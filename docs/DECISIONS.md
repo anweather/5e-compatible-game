@@ -69,9 +69,28 @@ What this project has *decided*, as distinct from what is *true*
   physics. That would mean evaluating a fixed-point engine, or Netcode
   for Entities prediction on a dedicated server.
 
+## D5. Real-time, not turn-based, for now (2026-10-13)
+
+- **Decision:** the prototypes are all real-time: action, platforming,
+  exploration. Turn-based combat is out of scope for now.
+- **Why:** Pocket Tactics already covers turn-based tactics on the
+  platform, and that genre is crowded. The interesting, less-trodden
+  space is real-time 5E spell chemistry.
+- **Consequences:**
+  - Single-player PhysX is authoritative everywhere (D4's
+    "nobody has to agree" case).
+  - Platform integration drops to option 0 (standalone) or option 1
+    for accounts and saves only (`PLATFORM_FIT.md`).
+  - D3's core library is still worth it, for a different reason: one
+    chemistry rule set shared by the 2D (`Rigidbody2D`) and 3D (PhysX)
+    prototypes, which are separate physics systems in Unity.
+- **Reopen if:** a prototype shows that the chemistry shines most when
+  you can plan it out.
+
 ## Still open
 
-- Combat mode: turn-based, action, or hybrid (`PLAN.md` Gate 1).
+- Paradigm: view, what spells are for, and progression structure
+  (`PROTOTYPES.md`), to be decided as D6 after the prototypes.
 - Whether, and how deeply, to integrate with web-boardgame-platform
   (`PLATFORM_FIT.md`).
 - Name. `5e-compatible-game` is the repo name, not a title.

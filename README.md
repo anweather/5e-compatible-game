@@ -6,14 +6,18 @@ whimsical interactions between spells and abilities**.
 
 - **Targets:** PC first. Native mobile and web are interesting but
   secondary.
-- **Still open:** combat mode (turn-based vs. action) and how much
-  platforming to include.
+- **Real-time, not turn-based**, for now (D5).
+- **Still open:** the paradigm: 2D vs. 3D, first or third person,
+  platformer vs. action vs. immersive sim, and levels vs. hub vs.
+  Metroid-style vs. open world. This is being answered by the
+  prototypes in `docs/PROTOTYPES.md`.
 
 No code yet. This repo is the knowledge base:
 
 | File | What it is |
 |---|---|
 | `README.md` | This page: the verdict and the shape of the answer |
+| `docs/PROTOTYPES.md` | **Current phase:** the prototypes, the shared spell kit, the progression options and the scorecard |
 | `docs/DECISIONS.md` | What has been decided, and why |
 | `docs/RESEARCH.md` | What is true, with sources: licence, SRD contents, data sets, prior games, systemic-magic patterns, Unity, physics determinism |
 | `docs/PLATFORM_FIT.md` | How (and whether) it fits web-boardgame-platform, from reading the code |
@@ -22,7 +26,7 @@ No code yet. This repo is the knowledge base:
 ## Verdict
 
 **Feasible, and a good way to learn Unity, if the physics/magic sandbox
-comes first and the combat mode is decided by a playable bench, not up
+comes first and the paradigm is decided by playable prototypes, not up
 front.**
 
 1. **Rules/licence: clear.**
