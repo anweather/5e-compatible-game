@@ -102,4 +102,8 @@ What this project has *decided*, as distinct from what is *true*
   (`PROTOTYPES.md`), to be decided as D6 after the prototypes.
 - Whether, and how deeply, to integrate with web-boardgame-platform
   (`PLATFORM_FIT.md`).
+- Locked vs. flexible abilities (class-locked, learnable, or a hybrid).
+  The data model supports all three (`TRAVERSAL.md`).
+- Critter acquisition: befriend or bond, not capture-device, pending
+  a patent check (`TRAVERSAL.md`).
 - Name. `5e-compatible-game` is the repo name, not a title.

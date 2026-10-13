@@ -46,6 +46,14 @@ Under the kit is a chemistry table, the first job of `Game.Core`:
   - element × tag
   - element × element
 
+**Traversal additions** (see `TRAVERSAL.md`):
+- three critters as element and material sources: ember newt (fire),
+  puddle frog (water), burrow mole (earth);
+- two machines that consume states: a steam engine (water + fire) and a
+  counterweight (mass);
+- a *physical channel* tag on every ability, so characters' verbs stay
+  distinct.
+
 The same table drives the 2D and 3D prototypes. Unity's 2D physics
 (`Rigidbody2D`, Box2D-based) and 3D physics (PhysX) are *separate*
 systems. Without a shared core, every rule would be written twice.
