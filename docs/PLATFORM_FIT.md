@@ -57,27 +57,29 @@ repo.
   FFT-style, so expect to write a fresh 5E core rather than bend that
   one.
 
-## Fit by combat mode
+## Integration options with a Unity client
+
+Updated for D1 (Unity) and D4 (physics isn't shared truth).
+
+| Option | How | Cost | Verdict |
+|---|---|---|---|
+| **0. No integration** | Standalone PC game | None | Fine for the first months. The platform adds nothing to a single-player physics bench |
+| **1. Platform as backend for a native client** | An ASP.NET Core plugin backend wraps `Game.Core` and implements the RPC contract (nothing requires a JVM; the Node SSDK and the Smithy model show the wire shape). The native Unity client calls the platform's HTTP API for account, saves, Spaces and async turns. The platform's web board shows a light 2D or summary view | A C# implementation of the RPC layer (no C# SSDK exists today); auth from a native app | **Natural fit** for async co-op or turn-based play |
+| **2. Unity web build as the plugin's board** | The plugin's `plugin.mjs` creates an **iframe** inside its shadow root, which loads the Unity web build from the plugin's `/assets`. A `postMessage` bridge carries `gameView` in and `onMove` out (jslib ⇄ `SendMessage`) | Tens of MB to download; mobile-browser performance; no managed threads | Possible, but late. Do it after the game is fun. Avoid mounting `createUnityInstance` directly in the shadow root (undocumented, page-global input and memory) |
+| **3. Real-time multiplayer through the platform** | Live channels: JSON only, ≤30 signals/s, no prediction | Doesn't fit action netcode | **No.** Real-time multiplayer would use Unity netcode (NGO, Mirror, FishNet) with its own server |
+
+## Fit by combat mode (Unity version)
 
 | Mode | Fit | How |
 |---|---|---|
-| **Turn-based (BG3/Solasta-like)** | **Clean** | `ApplyMove` runs deterministic Rapier until settled (budget: well under the 150–300 ms the platform already spends). The client replays the same steps for animation. Previews run the same function (triple-triad's `preview.ts` pattern). Co-op and presence go through a hosted live room; persistent campaigns through Spaces. |
-| **Real-time-with-pause** | Awkward | Too chatty for Moves, too authoritative for 30 signals/s. Avoid. |
-| **Action / platforming** | **Poor as a platform game** | The client simulates locally. The platform supplies identity, saves, Spaces and maybe low-rate presence. Moves become checkpoints ("cleared room 3", loot), not gameplay. Multiplayer action would need new netcode the platform deliberately didn't build. |
-
-**Hybrid that fits well.** Real-time *exploration and platforming*
-runs client-side (single-player or ghosted co-op, like tactics'
-overworld), and **turn-based combat** runs as server-authoritative
-Moves. That is the same split Pocket Tactics landed on: live overworld,
-turn-based battles. Spells use one sim core under both clocks.
+| **Turn-based** | **Good** | `Game.Core` `Apply(state, move)` is the ApplyMove. Physics is presentation, or quantised into the move (D4). Previews run the same core function |
+| **Action / platforming** | Standalone | PhysX is authoritative locally. The platform is at most a save/account backend (option 1, without async turns) |
+| **Hybrid** (real-time exploration, turn-based fights) | **Good** | Exploration is local. Fights are core-authoritative turns, which is the split Pocket Tactics already proved on the platform |
 
 ## Where it lives
 
-Its own repo, by boardgame-plugins' design rule ("a big, standalone
-game with its own asset pipeline gets its own repo", as with
-tactics-game-plugin). It would have the same two-runtime shape as
-tactics:
-- a standalone dev app or test bench;
-- `plugin-backend/` as the platform runtime.
-
-A port and a `registry.ts` entry come only once it is a plugin.
+`anweather/5e-compatible-game`, its own repo, following
+boardgame-plugins' rule that "a big standalone game gets its own repo".
+If option 1 happens, a `plugin-backend/` (ASP.NET Core) would sit next
+to the Unity project, with a port claimed in boardgame-plugins' registry
+and a `registry.ts` entry on the platform side.

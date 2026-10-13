@@ -172,6 +172,11 @@ Devil.
 
 ## 7. Physics in turn-based games, and determinism
 
+> With Unity (D1), the Rapier route below is off the table: Unity's
+> engines aren't cross-machine deterministic (§9). See D4 for the stance
+> taken instead. The design patterns (previews, settle-then-commit) still
+> apply.
+
 - **Patterns:**
   - Worms/Angry Birds: commit, simulate, wait for the scene to settle.
   - Into the Breach: discrete, deterministic, *previewed* pushes.
@@ -202,6 +207,9 @@ Devil.
 
 ## 8. Engines (2026)
 
+> **Superseded by D1 (Unity).** This survey was optimised for the web
+> platform. It's kept for context; see §9 for Unity specifics.
+
 | Option | For | Against |
 |---|---|---|
 | **Three.js / R3F + Rapier** | TypeScript and React like your boards; ~1–3 MB [mem]; same physics on server and client, deterministically; drops straight into ShadowMount | A library, not an engine: you build your own tooling (leva, theatre.js, a level editor) |
@@ -230,3 +238,107 @@ Magic movement works as **overrides on the kinematic controller**:
 | Misty Step | Shape-cast to the target, land at the last free spot |
 
 The player stays kinematic; the world stays dynamic so spells move props.
+
+## 9. Unity specifics (Oct 2026)
+
+**[V]** means verified on an official page. **[S]** means secondary
+sources. **[U]** means uncertain.
+
+### Versions and licence
+
+- **Current LTS:** 6.3 LTS, supported to Dec 2027. 6.0 LTS reaches end
+  of support about Oct 2026. [V]
+  <https://unity.com/releases/unity-6/support>
+- **Newer releases:**
+  - 6.6 (Sep 2026) is a supported, non-LTS release with production
+    WebGPU. [S]
+  - 6.7 will be an LTS, and the last Mono-based one. [V-forum]
+  - **Unity 7** brings CoreCLR, .NET 10 and C# 14, plus a URP-centred
+    pipeline. Beta about Dec 2026, release about Q1 2027. [S]
+  - <https://discussions.unity.com/t/coreclr-scripting-and-serialization-update-june-2026/1723299>
+- **Personal tier:** free under $200k a year of revenue plus funding;
+  the splash screen is optional; the runtime fee was cancelled
+  (Sep 2024). [V] <https://unity.com/products/unity-personal>
+- **For a shared C# core:** Unity's API level is .NET Standard 2.1 [V].
+  Keep the core at C# 9 or below until CoreCLR. NuGet packages come in
+  through NuGetForUnity or the UnityNuGet registry.
+
+### Physics determinism
+
+| Engine | Deterministic? |
+|---|---|
+| PhysX (built-in) | "Enhanced determinism" = same machine/binary + identical world rebuild only. A same-platform inconsistency bug was closed Won't Fix. [S] <https://uninomicon.com/physics_determinism> |
+| Unity Physics (DOTS) | Stateless; same architecture only. Cross-arch work is shelved, and the soft-float fork has been dead since 2022. [S] <https://discussions.unity.com/t/state-of-determinism-in-unity/867770> |
+| Havok for Unity | A paid add-on since 6.3; runtime needs a paid tier. [V] |
+| BEPUphysics v2 | Same build/architecture only. [S] |
+| Fixed-point maths (FixedMathSharp, FixPointCS) | Cross-platform, but it's maths, not a physics engine. |
+
+**Conclusion:** no Unity physics engine re-simulates identically on a
+Linux server and a Windows client. Hence D4.
+
+### Web build
+
+- **6.6:** WebGPU is supported but opt-in (WebGL2 is the default).
+  WebGPU unlocks VFX Graph on the web. Wasm64 allows memory up to
+  16 GB. [S]
+- **Mobile browsers:** iOS Safari 15+ and Android Chrome are officially
+  supported. [V]
+  <https://docs.unity3d.com/Manual/webgl-browsercompatibility.html>
+- **Limits** [V] <https://docs.unity3d.com/Manual/webgl-technical-overview.html>:
+  - no managed C# threads;
+  - no raw sockets (WebSockets or fetch only);
+  - basic audio;
+  - keyboard captured page-wide unless
+    `WebGLInput.captureAllKeyboardInput = false`.
+- **Size:** an empty URP build is about 8–15 MB compressed; a real game
+  is tens of MB. [U, measure it]
+- **Embedding:** `createUnityInstance(canvas, …)` takes any canvas, but
+  shadow-DOM hosting is undocumented. Global input, one instance per
+  page, and memory that is only freed on page reload all argue for an
+  **iframe** with a `postMessage` bridge (jslib ⇄ `SendMessage`).
+
+### Server side
+
+- Unity has a **Dedicated Server** build target: Linux, headless, with
+  assets stripped. It's useful if action multiplayer ever happens.
+- Simpler for turn-based: an ASP.NET Core service referencing
+  `Game.Core` directly.
+
+### Netcode (only if action or co-op)
+
+| Option | Notes |
+|---|---|
+| Netcode for GameObjects | First-party, server-authoritative, no prediction |
+| Netcode for Entities | Prediction and rollback; DOTS/ECS only |
+| Mirror | MIT; mature; server-authoritative |
+| FishNet | Free; built-in prediction; licence [U] |
+| Photon Fusion 2 | Hosted; excellent prediction; paid past a small free tier |
+
+### Learning path
+
+1. Unity Learn's *Unity Essentials*, then *Junior Programmer*
+   (<https://learn.unity.com/pathways>).
+2. Input System, Cinemachine, and the Starter Assets third-person
+   controller (CharacterController vs. Rigidbody).
+3. Shader Graph and VFX Graph (VFX Graph on the web needs WebGPU).
+
+**Testing:**
+- Unity Test Framework: EditMode tests for logic, PlayMode tests for
+  scenes and physics.
+- CI through GameCI on GitHub Actions. A Personal licence is activated
+  via Unity Hub, then the `.ulf` file goes into secrets; users report
+  friction. <https://game.ci/docs/github/activation>
+
+### AI-agent help without the Editor
+
+- **Works well:**
+  - C# scripts and `.asmdef` files;
+  - the whole engine-free core with `dotnet test`;
+  - GameCI workflows.
+- **Doesn't work:** hand-editing scenes and prefabs. They are YAML, but
+  full of GUIDs, and need visual iteration.
+- **Editor bridges** (both need the Editor running on your own machine,
+  not in a cloud container):
+  - Unity CLI's `unity mcp configure claude` (Unity 6.0+). [V]
+    <https://docs.unity.com/en-us/unity-cli/replace-mcp-server-unity-cli>
+  - The community `CoplayDev/unity-mcp` (MIT).

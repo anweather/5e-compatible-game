@@ -1,169 +1,175 @@
 # Plan to go deeper
 
 Principle: **each step answers one open question with something
-playable or measurable.** The combat-mode decision is made at Gate 1,
-from evidence, not up front.
+playable or measurable.** The engine is decided (Unity, D1). The combat
+mode is decided at Gate 1, from evidence.
+
+## Who does what
+
+The work splits by where it can run.
+
+| Work | Where it happens |
+|---|---|
+| Scenes, prefabs, materials, VFX, feel-tuning | **You, in the Unity Editor** on your PC. This is the learning |
+| `Game.Core` (rules, chemistry tables, grid), its xUnit tests, data import scripts, C# MonoBehaviours, CI workflows | **Claude**, in a cloud session (`dotnet test` runs there), or alongside you |
+| Live Editor help (inspect scene, run tests, build) | Claude Code on your PC with the Unity CLI MCP bridge (`unity mcp configure claude`) |
 
 ## Open questions (in the order the plan answers them)
 
 1. Is the spell sandbox *fun* in 3D, and which mode does it want?
-2. Can deterministic physics resolve a turn fast and small enough for
-   `ApplyMove`?
-3. Does a 3D canvas live happily in ShadowMount (pointer lock, asset
-   loading, phone performance)?
-4. How much of 5E survives contact with physics (to-hit vs. aim, saves
-   vs. dodging, push distances vs. impulses)?
-5. Is platforming a genre or a seasoning? (Likely seasoning: traversal
-   puzzles using Jump/Levitate/Misty Step between fights.)
+2. Does the chemistry-as-data + grid model feel rich enough, with
+   physics only as "feel"? (D4 tests this.)
+3. How much of 5E survives contact with physics: to-hit vs. aim, saves
+   vs. dodging, push distances vs. impulses?
+4. Is platforming a genre or a seasoning? Likely seasoning: traversal
+   puzzles using Jump, Levitate and Misty Step between fights.
+5. Does the platform add enough to be worth integrating, and how
+   (`PLATFORM_FIT.md` options 0–2)?
 
-## Phase 0 — Spikes (each a small, throwaway-friendly bench)
+## Phase 0 — Learn Unity while building the bench
 
-**Spike A: Spell bench** (answers Q1, Q5). Modelled on boardgame-plugins'
-`ship-lab/`: one thing, isolated, judged on feel.
+### Step 0: Unity basics (about 1–2 weeks of evenings)
 
-- **Stack:** Vite, TypeScript, Three.js or R3F, and `@dimforge/rapier3d-compat`.
-- **Scene:** one wizard on a kinematic controller, a greybox arena with
-  ledges and a pool, crates, an oil barrel, a wooden bridge, three
-  dummy enemies on dynamic bodies.
-- **Eight spells, all SRD:**
+- Install Unity Hub and **6.3 LTS** with a **URP** 3D template.
+- Do *Unity Essentials* and the first half of *Junior Programmer*
+  (Unity Learn).
+- Import Starter Assets (Third Person) and walk around a greybox.
+- Learn the Input System and Cinemachine basics.
+- Commit the project with a Unity `.gitignore` and Git LFS for binary
+  assets.
+
+### Spike A: Spell bench (answers Q1, Q4)
+
+It is modelled on boardgame-plugins' `ship-lab/`: one thing, in
+isolation, judged on feel. In this spike, PhysX is authoritative
+(single-player, D4).
+
+- **Scene:** one wizard (Starter Assets controller), a greybox arena
+  with ledges and a pool, crates, an oil barrel, a wooden bridge, and
+  three dummies on Rigidbodies.
+- **Eight SRD spells:**
   - Fire Bolt
   - Ray of Frost
-  - Thunderwave
-  - Grease
-  - Gust of Wind
+  - Thunderwave (an `OverlapSphere` plus `AddExplosionForce`)
+  - Grease (a low-friction `PhysicsMaterial` decal)
+  - Gust of Wind (a force volume)
   - Create Water
-  - Levitate
-  - Misty Step
-- **Chemistry v0:** a JSON table over tags. Fire + flammable gives
-  burning. Water + fire gives steam. Cold + water gives ice. Oil + fire
-  gives a spreading blaze. Lightning + wet gives a chain.
-- **Done when:** you've recorded 3 clips of an interaction you didn't
-  explicitly script (for example, grease → push → slide into the pool →
-  freeze).
+  - Levitate (gravity override)
+  - Misty Step (a `CapsuleCast` blink)
+- **Chemistry v0:** a ScriptableObject or JSON table over material
+  tags:
+  - fire + flammable → burning
+  - water + fire → steam
+  - cold + water → ice
+  - oil + fire → a spreading blaze
+  - lightning + wet → a chain
+- **Done when:** you have three recorded clips of an interaction nobody
+  explicitly scripted. For example: grease → shove → slide into the pool
+  → freeze.
 
-**Spike B: Deterministic turn resolve** (answers Q2). This is a Node
-script, not a game.
+### Spike B: `Game.Core` skeleton (answers Q2, in parallel with A; Claude can do this)
 
-1. Build the same Rapier scene from JSON.
-2. Apply an impulse.
-3. Step at a fixed dt until asleep.
-4. Hash the result.
-5. Run it in Node and in Chromium (Playwright) and compare the hashes.
+- A `netstandard2.1` library, an xUnit test project, and a GitHub
+  Actions workflow running `dotnet test`.
+- A data-driven chemistry table with elements, tags, element×tag and
+  element×element rules, and DOS-style orthogonal modifiers
+  (electrified/frozen, blessed/cursed).
+- A field grid as an integer cellular automaton (fire spread, liquid,
+  oil, ice, gas), with golden tests for each interaction.
+- Seeded RNG in state, and a pure `Apply(state, move)`.
+- Bring it into Unity as a source folder with an `.asmdef`
+  (`noEngineReferences: true`). Spike A's bench then swaps its ad-hoc
+  chemistry for the core.
 
-Measure:
-- milliseconds per resolve;
-- ticks to settle;
-- serialized state size, against the per-move RPC and storage budget.
+### Spike C: Web build, cheap probe (answers part of Q5; optional)
 
-Done when the hashes match across both, and you have a number.
-
-**Spike C: 3D in ShadowMount** (answers Q3).
-- Mount Spike A's canvas as a `plugin.mjs` behind a stub plugin locally.
-- Check pointer lock, resize, `fullScreenBoard`, lazy GLTF loading from
-  `/assets`, and frame rate on a phone.
+- Export Spike A to Web (WebGL2, then WebGPU on 6.6), and record its
+  size and load time.
+- Host it in an iframe inside a stub `plugin.mjs` on a local platform
+  stack.
+- Check input capture, fullscreen and phone performance.
 
 ## Gate 1 — choose the mode
 
-Decide from Spike A's feel and Spike B's numbers.
+Decide from Spike A's feel and Spike B's expressiveness.
 
 | If… | Then |
 |---|---|
-| The best moments came from *aiming and timing* | Action game. Standalone-first; the platform is used for saves and Spaces only |
-| The best moments came from *setting up chains* | Turn-based. Plugin-first, with server-resolved physics |
-| Both | **Hybrid**: real-time exploration and traversal, turn-based combat (the Pocket Tactics split). This is the current best guess |
+| The best moments came from *aiming and timing* | Action game: PhysX authoritative, PC standalone, platform option 0 |
+| The best moments came from *setting up chains* | Turn-based: core authoritative, physics as presentation, platform option 1 becomes attractive |
+| Both | **Hybrid**: real-time exploration and traversal, turn-based fights (current best guess) |
 
-Write the result into a `docs/DECISIONS.md` in the new repo. That
-mirrors tetra-master's RESEARCH vs. DECISIONS split.
+Record the outcome in `DECISIONS.md` as D5.
 
-## Phase 1 — Sim core (mode-agnostic)
+## Phase 1 — 5E layer in `Game.Core`
 
-- **Repo:** create a new one, for example `anweather/<name>-rpg`, with
-  the tactics-style layout: `src/core` (pure), `src/adapters/three`,
-  `data/`, `tests-unit/`.
-- **Chemistry engine:** elements, material tags, an element×tag table,
-  an element×element table, and DOS-style orthogonal modifiers
-  (electrified/frozen, blessed/cursed).
-- **Field grid:** a coarse voxel/heightfield cellular automaton for fire
-  spread, liquid depth, oil, ice and gas. It must be deterministic and
-  unit-tested.
-- **Body ↔ cell coupling:** objects ignite from the cell they stand on,
-  wet objects conduct, frozen surfaces lower friction.
-- **Spell = data plus a small effect vocabulary:**
-  - emit element,
-  - impulse (cone, sphere or line),
-  - spawn body or wall,
-  - modify gravity,
-  - teleport,
-  - spawn volume,
-  - grab.
-
-  Around 10 primitives should express most physical SRD spells.
-- **Tests:** a golden test for every documented interaction, plus a
-  "surprise log" of emergent combos found in play.
-
-## Phase 2 — 5E layer
-
-- **Import:** `data/build-srd.mjs` parses SRD 5.2.1 (Markdown, or
-  Foundry packs) into typed JSON, for the subset implemented. It checks
-  against a second statement in the source. The attribution text goes
-  in the README and credits.
-- **Core rules:**
-  - ability scores and modifiers, proficiency;
+- **Import:** a build script parses SRD 5.2.1 (from the Markdown or the
+  Foundry packs) into typed JSON for the subset implemented. Validate it
+  against a second statement in the source. The CC-BY attribution goes
+  in the README and in the game's credits.
+- **Rules:**
+  - ability scores and proficiency;
   - d20 tests with advantage and disadvantage;
   - saves and DCs;
   - spell slots and concentration;
-  - conditions (prone, restrained, grappled…);
-  - all randomness through a seeded cursor in state.
-- **Physics ↔ 5E mapping** (write it down as decisions):
+  - conditions;
+  - seeded dice.
+- **Physics-to-5E mapping**, written down as decisions:
 
-  | 5E rule | Physical version |
+  | 5E rule | In the game |
   |---|---|
-  | Push "10 ft" | Impulse calibrated to 3 m on a Medium creature |
-  | Fall damage | Measured from physical fall height |
-  | Prone | Triggered by ice or grease physics |
-  | High ground | Gives advantage |
-  | Shove / Jump / Throw | Cheap verbs (BG3's lesson) |
+  | push "10 ft" | an impulse calibrated to about 3 m |
+  | fall damage | from the physical fall height |
+  | prone | from ice or grease |
+  | high ground | gives advantage |
+  | shove, jump, throw | cheap verbs, which is BG3's lesson |
 
-- **Slice:** two SRD classes (Wizard/Evoker and Fighter/Champion),
-  levels 1–5, about 15 spells, about 6 monsters.
+- **Slice:** Wizard (Evoker) and Fighter (Champion), levels 1–5, about
+  15 spells, about 6 monsters.
 
-## Phase 3 — the chosen mode, as a vertical slice
+## Phase 2 — Vertical slice in the chosen mode
 
-- **Turn-based or hybrid:**
-  - `plugin-backend/` on the TS SSDK, with `servePlugin` and
-    `engineContract` conformance;
-  - `ApplyMove` runs the TurnClock;
-  - previews use the same function;
-  - a hosted live room for co-op;
-  - Spaces for a persistent campaign.
-- **Action:**
-  - feel first (Dark Alliance's lesson): lock-on, hit-stop, i-frames;
-  - map AC and saves to real-time per RESEARCH §4;
-  - the platform is used for saves.
-- **Deliverable:** one dungeon, one boss and one traversal puzzle that
-  requires combining two spells.
+- One dungeon, one boss, and one traversal puzzle that needs two spells
+  combined.
+- **Turn-based or hybrid:** a turn UI, previews driven by the core,
+  initiative, and a camera that frames the action.
+- **Action:** lock-on, hit-stop and i-frames come first (the lesson from
+  Dark Alliance). Map AC and saves to real time per `RESEARCH.md` §4.
+- Build for PC. Try a mobile build once as a reality check.
 
-## Phase 4 — breadth (only after the slice is fun)
+## Phase 3 — Platform integration (only if Gate 1 and the slice justify it)
 
-More classes, an SRD monster pipeline, art direction (whimsical:
-stylised low-poly plus juicy VFX keeps the art budget sane), and
-procedural rooms (tactics' chunk generator as reference).
+- **Option 1:** an ASP.NET Core `plugin-backend/` wrapping `Game.Core`,
+  implementing the platform RPC contract, with a port in
+  boardgame-plugins and a `registry.ts` entry. The native client handles
+  async turns and saves.
+- **Option 2:** a Unity web build in an iframe, as the plugin's board.
 
-## Learning track (runs alongside)
+## Phase 4 — Breadth (only after the slice is fun)
+
+- More classes and the SRD monster pipeline.
+- Art direction: whimsical, stylised low-poly, URP toon shading, with
+  juicy VFX Graph effects. Use CC0 kits (Kenney, Quaternius) through
+  Phase 2.
+- Procedural rooms.
+- Netcode, only if co-op action is wanted (Mirror or FishNet).
+
+## Learning track (alongside)
 
 | Phase | Learn |
 |---|---|
-| Spike A | Three.js fundamentals: scene graph, cameras, lights, materials, GLTF; Rapier bodies, colliders, the character controller |
-| Phase 1 | Cellular automata; instanced rendering; particles and VFX (three.quarks or custom shaders) |
-| Phase 3 | Animation (mixamo-style rigs, blend trees); camera feel; netcode basics (fixed timestep, deterministic lockstep vs. authoritative state) |
-| Optional | A weekend in Godot 4.6 to feel a full editor, then decide whether to miss it |
+| Step 0 / A | GameObjects and components, prefabs, Rigidbody and colliders, `PhysicsMaterial`, raycasts and overlaps, Input System, Cinemachine |
+| B | C# for a TS/Kotlin dev: structs vs. classes, `Span`, records (C# 9), nullable refs; asmdefs; xUnit |
+| 1–2 | ScriptableObjects as data, Animator and blend trees (Mixamo rigs), Shader Graph, VFX Graph, UI Toolkit, the Unity Test Framework (EditMode/PlayMode) |
+| 3+ | Build pipelines, Addressables, GameCI, profiling on mobile |
 
 ## Risks
 
 | Risk | Mitigation |
 |---|---|
-| Scope (3D RPG is the canonical over-scoped hobby project) | Spikes are small; Gate 1 is honest; slice before breadth |
-| Physics chaos versus tactical predictability | Previews from the same function; physics only where it's the joke or the point |
-| Determinism drift on a Rapier upgrade | Pin the version; hash goldens in CI; re-seed and migrate like risk-remote's cursor change |
-| Art cost | Greybox through Phase 3; stylised low-poly; CC0 kits (Kenney, Quaternius) |
-| Licence slip (using "D&D", or non-SRD names) | Name list check in CI; only SRD 5.2.1-sourced text |
+| Scope: a 3D RPG is the classic over-scoped hobby project | Small spikes, an honest Gate 1, slice before breadth |
+| Physics chaos vs. tactical predictability | Previews from the core; physics only where it's the joke or the point |
+| Wanting multiplayer physics later | D4 already keeps shared truth out of PhysX; netcode is a Phase 4 add-on |
+| Unity churn (CoreCLR, Unity 7 in 2027) | Core at C# 9 or below, on netstandard2.1; stay on LTS |
+| Art cost | Greybox through Phase 2; CC0 kits; stylised URP |
+| Licence slip (using "D&D" or non-SRD names) | A name check in CI; only SRD 5.2.1-sourced text |
