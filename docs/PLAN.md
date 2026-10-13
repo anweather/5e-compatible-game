@@ -1,8 +1,8 @@
 # Plan to go deeper
 
 Principle: **each step answers one open question with something
-playable or measurable.** The engine is decided (Unity, D1); real-time,
-not turn-based (D5). The paradigm (view, what spells are for, and
+playable or measurable.** The engine is decided (Unity, D1). No grid
+tactics; turn-based only in its physical form (D5). The paradigm (view, what spells are for, and
 progression) is decided at Gate 1, from prototypes.
 
 ## Who does what
@@ -42,11 +42,12 @@ The work splits by where it can run.
 
 ### Prototypes P1–P4 (answer Q1, Q4)
 
-See **`PROTOTYPES.md`**. Four greybox prototypes share one 8-spell kit:
+See **`PROTOTYPES.md`**. Five greybox prototypes share one 8-spell kit:
 - P1: 2D side-view
 - P2: 3D third-person platformer
 - P3: first-person immersive sim
 - P4: top-down (optional)
+- P5: physical turn-based tactics (`PHYSICAL_TACTICS.md`)
 
 Each is timeboxed to 1–2 weeks and scored on the same rubric. PhysX
 and `Rigidbody2D` are authoritative, since everything is single-player

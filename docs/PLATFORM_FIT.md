@@ -59,8 +59,11 @@ repo.
 
 ## Integration options with a Unity client
 
-> With D5 (real-time, not turn-based), only options 0 and 1 (accounts
-> and saves) are realistic for now. Integration is not a priority.
+> Integration is not a priority while prototyping. For P1–P4
+> (real-time), only options 0 and 1 (accounts and saves) are
+> realistic. If P5 (physical tactics) wins, its preview-then-replay
+> recording can be the Move, and option 1 with async turns comes back
+> into play (D4, D5).
 
 Updated for D1 (Unity) and D4 (physics isn't shared truth).
 
@@ -71,7 +74,7 @@ Updated for D1 (Unity) and D4 (physics isn't shared truth).
 | **2. Unity web build as the plugin's board** | The plugin's `plugin.mjs` creates an **iframe** inside its shadow root, which loads the Unity web build from the plugin's `/assets`. A `postMessage` bridge carries `gameView` in and `onMove` out (jslib ⇄ `SendMessage`) | Tens of MB to download; mobile-browser performance; no managed threads | Possible, but late. Do it after the game is fun. Avoid mounting `createUnityInstance` directly in the shadow root (undocumented, page-global input and memory) |
 | **3. Real-time multiplayer through the platform** | Live channels: JSON only, ≤30 signals/s, no prediction | Doesn't fit action netcode | **No.** Real-time multiplayer would use Unity netcode (NGO, Mirror, FishNet) with its own server |
 
-## Fit by combat mode (Unity version; turn-based rows parked by D5)
+## Fit by combat mode (Unity version)
 
 | Mode | Fit | How |
 |---|---|---|

@@ -2,8 +2,10 @@
 
 The constant is **5E-style characters and spells, with deep, whimsical
 interactions between them**. Everything else is open: camera,
-dimension, how much platforming, and how progression works. **Not
-turn-based**, for now (D5); Pocket Tactics already covers that ground.
+dimension, how much platforming, how progression works, and real-time
+vs. turn-based. Turn-based is in only in its *physical* form (P5,
+`PHYSICAL_TACTICS.md`). Grid tactics stays out, because Pocket Tactics
+already covers it (D5).
 
 The goal of this phase is to *feel* the options side by side, cheaply,
 and to pick the one where the spells are both the most fun and the most
@@ -108,6 +110,30 @@ the shared kit, one small space.
   so it costs about a weekend. If the chemistry is far more fun from
   above, that's worth knowing.
 
+### P5: Physical turn-based tactics (party RPG, BG3 / Final Fantasy party direction)
+
+Full concept: **`PHYSICAL_TACTICS.md`**.
+
+- **Build:** P2's arena with a tactics camera, a party of three against
+  goblins and an ogre.
+- **Hypothesis:** turn-based play gets fresh when **the world resolves
+  your intent physically**:
+  - attacks hit whatever is really in the way;
+  - charges leave you where you ended up;
+  - throws depend on Strength against weight.
+  - On top of that: reactions as the skill expression (Shield, readied
+    Gust, interpose), and **flat HP**, so position and environment kill,
+    not numbers.
+- **Fresh angle:** no health sponges. A low-HP, high-lethality party
+  RPG where the preview equals the outcome (sandbox physics scene, then
+  replay).
+- **Learns:** NavMesh, a tactics camera, Unity multi-scene physics
+  (`PhysicsScene.Simulate`), turn and initiative state machines, UI
+  Toolkit.
+- **Cost:** medium after P2. The turn and reaction system is the new
+  work, and it is mostly `Game.Core` (5E initiative, reactions,
+  conditions), which Claude can build and test.
+
 ### What is *not* a prototype: open world
 
 Open world is axis C, a structure, not a feel. A third-person (P2) or
@@ -139,15 +165,15 @@ one hub or region, then grow it.
 
 Score each from 1 to 5. Record clips; they settle arguments.
 
-| Criterion | P1 2D | P2 3P plat | P3 1P sim | P4 top-down |
-|---|---|---|---|---|
-| Unscripted interaction moments (count clips) | | | | |
-| Readability: could a friend see *why* it happened? | | | | |
-| Movement feel, before any spells | | | | |
-| "Haven't played this before" factor | | | | |
-| Content cost to reach a 30-minute game | | | | |
-| What it taught me about Unity | | | | |
-| Did I want to keep playing it? | | | | |
+| Criterion | P1 2D | P2 3P plat | P3 1P sim | P4 top-down | P5 phys. tactics |
+|---|---|---|---|---|---|
+| Unscripted interaction moments (count clips) | | | | | |
+| Readability: could a friend see *why* it happened? | | | | | |
+| Movement feel before any spells (P5: does the preview read clearly?) | | | | | |
+| "Haven't played this before" factor | | | | | |
+| Content cost to reach a 30-minute game | | | | | |
+| What it taught me about Unity | | | | | |
+| Did I want to keep playing it? | | | | | |
 
 ## Order
 
@@ -158,9 +184,12 @@ Score each from 1 to 5. Record clips; they settle arguments.
    payoff, and it builds the 3D scene that P3 and P4 reuse.
 3. **P1 (2D side-view).** The different physics and renderer show
    whether the shared core really is engine-agnostic.
-4. **P3 (first person)** on P2's scene.
-5. **P4 (top-down)**, a weekend, optional.
-6. **Compare, pick, write D6.** Then one structure slice (a hub, a level
+4. **P5 (physical tactics)** on P2's arena. Its 5E turn, reaction and
+   condition rules go into `Game.Core` first, which Claude can build
+   ahead of time.
+5. **P3 (first person)** on P2's scene.
+6. **P4 (top-down)**, a weekend, optional.
+7. **Compare, pick, write D6.** Then one structure slice (a hub, a level
    or a region) for the winner.
 
 **Alternative order** if you'd rather test the *interactions* first and
