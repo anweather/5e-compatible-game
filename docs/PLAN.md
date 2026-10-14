@@ -42,12 +42,13 @@ The work splits by where it can run.
 
 ### Prototypes P1–P4 (answer Q1, Q4)
 
-See **`PROTOTYPES.md`**. Five greybox prototypes share one 8-spell kit:
+See **`PROTOTYPES.md`**. Six greybox prototypes share one 8-spell kit:
 - P1: 2D side-view
 - P2: 3D third-person platformer
 - P3: first-person immersive sim
 - P4: top-down (optional)
 - P5: physical turn-based tactics (`PHYSICAL_TACTICS.md`)
+- P6: third-person exploration plus P5 fights (`EXPLORE_AND_FIGHT.md`)
 
 Each is timeboxed to 1–2 weeks and scored on the same rubric. PhysX
 and `Rigidbody2D` are authoritative, since everything is single-player

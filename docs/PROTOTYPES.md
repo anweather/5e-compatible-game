@@ -142,6 +142,25 @@ Full concept: **`PHYSICAL_TACTICS.md`**.
   work, and it is mostly `Game.Core` (5E initiative, reactions,
   conditions), which Claude can build and test.
 
+### P6: Third-person adventure with turn-based fights (Divinity/BG3 modes, BotW movement)
+
+Full concept: **`EXPLORE_AND_FIGHT.md`**.
+
+- **Build:** one valley and one goblin camp. Real-time third-person
+  exploration with party-leader swapping and traversal verbs. Fights drop
+  into P5 tactics in place.
+- **Hypothesis:** the two modes *multiply* when exploration movement is
+  used to **prepare the battlefield**: grease the bridge, take the high
+  ground, park the newt by the oil.
+- **Fresh angle:** BotW-grade field movement and chemistry plus
+  BG3-grade physical turn-based combat. Also tests Expedition 33-style
+  timed reactions against menu reactions.
+- **Learns:** Cinemachine camera blends, a mode state machine,
+  `NavMeshAgent` followers with off-mesh links, animation-event timing
+  windows.
+- **Cost:** low to medium *after* P2 and P5. The new work is the seam
+  (engagement, followers, camera).
+
 ### What is *not* a prototype: open world
 
 Open world is axis C, a structure, not a feel. A third-person (P2) or
@@ -173,15 +192,15 @@ one hub or region, then grow it.
 
 Score each from 1 to 5. Record clips; they settle arguments.
 
-| Criterion | P1 2D | P2 3P plat | P3 1P sim | P4 top-down | P5 phys. tactics |
-|---|---|---|---|---|---|
-| Unscripted interaction moments (count clips) | | | | | |
-| Readability: could a friend see *why* it happened? | | | | | |
-| Movement feel before any spells (P5: does the preview read clearly?) | | | | | |
-| "Haven't played this before" factor | | | | | |
-| Content cost to reach a 30-minute game | | | | | |
-| What it taught me about Unity | | | | | |
-| Did I want to keep playing it? | | | | | |
+| Criterion | P1 2D | P2 3P plat | P3 1P sim | P4 top-down | P5 phys. tactics | P6 explore+fight |
+|---|---|---|---|---|---|---|
+| Unscripted interaction moments (count clips) | | | | | | |
+| Readability: could a friend see *why* it happened? | | | | | | |
+| Movement feel before any spells (P5: does the preview read clearly?) | | | | | | |
+| "Haven't played this before" factor | | | | | | |
+| Content cost to reach a 30-minute game | | | | | | |
+| What it taught me about Unity | | | | | | |
+| Did I want to keep playing it? | | | | | | |
 
 ## Order
 
@@ -195,9 +214,12 @@ Score each from 1 to 5. Record clips; they settle arguments.
 4. **P5 (physical tactics)** on P2's arena. Its 5E turn, reaction and
    condition rules go into `Game.Core` first, which Claude can build
    ahead of time.
-5. **P3 (first person)** on P2's scene.
-6. **P4 (top-down)**, a weekend, optional.
-7. **Compare, pick, write D6.** Then one structure slice (a hub, a level
+5. **P6 (explore + fight)**: stitch P2 and P5 together in one valley.
+   It's cheap at this point, and it's the likely front-runner if both
+   halves are fun.
+6. **P3 (first person)** on P2's scene.
+7. **P4 (top-down)**, a weekend, optional.
+8. **Compare, pick, write D6.** Then one structure slice (a hub, a level
    or a region) for the winner.
 
 **Alternative order** if you'd rather test the *interactions* first and

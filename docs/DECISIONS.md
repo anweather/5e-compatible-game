@@ -75,7 +75,8 @@ What this project has *decided*, as distinct from what is *true*
   - P1–P4 are real-time: action, platforming, exploration.
   - Turn-based is in **only** as P5, physical tactics
     (`PHYSICAL_TACTICS.md`): continuous 3D space, intents resolved
-    physically, reactions, flat HP.
+    physically, reactions, flat HP. That includes P6, which uses P5 as
+    its combat mode (`EXPLORE_AND_FIGHT.md`).
   - Grid or FFT-style tactics is out.
 - **Amended because** the physical, reaction-driven, low-HP version is
   a different game from Pocket Tactics. The original "real-time only"
