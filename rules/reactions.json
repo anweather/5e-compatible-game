@@ -1,0 +1,49 @@
+{
+  "cell": [
+    { "id": "fire-oil", "element": "fire", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} ignites", "notable": true, "stop": true },
+    { "id": "fire-ice", "element": "fire", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water", "stop": true },
+    { "id": "fire-water", "element": "fire", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam", "stop": true },
+    { "id": "fire-flammable", "element": "fire", "if": { "terrainTag": "flammable" }, "do": [{ "ignite": 2 }], "log": "The {terrain} catches fire", "stop": true },
+
+    { "id": "cold-fire", "element": "cold", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "Frost snuffs out the flames" },
+    { "id": "cold-water", "element": "cold", "if": { "water": true }, "do": [{ "freeze": true }], "log": "The water freezes solid" },
+    { "id": "cold-steam", "element": "cold", "if": { "gas": "steam" }, "do": [{ "condense": true }], "log": "Steam condenses back into water" },
+
+    { "id": "water-oilfire", "element": "water", "if": { "fire": true, "cover": ["oil", "grease"] }, "do": [{ "spreadCover": 2 }, { "addWater": "power" }], "log": "Water can't douse burning {cover}. It splashes the fire outward!", "notable": true, "stop": true },
+    { "id": "water-fire", "element": "water", "if": { "fire": true }, "do": [{ "extinguish": true }, { "gas": "steam", "n": 2 }], "log": "Water douses the fire in a hiss of steam" },
+    { "id": "water-add", "element": "water", "if": { "notTerrainTag": "blocking" }, "do": [{ "addWater": "power" }], "stop": true },
+    { "id": "water-vessel", "element": "water", "if": { "terrainTag": "vessel" }, "do": [{ "addWater": "power" }], "log": "Water pours into the {terrain}", "stop": true },
+
+    { "id": "air-small-fire", "element": "air", "if": { "fire": 1, "fireBelow": 2 }, "do": [{ "extinguish": true }], "log": "The gust blows the little flame out" },
+    { "id": "air-big-fire", "element": "air", "if": { "fire": 2 }, "do": [{ "fan": true }], "log": "The wind fans the fire downwind", "notable": true },
+    { "id": "air-gas", "element": "air", "if": { "gas": "any" }, "do": [{ "pushGas": true }] },
+    { "id": "air-mark", "element": "air", "do": [{ "mark": "wind" }] },
+
+    { "id": "earth-break", "element": "earth", "if": { "terrainTag": "breakable" }, "do": [{ "break": true }], "log": "The {terrain} crumbles to rubble", "stop": true },
+    { "id": "earth-fill", "element": "earth", "if": { "terrainTag": "low", "notTerrainTag": "machine" }, "do": [{ "setTerrain": "dirt" }], "log": "Earth fills the pit", "stop": true },
+    { "id": "earth-raise", "element": "earth", "if": { "terrainTag": "ground", "notTerrainTag": "machine" }, "do": [{ "raise": "pillar" }], "log": "A pillar of earth rises", "stop": true },
+
+    { "id": "lightning-conduct", "element": "lightning", "if": { "conductive": true }, "do": [{ "conduct": 3 }], "log": "Lightning arcs through everything conductive that touches", "notable": true },
+    { "id": "lightning-oil", "element": "lightning", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "A spark lights the {cover}", "notable": true, "stop": true },
+    { "id": "lightning-ice", "element": "lightning", "if": { "frozen": true }, "do": [], "log": "The ice insulates and the spark fizzles", "stop": true },
+    { "id": "lightning-flammable", "element": "lightning", "if": { "terrainTag": "flammable", "conductive": false }, "do": [{ "ignite": 1 }], "log": "The strike sets the {terrain} smouldering", "stop": true },
+
+    { "id": "grease-into-fire", "element": "grease", "if": { "notTerrainTag": "blocking", "fire": true }, "do": [{ "setCover": "grease" }, { "ignite": "cover" }], "log": "Grease hits the flames. Whoosh!", "notable": true, "stop": true },
+    { "id": "grease-spill", "element": "grease", "if": { "notTerrainTag": "blocking" }, "do": [{ "setCover": "grease" }], "stop": true },
+    { "id": "oil-into-fire", "element": "oil", "if": { "notTerrainTag": "blocking", "fire": true }, "do": [{ "setCover": "oil" }, { "ignite": "cover" }], "log": "Oil hits the flames. Whoosh!", "notable": true, "stop": true },
+    { "id": "oil-spill", "element": "oil", "if": { "notTerrainTag": "blocking" }, "do": [{ "setCover": "oil" }], "stop": true },
+
+    { "id": "thunder-gas", "element": "thunder", "if": { "gas": "any" }, "do": [{ "clearGas": true }], "log": "The thunderclap scatters the vapour" }
+  ],
+  "entity": [
+    { "id": "e-fire-wet", "element": "fire", "if": { "status": "wet" }, "do": [{ "clear": "wet" }], "log": "{name} is soaked, so the fire only sizzles", "stop": true },
+    { "id": "e-fire-frozen", "element": "fire", "if": { "status": "frozen" }, "do": [{ "clear": "frozen" }, { "status": { "wet": 30 } }], "log": "{name} thaws out", "stop": true },
+    { "id": "e-fire-flammable", "element": "fire", "if": { "flammable": true }, "do": [{ "status": { "burning": 24 } }], "log": "{name} catches fire" },
+    { "id": "e-fire-creature", "element": "fire", "if": { "flammable": false }, "do": [{ "status": { "burning": 9 } }] },
+    { "id": "e-water", "element": "water", "do": [{ "clear": "burning" }, { "status": { "wet": 60 } }] },
+    { "id": "e-cold-wet", "element": "cold", "if": { "status": "wet" }, "do": [{ "clear": "wet" }, { "status": { "frozen": 30 } }], "log": "{name} is wet, and freezes solid", "notable": true, "stop": true },
+    { "id": "e-cold", "element": "cold", "do": [{ "clear": "burning" }] },
+    { "id": "e-lightning-flammable", "element": "lightning", "if": { "flammable": true }, "do": [{ "status": { "burning": 24 } }], "log": "{name} catches a spark" },
+    { "id": "e-lightning-wet", "element": "lightning", "if": { "status": "wet" }, "do": [{ "damageMul": 2 }], "log": "{name} is wet, so the shock hits twice as hard", "notable": true }
+  ]
+}

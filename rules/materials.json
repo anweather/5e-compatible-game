@@ -1,0 +1,32 @@
+{
+  "terrain": {
+    "bedrock":   { "name": "Bedrock", "tags": ["blocking"] },
+    "dirt":      { "name": "Dirt", "tags": ["ground"] },
+    "grass":     { "name": "Grass", "tags": ["ground", "flammable"], "flammability": 0.35, "fuel": 8, "burnsTo": "dirt" },
+    "brush":     { "name": "Brambles", "tags": ["blocking", "flammable"], "flammability": 0.4, "fuel": 14, "burnsTo": "dirt", "burnLog": "The brambles burn away, opening a path" },
+    "tree":      { "name": "Tree", "tags": ["blocking", "flammable"], "flammability": 0.12, "fuel": 40, "burnsTo": "stump" },
+    "stump":     { "name": "Stump", "tags": ["ground"] },
+    "stone":     { "name": "Stone wall", "tags": ["blocking", "breakable"], "breaksTo": "rubble" },
+    "pillar":    { "name": "Earth pillar", "tags": ["blocking", "breakable"], "breaksTo": "rubble" },
+    "rubble":    { "name": "Rubble", "tags": ["ground"] },
+    "wood":      { "name": "Wooden bridge", "tags": ["ground", "flammable"], "flammability": 0.25, "fuel": 18, "burnsTo": "pit", "burnLog": "The bridge burns through and collapses" },
+    "pit":       { "name": "Pit", "tags": ["low"], "elevation": -1 },
+    "metal":     { "name": "Metal plate", "tags": ["ground", "conductive"] },
+    "gate":      { "name": "Gate (shut)", "tags": ["blocking", "gate"] },
+    "gate_open": { "name": "Gate (open)", "tags": ["ground", "gate"] },
+    "boiler":    { "name": "Steam boiler", "tags": ["blocking", "machine", "vessel"], "elevation": -1 },
+    "plate":     { "name": "Pressure plate", "tags": ["ground", "machine"] },
+    "wheel":     { "name": "Water wheel", "tags": ["low", "machine"], "elevation": -1 },
+    "coil":      { "name": "Lightning coil", "tags": ["ground", "machine", "conductive"] },
+    "windmill":  { "name": "Windmill", "tags": ["blocking", "machine"] }
+  },
+  "covers": {
+    "oil":    { "name": "Oil", "tags": ["flammable", "slippery"], "flammability": 0.95, "fuel": 10, "burnIntensity": 3 },
+    "grease": { "name": "Grease", "tags": ["flammable", "slippery"], "flammability": 0.6, "fuel": 7, "burnIntensity": 2 },
+    "ash":    { "name": "Ash", "tags": [] }
+  },
+  "gases": {
+    "steam": { "name": "Steam", "scald": 1 },
+    "smoke": { "name": "Smoke" }
+  }
+}

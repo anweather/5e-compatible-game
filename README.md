@@ -14,7 +14,16 @@ whimsical interactions between spells and abilities**.
   Metroid-style vs. open world. This is being answered by the
   prototypes in `docs/PROTOTYPES.md`.
 
-No code yet. This repo is the knowledge base:
+The first runnable piece is the **Spell Chemistry Sandbox** (`sandbox/`): a
+browser paper prototype of the spell interactions, driven by the rule
+tables in `rules/` that the Unity build will load too.
+
+| Folder | What it is |
+|---|---|
+| `rules/` | The interaction rules as JSON: elements, materials, reactions, spells, critters, machines |
+| `sandbox/` | A top-down web sandbox that runs those rules, with tests (`npm test`) |
+
+The docs:
 
 | File | What it is |
 |---|---|

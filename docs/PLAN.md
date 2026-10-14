@@ -40,6 +40,12 @@ The work splits by where it can run.
 - Commit the project with a Unity `.gitignore` and Git LFS for binary
   assets.
 
+### Spell Chemistry Sandbox (done; answers Q2 early)
+
+A browser paper prototype of the chemistry (`sandbox/`), running on the
+shared rule tables in `rules/`. Play it and log which chains surprise
+you and which rules feel missing, before any Unity time goes in.
+
 ### Prototypes P1–P4 (answer Q1, Q4)
 
 See **`PROTOTYPES.md`**. Six greybox prototypes share one 8-spell kit:

@@ -1,0 +1,159 @@
+// Things on the board: damage, death, explosions, and being shoved around.
+import { RULES } from "./rules.ts";
+import { applyElement, applyEntityElement, ignite } from "./react.ts";
+import {
+  type Dir, type Entity, type World,
+  DX, DY, cellAt, entityAt, hasTag, isBlocking, isSlippery, log, logOnce, roll, terrainDef,
+} from "./world.ts";
+
+export const defOf = (e: Entity) => RULES.entities[e.kind]!;
+export const isLevitating = (e: Entity) => (e.status.levitate ?? 0) > 0;
+export const massOf = (e: Entity) => (isLevitating(e) ? 0 : defOf(e).mass);
+
+export function spawn(w: World, kind: string, x: number, y: number): Entity | undefined {
+  const c = cellAt(w, x, y);
+  if (!c || isBlocking(c) || entityAt(w, x, y) || !(kind in RULES.entities)) return undefined;
+  const e: Entity = { id: w.nextId++, kind, x, y, hp: RULES.entities[kind]!.hp, status: {} };
+  w.entities.push(e);
+  return e;
+}
+
+export function damage(w: World, e: Entity, amount: number, cause: string) {
+  if (amount <= 0 || !w.entities.includes(e)) return;
+  const def = defOf(e);
+  if (def.hp >= 999) return; // boulders shrug
+  e.hp -= amount;
+  if (def.creature) logOnce(w, `hurt#${e.id}#${cause}`, `${def.name} takes ${amount} ${cause} damage (${Math.max(0, e.hp)}/${def.hp} HP)`, "hurt");
+  if (e.hp <= 0) destroy(w, e);
+}
+
+export function destroy(w: World, e: Entity) {
+  const i = w.entities.indexOf(e);
+  if (i < 0) return;
+  w.entities.splice(i, 1);
+  const def = defOf(e);
+  if (def.explodes) return explode(w, e.x, e.y, def.explodes);
+  if (def.creature) {
+    log(w, `${def.name} is defeated`, "hurt");
+  } else if (e.status.burning) {
+    const c = cellAt(w, e.x, e.y)!;
+    c.fire = Math.max(c.fire, 2);
+    c.fuel = Math.max(c.fuel, 6);
+    log(w, `The ${def.name.toLowerCase()} burns to cinders`, "info");
+  } else {
+    log(w, `The ${def.name.toLowerCase()} breaks apart`, "info");
+  }
+}
+
+function explode(w: World, x: number, y: number, ex: NonNullable<ReturnType<typeof defOf>["explodes"]>) {
+  log(w, "KABOOM! The oil barrel explodes", "notable");
+  for (let dy = -ex.radius; dy <= ex.radius; dy++) {
+    for (let dx = -ex.radius; dx <= ex.radius; dx++) {
+      const c = cellAt(w, x + dx, y + dy);
+      if (!c || isBlocking(c)) continue;
+      c.cover = ex.cover;
+      ignite(c, "cover");
+      c.fire = Math.max(c.fire, ex.fire);
+    }
+  }
+  const hit = w.entities.filter((e) => Math.max(Math.abs(e.x - x), Math.abs(e.y - y)) <= ex.radius + 1);
+  for (const e of hit) {
+    damage(w, e, roll(w, ex.damage), "blast");
+    if (!w.entities.includes(e)) continue;
+    applyEntityElement(w, e, "fire", { power: 3, direct: false });
+    if (e.x !== x || e.y !== y) push(w, e, awayDir(e.x - x, e.y - y), ex.push, false);
+  }
+}
+
+export function awayDir(dx: number, dy: number, fallback: Dir = 0): Dir {
+  if (dx === 0 && dy === 0) return fallback;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 1 : 3;
+  return dy > 0 ? 2 : 0;
+}
+
+/** Shoves an entity. Distance = force - mass + 1; slick ground adds a slide. */
+export function push(w: World, e: Entity, dir: Dir, force: number, direct: boolean): void {
+  const def = defOf(e);
+  const dist = force - massOf(e) + 1;
+  if (dist <= 0) {
+    if (direct) logOnce(w, `budge#${e.id}`, `The ${def.name.toLowerCase()} doesn't budge`, "info");
+    return;
+  }
+  let moved = 0;
+  const step = (): boolean => {
+    const nx = e.x + DX[dir], ny = e.y + DY[dir];
+    const n = cellAt(w, nx, ny);
+    const other = entityAt(w, nx, ny);
+    if (!n || isBlocking(n) || other) {
+      const into = other ? defOf(other).name.toLowerCase() : n ? terrainDef(n).name.toLowerCase() : "edge";
+      if (moved > 0 || force > 1) {
+        logOnce(w, `slam#${e.id}`, `${def.name} slams into the ${into}`, "notable");
+        damage(w, e, RULES.sim.push.collisionDamage, "impact");
+        if (other) damage(w, other, RULES.sim.push.collisionDamage, "impact");
+      }
+      return false;
+    }
+    e.x = nx;
+    e.y = ny;
+    moved++;
+    // Falling into a pit ends the shove (unless floating).
+    if (hasTag(n, "low") && !(n.frozen && n.water > 0) && !isLevitating(e)) return false;
+    return true;
+  };
+  for (let i = 0; i < dist; i++) if (!step()) return;
+  const slick = () => {
+    const c = cellAt(w, e.x, e.y)!;
+    return !isLevitating(e) && (isSlippery(c) || (e.status.frozen ?? 0) > 0);
+  };
+  if (moved > 0 && slick()) {
+    const c = cellAt(w, e.x, e.y)!;
+    const what = (e.status.frozen ?? 0) > 0 ? "frozen solid" : c.frozen ? "across the ice" : `across the ${RULES.covers[c.cover!]?.name.toLowerCase() ?? "ground"}`;
+    logOnce(w, `slide#${e.id}`, `${def.name} slides ${what}`, "notable");
+    for (let i = 0; i < RULES.sim.push.slideCells && slick(); i++) if (!step()) return;
+  }
+}
+
+/** Per-tick entity upkeep: statuses, burning, wading, zaps, falls. */
+export function tickEntities(w: World) {
+  const s = RULES.sim;
+  for (const e of [...w.entities]) {
+    if (!w.entities.includes(e)) continue;
+    const def = defOf(e);
+    const c = cellAt(w, e.x, e.y)!;
+    const lev = isLevitating(e);
+
+    if (c.fire > 0 && !lev) applyEntityElement(w, e, "fire", { power: c.fire, direct: false });
+    if (c.water > 0 && !c.frozen && !lev) applyEntityElement(w, e, "water", { power: 1, direct: false });
+
+    if ((e.status.burning ?? 0) > 0 && w.tick % s.status.burnDamageEvery === 0) {
+      damage(w, e, 1, "fire");
+      if (def.flammable && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
+    }
+    if (c.gas === "steam" && c.gasAmt >= 2 && def.creature && w.tick % s.status.scaldEvery === 0) {
+      damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding");
+    }
+    if (c.charge === 3 && w.entities.includes(e)) {
+      const mul = applyEntityElement(w, e, "lightning", { power: 1, direct: false });
+      damage(w, e, s.zapDamage * mul, "lightning");
+    }
+    if (!w.entities.includes(e)) continue;
+
+    const inPit = hasTag(c, "low") && !(c.frozen && c.water > 0) && !lev;
+    if (inPit && c.water === 0 && !e.status.fallen) {
+      e.status.fallen = 1e9;
+      log(w, `${def.name} falls into the pit`, "notable");
+      damage(w, e, s.fallDamage, "falling");
+    } else if (!inPit && e.status.fallen) {
+      delete e.status.fallen;
+    }
+
+    for (const k of Object.keys(e.status)) {
+      if (k === "fallen") continue;
+      e.status[k]!--;
+      if (e.status[k]! <= 0) {
+        delete e.status[k];
+        if (k === "levitate") log(w, `The ${def.name.toLowerCase()} drifts back down`, "info");
+      }
+    }
+  }
+}

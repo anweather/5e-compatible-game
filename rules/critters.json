@@ -1,0 +1,14 @@
+[
+  { "id": "ember-newt", "name": "Ember newt", "glyph": "🦎", "color": "#e8622c", "mode": "emit", "element": "fire", "power": 2, "every": 5,
+    "blurb": "A walking heat source. It heats whatever it sits on: great on a boiler, bad news on grass." },
+  { "id": "puddle-frog", "name": "Puddle frog", "glyph": "🐸", "color": "#3f9ad8", "mode": "emit", "element": "water", "power": 3, "every": 7,
+    "blurb": "A spring on legs. Water pools around it and runs downhill." },
+  { "id": "rime-moth", "name": "Rime moth", "glyph": "🦋", "color": "#9fd6f0", "mode": "emit", "element": "cold", "every": 6, "radius": 1,
+    "blurb": "Keeps everything next to it frozen. Ice stays ice; fires won't start." },
+  { "id": "gale-finch", "name": "Gale finch", "glyph": "🐦", "color": "#c7d36a", "mode": "emit", "element": "air", "every": 4, "length": 4, "directional": true,
+    "blurb": "Flaps a steady breeze in the direction you set. It spins windmills and herds steam." },
+  { "id": "spark-eel", "name": "Spark eel", "glyph": "⚡", "color": "#f4d03f", "mode": "emit", "element": "lightning", "every": 14,
+    "blurb": "Discharges every few seconds. In a pond, the whole pond gets the shock." },
+  { "id": "burrow-mole", "name": "Burrow mole", "glyph": "🐾", "color": "#9c7a55", "mode": "act", "element": "earth",
+    "blurb": "Digs through rock, fills pits, or raises a pillar. Then it pops back into your satchel." }
+]

@@ -1,0 +1,257 @@
+// The rule interpreter: an element arrives at a cell (from a spell, a
+// critter, or spreading fire) and reactions.json decides what happens.
+import { RULES, type CellCond, type CellRule, type Effect, type EntityRule } from "./rules.ts";
+import {
+  type Cell, type Dir, type Entity, type World,
+  DX, DY, addGas, cellAt, coverHasTag, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
+  logOnce, neighbours, rand, terrainDef,
+} from "./world.ts";
+
+export interface Ctx {
+  power: number;
+  dir?: Dir;
+  /** Cast or emitted on purpose. Indirect reactions (spreading) log only notable rules. */
+  direct: boolean;
+}
+
+const byElement = new Map<string, CellRule[]>();
+for (const r of RULES.cellRules) byElement.set(r.element, [...(byElement.get(r.element) ?? []), r]);
+const entityByElement = new Map<string, EntityRule[]>();
+for (const r of RULES.entityRules) entityByElement.set(r.element, [...(entityByElement.get(r.element) ?? []), r]);
+
+function matches(c: Cell, cond: CellCond | undefined): boolean {
+  if (!cond) return true;
+  if (cond.cover && !(c.cover !== null && cond.cover.includes(c.cover))) return false;
+  if (cond.fire !== undefined) {
+    if (cond.fire === true && c.fire === 0) return false;
+    if (cond.fire === false && c.fire > 0) return false;
+    if (typeof cond.fire === "number" && c.fire < cond.fire) return false;
+  }
+  if (cond.fireBelow !== undefined && c.fire >= cond.fireBelow) return false;
+  if (cond.water !== undefined && (c.water > 0 && !c.frozen) !== cond.water) return false;
+  if (cond.frozen !== undefined && (c.frozen && c.water > 0) !== cond.frozen) return false;
+  if (cond.gas !== undefined && (cond.gas === "any" ? c.gas === null : c.gas !== cond.gas)) return false;
+  if (cond.terrainTag && !hasTag(c, cond.terrainTag)) return false;
+  if (cond.notTerrainTag && hasTag(c, cond.notTerrainTag)) return false;
+  if (cond.conductive !== undefined && isConductive(c) !== cond.conductive) return false;
+  return true;
+}
+
+function fill(text: string, c: Cell): string {
+  return text
+    .replace("{cover}", c.cover ? RULES.covers[c.cover]!.name.toLowerCase() : "")
+    .replace("{terrain}", terrainDef(c).name.toLowerCase());
+}
+
+/** Applies one element to one cell, then to whatever stands there. */
+export function applyElement(w: World, x: number, y: number, element: string, ctx: Ctx): void {
+  const c = cellAt(w, x, y);
+  if (!c) return;
+  const before = fill("{cover}|{terrain}", c);
+  for (const rule of byElement.get(element) ?? []) {
+    if (!matches(c, rule.if)) continue;
+    let changed = rule.do.length === 0;
+    for (const eff of rule.do) changed = runEffect(w, x, y, c, eff, ctx) || changed;
+    if (changed && rule.log && (ctx.direct || rule.notable)) {
+      const [cover, terrain] = before.split("|");
+      const text = rule.log.replace("{cover}", cover!).replace("{terrain}", terrain!);
+      logOnce(w, rule.id, text, rule.notable ? "notable" : "info");
+    }
+    if (rule.stop) break;
+  }
+  const e = entityAt(w, x, y);
+  if (e) applyEntityElement(w, e, element, ctx);
+}
+
+/** Returns the damage multiplier the entity's state adds (wet + lightning = 2). */
+export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ctx): number {
+  const def = RULES.entities[e.kind]!;
+  let mul = 1;
+  for (const rule of entityByElement.get(element) ?? []) {
+    const cond = rule.if;
+    if (cond?.status && !(e.status[cond.status]! > 0)) continue;
+    if (cond?.flammable !== undefined && def.flammable !== cond.flammable) continue;
+    for (const eff of rule.do) {
+      if (eff.status) for (const [k, v] of Object.entries(eff.status)) e.status[k] = Math.max(e.status[k] ?? 0, v);
+      if (eff.clear) delete e.status[eff.clear];
+      if (eff.damageMul) mul *= eff.damageMul;
+    }
+    if (rule.log && (ctx.direct || rule.notable)) {
+      logOnce(w, `${rule.id}#${e.id}`, rule.log.replace("{name}", def.name), rule.notable ? "notable" : "info");
+    }
+    if (rule.stop) break;
+  }
+  return mul;
+}
+
+export function ignite(c: Cell, intensity: number | "cover"): boolean {
+  if (intensity === "cover") {
+    if (!coverHasTag(c, "flammable")) return false;
+    const cv = RULES.covers[c.cover!]!;
+    const n = cv.burnIntensity ?? 2;
+    if (c.fire >= n) return false;
+    if (c.fire === 0) c.fuel = cv.fuel ?? 5;
+    c.fire = n;
+    return true;
+  }
+  const t = terrainDef(c);
+  if (!t.tags.includes("flammable") && !coverHasTag(c, "flammable")) return false;
+  if (c.fire >= intensity) return false;
+  if (c.fire === 0) c.fuel = coverHasTag(c, "flammable") ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5);
+  c.fire = intensity;
+  return true;
+}
+
+/** Moves water out of a cell that just became solid. */
+export function displaceWater(w: World, x: number, y: number) {
+  const c = cellAt(w, x, y)!;
+  const max = RULES.sim.water.maxLevel;
+  let guard = 16;
+  while (c.water > 0 && guard-- > 0) {
+    let moved = false;
+    for (const [nx, ny] of neighbours(w, x, y)) {
+      const n = cellAt(w, nx, ny)!;
+      if (c.water === 0) break;
+      if (isBlocking(n) || n.water >= max) continue;
+      n.water++;
+      c.water--;
+      moved = true;
+    }
+    if (!moved) break;
+  }
+  c.water = 0;
+  c.frozen = false;
+}
+
+function conduct(w: World, x: number, y: number, charge: number): boolean {
+  const start = cellAt(w, x, y)!;
+  if (!isConductive(start)) return false;
+  const seen = new Set<number>([idx(w, x, y)]);
+  const queue: [number, number][] = [[x, y]];
+  let count = 0;
+  while (queue.length && count < RULES.sim.conductLimit) {
+    const [cx, cy] = queue.shift()!;
+    const c = cellAt(w, cx, cy)!;
+    c.charge = Math.max(c.charge, charge);
+    if (coverHasTag(c, "flammable")) ignite(c, "cover");
+    count++;
+    for (const [nx, ny] of neighbours(w, cx, cy)) {
+      const k = idx(w, nx, ny);
+      if (seen.has(k)) continue;
+      seen.add(k);
+      if (isConductive(cellAt(w, nx, ny)!)) queue.push([nx, ny]);
+    }
+  }
+  return true;
+}
+
+function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ctx): boolean {
+  const max = RULES.sim.water.maxLevel;
+  if (eff.ignite !== undefined) return ignite(c, eff.ignite);
+  if (eff.boil !== undefined) {
+    if (c.water === 0 || c.frozen) return false;
+    c.water--;
+    addGas(c, "steam", eff.boil);
+    w.marks.steam[idx(w, x, y)] = 1;
+    return true;
+  }
+  if (eff.melt) {
+    if (!c.frozen) return false;
+    c.frozen = false;
+    return true;
+  }
+  if (eff.freeze) {
+    if (c.water === 0 || c.frozen) return false;
+    c.frozen = true;
+    return true;
+  }
+  if (eff.extinguish) {
+    if (c.fire === 0) return false;
+    c.fire = 0;
+    c.fuel = 0;
+    return true;
+  }
+  if (eff.condense) {
+    if (c.gas !== "steam") return false;
+    c.gasAmt -= 2;
+    if (c.gasAmt <= 0) {
+      c.gas = null;
+      c.gasAmt = 0;
+    }
+    if (!isBlocking(c) || hasTag(c, "vessel")) c.water = Math.min(max, c.water + 2);
+    return true;
+  }
+  if (eff.addWater !== undefined) {
+    const n = eff.addWater === "power" ? ctx.power : eff.addWater;
+    if (c.water >= max) return false;
+    c.water = Math.min(max, c.water + n);
+    return true;
+  }
+  if (eff.setCover !== undefined) {
+    if (c.cover === eff.setCover) return false;
+    c.cover = eff.setCover;
+    return true;
+  }
+  if (eff.spreadCover !== undefined) {
+    if (!c.cover) return false;
+    const options = [...neighbours(w, x, y)].filter(([nx, ny]) => !isBlocking(cellAt(w, nx, ny)!));
+    for (let i = 0; i < eff.spreadCover && options.length; i++) {
+      const [nx, ny] = options.splice(Math.floor(rand(w) * options.length), 1)[0]!;
+      const n = cellAt(w, nx, ny)!;
+      n.cover = c.cover;
+      if (c.fire > 0) ignite(n, "cover");
+    }
+    return true;
+  }
+  if (eff.break) {
+    const to = terrainDef(c).breaksTo;
+    if (!to) return false;
+    c.t = to;
+    return true;
+  }
+  if (eff.setTerrain !== undefined) {
+    if (c.t === eff.setTerrain) return false;
+    displaceWater(w, x, y);
+    c.t = eff.setTerrain;
+    return true;
+  }
+  if (eff.raise !== undefined) {
+    if (entityAt(w, x, y)) return false;
+    displaceWater(w, x, y);
+    c.t = eff.raise;
+    c.cover = null;
+    c.fire = 0;
+    return true;
+  }
+  if (eff.conduct !== undefined) return conduct(w, x, y, eff.conduct);
+  if (eff.fan) {
+    if (ctx.dir === undefined) return false;
+    c.fire = Math.min(3, c.fire + 1);
+    const nx = x + DX[ctx.dir], ny = y + DY[ctx.dir];
+    if (inBounds(w, nx, ny)) applyElement(w, nx, ny, "fire", { power: 2, direct: false });
+    return true;
+  }
+  if (eff.pushGas) {
+    if (!c.gas || ctx.dir === undefined) return false;
+    const n = cellAt(w, x + DX[ctx.dir], y + DY[ctx.dir]);
+    if (n && !isBlocking(n)) addGas(n, c.gas, c.gasAmt);
+    c.gas = null;
+    c.gasAmt = 0;
+    return true;
+  }
+  if (eff.clearGas) {
+    if (!c.gas) return false;
+    c.gas = null;
+    c.gasAmt = 0;
+    return true;
+  }
+  if (eff.mark === "wind") {
+    w.marks.wind[idx(w, x, y)] = 1;
+    return false;
+  }
+  if (eff.gas !== undefined) {
+    addGas(c, eff.gas, eff.n ?? 1);
+    return true;
+  }
+  return false;
+}

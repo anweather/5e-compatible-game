@@ -1,0 +1,12 @@
+{
+  "boiler":   { "name": "Steam boiler", "needs": "steam", "build": 4, "max": 10, "decayEvery": 8,
+                "how": "Needs water inside and heat on it. Each puff of steam builds pressure." },
+  "plate":    { "name": "Pressure plate", "needs": "mass", "mass": 3,
+                "how": "Needs something heavy resting on it (mass 3 or more)." },
+  "wheel":    { "name": "Water wheel", "needs": "flow", "hold": 8,
+                "how": "Needs water flowing through it." },
+  "coil":     { "name": "Lightning coil", "needs": "charge", "hold": 24,
+                "how": "Needs an electric charge to reach it, through water or metal." },
+  "windmill": { "name": "Windmill", "needs": "wind", "hold": 24,
+                "how": "Needs wind blowing into it." }
+}
