@@ -178,3 +178,28 @@ export function hashWorld(w: World): string {
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
 }
+
+/** The wizard you control, if still standing. */
+export const playerOf = (w: World): Entity | undefined => w.entities.find((e) => RULES.entities[e.kind]?.player);
+
+/** Dominant-axis direction from a to b, or null if they're the same square. */
+export function dirFrom(ax: number, ay: number, bx: number, by: number): Dir | null {
+  const dx = bx - ax, dy = by - ay;
+  if (dx === 0 && dy === 0) return null;
+  return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 1 : 3) : dy > 0 ? 2 : 0;
+}
+
+/** Bresenham sight line. Blocking terrain stops it unless tagged seeThrough (gate bars). */
+export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: number): boolean {
+  const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+  let err = dx + dy, x = x0, y = y0;
+  for (;;) {
+    if (x === x1 && y === y1) return true;
+    const e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x += sx; }
+    if (e2 <= dx) { err += dx; y += sy; }
+    if (x === x1 && y === y1) return true;
+    const c = cellAt(w, x, y)!;
+    if (isBlocking(c) && !hasTag(c, "seeThrough")) return false;
+  }
+}

@@ -31,6 +31,7 @@ export const LEGEND: Record<string, CellSpec> = {
   c: { t: "grass", entity: "crate" },
   x: { t: "dirt", entity: "barrel" },
   b: { t: "dirt", entity: "boulder" },
+  "@": { t: "grass", entity: "wizard" },
 };
 
 export interface Goal {
@@ -64,7 +65,7 @@ export const SCENARIOS: Scenario[] = [
       "%,,,wwwmmmmmmmmmmmmmmmmmC.%....%",
       "%,,,,,,,,,,,,,............%....%",
       '%,,,,,,,,"",,,.......x..g.%....%',
-      '%,,,,,,,,"",,,......x.....G....%',
+      '%,,,,,,,,"",,@......x.....G....%',
       '%,T,,,,,,"",,,.........g..%....%',
       "%,,T,,,,~,,,,,............%....%",
       "%,,,,,,,_____W___________.%....%",
@@ -95,7 +96,7 @@ export const SCENARIOS: Scenario[] = [
       "%,,www,,,,,,==h=====.,,,,,,,...%",
       "%,,www,,,,,,=====h==...........%",
       "%,,,,,,,,,,,________...........%",
-      "%,,,,,,,,,,,________..x..g~....%",
+      "%,,,,,@,,,,,________..x..g~....%",
       "%,T,,,,,,c,,________....~~~....%",
       '%,,,,,,,,,x,wwwwwwww........"".%',
       '%,,,,,,,,,,,wwwwwwww..g....."".%',
@@ -125,7 +126,7 @@ export const SCENARIOS: Scenario[] = [
       "%,,,,,,,,,,,wwwwwww,,,,,,,,,T,,%",
       "%,,,,,,,,,,,wwwwwww,,,,,,,,,,,,%",
       "%,,,,,,,,,,,,wwwww,,,,,,,,,,,,,%",
-      "%,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,%",
+      "%,,,,,,,,,,,,,,@,,,,,,,,,,,,,,,%",
       '%,,,,,,,""",,,,,,,,,,,,,,,,,,,,%',
       '%,,,,T,,""",,,,,,,,,cx,,T,,,,,,%',
       '%,,,,,,,""",,,,,,,,,,,,,,T,,,,,%',
@@ -156,7 +157,8 @@ export function loadScenario(s: Scenario, seed = 1): World {
   return world;
 }
 
-export type GoalState = { done: boolean; text: string };
+/** `via` names how a breach happened: a machine name, "tunnel" or "blink". */
+export type GoalState = { done: boolean; text: string; via?: string };
 
 export function goalState(w: World, s: Scenario): GoalState | null {
   if (!s.goal) return null;
@@ -170,8 +172,10 @@ export function goalState(w: World, s: Scenario): GoalState | null {
   const col = s.goal.column!;
   for (let y = 0; y < w.h; y++) {
     const t = w.cells[idx(w, col, y)]!.t;
-    if (t === "gate_open") return { done: true, text: `Through! The ${(w.openedBy ?? "machine").toLowerCase()} opened the gate.` };
-    if (!RULES.terrain[t]!.tags.includes("blocking")) return { done: true, text: "Through! You dug a way past the gate." };
+    if (t === "gate_open") return { done: true, via: w.openedBy ?? "machine", text: `Through! The ${(w.openedBy ?? "machine").toLowerCase()} opened the gate.` };
+    if (!RULES.terrain[t]!.tags.includes("blocking")) return { done: true, via: "tunnel", text: "Through! You dug a way past the gate." };
   }
+  const p = w.entities.find((e) => RULES.entities[e.kind]?.player);
+  if (p && p.x > col) return { done: true, via: "blink", text: "Through! You blinked between the gate bars." };
   return { done: false, text: "The east wall still stands" };
 }

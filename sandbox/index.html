@@ -117,6 +117,11 @@ button { font: inherit; color: inherit; }
 .log .t { font-family: var(--font-mono); font-size: 0.72rem; color: var(--ink-soft); font-variant-numeric: tabular-nums; }
 .empty { color: var(--ink-soft); font-style: italic; }
 
+.howto summary { cursor: pointer; font-family: var(--font-display); font-size: 1.05rem; }
+.howto ol { margin: 0; padding-left: 1.3em; display: grid; gap: 6px; max-width: 80ch; }
+kbd { font-family: var(--font-mono); font-size: 0.8em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 4px; background: var(--paper); }
+#board:focus { outline: none; }
+.board-wrap:focus-within { box-shadow: 0 0 0 2px var(--accent); }
 .rules summary { cursor: pointer; font-family: var(--font-display); font-size: 1.05rem; }
 .rules p { margin: 8px 0; color: var(--ink-soft); max-width: 75ch; }
 .table-wrap { overflow-x: auto; }
@@ -140,11 +145,20 @@ footer a { color: inherit; }
 
   <main class="layout">
     <section class="stage">
+      <details class="card howto" id="howto" open>
+        <summary>How to play</summary>
+        <ol>
+          <li><strong>You're the wizard</strong>: purple robe, pointed hat, soft ring. Walk with the <kbd>arrow keys</kbd> or <kbd>WASD</kbd> (click the board first so the keys reach it), or use the Move pad under the board.</li>
+          <li><strong>Pick a tool</strong> on the right: a spell, a critter, or a Build brush. <kbd>1</kbd>–<kbd>9</kbd> pick spells.</li>
+          <li><strong>Click a square to use it.</strong> Ray of Frost and Gust of Wind shoot out of the wizard toward where you click; Thunderwave goes off all around her; everything else lands on the square you click. The highlighted squares show what it will hit.</li>
+          <li><strong>Watch it play out</strong> and read <em>What happened</em>. Ice and grease are slippery, for you too.</li>
+        </ol>
+      </details>
       <div class="goal" id="goal"></div>
-      <div class="board-wrap" id="board-wrap"><canvas id="board" aria-label="Sandbox board"></canvas></div>
+      <div class="board-wrap" id="board-wrap"><canvas id="board" tabindex="0" aria-label="Sandbox board. Arrow keys move the wizard; click to use the selected tool."></canvas></div>
       <div class="transport">
         <div class="group">
-          <button class="btn primary" id="play" type="button">Pause</button>
+          <button class="btn primary" id="play" type="button" title="Pause or resume time (Space)">Pause</button>
           <button class="btn" id="step" type="button" title="Advance one tick (.)">Step</button>
           <button class="btn" id="reset" type="button" title="Reload this scenario (R)">Reset</button>
         </div>
@@ -155,8 +169,8 @@ footer a { color: inherit; }
           <button class="btn" data-speed="3" type="button">3×</button>
         </div>
         <div class="group">
-          <span class="label">Aim</span>
-          <div class="dirpad" role="group" aria-label="Direction">
+          <span class="label">Move</span>
+          <div class="dirpad" role="group" aria-label="Move the wizard">
             <button class="n" data-dir="0" type="button" aria-label="North">↑</button>
             <button class="w" data-dir="3" type="button" aria-label="West">←</button>
             <button class="s" data-dir="2" type="button" aria-label="South">↓</button>

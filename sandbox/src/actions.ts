@@ -4,8 +4,8 @@ import { applyElement, applyEntityElement, displaceWater } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
 import {
-  type Dir, type World,
-  DX, DY, cellAt, critterAt, entityAt, inBounds, isBlocking, log, newCell, roll,
+  type Dir, type Entity, type World,
+  DX, DY, cellAt, critterAt, dirFrom, entityAt, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, roll,
 } from "./world.ts";
 
 export const spellById = (id: string) => RULES.spells.find((s) => s.id === id);
@@ -42,7 +42,61 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
   return out;
 }
 
-export function castSpell(w: World, id: string, x: number, y: number, dir: Dir): void {
+/**
+ * The player's cast: a click on (tx,ty) with the wizard as the caster.
+ * Beams and Gust start next to the wizard and point at the click; Thunderwave
+ * goes off around the wizard; everything else lands on the clicked square.
+ * Returns a message when the cast can't happen.
+ */
+export function castAt(w: World, id: string, tx: number, ty: number): string | null {
+  const s = spellById(id);
+  if (!s) return null;
+  const aim = aimSpell(w, id, tx, ty);
+  if ("error" in aim) return aim.error;
+  if (s.effect === "teleport") return mistyStep(w, s, tx, ty);
+  castSpell(w, id, aim.x, aim.y, aim.dir, aim.casterId);
+  return null;
+}
+
+type Aim = { x: number; y: number; dir: Dir; casterId?: number } | { error: string };
+
+/** Where a click would put the spell: shared by castAt and the hover preview. */
+export function aimSpell(w: World, id: string, tx: number, ty: number): Aim {
+  const s = spellById(id)!;
+  const p = playerOf(w);
+  if (s.origin !== "self" && s.effect !== "teleport") return { x: tx, y: ty, dir: p ? (dirFrom(p.x, p.y, tx, ty) ?? 1) : 1 };
+  if (!p) return { error: "You're down. Press Reset to try again." };
+  if (s.effect === "teleport") return { x: tx, y: ty, dir: 1 };
+  if (s.shape === "burst") return { x: p.x, y: p.y, dir: dirFrom(p.x, p.y, tx, ty) ?? 1, casterId: p.id };
+  const dir = dirFrom(p.x, p.y, tx, ty);
+  if (dir === null) return { error: `Click a square away from the wizard to point ${s.name} that way.` };
+  return { x: p.x + DX[dir], y: p.y + DY[dir], dir, casterId: p.id };
+}
+
+/** Squares a click would touch, for the hover preview. */
+export function previewCells(w: World, id: string, tx: number, ty: number): [number, number][] {
+  const s = spellById(id)!;
+  const aim = aimSpell(w, id, tx, ty);
+  if ("error" in aim) return [];
+  const cells = spellCells(w, s, aim.x, aim.y, aim.dir);
+  return s.shape === "burst" && s.origin === "self" ? cells.filter(([x, y]) => x !== aim.x || y !== aim.y) : cells;
+}
+
+function mistyStep(w: World, s: SpellDef, tx: number, ty: number): string | null {
+  const p = playerOf(w)!;
+  const range = s.range ?? 6;
+  if (Math.max(Math.abs(tx - p.x), Math.abs(ty - p.y)) > range) return `Too far. Misty Step reaches ${range * 5} ft (${range} squares).`;
+  const c = cellAt(w, tx, ty);
+  if (!c || isBlocking(c) || entityAt(w, tx, ty)) return "Misty Step needs an empty square to land on.";
+  if (!lineOfSight(w, p.x, p.y, tx, ty)) return "You can't see that square. Walls block sight; gate bars don't.";
+  p.x = tx;
+  p.y = ty;
+  delete p.status.fallen;
+  log(w, "You cast Misty Step and reappear in a swirl of silver mist", "notable");
+  return null;
+}
+
+export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, casterId?: number): void {
   const s = spellById(id);
   if (!s || !inBounds(w, x, y)) return;
   if (s.effect === "levitate") return levitate(w, s, x, y);
@@ -56,7 +110,7 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir):
   if (s.push) {
     const hit = cells
       .map(([cx, cy]) => entityAt(w, cx, cy))
-      .filter((e) => e !== undefined)
+      .filter((e): e is Entity => e !== undefined && e.id !== casterId)
       .sort((a, b) => Math.hypot(b.x - x, b.y - y) - Math.hypot(a.x - x, a.y - y));
     for (const e of hit) {
       if (s.damage) damage(w, e, roll(w, s.damage), s.name.toLowerCase());
@@ -66,9 +120,11 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir):
     }
   }
   for (const [cx, cy] of cells) {
+    if (casterId !== undefined && s.shape === "burst" && cx === x && cy === y) continue;
     if (s.element) applyElement(w, cx, cy, s.element, ctx);
     if (!s.push && s.damage) {
       const e = entityAt(w, cx, cy);
+      if (e && e.id === casterId) continue;
       if (e && defOf(e).creature) {
         const mul = s.element === "lightning" ? applyEntityElement(w, e, "lightning", { ...ctx, direct: false }) : 1;
         damage(w, e, roll(w, s.damage) * mul, s.name.toLowerCase());
@@ -101,6 +157,7 @@ export function carry(w: World, fx: number, fy: number, tx: number, ty: number):
   if (!c || isBlocking(c) || entityAt(w, tx, ty)) return "Can't set it down there.";
   e.x = tx;
   e.y = ty;
+  delete e.status.fallen;
   log(w, `Mage Hand sets the ${defOf(e).name.toLowerCase()} down`, "info");
   return null;
 }

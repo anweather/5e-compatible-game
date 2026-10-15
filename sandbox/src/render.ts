@@ -10,8 +10,6 @@ export interface View {
   hover: [number, number] | null;
   preview: [number, number][];
   previewColor: string;
-  dir: Dir;
-  showDir: boolean;
   selected: number | null; // entity id held by Mage Hand
 }
 
@@ -259,6 +257,22 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: World["entities"][number],
   ctx.lineWidth = Math.max(1, s / 14);
   ctx.strokeStyle = "#1b1d1f";
   switch (e.kind) {
+    case "wizard": {
+      ctx.strokeStyle = `rgba(201,184,255,${0.45 + 0.25 * Math.sin(t / 260)})`;
+      ctx.lineWidth = Math.max(1.5, s / 10);
+      ctx.beginPath(); ctx.arc(cx, cy, s * 0.48, 0, 7); ctx.stroke();
+      ctx.lineWidth = Math.max(1, s / 14);
+      ctx.strokeStyle = "#1b1d1f";
+      ctx.fillStyle = "#6a50c8";
+      ctx.beginPath(); ctx.arc(cx, cy + s * 0.08, s * 0.3, 0, 7); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#f2d7b6";
+      ctx.beginPath(); ctx.arc(cx, cy - s * 0.02, s * 0.13, 0, 7); ctx.fill();
+      ctx.fillStyle = "#33246f";
+      ctx.beginPath(); ctx.moveTo(cx - s * 0.26, cy - s * 0.1); ctx.lineTo(cx + s * 0.06, cy - s * 0.62); ctx.lineTo(cx + s * 0.24, cy - s * 0.1); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = "#ffe14d";
+      ctx.beginPath(); ctx.arc(cx + s * 0.02, cy - s * 0.3, s * 0.05, 0, 7); ctx.fill();
+      break;
+    }
     case "goblin":
       ctx.fillStyle = "#6fae4a";
       ctx.beginPath(); ctx.moveTo(cx - s * 0.42, cy - s * 0.2); ctx.lineTo(cx - s * 0.2, cy - s * 0.05); ctx.lineTo(cx - s * 0.2, cy - s * 0.25); ctx.fill();
@@ -350,5 +364,4 @@ function drawPreview(ctx: CanvasRenderingContext2D, v: View, s: number) {
     ctx.fillRect(x * s, y * s, s, s);
     ctx.strokeRect(x * s + 1, y * s + 1, s - 2, s - 2);
   }
-  if (v.showDir && v.hover) arrow(ctx, v.hover[0] * s + s / 2, v.hover[1] * s + s / 2, v.dir, s * 0.9, v.previewColor);
 }

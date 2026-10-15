@@ -96,6 +96,8 @@ export interface SpellDef {
   name: string;
   level: number;
   shape: Shape;
+  /** "self": the spell starts at the caster (beams, Thunderwave), not at the clicked square. */
+  origin?: "self";
   element?: string;
   power?: number;
   damage?: [number, number];
@@ -104,7 +106,7 @@ export interface SpellDef {
   radius?: number;
   push?: number;
   wind?: number;
-  effect?: "levitate" | "carry";
+  effect?: "levitate" | "carry" | "teleport";
   duration?: number;
   maxMass?: number;
   range?: number;
@@ -130,6 +132,7 @@ export interface EntityDef {
   mass: number;
   flammable: boolean;
   creature?: boolean;
+  player?: boolean;
   explodes?: { cover: string; radius: number; fire: number; push: number; damage: [number, number] };
 }
 export interface MachineDef {

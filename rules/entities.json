@@ -1,4 +1,5 @@
 {
+  "wizard":  { "name": "Wizard", "hp": 12, "mass": 1, "flammable": false, "creature": true, "player": true },
   "goblin":  { "name": "Goblin", "hp": 10, "mass": 1, "flammable": false, "creature": true },
   "crate":   { "name": "Crate", "hp": 6, "mass": 1, "flammable": true },
   "barrel":  { "name": "Oil barrel", "hp": 3, "mass": 1, "flammable": true, "explodes": { "cover": "oil", "radius": 1, "fire": 3, "push": 2, "damage": [2, 6] } },

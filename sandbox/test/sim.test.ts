@@ -2,11 +2,11 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RULES, validateRules } from "../src/rules.ts";
 import { step } from "../src/sim.ts";
-import { castSpell, carry, paint, placeCritter } from "../src/actions.ts";
-import { push, spawn } from "../src/entities.ts";
+import { castAt, castSpell, carry, paint, placeCritter, previewCells } from "../src/actions.ts";
+import { push, spawn, walk } from "../src/entities.ts";
 import { applyElement } from "../src/react.ts";
 import { SCENARIOS, goalState, loadScenario } from "../src/scenarios.ts";
-import { type World, cellAt, createWorld, entityAt, hashWorld } from "../src/world.ts";
+import { type World, cellAt, createWorld, entityAt, hashWorld, playerOf } from "../src/world.ts";
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
 const direct = { power: 2, direct: true };
@@ -237,4 +237,62 @@ test("every route through the Steam Gate works", async (t) => {
     run(w, 600);
     assert.equal(goalState(w, s)!.done, false);
   });
+});
+
+test("every scenario starts with the wizard", () => {
+  for (const s of SCENARIOS) assert.ok(playerOf(loadScenario(s)), s.id);
+});
+
+test("walking: blocked by walls, refuses a dry pit, slides on ice", () => {
+  const w = room(14, 6);
+  const me = spawn(w, "wizard", 2, 1)!;
+  assert.match(walk(w, me, 0)!, /in the way/, "bedrock above");
+  cellAt(w, 3, 1)!.t = "pit";
+  assert.match(walk(w, me, 1)!, /pit/);
+  assert.equal(me.x, 2);
+  cellAt(w, 3, 1)!.t = "dirt";
+  for (let x = 4; x <= 7; x++) Object.assign(cellAt(w, x, 1)!, { t: "pit", water: 4, frozen: true });
+  assert.equal(walk(w, me, 1), null);
+  assert.equal(walk(w, me, 1), null);
+  assert.equal(me.x, 7, "one step onto the ice, then a 3-square slide");
+});
+
+test("beams start at the wizard and point at the click", () => {
+  const w = room(14, 8);
+  spawn(w, "wizard", 2, 4);
+  for (let x = 4; x <= 8; x++) Object.assign(cellAt(w, x, 4)!, { t: "pit", water: 4 });
+  assert.deepEqual(previewCells(w, "ray-of-frost", 11, 5).map(([x]) => x), [3, 4, 5, 6, 7]);
+  assert.equal(castAt(w, "ray-of-frost", 11, 5), null);
+  assert.ok(cellAt(w, 4, 4)!.frozen && cellAt(w, 7, 4)!.frozen);
+  assert.equal(cellAt(w, 8, 4)!.frozen, false, "the beam is 5 squares long");
+});
+
+test("Thunderwave goes off around the wizard and spares the caster", () => {
+  const w = room(14, 8);
+  const me = spawn(w, "wizard", 5, 4)!;
+  const gob = spawn(w, "goblin", 6, 4)!;
+  castAt(w, "thunderwave", 9, 4);
+  assert.equal(me.hp, 12);
+  assert.ok(gob.x > 6, "goblin thrown away from the wizard");
+});
+
+test("Misty Step: through gate bars yes, through a wall no, and only 30 ft", () => {
+  const w = room(16, 6);
+  for (let y = 1; y <= 4; y++) cellAt(w, 8, y)!.t = "stone";
+  cellAt(w, 8, 2)!.t = "gate";
+  const me = spawn(w, "wizard", 6, 3)!;
+  assert.match(castAt(w, "misty-step", 10, 3)!, /can't see/);
+  me.y = 2;
+  assert.equal(castAt(w, "misty-step", 10, 2), null);
+  assert.equal(me.x, 10);
+  assert.match(castAt(w, "misty-step", 1, 2)!, /Too far/);
+});
+
+test("Misty Step between the Steam Gate's bars counts as getting through", () => {
+  const s = SCENARIOS.find((sc) => sc.id === "steam-gate")!;
+  const w = loadScenario(s, 3);
+  const me = playerOf(w)!;
+  Object.assign(me, { x: 25, y: 9 });
+  assert.equal(castAt(w, "misty-step", 28, 9), null);
+  assert.equal(goalState(w, s)!.via, "blink");
 });

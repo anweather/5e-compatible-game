@@ -33,7 +33,9 @@ export function destroy(w: World, e: Entity) {
   w.entities.splice(i, 1);
   const def = defOf(e);
   if (def.explodes) return explode(w, e.x, e.y, def.explodes);
-  if (def.creature) {
+  if (def.player) {
+    log(w, "You're down! Press Reset to try again.", "hurt");
+  } else if (def.creature) {
     log(w, `${def.name} is defeated`, "hurt");
   } else if (e.status.burning) {
     const c = cellAt(w, e.x, e.y)!;
@@ -79,6 +81,12 @@ export function push(w: World, e: Entity, dir: Dir, force: number, direct: boole
     if (direct) logOnce(w, `budge#${e.id}`, `The ${def.name.toLowerCase()} doesn't budge`, "info");
     return;
   }
+  travel(w, e, dir, dist, force > 1);
+}
+
+/** Moves up to `dist` squares, then keeps sliding while the ground is slick. */
+function travel(w: World, e: Entity, dir: Dir, dist: number, hard: boolean): void {
+  const def = defOf(e);
   let moved = 0;
   const step = (): boolean => {
     const nx = e.x + DX[dir], ny = e.y + DY[dir];
@@ -86,7 +94,7 @@ export function push(w: World, e: Entity, dir: Dir, force: number, direct: boole
     const other = entityAt(w, nx, ny);
     if (!n || isBlocking(n) || other) {
       const into = other ? defOf(other).name.toLowerCase() : n ? terrainDef(n).name.toLowerCase() : "edge";
-      if (moved > 0 || force > 1) {
+      if (moved > 0 || hard) {
         logOnce(w, `slam#${e.id}`, `${def.name} slams into the ${into}`, "notable");
         damage(w, e, RULES.sim.push.collisionDamage, "impact");
         if (other) damage(w, other, RULES.sim.push.collisionDamage, "impact");
@@ -111,6 +119,18 @@ export function push(w: World, e: Entity, dir: Dir, force: number, direct: boole
     logOnce(w, `slide#${e.id}`, `${def.name} slides ${what}`, "notable");
     for (let i = 0; i < RULES.sim.push.slideCells && slick(); i++) if (!step()) return;
   }
+}
+
+/** One step of walking. Returns why not, or null if the step happened. */
+export function walk(w: World, e: Entity, dir: Dir): string | null {
+  const nx = e.x + DX[dir], ny = e.y + DY[dir];
+  const n = cellAt(w, nx, ny);
+  if (!n || isBlocking(n)) return n ? `The ${terrainDef(n).name.toLowerCase()} is in the way.` : "That's the edge of the map.";
+  const other = entityAt(w, nx, ny);
+  if (other) return `The ${defOf(other).name.toLowerCase()} is in the way.`;
+  if (hasTag(n, "low") && n.water === 0 && !isLevitating(e)) return "That's a drop into a pit. Levitate yourself, fill it, or bridge it.";
+  travel(w, e, dir, 1, false);
+  return null;
 }
 
 /** Per-tick entity upkeep: statuses, burning, wading, zaps, falls. */

@@ -19,14 +19,31 @@ npm test           # node:test suite (Node 22.18+ runs the .ts directly)
 npm run typecheck
 ```
 
+## How to play
+
+- **You're the wizard.** Walk with the arrow keys or WASD, or the Move
+  pad under the board.
+- **Pick a tool** on the right: a spell, a critter or a Build brush.
+- **Click a square to use it:**
+  - Ray of Frost and Gust of Wind shoot out of the wizard toward the
+    click.
+  - Thunderwave goes off around her.
+  - Misty Step blinks her to a square she can see, up to 30 ft away.
+  - Everything else lands on the square you click.
+  - The highlighted squares preview what a spell will hit.
+- **Watch the log.** It says what reacted and why.
+
 ## What's in it
 
 - **Three rooms:**
-  - *The Steam Gate*: a puzzle with nine tested ways through.
+  - *The Steam Gate*: a puzzle with ten tested ways through, including
+    a Misty Step between the gate bars.
   - *Goblin Bridge*: a fight using the environment.
   - *Open Meadow*: free play with Build tools.
 - **Kit:**
   - The 8 shared spells, plus Shocking Grasp for lightning.
+  - A wizard you walk around. Beams and Gust come out of her, and she
+    slides on ice and grease like everything else.
   - All six critters from `docs/TRAVERSAL.md`.
   - Five machines that open gates: a boiler, a pressure plate, a water
     wheel, a lightning coil and a windmill.
@@ -57,8 +74,10 @@ C# core needs.
 
 ## Deliberate simplifications
 
-- Top-down 2D grid, one entity per square, no characters: you are a
-  disembodied caster. Misty Step isn't in, because it needs a body.
+- Top-down 2D grid, one entity per square. The wizard moves a square
+  at a time and can't climb into a dry pit on purpose. Goblins stand
+  still; they're targets, not opponents.
+- Spell range isn't limited except for Misty Step and Mage Hand.
 - No saving throws or attack rolls. Damage is rolled flat.
 - Water is integer units on a two-level height map (ground and pit), so
   a channel fills as a slope rather than levelling out.

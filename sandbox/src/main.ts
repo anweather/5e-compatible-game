@@ -1,11 +1,11 @@
 // Page wiring: tools, pointer input, the play loop, and the side panels.
 import { RULES, type CellRule } from "./rules.ts";
 import { step } from "./sim.ts";
-import { PAINT_OTHER, PAINT_TERRAIN, carry, castSpell, paint, placeCritter, spellById, spellCells } from "./actions.ts";
+import { PAINT_OTHER, PAINT_TERRAIN, carry, castAt, paint, placeCritter, previewCells, spellById } from "./actions.ts";
 import { SCENARIOS, type Scenario, goalState, loadScenario } from "./scenarios.ts";
 import { draw, elementColor, type View } from "./render.ts";
-import { defOf } from "./entities.ts";
-import { type Dir, type World, DIR_NAMES, cellAt, critterAt, entityAt, terrainDef } from "./world.ts";
+import { defOf, walk } from "./entities.ts";
+import { type Dir, type World, DIR_NAMES, cellAt, critterAt, dirFrom, entityAt, playerOf, terrainDef } from "./world.ts";
 
 type Tab = "spells" | "critters" | "build";
 type Tool = { tab: Tab; id: string };
@@ -22,7 +22,6 @@ const store = {
 let scenario: Scenario = SCENARIOS.find((s) => s.id === store.get("sandbox.scenario")) ?? SCENARIOS[0]!;
 let world: World = loadScenario(scenario, freshSeed());
 let tool: Tool = { tab: "spells", id: "fire-bolt" };
-let dir: Dir = 1;
 let playing = true;
 let speed = 1;
 let hover: [number, number] | null = null;
@@ -118,7 +117,10 @@ function renderDetail() {
     p.textContent = s.blurb;
     hint.textContent = s.effect === "carry"
       ? carryFrom ? "Now tap where to set it down." : "Tap something light to pick it up."
-      : s.shape === "line" ? "Tap where the line starts. Drag or use Aim to point it." : "Tap the board to cast.";
+      : s.effect === "teleport" ? "Click an empty square you can see, up to 6 squares away."
+      : s.effect === "levitate" ? "Click a thing to float it. Click the wizard to float yourself over pits."
+      : s.origin === "self" ? (s.shape === "burst" ? "Click anywhere: it goes off all around the wizard." : "Click toward where you want it: it shoots out of the wizard in that direction.")
+      : "Click a square to cast it there.";
   } else if (tool.tab === "critters") {
     const c = RULES.critters.find((k) => k.id === tool.id)!;
     h.textContent = `${c.glyph} ${c.name}`;
@@ -126,13 +128,13 @@ function renderDetail() {
     p.textContent = c.blurb;
     hint.textContent = c.mode === "act"
       ? "Tap a rock to dig through it, a pit to fill it, or open ground to raise a pillar."
-      : `You have one. Tap to set it down, tap it again to pick it up.${c.directional ? " Drag or use Aim to face it." : ""}`;
+      : `You have one. Click to set it down, click it again to pick it up.${c.directional ? " It faces away from the wizard." : ""}`;
   } else {
     const t = RULES.terrain[tool.id], m = RULES.machines[tool.id], e = RULES.entities[tool.id];
     h.textContent = BUILD_LABEL[tool.id] ?? t?.name ?? e?.name ?? tool.id;
     meta.textContent = m ? "machine" : e ? `thing · mass ${e.mass} · ${e.hp >= 999 ? "unbreakable" : `${e.hp} HP`}` : t ? t.tags.join(" · ") : "paint";
     p.textContent = m ? `${m.how} Any powered machine opens every gate.` : tool.id === "erase" ? "Resets a square to bare dirt and removes whatever stood there." : tool.id === "water" ? "Adds a step of water. It runs downhill into pits." : "";
-    hint.textContent = "Tap or drag on the board to paint.";
+    hint.textContent = "Click or drag on the board to paint.";
   }
   const parts: HTMLElement[] = [h, meta];
   if (p.textContent) parts.push(p);
@@ -159,7 +161,7 @@ function setTool(t: Tool) {
 // ---------- scenario + goal ----------
 const ROUTES: [string, string][] = [
   ["Steam boiler", "Boiler"], ["Pressure plate", "Plate"], ["Water wheel", "Wheel"],
-  ["Lightning coil", "Coil"], ["Windmill", "Windmill"], ["tunnel", "Tunnel"],
+  ["Lightning coil", "Coil"], ["Windmill", "Windmill"], ["tunnel", "Tunnel"], ["blink", "Misty Step"],
 ];
 let goalWasDone = false;
 
@@ -177,7 +179,7 @@ function renderScenarios() {
 function renderGoal() {
   const g = goalState(world, scenario);
   if (g?.done && !goalWasDone && scenario.id === "steam-gate") {
-    found.add(world.gatesOpen ? (world.openedBy ?? "") : "tunnel");
+    found.add(g.via ?? "");
     store.set("sandbox.routes", JSON.stringify([...found]));
   }
   goalWasDone = g?.done ?? false;
@@ -272,14 +274,15 @@ function renderInspect() {
 }
 
 function renderReadout() {
+  const p = playerOf(world);
+  const me = p ? `Wizard ${p.hp}/${defOf(p).hp} HP` : "Wizard down";
   const wind = world.wind ? `wind ${DIR_NAMES[world.wind.dir]}` : "still air";
-  $("readout").textContent = `${(world.tick / RULES.sim.ticksPerSecond).toFixed(1)}s · ${wind} · aim ${DIR_NAMES[dir]}`;
+  $("readout").textContent = `${me} · ${wind} · ${(world.tick / RULES.sim.ticksPerSecond).toFixed(1)}s`;
 }
 
 function renderTransport() {
   $("play").textContent = playing ? "Pause" : "Play";
   document.querySelectorAll<HTMLButtonElement>("[data-speed]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.speed) === speed)));
-  document.querySelectorAll<HTMLButtonElement>("[data-dir]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.dir) === dir)));
 }
 
 // ---------- rules table ----------
@@ -374,17 +377,12 @@ function cellFromEvent(ev: PointerEvent): [number, number] | null {
   const y = Math.floor(((ev.clientY - r.top) / r.height) * world.h);
   return x >= 0 && y >= 0 && x < world.w && y < world.h ? [x, y] : null;
 }
-const dirFrom = (a: [number, number], b: [number, number]): Dir | null => {
-  const dx = b[0] - a[0], dy = b[1] - a[1];
-  if (dx === 0 && dy === 0) return null;
-  return Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 1 : 3) : dy > 0 ? 2 : 0;
-};
-
 let down: [number, number] | null = null;
 let painted = new Set<string>();
 
 canvas.addEventListener("pointerdown", (ev) => {
   const c = cellFromEvent(ev);
+  canvas.focus({ preventScroll: true });
   if (!c) return;
   canvas.setPointerCapture(ev.pointerId);
   down = c;
@@ -401,54 +399,45 @@ canvas.addEventListener("pointermove", (ev) => {
     painted.add(c.join());
     paint(world, tool.id, c[0], c[1]);
   }
-  if (c && down && isDirectional()) {
-    const d = dirFrom(down, c);
-    if (d !== null) {
-      dir = d;
-      renderTransport();
-    }
-  }
 });
 canvas.addEventListener("pointerleave", () => { if (!down) hover = null; });
 canvas.addEventListener("pointerup", (ev) => {
-  const at = down;
+  const at = cellFromEvent(ev) ?? down;
   down = null;
   if (!at || tool.tab === "build") return;
-  const up = cellFromEvent(ev);
-  if (up && isDirectional()) {
-    const d = dirFrom(at, up);
-    if (d !== null) dir = d;
-  }
   act(at);
   if (ev.pointerType !== "mouse") hover = at;
-  renderTransport();
 });
-
-function isDirectional() {
-  if (tool.tab === "spells") return spellById(tool.id)?.shape === "line";
-  if (tool.tab === "critters") return RULES.critters.find((c) => c.id === tool.id)?.directional ?? false;
-  return false;
-}
 
 function act([x, y]: [number, number]) {
   notice = "";
   if (tool.tab === "spells") {
     if (tool.id === "mage-hand") {
       if (!carryFrom) {
-        const e = entityAt(world, x, y);
-        if (e) carryFrom = [x, y];
-        else notice = "Nothing there to lift. Tap a crate, barrel or goblin.";
+        if (entityAt(world, x, y)) carryFrom = [x, y];
+        else notice = "Nothing there to lift. Click a crate, barrel or goblin.";
       } else {
-        const err = carry(world, carryFrom[0], carryFrom[1], x, y);
-        if (err) notice = err;
+        notice = carry(world, carryFrom[0], carryFrom[1], x, y) ?? "";
         carryFrom = null;
       }
     } else {
-      castSpell(world, tool.id, x, y, dir);
+      notice = castAt(world, tool.id, x, y) ?? "";
     }
   } else if (tool.tab === "critters") {
-    placeCritter(world, tool.id, x, y, dir);
+    const p = playerOf(world);
+    const facing: Dir = (p && dirFrom(p.x, p.y, x, y)) ?? 1;
+    placeCritter(world, tool.id, x, y, facing);
     renderChips();
+  }
+  renderDetail();
+}
+
+function move(d: Dir) {
+  const p = playerOf(world);
+  if (!p) {
+    notice = "You're down. Press Reset to try again.";
+  } else {
+    notice = walk(world, p, d) ?? "";
   }
   renderDetail();
 }
@@ -458,11 +447,15 @@ $("play").onclick = () => { playing = !playing; renderTransport(); };
 $("step").onclick = () => { playing = false; step(world); renderTransport(); };
 $("reset").onclick = () => load(scenario);
 document.querySelectorAll<HTMLButtonElement>("[data-speed]").forEach((b) => b.onclick = () => { speed = Number(b.dataset.speed); renderTransport(); });
-document.querySelectorAll<HTMLButtonElement>("[data-dir]").forEach((b) => b.onclick = () => { dir = Number(b.dataset.dir) as Dir; renderTransport(); });
+document.querySelectorAll<HTMLButtonElement>("[data-dir]").forEach((b) => b.onclick = () => move(Number(b.dataset.dir) as Dir));
 const KEY_DIR: Record<string, Dir> = { ArrowUp: 0, w: 0, ArrowRight: 1, d: 1, ArrowDown: 2, s: 2, ArrowLeft: 3, a: 3 };
 window.addEventListener("keydown", (ev) => {
   if (ev.target instanceof HTMLInputElement || ev.metaKey || ev.ctrlKey || ev.altKey) return;
-  if (ev.key in KEY_DIR) { dir = KEY_DIR[ev.key]!; renderTransport(); ev.preventDefault(); }
+  if (ev.key in KEY_DIR) { move(KEY_DIR[ev.key]!); ev.preventDefault(); }
+  else if (/^[1-9]$/.test(ev.key) && tool.tab === "spells") {
+    const s = RULES.spells[Number(ev.key) - 1];
+    if (s) setTool({ tab: "spells", id: s.id });
+  }
   else if (ev.key === " ") { playing = !playing; renderTransport(); ev.preventDefault(); }
   else if (ev.key === ".") { playing = false; step(world); renderTransport(); }
   else if (ev.key === "r") load(scenario);
@@ -484,12 +477,12 @@ function frame(now: number) {
     if (n >= 6) acc = 0;
   }
   const preview = hover && tool.tab === "spells" && tool.id !== "mage-hand"
-    ? spellCells(world, spellById(tool.id)!, hover[0], hover[1], dir)
+    ? previewCells(world, tool.id, hover[0], hover[1])
     : hover ? [hover] : [];
   const spell = tool.tab === "spells" ? spellById(tool.id) : undefined;
   const critter = tool.tab === "critters" ? RULES.critters.find((c) => c.id === tool.id) : undefined;
   const view: View = {
-    cs, time: now, hover, preview, dir, showDir: isDirectional(),
+    cs, time: now, hover, preview,
     previewColor: spell ? (spell.element ? elementColor(spell.element) : "#c9b8ff") : critter ? critter.color : "#ffffff",
     selected: carryFrom ? entityAt(world, carryFrom[0], carryFrom[1])?.id ?? null : null,
   };
@@ -503,6 +496,10 @@ function frame(now: number) {
   }
   requestAnimationFrame(frame);
 }
+
+const howto = $<HTMLDetailsElement>("howto");
+if (store.get("sandbox.howto") === "closed") howto.open = false;
+howto.addEventListener("toggle", () => store.set("sandbox.howto", howto.open ? "open" : "closed"));
 
 renderScenarios();
 renderRules();
