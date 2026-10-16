@@ -21,13 +21,15 @@ tables in `rules/` that the Unity build will load too.
 | Folder | What it is |
 |---|---|
 | `rules/` | The interaction rules as JSON: elements, materials, reactions, spells, critters, machines |
-| `sandbox/` | A top-down web sandbox that runs those rules, with tests (`npm test`) |
+| `sandbox/` | A top-down web sandbox that runs those rules, with tests (`npm test`). Multiplayer rooms and live, votable rule mods: see `docs/LIVE_LAB.md` |
 
 The docs:
 
 | File | What it is |
 |---|---|
 | `README.md` | This page: the verdict and the shape of the answer |
+| `docs/LIVE_LAB.md` | Playing together, hot-swapping rules mid-game, and keeping what's fun; how it carries into Unity |
+| `docs/MODDING.md` | How to write a mod, by hand or with any LLM |
 | `docs/PROTOTYPES.md` | **Current phase:** the prototypes, the shared spell kit, the progression options and the scorecard |
 | `docs/PHYSICAL_TACTICS.md` | Prototype P5's concept: turn-based play resolved physically, with reactions and no health sponges |
 | `docs/EXPLORE_AND_FIGHT.md` | Prototype P6's concept: third-person adventure movement in exploration, physical turn-based fights in place, battlefield prep between them |

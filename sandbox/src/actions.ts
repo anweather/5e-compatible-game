@@ -48,12 +48,12 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
  * goes off around the wizard; everything else lands on the clicked square.
  * Returns a message when the cast can't happen.
  */
-export function castAt(w: World, id: string, tx: number, ty: number): string | null {
+export function castAt(w: World, id: string, tx: number, ty: number, owner?: string): string | null {
   const s = spellById(id);
   if (!s) return null;
-  const aim = aimSpell(w, id, tx, ty);
+  const aim = aimSpell(w, id, tx, ty, owner);
   if ("error" in aim) return aim.error;
-  if (s.effect === "teleport") return mistyStep(w, s, tx, ty);
+  if (s.effect === "teleport") return mistyStep(w, s, tx, ty, owner);
   castSpell(w, id, aim.x, aim.y, aim.dir, aim.casterId);
   return null;
 }
@@ -61,9 +61,10 @@ export function castAt(w: World, id: string, tx: number, ty: number): string | n
 type Aim = { x: number; y: number; dir: Dir; casterId?: number } | { error: string };
 
 /** Where a click would put the spell: shared by castAt and the hover preview. */
-export function aimSpell(w: World, id: string, tx: number, ty: number): Aim {
-  const s = spellById(id)!;
-  const p = playerOf(w);
+export function aimSpell(w: World, id: string, tx: number, ty: number, owner?: string): Aim {
+  const s = spellById(id);
+  if (!s) return { error: "That spell isn't in the rules any more." };
+  const p = playerOf(w, owner);
   if (s.origin !== "self" && s.effect !== "teleport") return { x: tx, y: ty, dir: p ? (dirFrom(p.x, p.y, tx, ty) ?? 1) : 1 };
   if (!p) return { error: "You're down. Press Reset to try again." };
   if (s.effect === "teleport") return { x: tx, y: ty, dir: 1 };
@@ -74,16 +75,17 @@ export function aimSpell(w: World, id: string, tx: number, ty: number): Aim {
 }
 
 /** Squares a click would touch, for the hover preview. */
-export function previewCells(w: World, id: string, tx: number, ty: number): [number, number][] {
-  const s = spellById(id)!;
-  const aim = aimSpell(w, id, tx, ty);
+export function previewCells(w: World, id: string, tx: number, ty: number, owner?: string): [number, number][] {
+  const s = spellById(id);
+  if (!s) return [];
+  const aim = aimSpell(w, id, tx, ty, owner);
   if ("error" in aim) return [];
   const cells = spellCells(w, s, aim.x, aim.y, aim.dir);
   return s.shape === "burst" && s.origin === "self" ? cells.filter(([x, y]) => x !== aim.x || y !== aim.y) : cells;
 }
 
-function mistyStep(w: World, s: SpellDef, tx: number, ty: number): string | null {
-  const p = playerOf(w)!;
+function mistyStep(w: World, s: SpellDef, tx: number, ty: number, owner?: string): string | null {
+  const p = playerOf(w, owner)!;
   const range = s.range ?? 6;
   if (Math.max(Math.abs(tx - p.x), Math.abs(ty - p.y)) > range) return `Too far. Misty Step reaches ${range * 5} ft (${range} squares).`;
   const c = cellAt(w, tx, ty);
@@ -111,7 +113,7 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
     const hit = cells
       .map(([cx, cy]) => entityAt(w, cx, cy))
       .filter((e): e is Entity => e !== undefined && e.id !== casterId)
-      .sort((a, b) => Math.hypot(b.x - x, b.y - y) - Math.hypot(a.x - x, a.y - y));
+      .sort((a, b) => (b.x - x) ** 2 + (b.y - y) ** 2 - ((a.x - x) ** 2 + (a.y - y) ** 2) || a.id - b.id);
     for (const e of hit) {
       if (s.damage) damage(w, e, roll(w, s.damage), s.name.toLowerCase());
       if (!w.entities.includes(e)) continue;

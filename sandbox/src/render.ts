@@ -10,6 +10,9 @@ export interface View {
   hover: [number, number] | null;
   preview: [number, number][];
   previewColor: string;
+  /** This page's player, and each player's colour. */
+  me: string;
+  colorOf: (owner: string) => string;
   selected: number | null; // entity id held by Mage Hand
 }
 
@@ -31,7 +34,7 @@ export function draw(ctx: CanvasRenderingContext2D, w: World, v: View) {
   ctx.clearRect(0, 0, w.w * s, w.h * s);
   for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) drawCell(ctx, w.cells[y * w.w + x]!, x, y, s, v.time, w);
   for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) drawOverlay(ctx, w.cells[y * w.w + x]!, x, y, s, v.time);
-  for (const e of w.entities) drawEntity(ctx, e, s, v.time, v.selected === e.id);
+  for (const e of w.entities) drawEntity(ctx, e, s, v.time, v.selected === e.id, v);
   for (const c of w.critters) drawCritter(ctx, c, s, v.time);
   for (let y = 0; y < w.h; y++) for (let x = 0; x < w.w; x++) drawGas(ctx, w.cells[y * w.w + x]!, x, y, s, v.time);
   drawPreview(ctx, v, s);
@@ -245,7 +248,7 @@ function drawGas(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, s
   }
 }
 
-function drawEntity(ctx: CanvasRenderingContext2D, e: World["entities"][number], s: number, t: number, selected: boolean) {
+function drawEntity(ctx: CanvasRenderingContext2D, e: World["entities"][number], s: number, t: number, selected: boolean, v: View) {
   const def = defOf(e);
   const lev = isLevitating(e);
   const bob = lev ? -s * (0.18 + 0.06 * Math.sin(t / 220)) : 0;
@@ -258,12 +261,16 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: World["entities"][number],
   ctx.strokeStyle = "#1b1d1f";
   switch (e.kind) {
     case "wizard": {
-      ctx.strokeStyle = `rgba(201,184,255,${0.45 + 0.25 * Math.sin(t / 260)})`;
-      ctx.lineWidth = Math.max(1.5, s / 10);
-      ctx.beginPath(); ctx.arc(cx, cy, s * 0.48, 0, 7); ctx.stroke();
+      const mine = e.owner === v.me || (!e.owner && v.me === "you");
+      const robe = e.owner ? v.colorOf(e.owner) : "#6a50c8";
+      if (mine) {
+        ctx.strokeStyle = `rgba(255,255,255,${0.55 + 0.3 * Math.sin(t / 260)})`;
+        ctx.lineWidth = Math.max(1.5, s / 9);
+        ctx.beginPath(); ctx.arc(cx, cy, s * 0.5, 0, 7); ctx.stroke();
+      }
       ctx.lineWidth = Math.max(1, s / 14);
       ctx.strokeStyle = "#1b1d1f";
-      ctx.fillStyle = "#6a50c8";
+      ctx.fillStyle = robe;
       ctx.beginPath(); ctx.arc(cx, cy + s * 0.08, s * 0.3, 0, 7); ctx.fill(); ctx.stroke();
       ctx.fillStyle = "#f2d7b6";
       ctx.beginPath(); ctx.arc(cx, cy - s * 0.02, s * 0.13, 0, 7); ctx.fill();

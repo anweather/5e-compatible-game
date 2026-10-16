@@ -12,9 +12,12 @@ const inline = {
       if (result.errors.length) return;
       const js = result.outputFiles[0].text.replaceAll("</script", "<\\/script");
       const template = await readFile("index.html", "utf8");
+      const fake = await readFile("dev/fake-claude.js", "utf8");
       await mkdir("dist", { recursive: true });
       await writeFile("dist/index.html", template.replace("<!--APP-->", () => `<script>\n${js}</script>`));
-      console.log(`dist/index.html (${(js.length / 1024).toFixed(0)} KB of script)`);
+      // dev.html: the same page plus a fake platform, so two local tabs can share a room.
+      await writeFile("dist/dev.html", `<meta charset="utf-8">\n` + template.replace("<!--APP-->", () => `<script>\n${fake}</script>\n<script>\n${js}</script>`));
+      console.log(`dist/index.html + dist/dev.html (${(js.length / 1024).toFixed(0)} KB of script)`);
     });
   },
 };

@@ -14,10 +14,19 @@ export interface Ctx {
   direct: boolean;
 }
 
+// Rules grouped by element, rebuilt whenever a mod swaps the tables.
+let indexedCell: CellRule[] | null = null, indexedEntity: EntityRule[] | null = null;
 const byElement = new Map<string, CellRule[]>();
-for (const r of RULES.cellRules) byElement.set(r.element, [...(byElement.get(r.element) ?? []), r]);
 const entityByElement = new Map<string, EntityRule[]>();
-for (const r of RULES.entityRules) entityByElement.set(r.element, [...(entityByElement.get(r.element) ?? []), r]);
+function index() {
+  if (indexedCell === RULES.cellRules && indexedEntity === RULES.entityRules) return;
+  byElement.clear();
+  entityByElement.clear();
+  for (const r of RULES.cellRules) byElement.set(r.element, [...(byElement.get(r.element) ?? []), r]);
+  for (const r of RULES.entityRules) entityByElement.set(r.element, [...(entityByElement.get(r.element) ?? []), r]);
+  indexedCell = RULES.cellRules;
+  indexedEntity = RULES.entityRules;
+}
 
 function matches(c: Cell, cond: CellCond | undefined): boolean {
   if (!cond) return true;
@@ -47,6 +56,7 @@ function fill(text: string, c: Cell): string {
 export function applyElement(w: World, x: number, y: number, element: string, ctx: Ctx): void {
   const c = cellAt(w, x, y);
   if (!c) return;
+  index();
   const before = fill("{cover}|{terrain}", c);
   for (const rule of byElement.get(element) ?? []) {
     if (!matches(c, rule.if)) continue;
@@ -65,6 +75,7 @@ export function applyElement(w: World, x: number, y: number, element: string, ct
 
 /** Returns the damage multiplier the entity's state adds (wet + lightning = 2). */
 export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ctx): number {
+  index();
   const def = RULES.entities[e.kind]!;
   let mul = 1;
   for (const rule of entityByElement.get(element) ?? []) {

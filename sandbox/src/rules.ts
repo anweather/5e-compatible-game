@@ -158,6 +158,8 @@ export interface SimParams {
 }
 
 export interface Rules {
+  /** Every element name a rule, spell or critter may use. Mods can add more. */
+  elements: string[];
   terrain: Record<string, TerrainDef>;
   covers: Record<string, CoverDef>;
   gases: Record<string, GasDef>;
@@ -170,7 +172,13 @@ export interface Rules {
   sim: SimParams;
 }
 
-export const RULES: Rules = {
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder"];
+
+const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
+
+/** The rule tables exactly as committed in ../../rules/. Never mutated. */
+export const BASE_RULES: Readonly<Rules> = Object.freeze({
+  elements: BASE_ELEMENTS,
   terrain: materials.terrain as Record<string, TerrainDef>,
   covers: materials.covers as Record<string, CoverDef>,
   gases: materials.gases as Record<string, GasDef>,
@@ -181,14 +189,111 @@ export const RULES: Rules = {
   entities: entities as unknown as Record<string, EntityDef>,
   machines: machines as Record<string, MachineDef>,
   sim: sim as SimParams,
-};
+});
 
-export const ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder"] as const;
+/**
+ * The rules in force right now: the base tables plus whatever mods are on.
+ * Everything reads through this object; installRules swaps its contents.
+ */
+export const RULES: Rules = clone(BASE_RULES as Rules);
+
+/**
+ * A mod: a data-only patch over the rule tables. Anything it names by id is
+ * added, or replaces the existing entry with that id. See docs/MODDING.md.
+ */
+export interface ModPatch {
+  elements?: string[];
+  terrain?: Record<string, TerrainDef>;
+  covers?: Record<string, CoverDef>;
+  gases?: Record<string, GasDef>;
+  entities?: Record<string, EntityDef>;
+  machines?: Record<string, MachineDef>;
+  /** New or replaced reaction rules. New ones go to the top of their element's list, so they win. */
+  reactions?: { add?: CellRule[]; addEntity?: EntityRule[]; remove?: string[] };
+  spells?: SpellDef[];
+  critters?: CritterDef[];
+  /** Deep-merged over sim.json. */
+  sim?: Record<string, unknown>;
+}
+
+function mergeDeep(into: Record<string, unknown>, from: Record<string, unknown>) {
+  for (const [k, v] of Object.entries(from)) {
+    const cur = into[k];
+    if (v && typeof v === "object" && !Array.isArray(v) && cur && typeof cur === "object" && !Array.isArray(cur)) {
+      mergeDeep(cur as Record<string, unknown>, v as Record<string, unknown>);
+    } else {
+      into[k] = v;
+    }
+  }
+}
+
+function upsertRules<T extends { id: string; element: string }>(list: T[], add: T[]): T[] {
+  const out = [...list];
+  for (const rule of add) {
+    const i = out.findIndex((r) => r.id === rule.id);
+    if (i >= 0) {
+      out[i] = rule;
+      continue;
+    }
+    const first = out.findIndex((r) => r.element === rule.element);
+    out.splice(first >= 0 ? first : out.length, 0, rule);
+  }
+  return out;
+}
+
+function upsertById<T extends { id: string }>(list: T[], add: T[]): T[] {
+  const out = [...list];
+  for (const item of add) {
+    const i = out.findIndex((x) => x.id === item.id);
+    if (i >= 0) out[i] = item;
+    else out.push(item);
+  }
+  return out;
+}
+
+/** Base tables with each patch applied in order. Pure: never touches RULES. */
+export function composeRules(patches: ModPatch[], base: Readonly<Rules> = BASE_RULES): Rules {
+  const r = clone(base as Rules);
+  for (const p of patches) {
+    if (p.elements) r.elements = [...new Set([...r.elements, ...p.elements])];
+    Object.assign(r.terrain, clone(p.terrain ?? {}));
+    Object.assign(r.covers, clone(p.covers ?? {}));
+    Object.assign(r.gases, clone(p.gases ?? {}));
+    Object.assign(r.entities, clone(p.entities ?? {}));
+    Object.assign(r.machines, clone(p.machines ?? {}));
+    if (p.reactions?.remove) {
+      const drop = new Set(p.reactions.remove);
+      r.cellRules = r.cellRules.filter((x) => !drop.has(x.id));
+      r.entityRules = r.entityRules.filter((x) => !drop.has(x.id));
+    }
+    if (p.reactions?.add) r.cellRules = upsertRules(r.cellRules, clone(p.reactions.add));
+    if (p.reactions?.addEntity) r.entityRules = upsertRules(r.entityRules, clone(p.reactions.addEntity));
+    if (p.spells) r.spells = upsertById(r.spells, clone(p.spells));
+    if (p.critters) r.critters = upsertById(r.critters, clone(p.critters));
+    if (p.sim) mergeDeep(r.sim as unknown as Record<string, unknown>, clone(p.sim));
+  }
+  return r;
+}
+
+/** Swaps the live rules. Callers validate first. */
+export function installRules(r: Rules) {
+  Object.assign(RULES, clone(r));
+}
+
+/** Kept for older imports: the base element list. */
+export const ELEMENTS = BASE_ELEMENTS;
+
+const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable"]);
+const EFFECT_KEYS = new Set([
+  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
+  "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
+]);
+const SHAPES = new Set(["point", "line", "square", "burst", "target"]);
 
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
   const errors: string[] = [];
-  const el = new Set<string>(ELEMENTS);
+  const el = new Set<string>(r.elements);
   const terrainIds = new Set(Object.keys(r.terrain));
   const coverIds = new Set(Object.keys(r.covers));
   for (const [id, t] of Object.entries(r.terrain)) {
@@ -196,8 +301,15 @@ export function validateRules(r: Rules): string[] {
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
   }
+  const seen = new Set<string>();
   for (const rule of [...r.cellRules, ...r.entityRules]) {
+    if (!rule || typeof rule.id !== "string") { errors.push("a reaction rule has no id"); continue; }
+    if (seen.has(rule.id)) errors.push(`rule ${rule.id}: duplicate id`);
+    seen.add(rule.id);
     if (!el.has(rule.element)) errors.push(`rule ${rule.id}: unknown element ${rule.element}`);
+    if (!Array.isArray(rule.do)) { errors.push(`rule ${rule.id}: "do" must be a list`); continue; }
+    for (const k of Object.keys(rule.if ?? {})) if (!COND_KEYS.has(k)) errors.push(`rule ${rule.id}: unknown condition "${k}"`);
+    for (const e of rule.do) for (const k of Object.keys(e)) if (!EFFECT_KEYS.has(k)) errors.push(`rule ${rule.id}: unknown effect "${k}" (new verbs need code; see docs/MODDING.md)`);
     for (const e of rule.do) {
       if (e.setTerrain && !terrainIds.has(e.setTerrain)) errors.push(`rule ${rule.id}: setTerrain ${e.setTerrain} unknown`);
       if (e.raise && !terrainIds.has(e.raise)) errors.push(`rule ${rule.id}: raise ${e.raise} unknown`);
@@ -207,7 +319,11 @@ export function validateRules(r: Rules): string[] {
     const c = (rule as CellRule).if;
     for (const cv of c?.cover ?? []) if (!coverIds.has(cv)) errors.push(`rule ${rule.id}: cover ${cv} unknown`);
   }
-  for (const s of r.spells) if (s.element && !el.has(s.element)) errors.push(`spell ${s.id}: unknown element ${s.element}`);
+  for (const s of r.spells) {
+    if (s.element && !el.has(s.element)) errors.push(`spell ${s.id}: unknown element ${s.element}`);
+    if (!SHAPES.has(s.shape)) errors.push(`spell ${s.id}: unknown shape ${s.shape}`);
+    if (!s.name) errors.push(`spell ${s.id}: needs a name`);
+  }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const id of Object.keys(r.machines)) {
     if (!terrainIds.has(id)) errors.push(`machine ${id}: no terrain with that id`);

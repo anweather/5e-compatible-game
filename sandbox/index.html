@@ -129,6 +129,38 @@ kbd { font-family: var(--font-mono); font-size: 0.8em; border: 1px solid var(--l
 .rules th, .rules td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
 .rules th { font-size: 0.74rem; letter-spacing: 0.06em; text-transform: uppercase; color: var(--ink-soft); font-weight: 700; }
 .el { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; }
+.notice { color: var(--hurt); }
+.row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.room input, .lab input[type="text"], .lab textarea, .lab select {
+  font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; min-width: 0;
+}
+.room input { flex: 1 1 140px; }
+.players { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.players li { display: flex; align-items: center; gap: 8px; }
+.players small { color: var(--ink-soft); margin-left: auto; }
+.chip-btn { border: 1px solid var(--line); background: var(--paper); border-radius: 999px; padding: 3px 10px; cursor: pointer; font: inherit; font-size: 0.85rem; }
+.lab-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.lab .draft { display: grid; gap: 6px; border: 1px dashed var(--line); border-radius: 8px; padding: 10px; }
+.lab .draft label { font-size: 0.78rem; letter-spacing: 0.05em; text-transform: uppercase; color: var(--ink-soft); }
+.lab textarea { width: 100%; resize: vertical; }
+.lab textarea.code, .lab .patch { font-family: var(--font-mono); font-size: 0.78rem; }
+.lab .patch { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; padding: 8px; overflow-x: auto; max-height: 220px; margin: 6px 0; }
+.mod { border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 6px; background: var(--paper); }
+.mod.on { border-color: var(--accent); box-shadow: inset 3px 0 0 var(--accent); }
+.mod-line { display: flex; align-items: center; gap: 8px; }
+.mod-title { font-weight: 700; flex: 1; min-width: 0; overflow-wrap: anywhere; cursor: pointer; }
+.mod input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); flex: none; }
+.status { font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--line); color: var(--ink-soft); }
+.status.keep { border-color: var(--accent); color: var(--accent); }
+.status.drop { border-color: var(--hurt); color: var(--hurt); }
+.status.merged { background: var(--accent-wash); color: var(--ink); }
+.votes { display: flex; gap: 6px; }
+.vote { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 3px 9px; cursor: pointer; font: inherit; font-size: 0.82rem; font-variant-numeric: tabular-nums; }
+.vote[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.vote:disabled { opacity: 0.55; cursor: default; }
+.mod details summary { cursor: pointer; color: var(--ink-soft); font-size: 0.85rem; }
+.mod details input[type="text"] { width: 100%; margin-top: 6px; }
+.notes { margin: 6px 0; padding-left: 1.1em; font-size: 0.86rem; }
 footer { color: var(--ink-soft); font-size: 0.8rem; max-width: 90ch; }
 footer a { color: inherit; }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto; } }
@@ -152,6 +184,7 @@ footer a { color: inherit; }
           <li><strong>Pick a tool</strong> on the right: a spell, a critter, or a Build brush. <kbd>1</kbd>–<kbd>9</kbd> pick spells.</li>
           <li><strong>Click a square to use it.</strong> Ray of Frost and Gust of Wind shoot out of the wizard toward where you click; Thunderwave goes off all around her; everything else lands on the square you click. The highlighted squares show what it will hit.</li>
           <li><strong>Watch it play out</strong> and read <em>What happened</em>. Ice and grease are slippery, for you too.</li>
+          <li><strong>Play together</strong>: start a room and give friends the code. <strong>Experiments</strong> change the rules live for everyone; vote on what was fun.</li>
         </ol>
       </details>
       <div class="goal" id="goal"></div>
@@ -182,6 +215,7 @@ footer a { color: inherit; }
     </section>
 
     <aside class="side">
+      <div class="card room" id="room"></div>
       <div class="card">
         <div class="tabs" role="tablist" id="tabs"></div>
         <div class="chips" id="chips"></div>
@@ -195,6 +229,7 @@ footer a { color: inherit; }
         <h2>What happened</h2>
         <ol class="log" id="log"></ol>
       </div>
+      <div class="card lab" id="lab"></div>
     </aside>
   </main>
 

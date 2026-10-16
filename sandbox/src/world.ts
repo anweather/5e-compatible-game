@@ -25,6 +25,8 @@ export interface Entity {
   y: number;
   hp: number;
   status: Record<string, number>; // ticks remaining
+  /** For a player's wizard: the peer that controls it. */
+  owner?: string;
 }
 
 export interface Critter {
@@ -50,7 +52,17 @@ export interface LogEntry {
   count: number;
 }
 
+/** Shared controls. They live in the world so every player agrees on them. */
+export interface Controls {
+  playing: boolean;
+  speed: number;
+}
+
 export interface World {
+  scenarioId: string;
+  /** Ids of the mods in force, in order. Their patches decide RULES. */
+  mods: string[];
+  ctl: Controls;
   w: number;
   h: number;
   cells: Cell[];
@@ -76,6 +88,9 @@ export function newCell(t = "dirt"): Cell {
 export function createWorld(w: number, h: number, seed = 1): World {
   const n = w * h;
   return {
+    scenarioId: "",
+    mods: [],
+    ctl: { playing: true, speed: 1 },
     w,
     h,
     cells: Array.from({ length: n }, () => newCell()),
@@ -173,14 +188,15 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen]);
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick]);
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
 }
 
-/** The wizard you control, if still standing. */
-export const playerOf = (w: World): Entity | undefined => w.entities.find((e) => RULES.entities[e.kind]?.player);
+/** A player's wizard, if still standing. With no owner given: the first one. */
+export const playerOf = (w: World, owner?: string): Entity | undefined =>
+  w.entities.find((e) => RULES.entities[e.kind]?.player && (owner === undefined || e.owner === owner));
 
 /** Dominant-axis direction from a to b, or null if they're the same square. */
 export function dirFrom(ax: number, ay: number, bx: number, by: number): Dir | null {
@@ -202,4 +218,34 @@ export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: nu
     const c = cellAt(w, x, y)!;
     if (isBlocking(c) && !hasTag(c, "seeThrough")) return false;
   }
+}
+
+// ---------- snapshots ----------
+
+/** Everything the simulation needs, as plain JSON (per-tick scratch left out). */
+export type WorldSnapshot = Omit<World, "marks" | "logged">;
+
+export function serializeWorld(w: World): WorldSnapshot {
+  const { marks: _m, logged: _l, ...rest } = w;
+  return JSON.parse(JSON.stringify({ ...rest, log: w.log.slice(-40) })) as WorldSnapshot;
+}
+
+export function deserializeWorld(s: WorldSnapshot): World {
+  const n = s.w * s.h;
+  const copy = JSON.parse(JSON.stringify(s)) as WorldSnapshot;
+  return { ...copy, marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+}
+
+/**
+ * After a mod is switched off, the board may name things the rules no longer
+ * define. Replace them with something harmless, the same way on every peer.
+ */
+export function sanitizeWorld(w: World) {
+  for (const c of w.cells) {
+    if (!RULES.terrain[c.t]) c.t = "dirt";
+    if (c.cover && !RULES.covers[c.cover]) c.cover = null;
+    if (c.gas && !RULES.gases[c.gas]) { c.gas = null; c.gasAmt = 0; }
+  }
+  w.entities = w.entities.filter((e) => RULES.entities[e.kind]);
+  w.critters = w.critters.filter((c) => RULES.critters.some((d) => d.id === c.kind));
 }

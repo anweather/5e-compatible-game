@@ -3,7 +3,7 @@
     { "id": "fire-oil", "element": "fire", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} ignites", "notable": true, "stop": true },
     { "id": "fire-ice", "element": "fire", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water", "stop": true },
     { "id": "fire-water", "element": "fire", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam", "stop": true },
-    { "id": "fire-flammable", "element": "fire", "if": { "terrainTag": "flammable" }, "do": [{ "ignite": 2 }], "log": "The {terrain} catches fire", "stop": true },
+    { "id": "fire-flammable", "element": "fire", "if": { "terrainTag": "flammable" }, "do": [{ "ignite": 2 }], "log": "Fire takes hold of the {terrain}", "stop": true },
 
     { "id": "cold-fire", "element": "cold", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "Frost snuffs out the flames" },
     { "id": "cold-water", "element": "cold", "if": { "water": true }, "do": [{ "freeze": true }], "log": "The water freezes solid" },

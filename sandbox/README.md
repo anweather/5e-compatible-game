@@ -33,6 +33,19 @@ npm run typecheck
   - The highlighted squares preview what a spell will hit.
 - **Watch the log.** It says what reacted and why.
 
+## Play together and change the rules live
+
+See `docs/LIVE_LAB.md` for the full picture.
+
+- **Play together.** Start a room and share the code. Friends need the
+  published page shared with them at Contributor or above.
+- **Experiments.** Write a mod (by hand, with Claude, or by pasting the
+  brief into any AI; see `docs/MODDING.md`), switch it on for the whole
+  room, and vote keep, meh or drop.
+- **Locally:** `dist/dev.html` includes a fake platform (`dev/fake-claude.js`),
+  so two tabs on one machine can share a room. Serve `dist/` over HTTP;
+  browsers don't share rooms between `file://` tabs.
+
 ## What's in it
 
 - **Three rooms:**
@@ -65,8 +78,14 @@ npm run typecheck
 | `src/entities.ts` | Damage, explosions, push and slide, per-tick statuses |
 | `src/actions.ts` | Casting, placing critters, painting |
 | `src/scenarios.ts` | ASCII maps and goals |
+| `src/intents.ts` | Every player action as a small JSON message, applied identically on every page |
+| `src/net.ts` | Lockstep sessions: host election, batches, snapshots, checksums |
+| `src/room.ts` | Transports: solo, and the artifact `room` + `db` |
+| `src/lab.ts` | The Experiments panel and the brief for any LLM |
+| `dev/fake-claude.js` | A local stand-in for the platform, for two-tab testing |
 | `src/render.ts`, `src/main.ts`, `index.html` | The page |
 | `test/sim.test.ts` | Interaction tests, including every Steam Gate route and determinism |
+| `test/net.test.ts` | Multiplayer: late join, lost batches, host leaving, mods mid-game; the doc examples validate |
 
 The simulation is deterministic for a seed: all randomness comes from a
 mulberry32 cursor in the world state. That is the same discipline the

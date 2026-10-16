@@ -140,6 +140,7 @@ export const SCENARIOS: Scenario[] = [
 export function loadScenario(s: Scenario, seed = 1): World {
   const h = s.rows.length, w = s.rows[0]!.length;
   const world = createWorld(w, h, seed);
+  world.scenarioId = s.id;
   s.rows.forEach((row, y) => {
     if (row.length !== w) throw new Error(`${s.id}: row ${y} is ${row.length} wide, expected ${w}`);
     [...row].forEach((ch, x) => {
