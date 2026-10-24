@@ -22,7 +22,7 @@ tables in `rules/` that the Unity build will load too.
 |---|---|
 | `rules/` | The interaction rules as JSON: elements, materials, reactions, spells, critters, machines |
 | `sandbox/` | A top-down web sandbox that runs those rules, with tests (`npm test`). Multiplayer rooms and live, votable rule mods: see `docs/LIVE_LAB.md` |
-| `unity/` | The Unity 6.3 LTS (URP) project. First greybox: Fire Bolt and spreading grass fire; rebuild it with **Prototype → Build Test Scene** |
+| `unity/` | The Unity 6.3 LTS (URP) project. First greybox: Fire Bolt and spreading grass fire; rebuild it with **Prototype → Build Test Scene**. Asset Store packs aren't in git: `unity/AssetPacks.json` lists them, and **Prototype → Restore Asset Packs** downloads and imports any that are missing (your Unity account needs them in My Assets) |
 
 The docs:
 

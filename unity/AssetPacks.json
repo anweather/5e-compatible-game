@@ -1,0 +1,21 @@
+{
+  "about": "Asset Store packs this project uses. They are not in git: Prototype > Restore Asset Packs downloads any that are missing (the signed-in Unity account must have them in My Assets) and imports them. Never edit files inside a pack's folder; copy what you change into Assets/Prototype first.",
+  "packs": [
+    {
+      "id": 196526,
+      "name": "First Person + Third Person | Character Controllers",
+      "url": "https://assetstore.unity.com/packages/essentials/starter-assets-thirdperson-updates-in-new-charactercontroller-pa-196526",
+      "version": "2.0.1",
+      "folder": "Assets/Starter Assets",
+      "cache": "Unity Technologies/3D ModelsCharacters/First Person Third Person Character Controllers.unitypackage"
+    },
+    {
+      "id": 127325,
+      "name": "Particle Pack | Starter Assets",
+      "url": "https://assetstore.unity.com/packages/vfx/particles/particle-pack-127325",
+      "version": "3.3",
+      "folder": "Assets/UnityTechnologies",
+      "cache": "Unity Technologies/Particle Systems/Particle Pack Starter Assets.unitypackage"
+    }
+  ]
+}

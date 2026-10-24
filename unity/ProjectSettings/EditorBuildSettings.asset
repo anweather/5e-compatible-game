@@ -6,6 +6,9 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
+    path: Assets/Prototype/Scenes/ChemistryYard.unity
+    guid: f2663c50dfda24918a8751f8d49c8fbb
+  - enabled: 1
     path: Assets/Prototype/Scenes/Fireline.unity
     guid: dc5022428edcb47f9b1de3869e1c0168
   m_configObjects:

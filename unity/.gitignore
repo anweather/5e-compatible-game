@@ -9,6 +9,13 @@
 /[Mm]emoryCaptures/
 /[Rr]ecordings/
 
+# Asset Store packs: listed in AssetPacks.json and restored with
+# Prototype > Restore Asset Packs, never committed
+/Assets/Starter Assets/
+/Assets/Starter Assets.meta
+/Assets/UnityTechnologies/
+/Assets/UnityTechnologies.meta
+
 # IDE files Unity regenerates
 .vs/
 .vscode/
