@@ -11,6 +11,8 @@ public class SpellCaster : MonoBehaviour
 {
     public ChemGrid grid;
     public string[] spellIds = { "fire-bolt", "ray-of-frost", "create-water", "grease", "shocking-grasp", "gust-of-wind" };
+    [Tooltip("Optional: the Fire Bolt projectile. Without it Fire Bolt lands instantly.")]
+    public GameObject fireBolt;
 
     public int Selected { get; private set; }
     public string SelectedName => grid != null && grid.World != null ? grid.World.Rules.Spell(spellIds[Selected])?.Name ?? spellIds[Selected] : spellIds[Selected];
@@ -58,7 +60,21 @@ public class SpellCaster : MonoBehaviour
 
         if (!mouse.leftButton.wasPressedThisFrame) return;
         if (error != null) { EventLog.Add(error); return; }
-        if (aim.HasValue) grid.World.Cast(spellIds[Selected], aim.Value.x, aim.Value.y, aim.Value.dir);
+        if (aim.HasValue) Cast(spellIds[Selected], aim.Value.x, aim.Value.y, aim.Value.dir);
+    }
+
+    // Spells with a projectile fly from the wizard's hand and take effect where
+    // they land; the rest take effect at once. The demo casts through this too.
+    public void Cast(string spellId, int x, int y, int dir)
+    {
+        if (spellId == "fire-bolt" && fireBolt != null)
+        {
+            var hand = transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
+            var target = grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);
+            SpellProjectile.Launch(fireBolt, hand, target, () => grid.World.Cast(spellId, x, y, dir));
+            return;
+        }
+        grid.World.Cast(spellId, x, y, dir);
     }
 
     (int x, int y, int dir)? Aim(Vector2Int target, out string error)

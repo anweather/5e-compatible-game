@@ -1,6 +1,8 @@
 using System.IO;
 using UnityEditor;
 using Unity.Cinemachine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -10,6 +12,11 @@ public static class ChemYardBuilder
 {
     const string ScenePath = "Assets/Prototype/Scenes/ChemistryYard.unity";
     const string StarterAssets = "Assets/Starter Assets/Runtime/ThirdPersonController/Prefabs";
+    const string Effects = "Assets/UnityTechnologies/ParticlePack/EffectExamples";
+    const string FireFx = Effects + "/Fire & Explosion Effects/Prefabs";
+    const string SmokeFx = Effects + "/Smoke & Steam Effects/Prefabs";
+    const string MiscFx = Effects + "/Misc Effects/Prefabs";
+    const string VolumePath = "Assets/Prototype/Settings/YardVolume.asset";
 
     // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
     // w pond  _ pit  = wooden bridge  m metal  ~ puddle  % bedrock  @ start
@@ -42,6 +49,7 @@ public static class ChemYardBuilder
 
         var grid = new GameObject("ChemGrid").AddComponent<ChemGrid>();
         grid.map = Map;
+        AssignEffects(grid);
 
         // Find the @ to place the wizard; cell (x, y) sits at world (x, 0, H-1-y) times the cell size.
         var rows = Map.Split('\n');
@@ -63,19 +71,21 @@ public static class ChemYardBuilder
             return;
         }
         Object.DestroyImmediate(Camera.main.gameObject);
-        PrefabUtility.InstantiatePrefab(mainCamera);
+        var camera = (GameObject)PrefabUtility.InstantiatePrefab(mainCamera);
+        camera.GetComponent<UniversalAdditionalCameraData>().renderPostProcessing = true;
 
         var player = (GameObject)PrefabUtility.InstantiatePrefab(armature);
         player.name = "Wizard";
         player.transform.position = start;
-        player.AddComponent<SpellCaster>().grid = grid;
+        var caster = player.AddComponent<SpellCaster>();
+        caster.grid = grid;
+        caster.fireBolt = Load(FireFx + "/FireBall.prefab");
 
         var follow = (GameObject)PrefabUtility.InstantiatePrefab(followCamera);
         var cameraRoot = player.transform.Find("PlayerCameraRoot");
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
 
-        var sun = Object.FindFirstObjectByType<Light>();
-        if (sun != null) sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
+        SetUpLighting();
         new GameObject("EventLog").AddComponent<EventLog>();
 
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -83,5 +93,64 @@ public static class ChemYardBuilder
         if (!scenes.Exists(s => s.path == ScenePath)) scenes.Insert(0, new EditorBuildSettingsScene(ScenePath, true));
         EditorBuildSettings.scenes = scenes.ToArray();
         Debug.Log($"Built {ScenePath}. Press Play.");
+    }
+
+    static GameObject Load(string path) => AssetDatabase.LoadAssetAtPath<GameObject>(path);
+
+    // Particle Pack effects; any that are missing leave the grid's cube stand-ins.
+    static void AssignEffects(ChemGrid grid)
+    {
+        grid.fireSmall = Load(FireFx + "/TinyFlames.prefab");
+        grid.fireMedium = Load(FireFx + "/MediumFlames.prefab");
+        grid.fireLarge = Load(FireFx + "/LargeFlames.prefab");
+        grid.smokeFx = Load(SmokeFx + "/SmokeEffect.prefab");
+        grid.steamFx = Load(SmokeFx + "/RisingSteam.prefab");
+        grid.sparksFx = Load(MiscFx + "/SparksEffect.prefab");
+        if (grid.fireSmall == null) Debug.LogWarning("Particle Pack missing: fire and smoke will be cubes. Run Prototype > Restore Asset Packs.");
+    }
+
+    // Late-afternoon sun, and a post-processing volume: bloom so fire glows,
+    // filmic tonemapping, a little extra saturation and a soft vignette.
+    static void SetUpLighting()
+    {
+        var sun = Object.FindFirstObjectByType<Light>();
+        if (sun != null)
+        {
+            sun.transform.rotation = Quaternion.Euler(32f, -40f, 0f);
+            sun.color = new Color(1f, 0.88f, 0.74f);
+            sun.intensity = 1.6f;
+            sun.shadows = LightShadows.Soft;
+        }
+
+        Directory.CreateDirectory(Path.GetDirectoryName(VolumePath));
+        AssetDatabase.Refresh();
+        var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(VolumePath);
+        if (profile == null)
+        {
+            profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            AssetDatabase.CreateAsset(profile, VolumePath);
+        }
+        Override<Bloom>(profile, b => { b.intensity.Override(0.9f); b.threshold.Override(1f); b.scatter.Override(0.7f); });
+        Override<Tonemapping>(profile, t => t.mode.Override(TonemappingMode.ACES));
+        Override<ColorAdjustments>(profile, c => { c.postExposure.Override(0.25f); c.saturation.Override(12f); c.contrast.Override(8f); });
+        Override<Vignette>(profile, v => { v.intensity.Override(0.22f); v.smoothness.Override(0.5f); });
+        EditorUtility.SetDirty(profile);
+        AssetDatabase.SaveAssets();
+
+        var volume = new GameObject("Post-processing").AddComponent<Volume>();
+        volume.isGlobal = true;
+        volume.sharedProfile = profile;
+    }
+
+    static void Override<T>(VolumeProfile profile, System.Action<T> set) where T : VolumeComponent
+    {
+        if (!profile.TryGet<T>(out var component))
+        {
+            component = profile.Add<T>(true);
+            component.name = typeof(T).Name;
+            AssetDatabase.AddObjectToAsset(component, profile);
+        }
+        set(component);
+        EditorUtility.SetDirty(component);
     }
 }

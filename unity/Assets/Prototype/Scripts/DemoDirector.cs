@@ -63,7 +63,11 @@ public class DemoDirector : MonoBehaviour
 
     IEnumerator Cast(string spell, int x, int y, int dir, float wait)
     {
-        grid.World.Cast(spell, x, y, dir);
+        // Face the target, then cast through the SpellCaster so projectiles fly.
+        var to = grid.CellCenter(x, y) - wizard.position;
+        to.y = 0f;
+        if (to.sqrMagnitude > 0.01f) wizard.rotation = Quaternion.LookRotation(to);
+        wizard.GetComponent<SpellCaster>().Cast(spell, x, y, dir);
         yield return new WaitForSeconds(wait);
     }
 }

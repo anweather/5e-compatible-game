@@ -35,8 +35,25 @@ public static class DemoRecorder
         };
     }
 
+    // The Game view's Gizmos toggle (light icons and the like) shows up in recordings,
+    // so it is switched off while recording and put back afterwards.
+    static bool? gizmosWere;
+
+    static void SetGameViewGizmos(bool on)
+    {
+        var type = typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView");
+        var field = type?.GetField("m_Gizmos", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (field == null) return;
+        foreach (var view in Resources.FindObjectsOfTypeAll(type))
+        {
+            gizmosWere ??= (bool)field.GetValue(view);
+            field.SetValue(view, on);
+        }
+    }
+
     static void Begin()
     {
+        SetGameViewGizmos(false);
         var director = new GameObject("DemoDirector").AddComponent<DemoDirector>();
 
         var movie = ScriptableObject.CreateInstance<MovieRecorderSettings>();
@@ -75,6 +92,8 @@ public static class DemoRecorder
     {
         if (controller == null || !controller.IsRecording()) return;
         controller.StopRecording();
+        if (gizmosWere.HasValue) SetGameViewGizmos(gizmosWere.Value);
+        gizmosWere = null;
         controller = null;
         Debug.Log("Saved Recordings/ChemistryYard.mp4");
     }
