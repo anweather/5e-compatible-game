@@ -46,7 +46,12 @@ public class EventLog : MonoBehaviour
             GUI.Label(new Rect(16, 12, 900, 30), "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset", style);
         else
         {
-            GUI.Label(new Rect(16, 12, 1200, 30), "<b>WASD</b> move   ·   <b>1–6</b> pick a spell   ·   <b>Click</b> cast   ·   <b>R</b> reset", style);
+            GUI.Label(new Rect(16, 12, 1400, 30), "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>1–6</b> or <b>wheel</b> pick a spell   ·   <b>Click</b> cast   ·   <b>R</b> reset", style);
+            if (Cursor.lockState == CursorLockMode.Locked)
+            {
+                var c = new Vector2(Screen.width / 2f, Screen.height / 2f);
+                GUI.Label(new Rect(c.x - 12, c.y - 15, 24, 30), "<b>+</b>", new GUIStyle(style) { alignment = TextAnchor.MiddleCenter, fontSize = 26 });
+            }
             var bar = new StringBuilder();
             for (int i = 0; i < caster.spellIds.Length; i++)
             {

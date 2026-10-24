@@ -38,7 +38,14 @@ public class SpellCaster : MonoBehaviour
         var mouse = Mouse.current;
         if (mouse == null || grid == null || grid.World == null) return;
 
-        var ray = Camera.main.ScreenPointToRay(mouse.position.ReadValue());
+        // The scroll wheel steps through the spells too.
+        float scroll = mouse.scroll.ReadValue().y;
+        if (scroll > 0.1f) Selected = (Selected + spellIds.Length - 1) % spellIds.Length;
+        else if (scroll < -0.1f) Selected = (Selected + 1) % spellIds.Length;
+
+        // With mouse-look the cursor is locked, so aim through the crosshair at the screen centre.
+        var aimAt = Cursor.lockState == CursorLockMode.Locked ? new Vector2(Screen.width / 2f, Screen.height / 2f) : mouse.position.ReadValue();
+        var ray = Camera.main.ScreenPointToRay(aimAt);
         if (!Physics.Raycast(ray, out var hit, 200f) || hit.collider.transform.IsChildOf(transform))
         {
             ShowMarkers(null);
@@ -99,7 +106,7 @@ public class SpellCaster : MonoBehaviour
             var (x, y) = cells[i];
             var c = grid.CellCenter(x, y);
             markers[i].transform.position = new Vector3(c.x, grid.SurfaceY(x, y) + 0.06f, c.z);
-            markers[i].transform.localScale = new Vector3(0.3f, 0.02f, 0.3f);
+            markers[i].transform.localScale = new Vector3(0.3f * grid.cellSize, 0.02f, 0.3f * grid.cellSize);
         }
     }
 }

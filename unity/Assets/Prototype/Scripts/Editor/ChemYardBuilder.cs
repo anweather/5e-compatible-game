@@ -1,5 +1,6 @@
 using System.IO;
 using UnityEditor;
+using Unity.Cinemachine;
 using UnityEditor.SceneManagement;
 using UnityEngine;
 
@@ -8,6 +9,7 @@ using UnityEngine;
 public static class ChemYardBuilder
 {
     const string ScenePath = "Assets/Prototype/Scenes/ChemistryYard.unity";
+    const string StarterAssets = "Assets/Starter Assets/Runtime/ThirdPersonController/Prefabs";
 
     // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
     // w pond  _ pit  = wooden bridge  m metal  ~ puddle  % bedrock  @ start
@@ -41,34 +43,37 @@ public static class ChemYardBuilder
         var grid = new GameObject("ChemGrid").AddComponent<ChemGrid>();
         grid.map = Map;
 
-        // Find the @ to place the wizard; cell (x, y) sits at world (x, 0, H-1-y).
+        // Find the @ to place the wizard; cell (x, y) sits at world (x, 0, H-1-y) times the cell size.
         var rows = Map.Split('\n');
         var start = Vector3.zero;
         for (int y = 0; y < rows.Length; y++)
         {
             int x = rows[y].IndexOf('@');
-            if (x >= 0) start = new Vector3(x, 1.1f, rows.Length - 1 - y);
+            if (x >= 0) start = new Vector3(x, 0.1f, rows.Length - 1 - y) * grid.cellSize;
         }
 
-        var robe = AssetDatabase.LoadAssetAtPath<Material>("Assets/Prototype/Materials/Wizard.mat");
-        var player = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+        // The wizard is the Starter Assets third-person character (restore it with
+        // Prototype > Restore Asset Packs), with our spellcasting added.
+        var armature = AssetDatabase.LoadAssetAtPath<GameObject>(StarterAssets + "/PlayerArmature.prefab");
+        var mainCamera = AssetDatabase.LoadAssetAtPath<GameObject>(StarterAssets + "/MainCamera.prefab");
+        var followCamera = AssetDatabase.LoadAssetAtPath<GameObject>(StarterAssets + "/PlayerFollowCamera.prefab");
+        if (armature == null || mainCamera == null || followCamera == null)
+        {
+            Debug.LogError("Starter Assets are missing. Run Prototype > Restore Asset Packs, then build again.");
+            return;
+        }
+        Object.DestroyImmediate(Camera.main.gameObject);
+        PrefabUtility.InstantiatePrefab(mainCamera);
+
+        var player = (GameObject)PrefabUtility.InstantiatePrefab(armature);
         player.name = "Wizard";
-        player.tag = "Player";
-        Object.DestroyImmediate(player.GetComponent<CapsuleCollider>());
         player.transform.position = start;
-        player.transform.localScale = Vector3.one * 0.8f;
-        if (robe != null) player.GetComponent<Renderer>().sharedMaterial = robe;
-        var cc = player.AddComponent<CharacterController>();
-        cc.center = Vector3.zero;
-        cc.height = 2f;
-        cc.radius = 0.4f;
-        cc.stepOffset = 0.55f;
-        player.AddComponent<PlayerController>().grid = grid;
         player.AddComponent<SpellCaster>().grid = grid;
 
-        var cam = Camera.main.gameObject;
-        cam.transform.position = start + new Vector3(0f, 9f, -7f);
-        cam.AddComponent<CameraFollow>().target = player.transform;
+        var follow = (GameObject)PrefabUtility.InstantiatePrefab(followCamera);
+        var cameraRoot = player.transform.Find("PlayerCameraRoot");
+        follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
+
         var sun = Object.FindFirstObjectByType<Light>();
         if (sun != null) sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
         new GameObject("EventLog").AddComponent<EventLog>();

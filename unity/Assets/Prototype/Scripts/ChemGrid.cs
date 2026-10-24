@@ -6,13 +6,15 @@ using UnityEngine;
 // The 3D view of a Chem.World: one block per cell, plus water, ice, covers,
 // fire, gas and charge drawn on top. The rules come from ../rules/*.json,
 // the same files the web sandbox runs on. Cell (x, y) sits at world
-// (x, 0, H-1-y), so north (y-1) is +z.
+// (x, 0, H-1-y) times cellSize, so north (y-1) is +z.
 public class ChemGrid : MonoBehaviour
 {
     [TextArea(8, 20)] public string map;
     public uint seed = 1;
     [Tooltip("World height of one step of elevation (a pit is one step deep).")]
     public float stepHeight = 0.5f;
+    [Tooltip("World width of one cell. A 5 ft square is about 1.5 m.")]
+    public float cellSize = 1.5f;
 
     public World World { get; private set; }
     public Vector2Int PlayerStart { get; private set; }
@@ -94,10 +96,10 @@ public class ChemGrid : MonoBehaviour
 
     // --- coordinates -----------------------------------------------------
 
-    public Vector3 CellCenter(int x, int y) => new Vector3(x, 0f, World.H - 1 - y);
+    public Vector3 CellCenter(int x, int y) => new Vector3(x * cellSize, 0f, (World.H - 1 - y) * cellSize);
 
     public Vector2Int CellAt(Vector3 p) =>
-        new Vector2Int(Mathf.RoundToInt(p.x), World.H - 1 - Mathf.RoundToInt(p.z));
+        new Vector2Int(Mathf.RoundToInt(p.x / cellSize), World.H - 1 - Mathf.RoundToInt(p.z / cellSize));
 
     public float SurfaceY(int x, int y)
     {
@@ -136,7 +138,7 @@ public class ChemGrid : MonoBehaviour
                 top = Mathf.Max(top, ground + 0.04f);
                 var slab = Ensure(ref v.water, "Water", center);
                 slab.transform.position = new Vector3(center.x, (ground + top) / 2f, center.z);
-                slab.transform.localScale = new Vector3(1f, top - ground, 1f);
+                slab.transform.localScale = new Vector3(cellSize, top - ground, cellSize);
                 slab.GetComponent<Renderer>().sharedMaterial = c.Frozen ? Mat("Ice", new Color(0.78f, 0.92f, 1f), 0.95f) : Mat("Water", new Color(0.2f, 0.45f, 0.8f), 0.9f);
                 slab.GetComponent<Collider>().enabled = c.Frozen;
                 ground = top;
@@ -148,7 +150,7 @@ public class ChemGrid : MonoBehaviour
                 var col = c.Cover == "oil" ? new Color(0.08f, 0.07f, 0.06f) : c.Cover == "grease" ? new Color(0.85f, 0.80f, 0.45f) : new Color(0.55f, 0.55f, 0.55f);
                 var film = Ensure(ref v.cover, "Cover", center);
                 film.transform.position = new Vector3(center.x, ground + 0.02f, center.z);
-                film.transform.localScale = new Vector3(0.96f, 0.03f, 0.96f);
+                film.transform.localScale = new Vector3(0.96f * cellSize, 0.03f, 0.96f * cellSize);
                 film.GetComponent<Renderer>().sharedMaterial = Mat("Cover-" + c.Cover, col, c.Cover == "ash" ? 0.1f : 0.85f);
             }
             else Hide(v.cover);
@@ -178,7 +180,7 @@ public class ChemGrid : MonoBehaviour
             {
                 var spark = Ensure(ref v.spark, "Charge", center);
                 spark.transform.position = new Vector3(center.x, ground + 0.08f, center.z);
-                spark.transform.localScale = new Vector3(0.8f, 0.05f, 0.8f);
+                spark.transform.localScale = new Vector3(0.8f * cellSize, 0.05f, 0.8f * cellSize);
                 spark.GetComponent<Renderer>().sharedMaterial = Mat("Charge", new Color(1f, 0.95f, 0.3f), 0.5f, new Color(1f, 0.9f, 0.2f) * 6f);
             }
             else Hide(v.spark);
@@ -210,8 +212,9 @@ public class ChemGrid : MonoBehaviour
         var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
         tile.name = $"{c.T} {x},{y}";
         tile.transform.SetParent(transform, false);
-        tile.transform.position = new Vector3(x, (top + bottom) / 2f, World.H - 1 - y);
-        tile.transform.localScale = new Vector3(1f, top - bottom, 1f);
+        var c0 = CellCenter(x, y);
+        tile.transform.position = new Vector3(c0.x, (top + bottom) / 2f, c0.z);
+        tile.transform.localScale = new Vector3(cellSize, top - bottom, cellSize);
         tile.GetComponent<Renderer>().sharedMaterial = Mat("T-" + c.T, look.color, c.T == "metal" ? 0.8f : 0.15f);
         v.tile = tile;
     }
