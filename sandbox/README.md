@@ -10,6 +10,10 @@ README). The TypeScript here is throwaway; the rule tables are not.
 
 ## Run it
 
+`sandbox.html` is a committed copy of the build, the same page as the
+published artifact. Open it in a browser with no setup. Refresh it with
+`cp dist/index.html sandbox.html` after a build you publish.
+
 ```bash
 cd sandbox
 npm ci
