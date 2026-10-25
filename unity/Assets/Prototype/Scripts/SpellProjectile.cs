@@ -6,7 +6,9 @@ using UnityEngine;
 // particles fade out.
 public class SpellProjectile : MonoBehaviour
 {
-    public float speed = 22f;
+    public const float DefaultSpeed = 22f;
+
+    public float speed = DefaultSpeed;
     public float arc = 0.12f;
 
     Vector3 from, to;

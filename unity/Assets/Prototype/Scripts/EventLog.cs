@@ -14,7 +14,16 @@ public class EventLog : MonoBehaviour
     SpellCaster caster;
 
     void Awake() => instance = this;
-    void Start() => caster = FindFirstObjectByType<SpellCaster>();
+    void Start()
+    {
+        if (caster == null) caster = FindFirstObjectByType<SpellCaster>();
+    }
+
+    /// <summary>Shows this caster's spells and controls; the local player's caster calls it when enabled.</summary>
+    public static void Track(SpellCaster c)
+    {
+        if (instance != null) instance.caster = c;
+    }
     void OnDestroy() { if (instance == this) instance = null; }
 
     // A line that starts with the same text as the last one replaces it, so

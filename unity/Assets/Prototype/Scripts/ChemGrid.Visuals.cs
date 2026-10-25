@@ -55,7 +55,7 @@ public partial class ChemGrid
         views = new View[World.W * World.H];
         for (int i = 0; i < views.Length; i++) views[i] = new View();
         tint = new MaterialPropertyBlock();
-        tuftMesh = BuildTuftMesh();
+        if (tuftMesh == null) tuftMesh = BuildTuftMesh();
         for (int i = 0; i < maxFireLights; i++)
         {
             var l = new GameObject("Fire light").AddComponent<Light>();

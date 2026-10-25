@@ -19,6 +19,9 @@ public partial class ChemGrid : MonoBehaviour
     public World World { get; private set; }
     public Vector2Int PlayerStart { get; private set; }
 
+    /// <summary>When true, something else (NetChem in multiplayer) steps the world; the grid only draws it.</summary>
+    public bool ExternalTicks { get; set; }
+
     // One character per cell, the same legend as the web sandbox's scenarios.
     static readonly Dictionary<char, (string t, int water, bool frozen, string cover)> Legend = new()
     {
@@ -32,13 +35,25 @@ public partial class ChemGrid : MonoBehaviour
     };
 
     float tickTimer;
+    int lastLitTick = -1;
     LogEntry lastLog;
     int lastLogCount;
 
-    void Awake()
+    void Awake() => BuildWorld();
+
+    /// <summary>Throws away the current world and its visuals and starts again from the map.</summary>
+    public void ResetWorld()
     {
-        var rulesDir = Path.GetFullPath(Path.Combine(Application.dataPath, "../../rules"));
-        var rules = Rules.Load(rulesDir);
+        foreach (Transform child in transform) Destroy(child.gameObject);
+        fireLights.Clear();
+        lastLog = null;
+        tickTimer = 0f;
+        BuildWorld();
+    }
+
+    void BuildWorld()
+    {
+        var rules = Rules.Load(FindRulesDir());
 
         var rows = map.Replace("\r", "").Trim('\n').Split('\n');
         int h = rows.Length, w = 0;
@@ -62,6 +77,15 @@ public partial class ChemGrid : MonoBehaviour
 
     void Update()
     {
+        if (ExternalTicks)
+        {
+            Render();
+            if (World.Tick != lastLitTick) { UpdateFireLights(); lastLitTick = World.Tick; }
+            FlickerFireLights();
+            PumpLog();
+            return;
+        }
+
         tickTimer += Time.deltaTime;
         float tick = 1f / Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
         int guard = 4;
@@ -76,6 +100,20 @@ public partial class ChemGrid : MonoBehaviour
         if (stepped) UpdateFireLights();
         FlickerFireLights();
         PumpLog();
+    }
+
+    // The repo's rules/ folder, found by walking up from the project. A fixed
+    // "../../rules" breaks for Multiplayer Play Mode's virtual players, whose
+    // project copies live deeper (unity/Library/VP/<id>/).
+    static string FindRulesDir()
+    {
+        var dir = new DirectoryInfo(Application.dataPath);
+        for (; dir != null; dir = dir.Parent)
+        {
+            var candidate = Path.Combine(dir.FullName, "rules");
+            if (File.Exists(Path.Combine(candidate, "materials.json"))) return candidate;
+        }
+        throw new DirectoryNotFoundException($"No rules/ folder with materials.json above {Application.dataPath}");
     }
 
     // --- coordinates -----------------------------------------------------

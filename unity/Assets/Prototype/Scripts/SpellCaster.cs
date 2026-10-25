@@ -80,17 +80,44 @@ public class SpellCaster : MonoBehaviour
 
     // Spells with a projectile fly from the wizard's hand and take effect where
     // they land; the rest take effect at once. The demo casts through this too.
+    // Online, the cast goes to the host and lands on every machine at the same
+    // tick, timed to roughly when the fireball arrives.
     public void Cast(string spellId, int x, int y, int dir)
     {
-        if (spellId == "fire-bolt" && fireBolt != null)
+        var online = Net;
+        if (online != null && online.Online)
         {
-            var hand = transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
-            var target = grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);
-            SpellProjectile.Launch(fireBolt, hand, target, () => grid.World.Cast(spellId, x, y, dir));
+            int delay = Mathf.CeilToInt(FlightSeconds(spellId, x, y) * grid.World.Rules.Sim.TicksPerSecond);
+            online.RequestCast(spellId, x, y, dir, delay);
             return;
         }
-        grid.World.Cast(spellId, x, y, dir);
+        if (!PlayCastEffect(spellId, x, y, () => grid.World.Cast(spellId, x, y, dir)))
+            grid.World.Cast(spellId, x, y, dir);
     }
+
+    /// <summary>Shows the spell leaving the wizard (the Fire Bolt fireball). Returns false when the spell has no projectile.</summary>
+    public bool PlayCastEffect(string spellId, int x, int y, System.Action onArrive = null)
+    {
+        if (spellId != FireBoltId || fireBolt == null) return false;
+        SpellProjectile.Launch(fireBolt, Hand, Target(x, y), onArrive);
+        return true;
+    }
+
+    const string FireBoltId = "fire-bolt";
+
+    Vector3 Hand => transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
+
+    Vector3 Target(int x, int y) => grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);
+
+    float FlightSeconds(string spellId, int x, int y) =>
+        spellId == FireBoltId && fireBolt != null ? Vector3.Distance(Hand, Target(x, y)) / SpellProjectile.DefaultSpeed : 0f;
+
+    NetChem net;
+
+    // Found lazily: a networked wizard gets its grid assigned after Awake.
+    NetChem Net => net != null ? net : net = grid != null ? grid.GetComponent<NetChem>() : null;
+
+    void OnEnable() => EventLog.Track(this);
 
     (int x, int y, int dir)? Aim(Vector2Int target, out string error)
     {
