@@ -55,14 +55,17 @@ namespace Chem
         /// Switches the rules on a running world (a live mod on or off; see Rules.WithMods),
         /// keeping its cells. Call it between ticks, at the same tick on every peer. Like the
         /// sandbox's applyMods and sanitizeWorld: anything the new rules no longer define is
-        /// replaced the same way everywhere (terrain by dirt, covers and gases cleared).
+        /// replaced the same way everywhere (terrain by dirt, covers and gases cleared, heights
+        /// clamped into the new range).
         /// </summary>
         public void ApplyRules(Rules rules)
         {
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
+            var height = rules.Sim.Height;
             foreach (var c in Cells)
             {
                 c.ForgetDef();
+                c.Height = Math.Max(height.Min, Math.Min(height.Max, c.Height));
                 if (!rules.Terrain.ContainsKey(c.T)) c.T = "dirt";
                 if (c.Cover != null && !rules.Covers.ContainsKey(c.Cover)) c.Cover = null;
                 if (c.Gas != null && !rules.Gases.ContainsKey(c.Gas))
@@ -107,9 +110,11 @@ namespace Chem
             return c.Def;
         }
         public bool HasTag(Cell c, string tag) => TerrainOf(c).Has(tag);
-        public bool IsBlocking(Cell c) => HasTag(c, "blocking");
-        /// <summary>In water units, so it compares directly with Cell.Water.</summary>
-        public int ElevationUnits(Cell c) => TerrainOf(c).Elevation * Rules.Sim.WaterUnitsPerStep;
+        public bool IsBlocking(Cell c) => HasTag(c, "blocking") || IsRaisedWall(c);
+        /// <summary>Raised height.blockAt steps or more: a wall of earth, whatever the terrain.</summary>
+        public bool IsRaisedWall(Cell c) => c.Height >= Rules.Sim.Height.BlockAt;
+        /// <summary>Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.Water.</summary>
+        public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + c.Height) * Rules.Sim.WaterUnitsPerStep;
         public bool CoverHasTag(Cell c, string tag) =>
             c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) && cv.Has(tag);
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
@@ -212,14 +217,22 @@ namespace Chem
             c.Cover = coverId;
         }
 
-        /// <summary>Stable fingerprint of the cells (FNV-1a), matching the TS golden script in the tests.</summary>
+        /// <summary>
+        /// Stable fingerprint of the cells (FNV-1a), matching the TS golden script in the tests
+        /// (cellHash in sandbox/test/sim.test.ts). Height is written only when it isn't 0, so
+        /// worlds nobody has terraformed hash as they did before heights existed.
+        /// </summary>
         public string CellHash()
         {
             var sb = new System.Text.StringBuilder();
             foreach (var c in Cells)
+            {
                 sb.Append(c.T).Append(',').Append(c.Water).Append(',').Append(c.Frozen ? 1 : 0).Append(',')
                   .Append(c.Cover ?? "").Append(',').Append(c.Fire).Append(',').Append(c.Fuel).Append(',')
-                  .Append(c.Gas ?? "").Append(',').Append(c.GasAmt).Append(',').Append(c.Charge).Append(';');
+                  .Append(c.Gas ?? "").Append(',').Append(c.GasAmt).Append(',').Append(c.Charge);
+                if (c.Height != 0) sb.Append(",h").Append(c.Height.ToString(System.Globalization.CultureInfo.InvariantCulture));
+                sb.Append(';');
+            }
             return Fnv1a.Hash(sb.ToString());
         }
     }

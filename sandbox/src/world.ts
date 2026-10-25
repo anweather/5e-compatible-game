@@ -16,6 +16,7 @@ export interface Cell {
   gas: string | null;
   gasAmt: number;
   charge: number; // 3 on the tick lightning arrives, then decays
+  h: number; // steps raised (+) or dug (-) by terraform spells, on top of the terrain's elevation
 }
 
 export interface Entity {
@@ -82,7 +83,7 @@ export interface World {
 }
 
 export function newCell(t = "dirt"): Cell {
-  return { t, water: 0, frozen: false, cover: null, fire: 0, fuel: 0, gas: null, gasAmt: 0, charge: 0 };
+  return { t, water: 0, frozen: false, cover: null, fire: 0, fuel: 0, gas: null, gasAmt: 0, charge: 0, h: 0 };
 }
 
 export function createWorld(w: number, h: number, seed = 1): World {
@@ -116,9 +117,11 @@ export const cellAt = (w: World, x: number, y: number): Cell | undefined =>
 
 export const terrainDef = (c: Cell) => RULES.terrain[c.t]!;
 export const hasTag = (c: Cell, tag: string) => terrainDef(c).tags.includes(tag);
-export const isBlocking = (c: Cell) => hasTag(c, "blocking");
-/** In water units, so it compares directly with Cell.water. */
-export const elevation = (c: Cell) => (terrainDef(c).elevation ?? 0) * RULES.sim.water.unitsPerStep;
+/** Raised sim.height.blockAt steps or more: a wall of earth, whatever the terrain. */
+export const isRaisedWall = (c: Cell) => c.h >= RULES.sim.height.blockAt;
+export const isBlocking = (c: Cell) => hasTag(c, "blocking") || isRaisedWall(c);
+/** Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.water. */
+export const elevation = (c: Cell) => ((terrainDef(c).elevation ?? 0) + c.h) * RULES.sim.water.unitsPerStep;
 export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.covers[c.cover]?.tags.includes(tag) ?? false);
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);
 export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || hasTag(c, "conductive");
@@ -241,7 +244,9 @@ export function deserializeWorld(s: WorldSnapshot): World {
  * define. Replace them with something harmless, the same way on every peer.
  */
 export function sanitizeWorld(w: World) {
+  const { min, max } = RULES.sim.height;
   for (const c of w.cells) {
+    c.h = Math.max(min, Math.min(max, c.h));
     if (!RULES.terrain[c.t]) c.t = "dirt";
     if (c.cover && !RULES.covers[c.cover]) c.cover = null;
     if (c.gas && !RULES.gases[c.gas]) { c.gas = null; c.gasAmt = 0; }

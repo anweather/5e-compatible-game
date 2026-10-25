@@ -18,7 +18,7 @@ export interface View {
 
 const TERRAIN_COLOR: Record<string, string> = {
   bedrock: "#3a3d44", dirt: "#a7895f", grass: "#7aa956", brush: "#557d3c", tree: "#7aa956", stump: "#a7895f",
-  stone: "#8b8d94", pillar: "#a59a84", rubble: "#a7895f", wood: "#b47a43", pit: "#2b2522", metal: "#9aa6b2",
+  stone: "#8b8d94", pillar: "#a59a84", rubble: "#a7895f", rock: "#9a8f7d", wood: "#b47a43", pit: "#2b2522", metal: "#9aa6b2",
   gate: "#a7895f", gate_open: "#a7895f", boiler: "#a7895f", plate: "#a7895f", wheel: "#2b2522", coil: "#a7895f", windmill: "#a7895f",
 };
 const ELEMENT_COLOR: Record<string, string> = {
@@ -48,6 +48,8 @@ function rect(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, co
 function drawCell(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, s: number, t: number, w: World) {
   const px = x * s, py = y * s;
   rect(ctx, x, y, s, TERRAIN_COLOR[c.t] ?? "#f0f");
+  // Raised ground is lighter and dug ground darker, a shade per step.
+  if (c.h !== 0) rect(ctx, x, y, s, c.h > 0 ? `rgba(255,255,255,${0.12 * c.h})` : `rgba(0,0,0,${-0.15 * c.h})`);
   ctx.save();
   switch (c.t) {
     case "grass":

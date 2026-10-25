@@ -39,6 +39,12 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   cell", then it looks up `reactions.json` and applies the matching steps.
 - `World.Sim.cs` is one tick: fire spreads, water flows, gas drifts,
   charge and wind decay.
+- `World.Terraform.cs` is earth shaping: a spell with `"effect":
+  "terraform"` raises or digs its cells (`Cell.Height`, steps on top of
+  the terrain's elevation). Water flow reads elevation plus height, raised
+  ground spills its water without losing any, and a cell raised to
+  `sim.height.blockAt` counts as blocking (`IsRaisedWall`). `CellHash`
+  writes the height only when it isn't 0, so older goldens still hold.
 - **Live mods** (`docs/LIVE_LAB.md`), the sandbox's patch format:
   `ModPatch.Parse` reads one, `rules.WithMods(mods)` applies them in order
   and checks the result (`Rules.Mods.cs`, `Rules.Check.cs`; same merge and

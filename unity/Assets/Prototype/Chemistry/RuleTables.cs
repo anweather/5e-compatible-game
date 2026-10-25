@@ -20,6 +20,8 @@ namespace Chem
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
+        /// <summary>What digging leaves (grass is dug down to dirt), or null to keep the terrain.</summary>
+        public string DugTo;
 
         // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
         HashSet<string> tagSet;
@@ -50,11 +52,19 @@ namespace Chem
     {
         public string Id, Name, Shape, Origin, Element, Blurb;
         public int Level, Power, Length, Size, Radius;
-        // Extras, carried for completeness; only Wind is used by the cell sim.
+        // Extras, carried for completeness; the cell sim uses Wind and (below) the terraform fields.
         public string Effect;
         public int Push, Wind, Range, Duration, MaxMass;
         /// <summary>[dice, sides], or null.</summary>
         public int[] Damage;
+        /// <summary>
+        /// Effect "terraform": steps to raise or dig (one is 0), the terrain the cells become
+        /// (null: keep it, or its DugTo when digging), and whether the steps taper off with
+        /// distance from the target over Radius (a hill or a crater).
+        /// </summary>
+        public int Raise, Dig;
+        public string Terrain;
+        public bool Taper;
     }
 
     public sealed class FireParams
@@ -77,11 +87,18 @@ namespace Chem
         public int MaxAmount = 6;
     }
 
+    /// <summary>The range of Cell.Height, in steps, and the height from which a cell is a wall.</summary>
+    public sealed class HeightParams
+    {
+        public int Min = -3, Max = 4, BlockAt = 3;
+    }
+
     public sealed class SimParams
     {
         public int TicksPerSecond = 6;
         public FireParams Fire = new FireParams();
         public GasParams Gas = new GasParams();
+        public HeightParams Height = new HeightParams();
         public int WaterMaxLevel = 16, WaterUnitsPerStep = 4;
         public int ConductLimit = 80;
         // Not used by the cell port, carried so a view can read them.
@@ -263,6 +280,7 @@ namespace Chem
             BurnsTo = Str(o["burnsTo"]),
             BreaksTo = Str(o["breaksTo"]),
             BurnLog = Str(o["burnLog"]),
+            DugTo = Str(o["dugTo"]),
         };
 
         static CoverDef ParseCover(string id, JObject o) => new CoverDef
@@ -299,6 +317,10 @@ namespace Chem
                 Duration = Int(o["duration"]) ?? 40,
                 MaxMass = Int(o["maxMass"]) ?? 1,
                 Damage = dmg,
+                Raise = Int(o["raise"]) ?? 0,
+                Dig = Int(o["dig"]) ?? 0,
+                Terrain = Str(o["terrain"]),
+                Taper = Truthy(o["taper"]),
             };
         }
 
@@ -396,6 +418,12 @@ namespace Chem
             {
                 s.WaterMaxLevel = Int(w["maxLevel"]) ?? s.WaterMaxLevel;
                 s.WaterUnitsPerStep = Int(w["unitsPerStep"]) ?? s.WaterUnitsPerStep;
+            }
+            if (o["height"] is JObject ht)
+            {
+                s.Height.Min = Int(ht["min"]) ?? s.Height.Min;
+                s.Height.Max = Int(ht["max"]) ?? s.Height.Max;
+                s.Height.BlockAt = Int(ht["blockAt"]) ?? s.Height.BlockAt;
             }
             if (o["gas"] is JObject g)
             {

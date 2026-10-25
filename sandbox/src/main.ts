@@ -126,7 +126,7 @@ function renderChips() {
     host.replaceChildren(...RULES.critters.map((c) =>
       chip(c.name, tool.id === c.id, () => setTool({ tab: "critters", id: c.id }), glyph(c.glyph), world().critters.some((k) => k.kind === c.id) ? "out" : "")));
   } else {
-    const ids = [...PAINT_TERRAIN.filter((t) => RULES.terrain[t]), ...Object.keys(RULES.terrain).filter((t) => !PAINT_TERRAIN.includes(t) && !["bedrock", "gate_open", "stump", "rubble", "pillar"].includes(t)),
+    const ids = [...PAINT_TERRAIN.filter((t) => RULES.terrain[t]), ...Object.keys(RULES.terrain).filter((t) => !PAINT_TERRAIN.includes(t) && !["bedrock", "gate_open", "stump", "rubble", "pillar", "rock"].includes(t)),
       ...Object.keys(RULES.entities).filter((e) => !RULES.entities[e]!.player), ...PAINT_OTHER];
     host.replaceChildren(...ids.map((id) => {
       const name = BUILD_LABEL[id] ?? RULES.terrain[id]?.name ?? RULES.entities[id]?.name ?? id;

@@ -21,6 +21,11 @@ namespace Chem
         public int GasAmt;
         /// <summary>3 on the tick lightning arrives, then decays.</summary>
         public int Charge;
+        /// <summary>
+        /// Steps of earth raised (+) or dug (-) by terraform spells, on top of the terrain's own
+        /// elevation, within sim.json's height range. At height.blockAt or more the cell is a wall.
+        /// </summary>
+        public int Height;
 
         // World.TerrainOf's cache: the definition of the terrain id it was looked up for.
         // Not cell state (not hashed or saved); refreshed whenever T changes.
@@ -40,7 +45,7 @@ namespace Chem
         /// <summary>Back to a bare square of the given terrain (the sandbox's erase brush).</summary>
         public void Reset(string terrain = "dirt")
         {
-            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0;
+            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0;
         }
     }
 

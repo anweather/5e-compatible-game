@@ -31,11 +31,12 @@ namespace Chem
                 "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target" };
+            static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform" };
 
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass" };
             static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
-            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep" };
+            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt" };
 
             readonly JObject r, terrain, covers, gases;
             readonly HashSet<string> elements;
@@ -78,12 +79,30 @@ namespace Chem
                 if (Truthy(s["element"]) && !IsElement(s["element"])) Errors.Add($"spell {Show(s["id"])}: unknown element {Show(s["element"])}");
                 if (!Shapes.Contains(Text(s["shape"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown shape {Show(s["shape"])}");
                 if (!Truthy(s["name"])) Errors.Add($"spell {Show(s["id"])}: needs a name");
+                if (s["effect"] != null && !SpellEffects.Contains(Text(s["effect"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown effect {Show(s["effect"])}");
+                if (Text(s["effect"]) == "terraform") TerraformRefs(s);
             }
+
+            void TerraformRefs(JToken s)
+            {
+                var steps = new[] { s["raise"], s["dig"] }.Where(v => v != null).ToList();
+                if (steps.Count != 1 || !IsWholeNumber(steps[0]) || (double)steps[0] < 1)
+                    Errors.Add($"spell {Show(s["id"])}: terraform needs one of raise or dig, a whole number of steps from 1");
+                var to = s["terrain"];
+                if (to != null && !IsIn(terrain, to)) Errors.Add($"spell {Show(s["id"])}: terrain {Show(to)} unknown");
+                else if (to != null && Strings(terrain[Text(to)]["tags"]).Contains("blocking"))
+                    Errors.Add($"spell {Show(s["id"])}: terrain {Show(to)} is blocking (walls come from raise)");
+                if (s["taper"] != null && s["taper"].Type != JTokenType.Boolean) Errors.Add($"spell {Show(s["id"])}: taper must be true or false");
+            }
+
+            static bool IsWholeNumber(JToken v) =>
+                v.Type == JTokenType.Integer || (v.Type == JTokenType.Float && System.Math.Abs((double)v - System.Math.Floor((double)v)) < 1e-9);
 
             void TerrainRefs(string id, JToken t)
             {
                 if (Truthy(t["burnsTo"]) && !IsIn(terrain, t["burnsTo"])) Errors.Add($"terrain {id}: burnsTo {Show(t["burnsTo"])} unknown");
                 if (Truthy(t["breaksTo"]) && !IsIn(terrain, t["breaksTo"])) Errors.Add($"terrain {id}: breaksTo {Show(t["breaksTo"])} unknown");
+                if (Truthy(t["dugTo"]) && !IsIn(terrain, t["dugTo"])) Errors.Add($"terrain {id}: dugTo {Show(t["dugTo"])} unknown");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
             }
@@ -151,6 +170,9 @@ namespace Chem
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);
                 foreach (var rule in r["cellRules"].OfType<JObject>()) RuleNumbers(rule);
                 Sim((JObject)r["sim"], "");
+                var min = (r["sim"]["height"] as JObject)?["min"];
+                if (min != null && (min.Type == JTokenType.Integer || min.Type == JTokenType.Float) && (double)min > 0)
+                    Errors.Add("sim height.min must be at most 0");
             }
 
             void RuleNumbers(JObject rule)
@@ -168,6 +190,7 @@ namespace Chem
                 {
                     var key = path + p.Name;
                     if (p.Value is JObject sub) Sim(sub, key + ".");
+                    else if (key == "height.min") Number(p.Value, $"sim {key}");
                     else Number(p.Value, $"sim {key}", PositiveSim.Contains(key) ? 1 : 0);
                 }
             }

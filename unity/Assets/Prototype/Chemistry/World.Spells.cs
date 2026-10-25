@@ -50,8 +50,9 @@ namespace Chem
 
         /// <summary>
         /// Applies the spell's element to its cells, like castSpell's cell part. Gust of
-        /// Wind (air + wind) also sets the world's wind. Spells with an "effect"
-        /// (levitate, carry, teleport) do nothing to cells.
+        /// Wind (air + wind) also sets the world's wind. A terraform spell raises or digs
+        /// its cells first (World.Terraform.cs). The other effects (levitate, carry,
+        /// teleport) do nothing to cells.
         /// </summary>
         public void Cast(string spellId, int x, int y, int dir)
         {
@@ -61,6 +62,7 @@ namespace Chem
             var cells = SpellCells(s, x, y, dir);
             AddLog($"You cast {s.Name}", LogKind.Info);
             if (s.Element == "air" && s.Wind > 0) Wind = (dir, s.Wind);
+            if (s.Effect == "terraform") Terraform(s, cells, x, y);
             if (s.Element == null) return;
             foreach (var (cx, cy) in cells) Apply(cx, cy, s.Element, s.Power, dir, true);
         }
