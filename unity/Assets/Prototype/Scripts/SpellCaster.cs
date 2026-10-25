@@ -12,8 +12,6 @@ public class SpellCaster : MonoBehaviour
     public ChemGrid grid;
     public PlayerControls controls;
     public string[] spellIds = { "fire-bolt", "ray-of-frost", "create-water", "grease", "shocking-grasp", "gust-of-wind" };
-    [Tooltip("Optional: the Fire Bolt projectile. Without it Fire Bolt lands instantly.")]
-    public GameObject fireBolt;
 
     public int Selected { get; private set; }
     public string SelectedName => grid != null && grid.World != null ? grid.World.Rules.Spell(spellIds[Selected])?.Name ?? spellIds[Selected] : spellIds[Selected];
@@ -78,39 +76,75 @@ public class SpellCaster : MonoBehaviour
         return best < float.MaxValue;
     }
 
-    // Spells with a projectile fly from the wizard's hand and take effect where
-    // they land; the rest take effect at once. The demo casts through this too.
-    // Online, the cast goes to the host and lands on every machine at the same
-    // tick, timed to roughly when the fireball arrives.
+    // The cast is shown at once (gesture, projectile) and takes effect when it
+    // lands. Online, the cast goes to the host and lands on every machine at
+    // the same tick, timed to roughly when the projectile arrives. The demos
+    // cast through this too.
     public void Cast(string spellId, int x, int y, int dir)
     {
         var online = Net;
         if (online != null && online.Online)
         {
-            int delay = Mathf.CeilToInt(FlightSeconds(spellId, x, y) * grid.World.Rules.Sim.TicksPerSecond);
+            int delay = Mathf.CeilToInt(FlightSeconds(spellId, x, y, dir) * grid.World.Rules.Sim.TicksPerSecond);
             online.RequestCast(spellId, x, y, dir, delay);
             return;
         }
-        if (!PlayCastEffect(spellId, x, y, () => grid.World.Cast(spellId, x, y, dir)))
-            grid.World.Cast(spellId, x, y, dir);
+        PlayCastEffect(spellId, x, y, dir, () => grid.World.Cast(spellId, x, y, dir));
     }
 
-    /// <summary>Shows the spell leaving the wizard (the Fire Bolt fireball). Returns false when the spell has no projectile.</summary>
-    public bool PlayCastEffect(string spellId, int x, int y, System.Action onArrive = null)
+    /// <summary>
+    /// Shows a cast: the casting gesture, the projectile if the spell has one, and the effect
+    /// where it lands. <paramref name="onArrive"/> runs once, when it lands (at once without a projectile).
+    /// </summary>
+    public void PlayCastEffect(string spellId, int x, int y, int dir, System.Action onArrive = null)
     {
-        if (spellId != FireBoltId || fireBolt == null) return false;
-        SpellProjectile.Launch(fireBolt, Hand, Target(x, y), onArrive);
-        return true;
+        var look = visuals != null ? visuals.For(spellId) : null;
+        var landing = Landing(spellId, x, y, dir);
+        if (pose != null) pose.Play(landing, look?.glow ?? Color.white);
+
+        void Land()
+        {
+            if (look?.impact != null) Destroy(Instantiate(look.impact, landing, Quaternion.LookRotation(Flat(landing - Hand))), look.impactSeconds);
+            onArrive?.Invoke();
+        }
+
+        if (look?.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, Land);
+        else Land();
     }
 
-    const string FireBoltId = "fire-bolt";
+    [Tooltip("How each spell looks when cast. Without it, spells take effect with no show.")]
+    public SpellVisuals visuals;
 
-    Vector3 Hand => transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
+    CastPose pose;
 
-    Vector3 Target(int x, int y) => grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);
+    void Awake() => pose = GetComponent<CastPose>();
 
-    float FlightSeconds(string spellId, int x, int y) =>
-        spellId == FireBoltId && fireBolt != null ? Vector3.Distance(Hand, Target(x, y)) / SpellProjectile.DefaultSpeed : 0f;
+    Vector3 Hand => pose != null ? pose.HandPosition : transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
+
+    // Where the spell's show lands: the far end of a beam, the caster for a burst, otherwise the target cell.
+    Vector3 Landing(string spellId, int x, int y, int dir)
+    {
+        var spell = grid.World.Rules.Spell(spellId);
+        if (spell != null && spell.Shape == "line")
+        {
+            var cells = grid.World.SpellCells(spell, x, y, dir);
+            if (cells.Count > 0) (x, y) = cells[cells.Count - 1];
+        }
+        else if (spell != null && spell.Shape == "burst") return transform.position + Vector3.up;
+        return grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);
+    }
+
+    static Vector3 Flat(Vector3 v)
+    {
+        v.y = 0f;
+        return v.sqrMagnitude > 1e-4f ? v : Vector3.forward;
+    }
+
+    float FlightSeconds(string spellId, int x, int y, int dir)
+    {
+        var look = visuals != null ? visuals.For(spellId) : null;
+        return look?.projectile != null ? Vector3.Distance(Hand, Landing(spellId, x, y, dir)) / SpellProjectile.DefaultSpeed : 0f;
+    }
 
     NetChem net;
 

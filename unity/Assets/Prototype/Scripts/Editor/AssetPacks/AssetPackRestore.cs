@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using UnityEngine;
 
@@ -18,9 +19,20 @@ public static class AssetPackRestore
     const string ManifestPath = "AssetPacks.json";
     const string Active = "AssetPackRestore.active";
     const string Failed = "AssetPackRestore.failed";
+    const string Attempted = "AssetPackRestore.attempted";
     const double DownloadTimeout = 1800;
 
-    [Serializable] class Pack { public long id; public string name; public string version; public string folder; public string cache; }
+    [Serializable]
+    class Pack
+    {
+        public long id;
+        public string name;
+        public string version;
+        public string folder;
+        public string cache;
+        [Tooltip("Optional: import only these folders and what they reference (see UnityPackageSubset).")]
+        public string[] include;
+    }
     [Serializable] class Manifest { public List<Pack> packs = new List<Pack>(); }
 
     static Pack current;
@@ -49,7 +61,7 @@ public static class AssetPackRestore
         var missing = new List<Pack>();
         if (!File.Exists(ManifestPath)) return missing;
         foreach (var p in JsonUtility.FromJson<Manifest>(File.ReadAllText(ManifestPath)).packs)
-            if (!Directory.Exists(p.folder)) missing.Add(p);
+            if (!HasFiles(p.folder)) missing.Add(p);
         return missing;
     }
 
@@ -63,6 +75,7 @@ public static class AssetPackRestore
         }
         SessionState.SetBool(Active, true);
         SessionState.SetString(Failed, "");
+        SessionState.SetString(Attempted, "");
         EditorApplication.update -= Pump;
         EditorApplication.update += Pump;
     }
@@ -75,6 +88,14 @@ public static class AssetPackRestore
         {
             var failed = SessionState.GetString(Failed, "");
             current = Missing().Find(p => !failed.Contains($"[{p.id}]"));
+            // One import attempt per pack per restore: still missing afterwards means it failed.
+            if (current != null && SessionState.GetString(Attempted, "").Contains($"[{current.id}]"))
+            {
+                Debug.LogError($"Asset packs: {current.name} imported but {current.folder} still doesn't exist.");
+                SessionState.SetString(Failed, failed + $"[{current.id}]");
+                current = null;
+                return;
+            }
             if (current == null)
             {
                 EditorApplication.update -= Pump;
@@ -112,8 +133,28 @@ public static class AssetPackRestore
         }
         if (EditorApplication.timeSinceStartup - lastChange < 3) return;
 
-        Debug.Log($"Asset packs: importing {current.name} {current.version}");
+        if (current.include != null && current.include.Length > 0)
+        {
+            var subset = Path.Combine("Temp", $"asset-pack-{current.id}-subset.unitypackage");
+            int count = UnityPackageSubset.Create(file, subset, current.include, IsInProject);
+            Debug.Log($"Asset packs: importing {count} assets from {current.name} {current.version} ({string.Join(", ", current.include)})");
+            file = subset;
+        }
+        else Debug.Log($"Asset packs: importing {current.name} {current.version}");
+        SessionState.SetString(Attempted, SessionState.GetString(Attempted, "") + $"[{current.id}]");
         AssetDatabase.ImportPackage(file, false);
         current = null;
     }
+
+    // Unity remembers deleted assets' GUIDs for a while, so check the file is really there.
+    static bool IsInProject(string guid)
+    {
+        var path = AssetDatabase.GUIDToAssetPath(guid);
+        return !string.IsNullOrEmpty(path) && (File.Exists(path) || Directory.Exists(path));
+    }
+
+    // A pack counts as present only if its folder holds real files: an empty
+    // folder (say, one Unity kept after an interrupted import) doesn't count.
+    static bool HasFiles(string folder) =>
+        Directory.Exists(folder) && Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Any(f => !f.EndsWith(".meta"));
 }

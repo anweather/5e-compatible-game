@@ -93,6 +93,12 @@ PrefabInstance:
       addedObject: {fileID: 6162257116778718615}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 3541750731685027454}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 1346358280460853545}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 1708091964083407250}
   m_SourcePrefab: {fileID: 100100000, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
 --- !u!1 &3189246001750556768 stripped
@@ -246,7 +252,35 @@ MonoBehaviour:
   - grease
   - shocking-grasp
   - gust-of-wind
-  fireBolt: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
+  visuals: {fileID: 11400000, guid: b7c97d945ab8447c4953811216a3d01b, type: 2}
+--- !u!114 &3541750731685027454
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 8bf54b2e81c3e4fb480d5557e0fb5fda, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CastPose
+--- !u!114 &1346358280460853545
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 0
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4a4724e9b55ed42e9adefd12b09b4336, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SurfaceEffects
+  grid: {fileID: 0}
+  slipperyGrip: 1.2
+  wadingSpeed: 0.55
+  wadingDepth: 2
 --- !u!114 &1708091964083407250
 MonoBehaviour:
   m_ObjectHideFlags: 0

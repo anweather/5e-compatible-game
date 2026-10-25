@@ -39,6 +39,9 @@ public class NetWizard : NetworkBehaviour
         GetComponent<PlayerInput>().enabled = true;
         foreach (var typeName in OwnerOnlyByName)
             if (GetComponent(typeName) is Behaviour b) b.enabled = true;
+        var surface = GetComponent<SurfaceEffects>();
+        surface.grid = grid;
+        surface.enabled = true;
         var controls = GetComponent<PlayerControls>();
         controls.enabled = true;
         caster.controls = controls;

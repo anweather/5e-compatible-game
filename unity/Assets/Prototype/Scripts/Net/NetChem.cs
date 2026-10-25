@@ -109,7 +109,7 @@ public class NetChem : NetworkBehaviour
     {
         ulong caster = rpc.Receive.SenderClientId;
         scheduled.Add(new CastIntent { Spell = spell, X = x, Y = y, Dir = dir, Caster = caster, Tick = hostTick + 1 + Mathf.Clamp(delayTicks, 0, 30) });
-        AnnounceCastRpc(spell, x, y, caster);
+        AnnounceCastRpc(spell, x, y, dir, caster);
     }
 
     [Rpc(SendTo.Server)]
@@ -120,13 +120,13 @@ public class NetChem : NetworkBehaviour
 
     // --- everyone --------------------------------------------------------------
 
-    // Cosmetic only: lets every machine show the cast (a fireball in flight) before its tick arrives.
+    // Cosmetic only: every machine shows the cast (gesture, projectile, landing effect) before its tick arrives.
     [Rpc(SendTo.ClientsAndHost)]
-    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, ulong caster)
+    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, int dir, ulong caster)
     {
         var player = NetworkManager.SpawnManager.GetPlayerNetworkObject(caster);
         if (player != null && player.TryGetComponent<SpellCaster>(out var spellCaster))
-            spellCaster.PlayCastEffect(spell.ToString(), x, y);
+            spellCaster.PlayCastEffect(spell.ToString(), x, y, dir);
     }
 
     [Rpc(SendTo.ClientsAndHost)]

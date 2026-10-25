@@ -15,6 +15,14 @@
 /Assets/Starter Assets.meta
 /Assets/UnityTechnologies/
 /Assets/UnityTechnologies.meta
+/Assets/TerrainSampleAssets/
+/Assets/TerrainSampleAssets.meta
+/Assets/TerrainDemoScene_URP/
+/Assets/TerrainDemoScene_URP.meta
+
+# Built by Prototype > Build Chemistry Yard from Asset Store content; not redistributable
+/Assets/Prototype/Generated/
+/Assets/Prototype/Generated.meta
 
 # IDE files Unity regenerates
 .vs/

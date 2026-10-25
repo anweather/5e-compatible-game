@@ -19,6 +19,8 @@ public partial class ChemGrid
     public GameObject steamFx;
     public GameObject sparksFx;
     public int maxFireLights = 16;
+    [Tooltip("Multiplies grass colours, so the yard can match the terrain around it.")]
+    public Color grassTint = Color.white;
 
     static readonly Dictionary<string, (Color color, float height)> TerrainLook = new()
     {
@@ -41,9 +43,12 @@ public partial class ChemGrid
         public int fireLevel;
         public string gasKind;
         public bool charged;
+        public float waterGround, waterTop, waterTarget;
     }
 
     View[] views;
+    readonly HashSet<View> rising = new();
+    Texture2D ripples;
     readonly Dictionary<string, Material> materials = new();
     readonly List<Light> fireLights = new();
     readonly List<(int x, int y, int fire)> burning = new();
@@ -90,9 +95,15 @@ public partial class ChemGrid
             {
                 float top = (World.ElevationUnits(c) + c.Water) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
                 top = Mathf.Max(top, ground + 0.04f);
+                bool fresh = v.water == null || !v.water.activeSelf;
                 var slab = Ensure(ref v.water, "Water", center, keepCollider: true);
-                slab.transform.position = new Vector3(center.x, (ground + top) / 2f, center.z);
-                slab.transform.localScale = new Vector3(cellSize, top - ground, cellSize);
+                // New water rises from the ground; level changes ease in (see AnimateWater).
+                v.waterGround = ground;
+                v.waterTarget = top;
+                if (fresh) v.waterTop = ground + 0.02f;
+                if (c.Frozen) v.waterTop = top;
+                PlaceWater(v, center);
+                if (!Mathf.Approximately(v.waterTop, top)) rising.Add(v);
                 slab.GetComponent<Renderer>().sharedMaterial = c.Frozen ? Mat("Ice", new Color(0.80f, 0.93f, 1f), 0.97f) : WaterMat();
                 slab.GetComponent<Renderer>().shadowCastingMode = c.Frozen ? ShadowCastingMode.On : ShadowCastingMode.Off;
                 slab.GetComponent<Collider>().enabled = c.Frozen;
@@ -114,6 +125,7 @@ public partial class ChemGrid
             RenderGas(v, c, center, ground, (x + y) % 2 == 0);
             RenderCharge(v, c, center, ground);
         }
+        AnimateWater();
     }
 
     // --- fire, gas, charge -------------------------------------------------
@@ -280,7 +292,9 @@ public partial class ChemGrid
         tile.transform.SetParent(transform, false);
         tile.transform.position = new Vector3(center.x, (top + bottom) / 2f, center.z);
         tile.transform.localScale = new Vector3(cellSize, top - bottom, cellSize);
-        var groundColor = dressed ? Look(c.T == "brush" || c.T == "tree" ? "grass" : "dirt").color : look.color;
+        bool grassy = c.T == "grass" || c.T == "brush" || c.T == "tree";
+        var groundColor = dressed ? Look(grassy ? "grass" : "dirt").color : look.color;
+        if (grassy) groundColor *= grassTint;
         Paint(tile.GetComponent<Renderer>(), "Ground", groundColor, c.T == "metal" ? 0.85f : 0.1f, x, y);
         v.tile = tile;
 
@@ -362,7 +376,7 @@ public partial class ChemGrid
         go.AddComponent<MeshFilter>().sharedMesh = tuftMesh;
         var r = go.AddComponent<MeshRenderer>();
         r.shadowCastingMode = ShadowCastingMode.Off;
-        Paint(r, "Blades", new Color(0.36f, 0.62f, 0.24f), 0.15f, x * 3 + rng.Next(5), y);
+        Paint(r, "Blades", new Color(0.36f, 0.62f, 0.24f) * grassTint, 0.15f, x * 3 + rng.Next(5), y);
     }
 
     // A tuft of five thin blades leaning outward. Each blade has a front and a
@@ -445,11 +459,15 @@ public partial class ChemGrid
         return m;
     }
 
-    // URP Lit set up as a transparent surface.
+    // URP Lit set up as a transparent surface, with a rippling normal map that AnimateWater scrolls.
     Material WaterMat()
     {
         if (materials.TryGetValue("Water", out var m)) return m;
         m = Mat("Water", new Color(0.16f, 0.42f, 0.62f, 0.62f), 0.95f);
+        ripples = ProceduralTextures.RippleNormals(128);
+        m.SetTexture("_BumpMap", ripples);
+        m.SetFloat("_BumpScale", 0.2f);
+        m.EnableKeyword("_NORMALMAP");
         m.SetFloat("_Surface", 1f);
         m.SetFloat("_Blend", 0f);
         m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
@@ -461,9 +479,33 @@ public partial class ChemGrid
         return m;
     }
 
+    void PlaceWater(View v, Vector3 center)
+    {
+        float height = Mathf.Max(0.02f, v.waterTop - v.waterGround);
+        v.water.transform.position = new Vector3(center.x, v.waterGround + height / 2f, center.z);
+        v.water.transform.localScale = new Vector3(cellSize, height, cellSize);
+    }
+
+    // Each frame: ease water levels toward their targets, and drift the ripples.
+    void AnimateWater()
+    {
+        if (materials.TryGetValue("Water", out var water))
+            water.SetTextureOffset("_BaseMap", new Vector2(Time.time * 0.03f, Time.time * 0.02f));
+        if (rising.Count == 0) return;
+        float step = 1.2f * Time.deltaTime;
+        rising.RemoveWhere(v =>
+        {
+            if (v.water == null || !v.water.activeSelf) return true;
+            v.waterTop = Mathf.MoveTowards(v.waterTop, v.waterTarget, step);
+            PlaceWater(v, v.water.transform.position);
+            return Mathf.Approximately(v.waterTop, v.waterTarget);
+        });
+    }
+
     void OnDestroy()
     {
         foreach (var m in materials.Values) Destroy(m);
+        if (ripples != null) Destroy(ripples);
         if (tuftMesh != null) Destroy(tuftMesh);
     }
 }

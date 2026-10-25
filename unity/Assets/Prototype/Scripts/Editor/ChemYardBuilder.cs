@@ -22,26 +22,28 @@ public static class ChemYardBuilder
     const string MiscFx = Effects + "/Misc Effects/Prefabs";
     const string VolumePath = "Assets/Prototype/Settings/YardVolume.asset";
     const string NetWizardPath = "Assets/Prototype/Prefabs/NetWizard.prefab";
+    const string SpellVisualsPath = "Assets/Prototype/Settings/SpellVisuals.asset";
 
     // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
     // w pond  _ pit  = wooden bridge  m metal  ~ puddle  % bedrock  @ start
+    // The edge is open grass: the yard sits in the valley (ValleyBuilder).
     const string Map =
-        "%%%%%%%%%%%%%%%%%%%%%%%%%%\n" +
-        "%,,,,,T,,,,,,,,..........%\n" +
-        "%,,T,,,,,\"\",,,,,...oo....%\n" +
-        "%,,,,,,,,\"\",,,,,..oooo...%\n" +
-        "%,,,,,,,,,,,,,,,..wwww...%\n" +
-        "%,T,,,,,,,,,,,,..wwwwww..%\n" +
-        "%,,,,,,,,,,,,,,..wwwwwwmm%\n" +
-        "%,,,,,,,,,,,,,,...wwww..m%\n" +
-        "%,,,,T,,,,,,,,,.........m%\n" +
-        "%_____=____________.....m%\n" +
-        "%_____=____________.....m%\n" +
-        "%,,,,,,,,,,,,,,,,,,.....m%\n" +
-        "%,,T,,,\"\"\",,,,,,,,..~~..m%\n" +
-        "%,,,,,,,,,,,,@,,,,..~~...%\n" +
-        "%,,,,,,,,,,,T,,,,,.......%\n" +
-        "%%%%%%%%%%%%%%%%%%%%%%%%%%";
+        ",,T,,,,,,,,,,,,,,,,,,,,T,,\n" +
+        ",,,,,,T,,,,,,,,..........,\n" +
+        ",,,T,,,,,\"\",,,,,...oo....,\n" +
+        ",,,,,,,,,\"\",,,,,..oooo...,\n" +
+        ",,,,,,,,,,,,,,,,..wwww...,\n" +
+        ",,T,,,,,,,,,,,,..wwwwww..,\n" +
+        ",,,,,,,,,,,,,,,..wwwwwwmm,\n" +
+        ",,,,,,,,,,,,,,,...wwww..m,\n" +
+        ",,,,,T,,,,,,,,,.........m,\n" +
+        ",_____=____________.....m,\n" +
+        ",_____=____________.....m,\n" +
+        ",,,,,,,,,,,,,,,,,,,.....m,\n" +
+        ",,,T,,,\"\"\",,,,,,,,..~~..m,\n" +
+        ",,,,,,,,,,,,,@,,,,..~~...,\n" +
+        ",,,,,,,,,,,,T,,,,,.......,\n" +
+        ",,,,,,T,,,,,,,,,,,,,,,,,,,";
 
     [MenuItem("Prototype/Build Chemistry Yard")]
     public static void Build()
@@ -83,10 +85,13 @@ public static class ChemYardBuilder
         player.name = "Wizard";
         player.transform.position = start;
         var controls = player.AddComponent<PlayerControls>();
+        var visuals = BuildSpellVisuals();
+        player.AddComponent<CastPose>();
+        player.AddComponent<SurfaceEffects>().grid = grid;
         var caster = player.AddComponent<SpellCaster>();
         caster.grid = grid;
         caster.controls = controls;
-        caster.fireBolt = Load(FireFx + "/FireBall.prefab");
+        caster.visuals = visuals;
 
         var follow = (GameObject)PrefabUtility.InstantiatePrefab(followCamera);
         var cameraRoot = player.transform.Find("PlayerCameraRoot");
@@ -94,6 +99,7 @@ public static class ChemYardBuilder
         follow.AddComponent<CameraZoom>().controls = controls;
 
         SetUpLighting();
+        ValleyBuilder.Dress(grid, rows[0].Length, rows.Length);
         new GameObject("EventLog").AddComponent<EventLog>();
         SetUpNetwork(grid, BuildNetWizard(armature));
 
@@ -207,8 +213,10 @@ public static class ChemYardBuilder
 
         wizard.AddComponent<PlayerControls>().enabled = false;
         var caster = wizard.AddComponent<SpellCaster>();
-        caster.fireBolt = Load(FireFx + "/FireBall.prefab");
+        caster.visuals = BuildSpellVisuals();
         caster.enabled = false;
+        wizard.AddComponent<CastPose>();
+        wizard.AddComponent<SurfaceEffects>().enabled = false;
         wizard.AddComponent<NetWizard>();
 
         wizard.GetComponent<CharacterController>().enabled = false;
@@ -233,4 +241,38 @@ public static class ChemYardBuilder
             EditorUtility.SetDirty(networkObject);
         }
     }
+
+    // How each spell looks, from the Particle Pack. Missing prefabs leave that part out.
+    static SpellVisuals BuildSpellVisuals()
+    {
+        var visuals = AssetDatabase.LoadAssetAtPath<SpellVisuals>(SpellVisualsPath);
+        if (visuals == null)
+        {
+            Directory.CreateDirectory(Path.GetDirectoryName(SpellVisualsPath));
+            AssetDatabase.Refresh();
+            visuals = ScriptableObject.CreateInstance<SpellVisuals>();
+            AssetDatabase.CreateAsset(visuals, SpellVisualsPath);
+        }
+        visuals.entries = new System.Collections.Generic.List<SpellVisuals.Entry>
+        {
+            Visual("fire-bolt", new Color(1f, 0.5f, 0.15f), FireFx + "/FireBall.prefab", FireFx + "/TinyExplosion.prefab"),
+            Visual("ray-of-frost", new Color(0.55f, 0.85f, 1f), null, Effects + "/Magic Effects/Prefabs/IceLance.prefab"),
+            Visual("create-water", new Color(0.3f, 0.6f, 1f), null, Effects + "/Water Effects/Prefabs/BigSplash.prefab"),
+            Visual("grease", new Color(0.9f, 0.8f, 0.3f), null, Effects + "/Goop Effects/Prefabs/GoopSpray.prefab"),
+            Visual("shocking-grasp", new Color(1f, 0.95f, 0.4f), null, MiscFx + "/ElectricalSparks.prefab"),
+            Visual("gust-of-wind", new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),
+            Visual("thunderwave", new Color(0.8f, 0.85f, 1f), null, FireFx + "/DustExplosion.prefab"),
+        };
+        EditorUtility.SetDirty(visuals);
+        AssetDatabase.SaveAssets();
+        return visuals;
+    }
+
+    static SpellVisuals.Entry Visual(string spellId, Color glow, string projectile, string impact) => new SpellVisuals.Entry
+    {
+        spellId = spellId,
+        glow = glow,
+        projectile = projectile != null ? Load(projectile) : null,
+        impact = impact != null ? Load(impact) : null,
+    };
 }

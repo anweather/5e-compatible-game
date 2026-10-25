@@ -16,6 +16,30 @@
       "version": "3.3",
       "folder": "Assets/UnityTechnologies",
       "cache": "Unity Technologies/Particle Systems/Particle Pack Starter Assets.unitypackage"
+    },
+    {
+      "id": 145808,
+      "name": "Terrain Asset Pack | Terrain Sample",
+      "url": "https://assetstore.unity.com/packages/p/terrain-asset-pack-terrain-sample-145808",
+      "version": "2.1.0",
+      "folder": "Assets/TerrainSampleAssets",
+      "cache": "Unity Technologies/3D ModelsEnvironmentsLandscapes/Terrain Asset Pack Terrain Sample.unitypackage",
+      "include": [
+        "Assets/TerrainSampleAssets"
+      ]
+    },
+    {
+      "id": 213197,
+      "name": "Unity URP Terrain | Terrain Sample Project",
+      "url": "https://assetstore.unity.com/packages/p/unity-urp-terrain-terrain-sample-project-213197",
+      "version": "1.1.0",
+      "folder": "Assets/TerrainDemoScene_URP",
+      "cache": "Unity Technologies/3D ModelsEnvironmentsLandscapes/Unity URP Terrain Terrain Sample Project.unitypackage",
+      "include": [
+        "Assets/TerrainDemoScene_URP/Prefabs/Trees",
+        "Assets/TerrainDemoScene_URP/Prefabs/Skybox",
+        "Assets/TerrainDemoScene_URP/Prefabs/Rocks"
+      ]
     }
   ]
 }
