@@ -19,7 +19,8 @@ using UnityEngine;
 public class NetChem : NetworkBehaviour
 {
     const int HashEvery = 30;
-    const int MaxStepsPerFrame = 400;
+    // A late joiner replays the whole history; spread it so no frame spends more than this.
+    const double CatchUpBudgetMs = 8.0;
 
     ChemGrid grid;
 
@@ -164,8 +165,8 @@ public class NetChem : NetworkBehaviour
     {
         if (!synced) return;
         var world = grid.World;
-        int steps = 0;
-        while (world.Tick < knownUpTo && steps++ < MaxStepsPerFrame)
+        var budget = System.Diagnostics.Stopwatch.StartNew();
+        while (world.Tick < knownUpTo && budget.Elapsed.TotalMilliseconds < CatchUpBudgetMs)
         {
             int next = world.Tick + 1;
             if (batches.TryGetValue(next, out var casts))

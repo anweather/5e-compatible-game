@@ -61,7 +61,7 @@ public class ValleyChemistry : MonoBehaviour
     }
 
     /// <summary>How high above the ground a cell's fire burns: in the crown of a tree, along a cabin wall.</summary>
-    public float FireHeight(string terrainType) => terrainType switch
+    public static float FireHeight(string terrainType) => terrainType switch
     {
         "tree" => 2.6f,
         "logwall" => 1.4f,

@@ -19,7 +19,10 @@ namespace Chem
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
-        public bool Has(string tag) => Tags.Contains(tag);
+
+        // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
+        HashSet<string> tagSet;
+        public bool Has(string tag) => (tagSet ??= new HashSet<string>(Tags)).Contains(tag);
     }
 
     public sealed class CoverDef

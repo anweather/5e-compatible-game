@@ -105,19 +105,26 @@ namespace Chem
                 var c = Cells[i];
                 if (c.Water == 0 || c.Frozen || IsBlocking(c)) continue;
                 int x = i % W, y = i / W;
-                int level = ElevationUnits(c) + c.Water;
+                int elevation = ElevationUnits(c);
+                int level = elevation + c.Water;
                 // Water always runs onto lower ground; on the flat it needs a 2-step
                 // difference, so a still puddle doesn't slosh back and forth forever.
+                // Neighbours are visited inline in N, E, S, W order (the order Neighbours()
+                // gives): this loop runs for every wet cell every tick, a whole lake of them.
                 int best = -1;
                 double bestScore = 0;
-                foreach (var (nx, ny, _) in Neighbours(x, y))
+                for (int d = 0; d < 4; d++)
                 {
-                    var nc = At(nx, ny);
+                    int nx = x + DirX(d), ny = y + DirY(d);
+                    if (!InBounds(nx, ny)) continue;
+                    var nc = Cells[ny * W + nx];
                     if (nc.Frozen && nc.Water > 0) continue;
-                    if (IsBlocking(nc) && !HasTag(nc, "vessel")) continue;
+                    var nt = TerrainOf(nc);
+                    if (nt.Has("blocking") && !nt.Has("vessel")) continue;
                     if (nc.Water >= maxLevel) continue;
-                    int drop = level - (ElevationUnits(nc) + nc.Water);
-                    bool downhill = ElevationUnits(nc) < ElevationUnits(c);
+                    int nElevation = nt.Elevation * Rules.Sim.WaterUnitsPerStep;
+                    int drop = level - (nElevation + nc.Water);
+                    bool downhill = nElevation < elevation;
                     if (!(drop >= 2 || (downhill && drop >= 1))) continue;
                     double score = drop + (downhill ? 0.5 : 0);
                     if (score > bestScore)

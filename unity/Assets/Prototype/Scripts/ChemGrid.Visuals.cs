@@ -134,7 +134,7 @@ public partial class ChemGrid
             }
             else Hide(v.cover);
 
-            RenderFire(v, c, center, yard || valley == null ? ground : ground + valley.FireHeight(c.T), !yard && c.T == "tree" ? 1.8f : 1f);
+            RenderFire(v, c, center, yard || valley == null ? ground : ground + ValleyChemistry.FireHeight(c.T), !yard && c.T == "tree" ? 1.8f : 1f);
             RenderGas(v, c, center, ground, (x + y) % 2 == 0);
             // A lightning strike across the lake charges thousands of cells; outside the
             // yard, sparks on one cell in 25 read the same without thousands of effects.

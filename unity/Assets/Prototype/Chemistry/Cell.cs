@@ -20,6 +20,11 @@ namespace Chem
         /// <summary>3 on the tick lightning arrives, then decays.</summary>
         public int Charge;
 
+        // World.TerrainOf's cache: the definition of the terrain id it was looked up for.
+        // Not cell state (not hashed or saved); refreshed whenever T changes.
+        internal string DefFor;
+        internal TerrainDef Def;
+
         public Cell() { }
         public Cell(string terrain) { T = terrain; }
 
