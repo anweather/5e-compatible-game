@@ -13,10 +13,34 @@ public static class SpellIds
     public const string ShockingGrasp = "shocking-grasp";
     public const string GustOfWind = "gust-of-wind";
     public const string Thunderwave = "thunderwave";
+    public const string Levitate = "levitate";
 
-    /// <summary>The spell bar a new wizard starts with, in key order 1-6.</summary>
+    /// <summary>The spell bar a new wizard starts with, in key order 1-8.</summary>
     public static string[] DefaultBar() =>
-        new[] { FireBolt, RayOfFrost, CreateWater, Grease, ShockingGrasp, GustOfWind };
+        new[] { FireBolt, RayOfFrost, CreateWater, Grease, ShockingGrasp, GustOfWind, Thunderwave, Levitate };
+}
+
+/// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
+public static class SpellShapes
+{
+    public const string Line = "line";
+    public const string Burst = "burst";
+    public const string LevitateEffect = "levitate";
+}
+
+/// <summary>Element ids (what a spell or a reaction brings to a cell), as in rules/reactions.json.</summary>
+public static class ElementIds
+{
+    public const string Fire = "fire";
+}
+
+/// <summary>Entity ids, as in rules/entities.json.</summary>
+public static class EntityIds
+{
+    public const string Wizard = "wizard";
+    public const string Crate = "crate";
+    public const string Barrel = "barrel";
+    public const string Boulder = "boulder";
 }
 
 /// <summary>Terrain ids (a cell's <c>T</c>), as in rules/materials.json.</summary>

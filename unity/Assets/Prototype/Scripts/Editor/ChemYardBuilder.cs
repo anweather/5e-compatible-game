@@ -86,6 +86,7 @@ public static class ChemYardBuilder
         var visuals = BuildSpellVisuals();
         player.AddComponent<CastPose>();
         player.AddComponent<SurfaceEffects>().grid = grid;
+        player.AddComponent<Knockback>().grid = grid;
         var caster = player.AddComponent<SpellCaster>();
         caster.grid = grid;
         caster.controls = controls;
@@ -98,6 +99,7 @@ public static class ChemYardBuilder
 
         SetUpLighting();
         ValleyBuilder.Dress(grid, rows);
+        PropBuilder.Place(grid, rows.Length);
         new GameObject("EventLog").AddComponent<EventLog>();
         SetUpNetwork(grid, BuildNetWizard(armature));
 
@@ -208,6 +210,7 @@ public static class ChemYardBuilder
         caster.enabled = false;
         wizard.AddComponent<CastPose>();
         wizard.AddComponent<SurfaceEffects>().enabled = false;
+        wizard.AddComponent<Knockback>();
         wizard.AddComponent<NetWizard>();
 
         WizardRig.SetPlayerDriven(wizard, false);
@@ -249,6 +252,7 @@ public static class ChemYardBuilder
             Visual(SpellIds.ShockingGrasp, new Color(1f, 0.95f, 0.4f), null, MiscFx + "/ElectricalSparks.prefab"),
             Visual(SpellIds.GustOfWind, new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),
             Visual(SpellIds.Thunderwave, new Color(0.8f, 0.85f, 1f), null, FireFx + "/DustExplosion.prefab"),
+            Visual(SpellIds.Levitate, new Color(0.75f, 0.6f, 1f), null, MiscFx + "/ParticlesLight.prefab"),
         };
         EditorUtility.SetDirty(visuals);
         AssetDatabase.SaveAssets();

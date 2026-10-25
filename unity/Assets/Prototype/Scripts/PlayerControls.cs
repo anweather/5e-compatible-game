@@ -9,7 +9,7 @@ using UnityEngine.InputSystem;
 //   Cast spell   left mouse    right trigger
 //   Next spell   E             right bumper (R1)
 //   Prev spell   Q             left bumper (L1)
-//   Pick spell   1-6
+//   Pick spell   1-8
 //   Zoom camera  mouse wheel   d-pad up / down
 //   Reset        R             View / Share button
 public class PlayerControls : MonoBehaviour
@@ -31,7 +31,7 @@ public class PlayerControls : MonoBehaviour
         Cast = Button("Cast", "<Mouse>/leftButton", "<Gamepad>/rightTrigger");
         NextSpell = Button("Next spell", "<Keyboard>/e", "<Gamepad>/rightShoulder");
         PrevSpell = Button("Previous spell", "<Keyboard>/q", "<Gamepad>/leftShoulder");
-        PickSpell = Button("Pick spell", "<Keyboard>/1", "<Keyboard>/2", "<Keyboard>/3", "<Keyboard>/4", "<Keyboard>/5", "<Keyboard>/6");
+        PickSpell = Button("Pick spell", "<Keyboard>/1", "<Keyboard>/2", "<Keyboard>/3", "<Keyboard>/4", "<Keyboard>/5", "<Keyboard>/6", "<Keyboard>/7", "<Keyboard>/8");
         Reset = Button("Reset", "<Keyboard>/r", "<Gamepad>/select");
 
         Zoom = new InputAction("Zoom", InputActionType.Value);
@@ -63,7 +63,7 @@ public class PlayerControls : MonoBehaviour
             UsingGamepad = false;
     }
 
-    /// <summary>The spell slot (0-5) of the number key pressed this frame, or -1.</summary>
+    /// <summary>The spell slot (0-7) of the number key pressed this frame, or -1.</summary>
     public int PickedSlot()
     {
         if (!PickSpell.WasPressedThisFrame() || PickSpell.activeControl == null) return -1;

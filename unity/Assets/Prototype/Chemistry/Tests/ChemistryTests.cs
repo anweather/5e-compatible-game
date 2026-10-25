@@ -14,7 +14,7 @@ namespace Chem.Tests
     {
         static Rules rules;
 
-        static Rules R => rules ??= Rules.Load(RulesDir());
+        internal static Rules R => rules ??= Rules.Load(RulesDir());
 
         /// <summary>
         /// The repo's rules/ folder. In Unity it sits next to the project; under
@@ -35,7 +35,7 @@ namespace Chem.Tests
         }
 
         /// <summary>A small dirt room with bedrock walls, like room() in sim.test.ts (seed 7).</summary>
-        static World Room(int w = 12, int h = 8)
+        internal static World Room(int w = 12, int h = 8)
         {
             var world = new World(R, w, h, 7);
             for (int x = 0; x < w; x++)

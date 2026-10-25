@@ -1,6 +1,7 @@
 // Typed view of ../rules/*.json, the same tables the web sandbox runs on
-// (sandbox/src/rules.ts). Only the cell-level parts are interpreted; the
-// other files (entities, critters, machines) are accepted and ignored.
+// (sandbox/src/rules.ts). Only the cell-level parts are interpreted, plus
+// entities.json for the Unity physics props; the other files (critters,
+// machines) are accepted and ignored.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -49,11 +50,30 @@ namespace Chem
     {
         public string Id, Name, Shape, Origin, Element, Blurb;
         public int Level, Power, Length, Size, Radius;
-        // Extras, carried for completeness; only Wind is used by the cell sim.
+        // Extras: only Wind is used by the cell sim; Push and Duration drive the Unity props (SpellForces).
         public string Effect;
         public int Push, Wind, Range, Duration, MaxMass;
-        /// <summary>[dice, sides], or null.</summary>
+        /// <summary>[dice, sides], or empty.</summary>
         public int[] Damage;
+    }
+
+    /// <summary>What an entity leaves behind when it blows up (entities.json "explodes").</summary>
+    public sealed class ExplosionDef
+    {
+        public string Cover;
+        public int Radius, Fire, Push;
+        /// <summary>[dice, sides], or empty.</summary>
+        public int[] Damage;
+    }
+
+    /// <summary>A thing on the board (entities.json): a wizard, a crate, a barrel, a boulder.</summary>
+    public sealed class EntityDef
+    {
+        public string Id, Name;
+        public int Hp, Mass;
+        public bool Flammable, Creature, Player;
+        /// <summary>Null unless it blows up when destroyed.</summary>
+        public ExplosionDef Explodes;
     }
 
     public sealed class FireParams
@@ -84,6 +104,8 @@ namespace Chem
         public int ConductLimit = 80;
         // Not used by the cell port, carried so a view can read them.
         public int FallDamage = 4, ZapDamage = 3;
+        /// <summary>A burning entity takes 1 damage on every tick divisible by this (sim.json status).</summary>
+        public int BurnDamageEvery = 3;
     }
 
     /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
@@ -130,6 +152,7 @@ namespace Chem
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
         readonly Dictionary<string, GasDef> gases = new Dictionary<string, GasDef>();
         readonly List<SpellDef> spells = new List<SpellDef>();
+        readonly Dictionary<string, EntityDef> entities = new Dictionary<string, EntityDef>();
         readonly List<CellRule> cellRules = new List<CellRule>();
         readonly Dictionary<string, List<CellRule>> byElement = new Dictionary<string, List<CellRule>>();
         static readonly IReadOnlyList<CellRule> NoRules = Array.Empty<CellRule>();
@@ -138,6 +161,7 @@ namespace Chem
         public IReadOnlyDictionary<string, CoverDef> Covers => covers;
         public IReadOnlyDictionary<string, GasDef> Gases => gases;
         public IReadOnlyList<SpellDef> Spells => spells;
+        public IReadOnlyDictionary<string, EntityDef> Entities => entities;
         /// <summary>reactions.json "cell", in file order.</summary>
         public IReadOnlyList<CellRule> CellRules => cellRules;
         public SimParams Sim { get; private set; } = new SimParams();
@@ -146,11 +170,14 @@ namespace Chem
 
         public SpellDef Spell(string id) => spells.FirstOrDefault(s => s.Id == id);
 
+        /// <summary>The entity with this id, or null.</summary>
+        public EntityDef Entity(string id) => id != null && entities.TryGetValue(id, out var e) ? e : null;
+
         /// <summary>Cell rules for one element, top to bottom.</summary>
         public IReadOnlyList<CellRule> CellRulesFor(string element) =>
             element != null && byElement.TryGetValue(element, out var list) ? list : NoRules;
 
-        /// <summary>Reads every *.json in the folder (materials, reactions, sim required; spells optional).</summary>
+        /// <summary>Reads every *.json in the folder (materials, reactions, sim required; spells and entities optional).</summary>
         public static Rules Load(string rulesDir)
         {
             var files = new Dictionary<string, string>();
@@ -173,6 +200,7 @@ namespace Chem
             var reactions = JObject.Parse(Get("reactions.json", true));
             var simText = Get("sim.json", false);
             var spellsText = Get("spells.json", false);
+            var entitiesText = Get("entities.json", false);
 
             if (materials["terrain"] is JObject tj)
                 foreach (var p in tj.Properties()) r.terrain[p.Name] = ParseTerrain(p.Name, (JObject)p.Value);
@@ -195,8 +223,15 @@ namespace Chem
             if (spellsText != null && JToken.Parse(spellsText) is JArray sj)
                 foreach (var t in sj.OfType<JObject>()) r.spells.Add(ParseSpell(t));
 
+            r.LoadEntities(entitiesText);
             if (simText != null) r.Sim = ParseSim(JObject.Parse(simText));
             return r;
+        }
+
+        void LoadEntities(string json)
+        {
+            if (json == null || JToken.Parse(json) is not JObject o) return;
+            foreach (var p in o.Properties()) entities[p.Name] = ParseEntity(p.Name, (JObject)p.Value);
         }
 
         // ---------- parsing helpers ----------
@@ -248,32 +283,54 @@ namespace Chem
             BurnIntensity = Int(o["burnIntensity"]),
         };
 
-        static SpellDef ParseSpell(JObject o)
+        static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
+
+        static EntityDef ParseEntity(string id, JObject o)
         {
-            int[] dmg = null;
-            if (o["damage"] is JArray d && d.Count >= 2) dmg = new[] { (int)d[0], (int)d[1] };
-            return new SpellDef
+            ExplosionDef boom = null;
+            if (o["explodes"] is JObject x)
+                boom = new ExplosionDef
+                {
+                    Cover = Str(x["cover"]),
+                    Radius = Int(x["radius"]) ?? 1,
+                    Fire = Int(x["fire"]) ?? 0,
+                    Push = Int(x["push"]) ?? 0,
+                    Damage = Dice(x["damage"]),
+                };
+            return new EntityDef
             {
-                Id = Str(o["id"]),
-                Name = Str(o["name"]) ?? Str(o["id"]),
-                Shape = Str(o["shape"]) ?? "point",
-                Origin = Str(o["origin"]),
-                Element = Str(o["element"]),
-                Blurb = Str(o["blurb"]) ?? "",
-                Level = Int(o["level"]) ?? 0,
-                Power = Int(o["power"]) ?? 1,
-                Length = Int(o["length"]) ?? 5,
-                Size = Int(o["size"]) ?? 2,
-                Radius = Int(o["radius"]) ?? 1,
-                Effect = Str(o["effect"]),
-                Push = Int(o["push"]) ?? 0,
-                Wind = Int(o["wind"]) ?? 0,
-                Range = Int(o["range"]) ?? 6,
-                Duration = Int(o["duration"]) ?? 40,
-                MaxMass = Int(o["maxMass"]) ?? 1,
-                Damage = dmg,
+                Id = id,
+                Name = Str(o["name"]) ?? id,
+                Hp = Int(o["hp"]) ?? 1,
+                Mass = Int(o["mass"]) ?? 1,
+                Flammable = Truthy(o["flammable"]),
+                Creature = Truthy(o["creature"]),
+                Player = Truthy(o["player"]),
+                Explodes = boom,
             };
         }
+
+        static SpellDef ParseSpell(JObject o) => new SpellDef
+        {
+            Id = Str(o["id"]),
+            Name = Str(o["name"]) ?? Str(o["id"]),
+            Shape = Str(o["shape"]) ?? "point",
+            Origin = Str(o["origin"]),
+            Element = Str(o["element"]),
+            Blurb = Str(o["blurb"]) ?? "",
+            Level = Int(o["level"]) ?? 0,
+            Power = Int(o["power"]) ?? 1,
+            Length = Int(o["length"]) ?? 5,
+            Size = Int(o["size"]) ?? 2,
+            Radius = Int(o["radius"]) ?? 1,
+            Effect = Str(o["effect"]),
+            Push = Int(o["push"]) ?? 0,
+            Wind = Int(o["wind"]) ?? 0,
+            Range = Int(o["range"]) ?? 6,
+            Duration = Int(o["duration"]) ?? 40,
+            MaxMass = Int(o["maxMass"]) ?? 1,
+            Damage = Dice(o["damage"]),
+        };
 
         static CellRule ParseRule(JObject o)
         {
@@ -377,6 +434,7 @@ namespace Chem
             s.ConductLimit = Int(o["conductLimit"]) ?? s.ConductLimit;
             s.FallDamage = Int(o["fallDamage"]) ?? s.FallDamage;
             s.ZapDamage = Int(o["zapDamage"]) ?? s.ZapDamage;
+            if (o["status"] is JObject st) s.BurnDamageEvery = Int(st["burnDamageEvery"]) ?? s.BurnDamageEvery;
             return s;
         }
     }

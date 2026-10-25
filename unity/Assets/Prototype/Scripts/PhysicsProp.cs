@@ -1,0 +1,266 @@
+using Chem;
+using UnityEngine;
+
+// A crate, barrel or boulder that Unity's physics moves and the chemistry
+// acts on. Its numbers come from rules/entities.json (kind). Every physics
+// step it reads the cell under it: slick ground (ice, oil, grease) takes its
+// friction away, and water holds up what floats and slows everything down.
+// Every sim tick goes to its PropState, which lights it from fire, douses it
+// in water and burns its hit points down. At 0 HP it breaks, burns away or,
+// for a barrel, explodes.
+//
+// What it does to the cells (fire it spreads, a blast of burning oil) goes
+// through ChemEffects, the one door from physics into the chemistry.
+[RequireComponent(typeof(Rigidbody), typeof(Collider), typeof(Renderer))]
+public class PhysicsProp : MonoBehaviour, IPushable
+{
+    public ChemGrid grid;
+    [Tooltip("Its id in rules/entities.json.")]
+    public string kind = EntityIds.Crate;
+    [Tooltip("Optional: shown while it burns. A cube stands in.")]
+    public GameObject flamesFx;
+    [Tooltip("Optional: plays where it explodes.")]
+    public GameObject explosionFx;
+    [Tooltip("Speed it rises at when levitated, m/s.")]
+    public float levitateRise = 1.2f;
+
+    // Linear damping: in air, in water, and while levitating (so it rises and then hovers).
+    const float AirDrag = 0.05f, WaterDrag = 2.5f, HoverDrag = 1.2f;
+    // Angular damping in air and in water (so a floating crate settles rather than spins).
+    const float AirSpin = 0.05f, WaterSpin = 1.5f;
+
+    static PhysicsMaterial slick;
+
+    public PropState State { get; private set; }
+
+    Rigidbody body;
+    // Its colliders (a body and the feet PropBuilder gives it), and its look, for its size.
+    Collider[] shapes;
+    Renderer look;
+    PhysicsMaterial ownMaterial;
+    bool onSlick;
+    float halfHeight;
+    Collider valleyGround;
+    bool inYard;
+    GameObject flames;
+    int lastTick;
+    bool broken;
+
+    string Label => State.Def.Name.ToLowerInvariant();
+
+    void Awake()
+    {
+        body = GetComponent<Rigidbody>();
+        shapes = GetComponents<Collider>();
+        look = GetComponent<Renderer>();
+        ownMaterial = shapes[0].sharedMaterial;
+    }
+
+    void Start()
+    {
+        var def = grid != null && grid.World != null ? grid.World.Rules.Entity(kind) : null;
+        if (def == null)
+        {
+            Debug.LogWarning($"{name}: no entity '{kind}' in rules/entities.json, or no grid");
+            enabled = false;
+            return;
+        }
+        State = new PropState(def);
+        body.mass = def.Mass * Forces.KgPerMass;
+        halfHeight = look.bounds.extents.y;
+        lastTick = grid.World.Tick;
+        if (grid.valley != null && grid.valley.terrain != null) valleyGround = grid.valley.terrain.GetComponent<TerrainCollider>();
+    }
+
+    void OnDestroy()
+    {
+        if (flames != null) Destroy(flames);
+    }
+
+    void FixedUpdate()
+    {
+        if (State == null || grid.World == null) return;
+        var at = grid.CellAt(transform.position);
+        var cell = grid.World.At(at.x, at.y);
+        StandOnYard(at);
+        ReadGround(at, cell);
+        RunTicks(at, cell);
+        if (flames != null) flames.transform.position = TopCentre();
+    }
+
+    // --- what the cell does to it ------------------------------------------------
+
+    // The valley's terrain runs flush under the whole yard (ValleyBuilder), which would floor the
+    // pond and the pits; inside the yard the cells' own tiles are the ground, so pass through it.
+    void StandOnYard(Vector2Int at)
+    {
+        bool yard = grid.InYard(at.x, at.y);
+        if (valleyGround == null || yard == inYard) return;
+        inYard = yard;
+        foreach (var s in shapes) Physics.IgnoreCollision(s, valleyGround, yard);
+    }
+
+    void ReadGround(Vector2Int at, Cell cell)
+    {
+        var world = grid.World;
+        bool hovering = State.Levitating(world.Tick);
+        body.useGravity = !hovering;
+        SetSlick(!hovering && cell != null && world.IsSlippery(cell));
+        if (hovering)
+        {
+            body.linearDamping = HoverDrag;
+            return;
+        }
+        bool wet = cell != null && cell.Water > 0 && !cell.Frozen && Buoy(at);
+        body.linearDamping = wet ? WaterDrag : AirDrag;
+        body.angularDamping = wet ? WaterSpin : AirSpin;
+    }
+
+    void SetSlick(bool slick)
+    {
+        if (slick == onSlick) return;
+        onSlick = slick;
+        foreach (var s in shapes) s.sharedMaterial = slick ? Slick : ownMaterial;
+    }
+
+    // Lift in proportion to how much of it is under the surface; floaters bob, sinkers settle slowly.
+    bool Buoy(Vector2Int at)
+    {
+        // Measured upright (see Start), so a tumbling crate's growing bounding box doesn't add lift.
+        float bottom = transform.position.y - halfHeight;
+        float under = (float)PropState.Submerged(bottom, 2f * halfHeight, grid.WaterSurfaceY(at.x, at.y));
+        if (under <= 0f) return false;
+        body.AddForce(-Physics.gravity * (body.mass * (float)State.Lift * under));
+        return true;
+    }
+
+    // Each sim tick since the last physics step goes to the rules once.
+    void RunTicks(Vector2Int at, Cell cell)
+    {
+        var world = grid.World;
+        while (lastTick < world.Tick && !broken)
+        {
+            lastTick++;
+            Handle(State.Step(cell, lastTick, world.Rules.Sim.BurnDamageEvery), at);
+        }
+    }
+
+    void Handle(PropEvents events, Vector2Int at)
+    {
+        if (Has(events, PropEvents.Ignited))
+        {
+            ShowFlames(true);
+            EventLog.Add($"The {Label} catches fire");
+        }
+        if (Has(events, PropEvents.Doused))
+        {
+            ShowFlames(false);
+            EventLog.Add($"The {Label} hisses out in the water");
+        }
+        if (Has(events, PropEvents.Burned)) ChemEffects.Request(grid, new ChemEffect(ChemEffectKind.Burn, at, kind));
+        if (Has(events, PropEvents.Landed)) EventLog.Add($"The {Label} drifts back down");
+        if (Has(events, PropEvents.Destroyed)) Break(at);
+    }
+
+    static bool Has(PropEvents events, PropEvents flag) => (events & flag) != 0;
+
+    // --- what spells and blasts do to it -------------------------------------------
+
+    public void Push(Vector3 impulse)
+    {
+        if (State == null) return;
+        body.AddForce(impulse, ForceMode.Impulse);
+    }
+
+    /// <summary>Floats for <paramref name="ticks"/> sim ticks, rising a little, then falls.</summary>
+    public void Levitate(int ticks)
+    {
+        if (State == null) return;
+        State.Levitate(grid.World.Tick, ticks);
+        body.useGravity = false;
+        body.linearVelocity += Vector3.up * levitateRise;
+        EventLog.Add($"The {Label} floats up");
+    }
+
+    /// <summary>Takes damage; at 0 HP it breaks (or explodes).</summary>
+    public void Hurt(int amount)
+    {
+        if (State != null && State.Damage(amount)) Break(grid.CellAt(transform.position));
+    }
+
+    void Break(Vector2Int at)
+    {
+        if (broken) return;
+        broken = true;
+        if (State.Def.Explodes != null) Explode(at, State.Def.Explodes);
+        else if (State.Burning) ChemEffects.Request(grid, new ChemEffect(ChemEffectKind.Embers, at, kind));
+        else EventLog.Add($"The {Label} breaks apart");
+        Destroy(gameObject);
+    }
+
+    // The blast's cells go to the chemistry; its shove and its damage are physics, so they stay here.
+    void Explode(Vector2Int at, ExplosionDef blast)
+    {
+        ChemEffects.Request(grid, new ChemEffect(ChemEffectKind.Explode, at, kind));
+        if (explosionFx != null) Destroy(Instantiate(explosionFx, transform.position, Quaternion.identity), 4f);
+        float reach = (blast.Radius + 1) * grid.cellSize;
+        Forces.Radial(transform.position, reach, blast.Push * Forces.ImpulsePerPush, transform);
+        foreach (var other in Forces.InSphere<PhysicsProp>(transform.position, reach, transform)) other.Hurt(Roll(blast.Damage));
+    }
+
+    // [dice, sides], as the rules write damage. Physics is local (D4), so Unity's random is fine here.
+    static int Roll(int[] dice)
+    {
+        if (dice.Length < 2) return 0;
+        int total = 0;
+        for (int i = 0; i < dice[0]; i++) total += Random.Range(1, dice[1] + 1);
+        return total;
+    }
+
+    // --- looks ---------------------------------------------------------------------
+
+    void ShowFlames(bool on)
+    {
+        if (on == (flames != null)) return;
+        if (!on)
+        {
+            Destroy(flames);
+            flames = null;
+            return;
+        }
+        // Not parented: it follows the top of the prop (FixedUpdate) but doesn't tumble with it.
+        flames = flamesFx != null ? Instantiate(flamesFx) : FallbackFlames();
+        flames.transform.position = TopCentre();
+    }
+
+    Vector3 TopCentre()
+    {
+        var bounds = look.bounds;
+        return new Vector3(bounds.center.x, bounds.max.y, bounds.center.z);
+    }
+
+    static GameObject FallbackFlames()
+    {
+        var cube = Primitives.Visual(PrimitiveType.Cube, "Flames");
+        cube.transform.localScale = new Vector3(0.45f, 0.6f, 0.45f);
+        UrpMaterials.SetColor(cube.GetComponent<Renderer>(), new MaterialPropertyBlock(), new Color(1f, 0.4f, 0.05f));
+        cube.AddComponent<Flicker>();
+        return cube;
+    }
+
+    // Almost no friction, and the lower of the two surfaces wins, so it slides on anything.
+    static PhysicsMaterial Slick
+    {
+        get
+        {
+            if (slick == null)
+                slick = new PhysicsMaterial("Slick")
+                {
+                    dynamicFriction = 0.02f,
+                    staticFriction = 0.02f,
+                    frictionCombine = PhysicsMaterialCombine.Minimum,
+                };
+            return slick;
+        }
+    }
+}

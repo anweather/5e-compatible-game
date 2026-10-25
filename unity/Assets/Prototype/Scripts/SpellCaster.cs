@@ -9,8 +9,8 @@ using UnityEngine.InputSystem;
 // targeted cell. The cells it will touch are highlighted.
 //
 // A cast is an intent, (spell, x, y, direction): solo it is applied to the
-// world when the show lands; online it goes to NetChem, which applies it on
-// every machine at the same tick.
+// world when the show lands, and its shove to whatever moves (SpellForces);
+// online it goes to NetChem, which applies it on every machine at the same tick.
 public class SpellCaster : MonoBehaviour
 {
     public ChemGrid grid;
@@ -114,7 +114,11 @@ public class SpellCaster : MonoBehaviour
             online.RequestCast(spellId, x, y, dir, delay);
             return;
         }
-        PlayCastEffect(spellId, x, y, dir, () => grid.World.Cast(spellId, x, y, dir));
+        PlayCastEffect(spellId, x, y, dir, () =>
+        {
+            grid.World.Cast(spellId, x, y, dir);
+            SpellForces.Apply(grid, spellId, x, y, dir, transform);
+        });
     }
 
     /// <summary>
@@ -155,12 +159,12 @@ public class SpellCaster : MonoBehaviour
     Vector3 Landing(string spellId, int x, int y, int dir)
     {
         var spell = grid.World.Rules.Spell(spellId);
-        if (spell != null && spell.Shape == "line")
+        if (spell != null && spell.Shape == SpellShapes.Line)
         {
             var cells = grid.World.SpellCells(spell, x, y, dir);
             if (cells.Count > 0) (x, y) = cells[cells.Count - 1];
         }
-        else if (spell != null && spell.Shape == "burst") return transform.position + Vector3.up;
+        else if (spell != null && spell.Shape == SpellShapes.Burst) return transform.position + Vector3.up;
         return grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);
     }
 
@@ -187,7 +191,7 @@ public class SpellCaster : MonoBehaviour
         var me = grid.CellAt(transform.position);
         int? dir = DirFrom(me, target);
         if (spell.Origin != "self") return (target.x, target.y, dir ?? 1);
-        if (spell.Shape == "burst") return (me.x, me.y, dir ?? 1);
+        if (spell.Shape == SpellShapes.Burst) return (me.x, me.y, dir ?? 1);
         if (dir == null) { error = $"Click away from the wizard to point {spell.Name} that way."; return null; }
         var (dx, dy) = Step(dir.Value);
         return (me.x + dx, me.y + dy, dir.Value);

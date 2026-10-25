@@ -1,0 +1,106 @@
+using UnityEditor;
+using UnityEngine;
+
+// The yard's physics props (PhysicsProp), placed by Prototype > Build
+// Chemistry Yard: oil barrels in and by the oil spill, crates on and beside the
+// pond, a boulder at its edge, and crates by the brambles. Positions are yard
+// cells, as in ChemYardBuilder's map; each prop is dropped from a little
+// above its cell and settles when Play starts (on the pond, crates float).
+public static class PropBuilder
+{
+    const string Generated = "Assets/Prototype/Generated";
+
+    static readonly (string kind, int x, int y)[] SetPieces =
+    {
+        // Oil barrels in the spill (light the oil and they go up) and one beside it.
+        (EntityIds.Barrel, 18, 3), (EntityIds.Barrel, 20, 3), (EntityIds.Barrel, 17, 2),
+        // Crates on the pond and at its edge, and a boulder beside it.
+        (EntityIds.Crate, 19, 5), (EntityIds.Crate, 21, 6), (EntityIds.Crate, 16, 6),
+        (EntityIds.Boulder, 23, 5),
+        // Crates by the brambles.
+        (EntityIds.Crate, 11, 2), (EntityIds.Crate, 11, 3), (EntityIds.Crate, 10, 11),
+    };
+
+    /// <summary>Places the set pieces for a yard <paramref name="yardHeight"/> cells tall.</summary>
+    public static void Place(ChemGrid grid, int yardHeight)
+    {
+        var parent = new GameObject("Props").transform;
+        var flames = EditorAssets.LoadPrefab(PackPaths.FireFx + "/TinyFlames.prefab");
+        var blast = EditorAssets.LoadPrefab(PackPaths.FireFx + "/BigExplosion.prefab");
+        int n = 0;
+        foreach (var (kind, x, y) in SetPieces)
+        {
+            var go = Shape(kind);
+            go.name = $"{kind} {++n}";
+            go.transform.SetParent(parent, false);
+            var cell = new Vector3(x, 0f, yardHeight - 1 - y) * grid.cellSize;
+            go.transform.position = cell + Vector3.up * (go.GetComponent<Renderer>().bounds.extents.y + 0.3f);
+
+            var body = go.AddComponent<Rigidbody>();
+            body.interpolation = RigidbodyInterpolation.Interpolate;
+            body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+            var prop = go.AddComponent<PhysicsProp>();
+            prop.grid = grid;
+            prop.kind = kind;
+            prop.flamesFx = flames;
+            prop.explosionFx = blast;
+        }
+    }
+
+    // Greybox shapes: a wooden crate, an upright oil drum, a round grey boulder.
+    static GameObject Shape(string kind)
+    {
+        switch (kind)
+        {
+            case EntityIds.Barrel:
+            {
+                var drum = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+                drum.transform.localScale = new Vector3(0.7f, 0.5f, 0.7f);
+                // The cylinder's own collider is a capsule, which won't stand up; a convex mesh will.
+                Object.DestroyImmediate(drum.GetComponent<Collider>());
+                drum.AddComponent<MeshCollider>().convex = true;
+                AddFeet(drum, new Vector3(0.2f, 0.5f - FootRadius + FootProud, 0.2f));
+                Paint(drum, "PropBarrel", new Color(0.55f, 0.12f, 0.08f), 0.55f);
+                return drum;
+            }
+            case EntityIds.Boulder:
+            {
+                var rock = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                rock.transform.localScale = new Vector3(1.1f, 0.95f, 1.05f);
+                Paint(rock, "PropBoulder", new Color(0.46f, 0.45f, 0.43f), 0.1f);
+                return rock;
+            }
+            default:
+            {
+                var crate = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                crate.transform.localScale = Vector3.one * 0.8f;
+                AddFeet(crate, Vector3.one * (0.4f - FootRadius + FootProud));
+                Paint(crate, "PropCrate", new Color(0.62f, 0.44f, 0.24f), 0.15f);
+                return crate;
+            }
+        }
+    }
+
+    // The yard's ground is one box collider per cell, and PhysX catches a flat face sliding over
+    // the seam between two (an "internal edge"), stopping a sliding crate dead. So a crate or
+    // barrel stands on small spheres at its corners, just proud of its faces: spheres glide over seams.
+    const float FootRadius = 0.06f, FootProud = 0.02f;
+
+    /// <summary>Eight sphere colliders at (±x, ±y, ±z) from the centre, in metres.</summary>
+    static void AddFeet(GameObject go, Vector3 corner)
+    {
+        var scale = go.transform.localScale;
+        float largest = Mathf.Max(scale.x, Mathf.Max(scale.y, scale.z));
+        for (int i = 0; i < 8; i++)
+        {
+            var sign = new Vector3((i & 1) == 0 ? -1f : 1f, (i & 2) == 0 ? -1f : 1f, (i & 4) == 0 ? -1f : 1f);
+            var foot = go.AddComponent<SphereCollider>();
+            // Sphere colliders scale their radius by the largest axis of the object's scale.
+            foot.radius = FootRadius / largest;
+            foot.center = new Vector3(sign.x * corner.x / scale.x, sign.y * corner.y / scale.y, sign.z * corner.z / scale.z);
+        }
+    }
+
+    static void Paint(GameObject go, string material, Color color, float smoothness) =>
+        go.GetComponent<Renderer>().sharedMaterial = EditorAssets.LitMaterial($"{Generated}/{material}.mat", color, smoothness);
+}

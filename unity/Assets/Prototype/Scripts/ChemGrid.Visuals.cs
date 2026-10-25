@@ -149,6 +149,15 @@ public partial class ChemGrid
             : ground + c.Water / unitsPerStep * stepHeight;
     }
 
+    /// <summary>Height of the water surface in a cell, as drawn (its ground when the cell is dry).</summary>
+    public float WaterSurfaceY(int x, int y)
+    {
+        var c = World.At(x, y);
+        if (c == null) return 0f;
+        bool yard = InYard(x, y);
+        return WaterTop(c, yard ? GroundTop(c) : SurfaceY(x, y), yard);
+    }
+
     void PlaceWater(View v, Vector3 center)
     {
         float height = Mathf.Max(0.02f, v.waterTop - v.waterGround);

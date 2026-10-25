@@ -28,6 +28,7 @@ public class NetWizard : NetworkBehaviour
         var surface = GetComponent<SurfaceEffects>();
         surface.grid = grid;
         surface.enabled = true;
+        if (TryGetComponent<Knockback>(out var knockback)) knockback.grid = grid;
         var controls = GetComponent<PlayerControls>();
         controls.enabled = true;
         caster.controls = controls;
