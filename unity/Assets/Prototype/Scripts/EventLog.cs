@@ -24,6 +24,9 @@ public class EventLog : MonoBehaviour
     }
 
     /// <summary>Shows this caster's spells and controls; the local player's caster calls it when enabled.</summary>
+    /// <summary>The local player's caster, or null (e.g. the mods panel pauses its controls).</summary>
+    public static SpellCaster TrackedCaster => instance != null ? instance.caster : null;
+
     public static void Track(SpellCaster c)
     {
         if (instance != null) instance.caster = c;
@@ -53,9 +56,9 @@ public class EventLog : MonoBehaviour
         if (reset) SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    const string KeyboardHelp = "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Wheel</b> zoom   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>1–8 / Q E</b> spell   ·   <b>Tab</b> page   ·   <b>Click</b> cast   ·   <b>R</b> reset";
+    const string KeyboardHelp = "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Wheel</b> zoom   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>1–8 / Q E</b> spell   ·   <b>Tab</b> page   ·   <b>Click</b> cast   ·   <b>M</b> mods   ·   <b>R</b> reset";
     const string FirelineHelp = "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset";
-    const string GamepadHelp = "<b>Left stick</b> move   ·   <b>Right stick</b> look   ·   <b>D-pad</b> zoom   ·   <b>A / ✕</b> jump   ·   <b>LT</b> sprint   ·   <b>LB RB</b> spell   ·   <b>D-pad ◀ ▶</b> page   ·   <b>RT</b> cast   ·   <b>View / Share</b> reset";
+    const string GamepadHelp = "<b>Left stick</b> move   ·   <b>Right stick</b> look   ·   <b>D-pad</b> zoom   ·   <b>A / ✕</b> jump   ·   <b>LT</b> sprint   ·   <b>LB RB</b> spell   ·   <b>D-pad ◀ ▶</b> page   ·   <b>RT</b> cast   ·   <b>Start</b> mods   ·   <b>View / Share</b> reset";
 
     // A plus with a dark shadow, so it reads against the sky as well as the ground.
     void Crosshair()

@@ -25,7 +25,7 @@ public partial class ChemGrid : MonoBehaviour
     [Tooltip("Optional: draws and dresses the cells outside the yard.")]
     public ValleyChemistry valley;
 
-    [Header("Tuning for this scene (0 keeps rules/sim.json)")]
+    [Header("Tuning for this scene (0 keeps rules/sim.json); applied as part of the base rules")]
     [Tooltip("Fire weakens as it spreads and dies out after about this many cells (see FireParams.FadeCells).")]
     public int fireFadeCells;
     [Tooltip("How many connected conductive cells one lightning strike can reach.")]
@@ -55,7 +55,12 @@ public partial class ChemGrid : MonoBehaviour
     LogEntry lastLog;
     int lastLogCount;
 
-    void Awake() => BuildWorld();
+    void Awake()
+    {
+        BuildWorld();
+        // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
+        if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
+    }
 
     /// <summary>Throws away the current world and its visuals and starts again from the map.</summary>
     public void ResetWorld()
@@ -68,9 +73,7 @@ public partial class ChemGrid : MonoBehaviour
 
     void BuildWorld()
     {
-        var rules = Rules.Load(FindRulesDir());
-        if (fireFadeCells > 0) rules.Sim.Fire.FadeCells = fireFadeCells;
-        if (conductLimit > 0) rules.Sim.ConductLimit = conductLimit;
+        var rules = StartRules();
 
         var rows = map.Replace("\r", "").Trim('\n').Split('\n');
         int h = rows.Length, w = 0;
@@ -114,6 +117,7 @@ public partial class ChemGrid : MonoBehaviour
         while (tickTimer >= tick && guard-- > 0)
         {
             tickTimer -= tick;
+            ApplyQueuedRules();
             World.Step();
             stepped = true;
         }
@@ -127,7 +131,7 @@ public partial class ChemGrid : MonoBehaviour
     // Editor the repo's rules/ folder, found by walking up from the project. A fixed
     // "../../rules" breaks for Multiplayer Play Mode's virtual players, whose project copies
     // live deeper (unity/Library/VP/<id>/).
-    static string FindRulesDir()
+    internal static string FindRulesDir()
     {
         var packed = Path.Combine(Application.streamingAssetsPath, "rules");
         if (!Application.isEditor && File.Exists(Path.Combine(packed, "materials.json"))) return packed;

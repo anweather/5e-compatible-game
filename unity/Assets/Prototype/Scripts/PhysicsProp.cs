@@ -73,12 +73,26 @@ public class PhysicsProp : MonoBehaviour, IPushable
         body.mass = item != null ? (float)item.Mass : def.Mass * Forces.KgPerMass;
         halfHeight = look.bounds.extents.y;
         lastTick = grid.World.Tick;
+        grid.RulesChanged += ReadRules;
         if (grid.valley != null && grid.valley.terrain != null) valleyGround = grid.valley.terrain.GetComponent<TerrainCollider>();
     }
 
     void OnDestroy()
     {
         if (flames != null) Destroy(flames);
+        if (grid != null) grid.RulesChanged -= ReadRules;
+    }
+
+    // A live mod changed the rules: take this kind's new numbers (hit points, mass, what it does
+    // when it breaks), keeping the damage it has taken. A kind the new rules dropped keeps its old ones.
+    void ReadRules()
+    {
+        var rules = grid.World.Rules;
+        var item = rules.Item(kind);
+        var def = rules.Entity(kind) ?? item?.AsEntity();
+        if (def == null || State == null) return;
+        State.UseDef(def);
+        body.mass = item != null ? (float)item.Mass : def.Mass * Forces.KgPerMass;
     }
 
     void FixedUpdate()

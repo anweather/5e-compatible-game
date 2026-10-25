@@ -1,4 +1,6 @@
 using System.Collections.Generic;
+using System.Linq;
+using Chem;
 using Unity.Collections;
 using Unity.Netcode;
 using UnityEngine;
@@ -12,9 +14,13 @@ using UnityEngine;
 // - The host owns the clock: each sim tick it stamps the casts due and
 //   broadcasts the batch (empty batches too, so clients know a tick is
 //   complete). Everyone, the host included, applies a batch and steps.
-// - Every batch carries the host's checksum of an earlier tick; a client
-//   that disagrees logs a desync.
-// - A late joiner asks for the cast history and replays it from tick 0.
+// - A rule switch (mods on or off; RuleSwitcher) travels the same way: the
+//   host checks it and stamps it into the next batch with the full mod list
+//   and each mod's JSON, and every machine switches at that tick.
+// - Every batch carries the host's checksum of an earlier tick, the cells'
+//   hash and the rules' fingerprint; a client that disagrees logs a desync.
+// - A late joiner asks for the history (casts and rule switches) and replays
+//   it from tick 0.
 [RequireComponent(typeof(ChemGrid))]
 public class NetChem : NetworkBehaviour
 {
@@ -29,9 +35,11 @@ public class NetChem : NetworkBehaviour
     int hostTick;
     readonly List<CastIntent> scheduled = new();
     readonly List<CastIntent> history = new();
+    readonly List<RuleChangeMsg> ruleHistory = new();
+    RuleSet stampNext;
 
     // Everyone.
-    readonly Dictionary<int, CastIntent[]> batches = new();
+    readonly Dictionary<int, TickBatch> batches = new();
     readonly Dictionary<int, string> hostHashes = new();
     int knownUpTo;
     bool synced;
@@ -41,11 +49,20 @@ public class NetChem : NetworkBehaviour
 
     void Awake() => grid = GetComponent<ChemGrid>();
 
+    /// <summary>Host only: the rules the host has most recently stamped (or will stamp next), or null if none since spawn.</summary>
+    public RuleSet HostUpcoming { get; private set; }
+
     public override void OnNetworkSpawn()
     {
+        // The host keeps the mods it had on solo: they go out at tick 1, so they are in the history too.
+        var soloMods = grid.CurrentRules != null ? grid.CurrentRules.Mods : null;
         grid.ExternalTicks = true;
         grid.ResetWorld();
         batches.Clear();
+        history.Clear();
+        ruleHistory.Clear();
+        stampNext = null;
+        HostUpcoming = null;
         hostHashes.Clear();
         knownUpTo = 0;
         desyncReported = false;
@@ -54,6 +71,7 @@ public class NetChem : NetworkBehaviour
             hostTick = 0;
             clock = 0f;
             synced = true;
+            if (soloMods != null && soloMods.Count > 0) TryStamp(soloMods);
         }
         else
         {
@@ -68,6 +86,23 @@ public class NetChem : NetworkBehaviour
     public void RequestCast(string spellId, int x, int y, int dir, int delayTicks)
     {
         RequestCastRpc(new FixedString32Bytes(spellId), x, y, dir, delayTicks);
+    }
+
+    /// <summary>Host only: stamps a checked rule switch into the next tick's batch, for every machine.</summary>
+    public void StampRules(RuleSet next)
+    {
+        if (!IsServer) return;
+        stampNext = next;
+        HostUpcoming = next;
+    }
+
+    /// <summary>Client: asks the host to switch a mod on or off (the host checks it with its own copy of the file).</summary>
+    public void RequestToggle(string modId) => RequestToggleRpc(new FixedString128Bytes(modId));
+
+    void TryStamp(IReadOnlyList<ActiveMod> mods)
+    {
+        try { StampRules(grid.CurrentRules.WithMods(mods)); }
+        catch (ModException e) { EventLog.Add($"Mods left off online: {e.Errors[0]}"); }
     }
 
     void Update()
@@ -97,11 +132,18 @@ public class NetChem : NetworkBehaviour
                 due[i] = c;
             }
             history.AddRange(due);
+            var rules = RuleChangeMsg.None;
+            if (stampNext != null)
+            {
+                rules = RuleChangeMsg.From(new RuleChange(hostTick, stampNext.Mods));
+                ruleHistory.Add(rules);
+                stampNext = null;
+            }
 
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
             int hashTick = grid.World.Tick;
-            string hash = hashTick % HashEvery == 0 ? grid.World.CellHash() : "";
-            ApplyBatchRpc(hostTick, due.ToArray(), hashTick, new FixedString64Bytes(hash));
+            string hash = hashTick % HashEvery == 0 ? Checksum(grid) : "";
+            ApplyBatchRpc(hostTick, due.ToArray(), rules, hashTick, new FixedString64Bytes(hash));
         }
     }
 
@@ -116,8 +158,28 @@ public class NetChem : NetworkBehaviour
     [Rpc(SendTo.Server)]
     void RequestHistoryRpc(RpcParams rpc = default)
     {
-        SendHistoryRpc(hostTick, history.ToArray(), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
+        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
     }
+
+    [Rpc(SendTo.Server)]
+    void RequestToggleRpc(FixedString128Bytes modId, RpcParams rpc = default)
+    {
+        if (!TryGetComponent<RuleSwitcher>(out var switcher)) return;
+        string error = switcher.Toggle(modId.ToString());
+        if (error != null) RuleRefusedRpc(new FixedString512Bytes(Clip(error, 120)), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
+    }
+
+    // FixedString512Bytes holds up to 509 UTF-8 bytes; a few non-ASCII characters are at most 4 bytes each.
+    static string Clip(string s, int chars) => s.Length <= chars ? s : s.Substring(0, chars - 1) + "…";
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    void RuleRefusedRpc(FixedString512Bytes why, RpcParams rpc = default)
+    {
+        if (TryGetComponent<RuleSwitcher>(out var switcher)) switcher.Refused(why.ToString());
+    }
+
+    /// <summary>The checksum every machine compares: the cells' hash and the rules' fingerprint.</summary>
+    static string Checksum(ChemGrid grid) => grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint;
 
     // --- everyone --------------------------------------------------------------
 
@@ -131,28 +193,25 @@ public class NetChem : NetworkBehaviour
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    void ApplyBatchRpc(int tick, CastIntent[] casts, int hashTick, FixedString64Bytes hash)
+    void ApplyBatchRpc(int tick, CastIntent[] casts, RuleChangeMsg rules, int hashTick, FixedString64Bytes hash)
     {
-        batches[tick] = casts;
+        batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null);
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
         if (synced) ExtendKnown();
     }
 
     [Rpc(SendTo.SpecifiedInParams)]
-    void SendHistoryRpc(int upToTick, CastIntent[] past, RpcParams rpc = default)
+    void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, RpcParams rpc = default)
     {
-        var byTick = new Dictionary<int, List<CastIntent>>();
-        foreach (var c in past)
-        {
-            if (!byTick.TryGetValue(c.Tick, out var list)) byTick[c.Tick] = list = new List<CastIntent>();
-            list.Add(c);
-        }
+        var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick);
         for (int t = 1; t <= upToTick; t++)
-            if (!batches.ContainsKey(t)) batches[t] = byTick.TryGetValue(t, out var list) ? list.ToArray() : System.Array.Empty<CastIntent>();
+            if (!batches.ContainsKey(t)) batches[t] = timeline[t];
         knownUpTo = upToTick;
         synced = true;
         ExtendKnown();
-        EventLog.Add($"Joined the yard at tick {upToTick}; catching up");
+        EventLog.Add(ruleChanges.Length > 0
+            ? $"Joined the yard at tick {upToTick}; catching up, with {ruleChanges.Length} rule switch(es)"
+            : $"Joined the yard at tick {upToTick}; catching up");
     }
 
     void ExtendKnown()
@@ -169,12 +228,8 @@ public class NetChem : NetworkBehaviour
         while (world.Tick < knownUpTo && budget.Elapsed.TotalMilliseconds < CatchUpBudgetMs)
         {
             int next = world.Tick + 1;
-            if (batches.TryGetValue(next, out var casts))
-            {
-                foreach (var c in casts) world.Cast(c.Spell.ToString(), c.X, c.Y, c.Dir);
-                batches.Remove(next);
-            }
-            world.Step();
+            if (batches.TryGetValue(next, out var batch)) batches.Remove(next);
+            grid.RunBatch(batch ?? new TickBatch(next));
             CheckHash(world.Tick);
         }
     }
@@ -183,11 +238,29 @@ public class NetChem : NetworkBehaviour
     {
         if (IsServer || desyncReported || !hostHashes.TryGetValue(tick, out var expected)) return;
         hostHashes.Remove(tick);
-        if (expected == grid.World.CellHash()) return;
+        string here = Checksum(grid);
+        if (expected == here) return;
         desyncReported = true;
+        var (hostCells, hostRules) = Split(expected);
+        var (ownCells, ownRules) = Split(here);
+        if (hostRules != ownRules)
+        {
+            EventLog.Add($"<color=#ff8a80>Desync at tick {tick}: this machine runs different rules from the host's (host {hostRules}, here {ownRules}). Same mods, same files?</color>");
+            Debug.LogWarning($"NetChem desync at tick {tick}: rules fingerprint host {hostRules} here {ownRules}");
+            return;
+        }
         EventLog.Add($"Desync at tick {tick}: this yard no longer matches the host's");
-        Debug.LogWarning($"NetChem desync at tick {tick}");
+        Debug.LogWarning($"NetChem desync at tick {tick}: cells host {hostCells} here {ownCells}");
     }
+
+    static (string cells, string rules) Split(string checksum)
+    {
+        int at = checksum.IndexOf('/');
+        return at < 0 ? (checksum, "") : (checksum.Substring(0, at), checksum.Substring(at + 1));
+    }
+
+    /// <summary>For tests and the CLI: the last checksum this machine would send or compare.</summary>
+    public string CurrentChecksum => Checksum(grid);
 }
 
 /// <summary>A spell cast, stamped with the sim tick it takes effect on.</summary>
@@ -197,6 +270,8 @@ public struct CastIntent : INetworkSerializable
     public int X, Y, Dir, Tick;
     public ulong Caster;
 
+    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir);
+
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
         serializer.SerializeValue(ref Spell);
@@ -205,5 +280,57 @@ public struct CastIntent : INetworkSerializable
         serializer.SerializeValue(ref Dir);
         serializer.SerializeValue(ref Tick);
         serializer.SerializeValue(ref Caster);
+    }
+}
+
+/// <summary>
+/// A rule switch on the wire: the tick and the full mod list from then on, each mod's id and JSON.
+/// Has is false in the (usual) batch that switches nothing.
+/// </summary>
+public struct RuleChangeMsg : INetworkSerializable
+{
+    public bool Has;
+    public int Tick;
+    public string[] Ids;
+    public string[] Jsons;
+
+    public static RuleChangeMsg None => new RuleChangeMsg { Ids = System.Array.Empty<string>(), Jsons = System.Array.Empty<string>() };
+
+    public static RuleChangeMsg From(RuleChange change) => new RuleChangeMsg
+    {
+        Has = true,
+        Tick = change.Tick,
+        Ids = change.Mods.Select(m => m.Id).ToArray(),
+        Jsons = change.Mods.Select(m => m.Json).ToArray(),
+    };
+
+    public RuleChange ToChange()
+    {
+        var ids = Ids;
+        var jsons = Jsons;
+        return new RuleChange(Tick, ids.Select((id, i) => new ActiveMod(id, jsons[i])).ToArray());
+    }
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref Has);
+        if (!Has)
+        {
+            if (serializer.IsReader) this = None;
+            return;
+        }
+        serializer.SerializeValue(ref Tick);
+        int count = Ids?.Length ?? 0;
+        serializer.SerializeValue(ref count);
+        if (serializer.IsReader)
+        {
+            Ids = new string[count];
+            Jsons = new string[count];
+        }
+        for (int i = 0; i < count; i++)
+        {
+            serializer.SerializeValue(ref Ids[i]);
+            serializer.SerializeValue(ref Jsons[i]);
+        }
     }
 }

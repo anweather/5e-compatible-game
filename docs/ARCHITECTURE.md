@@ -64,6 +64,15 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   `rules.Fingerprint` is a stable hash of the rules in force, for the
   netcode checksum next to `world.CellHash()`. A late joiner rebuilds the
   rules as `baseRules.WithMods(roomMods)`. Examples are in `rules/mods/`.
+- **Switching rules in a running game** (`docs/LIVE_LAB.md`): `RuleSet.cs`
+  is the rules in force as a value (base rules, the ordered switched-on
+  mods as id + JSON text, the effective rules), so every switch builds and
+  checks a new one and a refused switch leaves the old one untouched.
+  `RuleSet.BaseOf` folds a scene's tuning into the base as a mod.
+  `TickBatch.cs` is one tick's lockstep inputs, a rule switch and casts;
+  `RunOn` is the one place they are applied, live or replayed, and
+  `Timeline` rebuilds the batches from a host's history for a late joiner.
+  `ModCatalog.cs` lists `rules/mods/*.json` with titles and ideas.
 
 It is a line-by-line port of the TypeScript sandbox (`sandbox/src/`), and
 the "golden" tests in `Chemistry/Tests/` check both give identical
@@ -73,13 +82,14 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 ### 3. View (`Scripts/`)
 | Area | Files |
 |---|---|
-| The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Visuals.cs` (per-cell redraw, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge), `ChemGrid.Shaping.cs` (earth shaping: a reshaped tile eases to its new height with a puff of dust, carrying what stands on it), `GridTileBuilder.cs` (ground tiles: soil blocks capped with the terrain, foliage, a raised wall's crags and blocker), `MaterialCache.cs`, `FireLightPool.cs` |
+| The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Rules.cs` (the rules in force; puts a switch in force between ticks and raises `RulesChanged`), `ChemGrid.Visuals.cs` (per-cell redraw, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge), `ChemGrid.Shaping.cs` (earth shaping: a reshaped tile eases to its new height with a puff of dust, carrying what stands on it), `GridTileBuilder.cs` (ground tiles: soil blocks capped with the terrain, foliage, a raised wall's crags and blocker), `MaterialCache.cs`, `FireLightPool.cs` |
 | The world beyond the yard | `ValleyChemistry.cs` (burnt trees, scorched grass, the cabin burning down on the terrain, terrain raised or sunk under reshaped cells, and a hole cut under the yard so its tiles are the ground there) |
 | The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast; a two-page bar, Elements and Earth), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water, the yard's tiles as ground, climb one step), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
 | Physics props | `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes), `Forces.cs` (radial and line shoves), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate), `ChemEffects.cs` (the one door from physics into the chemistry) |
 | Things to carry | `Carryable.cs` (an item from `rules/items.json`; a `PhysicsProp` on the ground, kinematic in hand; adds the behaviours its row asks for), `ItemHolder.cs` (the wizard's hand: pick up, drop, throw, use, the hint by the crosshair), `ItemUse.cs` (base of the behaviours), `ItemLight.cs`, `Fragile.cs` (smash and spill through `ChemEffects`), `Spyglass.cs`, `SendingStone.cs` with `PingMarker.cs`, `DancingLights.cs`, `Aiming.cs` (the crosshair ray, shared with `SpellCaster`) |
 | The show of a spell | `SpellVisuals.cs` (data asset), `SpellProjectile.cs` |
-| HUD | `EventLog.cs` (help, spell bar, "what happened" log) |
+| HUD | `EventLog.cs` (help, spell bar, "what happened" log), `ModsPanel.cs` (M / Start: the mods panel) |
+| Live rules | `RuleSwitcher.cs` (decides what to switch to and sends it: queued solo, stamped by the host online, asked of the host by a client), `RulesWatcher.cs` (Editor and dev builds: reloads saved `rules/` files, debounced, on the main thread). `ChemGrid` adds both at runtime, so scenes need no rebuild |
 | Demos and probes | `DemoDirector.cs`, `WizardPuppet.cs`, `Showcase.cs`, `FlythroughCamera.cs`, `FpsProbe.cs` |
 | Small shared helpers | `UrpMaterials.cs`, `Primitives.cs`, `ProceduralTextures.cs`, `ScrollingTexture.cs`, `Flicker.cs` |
 | The old Fireline greybox | `PlayerController.cs`, `CameraFollow.cs`, `FireBolt.cs`, `Burnable.cs`, `Water.cs` (not used by the yard) |
@@ -99,9 +109,12 @@ through lockstep like everything else.
 
 ### 4. Networking (`Scripts/Net/`)
 `NetChem.cs` is **lockstep**: the host owns the clock and broadcasts, every
-tick, the casts due on that tick. Every machine applies them to its own
-`Chem.World` and steps it, so all worlds stay identical without sending
-any cells. A checksum every 30 ticks catches a desync. `NetWizard.cs`
+tick, the casts due on that tick and, when the rules change, the new mod
+list (`RuleChangeMsg`). Every machine runs them as a `TickBatch` on its own
+`Chem.World`, so all worlds stay identical without sending any cells. A
+checksum every 30 ticks (cell hash and rules fingerprint) catches a
+desync and says whether the rules differ. A late joiner gets the casts and
+rule switches and replays them. `NetWizard.cs`
 switches a spawned wizard on for its owner. `NetSession.cs` is the Play
 Together panel (Relay join codes, or same-network IP). `NetDemo.cs` and
 `NetDemoDirector.cs` run the 4-player scripted demo. Background:
@@ -124,7 +137,8 @@ makes macOS/Windows builds, `AssetPacks/` restores the Asset Store packs.
 |---|---|---|
 | **Pure core + view** | The rules engine knows nothing about graphics; the view only reads its state and draws it | `Chemistry/` vs. `ChemGrid*`, `ValleyChemistry` |
 | **Rules as data + interpreter** | Behaviour is a table in JSON; one small engine reads the table | `rules/reactions.json` + `World.React.cs` |
-| **Command / intent** | A cast is a small message, `(spell, x, y, direction)`, not a change to the world. Solo it is applied when the projectile lands; online it is queued, stamped with a tick and applied everywhere at once | `SpellCaster.Cast`, `NetChem.CastIntent` |
+| **Command / intent** | A cast is a small message, `(spell, x, y, direction)`, not a change to the world. Solo it is applied when the projectile lands; online it is queued, stamped with a tick and applied everywhere at once. A rule switch travels the same way | `SpellCaster.Cast`, `NetChem.CastIntent`, `TickBatch` |
+| **Immutable value + observer** | The rules in force are a value replaced whole at a tick boundary; props and items listen for `ChemGrid.RulesChanged` and re-read their rows | `RuleSet`, `ChemGrid.Rules.cs`, `PhysicsProp.ReadRules` |
 | **Lockstep simulation** | Share the inputs, not the results; a deterministic world does the rest | `NetChem.cs`, seeded RNG in `World` |
 | **Dirty checking** | Each cell keeps a fingerprint of what's drawn and is only redrawn when it changes | `ChemGrid.View`, `ChemGrid.Key` |
 | **Object pool** | A fixed set of lights moved to the biggest fires, never created per fire | `FireLightPool.cs` (and the aim markers in `SpellCaster`) |

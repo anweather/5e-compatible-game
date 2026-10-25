@@ -53,6 +53,25 @@ public class Carryable : MonoBehaviour
         }
         AddBehaviours();
         Uses = GetComponents<ItemUse>();
+        prop.grid.RulesChanged += ReadRules;
+    }
+
+    void OnDestroy()
+    {
+        if (prop != null && prop.grid != null) prop.grid.RulesChanged -= ReadRules;
+    }
+
+    /// <summary>Raised after a live mod gave this item new numbers (its light, zoom, how it breaks).</summary>
+    public event System.Action DefChanged;
+
+    // A live mod changed the rules: read this item's row again. The behaviours added at Start stay
+    // as they are (a mod that gives a ball a "use" it didn't have needs a restart to add it).
+    void ReadRules()
+    {
+        var def = prop.grid.World.Rules.Item(prop.kind);
+        if (def == null) return;
+        Def = def;
+        DefChanged?.Invoke();
     }
 
     void AddBehaviours()

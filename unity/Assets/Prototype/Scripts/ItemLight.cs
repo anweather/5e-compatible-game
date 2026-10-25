@@ -38,6 +38,23 @@ public class ItemLight : ItemUse
         if (def.Cone > 0 && look != null) Lamp.transform.position = transform.position + transform.forward * (look.bounds.extents.magnitude + 0.03f);
         Configure(Lamp, def, glow);
         SetGlow(true);
+        Item.DefChanged += Reconfigure;
+    }
+
+    void OnDestroy()
+    {
+        if (Item != null) Item.DefChanged -= Reconfigure;
+    }
+
+    // A live mod changed the item's light (e.g. "bright-lantern"): same lamp, new reach and colour.
+    void Reconfigure()
+    {
+        var def = Item.Def.Light;
+        if (def == null || Lamp == null) return;
+        ColorUtility.TryParseHtmlString(def.Color, out glow);
+        bool on = Lamp.enabled;
+        Configure(Lamp, def, glow);
+        SetGlow(on);
     }
 
     /// <summary>Sets up <paramref name="lamp"/> for an items.json light: a spot for a cone, otherwise a point light.</summary>

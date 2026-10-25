@@ -40,7 +40,7 @@ namespace Chem
             Hp = def.Hp;
         }
 
-        public EntityDef Def { get; }
+        public EntityDef Def { get; private set; }
         public int Hp { get; private set; }
         public bool Destroyed => Hp <= 0;
         public int BurningTicks { get; private set; }
@@ -60,6 +60,20 @@ namespace Chem
 
         /// <summary>Floats for <paramref name="duration"/> ticks from <paramref name="tick"/>.</summary>
         public void Levitate(int tick, int duration) => LevitateUntil = tick + Math.Max(0, duration);
+
+        /// <summary>
+        /// Switches to new numbers for the same thing (a live mod changed its row in entities.json).
+        /// The damage already taken carries over, but a rule change never breaks it by itself: it
+        /// keeps at least 1 hit point. Burning and levitation carry over unchanged.
+        /// </summary>
+        public void UseDef(EntityDef def)
+        {
+            if (def == null) throw new ArgumentNullException(nameof(def));
+            if (Destroyed) return;
+            int taken = Def.Hp >= Unbreakable ? 0 : Def.Hp - Hp;
+            Def = def;
+            Hp = Math.Max(1, def.Hp - taken);
+        }
 
         /// <summary>Takes damage; returns true if this destroyed it.</summary>
         public bool Damage(int amount)
