@@ -56,6 +56,15 @@ public static class DemoRecorder
     // so it is switched off while recording and put back afterwards.
     static bool? gizmosWere;
 
+    /// <summary>Switches the Game view's Gizmos off (for screenshots too: ProbeCommands) until RestoreGizmos.</summary>
+    internal static void HideGizmos() => SetGameViewGizmos(false);
+
+    internal static void RestoreGizmos()
+    {
+        if (gizmosWere.HasValue) SetGameViewGizmos(gizmosWere.Value);
+        gizmosWere = null;
+    }
+
     static void SetGameViewGizmos(bool on)
     {
         var type = typeof(EditorWindow).Assembly.GetType("UnityEditor.GameView");
@@ -95,7 +104,7 @@ public static class DemoRecorder
     public static void RecordUntil(string file, System.Func<bool> done, bool realTime, System.Action finished = null,
         int width = 1280, int height = 720, bool frames = false)
     {
-        SetGameViewGizmos(false);
+        HideGizmos();
         var input = new GameViewInputSettings { OutputWidth = width, OutputHeight = height };
         RecorderSettings recorder;
         if (frames)
@@ -152,8 +161,7 @@ public static class DemoRecorder
     {
         if (controller == null || !controller.IsRecording()) return;
         controller.StopRecording();
-        if (gizmosWere.HasValue) SetGameViewGizmos(gizmosWere.Value);
-        gizmosWere = null;
+        RestoreGizmos();
         controller = null;
         Debug.Log($"Saved {outputFile}");
     }

@@ -58,11 +58,9 @@ public class FpsProbe : MonoBehaviour
 
     void Report()
     {
-        frameMs.Sort();
-        float mean = frameMs.Average();
-        float p95 = frameMs[(int)(frameMs.Count * 0.95f)];
-        float worst = frameMs[frameMs.Count - 1];
-        Debug.Log($"FPS PROBE: {frameMs.Count} frames over {Elapsed:0.0} s at {Screen.width}x{Screen.height}; " +
+        var stats = FrameStats.Of(frameMs);
+        float mean = stats.MeanMs, p95 = stats.P95Ms, worst = stats.WorstMs;
+        Debug.Log($"FPS PROBE: {stats.Count} frames over {Elapsed:0.0} s at {Screen.width}x{Screen.height}; " +
                   $"mean {mean:0.0} ms ({1000f / mean:0} fps), 95th percentile {p95:0.0} ms ({1000f / p95:0} fps), worst {worst:0.0} ms; " +
                   $"GPU {SystemInfo.graphicsDeviceName}");
     }

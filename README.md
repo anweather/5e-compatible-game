@@ -38,6 +38,7 @@ The docs:
 | `docs/DECISIONS.md` | What has been decided, and why |
 | `docs/ARCHITECTURE.md` | How the Unity code is organised: the layers, the design patterns, who may depend on whom, where new things go, known debt |
 | `docs/QUALITY.md` | The automatic C# checks: analyzers in the Unity console, the CI quality gate, how to read a failure |
+| `docs/FAST_LOOP.md` | The probe: run a named, scripted scenario in the open Editor from the CLI and get pass/fail checks and numbers as JSON |
 | `docs/RESEARCH.md` | What is true, with sources: licence, SRD contents, data sets, prior games, systemic-magic patterns, Unity, physics determinism |
 | `docs/PLATFORM_FIT.md` | How (and whether) it fits web-boardgame-platform, from reading the code |
 | `docs/PLAN.md` | Spikes and phases to go deeper, with the decisions each one unlocks |
