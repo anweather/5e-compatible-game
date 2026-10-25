@@ -10,13 +10,15 @@ using UnityEngine;
 // (physics, earth, items and live rules) at 1080p, as JPEG frames in
 // Recordings/OvernightShowcase/ for ffmpeg: the movie encoder can't keep up
 // with 1080p and queues frames in memory until the Editor runs out.
+// Prototype > Record Valley Showcase records ValleyShowcase (the chunked
+// valley) the same way, into Recordings/ValleyShowcase/.
 // RecordUntil records any running session, such as one player's view of
 // the 4-player demo.
 public static class DemoRecorder
 {
     // Which recording to start once Play mode is up (empty: none).
     const string Flag = "Prototype.RecordDemo";
-    const string Demo = "demo", Overnight = "overnight";
+    const string Demo = "demo", Overnight = "overnight", Valley = "valley";
     static RecorderController controller;
 
     [MenuItem("Prototype/Record Demo Clip")]
@@ -24,6 +26,9 @@ public static class DemoRecorder
 
     [MenuItem("Prototype/Record Overnight Showcase")]
     public static void RecordOvernightShowcase() => PlayAndRecord(Overnight);
+
+    [MenuItem("Prototype/Record Valley Showcase")]
+    public static void RecordValleyShowcase() => PlayAndRecord(Valley);
 
     static void PlayAndRecord(string which)
     {
@@ -66,14 +71,18 @@ public static class DemoRecorder
     static void Begin(string which)
     {
         void Stop() => EditorApplication.isPlaying = false;
-        if (which == Overnight)
-        {
-            var show = new GameObject("OvernightShowcase").AddComponent<OvernightShowcase>();
-            RecordUntil("Recordings/OvernightShowcase", () => show == null || show.Done, realTime: false, Stop, 1920, 1080, frames: true);
-            return;
-        }
+        if (which == Overnight) { RecordShowcase<OvernightShowcase>(Stop); return; }
+        if (which == Valley) { RecordShowcase<ValleyShowcase>(Stop); return; }
         var director = new GameObject("DemoDirector").AddComponent<DemoDirector>();
         RecordUntil("Recordings/ChemistryYard", () => director == null || director.Done, realTime: false, Stop);
+    }
+
+    // A scripted showcase at 1080p, as JPEG frames in Recordings/<its class name>/.
+    static void RecordShowcase<T>(System.Action stop) where T : ShowcaseScript
+    {
+        var name = typeof(T).Name;
+        var show = new GameObject(name).AddComponent<T>();
+        RecordUntil($"Recordings/{name}", () => show == null || show.Done, realTime: false, stop, 1920, 1080, frames: true);
     }
 
     /// <summary>

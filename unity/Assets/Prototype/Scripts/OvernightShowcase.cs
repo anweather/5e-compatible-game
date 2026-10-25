@@ -1,5 +1,4 @@
 using System.Collections;
-using Unity.Cinemachine;
 using UnityEngine;
 
 // A one-take tour of the physics, earth shaping, things to carry and live
@@ -19,53 +18,25 @@ using UnityEngine;
 // The HUD is hidden except while the mods panel is shown. Dusk is play-mode
 // only: the sun, ambient light and fog are put back, and the sky is a copy of
 // the scene's, so the generated sky material is never touched.
-public class OvernightShowcase : MonoBehaviour
+public class OvernightShowcase : ShowcaseScript
 {
-    public bool Done { get; private set; }
-
     const float Beat = 0.5f;
 
-    ChemGrid grid;
-    GameObject wizard;
-    WizardPuppet puppet;
-    SpellCaster caster;
-    ItemHolder hands;
-    CinemachineBrain brain;
-    Vector3 lookingAt;
-    float started;
     Lighting daylight;
 
-    static Vector3 V(float x, float y, float z) => new Vector3(x, y, z);
-
-    static FlythroughCamera.Waypoint W(Vector3 position, Vector3 lookAt, float seconds) =>
-        FlythroughCamera.Waypoint.At(position, lookAt, seconds);
-
-    void OnDestroy()
+    protected override void OnDestroy()
     {
-        EventLog.HudVisible = true;
+        base.OnDestroy();
         daylight?.Restore();
     }
 
-    IEnumerator Start()
+    protected override IEnumerator Play()
     {
-        started = Time.time;
-        EventLog.HudVisible = false;
-        grid = FindFirstObjectByType<ChemGrid>();
-        wizard = WizardRig.FindLocal();
-        puppet = new WizardPuppet(wizard);
-        caster = wizard.GetComponent<SpellCaster>();
-        caster.enabled = false;
-        hands = wizard.GetComponent<ItemHolder>();
-        brain = Camera.main.GetComponent<CinemachineBrain>();
         daylight = Lighting.Capture();
-
         yield return PhysicsChapter();
         yield return EarthChapter();
         yield return ItemsChapter();
         yield return RulesChapter();
-
-        EventLog.HudVisible = true;
-        Done = true;
     }
 
     // --- 1. physics -----------------------------------------------------------------
@@ -193,73 +164,11 @@ public class OvernightShowcase : MonoBehaviour
 
     // --- helpers ------------------------------------------------------------------------
 
-    void Chapter(string title)
-    {
-        Debug.Log($"Showcase chapter at {Time.time - started:0.0} s: {title}");
-    }
-
-    Vector3 Yard(int x, int y) => grid.YardCellCenter(x, y);
-
     static Carryable Item(string id)
     {
         foreach (var item in FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID))
             if (item.GetComponent<PhysicsProp>().kind == id && item.Holder == null) return item;
         return null;
-    }
-
-    // Puts out every fire in the world, between chapters, while the camera is elsewhere.
-    void PutOutFires()
-    {
-        foreach (var cell in grid.World.Cells) cell.Fire = 0;
-    }
-
-    // Moves the wizard to a yard cell at once (off camera).
-    void Place(int x, int y)
-    {
-        var body = wizard.GetComponent<CharacterController>();
-        body.enabled = false;
-        var cell = grid.YardCell(x, y);
-        wizard.transform.position = grid.CellCenter(cell.x, cell.y) + Vector3.up * (grid.SurfaceY(cell.x, cell.y) + 0.05f);
-        body.enabled = true;
-    }
-
-    // Puts the camera somewhere at once, taking it from Cinemachine.
-    void Cut(Vector3 position, Vector3 lookAt)
-    {
-        if (brain != null) brain.enabled = false;
-        var cam = Camera.main.transform;
-        cam.SetPositionAndRotation(position, Quaternion.LookRotation(lookAt - position));
-        lookingAt = lookAt;
-    }
-
-    // Glides on from the current shot; the camera stays where the flight ends.
-    FlythroughCamera Fly(params FlythroughCamera.Waypoint[] waypoints)
-    {
-        var flight = FlythroughCamera.FromHere(lookingAt, waypoints);
-        lookingAt = waypoints[waypoints.Length - 1].lookAt;
-        Destroy(flight.gameObject, Seconds(waypoints) + 0.5f);
-        return flight;
-    }
-
-    // Game time, as the recorder runs it (30 frames a second of it, however slowly the Editor renders).
-    static IEnumerator Wait(float seconds)
-    {
-        for (float t = 0f; t < seconds; t += Time.deltaTime) yield return null;
-    }
-
-    static float Seconds(FlythroughCamera.Waypoint[] waypoints)
-    {
-        float s = 0f;
-        foreach (var w in waypoints) s += w.seconds;
-        return s;
-    }
-
-    IEnumerator Cast(string spell, int x, int y, int dir, float wait)
-    {
-        var cell = grid.YardCell(x, y);
-        puppet.Face(grid.CellCenter(cell.x, cell.y));
-        caster.Cast(spell, cell.x, cell.y, dir);
-        yield return Wait(wait);
     }
 
     // Lets go of the held item and sends it toward a point, lobbed.
