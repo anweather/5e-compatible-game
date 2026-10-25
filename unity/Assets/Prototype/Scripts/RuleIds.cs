@@ -14,10 +14,19 @@ public static class SpellIds
     public const string GustOfWind = "gust-of-wind";
     public const string Thunderwave = "thunderwave";
     public const string Levitate = "levitate";
+    public const string MoldEarth = "mold-earth";
+    public const string MoldEarthHeap = "mold-earth-heap";
+    public const string EarthenTrench = "earthen-trench";
+    public const string WallOfStone = "wall-of-stone";
+    public const string MoveEarth = "move-earth";
 
-    /// <summary>The spell bar a new wizard starts with, in key order 1-8.</summary>
+    /// <summary>The spell bar a new wizard starts with (the Elements page), in key order 1-8.</summary>
     public static string[] DefaultBar() =>
         new[] { FireBolt, RayOfFrost, CreateWater, Grease, ShockingGrasp, GustOfWind, Thunderwave, Levitate };
+
+    /// <summary>The second page of the bar (Earth), in key order 1-5: earth shaping.</summary>
+    public static string[] EarthBar() =>
+        new[] { MoldEarth, MoldEarthHeap, EarthenTrench, WallOfStone, MoveEarth };
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
@@ -67,6 +76,7 @@ public static class TerrainIds
     public const string Pit = "pit";
     public const string Metal = "metal";
     public const string LogWall = "logwall";
+    public const string Rock = "rock";
 }
 
 /// <summary>Cover ids (a film on a cell), as in rules/materials.json.</summary>

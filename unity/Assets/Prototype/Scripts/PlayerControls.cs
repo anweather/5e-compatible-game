@@ -9,7 +9,8 @@ using UnityEngine.InputSystem;
 //   Cast spell   left mouse    right trigger
 //   Next spell   E             right bumper (R1)
 //   Prev spell   Q             left bumper (L1)
-//   Pick spell   1-8
+//   Pick spell   1-8 (on the page shown)
+//   Spell page   Tab           d-pad left / right   (Elements <-> Earth)
 //   Zoom camera  mouse wheel   d-pad up / down
 //   Reset        R             View / Share button
 //   Pick up/drop E             X / Square
@@ -19,12 +20,15 @@ using UnityEngine.InputSystem;
 //
 // E is both "next spell" and "pick up": while an item is in reach or in hand
 // (ItemHolder sets ItemInReach) it picks up or drops, and the spell stays put.
+// Q and E step through every spell on both pages, so a gamepad reaches them
+// all with the bumpers alone.
 public class PlayerControls : MonoBehaviour
 {
     public InputAction Cast { get; private set; }
     public InputAction NextSpell { get; private set; }
     public InputAction PrevSpell { get; private set; }
     public InputAction PickSpell { get; private set; }
+    public InputAction SwitchPage { get; private set; }
     public InputAction Zoom { get; private set; }
     public InputAction Reset { get; private set; }
     public InputAction Interact { get; private set; }
@@ -45,6 +49,7 @@ public class PlayerControls : MonoBehaviour
         NextSpell = Button("Next spell", "<Keyboard>/e", "<Gamepad>/rightShoulder");
         PrevSpell = Button("Previous spell", "<Keyboard>/q", "<Gamepad>/leftShoulder");
         PickSpell = Button("Pick spell", "<Keyboard>/1", "<Keyboard>/2", "<Keyboard>/3", "<Keyboard>/4", "<Keyboard>/5", "<Keyboard>/6", "<Keyboard>/7", "<Keyboard>/8");
+        SwitchPage = Button("Spell page", "<Keyboard>/tab", "<Gamepad>/dpad/left", "<Gamepad>/dpad/right");
         Reset = Button("Reset", "<Keyboard>/r", "<Gamepad>/select");
         Interact = Button("Pick up or drop", "<Keyboard>/e", "<Gamepad>/buttonWest");
         Use = Button("Use item", "<Keyboard>/f", "<Gamepad>/buttonNorth");
@@ -56,7 +61,7 @@ public class PlayerControls : MonoBehaviour
             .With("Negative", "<Gamepad>/dpad/up")
             .With("Positive", "<Gamepad>/dpad/down");
 
-        all = new[] { Cast, NextSpell, PrevSpell, PickSpell, Zoom, Reset, Interact, Use, Throw };
+        all = new[] { Cast, NextSpell, PrevSpell, PickSpell, SwitchPage, Zoom, Reset, Interact, Use, Throw };
         foreach (var a in all) a.performed += Track;
     }
 

@@ -3,8 +3,14 @@ using UnityEngine;
 
 // Shows the chemistry of the cells outside the yard on the valley itself:
 // where each cell's ground is, trees that burn down to charred stumps, burnt
-// grass leaving scorched ground with its grass cleared, and the cabin
-// charring and losing its roof once enough of its log walls have burned.
+// grass leaving scorched ground with its grass cleared, the cabin
+// charring and losing its roof once enough of its log walls have burned, and
+// earth shaping: a raised or dug cell lifts or sinks the terrain under it
+// (its nearest heightmap sample; the valley's samples are about a cell apart),
+// eased over half a second. The terrain runs flush under the yard
+// (ValleyBuilder) and would cover anything dug below it (a pit, the pond's
+// bed, a trench), so the runtime copy has a hole cut under the yard, where
+// the yard's own tiles are the ground.
 // Works on a runtime copy of the terrain data, so playing never changes the
 // saved valley.
 public class ValleyChemistry : MonoBehaviour
@@ -26,6 +32,19 @@ public class ValleyChemistry : MonoBehaviour
     bool cabinCharred;
     Material charred;
 
+    // One heightmap sample under a reshaped cell: its height before any shaping, and the offset
+    // it is easing from and to (normalised heights, as TerrainData stores them).
+    sealed class Heave
+    {
+        public int hx, hz;
+        public float baseHeight, offset, from, to, start;
+    }
+    const float HeaveSeconds = 0.5f;
+    readonly Dictionary<int, Heave> heaves = new();
+    readonly List<Heave> easing = new();
+
+    void Start() => Init();
+
     void Init()
     {
         if (data != null || grid == null || grid.World == null || terrain == null) return;
@@ -33,6 +52,7 @@ public class ValleyChemistry : MonoBehaviour
         data = Instantiate(terrain.terrainData);
         terrain.terrainData = data;
         if (terrain.TryGetComponent<TerrainCollider>(out var collider)) collider.terrainData = data;
+        CutUnderYard();
 
         trees = data.treeInstances;
         var origin = terrain.transform.position;
@@ -49,6 +69,23 @@ public class ValleyChemistry : MonoBehaviour
             if (c.T == TerrainIds.LogWall) cabinCells++;
         }
         charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
+    }
+
+    // Holes in every hole texel that lies wholly within the yard. The texels are about a cell
+    // wide, so a strip under the yard's outer cells keeps its terrain (just under their tiles).
+    void CutUnderYard()
+    {
+        var yard = grid.yardCells;
+        if (yard.width <= 0) return;
+        float half = grid.cellSize / 2f;
+        var southWest = grid.CellCenter(yard.xMin, yard.yMax - 1) - terrain.transform.position;
+        var northEast = grid.CellCenter(yard.xMax - 1, yard.yMin) - terrain.transform.position;
+        int res = data.holesResolution;
+        float sx = data.size.x / res, sz = data.size.z / res;
+        int i0 = Mathf.CeilToInt((southWest.x - half) / sx), j0 = Mathf.CeilToInt((southWest.z - half) / sz);
+        int i1 = Mathf.FloorToInt((northEast.x + half) / sx), j1 = Mathf.FloorToInt((northEast.z + half) / sz);
+        if (i0 < 0 || j0 < 0 || i1 > res || j1 > res || i1 <= i0 || j1 <= j0) return;
+        data.SetHoles(i0, j0, new bool[j1 - j0, i1 - i0]);
     }
 
     /// <summary>The terrain's height at a cell's centre.</summary>
@@ -77,6 +114,40 @@ public class ValleyChemistry : MonoBehaviour
         if (from == TerrainIds.Tree) BurnTrees(x, y);
         if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorch.Add(new Vector2Int(x, y));
         if (from == TerrainIds.LogWall) CabinWallBurned();
+    }
+
+    /// <summary>A cell outside the yard was raised or dug: ease the terrain under it to its new height.</summary>
+    public void HeightChanged(int x, int y)
+    {
+        Init();
+        var c = grid.World.At(x, y);
+        if (data == null || c == null) return;
+        var local = grid.CellCenter(x, y) - terrain.transform.position;
+        int res = data.heightmapResolution;
+        int hx = Mathf.Clamp(Mathf.RoundToInt(local.x / data.size.x * (res - 1)), 0, res - 1);
+        int hz = Mathf.Clamp(Mathf.RoundToInt(local.z / data.size.z * (res - 1)), 0, res - 1);
+        int key = hz * res + hx;
+        if (!heaves.TryGetValue(key, out var h))
+            heaves[key] = h = new Heave { hx = hx, hz = hz, baseHeight = data.GetHeights(hx, hz, 1, 1)[0, 0] };
+        h.from = h.offset;
+        h.to = c.Height * grid.stepHeight / data.size.y;
+        h.start = Time.time;
+        if (!easing.Contains(h)) easing.Add(h);
+    }
+
+    void EaseHeaves()
+    {
+        if (easing.Count == 0) return;
+        var one = new float[1, 1];
+        easing.RemoveAll(h =>
+        {
+            float k = Mathf.Clamp01((Time.time - h.start) / HeaveSeconds);
+            h.offset = Mathf.Lerp(h.from, h.to, k * k * (3f - 2f * k));
+            one[0, 0] = h.baseHeight + h.offset;
+            data.SetHeightsDelayLOD(h.hx, h.hz, one);
+            return k >= 1f;
+        });
+        data.SyncHeightmap();
     }
 
     void BurnTrees(int x, int y)
@@ -117,6 +188,7 @@ public class ValleyChemistry : MonoBehaviour
     void LateUpdate()
     {
         if (data == null) return;
+        EaseHeaves();
         if (treesChanged)
         {
             data.treeInstances = trees;

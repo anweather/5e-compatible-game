@@ -5,7 +5,7 @@ using UnityEngine.Rendering;
 
 // How the grid looks. Each frame Render() walks the cells and, for any cell
 // whose state changed, updates that cell's view: its ground tile (built by
-// GridTileBuilder), see-through water or glossy ice, a cover film (oil,
+// GridTileBuilder, raised or sunk by earth shaping: ChemGrid.Shaping.cs), see-through water or glossy ice, a cover film (oil,
 // grease, ash), and its fire, gas and charge effects (ChemGrid.Effects.cs).
 // A small pool of flickering lights follows the biggest fires
 // (FireLightPool). Cubes stand in for any effect prefab that isn't assigned
@@ -28,6 +28,7 @@ public partial class ChemGrid
     {
         public GameObject tile, water, cover, fire, gas, spark;
         public string terrain;
+        public int height;
         public int key = int.MinValue;
         public int fireLevel;
         public string gasKind;
@@ -56,6 +57,7 @@ public partial class ChemGrid
             for (int x = 0; x < World.W; x++) RenderCell(x, y);
         }
         AnimateWater();
+        AnimateShaping();
     }
 
     void RenderCell(int x, int y)
@@ -63,12 +65,12 @@ public partial class ChemGrid
         var c = World.At(x, y);
         var v = views[y * World.W + x];
         int key = Key(c);
-        if (key == v.key && v.terrain == c.T) return;
+        if (key == v.key && v.terrain == c.T && v.height == c.Height) return;
         v.key = key;
 
         // Yard cells are blocks; cells outside the yard are scenery that ValleyChemistry updates.
         bool yard = InYard(x, y);
-        if (v.terrain != c.T) ChangeTerrain(v, c, x, y, yard);
+        if (v.terrain != c.T || v.height != c.Height) ChangeTerrain(v, c, x, y, yard);
         float ground = yard && GridTileBuilder.IsDressed(c.T) ? GroundTop(c) : SurfaceY(x, y);
         var center = CellCenter(x, y);
 
@@ -81,15 +83,25 @@ public partial class ChemGrid
         if (yard || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
     }
 
+    // A new terrain or a new height: a yard cell's tile is rebuilt (and eases from where the old
+    // one stood when its height changed); outside the yard the valley shows it.
     void ChangeTerrain(View v, Cell c, int x, int y, bool yard)
     {
+        bool reshaped = v.terrain != null && v.height != c.Height;
         if (yard)
         {
+            float from = v.tile != null ? v.tile.transform.position.y : 0f;
             if (v.tile != null) Destroy(v.tile);
             v.tile = tiles.Build(c, x, y);
+            if (reshaped) StartShaping(v, from, CellCenter(x, y));
         }
-        else if (valley != null) valley.TerrainChanged(x, y, v.terrain, c.T);
+        else if (valley != null)
+        {
+            if (v.terrain != c.T) valley.TerrainChanged(x, y, v.terrain, c.T);
+            if (reshaped) valley.HeightChanged(x, y);
+        }
         v.terrain = c.T;
+        v.height = c.Height;
     }
 
     // Outside the yard, fire burns up in a tree's crown or along a cabin wall.
@@ -229,5 +241,6 @@ public partial class ChemGrid
     {
         materials.Destroy();
         tiles?.Destroy();
+        if (plainDust != null) Destroy(plainDust);
     }
 }

@@ -73,9 +73,9 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 ### 3. View (`Scripts/`)
 | Area | Files |
 |---|---|
-| The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Visuals.cs` (per-cell redraw, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge), `GridTileBuilder.cs` (ground tiles and foliage), `MaterialCache.cs`, `FireLightPool.cs` |
-| The world beyond the yard | `ValleyChemistry.cs` (burnt trees, scorched grass, the cabin burning down on the terrain) |
-| The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
+| The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Visuals.cs` (per-cell redraw, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge), `ChemGrid.Shaping.cs` (earth shaping: a reshaped tile eases to its new height with a puff of dust, carrying what stands on it), `GridTileBuilder.cs` (ground tiles: soil blocks capped with the terrain, foliage, a raised wall's crags and blocker), `MaterialCache.cs`, `FireLightPool.cs` |
+| The world beyond the yard | `ValleyChemistry.cs` (burnt trees, scorched grass, the cabin burning down on the terrain, terrain raised or sunk under reshaped cells, and a hole cut under the yard so its tiles are the ground there) |
+| The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast; a two-page bar, Elements and Earth), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water, the yard's tiles as ground, climb one step), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
 | Physics props | `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes), `Forces.cs` (radial and line shoves), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate), `ChemEffects.cs` (the one door from physics into the chemistry) |
 | Things to carry | `Carryable.cs` (an item from `rules/items.json`; a `PhysicsProp` on the ground, kinematic in hand; adds the behaviours its row asks for), `ItemHolder.cs` (the wizard's hand: pick up, drop, throw, use, the hint by the crosshair), `ItemUse.cs` (base of the behaviours), `ItemLight.cs`, `Fragile.cs` (smash and spill through `ChemEffects`), `Spyglass.cs`, `SendingStone.cs` with `PingMarker.cs`, `DancingLights.cs`, `Aiming.cs` (the crosshair ray, shared with `SpellCaster`) |
 | The show of a spell | `SpellVisuals.cs` (data asset), `SpellProjectile.cs` |
@@ -83,6 +83,19 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 | Demos and probes | `DemoDirector.cs`, `WizardPuppet.cs`, `Showcase.cs`, `FlythroughCamera.cs`, `FpsProbe.cs` |
 | Small shared helpers | `UrpMaterials.cs`, `Primitives.cs`, `ProceduralTextures.cs`, `ScrollingTexture.cs`, `Flicker.cs` |
 | The old Fireline greybox | `PlayerController.cs`, `CameraFollow.cs`, `FireBolt.cs`, `Burnable.cs`, `Water.cs` (not used by the yard) |
+
+**Earth shaping in the yard.** One step of `Cell.Height` is `ChemGrid.stepHeight`
+(0.5 m, the same step a pit is deep), so the ground, the water surface
+(ground plus depth) and the water flow all use one scale: a heap is 0.5 m,
+Move Earth's hill 1 m, an Earthen Trench 1 m deep, and a Wall of Stone
+(height 3, `sim.height.blockAt`) a 1.5 m block of rock with crags on top and
+an invisible blocker to 2.7 m, so it can't be jumped. Tiles are rebuilt
+when a cell's height changes and ease there over half a second. The wizard
+steps up one step (`SurfaceEffects.climbStep`, 0.55 m) and jumps out of a
+trench. Inside the yard, props and the wizard pass through the valley
+terrain (it is also holed there), so pits, the pond and trenches have real
+floors. Height is cell state, hashed in `CellHash`, so online it arrives
+through lockstep like everything else.
 
 ### 4. Networking (`Scripts/Net/`)
 `NetChem.cs` is **lockstep**: the host owns the clock and broadcasts, every
@@ -164,7 +177,7 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 | You want to add... | Do this |
 |---|---|
 | A **material or terrain** | Add it to `rules/materials.json` (and reactions to `rules/reactions.json`). Test it in the web sandbox first. To draw it in the yard, add its colour and height to `GridTileBuilder.TerrainLook`, and a map character to `ChemGrid.Legend` if maps should use it |
-| A **spell** | Add it to `rules/spells.json`. Add its id to `SpellIds` in `RuleIds.cs`, its look (glow, projectile, impact) to `ChemYardBuilder.BuildSpellVisuals`, and, to put it on the bar, to `SpellIds.DefaultBar` |
+| A **spell** | Add it to `rules/spells.json`. Add its id to `SpellIds` in `RuleIds.cs`, its look (glow, projectile, impact) to `ChemYardBuilder.BuildSpellVisuals`, and, to put it on the bar, to `SpellIds.DefaultBar` (the Elements page) or `SpellIds.EarthBar` (the Earth page; Tab or the d-pad's left/right switches pages) |
 | A **new kind of cell effect** (e.g. a new gas) | Data first; then a `Render...` method in `ChemGrid.Effects.cs` with a prefab and a cube fallback, called from `ChemGrid.RenderCell`, and its state added to `ChemGrid.Key` |
 | A **chemistry behaviour** that data can't express | Change the TS sandbox and `Chemistry/` together, with a golden test for both |
 | A **physics prop** | Its numbers in `rules/entities.json`, a `PhysicsProp` placed by `PropBuilder` (Editor). Anything it does to cells goes through `ChemEffects.Request`, never straight to the world: solo it applies at once; online it is meant to become an intent (D4 in `DECISIONS.md`): the host stamps "barrel blew up in cell (4,7)" with a tick and sends it through `NetChem` like a cast (not built yet; online yards ignore these requests for now) |
@@ -175,7 +188,7 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 
 What this clean-up left alone, roughly in order of value.
 
-- **Cognitive complexity in `Chemistry/`** (8 methods, up to 69 in
+- **Cognitive complexity in `Chemistry/`** (7 methods, up to 69 in
   `World.React.cs`). They mirror the TS sandbox line by line; splitting
   them means splitting the TS the same way, with the parity tests as the
   safety net. Then drop `S3776` from `WarningsNotAsErrors` in

@@ -6,7 +6,7 @@ read the code. There are two layers:
 | Layer | Where you see it | What runs | Blocks anything? |
 |---|---|---|---|
 | 1. Analyzers | Unity's **Console**, as yellow warnings, every time scripts compile | Sonar, Unity and .NET analyzers on our code | No. Warnings never stop the game compiling |
-| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 73 tests, formatting, duplicate code | Yes. A red check means fix before merging |
+| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 75 tests, formatting, duplicate code | Yes. A red check means fix before merging |
 
 Only our code is checked: `unity/Assets/Prototype/` and `sandbox/src/`. The
 Asset Store packs (`Starter Assets`, `UnityTechnologies`) are never analyzed,
@@ -110,12 +110,12 @@ is in `docs/ARCHITECTURE.md`.
 |---|---|---|
 | Chemistry/World.React.cs | 3 | S3776 ×3 (complexity 18, 28, 69) |
 | Chemistry/World.Sim.cs | 3 | S3776 ×3 (28, 36, 55) |
-| Chemistry/World.Spells.cs | 1 | S3776 (22) |
 | Chemistry/World.Terraform.cs | 1 | S3776 (23) |
 | *Starter Assets ReadmeEditor.cs (pack)* | 2 | S1066, S1199 |
 
-Totals: **Scripts/ 0**, **Chemistry/ 8** (all cognitive complexity), pack 2,
-which makes 10 in the Unity console.
+Totals: **Scripts/ 0**, **Chemistry/ 7** (all cognitive complexity; the
+terraform line fix split `World.Spells.cs`'s), pack 2, which makes 9 in the
+Unity console.
 
 Before the clean-up (2026-10-25, the code had grown since the first baseline
 of 39) it was **Scripts/ 65**, **Chemistry/ 8**, pack 2: S3776 21, UNT0039 10,

@@ -7,6 +7,10 @@ using UnityEngine;
 // next to the wizard and point at the target, everything else lands on the
 // targeted cell. The cells it will touch are highlighted.
 //
+// The bar has two pages: Elements (spellIds, keys 1-8) and Earth
+// (earthSpellIds, keys 1-5), switched with Tab or the d-pad's left/right.
+// The number keys pick on the page shown; Q and E step through both pages.
+//
 // A cast is an intent, (spell, x, y, direction): solo it is applied to the
 // world when the show lands, and its shove to whatever moves (SpellForces);
 // online it goes to NetChem, which applies it on every machine at the same tick.
@@ -15,11 +19,22 @@ public class SpellCaster : MonoBehaviour
     public ChemGrid grid;
     public PlayerControls controls;
     public string[] spellIds = SpellIds.DefaultBar();
+    [Tooltip("The bar's second page (Tab, or d-pad left/right): earth shaping.")]
+    public string[] earthSpellIds = SpellIds.EarthBar();
     [Tooltip("How each spell looks when cast. Without it, spells take effect with no show.")]
     public SpellVisuals visuals;
 
+    /// <summary>The names of the bar's pages, in page order.</summary>
+    public static readonly string[] PageNames = { "Elements", "Earth" };
+
+    /// <summary>The page of the bar shown: 0 Elements, 1 Earth.</summary>
+    public int Page { get; private set; }
+    /// <summary>The selected slot on the page shown.</summary>
     public int Selected { get; private set; }
     public string SelectedName => SpellName(Selected);
+    /// <summary>The spells on the page shown, in key order.</summary>
+    public string[] Bar => Page == 0 ? spellIds : earthSpellIds;
+    public string SelectedId => Bar[Selected];
 
     readonly List<GameObject> markers = new();
     Material markerMat;
@@ -41,7 +56,21 @@ public class SpellCaster : MonoBehaviour
     public string SpellName(int slot)
     {
         var world = grid != null ? grid.World : null;
-        return world?.Rules.Spell(spellIds[slot])?.Name ?? spellIds[slot];
+        return world?.Rules.Spell(Bar[slot])?.Name ?? Bar[slot];
+    }
+
+    /// <summary>Selects a spell by id on whichever page has it; false if neither does.</summary>
+    public bool Select(string spellId)
+    {
+        for (int page = 0; page < PageNames.Length; page++)
+        {
+            int slot = System.Array.IndexOf(page == 0 ? spellIds : earthSpellIds, spellId);
+            if (slot < 0) continue;
+            Page = page;
+            Selected = slot;
+            return true;
+        }
+        return false;
     }
 
     void Update()
@@ -56,20 +85,35 @@ public class SpellCaster : MonoBehaviour
         }
         var target = grid.CellAt(hit.point - hit.normal * 0.05f);
         var aim = Aim(target, out var error);
-        var spell = grid.World.Rules.Spell(spellIds[Selected]);
+        var spell = grid.World.Rules.Spell(SelectedId);
         ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir) : null);
 
         if (!controls.Cast.WasPressedThisFrame()) return;
         if (error != null) { EventLog.Add(error); return; }
-        if (aim.HasValue) Cast(spellIds[Selected], aim.Value.x, aim.Value.y, aim.Value.dir);
+        if (aim.HasValue) Cast(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir);
     }
 
     void PickSpell()
     {
+        if (controls.SwitchPage.WasPressedThisFrame() && earthSpellIds.Length > 0)
+        {
+            Page = 1 - Page;
+            Selected = Mathf.Min(Selected, Bar.Length - 1);
+        }
         int slot = controls.PickedSlot();
-        if (slot >= 0 && slot < spellIds.Length) Selected = slot;
-        if (controls.NextSpellPressed()) Selected = (Selected + 1) % spellIds.Length;
-        if (controls.PrevSpell.WasPressedThisFrame()) Selected = (Selected + spellIds.Length - 1) % spellIds.Length;
+        if (slot >= 0 && slot < Bar.Length) Selected = slot;
+        if (controls.NextSpellPressed()) StepSpell(1);
+        if (controls.PrevSpell.WasPressedThisFrame()) StepSpell(-1);
+    }
+
+    // Steps through both pages as one list, turning the page at either end.
+    void StepSpell(int by)
+    {
+        int total = spellIds.Length + earthSpellIds.Length;
+        int at = (Page == 0 ? 0 : spellIds.Length) + Selected;
+        at = (at + by + total) % total;
+        Page = at < spellIds.Length ? 0 : 1;
+        Selected = Page == 0 ? at : at - spellIds.Length;
     }
 
     // --- casting ---------------------------------------------------------------------
@@ -158,8 +202,8 @@ public class SpellCaster : MonoBehaviour
     (int x, int y, int dir)? Aim(Vector2Int target, out string error)
     {
         error = null;
-        var spell = grid.World.Rules.Spell(spellIds[Selected]);
-        if (spell == null) { error = $"{spellIds[Selected]} isn't in rules/spells.json"; return null; }
+        var spell = grid.World.Rules.Spell(SelectedId);
+        if (spell == null) { error = $"{SelectedId} isn't in rules/spells.json"; return null; }
         if (!grid.World.InBounds(target.x, target.y)) return null;
         var me = grid.CellAt(transform.position);
         int? dir = DirFrom(me, target);

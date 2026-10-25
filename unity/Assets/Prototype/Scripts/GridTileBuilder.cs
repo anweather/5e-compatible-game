@@ -3,10 +3,16 @@ using Chem;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-// Builds one yard cell's ground: a block of the terrain's colour, with a
-// little per-cell colour variation, dressed with what stands on it (grass
-// tufts, a tree, bramble bushes, a stump, rubble). Each cell's dressing is
-// seeded from its position, so a rebuilt tile looks the same.
+// Builds one yard cell's ground: a block of soil (or stone, wood, metal)
+// capped with the terrain's colour, with a little per-cell colour variation,
+// dressed with what stands on it (grass tufts, a tree, bramble bushes, a
+// stump, rubble, the crags of a raised wall). Each cell's dressing is seeded
+// from its position, so a rebuilt tile looks the same.
+//
+// A tile is an unscaled root at the cell's ground height with the block and
+// the dressing under it, so ChemGrid can raise or sink the whole thing (earth
+// shaping, ChemGrid.Shaping.cs) by moving the root. The blocks reach well
+// below the deepest dig, so a trench's sides are its neighbours' soil.
 public sealed class GridTileBuilder
 {
     static readonly Dictionary<string, (Color color, float height)> TerrainLook = new()
@@ -17,12 +23,23 @@ public sealed class GridTileBuilder
         ["brush"] = (new Color(0.20f, 0.36f, 0.14f), 0.6f), ["tree"] = (new Color(0.16f, 0.38f, 0.15f), 2.2f),
         ["stump"] = (new Color(0.40f, 0.28f, 0.16f), 0.15f), ["wood"] = (new Color(0.58f, 0.40f, 0.22f), 0f),
         ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.62f, 0.66f, 0.72f), 0.02f),
+        ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f),
     };
+
+    // What a block is made of under its top: soil for earthy ground; stone, wood and metal all through.
+    static readonly Color Soil = new(0.34f, 0.25f, 0.17f);
+    static readonly HashSet<string> SolidThrough = new() { "bedrock", "stone", "pillar", "wood", TerrainIds.Metal, TerrainIds.Rock };
+    const float CapDepth = 0.12f;
+    // Each step dug darkens the earth at the bottom by this much.
+    const float DarkerPerDug = 0.14f;
+    // A raised wall's invisible blocker reaches this far above its top, out of a jump's reach.
+    const float WallBlockerHeight = 1.2f;
 
     // Terrains drawn as a ground tile with something standing on it; their height is an invisible collider.
     static readonly HashSet<string> Dressed = new() { TerrainIds.Tree, TerrainIds.Brush, TerrainIds.Stump, TerrainIds.Rubble };
 
-    const float TileBottom = -1.5f;
+    // Below the deepest dig (sim.height.min) under a pit.
+    const float TileBottom = -3f;
 
     readonly ChemGrid grid;
     readonly MaterialCache materials;
@@ -44,23 +61,62 @@ public sealed class GridTileBuilder
 
     float CellSize => grid.cellSize;
 
-    /// <summary>Builds the tile for a yard cell and returns it.</summary>
+    /// <summary>Height of a yard cell's tile top: its ground, or for blocks that stand up (stone) their top.</summary>
+    public float Top(Cell c, int x, int y) => IsDressed(c.T) ? grid.GroundTop(c) : grid.SurfaceY(x, y);
+
+    /// <summary>Builds the tile for a yard cell and returns its root, which sits at the tile's top.</summary>
     public GameObject Build(Cell c, int x, int y)
     {
         var look = Look(c.T);
         bool dressed = IsDressed(c.T);
-        float top = dressed ? grid.GroundTop(c) : grid.SurfaceY(x, y);
+        float top = Top(c, x, y);
         var center = grid.CellCenter(x, y);
 
-        var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        tile.name = $"{c.T} {x},{y}";
+        var tile = new GameObject($"{c.T} {x},{y}");
         tile.transform.SetParent(grid.transform, false);
-        tile.transform.position = new Vector3(center.x, (top + TileBottom) / 2f, center.z);
-        tile.transform.localScale = new Vector3(CellSize, top - TileBottom, CellSize);
-        Paint(tile.GetComponent<Renderer>(), "Ground", GroundColor(c.T, dressed, look.color), c.T == TerrainIds.Metal ? 0.85f : 0.1f, x, y);
+        tile.transform.position = new Vector3(center.x, top, center.z);
 
-        Dress(tile.transform, c.T, look, new Vector3(center.x, top, center.z), x, y);
+        var color = GroundColor(c.T, dressed, look.color);
+        if (c.Height < 0) color *= Mathf.Max(0.4f, 1f - DarkerPerDug * -c.Height);
+        var body = SolidThrough.Contains(c.T) ? color : Soil;
+        float smooth = c.T == TerrainIds.Metal ? 0.85f : 0.1f;
+        var block = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        block.name = "Ground";
+        block.transform.SetParent(tile.transform, false);
+        block.transform.localPosition = new Vector3(0f, (TileBottom - top) / 2f, 0f);
+        block.transform.localScale = new Vector3(CellSize, top - TileBottom, CellSize);
+        Paint(block.GetComponent<Renderer>(), "Ground", body, smooth, x, y);
+        if (body != color) Cap(tile.transform, color, smooth, x, y);
+
+        var surface = new Vector3(center.x, top, center.z);
+        Dress(tile.transform, c.T, look, surface, x, y);
+        if (grid.World.IsRaisedWall(c)) DressWall(tile.transform, surface, look.color, x, y);
         return tile;
+    }
+
+    // The top of a block in the terrain's own colour (grass, dirt), over a body of soil.
+    void Cap(Transform tile, Color color, float smooth, int x, int y)
+    {
+        var cap = Primitives.Visual(PrimitiveType.Cube, "Top");
+        cap.transform.SetParent(tile, false);
+        cap.transform.localPosition = new Vector3(0f, 0.005f - CapDepth / 2f, 0f);
+        cap.transform.localScale = new Vector3(CellSize + 0.004f, CapDepth, CellSize + 0.004f);
+        Paint(cap.GetComponent<Renderer>(), "Ground", color, smooth, x, y);
+    }
+
+    // A raised wall: crags of rock along its top, and a blocker above them so it can't be jumped onto.
+    void DressWall(Transform tile, Vector3 surface, Color color, int x, int y)
+    {
+        var rng = new System.Random(x * 15485863 + y * 32452843);
+        for (int i = 0; i < 3; i++)
+        {
+            var off = new Vector3((float)rng.NextDouble() - 0.5f, 0f, (float)rng.NextDouble() - 0.5f) * (CellSize * 0.55f);
+            float size = 0.45f + 0.3f * (float)rng.NextDouble();
+            var crag = Part(tile, PrimitiveType.Cube, surface + off + Vector3.up * (size * 0.25f), new Vector3(size, size * 0.8f, size), "Stone", color);
+            crag.transform.rotation = Quaternion.Euler(rng.Next(-25, 25), rng.Next(360), rng.Next(-25, 25));
+            Paint(crag.GetComponent<Renderer>(), "Stone", color * 0.9f, 0.1f, x + i * 11, y);
+        }
+        Blocker(tile, surface, WallBlockerHeight);
     }
 
     // Dressed terrains stand on grass or dirt; anything grassy takes the scene's grass tint.

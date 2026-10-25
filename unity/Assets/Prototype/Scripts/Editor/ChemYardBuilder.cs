@@ -127,6 +127,9 @@ public static class ChemYardBuilder
         grid.smokeFx = Load(SmokeFx + "/SmokeEffect.prefab");
         grid.steamFx = Load(SmokeFx + "/RisingSteam.prefab");
         grid.sparksFx = Load(MiscFx + "/SparksEffect.prefab");
+        // The dust thrown up by earth shaping uses the Particle Pack's dust material.
+        var dust = Load(FireFx + "/DustExplosion.prefab");
+        grid.dustMaterial = dust != null ? dust.GetComponent<ParticleSystemRenderer>().sharedMaterial : null;
         if (grid.fireSmall == null) Debug.LogWarning("Particle Pack missing: fire and smoke will be cubes. Run Prototype > Restore Asset Packs.");
     }
 
@@ -257,6 +260,12 @@ public static class ChemYardBuilder
             Visual(SpellIds.GustOfWind, new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),
             Visual(SpellIds.Thunderwave, new Color(0.8f, 0.85f, 1f), null, FireFx + "/DustExplosion.prefab"),
             Visual(SpellIds.Levitate, new Color(0.75f, 0.6f, 1f), null, MiscFx + "/ParticlesLight.prefab"),
+            // Earth shaping: the ground itself throws up dust where it moves (ChemGrid.dustFx).
+            Visual(SpellIds.MoldEarth, new Color(0.75f, 0.55f, 0.3f), null, null),
+            Visual(SpellIds.MoldEarthHeap, new Color(0.75f, 0.55f, 0.3f), null, null),
+            Visual(SpellIds.EarthenTrench, new Color(0.7f, 0.5f, 0.28f), null, null),
+            Visual(SpellIds.WallOfStone, new Color(0.7f, 0.68f, 0.62f), null, null),
+            Visual(SpellIds.MoveEarth, new Color(0.65f, 0.5f, 0.3f), null, null),
         };
         EditorUtility.SetDirty(visuals);
         AssetDatabase.SaveAssets();
