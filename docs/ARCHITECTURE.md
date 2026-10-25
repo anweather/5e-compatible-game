@@ -89,8 +89,16 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   `Advance(dt)` the ones that moved, for `SetHeightsDelayLOD`. `CellPaint.cs`
   maps a cell's terrain, cover and scorch to weights of the valley's
   terrain layers (by name) for its 4×4 or 1×1 texel block, batched as one
-  rectangle per chunk. Arrays are Unity's order: `[z, x]` (and `[z, x,
-  layer]`).
+  rectangle per chunk. Each texel blends the cells around a point nudged by
+  smooth noise, and the fade into the base slides with broader noise, so a
+  scorch or the bare pad has a soft, wobbly edge that ignores cell borders
+  (a cell still only affects its 3×3 neighbourhood). Arrays are Unity's
+  order: `[z, x]` (and `[z, x, layer]`).
+- `ValueNoise.cs` (smooth, seeded, repeatable noise) and `CellContour.cs`
+  (a rounded, wobbly outline around a patch of cells as a triangle mesh,
+  by marching triangles over the cells' blended values; a per-cell wobble
+  factor holds the edge still where it must meet a bank) are view maths
+  kept here so they are tested without Unity. Not ports.
 - `World.Terraform.cs` is earth shaping: a spell with `"effect":
   "terraform"` raises or digs its cells (`Cell.Height`, steps on top of
   the terrain's elevation). Water flow reads elevation plus height, raised
@@ -125,7 +133,7 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 ### 3. View (`Scripts/`)
 | Area | Files |
 |---|---|
-| The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Rules.cs` (the rules in force; puts a switch in force between ticks and raises `RulesChanged`), `ChemGrid.Visuals.cs` (per-cell redraw: dressing, blocker, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge), `ChemGrid.Shaping.cs` (earth shaping: reshaped ground eases to its new height with a puff of dust, carrying what stands on it), `CellDressing.cs` (what stands on a cell: brambles, a charred stump, rubble, bridge planks, a metal plate, a stone block, a raised wall's crags), `CellBlockers.cs` (pooled invisible boxes on blocking cells: trees, brambles, stone, raised walls), `CellWaterMesh.cs` (one surface over the wet cells, and one for ice with a collider; never above the land around it), `MaterialCache.cs`, `FireLightPool.cs` |
+| The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Rules.cs` (the rules in force; puts a switch in force between ticks and raises `RulesChanged`), `ChemGrid.Visuals.cs` (per-cell redraw: dressing, blocker, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge; flames jittered by a cell hash so a burning front isn't a row), `ChemGrid.Shaping.cs` (earth shaping: reshaped ground eases to its new height with a puff of dust, carrying what stands on it), `CellDressing.cs` (what stands on a cell: brambles, a charred stump, rubble, a stone block; seeded per cell so nothing repeats), `CellDressing.Built.cs` (a bridge's plank deck on two beams, a riveted iron or bronze plate shifted and turned off the grid, a raised wall's grey crags), `CellBlockers.cs` (pooled invisible boxes on blocking cells: trees, brambles, stone, raised walls), `CellWaterMesh.cs` (one surface over the wet cells, and one for ice with a collider; never above the land around it), `CellSlickMesh.cs` (oil and grease as one glossy film, level over a pit's lip and shed on steep ground), `ContourSurface.cs` (the mesh both draw: a `CellContour` outline with heights, vertex colours fading the edge, world UVs), `MaterialCache.cs`, `FireLightPool.cs` |
 | The ground | The valley's 9×9 chunk terrains are the ground for every cell, the old yard included. `ValleyGround.cs` keeps runtime copies of the chunks the cells reach and draws the cells on them: heights from `CellHeightfield` (baked base plus each cell's offset, eased) and paint from `CellPaint` (one texel block per cell, detail grass cleared off bare ground). `ValleyChemistry.cs` routes cell changes to it and does the rest on the terrain: burnt trees (the yard's trees are terrain trees too), scorched grass, the cabin burning down, the lake (pits under the lake's surface) |
 | The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast; a two-page bar, Elements and Earth), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water, climb one step), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
 | Physics props | `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes; online a client's copy is a puppet of the host's), `Forces.cs` (radial and line shoves, optionally only what this machine owns), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate; solo when a cast lands, online when its tick batch runs), `ChemEffects.cs` (the one door from physics into the chemistry: applied solo, stamped by the host online) |

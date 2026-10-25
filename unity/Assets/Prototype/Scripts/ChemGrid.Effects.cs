@@ -8,7 +8,7 @@ public partial class ChemGrid
 {
     // --- fire ----------------------------------------------------------------------
 
-    void RenderFire(View v, Cell c, Vector3 center, float ground, float scale = 1f)
+    void RenderFire(View v, Cell c, int x, int y, Vector3 center, float ground, float scale = 1f)
     {
         var prefab = FirePrefab(c.Fire);
         if (c.Fire == 0 || prefab == null)
@@ -19,9 +19,20 @@ public partial class ChemGrid
         }
         if (v.fireLevel == c.Fire && v.fire != null) return;
         Retire(v.fire);
-        v.fire = Instantiate(prefab, new Vector3(center.x, ground, center.z), Quaternion.identity, transform);
-        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f * scale);
+        var (offset, turn, size) = FlameSpot(x, y);
+        v.fire = Instantiate(prefab, new Vector3(center.x + offset.x, ground, center.z + offset.y), Quaternion.Euler(0f, turn, 0f), transform);
+        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f * scale * size);
         v.fireLevel = c.Fire;
+    }
+
+    // Where in its cell a fire burns, how it is turned and sized, from the cell alone (so a
+    // relit cell burns in the same spot): flames scattered off the cell centres, so a burning
+    // field doesn't read as rows.
+    (Vector2 offset, float turn, float size) FlameSpot(int x, int y)
+    {
+        float Hash(int seed) => ValueNoise.Hash(x, y, seed);
+        var offset = new Vector2(Hash(1) - 0.5f, Hash(2) - 0.5f) * (cellSize * 0.7f);
+        return (offset, Hash(3) * 360f, 0.75f + 0.5f * Hash(4));
     }
 
     GameObject FirePrefab(int fire) => fire switch

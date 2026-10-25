@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 // and, for any cell whose state changed, updates what stands on it: its
 // dressing (CellDressing: brambles, a stump, planks, crags), its invisible
 // blocker (CellBlockers), its water or ice (one surface over all the wet
-// cells: CellWaterMesh), a cover film (oil, grease), and its fire, gas and
+// cells: CellWaterMesh), oil or grease (one film: CellSlickMesh), and its fire, gas and
 // charge effects (ChemGrid.Effects.cs).
 // Reshaped ground eases to its new height (ChemGrid.Shaping.cs). A small pool
 // of flickering lights follows the biggest fires (FireLightPool). Cubes stand
@@ -24,8 +24,10 @@ public partial class ChemGrid
     public GameObject steamFx;
     public GameObject sparksFx;
     public int maxFireLights = 16;
-    [Tooltip("Optional: the material of the cells' water (the lake's, so they match). A plain see-through blue stands in.")]
+    [Tooltip("Optional: the material of the cells' water (vertex alpha fades its edges). A plain see-through blue stands in.")]
     public Material waterMaterial;
+    [Tooltip("Optional: the material of oil and grease films (tinted by vertex colours). One is made at runtime if missing.")]
+    public Material slickMaterial;
 
     // What is currently shown for one cell, so a cell is only redrawn when it changes.
     sealed class View
@@ -45,6 +47,7 @@ public partial class ChemGrid
     CellDressing dressings;
     CellBlockers blockers;
     CellWaterMesh waterSurface;
+    CellSlickMesh slicks;
     FireLightPool fireLights;
 
     void InitVisuals()
@@ -56,6 +59,8 @@ public partial class ChemGrid
         waterSurface?.Destroy();
         waterSurface = new CellWaterMesh(this, waterMaterial != null ? waterMaterial : materials.Water(),
             materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f));
+        slicks?.Destroy();
+        slicks = new CellSlickMesh(this, slickMaterial != null ? slickMaterial : materials.Slick());
         shaping.Clear();
         fireLights = new FireLightPool(this, maxFireLights);
     }
@@ -67,6 +72,7 @@ public partial class ChemGrid
             for (int x = 0; x < World.W; x++) RenderCell(x, y);
         }
         waterSurface.Rebuild();
+        slicks.Rebuild();
         materials.ScrollWater(Time.time);
         AnimateShaping();
     }
@@ -87,8 +93,8 @@ public partial class ChemGrid
         bool lake = valley != null && valley.IsLake(c, x, y);
 
         ground = RenderWater(v, c, x, y, ground, groundTop, lake);
-        RenderCover(v, c, center, ground);
-        RenderFire(v, c, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
+        RenderCover(v, c, x, y, center, ground);
+        RenderFire(v, c, x, y, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
         RenderGas(v, c, center, ground, (x + y) % 2 == 0);
         // A lightning strike across the lake charges thousands of cells; on the lake, sparks on
         // one cell in 25 read the same without thousands of effects.
@@ -111,7 +117,11 @@ public partial class ChemGrid
             blockers.Place(x, y, c, shown);
             if (reshaped) StartShaping(v, x, y, shown);
         }
-        if (reshaped) waterSurface.GroundChanged();
+        if (reshaped)
+        {
+            waterSurface.GroundChanged();
+            slicks.GroundChanged();
+        }
         v.terrain = c.T;
         v.height = c.Height;
         v.elevation = elevation;
@@ -160,10 +170,12 @@ public partial class ChemGrid
 
     // --- covers ------------------------------------------------------------------
 
-    // A glossy film of oil or grease; ash is the terrain's own scorched paint (CellPaint), not a film.
-    void RenderCover(View v, Cell c, Vector3 center, float ground)
+    // Oil and grease are a glossy film over the cells (CellSlickMesh); ash is the terrain's own
+    // charred paint (CellPaint), or a grey sheet without a valley.
+    void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
-        if (c.Cover == null || (valley != null && c.Cover == CoverIds.Ash))
+        slicks.Changed(x, y, c.Cover);
+        if (c.Cover != CoverIds.Ash || valley != null)
         {
             Hide(v.cover);
             return;
@@ -171,15 +183,8 @@ public partial class ChemGrid
         var film = Ensure(ref v.cover, "Cover", center);
         film.transform.position = new Vector3(center.x, ground + 0.02f, center.z);
         film.transform.localScale = new Vector3(0.96f * cellSize, 0.03f, 0.96f * cellSize);
-        film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-" + c.Cover, CoverColor(c.Cover), c.Cover == CoverIds.Ash ? 0.05f : 0.9f);
+        film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-ash", new Color(0.35f, 0.34f, 0.33f), 0.05f);
     }
-
-    static Color CoverColor(string cover) => cover switch
-    {
-        CoverIds.Oil => new Color(0.06f, 0.05f, 0.05f),
-        CoverIds.Grease => new Color(0.85f, 0.78f, 0.40f),
-        _ => new Color(0.35f, 0.34f, 0.33f),
-    };
 
     // --- stand-in cubes ------------------------------------------------------------
 
@@ -208,6 +213,7 @@ public partial class ChemGrid
     {
         materials.Destroy();
         waterSurface?.Destroy();
+        slicks?.Destroy();
         if (plainDust != null) Destroy(plainDust);
     }
 }

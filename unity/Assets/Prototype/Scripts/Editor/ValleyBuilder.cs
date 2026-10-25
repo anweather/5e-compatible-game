@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using Chem;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -30,8 +31,12 @@ public static class ValleyBuilder
         AssetDatabase.Refresh();
 
         var terrains = BuildTerrain(grid, yardRows);
-        // The cells' water (the pond, trenches) wears the lake's material, so they match.
-        grid.waterMaterial = BuildLake();
+        var ripples = BuildLake();
+        // The cells' water (the pond, trenches, puddles) and their oil and grease: films whose
+        // meshes fade their own edges (vertex alpha). The water has the lake's colour and
+        // ripples, gentler, so a small pool doesn't glint in rings.
+        grid.waterMaterial = SoftMaterial("CellWater", new Color(0.12f, 0.32f, 0.42f, 0.8f), 0.93f, ripples, 0.12f);
+        grid.slickMaterial = SoftMaterial("Slick", Color.white, 0.92f, null, 0f);
         BuildSky();
         var cabinRoot = BuildCabin();
         ScatterRocks();
@@ -73,32 +78,51 @@ public static class ValleyBuilder
     }
 
     // Grass on flat ground, moss in the meadows, rock on slopes, snow up high, sand at the lake.
+    // ValleyShape.LayerWeights paints these; the cells also paint charred and bare earth
+    // (CellPaint.Charred, CellPaint.Earth: copies of pack layers, after these).
     static readonly string[] LayerNames = { "Grass_A", "Grass_Moss", "Rock", "Snow", "Sand", "Soil_Rocks" };
 
-    // The terrain layers in LayerNames order, with greener copies of the grass; null if the pack is missing.
+    // The terrain layers in LayerNames order, with greener copies of the grass, then the cells'
+    // own; null if the pack is missing.
     static TerrainLayer[] LoadLayers()
     {
         var layers = new List<TerrainLayer>();
         foreach (var n in LayerNames)
         {
-            var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>($"{TerrainPack}/TerrainLayers/{n}_TerrainLayer.terrainlayer");
+            var layer = PackLayer(n);
             if (layer != null) layers.Add(n.StartsWith("Grass", System.StringComparison.Ordinal) ? Greener(layer) : layer);
         }
-        if (layers.Count == LayerNames.Length) return layers.ToArray();
+        var pebbles = PackLayer("Pebbles_A");
+        var mud = PackLayer("Muddy");
+        if (layers.Count == LayerNames.Length && pebbles != null && mud != null)
+        {
+            // Burnt ground: the pack's dark pebbles, charred nearly black, tiled wide so no repeat shows.
+            layers.Add(CopyLayer(pebbles, $"{Generated}/{CellPaint.Charred}_TerrainLayer.terrainlayer", new Color(0.42f, 0.4f, 0.38f), 2.5f));
+            // Worn bare earth: the pack's mud, a touch lighter.
+            layers.Add(CopyLayer(mud, $"{Generated}/{CellPaint.Earth}_TerrainLayer.terrainlayer", new Color(1.12f, 1.05f, 0.98f), 3f));
+            return layers.ToArray();
+        }
         Debug.LogWarning("Terrain Sample Asset Pack missing: the valley will be untextured. Run Prototype > Restore Asset Packs.");
         return null;
     }
 
+    static TerrainLayer PackLayer(string name) =>
+        AssetDatabase.LoadAssetAtPath<TerrainLayer>($"{TerrainPack}/TerrainLayers/{name}_TerrainLayer.terrainlayer");
+
     // The pack's grass textures are olive; a copy of the layer with a greener copy of its
-    // texture gives a lush valley without editing the pack. (URP's terrain shader ignores the
-    // layer's colour remap, so the colour has to be in the texture.)
-    static TerrainLayer Greener(TerrainLayer source)
+    // texture gives a lush valley without editing the pack.
+    static TerrainLayer Greener(TerrainLayer source) =>
+        CopyLayer(source, $"{Generated}/{source.name}_Green.terrainlayer", new Color(0.78f, 1.12f, 0.6f), source.tileSize.x);
+
+    // A copy of a pack layer at a path, its texture colour-multiplied (URP's terrain shader ignores
+    // the layer's colour remap, so the colour has to be in the texture) and tiled every tileSize metres.
+    static TerrainLayer CopyLayer(TerrainLayer source, string path, Color tint, float tileSize)
     {
-        var layer = EditorAssets.LoadOrCreate($"{Generated}/{source.name}_Green.terrainlayer", () => new TerrainLayer());
-        layer.diffuseTexture = Tinted(source.diffuseTexture, new Color(0.78f, 1.12f, 0.6f));
+        var layer = EditorAssets.LoadOrCreate(path, () => new TerrainLayer());
+        layer.diffuseTexture = Tinted(source.diffuseTexture, tint);
         layer.normalMapTexture = source.normalMapTexture;
         layer.maskMapTexture = source.maskMapTexture;
-        layer.tileSize = source.tileSize;
+        layer.tileSize = new Vector2(tileSize, tileSize);
         layer.normalScale = source.normalScale;
         layer.smoothness = source.smoothness;
         layer.metallic = source.metallic;
@@ -217,7 +241,8 @@ public static class ValleyBuilder
 
     // --- lake ----------------------------------------------------------------
 
-    static Material BuildLake()
+    // Builds the lake; returns its ripples (a normal map).
+    static Texture2D BuildLake()
     {
         var ripplesPath = Generated + "/LakeRipples.png";
         File.WriteAllBytes(ripplesPath, ProceduralTextures.RippleNormals(256).EncodeToPNG());
@@ -240,6 +265,16 @@ public static class ValleyBuilder
         r.sharedMaterial = mat;
         r.shadowCastingMode = ShadowCastingMode.Off;
         lake.AddComponent<ScrollingTexture>().speed = new Vector2(0.004f, 0.003f);
+        return AssetDatabase.LoadAssetAtPath<Texture2D>(ripplesPath);
+    }
+
+    // A see-through material tinted by its mesh's vertex colours (UrpMaterials.ConfigureSoftSurface).
+    static Material SoftMaterial(string name, Color color, float smoothness, Texture2D normals, float bump)
+    {
+        var mat = EditorAssets.LoadOrCreate($"{Generated}/{name}.mat", () => new Material(Shader.Find(UrpMaterials.LitShader)));
+        UrpMaterials.ConfigureSoftSurface(mat, color, smoothness);
+        if (normals != null) UrpMaterials.SetNormalMap(mat, normals, bump);
+        EditorUtility.SetDirty(mat);
         return mat;
     }
 

@@ -4,15 +4,15 @@ using UnityEngine;
 
 // What stands on a cell, on top of the chunk terrain (the terrain itself is the
 // ground: CellHeightfield shapes it, CellPaint colours it): bramble bushes, a
-// charred stump, rubble, the planks of a bridge, a metal plate, a stone block,
-// the crags along a raised wall. Trees are the terrain's own trees
+// charred stump, rubble, a stone block here; the planks of a bridge, an iron
+// plate and the crags along a raised wall in CellDressing.Built.cs. Trees are the terrain's own trees
 // (ValleyChemistry burns them); grass is the terrain's detail grass. Each
 // cell's dressing is seeded from its position, so a rebuilt one looks the same.
 //
 // A dressing is an unscaled root at the cell's ground with its parts under it,
 // so ChemGrid can raise or sink the whole thing with the ground (earth shaping,
 // ChemGrid.Shaping.cs) by moving the root.
-public sealed class CellDressing
+public sealed partial class CellDressing
 {
     static readonly Dictionary<string, (Color color, float height)> TerrainLook = new()
     {
@@ -21,7 +21,7 @@ public sealed class CellDressing
         ["dirt"] = (new Color(0.50f, 0.38f, 0.25f), 0f), ["grass"] = (new Color(0.33f, 0.55f, 0.22f), 0f),
         ["brush"] = (new Color(0.20f, 0.36f, 0.14f), 0.6f), ["tree"] = (new Color(0.16f, 0.38f, 0.15f), 2.2f),
         ["stump"] = (new Color(0.13f, 0.10f, 0.08f), 0.15f), ["wood"] = (new Color(0.58f, 0.40f, 0.22f), 0f),
-        ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.62f, 0.66f, 0.72f), 0.02f),
+        ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.30f, 0.29f, 0.28f), 0.06f),
         ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f),
     };
 
@@ -83,42 +83,15 @@ public sealed class CellDressing
                 DressRubble(root, surface, rng, look.color);
                 break;
             case TerrainIds.Wood:
-                DressPlanks(root, surface, look.color, x, y);
+                DressPlanks(root, surface, look.color, rng, x, y);
                 break;
             case TerrainIds.Metal:
-                Part(root, PrimitiveType.Cube, surface + Vector3.up * 0.02f, new Vector3(CellSize * 0.98f, 0.04f, CellSize * 0.98f), "Metal", look.color, 0.85f);
+                DressPlate(root, surface, rng, x, y);
                 break;
             default:
                 var block = Part(root, PrimitiveType.Cube, surface + Vector3.up * (look.height / 2f - 0.1f), new Vector3(CellSize, look.height + 0.2f, CellSize), "Stone", look.color);
                 Paint(block.GetComponent<Renderer>(), "Stone", look.color, 0.1f, x, y);
                 break;
-        }
-    }
-
-    // A bridge's deck: boards across the cell, a little proud of the ground, with gaps between them.
-    void DressPlanks(Transform root, Vector3 surface, Color color, int x, int y)
-    {
-        const int boards = 4;
-        float depth = CellSize / boards;
-        for (int i = 0; i < boards; i++)
-        {
-            var at = surface + new Vector3(0f, 0.04f, (i + 0.5f) * depth - CellSize / 2f);
-            var board = Part(root, PrimitiveType.Cube, at, new Vector3(CellSize * 1.05f, 0.08f, depth * 0.88f), "Planks", color);
-            Paint(board.GetComponent<Renderer>(), "Planks", color, 0.15f, x * 5 + i, y);
-        }
-    }
-
-    // A raised wall: crags of rock along its top.
-    void DressWall(Transform root, Vector3 surface, Color color, int x, int y)
-    {
-        var rng = new System.Random(x * 15485863 + y * 32452843);
-        for (int i = 0; i < 3; i++)
-        {
-            var off = new Vector3((float)rng.NextDouble() - 0.5f, 0f, (float)rng.NextDouble() - 0.5f) * (CellSize * 0.55f);
-            float size = 0.45f + 0.3f * (float)rng.NextDouble();
-            var crag = Part(root, PrimitiveType.Cube, surface + off + Vector3.up * (size * 0.25f), new Vector3(size, size * 0.8f, size), "Stone", color);
-            crag.transform.rotation = Quaternion.Euler(rng.Next(-25, 25), rng.Next(360), rng.Next(-25, 25));
-            Paint(crag.GetComponent<Renderer>(), "Stone", color * 0.9f, 0.1f, x + i * 11, y);
         }
     }
 

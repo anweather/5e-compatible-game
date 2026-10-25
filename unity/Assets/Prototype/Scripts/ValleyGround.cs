@@ -4,8 +4,12 @@ using UnityEngine;
 
 // The ground of the chunk terrains under the chemistry's cells, as Unity
 // TerrainData: the cells' heights (CellHeightfield: baked ground plus each
-// cell's offset, eased) and their paint (CellPaint: a block of alphamap texels
-// per cell, with the detail grass cleared off bare ground).
+// cell's offset, eased) and their paint (CellPaint: soft-edged paint laid over
+// the saved valley's own, with the detail grass cleared off bare ground).
+//
+// Only cells whose paint differs from how they were baked paint anything: the
+// rest keep the saved paint (the meadow, the old yard's soft-edged pad and
+// gully), so a burnt patch fades into whatever was there before.
 //
 // Works on runtime copies of the chunks the cells reach, so playing never
 // changes the saved valley; Bind makes fresh copies (a new world starts from the
@@ -22,6 +26,8 @@ public sealed class ValleyGround
         public float[,] baseHeights;
         // CellPaint.Layers as indices into the terrain's layers (-1: the terrain lacks it).
         public int[] layers;
+        // The saved paint, [z, x, terrain layer], read the first time the chunk is painted.
+        public float[,,] baseAlpha;
         public bool heightsChanged;
     }
 
@@ -32,6 +38,9 @@ public sealed class ValleyGround
     CellHeightfield heightfield;
     World world;
     float[] cellBase;
+    // Each cell's paint as baked (CellPaint.Mix of the starting world); a cell still painting
+    // this keeps the saved paint.
+    IReadOnlyList<float>[] bakedPaint;
 
     public ValleyGround(TerrainGrid layout, Terrain[] terrains)
     {
@@ -65,8 +74,15 @@ public sealed class ValleyGround
         reshaped.Clear();
         foreach (var kv in chunks) Copy(kv.Key, kv.Value);
         cellBase = new float[w.W * w.H];
+        bakedPaint = new IReadOnlyList<float>[w.W * w.H];
         for (int y = 0; y < w.H; y++)
-            for (int x = 0; x < w.W; x++) cellBase[w.Idx(x, y)] = SampleBase(x, y);
+        {
+            for (int x = 0; x < w.W; x++)
+            {
+                cellBase[w.Idx(x, y)] = SampleBase(x, y);
+                bakedPaint[w.Idx(x, y)] = CellPaint.Mix(w, w.At(x, y));
+            }
+        }
     }
 
     void Copy((int i, int j) at, Chunk ch)
@@ -83,6 +99,7 @@ public sealed class ValleyGround
         for (int z = 0; z < res; z++)
             for (int x = 0; x < res; x++) ch.baseHeights[z, x] = heights[z, x] * size - offsets[z, x];
         ch.layers = LayerIndices(ch.data.terrainLayers);
+        ch.baseAlpha = null;
     }
 
     /// <summary>CellPaint's layers as indices into a terrain's layers, by name ("&lt;name&gt;_TerrainLayer...", as ValleyBuilder names them); -1 where missing.</summary>
@@ -112,6 +129,15 @@ public sealed class ValleyGround
     {
         var (i, j, sx, sz) = layout.CellSample(x, y);
         return BaseHeight(x, y) + (heightfield != null && heightfield.Shapes(i, j) ? heightfield.Current(i, j)[sz, sx] : 0f);
+    }
+
+    /// <summary>The terrain's ground drawn now at a world point over the cells (0 off them).</summary>
+    public float GroundAt(float wx, float wz)
+    {
+        var (x, y) = layout.CellAt(wx, wz);
+        if (!chunks.TryGetValue(layout.ChunkOfCell(x, y), out var ch) || ch.data == null) return 0f;
+        var p = ch.terrain.transform.position;
+        return p.y + ch.data.GetInterpolatedHeight((wx - p.x) / ch.data.size.x, (wz - p.z) / ch.data.size.z);
     }
 
     /// <summary>A cell's elevation or height changed: its ground eases there (see Advance).</summary>
@@ -154,36 +180,57 @@ public sealed class ValleyGround
             ch.heightsChanged = false;
         }
         if (repaint.Count == 0) return;
-        foreach (var (x, y) in repaint) Paint(x, y, scorched);
+        // A cell's paint reaches its neighbours' texels: repaint them too, as strips of cells.
+        System.Func<int, int, IReadOnlyList<float>> paintOf = (x, y) => PaintOf(x, y, scorched(x, y));
+        foreach (var r in CellPaint.Runs(layout, CellPaint.Around(layout, repaint))) Paint(r, paintOf);
+        foreach (var (x, y) in repaint) ClearDetailIfBare(x, y, scorched(x, y));
         repaint.Clear();
     }
 
-    // One cell's texels (a rectangle per cell, so cells around it keep the valley's own paint),
-    // and its detail grass cleared if it is no longer grassy.
-    void Paint(int x, int y, System.Func<int, int, bool> scorched)
+    // What a cell paints over the saved paint: nothing while it paints as it was baked.
+    IReadOnlyList<float> PaintOf(int x, int y, bool scorched)
     {
-        var r = layout.TexelRect(x, y);
-        if (!chunks.TryGetValue((r.I, r.J), out var ch)) return;
-        var block = Expand(CellPaint.Block(layout, world, r, scorched), ch.layers, ch.data.alphamapLayers);
-        ch.data.SetAlphamaps(r.X, r.Z, block);
-        var w = CellPaint.Weights(world.At(x, y), scorched(x, y));
-        if (IsGrassy(w)) return;
-        ClearDetail(ch.data, r);
+        var mix = CellPaint.Mix(world, world.At(x, y), scorched);
+        return ReferenceEquals(mix, bakedPaint[world.Idx(x, y)]) ? null : mix;
     }
 
-    /// <summary>Whether layer weights (CellPaint.Layers order) read as grass that detail grass grows on.</summary>
-    public static bool IsGrassy(IReadOnlyList<float> w) => w[0] + w[1] >= 0.5f;
-
-    /// <summary>A CellPaint block spread over all of a terrain's layers (<paramref name="layers"/> from LayerIndices).</summary>
-    public static float[,,] Expand(float[,,] block, int[] layers, int layerCount)
+    void Paint(ChunkRect r, System.Func<int, int, IReadOnlyList<float>> paintOf)
     {
-        int h = block.GetLength(0), w = block.GetLength(1);
-        var full = new float[h, w, layerCount];
-        for (int z = 0; z < h; z++)
-            for (int x = 0; x < w; x++)
-                for (int k = 0; k < layers.Length; k++)
-                    if (layers[k] >= 0) full[z, x, layers[k]] += block[z, x, k];
+        if (!chunks.TryGetValue((r.I, r.J), out var ch)) return;
+        int res = ch.data.alphamapResolution;
+        ch.baseAlpha ??= ch.data.GetAlphamaps(0, 0, res, res);
+        ch.data.SetAlphamaps(r.X, r.Z, Compose(CellPaint.Block(layout, r, paintOf), ch.layers, ch.baseAlpha));
+    }
+
+    void ClearDetailIfBare(int x, int y, bool scorched)
+    {
+        if (CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y), scorched))) return;
+        var r = layout.TexelRect(x, y);
+        if (chunks.TryGetValue((r.I, r.J), out var ch)) ClearDetail(ch.data, r);
+    }
+
+    /// <summary>
+    /// A CellPaint block laid over a terrain's paint (<paramref name="baseAlpha"/>, the whole
+    /// alphamap, [z, x, layer]) for the block's rectangle, spread over all of the terrain's layers
+    /// (<paramref name="layers"/> from LayerIndices).
+    /// </summary>
+    public static float[,,] Compose(PaintBlock block, int[] layers, float[,,] baseAlpha)
+    {
+        var r = block.Rect;
+        var full = new float[r.Height, r.Width, baseAlpha.GetLength(2)];
+        for (int z = 0; z < r.Height; z++)
+            for (int x = 0; x < r.Width; x++) ComposeTexel(block, layers, baseAlpha, full, x, z);
         return full;
+    }
+
+    static void ComposeTexel(PaintBlock block, int[] layers, float[,,] baseAlpha, float[,,] full, int x, int z)
+    {
+        var r = block.Rect;
+        float a = block.Cover[z, x];
+        for (int n = 0; n < full.GetLength(2); n++) full[z, x, n] = baseAlpha[r.Z + z, r.X + x, n] * (1f - a);
+        if (a <= 0f) return;
+        for (int k = 0; k < layers.Length; k++)
+            if (layers[k] >= 0) full[z, x, layers[k]] += a * block.Mix[z, x, k];
     }
 
     /// <summary>Clears the detail grass under a texel rectangle (detail and alphamap resolutions may differ).</summary>

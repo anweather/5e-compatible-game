@@ -8,6 +8,8 @@ using UnityEngine.Rendering;
 public static class UrpMaterials
 {
     public const string LitShader = "Universal Render Pipeline/Lit";
+    // Lit like LitShader, but multiplied by the mesh's vertex colours (alpha too): soft-edged films.
+    public const string VertexLitShader = "Universal Render Pipeline/Particles/Lit";
 
     /// <summary>A new Lit material. <paramref name="smoothness"/> null keeps the shader's default.</summary>
     public static Material NewLit(string name, Color color, float? smoothness = null, Color? emission = null)
@@ -41,6 +43,21 @@ public static class UrpMaterials
         m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
         m.renderQueue = (int)RenderQueue.Transparent;
         m.SetOverrideTag("RenderType", "Transparent");
+    }
+
+    /// <summary>
+    /// Makes a material a see-through lit surface tinted by its mesh's vertex colours, alpha
+    /// included, so a mesh can fade its own edges (water, slicks). Falls back to plain Lit (no
+    /// vertex colours) if the shader isn't in the build.
+    /// </summary>
+    public static void ConfigureSoftSurface(Material m, Color color, float smoothness)
+    {
+        var shader = Shader.Find(VertexLitShader);
+        m.shader = shader != null ? shader : Shader.Find(LitShader);
+        Configure(m, color, smoothness);
+        MakeTransparent(m);
+        m.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
+        m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
     }
 
     public static void SetNormalMap(Material m, Texture normals, float scale)

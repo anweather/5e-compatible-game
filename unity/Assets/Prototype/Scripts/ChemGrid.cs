@@ -204,6 +204,15 @@ public partial class ChemGrid : MonoBehaviour
         return baseY + World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
     }
 
+    /// <summary>The ground drawn at a world point: the terrain's (between cell centres too), or its cell's without a valley.</summary>
+    public float GroundAt(Vector3 p)
+    {
+        if (valley != null) return valley.GroundAt(p);
+        var cell = CellAt(p);
+        var c = World.At(cell.x, cell.y);
+        return c == null ? 0f : GroundTop(cell.x, cell.y, c);
+    }
+
     public bool IsSlipperyAt(Vector3 p)
     {
         var cell = CellAt(p);

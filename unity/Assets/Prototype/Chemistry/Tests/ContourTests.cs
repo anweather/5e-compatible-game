@@ -1,0 +1,123 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using NUnit.Framework;
+
+namespace Chem.Tests
+{
+    /// <summary>The view's smooth noise and the rounded outlines of water and slicks (ValueNoise, CellContour).</summary>
+    public class ContourTests
+    {
+        static readonly ContourSpec Smooth = new ContourSpec(4, 0.5f, 0f, 7);
+        static readonly ContourSpec Wobbly = new ContourSpec(4, 0.5f, 0.3f, 7);
+
+        [Test]
+        public void NoiseIsSmoothBoundedAndRepeatable()
+        {
+            var rng = new Random(3);
+            for (int n = 0; n < 500; n++)
+            {
+                float x = (float)rng.NextDouble() * 200f - 100f, y = (float)rng.NextDouble() * 200f - 100f;
+                float v = ValueNoise.Twice(x, y, 5);
+                Assert.That(v, Is.InRange(0f, 1f));
+                Assert.AreEqual(v, ValueNoise.Twice(x, y, 5));
+                Assert.Less(Math.Abs(ValueNoise.At(x + 0.01f, y, 5) - ValueNoise.At(x, y, 5)), 0.05f);
+            }
+            Assert.AreNotEqual(ValueNoise.At(0.5f, 0.5f, 1), ValueNoise.At(0.5f, 0.5f, 2), "seeds differ");
+        }
+
+        static ContourMesh Outline(ContourSpec spec, HashSet<(int x, int y)> cells)
+        {
+            var mesh = new ContourMesh();
+            if (cells.Count == 0)
+            {
+                new CellContour(spec).Build(0, 0, -1, -1, (x, y) => 0f, mesh);
+                return mesh;
+            }
+            new CellContour(spec).Build(cells.Min(c => c.x), cells.Min(c => c.y), cells.Max(c => c.x), cells.Max(c => c.y),
+                (x, y) => cells.Contains((x, y)) ? 1f : 0f, mesh);
+            return mesh;
+        }
+
+        static float Area(ContourMesh m)
+        {
+            float area = 0f;
+            for (int t = 0; t < m.Triangles.Count; t += 3)
+            {
+                var (ax, ay) = m.Points[m.Triangles[t]];
+                var (bx, by) = m.Points[m.Triangles[t + 1]];
+                var (cx, cy) = m.Points[m.Triangles[t + 2]];
+                float cross = (bx - ax) * (cy - ay) - (by - ay) * (cx - ax);
+                Assert.Greater(cross, 0f, "every triangle winds clockwise seen from above");
+                area += cross / 2f;
+            }
+            return area;
+        }
+
+        [Test]
+        public void NothingToOutlineGivesNoTriangles()
+        {
+            Assert.IsEmpty(Outline(Smooth, new HashSet<(int x, int y)>()).Triangles);
+        }
+
+        [Test]
+        public void OneCellIsARoundBlobInsideItsNeighbourhood()
+        {
+            var m = Outline(Smooth, new HashSet<(int x, int y)> { (5, 5) });
+            float area = Area(m);
+            Assert.That(area, Is.InRange(0.3f, 1f), "about a disc of half a cell's radius");
+            foreach (var (x, y) in m.Points) Assert.Less(Math.Max(Math.Abs(x - 5.5f), Math.Abs(y - 5.5f)), 1f);
+            int rim = m.Values.Count(v => Math.Abs(v - 0.5f) < 1e-6f);
+            Assert.Greater(rim, 8, "a round edge has many points, a square four");
+        }
+
+        [Test]
+        public void ABlockCoversAboutItsCellsWithRoundedCorners()
+        {
+            var cells = new HashSet<(int x, int y)>();
+            for (int y = 0; y < 3; y++)
+                for (int x = 0; x < 3; x++) cells.Add((x, y));
+            var m = Outline(Smooth, cells);
+            Assert.That(Area(m), Is.InRange(7f, 9f), "9 cells, minus the rounded corners");
+            Assert.That(m.Values, Has.All.GreaterThanOrEqualTo(0.5f - 1e-6f));
+            float corner = m.Points.Min(p => Math.Abs(p.x - 3f) + Math.Abs(p.y - 3f));
+            Assert.Greater(corner, 0.2f, "the outline cuts the block's corner");
+        }
+
+        [Test]
+        public void WobbleBendsTheEdgeButKeepsThePatch()
+        {
+            var cells = new HashSet<(int x, int y)>();
+            for (int y = 0; y < 6; y++)
+                for (int x = 0; x < 6; x++) cells.Add((x, y));
+            var smooth = Outline(Smooth, cells);
+            var wobbly = Outline(Wobbly, cells);
+            Assert.AreNotEqual(Area(smooth), Area(wobbly));
+            Assert.AreEqual(Area(smooth), Area(wobbly), 4f);
+            var again = Outline(Wobbly, cells);
+            Assert.AreEqual(wobbly.Points, again.Points, "the same cells give the same outline");
+        }
+
+        [Test]
+        public void CalmCellsHoldTheEdgeWhereTheValuesPutIt()
+        {
+            Func<int, int, float> block = (x, y) => x >= 0 && x < 6 && y >= 0 && y < 6 ? 1f : 0f;
+            var smooth = new ContourMesh();
+            var calm = new ContourMesh();
+            var wobbly = new ContourMesh();
+            new CellContour(Smooth).Build(0, 0, 5, 5, block, smooth);
+            new CellContour(Wobbly).Build(0, 0, 5, 5, block, calm, (x, y) => 0f);
+            new CellContour(Wobbly).Build(0, 0, 5, 5, block, wobbly, (x, y) => 1f);
+            Assert.AreEqual(smooth.Points, calm.Points, "no wobble anywhere: the smooth outline");
+            Assert.AreEqual(Outline(Wobbly, Block6()).Points, wobbly.Points, "full wobble: as with none given");
+        }
+
+        static HashSet<(int x, int y)> Block6()
+        {
+            var cells = new HashSet<(int x, int y)>();
+            for (int y = 0; y < 6; y++)
+                for (int x = 0; x < 6; x++) cells.Add((x, y));
+            return cells;
+        }
+    }
+}

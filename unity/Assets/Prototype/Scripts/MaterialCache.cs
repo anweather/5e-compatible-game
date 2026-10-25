@@ -20,6 +20,15 @@ public sealed class MaterialCache
         return m;
     }
 
+    /// <summary>A metallic Lit material, one per name like Lit.</summary>
+    public Material Metal(string name, Color color, float smoothness, float metallic)
+    {
+        if (materials.TryGetValue(name, out var m)) return m;
+        m = Lit(name, color, smoothness);
+        m.SetFloat("_Metallic", metallic);
+        return m;
+    }
+
     /// <summary>See-through water with a rippling normal map that <see cref="ScrollWater"/> drifts.</summary>
     public Material Water()
     {
@@ -28,6 +37,17 @@ public sealed class MaterialCache
         ripples = ProceduralTextures.RippleNormals(128);
         UrpMaterials.SetNormalMap(m, ripples, 0.2f);
         UrpMaterials.MakeTransparent(m);
+        return m;
+    }
+
+    /// <summary>A glossy film coloured by its mesh's vertex colours (CellSlickMesh), if the scene has none.</summary>
+    public Material Slick()
+    {
+        const string name = "Slick";
+        if (materials.TryGetValue(name, out var m)) return m;
+        m = new Material(Shader.Find(UrpMaterials.LitShader)) { name = name };
+        UrpMaterials.ConfigureSoftSurface(m, Color.white, 0.92f);
+        materials[name] = m;
         return m;
     }
 

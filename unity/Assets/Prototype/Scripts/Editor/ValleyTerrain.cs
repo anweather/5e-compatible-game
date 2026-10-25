@@ -11,7 +11,7 @@ using UnityEngine;
 //
 // The starting cells are baked in with the runtime's own code: CellHeightfield
 // sinks the pond, the pits and the gully into the ground, and CellPaint paints
-// the old yard's bare and oiled ground and clears its grass. Trees are the
+// the old yard's bare ground with soft edges and clears its grass. Trees are the
 // terrain's own, the yard's included. Everything goes into Generated/Valley
 // (derived, gitignored).
 public static class ValleyTerrain
@@ -180,7 +180,10 @@ public static class ValleyTerrain
 
     // --- paint -------------------------------------------------------------
 
-    /// <summary>Paints every chunk from the valley's shape, then the given cells (the old yard's) from their state.</summary>
+    /// <summary>
+    /// Paints every chunk from the valley's shape, then lays the given cells' paint (the old
+    /// yard's: its bare pad, the gully) over it with the runtime's soft edges (CellPaint).
+    /// </summary>
     public static void Paint(TerrainLayer[] layers, World world, IEnumerable<(int x, int y)> cells)
     {
         if (layers == null) return;
@@ -188,13 +191,14 @@ public static class ValleyTerrain
         for (int j = 0; j < Layout.ChunksZ; j++)
             for (int i = 0; i < Layout.ChunksX; i++) maps[Index(i, j)] = ShapePaint(i, j, layers.Length);
         var indices = ValleyGround.LayerIndices(layers);
+        var bare = new HashSet<(int x, int y)>();
         foreach (var (x, y) in cells)
+            if (!CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y)))) bare.Add((x, y));
+        System.Func<int, int, IReadOnlyList<float>> paintOf = (x, y) => bare.Contains((x, y)) ? CellPaint.Mix(world, world.At(x, y)) : null;
+        foreach (var r in CellPaint.DirtyRects(Layout, CellPaint.Around(Layout, bare)))
         {
-            var c = world.At(x, y);
-            if (ValleyGround.IsGrassy(CellPaint.Weights(c))) continue;
-            var r = Layout.TexelRect(x, y);
-            var block = ValleyGround.Expand(CellPaint.Block(Layout, world, r), indices, layers.Length);
-            CopyBlock(block, maps[Index(r.I, r.J)], r);
+            var map = maps[Index(r.I, r.J)];
+            CopyBlock(ValleyGround.Compose(CellPaint.Block(Layout, r, paintOf), indices, map), map, r);
         }
         for (int n = 0; n < datas.Length; n++) datas[n].SetAlphamaps(0, 0, maps[n]);
     }
@@ -212,7 +216,7 @@ public static class ValleyTerrain
                 float u = (tx + 0.5f) / res, v = (tz + 0.5f) / res;
                 var w = new Vector2(cx + u * Layout.ChunkSize, cz + v * Layout.ChunkSize);
                 var weights = Normalized(ValleyShape.LayerWeights(w, data.GetSteepness(u, v)));
-                for (int k = 0; k < layers; k++) map[tz, tx, k] = weights[k];
+                for (int k = 0; k < Mathf.Min(layers, weights.Length); k++) map[tz, tx, k] = weights[k];
             }
         }
         return map;
@@ -284,7 +288,7 @@ public static class ValleyTerrain
         }
         foreach (var (x, y) in cells)
         {
-            if (ValleyGround.IsGrassy(CellPaint.Weights(world.At(x, y)))) continue;
+            if (CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y)))) continue;
             var r = Layout.TexelRect(x, y);
             ValleyGround.ClearDetail(datas[Index(r.I, r.J)], r);
         }

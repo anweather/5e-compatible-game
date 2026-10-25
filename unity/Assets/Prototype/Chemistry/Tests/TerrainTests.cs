@@ -274,51 +274,141 @@ namespace Chem.Tests
         [TestCase("rock", CellPaint.Rock)]
         [TestCase("stone", CellPaint.Rock)]
         [TestCase("rubble", CellPaint.Rock)]
-        [TestCase("dirt", CellPaint.Soil)]
-        [TestCase("pit", CellPaint.Soil)]
-        [TestCase("wood", CellPaint.Soil)]
+        [TestCase("stump", CellPaint.Charred)]
+        [TestCase("dirt", CellPaint.Earth)]
+        [TestCase("pit", CellPaint.Earth)]
+        [TestCase("wood", CellPaint.Earth)]
         public void TerrainPaintsItsLayer(string terrain, string layer)
         {
-            var w = CellPaint.Weights(new Cell(terrain));
-            int top = Enumerable.Range(0, w.Count).OrderByDescending(k => w[k]).First();
-            Assert.AreEqual(layer, CellPaint.Layers[top]);
+            Assert.AreEqual(layer, Top(CellPaint.Weights(new Cell(terrain))));
         }
 
+        static string Top(IReadOnlyList<float> w) =>
+            CellPaint.Layers[Enumerable.Range(0, w.Count).OrderByDescending(k => w[k]).First()];
+
+        static int LayerIndex(string layer) => CellPaint.Layers.ToList().IndexOf(layer);
+
         [Test]
-        public void ScorchAndCoversPaintDarkSoil()
+        public void ScorchAndAshPaintCharredButSlicksLeaveTheGround()
         {
-            int soil = CellPaint.Layers.ToList().IndexOf(CellPaint.Soil);
-            Assert.AreEqual(1f, CellPaint.Weights(new Cell("dirt"), scorched: true)[soil]);
-            Assert.AreEqual(1f, CellPaint.Weights(new Cell("grass") { Cover = "ash" })[soil]);
-            Assert.AreEqual(1f, CellPaint.Weights(new Cell("grass") { Cover = "oil" })[soil]);
-            Assert.Less(CellPaint.Weights(new Cell("dirt"))[soil], 1f, "bare earth reads apart from scorch");
+            Assert.AreEqual(CellPaint.Charred, Top(CellPaint.Weights(new Cell("dirt"), scorched: true)));
+            Assert.AreEqual(CellPaint.Charred, Top(CellPaint.Weights(new Cell("grass") { Cover = "ash" })));
+            Assert.AreEqual(CellPaint.Grass, Top(CellPaint.Weights(new Cell("grass") { Cover = "oil" })), "the slick is drawn on top");
+            Assert.AreEqual(0f, CellPaint.Weights(new Cell("dirt"))[LayerIndex(CellPaint.Charred)], "bare earth reads apart from scorch");
         }
 
         [Test]
-        public void PaintBlocksAreFourByFourOrOneTexel()
+        public void WallsAreRockAndDugGrassIsEarth()
         {
             var w = Meadow();
-            w.Paint(10, 10, "rock");
-            w.Paint(11, 10, "dirt");
-            w.Paint(195, 10, "rock");
-            var rects = CellPaint.DirtyRects(G, new[] { (10, 10), (11, 10), (195, 10) });
-            Assert.AreEqual(2, rects.Count);
-            var fine = rects.Single(r => r.I == 3);
-            Assert.AreEqual((8, 4), (fine.Width, fine.Height), "two 4×4 blocks side by side");
-            var coarse = rects.Single(r => r.I == 6);
-            Assert.AreEqual((1, 1), (coarse.Width, coarse.Height));
-            var block = CellPaint.Block(G, w, fine);
-            int rock = CellPaint.Layers.ToList().IndexOf(CellPaint.Rock);
-            for (int z = 0; z < 4; z++)
+            var wall = w.At(5, 5);
+            wall.Height = R.Sim.Height.BlockAt;
+            Assert.AreEqual(CellPaint.Rock, Top(CellPaint.Mix(w, wall)));
+            var trench = w.At(6, 5);
+            trench.Height = -1;
+            Assert.AreEqual(CellPaint.Earth, Top(CellPaint.Mix(w, trench)));
+            Assert.AreEqual(CellPaint.Grass, Top(CellPaint.Mix(w, w.At(7, 5))));
+        }
+
+        // A 3×3 patch of rock at (20..22, 20..22) on a full-detail chunk; the rest keeps the base.
+        static PaintBlock RockPatch(World w, out ChunkRect rect)
+        {
+            for (int y = 20; y <= 22; y++)
+                for (int x = 20; x <= 22; x++) w.Paint(x, y, "rock");
+            var cells = new List<(int x, int y)>();
+            for (int y = 17; y <= 25; y++)
+                for (int x = 17; x <= 25; x++) cells.Add((x, y));
+            rect = CellPaint.DirtyRects(G, cells).Single();
+            return CellPaint.Block(G, rect, (x, y) => w.At(x, y).T == "rock" ? CellPaint.Mix(w, w.At(x, y)) : null);
+        }
+
+        // The cover of the texel at a fraction (fx, fy) across grid cell (x, y) (y growing south).
+        static float CoverAt(PaintBlock b, ChunkRect rect, int x, int y, float fx, float fy)
+        {
+            var cell = G.TexelRect(x, y);
+            int tx = cell.X + (int)(fx * 4), tz = cell.ZMax - (int)(fy * 4);
+            return b.Cover[tz - rect.Z, tx - rect.X];
+        }
+
+        [Test]
+        public void PatchesCoverTheirCellsAndFadeSoftlyAcrossTheirBorders()
+        {
+            var b = RockPatch(Meadow(), out var rect);
+            Assert.AreEqual(1f, CoverAt(b, rect, 21, 21, 0.5f, 0.5f), 1e-4f, "the middle is all rock");
+            Assert.AreEqual(0f, CoverAt(b, rect, 18, 21, 0.5f, 0.5f), 1e-4f, "two cells away is the base");
+            int rock = LayerIndex(CellPaint.Rock);
+            float soft = 0f, painted = 0f;
+            for (int z = 0; z < rect.Height; z++)
             {
-                for (int x = 0; x < 4; x++)
+                for (int x = 0; x < rect.Width; x++)
                 {
-                    Assert.AreEqual(1f, block[z, x, rock]);
-                    Assert.AreEqual(0f, block[z, x + 4, rock]);
+                    float c = b.Cover[z, x];
+                    if (c > 0.02f && c < 0.98f) soft++;
+                    if (c > 0f) Assert.AreEqual(1f, b.Mix[z, x, rock], 1e-5f, "a painted texel is all rock");
+                    painted += c;
                 }
             }
-            var scorched = CellPaint.Block(G, w, coarse, (x, y) => x == 195);
-            Assert.AreEqual(1f, scorched[0, 0, CellPaint.Layers.ToList().IndexOf(CellPaint.Soil)]);
+            Assert.Greater(soft, 8, "some texels blend paint and base");
+            Assert.AreEqual(9 * 16, painted, 9 * 16 * 0.25f, "about the patch's own texels are painted");
+        }
+
+        [Test]
+        public void PatchEdgesWanderAcrossCellBorders()
+        {
+            var b = RockPatch(Meadow(), out var rect);
+            // The west border of the patch: the cover of the texels just outside it differs from row to row.
+            var outside = new List<float>();
+            var inside = new List<float>();
+            for (int y = 20; y <= 22; y++)
+            {
+                for (int k = 0; k < 4; k++)
+                {
+                    outside.Add(CoverAt(b, rect, 19, y, 0.875f, k / 4f));
+                    inside.Add(CoverAt(b, rect, 20, y, 0.125f, k / 4f));
+                }
+            }
+            Assert.Greater(outside.Max() - outside.Min(), 0.2f, "the edge isn't a straight line");
+            Assert.Greater(outside.Max(), 0.1f, "paint reaches past the cell border somewhere");
+            Assert.Less(inside.Min(), 0.9f, "and the base reaches inside it somewhere");
+        }
+
+        [Test]
+        public void WallsSpreadOverTheirSideSlopes()
+        {
+            var w = Meadow();
+            w.At(30, 30).Height = R.Sim.Height.BlockAt;
+            var rect = CellPaint.DirtyRects(G, CellPaint.Around(G, new[] { (30, 30) })).Single();
+            var b = CellPaint.Block(G, rect, (x, y) => w.IsRaisedWall(w.At(x, y)) ? CellPaint.Mix(w, w.At(x, y)) : null);
+            // The first texel of each neighbour, toward the wall (where its slope is), is mostly rock.
+            float east = CoverAt(b, rect, 31, 30, 0f, 0.5f), west = CoverAt(b, rect, 29, 30, 0.875f, 0.5f);
+            float north = CoverAt(b, rect, 30, 29, 0.5f, 0.875f), south = CoverAt(b, rect, 30, 31, 0.5f, 0f);
+            Assert.Greater(Math.Min(Math.Min(east, west), Math.Min(north, south)), 0.5f);
+        }
+
+        [Test]
+        public void PaintIsDeterministicAndOneTexelOnCoarseChunks()
+        {
+            var w = Meadow();
+            w.Paint(195, 10, "dirt");
+            var coarse = G.TexelRect(195, 10);
+            Assert.AreEqual((1, 1), (coarse.Width, coarse.Height));
+            Func<int, int, IReadOnlyList<float>> dirt = (x, y) => w.At(x, y).T == "dirt" ? CellPaint.Mix(w, w.At(x, y)) : null;
+            var a = CellPaint.Block(G, coarse, dirt);
+            var again = CellPaint.Block(G, coarse, dirt);
+            Assert.Greater(a.Cover[0, 0], 0.5f);
+            Assert.AreEqual(a.Cover[0, 0], again.Cover[0, 0]);
+            Assert.AreEqual(CellPaint.Earth, Top(Enumerable.Range(0, CellPaint.Layers.Count).Select(k => a.Mix[0, 0, k]).ToList()));
+        }
+
+        [Test]
+        public void RunsJoinNeighboursInARowOfOneChunk()
+        {
+            // x 63 and 64 are u 255 and 256: the two sides of a chunk edge.
+            var runs = CellPaint.Runs(G, new[] { (10, 10), (11, 10), (13, 10), (10, 11), (63, 10), (64, 10) });
+            Assert.AreEqual(5, runs.Count);
+            Assert.AreEqual(1, runs.Count(r => r.Width == 8 && r.Height == 4), "10 and 11 join");
+            Assert.AreEqual(4, CellPaint.Around(G, new[] { (0, 0) }).Count, "the grid's corner has 3 neighbours");
+            Assert.AreEqual(9, CellPaint.Around(G, new[] { (5, 5) }).Count);
         }
 
         [Test]
