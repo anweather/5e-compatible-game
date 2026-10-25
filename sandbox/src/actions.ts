@@ -20,15 +20,20 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
     case "target":
       add(x, y);
       break;
-    case "line":
-      for (let k = 0; k < (s.length ?? 5); k++) {
+    case "line": {
+      // A terraform line from the caster (Earthen Trench) starts under their feet, one
+      // square behind the aim, so a trench cut from a pond's bank opens into the pond.
+      const from = s.effect === "terraform" && s.origin === "self" ? -1 : 0;
+      for (let k = from; k < from + (s.length ?? 5); k++) {
         const cx = x + DX[dir] * k, cy = y + DY[dir] * k;
         const c = cellAt(w, cx, cy);
+        if (!c && k < 0) continue;
         if (!c) break;
         out.push([cx, cy]);
         if (isBlocking(c)) break;
       }
       break;
+    }
     case "square": {
       const n = s.size ?? 2, off = Math.floor((n - 1) / 2);
       for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) add(x - off + dx, y - off + dy);

@@ -19,14 +19,7 @@ namespace Chem
                     Add(x, y);
                     break;
                 case "line":
-                    for (int k = 0; k < s.Length; k++)
-                    {
-                        int cx = x + DirX(dir) * k, cy = y + DirY(dir) * k;
-                        var c = At(cx, cy);
-                        if (c == null) break;
-                        output.Add((cx, cy));
-                        if (IsBlocking(c)) break;
-                    }
+                    LineCells(s, x, y, dir, output);
                     break;
                 case "square":
                 {
@@ -44,6 +37,25 @@ namespace Chem
                 }
             }
             return output;
+        }
+
+        /// <summary>
+        /// A line from (x, y) up to its first blocking cell. A terraform line from the caster
+        /// (Earthen Trench) starts under their feet, one square behind the aim, so a trench cut
+        /// from a pond's bank opens into the pond.
+        /// </summary>
+        void LineCells(SpellDef s, int x, int y, int dir, List<(int x, int y)> output)
+        {
+            int from = s.Effect == "terraform" && s.Origin == "self" ? -1 : 0;
+            for (int k = from; k < from + s.Length; k++)
+            {
+                int cx = x + DirX(dir) * k, cy = y + DirY(dir) * k;
+                var c = At(cx, cy);
+                if (c == null && k < 0) continue;
+                if (c == null) break;
+                output.Add((cx, cy));
+                if (IsBlocking(c)) break;
+            }
         }
 
         static int FloorDiv(int a, int b) => (int)System.Math.Floor((double)a / b);

@@ -4,10 +4,10 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RULES, composeRules, installRules, validateRules, type ModPatch } from "../src/rules.ts";
 import { step } from "../src/sim.ts";
-import { castSpell } from "../src/actions.ts";
+import { castSpell, spellById, spellCells } from "../src/actions.ts";
 import { spawn } from "../src/entities.ts";
 import { reshape } from "../src/terraform.ts";
-import { type World, cellAt, createWorld, hashWorld, isBlocking, sanitizeWorld } from "../src/world.ts";
+import { type World, cellAt, createWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -47,24 +47,30 @@ test("the terraform spells validate", () => {
   assert.deepEqual(validateRules(composeRules([highWalls.patch as ModPatch])), []);
 });
 
-test("an Earthen Trench cut from a pond fills and carries the water along", () => {
+test("an Earthen Trench cut from a pond's bank digs from the caster's feet and the water follows", () => {
   const w = room(20, 9);
   pond(w, 2, 5, 2, 6);
-  castSpell(w, "earthen-trench", 6, 4, 1);
-  assert.deepEqual([4, 5, 6, 13, 14].map((x) => cellAt(w, x, 4)!.h), [0, 0, -2, -2, 0]);
-  run(w, 10);
-  assert.deepEqual([6, 7, 8, 9, 10].map((x) => cellAt(w, x, 4)!.water), [4, 3, 2, 1, 0]);
-  run(w, 10);
+  // The wizard stands on the dry bank at (6, 4); aimSpell puts a self line one square out.
+  castSpell(w, "earthen-trench", 7, 4, 1);
+  assert.deepEqual([5, 6, 7, 13, 14].map((x) => cellAt(w, x, 4)!.h), [0, -2, -2, -2, 0], "8 squares from the caster's own");
+  run(w, 20);
   // Settled: on the flat water needs a 2-unit difference to move, so the channel slopes.
   assert.deepEqual([6, 7, 8, 9, 10, 11, 12, 13].map((x) => cellAt(w, x, 4)!.water), [5, 4, 3, 2, 1, 1, 0, 0]);
   assert.equal(cellAt(w, 8, 3)!.water, 0, "the banks stay dry");
   assert.equal(totalWater(w), 80);
 });
 
+test("other line spells still start one square out from the caster", () => {
+  const w = room(20, 9);
+  assert.deepEqual(spellCells(w, spellById("ray-of-frost")!, 7, 4, 1)[0], [7, 4]);
+  assert.deepEqual(spellCells(w, spellById("gust-of-wind")!, 7, 4, 1)[0], [7, 4]);
+  assert.deepEqual(spellCells(w, spellById("earthen-trench")!, 7, 4, 1).slice(0, 2), [[6, 4], [7, 4]]);
+});
+
 test("lightning runs along a flooded trench", () => {
   const w = room(20, 9);
   pond(w, 2, 5, 2, 6);
-  castSpell(w, "earthen-trench", 6, 4, 1);
+  castSpell(w, "earthen-trench", 7, 4, 1);
   run(w, 20);
   castSpell(w, "shocking-grasp", 2, 2, 1);
   assert.ok(cellAt(w, 11, 4)!.charge > 0, "the far wet end of the channel is charged");
@@ -87,6 +93,20 @@ test("a Wall of Stone dams the flow: the far side stays dry", () => {
       assert.ok(isBlocking(cellAt(w, 6, 3)!), "three steps up is a wall");
     }
   }
+});
+
+test("a Wall of Stone across a dug trench walls every square, trench included", () => {
+  const w = room(12, 12);
+  castSpell(w, "earthen-trench", 2, 5, 1);
+  assert.equal(cellAt(w, 5, 5)!.h, -2);
+  castSpell(w, "wall-of-stone", 5, 2, 2);
+  for (let y = 2; y <= 7; y++) {
+    assert.equal(cellAt(w, 5, y)!.h, RULES.sim.height.blockAt, `(5, ${y}) is raised to wall height`);
+    assert.ok(isRaisedWall(cellAt(w, 5, y)!), `(5, ${y}) is a wall`);
+  }
+  cellAt(w, 4, 4)!.h = 4;
+  castSpell(w, "wall-of-stone", 4, 2, 2);
+  assert.equal(cellAt(w, 4, 4)!.h, 4, "height never lowers a square that is already higher");
 });
 
 test("Move Earth heaves up a hill, highest in the middle", () => {
@@ -149,18 +169,23 @@ test("bad terraform spells are refused with clear messages", () => {
       { id: "b", name: "B", level: 1, shape: "line", effect: "terraform", raise: 2, dig: 1, blurb: "" },
       { id: "c", name: "C", level: 1, shape: "square", effect: "terraform", dig: 1.5, terrain: "lava", taper: "yes", blurb: "" },
       { id: "d", name: "D", level: 1, shape: "burst", effect: "terraform", raise: 0, terrain: "bedrock", blurb: "" },
+      { id: "f", name: "F", level: 1, shape: "line", effect: "terraform", height: 5, blurb: "" },
+      { id: "g", name: "G", level: 1, shape: "line", effect: "terraform", height: -1.5, dig: 1, blurb: "" },
       { id: "e", name: "E", level: 1, shape: "point", effect: "quake", blurb: "" },
     ] as unknown as ModPatch["spells"],
   }]));
   assert.deepEqual(errors, [
     "terrain mud: dugTo clay unknown",
-    "spell a: terraform needs one of raise or dig, a whole number of steps from 1",
-    "spell b: terraform needs one of raise or dig, a whole number of steps from 1",
-    "spell c: terraform needs one of raise or dig, a whole number of steps from 1",
+    "spell a: terraform needs exactly one of raise, dig or height",
+    "spell b: terraform needs exactly one of raise, dig or height",
+    "spell c: dig must be a whole number of steps from 1",
     "spell c: terrain lava unknown",
     "spell c: taper must be true or false",
-    "spell d: terraform needs one of raise or dig, a whole number of steps from 1",
+    "spell d: raise must be a whole number of steps from 1",
     "spell d: terrain bedrock is blocking (walls come from raise)",
+    "spell f: height must be a whole number from -3 to 4 (sim.height)",
+    "spell g: terraform needs exactly one of raise, dig or height",
+    "spell g: height must be a whole number from -3 to 4 (sim.height)",
     "spell e: unknown effect quake",
   ]);
 });
@@ -172,9 +197,9 @@ function earthShaping(seed: number): World {
   for (let x = 8; x <= 15; x++) for (let y = 6; y <= 8; y++) cellAt(w, x, y)!.t = "grass";
   cellAt(w, 9, 7)!.cover = "oil";
   cellAt(w, 10, 7)!.cover = "oil";
-  castSpell(w, "earthen-trench", 5, 4, 1);
+  castSpell(w, "earthen-trench", 6, 4, 1); // from the dry bank at (5, 4)
   run(w, 20);
-  castSpell(w, "wall-of-stone", 12, 1, 2);
+  castSpell(w, "wall-of-stone", 12, 1, 2); // across the trench's end
   castSpell(w, "move-earth", 14, 7, 1);
   castSpell(w, "create-water", 14, 7, 1);
   castSpell(w, "mold-earth", 9, 7, 1);
@@ -188,8 +213,10 @@ function earthShaping(seed: number): World {
 test("earth shaping is deterministic and matches the C# golden", () => {
   const a = earthShaping(11), b = earthShaping(11);
   assert.equal(hashWorld(a), hashWorld(b));
-  assert.equal(cellHash(a), "a8199e69");
+  assert.equal(cellHash(a), "93d9117b");
   assert.equal(a.rng, 3719496534);
+  assert.equal(cellAt(a, 5, 4)!.h, -2, "the trench starts at the caster's feet");
+  assert.ok(isRaisedWall(cellAt(a, 12, 4)!), "the wall closes the trench");
   assert.deepEqual(a.log.map((l) => `${l.tick}|${l.kind}|${l.count}|${l.text}`), [
     "0|info|1|You cast Earthen Trench",
     "20|info|1|You cast Wall of Stone",
