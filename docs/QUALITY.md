@@ -6,7 +6,7 @@ read the code. There are two layers:
 | Layer | Where you see it | What runs | Blocks anything? |
 |---|---|---|---|
 | 1. Analyzers | Unity's **Console**, as yellow warnings, every time scripts compile | Sonar, Unity and .NET analyzers on our code | No. Warnings never stop the game compiling |
-| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 97 tests, formatting, duplicate code | Yes. A red check means fix before merging |
+| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 124 tests, formatting, duplicate code | Yes. A red check means fix before merging |
 
 Only our code is checked: `unity/Assets/Prototype/` and `sandbox/src/`. The
 Asset Store packs (`Starter Assets`, `UnityTechnologies`) are never analyzed,

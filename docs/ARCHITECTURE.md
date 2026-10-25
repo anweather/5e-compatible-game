@@ -72,6 +72,25 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
 - `PropState.cs` is the rules side of a physics prop (hit points, burning,
   levitation, whether it floats), counted in ticks. It is the one file here
   that is *not* a port: the sandbox has no physics.
+- **Chunk terrains** (`docs/WORLD_STREAMING.md`, part 1), the maths the
+  view needs to draw the cells on 9×9 chunk `Terrain`s, kept here so it is
+  tested without Unity. Like `PropState`, not a port (the sandbox has no
+  terrain). `TerrainGrid.cs` is the layout: chunk corners, 257 or 65
+  heightmaps (4 or 1 samples per cell), grid cell ↔ world cell ↔ chunk,
+  sample and alphamap texel, and world point → cell (`TerrainGrid.Valley()`
+  is the valley's). `CellHeightfield.cs` turns cells into each sample's
+  offset from the baked ground: a cell's `(elevation + Height) ×
+  stepHeight`, the mean of the cells touching a sample on a cell border (so
+  banks slope), the highest wall for a border touching a raised wall (walls
+  stand full height over their whole cell), and on a 257 edge facing a 65
+  chunk the in-between samples interpolated so seams match exactly. It keeps
+  a target and an eased current per chunk; `Update(world, changedCells)`
+  gives the dirty sample rectangles (neighbour chunks included) and
+  `Advance(dt)` the ones that moved, for `SetHeightsDelayLOD`. `CellPaint.cs`
+  maps a cell's terrain, cover and scorch to weights of the valley's
+  terrain layers (by name) for its 4×4 or 1×1 texel block, batched as one
+  rectangle per chunk. Arrays are Unity's order: `[z, x]` (and `[z, x,
+  layer]`).
 - `World.Terraform.cs` is earth shaping: a spell with `"effect":
   "terraform"` raises or digs its cells (`Cell.Height`, steps on top of
   the terrain's elevation). Water flow reads elevation plus height, raised
