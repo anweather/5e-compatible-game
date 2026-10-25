@@ -129,7 +129,7 @@ namespace Chem.Tests
         {
             // Mirrors the net.test.ts test of the same name.
             var md = File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "..", "docs", "MODDING.md"));
-            var blocks = Regex.Matches(md, "```json\n([\\s\\S]*?)```").Cast<Match>().Select(m => m.Groups[1].Value).ToList();
+            var blocks = Regex.Matches(md, "```json\r?\n([\\s\\S]*?)```").Cast<Match>().Select(m => m.Groups[1].Value).ToList();
             Assert.That(blocks.Count, Is.GreaterThanOrEqualTo(4), "found the examples");
             foreach (var b in blocks) Assert.DoesNotThrow(() => Base.WithMods(new[] { ModPatch.Parse(b) }), b);
         }

@@ -173,7 +173,7 @@ test("every example patch in docs/MODDING.md passes the engine's checks", async 
   const { readFile } = await import("node:fs/promises");
   const { composeRules, validateRules } = await import("../src/rules.ts");
   const md = await readFile(new URL("../../docs/MODDING.md", import.meta.url), "utf8");
-  const blocks = [...md.matchAll(/```json\n([\s\S]*?)```/g)].map((m) => m[1]!);
+  const blocks = [...md.matchAll(/```json\r?\n([\s\S]*?)```/g)].map((m) => m[1]!);
   assert.ok(blocks.length >= 4, "found the examples");
   for (const b of blocks) assert.deepEqual(validateRules(composeRules([JSON.parse(b)])), [], b.slice(0, 60));
 });
