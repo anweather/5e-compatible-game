@@ -96,10 +96,14 @@ public static class ChemYardBuilder
         var cameraRoot = player.transform.Find(WizardRig.CameraRoot);
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
         follow.AddComponent<CameraZoom>().controls = controls;
+        var hands = player.AddComponent<ItemHolder>();
+        hands.controls = controls;
+        hands.view = follow.GetComponent<CinemachineCamera>();
 
         SetUpLighting();
         ValleyBuilder.Dress(grid, rows);
         PropBuilder.Place(grid, rows.Length);
+        ItemBuilder.Place(grid, rows.Length);
         new GameObject("EventLog").AddComponent<EventLog>();
         SetUpNetwork(grid, BuildNetWizard(armature));
 

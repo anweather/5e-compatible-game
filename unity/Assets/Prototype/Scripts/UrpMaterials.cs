@@ -25,6 +25,9 @@ public static class UrpMaterials
         if (!emission.HasValue) return;
         m.EnableKeyword("_EMISSION");
         m.SetColor("_EmissionColor", emission.Value);
+        // Without this flag URP's material validation drops _EMISSION again when a saved
+        // material is imported (the flag starts as EmissiveIsBlack), and the glow is lost.
+        m.globalIlluminationFlags = MaterialGlobalIlluminationFlags.RealtimeEmissive;
     }
 
     /// <summary>Switches a Lit material to a transparent, alpha-blended surface (as the inspector's Surface Type does).</summary>

@@ -1,6 +1,7 @@
 // What entities do to cells. Port of the cell parts of destroy and explode in
-// sandbox/src/entities.ts. The entities themselves are not in the core: in
-// Unity they are physics props, which ask for these through ChemEffects.
+// sandbox/src/entities.ts, and what a broken item spills (Items.cs). The
+// entities themselves are not in the core: in Unity they are physics props,
+// which ask for these through ChemEffects.
 using System;
 
 namespace Chem
@@ -16,6 +17,23 @@ namespace Chem
             var ex = e?.Explodes;
             if (ex == null || !InBounds(x, y)) return 0;
             AddLog($"KABOOM! The {e.Name.ToLowerInvariant()} explodes", LogKind.Notable);
+            return Stamp(x, y, ex);
+        }
+
+        /// <summary>
+        /// A dropped item that broke and spilled what it held (a bullseye lantern's burning oil),
+        /// stamped like a small explosion with no blast. Returns the cells stamped.
+        /// </summary>
+        public int Spill(int x, int y, ItemDef item)
+        {
+            var spill = item?.Breaks?.Spill;
+            if (spill == null || !InBounds(x, y)) return 0;
+            AddLog($"The {item.Name.ToLowerInvariant()} smashes and spills burning {spill.Cover}", LogKind.Notable);
+            return Stamp(x, y, spill);
+        }
+
+        int Stamp(int x, int y, ExplosionDef ex)
+        {
             int stamped = 0;
             for (int dy = -ex.Radius; dy <= ex.Radius; dy++)
             {

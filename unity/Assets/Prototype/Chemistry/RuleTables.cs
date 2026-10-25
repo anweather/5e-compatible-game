@@ -1,6 +1,6 @@
 // Typed view of ../rules/*.json, the same tables the web sandbox runs on
-// (sandbox/src/rules.ts). Only the cell-level parts and entities.json (for the
-// Unity physics props) are interpreted; the other files (critters, machines)
+// (sandbox/src/rules.ts). Only the cell-level parts, entities.json (for the
+// Unity physics props) and items.json (things to carry, Items.cs) are interpreted; the other files (critters, machines)
 // are kept as JSON so live mods (Rules.Mods.cs) can patch and check them, but
 // nothing here reads them.
 using System;
@@ -190,7 +190,7 @@ namespace Chem
 
         /// <summary>
         /// Every table as JSON, in the shape of the sandbox's `Rules` object (elements, terrain,
-        /// covers, gases, cellRules, entityRules, spells, critters, entities, machines, sim).
+        /// covers, gases, cellRules, entityRules, spells, critters, entities, items, machines, sim).
         /// Mods patch this, never the typed tables, so merging works exactly like composeRules.
         /// </summary>
         readonly JObject doc;
@@ -241,6 +241,7 @@ namespace Chem
                 ["spells"] = Get("spells.json", false) as JArray ?? new JArray(),
                 ["critters"] = Get("critters.json", false) as JArray ?? new JArray(),
                 ["entities"] = Get("entities.json", false) as JObject ?? new JObject(),
+                ["items"] = Get("items.json", false) as JObject ?? new JObject(),
                 ["machines"] = Get("machines.json", false) as JObject ?? new JObject(),
                 ["sim"] = Get("sim.json", false) as JObject ?? new JObject(),
             });
@@ -267,6 +268,8 @@ namespace Chem
             foreach (var t in doc["spells"].OfType<JObject>()) r.spells.Add(ParseSpell(t));
             foreach (var p in ((JObject)doc["entities"]).Properties())
                 if (p.Value is JObject e) r.entities[p.Name] = ParseEntity(p.Name, e);
+            foreach (var p in ((JObject)doc["items"]).Properties())
+                if (p.Value is JObject i) r.items[p.Name] = ParseItem(p.Name, i);
             r.Sim = ParseSim((JObject)doc["sim"]);
             return r;
         }

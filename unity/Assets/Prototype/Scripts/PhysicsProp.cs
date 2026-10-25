@@ -2,7 +2,9 @@ using Chem;
 using UnityEngine;
 
 // A crate, barrel or boulder that Unity's physics moves and the chemistry
-// acts on. Its numbers come from rules/entities.json (kind). Every physics
+// acts on. Its numbers come from rules/entities.json (kind), or, for a thing
+// to carry (Carryable), from rules/items.json, which runs as a light,
+// unbreakable entity (ItemDef.AsEntity) with its own mass in kilograms. Every physics
 // step it reads the cell under it: slick ground (ice, oil, grease) takes its
 // friction away, and water holds up what floats and slows everything down.
 // Every sim tick goes to its PropState, which lights it from fire, douses it
@@ -15,7 +17,7 @@ using UnityEngine;
 public class PhysicsProp : MonoBehaviour, IPushable
 {
     public ChemGrid grid;
-    [Tooltip("Its id in rules/entities.json.")]
+    [Tooltip("Its id in rules/entities.json (or rules/items.json for a Carryable).")]
     public string kind = EntityIds.Crate;
     [Tooltip("Optional: shown while it burns. A cube stands in.")]
     public GameObject flamesFx;
@@ -58,15 +60,17 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     void Start()
     {
-        var def = grid != null && grid.World != null ? grid.World.Rules.Entity(kind) : null;
+        var rules = grid != null && grid.World != null ? grid.World.Rules : null;
+        var item = rules?.Item(kind);
+        var def = rules?.Entity(kind) ?? item?.AsEntity();
         if (def == null)
         {
-            Debug.LogWarning($"{name}: no entity '{kind}' in rules/entities.json, or no grid");
+            Debug.LogWarning($"{name}: no entity or item '{kind}' in rules/, or no grid");
             enabled = false;
             return;
         }
         State = new PropState(def);
-        body.mass = def.Mass * Forces.KgPerMass;
+        body.mass = item != null ? (float)item.Mass : def.Mass * Forces.KgPerMass;
         halfHeight = look.bounds.extents.y;
         lastTick = grid.World.Tick;
         if (grid.valley != null && grid.valley.terrain != null) valleyGround = grid.valley.terrain.GetComponent<TerrainCollider>();
@@ -166,16 +170,19 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     // --- what spells and blasts do to it -------------------------------------------
 
+    // As fast as its rules mass says (impulse / mass), whatever its body weighs: a carried
+    // item weighs grams but flies off like the lightest crate, not like a bullet.
     public void Push(Vector3 impulse)
     {
         if (State == null) return;
-        body.AddForce(impulse, ForceMode.Impulse);
+        body.AddForce(impulse / (State.Def.Mass * Forces.KgPerMass), ForceMode.VelocityChange);
     }
 
     /// <summary>Floats for <paramref name="ticks"/> sim ticks, rising a little, then falls.</summary>
     public void Levitate(int ticks)
     {
-        if (State == null) return;
+        // A kinematic body is in someone's hand (Carryable).
+        if (State == null || body.isKinematic) return;
         State.Levitate(grid.World.Tick, ticks);
         body.useGravity = false;
         body.linearVelocity += Vector3.up * levitateRise;

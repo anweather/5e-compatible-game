@@ -8,7 +8,7 @@ using UnityEngine;
 // above its cell and settles when Play starts (on the pond, crates float).
 public static class PropBuilder
 {
-    const string Generated = "Assets/Prototype/Generated";
+    public const string Generated = "Assets/Prototype/Generated";
 
     static readonly (string kind, int x, int y)[] SetPieces =
     {
@@ -30,21 +30,30 @@ public static class PropBuilder
         int n = 0;
         foreach (var (kind, x, y) in SetPieces)
         {
-            var go = Shape(kind);
-            go.name = $"{kind} {++n}";
-            go.transform.SetParent(parent, false);
-            var cell = new Vector3(x, 0f, yardHeight - 1 - y) * grid.cellSize;
-            go.transform.position = cell + Vector3.up * (go.GetComponent<Renderer>().bounds.extents.y + 0.3f);
-
-            var body = go.AddComponent<Rigidbody>();
-            body.interpolation = RigidbodyInterpolation.Interpolate;
-            body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
-            var prop = go.AddComponent<PhysicsProp>();
-            prop.grid = grid;
-            prop.kind = kind;
+            var prop = Drop(Shape(kind), $"{kind} {++n}", parent, grid, kind, x, yardHeight - 1 - y);
             prop.flamesFx = flames;
             prop.explosionFx = blast;
         }
+    }
+
+    /// <summary>
+    /// Makes <paramref name="go"/> a physics prop of <paramref name="kind"/> under <paramref name="parent"/>,
+    /// a little above yard cell (<paramref name="x"/>, <paramref name="z"/>) in world cells (z grows north).
+    /// </summary>
+    public static PhysicsProp Drop(GameObject go, string name, Transform parent, ChemGrid grid, string kind, int x, int z)
+    {
+        go.name = name;
+        go.transform.SetParent(parent, false);
+        var cell = new Vector3(x, 0f, z) * grid.cellSize;
+        go.transform.position = cell + Vector3.up * (go.GetComponent<Renderer>().bounds.extents.y + 0.3f);
+
+        var body = go.AddComponent<Rigidbody>();
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
+        var prop = go.AddComponent<PhysicsProp>();
+        prop.grid = grid;
+        prop.kind = kind;
+        return prop;
     }
 
     // Greybox shapes: a wooden crate, an upright oil drum, a round grey boulder.
@@ -101,6 +110,6 @@ public static class PropBuilder
         }
     }
 
-    static void Paint(GameObject go, string material, Color color, float smoothness) =>
-        go.GetComponent<Renderer>().sharedMaterial = EditorAssets.LitMaterial($"{Generated}/{material}.mat", color, smoothness);
+    public static void Paint(GameObject go, string material, Color color, float smoothness, Color? emission = null) =>
+        go.GetComponent<Renderer>().sharedMaterial = EditorAssets.LitMaterial($"{Generated}/{material}.mat", color, smoothness, emission);
 }

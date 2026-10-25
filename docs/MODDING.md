@@ -27,6 +27,7 @@ Every field is optional.
   "covers":   { "tar": { "name": "Tar", "tags": ["flammable"], "flammability": 0.5, "fuel": 20 } },
   "gases":    { "spores": { "name": "Spores" } },
   "entities": { "ogre": { "name": "Ogre", "hp": 30, "mass": 3, "flammable": false, "creature": true } },
+  "items":    { "spyglass": { "name": "Long spyglass", "use": "zoom", "zoom": 4 } },   // things to carry (rules/README.md)
   "machines": { "boiler": { "name": "Steam boiler", "needs": "steam", "build": 2, "how": "Builds pressure faster." } },
   "reactions": {
     "add":       [ /* cell rules: new ones go to the TOP of their element's list, so they win */ ],

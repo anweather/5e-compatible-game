@@ -1,7 +1,6 @@
 using System.Collections.Generic;
 using Chem;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 // Picks a spell from rules/spells.json and casts it on the grid (controls
 // in PlayerControls). Aiming matches the web sandbox: beams and Gust start
@@ -23,7 +22,6 @@ public class SpellCaster : MonoBehaviour
     public string SelectedName => SpellName(Selected);
 
     readonly List<GameObject> markers = new();
-    readonly RaycastHit[] hits = new RaycastHit[16];
     Material markerMat;
     CastPose pose;
     NetChem net;
@@ -51,7 +49,7 @@ public class SpellCaster : MonoBehaviour
         if (controls == null || grid == null || grid.World == null) return;
         PickSpell();
 
-        if (!RaycastPastSelf(AimRay(), out var hit))
+        if (!Aiming.PastSelf(Aiming.Ray(controls), transform, out var hit))
         {
             ShowMarkers(null);
             return;
@@ -70,33 +68,8 @@ public class SpellCaster : MonoBehaviour
     {
         int slot = controls.PickedSlot();
         if (slot >= 0 && slot < spellIds.Length) Selected = slot;
-        if (controls.NextSpell.WasPressedThisFrame()) Selected = (Selected + 1) % spellIds.Length;
+        if (controls.NextSpellPressed()) Selected = (Selected + 1) % spellIds.Length;
         if (controls.PrevSpell.WasPressedThisFrame()) Selected = (Selected + spellIds.Length - 1) % spellIds.Length;
-    }
-
-    // With mouse-look or a gamepad, aim through the crosshair at the screen centre;
-    // with a free cursor (e.g. after Esc in the Editor), aim where it points.
-    Ray AimRay()
-    {
-        bool centre = Cursor.lockState == CursorLockMode.Locked || controls.UsingGamepad || Mouse.current == null;
-        var aimAt = centre ? new Vector2(Screen.width / 2f, Screen.height / 2f) : Mouse.current.position.ReadValue();
-        return Camera.main.ScreenPointToRay(aimAt);
-    }
-
-    // The nearest hit that isn't the caster: the over-the-shoulder crosshair
-    // often passes through the wizard's own collider first.
-    bool RaycastPastSelf(Ray ray, out RaycastHit nearest)
-    {
-        nearest = default;
-        int count = Physics.RaycastNonAlloc(ray, hits, 200f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
-        float best = float.MaxValue;
-        for (int i = 0; i < count; i++)
-        {
-            if (hits[i].collider.transform.IsChildOf(transform) || hits[i].distance >= best) continue;
-            best = hits[i].distance;
-            nearest = hits[i];
-        }
-        return best < float.MaxValue;
     }
 
     // --- casting ---------------------------------------------------------------------

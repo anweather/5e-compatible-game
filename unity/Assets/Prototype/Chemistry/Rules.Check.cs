@@ -15,11 +15,12 @@ namespace Chem
         {
             var check = new Checker(r);
             check.CrossReferences();
+            check.Items();
             check.Numbers();
             return check.Errors;
         }
 
-        sealed class Checker
+        sealed partial class Checker
         {
             static readonly HashSet<string> CondKeys = new HashSet<string>
             {

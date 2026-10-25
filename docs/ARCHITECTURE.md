@@ -40,7 +40,13 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
 - `World.Sim.cs` is one tick: fire spreads, water flows, gas drifts,
   charge and wind decay.
 - `World.Entities.cs` is what an entity does to cells: a barrel's blast of
-  burning oil, a burnt crate's embers.
+  burning oil, a burnt crate's embers, a smashed lantern's spilled oil.
+- `Items.cs` reads `rules/items.json`, things to carry (glowing balls, a
+  bullseye lantern, a spyglass, sending stones, a Dancing Lights mote): their
+  light in SRD feet, their use, and when one breaks (`ItemDef.BreaksAt`).
+  `Rules.CheckItems.cs` checks them with the same messages as the sandbox,
+  which carries the table through mods but has no items on its board. Not a
+  port: like `PropState`, it is the rules side of Unity physics.
 - `PropState.cs` is the rules side of a physics prop (hit points, burning,
   levitation, whether it floats), counted in ticks. It is the one file here
   that is *not* a port: the sandbox has no physics.
@@ -71,6 +77,7 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 | The world beyond the yard | `ValleyChemistry.cs` (burnt trees, scorched grass, the cabin burning down on the terrain) |
 | The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
 | Physics props | `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes), `Forces.cs` (radial and line shoves), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate), `ChemEffects.cs` (the one door from physics into the chemistry) |
+| Things to carry | `Carryable.cs` (an item from `rules/items.json`; a `PhysicsProp` on the ground, kinematic in hand; adds the behaviours its row asks for), `ItemHolder.cs` (the wizard's hand: pick up, drop, throw, use, the hint by the crosshair), `ItemUse.cs` (base of the behaviours), `ItemLight.cs`, `Fragile.cs` (smash and spill through `ChemEffects`), `Spyglass.cs`, `SendingStone.cs` with `PingMarker.cs`, `DancingLights.cs`, `Aiming.cs` (the crosshair ray, shared with `SpellCaster`) |
 | The show of a spell | `SpellVisuals.cs` (data asset), `SpellProjectile.cs` |
 | HUD | `EventLog.cs` (help, spell bar, "what happened" log) |
 | Demos and probes | `DemoDirector.cs`, `WizardPuppet.cs`, `Showcase.cs`, `FlythroughCamera.cs`, `FpsProbe.cs` |
@@ -161,6 +168,7 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 | A **new kind of cell effect** (e.g. a new gas) | Data first; then a `Render...` method in `ChemGrid.Effects.cs` with a prefab and a cube fallback, called from `ChemGrid.RenderCell`, and its state added to `ChemGrid.Key` |
 | A **chemistry behaviour** that data can't express | Change the TS sandbox and `Chemistry/` together, with a golden test for both |
 | A **physics prop** | Its numbers in `rules/entities.json`, a `PhysicsProp` placed by `PropBuilder` (Editor). Anything it does to cells goes through `ChemEffects.Request`, never straight to the world: solo it applies at once; online it is meant to become an intent (D4 in `DECISIONS.md`): the host stamps "barrel blew up in cell (4,7)" with a tick and sends it through `NetChem` like a cast (not built yet; online yards ignore these requests for now) |
+| A **thing to carry** | Its row in `rules/items.json` (light, use, breaks; checked in both `Rules.CheckItems.cs` and `validateRules`). Its id in `ItemIds`, a shape and a spot in `ItemBuilder` (Editor). A new `use` needs an `ItemUse` behaviour, added in `Carryable.AddBehaviours`, and the use name in both checkers. Solo only for now: online wizards have no `ItemHolder` |
 | **Scenery** | In a builder (`ValleyBuilder`), never placed by hand |
 
 ## Known debt

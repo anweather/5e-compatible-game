@@ -43,6 +43,18 @@ public static class EntityIds
     public const string Boulder = "boulder";
 }
 
+/// <summary>Item ids, as in rules/items.json (the yard's set pieces; ItemBuilder).</summary>
+public static class ItemIds
+{
+    public const string GlowBallAmber = "glow-ball-amber";
+    public const string GlowBallAzure = "glow-ball-azure";
+    public const string GlowBallRose = "glow-ball-rose";
+    public const string BullseyeLantern = "bullseye-lantern";
+    public const string Spyglass = "spyglass";
+    public const string SendingStone = "sending-stone";
+    public const string DancingLights = "dancing-lights";
+}
+
 /// <summary>Terrain ids (a cell's <c>T</c>), as in rules/materials.json.</summary>
 public static class TerrainIds
 {

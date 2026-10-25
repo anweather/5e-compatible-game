@@ -1,9 +1,10 @@
 using Chem;
 using UnityEngine;
 
-// The one door from physics into the chemistry. A physics prop never edits
-// cells itself: it asks here ("the barrel blew up at cell (4, 7)") and the
-// effect is applied to the grid's Chem.World.
+// The one door from physics into the chemistry. A physics prop or a carried
+// item never edits cells itself: it asks here ("the barrel blew up at cell
+// (4, 7)", "the lantern smashed there") and the effect is applied to the
+// grid's Chem.World.
 //
 // Solo, a request is applied at once. Online, every machine has to change its
 // world on the same tick, so a request will travel like a cast: to the host
@@ -21,6 +22,8 @@ public enum ChemEffectKind
     Embers,
     /// <summary>A prop blew up (entities.json "explodes").</summary>
     Explode,
+    /// <summary>An item landed hard enough to break and spilled what it held (items.json "breaks").</summary>
+    Spill,
 }
 
 /// <summary>A prop's effect on one cell: a plain value, small enough to send like a CastIntent.</summary>
@@ -37,7 +40,7 @@ public readonly struct ChemEffect
     public ChemEffectKind Kind { get; }
     public int X { get; }
     public int Y { get; }
-    /// <summary>The prop's id in rules/entities.json.</summary>
+    /// <summary>The prop's id in rules/entities.json, or the item's in rules/items.json.</summary>
     public string Entity { get; }
 }
 
@@ -65,6 +68,9 @@ public static class ChemEffects
                 break;
             case ChemEffectKind.Explode:
                 world.Explode(effect.X, effect.Y, def);
+                break;
+            case ChemEffectKind.Spill:
+                world.Spill(effect.X, effect.Y, world.Rules.Item(effect.Entity));
                 break;
         }
     }
