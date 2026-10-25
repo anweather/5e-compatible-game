@@ -17,6 +17,8 @@ export interface TerrainDef {
   breaksTo?: string;
   elevation?: number;
   burnLog?: string;
+  /** What digging leaves (grass is dug down to dirt); unset keeps the terrain. */
+  dugTo?: string;
 }
 export interface CoverDef {
   name: string;
@@ -106,7 +108,12 @@ export interface SpellDef {
   radius?: number;
   push?: number;
   wind?: number;
-  effect?: "levitate" | "carry" | "teleport";
+  effect?: "levitate" | "carry" | "teleport" | "terraform";
+  /** terraform: steps to raise or to dig (exactly one), the terrain the cells become, and taper (a hill or crater over radius). */
+  raise?: number;
+  dig?: number;
+  terrain?: string;
+  taper?: boolean;
   duration?: number;
   maxMass?: number;
   range?: number;
@@ -149,6 +156,8 @@ export interface SimParams {
   ticksPerSecond: number;
   fire: { spreadChance: number; heatChance: number; boilChance: number; downwindBonus: number; smokeChance: number };
   water: { maxLevel: number; unitsPerStep: number };
+  /** Range of Cell.h in steps; from blockAt up a cell is a wall. */
+  height: { min: number; max: number; blockAt: number };
   gas: { decayChance: number; maxAmount: number };
   status: { burnDamageEvery: number; scaldEvery: number };
   push: { slideCells: number; collisionDamage: number };
@@ -289,6 +298,21 @@ const EFFECT_KEYS = new Set([
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target"]);
+const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform"]);
+
+function terraformErrors(r: Rules, s: SpellDef): string[] {
+  const errors: string[] = [];
+  const steps = [s.raise, s.dig].filter((n) => n !== undefined);
+  if (steps.length !== 1 || !Number.isInteger(steps[0]) || steps[0]! < 1) {
+    errors.push(`spell ${s.id}: terraform needs one of raise or dig, a whole number of steps from 1`);
+  }
+  if (s.terrain !== undefined && !Object.keys(r.terrain).includes(s.terrain)) errors.push(`spell ${s.id}: terrain ${s.terrain} unknown`);
+  else if (s.terrain !== undefined && r.terrain[s.terrain]!.tags.includes("blocking")) {
+    errors.push(`spell ${s.id}: terrain ${s.terrain} is blocking (walls come from raise)`);
+  }
+  if (s.taper !== undefined && typeof s.taper !== "boolean") errors.push(`spell ${s.id}: taper must be true or false`);
+  return errors;
+}
 
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
@@ -299,6 +323,7 @@ export function validateRules(r: Rules): string[] {
   for (const [id, t] of Object.entries(r.terrain)) {
     if (t.burnsTo && !terrainIds.has(t.burnsTo)) errors.push(`terrain ${id}: burnsTo ${t.burnsTo} unknown`);
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
+    if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
   }
   const seen = new Set<string>();
@@ -323,6 +348,8 @@ export function validateRules(r: Rules): string[] {
     if (s.element && !el.has(s.element)) errors.push(`spell ${s.id}: unknown element ${s.element}`);
     if (!SHAPES.has(s.shape)) errors.push(`spell ${s.id}: unknown shape ${s.shape}`);
     if (!s.name) errors.push(`spell ${s.id}: needs a name`);
+    if (s.effect !== undefined && !SPELL_EFFECTS.has(s.effect)) errors.push(`spell ${s.id}: unknown effect ${s.effect}`);
+    if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const id of Object.keys(r.machines)) {

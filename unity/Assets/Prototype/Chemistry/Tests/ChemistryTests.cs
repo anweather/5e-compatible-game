@@ -20,7 +20,7 @@ namespace Chem.Tests
         /// The repo's rules/ folder. In Unity it sits next to the project; under
         /// `dotnet test` (core/Game.Core.Tests) we walk up from the test binary.
         /// </summary>
-        static string RulesDir()
+        internal static string RulesDir()
         {
 #if UNITY_5_3_OR_NEWER
             return Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../rules"));
@@ -35,9 +35,9 @@ namespace Chem.Tests
         }
 
         /// <summary>A small dirt room with bedrock walls, like room() in sim.test.ts (seed 7).</summary>
-        internal static World Room(int w = 12, int h = 8)
+        internal static World Room(int w = 12, int h = 8, uint seed = 7, Rules rules = null)
         {
-            var world = new World(R, w, h, 7);
+            var world = new World(rules ?? R, w, h, seed);
             for (int x = 0; x < w; x++)
                 for (int y = 0; y < h; y++)
                     if (x == 0 || y == 0 || x == w - 1 || y == h - 1) world.At(x, y).T = "bedrock";

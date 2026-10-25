@@ -5,7 +5,7 @@ import { applyElement, ignite } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import {
   type World,
-  DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking,
+  DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
   log, neighbours, rand, terrainDef,
 } from "./world.ts";
 
@@ -117,7 +117,7 @@ function tickWater(w: World) {
     for (const [nx, ny] of neighbours(w, x, y)) {
       const nc = cellAt(w, nx, ny)!;
       if (nc.frozen && nc.water > 0) continue;
-      if (isBlocking(nc) && !hasTag(nc, "vessel")) continue;
+      if ((hasTag(nc, "blocking") && !hasTag(nc, "vessel")) || isRaisedWall(nc)) continue;
       if (nc.water >= RULES.sim.water.maxLevel) continue;
       const drop = level - (elevation(nc) + nc.water);
       const downhill = elevation(nc) < elevation(c);

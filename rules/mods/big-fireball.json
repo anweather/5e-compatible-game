@@ -1,0 +1,10 @@
+{
+  "title": "Big fireball",
+  "idea": "A third-level Fireball with a huge blast: everything within four squares of where it lands catches fire.",
+  "patch": {
+    "spells": [
+      { "id": "fireball", "name": "Fireball", "level": 3, "shape": "burst", "radius": 4, "element": "fire", "power": 2, "damage": [8, 6],
+        "blurb": "A bead of flame that blooms into a huge explosion where it lands. Sets the whole area alight." }
+    ]
+  }
+}

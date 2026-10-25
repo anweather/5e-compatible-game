@@ -7,13 +7,14 @@ prototype**. Nothing in this folder is specific to the sandbox.
 
 | File | What it holds |
 |---|---|
-| `materials.json` | Terrain (tags, flammability, fuel, what it burns or breaks into, elevation), covers (oil, grease, ash) and gases (steam, smoke) |
+| `materials.json` | Terrain (tags, flammability, fuel, what it burns, breaks or is dug into, elevation), covers (oil, grease, ash) and gases (steam, smoke) |
 | `reactions.json` | **The chemistry table.** What each element does when it reaches a square (`cell`), and to a creature or object standing there (`entity`) |
-| `spells.json` | The shared SRD spell kit: element, shape, power, damage, push force |
+| `spells.json` | The shared SRD spell kit: element, shape, power, damage, push force, earth shaping |
 | `critters.json` | Critters: what each emits, how often, and in what shape |
 | `entities.json` | Things on the board: HP, mass, flammable, explodes |
 | `machines.json` | What each machine needs before it powers the gates |
-| `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, gas decay, push and slide, damage |
+| `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage |
+| `mods/` | Example live mods (`docs/MODDING.md`), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
 
 ## Elements
 
@@ -57,6 +58,35 @@ prototype**. Nothing in this folder is specific to the sandbox.
 - **Entity rules** use `if.status` and `if.flammable`. Their effects
   are `status` (`{ "name": ticks }`), `clear` and `damageMul`.
 
+## Earth shaping (`"effect": "terraform"`)
+
+A spell with this effect raises or digs every square its shape touches.
+Each square keeps a **height**: whole steps on top of its terrain's
+`elevation`, within `sim.height` `min`..`max` (-3..4). Water flows by
+elevation plus height.
+
+```jsonc
+{ "id": "move-earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3,
+  "effect": "terraform",
+  "raise": 2,           // or "dig": n. Exactly one, a whole number of steps from 1
+                        // (not the reaction verb "raise", which puts up a pillar terrain)
+  "terrain": "rock",    // optional: what the squares become (not a blocking terrain)
+  "taper": true }       // optional: a hill or crater, full height in the middle, 1 at the radius
+```
+
+- **Blocking terrain and machines** (bedrock, trees, gates, boilers)
+  can't be shaped.
+- **Digging** clears the cover and turns the terrain into its `dugTo`
+  (grass is dug to dirt; raised rock to rubble) unless the spell names a
+  `terrain`.
+- **Raising** spills the square's water onto its neighbours, nearest
+  first, so no water is lost.
+- **A square raised `sim.height.blockAt` (3) steps or more is a wall:**
+  it blocks walking, sight, gas and water like blocking terrain, and loses
+  its cover and fire. Dig it back below that to open it. In the sandbox a
+  wall won't rise under a creature or object.
+- An element on the spell, if any, is applied after the shaping.
+
 ## Units
 
 - One square is 5 ft.
@@ -71,7 +101,8 @@ These are the cellular-automaton steps, parameterised by `sim.json`.
 They live in `../sandbox/src/sim.ts`, and `Game.Core` will need its own
 port of them:
 - fire spreading and burning out;
-- water flowing downhill;
+- water flowing downhill (by elevation plus height);
+- raising and digging squares (terraform spells);
 - gas drifting and decaying;
 - charge decaying;
 - statuses ticking down.

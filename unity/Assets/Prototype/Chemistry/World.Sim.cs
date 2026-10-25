@@ -98,7 +98,7 @@ namespace Chem
         {
             int n = Cells.Length;
             bool forward = Tick % 2 == 0;
-            int maxLevel = Rules.Sim.WaterMaxLevel;
+            int maxLevel = Rules.Sim.WaterMaxLevel, blockAt = Rules.Sim.Height.BlockAt;
             for (int k = 0; k < n; k++)
             {
                 int i = forward ? k : n - 1 - k;
@@ -120,9 +120,9 @@ namespace Chem
                     var nc = Cells[ny * W + nx];
                     if (nc.Frozen && nc.Water > 0) continue;
                     var nt = TerrainOf(nc);
-                    if (nt.Has("blocking") && !nt.Has("vessel")) continue;
+                    if ((nt.Has("blocking") && !nt.Has("vessel")) || nc.Height >= blockAt) continue;
                     if (nc.Water >= maxLevel) continue;
-                    int nElevation = nt.Elevation * Rules.Sim.WaterUnitsPerStep;
+                    int nElevation = (nt.Elevation + nc.Height) * Rules.Sim.WaterUnitsPerStep;
                     int drop = level - (nElevation + nc.Water);
                     bool downhill = nElevation < elevation;
                     if (!(drop >= 2 || (downhill && drop >= 1))) continue;

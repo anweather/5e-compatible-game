@@ -1,7 +1,8 @@
 // Typed view of ../rules/*.json, the same tables the web sandbox runs on
-// (sandbox/src/rules.ts). Only the cell-level parts are interpreted, plus
-// entities.json for the Unity physics props; the other files (critters,
-// machines) are accepted and ignored.
+// (sandbox/src/rules.ts). Only the cell-level parts and entities.json (for the
+// Unity physics props) are interpreted; the other files (critters, machines)
+// are kept as JSON so live mods (Rules.Mods.cs) can patch and check them, but
+// nothing here reads them.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -20,6 +21,8 @@ namespace Chem
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
+        /// <summary>What digging leaves (grass is dug down to dirt), or null to keep the terrain.</summary>
+        public string DugTo;
 
         // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
         HashSet<string> tagSet;
@@ -50,11 +53,19 @@ namespace Chem
     {
         public string Id, Name, Shape, Origin, Element, Blurb;
         public int Level, Power, Length, Size, Radius;
-        // Extras: only Wind is used by the cell sim; Push and Duration drive the Unity props (SpellForces).
+        // Extras: the cell sim uses Wind and (below) the terraform fields; Push and Duration drive the Unity props (SpellForces).
         public string Effect;
         public int Push, Wind, Range, Duration, MaxMass;
         /// <summary>[dice, sides], or empty.</summary>
         public int[] Damage;
+        /// <summary>
+        /// Effect "terraform": steps to raise or dig (one is 0), the terrain the cells become
+        /// (null: keep it, or its DugTo when digging), and whether the steps taper off with
+        /// distance from the target over Radius (a hill or a crater).
+        /// </summary>
+        public int Raise, Dig;
+        public string Terrain;
+        public bool Taper;
     }
 
     /// <summary>What an entity leaves behind when it blows up (entities.json "explodes").</summary>
@@ -85,6 +96,7 @@ namespace Chem
         /// started can no longer pass it on. The chance stays near full for most of the way and
         /// falls off toward the end (1 - (generation / FadeCells)^3). 0 (the
         /// default, and the web sandbox's behaviour) means fire spreads as far as there is fuel.
+        /// sim.json's fire.fadeCells (the sandbox ignores it), so a live mod can set it.
         /// </summary>
         public int FadeCells;
     }
@@ -95,11 +107,18 @@ namespace Chem
         public int MaxAmount = 6;
     }
 
+    /// <summary>The range of Cell.Height, in steps, and the height from which a cell is a wall.</summary>
+    public sealed class HeightParams
+    {
+        public int Min = -3, Max = 4, BlockAt = 3;
+    }
+
     public sealed class SimParams
     {
         public int TicksPerSecond = 6;
         public FireParams Fire = new FireParams();
         public GasParams Gas = new GasParams();
+        public HeightParams Height = new HeightParams();
         public int WaterMaxLevel = 16, WaterUnitsPerStep = 4;
         public int ConductLimit = 80;
         // Not used by the cell port, carried so a view can read them.
@@ -146,8 +165,11 @@ namespace Chem
         public bool Notable, Stop;
     }
 
-    public sealed class Rules
+    public sealed partial class Rules
     {
+        /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder" };
+
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
         readonly Dictionary<string, GasDef> gases = new Dictionary<string, GasDef>();
@@ -166,7 +188,14 @@ namespace Chem
         public IReadOnlyList<CellRule> CellRules => cellRules;
         public SimParams Sim { get; private set; } = new SimParams();
 
-        Rules() { }
+        /// <summary>
+        /// Every table as JSON, in the shape of the sandbox's `Rules` object (elements, terrain,
+        /// covers, gases, cellRules, entityRules, spells, critters, entities, machines, sim).
+        /// Mods patch this, never the typed tables, so merging works exactly like composeRules.
+        /// </summary>
+        readonly JObject doc;
+
+        Rules(JObject doc) { this.doc = doc; }
 
         public SpellDef Spell(string id) => spells.FirstOrDefault(s => s.Id == id);
 
@@ -177,7 +206,7 @@ namespace Chem
         public IReadOnlyList<CellRule> CellRulesFor(string element) =>
             element != null && byElement.TryGetValue(element, out var list) ? list : NoRules;
 
-        /// <summary>Reads every *.json in the folder (materials, reactions, sim required; spells and entities optional).</summary>
+        /// <summary>Reads every *.json in the folder (see <see cref="FromJson"/>). Subfolders such as mods/ are skipped.</summary>
         public static Rules Load(string rulesDir)
         {
             var files = new Dictionary<string, string>();
@@ -186,52 +215,60 @@ namespace Chem
             return FromJson(files);
         }
 
+        /// <summary>
+        /// Builds the rules from the files' text by name. materials.json and reactions.json are
+        /// required; the rest are optional.
+        /// </summary>
         public static Rules FromJson(IDictionary<string, string> filesByName)
         {
-            string Get(string name, bool required)
+            JToken Get(string name, bool required)
             {
-                if (filesByName.TryGetValue(name, out var text)) return text;
+                if (filesByName.TryGetValue(name, out var text)) return JToken.Parse(text);
                 if (required) throw new ArgumentException($"Rules: {name} is missing");
-                return null;
+                return JValue.CreateNull();
             }
 
-            var r = new Rules();
-            var materials = JObject.Parse(Get("materials.json", true));
-            var reactions = JObject.Parse(Get("reactions.json", true));
-            var simText = Get("sim.json", false);
-            var spellsText = Get("spells.json", false);
-            var entitiesText = Get("entities.json", false);
-
-            if (materials["terrain"] is JObject tj)
-                foreach (var p in tj.Properties()) r.terrain[p.Name] = ParseTerrain(p.Name, (JObject)p.Value);
-            if (materials["covers"] is JObject cj)
-                foreach (var p in cj.Properties()) r.covers[p.Name] = ParseCover(p.Name, (JObject)p.Value);
-            if (materials["gases"] is JObject gj)
-                foreach (var p in gj.Properties())
-                    r.gases[p.Name] = new GasDef { Id = p.Name, Name = Str(p.Value["name"]) ?? p.Name, Scald = Int(p.Value["scald"]) ?? 0 };
-
-            if (reactions["cell"] is JArray cells)
-                foreach (var t in cells.OfType<JObject>())
-                {
-                    var rule = ParseRule(t);
-                    r.cellRules.Add(rule);
-                    if (rule.Element == null) continue;
-                    if (!r.byElement.TryGetValue(rule.Element, out var list)) r.byElement[rule.Element] = list = new List<CellRule>();
-                    list.Add(rule);
-                }
-
-            if (spellsText != null && JToken.Parse(spellsText) is JArray sj)
-                foreach (var t in sj.OfType<JObject>()) r.spells.Add(ParseSpell(t));
-
-            r.LoadEntities(entitiesText);
-            if (simText != null) r.Sim = ParseSim(JObject.Parse(simText));
-            return r;
+            var materials = (JObject)Get("materials.json", true);
+            var reactions = (JObject)Get("reactions.json", true);
+            return FromDoc(new JObject
+            {
+                ["elements"] = new JArray(BaseElements),
+                ["terrain"] = materials["terrain"] as JObject ?? new JObject(),
+                ["covers"] = materials["covers"] as JObject ?? new JObject(),
+                ["gases"] = materials["gases"] as JObject ?? new JObject(),
+                ["cellRules"] = reactions["cell"] as JArray ?? new JArray(),
+                ["entityRules"] = reactions["entity"] as JArray ?? new JArray(),
+                ["spells"] = Get("spells.json", false) as JArray ?? new JArray(),
+                ["critters"] = Get("critters.json", false) as JArray ?? new JArray(),
+                ["entities"] = Get("entities.json", false) as JObject ?? new JObject(),
+                ["machines"] = Get("machines.json", false) as JObject ?? new JObject(),
+                ["sim"] = Get("sim.json", false) as JObject ?? new JObject(),
+            });
         }
 
-        void LoadEntities(string json)
+        /// <summary>The typed tables for a rule document (see <see cref="doc"/>), which the result keeps.</summary>
+        static Rules FromDoc(JObject doc)
         {
-            if (json == null || JToken.Parse(json) is not JObject o) return;
-            foreach (var p in o.Properties()) entities[p.Name] = ParseEntity(p.Name, (JObject)p.Value);
+            var r = new Rules(doc);
+            foreach (var p in ((JObject)doc["terrain"]).Properties()) r.terrain[p.Name] = ParseTerrain(p.Name, (JObject)p.Value);
+            foreach (var p in ((JObject)doc["covers"]).Properties()) r.covers[p.Name] = ParseCover(p.Name, (JObject)p.Value);
+            foreach (var p in ((JObject)doc["gases"]).Properties())
+                r.gases[p.Name] = new GasDef { Id = p.Name, Name = Str(p.Value["name"]) ?? p.Name, Scald = Int(p.Value["scald"]) ?? 0 };
+
+            foreach (var t in doc["cellRules"].OfType<JObject>())
+            {
+                var rule = ParseRule(t);
+                r.cellRules.Add(rule);
+                if (rule.Element == null) continue;
+                if (!r.byElement.TryGetValue(rule.Element, out var list)) r.byElement[rule.Element] = list = new List<CellRule>();
+                list.Add(rule);
+            }
+
+            foreach (var t in doc["spells"].OfType<JObject>()) r.spells.Add(ParseSpell(t));
+            foreach (var p in ((JObject)doc["entities"]).Properties())
+                if (p.Value is JObject e) r.entities[p.Name] = ParseEntity(p.Name, e);
+            r.Sim = ParseSim((JObject)doc["sim"]);
+            return r;
         }
 
         // ---------- parsing helpers ----------
@@ -257,8 +294,9 @@ namespace Chem
             }
         }
 
+        /// <summary>The strings in a list (anything else in it is skipped), or none.</summary>
         static IReadOnlyList<string> Strings(JToken t) =>
-            t is JArray a ? a.Select(x => (string)x).ToList() : new List<string>();
+            t is JArray a ? a.Where(x => x.Type == JTokenType.String).Select(x => (string)x).ToList() : new List<string>();
 
         static TerrainDef ParseTerrain(string id, JObject o) => new TerrainDef
         {
@@ -271,6 +309,7 @@ namespace Chem
             BurnsTo = Str(o["burnsTo"]),
             BreaksTo = Str(o["breaksTo"]),
             BurnLog = Str(o["burnLog"]),
+            DugTo = Str(o["dugTo"]),
         };
 
         static CoverDef ParseCover(string id, JObject o) => new CoverDef
@@ -330,6 +369,10 @@ namespace Chem
             Duration = Int(o["duration"]) ?? 40,
             MaxMass = Int(o["maxMass"]) ?? 1,
             Damage = Dice(o["damage"]),
+            Raise = Int(o["raise"]) ?? 0,
+            Dig = Int(o["dig"]) ?? 0,
+            Terrain = Str(o["terrain"]),
+            Taper = Truthy(o["taper"]),
         };
 
         static CellRule ParseRule(JObject o)
@@ -420,11 +463,18 @@ namespace Chem
                 s.Fire.BoilChance = Num(f["boilChance"]) ?? s.Fire.BoilChance;
                 s.Fire.DownwindBonus = Num(f["downwindBonus"]) ?? s.Fire.DownwindBonus;
                 s.Fire.SmokeChance = Num(f["smokeChance"]) ?? s.Fire.SmokeChance;
+                s.Fire.FadeCells = Int(f["fadeCells"]) ?? s.Fire.FadeCells;
             }
             if (o["water"] is JObject w)
             {
                 s.WaterMaxLevel = Int(w["maxLevel"]) ?? s.WaterMaxLevel;
                 s.WaterUnitsPerStep = Int(w["unitsPerStep"]) ?? s.WaterUnitsPerStep;
+            }
+            if (o["height"] is JObject ht)
+            {
+                s.Height.Min = Int(ht["min"]) ?? s.Height.Min;
+                s.Height.Max = Int(ht["max"]) ?? s.Height.Max;
+                s.Height.BlockAt = Int(ht["blockAt"]) ?? s.Height.BlockAt;
             }
             if (o["gas"] is JObject g)
             {

@@ -44,6 +44,20 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
 - `PropState.cs` is the rules side of a physics prop (hit points, burning,
   levitation, whether it floats), counted in ticks. It is the one file here
   that is *not* a port: the sandbox has no physics.
+- `World.Terraform.cs` is earth shaping: a spell with `"effect":
+  "terraform"` raises or digs its cells (`Cell.Height`, steps on top of
+  the terrain's elevation). Water flow reads elevation plus height, raised
+  ground spills its water without losing any, and a cell raised to
+  `sim.height.blockAt` counts as blocking (`IsRaisedWall`). `CellHash`
+  writes the height only when it isn't 0, so older goldens still hold.
+- **Live mods** (`docs/LIVE_LAB.md`), the sandbox's patch format:
+  `ModPatch.Parse` reads one, `rules.WithMods(mods)` applies them in order
+  and checks the result (`Rules.Mods.cs`, `Rules.Check.cs`; same merge and
+  same messages as `sandbox/src/rules.ts`), and `world.ApplyRules(rules)`
+  switches a running world over between ticks, keeping its cells.
+  `rules.Fingerprint` is a stable hash of the rules in force, for the
+  netcode checksum next to `world.CellHash()`. A late joiner rebuilds the
+  rules as `baseRules.WithMods(roomMods)`. Examples are in `rules/mods/`.
 
 It is a line-by-line port of the TypeScript sandbox (`sandbox/src/`), and
 the "golden" tests in `Chemistry/Tests/` check both give identical

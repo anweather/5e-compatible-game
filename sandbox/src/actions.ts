@@ -3,6 +3,7 @@ import { RULES, type SpellDef } from "./rules.ts";
 import { applyElement, applyEntityElement, displaceWater } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
+import { terraform } from "./terraform.ts";
 import {
   type Dir, type Entity, type World,
   DX, DY, cellAt, critterAt, dirFrom, entityAt, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, roll,
@@ -107,6 +108,7 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   const ctx = { power: s.power ?? 1, dir, direct: true };
   log(w, `You cast ${s.name}`, "info");
   if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };
+  if (s.effect === "terraform") terraform(w, s, cells, x, y);
 
   // Shove first (furthest first, so a line of goblins doesn't jam), then react.
   if (s.push) {
