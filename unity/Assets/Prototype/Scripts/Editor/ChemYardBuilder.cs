@@ -183,6 +183,8 @@ public static class ChemYardBuilder
         var go = new GameObject("NetworkManager");
         var manager = go.AddComponent<NetworkManager>();
         var transport = go.AddComponent<UnityTransport>();
+        // A late joiner receives the history and every prop's state at once; the default 128 overflowed.
+        transport.MaxPacketQueueSize = 512;
         manager.NetworkConfig = new NetworkConfig
         {
             NetworkTransport = transport,
@@ -218,6 +220,8 @@ public static class ChemYardBuilder
         wizard.AddComponent<CastPose>();
         wizard.AddComponent<SurfaceEffects>().enabled = false;
         wizard.AddComponent<Knockback>();
+        // Every copy holds what its player holds; NetWizard gives the owner's copy its controls.
+        wizard.AddComponent<ItemHolder>();
         wizard.AddComponent<NetWizard>();
 
         WizardRig.SetPlayerDriven(wizard, false);

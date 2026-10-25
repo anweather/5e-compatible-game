@@ -6,6 +6,9 @@ using UnityEngine;
 // flies to where the crosshair points, up to its reach (60 ft, about 18 m)
 // from the hand; let go and it comes back.
 //
+// Online the holder shares where the mote is (NetItem), and everyone else's
+// copy eases it there, so all see the same pointer.
+//
 // A held item rather than a ninth spell: the spell bar's spells are cell
 // effects cast through World.Cast, and a moving light touches no cells, so it
 // would need a new spell effect in both rule checkers and a ninth key.
@@ -19,6 +22,8 @@ public class DancingLights : ItemUse
 
     ItemLight itemLight;
     GameObject mote;
+    // Online, someone else's mote: where their screen last had it.
+    Vector3? shared;
 
     /// <summary>True while the mote is out of the hand.</summary>
     public bool Out { get; private set; }
@@ -39,10 +44,38 @@ public class DancingLights : ItemUse
         if (!Out) return;
         var goal = useDown ? Target(holder) : transform.position;
         lamp.transform.position = Vector3.MoveTowards(lamp.transform.position, goal, Speed * Time.deltaTime);
-        if (!useDown && (lamp.transform.position - goal).sqrMagnitude < 0.01f) CallBack();
+        bool back = !useDown && (lamp.transform.position - goal).sqrMagnitude < 0.01f;
+        if (Item.Online) Item.Net.ShareMote(!back, lamp.transform.position, now: back);
+        if (back) CallBack();
     }
 
-    public override void Released() => CallBack();
+    /// <summary>Online: someone else's mote is out at <paramref name="at"/>, or back in their hand.</summary>
+    public void Follow(bool isOut, Vector3 at)
+    {
+        var lamp = itemLight.Lamp;
+        if (lamp == null) return;
+        if (!isOut)
+        {
+            shared = null;
+            CallBack();
+            return;
+        }
+        if (!Out) SendOut(lamp);
+        shared = at;
+    }
+
+    void Update()
+    {
+        if (!Out || shared == null) return;
+        var lamp = itemLight.Lamp.transform;
+        lamp.position = Vector3.MoveTowards(lamp.position, shared.Value, Speed * Time.deltaTime);
+    }
+
+    public override void Released()
+    {
+        shared = null;
+        CallBack();
+    }
 
     /// <summary>Where the crosshair points, no further than the reach from the hand.</summary>
     Vector3 Target(ItemHolder holder)

@@ -13,6 +13,9 @@ using UnityEngine;
 //
 // What it does to the cells (fire it spreads, a blast of burning oil) goes
 // through ChemEffects, the one door from physics into the chemistry.
+//
+// Online (NetProp) only the host runs all this; a client's copy is a puppet
+// that follows the host's and only shows its flames and its end.
 [RequireComponent(typeof(Rigidbody), typeof(Collider), typeof(Renderer))]
 public class PhysicsProp : MonoBehaviour, IPushable
 {
@@ -47,6 +50,10 @@ public class PhysicsProp : MonoBehaviour, IPushable
     GameObject flames;
     int lastTick;
     bool broken;
+    NetProp net;
+
+    /// <summary>Online on a client: the host simulates this prop, and this copy only follows it.</summary>
+    public bool Puppet => net != null && net.Puppet;
 
     string Label => State.Def.Name.ToLowerInvariant();
 
@@ -56,6 +63,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
         shapes = GetComponents<Collider>();
         look = GetComponent<Renderer>();
         ownMaterial = shapes[0].sharedMaterial;
+        TryGetComponent(out net);
     }
 
     void Start()
@@ -98,6 +106,11 @@ public class PhysicsProp : MonoBehaviour, IPushable
     void FixedUpdate()
     {
         if (State == null || grid.World == null) return;
+        if (Puppet)
+        {
+            if (flames != null) flames.transform.position = TopCentre();
+            return;
+        }
         var at = grid.CellAt(transform.position);
         var cell = grid.World.At(at.x, at.y);
         StandOnYard(at);
@@ -156,6 +169,8 @@ public class PhysicsProp : MonoBehaviour, IPushable
     void RunTicks(Vector2Int at, Cell cell)
     {
         var world = grid.World;
+        // Going online starts a fresh world at tick 0 (NetChem); count from there.
+        if (lastTick > world.Tick) lastTick = world.Tick;
         while (lastTick < world.Tick && !broken)
         {
             lastTick++;
@@ -165,17 +180,9 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     void Handle(PropEvents events, Vector2Int at)
     {
-        if (Has(events, PropEvents.Ignited))
-        {
-            ShowFlames(true);
-            EventLog.Add($"The {Label} catches fire");
-        }
-        if (Has(events, PropEvents.Doused))
-        {
-            ShowFlames(false);
-            EventLog.Add($"The {Label} hisses out in the water");
-        }
-        if (Has(events, PropEvents.Burned)) ChemEffects.Request(grid, new ChemEffect(ChemEffectKind.Burn, at, kind));
+        if (Has(events, PropEvents.Ignited)) ShowBurning(true, announce: true);
+        if (Has(events, PropEvents.Doused)) ShowBurning(false, announce: true);
+        if (Has(events, PropEvents.Burned)) ChemEffects.Request(grid, ChemEffects.At(EffectKind.Burn, at, kind));
         if (Has(events, PropEvents.Landed)) EventLog.Add($"The {Label} drifts back down");
         if (Has(events, PropEvents.Destroyed)) Break(at);
     }
@@ -188,15 +195,15 @@ public class PhysicsProp : MonoBehaviour, IPushable
     // item weighs grams but flies off like the lightest crate, not like a bullet.
     public void Push(Vector3 impulse)
     {
-        if (State == null) return;
+        if (State == null || Puppet) return;
         body.AddForce(impulse / (State.Def.Mass * Forces.KgPerMass), ForceMode.VelocityChange);
     }
 
     /// <summary>Floats for <paramref name="ticks"/> sim ticks, rising a little, then falls.</summary>
     public void Levitate(int ticks)
     {
-        // A kinematic body is in someone's hand (Carryable).
-        if (State == null || body.isKinematic) return;
+        // A kinematic body is in someone's hand (Carryable), or a puppet of the host's.
+        if (State == null || body.isKinematic || Puppet) return;
         State.Levitate(grid.World.Tick, ticks);
         body.useGravity = false;
         body.linearVelocity += Vector3.up * levitateRise;
@@ -206,24 +213,41 @@ public class PhysicsProp : MonoBehaviour, IPushable
     /// <summary>Takes damage; at 0 HP it breaks (or explodes).</summary>
     public void Hurt(int amount)
     {
-        if (State != null && State.Damage(amount)) Break(grid.CellAt(transform.position));
+        if (State != null && !Puppet && State.Damage(amount)) Break(grid.CellAt(transform.position));
     }
 
     void Break(Vector2Int at)
     {
         if (broken) return;
         broken = true;
-        if (State.Def.Explodes != null) Explode(at, State.Def.Explodes);
-        else if (State.Burning) ChemEffects.Request(grid, new ChemEffect(ChemEffectKind.Embers, at, kind));
-        else EventLog.Add($"The {Label} breaks apart");
-        Destroy(gameObject);
+        bool exploded = State.Def.Explodes != null;
+        if (exploded) Explode(at, State.Def.Explodes);
+        else if (State.Burning) ChemEffects.Request(grid, ChemEffects.At(EffectKind.Embers, at, kind));
+        ShowBreak(exploded);
+        if (net != null && net.Hosting) net.Broke(exploded);
+        else Destroy(gameObject);
+    }
+
+    /// <summary>Online: it broke on the host. Hidden rather than destroyed, as Netcode wants for objects placed in the scene.</summary>
+    public void Vanish()
+    {
+        broken = true;
+        if (flames != null) Destroy(flames);
+        flames = null;
+        gameObject.SetActive(false);
+    }
+
+    /// <summary>How it goes: a blast for a barrel, a line in the log otherwise. Its cells are the chemistry's.</summary>
+    public void ShowBreak(bool exploded)
+    {
+        if (exploded && explosionFx != null) Destroy(Instantiate(explosionFx, transform.position, Quaternion.identity), 4f);
+        else if (!exploded && (State == null || !State.Burning) && !(net != null && net.Burning)) EventLog.Add($"The {Label} breaks apart");
     }
 
     // The blast's cells go to the chemistry; its shove and its damage are physics, so they stay here.
     void Explode(Vector2Int at, ExplosionDef blast)
     {
-        ChemEffects.Request(grid, new ChemEffect(ChemEffectKind.Explode, at, kind));
-        if (explosionFx != null) Destroy(Instantiate(explosionFx, transform.position, Quaternion.identity), 4f);
+        ChemEffects.Request(grid, ChemEffects.At(EffectKind.Explode, at, kind));
         float reach = (blast.Radius + 1) * grid.cellSize;
         Forces.Radial(transform.position, reach, blast.Push * Forces.ImpulsePerPush, transform);
         foreach (var other in Forces.InSphere<PhysicsProp>(transform.position, reach, transform)) other.Hurt(Roll(blast.Damage));
@@ -239,6 +263,14 @@ public class PhysicsProp : MonoBehaviour, IPushable
     }
 
     // --- looks ---------------------------------------------------------------------
+
+    /// <summary>Flames on or off; <paramref name="announce"/> says so in the log.</summary>
+    public void ShowBurning(bool on, bool announce)
+    {
+        if (on == (flames != null)) return;
+        ShowFlames(on);
+        if (announce && State != null) EventLog.Add(on ? $"The {Label} catches fire" : $"The {Label} hisses out in the water");
+    }
 
     void ShowFlames(bool on)
     {

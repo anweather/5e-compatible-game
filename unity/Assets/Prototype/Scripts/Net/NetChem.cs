@@ -19,8 +19,14 @@ using UnityEngine;
 //   and each mod's JSON, and every machine switches at that tick.
 // - Every batch carries the host's checksum of an earlier tick, the cells'
 //   hash and the rules' fingerprint; a client that disagrees logs a desync.
-// - A late joiner asks for the history (casts and rule switches) and replays
-//   it from tick 0.
+// - What physics props do to cells (a barrel's blast, a lantern's spill;
+//   ChemEffects) is seen by the host, whose physics is the only one that
+//   counts, and stamped into the next batch like a cast.
+// - When a batch's casts are applied, their shoves are too (SpellForces): the
+//   host moves the props, and each player moves their own wizard, from the
+//   caster's position carried in the cast.
+// - A late joiner asks for the history (casts, rule switches and prop
+//   effects) and replays it from tick 0.
 [RequireComponent(typeof(ChemGrid))]
 public class NetChem : NetworkBehaviour
 {
@@ -36,10 +42,14 @@ public class NetChem : NetworkBehaviour
     readonly List<CastIntent> scheduled = new();
     readonly List<CastIntent> history = new();
     readonly List<RuleChangeMsg> ruleHistory = new();
+    readonly List<EffectIntent> pendingEffects = new();
+    readonly List<EffectIntent> effectHistory = new();
     RuleSet stampNext;
 
     // Everyone.
     readonly Dictionary<int, TickBatch> batches = new();
+    // The casts of batches that arrived live (not replayed history), for their shoves.
+    readonly Dictionary<int, CastIntent[]> liveCasts = new();
     readonly Dictionary<int, string> hostHashes = new();
     int knownUpTo;
     bool synced;
@@ -59,8 +69,11 @@ public class NetChem : NetworkBehaviour
         grid.ExternalTicks = true;
         grid.ResetWorld();
         batches.Clear();
+        liveCasts.Clear();
         history.Clear();
         ruleHistory.Clear();
+        pendingEffects.Clear();
+        effectHistory.Clear();
         stampNext = null;
         HostUpcoming = null;
         hostHashes.Clear();
@@ -82,10 +95,20 @@ public class NetChem : NetworkBehaviour
 
     public override void OnNetworkDespawn() => grid.ExternalTicks = false;
 
-    /// <summary>Asks the host to cast a spell. It takes effect on every machine at the same tick, after <paramref name="delayTicks"/>.</summary>
-    public void RequestCast(string spellId, int x, int y, int dir, int delayTicks)
+    /// <summary>
+    /// Asks the host to cast a spell. It takes effect on every machine at the same tick, after
+    /// <paramref name="delayTicks"/>; <paramref name="from"/> is where the caster stands (a burst's centre).
+    /// </summary>
+    public void RequestCast(string spellId, int x, int y, int dir, int delayTicks, Vector3 from)
     {
-        RequestCastRpc(new FixedString32Bytes(spellId), x, y, dir, delayTicks);
+        RequestCastRpc(new FixedString32Bytes(spellId), x, y, dir, delayTicks, from);
+    }
+
+    /// <summary>Host only: stamps a physics prop's effect on cells into the next tick's batch, for every machine.</summary>
+    public void StampEffect(EffectCommand effect)
+    {
+        if (!IsServer) return;
+        pendingEffects.Add(EffectIntent.From(effect, 0));
     }
 
     /// <summary>Host only: stamps a checked rule switch into the next tick's batch, for every machine.</summary>
@@ -132,6 +155,10 @@ public class NetChem : NetworkBehaviour
                 due[i] = c;
             }
             history.AddRange(due);
+            var effects = pendingEffects.ToArray();
+            pendingEffects.Clear();
+            for (int i = 0; i < effects.Length; i++) effects[i].Tick = hostTick;
+            effectHistory.AddRange(effects);
             var rules = RuleChangeMsg.None;
             if (stampNext != null)
             {
@@ -143,22 +170,24 @@ public class NetChem : NetworkBehaviour
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
             int hashTick = grid.World.Tick;
             string hash = hashTick % HashEvery == 0 ? Checksum(grid) : "";
-            ApplyBatchRpc(hostTick, due.ToArray(), rules, hashTick, new FixedString64Bytes(hash));
+            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, hashTick, new FixedString64Bytes(hash));
         }
     }
 
     [Rpc(SendTo.Server)]
-    void RequestCastRpc(FixedString32Bytes spell, int x, int y, int dir, int delayTicks, RpcParams rpc = default)
+    void RequestCastRpc(FixedString32Bytes spell, int x, int y, int dir, int delayTicks, Vector3 from, RpcParams rpc = default)
     {
         ulong caster = rpc.Receive.SenderClientId;
-        scheduled.Add(new CastIntent { Spell = spell, X = x, Y = y, Dir = dir, Caster = caster, Tick = hostTick + 1 + Mathf.Clamp(delayTicks, 0, 30) });
-        AnnounceCastRpc(spell, x, y, dir, caster);
+        scheduled.Add(new CastIntent { Spell = spell, X = x, Y = y, Dir = dir, Caster = caster, From = from, Tick = hostTick + 1 + Mathf.Clamp(delayTicks, 0, 30) });
+        // Only the server can look a player's wizard up by client id; everyone else finds it by its object id.
+        var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(caster);
+        if (wizard != null) AnnounceCastRpc(spell, x, y, dir, wizard.NetworkObjectId);
     }
 
     [Rpc(SendTo.Server)]
     void RequestHistoryRpc(RpcParams rpc = default)
     {
-        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
+        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
     }
 
     [Rpc(SendTo.Server)]
@@ -185,30 +214,32 @@ public class NetChem : NetworkBehaviour
 
     // Cosmetic only: every machine shows the cast (gesture, projectile, landing effect) before its tick arrives.
     [Rpc(SendTo.ClientsAndHost)]
-    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, int dir, ulong caster)
+    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, int dir, ulong casterObject)
     {
-        var player = NetworkManager.SpawnManager.GetPlayerNetworkObject(caster);
-        if (player != null && player.TryGetComponent<SpellCaster>(out var spellCaster))
+        if (NetworkManager.SpawnManager.SpawnedObjects.TryGetValue(casterObject, out var player) && player.TryGetComponent<SpellCaster>(out var spellCaster))
             spellCaster.PlayCastEffect(spell.ToString(), x, y, dir);
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    void ApplyBatchRpc(int tick, CastIntent[] casts, RuleChangeMsg rules, int hashTick, FixedString64Bytes hash)
+    void ApplyBatchRpc(int tick, CastIntent[] casts, EffectIntent[] effects, RuleChangeMsg rules, int hashTick, FixedString64Bytes hash)
     {
-        batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null);
+        batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null, effects.Select(e => e.ToCommand()));
+        if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
         if (synced) ExtendKnown();
     }
 
     [Rpc(SendTo.SpecifiedInParams)]
-    void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, RpcParams rpc = default)
+    void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, RpcParams rpc = default)
     {
-        var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick);
+        var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
+            effects.Select(e => (e.Tick, e.ToCommand())));
         for (int t = 1; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
         knownUpTo = upToTick;
         synced = true;
         ExtendKnown();
+        if (effects.Length > 0) EventLog.Add($"Catching up {effects.Length} prop effect(s) on the yard");
         EventLog.Add(ruleChanges.Length > 0
             ? $"Joined the yard at tick {upToTick}; catching up, with {ruleChanges.Length} rule switch(es)"
             : $"Joined the yard at tick {upToTick}; catching up");
@@ -230,7 +261,21 @@ public class NetChem : NetworkBehaviour
             int next = world.Tick + 1;
             if (batches.TryGetValue(next, out var batch)) batches.Remove(next);
             grid.RunBatch(batch ?? new TickBatch(next));
+            if (liveCasts.Remove(next, out var casts)) Shove(casts);
             CheckHash(world.Tick);
+        }
+    }
+
+    // The physical side of the casts just applied: the host moves the props (its physics is the
+    // one that counts), and every player moves their own wizard unless they cast it.
+    void Shove(CastIntent[] casts)
+    {
+        var mine = NetworkManager.SpawnManager.GetLocalPlayerObject();
+        var myWizard = mine != null ? mine.GetComponent<Knockback>() : null;
+        foreach (var c in casts)
+        {
+            var wizard = c.Caster == NetworkManager.LocalClientId ? null : myWizard;
+            SpellForces.ApplyOnline(grid, c.ToCommand(), c.From, IsServer, wizard);
         }
     }
 
@@ -263,12 +308,14 @@ public class NetChem : NetworkBehaviour
     public string CurrentChecksum => Checksum(grid);
 }
 
-/// <summary>A spell cast, stamped with the sim tick it takes effect on.</summary>
+/// <summary>A spell cast, stamped with the sim tick it takes effect on, with who cast it and from where.</summary>
 public struct CastIntent : INetworkSerializable
 {
     public FixedString32Bytes Spell;
     public int X, Y, Dir, Tick;
     public ulong Caster;
+    /// <summary>Where the caster stood when casting: the centre of a burst's shove (Thunderwave).</summary>
+    public Vector3 From;
 
     public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir);
 
@@ -280,6 +327,35 @@ public struct CastIntent : INetworkSerializable
         serializer.SerializeValue(ref Dir);
         serializer.SerializeValue(ref Tick);
         serializer.SerializeValue(ref Caster);
+        serializer.SerializeValue(ref From);
+    }
+}
+
+/// <summary>A physics prop's effect on cells (Chem.EffectCommand), stamped with the sim tick it takes effect on.</summary>
+public struct EffectIntent : INetworkSerializable
+{
+    public byte Kind;
+    public int X, Y, Tick;
+    public FixedString64Bytes Entity;
+
+    public static EffectIntent From(EffectCommand e, int tick) => new EffectIntent
+    {
+        Kind = (byte)e.Kind,
+        X = e.X,
+        Y = e.Y,
+        Tick = tick,
+        Entity = new FixedString64Bytes(e.Entity ?? ""),
+    };
+
+    public EffectCommand ToCommand() => new EffectCommand((EffectKind)Kind, X, Y, Entity.ToString());
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref Kind);
+        serializer.SerializeValue(ref X);
+        serializer.SerializeValue(ref Y);
+        serializer.SerializeValue(ref Tick);
+        serializer.SerializeValue(ref Entity);
     }
 }
 

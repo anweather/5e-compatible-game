@@ -6,8 +6,10 @@ using UnityEngine;
 // where the crosshair points (hold the throw button to throw harder) and
 // passes "use" on to it. Shows what E would do next to the crosshair.
 //
-// Solo only for now: an online wizard has no ItemHolder, and items lie still
-// on other machines (props aren't networked yet; see ChemEffects).
+// Online every wizard has one, so a held item rides in its holder's hand on
+// every screen, but only the local player's has controls. Picking up and
+// letting go are asked of the host (NetItem), which grants them; Grant and
+// Forget are how the answer arrives, on every machine.
 [DefaultExecutionOrder(120)] // after CastPose and Knockback have moved the arm and body
 public class ItemHolder : MonoBehaviour
 {
@@ -50,8 +52,7 @@ public class ItemHolder : MonoBehaviour
     void Update()
     {
         if (controls == null) return;
-        InReach = Held == null ? Forces.Nearest<Carryable>(transform.position, reach) : null;
-        if (InReach != null && !InReach.isActiveAndEnabled) InReach = null;
+        InReach = Held == null ? Nearest() : null;
         controls.ItemInReach = Held != null || InReach != null;
 
         if (controls.Interact.WasPressedThisFrame())
@@ -76,12 +77,30 @@ public class ItemHolder : MonoBehaviour
             foreach (var use in Held.Uses) use.Use(this);
     }
 
-    // After the animation (and CastPose's gesture): the item rides in the hand, pointing where the wizard aims.
+    // The nearest item lying about (not in anyone's hand) within reach.
+    Carryable Nearest()
+    {
+        Carryable best = null;
+        float bestDistance = float.MaxValue;
+        foreach (var item in Forces.InSphere<Carryable>(transform.position, reach, null))
+        {
+            if (item.Holder != null || !item.isActiveAndEnabled) continue;
+            float d = (item.transform.position - transform.position).sqrMagnitude;
+            if (d >= bestDistance) continue;
+            bestDistance = d;
+            best = item;
+        }
+        return best;
+    }
+
+    // After the animation (and CastPose's gesture): the item rides in the hand, pointing where the
+    // wizard aims (someone else's wizard: the way it faces). Only the local player uses it.
     void LateUpdate()
     {
         if (Held == null) return;
-        var aim = AimDirection;
+        var aim = controls != null ? AimDirection : transform.forward;
         Held.transform.SetPositionAndRotation(HandPosition, Quaternion.LookRotation(aim));
+        if (controls == null) return;
         bool useDown = controls.Use.IsPressed();
         foreach (var use in Held.Uses) use.WhileHeld(this, useDown);
     }
@@ -89,28 +108,57 @@ public class ItemHolder : MonoBehaviour
     public void PickUp(Carryable item)
     {
         if (Held != null || item.Holder != null) return;
+        if (item.Online)
+        {
+            item.Net.RequestPickUp();
+            return;
+        }
+        Grant(item);
+    }
+
+    /// <summary>Puts <paramref name="item"/> in this hand (solo at once; online when the host says so, on every machine).</summary>
+    public void Grant(Carryable item)
+    {
         Held = item;
         item.TakeInto(this);
-        EventLog.Add($"You pick up the {item.Name.ToLowerInvariant()}");
+        if (controls != null) EventLog.Add($"You pick up the {item.Name.ToLowerInvariant()}");
+    }
+
+    /// <summary>Online: <paramref name="item"/> has left this hand (the host let it go).</summary>
+    public void Forget(Carryable item)
+    {
+        if (Held == item) Held = null;
+    }
+
+    /// <summary>The wizard is leaving the game: whatever it holds drops where it is.</summary>
+    public void LetGoOnLeaving()
+    {
+        var item = Held;
+        if (item == null) return;
+        Held = null;
+        item.Release(Vector3.zero);
     }
 
     /// <summary>Lets go: it falls from the hand at the wizard's own pace.</summary>
-    public void Drop() => Let(go => go.Release(body != null ? body.velocity : Vector3.zero), "drop");
+    public void Drop() => Let(body != null ? body.velocity : Vector3.zero, "drop");
 
     /// <summary>Throws the held item along the aim at <paramref name="speed"/> m/s, on top of the wizard's own pace.</summary>
     public void Throw(float speed)
     {
         var dir = (AimDirection + Vector3.up * Loft).normalized;
         var pace = body != null ? body.velocity : Vector3.zero;
-        Let(go => go.Release(pace + dir * speed), speed >= (gentleThrow + hardThrow) / 2f ? "hurl" : "toss");
+        Let(pace + dir * speed, speed >= (gentleThrow + hardThrow) / 2f ? "hurl" : "toss");
     }
 
-    void Let(System.Action<Carryable> release, string verb)
+    // Solo the item leaves the hand at once; online the host lets it go, from where this screen
+    // has the hand, and every machine follows (it stays in the hand until the host's answer arrives).
+    void Let(Vector3 velocity, string verb)
     {
         var item = Held;
         Held = null;
         throwPressedAt = -1f;
-        release(item);
+        if (item.Online) item.Net.RequestRelease(HandPosition, velocity);
+        else item.Release(velocity);
         EventLog.Add($"You {verb} the {item.Name.ToLowerInvariant()}");
     }
 

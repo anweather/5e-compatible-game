@@ -26,11 +26,20 @@ public static class Forces
 
     /// <summary>
     /// Pushes everything within <paramref name="reach"/> away from <paramref name="center"/>:
-    /// the full impulse at the centre, half at the edge. Returns how many things it pushed.
+    /// the full impulse at the centre, half at the edge. <paramref name="only"/>, if given, picks
+    /// what may be pushed (online, each machine pushes only what it owns). Returns how many things it pushed.
     /// </summary>
-    public static int Radial(Vector3 center, float reach, float impulse, Transform except)
+    public static int Radial(Vector3 center, float reach, float impulse, Transform except, System.Predicate<IPushable> only = null)
     {
         var targets = InSphere<IPushable>(center, reach, except);
+        // Other players' wizards have no live collider on this machine (their owners move them),
+        // so they are found by distance; Knockback hands their shove on to their owner.
+        foreach (var wizard in Knockback.All)
+        {
+            if (targets.Contains(wizard) || (except != null && wizard.transform.IsChildOf(except))) continue;
+            if ((wizard.transform.position - center).sqrMagnitude <= reach * reach) targets.Add(wizard);
+        }
+        if (only != null) targets.RemoveAll(t => !only(t));
         foreach (var target in targets)
         {
             var away = Position(target) - center;
@@ -42,8 +51,11 @@ public static class Forces
         return targets.Count;
     }
 
-    /// <summary>Pushes everything standing in <paramref name="cells"/> along <paramref name="direction"/>. Returns how many things it pushed.</summary>
-    public static int Along(ChemGrid grid, List<(int x, int y)> cells, Vector3 direction, float impulse, Transform except)
+    /// <summary>
+    /// Pushes everything standing in <paramref name="cells"/> along <paramref name="direction"/> (only what
+    /// <paramref name="only"/> picks, if given). Returns how many things it pushed.
+    /// </summary>
+    public static int Along(ChemGrid grid, List<(int x, int y)> cells, Vector3 direction, float impulse, Transform except, System.Predicate<IPushable> only = null)
     {
         var pushed = new HashSet<IPushable>();
         var half = new Vector3(grid.cellSize / 2f, ColumnHeight / 2f, grid.cellSize / 2f);
@@ -54,7 +66,7 @@ public static class Forces
             for (int i = 0; i < count; i++)
             {
                 var target = Find<IPushable>(Hits[i], except);
-                if (target != null && pushed.Add(target)) target.Push(Thrown(direction.normalized) * impulse);
+                if (target != null && (only == null || only(target)) && pushed.Add(target)) target.Push(Thrown(direction.normalized) * impulse);
             }
         }
         return pushed.Count;

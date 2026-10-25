@@ -83,7 +83,9 @@ public class PingMarker : MonoBehaviour
             Label(new Rect(screen.x - 200, screen.y - 30, 400, 30), text);
             return;
         }
-        // Off screen: an arrow on the edge pointing the way, the message just inside it.
+        // Off screen: an arrow on the edge pointing the way, the message just inside it. The edge is
+        // kept below the Play Together panel (NetSession, top right, to about y 190) and centred.
+        inset = new Rect(60, 200, Screen.width - 120, Screen.height - 400);
         var dir = (screen - centre).normalized;
         float scale = Mathf.Min(inset.width / 2f / Mathf.Max(1e-3f, Mathf.Abs(dir.x)), inset.height / 2f / Mathf.Max(1e-3f, Mathf.Abs(dir.y)));
         var edge = centre + dir * scale;

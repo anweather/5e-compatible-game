@@ -1,3 +1,4 @@
+using Unity.Netcode;
 using UnityEngine;
 
 // One of a pair of sending stones (items.json "send"). Using it casts Sending
@@ -5,9 +6,10 @@ using UnityEngine;
 // them where it came from. Nobody carrying the other stone? Then it hums
 // where it lies, and the ping shows the sender where that is.
 //
-// Solo, both ends are on this machine. Online, Send is where a message would
-// go to the host and on to the machine whose player holds the partner (as
-// NetChem.RequestCast does for casts); until then only the local end runs.
+// Solo, both ends are on this machine. Online, the message goes (NetItem,
+// through the host) to the machine of the player who holds the other stone,
+// and only their screen shows it and the ping; the sender's log says who
+// heard it.
 public class SendingStone : ItemUse
 {
     /// <summary>How long a ping marker stays up, in seconds.</summary>
@@ -27,6 +29,13 @@ public class SendingStone : ItemUse
             EventLog.Add($"The {Item.Name.ToLowerInvariant()} has no partner to send to");
             return null;
         }
+        if (other.Holder != null && other.Online && other.Holder.TryGetComponent<NetworkObject>(out var bearer))
+        {
+            string me = from.TryGetComponent<NetworkObject>(out var self) ? PlayerName(self.OwnerClientId) : from.name;
+            other.Net.Whisper(bearer.OwnerClientId, from.transform.position, message, me);
+            EventLog.Add($"Sending: \"{message}\" (heard by {PlayerName(bearer.OwnerClientId)}, {Distance(from, other):0} m away)");
+            return null;
+        }
         if (other.Holder != null)
         {
             // Heard by the other stone's bearer, with a ping where the sender stands.
@@ -36,6 +45,15 @@ public class SendingStone : ItemUse
         EventLog.Add($"Sending: \"{message}\". The other stone hums {Distance(from, other):0} m away {Compass(other.transform.position - from.transform.position)}");
         return PingMarker.Show(other.transform.position, $"\"{message}\"", PingColor, PingSeconds);
     }
+
+    /// <summary>Online: this stone's bearer hears a message <paramref name="sender"/> spoke into the other stone at <paramref name="from"/>.</summary>
+    public static PingMarker Heard(Vector3 from, string message, string sender)
+    {
+        EventLog.Add($"Sending from {sender}: \"{message}\"");
+        return PingMarker.Show(from, $"\"{message}\"", PingColor, PingSeconds);
+    }
+
+    static string PlayerName(ulong clientId) => $"player {clientId + 1}";
 
     static float Distance(ItemHolder from, Carryable to) => Vector3.Distance(from.transform.position, to.transform.position);
 

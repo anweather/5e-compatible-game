@@ -1,5 +1,7 @@
-// One sim tick's inputs, in lockstep: a rule switch (mods on or off) and the
-// casts stamped for that tick. Solo play runs one per tick; online the host
+// One sim tick's inputs, in lockstep: a rule switch (mods on or off), the
+// casts stamped for that tick, and the effects physics props had on cells
+// (Effects.cs: a barrel's blast, a lantern's spill), which the host saw and
+// stamped like casts. Solo play runs one per tick; online the host
 // stamps them and every machine runs the same batches in the same order
 // (NetChem), and a late joiner rebuilds them from the host's history
 // (Timeline) and replays from tick 0. Running a batch is the same code in all
@@ -42,11 +44,12 @@ namespace Chem
 
     public sealed class TickBatch
     {
-        public TickBatch(int tick, IEnumerable<CastCommand> casts = null, IReadOnlyList<ActiveMod> mods = null)
+        public TickBatch(int tick, IEnumerable<CastCommand> casts = null, IReadOnlyList<ActiveMod> mods = null, IEnumerable<EffectCommand> effects = null)
         {
             Tick = tick;
             Casts = (casts ?? Enumerable.Empty<CastCommand>()).ToList();
             Mods = mods;
+            Effects = (effects ?? Enumerable.Empty<EffectCommand>()).ToList();
         }
 
         /// <summary>The tick this batch brings the world to: it runs while the world is at Tick - 1.</summary>
@@ -54,9 +57,12 @@ namespace Chem
         public List<CastCommand> Casts { get; }
         /// <summary>The mod list from this tick on, or null when the rules don't change.</summary>
         public IReadOnlyList<ActiveMod> Mods { get; set; }
+        /// <summary>What physics props did to cells, applied after the casts, in order.</summary>
+        public List<EffectCommand> Effects { get; }
 
         /// <summary>
-        /// Runs the batch: switches the rules if it says to, applies its casts, then steps the world.
+        /// Runs the batch: switches the rules if it says to, applies its casts and then its props'
+        /// effects, then steps the world.
         /// Returns the rules now in force. A rule switch that doesn't check out (it can't on a
         /// machine whose own files differ) keeps the old rules, reports why through
         /// <paramref name="errors"/>, and the checksum will then flag that machine.
@@ -79,15 +85,18 @@ namespace Chem
                 }
             }
             foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir);
+            foreach (var e in Effects) world.ApplyEffect(e);
             world.Step();
             return rules;
         }
 
         /// <summary>
-        /// Every tick's batch from 1 to <paramref name="upToTick"/>, from a recorded history of casts and
-        /// rule switches (what a late joiner gets). Ticks with nothing on them get an empty batch.
+        /// Every tick's batch from 1 to <paramref name="upToTick"/>, from a recorded history of casts,
+        /// rule switches and props' effects (what a late joiner gets). Ticks with nothing on them get
+        /// an empty batch.
         /// </summary>
-        public static Dictionary<int, TickBatch> Timeline(IEnumerable<(int tick, CastCommand cast)> casts, IEnumerable<RuleChange> changes, int upToTick)
+        public static Dictionary<int, TickBatch> Timeline(IEnumerable<(int tick, CastCommand cast)> casts, IEnumerable<RuleChange> changes, int upToTick,
+            IEnumerable<(int tick, EffectCommand effect)> effects = null)
         {
             var batches = new Dictionary<int, TickBatch>();
             for (int t = 1; t <= upToTick; t++) batches[t] = new TickBatch(t);
@@ -95,6 +104,8 @@ namespace Chem
                 if (batches.TryGetValue(tick, out var b)) b.Casts.Add(cast);
             foreach (var change in changes ?? Enumerable.Empty<RuleChange>())
                 if (batches.TryGetValue(change.Tick, out var b)) b.Mods = change.Mods;
+            foreach (var (tick, effect) in effects ?? Enumerable.Empty<(int, EffectCommand)>())
+                if (batches.TryGetValue(tick, out var b)) b.Effects.Add(effect);
             return batches;
         }
     }

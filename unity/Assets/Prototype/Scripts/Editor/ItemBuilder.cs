@@ -32,6 +32,7 @@ public static class ItemBuilder
         {
             var prop = PropBuilder.Drop(Shape(id), $"{id} {++n}", parent, grid, id, x, yardHeight - 1 - y);
             var item = prop.gameObject.AddComponent<Carryable>();
+            prop.gameObject.AddComponent<NetItem>();
             if (id != ItemIds.SendingStone) continue;
             // Stones come in pairs: each one knows the other.
             if (lastStone == null)

@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 // Shoves the wizard: a Thunderwave or an exploding barrel knocks it back.
@@ -5,6 +6,10 @@ using UnityEngine;
 // dies away, moving the CharacterController after the controller has (as
 // SurfaceEffects does), so the controller itself stays untouched. On slick
 // ground SurfaceEffects then carries the slide on as momentum.
+//
+// Online, a wizard moves only on its owner's machine: a shove that lands on
+// someone else's wizard here (a barrel the host's physics blew up) is handed
+// on to its owner (NetWizard), who applies it.
 [DefaultExecutionOrder(110)]
 [RequireComponent(typeof(CharacterController))]
 public class Knockback : MonoBehaviour, IPushable
@@ -17,16 +22,34 @@ public class Knockback : MonoBehaviour, IPushable
     // Below this speed (m/s) the shove is over.
     const float StopSpeed = 0.05f;
 
+    static readonly List<Knockback> all = new();
+
     CharacterController body;
+    NetWizard net;
+
+    /// <summary>Every wizard in the scene, local or not (Forces finds other players' wizards by distance).</summary>
+    public static IReadOnlyList<Knockback> All => all;
 
     /// <summary>The shove's current speed, in m/s.</summary>
     public Vector3 Velocity { get; private set; }
 
-    void Awake() => body = GetComponent<CharacterController>();
+    void Awake()
+    {
+        body = GetComponent<CharacterController>();
+        TryGetComponent(out net);
+    }
+
+    void OnEnable() => all.Add(this);
+    void OnDisable() => all.Remove(this);
 
     /// <summary>Adds an impulse (newton-seconds). Only the sideways part moves the wizard; the controller owns jumping and falling.</summary>
     public void Push(Vector3 impulse)
     {
+        if (net != null && net.IsSpawned && !net.IsOwner)
+        {
+            net.PushOwner(impulse);
+            return;
+        }
         impulse.y = 0f;
         Velocity += impulse / MassKg;
     }

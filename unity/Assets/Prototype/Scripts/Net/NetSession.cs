@@ -8,9 +8,9 @@ using Unity.Services.Multiplayer;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// The Play Together panel, top right. Solo play uses the scene's own wizard;
-// hosting or joining removes it and the network spawns one wizard per player
-// (up to MaxPlayers).
+// The Play Together panel, top right, under the help line and spell bar.
+// Solo play uses the scene's own wizard; hosting or joining removes it and
+// the network spawns one wizard per player (up to MaxPlayers).
 //
 // Online: Unity Relay through a Multiplayer Services session. The host gets a
 // short join code to send a friend; nobody needs an account (anonymous
@@ -153,12 +153,28 @@ public class NetSession : MonoBehaviour
         GUI.skin.button.fontSize = 16;
         GUI.skin.textField.fontSize = 16;
         GUI.skin.label.fontSize = 16;
-        GUILayout.BeginArea(new Rect(Screen.width - 316, 12, 300, 210), box);
-        if (Net.IsListening || session != null) OnlinePanel();
+        bool online = Net.IsListening || session != null;
+        GUILayout.BeginArea(PanelRect(online, SessionCode != null, status != null), box);
+        if (online) OnlinePanel();
         else OfflinePanel();
         if (status != null) GUILayout.Label(status);
         GUILayout.EndArea();
     }
+
+    // Top right, below the help line and the spell bar (EventLog, y 12 to 70), so neither runs
+    // under it at any width; only as tall as what it shows.
+    const float PanelTop = 76f, PanelWidth = 300f, Row = 30f;
+
+    /// <summary>Where the panel goes on a screen <paramref name="width"/> pixels wide.</summary>
+    public static Rect PanelRect(bool online, bool hasCode, bool hasStatus, float width)
+    {
+        float rows = 6f;
+        if (online) rows = hasCode ? 5f : 3f;
+        if (hasStatus) rows += 1.5f;
+        return new Rect(width - PanelWidth - 16f, PanelTop, PanelWidth, rows * Row + 20f);
+    }
+
+    static Rect PanelRect(bool online, bool hasCode, bool hasStatus) => PanelRect(online, hasCode, hasStatus, Screen.width);
 
     void OfflinePanel()
     {

@@ -7,22 +7,40 @@ using UnityEngine;
 // prop nearest its target. The strengths are the spell's push and duration in
 // rules/spells.json (see Forces for the units).
 //
-// Solo only for now: SpellCaster calls it when a cast lands. Online, casts
-// reach every machine through NetChem, and props stay put (see ChemEffects).
+// Solo: SpellCaster calls Apply when a cast lands, and it moves everything.
+// Online: NetChem calls ApplyOnline on every machine when the cast's tick
+// batch runs. Physics props move only on the host (clients' props follow the
+// host's), and each player moves only their own wizard (owner-authoritative
+// movement), from the caster's position carried in the cast.
 public static class SpellForces
 {
-    /// <summary>Applies the forces of a cast that just landed. Returns how many things it moved.</summary>
-    public static int Apply(ChemGrid grid, string spellId, int x, int y, int dir, Transform caster)
+    /// <summary>Solo: applies the forces of a cast that just landed to everything but the caster. Returns how many things it moved.</summary>
+    public static int Apply(ChemGrid grid, string spellId, int x, int y, int dir, Transform caster) =>
+        Apply(grid, new CastCommand(spellId, x, y, dir), caster.position, caster, null, levitate: true);
+
+    /// <summary>
+    /// Online: the forces of a cast whose tick batch just ran. <paramref name="props"/> on the host
+    /// moves the physics props; <paramref name="wizard"/>, the local player's wizard unless they cast it,
+    /// is shoved too. Returns how many things it moved here.
+    /// </summary>
+    public static int ApplyOnline(ChemGrid grid, CastCommand cast, Vector3 from, bool props, Knockback wizard)
     {
-        var spell = grid.World.Rules.Spell(spellId);
+        bool Mine(IPushable p) => (props && p is PhysicsProp) || (wizard != null && ReferenceEquals(p, wizard));
+        return Apply(grid, cast, from, null, Mine, levitate: props);
+    }
+
+    static int Apply(ChemGrid grid, CastCommand cast, Vector3 from, Transform except, System.Predicate<IPushable> only, bool levitate)
+    {
+        var (x, y, dir) = (cast.X, cast.Y, cast.Dir);
+        var spell = grid.World.Rules.Spell(cast.Spell);
         if (spell == null) return 0;
-        if (spell.Effect == SpellShapes.LevitateEffect) return Levitate(grid, spell, x, y) ? 1 : 0;
+        if (spell.Effect == SpellShapes.LevitateEffect) return levitate && Levitate(grid, spell, x, y) ? 1 : 0;
         if (spell.Push <= 0) return 0;
         float impulse = spell.Push * Forces.ImpulsePerPush;
         return spell.Shape switch
         {
-            SpellShapes.Burst => Forces.Radial(caster.position, (spell.Radius + 1) * grid.cellSize, impulse, caster),
-            SpellShapes.Line => Forces.Along(grid, grid.World.SpellCells(spell, x, y, dir), Direction(dir), impulse, caster),
+            SpellShapes.Burst => Forces.Radial(from, (spell.Radius + 1) * grid.cellSize, impulse, except, only),
+            SpellShapes.Line => Forces.Along(grid, grid.World.SpellCells(spell, x, y, dir), Direction(dir), impulse, except, only),
             _ => 0,
         };
     }

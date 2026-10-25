@@ -13,7 +13,8 @@ using UnityEngine;
 //
 // A cast is an intent, (spell, x, y, direction): solo it is applied to the
 // world when the show lands, and its shove to whatever moves (SpellForces);
-// online it goes to NetChem, which applies it on every machine at the same tick.
+// online it goes to NetChem, which applies it on every machine at the same
+// tick, with where the caster stood (the centre of a burst's shove).
 public class SpellCaster : MonoBehaviour
 {
     public ChemGrid grid;
@@ -128,7 +129,7 @@ public class SpellCaster : MonoBehaviour
         if (online != null && online.Online)
         {
             int delay = Mathf.CeilToInt(FlightSeconds(spellId, x, y, dir) * grid.World.Rules.Sim.TicksPerSecond);
-            online.RequestCast(spellId, x, y, dir, delay);
+            online.RequestCast(spellId, x, y, dir, delay, transform.position);
             return;
         }
         PlayCastEffect(spellId, x, y, dir, () =>

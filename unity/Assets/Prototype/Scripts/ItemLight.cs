@@ -3,7 +3,8 @@ using UnityEngine;
 
 // The light an item sheds (items.json "light"), as a real Unity light: a point
 // light for a glowing ball, a spot light down the beam for the bullseye
-// lantern, which points where its holder aims. Use covers and uncovers it.
+// lantern, which points where its holder aims. Use covers and uncovers it
+// (online, for everyone: NetItem keeps whether it is lit).
 //
 // The SRD's bright and dim light become the light's reach: it ends where the
 // dim light does (RangeMetres), and its intensity is set so the bright edge
@@ -37,7 +38,7 @@ public class ItemLight : ItemUse
         // A beam starts just in front, so the lantern's own body doesn't shadow it.
         if (def.Cone > 0 && look != null) Lamp.transform.position = transform.position + transform.forward * (look.bounds.extents.magnitude + 0.03f);
         Configure(Lamp, def, glow);
-        SetGlow(true);
+        SetOn(!Item.Online || Item.Net.Lit);
         Item.DefChanged += Reconfigure;
     }
 
@@ -101,9 +102,17 @@ public class ItemLight : ItemUse
     public override void Use(ItemHolder holder)
     {
         bool on = !Lamp.enabled;
+        if (Item.Online) Item.Net.RequestLit(on);
+        else SetOn(on);
+        EventLog.Add(on ? $"You uncover the {Item.Name.ToLowerInvariant()}" : $"You cover the {Item.Name.ToLowerInvariant()}");
+    }
+
+    /// <summary>Uncovers (true) or covers the light.</summary>
+    public void SetOn(bool on)
+    {
+        if (Lamp == null) return;
         Lamp.enabled = on;
         SetGlow(on);
-        EventLog.Add(on ? $"You uncover the {Item.Name.ToLowerInvariant()}" : $"You cover the {Item.Name.ToLowerInvariant()}");
     }
 
     // The item's own surface glows in its light's colour while lit (bloom picks it up).

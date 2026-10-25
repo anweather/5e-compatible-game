@@ -1,3 +1,5 @@
+using Unity.Netcode;
+using Unity.Netcode.Components;
 using UnityEditor;
 using UnityEngine;
 
@@ -6,6 +8,10 @@ using UnityEngine;
 // pond, a boulder at its edge, and crates by the brambles. Positions are yard
 // cells, as in ChemYardBuilder's map; each prop is dropped from a little
 // above its cell and settles when Play starts (on the pond, crates float).
+//
+// Each prop is also an in-scene NetworkObject (NetProp): online the host
+// simulates it and clients follow its NetworkTransform. ChemYardBuilder gives
+// every in-scene NetworkObject its id once the scene is saved.
 public static class PropBuilder
 {
     public const string Generated = "Assets/Prototype/Generated";
@@ -53,7 +59,22 @@ public static class PropBuilder
         var prop = go.AddComponent<PhysicsProp>();
         prop.grid = grid;
         prop.kind = kind;
+        Network(go);
         return prop;
+    }
+
+    // Host-simulated online: server-authoritative transform, interpolated on clients. It never
+    // changes parent through Netcode (a carried item rides in a hand by our own code, solo too).
+    static void Network(GameObject go)
+    {
+        var networkObject = go.AddComponent<NetworkObject>();
+        networkObject.AutoObjectParentSync = false;
+        var netTransform = go.AddComponent<NetworkTransform>();
+        netTransform.AuthorityMode = NetworkTransform.AuthorityModes.Server;
+        netTransform.SyncScaleX = netTransform.SyncScaleY = netTransform.SyncScaleZ = false;
+        netTransform.InLocalSpace = false;
+        netTransform.Interpolate = true;
+        go.AddComponent<NetProp>();
     }
 
     // Greybox shapes: a wooden crate, an upright oil drum, a round grey boulder.

@@ -11,6 +11,10 @@ using UnityEngine;
 // What it does when used comes from its row in items.json, as behaviours
 // added at Start: a light (ItemLight), breaking on a hard landing (Fragile),
 // and its "use" (Spyglass, SendingStone, DancingLights).
+//
+// Online (NetItem) the host decides who holds it and flies it when thrown;
+// a client's copy is a puppet that rides in whichever hand holds it and
+// otherwise follows the host's.
 [RequireComponent(typeof(PhysicsProp), typeof(Rigidbody))]
 public class Carryable : MonoBehaviour
 {
@@ -27,6 +31,12 @@ public class Carryable : MonoBehaviour
 
     public ItemDef Def { get; private set; }
     public ChemGrid Grid => prop.grid;
+    /// <summary>Its network half, or null in a scene without networking.</summary>
+    public NetItem Net { get; private set; }
+    /// <summary>Online, whether picking up, letting go and using it go through the host.</summary>
+    public bool Online => Net != null && Net.Online;
+    /// <summary>Online on a client: the host's copy is the real one.</summary>
+    public bool Puppet => prop.Puppet;
     /// <summary>Who has it in hand, or null when it lies about.</summary>
     public ItemHolder Holder { get; private set; }
     public string Name => Def != null ? Def.Name : name;
@@ -39,6 +49,7 @@ public class Carryable : MonoBehaviour
         body = GetComponent<Rigidbody>();
         shapes = GetComponents<Collider>();
         restParent = transform.parent;
+        Net = TryGetComponent<NetItem>(out var net) ? net : null;
     }
 
     void Start()
@@ -96,18 +107,30 @@ public class Carryable : MonoBehaviour
         transform.SetParent(holder.transform, true);
     }
 
-    /// <summary>Out of the hand, moving at <paramref name="velocity"/> (a throw, or the wizard's own pace for a drop).</summary>
+    /// <summary>
+    /// Out of the hand, moving at <paramref name="velocity"/> (a throw, or the wizard's own pace for a drop).
+    /// A puppet stays kinematic: the host's copy flies, and this one follows it.
+    /// </summary>
     public void Release(Vector3 velocity)
     {
         var from = Holder;
         Holder = null;
         transform.SetParent(restParent, true);
+        foreach (var use in Uses) use.Released();
+        if (from != null) StartCoroutine(StopIgnoring(from));
+        if (Puppet) return;
         body.isKinematic = false;
         body.interpolation = RigidbodyInterpolation.Interpolate;
         body.linearVelocity = velocity;
         body.angularVelocity = Random.insideUnitSphere * 2f;
-        foreach (var use in Uses) use.Released();
-        if (from != null) StartCoroutine(StopIgnoring(from));
+    }
+
+    /// <summary>Host: lets go at <paramref name="from"/> (where the holder's own screen had the hand), moving at <paramref name="velocity"/>.</summary>
+    public void ReleaseAt(Vector3 from, Vector3 velocity)
+    {
+        Release(velocity);
+        transform.position = from;
+        body.position = from;
     }
 
     IEnumerator StopIgnoring(ItemHolder from)

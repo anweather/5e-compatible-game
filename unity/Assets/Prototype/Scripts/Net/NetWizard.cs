@@ -6,6 +6,11 @@ using UnityEngine;
 // and spellcasting switched off; on spawn the owner switches them on and
 // takes the camera, while everyone else's copy stays a puppet moved by its
 // NetworkTransform and NetworkAnimator (both owner-authoritative).
+//
+// Every copy has an ItemHolder, so an item someone holds rides in their hand
+// on every screen (NetItem); only the owner's copy has controls. A shove
+// another machine works out for this wizard (a barrel blast on the host) is
+// sent to the owner, who applies it (Knockback).
 [RequireComponent(typeof(SpellCaster), typeof(SurfaceEffects), typeof(PlayerControls))]
 public class NetWizard : NetworkBehaviour
 {
@@ -33,7 +38,27 @@ public class NetWizard : NetworkBehaviour
         controls.enabled = true;
         caster.controls = controls;
         caster.enabled = true;
-        TakeCamera(controls);
+        var follow = TakeCamera(controls);
+        if (TryGetComponent<ItemHolder>(out var hands))
+        {
+            hands.controls = controls;
+            hands.view = follow;
+        }
+    }
+
+    // A wizard that leaves lets go of what it holds first, or the item (riding in its hand) would go with it.
+    public override void OnNetworkDespawn()
+    {
+        if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
+    }
+
+    /// <summary>Sends a shove to this wizard's owner, whose machine moves it.</summary>
+    public void PushOwner(Vector3 impulse) => PushRpc(impulse);
+
+    [Rpc(SendTo.Owner)]
+    void PushRpc(Vector3 impulse)
+    {
+        if (TryGetComponent<Knockback>(out var knockback)) knockback.Push(impulse);
     }
 
     // Players are spread around the start cell so they don't spawn inside each other.
@@ -44,11 +69,12 @@ public class NetWizard : NetworkBehaviour
         return start + new Vector3(Mathf.Cos(angle), 0.1f, Mathf.Sin(angle)) * grid.cellSize;
     }
 
-    void TakeCamera(PlayerControls controls)
+    CinemachineCamera TakeCamera(PlayerControls controls)
     {
         var follow = FindFirstObjectByType<CinemachineCamera>();
-        if (follow == null) return;
+        if (follow == null) return null;
         follow.Target.TrackingTarget = transform.Find(WizardRig.CameraRoot);
         if (follow.TryGetComponent<CameraZoom>(out var zoom)) zoom.controls = controls;
+        return follow;
     }
 }

@@ -41,6 +41,10 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   charge and wind decay.
 - `World.Entities.cs` is what an entity does to cells: a barrel's blast of
   burning oil, a burnt crate's embers, a smashed lantern's spilled oil.
+  `Effects.cs` wraps these as a value, `EffectCommand` (burn, embers,
+  explode or spill, a cell and an entity or item id), applied by
+  `world.ApplyEffect`: what a physics prop hands the chemistry, solo at once
+  and online stamped into a tick batch like a cast.
 - `Items.cs` reads `rules/items.json`, things to carry (glowing balls, a
   bullseye lantern, a spyglass, sending stones, a Dancing Lights mote): their
   light in SRD feet, their use, and when one breaks (`ItemDef.BreaksAt`).
@@ -69,9 +73,11 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   mods as id + JSON text, the effective rules), so every switch builds and
   checks a new one and a refused switch leaves the old one untouched.
   `RuleSet.BaseOf` folds a scene's tuning into the base as a mod.
-  `TickBatch.cs` is one tick's lockstep inputs, a rule switch and casts;
-  `RunOn` is the one place they are applied, live or replayed, and
-  `Timeline` rebuilds the batches from a host's history for a late joiner.
+  `TickBatch.cs` is one tick's lockstep inputs: a rule switch, casts and
+  props' effects (applied in that order, then a step); `RunOn` is the one
+  place they are applied, live or replayed, and `Timeline` rebuilds the
+  batches from a host's history (casts, rule switches, effects) for a late
+  joiner.
   `ModCatalog.cs` lists `rules/mods/*.json` with titles and ideas.
 
 It is a line-by-line port of the TypeScript sandbox (`sandbox/src/`), and
@@ -85,8 +91,8 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 | The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Rules.cs` (the rules in force; puts a switch in force between ticks and raises `RulesChanged`), `ChemGrid.Visuals.cs` (per-cell redraw, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge), `ChemGrid.Shaping.cs` (earth shaping: a reshaped tile eases to its new height with a puff of dust, carrying what stands on it), `GridTileBuilder.cs` (ground tiles: soil blocks capped with the terrain, foliage, a raised wall's crags and blocker), `MaterialCache.cs`, `FireLightPool.cs` |
 | The world beyond the yard | `ValleyChemistry.cs` (burnt trees, scorched grass, the cabin burning down on the terrain, terrain raised or sunk under reshaped cells, and a hole cut under the yard so its tiles are the ground there) |
 | The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast; a two-page bar, Elements and Earth), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water, the yard's tiles as ground, climb one step), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
-| Physics props | `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes), `Forces.cs` (radial and line shoves), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate), `ChemEffects.cs` (the one door from physics into the chemistry) |
-| Things to carry | `Carryable.cs` (an item from `rules/items.json`; a `PhysicsProp` on the ground, kinematic in hand; adds the behaviours its row asks for), `ItemHolder.cs` (the wizard's hand: pick up, drop, throw, use, the hint by the crosshair), `ItemUse.cs` (base of the behaviours), `ItemLight.cs`, `Fragile.cs` (smash and spill through `ChemEffects`), `Spyglass.cs`, `SendingStone.cs` with `PingMarker.cs`, `DancingLights.cs`, `Aiming.cs` (the crosshair ray, shared with `SpellCaster`) |
+| Physics props | `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes; online a client's copy is a puppet of the host's), `Forces.cs` (radial and line shoves, optionally only what this machine owns), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate; solo when a cast lands, online when its tick batch runs), `ChemEffects.cs` (the one door from physics into the chemistry: applied solo, stamped by the host online) |
+| Things to carry | `Carryable.cs` (an item from `rules/items.json`; a `PhysicsProp` on the ground, kinematic in hand; adds the behaviours its row asks for), `ItemHolder.cs` (the wizard's hand: pick up, drop, throw, use, the hint by the crosshair; online every wizard has one, and pick-up and letting go are granted by the host), `ItemUse.cs` (base of the behaviours), `ItemLight.cs`, `Fragile.cs` (smash and spill through `ChemEffects`), `Spyglass.cs`, `SendingStone.cs` with `PingMarker.cs`, `DancingLights.cs`, `Aiming.cs` (the crosshair ray, shared with `SpellCaster`) |
 | The show of a spell | `SpellVisuals.cs` (data asset), `SpellProjectile.cs` |
 | HUD | `EventLog.cs` (help, spell bar, "what happened" log), `ModsPanel.cs` (M / Start: the mods panel) |
 | Live rules | `RuleSwitcher.cs` (decides what to switch to and sends it: queued solo, stamped by the host online, asked of the host by a client), `RulesWatcher.cs` (Editor and dev builds: reloads saved `rules/` files, debounced, on the main thread). `ChemGrid` adds both at runtime, so scenes need no rebuild |
@@ -109,13 +115,28 @@ through lockstep like everything else.
 
 ### 4. Networking (`Scripts/Net/`)
 `NetChem.cs` is **lockstep**: the host owns the clock and broadcasts, every
-tick, the casts due on that tick and, when the rules change, the new mod
-list (`RuleChangeMsg`). Every machine runs them as a `TickBatch` on its own
-`Chem.World`, so all worlds stay identical without sending any cells. A
-checksum every 30 ticks (cell hash and rules fingerprint) catches a
-desync and says whether the rules differ. A late joiner gets the casts and
-rule switches and replays them. `NetWizard.cs`
-switches a spawned wizard on for its owner. `NetSession.cs` is the Play
+tick, the casts due on that tick (with the caster's position), the effects
+its physics props had on cells (`EffectIntent`: a barrel's blast, a
+lantern's spill, a burning crate's fire) and, when the rules change, the
+new mod list (`RuleChangeMsg`). Every machine runs them as a `TickBatch` on
+its own `Chem.World`, so all worlds stay identical without sending any
+cells. A checksum every 30 ticks (cell hash and rules fingerprint) catches
+a desync and says whether the rules differ. A late joiner gets the casts,
+rule switches and effects and replays them. When a live batch's casts run,
+their shoves run too: the host moves the props, each player their own
+wizard. `NetWizard.cs` switches a spawned wizard on for its owner and
+passes a shove worked out elsewhere (a barrel blast on the host) to it.
+
+**Physics props and items are host-authoritative** (D4): each is an
+in-scene `NetworkObject` placed by `PropBuilder` with a server-authority
+`NetworkTransform`. `NetProp.cs` makes a client's copy a kinematic puppet
+and replicates only what the eye needs (burning, levitating, hit points);
+a broken prop is despawned without being destroyed and hidden everywhere,
+late joiners included. `NetItem.cs` keeps who holds an item (the holder
+wizard's object id; the host grants pick-ups and flies throws), whether its
+light is uncovered, the Dancing Lights mote's position (from the holder),
+and carries a sending stone's message to the machine of whoever holds the
+other stone. Measured numbers are in `docs/MULTIPLAYER.md` §7. `NetSession.cs` is the Play
 Together panel (Relay join codes, or same-network IP). `NetDemo.cs` and
 `NetDemoDirector.cs` run the 4-player scripted demo. Background:
 `docs/MULTIPLAYER.md`.
@@ -161,8 +182,11 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
    other way round. The core reports back only through its state and its
    log.
 3. **Networking may use the view** (`NetChem` drives `ChemGrid`,
-   `NetWizard` switches on `SpellCaster`). The view knows only one thing
-   about networking: `SpellCaster` hands a cast to `NetChem` when online.
+   `NetWizard` switches on `SpellCaster`). The view knows networking only
+   as a door it hands a request to when online: `SpellCaster` and
+   `ChemEffects` to `NetChem`, `PhysicsProp` and `Carryable` (and the item
+   behaviours) to their `NetProp` / `NetItem`, `Knockback` to `NetWizard`.
+   Solo none of them is used.
 4. **Editor code may use everything; nothing may use editor code.**
 5. **Asset Store packs are optional.** Runtime code reaches them by name
    or through prefab references set by a builder, and every missing
@@ -194,8 +218,8 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 | A **spell** | Add it to `rules/spells.json`. Add its id to `SpellIds` in `RuleIds.cs`, its look (glow, projectile, impact) to `ChemYardBuilder.BuildSpellVisuals`, and, to put it on the bar, to `SpellIds.DefaultBar` (the Elements page) or `SpellIds.EarthBar` (the Earth page; Tab or the d-pad's left/right switches pages) |
 | A **new kind of cell effect** (e.g. a new gas) | Data first; then a `Render...` method in `ChemGrid.Effects.cs` with a prefab and a cube fallback, called from `ChemGrid.RenderCell`, and its state added to `ChemGrid.Key` |
 | A **chemistry behaviour** that data can't express | Change the TS sandbox and `Chemistry/` together, with a golden test for both |
-| A **physics prop** | Its numbers in `rules/entities.json`, a `PhysicsProp` placed by `PropBuilder` (Editor). Anything it does to cells goes through `ChemEffects.Request`, never straight to the world: solo it applies at once; online it is meant to become an intent (D4 in `DECISIONS.md`): the host stamps "barrel blew up in cell (4,7)" with a tick and sends it through `NetChem` like a cast (not built yet; online yards ignore these requests for now) |
-| A **thing to carry** | Its row in `rules/items.json` (light, use, breaks; checked in both `Rules.CheckItems.cs` and `validateRules`). Its id in `ItemIds`, a shape and a spot in `ItemBuilder` (Editor). A new `use` needs an `ItemUse` behaviour, added in `Carryable.AddBehaviours`, and the use name in both checkers. Solo only for now: online wizards have no `ItemHolder` |
+| A **physics prop** | Its numbers in `rules/entities.json`, a `PhysicsProp` placed by `PropBuilder` (Editor), which also makes it networked (`NetProp`). Anything it does to cells goes through `ChemEffects.Request` as an `EffectCommand`, never straight to the world: solo it applies at once; online the host stamps it into the next `NetChem` tick batch (D4 in `DECISIONS.md`) and every machine applies it at that tick. A new kind of effect goes in `Chem.EffectKind` and `World.ApplyEffect`. Then rebuild the yard (Prototype > Build Chemistry Yard) so every in-scene `NetworkObject` gets its id |
+| A **thing to carry** | Its row in `rules/items.json` (light, use, breaks; checked in both `Rules.CheckItems.cs` and `validateRules`). Its id in `ItemIds`, a shape and a spot in `ItemBuilder` (Editor). A new `use` needs an `ItemUse` behaviour, added in `Carryable.AddBehaviours`, and the use name in both checkers. If what it does should show on other screens, give `NetItem` the state or message (as for the light, the mote and sending stones); a use only its holder sees (the spyglass) needs nothing |
 | **Scenery** | In a builder (`ValleyBuilder`), never placed by hand |
 
 ## Known debt
