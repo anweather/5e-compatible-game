@@ -77,7 +77,7 @@ public static class AssetStoreTools
         }
     }
 
-    // Downloads packs into ~/Library/Unity/Asset Store-5.x. Import them with AssetDatabase.ImportPackage.
+    // Downloads packs into the Editor's Asset Store cache (AssetPackRestore.CacheRoot). Import them with AssetDatabase.ImportPackage.
     public static void Download(params long[] productIds)
     {
         var manager = Service("IAssetStoreDownloadManager");

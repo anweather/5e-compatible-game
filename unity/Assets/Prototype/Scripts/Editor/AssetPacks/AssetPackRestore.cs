@@ -8,7 +8,7 @@ using UnityEngine;
 // Asset Store packs are dependencies, like Packages/manifest.json: the
 // repo lists them in AssetPacks.json and ignores their folders, and this
 // restores any that are missing. A pack comes from the local Asset Store
-// cache (~/Library/Unity/Asset Store-5.x) when it's there, otherwise it is
+// cache (see CacheRoot) when it's there, otherwise it is
 // downloaded first. Imports are non-interactive.
 //
 // Importing a pack with scripts reloads the domain, so the restore keeps
@@ -54,7 +54,11 @@ public static class AssetPackRestore
         };
     }
 
-    static string CacheRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Library/Unity/Asset Store-5.x");
+    // Where the Editor keeps downloaded packs: ~/Library/Unity/Asset Store-5.x on macOS,
+    // %APPDATA%\Unity\Asset Store-5.x on Windows.
+    static string CacheRoot => Application.platform == RuntimePlatform.WindowsEditor
+        ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Unity", "Asset Store-5.x")
+        : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Library", "Unity", "Asset Store-5.x");
 
     static List<Pack> Missing()
     {
