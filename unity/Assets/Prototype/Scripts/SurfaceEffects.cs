@@ -28,10 +28,10 @@ public class SurfaceEffects : MonoBehaviour
     void Awake()
     {
         body = GetComponent<CharacterController>();
-        controller = GetComponent("ThirdPersonController");
+        controller = GetComponent(WizardRig.ControllerComponent);
         if (controller == null) return;
-        moveSpeed = controller.GetType().GetField("MoveSpeed", BindingFlags.Instance | BindingFlags.Public);
-        sprintSpeed = controller.GetType().GetField("SprintSpeed", BindingFlags.Instance | BindingFlags.Public);
+        moveSpeed = WizardRig.Field(controller, "MoveSpeed", isPublic: true);
+        sprintSpeed = WizardRig.Field(controller, "SprintSpeed", isPublic: true);
         baseMove = (float)moveSpeed.GetValue(controller);
         baseSprint = (float)sprintSpeed.GetValue(controller);
     }

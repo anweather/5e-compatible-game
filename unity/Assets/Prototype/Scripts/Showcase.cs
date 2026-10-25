@@ -19,9 +19,8 @@ public class Showcase : MonoBehaviour
     {
         EventLog.HudVisible = false;
         var grid = FindFirstObjectByType<ChemGrid>();
-        var wizard = GameObject.Find("Wizard").transform;
-        var middle = grid.YardCell(13, 7);
-        var yard = grid.CellCenter(middle.x, middle.y);
+        var wizard = WizardRig.FindLocal().transform;
+        var yard = grid.YardCellCenter(13, 7);
         var behindWizard = wizard.position + V(0.9f, 2.3f, -4.2f);
 
         // High over the lake with the mountains ahead, down across the water,
@@ -38,8 +37,7 @@ public class Showcase : MonoBehaviour
         yield return new WaitUntil(() => flight.Done);
 
         // Hand over to the gameplay camera, then play the spell demo.
-        var brain = Camera.main.GetComponent<Unity.Cinemachine.CinemachineBrain>();
-        if (brain != null) brain.enabled = true;
+        if (Camera.main.TryGetComponent<Unity.Cinemachine.CinemachineBrain>(out var brain)) brain.enabled = true;
         Destroy(flight.gameObject);
         var demo = new GameObject("DemoDirector").AddComponent<DemoDirector>();
         yield return new WaitUntil(() => demo.Done);

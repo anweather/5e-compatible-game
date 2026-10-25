@@ -44,10 +44,11 @@ public class ValleyChemistry : MonoBehaviour
             if (!treesByCell.TryGetValue(key, out var list)) treesByCell[key] = list = new List<int>();
             list.Add(i);
         }
-        foreach (var c in grid.World.Cells) if (c.T == "logwall") cabinCells++;
-        charred = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Charred" };
-        charred.SetColor("_BaseColor", new Color(0.07f, 0.06f, 0.055f));
-        charred.SetFloat("_Smoothness", 0.05f);
+        foreach (var c in grid.World.Cells)
+        {
+            if (c.T == TerrainIds.LogWall) cabinCells++;
+        }
+        charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
     }
 
     /// <summary>The terrain's height at a cell's centre.</summary>
@@ -57,14 +58,14 @@ public class ValleyChemistry : MonoBehaviour
         var p = grid.CellCenter(x, y);
         float h = terrain == null ? 0f : terrain.SampleHeight(p) + terrain.transform.position.y;
         var c = grid.World.At(x, y);
-        return c != null && c.Water > 0 && c.T == "pit" ? Mathf.Max(h, lakeLevel) : h;
+        return c != null && c.Water > 0 && c.T == TerrainIds.Pit ? Mathf.Max(h, lakeLevel) : h;
     }
 
     /// <summary>How high above the ground a cell's fire burns: in the crown of a tree, along a cabin wall.</summary>
     public static float FireHeight(string terrainType) => terrainType switch
     {
-        "tree" => 2.6f,
-        "logwall" => 1.4f,
+        TerrainIds.Tree => 2.6f,
+        TerrainIds.LogWall => 1.4f,
         _ => 0f,
     };
 
@@ -73,9 +74,9 @@ public class ValleyChemistry : MonoBehaviour
     {
         Init();
         if (from == null || data == null) return;
-        if (from == "tree") BurnTrees(x, y);
-        if ((from == "grass" || from == "brush") && to == "dirt") scorch.Add(new Vector2Int(x, y));
-        if (from == "logwall") CabinWallBurned();
+        if (from == TerrainIds.Tree) BurnTrees(x, y);
+        if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorch.Add(new Vector2Int(x, y));
+        if (from == TerrainIds.LogWall) CabinWallBurned();
     }
 
     void BurnTrees(int x, int y)
@@ -91,9 +92,7 @@ public class ValleyChemistry : MonoBehaviour
         treesChanged = true;
         scorch.Add(new Vector2Int(x, y));
 
-        var stump = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
-        Destroy(stump.GetComponent<Collider>());
-        stump.name = "Stump";
+        var stump = Primitives.Visual(PrimitiveType.Cylinder, "Stump");
         stump.transform.SetParent(transform, false);
         stump.transform.position = grid.CellCenter(x, y) + Vector3.up * (GroundHeight(x, y) + 0.3f);
         stump.transform.localScale = new Vector3(0.45f, 0.3f, 0.45f);

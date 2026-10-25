@@ -7,43 +7,51 @@ using UnityEngine.InputSystem;
 // in PlayerControls). Aiming matches the web sandbox: beams and Gust start
 // next to the wizard and point at the target, everything else lands on the
 // targeted cell. The cells it will touch are highlighted.
+//
+// A cast is an intent, (spell, x, y, direction): solo it is applied to the
+// world when the show lands; online it goes to NetChem, which applies it on
+// every machine at the same tick.
 public class SpellCaster : MonoBehaviour
 {
     public ChemGrid grid;
     public PlayerControls controls;
-    public string[] spellIds = { "fire-bolt", "ray-of-frost", "create-water", "grease", "shocking-grasp", "gust-of-wind" };
+    public string[] spellIds = SpellIds.DefaultBar();
+    [Tooltip("How each spell looks when cast. Without it, spells take effect with no show.")]
+    public SpellVisuals visuals;
 
     public int Selected { get; private set; }
-    public string SelectedName => grid != null && grid.World != null ? grid.World.Rules.Spell(spellIds[Selected])?.Name ?? spellIds[Selected] : spellIds[Selected];
+    public string SelectedName => SpellName(Selected);
 
     readonly List<GameObject> markers = new();
+    readonly RaycastHit[] hits = new RaycastHit[16];
     Material markerMat;
+    CastPose pose;
+    NetChem net;
+
+    void Awake() => TryGetComponent(out pose);
+
+    void OnEnable() => EventLog.Track(this);
 
     void Start()
     {
-        markerMat = new Material(Shader.Find("Universal Render Pipeline/Lit"));
-        markerMat.SetColor("_BaseColor", new Color(1f, 0.85f, 0.3f));
-        markerMat.EnableKeyword("_EMISSION");
-        markerMat.SetColor("_EmissionColor", new Color(1f, 0.8f, 0.2f) * 1.5f);
+        markerMat = UrpMaterials.NewLit("Aim marker", new Color(1f, 0.85f, 0.3f), emission: new Color(1f, 0.8f, 0.2f) * 1.5f);
     }
 
     void OnDestroy() => Destroy(markerMat);
 
+    /// <summary>The display name of the spell in a bar slot (its id if the rules don't know it).</summary>
+    public string SpellName(int slot)
+    {
+        var world = grid != null ? grid.World : null;
+        return world?.Rules.Spell(spellIds[slot])?.Name ?? spellIds[slot];
+    }
+
     void Update()
     {
         if (controls == null || grid == null || grid.World == null) return;
+        PickSpell();
 
-        int slot = controls.PickedSlot();
-        if (slot >= 0 && slot < spellIds.Length) Selected = slot;
-        if (controls.NextSpell.WasPressedThisFrame()) Selected = (Selected + 1) % spellIds.Length;
-        if (controls.PrevSpell.WasPressedThisFrame()) Selected = (Selected + spellIds.Length - 1) % spellIds.Length;
-
-        // With mouse-look or a gamepad, aim through the crosshair at the screen centre;
-        // with a free cursor (e.g. after Esc in the Editor), aim where it points.
-        bool centre = Cursor.lockState == CursorLockMode.Locked || controls.UsingGamepad || Mouse.current == null;
-        var aimAt = centre ? new Vector2(Screen.width / 2f, Screen.height / 2f) : Mouse.current.position.ReadValue();
-        var ray = Camera.main.ScreenPointToRay(aimAt);
-        if (!RaycastPastSelf(ray, out var hit))
+        if (!RaycastPastSelf(AimRay(), out var hit))
         {
             ShowMarkers(null);
             return;
@@ -58,7 +66,22 @@ public class SpellCaster : MonoBehaviour
         if (aim.HasValue) Cast(spellIds[Selected], aim.Value.x, aim.Value.y, aim.Value.dir);
     }
 
-    readonly RaycastHit[] hits = new RaycastHit[16];
+    void PickSpell()
+    {
+        int slot = controls.PickedSlot();
+        if (slot >= 0 && slot < spellIds.Length) Selected = slot;
+        if (controls.NextSpell.WasPressedThisFrame()) Selected = (Selected + 1) % spellIds.Length;
+        if (controls.PrevSpell.WasPressedThisFrame()) Selected = (Selected + spellIds.Length - 1) % spellIds.Length;
+    }
+
+    // With mouse-look or a gamepad, aim through the crosshair at the screen centre;
+    // with a free cursor (e.g. after Esc in the Editor), aim where it points.
+    Ray AimRay()
+    {
+        bool centre = Cursor.lockState == CursorLockMode.Locked || controls.UsingGamepad || Mouse.current == null;
+        var aimAt = centre ? new Vector2(Screen.width / 2f, Screen.height / 2f) : Mouse.current.position.ReadValue();
+        return Camera.main.ScreenPointToRay(aimAt);
+    }
 
     // The nearest hit that isn't the caster: the over-the-shoulder crosshair
     // often passes through the wizard's own collider first.
@@ -75,6 +98,8 @@ public class SpellCaster : MonoBehaviour
         }
         return best < float.MaxValue;
     }
+
+    // --- casting ---------------------------------------------------------------------
 
     // The cast is shown at once (gesture, projectile) and takes effect when it
     // lands. Online, the cast goes to the host and lands on every machine at
@@ -98,7 +123,7 @@ public class SpellCaster : MonoBehaviour
     /// </summary>
     public void PlayCastEffect(string spellId, int x, int y, int dir, System.Action onArrive = null)
     {
-        var look = visuals != null ? visuals.For(spellId) : null;
+        var look = LookOf(spellId);
         var landing = Landing(spellId, x, y, dir);
         if (pose != null) pose.Play(landing, look?.glow ?? Color.white);
 
@@ -112,12 +137,17 @@ public class SpellCaster : MonoBehaviour
         else Land();
     }
 
-    [Tooltip("How each spell looks when cast. Without it, spells take effect with no show.")]
-    public SpellVisuals visuals;
+    // Found lazily: a networked wizard gets its grid assigned after Awake.
+    NetChem Net
+    {
+        get
+        {
+            if (net == null && grid != null) net = grid.GetComponent<NetChem>();
+            return net;
+        }
+    }
 
-    CastPose pose;
-
-    void Awake() => pose = GetComponent<CastPose>();
+    SpellVisuals.Entry LookOf(string spellId) => visuals != null ? visuals.For(spellId) : null;
 
     Vector3 Hand => pose != null ? pose.HandPosition : transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
 
@@ -142,16 +172,11 @@ public class SpellCaster : MonoBehaviour
 
     float FlightSeconds(string spellId, int x, int y, int dir)
     {
-        var look = visuals != null ? visuals.For(spellId) : null;
+        var look = LookOf(spellId);
         return look?.projectile != null ? Vector3.Distance(Hand, Landing(spellId, x, y, dir)) / SpellProjectile.DefaultSpeed : 0f;
     }
 
-    NetChem net;
-
-    // Found lazily: a networked wizard gets its grid assigned after Awake.
-    NetChem Net => net != null ? net : net = grid != null ? grid.GetComponent<NetChem>() : null;
-
-    void OnEnable() => EventLog.Track(this);
+    // --- aiming ------------------------------------------------------------------------
 
     (int x, int y, int dir)? Aim(Vector2Int target, out string error)
     {
@@ -173,7 +198,8 @@ public class SpellCaster : MonoBehaviour
     {
         int dx = b.x - a.x, dy = b.y - a.y;
         if (dx == 0 && dy == 0) return null;
-        return Mathf.Abs(dx) >= Mathf.Abs(dy) ? (dx > 0 ? 1 : 3) : (dy > 0 ? 2 : 0);
+        if (Mathf.Abs(dx) >= Mathf.Abs(dy)) return dx > 0 ? 1 : 3;
+        return dy > 0 ? 2 : 0;
     }
 
     static (int, int) Step(int dir) => dir switch { 0 => (0, -1), 1 => (1, 0), 2 => (0, 1), _ => (-1, 0) };
@@ -181,15 +207,7 @@ public class SpellCaster : MonoBehaviour
     void ShowMarkers(List<(int x, int y)> cells)
     {
         int n = cells?.Count ?? 0;
-        while (markers.Count < n)
-        {
-            var m = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            m.name = "Aim";
-            Destroy(m.GetComponent<Collider>());
-            m.GetComponent<Renderer>().sharedMaterial = markerMat;
-            m.GetComponent<Renderer>().shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-            markers.Add(m);
-        }
+        while (markers.Count < n) markers.Add(NewMarker());
         for (int i = 0; i < markers.Count; i++)
         {
             bool on = i < n;
@@ -200,5 +218,14 @@ public class SpellCaster : MonoBehaviour
             markers[i].transform.position = new Vector3(c.x, grid.SurfaceY(x, y) + 0.06f, c.z);
             markers[i].transform.localScale = new Vector3(0.3f * grid.cellSize, 0.02f, 0.3f * grid.cellSize);
         }
+    }
+
+    GameObject NewMarker()
+    {
+        var m = Primitives.Visual(PrimitiveType.Cube, "Aim");
+        var r = m.GetComponent<Renderer>();
+        r.sharedMaterial = markerMat;
+        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        return m;
     }
 }

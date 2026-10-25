@@ -1,0 +1,52 @@
+using System.Reflection;
+using UnityEngine;
+using UnityEngine.InputSystem;
+
+// What our code knows about the wizard: the Starter Assets third-person
+// character (PlayerArmature) with our spellcasting added. One place for its
+// names and for reaching into the Starter Assets scripts.
+//
+// Starter Assets components are reached by name and reflection, not by type,
+// so our code compiles before the Asset Store packs are restored
+// (Prototype > Restore Asset Packs).
+public static class WizardRig
+{
+    /// <summary>The local player's wizard is called this, solo and online (other players' are "Wizard (player N)").</summary>
+    public const string Name = "Wizard";
+
+    /// <summary>The child the follow camera tracks.</summary>
+    public const string CameraRoot = "PlayerCameraRoot";
+
+    public const string InputsComponent = "StarterAssetsInputs";
+    public const string ControllerComponent = "ThirdPersonController";
+    const string PushComponent = "BasicRigidBodyPush";
+
+    // The Starter Assets behaviours that only the owning player runs.
+    static readonly string[] OwnerOnlyByName = { InputsComponent, ControllerComponent, PushComponent };
+
+    /// <summary>The local player's wizard in the scene, or null.</summary>
+    public static GameObject FindLocal() => GameObject.Find(Name);
+
+    /// <summary>
+    /// Switches on or off what makes a wizard player-driven: its CharacterController,
+    /// PlayerInput and the Starter Assets input, movement and push scripts. A networked
+    /// wizard ships with them off; NetWizard switches them on for the owner.
+    /// </summary>
+    public static void SetPlayerDriven(GameObject wizard, bool on)
+    {
+        wizard.GetComponent<CharacterController>().enabled = on;
+        wizard.GetComponent<PlayerInput>().enabled = on;
+        foreach (var typeName in OwnerOnlyByName)
+        {
+            if (wizard.GetComponent(typeName) is Behaviour b) b.enabled = on;
+        }
+    }
+
+    /// <summary>A field of a Starter Assets component, found by name; null if the component or field is missing.</summary>
+    public static FieldInfo Field(Component component, string field, bool isPublic)
+    {
+        if (component == null) return null;
+        var visibility = isPublic ? BindingFlags.Public : BindingFlags.NonPublic;
+        return component.GetType().GetField(field, BindingFlags.Instance | visibility);
+    }
+}

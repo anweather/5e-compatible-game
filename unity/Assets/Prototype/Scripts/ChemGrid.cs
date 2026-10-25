@@ -61,7 +61,6 @@ public partial class ChemGrid : MonoBehaviour
     public void ResetWorld()
     {
         foreach (Transform child in transform) Destroy(child.gameObject);
-        fireLights.Clear();
         lastLog = null;
         tickTimer = 0f;
         BuildWorld();
@@ -78,19 +77,23 @@ public partial class ChemGrid : MonoBehaviour
         foreach (var r in rows) w = Mathf.Max(w, r.Length);
         World = new World(rules, w, h, seed);
         for (int y = 0; y < h; y++)
-        for (int x = 0; x < w; x++)
         {
-            char ch = x < rows[y].Length ? rows[y][x] : '.';
-            if (!Legend.TryGetValue(ch, out var spec)) spec = Legend['.'];
-            if (ch == '@') PlayerStart = new Vector2Int(x, y);
-            World.Paint(x, y, spec.t);
-            if (spec.water > 0) World.AddWater(x, y, spec.water);
-            if (spec.frozen) World.At(x, y).Frozen = true;
-            if (spec.cover != null) World.SetCover(x, y, spec.cover);
+            for (int x = 0; x < w; x++) PaintCell(x, y, x < rows[y].Length ? rows[y][x] : '.');
         }
 
         InitVisuals();
         Render();
+    }
+
+    // Sets up one cell from its map character (see Legend); unknown characters are dirt.
+    void PaintCell(int x, int y, char ch)
+    {
+        if (!Legend.TryGetValue(ch, out var spec)) spec = Legend['.'];
+        if (ch == '@') PlayerStart = new Vector2Int(x, y);
+        World.Paint(x, y, spec.t);
+        if (spec.water > 0) World.AddWater(x, y, spec.water);
+        if (spec.frozen) World.At(x, y).Frozen = true;
+        if (spec.cover != null) World.SetCover(x, y, spec.cover);
     }
 
     void Update()
@@ -98,8 +101,8 @@ public partial class ChemGrid : MonoBehaviour
         if (ExternalTicks)
         {
             Render();
-            if (World.Tick != lastLitTick) { UpdateFireLights(); lastLitTick = World.Tick; }
-            FlickerFireLights();
+            if (World.Tick != lastLitTick) { fireLights.Place(); lastLitTick = World.Tick; }
+            fireLights.Flicker();
             PumpLog();
             return;
         }
@@ -115,8 +118,8 @@ public partial class ChemGrid : MonoBehaviour
             stepped = true;
         }
         Render();
-        if (stepped) UpdateFireLights();
-        FlickerFireLights();
+        if (stepped) fireLights.Place();
+        fireLights.Flicker();
         PumpLog();
     }
 
@@ -146,6 +149,13 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>World cell of a yard cell (yard maps and demos use yard coordinates).</summary>
     public Vector2Int YardCell(int x, int y) => new Vector2Int(x + Yard.x, y + Yard.y);
 
+    /// <summary>Centre of a yard cell, given in yard coordinates (as the demo scripts are).</summary>
+    public Vector3 YardCellCenter(int x, int y)
+    {
+        var cell = YardCell(x, y);
+        return CellCenter(cell.x, cell.y);
+    }
+
     public Vector3 CellCenter(int x, int y)
     {
         var yard = Yard;
@@ -163,8 +173,11 @@ public partial class ChemGrid : MonoBehaviour
         var c = World.At(x, y);
         if (c == null) return 0f;
         if (!InYard(x, y) && valley != null) return valley.GroundHeight(x, y);
-        return World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight + Look(c.T).height;
+        return GroundTop(c) + GridTileBuilder.Look(c.T).height;
     }
+
+    /// <summary>Top of a cell's ground (its elevation), before anything standing on it.</summary>
+    internal float GroundTop(Cell c) => World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
 
     public bool IsSlipperyAt(Vector3 p)
     {

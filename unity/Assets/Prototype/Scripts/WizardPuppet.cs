@@ -5,12 +5,10 @@ using UnityEngine;
 // Drives a Starter Assets wizard from a script, for demo recordings: the
 // move stick (so walk and run animations play as for a player), which way
 // the wizard faces, and where its follow camera looks. Starter Assets
-// components are reached by name so this compiles before the Asset Store
-// packs are restored.
+// components are reached by name (see WizardRig) so this compiles before the
+// Asset Store packs are restored.
 public sealed class WizardPuppet
 {
-    const BindingFlags Private = BindingFlags.Instance | BindingFlags.NonPublic;
-
     readonly Transform wizard;
     readonly Component input;
     readonly Component controller;
@@ -20,12 +18,12 @@ public sealed class WizardPuppet
     public WizardPuppet(GameObject go)
     {
         wizard = go.transform;
-        input = go.GetComponent("StarterAssetsInputs");
-        input.GetType().GetField("cursorInputForLook").SetValue(input, false);
-        controller = go.GetComponent("ThirdPersonController");
+        input = go.GetComponent(WizardRig.InputsComponent);
+        WizardRig.Field(input, "cursorInputForLook", isPublic: true).SetValue(input, false);
+        controller = go.GetComponent(WizardRig.ControllerComponent);
         if (controller == null) return;
-        cameraYaw = controller.GetType().GetField("_cinemachineTargetYaw", Private);
-        cameraPitch = controller.GetType().GetField("_cinemachineTargetPitch", Private);
+        cameraYaw = WizardRig.Field(controller, "_cinemachineTargetYaw", isPublic: false);
+        cameraPitch = WizardRig.Field(controller, "_cinemachineTargetPitch", isPublic: false);
     }
 
     public Vector3 Position => wizard.position;

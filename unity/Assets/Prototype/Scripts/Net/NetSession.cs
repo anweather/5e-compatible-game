@@ -28,8 +28,18 @@ public class NetSession : MonoBehaviour
     bool busy;
     ISession session;
     GUIStyle box, codeStyle;
+    NetworkManager manager;
 
-    NetworkManager Net => NetworkManager.Singleton;
+    // The scene's NetworkManager (Netcode's singleton), looked up once it exists.
+    NetworkManager Net
+    {
+        get
+        {
+            if (manager == null) manager = NetworkManager.Singleton;
+            return manager;
+        }
+    }
+
     UnityTransport Transport => Net.GetComponent<UnityTransport>();
 
     void Start()
@@ -121,7 +131,7 @@ public class NetSession : MonoBehaviour
     // The solo wizard isn't networked; the network spawns everyone's.
     static void PrepareForNetwork()
     {
-        var solo = GameObject.Find("Wizard");
+        var solo = WizardRig.FindLocal();
         if (solo != null && solo.GetComponent<NetworkObject>() == null) Destroy(solo);
     }
 
@@ -168,9 +178,15 @@ public class NetSession : MonoBehaviour
         GUI.enabled = true;
     }
 
+    string RoleLabel()
+    {
+        if (Net.IsHost) return "Hosting";
+        return Net.IsConnectedClient ? "Connected" : "Connecting…";
+    }
+
     void OnlinePanel()
     {
-        string role = Net.IsHost ? "Hosting" : Net.IsConnectedClient ? "Connected" : "Connecting…";
+        string role = RoleLabel();
         int players = session?.PlayerCount ?? (Net.IsServer ? Net.ConnectedClientsIds.Count : 0);
         GUILayout.Label(players > 0 ? $"{role} · {players}/{MaxPlayers} players" : role);
         if (SessionCode != null)

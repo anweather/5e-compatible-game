@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Text;
 using UnityEngine;
@@ -36,7 +37,7 @@ public class EventLog : MonoBehaviour
         Debug.Log(line);
         if (instance == null) return;
         var list = instance.lines;
-        if (list.Count > 0 && list[list.Count - 1].StartsWith(sameAs ?? line))
+        if (list.Count > 0 && list[list.Count - 1].StartsWith(sameAs ?? line, StringComparison.Ordinal))
         {
             list[list.Count - 1] = line;
             return;
@@ -53,6 +54,7 @@ public class EventLog : MonoBehaviour
     }
 
     const string KeyboardHelp = "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Wheel</b> zoom   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>1–6 / Q E</b> spell   ·   <b>Click</b> cast   ·   <b>R</b> reset";
+    const string FirelineHelp = "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset";
     const string GamepadHelp = "<b>Left stick</b> move   ·   <b>Right stick</b> look   ·   <b>D-pad</b> zoom   ·   <b>A / ✕</b> jump   ·   <b>LT</b> sprint   ·   <b>LB RB</b> spell   ·   <b>RT</b> cast   ·   <b>View / Share</b> reset";
 
     // A plus with a dark shadow, so it reads against the sky as well as the ground.
@@ -68,23 +70,24 @@ public class EventLog : MonoBehaviour
     {
         if (!HudVisible) return;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true };
-        if (caster == null)
-            GUI.Label(new Rect(16, 12, 900, 30), "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset", style);
-        else
-        {
-            bool pad = caster.controls != null && caster.controls.UsingGamepad;
-            GUI.Label(new Rect(16, 12, 1600, 30), pad ? GamepadHelp : KeyboardHelp, style);
-            if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
-            var bar = new StringBuilder();
-            for (int i = 0; i < caster.spellIds.Length; i++)
-            {
-                var world = caster.grid != null ? caster.grid.World : null; // Unity objects need ==, not ?.
-                var name = world?.Rules.Spell(caster.spellIds[i])?.Name ?? caster.spellIds[i];
-                bar.Append(i == caster.Selected ? $"<color=#ffd24a><b>[{i + 1}] {name}</b></color>   " : $"{i + 1} {name}   ");
-            }
-            GUI.Label(new Rect(16, 40, 1400, 30), bar.ToString(), style);
-        }
+        if (caster == null) GUI.Label(new Rect(16, 12, 900, 30), FirelineHelp, style);
+        else DrawCasterHud();
         for (int i = 0; i < lines.Count; i++)
             GUI.Label(new Rect(16, Screen.height - 32 - (lines.Count - i) * 26, 900, 26), lines[i], style);
+    }
+
+    // Controls help for the device in use, the crosshair, and the spell bar with the selected spell highlighted.
+    void DrawCasterHud()
+    {
+        bool pad = caster.controls != null && caster.controls.UsingGamepad;
+        GUI.Label(new Rect(16, 12, 1600, 30), pad ? GamepadHelp : KeyboardHelp, style);
+        if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
+        var bar = new StringBuilder();
+        for (int i = 0; i < caster.spellIds.Length; i++)
+        {
+            var name = caster.SpellName(i);
+            bar.Append(i == caster.Selected ? $"<color=#ffd24a><b>[{i + 1}] {name}</b></color>   " : $"{i + 1} {name}   ");
+        }
+        GUI.Label(new Rect(16, 40, 1400, 30), bar.ToString(), style);
     }
 }

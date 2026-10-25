@@ -13,8 +13,8 @@ using UnityEngine.Rendering;
 public static class ValleyBuilder
 {
     const string Generated = "Assets/Prototype/Generated";
-    const string TerrainPack = "Assets/TerrainSampleAssets";
-    const string DemoPack = "Assets/TerrainDemoScene_URP/Prefabs";
+    const string TerrainPack = PackPaths.TerrainSamples;
+    const string DemoPack = PackPaths.TerrainDemo;
 
     const float Size = 900f;        // terrain width and length, metres
     const float Depth = 22f;        // terrain base below the yard
@@ -46,10 +46,10 @@ public static class ValleyBuilder
         var terrain = BuildTerrain();
         BuildLake();
         BuildSky();
-        BuildCabin();
+        var cabinRoot = BuildCabin();
         ScatterRocks(terrain);
         grid.grassTint = new Color(0.95f, 1.05f, 0.85f);
-        WireChemistry(grid, yardRows, terrain);
+        WireChemistry(grid, yardRows, terrain, cabinRoot);
     }
 
     // --- terrain -------------------------------------------------------------
@@ -75,14 +75,7 @@ public static class ValleyBuilder
         AssetDatabase.DeleteAsset(Generated + "/ValleyTerrain.asset");
         AssetDatabase.CreateAsset(data, Generated + "/ValleyTerrain.asset");
 
-        var heights = new float[HeightRes, HeightRes];
-        for (int iz = 0; iz < HeightRes; iz++)
-        for (int ix = 0; ix < HeightRes; ix++)
-        {
-            var w = World(ix / (float)(HeightRes - 1), iz / (float)(HeightRes - 1));
-            heights[iz, ix] = Mathf.Clamp01((HeightAt(w) + Depth) / MaxHeight);
-        }
-        data.SetHeights(0, 0, heights);
+        data.SetHeights(0, 0, HeightMap());
 
         PaintLayers(data, layers);
         PlantTrees(data, trees);
@@ -101,6 +94,22 @@ public static class ValleyBuilder
         return terrain;
     }
 
+    // The terrain's heights (0..1 of MaxHeight, from Depth below the yard), row by row.
+    static float[,] HeightMap()
+    {
+        var heights = new float[HeightRes, HeightRes];
+        for (int iz = 0; iz < HeightRes; iz++)
+        {
+            for (int ix = 0; ix < HeightRes; ix++)
+            {
+                var w = World(ix / (float)(HeightRes - 1), iz / (float)(HeightRes - 1));
+                heights[iz, ix] = Mathf.Clamp01((HeightAt(w) + Depth) / MaxHeight);
+            }
+        }
+        return heights;
+    }
+
+    // A point on the ground plane from terrain coordinates (0..1 across, 0..1 along).
     static Vector2 World(float u, float v) => new Vector2(centre.x - Size / 2f + u * Size, centre.y - Size / 2f + v * Size);
 
     // World height (metres above the yard) at a point on the ground plane.
@@ -169,7 +178,7 @@ public static class ValleyBuilder
         foreach (var n in LayerNames)
         {
             var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>($"{TerrainPack}/TerrainLayers/{n}_TerrainLayer.terrainlayer");
-            if (layer != null) layers.Add(n.StartsWith("Grass") ? Greener(layer) : layer);
+            if (layer != null) layers.Add(n.StartsWith("Grass", System.StringComparison.Ordinal) ? Greener(layer) : layer);
         }
         if (layers.Count == LayerNames.Length) return layers.ToArray();
         Debug.LogWarning("Terrain Sample Asset Pack missing: the valley will be untextured. Run Prototype > Restore Asset Packs.");
@@ -179,30 +188,48 @@ public static class ValleyBuilder
     static void PaintLayers(TerrainData data, TerrainLayer[] layers)
     {
         if (layers == null) return;
-        string[] names = LayerNames;
         data.terrainLayers = layers;
 
-        var map = new float[SplatRes, SplatRes, names.Length];
+        var map = new float[SplatRes, SplatRes, LayerNames.Length];
         for (int iz = 0; iz < SplatRes; iz++)
-        for (int ix = 0; ix < SplatRes; ix++)
         {
-            float u = ix / (float)(SplatRes - 1), v = iz / (float)(SplatRes - 1);
-            var w = World(u, v);
-            float h = HeightAt(w);
-            float slope = data.GetSteepness(u, v);
-            float shore = Mathf.InverseLerp(1.5f, 0f, Mathf.Abs(h - LakeLevel)) * Mathf.InverseLerp(30f, 0f, DistanceToLake(w));
-            float rock = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(24f, 38f, slope));
-            float snow = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(140f, 175f, h + 20f * Fbm(w * 0.02f, 2))) * (1f - rock * 0.6f);
-            float moss = Mathf.Clamp01(0.5f + Fbm(w * 0.03f, 3)) * (1f - rock);
-            float soil = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(60f, 120f, h)) * (1f - rock) * (1f - snow);
-            float sand = shore;
-            float grass = Mathf.Max(0f, 1f - rock - snow - moss * 0.6f - sand - soil);
-            float[] wts = { grass, moss * 0.6f, rock, snow, sand, soil };
-            float total = 0f;
-            foreach (var x in wts) total += x;
-            for (int k = 0; k < wts.Length; k++) map[iz, ix, k] = total > 0f ? wts[k] / total : (k == 0 ? 1f : 0f);
+            for (int ix = 0; ix < SplatRes; ix++)
+            {
+                float u = ix / (float)(SplatRes - 1), v = iz / (float)(SplatRes - 1);
+                var wts = Normalized(LayerWeights(data, u, v));
+                for (int k = 0; k < wts.Length; k++) map[iz, ix, k] = wts[k];
+            }
         }
         data.SetAlphamaps(0, 0, map);
+    }
+
+    // How much of each layer (LayerNames order) a terrain point gets, before normalising.
+    static float[] LayerWeights(TerrainData data, float u, float v)
+    {
+        var w = World(u, v);
+        float h = HeightAt(w);
+        float slope = data.GetSteepness(u, v);
+        float shore = Mathf.InverseLerp(1.5f, 0f, Mathf.Abs(h - LakeLevel)) * Mathf.InverseLerp(30f, 0f, DistanceToLake(w));
+        float rock = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(24f, 38f, slope));
+        float snow = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(140f, 175f, h + 20f * Fbm(w * 0.02f, 2))) * (1f - rock * 0.6f);
+        float moss = Mathf.Clamp01(0.5f + Fbm(w * 0.03f, 3)) * (1f - rock);
+        float soil = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(60f, 120f, h)) * (1f - rock) * (1f - snow);
+        float sand = shore;
+        float grass = Mathf.Max(0f, 1f - rock - snow - moss * 0.6f - sand - soil);
+        return new[] { grass, moss * 0.6f, rock, snow, sand, soil };
+    }
+
+    // Weights scaled to sum to 1; all grass (the first layer) if they are all zero.
+    static float[] Normalized(float[] weights)
+    {
+        float total = 0f;
+        foreach (var x in weights) total += x;
+        for (int k = 0; k < weights.Length; k++)
+        {
+            if (total > 0f) weights[k] /= total;
+            else weights[k] = k == 0 ? 1f : 0f;
+        }
+        return weights;
     }
 
     // The pack's grass textures are olive; a copy of the layer with a greener copy of its
@@ -210,7 +237,7 @@ public static class ValleyBuilder
     // layer's colour remap, so the colour has to be in the texture.)
     static TerrainLayer Greener(TerrainLayer source)
     {
-        var layer = LoadOrCreate($"{Generated}/{source.name}_Green.terrainlayer", () => new TerrainLayer());
+        var layer = EditorAssets.LoadOrCreate($"{Generated}/{source.name}_Green.terrainlayer", () => new TerrainLayer());
         layer.diffuseTexture = Tinted(source.diffuseTexture, new Color(0.78f, 1.12f, 0.6f));
         layer.normalMapTexture = source.normalMapTexture;
         layer.maskMapTexture = source.maskMapTexture;
@@ -280,13 +307,31 @@ public static class ValleyBuilder
         data.SetTreeInstances(trees.ToArray(), true);
     }
 
+    // Grass (the first three) and ferns and plants (the rest), from the terrain pack.
+    static readonly string[] DetailNames = { "Grass_A", "Grass_B", "Grass_C", "Fern_A", "Plant_A", "Plant_C" };
+
     static void PaintDetails(TerrainData data)
     {
-        string[] names = { "Grass_A", "Grass_B", "Grass_C", "Fern_A", "Plant_A", "Plant_C" };
-        var protos = new List<DetailPrototype>();
-        foreach (var n in names)
+        var protos = LoadDetails();
+        if (protos.Count == 0) return;
+        data.detailPrototypes = protos.ToArray();
+
+        var layers = new int[protos.Count][,];
+        for (int k = 0; k < protos.Count; k++) layers[k] = new int[DetailRes, DetailRes];
+        var rng = new System.Random(11);
+        for (int iz = 0; iz < DetailRes; iz++)
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{TerrainPack}/Prefabs/{n}.prefab");
+            for (int ix = 0; ix < DetailRes; ix++) ScatterDetails(data, layers, rng, ix, iz);
+        }
+        for (int k = 0; k < protos.Count; k++) data.SetDetailLayer(0, 0, k, layers[k]);
+    }
+
+    static List<DetailPrototype> LoadDetails()
+    {
+        var protos = new List<DetailPrototype>();
+        foreach (var n in DetailNames)
+        {
+            var prefab = EditorAssets.LoadPrefab($"{TerrainPack}/Prefabs/{n}.prefab");
             if (prefab == null) continue;
             protos.Add(new DetailPrototype
             {
@@ -298,29 +343,24 @@ public static class ValleyBuilder
                 noiseSpread = 0.3f,
             });
         }
-        if (protos.Count == 0) return;
-        data.detailPrototypes = protos.ToArray();
+        return protos;
+    }
 
-        var layers = new int[protos.Count][,];
-        for (int k = 0; k < protos.Count; k++) layers[k] = new int[DetailRes, DetailRes];
-        var rng = new System.Random(11);
-        for (int iz = 0; iz < DetailRes; iz++)
-        for (int ix = 0; ix < DetailRes; ix++)
+    // One detail-map cell: lush grass in the meadows, the odd fern or plant where it is drier.
+    static void ScatterDetails(TerrainData data, int[][,] layers, System.Random rng, int ix, int iz)
+    {
+        float u = ix / (float)(DetailRes - 1), v = iz / (float)(DetailRes - 1);
+        var w = World(u, v);
+        if (KeepClear(w, 2.5f)) return;
+        float h = HeightAt(w);
+        if (h > 70f || data.GetSteepness(u, v) > 28f) return;
+        float lush = Mathf.Clamp01(0.55f + Fbm(w * 0.05f, 2));
+        for (int k = 0; k < layers.Length; k++)
         {
-            float u = ix / (float)(DetailRes - 1), v = iz / (float)(DetailRes - 1);
-            var w = World(u, v);
-            if (KeepClear(w, 2.5f)) continue;
-            float h = HeightAt(w);
-            if (h > 70f || data.GetSteepness(u, v) > 28f) continue;
-            float lush = Mathf.Clamp01(0.55f + Fbm(w * 0.05f, 2));
-            for (int k = 0; k < protos.Count; k++)
-            {
-                bool grass = k < 3;
-                double p = grass ? 0.55 * lush : 0.04 * (1f - lush);
-                if (rng.NextDouble() < p) layers[k][iz, ix] = grass ? 1 + rng.Next(3) : 1;
-            }
+            bool grass = k < 3;
+            double p = grass ? 0.55 * lush : 0.04 * (1f - lush);
+            if (rng.NextDouble() < p) layers[k][iz, ix] = grass ? 1 + rng.Next(3) : 1;
         }
-        for (int k = 0; k < protos.Count; k++) data.SetDetailLayer(0, 0, k, layers[k]);
     }
 
     static void ScatterRocks(Terrain terrain)
@@ -328,7 +368,7 @@ public static class ValleyBuilder
         var rocks = new List<GameObject>();
         foreach (var n in new[] { "Rock_A_01", "Rock_B_01", "Rock_C_01", "Rock_Overgrown_A", "Rock_Overgrown_C" })
         {
-            var prefab = AssetDatabase.LoadAssetAtPath<GameObject>($"{DemoPack}/Rocks/{n}.prefab");
+            var prefab = EditorAssets.LoadPrefab($"{DemoPack}/Rocks/{n}.prefab");
             if (prefab != null) rocks.Add(prefab);
         }
         if (rocks.Count == 0) return;
@@ -344,8 +384,8 @@ public static class ValleyBuilder
             bool shore = DistanceToLake(w) < 12f;
             if (!mountainFoot && !shore) continue;
             var rock = (GameObject)PrefabUtility.InstantiatePrefab(rocks[rng.Next(rocks.Count)], parent);
-            rock.transform.position = new Vector3(w.x, terrain.SampleHeight(new Vector3(w.x, 0f, w.y)) + terrain.transform.position.y - 0.3f, w.y);
-            rock.transform.rotation = Quaternion.Euler(0f, rng.Next(360), 0f);
+            var ground = new Vector3(w.x, terrain.SampleHeight(new Vector3(w.x, 0f, w.y)) + terrain.transform.position.y - 0.3f, w.y);
+            rock.transform.SetPositionAndRotation(ground, Quaternion.Euler(0f, rng.Next(360), 0f));
             rock.transform.localScale = Vector3.one * (0.6f + 1.2f * (float)rng.NextDouble());
             placed++;
         }
@@ -363,25 +403,13 @@ public static class ValleyBuilder
         importer.wrapMode = TextureWrapMode.Repeat;
         importer.SaveAndReimport();
 
-        var mat = LoadOrCreate(Generated + "/Lake.mat", () => new Material(Shader.Find("Universal Render Pipeline/Lit")));
-        mat.SetColor("_BaseColor", new Color(0.12f, 0.32f, 0.42f, 0.78f));
-        mat.SetFloat("_Smoothness", 0.96f);
-        mat.SetFloat("_Surface", 1f);
-        mat.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-        mat.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-        mat.SetFloat("_ZWrite", 0f);
-        mat.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-        mat.renderQueue = (int)RenderQueue.Transparent;
-        mat.SetOverrideTag("RenderType", "Transparent");
-        mat.SetTexture("_BumpMap", AssetDatabase.LoadAssetAtPath<Texture2D>(ripplesPath));
-        mat.SetFloat("_BumpScale", 0.45f);
-        mat.EnableKeyword("_NORMALMAP");
+        var mat = EditorAssets.LitMaterial(Generated + "/Lake.mat", new Color(0.12f, 0.32f, 0.42f, 0.78f), 0.96f);
+        UrpMaterials.MakeTransparent(mat);
+        UrpMaterials.SetNormalMap(mat, AssetDatabase.LoadAssetAtPath<Texture2D>(ripplesPath), 0.45f);
         mat.SetTextureScale("_BaseMap", new Vector2(24f, 16f));
         EditorUtility.SetDirty(mat);
 
-        var lake = GameObject.CreatePrimitive(PrimitiveType.Plane);
-        lake.name = "Lake";
-        Object.DestroyImmediate(lake.GetComponent<Collider>());
+        var lake = Primitives.Visual(PrimitiveType.Plane, "Lake");
         lake.transform.position = new Vector3(lakeCentre.x, LakeLevel, lakeCentre.y);
         lake.transform.localScale = new Vector3(24f, 1f, 16f);   // a Plane is 10 m square
         var r = lake.GetComponent<MeshRenderer>();
@@ -397,7 +425,7 @@ public static class ValleyBuilder
     {
         // A procedural sky: its sun follows the scene's directional light. (The sample's HDR
         // cubemap sky is tuned for HDRP's physical exposure and washes out in URP.)
-        var sky = LoadOrCreate(Generated + "/Sky.mat", () => new Material(Shader.Find("Skybox/Procedural")));
+        var sky = EditorAssets.LoadOrCreate(Generated + "/Sky.mat", () => new Material(Shader.Find("Skybox/Procedural")));
         sky.shader = Shader.Find("Skybox/Procedural");
         sky.SetFloat("_SunSize", 0.035f);
         sky.SetFloat("_AtmosphereThickness", 0.9f);
@@ -408,7 +436,7 @@ public static class ValleyBuilder
         RenderSettings.skybox = sky;
         var sun = Object.FindFirstObjectByType<Light>();
         if (sun != null) RenderSettings.sun = sun;
-        var mountains = AssetDatabase.LoadAssetAtPath<GameObject>(DemoPack + "/Skybox/SkyboxMountains.prefab");
+        var mountains = EditorAssets.LoadPrefab(DemoPack + "/Skybox/SkyboxMountains.prefab");
         if (mountains != null)
         {
             var ring = (GameObject)PrefabUtility.InstantiatePrefab(mountains);
@@ -438,11 +466,11 @@ public static class ValleyBuilder
     // A small log cabin from primitives: log walls, a pitched roof, a door, a lit window and a
     // smoking chimney. Local axes: x is the cabin's width, z its depth, the door is on the -z
     // side; the ridge runs along x.
-    static void BuildCabin()
+    static Transform BuildCabin()
     {
         var root = new GameObject("Cabin").transform;
-        root.position = new Vector3(cabin.x, HeightAt(cabin) - 0.1f, cabin.y);   // bottom logs bedded in
-        root.rotation = Quaternion.LookRotation(Vector3.left);   // local -z (the door) faces the yard, east
+        // Bottom logs bedded in; local -z (the door) faces the yard, east.
+        root.SetPositionAndRotation(new Vector3(cabin.x, HeightAt(cabin) - 0.1f, cabin.y), Quaternion.LookRotation(Vector3.left));
 
         var log = CabinMaterial("Log", new Color(0.42f, 0.29f, 0.18f), 0.15f);
         var roof = CabinMaterial("Roof", new Color(0.24f, 0.2f, 0.18f), 0.1f);
@@ -498,7 +526,7 @@ public static class ValleyBuilder
         lamp.intensity = 2f;
         lamp.range = 5f;
 
-        var smoke = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/UnityTechnologies/ParticlePack/EffectExamples/Smoke & Steam Effects/Prefabs/SmokeEffect.prefab");
+        var smoke = EditorAssets.LoadPrefab(PackPaths.SmokeFx + "/SmokeEffect.prefab");
         if (smoke != null)
         {
             var puff = (GameObject)PrefabUtility.InstantiatePrefab(smoke, root);
@@ -510,6 +538,7 @@ public static class ValleyBuilder
         var block = root.gameObject.AddComponent<BoxCollider>();
         block.center = new Vector3(0f, (wallTop + rise) / 2f, 0f);
         block.size = new Vector3(w + 0.6f, wallTop + rise, l + 0.6f);
+        return root;
     }
 
     enum Axis { X, Z }
@@ -523,8 +552,7 @@ public static class ValleyBuilder
 
     static GameObject Part(Transform parent, PrimitiveType type, Vector3 localPos, Vector3 scale, Material mat)
     {
-        var go = GameObject.CreatePrimitive(type);
-        Object.DestroyImmediate(go.GetComponent<Collider>());
+        var go = Primitives.Visual(type);
         go.transform.SetParent(parent, false);
         go.transform.localPosition = localPos;
         go.transform.localScale = scale;
@@ -532,30 +560,10 @@ public static class ValleyBuilder
         return go;
     }
 
-    static Material CabinMaterial(string name, Color color, float smoothness, Color? emission = null)
-    {
-        var mat = LoadOrCreate($"{Generated}/Cabin{name}.mat", () => new Material(Shader.Find("Universal Render Pipeline/Lit")));
-        mat.SetColor("_BaseColor", color);
-        mat.SetFloat("_Smoothness", smoothness);
-        if (emission.HasValue)
-        {
-            mat.EnableKeyword("_EMISSION");
-            mat.SetColor("_EmissionColor", emission.Value);
-        }
-        EditorUtility.SetDirty(mat);
-        return mat;
-    }
+    static Material CabinMaterial(string name, Color color, float smoothness, Color? emission = null) =>
+        EditorAssets.LitMaterial($"{Generated}/Cabin{name}.mat", color, smoothness, emission);
 
     // --- helpers -------------------------------------------------------------
-
-    static T LoadOrCreate<T>(string path, System.Func<T> create) where T : Object
-    {
-        var existing = AssetDatabase.LoadAssetAtPath<T>(path);
-        if (existing != null) return existing;
-        var made = create();
-        AssetDatabase.CreateAsset(made, path);
-        return made;
-    }
 
     // The sample trees' leaf and billboard materials use a shader graph that fails to import
     // in Unity 6.3 (they render pink). This makes a variant of the tree prefab in Generated/
@@ -575,26 +583,33 @@ public static class ValleyBuilder
             var mats = r.sharedMaterials;
             for (int i = 0; i < mats.Length; i++)
             {
-                if (mats[i] == null || mats[i].shader.isSupported) continue;
-                var broken = mats[i];
-                mats[i] = LoadOrCreate($"{Generated}/Trees/{broken.name}.mat", () => new Material(shader));
-                mats[i].shader = shader;
-                foreach (var (prop, texture) in SavedTextures(broken))
-                    if (mats[i].HasProperty(prop)) mats[i].SetTexture(prop, texture);
-                bool billboard = broken.name.Contains("Billboard");
-                if (billboard) mats[i].EnableKeyword("EFFECT_BILLBOARD");
-                else mats[i].DisableKeyword("EFFECT_BILLBOARD");
-                mats[i].SetFloat("_TwoSided", billboard ? 2f : 0f);
-                // URP's SpeedTree shader tints leaves gold by default (hue variation).
-                mats[i].SetFloat("_HueVariationKwToggle", 0f);
-                mats[i].DisableKeyword("EFFECT_HUE_VARIATION");
-                EditorUtility.SetDirty(mats[i]);
+                if (mats[i] != null && !mats[i].shader.isSupported) mats[i] = RepairedTreeMaterial(mats[i], shader);
             }
             r.sharedMaterials = mats;
         }
         var variant = PrefabUtility.SaveAsPrefabAsset(tree, $"{Generated}/Trees/{name}.prefab");
         Object.DestroyImmediate(tree);
         return variant;
+    }
+
+    // A copy of a broken tree material on the given SpeedTree shader, with the same textures.
+    static Material RepairedTreeMaterial(Material broken, Shader shader)
+    {
+        var mat = EditorAssets.LoadOrCreate($"{Generated}/Trees/{broken.name}.mat", () => new Material(shader));
+        mat.shader = shader;
+        foreach (var (prop, texture) in SavedTextures(broken))
+        {
+            if (mat.HasProperty(prop)) mat.SetTexture(prop, texture);
+        }
+        bool billboard = broken.name.Contains("Billboard");
+        if (billboard) mat.EnableKeyword("EFFECT_BILLBOARD");
+        else mat.DisableKeyword("EFFECT_BILLBOARD");
+        mat.SetFloat("_TwoSided", billboard ? 2f : 0f);
+        // URP's SpeedTree shader tints leaves gold by default (hue variation).
+        mat.SetFloat("_HueVariationKwToggle", 0f);
+        mat.DisableKeyword("EFFECT_HUE_VARIATION");
+        EditorUtility.SetDirty(mat);
+        return mat;
     }
 
     // Texture slots as saved in a material's file. A material whose shader failed to load
@@ -623,9 +638,13 @@ public static class ValleyBuilder
         copy.ReadPixels(new Rect(0, 0, size, size), 0, 0);
         RenderTexture.active = previous;
         RenderTexture.ReleaseTemporary(rt);
-        var pixels = copy.GetPixels();
-        for (int i = 0; i < pixels.Length; i++) pixels[i] = new Color(pixels[i].r * multiply.r, pixels[i].g * multiply.g, pixels[i].b * multiply.b, pixels[i].a);
-        copy.SetPixels(pixels);
+        var pixels = copy.GetPixels32();
+        for (int i = 0; i < pixels.Length; i++)
+        {
+            Color c = pixels[i];
+            pixels[i] = new Color(c.r * multiply.r, c.g * multiply.g, c.b * multiply.b, c.a);
+        }
+        copy.SetPixels32(pixels);
         File.WriteAllBytes(path, copy.EncodeToPNG());
         Object.DestroyImmediate(copy);
         AssetDatabase.ImportAsset(path);
@@ -642,7 +661,7 @@ public static class ValleyBuilder
 
     // Builds the cell map around the yard from the same shapes the scenery came from, and
     // hooks up the scene's chemistry tuning and ValleyChemistry.
-    static void WireChemistry(ChemGrid grid, string[] yardRows, Terrain terrain)
+    static void WireChemistry(ChemGrid grid, string[] yardRows, Terrain terrain, Transform cabinRoot)
     {
         float cs = grid.cellSize;
         int left = Mathf.RoundToInt(WestOfYard / cs), right = Mathf.RoundToInt(EastOfYard / cs);
@@ -679,7 +698,7 @@ public static class ValleyBuilder
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.terrain = terrain;
-        valley.cabin = GameObject.Find("Cabin")?.transform;
+        valley.cabin = cabinRoot;
         valley.lakeLevel = LakeLevel;
         valley.scorchedLayer = 5;   // Soil_Rocks, see PaintLayers
         grid.valley = valley;

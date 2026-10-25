@@ -1,19 +1,14 @@
 using Unity.Cinemachine;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 // A player's wizard in multiplayer. The prefab ships with its input, movement
 // and spellcasting switched off; on spawn the owner switches them on and
 // takes the camera, while everyone else's copy stays a puppet moved by its
 // NetworkTransform and NetworkAnimator (both owner-authoritative).
-//
-// Starter Assets components are reached by name so this compiles before the
-// Asset Store packs are restored.
+[RequireComponent(typeof(SpellCaster), typeof(SurfaceEffects), typeof(PlayerControls))]
 public class NetWizard : NetworkBehaviour
 {
-    static readonly string[] OwnerOnlyByName = { "StarterAssetsInputs", "ThirdPersonController", "BasicRigidBodyPush" };
-
     public override void OnNetworkSpawn()
     {
         var grid = FindFirstObjectByType<ChemGrid>();
@@ -26,19 +21,10 @@ public class NetWizard : NetworkBehaviour
             return;
         }
 
-        name = "Wizard";
-        if (grid != null)
-        {
-            // Spread players around the start cell so they don't spawn inside each other.
-            float angle = OwnerClientId * 90f * Mathf.Deg2Rad;
-            var start = grid.CellCenter(grid.PlayerStart.x, grid.PlayerStart.y);
-            transform.position = start + new Vector3(Mathf.Cos(angle), 0.1f, Mathf.Sin(angle)) * grid.cellSize;
-        }
+        name = WizardRig.Name;
+        if (grid != null) transform.position = SpawnPoint(grid);
 
-        GetComponent<CharacterController>().enabled = true;
-        GetComponent<PlayerInput>().enabled = true;
-        foreach (var typeName in OwnerOnlyByName)
-            if (GetComponent(typeName) is Behaviour b) b.enabled = true;
+        WizardRig.SetPlayerDriven(gameObject, true);
         var surface = GetComponent<SurfaceEffects>();
         surface.grid = grid;
         surface.enabled = true;
@@ -46,12 +32,22 @@ public class NetWizard : NetworkBehaviour
         controls.enabled = true;
         caster.controls = controls;
         caster.enabled = true;
+        TakeCamera(controls);
+    }
 
+    // Players are spread around the start cell so they don't spawn inside each other.
+    Vector3 SpawnPoint(ChemGrid grid)
+    {
+        float angle = OwnerClientId * 90f * Mathf.Deg2Rad;
+        var start = grid.CellCenter(grid.PlayerStart.x, grid.PlayerStart.y);
+        return start + new Vector3(Mathf.Cos(angle), 0.1f, Mathf.Sin(angle)) * grid.cellSize;
+    }
+
+    void TakeCamera(PlayerControls controls)
+    {
         var follow = FindFirstObjectByType<CinemachineCamera>();
-        if (follow != null)
-        {
-            follow.Target.TrackingTarget = transform.Find("PlayerCameraRoot");
-            if (follow.TryGetComponent<CameraZoom>(out var zoom)) zoom.controls = controls;
-        }
+        if (follow == null) return;
+        follow.Target.TrackingTarget = transform.Find(WizardRig.CameraRoot);
+        if (follow.TryGetComponent<CameraZoom>(out var zoom)) zoom.controls = controls;
     }
 }

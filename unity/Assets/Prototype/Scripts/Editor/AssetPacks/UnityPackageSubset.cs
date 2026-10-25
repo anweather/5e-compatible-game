@@ -63,10 +63,7 @@ public static class UnityPackageSubset
         var queue = new Queue<string>();
         foreach (var kv in assets)
         {
-            var path = kv.Value.Path;
-            if (path == null || path.StartsWith("ProjectSettings/") || path.StartsWith("Packages/")) continue;
-            foreach (var prefix in prefixes)
-                if (path == prefix || path.StartsWith(prefix + "/")) { queue.Enqueue(kv.Key); break; }
+            if (IsIncluded(kv.Value.Path, prefixes)) queue.Enqueue(kv.Key);
         }
         while (queue.Count > 0)
         {
@@ -75,6 +72,17 @@ public static class UnityPackageSubset
             foreach (var r in info.References) queue.Enqueue(r);
         }
         return keep;
+    }
+
+    // Under one of the prefixes (a folder or a file), and not project settings or packages.
+    static bool IsIncluded(string path, IReadOnlyList<string> prefixes)
+    {
+        if (path == null || path.StartsWith("ProjectSettings/", StringComparison.Ordinal) || path.StartsWith("Packages/", StringComparison.Ordinal)) return false;
+        foreach (var prefix in prefixes)
+        {
+            if (path == prefix || path.StartsWith(prefix + "/", StringComparison.Ordinal)) return true;
+        }
+        return false;
     }
 
     // Pass 2: copy the kept assets' entries into a new package.
@@ -103,23 +111,8 @@ public static class UnityPackageSubset
         while (ReadFully(gzip, header, Block))
         {
             if (header[0] == 0) yield break;
-            string name = Field(header, 0, 100);
-            string prefix = Field(header, 345, 155);
-            if (prefix.Length > 0) name = prefix + "/" + name;
-            long size = Convert.ToInt64(Field(header, 124, 12).Trim() is var s && s.Length > 0 ? s : "0", 8);
-            char type = (char)header[156];
-
-            var parts = name.TrimStart('.', '/').Split('/');
-            var entry = new Entry { Name = name.TrimStart('.', '/') };
-            if (type != '5' && parts.Length == 2 && parts[0].Length == 32)
-            {
-                entry.Guid = parts[0];
-                entry.Part = parts[1];
-            }
-
-            bool load = entry.Guid != null && (keepData != null
-                ? keepData(entry.Guid)
-                : entry.Part == "pathname" || entry.Part == "asset.meta" || (entry.Part == "asset" && size <= MaxScannedBytes));
+            var entry = ParseHeader(header, out long size);
+            bool load = entry.Guid != null && (keepData != null ? keepData(entry.Guid) : IsScanned(entry.Part, size));
             long padded = (size + Block - 1) / Block * Block;
             if (load)
             {
@@ -132,6 +125,30 @@ public static class UnityPackageSubset
             yield return entry;
         }
     }
+
+    // A tar header's entry: its name, and for "<guid>/<part>" files the GUID and part.
+    static Entry ParseHeader(byte[] header, out long size)
+    {
+        string name = Field(header, 0, 100);
+        string prefix = Field(header, 345, 155);
+        if (prefix.Length > 0) name = prefix + "/" + name;
+        var sizeField = Field(header, 124, 12).Trim();
+        size = Convert.ToInt64(sizeField.Length > 0 ? sizeField : "0", 8);
+        char type = (char)header[156];
+
+        var parts = name.TrimStart('.', '/').Split('/');
+        var entry = new Entry { Name = name.TrimStart('.', '/') };
+        if (type != '5' && parts.Length == 2 && parts[0].Length == 32)
+        {
+            entry.Guid = parts[0];
+            entry.Part = parts[1];
+        }
+        return entry;
+    }
+
+    // The parts the first pass reads: paths, meta files, and assets small enough to search for references.
+    static bool IsScanned(string part, long size) =>
+        part == "pathname" || part == "asset.meta" || (part == "asset" && size <= MaxScannedBytes);
 
     static bool LooksLikeText(byte[] data)
     {
@@ -160,7 +177,7 @@ public static class UnityPackageSubset
         WriteOctal(header, 148, 7, sum);
         output.Write(header, 0, Block);
         output.Write(data, 0, data.Length);
-        int pad = (int)((Block - data.Length % Block) % Block);
+        int pad = (Block - data.Length % Block) % Block;
         output.Write(new byte[pad], 0, pad);
     }
 

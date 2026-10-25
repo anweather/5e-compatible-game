@@ -25,8 +25,7 @@ public class FlythroughCamera : MonoBehaviour
     {
         var main = Camera.main;
         cam = main.transform;
-        var brain = main.GetComponent<Unity.Cinemachine.CinemachineBrain>();
-        if (brain != null) brain.enabled = false;
+        if (main.TryGetComponent<Unity.Cinemachine.CinemachineBrain>(out var brain)) brain.enabled = false;
         Place(waypoints[0], waypoints[0], 0f);
     }
 

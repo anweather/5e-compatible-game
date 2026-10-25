@@ -4,7 +4,6 @@ using Unity.Cinemachine;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using Unity.Netcode.Transports.UTP;
-using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 using UnityEditor.SceneManagement;
@@ -15,11 +14,10 @@ using UnityEngine;
 public static class ChemYardBuilder
 {
     const string ScenePath = "Assets/Prototype/Scenes/ChemistryYard.unity";
-    const string StarterAssets = "Assets/Starter Assets/Runtime/ThirdPersonController/Prefabs";
-    const string Effects = "Assets/UnityTechnologies/ParticlePack/EffectExamples";
-    const string FireFx = Effects + "/Fire & Explosion Effects/Prefabs";
-    const string SmokeFx = Effects + "/Smoke & Steam Effects/Prefabs";
-    const string MiscFx = Effects + "/Misc Effects/Prefabs";
+    const string StarterAssets = PackPaths.StarterAssets;
+    const string FireFx = PackPaths.FireFx;
+    const string SmokeFx = PackPaths.SmokeFx;
+    const string MiscFx = PackPaths.MiscFx;
     const string VolumePath = "Assets/Prototype/Settings/YardVolume.asset";
     const string NetWizardPath = "Assets/Prototype/Prefabs/NetWizard.prefab";
     const string SpellVisualsPath = "Assets/Prototype/Settings/SpellVisuals.asset";
@@ -69,9 +67,9 @@ public static class ChemYardBuilder
 
         // The wizard is the Starter Assets third-person character (restore it with
         // Prototype > Restore Asset Packs), with our spellcasting added.
-        var armature = AssetDatabase.LoadAssetAtPath<GameObject>(StarterAssets + "/PlayerArmature.prefab");
-        var mainCamera = AssetDatabase.LoadAssetAtPath<GameObject>(StarterAssets + "/MainCamera.prefab");
-        var followCamera = AssetDatabase.LoadAssetAtPath<GameObject>(StarterAssets + "/PlayerFollowCamera.prefab");
+        var armature = Load(StarterAssets + "/PlayerArmature.prefab");
+        var mainCamera = Load(StarterAssets + "/MainCamera.prefab");
+        var followCamera = Load(StarterAssets + "/PlayerFollowCamera.prefab");
         if (armature == null || mainCamera == null || followCamera == null)
         {
             Debug.LogError("Starter Assets are missing. Run Prototype > Restore Asset Packs, then build again.");
@@ -82,7 +80,7 @@ public static class ChemYardBuilder
         camera.GetComponent<UniversalAdditionalCameraData>().renderPostProcessing = true;
 
         var player = (GameObject)PrefabUtility.InstantiatePrefab(armature);
-        player.name = "Wizard";
+        player.name = WizardRig.Name;
         player.transform.position = start;
         var controls = player.AddComponent<PlayerControls>();
         var visuals = BuildSpellVisuals();
@@ -94,7 +92,7 @@ public static class ChemYardBuilder
         caster.visuals = visuals;
 
         var follow = (GameObject)PrefabUtility.InstantiatePrefab(followCamera);
-        var cameraRoot = player.transform.Find("PlayerCameraRoot");
+        var cameraRoot = player.transform.Find(WizardRig.CameraRoot);
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
         follow.AddComponent<CameraZoom>().controls = controls;
 
@@ -112,7 +110,7 @@ public static class ChemYardBuilder
         Debug.Log($"Built {ScenePath}. Press Play.");
     }
 
-    static GameObject Load(string path) => AssetDatabase.LoadAssetAtPath<GameObject>(path);
+    static GameObject Load(string path) => EditorAssets.LoadPrefab(path);
 
     // Particle Pack effects; any that are missing leave the grid's cube stand-ins.
     static void AssignEffects(ChemGrid grid)
@@ -139,14 +137,8 @@ public static class ChemYardBuilder
             sun.shadows = LightShadows.Soft;
         }
 
-        Directory.CreateDirectory(Path.GetDirectoryName(VolumePath));
-        AssetDatabase.Refresh();
-        var profile = AssetDatabase.LoadAssetAtPath<VolumeProfile>(VolumePath);
-        if (profile == null)
-        {
-            profile = ScriptableObject.CreateInstance<VolumeProfile>();
-            AssetDatabase.CreateAsset(profile, VolumePath);
-        }
+        EditorAssets.EnsureFolderFor(VolumePath);
+        var profile = EditorAssets.LoadOrCreate(VolumePath, ScriptableObject.CreateInstance<VolumeProfile>);
         Override<Bloom>(profile, b => { b.intensity.Override(0.9f); b.threshold.Override(1f); b.scatter.Override(0.7f); });
         Override<Tonemapping>(profile, t => t.mode.Override(TonemappingMode.ACES));
         Override<ColorAdjustments>(profile, c => { c.postExposure.Override(0.25f); c.saturation.Override(12f); c.contrast.Override(8f); });
@@ -198,8 +190,7 @@ public static class ChemYardBuilder
     // spellcasting start switched off; NetWizard turns them on for the owner.
     static GameObject BuildNetWizard(GameObject armature)
     {
-        Directory.CreateDirectory(Path.GetDirectoryName(NetWizardPath));
-        AssetDatabase.Refresh();
+        EditorAssets.EnsureFolderFor(NetWizardPath);
 
         var wizard = (GameObject)PrefabUtility.InstantiatePrefab(armature);
         wizard.name = "NetWizard";
@@ -219,10 +210,7 @@ public static class ChemYardBuilder
         wizard.AddComponent<SurfaceEffects>().enabled = false;
         wizard.AddComponent<NetWizard>();
 
-        wizard.GetComponent<CharacterController>().enabled = false;
-        wizard.GetComponent<PlayerInput>().enabled = false;
-        foreach (var name in new[] { "StarterAssetsInputs", "ThirdPersonController", "BasicRigidBodyPush" })
-            if (wizard.GetComponent(name) is Behaviour b) b.enabled = false;
+        WizardRig.SetPlayerDriven(wizard, false);
 
         var prefab = PrefabUtility.SaveAsPrefabAsset(wizard, NetWizardPath);
         Object.DestroyImmediate(wizard);
@@ -248,20 +236,19 @@ public static class ChemYardBuilder
         var visuals = AssetDatabase.LoadAssetAtPath<SpellVisuals>(SpellVisualsPath);
         if (visuals == null)
         {
-            Directory.CreateDirectory(Path.GetDirectoryName(SpellVisualsPath));
-            AssetDatabase.Refresh();
+            EditorAssets.EnsureFolderFor(SpellVisualsPath);
             visuals = ScriptableObject.CreateInstance<SpellVisuals>();
             AssetDatabase.CreateAsset(visuals, SpellVisualsPath);
         }
         visuals.entries = new System.Collections.Generic.List<SpellVisuals.Entry>
         {
-            Visual("fire-bolt", new Color(1f, 0.5f, 0.15f), FireFx + "/FireBall.prefab", FireFx + "/TinyExplosion.prefab"),
-            Visual("ray-of-frost", new Color(0.55f, 0.85f, 1f), null, Effects + "/Magic Effects/Prefabs/IceLance.prefab"),
-            Visual("create-water", new Color(0.3f, 0.6f, 1f), null, Effects + "/Water Effects/Prefabs/BigSplash.prefab"),
-            Visual("grease", new Color(0.9f, 0.8f, 0.3f), null, Effects + "/Goop Effects/Prefabs/GoopSpray.prefab"),
-            Visual("shocking-grasp", new Color(1f, 0.95f, 0.4f), null, MiscFx + "/ElectricalSparks.prefab"),
-            Visual("gust-of-wind", new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),
-            Visual("thunderwave", new Color(0.8f, 0.85f, 1f), null, FireFx + "/DustExplosion.prefab"),
+            Visual(SpellIds.FireBolt, new Color(1f, 0.5f, 0.15f), FireFx + "/FireBall.prefab", FireFx + "/TinyExplosion.prefab"),
+            Visual(SpellIds.RayOfFrost, new Color(0.55f, 0.85f, 1f), null, PackPaths.MagicFx + "/IceLance.prefab"),
+            Visual(SpellIds.CreateWater, new Color(0.3f, 0.6f, 1f), null, PackPaths.WaterFx + "/BigSplash.prefab"),
+            Visual(SpellIds.Grease, new Color(0.9f, 0.8f, 0.3f), null, PackPaths.GoopFx + "/GoopSpray.prefab"),
+            Visual(SpellIds.ShockingGrasp, new Color(1f, 0.95f, 0.4f), null, MiscFx + "/ElectricalSparks.prefab"),
+            Visual(SpellIds.GustOfWind, new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),
+            Visual(SpellIds.Thunderwave, new Color(0.8f, 0.85f, 1f), null, FireFx + "/DustExplosion.prefab"),
         };
         EditorUtility.SetDirty(visuals);
         AssetDatabase.SaveAssets();

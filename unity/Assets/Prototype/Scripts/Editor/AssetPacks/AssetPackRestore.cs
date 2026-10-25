@@ -86,33 +86,44 @@ public static class AssetPackRestore
 
         if (current == null)
         {
-            var failed = SessionState.GetString(Failed, "");
-            current = Missing().Find(p => !failed.Contains($"[{p.id}]"));
-            // One import attempt per pack per restore: still missing afterwards means it failed.
-            if (current != null && SessionState.GetString(Attempted, "").Contains($"[{current.id}]"))
-            {
-                Debug.LogError($"Asset packs: {current.name} imported but {current.folder} still doesn't exist.");
-                SessionState.SetString(Failed, failed + $"[{current.id}]");
-                current = null;
-                return;
-            }
-            if (current == null)
-            {
-                EditorApplication.update -= Pump;
-                SessionState.SetBool(Active, false);
-                Debug.Log(failed.Length == 0 ? "Asset packs: restore finished." : "Asset packs: restore finished with failures; see the errors above.");
-                return;
-            }
-            started = lastChange = EditorApplication.timeSinceStartup;
-            lastSize = -1;
-            if (!File.Exists(Path.Combine(CacheRoot, current.cache)))
-            {
-                Debug.Log($"Asset packs: downloading {current.name}...");
-                AssetStoreTools.Download(current.id);
-            }
+            StartNextPack();
             return;
         }
+        ImportWhenDownloaded();
+    }
 
+    // Picks the next missing pack and starts its download if it isn't cached; finishes the restore when none are left.
+    static void StartNextPack()
+    {
+        var failed = SessionState.GetString(Failed, "");
+        current = Missing().Find(p => !failed.Contains($"[{p.id}]"));
+        // One import attempt per pack per restore: still missing afterwards means it failed.
+        if (current != null && SessionState.GetString(Attempted, "").Contains($"[{current.id}]"))
+        {
+            Debug.LogError($"Asset packs: {current.name} imported but {current.folder} still doesn't exist.");
+            SessionState.SetString(Failed, failed + $"[{current.id}]");
+            current = null;
+            return;
+        }
+        if (current == null)
+        {
+            EditorApplication.update -= Pump;
+            SessionState.SetBool(Active, false);
+            Debug.Log(failed.Length == 0 ? "Asset packs: restore finished." : "Asset packs: restore finished with failures; see the errors above.");
+            return;
+        }
+        started = lastChange = EditorApplication.timeSinceStartup;
+        lastSize = -1;
+        if (!File.Exists(Path.Combine(CacheRoot, current.cache)))
+        {
+            Debug.Log($"Asset packs: downloading {current.name}...");
+            AssetStoreTools.Download(current.id);
+        }
+    }
+
+    // Waits for the current pack's file to finish downloading, then imports it (or the subset it asks for).
+    static void ImportWhenDownloaded()
+    {
         var file = Path.Combine(CacheRoot, current.cache);
         if (EditorApplication.timeSinceStartup - started > DownloadTimeout)
         {
@@ -156,5 +167,5 @@ public static class AssetPackRestore
     // A pack counts as present only if its folder holds real files: an empty
     // folder (say, one Unity kept after an interrupted import) doesn't count.
     static bool HasFiles(string folder) =>
-        Directory.Exists(folder) && Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Any(f => !f.EndsWith(".meta"));
+        Directory.Exists(folder) && Directory.EnumerateFiles(folder, "*", SearchOption.AllDirectories).Any(f => !f.EndsWith(".meta", StringComparison.Ordinal));
 }
