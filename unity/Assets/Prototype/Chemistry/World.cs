@@ -16,6 +16,10 @@ namespace Chem
         // Per-tick marks machines read in the TS; cleared at the end of each tick.
         readonly byte[] flowMarks, steamMarks, windMarks;
 
+        // How many spreads each burning cell is from where its fire started (see FireParams.FadeCells).
+        // Kept outside Cell so cell state, checksums and the TS parity tests are unaffected.
+        readonly int[] fireGeneration;
+
         public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt")
         {
             if (w <= 0 || h <= 0) throw new ArgumentException("World size must be positive");
@@ -26,6 +30,7 @@ namespace Chem
             Cells = new Cell[w * h];
             for (int i = 0; i < Cells.Length; i++) Cells[i] = new Cell(fill);
             flowMarks = new byte[w * h];
+            fireGeneration = new int[w * h];
             steamMarks = new byte[w * h];
             windMarks = new byte[w * h];
         }

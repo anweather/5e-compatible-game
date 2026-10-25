@@ -29,9 +29,11 @@ public static class ValleyBuilder
     static Vector2 centre;
     static Vector2 lakeCentre;
     static Vector2 cabin;
+    static readonly List<Vector2> treeSpots = new();
 
-    public static void Dress(ChemGrid grid, int width, int height)
+    public static void Dress(ChemGrid grid, string[] yardRows)
     {
+        int width = yardRows[0].Length, height = yardRows.Length;
         float half = grid.cellSize / 2f;
         yard = Rect.MinMaxRect(-half, -half, (width - 1) * grid.cellSize + half, (height - 1) * grid.cellSize + half);
         centre = yard.center;
@@ -47,12 +49,21 @@ public static class ValleyBuilder
         BuildCabin();
         ScatterRocks(terrain);
         grid.grassTint = new Color(0.95f, 1.05f, 0.85f);
+        WireChemistry(grid, yardRows, terrain);
     }
 
     // --- terrain -------------------------------------------------------------
 
     static Terrain BuildTerrain()
     {
+        // Order matters. Every asset the terrain uses (greener grass layers, repaired trees) is
+        // created first; then the terrain asset is saved, and only then filled in. Creating other
+        // assets after the terrain is saved reloads it from disk and throws away heights set in
+        // memory (which left the valley flat, 22 m below the yard); filling it in before saving
+        // loses the paint maps.
+        var layers = LoadLayers();
+        var trees = LoadTrees();
+
         var data = new TerrainData
         {
             heightmapResolution = HeightRes,
@@ -61,8 +72,6 @@ public static class ValleyBuilder
         };
         data.SetDetailResolution(DetailRes, 16);
         data.size = new Vector3(Size, MaxHeight, Size);
-        // Save first, then fill in: the paint maps are textures stored inside the asset,
-        // and paint set before the asset exists is lost when it's saved.
         AssetDatabase.DeleteAsset(Generated + "/ValleyTerrain.asset");
         AssetDatabase.CreateAsset(data, Generated + "/ValleyTerrain.asset");
 
@@ -75,8 +84,8 @@ public static class ValleyBuilder
         }
         data.SetHeights(0, 0, heights);
 
-        PaintLayers(data);
-        PlantTrees(data);
+        PaintLayers(data, layers);
+        PlantTrees(data, trees);
         PaintDetails(data);
         EditorUtility.SetDirty(data);
         AssetDatabase.SaveAssets();
@@ -114,7 +123,11 @@ public static class ValleyBuilder
         float h = Mathf.Max(meadow + mountain + sides + south, 0f) * rise - lake;
         // A level pad for the cabin, easing back into the meadow.
         float pad = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(6f, 14f, (p - cabin).magnitude));
-        return Mathf.Lerp(0f, h, pad);
+        h = Mathf.Lerp(0f, h, pad);
+        // Near the yard and the cabin the ground never dips below their base; heightmap samples
+        // are 1.8 m apart, so a dip just outside the yard showed the sides of its tiles.
+        if (d < 45f || (p - cabin).magnitude < 20f) h = Mathf.Max(h, 0f);
+        return h;
     }
 
     static float LakeDepth(Vector2 p)
@@ -147,21 +160,27 @@ public static class ValleyBuilder
     }
 
     // Grass on flat ground, moss in the meadows, rock on slopes, snow up high, sand at the lake.
-    static void PaintLayers(TerrainData data)
+    static readonly string[] LayerNames = { "Grass_A", "Grass_Moss", "Rock", "Snow", "Sand", "Soil_Rocks" };
+
+    // The terrain layers in LayerNames order, with greener copies of the grass; null if the pack is missing.
+    static TerrainLayer[] LoadLayers()
     {
-        string[] names = { "Grass_A", "Grass_Moss", "Rock", "Snow", "Sand", "Soil_Rocks" };
         var layers = new List<TerrainLayer>();
-        foreach (var n in names)
+        foreach (var n in LayerNames)
         {
             var layer = AssetDatabase.LoadAssetAtPath<TerrainLayer>($"{TerrainPack}/TerrainLayers/{n}_TerrainLayer.terrainlayer");
             if (layer != null) layers.Add(n.StartsWith("Grass") ? Greener(layer) : layer);
         }
-        if (layers.Count < names.Length)
-        {
-            Debug.LogWarning("Terrain Sample Asset Pack missing: the valley will be untextured. Run Prototype > Restore Asset Packs.");
-            return;
-        }
-        data.terrainLayers = layers.ToArray();
+        if (layers.Count == LayerNames.Length) return layers.ToArray();
+        Debug.LogWarning("Terrain Sample Asset Pack missing: the valley will be untextured. Run Prototype > Restore Asset Packs.");
+        return null;
+    }
+
+    static void PaintLayers(TerrainData data, TerrainLayer[] layers)
+    {
+        if (layers == null) return;
+        string[] names = LayerNames;
+        data.terrainLayers = layers;
 
         var map = new float[SplatRes, SplatRes, names.Length];
         for (int iz = 0; iz < SplatRes; iz++)
@@ -210,22 +229,26 @@ public static class ValleyBuilder
     static bool KeepClear(Vector2 p, float margin) =>
         DistanceToYard(p) < margin || (p - cabin).magnitude < 12f || LakeDepth(p) > 0.05f;
 
-    static void PlantTrees(TerrainData data)
+    // The tree species, repaired for URP; empty if the pack is missing.
+    static List<TreePrototype> LoadTrees()
     {
         var conifer = RepairedTree(DemoPack + "/Trees/Conifer/Conifer.prefab", "Conifer");
         var cypress = RepairedTree(DemoPack + "/Trees/Cypress/Cypress_Forest_Desktop.prefab", "Cypress");
         var protos = new List<TreePrototype>();
         if (conifer != null) protos.Add(new TreePrototype { prefab = conifer });
         if (cypress != null) protos.Add(new TreePrototype { prefab = cypress });
-        if (protos.Count == 0)
-        {
-            Debug.LogWarning("URP Terrain sample trees missing: the valley has no trees. Run Prototype > Restore Asset Packs.");
-            return;
-        }
+        if (protos.Count == 0) Debug.LogWarning("URP Terrain sample trees missing: the valley has no trees. Run Prototype > Restore Asset Packs.");
+        return protos;
+    }
+
+    static void PlantTrees(TerrainData data, List<TreePrototype> protos)
+    {
+        if (protos.Count == 0) return;
         data.treePrototypes = protos.ToArray();
 
         var rng = new System.Random(7);
         var trees = new List<TreeInstance>();
+        treeSpots.Clear();
         for (int i = 0; i < 9000 && trees.Count < 2600; i++)
         {
             float u = (float)rng.NextDouble(), v = (float)rng.NextDouble();
@@ -242,6 +265,7 @@ public static class ValleyBuilder
             if (rng.NextDouble() > chance) continue;
 
             float scale = 0.8f + 0.5f * (float)rng.NextDouble();
+            treeSpots.Add(w);
             trees.Add(new TreeInstance
             {
                 position = new Vector3(u, 0f, v),
@@ -417,7 +441,7 @@ public static class ValleyBuilder
     static void BuildCabin()
     {
         var root = new GameObject("Cabin").transform;
-        root.position = new Vector3(cabin.x, HeightAt(cabin), cabin.y);
+        root.position = new Vector3(cabin.x, HeightAt(cabin) - 0.1f, cabin.y);   // bottom logs bedded in
         root.rotation = Quaternion.LookRotation(Vector3.left);   // local -z (the door) faces the yard, east
 
         var log = CabinMaterial("Log", new Color(0.42f, 0.29f, 0.18f), 0.15f);
@@ -458,6 +482,7 @@ public static class ValleyBuilder
             var downhill = new Vector3(0f, -Mathf.Sin(pitch * Mathf.Deg2Rad), side * Mathf.Cos(pitch * Mathf.Deg2Rad));
             var slab = Part(root, PrimitiveType.Cube, ridge + downhill * (panel / 2f), new Vector3(w + 1.2f, 0.12f, panel), roof);
             slab.transform.localRotation = Quaternion.LookRotation(downhill);
+            slab.name = "Roof";
         }
 
         Part(root, PrimitiveType.Cube, new Vector3(0.8f, 1.0f, -l / 2f - 0.17f), new Vector3(1f, 2f, 0.08f), dark);           // door
@@ -605,5 +630,73 @@ public static class ValleyBuilder
         Object.DestroyImmediate(copy);
         AssetDatabase.ImportAsset(path);
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
+
+    // --- chemistry ------------------------------------------------------------
+
+    // The chemistry world around the yard: about 300 m x 260 m, from the lake's far shore to the
+    // forest north of the yard. Bigger than the fire can reach (it fades after FireFadeCells).
+    const float WestOfYard = 130f, EastOfYard = 130f, NorthOfYard = 88f, SouthOfYard = 150f;
+    const int FireFadeCells = 50;
+    const int LightningReach = 12000;
+
+    // Builds the cell map around the yard from the same shapes the scenery came from, and
+    // hooks up the scene's chemistry tuning and ValleyChemistry.
+    static void WireChemistry(ChemGrid grid, string[] yardRows, Terrain terrain)
+    {
+        float cs = grid.cellSize;
+        int left = Mathf.RoundToInt(WestOfYard / cs), right = Mathf.RoundToInt(EastOfYard / cs);
+        int top = Mathf.RoundToInt(NorthOfYard / cs), bottom = Mathf.RoundToInt(SouthOfYard / cs);
+        int yw = yardRows[0].Length, yh = yardRows.Length;
+        int w = left + yw + right, h = top + yh + bottom;
+
+        var treeCells = new HashSet<Vector2Int>();
+        foreach (var t in treeSpots) treeCells.Add(CellOf(t, cs, left, top, yh));
+
+        var rows = new System.Text.StringBuilder(w * h + h);
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                int yx = x - left, yy = y - top;
+                if (yx >= 0 && yx < yw && yy >= 0 && yy < yh)
+                {
+                    rows.Append(yardRows[yy][yx]);
+                    continue;
+                }
+                // Cell centre on the ground plane (yard cell (0, 0) is at (0, (yh - 1) * cs)).
+                var p = new Vector2(yx * cs, (yh - 1 - yy) * cs);
+                rows.Append(CellKind(p, treeCells.Contains(new Vector2Int(x, y))));
+            }
+            if (y < h - 1) rows.Append('\n');
+        }
+
+        grid.map = rows.ToString();
+        grid.yardCells = new RectInt(left, top, yw, yh);
+        grid.fireFadeCells = FireFadeCells;
+        grid.conductLimit = LightningReach;
+
+        var valley = grid.gameObject.AddComponent<ValleyChemistry>();
+        valley.grid = grid;
+        valley.terrain = terrain;
+        valley.cabin = GameObject.Find("Cabin")?.transform;
+        valley.lakeLevel = LakeLevel;
+        valley.scorchedLayer = 5;   // Soil_Rocks, see PaintLayers
+        grid.valley = valley;
+    }
+
+    static Vector2Int CellOf(Vector2 p, float cs, int left, int top, int yh) =>
+        new Vector2Int(Mathf.RoundToInt(p.x / cs) + left, top + yh - 1 - Mathf.RoundToInt(p.y / cs));
+
+    // Lake water, cabin wall, a tree, bare shore, or meadow grass.
+    static char CellKind(Vector2 p, bool tree)
+    {
+        if (LakeDepth(p) > 0.3f) return 'w';
+        // The cabin faces east: its 6 m width runs north-south, its 4.5 m depth east-west.
+        var q = p - cabin;
+        if (Mathf.Abs(q.y) <= 3.3f && Mathf.Abs(q.x) <= 2.55f) return 'L';
+        if (tree) return 'T';
+        if (DistanceToLake(p) < 6f && HeightAt(p) < 0.6f) return '.';
+        return ',';
     }
 }

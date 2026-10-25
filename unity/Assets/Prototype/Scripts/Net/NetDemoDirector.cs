@@ -82,7 +82,8 @@ public class NetDemoDirector : MonoBehaviour
         puppet = new WizardPuppet(gameObject);
         caster = GetComponent<SpellCaster>();
         caster.enabled = false;
-        lookAt = grid.CellCenter(16, 8);
+        var middle = grid.YardCell(16, 8);
+        lookAt = grid.CellCenter(middle.x, middle.y);
         Current = this;
         StartCoroutine(Run());
     }
@@ -95,14 +96,16 @@ public class NetDemoDirector : MonoBehaviour
         foreach (var step in Parts[part])
         {
             yield return new WaitUntil(() => Elapsed >= step.At);
-            var cell = grid.CellCenter(step.X, step.Y);
+            // Parts are written in yard coordinates; the world may extend beyond the yard.
+            var at = grid.YardCell(step.X, step.Y);
+            var cell = grid.CellCenter(at.x, at.y);
             switch (step.Act)
             {
                 case Act.Walk: StartCoroutine(puppet.WalkTo(cell)); break;
                 case Act.Look: lookAt = cell; break;
                 case Act.Cast:
                     puppet.Face(cell);
-                    caster.Cast(step.Spell, step.X, step.Y, step.Dir);
+                    caster.Cast(step.Spell, at.x, at.y, step.Dir);
                     break;
             }
         }

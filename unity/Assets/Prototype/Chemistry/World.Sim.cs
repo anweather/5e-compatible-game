@@ -46,6 +46,9 @@ namespace Chem
                     continue;
                 }
                 if (c.Gas != "steam" && Rand() < p.SmokeChance) AddGas(c, "smoke", 1);
+                // Near full strength for most of the run, then dying away toward FadeCells.
+                double reach = p.FadeCells > 0 ? fireGeneration[i] / (double)p.FadeCells : 0.0;
+                double fade = p.FadeCells > 0 ? Math.Max(0.0, 1.0 - reach * reach * reach) : 1.0;
                 foreach (var (nx, ny, d) in Neighbours(x, y))
                 {
                     var n = At(nx, ny);
@@ -56,7 +59,11 @@ namespace Chem
                     double chance;
                     if (flam > 0) chance = p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam;
                     else chance = wet ? p.BoilChance : p.HeatChance;
-                    if (Rand() < chance) Apply(nx, ny, "fire", 1, -1, false);
+                    if (Rand() < chance * fade)
+                    {
+                        Apply(nx, ny, "fire", 1, -1, false);
+                        if (p.FadeCells > 0 && n.Fire > 0) fireGeneration[Idx(nx, ny)] = fireGeneration[i] + 1;
+                    }
                 }
                 if (--c.Fuel > 0) continue;
                 if (CoverHasTag(c, "flammable"))
@@ -77,6 +84,7 @@ namespace Chem
                 }
                 var t = TerrainOf(c);
                 c.Fire = 0;
+                fireGeneration[i] = 0;
                 if (t.BurnsTo != null)
                 {
                     c.T = t.BurnsTo;

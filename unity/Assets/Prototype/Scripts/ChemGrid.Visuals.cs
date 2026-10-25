@@ -85,15 +85,28 @@ public partial class ChemGrid
             if (key == v.key && v.terrain == c.T) continue;
             v.key = key;
 
-            if (v.terrain != c.T) BuildTile(v, c, x, y);
+            // Yard cells are blocks; cells outside the yard are scenery that ValleyChemistry updates.
+            bool yard = InYard(x, y);
+            if (v.terrain != c.T)
+            {
+                if (yard) BuildTile(v, c, x, y);
+                else
+                {
+                    if (valley != null) valley.TerrainChanged(x, y, v.terrain, c.T);
+                    v.terrain = c.T;
+                }
+            }
             float ground = SurfaceY(x, y);
-            if (Dressed.Contains(c.T)) ground = GroundTop(c);
+            if (yard && Dressed.Contains(c.T)) ground = GroundTop(c);
             var center = CellCenter(x, y);
 
             // Water and ice: a slab from the ground up to the water surface. Ice is solid to walk on.
-            if (c.Water > 0)
+            // Outside the yard the lake's own surface stands for its cells; puddles still show.
+            if (c.Water > 0 && (yard || c.T != "pit"))
             {
-                float top = (World.ElevationUnits(c) + c.Water) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
+                float top = yard
+                    ? (World.ElevationUnits(c) + c.Water) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight
+                    : ground + c.Water / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
                 top = Mathf.Max(top, ground + 0.04f);
                 bool fresh = v.water == null || !v.water.activeSelf;
                 var slab = Ensure(ref v.water, "Water", center, keepCollider: true);
@@ -121,16 +134,18 @@ public partial class ChemGrid
             }
             else Hide(v.cover);
 
-            RenderFire(v, c, center, ground);
+            RenderFire(v, c, center, yard || valley == null ? ground : ground + valley.FireHeight(c.T), !yard && c.T == "tree" ? 1.8f : 1f);
             RenderGas(v, c, center, ground, (x + y) % 2 == 0);
-            RenderCharge(v, c, center, ground);
+            // A lightning strike across the lake charges thousands of cells; outside the
+            // yard, sparks on one cell in 25 read the same without thousands of effects.
+            if (yard || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
         }
         AnimateWater();
     }
 
     // --- fire, gas, charge -------------------------------------------------
 
-    void RenderFire(View v, Cell c, Vector3 center, float ground)
+    void RenderFire(View v, Cell c, Vector3 center, float ground, float scale = 1f)
     {
         var prefab = c.Fire >= 3 ? fireLarge : c.Fire == 2 ? fireMedium : fireSmall;
         if (c.Fire == 0 || prefab == null)
@@ -142,7 +157,7 @@ public partial class ChemGrid
         if (v.fireLevel == c.Fire && v.fire != null) return;
         Retire(v.fire);
         v.fire = Instantiate(prefab, new Vector3(center.x, ground, center.z), Quaternion.identity, transform);
-        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f);
+        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f * scale);
         v.fireLevel = c.Fire;
     }
 
@@ -241,7 +256,7 @@ public partial class ChemGrid
             }
             if (near) continue;
             var l = fireLights[used++];
-            l.transform.position = CellCenter(b.x, b.y) + Vector3.up * (GroundTop(World.At(b.x, b.y)) + 1f);
+            l.transform.position = CellCenter(b.x, b.y) + Vector3.up * (SurfaceY(b.x, b.y) + 1f);
             l.intensity = 1.5f + b.fire;
             l.enabled = true;
         }

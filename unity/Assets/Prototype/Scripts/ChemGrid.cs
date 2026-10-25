@@ -5,8 +5,12 @@ using UnityEngine;
 
 // The 3D view of a Chem.World. The rules come from ../rules/*.json, the
 // same files the web sandbox runs on; this side only ticks the world and
-// draws it (see ChemGrid.Visuals.cs). Cell (x, y) sits at world
-// (x, 0, H-1-y) times cellSize, so north (y-1) is +z.
+// draws it (see ChemGrid.Visuals.cs). North (y-1) is +z.
+//
+// The world can be bigger than the yard: the yard's cells are drawn as blocks,
+// and cells outside it belong to the surrounding scenery (ValleyChemistry),
+// which shows their changes on the terrain. The yard keeps its own position:
+// yard cell (0, 0) sits at world (0, 0, (yard height - 1) * cellSize).
 public partial class ChemGrid : MonoBehaviour
 {
     [TextArea(8, 20)] public string map;
@@ -15,6 +19,17 @@ public partial class ChemGrid : MonoBehaviour
     public float stepHeight = 0.5f;
     [Tooltip("World width of one cell. A 5 ft square is about 1.5 m.")]
     public float cellSize = 1.5f;
+
+    [Tooltip("The yard's cells within the map; empty means the whole map is the yard.")]
+    public RectInt yardCells;
+    [Tooltip("Optional: draws and dresses the cells outside the yard.")]
+    public ValleyChemistry valley;
+
+    [Header("Tuning for this scene (0 keeps rules/sim.json)")]
+    [Tooltip("Fire weakens as it spreads and dies out after about this many cells (see FireParams.FadeCells).")]
+    public int fireFadeCells;
+    [Tooltip("How many connected conductive cells one lightning strike can reach.")]
+    public int conductLimit;
 
     public World World { get; private set; }
     public Vector2Int PlayerStart { get; private set; }
@@ -32,6 +47,7 @@ public partial class ChemGrid : MonoBehaviour
         ['w'] = ("pit", 4, false, null), ['*'] = ("pit", 4, true, null),
         ['~'] = ("dirt", 2, false, null), ['m'] = ("metal", 0, false, null),
         ['o'] = ("dirt", 0, false, "oil"), ['@'] = ("grass", 0, false, null),
+        ['L'] = ("logwall", 0, false, null),
     };
 
     float tickTimer;
@@ -54,6 +70,8 @@ public partial class ChemGrid : MonoBehaviour
     void BuildWorld()
     {
         var rules = Rules.Load(FindRulesDir());
+        if (fireFadeCells > 0) rules.Sim.Fire.FadeCells = fireFadeCells;
+        if (conductLimit > 0) rules.Sim.ConductLimit = conductLimit;
 
         var rows = map.Replace("\r", "").Trim('\n').Split('\n');
         int h = rows.Length, w = 0;
@@ -118,15 +136,31 @@ public partial class ChemGrid : MonoBehaviour
 
     // --- coordinates -----------------------------------------------------
 
-    public Vector3 CellCenter(int x, int y) => new Vector3(x * cellSize, 0f, (World.H - 1 - y) * cellSize);
+    RectInt Yard => yardCells.width > 0 ? yardCells : new RectInt(0, 0, World.W, World.H);
 
-    public Vector2Int CellAt(Vector3 p) =>
-        new Vector2Int(Mathf.RoundToInt(p.x / cellSize), World.H - 1 - Mathf.RoundToInt(p.z / cellSize));
+    public bool InYard(int x, int y) => Yard.Contains(new Vector2Int(x, y));
+
+    /// <summary>World cell of a yard cell (yard maps and demos use yard coordinates).</summary>
+    public Vector2Int YardCell(int x, int y) => new Vector2Int(x + Yard.x, y + Yard.y);
+
+    public Vector3 CellCenter(int x, int y)
+    {
+        var yard = Yard;
+        return new Vector3((x - yard.x) * cellSize, 0f, (yard.y + yard.height - 1 - y) * cellSize);
+    }
+
+    public Vector2Int CellAt(Vector3 p)
+    {
+        var yard = Yard;
+        return new Vector2Int(Mathf.RoundToInt(p.x / cellSize) + yard.x, yard.y + yard.height - 1 - Mathf.RoundToInt(p.z / cellSize));
+    }
 
     public float SurfaceY(int x, int y)
     {
         var c = World.At(x, y);
-        return c == null ? 0f : World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight + Look(c.T).height;
+        if (c == null) return 0f;
+        if (!InYard(x, y) && valley != null) return valley.GroundHeight(x, y);
+        return World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight + Look(c.T).height;
     }
 
     public bool IsSlipperyAt(Vector3 p)

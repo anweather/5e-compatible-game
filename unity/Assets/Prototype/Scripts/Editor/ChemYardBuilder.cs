@@ -99,7 +99,7 @@ public static class ChemYardBuilder
         follow.AddComponent<CameraZoom>().controls = controls;
 
         SetUpLighting();
-        ValleyBuilder.Dress(grid, rows[0].Length, rows.Length);
+        ValleyBuilder.Dress(grid, rows);
         new GameObject("EventLog").AddComponent<EventLog>();
         SetUpNetwork(grid, BuildNetWizard(armature));
 

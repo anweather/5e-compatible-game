@@ -56,6 +56,14 @@ namespace Chem
     public sealed class FireParams
     {
         public double SpreadChance = 0.5, HeatChance = 0.04, BoilChance = 0.35, DownwindBonus = 0.35, SmokeChance = 0.25;
+
+        /// <summary>
+        /// When above 0, fire weakens as it spreads: a cell this many spreads from where the fire
+        /// started can no longer pass it on. The chance stays near full for most of the way and
+        /// falls off toward the end (1 - (generation / FadeCells)^3). 0 (the
+        /// default, and the web sandbox's behaviour) means fire spreads as far as there is fuel.
+        /// </summary>
+        public int FadeCells;
     }
 
     public sealed class GasParams

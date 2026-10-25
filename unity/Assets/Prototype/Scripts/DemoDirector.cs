@@ -22,24 +22,32 @@ public class DemoDirector : MonoBehaviour
         yield return new WaitForSeconds(1f);
 
         // East to the oil spill and the pond.
-        yield return puppet.WalkTo(grid.CellCenter(20, 11));
+        yield return puppet.WalkTo(Yard(20, 11));
         yield return Cast("fire-bolt", 19, 3, 0, 1.2f);
         yield return Cast("create-water", 19, 3, 0, 2.5f);   // water splashes burning oil
         yield return Cast("ray-of-frost", 20, 10, 0, 2f);     // a beam north across the pond
         yield return Cast("shocking-grasp", 24, 9, 1, 2f);    // down the metal strip into the water
 
         // West to the meadow: grease, then light it, then fan it.
-        yield return puppet.WalkTo(grid.CellCenter(14, 12));
+        yield return puppet.WalkTo(Yard(14, 12));
         yield return Cast("grease", 10, 12, 3, 1.2f);
         yield return Cast("fire-bolt", 10, 12, 3, 2.5f);
         yield return Cast("gust-of-wind", 13, 12, 3, 4f);
         Done = true;
     }
 
+    Vector3 Yard(int x, int y)
+    {
+        var cell = grid.YardCell(x, y);
+        return grid.CellCenter(cell.x, cell.y);
+    }
+
     IEnumerator Cast(string spell, int x, int y, int dir, float wait)
     {
-        puppet.Face(grid.CellCenter(x, y));
-        caster.Cast(spell, x, y, dir);
+        // The schedule is in yard coordinates; the world may extend beyond the yard.
+        var cell = grid.YardCell(x, y);
+        puppet.Face(grid.CellCenter(cell.x, cell.y));
+        caster.Cast(spell, cell.x, cell.y, dir);
         yield return new WaitForSeconds(wait);
     }
 }

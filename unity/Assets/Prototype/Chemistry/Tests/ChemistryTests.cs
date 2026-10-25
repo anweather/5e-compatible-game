@@ -198,6 +198,41 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void FadingFireSpreadsAWayThenDiesOut()
+        {
+            // How far right fire started at the left end of a long grass strip gets, in cells.
+            int Reach(int fadeCells, uint seed)
+            {
+                var ownRules = Rules.Load(RulesDir());   // a private copy: R is shared by every test
+                ownRules.Sim.Fire.FadeCells = fadeCells;
+                var w = new World(ownRules, 120, 9, seed, "grass");
+                w.Apply(0, 4, "fire");
+                Run(w, 2000);
+                int far = 0;
+                for (int y = 0; y < w.H; y++)
+                {
+                    for (int x = 0; x < w.W; x++)
+                    {
+                        if (w.At(x, y).T == "dirt") far = System.Math.Max(far, x);
+                    }
+                }
+                return far;
+            }
+
+            // Grass fire is chancy (some fires die at once), so judge over many seeds.
+            var unfaded = new System.Collections.Generic.List<int>();
+            var faded = new System.Collections.Generic.List<int>();
+            for (uint seed = 1; seed <= 12; seed++)
+            {
+                unfaded.Add(Reach(0, seed));
+                faded.Add(Reach(12, seed));
+            }
+            Assert.That(faded.Max(), Is.LessThanOrEqualTo(12), "a fire can't pass on beyond FadeCells spreads");
+            Assert.That(faded.Average(), Is.GreaterThan(4), "but it still spreads a way first");
+            Assert.That(unfaded.Average(), Is.GreaterThan(3 * faded.Average()), "without fading, fire runs much further");
+        }
+
+        [Test]
         public void FireOnOilBlazesAndWaterSplashesIt()
         {
             var w = Room();

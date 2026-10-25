@@ -20,7 +20,8 @@ public class Showcase : MonoBehaviour
         EventLog.HudVisible = false;
         var grid = FindFirstObjectByType<ChemGrid>();
         var wizard = GameObject.Find("Wizard").transform;
-        var yard = grid.CellCenter(13, 7);
+        var middle = grid.YardCell(13, 7);
+        var yard = grid.CellCenter(middle.x, middle.y);
         var behindWizard = wizard.position + V(0.9f, 2.3f, -4.2f);
 
         // High over the lake with the mountains ahead, down across the water,
