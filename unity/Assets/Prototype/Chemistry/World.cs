@@ -3,6 +3,7 @@
 // World.Sim.cs and spells in World.Spells.cs.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace Chem
 {
@@ -12,7 +13,6 @@ namespace Chem
 
         readonly List<LogEntry> log = new List<LogEntry>();
         readonly HashSet<string> logged = new HashSet<string>();
-        uint rng;
         // Per-tick marks machines read in the TS; cleared at the end of each tick.
         readonly byte[] flowMarks, steamMarks, windMarks;
 
@@ -22,7 +22,7 @@ namespace Chem
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             W = w;
             H = h;
-            rng = seed;
+            RngState = seed;
             Cells = new Cell[w * h];
             for (int i = 0; i < Cells.Length; i++) Cells[i] = new Cell(fill);
             flowMarks = new byte[w * h];
@@ -42,7 +42,7 @@ namespace Chem
         public int LogAppended { get; private set; }
 
         /// <summary>The mulberry32 state; identical to the TS world's `rng`.</summary>
-        public uint RngState { get => rng; set => rng = value; }
+        public uint RngState { get; set; }
 
         /// <summary>Active wind from Gust of Wind: direction (0..3) and ticks left, or null.</summary>
         public (int dir, int ticks)? Wind { get; set; }
@@ -50,8 +50,8 @@ namespace Chem
         // ---------- directions ----------
 
         /// <summary>dir: 0=N(y-1) 1=E 2=S(y+1) 3=W, same as the TS DX/DY.</summary>
-        public static int DirX(int d) => d == 1 ? 1 : d == 3 ? -1 : 0;
-        public static int DirY(int d) => d == 0 ? -1 : d == 2 ? 1 : 0;
+        public static int DirX(int d) => d switch { 1 => 1, 3 => -1, _ => 0 };
+        public static int DirY(int d) => d switch { 0 => -1, 2 => 1, _ => 0 };
 
         // ---------- cells ----------
 
@@ -93,8 +93,8 @@ namespace Chem
         {
             unchecked
             {
-                rng += 0x6d2b79f5u;
-                uint t = rng;
+                RngState += 0x6d2b79f5u;
+                uint t = RngState;
                 t = (t ^ (t >> 15)) * (t | 1u);
                 t ^= t + (t ^ (t >> 7)) * (t | 61u);
                 return (t ^ (t >> 14)) / 4294967296.0;
@@ -189,7 +189,7 @@ namespace Chem
                 uint h = 0x811c9dc5;
                 var s = sb.ToString();
                 for (int i = 0; i < s.Length; i++) h = (h ^ s[i]) * 0x01000193u;
-                return h.ToString("x");
+                return h.ToString("x", CultureInfo.InvariantCulture);
             }
         }
     }

@@ -1,0 +1,41 @@
+<Project>
+  <!--
+    Shared quality settings for everything under core/ (see docs/QUALITY.md).
+    The C# itself lives in the Unity project; these projects only link it, so
+    the rules can be built, analyzed and tested without the Unity Editor.
+  -->
+  <PropertyGroup>
+    <!-- docs/DECISIONS.md D3: Unity's compiler supports C# 9 at most. -->
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+
+    <!-- Analyzers: .NET's recommended set, code style (naming, formatting) from
+         the root .editorconfig, and SonarAnalyzer (below). -->
+    <AnalysisLevel>latest-recommended</AnalysisLevel>
+    <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
+    <!-- Needed for IDE0005 (unused usings) to run in the build; CS1591
+         (missing XML doc comment on public API) is not wanted. -->
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <!-- Any warning fails the build, locally and in CI. -->
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Known debt, reported but not failing: cognitive complexity in the
+         methods ported line by line from the TS sandbox. Remove this line once
+         they are split up. -->
+    <WarningsNotAsErrors>$(WarningsNotAsErrors);S3776</WarningsNotAsErrors>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- The same rule severities Unity uses, so the console and CI agree. -->
+    <GlobalAnalyzerConfigFiles Include="$(MSBuildThisFileDirectory)../unity/Assets/Default.globalconfig" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Same versions as the DLLs in unity/Assets/Prototype/Analyzers. -->
+    <PackageReference Include="SonarAnalyzer.CSharp" Version="10.35.0.4138" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+    <PackageReference Include="Microsoft.CodeAnalysis.NetAnalyzers" Version="10.0.402" PrivateAssets="all" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
+  </ItemGroup>
+</Project>

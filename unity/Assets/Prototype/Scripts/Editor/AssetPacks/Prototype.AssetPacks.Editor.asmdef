@@ -1,7 +1,9 @@
 {
     "name": "Prototype.AssetPacks.Editor",
     "rootNamespace": "",
-    "references": [],
+    "references": [
+        "Prototype.Analyzers"
+    ],
     "includePlatforms": [
         "Editor"
     ],

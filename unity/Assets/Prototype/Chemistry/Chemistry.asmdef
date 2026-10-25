@@ -1,7 +1,9 @@
 {
     "name": "Chemistry",
     "rootNamespace": "Chem",
-    "references": [],
+    "references": [
+        "Prototype.Analyzers"
+    ],
     "includePlatforms": [],
     "excludePlatforms": [],
     "allowUnsafeCode": false,

@@ -1,0 +1,25 @@
+{
+  "$comment": "Duplicate-code check (docs/QUALITY.md). CI fails if more than `threshold` percent of the scanned code is copy-paste.",
+  "threshold": 2,
+  "minTokens": 50,
+  "minLines": 5,
+  "format": [
+    "csharp",
+    "typescript"
+  ],
+  "gitignore": true,
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/bin/**",
+    "**/obj/**",
+    "**/Library/**",
+    "**/Starter Assets/**",
+    "**/UnityTechnologies/**",
+    "**/*.meta"
+  ],
+  "reporters": [
+    "console"
+  ],
+  "absolute": false
+}

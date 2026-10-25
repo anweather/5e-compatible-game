@@ -53,9 +53,9 @@ namespace Chem
                     double flam = Flammability(n);
                     double downwind = Wind.HasValue && Wind.Value.dir == d ? p.DownwindBonus : 0;
                     bool wet = n.Water > 0 && !n.Frozen;
-                    double chance = flam > 0
-                        ? p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam
-                        : wet ? p.BoilChance : p.HeatChance;
+                    double chance;
+                    if (flam > 0) chance = p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam;
+                    else chance = wet ? p.BoilChance : p.HeatChance;
                     if (Rand() < chance) Apply(nx, ny, "fire", 1, -1, false);
                 }
                 if (--c.Fuel > 0) continue;

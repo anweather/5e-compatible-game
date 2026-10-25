@@ -1,0 +1,59 @@
+name: quality
+
+# C# quality gate (docs/QUALITY.md). The sandbox's own tests run in sandbox.yml.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "core/**"
+      - "unity/Assets/Prototype/**"
+      - "unity/Assets/Default.globalconfig"
+      - "rules/**"
+      - "sandbox/src/**"
+      - ".editorconfig"
+      - ".jscpd.json"
+      - ".github/workflows/quality.yml"
+  pull_request:
+    paths:
+      - "core/**"
+      - "unity/Assets/Prototype/**"
+      - "unity/Assets/Default.globalconfig"
+      - "rules/**"
+      - "sandbox/src/**"
+      - ".editorconfig"
+      - ".jscpd.json"
+      - ".github/workflows/quality.yml"
+
+jobs:
+  build-and-test:
+    name: Game.Core build (warnings fail) and tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - uses: actions/setup-dotnet@v4.3.1
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet build core -c Release -warnaserror
+      - run: dotnet test core -c Release --no-build --logger "console;verbosity=normal"
+
+  format:
+    name: Formatting and code style
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - uses: actions/setup-dotnet@v4.3.1
+        with:
+          dotnet-version: 8.0.x
+      - run: dotnet format core --verify-no-changes --verbosity diagnostic
+
+  duplicates:
+    name: Duplicate code
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4.4.0
+      - uses: actions/setup-node@v4.4.0
+        with:
+          node-version: 22
+      # Settings and threshold are in .jscpd.json.
+      - run: npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src

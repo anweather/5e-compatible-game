@@ -1,8 +1,8 @@
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
-using UnityEngine;
 
 namespace Chem.Tests
 {
@@ -14,7 +14,25 @@ namespace Chem.Tests
     {
         static Rules rules;
 
-        static Rules R => rules ??= Rules.Load(Path.GetFullPath(Path.Combine(Application.dataPath, "../../rules")));
+        static Rules R => rules ??= Rules.Load(RulesDir());
+
+        /// <summary>
+        /// The repo's rules/ folder. In Unity it sits next to the project; under
+        /// `dotnet test` (core/Game.Core.Tests) we walk up from the test binary.
+        /// </summary>
+        static string RulesDir()
+        {
+#if UNITY_5_3_OR_NEWER
+            return Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../rules"));
+#else
+            for (var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory); dir != null; dir = dir.Parent)
+            {
+                var candidate = Path.Combine(dir.FullName, "rules");
+                if (File.Exists(Path.Combine(candidate, "materials.json"))) return candidate;
+            }
+            throw new DirectoryNotFoundException("No rules/ folder above " + TestContext.CurrentContext.TestDirectory);
+#endif
+        }
 
         /// <summary>A small dirt room with bedrock walls, like room() in sim.test.ts (seed 7).</summary>
         static World Room(int w = 12, int h = 8)
@@ -42,7 +60,7 @@ namespace Chem.Tests
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
             Assert.That(R.CellRules.Count, Is.EqualTo(27));
-            Assert.That(R.CellRulesFor("fire").First().Id, Is.EqualTo("fire-oil"));
+            Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-oil"));
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
             Assert.That(R.Spell("nope"), Is.Null);
@@ -169,7 +187,7 @@ namespace Chem.Tests
             var w = new World(R, 15, 15, 3, "grass");
             w.Apply(7, 7, "fire");
             Assert.That(w.At(7, 7).Fire, Is.EqualTo(2));
-            Assert.That(w.Log.Last().Text, Is.EqualTo("Fire takes hold of the grass"));
+            Assert.That(w.Log[w.Log.Count - 1].Text, Is.EqualTo("Fire takes hold of the grass"));
             Run(w, 6);
             Assert.That(w.Cells.Count(c => c.Fire > 0), Is.GreaterThan(1), "fire spread to neighbours");
             Run(w, 200);
@@ -190,7 +208,7 @@ namespace Chem.Tests
             Assert.That(w.At(5, 4).Fire, Is.EqualTo(3), "still burning");
             int lit = new[] { (4, 4), (6, 4), (5, 3), (5, 5) }.Count(p => w.At(p.Item1, p.Item2).Fire > 0);
             Assert.That(lit, Is.EqualTo(2), "burning oil splashed onto two neighbours");
-            Assert.That(w.Log.Any(l => l.Text.StartsWith("Water can't douse burning oil")));
+            Assert.That(w.Log.Any(l => l.Text.StartsWith("Water can't douse burning oil", StringComparison.Ordinal)));
         }
 
         [Test]
@@ -278,7 +296,7 @@ namespace Chem.Tests
             Direct(w, 5, 4, "grease");
             Assert.That(w.At(5, 4).Cover, Is.EqualTo("grease"));
             Assert.That(w.At(5, 4).Fire, Is.EqualTo(2));
-            Assert.That(w.Log.Last().Text, Is.EqualTo("Grease hits the flames. Whoosh!"));
+            Assert.That(w.Log[w.Log.Count - 1].Text, Is.EqualTo("Grease hits the flames. Whoosh!"));
         }
 
         // ---------- air / thunder ----------
@@ -438,12 +456,12 @@ namespace Chem.Tests
             Direct(w, 3, 3, "cold");
             Direct(w, 4, 3, "cold");
             Assert.That(w.Log.Count(l => l.Text == "The water freezes solid"), Is.EqualTo(1));
-            Assert.That(w.Log.Last().Count, Is.EqualTo(1), "second one was deduped within the tick");
+            Assert.That(w.Log[w.Log.Count - 1].Count, Is.EqualTo(1), "second one was deduped within the tick");
             w.Step();
             w.Paint(5, 3, "pit"); w.AddWater(5, 3, 4);
             Direct(w, 5, 3, "cold");
-            Assert.That(w.Log.Last().Count, Is.EqualTo(2), "a later repeat merges into the last line");
-            Assert.That(w.Log.Last().Tick, Is.EqualTo(1));
+            Assert.That(w.Log[w.Log.Count - 1].Count, Is.EqualTo(2), "a later repeat merges into the last line");
+            Assert.That(w.Log[w.Log.Count - 1].Tick, Is.EqualTo(1));
         }
 
         [Test]
