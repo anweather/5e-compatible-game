@@ -129,7 +129,10 @@ The same loop, one level up:
   PhysX isn't deterministic across machines).
 - **Hot swap:** the server applies mod patches at a tick boundary and
   broadcasts them. Clients rebuild their rule index, as the sandbox does
-  today.
+  today. The C# core already has the pieces: `ModPatch.Parse`,
+  `Rules.WithMods` (same merge and checks as the sandbox),
+  `World.ApplyRules` and `Rules.Fingerprint` for the checksum
+  (`ARCHITECTURE.md`).
 - **Builders with their own LLMs:**
   - *Data:* the same brief (`docs/MODDING.md`, plus the current tables).
   - *Code:* PRs, and the Unity CLI's MCP bridge (`RESEARCH.md` §9) for

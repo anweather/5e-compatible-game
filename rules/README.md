@@ -14,6 +14,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 | `entities.json` | Things on the board: HP, mass, flammable, explodes |
 | `machines.json` | What each machine needs before it powers the gates |
 | `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, gas decay, push and slide, damage |
+| `mods/` | Example live mods (`docs/MODDING.md`), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
 
 ## Elements
 

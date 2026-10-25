@@ -39,6 +39,14 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   cell", then it looks up `reactions.json` and applies the matching steps.
 - `World.Sim.cs` is one tick: fire spreads, water flows, gas drifts,
   charge and wind decay.
+- **Live mods** (`docs/LIVE_LAB.md`), the sandbox's patch format:
+  `ModPatch.Parse` reads one, `rules.WithMods(mods)` applies them in order
+  and checks the result (`Rules.Mods.cs`, `Rules.Check.cs`; same merge and
+  same messages as `sandbox/src/rules.ts`), and `world.ApplyRules(rules)`
+  switches a running world over between ticks, keeping its cells.
+  `rules.Fingerprint` is a stable hash of the rules in force, for the
+  netcode checksum next to `world.CellHash()`. A late joiner rebuilds the
+  rules as `baseRules.WithMods(roomMods)`. Examples are in `rules/mods/`.
 
 It is a line-by-line port of the TypeScript sandbox (`sandbox/src/`), and
 the "golden" tests in `Chemistry/Tests/` check both give identical

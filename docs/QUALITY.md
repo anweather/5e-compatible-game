@@ -6,7 +6,7 @@ read the code. There are two layers:
 | Layer | Where you see it | What runs | Blocks anything? |
 |---|---|---|---|
 | 1. Analyzers | Unity's **Console**, as yellow warnings, every time scripts compile | Sonar, Unity and .NET analyzers on our code | No. Warnings never stop the game compiling |
-| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 27 tests, formatting, duplicate code | Yes. A red check means fix before merging |
+| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its tests, formatting, duplicate code | Yes. A red check means fix before merging |
 
 Only our code is checked: `unity/Assets/Prototype/` and `sandbox/src/`. The
 Asset Store packs (`Starter Assets`, `UnityTechnologies`) are never analyzed,
@@ -61,7 +61,7 @@ and `CA…`/`IDE…` at `learn.microsoft.com/dotnet/fundamentals/code-analysis/`
 
 1. **Build and test.** `core/Game.Core` (netstandard2.1, C# 9: D3's
    engine-free core) compiles `unity/Assets/Prototype/Chemistry/*.cs` from
-   where Unity keeps them. `core/Game.Core.Tests` runs the same 27 NUnit tests
+   where Unity keeps them. `core/Game.Core.Tests` runs the same NUnit tests
    Unity runs in EditMode. Every warning is an error, except cognitive
    complexity (`S3776`, see the baseline). The build also runs .NET's
    `latest-recommended` rules and the naming and code-style rules in the root
@@ -93,7 +93,7 @@ failed job:
 ```sh
 export PATH="$HOME/.dotnet:$PATH"          # .NET 8 SDK
 dotnet build core -c Release -warnaserror  # analyzers, warnings fail
-dotnet test core                           # the 27 chemistry tests
+dotnet test core                           # the chemistry and live-mod tests
 dotnet format core --verify-no-changes     # drop --verify-no-changes to fix
 npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
 ```
@@ -110,12 +110,11 @@ is in `docs/ARCHITECTURE.md`.
 |---|---|---|
 | Chemistry/World.React.cs | 3 | S3776 ×3 (complexity 18, 28, 69) |
 | Chemistry/World.Sim.cs | 3 | S3776 ×3 (28, 35, 55) |
-| Chemistry/RuleTables.cs | 1 | S3776 (27) |
 | Chemistry/World.Spells.cs | 1 | S3776 (22) |
 | *Starter Assets ReadmeEditor.cs (pack)* | 2 | S1066, S1199 |
 
-Totals: **Scripts/ 0**, **Chemistry/ 8** (all cognitive complexity), pack 2,
-which makes 10 in the Unity console.
+Totals: **Scripts/ 0**, **Chemistry/ 7** (all cognitive complexity), pack 2,
+which makes 9 in the Unity console.
 
 Before the clean-up (2026-10-25, the code had grown since the first baseline
 of 39) it was **Scripts/ 65**, **Chemistry/ 8**, pack 2: S3776 21, UNT0039 10,

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Chem
 {
     /// <summary>One 5 ft square. Mirrors the TS Cell in sandbox/src/world.ts.</summary>
@@ -25,6 +27,13 @@ namespace Chem
         internal string DefFor;
         internal TerrainDef Def;
 
+        /// <summary>Drops that cache, for when the rules it was looked up in are replaced.</summary>
+        internal void ForgetDef()
+        {
+            DefFor = null;
+            Def = null;
+        }
+
         public Cell() { }
         public Cell(string terrain) { T = terrain; }
 
@@ -44,5 +53,19 @@ namespace Chem
         public LogKind Kind;
         /// <summary>How many times in a row this line happened (the log merges repeats).</summary>
         public int Count;
+    }
+
+    /// <summary>32-bit FNV-1a as lowercase hex, the hash the TS golden script and hashWorld use.</summary>
+    internal static class Fnv1a
+    {
+        public static string Hash(string s)
+        {
+            unchecked
+            {
+                uint h = 0x811c9dc5;
+                for (int i = 0; i < s.Length; i++) h = (h ^ s[i]) * 0x01000193u;
+                return h.ToString("x", CultureInfo.InvariantCulture);
+            }
+        }
     }
 }

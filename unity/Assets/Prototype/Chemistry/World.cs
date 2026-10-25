@@ -3,7 +3,6 @@
 // World.Sim.cs and spells in World.Spells.cs.
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 namespace Chem
 {
@@ -35,7 +34,7 @@ namespace Chem
             windMarks = new byte[w * h];
         }
 
-        public Rules Rules { get; }
+        public Rules Rules { get; private set; }
         public int W { get; }
         public int H { get; }
         public int Tick { get; private set; }
@@ -51,6 +50,28 @@ namespace Chem
 
         /// <summary>Active wind from Gust of Wind: direction (0..3) and ticks left, or null.</summary>
         public (int dir, int ticks)? Wind { get; set; }
+
+        /// <summary>
+        /// Switches the rules on a running world (a live mod on or off; see Rules.WithMods),
+        /// keeping its cells. Call it between ticks, at the same tick on every peer. Like the
+        /// sandbox's applyMods and sanitizeWorld: anything the new rules no longer define is
+        /// replaced the same way everywhere (terrain by dirt, covers and gases cleared).
+        /// </summary>
+        public void ApplyRules(Rules rules)
+        {
+            Rules = rules ?? throw new ArgumentNullException(nameof(rules));
+            foreach (var c in Cells)
+            {
+                c.ForgetDef();
+                if (!rules.Terrain.ContainsKey(c.T)) c.T = "dirt";
+                if (c.Cover != null && !rules.Covers.ContainsKey(c.Cover)) c.Cover = null;
+                if (c.Gas != null && !rules.Gases.ContainsKey(c.Gas))
+                {
+                    c.Gas = null;
+                    c.GasAmt = 0;
+                }
+            }
+        }
 
         // ---------- directions ----------
 
@@ -199,13 +220,7 @@ namespace Chem
                 sb.Append(c.T).Append(',').Append(c.Water).Append(',').Append(c.Frozen ? 1 : 0).Append(',')
                   .Append(c.Cover ?? "").Append(',').Append(c.Fire).Append(',').Append(c.Fuel).Append(',')
                   .Append(c.Gas ?? "").Append(',').Append(c.GasAmt).Append(',').Append(c.Charge).Append(';');
-            unchecked
-            {
-                uint h = 0x811c9dc5;
-                var s = sb.ToString();
-                for (int i = 0; i < s.Length; i++) h = (h ^ s[i]) * 0x01000193u;
-                return h.ToString("x", CultureInfo.InvariantCulture);
-            }
+            return Fnv1a.Hash(sb.ToString());
         }
     }
 }

@@ -20,7 +20,7 @@ namespace Chem.Tests
         /// The repo's rules/ folder. In Unity it sits next to the project; under
         /// `dotnet test` (core/Game.Core.Tests) we walk up from the test binary.
         /// </summary>
-        static string RulesDir()
+        internal static string RulesDir()
         {
 #if UNITY_5_3_OR_NEWER
             return Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../rules"));

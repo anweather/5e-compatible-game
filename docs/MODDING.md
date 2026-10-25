@@ -115,6 +115,12 @@ patch, and ask for the verb in a PR.
 { "sim": { "push": { "slideCells": 7 } } }
 ```
 
+More complete examples, saved as `{"title", "idea", "patch"}`, are in
+`rules/mods/`. The Unity game reads the same mods (`ModPatch.Parse` in the
+C# core) and also understands `sim.fire.fadeCells`: fire dies out after
+about that many squares (the sandbox ignores it). It is stricter about
+types, too: a sim number that isn't a number, or is negative, is refused.
+
 ## Good experiments
 
 - **One idea per mod.** Stacking three changes makes the vote mean
