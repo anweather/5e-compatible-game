@@ -24,6 +24,10 @@
 /Assets/Prototype/Generated/
 /Assets/Prototype/Generated.meta
 
+# Copied from ../rules by PrototypeBuild before each player build
+/Assets/StreamingAssets/
+/Assets/StreamingAssets.meta
+
 # IDE files Unity regenerates
 .vs/
 .vscode/

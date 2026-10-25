@@ -120,11 +120,14 @@ public partial class ChemGrid : MonoBehaviour
         PumpLog();
     }
 
-    // The repo's rules/ folder, found by walking up from the project. A fixed
-    // "../../rules" breaks for Multiplayer Play Mode's virtual players, whose
-    // project copies live deeper (unity/Library/VP/<id>/).
+    // The rules: packed into a build's StreamingAssets/rules (see PrototypeBuild), or in the
+    // Editor the repo's rules/ folder, found by walking up from the project. A fixed
+    // "../../rules" breaks for Multiplayer Play Mode's virtual players, whose project copies
+    // live deeper (unity/Library/VP/<id>/).
     static string FindRulesDir()
     {
+        var packed = Path.Combine(Application.streamingAssetsPath, "rules");
+        if (!Application.isEditor && File.Exists(Path.Combine(packed, "materials.json"))) return packed;
         var dir = new DirectoryInfo(Application.dataPath);
         for (; dir != null; dir = dir.Parent)
         {
