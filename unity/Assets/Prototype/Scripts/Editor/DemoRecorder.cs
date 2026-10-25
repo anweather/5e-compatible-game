@@ -6,8 +6,8 @@ using UnityEngine;
 
 // Prototype > Record Demo Clip: plays the Chemistry Yard with the scripted
 // DemoDirector and records the Game view to Recordings/ChemistryYard.mp4.
-// Recording runs at a fixed 30 fps of game time, so the clip is smooth
-// even when the Editor renders slower than real time.
+// RecordUntil records any running session, such as one player's view of
+// the 4-player demo.
 public static class DemoRecorder
 {
     const string Flag = "Prototype.RecordDemo";
@@ -53,9 +53,20 @@ public static class DemoRecorder
 
     static void Begin()
     {
-        SetGameViewGizmos(false);
         var director = new GameObject("DemoDirector").AddComponent<DemoDirector>();
+        RecordUntil("Recordings/ChemistryYard", () => director == null || director.Done, realTime: false,
+            () => EditorApplication.isPlaying = false);
+    }
 
+    /// <summary>
+    /// Records the Game view (already in Play mode) to <paramref name="file"/>.mp4 until
+    /// <paramref name="done"/> returns true. Fixed-rate recording runs game time at 30 fps,
+    /// smooth even when the Editor renders slowly; real-time recording keeps pace with the
+    /// wall clock, which a networked session needs because other machines don't wait.
+    /// </summary>
+    public static void RecordUntil(string file, System.Func<bool> done, bool realTime, System.Action finished = null)
+    {
+        SetGameViewGizmos(false);
         var movie = ScriptableObject.CreateInstance<MovieRecorderSettings>();
         movie.name = "Demo";
         movie.Enabled = true;
@@ -66,27 +77,32 @@ public static class DemoRecorder
         };
         movie.ImageInputSettings = new GameViewInputSettings { OutputWidth = 1280, OutputHeight = 720 };
         movie.AudioInputSettings.PreserveAudio = false;
-        movie.OutputFile = "Recordings/ChemistryYard";
+        movie.OutputFile = file;
 
         var settings = ScriptableObject.CreateInstance<RecorderControllerSettings>();
         settings.AddRecorderSettings(movie);
         settings.SetRecordModeToManual();
         settings.FrameRate = 30f;
-        settings.CapFrameRate = true;
+        settings.FrameRatePlayback = realTime ? FrameRatePlayback.Variable : FrameRatePlayback.Constant;
+        settings.CapFrameRate = !realTime;
 
+        outputFile = file;
         controller = new RecorderController(settings);
         controller.PrepareRecording();
         controller.StartRecording();
-        Debug.Log("Recording demo clip...");
+        Debug.Log($"Recording {file}.mp4...");
 
         void Tick()
         {
-            if (director != null && !director.Done) return;
+            if (!done()) return;
             EditorApplication.update -= Tick;
-            EditorApplication.isPlaying = false;
+            Finish();
+            finished?.Invoke();
         }
         EditorApplication.update += Tick;
     }
+
+    static string outputFile;
 
     static void Finish()
     {
@@ -95,6 +111,6 @@ public static class DemoRecorder
         if (gizmosWere.HasValue) SetGameViewGizmos(gizmosWere.Value);
         gizmosWere = null;
         controller = null;
-        Debug.Log("Saved Recordings/ChemistryYard.mp4");
+        Debug.Log($"Saved {outputFile}.mp4");
     }
 }

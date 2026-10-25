@@ -171,6 +171,7 @@ public static class ChemYardBuilder
     {
         grid.gameObject.AddComponent<NetworkObject>();
         grid.gameObject.AddComponent<NetChem>();
+        grid.gameObject.AddComponent<NetDemo>();
 
         var go = new GameObject("NetworkManager");
         var manager = go.AddComponent<NetworkManager>();
