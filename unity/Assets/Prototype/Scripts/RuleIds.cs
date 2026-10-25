@@ -77,6 +77,7 @@ public static class TerrainIds
     public const string Metal = "metal";
     public const string LogWall = "logwall";
     public const string Rock = "rock";
+    public const string Wood = "wood";
 }
 
 /// <summary>Cover ids (a film on a cell), as in rules/materials.json.</summary>

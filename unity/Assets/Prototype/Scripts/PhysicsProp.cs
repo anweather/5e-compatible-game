@@ -45,8 +45,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
     PhysicsMaterial ownMaterial;
     bool onSlick;
     float halfHeight;
-    Collider valleyGround;
-    bool inYard;
     GameObject flames;
     int lastTick;
     bool broken;
@@ -82,7 +80,6 @@ public class PhysicsProp : MonoBehaviour, IPushable
         halfHeight = look.bounds.extents.y;
         lastTick = grid.World.Tick;
         grid.RulesChanged += ReadRules;
-        if (grid.valley != null && grid.valley.terrain != null) valleyGround = grid.valley.terrain.GetComponent<TerrainCollider>();
     }
 
     void OnDestroy()
@@ -113,23 +110,12 @@ public class PhysicsProp : MonoBehaviour, IPushable
         }
         var at = grid.CellAt(transform.position);
         var cell = grid.World.At(at.x, at.y);
-        StandOnYard(at);
         ReadGround(at, cell);
         RunTicks(at, cell);
         if (flames != null) flames.transform.position = TopCentre();
     }
 
     // --- what the cell does to it ------------------------------------------------
-
-    // The valley's terrain runs flush under the whole yard (ValleyBuilder), which would floor the
-    // pond and the pits; inside the yard the cells' own tiles are the ground, so pass through it.
-    void StandOnYard(Vector2Int at)
-    {
-        bool yard = grid.InYard(at.x, at.y);
-        if (valleyGround == null || yard == inYard) return;
-        inYard = yard;
-        foreach (var s in shapes) Physics.IgnoreCollision(s, valleyGround, yard);
-    }
 
     void ReadGround(Vector2Int at, Cell cell)
     {

@@ -125,9 +125,9 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 ### 3. View (`Scripts/`)
 | Area | Files |
 |---|---|
-| The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Rules.cs` (the rules in force; puts a switch in force between ticks and raises `RulesChanged`), `ChemGrid.Visuals.cs` (per-cell redraw, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge), `ChemGrid.Shaping.cs` (earth shaping: a reshaped tile eases to its new height with a puff of dust, carrying what stands on it), `GridTileBuilder.cs` (ground tiles: soil blocks capped with the terrain, foliage, a raised wall's crags and blocker), `MaterialCache.cs`, `FireLightPool.cs` |
-| The world beyond the yard | `ValleyChemistry.cs` (burnt trees, scorched grass, the cabin burning down on the terrain, terrain raised or sunk under reshaped cells, and a hole cut under the yard so its tiles are the ground there) |
-| The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast; a two-page bar, Elements and Earth), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water, the yard's tiles as ground, climb one step), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
+| The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Rules.cs` (the rules in force; puts a switch in force between ticks and raises `RulesChanged`), `ChemGrid.Visuals.cs` (per-cell redraw: dressing, blocker, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge), `ChemGrid.Shaping.cs` (earth shaping: reshaped ground eases to its new height with a puff of dust, carrying what stands on it), `CellDressing.cs` (what stands on a cell: brambles, a charred stump, rubble, bridge planks, a metal plate, a stone block, a raised wall's crags), `CellBlockers.cs` (pooled invisible boxes on blocking cells: trees, brambles, stone, raised walls), `CellWaterMesh.cs` (one surface over the wet cells, and one for ice with a collider; never above the land around it), `MaterialCache.cs`, `FireLightPool.cs` |
+| The ground | The valley's 9×9 chunk terrains are the ground for every cell, the old yard included. `ValleyGround.cs` keeps runtime copies of the chunks the cells reach and draws the cells on them: heights from `CellHeightfield` (baked base plus each cell's offset, eased) and paint from `CellPaint` (one texel block per cell, detail grass cleared off bare ground). `ValleyChemistry.cs` routes cell changes to it and does the rest on the terrain: burnt trees (the yard's trees are terrain trees too), scorched grass, the cabin burning down, the lake (pits under the lake's surface) |
+| The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast; a two-page bar, Elements and Earth), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water, climb one step), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
 | Physics props | `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes; online a client's copy is a puppet of the host's), `Forces.cs` (radial and line shoves, optionally only what this machine owns), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate; solo when a cast lands, online when its tick batch runs), `ChemEffects.cs` (the one door from physics into the chemistry: applied solo, stamped by the host online) |
 | Things to carry | `Carryable.cs` (an item from `rules/items.json`; a `PhysicsProp` on the ground, kinematic in hand; adds the behaviours its row asks for), `ItemHolder.cs` (the wizard's hand: pick up, drop, throw, use, the hint by the crosshair; online every wizard has one, and pick-up and letting go are granted by the host), `ItemUse.cs` (base of the behaviours), `ItemLight.cs`, `Fragile.cs` (smash and spill through `ChemEffects`), `Spyglass.cs`, `SendingStone.cs` with `PingMarker.cs`, `DancingLights.cs`, `Aiming.cs` (the crosshair ray, shared with `SpellCaster`) |
 | The show of a spell | `SpellVisuals.cs` (data asset), `SpellProjectile.cs` |
@@ -137,18 +137,22 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 | Small shared helpers | `UrpMaterials.cs`, `Primitives.cs`, `ProceduralTextures.cs`, `ScrollingTexture.cs`, `Flicker.cs` |
 | The old Fireline greybox | `PlayerController.cs`, `CameraFollow.cs`, `FireBolt.cs`, `Burnable.cs`, `Water.cs` (not used by the yard) |
 
-**Earth shaping in the yard.** One step of `Cell.Height` is `ChemGrid.stepHeight`
+**Earth shaping.** One step of `Cell.Height` is `ChemGrid.stepHeight`
 (0.5 m, the same step a pit is deep), so the ground, the water surface
 (ground plus depth) and the water flow all use one scale: a heap is 0.5 m,
 Move Earth's hill 1 m, an Earthen Trench 1 m deep, and a Wall of Stone
 (height 3, `sim.height.blockAt`) a 1.5 m block of rock with crags on top and
-an invisible blocker to 2.7 m, so it can't be jumped. Tiles are rebuilt
-when a cell's height changes and ease there over half a second. The wizard
-steps up one step (`SurfaceEffects.climbStep`, 0.55 m) and jumps out of a
-trench. Inside the yard, props and the wizard pass through the valley
-terrain (it is also holed there), so pits, the pond and trenches have real
-floors. Height is cell state, hashed in `CellHash`, so online it arrives
-through lockstep like everything else.
+an invisible blocker to 2.7 m, so it can't be jumped. The terrain is the
+ground: `CellHeightfield` moves its samples at `stepHeight` per
+`shapeSeconds` (1 m/s), and the cell's dressing, blocker and anything
+standing on it ride along. The wizard steps up one step
+(`SurfaceEffects.climbStep`, 0.55 m) and jumps out of a trench. Props and
+the wizard stand on the terrain colliders everywhere, so pits, the pond and
+trenches are real hollows. `ChemGrid.GroundTop` (valley base + offset),
+`SurfaceY` (+ what stands on the cell) and `WaterSurfaceY` (+ water depth;
+the lake level for lake cells) are the one height function. Height is cell
+state, hashed in `CellHash`, so online it arrives through lockstep like
+everything else.
 
 ### 4. Networking (`Scripts/Net/`)
 `NetChem.cs` is **lockstep**: the host owns the clock and broadcasts, every
@@ -184,7 +188,15 @@ Scenes are **generated by code**, never edited by hand:
 the wizard, the camera, lighting, networking and the spell visuals, and
 calls `ValleyBuilder.cs` for the terrain, lake, sky, cabin and the
 chemistry map around the yard, and `PropBuilder.cs` for the crates,
-barrels and boulder. `PrototypeSceneBuilder.cs` builds the old
+barrels and boulder (placed at rest on the baked terrain, floaters at their
+waterline). `ValleyShape.cs` is the valley's shape as functions of a point;
+`ValleyTerrain.cs` builds the chunk terrains from it (`TerrainGrid.Valley()`:
+257 heightmaps on the 3×3 chunks around the play area, 65 elsewhere; seam
+corners rounded to stored height steps so a 257 edge meets a 65 edge
+exactly) and bakes the starting cells into them with the runtime's own
+`CellHeightfield` and `CellPaint`, from `ChemGrid.MapWorld`. Full-detail
+and coarse chunks are separate terrain groups, since Unity only stitches
+LOD between neighbours of one resolution. `PrototypeSceneBuilder.cs` builds the old
 Fireline scene. `EditorAssets.cs` has the shared helpers and the Asset
 Store pack paths. `DemoRecorder.cs` records clips, `PrototypeBuild.cs`
 makes macOS/Windows builds, `AssetPacks/` restores the Asset Store packs.
@@ -199,8 +211,8 @@ makes macOS/Windows builds, `AssetPacks/` restores the Asset Store packs.
 | **Immutable value + observer** | The rules in force are a value replaced whole at a tick boundary; props and items listen for `ChemGrid.RulesChanged` and re-read their rows | `RuleSet`, `ChemGrid.Rules.cs`, `PhysicsProp.ReadRules` |
 | **Lockstep simulation** | Share the inputs, not the results; a deterministic world does the rest | `NetChem.cs`, seeded RNG in `World` |
 | **Dirty checking** | Each cell keeps a fingerprint of what's drawn and is only redrawn when it changes | `ChemGrid.View`, `ChemGrid.Key` |
-| **Object pool** | A fixed set of lights moved to the biggest fires, never created per fire | `FireLightPool.cs` (and the aim markers in `SpellCaster`) |
-| **Cache / flyweight** | One material per name, shared by thousands of tiles; per-tile shades go through property blocks | `MaterialCache.cs`, `GridTileBuilder.Paint` |
+| **Object pool** | A fixed set of lights moved to the biggest fires, never created per fire; blocker boxes handed back and reused | `FireLightPool.cs`, `CellBlockers.cs` (and the aim markers in `SpellCaster`) |
+| **Cache / flyweight** | One material per name, shared by every cell's dressing; per-cell shades go through property blocks | `MaterialCache.cs`, `CellDressing.Paint` |
 | **Data assets** | How a spell *looks* is an editable asset, separate from what it *does* | `SpellVisuals.cs` (ScriptableObject) |
 | **Builders** | Code that generates scenes and assets, so a rebuild always gives the same result | `ChemYardBuilder`, `ValleyBuilder`, `PrototypeSceneBuilder` |
 | **Fallbacks (strategy-ish)** | Each effect has a prefab version and a plain-cube version, chosen by whether the pack is present | `ChemGrid.Effects.cs`: `RenderFire`/`FallbackFire`, `RenderGas`/`FallbackGas`, `RenderCharge` |
@@ -251,7 +263,7 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 
 | You want to add... | Do this |
 |---|---|
-| A **material or terrain** | Add it to `rules/materials.json` (and reactions to `rules/reactions.json`). Test it in the web sandbox first. To draw it in the yard, add its colour and height to `GridTileBuilder.TerrainLook`, and a map character to `ChemGrid.Legend` if maps should use it |
+| A **material or terrain** | Add it to `rules/materials.json` (and reactions to `rules/reactions.json`). Test it in the web sandbox first. To draw it, give it layer weights in `CellPaint` (or it reads as bare earth), its colour and height in `CellDressing.TerrainLook` (and parts in `CellDressing` if something stands on it), and a map character to `ChemGrid.Legend` if maps should use it |
 | A **spell** | Add it to `rules/spells.json`. Add its id to `SpellIds` in `RuleIds.cs`, its look (glow, projectile, impact) to `ChemYardBuilder.BuildSpellVisuals`, and, to put it on the bar, to `SpellIds.DefaultBar` (the Elements page) or `SpellIds.EarthBar` (the Earth page; Tab or the d-pad's left/right switches pages) |
 | A **new kind of cell effect** (e.g. a new gas) | Data first; then a `Render...` method in `ChemGrid.Effects.cs` with a prefab and a cube fallback, called from `ChemGrid.RenderCell`, and its state added to `ChemGrid.Key` |
 | A **chemistry behaviour** that data can't express | Change the TS sandbox and `Chemistry/` together, with a golden test for both |
@@ -273,9 +285,10 @@ What this clean-up left alone, roughly in order of value.
   would enforce rules 2 to 4 above (see `QUALITY.md`, Recommendations).
 - **The two demo directors** (`DemoDirector`, `NetDemoDirector`) script
   similar tours in two formats (a coroutine and a step table).
-- **`ValleyBuilder` keeps its layout in static fields** set by `Dress`.
-  Fine for a one-shot editor tool, but a small "valley plan" object would
-  make its steps independent.
+- **The valley builders keep their layout in static fields**
+  (`ValleyShape.Plan`, `ValleyTerrain`'s chunk list, `PropBuilder`'s
+  starting world). Fine for one-shot editor tools, but a small "valley
+  plan" object would make their steps independent.
 - **Rules folder lookup is written twice**: `ChemGrid.FindRulesDir` and
   the test helper in `Chemistry/Tests/` (the one jscpd clone).
 - **Starter Assets via reflection** (`WizardRig`) breaks silently if the

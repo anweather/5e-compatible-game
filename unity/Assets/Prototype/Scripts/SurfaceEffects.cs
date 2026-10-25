@@ -7,11 +7,10 @@ using UnityEngine;
 // speed. Runs after the Starter Assets controller has moved the wizard and
 // corrects that move, so the controller itself stays untouched.
 //
-// The yard's own tiles are its ground: inside the yard the wizard passes
-// through the valley terrain that runs flush under it (as PhysicsProp does),
-// so it can climb down into a pit, a pond or a trench. It steps up one step
-// of earth (a heap, a hill's terrace, a pit's edge) without jumping; two
-// steps (out of a trench) need a jump, and a raised wall can't be climbed.
+// The ground is the valley's terrain everywhere, dug into pits, a pond and
+// trenches by the cells. The wizard steps up one step of earth (a heap, a
+// hill's terrace, a pit's edge) without jumping; two steps (out of a trench)
+// need a jump, and a raised wall's blocker can't be climbed.
 [DefaultExecutionOrder(100)]
 [RequireComponent(typeof(CharacterController))]
 public class SurfaceEffects : MonoBehaviour
@@ -32,8 +31,6 @@ public class SurfaceEffects : MonoBehaviour
     Vector3 lastPosition;
     Vector3 momentum;
     bool wasSlipping, wasWading;
-    Collider valleyGround;
-    bool inYard;
 
     void Awake()
     {
@@ -53,29 +50,17 @@ public class SurfaceEffects : MonoBehaviour
         momentum = Vector3.zero;
     }
 
-    void OnDisable() => StandOnYard(false);
-
     void Update()
     {
         if (grid == null || grid.World == null || !body.enabled) return;
         var cell = grid.CellAt(transform.position);
         var c = grid.World.At(cell.x, cell.y);
-        StandOnYard(grid.InYard(cell.x, cell.y));
         bool slippery = c != null && body.isGrounded && grid.World.IsSlippery(c);
         bool wading = c != null && !c.Frozen && c.Water >= wadingDepth;
 
         Slide(slippery);
         Wade(wading);
         lastPosition = transform.position;
-    }
-
-    void StandOnYard(bool yard)
-    {
-        if (valleyGround == null && grid != null && grid.valley != null && grid.valley.terrain != null)
-            valleyGround = grid.valley.terrain.GetComponent<TerrainCollider>();
-        if (valleyGround == null || yard == inYard) return;
-        inYard = yard;
-        Physics.IgnoreCollision(body, valleyGround, yard);
     }
 
     // Blend the controller's move this frame with the momentum carried from before.

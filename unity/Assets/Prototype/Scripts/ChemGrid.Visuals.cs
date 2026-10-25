@@ -3,13 +3,17 @@ using Chem;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-// How the grid looks. Each frame Render() walks the cells and, for any cell
-// whose state changed, updates that cell's view: its ground tile (built by
-// GridTileBuilder, raised or sunk by earth shaping: ChemGrid.Shaping.cs), see-through water or glossy ice, a cover film (oil,
-// grease, ash), and its fire, gas and charge effects (ChemGrid.Effects.cs).
-// A small pool of flickering lights follows the biggest fires
-// (FireLightPool). Cubes stand in for any effect prefab that isn't assigned
-// (for example before the Asset Store packs are restored).
+// How the grid looks. The valley's chunk terrains are the ground: the cells
+// shape and paint them (ValleyChemistry). Each frame Render() walks the cells
+// and, for any cell whose state changed, updates what stands on it: its
+// dressing (CellDressing: brambles, a stump, planks, crags), its invisible
+// blocker (CellBlockers), its water or ice (one surface over all the wet
+// cells: CellWaterMesh), a cover film (oil, grease), and its fire, gas and
+// charge effects (ChemGrid.Effects.cs).
+// Reshaped ground eases to its new height (ChemGrid.Shaping.cs). A small pool
+// of flickering lights follows the biggest fires (FireLightPool). Cubes stand
+// in for any effect prefab that isn't assigned (for example before the Asset
+// Store packs are restored).
 public partial class ChemGrid
 {
     [Header("Effects (optional; cubes stand in when missing)")]
@@ -20,33 +24,39 @@ public partial class ChemGrid
     public GameObject steamFx;
     public GameObject sparksFx;
     public int maxFireLights = 16;
-    [Tooltip("Multiplies grass colours, so the yard can match the terrain around it.")]
-    public Color grassTint = Color.white;
+    [Tooltip("Optional: the material of the cells' water (the lake's, so they match). A plain see-through blue stands in.")]
+    public Material waterMaterial;
 
     // What is currently shown for one cell, so a cell is only redrawn when it changes.
     sealed class View
     {
-        public GameObject tile, water, cover, fire, gas, spark;
-        public string terrain;
-        public int height;
+        public GameObject dressing, cover, fire, gas, spark;
+        public string terrain, coverId;
+        public int height, elevation;
         public int key = int.MinValue;
         public int fireLevel;
         public string gasKind;
         public bool charged;
-        public float waterGround, waterTop, waterTarget;
+        public bool wet;
     }
 
     View[] views;
-    readonly HashSet<View> rising = new();
     readonly MaterialCache materials = new();
-    GridTileBuilder tiles;
+    CellDressing dressings;
+    CellBlockers blockers;
+    CellWaterMesh waterSurface;
     FireLightPool fireLights;
 
     void InitVisuals()
     {
         views = new View[World.W * World.H];
         for (int i = 0; i < views.Length; i++) views[i] = new View();
-        tiles ??= new GridTileBuilder(this, materials);
+        dressings ??= new CellDressing(this, materials);
+        blockers = new CellBlockers(this);
+        waterSurface?.Destroy();
+        waterSurface = new CellWaterMesh(this, waterMaterial != null ? waterMaterial : materials.Water(),
+            materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f));
+        shaping.Clear();
         fireLights = new FireLightPool(this, maxFireLights);
     }
 
@@ -56,57 +66,57 @@ public partial class ChemGrid
         {
             for (int x = 0; x < World.W; x++) RenderCell(x, y);
         }
-        AnimateWater();
+        waterSurface.Rebuild();
+        materials.ScrollWater(Time.time);
         AnimateShaping();
     }
 
     void RenderCell(int x, int y)
     {
-        var c = World.At(x, y);
-        var v = views[y * World.W + x];
+        int index = y * World.W + x;
+        var c = World.Cells[index];
+        var v = views[index];
         int key = Key(c);
         if (key == v.key && v.terrain == c.T && v.height == c.Height) return;
         v.key = key;
 
-        // Yard cells are blocks; cells outside the yard are scenery that ValleyChemistry updates.
-        bool yard = InYard(x, y);
-        if (v.terrain != c.T || v.height != c.Height) ChangeTerrain(v, c, x, y, yard);
-        float ground = yard && GridTileBuilder.IsDressed(c.T) ? GroundTop(c) : SurfaceY(x, y);
+        if (v.terrain != c.T || v.height != c.Height || v.coverId != c.Cover) ChangeGround(v, c, x, y);
+        float groundTop = GroundTop(x, y, c);
+        float ground = CellDressing.IsDressed(c.T) ? groundTop : groundTop + CellDressing.Look(c.T).height;
         var center = CellCenter(x, y);
+        bool lake = valley != null && valley.IsLake(c, x, y);
 
-        ground = RenderWater(v, c, center, ground, yard);
+        ground = RenderWater(v, c, x, y, ground, groundTop, lake);
         RenderCover(v, c, center, ground);
-        RenderFire(v, c, center, FireGround(c, ground, yard), !yard && c.T == TerrainIds.Tree ? 1.8f : 1f);
+        RenderFire(v, c, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
         RenderGas(v, c, center, ground, (x + y) % 2 == 0);
-        // A lightning strike across the lake charges thousands of cells; outside the
-        // yard, sparks on one cell in 25 read the same without thousands of effects.
-        if (yard || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
+        // A lightning strike across the lake charges thousands of cells; on the lake, sparks on
+        // one cell in 25 read the same without thousands of effects.
+        if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
     }
 
-    // A new terrain or a new height: a yard cell's tile is rebuilt (and eases from where the old
-    // one stood when its height changed); outside the yard the valley shows it.
-    void ChangeTerrain(View v, Cell c, int x, int y, bool yard)
+    // A new terrain, height or cover: the terrain is reshaped (eased, see ChemGrid.Shaping.cs)
+    // and repainted, and the cell's dressing and blocker rebuilt where its ground stands now.
+    void ChangeGround(View v, Cell c, int x, int y)
     {
-        bool reshaped = v.terrain != null && v.height != c.Height;
-        if (yard)
+        int elevation = World.ElevationUnits(c);
+        bool reshaped = v.terrain != null && v.elevation != elevation;
+        bool rebuild = v.terrain != c.T || v.height != c.Height;
+        if (valley != null) valley.CellChanged(x, y, v.terrain, c.T, reshaped);
+        if (rebuild)
         {
-            float from = v.tile != null ? v.tile.transform.position.y : 0f;
-            if (v.tile != null) Destroy(v.tile);
-            v.tile = tiles.Build(c, x, y);
-            if (reshaped) StartShaping(v, from, CellCenter(x, y));
+            float shown = reshaped ? ShownGround(x, y, c) : GroundTop(x, y, c);
+            if (v.dressing != null) Destroy(v.dressing);
+            v.dressing = dressings.Build(c, x, y, shown);
+            blockers.Place(x, y, c, shown);
+            if (reshaped) StartShaping(v, x, y, shown);
         }
-        else if (valley != null)
-        {
-            if (v.terrain != c.T) valley.TerrainChanged(x, y, v.terrain, c.T);
-            if (reshaped) valley.HeightChanged(x, y);
-        }
+        if (reshaped) waterSurface.GroundChanged();
         v.terrain = c.T;
         v.height = c.Height;
+        v.elevation = elevation;
+        v.coverId = c.Cover;
     }
-
-    // Outside the yard, fire burns up in a tree's crown or along a cabin wall.
-    float FireGround(Cell c, float ground, bool yard) =>
-        yard || valley == null ? ground : ground + ValleyChemistry.FireHeight(c.T);
 
     // A hash of everything drawn for a cell apart from its terrain.
     static int Key(Cell c)
@@ -126,77 +136,34 @@ public partial class ChemGrid
 
     // --- water and ice ----------------------------------------------------------
 
-    // A slab from the ground up to the water surface; ice is solid to walk on. Outside the
-    // yard the lake's own surface stands for its cells; puddles still show. Returns the
-    // height that covers and effects sit on.
-    float RenderWater(View v, Cell c, Vector3 center, float ground, bool yard)
+    // Water joins the wet cells' surface (CellWaterMesh); the lake's own surface stands for its
+    // cells. Returns the height that covers and effects sit on.
+    float RenderWater(View v, Cell c, int x, int y, float ground, float groundTop, bool lake)
     {
-        if (c.Water <= 0 || (!yard && c.T == TerrainIds.Pit))
-        {
-            Hide(v.water);
-            return ground;
-        }
-        float top = Mathf.Max(WaterTop(c, ground, yard), ground + 0.04f);
-        bool fresh = v.water == null || !v.water.activeSelf;
-        var slab = Ensure(ref v.water, "Water", center, keepCollider: true);
-        // New water rises from the ground; level changes ease in (see AnimateWater).
-        v.waterGround = ground;
-        v.waterTarget = top;
-        if (fresh) v.waterTop = ground + 0.02f;
-        if (c.Frozen) v.waterTop = top;
-        PlaceWater(v, center);
-        if (!Mathf.Approximately(v.waterTop, top)) rising.Add(v);
-        var slabRenderer = slab.GetComponent<Renderer>();
-        slabRenderer.sharedMaterial = c.Frozen ? materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f) : materials.Water();
-        slabRenderer.shadowCastingMode = c.Frozen ? ShadowCastingMode.On : ShadowCastingMode.Off;
-        slab.GetComponent<Collider>().enabled = c.Frozen;
-        return top;
+        bool wet = c.Water > 0 && !lake;
+        if (wet || v.wet) waterSurface.Changed(x, y, wet);
+        v.wet = wet;
+        if (lake) return c.Water > 0 ? Mathf.Max(ground, valley.lakeLevel) : ground;
+        return wet ? Mathf.Max(ground, waterSurface.Top(x, y, groundTop + WaterDepth(c))) : ground;
     }
 
-    float WaterTop(Cell c, float ground, bool yard)
-    {
-        float unitsPerStep = World.Rules.Sim.WaterUnitsPerStep;
-        return yard
-            ? (World.ElevationUnits(c) + c.Water) / unitsPerStep * stepHeight
-            : ground + c.Water / unitsPerStep * stepHeight;
-    }
+    float WaterDepth(Cell c) => c.Water / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
 
     /// <summary>Height of the water surface in a cell, as drawn (its ground when the cell is dry).</summary>
     public float WaterSurfaceY(int x, int y)
     {
         var c = World.At(x, y);
         if (c == null) return 0f;
-        bool yard = InYard(x, y);
-        return WaterTop(c, yard ? GroundTop(c) : SurfaceY(x, y), yard);
-    }
-
-    void PlaceWater(View v, Vector3 center)
-    {
-        float height = Mathf.Max(0.02f, v.waterTop - v.waterGround);
-        v.water.transform.position = new Vector3(center.x, v.waterGround + height / 2f, center.z);
-        v.water.transform.localScale = new Vector3(cellSize, height, cellSize);
-    }
-
-    // Each frame: ease water levels toward their targets, and drift the ripples.
-    void AnimateWater()
-    {
-        materials.ScrollWater(Time.time);
-        if (rising.Count == 0) return;
-        float step = 1.2f * Time.deltaTime;
-        rising.RemoveWhere(v =>
-        {
-            if (v.water == null || !v.water.activeSelf) return true;
-            v.waterTop = Mathf.MoveTowards(v.waterTop, v.waterTarget, step);
-            PlaceWater(v, v.water.transform.position);
-            return Mathf.Approximately(v.waterTop, v.waterTarget);
-        });
+        float top = GroundTop(x, y, c) + WaterDepth(c);
+        return valley != null && c.Water > 0 && valley.IsLake(c, x, y) ? Mathf.Max(top, valley.lakeLevel) : top;
     }
 
     // --- covers ------------------------------------------------------------------
 
+    // A glossy film of oil or grease; ash is the terrain's own scorched paint (CellPaint), not a film.
     void RenderCover(View v, Cell c, Vector3 center, float ground)
     {
-        if (c.Cover == null)
+        if (c.Cover == null || (valley != null && c.Cover == CoverIds.Ash))
         {
             Hide(v.cover);
             return;
@@ -217,7 +184,7 @@ public partial class ChemGrid
     // --- stand-in cubes ------------------------------------------------------------
 
     // A cell's stand-in cube, made (or remade, if the slot holds a particle effect) and shown.
-    GameObject Ensure(ref GameObject go, string name, Vector3 at, bool keepCollider = false)
+    GameObject Ensure(ref GameObject go, string name, Vector3 at)
     {
         if (go == null || go.GetComponent<ParticleSystem>() != null)
         {
@@ -225,7 +192,7 @@ public partial class ChemGrid
             go.name = name;
             go.transform.SetParent(transform, false);
             go.transform.position = at;
-            if (!keepCollider) Primitives.RemoveCollider(go);
+            Primitives.RemoveCollider(go);
         }
         go.SetActive(true);
         return go;
@@ -240,7 +207,7 @@ public partial class ChemGrid
     void OnDestroy()
     {
         materials.Destroy();
-        tiles?.Destroy();
+        waterSurface?.Destroy();
         if (plainDust != null) Destroy(plainDust);
     }
 }

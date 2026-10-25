@@ -3,7 +3,7 @@ using UnityEngine;
 
 // The grid's materials, one per name, made on first use and shared by every
 // cell that asks for that name (the first request's colour wins; per-cell
-// shades go through property blocks instead, see GridTileBuilder.Paint).
+// shades go through property blocks instead, see CellDressing.Paint).
 // Owns what it makes: Destroy() frees them all.
 public sealed class MaterialCache
 {

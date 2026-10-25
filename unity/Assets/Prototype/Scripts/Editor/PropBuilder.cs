@@ -6,8 +6,9 @@ using UnityEngine;
 // The yard's physics props (PhysicsProp), placed by Prototype > Build
 // Chemistry Yard: oil barrels in and by the oil spill, crates on and beside the
 // pond, a boulder at its edge, and crates by the brambles. Positions are yard
-// cells, as in ChemYardBuilder's map; each prop is dropped from a little
-// above its cell and settles when Play starts (on the pond, crates float).
+// cells, as in ChemYardBuilder's map. Each prop is placed at rest on the baked
+// terrain (ValleyTerrain), or floating at its waterline on the pond, so nothing
+// drops or bobs when Play starts.
 //
 // Each prop is also an in-scene NetworkObject (NetProp): online the host
 // simulates it and clients follow its NetworkTransform. ChemYardBuilder gives
@@ -30,6 +31,7 @@ public static class PropBuilder
     /// <summary>Places the set pieces for a yard <paramref name="yardHeight"/> cells tall.</summary>
     public static void Place(ChemGrid grid, int yardHeight)
     {
+        world = ChemGrid.MapWorld(grid.LoadBaseRules(), grid.map, grid.seed, out _);
         var parent = new GameObject("Props").transform;
         var flames = EditorAssets.LoadPrefab(PackPaths.FireFx + "/TinyFlames.prefab");
         var blast = EditorAssets.LoadPrefab(PackPaths.FireFx + "/BigExplosion.prefab");
@@ -42,16 +44,19 @@ public static class PropBuilder
         }
     }
 
+    // The starting world, for the water props float on (set by Place, which runs first).
+    static Chem.World world;
+
     /// <summary>
     /// Makes <paramref name="go"/> a physics prop of <paramref name="kind"/> under <paramref name="parent"/>,
-    /// a little above yard cell (<paramref name="x"/>, <paramref name="z"/>) in world cells (z grows north).
+    /// at rest on yard cell (<paramref name="x"/>, <paramref name="z"/>) in world cells (z grows north).
     /// </summary>
     public static PhysicsProp Drop(GameObject go, string name, Transform parent, ChemGrid grid, string kind, int x, int z)
     {
         go.name = name;
         go.transform.SetParent(parent, false);
         var cell = new Vector3(x, 0f, z) * grid.cellSize;
-        go.transform.position = cell + Vector3.up * (go.GetComponent<Renderer>().bounds.extents.y + 0.3f);
+        go.transform.position = cell + Vector3.up * RestHeight(go, grid, kind, cell);
 
         var body = go.AddComponent<Rigidbody>();
         body.interpolation = RigidbodyInterpolation.Interpolate;
@@ -61,6 +66,26 @@ public static class PropBuilder
         prop.kind = kind;
         Network(go);
         return prop;
+    }
+
+    // Where its centre rests: its lowest collider on the terrain, or, where it floats on water,
+    // its waterline (PropState: a floater sinks until the part under water times its lift holds it up).
+    static float RestHeight(GameObject go, ChemGrid grid, string kind, Vector3 at)
+    {
+        Physics.SyncTransforms();
+        float below = go.transform.position.y;
+        foreach (var c in go.GetComponents<Collider>()) below = Mathf.Min(below, c.bounds.min.y);
+        float onGround = ValleyTerrain.GroundAt(at) + go.transform.position.y - below;
+
+        var rules = world.Rules;
+        var def = rules.Entity(kind) ?? rules.Item(kind)?.AsEntity();
+        var cell = grid.CellAt(at);
+        var c0 = world.At(cell.x, cell.y);
+        if (def == null || c0 == null || c0.Water <= 0 || !new Chem.PropState(def).Floats) return onGround;
+        float half = go.GetComponent<Renderer>().bounds.extents.y;
+        float surface = ValleyTerrain.GroundAt(at) + c0.Water / (float)rules.Sim.WaterUnitsPerStep * grid.stepHeight;
+        float afloat = surface - 2f * half / (float)new Chem.PropState(def).Lift + half;
+        return Mathf.Max(onGround, afloat);
     }
 
     // Host-simulated online: server-authoritative transform, interpolated on clients. It never
@@ -111,9 +136,9 @@ public static class PropBuilder
         }
     }
 
-    // The yard's ground is one box collider per cell, and PhysX catches a flat face sliding over
-    // the seam between two (an "internal edge"), stopping a sliding crate dead. So a crate or
-    // barrel stands on small spheres at its corners, just proud of its faces: spheres glide over seams.
+    // PhysX can catch a flat face sliding over an edge between triangles or colliders (an
+    // "internal edge"), stopping a sliding crate dead. So a crate or barrel stands on small
+    // spheres at its corners, just proud of its faces: spheres glide over edges.
     const float FootRadius = 0.06f, FootProud = 0.02f;
 
     /// <summary>Eight sphere colliders at (±x, ±y, ±z) from the centre, in metres.</summary>
