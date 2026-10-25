@@ -34,6 +34,24 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
 - `RuleTables.cs` reads the JSON into typed tables.
 - `World.cs` holds the cells (`Cell.cs`), the seeded random number
   generator, the log and the tick counter.
+- **Chunks** (`Chunk.cs`, `World.Chunks.cs`; `docs/WORLD_STREAMING.md`).
+  Cells are stored in 64×64 chunks (`Chunks.Size`, set once as
+  `Chunks.Shift`) keyed by world-wide chunk coordinate:
+  `Chunks.ChunkOf(cell)` is `floor(cell / 64)` and `Chunks.LocalOf` the
+  remainder, negatives included. Each chunk also keeps the per-cell sim state
+  that isn't `Cell` state (fire generation, per-tick marks) and links to its
+  loaded neighbours. The world still has an extent (`W`×`H`, the valley is
+  4×3 chunks); `At`, `Idx` and `Cells` (a row-major array of the same cell
+  objects) work as before. **Active set:** `SetActive(cx, cy, bool)`,
+  `SetAllActive`, `IsActive`, `ChunkCoords`. `Step` visits only active
+  chunks, as row segments in world row-major order (sorted, never the
+  store's order), so with every chunk active a tick is exactly the old
+  single-grid tick and all goldens hold. A paused chunk is frozen: nothing
+  the simulation does writes to it (ticks, reactions, spells, blasts, earth
+  shaping), and fire, water and gas beside it treat it as a wall. Map
+  building (`Paint`, `AddWater`, `SetCover`) still writes anywhere.
+  `ChunkHash(cx, cy)` fingerprints one chunk like `CellHash` does the world
+  (whose value is unchanged).
 - `World.Spells.cs` turns a cast into the cells it touches.
 - `World.React.cs` is the **rule interpreter**: "element X arrives at this
   cell", then it looks up `reactions.json` and applies the matching steps.
@@ -226,7 +244,7 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 
 What this clean-up left alone, roughly in order of value.
 
-- **Cognitive complexity in `Chemistry/`** (7 methods, up to 69 in
+- **Cognitive complexity in `Chemistry/`** (4 methods, up to 69 in
   `World.React.cs`). They mirror the TS sandbox line by line; splitting
   them means splitting the TS the same way, with the parity tests as the
   safety net. Then drop `S3776` from `WarningsNotAsErrors` in

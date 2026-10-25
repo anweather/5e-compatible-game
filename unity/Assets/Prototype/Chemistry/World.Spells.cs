@@ -72,6 +72,8 @@ namespace Chem
             if (s == null || !InBounds(x, y)) return;
             if (s.Effect == "levitate" || s.Effect == "carry") return;
             var cells = SpellCells(s, x, y, dir);
+            // Squares in paused chunks are left alone (World.Chunks.cs).
+            cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
             AddLog($"You cast {s.Name}", LogKind.Info);
             if (s.Element == "air" && s.Wind > 0) Wind = (dir, s.Wind);
             if (s.Effect == "terraform") Terraform(s, cells, x, y);

@@ -12,12 +12,9 @@ namespace Chem
 
         readonly List<LogEntry> log = new List<LogEntry>();
         readonly HashSet<string> logged = new HashSet<string>();
-        // Per-tick marks machines read in the TS; cleared at the end of each tick.
-        readonly byte[] flowMarks, steamMarks, windMarks;
 
-        // How many spreads each burning cell is from where its fire started (see FireParams.FadeCells).
-        // Kept outside Cell so cell state, checksums and the TS parity tests are unaffected.
-        readonly int[] fireGeneration;
+        // Per-tick marks machines read in the TS, kept in Chunk.Marks.
+        const byte FlowMark = 1, SteamMark = 2, WindMark = 4;
 
         public World(Rules rules, int w, int h, uint seed = 1, string fill = "dirt")
         {
@@ -27,17 +24,18 @@ namespace Chem
             H = h;
             RngState = seed;
             Cells = new Cell[w * h];
-            for (int i = 0; i < Cells.Length; i++) Cells[i] = new Cell(fill);
-            flowMarks = new byte[w * h];
-            fireGeneration = new int[w * h];
-            steamMarks = new byte[w * h];
-            windMarks = new byte[w * h];
+            BuildChunks(fill);
         }
 
         public Rules Rules { get; private set; }
         public int W { get; }
         public int H { get; }
         public int Tick { get; private set; }
+        /// <summary>
+        /// Every cell of the world's extent, row-major (index Idx(x, y)): a view for callers that
+        /// want them all. The cells themselves are stored in chunks (World.Chunks.cs); this array
+        /// holds the same objects.
+        /// </summary>
         public Cell[] Cells { get; }
 
         /// <summary>The event log, oldest first, capped at LogCap entries. The last entry's Count/Tick may grow.</summary>
@@ -86,7 +84,7 @@ namespace Chem
 
         public bool InBounds(int x, int y) => x >= 0 && y >= 0 && x < W && y < H;
         public int Idx(int x, int y) => y * W + x;
-        public Cell At(int x, int y) => InBounds(x, y) ? Cells[y * W + x] : null;
+        public Cell At(int x, int y) => Locate(x, y, out _, out _);
 
         /// <summary>Neighbours in fixed N, E, S, W order, so the simulation stays deterministic.</summary>
         public IEnumerable<(int x, int y, int dir)> Neighbours(int x, int y)
@@ -215,25 +213,6 @@ namespace Chem
             if (coverId == null) { c.Cover = null; return; }
             if (IsBlocking(c) || !Rules.Covers.ContainsKey(coverId)) return;
             c.Cover = coverId;
-        }
-
-        /// <summary>
-        /// Stable fingerprint of the cells (FNV-1a), matching the TS golden script in the tests
-        /// (cellHash in sandbox/test/sim.test.ts). Height is written only when it isn't 0, so
-        /// worlds nobody has terraformed hash as they did before heights existed.
-        /// </summary>
-        public string CellHash()
-        {
-            var sb = new System.Text.StringBuilder();
-            foreach (var c in Cells)
-            {
-                sb.Append(c.T).Append(',').Append(c.Water).Append(',').Append(c.Frozen ? 1 : 0).Append(',')
-                  .Append(c.Cover ?? "").Append(',').Append(c.Fire).Append(',').Append(c.Fuel).Append(',')
-                  .Append(c.Gas ?? "").Append(',').Append(c.GasAmt).Append(',').Append(c.Charge);
-                if (c.Height != 0) sb.Append(",h").Append(c.Height.ToString(System.Globalization.CultureInfo.InvariantCulture));
-                sb.Append(';');
-            }
-            return Fnv1a.Hash(sb.ToString());
         }
     }
 }

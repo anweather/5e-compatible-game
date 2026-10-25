@@ -46,7 +46,7 @@ namespace Chem
         public bool Reshape(int x, int y, int n, string terrain = null)
         {
             var c = At(x, y);
-            if (c == null) return false;
+            if (c == null || !IsActiveAt(x, y)) return false;
             var t = TerrainOf(c);
             if (t.Has("blocking") || t.Has("machine")) return false;
             var range = Rules.Sim.Height;
@@ -83,7 +83,7 @@ namespace Chem
             {
                 var next = new List<int>();
                 foreach (int i in ring)
-                    foreach (var (nx, ny, _) in Neighbours(i % W, i / W))
+                    foreach (var (nx, ny, _) in ActiveNeighbours(i % W, i / W))
                     {
                         int k = Idx(nx, ny);
                         var nc = Cells[k];

@@ -39,12 +39,12 @@ namespace Chem
             {
                 for (int dx = -ex.Radius; dx <= ex.Radius; dx++)
                 {
-                    var c = At(x + dx, y + dy);
+                    var c = LocateActive(x + dx, y + dy, out var ch, out int i);
                     if (c == null || IsBlocking(c)) continue;
                     c.Cover = ex.Cover;
                     IgniteCover(c);
                     c.Fire = Math.Max(c.Fire, ex.Fire);
-                    fireGeneration[Idx(x + dx, y + dy)] = 0;
+                    ch.FireGeneration[i] = 0;
                     stamped++;
                 }
             }
@@ -55,7 +55,7 @@ namespace Chem
         public void LeaveEmbers(int x, int y, EntityDef e)
         {
             var c = At(x, y);
-            if (c == null || e == null) return;
+            if (c == null || e == null || !IsActiveAt(x, y)) return;
             c.Fire = Math.Max(c.Fire, 2);
             c.Fuel = Math.Max(c.Fuel, 6);
             AddLog($"The {e.Name.ToLowerInvariant()} burns to cinders");
