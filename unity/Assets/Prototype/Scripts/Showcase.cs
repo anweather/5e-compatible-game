@@ -13,7 +13,7 @@ public class Showcase : MonoBehaviour
     static Vector3 V(float x, float y, float z) => new Vector3(x, y, z);
 
     static FlythroughCamera.Waypoint W(Vector3 position, Vector3 lookAt, float seconds) =>
-        new FlythroughCamera.Waypoint { position = position, lookAt = lookAt, seconds = seconds };
+        FlythroughCamera.Waypoint.At(position, lookAt, seconds);
 
     IEnumerator Start()
     {
