@@ -110,9 +110,13 @@ export interface SpellDef {
   push?: number;
   wind?: number;
   effect?: "levitate" | "carry" | "teleport" | "terraform";
-  /** terraform: steps to raise or to dig (exactly one), the terrain the cells become, and taper (a hill or crater over radius). */
+  /**
+   * terraform: steps to raise or to dig, or a height to raise the cells to (exactly one of
+   * the three), the terrain the cells become, and taper (a hill or crater over radius).
+   */
   raise?: number;
   dig?: number;
+  height?: number;
   terrain?: string;
   taper?: boolean;
   duration?: number;
@@ -327,9 +331,15 @@ const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform"]);
 
 function terraformErrors(r: Rules, s: SpellDef): string[] {
   const errors: string[] = [];
-  const steps = [s.raise, s.dig].filter((n) => n !== undefined);
-  if (steps.length !== 1 || !Number.isInteger(steps[0]) || steps[0]! < 1) {
-    errors.push(`spell ${s.id}: terraform needs one of raise or dig, a whole number of steps from 1`);
+  const { min, max } = r.sim.height;
+  const given = [s.raise, s.dig, s.height].filter((n) => n !== undefined).length;
+  if (given !== 1) errors.push(`spell ${s.id}: terraform needs exactly one of raise, dig or height`);
+  for (const key of ["raise", "dig"] as const) {
+    const n = s[key];
+    if (n !== undefined && (!Number.isInteger(n) || n < 1)) errors.push(`spell ${s.id}: ${key} must be a whole number of steps from 1`);
+  }
+  if (s.height !== undefined && (!Number.isInteger(s.height) || s.height < min || s.height > max)) {
+    errors.push(`spell ${s.id}: height must be a whole number from ${min} to ${max} (sim.height)`);
   }
   if (s.terrain !== undefined && !Object.keys(r.terrain).includes(s.terrain)) errors.push(`spell ${s.id}: terrain ${s.terrain} unknown`);
   else if (s.terrain !== undefined && r.terrain[s.terrain]!.tags.includes("blocking")) {

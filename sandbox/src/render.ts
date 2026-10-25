@@ -47,11 +47,14 @@ function rect(ctx: CanvasRenderingContext2D, x: number, y: number, s: number, co
 
 function drawCell(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, s: number, t: number, w: World) {
   const px = x * s, py = y * s;
-  rect(ctx, x, y, s, TERRAIN_COLOR[c.t] ?? "#f0f");
+  // A pit or other low ground heaped back up to ground level draws as bare earth, not a hole.
+  const low = RULES.terrain[c.t]?.elevation ?? 0;
+  const look = low < 0 && low + c.h >= 0 ? "dirt" : c.t;
+  rect(ctx, x, y, s, TERRAIN_COLOR[look] ?? "#f0f");
   // Raised ground is lighter and dug ground darker, a shade per step.
   if (c.h !== 0) rect(ctx, x, y, s, c.h > 0 ? `rgba(255,255,255,${0.12 * c.h})` : `rgba(0,0,0,${-0.15 * c.h})`);
   ctx.save();
-  switch (c.t) {
+  switch (look) {
     case "grass":
     case "tree":
       ctx.strokeStyle = "#5f8f41";

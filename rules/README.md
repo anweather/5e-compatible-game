@@ -69,8 +69,12 @@ elevation plus height.
 ```jsonc
 { "id": "move-earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3,
   "effect": "terraform",
-  "raise": 2,           // or "dig": n. Exactly one, a whole number of steps from 1
-                        // (not the reaction verb "raise", which puts up a pillar terrain)
+  "raise": 2,           // or "dig": n, or "height": n. Exactly one of the three.
+                        // raise and dig: a whole number of steps from 1, relative to
+                        // each square (not the reaction verb "raise", which puts up a
+                        // pillar terrain). height: raise each square to that height,
+                        // within sim.height min..max, leaving higher squares alone, so
+                        // "height": 3 (blockAt) always walls, even across a trench.
   "terrain": "rock",    // optional: what the squares become (not a blocking terrain)
   "taper": true }       // optional: a hill or crater, full height in the middle, 1 at the radius
 ```
@@ -86,6 +90,9 @@ elevation plus height.
   it blocks walking, sight, gas and water like blocking terrain, and loses
   its cover and fire. Dig it back below that to open it. In the sandbox a
   wall won't rise under a creature or object.
+- **A line from the caster** (`"shape": "line", "origin": "self"`, like
+  Earthen Trench) starts under the caster's feet, so a trench cut from a
+  pond's bank opens into the pond. Other line spells start one square out.
 - An element on the spell, if any, is applied after the shaping.
 
 ## Units

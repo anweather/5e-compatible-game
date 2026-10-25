@@ -86,15 +86,30 @@ namespace Chem
 
             void TerraformRefs(JToken s)
             {
-                var steps = new[] { s["raise"], s["dig"] }.Where(v => v != null).ToList();
-                if (steps.Count != 1 || !IsWholeNumber(steps[0]) || (double)steps[0] < 1)
-                    Errors.Add($"spell {Show(s["id"])}: terraform needs one of raise or dig, a whole number of steps from 1");
+                var range = r["sim"]?["height"];
+                if (new[] { "raise", "dig", "height" }.Count(k => s[k] != null) != 1)
+                    Errors.Add($"spell {Show(s["id"])}: terraform needs exactly one of raise, dig or height");
+                foreach (var key in new[] { "raise", "dig" })
+                    if (s[key] != null && !(IsWholeNumber(s[key]) && (double)s[key] >= 1))
+                        Errors.Add($"spell {Show(s["id"])}: {key} must be a whole number of steps from 1");
+                if (s["height"] != null && !IsHeightIn(s["height"], range))
+                    Errors.Add($"spell {Show(s["id"])}: height must be a whole number from {Show(range?["min"])} to {Show(range?["max"])} (sim.height)");
                 var to = s["terrain"];
                 if (to != null && !IsIn(terrain, to)) Errors.Add($"spell {Show(s["id"])}: terrain {Show(to)} unknown");
                 else if (to != null && Strings(terrain[Text(to)]["tags"]).Contains("blocking"))
                     Errors.Add($"spell {Show(s["id"])}: terrain {Show(to)} is blocking (walls come from raise)");
                 if (s["taper"] != null && s["taper"].Type != JTokenType.Boolean) Errors.Add($"spell {Show(s["id"])}: taper must be true or false");
             }
+
+            /// <summary>A whole number within sim.height min..max (a bound that isn't a number doesn't bind, as in JavaScript).</summary>
+            static bool IsHeightIn(JToken h, JToken range)
+            {
+                bool Below(JToken bound) => IsNumber(bound) && (double)h < (double)bound;
+                bool Above(JToken bound) => IsNumber(bound) && (double)h > (double)bound;
+                return IsWholeNumber(h) && !Below(range?["min"]) && !Above(range?["max"]);
+            }
+
+            static bool IsNumber(JToken v) => v != null && (v.Type == JTokenType.Integer || v.Type == JTokenType.Float);
 
             static bool IsWholeNumber(JToken v) =>
                 v.Type == JTokenType.Integer || (v.Type == JTokenType.Float && System.Math.Abs((double)v - System.Math.Floor((double)v)) < 1e-9);

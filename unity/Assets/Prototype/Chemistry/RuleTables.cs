@@ -59,11 +59,13 @@ namespace Chem
         /// <summary>[dice, sides], or empty.</summary>
         public int[] Damage;
         /// <summary>
-        /// Effect "terraform": steps to raise or dig (one is 0), the terrain the cells become
-        /// (null: keep it, or its DugTo when digging), and whether the steps taper off with
-        /// distance from the target over Radius (a hill or a crater).
+        /// Effect "terraform": steps to raise or dig (one is 0), or a Height to raise the cells
+        /// to (null unless set; then Raise and Dig are 0), the terrain the cells become (null:
+        /// keep it, or its DugTo when digging), and whether the steps taper off with distance
+        /// from the target over Radius (a hill or a crater).
         /// </summary>
         public int Raise, Dig;
+        public int? Height;
         public string Terrain;
         public bool Taper;
     }
@@ -374,6 +376,7 @@ namespace Chem
             Damage = Dice(o["damage"]),
             Raise = Int(o["raise"]) ?? 0,
             Dig = Int(o["dig"]) ?? 0,
+            Height = Int(o["height"]),
             Terrain = Str(o["terrain"]),
             Taper = Truthy(o["taper"]),
         };

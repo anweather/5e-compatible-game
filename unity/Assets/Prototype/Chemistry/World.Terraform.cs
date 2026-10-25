@@ -7,13 +7,21 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>Raises or digs every cell of a terraform spell aimed at (x, y).</summary>
+        /// <summary>
+        /// Raises or digs every cell of a terraform spell aimed at (x, y): by Raise or Dig
+        /// steps, or (Height) up to that height, leaving higher cells alone.
+        /// </summary>
         void Terraform(SpellDef s, List<(int x, int y)> cells, int x, int y)
         {
+            bool toHeight = s.Height.HasValue;
             int steps = s.Raise > 0 ? s.Raise : -s.Dig;
+            if (toHeight) steps = s.Height.Value;
             foreach (var (cx, cy) in cells)
             {
-                int n = s.Taper ? Tapered(steps, Math.Max(Math.Abs(cx - x), Math.Abs(cy - y)), s.Radius) : steps;
+                int d = Math.Max(Math.Abs(cx - x), Math.Abs(cy - y));
+                if (s.Taper && d > s.Radius) continue;
+                int n = s.Taper ? Tapered(steps, d, s.Radius) : steps;
+                if (toHeight) n = Math.Max(0, n - At(cx, cy).Height);
                 if (n != 0) Reshape(cx, cy, n, s.Terrain);
             }
         }

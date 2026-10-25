@@ -3,11 +3,18 @@
 import { RULES, type SpellDef } from "./rules.ts";
 import { type World, cellAt, entityAt, hasTag, idx, isBlocking, neighbours, terrainDef } from "./world.ts";
 
-/** Raises or digs every cell of a terraform spell aimed at (x, y). */
+/**
+ * Raises or digs every cell of a terraform spell aimed at (x, y): by raise or dig
+ * steps, or (height) up to that height, leaving higher cells alone.
+ */
 export function terraform(w: World, s: SpellDef, cells: [number, number][], x: number, y: number): void {
-  const steps = s.raise ? s.raise : -(s.dig ?? 0);
+  const toHeight = s.height !== undefined;
+  const steps = toHeight ? s.height! : s.raise ? s.raise : -(s.dig ?? 0);
   for (const [cx, cy] of cells) {
-    const n = s.taper ? tapered(steps, Math.max(Math.abs(cx - x), Math.abs(cy - y)), s.radius ?? 1) : steps;
+    const d = Math.max(Math.abs(cx - x), Math.abs(cy - y)), radius = s.radius ?? 1;
+    if (s.taper && d > radius) continue;
+    let n = s.taper ? tapered(steps, d, radius) : steps;
+    if (toHeight) n = Math.max(0, n - cellAt(w, cx, cy)!.h);
     if (n !== 0) reshape(w, cx, cy, n, s.terrain);
   }
 }

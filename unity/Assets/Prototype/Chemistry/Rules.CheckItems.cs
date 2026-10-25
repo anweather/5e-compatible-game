@@ -89,8 +89,6 @@ namespace Chem
             static bool IsHexColor(JToken v) =>
                 v.Type == JTokenType.String && ((string)v).Length == 7 && ((string)v)[0] == '#' && ((string)v).Skip(1).All(Uri.IsHexDigit);
 
-            static bool IsNumber(JToken v) => v != null && (v.Type == JTokenType.Integer || v.Type == JTokenType.Float);
-
             /// <summary>A number from <paramref name="min"/> (or above it), up to <paramref name="max"/>, when present.</summary>
             void Range(JToken v, string what, double min, bool above = false, double max = double.MaxValue)
             {

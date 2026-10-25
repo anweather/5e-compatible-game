@@ -78,7 +78,8 @@ The full schema is in `rules/README.md`.
 | Entity rules | `status: {name: ticks}`, `clear`, `damageMul` |
 
 **Shaping the ground** is a spell effect, not a reaction verb. A spell with
-`"effect": "terraform"` raises or digs every square it touches; see
+`"effect": "terraform"` raises or digs every square it touches, by
+`raise` or `dig` steps or up to an absolute `height` (exactly one); see
 `rules/README.md` for the keys.
 
 **New verbs need code.** If an idea can't be said with these, write it

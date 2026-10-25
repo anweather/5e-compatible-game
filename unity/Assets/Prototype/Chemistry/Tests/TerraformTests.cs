@@ -36,15 +36,14 @@ namespace Chem.Tests
             ModPatch.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "mods", "high-walls.json")));
 
         [Test]
-        public void AnEarthenTrenchCutFromAPondFillsAndCarriesTheWaterAlong()
+        public void AnEarthenTrenchCutFromAPondsBankDigsFromTheCastersFeetAndTheWaterFollows()
         {
             var w = Room(20, 9);
             Pond(w, 2, 5, 2, 6);
-            w.Cast("earthen-trench", 6, 4, 1);
-            Assert.That(Heights(w, 4, 4, 5, 6, 13, 14), Is.EqualTo(new[] { 0, 0, -2, -2, 0 }));
-            Run(w, 10);
-            Assert.That(Row(w, 4, 6, 7, 8, 9, 10), Is.EqualTo(new[] { 4, 3, 2, 1, 0 }));
-            Run(w, 10);
+            // The wizard stands on the dry bank at (6, 4); SpellCaster.Aim puts a self line one square out.
+            w.Cast("earthen-trench", 7, 4, 1);
+            Assert.That(Heights(w, 4, 5, 6, 7, 13, 14), Is.EqualTo(new[] { 0, -2, -2, -2, 0 }), "8 squares from the caster's own");
+            Run(w, 20);
             // Settled: on the flat water needs a 2-unit difference to move, so the channel slopes.
             Assert.That(Row(w, 4, 6, 7, 8, 9, 10, 11, 12, 13), Is.EqualTo(new[] { 5, 4, 3, 2, 1, 1, 0, 0 }));
             Assert.That(w.At(8, 3).Water, Is.EqualTo(0), "the banks stay dry");
@@ -52,11 +51,20 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void OtherLineSpellsStillStartOneSquareOutFromTheCaster()
+        {
+            var w = Room(20, 9);
+            Assert.That(w.SpellCells(R.Spell("ray-of-frost"), 7, 4, 1)[0], Is.EqualTo((7, 4)));
+            Assert.That(w.SpellCells(R.Spell("gust-of-wind"), 7, 4, 1)[0], Is.EqualTo((7, 4)));
+            Assert.That(w.SpellCells(R.Spell("earthen-trench"), 7, 4, 1).Take(2), Is.EqualTo(new[] { (6, 4), (7, 4) }));
+        }
+
+        [Test]
         public void LightningRunsAlongAFloodedTrench()
         {
             var w = Room(20, 9);
             Pond(w, 2, 5, 2, 6);
-            w.Cast("earthen-trench", 6, 4, 1);
+            w.Cast("earthen-trench", 7, 4, 1);
             Run(w, 20);
             w.Cast("shocking-grasp", 2, 2, 1);
             Assert.That(w.At(11, 4).Charge, Is.GreaterThan(0), "the far wet end of the channel is charged");
@@ -128,6 +136,23 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AWallOfStoneAcrossADugTrenchWallsEverySquareTrenchIncluded()
+        {
+            var w = Room(12, 12);
+            w.Cast("earthen-trench", 2, 5, 1);
+            Assert.That(w.At(5, 5).Height, Is.EqualTo(-2));
+            w.Cast("wall-of-stone", 5, 2, 2);
+            for (int y = 2; y <= 7; y++)
+            {
+                Assert.That(w.At(5, y).Height, Is.EqualTo(R.Sim.Height.BlockAt), $"(5, {y}) is raised to wall height");
+                Assert.That(w.IsRaisedWall(w.At(5, y)), $"(5, {y}) is a wall");
+            }
+            w.At(4, 4).Height = 4;
+            w.Cast("wall-of-stone", 4, 2, 2);
+            Assert.That(w.At(4, 4).Height, Is.EqualTo(4), "height never lowers a square that is already higher");
+        }
+
+        [Test]
         public void AModChangesTheHeightRangeAndTheSpellsNumbers()
         {
             var modded = R.WithMods(new[] { HighWalls() });
@@ -154,18 +179,23 @@ namespace Chem.Tests
                     { 'id': 'b', 'name': 'B', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'raise': 2, 'dig': 1, 'blurb': '' },
                     { 'id': 'c', 'name': 'C', 'level': 1, 'shape': 'square', 'effect': 'terraform', 'dig': 1.5, 'terrain': 'lava', 'taper': 'yes', 'blurb': '' },
                     { 'id': 'd', 'name': 'D', 'level': 1, 'shape': 'burst', 'effect': 'terraform', 'raise': 0, 'terrain': 'bedrock', 'blurb': '' },
+                    { 'id': 'f', 'name': 'F', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': 5, 'blurb': '' },
+                    { 'id': 'g', 'name': 'G', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': -1.5, 'dig': 1, 'blurb': '' },
                     { 'id': 'e', 'name': 'E', 'level': 1, 'shape': 'point', 'effect': 'quake', 'blurb': '' } ] }".Replace('\'', '"')) })).Errors;
             // validateRules' output for the same patch (terraform.test.ts).
             Assert.That(errors, Is.EqualTo(new[]
             {
                 "terrain mud: dugTo clay unknown",
-                "spell a: terraform needs one of raise or dig, a whole number of steps from 1",
-                "spell b: terraform needs one of raise or dig, a whole number of steps from 1",
-                "spell c: terraform needs one of raise or dig, a whole number of steps from 1",
+                "spell a: terraform needs exactly one of raise, dig or height",
+                "spell b: terraform needs exactly one of raise, dig or height",
+                "spell c: dig must be a whole number of steps from 1",
                 "spell c: terrain lava unknown",
                 "spell c: taper must be true or false",
-                "spell d: terraform needs one of raise or dig, a whole number of steps from 1",
+                "spell d: raise must be a whole number of steps from 1",
                 "spell d: terrain bedrock is blocking (walls come from raise)",
+                "spell f: height must be a whole number from -3 to 4 (sim.height)",
+                "spell g: terraform needs exactly one of raise, dig or height",
+                "spell g: height must be a whole number from -3 to 4 (sim.height)",
                 "spell e: unknown effect quake",
             }));
         }
@@ -173,11 +203,12 @@ namespace Chem.Tests
         [Test]
         public void HeightRangeNumbersAreChecked()
         {
-            string Error(string sim) =>
-                Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(("{ 'sim': { 'height': " + sim + " } }").Replace('\'', '"')) })).Errors[0];
-            Assert.That(Error("{ 'min': 1 }"), Is.EqualTo("sim height.min must be at most 0"));
-            Assert.That(Error("{ 'max': -1 }"), Is.EqualTo("sim height.max must be at least 0"));
-            Assert.That(Error("{ 'blockAt': 0 }"), Is.EqualTo("sim height.blockAt must be at least 1"));
+            System.Collections.Generic.IReadOnlyList<string> Errors(string sim) =>
+                Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(("{ 'sim': { 'height': " + sim + " } }").Replace('\'', '"')) })).Errors;
+            Assert.That(Errors("{ 'min': 1 }"), Does.Contain("sim height.min must be at most 0"));
+            Assert.That(Errors("{ 'max': -1 }"), Does.Contain("sim height.max must be at least 0"));
+            Assert.That(Errors("{ 'max': -1 }"), Does.Contain("spell wall-of-stone: height must be a whole number from -3 to -1 (sim.height)"));
+            Assert.That(Errors("{ 'blockAt': 0 }"), Does.Contain("sim height.blockAt must be at least 1"));
             Assert.DoesNotThrow(() => R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"height\": { \"min\": -5 } } }") }));
         }
 
@@ -190,9 +221,9 @@ namespace Chem.Tests
                 for (int y = 6; y <= 8; y++) w.At(x, y).T = "grass";
             w.At(9, 7).Cover = "oil";
             w.At(10, 7).Cover = "oil";
-            w.Cast("earthen-trench", 5, 4, 1);
+            w.Cast("earthen-trench", 6, 4, 1); // from the dry bank at (5, 4)
             Run(w, 20);
-            w.Cast("wall-of-stone", 12, 1, 2);
+            w.Cast("wall-of-stone", 12, 1, 2); // across the trench's end
             w.Cast("move-earth", 14, 7, 1);
             w.Cast("create-water", 14, 7, 1);
             w.Cast("mold-earth", 9, 7, 1);
@@ -208,8 +239,10 @@ namespace Chem.Tests
         {
             var w = EarthShaping(11);
             Assert.That(EarthShaping(11).CellHash(), Is.EqualTo(w.CellHash()), "deterministic");
-            Assert.That(w.CellHash(), Is.EqualTo("a8199e69"));
+            Assert.That(w.CellHash(), Is.EqualTo("93d9117b"));
             Assert.That(w.RngState, Is.EqualTo(3719496534u));
+            Assert.That(w.At(5, 4).Height, Is.EqualTo(-2), "the trench starts at the caster's feet");
+            Assert.That(w.IsRaisedWall(w.At(12, 4)), "the wall closes the trench");
             CollectionAssert.AreEqual(new[]
             {
                 "0|info|1|You cast Earthen Trench",
