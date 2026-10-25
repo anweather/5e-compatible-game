@@ -135,6 +135,25 @@ The Chemistry methods are ported line by line from the TS sandbox. Splitting
 them (together with the TS) is the next refactor; then remove `S3776` from
 `WarningsNotAsErrors` in `core/Directory.Build.props`.
 
+## Windows PC check (2026-10-25)
+
+First setup of the Windows PC (Ryzen 7 7700X, RTX 4080 Super) from
+`docs/DEV_SETUP_WINDOWS.md`, on `feat/chunked-valley` at 4c35755, Unity 6000.3.27f1.
+
+- `dotnet test core`: 124 passed. Editor EditMode tests: 124 passed.
+  0 compile errors after Restore Asset Packs and Build Chemistry Yard.
+- Play mode in the yard: walking, all 8 Elements spells, the Earth page and
+  the mods panel work, with 0 console errors or warnings.
+- First Windows player build (Prototype → Build → Windows): OK, 0 errors,
+  14 warnings, 541 MB, 849 s.
+- `SpellChemistryValley.exe -fps-probe`, 3840×2160 with the Editor still open:
+  5979 frames over 45.3 s, mean 7.6 ms (132 fps), 95th percentile 9.9 ms
+  (101 fps), worst 318.8 ms. No errors in the player log.
+- Known pack error, ignored: importing the Unity URP Terrain pack logs a
+  `NullReferenceException` in Shader Graph's `GraphData.GetPromotedInputs` for
+  `Assets/TerrainDemoScene_URP/ShaderGraphs/SpeedTreeURP_Branch.shadergraph`.
+  It is in the pack's own Shader Graph, not our code, and the Mac logs it too.
+
 ## Recommendations
 
 - Give `Scripts/` its own `.asmdef` (e.g. `Prototype`, referencing
