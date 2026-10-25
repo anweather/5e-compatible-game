@@ -1,0 +1,23 @@
+# One line-ending style on every machine (Mac and Windows), so Unity's
+# YAML assets and our code never show as changed just from checkout.
+* text=auto eol=lf
+
+# Binary assets: never convert, never diff as text.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.psd binary
+*.tga binary
+*.exr binary
+*.fbx binary
+*.wav binary
+*.mp3 binary
+*.ogg binary
+*.mp4 binary
+*.dll binary
+*.so binary
+*.dylib binary
+*.unitypackage binary
+
+# Visual Studio solution files are left exactly as committed (Windows line endings).
+*.sln -text
