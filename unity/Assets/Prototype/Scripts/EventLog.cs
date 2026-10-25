@@ -9,6 +9,9 @@ using UnityEngine.SceneManagement;
 public class EventLog : MonoBehaviour
 {
     static EventLog instance;
+
+    /// <summary>False hides all on-screen UI (help, spell bar, log, Play Together panel), e.g. for trailer recordings.</summary>
+    public static bool HudVisible { get; set; } = true;
     readonly List<string> lines = new List<string>();
     GUIStyle style;
     SpellCaster caster;
@@ -63,6 +66,7 @@ public class EventLog : MonoBehaviour
 
     void OnGUI()
     {
+        if (!HudVisible) return;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true };
         if (caster == null)
             GUI.Label(new Rect(16, 12, 900, 30), "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset", style);

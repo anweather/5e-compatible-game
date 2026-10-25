@@ -137,7 +137,7 @@ public class NetSession : MonoBehaviour
 
     void OnGUI()
     {
-        if (Net == null) return;
+        if (Net == null || !EventLog.HudVisible) return;
         box ??= new GUIStyle(GUI.skin.box) { fontSize = 16, alignment = TextAnchor.UpperLeft, padding = new RectOffset(10, 10, 8, 8) };
         codeStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold };
         GUI.skin.button.fontSize = 16;
