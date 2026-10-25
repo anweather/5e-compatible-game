@@ -77,13 +77,16 @@ public static class ChemYardBuilder
         var player = (GameObject)PrefabUtility.InstantiatePrefab(armature);
         player.name = "Wizard";
         player.transform.position = start;
+        var controls = player.AddComponent<PlayerControls>();
         var caster = player.AddComponent<SpellCaster>();
         caster.grid = grid;
+        caster.controls = controls;
         caster.fireBolt = Load(FireFx + "/FireBall.prefab");
 
         var follow = (GameObject)PrefabUtility.InstantiatePrefab(followCamera);
         var cameraRoot = player.transform.Find("PlayerCameraRoot");
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
+        follow.AddComponent<CameraZoom>().controls = controls;
 
         SetUpLighting();
         new GameObject("EventLog").AddComponent<EventLog>();

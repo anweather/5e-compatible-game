@@ -3,13 +3,14 @@ using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// Number keys pick a spell from rules/spells.json; a click casts it on the
-// grid. Aiming matches the web sandbox: beams and Gust start next to the
-// wizard and point at the click, everything else lands on the clicked cell.
-// The cells it will touch are highlighted under the cursor.
+// Picks a spell from rules/spells.json and casts it on the grid (controls
+// in PlayerControls). Aiming matches the web sandbox: beams and Gust start
+// next to the wizard and point at the target, everything else lands on the
+// targeted cell. The cells it will touch are highlighted.
 public class SpellCaster : MonoBehaviour
 {
     public ChemGrid grid;
+    public PlayerControls controls;
     public string[] spellIds = { "fire-bolt", "ray-of-frost", "create-water", "grease", "shocking-grasp", "gust-of-wind" };
     [Tooltip("Optional: the Fire Bolt projectile. Without it Fire Bolt lands instantly.")]
     public GameObject fireBolt;
@@ -32,23 +33,19 @@ public class SpellCaster : MonoBehaviour
 
     void Update()
     {
-        var kb = Keyboard.current;
-        if (kb != null)
-            for (int i = 0; i < spellIds.Length && i < 9; i++)
-                if (kb[(Key)((int)Key.Digit1 + i)].wasPressedThisFrame) Selected = i;
+        if (controls == null || grid == null || grid.World == null) return;
 
-        var mouse = Mouse.current;
-        if (mouse == null || grid == null || grid.World == null) return;
+        int slot = controls.PickedSlot();
+        if (slot >= 0 && slot < spellIds.Length) Selected = slot;
+        if (controls.NextSpell.WasPressedThisFrame()) Selected = (Selected + 1) % spellIds.Length;
+        if (controls.PrevSpell.WasPressedThisFrame()) Selected = (Selected + spellIds.Length - 1) % spellIds.Length;
 
-        // The scroll wheel steps through the spells too.
-        float scroll = mouse.scroll.ReadValue().y;
-        if (scroll > 0.1f) Selected = (Selected + spellIds.Length - 1) % spellIds.Length;
-        else if (scroll < -0.1f) Selected = (Selected + 1) % spellIds.Length;
-
-        // With mouse-look the cursor is locked, so aim through the crosshair at the screen centre.
-        var aimAt = Cursor.lockState == CursorLockMode.Locked ? new Vector2(Screen.width / 2f, Screen.height / 2f) : mouse.position.ReadValue();
+        // With mouse-look or a gamepad, aim through the crosshair at the screen centre;
+        // with a free cursor (e.g. after Esc in the Editor), aim where it points.
+        bool centre = Cursor.lockState == CursorLockMode.Locked || controls.UsingGamepad || Mouse.current == null;
+        var aimAt = centre ? new Vector2(Screen.width / 2f, Screen.height / 2f) : Mouse.current.position.ReadValue();
         var ray = Camera.main.ScreenPointToRay(aimAt);
-        if (!Physics.Raycast(ray, out var hit, 200f) || hit.collider.transform.IsChildOf(transform))
+        if (!RaycastPastSelf(ray, out var hit))
         {
             ShowMarkers(null);
             return;
@@ -58,9 +55,27 @@ public class SpellCaster : MonoBehaviour
         var spell = grid.World.Rules.Spell(spellIds[Selected]);
         ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir) : null);
 
-        if (!mouse.leftButton.wasPressedThisFrame) return;
+        if (!controls.Cast.WasPressedThisFrame()) return;
         if (error != null) { EventLog.Add(error); return; }
         if (aim.HasValue) Cast(spellIds[Selected], aim.Value.x, aim.Value.y, aim.Value.dir);
+    }
+
+    readonly RaycastHit[] hits = new RaycastHit[16];
+
+    // The nearest hit that isn't the caster: the over-the-shoulder crosshair
+    // often passes through the wizard's own collider first.
+    bool RaycastPastSelf(Ray ray, out RaycastHit nearest)
+    {
+        nearest = default;
+        int count = Physics.RaycastNonAlloc(ray, hits, 200f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        float best = float.MaxValue;
+        for (int i = 0; i < count; i++)
+        {
+            if (hits[i].collider.transform.IsChildOf(transform) || hits[i].distance >= best) continue;
+            best = hits[i].distance;
+            nearest = hits[i];
+        }
+        return best < float.MaxValue;
     }
 
     // Spells with a projectile fly from the wizard's hand and take effect where
