@@ -56,7 +56,7 @@ sound was heard in a later build (main, not 0.1.1).
 | Id | Issue | State |
 |---|---|---|
 | P20 | Water looks bad and patterned | done: the ripples were three crossing sine waves tiled 24×16 across the lake, an obvious grid; now 24 waves in random directions (still tiling), half as many repeats |
-| P21 | Shaders: grass, water reflections | open: found that the terrain's detail grass doesn't render at all (the meadow is the terrain's grass texture only); fix that first, then wind sway (the Grass detail mode) and water reflections |
+| P21 | Shaders: grass, water reflections | open: the terrain's detail grass is in its data (about 850 clumps per grass kind per chunk) but never drawn, in VertexLit or Grass mode and at twice the detail resolution; look at the grass prefabs' material under URP instanced details first, then wind sway and water reflections |
 | P22 | The glowing balls' lighting is very harsh | done: the light hangs 2 m above the ball, bright edge 0.5 (was 0.8), softer glow |
 | P23 | The storm sounds are too loud | done: rain, wind and thunder turned down, on the ambience setting |
 
