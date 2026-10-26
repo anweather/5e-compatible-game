@@ -72,6 +72,19 @@ public class ValleyChemistry : MonoBehaviour
         }
     }
 
+    /// <summary>Where the trunk of a tree drawn in a cell stands (the first, if there are several); false when none is.</summary>
+    public bool TrunkAt(int x, int y, out Vector3 at)
+    {
+        at = default;
+        if (!treesByCell.TryGetValue(grid.World.Idx(x, y), out var list) || list.Count == 0) return false;
+        var (chunk, n) = list[0];
+        var p = trees[chunk][n].position;
+        var size = ground.Data(chunk).size;
+        var (cx, cz) = layout.ChunkCorner(chunk.i, chunk.j);
+        at = new Vector3(cx + p.x * size.x, 0f, cz + p.z * size.z);
+        return true;
+    }
+
     /// <summary>The valley's own ground under a cell, before the cell's offset.</summary>
     public float BaseHeight(int x, int y) => ground != null ? ground.BaseHeight(x, y) : 0f;
 
@@ -148,7 +161,7 @@ public class ValleyChemistry : MonoBehaviour
     void LateUpdate()
     {
         if (ground == null) return;
-        foreach (var at in treesChanged) ground.Data(at).treeInstances = trees[at];
+        foreach (var at in treesChanged) ground.WritableData(at).treeInstances = trees[at];
         treesChanged.Clear();
         ground.Flush(IsScorched);
     }

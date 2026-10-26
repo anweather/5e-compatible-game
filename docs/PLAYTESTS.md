@@ -18,8 +18,8 @@ sound was heard in a later build (main, not 0.1.1).
 |---|---|---|
 | P1 | Pushing a player to the world's edge with Gust of Wind: a chunk didn't load and they got stuck at a wall | done: the chemistry now covers the whole valley and wakes around the players (world streaming part 2, first slice); the edge of the land holds |
 | P2 | The world's edge is just a drop-off | done: invisible walls 3 m inside the end of the land, marked by a line of rocks; probe `edge` |
-| P3 | Collision boxes of earth spells (raised and dug ground) don't match what's drawn | open |
-| P4 | Tree collision is a bit off | open |
+| P3 | Collision boxes of earth spells (raised and dug ground) don't match what's drawn | done: a Wall of Stone's blocker reached 1.2 m above the wall as drawn (an invisible ceiling); now it stops at the top; probe `collision` |
+| P4 | Tree collision is a bit off | done: a tree blocked its whole 1.5 m square, centred on the square; now 0.7 m about the trunk, where the trunk stands |
 | P5 | Ray of Frost doesn't freeze water: nothing happens | done: it froze, but lake ice wasn't drawn (the lake plane stands for its cells); now it is, solid, at the surface |
 | P6 | Performance drops with a lot of fire | open |
 

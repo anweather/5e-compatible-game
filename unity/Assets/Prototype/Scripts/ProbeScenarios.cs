@@ -73,6 +73,10 @@ public static class ProbeScenarios
             "The wizard goes to meadow 3 chunks or more from the yard (outside the old chemistry area) and casts Fire Bolt there. " +
             "Checks: the chemistry covers the whole valley, the chunks around the wizard woke (25 at most) and the yard's went to sleep, " +
             "the fire spreads there, the sleeping yard is unchanged, and it wakes when the wizard comes back, no console errors."),
+        new Entry("collision", typeof(CollisionProbe), 40f,
+            "The invisible blockers against what is drawn: the nearest valley tree north of the yard, then a Wall of Stone. " +
+            "Checks: a ray through the trunk hits its blocker and one 1 m beside it passes, the wall's blocker tops out within " +
+            "25 cm of where the wall is drawn, no console errors."),
         new Entry("edge", typeof(EdgeProbe), 90f,
             "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
             "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),

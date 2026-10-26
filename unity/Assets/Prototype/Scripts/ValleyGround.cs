@@ -61,6 +61,9 @@ public sealed class ValleyGround
     /// <summary>One of the chunks the cells reach, as drawn now.</summary>
     public TerrainData Data((int i, int j) at) => Shown(chunks[at]);
 
+    /// <summary>One of the chunks the cells reach, to change: its runtime copy, made now if it has none yet.</summary>
+    public TerrainData WritableData((int i, int j) at) => Writable(chunks[at]);
+
     static TerrainData Shown(Chunk ch) => ch.data != null ? ch.data : ch.original;
 
     // A chunk is copied the first time the cells change it, so the saved valley never changes and a
