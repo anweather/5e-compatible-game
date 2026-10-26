@@ -3,26 +3,117 @@ using UnityEngine;
 
 // A cell's fire, gas and charge, drawn with the Particle Pack's effects when
 // they are assigned and with simple cubes when they aren't. Particle effects
-// are retired (they stop emitting and fade) rather than popped out.
+// are retired (they stop emitting and fade) rather than popped out. Fire
+// and smoke effects are pooled (made once, reused as they come and go), fires keep their
+// effect as the fire grows or dies down (only its size changes), and thin out
+// when much burns: a field of flames overlaps, and hundreds of particle
+// systems cost more than they add (FireDensity).
 public partial class ChemGrid
 {
     // --- fire ----------------------------------------------------------------------
 
+    // Burning cells (in the simulated chunks) past which only some cells draw flames.
+    const int ThinFiresAt = 200, SparseFiresAt = 500;
+    // How long a retired fire or smoke effect fades before it is reused.
+    const float FxFadeSeconds = 1.5f;
+    // Fire and smoke effects alive at once (fading ones too): past this a cell's fire or smoke
+    // goes undrawn until it changes, rather than making ever more particle systems.
+    const int MaxLiveFx = 320;
+    int liveFx;
+
+    readonly System.Collections.Generic.Dictionary<GameObject, System.Collections.Generic.Stack<GameObject>> freeFx = new();
+    readonly System.Collections.Generic.Dictionary<GameObject, GameObject> fxPrefab = new();
+    readonly System.Collections.Generic.List<(GameObject go, float until)> fadingFx = new();
+
     void RenderFire(View v, Cell c, int x, int y, Vector3 center, float ground, float scale = 1f)
     {
         var prefab = FirePrefab(c.Fire);
-        if (c.Fire == 0 || prefab == null)
+        bool shown = c.Fire > 0 && prefab != null && FlameDrawnAt(x, y);
+        if (!shown)
         {
-            if (v.fireLevel != 0) { Retire(v.fire); v.fire = null; v.fireLevel = 0; }
-            if (c.Fire > 0) FallbackFire(v, c, center, ground);
+            if (v.fireLevel != 0) { RetireFx(v.fire); v.fire = null; v.fireLevel = 0; }
+            if (c.Fire > 0 && prefab == null) FallbackFire(v, c, center, ground);
             return;
         }
-        if (v.fireLevel == c.Fire && v.fire != null) return;
-        Retire(v.fire);
         var (offset, turn, size) = FlameSpot(x, y);
-        v.fire = Instantiate(prefab, new Vector3(center.x + offset.x, ground, center.z + offset.y), Quaternion.Euler(0f, turn, 0f), transform);
-        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f * scale * size);
+        // A fire that grows or dies down keeps its effect; it only changes size.
+        if (v.fire == null) v.fire = TakeFx(prefab, new Vector3(center.x + offset.x, ground, center.z + offset.y), Quaternion.Euler(0f, turn, 0f), MaxLiveFx, out _);
+        if (v.fire == null) return; // over the effects budget: drawn when it next changes
+        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f * scale * size * FlameScale(c.Fire));
         v.fireLevel = c.Fire;
+    }
+
+    static float FlameScale(int fire) => fire switch { >= 3 => 1.25f, 2 => 1f, _ => 0.8f };
+
+    // Gas drifts over many cells at once: its effects go on every other cell, and one in four when much burns.
+    bool GasDrawnAt(int x, int y)
+    {
+        int burning = fireLights != null ? fireLights.BurningCount : 0;
+        return burning < ThinFiresAt ? ((x + y) & 1) == 0 : (x & 1) == 0 && (y & 1) == 0;
+    }
+
+    // With much burning, flames on every other cell, then one in four (the same cells each time).
+    bool FlameDrawnAt(int x, int y)
+    {
+        int burning = fireLights != null ? fireLights.BurningCount : 0;
+        if (burning < ThinFiresAt) return true;
+        if (burning < SparseFiresAt) return ((x + y) & 1) == 0;
+        return (x & 1) == 0 && (y & 1) == 0;
+    }
+
+    // An effect from the pool, or a new one (fresh: true) when none is free; null once this many are alive.
+    GameObject TakeFx(GameObject prefab, Vector3 at, Quaternion turn, int limit, out bool fresh)
+    {
+        fresh = false;
+        if (liveFx >= limit) return null;
+        liveFx++;
+        if (freeFx.TryGetValue(prefab, out var free) && free.Count > 0)
+        {
+            var go = free.Pop();
+            go.transform.SetPositionAndRotation(at, turn);
+            go.SetActive(true);
+            foreach (var ps in go.GetComponentsInChildren<ParticleSystem>()) ps.Play(true);
+            return go;
+        }
+        var made = Instantiate(prefab, at, turn, transform);
+        fxPrefab[made] = prefab;
+        fresh = true;
+        return made;
+    }
+
+    // Stops an effect emitting; once it has faded it goes back to the pool.
+    void RetireFx(GameObject go)
+    {
+        if (go == null) return;
+        if (!fxPrefab.ContainsKey(go)) { Retire(go); return; }
+        foreach (var ps in go.GetComponentsInChildren<ParticleSystem>()) ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
+        fadingFx.Add((go, Time.time + FxFadeSeconds));
+    }
+
+    // Faded effects back into the pool; call once a frame.
+    void RecycleFx()
+    {
+        for (int i = fadingFx.Count - 1; i >= 0; i--)
+        {
+            var (go, until) = fadingFx[i];
+            if (Time.time < until) continue;
+            fadingFx.RemoveAt(i);
+            liveFx--;
+            if (go == null) continue;
+            go.SetActive(false);
+            var prefab = fxPrefab[go];
+            if (!freeFx.TryGetValue(prefab, out var free)) freeFx[prefab] = free = new System.Collections.Generic.Stack<GameObject>();
+            free.Push(go);
+        }
+    }
+
+    // A new world's visuals start empty (its old children are destroyed).
+    void ForgetFx()
+    {
+        liveFx = 0;
+        freeFx.Clear();
+        fxPrefab.Clear();
+        fadingFx.Clear();
     }
 
     // Where in its cell a fire burns, how it is turned and sized, from the cell alone (so a
@@ -76,11 +167,13 @@ public partial class ChemGrid
 
     void SwapGasEffect(View v, string kind, GameObject prefab, Vector3 center, float ground)
     {
-        if (v.gasKind != null && v.gas != null && v.gas.GetComponent<ParticleSystem>() != null) { Retire(v.gas); v.gas = null; }
+        if (v.gasKind != null && v.gas != null && v.gas.GetComponent<ParticleSystem>() != null) { RetireFx(v.gas); v.gas = null; }
         v.gasKind = kind;
         if (kind == null || prefab == null) return;
         Hide(v.gas);
-        v.gas = Instantiate(prefab, new Vector3(center.x, ground + 0.3f, center.z), Quaternion.identity, transform);
+        // Smoke may use only part of the budget, so it never crowds out the flames.
+        v.gas = TakeFx(prefab, new Vector3(center.x, ground + 0.3f, center.z), Quaternion.identity, MaxLiveFx * 3 / 5, out bool fresh);
+        if (!fresh) return; // pooled (its emission set already), or over budget
         float emission = kind == GasIds.Smoke ? 0.3f : 0.6f;
         foreach (var ps in v.gas.GetComponentsInChildren<ParticleSystem>())
         {

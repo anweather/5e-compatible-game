@@ -21,7 +21,7 @@ sound was heard in a later build (main, not 0.1.1).
 | P3 | Collision boxes of earth spells (raised and dug ground) don't match what's drawn | done: a Wall of Stone's blocker reached 1.2 m above the wall as drawn (an invisible ceiling); now it stops at the top; probe `collision` |
 | P4 | Tree collision is a bit off | done: a tree blocked its whole 1.5 m square, centred on the square; now 0.7 m about the trunk, where the trunk stands |
 | P5 | Ray of Frost doesn't freeze water: nothing happens | done: it froze, but lake ice wasn't drawn (the lake plane stands for its cells); now it is, solid, at the surface |
-| P6 | Performance drops with a lot of fire | open |
+| P6 | Performance drops with a lot of fire | done: 650 squares burning went from 42 ms mean / 178 ms p95 to 8 ms / 21 ms: fire and smoke effects pooled and capped (320 alive), kept across fire levels, thinned when much burns; scorched ground repainted over several frames; probe `wildfire` |
 
 ### Spells and how they feel
 

@@ -62,6 +62,7 @@ public partial class ChemGrid
         slicks?.Destroy();
         slicks = new CellSlickMesh(this, slickMaterial != null ? slickMaterial : materials.Slick());
         shaping.Clear();
+        ForgetFx();
         fireLights = new FireLightPool(this, maxFireLights);
     }
 
@@ -95,12 +96,20 @@ public partial class ChemGrid
         FinishRender();
     }
 
+    readonly System.Diagnostics.Stopwatch finishTimer = new();
+
+    /// <summary>Of RenderMs, the milliseconds the last frame spent on the water, slicks and easing ground.</summary>
+    public double SurfacesMs { get; private set; }
+
     void FinishRender()
     {
+        finishTimer.Restart();
         waterSurface.Rebuild();
         slicks.Rebuild();
         materials.ScrollWater(Time.time);
         AnimateShaping();
+        RecycleFx();
+        SurfacesMs = finishTimer.Elapsed.TotalMilliseconds;
     }
 
     void RenderCell(int x, int y)
@@ -121,7 +130,7 @@ public partial class ChemGrid
         ground = RenderWater(v, c, x, y, ground, groundTop, lake);
         RenderCover(v, c, x, y, center, ground);
         RenderFire(v, c, x, y, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
-        RenderGas(v, c, center, ground, (x + y) % 2 == 0);
+        RenderGas(v, c, center, ground, GasDrawnAt(x, y));
         // A lightning strike across the lake charges thousands of cells; on the lake, sparks on
         // one cell in 25 read the same without thousands of effects.
         if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);

@@ -210,12 +210,23 @@ public sealed class ValleyGround
             ch.heightsChanged = false;
         }
         if (repaint.Count == 0) return;
+        // A big fire scorches hundreds of cells a tick: repaint at most so many a frame, the rest
+        // over the next frames, so the terrain's paint never stalls a frame.
+        batch.Clear();
+        foreach (var cell in repaint)
+        {
+            batch.Add(cell);
+            if (batch.Count == RepaintPerFrame) break;
+        }
+        foreach (var cell in batch) repaint.Remove(cell);
         // A cell's paint reaches its neighbours' texels: repaint them too, as strips of cells.
         System.Func<int, int, IReadOnlyList<float>> paintOf = (x, y) => PaintOf(x, y, scorched(x, y));
-        foreach (var r in CellPaint.Runs(layout, CellPaint.Around(layout, repaint))) Paint(r, paintOf);
-        foreach (var (x, y) in repaint) ClearDetailIfBare(x, y, scorched(x, y));
-        repaint.Clear();
+        foreach (var r in CellPaint.Runs(layout, CellPaint.Around(layout, batch))) Paint(r, paintOf);
+        foreach (var (x, y) in batch) ClearDetailIfBare(x, y, scorched(x, y));
     }
+
+    const int RepaintPerFrame = 48;
+    readonly List<(int x, int y)> batch = new();
 
     // What a cell paints over the saved paint: nothing while it paints as it was baked.
     IReadOnlyList<float> PaintOf(int x, int y, bool scorched)

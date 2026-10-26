@@ -31,6 +31,9 @@ public sealed class FireLightPool
         }
     }
 
+    /// <summary>How many cells burned at the last Place (the simulated chunks').</summary>
+    public int BurningCount => burning.Count;
+
     /// <summary>Moves the lights to the biggest fires, at least two cells apart; call after the world steps.</summary>
     public void Place()
     {

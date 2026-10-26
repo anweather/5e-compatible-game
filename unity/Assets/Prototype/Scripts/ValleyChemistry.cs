@@ -158,12 +158,22 @@ public class ValleyChemistry : MonoBehaviour
     bool IsScorched(int x, int y) => scorched.Contains(grid.World.Idx(x, y));
 
     // Terrain edits are batched once per frame.
+    readonly System.Diagnostics.Stopwatch timer = new();
+
+    /// <summary>Milliseconds the last frame spent handing burnt trees and changed ground to the terrains (the wildfire probe reads them).</summary>
+    public double TreesMs { get; private set; }
+    public double GroundMs { get; private set; }
+
     void LateUpdate()
     {
         if (ground == null) return;
+        timer.Restart();
         foreach (var at in treesChanged) ground.WritableData(at).treeInstances = trees[at];
         treesChanged.Clear();
+        TreesMs = timer.Elapsed.TotalMilliseconds;
+        timer.Restart();
         ground.Flush(IsScorched);
+        GroundMs = timer.Elapsed.TotalMilliseconds;
     }
 
     void OnDestroy()

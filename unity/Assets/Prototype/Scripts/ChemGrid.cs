@@ -46,6 +46,12 @@ public partial class ChemGrid : MonoBehaviour
     public bool streamChunks = true;
 
     readonly List<(int x, int y)> playerCells = new();
+    readonly System.Diagnostics.Stopwatch timer = new();
+
+    /// <summary>Milliseconds the last frame spent stepping the world, drawing its cells, and placing the fire lights (the probe's wildfire scenario reads them).</summary>
+    public double StepMs { get; private set; }
+    public double RenderMs { get; private set; }
+    public double LightsMs { get; private set; }
     SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
     float nextWizardLookup;
 
@@ -160,6 +166,7 @@ public partial class ChemGrid : MonoBehaviour
         float tick = 1f / Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
         int guard = 4;
         bool stepped = false;
+        timer.Restart();
         while (tickTimer >= tick && guard-- > 0)
         {
             tickTimer -= tick;
@@ -168,9 +175,14 @@ public partial class ChemGrid : MonoBehaviour
             World.Step();
             stepped = true;
         }
+        StepMs = timer.Elapsed.TotalMilliseconds;
+        timer.Restart();
         Render();
+        RenderMs = timer.Elapsed.TotalMilliseconds;
+        timer.Restart();
         if (stepped) fireLights.Place();
         fireLights.Flicker();
+        LightsMs = timer.Elapsed.TotalMilliseconds;
         PumpLog();
     }
 

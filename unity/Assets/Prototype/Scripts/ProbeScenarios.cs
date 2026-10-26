@@ -77,6 +77,10 @@ public static class ProbeScenarios
             "The invisible blockers against what is drawn: the nearest valley tree north of the yard, then a Wall of Stone. " +
             "Checks: a ray through the trunk hits its blocker and one 1 m beside it passes, the wall's blocker tops out within " +
             "25 cm of where the wall is drawn, no console errors."),
+        new Entry("wildfire", typeof(WildfireProbe), 60f,
+            "A lot of fire, for frame times: the Wildfire mod on, Fire Bolts at five spots in the meadow north of the yard, 20 s of " +
+            "burning with the camera on it. Metrics: the burning peak, frame mean and p95 while it burns, and the grid's step, " +
+            "cell drawing and fire lights per frame. Checks: the fire spread (over 150 squares), p95 within 33 ms, no console errors."),
         new Entry("edge", typeof(EdgeProbe), 90f,
             "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
             "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),
