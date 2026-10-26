@@ -8,7 +8,8 @@ RUNNING IT (Windows 10 or 11, 64-bit)
 2. Double-click SpellChemistryValley.exe.
 3. The game isn't signed, so Windows may check it first. If Windows Security
    says "Scan required", let the scan finish (or click Scan) and it starts.
-   If SmartScreen says "Windows protected your PC", click "More info", then
+   If it says "The publisher could not be verified", click Run. If
+   SmartScreen says "Windows protected your PC", click "More info", then
    "Run anyway". The first run may also ask to let it through the firewall:
    allow it for playing together.
 

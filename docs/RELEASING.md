@@ -42,14 +42,15 @@ startup and shows "alpha X.Y.Z (abc1234)" at the bottom of the Esc menu.
    git log --no-merges --pretty='- %s' ${last:+$last..}HEAD > /tmp/notes.md   # edit it down
    gh release create alpha-X.Y.Z \
      unity/Builds/Release/SpellChemistryValley-alpha-X.Y.Z-windows.zip \
-     --target <commit from step 3> --prerelease --draft \
+     --target <FULL 40-char SHA from step 3; a short one gives HTTP 422> --prerelease --draft \
      --title "alpha X.Y.Z" --notes-file /tmp/notes.md
    ```
 
 5. **Test the draft on the PC.** Download the zip from the draft (not the
    local build), unzip into a fresh folder, run it (the exe is unsigned:
-   Defender may show "Windows Security: Scan required" and scan it first,
-   and SmartScreen may need More info → Run anyway; seen on alpha 0.1.0), check the Esc menu shows the right version, then play a
+   Windows may show any of: Defender's "Windows Security: Scan required"
+   (seen on 0.1.0), "Open File – Security Warning: Unknown Publisher" with
+   Run (seen on 0.1.1), or SmartScreen's More info → Run anyway), check the Esc menu shows the right version, then play a
    Relay game against another machine on the same release (Esc → Play
    together → Host online / Join code).
 6. **Publish:** `gh release edit alpha-X.Y.Z --draft=false`.
