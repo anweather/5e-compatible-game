@@ -255,6 +255,33 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void GoldenFireballCraterMatchesTs()
+        {
+            // The same as "Fireball blows a small crater..." in terraform.test.ts.
+            var w = Room(20, 12, 8);
+            for (int x = 1; x < 19; x++)
+                for (int y = 1; y < 11; y++) w.At(x, y).T = "grass";
+            w.Cast("fireball", 10, 6, 1);
+            Assert.That(w.At(10, 6).Height, Is.EqualTo(-2), "two steps down in the middle");
+            Assert.That(w.At(11, 7).Height, Is.EqualTo(-1), "one step round it");
+            Assert.That(w.At(12, 6).Height, Is.EqualTo(0), "the blast's edge isn't dug");
+            Assert.That(w.At(12, 6).Fire, Is.GreaterThan(0), "but it burns");
+            Run(w, 40);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("b1b430e0 3300970619"));
+        }
+
+        [Test]
+        public void ABarrelBlastDigsAShallowPit()
+        {
+            var w = Room(12, 12, 2);
+            w.Explode(6, 6, R.Entity("barrel"));
+            Assert.That(w.At(6, 6).Height, Is.EqualTo(-1));
+            Assert.That(w.At(7, 7).Height, Is.EqualTo(-1));
+            Assert.That(w.At(8, 6).Height, Is.EqualTo(0));
+            Assert.That(w.At(6, 6).Cover, Is.EqualTo("oil"), "the oil lands in the pit");
+        }
+
+        [Test]
         public void HeightRangeNumbersAreChecked()
         {
             System.Collections.Generic.IReadOnlyList<string> Errors(string sim) =>

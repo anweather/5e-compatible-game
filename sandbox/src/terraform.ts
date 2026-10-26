@@ -1,6 +1,6 @@
 // Earth shaping: terraform spells raise and dig cells (Cell.h), and raised
 // ground sheds its water. Unity's port is Chemistry/World.Terraform.cs.
-import { RULES, type SpellDef } from "./rules.ts";
+import { type CraterDef, RULES, type SpellDef } from "./rules.ts";
 import { type World, cellAt, entityAt, hasTag, idx, isBlocking, neighbours, terrainDef } from "./world.ts";
 
 /**
@@ -17,6 +17,21 @@ export function terraform(w: World, s: SpellDef, cells: [number, number][], x: n
     let n = s.taper ? tapered(steps, d, radius) : steps;
     if (toHeight) n = Math.max(0, n - cellAt(w, cx, cy)!.h);
     if (n !== 0) reshape(w, cx, cy, n, s.terrain);
+  }
+}
+
+/**
+ * A blast's crater at (x, y): the ground dug depth steps in the middle,
+ * tapering to none past radius, in row order. Unity's is World.Crater.
+ */
+export function crater(w: World, x: number, y: number, c: CraterDef | undefined): void {
+  if (!c) return;
+  const r = c.radius ?? 1;
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const n = tapered(-c.depth, Math.max(Math.abs(dx), Math.abs(dy)), r);
+      if (n !== 0) reshape(w, x + dx, y + dy, n);
+    }
   }
 }
 

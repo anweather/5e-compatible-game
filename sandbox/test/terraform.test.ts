@@ -270,3 +270,15 @@ test("a river refills, so a trench cut from it fills and the river stays full; m
   assert.ok(totalWater(w) > 40, "more water than the river held: the spring keeps giving");
   assert.equal(`${cellHash(w)} ${w.rng}`, "602cdf19 6");
 });
+
+test("Fireball blows a small crater before it burns, and matches the C# golden", () => {
+  const w = room(20, 12, 8);
+  for (let x = 1; x < 19; x++) for (let y = 1; y < 11; y++) cellAt(w, x, y)!.t = "grass";
+  castSpell(w, "fireball", 10, 6, 1);
+  assert.equal(cellAt(w, 10, 6)!.h, -2, "two steps down in the middle");
+  assert.equal(cellAt(w, 11, 7)!.h, -1, "one step round it");
+  assert.equal(cellAt(w, 12, 6)!.h, 0, "the blast's edge isn't dug");
+  assert.ok(cellAt(w, 12, 6)!.fire > 0, "but it burns");
+  run(w, 40);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "b1b430e0 3300970619");
+});

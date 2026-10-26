@@ -69,11 +69,14 @@ namespace Chem
                     if (terrain[p.Name] == null) Errors.Add($"machine {p.Name}: no terrain with that id");
                     else if (!Strings(terrain[p.Name]["tags"]).Contains("machine")) Errors.Add($"machine {p.Name}: terrain lacks the machine tag");
                 }
-                foreach (var p in ((JObject)r["entities"]).Properties())
-                {
-                    var explodes = p.Value["explodes"];
-                    if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
-                }
+                foreach (var p in ((JObject)r["entities"]).Properties()) EntityRefs(p);
+            }
+
+            void EntityRefs(JProperty p)
+            {
+                var explodes = p.Value["explodes"];
+                if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
+                if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1 and radius from 0");
             }
 
             void SpellRefs(JToken s)
@@ -83,7 +86,13 @@ namespace Chem
                 if (!Truthy(s["name"])) Errors.Add($"spell {Show(s["id"])}: needs a name");
                 if (s["effect"] != null && !SpellEffects.Contains(Text(s["effect"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown effect {Show(s["effect"])}");
                 if (Text(s["effect"]) == "terraform") TerraformRefs(s);
+                if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1 and radius from 0");
             }
+
+            /// <summary>No crater, or one with a whole depth from 1 and (if given) a whole radius from 0.</summary>
+            static bool IsCrater(JToken c) =>
+                c == null || (c is JObject && IsWholeNumber(c["depth"]) && (double)c["depth"] >= 1
+                    && (c["radius"] == null || (IsWholeNumber(c["radius"]) && (double)c["radius"] >= 0)));
 
             void TerraformRefs(JToken s)
             {

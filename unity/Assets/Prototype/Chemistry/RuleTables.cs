@@ -74,6 +74,17 @@ namespace Chem
         public int? Height;
         public string Terrain;
         public bool Taper;
+        /// <summary>The ground the spell blows out where it lands (Fireball), or null.</summary>
+        public CraterDef Crater;
+    }
+
+    /// <summary>
+    /// Ground a blast digs out ("crater" on a spell or an entity's "explodes"): Depth steps in the
+    /// middle, tapering to none past Radius squares.
+    /// </summary>
+    public sealed class CraterDef
+    {
+        public int Radius, Depth;
     }
 
     /// <summary>What an entity leaves behind when it blows up (entities.json "explodes").</summary>
@@ -83,6 +94,8 @@ namespace Chem
         public int Radius, Fire, Push;
         /// <summary>[dice, sides], or empty.</summary>
         public int[] Damage;
+        /// <summary>The ground it blows out, or null.</summary>
+        public CraterDef Crater;
     }
 
     /// <summary>A thing on the board (entities.json): a wizard, a crate, a barrel, a boulder.</summary>
@@ -376,6 +389,7 @@ namespace Chem
                     Fire = Int(x["fire"]) ?? 0,
                     Push = Int(x["push"]) ?? 0,
                     Damage = Dice(x["damage"]),
+                    Crater = ParseCrater(x["crater"]),
                 };
             return new EntityDef
             {
@@ -417,7 +431,11 @@ namespace Chem
             Height = Int(o["height"]),
             Terrain = Str(o["terrain"]),
             Taper = Truthy(o["taper"]),
+            Crater = ParseCrater(o["crater"]),
         };
+
+        static CraterDef ParseCrater(JToken t) =>
+            t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1 } : null;
 
         static CellRule ParseRule(JObject o)
         {

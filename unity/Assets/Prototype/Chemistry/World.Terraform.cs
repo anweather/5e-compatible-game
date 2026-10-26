@@ -28,6 +28,22 @@ namespace Chem
         }
 
         /// <summary>
+        /// A blast's crater at (x, y), like crater in the TS: the ground dug Depth steps in the
+        /// middle, tapering to none past Radius, in row order. Nothing for a null crater.
+        /// </summary>
+        public void Crater(int x, int y, CraterDef crater)
+        {
+            if (crater == null) return;
+            int r = crater.Radius;
+            for (int dy = -r; dy <= r; dy++)
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    int n = Tapered(-crater.Depth, Math.Max(Math.Abs(dx), Math.Abs(dy)), r);
+                    if (n != 0) Reshape(x + dx, y + dy, n);
+                }
+        }
+
+        /// <summary>
         /// Steps at distance d (in squares) from the middle of a hill or crater of the given
         /// radius: all of them in the middle, rounding up toward the edge, none past it.
         /// </summary>

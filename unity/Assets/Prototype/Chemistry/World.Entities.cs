@@ -9,14 +9,16 @@ namespace Chem
     public sealed partial class World
     {
         /// <summary>
-        /// A blast like explode in the TS: every open cell within the radius takes the
-        /// explosion's cover, lit, and burns at least at its fire level. Returns the cells stamped.
+        /// A blast like explode in the TS: its crater is blown out of the ground, then every open
+        /// cell within the radius takes the explosion's cover, lit, and burns at least at its fire
+        /// level. Returns the cells stamped.
         /// </summary>
         public int Explode(int x, int y, EntityDef e)
         {
             var ex = e?.Explodes;
             if (ex == null || !InBounds(x, y)) return 0;
             AddLog($"KABOOM! The {e.Name.ToLowerInvariant()} explodes", LogKind.Notable);
+            Crater(x, y, ex.Crater);
             return Stamp(x, y, ex);
         }
 

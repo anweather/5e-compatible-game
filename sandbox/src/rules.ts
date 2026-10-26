@@ -124,6 +124,8 @@ export interface SpellDef {
   height?: number;
   terrain?: string;
   taper?: boolean;
+  /** The ground it blows out where it lands (Fireball). */
+  crater?: CraterDef;
   duration?: number;
   maxMass?: number;
   range?: number;
@@ -150,7 +152,12 @@ export interface EntityDef {
   flammable: boolean;
   creature?: boolean;
   player?: boolean;
-  explodes?: { cover: string; radius: number; fire: number; push: number; damage: [number, number] };
+  explodes?: { cover: string; radius: number; fire: number; push: number; damage: [number, number]; crater?: CraterDef };
+}
+/** Ground a blast digs out: depth steps in the middle, tapering to none past radius (default 1) squares. */
+export interface CraterDef {
+  radius?: number;
+  depth: number;
 }
 /**
  * A thing to carry (items.json). The Unity game picks these up, throws them and
@@ -381,6 +388,13 @@ function terraformErrors(r: Rules, s: SpellDef): string[] {
   return errors;
 }
 
+/** No crater, or one with a whole depth from 1 and (if given) a whole radius from 0. */
+function isCrater(c: CraterDef | undefined): boolean {
+  if (c === undefined) return true;
+  return typeof c === "object" && c !== null && Number.isInteger(c.depth) && c.depth >= 1
+    && (c.radius === undefined || (Number.isInteger(c.radius) && c.radius >= 0));
+}
+
 const ITEM_USES = new Set(["light", "zoom", "send", "point"]);
 const isNumber = (v: unknown): v is number => typeof v === "number";
 const absent = (v: unknown) => v === undefined || v === null;
@@ -493,6 +507,7 @@ export function validateRules(r: Rules): string[] {
     if (!s.name) errors.push(`spell ${s.id}: needs a name`);
     if (s.effect !== undefined && !SPELL_EFFECTS.has(s.effect)) errors.push(`spell ${s.id}: unknown effect ${s.effect}`);
     if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
+    if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1 and radius from 0`);
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const id of Object.keys(r.machines)) {
@@ -501,6 +516,7 @@ export function validateRules(r: Rules): string[] {
   }
   for (const [id, e] of Object.entries(r.entities)) {
     if (e.explodes && !coverIds.has(e.explodes.cover)) errors.push(`entity ${id}: explodes into unknown cover`);
+    if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1 and radius from 0`);
   }
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
   errors.push(...groupErrors(r));

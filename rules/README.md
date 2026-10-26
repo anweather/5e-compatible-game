@@ -96,6 +96,16 @@ elevation plus height.
   pond's bank opens into the pond. Other line spells start one square out.
 - An element on the spell, if any, is applied after the shaping.
 
+## Craters (`"crater"`)
+
+Any spell (Fireball), and an entity's `explodes` (the oil barrel), can blow
+a crater out of the ground where it goes off, before its element or cover
+lands: `"crater": { "radius": 1, "depth": 2 }` digs `depth` steps in the
+middle, tapering toward `radius` squares out (Chebyshev distance), like a
+tapered dig. `depth` is a whole number from 1; `radius` a whole number
+from 0 (default 1). Dug squares lose their cover and turn to their `dugTo`,
+as with any digging, so the middle of a crater doesn't burn.
+
 ## Units
 
 - One square is 5 ft.

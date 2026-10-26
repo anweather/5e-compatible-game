@@ -84,7 +84,8 @@ namespace Chem
         /// its cells first (World.Terraform.cs). The other effects (levitate, carry,
         /// teleport) do nothing to cells. A charged cast (held: charge 2 or 3) is that many
         /// times as strong, raises or digs that many times the steps, and a line reaches
-        /// half again as far per level.
+        /// half again as far per level. A spell with a crater (Fireball) blows it out of the
+        /// ground before its element lands.
         /// </summary>
         public void Cast(string spellId, int x, int y, int dir, int charge = 1)
         {
@@ -98,6 +99,7 @@ namespace Chem
             AddLog($"You cast {s.Name}", LogKind.Info);
             if (s.Element == "air" && s.Wind > 0) Wind = (dir, s.Wind);
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
+            Crater(x, y, s.Crater);
             if (s.Element == null) return;
             foreach (var (cx, cy) in cells) Apply(cx, cy, s.Element, s.Power * charge, dir, true);
         }

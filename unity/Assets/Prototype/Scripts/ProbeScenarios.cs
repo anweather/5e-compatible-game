@@ -104,6 +104,9 @@ public static class ProbeScenarios
             "every half second, then fog. Checks: the Sky object is built, the sun is bright at noon and the clock line says so, " +
             "night is dark with the moon up, the storm is in force (wind too) with rain falling, strikes logged and a bolt drawn, " +
             "the sun dimmed, fog closes the haze in, no console errors."),
+        new Entry("blast", typeof(BlastProbe), 40f,
+            "Fireball cast from the bar on the meadow east of the yard. Checks: its crater is in the cells (two steps down in the " +
+            "middle, one round it), the terrain is drawn at least 0.6 m lower there, the blast's edge still burns, no console errors."),
         new Entry("swim", typeof(SwimProbe), 40f,
             "The wizard drops into the deepest part of the lake. Checks: deep water found, it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, jump kicks it up over 1.5 m " +
