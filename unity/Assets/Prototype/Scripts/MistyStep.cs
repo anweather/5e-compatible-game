@@ -1,42 +1,83 @@
 using Chem;
 using UnityEngine;
 
-// Misty Step: blink up to the spell's range (6 squares, 30 ft) to an empty
-// square you can see, the same rules as the web sandbox's mistyStep. The
-// chemistry has nothing to do with it (World.Cast only logs it); this moves
-// the caster's own wizard, so online only the caster's machine runs it and
-// the wizard's owner-authoritative NetworkTransform carries the jump to
-// everyone else (NetWizard.Teleport).
+// Misty Step: blink up to the spell's range (rules/spells.json) to a spot you
+// can see, onto the ground or up onto anything you can stand on: a big rock,
+// the cabin, the top of a Wall of Stone. The web sandbox's rules (range in
+// squares, walls block sight, gate bars don't) plus the 3D ones: the spot
+// must be a walkable surface (not too steep, not an invisible cell blocker)
+// with room for the wizard, and in sight physically as well as on the grid.
+//
+// Cast from the crosshair, the wizard lands where it points (SpellCaster
+// keeps that spot as BlinkPoint); cast by square (demos, scripts), it lands
+// on the top surface over that square. The chemistry has nothing to do with
+// it (World.Cast only logs it); this moves the caster's own wizard, so online
+// only the caster's machine runs it and the wizard's owner-authoritative
+// NetworkTransform carries the jump to everyone else (NetWizard.Teleport).
 public static class MistyStep
 {
-    /// <summary>Why the caster at <paramref name="from"/> can't blink to (x, y), or null if it can.</summary>
-    public static string Check(ChemGrid grid, SpellDef spell, Vector2Int from, int x, int y)
+    // Steepest ground to land on: 55 degrees, a little past the controller's own slope limit.
+    const float MinUpward = 0.57f;
+    const float Eye = 1.6f;
+    static readonly RaycastHit[] Hits = new RaycastHit[32];
+    static readonly Collider[] Overlaps = new Collider[16];
+
+    /// <summary>
+    /// Why <paramref name="wizard"/> can't blink to what the crosshair <paramref name="hit"/>, or null
+    /// if it can, with where it would land. Pointing at the side of something you can stand on (the
+    /// cabin's wall, a rock's face) lands on its top, straight above where you pointed.
+    /// </summary>
+    public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, RaycastHit hit, out Vector3 landing)
     {
-        var world = grid.World;
-        int range = spell.Range > 0 ? spell.Range : 6;
-        if (Mathf.Max(Mathf.Abs(x - from.x), Mathf.Abs(y - from.y)) > range)
-            return $"Too far. {spell.Name} reaches {range * 5} ft ({range} squares).";
-        if (!world.InBounds(x, y) || world.IsBlocking(world.At(x, y)) || Occupied(grid, x, y))
-            return $"{spell.Name} needs an empty square to land on.";
-        if (!world.LineOfSight(from.x, from.y, x, y))
-            return "You can't see that square. Walls block sight; gate bars don't.";
-        return null;
+        landing = hit.point;
+        if (hit.normal.y < MinUpward && !CellBlockers.IsBlocker(hit.collider) && TopAbove(hit, out var top))
+        {
+            landing = top.point;
+            return CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider, seen: true);
+        }
+        return CheckSpot(grid, spell, wizard, hit.point, hit.normal, hit.collider, seen: true);
+    }
+
+    /// <summary>Why <paramref name="wizard"/> can't blink onto square (x, y), or null if it can.</summary>
+    public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y)
+    {
+        if (!grid.World.InBounds(x, y)) return $"{spell.Name} needs a square to land on.";
+        return TopOf(grid, wizard, x, y, out var top) ? CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider) : $"{spell.Name} needs ground to land on.";
     }
 
     /// <summary>
-    /// Moves <paramref name="wizard"/> to (x, y) (the mist at both ends is the cast's show, on every
-    /// machine: SpellCaster.PlayCastEffect), checking again
-    /// first (the square may have filled up since the cast was aimed). Returns whether it moved.
+    /// Moves <paramref name="wizard"/> to square (x, y): to its BlinkPoint when it aimed at a spot
+    /// in that square, else onto the square's top surface. It checks again first (the spot may have
+    /// filled up since the cast was aimed). The mist at both ends is the cast's show, on every
+    /// machine (SpellCaster.PlayCastEffect). Returns whether it moved.
     /// </summary>
     public static bool Blink(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y)
     {
-        var why = Check(grid, spell, grid.CellAt(wizard.position), x, y);
+        wizard.TryGetComponent<SpellCaster>(out var caster);
+        Vector3 to;
+        string why;
+        var aimed = caster != null ? caster.BlinkPoint : null;
+        if (aimed.HasValue && grid.CellAt(aimed.Value) == new Vector2Int(x, y) && Physics.Raycast(aimed.Value + Vector3.up * 0.5f, Vector3.down, out var spot, 1.5f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+        {
+            to = spot.point;
+            why = CheckSpot(grid, spell, wizard, spot.point, spot.normal, spot.collider, seen: true);
+        }
+        else if (TopOf(grid, wizard, x, y, out var top))
+        {
+            to = top.point;
+            why = CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider);
+        }
+        else
+        {
+            to = default;
+            why = "there's no ground there";
+        }
+        if (caster != null) caster.BlinkPoint = null;
         if (why != null)
         {
             EventLog.Add($"{spell.Name} fizzles: {why}");
             return false;
         }
-        var to = grid.CellCenter(x, y) + Vector3.up * grid.SurfaceY(x, y);
         bool hasBody = wizard.TryGetComponent<CharacterController>(out var body);
         if (hasBody) body.enabled = false; // a controller would undo a direct move
         if (wizard.TryGetComponent<NetWizard>(out var net) && net.IsSpawned) net.Teleport(to);
@@ -46,7 +87,105 @@ public static class MistyStep
         return true;
     }
 
-    // A crate, barrel or boulder standing on the square.
-    static bool Occupied(ChemGrid grid, int x, int y) =>
-        Forces.Nearest<PhysicsProp>(grid.CellCenter(x, y) + Vector3.up * grid.SurfaceY(x, y), grid.cellSize * 0.6f) != null;
+    // The rules for a landing spot, in order of what a player most likely got wrong. A spot the
+    // crosshair hit is already seen: the camera's ray reached it first, which is how a roof is
+    // seen from below. A square's top is checked from the wizard's eyes.
+    static string CheckSpot(ChemGrid grid, SpellDef spell, Transform wizard, Vector3 point, Vector3 normal, Collider surface, bool seen = false)
+    {
+        int range = spell.Range > 0 ? spell.Range : 6;
+        var from = grid.CellAt(wizard.position);
+        var to = grid.CellAt(point);
+        if (Mathf.Max(Mathf.Abs(to.x - from.x), Mathf.Abs(to.y - from.y)) > range)
+            return $"Too far. {spell.Name} reaches {range * 5} ft ({range} squares).";
+        if (CellBlockers.IsBlocker(surface) || normal.y < MinUpward)
+            return $"{spell.Name} needs somewhere to stand: ground, a rock, a roof.";
+        if (!HasRoom(wizard, point))
+            return $"There's no room to stand there.";
+        if (!seen && !InSight(grid, wizard, point))
+            return "You can't see that spot. Walls block sight; gate bars don't.";
+        return null;
+    }
+
+    // How far in from the face the crosshair hit to look for a top: a box's roof is just inside its
+    // wall; a rock's rounded shoulder can be steep for a metre or two before its top flattens out.
+    static readonly float[] Inward = { 0.6f, 1.2f, 2f, 3f };
+
+    // The top of the thing the crosshair hit, inside the face it hit: rays down onto the same collider
+    // from above it, stepping inward until one finds somewhere you could stand.
+    static bool TopAbove(RaycastHit hit, out RaycastHit top)
+    {
+        top = default;
+        var inward = new Vector3(-hit.normal.x, 0f, -hit.normal.z);
+        if (inward.sqrMagnitude < 1e-4f) return false;
+        inward.Normalize();
+        var bounds = hit.collider.bounds;
+        foreach (float step in Inward)
+        {
+            var probe = hit.point + inward * step;
+            var from = new Vector3(probe.x, bounds.max.y + 1f, probe.z);
+            if (hit.collider.Raycast(new Ray(from, Vector3.down), out top, bounds.size.y + 2f) && top.normal.y >= MinUpward) return true;
+        }
+        return false;
+    }
+
+    // The highest thing to stand on over a square's centre (not the wizard, not a cell blocker).
+    static bool TopOf(ChemGrid grid, Transform wizard, int x, int y, out RaycastHit top)
+    {
+        top = default;
+        var above = grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 40f);
+        int n = Physics.RaycastNonAlloc(above, Vector3.down, Hits, 80f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        float best = float.MaxValue;
+        for (int i = 0; i < n; i++)
+        {
+            var h = Hits[i];
+            if (h.distance >= best || h.collider.transform.IsChildOf(wizard) || CellBlockers.IsBlocker(h.collider)) continue;
+            best = h.distance;
+            top = h;
+        }
+        return best < float.MaxValue;
+    }
+
+    // Room for the wizard's capsule standing at the spot: no prop, wall or overhang in it.
+    static bool HasRoom(Transform wizard, Vector3 point)
+    {
+        float radius = 0.3f, height = 1.8f;
+        if (wizard.TryGetComponent<CharacterController>(out var body))
+        {
+            radius = body.radius;
+            height = body.height;
+        }
+        var bottom = point + Vector3.up * (radius + 0.08f);
+        var top = point + Vector3.up * Mathf.Max(radius + 0.1f, height - radius);
+        int n = Physics.OverlapCapsuleNonAlloc(bottom, top, radius * 0.9f, Overlaps, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+            if (!Overlaps[i].transform.IsChildOf(wizard)) return false;
+        return true;
+    }
+
+    // Sight in 3D, from the wizard's eyes to a little above the spot, so a roof can be seen over
+    // the cabin's own squares: rocks, the cabin and the ground block it, and so do the cell
+    // blockers at their real heights (trees, stone, raised walls), except a see-through cell's
+    // (gate bars), as in the sandbox's lineOfSight.
+    static bool InSight(ChemGrid grid, Transform wizard, Vector3 point)
+    {
+        var eye = wizard.position + Vector3.up * Eye;
+        var target = point + Vector3.up * 0.5f;
+        var dir = target - eye;
+        int n = Physics.RaycastNonAlloc(eye, dir.normalized, Hits, dir.magnitude, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++)
+        {
+            var c = Hits[i].collider;
+            if (c.transform.IsChildOf(wizard)) continue;
+            if (CellBlockers.IsBlocker(c) && SeeThrough(grid, c.bounds.center)) continue;
+            return false;
+        }
+        return true;
+    }
+
+    static bool SeeThrough(ChemGrid grid, Vector3 at)
+    {
+        var cell = grid.CellAt(at);
+        var world = grid.World;
+        return world.InBounds(cell.x, cell.y) && world.HasTag(world.At(cell.x, cell.y), "seeThrough");
+    }
 }

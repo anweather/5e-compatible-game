@@ -276,8 +276,8 @@ test("Thunderwave goes off around the wizard and spares the caster", () => {
   assert.ok(gob.x > 6, "goblin thrown away from the wizard");
 });
 
-test("Misty Step: through gate bars yes, through a wall no, and only 30 ft", () => {
-  const w = room(16, 6);
+test("Misty Step: through gate bars yes, through a wall no, and only 60 ft", () => {
+  const w = room(30, 6);
   for (let y = 1; y <= 4; y++) cellAt(w, 8, y)!.t = "stone";
   cellAt(w, 8, 2)!.t = "gate";
   const me = spawn(w, "wizard", 6, 3)!;
@@ -285,7 +285,9 @@ test("Misty Step: through gate bars yes, through a wall no, and only 30 ft", () 
   me.y = 2;
   assert.equal(castAt(w, "misty-step", 10, 2), null);
   assert.equal(me.x, 10);
-  assert.match(castAt(w, "misty-step", 1, 2)!, /Too far/);
+  assert.equal(castAt(w, "misty-step", 22, 2), null, "12 squares (60 ft) is in range");
+  assert.equal(me.x, 22);
+  assert.match(castAt(w, "misty-step", 9, 2)!, /Too far/, "13 squares isn't");
 });
 
 test("Misty Step between the Steam Gate's bars counts as getting through", () => {

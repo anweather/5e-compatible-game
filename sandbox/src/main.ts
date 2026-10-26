@@ -156,7 +156,7 @@ function renderDetail() {
     p.textContent = s.blurb;
     hint.textContent = s.effect === "carry"
       ? carryFrom ? "Now click where to set it down." : "Click something light to pick it up."
-      : s.effect === "teleport" ? "Click an empty square you can see, up to 6 squares away."
+      : s.effect === "teleport" ? `Click an empty square you can see, up to ${s.range ?? 6} squares away.`
       : s.effect === "levitate" ? "Click a thing to float it. Click your wizard to float yourself over pits."
       : s.origin === "self" ? (s.shape === "burst" ? "Click anywhere: it goes off all around your wizard." : "Click toward where you want it: it shoots out of your wizard in that direction.")
       : "Click a square to cast it there.";

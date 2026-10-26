@@ -19,12 +19,18 @@ public sealed class CellBlockers
     readonly Dictionary<int, BoxCollider> used = new();
     readonly Stack<BoxCollider> spare = new();
 
+    const string ParentName = "Blockers";
+
     public CellBlockers(ChemGrid grid)
     {
         this.grid = grid;
-        parent = new GameObject("Blockers").transform;
+        parent = new GameObject(ParentName).transform;
         parent.SetParent(grid.transform, false);
     }
+
+    /// <summary>Whether <paramref name="c"/> is one of these invisible boxes (nothing to stand on or to see).</summary>
+    public static bool IsBlocker(Collider c) =>
+        c != null && c.transform.parent != null && c.transform.parent.name == ParentName;
 
     public int Count => used.Count;
 

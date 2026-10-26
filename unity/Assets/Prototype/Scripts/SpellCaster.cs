@@ -53,6 +53,15 @@ public class SpellCaster : MonoBehaviour
     CastPose pose;
     ItemHolder hands;
     NetChem net;
+    RaycastHit crosshair;
+    bool hasCrosshair;
+    Vector3? blinkLanding;
+
+    /// <summary>
+    /// Where a Misty Step cast from the crosshair lands: the exact spot it pointed at (a roof, the top
+    /// of a rock), kept on the caster's own machine until the blink runs (MistyStep.Blink).
+    /// </summary>
+    public Vector3? BlinkPoint { get; set; }
 
     void Awake()
     {
@@ -95,20 +104,32 @@ public class SpellCaster : MonoBehaviour
         if (controls == null || grid == null || grid.World == null) return;
         PickSpell();
 
-        if (!Aiming.PastSelf(Aiming.Ray(controls), transform, out var hit))
+        hasCrosshair = Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
+        if (!hasCrosshair)
         {
             ShowMarkers(null);
             return;
         }
-        var target = grid.CellAt(hit.point - hit.normal * 0.05f);
+        var target = CrosshairCell;
         var aim = Aim(target, out var error);
         var spell = grid.World.Rules.Spell(SelectedId);
         ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir) : null);
 
         if (!controls.Cast.WasPressedThisFrame()) return;
         if (error != null) { EventLog.Add(error); return; }
-        if (aim.HasValue) Cast(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir);
+        if (!aim.HasValue) return;
+        // A blink lands on the exact spot it found from the crosshair (a roof, a rock's top), in that spot's square.
+        if (spell?.Effect == SpellShapes.TeleportEffect && blinkLanding.HasValue)
+        {
+            BlinkPoint = blinkLanding;
+            var at = grid.CellAt(blinkLanding.Value);
+            Cast(SelectedId, at.x, at.y, 1);
+            return;
+        }
+        Cast(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir);
     }
+
+    Vector2Int CrosshairCell => grid.CellAt(crosshair.point - crosshair.normal * 0.05f);
 
     void PickSpell()
     {
@@ -254,7 +275,7 @@ public class SpellCaster : MonoBehaviour
         if (spell.Effect == SpellShapes.TeleportEffect || spell.Effect == SpellShapes.CarryEffect)
         {
             error = spell.Effect == SpellShapes.TeleportEffect
-                ? MistyStep.Check(grid, spell, me, target.x, target.y)
+                ? CheckBlink(spell, target)
                 : MageHand.Check(grid, spell, hands, me, target.x, target.y);
             return error == null ? (target.x, target.y, 1) : null;
         }
@@ -264,6 +285,17 @@ public class SpellCaster : MonoBehaviour
         if (dir == null) { error = $"Click away from the wizard to point {spell.Name} that way."; return null; }
         var (dx, dy) = Step(dir.Value);
         return (me.x + dx, me.y + dy, dir.Value);
+    }
+
+    // Misty Step checks what the crosshair points at when it's in the target square (a roof, a rock,
+    // or its side, which lands on its top), else the top of the square.
+    string CheckBlink(SpellDef spell, Vector2Int target)
+    {
+        blinkLanding = null;
+        if (!hasCrosshair || CrosshairCell != target) return MistyStep.Check(grid, spell, transform, target.x, target.y);
+        string why = MistyStep.Check(grid, spell, transform, crosshair, out var landing);
+        if (why == null) blinkLanding = landing;
+        return why;
     }
 
     // 0 = north (y-1), 1 = east, 2 = south, 3 = west: the sandbox's directions.
