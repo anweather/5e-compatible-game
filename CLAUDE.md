@@ -17,8 +17,11 @@ Get up to date with main first. More than one machine works on this repo
 ```
 git fetch origin
 git switch main
-git pull --ff-only
+git merge --ff-only origin/main
 ```
+
+(`git merge --ff-only` rather than `git pull`: Git for Windows sets
+`pull.rebase`, which makes a pull refuse to run with any local change.)
 
 If the pull won't fast-forward or the tree has local changes, stop and say
 so rather than discarding anything. In particular, never revert a scene or
@@ -32,10 +35,13 @@ is fine; releases will be tagged once there's something to release. Do
 feature work on a short-lived branch (or worktree) off `main` for isolation,
 then merge it into `main` and push as soon as it's verified. No PR is
 needed. Never leave a finished branch unmerged. Pull again just before
-pushing. Don't commit the churn the
-Editor leaves behind after a rebuild (`ChemistryYard.unity`, URP assets
-upgraded by a newer Editor, `unity/.vsconfig`) unless that change is the
-point.
+pushing.
+
+Generated output stays out of git, so rebuilding never dirties the tree:
+the yard scene (`ChemistryYard.unity`, rebuilt automatically when missing),
+`Generated/`, `Builds/`, the Asset Store packs. If a rebuild does show a
+tracked file changing, that's a new leak to fix (ignore it or make it
+stable), not something to commit or keep reverting.
 
 ## The map
 

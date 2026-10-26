@@ -37,8 +37,9 @@ first, then imports it non-interactively (subsets where the manifest says
 so). The account must have every pack in My Assets. Never commit pack folders
 or anything under `Generated/`, `Builds/` or `Recordings/`; they're gitignored.
 
-Then rebuild the scene: **Prototype → Build Chemistry Yard** (it also builds
-the valley).
+When the restore finishes, the yard scene builds itself (it isn't in git;
+`YardAutoBuild`). **Prototype → Build Chemistry Yard** rebuilds it, and the
+valley, any time.
 
 ## 4. Check it works
 

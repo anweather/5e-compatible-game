@@ -54,6 +54,13 @@ Windows run it from Git Bash.
 
 ## What's in git and what isn't
 
+- The yard scene isn't: `ChemistryYard.unity` and its `.meta` are ignored.
+  `YardAutoBuild` builds it whenever it's missing (once the packs are
+  there), and `ChemYardBuilder` writes the `.meta` with a fixed GUID so the
+  build settings never change. Netcode's `DefaultNetworkPrefabs.asset`
+  generation is off for the same reason; the `NetworkManager` uses its own
+  prefab lists.
+
 - Asset Store packs aren't: `AssetPacks.json` lists them and **Restore
   Asset Packs** fetches them (the signed-in account must own them). Never
   edit pack folders (`Starter Assets`, `UnityTechnologies`,
