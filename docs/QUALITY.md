@@ -154,6 +154,31 @@ First setup of the Windows PC (Ryzen 7 7700X, RTX 4080 Super) from
   `Assets/TerrainDemoScene_URP/ShaderGraphs/SpeedTreeURP_Branch.shadergraph`.
   It is in the pack's own Shader Graph, not our code, and the Mac logs it too.
 
+## Two-machine online check (2026-10-25)
+
+The first online game between two real machines (`DEV_SETUP_WINDOWS.md`
+step 4.5): the Windows player on the PC and the macOS player (universal
+build) on the Mac, both built at c11083e, over Unity Relay.
+
+- The PC hosted with `-host-online` (join code C7TT98), the Mac joined with
+  `-join-code C7TT98` (`NetCommandLine`). Both logged the same
+  `NET CONFIG: 10529554600652847332`.
+- Both reported `players=2` and `desync=False` (the client checks the host's
+  cells, rules and things checksum every 30 ticks) for the whole run, over
+  1,100 ticks, with no exceptions on either side. Both advanced 60 ticks
+  every 10 s.
+- Andrew played on both: walking, casting and the chemistry looked the same
+  on each, with no issues.
+- What it took: the first attempt (50bc917) failed with "Failed to start the
+  network manager" on the Mac. The network prefabs (`Generated/Things/`) and
+  the in-scene `NetChem` object got different GUIDs on each machine, so the
+  NetworkConfig hashes differed and the host refused the join, silently,
+  since Netcode's warnings are compiled out of release builds. c11083e pins
+  those ids (`StableNetworkIds`), and builds now log `NET CONFIG` to compare.
+- Found on the way, fixed after: going online while a solo spell was in
+  flight left its projectile throwing `MissingReferenceException` every
+  frame (784 in 4 s); now the projectile fizzles when its caster is gone.
+
 ## Recommendations
 
 - Give `Scripts/` its own `.asmdef` (e.g. `Prototype`, referencing

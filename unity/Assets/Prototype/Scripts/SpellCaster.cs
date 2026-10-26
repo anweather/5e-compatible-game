@@ -155,7 +155,7 @@ public class SpellCaster : MonoBehaviour
             onArrive?.Invoke();
         }
 
-        if (look?.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, Land);
+        if (look?.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, Land, this);
         else Land();
     }
 
