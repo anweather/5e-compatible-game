@@ -4,8 +4,8 @@ using UnityEngine;
 
 // Shows the chemistry of the cells on the valley's chunk terrains (ValleyGround
 // does their heights and paint): trees that burn down to charred stumps, burnt
-// grass leaving scorched ground with its grass cleared, the cabin charring and
-// losing its roof once enough of its log walls have burned, and earth shaping
+// grass leaving scorched ground with its grass cleared, a cabin charring and
+// losing its roof once half its log walls have burned, and earth shaping
 // raising or sinking the ground under reshaped cells. Every cell is on the
 // terrain, the old yard included; the lake's cells are pits under the lake's
 // own surface.
@@ -16,7 +16,8 @@ public class ValleyChemistry : MonoBehaviour
     public ChemGrid grid;
     [Tooltip("The chunk terrains, chunk (i, j) at j * 9 + i (TerrainGrid.Valley()).")]
     public Terrain[] chunks;
-    public Transform cabin;
+    [Tooltip("The cabins; a log wall cell belongs to the nearest.")]
+    public Transform[] cabins;
     [Tooltip("Height of the lake's surface; lake cells' effects sit on it.")]
     public float lakeLevel = -0.6f;
 
@@ -26,8 +27,8 @@ public class ValleyChemistry : MonoBehaviour
     readonly Dictionary<int, List<((int i, int j) chunk, int index)>> treesByCell = new();
     readonly HashSet<(int i, int j)> treesChanged = new();
     readonly HashSet<int> scorched = new();
-    int cabinCells, cabinBurnt;
-    bool cabinCharred;
+    int[] cabinCells, cabinBurnt;
+    bool[] cabinCharred;
     Material charred;
 
     /// <summary>The ground under the cells; null before the first Bind.</summary>
@@ -42,11 +43,16 @@ public class ValleyChemistry : MonoBehaviour
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds));
         scorched.Clear();
         IndexTrees();
-        cabinCells = cabinBurnt = 0;
-        foreach (var c in world.Cells)
-        {
-            if (c.T == TerrainIds.LogWall) cabinCells++;
-        }
+        int n = cabins?.Length ?? 0;
+        cabinCells = new int[n];
+        cabinBurnt = new int[n];
+        cabinCharred = new bool[n];
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
+            {
+                int k = world.At(x, y).T == TerrainIds.LogWall ? CabinAt(x, y) : -1;
+                if (k >= 0) cabinCells[k]++;
+            }
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
     }
 
@@ -125,7 +131,7 @@ public class ValleyChemistry : MonoBehaviour
     {
         if (from == TerrainIds.Tree) BurnTrees(x, y);
         if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorched.Add(grid.World.Idx(x, y));
-        if (from == TerrainIds.LogWall) CabinWallBurned();
+        if (from == TerrainIds.LogWall) CabinWallBurned(CabinAt(x, y));
     }
 
     void BurnTrees(int x, int y)
@@ -141,11 +147,31 @@ public class ValleyChemistry : MonoBehaviour
         }
     }
 
-    void CabinWallBurned()
+    // The cabin nearest a cell, or -1 without any.
+    int CabinAt(int x, int y)
     {
-        cabinBurnt++;
-        if (cabinCharred || cabin == null || cabinBurnt * 2 < cabinCells) return;
-        cabinCharred = true;
+        var at = grid.CellCenter(x, y);
+        int best = -1;
+        float bestD = float.MaxValue;
+        for (int i = 0; i < (cabins?.Length ?? 0); i++)
+        {
+            if (cabins[i] == null) continue;
+            var d = cabins[i].position - at;
+            d.y = 0f;
+            if (d.sqrMagnitude >= bestD) continue;
+            bestD = d.sqrMagnitude;
+            best = i;
+        }
+        return best;
+    }
+
+    void CabinWallBurned(int k)
+    {
+        if (k < 0) return;
+        cabinBurnt[k]++;
+        if (cabinCharred[k] || cabinBurnt[k] * 2 < cabinCells[k]) return;
+        cabinCharred[k] = true;
+        var cabin = cabins[k];
         foreach (var r in cabin.GetComponentsInChildren<Renderer>())
         {
             if (r.name == "Roof") r.enabled = false;

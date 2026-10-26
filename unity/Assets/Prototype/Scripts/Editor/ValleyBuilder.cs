@@ -10,7 +10,7 @@ using UnityEngine.Rendering;
 // with its pond, pits and oil slick in the ground, a ridged mountain to the
 // north, a lake to the south, hills closing the sides, trees, grass and rocks
 // from the terrain packs, the sample project's mountain skybox, haze, and a
-// small log cabin. Everything is generated from code, so rebuilding gives the
+// few small log cabins. Everything is generated from code, so rebuilding gives the
 // same valley. The chemistry map covers the yard and about 300 m × 260 m of
 // valley around it; every cell is on the terrain.
 public static class ValleyBuilder
@@ -22,7 +22,6 @@ public static class ValleyBuilder
 
     static Vector2 Centre => ValleyShape.Centre;
     static Vector2 LakeCentre => ValleyShape.LakeCentre;
-    static Vector2 CabinSpot => ValleyShape.Cabin;
 
     public static void Dress(ChemGrid grid, string[] yardRows)
     {
@@ -38,7 +37,7 @@ public static class ValleyBuilder
         grid.waterMaterial = SoftMaterial("CellWater", new Color(0.12f, 0.32f, 0.42f, 0.8f), 0.93f, ripples, 0.12f);
         grid.slickMaterial = SoftMaterial("Slick", Color.white, 0.92f, null, 0f);
         BuildSky();
-        var cabinRoot = BuildCabin();
+        var cabins = BuildCabins();
         ScatterRocks();
         BuildWorldEdge();
         BuildCourt();
@@ -46,7 +45,7 @@ public static class ValleyBuilder
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.chunks = terrains;
-        valley.cabin = cabinRoot;
+        valley.cabins = cabins;
         valley.lakeLevel = LakeLevel;
         grid.valley = valley;
     }
@@ -253,8 +252,8 @@ public static class ValleyBuilder
     static void BuildCourt()
     {
         var parent = new GameObject("Ball court").transform;
-        var wood = EditorAssets.LitMaterial(Generated + "/CourtWood.mat", new Color(0.55f, 0.4f, 0.24f), 0.2f);
-        var paint = EditorAssets.LitMaterial(Generated + "/CourtGoal.mat", new Color(0.92f, 0.92f, 0.9f), 0.4f);
+        // Logs, as the cabins are built of.
+        var wood = LogMaterial();
         float x0 = CourtCentre.x - CourtLength / 2f, x1 = CourtCentre.x + CourtLength / 2f;
         float z0 = CourtCentre.y - CourtWidth / 2f, z1 = CourtCentre.y + CourtWidth / 2f;
         // The long sides, whole; the ends, either side of a goal mouth.
@@ -264,11 +263,12 @@ public static class ValleyBuilder
         {
             Rail(parent, wood, new Vector3(x, 0f, z0), new Vector3(x, 0f, CourtCentre.y - GoalWidth / 2f));
             Rail(parent, wood, new Vector3(x, 0f, CourtCentre.y + GoalWidth / 2f), new Vector3(x, 0f, z1));
-            Goal(parent, paint, new Vector3(x, 0f, CourtCentre.y), x < CourtCentre.x ? -1f : 1f);
+            Goal(parent, wood, new Vector3(x, 0f, CourtCentre.y), x < CourtCentre.x ? -1f : 1f);
         }
     }
 
-    // A solid rail between two points on the ground, on posts.
+    // A solid rail between two points on the ground: logs stacked to the rail's height, around an
+    // unseen box that stops the ball.
     static void Rail(Transform parent, Material mat, Vector3 a, Vector3 b)
     {
         a.y = ValleyTerrain.GroundAt(a);
@@ -277,8 +277,19 @@ public static class ValleyBuilder
         rail.name = "Court rail";
         rail.transform.SetParent(parent, false);
         rail.transform.SetPositionAndRotation((a + b) / 2f + Vector3.up * (RailHeight / 2f), Quaternion.LookRotation(b - a));
-        rail.transform.localScale = new Vector3(0.15f, RailHeight, Vector3.Distance(a, b) + 0.15f);
-        rail.GetComponent<Renderer>().sharedMaterial = mat;
+        float length = Vector3.Distance(a, b) + 0.15f;
+        rail.transform.localScale = new Vector3(0.15f, RailHeight, length);
+        rail.GetComponent<Renderer>().enabled = false;
+        const int logs = 3;
+        float r = RailHeight / logs / 2f;
+        for (int i = 0; i < logs; i++)
+        {
+            var log = Primitives.Visual(PrimitiveType.Cylinder, "Court log");
+            log.transform.SetParent(parent, false);
+            log.transform.SetPositionAndRotation((a + b) / 2f + Vector3.up * (r + i * 2f * r), Quaternion.LookRotation(b - a) * Quaternion.Euler(90f, 0f, 0f));
+            log.transform.localScale = new Vector3(2f * r, (length + 0.3f) / 2f, 2f * r);
+            log.GetComponent<Renderer>().sharedMaterial = mat;
+        }
     }
 
     // Two posts and a crossbar across a goal mouth, a bar along the back of the net to stop the ball.
@@ -488,20 +499,41 @@ public static class ValleyBuilder
 
     // --- cabin ---------------------------------------------------------------
 
+    // The cabins' materials, made once per build.
+    sealed class CabinLook
+    {
+        public Material log, roof, stone, door, window;
+    }
+
+    // Every cabin of ValleyShape.Cabins, the first named "Cabin" and the rest numbered.
+    static Transform[] BuildCabins()
+    {
+        var look = new CabinLook
+        {
+            log = LogMaterial(),
+            roof = CabinMaterial("Roof", new Color(0.24f, 0.2f, 0.18f), 0.1f),
+            stone = CabinMaterial("Stone", new Color(0.45f, 0.44f, 0.42f), 0.1f),
+            door = CabinMaterial("Door", new Color(0.2f, 0.13f, 0.08f), 0.2f),
+            window = CabinMaterial("Window", new Color(1f, 0.75f, 0.4f), 0.3f, new Color(1f, 0.6f, 0.25f) * 2.2f),
+        };
+        var sites = ValleyShape.Cabins;
+        var roots = new Transform[sites.Length];
+        for (int i = 0; i < sites.Length; i++) roots[i] = BuildCabin(sites[i], i == 0 ? "Cabin" : $"Cabin {i + 1}", look);
+        return roots;
+    }
+
+    static Material LogMaterial() => CabinMaterial("Log", new Color(0.42f, 0.29f, 0.18f), 0.15f);
+
     // A small log cabin from primitives: log walls, a pitched roof, a door, a lit window and a
     // smoking chimney. Local axes: x is the cabin's width, z its depth, the door is on the -z
     // side; the ridge runs along x.
-    static Transform BuildCabin()
+    static Transform BuildCabin(ValleyShape.CabinSite site, string name, CabinLook look)
     {
-        var root = new GameObject("Cabin").transform;
-        // Bottom logs bedded in; local -z (the door) faces the yard, east.
-        root.SetPositionAndRotation(new Vector3(CabinSpot.x, ValleyShape.HeightAt(CabinSpot) - 0.1f, CabinSpot.y), Quaternion.LookRotation(Vector3.left));
+        var root = new GameObject(name).transform;
+        // Bottom logs bedded in; local -z (the door) faces the site's way.
+        root.SetPositionAndRotation(new Vector3(site.At.x, ValleyShape.HeightAt(site.At) - 0.1f, site.At.y), ValleyShape.CabinRotation(site));
 
-        var log = CabinMaterial("Log", new Color(0.42f, 0.29f, 0.18f), 0.15f);
-        var roof = CabinMaterial("Roof", new Color(0.24f, 0.2f, 0.18f), 0.1f);
-        var stone = CabinMaterial("Stone", new Color(0.45f, 0.44f, 0.42f), 0.1f);
-        var dark = CabinMaterial("Door", new Color(0.2f, 0.13f, 0.08f), 0.2f);
-        var glow = CabinMaterial("Window", new Color(1f, 0.75f, 0.4f), 0.3f, new Color(1f, 0.6f, 0.25f) * 2.2f);
+        Material log = look.log, roof = look.roof, stone = look.stone, dark = look.door, glow = look.window;
 
         const float w = 6f, l = 4.5f, r = 0.16f, pitch = 34f, overhang = 0.5f;
         const int courses = 9;
@@ -727,9 +759,7 @@ public static class ValleyBuilder
         float ground = ValleyShape.HeightAt(p);
         if (ground < LakeLevel) return 'w';
         if (ValleyShape.DistanceToRiver(p) < ValleyShape.RiverHalfWidth) return 'r';
-        // The cabin faces east: its 6 m width runs north-south, its 4.5 m depth east-west.
-        var q = p - CabinSpot;
-        if (Mathf.Abs(q.y) <= 3.3f && Mathf.Abs(q.x) <= 2.55f) return 'L';
+        if (ValleyShape.InCabin(p)) return 'L';
         if (tree) return 'T';
         if (ValleyShape.DistanceToLake(p) < 6f && ground < 0.6f) return '.';
         return ',';

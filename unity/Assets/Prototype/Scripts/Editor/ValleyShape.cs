@@ -2,8 +2,8 @@ using UnityEngine;
 
 // The valley's shape as functions of a point on the ground plane (x, z in
 // metres): the flat meadow where the old yard was, the ridged mountain to the
-// north, the lake to the south, hills closing the sides, a level pad for the
-// cabin, and which terrain layers each point gets. ValleyBuilder and
+// north, the lake to the south, hills closing the sides, level pads for the
+// cabins, and which terrain layers each point gets. ValleyBuilder and
 // ValleyTerrain sample it; it never touches assets. Set by Plan.
 public static class ValleyShape
 {
@@ -17,7 +17,28 @@ public static class ValleyShape
 
     public static Vector2 Centre { get; private set; }
     public static Vector2 LakeCentre { get; private set; }
-    public static Vector2 Cabin { get; private set; }
+    public static Vector2 Cabin => Cabins[0].At;
+
+    /// <summary>Where a cabin stands (x, z) and which way its door faces (a direction on the ground plane).</summary>
+    public readonly struct CabinSite
+    {
+        public readonly Vector2 At, Door;
+        public CabinSite(Vector2 at, Vector2 door)
+        {
+            At = at;
+            Door = door.normalized;
+        }
+    }
+
+    /// <summary>
+    /// The cabins: the first west of the yard, its door to the yard; then one on the lake's west
+    /// shore, one on the river's east bank and one on the rise toward the standing stones.
+    /// </summary>
+    public static CabinSite[] Cabins { get; private set; }
+
+    // The ground each cabin's pad is levelled to: the first at the yard's level, the rest at the
+    // valley's height where they stand.
+    static float[] padLevels;
 
     /// <summary>Lays the valley out around a yard of <paramref name="width"/> × <paramref name="height"/> cells.</summary>
     public static void Plan(int width, int height, float cellSize)
@@ -26,11 +47,56 @@ public static class ValleyShape
         yard = Rect.MinMaxRect(-half, -half, (width - 1) * cellSize + half, (height - 1) * cellSize + half);
         Centre = yard.center;
         LakeCentre = Centre + new Vector2(25f, -95f);
-        Cabin = new Vector2(yard.xMin - 16f, Centre.y + 4f);
+        Cabins = new[]
+        {
+            new CabinSite(new Vector2(yard.xMin - 16f, Centre.y + 4f), Vector2.right),
+            new CabinSite(new Vector2(-30f, -40f), new Vector2(1f, -1f)),
+            new CabinSite(new Vector2(155f, 62f), Vector2.left),
+            new CabinSite(new Vector2(-95f, 140f), new Vector2(0.6f, -0.8f)),
+        };
+        padLevels = new float[Cabins.Length];
+        for (int i = 1; i < Cabins.Length; i++) padLevels[i] = Mathf.Max(Unlevelled(Cabins[i].At), 0f);
+    }
+
+    /// <summary>The rotation of a cabin's root: its local -z (the door) toward the site's door direction.</summary>
+    public static Quaternion CabinRotation(CabinSite site) => Quaternion.LookRotation(new Vector3(-site.Door.x, 0f, -site.Door.y));
+
+    /// <summary>Whether a point is inside a cabin's walls (its 6 m width along local x, 4.5 m depth along z, and the log ends).</summary>
+    public static bool InCabin(Vector2 p)
+    {
+        foreach (var site in Cabins)
+        {
+            var q = Quaternion.Inverse(CabinRotation(site)) * new Vector3(p.x - site.At.x, 0f, p.y - site.At.y);
+            if (Mathf.Abs(q.x) <= 3.3f && Mathf.Abs(q.z) <= 2.55f) return true;
+        }
+        return false;
+    }
+
+    /// <summary>The distance from a point to the nearest cabin.</summary>
+    public static float DistanceToCabin(Vector2 p)
+    {
+        float best = float.MaxValue;
+        foreach (var site in Cabins) best = Mathf.Min(best, (p - site.At).magnitude);
+        return best;
     }
 
     /// <summary>World height (metres above the yard) at a point on the ground plane.</summary>
     public static float HeightAt(Vector2 p)
+    {
+        float h = Unlevelled(p);
+        // A level pad for each cabin, easing back into the meadow.
+        for (int i = 0; i < Cabins.Length; i++)
+        {
+            float pad = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(6f, 14f, (p - Cabins[i].At).magnitude));
+            h = Mathf.Lerp(padLevels[i], h, pad);
+        }
+        // Near the yard and the first cabin the ground never dips below their level.
+        if (DistanceToYard(p) < 45f || (p - Cabin).magnitude < 20f) h = Mathf.Max(h, 0f);
+        return h;
+    }
+
+    // The valley's height before the cabins' pads.
+    static float Unlevelled(Vector2 p)
     {
         float d = DistanceToYard(p);
         if (d <= FlatAroundYard) return 0f;
@@ -46,13 +112,7 @@ public static class ValleyShape
         float south = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(260f, 440f, -rel.y)) * (40f + 35f * Fbm(p * 0.01f + Vector2.one * 3f, 3));
 
         float lake = LakeDepth(p);
-        float h = Mathf.Max(meadow + mountain + sides + south, 0f) * rise - lake;
-        // A level pad for the cabin, easing back into the meadow.
-        float pad = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(6f, 14f, (p - Cabin).magnitude));
-        h = Mathf.Lerp(0f, h, pad);
-        // Near the yard and the cabin the ground never dips below their level.
-        if (d < 45f || (p - Cabin).magnitude < 20f) h = Mathf.Max(h, 0f);
-        return h;
+        return Mathf.Max(meadow + mountain + sides + south, 0f) * rise - lake;
     }
 
     public static float LakeDepth(Vector2 p)
@@ -98,12 +158,12 @@ public static class ValleyShape
         return best;
     }
 
-    /// <summary>Kept clear of trees and rocks: near the yard, the cabin's pad, and the lake.</summary>
+    /// <summary>Kept clear of trees and rocks: near the yard, the cabins' pads, and the lake.</summary>
     public static bool KeepClear(Vector2 p, float margin) =>
         DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p) || DistanceToRiver(p) < RiverHalfWidth + 3f;
 
-    /// <summary>Kept clear of grass and plants: the cabin's pad and the lake.</summary>
-    public static bool KeepClearOfCabinAndLake(Vector2 p) => (p - Cabin).magnitude < 12f || LakeDepth(p) > 0.05f;
+    /// <summary>Kept clear of grass and plants: the cabins' pads and the lake.</summary>
+    public static bool KeepClearOfCabinAndLake(Vector2 p) => DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f;
 
     public static float Fbm(Vector2 p, int octaves)
     {

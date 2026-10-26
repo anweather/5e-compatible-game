@@ -290,6 +290,10 @@ MonoBehaviour:
   wadingSpeed: 0.55
   wadingDepth: 2
   climbStep: 0.55
+  swimmingSpeed: 0.45
+  swimDepth: 1.3
+  floatDepth: 1.45
+  swimKick: 2.2
 --- !u!114 &2015966796114759086
 MonoBehaviour:
   m_ObjectHideFlags: 0
