@@ -32,5 +32,7 @@ things go" table is the recipe for adding a spell, material, prop or item.
   can't build it. Its checks are the Unity console's analyzer warnings
   (don't add any; the current count is the baseline in `docs/QUALITY.md`)
   and the probe.
-- After changing a builder (`Editor/*Builder.cs`), rerun its menu item;
-  in-scene `NetworkObject`s get their ids from the rebuild.
+- After changing a builder (`Editor/*Builder.cs`), rerun its menu item.
+  Props and items aren't placed in the scene: `ThingSpawner` spawns them
+  from `world/things.json` per chunk, with stable ids (`ThingId`: chunk +
+  index), from prefabs the builders make in `Generated/Things/`.

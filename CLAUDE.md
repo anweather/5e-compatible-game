@@ -38,6 +38,7 @@ point.
 | Folder | What it is |
 |---|---|
 | `rules/` | The game's interaction rules as JSON. The single source of truth for what spells, materials and reactions do |
+| `world/` | What stands where: `things.json` lists the props and items per 64×64 chunk; each gets a stable id from its chunk and its place in the list, so append, never insert |
 | `unity/Assets/Prototype/Chemistry/` | The engine-free C# core (namespace `Chem`): loads the rules, runs the cell world one tick at a time, deterministically |
 | `unity/Assets/Prototype/Scripts/` | The Unity view: draws the world, input, the wizard, props, items, HUD; `Net/` is the multiplayer layer; `Editor/` builds scenes and players |
 | `core/` | .NET projects that *link* the Chemistry sources and tests from `unity/` so they build and test without Unity (CI runs these) |

@@ -32,9 +32,7 @@ Showcase.
 scenario in Play mode and prints JSON with checks, metrics, frame times and
 console errors (`docs/FAST_LOOP.md`). The Editor must be on
 `Assets/Prototype/Scenes/ChemistryYard.unity` with no compile errors. On
-Windows run it from Git Bash with `UNITY="$(command -v unity)"`, since the
-script defaults to the Mac's CLI path; it also calls `python3` for its exit
-code, which Windows may not have (the JSON it prints is still right).
+Windows run it from Git Bash.
 
 ## Rules for the Editor
 
