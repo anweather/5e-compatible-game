@@ -455,6 +455,28 @@ public class OnlineProbe : ProbeScenario
         if (report == null) yield break;
         Compare(recorder.Seen, report);
         yield return TryReset();
+        yield return TryTag();
+    }
+
+    // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.
+    IEnumerator TryTag()
+    {
+        var tag = grid.GetComponent<NetTag>();
+        var network = NetworkManager.Singleton;
+        var other = network.ConnectedClientsList.FirstOrDefault(c => c.ClientId != network.LocalClientId);
+        bool started = tag != null && other != null && tag.StartWith(network.LocalClientId);
+        if (!started)
+        {
+            Check("tag_passes_on_touch", false, "tag didn't start (no NetTag, or no second player)");
+            yield break;
+        }
+        var body = wizard.GetComponent<CharacterController>();
+        body.enabled = false;
+        wizard.transform.position = other.PlayerObject.transform.position + new Vector3(0.6f, 0.2f, 0f);
+        body.enabled = true;
+        for (int i = 0; i < 30 && tag.It == network.LocalClientId; i++) yield return null;
+        Check("tag_passes_on_touch", tag.It == other.ClientId, $"it: {tag.It} (host {network.LocalClientId}, other {other.ClientId})");
+        tag.Stop();
     }
 
     // Reset (R / View) online is refused rather than reloading the host's scene from under everyone.
