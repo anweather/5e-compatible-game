@@ -56,7 +56,44 @@ public static class ValleyShape
         };
         padLevels = new float[Cabins.Length];
         for (int i = 1; i < Cabins.Length; i++) padLevels[i] = Mathf.Max(Unlevelled(Cabins[i].At), 0f);
+        PondLevel = Unlevelled(Falls) - 2f;
     }
+
+    // --- the falls ----------------------------------------------------------------
+
+    /// <summary>The middle of the pond at the foot of the falls, where the river starts (x, z).</summary>
+    public static readonly Vector2 Falls = new Vector2(138f, 292f);
+
+    /// <summary>The pond's radius (m): its squares are river (a spring), so it stays full and feeds the river.</summary>
+    public const float PondRadius = 8f;
+
+    /// <summary>How far north of the pond's middle the cliff stands (m), and how high it rises over the pond.</summary>
+    public const float CliffNorth = 10f, CliffHeight = 26f;
+
+    /// <summary>The height of the pond's floor (the ground under its water), set by Plan.</summary>
+    public static float PondLevel { get; private set; }
+
+    /// <summary>The top of the cliff, where the stream goes over.</summary>
+    public static float CliffTop => PondLevel + CliffHeight;
+
+    /// <summary>The stream on the cliff top that feeds the falls, from up the mountain to the lip.</summary>
+    public static readonly Vector2[] Stream = { Falls + new Vector2(-4f, 34f), Falls + new Vector2(0f, CliffNorth + 2.2f) };
+
+    // The basin the pond sits in, and the cliff behind it: north of the pond the ground leaps up to
+    // the cliff top and runs on as a shelf until the mountain rises past it; to the sides it eases back.
+    static float FallsShape(Vector2 p, float h)
+    {
+        var q = p - Falls;
+        float d = q.magnitude;
+        // A flat floor out to the pond's edge, banks up to the meadow by 15 m.
+        if (d < 15f) h = Mathf.Lerp(PondLevel, Mathf.Min(h, PondLevel + 6f), Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(PondRadius, 15f, d)));
+        float side = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(16f, 26f, Mathf.Abs(q.x)));
+        float shelf = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(CliffNorth - 0.5f, CliffNorth + 0.5f, q.y)) * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(30f, 48f, q.y)));
+        return Mathf.Max(h, Mathf.Lerp(h, CliffTop, side * shelf));
+    }
+
+    /// <summary>Whether a point is in the pond at the foot of the falls.</summary>
+    public static bool InPond(Vector2 p) => (p - Falls).magnitude < PondRadius;
 
     /// <summary>The rotation of a cabin's root: its local -z (the door) toward the site's door direction.</summary>
     public static Quaternion CabinRotation(CabinSite site) => Quaternion.LookRotation(new Vector3(-site.Door.x, 0f, -site.Door.y));
@@ -92,7 +129,7 @@ public static class ValleyShape
         }
         // Near the yard and the first cabin the ground never dips below their level.
         if (DistanceToYard(p) < 45f || (p - Cabin).magnitude < 20f) h = Mathf.Max(h, 0f);
-        return h;
+        return (p - Falls).sqrMagnitude < 70f * 70f ? FallsShape(p, h) : h;
     }
 
     // The valley's height before the cabins' pads.
@@ -133,12 +170,12 @@ public static class ValleyShape
     public static float DistanceToLake(Vector2 p) => Mathf.Max(0f, (p - LakeCentre).magnitude - 70f);
 
     /// <summary>
-    /// The river's course, from a spring in the foothills under the northern mountain down into the
+    /// The river's course, from the pond at the foot of the falls under the northern mountain down into the
     /// lake's north-east shore, east of the yard and the court (world x, z).
     /// </summary>
     public static readonly Vector2[] River =
     {
-        new(132f, 330f), new(150f, 250f), new(128f, 170f), new(142f, 95f), new(120f, 30f), new(100f, -45f),
+        Falls, new(150f, 250f), new(128f, 170f), new(142f, 95f), new(120f, 30f), new(100f, -45f),
     };
 
     /// <summary>How far from its middle the river's squares reach (metres): two or three squares across.</summary>
@@ -147,11 +184,17 @@ public static class ValleyShape
     /// <summary>Distance from a point to the river's middle line.</summary>
     public static float DistanceToRiver(Vector2 p)
     {
+        float best = Mathf.Min(DistanceToCourse(p, Stream), Mathf.Max(0f, (p - Falls).magnitude - PondRadius));
+        return Mathf.Min(best, DistanceToCourse(p, River));
+    }
+
+    static float DistanceToCourse(Vector2 p, Vector2[] course)
+    {
         float best = float.MaxValue;
-        for (int i = 0; i + 1 < River.Length; i++)
+        for (int i = 0; i + 1 < course.Length; i++)
         {
-            var a = River[i];
-            var ab = River[i + 1] - a;
+            var a = course[i];
+            var ab = course[i + 1] - a;
             float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
             best = Mathf.Min(best, (p - (a + ab * t)).magnitude);
         }
@@ -162,8 +205,15 @@ public static class ValleyShape
     public static bool KeepClear(Vector2 p, float margin) =>
         DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p) || DistanceToRiver(p) < RiverHalfWidth + 3f;
 
-    /// <summary>Kept clear of grass and plants: the cabins' pads and the lake.</summary>
-    public static bool KeepClearOfCabinAndLake(Vector2 p) => DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f;
+    /// <summary>Kept clear of grass and plants: the cabins' pads, the lake and the falls (its basin, cliff and shelf).</summary>
+    public static bool KeepClearOfCabinAndLake(Vector2 p) => DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p);
+
+    /// <summary>The pond's basin, the cliff and the shelf above it: nothing grows or stands there.</summary>
+    public static bool NearFalls(Vector2 p)
+    {
+        var q = p - Falls;
+        return q.magnitude < 16f || (Mathf.Abs(q.x) < 22f && q.y > 0f && q.y < CliffNorth + 6f);
+    }
 
     public static float Fbm(Vector2 p, int octaves)
     {

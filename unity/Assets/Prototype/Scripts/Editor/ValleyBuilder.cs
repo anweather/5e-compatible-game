@@ -45,6 +45,7 @@ public static class ValleyBuilder
         BuildWorldEdge();
         BuildCourt();
         BuildLandmarks();
+        BuildWaterfall();
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.chunks = terrains;
@@ -354,6 +355,224 @@ public static class ValleyBuilder
             float s = 3f + 3f * (float)rng.NextDouble();
             Rock(parent, rocks[rng.Next(rocks.Count)], at, Quaternion.Euler(0f, rng.Next(360), 0f), new Vector3(s, s * (0.8f + 0.6f * (float)rng.NextDouble()), s));
         }
+    }
+
+    // --- the falls -------------------------------------------------------------------
+
+    // The falls at the head of the river (ValleyShape.Falls): the cliff face clad in the demo pack's
+    // big rocks, a stream over its lip (river squares, drawn by the cells) pouring down two sheets of
+    // streaming water (one see-through, one of white foam, scrolled), spray falling down them, mist and
+    // splashes where they land in the pond (WaterfallFx), which is river squares too and feeds the river.
+    static void BuildWaterfall()
+    {
+        var parent = new GameObject("Falls").transform;
+        var falls = ValleyShape.Falls;
+        float top = ValleyShape.CliffTop, pond = ValleyShape.PondLevel, face = falls.y + ValleyShape.CliffNorth;
+        CladCliff(parent, falls, face, pond, top);
+
+        var streaksPath = Generated + "/WaterStreaks.png";
+        File.WriteAllBytes(streaksPath, ProceduralTextures.WaterStreaks(64, 256).EncodeToPNG());
+        AssetDatabase.ImportAsset(streaksPath);
+        var importer = (TextureImporter)AssetImporter.GetAtPath(streaksPath);
+        importer.alphaIsTransparency = true;
+        importer.wrapMode = TextureWrapMode.Repeat;
+        importer.SaveAndReimport();
+        var streaks = AssetDatabase.LoadAssetAtPath<Texture2D>(streaksPath);
+
+        var water = EditorAssets.LitMaterial(Generated + "/FallsWater.mat", new Color(0.72f, 0.86f, 0.95f, 0.75f), 0.9f);
+        UrpMaterials.MakeTransparent(water);
+        water.SetTexture("_BaseMap", streaks);
+        water.SetTextureScale("_BaseMap", new Vector2(2f, 1.5f));
+        water.SetFloat("_Cull", 0f);   // both faces: seen from the pond and from the cliff top
+        EditorUtility.SetDirty(water);
+        var foam = EditorAssets.LoadOrCreate(Generated + "/FallsFoam.mat", () => UrpMaterials.NewUnlitParticles("FallsFoam", Color.white, additive: true));
+        foam.SetTexture("_BaseMap", streaks);
+        foam.SetColor("_BaseColor", new Color(1f, 1f, 1f, 0.55f));
+        foam.SetTextureScale("_BaseMap", new Vector2(3f, 2f));
+        foam.SetFloat("_Cull", 0f);
+        EditorUtility.SetDirty(foam);
+
+        // The water leaves the lip a little out from the face, so it falls clear of the rocks.
+        var lip = new Vector3(falls.x, top + 0.3f, face - 2.4f);
+        float drop = top + 0.3f - pond;
+        Sheet(parent, "Falls water", lip, drop, 4.6f, 0f, water, new Vector2(0f, -1.4f));
+        Sheet(parent, "Falls foam", lip + Vector3.back * 0.15f, drop, 4f, 0.1f, foam, new Vector2(0.03f, -2.3f));
+        // The stream pours over the rocks to the lip: a short sheet from where its squares end.
+        var streamEnd = ValleyShape.Stream[ValleyShape.Stream.Length - 1];
+        Chute(parent, new Vector3(streamEnd.x, top + 0.12f, streamEnd.y), lip, 3.6f, water);
+
+        var footAt = new Vector3(falls.x, pond, face - 2.4f - 2.6f);
+        Spray(parent, lip, drop);
+        Mist(parent, footAt);
+        var fx = parent.gameObject.AddComponent<WaterfallFx>();
+        fx.splash = EditorAssets.LoadPrefab(PackPaths.WaterFx + "/BigSplash.prefab");
+        fx.foot = footAt;
+    }
+
+    // The cliff face built up of big rocks in staggered courses, like a crag: each rock its own shape
+    // (only a little stretched), the courses stepping back a little as they rise, narrowing toward
+    // the top and the ends where the shelf eases back into the mountain. The ones behind the falls
+    // stand back so the water pours clear in front of them.
+    static void CladCliff(Transform parent, Vector2 falls, float face, float pond, float top)
+    {
+        var rocks = LoadRocks("Rock_A_02", "Rock_C_02");
+        if (rocks.Length == 0) return;
+        var rng = new System.Random(31);
+        const float course = 4.5f;
+        int courses = Mathf.CeilToInt((top - pond + 2f) / course);
+        for (int k = 0; k < courses; k++)
+        {
+            float y = pond - 1.5f + k * course;
+            float rise = k / (float)Mathf.Max(1, courses - 1);
+            float span = Mathf.Lerp(17f, 13f, rise);
+            for (float x = -span + (k % 2) * 2.5f; x <= span; x += 5f)
+            {
+                // Behind the falls the rocks stop below the lip, so the stream goes over clear.
+                if (Mathf.Abs(x) < 6f && y + course * 1.5f > top - 0.4f) continue;
+                float behind = Mathf.Abs(x) < 4f ? 1.8f : 0f;
+                float size = 7.5f + 2.5f * (float)rng.NextDouble();
+                var at = new Vector3(falls.x + x + (float)rng.NextDouble() - 0.5f, y, face + 0.6f + behind + rise * 1.2f + 0.6f * (float)rng.NextDouble());
+                FitRock(parent, rocks[rng.Next(rocks.Length)], at, new Vector3(size, course * 1.5f, size * 0.8f), Quaternion.Euler(0f, rng.Next(4) * 90f + (float)rng.NextDouble() * 25f, 0f));
+            }
+        }
+    }
+
+    // A rock prefab stood on <paramref name="foot"/>, stretched to about <paramref name="size"/>.
+    static void FitRock(Transform parent, GameObject prefab, Vector3 foot, Vector3 size, Quaternion turn)
+    {
+        var rock = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        rock.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
+        var b = new Bounds();
+        bool first = true;
+        foreach (var r in rock.GetComponentsInChildren<Renderer>())
+        {
+            if (first) b = r.bounds;
+            else b.Encapsulate(r.bounds);
+            first = false;
+        }
+        if (first) return;
+        var fit = new Vector3(size.x / Mathf.Max(0.01f, b.size.x), size.y / Mathf.Max(0.01f, b.size.y), size.z / Mathf.Max(0.01f, b.size.z));
+        rock.transform.localScale = Vector3.Scale(rock.transform.localScale, fit);
+        rock.transform.SetPositionAndRotation(foot - turn * Vector3.Scale(new Vector3(b.center.x, b.min.y, b.center.z), fit), turn);
+    }
+
+    // A sheet of falling water: a strip of quads from the lip down to the pond, bowing out as it falls,
+    // a little wider at the foot, its streaks scrolled down at the given speed.
+    static void Sheet(Transform parent, string name, Vector3 lip, float drop, float width, float flare, Material mat, Vector2 scroll)
+    {
+        const int rows = 18;
+        var verts = new Vector3[(rows + 1) * 2];
+        var uv = new Vector2[verts.Length];
+        var tris = new int[rows * 6];
+        for (int i = 0; i <= rows; i++)
+        {
+            float t = i / (float)rows;
+            float half = width / 2f * (1f + (0.35f + flare) * t);
+            float outward = 2.6f * Mathf.Sqrt(t);
+            var c = new Vector3(0f, -drop * t, -outward);
+            verts[i * 2] = c + Vector3.left * half;
+            verts[i * 2 + 1] = c + Vector3.right * half;
+            uv[i * 2] = new Vector2(0f, t * drop / 8f);
+            uv[i * 2 + 1] = new Vector2(1f, t * drop / 8f);
+            if (i == rows) break;
+            int k = i * 6, v = i * 2;
+            tris[k] = v; tris[k + 1] = v + 2; tris[k + 2] = v + 1;
+            tris[k + 3] = v + 1; tris[k + 4] = v + 2; tris[k + 5] = v + 3;
+        }
+        var mesh = new Mesh { name = name, vertices = verts, uv = uv, triangles = tris };
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        AssetDatabase.CreateAsset(mesh, $"{Generated}/{name.Replace(' ', '_')}.asset");
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.transform.position = lip;
+        go.AddComponent<MeshFilter>().sharedMesh = mesh;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterial = mat;
+        r.shadowCastingMode = ShadowCastingMode.Off;
+        go.AddComponent<ScrollingTexture>().speed = scroll;
+    }
+
+    // A sheet of water sliding from <paramref name="from"/> over the edge to <paramref name="lip"/>,
+    // widening toward the lip, its streaks running along it.
+    static void Chute(Transform parent, Vector3 from, Vector3 lip, float width, Material mat)
+    {
+        var along = lip - from;
+        var across = Vector3.Cross(Vector3.up, along).normalized;
+        var verts = new[]
+        {
+            from - across * (width * 0.4f), from + across * (width * 0.4f),
+            lip - across * (width * 0.5f), lip + across * (width * 0.5f),
+        };
+        float length = along.magnitude / 8f;
+        var mesh = new Mesh
+        {
+            name = "Falls lip", vertices = verts,
+            uv = new[] { new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(0f, length), new Vector2(1f, length) },
+            triangles = new[] { 0, 2, 1, 1, 2, 3 },
+        };
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+        AssetDatabase.CreateAsset(mesh, Generated + "/Falls_lip.asset");
+        var go = new GameObject("Falls lip");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<MeshFilter>().sharedMesh = mesh;
+        var r = go.AddComponent<MeshRenderer>();
+        r.sharedMaterial = mat;
+        r.shadowCastingMode = ShadowCastingMode.Off;
+        go.AddComponent<ScrollingTexture>().speed = new Vector2(0f, -0.9f);
+    }
+
+    // Spray tumbling down the face of the falls: the splash's droplets, let go along the lip.
+    static void Spray(Transform parent, Vector3 lip, float drop)
+    {
+        var droplets = ParticleMaterialOf(EditorAssets.LoadPrefab(PackPaths.WaterFx + "/BigSplash.prefab"));
+        var go = new GameObject("Falls spray");
+        go.transform.SetParent(parent, false);
+        go.transform.position = lip + Vector3.back * 0.6f;
+        var ps = go.AddComponent<ParticleSystem>();
+        var main = ps.main;
+        main.loop = true;
+        main.startLifetime = Mathf.Sqrt(2f * drop / 9.81f) + 0.2f;
+        main.startSpeed = new ParticleSystem.MinMaxCurve(0.5f, 2f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.15f, 0.5f);
+        main.startColor = new Color(1f, 1f, 1f, 0.7f);
+        main.gravityModifier = 1f;
+        main.maxParticles = 600;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        var emission = ps.emission;
+        emission.rateOverTime = 140f;
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(4.6f, 0.2f, 0.4f);
+        shape.rotation = new Vector3(0f, 180f, 0f);
+        var r = go.GetComponent<ParticleSystemRenderer>();
+        if (droplets != null) r.sharedMaterial = droplets;
+    }
+
+    // A cloud of mist rolling off the foot of the falls: the smoke effect, turned white and slow.
+    static void Mist(Transform parent, Vector3 foot)
+    {
+        var smoke = EditorAssets.LoadPrefab(PackPaths.SmokeFx + "/SmokeEffect.prefab");
+        if (smoke == null) return;
+        var mist = (GameObject)PrefabUtility.InstantiatePrefab(smoke, parent);
+        mist.name = "Falls mist";
+        mist.transform.position = foot;
+        mist.transform.localScale = Vector3.one * 3f;
+        foreach (var ps in mist.GetComponentsInChildren<ParticleSystem>())
+        {
+            var main = ps.main;
+            main.startColor = new Color(0.92f, 0.95f, 1f, 0.35f);
+            main.loop = true;
+        }
+    }
+
+    static Material ParticleMaterialOf(GameObject prefab)
+    {
+        if (prefab == null) return null;
+        foreach (var r in prefab.GetComponentsInChildren<ParticleSystemRenderer>(true))
+            if (r.sharedMaterial != null) return r.sharedMaterial;
+        return null;
     }
 
     static void Rock(Transform parent, GameObject prefab, Vector2 at, Quaternion turn, Vector3 scale)

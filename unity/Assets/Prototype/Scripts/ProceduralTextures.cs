@@ -60,4 +60,36 @@ public static class ProceduralTextures
 
     // A normal component in -1..1 packed into a byte, as normal maps store it.
     static byte ToByte(float v) => (byte)((v * 0.5f + 0.5f) * 255);
+
+    /// <summary>
+    /// Falling water's streaks: white, see-through, in vertical strands of uneven brightness that
+    /// thicken and thin down their length, tileable both ways (the falls under the mountain scrolls
+    /// it down its sheets). A fixed seed, so every build is the same.
+    /// </summary>
+    public static Texture2D WaterStreaks(int width, int height)
+    {
+        var tex = new Texture2D(width, height, TextureFormat.RGBA32, true) { name = "Streaks", wrapMode = TextureWrapMode.Repeat };
+        var rng = new System.Random(17);
+        var strand = new float[width];
+        var phase = new float[width];
+        for (int x = 0; x < width; x++)
+        {
+            strand[x] = (float)rng.NextDouble();
+            phase[x] = (float)rng.NextDouble() * Mathf.PI * 2f;
+        }
+        var pixels = new Color32[width * height];
+        for (int y = 0; y < height; y++)
+            for (int x = 0; x < width; x++)
+            {
+                // Neighbouring strands blur together a little; each pulses twice down the texture.
+                float s = (strand[x] * 2f + strand[(x + 1) % width] + strand[(x + width - 1) % width]) / 4f;
+                float pulse = 0.65f + 0.35f * Mathf.Sin(y * Mathf.PI * 4f / height + phase[x]);
+                float a = Mathf.Clamp01(Mathf.Pow(s, 1.6f) * pulse * 1.3f);
+                byte v = (byte)(200 + 55 * a);
+                pixels[y * width + x] = new Color32(v, v, 255, (byte)(255 * a));
+            }
+        tex.SetPixels32(pixels);
+        tex.Apply();
+        return tex;
+    }
 }
