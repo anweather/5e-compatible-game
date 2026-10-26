@@ -2,10 +2,11 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 
 // The Esc menu: Resume, any sections other code adds (NetSession adds Play
-// together), and Quit. It starts itself in every scene, like FpsProbe, so no
-// scene or builder has to add it. While it is open the wizard's own controls
-// and mouse look are off and the cursor is free, as with the mods panel; the
-// game itself keeps running (online, the others are still playing).
+// together; GameInfoMenu the version, credits and log folder), and Quit. It
+// starts itself in every scene, like FpsProbe, so no scene or builder has to
+// add it. While it is open the wizard's own controls and mouse look are off
+// and the cursor is free, as with the mods panel; the game itself keeps
+// running (online, the others are still playing).
 //
 //   Open / close    Esc
 //   Choose          click
@@ -14,7 +15,7 @@ public class PauseMenu : MonoBehaviour
     const int Width = 360;
 
     static PauseMenu instance;
-    static readonly System.Collections.Generic.List<System.Action> sections = new();
+    static readonly System.Collections.Generic.List<(System.Action draw, int order)> sections = new();
     GUIStyle box, title, button;
 
     /// <summary>
@@ -22,9 +23,18 @@ public class PauseMenu : MonoBehaviour
     /// width), so other parts of the game can put their controls in the menu without the
     /// menu knowing about them. Remove it again when its owner goes away.
     /// </summary>
-    public static void AddSection(System.Action draw) { if (!sections.Contains(draw)) sections.Add(draw); }
+    /// <param name="order">Lower draws higher up; equal orders keep the order they were added in.</param>
+    public static void AddSection(System.Action draw, int order = 0)
+    {
+        if (sections.Exists(s => s.draw == draw)) return;
+        int at = sections.FindIndex(s => s.order > order);
+        sections.Insert(at < 0 ? sections.Count : at, (draw, order));
+    }
 
-    public static void RemoveSection(System.Action draw) => sections.Remove(draw);
+    public static void RemoveSection(System.Action draw) => sections.RemoveAll(s => s.draw == draw);
+
+    /// <summary>The order for sections that belong at the bottom, just above Quit (the version and credits).</summary>
+    public const int LastOrder = 1000;
 
     /// <summary>The menu's button style, for sections that want matching buttons.</summary>
     public static GUIStyle ButtonStyle => instance != null ? instance.button : GUI.skin.button;
@@ -125,10 +135,10 @@ public class PauseMenu : MonoBehaviour
         GUILayout.Label("<b>Paused</b>", title);
         GUILayout.Space(8);
         if (GUILayout.Button("Resume   <color=#ffffff88>Esc</color>", button)) SetOpen(false);
-        foreach (var draw in sections.ToArray())
+        foreach (var section in sections.ToArray())
         {
             GUILayout.Space(12);
-            draw();
+            section.draw();
         }
         GUILayout.Space(12);
         if (GUILayout.Button("Quit", button)) Quit();
