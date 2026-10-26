@@ -53,6 +53,11 @@ public static class ProbeScenarios
             "at the sample tick, no desync seen, the client's terrain drawn as low as the host's under the trenches, the same " +
             "water (cells and drawn surface) and walls, the crate and the host's wizard each within 5 cm on both, no console errors on either.",
             players: 2),
+        new Entry("menu", typeof(MenuProbe), 60f,
+            "The Esc menu with a controller: Start on a virtual gamepad opens it, the highlight moves down to Mods, A opens the " +
+            "Mods page and switches the first mod on and off, B goes back, then Credits and Join by code (letters picked, B back). " +
+            "Checks: each step landed on the right page, 5 mods listed, the mod switched, B and Start close the menu and the " +
+            "wizard's controls come back, no console errors."),
     };
 
     public static Entry Find(string name) =>

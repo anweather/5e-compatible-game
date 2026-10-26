@@ -6,10 +6,13 @@ using Unity.Services.Authentication;
 using Unity.Services.Core;
 using Unity.Services.Multiplayer;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
-// Playing together: the Play together section of the Esc menu (PauseMenu), and
-// a one-line status with the join code top right while online.
+// Playing together: the Play together section of the Esc menu (PauseMenu), its
+// Join by code page for controllers (CodePicker: up / down change a letter, A
+// next, B back; a copied code is filled in), and a one-line status with the
+// join code top right while online.
 // Solo play uses the scene's own wizard; hosting or joining removes it and
 // the network spawns one wizard per player (up to MaxPlayers).
 //
@@ -37,6 +40,12 @@ public class NetSession : MonoBehaviour
     GUIStyle label, field, codeStyle, corner;
     NetworkManager manager;
     bool joining; // started a client that the host hasn't accepted yet
+    readonly CodePicker picker = new();
+    PauseMenu.Page codePage;
+    GUIStyle slot, slotOn;
+
+    /// <summary>The Join by code page's id in the Esc menu.</summary>
+    public const string CodePage = "join-code";
 
     // Why the last join failed; static so it outlives the scene reload back to solo.
     static string joinFailure;
@@ -196,8 +205,66 @@ public class NetSession : MonoBehaviour
 
     // --- in the Esc menu, and a status line while online ----------------------
 
-    void OnEnable() => PauseMenu.AddSection(MenuSection);
-    void OnDisable() => PauseMenu.RemoveSection(MenuSection);
+    void OnEnable()
+    {
+        codePage ??= new PauseMenu.Page
+        {
+            Title = "Join by code",
+            Draw = DrawCodePage,
+            Move = delta => { picker.Step(-delta); return true; }, // up: next letter
+            Submit = SubmitPicked,
+            Back = () => picker.Back(),
+        };
+        PauseMenu.AddSection(MenuSection);
+        PauseMenu.AddPage(CodePage, codePage);
+    }
+
+    void OnDisable()
+    {
+        PauseMenu.RemoveSection(MenuSection);
+        PauseMenu.RemovePage(CodePage);
+    }
+
+    // A on the Join by code page: the next letter, or join after the last.
+    bool SubmitPicked()
+    {
+        if (picker.Next()) JoinPicked();
+        return true;
+    }
+
+    /// <summary>Opens the Join by code page, filled in with a copied (or typed) code if there is one.</summary>
+    public void PickCode()
+    {
+        string clip = GUIUtility.systemCopyBuffer;
+        picker.Begin(CodePicker.LooksLikeCode(joinCode) ? joinCode : clip);
+        PauseMenu.Instance.ShowPage(CodePage);
+    }
+
+    // The picker's code is done: join with it, back on the main page where the status shows.
+    void JoinPicked()
+    {
+        joinCode = picker.Code;
+        PauseMenu.Instance.CloseSubPages();
+        _ = JoinOnline(joinCode);
+    }
+
+    void DrawCodePage()
+    {
+        MakeStyles();
+        GUILayout.Label("Up / down change the letter, A goes to the next one (on the last, A joins), B goes back.", label);
+        GUILayout.Space(8);
+        GUILayout.BeginHorizontal();
+        GUILayout.FlexibleSpace();
+        string code = picker.Code;
+        for (int i = 0; i < CodePicker.Length; i++)
+            GUILayout.Label(i == picker.Slot ? $"▲\n{code[i]}\n▼" : $"\n{code[i]}\n", i == picker.Slot ? slotOn : slot, GUILayout.Width(44));
+        GUILayout.FlexibleSpace();
+        GUILayout.EndHorizontal();
+        GUILayout.Space(8);
+        GUI.enabled = !busy;
+        if (GUILayout.Button($"Join {code}", PauseMenu.ButtonStyle)) JoinPicked();
+        GUI.enabled = true;
+    }
 
     // The Play together section of the Esc menu.
     void MenuSection()
@@ -215,16 +282,18 @@ public class NetSession : MonoBehaviour
     void OfflineControls()
     {
         GUI.enabled = !busy;
-        if (GUILayout.Button("Host online", PauseMenu.ButtonStyle)) _ = HostOnline();
+        if (PauseMenu.Button("Host online", PauseMenu.ButtonStyle)) _ = HostOnline();
         GUILayout.BeginHorizontal();
         joinCode = GUILayout.TextField(joinCode, 12, field, GUILayout.Width(170));
-        if (GUILayout.Button("Join code", GUILayout.Height(32)) && joinCode.Trim().Length > 0) _ = JoinOnline(joinCode);
+        if (PauseMenu.Button("Join code", null, GUILayout.Height(32)) && joinCode.Trim().Length > 0) _ = JoinOnline(joinCode);
         GUILayout.EndHorizontal();
+        // The code field needs a keyboard; with a controller, pick the code letter by letter.
+        if (Gamepad.current != null && PauseMenu.Button("Enter a code with the controller", null, GUILayout.Height(32))) PickCode();
         GUILayout.Label("Same network:", label);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Host", GUILayout.Width(70), GUILayout.Height(32))) Host();
+        if (PauseMenu.Button("Host", null, GUILayout.Width(70), GUILayout.Height(32))) Host();
         address = GUILayout.TextField(address, field, GUILayout.Width(150));
-        if (GUILayout.Button("Join", GUILayout.Height(32))) Join(address);
+        if (PauseMenu.Button("Join", null, GUILayout.Height(32))) Join(address);
         GUILayout.EndHorizontal();
         GUI.enabled = true;
     }
@@ -236,10 +305,10 @@ public class NetSession : MonoBehaviour
         {
             GUILayout.BeginHorizontal();
             GUILayout.Label(SessionCode, codeStyle);
-            if (GUILayout.Button("Copy", GUILayout.Width(70), GUILayout.Height(32))) GUIUtility.systemCopyBuffer = SessionCode;
+            if (PauseMenu.Button("Copy", null, GUILayout.Width(70), GUILayout.Height(32))) GUIUtility.systemCopyBuffer = SessionCode;
             GUILayout.EndHorizontal();
         }
-        if (GUILayout.Button("Leave", PauseMenu.ButtonStyle)) _ = Leave();
+        if (PauseMenu.Button("Leave", PauseMenu.ButtonStyle)) _ = Leave();
     }
 
     string RoleLabel()
@@ -276,5 +345,9 @@ public class NetSession : MonoBehaviour
         field = new GUIStyle(GUI.skin.textField) { fontSize = 18, fixedHeight = 32 };
         codeStyle = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold };
         corner = new GUIStyle(label) { alignment = TextAnchor.UpperRight, wordWrap = false };
+        slot = new GUIStyle(GUI.skin.box) { fontSize = 26, fontStyle = FontStyle.Bold, alignment = TextAnchor.MiddleCenter, fixedHeight = 96 };
+        slotOn = new GUIStyle(slot);
+        slotOn.normal.textColor = new Color(1f, 0.82f, 0.29f);
+        slotOn.normal.background = PauseMenu.Solid(new Color(1f, 0.82f, 0.29f, 0.22f));
     }
 }

@@ -20,8 +20,10 @@ CONTROLS (keyboard and mouse; a gamepad works too)
   Left click      cast
   E (near a thing) pick up / drop   F            use the held item
   G / right-click throw (hold to throw harder)
-  M               mods (switch rules on and off)
   R               reset the yard    Esc          menu
+  M               the menu's Mods page (switch rules on and off)
+With a controller, Start opens the menu: d-pad or left stick up / down to
+move, A (Cross) to choose, B (Circle) to go back or close.
 Spells mix: set grass alight, put it out with water, freeze the puddle,
 grease a slope, blow smoke away. Try things.
 
@@ -30,6 +32,9 @@ Everybody needs this same version (the Esc menu shows it at the bottom).
   Host:  Esc -> Play together -> Host online. Send your friend the code
          that appears (there is a Copy button).
   Join:  Esc -> Play together, type the code, click "Join code".
+         With a controller: Start -> "Enter a code with the controller",
+         then up / down to change each letter and A for the next (a code
+         you copied is filled in already).
 No accounts and no router setup are needed. If the join fails because the
 versions differ, the game says so: both players download the newest alpha.
 

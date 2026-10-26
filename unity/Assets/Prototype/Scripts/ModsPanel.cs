@@ -3,44 +3,59 @@ using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The in-game mods panel: every rules/mods/*.json with its title and idea, a
-// tick by the ones in force, the rules' fingerprint, and why the last switch
-// was refused. Switching goes through RuleSwitcher (solo: next tick; online:
-// the host stamps it for everyone).
+// The Mods page of the Esc menu (PauseMenu): every rules/mods/*.json with its
+// title and idea, a tick by the ones in force, the rules' fingerprint, and why
+// the last switch was refused. Switching goes through RuleSwitcher (solo: next
+// tick; online: the host stamps it for everyone). The main page gets a
+// "Mods" button that opens it.
 //
-//   Open / close    M                Start / Options
-//   Switch a mod    1-9 or click     d-pad up / down, then X / Square
+//   Open            M (opens the menu on this page; M again closes it)
+//                   Esc / Start, then Mods
+//   Switch a mod    1-9 or click     highlight it, then A / Cross
 //
-// While it is open the wizard's own controls (spells, items, reset) are off,
-// so the number keys don't also pick spells, and the mouse is free to click.
+// While the menu is open the wizard's own controls (spells, items, reset) are
+// off, so the number keys don't also pick spells.
 [RequireComponent(typeof(RuleSwitcher))]
 public class ModsPanel : MonoBehaviour
 {
-    const int Width = 560;
+    /// <summary>The page's id in the Esc menu.</summary>
+    public const string PageId = "mods";
+    const int Width = 600;
+    const int SectionOrder = 500; // after Play together, before the version and credits
 
     RuleSwitcher switcher;
-    int cursor;
-    GUIStyle box, row, rowOn, small, error;
+    GUIStyle row, rowOn, small, error;
     Vector2 scroll;
+    PauseMenu.Page page;
 
-    // What opening the panel changed on the wizard, put back on close.
-    PlayerControls pausedControls;
-    Component lookInput;
-    CursorLockMode cursorWas;
-    bool cursorVisibleWas;
+    /// <summary>True while the Esc menu shows the Mods page.</summary>
+    public static bool Open => PauseMenu.Instance != null && PauseMenu.Instance.Open && PauseMenu.Instance.CurrentPage == PageId;
 
-    public bool Open { get; private set; }
+    void Awake()
+    {
+        switcher = GetComponent<RuleSwitcher>();
+        page = new PauseMenu.Page { Title = "Mods", Width = Width, Draw = DrawPage };
+    }
 
-    void Awake() => switcher = GetComponent<RuleSwitcher>();
+    void OnEnable()
+    {
+        PauseMenu.AddPage(PageId, page);
+        PauseMenu.AddSection(DrawEntry, SectionOrder);
+    }
+
+    void OnDisable()
+    {
+        PauseMenu.RemoveSection(DrawEntry);
+        PauseMenu.RemovePage(PageId);
+    }
 
     void Update()
     {
-        var pad = Gamepad.current;
         var keys = Keyboard.current;
-        if ((keys != null && keys.mKey.wasPressedThisFrame) || (pad != null && pad.startButton.wasPressedThisFrame)) SetOpen(!Open);
-        if (!Open || switcher.Catalog.Mods.Count == 0) return;
-        if (keys != null) NumberKeys(keys);
-        if (pad != null) PadKeys(pad);
+        var controls = PauseMenu.Controls;
+        bool typing = PauseMenu.Instance != null && PauseMenu.Instance.Open && GUIUtility.keyboardControl != 0; // the join code field has the keys
+        if (controls != null && controls.Mods.WasPressedThisFrame() && !typing) SetOpen(!Open);
+        if (Open && keys != null && !typing && switcher.Catalog.Mods.Count > 0) NumberKeys(keys);
     }
 
     void NumberKeys(Keyboard keys)
@@ -50,86 +65,46 @@ public class ModsPanel : MonoBehaviour
             if (keys[Key.Digit1 + i].wasPressedThisFrame) Toggle(i);
     }
 
-    void PadKeys(Gamepad pad)
-    {
-        int count = switcher.Catalog.Mods.Count;
-        if (pad.dpad.up.wasPressedThisFrame) cursor = (cursor + count - 1) % count;
-        if (pad.dpad.down.wasPressedThisFrame) cursor = (cursor + 1) % count;
-        if (pad.buttonWest.wasPressedThisFrame) Toggle(cursor);
-    }
-
-    void Toggle(int index)
+    /// <summary>Switches the mod at this place in the list on or off.</summary>
+    public void Toggle(int index)
     {
         var mods = switcher.Catalog.Mods;
         if (index < 0 || index >= mods.Count) return;
-        cursor = index;
         switcher.Toggle(mods[index].Id);
     }
 
-    /// <summary>Opens or closes the panel (also for scripted screenshots).</summary>
-    public void SetOpen(bool open)
+    /// <summary>Opens the Esc menu on the Mods page, or closes the menu (also for scripted screenshots).</summary>
+    public static void SetOpen(bool open)
     {
-        if (open == Open) return;
-        Open = open;
-        if (open) PauseWizard();
-        else ResumeWizard();
+        var menu = PauseMenu.Instance;
+        if (menu == null) return;
+        if (open) menu.ShowPage(PageId);
+        else if (Open) menu.SetOpen(false);
     }
-
-    void PauseWizard()
-    {
-        var caster = EventLog.TrackedCaster;
-        if (caster != null && caster.controls != null && caster.controls.enabled)
-        {
-            pausedControls = caster.controls;
-            pausedControls.enabled = false;
-        }
-        lookInput = caster != null ? caster.GetComponent(WizardRig.InputsComponent) : null;
-        SetLook(false);
-        cursorWas = Cursor.lockState;
-        cursorVisibleWas = Cursor.visible;
-        Cursor.lockState = CursorLockMode.None;
-        Cursor.visible = true;
-    }
-
-    void ResumeWizard()
-    {
-        if (pausedControls != null) pausedControls.enabled = true;
-        pausedControls = null;
-        SetLook(true);
-        lookInput = null;
-        Cursor.lockState = cursorWas;
-        Cursor.visible = cursorVisibleWas;
-    }
-
-    // Stops (or restarts) the mouse turning the camera; the last look input is cleared so it doesn't keep spinning.
-    void SetLook(bool on)
-    {
-        if (lookInput == null) return;
-        WizardRig.Field(lookInput, "cursorInputForLook", isPublic: true)?.SetValue(lookInput, on);
-        var look = WizardRig.Field(lookInput, "look", isPublic: true);
-        if (look != null && look.FieldType == typeof(Vector2)) look.SetValue(lookInput, Vector2.zero);
-    }
-
-    void OnDisable() => SetOpen(false);
 
     // --- drawing -----------------------------------------------------------------
 
-    void OnGUI()
+    // On the main page: the button that opens this page, with what's on.
+    void DrawEntry()
     {
-        if (!Open || !EventLog.HudVisible) return;
+        MakeStyles();
+        if (PauseMenu.Button($"Mods   <color=#ffffff88>M</color>", PauseMenu.ButtonStyle)) PauseMenu.Instance.ShowPage(PageId);
+        GUILayout.Label($"<color=#ffffff99>{Summary()}</color>", small);
+    }
+
+    void DrawPage()
+    {
         MakeStyles();
         var mods = switcher.Catalog.Mods;
-        // Down to just above the event log (EventLog: 8 lines of 26 from 32 above the bottom).
-        float height = Mathf.Min(Screen.height - 76 - 252, 120 + mods.Count * 50);
-        GUILayout.BeginArea(new Rect(16, 76, Width, height), box);
-        GUILayout.Label("<b>Mods</b>   <color=#ffffff99>M or Start closes · 1–9, click, or d-pad + X switches</color>", small);
+        GUILayout.Label("<color=#ffffff99>Click, 1–9, or highlight and A to switch one on or off. M closes.</color>", small);
         GUILayout.Label($"Rules fingerprint <b>{switcher.Rules.Fingerprint}</b>   ·   {Summary()}", small);
-        scroll = GUILayout.BeginScrollView(scroll, false, false, GUIStyle.none, GUI.skin.verticalScrollbar);
-        for (int i = 0; i < mods.Count; i++) DrawRow(i, mods[i]);
-        if (mods.Count == 0) GUILayout.Label("No mods in rules/mods/ yet. Save one there (docs/MODDING.md) and it shows up here.", small);
-        GUILayout.EndScrollView();
+        float height = Mathf.Clamp(mods.Count * 58f + 8f, 60f, Mathf.Max(120f, Screen.height - 340f));
+        scroll = PauseMenu.ScrollView(scroll, height, () =>
+        {
+            for (int i = 0; i < mods.Count; i++) DrawRow(i, mods[i]);
+            if (mods.Count == 0) GUILayout.Label("No mods in rules/mods/ yet. Save one there (docs/MODDING.md) and it shows up here.", small);
+        });
         if (switcher.LastError != null) GUILayout.Label(switcher.LastError, error);
-        GUILayout.EndArea();
     }
 
     void DrawRow(int i, ModFile mod)
@@ -138,9 +113,8 @@ public class ModsPanel : MonoBehaviour
         string mark = on ? "<color=#7CFC7C>✔</color>" : "<color=#ffffff55>○</color>";
         string number = i < 9 ? $"{i + 1}" : " ";
         string idea = mod.Error != null ? $"<color=#ff8a80>{mod.Error}</color>" : mod.Idea;
-        string focus = i == cursor && Gamepad.current != null ? "▶ " : "";
-        string label = $"{focus}{mark}  <b>{number}  {mod.Title}</b>\n<size=13><color=#ffffffbb>{Shorten(idea, 90)}</color></size>";
-        if (GUILayout.Button(label, on ? rowOn : row, GUILayout.Width(Width - 48))) Toggle(i);
+        string label = $"{mark}  <b>{number}  {mod.Title}</b>\n<size=13><color=#ffffffbb>{Shorten(idea, 90)}</color></size>";
+        if (PauseMenu.Button(label, on ? rowOn : row, GUILayout.Width(Width - 56), GUILayout.Height(52))) Toggle(i);
     }
 
     string Summary()
@@ -161,23 +135,13 @@ public class ModsPanel : MonoBehaviour
 
     void MakeStyles()
     {
-        if (box != null) return;
-        box = new GUIStyle(GUI.skin.box) { padding = new RectOffset(12, 12, 10, 10), alignment = TextAnchor.UpperLeft };
-        box.normal.background = Solid(new Color(0.06f, 0.07f, 0.09f, 0.86f));
+        if (row != null) return;
         small = new GUIStyle(GUI.skin.label) { fontSize = 15, richText = true, wordWrap = true };
         row = new GUIStyle(GUI.skin.button) { fontSize = 17, richText = true, alignment = TextAnchor.MiddleLeft, wordWrap = false, clipping = TextClipping.Clip, padding = new RectOffset(10, 10, 4, 4) };
         rowOn = new GUIStyle(row);
-        rowOn.normal.background = Solid(new Color(0.16f, 0.34f, 0.2f, 0.95f));
-        rowOn.hover.background = Solid(new Color(0.2f, 0.42f, 0.25f, 0.95f));
+        rowOn.normal.background = PauseMenu.Solid(new Color(0.16f, 0.34f, 0.2f, 0.95f));
+        rowOn.hover.background = PauseMenu.Solid(new Color(0.2f, 0.42f, 0.25f, 0.95f));
         error = new GUIStyle(small) { fontSize = 15 };
         error.normal.textColor = new Color(1f, 0.55f, 0.5f);
-    }
-
-    static Texture2D Solid(Color c)
-    {
-        var t = new Texture2D(1, 1) { hideFlags = HideFlags.HideAndDontSave };
-        t.SetPixel(0, 0, c);
-        t.Apply();
-        return t;
     }
 }

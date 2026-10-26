@@ -145,15 +145,14 @@ public class OvernightShowcase : ShowcaseScript
         yield return dawn;
         yield return Wait(0.8f);                    // base rules: it creeps
 
-        // The panel, and Wildfire switched on from it.
+        // The Esc menu's Mods page, and Wildfire switched on from it.
         EventLog.HudVisible = true;
-        var panel = grid.GetComponent<ModsPanel>();
         var switcher = grid.GetComponent<RuleSwitcher>();
-        panel.SetOpen(true);
+        ModsPanel.SetOpen(true);
         yield return Wait(1f);
         switcher.Toggle("wildfire");
         yield return Wait(3f);
-        panel.SetOpen(false);
+        ModsPanel.SetOpen(false);
         EventLog.HudVisible = false;
 
         // Up and back as it races across the meadow.

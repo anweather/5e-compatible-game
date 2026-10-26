@@ -13,7 +13,8 @@ using UnityEngine.InputSystem;
 //   Spell page   Tab           d-pad left / right   (Elements <-> Earth)
 //   Zoom camera  mouse wheel   d-pad up / down
 //   Reset        R             View / Share button
-//   Mods panel   M             Start / Options      (ModsPanel reads these itself)
+//   Esc menu     Esc / M       Start / Options      (MenuControls, the menu's own;
+//                                                    M opens it on the Mods page)
 //   Pick up/drop E             X / Square
 //   Use item     F             Y / Triangle
 //   Throw item   G or right    B / Circle      (hold to throw harder)

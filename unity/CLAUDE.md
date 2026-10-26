@@ -48,7 +48,9 @@ Windows run it from Git Bash.
   but press-type actions (`WasPressedThisFrame`: number keys, click, Tab,
   M, Esc) don't fire from them. Call the game's own methods through
   `script eval` instead (`SpellCaster.Select` / `Cast`, `ModsPanel.SetOpen`,
-  `PauseMenu.SetOpen`), or use the probe.
+  `PauseMenu.SetOpen`, and `PauseMenu.Instance.Navigate` / `Submit` /
+  `Back` for what the controller's d-pad, A and B do), or use the probe
+  (`tools/probe.sh menu`).
 - `capture game_view --save_path` writes under `Assets/`; move the files
   out and delete the folder with `AssetDatabase.DeleteAsset` afterwards.
 

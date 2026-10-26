@@ -119,12 +119,14 @@ read it directly, so "bake the kept ones in" is a one-line request.
 
 The running Unity yard switches rules the same way, solo and online.
 
-**Controls.** **M** (keyboard) or **Start / Options** (gamepad) opens the
-mods panel over the game. It lists every `rules/mods/*.json` with its title
-and idea, ticks the ones in force, and shows the rules' fingerprint and,
-in red, why the last switch was refused. Switch a mod with **1–9**, a mouse
-click, or **d-pad up/down then X / Square**. While the panel is open the
-wizard's own controls (spells, items, reset) and mouse-look are paused.
+**Controls.** The mods are the **Mods** page of the Esc menu: **M**
+(keyboard) opens the menu straight on it; with a gamepad, **Start / Options**
+opens the menu and **Mods** is one of its buttons. It lists every
+`rules/mods/*.json` with its title and idea, ticks the ones in force, and
+shows the rules' fingerprint and, in red, why the last switch was refused.
+Switch a mod with **1–9**, a mouse click, or **d-pad up/down then A /
+Cross**; **B / Circle** goes back. While the menu is open the wizard's own
+controls (spells, items, reset), movement and look are paused.
 
 **When a switch happens.** Always between ticks:
 - *Solo:* the new rules are checked at once and put in force before the

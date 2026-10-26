@@ -4,13 +4,17 @@ using UnityEngine;
 // The bottom of the Esc menu (PauseMenu): the version this copy is ("alpha
 // 0.1.0 (abc1234)", BuildInfo), a line and a download button when a newer
 // alpha is out (UpdateCheck), an "Open log folder" button for bug reports, and
-// a Credits section that unfolds the attribution (Credits). Starts itself.
+// a Credits button that opens the attribution (Credits) as a page of the
+// menu. Starts itself.
 public class GameInfoMenu : MonoBehaviour
 {
+    /// <summary>The Credits page's id in the Esc menu.</summary>
+    public const string CreditsPage = "credits";
+
     static GameInfoMenu instance;
-    bool showCredits;
     GUIStyle small, credits;
     Vector2 scroll;
+    PauseMenu.Page creditsPage;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Create()
@@ -21,8 +25,18 @@ public class GameInfoMenu : MonoBehaviour
         instance = go.AddComponent<GameInfoMenu>();
     }
 
-    void OnEnable() => PauseMenu.AddSection(Draw, PauseMenu.LastOrder);
-    void OnDisable() => PauseMenu.RemoveSection(Draw);
+    void OnEnable()
+    {
+        creditsPage ??= new PauseMenu.Page { Title = "Credits", Width = 560, Draw = DrawCredits };
+        PauseMenu.AddSection(Draw, PauseMenu.LastOrder);
+        PauseMenu.AddPage(CreditsPage, creditsPage);
+    }
+
+    void OnDisable()
+    {
+        PauseMenu.RemoveSection(Draw);
+        PauseMenu.RemovePage(CreditsPage);
+    }
     void OnDestroy() { if (instance == this) instance = null; }
 
     void Draw()
@@ -32,19 +46,21 @@ public class GameInfoMenu : MonoBehaviour
         if (update != null)
         {
             GUILayout.Label($"<color=#ffd24a><b>alpha {update.Version} is out</b></color>", small);
-            if (GUILayout.Button("Open download page", PauseMenu.ButtonStyle)) UpdateCheck.OpenDownloadPage();
+            if (PauseMenu.Button("Open download page", PauseMenu.ButtonStyle)) UpdateCheck.OpenDownloadPage();
             GUILayout.Space(6);
         }
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button(showCredits ? "Hide credits" : "Credits", GUILayout.Height(32))) showCredits = !showCredits;
-        if (GUILayout.Button("Open log folder", GUILayout.Height(32))) OpenLogFolder();
+        if (PauseMenu.Button("Credits", null, GUILayout.Height(32))) PauseMenu.Instance.ShowPage(CreditsPage);
+        if (PauseMenu.Button("Open log folder", null, GUILayout.Height(32))) OpenLogFolder();
         GUILayout.EndHorizontal();
-        if (showCredits)
-        {
-            scroll = GUILayout.BeginScrollView(scroll, GUILayout.Height(220));
-            GUILayout.Label(CreditsText(), credits);
-            GUILayout.EndScrollView();
-        }
+        GUILayout.Label($"<color=#ffffff88>{BuildInfo.Label}</color>", small);
+    }
+
+    // The Credits page: the attribution, scrolled with the mouse wheel or the right stick.
+    void DrawCredits()
+    {
+        MakeStyles();
+        scroll = PauseMenu.ScrollView(scroll, Mathf.Clamp(Screen.height - 260f, 160f, 460f), () => GUILayout.Label(CreditsText(), credits));
         GUILayout.Label($"<color=#ffffff88>{BuildInfo.Label}</color>", small);
     }
 
@@ -66,6 +82,6 @@ public class GameInfoMenu : MonoBehaviour
     {
         if (small != null) return;
         small = new GUIStyle(GUI.skin.label) { fontSize = 15, richText = true, wordWrap = true, alignment = TextAnchor.MiddleCenter };
-        credits = new GUIStyle(GUI.skin.label) { fontSize = 13, richText = true, wordWrap = true };
+        credits = new GUIStyle(GUI.skin.label) { fontSize = 15, richText = true, wordWrap = true };
     }
 }
