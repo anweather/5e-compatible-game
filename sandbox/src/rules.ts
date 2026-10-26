@@ -94,7 +94,7 @@ export interface EntityRule {
   stop?: boolean;
 }
 
-export type Shape = "point" | "line" | "square" | "burst" | "target";
+export type Shape = "point" | "line" | "square" | "burst" | "target" | "cone";
 export interface SpellDef {
   id: string;
   name: string;
@@ -356,7 +356,7 @@ const EFFECT_KEYS = new Set([
   "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
 ]);
-const SHAPES = new Set(["point", "line", "square", "burst", "target"]);
+const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
 const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform"]);
 
 function terraformErrors(r: Rules, s: SpellDef): string[] {

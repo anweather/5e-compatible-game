@@ -321,6 +321,8 @@ public static class ChemYardBuilder
         visuals.entries = new System.Collections.Generic.List<SpellVisuals.Entry>
         {
             Visual(SpellIds.FireBolt, new Color(1f, 0.5f, 0.15f), FireFx + "/FireBall.prefab", FireFx + "/TinyExplosion.prefab"),
+            Visual(SpellIds.BurningHands, new Color(1f, 0.45f, 0.1f), null, FireFx + "/FlameThrower.prefab"),
+            Visual(SpellIds.Fireball, new Color(1f, 0.4f, 0.1f), FireFx + "/FireBall.prefab", FireFx + "/BigExplosion.prefab"),
             Visual(SpellIds.RayOfFrost, new Color(0.55f, 0.85f, 1f), null, PackPaths.MagicFx + "/IceLance.prefab"),
             Visual(SpellIds.CreateWater, new Color(0.3f, 0.6f, 1f), null, PackPaths.WaterFx + "/BigSplash.prefab"),
             Visual(SpellIds.SleetStorm, new Color(0.75f, 0.9f, 1f), null, PackPaths.MagicFx + "/IceLance.prefab"),

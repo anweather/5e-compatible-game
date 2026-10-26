@@ -247,3 +247,15 @@ test("charged casts dig deeper, build higher and reach further, and match the C#
   for (let i = 0; i < 60; i++) step(w);
   assert.equal(`${cellHash(w)} ${w.rng}`, "6467c88a 2424605280");
 });
+
+test("Burning Hands is a cone from the caster, longer when charged, and matches the C# golden", () => {
+  const w = room(20, 14, 4);
+  for (let x = 1; x < 19; x++) for (let y = 1; y < 13; y++) cellAt(w, x, y)!.t = "grass";
+  const s = spellById("burning-hands")!;
+  // Aimed east from the square in front of the caster at (3, 6): rows of 1, 3 and 5 squares.
+  assert.deepEqual(spellCells(w, s, 4, 6, 1), [[4, 6], [5, 5], [5, 6], [5, 7], [6, 4], [6, 5], [6, 6], [6, 7], [6, 8]]);
+  assert.equal(spellCells(w, s, 4, 6, 1, 3).length, 1 + 3 + 5 + 7 + 9 + 11, "charged to 3: six rows");
+  castSpell(w, "burning-hands", 4, 6, 1, undefined, 2);
+  for (let i = 0; i < 40; i++) step(w);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "d1f5f85a 1912747678");
+});

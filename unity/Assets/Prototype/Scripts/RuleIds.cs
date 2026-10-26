@@ -7,6 +7,8 @@
 public static class SpellIds
 {
     public const string FireBolt = "fire-bolt";
+    public const string BurningHands = "burning-hands";
+    public const string Fireball = "fireball";
     public const string RayOfFrost = "ray-of-frost";
     public const string CreateWater = "create-water";
     public const string SleetStorm = "sleet-storm";

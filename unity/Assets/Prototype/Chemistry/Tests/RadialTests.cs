@@ -21,10 +21,13 @@ namespace Chem.Tests
         // Base layout, clockwise from the top, 72° a wedge: fire 0°, water 72°, storm 144°, earth 216°, arcane 288°.
         const int Fire = 0, Water = 1, Storm = 2, Earth = 3, Arcane = 4;
 
-        // The arc mechanics are tested on an Earth wedge of five spells: Earthen Trench and Move
-        // Earth back on the radial (the game keeps them off it; TheLayoutFollowsTheGroupsAndSpellsJsonOrder).
+        // The arc mechanics are tested on the layout they were written for: Fire Bolt alone under
+        // Fire, and an Earth wedge of five spells (Earthen Trench and Move Earth back on the radial).
+        // TheLayoutFollowsTheGroupsAndSpellsJsonOrder checks the game's own layout.
         static Rules fiveEarth;
         static Rules FiveEarth => fiveEarth ??= With(@"{ 'spells': [
+            { 'id': 'burning-hands', 'group': 'fire', 'name': 'Burning Hands', 'level': 1, 'shape': 'cone', 'origin': 'self', 'length': 3, 'element': 'fire', 'radial': false, 'blurb': '' },
+            { 'id': 'fireball', 'group': 'fire', 'name': 'Fireball', 'level': 3, 'shape': 'burst', 'radius': 2, 'element': 'fire', 'radial': false, 'blurb': '' },
             { 'id': 'earthen-trench', 'group': 'earth', 'name': 'Earthen Trench', 'level': 2, 'shape': 'line', 'origin': 'self', 'length': 8, 'effect': 'terraform', 'dig': 2, 'blurb': '' },
             { 'id': 'move-earth', 'group': 'earth', 'name': 'Move Earth', 'level': 6, 'shape': 'burst', 'radius': 3, 'effect': 'terraform', 'raise': 2, 'taper': true, 'blurb': '' } ] }");
 
@@ -66,7 +69,8 @@ namespace Chem.Tests
         {
             var layout = RadialLayout.From(Base);
             Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane" }));
-            Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt" }), "a group with one spell");
+            Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt", "burning-hands", "fireball" }));
+            Assert.That(RadialLayout.From(FiveEarth).Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt" }), "a group with one spell");
             Assert.That(layout.Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "wall-of-stone" }), "Earthen Trench and Move Earth stay off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "earthen-trench", "wall-of-stone", "move-earth" }), "a group with five");
             Assert.That(layout.Groups[Arcane].SpellIds, Does.Contain("grease"));
@@ -92,11 +96,11 @@ namespace Chem.Tests
         [Test]
         public void ASpellWithNoGroupGoesUnderTheLastElement()
         {
-            var r = With("{ 'spells': [ { 'id': 'fireball', 'name': 'Fireball', 'level': 3, 'shape': 'burst', 'element': 'fire' } ] }");
+            var r = With("{ 'spells': [ { 'id': 'meteor-swarm', 'name': 'Meteor Swarm', 'level': 9, 'shape': 'burst', 'element': 'fire' } ] }");
             var groups = RadialLayout.From(r).Groups;
             var last = groups[groups.Count - 1];
             Assert.That(last.Id, Is.EqualTo("arcane"));
-            Assert.That(last.SpellIds[last.SpellIds.Count - 1], Is.EqualTo("fireball"));
+            Assert.That(last.SpellIds[last.SpellIds.Count - 1], Is.EqualTo("meteor-swarm"));
         }
 
         [Test]

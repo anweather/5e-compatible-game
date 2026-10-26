@@ -30,6 +30,15 @@ namespace Chem
                 case "line":
                     LineCells(s, x, y, dir, ChargedLength(s.Length, charge), output);
                     break;
+                case "cone":
+                {
+                    // From the square in front of the caster, widening a square each side per square
+                    // out (a 15 ft cone: 1, 3, then 5 squares); it washes over walls.
+                    int len = ChargedLength(s.Length, charge), px = DirY(dir), py = DirX(dir);
+                    for (int k = 0; k < len; k++)
+                        for (int o = -k; o <= k; o++) Add(x + DirX(dir) * k + px * o, y + DirY(dir) * k + py * o);
+                    break;
+                }
                 case "square":
                 {
                     int n = s.Size, off = FloorDiv(n - 1, 2);

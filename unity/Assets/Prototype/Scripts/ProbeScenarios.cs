@@ -141,6 +141,10 @@ public class SmokeProbe : ProbeScenario
         Metric("mold_earth_height_change", after - before);
         Check("mold_earth_shaped", after != before, $"height sum {before} -> {after}");
 
+        // The fire spells past Fire Bolt: a cone from the hands, and a blast.
+        yield return CastLogged(SpellIds.BurningHands, 4, 14, 3, 1f);
+        yield return CastLogged(SpellIds.Fireball, 22, 1, 0, 1.5f);
+
         var reactions = LogSince(startTick).Where(t => !t.StartsWith("You cast", StringComparison.Ordinal)).ToList();
         Metric("reaction_log_lines", reactions.Count);
         Check("reactions_logged", reactions.Count > 0, string.Join(" | ", reactions.Take(5)));

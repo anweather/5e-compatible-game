@@ -30,7 +30,7 @@ sound was heard in a later build (main, not 0.1.1).
 | P7 | Casting is binary. Hold to charge: Fire Bolt and other thrown spells go further the longer you hold; earth spells raise or dig more steps | done: hold Cast to charge (1–3, pips under the crosshair): power and earth steps times the charge, lines half again as long per level; both engines, shared golden; probe `charge` |
 | P8 | Too many earth spells: consolidate them into a few primitives | done: the Earth wedge is Raise Earth, Lower Earth and Wall of Stone (charge for more); Earthen Trench and Move Earth stay in the rules, off the radial (`"radial": false`) |
 | P9 | Earth needs more height range, up and down | done: heights -6 to 8 steps (were -3 to 4), water up to 32 units so deep pits fill; High walls mod scaled to 12 |
-| P10 | A second fire spell | open |
+| P10 | A second fire spell | done: Burning Hands (level 1, a 15 ft cone from your hands; a new `cone` shape in both engines) and Fireball (level 3, a blast 25 ft across) |
 | P11 | A spell that freezes water (see P5) | done: Sleet Storm (level 3, Water & Ice), a wide circle of ice |
 | P12 | Spells should affect the other wizards, as Gust of Wind and the earth spells do: more than now, not so much it stops being fun | open |
 

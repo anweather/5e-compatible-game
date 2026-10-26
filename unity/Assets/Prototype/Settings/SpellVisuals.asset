@@ -18,6 +18,16 @@ MonoBehaviour:
     impact: {fileID: 1337198075554910, guid: 25c7aa9ad705fe143a4d71c1c8deb7d4, type: 3}
     impactSeconds: 2
     glow: {r: 1, g: 0.5, b: 0.15, a: 1}
+  - spellId: burning-hands
+    projectile: {fileID: 0}
+    impact: {fileID: 1634767862067424, guid: 007c57e2df8e9b144b99f471b84f3d56, type: 3}
+    impactSeconds: 2
+    glow: {r: 1, g: 0.45, b: 0.1, a: 1}
+  - spellId: fireball
+    projectile: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
+    impact: {fileID: 1121192042590650, guid: e1b08032bec16ba4eb1ae23cbd572664, type: 3}
+    impactSeconds: 2
+    glow: {r: 1, g: 0.4, b: 0.1, a: 1}
   - spellId: ray-of-frost
     projectile: {fileID: 0}
     impact: {fileID: 1820680284854294, guid: 1a1c02facd51d87458dcaa3a761e2c03, type: 3}

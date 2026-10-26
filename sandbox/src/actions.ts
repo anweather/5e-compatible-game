@@ -40,6 +40,13 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
       }
       break;
     }
+    case "cone": {
+      // From the square in front of the caster, widening a square each side per square out
+      // (a 15 ft cone: 1, 3, then 5 squares); it washes over walls.
+      const len = chargedLength(s.length ?? 5, charge), px = DY[dir], py = DX[dir];
+      for (let k = 0; k < len; k++) for (let o = -k; o <= k; o++) add(x + DX[dir] * k + px * o, y + DY[dir] * k + py * o);
+      break;
+    }
     case "square": {
       const n = s.size ?? 2, off = Math.floor((n - 1) / 2);
       for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) add(x - off + dx, y - off + dy);

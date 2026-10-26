@@ -39,7 +39,7 @@ public static class GameSounds
         if (spell == null) return null;
         switch (spell.Element)
         {
-            case "fire": return SoundIds.Fire;
+            case "fire": return spell.Shape == SpellShapes.Burst ? SoundIds.Explosion : SoundIds.Fire;
             case "cold": return SoundIds.Frost;
             case "water": return SoundIds.Splash;
             case "grease": return SoundIds.Grease;

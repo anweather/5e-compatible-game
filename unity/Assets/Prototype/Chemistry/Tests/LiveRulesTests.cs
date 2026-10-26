@@ -80,11 +80,11 @@ namespace Chem.Tests
         {
             var r = With(
                 "{ 'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground'] }, 'grass': { 'name': 'Wet grass', 'tags': ['ground'] } }, 'sim': { 'fire': { 'spreadChance': 0.1 }, 'push': 5 } }",
-                @"{ 'spells': [{ 'id': 'fireball', 'name': 'Fireball', 'level': 3, 'shape': 'burst', 'radius': 4, 'element': 'fire', 'blurb': 'b' },
+                @"{ 'spells': [{ 'id': 'meteor-swarm', 'name': 'Meteor Swarm', 'level': 3, 'shape': 'burst', 'radius': 4, 'element': 'fire', 'blurb': 'b' },
                                { 'id': 'fire-bolt', 'name': 'Fire Bolt', 'level': 0, 'shape': 'point', 'element': 'fire', 'power': 3, 'blurb': 'x' }],
                     'sim': { 'fire': { 'heatChance': 0.2 }, 'push': { 'slideCells': 9 } },
                     'reactions': { 'remove': ['fire-oil'], 'addEntity': [{ 'id': 'acid-entity', 'element': 'fire', 'do': [{ 'status': { 'burning': 2 } }] }] } }");
-            Assert.That(r.Spells.Select(s => s.Id).Last(), Is.EqualTo("fireball"), "a new spell goes last");
+            Assert.That(r.Spells.Select(s => s.Id).Last(), Is.EqualTo("meteor-swarm"), "a new spell goes last");
             Assert.That(r.Spells[0].Id, Is.EqualTo("fire-bolt"), "a replaced one stays where it was");
             Assert.That(r.Spell("fire-bolt").Power, Is.EqualTo(3));
             Assert.That(r.Sim.Fire.SpreadChance, Is.EqualTo(0.1));

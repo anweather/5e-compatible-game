@@ -222,6 +222,21 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void GoldenBurningHandsConeMatchesTs()
+        {
+            // The same as "Burning Hands is a cone..." in terraform.test.ts.
+            var w = Room(20, 14, 4);
+            for (int x = 1; x < 19; x++)
+                for (int y = 1; y < 13; y++) w.At(x, y).T = "grass";
+            var s = R.Spell("burning-hands");
+            Assert.That(w.SpellCells(s, 4, 6, 1), Is.EqualTo(new[] { (4, 6), (5, 5), (5, 6), (5, 7), (6, 4), (6, 5), (6, 6), (6, 7), (6, 8) }));
+            Assert.That(w.SpellCells(s, 4, 6, 1, 3).Count, Is.EqualTo(1 + 3 + 5 + 7 + 9 + 11), "charged to 3: six rows");
+            w.Cast("burning-hands", 4, 6, 1, 2);
+            Run(w, 40);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("d1f5f85a 1912747678"));
+        }
+
+        [Test]
         public void HeightRangeNumbersAreChecked()
         {
             System.Collections.Generic.IReadOnlyList<string> Errors(string sim) =>
