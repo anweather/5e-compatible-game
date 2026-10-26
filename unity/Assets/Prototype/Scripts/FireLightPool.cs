@@ -3,11 +3,14 @@ using UnityEngine;
 
 // A fixed pool of flickering point lights spread over the biggest fires.
 // Hundreds of cells can burn at once and every real-time light costs a lot,
-// so the lights are made once and moved, never created per fire.
+// so the lights are made once and moved, never created per fire. Each light
+// also carries the crackle of the fire it sits on, so the sound of a fire
+// comes from the same few places as its light.
 public sealed class FireLightPool
 {
     readonly ChemGrid grid;
     readonly List<Light> lights = new();
+    readonly List<AudioSource> crackles = new();
     readonly List<(int x, int y, int fire)> burning = new();
 
     public FireLightPool(ChemGrid grid, int size)
@@ -23,6 +26,7 @@ public sealed class FireLightPool
             l.shadows = LightShadows.None;
             l.enabled = false;
             lights.Add(l);
+            crackles.Add(GameSounds.Loop(ProceduralSounds.FireLoop, l.transform, 0f));
         }
     }
 
@@ -35,12 +39,27 @@ public sealed class FireLightPool
         {
             if (used >= lights.Count) break;
             if (NearLitFire(b.x, b.y, used)) continue;
-            var l = lights[used++];
+            var l = lights[used];
             l.transform.position = grid.CellCenter(b.x, b.y) + Vector3.up * (grid.SurfaceY(b.x, b.y) + 1f);
             l.intensity = 1.5f + b.fire;
             l.enabled = true;
+            SetCrackle(used, 0.25f + 0.2f * b.fire);
+            used++;
         }
-        for (int i = used; i < lights.Count; i++) lights[i].enabled = false;
+        for (int i = used; i < lights.Count; i++)
+        {
+            lights[i].enabled = false;
+            SetCrackle(i, 0f);
+        }
+    }
+
+    // A fire's crackle: playing (at this volume) while its light is lit, stopped otherwise.
+    void SetCrackle(int i, float volume)
+    {
+        var s = crackles[i];
+        s.volume = volume;
+        if (volume > 0f && !s.isPlaying) s.Play();
+        else if (volume <= 0f && s.isPlaying) s.Stop();
     }
 
     /// <summary>Wavers the lit lights' range; call every frame.</summary>

@@ -147,11 +147,14 @@ public class SpellCaster : MonoBehaviour
     {
         var look = LookOf(spellId);
         var landing = Landing(spellId, x, y, dir);
+        var def = grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null;
         if (pose != null) pose.Play(landing, look?.glow ?? Color.white);
+        GameSounds.Play(GameSounds.CastOf(def), Hand, 0.45f);
 
         void Land()
         {
             if (look?.impact != null) Destroy(Instantiate(look.impact, landing, Quaternion.LookRotation(Flat(landing - Hand))), look.impactSeconds);
+            GameSounds.Play(GameSounds.LandingOf(def), landing);
             onArrive?.Invoke();
         }
 
