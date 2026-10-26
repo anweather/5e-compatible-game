@@ -7,13 +7,18 @@ using UnityEngine;
 // times. The Wildfire mod on, Fire Bolts into the meadow around the yard, and
 // 20 s of it burning with the camera on it. Reports the frame times while it
 // burns, how many squares burn at most, and where a frame's time goes (the
-// grid's step, drawing the cells, the fire lights). Checks the fire spread and
-// that frames stay under the p95 budget.
+// grid's step, drawing the cells, the fire lights) and how many frames are
+// slow (over 20 ms), how slow on average, and the slowest. For what a slow
+// frame spent its time on, record the run in the Profiler (its ChemGrid and
+// ValleyGround markers). Checks the fire spread and that frames stay under the
+// p95 budget.
 public class WildfireProbe : ProbeScenario
 {
     const float BurnSeconds = 20f;
     /// <summary>The p95 frame time a big fire may take in Editor Play mode (60 fps is 16.7 ms).</summary>
     const float P95BudgetMs = 33f;
+    /// <summary>A frame slower than this counts as slow (under 50 fps).</summary>
+    const float SlowMs = 20f;
 
     protected override IEnumerator Run()
     {
@@ -53,6 +58,11 @@ public class WildfireProbe : ProbeScenario
         }
         Shot("burning");
 
+        float slowest = frames.Max();
+        var slow = frames.Where(f => f > SlowMs).ToList();
+        Metric("slow_frames", slow.Count);
+        Metric("slow_mean_ms", slow.Count > 0 ? slow.Average() : 0);
+        Metric("worst_frame_ms", slowest);
         frames.Sort();
         float p95 = frames[(int)(frames.Count * 0.95f)];
         float mean = frames.Average();

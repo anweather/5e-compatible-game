@@ -105,14 +105,22 @@ public partial class ChemGrid
     /// <summary>Of RenderMs, the milliseconds the last frame spent on the water, slicks and easing ground.</summary>
     public double SurfacesMs { get; private set; }
 
+    // Profiler markers (Window > Analysis > Profiler) round the parts of drawing the cells.
+    static readonly Unity.Profiling.ProfilerMarker GroundMarker = new("ChemGrid.ChangeGround"),
+        WaterMarker = new("ChemGrid.RenderWater"), FireMarker = new("ChemGrid.RenderFire"), GasMarker = new("ChemGrid.RenderGas"),
+        FinishMarker = new("ChemGrid.FinishRender"), WaterMeshMarker = new("ChemGrid.WaterMesh"),
+        SlickMeshMarker = new("ChemGrid.SlickMesh"), ShapingMarker = new("ChemGrid.Shaping"), RecycleMarker = new("ChemGrid.RecycleFx");
+
     void FinishRender()
     {
+        using var marked = FinishMarker.Auto();
         finishTimer.Restart();
-        waterSurface.Rebuild();
-        slicks.Rebuild();
+        using (WaterMeshMarker.Auto()) waterSurface.Rebuild();
+        using (SlickMeshMarker.Auto()) slicks.Rebuild();
         materials.ScrollWater(Time.time);
-        AnimateShaping();
-        RecycleFx();
+        waterSurface.Scroll(Time.time);
+        using (ShapingMarker.Auto()) AnimateShaping();
+        using (RecycleMarker.Auto()) RecycleFx();
         SurfacesMs = finishTimer.Elapsed.TotalMilliseconds;
     }
 
@@ -125,16 +133,17 @@ public partial class ChemGrid
         if (key == v.key && v.terrain == c.T && v.height == c.Height) return;
         v.key = key;
 
-        if (v.terrain != c.T || v.height != c.Height || v.coverId != c.Cover) ChangeGround(v, c, x, y);
+        if (v.terrain != c.T || v.height != c.Height || v.coverId != c.Cover)
+            using (GroundMarker.Auto()) ChangeGround(v, c, x, y);
         float groundTop = GroundTop(x, y, c);
         float ground = CellDressing.IsDressed(c.T) ? groundTop : groundTop + CellDressing.Look(c.T).height;
         var center = CellCenter(x, y);
         bool lake = valley != null && valley.IsLake(c, x, y);
 
-        ground = RenderWater(v, c, x, y, ground, groundTop, lake);
+        using (WaterMarker.Auto()) ground = RenderWater(v, c, x, y, ground, groundTop, lake);
         RenderCover(v, c, x, y, center, ground);
-        RenderFire(v, c, x, y, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
-        RenderGas(v, c, center, ground, GasDrawnAt(x, y));
+        using (FireMarker.Auto()) RenderFire(v, c, x, y, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
+        using (GasMarker.Auto()) RenderGas(v, c, center, ground, GasDrawnAt(x, y));
         // A lightning strike across the lake charges thousands of cells; on the lake, sparks on
         // one cell in 25 read the same without thousands of effects.
         if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
@@ -160,7 +169,7 @@ public partial class ChemGrid
         }
         if (reshaped)
         {
-            waterSurface.GroundChanged();
+            waterSurface.GroundChanged(x, y);
             slicks.GroundChanged();
         }
         v.terrain = c.T;
