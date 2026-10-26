@@ -436,38 +436,10 @@ the same cells through `CellHeightfield`; `OnlineValleyTests` checks in the
 core that a client and a late joiner on a valley-sized world keep the
 host's checksums and draw the same heightfield.
 
-## Proposed decision entries (not yet in `DECISIONS.md`)
+## Proposed decisions
 
-```markdown
-## D7. Netcode: NGO, client-hosted, lockstep chemistry (2026-10-24, proposed)
-
-- **Decision:**
-  - Netcode for GameObjects 2.x on Unity Transport, client-hosted
-    (one player hosts). Unity Multiplayer Services sessions with
-    Relay and a join code for connecting; anonymous sign-in.
-  - The grid chemistry stays lockstep, as in the sandbox (D6): the
-    host orders cast intents into one batch per tick, every machine
-    steps on batches, `CellHash` checksums, snapshot on join or
-    desync. Cells are never streamed.
-  - Players are owner-authoritative (NetworkTransform/Animator,
-    interpolated). PhysX props are host-authoritative; any result
-    that matters to chemistry is quantised into an intent (D4).
-- **Why:** first-party and the most learnable path (D1); co-op needs
-  no prediction; the deterministic core already exists and is tested;
-  $0 at friends scale.
-- **Reopen if:** competitive play, more than ~8 players, shipping on
-  Steam (swap the transport for Steam sockets), or a desync rate that
-  integer rules can't fix.
-
-## D8. Voice: Vivox, with spell effects applied by each listener (2026-10-24, proposed)
-
-- **Decision:** Vivox for voice. Start with a positional channel; move
-  to participant taps played through Unity AudioSources so the game
-  owns falloff and effects. Spell voice effects are a pure function of
-  the shared spell state, evaluated by each listener. Private spells
-  (Message, Sending, Telepathic Bond) use separate Vivox channels.
-- **Why:** free to 5,000 PCU, same UGS sign-in, and taps give the raw
-  audio access that spell effects need.
-- **Reopen if:** the tap spike fails (then Dissonance over NGO), or
-  the game moves to Steam or EOS for netcode.
-```
+The two decisions this doc proposes are ADRs, still marked Proposed:
+[D7, netcode](adr/0007-netcode-ngo-client-hosted-lockstep-chemistry.md)
+(NGO, client-hosted, lockstep chemistry) and
+[D8, voice](adr/0008-voice-vivox-with-spell-effects-applied-by-each-listener.md)
+(Vivox, with spell effects applied by each listener). See `DECISIONS.md`.
