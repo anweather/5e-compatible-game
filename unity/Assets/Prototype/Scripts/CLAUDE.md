@@ -32,6 +32,10 @@ things go" table is the recipe for adding a spell, material, prop or item.
   can't build it. Its checks are the Unity console's analyzer warnings
   (don't add any; the current count is the baseline in `docs/QUALITY.md`)
   and the probe.
+- There are two wizards: the solo one in the yard and the `NetWizard`
+  prefab for online play. Give a wizard a new part only in
+  `ChemYardBuilder.AddWizardParts`, which both are built from;
+  `WizardPartsTests` fails if their parts ever differ.
 - After changing a builder (`Editor/*Builder.cs`), rerun its menu item.
   Props and items aren't placed in the scene: `ThingSpawner` spawns them
   from `world/things.json` per chunk, with stable ids (`ThingId`: chunk +

@@ -83,22 +83,12 @@ public static class ChemYardBuilder
         var player = (GameObject)PrefabUtility.InstantiatePrefab(armature);
         player.name = WizardRig.Name;
         player.transform.position = start;
-        var controls = player.AddComponent<PlayerControls>();
-        var visuals = BuildSpellVisuals();
-        player.AddComponent<CastPose>();
-        player.AddComponent<SurfaceEffects>().grid = grid;
-        player.AddComponent<Knockback>().grid = grid;
-        var caster = player.AddComponent<SpellCaster>();
-        caster.grid = grid;
-        caster.controls = controls;
-        caster.visuals = visuals;
+        var (controls, _, hands) = AddWizardParts(player, grid, BuildSpellVisuals(), playerDriven: true);
 
         var follow = (GameObject)PrefabUtility.InstantiatePrefab(followCamera);
         var cameraRoot = player.transform.Find(WizardRig.CameraRoot);
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
         follow.AddComponent<CameraZoom>().controls = controls;
-        var hands = player.AddComponent<ItemHolder>();
-        hands.controls = controls;
         hands.view = follow.GetComponent<CinemachineCamera>();
 
         SetUpLighting();
@@ -237,6 +227,37 @@ public static class ChemYardBuilder
     // The networked wizard: a variant of the Starter Assets character with
     // owner-authoritative movement and animation. Input, movement and
     // spellcasting start switched off; NetWizard turns them on for the owner.
+    /// <summary>
+    /// The wizard's gameplay parts, the one recipe for both wizards (the solo one in the yard and
+    /// the NetWizard prefab), so the two can't drift apart: anything a wizard can do goes here.
+    /// <paramref name="playerDriven"/>: the solo wizard, wired to the grid and its controls now;
+    /// otherwise switched off and left for NetWizard to wire up for its owner on spawn.
+    /// WizardPartsTests checks both builds carry the same parts.
+    /// </summary>
+    internal static (PlayerControls controls, SpellCaster caster, ItemHolder hands) AddWizardParts(
+        GameObject wizard, ChemGrid grid, SpellVisuals visuals, bool playerDriven)
+    {
+        var controls = wizard.AddComponent<PlayerControls>();
+        controls.enabled = playerDriven;
+        var caster = wizard.AddComponent<SpellCaster>();
+        caster.visuals = visuals;
+        caster.enabled = playerDriven;
+        wizard.AddComponent<CastPose>();
+        var surface = wizard.AddComponent<SurfaceEffects>();
+        surface.enabled = playerDriven;
+        var knockback = wizard.AddComponent<Knockback>();
+        var hands = wizard.AddComponent<ItemHolder>();
+        if (playerDriven)
+        {
+            caster.grid = grid;
+            caster.controls = controls;
+            surface.grid = grid;
+            knockback.grid = grid;
+            hands.controls = controls;
+        }
+        return (controls, caster, hands);
+    }
+
     static GameObject BuildNetWizard(GameObject armature)
     {
         EditorAssets.EnsureFolderFor(NetWizardPath);
@@ -251,15 +272,8 @@ public static class ChemYardBuilder
         animator.Animator = wizard.GetComponent<Animator>();
         animator.AuthorityMode = NetworkAnimator.AuthorityModes.Owner;
 
-        wizard.AddComponent<PlayerControls>().enabled = false;
-        var caster = wizard.AddComponent<SpellCaster>();
-        caster.visuals = BuildSpellVisuals();
-        caster.enabled = false;
-        wizard.AddComponent<CastPose>();
-        wizard.AddComponent<SurfaceEffects>().enabled = false;
-        wizard.AddComponent<Knockback>();
-        // Every copy holds what its player holds; NetWizard gives the owner's copy its controls.
-        wizard.AddComponent<ItemHolder>();
+        // Every copy holds what its player holds; NetWizard gives the owner's copy its grid and controls.
+        AddWizardParts(wizard, null, BuildSpellVisuals(), playerDriven: false);
         wizard.AddComponent<NetWizard>();
 
         WizardRig.SetPlayerDriven(wizard, false);
