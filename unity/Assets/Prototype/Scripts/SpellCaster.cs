@@ -7,10 +7,9 @@ using UnityEngine;
 // next to the wizard and point at the target, everything else lands on the
 // targeted cell. The cells it will touch are highlighted.
 //
-// The bar has three pages: Elements (spellIds, keys 1-8), Earth
-// (earthSpellIds, keys 1-5) and Arcane (arcaneSpellIds), turned with Tab or
-// the d-pad's left/right. The number keys pick on the page shown; Q and E
-// step through all the pages as one list.
+// The spell to cast is picked with the spell radial (SpellRadialHud: hold Tab
+// or LB, element then spell), or Select(id) from anywhere else (demos, the
+// probe). Every spell in rules/spells.json can be picked; nothing to set up.
 //
 // A cast is an intent, (spell, x, y, direction): solo it is applied to the
 // world when the show lands, and its shove to whatever moves (SpellForces);
@@ -20,38 +19,19 @@ public class SpellCaster : MonoBehaviour
 {
     public ChemGrid grid;
     public PlayerControls controls;
-    public string[] spellIds = SpellIds.DefaultBar();
-    [Tooltip("The bar's second page (Tab, or d-pad left/right): earth shaping.")]
-    public string[] earthSpellIds = SpellIds.EarthBar();
-    [Tooltip("The bar's third page: magic that moves you or things.")]
-    public string[] arcaneSpellIds = SpellIds.ArcaneBar();
     [Tooltip("How each spell looks when cast. Without it, spells take effect with no show.")]
     public SpellVisuals visuals;
 
-    /// <summary>The names of the bar's pages, in page order.</summary>
-    public static readonly string[] PageNames = { "Elements", "Earth", "Arcane" };
-
-    /// <summary>The page of the bar shown: 0 Elements, 1 Earth, 2 Arcane.</summary>
-    public int Page { get; private set; }
-    /// <summary>The selected slot on the page shown.</summary>
-    public int Selected { get; private set; }
-    public string SelectedName => SpellName(Selected);
-    /// <summary>The spells on the page shown, in key order.</summary>
-    public string[] Bar => PageSpells(Page);
-    public string SelectedId => Bar[Selected];
-
-    /// <summary>The spells on a page, in key order (empty if the page has none).</summary>
-    public string[] PageSpells(int page) => page switch
-    {
-        0 => spellIds,
-        1 => earthSpellIds,
-        _ => arcaneSpellIds ?? System.Array.Empty<string>(),
-    };
+    /// <summary>The spell a cast casts.</summary>
+    public string SelectedId { get; private set; } = SpellIds.FireBolt;
+    /// <summary>Its display name (its id if the rules don't know it).</summary>
+    public string SelectedName => grid != null && grid.World != null ? grid.World.Rules.Spell(SelectedId)?.Name ?? SelectedId : SelectedId;
 
     readonly List<GameObject> markers = new();
     Material markerMat;
     CastPose pose;
     ItemHolder hands;
+    SpellRadialHud radial;
     NetChem net;
     RaycastHit crosshair;
     bool hasCrosshair;
@@ -67,6 +47,7 @@ public class SpellCaster : MonoBehaviour
     {
         TryGetComponent(out pose);
         TryGetComponent(out hands);
+        TryGetComponent(out radial);
     }
 
     void OnEnable() => EventLog.Track(this);
@@ -78,34 +59,22 @@ public class SpellCaster : MonoBehaviour
 
     void OnDestroy() => Destroy(markerMat);
 
-    /// <summary>The display name of the spell in a bar slot (its id if the rules don't know it).</summary>
-    public string SpellName(int slot)
-    {
-        var world = grid != null ? grid.World : null;
-        return world?.Rules.Spell(Bar[slot])?.Name ?? Bar[slot];
-    }
-
-    /// <summary>Selects a spell by id on whichever page has it; false if neither does.</summary>
+    /// <summary>Selects a spell by id; false (and nothing changes) if the rules in force don't have it.</summary>
     public bool Select(string spellId)
     {
-        for (int page = 0; page < PageNames.Length; page++)
-        {
-            int slot = System.Array.IndexOf(PageSpells(page), spellId);
-            if (slot < 0) continue;
-            Page = page;
-            Selected = slot;
-            return true;
-        }
-        return false;
+        if (string.IsNullOrEmpty(spellId)) return false;
+        if (grid != null && grid.World != null && grid.World.Rules.Spell(spellId) == null) return false;
+        SelectedId = spellId;
+        return true;
     }
 
     void Update()
     {
         if (controls == null || grid == null || grid.World == null) return;
-        PickSpell();
 
         hasCrosshair = Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
-        if (!hasCrosshair)
+        // While the spell radial is open the player is choosing, not aiming: no markers, no cast.
+        if (!hasCrosshair || (radial != null && radial.IsOpen))
         {
             ShowMarkers(null);
             return;
@@ -130,51 +99,6 @@ public class SpellCaster : MonoBehaviour
     }
 
     Vector2Int CrosshairCell => grid.CellAt(crosshair.point - crosshair.normal * 0.05f);
-
-    void PickSpell()
-    {
-        if (controls.SwitchPage.WasPressedThisFrame()) NextPage();
-        int slot = controls.PickedSlot();
-        if (slot >= 0 && slot < Bar.Length) Selected = slot;
-        if (controls.NextSpellPressed()) StepSpell(1);
-        if (controls.PrevSpell.WasPressedThisFrame()) StepSpell(-1);
-    }
-
-    /// <summary>Turns to the next page that has spells (Tab), keeping the slot where it can.</summary>
-    public void NextPage()
-    {
-        for (int i = 1; i <= PageNames.Length; i++)
-        {
-            int page = (Page + i) % PageNames.Length;
-            if (PageSpells(page).Length == 0) continue;
-            Page = page;
-            Selected = Mathf.Min(Selected, Bar.Length - 1);
-            return;
-        }
-    }
-
-    // Steps through all the pages as one list, turning the page at either end.
-    void StepSpell(int by)
-    {
-        int total = 0, at = 0;
-        for (int p = 0; p < PageNames.Length; p++)
-        {
-            if (p == Page) at = total + Selected;
-            total += PageSpells(p).Length;
-        }
-        at = (at + by + total) % total;
-        for (int p = 0; p < PageNames.Length; p++)
-        {
-            int n = PageSpells(p).Length;
-            if (at < n)
-            {
-                Page = p;
-                Selected = at;
-                return;
-            }
-            at -= n;
-        }
-    }
 
     // --- casting ---------------------------------------------------------------------
 

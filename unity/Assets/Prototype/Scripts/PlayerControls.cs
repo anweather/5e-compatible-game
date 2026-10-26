@@ -7,10 +7,14 @@ using UnityEngine.InputSystem;
 // PlayStation controllers both map to <Gamepad>.
 //
 //   Cast spell   left mouse    right trigger
-//   Next spell   E             right bumper (R1)
-//   Prev spell   Q             left bumper (L1)
-//   Pick spell   1-8 (on the page shown)
-//   Spell page   Tab           d-pad left / right   (Elements <-> Earth)
+//   Spell radial hold Tab      hold left bumper (L1)   (SpellRadialHud: aim with the
+//                                                        mouse / right stick, release to pick;
+//                                                        a tap swaps to the previous spell)
+//   Cancel radial (release     B / Circle (while it's open; otherwise B throws)
+//                 in centre)
+//   Next spell   E             right bumper (R1)       (in the current element)
+//   Prev spell   Q
+//   Element      1-8 (opens that element's spells)  d-pad left / right (steps)
 //   Zoom camera  mouse wheel   d-pad up / down
 //   Reset        R             View / Share button
 //   Esc menu     Esc / M       Start / Options      (MenuControls, the menu's own;
@@ -22,15 +26,16 @@ using UnityEngine.InputSystem;
 //
 // E is both "next spell" and "pick up": while an item is in reach or in hand
 // (ItemHolder sets ItemInReach) it picks up or drops, and the spell stays put.
-// Q and E step through every spell on both pages, so a gamepad reaches them
-// all with the bumpers alone.
 public class PlayerControls : MonoBehaviour
 {
     public InputAction Cast { get; private set; }
+    public InputAction RadialHold { get; private set; }
+    public InputAction RadialCancel { get; private set; }
     public InputAction NextSpell { get; private set; }
     public InputAction PrevSpell { get; private set; }
-    public InputAction PickSpell { get; private set; }
-    public InputAction SwitchPage { get; private set; }
+    public InputAction PickElement { get; private set; }
+    public InputAction NextElement { get; private set; }
+    public InputAction PrevElement { get; private set; }
     public InputAction Zoom { get; private set; }
     public InputAction Reset { get; private set; }
     public InputAction Interact { get; private set; }
@@ -48,10 +53,13 @@ public class PlayerControls : MonoBehaviour
     void Awake()
     {
         Cast = Button("Cast", "<Mouse>/leftButton", "<Gamepad>/rightTrigger");
+        RadialHold = Button("Spell radial", "<Keyboard>/tab", "<Gamepad>/leftShoulder");
+        RadialCancel = Button("Cancel spell radial", "<Gamepad>/buttonEast");
         NextSpell = Button("Next spell", "<Keyboard>/e", "<Gamepad>/rightShoulder");
-        PrevSpell = Button("Previous spell", "<Keyboard>/q", "<Gamepad>/leftShoulder");
-        PickSpell = Button("Pick spell", "<Keyboard>/1", "<Keyboard>/2", "<Keyboard>/3", "<Keyboard>/4", "<Keyboard>/5", "<Keyboard>/6", "<Keyboard>/7", "<Keyboard>/8");
-        SwitchPage = Button("Spell page", "<Keyboard>/tab", "<Gamepad>/dpad/left", "<Gamepad>/dpad/right");
+        PrevSpell = Button("Previous spell", "<Keyboard>/q");
+        PickElement = Button("Pick element", "<Keyboard>/1", "<Keyboard>/2", "<Keyboard>/3", "<Keyboard>/4", "<Keyboard>/5", "<Keyboard>/6", "<Keyboard>/7", "<Keyboard>/8");
+        NextElement = Button("Next element", "<Gamepad>/dpad/right");
+        PrevElement = Button("Previous element", "<Gamepad>/dpad/left");
         Reset = Button("Reset", "<Keyboard>/r", "<Gamepad>/select");
         Interact = Button("Pick up or drop", "<Keyboard>/e", "<Gamepad>/buttonWest");
         Use = Button("Use item", "<Keyboard>/f", "<Gamepad>/buttonNorth");
@@ -63,7 +71,7 @@ public class PlayerControls : MonoBehaviour
             .With("Negative", "<Gamepad>/dpad/up")
             .With("Positive", "<Gamepad>/dpad/down");
 
-        all = new[] { Cast, NextSpell, PrevSpell, PickSpell, SwitchPage, Zoom, Reset, Interact, Use, Throw };
+        all = new[] { Cast, RadialHold, RadialCancel, NextSpell, PrevSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Throw };
         foreach (var a in all) a.performed += Track;
     }
 
@@ -90,11 +98,11 @@ public class PlayerControls : MonoBehaviour
     public bool NextSpellPressed() =>
         NextSpell.WasPressedThisFrame() && !(ItemInReach && NextSpell.activeControl?.device is Keyboard);
 
-    /// <summary>The spell slot (0-7) of the number key pressed this frame, or -1.</summary>
-    public int PickedSlot()
+    /// <summary>The element (0-7, radial order) of the number key pressed this frame, or -1.</summary>
+    public int PickedElement()
     {
-        if (!PickSpell.WasPressedThisFrame() || PickSpell.activeControl == null) return -1;
-        return int.TryParse(PickSpell.activeControl.name, out int n) ? n - 1 : -1;
+        if (!PickElement.WasPressedThisFrame() || PickElement.activeControl == null) return -1;
+        return int.TryParse(PickElement.activeControl.name, out int n) ? n - 1 : -1;
     }
 
     void OnEnable() { foreach (var a in all) a.Enable(); }

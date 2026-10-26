@@ -248,6 +248,7 @@ public static class ChemYardBuilder
         surface.enabled = playerDriven;
         var knockback = wizard.AddComponent<Knockback>();
         var hands = wizard.AddComponent<ItemHolder>();
+        wizard.AddComponent<SpellRadialHud>(); // waits for the caster and controls to be on (solo now, the owner's on spawn)
         if (playerDriven)
         {
             caster.grid = grid;

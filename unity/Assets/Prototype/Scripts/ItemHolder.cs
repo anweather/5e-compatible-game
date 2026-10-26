@@ -27,6 +27,7 @@ public class ItemHolder : MonoBehaviour
 
     Transform hand;
     CharacterController body;
+    SpellRadialHud radial;
     float throwPressedAt = -1f;
     GUIStyle style, shadow;
 
@@ -46,6 +47,7 @@ public class ItemHolder : MonoBehaviour
     {
         Colliders = GetComponentsInChildren<Collider>();
         TryGetComponent(out body);
+        TryGetComponent(out radial);
         if (TryGetComponent<Animator>(out var animator) && animator.isHuman) hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
     }
 
@@ -64,9 +66,15 @@ public class ItemHolder : MonoBehaviour
         else throwPressedAt = -1f;
     }
 
-    // Throw (hold to wind up, release to let fly) and use.
+    // Throw (hold to wind up, release to let fly) and use. B is also the spell radial's cancel:
+    // while the radial has it (open, or closed by it this frame) it doesn't throw.
     void HandleHeld()
     {
+        if (radial != null && radial.BusyThisFrame)
+        {
+            throwPressedAt = -1f;
+            return;
+        }
         if (controls.Throw.WasPressedThisFrame()) throwPressedAt = Time.time;
         if (controls.Throw.WasReleasedThisFrame() && throwPressedAt >= 0f)
         {
@@ -192,7 +200,7 @@ public class ItemHolder : MonoBehaviour
 
     void OnGUI()
     {
-        if (!EventLog.HudVisible || controls == null) return;
+        if (!EventLog.HudVisible || controls == null || (radial != null && radial.IsOpen)) return; // the spell radial covers the middle
         string hint = Hint();
         if (hint == null) return;
         if (style == null)

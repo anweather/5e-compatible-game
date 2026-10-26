@@ -58,6 +58,12 @@ public static class ProbeScenarios
             "Mods page and switches the first mod on and off, B goes back, then Credits and Join by code (letters picked, B back). " +
             "Checks: each step landed on the right page, 5 mods listed, the mod switched, B and Start close the menu and the " +
             "wizard's controls come back, no console errors."),
+        new Entry("radial", typeof(RadialProbe), 60f,
+            "The spell radial with a controller, on a virtual gamepad: hold LB and push the right stick at Storm, then at " +
+            "Thunderwave in its arc, release; tap LB; open on Earth and press B; d-pad right; RB. Checks: LB opens it on Storm, " +
+            "the arc opens with Thunderwave highlighted, release picks it and camera look comes back, a tap swaps back to " +
+            "Fire Bolt, B cancels without changing the spell, the d-pad steps to the next element and RB to the next spell " +
+            "in it, no console errors."),
     };
 
     public static Entry Find(string name) =>

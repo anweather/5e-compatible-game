@@ -56,9 +56,9 @@ public class EventLog : MonoBehaviour
         if (reset) SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 
-    const string KeyboardHelp = "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Wheel</b> zoom   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>1–8 / Q E</b> spell   ·   <b>Tab</b> page   ·   <b>Click</b> cast   ·   <b>R</b> reset   ·   <b>Esc</b> menu   ·   <b>M</b> mods";
+    const string KeyboardHelp = "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Wheel</b> zoom   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>Hold Tab</b> spells   ·   <b>Click</b> cast   ·   <b>R</b> reset   ·   <b>Esc</b> menu   ·   <b>M</b> mods";
     const string FirelineHelp = "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset   ·   <b>Esc</b> menu";
-    const string GamepadHelp = "<b>Left stick</b> move   ·   <b>Right stick</b> look   ·   <b>D-pad</b> zoom   ·   <b>A / ✕</b> jump   ·   <b>LT</b> sprint   ·   <b>LB RB</b> spell   ·   <b>D-pad ◀ ▶</b> page   ·   <b>RT</b> cast   ·   <b>View / Share</b> reset   ·   <b>Start</b> menu";
+    const string GamepadHelp = "<b>Left stick</b> move   ·   <b>Right stick</b> look   ·   <b>D-pad</b> zoom   ·   <b>A / ✕</b> jump   ·   <b>LT</b> sprint   ·   <b>Hold LB</b> spells   ·   <b>RT</b> cast   ·   <b>View / Share</b> reset   ·   <b>Start</b> menu";
 
     // A plus with a dark shadow, so it reads against the sky as well as the ground.
     void Crosshair()
@@ -79,21 +79,22 @@ public class EventLog : MonoBehaviour
             GUI.Label(new Rect(16, Screen.height - 32 - (lines.Count - i) * 26, 900, 26), lines[i], style);
     }
 
-    // Controls help for the device in use, the crosshair, and the spell bar with the selected spell highlighted.
+    // Controls help for the device in use, the crosshair, and the spell chip: the selected spell in
+    // its element's colour, with the keys that change it (the spell radial: SpellRadialHud).
     void DrawCasterHud()
     {
         bool pad = caster.controls != null && caster.controls.UsingGamepad;
         GUI.Label(new Rect(16, 12, 1600, 30), pad ? GamepadHelp : KeyboardHelp, style);
         if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
-        var bar = new StringBuilder();
-        for (int p = 0; p < SpellCaster.PageNames.Length; p++)
-            bar.Append(p == caster.Page ? $"<b>{SpellCaster.PageNames[p]}</b>  " : $"<color=#ffffff88>{SpellCaster.PageNames[p]}</color>  ");
-        bar.Append("|   ");
-        for (int i = 0; i < caster.Bar.Length; i++)
-        {
-            var name = caster.SpellName(i);
-            bar.Append(i == caster.Selected ? $"<color=#ffd24a><b>[{i + 1}] {name}</b></color>   " : $"{i + 1} {name}   ");
-        }
-        GUI.Label(new Rect(16, 40, 1400, 30), bar.ToString(), style);
+        GUI.Label(new Rect(16, 40, 1400, 30), SpellChip(pad), style);
+    }
+
+    string SpellChip(bool pad)
+    {
+        var group = caster.TryGetComponent<SpellRadialHud>(out var radial) ? radial.CurrentGroup : null;
+        string colour = group?.Color ?? "#ffd24a";
+        string element = group != null ? $"<color={colour}>{group.Name}</color>  " : "";
+        string keys = pad ? "hold LB: spells, tap: swap  ·  RB next  ·  D-pad ◀ ▶ element" : "hold Tab: spells, tap: swap  ·  Q E next  ·  1–8 element";
+        return $"<color={colour}>●</color> {element}<color=#ffd24a><b>{caster.SelectedName}</b></color>   <color=#ffffff88>{keys}</color>";
     }
 }

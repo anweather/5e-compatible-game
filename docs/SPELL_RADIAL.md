@@ -58,7 +58,11 @@ add elements.
   a wedge, dead zone, the two rings, release / cancel / quick-swap.
 - Drawn with IMGUI like the rest of the HUD; wedges are generated textures.
 - Selection still goes through `SpellCaster.Select(id)`, so online play and
-  the probe are unchanged. The pages are removed once the radial is verified.
-
-Order: data and logic with tests → mouse and keyboard → gamepad → HUD chip →
-retire the pages → docs.
+  the probe are unchanged.
+- Built (2026-10-26): the model `Chemistry/SpellRadial.cs`, `RadialLayout.cs`
+  and `SpellGroups.cs` with `RadialTests`; the view `Scripts/SpellRadialHud.cs`
+  (input, look pause, drawing; on every wizard through
+  `ChemYardBuilder.AddWizardParts`); the bindings in `PlayerControls` (Tab / LB
+  hold, B cancel, E / RB and Q, 1–8, d-pad left / right); the HUD chip in
+  `EventLog`. The bar pages are gone. `tools/probe.sh radial` plays it on a
+  virtual gamepad.

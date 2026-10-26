@@ -105,6 +105,9 @@ PrefabInstance:
       addedObject: {fileID: 3470894612682429423}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 6970996195446869681}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 1708091964083407250}
   m_SourcePrefab: {fileID: 100100000, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
 --- !u!1 &3189246001750556768 stripped
@@ -251,24 +254,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SpellCaster
   grid: {fileID: 0}
   controls: {fileID: 0}
-  spellIds:
-  - fire-bolt
-  - ray-of-frost
-  - create-water
-  - grease
-  - shocking-grasp
-  - gust-of-wind
-  - thunderwave
-  - levitate
-  earthSpellIds:
-  - mold-earth
-  - mold-earth-heap
-  - earthen-trench
-  - wall-of-stone
-  - move-earth
-  arcaneSpellIds:
-  - misty-step
-  - mage-hand
   visuals: {fileID: 11400000, guid: b7c97d945ab8447c4953811216a3d01b, type: 2}
 --- !u!114 &3541750731685027454
 MonoBehaviour:
@@ -331,6 +316,18 @@ MonoBehaviour:
   gentleThrow: 4
   hardThrow: 12
   windUp: 0.6
+--- !u!114 &6970996195446869681
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0125766545336a14ca9cd32c54e254f6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SpellRadialHud
 --- !u!114 &1708091964083407250
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -72,7 +72,7 @@ can fail to connect for a few seconds during the reload; the script retries.
 
 All run in the Chemistry Yard, in yard coordinates borrowed from
 `DemoDirector` and `ValleyShowcase`, and cast through `SpellCaster.Select`
-and `SpellCaster.Cast` (the spell must be on the bar).
+and `SpellCaster.Cast` (the spell must be in the rules).
 
 | Name | What it does | Checks |
 |---|---|---|
@@ -82,6 +82,7 @@ and `SpellCaster.Cast` (the spell must be on the bar).
 | `perf` | Fixed camera over the meadow toward the pond for `--seconds` (default 10, 1 to 300) | Only `no_console_errors`; the point is `frames` |
 | `online` | This Editor hosts; Multiplayer Play Mode's Player 2 joins on 127.0.0.1. On one schedule of sim ticks: Player 2's Thunderwave beside crate `1,1#2` and the host's wizard; each casts Fire Bolt (meadow; oil spill), Earthen Trench (from the pond's bank; beside it) and Wall of Stone; the host's wizard falls 10 m. Both sample at the same tick, 20 s after the fall | `virtual_player_joined`, `virtual_player_reported`, `checksums_equal` (every 30-tick checksum both recorded, at least 3), `sampled_same_world`, `client_saw_no_desync`, `client_terrain_matches` (cells' heights and the terrain drawn under the earth spells, within 1 cm, and dug), `client_water_matches` (wet cells, water, cells drawn wet), `client_walls_match`, `thing_ids_match` (the same stable ids and kinds on both, all of `world/things.json`), `prop_moved_matches` (crate `1,1#2`, found by its stable id, thrown over 1 m, client within 5 cm), `player_knockback_matches` (the host's wizard, same), `client_no_console_errors` |
 | `menu` | The Esc menu with a controller: Start pressed on a virtual gamepad the run adds, then the menu's own `Navigate` / `Submit` / `Back` (what the d-pad, A and B call): down to Mods, A, A on the first mod twice, B; Credits and back; Join by code (letters stepped, A, B twice); B closes; Start opens and closes. `--shots` saves the main page with the highlight, Mods, Credits and Join by code | `start_opens_menu`, `wizard_paused`, `main_page_items`, `mods_page_opens`, `mods_page_lists_mods` (5 mods and Back), `a_toggles_mod`, `a_toggles_mod_back`, `b_backs_out_of_mods` (highlight back on Mods), `credits_page_opens`, `code_page_opens`, `code_page_b_goes_back_a_letter`, `code_page_b_leaves`, `b_closes_menu`, `wizard_resumed`, `start_closes_menu` |
+| `radial` | The spell radial with a controller, on a virtual gamepad the run adds: hold LB with the right stick at Storm, then at Thunderwave in its arc, release; tap LB; hold LB at Earth and press B; d-pad right; RB. `--shots` saves the radial open on Storm's spells | `radial_ready`, `storm_has_thunderwave`, `lb_opens_radial`, `arc_opens_on_storm`, `release_picks_thunderwave`, `look_back_on` (camera look back as it was), `tap_swaps_back` (to Fire Bolt), `b_cancels`, `dpad_steps_element`, `rb_steps_spell` |
 
 ## The online scenario
 
