@@ -40,7 +40,7 @@ sound was heard in a later build (main, not 0.1.1).
 |---|---|---|
 | P13 | Swimming | later (BACKLOG 13) |
 | P14 | Climbing | later (BACKLOG 14) |
-| P15 | A ball to run at and kick around, with a fenced or walled court (soccer-like) so the start is less barren | open |
+| P15 | A ball to run at and kick around, with a fenced or walled court (soccer-like) so the start is less barren | done: a walled court with two goals on the meadow east of the yard and a ball (an item: kick it by running into it, or pick it up and throw it); probe `ball` |
 | P16 | Tag: one player is "it" (in another colour) and tags someone else | open |
 
 ### Interface

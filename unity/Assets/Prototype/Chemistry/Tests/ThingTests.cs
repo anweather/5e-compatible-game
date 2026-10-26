@@ -28,11 +28,11 @@ namespace Chem.Tests
         public void TheValleysThingsLoadAndFitTheRules()
         {
             var things = Valley;
-            Assert.That(things.Count, Is.EqualTo(18), "10 props and 8 items, as the yard had in the scene");
+            Assert.That(things.Count, Is.EqualTo(19), "10 props and 9 items: the yard's, and the court's ball");
             Assert.That(things.Check(R), Is.Empty);
             Assert.That(things.All.Count(t => R.Entity(t.Kind) != null), Is.EqualTo(10));
-            Assert.That(things.All.Count(t => R.Item(t.Kind) != null), Is.EqualTo(8));
-            Assert.That(things.ChunkCoords, Is.EquivalentTo(new[] { (4, 4), (4, 5) }), "the old yard straddles two chunks");
+            Assert.That(things.All.Count(t => R.Item(t.Kind) != null), Is.EqualTo(9));
+            Assert.That(things.ChunkCoords, Is.EquivalentTo(new[] { (4, 4), (4, 5), (5, 5) }), "the old yard straddles two chunks; the court is east of it");
 
             // The crate the online probe throws: yard cell (16, 6), the yard at world cell (279, 315).
             var crate = things.At(279 + 16, 315 + 6);
@@ -62,7 +62,7 @@ namespace Chem.Tests
                 Assert.That(things.Find(t.Id), Is.SameAs(t));
                 Assert.That(new ThingId(t.Id.Value), Is.EqualTo(t.Id), "the wire form round-trips");
             }
-            Assert.That(things.InChunk(5, 5), Is.Empty);
+            Assert.That(things.InChunk(0, 0), Is.Empty);
             Assert.That(things.Find(ThingId.None), Is.Null);
         }
 

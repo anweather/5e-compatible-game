@@ -139,14 +139,20 @@ public class ThingSpawner : MonoBehaviour
         if (prefab == null) return null;
         var cell = new Vector2Int(thing.CellX, thing.CellY);
         var at = grid.CellCenter(cell.x, cell.y);
-        var go = Instantiate(prefab, at, Quaternion.Euler(0f, thing.Rotation, 0f));
+        // Made above the ground, never in it: a body that starts half sunk into a terrain can fall through it.
+        var go = Instantiate(prefab, at + Vector3.up * SpawnAbove, Quaternion.Euler(0f, thing.Rotation, 0f));
         go.name = NameOf(thing.Kind, thing.Id);
         var prop = go.GetComponent<PhysicsProp>();
         prop.grid = grid;
         if (go.TryGetComponent<NetProp>(out var net)) net.AssignId(thing.Id);
-        go.transform.position = at + Vector3.up * RestHeight(go, thing.Kind, cell, at);
+        var rest = at + Vector3.up * RestHeight(go, thing.Kind, cell, at);
+        go.transform.position = rest;
+        if (go.TryGetComponent<Rigidbody>(out var body)) body.position = rest;
+        Physics.SyncTransforms();
         return prop;
     }
+
+    const float SpawnAbove = 5f;
 
     static string NameOf(string kind, ThingId id) => $"{kind} {id}";
 

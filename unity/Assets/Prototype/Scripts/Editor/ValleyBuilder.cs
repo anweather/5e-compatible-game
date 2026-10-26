@@ -41,6 +41,7 @@ public static class ValleyBuilder
         var cabinRoot = BuildCabin();
         ScatterRocks();
         BuildWorldEdge();
+        BuildCourt();
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.chunks = terrains;
@@ -238,6 +239,65 @@ public static class ValleyBuilder
             rock.transform.localScale = Vector3.one * (0.6f + 1.2f * (float)rng.NextDouble());
             placed++;
         }
+    }
+
+    // --- the ball court --------------------------------------------------------
+
+    // A walled court on the flat meadow east of the yard, with a goal in each end wall and the
+    // ball in the middle (world/things.json). Wooden rails a ball bounces off, low enough to step
+    // over a corner of; the goal mouths are open.
+    static readonly Vector2 CourtCentre = new Vector2(61f, 5f);
+    const float CourtLength = 26f, CourtWidth = 18f, RailHeight = 0.9f, GoalWidth = 4f, GoalHeight = 1.8f;
+
+    static void BuildCourt()
+    {
+        var parent = new GameObject("Ball court").transform;
+        var wood = EditorAssets.LitMaterial(Generated + "/CourtWood.mat", new Color(0.55f, 0.4f, 0.24f), 0.2f);
+        var paint = EditorAssets.LitMaterial(Generated + "/CourtGoal.mat", new Color(0.92f, 0.92f, 0.9f), 0.4f);
+        float x0 = CourtCentre.x - CourtLength / 2f, x1 = CourtCentre.x + CourtLength / 2f;
+        float z0 = CourtCentre.y - CourtWidth / 2f, z1 = CourtCentre.y + CourtWidth / 2f;
+        // The long sides, whole; the ends, either side of a goal mouth.
+        Rail(parent, wood, new Vector3(x0, 0f, z0), new Vector3(x1, 0f, z0));
+        Rail(parent, wood, new Vector3(x0, 0f, z1), new Vector3(x1, 0f, z1));
+        foreach (float x in new[] { x0, x1 })
+        {
+            Rail(parent, wood, new Vector3(x, 0f, z0), new Vector3(x, 0f, CourtCentre.y - GoalWidth / 2f));
+            Rail(parent, wood, new Vector3(x, 0f, CourtCentre.y + GoalWidth / 2f), new Vector3(x, 0f, z1));
+            Goal(parent, paint, new Vector3(x, 0f, CourtCentre.y), x < CourtCentre.x ? -1f : 1f);
+        }
+    }
+
+    // A solid rail between two points on the ground, on posts.
+    static void Rail(Transform parent, Material mat, Vector3 a, Vector3 b)
+    {
+        a.y = ValleyTerrain.GroundAt(a);
+        b.y = ValleyTerrain.GroundAt(b);
+        var rail = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        rail.name = "Court rail";
+        rail.transform.SetParent(parent, false);
+        rail.transform.SetPositionAndRotation((a + b) / 2f + Vector3.up * (RailHeight / 2f), Quaternion.LookRotation(b - a));
+        rail.transform.localScale = new Vector3(0.15f, RailHeight, Vector3.Distance(a, b) + 0.15f);
+        rail.GetComponent<Renderer>().sharedMaterial = mat;
+    }
+
+    // Two posts and a crossbar across a goal mouth, a bar along the back of the net to stop the ball.
+    static void Goal(Transform parent, Material mat, Vector3 mouth, float outward)
+    {
+        mouth.y = ValleyTerrain.GroundAt(mouth);
+        foreach (float side in new[] { -1f, 1f })
+            Bar(parent, mat, mouth + new Vector3(0f, GoalHeight / 2f, side * GoalWidth / 2f), new Vector3(0.12f, GoalHeight, 0.12f));
+        Bar(parent, mat, mouth + new Vector3(0f, GoalHeight, 0f), new Vector3(0.12f, 0.12f, GoalWidth + 0.12f));
+        Bar(parent, mat, mouth + new Vector3(outward * 1.2f, GoalHeight / 2f, 0f), new Vector3(0.1f, GoalHeight, GoalWidth));
+    }
+
+    static void Bar(Transform parent, Material mat, Vector3 at, Vector3 size)
+    {
+        var bar = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        bar.name = "Goal";
+        bar.transform.SetParent(parent, false);
+        bar.transform.position = at;
+        bar.transform.localScale = size;
+        bar.GetComponent<Renderer>().sharedMaterial = mat;
     }
 
     // --- the world's edge ------------------------------------------------------

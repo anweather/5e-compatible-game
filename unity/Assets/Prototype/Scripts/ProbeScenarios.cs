@@ -89,6 +89,9 @@ public static class ProbeScenarios
             "Spells catching a wizard, applied as if cast by someone a few metres off (a caster never catches itself): Fire Bolt on " +
             "the wizard's square, Ray of Frost through it, Shocking Grasp on it. Checks: the fire throws it back over 0.5 m, the frost " +
             "slows it, the lightning stops it a moment and knocks it, no console errors."),
+        new Entry("ball", typeof(BallProbe), 40f,
+            "The court east of the yard and its ball: the wizard runs at the ball from 6 m away (Kicker). Checks: the court is " +
+            "built (rails and goals), the ball spawned, the run kicks it over 2 m and it stays inside the court, no console errors."),
         new Entry("edge", typeof(EdgeProbe), 90f,
             "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
             "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),

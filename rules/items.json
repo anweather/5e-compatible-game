@@ -16,6 +16,8 @@
     "srd": "Objects viewed through a spyglass are magnified to twice their size." },
   "sending-stone": { "name": "Sending stone", "mass": 0.25, "use": "send", "message": "Over here!",
     "srd": "Sending stones come in pairs. Touching one, you can cast Sending to whoever bears the other: a message of 25 words or fewer." },
+  "ball": { "name": "Ball", "mass": 0.45,
+    "srd": "Not from the SRD: a leather ball to kick about the court east of the yard (run into it), or pick up and throw." },
   "dancing-lights": { "name": "Dancing Lights mote", "mass": 0.05, "use": "point", "reach": 60,
     "light": { "bright": 0, "dim": 10, "color": "#c8f0ff" },
     "srd": "The Dancing Lights cantrip held ready: a mote shedding dim light in a 10 ft radius, moved up to 60 ft to where you point. Our stand-in for a laser pointer." }

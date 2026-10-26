@@ -4,8 +4,8 @@ using UnityEngine;
 
 // The things to carry's prefabs (Carryable, rules/items.json), built by
 // Prototype > Build Chemistry Yard, one per item in Generated/Things/: three
-// glowing balls, a bullseye lantern, a spyglass, a Dancing Lights mote and a
-// sending stone. Where they lie is data, world/things.json (ThingSpawner
+// glowing balls, a bullseye lantern, a spyglass, a Dancing Lights mote, a
+// sending stone and a ball to kick about (Kicker). Where they lie is data, world/things.json (ThingSpawner
 // spawns them; a pair of sending stones share a "link" there). Their light,
 // colour and use come from the rules at runtime; these are only greybox shapes.
 public static class ItemBuilder
@@ -16,7 +16,7 @@ public static class ItemBuilder
     static readonly string[] Kinds =
     {
         ItemIds.GlowBallAmber, ItemIds.GlowBallAzure, ItemIds.GlowBallRose, ItemIds.BullseyeLantern,
-        ItemIds.Spyglass, ItemIds.DancingLights, ItemIds.SendingStone,
+        ItemIds.Spyglass, ItemIds.DancingLights, ItemIds.SendingStone, ItemIds.Ball,
     };
 
     /// <summary>Builds (or rebuilds) one prefab per item.</summary>
@@ -58,6 +58,15 @@ public static class ItemBuilder
                 stone.transform.localScale = new Vector3(0.14f, 0.08f, 0.12f);
                 PropBuilder.Paint(stone, "ItemSendingStone", new Color(0.36f, 0.42f, 0.5f), 0.5f, new Color(0.2f, 0.45f, 0.8f));
                 return stone;
+            }
+            case ItemIds.Ball:
+            {
+                // A football, a little big: easy to see and to run into.
+                var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                ball.transform.localScale = Vector3.one * 0.42f;
+                ball.GetComponent<Collider>().sharedMaterial = Bouncy();
+                PropBuilder.Paint(ball, "ItemBall", new Color(0.95f, 0.93f, 0.86f), 0.35f);
+                return ball;
             }
             case ItemIds.DancingLights:
             {

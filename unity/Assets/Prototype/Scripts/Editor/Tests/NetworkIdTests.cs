@@ -32,6 +32,7 @@ public class NetworkIdTests
         [Things + "spyglass.prefab"] = 1313338354,
         [Things + "dancing-lights.prefab"] = 3321017021,
         [Things + "sending-stone.prefab"] = 2606121274,
+        [Things + "ball.prefab"] = 1747778105,
     };
 
     // In git, so its ids are too; a change here means the tracked prefab's were rewritten.

@@ -11,9 +11,10 @@ using UnityEngine;
 // rest keep the saved paint (the meadow, the old yard's soft-edged pad and
 // gully), so a burnt patch fades into whatever was there before.
 //
-// Works on runtime copies of the chunks the cells change, made the first time
-// one changes, so playing never changes the saved valley; Bind drops them (a new
-// world starts from the saved ground). The baked heights already hold the starting cells' offsets
+// Works on runtime copies of the chunks, made when a world starts (Bind), so
+// playing never changes the saved valley. They are made up front, not when a
+// chunk first changes: swapping a terrain's collider under a prop resting on it
+// drops the contact, and the prop falls through the ground. The baked heights already hold the starting cells' offsets
 // (ValleyBuilder bakes them with the same CellHeightfield), so the base under
 // each sample is what was baked minus that offset.
 public sealed class ValleyGround
@@ -66,8 +67,7 @@ public sealed class ValleyGround
 
     static TerrainData Shown(Chunk ch) => ch.data != null ? ch.data : ch.original;
 
-    // A chunk is copied the first time the cells change it, so the saved valley never changes and a
-    // valley of many chunks doesn't copy them all up front.
+    // The chunk's runtime copy (Bind makes them all; this only covers a chunk Bind didn't reach).
     static TerrainData Writable(Chunk ch)
     {
         if (ch.data != null) return ch.data;
@@ -119,6 +119,7 @@ public sealed class ValleyGround
     void Recover((int i, int j) at, Chunk ch)
     {
         Restore(ch);
+        Writable(ch);
         int res = ch.original.heightmapResolution;
         var heights = ch.original.GetHeights(0, 0, res, res);
         var offsets = heightfield.Current(at.i, at.j);

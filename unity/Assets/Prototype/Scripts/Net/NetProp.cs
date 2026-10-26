@@ -116,4 +116,19 @@ public class NetProp : NetworkBehaviour
         transform.position = at;
         prop.ShowBreak(exploded);
     }
+
+    /// <summary>A wizard ran into it (Kicker): the host's physics takes the kick, wherever it came from.</summary>
+    public void Kick(Vector3 impulse)
+    {
+        if (IsServer) KickHere(impulse);
+        else KickRpc(impulse);
+    }
+
+    [Rpc(SendTo.Server)]
+    void KickRpc(Vector3 impulse) => KickHere(impulse);
+
+    void KickHere(Vector3 impulse)
+    {
+        if (TryGetComponent<Rigidbody>(out var rb) && !rb.isKinematic) rb.AddForce(Vector3.ClampMagnitude(impulse, Kicker.MaxKickKg * 20f), ForceMode.Impulse);
+    }
 }

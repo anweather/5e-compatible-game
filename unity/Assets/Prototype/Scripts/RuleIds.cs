@@ -58,6 +58,7 @@ public static class ItemIds
     public const string GlowBallAmber = "glow-ball-amber";
     public const string GlowBallAzure = "glow-ball-azure";
     public const string GlowBallRose = "glow-ball-rose";
+    public const string Ball = "ball";
     public const string BullseyeLantern = "bullseye-lantern";
     public const string Spyglass = "spyglass";
     public const string SendingStone = "sending-stone";
