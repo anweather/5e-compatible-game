@@ -419,8 +419,7 @@ public class OnlineProbe : ProbeScenario
         OnlineObservation joined = null;
         for (float t = 0f; t < JoinSeconds && joined == null; t += Time.unscaledDeltaTime)
         {
-            joined = ProbeLink.Read<OnlineObservation>(ProbeLink.ClientFile);
-            if (joined != null && joined.id != id) joined = null;
+            joined = ReadClient(id, phase: null);
             yield return null;
         }
         int players = NetworkManager.Singleton.ConnectedClientsIds.Count;
@@ -449,8 +448,7 @@ public class OnlineProbe : ProbeScenario
         OnlineObservation report = null;
         for (float t = 0f; t < ReportSeconds && report == null; t += Time.unscaledDeltaTime)
         {
-            report = ProbeLink.Read<OnlineObservation>(ProbeLink.ClientFile);
-            if (report != null && (report.id != id || report.phase != ProbeLink.Reported)) report = null;
+            report = ReadClient(id, ProbeLink.Reported);
             yield return null;
         }
         Check("virtual_player_reported", report != null, report != null ? $"sampled at tick {report.sampledTick}" : $"no report in {ReportSeconds:0} s");
@@ -458,7 +456,28 @@ public class OnlineProbe : ProbeScenario
         Compare(recorder.Seen, report);
     }
 
+    // The virtual player's client.json if it is from this run and in the given phase (any phase when null), else null.
+    static OnlineObservation ReadClient(string id, string phase)
+    {
+        var seen = ProbeLink.Read<OnlineObservation>(ProbeLink.ClientFile);
+        return seen != null && seen.id == id && (phase == null || seen.phase == phase) ? seen : null;
+    }
+
     void Compare(OnlineObservation host, OnlineObservation client)
+    {
+        CompareChecksums(host, client);
+        CompareEarth(host, client);
+        CompareThings(host, client);
+        CompareProp(host, client);
+        CompareKnockback(host, client);
+
+        Metric("client_console_errors", client.errorCount);
+        Check("client_no_console_errors", client.errorCount == 0,
+            client.errorCount == 0 ? "0 errors" : $"{client.errorCount} errors: {string.Join(" | ", client.errors.Take(3))}");
+    }
+
+    // The checksums of the ticks both sides wrote down, the sample's tick and checksum, and the client's desync flag.
+    void CompareChecksums(OnlineObservation host, OnlineObservation client)
     {
         var mine = new Dictionary<int, string>();
         for (int i = 0; i < host.hashTicks.Count; i++) mine[host.hashTicks[i]] = host.hashes[i];
@@ -480,7 +499,11 @@ public class OnlineProbe : ProbeScenario
         Check("sampled_same_world", host.sampledTick == client.sampledTick && host.sampledChecksum == client.sampledChecksum,
             $"tick {host.sampledTick}: host {host.sampledChecksum}, client {client.sampledChecksum}");
         Check("client_saw_no_desync", !client.desync);
+    }
 
+    // The trenches, their water and the walls, as each side has and draws them at the sample tick.
+    void CompareEarth(OnlineObservation host, OnlineObservation client)
+    {
         string Lines(OnlineObservation o, Func<OnlineObservation, IEnumerable<object>> f) => string.Join(",", f(o));
         bool Same(Func<OnlineObservation, IEnumerable<object>> f) => Lines(host, f) == Lines(client, f);
 
@@ -503,16 +526,21 @@ public class OnlineProbe : ProbeScenario
             $"drawn wet host [{Lines(host, o => o.drawnWet.Cast<object>())}] client [{Lines(client, o => o.drawnWet.Cast<object>())}]");
         Check("client_walls_match", Same(o => o.raisedWalls.Cast<object>()) && host.raisedWalls.Count == 4 && host.raisedWalls[2] > 0 && host.raisedWalls[3] > 0,
             $"raised wall cells host [{Lines(host, o => o.raisedWalls.Cast<object>())}] client [{Lines(client, o => o.raisedWalls.Cast<object>())}]");
+    }
 
-        CompareThings(host, client);
-
+    // The crate the client's Thunderwave shoved: moved on the host, and in the same place on the client.
+    void CompareProp(OnlineObservation host, OnlineObservation client)
+    {
         float moved = Vector3.Distance(host.propBefore, host.propAfter);
         float apart = Vector3.Distance(host.propAfter, client.propAfter);
         Metric("prop_moved_m", moved);
         Metric("prop_apart_m", apart);
         Check("prop_moved_matches", host.propFound && client.propFound && moved > 1f && apart < 0.05f,
             $"crate {host.propId} moved {moved:0.00} m on the host by the client's Thunderwave; the client's copy {apart * 100f:0.0} cm from it");
+    }
 
+    void CompareKnockback(OnlineObservation host, OnlineObservation client)
+    {
         // The client's Thunderwave throws the host's wizard on the host's machine (Knockback); its landing on the
         // client's screen is what threw in the Starter Assets controller before WizardRig.PrepareForAnimationEvents.
         float thrown = Vector3.Distance(host.hostWizardBefore, host.hostWizardAfter);
@@ -521,10 +549,6 @@ public class OnlineProbe : ProbeScenario
         Metric("host_wizard_apart_m", wizardApart);
         Check("player_knockback_matches", thrown > 1f && wizardApart < 0.05f,
             $"the host's wizard thrown {thrown:0.00} m by the client's Thunderwave; the client's copy {wizardApart * 100f:0.0} cm from it");
-
-        Metric("client_console_errors", client.errorCount);
-        Check("client_no_console_errors", client.errorCount == 0,
-            client.errorCount == 0 ? "0 errors" : $"{client.errorCount} errors: {string.Join(" | ", client.errors.Take(3))}");
     }
 
     // Every prop and item by its stable id (world/things.json): the client adopted the host's, none missing.
