@@ -19,6 +19,25 @@ ships in alpha 0.1.1.
   Number keys 1–5 jump to an element and open its arc.
 - The HUD's long bar becomes one chip: element colour, spell name, key hints.
 
+## Controller
+
+The controller is a first-class way to pick spells, not an afterthought:
+
+- **Hold LB** opens the radial; the **right stick** aims (camera look pauses
+  while it's open). Stick direction alone picks: no cursor, no accumulated
+  delta. Past an inner threshold it highlights an element; pushing near full
+  deflection, or holding a moment, opens that element's spell arc, and the
+  stick then picks within the arc.
+- **Release LB** selects what's highlighted. Letting the stick fall back to
+  centre keeps the last highlight (sticks spring back), so releasing LB after
+  that still selects; to cancel, press **B / ○** while holding.
+- **Tap LB** (no stick movement) swaps to the previous spell, like a Tab tap.
+  RB steps to the next spell in the current element.
+- The D-pad no longer turns pages; it stays zoom (up/down) and steps elements
+  (left/right) without opening the radial.
+- The HUD shows controller hints (LB, RB, B) whenever the last input came
+  from a gamepad, as it already does for the help line.
+
 ## Groups
 
 | Element | Spells |
