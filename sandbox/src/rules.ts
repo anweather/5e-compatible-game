@@ -21,6 +21,9 @@ export interface TerrainDef {
   /** Water a spring keeps the square filled to each tick (units; a river), or none. */
   spring?: number;
   burnLog?: string;
+  /** What earth shaping leaves of it (a tree topples into deadfall) before shaping the ground, and the log line. */
+  uprootsTo?: string;
+  uprootLog?: string;
   /** What digging leaves (grass is dug down to dirt); unset keeps the terrain. */
   dugTo?: string;
 }
@@ -481,6 +484,8 @@ export function validateRules(r: Rules): string[] {
     if (t.burnsTo && !terrainIds.has(t.burnsTo)) errors.push(`terrain ${id}: burnsTo ${t.burnsTo} unknown`);
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
     if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
+    if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
+    else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
   }
   const seen = new Set<string>();

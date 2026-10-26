@@ -314,6 +314,27 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void GoldenTopplingTreesMatchesTs()
+        {
+            // The same as "earth shaping topples trees..." in terraform.test.ts.
+            var w = Room(20, 12, 10);
+            for (int x = 1; x < 19; x++)
+                for (int y = 1; y < 11; y++) w.At(x, y).T = "grass";
+            foreach (var (x, y) in new[] { (5, 5), (6, 5), (7, 6), (13, 3), (15, 8) }) w.At(x, y).T = "tree";
+            w.Cast("move-earth", 6, 5, 0);
+            Assert.That(w.At(6, 5).T, Is.EqualTo("deadfall"), "the tree in the heave toppled");
+            Assert.That(w.At(6, 5).Height, Is.GreaterThan(0), "and the ground rose under it");
+            Assert.That(w.Log.Count(e => e.Text.Contains("tree topples")), Is.EqualTo(1), "one line for the cast, however many trees");
+            w.Cast("wall-of-stone", 13, 2, 2);
+            Assert.That(w.At(13, 3).T, Is.EqualTo("rock"), "a wall raised through a tree goes up as rock");
+            w.Cast("fireball", 15, 8, 0);
+            Assert.That(w.At(15, 8).T, Is.EqualTo("deadfall"), "a crater fells the tree it lands on");
+            w.Cast("fire-bolt", 5, 5, 0);
+            Run(w, 40);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1213368f 1054537720"));
+        }
+
+        [Test]
         public void HeightRangeNumbersAreChecked()
         {
             System.Collections.Generic.IReadOnlyList<string> Errors(string sim) =>

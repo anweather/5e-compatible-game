@@ -73,6 +73,7 @@ public static class TerrainIds
     public const string Brush = "brush";
     public const string Tree = "tree";
     public const string Stump = "stump";
+    public const string Deadfall = "deadfall";
     public const string Rubble = "rubble";
     public const string Dirt = "dirt";
     public const string Pit = "pit";

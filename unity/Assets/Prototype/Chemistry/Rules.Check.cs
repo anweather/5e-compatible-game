@@ -129,6 +129,9 @@ namespace Chem
                 if (Truthy(t["burnsTo"]) && !IsIn(terrain, t["burnsTo"])) Errors.Add($"terrain {id}: burnsTo {Show(t["burnsTo"])} unknown");
                 if (Truthy(t["breaksTo"]) && !IsIn(terrain, t["breaksTo"])) Errors.Add($"terrain {id}: breaksTo {Show(t["breaksTo"])} unknown");
                 if (Truthy(t["dugTo"]) && !IsIn(terrain, t["dugTo"])) Errors.Add($"terrain {id}: dugTo {Show(t["dugTo"])} unknown");
+                if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");
+                else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
+                    Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
             }

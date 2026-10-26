@@ -21,12 +21,13 @@ public sealed partial class CellDressing
         ["dirt"] = (new Color(0.50f, 0.38f, 0.25f), 0f), ["grass"] = (new Color(0.33f, 0.55f, 0.22f), 0f),
         ["brush"] = (new Color(0.20f, 0.36f, 0.14f), 0.6f), ["tree"] = (new Color(0.16f, 0.38f, 0.15f), 2.2f),
         ["stump"] = (new Color(0.13f, 0.10f, 0.08f), 0.15f), ["wood"] = (new Color(0.58f, 0.40f, 0.22f), 0f),
+        ["deadfall"] = (new Color(0.32f, 0.23f, 0.15f), 0.4f),
         ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.30f, 0.29f, 0.28f), 0.06f),
         ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f),
     };
 
     // Terrains drawn as ground with something standing on it; effects sit on their ground, not on top.
-    static readonly HashSet<string> Dressed = new() { TerrainIds.Tree, TerrainIds.Brush, TerrainIds.Stump, TerrainIds.Rubble };
+    static readonly HashSet<string> Dressed = new() { TerrainIds.Tree, TerrainIds.Brush, TerrainIds.Stump, TerrainIds.Rubble, TerrainIds.Deadfall };
     // Terrains that stand up as a solid block of their own height.
     static readonly HashSet<string> Blocks = new() { "bedrock", "stone", "pillar" };
 
@@ -65,7 +66,7 @@ public sealed partial class CellDressing
     }
 
     static bool HasParts(string terrain) =>
-        terrain == TerrainIds.Brush || terrain == TerrainIds.Stump || terrain == TerrainIds.Rubble ||
+        terrain == TerrainIds.Brush || terrain == TerrainIds.Stump || terrain == TerrainIds.Rubble || terrain == TerrainIds.Deadfall ||
         terrain == TerrainIds.Wood || terrain == TerrainIds.Metal || Blocks.Contains(terrain);
 
     void Dress(Transform root, string terrain, (Color color, float height) look, Vector3 surface, int x, int y)
@@ -81,6 +82,9 @@ public sealed partial class CellDressing
                 break;
             case TerrainIds.Rubble:
                 DressRubble(root, surface, rng, look.color);
+                break;
+            case TerrainIds.Deadfall:
+                DressDeadfall(root, surface, rng, look.color, x, y);
                 break;
             case TerrainIds.Wood:
                 DressPlanks(root, surface, look.color, rng, x, y);
@@ -106,8 +110,19 @@ public sealed partial class CellDressing
         }
     }
 
+    // Broken stone: a few of the terrain pack's small stones when the grid has them (ChemGrid.wallStones), else rough cubes.
     void DressRubble(Transform root, Vector3 surface, System.Random rng, Color color)
     {
+        var stones = grid.wallStones;
+        if (stones != null && stones.Length > 0 && stones[0] != null)
+        {
+            for (int i = 0; i < 3; i++)
+            {
+                var at = surface + new Vector3(Jitter(rng, 0.35f), -0.05f, Jitter(rng, 0.35f)) * CellSize;
+                Rock(root, stones[rng.Next(stones.Length)], at, CellSize * (0.3f + 0.2f * (float)rng.NextDouble()), 0.15f + 0.15f * (float)rng.NextDouble(), rng);
+            }
+            return;
+        }
         for (int i = 0; i < 4; i++)
         {
             var off = new Vector3((float)rng.NextDouble() - 0.5f, 0.1f, (float)rng.NextDouble() - 0.5f) * (CellSize * 0.8f);

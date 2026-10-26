@@ -23,6 +23,8 @@ namespace Chem
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
+        /// <summary>What earth shaping leaves of it (a tree topples into deadfall) before shaping the ground, or null; and the log line.</summary>
+        public string UprootsTo, UprootLog;
         /// <summary>What digging leaves (grass is dug down to dirt), or null to keep the terrain.</summary>
         public string DugTo;
 
@@ -363,6 +365,8 @@ namespace Chem
             BurnsTo = Str(o["burnsTo"]),
             BreaksTo = Str(o["breaksTo"]),
             BurnLog = Str(o["burnLog"]),
+            UprootsTo = Str(o["uprootsTo"]),
+            UprootLog = Str(o["uprootLog"]),
             DugTo = Str(o["dugTo"]),
         };
 

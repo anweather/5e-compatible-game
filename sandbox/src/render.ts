@@ -17,7 +17,7 @@ export interface View {
 }
 
 const TERRAIN_COLOR: Record<string, string> = {
-  bedrock: "#3a3d44", dirt: "#a7895f", grass: "#7aa956", brush: "#557d3c", tree: "#7aa956", stump: "#a7895f",
+  bedrock: "#3a3d44", dirt: "#a7895f", grass: "#7aa956", brush: "#557d3c", tree: "#7aa956", stump: "#a7895f", deadfall: "#7aa956",
   stone: "#8b8d94", pillar: "#a59a84", rubble: "#a7895f", rock: "#9a8f7d", wood: "#b47a43", pit: "#2b2522", metal: "#9aa6b2",
   gate: "#a7895f", gate_open: "#a7895f", boiler: "#a7895f", plate: "#a7895f", wheel: "#2b2522", coil: "#a7895f", windmill: "#a7895f",
 };
@@ -85,6 +85,16 @@ function drawCell(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, 
     case "stump":
       ctx.fillStyle = "#7a5530";
       ctx.beginPath(); ctx.arc(px + s / 2, py + s / 2, s * 0.22, 0, Math.PI * 2); ctx.fill();
+      break;
+    case "deadfall":
+      // A fallen trunk lying across the square, its root ball at one end.
+      ctx.strokeStyle = "#6b4a2b";
+      ctx.lineWidth = s * 0.2;
+      ctx.beginPath(); ctx.moveTo(px + s * 0.15, py + s * 0.8); ctx.lineTo(px + s * 0.85, py + s * 0.25); ctx.stroke();
+      ctx.fillStyle = "#4e3a26";
+      ctx.beginPath(); ctx.arc(px + s * 0.18, py + s * 0.78, s * 0.17, 0, Math.PI * 2); ctx.fill();
+      ctx.fillStyle = "#3e6229";
+      ctx.beginPath(); ctx.arc(px + s * 0.82, py + s * 0.27, s * 0.18, 0, Math.PI * 2); ctx.fill();
       break;
     case "stone":
     case "pillar":

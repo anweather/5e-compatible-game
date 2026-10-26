@@ -303,3 +303,20 @@ test("a slanted cone fans along the aim", () => {
   const s = spellById("burning-hands")!;
   assert.deepEqual(spellCells(w, s, 4, 6, 1, 1, [3, 2]), [[4, 6], [5, 6], [6, 6], [7, 6], [5, 7], [6, 7], [5, 8], [6, 8], [5, 9]]);
 });
+
+test("earth shaping topples trees into deadfall that burns, and matches the C# golden", () => {
+  const w = room(20, 12, 10);
+  for (let x = 1; x < 19; x++) for (let y = 1; y < 11; y++) cellAt(w, x, y)!.t = "grass";
+  for (const [x, y] of [[5, 5], [6, 5], [7, 6], [13, 3], [15, 8]] as const) cellAt(w, x, y)!.t = "tree";
+  castSpell(w, "move-earth", 6, 5, 0);
+  assert.equal(cellAt(w, 6, 5)!.t, "deadfall", "the tree in the heave toppled");
+  assert.ok(cellAt(w, 6, 5)!.h > 0, "and the ground rose under it");
+  assert.equal(w.log.filter((e) => e.text.includes("tree topples")).length, 1, "one line for the cast, however many trees");
+  castSpell(w, "wall-of-stone", 13, 2, 2);
+  assert.equal(cellAt(w, 13, 3)!.t, "rock", "a wall raised through a tree goes up as rock");
+  castSpell(w, "fireball", 15, 8, 0);
+  assert.equal(cellAt(w, 15, 8)!.t, "deadfall", "a crater fells the tree it lands on");
+  castSpell(w, "fire-bolt", 5, 5, 0);
+  run(w, 40);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "1213368f 1054537720");
+});

@@ -24,10 +24,12 @@ public class ValleyChemistry : MonoBehaviour
     readonly TerrainGrid layout = TerrainGrid.Valley();
     ValleyGround ground;
     readonly Dictionary<(int i, int j), TreeInstance[]> trees = new();
+    // The trees as the valley was baked, untouched by burning or felling: what a fallen tree was.
+    readonly Dictionary<(int i, int j), TreeInstance[]> bakedTrees = new();
     readonly Dictionary<int, List<((int i, int j) chunk, int index)>> treesByCell = new();
     readonly HashSet<(int i, int j)> treesChanged = new();
     readonly HashSet<int> scorched = new();
-    int[] cabinCells, cabinBurnt;
+    int[] cabinCells, cabinBurnt, cabinWrecked;
     bool[] cabinCharred;
     Material charred;
 
@@ -52,6 +54,7 @@ public class ValleyChemistry : MonoBehaviour
         int n = cabins?.Length ?? 0;
         cabinCells = new int[n];
         cabinBurnt = new int[n];
+        cabinWrecked = new int[n];
         cabinCharred = new bool[n];
         for (int y = 0; y < world.H; y++)
             for (int x = 0; x < world.W; x++)
@@ -65,12 +68,14 @@ public class ValleyChemistry : MonoBehaviour
     void IndexTrees()
     {
         trees.Clear();
+        bakedTrees.Clear();
         treesByCell.Clear();
         treesChanged.Clear();
         foreach (var (at, data) in ground.Chunks())
         {
             var list = data.treeInstances;
             trees[at] = list;
+            bakedTrees[at] = (TreeInstance[])list.Clone();
             var (cx, cz) = layout.ChunkCorner(at.i, at.j);
             for (int n = 0; n < list.Length; n++)
             {
@@ -97,6 +102,24 @@ public class ValleyChemistry : MonoBehaviour
         return true;
     }
 
+    /// <summary>
+    /// The tree that stood in a cell, for drawing it fallen (CellDressing): its model and its
+    /// scale; false when the valley drew none there.
+    /// </summary>
+    public bool FelledTree(int x, int y, out GameObject prefab, out Vector3 scale)
+    {
+        prefab = null;
+        scale = Vector3.one;
+        if (!treesByCell.TryGetValue(grid.World.Idx(x, y), out var list) || list.Count == 0) return false;
+        var (chunk, n) = list[0];
+        var t = bakedTrees[chunk][n];
+        var protos = ground.Data(chunk).treePrototypes;
+        if (t.prototypeIndex < 0 || t.prototypeIndex >= protos.Length) return false;
+        prefab = protos[t.prototypeIndex].prefab;
+        scale = new Vector3(t.widthScale, t.heightScale, t.widthScale);
+        return prefab != null;
+    }
+
     /// <summary>The valley's own ground under a cell, before the cell's offset.</summary>
     public float BaseHeight(int x, int y) => ground != null ? ground.BaseHeight(x, y) : 0f;
 
@@ -117,6 +140,7 @@ public class ValleyChemistry : MonoBehaviour
     {
         TerrainIds.Tree => 2.6f,
         TerrainIds.LogWall => 1.4f,
+        TerrainIds.Deadfall => 0.5f,
         _ => 0f,
     };
 
@@ -127,7 +151,10 @@ public class ValleyChemistry : MonoBehaviour
     /// </summary>
     public void CellChanged(int x, int y, string from, string to, bool reshaped)
     {
-        if (from == null || ground == null) return;
+        if (ground == null) return;
+        // First look at a felled or burnt tree (a world replayed for a late joiner): the baked tree goes.
+        if (from == null && (to == TerrainIds.Deadfall || to == TerrainIds.Stump)) BurnTrees(x, y);
+        if (from == null) return;
         if (from != to) TerrainChanged(x, y, from, to);
         if (reshaped) ground.Reshape(x, y);
         ground.Repaint(x, y);
@@ -137,7 +164,7 @@ public class ValleyChemistry : MonoBehaviour
     {
         if (from == TerrainIds.Tree) BurnTrees(x, y);
         if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorched.Add(grid.World.Idx(x, y));
-        if (from == TerrainIds.LogWall) CabinWallBurned(CabinAt(x, y));
+        if (from == TerrainIds.LogWall) CabinWallLost(CabinAt(x, y), burning: grid.World.At(x, y).Fire > 0);
     }
 
     void BurnTrees(int x, int y)
@@ -171,13 +198,21 @@ public class ValleyChemistry : MonoBehaviour
         return best;
     }
 
-    void CabinWallBurned(int k)
+    // A cabin's log wall burnt through, or caved in under earth shaping. Once half its walls are
+    // gone the cabin falls: charred if fire took most of them, else caved in (sunk, its roof down).
+    void CabinWallLost(int k, bool burning)
     {
         if (k < 0) return;
-        cabinBurnt[k]++;
-        if (cabinCharred[k] || cabinBurnt[k] * 2 < cabinCells[k]) return;
+        if (burning) cabinBurnt[k]++;
+        else cabinWrecked[k]++;
+        if (cabinCharred[k] || (cabinBurnt[k] + cabinWrecked[k]) * 2 < cabinCells[k]) return;
         cabinCharred[k] = true;
         var cabin = cabins[k];
+        if (cabinWrecked[k] > cabinBurnt[k])
+        {
+            CaveIn(cabin);
+            return;
+        }
         foreach (var r in cabin.GetComponentsInChildren<Renderer>())
         {
             if (r.name == "Roof") r.enabled = false;
@@ -185,6 +220,15 @@ public class ValleyChemistry : MonoBehaviour
         }
         foreach (var l in cabin.GetComponentsInChildren<Light>()) l.enabled = false;
         EventLog.Add("The cabin burns down");
+    }
+
+    static void CaveIn(Transform cabin)
+    {
+        foreach (var r in cabin.GetComponentsInChildren<Renderer>())
+            if (r.name == "Roof" || r.GetComponent<ParticleSystem>() != null) r.enabled = false;
+        foreach (var l in cabin.GetComponentsInChildren<Light>()) l.enabled = false;
+        cabin.SetPositionAndRotation(cabin.position + Vector3.down * 1.3f, cabin.rotation * Quaternion.Euler(4f, 0f, -3f));
+        EventLog.Add("The cabin caves in");
     }
 
     bool IsScorched(int x, int y) => scorched.Contains(grid.World.Idx(x, y));

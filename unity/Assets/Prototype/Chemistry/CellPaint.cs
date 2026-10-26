@@ -60,6 +60,8 @@ namespace Chem
         static readonly float[] GrassMix = { 1, 0, 0, 0, 0, 0, 0 };
         static readonly float[] UndergrowthMix = { 0, 1, 0, 0, 0, 0, 0 };
         static readonly float[] StumpMix = { 0, 0, 0, 0, 0, 0.6f, 0.4f };
+        // A fallen tree: torn-up earth and moss where it lay.
+        static readonly float[] DeadfallMix = { 0, 0.4f, 0, 0, 0, 0, 0.6f };
         static readonly float[] RockMix = { 0, 0, 1, 0, 0, 0, 0 };
         // A raised wall: rock, spread over its side slopes (see Spread).
         static readonly float[] WallMix = { 0, 0, 1, 0, 0, 0, 0 };
@@ -79,6 +81,7 @@ namespace Chem
             ["brush"] = UndergrowthMix,
             ["tree"] = UndergrowthMix,
             ["stump"] = StumpMix,
+            ["deadfall"] = DeadfallMix,
             ["rock"] = RockMix,
             ["rubble"] = RockMix,
             ["stone"] = RockMix,

@@ -1,7 +1,7 @@
 // Earth shaping: terraform spells raise and dig cells (Cell.h), and raised
 // ground sheds its water. Unity's port is Chemistry/World.Terraform.cs.
 import { type CraterDef, RULES, type SpellDef } from "./rules.ts";
-import { type World, cellAt, entityAt, hasTag, idx, isBlocking, neighbours, terrainDef } from "./world.ts";
+import { type World, cellAt, entityAt, hasTag, idx, isBlocking, logOnce, neighbours, terrainDef } from "./world.ts";
 
 /**
  * Raises or digs every cell of a terraform spell aimed at (x, y): by raise or dig
@@ -46,7 +46,8 @@ function tapered(steps: number, d: number, radius: number): number {
 
 /**
  * Raises (n > 0) or digs (n < 0) one cell by n steps, clamped to the sim's
- * height range. Blocking terrain and machines can't be shaped, and nothing
+ * height range. A terrain that uproots (a tree, a cabin's log wall) turns to
+ * its uprootsTo first. Blocking terrain and machines can't be shaped, and nothing
  * rises into a wall under a creature or object. Digging strips the cover and
  * turns the terrain to its dugTo; raised ground spills its water onto its
  * neighbours. A cell that ends up blocking loses its cover and fire.
@@ -54,11 +55,17 @@ function tapered(steps: number, d: number, radius: number): number {
 export function reshape(w: World, x: number, y: number, n: number, terrain?: string): boolean {
   const c = cellAt(w, x, y);
   if (!c) return false;
-  const t = terrainDef(c);
-  if (t.tags.includes("blocking") || t.tags.includes("machine")) return false;
+  let t = terrainDef(c);
+  const uprooted = t.uprootsTo !== undefined;
+  if (uprooted) {
+    if (t.uprootLog) logOnce(w, `uproot#${c.t}#${w.tick}`, t.uprootLog, "notable");
+    c.t = t.uprootsTo!;
+    t = terrainDef(c);
+  }
+  if (t.tags.includes("blocking") || t.tags.includes("machine")) return uprooted;
   const { min, max, blockAt } = RULES.sim.height;
   const h = Math.max(min, Math.min(max, c.h + n));
-  if (h === c.h || (h >= blockAt && entityAt(w, x, y))) return false;
+  if (h === c.h || (h >= blockAt && entityAt(w, x, y))) return uprooted;
   c.h = h;
   if (n < 0) c.cover = null;
   const to = terrain ?? (n < 0 ? t.dugTo : undefined);

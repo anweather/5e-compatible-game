@@ -82,6 +82,11 @@ elevation plus height.
 
 - **Blocking terrain and machines** (bedrock, trees, gates, boilers)
   can't be shaped.
+- **Uprooting:** a terrain with `uprootsTo` (a tree topples into
+  `deadfall`; a cabin's log wall caves in to rubble) turns into it as soon
+  as any shaping touches it, its `uprootLog` logged once a tick, and the
+  ground is then shaped as usual. `uprootsTo` must be a known, non-blocking
+  terrain. A fallen tree is flammable ground that burns long and hot.
 - **Digging** clears the cover and turns the terrain into its `dugTo`
   (grass is dug to dirt; raised rock to rubble) unless the spell names a
   `terrain`.

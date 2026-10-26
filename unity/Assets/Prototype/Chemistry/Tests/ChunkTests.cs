@@ -72,12 +72,13 @@ namespace Chem.Tests
         [Test]
         public void ValleyAcrossChunksMatchesTheUnchunkedGrid()
         {
-            // Recorded with the dense grid before chunks existed (c4bbf1c).
+            // Recorded with the dense grid before chunks existed (c4bbf1c); again when Move Earth
+            // began toppling the trees it heaves (one more log line: "a tree topples").
             var w = Valley();
             ValleyScript(w, 300);
-            Assert.That(w.CellHash(), Is.EqualTo("a9686f49"));
+            Assert.That(w.CellHash(), Is.EqualTo("f2de2b59"));
             Assert.That(w.RngState, Is.EqualTo(3574071908u));
-            Assert.That(w.Log.Count, Is.EqualTo(36));
+            Assert.That(w.Log.Count, Is.EqualTo(37));
         }
 
         // ---------- chunk maths and layout ----------

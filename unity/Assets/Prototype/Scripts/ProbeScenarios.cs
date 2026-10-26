@@ -111,6 +111,10 @@ public static class ProbeScenarios
             "Earthen Trench aimed about 20 degrees south of east, through the wizard's own controls on a virtual gamepad (crosshair " +
             "and right trigger). Checks: it dug six squares or more, it slants (more columns than rows, two rows or more), every dug " +
             "square shares a side with another, no console errors."),
+        new Entry("topple", typeof(ToppleProbe), 40f,
+            "Move Earth on the valley tree nearest the yard, then Fire Bolt on it; then Move Earth on the cabin west of the yard. " +
+            "Checks: the tree toppled (deadfall) and is drawn fallen, no blocker left in its square, it burns, the cabin's walls cave " +
+            "in and the cabin falls, no console errors."),
         new Entry("swim", typeof(SwimProbe), 40f,
             "The wizard drops into the deepest part of the lake. Checks: deep water found, it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, jump kicks it up over 1.5 m " +

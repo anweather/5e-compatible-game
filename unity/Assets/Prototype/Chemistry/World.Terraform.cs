@@ -56,7 +56,8 @@ namespace Chem
 
         /// <summary>
         /// Raises (n &gt; 0) or digs (n &lt; 0) one cell by n steps, clamped to the sim's height
-        /// range. Blocking terrain and machines can't be shaped. Digging strips the cover and
+        /// range. A terrain that uproots (a tree, a cabin's log wall) turns to its UprootsTo
+        /// first. Blocking terrain and machines can't be shaped. Digging strips the cover and
         /// turns the terrain to its dugTo; raised ground spills its water onto its neighbours.
         /// A cell that ends up blocking loses its cover and fire. Returns whether it changed.
         /// </summary>
@@ -65,10 +66,17 @@ namespace Chem
             var c = At(x, y);
             if (c == null || !IsActiveAt(x, y)) return false;
             var t = TerrainOf(c);
-            if (t.Has("blocking") || t.Has("machine")) return false;
+            bool uprooted = t.UprootsTo != null;
+            if (uprooted)
+            {
+                if (t.UprootLog != null) LogOnce($"uproot#{t.Id}#{Tick}", t.UprootLog, LogKind.Notable);
+                c.T = t.UprootsTo;
+                t = TerrainOf(c);
+            }
+            if (t.Has("blocking") || t.Has("machine")) return uprooted;
             var range = Rules.Sim.Height;
             int height = Math.Max(range.Min, Math.Min(range.Max, c.Height + n));
-            if (height == c.Height) return false;
+            if (height == c.Height) return uprooted;
             c.Height = height;
             if (n < 0) c.Cover = null;
             var to = terrain ?? (n < 0 ? t.DugTo : null);

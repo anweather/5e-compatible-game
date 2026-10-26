@@ -149,6 +149,53 @@ public sealed partial class CellDressing
         }
     }
 
+    // A fallen tree: the valley's own tree that stood here (ValleyChemistry.FelledTree), laid on
+    // its side with its torn-up root ball at its foot, fallen a different way per cell; a trunk,
+    // a root ball and a few clumps of leaves without one.
+    void DressDeadfall(Transform root, Vector3 surface, System.Random rng, Color color, int x, int y)
+    {
+        var fall = Quaternion.Euler(0f, rng.Next(360), 0f);
+        var roots = Part(root, PrimitiveType.Sphere, surface + Vector3.up * 0.35f, new Vector3(1.1f, 0.9f, 0.45f), "Roots", color * 0.7f);
+        roots.transform.rotation = fall;
+        Paint(roots.GetComponent<Renderer>(), "Roots", color * 0.7f, 0.05f, x, y);
+        if (grid.valley != null && grid.valley.FelledTree(x, y, out var prefab, out var scale))
+        {
+            var tree = Object.Instantiate(prefab, root);
+            tree.name = "Fallen " + prefab.name;
+            // Tipped over toward its fall, lying a little above the ground on its branches.
+            tree.transform.SetPositionAndRotation(surface + Vector3.up * 0.3f, fall * Quaternion.Euler(86f, 0f, 0f));
+            tree.transform.localScale = Vector3.Scale(prefab.transform.localScale, scale);
+            Untip(tree);
+            return;
+        }
+        var along = fall * Vector3.forward;
+        var trunk = Part(root, PrimitiveType.Cylinder, surface + Vector3.up * 0.25f + along * 2.5f, new Vector3(0.4f, 2.5f, 0.4f), "Bark", color);
+        trunk.transform.rotation = Quaternion.FromToRotation(Vector3.up, along);
+        Paint(trunk.GetComponent<Renderer>(), "Bark", color, 0.1f, x, y);
+        var leaves = new Color(0.2f, 0.34f, 0.14f);
+        for (int i = 0; i < 3; i++)
+        {
+            float r = 0.9f + 0.4f * (float)rng.NextDouble();
+            var clump = Part(root, PrimitiveType.Sphere, surface + along * (3.5f + i * 0.8f) + Vector3.up * (r * 0.3f), new Vector3(r * 1.3f, r * 0.6f, r), "Leaves", leaves);
+            Paint(clump.GetComponent<Renderer>(), "Leaves", leaves, 0.1f, x + i * 13, y);
+        }
+    }
+
+    // A tree model on its side: no colliders, and not the far LOD (a picture of a standing tree,
+    // which would stand up again in the distance).
+    static void Untip(GameObject tree)
+    {
+        foreach (var col in tree.GetComponentsInChildren<Collider>()) Object.Destroy(col);
+        if (!tree.TryGetComponent<LODGroup>(out var lod) || lod.lodCount < 2) return;
+        var lods = lod.GetLODs();
+        foreach (var r in lods[lods.Length - 1].renderers)
+            if (r != null) r.enabled = false;
+        var kept = new LOD[lods.Length - 1];
+        System.Array.Copy(lods, kept, kept.Length);
+        kept[kept.Length - 1].screenRelativeTransitionHeight = 0.01f;
+        lod.SetLODs(kept);
+    }
+
     // A random value in -range..range.
     static float Jitter(System.Random rng, float range) => ((float)rng.NextDouble() * 2f - 1f) * range;
 }
