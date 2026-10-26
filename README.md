@@ -43,6 +43,7 @@ The docs:
 | `docs/MULTIPLAYER.md` | Playing together online and voice: the netcode, what was built and measured |
 | `docs/DEV_SETUP_WINDOWS.md` | Setting up the Windows PC, the main Unity machine; Mac vs. Windows for agents |
 | `docs/ARCHITECTURE.md` | How the Unity code is organised: the layers, the design patterns, who may depend on whom, where new things go, known debt |
+| `docs/RELEASING.md` | Shipping an alpha: the version bump, the one-command Windows zip, the GitHub pre-release, the update check and version check on join |
 | `docs/QUALITY.md` | The automatic C# checks: analyzers in the Unity console, the CI quality gate, how to read a failure |
 | `docs/FAST_LOOP.md` | The probe: run a named, scripted scenario in the open Editor from the CLI and get pass/fail checks and numbers as JSON |
 | `docs/RESEARCH.md` | What is true, with sources: licence, SRD contents, data sets, prior games, systemic-magic patterns, Unity, physics determinism |
