@@ -60,6 +60,28 @@ public class MenuProbe : ProbeScenario
             Check("b_backs_out_of_mods", menu.Open && menu.CurrentPage == MenuNavigator.MainPage && menu.FocusedLabel != null && menu.FocusedLabel.StartsWith("Mods", System.StringComparison.Ordinal),
                 $"page '{menu.CurrentPage}', highlight on '{menu.FocusedLabel}'");
 
+            // Sound: A on Effects' − turns effects down a step, + puts it back.
+            yield return FocusOn(menu, "Sound");
+            menu.Submit();
+            yield return Frames(3);
+            Check("sound_page_opens", menu.CurrentPage == SettingsMenu.SoundPage && menu.ItemCount == 7, $"page '{menu.CurrentPage}', {menu.ItemCount} items");
+            float effects = GameVolume.Effects;
+            menu.Navigate(1);
+            menu.Navigate(1);
+            yield return Frames(2);
+            menu.Submit();
+            yield return Frames(2);
+            float lowered = GameVolume.Effects;
+            menu.Navigate(1);
+            yield return Frames(2);
+            menu.Submit();
+            yield return Frames(2);
+            Check("sound_buttons_step", lowered < effects && Mathf.Approximately(GameVolume.Effects, effects),
+                $"effects {effects:0.00} -> {lowered:0.00} -> {GameVolume.Effects:0.00}");
+            Shot("sound");
+            menu.Back();
+            yield return Frames(3);
+
             // Credits, then back.
             yield return FocusOn(menu, "Credits");
             menu.Submit();

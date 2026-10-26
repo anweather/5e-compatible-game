@@ -42,8 +42,8 @@ public class WeatherFx : MonoBehaviour
         rainShown = Mathf.MoveTowards(rainShown, now.Rain / 100f, Time.deltaTime * 0.25f);
         windShown = Mathf.MoveTowards(windShown, world.WindDir >= 0 ? 1f : 0f, Time.deltaTime * 0.3f);
         if (rain != null) Rain(cam.transform.position, world.WindDir);
-        rainLoop.volume = 0.45f * rainShown;
-        windLoop.volume = 0.3f * windShown;
+        rainLoop.volume = 0.22f * rainShown * GameVolume.Ambience;
+        windLoop.volume = 0.15f * windShown * GameVolume.Ambience;
         Play(rainLoop, rainShown > 0.01f);
         Play(windLoop, windShown > 0.01f);
         if (world.Tick == seenTick) return;
@@ -178,7 +178,7 @@ public class WeatherFx : MonoBehaviour
         source.clip = clip;
         source.spatialBlend = 0f;
         source.pitch = Random.Range(0.55f, 0.75f);
-        source.volume = Mathf.Lerp(1f, 0.25f, distance / 700f);
+        source.volume = Mathf.Lerp(0.55f, 0.12f, distance / 700f) * GameVolume.Ambience;
         var dull = go.AddComponent<AudioLowPassFilter>();
         dull.cutoffFrequency = Mathf.Lerp(5000f, 600f, distance / 700f);
         source.Play();

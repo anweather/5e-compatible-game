@@ -57,7 +57,7 @@ public sealed class FireLightPool
     void SetCrackle(int i, float volume)
     {
         var s = crackles[i];
-        s.volume = volume;
+        s.volume = volume * GameVolume.Effects;
         if (volume > 0f && !s.isPlaying) s.Play();
         else if (volume <= 0f && s.isPlaying) s.Stop();
     }

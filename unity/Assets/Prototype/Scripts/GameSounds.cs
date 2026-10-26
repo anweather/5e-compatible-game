@@ -84,7 +84,7 @@ public static class GameSounds
         var go = new GameObject("Sound " + sound);
         go.transform.position = at;
         var source = go.AddComponent<AudioSource>();
-        Configure(source, clip, volume);
+        Configure(source, clip, volume * GameVolume.Effects);
         source.pitch = 1f + Random.Range(-pitchJitter, pitchJitter);
         source.Play();
         Object.Destroy(go, clip.length / Mathf.Max(0.5f, source.pitch) + 0.1f);

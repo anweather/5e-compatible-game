@@ -47,7 +47,7 @@ sound was heard in a later build (main, not 0.1.1).
 
 | Id | Issue | State |
 |---|---|---|
-| P17 | Volume sliders (master, effects, ambience): still a little loud | open |
+| P17 | Volume sliders (master, effects, ambience): still a little loud | done: Sound page, master / effects / ambience |
 | P18 | Move the on-screen instructions to a Controls page of the menu; flash them on screen the first time | open |
 | P19 | Health, stamina and magic bars (infinite in the sandbox for now) | open |
 
@@ -58,7 +58,7 @@ sound was heard in a later build (main, not 0.1.1).
 | P20 | Water looks bad and patterned | open |
 | P21 | Shaders: grass, water reflections | open |
 | P22 | The glowing balls' lighting is very harsh | open |
-| P23 | The storm sounds are too loud | open |
+| P23 | The storm sounds are too loud | done: rain, wind and thunder turned down, on the ambience setting |
 
 ### World
 

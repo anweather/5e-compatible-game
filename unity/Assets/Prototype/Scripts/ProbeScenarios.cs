@@ -57,7 +57,7 @@ public static class ProbeScenarios
         new Entry("menu", typeof(MenuProbe), 60f,
             "The Esc menu with a controller: Start on a virtual gamepad opens it, the highlight moves down to Mods, A opens the " +
             "Mods page and switches the first mod on and off, B goes back, then Credits and Join by code (letters picked, B back). " +
-            "Checks: each step landed on the right page, 6 mods listed, the mod switched, B and Start close the menu and the " +
+            "Checks: each step landed on the right page, 6 mods listed, the mod switched, the Sound page's − and + step the effects volume, B and Start close the menu and the " +
             "wizard's controls come back, no console errors."),
         new Entry("radial", typeof(RadialProbe), 60f,
             "The spell radial with a controller, on a virtual gamepad: hold LB and push the right stick at Storm, then at " +
