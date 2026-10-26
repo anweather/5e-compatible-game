@@ -121,7 +121,8 @@ public static class ProceduralSounds
 
     static AudioClip Build(string name, float seconds, Func<float, System.Random, float> sample, bool loop)
     {
-        if (cache.TryGetValue(name, out var clip)) return clip;
+        // A clip only this cache holds counts as unused: Unity destroys it when a scene loads, so make it again.
+        if (cache.TryGetValue(name, out var clip) && clip != null) return clip;
         int n = Mathf.CeilToInt(seconds * Rate);
         var data = new float[n];
         var random = new System.Random(Seed(name));
