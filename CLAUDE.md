@@ -27,8 +27,12 @@ blocks the Editor); rebuild it with its builder menu instead.
 
 ## Committing
 
-Nothing is live yet, so commit and push straight to `main`; no branch or
-PR is needed. Pull again just before pushing. Don't commit the churn the
+Nothing is live yet, so `main` is the integration branch and pushing to it
+is fine; releases will be tagged once there's something to release. Do
+feature work on a short-lived branch (or worktree) off `main` for isolation,
+then merge it into `main` and push as soon as it's verified. No PR is
+needed. Never leave a finished branch unmerged. Pull again just before
+pushing. Don't commit the churn the
 Editor leaves behind after a rebuild (`ChemistryYard.unity`, URP assets
 upgraded by a newer Editor, `unity/.vsconfig`) unless that change is the
 point.
