@@ -47,8 +47,9 @@ startup and shows "alpha X.Y.Z (abc1234)" at the bottom of the Esc menu.
    ```
 
 5. **Test the draft on the PC.** Download the zip from the draft (not the
-   local build), unzip into a fresh folder, run it (SmartScreen: More info →
-   Run anyway), check the Esc menu shows the right version, then play a
+   local build), unzip into a fresh folder, run it (the exe is unsigned:
+   Defender may show "Windows Security: Scan required" and scan it first,
+   and SmartScreen may need More info → Run anyway; seen on alpha 0.1.0), check the Esc menu shows the right version, then play a
    Relay game against another machine on the same release (Esc → Play
    together → Host online / Join code).
 6. **Publish:** `gh release edit alpha-X.Y.Z --draft=false`.

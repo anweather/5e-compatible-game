@@ -6,9 +6,11 @@ itself may change completely between versions.
 RUNNING IT (Windows 10 or 11, 64-bit)
 1. Unzip the whole folder somewhere (not inside the zip viewer).
 2. Double-click SpellChemistryValley.exe.
-3. The game isn't signed, so Windows SmartScreen may say "Windows protected
-   your PC". Click "More info", then "Run anyway". The first run may also ask
-   to let it through the firewall: allow it for playing together.
+3. The game isn't signed, so Windows may check it first. If Windows Security
+   says "Scan required", let the scan finish (or click Scan) and it starts.
+   If SmartScreen says "Windows protected your PC", click "More info", then
+   "Run anyway". The first run may also ask to let it through the firewall:
+   allow it for playing together.
 
 CONTROLS (keyboard and mouse; a gamepad works too)
   WASD            move              Mouse        look
