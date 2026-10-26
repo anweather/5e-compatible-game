@@ -44,7 +44,8 @@ public class SlantProbe : ProbeScenario
             var set = dug.ToHashSet();
             bool joined = dug.All(c => dug.Count == 1 || set.Contains((c.x + 1, c.y)) || set.Contains((c.x - 1, c.y)) || set.Contains((c.x, c.y + 1)) || set.Contains((c.x, c.y - 1)));
             Check("squares_share_sides", joined, "every dug square has a dug neighbour beside it, not only at a corner");
-            Cut(me + V(4f, 12f, -1.6f), me + V(4.01f, 0f, -1.5f));
+            var middle = dug.Count > 0 ? grid.CellCenter((int)dug.Average(c => c.x), (int)dug.Average(c => c.y)) : me;
+            Cut(middle + V(0f, 11f, -0.1f), middle);
             yield return Wait(0.3f);
             Shot("slanted-trench");
         }

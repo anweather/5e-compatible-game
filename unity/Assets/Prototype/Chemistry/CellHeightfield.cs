@@ -119,7 +119,14 @@ namespace Chem
 
         bool IsCoarse(int i, int j) => grid.HasChunk(i, j) && !grid.IsHighRes(i, j);
 
-        /// <summary>A sample's offset from the cells touching it, before the seam rule.</summary>
+        /// <summary>
+        /// A sample's offset from the cells round it, before the seam rule. A sample in or on the
+        /// border of a raised wall stands at the wall's top, so walls keep their edges. Otherwise, at
+        /// full detail the ground is blended between cell centres (bilinear: each centre exactly at
+        /// its cell's height, sloping between), so a trench or a river at a slant reads as a channel
+        /// rather than a staircase of blocks; a coarse chunk's samples are its cells' corners, the
+        /// average of the four cells there.
+        /// </summary>
         float RawOffset(World world, int i, int j, int sx, int sz)
         {
             int p = grid.SamplesPerCell(i, j);
@@ -132,12 +139,36 @@ namespace Chem
                 {
                     var c = CellAt(world, u, v);
                     bool raised = c != null && world.IsRaisedWall(c);
-                    float o = raised && FlatUnderWalls ? (world.TerrainOf(c).Elevation + Math.Min(c.Height, 0)) * StepHeight : CellOffset(world, c);
+                    float o = Offset(world, c);
                     sum += o;
                     if (raised && !FlatUnderWalls) wall = Math.Max(wall, o);
                 }
             }
-            return float.IsNegativeInfinity(wall) ? sum / ((u1 - u0 + 1) * (v1 - v0 + 1)) : wall;
+            if (!float.IsNegativeInfinity(wall)) return wall;
+            if (p == 1) return sum / ((u1 - u0 + 1) * (v1 - v0 + 1));
+            return Blended(world, i, j, sx, sz, p, Offset(world, CellAt(world, u1, v1)));
+        }
+
+        // A cell's offset as the ground under it is drawn (a raised wall over FlatUnderWalls drawn flat).
+        float Offset(World world, Cell c) =>
+            c != null && FlatUnderWalls && world.IsRaisedWall(c) ? (world.TerrainOf(c).Elevation + Math.Min(c.Height, 0)) * StepHeight : CellOffset(world, c);
+
+        // Bilinear between the centres of the four cells round a full-detail sample. A neighbour that
+        // is a raised wall (drawn by its own rule) counts as the sample's own cell; one off the grid as 0.
+        float Blended(World world, int i, int j, int sx, int sz, int p, float own)
+        {
+            float fu = i * TerrainGrid.ChunkCells + (float)sx / p - 0.5f, fv = j * TerrainGrid.ChunkCells + (float)sz / p - 0.5f;
+            int u = (int)Math.Floor(fu), v = (int)Math.Floor(fv);
+            float tu = fu - u, tv = fv - v;
+            float Corner(int du, int dv)
+            {
+                var c = CellAt(world, u + du, v + dv);
+                if (c == null) return 0f;
+                return !FlatUnderWalls && world.IsRaisedWall(c) ? own : Offset(world, c);
+            }
+            float near = Corner(0, 0) + (Corner(1, 0) - Corner(0, 0)) * tu;
+            float far = Corner(0, 1) + (Corner(1, 1) - Corner(0, 1)) * tu;
+            return near + (far - near) * tv;
         }
 
         /// <summary>The world cells (inclusive) a sample index touches along one axis: one inside a cell, two on a border.</summary>

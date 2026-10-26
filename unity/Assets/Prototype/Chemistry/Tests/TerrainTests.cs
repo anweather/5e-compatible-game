@@ -180,9 +180,11 @@ namespace Chem.Tests
             Assert.AreEqual(-1f, h[sz, sx], "inside the trench");
             Assert.AreEqual(-1f, h[sz, 55 * 4], "between two trench cells");
             // The trench's north edge: y 80 is v 239 (local 47), its top the corner at local 48.
-            Assert.AreEqual(-1f, h[48 * 4 - 1, sx], "last sample inside the trench");
+            // The bank slopes evenly from the last trench cell's centre to the first meadow cell's.
+            Assert.AreEqual(-0.75f, h[48 * 4 - 1, sx], "a quarter of a cell from the trench's last centre");
             Assert.AreEqual(-0.5f, h[48 * 4, sx], "bank: half way");
-            Assert.AreEqual(0f, h[48 * 4 + 1, sx], "first sample inside the meadow");
+            Assert.AreEqual(-0.25f, h[48 * 4 + 1, sx], "a quarter of a cell from the meadow's first centre");
+            Assert.AreEqual(0f, h[48 * 4 + 2, sx], "the meadow cell's centre");
             // The trench's north-west corner (x 50 is u 242, local 50).
             Assert.AreEqual(-0.25f, h[48 * 4, 50 * 4], "outer corner: one cell of four");
             Assert.AreEqual(0f, h[100, 100], "untouched meadow");

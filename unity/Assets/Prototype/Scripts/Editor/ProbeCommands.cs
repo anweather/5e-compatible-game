@@ -176,7 +176,7 @@ public static class ProbeCommands
     }
 
     // How long a run may stay "starting": entering Play mode, or first starting the virtual player.
-    static double StartLimit(string scenario) => ProbeScenarios.Find(scenario)?.Players > 1 ? LaunchTimeout + 30 : 60;
+    static double StartLimit(string scenario) => ProbeScenarios.Find(scenario)?.Players > 1 ? LaunchTimeout + 30 : 120;
 
     // --- the run, in Play mode -------------------------------------------------------
 
