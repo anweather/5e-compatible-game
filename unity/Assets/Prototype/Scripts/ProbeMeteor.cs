@@ -36,11 +36,17 @@ public class MeteorProbe : ProbeScenario
         int middle = World.At(cell.x, cell.y).Height;
         Check("crater", middle == -3, $"the middle {middle} steps");
         int burning = 0;
+        // The ring past the crater (which digs out to two squares): burning, or already burnt to dirt.
+        // How many still burn at this moment depends on the frame rate, so burnt ones count too.
         for (int dy = -4; dy <= 4; dy++)
             for (int dx = -4; dx <= 4; dx++)
-                if (World.At(cell.x + dx, cell.y + dy).Fire > 0) burning++;
+            {
+                if (System.Math.Max(System.Math.Abs(dx), System.Math.Abs(dy)) < 3) continue;
+                var c = World.At(cell.x + dx, cell.y + dy);
+                if (c.Fire > 0 || c.T == TerrainIds.Dirt) burning++;
+            }
         Metric("burning_round_it", burning);
-        Check("ring_of_fire", burning >= 8, $"{burning} squares burning round the crater");
+        Check("ring_of_fire", burning >= 8, $"{burning} squares round the crater burning or burnt");
         Shot("after");
     }
 }

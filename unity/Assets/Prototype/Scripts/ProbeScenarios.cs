@@ -118,7 +118,7 @@ public static class ProbeScenarios
         new Entry("meteor", typeof(MeteorProbe), 40f,
             "Meteor cast from the bar on the meadow east of the yard. Shots as it falls, lands and after. Checks: it starts over 50 m up, " +
             "with its light; the ground waits for it to land; its crater is three steps down in the middle with eight or more squares " +
-            "burning round it, no console errors."),
+            "round it burning or burnt (out past the crater), no console errors."),
         new Entry("falls", typeof(FallsProbe), 40f,
             "The waterfall at the head of the river: the wizard goes to the pond at its foot. Checks: the falls is built (its water, " +
             "twenty or more rocks on the cliff), the pond's middle is river and full, river squares run on south of it, splashes " +
