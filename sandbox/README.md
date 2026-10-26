@@ -81,6 +81,7 @@ See `docs/LIVE_LAB.md` for the full picture.
 | `src/sim.ts` | One tick: critters, fire, water, gas, entities, machines |
 | `src/entities.ts` | Damage, explosions, push and slide, per-tick statuses |
 | `src/actions.ts` | Casting, placing critters, painting |
+| `src/terraform.ts` | Earth shaping: terraform spells raise and dig cells; raised ground sheds its water |
 | `src/scenarios.ts` | ASCII maps and goals |
 | `src/intents.ts` | Every player action as a small JSON message, applied identically on every page |
 | `src/net.ts` | Lockstep sessions: host election, batches, snapshots, checksums |
@@ -90,6 +91,8 @@ See `docs/LIVE_LAB.md` for the full picture.
 | `src/render.ts`, `src/main.ts`, `index.html` | The page |
 | `test/sim.test.ts` | Interaction tests, including every Steam Gate route and determinism |
 | `test/net.test.ts` | Multiplayer: late join, lost batches, host leaving, mods mid-game; the doc examples validate |
+| `test/terraform.test.ts` | Earth shaping, with the `CellHash` golden shared with the C# `TerraformTests.cs` |
+| `test/items.test.ts` | `items.json` checks, worded like the C# `Rules.CheckItems.cs` |
 
 The simulation is deterministic for a seed: all randomness comes from a
 mulberry32 cursor in the world state. That is the same discipline the
@@ -102,8 +105,8 @@ C# core needs.
   still; they're targets, not opponents.
 - Spell range isn't limited except for Misty Step and Mage Hand.
 - No saving throws or attack rolls. Damage is rolled flat.
-- Water is integer units on a two-level height map (ground and pit), so
-  a channel fills as a slope rather than levelling out.
+- Water is integer units over each cell's elevation plus its raised or
+  dug height, so a channel fills as a slope rather than levelling out.
 - Every powered machine opens every gate (one channel).
 - Critters are invulnerable, and you carry one of each.
 

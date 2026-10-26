@@ -184,8 +184,9 @@ The same loop, one level up:
 - **Server:** a small authoritative server, either a headless Unity
   build or a plain .NET service running `Game.Core`. Unity clients
   connect to it. It sequences inputs exactly like the sandbox host. For
-  real-time 3D it sends authoritative state rather than lockstep (D4:
-  PhysX isn't deterministic across machines).
+  real-time 3D the grid stays lockstep and only PhysX props travel as
+  authoritative state (D4: PhysX isn't deterministic across machines;
+  `MULTIPLAYER.md` §1). Today the host is one of the players (D7).
 - **Hot swap** (built for the lockstep yard; see "In the Unity game
   today" above): the server applies mod patches at a tick boundary and
   broadcasts them. Clients rebuild their rule index, as the sandbox does

@@ -22,7 +22,7 @@ tables in `rules/` that the Unity build will load too.
 |---|---|
 | `rules/` | The interaction rules as JSON: elements, materials, reactions, spells, critters, machines |
 | `sandbox/` | A top-down web sandbox that runs those rules, with tests (`npm test`). Multiplayer rooms and live, votable rule mods: see `docs/LIVE_LAB.md` |
-| `unity/` | The Unity 6.3 LTS (URP) project. First greybox: Fire Bolt and spreading grass fire; rebuild it with **Prototype → Build Test Scene**. Asset Store packs aren't in git: `unity/AssetPacks.json` lists them, and **Prototype → Restore Asset Packs** downloads and imports any that are missing (your Unity account needs them in My Assets) |
+| `unity/` | The Unity 6.3 LTS (URP) project. The main scene is the Chemistry Yard in a chunked valley, built by **Prototype → Build Chemistry Yard** (and automatically when missing); the first greybox (Fire Bolt and spreading grass fire) is still **Prototype → Build Test Scene**. Asset Store packs aren't in git: `unity/AssetPacks.json` lists them, and **Prototype → Restore Asset Packs** downloads and imports any that are missing (your Unity account needs them in My Assets) |
 
 The docs:
 
@@ -35,7 +35,11 @@ The docs:
 | `docs/PHYSICAL_TACTICS.md` | Prototype P5's concept: turn-based play resolved physically, with reactions and no health sponges |
 | `docs/EXPLORE_AND_FIGHT.md` | Prototype P6's concept: third-person adventure movement in exploration, physical turn-based fights in place, battlefield prep between them |
 | `docs/TRAVERSAL.md` | Unique per-character traversal (by physical channel), collectible critters that change world state, machines that consume it |
-| `docs/DECISIONS.md` | What has been decided, and why |
+| `docs/DECISIONS.md` | What has been decided, and why: the index of the ADRs in `docs/adr/` |
+| `docs/BACKLOG.md` | Features to build next, what each builds on, and a suggested order |
+| `docs/WORLD_STREAMING.md` | From one valley to an endless world: chunks, and what the chunked valley built |
+| `docs/MULTIPLAYER.md` | Playing together online and voice: the netcode, what was built and measured |
+| `docs/DEV_SETUP_WINDOWS.md` | Setting up the Windows PC, the main Unity machine; Mac vs. Windows for agents |
 | `docs/ARCHITECTURE.md` | How the Unity code is organised: the layers, the design patterns, who may depend on whom, where new things go, known debt |
 | `docs/QUALITY.md` | The automatic C# checks: analyzers in the Unity console, the CI quality gate, how to read a failure |
 | `docs/FAST_LOOP.md` | The probe: run a named, scripted scenario in the open Editor from the CLI and get pass/fail checks and numbers as JSON |

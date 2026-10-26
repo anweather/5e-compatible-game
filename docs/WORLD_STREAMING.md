@@ -123,6 +123,15 @@ grass).
   probe `smoke` checks `things_spawned`), and `probe online` checks
   `thing_ids_match` (the same ids and kinds on host and client).
 
+### Still open in part 1
+
+- Water easing: reshaped ground eases to its new height, the water
+  surface doesn't.
+- The pond reads blocky from overhead, and a raised wall's crags are
+  primitive shapes.
+- Online on the chunked valley has run with 2 players on one machine
+  (`docs/MULTIPLAYER.md` §8), not with 3 or 4, and not Mac↔PC over Relay.
+
 Not in part 1: streaming to disk, seed generation, floating origin, the
 server/interest-management change, the fast-forward on wake.
 

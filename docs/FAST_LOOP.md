@@ -118,6 +118,6 @@ what it checks, and its `max_seconds`. Recompile; `probe list` shows it.
   `.asmdef`, see `docs/QUALITY.md` "Recommendations") so a test assembly can
   reference it.
 - Screenshots are of the Game view at its current size.
-- `online` runs two Editors on one Mac, not a Mac host with a Windows
+- `online` runs two Editors on one machine, not a Mac host with a Windows
   client, and over 127.0.0.1, not Relay. It has one virtual player; the
   4-player and late-join checks in `docs/MULTIPLAYER.md` were by hand.

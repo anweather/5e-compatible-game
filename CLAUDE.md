@@ -34,8 +34,8 @@ Nothing is live yet, so `main` is the integration branch and pushing to it
 is fine; releases will be tagged once there's something to release. Do
 feature work on a short-lived branch (or worktree) off `main` for isolation,
 then merge it into `main` and push as soon as it's verified. No PR is
-needed. Never leave a finished branch unmerged. Pull again just before
-pushing.
+needed. Never leave a finished branch unmerged. Fetch and merge
+`origin/main` again just before pushing.
 
 Generated output stays out of git, so rebuilding never dirties the tree:
 the yard scene (`ChemistryYard.unity`, rebuilt automatically when missing),

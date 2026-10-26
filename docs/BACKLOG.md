@@ -134,7 +134,9 @@ Halo-style loadouts: sniper, shotgun, assault rifle, pistol, sword, hammer.
 - **What:** voices and sound effects get quieter with distance and
   muffled through walls and water; voices carry only so far.
 - **Builds on:** online play (Relay, up to 4 players). Unity Vivox has
-  positional (3D) voice channels. Audio stays on (`DEV_SETUP_WINDOWS.md`,
+  positional (3D) voice channels; D8 (proposed) picks Vivox and lets
+  spells change voices (`MULTIPLAYER.md` §4–5). None of it is built: the
+  only sounds today are the Starter Assets footsteps. Audio stays on (`DEV_SETUP_WINDOWS.md`,
   section 6).
 - **Spells:** *where is that sound coming from?* A spell (or the Alert
   feat, or a familiar's ears) shows sound sources: ripples or icons at

@@ -9,7 +9,7 @@ is reached from a phone through Remote Control.
 
 | Tool | Version / notes |
 |---|---|
-| Git for Windows | Long paths on: `git config --global core.longpaths true`. Git LFS comes with it (art, audio and video go to LFS; see `.gitattributes`); on the Mac, `brew install git-lfs`, then `git lfs install` once |
+| Git for Windows | Long paths on: `git config --global core.longpaths true`. Git LFS comes with it (art, audio, video and fonts go to LFS; see `.gitattributes`). On the Mac, git-lfs is the release binary in `~/.local/bin`, not Homebrew. Run `git lfs install` once on each machine |
 | Unity Hub, then Editor **6000.3.27f1** | Modules: Windows Build Support (IL2CPP optional). Same Editor version as `unity/ProjectSettings/ProjectVersion.txt` |
 | .NET SDK 8 | `dotnet build core -c Release -warnaserror` and `dotnet test core` (CI uses 8.0.x) |
 | Node 22.18 or later | The web sandbox (`sandbox/`): `npm ci`, `npm test`, `npm run typecheck` |
@@ -22,7 +22,7 @@ is reached from a phone through Remote Control.
 ```
 git clone git@github.com:anweather/5e-compatible-game.git
 cd 5e-compatible-game
-git switch feat/chunked-valley        # current work; see "Branches" below
+git switch main                       # everything is merged; see "Branches" below
 ```
 
 Open `unity/` in Unity Hub with 6000.3.27f1 and sign in to the Unity account
@@ -49,7 +49,8 @@ valley, any time.
 3. Play the yard: walk, cast 1–8, Tab for the Earth page, M for mods.
 4. **Prototype → Build → Windows**, then run
    `Builds\Windows\SpellChemistryValley.exe -fps-probe` and note the FPS line.
-   The Windows build has never been run before this.
+   First run on 2026-10-25: 7.6 ms mean, 9.9 ms 95th percentile at
+   3840×2160 (`docs/QUALITY.md`).
 5. Two-machine multiplayer: Host online on one machine, join by code on the
    other (Relay). Never tested across two real machines before this.
 
@@ -80,10 +81,9 @@ Record the results (FPS mean and 95th percentile, any errors) in `docs/QUALITY.m
 
 ## Branches
 
-Pushed work branches, none merged to `main` yet:
-
-| Branch | What |
-|---|---|
-| `feat/chunked-valley` | Current: chunked world (docs/WORLD_STREAMING.md), built on everything below |
-| `overnight/integration` | Physics, items, earth shaping, live rules, online, overnight demo |
-| `feat/chunked-core`, `feat/earth-shaping`, `feat/live-rules`, `feat/physics-props`, `refactor/unity-code-health` | The individual features, for review |
+Every work branch that used to be listed here (`feat/chunked-valley`,
+`overnight/integration`, `feat/chunked-core`, `feat/earth-shaping`,
+`feat/live-rules`, `feat/physics-props`, `refactor/unity-code-health`),
+and `feat/fast-loop`, `feat/props-from-data` and `fix/probe-windows` since,
+is merged into `main`. Work from `main`; how branches, merges and pushes
+work now is in the root `CLAUDE.md`.

@@ -12,7 +12,7 @@ The work splits by where it can run.
 | Work | Where it happens |
 |---|---|
 | Scenes, prefabs, materials, VFX, feel-tuning | **You, in the Unity Editor** on your PC. This is the learning |
-| `Game.Core` (rules, chemistry tables, grid), its xUnit tests, data import scripts, C# MonoBehaviours, CI workflows | **Claude**, in a cloud session (`dotnet test` runs there), or alongside you |
+| `Game.Core` (rules, chemistry tables, grid), its NUnit tests, data import scripts, C# MonoBehaviours, CI workflows | **Claude**, in a cloud session (`dotnet test` runs there), or alongside you |
 | Live Editor help (inspect scene, run tests, build) | Claude Code on your PC with the Unity CLI MCP bridge (`unity mcp configure claude`) |
 
 ## Open questions (in the order the plan answers them)
@@ -62,7 +62,7 @@ and `Rigidbody2D` are authoritative, since everything is single-player
 
 ### Spike B: `Game.Core` skeleton (answers Q2, in parallel with A; Claude can do this)
 
-- A `netstandard2.1` library, an xUnit test project, and a GitHub
+- A `netstandard2.1` library, an NUnit test project, and a GitHub
   Actions workflow running `dotnet test`.
 - A data-driven chemistry table with elements, tags, element×tag and
   element×element rules, and DOS-style orthogonal modifiers
@@ -85,7 +85,7 @@ and `Rigidbody2D` are authoritative, since everything is single-player
 
 Compare the prototype scorecards (`PROTOTYPES.md`), pick the view and
 what spells are *for*, then choose a progression structure on paper.
-Record it in `DECISIONS.md` as D6. Before Phase 1, build one structure
+Record it as the next ADR (`DECISIONS.md`). Before Phase 1, build one structure
 slice of the winner: a level, a hub or a region.
 
 ## Phase 1 — 5E layer in `Game.Core`
@@ -139,14 +139,15 @@ slice of the winner: a level, a hub or a region.
   juicy VFX Graph effects. Use CC0 kits (Kenney, Quaternius) through
   Phase 2.
 - Procedural rooms.
-- Netcode, only if co-op action is wanted (Mirror or FishNet).
+- Netcode: built early for the yard, on Netcode for GameObjects rather
+  than Mirror or FishNet (D7, `MULTIPLAYER.md`).
 
 ## Learning track (alongside)
 
 | Phase | Learn |
 |---|---|
 | Step 0 / A | GameObjects and components, prefabs, Rigidbody and colliders, `PhysicsMaterial`, raycasts and overlaps, Input System, Cinemachine |
-| B | C# for a TS/Kotlin dev: structs vs. classes, `Span`, records (C# 9), nullable refs; asmdefs; xUnit |
+| B | C# for a TS/Kotlin dev: structs vs. classes, `Span`, records (C# 9), nullable refs; asmdefs; NUnit |
 | 1–2 | ScriptableObjects as data, Animator and blend trees (Mixamo rigs), Shader Graph, VFX Graph, UI Toolkit, the Unity Test Framework (EditMode/PlayMode) |
 | 3+ | Build pipelines, Addressables, GameCI, profiling on mobile |
 
@@ -156,7 +157,7 @@ slice of the winner: a level, a hub or a region.
 |---|---|
 | Scope: a 3D RPG is the classic over-scoped hobby project | Small spikes, an honest Gate 1, slice before breadth |
 | Physics chaos vs. tactical predictability | Previews from the core; physics only where it's the joke or the point |
-| Wanting multiplayer physics later | D4 already keeps shared truth out of PhysX; netcode is a Phase 4 add-on |
+| Wanting multiplayer physics later | D4 already keeps shared truth out of PhysX; the netcode built early (D7) keeps the chemistry lockstep and the props host-authoritative |
 | Unity churn (CoreCLR, Unity 7 in 2027) | Core at C# 9 or below, on netstandard2.1; stay on LTS |
 | Art cost | Greybox through Phase 2; CC0 kits; stylised URP |
 | Licence slip (using "D&D" or non-SRD names) | A name check in CI; only SRD 5.2.1-sourced text |

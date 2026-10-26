@@ -6,7 +6,7 @@ read the code. There are two layers:
 | Layer | Where you see it | What runs | Blocks anything? |
 |---|---|---|---|
 | 1. Analyzers | Unity's **Console**, as yellow warnings, every time scripts compile | Sonar, Unity and .NET analyzers on our code | No. Warnings never stop the game compiling |
-| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 124 tests, formatting, duplicate code | Yes. A red check means fix before merging |
+| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 146 tests, formatting, duplicate code | Yes. A red check means fix before merging |
 
 Only our code is checked: `unity/Assets/Prototype/` and `sandbox/src/`. The
 Asset Store packs (`Starter Assets`, `UnityTechnologies`) are never analyzed,
@@ -78,8 +78,8 @@ The sandbox's own tests stay in `sandbox.yml`.
 `Scripts/` (the MonoBehaviours) can't build outside Unity, so CI doesn't
 cover it. Its only checks are the Unity console warnings.
 
-**Reading a failure:** open the red **quality** check on the PR, then the
-failed job:
+**Reading a failure:** open the red **quality** check on the commit (or PR), then
+the failed job:
 
 - *build-and-test*: an `error XX1234:` line gives file, line and rule, read it
   as above. A `Failed <TestName>` line is a broken test.

@@ -9,7 +9,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 |---|---|---|
 | D1 | [Engine: Unity](adr/0001-engine-unity.md) | Accepted (2026-10-13) |
 | D2 | [Targets: PC first; mobile and web secondary](adr/0002-targets-pc-first-mobile-and-web-secondary.md) | Accepted (2026-10-13) |
-| D3 | [Rules live in an engine-free C# core](adr/0003-rules-live-in-an-engine-free-csharp-core.md) | Accepted (2026-10-13) |
+| D3 | [Rules live in an engine-free C# core](adr/0003-rules-live-in-an-engine-free-csharp-core.md) | Accepted (2026-10-13, amended 2026-10-25) |
 | D4 | [Physics is authoritative only where nobody has to agree](adr/0004-physics-is-authoritative-only-where-nobody-has-to-agree.md) | Accepted (2026-10-13) |
 | D5 | [No grid tactics; turn-based only in physical form](adr/0005-no-grid-tactics-turn-based-only-in-physical-form.md) | Accepted (2026-10-13, amended same day) |
 | D6 | [The sandbox is the shared lab](adr/0006-the-sandbox-is-the-shared-lab.md) | Accepted (2026-10-16) |

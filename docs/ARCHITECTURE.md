@@ -40,8 +40,8 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   `Chunks.ChunkOf(cell)` is `floor(cell / 64)` and `Chunks.LocalOf` the
   remainder, negatives included. Each chunk also keeps the per-cell sim state
   that isn't `Cell` state (fire generation, per-tick marks) and links to its
-  loaded neighbours. The world still has an extent (`W`×`H`, the valley is
-  4×3 chunks); `At`, `Idx` and `Cells` (a row-major array of the same cell
+  loaded neighbours. The world still has an extent (`W`×`H`: the valley's
+  200×175 cells span 4×3 chunks, under its 9×9 chunk terrains); `At`, `Idx` and `Cells` (a row-major array of the same cell
   objects) work as before. **Active set:** `SetActive(cx, cy, bool)`,
   `SetAllActive`, `IsActive`, `ChunkCoords`. `Step` visits only active
   chunks, as row segments in world row-major order (sorted, never the

@@ -378,6 +378,8 @@ Mode (one Mac, 2 and then 4 players, same-network transport).
   spyglass is local.
 - A broken prop is despawned without being destroyed and hidden on every
   machine (Netcode's way for in-scene objects), so late joiners hide it too.
+  Since props come from data, a broken prop is despawned and destroyed
+  instead, and `ThingSpawner` remembers it as gone.
 - `AnnounceCastRpc` finds the caster's wizard by its object id (a client
   can't look up other players by client id), so every player sees every
   cast's show.
@@ -405,7 +407,7 @@ joiner's transport still logged "Receive queue is full (512)" once while
 catching up; the receive queue is 512 packets (`ChemYardBuilder`), and
 reliable messages are resent, so nothing desynced.
 
-## 8. Online on the chunked valley (checked 2026-10-26)
+## 8. Online on the chunked valley (checked 2026-10-25)
 
 The first online check since the valley became 9×9 chunk terrains
 (`feat/chunked-valley`, slices 1 and 2). It is now a probe scenario,

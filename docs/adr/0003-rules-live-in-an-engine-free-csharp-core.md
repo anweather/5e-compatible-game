@@ -21,3 +21,7 @@
   - all randomness from a seeded PRNG stored in state;
   - integer or fixed-point maths for anything that must agree across
     machines.
+- **Amended 2026-10-25:** the tests are NUnit 3, not xUnit, so the same
+  tests run in Unity's EditMode runner and under `dotnet test core`.
+  `core/Game.Core` compiles the sources where Unity keeps them
+  (`unity/Assets/Prototype/Chemistry/`).

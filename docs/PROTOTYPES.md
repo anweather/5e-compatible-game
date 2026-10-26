@@ -219,7 +219,7 @@ Score each from 1 to 5. Record clips; they settle arguments.
    halves are fun.
 6. **P3 (first person)** on P2's scene.
 7. **P4 (top-down)**, a weekend, optional.
-8. **Compare, pick, write D6.** Then one structure slice (a hub, a level
+8. **Compare, pick, write the next ADR.** Then one structure slice (a hub, a level
    or a region) for the winner.
 
 **Alternative order** if you'd rather test the *interactions* first and
