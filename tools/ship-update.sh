@@ -90,12 +90,12 @@ if ! gh release view "$tag" -R "$REPO" >/dev/null 2>&1; then
 fi
 for channel in "osx$suffix" "win$suffix"; do
   dir="$out/releases-$channel"
-  # This version's packages, the installers and the channel's feed (the folder also
-  # holds the previous full package, fetched only to make the delta).
-  files=("$dir/releases.$channel.json" "$dir/$APP_ID-$version-$channel-full.nupkg" "$dir/$APP_ID-$channel-Portable.zip")
-  for f in "$dir/$APP_ID-$version-$channel-delta.nupkg" "$dir/$APP_ID-$channel-Setup".*; do
-    [ -e "$f" ] && files+=("$f")
-  done
+  # The feed plus what this pack made (assets.<channel>.json lists it: the full and
+  # delta packages, the installer, the portable zip). Package names differ by
+  # channel, so read them rather than guess; the folder also holds the previous
+  # full package, fetched only to make the delta.
+  files=("$dir/releases.$channel.json")
+  while IFS= read -r f; do files+=("$dir/$f"); done < <(grep -o '"RelativeFileName":"[^"]*"' "$dir/assets.$channel.json" | cut -d'"' -f4)
   echo "$channel: ${files[*]##*/}"
   gh release upload "$tag" -R "$REPO" --clobber "${files[@]}"
 done
