@@ -22,7 +22,11 @@ public static class SpellForces
 {
     /// <summary>Solo: applies the forces of a cast that just landed to everything but the caster. Returns how many things it moved.</summary>
     public static int Apply(ChemGrid grid, string spellId, int x, int y, int dir, Transform caster, int charge = 1) =>
-        Apply(grid, new CastCommand(spellId, x, y, dir, charge), caster.position, caster, null, levitate: true, caster);
+        Apply(grid, new CastCommand(spellId, x, y, dir, charge), caster);
+
+    /// <summary>Solo: as above, for a cast that may be aimed off the grid's four ways.</summary>
+    public static int Apply(ChemGrid grid, CastCommand cast, Transform caster) =>
+        Apply(grid, cast, caster.position, caster, null, levitate: true, caster);
 
     /// <summary>
     /// Online: the forces of a cast whose tick batch just ran. <paramref name="props"/> on the host
@@ -49,7 +53,7 @@ public static class SpellForces
         return spell.Shape switch
         {
             SpellShapes.Burst => Forces.Radial(from, (spell.Radius + 1) * grid.cellSize, impulse, except, only),
-            SpellShapes.Line => Forces.Along(grid, grid.World.SpellCells(spell, x, y, dir), Direction(dir), impulse, except, only),
+            SpellShapes.Line => Forces.Along(grid, grid.World.SpellCells(spell, x, y, dir, cast.Charge, cast.AimX, cast.AimY), Along(cast), impulse, except, only),
             _ => 0,
         };
     }
@@ -58,7 +62,7 @@ public static class SpellForces
     static int HitWizards(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
     {
         if (spell.Element == null) return 0;
-        var cells = new System.Collections.Generic.HashSet<(int x, int y)>(grid.World.SpellCells(spell, cast.X, cast.Y, cast.Dir, cast.Charge));
+        var cells = new System.Collections.Generic.HashSet<(int x, int y)>(grid.World.SpellCells(spell, cast.X, cast.Y, cast.Dir, cast.Charge, cast.AimX, cast.AimY));
         var centre = grid.CellCenter(cast.X, cast.Y);
         int hit = 0;
         foreach (var wizard in Knockback.All.ToArray())
@@ -66,7 +70,7 @@ public static class SpellForces
             if (wizard == null || (except != null && wizard.transform == except) || (only != null && !only(wizard))) continue;
             var at = grid.CellAt(wizard.transform.position);
             if (!cells.Contains((at.x, at.y))) continue;
-            if (Hit(wizard, spell, centre, Direction(cast.Dir), World.ClampCharge(cast.Charge))) hit++;
+            if (Hit(wizard, spell, centre, Along(cast), World.ClampCharge(cast.Charge))) hit++;
         }
         return hit;
     }
@@ -105,6 +109,13 @@ public static class SpellForces
 
     // The sandbox's directions on the ground: north (y-1) is +z.
     static Vector3 Direction(int dir) => new Vector3(World.DirX(dir), 0f, -World.DirY(dir));
+
+    // Which way a cast points on the ground: along its aim when it has one off the grid's four ways.
+    static Vector3 Along(CastCommand cast)
+    {
+        var (ax, ay) = World.SnapAim(cast.AimX, cast.AimY);
+        return ax != 0 && ay != 0 ? new Vector3(ax, 0f, -ay).normalized : Direction(cast.Dir);
+    }
 
     static bool Levitate(ChemGrid grid, SpellDef spell, int x, int y)
     {

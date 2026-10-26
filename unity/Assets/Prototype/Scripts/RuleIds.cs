@@ -31,6 +31,7 @@ public static class SpellShapes
 {
     public const string Line = "line";
     public const string Burst = "burst";
+    public const string Cone = "cone";
     public const string LevitateEffect = "levitate";
     public const string TeleportEffect = "teleport";
     public const string CarryEffect = "carry";

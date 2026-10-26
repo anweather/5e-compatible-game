@@ -18,9 +18,28 @@ export const clampCharge = (charge: number) => Math.max(1, Math.min(MAX_CHARGE, 
 /** A line spell's length at a charge: half again for each level past a tap. */
 export const chargedLength = (length: number, charge: number) => length + Math.floor((length * (clampCharge(charge) - 1)) / 2);
 
-export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge = 1): [number, number][] {
+/**
+ * An aim (a whole-number vector, x east and y south) snapped to the four ways
+ * when it's within about 5 degrees of one, so a nearly straight line comes
+ * out straight (World.SnapAim).
+ */
+export function snapAim(ax: number, ay: number): [number, number] {
+  if (Math.abs(ay) * 11 < Math.abs(ax)) return [Math.sign(ax), 0];
+  if (Math.abs(ax) * 11 < Math.abs(ay)) return [0, Math.sign(ay)];
+  return [ax, ay];
+}
+
+/**
+ * Squares a spell touches. A line or cone points along dir, or along an aim off
+ * the four ways when one is given (World.SpellCells).
+ */
+export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge = 1, aim?: [number, number]): [number, number][] {
   const out: [number, number][] = [];
   const add = (cx: number, cy: number) => inBounds(w, cx, cy) && out.push([cx, cy]);
+  const [ax, ay] = snapAim(aim?.[0] ?? 0, aim?.[1] ?? 0);
+  const slant = ax !== 0 && ay !== 0;
+  if (slant && s.shape === "line") return slantCells(w, s, x, y, dir, chargedLength(s.length ?? 5, charge), ax, ay);
+  if (slant && s.shape === "cone") return slantCone(w, x, y, chargedLength(s.length ?? 5, charge), ax, ay);
   switch (s.shape) {
     case "point":
     case "target":
@@ -62,6 +81,49 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
 }
 
 /**
+ * A line along a slanted aim: from (x, y) (a trench from the caster's square
+ * behind it first) out to length squares as the crow flies, up to its first
+ * blocking square. Each square shares a side with the one before, turning a
+ * corner through the square along the aim's longer part (World.SlantCells).
+ */
+function slantCells(w: World, s: SpellDef, x: number, y: number, dir: Dir, length: number, ax: number, ay: number): [number, number][] {
+  const out: [number, number][] = [];
+  const visit = (cx: number, cy: number): boolean => {
+    const c = cellAt(w, cx, cy);
+    if (!c) return false;
+    out.push([cx, cy]);
+    return !isBlocking(c);
+  };
+  if (s.effect === "terraform" && s.origin === "self" && cellAt(w, x - DX[dir], y - DY[dir]) && !visit(x - DX[dir], y - DY[dir])) return out;
+  const alongX = Math.abs(ax) >= Math.abs(ay), major = Math.max(Math.abs(ax), Math.abs(ay));
+  const reach = length * length * major * major, size = ax * ax + ay * ay;
+  let px = x, py = y;
+  for (let k = 0; k * k * size < reach; k++) {
+    const cx = x + roundDiv(k * ax, major), cy = y + roundDiv(k * ay, major);
+    if (k > 0 && cx !== px && cy !== py && !visit(alongX ? cx : px, alongX ? py : cy)) return out;
+    if (!visit(cx, cy)) return out;
+    [px, py] = [cx, cy];
+  }
+  return out;
+}
+
+/** A cone along a slanted aim from its apex: every square within 45 degrees of it and nearer than length along it, in row order. */
+function slantCone(w: World, x: number, y: number, length: number, ax: number, ay: number): [number, number][] {
+  const out: [number, number][] = [];
+  const reach = length * length * (ax * ax + ay * ay);
+  for (let dy = -length; dy <= length; dy++) {
+    for (let dx = -length; dx <= length; dx++) {
+      const along = dx * ax + dy * ay, side = Math.abs(dx * ay - dy * ax);
+      if (along >= 0 && side <= along && along * along < reach && inBounds(w, x + dx, y + dy)) out.push([x + dx, y + dy]);
+    }
+  }
+  return out;
+}
+
+/** n / d (d > 0) rounded to the nearest whole number, halves up. */
+const roundDiv = (n: number, d: number) => Math.floor((2 * n + d) / (2 * d));
+
+/**
  * The player's cast: a click on (tx,ty) with the wizard as the caster.
  * Beams and Gust start next to the wizard and point at the click; Thunderwave
  * goes off around the wizard; everything else lands on the clicked square.
@@ -73,24 +135,26 @@ export function castAt(w: World, id: string, tx: number, ty: number, owner?: str
   const aim = aimSpell(w, id, tx, ty, owner);
   if ("error" in aim) return aim.error;
   if (s.effect === "teleport") return mistyStep(w, s, tx, ty, owner);
-  castSpell(w, id, aim.x, aim.y, aim.dir, aim.casterId);
+  castSpell(w, id, aim.x, aim.y, aim.dir, aim.casterId, 1, aim.aim);
   return null;
 }
 
-type Aim = { x: number; y: number; dir: Dir; casterId?: number } | { error: string };
+type Aim = { x: number; y: number; dir: Dir; casterId?: number; aim?: [number, number] } | { error: string };
 
 /** Where a click would put the spell: shared by castAt and the hover preview. */
 export function aimSpell(w: World, id: string, tx: number, ty: number, owner?: string): Aim {
   const s = spellById(id);
   if (!s) return { error: "That spell isn't in the rules any more." };
   const p = playerOf(w, owner);
-  if (s.origin !== "self" && s.effect !== "teleport") return { x: tx, y: ty, dir: p ? (dirFrom(p.x, p.y, tx, ty) ?? 1) : 1 };
+  // A line or cone points from the wizard toward the click, off the four ways if the click is.
+  const aim: [number, number] | undefined = p && (s.shape === "line" || s.shape === "cone") ? [tx - p.x, ty - p.y] : undefined;
+  if (s.origin !== "self" && s.effect !== "teleport") return { x: tx, y: ty, dir: p ? (dirFrom(p.x, p.y, tx, ty) ?? 1) : 1, aim };
   if (!p) return { error: "You're down. Press Reset to try again." };
   if (s.effect === "teleport") return { x: tx, y: ty, dir: 1 };
   if (s.shape === "burst") return { x: p.x, y: p.y, dir: dirFrom(p.x, p.y, tx, ty) ?? 1, casterId: p.id };
   const dir = dirFrom(p.x, p.y, tx, ty);
   if (dir === null) return { error: `Click a square away from the wizard to point ${s.name} that way.` };
-  return { x: p.x + DX[dir], y: p.y + DY[dir], dir, casterId: p.id };
+  return { x: p.x + DX[dir], y: p.y + DY[dir], dir, casterId: p.id, aim };
 }
 
 /** Squares a click would touch, for the hover preview. */
@@ -99,7 +163,7 @@ export function previewCells(w: World, id: string, tx: number, ty: number, owner
   if (!s) return [];
   const aim = aimSpell(w, id, tx, ty, owner);
   if ("error" in aim) return [];
-  const cells = spellCells(w, s, aim.x, aim.y, aim.dir);
+  const cells = spellCells(w, s, aim.x, aim.y, aim.dir, 1, aim.aim);
   return s.shape === "burst" && s.origin === "self" ? cells.filter(([x, y]) => x !== aim.x || y !== aim.y) : cells;
 }
 
@@ -122,13 +186,13 @@ function mistyStep(w: World, s: SpellDef, tx: number, ty: number, owner?: string
  * that many times the steps, and a line reaches half again as far per level
  * (World.Cast in the C# core).
  */
-export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, casterId?: number, charge = 1): void {
+export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, casterId?: number, charge = 1, aim?: [number, number]): void {
   const s = spellById(id);
   if (!s || !inBounds(w, x, y)) return;
   if (s.effect === "levitate") return levitate(w, s, x, y);
   if (s.effect === "carry") return; // two taps; see carry()
   charge = clampCharge(charge);
-  const cells = spellCells(w, s, x, y, dir, charge);
+  const cells = spellCells(w, s, x, y, dir, charge, aim);
   const ctx = { power: (s.power ?? 1) * charge, dir, direct: true };
   log(w, `You cast ${s.name}`, "info");
   if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };

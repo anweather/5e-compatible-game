@@ -282,3 +282,24 @@ test("Fireball blows a small crater before it burns, and matches the C# golden",
   run(w, 40);
   assert.equal(`${cellHash(w)} ${w.rng}`, "b1b430e0 3300970619");
 });
+
+test("a slanted trench runs off the grid, side to side, and the river's water follows it; matches the C# golden", () => {
+  const w = room(24, 14, 9);
+  for (let x = 2; x <= 4; x++) for (let y = 3; y <= 10; y++) Object.assign(cellAt(w, x, y)!, { t: "river", water: 4 });
+  const s = spellById("earthen-trench")!;
+  const cells = spellCells(w, s, 6, 6, 1, 1, [6, 2]);
+  assert.deepEqual(cells[0], [5, 6], "it starts under the caster on the river's bank");
+  assert.ok(cells.every(([x, y], i) => i === 0 || Math.abs(x - cells[i - 1]![0]) + Math.abs(y - cells[i - 1]![1]) === 1), "each square shares a side with the last");
+  assert.ok(cells.at(-1)![1] > 6, "it slants south as it goes east");
+  assert.deepEqual(spellCells(w, s, 6, 6, 1, 1, [12, 1]), spellCells(w, s, 6, 6, 1), "within 5 degrees of east it's the straight trench");
+  castSpell(w, "earthen-trench", 6, 6, 1, undefined, 1, [6, 2]);
+  run(w, 60);
+  assert.ok(cells.slice(0, 8).every(([x, y]) => cellAt(w, x, y)!.water > 0), "water ran along it, round its corners, as far as along a straight one");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "62e0b220 9");
+});
+
+test("a slanted cone fans along the aim", () => {
+  const w = room(20, 14, 4);
+  const s = spellById("burning-hands")!;
+  assert.deepEqual(spellCells(w, s, 4, 6, 1, 1, [3, 2]), [[4, 6], [5, 6], [6, 6], [7, 6], [5, 7], [6, 7], [5, 8], [6, 8], [5, 9]]);
+});

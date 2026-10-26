@@ -94,6 +94,14 @@ elevation plus height.
 - **A line from the caster** (`"shape": "line", "origin": "self"`, like
   Earthen Trench) starts under the caster's feet, so a trench cut from a
   pond's bank opens into the pond. Other line spells start one square out.
+- **Lines and cones can point any way**, not only the four ways of the
+  grid: a cast carries an aim (a whole-number vector; the game takes it
+  from the crosshair, the sandbox from the clicked square). Within about 5
+  degrees of a grid way it snaps straight. A slanted line steps along the
+  aim with each square sharing a side with the one before (so water runs
+  along a slanted trench and a slanted wall has no gaps); its length is
+  measured as the crow flies. A slanted cone takes every square within 45
+  degrees of the aim. The element still pushes along the nearest grid way.
 - An element on the spell, if any, is applied after the shaping.
 
 ## Craters (`"crater"`)

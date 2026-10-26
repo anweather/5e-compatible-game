@@ -282,6 +282,38 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void GoldenSlantedTrenchMatchesTs()
+        {
+            // The same as "a slanted trench runs off the grid..." in terraform.test.ts.
+            var w = Room(24, 14, 9);
+            for (int x = 2; x <= 4; x++)
+                for (int y = 3; y <= 10; y++)
+                {
+                    w.At(x, y).T = "river";
+                    w.At(x, y).Water = 4;
+                }
+            var s = R.Spell("earthen-trench");
+            var cells = w.SpellCells(s, 6, 6, 1, 1, 6, 2);
+            Assert.That(cells[0], Is.EqualTo((5, 6)), "it starts under the caster on the river's bank");
+            for (int i = 1; i < cells.Count; i++)
+                Assert.That(System.Math.Abs(cells[i].x - cells[i - 1].x) + System.Math.Abs(cells[i].y - cells[i - 1].y), Is.EqualTo(1), "each square shares a side with the last");
+            Assert.That(cells[cells.Count - 1].y, Is.GreaterThan(6), "it slants south as it goes east");
+            Assert.That(w.SpellCells(s, 6, 6, 1, 1, 12, 1), Is.EqualTo(w.SpellCells(s, 6, 6, 1)), "within 5 degrees of east it's the straight trench");
+            w.Cast("earthen-trench", 6, 6, 1, 1, 6, 2);
+            Run(w, 60);
+            Assert.That(cells.Take(8).All(c => w.At(c.x, c.y).Water > 0), "water ran along it, round its corners, as far as along a straight one");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("62e0b220 9"));
+        }
+
+        [Test]
+        public void ASlantedConeFansAlongTheAim()
+        {
+            var w = Room(20, 14, 4);
+            Assert.That(w.SpellCells(R.Spell("burning-hands"), 4, 6, 1, 1, 3, 2),
+                Is.EqualTo(new[] { (4, 6), (5, 6), (6, 6), (7, 6), (5, 7), (6, 7), (5, 8), (6, 8), (5, 9) }));
+        }
+
+        [Test]
         public void HeightRangeNumbersAreChecked()
         {
             System.Collections.Generic.IReadOnlyList<string> Errors(string sim) =>

@@ -90,7 +90,7 @@ public class SpellCaster : MonoBehaviour
         var target = CrosshairCell;
         var aim = Aim(target, out var error);
         var spell = grid.World.Rules.Spell(SelectedId);
-        ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir, Charge) : null);
+        ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir, Charge, aim.Value.aimX, aim.Value.aimY) : null);
 
         // A spell that charges starts charging on the press and casts on the release; the rest cast on the press.
         bool charges = Chargeable(spell);
@@ -109,7 +109,7 @@ public class SpellCaster : MonoBehaviour
             Cast(SelectedId, at.x, at.y, 1);
             return;
         }
-        Cast(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir, charge);
+        Cast(new CastCommand(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
     }
 
     /// <summary>Whether holding Cast makes this spell stronger (World.Cast): one with an element, a line, or earth shaping.</summary>
@@ -136,19 +136,22 @@ public class SpellCaster : MonoBehaviour
     // lands. Online, the cast goes to the host and lands on every machine at
     // the same tick, timed to roughly when the projectile arrives. The demos
     // cast through this too.
-    public void Cast(string spellId, int x, int y, int dir, int charge = 1)
+    public void Cast(string spellId, int x, int y, int dir, int charge = 1) => Cast(new CastCommand(spellId, x, y, dir, charge));
+
+    /// <summary>A cast, perhaps aimed off the grid's four ways (CastCommand.AimX, AimY).</summary>
+    public void Cast(CastCommand cast)
     {
         var online = Net;
         if (online != null && online.Online)
         {
-            int delay = Mathf.CeilToInt(FlightSeconds(spellId, x, y, dir) * grid.World.Rules.Sim.TicksPerSecond);
-            online.RequestCast(spellId, x, y, dir, delay, transform.position, charge);
+            int delay = Mathf.CeilToInt(FlightSeconds(cast) * grid.World.Rules.Sim.TicksPerSecond);
+            online.RequestCast(cast, delay, transform.position);
             return;
         }
-        PlayCastEffect(spellId, x, y, dir, () =>
+        PlayCastEffect(cast, () =>
         {
-            grid.World.Cast(spellId, x, y, dir, charge);
-            SpellForces.Apply(grid, spellId, x, y, dir, transform, charge);
+            grid.World.Cast(cast.Spell, cast.X, cast.Y, cast.Dir, cast.Charge, cast.AimX, cast.AimY);
+            SpellForces.Apply(grid, cast, transform);
         });
     }
 
@@ -156,10 +159,14 @@ public class SpellCaster : MonoBehaviour
     /// Shows a cast: the casting gesture, the projectile if the spell has one, and the effect
     /// where it lands. <paramref name="onArrive"/> runs once, when it lands (at once without a projectile).
     /// </summary>
-    public void PlayCastEffect(string spellId, int x, int y, int dir, System.Action onArrive = null)
+    public void PlayCastEffect(string spellId, int x, int y, int dir, System.Action onArrive = null) =>
+        PlayCastEffect(new CastCommand(spellId, x, y, dir), onArrive);
+
+    public void PlayCastEffect(CastCommand cast, System.Action onArrive = null)
     {
+        string spellId = cast.Spell;
         var look = LookOf(spellId);
-        var landing = Landing(spellId, x, y, dir);
+        var landing = Landing(cast);
         var def = grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null;
         if (pose != null) pose.Play(landing, look?.glow ?? Color.white);
         GameSounds.Play(GameSounds.CastOf(def), Hand);
@@ -193,12 +200,13 @@ public class SpellCaster : MonoBehaviour
     Vector3 Hand => pose != null ? pose.HandPosition : transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
 
     // Where the spell's show lands: the far end of a beam, the caster for a burst, otherwise the target cell.
-    Vector3 Landing(string spellId, int x, int y, int dir)
+    Vector3 Landing(CastCommand cast)
     {
-        var spell = grid.World.Rules.Spell(spellId);
+        var spell = grid.World.Rules.Spell(cast.Spell);
+        var (x, y) = (cast.X, cast.Y);
         if (spell != null && spell.Shape == SpellShapes.Line)
         {
-            var cells = grid.World.SpellCells(spell, x, y, dir);
+            var cells = grid.World.SpellCells(spell, x, y, cast.Dir, cast.Charge, cast.AimX, cast.AimY);
             if (cells.Count > 0) (x, y) = cells[cells.Count - 1];
         }
         else if (spell != null && spell.Shape == SpellShapes.Burst) return transform.position + Vector3.up;
@@ -211,15 +219,15 @@ public class SpellCaster : MonoBehaviour
         return v.sqrMagnitude > 1e-4f ? v : Vector3.forward;
     }
 
-    float FlightSeconds(string spellId, int x, int y, int dir)
+    float FlightSeconds(CastCommand cast)
     {
-        var look = LookOf(spellId);
-        return look?.projectile != null ? Vector3.Distance(Hand, Landing(spellId, x, y, dir)) / SpellProjectile.DefaultSpeed : 0f;
+        var look = LookOf(cast.Spell);
+        return look?.projectile != null ? Vector3.Distance(Hand, Landing(cast)) / SpellProjectile.DefaultSpeed : 0f;
     }
 
     // --- aiming ------------------------------------------------------------------------
 
-    (int x, int y, int dir)? Aim(Vector2Int target, out string error)
+    (int x, int y, int dir, int aimX, int aimY)? Aim(Vector2Int target, out string error)
     {
         error = null;
         var spell = grid.World.Rules.Spell(SelectedId);
@@ -231,14 +239,29 @@ public class SpellCaster : MonoBehaviour
             error = spell.Effect == SpellShapes.TeleportEffect
                 ? CheckBlink(spell, target)
                 : MageHand.Check(grid, spell, hands, me, target.x, target.y);
-            return error == null ? (target.x, target.y, 1) : null;
+            return error == null ? (target.x, target.y, 1, 0, 0) : null;
         }
-        int? dir = DirFrom(me, target);
-        if (spell.Origin != "self") return (target.x, target.y, dir ?? 1);
-        if (spell.Shape == SpellShapes.Burst) return (me.x, me.y, dir ?? 1);
+        // A line or a cone points where the crosshair is, off the grid's four ways if it is; it
+        // starts beside the caster on the nearest of the four.
+        var (aimX, aimY) = AimOf(spell);
+        int? dir = aimX != 0 || aimY != 0 ? World.DirOf(aimX, aimY) : DirFrom(me, target);
+        if (spell.Origin != "self") return (target.x, target.y, dir ?? 1, aimX, aimY);
+        if (spell.Shape == SpellShapes.Burst) return (me.x, me.y, dir ?? 1, 0, 0);
         if (dir == null) { error = $"Click away from the wizard to point {spell.Name} that way."; return null; }
         var (dx, dy) = Step(dir.Value);
-        return (me.x + dx, me.y + dy, dir.Value);
+        return (me.x + dx, me.y + dy, dir.Value, aimX, aimY);
+    }
+
+    /// <summary>Fine steps per square of an aim's vector: the most slant a line can take is one square in this many.</summary>
+    const int AimSteps = 16;
+
+    // From the caster to the crosshair, in sixteenths of a square on the grid (x east, y south),
+    // snapped to the grid's four ways near them (World.SnapAim); (0, 0) for other shapes.
+    (int, int) AimOf(SpellDef spell)
+    {
+        if (spell.Shape != SpellShapes.Line && spell.Shape != SpellShapes.Cone) return (0, 0);
+        var d = crosshair.point - transform.position;
+        return World.SnapAim(Mathf.RoundToInt(d.x / grid.cellSize * AimSteps), Mathf.RoundToInt(-d.z / grid.cellSize * AimSteps));
     }
 
     // Misty Step checks what the crosshair points at when it's in the target square (a roof, a rock,

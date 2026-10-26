@@ -120,9 +120,13 @@ public class NetChem : NetworkBehaviour
     /// Asks the host to cast a spell. It takes effect on every machine at the same tick, after
     /// <paramref name="delayTicks"/>; <paramref name="from"/> is where the caster stands (a burst's centre).
     /// </summary>
-    public void RequestCast(string spellId, int x, int y, int dir, int delayTicks, Vector3 from, int charge = 1)
+    public void RequestCast(CastCommand command, int delayTicks, Vector3 from)
     {
-        var cast = new CastIntent { Spell = new FixedString32Bytes(spellId), X = x, Y = y, Dir = dir, Charge = (byte)World.ClampCharge(charge), From = from };
+        var cast = new CastIntent
+        {
+            Spell = new FixedString32Bytes(command.Spell), X = command.X, Y = command.Y, Dir = command.Dir,
+            Charge = (byte)World.ClampCharge(command.Charge), AimX = command.AimX, AimY = command.AimY, From = from,
+        };
         RequestCastRpc(cast, delayTicks);
     }
 
@@ -225,7 +229,7 @@ public class NetChem : NetworkBehaviour
         var (spell, x, y, dir) = (cast.Spell, cast.X, cast.Y, cast.Dir);
         // Only the server can look a player's wizard up by client id; everyone else finds it by its object id.
         var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(caster);
-        if (wizard != null) AnnounceCastRpc(spell, x, y, dir, wizard.NetworkObjectId);
+        if (wizard != null) AnnounceCastRpc(spell, x, y, dir, cast.AimX, cast.AimY, wizard.NetworkObjectId);
     }
 
     [Rpc(SendTo.Server)]
@@ -261,10 +265,10 @@ public class NetChem : NetworkBehaviour
 
     // Cosmetic only: every machine shows the cast (gesture, projectile, landing effect) before its tick arrives.
     [Rpc(SendTo.ClientsAndHost)]
-    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, int dir, ulong casterObject)
+    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, int dir, int aimX, int aimY, ulong casterObject)
     {
         if (NetworkManager.SpawnManager.SpawnedObjects.TryGetValue(casterObject, out var player) && player.TryGetComponent<SpellCaster>(out var spellCaster))
-            spellCaster.PlayCastEffect(spell.ToString(), x, y, dir);
+            spellCaster.PlayCastEffect(new CastCommand(spell.ToString(), x, y, dir, 1, aimX, aimY));
     }
 
     [Rpc(SendTo.ClientsAndHost)]
@@ -370,11 +374,13 @@ public struct CastIntent : INetworkSerializable
     public int X, Y, Dir, Tick;
     /// <summary>How long it was held, 1 (a tap) to World.MaxCharge.</summary>
     public byte Charge;
+    /// <summary>Its aim off the grid's four ways, or (0, 0) (CastCommand).</summary>
+    public int AimX, AimY;
     public ulong Caster;
     /// <summary>Where the caster stood when casting: the centre of a burst's shove (Thunderwave).</summary>
     public Vector3 From;
 
-    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir, Charge);
+    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir, Charge, AimX, AimY);
 
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
@@ -383,6 +389,8 @@ public struct CastIntent : INetworkSerializable
         serializer.SerializeValue(ref Y);
         serializer.SerializeValue(ref Dir);
         serializer.SerializeValue(ref Charge);
+        serializer.SerializeValue(ref AimX);
+        serializer.SerializeValue(ref AimY);
         serializer.SerializeValue(ref Tick);
         serializer.SerializeValue(ref Caster);
         serializer.SerializeValue(ref From);
