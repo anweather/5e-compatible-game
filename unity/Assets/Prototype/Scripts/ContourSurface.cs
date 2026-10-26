@@ -21,11 +21,12 @@ public sealed class ContourSurface
     readonly float uvMetres;
 
     /// <param name="uvMetres">Metres per texture repeat (UVs are world x, z over this).</param>
-    public ContourSurface(ChemGrid grid, string name, Material material, ContourSpec spec, float uvMetres)
+    /// <param name="tiled">Draw one tile of a bigger surface (CellContour.Tiled): from the centre of the box's first cell to the centre of the cell past its last.</param>
+    public ContourSurface(ChemGrid grid, string name, Material material, ContourSpec spec, float uvMetres, bool tiled = false)
     {
         this.grid = grid;
         this.uvMetres = uvMetres;
-        contour = new CellContour(spec);
+        contour = new CellContour(spec) { Tiled = tiled };
         mesh = new Mesh { name = name };
         mesh.MarkDynamic();
         go = new GameObject(name);
@@ -100,5 +101,9 @@ public sealed class ContourSurface
         return weight > 0f ? sum / weight : fallback;
     }
 
-    public void Destroy() => Object.Destroy(mesh);
+    public void Destroy()
+    {
+        Object.Destroy(mesh);
+        Object.Destroy(go);
+    }
 }

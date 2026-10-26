@@ -51,6 +51,8 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>Milliseconds the last frame spent stepping the world, drawing its cells, and placing the fire lights (the probe's wildfire scenario reads them).</summary>
     public double StepMs { get; private set; }
     public double RenderMs { get; private set; }
+
+    static readonly Unity.Profiling.ProfilerMarker StepMarker = new("ChemGrid.Step"), RenderMarker = new("ChemGrid.Render");
     public double LightsMs { get; private set; }
     SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
     float nextWizardLookup;
@@ -172,12 +174,12 @@ public partial class ChemGrid : MonoBehaviour
             tickTimer -= tick;
             ApplyQueuedRules();
             if (streamChunks) ChunkStreaming.Apply(World, ChunkStreaming.Plan(World, PlayerCells()));
-            World.Step();
+            using (StepMarker.Auto()) World.Step();
             stepped = true;
         }
         StepMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
-        Render();
+        using (RenderMarker.Auto()) Render();
         RenderMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         if (stepped) fireLights.Place();

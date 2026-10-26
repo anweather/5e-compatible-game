@@ -29,6 +29,10 @@ public sealed class ValleyGround
         public int[] layers;
         // The saved paint, [z, x, terrain layer], read the first time the chunk is painted.
         public float[,,] baseAlpha;
+        // This frame's painted texels, [z, x, terrain layer] over the whole alphamap, and the box
+        // round them (Flush writes it to the terrain once).
+        public float[,,] frameAlpha;
+        public int dx0 = int.MaxValue, dz0 = int.MaxValue, dx1 = -1, dz1 = -1;
         public bool heightsChanged;
     }
 
@@ -129,6 +133,7 @@ public sealed class ValleyGround
             for (int x = 0; x < res; x++) ch.baseHeights[z, x] = heights[z, x] * size - offsets[z, x];
         ch.layers = LayerIndices(ch.original.terrainLayers);
         ch.baseAlpha = null;
+        ch.frameAlpha = null;
     }
 
     /// <summary>CellPaint's layers as indices into a terrain's layers, by name ("&lt;name&gt;_TerrainLayer...", as ValleyBuilder names them); -1 where missing.</summary>
@@ -204,13 +209,19 @@ public sealed class ValleyGround
     /// <summary>Once a frame: the batched paint, and the terrains' LOD and colliders for moved ground.</summary>
     public void Flush(System.Func<int, int, bool> scorched)
     {
+        using var marked = FlushMarker.Auto();
         foreach (var ch in chunks.Values)
         {
             if (!ch.heightsChanged) continue;
             ch.data.SyncHeightmap();
             ch.heightsChanged = false;
         }
-        if (repaint.Count == 0) return;
+        if (repaint.Count == 0)
+        {
+            // The paint composed in earlier frames still goes out, a chunk a frame.
+            WriteOnePaint();
+            return;
+        }
         // A big fire scorches hundreds of cells a tick: repaint at most so many a frame, the rest
         // over the next frames, so the terrain's paint never stalls a frame.
         batch.Clear();
@@ -222,9 +233,17 @@ public sealed class ValleyGround
         foreach (var cell in batch) repaint.Remove(cell);
         // A cell's paint reaches its neighbours' texels: repaint them too, as strips of cells.
         System.Func<int, int, IReadOnlyList<float>> paintOf = (x, y) => PaintOf(x, y, scorched(x, y));
-        foreach (var r in CellPaint.Runs(layout, CellPaint.Around(layout, batch))) Paint(r, paintOf);
-        foreach (var (x, y) in batch) ClearDetailIfBare(x, y, scorched(x, y));
+        using (PaintMarker.Auto())
+        {
+            foreach (var r in CellPaint.Runs(layout, CellPaint.Around(layout, batch))) Paint(r, paintOf);
+            WriteOnePaint();
+        }
+        using (DetailMarker.Auto()) ClearBareDetail(scorched);
     }
+
+    // Profiler markers (Window > Analysis > Profiler) round the terrain's per-frame work.
+    static readonly Unity.Profiling.ProfilerMarker FlushMarker = new("ValleyGround.Flush"),
+        PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint");
 
     const int RepaintPerFrame = 48;
     readonly List<(int x, int y)> batch = new();
@@ -236,21 +255,94 @@ public sealed class ValleyGround
         return ReferenceEquals(mix, bakedPaint[world.Idx(x, y)]) ? null : mix;
     }
 
+    // Composes a strip of cells' paint into its chunk's frame copy; WritePaint sends it to the terrain.
     void Paint(ChunkRect r, System.Func<int, int, IReadOnlyList<float>> paintOf)
     {
         if (!chunks.TryGetValue((r.I, r.J), out var ch)) return;
         var data = Writable(ch);
         int res = data.alphamapResolution;
         ch.baseAlpha ??= data.GetAlphamaps(0, 0, res, res);
-        data.SetAlphamaps(r.X, r.Z, Compose(CellPaint.Block(layout, r, paintOf), ch.layers, ch.baseAlpha));
+        ch.frameAlpha ??= (float[,,])ch.baseAlpha.Clone();
+        var block = CellPaint.Block(layout, r, paintOf);
+        for (int z = 0; z < r.Height; z++)
+            for (int x = 0; x < r.Width; x++) ComposeTexel(block, (ch.layers, ch.baseAlpha), ch.frameAlpha, x, z, (r.X, r.Z));
+        ch.dx0 = Mathf.Min(ch.dx0, r.X);
+        ch.dz0 = Mathf.Min(ch.dz0, r.Z);
+        ch.dx1 = Mathf.Max(ch.dx1, r.XMax);
+        ch.dz1 = Mathf.Max(ch.dz1, r.ZMax);
     }
 
-    void ClearDetailIfBare(int x, int y, bool scorched)
+    // Uploads one chunk's waiting paint a frame, taking the chunks in turn, so a fire across several
+    // chunks spreads its uploads over frames rather than stacking them in one.
+    void WriteOnePaint()
     {
-        if (CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y), scorched))) return;
-        var r = layout.TexelRect(x, y);
-        if (chunks.TryGetValue((r.I, r.J), out var ch)) ClearDetail(Writable(ch), r);
+        if (paintOrder.Count != chunks.Count) paintOrder = new List<Chunk>(chunks.Values);
+        for (int k = 0; k < paintOrder.Count; k++)
+        {
+            nextPaint = (nextPaint + 1) % paintOrder.Count;
+            if (paintOrder[nextPaint].dx1 < 0) continue;
+            WritePaint(paintOrder[nextPaint]);
+            return;
+        }
     }
+
+    // One paint texture's texels in the chunk's box, written in place through GetPixelData (no copy,
+    // nothing for the garbage collector); <paramref name="first"/> is the layer in its red channel.
+    static void WriteTexture(Texture2D tex, int first, Chunk ch)
+    {
+        var pixels = tex.GetPixelData<Color32>(0);
+        int width = tex.width, n = ch.frameAlpha.GetLength(2);
+        for (int z = ch.dz0; z <= ch.dz1; z++)
+            for (int x = ch.dx0; x <= ch.dx1; x++)
+            {
+                var c = new Color32();
+                for (int channel = 0; channel < 4 && first + channel < n; channel++)
+                    c[channel] = (byte)Mathf.RoundToInt(Mathf.Clamp01(ch.frameAlpha[z, x, first + channel]) * 255f);
+                pixels[z * width + x] = c;
+            }
+    }
+
+    List<Chunk> paintOrder = new();
+    int nextPaint;
+
+    // Writes the box round a chunk's painted strips into the terrain's paint textures (its
+    // alphamapTextures, four layers to a texture, one per channel: the paint's own storage, so
+    // GetAlphamaps reads it back) and uploads them with their mip levels. TerrainData.SetAlphamaps
+    // does the same and also regenerates the base map, the low-detail texture drawn past the
+    // terrain's basemapDistance, about 20 ms a call; that stalled a big fire's frames, and nothing
+    // in the valley is far enough off to draw the base map.
+    static void WritePaint(Chunk ch)
+    {
+        using var marked = UploadMarker.Auto();
+        if (ch.dx1 < 0) return;
+        var textures = ch.data.alphamapTextures;
+        for (int t = 0; t < textures.Length; t++)
+        {
+            WriteTexture(textures[t], t * 4, ch);
+            textures[t].Apply(true);
+        }
+        ch.dx0 = ch.dz0 = int.MaxValue;
+        ch.dx1 = ch.dz1 = -1;
+    }
+
+    // Clears the grass under this frame's bare cells, one read and one write per chunk and grass
+    // kind (each SetDetailLayer rebuilds the terrain's grass patches there, so a call per cell made a
+    // big fire's frames stall).
+    void ClearBareDetail(System.Func<int, int, bool> scorched)
+    {
+        bareByChunk.Clear();
+        foreach (var (x, y) in batch)
+        {
+            if (CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y), scorched(x, y)))) continue;
+            var r = layout.TexelRect(x, y);
+            if (!chunks.ContainsKey((r.I, r.J))) continue;
+            if (!bareByChunk.TryGetValue((r.I, r.J), out var list)) bareByChunk[(r.I, r.J)] = list = new List<ChunkRect>();
+            list.Add(r);
+        }
+        foreach (var kv in bareByChunk) ClearDetail(Writable(chunks[kv.Key]), kv.Value);
+    }
+
+    readonly Dictionary<(int i, int j), List<ChunkRect>> bareByChunk = new();
 
     /// <summary>
     /// A CellPaint block laid over a terrain's paint (<paramref name="baseAlpha"/>, the whole
@@ -262,28 +354,58 @@ public sealed class ValleyGround
         var r = block.Rect;
         var full = new float[r.Height, r.Width, baseAlpha.GetLength(2)];
         for (int z = 0; z < r.Height; z++)
-            for (int x = 0; x < r.Width; x++) ComposeTexel(block, layers, baseAlpha, full, x, z);
+            for (int x = 0; x < r.Width; x++) ComposeTexel(block, (layers, baseAlpha), full, x, z, (0, 0));
         return full;
     }
 
-    static void ComposeTexel(PaintBlock block, int[] layers, float[,,] baseAlpha, float[,,] full, int x, int z)
+    // One texel of the block over the saved paint (its layer indices and alphamap), into
+    // <paramref name="into"/> at (x, z) moved by <paramref name="offset"/>.
+    static void ComposeTexel(PaintBlock block, (int[] layers, float[,,] alpha) saved, float[,,] into, int x, int z, (int x, int z) offset)
     {
+        var (layers, baseAlpha) = saved;
+        int ox = offset.x, oz = offset.z;
         var r = block.Rect;
         float a = block.Cover[z, x];
-        for (int n = 0; n < full.GetLength(2); n++) full[z, x, n] = baseAlpha[r.Z + z, r.X + x, n] * (1f - a);
+        for (int n = 0; n < into.GetLength(2); n++) into[oz + z, ox + x, n] = baseAlpha[r.Z + z, r.X + x, n] * (1f - a);
         if (a <= 0f) return;
         for (int k = 0; k < layers.Length; k++)
-            if (layers[k] >= 0) full[z, x, layers[k]] += a * block.Mix[z, x, k];
+            if (layers[k] >= 0) into[oz + z, ox + x, layers[k]] += a * block.Mix[z, x, k];
     }
 
     /// <summary>Clears the detail grass under a texel rectangle (detail and alphamap resolutions may differ).</summary>
-    public static void ClearDetail(TerrainData data, ChunkRect r)
+    public static void ClearDetail(TerrainData data, ChunkRect r) => ClearDetail(data, new List<ChunkRect> { r });
+
+    /// <summary>
+    /// Clears the detail grass under several texel rectangles of one terrain: the box round them read
+    /// once per grass kind, the rectangles zeroed in it, and written back once.
+    /// </summary>
+    public static void ClearDetail(TerrainData data, List<ChunkRect> rects)
     {
+        if (rects.Count == 0) return;
         float k = data.detailResolution / (float)data.alphamapResolution;
-        int x0 = Mathf.FloorToInt(r.X * k), z0 = Mathf.FloorToInt(r.Z * k);
-        int x1 = Mathf.Max(x0, Mathf.CeilToInt((r.XMax + 1) * k) - 1), z1 = Mathf.Max(z0, Mathf.CeilToInt((r.ZMax + 1) * k) - 1);
-        var none = new int[z1 - z0 + 1, x1 - x0 + 1];
-        for (int layer = 0; layer < data.detailPrototypes.Length; layer++) data.SetDetailLayer(x0, z0, layer, none);
+        int bx0 = int.MaxValue, bz0 = int.MaxValue, bx1 = int.MinValue, bz1 = int.MinValue;
+        var spans = new List<(int x0, int z0, int x1, int z1)>(rects.Count);
+        foreach (var r in rects)
+        {
+            int x0 = Mathf.FloorToInt(r.X * k), z0 = Mathf.FloorToInt(r.Z * k);
+            int x1 = Mathf.Max(x0, Mathf.CeilToInt((r.XMax + 1) * k) - 1), z1 = Mathf.Max(z0, Mathf.CeilToInt((r.ZMax + 1) * k) - 1);
+            spans.Add((x0, z0, x1, z1));
+            bx0 = Mathf.Min(bx0, x0); bz0 = Mathf.Min(bz0, z0); bx1 = Mathf.Max(bx1, x1); bz1 = Mathf.Max(bz1, z1);
+        }
+        int w = bx1 - bx0 + 1, h = bz1 - bz0 + 1;
+        for (int layer = 0; layer < data.detailPrototypes.Length; layer++)
+        {
+            var map = data.GetDetailLayer(bx0, bz0, w, h, layer);
+            bool any = false;
+            foreach (var (x0, z0, x1, z1) in spans)
+                for (int z = z0; z <= z1; z++)
+                    for (int x = x0; x <= x1; x++)
+                    {
+                        any |= map[z - bz0, x - bx0] != 0;
+                        map[z - bz0, x - bx0] = 0;
+                    }
+            if (any) data.SetDetailLayer(bx0, bz0, layer, map);
+        }
     }
 
     /// <summary>Frees the runtime copies, the saved chunks back on the terrains.</summary>

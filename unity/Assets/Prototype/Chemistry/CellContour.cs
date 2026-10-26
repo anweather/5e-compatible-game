@@ -66,11 +66,19 @@ namespace Chem
         public CellContour(ContourSpec spec) => this.spec = spec;
 
         /// <summary>
+        /// Draws only from the centre of the box's first cell to the centre of the cell past its
+        /// last (in x and in y), so boxes built side by side (the next from the cell past this one's
+        /// last) meet exactly, with neither a gap nor an overlap: a big surface drawn in tiles.
+        /// </summary>
+        public bool Tiled { get; set; }
+
+        /// <summary>
         /// Outlines the cells x0..x1, y0..y1 (inclusive) into <paramref name="mesh"/> (cleared first).
         /// <paramref name="value"/>(x, y) is a cell's value; it is also read one cell outside the
         /// box, so the edge can close there (give 0 to keep the patch inside the box).
         /// <paramref name="wobble"/>(x, y), if given, scales the wobble around a cell (0 holds the
         /// edge where the values put it, 1 is the spec's full wobble), blended like the values.
+        /// When Tiled, it draws only from the centre of cell x0 to the centre of cell x1 + 1.
         /// </summary>
         public void Build(int x0, int y0, int x1, int y1, Func<int, int, float> value, ContourMesh mesh,
             Func<int, int, float> wobble = null)
@@ -83,9 +91,11 @@ namespace Chem
             Sample();
             edgePoints.Clear();
             Array.Clear(latticePoint, 0, latticePoint.Length);
-            for (int j = 0; j < lh - 1; j++)
+            // The lattice runs from the centre of cell x0 - 1 to that of cell x1 + 1; a tile starts one cell in.
+            int edge = Tiled ? spec.Lattice : 0;
+            for (int j = edge; j < lh - 1; j++)
             {
-                for (int i = 0; i < lw - 1; i++)
+                for (int i = edge; i < lw - 1; i++)
                 {
                     int a = j * lw + i, b = a + 1, c = a + lw, d = c + 1;
                     Cut(mesh, a, b, d);

@@ -55,6 +55,24 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TilesSideBySideCoverWhatOneTileDoes()
+        {
+            // A wobbly blob across where two tiles meet (x 0..7 and 8..15): together they cover
+            // what one tile over both does, so they neither overlap nor leave a gap.
+            Func<int, int, float> value = (x, y) => (x - 8) * (x - 8) + (y - 4) * (y - 4) < 12 ? 1f : 0f;
+            float Tile(int x0, int x1)
+            {
+                var m = new ContourMesh();
+                new CellContour(Wobbly) { Tiled = true }.Build(x0, 0, x1, 7, value, m);
+                return Area(m);
+            }
+            float left = Tile(0, 7), right = Tile(8, 15), both = Tile(0, 15);
+            Assert.Greater(left, 1f);
+            Assert.Greater(right, 1f);
+            Assert.AreEqual(both, left + right, 1e-3f);
+        }
+
+        [Test]
         public void NothingToOutlineGivesNoTriangles()
         {
             Assert.IsEmpty(Outline(Smooth, new HashSet<(int x, int y)>()).Triangles);
