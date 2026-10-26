@@ -8,6 +8,7 @@ import entities from "../../rules/entities.json" with { type: "json" };
 import items from "../../rules/items.json" with { type: "json" };
 import machines from "../../rules/machines.json" with { type: "json" };
 import sim from "../../rules/sim.json" with { type: "json" };
+import groups from "../../rules/groups.json" with { type: "json" };
 
 export interface TerrainDef {
   name: string;
@@ -102,6 +103,8 @@ export interface SpellDef {
   /** "self": the spell starts at the caster (beams, Thunderwave), not at the clicked square. */
   origin?: "self";
   element?: string;
+  /** The Unity spell radial's element it sits under (a groups id). */
+  group?: string;
   power?: number;
   damage?: [number, number];
   length?: number;
@@ -177,6 +180,18 @@ export interface MachineDef {
   hold?: number;
   how: string;
 }
+/**
+ * An element of the Unity game's spell radial (groups.json): spells name one
+ * with "group". UI only; the sandbox carries and checks it, so both engines
+ * accept the same patches, but has no radial.
+ */
+export interface GroupDef {
+  name: string;
+  /** Lowest first, clockwise from the top; ties by id. */
+  order?: number;
+  /** "#rrggbb". */
+  color?: string;
+}
 export interface SimParams {
   ticksPerSecond: number;
   fire: { spreadChance: number; heatChance: number; boilChance: number; downwindBonus: number; smokeChance: number };
@@ -205,6 +220,7 @@ export interface Rules {
   items: Record<string, ItemDef>;
   machines: Record<string, MachineDef>;
   sim: SimParams;
+  groups: Record<string, GroupDef>;
 }
 
 export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder"];
@@ -225,6 +241,7 @@ export const BASE_RULES: Readonly<Rules> = Object.freeze({
   items: items as Record<string, ItemDef>,
   machines: machines as Record<string, MachineDef>,
   sim: sim as SimParams,
+  groups: groups as Record<string, GroupDef>,
 });
 
 /**
@@ -245,6 +262,7 @@ export interface ModPatch {
   entities?: Record<string, EntityDef>;
   items?: Record<string, ItemDef>;
   machines?: Record<string, MachineDef>;
+  groups?: Record<string, GroupDef>;
   /** New or replaced reaction rules. New ones go to the top of their element's list, so they win. */
   reactions?: { add?: CellRule[]; addEntity?: EntityRule[]; remove?: string[] };
   spells?: SpellDef[];
@@ -299,6 +317,7 @@ export function composeRules(patches: ModPatch[], base: Readonly<Rules> = BASE_R
     Object.assign(r.entities, clone(p.entities ?? {}));
     Object.assign(r.items, clone(p.items ?? {}));
     Object.assign(r.machines, clone(p.machines ?? {}));
+    Object.assign(r.groups, clone(p.groups ?? {}));
     if (p.reactions?.remove) {
       const drop = new Set(p.reactions.remove);
       r.cellRules = r.cellRules.filter((x) => !drop.has(x.id));
@@ -410,6 +429,21 @@ function itemErrors(r: Rules, id: string, it: ItemDef): string[] {
   return errors;
 }
 
+/** The spell groups and the spells' groups. Same wording as SpellGroups.cs. */
+function groupErrors(r: Rules): string[] {
+  const errors: string[] = [];
+  for (const [id, g] of Object.entries(r.groups)) {
+    if (!g || typeof g !== "object" || Array.isArray(g)) { errors.push(`group ${id}: must be an object`); continue; }
+    if (!g.name) errors.push(`group ${id}: needs a name`);
+    if (!absent(g.order) && !isNumber(g.order)) errors.push(`group ${id}: order must be a number`);
+    if (g.color !== undefined && !(typeof g.color === "string" && /^#[0-9a-fA-F]{6}$/.test(g.color))) errors.push(`group ${id}: color must be #rrggbb`);
+  }
+  for (const s of r.spells) {
+    if (s.group !== undefined && !(typeof s.group === "string" && Object.hasOwn(r.groups, s.group))) errors.push(`spell ${s.id}: unknown group ${s.group}`);
+  }
+  return errors;
+}
+
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
   const errors: string[] = [];
@@ -456,5 +490,6 @@ export function validateRules(r: Rules): string[] {
     if (e.explodes && !coverIds.has(e.explodes.cover)) errors.push(`entity ${id}: explodes into unknown cover`);
   }
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
+  errors.push(...groupErrors(r));
   return errors;
 }

@@ -356,19 +356,19 @@ export function buildPrompt(idea: string, previous: string | null, errors: strin
   const current = {
     elements: RULES.elements, terrain: RULES.terrain, covers: RULES.covers, gases: RULES.gases,
     cellRules: RULES.cellRules, entityRules: RULES.entityRules, spells: RULES.spells, critters: RULES.critters,
-    entities: RULES.entities, machines: RULES.machines, sim: RULES.sim,
+    entities: RULES.entities, machines: RULES.machines, sim: RULES.sim, groups: RULES.groups,
   };
   return [
     "You write data-only mods for a top-down 2D spell-chemistry sandbox built on 5E (SRD 5.2.1) spells.",
     "A mod is a JSON patch over the rule tables. Reply with JSON only, shaped {\"title\": string, \"patch\": Patch}.",
     "",
-    "Patch fields (all optional): elements (string[] of new element names); terrain, covers, gases, entities, machines (objects keyed by id: add or replace);",
+    "Patch fields (all optional): elements (string[] of new element names); terrain, covers, gases, entities, machines, groups (objects keyed by id: add or replace; a group is {name, order, color \"#rrggbb\"});",
     "reactions: {add?: CellRule[], addEntity?: EntityRule[], remove?: string[] of rule ids}; spells: SpellDef[] and critters: CritterDef[] (add or replace by id); sim: partial object deep-merged over sim.",
     "A CellRule is {id, element, if?: Cond, do: Effect[], log?, notable?, stop?}. New rules go to the top of their element's list, so they win; rules run in order and stop ends the list.",
     "Cond keys: cover (string[]), fire (true|false|min number), fireBelow, water (bool, unfrozen water present), frozen, gas (id or \"any\"), terrainTag, notTerrainTag, conductive.",
     "Effect objects have exactly one of: ignite (number or \"cover\"), boil (n), melt, freeze, extinguish, condense, addWater (n or \"power\"), setCover (id|null), spreadCover (n), break, setTerrain (id), raise (terrain id), conduct (n), fan, pushGas, clearGas, mark (\"wind\"), gas (id) with n.",
     "Entity rules: if {status?, flammable?}; effects status {name: ticks}, clear (status name), damageMul (n).",
-    "Spell shapes: point, line, square, burst, target. Spells may set origin \"self\", length, size, radius, push, wind, damage [n, sides], power, element, blurb, name, level.",
+    "Spell shapes: point, line, square, burst, target. Spells may set origin \"self\", length, size, radius, push, wind, damage [n, sides], power, element, blurb, name, level, and group (a groups id: which element of the Unity game's spell radial it sits under; keep it when replacing a spell).",
     "A spell with effect \"terraform\" shapes the ground: exactly one of raise or dig (whole steps from 1, relative) or height (raise each cell to that height, within sim.height min..max; higher cells untouched), optional terrain (a non-blocking terrain id the cells become) and taper (true: a hill or crater over radius). Heights stay within sim.height {min, max}; a cell raised to sim.height.blockAt or more is a wall. A line with origin self starts under the caster's feet.",
     "Critters: {id, name, glyph (one emoji), color, mode \"emit\"|\"act\", element, power?, every? (ticks), radius?, length?, directional?, blurb}.",
     "You cannot invent new effect or condition verbs; those need code. Express the idea with the existing verbs, tags and elements, or by adding terrain, covers, gases, spells and critters.",

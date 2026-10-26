@@ -4,9 +4,9 @@
   "patch": {
     "sim": { "height": { "max": 6, "blockAt": 5 } },
     "spells": [
-      { "id": "wall-of-stone", "name": "Wall of Stone", "level": 5, "shape": "line", "length": 6, "effect": "terraform", "height": 5, "terrain": "rock",
+      { "id": "wall-of-stone", "group": "earth", "name": "Wall of Stone", "level": 5, "shape": "line", "length": 6, "effect": "terraform", "height": 5, "terrain": "rock",
         "blurb": "A towering 30 ft wall of rock rises from where you click, running away from you." },
-      { "id": "move-earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3, "effect": "terraform", "raise": 4, "taper": true,
+      { "id": "move-earth", "group": "earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3, "effect": "terraform", "raise": 4, "taper": true,
         "blurb": "The ground heaves up into a tall hill 35 ft across, highest in the middle." }
     ]
   }

@@ -13,7 +13,7 @@ namespace Chem
     public sealed class ModPatch
     {
         /// <summary>The id tables a mod adds to or replaces entries in, whole entries at a time.</summary>
-        internal static readonly string[] Tables = { "terrain", "covers", "gases", "entities", "items", "machines" };
+        internal static readonly string[] Tables = { "terrain", "covers", "gases", "entities", "items", "machines", "groups" };
 
         ModPatch(string title, JObject patch)
         {

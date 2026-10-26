@@ -16,6 +16,7 @@ namespace Chem
             var check = new Checker(r);
             check.CrossReferences();
             check.Items();
+            check.Groups();
             check.Numbers();
             return check.Errors;
         }

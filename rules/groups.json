@@ -1,0 +1,7 @@
+{
+  "fire": { "name": "Fire", "order": 1, "color": "#e8642c" },
+  "water": { "name": "Water & Ice", "order": 2, "color": "#4aa8e0" },
+  "storm": { "name": "Storm", "order": 3, "color": "#a98cf0" },
+  "earth": { "name": "Earth", "order": 4, "color": "#b08850" },
+  "arcane": { "name": "Arcane", "order": 5, "color": "#d6c46a" }
+}

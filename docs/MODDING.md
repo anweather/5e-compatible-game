@@ -35,6 +35,7 @@ Every field is optional.
     "remove":    [ "fire-water" ]             // rule ids to delete
   },
   "spells":   [ /* SpellDef, add or replace by id */ ],
+  "groups":   { "shadow": { "name": "Shadow", "order": 6, "color": "#5a4a7a" } },   // spell radial elements (Unity)
   "critters": [ /* CritterDef, add or replace by id */ ],
   "sim":      { "push": { "slideCells": 6 } } // deep-merged over sim.json
 }
@@ -120,8 +121,23 @@ down is `sim.height.min`).
 
 ```json
 { "spells": [
-  { "id": "earthen-trench", "name": "Earthen Trench", "level": 2, "shape": "line", "origin": "self", "length": 8,
+  { "id": "earthen-trench", "group": "earth", "name": "Earthen Trench", "level": 2, "shape": "line", "origin": "self", "length": 8,
     "effect": "terraform", "dig": 3, "blurb": "A 40 ft moat three steps deep from your feet." }
+] }
+```
+
+A replaced spell is replaced whole, so keep its `group` (which element of
+the Unity game's spell radial it sits under, from `rules/groups.json`). A
+spell with no group goes under the last element.
+
+**A new element on the spell radial.** Frost gets its own wedge; Ray of
+Frost moves to it.
+
+```json
+{ "groups": { "frost": { "name": "Frost", "order": 2.5, "color": "#bfe6ff" } },
+  "spells": [
+  { "id": "ray-of-frost", "group": "frost", "name": "Ray of Frost", "level": 0, "shape": "line", "origin": "self", "length": 5,
+    "element": "cold", "damage": [1, 8], "blurb": "Cantrip. A 25 ft beam of frost." }
 ] }
 ```
 
