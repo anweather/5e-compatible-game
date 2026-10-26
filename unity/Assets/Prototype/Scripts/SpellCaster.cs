@@ -51,9 +51,14 @@ public class SpellCaster : MonoBehaviour
     readonly List<GameObject> markers = new();
     Material markerMat;
     CastPose pose;
+    ItemHolder hands;
     NetChem net;
 
-    void Awake() => TryGetComponent(out pose);
+    void Awake()
+    {
+        TryGetComponent(out pose);
+        TryGetComponent(out hands);
+    }
 
     void OnEnable() => EventLog.Track(this);
 
@@ -246,9 +251,11 @@ public class SpellCaster : MonoBehaviour
         if (spell == null) { error = $"{SelectedId} isn't in rules/spells.json"; return null; }
         if (!grid.World.InBounds(target.x, target.y)) return null;
         var me = grid.CellAt(transform.position);
-        if (spell.Effect == SpellShapes.TeleportEffect)
+        if (spell.Effect == SpellShapes.TeleportEffect || spell.Effect == SpellShapes.CarryEffect)
         {
-            error = MistyStep.Check(grid, spell, me, target.x, target.y);
+            error = spell.Effect == SpellShapes.TeleportEffect
+                ? MistyStep.Check(grid, spell, me, target.x, target.y)
+                : MageHand.Check(grid, spell, hands, me, target.x, target.y);
             return error == null ? (target.x, target.y, 1) : null;
         }
         int? dir = DirFrom(me, target);

@@ -116,6 +116,32 @@ public class ItemHolder : MonoBehaviour
         Grant(item);
     }
 
+    /// <summary>
+    /// Mage Hand: picks up <paramref name="item"/> from up to <paramref name="reach"/> metres away
+    /// (online the host allows a spell's reach, within limits; see NetItem).
+    /// </summary>
+    public void PickUpFromAfar(Carryable item, float reach)
+    {
+        if (Held != null || item.Holder != null) return;
+        if (item.Online)
+        {
+            item.Net.RequestPickUp(reach);
+            return;
+        }
+        Grant(item);
+    }
+
+    /// <summary>Mage Hand: lets go of what this hand holds at <paramref name="spot"/>, at rest.</summary>
+    public void SetDownAt(Vector3 spot)
+    {
+        var item = Held;
+        if (item == null) return;
+        Held = null;
+        throwPressedAt = -1f;
+        if (item.Online) item.Net.RequestRelease(spot, Vector3.zero);
+        else item.ReleaseAt(spot, Vector3.zero);
+    }
+
     /// <summary>Puts <paramref name="item"/> in this hand (solo at once; online when the host says so, on every machine).</summary>
     public void Grant(Carryable item)
     {

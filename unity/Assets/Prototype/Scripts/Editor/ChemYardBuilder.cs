@@ -291,6 +291,8 @@ public static class ChemYardBuilder
             Visual(SpellIds.Levitate, new Color(0.75f, 0.6f, 1f), null, MiscFx + "/ParticlesLight.prefab"),
             // Misty Step: silver mist where the caster leaves and where they land (SpellCaster.PlayCastEffect).
             Visual(SpellIds.MistyStep, new Color(0.85f, 0.88f, 0.95f), null, MiscFx + "/Respawn.prefab"),
+            // Mage Hand: a spectral glow where the hand reaches.
+            Visual(SpellIds.MageHand, new Color(0.6f, 0.95f, 0.8f), null, MiscFx + "/ParticlesLight.prefab"),
             // Earth shaping: the ground itself throws up dust where it moves (ChemGrid.dustFx).
             Visual(SpellIds.MoldEarth, new Color(0.75f, 0.55f, 0.3f), null, null),
             Visual(SpellIds.MoldEarthHeap, new Color(0.75f, 0.55f, 0.3f), null, null),

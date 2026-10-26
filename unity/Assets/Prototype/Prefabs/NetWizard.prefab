@@ -268,6 +268,7 @@ MonoBehaviour:
   - move-earth
   arcaneSpellIds:
   - misty-step
+  - mage-hand
   visuals: {fileID: 11400000, guid: b7c97d945ab8447c4953811216a3d01b, type: 2}
 --- !u!114 &3541750731685027454
 MonoBehaviour:

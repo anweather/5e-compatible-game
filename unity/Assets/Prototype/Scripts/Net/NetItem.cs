@@ -27,6 +27,9 @@ public class NetItem : NetworkBehaviour
     public const ulong Nobody = ulong.MaxValue;
     // How far (m) from the item a wizard may be when the host grants a pick-up (the hand's reach plus lag).
     const float GrantReach = 4f;
+    // The most a spell may ask for (Mage Hand: 30 ft, 6 squares of 1.5 m, plus lag), so a client
+    // can't claim any reach it likes.
+    const float MaxGrantReach = 12f;
     // How often the holder sends the mote's position, per second.
     const float MoteRate = 15f;
 
@@ -95,15 +98,19 @@ public class NetItem : NetworkBehaviour
     // --- picking up and letting go --------------------------------------------------
 
     /// <summary>Asks the host to put this item in the local player's hand.</summary>
-    public void RequestPickUp() => PickUpRpc();
+    public void RequestPickUp() => PickUpRpc(GrantReach);
+
+    /// <summary>Asks the host for this item from up to <paramref name="reach"/> metres away (Mage Hand), capped at MaxGrantReach.</summary>
+    public void RequestPickUp(float reach) => PickUpRpc(reach);
 
     [Rpc(SendTo.Server)]
-    void PickUpRpc(RpcParams rpc = default)
+    void PickUpRpc(float reach, RpcParams rpc = default)
     {
         if (holder.Value != Nobody) return;
         var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(rpc.Receive.SenderClientId);
         if (wizard == null || !wizard.TryGetComponent<ItemHolder>(out var hands) || hands.Held != null) return;
-        if ((wizard.transform.position - transform.position).sqrMagnitude > GrantReach * GrantReach) return;
+        float allowed = Mathf.Clamp(reach, GrantReach, MaxGrantReach);
+        if ((wizard.transform.position - transform.position).sqrMagnitude > allowed * allowed) return;
         holder.Value = wizard.NetworkObjectId;
         Follow(holder.Value);
     }

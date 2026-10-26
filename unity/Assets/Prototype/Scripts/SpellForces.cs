@@ -4,7 +4,8 @@ using UnityEngine;
 // What a spell does to things that move, beside what it does to cells (that
 // is World.Cast): Thunderwave throws everything around the caster away from
 // it, Gust of Wind shoves everything along its line, Levitate lifts the prop
-// nearest its target, and Misty Step moves the caster (MistyStep). The
+// nearest its target, Misty Step moves the caster (MistyStep) and Mage Hand
+// fetches or sets down something light (MageHand). The
 // strengths are the spell's push and duration in rules/spells.json (see
 // Forces for the units).
 //
@@ -38,6 +39,7 @@ public static class SpellForces
         if (spell == null) return 0;
         if (spell.Effect == SpellShapes.LevitateEffect) return levitate && Levitate(grid, spell, x, y) ? 1 : 0;
         if (spell.Effect == SpellShapes.TeleportEffect) return ownCaster != null && MistyStep.Blink(grid, spell, ownCaster, x, y) ? 1 : 0;
+        if (spell.Effect == SpellShapes.CarryEffect) return ownCaster != null && MageHand.Cast(grid, spell, ownCaster, x, y) ? 1 : 0;
         if (spell.Push <= 0) return 0;
         float impulse = spell.Push * Forces.ImpulsePerPush;
         return spell.Shape switch
