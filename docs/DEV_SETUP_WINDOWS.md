@@ -61,7 +61,7 @@ Record the results (FPS mean and 95th percentile, any errors) in `docs/QUALITY.m
 | Mac | Windows |
 |---|---|
 | Scratch files in `/private/tmp/...` | Use the session scratchpad Claude Code gives you, or `%TEMP%` |
-| `osascript` reads and clicks Unity dialogs | PowerShell UI Automation, e.g. `[System.Windows.Automation.AutomationElement]`. Read a dialog's text before clicking anything |
+| `osascript` reads and clicks some Unity windows, but not its NSAlert modals such as "scene modified externally": they show 0 accessibility windows and a simulated Return doesn't dismiss them. Those need a human click, so never cause one (never revert or check out a scene the Editor has open) | PowerShell UI Automation, e.g. `[System.Windows.Automation.AutomationElement]`. Read a dialog's text before clicking anything |
 | `ps -o rss= -p <pid>` for Editor memory | `Get-Process Unity \| Select-Object WorkingSet64` |
 | `cp -c` (APFS clone) for a cheap second project copy for batchmode tests | No cheap clone: a full copy of `unity/` including `Library/` (~10 GB). Or run batchmode tests in the one Editor's project only when it's closed |
 | `~/.dotnet/dotnet` | `dotnet` on PATH |

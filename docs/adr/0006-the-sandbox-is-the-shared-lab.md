@@ -8,7 +8,7 @@
     experiments and votes go in its `db`.
   - **Mods:** data only, validated, switched on for everyone at the same
     tick.
-  - **Promotion:** kept mods are baked into `rules/` by PR.
+  - **Promotion:** kept mods are baked into `rules/` (amended below).
   - **Code:** code changes go through the repo, never live.
 - **Why:**
   - It is the cheapest place to find out what's fun with other people.
@@ -16,4 +16,7 @@
     what's proven here carries over.
   - Data-only mods keep friends from running each other's code.
 - **Reopen if:** an experiment that matters can't be expressed without
-  new verbs often enough that the PR loop becomes the bottleneck.
+  new verbs often enough that the code loop becomes the bottleneck.
+- **Amended 2026-10-25:** a kept mod lands like code, not by PR: a
+  branch, verified (tests plus the probe), merged to main. No PR, as for
+  all work on this repo (`CLAUDE.md`).

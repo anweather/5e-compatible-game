@@ -1,6 +1,6 @@
-# D7. Netcode: NGO, client-hosted, lockstep chemistry (2026-10-24, proposed)
+# D7. Netcode: NGO, client-hosted, lockstep chemistry (2026-10-24)
 
-**Status:** Proposed (from `MULTIPLAYER.md`, not yet accepted)
+**Status:** Accepted (2026-10-25; proposed 2026-10-24 from `MULTIPLAYER.md`)
 
 - **Decision:**
   - Netcode for GameObjects 2.x on Unity Transport, client-hosted
@@ -13,6 +13,10 @@
   - Players are owner-authoritative (NetworkTransform/Animator,
     interpolated). PhysX props are host-authoritative; any result
     that matters to chemistry is quantised into an intent (D4).
+  - **A player hosts now; a dedicated server may come later.** The
+    north star is one dedicated authoritative server for the shared
+    endless world (`WORLD_STREAMING.md`). Whether and when to run one
+    is an open question; until then the host is one of the players.
 - **Why:** first-party and the most learnable path (D1); co-op needs
   no prediction; the deterministic core already exists and is tested;
   $0 at friends scale.

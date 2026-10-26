@@ -38,20 +38,22 @@ not exact.
 Today every peer simulates the whole world in lockstep from shared inputs
 (NetChem). That stops scaling once players are far apart. The target:
 
-- **One authoritative server** simulates every active chunk: the host for
-  small worlds, a dedicated server for a persistent one.
+- **One authoritative simulation** of every active chunk. Today that's a
+  player hosting (D7). The north star is one dedicated server for the
+  shared endless world; whether and when to run one is still open.
 - **Interest by chunk:** each player follows only the chunks near them.
   Entering a chunk = a per-chunk late join (state snapshot at a tick).
   Players in the same chunks keep lockstep from shared inputs, so bandwidth
   stays tiny where players are together.
 - **Safety net:** a per-chunk checksum. On mismatch (e.g. effects crossing a
-  chunk edge that a client doesn't simulate) the server sends that chunk's
+  chunk edge that a client doesn't simulate) the host sends that chunk's
   changed cells and the client snaps.
 - **Determinism stays:** replays, golden tests and cheap drift detection all
   rely on it, even where it's no longer the only thing keeping peers in sync.
 
-Groups of players far apart simply follow different chunks on one server; a
-player travelling between them hands over chunk by chunk.
+Groups of players far apart simply follow different chunks on one host (or,
+later, one dedicated server); a player travelling between them hands over
+chunk by chunk.
 
 ## Unity specifics
 
@@ -133,6 +135,7 @@ grass).
   (`docs/MULTIPLAYER.md` §8), not with 3 or 4, and not Mac↔PC over Relay.
 
 Not in part 1: streaming to disk, seed generation, floating origin, the
-server/interest-management change, the fast-forward on wake.
+server/interest-management change, the fast-forward on wake. Part 2 is in
+`docs/BACKLOG.md` §11.
 
 See `docs/ARCHITECTURE.md` for the current code layout.

@@ -10,8 +10,7 @@
 - **Decision:**
   - **No Unity Entities, Netcode for Entities or Unity Physics for the
     game now.** The view stays GameObjects; networking stays Netcode for
-    GameObjects carrying intents in lockstep (`NetChem`; D4, and D7,
-    proposed).
+    GameObjects carrying intents in lockstep (`NetChem`; D4 and D7).
   - **The Chem core follows the ECS pattern:** state is plain data,
     behaviour is ordered systems over it (`World.Sim.cs`,
     `World.React.cs`), and what things do is data (`rules/`).
@@ -25,9 +24,11 @@
   1. **Data and systems apart.** No behaviour on state classes; a system
      is a pass over state with a fixed place in the tick order, and its
      comment says what it reads and writes.
-  2. **Integer ids in hot state.** Terrain, cover, gas and so on are rule
-     ids interned to small integers at load (`RuleTables`), not strings in
-     each cell. Strings stay in the rules and the log.
+  2. **Integer ids in hot state.** Terrain, cover, gas and so on will be
+     rule ids interned to small integers at load (`RuleTables`), not
+     strings in each cell. Strings stay in the rules and the log. Not done
+     yet: cells still hold strings (`Cell.T`, `Cover`, `Gas`); the step is
+     in `BACKLOG.md` §10.
   3. **Fields, not objects, per cell.** Reach cells through accessors
      (`World.At` and friends), not by holding `Cell` objects, so a chunk
      can become one array per field (struct of arrays) behind them.

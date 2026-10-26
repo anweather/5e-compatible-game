@@ -13,6 +13,8 @@ whimsical interactions between spells and abilities**.
   explore-plus-fight, and levels vs. hub vs.
   Metroid-style vs. open world. This is being answered by the
   prototypes in `docs/PROTOTYPES.md`.
+- **Now, in parallel:** the P1–P6 prototypes and the endless-world
+  foundation (the chunked world, `docs/WORLD_STREAMING.md`).
 
 The first runnable piece is the **Spell Chemistry Sandbox** (`sandbox/`): a
 browser paper prototype of the spell interactions, driven by the rule
@@ -31,13 +33,13 @@ The docs:
 | `README.md` | This page: the verdict and the shape of the answer |
 | `docs/LIVE_LAB.md` | Playing together, hot-swapping rules mid-game, and keeping what's fun; how it carries into Unity |
 | `docs/MODDING.md` | How to write a mod, by hand or with any LLM |
-| `docs/PROTOTYPES.md` | **Current phase:** the prototypes, the shared spell kit, the progression options and the scorecard |
+| `docs/PROTOTYPES.md` | **Current phase, part one:** the prototypes, the shared spell kit, the progression options and the scorecard |
 | `docs/PHYSICAL_TACTICS.md` | Prototype P5's concept: turn-based play resolved physically, with reactions and no health sponges |
 | `docs/EXPLORE_AND_FIGHT.md` | Prototype P6's concept: third-person adventure movement in exploration, physical turn-based fights in place, battlefield prep between them |
 | `docs/TRAVERSAL.md` | Unique per-character traversal (by physical channel), collectible critters that change world state, machines that consume it |
 | `docs/DECISIONS.md` | What has been decided, and why: the index of the ADRs in `docs/adr/` |
 | `docs/BACKLOG.md` | Features to build next, what each builds on, and a suggested order |
-| `docs/WORLD_STREAMING.md` | From one valley to an endless world: chunks, and what the chunked valley built |
+| `docs/WORLD_STREAMING.md` | **Current phase, part two:** from one valley to an endless world: chunks, and what the chunked valley built |
 | `docs/MULTIPLAYER.md` | Playing together online and voice: the netcode, what was built and measured |
 | `docs/DEV_SETUP_WINDOWS.md` | Setting up the Windows PC, the main Unity machine; Mac vs. Windows for agents |
 | `docs/ARCHITECTURE.md` | How the Unity code is organised: the layers, the design patterns, who may depend on whom, where new things go, known debt |

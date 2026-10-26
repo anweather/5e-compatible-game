@@ -154,6 +154,22 @@ First setup of the Windows PC (Ryzen 7 7700X, RTX 4080 Super) from
   `Assets/TerrainDemoScene_URP/ShaderGraphs/SpeedTreeURP_Branch.shadergraph`.
   It is in the pack's own Shader Graph, not our code, and the Mac logs it too.
 
+## Mac check (2026-10-25)
+
+macOS player build on the M2 Pro, `-fps-probe` at 1600×900, at the
+chunked-valley slice 2 commit 53df5de. Not comparable with the PC's 4K
+numbers above: different machine, different resolution.
+
+| Run | Mean | 95th percentile | Worst |
+|---|---|---|---|
+| Slice 2, run 1 | 16.7 ms | 23.7 ms | 612 ms |
+| Slice 2, run 2 | 16.3 ms | 24.1 ms | 363 ms |
+| Slice 2, run 3 | 16.3 ms | 23.7 ms | 288 ms |
+| Slice 1 baseline, re-run in the same session | 15.7 ms | 23.0 ms | 269 ms |
+
+So slice 2 costs about +0.6 ms mean and +1 ms at the 95th percentile.
+Not profiled yet.
+
 ## Two-machine online check (2026-10-25)
 
 The first online game between two real machines (`DEV_SETUP_WINDOWS.md`

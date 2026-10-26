@@ -207,10 +207,42 @@ and the reasons are there.
      exact.
 - **Size:** 1 is M and pays off immediately; 2 is L, when needed.
 
+## 11. World streaming, part 2
+
+The endless-world foundation, built in parallel with the prototypes. Part 1
+(the chunked valley) is done; part 2 is what `WORLD_STREAMING.md` lists as
+not in part 1, and makes its rings real.
+
+- **What:**
+  - Loading rings around each player: the player's chunk and its 8
+    neighbours simulated at full detail, the next ring drawn with the
+    simulation paused and props asleep, coarse terrain further out.
+  - Chunk activation and unloading: the active-chunk set follows the
+    players (all chunks are active today), and `UnloadChunk` gets used
+    (nothing unloads chunks yet). Fire at the edge wakes the next chunk, up
+    to a cap.
+  - Fast-forward on wake: a bounded number of ticks for a chunk that wakes
+    after a long pause.
+  - Streaming to disk: only what players changed is saved; an untouched
+    chunk regenerates from the world seed (seed generation).
+  - Interest by chunk online: each player follows only the chunks near
+    them; entering a chunk is a per-chunk late join (a snapshot at a tick),
+    with a per-chunk checksum as the safety net.
+  - Floating origin past ~5–10 km.
+- **Builds on:** `Chunk.cs`, the active-chunk set and per-chunk hashes,
+  `SpawnChunk` / `UnloadChunk`, `world/things.json` and stable `ThingId`s,
+  `NetChem`'s lockstep and late join.
+- **Open:** part 1's leftovers ("Still open in part 1" in
+  `WORLD_STREAMING.md`); the host today vs. a dedicated server later (D7).
+- **Size:** L to XL; split it into slices as part 1 was.
+
 ## Suggested order
 
 Dependencies, roughly:
 
+0. **World streaming, part 2 (11)** runs alongside everything below, as
+   the endless-world foundation; features that store per-cell or per-chunk
+   state (weather, caves) should fit its chunks.
 1. **Terrain hardness (4)** is small and sets up digging and caves.
 2. **Components in the rules (10.1)** before many new items and weapons,
    so each new thing combines with the rest for free.

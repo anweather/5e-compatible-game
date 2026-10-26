@@ -438,10 +438,11 @@ the same cells through `CellHeightfield`; `OnlineValleyTests` checks in the
 core that a client and a late joiner on a valley-sized world keep the
 host's checksums and draw the same heightfield.
 
-## Proposed decisions
+## Decisions
 
-The two decisions this doc proposes are ADRs, still marked Proposed:
+The two decisions this doc proposed are ADRs:
 [D7, netcode](adr/0007-netcode-ngo-client-hosted-lockstep-chemistry.md)
-(NGO, client-hosted, lockstep chemistry) and
+(NGO, client-hosted, lockstep chemistry), accepted 2026-10-25, and
 [D8, voice](adr/0008-voice-vivox-with-spell-effects-applied-by-each-listener.md)
-(Vivox, with spell effects applied by each listener). See `DECISIONS.md`.
+(Vivox, with spell effects applied by each listener), still Proposed. See
+`DECISIONS.md`.

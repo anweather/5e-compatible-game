@@ -9,7 +9,8 @@ already covers it (D5).
 
 The goal of this phase is to *feel* the options side by side, cheaply,
 and to pick the one where the spells are both the most fun and the most
-original.
+original. It runs in parallel with the endless-world foundation (the
+chunked world, `WORLD_STREAMING.md`); neither waits for the other.
 
 ## The three axes, which are separate questions
 

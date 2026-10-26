@@ -84,7 +84,7 @@ The full schema is in `rules/README.md`.
 
 **New verbs need code.** If an idea can't be said with these, write it
 up as an experiment anyway, with the idea filled in and a best-effort
-patch, and ask for the verb in a PR.
+patch, and ask for the verb as a code change.
 
 ## Worked examples
 

@@ -34,8 +34,8 @@ straight over.
 | Switch mods on or off | Anyone in the room | Experiments panel |
 | Vote and leave notes | Anyone signed in | Experiments panel |
 | Mark keep, drop or merged | The page owner | Experiments panel, status menu |
-| Bake kept mods into `rules/` | Claude Code, asked by the owner | This repo, as a PR |
-| New verbs or physics (code) | Claude Code or a contributor | This repo, as a PR. Republishing reloads everyone's page |
+| Bake kept mods into `rules/` | Claude Code, asked by the owner | This repo, like code: a branch, verified (tests and the probe), merged to main |
+| New verbs or physics (code) | Claude Code or a contributor | This repo, the same way. Republishing reloads everyone's page |
 
 ## Multiplayer: how it works
 
@@ -86,7 +86,7 @@ watch the page but can't join rooms or save experiments.
 | | Data mods (hot-swappable) | Code changes |
 |---|---|---|
 | What | New or changed reactions, terrain, covers, gases, spells, critters, things, machine thresholds, sim numbers, new element names | New effect verbs, new physics, new UI, new kinds of machines |
-| Who | Anyone, in the page, live | A PR to this repo, then a republish |
+| Who | Anyone, in the page, live | A change to this repo (branch, verify, merge to main), then a republish |
 | Safety | JSON only, validated against the engine before it can switch on; nobody runs anyone else's code | Reviewed in the repo |
 | Speed | Seconds, mid-game | Minutes; everyone's page reloads (the "disconnect and reconnect") |
 
@@ -95,7 +95,7 @@ untrusted JavaScript on each other's machines, so the sandbox
 deliberately doesn't. The data layer turns out to cover most game-design
 experiments ("what if ice cracked under weight?", "what if steam
 scalded?", "a new critter that…"). When an idea needs a new verb, that
-is a signal it's worth a real PR.
+is a signal it's worth a real code change.
 
 ## Experiment records
 
@@ -111,8 +111,9 @@ read it directly, so "bake the kept ones in" is a one-line request.
 **Promotion:**
 1. The owner marks a mod **keep**.
 2. Claude reads `mods` and `votes`, folds the patch into `rules/*.json`
-   (with a test for the new behaviour), opens a PR, republishes, and
-   marks the mod **merged**.
+   (with a test for the new behaviour) on a branch, verifies it (tests
+   and the probe), merges it to main with no PR, republishes, and marks
+   the mod **merged**.
 
 ## In the Unity game today
 
@@ -181,14 +182,15 @@ The same loop, one level up:
   the C# `Game.Core` (D3). A mod proven in the sandbox switches on in
   Unity unchanged, as far as the verbs exist on both sides. Keep the
   verb vocabulary shared.
-- **Server:** a small authoritative server, either a headless Unity
-  build or a plain .NET service running `Game.Core`. Unity clients
-  connect to it. It sequences inputs exactly like the sandbox host. For
-  real-time 3D the grid stays lockstep and only PhysX props travel as
-  authoritative state (D4: PhysX isn't deterministic across machines;
-  `MULTIPLAYER.md` §1). Today the host is one of the players (D7).
+- **Host:** today one of the players hosts (D7) and sequences inputs
+  exactly like the sandbox host. Later, maybe one dedicated authoritative
+  server for the shared endless world (a headless Unity build or a plain
+  .NET service running `Game.Core`); that is the north star and still an
+  open question. Either way, for real-time 3D the grid stays lockstep and
+  only PhysX props travel as authoritative state (D4: PhysX isn't
+  deterministic across machines; `MULTIPLAYER.md` §1).
 - **Hot swap** (built for the lockstep yard; see "In the Unity game
-  today" above): the server applies mod patches at a tick boundary and
+  today" above): the host applies mod patches at a tick boundary and
   broadcasts them. Clients rebuild their rule index, as the sandbox does
   today. The C# core already has the pieces: `ModPatch.Parse`,
   `Rules.WithMods` (same merge and checks as the sandbox),
@@ -196,11 +198,12 @@ The same loop, one level up:
   (`ARCHITECTURE.md`).
 - **Builders with their own LLMs:**
   - *Data:* the same brief (`docs/MODDING.md`, plus the current tables).
-  - *Code:* PRs, and the Unity CLI's MCP bridge (`RESEARCH.md` §9) for
-    people working in the Editor on their own machines.
+  - *Code:* changes to this repo, and the Unity CLI's MCP bridge
+    (`RESEARCH.md` §9) for people working in the Editor on their own
+    machines.
   - The experiments database can stay where it is: the sandbox page
     becomes the lab notebook for both versions.
 
 Order: prove the loop in the sandbox with friends first; it costs
-nothing to change. Build the Unity server only once the P2/P5/P6
-prototypes give it a game worth serving.
+nothing to change. Build a dedicated server, if at all, only once the
+P2/P5/P6 prototypes give it a game worth serving.
