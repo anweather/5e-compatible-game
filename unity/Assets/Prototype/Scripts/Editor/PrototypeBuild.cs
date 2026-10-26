@@ -161,10 +161,17 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
         AssetDatabase.Refresh();
     }
 
+    /// <summary>
+    /// Set by UpdateBuild while it builds at a version that's only in memory: Unity saves
+    /// that version into ProjectSettings.asset during the build, which isn't a real change.
+    /// </summary>
+    internal static bool VersionOnlyInMemory;
+
     static void WriteStamp()
     {
         string commit = BuildInfo.RunGit("rev-parse --short=7 HEAD") ?? "unknown";
-        string changes = BuildInfo.RunGit("status --porcelain --untracked-files=no");
+        string changes = BuildInfo.RunGit("status --porcelain --untracked-files=no" +
+            (VersionOnlyInMemory ? " -- . :(exclude)ProjectSettings/ProjectSettings.asset" : ""));
         if (!string.IsNullOrEmpty(changes)) commit += "-dirty";
         var stamp = new BuildInfo.StampFile
         {

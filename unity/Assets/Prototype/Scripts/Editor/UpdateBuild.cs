@@ -25,6 +25,7 @@ public static class UpdateBuild
         if (Directory.Exists(root)) Directory.Delete(root, true);
         string was = PlayerSettings.bundleVersion;
         PlayerSettings.bundleVersion = version;
+        PackRulesIntoBuild.VersionOnlyInMemory = was != version;
         try
         {
             string mac = BuildOnce(BuildTarget.StandaloneOSX, $"{root}/osx/{PrototypeBuild.ProductName}.app");
@@ -37,6 +38,7 @@ public static class UpdateBuild
         }
         finally
         {
+            PackRulesIntoBuild.VersionOnlyInMemory = false;
             PlayerSettings.bundleVersion = was;
             AssetDatabase.SaveAssets();
         }
