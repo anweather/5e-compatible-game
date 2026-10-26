@@ -148,6 +148,7 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 | HUD | `EventLog.cs` (help, spell bar, "what happened" log), `ModsPanel.cs` (M / Start: the mods panel), `PauseMenu.cs` (Esc: Resume, Play together, Quit; other code adds sections with `PauseMenu.AddSection`) |
 | Live rules | `RuleSwitcher.cs` (decides what to switch to and sends it: queued solo, stamped by the host online, asked of the host by a client), `RulesWatcher.cs` (Editor and dev builds: reloads saved `rules/` files, debounced, on the main thread). `ChemGrid` adds both at runtime, so scenes need no rebuild |
 | Demos and probes | `DemoDirector.cs`, `WizardPuppet.cs`, `Showcase.cs`, `FlythroughCamera.cs`, `FpsProbe.cs` |
+| Sound | `GameSounds.cs` (which clip a spell makes when cast and where it lands, a break or a blast; one-shot and looping 3D sources), `ProceduralSounds.cs` (the clips, made in code: no recordings yet). Fires crackle from the `FireLightPool` lights |
 | Small shared helpers | `UrpMaterials.cs`, `Primitives.cs`, `ProceduralTextures.cs`, `ScrollingTexture.cs`, `Flicker.cs` |
 | The old Fireline greybox | `PlayerController.cs`, `CameraFollow.cs`, `FireBolt.cs`, `Burnable.cs`, `Water.cs` (not used by the yard) |
 
