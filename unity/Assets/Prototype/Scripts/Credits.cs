@@ -25,6 +25,9 @@ public static class Credits
 
     public const string Engine = "Made with Unity. Unity is a trademark of Unity Technologies.";
 
+    /// <summary>Libraries in the build whose licences ask to be credited.</summary>
+    public const string Libraries = "Velopack (updates in place), MIT License. Copyright (c) 2021 Caelan Sayler, (c) 2024 Velopack Ltd.";
+
     /// <summary>All of it as plain text, for CREDITS.txt (Windows line endings: it's read in Notepad).</summary>
     public static string PlainText(string versionLabel)
     {
@@ -36,7 +39,8 @@ public static class Credits
         text.Append("ASSETS").Append(nl);
         foreach (var a in Assets) text.Append("- ").Append(a).Append(nl);
         text.Append("Used under the Unity Asset Store End User License Agreement.").Append(nl).Append(nl);
-        text.Append("ENGINE").Append(nl).Append(Engine).Append(nl);
+        text.Append("ENGINE").Append(nl).Append(Engine).Append(nl).Append(nl);
+        text.Append("LIBRARIES").Append(nl).Append(Libraries).Append(nl);
         return text.ToString();
     }
 }

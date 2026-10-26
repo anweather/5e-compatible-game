@@ -22,7 +22,7 @@ public class UpdateCheck : MonoBehaviour
     /// <summary>What the check concluded, for the log and tests: "checking", "up to date", "newer: X", "failed: ...".</summary>
     public static string Result { get; private set; } = "not run";
 
-    GUIStyle hint;
+    GUIStyle hint, updating;
     bool hintDismissed;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
@@ -34,7 +34,29 @@ public class UpdateCheck : MonoBehaviour
         var go = new GameObject("Update check");
         DontDestroyOnLoad(go);
         instance = go.AddComponent<UpdateCheck>();
-        instance.StartCoroutine(Check(BuildVersion.ReleasesApi));
+        instance.StartCoroutine(SelfUpdate.Installed ? CheckInstalled() : Check(BuildVersion.ReleasesApi));
+    }
+
+    // A Velopack install asks Velopack, which can then download and apply what it finds.
+    static IEnumerator CheckInstalled()
+    {
+        Result = "checking";
+        Available = null;
+        var check = SelfUpdate.CheckAsync();
+        yield return new WaitUntil(() => check.IsCompleted);
+        if (check.IsFaulted)
+        {
+            Result = $"failed: {check.Exception?.GetBaseException().Message}";
+            Debug.Log($"Update check: Velopack couldn't check ({Result}); carrying on.");
+            yield break;
+        }
+        string version = check.Result;
+        Available = version == null ? null : new BuildVersion.Release { Version = version, Url = BuildVersion.ReleasesPage };
+        Result = version == null ? "up to date" : $"newer: {version}";
+        Debug.Log(version == null
+            ? $"Update check: up to date (Velopack found nothing newer than {SelfUpdate.CurrentVersion})."
+            : $"Update check: alpha {version} is out; it can update in place.");
+        if (version != null && SelfUpdate.AutoUpdate) _ = SelfUpdate.DownloadAndRestart();
     }
 
     /// <summary>Runs the check again against a URL (the real API or a test server); for tests in the Editor.</summary>
@@ -82,13 +104,23 @@ public class UpdateCheck : MonoBehaviour
 
     void OnGUI()
     {
-        if (Available == null || !EventLog.HudVisible) return;
+        if (Available == null) return;
+        if (SelfUpdate.Progress >= 0)
+        {
+            // Updating in place: say so over everything until the game restarts.
+            GUI.depth = -200;
+            updating ??= new GUIStyle(GUI.skin.box) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
+            GUI.Box(new Rect(Screen.width / 2f - 260f, Screen.height / 2f - 40f, 520f, 80f),
+                $"Updating to alpha {Available.Version}...  {SelfUpdate.Progress}%\n<size=15><color=#ffffff99>The game restarts by itself when it's done.</color></size>", updating);
+            return;
+        }
+        if (!EventLog.HudVisible) return;
         var menu = FindFirstObjectByType<PauseMenu>();
         if (menu != null && menu.Open) hintDismissed = true;
         if (hintDismissed) return;
         hint ??= new GUIStyle(GUI.skin.label) { fontSize = 15, richText = true, alignment = TextAnchor.LowerRight };
         GUI.Label(new Rect(Screen.width - 476f, Screen.height - 40f, 460f, 28f),
-            $"<color=#ffd24a>alpha {Available.Version} is out</color>   <color=#ffffff88>Esc: download</color>", hint);
+            $"<color=#ffd24a>alpha {Available.Version} is out</color>   <color=#ffffff88>Esc: {(SelfUpdate.Installed ? "update" : "download")}</color>", hint);
     }
 
     void OnDestroy() { if (instance == this) instance = null; }

@@ -46,7 +46,14 @@ public class GameInfoMenu : MonoBehaviour
         if (update != null)
         {
             GUILayout.Label($"<color=#ffd24a><b>alpha {update.Version} is out</b></color>", small);
-            if (PauseMenu.Button("Open download page", PauseMenu.ButtonStyle)) UpdateCheck.OpenDownloadPage();
+            if (!SelfUpdate.Installed)
+            {
+                if (PauseMenu.Button("Open download page", PauseMenu.ButtonStyle)) UpdateCheck.OpenDownloadPage();
+            }
+            else if (SelfUpdate.Progress >= 0)
+                GUILayout.Label($"Downloading... {SelfUpdate.Progress}%", small);
+            else if (PauseMenu.Button("Update and restart", PauseMenu.ButtonStyle)) _ = SelfUpdate.DownloadAndRestart();
+            if (SelfUpdate.Error != null) GUILayout.Label($"<color=#ff8a80>Update failed: {SelfUpdate.Error}</color>", small);
             GUILayout.Space(6);
         }
         GUILayout.BeginHorizontal();
@@ -67,7 +74,7 @@ public class GameInfoMenu : MonoBehaviour
     static string CreditsText()
     {
         var assets = string.Join("\n", System.Array.ConvertAll(Credits.Assets, a => "· " + a));
-        return $"{Credits.Game}\n\n<b>Rules</b>\n{Credits.Srd}\n\n<b>Assets</b>\n{assets}\n\n<b>Engine</b>\n{Credits.Engine}";
+        return $"{Credits.Game}\n\n<b>Rules</b>\n{Credits.Srd}\n\n<b>Assets</b>\n{assets}\n\n<b>Engine</b>\n{Credits.Engine}\n\n<b>Libraries</b>\n{Credits.Libraries}";
     }
 
     /// <summary>Opens the folder with Player.log (the Editor's own log in the Editor), to attach to a bug report.</summary>

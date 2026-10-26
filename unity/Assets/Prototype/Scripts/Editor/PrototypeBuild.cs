@@ -75,7 +75,7 @@ public static class PrototypeBuild
     }
 
     // Changed or untracked files git reports, without Unity's crash-recovery copies; null if git failed.
-    static string[] DirtyFiles()
+    internal static string[] DirtyFiles()
     {
         string status = BuildInfo.RunGit("status --porcelain");
         if (status == null) return null;

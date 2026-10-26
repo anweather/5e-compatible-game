@@ -9,8 +9,11 @@ using Newtonsoft.Json.Linq;
 // BuildInfo says which version and commit this copy of the game is.
 public static class BuildVersion
 {
+    /// <summary>The game's GitHub repository, where its releases live (SelfUpdate reads them).</summary>
+    public const string RepoUrl = "https://github.com/anweather/5e-compatible-game";
+
     /// <summary>Where players download the game; also where a version mismatch sends them.</summary>
-    public const string ReleasesPage = "https://github.com/anweather/5e-compatible-game/releases";
+    public const string ReleasesPage = RepoUrl + "/releases";
 
     /// <summary>GitHub's list of releases, newest first, pre-releases included.</summary>
     public const string ReleasesApi = "https://api.github.com/repos/anweather/5e-compatible-game/releases?per_page=10";
