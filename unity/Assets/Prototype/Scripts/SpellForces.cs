@@ -1,3 +1,4 @@
+using System.Linq;
 using Chem;
 using UnityEngine;
 
@@ -7,7 +8,10 @@ using UnityEngine;
 // nearest its target, Misty Step moves the caster (MistyStep) and Mage Hand
 // fetches or sets down something light (MageHand). The
 // strengths are the spell's push and duration in rules/spells.json (see
-// Forces for the units).
+// Forces for the units). A spell with an element and no push catches the
+// wizards in its squares (Hit): fire throws them back from the blast, frost
+// slows them, lightning jolts (a moment's stop and a knock), water shoves;
+// a charged cast hits that much harder. Enough to matter, not to stop the fun.
 //
 // Solo: SpellCaster calls Apply when a cast lands, and it moves everything.
 // Online: NetChem calls ApplyOnline on every machine when the cast's tick
@@ -17,8 +21,8 @@ using UnityEngine;
 public static class SpellForces
 {
     /// <summary>Solo: applies the forces of a cast that just landed to everything but the caster. Returns how many things it moved.</summary>
-    public static int Apply(ChemGrid grid, string spellId, int x, int y, int dir, Transform caster) =>
-        Apply(grid, new CastCommand(spellId, x, y, dir), caster.position, caster, null, levitate: true, caster);
+    public static int Apply(ChemGrid grid, string spellId, int x, int y, int dir, Transform caster, int charge = 1) =>
+        Apply(grid, new CastCommand(spellId, x, y, dir, charge), caster.position, caster, null, levitate: true, caster);
 
     /// <summary>
     /// Online: the forces of a cast whose tick batch just ran. <paramref name="props"/> on the host
@@ -40,7 +44,7 @@ public static class SpellForces
         if (spell.Effect == SpellShapes.LevitateEffect) return levitate && Levitate(grid, spell, x, y) ? 1 : 0;
         if (spell.Effect == SpellShapes.TeleportEffect) return ownCaster != null && MistyStep.Blink(grid, spell, ownCaster, x, y) ? 1 : 0;
         if (spell.Effect == SpellShapes.CarryEffect) return ownCaster != null && MageHand.Cast(grid, spell, ownCaster, x, y) ? 1 : 0;
-        if (spell.Push <= 0) return 0;
+        if (spell.Push <= 0) return HitWizards(grid, spell, cast, except, only);
         float impulse = spell.Push * Forces.ImpulsePerPush;
         return spell.Shape switch
         {
@@ -48,6 +52,55 @@ public static class SpellForces
             SpellShapes.Line => Forces.Along(grid, grid.World.SpellCells(spell, x, y, dir), Direction(dir), impulse, except, only),
             _ => 0,
         };
+    }
+
+    // The wizards standing in the spell's squares (not its caster) feel its element.
+    static int HitWizards(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
+    {
+        if (spell.Element == null) return 0;
+        var cells = new System.Collections.Generic.HashSet<(int x, int y)>(grid.World.SpellCells(spell, cast.X, cast.Y, cast.Dir, cast.Charge));
+        var centre = grid.CellCenter(cast.X, cast.Y);
+        int hit = 0;
+        foreach (var wizard in Knockback.All.ToArray())
+        {
+            if (wizard == null || (except != null && wizard.transform == except) || (only != null && !only(wizard))) continue;
+            var at = grid.CellAt(wizard.transform.position);
+            if (!cells.Contains((at.x, at.y))) continue;
+            if (Hit(wizard, spell, centre, Direction(cast.Dir), World.ClampCharge(cast.Charge))) hit++;
+        }
+        return hit;
+    }
+
+    // What an element does to a wizard it catches.
+    static bool Hit(Knockback wizard, SpellDef spell, Vector3 centre, Vector3 along, int charge)
+    {
+        var away = wizard.transform.position - centre;
+        away.y = 0f;
+        away = away.sqrMagnitude > 0.01f ? away.normalized : along;
+        wizard.TryGetComponent<SurfaceEffects>(out var feet);
+        bool me = wizard.TryGetComponent<PlayerControls>(out var controls) && controls.enabled;
+        switch (spell.Element)
+        {
+            case "fire":
+                wizard.Push(1.5f * Forces.ImpulsePerPush * charge * away);
+                if (me) EventLog.Add($"{spell.Name} throws you back");
+                return true;
+            case "cold":
+                if (feet != null) feet.Slow(0.45f, 2.5f * charge);
+                if (me) EventLog.Add($"{spell.Name} chills you: slowed");
+                return true;
+            case "lightning":
+                if (feet != null) feet.Slow(0.05f, 0.35f * charge);
+                wizard.Push(Forces.ImpulsePerPush * charge * away);
+                if (me) EventLog.Add($"{spell.Name} jolts you");
+                return true;
+            case "water":
+                wizard.Push(Forces.ImpulsePerPush * charge * along);
+                if (me) EventLog.Add($"{spell.Name} knocks you about");
+                return true;
+            default:
+                return false;
+        }
     }
 
     // The sandbox's directions on the ground: north (y-1) is +z.

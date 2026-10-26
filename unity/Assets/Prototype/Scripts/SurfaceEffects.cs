@@ -4,7 +4,7 @@ using UnityEngine;
 // What the ground under the wizard does to movement, read from the chemistry
 // grid: on a slippery cell (ice, oil, grease) the wizard keeps its momentum
 // and skids; in unfrozen water deeper than a puddle it wades at reduced
-// speed. Runs after the Starter Assets controller has moved the wizard and
+// speed. Spells slow it too (Slow: frost chills, lightning jolts; SpellForces). Runs after the Starter Assets controller has moved the wizard and
 // corrects that move, so the controller itself stays untouched.
 //
 // The ground is the valley's terrain everywhere, dug into pits, a pond and
@@ -31,6 +31,17 @@ public class SurfaceEffects : MonoBehaviour
     Vector3 lastPosition;
     Vector3 momentum;
     bool wasSlipping, wasWading;
+    float slowUntil, slowFactor = 1f, appliedSpeed = 1f;
+
+    /// <summary>True while a spell has the wizard slowed.</summary>
+    public bool Slowed => Time.time < slowUntil;
+
+    /// <summary>Slows the wizard to <paramref name="factor"/> of its speed for a while (the stronger slow wins while both last).</summary>
+    public void Slow(float factor, float seconds)
+    {
+        if (!Slowed || factor < slowFactor) slowFactor = factor;
+        slowUntil = Mathf.Max(slowUntil, Time.time + seconds);
+    }
 
     void Awake()
     {
@@ -59,7 +70,7 @@ public class SurfaceEffects : MonoBehaviour
         bool wading = c != null && !c.Frozen && c.Water >= wadingDepth;
 
         Slide(slippery);
-        Wade(wading);
+        SetSpeed(wading);
         lastPosition = transform.position;
     }
 
@@ -82,13 +93,17 @@ public class SurfaceEffects : MonoBehaviour
         body.Move((momentum - intended) * dt);
     }
 
-    void Wade(bool wading)
+    // Wading and a spell's slow, together.
+    void SetSpeed(bool wading)
     {
-        if (moveSpeed == null || wading == wasWading) return;
+        if (moveSpeed == null) return;
+        if (wading && wasWading != wading) EventLog.Add("You wade into the water");
         wasWading = wading;
-        float k = wading ? wadingSpeed : 1f;
+        float k = (wading ? wadingSpeed : 1f) * (Slowed ? slowFactor : 1f);
+        if (Mathf.Approximately(k, appliedSpeed)) return;
+        appliedSpeed = k;
         moveSpeed.SetValue(controller, baseMove * k);
         sprintSpeed.SetValue(controller, baseSprint * k);
-        if (wading) EventLog.Add("You wade into the water");
     }
+
 }

@@ -148,7 +148,7 @@ public class SpellCaster : MonoBehaviour
         PlayCastEffect(spellId, x, y, dir, () =>
         {
             grid.World.Cast(spellId, x, y, dir, charge);
-            SpellForces.Apply(grid, spellId, x, y, dir, transform);
+            SpellForces.Apply(grid, spellId, x, y, dir, transform, charge);
         });
     }
 

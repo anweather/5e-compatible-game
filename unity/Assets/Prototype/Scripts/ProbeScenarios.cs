@@ -85,6 +85,10 @@ public static class ProbeScenarios
             "Holding Cast charges a spell, on a virtual gamepad through the wizard's own controls, the camera aimed at the meadow: " +
             "Raise Earth held on the right trigger for 1.1 s, then Lower Earth tapped. Checks: the held cast raised its square three " +
             "steps, the tap dug one, no console errors."),
+        new Entry("hits", typeof(HitsProbe), 40f,
+            "Spells catching a wizard, applied as if cast by someone a few metres off (a caster never catches itself): Fire Bolt on " +
+            "the wizard's square, Ray of Frost through it, Shocking Grasp on it. Checks: the fire throws it back over 0.5 m, the frost " +
+            "slows it, the lightning stops it a moment and knocks it, no console errors."),
         new Entry("edge", typeof(EdgeProbe), 90f,
             "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
             "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),

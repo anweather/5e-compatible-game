@@ -32,7 +32,7 @@ sound was heard in a later build (main, not 0.1.1).
 | P9 | Earth needs more height range, up and down | done: heights -6 to 8 steps (were -3 to 4), water up to 32 units so deep pits fill; High walls mod scaled to 12 |
 | P10 | A second fire spell | done: Burning Hands (level 1, a 15 ft cone from your hands; a new `cone` shape in both engines) and Fireball (level 3, a blast 25 ft across) |
 | P11 | A spell that freezes water (see P5) | done: Sleet Storm (level 3, Water & Ice), a wide circle of ice |
-| P12 | Spells should affect the other wizards, as Gust of Wind and the earth spells do: more than now, not so much it stops being fun | open |
+| P12 | Spells should affect the other wizards, as Gust of Wind and the earth spells do: more than now, not so much it stops being fun | done: a spell with an element catches the wizards in its squares: fire throws them back, frost slows them (2.5 s), lightning jolts (a moment's stop and a knock), water shoves; charged casts hit harder; online each player applies it to their own wizard; probe `hits` |
 
 ### Movement and play
 
