@@ -120,8 +120,8 @@ public static class ProbeScenarios
             "with its light; the ground waits for it to land; its crater is three steps down in the middle with eight or more squares " +
             "burning round it, no console errors."),
         new Entry("swim", typeof(SwimProbe), 40f,
-            "The wizard drops into the deepest part of the lake. Checks: deep water found, it floats with its feet about a metre " +
-            "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, jump kicks it up over 1.5 m " +
+            "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
+            "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
             "and it floats again after, no console errors."),
     };
 

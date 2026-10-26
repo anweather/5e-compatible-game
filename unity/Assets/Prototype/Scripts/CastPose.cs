@@ -1,10 +1,12 @@
 using UnityEngine;
 
 // A short casting gesture laid over the character's animation: the right
-// arm swings up to point at the target and the hand glows in the spell's
-// colour, then the arm settles back. Runs after the Animator (LateUpdate),
-// so it works on any humanoid without editing the animation controller.
-// Every machine plays it for every caster, from the cast announcement.
+// arm reaches out toward the target (LimbIK, the elbow a little bent and
+// down) and the hand glows in the spell's colour, then the arm settles back.
+// Runs after the Animator and after SwimPose (LateUpdate), so it works on any
+// humanoid without editing the animation controller, swimming too. Every
+// machine plays it for every caster, from the cast announcement.
+[DefaultExecutionOrder(200)]
 [RequireComponent(typeof(Animator))]
 public class CastPose : MonoBehaviour
 {
@@ -56,18 +58,14 @@ public class CastPose : MonoBehaviour
 
         // Up quickly, hold, ease back down.
         float weight = t < Rise ? t / Rise : 1f - Mathf.SmoothStep(0f, 1f, (t - Rise) / (Duration - Rise));
-        PointAt(upperArm, lowerArm.position, weight);
-        PointAt(lowerArm, hand.position, weight);
+        // The hand out toward the target at nearly the arm's full length, the elbow bent down and out.
+        var shoulder = upperArm.position;
+        float length = Vector3.Distance(shoulder, lowerArm.position) + Vector3.Distance(lowerArm.position, hand.position);
+        var toward = target - shoulder;
+        if (toward.sqrMagnitude < 1e-4f) toward = transform.forward;
+        var reach = shoulder + toward.normalized * (length * 0.92f);
+        var elbow = shoulder + transform.right * 0.3f - Vector3.up * 0.35f;
+        LimbIK.Solve(new LimbIK.Limb(upperArm, lowerArm, hand), reach, elbow, weight);
         glow.intensity = 4f * weight;
-    }
-
-    // Rotate a bone so the segment from it to its child points at the target, blended by weight.
-    void PointAt(Transform bone, Vector3 childPosition, float weight)
-    {
-        var current = childPosition - bone.position;
-        var wanted = target - bone.position;
-        if (current.sqrMagnitude < 1e-6f || wanted.sqrMagnitude < 1e-6f) return;
-        var turn = Quaternion.FromToRotation(current, wanted);
-        bone.rotation = Quaternion.Slerp(Quaternion.identity, turn, weight) * bone.rotation;
     }
 }

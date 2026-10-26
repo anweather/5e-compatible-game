@@ -273,6 +273,9 @@ public static class ChemYardBuilder
         surface.enabled = playerDriven;
         var knockback = wizard.AddComponent<Knockback>();
         var hands = wizard.AddComponent<ItemHolder>();
+        // Poses laid over the animation with IK: swimming, throwing (casting is CastPose, above).
+        wizard.AddComponent<SwimPose>();
+        wizard.AddComponent<ThrowPose>();
         wizard.AddComponent<Vitals>();
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SpellRadialHud>(); // waits for the caster and controls to be on (solo now, the owner's on spawn)

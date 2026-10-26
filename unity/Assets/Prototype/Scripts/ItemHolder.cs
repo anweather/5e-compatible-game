@@ -41,6 +41,9 @@ public class ItemHolder : MonoBehaviour
     /// <summary>The way the wizard is aiming (through the crosshair).</summary>
     public Vector3 AimDirection => Aiming.Ray(controls).direction;
     /// <summary>How far the current throw has wound up, 0..1 (0 when not throwing).</summary>
+    /// <summary>A throw just left the hand: how hard, 0 (a toss) to 1 (a full wind-up), for the arm's follow-through (ThrowPose).</summary>
+    public event System.Action<float> Thrown;
+
     public float WindUp => throwPressedAt < 0f ? 0f : Mathf.Clamp01((Time.time - throwPressedAt) / windUp);
 
     void Awake()
@@ -179,6 +182,7 @@ public class ItemHolder : MonoBehaviour
     /// <summary>Throws the held item along the aim at <paramref name="speed"/> m/s, on top of the wizard's own pace.</summary>
     public void Throw(float speed)
     {
+        if (Held != null) Thrown?.Invoke(Mathf.InverseLerp(gentleThrow, hardThrow, speed));
         var dir = (AimDirection + Vector3.up * Loft).normalized;
         var pace = body != null ? body.velocity : Vector3.zero;
         Let(pace + dir * speed, speed >= (gentleThrow + hardThrow) / 2f ? "hurl" : "toss");

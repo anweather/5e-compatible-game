@@ -29,9 +29,34 @@ public class SwimProbe : ProbeScenario
         yield return Wait(3f);
         Check("stays_afloat", surface.Swimming && Mathf.Abs(wizard.transform.position.y - y) < 0.3f, $"y {y:0.00} then {wizard.transform.position.y:0.00}");
 
+        var pose = wizard.GetComponent<SwimPose>();
+        var animator = wizard.GetComponent<Animator>();
+        var head = animator.GetBoneTransform(HumanBodyBones.Head);
+        var hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+        var hips = animator.GetBoneTransform(HumanBodyBones.Hips);
+        Check("swim_pose", pose != null && pose.Weight > 0.9f, pose != null ? $"pose weight {pose.Weight:0.00}" : "no SwimPose");
+
         var from = wizard.transform.position;
         puppet.Move(Vector2.up);
-        yield return Wait(2f);
+        yield return Wait(1.2f);
+        // While stroking: the body leans forward into it, the head stays out, the hands move.
+        float lean = Vector3.Angle(hips.up, Vector3.up);
+        float handTravel = 0f;
+        var handWas = hand.position - wizard.transform.position;
+        for (float t = 0f; t < 0.8f; t += Time.deltaTime)
+        {
+            var now = hand.position - wizard.transform.position;
+            handTravel += (now - handWas).magnitude;
+            handWas = now;
+            yield return null;
+        }
+        Metric("stroke_lean_deg", lean);
+        Metric("head_above_water_m", head.position.y - top);
+        Metric("hand_travel_m", handTravel);
+        Check("leans_into_stroke", lean > 30f, $"hips {lean:0} degrees from upright");
+        Check("head_out_of_water", head.position.y > top, $"head {head.position.y - top:0.00} m above the surface");
+        Check("arms_stroke", handTravel > 0.5f, $"the right hand moved {handTravel:0.00} m in 0.8 s");
+        Shot("stroke");
         puppet.Move(Vector2.zero);
         var swum = wizard.transform.position - from;
         swum.y = 0f;
