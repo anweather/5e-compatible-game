@@ -46,6 +46,11 @@ else
   suffix=; tag="alpha-$version"; name="alpha $version"; publish=
 fi
 commit="$(git -C "$here" rev-parse HEAD)"
+# GitHub tags the release at this commit, so it has to be pushed.
+if [ -z "$(git -C "$here" branch -r --contains "$commit" 2>/dev/null)" ]; then
+  echo "commit ${commit:0:7} isn't on GitHub yet: push it first (the release is tagged at it)" >&2
+  exit 1
+fi
 token="${GITHUB_TOKEN:-$(gh auth token)}"
 out="$here/unity/Builds/Update"
 step() { echo; echo "== $*"; }

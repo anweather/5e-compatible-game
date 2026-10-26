@@ -1,8 +1,9 @@
 # Releasing an alpha
 
-Alphas are Windows zips on GitHub Releases, marked **pre-release**, tagged
-`alpha-X.Y.Z`. Players unzip and run; there is no installer and no
-auto-updater yet (see "Later" below).
+Alphas are on GitHub Releases, marked **pre-release**, tagged `alpha-X.Y.Z`.
+Up to 0.1.x they are Windows zips that players unzip and run; copies
+installed with Velopack update themselves in place (see "Updates in place"
+below).
 
 ## What a release contains
 
@@ -76,10 +77,59 @@ startup and shows "alpha X.Y.Z (abc1234)" at the bottom of the Esc menu.
   `%USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\Player.log`
   (Esc → Open log folder); its first lines name the version and commit.
 
-## Later
+## Updates in place (Velopack)
 
-- **Velopack delta updates.** Download only what changed, update in place,
-  sign the installer. Spike it before 0.2.
+A copy installed with Velopack's installer updates itself: at launch it asks
+GitHub for a newer release on its channel, downloads only what changed (a
+code change is ~150 KB, against ~500 MB for the whole game), shows
+"Updating to alpha X.Y.Z..." and restarts into it. Code: `SelfUpdate.cs`
+(Velopack), `UpdateCheck.cs` (the check at launch, the overlay), the Esc
+menu's "Update and restart" (with `-no-auto-update`). Zip copies and the
+Editor keep the old "Open download page" path.
+
+**Shipping one:** `tools/ship-update.sh X.Y.Z` (or the `ship-update` skill).
+On the Mac or the PC, with the Editor open on the commit to ship and a clean
+tree, it:
+
+1. builds a macOS app and a Windows folder at that version
+   (`UpdateBuild.Players`; Player Settings' version is put back after);
+2. fetches the last update on each channel from GitHub, so it can make the
+   delta (`vpk download github`);
+3. packs each with `vpk` (the Windows one cross-packed with `[win]`), giving
+   a full package, a delta, `Setup.exe` / `Setup.pkg`, a portable zip and
+   the channel's feed, `releases.<channel>.json`;
+4. uploads both channels into one GitHub release (`vpk upload github`).
+
+Without `--test` that's the draft `alpha-X.Y.Z` (test it, then publish as in
+step 6 above). With `--test` it's `update-test-X.Y.Z`, published at once, on
+the channels `osx-test` and `win-test`: only copies installed from a test
+release follow those, so trying the loop never reaches players, and the old
+zip check ignores `update-test-*` tags. Needs vpk (`dotnet tool install -g
+vpk`) and `gh` signed in.
+
+**Installing (once per player):**
+
+- **Windows:** run `SpellChemistryValley-win-Setup.exe` from the release (the
+  SmartScreen warnings above still apply). It installs to
+  `%LOCALAPPDATA%\SpellChemistryValley` with a Start menu shortcut.
+- **macOS:** the app isn't signed or notarized, so Gatekeeper blocks it.
+  Either run `SpellChemistryValley-osx-Setup.pkg` and allow it in System
+  Settings → Privacy & Security → "Open Anyway", or unzip the portable zip
+  into `/Applications` or `~/Applications` and do the same for the app.
+  **Keep it out of Documents, Desktop and Downloads:** after an update
+  Velopack relaunches the game on its own, and macOS then holds the
+  game's file access in those folders for a privacy prompt, which freezes
+  it at startup (seen in the spike, 2026-10-26).
+- A copy unzipped from the portable zip has no local package to patch, so
+  its first update downloads the full package; every one after that is a
+  delta. The installers don't have that cost.
+
+**Limits:** nothing is signed (Windows SmartScreen and macOS Gatekeeper warn
+on first install; updates after that don't prompt). A player more than one
+update behind needs every delta in between; if one is missing Velopack falls
+back to the full package.
+
+## Later
 - **Rules and world data over the air.** `rules/` and `world/` already load
   from `StreamingAssets` at runtime, so a newer data pack could be fetched
   without a new build; online, both players would need the same pack.
