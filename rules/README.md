@@ -9,7 +9,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 |---|---|
 | `materials.json` | Terrain (tags, flammability, fuel, what it burns, breaks or is dug into, elevation), covers (oil, grease, ash) and gases (steam, smoke) |
 | `reactions.json` | **The chemistry table.** What each element does when it reaches a square (`cell`), and to a creature or object standing there (`entity`) |
-| `spells.json` | The shared SRD spell kit: element, shape, power, damage, push force, earth shaping |
+| `spells.json` | The shared SRD spell kit: element, shape, power, damage, push force, earth shaping. `"radial": false` keeps a spell off the Unity game's spell radial. A cast can be charged (held) 1 to 3: power and raise / dig times the charge, height 2 more per level, lines half again as long per level |
 | `critters.json` | Critters: what each emits, how often, and in what shape |
 | `entities.json` | Things on the board: HP, mass, flammable, explodes |
 | `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`), `breaks` (impact speed in m/s and what it spills). The sandbox carries and checks them but has no items |

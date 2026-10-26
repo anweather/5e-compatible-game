@@ -1,12 +1,12 @@
 {
   "title": "High walls",
-  "idea": "Earth magic on a grand scale: the ground can rise six steps, only five or more makes a wall, Wall of Stone rises to five and Move Earth throws up a real hill.",
+  "idea": "Earth magic on a grand scale: the ground can rise twelve steps, only five or more makes a wall, Wall of Stone rises to ten and Move Earth throws up a real hill.",
   "patch": {
-    "sim": { "height": { "max": 6, "blockAt": 5 } },
+    "sim": { "height": { "max": 12, "blockAt": 5 } },
     "spells": [
-      { "id": "wall-of-stone", "group": "earth", "name": "Wall of Stone", "level": 5, "shape": "line", "length": 6, "effect": "terraform", "height": 5, "terrain": "rock",
+      { "id": "wall-of-stone", "group": "earth", "name": "Wall of Stone", "level": 5, "shape": "line", "length": 6, "effect": "terraform", "height": 10, "terrain": "rock",
         "blurb": "A towering 30 ft wall of rock rises from where you click, running away from you." },
-      { "id": "move-earth", "group": "earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3, "effect": "terraform", "raise": 4, "taper": true,
+      { "id": "move-earth", "group": "earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3, "effect": "terraform", "raise": 4, "taper": true, "radial": false,
         "blurb": "The ground heaves up into a tall hill 35 ft across, highest in the middle." }
     ]
   }

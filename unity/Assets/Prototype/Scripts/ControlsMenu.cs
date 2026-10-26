@@ -24,7 +24,7 @@ public class ControlsMenu : MonoBehaviour
         ("Back to your last spell", "Tap Tab", "Tap {LB}"),
         ("Next / previous spell", "E / Q", "{RB}"),
         ("Open an element's spells", "1 – 8", "D-pad ◀ ▶ (steps)"),
-        ("Cast", "Left click", "{RT}"),
+        ("Cast (hold: stronger)", "Left click", "{RT}"),
         ("Pick up / drop", "E (near a thing)", "{West}"),
         ("Use what you hold", "F", "{North}"),
         ("Throw (hold: harder)", "G / right click", "{East}"),

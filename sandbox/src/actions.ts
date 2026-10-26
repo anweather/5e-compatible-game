@@ -12,7 +12,13 @@ import {
 export const spellById = (id: string) => RULES.spells.find((s) => s.id === id);
 
 /** Cells a spell would touch, in the order it touches them (for previews too). */
-export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir): [number, number][] {
+/** The most a cast can be charged (held before release): 1 is a tap. */
+export const MAX_CHARGE = 3;
+export const clampCharge = (charge: number) => Math.max(1, Math.min(MAX_CHARGE, Math.floor(charge)));
+/** A line spell's length at a charge: half again for each level past a tap. */
+export const chargedLength = (length: number, charge: number) => length + Math.floor((length * (clampCharge(charge) - 1)) / 2);
+
+export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge = 1): [number, number][] {
   const out: [number, number][] = [];
   const add = (cx: number, cy: number) => inBounds(w, cx, cy) && out.push([cx, cy]);
   switch (s.shape) {
@@ -24,7 +30,7 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
       // A terraform line from the caster (Earthen Trench) starts under their feet, one
       // square behind the aim, so a trench cut from a pond's bank opens into the pond.
       const from = s.effect === "terraform" && s.origin === "self" ? -1 : 0;
-      for (let k = from; k < from + (s.length ?? 5); k++) {
+      for (let k = from; k < from + chargedLength(s.length ?? 5, charge); k++) {
         const cx = x + DX[dir] * k, cy = y + DY[dir] * k;
         const c = cellAt(w, cx, cy);
         if (!c && k < 0) continue;
@@ -104,16 +110,22 @@ function mistyStep(w: World, s: SpellDef, tx: number, ty: number, owner?: string
   return null;
 }
 
-export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, casterId?: number): void {
+/**
+ * A charged cast (held: charge 2 or 3) is that many times as strong, raises or digs
+ * that many times the steps, and a line reaches half again as far per level
+ * (World.Cast in the C# core).
+ */
+export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, casterId?: number, charge = 1): void {
   const s = spellById(id);
   if (!s || !inBounds(w, x, y)) return;
   if (s.effect === "levitate") return levitate(w, s, x, y);
   if (s.effect === "carry") return; // two taps; see carry()
-  const cells = spellCells(w, s, x, y, dir);
-  const ctx = { power: s.power ?? 1, dir, direct: true };
+  charge = clampCharge(charge);
+  const cells = spellCells(w, s, x, y, dir, charge);
+  const ctx = { power: (s.power ?? 1) * charge, dir, direct: true };
   log(w, `You cast ${s.name}`, "info");
   if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };
-  if (s.effect === "terraform") terraform(w, s, cells, x, y);
+  if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
 
   // Shove first (furthest first, so a line of goblins doesn't jam), then react.
   if (s.push) {

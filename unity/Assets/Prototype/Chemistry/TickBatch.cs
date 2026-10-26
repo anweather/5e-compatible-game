@@ -15,18 +15,21 @@ namespace Chem
     /// <summary>A spell cast: what NetChem's CastIntent carries, minus who cast it.</summary>
     public readonly struct CastCommand
     {
-        public CastCommand(string spell, int x, int y, int dir)
+        public CastCommand(string spell, int x, int y, int dir, int charge = 1)
         {
             Spell = spell;
             X = x;
             Y = y;
             Dir = dir;
+            Charge = charge;
         }
 
         public string Spell { get; }
         public int X { get; }
         public int Y { get; }
         public int Dir { get; }
+        /// <summary>How long it was held: 1 (a tap) to World.MaxCharge.</summary>
+        public int Charge { get; }
     }
 
     /// <summary>A rule switch stamped with the tick it takes effect on: the full mod list from then on.</summary>
@@ -89,7 +92,7 @@ namespace Chem
                     errors = e.Errors;
                 }
             }
-            foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir);
+            foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir, c.Charge);
             foreach (var e in Effects) world.ApplyEffect(e);
             world.Step();
             return rules;

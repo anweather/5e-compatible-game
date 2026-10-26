@@ -9,13 +9,14 @@ namespace Chem
     {
         /// <summary>
         /// Raises or digs every cell of a terraform spell aimed at (x, y): by Raise or Dig
-        /// steps, or (Height) up to that height, leaving higher cells alone.
+        /// steps (times the charge), or (Height) up to that height (2 more per charge level),
+        /// leaving higher cells alone.
         /// </summary>
-        void Terraform(SpellDef s, List<(int x, int y)> cells, int x, int y)
+        void Terraform(SpellDef s, List<(int x, int y)> cells, int x, int y, int charge)
         {
             bool toHeight = s.Height.HasValue;
-            int steps = s.Raise > 0 ? s.Raise : -s.Dig;
-            if (toHeight) steps = s.Height.Value;
+            int steps = (s.Raise > 0 ? s.Raise : -s.Dig) * charge;
+            if (toHeight) steps = s.Height.Value + 2 * (charge - 1);
             foreach (var (cx, cy) in cells)
             {
                 int d = Math.Max(Math.Abs(cx - x), Math.Abs(cy - y));

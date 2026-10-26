@@ -32,6 +32,7 @@ public static class SpellShapes
     public const string LevitateEffect = "levitate";
     public const string TeleportEffect = "teleport";
     public const string CarryEffect = "carry";
+    public const string TerraformEffect = "terraform";
 }
 
 /// <summary>Element ids (what a spell or a reaction brings to a cell), as in rules/reactions.json.</summary>

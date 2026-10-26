@@ -21,7 +21,14 @@ namespace Chem.Tests
         // Base layout, clockwise from the top, 72° a wedge: fire 0°, water 72°, storm 144°, earth 216°, arcane 288°.
         const int Fire = 0, Water = 1, Storm = 2, Earth = 3, Arcane = 4;
 
-        static SpellRadial NewRadial() => new SpellRadial(RadialLayout.From(Base));
+        // The arc mechanics are tested on an Earth wedge of five spells: Earthen Trench and Move
+        // Earth back on the radial (the game keeps them off it; TheLayoutFollowsTheGroupsAndSpellsJsonOrder).
+        static Rules fiveEarth;
+        static Rules FiveEarth => fiveEarth ??= With(@"{ 'spells': [
+            { 'id': 'earthen-trench', 'group': 'earth', 'name': 'Earthen Trench', 'level': 2, 'shape': 'line', 'origin': 'self', 'length': 8, 'effect': 'terraform', 'dig': 2, 'blurb': '' },
+            { 'id': 'move-earth', 'group': 'earth', 'name': 'Move Earth', 'level': 6, 'shape': 'burst', 'radius': 3, 'effect': 'terraform', 'raise': 2, 'taper': true, 'blurb': '' } ] }");
+
+        static SpellRadial NewRadial() => new SpellRadial(RadialLayout.From(FiveEarth));
 
         /// <summary>A vector at a compass angle (degrees clockwise from up), y up.</summary>
         static double X(double angle, double length) => length * Math.Sin(angle * Math.PI / 180);
@@ -60,7 +67,8 @@ namespace Chem.Tests
             var layout = RadialLayout.From(Base);
             Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane" }));
             Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt" }), "a group with one spell");
-            Assert.That(layout.Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "earthen-trench", "wall-of-stone", "move-earth" }), "a group with five");
+            Assert.That(layout.Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "wall-of-stone" }), "Earthen Trench and Move Earth stay off the radial");
+            Assert.That(RadialLayout.From(FiveEarth).Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "earthen-trench", "wall-of-stone", "move-earth" }), "a group with five");
             Assert.That(layout.Groups[Arcane].SpellIds, Does.Contain("grease"));
             Assert.That(layout.GroupOfSpell("thunderwave"), Is.EqualTo(Storm));
             Assert.That(layout.IndexOf("earth"), Is.EqualTo(Earth));

@@ -84,7 +84,7 @@ namespace Chem.Tests
             Assert.That(R.Spell("nope"), Is.Null);
             Assert.That(R.Sim.TicksPerSecond, Is.EqualTo(6));
             Assert.That(R.Sim.WaterUnitsPerStep, Is.EqualTo(4));
-            Assert.That(R.Sim.WaterMaxLevel, Is.EqualTo(16));
+            Assert.That(R.Sim.WaterMaxLevel, Is.EqualTo(32));
         }
 
         [Test]

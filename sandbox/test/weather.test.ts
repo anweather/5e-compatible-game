@@ -103,6 +103,6 @@ test("mixed quick weather over many stretches matches the C# golden", () => {
     const w = field(8);
     run(w, 1200);
     const kinds = Array.from({ length: 17 }, (_, k) => kindOf(RULES.sim, 8, k)).join(" ");
-    assert.equal(`${cellHash(w)} ${w.rng}`, "9680239a 26248982", kinds);
+    assert.equal(`${cellHash(w)} ${w.rng}`, "f89063c4 952317619", kinds);
   });
 });

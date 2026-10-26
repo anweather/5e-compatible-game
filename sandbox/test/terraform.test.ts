@@ -151,7 +151,7 @@ test("a mod changes the height range and the spells' numbers", () => {
   const w = room(12, 12);
   withRules(highWalls.patch as ModPatch, () => {
     castSpell(w, "wall-of-stone", 2, 1, 2);
-    assert.equal(cellAt(w, 2, 3)!.h, 5);
+    assert.equal(cellAt(w, 2, 3)!.h, 10);
     assert.ok(isBlocking(cellAt(w, 2, 3)!));
     castSpell(w, "move-earth", 7, 6, 1);
     assert.deepEqual([4, 5, 6, 7].map((x) => cellAt(w, x, 6)!.h), [1, 2, 3, 4]);
@@ -169,7 +169,7 @@ test("bad terraform spells are refused with clear messages", () => {
       { id: "b", name: "B", level: 1, shape: "line", effect: "terraform", raise: 2, dig: 1, blurb: "" },
       { id: "c", name: "C", level: 1, shape: "square", effect: "terraform", dig: 1.5, terrain: "lava", taper: "yes", blurb: "" },
       { id: "d", name: "D", level: 1, shape: "burst", effect: "terraform", raise: 0, terrain: "bedrock", blurb: "" },
-      { id: "f", name: "F", level: 1, shape: "line", effect: "terraform", height: 5, blurb: "" },
+      { id: "f", name: "F", level: 1, shape: "line", effect: "terraform", height: 9, blurb: "" },
       { id: "g", name: "G", level: 1, shape: "line", effect: "terraform", height: -1.5, dig: 1, blurb: "" },
       { id: "e", name: "E", level: 1, shape: "point", effect: "quake", blurb: "" },
     ] as unknown as ModPatch["spells"],
@@ -183,9 +183,9 @@ test("bad terraform spells are refused with clear messages", () => {
     "spell c: taper must be true or false",
     "spell d: raise must be a whole number of steps from 1",
     "spell d: terrain bedrock is blocking (walls come from raise)",
-    "spell f: height must be a whole number from -3 to 4 (sim.height)",
+    "spell f: height must be a whole number from -6 to 8 (sim.height)",
     "spell g: terraform needs exactly one of raise, dig or height",
-    "spell g: height must be a whole number from -3 to 4 (sim.height)",
+    "spell g: height must be a whole number from -6 to 8 (sim.height)",
     "spell e: unknown effect quake",
   ]);
 });
@@ -222,11 +222,28 @@ test("earth shaping is deterministic and matches the C# golden", () => {
     "20|info|1|You cast Wall of Stone",
     "20|info|1|You cast Move Earth",
     "20|info|1|You cast Create Water",
-    "20|info|1|You cast Shape Earth",
+    "20|info|1|You cast Lower Earth",
     "20|info|1|You cast Fire Bolt",
     "20|info|1|Fire takes hold of the grass",
     "20|info|1|You cast Shocking Grasp",
     "20|notable|1|Lightning arcs through everything conductive that touches",
-    "20|info|1|You cast Shape Earth (heap)",
+    "20|info|1|You cast Raise Earth",
   ]);
+});
+
+test("charged casts dig deeper, build higher and reach further, and match the C# golden", () => {
+  const w = room(24, 12, 3);
+  pond(w, 2, 4, 2, 9);
+  castSpell(w, "mold-earth-heap", 8, 3, 1, undefined, 3);
+  assert.equal(cellAt(w, 8, 3)!.h, 3, "Raise Earth held to the full: three steps, a wall");
+  castSpell(w, "mold-earth", 12, 3, 1, undefined, 2);
+  assert.equal(cellAt(w, 12, 3)!.h, -2, "Lower Earth held halfway: two steps down");
+  castSpell(w, "wall-of-stone", 16, 2, 2, undefined, 2);
+  assert.equal(cellAt(w, 16, 3)!.h, 5, "Wall of Stone held: two steps taller");
+  castSpell(w, "ray-of-frost", 5, 6, 3, undefined, 3);
+  assert.ok(cellAt(w, 2, 6)!.frozen, "a held Ray of Frost reaches 10 squares, across the pond");
+  for (let x = 16; x <= 22; x++) for (let y = 6; y <= 10; y++) cellAt(w, x, y)!.t = "grass";
+  castSpell(w, "fire-bolt", 18, 8, 1, undefined, 3);
+  for (let i = 0; i < 60; i++) step(w);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "6467c88a 2424605280");
 });

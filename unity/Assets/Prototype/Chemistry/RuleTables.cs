@@ -54,6 +54,8 @@ namespace Chem
         public string Id, Name, Shape, Origin, Element, Blurb;
         /// <summary>The spell radial's element it sits under (groups.json), or null.</summary>
         public string Group;
+        /// <summary>False keeps a spell off the Unity game's spell radial (it stays in the rules for mods, tests and the sandbox).</summary>
+        public bool Radial = true;
         public int Level, Power, Length, Size, Radius;
         // Extras: the cell sim uses Wind and (below) the terraform fields; Push and Duration drive the Unity props (SpellForces).
         public string Effect;
@@ -393,6 +395,7 @@ namespace Chem
             Origin = Str(o["origin"]),
             Element = Str(o["element"]),
             Group = Str(o["group"]),
+            Radial = o["radial"]?.Type != JTokenType.Boolean || (bool)o["radial"],
             Blurb = Str(o["blurb"]) ?? "",
             Level = Int(o["level"]) ?? 0,
             Power = Int(o["power"]) ?? 1,

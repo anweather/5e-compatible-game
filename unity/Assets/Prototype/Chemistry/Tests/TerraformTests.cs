@@ -158,7 +158,7 @@ namespace Chem.Tests
             var modded = R.WithMods(new[] { HighWalls() });
             var w = Room(12, 12, 7, modded);
             w.Cast("wall-of-stone", 2, 1, 2);
-            Assert.That(w.At(2, 3).Height, Is.EqualTo(5));
+            Assert.That(w.At(2, 3).Height, Is.EqualTo(10));
             Assert.That(w.IsBlocking(w.At(2, 3)));
             w.Cast("move-earth", 7, 6, 1);
             Assert.That(Heights(w, 6, 4, 5, 6, 7), Is.EqualTo(new[] { 1, 2, 3, 4 }));
@@ -179,7 +179,7 @@ namespace Chem.Tests
                     { 'id': 'b', 'name': 'B', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'raise': 2, 'dig': 1, 'blurb': '' },
                     { 'id': 'c', 'name': 'C', 'level': 1, 'shape': 'square', 'effect': 'terraform', 'dig': 1.5, 'terrain': 'lava', 'taper': 'yes', 'blurb': '' },
                     { 'id': 'd', 'name': 'D', 'level': 1, 'shape': 'burst', 'effect': 'terraform', 'raise': 0, 'terrain': 'bedrock', 'blurb': '' },
-                    { 'id': 'f', 'name': 'F', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': 5, 'blurb': '' },
+                    { 'id': 'f', 'name': 'F', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': 9, 'blurb': '' },
                     { 'id': 'g', 'name': 'G', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': -1.5, 'dig': 1, 'blurb': '' },
                     { 'id': 'e', 'name': 'E', 'level': 1, 'shape': 'point', 'effect': 'quake', 'blurb': '' } ] }".Replace('\'', '"')) })).Errors;
             // validateRules' output for the same patch (terraform.test.ts).
@@ -193,11 +193,32 @@ namespace Chem.Tests
                 "spell c: taper must be true or false",
                 "spell d: raise must be a whole number of steps from 1",
                 "spell d: terrain bedrock is blocking (walls come from raise)",
-                "spell f: height must be a whole number from -3 to 4 (sim.height)",
+                "spell f: height must be a whole number from -6 to 8 (sim.height)",
                 "spell g: terraform needs exactly one of raise, dig or height",
-                "spell g: height must be a whole number from -3 to 4 (sim.height)",
+                "spell g: height must be a whole number from -6 to 8 (sim.height)",
                 "spell e: unknown effect quake",
             }));
+        }
+
+        [Test]
+        public void GoldenChargedCastsMatchTs()
+        {
+            // The same casts as "charged casts dig deeper..." in terraform.test.ts.
+            var w = Room(24, 12, 3);
+            Pond(w, 2, 4, 2, 9);
+            w.Cast("mold-earth-heap", 8, 3, 1, 3);
+            Assert.That(w.At(8, 3).Height, Is.EqualTo(3), "Raise Earth held to the full: three steps, a wall");
+            w.Cast("mold-earth", 12, 3, 1, 2);
+            Assert.That(w.At(12, 3).Height, Is.EqualTo(-2), "Lower Earth held halfway: two steps down");
+            w.Cast("wall-of-stone", 16, 2, 2, 2);
+            Assert.That(w.At(16, 3).Height, Is.EqualTo(5), "Wall of Stone held: two steps taller");
+            w.Cast("ray-of-frost", 5, 6, 3, 3);
+            Assert.That(w.At(2, 6).Frozen, "a held Ray of Frost reaches 10 squares, across the pond");
+            for (int x = 16; x <= 22; x++)
+                for (int y = 6; y <= 10; y++) w.At(x, y).T = "grass";
+            w.Cast("fire-bolt", 18, 8, 1, 3);
+            Run(w, 60);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("6467c88a 2424605280"));
         }
 
         [Test]
@@ -207,7 +228,7 @@ namespace Chem.Tests
                 Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(("{ 'sim': { 'height': " + sim + " } }").Replace('\'', '"')) })).Errors;
             Assert.That(Errors("{ 'min': 1 }"), Does.Contain("sim height.min must be at most 0"));
             Assert.That(Errors("{ 'max': -1 }"), Does.Contain("sim height.max must be at least 0"));
-            Assert.That(Errors("{ 'max': -1 }"), Does.Contain("spell wall-of-stone: height must be a whole number from -3 to -1 (sim.height)"));
+            Assert.That(Errors("{ 'max': -1 }"), Does.Contain("spell wall-of-stone: height must be a whole number from -6 to -1 (sim.height)"));
             Assert.That(Errors("{ 'blockAt': 0 }"), Does.Contain("sim height.blockAt must be at least 1"));
             Assert.DoesNotThrow(() => R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"height\": { \"min\": -5 } } }") }));
         }
@@ -249,12 +270,12 @@ namespace Chem.Tests
                 "20|info|1|You cast Wall of Stone",
                 "20|info|1|You cast Move Earth",
                 "20|info|1|You cast Create Water",
-                "20|info|1|You cast Shape Earth",
+                "20|info|1|You cast Lower Earth",
                 "20|info|1|You cast Fire Bolt",
                 "20|info|1|Fire takes hold of the grass",
                 "20|info|1|You cast Shocking Grasp",
                 "20|notable|1|Lightning arcs through everything conductive that touches",
-                "20|info|1|You cast Shape Earth (heap)",
+                "20|info|1|You cast Raise Earth",
             }, w.Log.Select(l => $"{l.Tick}|{l.Kind.ToString().ToLowerInvariant()}|{l.Count}|{l.Text}").ToArray());
         }
     }

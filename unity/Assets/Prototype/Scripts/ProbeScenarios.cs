@@ -81,6 +81,10 @@ public static class ProbeScenarios
             "A lot of fire, for frame times: the Wildfire mod on, Fire Bolts at five spots in the meadow north of the yard, 20 s of " +
             "burning with the camera on it. Metrics: the burning peak, frame mean and p95 while it burns, and the grid's step, " +
             "cell drawing and fire lights per frame. Checks: the fire spread (over 150 squares), p95 within 33 ms, no console errors."),
+        new Entry("charge", typeof(ChargeProbe), 40f,
+            "Holding Cast charges a spell, on a virtual gamepad through the wizard's own controls, the camera aimed at the meadow: " +
+            "Raise Earth held on the right trigger for 1.1 s, then Lower Earth tapped. Checks: the held cast raised its square three " +
+            "steps, the tap dug one, no console errors."),
         new Entry("edge", typeof(EdgeProbe), 90f,
             "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
             "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),

@@ -7,9 +7,10 @@ import { type World, cellAt, entityAt, hasTag, idx, isBlocking, neighbours, terr
  * Raises or digs every cell of a terraform spell aimed at (x, y): by raise or dig
  * steps, or (height) up to that height, leaving higher cells alone.
  */
-export function terraform(w: World, s: SpellDef, cells: [number, number][], x: number, y: number): void {
+export function terraform(w: World, s: SpellDef, cells: [number, number][], x: number, y: number, charge = 1): void {
   const toHeight = s.height !== undefined;
-  const steps = toHeight ? s.height! : s.raise ? s.raise : -(s.dig ?? 0);
+  // Charged: that many times the steps, or 2 more height per level.
+  const steps = toHeight ? s.height! + 2 * (charge - 1) : (s.raise ? s.raise : -(s.dig ?? 0)) * charge;
   for (const [cx, cy] of cells) {
     const d = Math.max(Math.abs(cx - x), Math.abs(cy - y)), radius = s.radius ?? 1;
     if (s.taper && d > radius) continue;

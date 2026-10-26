@@ -35,6 +35,13 @@ public class SpellCaster : MonoBehaviour
     NetChem net;
     RaycastHit crosshair;
     bool hasCrosshair;
+    // Holding Cast charges a spell that can be (ChargeSeconds a level, to World.MaxCharge); release casts it.
+    const float ChargeSeconds = 0.45f;
+    float chargeStart = -1f;
+    GUIStyle pips;
+
+    /// <summary>The charge the held Cast has built so far (1 when not charging).</summary>
+    public int Charge => chargeStart < 0f ? 1 : World.ClampCharge(1 + (int)((Time.time - chargeStart) / ChargeSeconds));
     Vector3? blinkLanding;
 
     /// <summary>
@@ -77,14 +84,21 @@ public class SpellCaster : MonoBehaviour
         if (!hasCrosshair || (radial != null && radial.IsOpen))
         {
             ShowMarkers(null);
+            chargeStart = -1f;
             return;
         }
         var target = CrosshairCell;
         var aim = Aim(target, out var error);
         var spell = grid.World.Rules.Spell(SelectedId);
-        ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir) : null);
+        ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir, Charge) : null);
 
-        if (!controls.Cast.WasPressedThisFrame()) return;
+        // A spell that charges starts charging on the press and casts on the release; the rest cast on the press.
+        bool charges = Chargeable(spell);
+        if (charges && controls.Cast.WasPressedThisFrame()) { chargeStart = Time.time; return; }
+        if (charges && !controls.Cast.WasReleasedThisFrame()) return;
+        if (!charges && !controls.Cast.WasPressedThisFrame()) return;
+        int charge = Charge;
+        chargeStart = -1f;
         if (error != null) { EventLog.Add(error); return; }
         if (!aim.HasValue) return;
         // A blink lands on the exact spot it found from the crosshair (a roof, a rock's top), in that spot's square.
@@ -95,7 +109,23 @@ public class SpellCaster : MonoBehaviour
             Cast(SelectedId, at.x, at.y, 1);
             return;
         }
-        Cast(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir);
+        Cast(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir, charge);
+    }
+
+    /// <summary>Whether holding Cast makes this spell stronger (World.Cast): one with an element, a line, or earth shaping.</summary>
+    public static bool Chargeable(SpellDef spell) =>
+        spell != null && spell.Effect != SpellShapes.TeleportEffect && spell.Effect != SpellShapes.LevitateEffect && spell.Effect != SpellShapes.CarryEffect
+        && (spell.Element != null || spell.Shape == SpellShapes.Line || spell.Effect == SpellShapes.TerraformEffect);
+
+    // Three pips under the crosshair fill as the held Cast charges.
+    void OnGUI()
+    {
+        if (chargeStart < 0f || !EventLog.HudVisible) return;
+        pips ??= new GUIStyle(GUI.skin.label) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
+        int charge = Charge;
+        var text = new System.Text.StringBuilder();
+        for (int i = 1; i <= World.MaxCharge; i++) text.Append(i <= charge ? "<color=#ffd24a>●</color> " : "<color=#ffffff55>●</color> ");
+        GUI.Label(new Rect(Screen.width / 2f - 60f, Screen.height / 2f + 18f, 120f, 30f), text.ToString(), pips);
     }
 
     Vector2Int CrosshairCell => grid.CellAt(crosshair.point - crosshair.normal * 0.05f);
@@ -106,18 +136,18 @@ public class SpellCaster : MonoBehaviour
     // lands. Online, the cast goes to the host and lands on every machine at
     // the same tick, timed to roughly when the projectile arrives. The demos
     // cast through this too.
-    public void Cast(string spellId, int x, int y, int dir)
+    public void Cast(string spellId, int x, int y, int dir, int charge = 1)
     {
         var online = Net;
         if (online != null && online.Online)
         {
             int delay = Mathf.CeilToInt(FlightSeconds(spellId, x, y, dir) * grid.World.Rules.Sim.TicksPerSecond);
-            online.RequestCast(spellId, x, y, dir, delay, transform.position);
+            online.RequestCast(spellId, x, y, dir, delay, transform.position, charge);
             return;
         }
         PlayCastEffect(spellId, x, y, dir, () =>
         {
-            grid.World.Cast(spellId, x, y, dir);
+            grid.World.Cast(spellId, x, y, dir, charge);
             SpellForces.Apply(grid, spellId, x, y, dir, transform);
         });
     }

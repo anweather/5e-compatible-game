@@ -120,9 +120,10 @@ public class NetChem : NetworkBehaviour
     /// Asks the host to cast a spell. It takes effect on every machine at the same tick, after
     /// <paramref name="delayTicks"/>; <paramref name="from"/> is where the caster stands (a burst's centre).
     /// </summary>
-    public void RequestCast(string spellId, int x, int y, int dir, int delayTicks, Vector3 from)
+    public void RequestCast(string spellId, int x, int y, int dir, int delayTicks, Vector3 from, int charge = 1)
     {
-        RequestCastRpc(new FixedString32Bytes(spellId), x, y, dir, delayTicks, from);
+        var cast = new CastIntent { Spell = new FixedString32Bytes(spellId), X = x, Y = y, Dir = dir, Charge = (byte)World.ClampCharge(charge), From = from };
+        RequestCastRpc(cast, delayTicks);
     }
 
     /// <summary>Host only: stamps a physics prop's effect on cells into the next tick's batch, for every machine.</summary>
@@ -215,10 +216,13 @@ public class NetChem : NetworkBehaviour
     }
 
     [Rpc(SendTo.Server)]
-    void RequestCastRpc(FixedString32Bytes spell, int x, int y, int dir, int delayTicks, Vector3 from, RpcParams rpc = default)
+    void RequestCastRpc(CastIntent cast, int delayTicks, RpcParams rpc = default)
     {
         ulong caster = rpc.Receive.SenderClientId;
-        scheduled.Add(new CastIntent { Spell = spell, X = x, Y = y, Dir = dir, Caster = caster, From = from, Tick = hostTick + 1 + Mathf.Clamp(delayTicks, 0, 30) });
+        cast.Caster = caster;
+        cast.Tick = hostTick + 1 + Mathf.Clamp(delayTicks, 0, 30);
+        scheduled.Add(cast);
+        var (spell, x, y, dir) = (cast.Spell, cast.X, cast.Y, cast.Dir);
         // Only the server can look a player's wizard up by client id; everyone else finds it by its object id.
         var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(caster);
         if (wizard != null) AnnounceCastRpc(spell, x, y, dir, wizard.NetworkObjectId);
@@ -364,11 +368,13 @@ public struct CastIntent : INetworkSerializable
 {
     public FixedString32Bytes Spell;
     public int X, Y, Dir, Tick;
+    /// <summary>How long it was held, 1 (a tap) to World.MaxCharge.</summary>
+    public byte Charge;
     public ulong Caster;
     /// <summary>Where the caster stood when casting: the centre of a burst's shove (Thunderwave).</summary>
     public Vector3 From;
 
-    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir);
+    public CastCommand ToCommand() => new CastCommand(Spell.ToString(), X, Y, Dir, Charge);
 
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
@@ -376,6 +382,7 @@ public struct CastIntent : INetworkSerializable
         serializer.SerializeValue(ref X);
         serializer.SerializeValue(ref Y);
         serializer.SerializeValue(ref Dir);
+        serializer.SerializeValue(ref Charge);
         serializer.SerializeValue(ref Tick);
         serializer.SerializeValue(ref Caster);
         serializer.SerializeValue(ref From);

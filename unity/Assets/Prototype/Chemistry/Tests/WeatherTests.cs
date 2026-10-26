@@ -122,7 +122,7 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("9680239a 26248982"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f89063c4 952317619"));
         }
     }
 }

@@ -127,8 +127,16 @@ down is `sim.height.min`).
 ```
 
 A replaced spell is replaced whole, so keep its `group` (which element of
-the Unity game's spell radial it sits under, from `rules/groups.json`). A
-spell with no group goes under the last element.
+the Unity game's spell radial it sits under, from `rules/groups.json`) and
+its `"radial": false` if it had one (Earthen Trench and Move Earth do: they
+stay in the rules but off the radial, whose Earth is Raise Earth, Lower
+Earth and Wall of Stone). A spell with no group goes under the last element.
+
+**Charged casts.** Holding the cast charges a spell (1, a tap, to 3): its
+power times the charge, a terraform's raise or dig times the charge (a
+`height` 2 more per level), a line half again as long per level. A mod
+that changes `power`, `raise`, `dig`, `height` or `length` changes what
+each charge does.
 
 **A new element on the spell radial.** Frost gets its own wedge; Ray of
 Frost moves to it.

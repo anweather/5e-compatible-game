@@ -55,7 +55,7 @@ namespace Chem
                 : new[] { new GroupDef { Id = "", Name = "Spells", Color = Rules.DefaultGroupColor } };
             var last = defs[defs.Count - 1].Id;
             var spellsOf = defs.ToDictionary(g => g.Id, _ => new List<string>(), StringComparer.Ordinal);
-            foreach (var s in rules.Spells)
+            foreach (var s in rules.Spells.Where(s => s.Radial))
                 spellsOf[s.Group != null && spellsOf.ContainsKey(s.Group) ? s.Group : last].Add(s.Id);
             return new RadialLayout(defs
                 .Where(g => spellsOf[g.Id].Count > 0)
