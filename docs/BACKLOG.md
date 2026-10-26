@@ -306,6 +306,87 @@ Climbing walls of stone, rocks and the cabin (playtest P14).
   materials and props: "rough"); 5e rules (half speed, Athletics).
 - **Size:** M to L.
 
+## 15. Ball court scoreboard
+
+A score for the ball court east of the yard (Andrew, after the recap).
+
+- **What:** count the goals at each end and show them on a board by the
+  court (and a line in the HUD near it). After a goal, or when the ball
+  leaves the court, it goes back to the centre spot.
+- **Builds on:** the court's goals and rails (`ValleyBuilder.BuildCourt`),
+  the ball (`NetProp`, `Kicker`). Online the host decides goals and resets
+  (it runs the physics) and sends the score like tag's state (`NetTag`).
+- **Open:** a reset button; a match clock or first to N.
+- **Size:** S.
+
+## 16. Platformer tower
+
+A climbing course: an area with a tall tower of platforms and objects to
+get to the top of (Andrew, after the recap).
+
+- **What:** a double jump; platforms that move, platforms that collapse a
+  moment after you stand on them and come back later so it can be tried
+  again, platforms that phase in and out on a timer, maybe a wall jump. A
+  flag at the top, and fireworks when you reach it.
+- **Builds on:** the Starter Assets controller (its jump; a second jump is
+  a `SurfaceEffects`-style correction), the swim kick's vertical speed,
+  `CellBlockers` for walk-on boxes, the meteor's lights and particles for
+  the fireworks. A builder like the court's places the tower.
+- **Open:** online: moving and collapsing platforms run off the shared tick
+  (like the weather) so every player sees the same; a best time per player.
+- **Size:** M.
+
+## 17. Tower defense
+
+A second play area where waves of critters walk toward a flag and the
+players stop them with spells (Andrew, after the recap).
+
+- **What:** press a button to start; waves of critters (placeholders until
+  Andrew supplies models) walk a path toward a flag. Players raise
+  barriers with earth spells (walls, trenches, water) and hurt them with
+  damage spells (Fire Bolt, Fireball, Meteor, lightning through water).
+  A wave that reaches the flag costs a life.
+- **Builds on:** the sandbox's critters and entity damage (`entities.ts`,
+  `RULES.critters`), `SpellForces.Hit` for wizards (the same for
+  critters), pathing round blocking cells (Unity AI Navigation is in the
+  manifest, or a grid search over the cells, which the chemistry already
+  knows), terrain the spells already reshape.
+- **Open:** critters as core entities (deterministic for lockstep) or
+  host-run physics props; their stats in `rules/` as data; difficulty.
+- **Size:** L.
+
+## 18. Finer ground
+
+Smaller squares for the ground, so a slanted trench or the river is a
+smooth channel, not steps (playtest, after the slant aim).
+
+- **What:** the chemistry's squares are 1.5 m. The terrain now slopes
+  between square centres (`CellHeightfield.Blended`), which softens the
+  banks, but a trench at an angle still steps a square at a time. Two
+  ways on: halve the squares to 0.75 m (four times the cells: the sim,
+  the network checksum and every square-based number in `rules/` change),
+  or keep the squares and draw the ground from a smoother field (a
+  distance field from the shaped squares' edges, or rounding each
+  square's corners by its neighbours) that keeps a one-square pit at full
+  depth. Tried and rejected: a wider blur, which flattens a one-square pit
+  to a quarter of its depth.
+- **Size:** M (drawing) to L (finer squares).
+
+## 19. Performance pass
+
+The valley has grown (81 chunks, 576 × 576 squares, the falls, four
+cabins). Measured 2026-10-26 in the Editor: an ordinary frame 6.9 ms mean,
+8 ms p95; a wildfire of 650 burning squares 9.5 ms mean but 25 ms p95,
+with spikes up to 134 ms (drawing) and 31 ms (reshaping the ground);
+entering Play mode takes about 60 s.
+
+- **What:** find and flatten the spikes (batch the terrain writes per
+  frame, cap fire effects further away, profile the 134 ms frame), and
+  look at Play-mode start (the eager terrain copies at Bind, the yard
+  build). Measure a player build, not just the Editor.
+- **Builds on:** the wildfire and perf probes (their timing metrics).
+- **Size:** M.
+
 ## Suggested order)
 
 Dependencies, roughly:
@@ -324,3 +405,6 @@ Dependencies, roughly:
 7. **Caves and the underground lake (3)** after a representation spike;
    it's the biggest change to the core.
 8. **IK and animation (9)** whenever the look of a feature needs it.
+9. **Performance pass (19)** before the next playtest with friends; the
+   **scoreboard (15)** is small and can go any time; the **platformer
+   (16)** and **tower defense (17)** are play areas that build on the rest.
