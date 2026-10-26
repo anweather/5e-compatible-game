@@ -131,8 +131,9 @@ grass).
   surface doesn't.
 - The pond reads blocky from overhead, and a raised wall's crags are
   primitive shapes.
-- Online on the chunked valley has run with 2 players on one machine
-  (`docs/MULTIPLAYER.md` §8), not with 3 or 4, and not Mac↔PC over Relay.
+- Online on the chunked valley has run with 2 players: on one machine
+  (`docs/MULTIPLAYER.md` §8) and Mac↔PC over Relay (`docs/QUALITY.md`,
+  "Two-machine online check"), not yet with 3 or 4.
 
 Not in part 1: streaming to disk, seed generation, floating origin, the
 server/interest-management change, the fast-forward on wake. Part 2 is in

@@ -52,7 +52,8 @@ valley, any time.
    First run on 2026-10-25: 7.6 ms mean, 9.9 ms 95th percentile at
    3840×2160 (`docs/QUALITY.md`).
 5. Two-machine multiplayer: Host online on one machine, join by code on the
-   other (Relay). Never tested across two real machines before this.
+   other (Relay). Both builds must be from the same commit; the result is in
+   `docs/QUALITY.md` ("Two-machine online check").
 
 Record the results (FPS mean and 95th percentile, any errors) in `docs/QUALITY.md`.
 
