@@ -60,6 +60,15 @@ public static class AssetPackRestore
         ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "Unity", "Asset Store-5.x")
         : Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Personal), "Library", "Unity", "Asset Store-5.x");
 
+    /// <summary>True while a restore is downloading or importing.</summary>
+    public static bool Busy => SessionState.GetBool(Active, false);
+
+    /// <summary>True when every pack in the manifest is in the project.</summary>
+    public static bool AllPresent => Missing().Count == 0;
+
+    /// <summary>Raised when a restore ends (with or without failures).</summary>
+    public static event Action Finished;
+
     static List<Pack> Missing()
     {
         var missing = new List<Pack>();
@@ -114,6 +123,7 @@ public static class AssetPackRestore
             EditorApplication.update -= Pump;
             SessionState.SetBool(Active, false);
             Debug.Log(failed.Length == 0 ? "Asset packs: restore finished." : "Asset packs: restore finished with failures; see the errors above.");
+            Finished?.Invoke();
             return;
         }
         started = lastChange = EditorApplication.timeSinceStartup;

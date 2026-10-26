@@ -24,12 +24,19 @@
 /Assets/Prototype/Generated/
 /Assets/Prototype/Generated.meta
 
+# The yard scene is generated too (YardAutoBuild builds it when missing).
+# ChemYardBuilder writes its .meta with a fixed GUID, so the build settings
+# entry never changes.
+/Assets/Prototype/Scenes/ChemistryYard.unity
+/Assets/Prototype/Scenes/ChemistryYard.unity.meta
+
 # Copied from ../rules by PrototypeBuild before each player build
 /Assets/StreamingAssets/
 /Assets/StreamingAssets.meta
 
 # IDE files Unity regenerates
 .vs/
+.vsconfig
 .vscode/
 .idea/
 *.csproj

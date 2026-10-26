@@ -112,6 +112,7 @@ public static class ChemYardBuilder
         new GameObject("EventLog").AddComponent<EventLog>();
         SetUpNetwork(grid, BuildNetWizard(armature), things);
 
+        WriteSceneMeta();
         EditorSceneManager.SaveScene(scene, ScenePath);
         AssignSceneNetworkIds();
         EditorSceneManager.SaveScene(scene, ScenePath);
@@ -119,6 +120,19 @@ public static class ChemYardBuilder
         if (!scenes.Exists(s => s.path == ScenePath)) scenes.Insert(0, new EditorBuildSettingsScene(ScenePath, true));
         EditorBuildSettings.scenes = scenes.ToArray();
         Debug.Log($"Built {ScenePath}. Press Play.");
+    }
+
+    // The scene and its .meta aren't in git (YardAutoBuild), so a new scene would
+    // get a new GUID and change the build settings. Writing the .meta first keeps
+    // the same GUID on every machine and every rebuild.
+    const string SceneGuid = "f2663c50dfda24918a8751f8d49c8fbb";
+
+    static void WriteSceneMeta()
+    {
+        var meta = ScenePath + ".meta";
+        if (File.Exists(meta)) return;
+        File.WriteAllText(meta,
+            "fileFormatVersion: 2\nguid: " + SceneGuid + "\nDefaultImporter:\n  externalObjects: {}\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n");
     }
 
     static GameObject Load(string path) => EditorAssets.LoadPrefab(path);
