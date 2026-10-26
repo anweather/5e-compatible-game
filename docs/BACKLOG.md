@@ -269,7 +269,35 @@ everyone's wizards.
   happens to held items and rule switches (mods) on reset?
 - **Size:** S to M.
 
-## Suggested order
+## 13. Swimming
+
+Wading and swimming in the pond and lake (playtest P13).
+
+- **What:** deep water (a cell's water over the wizard's knees, from
+  `Cell.Water` and the drawn surface) switches the wizard to swimming:
+  slower, floating at the surface, a swim animation, out by walking up a
+  bank. Shallow water slows.
+- **Influenced by:** freezing (walk on ice), currents (water flow marks),
+  rain filling hollows.
+- **Builds on:** `WaterSurface` heights, the Starter Assets controller
+  (its grounded and gravity steps), `NetWizard` (the client moves itself).
+- **Open:** animations (Starter Assets has none for swimming; a CC0 or
+  Asset Store set), diving, drowning (5e: hold breath).
+- **Size:** M.
+
+## 14. Climbing
+
+Climbing walls of stone, rocks and the cabin (playtest P14).
+
+- **What:** walk into a steep face and hold jump (or a climb button) to
+  climb it at a stamina cost (P19's bar), mantle over the top.
+- **Builds on:** `MistyStep`'s `TopAbove` (finding the top of a face),
+  `CellBlockers`, the stamina bar.
+- **Open:** animations; which faces are climbable (all, or a tag on
+  materials and props: "rough"); 5e rules (half speed, Athletics).
+- **Size:** M to L.
+
+## Suggested order)
 
 Dependencies, roughly:
 
