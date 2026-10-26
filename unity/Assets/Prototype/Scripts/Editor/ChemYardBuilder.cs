@@ -21,6 +21,7 @@ public static class ChemYardBuilder
     const string VolumePath = "Assets/Prototype/Settings/YardVolume.asset";
     const string NetWizardPath = "Assets/Prototype/Prefabs/NetWizard.prefab";
     const string SpellVisualsPath = "Assets/Prototype/Settings/SpellVisuals.asset";
+    const string ThingPrefabsPath = "Assets/Prototype/Generated/ThingNetworkPrefabs.asset";
 
     // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
     // w pond  _ pit  = wooden bridge  m metal  ~ puddle  % bedrock  @ start
@@ -102,10 +103,14 @@ public static class ChemYardBuilder
 
         SetUpLighting();
         ValleyBuilder.Dress(grid, rows);
-        PropBuilder.Place(grid, rows.Length);
-        ItemBuilder.Place(grid, rows.Length);
+        // Props and items aren't placed here: ThingSpawner spawns them from world/things.json.
+        var things = PropBuilder.BuildPrefabs();
+        things.AddRange(ItemBuilder.BuildPrefabs());
+        var spawner = new GameObject("Things").AddComponent<ThingSpawner>();
+        spawner.grid = grid;
+        spawner.prefabs = things;
         new GameObject("EventLog").AddComponent<EventLog>();
-        SetUpNetwork(grid, BuildNetWizard(armature));
+        SetUpNetwork(grid, BuildNetWizard(armature), things);
 
         EditorSceneManager.SaveScene(scene, ScenePath);
         AssignSceneNetworkIds();
@@ -173,8 +178,9 @@ public static class ChemYardBuilder
     }
 
     // Multiplayer: the grid's lockstep chemistry (NetChem), a NetworkManager on
-    // UDP port NetSession.Port, and the Host / Join panel.
-    static void SetUpNetwork(ChemGrid grid, GameObject netWizard)
+    // UDP port NetSession.Port with the wizard and the things as network
+// prefabs, and the Host / Join panel.
+    static void SetUpNetwork(ChemGrid grid, GameObject netWizard, System.Collections.Generic.List<ThingSpawner.KindPrefab> things)
     {
         grid.gameObject.AddComponent<NetworkObject>();
         grid.gameObject.AddComponent<NetChem>();
@@ -192,8 +198,22 @@ public static class ChemYardBuilder
             ConnectionApproval = true,
         };
         manager.NetworkConfig.Prefabs.Add(new NetworkPrefab { Prefab = netWizard });
+        // The props and items, which the host spawns from world/things.json (ThingSpawner). A list
+        // asset, since NetworkConfig.Prefabs keeps only its lists in the scene, not prefabs added to it.
+        manager.NetworkConfig.Prefabs.NetworkPrefabsLists.Add(ThingPrefabList(things));
 
         new GameObject("NetSession").AddComponent<NetSession>();
+    }
+
+    static NetworkPrefabsList ThingPrefabList(System.Collections.Generic.List<ThingSpawner.KindPrefab> things)
+    {
+        EditorAssets.EnsureFolderFor(ThingPrefabsPath);
+        var list = EditorAssets.LoadOrCreate(ThingPrefabsPath, ScriptableObject.CreateInstance<NetworkPrefabsList>);
+        foreach (var old in new System.Collections.Generic.List<NetworkPrefab>(list.PrefabList)) list.Remove(old);
+        foreach (var thing in things) list.Add(new NetworkPrefab { Prefab = thing.prefab });
+        EditorUtility.SetDirty(list);
+        AssetDatabase.SaveAssets();
+        return list;
     }
 
     // The networked wizard: a variant of the Starter Assets character with

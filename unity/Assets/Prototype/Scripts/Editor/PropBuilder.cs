@@ -1,91 +1,76 @@
+using System.Collections.Generic;
 using Unity.Netcode;
 using Unity.Netcode.Components;
 using UnityEditor;
 using UnityEngine;
 
-// The yard's physics props (PhysicsProp), placed by Prototype > Build
-// Chemistry Yard: oil barrels in and by the oil spill, crates on and beside the
-// pond, a boulder at its edge, and crates by the brambles. Positions are yard
-// cells, as in ChemYardBuilder's map. Each prop is placed at rest on the baked
-// terrain (ValleyTerrain), or floating at its waterline on the pond, so nothing
-// drops or bobs when Play starts.
+// The physics props' prefabs (PhysicsProp), built by Prototype > Build
+// Chemistry Yard: an oil barrel, a crate and a boulder, one prefab per kind in
+// Generated/Things/. Where they stand is data, world/things.json, and
+// ThingSpawner spawns them there at runtime (at rest on the ground, floaters
+// at their waterline), so nothing is placed in the scene.
 //
-// Each prop is also an in-scene NetworkObject (NetProp): online the host
-// simulates it and clients follow its NetworkTransform. ChemYardBuilder gives
-// every in-scene NetworkObject its id once the scene is saved.
+// Each prefab is also a NetworkObject (NetProp, with the thing's stable id):
+// online the host spawns it and clients follow its NetworkTransform.
+// ChemYardBuilder registers every prefab with the NetworkManager.
 public static class PropBuilder
 {
     public const string Generated = "Assets/Prototype/Generated";
+    const string ThingsFolder = Generated + "/Things";
 
-    static readonly (string kind, int x, int y)[] SetPieces =
-    {
-        // Oil barrels in the spill (light the oil and they go up) and one beside it.
-        (EntityIds.Barrel, 18, 3), (EntityIds.Barrel, 20, 3), (EntityIds.Barrel, 17, 2),
-        // Crates on the pond and at its edge, and a boulder beside it.
-        (EntityIds.Crate, 19, 5), (EntityIds.Crate, 21, 6), (EntityIds.Crate, 16, 6),
-        (EntityIds.Boulder, 23, 5),
-        // Crates by the brambles.
-        (EntityIds.Crate, 11, 2), (EntityIds.Crate, 11, 3), (EntityIds.Crate, 10, 11),
-    };
+    static readonly string[] Kinds = { EntityIds.Barrel, EntityIds.Crate, EntityIds.Boulder };
 
-    /// <summary>Places the set pieces for a yard <paramref name="yardHeight"/> cells tall.</summary>
-    public static void Place(ChemGrid grid, int yardHeight)
+    /// <summary>Builds (or rebuilds) one prefab per prop kind.</summary>
+    public static List<ThingSpawner.KindPrefab> BuildPrefabs()
     {
-        world = ChemGrid.MapWorld(grid.LoadBaseRules(), grid.map, grid.seed, out _);
-        var parent = new GameObject("Props").transform;
         var flames = EditorAssets.LoadPrefab(PackPaths.FireFx + "/TinyFlames.prefab");
         var blast = EditorAssets.LoadPrefab(PackPaths.FireFx + "/BigExplosion.prefab");
-        int n = 0;
-        foreach (var (kind, x, y) in SetPieces)
+        var built = new List<ThingSpawner.KindPrefab>();
+        foreach (var kind in Kinds)
         {
-            var prop = Drop(Shape(kind), $"{kind} {++n}", parent, grid, kind, x, yardHeight - 1 - y);
+            var go = Shape(kind);
+            var prop = Make(go, kind);
             prop.flamesFx = flames;
             prop.explosionFx = blast;
+            built.Add(Save(go, kind));
         }
+        return built;
     }
 
-    // The starting world, for the water props float on (set by Place, which runs first).
-    static Chem.World world;
-
-    /// <summary>
-    /// Makes <paramref name="go"/> a physics prop of <paramref name="kind"/> under <paramref name="parent"/>,
-    /// at rest on yard cell (<paramref name="x"/>, <paramref name="z"/>) in world cells (z grows north).
-    /// </summary>
-    public static PhysicsProp Drop(GameObject go, string name, Transform parent, ChemGrid grid, string kind, int x, int z)
+    /// <summary>Makes <paramref name="go"/> a physics prop of <paramref name="kind"/> (rules/entities.json or rules/items.json), networked.</summary>
+    public static PhysicsProp Make(GameObject go, string kind)
     {
-        go.name = name;
-        go.transform.SetParent(parent, false);
-        var cell = new Vector3(x, 0f, z) * grid.cellSize;
-        go.transform.position = cell + Vector3.up * RestHeight(go, grid, kind, cell);
-
+        go.name = kind;
         var body = go.AddComponent<Rigidbody>();
         body.interpolation = RigidbodyInterpolation.Interpolate;
         body.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
         var prop = go.AddComponent<PhysicsProp>();
-        prop.grid = grid;
         prop.kind = kind;
         Network(go);
         return prop;
     }
 
-    // Where its centre rests: its lowest collider on the terrain, or, where it floats on water,
-    // its waterline (PropState: a floater sinks until the part under water times its lift holds it up).
-    static float RestHeight(GameObject go, ChemGrid grid, string kind, Vector3 at)
+    /// <summary>Saves <paramref name="go"/> as the prefab for <paramref name="kind"/> and removes it from the scene.</summary>
+    public static ThingSpawner.KindPrefab Save(GameObject go, string kind)
     {
-        Physics.SyncTransforms();
-        float below = go.transform.position.y;
-        foreach (var c in go.GetComponents<Collider>()) below = Mathf.Min(below, c.bounds.min.y);
-        float onGround = ValleyTerrain.GroundAt(at) + go.transform.position.y - below;
+        var path = $"{ThingsFolder}/{kind}.prefab";
+        EditorAssets.EnsureFolderFor(path);
+        var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
+        Object.DestroyImmediate(go);
+        StampNetworkHash(prefab);
+        return new ThingSpawner.KindPrefab { kind = kind, prefab = prefab };
+    }
 
-        var rules = world.Rules;
-        var def = rules.Entity(kind) ?? rules.Item(kind)?.AsEntity();
-        var cell = grid.CellAt(at);
-        var c0 = world.At(cell.x, cell.y);
-        if (def == null || c0 == null || c0.Water <= 0 || !new Chem.PropState(def).Floats) return onGround;
-        float half = go.GetComponent<Renderer>().bounds.extents.y;
-        float surface = ValleyTerrain.GroundAt(at) + c0.Water / (float)rules.Sim.WaterUnitsPerStep * grid.stepHeight;
-        float afloat = surface - 2f * half / (float)new Chem.PropState(def).Lift + half;
-        return Mathf.Max(onGround, afloat);
+    // A network prefab is known by its GlobalObjectIdHash, which Netcode works out in OnValidate.
+    // That doesn't run for a prefab saved from code, so run it and save the hash into the asset,
+    // so every Editor (Multiplayer Play Mode's virtual players too) reads the same hash.
+    static void StampNetworkHash(GameObject prefab)
+    {
+        var networkObject = prefab.GetComponent<NetworkObject>();
+        var onValidate = typeof(NetworkObject).GetMethod("OnValidate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        onValidate?.Invoke(networkObject, null);
+        EditorUtility.SetDirty(prefab);
+        AssetDatabase.SaveAssetIfDirty(prefab);
     }
 
     // Host-simulated online: server-authoritative transform, interpolated on clients. It never

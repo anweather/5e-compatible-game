@@ -32,6 +32,8 @@ public partial class ChemGrid : MonoBehaviour
     public int conductLimit;
 
     public World World { get; private set; }
+    /// <summary>The world's props and items (world/things.json) with their stable ids; ThingSpawner spawns them.</summary>
+    public WorldThings Things { get; private set; } = WorldThings.Empty;
     public Vector2Int PlayerStart { get; private set; }
 
     /// <summary>When true, something else (NetChem in multiplayer) steps the world; the grid only draws it.</summary>
@@ -58,8 +60,25 @@ public partial class ChemGrid : MonoBehaviour
     void Awake()
     {
         BuildWorld();
+        LoadThings();
         // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
         if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
+    }
+
+    // The things file is read once: it is the same for every world this scene starts (and online
+    // its fingerprint is part of the checksum, so every machine must have read the same one).
+    void LoadThings()
+    {
+        try
+        {
+            Things = WorldThings.Load(FindWorldDir());
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{WorldThings.FileName} can't be read, so no props or items: {e.Message}");
+            Things = WorldThings.Empty;
+        }
+        foreach (var problem in Things.Check(World.Rules)) Debug.LogWarning(problem);
     }
 
     /// <summary>Throws away the current world and its visuals and starts again from the map.</summary>
@@ -160,6 +179,9 @@ public partial class ChemGrid : MonoBehaviour
         }
         throw new DirectoryNotFoundException($"No rules/ folder with materials.json above {Application.dataPath}");
     }
+
+    // world/ (things.json) sits next to rules/: the repo's in the Editor, StreamingAssets/world in a build.
+    internal static string FindWorldDir() => Path.Combine(Path.GetDirectoryName(FindRulesDir()), "world");
 
     // --- coordinates -----------------------------------------------------
 

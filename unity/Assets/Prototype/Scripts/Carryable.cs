@@ -30,6 +30,8 @@ public class Carryable : MonoBehaviour
     Transform restParent;
 
     public ItemDef Def { get; private set; }
+    /// <summary>Its physics prop (the rules side, its kind and its stable id).</summary>
+    public PhysicsProp Prop => prop;
     public ChemGrid Grid => prop.grid;
     /// <summary>Its network half, or null in a scene without networking.</summary>
     public NetItem Net { get; private set; }

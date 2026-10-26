@@ -61,7 +61,8 @@ player travelling between them hands over chunk by chunk.
 - **Background work:** the chemistry core is engine-free C#, so chunk
   generation, saving and fast-forward run off the main thread.
 - **Props from data:** props are spawned from chunk data (stable ids from
-  chunk + index), not placed in the scene.
+  chunk + index), not placed in the scene. Built: see "Props and items from
+  data" below.
 - **Regional rules (idea):** mods scoped to a region ("Wildfire in this
   valley", a damp biome) on top of the global rule set.
 
@@ -87,6 +88,40 @@ grass).
   tested). Per-chunk hashes next to the world `CellHash`. Behaviour, goldens and
   netcode are unchanged.
 - **Props:** spawned from data with stable ids, not hand-placed in the scene.
+  **Done** (`feat/props-from-data`, below).
+
+### Props and items from data (done)
+
+- **The data:** `world/things.json` (repo root, next to `rules/`). Per
+  chunk, a list of things: `kind` (an id in `rules/entities.json` or
+  `rules/items.json`), `cell` (inside the chunk, 0 to 63; the world cell is
+  chunk × 64 + cell), optional `rot` (degrees about the vertical), optional
+  `link` (a pair of sending stones) and a free `note`. It is in `world/`, not
+  `rules/`, because rules say what exists and how it reacts (mods patch
+  them, the sandbox loads them) and this says where things stand in one
+  world; per-chunk files can split out of it when chunks stream.
+- **Stable ids:** `Chem.ThingId` is the chunk and the thing's index in that
+  chunk's list, packed into 64 bits (`"1,1#2"` in logs). Worked out from
+  the file, never a runtime counter, so host, clients and late joiners name
+  every thing the same way. Add new things at the end of a chunk's list, or
+  ids after it shift.
+- **Core:** `WorldThings.cs` reads the file (`InChunk`, `Find`, `At`,
+  `LinkedTo`), checks kinds and links against the rules, and has a
+  `Fingerprint`, which is the third part of the netcode checksum (cells /
+  rules / things). `EffectCommand.Thing` carries the id of the prop whose
+  blast, embers or spill it is. Tests: `ThingTests.cs`.
+- **Unity:** `ThingSpawner` spawns the active chunks' things from prefabs
+  (one per kind, built into `Generated/Things/` by `PropBuilder` and
+  `ItemBuilder`, registered through `Generated/ThingNetworkPrefabs.asset`),
+  at rest on the ground or at their waterline. Online the host spawns them
+  as NetworkObjects with the id in `NetProp` (so late joiners get it too);
+  a client drops its solo copies and adopts the host's by id. A broken
+  thing is despawned and destroyed, and remembered as gone.
+  `SpawnChunk` and `UnloadChunk` are the per-chunk API; nothing unloads
+  chunks yet.
+- **Checked:** the yard plays as before (same 18 things on the same cells;
+  probe `smoke` checks `things_spawned`), and `probe online` checks
+  `thing_ids_match` (the same ids and kinds on host and client).
 
 Not in part 1: streaming to disk, seed generation, floating origin, the
 server/interest-management change, the fast-forward on wake.

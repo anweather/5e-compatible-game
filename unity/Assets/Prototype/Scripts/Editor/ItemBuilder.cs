@@ -1,49 +1,37 @@
+using System.Collections.Generic;
 using UnityEditor;
 using UnityEngine;
 
-// The yard's things to carry (Carryable, rules/items.json), placed by
-// Prototype > Build Chemistry Yard: three glowing balls on the grass near the
-// start, a bullseye lantern at the yard's south edge, a spyglass, a Dancing
-// Lights mote, and a pair of sending stones, one by the start and one in the
-// far north-west corner. Positions are yard cells, as in ChemYardBuilder's map.
-// Their light, colour and use come from the rules at runtime; these are only
-// greybox shapes.
+// The things to carry's prefabs (Carryable, rules/items.json), built by
+// Prototype > Build Chemistry Yard, one per item in Generated/Things/: three
+// glowing balls, a bullseye lantern, a spyglass, a Dancing Lights mote and a
+// sending stone. Where they lie is data, world/things.json (ThingSpawner
+// spawns them; a pair of sending stones share a "link" there). Their light,
+// colour and use come from the rules at runtime; these are only greybox shapes.
 public static class ItemBuilder
 {
     const string BouncyPath = PropBuilder.Generated + "/ItemBouncy.asset";
     static readonly Color Placeholder = new Color(0.3f, 0.3f, 0.3f);
 
-    static readonly (string id, int x, int y)[] SetPieces =
+    static readonly string[] Kinds =
     {
-        (ItemIds.GlowBallAmber, 11, 12), (ItemIds.GlowBallAzure, 15, 12), (ItemIds.GlowBallRose, 14, 14),
-        (ItemIds.BullseyeLantern, 12, 15),
-        (ItemIds.Spyglass, 16, 14),
-        (ItemIds.DancingLights, 10, 14),
-        (ItemIds.SendingStone, 13, 11), (ItemIds.SendingStone, 2, 1),
+        ItemIds.GlowBallAmber, ItemIds.GlowBallAzure, ItemIds.GlowBallRose, ItemIds.BullseyeLantern,
+        ItemIds.Spyglass, ItemIds.DancingLights, ItemIds.SendingStone,
     };
 
-    /// <summary>Places the items for a yard <paramref name="yardHeight"/> cells tall.</summary>
-    public static void Place(ChemGrid grid, int yardHeight)
+    /// <summary>Builds (or rebuilds) one prefab per item.</summary>
+    public static List<ThingSpawner.KindPrefab> BuildPrefabs()
     {
-        var parent = new GameObject("Items").transform;
-        Carryable lastStone = null;
-        int n = 0;
-        foreach (var (id, x, y) in SetPieces)
+        var built = new List<ThingSpawner.KindPrefab>();
+        foreach (var id in Kinds)
         {
-            var prop = PropBuilder.Drop(Shape(id), $"{id} {++n}", parent, grid, id, x, yardHeight - 1 - y);
-            var item = prop.gameObject.AddComponent<Carryable>();
-            prop.gameObject.AddComponent<NetItem>();
-            if (id != ItemIds.SendingStone) continue;
-            // Stones come in pairs: each one knows the other.
-            if (lastStone == null)
-            {
-                lastStone = item;
-                continue;
-            }
-            item.partner = lastStone;
-            lastStone.partner = item;
-            lastStone = null;
+            var go = Shape(id);
+            PropBuilder.Make(go, id);
+            go.AddComponent<Carryable>();
+            go.AddComponent<NetItem>();
+            built.Add(PropBuilder.Save(go, id));
         }
+        return built;
     }
 
     // Greybox shapes. Lit items get a placeholder emission (a black one would drop the

@@ -88,6 +88,9 @@ public class OnlineObservation
     /// <summary>The pushed crate, before the shove and once it has settled (OnlineSchedule.PropTick).</summary>
     public Vector3 propBefore, propAfter;
     public bool propFound;
+    /// <summary>The pushed crate's stable id (world/things.json), and every thing this side has, as "id kind", sorted, at PropTick.</summary>
+    public string propId;
+    public List<string> things = new();
     /// <summary>The host's wizard (this side's copy), before the virtual player's Thunderwave and at PropTick.</summary>
     public Vector3 hostWizardBefore, hostWizardAfter;
     /// <summary>At OnlineSchedule.SampleTick, in the order of OnlineSchedule.Lines: per spell, its cells' summed height, wet cells, water units, raised walls, cells drawn wet, and the terrain drawn at their centres.</summary>
@@ -126,8 +129,16 @@ public static class OnlineSchedule
     public const string Fall = "(fall)";
     const float FallMetres = 10f;
 
-    /// <summary>The crate the virtual player's Thunderwave shoves east.</summary>
-    public const string PushedProp = "crate 6";
+    /// <summary>The yard cell of the crate the virtual player's Thunderwave shoves east (found by its stable id).</summary>
+    public static readonly Vector2Int PushedCell = new Vector2Int(16, 6);
+
+    /// <summary>The pushed crate's stable id, from the world's data (the same on both sides).</summary>
+    public static Chem.ThingId PushedThing(ChemGrid grid)
+    {
+        var cell = grid.YardCell(PushedCell.x, PushedCell.y);
+        var thing = grid.Things.At(cell.x, cell.y);
+        return thing != null ? thing.Id : Chem.ThingId.None;
+    }
 
     public static readonly Step[] Steps =
     {
@@ -193,8 +204,20 @@ public static class OnlineSchedule
         o.drawnGround = DrawnGround(grid, lines);
     }
 
-    public static NetProp FindProp(string name) =>
-        UnityEngine.Object.FindObjectsByType<NetProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.name == name);
+    /// <summary>This side's copy of a thing, by its stable id.</summary>
+    public static PhysicsProp FindProp(Chem.ThingId id)
+    {
+        var spawner = UnityEngine.Object.FindFirstObjectByType<ThingSpawner>();
+        return spawner != null ? spawner.Find(id) : null;
+    }
+
+    /// <summary>Every thing this side has, as "id kind", sorted by id.</summary>
+    public static List<string> Things()
+    {
+        var spawner = UnityEngine.Object.FindFirstObjectByType<ThingSpawner>();
+        if (spawner == null) return new List<string>();
+        return spawner.Live.OrderBy(t => t.id.Value).Select(t => $"{t.id} {t.prop.kind}").ToList();
+    }
 }
 
 /// <summary>
@@ -245,8 +268,11 @@ public sealed class OnlineProbeRecorder
 
     public void RecordProp(bool after)
     {
-        var prop = OnlineSchedule.FindProp(OnlineSchedule.PushedProp);
+        var id = OnlineSchedule.PushedThing(grid);
+        var prop = OnlineSchedule.FindProp(id);
         Seen.propFound = prop != null;
+        Seen.propId = id.ToString();
+        if (after) Seen.things = OnlineSchedule.Things();
         var host = UnityEngine.Object.FindObjectsByType<NetWizard>(FindObjectsSortMode.None).FirstOrDefault(w => w.OwnerClientId == NetworkManager.ServerClientId);
         if (host != null && after) Seen.hostWizardAfter = host.transform.position;
         else if (host != null) Seen.hostWizardBefore = host.transform.position;
@@ -478,12 +504,14 @@ public class OnlineProbe : ProbeScenario
         Check("client_walls_match", Same(o => o.raisedWalls.Cast<object>()) && host.raisedWalls.Count == 4 && host.raisedWalls[2] > 0 && host.raisedWalls[3] > 0,
             $"raised wall cells host [{Lines(host, o => o.raisedWalls.Cast<object>())}] client [{Lines(client, o => o.raisedWalls.Cast<object>())}]");
 
+        CompareThings(host, client);
+
         float moved = Vector3.Distance(host.propBefore, host.propAfter);
         float apart = Vector3.Distance(host.propAfter, client.propAfter);
         Metric("prop_moved_m", moved);
         Metric("prop_apart_m", apart);
         Check("prop_moved_matches", host.propFound && client.propFound && moved > 1f && apart < 0.05f,
-            $"{OnlineSchedule.PushedProp} moved {moved:0.00} m on the host by the client's Thunderwave; the client's copy {apart * 100f:0.0} cm from it");
+            $"crate {host.propId} moved {moved:0.00} m on the host by the client's Thunderwave; the client's copy {apart * 100f:0.0} cm from it");
 
         // The client's Thunderwave throws the host's wizard on the host's machine (Knockback); its landing on the
         // client's screen is what threw in the Starter Assets controller before WizardRig.PrepareForAnimationEvents.
@@ -497,5 +525,18 @@ public class OnlineProbe : ProbeScenario
         Metric("client_console_errors", client.errorCount);
         Check("client_no_console_errors", client.errorCount == 0,
             client.errorCount == 0 ? "0 errors" : $"{client.errorCount} errors: {string.Join(" | ", client.errors.Take(3))}");
+    }
+
+    // Every prop and item by its stable id (world/things.json): the client adopted the host's, none missing.
+    void CompareThings(OnlineObservation host, OnlineObservation client)
+    {
+        int inData = grid.Things.Count;
+        Metric("things_host", host.things.Count);
+        Metric("things_client", client.things.Count);
+        bool sameThings = host.things.SequenceEqual(client.things);
+        string firstOdd = host.things.Except(client.things).Concat(client.things.Except(host.things)).FirstOrDefault();
+        Check("thing_ids_match", sameThings && host.things.Count == inData && host.propId == client.propId,
+            sameThings ? $"{host.things.Count}/{inData} things, the same ids and kinds on both ({string.Join(", ", host.things.Take(3))}, ...); the pushed crate is {host.propId} on both"
+                       : $"host {host.things.Count}, client {client.things.Count} of {inData}; first difference: {firstOdd}; pushed crate host {host.propId} client {client.propId}");
     }
 }

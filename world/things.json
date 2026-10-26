@@ -1,0 +1,33 @@
+{
+  "about": "The valley's props and items, per 64x64-cell chunk (docs/WORLD_STREAMING.md). kind is an id in rules/entities.json or rules/items.json; cell is the cell inside the chunk (world cell = chunk * 64 + cell; y grows south); rot turns it about the vertical, in degrees; things with the same link are a pair (sending stones). A thing's id is its chunk and its place in the chunk's list, so add new things at the end of a chunk's list.",
+  "chunks": [
+    {
+      "chunk": [1, 0],
+      "things": [
+        { "kind": "barrel", "cell": [41, 62], "note": "in the oil spill: light the oil and it goes up" },
+        { "kind": "barrel", "cell": [43, 62], "note": "in the oil spill" },
+        { "kind": "barrel", "cell": [40, 61], "note": "beside the oil spill" },
+        { "kind": "crate", "cell": [34, 61], "note": "by the brambles" },
+        { "kind": "crate", "cell": [34, 62], "note": "by the brambles" },
+        { "kind": "sending-stone", "cell": [25, 60], "link": "stones", "note": "the yard's far north-west corner" }
+      ]
+    },
+    {
+      "chunk": [1, 1],
+      "things": [
+        { "kind": "crate", "cell": [42, 0], "note": "on the pond" },
+        { "kind": "crate", "cell": [44, 1], "note": "on the pond" },
+        { "kind": "crate", "cell": [39, 1], "note": "at the pond's west edge: the online probe's Thunderwave throws it" },
+        { "kind": "boulder", "cell": [46, 0], "note": "beside the pond" },
+        { "kind": "crate", "cell": [33, 6] },
+        { "kind": "glow-ball-amber", "cell": [34, 7] },
+        { "kind": "glow-ball-azure", "cell": [38, 7] },
+        { "kind": "glow-ball-rose", "cell": [37, 9] },
+        { "kind": "bullseye-lantern", "cell": [35, 10] },
+        { "kind": "spyglass", "cell": [39, 9] },
+        { "kind": "dancing-lights", "cell": [33, 9] },
+        { "kind": "sending-stone", "cell": [36, 6], "link": "stones", "note": "by the start" }
+      ]
+    }
+  ]
+}

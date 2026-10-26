@@ -39,7 +39,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
     public PropState State { get; private set; }
 
     Rigidbody body;
-    // Its colliders (a body and the feet PropBuilder gives it), and its look, for its size.
+    // Its colliders (a body and the feet PropBuilder gives its prefab), and its look, for its size.
     Collider[] shapes;
     Renderer look;
     PhysicsMaterial ownMaterial;
@@ -52,6 +52,9 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     /// <summary>Online on a client: the host simulates this prop, and this copy only follows it.</summary>
     public bool Puppet => net != null && net.Puppet;
+
+    /// <summary>Its stable id from world/things.json (ThingSpawner), or None for a prop made some other way.</summary>
+    public ThingId Thing => net != null ? net.Id : ThingId.None;
 
     string Label => State.Def.Name.ToLowerInvariant();
 
@@ -168,7 +171,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
     {
         if (Has(events, PropEvents.Ignited)) ShowBurning(true, announce: true);
         if (Has(events, PropEvents.Doused)) ShowBurning(false, announce: true);
-        if (Has(events, PropEvents.Burned)) ChemEffects.Request(grid, ChemEffects.At(EffectKind.Burn, at, kind));
+        if (Has(events, PropEvents.Burned)) ChemEffects.Request(grid, ChemEffects.By(this, EffectKind.Burn, at));
         if (Has(events, PropEvents.Landed)) EventLog.Add($"The {Label} drifts back down");
         if (Has(events, PropEvents.Destroyed)) Break(at);
     }
@@ -208,13 +211,13 @@ public class PhysicsProp : MonoBehaviour, IPushable
         broken = true;
         bool exploded = State.Def.Explodes != null;
         if (exploded) Explode(at, State.Def.Explodes);
-        else if (State.Burning) ChemEffects.Request(grid, ChemEffects.At(EffectKind.Embers, at, kind));
+        else if (State.Burning) ChemEffects.Request(grid, ChemEffects.By(this, EffectKind.Embers, at));
         ShowBreak(exploded);
         if (net != null && net.Hosting) net.Broke(exploded);
         else Destroy(gameObject);
     }
 
-    /// <summary>Online: it broke on the host. Hidden rather than destroyed, as Netcode wants for objects placed in the scene.</summary>
+    /// <summary>Online: it broke on the host. Hidden at once; Netcode destroys it as it despawns.</summary>
     public void Vanish()
     {
         broken = true;
@@ -233,7 +236,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
     // The blast's cells go to the chemistry; its shove and its damage are physics, so they stay here.
     void Explode(Vector2Int at, ExplosionDef blast)
     {
-        ChemEffects.Request(grid, ChemEffects.At(EffectKind.Explode, at, kind));
+        ChemEffects.Request(grid, ChemEffects.By(this, EffectKind.Explode, at));
         float reach = (blast.Radius + 1) * grid.cellSize;
         Forces.Radial(transform.position, reach, blast.Push * Forces.ImpulsePerPush, transform);
         foreach (var other in Forces.InSphere<PhysicsProp>(transform.position, reach, transform)) other.Hurt(Roll(blast.Damage));

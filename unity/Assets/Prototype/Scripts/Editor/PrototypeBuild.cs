@@ -6,9 +6,9 @@ using UnityEditor.Build.Reporting;
 using UnityEngine;
 
 // Player builds of the Chemistry Yard for macOS and Windows, into Builds/
-// (gitignored). The game reads rules/*.json at runtime, so every build gets
-// a copy in StreamingAssets/rules first (also gitignored: rules/ is the
-// source of truth).
+// (gitignored). The game reads rules/*.json and world/*.json at runtime, so
+// every build gets a copy in StreamingAssets/rules and StreamingAssets/world
+// first (also gitignored: rules/ and world/ are the source of truth).
 public static class PrototypeBuild
 {
     public const string ProductName = "Spell Chemistry Valley";
@@ -47,20 +47,27 @@ public static class PrototypeBuild
     }
 }
 
-// Copies rules/*.json into StreamingAssets/rules before any player build.
+// Copies rules/*.json and world/*.json (the props and items, world/things.json)
+// into StreamingAssets/rules and StreamingAssets/world before any player build.
 class PackRulesIntoBuild : IPreprocessBuildWithReport
 {
     public int callbackOrder => 0;
 
     public void OnPreprocessBuild(BuildReport report)
     {
-        var source = Path.GetFullPath(Path.Combine(Application.dataPath, "../../rules"));
-        var target = Path.Combine(Application.dataPath, "StreamingAssets/rules");
+        Pack("rules");
+        Pack("world");
+        AssetDatabase.Refresh();
+    }
+
+    static void Pack(string folder)
+    {
+        var source = Path.GetFullPath(Path.Combine(Application.dataPath, "../..", folder));
+        var target = Path.Combine(Application.dataPath, "StreamingAssets", folder);
         Directory.CreateDirectory(target);
         foreach (var old in Directory.GetFiles(target, "*.json")) File.Delete(old);
         var files = Directory.GetFiles(source, "*.json");
         foreach (var file in files) File.Copy(file, Path.Combine(target, Path.GetFileName(file)));
-        AssetDatabase.Refresh();
-        Debug.Log($"Packed {files.Length} rule files into the build: {string.Join(", ", files.Select(Path.GetFileName))}");
+        Debug.Log($"Packed {files.Length} {folder} files into the build: {string.Join(", ", files.Select(Path.GetFileName))}");
     }
 }

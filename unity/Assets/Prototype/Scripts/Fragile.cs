@@ -27,7 +27,7 @@ public class Fragile : MonoBehaviour
         broken = true;
         var grid = item.Grid;
         bool spills = item.Def.Breaks.Spill != null;
-        if (spills) ChemEffects.Request(grid, ChemEffects.At(EffectKind.Spill, grid.CellAt(transform.position), item.Def.Id));
+        if (spills) ChemEffects.Request(grid, ChemEffects.By(item.Prop, EffectKind.Spill, grid.CellAt(transform.position)));
         else EventLog.Add($"The {item.Name.ToLowerInvariant()} shatters");
         if (TryGetComponent<NetProp>(out var net) && net.Hosting) net.Broke(false, quiet: spills);
         else Destroy(gameObject);

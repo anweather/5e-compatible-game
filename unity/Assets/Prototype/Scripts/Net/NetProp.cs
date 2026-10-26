@@ -1,8 +1,15 @@
+using Chem;
 using Unity.Netcode;
 using UnityEngine;
 
-// A physics prop (or a carried item) in multiplayer: an in-scene NetworkObject
-// with a server-authoritative NetworkTransform, placed by PropBuilder.
+// A physics prop (or a carried item) in multiplayer: a NetworkObject with a
+// server-authoritative NetworkTransform, spawned from world/things.json by
+// ThingSpawner (its prefab built by PropBuilder or ItemBuilder).
+//
+// It carries the thing's stable id (ThingId: chunk + index in the data), set
+// before it spawns, so every machine and a late joiner know it by the same
+// id; a client's ThingSpawner adopts it by that id when it arrives. The
+// lockstep effects it hands the chemistry name it by that id too.
 //
 // The host simulates it: its Rigidbody, the cell under it, burning, hit
 // points, what it does to cells (stamped through NetChem, ChemEffects). On
@@ -10,15 +17,16 @@ using UnityEngine;
 // (interpolated), which shows the flames and the blast the host reports.
 // Only what the eye needs is replicated: burning, levitating and hit points.
 //
-// When it breaks, the host despawns it without destroying it (Netcode's way
-// for in-scene objects) and every machine hides it; a late joiner is told it
-// is despawned while joining and hides it too.
+// When it breaks, the host despawns and destroys it, so it is gone on every
+// machine, and a late joiner never gets it.
 [RequireComponent(typeof(PhysicsProp), typeof(Rigidbody))]
 public class NetProp : NetworkBehaviour
 {
     readonly NetworkVariable<bool> burning = new();
     readonly NetworkVariable<bool> levitating = new();
     readonly NetworkVariable<int> hp = new();
+    // Written once, by the spawner, before it spawns (so it arrives with the spawn, late joiners included).
+    readonly NetworkVariable<ulong> thing = new(ThingId.None.Value);
 
     PhysicsProp prop;
     Rigidbody body;
@@ -31,6 +39,11 @@ public class NetProp : NetworkBehaviour
     public bool Burning => burning.Value;
     public bool Levitating => levitating.Value;
     public int Hp => hp.Value;
+    /// <summary>Its stable id from world/things.json, the same on every machine (None if it wasn't spawned from data).</summary>
+    public ThingId Id => new ThingId(thing.Value);
+
+    /// <summary>ThingSpawner, before it is spawned: which thing of the world's data this is.</summary>
+    public void AssignId(ThingId id) => thing.Value = id.Value;
 
     void Awake()
     {
@@ -45,6 +58,9 @@ public class NetProp : NetworkBehaviour
             Publish();
             return;
         }
+        // A client's copy arrives from the host: the spawner gives it the grid and its partner.
+        var spawner = FindFirstObjectByType<ThingSpawner>();
+        if (spawner != null) spawner.Adopt(this);
         body.isKinematic = true;
         body.interpolation = RigidbodyInterpolation.None;
         burning.OnValueChanged += Burned;
@@ -86,7 +102,7 @@ public class NetProp : NetworkBehaviour
     {
         if (!Hosting) return;
         if (!quiet) BrokeRpc(exploded, transform.position);
-        NetworkObject.Despawn(false);
+        NetworkObject.Despawn(true);
     }
 
     [Rpc(SendTo.NotServer)]

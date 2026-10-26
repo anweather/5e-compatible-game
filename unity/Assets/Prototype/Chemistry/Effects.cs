@@ -4,7 +4,8 @@
 // deterministic result they hand over (D4 in docs/DECISIONS.md). Solo it is
 // applied at once; online the host stamps it into a TickBatch next to that
 // tick's casts, so every machine applies it at the same tick, and a late
-// joiner replays it from the host's history like a cast.
+// joiner replays it from the host's history like a cast. It names the thing
+// by its stable id (WorldThings), never by a runtime object id.
 namespace Chem
 {
     public enum EffectKind
@@ -22,12 +23,15 @@ namespace Chem
     /// <summary>A prop's effect on one cell: small enough to send like a cast.</summary>
     public readonly struct EffectCommand
     {
-        public EffectCommand(EffectKind kind, int x, int y, string entity)
+        public EffectCommand(EffectKind kind, int x, int y, string entity) : this(kind, x, y, entity, ThingId.None) { }
+
+        public EffectCommand(EffectKind kind, int x, int y, string entity, ThingId thing)
         {
             Kind = kind;
             X = x;
             Y = y;
             Entity = entity;
+            Thing = thing;
         }
 
         public EffectKind Kind { get; }
@@ -35,6 +39,11 @@ namespace Chem
         public int Y { get; }
         /// <summary>The prop's id in rules/entities.json, or the item's in rules/items.json.</summary>
         public string Entity { get; }
+        /// <summary>
+        /// Which prop or item did it: its stable id from world/things.json (WorldThings), the same on
+        /// every machine and for a late joiner, or ThingId.None. The kind's rules come from Entity.
+        /// </summary>
+        public ThingId Thing { get; }
     }
 
     public sealed partial class World

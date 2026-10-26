@@ -18,7 +18,8 @@ using UnityEngine;
 //   host checks it and stamps it into the next batch with the full mod list
 //   and each mod's JSON, and every machine switches at that tick.
 // - Every batch carries the host's checksum of an earlier tick, the cells'
-//   hash and the rules' fingerprint; a client that disagrees logs a desync.
+//   hash, the rules' fingerprint and the world's things' (the props' stable
+//   ids); a client that disagrees logs a desync.
 // - What physics props do to cells (a barrel's blast, a lantern's spill;
 //   ChemEffects) is seen by the host, whose physics is the only one that
 //   counts, and stamped into the next batch like a cast.
@@ -216,8 +217,11 @@ public class NetChem : NetworkBehaviour
         if (TryGetComponent<RuleSwitcher>(out var switcher)) switcher.Refused(why.ToString());
     }
 
-    /// <summary>The checksum every machine compares: the cells' hash and the rules' fingerprint.</summary>
-    static string Checksum(ChemGrid grid) => grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint;
+    /// <summary>
+    /// The checksum every machine compares: the cells' hash, the rules' fingerprint and the world's
+    /// things' (world/things.json: the props' stable ids).
+    /// </summary>
+    static string Checksum(ChemGrid grid) => grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint;
 
     // --- everyone --------------------------------------------------------------
 
@@ -296,8 +300,14 @@ public class NetChem : NetworkBehaviour
         string here = Checksum(grid);
         if (expected == here) return;
         desyncReported = true;
-        var (hostCells, hostRules) = Split(expected);
-        var (ownCells, ownRules) = Split(here);
+        var (hostCells, hostRules, hostThings) = Split(expected);
+        var (ownCells, ownRules, ownThings) = Split(here);
+        if (hostThings != ownThings)
+        {
+            EventLog.Add($"<color=#ff8a80>Desync at tick {tick}: this machine's world/things.json differs from the host's, so props have different ids. Same files?</color>");
+            Debug.LogWarning($"NetChem desync at tick {tick}: things fingerprint host {hostThings} here {ownThings}");
+            return;
+        }
         if (hostRules != ownRules)
         {
             EventLog.Add($"<color=#ff8a80>Desync at tick {tick}: this machine runs different rules from the host's (host {hostRules}, here {ownRules}). Same mods, same files?</color>");
@@ -308,10 +318,10 @@ public class NetChem : NetworkBehaviour
         Debug.LogWarning($"NetChem desync at tick {tick}: cells host {hostCells} here {ownCells}");
     }
 
-    static (string cells, string rules) Split(string checksum)
+    static (string cells, string rules, string things) Split(string checksum)
     {
-        int at = checksum.IndexOf('/');
-        return at < 0 ? (checksum, "") : (checksum.Substring(0, at), checksum.Substring(at + 1));
+        var parts = checksum.Split('/');
+        return (parts[0], parts.Length > 1 ? parts[1] : "", parts.Length > 2 ? parts[2] : "");
     }
 
     /// <summary>For tests and the CLI: the last checksum this machine would send or compare.</summary>
@@ -347,6 +357,8 @@ public struct EffectIntent : INetworkSerializable
     public byte Kind;
     public int X, Y, Tick;
     public FixedString64Bytes Entity;
+    /// <summary>The prop's stable id (Chem.ThingId), never its NetworkObjectId.</summary>
+    public ulong Thing;
 
     public static EffectIntent From(EffectCommand e, int tick) => new EffectIntent
     {
@@ -355,9 +367,10 @@ public struct EffectIntent : INetworkSerializable
         Y = e.Y,
         Tick = tick,
         Entity = new FixedString64Bytes(e.Entity ?? ""),
+        Thing = e.Thing.Value,
     };
 
-    public EffectCommand ToCommand() => new EffectCommand((EffectKind)Kind, X, Y, Entity.ToString());
+    public EffectCommand ToCommand() => new EffectCommand((EffectKind)Kind, X, Y, Entity.ToString(), new ThingId(Thing));
 
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
@@ -366,6 +379,7 @@ public struct EffectIntent : INetworkSerializable
         serializer.SerializeValue(ref Y);
         serializer.SerializeValue(ref Tick);
         serializer.SerializeValue(ref Entity);
+        serializer.SerializeValue(ref Thing);
     }
 }
 

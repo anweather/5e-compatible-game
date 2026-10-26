@@ -350,9 +350,10 @@ What the Unity yard does today, with what was measured in Multiplayer Play
 Mode (one Mac, 2 and then 4 players, same-network transport).
 
 **Design.**
-- Every crate, barrel, boulder and thing to carry is an in-scene
-  `NetworkObject` (built by `PropBuilder`; never edit the scene by hand,
-  rebuild it so each object gets its id). The host simulates its
+- Every crate, barrel, boulder and thing to carry is a `NetworkObject`.
+  (Since `feat/props-from-data` the host spawns them from
+  `world/things.json` with stable ids, `docs/WORLD_STREAMING.md`; this
+  section was measured when they were in-scene objects.) The host simulates its
   Rigidbody; clients get a kinematic copy moved by a server-authority
   `NetworkTransform` (interpolated). `NetProp` replicates only burning,
   levitating and hit points, for the flames and the log.

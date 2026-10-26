@@ -10,7 +10,7 @@ Five layers. Each one only knows about the layers above it in this list.
 
 | # | Layer | Where | What it does | Knows about Unity? |
 |---|---|---|---|---|
-| 1 | **Rules data** | `rules/*.json` (repo root) | What exists and how it reacts: materials, reactions, spells, sim numbers. Shared with the web sandbox | No (it's data) |
+| 1 | **Rules data** | `rules/*.json` (repo root) | What exists and how it reacts: materials, reactions, spells, sim numbers. Shared with the web sandbox. Next to it, `world/things.json`: where the props and items stand, per chunk | No (it's data) |
 | 2 | **Chem core** | `Chemistry/` (namespace `Chem`) | Loads the rules and runs the world: a grid of cells, one tick at a time. Same results on every machine | **No**, the compiler forbids it |
 | 3 | **View** (presentation) | `Scripts/` | Draws the world, reads input, plays the show (gestures, projectiles, particles), moves the wizard | Yes |
 | 4 | **Networking** | `Scripts/Net/` | Lets friends share one world: sends cast intents, not cells | Yes |
@@ -69,6 +69,12 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   `Rules.CheckItems.cs` checks them with the same messages as the sandbox,
   which carries the table through mods but has no items on its board. Not a
   port: like `PropState`, it is the rules side of Unity physics.
+- **Things from data** (`WorldThings.cs`, `docs/WORLD_STREAMING.md`): the
+  props and items of `world/things.json`, per chunk, each with a stable id
+  (`ThingId`: chunk + index in the chunk's list, never a runtime counter),
+  checked against the rules, with a `Fingerprint` for the netcode checksum.
+  `EffectCommand.Thing` names the prop an effect came from by that id. Not
+  a port: the sandbox has no props on its board.
 - `PropState.cs` is the rules side of a physics prop (hit points, burning,
   levitation, whether it floats), counted in ticks. It is the one file here
   that is *not* a port: the sandbox has no physics.
@@ -136,7 +142,7 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 | The grid's view | `ChemGrid.cs` (ticks the world, map legend, coordinates, log), `ChemGrid.Rules.cs` (the rules in force; puts a switch in force between ticks and raises `RulesChanged`), `ChemGrid.Visuals.cs` (per-cell redraw: dressing, blocker, water, covers), `ChemGrid.Effects.cs` (fire, gas, charge; flames jittered by a cell hash so a burning front isn't a row), `ChemGrid.Shaping.cs` (earth shaping: reshaped ground eases to its new height with a puff of dust, carrying what stands on it), `CellDressing.cs` (what stands on a cell: brambles, a charred stump, rubble, a stone block; seeded per cell so nothing repeats), `CellDressing.Built.cs` (a bridge's plank deck on two beams, a riveted iron or bronze plate shifted and turned off the grid, a raised wall's grey crags), `CellBlockers.cs` (pooled invisible boxes on blocking cells: trees, brambles, stone, raised walls), `CellWaterMesh.cs` (one surface over the wet cells, and one for ice with a collider; never above the land around it), `CellSlickMesh.cs` (oil and grease as one glossy film, level over a pit's lip and shed on steep ground), `ContourSurface.cs` (the mesh both draw: a `CellContour` outline with heights, vertex colours fading the edge, world UVs), `MaterialCache.cs`, `FireLightPool.cs` |
 | The ground | The valley's 9×9 chunk terrains are the ground for every cell, the old yard included. `ValleyGround.cs` keeps runtime copies of the chunks the cells reach and draws the cells on them: heights from `CellHeightfield` (baked base plus each cell's offset, eased) and paint from `CellPaint` (one texel block per cell, detail grass cleared off bare ground). `ValleyChemistry.cs` routes cell changes to it and does the rest on the terrain: burnt trees (the yard's trees are terrain trees too), scorched grass, the cabin burning down, the lake (pits under the lake's surface) |
 | The wizard | `PlayerControls.cs` (input bindings), `SpellCaster.cs` (aim, pick, cast; a two-page bar, Elements and Earth), `CastPose.cs` (arm gesture), `SurfaceEffects.cs` (skid on ice, wade in water, climb one step), `Knockback.cs` (shoved by blasts), `CameraZoom.cs`, `WizardRig.cs` (names of the Starter Assets parts) |
-| Physics props | `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes; online a client's copy is a puppet of the host's), `Forces.cs` (radial and line shoves, optionally only what this machine owns), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate; solo when a cast lands, online when its tick batch runs), `ChemEffects.cs` (the one door from physics into the chemistry: applied solo, stamped by the host online) |
+| Physics props | `ThingSpawner.cs` (spawns the props and items of `world/things.json` per chunk from one prefab per kind, at rest on their cells; online the host spawns them as NetworkObjects and clients adopt them by stable id; `SpawnChunk` / `UnloadChunk`), `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes; online a client's copy is a puppet of the host's), `Forces.cs` (radial and line shoves, optionally only what this machine owns), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate; solo when a cast lands, online when its tick batch runs), `ChemEffects.cs` (the one door from physics into the chemistry: applied solo, stamped by the host online) |
 | Things to carry | `Carryable.cs` (an item from `rules/items.json`; a `PhysicsProp` on the ground, kinematic in hand; adds the behaviours its row asks for), `ItemHolder.cs` (the wizard's hand: pick up, drop, throw, use, the hint by the crosshair; online every wizard has one, and pick-up and letting go are granted by the host), `ItemUse.cs` (base of the behaviours), `ItemLight.cs`, `Fragile.cs` (smash and spill through `ChemEffects`), `Spyglass.cs`, `SendingStone.cs` with `PingMarker.cs`, `DancingLights.cs`, `Aiming.cs` (the crosshair ray, shared with `SpellCaster`) |
 | The show of a spell | `SpellVisuals.cs` (data asset), `SpellProjectile.cs` |
 | HUD | `EventLog.cs` (help, spell bar, "what happened" log), `ModsPanel.cs` (M / Start: the mods panel) |
@@ -176,12 +182,14 @@ their shoves run too: the host moves the props, each player their own
 wizard. `NetWizard.cs` switches a spawned wizard on for its owner and
 passes a shove worked out elsewhere (a barrel blast on the host) to it.
 
-**Physics props and items are host-authoritative** (D4): each is an
-in-scene `NetworkObject` placed by `PropBuilder` with a server-authority
-`NetworkTransform`. `NetProp.cs` makes a client's copy a kinematic puppet
-and replicates only what the eye needs (burning, levitating, hit points);
-a broken prop is despawned without being destroyed and hidden everywhere,
-late joiners included. `NetItem.cs` keeps who holds an item (the holder
+**Physics props and items are host-authoritative** (D4): each is a
+`NetworkObject` spawned by the host's `ThingSpawner` from
+`world/things.json`, with a server-authority `NetworkTransform`. `NetProp.cs`
+carries the thing's stable id (`Chem.ThingId`, set before it spawns, so late
+joiners get it too), makes a client's copy a kinematic puppet and replicates
+only what the eye needs (burning, levitating, hit points); a broken prop is
+despawned and destroyed everywhere. Effects (`EffectIntent`) name the prop
+by that id, and the checksum includes the things file's fingerprint. `NetItem.cs` keeps who holds an item (the holder
 wizard's object id; the host grants pick-ups and flies throws), whether its
 light is uncovered, the Dancing Lights mote's position (from the holder),
 and carries a sending stone's message to the machine of whoever holds the
@@ -195,9 +203,11 @@ Scenes are **generated by code**, never edited by hand:
 `ChemYardBuilder.cs` (Prototype > Build Chemistry Yard) lays out the yard,
 the wizard, the camera, lighting, networking and the spell visuals, and
 calls `ValleyBuilder.cs` for the terrain, lake, sky, cabin and the
-chemistry map around the yard, and `PropBuilder.cs` for the crates,
-barrels and boulder (placed at rest on the baked terrain, floaters at their
-waterline). `ValleyShape.cs` is the valley's shape as functions of a point;
+chemistry map around the yard. `PropBuilder.cs` and `ItemBuilder.cs` build
+one prefab per prop and item kind (`Generated/Things/`, registered as network
+prefabs through `Generated/ThingNetworkPrefabs.asset`); where they stand is
+data (`world/things.json`), spawned at runtime by `ThingSpawner`, so nothing
+is placed in the scene. `ValleyShape.cs` is the valley's shape as functions of a point;
 `ValleyTerrain.cs` builds the chunk terrains from it (`TerrainGrid.Valley()`:
 257 heightmaps on the 3×3 chunks around the play area, 65 elsewhere; seam
 corners rounded to stored height steps so a 257 edge meets a 65 edge
@@ -275,8 +285,8 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 | A **spell** | Add it to `rules/spells.json`. Add its id to `SpellIds` in `RuleIds.cs`, its look (glow, projectile, impact) to `ChemYardBuilder.BuildSpellVisuals`, and, to put it on the bar, to `SpellIds.DefaultBar` (the Elements page) or `SpellIds.EarthBar` (the Earth page; Tab or the d-pad's left/right switches pages) |
 | A **new kind of cell effect** (e.g. a new gas) | Data first; then a `Render...` method in `ChemGrid.Effects.cs` with a prefab and a cube fallback, called from `ChemGrid.RenderCell`, and its state added to `ChemGrid.Key` |
 | A **chemistry behaviour** that data can't express | Change the TS sandbox and `Chemistry/` together, with a golden test for both |
-| A **physics prop** | Its numbers in `rules/entities.json`, a `PhysicsProp` placed by `PropBuilder` (Editor), which also makes it networked (`NetProp`). Anything it does to cells goes through `ChemEffects.Request` as an `EffectCommand`, never straight to the world: solo it applies at once; online the host stamps it into the next `NetChem` tick batch (D4 in `DECISIONS.md`) and every machine applies it at that tick. A new kind of effect goes in `Chem.EffectKind` and `World.ApplyEffect`. Then rebuild the yard (Prototype > Build Chemistry Yard) so every in-scene `NetworkObject` gets its id |
-| A **thing to carry** | Its row in `rules/items.json` (light, use, breaks; checked in both `Rules.CheckItems.cs` and `validateRules`). Its id in `ItemIds`, a shape and a spot in `ItemBuilder` (Editor). A new `use` needs an `ItemUse` behaviour, added in `Carryable.AddBehaviours`, and the use name in both checkers. If what it does should show on other screens, give `NetItem` the state or message (as for the light, the mote and sending stones); a use only its holder sees (the spyglass) needs nothing |
+| A **physics prop** | Its numbers in `rules/entities.json`, a shape in `PropBuilder` (Editor), which builds its prefab and makes it networked (`NetProp`), and where it stands in `world/things.json` (append to a chunk's list so ids don't shift). Anything it does to cells goes through `ChemEffects.Request` as an `EffectCommand`, never straight to the world: solo it applies at once; online the host stamps it into the next `NetChem` tick batch (D4 in `DECISIONS.md`) and every machine applies it at that tick. A new kind of effect goes in `Chem.EffectKind` and `World.ApplyEffect`. Then rebuild the yard (Prototype > Build Chemistry Yard) so its prefab is built and registered |
+| A **thing to carry** | Its row in `rules/items.json` (light, use, breaks; checked in both `Rules.CheckItems.cs` and `validateRules`). Its id in `ItemIds`, a shape in `ItemBuilder` (Editor), and a spot in `world/things.json` (a pair shares a `link`). A new `use` needs an `ItemUse` behaviour, added in `Carryable.AddBehaviours`, and the use name in both checkers. If what it does should show on other screens, give `NetItem` the state or message (as for the light, the mote and sending stones); a use only its holder sees (the spyglass) needs nothing |
 | **Scenery** | In a builder (`ValleyBuilder`), never placed by hand |
 
 ## Known debt
@@ -294,8 +304,7 @@ What this clean-up left alone, roughly in order of value.
 - **The two demo directors** (`DemoDirector`, `NetDemoDirector`) script
   similar tours in two formats (a coroutine and a step table).
 - **The valley builders keep their layout in static fields**
-  (`ValleyShape.Plan`, `ValleyTerrain`'s chunk list, `PropBuilder`'s
-  starting world). Fine for one-shot editor tools, but a small "valley
+  (`ValleyShape.Plan`, `ValleyTerrain`'s chunk list). Fine for one-shot editor tools, but a small "valley
   plan" object would make their steps independent.
 - **Rules folder lookup is written twice**: `ChemGrid.FindRulesDir` and
   the test helper in `Chemistry/Tests/` (the one jscpd clone).

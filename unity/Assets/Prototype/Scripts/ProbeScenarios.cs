@@ -35,7 +35,7 @@ public static class ProbeScenarios
     {
         new Entry("smoke", typeof(SmokeProbe), 90f,
             "Walks a few steps, casts each Elements spell once on the yard, then Mold Earth. " +
-            "Checks: the wizard moved, every spell is on the bar and was cast (World log), fire started, " +
+            "Checks: every prop and item of world/things.json spawned on its cell, the wizard moved, every spell is on the bar and was cast (World log), fire started, " +
             "Levitate lifted a prop, reactions logged, Mold Earth changed the ground, no console errors."),
         new Entry("fire", typeof(FireProbe), 60f,
             "Fire Bolt on the meadow west of the old yard. Counts burning cells at t+10 s and t+20 s. " +
@@ -66,6 +66,7 @@ public class SmokeProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         int startTick = World.Tick;
+        CheckThingsSpawned();
 
         // Walk: from the player start toward the pond, as DemoDirector does.
         var from = wizard.transform.position;
@@ -116,6 +117,21 @@ public class SmokeProbe : ProbeScenario
     }
 
     static Vector3 Flat(Vector3 v) => new Vector3(v.x, 0f, v.z);
+
+    // Every prop and item of world/things.json spawned by ThingSpawner, on its own cell, with its own id.
+    void CheckThingsSpawned()
+    {
+        var spawner = FindFirstObjectByType<ThingSpawner>();
+        var live = spawner != null ? spawner.Live.ToList() : new List<(Chem.ThingId id, PhysicsProp prop)>();
+        int placed = live.Count(t =>
+        {
+            var data = grid.Things.Find(t.id);
+            return data != null && data.Kind == t.prop.kind && grid.CellAt(t.prop.transform.position) == new Vector2Int(data.CellX, data.CellY);
+        });
+        Metric("things_spawned", live.Count);
+        Check("things_spawned", live.Count == grid.Things.Count && placed == live.Count,
+            $"{live.Count}/{grid.Things.Count} things spawned from world/things.json, {placed} on their own cell with their kind");
+    }
 }
 
 // --- fire ----------------------------------------------------------------------------
