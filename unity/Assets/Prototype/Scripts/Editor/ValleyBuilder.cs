@@ -366,7 +366,7 @@ public static class ValleyBuilder
     static Texture2D BuildLake()
     {
         var ripplesPath = Generated + "/LakeRipples.png";
-        File.WriteAllBytes(ripplesPath, ProceduralTextures.RippleNormals(256).EncodeToPNG());
+        File.WriteAllBytes(ripplesPath, ProceduralTextures.RippleNormals(512).EncodeToPNG());
         AssetDatabase.ImportAsset(ripplesPath);
         var importer = (TextureImporter)AssetImporter.GetAtPath(ripplesPath);
         importer.textureType = TextureImporterType.NormalMap;
@@ -376,7 +376,7 @@ public static class ValleyBuilder
         var mat = EditorAssets.LitMaterial(Generated + "/Lake.mat", new Color(0.12f, 0.32f, 0.42f, 0.78f), 0.96f);
         UrpMaterials.MakeTransparent(mat);
         UrpMaterials.SetNormalMap(mat, AssetDatabase.LoadAssetAtPath<Texture2D>(ripplesPath), 0.45f);
-        mat.SetTextureScale("_BaseMap", new Vector2(24f, 16f));
+        mat.SetTextureScale("_BaseMap", new Vector2(12f, 8f));
         EditorUtility.SetDirty(mat);
 
         var lake = Primitives.Visual(PrimitiveType.Plane, "Lake");
