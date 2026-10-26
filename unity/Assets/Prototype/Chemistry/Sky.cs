@@ -12,12 +12,13 @@ namespace Chem
     /// <summary>The weather at one tick: its kind, how strong it is (0..100, ramping in and out) and the wind it brings.</summary>
     public readonly struct WeatherNow
     {
-        public WeatherNow(WeatherKind kind, int strength, int windDir, int period)
+        public WeatherNow(WeatherKind kind, int strength, int windDir, int period, int meteors = 0)
         {
             Kind = kind;
             Strength = strength;
             WindDir = windDir;
             Period = period;
+            Meteors = meteors;
         }
 
         public WeatherKind Kind { get; }
@@ -26,6 +27,8 @@ namespace Chem
         public int WindDir { get; }
         /// <summary>Which stretch of weather.periodMinutes this is, from 0.</summary>
         public int Period { get; }
+        /// <summary>How thick a meteor shower is, 0..100: a clear stretch may be one (weather.meteors.showerChance).</summary>
+        public int Meteors { get; }
 
         /// <summary>How hard it rains, 0..100 (rain and storms).</summary>
         public int Rain => Kind == WeatherKind.Rain || Kind == WeatherKind.Storm ? Strength : 0;
@@ -58,9 +61,14 @@ namespace Chem
             int length = Ticks(p, wp.PeriodMinutes);
             int period = tick / length, at = tick % length;
             var kind = KindOf(p, seed, period);
-            if (kind == WeatherKind.Clear) return new WeatherNow(kind, 0, -1, period);
-            // Ramp in from the start and out toward the end, unless the stretch next door is the same weather.
             int ramp = Math.Max(1, Ticks(p, wp.RampMinutes));
+            if (kind == WeatherKind.Clear)
+            {
+                // A clear stretch after the calm may be a meteor shower, ramping in and out within it.
+                bool shower = period >= wp.CalmPeriods && Hash(seed, period, 3) / 4294967296.0 < wp.ShowerChance;
+                return new WeatherNow(kind, 0, -1, period, shower ? Math.Min(100, Math.Min(at, length - at) * 100 / ramp) : 0);
+            }
+            // Ramp in from the start and out toward the end, unless the stretch next door is the same weather.
             int fromStart = period > 0 && KindOf(p, seed, period - 1) == kind ? ramp : at;
             int toEnd = KindOf(p, seed, period + 1) == kind ? ramp : length - at;
             int strength = Math.Min(100, Math.Min(fromStart, toEnd) * 100 / ramp);

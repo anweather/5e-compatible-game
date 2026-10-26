@@ -149,6 +149,12 @@ comes). What it does to squares, at full strength:
   Gust of Wind's (which wins while it blows).
 - **storm**: every `storm.strikeEvery` ticks, lightning may strike a random
   square (`storm.strikeChance`), applying `lightning` like Shocking Grasp.
+- **meteor showers**: a clear stretch (after the calm) is a shower with
+  chance `meteors.showerChance`, ramping in and out within it. Every
+  `meteors.every` ticks a meteor may appear over a random square
+  (`meteors.chance`), and `meteors.fallTicks` later it lands as the
+  `meteor` spell (its crater, its fire) with "A meteor strikes". One that
+  lands where no one is near (a paused chunk) leaves no mark.
 - **cloudy** and **fog** change only how the world looks.
 
 ## The parts that are code, not data

@@ -16,6 +16,8 @@ export interface WeatherNow {
   windDir: number;
   /** Which stretch of weather.periodMinutes this is, from 0. */
   period: number;
+  /** How thick a meteor shower is, 0..100: a clear stretch may be one (weather.meteors.showerChance). */
+  meteors: number;
 }
 
 export const MINUTES_PER_DAY = 24 * 60;
@@ -38,14 +40,18 @@ export function weatherAt(p: SimParams, seed: number, tick: number): WeatherNow 
   const length = ticksOf(p, wp.periodMinutes);
   const period = Math.floor(tick / length), at = tick % length;
   const kind = kindOf(p, seed, period);
-  if (kind === "clear") return { kind, strength: 0, windDir: -1, period };
-  // Ramp in from the start and out toward the end, unless the stretch next door is the same weather.
   const ramp = Math.max(1, ticksOf(p, wp.rampMinutes));
+  if (kind === "clear") {
+    // A clear stretch after the calm may be a meteor shower, ramping in and out within it.
+    const shower = period >= wp.calmPeriods && hash(seed, period, 3) / 4294967296 < wp.meteors.showerChance;
+    return { kind, strength: 0, windDir: -1, period, meteors: shower ? Math.min(100, Math.floor((Math.min(at, length - at) * 100) / ramp)) : 0 };
+  }
+  // Ramp in from the start and out toward the end, unless the stretch next door is the same weather.
   const fromStart = period > 0 && kindOf(p, seed, period - 1) === kind ? ramp : at;
   const toEnd = kindOf(p, seed, period + 1) === kind ? ramp : length - at;
   const strength = Math.min(100, Math.floor((Math.min(fromStart, toEnd) * 100) / ramp));
   const windy = (kind === "windy" || kind === "storm") && strength >= 50;
-  return { kind, strength, windDir: windy ? hash(seed, period, 2) >>> 30 : -1, period };
+  return { kind, strength, windDir: windy ? hash(seed, period, 2) >>> 30 : -1, period, meteors: 0 };
 }
 
 /** The weather of one stretch: clear for the first weather.calmPeriods, then picked by weather.weights with the seed's hash. */

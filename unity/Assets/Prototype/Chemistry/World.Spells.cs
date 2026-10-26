@@ -177,11 +177,16 @@ namespace Chem
             var s = Rules.Spell(spellId);
             if (s == null || !InBounds(x, y)) return;
             if (s.Effect == "levitate" || s.Effect == "carry") return;
-            charge = ClampCharge(charge);
+            AddLog($"You cast {s.Name}", LogKind.Info);
+            Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
+        }
+
+        /// <summary>What a spell does to cells where it lands, without the cast's log line (a meteor's landing too).</summary>
+        void Land(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
+        {
             var cells = SpellCells(s, x, y, dir, charge, aimX, aimY);
             // Squares in paused chunks are left alone (World.Chunks.cs).
             cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
-            AddLog($"You cast {s.Name}", LogKind.Info);
             if (s.Element == "air" && s.Wind > 0) Wind = (dir, s.Wind);
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
             Crater(x, y, s.Crater);

@@ -22,6 +22,15 @@ public class WeatherFx : MonoBehaviour
     ParticleSystem rain;
     AudioSource rainLoop, windLoop;
     int seenTick = -1;
+    SpellVisuals.Entry meteorLook;
+
+    // The Meteor spell's look (its flames, blast and dust), from a wizard's spell visuals; a bare one without.
+    static SpellVisuals.Entry MeteorLook()
+    {
+        var caster = FindFirstObjectByType<SpellCaster>();
+        var look = caster != null && caster.visuals != null ? caster.visuals.For(SpellIds.Meteor) : null;
+        return look ?? new SpellVisuals.Entry { spellId = SpellIds.Meteor, fromSky = true };
+    }
     float rainShown, windShown;
 
     void Start()
@@ -49,6 +58,13 @@ public class WeatherFx : MonoBehaviour
         if (world.Tick == seenTick) return;
         seenTick = world.Tick;
         foreach (var (x, y) in world.Strikes) StartCoroutine(Strike(Ground(grid.CellCenter(x, y)), cam.transform.position));
+        // A meteor shower's meteors: each falls for the ticks until it lands, from beyond it as seen from here.
+        foreach (var (x, y, lands) in world.NewMeteors)
+        {
+            meteorLook ??= MeteorLook();
+            float seconds = (lands - world.Tick) / (float)world.Rules.Sim.TicksPerSecond;
+            MeteorFall.Launch(Ground(grid.CellCenter(x, y)), cam.transform.position, meteorLook, null, null, seconds);
+        }
     }
 
     static void Play(AudioSource source, bool on)

@@ -8,7 +8,8 @@ using UnityEngine;
 // switched the way a mod switches them (a rule switch between ticks), and what
 // the view makes of them. Noon, then night (the clock's start hour moved so
 // the next tick lands there), then a storm with lightning every half second,
-// then fog. Screenshots of each, over the meadow toward the pond.
+// then a meteor shower at night (meteors every half second), then fog.
+// Screenshots of each, over the meadow toward the pond.
 public class SkyProbe : ProbeScenario
 {
     SkyLight sky;
@@ -37,6 +38,7 @@ public class SkyProbe : ProbeScenario
         Shot("night");
 
         yield return Storm();
+        yield return Shower();
 
         yield return Switch(At(10f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Only("fog") + " }");
         yield return Wait(6f);
@@ -72,6 +74,25 @@ public class SkyProbe : ProbeScenario
         Check("storm_is_dim", sky.sun.intensity < 0.8f, $"sun {sky.sun.intensity:0.00}");
         Metric("log_lines_in_storm", World.LogAppended - logged);
         Shot("storm");
+    }
+
+    // A meteor shower at night: a clear stretch that is one, meteors coming down (the core's) and drawn falling.
+    IEnumerator Shower()
+    {
+        yield return Switch(At(23f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Only("clear") +
+            ", 'meteors': { 'showerChance': 1, 'every': 3, 'chance': 1, 'fallTicks': 11 } }");
+        Cut(V(40f, 6f, 1f), V(28f, 30f, 60f));
+        GameObject meteor = null;
+        for (float t = 0f; t < 8f && meteor == null; t += Time.deltaTime)
+        {
+            meteor = GameObject.Find("Meteor");
+            yield return null;
+        }
+        Check("meteor_shower", World.Weather.Meteors > 0, $"{World.Weather.Kind}, meteors {World.Weather.Meteors}");
+        Check("meteors_fall", meteor != null, meteor != null ? $"one {meteor.transform.position.y:0} m up" : "none drawn in 8 s");
+        yield return Wait(0.6f);
+        Shot("meteors");
+        yield return Wait(3f);
     }
 
     static string Only(string kind) =>

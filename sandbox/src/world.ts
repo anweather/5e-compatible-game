@@ -81,6 +81,10 @@ export interface World {
   weather: WeatherNow;
   /** Squares lightning struck this tick. */
   strikes: [number, number][];
+  /** Meteors falling: where, and the tick they land on (tickWeather). */
+  falling: [number, number, number][];
+  /** Meteors that appeared this tick, for a view. */
+  newMeteors: [number, number, number][];
   nextId: number;
   wind: { dir: Dir; ticks: number } | null;
   log: LogEntry[];
@@ -112,6 +116,8 @@ export function createWorld(w: number, h: number, seed = 1): World {
     seed: seed >>> 0,
     weather: weatherAt(RULES.sim, seed >>> 0, 0),
     strikes: [],
+    falling: [],
+    newMeteors: [],
     nextId: 1,
     wind: null,
     log: [],
@@ -250,7 +256,7 @@ export function deserializeWorld(s: WorldSnapshot): World {
   const copy = JSON.parse(JSON.stringify(s)) as WorldSnapshot;
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
-  return { ...copy, seed, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

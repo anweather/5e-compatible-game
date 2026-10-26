@@ -226,6 +226,8 @@ export interface SimParams {
     weights: Partial<Record<"clear" | "cloudy" | "windy" | "fog" | "rain" | "storm", number>>;
     rain: { douseChance: number; dampen: number; fillEvery: number; fillChance: number; dryEvery: number; dryChance: number };
     storm: { strikeEvery: number; strikeChance: number };
+    /** A clear stretch's chance of a meteor shower; in one, every `every` ticks the chance a meteor appears, landing fallTicks later. */
+    meteors: { showerChance: number; every: number; chance: number; fallTicks: number };
   };
 }
 

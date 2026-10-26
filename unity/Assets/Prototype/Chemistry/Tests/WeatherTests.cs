@@ -122,7 +122,28 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f89063c4 952317619"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("3b42222f 3737841178"));
+        }
+        [Test]
+        public void GoldenMeteorShowerMatchesTs()
+        {
+            // The same as "a meteor shower brings meteors down..." in weather.test.ts.
+            var rules = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0 }, " +
+                "'meteors': { 'showerChance': 1, 'every': 6, 'chance': 1, 'fallTicks': 11 }");
+            var w = Field(rules, 6);
+            (int x, int y, int lands)? seen = null;
+            int appeared = -1;
+            for (int i = 0; i < 150; i++)
+            {
+                w.Step();
+                if (seen == null && w.NewMeteors.Count > 0) (seen, appeared) = (w.NewMeteors[0], w.Tick);
+            }
+            Assert.That(seen, Is.Not.Null, "a meteor appeared");
+            Assert.That(seen.Value.lands, Is.EqualTo(appeared + 11), "it lands fallTicks after it appears");
+            int strikes = w.Log.Where(l => l.Text == "A meteor strikes").Sum(l => l.Count);
+            Assert.That(strikes, Is.GreaterThan(0), "meteors landed");
+            Assert.That(w.Cells.Any(c => c.Height < 0), "and left craters");
+            Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("68379587 878453404 19"));
         }
     }
 }

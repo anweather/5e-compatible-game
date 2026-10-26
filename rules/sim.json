@@ -14,6 +14,7 @@
     "periodMinutes": 4, "rampMinutes": 0.5, "calmPeriods": 2,
     "weights": { "clear": 4, "cloudy": 2, "windy": 1.5, "fog": 1, "rain": 2, "storm": 1 },
     "rain": { "douseChance": 0.05, "dampen": 0.6, "fillEvery": 12, "fillChance": 0.015, "dryEvery": 30, "dryChance": 0.1 },
-    "storm": { "strikeEvery": 18, "strikeChance": 0.5 }
+    "storm": { "strikeEvery": 18, "strikeChance": 0.5 },
+    "meteors": { "showerChance": 0.15, "every": 18, "chance": 0.6, "fallTicks": 11 }
   }
 }

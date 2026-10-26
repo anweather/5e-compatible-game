@@ -22,7 +22,7 @@ public class MeteorFall : MonoBehaviour
     static CinemachineImpulseSource shaker;
 
     Vector3 from, to;
-    float t;
+    float t, seconds = Seconds;
     Action onArrive;
     UnityEngine.Object caster;
     bool hasCaster;
@@ -34,7 +34,7 @@ public class MeteorFall : MonoBehaviour
     /// Brings a meteor down on <paramref name="target"/>, coming in from beyond it as seen from
     /// <paramref name="viewer"/> (the caster), so it streaks across their view.
     /// </summary>
-    public static void Launch(Vector3 target, Vector3 viewer, SpellVisuals.Entry look, Action onArrive, UnityEngine.Object caster)
+    public static void Launch(Vector3 target, Vector3 viewer, SpellVisuals.Entry look, Action onArrive, UnityEngine.Object caster, float seconds = Seconds)
     {
         var ahead = target - viewer;
         ahead.y = 0f;
@@ -49,6 +49,7 @@ public class MeteorFall : MonoBehaviour
         m.onArrive = onArrive;
         m.caster = caster;
         m.hasCaster = caster != null;
+        m.seconds = Mathf.Max(0.2f, seconds);
         go.transform.position = m.from;
         m.Build();
     }
@@ -126,7 +127,7 @@ public class MeteorFall : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-        t += Time.deltaTime / Seconds;
+        t += Time.deltaTime / seconds;
         float k = Mathf.Clamp01(t);
         // Falling faster as it comes.
         transform.position = Vector3.Lerp(from, to, k * (0.55f + 0.45f * k));

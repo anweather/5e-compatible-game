@@ -186,15 +186,22 @@ function mistyStep(w: World, s: SpellDef, tx: number, ty: number, owner?: string
  * that many times the steps, and a line reaches half again as far per level
  * (World.Cast in the C# core).
  */
+/** The spell a meteor lands as (World.MeteorSpell). */
+export const METEOR_SPELL = "meteor";
+
 export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, casterId?: number, charge = 1, aim?: [number, number]): void {
   const s = spellById(id);
   if (!s || !inBounds(w, x, y)) return;
   if (s.effect === "levitate") return levitate(w, s, x, y);
   if (s.effect === "carry") return; // two taps; see carry()
-  charge = clampCharge(charge);
+  log(w, `You cast ${s.name}`, "info");
+  landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
+}
+
+/** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */
+export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
   const cells = spellCells(w, s, x, y, dir, charge, aim);
   const ctx = { power: (s.power ?? 1) * charge, dir, direct: true };
-  log(w, `You cast ${s.name}`, "info");
   if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };
   if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
   crater(w, x, y, s.crater);

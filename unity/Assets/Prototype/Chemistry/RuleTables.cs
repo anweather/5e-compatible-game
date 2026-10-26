@@ -159,6 +159,12 @@ namespace Chem
         /// <summary>Every strikeEvery ticks of storm, the chance (at full strength) lightning strikes a square.</summary>
         public int StrikeEvery = 18;
         public double StrikeChance = 0.5;
+        /// <summary>
+        /// The chance a clear stretch is a meteor shower; in one, every MeteorEvery ticks the chance
+        /// (at full strength) a meteor appears, which lands as the Meteor spell MeteorFallTicks later.
+        /// </summary>
+        public double ShowerChance = 0.15, MeteorChance = 0.6;
+        public int MeteorEvery = 18, MeteorFallTicks = 11;
     }
 
     public sealed class SimParams
@@ -584,6 +590,13 @@ namespace Chem
             {
                 w.StrikeEvery = Int(storm["strikeEvery"]) ?? w.StrikeEvery;
                 w.StrikeChance = Num(storm["strikeChance"]) ?? w.StrikeChance;
+            }
+            if (o["meteors"] is JObject meteors)
+            {
+                w.ShowerChance = Num(meteors["showerChance"]) ?? w.ShowerChance;
+                w.MeteorEvery = Int(meteors["every"]) ?? w.MeteorEvery;
+                w.MeteorChance = Num(meteors["chance"]) ?? w.MeteorChance;
+                w.MeteorFallTicks = Int(meteors["fallTicks"]) ?? w.MeteorFallTicks;
             }
         }
     }

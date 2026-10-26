@@ -103,6 +103,24 @@ test("mixed quick weather over many stretches matches the C# golden", () => {
     const w = field(8);
     run(w, 1200);
     const kinds = Array.from({ length: 17 }, (_, k) => kindOf(RULES.sim, 8, k)).join(" ");
-    assert.equal(`${cellHash(w)} ${w.rng}`, "f89063c4 952317619", kinds);
+    assert.equal(`${cellHash(w)} ${w.rng}`, "3b42222f 3737841178", kinds);
+  });
+});
+
+test("a meteor shower brings meteors down a little later as craters, and matches the C# golden", () => {
+  withRules({ sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 1, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 0 },
+    meteors: { showerChance: 1, every: 6, chance: 1, fallTicks: 11 } } } } as ModPatch, () => {
+    const w = field(6);
+    let seen: [number, number, number] | undefined, appeared = -1;
+    for (let i = 0; i < 150; i++) {
+      step(w);
+      if (!seen && w.newMeteors.length) [seen, appeared] = [w.newMeteors[0], w.tick];
+    }
+    assert.ok(seen, "a meteor appeared");
+    assert.equal(seen![2], appeared + 11, "it lands fallTicks after it appears");
+    const strikes = w.log.filter((l) => l.text === "A meteor strikes").reduce((n, l) => n + l.count, 0);
+    assert.ok(strikes > 0, "meteors landed");
+    assert.ok(w.cells.some((c) => c.h < 0), "and left craters");
+    assert.equal(`${cellHash(w)} ${w.rng} ${strikes}`, "68379587 878453404 19");
   });
 });

@@ -9,6 +9,7 @@ import {
   log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
 import { rainOf, weatherAt } from "./sky.ts";
+import { METEOR_SPELL, landSpell, spellById } from "./actions.ts";
 
 export function step(w: World): void {
   w.tick++;
@@ -255,11 +256,33 @@ export { ignite };
 // Nothing happens during the calm stretches the world starts with.
 function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
+  w.newMeteors = [];
+  landMeteors(w);
   if (now.period < p.calmPeriods) return;
   const rain = rainOf(now);
   if (rain > 0 && w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);
   else if (rain === 0 && w.tick % p.rain.dryEvery === 0) dry(w, p.rain.dryChance);
   if (now.kind === "storm" && w.tick % p.storm.strikeEvery === 0 && rand(w) < (p.storm.strikeChance * now.strength) / 100) strike(w);
+  if (now.meteors > 0 && w.tick % p.meteors.every === 0 && rand(w) < (p.meteors.chance * now.meteors) / 100) meteor(w);
+}
+
+function meteor(w: World) {
+  const x = Math.floor(rand(w) * w.w), y = Math.floor(rand(w) * w.h);
+  const m: [number, number, number] = [x, y, w.tick + RULES.sim.weather.meteors.fallTicks];
+  w.falling.push(m);
+  w.newMeteors.push(m);
+}
+
+/** Meteors whose tick has come land as the Meteor spell, in the order they appeared (World.LandMeteors). */
+function landMeteors(w: World) {
+  if (!w.falling.length) return;
+  const spell = spellById(METEOR_SPELL);
+  for (const [x, y, lands] of w.falling) {
+    if (lands > w.tick || !spell) continue;
+    log(w, "A meteor strikes", "notable");
+    landSpell(w, spell, x, y, 0, undefined, 1);
+  }
+  w.falling = w.falling.filter(([, , lands]) => lands > w.tick);
 }
 
 function fill(w: World, chance: number) {
