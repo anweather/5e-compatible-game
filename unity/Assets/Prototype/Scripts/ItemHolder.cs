@@ -218,7 +218,7 @@ public class ItemHolder : MonoBehaviour
     string Hint()
     {
         bool pad = controls.UsingGamepad;
-        string pick = pad ? "X / □" : "E", use = pad ? "Y / △" : "F", toss = pad ? "B / ○" : "G / right-click";
+        string pick = pad ? PadGlyphs.Label(PadButton.West) : "E", use = pad ? PadGlyphs.Label(PadButton.North) : "F", toss = pad ? PadGlyphs.Label(PadButton.East) : "G / right-click";
         if (Held != null)
         {
             string wind = WindUp > 0f ? $"   ·   throw {Mathf.RoundToInt(WindUp * 100f)}%" : "";

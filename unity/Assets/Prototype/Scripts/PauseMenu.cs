@@ -379,7 +379,7 @@ public class PauseMenu : MonoBehaviour
     {
         GUILayout.Label("<b>Paused</b>", title);
         GUILayout.Space(8);
-        string key = Highlight ? "Start" : "Esc";
+        string key = Highlight ? PadGlyphs.Label(PadButton.Start) : "Esc";
         if (Button($"Resume   <color=#ffffff88>{key}</color>", button)) SetOpen(false);
         foreach (var section in sections.ToArray())
         {
@@ -388,7 +388,7 @@ public class PauseMenu : MonoBehaviour
         }
         GUILayout.Space(12);
         if (Button("Quit", button)) Quit();
-        if (Highlight) GUILayout.Label("<color=#ffffff99>A choose  ·  B close</color>", hint);
+        if (Highlight) GUILayout.Label(PadGlyphs.Text("<color=#ffffff99>{South} choose  ·  {East} close</color>"), hint);
     }
 
     void DrawPage(Page page)
@@ -397,7 +397,8 @@ public class PauseMenu : MonoBehaviour
         GUILayout.Space(8);
         page.Draw();
         GUILayout.Space(12);
-        if (Button("Back   <color=#ffffff88>B / ○</color>", button)) nav.Back();
+        string back = Highlight ? $"Back   <color=#ffffff88>{PadGlyphs.Label(PadButton.East)}</color>" : "Back";
+        if (Button(back, button)) nav.Back();
     }
 
     void MakeStyles()

@@ -72,7 +72,7 @@ public class EventLog : MonoBehaviour
 
     const string KeyboardHelp = "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Wheel</b> zoom   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>Hold Tab</b> spells   ·   <b>Click</b> cast   ·   <b>R</b> reset   ·   <b>Esc</b> menu   ·   <b>M</b> mods";
     const string FirelineHelp = "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset   ·   <b>Esc</b> menu";
-    const string GamepadHelp = "<b>Left stick</b> move   ·   <b>Right stick</b> look   ·   <b>D-pad</b> zoom   ·   <b>A / ✕</b> jump   ·   <b>LT</b> sprint   ·   <b>Hold LB</b> spells   ·   <b>RT</b> cast   ·   <b>View / Share</b> reset   ·   <b>Start</b> menu";
+    const string GamepadHelp = "<b>Left stick</b> move   ·   <b>Right stick</b> look   ·   <b>D-pad</b> zoom   ·   <b>{South}</b> jump   ·   <b>{LT}</b> sprint   ·   <b>Hold {LB}</b> spells   ·   <b>{RT}</b> cast   ·   <b>{Select}</b> reset   ·   <b>{Start}</b> pause";
 
     // A plus with a dark shadow, so it reads against the sky as well as the ground.
     void Crosshair()
@@ -98,7 +98,7 @@ public class EventLog : MonoBehaviour
     void DrawCasterHud()
     {
         bool pad = caster.controls != null && caster.controls.UsingGamepad;
-        GUI.Label(new Rect(16, 12, 1600, 30), pad ? GamepadHelp : KeyboardHelp, style);
+        GUI.Label(new Rect(16, 12, 1600, 30), pad ? PadGlyphs.Text(GamepadHelp) : KeyboardHelp, style);
         if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
         GUI.Label(new Rect(16, 40, 1400, 30), SpellChip(pad), style);
     }
@@ -108,7 +108,7 @@ public class EventLog : MonoBehaviour
         var group = caster.TryGetComponent<SpellRadialHud>(out var radial) ? radial.CurrentGroup : null;
         string colour = group?.Color ?? "#ffd24a";
         string element = group != null ? $"<color={colour}>{group.Name}</color>  " : "";
-        string keys = pad ? "hold LB: spells, tap: swap  ·  RB next  ·  D-pad ◀ ▶ element" : "hold Tab: spells, tap: swap  ·  Q E next  ·  1–8 element";
+        string keys = pad ? PadGlyphs.Text("hold {LB}: spells, tap: swap  ·  {RB} next  ·  D-pad ◀ ▶ element") : "hold Tab: spells, tap: swap  ·  Q E next  ·  1–8 element";
         return $"<color={colour}>●</color> {element}<color=#ffd24a><b>{caster.SelectedName}</b></color>   <color=#ffffff88>{keys}</color>";
     }
 }

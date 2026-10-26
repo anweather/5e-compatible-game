@@ -290,7 +290,7 @@ public class SpellRadialHud : MonoBehaviour
         return def.Level == 0 ? "cantrip" : $"level {def.Level}";
     }
 
-    static string CancelHint(bool pad) => pad ? "<color=#ffffffaa>B: cancel</color>" : "<color=#ffffffaa>release here: cancel</color>";
+    static string CancelHint(bool pad) => pad ? PadGlyphs.Text("<color=#ffffffaa>{East}: cancel</color>") : "<color=#ffffffaa>release here: cancel</color>";
 
     static string FirstSentence(string blurb)
     {

@@ -251,7 +251,7 @@ public class NetSession : MonoBehaviour
     void DrawCodePage()
     {
         MakeStyles();
-        GUILayout.Label("Up / down change the letter, A goes to the next one (on the last, A joins), B goes back.", label);
+        GUILayout.Label(PadGlyphs.Text("Up / down change the letter, {South} goes to the next one (on the last, {South} joins), {East} goes back."), label);
         GUILayout.Space(8);
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
