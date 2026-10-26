@@ -103,11 +103,12 @@ namespace Chem
         }
 
         /// <summary>
-        /// The valley: 9×9 chunks of 96 m, the 200×175 yard with cell (x, y) centred at world
-        /// ((x - 87) * 1.5, (74 - y) * 1.5), full detail on chunks i 3..5, j 2..4.
+        /// The valley: 9×9 chunks of 96 m, all of them cells (576×576, so chemistry works wherever
+        /// the players go; chunks wake around them, ChunkStreaming), with cell (x, y) centred at world
+        /// ((x - 279) * 1.5, (330 - y) * 1.5) and full detail on chunks i 3..5, j 2..4.
         /// </summary>
         public static TerrainGrid Valley() =>
-            new TerrainGrid(1.5f, (-419.25f, -368.25f), (9, 9), (192, 319), (200, 175), (3, 2, 5, 4));
+            new TerrainGrid(1.5f, (-419.25f, -368.25f), (9, 9), (0, 575), (576, 576), (3, 2, 5, 4));
 
         public float CellSize { get; }
         public float OriginX { get; }

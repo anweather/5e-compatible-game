@@ -69,6 +69,10 @@ public static class ProbeScenarios
             "Ray of Frost from the lake's shore (the dry square outside the yard nearest it with lake water two squares south) " +
             "out over the water. Checks: the shore was found, the wet squares in the beam froze, the ice is drawn at or above " +
             "the lake's surface and is solid (a ray down hits the Ice collider), Sleet Storm on open water freezes a wide circle, no console errors."),
+        new Entry("explore", typeof(ExploreProbe), 60f,
+            "The wizard goes to meadow 3 chunks or more from the yard (outside the old chemistry area) and casts Fire Bolt there. " +
+            "Checks: the chemistry covers the whole valley, the chunks around the wizard woke (25 at most) and the yard's went to sleep, " +
+            "the fire spreads there, the sleeping yard is unchanged, and it wakes when the wizard comes back, no console errors."),
         new Entry("edge", typeof(EdgeProbe), 90f,
             "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
             "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),

@@ -49,9 +49,21 @@ namespace Chem
         public static List<ChunkSwitch> Plan(World world, IReadOnlyList<(int x, int y)> players, int wake = WakeRing, int keep = KeepRing)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
+            return Plan(world.ChunkCoords, world.IsActive, players, wake, keep);
+        }
+
+        /// <summary>
+        /// The same plan against a set of chunks and what is awake among them, for a host that plans
+        /// ahead of its own world (its stamped switches apply a tick or so later).
+        /// </summary>
+        public static List<ChunkSwitch> Plan(IReadOnlyList<(int cx, int cy)> chunks, Func<int, int, bool> isActive,
+            IReadOnlyList<(int x, int y)> players, int wake = WakeRing, int keep = KeepRing)
+        {
+            if (chunks == null) throw new ArgumentNullException(nameof(chunks));
+            if (isActive == null) throw new ArgumentNullException(nameof(isActive));
             var plan = new List<ChunkSwitch>();
             if (players == null || players.Count == 0) return plan;
-            foreach (var (cx, cy) in world.ChunkCoords)
+            foreach (var (cx, cy) in chunks)
             {
                 int near = int.MaxValue;
                 foreach (var (x, y) in players)
@@ -59,7 +71,7 @@ namespace Chem
                     int d = Math.Max(Math.Abs(Chunks.ChunkOf(x) - cx), Math.Abs(Chunks.ChunkOf(y) - cy));
                     if (d < near) near = d;
                 }
-                bool active = world.IsActive(cx, cy);
+                bool active = isActive(cx, cy);
                 if (!active && near <= wake) plan.Add(new ChunkSwitch(cx, cy, true));
                 else if (active && near > keep) plan.Add(new ChunkSwitch(cx, cy, false));
             }

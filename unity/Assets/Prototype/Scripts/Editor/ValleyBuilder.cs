@@ -574,10 +574,9 @@ public static class ValleyBuilder
 
     // --- chemistry ------------------------------------------------------------
 
-    // The chemistry world around the yard: about 300 m x 260 m, from the lake's far shore to the
-    // forest north of the yard. Bigger than the fire can reach (it fades after FireFadeCells).
-    // Its size and place are the chunk layout's (TerrainGrid.Valley()).
-    const float WestOfYard = 130f, EastOfYard = 130f, NorthOfYard = 88f, SouthOfYard = 150f;
+    // The chemistry world: the whole valley, every chunk terrain's cells (TerrainGrid.Valley()), so
+    // spells work wherever the players go; only the chunks around them are simulated
+    // (ChunkStreaming). The yard's cell (0, 0) stands at world (0, (yard rows - 1) * cell size).
     const int FireFadeCells = 50;
     const int LightningReach = 12000;
 
@@ -586,10 +585,10 @@ public static class ValleyBuilder
     static void WireChemistry(ChemGrid grid, string[] yardRows, List<(Vector2 at, float scale, int species, float turn)> trees)
     {
         float cs = grid.cellSize;
-        int left = Mathf.RoundToInt(WestOfYard / cs), right = Mathf.RoundToInt(EastOfYard / cs);
-        int top = Mathf.RoundToInt(NorthOfYard / cs), bottom = Mathf.RoundToInt(SouthOfYard / cs);
         int yw = yardRows[0].Length, yh = yardRows.Length;
-        int w = left + yw + right, h = top + yh + bottom;
+        var layout = ValleyTerrain.Layout;
+        int w = layout.GridW, h = layout.GridH;
+        var (left, top) = layout.CellAt(0f, (yh - 1) * cs);
 
         var treeCells = new HashSet<Vector2Int>();
         foreach (var t in trees) treeCells.Add(CellOf(t.at, cs, left, top, yh));

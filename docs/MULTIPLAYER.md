@@ -431,9 +431,11 @@ landing and footstep events. `NetWizard` now hands it the
 players' landings and footsteps play. The probe's host wizard falls 10 m
 to cover it: without the fix `client_no_console_errors` fails.
 
-**Not affected by chunking.** The chemistry's active chunks are never
-switched off at runtime (nothing calls `World.SetActive`), so host and
-clients always step the same chunks. The terrain a client draws comes from
+**Chunks wake and sleep in lockstep.** Which chunks are simulated follows
+the players (`ChunkStreaming`): the host plans it every 3 ticks from every
+wizard's cell, against what it has already stamped, and stamps the
+switches into its batches (`ChunkIntent`) and its history, so clients and
+late joiners pause the same chunks at the same ticks. The terrain a client draws comes from
 the same cells through `CellHeightfield`; `OnlineValleyTests` checks in the
 core that a client and a late joiner on a valley-sized world keep the
 host's checksums and draw the same heightfield.

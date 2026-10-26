@@ -32,13 +32,13 @@ namespace Chem.Tests
             Assert.That(things.Check(R), Is.Empty);
             Assert.That(things.All.Count(t => R.Entity(t.Kind) != null), Is.EqualTo(10));
             Assert.That(things.All.Count(t => R.Item(t.Kind) != null), Is.EqualTo(8));
-            Assert.That(things.ChunkCoords, Is.EquivalentTo(new[] { (1, 0), (1, 1) }), "the old yard straddles two chunks");
+            Assert.That(things.ChunkCoords, Is.EquivalentTo(new[] { (4, 4), (4, 5) }), "the old yard straddles two chunks");
 
-            // The crate the online probe throws: yard cell (16, 6), the yard at world cell (87, 59).
-            var crate = things.At(87 + 16, 59 + 6);
+            // The crate the online probe throws: yard cell (16, 6), the yard at world cell (279, 315).
+            var crate = things.At(279 + 16, 315 + 6);
             Assert.That(crate.Kind, Is.EqualTo("crate"));
-            Assert.That(crate.Id.ToString(), Is.EqualTo("1,1#2"));
-            Assert.That((crate.ChunkX, crate.ChunkY, crate.LocalX, crate.LocalY), Is.EqualTo((1, 1, 39, 1)));
+            Assert.That(crate.Id.ToString(), Is.EqualTo("4,5#2"));
+            Assert.That((crate.ChunkX, crate.ChunkY, crate.LocalX, crate.LocalY), Is.EqualTo((4, 5, 39, 1)));
         }
 
         [Test]

@@ -2,7 +2,7 @@
   "about": "The valley's props and items, per 64x64-cell chunk (docs/WORLD_STREAMING.md). kind is an id in rules/entities.json or rules/items.json; cell is the cell inside the chunk (world cell = chunk * 64 + cell; y grows south); rot turns it about the vertical, in degrees; things with the same link are a pair (sending stones). A thing's id is its chunk and its place in the chunk's list, so add new things at the end of a chunk's list.",
   "chunks": [
     {
-      "chunk": [1, 0],
+      "chunk": [4, 4],
       "things": [
         { "kind": "barrel", "cell": [41, 62], "note": "in the oil spill: light the oil and it goes up" },
         { "kind": "barrel", "cell": [43, 62], "note": "in the oil spill" },
@@ -13,7 +13,7 @@
       ]
     },
     {
-      "chunk": [1, 1],
+      "chunk": [4, 5],
       "things": [
         { "kind": "crate", "cell": [42, 0], "note": "on the pond" },
         { "kind": "crate", "cell": [44, 1], "note": "on the pond" },

@@ -72,12 +72,31 @@ public partial class ChemGrid
         return float.IsNaN(top) ? null : top;
     }
 
-    void Render()
+    // Every cell once, for a new world: the sleeping chunks' trees and walls get their blockers too.
+    void RenderAll()
     {
         for (int y = 0; y < World.H; y++)
         {
             for (int x = 0; x < World.W; x++) RenderCell(x, y);
         }
+        FinishRender();
+    }
+
+    // Each frame: the simulated chunks' cells (a sleeping chunk doesn't change; ChunkStreaming).
+    void Render()
+    {
+        foreach (var (cx, cy) in World.ActiveChunks)
+        {
+            int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
+            int x1 = Mathf.Min(World.W, x0 + Chunks.Size), y1 = Mathf.Min(World.H, y0 + Chunks.Size);
+            for (int y = y0; y < y1; y++)
+                for (int x = x0; x < x1; x++) RenderCell(x, y);
+        }
+        FinishRender();
+    }
+
+    void FinishRender()
+    {
         waterSurface.Rebuild();
         slicks.Rebuild();
         materials.ScrollWater(Time.time);

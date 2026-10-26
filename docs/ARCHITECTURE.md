@@ -41,9 +41,13 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   remainder, negatives included. Each chunk also keeps the per-cell sim state
   that isn't `Cell` state (fire generation, per-tick marks) and links to its
   loaded neighbours. The world still has an extent (`W`×`H`: the valley's
-  200×175 cells span 4×3 chunks, under its 9×9 chunk terrains); `At`, `Idx` and `Cells` (a row-major array of the same cell
+  576×576 cells, one chunk per chunk terrain, 9×9); `At`, `Idx` and `Cells` (a row-major array of the same cell
   objects) work as before. **Active set:** `SetActive(cx, cy, bool)`,
-  `SetAllActive`, `IsActive`, `ChunkCoords`. `Step` visits only active
+  `SetAllActive`, `IsActive`, `ChunkCoords`, `ActiveChunks`.
+  `ChunkStreaming` plans it from the players' cells (the 3×3 around each
+  wakes, a chunk sleeps once no player is within 2) as `ChunkSwitch`es that
+  travel in `TickBatch.Chunks` like any other command; the view draws and
+  scans only active chunks. `Step` visits only active
   chunks, as row segments in world row-major order (sorted, never the
   store's order), so with every chunk active a tick is exactly the old
   single-grid tick and all goldens hold. A paused chunk is frozen: nothing

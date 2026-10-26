@@ -11,9 +11,9 @@ using UnityEngine;
 // rest keep the saved paint (the meadow, the old yard's soft-edged pad and
 // gully), so a burnt patch fades into whatever was there before.
 //
-// Works on runtime copies of the chunks the cells reach, so playing never
-// changes the saved valley; Bind makes fresh copies (a new world starts from the
-// saved ground). The baked heights already hold the starting cells' offsets
+// Works on runtime copies of the chunks the cells change, made the first time
+// one changes, so playing never changes the saved valley; Bind drops them (a new
+// world starts from the saved ground). The baked heights already hold the starting cells' offsets
 // (ValleyBuilder bakes them with the same CellHeightfield), so the base under
 // each sample is what was baked minus that offset.
 public sealed class ValleyGround
@@ -52,19 +52,47 @@ public sealed class ValleyGround
         }
     }
 
-    /// <summary>The runtime copies of the chunks the cells reach, by chunk.</summary>
+    /// <summary>The chunks the cells reach as drawn now: a runtime copy once one changed, else the saved one.</summary>
     public IEnumerable<((int i, int j) at, TerrainData data)> Chunks()
     {
-        foreach (var kv in chunks) yield return (kv.Key, kv.Value.data);
+        foreach (var kv in chunks) yield return (kv.Key, Shown(kv.Value));
     }
 
-    /// <summary>The runtime copy of one of the chunks the cells reach.</summary>
-    public TerrainData Data((int i, int j) at) => chunks[at].data;
+    /// <summary>One of the chunks the cells reach, as drawn now.</summary>
+    public TerrainData Data((int i, int j) at) => Shown(chunks[at]);
+
+    static TerrainData Shown(Chunk ch) => ch.data != null ? ch.data : ch.original;
+
+    // A chunk is copied the first time the cells change it, so the saved valley never changes and a
+    // valley of many chunks doesn't copy them all up front.
+    static TerrainData Writable(Chunk ch)
+    {
+        if (ch.data != null) return ch.data;
+        ch.data = Object.Instantiate(ch.original);
+        Use(ch, ch.data);
+        return ch.data;
+    }
+
+    static void Use(Chunk ch, TerrainData data)
+    {
+        ch.terrain.terrainData = data;
+        if (ch.terrain.TryGetComponent<TerrainCollider>(out var collider)) collider.terrainData = data;
+    }
+
+    // Back to the saved chunk, dropping the copy (the terrain may be gone already, as the scene unloads).
+    static void Restore(Chunk ch)
+    {
+        if (ch.data == null) return;
+        if (ch.terrain != null) Use(ch, ch.original);
+        Object.Destroy(ch.data);
+        ch.data = null;
+        ch.heightsChanged = false;
+    }
 
     /// <summary>True while reshaped ground is still easing to its new height.</summary>
     public bool Shaping => heightfield != null && !heightfield.Settled;
 
-    /// <summary>Starts over on a world: fresh copies of the saved chunks, their base heights recovered.</summary>
+    /// <summary>Starts over on a world: the saved chunks again (copied when first changed), their base heights recovered.</summary>
     public void Bind(World w, float stepHeight, float shapeSpeed)
     {
         world = w;
@@ -72,7 +100,7 @@ public sealed class ValleyGround
         heightfield.Reset(w);
         repaint.Clear();
         reshaped.Clear();
-        foreach (var kv in chunks) Copy(kv.Key, kv.Value);
+        foreach (var kv in chunks) Recover(kv.Key, kv.Value);
         cellBase = new float[w.W * w.H];
         bakedPaint = new IReadOnlyList<float>[w.W * w.H];
         for (int y = 0; y < w.H; y++)
@@ -85,20 +113,17 @@ public sealed class ValleyGround
         }
     }
 
-    void Copy((int i, int j) at, Chunk ch)
+    void Recover((int i, int j) at, Chunk ch)
     {
-        if (ch.data != null) Object.Destroy(ch.data);
-        ch.data = Object.Instantiate(ch.original);
-        ch.terrain.terrainData = ch.data;
-        if (ch.terrain.TryGetComponent<TerrainCollider>(out var collider)) collider.terrainData = ch.data;
-        int res = ch.data.heightmapResolution;
-        var heights = ch.data.GetHeights(0, 0, res, res);
+        Restore(ch);
+        int res = ch.original.heightmapResolution;
+        var heights = ch.original.GetHeights(0, 0, res, res);
         var offsets = heightfield.Current(at.i, at.j);
-        float size = ch.data.size.y;
+        float size = ch.original.size.y;
         ch.baseHeights = new float[res, res];
         for (int z = 0; z < res; z++)
             for (int x = 0; x < res; x++) ch.baseHeights[z, x] = heights[z, x] * size - offsets[z, x];
-        ch.layers = LayerIndices(ch.data.terrainLayers);
+        ch.layers = LayerIndices(ch.original.terrainLayers);
         ch.baseAlpha = null;
     }
 
@@ -135,9 +160,10 @@ public sealed class ValleyGround
     public float GroundAt(float wx, float wz)
     {
         var (x, y) = layout.CellAt(wx, wz);
-        if (!chunks.TryGetValue(layout.ChunkOfCell(x, y), out var ch) || ch.data == null) return 0f;
+        if (!chunks.TryGetValue(layout.ChunkOfCell(x, y), out var ch)) return 0f;
+        var data = Shown(ch);
         var p = ch.terrain.transform.position;
-        return p.y + ch.data.GetInterpolatedHeight((wx - p.x) / ch.data.size.x, (wz - p.z) / ch.data.size.z);
+        return p.y + data.GetInterpolatedHeight((wx - p.x) / data.size.x, (wz - p.z) / data.size.z);
     }
 
     /// <summary>A cell's elevation or height changed: its ground eases there (see Advance).</summary>
@@ -162,11 +188,12 @@ public sealed class ValleyGround
     {
         if (!chunks.TryGetValue((r.I, r.J), out var ch)) return;
         var offsets = heightfield.Current(r.I, r.J);
-        float size = ch.data.size.y;
+        var data = Writable(ch);
+        float size = data.size.y;
         var heights = new float[r.Height, r.Width];
         for (int z = 0; z < r.Height; z++)
             for (int x = 0; x < r.Width; x++) heights[z, x] = (ch.baseHeights[r.Z + z, r.X + x] + offsets[r.Z + z, r.X + x]) / size;
-        ch.data.SetHeightsDelayLOD(r.X, r.Z, heights);
+        data.SetHeightsDelayLOD(r.X, r.Z, heights);
         ch.heightsChanged = true;
     }
 
@@ -197,16 +224,17 @@ public sealed class ValleyGround
     void Paint(ChunkRect r, System.Func<int, int, IReadOnlyList<float>> paintOf)
     {
         if (!chunks.TryGetValue((r.I, r.J), out var ch)) return;
-        int res = ch.data.alphamapResolution;
-        ch.baseAlpha ??= ch.data.GetAlphamaps(0, 0, res, res);
-        ch.data.SetAlphamaps(r.X, r.Z, Compose(CellPaint.Block(layout, r, paintOf), ch.layers, ch.baseAlpha));
+        var data = Writable(ch);
+        int res = data.alphamapResolution;
+        ch.baseAlpha ??= data.GetAlphamaps(0, 0, res, res);
+        data.SetAlphamaps(r.X, r.Z, Compose(CellPaint.Block(layout, r, paintOf), ch.layers, ch.baseAlpha));
     }
 
     void ClearDetailIfBare(int x, int y, bool scorched)
     {
         if (CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y), scorched))) return;
         var r = layout.TexelRect(x, y);
-        if (chunks.TryGetValue((r.I, r.J), out var ch)) ClearDetail(ch.data, r);
+        if (chunks.TryGetValue((r.I, r.J), out var ch)) ClearDetail(Writable(ch), r);
     }
 
     /// <summary>
@@ -243,10 +271,9 @@ public sealed class ValleyGround
         for (int layer = 0; layer < data.detailPrototypes.Length; layer++) data.SetDetailLayer(x0, z0, layer, none);
     }
 
-    /// <summary>Frees the runtime copies.</summary>
+    /// <summary>Frees the runtime copies, the saved chunks back on the terrains.</summary>
     public void Destroy()
     {
-        foreach (var ch in chunks.Values)
-            if (ch.data != null) Object.Destroy(ch.data);
+        foreach (var ch in chunks.Values) Restore(ch);
     }
 }

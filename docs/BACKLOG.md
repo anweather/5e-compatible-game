@@ -224,6 +224,10 @@ and the reasons are there.
 
 ## 11. World streaming, part 2
 
+**First slice built (2026-10-26):** the chemistry covers the whole valley and
+chunks wake and sleep around the players, in lockstep (`WORLD_STREAMING.md`,
+"Part 2, first slice"). The rest below is still open.
+
 The endless-world foundation, built in parallel with the prototypes. Part 1
 (the chunked valley) is done; part 2 is what `WORLD_STREAMING.md` lists as
 not in part 1, and makes its rings real.

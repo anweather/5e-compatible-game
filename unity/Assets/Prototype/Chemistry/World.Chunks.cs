@@ -62,6 +62,7 @@ namespace Chem
             if (ch.West != null) ch.West.East = ch;
             if (ch.East != null) ch.East.West = ch;
             spans = null;
+            activeCoords = null;
         }
 
         // Lookups come in runs inside one chunk, so the last chunk found is checked first.
@@ -116,6 +117,20 @@ namespace Chem
 
         public bool HasChunk(int cx, int cy) => FindChunk(cx, cy) != null;
 
+        List<(int cx, int cy)> activeCoords;
+
+        /// <summary>The simulated chunks' coordinates, by row then column (kept until a chunk wakes or sleeps).</summary>
+        public IReadOnlyList<(int cx, int cy)> ActiveChunks
+        {
+            get
+            {
+                if (activeCoords != null) return activeCoords;
+                activeCoords = new List<(int cx, int cy)>();
+                foreach (var ch in SortedChunks(false)) if (ch.Active) activeCoords.Add((ch.X, ch.Y));
+                return activeCoords;
+            }
+        }
+
         /// <summary>Whether a loaded chunk is simulated. Chunks start active.</summary>
         public bool IsActive(int cx, int cy) => ChunkOrThrow(cx, cy).Active;
 
@@ -130,6 +145,7 @@ namespace Chem
             if (ch.Active == active) return;
             ch.Active = active;
             spans = null;
+            activeCoords = null;
         }
 
         /// <summary>Starts or pauses every loaded chunk.</summary>
@@ -137,6 +153,7 @@ namespace Chem
         {
             foreach (var ch in chunks.Values) ch.Active = active;
             spans = null;
+            activeCoords = null;
         }
 
         Chunk ChunkOrThrow(int cx, int cy) =>

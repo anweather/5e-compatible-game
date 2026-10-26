@@ -39,6 +39,16 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>When true, something else (NetChem in multiplayer) steps the world; the grid only draws it.</summary>
     public bool ExternalTicks { get; set; }
 
+    /// <summary>
+    /// Simulate only the chunks around the players (ChunkStreaming). Solo the grid applies the plan
+    /// before each tick; online NetChem's host stamps it into its batches.
+    /// </summary>
+    public bool streamChunks = true;
+
+    readonly List<(int x, int y)> playerCells = new();
+    SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
+    float nextWizardLookup;
+
     // One character per cell, the same legend as the web sandbox's scenarios.
     static readonly Dictionary<char, (string t, int water, bool frozen, string cover)> Legend = new()
     {
@@ -99,7 +109,7 @@ public partial class ChemGrid : MonoBehaviour
         if (valley != null) valley.Bind(World);
 
         InitVisuals();
-        Render();
+        RenderAll();
     }
 
     /// <summary>
@@ -154,6 +164,7 @@ public partial class ChemGrid : MonoBehaviour
         {
             tickTimer -= tick;
             ApplyQueuedRules();
+            if (streamChunks) ChunkStreaming.Apply(World, ChunkStreaming.Plan(World, PlayerCells()));
             World.Step();
             stepped = true;
         }
@@ -182,6 +193,24 @@ public partial class ChemGrid : MonoBehaviour
 
     // world/ (things.json) sits next to rules/: the repo's in the Editor, StreamingAssets/world in a build.
     internal static string FindWorldDir() => Path.Combine(Path.GetDirectoryName(FindRulesDir()), "world");
+
+    /// <summary>The cells every wizard in the scene stands on (the solo one, or every player's online), for ChunkStreaming.</summary>
+    public IReadOnlyList<(int x, int y)> PlayerCells()
+    {
+        if (Time.unscaledTime >= nextWizardLookup)
+        {
+            wizards = FindObjectsByType<SpellCaster>(FindObjectsSortMode.InstanceID);
+            nextWizardLookup = Time.unscaledTime + 1f;
+        }
+        playerCells.Clear();
+        foreach (var w in wizards)
+        {
+            if (w == null) continue;
+            var cell = CellAt(w.transform.position);
+            if (World.InBounds(cell.x, cell.y)) playerCells.Add((cell.x, cell.y));
+        }
+        return playerCells;
+    }
 
     // --- coordinates -----------------------------------------------------
 

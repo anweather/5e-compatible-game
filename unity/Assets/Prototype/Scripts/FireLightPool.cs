@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Chem;
 using UnityEngine;
 
 // A fixed pool of flickering point lights spread over the biggest fires.
@@ -73,17 +74,23 @@ public sealed class FireLightPool
         }
     }
 
-    // Every burning cell, biggest fire first.
+    // Every burning cell of the simulated chunks (a sleeping chunk's fire is paused), biggest fire first.
     void CollectBurning()
     {
         var world = grid.World;
+        var cells = world.Cells;
         burning.Clear();
-        for (int y = 0; y < world.H; y++)
+        foreach (var (cx, cy) in world.ActiveChunks)
         {
-            for (int x = 0; x < world.W; x++)
+            int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
+            int x1 = Mathf.Min(world.W, x0 + Chunks.Size), y1 = Mathf.Min(world.H, y0 + Chunks.Size);
+            for (int y = y0; y < y1; y++)
             {
-                int f = world.At(x, y).Fire;
-                if (f > 0) burning.Add((x, y, f));
+                for (int x = x0; x < x1; x++)
+                {
+                    int f = cells[y * world.W + x].Fire;
+                    if (f > 0) burning.Add((x, y, f));
+                }
             }
         }
         burning.Sort((a, b) => b.fire.CompareTo(a.fire));

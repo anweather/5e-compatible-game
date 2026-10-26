@@ -1,7 +1,8 @@
 # World streaming: from one valley to an endless world
 
 The north star for how the world grows, and what part 1 (the chunked valley)
-builds now. Agents: build toward this; don't build past part 1 without asking.
+builds now. Agents: build toward this; part 2's first slice is built (below), ask before
+going further.
 
 ## The unit: a chunk
 
@@ -103,7 +104,7 @@ grass).
   them, the sandbox loads them) and this says where things stand in one
   world; per-chunk files can split out of it when chunks stream.
 - **Stable ids:** `Chem.ThingId` is the chunk and the thing's index in that
-  chunk's list, packed into 64 bits (`"1,1#2"` in logs). Worked out from
+  chunk's list, packed into 64 bits (`"4,5#2"` in logs). Worked out from
   the file, never a runtime counter, so host, clients and late joiners name
   every thing the same way. Add new things at the end of a chunk's list, or
   ids after it shift.
@@ -138,5 +139,37 @@ grass).
 Not in part 1: streaming to disk, seed generation, floating origin, the
 server/interest-management change, the fast-forward on wake. Part 2 is in
 `docs/BACKLOG.md` §11.
+
+## Part 2, first slice: the whole valley, waking around the players (built 2026-10-26)
+
+Asked for after the 0.1.1 playtest (P1: "I want to be able to go explore
+with friends").
+
+- **Cells everywhere:** the chemistry covers every chunk terrain, 576×576
+  cells (`TerrainGrid.Valley()`), the yard where it was (grid cell 279,
+  315). `world/things.json`'s chunks moved by (3, 4) with it, so ids are
+  now like `4,5#2`.
+- **Rings:** each player's chunk and the ring around it are simulated; a
+  chunk sleeps once no player is within 2 chunks (`ChunkStreaming`). Solo
+  the grid applies the plan before each tick; online the host stamps it
+  into its tick batches and history (`ChunkIntent`), so every machine
+  pauses the same chunks at the same tick. A sleeping chunk is frozen,
+  spells cast into it do nothing, and its neighbours' fire and water stop
+  at its edge.
+- **View:** the grid draws, and the fire lights scan, only active chunks;
+  every cell is drawn once when a world starts (so sleeping chunks' trees
+  and walls have their blockers). Chunk terrains are copied only when the
+  cells first change them (`ValleyGround`).
+- **The edge of the land** holds you: walls 3 m inside the last terrain,
+  marked by rocks.
+- **Checked:** probe `explore` (Fire Bolt on a hillside 300 m from the
+  yard spreads; the yard sleeps unchanged and wakes on return), `online`
+  (checksums equal with the switches travelling), `ChunkStreamingTests`
+  (the plan, and a replay matching the live run).
+
+Still open: fire reaching a sleeping chunk doesn't wake it, a chunk that
+wakes doesn't fast-forward, props in sleeping chunks stay spawned (and
+awake to physics), the netcode checksum still hashes every cell, and
+players far apart are still all simulated by the host (interest by chunk).
 
 See `docs/ARCHITECTURE.md` for the current code layout.

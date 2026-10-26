@@ -26,8 +26,11 @@ using UnityEngine;
 // - When a batch's casts are applied, their shoves are too (SpellForces): the
 //   host moves the props, and each player moves their own wizard, from the
 //   caster's position carried in the cast.
-// - A late joiner asks for the history (casts, rule switches and prop
-//   effects) and replays it from tick 0.
+// - Which chunks are simulated follows the players (ChunkStreaming): the host
+//   plans it from every wizard's position and stamps the switches into its
+//   batches, so every machine pauses the same chunks at the same tick.
+// - A late joiner asks for the history (casts, rule switches, prop effects
+//   and chunk switches) and replays it from tick 0.
 [RequireComponent(typeof(ChemGrid))]
 public class NetChem : NetworkBehaviour
 {
@@ -45,7 +48,12 @@ public class NetChem : NetworkBehaviour
     readonly List<RuleChangeMsg> ruleHistory = new();
     readonly List<EffectIntent> pendingEffects = new();
     readonly List<EffectIntent> effectHistory = new();
+    readonly List<ChunkIntent> chunkHistory = new();
+    // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
+    readonly HashSet<(int cx, int cy)> plannedAwake = new();
     RuleSet stampNext;
+    // Chunks are planned every few ticks: players move a chunk in seconds, not ticks.
+    const int PlanEvery = 3;
 
     // Everyone.
     readonly Dictionary<int, TickBatch> batches = new();
@@ -84,6 +92,9 @@ public class NetChem : NetworkBehaviour
         ruleHistory.Clear();
         pendingEffects.Clear();
         effectHistory.Clear();
+        chunkHistory.Clear();
+        plannedAwake.Clear();
+        foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
         stampNext = null;
         HostUpcoming = null;
         hostHashes.Clear();
@@ -177,11 +188,30 @@ public class NetChem : NetworkBehaviour
                 stampNext = null;
             }
 
+            var chunks = PlanChunks();
+            chunkHistory.AddRange(chunks);
+
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
             int hashTick = grid.World.Tick;
             string hash = hashTick % HashEvery == 0 ? Checksum(grid) : "";
-            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, hashTick, new FixedString64Bytes(hash));
+            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, hashTick, new FixedString64Bytes(hash));
         }
+    }
+
+    // The chunk switches for this tick's batch: around every wizard, against what is already planned.
+    ChunkIntent[] PlanChunks()
+    {
+        if (!grid.streamChunks || hostTick % PlanEvery != 1) return System.Array.Empty<ChunkIntent>();
+        var plan = ChunkStreaming.Plan(grid.World.ChunkCoords, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells());
+        var stamped = new ChunkIntent[plan.Count];
+        for (int i = 0; i < plan.Count; i++)
+        {
+            var s = plan[i];
+            if (s.Active) plannedAwake.Add((s.CX, s.CY));
+            else plannedAwake.Remove((s.CX, s.CY));
+            stamped[i] = ChunkIntent.From(s, hostTick);
+        }
+        return stamped;
     }
 
     [Rpc(SendTo.Server)]
@@ -197,7 +227,7 @@ public class NetChem : NetworkBehaviour
     [Rpc(SendTo.Server)]
     void RequestHistoryRpc(RpcParams rpc = default)
     {
-        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
+        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
     }
 
     [Rpc(SendTo.Server)]
@@ -234,19 +264,20 @@ public class NetChem : NetworkBehaviour
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    void ApplyBatchRpc(int tick, CastIntent[] casts, EffectIntent[] effects, RuleChangeMsg rules, int hashTick, FixedString64Bytes hash)
+    void ApplyBatchRpc(int tick, CastIntent[] casts, EffectIntent[] effects, RuleChangeMsg rules, ChunkIntent[] chunks, int hashTick, FixedString64Bytes hash)
     {
-        batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null, effects.Select(e => e.ToCommand()));
+        batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null, effects.Select(e => e.ToCommand()),
+            chunks.Select(c => c.ToSwitch()));
         if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
         if (synced) ExtendKnown();
     }
 
     [Rpc(SendTo.SpecifiedInParams)]
-    void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, RpcParams rpc = default)
+    void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, ChunkIntent[] chunks, RpcParams rpc = default)
     {
         var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
-            effects.Select(e => (e.Tick, e.ToCommand())));
+            effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())));
         for (int t = 1; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
         knownUpTo = upToTick;
@@ -432,5 +463,24 @@ public struct RuleChangeMsg : INetworkSerializable
             serializer.SerializeValue(ref Ids[i]);
             serializer.SerializeValue(ref Jsons[i]);
         }
+    }
+}
+
+/// <summary>A chunk waking or going to sleep (Chem.ChunkSwitch), stamped with the sim tick it takes effect on.</summary>
+public struct ChunkIntent : INetworkSerializable
+{
+    public int CX, CY, Tick;
+    public bool Active;
+
+    public static ChunkIntent From(ChunkSwitch s, int tick) => new ChunkIntent { CX = s.CX, CY = s.CY, Active = s.Active, Tick = tick };
+
+    public ChunkSwitch ToSwitch() => new ChunkSwitch(CX, CY, Active);
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref CX);
+        serializer.SerializeValue(ref CY);
+        serializer.SerializeValue(ref Tick);
+        serializer.SerializeValue(ref Active);
     }
 }

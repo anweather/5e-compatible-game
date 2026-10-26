@@ -12,7 +12,9 @@ namespace Chem.Tests
     public class TerrainTests
     {
         static Rules R => ChemistryTests.R;
-        static readonly TerrainGrid G = TerrainGrid.Valley();
+        // The mechanics are tested on a 200×175 grid over the valley's terrains, where the yard's cells
+        // were before they covered the whole valley; ValleyCoversTheWholeTerrain checks the real layout.
+        static readonly TerrainGrid G = new TerrainGrid(1.5f, (-419.25f, -368.25f), (9, 9), (192, 319), (200, 175), (3, 2, 5, 4));
         const float Step = 0.5f;
 
         static World Meadow() => new World(R, G.GridW, G.GridH, 1, "grass");
@@ -57,6 +59,19 @@ namespace Chem.Tests
             Assert.AreEqual(96f, G.ChunkSize);
             Assert.AreEqual((3, 4), G.ChunkOfCell(0, 0));
             Assert.AreEqual((6, 2), G.ChunkOfCell(199, 174));
+        }
+
+        [Test]
+        public void ValleyCoversTheWholeTerrain()
+        {
+            var v = TerrainGrid.Valley();
+            Assert.AreEqual((576, 576), (v.GridW, v.GridH));
+            Assert.AreEqual((-418.5f, 495f), v.CellCenter(0, 0));
+            Assert.AreEqual((0f, 0f), v.CellCenter(279, 330), "the yard is where it was");
+            Assert.AreEqual(G.CellCenter(87, 74), v.CellCenter(279, 330));
+            Assert.AreEqual((0, 8), v.ChunkOfCell(0, 0));
+            Assert.AreEqual((8, 0), v.ChunkOfCell(575, 575));
+            Assert.AreEqual(81, v.GridChunks().Count);
         }
 
         [Test]
