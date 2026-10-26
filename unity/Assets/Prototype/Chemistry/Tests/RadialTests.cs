@@ -28,6 +28,7 @@ namespace Chem.Tests
         static Rules FiveEarth => fiveEarth ??= With(@"{ 'spells': [
             { 'id': 'burning-hands', 'group': 'fire', 'name': 'Burning Hands', 'level': 1, 'shape': 'cone', 'origin': 'self', 'length': 3, 'element': 'fire', 'radial': false, 'blurb': '' },
             { 'id': 'fireball', 'group': 'fire', 'name': 'Fireball', 'level': 3, 'shape': 'burst', 'radius': 2, 'element': 'fire', 'radial': false, 'blurb': '' },
+            { 'id': 'meteor', 'group': 'fire', 'name': 'Meteor', 'level': 7, 'shape': 'burst', 'radius': 4, 'element': 'fire', 'radial': false, 'blurb': '' },
             { 'id': 'earthen-trench', 'group': 'earth', 'name': 'Earthen Trench', 'level': 2, 'shape': 'line', 'origin': 'self', 'length': 8, 'effect': 'terraform', 'dig': 2, 'blurb': '' },
             { 'id': 'move-earth', 'group': 'earth', 'name': 'Move Earth', 'level': 6, 'shape': 'burst', 'radius': 3, 'effect': 'terraform', 'raise': 2, 'taper': true, 'blurb': '' } ] }");
 
@@ -69,7 +70,7 @@ namespace Chem.Tests
         {
             var layout = RadialLayout.From(Base);
             Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane" }));
-            Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt", "burning-hands", "fireball" }));
+            Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt", "burning-hands", "fireball", "meteor" }));
             Assert.That(RadialLayout.From(FiveEarth).Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt" }), "a group with one spell");
             Assert.That(layout.Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "wall-of-stone" }), "Earthen Trench and Move Earth stay off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "earthen-trench", "wall-of-stone", "move-earth" }), "a group with five");

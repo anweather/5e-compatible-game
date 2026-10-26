@@ -181,7 +181,13 @@ public class SpellCaster : MonoBehaviour
             onArrive?.Invoke();
         }
 
-        if (look?.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, Land, this);
+        if (look != null && look.fromSky)
+            MeteorFall.Launch(landing, transform.position, look, () =>
+            {
+                GameSounds.Play(GameSounds.LandingOf(def), landing);
+                onArrive?.Invoke();
+            }, this);
+        else if (look?.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, Land, this);
         else Land();
     }
 
@@ -209,7 +215,7 @@ public class SpellCaster : MonoBehaviour
             var cells = grid.World.SpellCells(spell, x, y, cast.Dir, cast.Charge, cast.AimX, cast.AimY);
             if (cells.Count > 0) (x, y) = cells[cells.Count - 1];
         }
-        else if (spell != null && spell.Shape == SpellShapes.Burst) return transform.position + Vector3.up;
+        else if (spell != null && spell.Shape == SpellShapes.Burst && spell.Origin == "self") return transform.position + Vector3.up;
         return grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);
     }
 
@@ -222,6 +228,7 @@ public class SpellCaster : MonoBehaviour
     float FlightSeconds(CastCommand cast)
     {
         var look = LookOf(cast.Spell);
+        if (look != null && look.fromSky) return MeteorFall.Seconds;
         return look?.projectile != null ? Vector3.Distance(Hand, Landing(cast)) / SpellProjectile.DefaultSpeed : 0f;
     }
 

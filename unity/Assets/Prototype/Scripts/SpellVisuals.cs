@@ -19,6 +19,10 @@ public class SpellVisuals : ScriptableObject
         public GameObject impact;
         public float impactSeconds = 2f;
         public Color glow = Color.white;
+        [Tooltip("Falls from the sky onto the target instead of flying from the hand (MeteorFall), with the projectile as its flames.")]
+        public bool fromSky;
+        [Tooltip("A second effect where it lands, with the impact (a meteor's dust).")]
+        public GameObject afterImpact;
     }
 
     public List<Entry> entries = new();

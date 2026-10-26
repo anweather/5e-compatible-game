@@ -27,9 +27,9 @@ public class BlastProbe : ProbeScenario
         int burning = 0;
         for (int dy = -2; dy <= 2; dy++)
             for (int dx = -2; dx <= 2; dx++)
-                if (World.At(cell.x + dx, cell.y + dy).Fire > 0) burning++;
+                if (System.Math.Max(System.Math.Abs(dx), System.Math.Abs(dy)) == 2 && (World.At(cell.x + dx, cell.y + dy).Fire > 0 || World.At(cell.x + dx, cell.y + dy).T == TerrainIds.Dirt)) burning++;
         Metric("burning_in_blast", burning);
-        Check("edge_burns", burning > 0, $"{burning} of the blast's squares burning");
+        Check("edge_burns", burning > 0, $"{burning} squares of the blast's edge burning or burnt");
         Shot("crater");
     }
 }

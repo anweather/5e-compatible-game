@@ -91,6 +91,8 @@ public static class ChemYardBuilder
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
         follow.AddComponent<CameraZoom>().controls = controls;
         hands.view = follow.GetComponent<CinemachineCamera>();
+        // Meteors shake it (MeteorFall).
+        follow.AddComponent<CinemachineImpulseListener>();
 
         SetUpLighting();
         ValleyBuilder.Dress(grid, rows);
@@ -343,10 +345,21 @@ public static class ChemYardBuilder
             Visual(SpellIds.EarthenTrench, new Color(0.7f, 0.5f, 0.28f), null, null),
             Visual(SpellIds.WallOfStone, new Color(0.7f, 0.68f, 0.62f), null, null),
             Visual(SpellIds.MoveEarth, new Color(0.65f, 0.5f, 0.3f), null, null),
+            Meteor(),
         };
         EditorUtility.SetDirty(visuals);
         AssetDatabase.SaveAssets();
         return visuals;
+    }
+
+    // Meteor: a burning rock from the sky (MeteorFall), the Fireball's flames on it, a big blast and dust where it lands.
+    static SpellVisuals.Entry Meteor()
+    {
+        var e = Visual(SpellIds.Meteor, new Color(1f, 0.35f, 0.1f), FireFx + "/FireBall.prefab", FireFx + "/BigExplosion.prefab");
+        e.fromSky = true;
+        e.afterImpact = Load(FireFx + "/DustExplosion.prefab");
+        e.impactSeconds = 5f;
+        return e;
     }
 
     static SpellVisuals.Entry Visual(string spellId, Color glow, string projectile, string impact) => new SpellVisuals.Entry

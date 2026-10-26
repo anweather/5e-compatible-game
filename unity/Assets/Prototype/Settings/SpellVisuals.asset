@@ -18,88 +18,131 @@ MonoBehaviour:
     impact: {fileID: 1337198075554910, guid: 25c7aa9ad705fe143a4d71c1c8deb7d4, type: 3}
     impactSeconds: 2
     glow: {r: 1, g: 0.5, b: 0.15, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: burning-hands
     projectile: {fileID: 0}
     impact: {fileID: 1634767862067424, guid: 007c57e2df8e9b144b99f471b84f3d56, type: 3}
     impactSeconds: 2
     glow: {r: 1, g: 0.45, b: 0.1, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: fireball
     projectile: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
     impact: {fileID: 1121192042590650, guid: e1b08032bec16ba4eb1ae23cbd572664, type: 3}
     impactSeconds: 2
     glow: {r: 1, g: 0.4, b: 0.1, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: ray-of-frost
     projectile: {fileID: 0}
     impact: {fileID: 1820680284854294, guid: 1a1c02facd51d87458dcaa3a761e2c03, type: 3}
     impactSeconds: 2
     glow: {r: 0.55, g: 0.85, b: 1, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: create-water
     projectile: {fileID: 0}
     impact: {fileID: 1722726733478836, guid: c1c88308ebb5d2541a282905b854ee4c, type: 3}
     impactSeconds: 2
     glow: {r: 0.3, g: 0.6, b: 1, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: sleet-storm
     projectile: {fileID: 0}
     impact: {fileID: 1820680284854294, guid: 1a1c02facd51d87458dcaa3a761e2c03, type: 3}
     impactSeconds: 2
     glow: {r: 0.75, g: 0.9, b: 1, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: grease
     projectile: {fileID: 0}
     impact: {fileID: 1240250018707908, guid: 5656e7ea1f1a75d4c895547ec2b824b3, type: 3}
     impactSeconds: 2
     glow: {r: 0.9, g: 0.8, b: 0.3, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: shocking-grasp
     projectile: {fileID: 0}
     impact: {fileID: 1000011396044746, guid: 96b2ec0239d11fa4b9792311efceb8ed, type: 3}
     impactSeconds: 2
     glow: {r: 1, g: 0.95, b: 0.4, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: gust-of-wind
     projectile: {fileID: 0}
     impact: {fileID: 1000010715882420, guid: 14d81e2c407975245973a11cdfbeb902, type: 3}
     impactSeconds: 2
     glow: {r: 0.9, g: 0.95, b: 1, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: thunderwave
     projectile: {fileID: 0}
     impact: {fileID: 1025285306637258, guid: d8f0099df63275647a8bcf646df1ca00, type: 3}
     impactSeconds: 2
     glow: {r: 0.8, g: 0.85, b: 1, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: levitate
     projectile: {fileID: 0}
     impact: {fileID: 1000011210275196, guid: 61a6b3a108030e54ba372fe7097916d0, type: 3}
     impactSeconds: 2
     glow: {r: 0.75, g: 0.6, b: 1, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: misty-step
     projectile: {fileID: 0}
     impact: {fileID: 3281665843732006339, guid: bd2fe1eb2e3ba454088c57397144535f, type: 3}
     impactSeconds: 2
     glow: {r: 0.85, g: 0.88, b: 0.95, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: mage-hand
     projectile: {fileID: 0}
     impact: {fileID: 1000011210275196, guid: 61a6b3a108030e54ba372fe7097916d0, type: 3}
     impactSeconds: 2
     glow: {r: 0.6, g: 0.95, b: 0.8, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: mold-earth
     projectile: {fileID: 0}
     impact: {fileID: 0}
     impactSeconds: 2
     glow: {r: 0.75, g: 0.55, b: 0.3, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: mold-earth-heap
     projectile: {fileID: 0}
     impact: {fileID: 0}
     impactSeconds: 2
     glow: {r: 0.75, g: 0.55, b: 0.3, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: earthen-trench
     projectile: {fileID: 0}
     impact: {fileID: 0}
     impactSeconds: 2
     glow: {r: 0.7, g: 0.5, b: 0.28, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: wall-of-stone
     projectile: {fileID: 0}
     impact: {fileID: 0}
     impactSeconds: 2
     glow: {r: 0.7, g: 0.68, b: 0.62, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
   - spellId: move-earth
     projectile: {fileID: 0}
     impact: {fileID: 0}
     impactSeconds: 2
     glow: {r: 0.65, g: 0.5, b: 0.3, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
+  - spellId: meteor
+    projectile: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
+    impact: {fileID: 1121192042590650, guid: e1b08032bec16ba4eb1ae23cbd572664, type: 3}
+    impactSeconds: 5
+    glow: {r: 1, g: 0.35, b: 0.1, a: 1}
+    fromSky: 1
+    afterImpact: {fileID: 1025285306637258, guid: d8f0099df63275647a8bcf646df1ca00, type: 3}

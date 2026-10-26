@@ -5,6 +5,8 @@
     "blurb": "Level 1. A 15 ft cone of flame from your hands: everything that can burn in it catches. Hold the cast and it reaches further." },
   { "id": "fireball", "group": "fire", "name": "Fireball", "level": 3, "shape": "burst", "radius": 2, "element": "fire", "power": 2, "damage": [8, 6], "push": 2, "crater": { "radius": 1, "depth": 2 },
     "blurb": "Level 3. A bead of flame that bursts where it lands, 25 ft across, setting it all alight. It goes off with a bang: things near it are thrown back and it blows a small crater in the ground. Our blast is smaller than the SRD's 20 ft radius; the Big fireball mod gives you that." },
+  { "id": "meteor", "group": "fire", "name": "Meteor", "level": 7, "shape": "burst", "radius": 4, "element": "fire", "power": 3, "damage": [10, 6], "push": 4, "crater": { "radius": 2, "depth": 3 },
+    "blurb": "Level 7. A burning rock falls from the sky where you point and bursts in a ring of fire 45 ft across, throwing everything back and blasting a deep crater. Our own single-stone reading of the SRD's Meteor Swarm (level 9, four of them)." },
   { "id": "ray-of-frost", "group": "water", "name": "Ray of Frost", "level": 0, "shape": "line", "origin": "self", "length": 5, "element": "cold", "damage": [1, 8],
     "blurb": "Cantrip. A 25 ft beam from you toward where you click. Freezes water into walkable ice and snuffs fire. RAW it only chills a creature; the ice is our physical reading." },
   { "id": "shocking-grasp", "group": "storm", "name": "Shocking Grasp", "level": 0, "shape": "point", "element": "lightning", "damage": [1, 8],
