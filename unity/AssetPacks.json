@@ -40,6 +40,28 @@
         "Assets/TerrainDemoScene_URP/Prefabs/Skybox",
         "Assets/TerrainDemoScene_URP/Prefabs/Rocks"
       ]
+    },
+    {
+      "id": 155776,
+      "name": "Free Sound Effects Pack Starter - All categories",
+      "url": "https://assetstore.unity.com/packages/audio/sound-fx/free-sound-effects-pack-155776",
+      "version": "1.0",
+      "folder": "Assets/Free Pack",
+      "cache": "Olivier Girardot/AudioSound FX/Free Sound Effects Pack Starter - All categories.unitypackage",
+      "include": [
+        "Assets/Free Pack/Dragon Spit Fire 1.wav",
+        "Assets/Free Pack/Magic Spell_Electricity Spell_1.wav",
+        "Assets/Free Pack/Magic Spell_Simple Swoosh_6.wav",
+        "Assets/Free Pack/Magic Spell_Short Reverse_1.wav",
+        "Assets/Free Pack/Magic Spell - Turn to stone.wav",
+        "Assets/Free Pack/Earthquake 3 - Big.wav",
+        "Assets/Free Pack/Explosion 1.wav",
+        "Assets/Free Pack/Explosion 2.wav",
+        "Assets/Free Pack/Explosion 8.wav",
+        "Assets/Free Pack/Cannon impact 9.wav",
+        "Assets/Free Pack/Heavy Object Impact 4.wav",
+        "Assets/Free Pack/Heavy Object Impact 10.wav"
+      ]
     }
   ]
 }

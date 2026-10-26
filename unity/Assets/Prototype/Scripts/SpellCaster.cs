@@ -187,7 +187,7 @@ public class SpellCaster : MonoBehaviour
         var landing = Landing(spellId, x, y, dir);
         var def = grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null;
         if (pose != null) pose.Play(landing, look?.glow ?? Color.white);
-        GameSounds.Play(GameSounds.CastOf(def), Hand, 0.45f);
+        GameSounds.Play(GameSounds.CastOf(def), Hand);
         // A blink shows its mist where the caster leaves as well as where they land.
         if (def?.Effect == SpellShapes.TeleportEffect && look?.impact != null)
             Destroy(Instantiate(look.impact, transform.position, Quaternion.identity), look.impactSeconds);

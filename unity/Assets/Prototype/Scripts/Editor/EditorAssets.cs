@@ -52,4 +52,7 @@ public static class PackPaths
 
     public const string TerrainSamples = "Assets/TerrainSampleAssets";
     public const string TerrainDemo = "Assets/TerrainDemoScene_URP/Prefabs";
+
+    /// <summary>Olivier Girardot's free sound pack (only the files AssetPacks.json lists are imported).</summary>
+    public const string FreeSounds = "Assets/Free Pack";
 }

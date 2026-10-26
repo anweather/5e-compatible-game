@@ -84,6 +84,7 @@ public static class ChemYardBuilder
         player.name = WizardRig.Name;
         player.transform.position = start;
         var (controls, _, hands) = AddWizardParts(player, grid, BuildSpellVisuals(), playerDriven: true);
+        SoundBankBuilder.Build(); // the mastered sounds (Generated/Resources), loaded by GameSounds at runtime
 
         var follow = (GameObject)PrefabUtility.InstantiatePrefab(followCamera);
         var cameraRoot = player.transform.Find(WizardRig.CameraRoot);
