@@ -70,9 +70,23 @@ public static class ProceduralSounds
     public static AudioClip FireLoop => MakeLoop("fire-loop", 3f, (t, r) =>
         Lowpass(ref loopLp, 0.06f, Noise(r)) * 1.6f + (r.NextDouble() < 0.0015 ? 1f : 0f) * Noise(r) * 0.9f);
 
+    /// <summary>Rain, made to loop: a hiss of fine noise (the noise less its low end) with scattered drops.</summary>
+    public static AudioClip RainLoop => MakeLoop("rain-loop", 4f, (t, r) =>
+    {
+        float n = Noise(r);
+        float hiss = n - Lowpass(ref rainLp, 0.15f, n);
+        float drop = r.NextDouble() < 0.004 ? Noise(r) * 1.4f : 0f;
+        return Lowpass(ref rainSoftLp, 0.5f, hiss * 0.8f + drop);
+    });
+
+    /// <summary>Wind, made to loop: dark noise that gusts up and down.</summary>
+    public static AudioClip WindLoop => MakeLoop("wind-loop", 6f, (t, r) =>
+        Lowpass(ref windLp, 0.012f + 0.02f * (0.5f + 0.5f * Mathf.Sin(t * 1.3f) * Mathf.Sin(t * 0.47f)), Noise(r))
+        * (0.6f + 0.4f * Mathf.Sin(t * 0.9f + 1f) * Mathf.Sin(t * 0.31f)) * 4f);
+
     // --- building blocks -------------------------------------------------------
 
-    static float fireLp, splashLp, squelchLp, thunderLp, rumbleLp, boomLp, loopLp, shimmerLp;
+    static float fireLp, splashLp, squelchLp, thunderLp, rumbleLp, boomLp, loopLp, shimmerLp, rainLp, rainSoftLp, windLp;
 
     static float Noise(System.Random r) => (float)(r.NextDouble() * 2.0 - 1.0);
     static float Tone(float t, float hz) => Mathf.Sin(2f * Mathf.PI * hz * t);

@@ -16,6 +16,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 | D7 | [Netcode: NGO, client-hosted, lockstep chemistry](adr/0007-netcode-ngo-client-hosted-lockstep-chemistry.md) | Accepted (2026-10-25) |
 | D8 | [Voice: Vivox, with spell effects applied by each listener](adr/0008-voice-vivox-with-spell-effects-applied-by-each-listener.md) | Proposed (2026-10-24) |
 | D9 | [ECS as a pattern in the core, not Unity Entities](adr/0009-ecs-as-a-pattern-in-the-core-not-unity-entities.md) | Accepted (2026-10-25) |
+| D10 | [Time and weather are a function of the tick](adr/0010-time-and-weather-are-a-function-of-the-tick.md) | Accepted (2026-10-25) |
 
 How to add one: see [`adr/README.md`](adr/README.md).
 

@@ -53,11 +53,11 @@ public class EventLog : MonoBehaviour
     {
         var controls = caster != null ? caster.controls : null;
         bool reset = controls != null ? controls.Reset.WasPressedThisFrame() : Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
-        if (reset) Reset();
+        if (reset) ResetYard();
     }
 
     /// <summary>Reloads the scene, solo only; returns whether it did.</summary>
-    public static bool Reset()
+    public static bool ResetYard()
     {
         // Reloading the scene online would drop this machine's world and everyone's wizards with it.
         var net = FindFirstObjectByType<NetChem>();

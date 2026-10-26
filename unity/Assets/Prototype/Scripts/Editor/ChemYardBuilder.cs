@@ -172,6 +172,28 @@ public static class ChemYardBuilder
         var volume = new GameObject("Post-processing").AddComponent<Volume>();
         volume.isGlobal = true;
         volume.sharedProfile = profile;
+        SetUpSky(sun);
+    }
+
+    // The clock turns the sun and a dim blue moon (SkyLight); WeatherFx draws the rain and lightning.
+    static void SetUpSky(Light sun)
+    {
+        var go = new GameObject("Sky");
+        var moon = new GameObject("Moon").AddComponent<Light>();
+        moon.transform.SetParent(go.transform, false);
+        moon.type = LightType.Directional;
+        moon.color = new Color(0.55f, 0.65f, 1f);
+        moon.intensity = 0f;
+        moon.shadows = LightShadows.None;
+        var light = go.AddComponent<SkyLight>();
+        light.sun = sun;
+        light.moon = moon;
+        EditorAssets.EnsureFolderFor(PropBuilder.Generated + "/Rain.mat");
+        var fx = go.AddComponent<WeatherFx>();
+        fx.rainMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Rain.mat",
+            () => UrpMaterials.NewUnlitParticles("Rain", Color.white, additive: false));
+        fx.boltMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/LightningBolt.mat",
+            () => UrpMaterials.NewUnlitParticles("Lightning bolt", new Color(6f, 6.5f, 8f), additive: true));
     }
 
     static void Override<T>(VolumeProfile profile, System.Action<T> set) where T : VolumeComponent

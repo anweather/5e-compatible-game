@@ -460,7 +460,7 @@ public class OnlineProbe : ProbeScenario
     // Reset (R / View) online is refused rather than reloading the host's scene from under everyone.
     IEnumerator TryReset()
     {
-        bool reloaded = EventLog.Reset();
+        bool reloaded = EventLog.ResetYard();
         for (int i = 0; i < 10; i++) yield return null;
         int players = NetworkManager.Singleton.ConnectedClientsIds.Count;
         Check("reset_refused_online", !reloaded && players == 2, $"reloaded {reloaded}, {players} players after");

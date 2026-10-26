@@ -13,6 +13,11 @@ changes them back (rules as data + interpreter, `ARCHITECTURE.md`).
 
 A clock that turns the sun and moon, sky and light.
 
+**Built (2026-10-25, D10):** the clock (`Sky.cs`; a day is 24 real minutes,
+starting at 9:00), the sun and a moon, the sky, ambient light and haze by
+the hour (`SkyLight`), and the clock line on the HUD. Still open: anything
+the night *does* (below), stars, and lights that switch on at dusk.
+
 - **Influenced by:** spells and items that make light or dark (Daylight,
   Darkness, the lantern's light `use`, burning things); maybe a spell that
   speeds or stops time locally.
@@ -29,6 +34,16 @@ A clock that turns the sun and moon, sky and light.
 ## 2. Weather
 
 Rain, fog, wind, storms, snow, heat.
+
+**Built (2026-10-25, D10):** world-wide weather in stretches (clear,
+cloudy, windy, fog, rain, storm) after a calm start. Rain douses and
+dampens fire, fills squares and dries puddles after; windy weather and
+storms bring a wind fire and gas follow; storms strike lightning. In view:
+rain, haze, cloud dimming, bolts, flashes, thunder by distance, rain and
+wind loops (`WeatherFx`). The Storm season mod. Still open: snow and
+cold (freezing), heat, fronts per chunk, weather that reacts to the world
+(a big fire's updraft), Control Weather, rain that stops under roofs,
+splashes, and recorded rain and wind instead of procedural loops.
 
 - **Influenced by:** Create Water and fire at scale (a big fire makes
   smoke and an updraft), Gust of Wind, lightning spells, Control Weather
@@ -239,7 +254,7 @@ not in part 1, and makes its rings real.
 ## 12. Reset the world online
 
 Reset (R / View) reloads the scene on the machine that pressed it, so since
-0.1.2 it's refused while playing together (`EventLog.Reset`; the online
+0.1.2 it's refused while playing together (`EventLog.ResetYard`; the online
 probe's `reset_refused_online`). In 0.1.1, a reset on the host dropped
 everyone's wizards.
 

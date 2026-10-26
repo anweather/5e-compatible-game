@@ -57,7 +57,7 @@ public static class ProbeScenarios
         new Entry("menu", typeof(MenuProbe), 60f,
             "The Esc menu with a controller: Start on a virtual gamepad opens it, the highlight moves down to Mods, A opens the " +
             "Mods page and switches the first mod on and off, B goes back, then Credits and Join by code (letters picked, B back). " +
-            "Checks: each step landed on the right page, 5 mods listed, the mod switched, B and Start close the menu and the " +
+            "Checks: each step landed on the right page, 6 mods listed, the mod switched, B and Start close the menu and the " +
             "wizard's controls come back, no console errors."),
         new Entry("radial", typeof(RadialProbe), 60f,
             "The spell radial with a controller, on a virtual gamepad: hold LB and push the right stick at Storm, then at " +
@@ -65,6 +65,11 @@ public static class ProbeScenarios
             "the arc opens with Thunderwave highlighted, release picks it and camera look comes back, a tap swaps back to " +
             "Fire Bolt, B cancels without changing the spell, the d-pad steps to the next element and RB to the next spell " +
             "in it, no console errors."),
+        new Entry("sky", typeof(SkyProbe), 90f,
+            "The clock and the weather, switched as a mod switches them: noon, then 22:00, then a storm at 13:00 with lightning " +
+            "every half second, then fog. Checks: the Sky object is built, the sun is bright at noon and the clock line says so, " +
+            "night is dark with the moon up, the storm is in force (wind too) with rain falling, strikes logged and a bolt drawn, " +
+            "the sun dimmed, fog closes the haze in, no console errors."),
     };
 
     public static Entry Find(string name) =>

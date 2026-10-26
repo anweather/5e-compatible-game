@@ -60,6 +60,23 @@ public static class UrpMaterials
         m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
     }
 
+    public const string UnlitParticlesShader = "Universal Render Pipeline/Particles/Unlit";
+
+    /// <summary>
+    /// An unlit see-through material for particles and lines, tinted by their vertex colours:
+    /// alpha-blended (rain) or added on top (a lightning bolt; a colour over 1 blooms).
+    /// </summary>
+    public static Material NewUnlitParticles(string name, Color color, bool additive)
+    {
+        var m = new Material(Shader.Find(UnlitParticlesShader)) { name = name };
+        m.SetColor("_BaseColor", color);
+        MakeTransparent(m);
+        if (!additive) return m;
+        m.SetFloat("_Blend", 2f);
+        m.SetFloat("_DstBlend", (float)BlendMode.One);
+        return m;
+    }
+
     public static void SetNormalMap(Material m, Texture normals, float scale)
     {
         m.SetTexture("_BumpMap", normals);
