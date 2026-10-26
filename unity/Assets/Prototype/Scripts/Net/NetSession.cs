@@ -8,7 +8,8 @@ using Unity.Services.Multiplayer;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 
-// The Play Together panel, top right, under the help line and spell bar.
+// Playing together: the Play together section of the Esc menu (PauseMenu), and
+// a one-line status with the join code top right while online.
 // Solo play uses the scene's own wizard; hosting or joining removes it and
 // the network spawns one wizard per player (up to MaxPlayers).
 //
@@ -27,7 +28,7 @@ public class NetSession : MonoBehaviour
     string status;
     bool busy;
     ISession session;
-    GUIStyle box, codeStyle;
+    GUIStyle label, field, codeStyle, corner;
     NetworkManager manager;
 
     // The scene's NetworkManager (Netcode's singleton), looked up once it exists.
@@ -143,55 +144,51 @@ public class NetSession : MonoBehaviour
         response.Reason = room ? null : $"The yard is full ({MaxPlayers} players).";
     }
 
-    // --- panel ---------------------------------------------------------------
+    // --- in the Esc menu, and a status line while online ----------------------
 
-    void OnGUI()
+    void OnEnable() => PauseMenu.AddSection(MenuSection);
+    void OnDisable() => PauseMenu.RemoveSection(MenuSection);
+
+    // The Play together section of the Esc menu.
+    void MenuSection()
     {
-        if (Net == null || !EventLog.HudVisible) return;
-        box ??= new GUIStyle(GUI.skin.box) { fontSize = 16, alignment = TextAnchor.UpperLeft, padding = new RectOffset(10, 10, 8, 8) };
-        codeStyle ??= new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold };
-        GUI.skin.button.fontSize = 16;
-        GUI.skin.textField.fontSize = 16;
-        GUI.skin.label.fontSize = 16;
+        if (Net == null) return;
+        MakeStyles();
         bool online = Net.IsListening || session != null;
-        GUILayout.BeginArea(PanelRect(online, SessionCode != null, status != null), box);
-        if (online) OnlinePanel();
-        else OfflinePanel();
-        if (status != null) GUILayout.Label(status);
-        GUILayout.EndArea();
+        GUILayout.Label("<b>Play together</b>  <color=#ffffff88>(up to 4)</color>", label);
+        if (online) OnlineControls();
+        else OfflineControls();
+        if (status != null) GUILayout.Label(status, label);
     }
 
-    // Top right, below the help line and the spell bar (EventLog, y 12 to 70), so neither runs
-    // under it at any width; only as tall as what it shows.
-    const float PanelTop = 76f, PanelWidth = 300f, Row = 30f;
-
-    /// <summary>Where the panel goes on a screen <paramref name="width"/> pixels wide.</summary>
-    public static Rect PanelRect(bool online, bool hasCode, bool hasStatus, float width)
-    {
-        float rows = 6f;
-        if (online) rows = hasCode ? 5f : 3f;
-        if (hasStatus) rows += 1.5f;
-        return new Rect(width - PanelWidth - 16f, PanelTop, PanelWidth, rows * Row + 20f);
-    }
-
-    static Rect PanelRect(bool online, bool hasCode, bool hasStatus) => PanelRect(online, hasCode, hasStatus, Screen.width);
-
-    void OfflinePanel()
+    void OfflineControls()
     {
         GUI.enabled = !busy;
-        GUILayout.Label("Play together (up to 4)");
-        if (GUILayout.Button("Host online")) _ = HostOnline();
+        if (GUILayout.Button("Host online", PauseMenu.ButtonStyle)) _ = HostOnline();
         GUILayout.BeginHorizontal();
-        joinCode = GUILayout.TextField(joinCode, 12, GUILayout.Width(150));
-        if (GUILayout.Button("Join code") && joinCode.Trim().Length > 0) _ = JoinOnline(joinCode);
+        joinCode = GUILayout.TextField(joinCode, 12, field, GUILayout.Width(170));
+        if (GUILayout.Button("Join code", GUILayout.Height(32)) && joinCode.Trim().Length > 0) _ = JoinOnline(joinCode);
         GUILayout.EndHorizontal();
-        GUILayout.Label("Same network:");
+        GUILayout.Label("Same network:", label);
         GUILayout.BeginHorizontal();
-        if (GUILayout.Button("Host", GUILayout.Width(60))) Host();
-        address = GUILayout.TextField(address, GUILayout.Width(120));
-        if (GUILayout.Button("Join")) Join(address);
+        if (GUILayout.Button("Host", GUILayout.Width(70), GUILayout.Height(32))) Host();
+        address = GUILayout.TextField(address, field, GUILayout.Width(150));
+        if (GUILayout.Button("Join", GUILayout.Height(32))) Join(address);
         GUILayout.EndHorizontal();
         GUI.enabled = true;
+    }
+
+    void OnlineControls()
+    {
+        GUILayout.Label(StatusText(), label);
+        if (SessionCode != null)
+        {
+            GUILayout.BeginHorizontal();
+            GUILayout.Label(SessionCode, codeStyle);
+            if (GUILayout.Button("Copy", GUILayout.Width(70), GUILayout.Height(32))) GUIUtility.systemCopyBuffer = SessionCode;
+            GUILayout.EndHorizontal();
+        }
+        if (GUILayout.Button("Leave", PauseMenu.ButtonStyle)) _ = Leave();
     }
 
     string RoleLabel()
@@ -200,20 +197,28 @@ public class NetSession : MonoBehaviour
         return Net.IsConnectedClient ? "Connected" : "Connecting…";
     }
 
-    void OnlinePanel()
+    string StatusText()
     {
-        string role = RoleLabel();
         int players = session?.PlayerCount ?? (Net.IsServer ? Net.ConnectedClientsIds.Count : 0);
-        GUILayout.Label(players > 0 ? $"{role} · {players}/{MaxPlayers} players" : role);
-        if (SessionCode != null)
-        {
-            GUILayout.Label("Join code:");
-            GUILayout.BeginHorizontal();
-            GUILayout.Label(SessionCode, codeStyle);
-            if (GUILayout.Button("Copy", GUILayout.Width(60))) GUIUtility.systemCopyBuffer = SessionCode;
-            GUILayout.EndHorizontal();
-        }
-        else GUILayout.Label($"Same network · port {Port}");
-        if (GUILayout.Button("Leave")) _ = Leave();
+        string where = SessionCode != null ? $"code <b>{SessionCode}</b>" : $"same network, port {Port}";
+        return players > 0 ? $"{RoleLabel()} · {players}/{MaxPlayers} players · {where}" : $"{RoleLabel()} · {where}";
+    }
+
+    // While online, one line top right (under the help line and spell bar) so the join
+    // code is always there to share; everything else is in the Esc menu.
+    void OnGUI()
+    {
+        if (Net == null || !EventLog.HudVisible || !(Net.IsListening || session != null)) return;
+        MakeStyles();
+        GUI.Label(new Rect(Screen.width - 456f, 76f, 440f, 30f), StatusText() + "   <color=#ffffff88>Esc: menu</color>", corner);
+    }
+
+    void MakeStyles()
+    {
+        if (label != null) return;
+        label = new GUIStyle(GUI.skin.label) { fontSize = 16, richText = true, wordWrap = true };
+        field = new GUIStyle(GUI.skin.textField) { fontSize = 18, fixedHeight = 32 };
+        codeStyle = new GUIStyle(GUI.skin.label) { fontSize = 26, fontStyle = FontStyle.Bold };
+        corner = new GUIStyle(label) { alignment = TextAnchor.UpperRight, wordWrap = false };
     }
 }

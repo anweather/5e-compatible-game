@@ -1,19 +1,33 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The Esc menu: Resume or Quit. It starts itself in every scene, like FpsProbe,
-// so no scene or builder has to add it. While it is open the wizard's own
-// controls and mouse look are off and the cursor is free, as with the mods panel;
-// the game itself keeps running (online, the others are still playing).
+// The Esc menu: Resume, any sections other code adds (NetSession adds Play
+// together), and Quit. It starts itself in every scene, like FpsProbe, so no
+// scene or builder has to add it. While it is open the wizard's own controls
+// and mouse look are off and the cursor is free, as with the mods panel; the
+// game itself keeps running (online, the others are still playing).
 //
 //   Open / close    Esc
-//   Choose          click, or Enter to quit
+//   Choose          click
 public class PauseMenu : MonoBehaviour
 {
-    const int Width = 320;
+    const int Width = 360;
 
     static PauseMenu instance;
+    static readonly System.Collections.Generic.List<System.Action> sections = new();
     GUIStyle box, title, button;
+
+    /// <summary>
+    /// Adds a section drawn between Resume and Quit (IMGUI layout calls, inside the menu's
+    /// width), so other parts of the game can put their controls in the menu without the
+    /// menu knowing about them. Remove it again when its owner goes away.
+    /// </summary>
+    public static void AddSection(System.Action draw) { if (!sections.Contains(draw)) sections.Add(draw); }
+
+    public static void RemoveSection(System.Action draw) => sections.Remove(draw);
+
+    /// <summary>The menu's button style, for sections that want matching buttons.</summary>
+    public static GUIStyle ButtonStyle => instance != null ? instance.button : GUI.skin.button;
 
     // What opening the menu changed on the wizard, put back on close.
     PlayerControls pausedControls;
@@ -35,15 +49,11 @@ public class PauseMenu : MonoBehaviour
     void Update()
     {
         var keys = Keyboard.current;
-        if (keys == null) return;
-        if (keys.escapeKey.wasPressedThisFrame)
-        {
-            // Esc closes the mods panel first, if it is open.
-            var mods = FindFirstObjectByType<ModsPanel>();
-            if (!Open && mods != null && mods.Open) mods.SetOpen(false);
-            else SetOpen(!Open);
-        }
-        else if (Open && (keys.enterKey.wasPressedThisFrame || keys.numpadEnterKey.wasPressedThisFrame)) Quit();
+        if (keys == null || !keys.escapeKey.wasPressedThisFrame) return;
+        // Esc closes the mods panel first, if it is open.
+        var mods = FindFirstObjectByType<ModsPanel>();
+        if (!Open && mods != null && mods.Open) mods.SetOpen(false);
+        else SetOpen(!Open);
     }
 
     /// <summary>Opens or closes the menu.</summary>
@@ -106,13 +116,26 @@ public class PauseMenu : MonoBehaviour
         if (!Open) return;
         GUI.depth = -100; // over the rest of the HUD (lower draws on top)
         MakeStyles();
-        const float height = 190;
-        GUILayout.BeginArea(new Rect((Screen.width - Width) / 2f, (Screen.height - height) / 2f, Width, height), box);
+        // Centred, as tall as its contents.
+        GUILayout.BeginArea(new Rect(0, 0, Screen.width, Screen.height));
+        GUILayout.FlexibleSpace();
+        GUILayout.BeginHorizontal();
+        GUILayout.FlexibleSpace();
+        GUILayout.BeginVertical(box, GUILayout.Width(Width));
         GUILayout.Label("<b>Paused</b>", title);
         GUILayout.Space(8);
         if (GUILayout.Button("Resume   <color=#ffffff88>Esc</color>", button)) SetOpen(false);
-        GUILayout.Space(6);
-        if (GUILayout.Button("Quit   <color=#ffffff88>Enter</color>", button)) Quit();
+        foreach (var draw in sections.ToArray())
+        {
+            GUILayout.Space(12);
+            draw();
+        }
+        GUILayout.Space(12);
+        if (GUILayout.Button("Quit", button)) Quit();
+        GUILayout.EndVertical();
+        GUILayout.FlexibleSpace();
+        GUILayout.EndHorizontal();
+        GUILayout.FlexibleSpace();
         GUILayout.EndArea();
     }
 

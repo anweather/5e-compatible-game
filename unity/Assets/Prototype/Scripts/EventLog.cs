@@ -11,7 +11,7 @@ public class EventLog : MonoBehaviour
 {
     static EventLog instance;
 
-    /// <summary>False hides all on-screen UI (help, spell bar, log, Play Together panel), e.g. for trailer recordings.</summary>
+    /// <summary>False hides all on-screen UI (help, spell bar, log, the online status line), e.g. for trailer recordings.</summary>
     public static bool HudVisible { get; set; } = true;
     readonly List<string> lines = new List<string>();
     GUIStyle style;

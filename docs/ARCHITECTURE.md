@@ -145,7 +145,7 @@ sandbox too. CI builds and tests it outside Unity (`core/`).
 | Physics props | `ThingSpawner.cs` (spawns the props and items of `world/things.json` per chunk from one prefab per kind, at rest on their cells; online the host spawns them as NetworkObjects and clients adopt them by stable id; `SpawnChunk` / `UnloadChunk`), `PhysicsProp.cs` (a crate, barrel or boulder: reads its cell, floats, burns, explodes; online a client's copy is a puppet of the host's), `Forces.cs` (radial and line shoves, optionally only what this machine owns), `SpellForces.cs` (Thunderwave, Gust of Wind, Levitate; solo when a cast lands, online when its tick batch runs), `ChemEffects.cs` (the one door from physics into the chemistry: applied solo, stamped by the host online) |
 | Things to carry | `Carryable.cs` (an item from `rules/items.json`; a `PhysicsProp` on the ground, kinematic in hand; adds the behaviours its row asks for), `ItemHolder.cs` (the wizard's hand: pick up, drop, throw, use, the hint by the crosshair; online every wizard has one, and pick-up and letting go are granted by the host), `ItemUse.cs` (base of the behaviours), `ItemLight.cs`, `Fragile.cs` (smash and spill through `ChemEffects`), `Spyglass.cs`, `SendingStone.cs` with `PingMarker.cs`, `DancingLights.cs`, `Aiming.cs` (the crosshair ray, shared with `SpellCaster`) |
 | The show of a spell | `SpellVisuals.cs` (data asset), `SpellProjectile.cs` |
-| HUD | `EventLog.cs` (help, spell bar, "what happened" log), `ModsPanel.cs` (M / Start: the mods panel) |
+| HUD | `EventLog.cs` (help, spell bar, "what happened" log), `ModsPanel.cs` (M / Start: the mods panel), `PauseMenu.cs` (Esc: Resume, Play together, Quit; other code adds sections with `PauseMenu.AddSection`) |
 | Live rules | `RuleSwitcher.cs` (decides what to switch to and sends it: queued solo, stamped by the host online, asked of the host by a client), `RulesWatcher.cs` (Editor and dev builds: reloads saved `rules/` files, debounced, on the main thread). `ChemGrid` adds both at runtime, so scenes need no rebuild |
 | Demos and probes | `DemoDirector.cs`, `WizardPuppet.cs`, `Showcase.cs`, `FlythroughCamera.cs`, `FpsProbe.cs` |
 | Small shared helpers | `UrpMaterials.cs`, `Primitives.cs`, `ProceduralTextures.cs`, `ScrollingTexture.cs`, `Flicker.cs` |
@@ -193,8 +193,11 @@ by that id, and the checksum includes the things file's fingerprint. `NetItem.cs
 wizard's object id; the host grants pick-ups and flies throws), whether its
 light is uncovered, the Dancing Lights mote's position (from the holder),
 and carries a sending stone's message to the machine of whoever holds the
-other stone. Measured numbers are in `docs/MULTIPLAYER.md` §7. `NetSession.cs` is the Play
-Together panel (Relay join codes, or same-network IP). `NetDemo.cs` and
+other stone. Measured numbers are in `docs/MULTIPLAYER.md` §7. `NetSession.cs` is playing together:
+the Play together section of the Esc menu (Relay join codes, or same-network
+IP) and a one-line status with the join code while online. `NetCommandLine.cs`
+lets a player build host (`-host-online`) or join (`-join-code CODE`) from the
+command line and logs a `NET STATUS` line every 10 s, for two-machine tests. `NetDemo.cs` and
 `NetDemoDirector.cs` run the 4-player scripted demo. Background:
 `docs/MULTIPLAYER.md`.
 
