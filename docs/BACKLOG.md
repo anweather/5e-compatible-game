@@ -370,7 +370,22 @@ smooth channel, not steps (playtest, after the slant aim).
   square's corners by its neighbours) that keeps a one-square pit at full
   depth. Tried and rejected: a wider blur, which flattens a one-square pit
   to a quarter of its depth.
-- **Size:** M (drawing) to L (finer squares).
+- **A third way (Andrew): different granularity per effect.** Not every
+  effect needs the same square. Height could live on a finer grid (say
+  2 × 2 sub-squares of 0.75 m per 1.5 m square) while fire, gas, charge
+  and the rest stay at 1.5 m. Shaping is rare (a cast), so a finer height
+  layer costs memory and little time; it only runs when the ground moves.
+  The ticking effects keep their cost. The catch is water: it flows by
+  height every tick, so either it reads each square's mean height (cheap;
+  a slanted trench is drawn smooth but water still moves square by
+  square), or water moves to the finer grid too (smooth flow down a
+  slanted channel, four times the water work). Lines and craters would
+  shape sub-squares along the true aim (`SlantCells` at the finer step).
+  It all stays integer and deterministic, so lockstep is unaffected, but
+  the TS sandbox has to match, and the network checksum and goldens
+  change. Likely the best balance: finer height plus mean-height water
+  first, finer water only if the flow looks wrong.
+- **Size:** M (drawing) to L (finer squares or finer height).
 
 ## 19. Performance pass
 
