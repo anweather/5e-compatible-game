@@ -17,13 +17,17 @@ CONTROLS (keyboard and mouse; a gamepad works too)
   WASD            move              Mouse        look
   Space           jump              Shift        sprint
   Mouse wheel     zoom
-  1-8 or Q / E    choose a spell    Tab          next spell page
+  Hold Tab        spell radial: aim at an element, then a spell, release
+                  (a quick tap swaps back to your last spell)
+  Q / E           previous / next spell     1-8   open an element
   Left click      cast
   E (near a thing) pick up / drop   F            use the held item
   G / right-click throw (hold to throw harder)
-  R               reset the yard    Esc          menu
+  R               reset the yard (not while playing together)
+  Esc             menu
   M               the menu's Mods page (switch rules on and off)
-With a controller, Start opens the menu: d-pad or left stick up / down to
+With a controller, hold LB (L1) for the spell radial and aim with the right
+stick; RT (R2) casts. Start opens the menu: d-pad or left stick up / down to
 move, A (Cross) to choose, B (Circle) to go back or close.
 Spells mix: set grass alight, put it out with water, freeze the puddle,
 grease a slope, blow smoke away. Try things.

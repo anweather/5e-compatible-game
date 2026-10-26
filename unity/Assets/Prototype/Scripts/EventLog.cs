@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 // On-screen help and a short "what happened" log, like the web sandbox's.
-// Shows the spell bar when the scene has a SpellCaster. R reloads the scene.
+// Shows the spell bar when the scene has a SpellCaster. R reloads the scene (solo only).
 public class EventLog : MonoBehaviour
 {
     static EventLog instance;
@@ -53,7 +53,21 @@ public class EventLog : MonoBehaviour
     {
         var controls = caster != null ? caster.controls : null;
         bool reset = controls != null ? controls.Reset.WasPressedThisFrame() : Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
-        if (reset) SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        if (reset) Reset();
+    }
+
+    /// <summary>Reloads the scene, solo only; returns whether it did.</summary>
+    public static bool Reset()
+    {
+        // Reloading the scene online would drop this machine's world and everyone's wizards with it.
+        var net = FindFirstObjectByType<NetChem>();
+        if (net != null && net.Online)
+        {
+            Add("Reset is off while playing together (leave the game from the Esc menu first)");
+            return false;
+        }
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
+        return true;
     }
 
     const string KeyboardHelp = "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Wheel</b> zoom   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>Hold Tab</b> spells   ·   <b>Click</b> cast   ·   <b>R</b> reset   ·   <b>Esc</b> menu   ·   <b>M</b> mods";

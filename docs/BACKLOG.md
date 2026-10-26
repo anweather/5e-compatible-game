@@ -236,6 +236,24 @@ not in part 1, and makes its rings real.
   `WORLD_STREAMING.md`); the host today vs. a dedicated server later (D7).
 - **Size:** L to XL; split it into slices as part 1 was.
 
+## 12. Reset the world online
+
+Reset (R / View) reloads the scene on the machine that pressed it, so since
+0.1.2 it's refused while playing together (`EventLog.Reset`; the online
+probe's `reset_refused_online`). In 0.1.1, a reset on the host dropped
+everyone's wizards.
+
+- **What:** the host resets for everyone. A "reset world" command, stamped
+  into a `NetChem` tick batch like an `EffectCommand`, that every peer
+  applies at the same tick: the world back to its seed and `things.json`,
+  props respawned with their stable ids, wizards back to their starts.
+  Clients' reset could ask the host, or stay off.
+- **Builds on:** `NetChem`'s tick batches and late join (a reset is close
+  to a late join from tick 0), `ThingSpawner`, stable `ThingId`s.
+- **Open:** does a client's reset need a vote or the host's say-so? What
+  happens to held items and rule switches (mods) on reset?
+- **Size:** S to M.
+
 ## Suggested order
 
 Dependencies, roughly:

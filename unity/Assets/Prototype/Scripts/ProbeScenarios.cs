@@ -51,7 +51,8 @@ public static class ProbeScenarios
             "127.0.0.1. Each casts Fire Bolt, Earthen Trench and Wall of Stone through the network; the virtual player's " +
             "Thunderwave throws a crate and the host's wizard, and the host's wizard falls 10 m. Checks: it joined, every 30-tick checksum (cells and rules) equal on both, the same world " +
             "at the sample tick, no desync seen, the client's terrain drawn as low as the host's under the trenches, the same " +
-            "water (cells and drawn surface) and walls, the crate and the host's wizard each within 5 cm on both, no console errors on either.",
+            "water (cells and drawn surface) and walls, the crate and the host's wizard each within 5 cm on both, no console errors on either, " +
+            "and reset on the host refused with both players still in.",
             players: 2),
         new Entry("menu", typeof(MenuProbe), 60f,
             "The Esc menu with a controller: Start on a virtual gamepad opens it, the highlight moves down to Mods, A opens the " +

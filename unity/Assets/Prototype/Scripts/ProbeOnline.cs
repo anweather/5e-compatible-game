@@ -454,6 +454,16 @@ public class OnlineProbe : ProbeScenario
         Check("virtual_player_reported", report != null, report != null ? $"sampled at tick {report.sampledTick}" : $"no report in {ReportSeconds:0} s");
         if (report == null) yield break;
         Compare(recorder.Seen, report);
+        yield return TryReset();
+    }
+
+    // Reset (R / View) online is refused rather than reloading the host's scene from under everyone.
+    IEnumerator TryReset()
+    {
+        bool reloaded = EventLog.Reset();
+        for (int i = 0; i < 10; i++) yield return null;
+        int players = NetworkManager.Singleton.ConnectedClientsIds.Count;
+        Check("reset_refused_online", !reloaded && players == 2, $"reloaded {reloaded}, {players} players after");
     }
 
     // The virtual player's client.json if it is from this run and in the given phase (any phase when null), else null.
