@@ -128,6 +128,11 @@ public class NetSession : MonoBehaviour
             await work();
             status = null;
         }
+        catch (Exception e) when (joinFailure != null)
+        {
+            // The host turned us away and Disconnected already said why; the session's own error adds nothing.
+            Debug.Log($"NET: the join ended: {e.Message}");
+        }
         catch (Exception e)
         {
             status = $"That didn't work: {e.Message}";

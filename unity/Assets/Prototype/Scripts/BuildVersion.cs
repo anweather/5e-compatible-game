@@ -136,8 +136,11 @@ public static class BuildVersion
     /// </summary>
     public static string JoinFailure(string disconnectReason)
     {
-        // Netcode's own text when the server sent nothing starts with "[Disconnect Event]".
-        bool fromHost = !string.IsNullOrWhiteSpace(disconnectReason) && !disconnectReason.StartsWith("[Disconnect Event]", StringComparison.Ordinal);
+        // Netcode's own texts, not the host's: "[Disconnect Event]..." when the server sent
+        // nothing, and "Client-3 disconnected by server." when it refused the config hash.
+        bool fromHost = !string.IsNullOrWhiteSpace(disconnectReason)
+            && !disconnectReason.StartsWith("[Disconnect Event]", StringComparison.Ordinal)
+            && !System.Text.RegularExpressions.Regex.IsMatch(disconnectReason, @"^Client-\d+ disconnected by server\.?$");
         return fromHost
             ? $"Couldn't join: {disconnectReason}"
             : $"Couldn't join: the host refused the connection, probably a different version. Both players need the same build: {ReleasesPage}";

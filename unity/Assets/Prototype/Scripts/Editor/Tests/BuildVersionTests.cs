@@ -112,5 +112,7 @@ public class BuildVersionTests
         string silent = BuildVersion.JoinFailure("[Disconnect Event][Client-0][TransportClientId-0][TransportDisconnect] Disconnected.");
         StringAssert.Contains("probably a different version", silent);
         StringAssert.Contains("probably a different version", BuildVersion.JoinFailure(""));
+        // What Netcode sends when the NetworkConfig hash (network prefabs) differs.
+        StringAssert.Contains("probably a different version", BuildVersion.JoinFailure("Client-3 disconnected by server."));
     }
 }
