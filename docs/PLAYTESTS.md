@@ -48,8 +48,8 @@ sound was heard in a later build (main, not 0.1.1).
 | Id | Issue | State |
 |---|---|---|
 | P17 | Volume sliders (master, effects, ambience): still a little loud | done: Sound page, master / effects / ambience |
-| P18 | Move the on-screen instructions to a Controls page of the menu; flash them on screen the first time | open |
-| P19 | Health, stamina and magic bars (infinite in the sandbox for now) | open |
+| P18 | Move the on-screen instructions to a Controls page of the menu; flash them on screen the first time | done: the help line is gone; Esc → Controls has every control (controller buttons as printed on the pad in use), shown on screen for the first 12 s of a player's first game |
+| P19 | Health, stamina and magic bars (infinite in the sandbox for now) | done: Health, Stamina and Magic bars at the top left (Vitals on both wizards), full and not drained yet |
 
 ### Look and sound
 

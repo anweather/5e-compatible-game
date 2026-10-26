@@ -65,6 +65,12 @@ public class CollisionProbe : ProbeScenario
         Shot("wall");
     }
 
-    static bool BlockerHit(Vector3 from, Vector3 dir, float length) =>
-        Physics.RaycastAll(from, dir, length, ~0, QueryTriggerInteraction.Ignore).Any(h => CellBlockers.IsBlocker(h.collider));
+    static readonly RaycastHit[] hits = new RaycastHit[32];
+
+    static bool BlockerHit(Vector3 from, Vector3 dir, float length)
+    {
+        int n = Physics.RaycastNonAlloc(from, dir, hits, length, ~0, QueryTriggerInteraction.Ignore);
+        for (int i = 0; i < n; i++) if (CellBlockers.IsBlocker(hits[i].collider)) return true;
+        return false;
+    }
 }

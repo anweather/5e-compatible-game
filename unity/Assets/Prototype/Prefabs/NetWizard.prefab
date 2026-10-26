@@ -105,6 +105,9 @@ PrefabInstance:
       addedObject: {fileID: 3470894612682429423}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 2300893671110082725}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 6970996195446869681}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
@@ -316,6 +319,19 @@ MonoBehaviour:
   gentleThrow: 4
   hardThrow: 12
   windUp: 0.6
+--- !u!114 &2300893671110082725
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dc090d532c4111546a22a088d7d49925, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Vitals
+  infinite: 1
 --- !u!114 &6970996195446869681
 MonoBehaviour:
   m_ObjectHideFlags: 0

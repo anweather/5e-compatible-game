@@ -60,6 +60,16 @@ public class MenuProbe : ProbeScenario
             Check("b_backs_out_of_mods", menu.Open && menu.CurrentPage == MenuNavigator.MainPage && menu.FocusedLabel != null && menu.FocusedLabel.StartsWith("Mods", System.StringComparison.Ordinal),
                 $"page '{menu.CurrentPage}', highlight on '{menu.FocusedLabel}'");
 
+            // Controls: the table of every control, then back.
+            yield return FocusOn(menu, "Controls");
+            menu.Submit();
+            yield return Frames(3);
+            Check("controls_page_opens", menu.CurrentPage == ControlsMenu.ControlsPage, $"page '{menu.CurrentPage}'");
+            Shot("controls");
+            yield return Wait(0.2f);
+            menu.Back();
+            yield return Frames(3);
+
             // Sound: A on Effects' − turns effects down a step, + puts it back.
             yield return FocusOn(menu, "Sound");
             menu.Submit();

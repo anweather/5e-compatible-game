@@ -14,8 +14,9 @@ public class EventLog : MonoBehaviour
     /// <summary>False hides all on-screen UI (help, spell bar, log, the online status line), e.g. for trailer recordings.</summary>
     public static bool HudVisible { get; set; } = true;
     readonly List<string> lines = new List<string>();
-    GUIStyle style;
+    GUIStyle style, barText;
     SpellCaster caster;
+    Vitals vitals;
 
     void Awake() => instance = this;
     void Start()
@@ -70,9 +71,7 @@ public class EventLog : MonoBehaviour
         return true;
     }
 
-    const string KeyboardHelp = "<b>WASD</b> move   ·   <b>Mouse</b> look   ·   <b>Wheel</b> zoom   ·   <b>Space</b> jump   ·   <b>Shift</b> sprint   ·   <b>Hold Tab</b> spells   ·   <b>Click</b> cast   ·   <b>R</b> reset   ·   <b>Esc</b> menu   ·   <b>M</b> mods";
     const string FirelineHelp = "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset   ·   <b>Esc</b> menu";
-    const string GamepadHelp = "<b>Left stick</b> move   ·   <b>Right stick</b> look   ·   <b>D-pad</b> zoom   ·   <b>{South}</b> jump   ·   <b>{LT}</b> sprint   ·   <b>Hold {LB}</b> spells   ·   <b>{RT}</b> cast   ·   <b>{Select}</b> reset   ·   <b>{Start}</b> pause";
 
     // A plus with a dark shadow, so it reads against the sky as well as the ground.
     void Crosshair()
@@ -93,14 +92,40 @@ public class EventLog : MonoBehaviour
             GUI.Label(new Rect(16, Screen.height - 32 - (lines.Count - i) * 26, 900, 26), lines[i], style);
     }
 
-    // Controls help for the device in use, the crosshair, and the spell chip: the selected spell in
-    // its element's colour, with the keys that change it (the spell radial: SpellRadialHud).
+    // The wizard's bars, the crosshair, and the spell chip: the selected spell in its element's
+    // colour, with the keys that change it (the spell radial: SpellRadialHud). The rest of the
+    // controls are on the menu's Controls page (ControlsMenu).
     void DrawCasterHud()
     {
         bool pad = caster.controls != null && caster.controls.UsingGamepad;
-        GUI.Label(new Rect(16, 12, 1600, 30), pad ? PadGlyphs.Text(GamepadHelp) : KeyboardHelp, style);
+        DrawVitals();
         if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
         GUI.Label(new Rect(16, 40, 1400, 30), SpellChip(pad), style);
+    }
+
+    static readonly Color HealthColor = new(0.85f, 0.25f, 0.25f), StaminaColor = new(0.9f, 0.75f, 0.2f), MagicColor = new(0.35f, 0.55f, 1f);
+
+    // Health, stamina and magic (Vitals), side by side at the top left.
+    void DrawVitals()
+    {
+        if (vitals == null || vitals.gameObject != caster.gameObject) vitals = caster.GetComponent<Vitals>();
+        if (vitals == null) return;
+        Bar(0, "Health", vitals.Health, vitals.HealthMax, HealthColor);
+        Bar(1, "Stamina", vitals.Stamina, Vitals.StaminaMax, StaminaColor);
+        Bar(2, "Magic", vitals.Magic, Vitals.MagicMax, MagicColor);
+    }
+
+    void Bar(int slot, string name, float value, float max, Color colour)
+    {
+        const float width = 170f, height = 20f;
+        var r = new Rect(16f + slot * (width + 10f), 14f, width, height);
+        GUI.color = new Color(0f, 0f, 0f, 0.55f);
+        GUI.DrawTexture(r, Texture2D.whiteTexture);
+        GUI.color = colour;
+        GUI.DrawTexture(new Rect(r.x + 2f, r.y + 2f, (r.width - 4f) * Mathf.Clamp01(value / max), r.height - 4f), Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        barText ??= new GUIStyle(style) { fontSize = 13, alignment = TextAnchor.MiddleCenter };
+        GUI.Label(r, $"<b>{name}</b> {Mathf.CeilToInt(value)}/{Mathf.CeilToInt(max)}", barText);
     }
 
     string SpellChip(bool pad)
