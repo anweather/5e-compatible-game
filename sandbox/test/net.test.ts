@@ -173,7 +173,20 @@ test("every example patch in docs/MODDING.md passes the engine's checks", async 
   const { readFile } = await import("node:fs/promises");
   const { composeRules, validateRules } = await import("../src/rules.ts");
   const md = await readFile(new URL("../../docs/MODDING.md", import.meta.url), "utf8");
-  const blocks = [...md.matchAll(/```json\n([\s\S]*?)```/g)].map((m) => m[1]!);
+  const blocks = [...md.matchAll(/```json\r?\n([\s\S]*?)```/g)].map((m) => m[1]!);
   assert.ok(blocks.length >= 4, "found the examples");
   for (const b of blocks) assert.deepEqual(validateRules(composeRules([JSON.parse(b)])), [], b.slice(0, 60));
+});
+
+test("every example mod in rules/mods passes the engine's checks", async () => {
+  const { readFile, readdir } = await import("node:fs/promises");
+  const { composeRules, validateRules } = await import("../src/rules.ts");
+  const dir = new URL("../../rules/mods/", import.meta.url);
+  const files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
+  assert.ok(files.length >= 3, "found the examples");
+  for (const f of files) {
+    // Saved as {"title", "idea", "patch"}, which the Experiments panel also accepts.
+    const mod = JSON.parse(await readFile(new URL(f, dir), "utf8")) as { patch: ModPatch };
+    assert.deepEqual(validateRules(composeRules([mod.patch])), [], f);
+  }
 });

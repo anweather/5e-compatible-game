@@ -6,6 +6,11 @@ using UnityEngine;
 // and skids; in unfrozen water deeper than a puddle it wades at reduced
 // speed. Runs after the Starter Assets controller has moved the wizard and
 // corrects that move, so the controller itself stays untouched.
+//
+// The ground is the valley's terrain everywhere, dug into pits, a pond and
+// trenches by the cells. The wizard steps up one step of earth (a heap, a
+// hill's terrace, a pit's edge) without jumping; two steps (out of a trench)
+// need a jump, and a raised wall's blocker can't be climbed.
 [DefaultExecutionOrder(100)]
 [RequireComponent(typeof(CharacterController))]
 public class SurfaceEffects : MonoBehaviour
@@ -16,6 +21,8 @@ public class SurfaceEffects : MonoBehaviour
     [Tooltip("Speed multiplier in water at least this many units deep.")]
     public float wadingSpeed = 0.55f;
     public int wadingDepth = 2;
+    [Tooltip("Highest ledge the wizard steps up without jumping: a little over one step of the grid.")]
+    public float climbStep = 0.55f;
 
     CharacterController body;
     Component controller;
@@ -28,10 +35,11 @@ public class SurfaceEffects : MonoBehaviour
     void Awake()
     {
         body = GetComponent<CharacterController>();
-        controller = GetComponent("ThirdPersonController");
+        body.stepOffset = Mathf.Max(body.stepOffset, climbStep);
+        controller = GetComponent(WizardRig.ControllerComponent);
         if (controller == null) return;
-        moveSpeed = controller.GetType().GetField("MoveSpeed", BindingFlags.Instance | BindingFlags.Public);
-        sprintSpeed = controller.GetType().GetField("SprintSpeed", BindingFlags.Instance | BindingFlags.Public);
+        moveSpeed = WizardRig.Field(controller, "MoveSpeed", isPublic: true);
+        sprintSpeed = WizardRig.Field(controller, "SprintSpeed", isPublic: true);
         baseMove = (float)moveSpeed.GetValue(controller);
         baseSprint = (float)sprintSpeed.GetValue(controller);
     }

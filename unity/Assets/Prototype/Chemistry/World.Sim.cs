@@ -8,183 +8,242 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>One tick of the sim.</summary>
+        // Reused by TickFire so a tick allocates nothing.
+        readonly List<(Chunk ch, int i)> burning = new List<(Chunk ch, int i)>();
+        readonly List<Cell> gasOptions = new List<Cell>(4);
+
+        /// <summary>
+        /// One tick of the sim, over the active chunks only. Cells are visited in world row-major
+        /// order (y, then x), as on the old single grid, so with every chunk active a tick is
+        /// exactly what it was.
+        /// </summary>
         public void Step()
         {
             Tick++;
             logged.Clear();
-            TickFire();
-            TickWater();
-            TickGas();
-            foreach (var c in Cells) if (c.Charge > 0) c.Charge--;
+            var rows = Spans;
+            TickFire(rows);
+            TickWater(rows);
+            TickGas(rows);
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++) if (cells[i].Charge > 0) cells[i].Charge--;
+            }
             if (Wind.HasValue)
             {
                 var (d, t) = Wind.Value;
                 Wind = t - 1 <= 0 ? ((int, int)?)null : (d, t - 1);
             }
-            Array.Clear(flowMarks, 0, flowMarks.Length);
-            Array.Clear(steamMarks, 0, steamMarks.Length);
-            Array.Clear(windMarks, 0, windMarks.Length);
+            foreach (var ch in activeChunks) Array.Clear(ch.Marks, 0, ch.Marks.Length);
         }
 
-        void TickFire()
+        void TickFire(RowSpan[] rows)
+        {
+            burning.Clear();
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++) if (cells[i].Fire > 0) burning.Add((s.Chunk, i));
+            }
+            foreach (var (ch, i) in burning) Burn(ch, i);
+        }
+
+        void Burn(Chunk ch, int i)
         {
             var p = Rules.Sim.Fire;
-            var burning = new List<int>();
-            for (int i = 0; i < Cells.Length; i++) if (Cells[i].Fire > 0) burning.Add(i);
-            foreach (int i in burning)
+            var c = ch.Cells[i];
+            if (c.Fire == 0) return;
+            // Water puts out anything but a floating oil or grease fire.
+            if (c.Water > 0 && !c.Frozen && !CoverHasTag(c, "flammable"))
             {
-                var c = Cells[i];
-                if (c.Fire == 0) continue;
-                int x = i % W, y = i / W;
-                // Water puts out anything but a floating oil or grease fire.
-                if (c.Water > 0 && !c.Frozen && !CoverHasTag(c, "flammable"))
+                c.Fire = 0;
+                c.Fuel = 0;
+                AddGas(c, "steam", 1);
+                return;
+            }
+            if (c.Gas != "steam" && Rand() < p.SmokeChance) AddGas(c, "smoke", 1);
+            Spread(ch, i, c, p);
+            if (--c.Fuel > 0) return;
+            BurnOut(ch, i, c);
+        }
+
+        /// <summary>Out of fuel: a burning cover leaves ash or the terrain under it alight; terrain burns to its BurnsTo.</summary>
+        void BurnOut(Chunk ch, int i, Cell c)
+        {
+            if (CoverHasTag(c, "flammable"))
+            {
+                c.Cover = null;
+                var tt = TerrainOf(c);
+                if (tt.Has("flammable"))
+                {
+                    c.Fuel = tt.Fuel ?? 5;
+                    c.Fire = 2;
+                }
+                else
                 {
                     c.Fire = 0;
-                    c.Fuel = 0;
-                    AddGas(c, "steam", 1);
-                    continue;
+                    if (!IsBlocking(c)) c.Cover = "ash";
                 }
-                if (c.Gas != "steam" && Rand() < p.SmokeChance) AddGas(c, "smoke", 1);
-                // Near full strength for most of the run, then dying away toward FadeCells.
-                double reach = p.FadeCells > 0 ? fireGeneration[i] / (double)p.FadeCells : 0.0;
-                double fade = p.FadeCells > 0 ? Math.Max(0.0, 1.0 - reach * reach * reach) : 1.0;
-                foreach (var (nx, ny, d) in Neighbours(x, y))
-                {
-                    var n = At(nx, ny);
-                    if (n.Fire > 0) continue;
-                    double flam = Flammability(n);
-                    double downwind = Wind.HasValue && Wind.Value.dir == d ? p.DownwindBonus : 0;
-                    bool wet = n.Water > 0 && !n.Frozen;
-                    double chance;
-                    if (flam > 0) chance = p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam;
-                    else chance = wet ? p.BoilChance : p.HeatChance;
-                    if (Rand() < chance * fade)
-                    {
-                        Apply(nx, ny, "fire", 1, -1, false);
-                        if (p.FadeCells > 0 && n.Fire > 0) fireGeneration[Idx(nx, ny)] = fireGeneration[i] + 1;
-                    }
-                }
-                if (--c.Fuel > 0) continue;
-                if (CoverHasTag(c, "flammable"))
-                {
-                    c.Cover = null;
-                    var tt = TerrainOf(c);
-                    if (tt.Has("flammable"))
-                    {
-                        c.Fuel = tt.Fuel ?? 5;
-                        c.Fire = 2;
-                    }
-                    else
-                    {
-                        c.Fire = 0;
-                        if (!IsBlocking(c)) c.Cover = "ash";
-                    }
-                    continue;
-                }
-                var t = TerrainOf(c);
-                c.Fire = 0;
-                fireGeneration[i] = 0;
-                if (t.BurnsTo != null)
-                {
-                    c.T = t.BurnsTo;
-                    c.Cover = IsBlocking(c) || HasTag(c, "low") ? null : "ash";
-                    if (t.BurnLog != null) AddLog(t.BurnLog, LogKind.Notable);
-                }
+                return;
             }
-        }
-
-        void TickWater()
-        {
-            int n = Cells.Length;
-            bool forward = Tick % 2 == 0;
-            int maxLevel = Rules.Sim.WaterMaxLevel;
-            for (int k = 0; k < n; k++)
+            var t = TerrainOf(c);
+            c.Fire = 0;
+            ch.FireGeneration[i] = 0;
+            if (t.BurnsTo != null)
             {
-                int i = forward ? k : n - 1 - k;
-                var c = Cells[i];
-                if (c.Water == 0 || c.Frozen || IsBlocking(c)) continue;
-                int x = i % W, y = i / W;
-                int elevation = ElevationUnits(c);
-                int level = elevation + c.Water;
-                // Water always runs onto lower ground; on the flat it needs a 2-step
-                // difference, so a still puddle doesn't slosh back and forth forever.
-                // Neighbours are visited inline in N, E, S, W order (the order Neighbours()
-                // gives): this loop runs for every wet cell every tick, a whole lake of them.
-                int best = -1;
-                double bestScore = 0;
-                for (int d = 0; d < 4; d++)
+                c.T = t.BurnsTo;
+                c.Cover = IsBlocking(c) || HasTag(c, "low") ? null : "ash";
+                if (t.BurnLog != null) AddLog(t.BurnLog, LogKind.Notable);
+            }
+        }
+
+        /// <summary>A burning cell's chance to light each neighbour, N, E, S, W; paused chunks don't catch.</summary>
+        void Spread(Chunk ch, int i, Cell c, FireParams p)
+        {
+            // Near full strength for most of the run, then dying away toward FadeCells.
+            double reach = p.FadeCells > 0 ? ch.FireGeneration[i] / (double)p.FadeCells : 0.0;
+            double fade = p.FadeCells > 0 ? Math.Max(0.0, 1.0 - reach * reach * reach) : 1.0;
+            int x = CellX(ch, i), y = CellY(ch, i);
+            for (int d = 0; d < 4; d++)
+            {
+                var n = Chunk.Next(ch, i, d, out var nch, out int ni);
+                if (n == null || !nch.Active || n.Fire > 0) continue;
+                if (Rand() < SpreadChance(c, n, d, p) * fade)
                 {
-                    int nx = x + DirX(d), ny = y + DirY(d);
-                    if (!InBounds(nx, ny)) continue;
-                    var nc = Cells[ny * W + nx];
-                    if (nc.Frozen && nc.Water > 0) continue;
-                    var nt = TerrainOf(nc);
-                    if (nt.Has("blocking") && !nt.Has("vessel")) continue;
-                    if (nc.Water >= maxLevel) continue;
-                    int nElevation = nt.Elevation * Rules.Sim.WaterUnitsPerStep;
-                    int drop = level - (nElevation + nc.Water);
-                    bool downhill = nElevation < elevation;
-                    if (!(drop >= 2 || (downhill && drop >= 1))) continue;
-                    double score = drop + (downhill ? 0.5 : 0);
-                    if (score > bestScore)
-                    {
-                        bestScore = score;
-                        best = Idx(nx, ny);
-                    }
-                }
-                if (best >= 0)
-                {
-                    c.Water--;
-                    Cells[best].Water++;
-                    flowMarks[i] = 1;
-                    flowMarks[best] = 1;
+                    Apply(x + DirX(d), y + DirY(d), "fire", 1, -1, false);
+                    if (p.FadeCells > 0 && n.Fire > 0) nch.FireGeneration[ni] = ch.FireGeneration[i] + 1;
                 }
             }
         }
 
-        void TickGas()
+        double SpreadChance(Cell c, Cell n, int d, FireParams p)
+        {
+            double flam = Flammability(n);
+            double downwind = Wind.HasValue && Wind.Value.dir == d ? p.DownwindBonus : 0;
+            if (flam > 0) return p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam;
+            return n.Water > 0 && !n.Frozen ? p.BoilChance : p.HeatChance;
+        }
+
+        void TickWater(RowSpan[] rows)
+        {
+            // Even ticks sweep forward, odd ticks backward, so water doesn't drift one way.
+            if (Tick % 2 == 0) FlowForward(rows);
+            else FlowBackward(rows);
+        }
+
+        void FlowForward(RowSpan[] rows)
+        {
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++) if (cells[i].Water != 0) Flow(s.Chunk, i);
+            }
+        }
+
+        void FlowBackward(RowSpan[] rows)
+        {
+            for (int k = rows.Length - 1; k >= 0; k--)
+            {
+                var s = rows[k];
+                var cells = s.Chunk.Cells;
+                for (int i = s.End - 1; i >= s.Start; i--) if (cells[i].Water != 0) Flow(s.Chunk, i);
+            }
+        }
+
+        /// <summary>Moves one unit of a wet cell's water to its best lower neighbour, if any.</summary>
+        void Flow(Chunk ch, int i)
+        {
+            var c = ch.Cells[i];
+            if (c.Frozen || IsBlocking(c)) return;
+            int elevation = ElevationUnits(c);
+            int level = elevation + c.Water;
+            // Water always runs onto lower ground; on the flat it needs a 2-step
+            // difference, so a still puddle doesn't slosh back and forth forever.
+            // Neighbours are visited inline in N, E, S, W order (the order Neighbours()
+            // gives): this runs for every wet cell every tick, a whole lake of them.
+            // A paused chunk next door is a wall.
+            Chunk best = null;
+            int bestI = 0;
+            double bestScore = 0;
+            for (int d = 0; d < 4; d++)
+            {
+                var nc = Chunk.Next(ch, i, d, out var nch, out int ni);
+                if (nc == null || !nch.Active) continue;
+                double score = FlowScore(nc, elevation, level);
+                if (score > bestScore)
+                {
+                    bestScore = score;
+                    best = nch;
+                    bestI = ni;
+                }
+            }
+            if (best == null) return;
+            c.Water--;
+            best.Cells[bestI].Water++;
+            ch.Marks[i] |= FlowMark;
+            best.Marks[bestI] |= FlowMark;
+        }
+
+        /// <summary>How much water at this level and elevation wants to run onto nc; 0 if it can't.</summary>
+        double FlowScore(Cell nc, int elevation, int level)
+        {
+            if (nc.Frozen && nc.Water > 0) return 0;
+            var nt = TerrainOf(nc);
+            if ((nt.Has("blocking") && !nt.Has("vessel")) || nc.Height >= Rules.Sim.Height.BlockAt) return 0;
+            if (nc.Water >= Rules.Sim.WaterMaxLevel) return 0;
+            int nElevation = (nt.Elevation + nc.Height) * Rules.Sim.WaterUnitsPerStep;
+            int drop = level - (nElevation + nc.Water);
+            bool downhill = nElevation < elevation;
+            if (!(drop >= 2 || (downhill && drop >= 1))) return 0;
+            return drop + (downhill ? 0.5 : 0);
+        }
+
+        void TickGas(RowSpan[] rows)
+        {
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++) if (cells[i].Gas != null) Drift(s.Chunk, i);
+            }
+        }
+
+        /// <summary>Moves one unit of gas downwind, unless something (or a paused chunk) is in the way.</summary>
+        bool BlowDownwind(Chunk ch, int i, Cell c)
+        {
+            var t = Chunk.Next(ch, i, Wind.Value.dir, out var tch, out _);
+            if (t == null || !tch.Active || IsBlocking(t)) return false;
+            AddGas(t, c.Gas, 1);
+            c.GasAmt--;
+            if (c.GasAmt <= 0) c.Gas = null;
+            return true;
+        }
+
+        /// <summary>A gas cell decays, blows downwind, or spreads to a thinner neighbour.</summary>
+        void Drift(Chunk ch, int i)
         {
             var p = Rules.Sim.Gas;
-            var opts = new List<Cell>(4);
-            for (int i = 0; i < Cells.Length; i++)
+            var c = ch.Cells[i];
+            if (Rand() < p.DecayChance) c.GasAmt--;
+            if (c.GasAmt <= 0)
             {
-                var c = Cells[i];
-                if (c.Gas == null) continue;
-                if (Rand() < p.DecayChance) c.GasAmt--;
-                if (c.GasAmt <= 0)
-                {
-                    c.Gas = null;
-                    c.GasAmt = 0;
-                    continue;
-                }
-                int x = i % W, y = i / W;
-                if (Wind.HasValue && Rand() < 0.5)
-                {
-                    int wd = Wind.Value.dir;
-                    var t = At(x + DirX(wd), y + DirY(wd));
-                    if (t != null && !IsBlocking(t))
-                    {
-                        AddGas(t, c.Gas, 1);
-                        c.GasAmt--;
-                        if (c.GasAmt <= 0) c.Gas = null;
-                        continue;
-                    }
-                }
-                if (c.GasAmt >= 2)
-                {
-                    opts.Clear();
-                    foreach (var (nx, ny, _) in Neighbours(x, y))
-                    {
-                        var nc = At(nx, ny);
-                        if (!IsBlocking(nc) && (nc.Gas == null || nc.Gas == c.Gas) && nc.GasAmt < c.GasAmt - 1) opts.Add(nc);
-                    }
-                    if (opts.Count > 0)
-                    {
-                        AddGas(opts[(int)Math.Floor(Rand() * opts.Count)], c.Gas, 1);
-                        c.GasAmt--;
-                    }
-                }
+                c.Gas = null;
+                c.GasAmt = 0;
+                return;
+            }
+            if (Wind.HasValue && Rand() < 0.5 && BlowDownwind(ch, i, c)) return;
+            if (c.GasAmt < 2) return;
+            gasOptions.Clear();
+            for (int d = 0; d < 4; d++)
+            {
+                var nc = Chunk.Next(ch, i, d, out var nch, out _);
+                if (nc != null && nch.Active && !IsBlocking(nc) && (nc.Gas == null || nc.Gas == c.Gas) && nc.GasAmt < c.GasAmt - 1)
+                    gasOptions.Add(nc);
+            }
+            if (gasOptions.Count > 0)
+            {
+                AddGas(gasOptions[(int)Math.Floor(Rand() * gasOptions.Count)], c.Gas, 1);
+                c.GasAmt--;
             }
         }
     }

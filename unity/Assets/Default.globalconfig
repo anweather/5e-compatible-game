@@ -34,9 +34,13 @@ dotnet_diagnostic.S3267.severity = none
 # Empty class: an empty MonoBehaviour is Unity's normal "tag" component (Water).
 dotnet_diagnostic.S2094.severity = none
 
-# Duplicates of Sonar rules we keep (S6608, S2325), so each problem shows once.
+# Duplicates of Sonar rules we keep (S6608), so each problem shows once.
 dotnet_diagnostic.CA1826.severity = none
-dotnet_diagnostic.CA1822.severity = none
+
+# "Make this member static": S2325 doesn't know Unity calls messages such as
+# Start or OnDestroy on an instance, so it flags them; CA1822 is the same check
+# and the Unity analyzers suppress it on Unity messages. Keep CA1822, drop S2325.
+dotnet_diagnostic.S2325.severity = none
 
 # CA1307 asks for a StringComparison on Replace/IndexOf/Contains, which are
 # already ordinal; CA1309/CA1310 below catch the culture-sensitive calls.
@@ -58,6 +62,9 @@ dotnet_diagnostic.CA1304.severity = warning
 dotnet_diagnostic.CA1305.severity = warning
 dotnet_diagnostic.CA1309.severity = warning
 dotnet_diagnostic.CA1310.severity = warning
+
+# Members that could be static (see S2325 above for why this one, not Sonar's).
+dotnet_diagnostic.CA1822.severity = warning
 
 # Unused code and complexity (Sonar defaults, listed so they are explicit).
 dotnet_diagnostic.S1144.severity = warning

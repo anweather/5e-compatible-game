@@ -19,14 +19,7 @@ namespace Chem
                     Add(x, y);
                     break;
                 case "line":
-                    for (int k = 0; k < s.Length; k++)
-                    {
-                        int cx = x + DirX(dir) * k, cy = y + DirY(dir) * k;
-                        var c = At(cx, cy);
-                        if (c == null) break;
-                        output.Add((cx, cy));
-                        if (IsBlocking(c)) break;
-                    }
+                    LineCells(s, x, y, dir, output);
                     break;
                 case "square":
                 {
@@ -46,12 +39,32 @@ namespace Chem
             return output;
         }
 
+        /// <summary>
+        /// A line from (x, y) up to its first blocking cell. A terraform line from the caster
+        /// (Earthen Trench) starts under their feet, one square behind the aim, so a trench cut
+        /// from a pond's bank opens into the pond.
+        /// </summary>
+        void LineCells(SpellDef s, int x, int y, int dir, List<(int x, int y)> output)
+        {
+            int from = s.Effect == "terraform" && s.Origin == "self" ? -1 : 0;
+            for (int k = from; k < from + s.Length; k++)
+            {
+                int cx = x + DirX(dir) * k, cy = y + DirY(dir) * k;
+                var c = At(cx, cy);
+                if (c == null && k < 0) continue;
+                if (c == null) break;
+                output.Add((cx, cy));
+                if (IsBlocking(c)) break;
+            }
+        }
+
         static int FloorDiv(int a, int b) => (int)System.Math.Floor((double)a / b);
 
         /// <summary>
         /// Applies the spell's element to its cells, like castSpell's cell part. Gust of
-        /// Wind (air + wind) also sets the world's wind. Spells with an "effect"
-        /// (levitate, carry, teleport) do nothing to cells.
+        /// Wind (air + wind) also sets the world's wind. A terraform spell raises or digs
+        /// its cells first (World.Terraform.cs). The other effects (levitate, carry,
+        /// teleport) do nothing to cells.
         /// </summary>
         public void Cast(string spellId, int x, int y, int dir)
         {
@@ -59,8 +72,11 @@ namespace Chem
             if (s == null || !InBounds(x, y)) return;
             if (s.Effect == "levitate" || s.Effect == "carry") return;
             var cells = SpellCells(s, x, y, dir);
+            // Squares in paused chunks are left alone (World.Chunks.cs).
+            cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
             AddLog($"You cast {s.Name}", LogKind.Info);
             if (s.Element == "air" && s.Wind > 0) Wind = (dir, s.Wind);
+            if (s.Effect == "terraform") Terraform(s, cells, x, y);
             if (s.Element == null) return;
             foreach (var (cx, cy) in cells) Apply(cx, cy, s.Element, s.Power, dir, true);
         }

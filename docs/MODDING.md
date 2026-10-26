@@ -27,6 +27,7 @@ Every field is optional.
   "covers":   { "tar": { "name": "Tar", "tags": ["flammable"], "flammability": 0.5, "fuel": 20 } },
   "gases":    { "spores": { "name": "Spores" } },
   "entities": { "ogre": { "name": "Ogre", "hp": 30, "mass": 3, "flammable": false, "creature": true } },
+  "items":    { "spyglass": { "name": "Long spyglass", "use": "zoom", "zoom": 4 } },   // things to carry (rules/README.md)
   "machines": { "boiler": { "name": "Steam boiler", "needs": "steam", "build": 2, "how": "Builds pressure faster." } },
   "reactions": {
     "add":       [ /* cell rules: new ones go to the TOP of their element's list, so they win */ ],
@@ -76,6 +77,11 @@ The full schema is in `rules/README.md`.
 | Machines | `mark: "wind"` |
 | Entity rules | `status: {name: ticks}`, `clear`, `damageMul` |
 
+**Shaping the ground** is a spell effect, not a reaction verb. A spell with
+`"effect": "terraform"` raises or digs every square it touches, by
+`raise` or `dig` steps or up to an absolute `height` (exactly one); see
+`rules/README.md` for the keys.
+
 **New verbs need code.** If an idea can't be said with these, write it
 up as an experiment anyway, with the idea filled in and a best-effort
 patch, and ask for the verb in a PR.
@@ -109,11 +115,28 @@ patch, and ask for the verb in a PR.
 ] }
 ```
 
+**A deep moat.** Dig three steps instead of two (the most the ground goes
+down is `sim.height.min`).
+
+```json
+{ "spells": [
+  { "id": "earthen-trench", "name": "Earthen Trench", "level": 2, "shape": "line", "origin": "self", "length": 8,
+    "effect": "terraform", "dig": 3, "blurb": "A 40 ft moat three steps deep from your feet." }
+] }
+```
+
 **Longer slides on ice.**
 
 ```json
 { "sim": { "push": { "slideCells": 7 } } }
 ```
+
+More complete examples, saved as `{"title", "idea", "patch"}`, are in
+`rules/mods/`. The Unity game reads the same mods (`ModPatch.Parse` in the
+C# core) and also understands `sim.fire.fadeCells`: fire dies out after
+about that many squares (the sandbox ignores it). It is stricter about
+types, too: a sim number that isn't a number, or is negative, is refused
+(except `sim.height.min`, which must be 0 or below).
 
 ## Good experiments
 

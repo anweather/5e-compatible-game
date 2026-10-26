@@ -7,10 +7,10 @@ using UnityEngine;
 // same files the web sandbox runs on; this side only ticks the world and
 // draws it (see ChemGrid.Visuals.cs). North (y-1) is +z.
 //
-// The world can be bigger than the yard: the yard's cells are drawn as blocks,
-// and cells outside it belong to the surrounding scenery (ValleyChemistry),
-// which shows their changes on the terrain. The yard keeps its own position:
-// yard cell (0, 0) sits at world (0, 0, (yard height - 1) * cellSize).
+// Every cell is drawn on the valley's chunk terrains (ValleyChemistry): the
+// terrain is the ground, shaped and painted by the cells, with dressing,
+// blockers, water and effects on top. The yard is only a coordinate frame for
+// maps and demos: yard cell (0, 0) sits at world (0, 0, (yard height - 1) * cellSize).
 public partial class ChemGrid : MonoBehaviour
 {
     [TextArea(8, 20)] public string map;
@@ -22,10 +22,10 @@ public partial class ChemGrid : MonoBehaviour
 
     [Tooltip("The yard's cells within the map; empty means the whole map is the yard.")]
     public RectInt yardCells;
-    [Tooltip("Optional: draws and dresses the cells outside the yard.")]
+    [Tooltip("Optional: the valley's terrains, which the cells shape and paint. Without it the ground is flat at 0.")]
     public ValleyChemistry valley;
 
-    [Header("Tuning for this scene (0 keeps rules/sim.json)")]
+    [Header("Tuning for this scene (0 keeps rules/sim.json); applied as part of the base rules")]
     [Tooltip("Fire weakens as it spreads and dies out after about this many cells (see FireParams.FadeCells).")]
     public int fireFadeCells;
     [Tooltip("How many connected conductive cells one lightning strike can reach.")]
@@ -55,13 +55,17 @@ public partial class ChemGrid : MonoBehaviour
     LogEntry lastLog;
     int lastLogCount;
 
-    void Awake() => BuildWorld();
+    void Awake()
+    {
+        BuildWorld();
+        // Live rules: the mods panel and, in the Editor and dev builds, the rules/ file watcher.
+        if (!TryGetComponent<RuleSwitcher>(out _)) gameObject.AddComponent<RuleSwitcher>();
+    }
 
     /// <summary>Throws away the current world and its visuals and starts again from the map.</summary>
     public void ResetWorld()
     {
         foreach (Transform child in transform) Destroy(child.gameObject);
-        fireLights.Clear();
         lastLog = null;
         tickTimer = 0f;
         BuildWorld();
@@ -69,28 +73,47 @@ public partial class ChemGrid : MonoBehaviour
 
     void BuildWorld()
     {
-        var rules = Rules.Load(FindRulesDir());
-        if (fireFadeCells > 0) rules.Sim.Fire.FadeCells = fireFadeCells;
-        if (conductLimit > 0) rules.Sim.ConductLimit = conductLimit;
+        var rules = StartRules();
 
-        var rows = map.Replace("\r", "").Trim('\n').Split('\n');
-        int h = rows.Length, w = 0;
-        foreach (var r in rows) w = Mathf.Max(w, r.Length);
-        World = new World(rules, w, h, seed);
-        for (int y = 0; y < h; y++)
-        for (int x = 0; x < w; x++)
-        {
-            char ch = x < rows[y].Length ? rows[y][x] : '.';
-            if (!Legend.TryGetValue(ch, out var spec)) spec = Legend['.'];
-            if (ch == '@') PlayerStart = new Vector2Int(x, y);
-            World.Paint(x, y, spec.t);
-            if (spec.water > 0) World.AddWater(x, y, spec.water);
-            if (spec.frozen) World.At(x, y).Frozen = true;
-            if (spec.cover != null) World.SetCover(x, y, spec.cover);
-        }
+        World = MapWorld(rules, map, seed, out var start);
+        PlayerStart = start;
+        if (valley != null) valley.Bind(World);
 
         InitVisuals();
         Render();
+    }
+
+    /// <summary>
+    /// A new world from a map (one Legend character per cell, rows top to bottom). The editor's
+    /// ValleyBuilder bakes the terrain from the same starting world.
+    /// </summary>
+    public static World MapWorld(Rules rules, string map, uint seed, out Vector2Int start)
+    {
+        var rows = map.Replace("\r", "").Trim('\n').Split('\n');
+        int h = rows.Length, w = 0;
+        foreach (var r in rows) w = Mathf.Max(w, r.Length);
+        var world = new World(rules, w, h, seed);
+        start = Vector2Int.zero;
+        for (int y = 0; y < h; y++)
+        {
+            for (int x = 0; x < w; x++)
+            {
+                char ch = x < rows[y].Length ? rows[y][x] : '.';
+                if (ch == '@') start = new Vector2Int(x, y);
+                PaintCell(world, x, y, ch);
+            }
+        }
+        return world;
+    }
+
+    // Sets up one cell from its map character (see Legend); unknown characters are dirt.
+    static void PaintCell(World world, int x, int y, char ch)
+    {
+        if (!Legend.TryGetValue(ch, out var spec)) spec = Legend['.'];
+        world.Paint(x, y, spec.t);
+        if (spec.water > 0) world.AddWater(x, y, spec.water);
+        if (spec.frozen) world.At(x, y).Frozen = true;
+        if (spec.cover != null) world.SetCover(x, y, spec.cover);
     }
 
     void Update()
@@ -98,8 +121,8 @@ public partial class ChemGrid : MonoBehaviour
         if (ExternalTicks)
         {
             Render();
-            if (World.Tick != lastLitTick) { UpdateFireLights(); lastLitTick = World.Tick; }
-            FlickerFireLights();
+            if (World.Tick != lastLitTick) { fireLights.Place(); lastLitTick = World.Tick; }
+            fireLights.Flicker();
             PumpLog();
             return;
         }
@@ -111,12 +134,13 @@ public partial class ChemGrid : MonoBehaviour
         while (tickTimer >= tick && guard-- > 0)
         {
             tickTimer -= tick;
+            ApplyQueuedRules();
             World.Step();
             stepped = true;
         }
         Render();
-        if (stepped) UpdateFireLights();
-        FlickerFireLights();
+        if (stepped) fireLights.Place();
+        fireLights.Flicker();
         PumpLog();
     }
 
@@ -124,7 +148,7 @@ public partial class ChemGrid : MonoBehaviour
     // Editor the repo's rules/ folder, found by walking up from the project. A fixed
     // "../../rules" breaks for Multiplayer Play Mode's virtual players, whose project copies
     // live deeper (unity/Library/VP/<id>/).
-    static string FindRulesDir()
+    internal static string FindRulesDir()
     {
         var packed = Path.Combine(Application.streamingAssetsPath, "rules");
         if (!Application.isEditor && File.Exists(Path.Combine(packed, "materials.json"))) return packed;
@@ -141,10 +165,15 @@ public partial class ChemGrid : MonoBehaviour
 
     RectInt Yard => yardCells.width > 0 ? yardCells : new RectInt(0, 0, World.W, World.H);
 
-    public bool InYard(int x, int y) => Yard.Contains(new Vector2Int(x, y));
-
     /// <summary>World cell of a yard cell (yard maps and demos use yard coordinates).</summary>
     public Vector2Int YardCell(int x, int y) => new Vector2Int(x + Yard.x, y + Yard.y);
+
+    /// <summary>Centre of a yard cell, given in yard coordinates (as the demo scripts are).</summary>
+    public Vector3 YardCellCenter(int x, int y)
+    {
+        var cell = YardCell(x, y);
+        return CellCenter(cell.x, cell.y);
+    }
 
     public Vector3 CellCenter(int x, int y)
     {
@@ -158,12 +187,30 @@ public partial class ChemGrid : MonoBehaviour
         return new Vector2Int(Mathf.RoundToInt(p.x / cellSize) + yard.x, yard.y + yard.height - 1 - Mathf.RoundToInt(p.z / cellSize));
     }
 
+    /// <summary>Top of what stands on a cell: its ground, plus a stone block's or a tree's height.</summary>
     public float SurfaceY(int x, int y)
     {
         var c = World.At(x, y);
-        if (c == null) return 0f;
-        if (!InYard(x, y) && valley != null) return valley.GroundHeight(x, y);
-        return World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight + Look(c.T).height;
+        return c == null ? 0f : GroundTop(x, y, c) + CellDressing.Look(c.T).height;
+    }
+
+    /// <summary>
+    /// A cell's ground, before anything standing on it: the valley's own ground (0 without a
+    /// valley) plus its elevation and height, the same offset CellHeightfield shapes the terrain with.
+    /// </summary>
+    public float GroundTop(int x, int y, Cell c)
+    {
+        float baseY = valley != null ? valley.BaseHeight(x, y) : 0f;
+        return baseY + World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
+    }
+
+    /// <summary>The ground drawn at a world point: the terrain's (between cell centres too), or its cell's without a valley.</summary>
+    public float GroundAt(Vector3 p)
+    {
+        if (valley != null) return valley.GroundAt(p);
+        var cell = CellAt(p);
+        var c = World.At(cell.x, cell.y);
+        return c == null ? 0f : GroundTop(cell.x, cell.y, c);
     }
 
     public bool IsSlipperyAt(Vector3 p)

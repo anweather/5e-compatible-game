@@ -9,17 +9,35 @@ using UnityEngine.InputSystem;
 //   Cast spell   left mouse    right trigger
 //   Next spell   E             right bumper (R1)
 //   Prev spell   Q             left bumper (L1)
-//   Pick spell   1-6
+//   Pick spell   1-8 (on the page shown)
+//   Spell page   Tab           d-pad left / right   (Elements <-> Earth)
 //   Zoom camera  mouse wheel   d-pad up / down
 //   Reset        R             View / Share button
+//   Mods panel   M             Start / Options      (ModsPanel reads these itself)
+//   Pick up/drop E             X / Square
+//   Use item     F             Y / Triangle
+//   Throw item   G or right    B / Circle      (hold to throw harder)
+//                mouse
+//
+// E is both "next spell" and "pick up": while an item is in reach or in hand
+// (ItemHolder sets ItemInReach) it picks up or drops, and the spell stays put.
+// Q and E step through every spell on both pages, so a gamepad reaches them
+// all with the bumpers alone.
 public class PlayerControls : MonoBehaviour
 {
     public InputAction Cast { get; private set; }
     public InputAction NextSpell { get; private set; }
     public InputAction PrevSpell { get; private set; }
     public InputAction PickSpell { get; private set; }
+    public InputAction SwitchPage { get; private set; }
     public InputAction Zoom { get; private set; }
     public InputAction Reset { get; private set; }
+    public InputAction Interact { get; private set; }
+    public InputAction Use { get; private set; }
+    public InputAction Throw { get; private set; }
+
+    /// <summary>Set by ItemHolder: an item is in reach or in hand, so the E key goes to it.</summary>
+    public bool ItemInReach { get; set; }
 
     /// <summary>True when the last control the player touched was on a gamepad.</summary>
     public bool UsingGamepad { get; private set; }
@@ -31,8 +49,12 @@ public class PlayerControls : MonoBehaviour
         Cast = Button("Cast", "<Mouse>/leftButton", "<Gamepad>/rightTrigger");
         NextSpell = Button("Next spell", "<Keyboard>/e", "<Gamepad>/rightShoulder");
         PrevSpell = Button("Previous spell", "<Keyboard>/q", "<Gamepad>/leftShoulder");
-        PickSpell = Button("Pick spell", "<Keyboard>/1", "<Keyboard>/2", "<Keyboard>/3", "<Keyboard>/4", "<Keyboard>/5", "<Keyboard>/6");
+        PickSpell = Button("Pick spell", "<Keyboard>/1", "<Keyboard>/2", "<Keyboard>/3", "<Keyboard>/4", "<Keyboard>/5", "<Keyboard>/6", "<Keyboard>/7", "<Keyboard>/8");
+        SwitchPage = Button("Spell page", "<Keyboard>/tab", "<Gamepad>/dpad/left", "<Gamepad>/dpad/right");
         Reset = Button("Reset", "<Keyboard>/r", "<Gamepad>/select");
+        Interact = Button("Pick up or drop", "<Keyboard>/e", "<Gamepad>/buttonWest");
+        Use = Button("Use item", "<Keyboard>/f", "<Gamepad>/buttonNorth");
+        Throw = Button("Throw item", "<Keyboard>/g", "<Mouse>/rightButton", "<Gamepad>/buttonEast");
 
         Zoom = new InputAction("Zoom", InputActionType.Value);
         Zoom.AddBinding("<Mouse>/scroll/y");
@@ -40,7 +62,7 @@ public class PlayerControls : MonoBehaviour
             .With("Negative", "<Gamepad>/dpad/up")
             .With("Positive", "<Gamepad>/dpad/down");
 
-        all = new[] { Cast, NextSpell, PrevSpell, PickSpell, Zoom, Reset };
+        all = new[] { Cast, NextSpell, PrevSpell, PickSpell, SwitchPage, Zoom, Reset, Interact, Use, Throw };
         foreach (var a in all) a.performed += Track;
     }
 
@@ -63,7 +85,11 @@ public class PlayerControls : MonoBehaviour
             UsingGamepad = false;
     }
 
-    /// <summary>The spell slot (0-5) of the number key pressed this frame, or -1.</summary>
+    /// <summary>Next spell was pressed this frame, unless it was the E key and E went to an item.</summary>
+    public bool NextSpellPressed() =>
+        NextSpell.WasPressedThisFrame() && !(ItemInReach && NextSpell.activeControl?.device is Keyboard);
+
+    /// <summary>The spell slot (0-7) of the number key pressed this frame, or -1.</summary>
     public int PickedSlot()
     {
         if (!PickSpell.WasPressedThisFrame() || PickSpell.activeControl == null) return -1;

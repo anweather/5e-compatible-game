@@ -17,7 +17,7 @@ scope drives every choice below.
 | Netcode | **Netcode for GameObjects (NGO) 2.x**, client-hosted (one player is the host), on Unity Transport |
 | Grid chemistry | **Lockstep of intents**, the sandbox's design (`LIVE_LAB.md`) carried over NGO messages. Cells are never streamed |
 | Player movement | **Owner-authoritative** `NetworkTransform` and `NetworkAnimator`, interpolated on other screens |
-| PhysX props (later) | **Host-authoritative** and synced as transforms. If one affects chemistry, the host quantises the result into an intent (D4) |
+| PhysX props and items | **Host-authoritative** and synced as transforms. If one affects chemistry, the host quantises the result into an intent (D4). Built: §7 |
 | Connectivity | **Unity Multiplayer Services sessions**: Relay plus a join code, signed in anonymously. $0 at friends scale |
 | Voice | **Vivox** (`com.unity.services.vivox`). Free up to 5,000 peak concurrent users |
 | Proximity | Start with Vivox's **positional channel**. For spells, move to **participant taps played through Unity `AudioSource`s**, so the game owns falloff and effects |
@@ -32,7 +32,7 @@ scope drives every choice below.
 |---|---|---|---|
 | **Grid chemistry** (`Chem.World`: cells, RNG, tick, wind) | Nobody: every machine computes it | Ordered cast intents in tick batches, plus checksums and a snapshot on join | Already deterministic and golden-tested against the TS sandbox. A batch is bytes; the grid is kilobytes per tick |
 | **Player movement and animation** | The owning player | `NetworkTransform` and `NetworkAnimator`, owner authority, interpolated | Co-op. Nobody gains from cheating, and your own wizard feels instant |
-| **PhysX props** (later) | The host | Host-simulated, synced as transforms | PhysX isn't deterministic across machines (`RESEARCH.md` §9). D4: physics never becomes shared truth. If a barrel landing matters to chemistry, the host sends "barrel at cell (4,7)" as an intent |
+| **PhysX props and carried items** (§7) | The host | Host-simulated, synced as transforms; who holds an item is host-granted | PhysX isn't deterministic across machines (`RESEARCH.md` §9). D4: physics never becomes shared truth. If a barrel landing matters to chemistry, the host sends "barrel at cell (4,7)" as an intent |
 
 This is D4 applied to a real-time co-op game. It also amends one line
 in `LIVE_LAB.md` ("for real-time 3D it sends authoritative state"). That
@@ -343,6 +343,97 @@ spread from each other's casts, and see each other's wizard run around.
 | Voice privacy | Low (friends) | Trust | Private sessions, push-to-talk default, mute, no recording except opt-in Magic Mouth |
 | Account setup only the user can do | Certain | Blocks phase 1 step 3 | Do it first: Unity Cloud project, link it, enable Relay/Lobby |
 | Version mismatch between friends | Medium | Desync or crash | `build` and `rulesHash` in session properties; refuse a mismatch |
+
+## 7. Physics props and items online (built 2026-10-25)
+
+What the Unity yard does today, with what was measured in Multiplayer Play
+Mode (one Mac, 2 and then 4 players, same-network transport).
+
+**Design.**
+- Every crate, barrel, boulder and thing to carry is an in-scene
+  `NetworkObject` (built by `PropBuilder`; never edit the scene by hand,
+  rebuild it so each object gets its id). The host simulates its
+  Rigidbody; clients get a kinematic copy moved by a server-authority
+  `NetworkTransform` (interpolated). `NetProp` replicates only burning,
+  levitating and hit points, for the flames and the log.
+- What a prop does to cells (a barrel's blast, embers, a burning crate's
+  fire, a smashed lantern's spill) is a `Chem.EffectCommand`. Only the
+  host's physics produces them; `NetChem` stamps them into the next tick
+  batch next to the casts, every machine applies them at that tick
+  (`TickBatch.RunOn`), and a late joiner replays them from the host's
+  history. Clients never apply effects themselves.
+- Spell shoves follow the cast's tick batch: the host shoves the props,
+  each player shoves their own wizard (owner-authoritative movement), from
+  the caster's position carried in `CastIntent.From`. A shove the host's
+  physics gives another player's wizard (a barrel blast) is sent to that
+  player's machine (`NetWizard.PushOwner`).
+- Items: `NetItem` holds the holder wizard's object id. Picking up asks
+  the host (checks the item is free and within 4 m) and every machine puts
+  the item in that wizard's hand; dropping or throwing sends the hand's
+  position and the velocity, and the host's physics flies it. A lantern's
+  or ball's light being uncovered is shared; the Dancing Lights mote's
+  position is sent by its holder 15 times a second; a sending stone's
+  message goes only to the machine of whoever holds the other stone. The
+  spyglass is local.
+- A broken prop is despawned without being destroyed and hidden on every
+  machine (Netcode's way for in-scene objects), so late joiners hide it too.
+- `AnnounceCastRpc` finds the caster's wizard by its object id (a client
+  can't look up other players by client id), so every player sees every
+  cast's show.
+
+**Measured.**
+
+| Test | Result |
+|---|---|
+| Host Thunderwave beside a crate | Crate thrown 2.78 m on the host; the client's copy trails by about 120 ms (interpolation): 0.77 m apart at the same instant mid-flight, mean 0.01 m once that delay is allowed for, 5 mm apart at rest |
+| Client Thunderwave at the barrels | Barrel thrown 3.32 m by the host's physics; client within 3 mm at rest |
+| Client lights the oil (chain) | KABOOM ×3 at tick 306 and embers at 375 and 390 on both; the same 6 props hidden on both; all 29 checksums (every 30 ticks) equal |
+| Client knocked back by the host's Thunderwave | Moved 2.42 m on its own machine; the host's view within 5 mm |
+| Client picks up a ball, walks, throws | Held in player 2's hand on the host; flew 10.85 m on the host after the throw; both at rest within 4 mm |
+| Client hurls the lantern | Smashed (12.3 m/s on the host) and the spill stamped at tick 1263 on both |
+| Sending stones | Host to client and back: message and ping only on the receiver; sender's log says who heard it |
+| Dancing Lights mote | Client's mote at (24.67, 0.50, 0.06), host's copy at (24.64, 0.50, 0.04); back in hand on both |
+| Late join after explosions (player 2 rejoins; 31 effects in the history) | Same props hidden, positions within 1 cm, a held stone in the holder's hand; checksums equal after catch-up |
+| 4 players, player 4 joining late | Host's Fire Bolt shown on both clients; KABOOM at tick 195 on all; player 3's Thunderwave moved a crate 2.78 m (same on all) and player 2 by 2.34 m; player 4 replayed the history from tick 0 (casts and effects) and its 50 checksums matched the host's |
+
+**Known limits.** A client's wizard can't push a crate by walking into it
+(its copy is kinematic); the Starter Assets push works only for the host.
+A held item rides in a hand pose that differs a little between machines
+(0.27 m measured for a held stone). With four Editors on one Mac a late
+joiner's transport still logged "Receive queue is full (512)" once while
+catching up; the receive queue is 512 packets (`ChemYardBuilder`), and
+reliable messages are resent, so nothing desynced.
+
+## 8. Online on the chunked valley (checked 2026-10-26)
+
+The first online check since the valley became 9×9 chunk terrains
+(`feat/chunked-valley`, slices 1 and 2). It is now a probe scenario,
+`tools/probe.sh online` (`docs/FAST_LOOP.md`): this Editor hosts, the
+Multiplayer Play Mode virtual player Player 2 joins on 127.0.0.1, and
+both cast through the network on one schedule of sim ticks.
+
+| Test | Result |
+|---|---|
+| By hand: host and Player 2 each cast Fire Bolt, Earthen Trench and Wall of Stone; Player 2's Thunderwave | Every 30-tick checksum both machines logged was equal (ticks 0 to 420); no desync warning. Trench cells: the same heights and water on both, the terrain drawn under them the same (-0.998 m at the host's trench on both), and the drawn water surface on the same cells. Crate 6 thrown 3.30 m by the host's physics; the client within 5 mm |
+| By hand: Player 2 leaves and rejoins at tick 924 (29 prop effects in the history) | Checksums equal from 930 to 1020 after catch-up; the same props left; trenches, walls and water as on the host |
+| `probe online`, Player 2 started by the probe (54 s) | 2 players; 7/7 checksums equal (ticks 30 to 210) and the same world at the sample tick (217); terrain under the four earth spells drawn identically (0.00 m apart, the host's trench 5.48 m lower in sum, the client's 7.98 m); the same wet and drawn-wet cells (3 in the host's trench, from the pond); the same raised walls; crate 6 thrown 3.28 m, the client's copy 0.7 cm from it; the host's wizard thrown 2.17 m by the client's Thunderwave, the client's view 0.7 cm from it; no console errors on either |
+
+**Found and fixed.** No desync. One error: another player's wizard
+landing from a fall (8 m or more) threw a `NullReferenceException` on
+every other screen, in the Starter Assets `ThirdPersonController.OnLand`.
+A puppet's controller is switched off, so its `Start`, which looks up the
+`CharacterController`, never runs, but the Animator still sends it the
+landing and footstep events. `NetWizard` now hands it the
+`CharacterController` (`WizardRig.PrepareForAnimationEvents`), so other
+players' landings and footsteps play. The probe's host wizard falls 10 m
+to cover it: without the fix `client_no_console_errors` fails.
+
+**Not affected by chunking.** The chemistry's active chunks are never
+switched off at runtime (nothing calls `World.SetActive`), so host and
+clients always step the same chunks. The terrain a client draws comes from
+the same cells through `CellHeightfield`; `OnlineValleyTests` checks in the
+core that a client and a late joiner on a valley-sized world keep the
+host's checksums and draw the same heightfield.
 
 ## Proposed decision entries (not yet in `DECISIONS.md`)
 

@@ -99,6 +99,12 @@ PrefabInstance:
       addedObject: {fileID: 1346358280460853545}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 2015966796114759086}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
+      addedObject: {fileID: 3470894612682429423}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 1708091964083407250}
   m_SourcePrefab: {fileID: 100100000, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
 --- !u!1 &3189246001750556768 stripped
@@ -252,6 +258,14 @@ MonoBehaviour:
   - grease
   - shocking-grasp
   - gust-of-wind
+  - thunderwave
+  - levitate
+  earthSpellIds:
+  - mold-earth
+  - mold-earth-heap
+  - earthen-trench
+  - wall-of-stone
+  - move-earth
   visuals: {fileID: 11400000, guid: b7c97d945ab8447c4953811216a3d01b, type: 2}
 --- !u!114 &3541750731685027454
 MonoBehaviour:
@@ -281,6 +295,39 @@ MonoBehaviour:
   slipperyGrip: 1.2
   wadingSpeed: 0.55
   wadingDepth: 2
+  climbStep: 0.55
+--- !u!114 &2015966796114759086
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: dbbbb185783d44fcbb6678287d6aefd0, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Knockback
+  grid: {fileID: 0}
+  decay: 2.5
+--- !u!114 &3470894612682429423
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d721a9ec3e99a4ff59b763acc55e33eb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::ItemHolder
+  controls: {fileID: 0}
+  view: {fileID: 0}
+  reach: 2
+  gentleThrow: 4
+  hardThrow: 12
+  windUp: 0.6
 --- !u!114 &1708091964083407250
 MonoBehaviour:
   m_ObjectHideFlags: 0

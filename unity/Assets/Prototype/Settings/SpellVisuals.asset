@@ -48,3 +48,33 @@ MonoBehaviour:
     impact: {fileID: 1025285306637258, guid: d8f0099df63275647a8bcf646df1ca00, type: 3}
     impactSeconds: 2
     glow: {r: 0.8, g: 0.85, b: 1, a: 1}
+  - spellId: levitate
+    projectile: {fileID: 0}
+    impact: {fileID: 1000011210275196, guid: 61a6b3a108030e54ba372fe7097916d0, type: 3}
+    impactSeconds: 2
+    glow: {r: 0.75, g: 0.6, b: 1, a: 1}
+  - spellId: mold-earth
+    projectile: {fileID: 0}
+    impact: {fileID: 0}
+    impactSeconds: 2
+    glow: {r: 0.75, g: 0.55, b: 0.3, a: 1}
+  - spellId: mold-earth-heap
+    projectile: {fileID: 0}
+    impact: {fileID: 0}
+    impactSeconds: 2
+    glow: {r: 0.75, g: 0.55, b: 0.3, a: 1}
+  - spellId: earthen-trench
+    projectile: {fileID: 0}
+    impact: {fileID: 0}
+    impactSeconds: 2
+    glow: {r: 0.7, g: 0.5, b: 0.28, a: 1}
+  - spellId: wall-of-stone
+    projectile: {fileID: 0}
+    impact: {fileID: 0}
+    impactSeconds: 2
+    glow: {r: 0.7, g: 0.68, b: 0.62, a: 1}
+  - spellId: move-earth
+    projectile: {fileID: 0}
+    impact: {fileID: 0}
+    impactSeconds: 2
+    glow: {r: 0.65, g: 0.5, b: 0.3, a: 1}

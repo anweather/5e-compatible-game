@@ -3,12 +3,17 @@ using Chem;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-// How the grid looks: ground blocks with a little colour variation, grass
-// tufts, trees and bramble bushes, see-through water and glossy ice,
-// covers, and the Particle Pack's flames, smoke, steam and sparks. Cubes
-// stand in for any effect prefab that isn't assigned (for example before
-// the Asset Store packs are restored). A small pool of flickering lights
-// follows the biggest fires.
+// How the grid looks. The valley's chunk terrains are the ground: the cells
+// shape and paint them (ValleyChemistry). Each frame Render() walks the cells
+// and, for any cell whose state changed, updates what stands on it: its
+// dressing (CellDressing: brambles, a stump, planks, crags), its invisible
+// blocker (CellBlockers), its water or ice (one surface over all the wet
+// cells: CellWaterMesh), oil or grease (one film: CellSlickMesh), and its fire, gas and
+// charge effects (ChemGrid.Effects.cs).
+// Reshaped ground eases to its new height (ChemGrid.Shaping.cs). A small pool
+// of flickering lights follows the biggest fires (FireLightPool). Cubes stand
+// in for any effect prefab that isn't assigned (for example before the Asset
+// Store packs are restored).
 public partial class ChemGrid
 {
     [Header("Effects (optional; cubes stand in when missing)")]
@@ -19,262 +24,118 @@ public partial class ChemGrid
     public GameObject steamFx;
     public GameObject sparksFx;
     public int maxFireLights = 16;
-    [Tooltip("Multiplies grass colours, so the yard can match the terrain around it.")]
-    public Color grassTint = Color.white;
+    [Tooltip("Optional: the material of the cells' water (vertex alpha fades its edges). A plain see-through blue stands in.")]
+    public Material waterMaterial;
+    [Tooltip("Optional: the material of oil and grease films (tinted by vertex colours). One is made at runtime if missing.")]
+    public Material slickMaterial;
 
-    static readonly Dictionary<string, (Color color, float height)> TerrainLook = new()
-    {
-        ["bedrock"] = (new Color(0.24f, 0.23f, 0.25f), 1.5f), ["stone"] = (new Color(0.50f, 0.50f, 0.52f), 1.2f),
-        ["pillar"] = (new Color(0.55f, 0.45f, 0.35f), 1.2f), ["rubble"] = (new Color(0.45f, 0.43f, 0.40f), 0.05f),
-        ["dirt"] = (new Color(0.50f, 0.38f, 0.25f), 0f), ["grass"] = (new Color(0.33f, 0.55f, 0.22f), 0f),
-        ["brush"] = (new Color(0.20f, 0.36f, 0.14f), 0.6f), ["tree"] = (new Color(0.16f, 0.38f, 0.15f), 2.2f),
-        ["stump"] = (new Color(0.40f, 0.28f, 0.16f), 0.15f), ["wood"] = (new Color(0.58f, 0.40f, 0.22f), 0f),
-        ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.62f, 0.66f, 0.72f), 0.02f),
-    };
-
-    // Terrains drawn as a ground tile with something standing on it; their height is an invisible collider.
-    static readonly HashSet<string> Dressed = new() { "tree", "brush", "stump", "rubble" };
-
+    // What is currently shown for one cell, so a cell is only redrawn when it changes.
     sealed class View
     {
-        public GameObject tile, water, cover, fire, gas, spark;
-        public string terrain;
+        public GameObject dressing, cover, fire, gas, spark;
+        public string terrain, coverId;
+        public int height, elevation;
         public int key = int.MinValue;
         public int fireLevel;
         public string gasKind;
         public bool charged;
-        public float waterGround, waterTop, waterTarget;
+        public bool wet;
     }
 
     View[] views;
-    readonly HashSet<View> rising = new();
-    Texture2D ripples;
-    readonly Dictionary<string, Material> materials = new();
-    readonly List<Light> fireLights = new();
-    readonly List<(int x, int y, int fire)> burning = new();
-    MaterialPropertyBlock tint;
-    Mesh tuftMesh;
+    readonly MaterialCache materials = new();
+    CellDressing dressings;
+    CellBlockers blockers;
+    CellWaterMesh waterSurface;
+    CellSlickMesh slicks;
+    FireLightPool fireLights;
 
     void InitVisuals()
     {
         views = new View[World.W * World.H];
         for (int i = 0; i < views.Length; i++) views[i] = new View();
-        tint = new MaterialPropertyBlock();
-        if (tuftMesh == null) tuftMesh = BuildTuftMesh();
-        for (int i = 0; i < maxFireLights; i++)
-        {
-            var l = new GameObject("Fire light").AddComponent<Light>();
-            l.transform.SetParent(transform, false);
-            l.type = LightType.Point;
-            l.color = new Color(1f, 0.55f, 0.22f);
-            l.range = 7f;
-            l.shadows = LightShadows.None;
-            l.enabled = false;
-            fireLights.Add(l);
-        }
+        dressings ??= new CellDressing(this, materials);
+        blockers = new CellBlockers(this);
+        waterSurface?.Destroy();
+        waterSurface = new CellWaterMesh(this, waterMaterial != null ? waterMaterial : materials.Water(),
+            materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f));
+        slicks?.Destroy();
+        slicks = new CellSlickMesh(this, slickMaterial != null ? slickMaterial : materials.Slick());
+        shaping.Clear();
+        fireLights = new FireLightPool(this, maxFireLights);
+    }
+
+    /// <summary>The top of the water drawn on a cell (CellWaterMesh), or null where none is drawn.</summary>
+    public float? DrawnWaterTop(int x, int y)
+    {
+        float top = waterSurface.Top(x, y, float.NaN);
+        return float.IsNaN(top) ? null : top;
     }
 
     void Render()
     {
         for (int y = 0; y < World.H; y++)
-        for (int x = 0; x < World.W; x++)
         {
-            var c = World.At(x, y);
-            var v = views[y * World.W + x];
-            int key = Key(c);
-            if (key == v.key && v.terrain == c.T) continue;
-            v.key = key;
-
-            // Yard cells are blocks; cells outside the yard are scenery that ValleyChemistry updates.
-            bool yard = InYard(x, y);
-            if (v.terrain != c.T)
-            {
-                if (yard) BuildTile(v, c, x, y);
-                else
-                {
-                    if (valley != null) valley.TerrainChanged(x, y, v.terrain, c.T);
-                    v.terrain = c.T;
-                }
-            }
-            float ground = SurfaceY(x, y);
-            if (yard && Dressed.Contains(c.T)) ground = GroundTop(c);
-            var center = CellCenter(x, y);
-
-            // Water and ice: a slab from the ground up to the water surface. Ice is solid to walk on.
-            // Outside the yard the lake's own surface stands for its cells; puddles still show.
-            if (c.Water > 0 && (yard || c.T != "pit"))
-            {
-                float top = yard
-                    ? (World.ElevationUnits(c) + c.Water) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight
-                    : ground + c.Water / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
-                top = Mathf.Max(top, ground + 0.04f);
-                bool fresh = v.water == null || !v.water.activeSelf;
-                var slab = Ensure(ref v.water, "Water", center, keepCollider: true);
-                // New water rises from the ground; level changes ease in (see AnimateWater).
-                v.waterGround = ground;
-                v.waterTarget = top;
-                if (fresh) v.waterTop = ground + 0.02f;
-                if (c.Frozen) v.waterTop = top;
-                PlaceWater(v, center);
-                if (!Mathf.Approximately(v.waterTop, top)) rising.Add(v);
-                slab.GetComponent<Renderer>().sharedMaterial = c.Frozen ? Mat("Ice", new Color(0.80f, 0.93f, 1f), 0.97f) : WaterMat();
-                slab.GetComponent<Renderer>().shadowCastingMode = c.Frozen ? ShadowCastingMode.On : ShadowCastingMode.Off;
-                slab.GetComponent<Collider>().enabled = c.Frozen;
-                ground = top;
-            }
-            else Hide(v.water);
-
-            if (c.Cover != null)
-            {
-                var col = c.Cover == "oil" ? new Color(0.06f, 0.05f, 0.05f) : c.Cover == "grease" ? new Color(0.85f, 0.78f, 0.40f) : new Color(0.35f, 0.34f, 0.33f);
-                var film = Ensure(ref v.cover, "Cover", center);
-                film.transform.position = new Vector3(center.x, ground + 0.02f, center.z);
-                film.transform.localScale = new Vector3(0.96f * cellSize, 0.03f, 0.96f * cellSize);
-                film.GetComponent<Renderer>().sharedMaterial = Mat("Cover-" + c.Cover, col, c.Cover == "ash" ? 0.05f : 0.9f);
-            }
-            else Hide(v.cover);
-
-            RenderFire(v, c, center, yard || valley == null ? ground : ground + ValleyChemistry.FireHeight(c.T), !yard && c.T == "tree" ? 1.8f : 1f);
-            RenderGas(v, c, center, ground, (x + y) % 2 == 0);
-            // A lightning strike across the lake charges thousands of cells; outside the
-            // yard, sparks on one cell in 25 read the same without thousands of effects.
-            if (yard || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
+            for (int x = 0; x < World.W; x++) RenderCell(x, y);
         }
-        AnimateWater();
+        waterSurface.Rebuild();
+        slicks.Rebuild();
+        materials.ScrollWater(Time.time);
+        AnimateShaping();
     }
 
-    // --- fire, gas, charge -------------------------------------------------
-
-    void RenderFire(View v, Cell c, Vector3 center, float ground, float scale = 1f)
+    void RenderCell(int x, int y)
     {
-        var prefab = c.Fire >= 3 ? fireLarge : c.Fire == 2 ? fireMedium : fireSmall;
-        if (c.Fire == 0 || prefab == null)
+        int index = y * World.W + x;
+        var c = World.Cells[index];
+        var v = views[index];
+        int key = Key(c);
+        if (key == v.key && v.terrain == c.T && v.height == c.Height) return;
+        v.key = key;
+
+        if (v.terrain != c.T || v.height != c.Height || v.coverId != c.Cover) ChangeGround(v, c, x, y);
+        float groundTop = GroundTop(x, y, c);
+        float ground = CellDressing.IsDressed(c.T) ? groundTop : groundTop + CellDressing.Look(c.T).height;
+        var center = CellCenter(x, y);
+        bool lake = valley != null && valley.IsLake(c, x, y);
+
+        ground = RenderWater(v, c, x, y, ground, groundTop, lake);
+        RenderCover(v, c, x, y, center, ground);
+        RenderFire(v, c, x, y, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
+        RenderGas(v, c, center, ground, (x + y) % 2 == 0);
+        // A lightning strike across the lake charges thousands of cells; on the lake, sparks on
+        // one cell in 25 read the same without thousands of effects.
+        if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
+    }
+
+    // A new terrain, height or cover: the terrain is reshaped (eased, see ChemGrid.Shaping.cs)
+    // and repainted, and the cell's dressing and blocker rebuilt where its ground stands now.
+    void ChangeGround(View v, Cell c, int x, int y)
+    {
+        int elevation = World.ElevationUnits(c);
+        bool reshaped = v.terrain != null && v.elevation != elevation;
+        bool rebuild = v.terrain != c.T || v.height != c.Height;
+        if (valley != null) valley.CellChanged(x, y, v.terrain, c.T, reshaped);
+        if (rebuild)
         {
-            if (v.fireLevel != 0) { Retire(v.fire); v.fire = null; v.fireLevel = 0; }
-            if (c.Fire > 0) FallbackFire(v, c, center, ground);
-            return;
+            float shown = reshaped ? ShownGround(x, y, c) : GroundTop(x, y, c);
+            if (v.dressing != null) Destroy(v.dressing);
+            v.dressing = dressings.Build(c, x, y, shown);
+            blockers.Place(x, y, c, shown);
+            if (reshaped) StartShaping(v, x, y, shown);
         }
-        if (v.fireLevel == c.Fire && v.fire != null) return;
-        Retire(v.fire);
-        v.fire = Instantiate(prefab, new Vector3(center.x, ground, center.z), Quaternion.identity, transform);
-        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f * scale);
-        v.fireLevel = c.Fire;
-    }
-
-    void FallbackFire(View v, Cell c, Vector3 center, float ground)
-    {
-        var flame = Ensure(ref v.fire, "Fire", center);
-        if (flame.GetComponent<Flicker>() == null) flame.AddComponent<Flicker>();
-        float s = 0.25f + 0.12f * c.Fire;
-        flame.transform.localScale = new Vector3(s, s * 1.3f, s);
-        flame.transform.position = new Vector3(center.x, ground + s * 0.65f, center.z);
-        flame.GetComponent<Renderer>().sharedMaterial = Mat("Fire", new Color(1f, 0.38f, 0.05f), 0.2f, new Color(1f, 0.3f, 0.02f) * 1.2f);
-    }
-
-    // Gas drifts over many cells at once, so effects go on every other cell at reduced emission;
-    // a full effect per cell turns into a wall.
-    void RenderGas(View v, Cell c, Vector3 center, float ground, bool showFx)
-    {
-        string kind = c.Gas != null && c.GasAmt > 0 ? c.Gas : null;
-        var prefab = kind == "steam" ? steamFx : kind == "smoke" ? smokeFx : null;
-        if (prefab != null && !showFx) kind = null;
-        if (kind != v.gasKind || (kind != null && prefab == null))
+        if (reshaped)
         {
-            if (v.gasKind != null && v.gas != null && v.gas.GetComponent<ParticleSystem>() != null) { Retire(v.gas); v.gas = null; }
-            v.gasKind = kind;
-            if (kind != null && prefab != null)
-            {
-                Hide(v.gas);
-                v.gas = Instantiate(prefab, new Vector3(center.x, ground + 0.3f, center.z), Quaternion.identity, transform);
-                foreach (var ps in v.gas.GetComponentsInChildren<ParticleSystem>())
-                {
-                    var emission = ps.emission;
-                    emission.rateOverTimeMultiplier *= kind == "smoke" ? 0.3f : 0.6f;
-                }
-            }
+            waterSurface.GroundChanged();
+            slicks.GroundChanged();
         }
-        if (kind == null) { Hide(v.gas); return; }
-        if (prefab != null) return;
-
-        var puff = Ensure(ref v.gas, "Gas", center);
-        float s = 0.25f + 0.1f * c.GasAmt;
-        puff.transform.localScale = Vector3.one * s;
-        puff.transform.position = new Vector3(center.x, ground + 1.2f, center.z);
-        puff.GetComponent<Renderer>().sharedMaterial = kind == "steam" ? Mat("Steam", new Color(0.95f, 0.97f, 1f), 0.3f) : Mat("Smoke", new Color(0.3f, 0.3f, 0.32f), 0.1f);
+        v.terrain = c.T;
+        v.height = c.Height;
+        v.elevation = elevation;
+        v.coverId = c.Cover;
     }
 
-    void RenderCharge(View v, Cell c, Vector3 center, float ground)
-    {
-        bool on = c.Charge > 0;
-        if (sparksFx != null)
-        {
-            if (on && !v.charged)
-            {
-                var fx = Instantiate(sparksFx, new Vector3(center.x, ground + 0.1f, center.z), Quaternion.identity, transform);
-                Destroy(fx, 1.5f);
-            }
-            v.charged = on;
-            return;
-        }
-        if (!on) { Hide(v.spark); return; }
-        var spark = Ensure(ref v.spark, "Charge", center);
-        spark.transform.position = new Vector3(center.x, ground + 0.08f, center.z);
-        spark.transform.localScale = new Vector3(0.8f * cellSize, 0.05f, 0.8f * cellSize);
-        spark.GetComponent<Renderer>().sharedMaterial = Mat("Charge", new Color(1f, 0.95f, 0.3f), 0.5f, new Color(1f, 0.9f, 0.2f) * 6f);
-    }
-
-    // Let a particle effect finish its particles instead of popping out.
-    static void Retire(GameObject go)
-    {
-        if (go == null) return;
-        var systems = go.GetComponentsInChildren<ParticleSystem>();
-        if (systems.Length == 0) { Destroy(go); return; }
-        foreach (var ps in systems) ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-        Destroy(go, 3f);
-    }
-
-    // Spread the light pool over the biggest fires, at least two cells apart.
-    void UpdateFireLights()
-    {
-        burning.Clear();
-        for (int y = 0; y < World.H; y++)
-        for (int x = 0; x < World.W; x++)
-        {
-            int f = World.At(x, y).Fire;
-            if (f > 0) burning.Add((x, y, f));
-        }
-        burning.Sort((a, b) => b.fire.CompareTo(a.fire));
-        int used = 0;
-        foreach (var b in burning)
-        {
-            if (used >= fireLights.Count) break;
-            bool near = false;
-            for (int i = 0; i < used && !near; i++)
-            {
-                var p = CellAt(fireLights[i].transform.position);
-                near = Mathf.Abs(p.x - b.x) <= 2 && Mathf.Abs(p.y - b.y) <= 2;
-            }
-            if (near) continue;
-            var l = fireLights[used++];
-            l.transform.position = CellCenter(b.x, b.y) + Vector3.up * (SurfaceY(b.x, b.y) + 1f);
-            l.intensity = 1.5f + b.fire;
-            l.enabled = true;
-        }
-        for (int i = used; i < fireLights.Count; i++) fireLights[i].enabled = false;
-    }
-
-    void FlickerFireLights()
-    {
-        for (int i = 0; i < fireLights.Count; i++)
-        {
-            var l = fireLights[i];
-            if (!l.enabled) continue;
-            l.range = 6f + 1.5f * Mathf.PerlinNoise(Time.time * 6f, i * 7.3f);
-        }
-    }
-
-    // --- tiles -------------------------------------------------------------
-
+    // A hash of everything drawn for a cell apart from its terrain.
     static int Key(Cell c)
     {
         unchecked
@@ -290,157 +151,52 @@ public partial class ChemGrid
         }
     }
 
-    float GroundTop(Cell c) => World.ElevationUnits(c) / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
+    // --- water and ice ----------------------------------------------------------
 
-    void BuildTile(View v, Cell c, int x, int y)
+    // Water joins the wet cells' surface (CellWaterMesh); the lake's own surface stands for its
+    // cells. Returns the height that covers and effects sit on.
+    float RenderWater(View v, Cell c, int x, int y, float ground, float groundTop, bool lake)
     {
-        if (v.tile != null) Destroy(v.tile);
-        v.terrain = c.T;
-        var look = Look(c.T);
-        bool dressed = Dressed.Contains(c.T);
-        float top = dressed ? GroundTop(c) : SurfaceY(x, y);
-        const float bottom = -1.5f;
-        var center = CellCenter(x, y);
+        bool wet = c.Water > 0 && !lake;
+        if (wet || v.wet) waterSurface.Changed(x, y, wet);
+        v.wet = wet;
+        if (lake) return c.Water > 0 ? Mathf.Max(ground, valley.lakeLevel) : ground;
+        return wet ? Mathf.Max(ground, waterSurface.Top(x, y, groundTop + WaterDepth(c))) : ground;
+    }
 
-        var tile = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        tile.name = $"{c.T} {x},{y}";
-        tile.transform.SetParent(transform, false);
-        tile.transform.position = new Vector3(center.x, (top + bottom) / 2f, center.z);
-        tile.transform.localScale = new Vector3(cellSize, top - bottom, cellSize);
-        bool grassy = c.T == "grass" || c.T == "brush" || c.T == "tree";
-        var groundColor = dressed ? Look(grassy ? "grass" : "dirt").color : look.color;
-        if (grassy) groundColor *= grassTint;
-        Paint(tile.GetComponent<Renderer>(), "Ground", groundColor, c.T == "metal" ? 0.85f : 0.1f, x, y);
-        v.tile = tile;
+    float WaterDepth(Cell c) => c.Water / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
 
-        var rng = new System.Random(x * 7919 + y * 104729 + c.T.GetHashCode());
-        var surface = new Vector3(center.x, top, center.z);
-        switch (c.T)
+    /// <summary>Height of the water surface in a cell, as drawn (its ground when the cell is dry).</summary>
+    public float WaterSurfaceY(int x, int y)
+    {
+        var c = World.At(x, y);
+        if (c == null) return 0f;
+        float top = GroundTop(x, y, c) + WaterDepth(c);
+        return valley != null && c.Water > 0 && valley.IsLake(c, x, y) ? Mathf.Max(top, valley.lakeLevel) : top;
+    }
+
+    // --- covers ------------------------------------------------------------------
+
+    // Oil and grease are a glossy film over the cells (CellSlickMesh); ash is the terrain's own
+    // charred paint (CellPaint), or a grey sheet without a valley.
+    void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
+    {
+        slicks.Changed(x, y, c.Cover);
+        if (c.Cover != CoverIds.Ash || valley != null)
         {
-            case "grass":
-                for (int i = 0; i < 6; i++) Tuft(tile.transform, surface, rng, x, y);
-                break;
-            case "tree":
-                Blocker(tile.transform, surface, look.height);
-                Part(tile.transform, PrimitiveType.Cylinder, surface + Vector3.up * 1.1f, new Vector3(0.28f, 1.1f, 0.28f), "Bark", new Color(0.36f, 0.25f, 0.16f));
-                for (int i = 0; i < 3; i++)
-                {
-                    var off = new Vector3((float)rng.NextDouble() - 0.5f, 2.4f + 0.5f * (float)rng.NextDouble(), (float)rng.NextDouble() - 0.5f) * cellSize * 0.6f;
-                    off.y = 2.3f + 0.6f * (float)rng.NextDouble();
-                    float r = 1.1f + 0.4f * (float)rng.NextDouble();
-                    var leaf = Part(tile.transform, PrimitiveType.Sphere, surface + off, new Vector3(r, r * 0.85f, r), "Leaves", look.color);
-                    Paint(leaf.GetComponent<Renderer>(), "Leaves", look.color, 0.1f, x + i * 13, y);
-                }
-                for (int i = 0; i < 3; i++) Tuft(tile.transform, surface, rng, x, y);
-                break;
-            case "brush":
-                Blocker(tile.transform, surface, 1.2f);
-                for (int i = 0; i < 5; i++)
-                {
-                    var off = new Vector3((float)rng.NextDouble() - 0.5f, 0f, (float)rng.NextDouble() - 0.5f) * cellSize * 0.7f;
-                    float r = 0.55f + 0.35f * (float)rng.NextDouble();
-                    var bush = Part(tile.transform, PrimitiveType.Sphere, surface + off + Vector3.up * r * 0.35f, new Vector3(r, r * 0.7f, r), "Leaves", look.color);
-                    Paint(bush.GetComponent<Renderer>(), "Leaves", look.color, 0.1f, x + i * 17, y);
-                }
-                break;
-            case "stump":
-                Part(tile.transform, PrimitiveType.Cylinder, surface + Vector3.up * 0.15f, new Vector3(0.45f, 0.15f, 0.45f), "Bark", look.color);
-                break;
-            case "rubble":
-                for (int i = 0; i < 4; i++)
-                {
-                    var off = new Vector3((float)rng.NextDouble() - 0.5f, 0.1f, (float)rng.NextDouble() - 0.5f) * cellSize * 0.8f;
-                    var rock = Part(tile.transform, PrimitiveType.Cube, surface + off, Vector3.one * (0.25f + 0.2f * (float)rng.NextDouble()), "Stone", look.color);
-                    rock.transform.rotation = Quaternion.Euler(rng.Next(360), rng.Next(360), rng.Next(360));
-                }
-                break;
+            Hide(v.cover);
+            return;
         }
+        var film = Ensure(ref v.cover, "Cover", center);
+        film.transform.position = new Vector3(center.x, ground + 0.02f, center.z);
+        film.transform.localScale = new Vector3(0.96f * cellSize, 0.03f, 0.96f * cellSize);
+        film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-ash", new Color(0.35f, 0.34f, 0.33f), 0.05f);
     }
 
-    // An invisible box the character can't walk through, for terrain that blocks.
-    void Blocker(Transform parent, Vector3 surface, float height)
-    {
-        var go = new GameObject("Blocker");
-        go.transform.SetParent(parent, true);
-        go.transform.position = surface + Vector3.up * height / 2f;
-        var box = go.AddComponent<BoxCollider>();
-        box.size = new Vector3(cellSize, height, cellSize);
-    }
+    // --- stand-in cubes ------------------------------------------------------------
 
-    GameObject Part(Transform parent, PrimitiveType type, Vector3 at, Vector3 scale, string mat, Color color)
-    {
-        var go = GameObject.CreatePrimitive(type);
-        Destroy(go.GetComponent<Collider>());
-        go.transform.SetParent(parent, true);
-        go.transform.position = at;
-        go.transform.localScale = Vector3.one;
-        go.transform.localScale = new Vector3(scale.x / parent.lossyScale.x, scale.y / parent.lossyScale.y, scale.z / parent.lossyScale.z);
-        go.GetComponent<Renderer>().sharedMaterial = Mat(mat, color, 0.1f);
-        return go;
-    }
-
-    void Tuft(Transform parent, Vector3 surface, System.Random rng, int x, int y)
-    {
-        var go = new GameObject("Grass");
-        go.transform.SetParent(parent, true);
-        var off = new Vector3((float)rng.NextDouble() - 0.5f, 0f, (float)rng.NextDouble() - 0.5f) * cellSize * 0.9f;
-        go.transform.position = surface + off;
-        go.transform.rotation = Quaternion.Euler(0f, rng.Next(360), 0f);
-        float s = 0.7f + 0.6f * (float)rng.NextDouble();
-        go.transform.localScale = new Vector3(s / parent.lossyScale.x, s / parent.lossyScale.y, s / parent.lossyScale.z);
-        go.AddComponent<MeshFilter>().sharedMesh = tuftMesh;
-        var r = go.AddComponent<MeshRenderer>();
-        r.shadowCastingMode = ShadowCastingMode.Off;
-        Paint(r, "Blades", new Color(0.36f, 0.62f, 0.24f) * grassTint, 0.15f, x * 3 + rng.Next(5), y);
-    }
-
-    // A tuft of five thin blades leaning outward. Each blade has a front and a
-    // back face with their own vertices; shared vertices would average the two
-    // normals to zero and light as NaN, which bloom then smears over the screen.
-    static Mesh BuildTuftMesh()
-    {
-        var verts = new List<Vector3>();
-        var normals = new List<Vector3>();
-        var tris = new List<int>();
-        for (int i = 0; i < 5; i++)
-        {
-            float a = i * Mathf.PI * 2f / 5f;
-            var dir = new Vector3(Mathf.Cos(a), 0f, Mathf.Sin(a));
-            var side = Vector3.Cross(dir, Vector3.up) * 0.03f;
-            var tip = dir * 0.1f + Vector3.up * (0.28f + 0.08f * (i % 3));
-            var facing = Vector3.Cross(side, tip + side).normalized;
-            foreach (var n in new[] { facing, -facing })
-            {
-                int b = verts.Count;
-                verts.AddRange(new[] { -side, side, tip });
-                normals.AddRange(new[] { n, n, n });
-                if (n == facing) tris.AddRange(new[] { b, b + 1, b + 2 });
-                else tris.AddRange(new[] { b + 2, b + 1, b });
-            }
-        }
-        var mesh = new Mesh { name = "Grass tuft" };
-        mesh.SetVertices(verts);
-        mesh.SetNormals(normals);
-        mesh.SetTriangles(tris, 0);
-        mesh.RecalculateBounds();
-        return mesh;
-    }
-
-    // Shared material, with a per-cell shade so neighbouring tiles don't read as one flat sheet.
-    void Paint(Renderer r, string mat, Color color, float smoothness, int x, int y)
-    {
-        r.sharedMaterial = Mat(mat, Color.white, smoothness);
-        float n = Mathf.PerlinNoise(x * 0.37f + 0.11f, y * 0.37f + 0.53f);
-        float jitter = 0.86f + 0.24f * n + 0.04f * (((x * 73856093) ^ (y * 19349663)) & 7) / 7f;
-        r.GetPropertyBlock(tint);
-        tint.SetColor("_BaseColor", color * jitter);
-        r.SetPropertyBlock(tint);
-    }
-
-    (Color color, float height) Look(string terrain) =>
-        TerrainLook.TryGetValue(terrain, out var l) ? l : (Color.magenta, 0f);
-
-    GameObject Ensure(ref GameObject go, string name, Vector3 at, bool keepCollider = false)
+    // A cell's stand-in cube, made (or remade, if the slot holds a particle effect) and shown.
+    GameObject Ensure(ref GameObject go, string name, Vector3 at)
     {
         if (go == null || go.GetComponent<ParticleSystem>() != null)
         {
@@ -448,79 +204,23 @@ public partial class ChemGrid
             go.name = name;
             go.transform.SetParent(transform, false);
             go.transform.position = at;
-            if (!keepCollider) Destroy(go.GetComponent<Collider>());
+            Primitives.RemoveCollider(go);
         }
         go.SetActive(true);
         return go;
     }
 
+    // Hides a stand-in cube; particle effects are retired instead (see Retire).
     static void Hide(GameObject go)
     {
         if (go != null && go.activeSelf && go.GetComponent<ParticleSystem>() == null) go.SetActive(false);
     }
 
-    Material Mat(string name, Color color, float smoothness, Color? emission = null)
-    {
-        if (materials.TryGetValue(name, out var m)) return m;
-        m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = name };
-        m.SetColor("_BaseColor", color);
-        m.SetFloat("_Smoothness", smoothness);
-        if (emission.HasValue)
-        {
-            m.EnableKeyword("_EMISSION");
-            m.SetColor("_EmissionColor", emission.Value);
-        }
-        materials[name] = m;
-        return m;
-    }
-
-    // URP Lit set up as a transparent surface, with a rippling normal map that AnimateWater scrolls.
-    Material WaterMat()
-    {
-        if (materials.TryGetValue("Water", out var m)) return m;
-        m = Mat("Water", new Color(0.16f, 0.42f, 0.62f, 0.62f), 0.95f);
-        ripples = ProceduralTextures.RippleNormals(128);
-        m.SetTexture("_BumpMap", ripples);
-        m.SetFloat("_BumpScale", 0.2f);
-        m.EnableKeyword("_NORMALMAP");
-        m.SetFloat("_Surface", 1f);
-        m.SetFloat("_Blend", 0f);
-        m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-        m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-        m.SetFloat("_ZWrite", 0f);
-        m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-        m.renderQueue = (int)RenderQueue.Transparent;
-        m.SetOverrideTag("RenderType", "Transparent");
-        return m;
-    }
-
-    void PlaceWater(View v, Vector3 center)
-    {
-        float height = Mathf.Max(0.02f, v.waterTop - v.waterGround);
-        v.water.transform.position = new Vector3(center.x, v.waterGround + height / 2f, center.z);
-        v.water.transform.localScale = new Vector3(cellSize, height, cellSize);
-    }
-
-    // Each frame: ease water levels toward their targets, and drift the ripples.
-    void AnimateWater()
-    {
-        if (materials.TryGetValue("Water", out var water))
-            water.SetTextureOffset("_BaseMap", new Vector2(Time.time * 0.03f, Time.time * 0.02f));
-        if (rising.Count == 0) return;
-        float step = 1.2f * Time.deltaTime;
-        rising.RemoveWhere(v =>
-        {
-            if (v.water == null || !v.water.activeSelf) return true;
-            v.waterTop = Mathf.MoveTowards(v.waterTop, v.waterTarget, step);
-            PlaceWater(v, v.water.transform.position);
-            return Mathf.Approximately(v.waterTop, v.waterTarget);
-        });
-    }
-
     void OnDestroy()
     {
-        foreach (var m in materials.Values) Destroy(m);
-        if (ripples != null) Destroy(ripples);
-        if (tuftMesh != null) Destroy(tuftMesh);
+        materials.Destroy();
+        waterSurface?.Destroy();
+        slicks?.Destroy();
+        if (plainDust != null) Destroy(plainDust);
     }
 }

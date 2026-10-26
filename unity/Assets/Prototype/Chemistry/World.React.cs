@@ -14,10 +14,11 @@ namespace Chem
         /// </summary>
         public void Apply(int x, int y, string element, int power = 1, int dir = -1, bool direct = true)
         {
-            var c = At(x, y);
+            // A paused chunk doesn't react (World.Chunks.cs).
+            var c = LocateActive(x, y, out var ch, out int i);
             if (c == null) return;
             // A spell's fire (or a fresh fire from any direct source) starts at full strength.
-            if (direct && element == "fire") fireGeneration[Idx(x, y)] = 0;
+            if (direct && element == "fire") ch.FireGeneration[i] = 0;
             string beforeCover = CoverName(c), beforeTerrain = TerrainOf(c).Name.ToLowerInvariant();
             foreach (var rule in Rules.CellRulesFor(element))
             {
@@ -98,7 +99,7 @@ namespace Chem
             while (c.Water > 0 && guard-- > 0)
             {
                 bool moved = false;
-                foreach (var (nx, ny, _) in Neighbours(x, y))
+                foreach (var (nx, ny, _) in ActiveNeighbours(x, y))
                 {
                     var n = At(nx, ny);
                     if (c.Water == 0) break;
@@ -127,7 +128,7 @@ namespace Chem
                 c.Charge = Math.Max(c.Charge, charge);
                 if (CoverHasTag(c, "flammable")) IgniteCover(c);
                 count++;
-                foreach (var (nx, ny, _) in Neighbours(cx, cy))
+                foreach (var (nx, ny, _) in ActiveNeighbours(cx, cy))
                 {
                     if (!seen.Add(Idx(nx, ny))) continue;
                     if (IsConductive(At(nx, ny))) queue.Enqueue((nx, ny));
@@ -145,7 +146,7 @@ namespace Chem
                 if (c.Water == 0 || c.Frozen) return false;
                 c.Water--;
                 AddGas(c, "steam", eff.Boil.Value);
-                steamMarks[Idx(x, y)] = 1;
+                Mark(x, y, SteamMark);
                 return true;
             }
             if (eff.Melt)
@@ -196,7 +197,7 @@ namespace Chem
             {
                 if (c.Cover == null) return false;
                 var options = new List<(int x, int y)>();
-                foreach (var (nx, ny, _) in Neighbours(x, y))
+                foreach (var (nx, ny, _) in ActiveNeighbours(x, y))
                     if (!IsBlocking(At(nx, ny))) options.Add((nx, ny));
                 for (int i = 0; i < eff.SpreadCover.Value && options.Count > 0; i++)
                 {
@@ -245,7 +246,7 @@ namespace Chem
             {
                 if (c.Gas == null || dir < 0) return false;
                 var n = At(x + DirX(dir), y + DirY(dir));
-                if (n != null && !IsBlocking(n)) AddGas(n, c.Gas, c.GasAmt);
+                if (n != null && IsActiveAt(x + DirX(dir), y + DirY(dir)) && !IsBlocking(n)) AddGas(n, c.Gas, c.GasAmt);
                 c.Gas = null;
                 c.GasAmt = 0;
                 return true;
@@ -259,7 +260,7 @@ namespace Chem
             }
             if (eff.Mark == "wind")
             {
-                windMarks[Idx(x, y)] = 1;
+                Mark(x, y, WindMark);
                 return false;
             }
             if (eff.Gas != null)

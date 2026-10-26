@@ -6,7 +6,7 @@ read the code. There are two layers:
 | Layer | Where you see it | What runs | Blocks anything? |
 |---|---|---|---|
 | 1. Analyzers | Unity's **Console**, as yellow warnings, every time scripts compile | Sonar, Unity and .NET analyzers on our code | No. Warnings never stop the game compiling |
-| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 26 tests, formatting, duplicate code | Yes. A red check means fix before merging |
+| 2. Quality gate | GitHub, the **quality** check on every push and PR | Build of `Game.Core` (warnings fail), its 124 tests, formatting, duplicate code | Yes. A red check means fix before merging |
 
 Only our code is checked: `unity/Assets/Prototype/` and `sandbox/src/`. The
 Asset Store packs (`Starter Assets`, `UnityTechnologies`) are never analyzed,
@@ -61,7 +61,7 @@ and `CA…`/`IDE…` at `learn.microsoft.com/dotnet/fundamentals/code-analysis/`
 
 1. **Build and test.** `core/Game.Core` (netstandard2.1, C# 9: D3's
    engine-free core) compiles `unity/Assets/Prototype/Chemistry/*.cs` from
-   where Unity keeps them. `core/Game.Core.Tests` runs the same 26 NUnit tests
+   where Unity keeps them. `core/Game.Core.Tests` runs the same NUnit tests
    Unity runs in EditMode. Every warning is an error, except cognitive
    complexity (`S3776`, see the baseline). The build also runs .NET's
    `latest-recommended` rules and the naming and code-style rules in the root
@@ -93,7 +93,7 @@ failed job:
 ```sh
 export PATH="$HOME/.dotnet:$PATH"          # .NET 8 SDK
 dotnet build core -c Release -warnaserror  # analyzers, warnings fail
-dotnet test core                           # the 26 chemistry tests
+dotnet test core                           # the chemistry and live-mod tests
 dotnet format core --verify-no-changes     # drop --verify-no-changes to fix
 npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
 ```
@@ -101,36 +101,58 @@ npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
 In Unity: change any script (or **Assets → Refresh**). The warnings appear in
 the Console once compiling finishes.
 
-## Baseline (2026-10-24)
+## Baseline (2026-10-25, after the clean-up)
 
-What the analyzers report on the code as it stands. Nothing here is fixed yet
-in `Scripts/`.
+What the analyzers report on our code now. The architecture the code follows
+is in `docs/ARCHITECTURE.md`.
 
 | File | Warnings | Rules |
 |---|---|---|
-| Scripts/ChemGrid.Visuals.cs | 17 | S3776 ×4, S3358 ×4, UNT0024 ×5, S3973 ×2, UNT0022, S2325 |
-| Scripts/Burnable.cs | 3 | UNT0039 ×3 |
-| Scripts/ChemGrid.cs | 2 | S3776, S3973 |
-| Scripts/EventLog.cs | 2 | UNT0008 (a real bug: `?.` on a Unity object), CA1310 |
-| Scripts/SpellCaster.cs | 2 | S3358 ×2 |
-| Scripts/Editor/PrototypeSceneBuilder.cs | 2 | S3776, S3973 |
-| Scripts/DemoDirector.cs | 1 | UNT0038 |
-| Chemistry/World.React.cs | 3 | S3776 ×3 (complexity 16, 28, 69) |
-| Chemistry/World.Sim.cs | 3 | S3776 ×3 (24, 28, 47) |
-| Chemistry/RuleTables.cs | 1 | S3776 (27) |
-| Chemistry/World.Spells.cs | 1 | S3776 (22) |
+| Chemistry/World.React.cs | 3 | S3776 ×3 (complexity 18, 28, 69) |
+| Chemistry/World.Terraform.cs | 1 | S3776 (23) |
 | *Starter Assets ReadmeEditor.cs (pack)* | 2 | S1066, S1199 |
 
-Totals: **Scripts/ 29**, **Chemistry/ 8** (all cognitive complexity),
-pack 2, which makes 39 in the Unity console. By rule: S3776 cognitive
-complexity 14, S3358 nested ternary 6, UNT0024 operand order 5, S3973
-unbraced loop body 4, UNT0039 RequireComponent 3, and UNT0008, UNT0022,
-UNT0038, S2325 and CA1310 once each. Naming rules (`IDE1006`) find nothing in
-our code.
+Totals: **Scripts/ 0**, **Chemistry/ 4** (all cognitive complexity; the
+terraform line fix split `World.Spells.cs`'s, and the chunked tick split
+`World.Sim.cs`'s three), pack 2, which makes 6 in the Unity console.
+
+Before the clean-up (2026-10-25, the code had grown since the first baseline
+of 39) it was **Scripts/ 65**, **Chemistry/ 8**, pack 2: S3776 21, UNT0039 10,
+S3358 9, S3973 8, CA1310 6, UNT0024 5, S2325 4, UNT0022 3, UNT0026 2, and
+UNT0038, UNT0017, UNT0008, S1905 and S1121 once each. All of them in
+`Scripts/` were fixed in the code, by splitting methods and files
+(`ChemGrid.Visuals.cs` became `ChemGrid.Visuals.cs`, `ChemGrid.Effects.cs`,
+`GridTileBuilder.cs`, `MaterialCache.cs` and `FireLightPool.cs`), ordinal string
+comparisons, `RequireComponent`/`TryGetComponent`, and braces. One rule was
+swapped rather than fixed: Sonar's S2325 ("make it static") flags Unity
+messages such as `OnDestroy`, which Unity calls on an instance, so it is off and
+.NET's identical CA1822 is on instead, which the Unity analyzers know to skip
+for Unity messages (see `Default.globalconfig`). Naming rules (`IDE1006`) find
+nothing in our code. jscpd finds one 5-line clone (the rules-folder lookup in
+`ChemGrid` and the tests), 0.08% of the C#.
 
 The Chemistry methods are ported line by line from the TS sandbox. Splitting
-them is the next refactor; then remove `S3776` from `WarningsNotAsErrors` in
-`core/Directory.Build.props`.
+them (together with the TS) is the next refactor; then remove `S3776` from
+`WarningsNotAsErrors` in `core/Directory.Build.props`.
+
+## Windows PC check (2026-10-25)
+
+First setup of the Windows PC (Ryzen 7 7700X, RTX 4080 Super) from
+`docs/DEV_SETUP_WINDOWS.md`, on `feat/chunked-valley` at 4c35755, Unity 6000.3.27f1.
+
+- `dotnet test core`: 124 passed. Editor EditMode tests: 124 passed.
+  0 compile errors after Restore Asset Packs and Build Chemistry Yard.
+- Play mode in the yard: walking, all 8 Elements spells, the Earth page and
+  the mods panel work, with 0 console errors or warnings.
+- First Windows player build (Prototype → Build → Windows): OK, 0 errors,
+  14 warnings, 541 MB, 849 s.
+- `SpellChemistryValley.exe -fps-probe`, 3840×2160 with the Editor still open:
+  5979 frames over 45.3 s, mean 7.6 ms (132 fps), 95th percentile 9.9 ms
+  (101 fps), worst 318.8 ms. No errors in the player log.
+- Known pack error, ignored: importing the Unity URP Terrain pack logs a
+  `NullReferenceException` in Shader Graph's `GraphData.GetPromotedInputs` for
+  `Assets/TerrainDemoScene_URP/ShaderGraphs/SpeedTreeURP_Branch.shadergraph`.
+  It is in the pack's own Shader Graph, not our code, and the Mac logs it too.
 
 ## Recommendations
 

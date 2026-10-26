@@ -2,7 +2,9 @@ using UnityEngine;
 
 // Something that can catch fire, burn for a while, spread fire to its
 // neighbours and then burn out. Hard-coded for now; the next step is to
-// drive these numbers from rules/*.json.
+// drive these numbers from rules/*.json. (The old Fireline scene; the
+// Chemistry Yard's fire is in the Chem core.)
+[RequireComponent(typeof(Collider), typeof(Renderer))]
 public class Burnable : MonoBehaviour
 {
     public string displayName = "grass";
@@ -22,6 +24,9 @@ public class Burnable : MonoBehaviour
     GameObject flames;
     float spreadTimer;
     readonly Collider[] nearby = new Collider[32];
+    Collider body;
+
+    void Awake() => body = GetComponent<Collider>();
 
     public bool Ignite()
     {
@@ -48,7 +53,7 @@ public class Burnable : MonoBehaviour
 
     void Spread()
     {
-        var bounds = GetComponent<Collider>().bounds;
+        var bounds = body.bounds;
         int count = Physics.OverlapBoxNonAlloc(bounds.center, bounds.extents + Vector3.one * (spreadRadius * 0.5f), nearby);
         for (int i = 0; i < count; i++)
         {
@@ -74,10 +79,8 @@ public class Burnable : MonoBehaviour
 
     GameObject MakeFlames()
     {
-        var top = GetComponent<Collider>().bounds;
-        var go = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        go.name = "Flames";
-        Destroy(go.GetComponent<Collider>());
+        var top = body.bounds;
+        var go = Primitives.Visual(PrimitiveType.Cube, "Flames");
         go.transform.position = new Vector3(top.center.x, top.max.y + 0.25f, top.center.z);
         go.transform.localScale = new Vector3(0.6f, 0.5f, 0.6f);
         go.transform.SetParent(transform, true);

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Chem
 {
     /// <summary>One 5 ft square. Mirrors the TS Cell in sandbox/src/world.ts.</summary>
@@ -19,11 +21,23 @@ namespace Chem
         public int GasAmt;
         /// <summary>3 on the tick lightning arrives, then decays.</summary>
         public int Charge;
+        /// <summary>
+        /// Steps of earth raised (+) or dug (-) by terraform spells, on top of the terrain's own
+        /// elevation, within sim.json's height range. At height.blockAt or more the cell is a wall.
+        /// </summary>
+        public int Height;
 
         // World.TerrainOf's cache: the definition of the terrain id it was looked up for.
         // Not cell state (not hashed or saved); refreshed whenever T changes.
         internal string DefFor;
         internal TerrainDef Def;
+
+        /// <summary>Drops that cache, for when the rules it was looked up in are replaced.</summary>
+        internal void ForgetDef()
+        {
+            DefFor = null;
+            Def = null;
+        }
 
         public Cell() { }
         public Cell(string terrain) { T = terrain; }
@@ -31,7 +45,7 @@ namespace Chem
         /// <summary>Back to a bare square of the given terrain (the sandbox's erase brush).</summary>
         public void Reset(string terrain = "dirt")
         {
-            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0;
+            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0;
         }
     }
 
@@ -44,5 +58,19 @@ namespace Chem
         public LogKind Kind;
         /// <summary>How many times in a row this line happened (the log merges repeats).</summary>
         public int Count;
+    }
+
+    /// <summary>32-bit FNV-1a as lowercase hex, the hash the TS golden script and hashWorld use.</summary>
+    internal static class Fnv1a
+    {
+        public static string Hash(string s)
+        {
+            unchecked
+            {
+                uint h = 0x811c9dc5;
+                for (int i = 0; i < s.Length; i++) h = (h ^ s[i]) * 0x01000193u;
+                return h.ToString("x", CultureInfo.InvariantCulture);
+            }
+        }
     }
 }

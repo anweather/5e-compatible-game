@@ -18,5 +18,15 @@
   { "id": "levitate", "name": "Levitate", "level": 2, "shape": "target", "effect": "levitate", "duration": 48,
     "blurb": "One thing floats for a while, you included. It ignores pits and slick ground, and the lightest gust carries it." },
   { "id": "mage-hand", "name": "Mage Hand", "level": 0, "shape": "target", "effect": "carry", "maxMass": 1, "range": 6,
-    "blurb": "Pick up something light (tap it), then set it down within 30 ft (tap the spot)." }
+    "blurb": "Pick up something light (tap it), then set it down within 30 ft (tap the spot)." },
+  { "id": "mold-earth", "name": "Mold Earth", "level": 0, "shape": "square", "size": 2, "effect": "terraform", "dig": 1,
+    "blurb": "Cantrip. Excavates a 10 ft patch one step down, stripping grass and anything spilled on it. Water runs in." },
+  { "id": "mold-earth-heap", "name": "Mold Earth (heap)", "level": 0, "shape": "square", "size": 2, "effect": "terraform", "raise": 1,
+    "blurb": "Cantrip. Heaps a 10 ft patch one step up. Water on it spills off; a low bank turns a trickle." },
+  { "id": "earthen-trench", "name": "Earthen Trench", "level": 2, "shape": "line", "origin": "self", "length": 8, "effect": "terraform", "dig": 2,
+    "blurb": "Gouges a 40 ft channel two steps deep from your feet toward where you click. Cut it from a pond and the water follows. Our reading of earth shaping; not an SRD spell." },
+  { "id": "wall-of-stone", "name": "Wall of Stone", "level": 5, "shape": "line", "length": 6, "effect": "terraform", "height": 3, "terrain": "rock",
+    "blurb": "A 30 ft wall of rock rises from where you click, running away from you, wall-high even across a trench. Blocks walking, sight, gas and water; dams a stream. Dig it back down to rubble." },
+  { "id": "move-earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3, "effect": "terraform", "raise": 2, "taper": true,
+    "blurb": "The ground heaves up into a hill 35 ft across, highest in the middle. Water runs off it and pools around the foot." }
 ]

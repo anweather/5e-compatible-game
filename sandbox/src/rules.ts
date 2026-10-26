@@ -5,6 +5,7 @@ import reactions from "../../rules/reactions.json" with { type: "json" };
 import spells from "../../rules/spells.json" with { type: "json" };
 import critters from "../../rules/critters.json" with { type: "json" };
 import entities from "../../rules/entities.json" with { type: "json" };
+import items from "../../rules/items.json" with { type: "json" };
 import machines from "../../rules/machines.json" with { type: "json" };
 import sim from "../../rules/sim.json" with { type: "json" };
 
@@ -17,6 +18,8 @@ export interface TerrainDef {
   breaksTo?: string;
   elevation?: number;
   burnLog?: string;
+  /** What digging leaves (grass is dug down to dirt); unset keeps the terrain. */
+  dugTo?: string;
 }
 export interface CoverDef {
   name: string;
@@ -106,7 +109,16 @@ export interface SpellDef {
   radius?: number;
   push?: number;
   wind?: number;
-  effect?: "levitate" | "carry" | "teleport";
+  effect?: "levitate" | "carry" | "teleport" | "terraform";
+  /**
+   * terraform: steps to raise or to dig, or a height to raise the cells to (exactly one of
+   * the three), the terrain the cells become, and taper (a hill or crater over radius).
+   */
+  raise?: number;
+  dig?: number;
+  height?: number;
+  terrain?: string;
+  taper?: boolean;
   duration?: number;
   maxMass?: number;
   range?: number;
@@ -135,6 +147,26 @@ export interface EntityDef {
   player?: boolean;
   explodes?: { cover: string; radius: number; fire: number; push: number; damage: [number, number] };
 }
+/**
+ * A thing to carry (items.json). The Unity game picks these up, throws them and
+ * uses them; the sandbox has no items on its board but carries the table through
+ * mods and checks it, so both engines accept the same patches (Items.cs).
+ */
+export interface ItemDef {
+  name: string;
+  /** Kilograms. */
+  mass?: number;
+  use?: "light" | "zoom" | "send" | "point";
+  /** Feet of bright and then dim light, its colour, and a cone's full angle in degrees (0 or unset: all round). */
+  light?: { bright?: number; dim?: number; color?: string; cone?: number };
+  zoom?: number;
+  /** use "point": how far away its light can go, in feet. */
+  reach?: number;
+  message?: string;
+  /** Breaks when it lands at speed (m/s) or harder, spilling a cover (lit) over a radius. */
+  breaks?: { speed: number; spill?: { cover: string; radius?: number; fire?: number } };
+  srd?: string;
+}
 export interface MachineDef {
   name: string;
   needs: "steam" | "mass" | "flow" | "charge" | "wind";
@@ -149,6 +181,8 @@ export interface SimParams {
   ticksPerSecond: number;
   fire: { spreadChance: number; heatChance: number; boilChance: number; downwindBonus: number; smokeChance: number };
   water: { maxLevel: number; unitsPerStep: number };
+  /** Range of Cell.h in steps; from blockAt up a cell is a wall. */
+  height: { min: number; max: number; blockAt: number };
   gas: { decayChance: number; maxAmount: number };
   status: { burnDamageEvery: number; scaldEvery: number };
   push: { slideCells: number; collisionDamage: number };
@@ -168,6 +202,7 @@ export interface Rules {
   spells: SpellDef[];
   critters: CritterDef[];
   entities: Record<string, EntityDef>;
+  items: Record<string, ItemDef>;
   machines: Record<string, MachineDef>;
   sim: SimParams;
 }
@@ -187,6 +222,7 @@ export const BASE_RULES: Readonly<Rules> = Object.freeze({
   spells: spells as SpellDef[],
   critters: critters as CritterDef[],
   entities: entities as unknown as Record<string, EntityDef>,
+  items: items as Record<string, ItemDef>,
   machines: machines as Record<string, MachineDef>,
   sim: sim as SimParams,
 });
@@ -207,6 +243,7 @@ export interface ModPatch {
   covers?: Record<string, CoverDef>;
   gases?: Record<string, GasDef>;
   entities?: Record<string, EntityDef>;
+  items?: Record<string, ItemDef>;
   machines?: Record<string, MachineDef>;
   /** New or replaced reaction rules. New ones go to the top of their element's list, so they win. */
   reactions?: { add?: CellRule[]; addEntity?: EntityRule[]; remove?: string[] };
@@ -260,6 +297,7 @@ export function composeRules(patches: ModPatch[], base: Readonly<Rules> = BASE_R
     Object.assign(r.covers, clone(p.covers ?? {}));
     Object.assign(r.gases, clone(p.gases ?? {}));
     Object.assign(r.entities, clone(p.entities ?? {}));
+    Object.assign(r.items, clone(p.items ?? {}));
     Object.assign(r.machines, clone(p.machines ?? {}));
     if (p.reactions?.remove) {
       const drop = new Set(p.reactions.remove);
@@ -289,6 +327,88 @@ const EFFECT_KEYS = new Set([
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target"]);
+const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform"]);
+
+function terraformErrors(r: Rules, s: SpellDef): string[] {
+  const errors: string[] = [];
+  const { min, max } = r.sim.height;
+  const given = [s.raise, s.dig, s.height].filter((n) => n !== undefined).length;
+  if (given !== 1) errors.push(`spell ${s.id}: terraform needs exactly one of raise, dig or height`);
+  for (const key of ["raise", "dig"] as const) {
+    const n = s[key];
+    if (n !== undefined && (!Number.isInteger(n) || n < 1)) errors.push(`spell ${s.id}: ${key} must be a whole number of steps from 1`);
+  }
+  if (s.height !== undefined && (!Number.isInteger(s.height) || s.height < min || s.height > max)) {
+    errors.push(`spell ${s.id}: height must be a whole number from ${min} to ${max} (sim.height)`);
+  }
+  if (s.terrain !== undefined && !Object.keys(r.terrain).includes(s.terrain)) errors.push(`spell ${s.id}: terrain ${s.terrain} unknown`);
+  else if (s.terrain !== undefined && r.terrain[s.terrain]!.tags.includes("blocking")) {
+    errors.push(`spell ${s.id}: terrain ${s.terrain} is blocking (walls come from raise)`);
+  }
+  if (s.taper !== undefined && typeof s.taper !== "boolean") errors.push(`spell ${s.id}: taper must be true or false`);
+  return errors;
+}
+
+const ITEM_USES = new Set(["light", "zoom", "send", "point"]);
+const isNumber = (v: unknown): v is number => typeof v === "number";
+const absent = (v: unknown) => v === undefined || v === null;
+
+/** A number from min (or above it), up to max, when present. Same wording as Rules.CheckItems.cs. */
+function rangeError(v: unknown, what: string, min: number, opts: { above?: boolean; max?: number } = {}): string[] {
+  if (absent(v)) return [];
+  const n = isNumber(v) ? v : NaN;
+  if (n >= min && (!opts.above || n > min) && n <= (opts.max ?? Infinity)) return [];
+  const range = opts.above ? `above ${min}` : opts.max !== undefined ? `from ${min} to ${opts.max}` : `from ${min}`;
+  return [`${what} must be a number ${range}`];
+}
+
+/** An optional sub-object; anything else there is an error. */
+function section(errors: string[], parent: Record<string, unknown>, key: string, what: string): Record<string, unknown> | undefined {
+  const v = parent[key];
+  if (absent(v)) return undefined;
+  if (typeof v === "object" && !Array.isArray(v)) return v as Record<string, unknown>;
+  errors.push(`${what}: ${key} must be an object`);
+  return undefined;
+}
+
+function itemErrors(r: Rules, id: string, it: ItemDef): string[] {
+  const errors: string[] = [];
+  const what = `item ${id}`;
+  const i = it as unknown as Record<string, unknown>;
+  if (!it.name) errors.push(`${what}: needs a name`);
+  if (id in r.entities) errors.push(`${what}: id is taken by an entity`);
+  errors.push(...rangeError(i.mass, `${what}: mass`, 0, { above: true }));
+  errors.push(...rangeError(i.zoom, `${what}: zoom`, 1));
+  errors.push(...rangeError(i.reach, `${what}: reach`, 0));
+  const light = section(errors, i, "light", what);
+  const breaks = section(errors, i, "breaks", what);
+  if (light) {
+    errors.push(...rangeError(light.bright, `${what}: light.bright`, 0));
+    errors.push(...rangeError(light.dim, `${what}: light.dim`, 0));
+    errors.push(...rangeError(light.cone, `${what}: light.cone`, 0, { max: 179 }));
+    if (light.color !== undefined && !(typeof light.color === "string" && /^#[0-9a-fA-F]{6}$/.test(light.color))) errors.push(`${what}: light.color must be #rrggbb`);
+  }
+  if (breaks) {
+    if (absent(breaks.speed)) errors.push(`${what}: breaks.speed must be a number above 0`);
+    else errors.push(...rangeError(breaks.speed, `${what}: breaks.speed`, 0, { above: true }));
+    const spill = section(errors, breaks, "spill", `${what}: breaks`);
+    if (spill) {
+      if (!(typeof spill.cover === "string" && spill.cover in r.covers)) errors.push(`${what}: breaks.spill.cover ${spill.cover} unknown`);
+      errors.push(...rangeError(spill.radius, `${what}: breaks.spill.radius`, 0));
+      errors.push(...rangeError(spill.fire, `${what}: breaks.spill.fire`, 0));
+    }
+  }
+  if (it.use === undefined) return errors;
+  if (!ITEM_USES.has(it.use)) errors.push(`${what}: unknown use ${it.use}`);
+  else if (it.use === "light" && !light) errors.push(`${what}: use light needs a light`);
+  else if (it.use === "zoom" && !(isNumber(i.zoom) && i.zoom > 1)) errors.push(`${what}: use zoom needs a zoom above 1`);
+  else if (it.use === "send" && !it.message) errors.push(`${what}: use send needs a message`);
+  else if (it.use === "point") {
+    if (!light) errors.push(`${what}: use point needs a light`);
+    if (!(isNumber(i.reach) && i.reach > 0)) errors.push(`${what}: use point needs a reach above 0`);
+  }
+  return errors;
+}
 
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
@@ -299,6 +419,7 @@ export function validateRules(r: Rules): string[] {
   for (const [id, t] of Object.entries(r.terrain)) {
     if (t.burnsTo && !terrainIds.has(t.burnsTo)) errors.push(`terrain ${id}: burnsTo ${t.burnsTo} unknown`);
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
+    if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
   }
   const seen = new Set<string>();
@@ -323,6 +444,8 @@ export function validateRules(r: Rules): string[] {
     if (s.element && !el.has(s.element)) errors.push(`spell ${s.id}: unknown element ${s.element}`);
     if (!SHAPES.has(s.shape)) errors.push(`spell ${s.id}: unknown shape ${s.shape}`);
     if (!s.name) errors.push(`spell ${s.id}: needs a name`);
+    if (s.effect !== undefined && !SPELL_EFFECTS.has(s.effect)) errors.push(`spell ${s.id}: unknown effect ${s.effect}`);
+    if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const id of Object.keys(r.machines)) {
@@ -332,5 +455,6 @@ export function validateRules(r: Rules): string[] {
   for (const [id, e] of Object.entries(r.entities)) {
     if (e.explodes && !coverIds.has(e.explodes.cover)) errors.push(`entity ${id}: explodes into unknown cover`);
   }
+  for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
   return errors;
 }

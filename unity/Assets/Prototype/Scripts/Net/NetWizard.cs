@@ -1,19 +1,19 @@
 using Unity.Cinemachine;
 using Unity.Netcode;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 // A player's wizard in multiplayer. The prefab ships with its input, movement
 // and spellcasting switched off; on spawn the owner switches them on and
 // takes the camera, while everyone else's copy stays a puppet moved by its
 // NetworkTransform and NetworkAnimator (both owner-authoritative).
 //
-// Starter Assets components are reached by name so this compiles before the
-// Asset Store packs are restored.
+// Every copy has an ItemHolder, so an item someone holds rides in their hand
+// on every screen (NetItem); only the owner's copy has controls. A shove
+// another machine works out for this wizard (a barrel blast on the host) is
+// sent to the owner, who applies it (Knockback).
+[RequireComponent(typeof(SpellCaster), typeof(SurfaceEffects), typeof(PlayerControls))]
 public class NetWizard : NetworkBehaviour
 {
-    static readonly string[] OwnerOnlyByName = { "StarterAssetsInputs", "ThirdPersonController", "BasicRigidBodyPush" };
-
     public override void OnNetworkSpawn()
     {
         var grid = FindFirstObjectByType<ChemGrid>();
@@ -23,35 +23,59 @@ public class NetWizard : NetworkBehaviour
         if (!IsOwner)
         {
             name = $"Wizard (player {OwnerClientId + 1})";
+            WizardRig.PrepareForAnimationEvents(gameObject);
             return;
         }
 
-        name = "Wizard";
-        if (grid != null)
-        {
-            // Spread players around the start cell so they don't spawn inside each other.
-            float angle = OwnerClientId * 90f * Mathf.Deg2Rad;
-            var start = grid.CellCenter(grid.PlayerStart.x, grid.PlayerStart.y);
-            transform.position = start + new Vector3(Mathf.Cos(angle), 0.1f, Mathf.Sin(angle)) * grid.cellSize;
-        }
+        name = WizardRig.Name;
+        if (grid != null) transform.position = SpawnPoint(grid);
 
-        GetComponent<CharacterController>().enabled = true;
-        GetComponent<PlayerInput>().enabled = true;
-        foreach (var typeName in OwnerOnlyByName)
-            if (GetComponent(typeName) is Behaviour b) b.enabled = true;
+        WizardRig.SetPlayerDriven(gameObject, true);
         var surface = GetComponent<SurfaceEffects>();
         surface.grid = grid;
         surface.enabled = true;
+        if (TryGetComponent<Knockback>(out var knockback)) knockback.grid = grid;
         var controls = GetComponent<PlayerControls>();
         controls.enabled = true;
         caster.controls = controls;
         caster.enabled = true;
-
-        var follow = FindFirstObjectByType<CinemachineCamera>();
-        if (follow != null)
+        var follow = TakeCamera(controls);
+        if (TryGetComponent<ItemHolder>(out var hands))
         {
-            follow.Target.TrackingTarget = transform.Find("PlayerCameraRoot");
-            if (follow.TryGetComponent<CameraZoom>(out var zoom)) zoom.controls = controls;
+            hands.controls = controls;
+            hands.view = follow;
         }
+    }
+
+    // A wizard that leaves lets go of what it holds first, or the item (riding in its hand) would go with it.
+    public override void OnNetworkDespawn()
+    {
+        if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
+    }
+
+    /// <summary>Sends a shove to this wizard's owner, whose machine moves it.</summary>
+    public void PushOwner(Vector3 impulse) => PushRpc(impulse);
+
+    [Rpc(SendTo.Owner)]
+    void PushRpc(Vector3 impulse)
+    {
+        if (TryGetComponent<Knockback>(out var knockback)) knockback.Push(impulse);
+    }
+
+    // Players are spread around the start cell so they don't spawn inside each other.
+    Vector3 SpawnPoint(ChemGrid grid)
+    {
+        float angle = OwnerClientId * 90f * Mathf.Deg2Rad;
+        var start = grid.CellCenter(grid.PlayerStart.x, grid.PlayerStart.y);
+        return start + new Vector3(Mathf.Cos(angle), 0.1f, Mathf.Sin(angle)) * grid.cellSize;
+    }
+
+    CinemachineCamera TakeCamera(PlayerControls controls)
+    {
+        var follow = FindFirstObjectByType<CinemachineCamera>();
+        if (follow == null) return null;
+        follow.Target.TrackingTarget = transform.Find(WizardRig.CameraRoot);
+        if (follow.TryGetComponent<CameraZoom>(out var zoom)) zoom.controls = controls;
+        return follow;
     }
 }

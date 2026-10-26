@@ -114,6 +114,65 @@ read it directly, so "bake the kept ones in" is a one-line request.
    (with a test for the new behaviour), opens a PR, republishes, and
    marks the mod **merged**.
 
+## In the Unity game today
+
+The running Unity yard switches rules the same way, solo and online.
+
+**Controls.** **M** (keyboard) or **Start / Options** (gamepad) opens the
+mods panel over the game. It lists every `rules/mods/*.json` with its title
+and idea, ticks the ones in force, and shows the rules' fingerprint and,
+in red, why the last switch was refused. Switch a mod with **1–9**, a mouse
+click, or **d-pad up/down then X / Square**. While the panel is open the
+wizard's own controls (spells, items, reset) and mouse-look are paused.
+
+**When a switch happens.** Always between ticks:
+- *Solo:* the new rules are checked at once and put in force before the
+  next tick (`ChemGrid.QueueRules`).
+- *Online:* the host checks them and stamps a rule switch into the next
+  `NetChem` tick batch, next to that tick's casts, with the full mod list
+  and each mod's JSON. Every machine switches at exactly that tick. A
+  client's click asks the host, which checks the mod against *its own*
+  copy of the file and stamps it, or sends back why not.
+- *Late join:* the host's history carries the rule switches with their
+  ticks, so the replay switches at the same ticks as the live game.
+- *Checksum:* every 30 ticks the host sends `cellHash/fingerprint`. A
+  machine on different rules logs "Desync at tick N: this machine runs
+  different rules from the host's (host …, here …)".
+
+**Editing files while it runs** (Editor and development builds, solo or
+host). `RulesWatcher` watches `rules/*.json` and `rules/mods/*.json`. On
+save (debounced 300 ms, handled on the main thread) the file is reloaded
+and checked:
+- a mod that is on is replaced in place ("Rules reloaded: mods/x.json")
+  and the new numbers apply at the next tick;
+- a mod that is off is only checked ("Mod checked: … switch it on in the
+  mods panel"), so a broken one shows up as soon as it is saved;
+- a base file reloads the base rules (solo only; online, other machines
+  have their own files, so the host refuses it);
+- a deleted mod that is on is switched off;
+- anything that doesn't check out is refused with its errors, in the log
+  and the panel, and the old rules stay.
+
+**Scene tuning is part of the base.** The valley's longer fire fade and
+lightning reach (`ChemGrid.fireFadeCells`, `conductLimit`) are applied as a
+mod over `rules/sim.json` when the world is built, so they are in the
+fingerprint, and a mod that sets `fadeCells` (Wildfire, Damp world)
+overrides them while it is on.
+
+**Props and items** take the new numbers too: a crate, barrel or carried
+item re-reads its row in `entities.json` / `items.json` when the rules
+change (hit points, keeping the damage already taken, and mass; an item's
+light is reconfigured). Behaviours added when an item spawned (a "use" it
+didn't have, breaking) are not added or removed by a mod; that needs a
+restart.
+
+**Measured** (yard meadow, fire lit at tick 0, burning cells per tick,
+mod switched on at tick 10): identical to the base run up to tick 10;
+base reaches 66 burning cells by tick 40, Wildfire 190, and with Damp world
+the fire dies out by tick 21. Online (two Multiplayer Play Mode players)
+the host's and the client's checksums matched at every 30th tick through
+two switches and a late rejoin.
+
 ## Carrying this into Unity
 
 The same loop, one level up:
@@ -127,9 +186,13 @@ The same loop, one level up:
   connect to it. It sequences inputs exactly like the sandbox host. For
   real-time 3D it sends authoritative state rather than lockstep (D4:
   PhysX isn't deterministic across machines).
-- **Hot swap:** the server applies mod patches at a tick boundary and
+- **Hot swap** (built for the lockstep yard; see "In the Unity game
+  today" above): the server applies mod patches at a tick boundary and
   broadcasts them. Clients rebuild their rule index, as the sandbox does
-  today.
+  today. The C# core already has the pieces: `ModPatch.Parse`,
+  `Rules.WithMods` (same merge and checks as the sandbox),
+  `World.ApplyRules` and `Rules.Fingerprint` for the checksum
+  (`ARCHITECTURE.md`).
 - **Builders with their own LLMs:**
   - *Data:* the same brief (`docs/MODDING.md`, plus the current tables).
   - *Code:* PRs, and the Unity CLI's MCP bridge (`RESEARCH.md` §9) for
