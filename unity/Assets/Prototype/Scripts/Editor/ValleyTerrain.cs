@@ -64,6 +64,9 @@ public static class ValleyTerrain
             baseMapResolution = Mathf.Max(64, texels),
         };
         data.SetDetailResolution(DetailRes, 8);
+        // The layers hold clumps per texel (ScatterDetails), not coverage out of 255 (the default,
+        // which would draw next to nothing).
+        data.SetDetailScatterMode(DetailScatterMode.InstanceCountMode);
         data.size = new Vector3(Layout.ChunkSize, MaxHeight, Layout.ChunkSize);
         AssetDatabase.CreateAsset(data, $"{Folder}/Chunk_{i}_{j}.asset");
         return data;
