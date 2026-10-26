@@ -19,6 +19,7 @@ public static class SpellIds
     public const string EarthenTrench = "earthen-trench";
     public const string WallOfStone = "wall-of-stone";
     public const string MoveEarth = "move-earth";
+    public const string MistyStep = "misty-step";
 
     /// <summary>The spell bar a new wizard starts with (the Elements page), in key order 1-8.</summary>
     public static string[] DefaultBar() =>
@@ -27,6 +28,10 @@ public static class SpellIds
     /// <summary>The second page of the bar (Earth), in key order 1-5: earth shaping.</summary>
     public static string[] EarthBar() =>
         new[] { MoldEarth, MoldEarthHeap, EarthenTrench, WallOfStone, MoveEarth };
+
+    /// <summary>The third page of the bar (Arcane), in key order: magic that moves you or things.</summary>
+    public static string[] ArcaneBar() =>
+        new[] { MistyStep };
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
@@ -35,6 +40,7 @@ public static class SpellShapes
     public const string Line = "line";
     public const string Burst = "burst";
     public const string LevitateEffect = "levitate";
+    public const string TeleportEffect = "teleport";
 }
 
 /// <summary>Element ids (what a spell or a reaction brings to a cell), as in rules/reactions.json.</summary>

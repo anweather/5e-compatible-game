@@ -56,6 +56,17 @@ public class NetWizard : NetworkBehaviour
     /// <summary>Sends a shove to this wizard's owner, whose machine moves it.</summary>
     public void PushOwner(Vector3 impulse) => PushRpc(impulse);
 
+    /// <summary>
+    /// Owner only: moves this wizard straight to a point (Misty Step), flagged as a teleport so
+    /// the other machines jump it there instead of sliding it across.
+    /// </summary>
+    public void Teleport(Vector3 to)
+    {
+        if (TryGetComponent<Unity.Netcode.Components.NetworkTransform>(out var net) && net.CanCommitToTransform)
+            net.Teleport(to, transform.rotation, transform.localScale);
+        else transform.position = to;
+    }
+
     [Rpc(SendTo.Owner)]
     void PushRpc(Vector3 impulse)
     {

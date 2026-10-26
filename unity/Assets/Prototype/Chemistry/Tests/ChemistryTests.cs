@@ -49,6 +49,24 @@ namespace Chem.Tests
 
         static string Entry(LogEntry l) => $"{l.Tick}|{l.Kind.ToString().ToLowerInvariant()}|{l.Count}|{l.Text}";
 
+        // ---------- line of sight (Misty Step) ----------
+
+        [Test]
+        public void WallsBlockSightButGateBarsAndTheEndsDont()
+        {
+            var w = Room(12, 8);
+            Assert.That(w.LineOfSight(2, 3, 9, 3), Is.True, "open floor");
+            w.At(5, 3).T = "tree";
+            Assert.That(w.LineOfSight(2, 3, 9, 3), Is.False, "a tree in the way");
+            Assert.That(w.LineOfSight(9, 3, 2, 3), Is.False, "either way round");
+            w.At(5, 3).T = "gate";
+            Assert.That(w.LineOfSight(2, 3, 9, 3), Is.True, "gate bars are see-through");
+            w.At(5, 3).T = "dirt";
+            w.At(9, 3).T = "tree";
+            Assert.That(w.LineOfSight(2, 3, 9, 3), Is.True, "the target square itself doesn't block the view of it");
+            Assert.That(w.LineOfSight(4, 4, 4, 4), Is.True, "your own square");
+        }
+
         // ---------- rules + rng ----------
 
         [Test]
