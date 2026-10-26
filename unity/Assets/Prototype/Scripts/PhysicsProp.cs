@@ -229,7 +229,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
     /// <summary>How it goes: a blast for a barrel, a line in the log otherwise. Its cells are the chemistry's.</summary>
     public void ShowBreak(bool exploded)
     {
-        GameSounds.Play(exploded ? ProceduralSounds.Explosion : ProceduralSounds.Break, transform.position, exploded ? 1f : 0.7f);
+        GameSounds.Play(exploded ? SoundIds.Explosion : SoundIds.Break, transform.position);
         if (exploded && explosionFx != null) Destroy(Instantiate(explosionFx, transform.position, Quaternion.identity), 4f);
         else if (!exploded && (State == null || !State.Burning) && !(net != null && net.Burning)) EventLog.Add($"The {Label} breaks apart");
     }

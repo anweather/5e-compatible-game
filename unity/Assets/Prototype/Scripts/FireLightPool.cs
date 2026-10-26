@@ -26,7 +26,7 @@ public sealed class FireLightPool
             l.shadows = LightShadows.None;
             l.enabled = false;
             lights.Add(l);
-            crackles.Add(GameSounds.Loop(ProceduralSounds.FireLoop, l.transform, 0f));
+            crackles.Add(GameSounds.Loop(SoundIds.FireLoop, l.transform, 0f));
         }
     }
 
@@ -43,7 +43,7 @@ public sealed class FireLightPool
             l.transform.position = grid.CellCenter(b.x, b.y) + Vector3.up * (grid.SurfaceY(b.x, b.y) + 1f);
             l.intensity = 1.5f + b.fire;
             l.enabled = true;
-            SetCrackle(used, 0.25f + 0.2f * b.fire);
+            SetCrackle(used, 0.55f + 0.15f * b.fire);
             used++;
         }
         for (int i = used; i < lights.Count; i++)
