@@ -36,6 +36,9 @@ public static class ValleyBuilder
         // ripples, gentler, so a small pool doesn't glint in rings.
         grid.waterMaterial = SoftMaterial("CellWater", new Color(0.12f, 0.32f, 0.42f, 0.8f), 0.93f, ripples, 0.12f);
         grid.slickMaterial = SoftMaterial("Slick", Color.white, 0.92f, null, 0f);
+        // Raised walls are built of the demo pack's rocks: upright crags and slabs for their faces, flat stones on top.
+        grid.wallRocks = LoadRocks("Rock_A_01", "Rock_A_02", "Rock_C_02");
+        grid.wallStones = LoadRocks("Rock_B_01", "Rock_C_01");
         BuildSky();
         var cabins = BuildCabins();
         ScatterRocks();
@@ -212,14 +215,21 @@ public static class ValleyBuilder
         return protos;
     }
 
-    static void ScatterRocks()
+    // The demo pack's rocks by name, those that are there.
+    static GameObject[] LoadRocks(params string[] names)
     {
         var rocks = new List<GameObject>();
-        foreach (var n in new[] { "Rock_A_01", "Rock_B_01", "Rock_C_01", "Rock_Overgrown_A", "Rock_Overgrown_C" })
+        foreach (var n in names)
         {
             var prefab = EditorAssets.LoadPrefab($"{DemoPack}/Rocks/{n}.prefab");
             if (prefab != null) rocks.Add(prefab);
         }
+        return rocks.ToArray();
+    }
+
+    static void ScatterRocks()
+    {
+        var rocks = new List<GameObject>(LoadRocks("Rock_A_01", "Rock_B_01", "Rock_C_01", "Rock_Overgrown_A", "Rock_Overgrown_C"));
         if (rocks.Count == 0) return;
         var parent = new GameObject("Rocks").transform;
         var rng = new System.Random(5);

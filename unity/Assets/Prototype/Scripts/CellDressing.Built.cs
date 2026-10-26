@@ -1,11 +1,14 @@
 using UnityEngine;
 
 // The shaped parts of a cell's dressing: a bridge's plank deck, an iron plate
-// lying on the ground, the crags of a raised wall. Each is seeded from its
+// lying on the ground, the rocks of a raised wall. Each is seeded from its
 // cell, so neighbours differ (turned, sized and shaded apart) and a strip of
 // them reads as separate things, not a row of tiles.
 public sealed partial class CellDressing
 {
+    // Each rock model's size and where its mesh sits, measured once.
+    static readonly System.Collections.Generic.Dictionary<GameObject, Bounds> RockBounds = new();
+
     static readonly Color Iron = new(0.30f, 0.29f, 0.28f);
     static readonly Color Bronze = new(0.45f, 0.32f, 0.18f);
 
@@ -69,9 +72,63 @@ public sealed partial class CellDressing
         UrpMaterials.SetColor(r, tint, Color.Lerp(color, rust, 0.35f * n) * (0.85f + 0.3f * n));
     }
 
-    // A raised wall: rough crags and boulders over its top and down its sides, placed, sized and
-    // turned per cell, so a run of wall cells reads as one rocky ridge.
-    void DressWall(Transform root, Vector3 surface, Color color, int x, int y)
+    // A raised wall: a rock model per square, big enough to cover the square's face from below the
+    // wall's foot to just over its top (the terrain's own steep sides stretch their texture), and
+    // now and then a smaller stone on top, each turned and sized per cell so a run of them reads as
+    // one rocky ridge. Rough shapes stand in without the terrain pack's rocks.
+    void DressWall(Transform root, Vector3 surface, int steps, int x, int y)
+    {
+        var rocks = grid.wallRocks;
+        if (rocks == null || rocks.Length == 0 || rocks[0] == null)
+        {
+            DressWallShapes(root, surface, Look(TerrainIds.Rock).color, x, y);
+            return;
+        }
+        var rng = new System.Random(x * 15485863 + y * 32452843);
+        float tall = Mathf.Max(1, steps) * grid.stepHeight;
+        var foot = new Vector3(surface.x + Jitter(rng, 0.08f) * CellSize, surface.y - tall - 0.25f, surface.z + Jitter(rng, 0.08f) * CellSize);
+        Rock(root, rocks[rng.Next(rocks.Length)], foot, CellSize * (1.3f + Jitter(rng, 0.08f)), tall + 0.25f + 0.3f * (float)rng.NextDouble(), rng);
+        var stones = grid.wallStones;
+        if (stones == null || stones.Length == 0 || rng.NextDouble() < 0.45) return;
+        var top = surface + new Vector3(Jitter(rng, 0.25f), 0f, Jitter(rng, 0.25f)) * CellSize + Vector3.up * 0.05f;
+        Rock(root, stones[rng.Next(stones.Length)], top, CellSize * (0.5f + 0.2f * (float)rng.NextDouble()), 0.3f + 0.25f * (float)rng.NextDouble(), rng);
+    }
+
+    // A rock model stood on <paramref name="foot"/>, turned about the vertical, scaled to about
+    // <paramref name="width"/> across and <paramref name="height"/> high.
+    static void Rock(Transform root, GameObject prefab, Vector3 foot, float width, float height, System.Random rng)
+    {
+        if (prefab == null) return;
+        var b = BoundsOf(prefab);
+        var rock = Object.Instantiate(prefab, root);
+        var turn = Quaternion.Euler(0f, rng.Next(360), 0f);
+        // The bounds are as the prefab stands (its root's own scale in them), so the root's scale is multiplied, not replaced.
+        var fit = new Vector3(width / Mathf.Max(0.01f, b.size.x), height / Mathf.Max(0.01f, b.size.y), width / Mathf.Max(0.01f, b.size.z));
+        rock.transform.localScale = Vector3.Scale(prefab.transform.localScale, fit);
+        rock.transform.SetPositionAndRotation(foot - turn * Vector3.Scale(new Vector3(b.center.x, b.min.y, b.center.z), fit), turn);
+    }
+
+    static Bounds BoundsOf(GameObject prefab)
+    {
+        if (RockBounds.TryGetValue(prefab, out var known)) return known;
+        var b = new Bounds();
+        bool first = true;
+        foreach (var mf in prefab.GetComponentsInChildren<MeshFilter>())
+        {
+            if (mf.sharedMesh == null) continue;
+            var m = mf.sharedMesh.bounds;
+            var w = new Bounds(mf.transform.TransformPoint(m.center), Vector3.Scale(m.size, mf.transform.lossyScale));
+            if (first) b = w;
+            else b.Encapsulate(w);
+            first = false;
+        }
+        if (first) b = new Bounds(Vector3.up * 0.5f, Vector3.one);
+        RockBounds[prefab] = b;
+        return b;
+    }
+
+    // Without the pack's rocks: rough crags and boulders over the wall's top and down its sides.
+    void DressWallShapes(Transform root, Vector3 surface, Color color, int x, int y)
     {
         var rng = new System.Random(x * 15485863 + y * 32452843);
         // Weathered grey, darker than the rock's own colour, so the crags read as stone and not as pale boxes.

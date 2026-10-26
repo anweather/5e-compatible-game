@@ -59,8 +59,8 @@ public sealed partial class CellDressing
         var root = new GameObject($"{c.T} {x},{y}");
         root.transform.SetParent(grid.transform, false);
         root.transform.position = surface;
-        Dress(root.transform, c.T, Look(c.T), surface, x, y);
-        if (wall) DressWall(root.transform, surface, Look(TerrainIds.Rock).color, x, y);
+        if (HasParts(c.T)) Dress(root.transform, c.T, Look(c.T), surface, x, y);
+        if (wall) DressWall(root.transform, surface, c.Height, x, y);
         return root;
     }
 

@@ -35,6 +35,10 @@ public partial class ChemGrid
     // The ground drawn at a cell now: the terrain's, which lags its target while it eases.
     float ShownGround(int x, int y, Cell c) => valley != null ? valley.ShownGround(x, y) : GroundTop(x, y, c);
 
+    // A raised wall built of rocks over flat terrain (ValleyChemistry.FlatUnderWalls): its top
+    // eases on its own, at the terrain's pace, since the terrain under it doesn't move.
+    bool StandsAlone(Cell c) => valley != null && valley.FlatUnderWalls && c != null && World.IsRaisedWall(c);
+
     // A cell's ground starts moving from where it is drawn now.
     void StartShaping(View v, int x, int y, float shown)
     {
@@ -52,7 +56,10 @@ public partial class ChemGrid
         for (int i = shaping.Count - 1; i >= 0; i--)
         {
             var s = shaping[i];
-            float now = ShownGround(s.x, s.y, World.At(s.x, s.y));
+            var c = World.At(s.x, s.y);
+            float now = StandsAlone(c)
+                ? Mathf.MoveTowards(s.shown, GroundTop(s.x, s.y, c), stepHeight / Mathf.Max(0.05f, shapeSeconds) * Time.deltaTime)
+                : ShownGround(s.x, s.y, c);
             if (s.view.dressing != null) SetY(s.view.dressing, now);
             blockers.Move(s.x, s.y, now);
             Carry(s.center, s.shown, now);

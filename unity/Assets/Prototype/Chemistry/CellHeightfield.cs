@@ -54,6 +54,14 @@ namespace Chem
         public float StepHeight { get; }
         public float EaseSpeed { get; }
 
+        /// <summary>
+        /// When set, the ground under a raised wall stays at the wall's foot (its height
+        /// counted as 0, or less for a wall's square dug below it first) instead of rising
+        /// to its top: the view builds the wall itself out of rock models, which the
+        /// terrain's own wall would bury.
+        /// </summary>
+        public bool FlatUnderWalls { get; set; }
+
         /// <summary>The chunks the cells shape (TerrainGrid.GridChunks); the others keep their baked heights.</summary>
         public IEnumerable<(int i, int j)> Chunks => chunks.Keys;
 
@@ -123,9 +131,10 @@ namespace Chem
                 for (int u = u0; u <= u1; u++)
                 {
                     var c = CellAt(world, u, v);
-                    float o = CellOffset(world, c);
+                    bool raised = c != null && world.IsRaisedWall(c);
+                    float o = raised && FlatUnderWalls ? (world.TerrainOf(c).Elevation + Math.Min(c.Height, 0)) * StepHeight : CellOffset(world, c);
                     sum += o;
-                    if (c != null && world.IsRaisedWall(c)) wall = Math.Max(wall, o);
+                    if (raised && !FlatUnderWalls) wall = Math.Max(wall, o);
                 }
             }
             return float.IsNegativeInfinity(wall) ? sum / ((u1 - u0 + 1) * (v1 - v0 + 1)) : wall;

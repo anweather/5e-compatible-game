@@ -209,6 +209,21 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void FlatUnderWallsLeavesTheGroundAtTheWallsFoot()
+        {
+            var w = Meadow();
+            w.At(30, 20).Height = R.Sim.Height.BlockAt;
+            w.At(32, 20).Height = 2;
+            var field = new CellHeightfield(G, Step) { FlatUnderWalls = true };
+            var (i, j, sx, sz) = G.CellSample(30, 20);
+            var h = field.Compute(w, i, j);
+            Assert.AreEqual(0f, h[sz, sx], "the wall's own ground stays down: its rocks are the wall");
+            Assert.AreEqual(0f, h[sz - 2, sx - 2], "and its corners");
+            (i, j, sx, sz) = G.CellSample(32, 20);
+            Assert.AreEqual(2 * Step, field.Compute(w, i, j)[sz, sx], "a heap under a wall's height still rises");
+        }
+
+        [Test]
         public void ChangedCellOnAnEdgeDirtiesBothChunks()
         {
             var field = new CellHeightfield(G, Step);

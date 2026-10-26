@@ -96,10 +96,10 @@ public sealed class ValleyGround
     public bool Shaping => heightfield != null && !heightfield.Settled;
 
     /// <summary>Starts over on a world: the saved chunks again (copied when first changed), their base heights recovered.</summary>
-    public void Bind(World w, float stepHeight, float shapeSpeed)
+    public void Bind(World w, float stepHeight, float shapeSpeed, bool flatUnderWalls = false)
     {
         world = w;
-        heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed);
+        heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls };
         heightfield.Reset(w);
         repaint.Clear();
         reshaped.Clear();

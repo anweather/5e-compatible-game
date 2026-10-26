@@ -28,6 +28,10 @@ public partial class ChemGrid
     public Material waterMaterial;
     [Tooltip("Optional: the material of oil and grease films (tinted by vertex colours). One is made at runtime if missing.")]
     public Material slickMaterial;
+    [Tooltip("Optional: rock models a raised wall is built of, one per square, sized to cover its face (CellDressing). Without them, rough shapes stand in.")]
+    public GameObject[] wallRocks;
+    [Tooltip("Optional: smaller stones set on a raised wall's top to break its line.")]
+    public GameObject[] wallStones;
 
     // What is currently shown for one cell, so a cell is only redrawn when it changes.
     sealed class View
@@ -146,7 +150,9 @@ public partial class ChemGrid
         if (valley != null) valley.CellChanged(x, y, v.terrain, c.T, reshaped);
         if (rebuild)
         {
-            float shown = reshaped ? ShownGround(x, y, c) : GroundTop(x, y, c);
+            // A rock wall growing taller rises from its old top, not from the flat ground under it.
+            float shown = GroundTop(x, y, c);
+            if (reshaped) shown = StandsAlone(c) && v.dressing != null ? v.dressing.transform.position.y : ShownGround(x, y, c);
             if (v.dressing != null) Destroy(v.dressing);
             v.dressing = dressings.Build(c, x, y, shown);
             blockers.Place(x, y, c, shown);

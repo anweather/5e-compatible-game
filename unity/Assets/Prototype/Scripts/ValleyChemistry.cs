@@ -31,6 +31,12 @@ public class ValleyChemistry : MonoBehaviour
     bool[] cabinCharred;
     Material charred;
 
+    /// <summary>
+    /// Whether the terrain stays flat under raised walls, because the grid builds them of rock
+    /// models (ChemGrid.wallRocks, CellDressing) that the terrain's own wall would bury.
+    /// </summary>
+    public bool FlatUnderWalls => grid != null && grid.wallRocks != null && grid.wallRocks.Length > 0 && grid.wallRocks[0] != null;
+
     /// <summary>The ground under the cells; null before the first Bind.</summary>
     public ValleyGround Ground => ground;
 
@@ -40,7 +46,7 @@ public class ValleyChemistry : MonoBehaviour
         if (world.W != layout.GridW || world.H != layout.GridH)
             Debug.LogError($"The valley's chunk layout is for a {layout.GridW}×{layout.GridH} world, not {world.W}×{world.H}");
         ground ??= new ValleyGround(layout, chunks);
-        ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds));
+        ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         scorched.Clear();
         IndexTrees();
         int n = cabins?.Length ?? 0;

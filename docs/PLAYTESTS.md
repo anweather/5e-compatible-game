@@ -59,6 +59,7 @@ sound was heard in a later build (main, not 0.1.1).
 | P21 | Shaders: grass, water reflections | partly done: the grass and plants draw now (the terrains' detail layers were read as coverage out of 255, so the 1 to 3 clumps a texel we scatter showed as next to nothing; they're instance counts now). Still open: wind sway in the grass and reflections on the water |
 | P22 | The glowing balls' lighting is very harsh | done: the light hangs 2 m above the ball, bright edge 0.5 (was 0.8), softer glow |
 | P23 | The storm sounds are too loud | done: rain, wind and thunder turned down, on the ambience setting |
+| P25 | The textures and models on raised rock walls look bad | done: the terrain no longer rises into a wall (its steep sides stretched the texture and the meadow's green ran up them, and grey placeholder shapes sat on top); a wall is now built of the terrain pack's rocks, one sized to each square from its foot to its top, with smaller stones on top (rough shapes stand in without the pack) |
 
 ### World
 
