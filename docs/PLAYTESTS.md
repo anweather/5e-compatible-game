@@ -38,7 +38,7 @@ sound was heard in a later build (main, not 0.1.1).
 
 | Id | Issue | State |
 |---|---|---|
-| P13 | Swimming | later (BACKLOG 13) |
+| P13 | Swimming | done (basic): deep water floats the wizard at the surface, slower, and jump kicks it out onto a bank; no swim animation yet (BACKLOG 13) |
 | P14 | Climbing | later (BACKLOG 14) |
 | P15 | A ball to run at and kick around, with a fenced or walled court (soccer-like) so the start is less barren | done: a walled court with two goals on the meadow east of the yard and a ball (an item: kick it by running into it, or pick it up and throw it); probe `ball` |
 | P16 | Tag: one player is "it" (in another colour) and tags someone else | done: the host starts tag from the Esc menu (online); whoever is it glows red for everyone and the top of the screen says who; touch someone to pass it, no tag-backs for 3 s; TagRulesTests and the online probe's `tag_passes_on_touch` |

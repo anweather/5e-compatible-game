@@ -66,24 +66,4 @@ public class EdgeProbe : ProbeScenario
         yield return Wait(0.3f);
         Shot(name);
     }
-
-    // The terrains' own ground (the chemistry's GroundAt knows only its squares).
-    static float TerrainGround(Vector3 p)
-    {
-        foreach (var t in Terrain.activeTerrains)
-        {
-            var o = t.transform.position;
-            var s = t.terrainData.size;
-            if (p.x >= o.x && p.x <= o.x + s.x && p.z >= o.z && p.z <= o.z + s.z) return o.y + t.SampleHeight(p);
-        }
-        return 0f;
-    }
-
-    void Teleport(Vector3 at)
-    {
-        var body = wizard.GetComponent<CharacterController>();
-        body.enabled = false;
-        wizard.transform.position = at;
-        body.enabled = true;
-    }
 }

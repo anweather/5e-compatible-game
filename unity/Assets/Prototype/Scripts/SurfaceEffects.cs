@@ -1,11 +1,17 @@
 using System.Reflection;
+using Chem;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 // What the ground under the wizard does to movement, read from the chemistry
 // grid: on a slippery cell (ice, oil, grease) the wizard keeps its momentum
 // and skids; in unfrozen water deeper than a puddle it wades at reduced
-// speed. Spells slow it too (Slow: frost chills, lightning jolts; SpellForces). Runs after the Starter Assets controller has moved the wizard and
-// corrects that move, so the controller itself stays untouched.
+// speed; deeper than the wizard's chest it swims: it floats with its head
+// above the surface, slower still, and jump kicks it up out of the water onto
+// a bank. Spells slow it too (Slow: frost chills, lightning jolts;
+// SpellForces). Runs after the Starter Assets controller has moved the wizard
+// and corrects that move, so the controller itself stays untouched (its
+// gravity is switched off while afloat and its animator told it's standing).
 //
 // The ground is the valley's terrain everywhere, dug into pits, a pond and
 // trenches by the cells. The wizard steps up one step of earth (a heap, a
@@ -23,18 +29,44 @@ public class SurfaceEffects : MonoBehaviour
     public int wadingDepth = 2;
     [Tooltip("Highest ledge the wizard steps up without jumping: a little over one step of the grid.")]
     public float climbStep = 0.55f;
+    [Tooltip("Speed multiplier while swimming.")]
+    public float swimmingSpeed = 0.45f;
+    [Tooltip("Water this deep over the wizard's feet (metres) floats it; it floats with its feet this far down.")]
+    public float swimDepth = 1.3f, floatDepth = 1.45f;
+    [Tooltip("How high a kick out of the water lifts the wizard (metres).")]
+    public float swimKick = 2.2f;
+
+    // Afloat until the water under the feet is shallower than this (metres), so a wave doesn't flicker it.
+    static readonly int GroundedId = Animator.StringToHash("Grounded"), FreeFallId = Animator.StringToHash("FreeFall"), JumpId = Animator.StringToHash("Jump");
+    const float StopSwimming = 1.1f, KickTime = 0.8f, Buoyancy = 4f, BobHeight = 0.04f;
 
     CharacterController body;
     Component controller;
-    FieldInfo moveSpeed, sprintSpeed;
-    float baseMove, baseSprint;
+    FieldInfo moveSpeed, sprintSpeed, gravity, fall;
+    Animator animator;
+    float baseMove, baseSprint, baseGravity;
     Vector3 lastPosition;
     Vector3 momentum;
-    bool wasSlipping, wasWading;
+    bool wasSlipping, wasWading, swimming;
+    float kickedUntil;
+    bool kick;
     float slowUntil, slowFactor = 1f, appliedSpeed = 1f;
 
     /// <summary>True while a spell has the wizard slowed.</summary>
     public bool Slowed => Time.time < slowUntil;
+
+    /// <summary>True while the wizard is afloat in deep water.</summary>
+    public bool Swimming => swimming;
+
+    /// <summary>Kicks up out of the water, if swimming (what jump does afloat).</summary>
+    public void Kick() => kick = swimming;
+
+    // Jump, from PlayerInput's messages: the controller drops a jump made off the ground, so it's
+    // caught here as it comes in.
+    void OnJump(InputValue value)
+    {
+        if (value.isPressed) Kick();
+    }
 
     /// <summary>Slows the wizard to <paramref name="factor"/> of its speed for a while (the stronger slow wins while both last).</summary>
     public void Slow(float factor, float seconds)
@@ -53,7 +85,13 @@ public class SurfaceEffects : MonoBehaviour
         sprintSpeed = WizardRig.Field(controller, "SprintSpeed", isPublic: true);
         baseMove = (float)moveSpeed.GetValue(controller);
         baseSprint = (float)sprintSpeed.GetValue(controller);
+        gravity = WizardRig.Field(controller, "Gravity", isPublic: true);
+        fall = WizardRig.Field(controller, "_verticalVelocity", isPublic: false);
+        if (gravity != null) baseGravity = (float)gravity.GetValue(controller);
+        TryGetComponent(out animator);
     }
+
+    void OnDisable() => SetAfloat(false);
 
     void OnEnable()
     {
@@ -69,7 +107,8 @@ public class SurfaceEffects : MonoBehaviour
         bool slippery = c != null && body.isGrounded && grid.World.IsSlippery(c);
         bool wading = c != null && !c.Frozen && c.Water >= wadingDepth;
 
-        Slide(slippery);
+        Swim(c, cell);
+        Slide(slippery && !swimming);
         SetSpeed(wading);
         lastPosition = transform.position;
     }
@@ -99,11 +138,52 @@ public class SurfaceEffects : MonoBehaviour
         if (moveSpeed == null) return;
         if (wading && wasWading != wading) EventLog.Add("You wade into the water");
         wasWading = wading;
-        float k = (wading ? wadingSpeed : 1f) * (Slowed ? slowFactor : 1f);
+        float k = Slowed ? slowFactor : 1f;
+        if (swimming) k *= swimmingSpeed;
+        else if (wading) k *= wadingSpeed;
         if (Mathf.Approximately(k, appliedSpeed)) return;
         appliedSpeed = k;
         moveSpeed.SetValue(controller, baseMove * k);
         sprintSpeed.SetValue(controller, baseSprint * k);
+    }
+
+    // Afloat in water deeper than the wizard's chest (unfrozen): held at the surface with a
+    // gentle bob, until the ground under it rises (walking out) or it kicks up out of the water.
+    void Swim(Cell c, Vector2Int cell)
+    {
+        if (gravity == null || fall == null) return;
+        float depth = c != null && !c.Frozen && c.Water > 0 ? grid.WaterSurfaceY(cell.x, cell.y) - transform.position.y : 0f;
+        bool afloat = Time.time >= kickedUntil && depth > (swimming ? StopSwimming : swimDepth);
+        if (afloat && !swimming) EventLog.Add("You swim");
+        SetAfloat(afloat);
+        if (!afloat) return;
+
+        // Rise or sink toward floating height through the controller's own fall speed (gravity is off),
+        // so its move each frame stays one move and its run speed isn't disturbed.
+        float target = transform.position.y + depth - floatDepth + BobHeight * Mathf.Sin(Time.time * 2.4f);
+        fall.SetValue(controller, (target - transform.position.y) * Buoyancy);
+        if (animator != null)
+        {
+            animator.SetBool(GroundedId, true);
+            animator.SetBool(FreeFallId, false);
+            animator.SetBool(JumpId, false);
+        }
+        if (!kick) return;
+        // A kick up out of the water, with gravity back on so it lands on a bank or falls back in.
+        kick = false;
+        kickedUntil = Time.time + KickTime;
+        SetAfloat(false);
+        fall.SetValue(controller, Mathf.Sqrt(swimKick * -2f * baseGravity));
+        if (animator != null) animator.SetBool(JumpId, true);
+    }
+
+    void SetAfloat(bool on)
+    {
+        if (swimming == on || gravity == null) return;
+        swimming = on;
+        kick = false;
+        gravity.SetValue(controller, on ? 0f : baseGravity);
+        if (on) fall.SetValue(controller, 0f);
     }
 
 }

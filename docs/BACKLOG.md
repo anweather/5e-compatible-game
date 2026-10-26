@@ -275,7 +275,12 @@ everyone's wizards.
 
 ## 13. Swimming
 
-Wading and swimming in the pond and lake (playtest P13).
+Wading and swimming in the pond and lake (playtest P13). **Partly built:** a
+basic version is in `SurfaceEffects`: water over the chest floats the wizard
+at the surface (the controller's gravity off, its fall speed steering it to
+floating height), slower, standing pose; jump kicks it up out onto a bank;
+walking up a bank ends it; ice is walked on (probe `swim`). Still to do:
+a swim animation, diving, drowning.
 
 - **What:** deep water (a cell's water over the wizard's knees, from
   `Cell.Water` and the drawn surface) switches the wizard to swimming:
