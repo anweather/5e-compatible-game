@@ -288,8 +288,8 @@ public class NetChem : NetworkBehaviour
         var myWizard = mine != null ? mine.GetComponent<Knockback>() : null;
         foreach (var c in casts)
         {
-            var wizard = c.Caster == NetworkManager.LocalClientId ? null : myWizard;
-            SpellForces.ApplyOnline(grid, c.ToCommand(), c.From, IsServer, wizard);
+            bool castHere = c.Caster == NetworkManager.LocalClientId;
+            SpellForces.ApplyOnline(grid, c.ToCommand(), c.From, IsServer, castHere ? null : myWizard, castHere && mine != null ? mine.transform : null);
         }
     }
 

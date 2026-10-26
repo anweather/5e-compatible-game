@@ -289,6 +289,8 @@ public static class ChemYardBuilder
             Visual(SpellIds.GustOfWind, new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),
             Visual(SpellIds.Thunderwave, new Color(0.8f, 0.85f, 1f), null, FireFx + "/DustExplosion.prefab"),
             Visual(SpellIds.Levitate, new Color(0.75f, 0.6f, 1f), null, MiscFx + "/ParticlesLight.prefab"),
+            // Misty Step: silver mist where the caster leaves and where they land (SpellCaster.PlayCastEffect).
+            Visual(SpellIds.MistyStep, new Color(0.85f, 0.88f, 0.95f), null, MiscFx + "/Respawn.prefab"),
             // Earth shaping: the ground itself throws up dust where it moves (ChemGrid.dustFx).
             Visual(SpellIds.MoldEarth, new Color(0.75f, 0.55f, 0.3f), null, null),
             Visual(SpellIds.MoldEarthHeap, new Color(0.75f, 0.55f, 0.3f), null, null),

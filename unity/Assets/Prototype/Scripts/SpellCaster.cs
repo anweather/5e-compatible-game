@@ -7,9 +7,10 @@ using UnityEngine;
 // next to the wizard and point at the target, everything else lands on the
 // targeted cell. The cells it will touch are highlighted.
 //
-// The bar has two pages: Elements (spellIds, keys 1-8) and Earth
-// (earthSpellIds, keys 1-5), switched with Tab or the d-pad's left/right.
-// The number keys pick on the page shown; Q and E step through both pages.
+// The bar has three pages: Elements (spellIds, keys 1-8), Earth
+// (earthSpellIds, keys 1-5) and Arcane (arcaneSpellIds), turned with Tab or
+// the d-pad's left/right. The number keys pick on the page shown; Q and E
+// step through all the pages as one list.
 //
 // A cast is an intent, (spell, x, y, direction): solo it is applied to the
 // world when the show lands, and its shove to whatever moves (SpellForces);
@@ -22,20 +23,30 @@ public class SpellCaster : MonoBehaviour
     public string[] spellIds = SpellIds.DefaultBar();
     [Tooltip("The bar's second page (Tab, or d-pad left/right): earth shaping.")]
     public string[] earthSpellIds = SpellIds.EarthBar();
+    [Tooltip("The bar's third page: magic that moves you or things.")]
+    public string[] arcaneSpellIds = SpellIds.ArcaneBar();
     [Tooltip("How each spell looks when cast. Without it, spells take effect with no show.")]
     public SpellVisuals visuals;
 
     /// <summary>The names of the bar's pages, in page order.</summary>
-    public static readonly string[] PageNames = { "Elements", "Earth" };
+    public static readonly string[] PageNames = { "Elements", "Earth", "Arcane" };
 
-    /// <summary>The page of the bar shown: 0 Elements, 1 Earth.</summary>
+    /// <summary>The page of the bar shown: 0 Elements, 1 Earth, 2 Arcane.</summary>
     public int Page { get; private set; }
     /// <summary>The selected slot on the page shown.</summary>
     public int Selected { get; private set; }
     public string SelectedName => SpellName(Selected);
     /// <summary>The spells on the page shown, in key order.</summary>
-    public string[] Bar => Page == 0 ? spellIds : earthSpellIds;
+    public string[] Bar => PageSpells(Page);
     public string SelectedId => Bar[Selected];
+
+    /// <summary>The spells on a page, in key order (empty if the page has none).</summary>
+    public string[] PageSpells(int page) => page switch
+    {
+        0 => spellIds,
+        1 => earthSpellIds,
+        _ => arcaneSpellIds ?? System.Array.Empty<string>(),
+    };
 
     readonly List<GameObject> markers = new();
     Material markerMat;
@@ -65,7 +76,7 @@ public class SpellCaster : MonoBehaviour
     {
         for (int page = 0; page < PageNames.Length; page++)
         {
-            int slot = System.Array.IndexOf(page == 0 ? spellIds : earthSpellIds, spellId);
+            int slot = System.Array.IndexOf(PageSpells(page), spellId);
             if (slot < 0) continue;
             Page = page;
             Selected = slot;
@@ -96,25 +107,47 @@ public class SpellCaster : MonoBehaviour
 
     void PickSpell()
     {
-        if (controls.SwitchPage.WasPressedThisFrame() && earthSpellIds.Length > 0)
-        {
-            Page = 1 - Page;
-            Selected = Mathf.Min(Selected, Bar.Length - 1);
-        }
+        if (controls.SwitchPage.WasPressedThisFrame()) NextPage();
         int slot = controls.PickedSlot();
         if (slot >= 0 && slot < Bar.Length) Selected = slot;
         if (controls.NextSpellPressed()) StepSpell(1);
         if (controls.PrevSpell.WasPressedThisFrame()) StepSpell(-1);
     }
 
-    // Steps through both pages as one list, turning the page at either end.
+    /// <summary>Turns to the next page that has spells (Tab), keeping the slot where it can.</summary>
+    public void NextPage()
+    {
+        for (int i = 1; i <= PageNames.Length; i++)
+        {
+            int page = (Page + i) % PageNames.Length;
+            if (PageSpells(page).Length == 0) continue;
+            Page = page;
+            Selected = Mathf.Min(Selected, Bar.Length - 1);
+            return;
+        }
+    }
+
+    // Steps through all the pages as one list, turning the page at either end.
     void StepSpell(int by)
     {
-        int total = spellIds.Length + earthSpellIds.Length;
-        int at = (Page == 0 ? 0 : spellIds.Length) + Selected;
+        int total = 0, at = 0;
+        for (int p = 0; p < PageNames.Length; p++)
+        {
+            if (p == Page) at = total + Selected;
+            total += PageSpells(p).Length;
+        }
         at = (at + by + total) % total;
-        Page = at < spellIds.Length ? 0 : 1;
-        Selected = Page == 0 ? at : at - spellIds.Length;
+        for (int p = 0; p < PageNames.Length; p++)
+        {
+            int n = PageSpells(p).Length;
+            if (at < n)
+            {
+                Page = p;
+                Selected = at;
+                return;
+            }
+            at -= n;
+        }
     }
 
     // --- casting ---------------------------------------------------------------------
@@ -150,6 +183,9 @@ public class SpellCaster : MonoBehaviour
         var def = grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null;
         if (pose != null) pose.Play(landing, look?.glow ?? Color.white);
         GameSounds.Play(GameSounds.CastOf(def), Hand, 0.45f);
+        // A blink shows its mist where the caster leaves as well as where they land.
+        if (def?.Effect == SpellShapes.TeleportEffect && look?.impact != null)
+            Destroy(Instantiate(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
 
         void Land()
         {
@@ -210,6 +246,11 @@ public class SpellCaster : MonoBehaviour
         if (spell == null) { error = $"{SelectedId} isn't in rules/spells.json"; return null; }
         if (!grid.World.InBounds(target.x, target.y)) return null;
         var me = grid.CellAt(transform.position);
+        if (spell.Effect == SpellShapes.TeleportEffect)
+        {
+            error = MistyStep.Check(grid, spell, me, target.x, target.y);
+            return error == null ? (target.x, target.y, 1) : null;
+        }
         int? dir = DirFrom(me, target);
         if (spell.Origin != "self") return (target.x, target.y, dir ?? 1);
         if (spell.Shape == SpellShapes.Burst) return (me.x, me.y, dir ?? 1);

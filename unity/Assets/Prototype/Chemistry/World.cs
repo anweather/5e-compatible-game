@@ -109,6 +109,35 @@ namespace Chem
         }
         public bool HasTag(Cell c, string tag) => TerrainOf(c).Has(tag);
         public bool IsBlocking(Cell c) => HasTag(c, "blocking") || IsRaisedWall(c);
+
+        /// <summary>
+        /// Whether (x1, y1) can be seen from (x0, y0): no blocking square between them on a
+        /// Bresenham line, except see-through ones (gate bars). The ends don't count. Mirrors
+        /// lineOfSight in sandbox/src/world.ts (Misty Step's "a square you can see").
+        /// </summary>
+        public bool LineOfSight(int x0, int y0, int x1, int y1)
+        {
+            int dx = Math.Abs(x1 - x0), dy = -Math.Abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
+            int err = dx + dy, x = x0, y = y0;
+            while (true)
+            {
+                if (x == x1 && y == y1) return true;
+                (x, y, err) = LineStep(x, y, err, dx, dy, sx, sy);
+                if (x == x1 && y == y1) return true;
+                if (BlocksSight(At(x, y))) return false;
+            }
+        }
+
+        // One step of Bresenham's line (lineOfSight's loop body).
+        static (int x, int y, int err) LineStep(int x, int y, int err, int dx, int dy, int sx, int sy)
+        {
+            int e2 = 2 * err;
+            if (e2 >= dy) { err += dy; x += sx; }
+            if (e2 <= dx) { err += dx; y += sy; }
+            return (x, y, err);
+        }
+
+        bool BlocksSight(Cell c) => IsBlocking(c) && !HasTag(c, "seeThrough");
         /// <summary>Raised height.blockAt steps or more: a wall of earth, whatever the terrain.</summary>
         public bool IsRaisedWall(Cell c) => c.Height >= Rules.Sim.Height.BlockAt;
         /// <summary>Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.Water.</summary>
