@@ -46,9 +46,16 @@ public static class SelfUpdate
         if (Application.isEditor) return;
         try
         {
-            // Handles Velopack's install/update hooks (it exits the process for those) and
-            // finishes an update that was waiting for a restart.
-            VelopackApp.Build().Run();
+            // Handles Velopack's install/update/uninstall hooks and finishes an update that was
+            // waiting for a restart. Velopack ends a hook run with Environment.Exit, which a
+            // Unity player doesn't honour (Setup then waits 30 s and reports a failure), so
+            // each hook ends the process itself.
+            VelopackApp.Build()
+                .OnAfterInstallFastCallback(_ => EndHookRun())
+                .OnAfterUpdateFastCallback(_ => EndHookRun())
+                .OnBeforeUpdateFastCallback(_ => EndHookRun())
+                .OnBeforeUninstallFastCallback(_ => EndHookRun())
+                .Run();
             manager = new UpdateManager(Source(), null, null);
             Installed = manager.IsInstalled;
             Debug.Log(Installed
@@ -61,6 +68,17 @@ public static class SelfUpdate
             Debug.Log($"Self update: Velopack didn't start ({e.Message}); updates come from the download page.");
         }
     }
+
+    // A hook run (Setup or Update.exe started the game with --veloapp-...) has nothing more
+    // to do: exit with success at once, without Unity's shutdown.
+    static void EndHookRun()
+    {
+        if (Application.platform == RuntimePlatform.WindowsPlayer) ExitProcess(0);
+        System.Diagnostics.Process.GetCurrentProcess().Kill();
+    }
+
+    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
+    static extern void ExitProcess(uint exitCode);
 
     // GitHub's pre-releases, or the folder or URL after -update-source.
     static IUpdateSource Source()
