@@ -30,6 +30,12 @@
 /Assets/Prototype/Scenes/ChemistryYard.unity
 /Assets/Prototype/Scenes/ChemistryYard.unity.meta
 
+# Netcode's auto-generated prefab list. Its generation is off
+# (ProjectSettings/NetcodeForGameObjects.asset), but an Editor that was open
+# when that setting was pulled can still write one.
+/Assets/DefaultNetworkPrefabs.asset
+/Assets/DefaultNetworkPrefabs.asset.meta
+
 # Copied from ../rules by PrototypeBuild before each player build
 /Assets/StreamingAssets/
 /Assets/StreamingAssets.meta

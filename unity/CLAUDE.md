@@ -58,8 +58,11 @@ Windows run it from Git Bash.
   `YardAutoBuild` builds it whenever it's missing (once the packs are
   there), and `ChemYardBuilder` writes the `.meta` with a fixed GUID so the
   build settings never change. Netcode's `DefaultNetworkPrefabs.asset`
-  generation is off for the same reason; the `NetworkManager` uses its own
-  prefab lists.
+  generation is off for the same reason (and the file is ignored); the
+  `NetworkManager` uses its own prefab lists.
+- **After a pull that changes `ProjectSettings/`, restart the Editor.** A
+  running Editor keeps project settings in memory and can write its old
+  values back over the pulled ones the next time it saves them.
 
 - Asset Store packs aren't: `AssetPacks.json` lists them and **Restore
   Asset Packs** fetches them (the signed-in account must own them). Never
