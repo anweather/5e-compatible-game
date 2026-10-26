@@ -23,6 +23,14 @@ public static class PrototypeBuild
     /// <summary>Builds the yard for a platform and returns a one-line summary (also logged).</summary>
     public static string Build(BuildTarget target, string path)
     {
+        // Another machine can only join a build whose network ids are the stable ones.
+        var unstable = ChemYardBuilder.UnstableNetworkIds();
+        if (unstable.Count > 0)
+        {
+            string refused = $"Build {target}: FAILED, the yard's network ids aren't stable ({string.Join(", ", unstable)}). Run Prototype > Build Chemistry Yard first.";
+            Debug.LogError(refused);
+            return refused;
+        }
         PlayerSettings.productName = ProductName;
         PlayerSettings.companyName = "anweather";
         PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, "com.anweather.spellchemistryvalley");

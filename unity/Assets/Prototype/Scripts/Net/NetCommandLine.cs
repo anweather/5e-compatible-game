@@ -12,6 +12,9 @@ using UnityEngine;
 // Either way it also writes a "NET STATUS" line to the player log every 10
 // seconds: role, players, the chemistry tick, and whether this machine has
 // seen a desync, so both machines' logs show whether they stayed in step.
+// And once Netcode starts, a "NET CONFIG" line with the NetworkConfig hash:
+// a host refuses a client whose hash differs (different network prefabs),
+// silently in a release build, so compare the two machines' lines.
 // Without the flags it does nothing.
 public class NetCommandLine : MonoBehaviour
 {
@@ -21,6 +24,7 @@ public class NetCommandLine : MonoBehaviour
     NetSession session;
     float nextStatus;
     bool codeLogged;
+    bool configLogged;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartIfAsked()
@@ -51,7 +55,21 @@ public class NetCommandLine : MonoBehaviour
             return;
         }
         Debug.Log(host ? "NET: hosting online" : $"NET: joining {code}");
+        var net = NetworkManager.Singleton;
+        if (net != null)
+        {
+            net.OnServerStarted += LogConfig;
+            net.OnClientStarted += LogConfig;
+        }
         _ = host ? session.HostOnline() : session.JoinOnline(code);
+    }
+
+    // After Netcode has registered its prefabs, so the hash is the one it sends and compares.
+    void LogConfig()
+    {
+        if (configLogged || NetworkManager.Singleton == null) return;
+        configLogged = true;
+        Debug.Log($"NET CONFIG: {NetworkManager.Singleton.NetworkConfig.GetConfig()} (host and client must match)");
     }
 
     void Update()

@@ -11,6 +11,8 @@ using UnityEngine.SceneManagement;
 // after a pull), this builds it, once the Asset Store packs are there; it
 // checks again when a pack restore finishes, and when a refresh finds the
 // scene deleted (a pull that removes it doesn't always reload scripts).
+// It also rebuilds a yard whose network ids aren't the stable ones
+// (StableNetworkIds: one built before them), or other machines can't join it.
 [InitializeOnLoad]
 public static class YardAutoBuild
 {
@@ -37,10 +39,17 @@ public static class YardAutoBuild
         BuildIfMissing();
     }
 
-    /// <summary>Builds the yard if its scene doesn't exist and the Editor is free to.</summary>
+    /// <summary>Builds the yard if its scene doesn't exist (or has unstable network ids) and the Editor is free to.</summary>
     public static void BuildIfMissing()
     {
-        if (File.Exists(ScenePath) || Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode) return;
+        if (Application.isBatchMode || EditorApplication.isPlayingOrWillChangePlaymode) return;
+        string why = $"{ScenePath} is missing";
+        if (File.Exists(ScenePath))
+        {
+            var unstable = ChemYardBuilder.UnstableNetworkIds();
+            if (unstable.Count == 0) return;
+            why = $"The yard's network ids aren't the same as other machines' ({string.Join(", ", unstable)})";
+        }
         if (AssetPackRestore.Busy) return; // Finished calls back when it's done
         if (!AssetPackRestore.AllPresent)
         {
@@ -48,7 +57,7 @@ public static class YardAutoBuild
             return;
         }
         if (!ClearForBuild()) return;
-        Debug.Log($"{ScenePath} is missing; building it.");
+        Debug.Log($"{why}; building it.");
         ChemYardBuilder.Build();
     }
 
@@ -65,7 +74,7 @@ public static class YardAutoBuild
             if (scene.path == ScenePath) yardOpen = true;
             else if (scene.isDirty)
             {
-                Debug.LogWarning($"{ScenePath} is missing, but {scene.name} has unsaved changes: save it, then run Prototype > Build Chemistry Yard.");
+                Debug.LogWarning($"{ScenePath} needs building, but {scene.name} has unsaved changes: save it, then run Prototype > Build Chemistry Yard.");
                 return false;
             }
         }

@@ -114,13 +114,17 @@ public static class ChemYardBuilder
 
         WriteSceneMeta();
         EditorSceneManager.SaveScene(scene, ScenePath);
-        AssignSceneNetworkIds();
-        EditorSceneManager.SaveScene(scene, ScenePath);
+        // The grid's NetworkObject gets the same id on every machine (StableNetworkIds).
+        StableNetworkIds.PinScene(ScenePath);
         var scenes = new System.Collections.Generic.List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
         if (!scenes.Exists(s => s.path == ScenePath)) scenes.Insert(0, new EditorBuildSettingsScene(ScenePath, true));
         EditorBuildSettings.scenes = scenes.ToArray();
         Debug.Log($"Built {ScenePath}. Press Play.");
     }
+
+    /// <summary>What in the built yard isn't on its stable network id (StableNetworkIds); empty when all is.</summary>
+    public static System.Collections.Generic.List<string> UnstableNetworkIds() =>
+        StableNetworkIds.Unstable(ScenePath, AssetDatabase.LoadAssetAtPath<NetworkPrefabsList>(ThingPrefabsPath));
 
     // The scene and its .meta aren't in git (YardAutoBuild), so a new scene would
     // get a new GUID and change the build settings. Writing the .meta first keeps
@@ -263,19 +267,6 @@ public static class ChemYardBuilder
         var prefab = PrefabUtility.SaveAsPrefabAsset(wizard, NetWizardPath);
         Object.DestroyImmediate(wizard);
         return prefab;
-    }
-
-    // An in-scene NetworkObject needs an id derived from its place in the saved
-    // scene. Netcode assigns it in OnValidate, which runs when a scene is edited
-    // by hand but not for objects added from code, so run it once the scene has a path.
-    static void AssignSceneNetworkIds()
-    {
-        var onValidate = typeof(NetworkObject).GetMethod("OnValidate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        foreach (var networkObject in Object.FindObjectsByType<NetworkObject>(FindObjectsSortMode.None))
-        {
-            onValidate?.Invoke(networkObject, null);
-            EditorUtility.SetDirty(networkObject);
-        }
     }
 
     // How each spell looks, from the Particle Pack. Missing prefabs leave that part out.

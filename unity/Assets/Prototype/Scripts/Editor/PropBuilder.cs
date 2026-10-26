@@ -12,7 +12,8 @@ using UnityEngine;
 //
 // Each prefab is also a NetworkObject (NetProp, with the thing's stable id):
 // online the host spawns it and clients follow its NetworkTransform.
-// ChemYardBuilder registers every prefab with the NetworkManager.
+// ChemYardBuilder registers every prefab with the NetworkManager, and
+// StableNetworkIds gives each the same network id on every machine.
 public static class PropBuilder
 {
     public const string Generated = "Assets/Prototype/Generated";
@@ -55,22 +56,11 @@ public static class PropBuilder
     {
         var path = $"{ThingsFolder}/{kind}.prefab";
         EditorAssets.EnsureFolderFor(path);
-        var prefab = PrefabUtility.SaveAsPrefabAsset(go, path);
+        // A network prefab must have the same id on every machine (StableNetworkIds).
+        StableNetworkIds.PrepareAsset(path);
+        PrefabUtility.SaveAsPrefabAsset(go, path);
         Object.DestroyImmediate(go);
-        StampNetworkHash(prefab);
-        return new ThingSpawner.KindPrefab { kind = kind, prefab = prefab };
-    }
-
-    // A network prefab is known by its GlobalObjectIdHash, which Netcode works out in OnValidate.
-    // That doesn't run for a prefab saved from code, so run it and save the hash into the asset,
-    // so every Editor (Multiplayer Play Mode's virtual players too) reads the same hash.
-    static void StampNetworkHash(GameObject prefab)
-    {
-        var networkObject = prefab.GetComponent<NetworkObject>();
-        var onValidate = typeof(NetworkObject).GetMethod("OnValidate", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        onValidate?.Invoke(networkObject, null);
-        EditorUtility.SetDirty(prefab);
-        AssetDatabase.SaveAssetIfDirty(prefab);
+        return new ThingSpawner.KindPrefab { kind = kind, prefab = StableNetworkIds.PinPrefab(path) };
     }
 
     // Host-simulated online: server-authoritative transform, interpolated on clients. It never

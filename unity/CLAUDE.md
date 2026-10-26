@@ -60,6 +60,13 @@ Windows run it from Git Bash.
   build settings never change. Netcode's `DefaultNetworkPrefabs.asset`
   generation is off for the same reason (and the file is ignored); the
   `NetworkManager` uses its own prefab lists.
+- **Network ids must not be per machine.** Netcode knows a network prefab
+  (and an in-scene NetworkObject) by a hash of its GUID and fileID, which
+  Unity picks at random for anything generated. Different hashes make the
+  host refuse the join, silently in a release build. So generated network
+  objects go through `StableNetworkIds` (`NetworkIdTests` pins the hashes),
+  and only Multiplayer Play Mode or a build from a fresh `Generated/` can
+  catch drift; a virtual player shares the Editor's files.
 - **After a pull that changes `ProjectSettings/`, restart the Editor.** A
   running Editor keeps project settings in memory and can write its old
   values back over the pulled ones the next time it saves them.

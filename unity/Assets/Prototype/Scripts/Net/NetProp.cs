@@ -7,9 +7,11 @@ using UnityEngine;
 // ThingSpawner (its prefab built by PropBuilder or ItemBuilder).
 //
 // It carries the thing's stable id (ThingId: chunk + index in the data), set
-// before it spawns, so every machine and a late joiner know it by the same
-// id; a client's ThingSpawner adopts it by that id when it arrives. The
-// lockstep effects it hands the chemistry name it by that id too.
+// by the spawner and sent with its spawn, so every machine and a late joiner
+// know it by the same id; a client's ThingSpawner adopts it by that id when
+// it arrives. The lockstep effects it hands the chemistry name it by that id
+// too. Solo it is never spawned, so the id is kept in a plain field and only
+// copied into its NetworkVariable as the host spawns it.
 //
 // The host simulates it: its Rigidbody, the cell under it, burning, hit
 // points, what it does to cells (stamped through NetChem, ChemEffects). On
@@ -25,8 +27,10 @@ public class NetProp : NetworkBehaviour
     readonly NetworkVariable<bool> burning = new();
     readonly NetworkVariable<bool> levitating = new();
     readonly NetworkVariable<int> hp = new();
-    // Written once, by the spawner, before it spawns (so it arrives with the spawn, late joiners included).
+    // The host writes it as it spawns (so it arrives with the spawn, late joiners included);
+    // a NetworkVariable mustn't be written before then.
     readonly NetworkVariable<ulong> thing = new(ThingId.None.Value);
+    ThingId assigned = ThingId.None;
 
     PhysicsProp prop;
     Rigidbody body;
@@ -40,10 +44,10 @@ public class NetProp : NetworkBehaviour
     public bool Levitating => levitating.Value;
     public int Hp => hp.Value;
     /// <summary>Its stable id from world/things.json, the same on every machine (None if it wasn't spawned from data).</summary>
-    public ThingId Id => new ThingId(thing.Value);
+    public ThingId Id => assigned.IsNone ? new ThingId(thing.Value) : assigned;
 
-    /// <summary>ThingSpawner, before it is spawned: which thing of the world's data this is.</summary>
-    public void AssignId(ThingId id) => thing.Value = id.Value;
+    /// <summary>ThingSpawner, before it is spawned (or solo, where it never is): which thing of the world's data this is.</summary>
+    public void AssignId(ThingId id) => assigned = id;
 
     void Awake()
     {
@@ -55,6 +59,7 @@ public class NetProp : NetworkBehaviour
     {
         if (IsServer)
         {
+            thing.Value = assigned.Value;
             Publish();
             return;
         }
