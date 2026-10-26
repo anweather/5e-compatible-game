@@ -40,6 +40,7 @@ public static class ValleyBuilder
         BuildSky();
         var cabinRoot = BuildCabin();
         ScatterRocks();
+        BuildWorldEdge();
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.chunks = terrains;
@@ -236,6 +237,66 @@ public static class ValleyBuilder
             rock.transform.SetPositionAndRotation(at, Quaternion.Euler(0f, rng.Next(360), 0f));
             rock.transform.localScale = Vector3.one * (0.6f + 1.2f * (float)rng.NextDouble());
             placed++;
+        }
+    }
+
+    // --- the world's edge ------------------------------------------------------
+
+    const float EdgeWallHeight = 400f, EdgeRockSpacing = 6f, EdgeInset = 3f;
+
+    // The end of the land: the valley's chunk terrains stop, and past them is nothing to stand on.
+    // Walls no ray sees (Ignore Raycast, so aiming and the camera pass through) stand just inside
+    // the last terrain's edge, with a line of standing rocks along them so the edge shows (none
+    // out in the lake).
+    static void BuildWorldEdge()
+    {
+        var layout = ValleyTerrain.Layout;
+        var (x0, z0) = layout.ChunkCorner(0, 0);
+        var (x1, z1) = layout.ChunkCorner(layout.ChunksX, layout.ChunksZ);
+        var a = new Vector3(x0 + EdgeInset, 0f, z0 + EdgeInset);   // south-west corner
+        var b = new Vector3(x1 - EdgeInset, 0f, z1 - EdgeInset);   // north-east corner
+        var parent = new GameObject("World edge").transform;
+        Wall(parent, "North", new Vector3((a.x + b.x) / 2f, 0f, b.z + 1f), new Vector3(b.x - a.x + 4f, EdgeWallHeight, 2f));
+        Wall(parent, "South", new Vector3((a.x + b.x) / 2f, 0f, a.z - 1f), new Vector3(b.x - a.x + 4f, EdgeWallHeight, 2f));
+        Wall(parent, "East", new Vector3(b.x + 1f, 0f, (a.z + b.z) / 2f), new Vector3(2f, EdgeWallHeight, b.z - a.z + 4f));
+        Wall(parent, "West", new Vector3(a.x - 1f, 0f, (a.z + b.z) / 2f), new Vector3(2f, EdgeWallHeight, b.z - a.z + 4f));
+        EdgeRocks(parent, a, b);
+    }
+
+    static void Wall(Transform parent, string name, Vector3 centre, Vector3 size)
+    {
+        var go = new GameObject(name + " wall") { layer = 2 };   // Ignore Raycast
+        go.transform.SetParent(parent, false);
+        // From well under the lake bed to well over the hills.
+        go.transform.position = centre + Vector3.up * (EdgeWallHeight / 2f - 60f);
+        go.AddComponent<BoxCollider>().size = size;
+    }
+
+    static void EdgeRocks(Transform parent, Vector3 a, Vector3 b)
+    {
+        var rocks = new List<GameObject>();
+        foreach (var n in new[] { "Rock_A_01", "Rock_B_01", "Rock_C_01" })
+        {
+            var prefab = EditorAssets.LoadPrefab($"{DemoPack}/Rocks/{n}.prefab");
+            if (prefab != null) rocks.Add(prefab);
+        }
+        if (rocks.Count == 0) return;
+        var rng = new System.Random(11);
+        var corners = new[] { new Vector3(a.x, 0f, a.z), new Vector3(b.x, 0f, a.z), new Vector3(b.x, 0f, b.z), new Vector3(a.x, 0f, b.z) };
+        for (int side = 0; side < 4; side++)
+        {
+            var from = corners[side];
+            var to = corners[(side + 1) % 4];
+            int count = Mathf.CeilToInt(Vector3.Distance(from, to) / EdgeRockSpacing);
+            for (int i = 0; i < count; i++)
+            {
+                var at = Vector3.Lerp(from, to, (i + (float)rng.NextDouble() * 0.5f) / count);
+                at.y = ValleyTerrain.GroundAt(at);
+                if (at.y < LakeLevel) continue;
+                var rock = (GameObject)PrefabUtility.InstantiatePrefab(rocks[rng.Next(rocks.Count)], parent);
+                rock.transform.SetPositionAndRotation(at - Vector3.up * 0.3f, Quaternion.Euler(0f, rng.Next(360), 0f));
+                rock.transform.localScale = Vector3.one * (0.9f + 0.8f * (float)rng.NextDouble());
+            }
         }
     }
 

@@ -155,7 +155,16 @@ public static class ProbeCommands
         {
             var result = ReadResult();
             string state = (string)result?["state"];
-            if (!wait || state == Done || state == Aborted) return result ?? (object)new { state = "none" };
+            // Nothing was run, or a run never got into Play mode: say so now rather than hold the
+            // Editor's command queue (every other command waits behind this one) until the timeout.
+            if (!wait || result == null || state == Done || state == Aborted) return result ?? (object)new { state = "none" };
+            if (state == Starting && DateTime.UtcNow - File.GetLastWriteTimeUtc(ResultPath) > TimeSpan.FromSeconds(StartLimit((string)result["scenario"])))
+            {
+                result["state"] = Aborted;
+                result["pass"] = false;
+                result["reason"] = "The run never entered Play mode (compile errors, or the Editor was busy): see the console";
+                return result;
+            }
             if (DateTime.UtcNow > deadline)
             {
                 result ??= new JObject { ["state"] = "none" };
@@ -165,6 +174,9 @@ public static class ProbeCommands
             Thread.Sleep(250);
         }
     }
+
+    // How long a run may stay "starting": entering Play mode, or first starting the virtual player.
+    static double StartLimit(string scenario) => ProbeScenarios.Find(scenario)?.Players > 1 ? LaunchTimeout + 30 : 60;
 
     // --- the run, in Play mode -------------------------------------------------------
 

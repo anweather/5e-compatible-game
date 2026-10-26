@@ -69,6 +69,9 @@ public static class ProbeScenarios
             "Ray of Frost from the lake's shore (the dry square outside the yard nearest it with lake water two squares south) " +
             "out over the water. Checks: the shore was found, the wet squares in the beam froze, the ice is drawn at or above " +
             "the lake's surface and is solid (a ray down hits the Ice collider), Sleet Storm on open water freezes a wide circle, no console errors."),
+        new Entry("edge", typeof(EdgeProbe), 90f,
+            "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
+            "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),
         new Entry("sky", typeof(SkyProbe), 90f,
             "The clock and the weather, switched as a mod switches them: noon, then 22:00, then a storm at 13:00 with lightning " +
             "every half second, then fog. Checks: the Sky object is built, the sun is bright at noon and the clock line says so, " +

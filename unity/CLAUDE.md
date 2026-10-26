@@ -51,6 +51,12 @@ Windows run it from Git Bash.
   `PauseMenu.SetOpen`, and `PauseMenu.Instance.Navigate` / `Submit` /
   `Back` for what the controller's d-pad, A and B do), or use the probe
   (`tools/probe.sh menu`).
+- **The Editor runs one CLI command at a time.** A long one (a yard build, a
+  `probe result --wait`) holds the queue and the rest wait, timing out after
+  60 s with "waiting for another command to finish". Don't retry in a loop:
+  that only adds to the queue. Give long commands `--timeout` and wait
+  (`unity status --until-ready`); `probe result --wait` now returns at once
+  when no run is going.
 - `capture game_view --save_path` writes under `Assets/`; move the files
   out and delete the folder with `AssetDatabase.DeleteAsset` afterwards.
 
