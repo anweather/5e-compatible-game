@@ -37,6 +37,10 @@ then merge it into `main` and push as soon as it's verified. No PR is
 needed. Never leave a finished branch unmerged. Fetch and merge
 `origin/main` again just before pushing.
 
+Docs-only changes (`.md` files, including `CLAUDE.md` files and ADRs) skip
+the branch: commit them on `main` and push. Branch only when code, rules,
+scenes or assets change.
+
 Generated output stays out of git, so rebuilding never dirties the tree:
 the yard scene (`ChemistryYard.unity`, rebuilt automatically when missing),
 `Generated/`, `Builds/`, the Asset Store packs. If a rebuild does show a
