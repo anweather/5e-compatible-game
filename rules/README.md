@@ -15,7 +15,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 | `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`), `breaks` (impact speed in m/s and what it spills). The sandbox carries and checks them but has no items |
 | `machines.json` | What each machine needs before it powers the gates |
 | `groups.json` | The Unity game's spell radial: its elements by id (`name`, `order` around the ring from the top, `color` as `#rrggbb`). Each spell in `spells.json` names one with `"group"`; one with none goes under the last. UI only, but mods can regroup or add elements |
-| `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage |
+| `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage, the length of a day and the weather |
 | `mods/` | Example live mods (`docs/MODDING.md`), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
 
 ## Elements
@@ -103,6 +103,30 @@ elevation plus height.
   one step of depth. A pit is one step below the ground, so a full pond
   holds 4 units.
 - Time is in ticks, `sim.ticksPerSecond` (6) a second.
+- A day lasts `sim.day.lengthMinutes` (24) real minutes, so a game hour
+  is a real minute; the world starts at `sim.day.startHour` (9:00).
+
+## Day and weather (`sim.day`, `sim.weather`)
+
+The time of day and the weather are worked out from the tick and the
+world's seed alone (`sandbox/src/sky.ts`, `Sky.cs`), so every player has
+the same sky. Weather comes in stretches of `periodMinutes` real minutes,
+each ramping in and out over `rampMinutes`; the first `calmPeriods` are
+clear, then each stretch is picked by `weights` (`clear`, `cloudy`,
+`windy`, `fog`, `rain`, `storm`; leave one out or set it to 0 and it never
+comes). What it does to squares, at full strength:
+
+- **rain** (and storms): each tick a fire may burn down a step
+  (`rain.douseChance`), fire spreads `rain.dampen` less, and every
+  `rain.fillEvery` ticks each square may get a unit of water
+  (`rain.fillChance`), so hollows and trenches fill. Without rain, every
+  `rain.dryEvery` ticks a square two units deep or less may lose one
+  (`rain.dryChance`): puddles dry, ponds stay.
+- **windy** and **storm**: a prevailing wind that fire and gas follow like
+  Gust of Wind's (which wins while it blows).
+- **storm**: every `storm.strikeEvery` ticks, lightning may strike a random
+  square (`storm.strikeChance`), applying `lightning` like Shocking Grasp.
+- **cloudy** and **fog** change only how the world looks.
 
 ## The parts that are code, not data
 
@@ -114,7 +138,8 @@ port of them:
 - raising and digging squares (terraform spells);
 - gas drifting and decaying;
 - charge decaying;
-- statuses ticking down.
+- statuses ticking down;
+- the weather's rain, drying and lightning.
 
 A burning square spreads by **applying `fire` to its neighbours**. So
 what spreading fire does to ice, water or oil next door is still decided

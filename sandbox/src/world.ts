@@ -1,5 +1,6 @@
 // World state and the small helpers every system shares.
 import { RULES } from "./rules.ts";
+import { type WeatherNow, weatherAt } from "./sky.ts";
 
 export type Dir = 0 | 1 | 2 | 3; // N E S W
 export const DX = [0, 1, 0, -1] as const;
@@ -74,6 +75,12 @@ export interface World {
   openedBy: string | null;
   tick: number;
   rng: number;
+  /** The seed the world was made with: the weather's (sky.ts), as rng is the cells'. */
+  seed: number;
+  /** This tick's weather (weatherAt), set at the start of each step. */
+  weather: WeatherNow;
+  /** Squares lightning struck this tick. */
+  strikes: [number, number][];
   nextId: number;
   wind: { dir: Dir; ticks: number } | null;
   log: LogEntry[];
@@ -102,6 +109,9 @@ export function createWorld(w: number, h: number, seed = 1): World {
     openedBy: null,
     tick: 0,
     rng: seed >>> 0,
+    seed: seed >>> 0,
+    weather: weatherAt(RULES.sim, seed >>> 0, 0),
+    strikes: [],
     nextId: 1,
     wind: null,
     log: [],
@@ -125,6 +135,8 @@ export const elevation = (c: Cell) => ((terrainDef(c).elevation ?? 0) + c.h) * R
 export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.covers[c.cover]?.tags.includes(tag) ?? false);
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);
 export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || hasTag(c, "conductive");
+/** The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none. */
+export const windDir = (w: World): number => (w.wind ? w.wind.dir : w.weather.windDir);
 
 export function flammability(c: Cell): number {
   if (coverHasTag(c, "flammable")) return RULES.covers[c.cover!]!.flammability ?? 0;
@@ -236,7 +248,9 @@ export function serializeWorld(w: World): WorldSnapshot {
 export function deserializeWorld(s: WorldSnapshot): World {
   const n = s.w * s.h;
   const copy = JSON.parse(JSON.stringify(s)) as WorldSnapshot;
-  return { ...copy, marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  // Snapshots from before the weather have no seed: worlds were all made with 1.
+  const seed = copy.seed ?? 1;
+  return { ...copy, seed, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

@@ -23,6 +23,8 @@ namespace Chem
             W = w;
             H = h;
             RngState = seed;
+            Seed = seed;
+            Weather = Sky.Weather(rules.Sim, seed, 0);
             Cells = new Cell[w * h];
             BuildChunks(fill);
         }
@@ -60,6 +62,7 @@ namespace Chem
         {
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             var height = rules.Sim.Height;
+            Weather = Sky.Weather(rules.Sim, Seed, Tick);
             foreach (var c in Cells)
             {
                 c.ForgetDef();

@@ -1,6 +1,6 @@
 // One tick of the cell world. Port of sandbox/src/sim.ts with the entity,
 // critter and machine systems left out. The order of what remains is the TS
-// order: fire -> water -> gas -> charge decay -> wind decay.
+// order: fire -> water -> gas -> weather -> charge decay -> wind decay.
 using System;
 using System.Collections.Generic;
 
@@ -21,10 +21,13 @@ namespace Chem
         {
             Tick++;
             logged.Clear();
+            strikes.Clear();
+            Weather = Sky.Weather(Rules.Sim, Seed, Tick);
             var rows = Spans;
             TickFire(rows);
             TickWater(rows);
             TickGas(rows);
+            TickWeather(rows);
             foreach (var s in rows)
             {
                 var cells = s.Chunk.Cells;
@@ -62,6 +65,7 @@ namespace Chem
                 AddGas(c, "steam", 1);
                 return;
             }
+            if (Doused(c)) return;
             if (c.Gas != "steam" && Rand() < p.SmokeChance) AddGas(c, "smoke", 1);
             Spread(ch, i, c, p);
             if (--c.Fuel > 0) return;
@@ -120,8 +124,8 @@ namespace Chem
         double SpreadChance(Cell c, Cell n, int d, FireParams p)
         {
             double flam = Flammability(n);
-            double downwind = Wind.HasValue && Wind.Value.dir == d ? p.DownwindBonus : 0;
-            if (flam > 0) return p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam;
+            double downwind = WindDir == d ? p.DownwindBonus : 0;
+            if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam) * RainDamp();
             return n.Water > 0 && !n.Frozen ? p.BoilChance : p.HeatChance;
         }
 
@@ -211,7 +215,7 @@ namespace Chem
         /// <summary>Moves one unit of gas downwind, unless something (or a paused chunk) is in the way.</summary>
         bool BlowDownwind(Chunk ch, int i, Cell c)
         {
-            var t = Chunk.Next(ch, i, Wind.Value.dir, out var tch, out _);
+            var t = Chunk.Next(ch, i, WindDir, out var tch, out _);
             if (t == null || !tch.Active || IsBlocking(t)) return false;
             AddGas(t, c.Gas, 1);
             c.GasAmt--;
@@ -231,7 +235,7 @@ namespace Chem
                 c.GasAmt = 0;
                 return;
             }
-            if (Wind.HasValue && Rand() < 0.5 && BlowDownwind(ch, i, c)) return;
+            if (WindDir >= 0 && Rand() < 0.5 && BlowDownwind(ch, i, c)) return;
             if (c.GasAmt < 2) return;
             gasOptions.Clear();
             for (int d = 0; d < 4; d++)

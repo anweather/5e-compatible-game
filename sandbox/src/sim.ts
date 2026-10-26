@@ -1,21 +1,25 @@
 // One tick of the world. Order matters and is fixed:
-// critters -> fire -> water -> gas -> entities -> machines -> decay.
+// critters -> fire -> water -> gas -> weather -> entities -> machines -> decay.
 import { RULES } from "./rules.ts";
 import { applyElement, ignite } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import {
-  type World,
+  type Cell, type World,
   DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
-  log, neighbours, rand, terrainDef,
+  log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
+import { rainOf, weatherAt } from "./sky.ts";
 
 export function step(w: World): void {
   w.tick++;
   w.logged.clear();
+  w.strikes = [];
+  w.weather = weatherAt(RULES.sim, w.seed, w.tick);
   tickCritters(w);
   tickFire(w);
   tickWater(w);
   tickGas(w);
+  tickWeather(w);
   tickEntities(w);
   tickMachines(w);
   for (const c of w.cells) if (c.charge > 0) c.charge--;
@@ -69,14 +73,15 @@ function tickFire(w: World) {
       addGas(c, "steam", 1);
       continue;
     }
+    if (doused(w, c)) continue;
     if (c.gas !== "steam" && rand(w) < p.smokeChance) addGas(c, "smoke", 1);
     for (const [nx, ny, d] of neighbours(w, x, y)) {
       const n = cellAt(w, nx, ny)!;
       if (n.fire > 0) continue;
       const flam = flammability(n);
-      const downwind = w.wind && w.wind.dir === d ? p.downwindBonus : 0;
+      const downwind = windDir(w) === d ? p.downwindBonus : 0;
       const wet = n.water > 0 && !n.frozen;
-      const chance = flam > 0 ? p.spreadChance * flam * (c.fire / 3) + downwind * flam : wet ? p.boilChance : p.heatChance;
+      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) + downwind * flam) * rainDamp(w) : wet ? p.boilChance : p.heatChance;
       if (rand(w) < chance) applyElement(w, nx, ny, "fire", { power: 1, direct: false });
     }
     if (--c.fuel > 0) continue;
@@ -149,8 +154,9 @@ function tickGas(w: World) {
       continue;
     }
     const x = i % w.w, y = Math.floor(i / w.w);
-    if (w.wind && rand(w) < 0.5) {
-      const t = cellAt(w, x + DX[w.wind.dir], y + DY[w.wind.dir]);
+    const wd = windDir(w);
+    if (wd >= 0 && rand(w) < 0.5) {
+      const t = cellAt(w, x + DX[wd]!, y + DY[wd]!);
       if (t && !isBlocking(t)) {
         addGas(t, c.gas, 1);
         c.gasAmt--;
@@ -231,3 +237,54 @@ function setGates(w: World, poweredBy: string | null) {
 
 // Re-exported so callers can light things without importing react.ts.
 export { ignite };
+
+// ---------- weather ----------
+
+// What the weather does to cells, after gas: rain fills squares and dry spells
+// dry shallow ones, storms strike lightning (World.Weather.cs ports this).
+// Nothing happens during the calm stretches the world starts with.
+function tickWeather(w: World) {
+  const now = w.weather, p = RULES.sim.weather;
+  if (now.period < p.calmPeriods) return;
+  const rain = rainOf(now);
+  if (rain > 0 && w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);
+  else if (rain === 0 && w.tick % p.rain.dryEvery === 0) dry(w, p.rain.dryChance);
+  if (now.kind === "storm" && w.tick % p.storm.strikeEvery === 0 && rand(w) < (p.storm.strikeChance * now.strength) / 100) strike(w);
+}
+
+function fill(w: World, chance: number) {
+  const max = RULES.sim.water.maxLevel;
+  for (const c of w.cells) {
+    if (isBlocking(c) || c.water >= max) continue;
+    if (rand(w) < chance) c.water++;
+  }
+}
+
+/** A unit of water off squares two units deep or less (not ice): puddles dry, lakes stay. */
+function dry(w: World, chance: number) {
+  for (const c of w.cells) {
+    if (c.water === 0 || c.water > 2 || c.frozen) continue;
+    if (rand(w) < chance) c.water--;
+  }
+}
+
+function strike(w: World) {
+  const x = Math.floor(rand(w) * w.w), y = Math.floor(rand(w) * w.h);
+  w.strikes.push([x, y]);
+  log(w, "Lightning strikes", "notable");
+  applyElement(w, x, y, "lightning", { power: 2, direct: false });
+}
+
+/** Rain may burn a fire down a step; true if it went out. */
+function doused(w: World, c: Cell): boolean {
+  const rain = rainOf(w.weather);
+  if (rain === 0) return false;
+  if (rand(w) >= (RULES.sim.weather.rain.douseChance * rain) / 100) return false;
+  if (--c.fire > 0) return false;
+  addGas(c, "steam", 1);
+  logOnce(w, "rain-douse", "The rain puts out a fire");
+  return true;
+}
+
+/** How much of fire's spread the rain leaves, 1 when dry. */
+const rainDamp = (w: World) => 1 - (RULES.sim.weather.rain.dampen * rainOf(w.weather)) / 100;

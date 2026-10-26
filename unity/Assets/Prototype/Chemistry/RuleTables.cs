@@ -117,9 +117,36 @@ namespace Chem
         public int Min = -3, Max = 4, BlockAt = 3;
     }
 
+    /// <summary>sim.json's day: how long a day lasts in real minutes, and the hour the world starts at.</summary>
+    public sealed class DayParams
+    {
+        public double LengthMinutes = 24, StartHour = 9;
+    }
+
+    /// <summary>sim.json's weather (Sky.cs picks it, World.Weather.cs applies it).</summary>
+    public sealed class WeatherParams
+    {
+        /// <summary>Real minutes per stretch of one weather, and of its ramp in and out.</summary>
+        public double PeriodMinutes = 4, RampMinutes = 0.5;
+        /// <summary>Stretches of clear sky the world starts with.</summary>
+        public int CalmPeriods = 2;
+        /// <summary>How often each WeatherKind comes up, in WeatherKind's order (sim.json's weights by name).</summary>
+        public double[] Weights = { 4, 2, 1.5, 1, 2, 1 };
+        /// <summary>At full rain: the chance per tick a fire burns down a step, and how much less fire spreads.</summary>
+        public double DouseChance = 0.05, Dampen = 0.6;
+        /// <summary>Every fillEvery ticks of rain, each square's chance of a unit of water; every dryEvery ticks of no rain, a shallow square's chance to dry a unit.</summary>
+        public int FillEvery = 12, DryEvery = 30;
+        public double FillChance = 0.015, DryChance = 0.1;
+        /// <summary>Every strikeEvery ticks of storm, the chance (at full strength) lightning strikes a square.</summary>
+        public int StrikeEvery = 18;
+        public double StrikeChance = 0.5;
+    }
+
     public sealed class SimParams
     {
         public int TicksPerSecond = 6;
+        public DayParams Day = new DayParams();
+        public WeatherParams Weather = new WeatherParams();
         public FireParams Fire = new FireParams();
         public GasParams Gas = new GasParams();
         public HeightParams Height = new HeightParams();
@@ -496,7 +523,40 @@ namespace Chem
             s.FallDamage = Int(o["fallDamage"]) ?? s.FallDamage;
             s.ZapDamage = Int(o["zapDamage"]) ?? s.ZapDamage;
             if (o["status"] is JObject st) s.BurnDamageEvery = Int(st["burnDamageEvery"]) ?? s.BurnDamageEvery;
+            if (o["day"] is JObject day)
+            {
+                s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;
+                s.Day.StartHour = Num(day["startHour"]) ?? s.Day.StartHour;
+            }
+            if (o["weather"] is JObject wo) ParseWeather(wo, s.Weather);
             return s;
+        }
+
+        static void ParseWeather(JObject o, WeatherParams w)
+        {
+            w.PeriodMinutes = Num(o["periodMinutes"]) ?? w.PeriodMinutes;
+            w.RampMinutes = Num(o["rampMinutes"]) ?? w.RampMinutes;
+            w.CalmPeriods = Int(o["calmPeriods"]) ?? w.CalmPeriods;
+            if (o["weights"] is JObject weights)
+            {
+                var names = Enum.GetNames(typeof(WeatherKind));
+                for (int k = 0; k < names.Length; k++)
+                    w.Weights[k] = Num(weights[names[k].ToLowerInvariant()]) ?? w.Weights[k];
+            }
+            if (o["rain"] is JObject rain)
+            {
+                w.DouseChance = Num(rain["douseChance"]) ?? w.DouseChance;
+                w.Dampen = Num(rain["dampen"]) ?? w.Dampen;
+                w.FillEvery = Int(rain["fillEvery"]) ?? w.FillEvery;
+                w.FillChance = Num(rain["fillChance"]) ?? w.FillChance;
+                w.DryEvery = Int(rain["dryEvery"]) ?? w.DryEvery;
+                w.DryChance = Num(rain["dryChance"]) ?? w.DryChance;
+            }
+            if (o["storm"] is JObject storm)
+            {
+                w.StrikeEvery = Int(storm["strikeEvery"]) ?? w.StrikeEvery;
+                w.StrikeChance = Num(storm["strikeChance"]) ?? w.StrikeChance;
+            }
         }
     }
 }

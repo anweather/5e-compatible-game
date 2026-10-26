@@ -204,6 +204,17 @@ export interface SimParams {
   fallDamage: number;
   zapDamage: number;
   conductLimit: number;
+  /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
+  day: { lengthMinutes: number; startHour: number };
+  /** The weather (sky.ts picks it, tickWeather in sim.ts applies it). */
+  weather: {
+    periodMinutes: number;
+    rampMinutes: number;
+    calmPeriods: number;
+    weights: Partial<Record<"clear" | "cloudy" | "windy" | "fog" | "rain" | "storm", number>>;
+    rain: { douseChance: number; dampen: number; fillEvery: number; fillChance: number; dryEvery: number; dryChance: number };
+    storm: { strikeEvery: number; strikeChance: number };
+  };
 }
 
 export interface Rules {
