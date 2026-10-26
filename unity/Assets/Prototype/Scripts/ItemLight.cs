@@ -13,7 +13,12 @@ using UnityEngine;
 public class ItemLight : ItemUse
 {
     /// <summary>Light falling on a surface at the bright edge (URP's units, the sun being 1.6 here).</summary>
-    public const float BrightLux = 0.8f;
+    public const float BrightLux = 0.5f;
+    /// <summary>
+    /// How far above a glowing ball its light hangs. Light falls off with the square of the distance,
+    /// so a lamp right at a ball lying in the grass burns a blown-out spot around it.
+    /// </summary>
+    public const float LampLift = 2f;
     /// <summary>For a light that is only dim (Dancing Lights): what falls halfway out.</summary>
     public const float DimLux = 0.5f;
 
@@ -45,6 +50,13 @@ public class ItemLight : ItemUse
     void OnDestroy()
     {
         if (Item != null) Item.DefChanged -= Reconfigure;
+    }
+
+    // A ball's light hangs above it, whichever way the ball has rolled (unless Dancing Lights sent it out).
+    void LateUpdate()
+    {
+        if (Lamp == null || Lamp.type != LightType.Point || Lamp.transform.parent != transform) return;
+        Lamp.transform.position = transform.position + Vector3.up * LampLift;
     }
 
     // A live mod changed the item's light (e.g. "bright-lantern"): same lamp, new reach and colour.
@@ -122,7 +134,7 @@ public class ItemLight : ItemUse
         var block = new MaterialPropertyBlock();
         look.GetPropertyBlock(block);
         // A lantern's brass only warms a little; a ball with the Light cantrip on it shines.
-        float strength = Item.Def.Light.Cone > 0 ? 0.6f : 1.5f;
+        float strength = Item.Def.Light.Cone > 0 ? 0.6f : 0.9f;
         block.SetColor("_EmissionColor", on ? glow * strength : Color.black);
         look.SetPropertyBlock(block);
     }

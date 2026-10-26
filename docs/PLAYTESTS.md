@@ -57,7 +57,7 @@ sound was heard in a later build (main, not 0.1.1).
 |---|---|---|
 | P20 | Water looks bad and patterned | open |
 | P21 | Shaders: grass, water reflections | open |
-| P22 | The glowing balls' lighting is very harsh | open |
+| P22 | The glowing balls' lighting is very harsh | done: the light hangs 2 m above the ball, bright edge 0.5 (was 0.8), softer glow |
 | P23 | The storm sounds are too loud | done: rain, wind and thunder turned down, on the ambience setting |
 
 ### World
