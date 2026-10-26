@@ -395,8 +395,8 @@ public static class ValleyBuilder
         // The water leaves the lip a little out from the face, so it falls clear of the rocks.
         var lip = new Vector3(falls.x, top + 0.3f, face - 2.4f);
         float drop = top + 0.3f - pond;
-        Sheet(parent, "Falls water", lip, drop, 4.6f, 0f, water, new Vector2(0f, -1.4f));
-        Sheet(parent, "Falls foam", lip + Vector3.back * 0.15f, drop, 4f, 0.1f, foam, new Vector2(0.03f, -2.3f));
+        Sheet(parent, "Falls water", lip, drop, (4.6f, 0f), water, new Vector2(0f, -1.4f));
+        Sheet(parent, "Falls foam", lip + Vector3.back * 0.15f, drop, (4f, 0.1f), foam, new Vector2(0.03f, -2.3f));
         // The stream pours over the rocks to the lip: a short sheet from where its squares end.
         var streamEnd = ValleyShape.Stream[ValleyShape.Stream.Length - 1];
         Chute(parent, new Vector3(streamEnd.x, top + 0.12f, streamEnd.y), lip, 3.6f, water);
@@ -458,7 +458,7 @@ public static class ValleyBuilder
 
     // A sheet of falling water: a strip of quads from the lip down to the pond, bowing out as it falls,
     // a little wider at the foot, its streaks scrolled down at the given speed.
-    static void Sheet(Transform parent, string name, Vector3 lip, float drop, float width, float flare, Material mat, Vector2 scroll)
+    static void Sheet(Transform parent, string name, Vector3 lip, float drop, (float width, float flare) size, Material mat, Vector2 scroll)
     {
         const int rows = 18;
         var verts = new Vector3[(rows + 1) * 2];
@@ -467,7 +467,7 @@ public static class ValleyBuilder
         for (int i = 0; i <= rows; i++)
         {
             float t = i / (float)rows;
-            float half = width / 2f * (1f + (0.35f + flare) * t);
+            float half = size.width / 2f * (1f + (0.35f + size.flare) * t);
             float outward = 2.6f * Mathf.Sqrt(t);
             var c = new Vector3(0f, -drop * t, -outward);
             verts[i * 2] = c + Vector3.left * half;
