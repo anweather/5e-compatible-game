@@ -322,6 +322,7 @@ public static class ChemYardBuilder
             Visual(SpellIds.FireBolt, new Color(1f, 0.5f, 0.15f), FireFx + "/FireBall.prefab", FireFx + "/TinyExplosion.prefab"),
             Visual(SpellIds.RayOfFrost, new Color(0.55f, 0.85f, 1f), null, PackPaths.MagicFx + "/IceLance.prefab"),
             Visual(SpellIds.CreateWater, new Color(0.3f, 0.6f, 1f), null, PackPaths.WaterFx + "/BigSplash.prefab"),
+            Visual(SpellIds.SleetStorm, new Color(0.75f, 0.9f, 1f), null, PackPaths.MagicFx + "/IceLance.prefab"),
             Visual(SpellIds.Grease, new Color(0.9f, 0.8f, 0.3f), null, PackPaths.GoopFx + "/GoopSpray.prefab"),
             Visual(SpellIds.ShockingGrasp, new Color(1f, 0.95f, 0.4f), null, MiscFx + "/ElectricalSparks.prefab"),
             Visual(SpellIds.GustOfWind, new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),

@@ -154,10 +154,11 @@ public partial class ChemGrid
     // --- water and ice ----------------------------------------------------------
 
     // Water joins the wet cells' surface (CellWaterMesh); the lake's own surface stands for its
-    // cells. Returns the height that covers and effects sit on.
+    // cells, except where they freeze: lake ice joins the ice, at the lake's surface. Returns the
+    // height that covers and effects sit on.
     float RenderWater(View v, Cell c, int x, int y, float ground, float groundTop, bool lake)
     {
-        bool wet = c.Water > 0 && !lake;
+        bool wet = c.Water > 0 && (!lake || c.Frozen);
         if (wet || v.wet) waterSurface.Changed(x, y, wet);
         v.wet = wet;
         if (lake) return c.Water > 0 ? Mathf.Max(ground, valley.lakeLevel) : ground;
@@ -165,6 +166,10 @@ public partial class ChemGrid
     }
 
     float WaterDepth(Cell c) => c.Water / (float)World.Rules.Sim.WaterUnitsPerStep * stepHeight;
+
+    /// <summary>The lake's surface if this cell is lake (its water is drawn by the lake), else negative infinity.</summary>
+    public float LakeLevelAt(int x, int y, Cell c) =>
+        valley != null && valley.IsLake(c, x, y) ? valley.lakeLevel : float.NegativeInfinity;
 
     /// <summary>Height of the water surface in a cell, as drawn (its ground when the cell is dry).</summary>
     public float WaterSurfaceY(int x, int y)

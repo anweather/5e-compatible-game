@@ -20,7 +20,7 @@ sound was heard in a later build (main, not 0.1.1).
 | P2 | The world's edge is just a drop-off | open |
 | P3 | Collision boxes of earth spells (raised and dug ground) don't match what's drawn | open |
 | P4 | Tree collision is a bit off | open |
-| P5 | Ray of Frost doesn't freeze water: nothing happens | open |
+| P5 | Ray of Frost doesn't freeze water: nothing happens | done: it froze, but lake ice wasn't drawn (the lake plane stands for its cells); now it is, solid, at the surface |
 | P6 | Performance drops with a lot of fire | open |
 
 ### Spells and how they feel
@@ -31,7 +31,7 @@ sound was heard in a later build (main, not 0.1.1).
 | P8 | Too many earth spells: consolidate them into a few primitives | open |
 | P9 | Earth needs more height range, up and down | open |
 | P10 | A second fire spell | open |
-| P11 | A spell that freezes water (see P5) | open |
+| P11 | A spell that freezes water (see P5) | done: Sleet Storm (level 3, Water & Ice), a wide circle of ice |
 | P12 | Spells should affect the other wizards, as Gust of Wind and the earth spells do: more than now, not so much it stops being fun | open |
 
 ### Movement and play

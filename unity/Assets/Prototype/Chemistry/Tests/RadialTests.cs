@@ -76,7 +76,7 @@ namespace Chem.Tests
             Assert.That(r.Group("empty").Color, Is.EqualTo(Rules.DefaultGroupColor));
             var layout = RadialLayout.From(r);
             Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "frost", "storm", "earth", "arcane" }), "an empty group gets no wedge");
-            Assert.That(layout.Groups[1].SpellIds, Is.EqualTo(new[] { "create-water" }));
+            Assert.That(layout.Groups[1].SpellIds, Is.EqualTo(new[] { "create-water", "sleet-storm" }));
             Assert.That(layout.Groups[2].SpellIds, Is.EqualTo(new[] { "ray-of-frost" }));
             Assert.That(r.Fingerprint, Is.Not.EqualTo(Base.Fingerprint), "groups are in the fingerprint");
         }
@@ -291,8 +291,10 @@ namespace Chem.Tests
             Move(r, 0, 0, 0.4);
             Assert.That((r.State, r.Element, r.Spell), Is.EqualTo((RadialState.Spells, Water, -1)), "the arc is out; ring 1 picks no spell");
             Move(r, 0.6, 0, 0.5);
-            Assert.That(r.HighlightedSpell, Is.EqualTo("create-water"));
-            IsSelected(Move(r, 0, 0, 0.6, held: false), "create-water");
+            // The arc's middle spell, whichever of the water spells that is.
+            string middle = r.HighlightedSpell;
+            Assert.That(Base.Spell(middle)?.Group, Is.EqualTo("water"));
+            IsSelected(Move(r, 0, 0, 0.6, held: false), middle);
         }
 
         [Test]

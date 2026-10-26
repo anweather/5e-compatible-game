@@ -111,7 +111,8 @@ public sealed class CellWaterMesh
             float ground = grid.GroundTop(x, y, c);
             float top = Mathf.Min(ground + c.Water * perUnit, cap[key] - Inset);
             if (MeetsLowGround(key, ground)) top = Mathf.Min(top, ground + Film);
-            tops[key] = Mathf.Max(ground + Film, top);
+            // Ice on the lake floats at the lake's surface, however deep the water under it.
+            tops[key] = Mathf.Max(Mathf.Max(ground + Film, top), grid.LakeLevelAt(x, y, c) + Film);
         }
     }
 

@@ -11,6 +11,8 @@
     "blurb": "A slick 10 ft square. Things slide across it. Flammable here, as in BG3; check the SRD text before relying on that." },
   { "id": "create-water", "group": "water", "name": "Create Water", "level": 1, "shape": "square", "size": 3, "element": "water", "power": 6,
     "blurb": "Pours water that flows downhill, fills pits and boilers, douses fire, and soaks creatures." },
+  { "id": "sleet-storm", "group": "water", "name": "Sleet Storm", "level": 3, "shape": "burst", "radius": 5, "element": "cold",
+    "blurb": "Level 3. Freezing sleet over a wide circle where you point: ponds and puddles freeze into walkable ice and flames go out. RAW it also makes the ground slick and breaks concentration." },
   { "id": "thunderwave", "group": "storm", "name": "Thunderwave", "level": 1, "shape": "burst", "origin": "self", "radius": 1, "element": "thunder", "push": 3, "damage": [2, 8],
     "blurb": "A wave of force all around you. Throws everything next to you away from you, even a boulder, a little." },
   { "id": "misty-step", "group": "arcane", "name": "Misty Step", "level": 2, "shape": "target", "effect": "teleport", "range": 12,
