@@ -64,4 +64,4 @@ sound was heard in a later build (main, not 0.1.1).
 
 | Id | Issue | State |
 |---|---|---|
-| P24 | More fixtures, further from the start: rocks, a river from the mountain into the lake, places to go to. Not too much: procedural generation is coming | open |
+| P24 | More fixtures, further from the start: rocks, a river from the mountain into the lake, places to go to. Not too much: procedural generation is coming | done (kept small): a river from the foothills under the northern mountain into the lake, real chemistry water (river terrain refills itself, so a trench dug from it fills and keeps filling); a ring of standing stones north-west and a rock outcrop east, away from the start |

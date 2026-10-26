@@ -72,9 +72,35 @@ public static class ValleyShape
 
     public static float DistanceToLake(Vector2 p) => Mathf.Max(0f, (p - LakeCentre).magnitude - 70f);
 
+    /// <summary>
+    /// The river's course, from a spring in the foothills under the northern mountain down into the
+    /// lake's north-east shore, east of the yard and the court (world x, z).
+    /// </summary>
+    public static readonly Vector2[] River =
+    {
+        new(132f, 330f), new(150f, 250f), new(128f, 170f), new(142f, 95f), new(120f, 30f), new(100f, -45f),
+    };
+
+    /// <summary>How far from its middle the river's squares reach (metres): two or three squares across.</summary>
+    public const float RiverHalfWidth = 1.6f;
+
+    /// <summary>Distance from a point to the river's middle line.</summary>
+    public static float DistanceToRiver(Vector2 p)
+    {
+        float best = float.MaxValue;
+        for (int i = 0; i + 1 < River.Length; i++)
+        {
+            var a = River[i];
+            var ab = River[i + 1] - a;
+            float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
+            best = Mathf.Min(best, (p - (a + ab * t)).magnitude);
+        }
+        return best;
+    }
+
     /// <summary>Kept clear of trees and rocks: near the yard, the cabin's pad, and the lake.</summary>
     public static bool KeepClear(Vector2 p, float margin) =>
-        DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p);
+        DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p) || DistanceToRiver(p) < RiverHalfWidth + 3f;
 
     /// <summary>Kept clear of grass and plants: the cabin's pad and the lake.</summary>
     public static bool KeepClearOfCabinAndLake(Vector2 p) => (p - Cabin).magnitude < 12f || LakeDepth(p) > 0.05f;

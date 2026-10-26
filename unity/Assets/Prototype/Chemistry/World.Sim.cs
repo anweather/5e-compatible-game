@@ -131,9 +131,26 @@ namespace Chem
 
         void TickWater(RowSpan[] rows)
         {
+            Springs(rows);
             // Even ticks sweep forward, odd ticks backward, so water doesn't drift one way.
             if (Tick % 2 == 0) FlowForward(rows);
             else FlowBackward(rows);
+        }
+
+        /// <summary>A spring's square (a river) refills to its level each tick, unless it is ice: water dug out of it keeps coming.</summary>
+        void Springs(RowSpan[] rows)
+        {
+            int max = Rules.Sim.WaterMaxLevel;
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    var c = cells[i];
+                    int level = TerrainOf(c).Spring;
+                    if (level > 0 && !c.Frozen && c.Water < level) c.Water = Math.Min(level, max);
+                }
+            }
         }
 
         void FlowForward(RowSpan[] rows)

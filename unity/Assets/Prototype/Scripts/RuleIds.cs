@@ -75,6 +75,7 @@ public static class TerrainIds
     public const string Rubble = "rubble";
     public const string Dirt = "dirt";
     public const string Pit = "pit";
+    public const string River = "river";
     public const string Metal = "metal";
     public const string LogWall = "logwall";
     public const string Rock = "rock";

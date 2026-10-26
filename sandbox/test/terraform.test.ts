@@ -259,3 +259,14 @@ test("Burning Hands is a cone from the caster, longer when charged, and matches 
   for (let i = 0; i < 40; i++) step(w);
   assert.equal(`${cellHash(w)} ${w.rng}`, "d1f5f85a 1912747678");
 });
+
+test("a river refills, so a trench cut from it fills and the river stays full; matches the C# golden", () => {
+  const w = room(24, 12, 6);
+  for (let x = 1; x <= 10; x++) Object.assign(cellAt(w, x, 6)!, { t: "river", water: 4 });
+  castSpell(w, "earthen-trench", 12, 6, 1);
+  run(w, 60);
+  assert.equal(cellAt(w, 3, 6)!.water, 4, "the river is full again");
+  assert.ok([12, 14, 16].every((x) => cellAt(w, x, 6)!.water > 0), "water ran down the trench");
+  assert.ok(totalWater(w) > 40, "more water than the river held: the spring keeps giving");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "602cdf19 6");
+});

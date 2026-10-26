@@ -62,7 +62,7 @@ public partial class ChemGrid : MonoBehaviour
         ['.'] = ("dirt", 0, false, null), [','] = ("grass", 0, false, null),
         ['"'] = ("brush", 0, false, null), ['T'] = ("tree", 0, false, null),
         ['='] = ("wood", 0, false, null), ['_'] = ("pit", 0, false, null),
-        ['w'] = ("pit", 4, false, null), ['*'] = ("pit", 4, true, null),
+        ['w'] = ("pit", 4, false, null), ['*'] = ("pit", 4, true, null), ['r'] = ("river", 4, false, null),
         ['~'] = ("dirt", 2, false, null), ['m'] = ("metal", 0, false, null),
         ['o'] = ("dirt", 0, false, "oil"), ['@'] = ("grass", 0, false, null),
         ['L'] = ("logwall", 0, false, null),

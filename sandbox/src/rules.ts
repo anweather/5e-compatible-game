@@ -18,6 +18,8 @@ export interface TerrainDef {
   burnsTo?: string;
   breaksTo?: string;
   elevation?: number;
+  /** Water a spring keeps the square filled to each tick (units; a river), or none. */
+  spring?: number;
   burnLog?: string;
   /** What digging leaves (grass is dug down to dirt); unset keeps the terrain. */
   dugTo?: string;

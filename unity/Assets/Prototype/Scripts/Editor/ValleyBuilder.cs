@@ -42,6 +42,7 @@ public static class ValleyBuilder
         ScatterRocks();
         BuildWorldEdge();
         BuildCourt();
+        BuildLandmarks();
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.chunks = terrains;
@@ -170,7 +171,7 @@ public static class ValleyBuilder
     }
 
     static bool TreeFits(Vector2 w) =>
-        !ValleyShape.KeepClear(w, 14f) && ValleyShape.HeightAt(w) <= 150f && ValleyTerrain.Steepness(w) <= 34f;
+        !ValleyShape.KeepClear(w, 14f) && (w - StonesAt).magnitude > 16f && (w - OutcropAt).magnitude > 14f && ValleyShape.HeightAt(w) <= 150f && ValleyTerrain.Steepness(w) <= 34f;
 
     // The valley's trees and one smaller conifer on each of the yard map's tree cells.
     static IEnumerable<(Vector2 at, float scale, int species, float turn)> AllTrees(
@@ -298,6 +299,49 @@ public static class ValleyBuilder
         bar.transform.position = at;
         bar.transform.localScale = size;
         bar.GetComponent<Renderer>().sharedMaterial = mat;
+    }
+
+    // --- places to go -----------------------------------------------------------
+
+    // A few things to walk out to, well away from the start: a ring of standing stones on the
+    // rise north-west of the yard, and a tall outcrop of rock to the east, past the river.
+    static readonly Vector2 StonesAt = new Vector2(-120f, 175f), OutcropAt = new Vector2(215f, 110f);
+
+    static void BuildLandmarks()
+    {
+        var rocks = new List<GameObject>();
+        foreach (var n in new[] { "Rock_A_01", "Rock_B_01", "Rock_C_01" })
+        {
+            var prefab = EditorAssets.LoadPrefab($"{DemoPack}/Rocks/{n}.prefab");
+            if (prefab != null) rocks.Add(prefab);
+        }
+        if (rocks.Count == 0) return;
+        var parent = new GameObject("Landmarks").transform;
+        // The standing stones: nine tall stones in a ring 18 m across, each turned to face the middle.
+        for (int i = 0; i < 9; i++)
+        {
+            float a = i * Mathf.PI * 2f / 9f;
+            var at = StonesAt + new Vector2(Mathf.Cos(a), Mathf.Sin(a)) * 9f;
+            Rock(parent, rocks[i % rocks.Count], at, Quaternion.Euler(0f, -a * Mathf.Rad2Deg, 0f), new Vector3(1.6f, 5.5f, 1.3f));
+        }
+        Rock(parent, rocks[0], StonesAt, Quaternion.Euler(0f, 20f, 0f), new Vector3(2.2f, 0.7f, 1.6f)); // the altar stone
+        // The outcrop: big rocks piled against each other, a climb (or a Misty Step) to a view.
+        var rng = new System.Random(23);
+        for (int i = 0; i < 6; i++)
+        {
+            var at = OutcropAt + new Vector2((float)rng.NextDouble() - 0.5f, (float)rng.NextDouble() - 0.5f) * 14f;
+            float s = 3f + 3f * (float)rng.NextDouble();
+            Rock(parent, rocks[rng.Next(rocks.Count)], at, Quaternion.Euler(0f, rng.Next(360), 0f), new Vector3(s, s * (0.8f + 0.6f * (float)rng.NextDouble()), s));
+        }
+    }
+
+    static void Rock(Transform parent, GameObject prefab, Vector2 at, Quaternion turn, Vector3 scale)
+    {
+        var rock = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+        var p = new Vector3(at.x, 0f, at.y);
+        p.y = ValleyTerrain.GroundAt(p) - 0.3f;
+        rock.transform.SetPositionAndRotation(p, turn);
+        rock.transform.localScale = scale;
     }
 
     // --- the world's edge ------------------------------------------------------
@@ -682,6 +726,7 @@ public static class ValleyBuilder
     {
         float ground = ValleyShape.HeightAt(p);
         if (ground < LakeLevel) return 'w';
+        if (ValleyShape.DistanceToRiver(p) < ValleyShape.RiverHalfWidth) return 'r';
         // The cabin faces east: its 6 m width runs north-south, its 4.5 m depth east-west.
         var q = p - CabinSpot;
         if (Mathf.Abs(q.y) <= 3.3f && Mathf.Abs(q.x) <= 2.55f) return 'L';

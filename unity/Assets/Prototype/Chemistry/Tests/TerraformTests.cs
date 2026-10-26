@@ -237,6 +237,24 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void GoldenRiverRefillsMatchesTs()
+        {
+            // The same as "a river refills..." in terraform.test.ts.
+            var w = Room(24, 12, 6);
+            for (int x = 1; x <= 10; x++)
+            {
+                w.At(x, 6).T = "river";
+                w.At(x, 6).Water = 4;
+            }
+            w.Cast("earthen-trench", 12, 6, 1);
+            Run(w, 60);
+            Assert.That(w.At(3, 6).Water, Is.EqualTo(4), "the river is full again");
+            Assert.That(new[] { 12, 14, 16 }.All(x => w.At(x, 6).Water > 0), "water ran down the trench");
+            Assert.That(TotalWater(w), Is.GreaterThan(40), "more water than the river held: the spring keeps giving");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("602cdf19 6"));
+        }
+
+        [Test]
         public void HeightRangeNumbersAreChecked()
         {
             System.Collections.Generic.IReadOnlyList<string> Errors(string sim) =>

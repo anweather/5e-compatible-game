@@ -85,6 +85,7 @@ namespace Chem
             ["pillar"] = RockMix,
             ["bedrock"] = RockMix,
             ["pit"] = DugMix,
+            ["river"] = DugMix,
         };
 
         /// <summary>

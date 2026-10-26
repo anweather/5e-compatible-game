@@ -17,6 +17,8 @@ namespace Chem
         public IReadOnlyList<string> Tags;
         /// <summary>In steps (pit = -1). World.ElevationUnits converts to water units.</summary>
         public int Elevation;
+        /// <summary>Water a spring keeps the square filled to each tick (units; a river, a spring), or 0.</summary>
+        public int Spring;
         public double Flammability;
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
@@ -342,6 +344,7 @@ namespace Chem
             Name = Str(o["name"]) ?? id,
             Tags = Strings(o["tags"]),
             Elevation = Int(o["elevation"]) ?? 0,
+            Spring = Int(o["spring"]) ?? 0,
             Flammability = Num(o["flammability"]) ?? 0,
             Fuel = Int(o["fuel"]),
             BurnsTo = Str(o["burnsTo"]),

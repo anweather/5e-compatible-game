@@ -107,7 +107,17 @@ function tickFire(w: World) {
   }
 }
 
+/** A spring's square (a river) refills to its level each tick, unless it is ice (World.Springs). */
+function springs(w: World) {
+  const max = RULES.sim.water.maxLevel;
+  for (const c of w.cells) {
+    const level = terrainDef(c).spring ?? 0;
+    if (level > 0 && !c.frozen && c.water < level) c.water = Math.min(level, max);
+  }
+}
+
 function tickWater(w: World) {
+  springs(w);
   const n = w.cells.length;
   const forward = w.tick % 2 === 0;
   for (let k = 0; k < n; k++) {
