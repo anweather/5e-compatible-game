@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Globalization;
+using Chem;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -20,6 +22,8 @@ public abstract class ShowcaseScript : MonoBehaviour
     protected CinemachineBrain brain;
     Vector3 lookingAt;
     float started;
+
+    protected World World => grid.World;
 
     protected static Vector3 V(float x, float y, float z) => new Vector3(x, y, z);
 
@@ -101,6 +105,51 @@ public abstract class ShowcaseScript : MonoBehaviour
         float s = 0f;
         foreach (var w in waypoints) s += w.seconds;
         return s;
+    }
+
+    /// <summary>The valley terrains' height under a point (0 off them).</summary>
+    protected static float TerrainGround(Vector3 p)
+    {
+        foreach (var t in Terrain.activeTerrains)
+        {
+            var o = t.transform.position;
+            var s = t.terrainData.size;
+            if (p.x >= o.x && p.x <= o.x + s.x && p.z >= o.z && p.z <= o.z + s.z) return o.y + t.SampleHeight(p);
+        }
+        return 0f;
+    }
+
+    /// <summary>Puts the wizard at a point at once (its CharacterController off for the move).</summary>
+    protected void Teleport(Vector3 at)
+    {
+        var body = wizard.GetComponent<CharacterController>();
+        body.enabled = false;
+        wizard.transform.position = at;
+        body.enabled = true;
+    }
+
+    /// <summary>Puts the wizard on the ground of a world cell at once.</summary>
+    protected void PlaceCell(int x, int y)
+    {
+        var at = grid.CellCenter(x, y);
+        Teleport(new Vector3(at.x, grid.GroundAt(at) + 0.05f, at.z));
+    }
+
+    // The clock's start hour that puts the next tick at this hour of day 1 or later.
+    protected string At(float hour)
+    {
+        var p = World.Rules.Sim;
+        double elapsed = (double)(World.Tick + 1) * Sky.MinutesPerDay / Sky.Ticks(p, p.Day.LengthMinutes) / 60.0;
+        double start = ((hour - elapsed) % 24 + 24) % 24;
+        return "'day': { 'startHour': " + start.ToString("0.###", CultureInfo.InvariantCulture) + " }";
+    }
+
+    // A rule switch to a mod over sim.json (replacing the last one), in force at the next tick.
+    protected IEnumerator Switch(string sim)
+    {
+        var mod = new ActiveMod("showcase-sky", "{ 'patch': { 'sim': { " + sim + " } } }");
+        grid.QueueRules(grid.CurrentRules.WithMods(new[] { mod }));
+        yield return Wait(0.5f);
     }
 
     protected IEnumerator Cast(string spell, int x, int y, int dir, float wait)

@@ -1,5 +1,4 @@
 using System.Collections;
-using System.Globalization;
 using System.Linq;
 using Chem;
 using UnityEngine;
@@ -98,20 +97,4 @@ public class SkyProbe : ProbeScenario
     static string Only(string kind) =>
         "{ " + string.Join(", ", new[] { "clear", "cloudy", "windy", "fog", "rain", "storm" }.Select(k => $"'{k}': {(k == kind ? 1 : 0)}")) + " }";
 
-    // The clock's start hour that puts the next tick at this hour of day 1 or later.
-    string At(float hour)
-    {
-        var p = World.Rules.Sim;
-        double elapsed = (double)(World.Tick + 1) * Sky.MinutesPerDay / Sky.Ticks(p, p.Day.LengthMinutes) / 60.0;
-        double start = ((hour - elapsed) % 24 + 24) % 24;
-        return "'day': { 'startHour': " + start.ToString("0.###", CultureInfo.InvariantCulture) + " }";
-    }
-
-    // A rule switch to a probe mod over sim.json (replacing the last one), in force at the next tick.
-    IEnumerator Switch(string sim)
-    {
-        var mod = new ActiveMod("probe-sky", "{ 'patch': { 'sim': { " + sim + " } } }");
-        grid.QueueRules(grid.CurrentRules.WithMods(new[] { mod }));
-        yield return Wait(0.5f);
-    }
 }

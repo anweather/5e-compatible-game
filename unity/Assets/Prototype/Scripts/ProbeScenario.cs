@@ -70,8 +70,6 @@ public abstract class ProbeScenario : ShowcaseScript
 
     // --- for scenarios -------------------------------------------------------------
 
-    protected World World => grid.World;
-
     protected void Check(string name, bool pass, string detail = null) =>
         Result.Checks.Add(new ProbeCheck { Name = name, Pass = pass, Detail = detail });
 
@@ -123,27 +121,6 @@ public abstract class ProbeScenario : ShowcaseScript
     {
         var cell = grid.YardCell(x, y);
         return World.SpellCells(World.Rules.Spell(spellId), cell.x, cell.y, dir);
-    }
-
-    /// <summary>The valley terrains' height under a point (0 off them).</summary>
-    protected static float TerrainGround(Vector3 p)
-    {
-        foreach (var t in Terrain.activeTerrains)
-        {
-            var o = t.transform.position;
-            var s = t.terrainData.size;
-            if (p.x >= o.x && p.x <= o.x + s.x && p.z >= o.z && p.z <= o.z + s.z) return o.y + t.SampleHeight(p);
-        }
-        return 0f;
-    }
-
-    /// <summary>Puts the wizard at a point at once (its CharacterController off for the move).</summary>
-    protected void Teleport(Vector3 at)
-    {
-        var body = wizard.GetComponent<CharacterController>();
-        body.enabled = false;
-        wizard.transform.position = at;
-        body.enabled = true;
     }
 
     void Summarise()

@@ -12,6 +12,9 @@ using UnityEngine;
 // with 1080p and queues frames in memory until the Editor runs out.
 // Prototype > Record Valley Showcase records ValleyShowcase (the chunked
 // valley) the same way, into Recordings/ValleyShowcase/.
+// RecordShowcase("EarthShowcase") records any ShowcaseScript by its class name the same
+// way (the recap films: EarthShowcase, SkyFireShowcase, WaterShowcase,
+// ValleyTourShowcase), from script eval or the CLI.
 // RecordUntil records any running session, such as one player's view of
 // the 4-player demo.
 public static class DemoRecorder
@@ -29,6 +32,11 @@ public static class DemoRecorder
 
     [MenuItem("Prototype/Record Valley Showcase")]
     public static void RecordValleyShowcase() => PlayAndRecord(Valley);
+
+    const string Named = "showcase:";
+
+    /// <summary>Plays and records the ShowcaseScript of this class name into Recordings/&lt;name&gt;/ (1080p JPEG frames).</summary>
+    public static void RecordShowcase(string typeName) => PlayAndRecord(Named + typeName);
 
     static void PlayAndRecord(string which)
     {
@@ -82,6 +90,14 @@ public static class DemoRecorder
         void Stop() => EditorApplication.isPlaying = false;
         if (which == Overnight) { RecordShowcase<OvernightShowcase>(Stop); return; }
         if (which == Valley) { RecordShowcase<ValleyShowcase>(Stop); return; }
+        if (which.StartsWith(Named, System.StringComparison.Ordinal))
+        {
+            var type = typeof(ShowcaseScript).Assembly.GetType(which.Substring(Named.Length));
+            if (type == null || !typeof(ShowcaseScript).IsAssignableFrom(type)) { Debug.LogError($"No showcase {which}"); Stop(); return; }
+            var show = (ShowcaseScript)new GameObject(type.Name).AddComponent(type);
+            RecordUntil($"Recordings/{type.Name}", () => show == null || show.Done, realTime: false, Stop, 1920, 1080, frames: true);
+            return;
+        }
         var director = new GameObject("DemoDirector").AddComponent<DemoDirector>();
         RecordUntil("Recordings/ChemistryYard", () => director == null || director.Done, realTime: false, Stop);
     }

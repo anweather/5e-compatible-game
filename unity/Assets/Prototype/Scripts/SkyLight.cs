@@ -59,6 +59,10 @@ public class SkyLight : MonoBehaviour
         float minute = (float)(Sky.MinutesSmooth(world.Rules.Sim, world.Tick) % Sky.MinutesPerDay);
         float sunUp = Place(sun.transform, minute);
         float moonUp = moon != null ? Place(moon.transform, minute + Sky.MinutesPerDay / 2f) : 0f;
+        // The procedural sky lights itself from RenderSettings.sun: the sun by day, the moon by night
+        // (with the moon in it by day, the daytime sky drew black).
+        var lit = moon != null && sunUp < -0.05f ? moon : sun;
+        if (RenderSettings.sun != lit) RenderSettings.sun = lit;
         Shine(sunUp, moonUp);
         Haze();
     }
