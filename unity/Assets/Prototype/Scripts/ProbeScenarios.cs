@@ -18,13 +18,16 @@ public static class ProbeScenarios
         /// <summary>The longest a run may take in Play mode before the editor gives up on it.</summary>
         public float MaxSeconds { get; }
         public Type Type { get; }
+        /// <summary>Players in the run: more than 1 means Multiplayer Play Mode virtual players (Player 2 on), started before Play mode.</summary>
+        public int Players { get; }
 
-        public Entry(string name, Type type, float maxSeconds, string description)
+        public Entry(string name, Type type, float maxSeconds, string description, int players = 1)
         {
             Name = name;
             Type = type;
             MaxSeconds = maxSeconds;
             Description = description;
+            Players = players;
         }
     }
 
@@ -43,6 +46,13 @@ public static class ProbeScenarios
         new Entry("perf", typeof(PerfProbe), 330f,
             "Holds a fixed camera over the valley for seconds=N (default 10) and reports the frame times " +
             "(Editor Play mode, not a player build). Checks: no console errors."),
+        new Entry("online", typeof(OnlineProbe), 180f,
+            "This Editor hosts and a Multiplayer Play Mode virtual player (Player 2, started if it isn't running) joins on " +
+            "127.0.0.1. Each casts Fire Bolt, Earthen Trench and Wall of Stone through the network; the virtual player's " +
+            "Thunderwave throws a crate and the host's wizard, and the host's wizard falls 10 m. Checks: it joined, every 30-tick checksum (cells and rules) equal on both, the same world " +
+            "at the sample tick, no desync seen, the client's terrain drawn as low as the host's under the trenches, the same " +
+            "water (cells and drawn surface) and walls, the crate and the host's wizard each within 5 cm on both, no console errors on either.",
+            players: 2),
     };
 
     public static Entry Find(string name) =>

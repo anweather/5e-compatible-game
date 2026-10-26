@@ -404,6 +404,37 @@ joiner's transport still logged "Receive queue is full (512)" once while
 catching up; the receive queue is 512 packets (`ChemYardBuilder`), and
 reliable messages are resent, so nothing desynced.
 
+## 8. Online on the chunked valley (checked 2026-10-26)
+
+The first online check since the valley became 9×9 chunk terrains
+(`feat/chunked-valley`, slices 1 and 2). It is now a probe scenario,
+`tools/probe.sh online` (`docs/FAST_LOOP.md`): this Editor hosts, the
+Multiplayer Play Mode virtual player Player 2 joins on 127.0.0.1, and
+both cast through the network on one schedule of sim ticks.
+
+| Test | Result |
+|---|---|
+| By hand: host and Player 2 each cast Fire Bolt, Earthen Trench and Wall of Stone; Player 2's Thunderwave | Every 30-tick checksum both machines logged was equal (ticks 0 to 420); no desync warning. Trench cells: the same heights and water on both, the terrain drawn under them the same (-0.998 m at the host's trench on both), and the drawn water surface on the same cells. Crate 6 thrown 3.30 m by the host's physics; the client within 5 mm |
+| By hand: Player 2 leaves and rejoins at tick 924 (29 prop effects in the history) | Checksums equal from 930 to 1020 after catch-up; the same props left; trenches, walls and water as on the host |
+| `probe online`, Player 2 started by the probe (54 s) | 2 players; 7/7 checksums equal (ticks 30 to 210) and the same world at the sample tick (217); terrain under the four earth spells drawn identically (0.00 m apart, the host's trench 5.48 m lower in sum, the client's 7.98 m); the same wet and drawn-wet cells (3 in the host's trench, from the pond); the same raised walls; crate 6 thrown 3.28 m, the client's copy 0.7 cm from it; the host's wizard thrown 2.17 m by the client's Thunderwave, the client's view 0.7 cm from it; no console errors on either |
+
+**Found and fixed.** No desync. One error: another player's wizard
+landing from a fall (8 m or more) threw a `NullReferenceException` on
+every other screen, in the Starter Assets `ThirdPersonController.OnLand`.
+A puppet's controller is switched off, so its `Start`, which looks up the
+`CharacterController`, never runs, but the Animator still sends it the
+landing and footstep events. `NetWizard` now hands it the
+`CharacterController` (`WizardRig.PrepareForAnimationEvents`), so other
+players' landings and footsteps play. The probe's host wizard falls 10 m
+to cover it: without the fix `client_no_console_errors` fails.
+
+**Not affected by chunking.** The chemistry's active chunks are never
+switched off at runtime (nothing calls `World.SetActive`), so host and
+clients always step the same chunks. The terrain a client draws comes from
+the same cells through `CellHeightfield`; `OnlineValleyTests` checks in the
+core that a client and a late joiner on a valley-sized world keep the
+host's checksums and draw the same heightfield.
+
 ## Proposed decision entries (not yet in `DECISIONS.md`)
 
 ```markdown

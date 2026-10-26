@@ -23,6 +23,7 @@ public class NetWizard : NetworkBehaviour
         if (!IsOwner)
         {
             name = $"Wizard (player {OwnerClientId + 1})";
+            WizardRig.PrepareForAnimationEvents(gameObject);
             return;
         }
 

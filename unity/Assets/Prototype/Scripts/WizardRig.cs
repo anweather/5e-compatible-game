@@ -42,6 +42,20 @@ public static class WizardRig
         }
     }
 
+    /// <summary>
+    /// Readies another player's wizard (a puppet, its controller switched off) for its animation
+    /// events. The Animator still sends OnFootstep and OnLand to the switched-off
+    /// ThirdPersonController, which plays their sounds at its CharacterController's centre. It
+    /// looks that up in Start, which a switched-off controller never runs, so without this a
+    /// puppet's landings and footsteps threw a NullReferenceException on every other screen.
+    /// </summary>
+    public static void PrepareForAnimationEvents(GameObject wizard)
+    {
+        var controller = wizard.GetComponent(ControllerComponent);
+        var field = Field(controller, "_controller", isPublic: false);
+        if (field != null && field.GetValue(controller) == null) field.SetValue(controller, wizard.GetComponent<CharacterController>());
+    }
+
     /// <summary>A field of a Starter Assets component, found by name; null if the component or field is missing.</summary>
     public static FieldInfo Field(Component component, string field, bool isPublic)
     {

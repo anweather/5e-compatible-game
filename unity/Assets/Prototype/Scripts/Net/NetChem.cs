@@ -57,6 +57,15 @@ public class NetChem : NetworkBehaviour
 
     public bool Online => IsSpawned;
 
+    /// <summary>
+    /// Raised on every machine after a tick is applied, with the tick; at every HashEvery'th tick
+    /// also with its checksum (null otherwise). The probe's online scenario compares these.
+    /// </summary>
+    public event System.Action<int, string> TickApplied;
+
+    /// <summary>True once this client has found a checksum that differs from the host's.</summary>
+    public bool DesyncSeen => desyncReported;
+
     void Awake() => grid = GetComponent<ChemGrid>();
 
     /// <summary>Host only: the rules the host has most recently stamped (or will stamp next), or null if none since spawn.</summary>
@@ -263,6 +272,7 @@ public class NetChem : NetworkBehaviour
             grid.RunBatch(batch ?? new TickBatch(next));
             if (liveCasts.Remove(next, out var casts)) Shove(casts);
             CheckHash(world.Tick);
+            TickApplied?.Invoke(world.Tick, world.Tick % HashEvery == 0 ? Checksum(grid) : null);
         }
     }
 

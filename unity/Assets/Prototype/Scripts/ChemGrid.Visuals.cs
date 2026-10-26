@@ -65,6 +65,13 @@ public partial class ChemGrid
         fireLights = new FireLightPool(this, maxFireLights);
     }
 
+    /// <summary>The top of the water drawn on a cell (CellWaterMesh), or null where none is drawn.</summary>
+    public float? DrawnWaterTop(int x, int y)
+    {
+        float top = waterSurface.Top(x, y, float.NaN);
+        return float.IsNaN(top) ? null : top;
+    }
+
     void Render()
     {
         for (int y = 0; y < World.H; y++)
