@@ -49,10 +49,13 @@ public static class ProceduralSounds
     public static AudioClip Rumble => Make("rumble", 1.2f, (t, r) =>
         Swell(t, 1.2f) * (Lowpass(ref rumbleLp, 0.03f, Noise(r)) * 3f + (r.NextDouble() < 0.01 ? Noise(r) * 0.4f : 0f)));
 
-    /// <summary>Magic without an element (levitate, blink, the spectral hand): a shimmer.</summary>
-    public static AudioClip Shimmer => Make("shimmer", 0.9f, (t, r) =>
-        Decay(t, 0.4f) * (Tone(t, 880f * (1f + 0.01f * Mathf.Sin(t * 40f))) * 0.2f
-        + Tone(t, 1320f) * 0.15f * Step(t, 0.08f) + Tone(t, 1760f) * 0.12f * Step(t, 0.16f)));
+    /// <summary>
+    /// Magic without an element (levitate, blink, the spectral hand), when the SoundBank has no
+    /// recording: a soft, airy swell, breathy noise rising and falling over a low two-note pad.
+    /// </summary>
+    public static AudioClip Shimmer => Make("shimmer", 1.0f, (t, r) =>
+        Swell(t, 1.0f) * (Lowpass(ref shimmerLp, 0.04f + 0.08f * Swell(t, 1.0f), Noise(r)) * 2.2f
+        + (Tone(t, 220f) + Tone(t, 330f * (1f + 0.003f * Mathf.Sin(t * 9f)))) * 0.12f));
 
     /// <summary>An explosion: a big boom.</summary>
     public static AudioClip Explosion => Make("explosion", 2.0f, (t, r) =>
@@ -69,12 +72,11 @@ public static class ProceduralSounds
 
     // --- building blocks -------------------------------------------------------
 
-    static float fireLp, splashLp, squelchLp, thunderLp, rumbleLp, boomLp, loopLp;
+    static float fireLp, splashLp, squelchLp, thunderLp, rumbleLp, boomLp, loopLp, shimmerLp;
 
     static float Noise(System.Random r) => (float)(r.NextDouble() * 2.0 - 1.0);
     static float Tone(float t, float hz) => Mathf.Sin(2f * Mathf.PI * hz * t);
     static float Decay(float t, float seconds) => t < 0f ? 0f : Mathf.Exp(-t / seconds);
-    static float Step(float t, float at) => t >= at ? 1f : 0f;
     static float Swell(float t, float length) => Mathf.Sin(Mathf.PI * Mathf.Clamp01(t / length));
 
     // One-pole low-pass; k near 0 is darker, near 1 brighter. State lives in the caller's field.
