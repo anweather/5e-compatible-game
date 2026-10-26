@@ -50,37 +50,32 @@ record its **full 40-character SHA**.
 
 The other machine: pull, then restart its Editor (a ProjectSettings change).
 
-## 3. Build
+## 3. Build, pack and draft (one script, either machine)
 
-- **Windows zip (the PC):** Prototype > Build > Release (Windows zip), or
-  `PrototypeBuild.Release()`. It refuses a dirty tree. Check its log line
-  `Release: OK, alpha X.Y.Z (<sha>)` names the release commit.
-- **macOS app (the Mac), same commit,** for the two-machine online test:
-  `PrototypeBuild.Build(BuildTarget.StandaloneOSX, "Builds/macOS/" + Application.productName + ".app")`.
-  A first build after a target switch can fail on a SpeedTree shadergraph
-  import; retry once.
-- Both builds log `NET CONFIG: <hash>` at startup; the two hashes must
-  match or joins are refused.
+`tools/ship-update.sh X.Y.Z` (no `--test`), run in the background: it builds
+the macOS app and the Windows folder at the release commit, packs both with
+Velopack (installers, portable zips, full packages, a delta from the last
+published release) and uploads them to the **draft** `alpha-X.Y.Z`. Both
+platforms build on the Mac, so the PC can keep working. Details:
+`docs/RELEASING.md`, "Updates in place", and the `ship-update` skill.
 
-## 4. Draft on GitHub
+Then the notes: `git log --no-merges --pretty='- %s' alpha-<previous>..HEAD`,
+rewritten as a short player-facing list (what's new, what's fixed, known
+issues, controls changes; plain words, no commit-speak), plus how to
+install: Windows `SpellChemistryValley-win-Setup.exe`; macOS the `.pkg` or
+the portable zip into Applications, "Open Anyway" in Privacy & Security.
+`gh release edit alpha-X.Y.Z --notes-file <scratchpad>/notes.md`.
 
-Notes: `git log --no-merges --pretty='- %s' alpha-<previous>..HEAD`, then
-rewrite them as a short player-facing list (what's new, what's fixed,
-known issues, controls changes). Plain words, no commit-speak.
+Both builds log `NET CONFIG: <hash>` at startup; the two must match or joins
+are refused.
 
-```sh
-gh release create alpha-X.Y.Z unity/Builds/Release/SpellChemistryValley-alpha-X.Y.Z-windows.zip \
-  --target <full 40-char SHA> --prerelease --draft \
-  --title "alpha X.Y.Z" --notes-file <scratchpad>/notes.md
-```
+## 4. Test the draft (stop for Andrew)
 
-A short SHA in `--target` gives HTTP 422.
-
-## 5. Test the draft (stop for Andrew)
-
-- On the PC: download the zip **from the draft**, unzip into a fresh
-  folder, run it. Windows warnings for the unsigned exe are expected (see
-  RELEASING.md). Esc menu shows `alpha X.Y.Z (<sha>)`.
+- On the PC: download `Setup.exe` **from the draft** and install. Windows
+  warnings for the unsigned exe are expected (see RELEASING.md). Setup
+  finishes without a 30 s wait or an "Install Partially Succeeded" dialog,
+  and the Esc menu shows `alpha X.Y.Z (<sha>)`.
+- On the Mac: the portable zip into `~/Applications` (not Documents).
 - Mac app hosts or joins the PC over Relay: `players=2`, `desync=False`,
   no exceptions in either `Player.log`.
 - Andrew checks anything that needs real hardware or eyes (the DualSense,
@@ -88,7 +83,7 @@ A short SHA in `--target` gives HTTP 422.
 
 Report what was and wasn't checked, then **ask Andrew to publish**.
 
-## 6. Publish (only on Andrew's go-ahead)
+## 5. Publish (only on Andrew's go-ahead)
 
 ```sh
 gh release edit alpha-X.Y.Z --draft=false
