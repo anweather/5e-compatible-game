@@ -222,11 +222,11 @@ test("earth shaping is deterministic and matches the C# golden", () => {
     "20|info|1|You cast Wall of Stone",
     "20|info|1|You cast Move Earth",
     "20|info|1|You cast Create Water",
-    "20|info|1|You cast Mold Earth",
+    "20|info|1|You cast Shape Earth",
     "20|info|1|You cast Fire Bolt",
     "20|info|1|Fire takes hold of the grass",
     "20|info|1|You cast Shocking Grasp",
     "20|notable|1|Lightning arcs through everything conductive that touches",
-    "20|info|1|You cast Mold Earth (heap)",
+    "20|info|1|You cast Shape Earth (heap)",
   ]);
 });

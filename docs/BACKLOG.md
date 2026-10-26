@@ -73,7 +73,7 @@ earth raised or dug. Caves need more than one walkable level per square.
 Dig dirt, but not rock.
 
 - **What:** each terrain gets a hardness; digging tools and spells have a
-  strength; Mold Earth moves dirt and sand, not stone; a pick or Stone
+  strength; Shape Earth moves dirt and sand, not stone; a pick or Stone
   Shape is needed for rock; metal and bedrock never dig.
 - **Builds on:** `materials.json` (add `hardness`) and the terraform
   spells, which already refuse some cells. Mostly data plus one check in

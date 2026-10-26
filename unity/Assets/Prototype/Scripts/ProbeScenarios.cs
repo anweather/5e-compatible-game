@@ -34,9 +34,9 @@ public static class ProbeScenarios
     public static readonly IReadOnlyList<Entry> All = new[]
     {
         new Entry("smoke", typeof(SmokeProbe), 90f,
-            "Walks a few steps, casts each Elements spell once on the yard, then Mold Earth. " +
+            "Walks a few steps, casts each Elements spell once on the yard, then Shape Earth. " +
             "Checks: every prop and item of world/things.json spawned on its cell, the wizard moved, every spell is on the bar and was cast (World log), fire started, " +
-            "Levitate lifted a prop, reactions logged, Mold Earth changed the ground, no console errors."),
+            "Levitate lifted a prop, reactions logged, Shape Earth changed the ground, no console errors."),
         new Entry("fire", typeof(FireProbe), 60f,
             "Fire Bolt on the meadow west of the old yard. Counts burning cells at t+10 s and t+20 s. " +
             "Checks: the fire has spread (more than one burning cell at t+10 s), no console errors."),
@@ -93,7 +93,7 @@ public class SmokeProbe : ProbeScenario
         Check("levitate_lifted", ConsoleSaid("floats up", mark), "a prop's \"... floats up\" line in the console");
         Shot("elements");
 
-        // Mold Earth digs its square.
+        // Shape Earth digs its square.
         var cells = SpellCells(SpellIds.MoldEarth, 6, 8, 0);
         int before = cells.Sum(c => World.At(c.x, c.y).Height);
         yield return CastLogged(SpellIds.MoldEarth, 6, 8, 0, 1.5f);
