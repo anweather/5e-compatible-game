@@ -1,4 +1,4 @@
-// One sim tick's inputs, in lockstep: a rule switch (mods on or off), the
+// One sim tick's inputs, in lockstep: chunks waking or sleeping (ChunkStreaming), a rule switch (mods on or off), the
 // casts stamped for that tick, and the effects physics props had on cells
 // (Effects.cs: a barrel's blast, a lantern's spill), which the host saw and
 // stamped like casts. Solo play runs one per tick; online the host
@@ -44,12 +44,14 @@ namespace Chem
 
     public sealed class TickBatch
     {
-        public TickBatch(int tick, IEnumerable<CastCommand> casts = null, IReadOnlyList<ActiveMod> mods = null, IEnumerable<EffectCommand> effects = null)
+        public TickBatch(int tick, IEnumerable<CastCommand> casts = null, IReadOnlyList<ActiveMod> mods = null, IEnumerable<EffectCommand> effects = null,
+            IEnumerable<ChunkSwitch> chunks = null)
         {
             Tick = tick;
             Casts = (casts ?? Enumerable.Empty<CastCommand>()).ToList();
             Mods = mods;
             Effects = (effects ?? Enumerable.Empty<EffectCommand>()).ToList();
+            Chunks = (chunks ?? Enumerable.Empty<ChunkSwitch>()).ToList();
         }
 
         /// <summary>The tick this batch brings the world to: it runs while the world is at Tick - 1.</summary>
@@ -59,9 +61,11 @@ namespace Chem
         public IReadOnlyList<ActiveMod> Mods { get; set; }
         /// <summary>What physics props did to cells, applied after the casts, in order.</summary>
         public List<EffectCommand> Effects { get; }
+        /// <summary>Chunks waking or going to sleep (ChunkStreaming), applied first.</summary>
+        public List<ChunkSwitch> Chunks { get; }
 
         /// <summary>
-        /// Runs the batch: switches the rules if it says to, applies its casts and then its props'
+        /// Runs the batch: wakes or pauses chunks and switches the rules if it says to, applies its casts and then its props'
         /// effects, then steps the world.
         /// Returns the rules now in force. A rule switch that doesn't check out (it can't on a
         /// machine whose own files differ) keeps the old rules, reports why through
@@ -72,6 +76,7 @@ namespace Chem
             if (world == null) throw new ArgumentNullException(nameof(world));
             if (rules == null) throw new ArgumentNullException(nameof(rules));
             errors = Array.Empty<string>();
+            ChunkStreaming.Apply(world, Chunks);
             if (Mods != null)
             {
                 try
@@ -96,7 +101,7 @@ namespace Chem
         /// an empty batch.
         /// </summary>
         public static Dictionary<int, TickBatch> Timeline(IEnumerable<(int tick, CastCommand cast)> casts, IEnumerable<RuleChange> changes, int upToTick,
-            IEnumerable<(int tick, EffectCommand effect)> effects = null)
+            IEnumerable<(int tick, EffectCommand effect)> effects = null, IEnumerable<(int tick, ChunkSwitch chunk)> chunks = null)
         {
             var batches = new Dictionary<int, TickBatch>();
             for (int t = 1; t <= upToTick; t++) batches[t] = new TickBatch(t);
@@ -106,6 +111,8 @@ namespace Chem
                 if (batches.TryGetValue(change.Tick, out var b)) b.Mods = change.Mods;
             foreach (var (tick, effect) in effects ?? Enumerable.Empty<(int, EffectCommand)>())
                 if (batches.TryGetValue(tick, out var b)) b.Effects.Add(effect);
+            foreach (var (tick, chunk) in chunks ?? Enumerable.Empty<(int, ChunkSwitch)>())
+                if (batches.TryGetValue(tick, out var b)) b.Chunks.Add(chunk);
             return batches;
         }
     }
