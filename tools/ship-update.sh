@@ -41,9 +41,9 @@ for arg in "$@"; do
 done
 
 if [ $test = 1 ]; then
-  suffix=-test; tag="update-test-$version"; name="Update test $version (not for players)"; publish=--publish
+  suffix=-test; tag="update-test-$version"; name="Update test $version (not for players)"; draft=
 else
-  suffix=; tag="alpha-$version"; name="alpha $version"; publish=
+  suffix=; tag="alpha-$version"; name="alpha $version"; draft=--draft
 fi
 commit="$(git -C "$here" rev-parse HEAD)"
 # GitHub tags the release at this commit, so it has to be pushed.
@@ -51,7 +51,7 @@ if [ -z "$(git -C "$here" branch -r --contains "$commit" 2>/dev/null)" ]; then
   echo "commit ${commit:0:7} isn't on GitHub yet: push it first (the release is tagged at it)" >&2
   exit 1
 fi
-token="${GITHUB_TOKEN:-$(gh auth token)}"
+token="${GITHUB_TOKEN:-$(gh auth token)}" # for vpk download
 out="$here/unity/Builds/Update"
 step() { echo; echo "== $*"; }
 
@@ -80,11 +80,24 @@ pack() { # channel, extra vpk args...
 pack "osx$suffix" pack -p "$out/osx/$TITLE.app" -e "$TITLE"
 pack "win$suffix" "[win]" pack -r win-x64 -p "$out/win" -e SpellChemistryValley.exe
 
+# Upload with gh rather than `vpk upload github`: vpk finds a release by its tag,
+# which GitHub doesn't do for drafts, and a real update is a draft until it's tested.
+step "Uploading to $tag"
+if ! gh release view "$tag" -R "$REPO" >/dev/null 2>&1; then
+  # shellcheck disable=SC2086 # $draft is one flag or nothing
+  gh release create "$tag" -R "$REPO" --target "$commit" --prerelease $draft \
+    --title "$name" --notes "In-place update $version for macOS and Windows (Velopack)."
+fi
 for channel in "osx$suffix" "win$suffix"; do
-  step "Uploading $channel to $tag"
-  # shellcheck disable=SC2086 # $publish is one flag or nothing
-  "$VPK" upload github -o "$out/releases-$channel" -c "$channel" --repoUrl "$REPO" --token "$token" \
-    --pre $publish --merge --tag "$tag" --releaseName "$name" --targetCommitish "$commit"
+  dir="$out/releases-$channel"
+  # This version's packages, the installers and the channel's feed (the folder also
+  # holds the previous full package, fetched only to make the delta).
+  files=("$dir/releases.$channel.json" "$dir/$APP_ID-$version-$channel-full.nupkg" "$dir/$APP_ID-$channel-Portable.zip")
+  for f in "$dir/$APP_ID-$version-$channel-delta.nupkg" "$dir/$APP_ID-$channel-Setup".*; do
+    [ -e "$f" ] && files+=("$f")
+  done
+  echo "$channel: ${files[*]##*/}"
+  gh release upload "$tag" -R "$REPO" --clobber "${files[@]}"
 done
 
 step "Done"

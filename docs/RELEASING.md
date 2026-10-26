@@ -98,7 +98,8 @@ tree, it:
 3. packs each with `vpk` (the Windows one cross-packed with `[win]`), giving
    a full package, a delta, `Setup.exe` / `Setup.pkg`, a portable zip and
    the channel's feed, `releases.<channel>.json`;
-4. uploads both channels into one GitHub release (`vpk upload github`).
+4. uploads both channels into one GitHub release with `gh` (`vpk upload
+   github` can't find a draft by its tag).
 
 Without `--test` that's the draft `alpha-X.Y.Z` (test it, then publish as in
 step 6 above). With `--test` it's `update-test-X.Y.Z`, published at once, on
