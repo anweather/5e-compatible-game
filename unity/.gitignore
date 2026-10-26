@@ -56,8 +56,34 @@
 *.mdb
 *.opendb
 *.VC.db
+*.suo
+*.tmp
+*.userprefs
+*.unityproj
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+ExportedObj/
+.consulo/
+.gradle/
+*.DotSettings.user
+/[Aa]ssets/Plugins/Editor/JetBrains*
 
 # OS and crash files
 .DS_Store
 sysinfo.txt
 crashlytics-build.properties
+mono_crash.*
+*.log
+
+# More that Unity generates (from GitHub's Unity.gitignore)
+.utmp/
+/[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+/[Aa]ssets/[Ss]ceneDependencyCache*
+/UIElementsSchema/
+
+# Player builds outside Builds/
+*.apk
+*.aab
+*.unitypackage
+*.unitypackage.meta

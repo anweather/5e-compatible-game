@@ -9,7 +9,7 @@ is reached from a phone through Remote Control.
 
 | Tool | Version / notes |
 |---|---|
-| Git for Windows | Long paths on: `git config --global core.longpaths true` |
+| Git for Windows | Long paths on: `git config --global core.longpaths true`. Git LFS comes with it (art, audio and video go to LFS; see `.gitattributes`); on the Mac, `brew install git-lfs`, then `git lfs install` once |
 | Unity Hub, then Editor **6000.3.27f1** | Modules: Windows Build Support (IL2CPP optional). Same Editor version as `unity/ProjectSettings/ProjectVersion.txt` |
 | .NET SDK 8 | `dotnet build core -c Release -warnaserror` and `dotnet test core` (CI uses 8.0.x) |
 | Node 22.18 or later | The web sandbox (`sandbox/`): `npm ci`, `npm test`, `npm run typecheck` |

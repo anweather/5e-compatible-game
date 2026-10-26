@@ -69,6 +69,10 @@ Windows run it from Git Bash.
   edit pack folders (`Starter Assets`, `UnityTechnologies`,
   `TerrainSampleAssets`, `TerrainDemoScene_URP`) or anything under
   `Generated/`, `Builds/` or `Recordings/`.
+- Art, audio, video and fonts we add ourselves (`.png`, `.fbx`, `.wav`,
+  ...) go to Git LFS through the root `.gitattributes`; scenes, prefabs,
+  materials and `.asset` files stay in normal git as text. Every machine
+  needs Git LFS installed (`git lfs install`).
 - Known pack noise: importing the URP terrain pack logs a
   `NullReferenceException` for `SpeedTreeURP_Branch.shadergraph`; ignore it.
 - Our code is all under `Assets/Prototype/`; analyzer warnings show in the
