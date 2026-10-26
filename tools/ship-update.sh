@@ -9,8 +9,9 @@
 #   tools/ship-update.sh 0.1.3 --test       # update-test-0.1.3 on the test channels, published
 #   tools/ship-update.sh 0.1.3 --skip-build # pack and upload what Builds/Update already holds
 #
-# --test uses the channels osx-test and win-test, which only test installs
-# follow, so trying the update loop never reaches players. Needs: the Unity
+# --test uses the channels osx-test and win-test and the app id
+# SpellChemistryValleyTest, which only test installs have, so trying the update
+# loop never reaches players or a real install on the same machine. Needs: the Unity
 # Editor open on this project (clean tree, the commit to ship checked out),
 # vpk (dotnet tool install -g vpk) and gh signed in.
 set -euo pipefail
@@ -41,7 +42,10 @@ for arg in "$@"; do
 done
 
 if [ $test = 1 ]; then
+  # Its own app id too: test installs get their own install folder and update cache,
+  # so a test package can never be applied over a real install (0.1.102 > 0.1.2).
   suffix=-test; tag="update-test-$version"; name="Update test $version (not for players)"; draft=
+  APP_ID=SpellChemistryValleyTest
 else
   suffix=; tag="alpha-$version"; name="alpha $version"; draft=--draft
 fi

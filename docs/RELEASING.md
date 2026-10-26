@@ -103,8 +103,9 @@ tree, it:
 
 Without `--test` that's the draft `alpha-X.Y.Z` (test it, then publish as in
 step 6 above). With `--test` it's `update-test-X.Y.Z`, published at once, on
-the channels `osx-test` and `win-test`: only copies installed from a test
-release follow those, so trying the loop never reaches players, and the old
+the channels `osx-test` and `win-test` under the app id
+`SpellChemistryValleyTest`: only copies installed from a test release follow
+those (in their own folder and update cache), so trying the loop never reaches players, and the old
 zip check ignores `update-test-*` tags. Needs vpk (`dotnet tool install -g
 vpk`) and `gh` signed in.
 

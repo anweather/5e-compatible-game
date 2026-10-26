@@ -11,8 +11,9 @@ script: `tools/ship-update.sh X.Y.Z [--test]`.
 ## Pick the mode
 
 - **`--test`**: an update-loop test. Published at once as
-  `update-test-X.Y.Z` on the channels `osx-test` / `win-test`, which only
-  test installs follow. No player sees it. Fine to run without asking.
+  `update-test-X.Y.Z` on the channels `osx-test` / `win-test` under the
+  app id `SpellChemistryValleyTest`, which only test installs have (their own
+  folder and update cache, so they never touch a real install). No player sees it. Fine to run without asking.
 - **No flag**: a real update for players, the draft `alpha-X.Y.Z`. Follow
   the `release` skill around it (bump the version, the two-machine test, and
   **publish only on Andrew's go-ahead**).
@@ -35,8 +36,8 @@ releases page, or `gh release list`).
    watch "Updating to alpha X.Y.Z..." then the restart, and check `Player.log`
    for `Self update: installed by Velopack as SpellChemistryValley X.Y.Z`. The
    Velopack log says whether it took the delta: macOS
-   `~/Library/Logs/velopack_SpellChemistryValley.log`, Windows
-   `%LOCALAPPDATA%\SpellChemistryValley\velopack.log`.
+   `~/Library/Logs/velopack_<app id>.log`, Windows
+   `%LOCALAPPDATA%\<app id>\velopack.log` (the app id is `SpellChemistryValleyTest` for test releases).
 
 ## Gotchas
 
