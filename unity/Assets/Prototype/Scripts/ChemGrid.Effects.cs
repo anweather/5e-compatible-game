@@ -110,6 +110,8 @@ public partial class ChemGrid
     // A new world's visuals start empty (its old children are destroyed).
     void ForgetFx()
     {
+        if (fogBank != null) Destroy(fogBank.gameObject);
+        fogBank = null;
         liveFx = 0;
         freeFx.Clear();
         fxPrefab.Clear();
@@ -147,15 +149,31 @@ public partial class ChemGrid
 
     // Gas drifts over many cells at once, so effects go on every other cell (showFx) at
     // reduced emission; a full effect per cell turns into a wall.
-    void RenderGas(View v, Cell c, Vector3 center, float ground, bool showFx)
+    void RenderGas(View v, Cell c, int x, int y, Vector3 center, float ground, bool showFx)
     {
-        string kind = c.Gas != null && c.GasAmt > 0 ? c.Gas : null;
+        // Fog Cloud's fog is a bank of soft billboards on every square of it (FogBank), not an effect.
+        bool fog = c.Gas == GasIds.Fog && c.GasAmt > 0;
+        if (fog || v.fogged) Fog.Set(y * World.W + x, center, ground, fog ? c.GasAmt : 0, World.Rules.Sim.Gas.MaxAmount);
+        v.fogged = fog;
+        string kind = c.Gas != null && c.GasAmt > 0 && !fog ? c.Gas : null;
         var prefab = GasPrefab(kind);
         if (prefab != null && !showFx) kind = null;
         if (kind != v.gasKind || (kind != null && prefab == null)) SwapGasEffect(v, kind, prefab, center, ground);
         if (kind == null) { Hide(v.gas); return; }
         if (prefab != null) return;
         FallbackGas(v, c, kind, center, ground);
+    }
+
+    FogBank fogBank;
+
+    /// <summary>Fog Cloud's fog as drawn (made with the first fog).</summary>
+    public FogBank Fog
+    {
+        get
+        {
+            if (fogBank == null) fogBank = FogBank.On(this);
+            return fogBank;
+        }
     }
 
     GameObject GasPrefab(string kind) => kind switch

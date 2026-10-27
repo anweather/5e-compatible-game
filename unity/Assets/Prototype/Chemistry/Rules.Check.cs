@@ -33,9 +33,9 @@ namespace Chem
                 "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
-            static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform" };
+            static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform", "haste", "weather" };
 
-            static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass" };
+            static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate" };
             static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
             static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.meteors.every", "weather.meteors.fallTicks" };
@@ -195,7 +195,12 @@ namespace Chem
                     Number(p.Value["fuel"], $"cover {p.Name}: fuel", 0);
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);
                 }
-                foreach (var p in gases.Properties()) Number(p.Value["scald"], $"gas {p.Name}: scald", 0);
+                foreach (var p in gases.Properties())
+                {
+                    Number(p.Value["scald"], $"gas {p.Name}: scald", 0);
+                    Number(p.Value["decay"], $"gas {p.Name}: decay", 0);
+                    Number(p.Value["blocksSightAt"], $"gas {p.Name}: blocksSightAt", 0);
+                }
                 foreach (var s in r["spells"])
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);
                 foreach (var rule in r["cellRules"].OfType<JObject>()) RuleNumbers(rule);

@@ -413,6 +413,12 @@ public static class ChemYardBuilder
             Visual(SpellIds.WallOfStone, new Color(0.7f, 0.68f, 0.62f), null, null),
             Visual(SpellIds.MoveEarth, new Color(0.65f, 0.5f, 0.3f), null, null),
             Meteor(),
+            // Time & Weather: a pale teal glow and a shimmer round the caster; the sky itself is the show
+            // (SkyLight races the sun, WeatherFx and CloudSky follow the weather). Fog Cloud's fog is drawn
+            // by the grid (FogBank); a puff of mist marks where it lands.
+            Visual(SpellIds.HastenTime, new Color(0.56f, 0.85f, 0.8f), null, MiscFx + "/ParticlesLight.prefab"),
+            Visual(SpellIds.ControlWeather, new Color(0.56f, 0.85f, 0.8f), null, MiscFx + "/SandSwirlsEffect.prefab"),
+            Visual(SpellIds.FogCloud, new Color(0.85f, 0.9f, 0.92f), null, MiscFx + "/Respawn.prefab"),
         };
         EditorUtility.SetDirty(visuals);
         AssetDatabase.SaveAssets();

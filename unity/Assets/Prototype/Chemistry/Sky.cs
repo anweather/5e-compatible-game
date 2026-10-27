@@ -48,8 +48,8 @@ namespace Chem
         public static int Ticks(SimParams p, double minutes) => Math.Max(1, (int)Math.Floor(minutes * 60 * p.TicksPerSecond));
 
         /// <summary>Game minutes since midnight of day 1 at this tick (day.startHour at tick 0; a day lasts day.lengthMinutes).</summary>
-        public static long Minutes(SimParams p, int tick) =>
-            (long)Math.Floor(p.Day.StartHour * 60) + (long)tick * MinutesPerDay / Ticks(p, p.Day.LengthMinutes);
+        public static long Minutes(SimParams p, long tick) =>
+            (long)Math.Floor(p.Day.StartHour * 60) + tick * MinutesPerDay / Ticks(p, p.Day.LengthMinutes);
 
         /// <summary>Minutes() for a tick with a fraction, for a view that moves the sun between ticks.</summary>
         public static double MinutesSmooth(SimParams p, double tick) =>
@@ -78,6 +78,21 @@ namespace Chem
             int strength = Math.Min(100, Math.Min(fromStart, toEnd) * 100 / ramp);
             bool windy = (kind == WeatherKind.Windy || kind == WeatherKind.Storm) && strength >= 50;
             return new WeatherNow(kind, strength, windy ? (int)(Hash(seed, period, 2) >> 30) : -1, period);
+        }
+
+        /// <summary>
+        /// Weather set by Control Weather at tick <paramref name="from"/> until <paramref name="until"/>,
+        /// at this tick: ramping in from the cast and out toward the end over weather.rampMinutes, a
+        /// storm's wind from the seed and the cast's tick. <paramref name="period"/> is the natural
+        /// weather's stretch, carried through for a view.
+        /// </summary>
+        public static WeatherNow Held(SimParams p, uint seed, WeatherKind kind, int from, int until, int tick, int period)
+        {
+            if (kind == WeatherKind.Clear) return new WeatherNow(kind, 0, -1, period);
+            int ramp = Math.Max(1, Ticks(p, p.Weather.RampMinutes));
+            int strength = Math.Max(0, Math.Min(100, Math.Min(tick - from, until - tick) * 100 / ramp));
+            bool windy = (kind == WeatherKind.Windy || kind == WeatherKind.Storm) && strength >= 50;
+            return new WeatherNow(kind, strength, windy ? (int)(Hash(seed, from, 4) >> 30) : -1, period);
         }
 
         /// <summary>

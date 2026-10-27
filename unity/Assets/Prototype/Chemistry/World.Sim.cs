@@ -1,6 +1,7 @@
 // One tick of the cell world. Port of sandbox/src/sim.ts with the entity,
 // critter and machine systems left out. The order of what remains is the TS
-// order: fire -> water -> gas -> weather -> charge decay -> wind decay.
+// order: fire -> water -> gas -> weather -> charge decay -> wind decay, then
+// the day clock (Hasten Time, World.Time.cs).
 using System;
 using System.Collections.Generic;
 
@@ -22,7 +23,8 @@ namespace Chem
             Tick++;
             logged.Clear();
             strikes.Clear();
-            Weather = Sky.Weather(Rules.Sim, Seed, Tick);
+            EndSetWeather();
+            Weather = SkyNow();
             var rows = Spans;
             TickFire(rows);
             TickWater(rows);
@@ -38,6 +40,7 @@ namespace Chem
                 var (d, t) = Wind.Value;
                 Wind = t - 1 <= 0 ? ((int, int)?)null : (d, t - 1);
             }
+            TickClock();
             foreach (var ch in activeChunks) Array.Clear(ch.Marks, 0, ch.Marks.Length);
         }
 
@@ -240,12 +243,15 @@ namespace Chem
             return true;
         }
 
+        /// <summary>A gas's chance per tick to lose a unit: its own decay (fog lingers), else sim.gas.decayChance.</summary>
+        double DecayOf(string gas) =>
+            Rules.Gases.TryGetValue(gas, out var g) && g.Decay.HasValue ? g.Decay.Value : Rules.Sim.Gas.DecayChance;
+
         /// <summary>A gas cell decays, blows downwind, or spreads to a thinner neighbour.</summary>
         void Drift(Chunk ch, int i)
         {
-            var p = Rules.Sim.Gas;
             var c = ch.Cells[i];
-            if (Rand() < p.DecayChance) c.GasAmt--;
+            if (Rand() < DecayOf(c.Gas)) c.GasAmt--;
             if (c.GasAmt <= 0)
             {
                 c.Gas = null;

@@ -35,6 +35,7 @@
   },
   "gases": {
     "steam": { "name": "Steam", "scald": 1 },
-    "smoke": { "name": "Smoke" }
+    "smoke": { "name": "Smoke" },
+    "fog":   { "name": "Fog", "decay": 0.015, "blocksSightAt": 2 }
   }
 }

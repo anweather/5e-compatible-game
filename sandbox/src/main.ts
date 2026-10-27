@@ -12,7 +12,7 @@ import { Lockstep } from "./net.ts";
 import { type Db, type Lobby, LocalTransport, RoomTransport, joinRoom, randomCode } from "./room.ts";
 import { Lab, type Sample, type UserCap } from "./lab.ts";
 import { loadScenario } from "./scenarios.ts";
-import { type Dir, type World, DIR_NAMES, cellAt, critterAt, entityAt, hashWorld, playerOf, terrainDef, windDir } from "./world.ts";
+import { type Dir, type World, DIR_NAMES, cellAt, clockTick, critterAt, entityAt, hashWorld, playerOf, terrainDef, windDir } from "./world.ts";
 
 type Tab = "spells" | "critters" | "build";
 type Tool = { tab: Tab; id: string };
@@ -443,7 +443,7 @@ function renderReadout() {
   const mine = p ? `Wizard ${p.hp}/${defOf(p).hp} HP` : "Wizard down";
   const dir = windDir(w);
   const wind = dir >= 0 ? `wind ${DIR_NAMES[dir]}` : "still air";
-  const minutes = minutesAt(RULES.sim, w.tick), m = minuteOfDay(minutes);
+  const minutes = minutesAt(RULES.sim, clockTick(w)), m = minuteOfDay(minutes);
   const clock = `day ${dayOf(minutes)} ${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")} · ${w.weather.kind}`;
   const mods = w.mods.length ? ` · ${w.mods.length} mod${w.mods.length > 1 ? "s" : ""} on` : "";
   $("readout").textContent = `${mine} · ${clock} · ${wind} · ${(w.tick / RULES.sim.ticksPerSecond).toFixed(1)}s${mods}`;

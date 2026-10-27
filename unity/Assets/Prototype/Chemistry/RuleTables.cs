@@ -47,6 +47,10 @@ namespace Chem
     {
         public string Id, Name;
         public int Scald;
+        /// <summary>Its own chance per tick a unit decays (fog lingers), or null for sim.gas.decayChance.</summary>
+        public double? Decay;
+        /// <summary>From how many units a square of it hides what's behind (World.LineOfSight), or 0 if it never does.</summary>
+        public int BlocksSightAt;
     }
 
     /// <summary>
@@ -64,6 +68,8 @@ namespace Chem
         // Extras: the cell sim uses Wind and (below) the terraform fields; Push and Duration drive the Unity props (SpellForces).
         public string Effect;
         public int Push, Wind, Range, Duration, MaxMass;
+        /// <summary>Effect "haste": how many times as fast the day clock runs (World.Time.cs).</summary>
+        public int Rate;
         /// <summary>[dice, sides], or empty.</summary>
         public int[] Damage;
         /// <summary>
@@ -235,7 +241,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -322,7 +328,14 @@ namespace Chem
             foreach (var p in ((JObject)doc["terrain"]).Properties()) r.terrain[p.Name] = ParseTerrain(p.Name, (JObject)p.Value);
             foreach (var p in ((JObject)doc["covers"]).Properties()) r.covers[p.Name] = ParseCover(p.Name, (JObject)p.Value);
             foreach (var p in ((JObject)doc["gases"]).Properties())
-                r.gases[p.Name] = new GasDef { Id = p.Name, Name = Str(p.Value["name"]) ?? p.Name, Scald = Int(p.Value["scald"]) ?? 0 };
+                r.gases[p.Name] = new GasDef
+                {
+                    Id = p.Name,
+                    Name = Str(p.Value["name"]) ?? p.Name,
+                    Scald = Int(p.Value["scald"]) ?? 0,
+                    Decay = Num(p.Value["decay"]),
+                    BlocksSightAt = Int(p.Value["blocksSightAt"]) ?? 0,
+                };
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
             {
@@ -446,6 +459,7 @@ namespace Chem
             Range = Int(o["range"]) ?? 6,
             Duration = Int(o["duration"]) ?? 40,
             MaxMass = Int(o["maxMass"]) ?? 1,
+            Rate = Int(o["rate"]) ?? 1,
             Damage = Dice(o["damage"]),
             Raise = Int(o["raise"]) ?? 0,
             Dig = Int(o["dig"]) ?? 0,

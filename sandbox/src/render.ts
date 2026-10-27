@@ -261,8 +261,10 @@ function drawFire(ctx: CanvasRenderingContext2D, px: number, py: number, s: numb
 
 function drawGas(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, s: number, t: number) {
   if (!c.gas) return;
-  const steam = c.gas === "steam";
-  ctx.fillStyle = steam ? `rgba(246,248,252,${Math.min(0.75, 0.14 * c.gasAmt)})` : `rgba(70,66,64,${Math.min(0.6, 0.12 * c.gasAmt)})`;
+  const steam = c.gas === "steam", fog = c.gas === "fog";
+  if (steam) ctx.fillStyle = `rgba(246,248,252,${Math.min(0.75, 0.14 * c.gasAmt)})`;
+  else if (fog) ctx.fillStyle = `rgba(214,222,228,${Math.min(0.9, 0.15 * c.gasAmt)})`;
+  else ctx.fillStyle = `rgba(70,66,64,${Math.min(0.6, 0.12 * c.gasAmt)})`;
   for (let k = 0; k < 3; k++) {
     const dx = Math.sin(t / 700 + hash(x, y, k) * 6) * s * 0.12;
     ctx.beginPath();

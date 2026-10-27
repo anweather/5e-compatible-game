@@ -37,6 +37,10 @@ export interface CoverDef {
 export interface GasDef {
   name: string;
   scald?: number;
+  /** Its own chance per tick a unit decays (fog lingers); unset uses sim.gas.decayChance. */
+  decay?: number;
+  /** From how many units a square of it hides what's behind (lineOfSight); unset never does. */
+  blocksSightAt?: number;
 }
 
 export interface CellCond {
@@ -117,7 +121,9 @@ export interface SpellDef {
   radius?: number;
   push?: number;
   wind?: number;
-  effect?: "levitate" | "carry" | "teleport" | "terraform";
+  effect?: "levitate" | "carry" | "teleport" | "terraform" | "haste" | "weather";
+  /** haste (Hasten Time): how many times as fast the day clock runs. */
+  rate?: number;
   /**
    * terraform: steps to raise or to dig, or a height to raise the cells to (exactly one of
    * the three), the terrain the cells become, and taper (a hill or crater over radius).
@@ -251,7 +257,7 @@ export interface Rules {
   groups: Record<string, GroupDef>;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -374,7 +380,7 @@ const EFFECT_KEYS = new Set([
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
-const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform"]);
+const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather"]);
 
 function terraformErrors(r: Rules, s: SpellDef): string[] {
   const errors: string[] = [];

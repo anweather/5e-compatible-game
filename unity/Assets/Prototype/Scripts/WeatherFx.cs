@@ -39,6 +39,10 @@ public class WeatherFx : MonoBehaviour
     }
     float rainShown, snowShown, windShown;
 
+    /// <summary>How hard the rain and the snow are drawn now, 0..1 (they ease toward the weather's), for the probe.</summary>
+    public float RainShown => rainShown;
+    public float SnowShown => snowShown;
+
     void Start()
     {
         grid = FindFirstObjectByType<ChemGrid>();

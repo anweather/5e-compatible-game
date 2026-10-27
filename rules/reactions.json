@@ -1,5 +1,6 @@
 {
   "cell": [
+    { "id": "fire-fog", "element": "fire", "if": { "gas": "fog" }, "do": [{ "clearGas": true }], "log": "The heat burns the fog away" },
     { "id": "fire-oil", "element": "fire", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} ignites", "notable": true, "stop": true },
     { "id": "fire-snowbank", "element": "fire", "if": { "cover": ["snowbank"] }, "do": [{ "setCover": "snow" }, { "addWater": 1 }], "log": "The snow bank slumps into slush", "stop": true },
     { "id": "fire-snow", "element": "fire", "if": { "cover": ["snow"] }, "do": [{ "setCover": null }, { "addWater": 1 }], "log": "The snow melts", "stop": true },
@@ -34,6 +35,8 @@
     { "id": "grease-spill", "element": "grease", "if": { "notTerrainTag": "blocking" }, "do": [{ "setCover": "grease" }], "stop": true },
     { "id": "oil-into-fire", "element": "oil", "if": { "notTerrainTag": "blocking", "fire": true }, "do": [{ "setCover": "oil" }, { "ignite": "cover" }], "log": "Oil hits the flames. Whoosh!", "notable": true, "stop": true },
     { "id": "oil-spill", "element": "oil", "if": { "notTerrainTag": "blocking" }, "do": [{ "setCover": "oil" }], "stop": true },
+
+    { "id": "fog-cloud", "element": "fog", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "fog", "n": 6 }], "stop": true },
 
     { "id": "thunder-gas", "element": "thunder", "if": { "gas": "any" }, "do": [{ "clearGas": true }], "log": "The thunderclap scatters the vapour" }
   ],

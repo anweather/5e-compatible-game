@@ -56,7 +56,8 @@ public class SkyLight : MonoBehaviour
         var now = world.Weather;
         cloud = Mathf.MoveTowards(cloud, CloudOf(now), Time.deltaTime * 0.3f);
         fog = Mathf.MoveTowards(fog, now.Fog / 100f, Time.deltaTime * 0.2f);
-        float minute = (float)(Sky.MinutesSmooth(world.Rules.Sim, world.Tick) % Sky.MinutesPerDay);
+        // The clock, not the tick: Hasten Time runs it ahead (World.ClockTick).
+        float minute = (float)(Sky.MinutesSmooth(world.Rules.Sim, world.ClockTick) % Sky.MinutesPerDay);
         float sunUp = Place(sun.transform, minute);
         float moonUp = moon != null ? Place(moon.transform, minute + Sky.MinutesPerDay / 2f) : 0f;
         // The procedural sky lights itself from RenderSettings.sun: the sun by day, the moon by night

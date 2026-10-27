@@ -1,5 +1,6 @@
 // One tick of the world. Order matters and is fixed:
-// critters -> fire -> water -> gas -> weather -> entities -> machines -> decay.
+// critters -> fire -> water -> gas -> weather -> entities -> machines -> decay
+// -> the day clock (Hasten Time).
 import { RULES } from "./rules.ts";
 import { applyElement, ignite } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
@@ -8,14 +9,15 @@ import {
   DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
   log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
-import { rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
+import { type WeatherNow, heldWeather, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
 import { METEOR_SPELL, landSpell, spellById } from "./actions.ts";
 
 export function step(w: World): void {
   w.tick++;
   w.logged.clear();
   w.strikes = [];
-  w.weather = weatherAt(RULES.sim, w.seed, w.tick);
+  endHeldWeather(w);
+  w.weather = skyNow(w);
   tickCritters(w);
   tickFire(w);
   tickWater(w);
@@ -25,9 +27,37 @@ export function step(w: World): void {
   tickMachines(w);
   for (const c of w.cells) if (c.charge > 0) c.charge--;
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
+  tickClock(w);
   w.marks.flow.fill(0);
   w.marks.steam.fill(0);
   w.marks.wind.fill(0);
+}
+
+/** The weather this tick: the held weather while Control Weather lasts, else the seed's (C#: World.SkyNow). */
+export function skyNow(w: World): WeatherNow {
+  const natural = weatherAt(RULES.sim, w.seed, w.tick);
+  if (!w.weatherSet) return natural;
+  const { kind, from, until } = w.weatherSet;
+  return heldWeather(RULES.sim, w.seed, kind, from, until, w.tick, natural.period);
+}
+
+/** At the start of a tick: held weather whose time is up gives way to the natural weather. */
+function endHeldWeather(w: World) {
+  if (!w.weatherSet || w.tick < w.weatherSet.until) return;
+  w.weatherSet = null;
+  log(w, "The weather goes its own way again", "info");
+}
+
+/** At the end of a tick: a hastened clock runs `rate` ticks of day for this one. */
+function tickClock(w: World) {
+  if (!w.haste) return;
+  w.clockAhead += w.haste.rate - 1;
+  if (w.haste.ticks > 1) {
+    w.haste.ticks--;
+    return;
+  }
+  w.haste = null;
+  log(w, "Time slows back to its own pace", "info");
 }
 
 export function emitCritter(w: World, kind: string, x: number, y: number, dir: 0 | 1 | 2 | 3) {
@@ -158,7 +188,7 @@ function tickGas(w: World) {
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (!c.gas) continue;
-    if (rand(w) < p.decayChance) c.gasAmt--;
+    if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) c.gasAmt--;
     if (c.gasAmt <= 0) {
       c.gas = null;
       c.gasAmt = 0;
@@ -260,7 +290,7 @@ function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
   w.newMeteors = [];
   landMeteors(w);
-  if (now.period < p.calmPeriods) return;
+  if (now.period < p.calmPeriods && !w.weatherSet) return;
   const rain = rainOf(now), snow = snowOf(now);
   if (rain > 0) {
     if (w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);

@@ -38,15 +38,13 @@ namespace Chem
         /// <summary>The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none.</summary>
         public int WindDir => Wind.HasValue ? Wind.Value.dir : Weather.WindDir;
 
-        /// <summary>Game minutes since midnight of day 1 (Sky.Minutes).</summary>
-        public long Minutes => Sky.Minutes(Rules.Sim, Tick);
 
         void TickWeather(RowSpan[] rows)
         {
             var now = Weather;
             newMeteors.Clear();
             LandMeteors();
-            if (now.Period < Rules.Sim.Weather.CalmPeriods) return;
+            if (now.Period < Rules.Sim.Weather.CalmPeriods && !WeatherSet.HasValue) return;
             var p = Rules.Sim.Weather;
             if (now.Rain > 0)
             {

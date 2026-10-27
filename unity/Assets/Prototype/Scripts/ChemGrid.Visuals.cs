@@ -44,6 +44,7 @@ public partial class ChemGrid
         public string gasKind;
         public bool charged;
         public bool wet;
+        public bool fogged;
     }
 
     View[] views;
@@ -147,7 +148,7 @@ public partial class ChemGrid
         using (WaterMarker.Auto()) ground = RenderWater(v, c, x, y, ground, groundTop, lake);
         RenderCover(v, c, x, y, center, ground);
         using (FireMarker.Auto()) RenderFire(v, c, x, y, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
-        using (GasMarker.Auto()) RenderGas(v, c, center, ground, GasDrawnAt(x, y));
+        using (GasMarker.Auto()) RenderGas(v, c, x, y, center, ground, GasDrawnAt(x, y));
         // A lightning strike across the lake charges thousands of cells; on the lake, sparks on
         // one cell in 25 read the same without thousands of effects.
         if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);

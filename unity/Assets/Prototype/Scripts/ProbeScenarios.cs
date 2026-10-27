@@ -186,6 +186,12 @@ public static class ProbeScenarios
             "Fireball, Meteor. Checks: each plays its gesture (Shove, Raise, Throw, CallDown); both hands push forward over 0.4 m for Gust; both hands " +
             "go below 0.95 m then over the head for Raise Earth; the casting hand goes back behind the shoulder then over 0.3 m forward for Fireball; " +
             "both hands go over the head then below the shoulders for Meteor, the meteor appearing at the pull; no console errors."),
+        new Entry("timeweather", typeof(TimeWeatherProbe), 60f,
+            "The Time & Weather spells cast from the bar on a clear morning: Hasten Time (and again to settle it), Control Weather four times, " +
+            "then Fog Cloud in the yard with a Misty Step aimed through it, a Fire Bolt into it and a Gust of Wind through it. Checks: the clock " +
+            "runs 90 game minutes or more in 6 s and back to its own pace after the second cast, the weather turns rain, snow, storm, clear " +
+            "with WeatherFx drawing the rain and the snow, two thirds of the fog's squares thick and drawn (FogBank), no line of sight through " +
+            "it and the blink refused, the bolt burns the fog off where it lands, the gust blows the fog east, no console errors."),
     };
 
     public static Entry Find(string name) =>

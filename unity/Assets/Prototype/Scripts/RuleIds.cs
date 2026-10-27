@@ -25,6 +25,9 @@ public static class SpellIds
     public const string MoveEarth = "move-earth";
     public const string MistyStep = "misty-step";
     public const string MageHand = "mage-hand";
+    public const string HastenTime = "hasten-time";
+    public const string ControlWeather = "control-weather";
+    public const string FogCloud = "fog-cloud";
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
@@ -38,6 +41,8 @@ public static class SpellShapes
     public const string TeleportEffect = "teleport";
     public const string CarryEffect = "carry";
     public const string TerraformEffect = "terraform";
+    public const string HasteEffect = Chem.World.HasteEffect;
+    public const string WeatherEffect = Chem.World.WeatherEffect;
 }
 
 /// <summary>Element ids (what a spell or a reaction brings to a cell), as in rules/reactions.json.</summary>
@@ -102,4 +107,5 @@ public static class GasIds
 {
     public const string Steam = "steam";
     public const string Smoke = "smoke";
+    public const string Fog = "fog";
 }
