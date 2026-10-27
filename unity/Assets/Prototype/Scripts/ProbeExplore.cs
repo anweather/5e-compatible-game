@@ -4,11 +4,11 @@ using Chem;
 using UnityEngine;
 
 // The probe's explore scenario (docs/FAST_LOOP.md): the chemistry covers the
-// whole valley and wakes around the player (ChunkStreaming). The wizard goes
-// far from the yard, to meadow outside the old chemistry area, and casts Fire
-// Bolt on the grass there. Checks that the chunks around them woke and the
-// yard's went to sleep, that the fire took and spreads there, and that the yard
-// is as it was left when the wizard comes back.
+// whole valley and is active around the player (ChunkStreaming). The wizard
+// goes far from the yard, to meadow outside the old chemistry area, and casts
+// Fire Bolt on the grass there. Checks that the chunks around them activated
+// and the yard's deactivated, that the fire took and spreads there, and that
+// the yard is as it was left when the wizard comes back.
 public class ExploreProbe : ProbeScenario
 {
     protected override IEnumerator Run()
@@ -21,7 +21,7 @@ public class ExploreProbe : ProbeScenario
 
         if (!FindMeadow(home, out var far))
         {
-            Check("far_meadow_found", false, "no grass 200 to 420 cells from the yard, 3 chunks or more away");
+            Check("far_meadow_found", false, $"no grass 200 to 420 cells from the yard, more than {World.Rules.Sim.Streaming.Keep} chunks away");
             yield break;
         }
         Check("far_meadow_found", true, $"cell {far}, {Vector2Int.Distance(far, home) * grid.cellSize:0} m from the yard");
@@ -35,9 +35,11 @@ public class ExploreProbe : ProbeScenario
         yield return Wait(1f);
         int farChunk = Chunks.ChunkOf(far.x), farRow = Chunks.ChunkOf(far.y);
         Metric("active_chunks", World.ActiveChunks.Count);
-        Check("chunks_wake_around_player", World.IsActive(farChunk, farRow) && World.ActiveChunks.Count <= 25,
-            $"chunk ({farChunk}, {farRow}) awake: {World.IsActive(farChunk, farRow)}; {World.ActiveChunks.Count} of {World.ChunkCoords.Count} awake");
-        Check("yard_sleeps", !World.IsActive(homeChunk, homeRow), $"the yard's chunk ({homeChunk}, {homeRow})");
+        // At most the square the keep distance spans round the player stays active (7×7 at keep 3).
+        int keep = World.Rules.Sim.Streaming.Keep, most = (2 * keep + 1) * (2 * keep + 1);
+        Check("chunks_activate_around_player", World.IsActive(farChunk, farRow) && World.ActiveChunks.Count <= most,
+            $"chunk ({farChunk}, {farRow}) active: {World.IsActive(farChunk, farRow)}; {World.ActiveChunks.Count} of {World.ChunkCoords.Count} active (at most {most})");
+        Check("yard_inactive", !World.IsActive(homeChunk, homeRow), $"the yard's chunk ({homeChunk}, {homeRow})");
 
         Check("bar_has_fire_bolt", caster.Select(SpellIds.FireBolt));
         puppet.Face(at);
@@ -49,11 +51,11 @@ public class ExploreProbe : ProbeScenario
             $"{burning} burning squares within 12 of the bolt");
         Shot("far-fire");
 
-        // Home again: the yard was asleep, so it is exactly as it was.
-        Check("yard_unchanged_while_asleep", World.ChunkHash(homeChunk, homeRow) == yardBefore);
+        // Home again: the yard was inactive, so it is exactly as it was.
+        Check("yard_unchanged_while_inactive", World.ChunkHash(homeChunk, homeRow) == yardBefore);
         Place(yard.width / 2, yard.height / 2);
         yield return Wait(1f);
-        Check("yard_wakes_on_return", World.IsActive(homeChunk, homeRow));
+        Check("yard_activates_on_return", World.IsActive(homeChunk, homeRow));
     }
 
     int Burning(Vector2Int around, int r)
@@ -75,7 +77,9 @@ public class ExploreProbe : ProbeScenario
             foreach (var dir in new[] { new Vector2Int(-1, -1), new Vector2Int(1, -1), new Vector2Int(-1, 1), new Vector2Int(1, 1), new Vector2Int(-1, 0), new Vector2Int(1, 0) })
             {
                 var c = home + dir * (int)(d / Mathf.Sqrt(dir.sqrMagnitude));
-                bool beyondKeep = Mathf.Max(Mathf.Abs(Chunks.ChunkOf(c.x) - Chunks.ChunkOf(home.x)), Mathf.Abs(Chunks.ChunkOf(c.y) - Chunks.ChunkOf(home.y))) > ChunkStreaming.KeepRing;
+                // Where the wizard will stand (3 cells short of it, see Run) is beyond keep from the yard.
+                var stand = c - new Vector2Int(3, 0);
+                bool beyondKeep = Mathf.Max(Mathf.Abs(Chunks.ChunkOf(stand.x) - Chunks.ChunkOf(home.x)), Mathf.Abs(Chunks.ChunkOf(stand.y) - Chunks.ChunkOf(home.y))) > World.Rules.Sim.Streaming.Keep;
                 if (beyondKeep && GrassAround(c, 4)) { found = c; return true; }
             }
         }

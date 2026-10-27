@@ -189,6 +189,14 @@ as with any digging, so the middle of a crater doesn't burn.
 - A day lasts `sim.day.lengthMinutes` (24) real minutes, so a game hour
   is a real minute; the world starts at `sim.day.startHour` (9:00).
 
+## Active chunks (`sim.streaming`)
+
+The world is simulated only around the characters (`docs/WORLD_STREAMING.md`;
+C# only, the sandbox has no chunks). Every chunk within `sim.streaming.reach`
+(2) chunks of a character's chunk is active; a chunk deactivates once no
+character is within `sim.streaming.keep` (3), which must be at least the
+reach. Distances are in chunks, the larger of the two axes.
+
 ## Day and weather (`sim.day`, `sim.weather`)
 
 The time of day and the weather are worked out from the tick and the

@@ -1,17 +1,19 @@
-// Which chunks are simulated, following the players (docs/WORLD_STREAMING.md,
-// "Rings around each player"): each player's chunk and the ring around it
-// wake; a chunk sleeps again once no player is within a wider ring, so walking
-// along a chunk edge doesn't wake and sleep it every few steps. The plan is a
-// list of switches that travel like any other command (TickBatch.Chunks): solo
-// they apply before the next tick, online the host stamps them into its tick
-// batches, so every peer pauses the same chunks at the same tick. C# only:
-// the sandbox has no chunks.
+// Which chunks are active, following the characters (docs/WORLD_STREAMING.md,
+// "Part 2, second slice"): every chunk within a character's reach activates,
+// and a chunk deactivates once no character is within a wider distance, so
+// walking along a chunk edge doesn't activate and deactivate it every few
+// steps. Reaches that overlap are one active region: a chunk is active once,
+// whoever's reach it is in. The distances are sim.json's streaming (reach,
+// keep). The plan is a list of switches that travel like any other command
+// (TickBatch.Chunks): solo they apply before the next tick, online the host
+// stamps them into its tick batches, so every peer switches the same chunks at
+// the same tick. C# only: the sandbox has no chunks.
 using System;
 using System.Collections.Generic;
 
 namespace Chem
 {
-    /// <summary>A chunk starting (Active) or stopping being simulated, in a tick batch.</summary>
+    /// <summary>A chunk activating (Active) or deactivating, in a tick batch.</summary>
     public readonly struct ChunkSwitch : IEquatable<ChunkSwitch>
     {
         public ChunkSwitch(int cx, int cy, bool active)
@@ -28,54 +30,59 @@ namespace Chem
         public bool Equals(ChunkSwitch other) => CX == other.CX && CY == other.CY && Active == other.Active;
         public override bool Equals(object obj) => obj is ChunkSwitch s && Equals(s);
         public override int GetHashCode() => (CX * 397) ^ (CY * 31) ^ (Active ? 1 : 0);
-        public override string ToString() => $"{CX},{CY} {(Active ? "wakes" : "sleeps")}";
+        public override string ToString() => $"{CX},{CY} {(Active ? "activates" : "deactivates")}";
         public static bool operator ==(ChunkSwitch a, ChunkSwitch b) => a.Equals(b);
         public static bool operator !=(ChunkSwitch a, ChunkSwitch b) => !a.Equals(b);
     }
 
     public static class ChunkStreaming
     {
-        /// <summary>Chunks within this many chunks of a player (in each direction) wake: 1 is the 3×3 around them.</summary>
-        public const int WakeRing = 1;
-        /// <summary>A chunk sleeps once no player is within this many chunks of it.</summary>
-        public const int KeepRing = 2;
-
         /// <summary>
-        /// The switches that bring the world's chunks in line with the players at these cells:
-        /// sleeping chunks within <paramref name="wake"/> of a player wake, active ones further than
-        /// <paramref name="keep"/> from every player sleep. Ordered by row then column, so the plan
-        /// is the same however the players are listed. With no players nothing changes.
+        /// The switches that bring the world's chunks in line with the characters at these cells,
+        /// at the world's rules' reach and keep distances (sim.json streaming).
         /// </summary>
-        public static List<ChunkSwitch> Plan(World world, IReadOnlyList<(int x, int y)> players, int wake = WakeRing, int keep = KeepRing)
+        public static List<ChunkSwitch> Plan(World world, IReadOnlyList<(int x, int y)> characters)
         {
             if (world == null) throw new ArgumentNullException(nameof(world));
-            return Plan(world.ChunkCoords, world.IsActive, players, wake, keep);
+            var s = world.Rules.Sim.Streaming;
+            return Plan(world.ChunkCoords, world.IsActive, characters, s.Reach, s.Keep);
         }
 
         /// <summary>
-        /// The same plan against a set of chunks and what is awake among them, for a host that plans
-        /// ahead of its own world (its stamped switches apply a tick or so later).
+        /// The switches against a set of chunks and which of them are active (for a host that plans
+        /// ahead of its own world, whose stamped switches apply a tick or so later): inactive chunks
+        /// within <paramref name="reach"/> chunks of a character activate, active ones further than
+        /// <paramref name="keep"/> from every character deactivate. Distances are in chunks, the
+        /// larger of the two axes. Ordered by row then column, so the plan is the same however the
+        /// characters are listed. With no characters nothing changes.
         /// </summary>
         public static List<ChunkSwitch> Plan(IReadOnlyList<(int cx, int cy)> chunks, Func<int, int, bool> isActive,
-            IReadOnlyList<(int x, int y)> players, int wake = WakeRing, int keep = KeepRing)
+            IReadOnlyList<(int x, int y)> characters, int reach, int keep)
         {
             if (chunks == null) throw new ArgumentNullException(nameof(chunks));
             if (isActive == null) throw new ArgumentNullException(nameof(isActive));
             var plan = new List<ChunkSwitch>();
-            if (players == null || players.Count == 0) return plan;
+            if (characters == null || characters.Count == 0) return plan;
             foreach (var (cx, cy) in chunks)
             {
-                int near = int.MaxValue;
-                foreach (var (x, y) in players)
-                {
-                    int d = Math.Max(Math.Abs(Chunks.ChunkOf(x) - cx), Math.Abs(Chunks.ChunkOf(y) - cy));
-                    if (d < near) near = d;
-                }
+                int near = Nearest(characters, cx, cy);
                 bool active = isActive(cx, cy);
-                if (!active && near <= wake) plan.Add(new ChunkSwitch(cx, cy, true));
+                if (!active && near <= reach) plan.Add(new ChunkSwitch(cx, cy, true));
                 else if (active && near > keep) plan.Add(new ChunkSwitch(cx, cy, false));
             }
             return plan;
+        }
+
+        // How many chunks the nearest character is from a chunk.
+        static int Nearest(IReadOnlyList<(int x, int y)> characters, int cx, int cy)
+        {
+            int near = int.MaxValue;
+            foreach (var (x, y) in characters)
+            {
+                int d = Math.Max(Math.Abs(Chunks.ChunkOf(x) - cx), Math.Abs(Chunks.ChunkOf(y) - cy));
+                if (d < near) near = d;
+            }
+            return near;
         }
 
         /// <summary>Applies switches to the world (unknown chunks are skipped). Between ticks, the same on every peer.</summary>

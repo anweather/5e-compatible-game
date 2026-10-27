@@ -164,6 +164,16 @@ namespace Chem
         public double LengthMinutes = 24, StartHour = 9;
     }
 
+    /// <summary>
+    /// sim.json's streaming (ChunkStreaming, docs/WORLD_STREAMING.md): a character's reach, the
+    /// chunks within Reach of the one it stands in, is kept active; a chunk deactivates once no
+    /// character is within Keep. C# only: the sandbox has no chunks.
+    /// </summary>
+    public sealed class StreamingParams
+    {
+        public int Reach = 2, Keep = 3;
+    }
+
     /// <summary>sim.json's weather (Sky.cs picks it, World.Weather.cs applies it).</summary>
     public sealed class WeatherParams
     {
@@ -204,6 +214,7 @@ namespace Chem
     {
         public int TicksPerSecond = 6;
         public DayParams Day = new DayParams();
+        public StreamingParams Streaming = new StreamingParams();
         public WeatherParams Weather = new WeatherParams();
         public FireParams Fire = new FireParams();
         public GasParams Gas = new GasParams();
@@ -639,6 +650,11 @@ namespace Chem
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;
                 s.Day.StartHour = Num(day["startHour"]) ?? s.Day.StartHour;
+            }
+            if (o["streaming"] is JObject so)
+            {
+                s.Streaming.Reach = Int(so["reach"]) ?? s.Streaming.Reach;
+                s.Streaming.Keep = Int(so["keep"]) ?? s.Streaming.Keep;
             }
             if (o["weather"] is JObject wo) ParseWeather(wo, s.Weather);
             return s;
