@@ -134,7 +134,8 @@ public static class ProbeScenarios
         new Entry("falls", typeof(FallsProbe), 40f,
             "The waterfall at the head of the river: the wizard goes to the pond at its foot. Checks: the falls is built (its water, " +
             "twenty or more rocks on the cliff), the pond's middle is river and full, river squares run on south of it, splashes " +
-            "go up at the foot, the roar plays, no console errors."),
+            "go up at the foot, the roar plays, the cliff's rocks are solid (a ray from above lands on them), the scree ramp beside it is built and the " +
+            "controller walks up it to within 6 m of the lip, no console errors."),
         new Entry("current", typeof(CurrentProbe), 40f,
             "The water carries things (WaterCurrents): the wizard dropped mid-river and left still is swept over 2 m downstream in 3 s, dropped in the surf off the beach is " +
             "carried over 1.5 m toward the sand in 5 s, and a crate floated on the river drifts over 2 m downstream in 4 s, no console errors."),
