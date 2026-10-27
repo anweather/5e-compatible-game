@@ -435,6 +435,9 @@ public static class ValleyShape
     /// <summary>Whether a point is within <paramref name="margin"/> of the bridge's line.</summary>
     public static bool NearBridge(Vector2 p, float margin) => bridgeLine != null && DistanceToCourse(p, bridgeLine) < margin;
 
+    /// <summary>Whether a point is within <paramref name="margin"/> of the climbing tower's round (ValleyTower).</summary>
+    public static bool NearTower(Vector2 p, float margin) => (p - ValleyTower.Site).magnitude < ValleyTower.Reach + margin;
+
     /// <summary>Kept clear of trees and rocks: near the yard, the cabins' pads, the lake, the river's banks and the bridge.</summary>
     public static bool KeepClear(Vector2 p, float margin) =>
         DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p) || DistanceToRiver(p) < RiverHalfWidth + 3f || NearBridge(p, 3f);
