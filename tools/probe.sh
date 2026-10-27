@@ -24,6 +24,22 @@ if [ "$1" = list ]; then
 fi
 
 name="$1"; shift
+
+# On Windows, a run pulls the Editor to the front for a few seconds as it
+# enters Play mode, which drops someone out of a built game they're playing
+# full screen. While the game is the window in front, wait (up to ten minutes,
+# in case they've walked away and left it there). PROBE_NO_WAIT=1 skips this.
+game_in_front() {
+  command -v powershell.exe >/dev/null 2>&1 || return 1
+  powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$(cygpath -w "$here/tools/game-in-front.ps1")" >/dev/null 2>&1
+}
+if [ "${PROBE_NO_WAIT:-0}" != 1 ] && game_in_front; then
+  echo "probe: the game is in front (someone's playing); waiting for them to leave it, up to 10 minutes" >&2
+  for _ in $(seq 1 120); do
+    sleep 5
+    game_in_front || break
+  done
+fi
 if ! started=$("$UNITY" command probe run --name "$name" "$@" --result-only 2>&1); then
   echo "$started" >&2
   exit 2

@@ -118,9 +118,9 @@ public static class ProbeCommands
         };
     }
 
-    // Enters Play mode without focusing the Game view, which on Windows also brings the Editor to the
-    // front over whatever the user is doing; their own setting (the Game view's Play Focused) is put
-    // back once the run is over.
+    // Enters Play mode without focusing the Game view (the user's Play Focused is put back once the
+    // run is over), and hands the keyboard back to the window they were in each time the Editor
+    // raises itself (FocusKeeper), so a run doesn't pull them out of what they're doing.
     static void Play()
     {
         if (!SessionState.GetBool(FocusedKey + ".saved", false))
@@ -129,6 +129,7 @@ public static class ProbeCommands
             SessionState.SetBool(FocusedKey + ".saved", true);
         }
         PlayModeWindow.SetPlayModeFocused(false);
+        FocusKeeper.Remember();
         EditorApplication.isPlaying = true;
     }
 
@@ -207,20 +208,32 @@ public static class ProbeCommands
 
     static void OnPlayModeChanged(PlayModeStateChange state)
     {
-        if (state == PlayModeStateChange.EnteredPlayMode) Begin();
-        else if (state == PlayModeStateChange.EnteredEditMode) RestoreFocus();
-        if (state == PlayModeStateChange.EnteredEditMode && stopAfterRun != null)
+        switch (state)
         {
-            string player = stopAfterRun;
-            stopAfterRun = null;
-            try { VirtualPlayers.Deactivate(player); }
-            catch (InvalidOperationException e) { Debug.LogWarning($"Probe: couldn't stop {player}: {e.Message}"); }
+            case PlayModeStateChange.EnteredPlayMode:
+                Begin();
+                FocusKeeper.Guard();
+                break;
+            case PlayModeStateChange.ExitingPlayMode:
+                FocusKeeper.Guard();
+                // Left Play mode before the scenario finished (stopped by hand, or timed out).
+                if (active != null) Finish(Aborted, $"Play mode ended after {EditorApplication.timeSinceStartup - startedAt:0.0} s, before the scenario finished");
+                break;
+            case PlayModeStateChange.EnteredEditMode:
+                RestoreFocus();
+                FocusKeeper.Release();
+                StopPlayer();
+                break;
         }
-        else if (state == PlayModeStateChange.ExitingPlayMode && active != null)
-        {
-            // Left Play mode before the scenario finished (stopped by hand, or timed out).
-            Finish(Aborted, $"Play mode ended after {EditorApplication.timeSinceStartup - startedAt:0.0} s, before the scenario finished");
-        }
+    }
+
+    static void StopPlayer()
+    {
+        if (stopAfterRun == null) return;
+        string player = stopAfterRun;
+        stopAfterRun = null;
+        try { VirtualPlayers.Deactivate(player); }
+        catch (InvalidOperationException e) { Debug.LogWarning($"Probe: couldn't stop {player}: {e.Message}"); }
     }
 
     static void Begin()
