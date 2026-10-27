@@ -1,6 +1,7 @@
 // What the weather does to cells, once a tick after gas: rain fills squares
-// and dry spells dry shallow ones, snow freezes shallow water (and dry spells
-// thaw it), storms strike lightning, and in a meteor
+// and dry spells dry shallow ones, snow freezes shallow water, covers open
+// ground and drifts into banks against walls and trees (and dry spells thaw
+// the ice and melt the snow), storms strike lightning, and in a meteor
 // shower meteors appear and land a little later as the Meteor spell. Rain's hold on fire
 // (dousing, less spread) is in Burn and SpreadChance, the prevailing wind in
 // WindDir. Port of tickWeather in sandbox/src/sim.ts; the weather itself
@@ -15,6 +16,9 @@ namespace Chem
         readonly List<(int x, int y)> strikes = new List<(int x, int y)>();
         readonly List<(int x, int y, int lands)> falling = new List<(int x, int y, int lands)>();
         readonly List<(int x, int y, int lands)> newMeteors = new List<(int x, int y, int lands)>();
+
+        /// <summary>The covers snow lays and drifts into (materials.json).</summary>
+        public const string SnowCover = "snow", BankCover = "snowbank";
 
         /// <summary>The spell a meteor lands as (its crater, its fire).</summary>
         public const string MeteorSpell = "meteor";
@@ -50,12 +54,17 @@ namespace Chem
             }
             else if (now.Snow > 0)
             {
-                if (Tick % p.FreezeEvery == 0) Freeze(rows, p.FreezeChance * now.Snow / 100, true);
+                if (Tick % p.FreezeEvery == 0)
+                {
+                    Freeze(rows, p.FreezeChance * now.Snow / 100, true);
+                    Settle(rows, p.CoverChance * now.Snow / 100, p.BankChance * now.Snow / 100);
+                }
             }
             else if (Tick % p.DryEvery == 0)
             {
                 Dry(rows, p.DryChance);
                 Freeze(rows, p.ThawChance, false);
+                Melt(rows, p.ThawChance);
             }
             if (now.Kind == WeatherKind.Storm && Tick % p.StrikeEvery == 0 && Rand() < p.StrikeChance * now.Strength / 100) Strike();
             if (now.Meteors > 0 && Tick % p.MeteorEvery == 0 && Rand() < p.MeteorChance * now.Meteors / 100) Meteor();
@@ -125,6 +134,59 @@ namespace Chem
                     var c = cells[i];
                     if (c.Water == 0 || c.Water > 2 || c.Frozen == freeze) continue;
                     if (Rand() < chance) c.Frozen = freeze;
+                }
+            }
+        }
+
+        /// <summary>Snow settles on open, dry, unburnt ground, and drifts into banks where it's sheltered.</summary>
+        void Settle(RowSpan[] rows, double cover, double bank)
+        {
+            int upwind = WindDir >= 0 ? (WindDir + 2) % 4 : -1;
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    var c = cells[i];
+                    if (c.Water > 0 || c.Fire > 0 || IsBlocking(c)) continue;
+                    if (c.Cover == null)
+                    {
+                        if (Rand() < cover) c.Cover = SnowCover;
+                    }
+                    else if (c.Cover == SnowCover && Sheltered(s.Chunk, i, upwind) && Rand() < bank) c.Cover = BankCover;
+                }
+            }
+        }
+
+        /// <summary>Whether something blocking stands next to a square: on its upwind side in a wind, any side without.</summary>
+        bool Sheltered(Chunk ch, int i, int upwind)
+        {
+            for (int d = 0; d < 4; d++)
+            {
+                if (upwind >= 0 && d != upwind) continue;
+                var n = Chunk.Next(ch, i, d, out var nch, out _);
+                if (n != null && nch.Active && IsBlocking(n)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>Banks sink back to snow, and snow melts into a puddle.</summary>
+        void Melt(RowSpan[] rows, double chance)
+        {
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    var c = cells[i];
+                    if (c.Cover != SnowCover && c.Cover != BankCover) continue;
+                    if (Rand() >= chance) continue;
+                    if (c.Cover == BankCover) c.Cover = SnowCover;
+                    else
+                    {
+                        c.Cover = null;
+                        if (c.Water == 0) c.Water = 1;
+                    }
                 }
             }
         }

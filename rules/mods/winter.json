@@ -1,6 +1,6 @@
 {
   "title": "Winter",
-  "idea": "Snow, one fall after another: the puddles and trenches freeze over into ice you slide on, fires burn lower and spread less, and the sky stays grey.",
+  "idea": "Snow, one fall after another: it blankets the valley and drifts into banks against walls and trees, the puddles and trenches freeze over into ice you slide on, and fire has to melt its way through before the grass will burn.",
   "patch": {
     "sim": { "weather": { "calmPeriods": 0, "weights": { "clear": 0, "cloudy": 1, "windy": 0, "fog": 0, "rain": 0, "storm": 0, "snow": 4 }, "snow": { "freezeEvery": 12, "freezeChance": 0.15 } } }
   }

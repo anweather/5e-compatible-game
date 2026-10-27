@@ -150,24 +150,17 @@ public partial class ChemGrid
     }
 
     // A new terrain, height or cover: the terrain is reshaped (eased, see ChemGrid.Shaping.cs)
-    // and repainted, and the cell's dressing and blocker rebuilt where its ground stands now.
+    // and repainted, and the cell's dressing and blocker rebuilt where its ground stands now. A snow
+    // bank coming or going reshapes it too (CellHeightfield stands the ground higher under one).
     void ChangeGround(View v, Cell c, int x, int y)
     {
         int elevation = World.ElevationUnits(c);
         bool reshaped = v.terrain != null && v.elevation != elevation;
         bool rebuild = v.terrain != c.T || v.height != c.Height;
-        if (valley != null) valley.CellChanged(x, y, v.terrain, c.T, reshaped);
-        if (rebuild)
-        {
-            // A rock wall growing taller rises from its old top, not from the flat ground under it.
-            float shown = GroundTop(x, y, c);
-            if (reshaped) shown = StandsAlone(c) && v.dressing != null ? v.dressing.transform.position.y : ShownGround(x, y, c);
-            if (v.dressing != null) Destroy(v.dressing);
-            v.dressing = dressings.Build(c, x, y, shown);
-            blockers.Place(x, y, c, shown);
-            if (reshaped) StartShaping(v, x, y, shown);
-        }
-        if (reshaped)
+        bool banked = (v.coverId == World.BankCover) != (c.Cover == World.BankCover);
+        if (valley != null) valley.CellChanged(x, y, v.terrain, c.T, reshaped || banked);
+        if (rebuild) Redress(v, c, x, y, reshaped);
+        if (reshaped || banked)
         {
             waterSurface.GroundChanged(x, y);
             slicks.GroundChanged();
@@ -176,6 +169,18 @@ public partial class ChemGrid
         v.height = c.Height;
         v.elevation = elevation;
         v.coverId = c.Cover;
+    }
+
+    // The cell's dressing and blocker, built again where its ground stands now. A rock wall growing
+    // taller rises from its old top, not from the flat ground under it.
+    void Redress(View v, Cell c, int x, int y, bool reshaped)
+    {
+        float shown = GroundTop(x, y, c);
+        if (reshaped) shown = StandsAlone(c) && v.dressing != null ? v.dressing.transform.position.y : ShownGround(x, y, c);
+        if (v.dressing != null) Destroy(v.dressing);
+        v.dressing = dressings.Build(c, x, y, shown);
+        blockers.Place(x, y, c, shown);
+        if (reshaped) StartShaping(v, x, y, shown);
     }
 
     // A hash of everything drawn for a cell apart from its terrain.

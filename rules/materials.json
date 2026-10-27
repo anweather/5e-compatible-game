@@ -29,7 +29,9 @@
   "covers": {
     "oil":    { "name": "Oil", "tags": ["flammable", "slippery"], "flammability": 0.95, "fuel": 10, "burnIntensity": 3 },
     "grease": { "name": "Grease", "tags": ["flammable", "slippery"], "flammability": 0.6, "fuel": 7, "burnIntensity": 2 },
-    "ash":    { "name": "Ash", "tags": [] }
+    "ash":    { "name": "Ash", "tags": [] },
+    "snow":   { "name": "Snow", "tags": ["snow"] },
+    "snowbank": { "name": "Snow bank", "tags": ["snow"] }
   },
   "gases": {
     "steam": { "name": "Steam", "scald": 1 },

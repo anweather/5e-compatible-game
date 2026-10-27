@@ -12,6 +12,29 @@ public static class ProceduralTextures
     /// lengths (a fixed seed), each a whole number of periods across the texture so its edges match,
     /// the longer ones stronger. Enough of them that no pattern shows across a lake.
     /// </summary>
+    /// <summary>
+    /// A boot print for Footprints: white where the snow is pressed down (the vertex colour tints it),
+    /// a sole and a heel, soft-edged, toe toward +v. Alpha only matters; the colour is white.
+    /// </summary>
+    public static Texture2D Footprint(int size)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "Footprint", wrapMode = TextureWrapMode.Clamp };
+        var pixels = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float u = (x + 0.5f) / size - 0.5f, v = (y + 0.5f) / size;
+                // Sole: an oval in the front two thirds; heel: a smaller one at the back.
+                float sole = new Vector2(u / 0.36f, (v - 0.62f) / 0.34f).magnitude;
+                float heel = new Vector2(u / 0.3f, (v - 0.18f) / 0.15f).magnitude;
+                float a = Mathf.Max(Mathf.InverseLerp(1f, 0.75f, sole), Mathf.InverseLerp(1f, 0.7f, heel));
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)(a * 255f));
+            }
+        tex.SetPixels32(pixels);
+        tex.Apply(true);
+        return tex;
+    }
+
     public static Texture2D RippleNormals(int size)
     {
         var tex = new Texture2D(size, size, TextureFormat.RGBA32, true, true) { name = "Ripples", wrapMode = TextureWrapMode.Repeat };

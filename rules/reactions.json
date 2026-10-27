@@ -1,6 +1,8 @@
 {
   "cell": [
     { "id": "fire-oil", "element": "fire", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} ignites", "notable": true, "stop": true },
+    { "id": "fire-snowbank", "element": "fire", "if": { "cover": ["snowbank"] }, "do": [{ "setCover": "snow" }, { "addWater": 1 }], "log": "The snow bank slumps into slush", "stop": true },
+    { "id": "fire-snow", "element": "fire", "if": { "cover": ["snow"] }, "do": [{ "setCover": null }, { "addWater": 1 }], "log": "The snow melts", "stop": true },
     { "id": "fire-ice", "element": "fire", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water", "stop": true },
     { "id": "fire-water", "element": "fire", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam", "stop": true },
     { "id": "fire-flammable", "element": "fire", "if": { "terrainTag": "flammable" }, "do": [{ "ignite": 2 }], "log": "Fire takes hold of the {terrain}", "stop": true },

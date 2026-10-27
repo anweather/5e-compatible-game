@@ -89,9 +89,16 @@ namespace Chem
 
         // ---------- the rule ----------
 
-        /// <summary>A cell's offset from the baked ground in metres; 0 for no cell.</summary>
-        public float CellOffset(World world, Cell c) =>
-            c == null ? 0f : (world.TerrainOf(c).Elevation + c.Height) * StepHeight;
+        /// <summary>How high a snow bank stands over the ground, in metres.</summary>
+        public const float BankDepth = 0.45f;
+
+        /// <summary>A cell's offset from the baked ground in metres (a snow bank's on top); 0 for no cell.</summary>
+        public float CellOffset(World world, Cell c)
+        {
+            if (c == null) return 0f;
+            float bank = c.Cover == World.BankCover ? BankDepth : 0f;
+            return (world.TerrainOf(c).Elevation + c.Height) * StepHeight + bank;
+        }
 
         /// <summary>One sample's offset, seams included.</summary>
         public float SampleOffset(World world, int i, int j, int sx, int sz)

@@ -148,8 +148,16 @@ comes). What it does to squares, at full strength:
 - **snow**: holds fire back half as much as rain does, and every
   `snow.freezeEvery` ticks the water on a square two units deep or less may
   freeze (`snow.freezeChance`): puddles and trenches ice over, ponds and
-  the lake don't. With neither rain nor snow, every `rain.dryEvery` ticks
-  such shallow ice may thaw again (`snow.thawChance`), a cold spell's too.
+  the lake don't. On the same beat open, dry, unburnt ground may take a
+  `snow` cover (`snow.coverChance`), and a snowy square with something
+  blocking beside it (on its upwind side in a wind: a wall, a tree, a rock)
+  may drift into a `snowbank` (`snow.bankChance`), which stands the ground
+  half a metre higher. Fire melts them (`fire-snowbank`, `fire-snow` in
+  `reactions.json`, before `fire-flammable`, so snowy grass won't burn
+  until the snow is gone). With neither rain nor snow, every
+  `rain.dryEvery` ticks such shallow ice may thaw again
+  (`snow.thawChance`), a cold spell's too, a bank may sink back to snow
+  and snow may melt into a puddle.
 - **windy** and **storm**: a prevailing wind that fire and gas follow like
   Gust of Wind's (which wins while it blows).
 - **storm**: every `storm.strikeEvery` ticks, lightning may strike a random

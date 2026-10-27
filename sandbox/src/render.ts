@@ -216,6 +216,14 @@ function drawOverlay(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: numbe
     ctx.fill();
     ctx.fillStyle = "rgba(255,255,255,0.25)";
     ctx.beginPath(); ctx.ellipse(px + s * 0.38, py + s * 0.38, s * 0.12, s * 0.05, -0.6, 0, 7); ctx.fill();
+  } else if (c.cover === "snow" || c.cover === "snowbank") {
+    // Snow: a white blanket, a bank piled higher and brighter.
+    ctx.fillStyle = c.cover === "snow" ? "rgba(240,244,250,0.82)" : "rgba(252,253,255,0.95)";
+    ctx.fillRect(px, py, s, s);
+    if (c.cover === "snowbank") {
+      ctx.fillStyle = "rgba(180,196,220,0.5)";
+      ctx.beginPath(); ctx.ellipse(px + s / 2, py + s * 0.62, s * 0.4, s * 0.2, 0, 0, 7); ctx.fill();
+    }
   } else if (c.cover === "ash") {
     ctx.fillStyle = "rgba(70,68,66,0.55)";
     for (let k = 0; k < 5; k++) ctx.fillRect(px + hash(x, y, k) * s, py + hash(y, x, k) * s, s * 0.1, s * 0.1);

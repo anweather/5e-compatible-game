@@ -133,6 +133,10 @@ public static class ProbeScenarios
             "The valley's animals (ValleyFauna, from Punchy's creatures): 10 s for them to come out round the camera, then a deer put 8 m north " +
             "from the wizard, then a deer, a rabbit, a turkey and a fox walking through the meadow. Checks: ValleyFauna is built with 10 " +
             "species or more, 10 animals or more are out, the deer bolts (over 15 m from the wizard after 3 s), no console errors."),
+        new Entry("snow", typeof(SnowProbe), 60f,
+            "Heavy snow at noon (fast settling), then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
+            "Checks: over 500 squares under snow, over 20 banks against walls and trees, the ground over a bank stands 0.25 m higher, " +
+            "4 footprints or more from the walk, the bolt melts the snow where it lands and nothing catches, no console errors."),
         new Entry("critters", typeof(CrittersProbe), 60f,
             "The ambient fireflies and butterflies (AmbientCritters, from Punchy): a clear 22:00 over the meadow toward the pond, then " +
             "a clear noon close to the grass. Checks: AmbientCritters is built with both materials, fireflies are out at night (and no " +

@@ -147,7 +147,7 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void GoldenSnowFreezesPuddlesAndADrySpellThawsThemMatchesTs()
+        public void GoldenSnowFreezesLiesAndBanksThenADrySpellThawsAndMeltsItMatchesTs()
         {
             // The same as "snow freezes shallow water..." in weather.test.ts.
             var snowy = With(Quick + ", 'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 1 }, " +
@@ -161,13 +161,34 @@ namespace Chem.Tests
             int frozen = w.Cells.Count(c => c.Frozen && c.Water > 0);
             Assert.That(frozen, Is.GreaterThan(10), "the puddles froze");
             Assert.That(w.Cells.Any(c => c.Water > 2 && c.Frozen), Is.False, "the deep pond did not");
-            Assert.That($"{w.CellHash()} {w.RngState} {frozen}", Is.EqualTo("95ca2729 1105483753 42"));
+            int covered = w.Cells.Count(c => c.Cover == World.SnowCover || c.Cover == World.BankCover);
+            int banks = w.Cells.Count(c => c.Cover == World.BankCover);
+            Assert.That(covered, Is.GreaterThan(50), "snow lies on the field");
+            Assert.That(banks, Is.GreaterThan(0), "and drifts into banks against the walls");
+            Assert.That($"{w.CellHash()} {w.RngState} {frozen} {covered} {banks}", Is.EqualTo("893f5dee 3623420721 42 119 26"));
 
             w.ApplyRules(clear);
             Run(w, 150);
             int still = w.Cells.Count(c => c.Frozen && c.Water > 0);
             Assert.That(still, Is.LessThan(frozen / 2), "a dry spell thawed most of it");
-            Assert.That($"{w.CellHash()} {w.RngState} {still}", Is.EqualTo("85a44211 104238795 0"));
+            int left = w.Cells.Count(c => c.Cover == World.SnowCover || c.Cover == World.BankCover);
+            Assert.That(left, Is.LessThan(20), "the snow melted");
+            Assert.That($"{w.CellHash()} {w.RngState} {still} {left}", Is.EqualTo("751afd98 2063358975 0 0"));
+        }
+
+        [Test]
+        public void FireMeltsSnowIntoWaterInsteadOfLightingTheGrassUnderIt()
+        {
+            var w = Field(R, 9);
+            var c = w.At(18, 3);
+            c.Cover = World.BankCover;
+            w.Apply(18, 3, "fire", 1, -1, false);
+            Assert.That(c.Cover, Is.EqualTo(World.SnowCover), "a bank slumps to snow");
+            Assert.That(c.Fire, Is.EqualTo(0));
+            w.Apply(18, 3, "fire", 1, -1, false);
+            Assert.That(c.Cover, Is.Null, "then melts");
+            Assert.That(c.Water, Is.EqualTo(2), "into water");
+            Assert.That(c.Fire, Is.EqualTo(0), "and the grass doesn't catch");
         }
     }
 }

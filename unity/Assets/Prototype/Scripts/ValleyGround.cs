@@ -333,7 +333,9 @@ public sealed class ValleyGround
         bareByChunk.Clear();
         foreach (var (x, y) in batch)
         {
-            if (CellPaint.IsGrassy(CellPaint.Mix(world, world.At(x, y), scorched(x, y)))) continue;
+            // Snow only lies on the grass (clearing it would be for good: nothing regrows it).
+            var c = world.At(x, y);
+            if (CellPaint.IsSnowy(c) || CellPaint.IsGrassy(CellPaint.Mix(world, c, scorched(x, y)))) continue;
             var r = layout.TexelRect(x, y);
             if (!chunks.ContainsKey((r.I, r.J))) continue;
             if (!bareByChunk.TryGetValue((r.I, r.J), out var list)) bareByChunk[(r.I, r.J)] = list = new List<ChunkRect>();

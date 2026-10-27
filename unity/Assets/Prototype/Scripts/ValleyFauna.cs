@@ -41,6 +41,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
 
     sealed class Creature
     {
+        public int id;
         public int species;
         public int coat;
         public CreatureState state;
@@ -61,6 +62,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
     ChemGrid grid;
     World world;
     float spawnBudget, nextLook;
+    int nextId;
     Unity.Mathematics.Random rng = new(0x9E3779B9u);
 
     /// <summary>How many animals are out, for the probe.</summary>
@@ -71,6 +73,9 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
 
     /// <summary>An animal's state (position, speed, what it's doing), for the probe.</summary>
     public CreatureState State(int index) => creatures[index].state;
+
+    /// <summary>An animal's id, the same for as long as it's out (Footprints follows each one by it).</summary>
+    public int Id(int index) => creatures[index].id;
 
     /// <summary>Takes an animal under outside control: it keeps this heading and speed and ignores everything (the probe).</summary>
     public void Puppet(int index, float yaw, float speed)
@@ -244,6 +249,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         var b = bodies[speciesIndex];
         creatures.Add(new Creature
         {
+            id = ++nextId,
             species = speciesIndex,
             coat = b.PickCoat(rng.NextFloat()),
             state = new CreatureState

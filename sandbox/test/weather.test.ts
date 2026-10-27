@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RULES, composeRules, installRules, validateRules, type ModPatch } from "../src/rules.ts";
 import { step } from "../src/sim.ts";
+import { applyElement } from "../src/react.ts";
 import { castSpell } from "../src/actions.ts";
 import { dayOf, kindOf, minuteOfDay, minutesAt, weatherAt } from "../src/sky.ts";
 import { type World, cellAt, createWorld, hashWorld } from "../src/world.ts";
@@ -125,7 +126,7 @@ test("a meteor shower brings meteors down a little later as craters, and matches
   });
 });
 
-test("snow freezes shallow water and damps the fire; a dry spell thaws it; matches the C# golden", () => {
+test("snow freezes shallow water, lies on the field and banks against the walls; a dry spell thaws and melts it; matches the C# golden", () => {
   const snowy = { sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 0, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 0, snow: 1 },
     snow: { freezeEvery: 4, freezeChance: 0.5 } } } } as ModPatch;
   const clear = { sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 1, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 0, snow: 0 },
@@ -138,12 +139,31 @@ test("snow freezes shallow water and damps the fire; a dry spell thaws it; match
     frozen = w.cells.filter((c) => c.frozen && c.water > 0).length;
     assert.ok(frozen > 10, `the puddles froze (${frozen})`);
     assert.ok(w.cells.filter((c) => c.water > 2 && c.frozen).length === 0, "the deep pond did not");
-    assert.equal(`${cellHash(w)} ${w.rng} ${frozen}`, "95ca2729 1105483753 42");
+    const snowy = w.cells.filter((c) => c.cover === "snow" || c.cover === "snowbank").length;
+    const banks = w.cells.filter((c) => c.cover === "snowbank").length;
+    assert.ok(snowy > 50, `snow lies on the field (${snowy})`);
+    assert.ok(banks > 0, `and drifts into banks against the walls (${banks})`);
+    assert.equal(`${cellHash(w)} ${w.rng} ${frozen} ${snowy} ${banks}`, "893f5dee 3623420721 42 119 26");
   });
   withRules(clear, () => {
     run(w, 150);
     const still = w.cells.filter((c) => c.frozen && c.water > 0).length;
     assert.ok(still < frozen / 2, `a dry spell thawed most of it (${still} of ${frozen} still ice)`);
-    assert.equal(`${cellHash(w)} ${w.rng} ${still}`, "85a44211 104238795 0");
+    const left = w.cells.filter((c) => c.cover === "snow" || c.cover === "snowbank").length;
+    assert.ok(left < 20, `the snow melted (${left} left)`);
+    assert.equal(`${cellHash(w)} ${w.rng} ${still} ${left}`, "751afd98 2063358975 0 0");
   });
+});
+
+test("fire melts snow into water instead of lighting the grass under it", () => {
+  const w = field(9);
+  const c = cellAt(w, 18, 3)!;
+  c.cover = "snowbank";
+  applyElement(w, 18, 3, "fire", { power: 1, direct: false });
+  assert.equal(c.cover, "snow", "a bank slumps to snow");
+  assert.equal(c.fire, 0);
+  applyElement(w, 18, 3, "fire", { power: 1, direct: false });
+  assert.equal(c.cover, null, "then melts");
+  assert.equal(c.water, 2, "into water");
+  assert.equal(c.fire, 0, "and the grass doesn't catch");
 });

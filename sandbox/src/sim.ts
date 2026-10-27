@@ -252,8 +252,9 @@ export { ignite };
 // ---------- weather ----------
 
 // What the weather does to cells, after gas: rain fills squares and dry spells
-// dry shallow ones, snow freezes shallow water (and dry spells thaw it), storms
-// strike lightning (World.Weather.cs ports this).
+// dry shallow ones, snow freezes shallow water, covers open ground and drifts
+// into banks against walls and trees (and dry spells thaw the ice and melt the
+// snow), storms strike lightning (World.Weather.cs ports this).
 // Nothing happens during the calm stretches the world starts with.
 function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
@@ -264,10 +265,14 @@ function tickWeather(w: World) {
   if (rain > 0) {
     if (w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);
   } else if (snow > 0) {
-    if (w.tick % p.snow.freezeEvery === 0) freeze(w, (p.snow.freezeChance * snow) / 100, true);
+    if (w.tick % p.snow.freezeEvery === 0) {
+      freeze(w, (p.snow.freezeChance * snow) / 100, true);
+      settle(w, (p.snow.coverChance * snow) / 100, (p.snow.bankChance * snow) / 100);
+    }
   } else if (w.tick % p.rain.dryEvery === 0) {
     dry(w, p.rain.dryChance);
     freeze(w, p.snow.thawChance, false);
+    melt(w, p.snow.thawChance);
   }
   if (now.kind === "storm" && w.tick % p.storm.strikeEvery === 0 && rand(w) < (p.storm.strikeChance * now.strength) / 100) strike(w);
   if (now.meteors > 0 && w.tick % p.meteors.every === 0 && rand(w) < (p.meteors.chance * now.meteors) / 100) meteor(w);
@@ -313,6 +318,44 @@ function freeze(w: World, chance: number, frozen: boolean) {
   for (const c of w.cells) {
     if (c.water === 0 || c.water > 2 || !!c.frozen === frozen) continue;
     if (rand(w) < chance) c.frozen = frozen;
+  }
+}
+
+/** The covers snow lays and drifts into (materials.json; C#: World.SnowCover, BankCover). */
+const SNOW = "snow", BANK = "snowbank";
+
+/** Snow settles on open, dry, unburnt ground, and drifts into banks where it's sheltered (World.Settle). */
+function settle(w: World, cover: number, bank: number) {
+  const wind = windDir(w), upwind = wind >= 0 ? (wind + 2) % 4 : -1;
+  for (let i = 0; i < w.cells.length; i++) {
+    const c = w.cells[i];
+    if (c.water > 0 || c.fire > 0 || isBlocking(c)) continue;
+    if (c.cover === null) {
+      if (rand(w) < cover) c.cover = SNOW;
+    } else if (c.cover === SNOW && sheltered(w, i % w.w, Math.floor(i / w.w), upwind) && rand(w) < bank) c.cover = BANK;
+  }
+}
+
+/** Whether something blocking stands next to a square: on its upwind side in a wind, any side without. */
+function sheltered(w: World, x: number, y: number, upwind: number): boolean {
+  for (let d = 0; d < 4; d++) {
+    if (upwind >= 0 && d !== upwind) continue;
+    const n = cellAt(w, x + DX[d], y + DY[d]);
+    if (n && isBlocking(n)) return true;
+  }
+  return false;
+}
+
+/** Banks sink back to snow, and snow melts into a puddle (World.Melt). */
+function melt(w: World, chance: number) {
+  for (const c of w.cells) {
+    if (c.cover !== SNOW && c.cover !== BANK) continue;
+    if (rand(w) >= chance) continue;
+    if (c.cover === BANK) c.cover = SNOW;
+    else {
+      c.cover = null;
+      if (c.water === 0) c.water = 1;
+    }
   }
 }
 

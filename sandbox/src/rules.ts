@@ -227,7 +227,8 @@ export interface SimParams {
     rain: { douseChance: number; dampen: number; fillEvery: number; fillChance: number; dryEvery: number; dryChance: number };
     storm: { strikeEvery: number; strikeChance: number };
     /** Every freezeEvery ticks of snow, a shallow square's chance its water freezes; dry spells thaw it at thawChance. */
-    snow: { freezeEvery: number; freezeChance: number; thawChance: number };
+    /** Also on that beat: open ground's chance of a snow cover, and a sheltered snowy square's chance to drift into a bank. */
+    snow: { freezeEvery: number; freezeChance: number; thawChance: number; coverChance: number; bankChance: number };
     /** A clear stretch's chance of a meteor shower; in one, every `every` ticks the chance a meteor appears, landing fallTicks later. */
     meteors: { showerChance: number; every: number; chance: number; fallTicks: number };
   };

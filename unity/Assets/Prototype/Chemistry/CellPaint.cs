@@ -52,25 +52,29 @@ namespace Chem
         public const string Charred = "Charred";
         /// <summary>Bare, worn or dug earth.</summary>
         public const string Earth = "Earth";
+        /// <summary>Snow lying on the ground (a snow or snowbank cover).</summary>
+        public const string Snow = "Snow";
 
-        /// <summary>The layers painted, in the order of the weights. The valley's Snow is never painted.</summary>
-        public static readonly IReadOnlyList<string> Layers = new[] { Grass, Moss, Rock, Sand, Soil, Charred, Earth };
+        /// <summary>The layers painted, in the order of the weights.</summary>
+        public static readonly IReadOnlyList<string> Layers = new[] { Grass, Moss, Rock, Sand, Soil, Charred, Earth, Snow };
 
-        // Weights in Layers order: grass, moss, rock, sand, soil, charred, earth.
-        static readonly float[] GrassMix = { 1, 0, 0, 0, 0, 0, 0 };
-        static readonly float[] UndergrowthMix = { 0, 1, 0, 0, 0, 0, 0 };
-        static readonly float[] StumpMix = { 0, 0, 0, 0, 0, 0.6f, 0.4f };
+        // Weights in Layers order: grass, moss, rock, sand, soil, charred, earth, snow.
+        static readonly float[] GrassMix = { 1, 0, 0, 0, 0, 0, 0, 0 };
+        static readonly float[] UndergrowthMix = { 0, 1, 0, 0, 0, 0, 0, 0 };
+        static readonly float[] StumpMix = { 0, 0, 0, 0, 0, 0.6f, 0.4f, 0 };
         // A fallen tree: torn-up earth and moss where it lay.
-        static readonly float[] DeadfallMix = { 0, 0.4f, 0, 0, 0, 0, 0.6f };
-        static readonly float[] RockMix = { 0, 0, 1, 0, 0, 0, 0 };
+        static readonly float[] DeadfallMix = { 0, 0.4f, 0, 0, 0, 0, 0.6f, 0 };
+        static readonly float[] RockMix = { 0, 0, 1, 0, 0, 0, 0, 0 };
         // A raised wall: rock, spread over its side slopes (see Spread).
-        static readonly float[] WallMix = { 0, 0, 1, 0, 0, 0, 0 };
+        static readonly float[] WallMix = { 0, 0, 1, 0, 0, 0, 0, 0 };
         // Bare earth, a little sand in it so it reads worn rather than wet.
-        static readonly float[] EarthMix = { 0, 0, 0, 0.2f, 0, 0, 0.8f };
+        static readonly float[] EarthMix = { 0, 0, 0, 0.2f, 0, 0, 0.8f, 0 };
         // Dug ground (pits, trenches): darker, stonier earth.
-        static readonly float[] DugMix = { 0, 0, 0, 0, 0.3f, 0, 0.7f };
+        static readonly float[] DugMix = { 0, 0, 0, 0, 0.3f, 0, 0.7f, 0 };
         // Scorched ground and ash.
-        static readonly float[] CharredMix = { 0, 0, 0, 0, 0, 0.85f, 0.15f };
+        static readonly float[] CharredMix = { 0, 0, 0, 0, 0, 0.85f, 0.15f, 0 };
+        // Snow lying on the ground.
+        static readonly float[] SnowMix = { 0, 0, 0, 0, 0, 0, 0, 1 };
 
         const int CharredIndex = 5, EarthIndex = 6;
 
@@ -92,13 +96,15 @@ namespace Chem
         };
 
         /// <summary>
-        /// A cell's layer weights (Layers order, summing to 1). Scorched ground (grass or brush
-        /// burnt away, which the cell itself doesn't remember) and ash paint charred; a film of
-        /// oil or grease is drawn on top (CellSlickMesh) and leaves the ground as it is.
+        /// A cell's layer weights (Layers order, summing to 1). Snow (and a snow bank) paints
+        /// snow; scorched ground (grass or brush burnt away, which the cell itself doesn't
+        /// remember) and ash paint charred; a film of oil or grease is drawn on top
+        /// (CellSlickMesh) and leaves the ground as it is.
         /// </summary>
         public static IReadOnlyList<float> Weights(Cell c, bool scorched = false)
         {
             if (c == null) throw new ArgumentNullException(nameof(c));
+            if (IsSnowy(c)) return SnowMix;
             if (scorched || c.Cover == "ash") return CharredMix;
             return ByTerrain.TryGetValue(c.T, out var mix) ? mix : EarthMix;
         }
@@ -114,6 +120,9 @@ namespace Chem
             var mix = Weights(c, scorched);
             return c.Height < 0 && IsGrassy(mix) ? DugMix : mix;
         }
+
+        /// <summary>Whether snow lies on a cell (World.SnowCover or BankCover).</summary>
+        public static bool IsSnowy(Cell c) => c != null && (c.Cover == World.SnowCover || c.Cover == World.BankCover);
 
         /// <summary>Whether layer weights (Layers order) read as grass that detail grass grows on.</summary>
         public static bool IsGrassy(IReadOnlyList<float> w) => w[0] + w[1] >= 0.5f;

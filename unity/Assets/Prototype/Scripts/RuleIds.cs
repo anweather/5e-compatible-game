@@ -91,6 +91,8 @@ public static class CoverIds
     public const string Oil = "oil";
     public const string Grease = "grease";
     public const string Ash = "ash";
+    public const string Snow = "snow";
+    public const string Snowbank = "snowbank";
 }
 
 /// <summary>Gas ids, as in rules/materials.json.</summary>

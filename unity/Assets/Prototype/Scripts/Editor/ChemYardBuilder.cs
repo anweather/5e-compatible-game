@@ -220,6 +220,9 @@ public static class ChemYardBuilder
 
     static void SetUpFauna()
     {
+        // Footprints in the snow, the wizards' and the animals'.
+        new GameObject("Footprints").AddComponent<Footprints>().material = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Footprint.mat",
+            () => UrpMaterials.NewUnlitParticles("Footprint", Color.white, additive: false));
         var fauna = new GameObject("Fauna").AddComponent<ValleyFauna>();
         var shader = Shader.Find("Punchy/Creature");
         fauna.material = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Creature.mat", () => new Material(shader) { name = "Creature" });

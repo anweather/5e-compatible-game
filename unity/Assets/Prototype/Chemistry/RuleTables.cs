@@ -171,6 +171,11 @@ namespace Chem
         /// </summary>
         public int FreezeEvery = 24;
         public double FreezeChance = 0.05, ThawChance = 0.05;
+        /// <summary>
+        /// On the same beat, at full strength: open dry ground's chance of a cover of snow, and a snowy
+        /// square's chance to drift into a bank where something blocking shelters it (upwind of it, in a wind).
+        /// </summary>
+        public double CoverChance = 0.08, BankChance = 0.05;
     }
 
     public sealed class SimParams
@@ -602,6 +607,8 @@ namespace Chem
                 w.FreezeEvery = Int(snow["freezeEvery"]) ?? w.FreezeEvery;
                 w.FreezeChance = Num(snow["freezeChance"]) ?? w.FreezeChance;
                 w.ThawChance = Num(snow["thawChance"]) ?? w.ThawChance;
+                w.CoverChance = Num(snow["coverChance"]) ?? w.CoverChance;
+                w.BankChance = Num(snow["bankChance"]) ?? w.BankChance;
             }
             if (o["meteors"] is JObject meteors)
             {
