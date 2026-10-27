@@ -22,6 +22,7 @@ public class SleetProbe : ProbeScenario
     List<(int x, int y)> squares;
     Vector2Int target;
     Vector3 at;
+    int flyingBefore;
 
     protected override IEnumerator Run()
     {
@@ -44,6 +45,7 @@ public class SleetProbe : ProbeScenario
 
         // Half a second in: the storm is gathering, nothing has landed yet.
         float castAt = Time.time;
+        flyingBefore = Flying(); // the Fire Bolt's, which lingers a moment after it lands
         yield return CastFromBar(SpellIds.SleetStorm, TargetX, TargetY, 1, 0.5f);
         var storm = FindFirstObjectByType<SleetStorm>();
         CheckShow(storm);
@@ -81,6 +83,9 @@ public class SleetProbe : ProbeScenario
         }
     }
 
+    static int Flying() =>
+        FindObjectsByType<SpellProjectile>(FindObjectsSortMode.None).Length + FindObjectsByType<MeteorFall>(FindObjectsSortMode.None).Length;
+
     int Burning() => squares.Count(s => World.At(s.x, s.y).Fire > 0);
 
     // A storm over the target, with its cloud and sleet, and nothing flying or landing like a ball.
@@ -98,7 +103,7 @@ public class SleetProbe : ProbeScenario
                 $"{off.magnitude:0.00} m from the target, {storm.HalfWidth:0.00} m each way (the burst's {want:0.00} m)");
             Check("cloud_overhead", storm.Cloud.transform.position.y > at.y + 6f, $"the cloud {storm.Cloud.transform.position.y - at.y:0.0} m up");
         }
-        bool projectile = FindFirstObjectByType<SpellProjectile>() != null || FindFirstObjectByType<MeteorFall>() != null;
+        bool projectile = Flying() > flyingBefore;
         bool lance = GameObject.Find("IceLance(Clone)") != null;
         Check("no_projectile", !projectile && !lance, $"projectile {(projectile ? "flew" : "none")}, ice impact {(lance ? "played" : "none")}");
     }
