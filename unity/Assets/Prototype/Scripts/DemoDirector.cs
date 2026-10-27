@@ -16,7 +16,7 @@ public class DemoDirector : MonoBehaviour
 
     IEnumerator Start()
     {
-        grid = FindFirstObjectByType<ChemGrid>();
+        grid = FindAnyObjectByType<ChemGrid>();
         var wizard = WizardRig.FindLocal();
         puppet = new WizardPuppet(wizard);
         caster = wizard.GetComponent<SpellCaster>();

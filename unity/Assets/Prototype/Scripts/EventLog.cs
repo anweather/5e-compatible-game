@@ -21,7 +21,7 @@ public class EventLog : MonoBehaviour
     void Awake() => instance = this;
     void Start()
     {
-        if (caster == null) caster = FindFirstObjectByType<SpellCaster>();
+        if (caster == null) caster = FindAnyObjectByType<SpellCaster>();
     }
 
     /// <summary>Shows this caster's spells and controls; the local player's caster calls it when enabled.</summary>
@@ -61,7 +61,7 @@ public class EventLog : MonoBehaviour
     public static bool ResetYard()
     {
         // Reloading the scene online would drop this machine's world and everyone's wizards with it.
-        var net = FindFirstObjectByType<NetChem>();
+        var net = FindAnyObjectByType<NetChem>();
         if (net != null && net.Online)
         {
             Add("Reset is off while playing together (leave the game from the Esc menu first)");

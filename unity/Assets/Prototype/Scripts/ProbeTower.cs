@@ -19,7 +19,7 @@ public class TowerProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        course = FindFirstObjectByType<TowerCourse>();
+        course = FindAnyObjectByType<TowerCourse>();
         Check("tower_built", course != null && course.platforms != null && course.platforms.Length > 0, "a Tower with its TowerCourse and platforms");
         if (course == null || course.platforms == null || course.platforms.Length == 0) yield break;
         Counts();
@@ -183,7 +183,7 @@ public class TowerProbe : ProbeScenario
         toYard.Normalize();
         Teleport(course.summit + toYard * 1.5f + Vector3.up * 0.05f);
         yield return Wait(0.8f);
-        Check("finish_fireworks", FindFirstObjectByType<TowerFireworks>() != null, "fireworks over the summit");
+        Check("finish_fireworks", FindAnyObjectByType<TowerFireworks>() != null, "fireworks over the summit");
         Check("finish_logged", ConsoleSaid("You reached the top in", mark), "\"You reached the top in m:ss!\" in the log");
         Metric("best_time_s", TowerCourse.Best);
         Cut(course.summit + Vector3.up * 3f - toYard * 6f, course.summit + toYard * 60f + Vector3.down * 25f);

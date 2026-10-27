@@ -22,7 +22,7 @@ public class ShapeshiftProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        fauna = FindFirstObjectByType<ValleyFauna>();
+        fauna = FindAnyObjectByType<ValleyFauna>();
         shape = wizard.GetComponent<Shapeshift>();
         spell = World.Rules.Spell(SpellIds.Shapeshift);
         deer = fauna != null ? fauna.SpeciesIndex("Deer") : -1;

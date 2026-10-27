@@ -12,7 +12,7 @@ public class FaunaProbe : ProbeScenario
 {
     protected override IEnumerator Run()
     {
-        var fauna = FindFirstObjectByType<ValleyFauna>();
+        var fauna = FindAnyObjectByType<ValleyFauna>();
         Check("fauna_built", fauna != null && fauna.material != null && fauna.species.Count >= 10,
             $"ValleyFauna with {(fauna != null ? fauna.species.Count : 0)} species");
         if (fauna == null) yield break;

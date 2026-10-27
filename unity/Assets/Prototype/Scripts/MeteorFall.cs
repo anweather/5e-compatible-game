@@ -64,7 +64,7 @@ public class MeteorFall : MonoBehaviour
         if (smoke == null) smoke = ParticleMaterial(look?.afterImpact, null);
         if (smoke == null) smoke = UrpMaterials.NewUnlitParticles("Meteor smoke", new Color(0.25f, 0.22f, 0.2f, 0.6f), additive: false);
 
-        var grid = FindFirstObjectByType<ChemGrid>();
+        var grid = FindAnyObjectByType<ChemGrid>();
         var stones = grid != null ? grid.wallStones : null;
         GameObject body = stones != null && stones.Length > 0 && stones[0] != null
             ? Instantiate(stones[0], transform)
@@ -150,7 +150,7 @@ public class MeteorFall : MonoBehaviour
         Shake(to);
         var cam = Camera.main;
         float distance = cam != null ? Vector3.Distance(cam.transform.position, to) : 50f;
-        var sky = FindFirstObjectByType<SkyLight>();
+        var sky = FindAnyObjectByType<SkyLight>();
         if (sky != null) sky.Flash(Mathf.Lerp(0.8f, 0.2f, distance / 400f));
 
         glow.transform.SetParent(null, true);

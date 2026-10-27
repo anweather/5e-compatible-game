@@ -71,7 +71,7 @@ public class FrostProbe : ProbeScenario
     // ice sphere (the old IceLance impact) or projectile ball anywhere.
     void CheckBeam((int x, int y) end)
     {
-        var beam = FindFirstObjectByType<FrostBeam>();
+        var beam = FindAnyObjectByType<FrostBeam>();
         var endAt = grid.CellCenter(end.x, end.y);
         if (beam != null)
         {

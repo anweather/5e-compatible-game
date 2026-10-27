@@ -153,7 +153,7 @@ public static class ChemYardBuilder
     // filmic tonemapping, a little extra saturation and a soft vignette.
     static void SetUpLighting()
     {
-        var sun = Object.FindFirstObjectByType<Light>();
+        var sun = Object.FindAnyObjectByType<Light>();
         if (sun != null)
         {
             sun.transform.rotation = Quaternion.Euler(32f, -40f, 0f);

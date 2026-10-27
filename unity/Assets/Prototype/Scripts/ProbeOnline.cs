@@ -207,14 +207,14 @@ public static class OnlineSchedule
     /// <summary>This side's copy of a thing, by its stable id.</summary>
     public static PhysicsProp FindProp(Chem.ThingId id)
     {
-        var spawner = UnityEngine.Object.FindFirstObjectByType<ThingSpawner>();
+        var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
         return spawner != null ? spawner.Find(id) : null;
     }
 
     /// <summary>Every thing this side has, as "id kind", sorted by id.</summary>
     public static List<string> Things()
     {
-        var spawner = UnityEngine.Object.FindFirstObjectByType<ThingSpawner>();
+        var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
         if (spawner == null) return new List<string>();
         return spawner.Live.OrderBy(t => t.id.Value).Select(t => $"{t.id} {t.prop.kind}").ToList();
     }
@@ -340,9 +340,9 @@ public class OnlineProbeClient : MonoBehaviour
     {
         errorCount = 0;
         errors.Clear();
-        var session = FindFirstObjectByType<NetSession>();
+        var session = FindAnyObjectByType<NetSession>();
         session.Join("127.0.0.1");
-        var grid = FindFirstObjectByType<ChemGrid>();
+        var grid = FindAnyObjectByType<ChemGrid>();
         var net = grid.GetComponent<NetChem>();
         float waited = 0f;
         GameObject wizard = null;
@@ -407,7 +407,7 @@ public class OnlineProbe : ProbeScenario
     {
         string id = Guid.NewGuid().ToString("N").Substring(0, 8);
         ProbeLink.Clear();
-        var session = FindFirstObjectByType<NetSession>();
+        var session = FindAnyObjectByType<NetSession>();
         session.Host();
         yield return null;
         wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;

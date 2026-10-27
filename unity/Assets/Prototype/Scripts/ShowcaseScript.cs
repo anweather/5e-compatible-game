@@ -39,7 +39,7 @@ public abstract class ShowcaseScript : MonoBehaviour
     {
         started = Time.time;
         EventLog.HudVisible = false;
-        grid = FindFirstObjectByType<ChemGrid>();
+        grid = FindAnyObjectByType<ChemGrid>();
         wizard = WizardRig.FindLocal();
         puppet = new WizardPuppet(wizard);
         caster = wizard.GetComponent<SpellCaster>();

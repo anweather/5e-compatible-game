@@ -34,7 +34,7 @@ public class Vitals : MonoBehaviour
 
     void Start()
     {
-        var grid = FindFirstObjectByType<ChemGrid>();
+        var grid = FindAnyObjectByType<ChemGrid>();
         var wizard = grid != null && grid.World != null ? grid.World.Rules.Entity(EntityIds.Wizard) : null;
         if (wizard != null) HealthMax = Mathf.Max(1, wizard.Hp);
         Health = HealthMax;

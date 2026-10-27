@@ -47,7 +47,7 @@ public class SleetProbe : ProbeScenario
         float castAt = Time.time;
         flyingBefore = Flying(); // the Fire Bolt's, which lingers a moment after it lands
         yield return CastFromBar(SpellIds.SleetStorm, TargetX, TargetY, 1, 0.5f);
-        var storm = FindFirstObjectByType<SleetStorm>();
+        var storm = FindAnyObjectByType<SleetStorm>();
         CheckShow(storm);
         Check("not_landed_yet", squares.All(s => !World.At(s.x, s.y).Frozen), "the puddles wait for the sleet to reach the ground");
         if (storm == null) yield break;
