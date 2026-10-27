@@ -278,7 +278,7 @@ public class NetChem : NetworkBehaviour
             // Never the hash of a tick still part done (World.StepSome): that one is skipped, and peers check the next.
             int hashTick = NetTick;
             string hash = hashTick % HashEvery == 0 && !grid.World.TickInProgress ? Checksum(grid) : "";
-            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, reset, hashTick, new FixedString64Bytes(hash));
+            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, hashTick, new FixedString64Bytes(hash));
         }
     }
 
