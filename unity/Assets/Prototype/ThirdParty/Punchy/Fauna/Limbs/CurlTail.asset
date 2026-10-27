@@ -1,0 +1,69 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 708ef94d31b2ee048b32343e93f70236, type: 3}
+  m_Name: CurlTail
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.LimbType
+  Role: 2
+  Segments:
+  - Length: 0.07
+    RadiusStart: 0.025
+    RadiusEnd: 0.04
+    Flatten: 1
+    Accent: 0
+    UseFixedColor: 0
+    FixedColor: {r: 0.1, g: 0.08, b: 0.07, a: 1}
+  - Length: 0.07
+    RadiusStart: 0.04
+    RadiusEnd: 0.045
+    Flatten: 1
+    Accent: 0
+    UseFixedColor: 0
+    FixedColor: {r: 0.1, g: 0.08, b: 0.07, a: 1}
+  - Length: 0.06
+    RadiusStart: 0.045
+    RadiusEnd: 0.02
+    Flatten: 1
+    Accent: 0
+    UseFixedColor: 0
+    FixedColor: {r: 0.1, g: 0.08, b: 0.07, a: 1}
+  Spring: 0.6
+  JointPhaseStep: 0
+  FollowGround: 0
+  Idle:
+    Joints:
+    - {x: -70, y: 0, z: 0}
+    - {x: -45, y: 0, z: 0}
+    - {x: -45, y: 0, z: 0}
+  WalkReach:
+    Joints:
+    - {x: -60, y: 6, z: 0}
+    - {x: -45, y: 6, z: 0}
+    - {x: -45, y: 6, z: 0}
+  WalkPush:
+    Joints:
+    - {x: -60, y: -6, z: 0}
+    - {x: -45, y: -6, z: 0}
+    - {x: -45, y: -6, z: 0}
+  WalkLift:
+    Joints: []
+  RunReach:
+    Joints:
+    - {x: -20, y: 0, z: 0}
+    - {x: -10, y: 0, z: 0}
+    - {x: -10, y: 0, z: 0}
+  RunPush:
+    Joints:
+    - {x: -10, y: 0, z: 0}
+    - {x: -10, y: 0, z: 0}
+    - {x: -10, y: 0, z: 0}
+  RunLift:
+    Joints: []

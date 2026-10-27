@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: Scorpion
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.075
+  BodyRadius: 0.025
+  BodyTaper: 0.9
+  BodyFlatten: 0.5
+  Base: {r: 0.55, g: 0.42, b: 0.25, a: 1}
+  Accent: {r: 0.3, g: 0.22, b: 0.12, a: 1}
+  Coats: []
+  Size: {x: 0.9, y: 1.1}
+  Parts:
+  - Limb: {fileID: 11400000, guid: 3ecb190472011a641862f4ffbcaca104, type: 2}
+    Parent: -1
+    Socket: {x: 0.9, y: -0.3, z: 0.55}
+    Direction: {x: 0, y: 80, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.5
+    Thickness: 0.55
+  - Limb: {fileID: 11400000, guid: 3ecb190472011a641862f4ffbcaca104, type: 2}
+    Parent: -1
+    Socket: {x: 0.9, y: -0.3, z: 0.15}
+    Direction: {x: 0, y: 95, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 0.55
+    Thickness: 0.55
+  - Limb: {fileID: 11400000, guid: 3ecb190472011a641862f4ffbcaca104, type: 2}
+    Parent: -1
+    Socket: {x: 0.9, y: -0.3, z: -0.25}
+    Direction: {x: 0, y: 110, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.55
+    Thickness: 0.55
+  - Limb: {fileID: 11400000, guid: 3ecb190472011a641862f4ffbcaca104, type: 2}
+    Parent: -1
+    Socket: {x: 0.9, y: -0.3, z: -0.6}
+    Direction: {x: 0, y: 125, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 0.5
+    Thickness: 0.55
+  - Limb: {fileID: 11400000, guid: 193db0a769f24324c8a3340453f56f8b, type: 2}
+    Parent: -1
+    Socket: {x: 0.5, y: 0, z: 1}
+    Direction: {x: 0, y: 25, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: c381b9a4993bb504ca349c3acf9e95fb, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0.3, z: -1}
+    Direction: {x: -25, y: 180, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  WalkSpeed: 0.3
+  RunSpeed: 1.2
+  Bob: {x: 0, y: 0}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 4
+  IdleTime: {x: 3, y: 15}
+  FleeDistance: 1.5
+  TurnRate: 200
+  GroupSize: {x: 1, y: 1}
+  NearWater: 0

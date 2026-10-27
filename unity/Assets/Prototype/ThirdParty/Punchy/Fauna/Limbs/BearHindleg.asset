@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 708ef94d31b2ee048b32343e93f70236, type: 3}
+  m_Name: BearHindleg
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.LimbType
+  Role: 0
+  Segments:
+  - Length: 0.32
+    RadiusStart: 0.11
+    RadiusEnd: 0.075
+    Flatten: 1
+    Accent: 0
+    UseFixedColor: 0
+    FixedColor: {r: 0.1, g: 0.08, b: 0.07, a: 1}
+  - Length: 0.28
+    RadiusStart: 0.065
+    RadiusEnd: 0.055
+    Flatten: 1
+    Accent: 0
+    UseFixedColor: 0
+    FixedColor: {r: 0.1, g: 0.08, b: 0.07, a: 1}
+  - Length: 0.17
+    RadiusStart: 0.06
+    RadiusEnd: 0.05
+    Flatten: 0.55
+    Accent: 0
+    UseFixedColor: 0
+    FixedColor: {r: 0.1, g: 0.08, b: 0.07, a: 1}
+  Spring: 0
+  JointPhaseStep: 0
+  FollowGround: 0
+  Idle:
+    Joints:
+    - {x: -15, y: 0, z: 0}
+    - {x: 35, y: 0, z: 0}
+    - {x: -110, y: 0, z: 0}
+  WalkReach:
+    Joints:
+    - {x: -35, y: 0, z: 0}
+    - {x: 35, y: 0, z: 0}
+    - {x: -110, y: 0, z: 0}
+  WalkPush:
+    Joints:
+    - {x: 15, y: 0, z: 0}
+    - {x: 30, y: 0, z: 0}
+    - {x: -90, y: 0, z: 0}
+  WalkLift:
+    Joints:
+    - {x: -5, y: 0, z: 0}
+    - {x: 35, y: 0, z: 0}
+    - {x: 30, y: 0, z: 0}
+  RunReach:
+    Joints:
+    - {x: -50, y: 0, z: 0}
+    - {x: 35, y: 0, z: 0}
+    - {x: -105, y: 0, z: 0}
+  RunPush:
+    Joints:
+    - {x: 25, y: 0, z: 0}
+    - {x: 30, y: 0, z: 0}
+    - {x: -80, y: 0, z: 0}
+  RunLift:
+    Joints:
+    - {x: -5, y: 0, z: 0}
+    - {x: 45, y: 0, z: 0}
+    - {x: 40, y: 0, z: 0}

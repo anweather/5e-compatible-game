@@ -1,0 +1,91 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: DesertTortoise
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.32
+  BodyRadius: 0.15
+  BodyTaper: 0.95
+  BodyFlatten: 0.62
+  Base: {r: 0.45, g: 0.37, b: 0.27, a: 1}
+  Accent: {r: 0.52, g: 0.48, b: 0.4, a: 1}
+  Coats: []
+  Size: {x: 0.9, y: 1.1}
+  Parts:
+  - Limb: {fileID: 11400000, guid: 3ecb190472011a641862f4ffbcaca104, type: 2}
+    Parent: -1
+    Socket: {x: 0.75, y: -0.6, z: 0.6}
+    Direction: {x: 35, y: 90, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.2
+    Thickness: 3
+  - Limb: {fileID: 11400000, guid: 3ecb190472011a641862f4ffbcaca104, type: 2}
+    Parent: -1
+    Socket: {x: 0.75, y: -0.6, z: -0.6}
+    Direction: {x: 35, y: 90, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 1.2
+    Thickness: 3
+  - Limb: {fileID: 11400000, guid: 638d929797ab7c94ea24e6ed0d7c877b, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: -0.2, z: 1}
+    Direction: {x: -15, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.7
+    Thickness: 0.55
+  - Limb: {fileID: 11400000, guid: 4518175697e57f845adef14c025ae4c8, type: 2}
+    Parent: 2
+    Socket: {x: 0, y: 0, z: 0}
+    Direction: {x: 20, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.1
+    Thickness: 1.2
+  - Limb: {fileID: 11400000, guid: 8db8692701365314db1a0b5e9ab1cbd1, type: 2}
+    Parent: 3
+    Socket: {x: 0.028, y: 0.012, z: -0.05}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.6
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 627b433384f10a54cb1451463b584b40, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: -0.3, z: -1}
+    Direction: {x: 30, y: 180, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.3
+    Thickness: 1
+  WalkSpeed: 0.15
+  RunSpeed: 0.3
+  Bob: {x: 0.004, y: 0.006}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 6
+  IdleTime: {x: 6, y: 25}
+  FleeDistance: 0
+  TurnRate: 40
+  GroupSize: {x: 1, y: 1}
+  NearWater: 0

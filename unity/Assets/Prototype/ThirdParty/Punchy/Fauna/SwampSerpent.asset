@@ -1,0 +1,75 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: SwampSerpent
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.234
+  BodyRadius: 0.0728
+  BodyTaper: 1
+  BodyFlatten: 0.75
+  Base: {r: 0.55, g: 0.4, b: 0.25, a: 1}
+  Accent: {r: 0.9, g: 0.85, b: 0.75, a: 1}
+  AccentGlow: 0
+  Coats:
+  - Name: Mire
+    Base: {r: 0.2, g: 0.12, b: 0.24, a: 1}
+    Accent: {r: 0.45, g: 0.95, b: 0.3, a: 1}
+    AccentGlow: 0.45
+    Weight: 2
+  - Name: Bog
+    Base: {r: 0.16, g: 0.22, b: 0.12, a: 1}
+    Accent: {r: 0.75, g: 0.35, b: 0.9, a: 1}
+    AccentGlow: 0.45
+    Weight: 1
+  Size: {x: 0.9, y: 1.1}
+  Parts:
+  - Limb: {fileID: 11400000, guid: 0b0d268b6767d0947ade03e60eb9e58a, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0, z: 1}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 2.86
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: e7dbf5e8328541f43a05153422ac8227, type: 2}
+    Parent: 0
+    Socket: {x: 0.04, y: 0.022, z: -0.06}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 2.2
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 0e1268e39b7bd0e43ac7c25cecd91c5e, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0, z: -1}
+    Direction: {x: 0, y: 180, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 2.6
+    Thickness: 1.15
+  WalkSpeed: 0.7
+  RunSpeed: 2.5
+  Bob: {x: 0, y: 0}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  LeglessStride: {x: 1.04, y: 1.43}
+  WanderRadius: 15
+  IdleTime: {x: 4, y: 15}
+  FleeDistance: 0
+  TurnRate: 70
+  GroupSize: {x: 1, y: 1}
+  NearWater: 0

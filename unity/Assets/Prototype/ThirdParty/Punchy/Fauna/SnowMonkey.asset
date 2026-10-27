@@ -1,0 +1,38 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: SnowMonkey
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 11400000, guid: e112520915f6d014b9b6ec86042081a8, type: 2}
+  VariantScale: 1.1
+  BodyLength: 0.8
+  BodyRadius: 0.15
+  BodyTaper: 1
+  BodyFlatten: 1.1
+  Base: {r: 0.72, g: 0.69, b: 0.64, a: 1}
+  Accent: {r: 0.86, g: 0.5, b: 0.48, a: 1}
+  AccentGlow: 0
+  Coats: []
+  Size: {x: 0.9, y: 1.1}
+  Parts: []
+  WalkSpeed: 1.4
+  RunSpeed: 6
+  Bob: {x: 0.02, y: 0.06}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 25
+  IdleTime: {x: 2, y: 8}
+  FleeDistance: 12
+  TurnRate: 140
+  GroupSize: {x: 1, y: 1}
+  NearWater: 0

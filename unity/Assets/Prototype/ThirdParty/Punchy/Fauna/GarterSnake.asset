@@ -1,0 +1,64 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: GarterSnake
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.076500006
+  BodyRadius: 0.0238
+  BodyTaper: 1
+  BodyFlatten: 0.75
+  Base: {r: 0.18, g: 0.25, b: 0.16, a: 1}
+  Accent: {r: 0.55, g: 0.55, b: 0.3, a: 1}
+  Coats: []
+  Size: {x: 0.9, y: 1.1}
+  Parts:
+  - Limb: {fileID: 11400000, guid: 0b0d268b6767d0947ade03e60eb9e58a, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0, z: 1}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.85
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 8db8692701365314db1a0b5e9ab1cbd1, type: 2}
+    Parent: 0
+    Socket: {x: 0.016, y: 0.008, z: -0.025}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.425
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 0e1268e39b7bd0e43ac7c25cecd91c5e, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0, z: -1}
+    Direction: {x: 0, y: 180, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.85
+    Thickness: 1
+  WalkSpeed: 0.5
+  RunSpeed: 1.6
+  Bob: {x: 0, y: 0}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  LeglessStride: {x: 0.34, y: 0.46750003}
+  WanderRadius: 10
+  IdleTime: {x: 3, y: 12}
+  FleeDistance: 3
+  TurnRate: 120
+  GroupSize: {x: 1, y: 1}
+  NearWater: 0

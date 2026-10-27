@@ -1,0 +1,120 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: AshCrab
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.13
+  BodyRadius: 0.05
+  BodyTaper: 1
+  BodyFlatten: 0.45
+  Base: {r: 0.55, g: 0.4, b: 0.25, a: 1}
+  Accent: {r: 0.9, g: 0.85, b: 0.75, a: 1}
+  AccentGlow: 0
+  Coats:
+  - Name: Ash
+    Base: {r: 0.32, g: 0.31, b: 0.3, a: 1}
+    Accent: {r: 0.55, g: 0.5, b: 0.48, a: 1}
+    AccentGlow: 0
+    Weight: 2
+  - Name: Ember
+    Base: {r: 0.16, g: 0.14, b: 0.14, a: 1}
+    Accent: {r: 1, g: 0.45, b: 0.12, a: 1}
+    AccentGlow: 0.8
+    Weight: 1
+  Size: {x: 0.9, y: 1.1}
+  Parts:
+  - Limb: {fileID: 11400000, guid: daa6a7393dd4acf4aa2e08d9c40192b5, type: 2}
+    Parent: -1
+    Socket: {x: 0.45, y: -0.2, z: 0.9}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: daa6a7393dd4acf4aa2e08d9c40192b5, type: 2}
+    Parent: -1
+    Socket: {x: 0.85, y: -0.2, z: 0.75}
+    Direction: {x: 0, y: 25, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: daa6a7393dd4acf4aa2e08d9c40192b5, type: 2}
+    Parent: -1
+    Socket: {x: 0.45, y: -0.2, z: -0.9}
+    Direction: {x: 0, y: 180, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: daa6a7393dd4acf4aa2e08d9c40192b5, type: 2}
+    Parent: -1
+    Socket: {x: 0.85, y: -0.2, z: -0.75}
+    Direction: {x: 0, y: 155, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: a1d891ab1d4ac3b4f9d5854c2a03c668, type: 2}
+    Parent: -1
+    Socket: {x: 1, y: 0, z: 0.45}
+    Direction: {x: 0, y: 90, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: a1d891ab1d4ac3b4f9d5854c2a03c668, type: 2}
+    Parent: -1
+    Socket: {x: 1, y: 0, z: -0.45}
+    Direction: {x: 0, y: 90, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 8db8692701365314db1a0b5e9ab1cbd1, type: 2}
+    Parent: -1
+    Socket: {x: 1, y: 0.9, z: 0.25}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.6
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 8db8692701365314db1a0b5e9ab1cbd1, type: 2}
+    Parent: -1
+    Socket: {x: 1, y: 0.9, z: -0.25}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.6
+    Thickness: 1
+  WalkSpeed: 0.5
+  RunSpeed: 3
+  Bob: {x: 0, y: 0}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 6
+  IdleTime: {x: 1, y: 6}
+  FleeDistance: 3
+  TurnRate: 220
+  GroupSize: {x: 3, y: 6}
+  NearWater: 0

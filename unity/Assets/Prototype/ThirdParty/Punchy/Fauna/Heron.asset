@@ -1,0 +1,92 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: Heron
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.32
+  BodyRadius: 0.08
+  BodyTaper: 0.7
+  BodyFlatten: 1
+  Base: {r: 0.55, g: 0.6, b: 0.66, a: 1}
+  Accent: {r: 0.88, g: 0.9, b: 0.92, a: 1}
+  AccentGlow: 0
+  Coats: []
+  Size: {x: 0.9, y: 1.1}
+  Parts:
+  - Limb: {fileID: 11400000, guid: c9353264e2115d240afe20ef59feeaa3, type: 2}
+    Parent: -1
+    Socket: {x: 0.4, y: -0.6, z: 0}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 3.2
+    Thickness: 0.55
+  - Limb: {fileID: 11400000, guid: 0404b5c0915dd1944a8937a8da2ded55, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0.5, z: 0.9}
+    Direction: {x: -30, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 38f5bde1e621b5048a55ee6cf5cbd380, type: 2}
+    Parent: 1
+    Socket: {x: 0, y: 0, z: 0}
+    Direction: {x: 60, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.2
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 6e02047a4eb1c6844862edf9267ec349, type: 2}
+    Parent: 2
+    Socket: {x: 0, y: 0, z: 0}
+    Direction: {x: 5, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 2.2
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 8db8692701365314db1a0b5e9ab1cbd1, type: 2}
+    Parent: 2
+    Socket: {x: 0.026, y: 0.012, z: -0.02}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.6
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: fe76f58551e55a740ba27ee474f98714, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0.3, z: -1}
+    Direction: {x: 10, y: 180, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.6
+    Thickness: 1
+  WalkSpeed: 0.5
+  RunSpeed: 3
+  Bob: {x: 0.01, y: 0.02}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 10
+  IdleTime: {x: 4, y: 15}
+  FleeDistance: 12
+  TurnRate: 120
+  GroupSize: {x: 1, y: 1}
+  NearWater: 1

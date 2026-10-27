@@ -1,0 +1,112 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: Wolf
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.85
+  BodyRadius: 0.15
+  BodyTaper: 0.9
+  BodyFlatten: 1.1
+  Base: {r: 0.55, g: 0.4, b: 0.25, a: 1}
+  Accent: {r: 0.9, g: 0.85, b: 0.75, a: 1}
+  Coats:
+  - Name: Grey
+    Base: {r: 0.5, g: 0.48, b: 0.45, a: 1}
+    Accent: {r: 0.84, g: 0.82, b: 0.78, a: 1}
+    Weight: 3
+  - Name: Black
+    Base: {r: 0.13, g: 0.12, b: 0.12, a: 1}
+    Accent: {r: 0.32, g: 0.3, b: 0.29, a: 1}
+    Weight: 1
+  - Name: White
+    Base: {r: 0.88, g: 0.88, b: 0.86, a: 1}
+    Accent: {r: 0.97, g: 0.97, b: 0.95, a: 1}
+    Weight: 1
+  Size: {x: 0.9, y: 1.1}
+  Parts:
+  - Limb: {fileID: 11400000, guid: 2c2c89c13d2d68c4cb4c8822c3681830, type: 2}
+    Parent: -1
+    Socket: {x: 0.5, y: -0.3, z: -0.7}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 2.5
+    Thickness: 1.15
+  - Limb: {fileID: 11400000, guid: 8126b24d28dddfa479b8f90a422c24b0, type: 2}
+    Parent: -1
+    Socket: {x: 0.55, y: -0.4, z: 0.7}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 2.5
+    Thickness: 1.15
+  - Limb: {fileID: 11400000, guid: 638d929797ab7c94ea24e6ed0d7c877b, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0.4, z: 0.95}
+    Direction: {x: -30, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.9
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 9bcf56f0ba49e194e95b7c6e677e6a78, type: 2}
+    Parent: 2
+    Socket: {x: 0, y: 0, z: 0}
+    Direction: {x: 40, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.6
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 9bc0bad3b30a40749865966abdcb6e5c, type: 2}
+    Parent: 3
+    Socket: {x: 0.05, y: 0.055, z: -0.2}
+    Direction: {x: -80, y: 20, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.3
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 8db8692701365314db1a0b5e9ab1cbd1, type: 2}
+    Parent: 3
+    Socket: {x: 0.05, y: 0.03, z: -0.12}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.2
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 9a256dd557a96e641bb260a5bf7a0fae, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0.3, z: -1}
+    Direction: {x: 30, y: 180, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.6
+    Thickness: 1
+  WalkSpeed: 1.4
+  RunSpeed: 10
+  Bob: {x: 0.01, y: 0.04}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 45
+  IdleTime: {x: 2, y: 8}
+  FleeDistance: 25
+  TurnRate: 140
+  GroupSize: {x: 2, y: 4}
+  NearWater: 0
