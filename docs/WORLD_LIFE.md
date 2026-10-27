@@ -212,7 +212,24 @@ changes what players can do.
     - One file of density knobs for all of the above, with a master "life" level for slow machines.
     - A `life` probe that counts what's out and measures what it costs.
 
-## Wizards (later)
+## Wizards
+
+**Built (2026-10-27, the gameplay session):** `WizardLook` draws a look from
+a seed (our own hash, the same on every platform): one of eight robe and
+trim pairings, the hat's height, brim, droop and bend, a beard or none, and
+a staff (none, gnarled, crystal or orb). `WizardOutfit` builds the parts
+with `MeshKit` (VillageLit, colours in the vertices) and hangs each on a
+bone of the Starter Assets rig: the hat and beard on the head, the bodice
+on the chest, the robe on the hips, bell sleeves on the arms, the staff in
+the left hand. So the animations, the casting gestures, the roll and
+swimming carry it with no skinning, and Shapeshift hides it with the
+wizard. The local player's seed is kept in PlayerPrefs (`wizard.look`);
+"New look" in the Esc menu draws another; online `NetWizard` sends it as
+an owner-written variable, so every peer dresses each wizard the same, a
+late joiner too. Probe `look`. Still open from the plan below: the body's
+height and stoop, and a way to pick parts rather than reroll the lot.
+
+### The plan
 
 A `WizardLook` recipe and a seed give each wizard their own look: the
 height and stoop of the body; the robe's length, flare, hem and colours;
