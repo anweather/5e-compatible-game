@@ -42,5 +42,9 @@
   { "id": "control-weather", "group": "time", "name": "Control Weather", "level": 8, "shape": "burst", "origin": "self", "radius": 0, "effect": "weather", "duration": 720,
     "blurb": "Level 8. You turn the weather for everyone, a step each cast: clear, then rain, then snow, then a storm, then clear again. It holds for two minutes (hold the cast for three, or four), then the natural weather comes back. The SRD's spell takes 10 minutes to set in and lasts 8 hours; ours ramps in over half a minute." },
   { "id": "fog-cloud", "group": "time", "name": "Fog Cloud", "level": 1, "shape": "burst", "radius": 4, "element": "fog",
-    "blurb": "Level 1. Thick fog fills a 20 ft radius where you point. Nothing sees through it (Misty Step can't blink past it), it drifts with the wind, a Gust of Wind blows it away, fire burns it off, and it thins out over a minute or so." }
+    "blurb": "Level 1. Thick fog fills a 20 ft radius where you point. Nothing sees through it (Misty Step can't blink past it), it drifts with the wind, a Gust of Wind blows it away, fire burns it off, and it thins out over a minute or so." },
+  { "id": "plant-growth", "group": "nature", "name": "Plant Growth", "level": 3, "shape": "burst", "radius": 4, "element": "growth",
+    "blurb": "Level 3. Life floods back into burnt land 45 ft across: the ash clears, green shoots spread out from the middle and are grass again in a few seconds, and saplings rise from old stumps and grow into trees. Hold the cast to reach further and seed saplings in the ash too; held all the way, young trees sprout in the meadow as well. Our reading: the SRD's spell overgrows or enriches plants; here it heals what fire took." },
+  { "id": "spike-growth", "group": "nature", "name": "Spike Growth", "level": 2, "shape": "burst", "radius": 4, "element": "thorns",
+    "blurb": "Level 2. The ground 40 ft across bristles with hard thorns for a minute: anything walking through is slowed to half speed and cut with every step (1d4 a square; the SRD's 2d4 would kill a wizard in three steps). Thorns burn, leaving ash. Hold the cast to spread them wider." }
 ]

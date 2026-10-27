@@ -8,7 +8,8 @@ using UnityEngine.InputSystem;
 // and skids; in unfrozen water deeper than a puddle it wades at reduced
 // speed; deeper than the wizard's chest it swims: it floats with its head
 // above the surface, slower still, and jump kicks it up out of the water onto
-// a bank. Over the water (crossing the bridge) it's dry. Spells slow it too
+// a bank. Over the water (crossing the bridge) it's dry. Thorns (Spike Growth's spiky
+// cover) slow it to the cover's speed and cut it (Vitals) every square it walks. Spells slow it too
 // (Slow: frost chills, lightning jolts; SpellForces). Runs after the Starter Assets controller has moved the wizard
 // and corrects that move, so the controller itself stays untouched (its
 // gravity is switched off while afloat and its animator told it's standing).
@@ -53,6 +54,12 @@ public class SurfaceEffects : MonoBehaviour
     float kickedUntil;
     bool kick;
     float slowUntil, slowFactor = 1f, appliedSpeed = 1f;
+    Vitals vitals;
+    // Thorns underfoot (Spike Growth): the cover's speed, and how far the wizard has walked through them since the last cut.
+    float thornSpeed = 1f, thornsWalked;
+
+    /// <summary>True while the wizard walks on thorns (a spiky cover): slowed, and cut every square walked.</summary>
+    public bool InThorns { get; private set; }
 
     /// <summary>True while a spell has the wizard slowed.</summary>
     public bool Slowed => Time.time < slowUntil;
@@ -80,6 +87,7 @@ public class SurfaceEffects : MonoBehaviour
     void Awake()
     {
         body = GetComponent<CharacterController>();
+        TryGetComponent(out vitals);
         body.stepOffset = Mathf.Max(body.stepOffset, climbStep);
         controller = GetComponent(WizardRig.ControllerComponent);
         if (controller == null) return;
@@ -115,6 +123,7 @@ public class SurfaceEffects : MonoBehaviour
 
         Swim(c, cell);
         Slide(slippery && !swimming);
+        Thorns(c != null && !above && body.isGrounded && !swimming && grid.World.IsSpiky(c) ? grid.World.CoverOf(c) : null);
         SetSpeed(wading);
         lastPosition = transform.position;
     }
@@ -138,7 +147,37 @@ public class SurfaceEffects : MonoBehaviour
         body.Move((momentum - intended) * dt);
     }
 
-    // Wading and a spell's slow, together.
+    // Thorns underfoot (the cover, or null off them): they slow the wizard to the cover's speed and,
+    // like the SRD's Spike Growth, cut it for every square (cellSize metres) it walks through them,
+    // with the cover's damage dice. Health is the wizard's own (Vitals), not shared state, so the
+    // dice are Unity's, not the world's.
+    void Thorns(CoverDef thorns)
+    {
+        if (thorns == null)
+        {
+            InThorns = false;
+            thornsWalked = 0f;
+            return;
+        }
+        if (!InThorns) EventLog.Add($"The {thorns.Name.ToLowerInvariant()} tear at you");
+        InThorns = true;
+        thornSpeed = Mathf.Clamp((float)thorns.Speed, 0.05f, 1f);
+        var moved = transform.position - lastPosition;
+        moved.y = 0f;
+        thornsWalked += moved.magnitude;
+        if (thornsWalked < grid.cellSize) return;
+        thornsWalked -= grid.cellSize;
+        if (vitals != null && thorns.Damage.Length == 2) vitals.Hurt(Roll(thorns.Damage));
+    }
+
+    static int Roll(int[] dice)
+    {
+        int total = 0;
+        for (int i = 0; i < dice[0]; i++) total += Random.Range(1, dice[1] + 1);
+        return total;
+    }
+
+    // Wading, thorns and a spell's slow, together.
     void SetSpeed(bool wading)
     {
         if (moveSpeed == null) return;
@@ -147,6 +186,7 @@ public class SurfaceEffects : MonoBehaviour
         float k = Slowed ? slowFactor : 1f;
         if (swimming) k *= swimmingSpeed;
         else if (wading) k *= wadingSpeed;
+        else if (InThorns) k *= thornSpeed;
         if (Mathf.Approximately(k, appliedSpeed)) return;
         appliedSpeed = k;
         moveSpeed.SetValue(controller, baseMove * k);

@@ -26,6 +26,9 @@ export interface TerrainDef {
   uprootLog?: string;
   /** What digging leaves (grass is dug down to dirt); unset keeps the terrain. */
   dugTo?: string;
+  /** What it grows into once its cell's life runs out (green shoots into grass, a sapling into a tree), and the line logged. */
+  growsTo?: string;
+  growLog?: string;
 }
 export interface CoverDef {
   name: string;
@@ -33,6 +36,12 @@ export interface CoverDef {
   flammability?: number;
   fuel?: number;
   burnIntensity?: number;
+  /** Ticks it lasts once laid (Cell.life) before it withers away (thorns), and the line logged then. */
+  lasts?: number;
+  witherLog?: string;
+  /** What it does to a creature walking through: [dice, sides] damage a square, and its speed (1 unhindered). */
+  damage?: [number, number];
+  speed?: number;
 }
 export interface GasDef {
   name: string;
@@ -53,6 +62,10 @@ export interface CellCond {
   terrainTag?: string;
   notTerrainTag?: string;
   conductive?: boolean;
+  /** The least power the element must arrive with (a charged cast's). */
+  power?: number;
+  /** The chance the rule applies, rolled last, once everything else holds. */
+  chance?: number;
 }
 export interface EntityCond {
   status?: string;
@@ -83,6 +96,10 @@ export interface Effect {
   status?: Record<string, number>;
   clear?: string;
   damageMul?: number;
+  /** The terrain the cell becomes, its life a roll within ticks [min, max] plus wave ticks a square from where the spell landed. */
+  grow?: string;
+  ticks?: [number, number];
+  wave?: number;
 }
 export interface CellRule {
   id: string;
@@ -119,6 +136,8 @@ export interface SpellDef {
   length?: number;
   size?: number;
   radius?: number;
+  /** Squares a burst's radius grows by for each level of charge past a tap. */
+  radiusPerCharge?: number;
   push?: number;
   wind?: number;
   effect?: "levitate" | "carry" | "teleport" | "terraform" | "haste" | "weather";
@@ -257,7 +276,7 @@ export interface Rules {
   groups: Record<string, GroupDef>;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -265,7 +284,7 @@ const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 export const BASE_RULES: Readonly<Rules> = Object.freeze({
   elements: BASE_ELEMENTS,
   terrain: materials.terrain as Record<string, TerrainDef>,
-  covers: materials.covers as Record<string, CoverDef>,
+  covers: materials.covers as unknown as Record<string, CoverDef>,
   gases: materials.gases as Record<string, GasDef>,
   cellRules: reactions.cell as CellRule[],
   entityRules: reactions.entity as EntityRule[],
@@ -374,10 +393,10 @@ export function installRules(r: Rules) {
 /** Kept for older imports: the base element list. */
 export const ELEMENTS = BASE_ELEMENTS;
 
-const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable"]);
+const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "power", "chance"]);
 const EFFECT_KEYS = new Set([
   "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
-  "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
+  "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
 const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather"]);
@@ -409,7 +428,12 @@ function isCrater(c: CraterDef | undefined): boolean {
     && (c.radius === undefined || (Number.isInteger(c.radius) && c.radius >= 0));
 }
 
-const ITEM_USES = new Set(["light", "zoom", "send", "point"]);
+/** A pair of whole numbers, the first from min0 and the second from min1 (dice, a tick range). */
+function isWholeRange(v: unknown, min0: number, min1: number): v is [number, number] {
+  return Array.isArray(v) && v.length === 2 && Number.isInteger(v[0]) && Number.isInteger(v[1]) && v[0] >= min0 && v[1] >= min1;
+}
+
+const ITEM_USES =new Set(["light", "zoom", "send", "point"]);
 const isNumber = (v: unknown): v is number => typeof v === "number";
 const absent = (v: unknown) => v === undefined || v === null;
 
@@ -497,7 +521,11 @@ export function validateRules(r: Rules): string[] {
     if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
+    if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
+  }
+  for (const [id, cv] of Object.entries(r.covers)) {
+    if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);
   }
   const seen = new Set<string>();
   for (const rule of [...r.cellRules, ...r.entityRules]) {
@@ -513,6 +541,9 @@ export function validateRules(r: Rules): string[] {
       if (e.raise && !terrainIds.has(e.raise)) errors.push(`rule ${rule.id}: raise ${e.raise} unknown`);
       if (typeof e.setCover === "string" && !coverIds.has(e.setCover)) errors.push(`rule ${rule.id}: cover ${e.setCover} unknown`);
       if (e.gas && !(e.gas in r.gases)) errors.push(`rule ${rule.id}: gas ${e.gas} unknown`);
+      if (e.grow && !terrainIds.has(e.grow)) errors.push(`rule ${rule.id}: grow ${e.grow} unknown`);
+      else if (e.grow && r.terrain[e.grow]!.tags.includes("blocking")) errors.push(`rule ${rule.id}: grow ${e.grow} is blocking (let it growsTo one)`);
+      if (e.ticks !== undefined && !(isWholeRange(e.ticks, 1, 1) && e.ticks[1] >= e.ticks[0])) errors.push(`rule ${rule.id}: ticks must be [min, max], whole numbers from 1`);
     }
     const c = (rule as CellRule).if;
     for (const cv of c?.cover ?? []) if (!coverIds.has(cv)) errors.push(`rule ${rule.id}: cover ${cv} unknown`);

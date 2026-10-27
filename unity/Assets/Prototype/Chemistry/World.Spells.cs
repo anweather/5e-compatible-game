@@ -219,7 +219,9 @@ namespace Chem
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
             Crater(x, y, s.Crater);
             if (s.Element == null) return;
+            waveFrom = (x, y);
             foreach (var (cx, cy) in cells) Apply(cx, cy, s.Element, s.Power * charge, dir, true);
+            waveFrom = null;
         }
     }
 }

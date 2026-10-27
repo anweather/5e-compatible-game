@@ -18,6 +18,7 @@ export interface Cell {
   gasAmt: number;
   charge: number; // 3 on the tick lightning arrives, then decays
   h: number; // steps raised (+) or dug (-) by terraform spells, on top of the terrain's elevation
+  life: number; // ticks until what grows or lasts here ripens (ripen in sim.ts): thorns wither, shoots and saplings grow; 0 for nothing
 }
 
 export interface Entity {
@@ -100,7 +101,7 @@ export interface World {
 }
 
 export function newCell(t = "dirt"): Cell {
-  return { t, water: 0, frozen: false, cover: null, fire: 0, fuel: 0, gas: null, gasAmt: 0, charge: 0, h: 0 };
+  return { t, water: 0, frozen: false, cover: null, fire: 0, fuel: 0, gas: null, gasAmt: 0, charge: 0, h: 0, life: 0 };
 }
 
 export function createWorld(w: number, h: number, seed = 1): World {

@@ -181,12 +181,12 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         return c != null && c.Water > 0 && !c.Frozen;
     }
 
-    /// <summary>Dry, clear of trees and walls, and not burning.</summary>
+    /// <summary>Dry, clear of trees, walls and thorns, and not burning.</summary>
     public bool Walkable(float2 xz)
     {
         var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
         var c = world.At(cell.x, cell.y);
-        if (c == null || c.Water > 0 || c.Fire > 0) return false;
+        if (c == null || c.Water > 0 || c.Fire > 0 || world.IsSpiky(c)) return false;
         return c.T != TerrainIds.Tree && c.T != TerrainIds.LogWall && c.T != TerrainIds.Stone && c.T != TerrainIds.Rock && c.T != TerrainIds.Metal;
     }
 

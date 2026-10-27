@@ -61,6 +61,8 @@ namespace Chem
         // Weights in Layers order: grass, moss, rock, sand, soil, charred, earth, snow.
         static readonly float[] GrassMix = { 1, 0, 0, 0, 0, 0, 0, 0 };
         static readonly float[] UndergrowthMix = { 0, 1, 0, 0, 0, 0, 0, 0 };
+        // Green shoots (Plant Growth): grass coming through bare earth, not yet grassy enough for detail grass.
+        static readonly float[] ShootsMix = { 0.45f, 0, 0, 0.1f, 0, 0, 0.45f, 0 };
         static readonly float[] StumpMix = { 0, 0, 0, 0, 0, 0.6f, 0.4f, 0 };
         // A fallen tree: torn-up earth and moss where it lay.
         static readonly float[] DeadfallMix = { 0, 0.4f, 0, 0, 0, 0, 0.6f, 0 };
@@ -84,6 +86,8 @@ namespace Chem
             ["grass"] = GrassMix,
             ["brush"] = UndergrowthMix,
             ["tree"] = UndergrowthMix,
+            ["sprouts"] = ShootsMix,
+            ["sapling"] = GrassMix,
             ["stump"] = StumpMix,
             ["deadfall"] = DeadfallMix,
             ["rock"] = RockMix,

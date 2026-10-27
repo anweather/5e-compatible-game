@@ -3,7 +3,7 @@ import { RULES } from "./rules.ts";
 import { applyElement, applyEntityElement, ignite } from "./react.ts";
 import { crater } from "./terraform.ts";
 import {
-  type Dir, type Entity, type World,
+  type Cell, type Dir, type Entity, type World,
   DX, DY, cellAt, entityAt, hasTag, isBlocking, isSlippery, log, logOnce, roll, terrainDef,
 } from "./world.ts";
 
@@ -106,6 +106,8 @@ function travel(w: World, e: Entity, dir: Dir, dist: number, hard: boolean): voi
     e.x = nx;
     e.y = ny;
     moved++;
+    if (!isLevitating(e)) thorns(w, e, n);
+    if (!w.entities.includes(e)) return false;
     // Falling into a pit ends the shove (unless floating).
     if (hasTag(n, "low") && !(n.frozen && n.water > 0) && !isLevitating(e)) return false;
     return true;
@@ -123,8 +125,24 @@ function travel(w: World, e: Entity, dir: Dir, dist: number, hard: boolean): voi
   }
 }
 
+/**
+ * A creature stepping onto a cover that hurts (thorns: Spike Growth) takes its
+ * damage, and one that slows (speed below 1) is snagged: a step takes 1/speed as
+ * long, so it can't take the next one for the rest of that time. Objects shrug.
+ */
+function thorns(w: World, e: Entity, c: Cell) {
+  const cv = c.cover !== null ? RULES.covers[c.cover] : undefined;
+  if (!cv || !defOf(e).creature) return;
+  if (cv.damage) damage(w, e, roll(w, cv.damage), cv.name.toLowerCase());
+  const speed = cv.speed ?? 1;
+  if (speed > 0 && speed < 1 && w.entities.includes(e)) {
+    e.status.snagged = Math.max(e.status.snagged ?? 0, Math.round(RULES.sim.ticksPerSecond * (1 / speed - 1)));
+  }
+}
+
 /** One step of walking. Returns why not, or null if the step happened. */
 export function walk(w: World, e: Entity, dir: Dir): string | null {
+  if ((e.status.snagged ?? 0) > 0) return "Thorns snag you. Pull free in a moment.";
   const nx = e.x + DX[dir], ny = e.y + DY[dir];
   const n = cellAt(w, nx, ny);
   if (!n || isBlocking(n)) return n ? `The ${terrainDef(n).name.toLowerCase()} is in the way.` : "That's the edge of the map.";

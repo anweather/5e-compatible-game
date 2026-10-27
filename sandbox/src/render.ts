@@ -18,12 +18,13 @@ export interface View {
 
 const TERRAIN_COLOR: Record<string, string> = {
   bedrock: "#3a3d44", dirt: "#a7895f", grass: "#7aa956", brush: "#557d3c", tree: "#7aa956", stump: "#a7895f", deadfall: "#7aa956",
+  sprouts: "#97a463", sapling: "#7aa956",
   stone: "#8b8d94", pillar: "#a59a84", rubble: "#a7895f", rock: "#9a8f7d", wood: "#b47a43", pit: "#2b2522", metal: "#9aa6b2",
   gate: "#a7895f", gate_open: "#a7895f", boiler: "#a7895f", plate: "#a7895f", wheel: "#2b2522", coil: "#a7895f", windmill: "#a7895f",
 };
 const ELEMENT_COLOR: Record<string, string> = {
   fire: "#ff8a2a", cold: "#8fd8f5", water: "#3f8fd8", air: "#e8eedd", earth: "#9c7a55",
-  lightning: "#ffe14d", grease: "#e3cf7a", oil: "#3a2346", thunder: "#c9b8ff",
+  lightning: "#ffe14d", grease: "#e3cf7a", oil: "#3a2346", thunder: "#c9b8ff", growth: "#9be36b", thorns: "#4f6b2a",
 };
 export const elementColor = (el: string | undefined) => ELEMENT_COLOR[el ?? ""] ?? "#ffffff";
 
@@ -81,6 +82,17 @@ function drawCell(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, 
       }
       ctx.fillStyle = "#c2523c";
       ctx.fillRect(px + hash(x, y, 4) * s * 0.8, py + hash(x, y, 5) * s * 0.8, s * 0.1, s * 0.1);
+      break;
+    case "sapling":
+      // A young tree: a thin stem and a small crown.
+      ctx.fillStyle = "#6b4a2b";
+      ctx.fillRect(px + s * 0.47, py + s * 0.45, s * 0.06, s * 0.35);
+      ctx.fillStyle = "#4f8a3a";
+      ctx.beginPath(); ctx.arc(px + s / 2, py + s * 0.42, s * 0.2, 0, Math.PI * 2); ctx.fill();
+      break;
+    case "sprouts":
+      ctx.fillStyle = "#7aa956";
+      for (let k = 0; k < 6; k++) ctx.fillRect(px + hash(x, y, k) * s * 0.9, py + hash(y, x, k + 3) * s * 0.9, s * 0.06, s * 0.14);
       break;
     case "stump":
       ctx.fillStyle = "#7a5530";
@@ -224,6 +236,16 @@ function drawOverlay(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: numbe
       ctx.fillStyle = "rgba(180,196,220,0.5)";
       ctx.beginPath(); ctx.ellipse(px + s / 2, py + s * 0.62, s * 0.4, s * 0.2, 0, 0, 7); ctx.fill();
     }
+  } else if (c.cover === "thorns") {
+    // Thorns: dark, crossing spiky strokes.
+    ctx.strokeStyle = "#3d5321";
+    ctx.lineWidth = Math.max(1, s / 14);
+    ctx.beginPath();
+    for (let k = 0; k < 5; k++) {
+      const ax = px + hash(x, y, k) * s, ay = py + hash(y, x, k) * s;
+      ctx.moveTo(ax, ay); ctx.lineTo(ax + (hash(x, y, k + 7) - 0.5) * s * 0.6, ay - s * 0.3);
+    }
+    ctx.stroke();
   } else if (c.cover === "ash") {
     ctx.fillStyle = "rgba(70,68,66,0.55)";
     for (let k = 0; k < 5; k++) ctx.fillRect(px + hash(x, y, k) * s, py + hash(y, x, k) * s, s * 0.1, s * 0.1);
