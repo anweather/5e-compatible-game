@@ -24,11 +24,18 @@ go-ahead in this conversation. Drafts are invisible to players.
 
 ## 1. Main is ready (whichever machine is cutting it)
 
+Releases are cut from `main` only. Upcoming work lives on `dev`; bring it
+over when Andrew says to ship (root `CLAUDE.md`, "Committing"):
+
 ```sh
-git branch --show-current && git status --short   # main; only _Recovery* untracked
-git fetch origin && git merge --ff-only origin/main
+git branch --show-current && git status --short   # only _Recovery* untracked
+git fetch origin && git switch main && git merge --ff-only origin/main
+git merge --no-edit origin/dev && git push origin main   # only on Andrew's word to ship
 gh run list --branch main --limit 5               # CI green on the commit
 ```
+
+A fix for the released version instead goes on a branch off `main`; after
+the release, merge `main` back into `dev`.
 
 In the Editor: refresh first (`AssetDatabase.Refresh()`), wait for the
 compile to finish, **then** Prototype > Build Chemistry Yard. A build run
