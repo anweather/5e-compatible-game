@@ -85,7 +85,7 @@ public static class ProbeCommands
             throw new ArgumentException($"No probe scenario '{name}'. Known: {string.Join(", ", ProbeScenarios.All.Select(e => e.Name))}");
         if (EditorApplication.isPlayingOrWillChangePlaymode) throw new InvalidOperationException("Already in Play mode: stop it first.");
         if (EditorApplication.isCompiling) throw new InvalidOperationException("Scripts are compiling: try again when they finish.");
-        if (UnityEngine.Object.FindFirstObjectByType<ChemGrid>() == null)
+        if (UnityEngine.Object.FindAnyObjectByType<ChemGrid>() == null)
             throw new InvalidOperationException("The open scene has no ChemGrid: open Assets/Prototype/Scenes/ChemistryYard.unity.");
 
         var request = new Request

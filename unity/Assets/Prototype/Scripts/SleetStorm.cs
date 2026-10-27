@@ -67,7 +67,7 @@ public class SleetStorm : MonoBehaviour
     // Downwind if the wind blows (the world's weather), else across the viewer's line of sight.
     static Vector3 DriftOf(Vector3 center, Vector3 viewer)
     {
-        var grid = FindFirstObjectByType<ChemGrid>();
+        var grid = FindAnyObjectByType<ChemGrid>();
         int windDir = grid != null && grid.World != null ? grid.World.WindDir : -1;
         if (windDir >= 0) return WeatherFx.Downwind(windDir);
         var ahead = center - viewer;
@@ -77,7 +77,7 @@ public class SleetStorm : MonoBehaviour
 
     void Build()
     {
-        var weather = FindFirstObjectByType<WeatherFx>();
+        var weather = FindAnyObjectByType<WeatherFx>();
         var rain = weather != null && weather.rainMaterial != null ? weather.rainMaterial : Fallback();
         var snow = weather != null && weather.snowMaterial != null ? weather.snowMaterial : Fallback();
         float width = HalfWidth * 2f;

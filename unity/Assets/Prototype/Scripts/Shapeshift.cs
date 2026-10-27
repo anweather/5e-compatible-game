@@ -65,7 +65,7 @@ public partial class Shapeshift : MonoBehaviour
     {
         get
         {
-            if (fauna == null) fauna = FindFirstObjectByType<ValleyFauna>();
+            if (fauna == null) fauna = FindAnyObjectByType<ValleyFauna>();
             return fauna;
         }
     }
@@ -74,7 +74,7 @@ public partial class Shapeshift : MonoBehaviour
     {
         get
         {
-            if (grid == null) grid = FindFirstObjectByType<ChemGrid>();
+            if (grid == null) grid = FindAnyObjectByType<ChemGrid>();
             return grid;
         }
     }

@@ -33,7 +33,7 @@ public class WeatherFx : MonoBehaviour
     // The Meteor spell's look (its flames, blast and dust), from a wizard's spell visuals; a bare one without.
     static SpellVisuals.Entry MeteorLook()
     {
-        var caster = FindFirstObjectByType<SpellCaster>();
+        var caster = FindAnyObjectByType<SpellCaster>();
         var look = caster != null && caster.visuals != null ? caster.visuals.For(SpellIds.Meteor) : null;
         return look ?? new SpellVisuals.Entry { spellId = SpellIds.Meteor, fromSky = true };
     }
@@ -45,7 +45,7 @@ public class WeatherFx : MonoBehaviour
 
     void Start()
     {
-        grid = FindFirstObjectByType<ChemGrid>();
+        grid = FindAnyObjectByType<ChemGrid>();
         skyLight = GetComponent<SkyLight>();
         clouds = GetComponent<CloudSky>();
         if (rainMaterial != null) rain = MakeRain();

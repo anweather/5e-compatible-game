@@ -917,7 +917,7 @@ public static class ValleyBuilder
         sky.shader = shader;
         EditorUtility.SetDirty(sky);
         RenderSettings.skybox = sky;
-        var sun = Object.FindFirstObjectByType<Light>();
+        var sun = Object.FindAnyObjectByType<Light>();
         if (sun != null) RenderSettings.sun = sun;
         var mountains = EditorAssets.LoadPrefab(DemoPack + "/Skybox/SkyboxMountains.prefab");
         if (mountains != null)

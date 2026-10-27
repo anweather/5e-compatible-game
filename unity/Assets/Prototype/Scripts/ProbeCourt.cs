@@ -15,8 +15,8 @@ public class CourtProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        court = FindFirstObjectByType<BallCourt>();
-        gate = FindFirstObjectByType<CourtGate>();
+        court = FindAnyObjectByType<BallCourt>();
+        gate = FindAnyObjectByType<CourtGate>();
         Check("court_built", court != null && gate != null && court.board != null, "BallCourt, CourtGate and CourtScoreboard in the Ball court");
         if (court == null || gate == null) yield break;
         Floor();

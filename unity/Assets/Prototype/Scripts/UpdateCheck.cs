@@ -115,7 +115,7 @@ public class UpdateCheck : MonoBehaviour
             return;
         }
         if (!EventLog.HudVisible) return;
-        var menu = FindFirstObjectByType<PauseMenu>();
+        var menu = FindAnyObjectByType<PauseMenu>();
         if (menu != null && menu.Open) hintDismissed = true;
         if (hintDismissed) return;
         hint ??= new GUIStyle(GUI.skin.label) { fontSize = 15, richText = true, alignment = TextAnchor.LowerRight };

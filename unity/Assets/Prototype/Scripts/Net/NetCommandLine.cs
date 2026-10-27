@@ -48,7 +48,7 @@ public class NetCommandLine : MonoBehaviour
 
     void Begin(bool host, string code)
     {
-        session = FindFirstObjectByType<NetSession>();
+        session = FindAnyObjectByType<NetSession>();
         if (session == null)
         {
             Debug.LogError("NET: no NetSession in this scene; can't go online.");
@@ -74,7 +74,7 @@ public class NetCommandLine : MonoBehaviour
 
     void Update()
     {
-        if (session == null) session = FindFirstObjectByType<NetSession>();
+        if (session == null) session = FindAnyObjectByType<NetSession>();
         if (session != null && !codeLogged && session.SessionCode != null)
         {
             codeLogged = true;
@@ -87,8 +87,8 @@ public class NetCommandLine : MonoBehaviour
 
     static string Status()
     {
-        var grid = FindFirstObjectByType<ChemGrid>();
-        var chem = FindFirstObjectByType<NetChem>();
+        var grid = FindAnyObjectByType<ChemGrid>();
+        var chem = FindAnyObjectByType<NetChem>();
         int players = FindObjectsByType<NetWizard>(FindObjectsSortMode.None).Length;
         string tick = grid != null && grid.World != null ? grid.World.Tick.ToString(CultureInfo.InvariantCulture) : "-";
         bool desync = chem != null && chem.DesyncSeen;

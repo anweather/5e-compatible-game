@@ -86,7 +86,7 @@ public class AmbientCritters : MonoBehaviour
 
     void Start()
     {
-        grid = FindFirstObjectByType<ChemGrid>();
+        grid = FindAnyObjectByType<ChemGrid>();
         skyLight = GetComponent<SkyLight>();
     }
 

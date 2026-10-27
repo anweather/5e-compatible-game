@@ -17,8 +17,8 @@ public class SkyProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
-        sky = FindFirstObjectByType<SkyLight>();
-        fx = FindFirstObjectByType<WeatherFx>();
+        sky = FindAnyObjectByType<SkyLight>();
+        fx = FindAnyObjectByType<WeatherFx>();
         Check("sky_built", sky != null && fx != null && sky.moon != null, "Sky object with SkyLight, WeatherFx and a moon");
         if (sky == null || fx == null) yield break;
         Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
@@ -81,7 +81,7 @@ public class SkyProbe : ProbeScenario
         Check("storm_is_dim", sky.sun.intensity < 0.8f, $"sun {sky.sun.intensity:0.00}");
         Metric("log_lines_in_storm", World.LogAppended - logged);
         Shot("storm");
-        var clouds = FindFirstObjectByType<CloudSky>();
+        var clouds = FindAnyObjectByType<CloudSky>();
         Metric("storm_cloud_cover", clouds != null ? clouds.Coverage : 0f);
         Check("storm_clouds", clouds != null && clouds.Coverage > 0.7f, $"cloud cover {(clouds != null ? clouds.Coverage : 0f):0.00}");
         yield return SkyShot("storm");

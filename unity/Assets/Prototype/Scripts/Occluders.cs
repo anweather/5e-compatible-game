@@ -88,7 +88,7 @@ public sealed class Occluders
 
     GameObject Dressing(Vector3 at)
     {
-        if (grid == null) grid = Object.FindFirstObjectByType<ChemGrid>();
+        if (grid == null) grid = Object.FindAnyObjectByType<ChemGrid>();
         if (grid == null) return null;
         var cell = grid.CellAt(at);
         return grid.DressingAt(cell.x, cell.y);

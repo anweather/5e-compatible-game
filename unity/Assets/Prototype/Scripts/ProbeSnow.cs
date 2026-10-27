@@ -53,7 +53,7 @@ public class SnowProbe : ProbeScenario
         // The wizard walks south through the yard's snow.
         var from = wizard.transform.position;
         yield return WalkFor(13, 3, 3f);
-        var prints = FindFirstObjectByType<Footprints>();
+        var prints = FindAnyObjectByType<Footprints>();
         int count = prints != null ? prints.WizardPrints : 0;
         Metric("footprints", count);
         Check("footprints", count >= 4, $"{count} prints along {Vector3.Distance(from, wizard.transform.position):0.0} m of walking");

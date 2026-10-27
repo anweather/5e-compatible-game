@@ -47,7 +47,7 @@ public static class PrototypeSceneBuilder
         var cam = Camera.main.gameObject;
         cam.transform.position = player.transform.position + new Vector3(0f, 9f, -7f);
         cam.AddComponent<CameraFollow>().target = player.transform;
-        var sun = Object.FindFirstObjectByType<Light>();
+        var sun = Object.FindAnyObjectByType<Light>();
         if (sun != null) sun.transform.rotation = Quaternion.Euler(50f, -30f, 0f);
         new GameObject("EventLog").AddComponent<EventLog>();
 

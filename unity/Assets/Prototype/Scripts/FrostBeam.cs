@@ -127,7 +127,7 @@ public class FrostBeam : MonoBehaviour
     // The weather's snowflakes when there are any (soft round flakes), else plain glowing dots.
     static Material MoteMaterial()
     {
-        var weather = FindFirstObjectByType<WeatherFx>();
+        var weather = FindAnyObjectByType<WeatherFx>();
         if (weather != null && weather.snowMaterial != null) return weather.snowMaterial;
         if (moteMaterial == null) moteMaterial = UrpMaterials.NewUnlitParticles("Frost motes", Color.white, additive: true);
         return moteMaterial;

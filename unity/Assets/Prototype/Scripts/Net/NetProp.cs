@@ -64,7 +64,7 @@ public class NetProp : NetworkBehaviour
             return;
         }
         // A client's copy arrives from the host: the spawner gives it the grid and its partner.
-        var spawner = FindFirstObjectByType<ThingSpawner>();
+        var spawner = FindAnyObjectByType<ThingSpawner>();
         if (spawner != null) spawner.Adopt(this);
         body.isKinematic = true;
         body.interpolation = RigidbodyInterpolation.None;

@@ -139,8 +139,8 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
 
     void Start()
     {
-        grid = FindFirstObjectByType<ChemGrid>();
-        sky = FindFirstObjectByType<SkyLight>();
+        grid = FindAnyObjectByType<ChemGrid>();
+        sky = FindAnyObjectByType<SkyLight>();
         FindVillages();
         BuildBodies();
         counts = new int[species.Count];

@@ -301,7 +301,7 @@ public class SmokeProbe : ProbeScenario
     // Every prop and item of world/things.json spawned by ThingSpawner, on its own cell, with its own id.
     void CheckThingsSpawned()
     {
-        var spawner = FindFirstObjectByType<ThingSpawner>();
+        var spawner = FindAnyObjectByType<ThingSpawner>();
         var live = spawner != null ? spawner.Live.ToList() : new List<(Chem.ThingId id, PhysicsProp prop)>();
         int placed = live.Count(t =>
         {

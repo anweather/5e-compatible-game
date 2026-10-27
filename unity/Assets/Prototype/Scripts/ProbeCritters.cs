@@ -10,7 +10,7 @@ public class CrittersProbe : ProbeScenario
 {
     protected override IEnumerator Run()
     {
-        var critters = FindFirstObjectByType<AmbientCritters>();
+        var critters = FindAnyObjectByType<AmbientCritters>();
         Check("critters_built", critters != null && critters.fireflyMaterial != null && critters.butterflyMaterial != null,
             "AmbientCritters on the Sky object with both materials");
         if (critters == null) yield break;

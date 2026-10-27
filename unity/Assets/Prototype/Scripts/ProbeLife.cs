@@ -8,7 +8,7 @@ public class LifeProbe : ProbeScenario
 {
     protected override IEnumerator Run()
     {
-        var life = FindFirstObjectByType<AmbientLife>();
+        var life = FindAnyObjectByType<AmbientLife>();
         Check("life_built", life != null, "AmbientLife on the coast");
         if (life == null) yield break;
         Metric("crab_spots", life.crabSpots.Length);

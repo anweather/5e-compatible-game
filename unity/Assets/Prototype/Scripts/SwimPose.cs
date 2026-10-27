@@ -41,7 +41,7 @@ public class SwimPose : MonoBehaviour
 
     void LateUpdate()
     {
-        if (grid == null) grid = FindFirstObjectByType<ChemGrid>();
+        if (grid == null) grid = FindAnyObjectByType<ChemGrid>();
         float dt = Mathf.Max(Time.deltaTime, 1e-4f);
         var moved = transform.position - lastPosition;
         moved.y = 0f;

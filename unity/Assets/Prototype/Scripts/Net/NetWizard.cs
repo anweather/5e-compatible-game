@@ -24,7 +24,7 @@ public class NetWizard : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        var grid = FindFirstObjectByType<ChemGrid>();
+        var grid = FindAnyObjectByType<ChemGrid>();
         var caster = GetComponent<SpellCaster>();
         caster.grid = grid;
         form.OnValueChanged += FormChanged;
@@ -118,7 +118,7 @@ public class NetWizard : NetworkBehaviour
 
     CinemachineCamera TakeCamera(PlayerControls controls)
     {
-        var follow = FindFirstObjectByType<CinemachineCamera>();
+        var follow = FindAnyObjectByType<CinemachineCamera>();
         if (follow == null) return null;
         follow.Target.TrackingTarget = transform.Find(WizardRig.CameraRoot);
         if (follow.TryGetComponent<CameraZoom>(out var zoom)) zoom.controls = controls;
