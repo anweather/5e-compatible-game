@@ -157,7 +157,7 @@ public static class ProbeScenarios
             "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
             "with the swell under it (Ocean.WaveOffset, the waves the shader draws): over half the swell's height, in step with it, no console errors."),
         new Entry("sleep", typeof(SleepProbe), 60f,
-            "Props sleep with their chunk (PhysicsProp, ChemGrid.ChunkSwitched): the wizard goes beyond the keep distance and back. Checks: the yard's " +
+            "Props sleep with their chunk (PhysicsProp, ChemGrid.ChunkSwitched): a crate levitated in the yard, then the wizard goes beyond the keep distance and back (the crate hangs in the air while asleep and falls once awake; the camera stays on it). Checks: the yard's " +
             "props awake while it's active, asleep and kinematic once it deactivates and none asleep in an active chunk, held still for 2 s, awake " +
             "again when it activates, and a shoved one moves, no console errors."),
         new Entry("fauna", typeof(FaunaProbe), 90f,
