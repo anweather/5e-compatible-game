@@ -87,8 +87,10 @@ public sealed class CellWaterMesh
     // The surface's levels and banks need working out again (something changed since).
     bool stale;
     // Milliseconds a frame may spend drawing tiles; the rest wait for the next frames, nearest first.
+    // In a playtest run a count of tiles instead (ChemGrid.ExactFrames): ice tiles carry colliders.
     const double DrawBudgetMs = 3.0;
-    readonly System.Diagnostics.Stopwatch drawTimer = new();
+    const int ExactDrawTiles = 24;
+    readonly ChemGrid.FrameBudget drawBudget = new(DrawBudgetMs, ExactDrawTiles);
     readonly List<int> drawOrder = new();
 
     // A cell's change reaches two cells round it (its outline reads one ring out, a bank's another):
@@ -116,7 +118,7 @@ public sealed class CellWaterMesh
     {
         if (dirtyTiles.Count == 0) return;
         if (stale) Recompute();
-        drawTimer.Restart();
+        drawBudget.Start();
         drawOrder.Clear();
         drawOrder.AddRange(dirtyTiles);
         var cam = Camera.main;
@@ -127,7 +129,7 @@ public sealed class CellWaterMesh
         }
         foreach (int tile in drawOrder)
         {
-            if (drawTimer.Elapsed.TotalMilliseconds > DrawBudgetMs) break;
+            if (drawBudget.Over()) break;
             DrawTile(tile);
             dirtyTiles.Remove(tile);
         }

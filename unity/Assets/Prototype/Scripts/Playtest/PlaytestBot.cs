@@ -15,8 +15,12 @@ using UnityEngine;
 // run's seed (PlaytestPlayer carries them out), feeds the detectors
 // (Logic/PlaytestWatches) every frame, takes a screenshot for each goal and
 // each new candidate, writes a heartbeat for the runner, and writes run.json.
-// Game time is locked to 1/30 s a frame, so the same seed on the same build
-// replays the same run.
+// Game time is locked to 1/30 s a frame from before the scene loads, frame
+// budgets count work rather than milliseconds (ChemGrid.ExactFrames),
+// UnityEngine.Random is seeded from the run, and a replay picks its goals
+// against the coverage the original started with, so the same seed on the
+// same build replays the same run. A sync step in the trace every second (the
+// tick and the wizard) shows where two runs part, if they do.
 //
 // Flags: -playtest-out <dir>, -playtest-seed <n>, -playtest-minutes <n> (or
 // -playtest-seconds <n>), -playtest-replay <run.json> (replays its seed),
@@ -56,6 +60,39 @@ public class PlaytestBot : MonoBehaviour
     string goal = "starting";
     float startedReal;
 
+    // The run's seed, worked out before the scene loads (UnityEngine.Random needs it by then).
+    static ulong? runSeed;
+
+    // Before the scene loads, so its first frames are locked too: the chemistry clock adds up
+    // deltaTime, and one slow loading frame on real time put a run a tick ahead of its replay.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void LockTimeIfAsked()
+    {
+        var args = Environment.GetCommandLineArgs();
+        if (!args.Contains("-playtest")) return;
+        // Game time moves exactly 1/30 s a frame; the cap keeps the bot from spinning the GPU.
+        Time.captureFramerate = Fps;
+        Application.targetFrameRate = Fps;
+        QualitySettings.vSyncCount = 0;
+        ChemGrid.ExactFrames = true;
+        runSeed = SeedOf(args);
+        UnityEngine.Random.InitState(ReplayCheck.UnitySeed(runSeed.Value));
+    }
+
+    static string Arg(string[] args, string name)
+    {
+        int i = Array.IndexOf(args, name);
+        return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
+    }
+
+    // The replayed run's seed, else -playtest-seed, else the time.
+    static ulong SeedOf(string[] args)
+    {
+        string replay = Arg(args, "-playtest-replay");
+        if (replay != null && File.Exists(replay)) return RunReport.FromJson(File.ReadAllText(replay)).Seed;
+        return ulong.TryParse(Arg(args, "-playtest-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : (ulong)DateTime.Now.Ticks;
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartIfAsked()
     {
@@ -75,29 +112,24 @@ public class PlaytestBot : MonoBehaviour
 
     void ReadSettings(string[] args)
     {
-        string Arg(string name)
-        {
-            int i = Array.IndexOf(args, name);
-            return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
-        }
+        string Arg(string name) => PlaytestBot.Arg(args, name);
         float Number(string name, float fallback) =>
             float.TryParse(Arg(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : fallback;
 
         run.RunId = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
         run.Started = DateTime.Now.ToString("s", CultureInfo.InvariantCulture);
         run.Build = BuildInfo.Label;
-        run.Seed = ulong.TryParse(Arg("-playtest-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : (ulong)DateTime.Now.Ticks;
+        run.Seed = runSeed ?? SeedOf(args);
         string replay = Arg("-playtest-replay");
-        if (replay != null && File.Exists(replay))
-        {
-            var original = RunReport.FromJson(File.ReadAllText(replay));
-            run.Seed = original.Seed;
-            run.ReplayOf = original.RunId;
-        }
+        RunReport original = replay != null && File.Exists(replay) ? RunReport.FromJson(File.ReadAllText(replay)) : null;
+        if (original != null) run.ReplayOf = original.RunId;
         seconds = Number("-playtest-seconds", Number("-playtest-minutes", 8f) * 60f);
         untilFrame = int.TryParse(Arg("-playtest-until-frame"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var u) ? u : int.MaxValue;
         string cov = Arg("-playtest-coverage");
         if (cov != null && File.Exists(cov)) coverage = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(cov)) ?? new();
+        // A replay chooses against what the original knew (coverage.json has moved on since).
+        if (original != null) coverage = original.Coverage ?? new();
+        run.Coverage = new Dictionary<string, int>(coverage);
         offscreen = args.Contains("-playtest-offscreen");
         mute = args.Contains("-playtest-mute");
         outDir = Arg("-playtest-out") ?? Path.Combine(Application.persistentDataPath, "playtest", run.RunId);
@@ -106,10 +138,6 @@ public class PlaytestBot : MonoBehaviour
 
     IEnumerator Start()
     {
-        // Game time moves exactly 1/30 s a frame (replays), and the frame rate is capped so the bot doesn't spin the GPU.
-        Time.captureFramerate = Fps;
-        Application.targetFrameRate = Fps;
-        QualitySettings.vSyncCount = 0;
         var notes = new System.Text.StringBuilder();
         if (offscreen) PlaytestWindow.MoveOffScreen(notes);
         if (mute) AudioListener.volume = 0f;
@@ -159,6 +187,11 @@ public class PlaytestBot : MonoBehaviour
         frame++;
         player.Frame = frame;
         WatchWizard();
+        if (frame % ReplayCheck.SyncEvery == 0)
+        {
+            var p = wizard.transform.position;
+            Trace(ReplayCheck.Sync, ReplayCheck.SyncDetail(grid.World.Tick, p.x, p.y, p.z));
+        }
         // Spikes while Hasten Time runs the chemistry fast are their own paper cut, not the place's.
         string spikeAt = grid.World.Haste.HasValue ? Here + " (hasten time)" : Here;
         foreach (var c in frameWatch.Frame(frame, Time.unscaledDeltaTime * 1000f, spikeAt)) Add(c);

@@ -195,6 +195,7 @@ public partial class ChemGrid : MonoBehaviour
 
         tickTimer += Time.deltaTime;
         timer.Restart();
+        stepBudget.Start();
         bool stepped;
         using (StepMarker.Auto()) stepped = StepWithinBudget();
         StepMs = timer.Elapsed.TotalMilliseconds;
@@ -233,13 +234,16 @@ public partial class ChemGrid : MonoBehaviour
     // than one frame stalling for the whole tick. Meanwhile the view may show a tick half done for
     // a frame or two (fire spread this tick, say, but water not yet moved).
     const double StepBudgetMs = 6.0;
+    // In a playtest run, slices instead (ExactFrames): a quiet valley tick is a hundred or so.
+    const int ExactStepSlices = 256;
+    readonly FrameBudget stepBudget = new(StepBudgetMs, ExactStepSlices);
 
     // Runs the ticks that are due, a tick in progress first, within the frame's budget: rule
     // switches and the chunk plan apply only between whole ticks. True if a tick finished.
     bool StepWithinBudget()
     {
         float tick = 1f / Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
-        bool Over() => timer.Elapsed.TotalMilliseconds >= StepBudgetMs;
+        bool Over() => stepBudget.Over();
         int guard = 4;
         bool stepped = false;
         while (true)
@@ -259,10 +263,10 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>The cells every wizard in the scene stands on (the solo one, or every player's online), for ChunkStreaming.</summary>
     public IReadOnlyList<(int x, int y)> PlayerCells()
     {
-        if (Time.unscaledTime >= nextWizardLookup)
+        if (ChoreClock >= nextWizardLookup)
         {
             wizards = FindObjectsByType<SpellCaster>(FindObjectsSortMode.InstanceID);
-            nextWizardLookup = Time.unscaledTime + 1f;
+            nextWizardLookup = ChoreClock + 1f;
         }
         playerCells.Clear();
         foreach (var w in wizards)
