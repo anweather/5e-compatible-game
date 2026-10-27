@@ -62,6 +62,7 @@ namespace Chem
         {
             FinishTick(); // a rule switch lands between whole ticks (StepSome)
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
+            ForgetWaterSnapshots(); // terrain may mean something else now
             var height = rules.Sim.Height;
             Weather = SkyNow();
             foreach (var c in Cells)
