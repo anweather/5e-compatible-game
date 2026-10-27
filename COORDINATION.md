@@ -42,6 +42,49 @@ It asks Andrew first before it:
 - resolves a conflict where one agent's work would be lost;
 - changes the overall plan.
 
+## The project update (coordinator to Andrew)
+
+Andrew gets one short update in this shape, so he doesn't have to read
+everything. It comes when he asks, and unasked after a milestone (a merge
+or a finished task), or when something needs him. It fits on one screen:
+
+```
+PROJECT UPDATE · <date time> · since <last update's time>
+
+WINS     · <what merged or was verified, one line each, with its commit>
+FAILS    · <what broke, or a test that failed, and what happens next>
+BLOCKED  · <what's stuck, and on whom>
+
+WORKERS  (active % since the last update)
+  Gameplay  <task>  <branch>  <busy / waiting on X / idle>  <n>%
+  World     <task>  <branch>  ...                            <n>%
+  Build     <task>  <branch>  ...                            <self-reported>
+
+COMPUTE  (the PC; Unity is the bottleneck)
+  Unity running <n>% · working (build, probe, player) <n>% · two Editors <n>%
+  No-Unity gaps: <time for n min: why>   · Editor slot: <who has it, and who's next>
+
+NEEDS YOU
+  1. <decision, with the options, my pick first>
+```
+
+How it's measured: `tools/coordinator/sample.sh` runs in the background on
+the PC and logs one row a minute. Each row says whether each PC worker's
+Claude transcript was written in the last 3 minutes, or a Unity batch job is
+running on its checkout. It also counts Editors, players and batch jobs, and
+records free memory and CPU. The log is
+`.claude/worktrees/_coordinator-logs/activity.csv` (not in git), and
+`tools/coordinator/report.sh <hours>` summarises it. The Mac reports its own
+busy and idle time.
+
+The rule: if no Unity has run on the PC for 15 minutes while any lane has
+work, the coordinator finds out why and fixes it. Either it gives the Editor
+slot to someone with Unity work, or it moves Unity work earlier in the
+queue. An alert fires when that happens (`report.sh --idle`).
+
+Agents report to the coordinator in the same shape, briefly: Done, Failed,
+Blocked, Next, and whether they hold Unity.
+
 ## Rules for every agent
 
 1. Read this file before you start each new task (`git fetch` first, then

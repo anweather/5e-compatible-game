@@ -1,6 +1,16 @@
 {
   "drops": [
     {
+      "when": "27 Oct 2026 · dev",
+      "title": "Today on dev",
+      "intro": "Features merged into dev after alpha 0.1.4.",
+      "clips": [
+        { "area": "World streaming", "lane": "gameplay", "title": "Props sleep with their chunk", "length": "0:08", "commit": "a473873",
+          "video": "props-sleep.mp4", "poster": "props-sleep.jpg",
+          "summary": "Walk far enough away and the yard's chunk deactivates. Its crates and barrels hold still, even a crate left floating in mid-air. Come back and they wake: the crate drops into the pond." }
+      ]
+    },
+    {
       "when": "27 Oct 2026 · alpha 0.1.4",
       "title": "The overnight build",
       "intro": "What both sessions built on the night of 26 Oct, each filmed while its automated check ran and passed in the Unity Editor.",
