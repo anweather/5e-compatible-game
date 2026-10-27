@@ -264,6 +264,7 @@ public static class ChemYardBuilder
         grid.gameObject.AddComponent<NetworkObject>();
         grid.gameObject.AddComponent<NetChem>();
         grid.gameObject.AddComponent<NetTag>();
+        grid.gameObject.AddComponent<NetCourt>();
         grid.gameObject.AddComponent<NetDemo>();
 
         var go = new GameObject("NetworkManager");

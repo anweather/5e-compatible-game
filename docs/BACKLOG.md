@@ -310,6 +310,14 @@ Climbing walls of stone, rocks and the cabin (playtest P14).
 
 A score for the ball court east of the yard (Andrew, after the recap).
 
+**Built (2026-10-26):** `BallCourt` counts a ball fully over a goal line at
+either end, logs it and shows it on a lit scoreboard by the north rail
+(`CourtScoreboard`); after a goal, or 2 s outside the rails (not while
+carried), the ball goes back to the centre spot. Online the host decides and
+`NetCourt` syncs the score. The court also got a dirt floor and a gate on
+the yard's side that opens for any wizard nearby (`CourtGate`); probe
+`court`. Still open: the HUD line, a reset button, a clock or first to N.
+
 - **What:** count the goals at each end and show them on a board by the
   court (and a line in the HUD near it). After a goal, or when the ball
   leaves the court, it goes back to the centre spot.

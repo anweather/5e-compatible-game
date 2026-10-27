@@ -117,6 +117,18 @@ public class NetProp : NetworkBehaviour
         prop.ShowBreak(exploded);
     }
 
+    /// <summary>
+    /// Host: moves it straight to a point (the ball back on the court's centre spot, BallCourt), flagged
+    /// as a teleport so the other machines jump it there instead of sliding it across.
+    /// </summary>
+    public void Teleport(Vector3 to)
+    {
+        if (!Hosting) return;
+        if (TryGetComponent<Unity.Netcode.Components.NetworkTransform>(out var follow) && follow.CanCommitToTransform)
+            follow.Teleport(to, transform.rotation, transform.localScale);
+        else transform.position = to;
+    }
+
     /// <summary>A wizard ran into it (Kicker): the host's physics takes the kick, wherever it came from.</summary>
     public void Kick(Vector3 impulse)
     {
