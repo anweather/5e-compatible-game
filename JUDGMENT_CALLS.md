@@ -22,6 +22,10 @@ Each entry has:
 
 ## Open
 
+(none)
+
+## Decided
+
 ### J-013: How may the playtest scripts run past the PowerShell execution policy?
 
 - **Asked:** 2026-10-27, raised by World.
@@ -38,7 +42,13 @@ Each entry has:
     policy involved).
 - **Also comes up when:** any script on this PC: the coordinator's tools,
   `tools/playtest`, release scripts, scheduled tasks.
-- **Answer:** pending. The coordinator recommends (d).
+- **Answer (2026-10-27):** **(d)**, a .NET console tool
+  (`tools/playtest/Playtest.Runner`, in `core/Game.Core.sln`) replaces
+  `run.ps1` and `build.ps1`. No PowerShell scripts, no Bypass, no policy
+  change.
+- **Why:** Andrew: "Agree with .NET tool." No security setting changes. It
+  shares the bot's rules and tests with the core. For any future script on
+  this PC, prefer bash (Git Bash) or .NET over .ps1 files.
 - **Revisited:** 0.
 
 ### J-014: How should resetting the world online behave (backlog #4)?
@@ -47,13 +57,15 @@ Each entry has:
   command, Gameplay the view).
 - **Also comes up when:** any host-versus-client authority question, mods
   across a world rebuild, any countdown UX.
-- **Answer:** pending. Recommended:
+- **Answer (2026-10-27):** all three as recommended:
   - a 3 s countdown;
   - the host decides (a client asks; no vote);
-  - mods stay on through a reset.
+  - mods stay on through a reset (re-stamped in the reset batch).
+- **Why:** Andrew: "yes that sounds great".
+  - With at most 4 players, the host is in charge.
+  - A reset restores the world, not the settings.
 - **Revisited:** 0.
 
-## Decided
 
 ### J-012: The backlog's priority order
 
