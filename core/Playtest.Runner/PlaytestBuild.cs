@@ -5,7 +5,8 @@ using System.Linq;
 using Newtonsoft.Json.Linq;
 
 // `playtest build` (playtest/DESIGN.md, section 6): the bot's player, built in
-// its own checkout (.claude/worktrees/playtest-build, detached at origin/dev)
+// its own checkout (.claude/worktrees/playtest-build, detached at origin/dev, or
+// another branch with --ref while the bot itself isn't on dev yet)
 // so nobody's Editor is locked and its Library keeps builds incremental. It
 // builds only when origin/dev has moved since the last build (or --force) and
 // the preflight passes. The checkout is the bot's throwaway tree
@@ -17,7 +18,7 @@ namespace Playtest.Runner
 {
     public static class PlaytestBuild
     {
-        public static int Build(Paths paths, bool force)
+        public static int Build(Paths paths, bool force, string branch = "dev")
         {
             string wt = paths.Checkout;
             string log = Path.Combine(paths.Runs, "build.log");
@@ -29,8 +30,8 @@ namespace Playtest.Runner
                 File.AppendAllText(log, l + Environment.NewLine);
             }
 
-            Git.Run(paths.Main, "fetch -q origin dev");
-            string target = Git.Run(paths.Main, "rev-parse origin/dev").Trim();
+            Git.Run(paths.Main, $"fetch -q origin {branch}");
+            string target = Git.Run(paths.Main, $"rev-parse origin/{branch}").Trim();
             string stamp = Path.Combine(wt, "unity", "Builds", "playtest-built-commit.txt");
             if (!force && File.Exists(stamp) && File.ReadAllText(stamp).Trim() == target)
             {
