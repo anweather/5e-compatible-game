@@ -46,7 +46,7 @@ public class SurfaceEffects : MonoBehaviour
     Component controller;
     FieldInfo moveSpeed, sprintSpeed, gravity, fall;
     Animator animator;
-    float baseMove, baseSprint, baseGravity;
+    float baseMove, baseSprint, baseGravity, wizardMove, wizardSprint;
     Vector3 lastPosition;
     Vector3 momentum;
     bool wasSlipping, wasWading, swimming;
@@ -77,6 +77,22 @@ public class SurfaceEffects : MonoBehaviour
         slowUntil = Mathf.Max(slowUntil, Time.time + seconds);
     }
 
+    /// <summary>The speeds wading, swimming and slows scale (the controller's MoveSpeed and SprintSpeed): an animal's, while shapeshifted.</summary>
+    public void SetBaseSpeeds(float move, float sprint)
+    {
+        if (moveSpeed == null) return;
+        baseMove = move;
+        baseSprint = sprint;
+        moveSpeed.SetValue(controller, baseMove * appliedSpeed);
+        sprintSpeed.SetValue(controller, baseSprint * appliedSpeed);
+    }
+
+    /// <summary>Back to the wizard's own speeds.</summary>
+    public void RestoreBaseSpeeds() => SetBaseSpeeds(wizardMove, wizardSprint);
+
+    /// <summary>The wizard's own speeds, walking and sprinting (before any shape, wading or slow).</summary>
+    public (float move, float sprint) WizardSpeeds => (wizardMove, wizardSprint);
+
     void Awake()
     {
         body = GetComponent<CharacterController>();
@@ -87,6 +103,7 @@ public class SurfaceEffects : MonoBehaviour
         sprintSpeed = WizardRig.Field(controller, "SprintSpeed", isPublic: true);
         baseMove = (float)moveSpeed.GetValue(controller);
         baseSprint = (float)sprintSpeed.GetValue(controller);
+        (wizardMove, wizardSprint) = (baseMove, baseSprint);
         gravity = WizardRig.Field(controller, "Gravity", isPublic: true);
         fall = WizardRig.Field(controller, "_verticalVelocity", isPublic: false);
         if (gravity != null) baseGravity = (float)gravity.GetValue(controller);

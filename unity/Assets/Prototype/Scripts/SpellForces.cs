@@ -5,8 +5,10 @@ using UnityEngine;
 // What a spell does to things that move, beside what it does to cells (that
 // is World.Cast): Thunderwave throws everything around the caster away from
 // it, Gust of Wind shoves everything along its line, Levitate lifts the prop
-// nearest its target, Misty Step moves the caster (MistyStep) and Mage Hand
-// fetches or sets down something light (MageHand). The
+// nearest its target, Misty Step moves the caster (MistyStep), Mage Hand
+// fetches or sets down something light (MageHand) and Shapeshift gives the
+// caster an animal's shape (Shapeshift). A spell with damage hurts the
+// wizards in its squares (Vitals, which an animal shape takes first). The
 // strengths are the spell's push and duration in rules/spells.json (see
 // Forces for the units). A spell with an element and no push catches the
 // wizards in its squares (Hit): fire throws them back from the blast, frost
@@ -48,6 +50,8 @@ public static class SpellForces
         if (spell.Effect == SpellShapes.LevitateEffect) return levitate && Levitate(grid, spell, x, y) ? 1 : 0;
         if (spell.Effect == SpellShapes.TeleportEffect) return ownCaster != null && MistyStep.Blink(grid, spell, ownCaster, x, y) ? 1 : 0;
         if (spell.Effect == SpellShapes.CarryEffect) return ownCaster != null && MageHand.Cast(grid, spell, ownCaster, x, y) ? 1 : 0;
+        if (spell.Effect == SpellShapes.ShapeshiftEffect) return Shift(ownCaster, spell, cast);
+        HurtWizards(grid, spell, cast, except, only);
         if (spell.Push <= 0) return HitWizards(grid, spell, cast, except, only);
         float impulse = spell.Push * Forces.ImpulsePerPush;
         return spell.Shape switch
@@ -58,21 +62,43 @@ public static class SpellForces
         };
     }
 
+    // Shapeshift: the caster's own wizard takes the animal's shape (on the caster's machine only).
+    static int Shift(Transform ownCaster, SpellDef spell, CastCommand cast) =>
+        ownCaster != null && ownCaster.TryGetComponent<Shapeshift>(out var shape) && shape.Land(spell, cast.X, cast.Y, cast.Charge) ? 1 : 0;
+
     // The wizards standing in the spell's squares (not its caster) feel its element.
     static int HitWizards(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
     {
         if (spell.Element == null) return 0;
-        var cells = new System.Collections.Generic.HashSet<(int x, int y)>(grid.World.SpellCells(spell, cast.X, cast.Y, cast.Dir, cast.Charge, cast.AimX, cast.AimY));
         var centre = grid.CellCenter(cast.X, cast.Y);
         int hit = 0;
+        foreach (var wizard in WizardsIn(grid, spell, cast, except, only))
+            if (Hit(wizard, spell, centre, Along(cast), World.ClampCharge(cast.Charge))) hit++;
+        return hit;
+    }
+
+    // A spell with damage hurts the wizards in its squares (not its caster): its dice's average,
+    // times the charge (Vitals; an animal shape takes it first).
+    static void HurtWizards(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
+    {
+        if (spell.Damage == null || spell.Damage.Length < 2) return;
+        float damage = spell.Damage[0] * (spell.Damage[1] + 1) * 0.5f * World.ClampCharge(cast.Charge);
+        foreach (var wizard in WizardsIn(grid, spell, cast, except, only))
+            if (wizard.TryGetComponent<Vitals>(out var vitals)) vitals.TakeDamage(damage);
+    }
+
+    // The wizards (this machine's to move, with `only`) standing in a cast's squares, not `except`.
+    static System.Collections.Generic.List<Knockback> WizardsIn(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
+    {
+        var found = new System.Collections.Generic.List<Knockback>();
+        var cells = new System.Collections.Generic.HashSet<(int x, int y)>(grid.World.SpellCells(spell, cast.X, cast.Y, cast.Dir, cast.Charge, cast.AimX, cast.AimY));
         foreach (var wizard in Knockback.All.ToArray())
         {
             if (wizard == null || (except != null && wizard.transform == except) || (only != null && !only(wizard))) continue;
             var at = grid.CellAt(wizard.transform.position);
-            if (!cells.Contains((at.x, at.y))) continue;
-            if (Hit(wizard, spell, centre, Along(cast), World.ClampCharge(cast.Charge))) hit++;
+            if (cells.Contains((at.x, at.y))) found.Add(wizard);
         }
-        return hit;
+        return found;
     }
 
     // What an element does to a wizard it catches.

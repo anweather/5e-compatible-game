@@ -147,6 +147,12 @@ public static class ProbeScenarios
             "Misty Step aimed as a player aims it (the camera's ray through the crosshair) at open ground all round the wizard, " +
             "3 m out to just inside its range, then a few blinks for real. Checks: 80% or more of the spots can be landed on (the " +
             "detail tallies why the rest can't), and every real blink arrives where it was aimed."),
+        new Entry("shapeshift", typeof(ShapeshiftProbe), 60f,
+            "Shapeshift in the meadow: a deer put 8 m in front of the wizard (held still), aimed at through a ray from the wizard's eyes and cast " +
+            "at; the wizard walks as a deer, tries Fire Bolt, a second deer is put 6 m away, then Cast changes it back; shifted again, a heavy blow. " +
+            "Checks: the ray finds the deer (and the sky fizzles), the wizard's model is hidden and a deer's body drawn where it stands, the controller " +
+            "has the deer's speeds, walking moves it with a gait, Fire Bolt is refused, the near deer doesn't bolt, changing back restores the model " +
+            "and speeds, the blow changes it back, no console errors. `--shots` saves the wizard as a deer."),
         new Entry("sprint", typeof(SprintProbe), 30f,
             "A virtual controller walks the wizard north, clicks the left stick, lets go of the stick and pushes again, then holds the left trigger. " +
             "Checks: the click runs (over 1.3 times the walk), letting go of the stick stops the run, the left trigger doesn't sprint, no console errors."),

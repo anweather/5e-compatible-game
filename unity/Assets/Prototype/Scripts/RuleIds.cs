@@ -25,6 +25,7 @@ public static class SpellIds
     public const string MoveEarth = "move-earth";
     public const string MistyStep = "misty-step";
     public const string MageHand = "mage-hand";
+    public const string Shapeshift = "shapeshift";
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
@@ -37,6 +38,7 @@ public static class SpellShapes
     public const string TeleportEffect = "teleport";
     public const string CarryEffect = "carry";
     public const string TerraformEffect = "terraform";
+    public const string ShapeshiftEffect = "shapeshift";
 }
 
 /// <summary>Element ids (what a spell or a reaction brings to a cell), as in rules/reactions.json.</summary>

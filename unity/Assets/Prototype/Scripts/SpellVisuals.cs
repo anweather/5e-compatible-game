@@ -26,6 +26,22 @@ public class SpellVisuals : ScriptableObject
         public GameObject afterImpact;
         [Tooltip("Pours down over the spell's squares from a low cloud for a while (SleetStorm) instead of flying from the hand; it lands when the first of it reaches the ground.")]
         public bool storm;
+        [Tooltip("Colours the impact's particles with the glow (Shapeshift's green take on the silver mist).")]
+        public bool tinted;
+
+        /// <summary>Plays the impact at a point for impactSeconds (tinted if asked), if there is one.</summary>
+        public void PlayImpact(Vector3 at, Quaternion rotation)
+        {
+            if (impact == null) return;
+            var fx = UnityEngine.Object.Instantiate(impact, at, rotation);
+            if (tinted)
+                foreach (var particles in fx.GetComponentsInChildren<ParticleSystem>())
+                {
+                    var main = particles.main;
+                    main.startColor = glow;
+                }
+            UnityEngine.Object.Destroy(fx, impactSeconds);
+        }
     }
 
     public List<Entry> entries = new();

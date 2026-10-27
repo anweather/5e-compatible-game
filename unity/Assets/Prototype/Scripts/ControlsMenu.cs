@@ -25,6 +25,7 @@ public class ControlsMenu : MonoBehaviour
         ("Next / previous spell", "E / Q", "{RB}"),
         ("Open an element's spells", "1 – 8", "D-pad ◀ ▶ (steps)"),
         ("Cast (hold: stronger)", "Left click", "{RT}"),
+        ("In an animal's shape: change back", "Left click", "{RT}"),
         ("Pick up / drop", "E (near a thing)", "{West}"),
         ("Use what you hold", "F", "{North}"),
         ("Throw (hold: harder)", "G / right click", "{East}"),

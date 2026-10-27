@@ -335,6 +335,7 @@ public static class ChemYardBuilder
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
         wizard.AddComponent<SpellRadialHud>(); // waits for the caster and controls to be on (solo now, the owner's on spawn)
+        wizard.AddComponent<Shapeshift>(); // an animal's shape: on every copy, so each machine draws the animal
         if (playerDriven)
         {
             caster.grid = grid;
@@ -399,6 +400,8 @@ public static class ChemYardBuilder
             Visual(SpellIds.MistyStep, new Color(0.85f, 0.88f, 0.95f), null, MiscFx + "/Respawn.prefab"),
             // Mage Hand: a spectral glow where the hand reaches.
             Visual(SpellIds.MageHand, new Color(0.6f, 0.95f, 0.8f), null, MiscFx + "/ParticlesLight.prefab"),
+            // Shapeshift: green mist, no projectile, on the animal it copies and round the wizard as it changes (Shapeshift.Puff).
+            ShapeshiftLook(),
             // Earth shaping: the ground itself throws up dust where it moves (ChemGrid.dustFx).
             Visual(SpellIds.MoldEarth, new Color(0.75f, 0.55f, 0.3f), null, null),
             Visual(SpellIds.MoldEarthHeap, new Color(0.75f, 0.55f, 0.3f), null, null),
@@ -419,6 +422,14 @@ public static class ChemYardBuilder
         e.fromSky = true;
         e.afterImpact = Load(FireFx + "/DustExplosion.prefab");
         e.impactSeconds = 5f;
+        return e;
+    }
+
+    // Shapeshift: Misty Step's mist tinted green, on the animal it copies and round the wizard as it changes.
+    static SpellVisuals.Entry ShapeshiftLook()
+    {
+        var e = Visual(SpellIds.Shapeshift, new Color(0.45f, 0.85f, 0.35f), null, MiscFx + "/Respawn.prefab");
+        e.tinted = true;
         return e;
     }
 
