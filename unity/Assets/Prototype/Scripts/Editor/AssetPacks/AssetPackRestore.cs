@@ -69,6 +69,12 @@ public static class AssetPackRestore
     /// <summary>Raised when a restore ends (with or without failures).</summary>
     public static event Action Finished;
 
+    /// <summary>The folders the manifest's packs live in ("Assets/Starter Assets", ...).</summary>
+    internal static List<string> Folders() =>
+        File.Exists(ManifestPath)
+            ? JsonUtility.FromJson<Manifest>(File.ReadAllText(ManifestPath)).packs.ConvertAll(p => p.folder)
+            : new List<string>();
+
     static List<Pack> Missing()
     {
         var missing = new List<Pack>();
