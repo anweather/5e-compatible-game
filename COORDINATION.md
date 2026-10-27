@@ -235,12 +235,13 @@ The coordinator approves each change and schedules them one at a time.
 7. `playtest-bot` (World), in phases, when each is ready.
 8. `perf-pass` (Build), in slices (the SSAO choice waits on Andrew).
 9. World, in this order once each passes its Editor turn:
-   a. `gas-pool` and `rain-water-mesh`;
-   b. `tick-spread`;
-   c. `still-water` and `net-reset` (both stacked on tick-spread);
-   d. `hardness`;
+   a. ~~`rain-water-mesh`~~ `f27d0b7` (the rain worst frame from 2.7 s to 75 ms); ~~`gas-pool`~~ `afbe09d`;
+   b. ~~`tick-spread`~~ `41de805`;
+   c. ~~`still-water`~~ `f3a8964`; `net-reset` waits for the online run (with Gameplay's part B, MPPM);
+   d. `hardness`: passed, merging now;
    e. `playtest-bot`.
-10. Gameplay: reset part B (stacked on `net-reset`), and the G1 perf items.
+10. Gameplay: ~~`static-resets`~~ `46abc35`; `villagers` (testing); `net-reset-view` (after the online run); `ground-perf` (perf numbers need a solo slot); `showcase-fire` (the Mac is verifying it).
+11. Build: `perf-pass` (cheap SSAO and soft Medium, `49bd690`) after PC-5 on a solo PC.
 
 The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 
