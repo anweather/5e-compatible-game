@@ -22,7 +22,23 @@ Each entry has:
 
 ## Open
 
-(none)
+### J-020: Caves, the six design questions (backlog #14, Later)
+
+- **Asked:** 2026-10-27, raised by World's spike (`docs/CAVES.md` on
+  `caves-spike`, never merged). It recommends C: levels linked by shafts.
+- **Also comes up when:** anything underground, digging, shafts, light in
+  caves, saves (SaveFormat 2).
+- **The questions,** with World's proposals:
+  1. How deep, and how many levels? One, about 6 m down.
+  2. Can players dig new caves anywhere, or only reach caves that exist?
+  3. Fixed levels with stairs, ramps and shafts, or continuous slopes?
+  4. What crosses a shaft? Water down, gas and smoke up, wizards falling
+     (SRD damage past 10 ft) or climbing; no spells.
+  5. Are caves always dark? Yes.
+  6. Solo first, or online from the start?
+- **Answer:** pending. Ask Andrew (with the question tool) when caves comes
+  up in the priority order. Not urgent.
+- **Revisited:** 0.
 
 ## Decided
 
