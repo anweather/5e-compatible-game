@@ -29,3 +29,4 @@ The creature files turn our style analyzers off (`#pragma warning disable`),
 so they can stay close to Punchy's code.
 | `Precipitation.shader` | `Assets/Game/Shaders/Precipitation.shader` | Header only (rain streaks and snowflakes for `WeatherFx`) |
 | `ThunderSynth.cs` | `Assets/Game/Scripts/Weather/ThunderSynth.cs` | Header only (a new thunderclap for every strike) |
+| `Terrain/Editor/BiomeTerrain.cs` | `Assets/Game/Scripts/Terrain/Biomes/BiomeData.cs` (BiomeSampling), `BiomeBaking.cs`, `TerrainSource.ShapeHeight` | Blobs made plain classes; surface stacks give per-surface weights for Unity terrain layers; a regional bias on biome picks. Editor-only (`ValleySurroundings.cs` bakes the land around the valley with it) |

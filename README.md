@@ -118,7 +118,8 @@ container (no Unity Editor) can build and test end to end.
 
 ## Thanks
 
-The sky and its clouds, the animals, the fireflies and the butterflies are adapted from
+The land around the valley, the sky and its clouds, the animals, the fireflies and the
+butterflies are adapted from
 [Punchy](https://github.com/Skeleman/Punchy) by Zachary Franklin, used with
 his permission (`unity/Assets/Prototype/ThirdParty/Punchy/`). The game's
 Credits name him too.

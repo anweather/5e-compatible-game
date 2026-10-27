@@ -1,10 +1,11 @@
 using UnityEngine;
 
 // The valley's shape as functions of a point on the ground plane (x, z in
-// metres): the flat meadow where the old yard was, the ridged mountain to the
-// north, the lake to the south, hills closing the sides, level pads for the
-// cabins, and which terrain layers each point gets. ValleyBuilder and
-// ValleyTerrain sample it; it never touches assets. Set by Plan.
+// metres): the flat meadow where the old yard was, the lake to the south, the
+// river and the falls, level pads for the cabins, and which terrain layers
+// each point gets. Past the valley floor the land is generated
+// (ValleySurroundings: Punchy's biomes, mountains to the north). ValleyBuilder
+// and ValleyTerrain sample it; it never touches assets. Set by Plan.
 public static class ValleyShape
 {
     public const float LakeLevel = -0.6f;
@@ -54,6 +55,9 @@ public static class ValleyShape
             new CabinSite(new Vector2(155f, 62f), Vector2.left),
             new CabinSite(new Vector2(-95f, 140f), new Vector2(0.6f, -0.8f)),
         };
+        var cabinSpots = new Vector2[Cabins.Length];
+        for (int i = 0; i < Cabins.Length; i++) cabinSpots[i] = Cabins[i].At;
+        ValleySurroundings.Plan(Centre, LakeCentre, Falls, cabinSpots);
         padLevels = new float[Cabins.Length];
         for (int i = 1; i < Cabins.Length; i++) padLevels[i] = Mathf.Max(Unlevelled(Cabins[i].At), 0f);
         PondLevel = Unlevelled(Falls) - 2f;
@@ -139,17 +143,16 @@ public static class ValleyShape
         if (d <= FlatAroundYard) return 0f;
         float rise = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(FlatAroundYard, 30f, d));
 
-        var rel = p - Centre;
         float meadow = 2.2f * Fbm(p * 0.012f, 3) * rise;
-        // The mountain starts well back from the yard and climbs gradually, so it reads as a
-        // mountain across the valley rather than a wall.
-        float north = Mathf.Pow(Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(140f, 430f, rel.y)), 1.4f);
-        float mountain = north * (110f + 120f * Ridged(p * 0.0045f));
-        float sides = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(220f, 440f, Mathf.Abs(rel.x))) * (55f + 45f * Fbm(p * 0.008f + Vector2.one * 7f, 3));
-        float south = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(260f, 440f, -rel.y)) * (40f + 35f * Fbm(p * 0.01f + Vector2.one * 3f, 3));
+        // The valley floor climbs gently north into the foothills, so the falls stand high and the
+        // river runs down from them to the lake.
+        float foothills = 45f * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(140f, 300f, (p - Centre).y));
+        // Past the valley floor the generated land rises (ValleySurroundings).
+        float t = ValleySurroundings.Mask(p);
+        float land = t > 0f ? t * ValleySurroundings.Height(p) : 0f;
 
         float lake = LakeDepth(p);
-        return Mathf.Max(meadow + mountain + sides + south, 0f) * rise - lake;
+        return Mathf.Max(meadow + foothills + land, 0f) * rise - lake;
     }
 
     public static float LakeDepth(Vector2 p)
@@ -188,7 +191,7 @@ public static class ValleyShape
         return Mathf.Min(best, DistanceToCourse(p, River));
     }
 
-    static float DistanceToCourse(Vector2 p, Vector2[] course)
+    internal static float DistanceToCourse(Vector2 p, Vector2[] course)
     {
         float best = float.MaxValue;
         for (int i = 0; i + 1 < course.Length; i++)
@@ -222,15 +225,21 @@ public static class ValleyShape
         return sum;
     }
 
-    static float Ridged(Vector2 p)
+    /// <summary>
+    /// Grass, moss, rock, snow, sand, soil (ValleyBuilder.LayerNames order) at a point with this slope,
+    /// summing to 1: the valley floor's own mix, blending into the generated land's surfaces past it.
+    /// </summary>
+    public static float[] LayerWeights(Vector2 w, float slope)
     {
-        float sum = 0f, amp = 0.55f;
-        for (int i = 0; i < 5; i++, p *= 2.1f, amp *= 0.5f) sum += amp * (1f - Mathf.Abs(Mathf.PerlinNoise(p.x, p.y) * 2f - 1f));
-        return sum;
+        var floor = FloorLayerWeights(w, slope);
+        float t = ValleySurroundings.Mask(w);
+        if (t <= 0f) return floor;
+        var land = ValleySurroundings.LayerWeights(w, HeightAt(w), slope);
+        for (int k = 0; k < floor.Length; k++) floor[k] = Mathf.Lerp(floor[k], land[k], t);
+        return floor;
     }
 
-    /// <summary>Grass, moss, rock, snow, sand, soil (ValleyBuilder.LayerNames order) at a point with this slope, before normalising.</summary>
-    public static float[] LayerWeights(Vector2 w, float slope)
+    static float[] FloorLayerWeights(Vector2 w, float slope)
     {
         float h = HeightAt(w);
         float shore = Mathf.InverseLerp(1.5f, 0f, Mathf.Abs(h - LakeLevel)) * Mathf.InverseLerp(30f, 0f, DistanceToLake(w));
@@ -240,6 +249,11 @@ public static class ValleyShape
         float soil = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(60f, 120f, h)) * (1f - rock) * (1f - snow);
         float sand = shore;
         float grass = Mathf.Max(0f, 1f - rock - snow - moss * 0.6f - sand - soil);
-        return new[] { grass, moss * 0.6f, rock, snow, sand, soil };
+        var mix = new[] { grass, moss * 0.6f, rock, snow, sand, soil };
+        float total = 0f;
+        foreach (var x in mix) total += x;
+        if (total > 0f)
+            for (int k = 0; k < mix.Length; k++) mix[k] /= total;
+        return mix;
     }
 }

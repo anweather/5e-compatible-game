@@ -172,4 +172,21 @@ wakes doesn't fast-forward, props in sleeping chunks stay spawned (and
 awake to physics), the netcode checksum still hashes every cell, and
 players far apart are still all simulated by the host (interest by chunk).
 
+## The land around the valley (built 2026-10-27)
+
+The valley floor (the yard, the cabins, the lake, the river and the falls)
+is still shaped by hand (`ValleyShape`), climbing gently north into the
+foothills. Past it, over a 90 m blend, the land is generated: Punchy's
+biome noise (`ThirdParty/Punchy/Terrain/Editor/BiomeTerrain.cs`,
+`ValleySurroundings`), grassland and forest to the sides and south, ridged
+mountains and fells to the north. It paints the valley's own terrain layers
+and sets how thick the forest grows. It is baked in the editor with the rest
+of the valley (terrains and the cell map), so every machine loads the same
+world and its float noise never decides shared state.
+
+Next: Punchy's rivers and lakes; then laying the world out from a theme (the
+PocketTactics open-world blueprint: zones, mountains, rivers, roads,
+towns), ported to the core so chunks can generate from the seed at runtime;
+then a bigger world.
+
 See `docs/ARCHITECTURE.md` for the current code layout.

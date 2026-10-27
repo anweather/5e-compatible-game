@@ -151,7 +151,8 @@ public static class ValleyBuilder
     }
 
     // The valley's forest: world points with a scale, a species and a turn each. Open meadow near
-    // the yard, thickening toward the mountain and the edges.
+    // the yard, thickening toward the valley's edges; past them as thick as the generated land's
+    // biome grows it (ValleySurroundings).
     static List<(Vector2 at, float scale, int species, float turn)> TreeSpots(bool any)
     {
         var spots = new List<(Vector2, float, int, float)>();
@@ -159,12 +160,13 @@ public static class ValleyBuilder
         var layout = ValleyTerrain.Layout;
         float size = layout.ChunkSize * layout.ChunksX;
         var rng = new System.Random(7);
-        for (int i = 0; i < 9000 && spots.Count < 2600; i++)
+        for (int i = 0; i < 16000 && spots.Count < 3600; i++)
         {
             var w = new Vector2(layout.OriginX + (float)rng.NextDouble() * size, layout.OriginZ + (float)rng.NextDouble() * size);
             if (!TreeFits(w)) continue;
             float d = ValleyShape.DistanceToYard(w), h = ValleyShape.HeightAt(w);
             float chance = Mathf.InverseLerp(14f, 70f, d) * (0.35f + 0.65f * Mathf.InverseLerp(40f, 160f, (w - Centre).magnitude));
+            chance = Mathf.Lerp(chance, ValleySurroundings.Trees(w), ValleySurroundings.Mask(w));
             chance *= Mathf.InverseLerp(150f, 90f, h);
             if (rng.NextDouble() > chance) continue;
             float scale = 0.8f + 0.5f * (float)rng.NextDouble();
