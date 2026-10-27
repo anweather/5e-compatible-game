@@ -104,7 +104,8 @@ public static class ProbeScenarios
             "every half second, then fog. Checks: the Sky object is built, the sun is bright at noon and the clock line says so, " +
             "night is dark with the moon up, the storm is in force (wind too) with rain falling, strikes logged and a bolt drawn, " +
             "the clouds over 70% of the sky in it, " +
-            "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, fog closes the haze in, no console errors."),
+            "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, snow at noon (over 2000 flakes in the air, over half " +
+            "the puddles laid in the yard frozen), fog closes the haze in, no console errors."),
         new Entry("blast", typeof(BlastProbe), 40f,
             "Fireball cast from the bar on the meadow east of the yard. Checks: its crater is in the cells (two steps down in the " +
             "middle, one round it), the terrain is drawn at least 0.6 m lower there, the blast's edge burns (burning, or burnt to dirt), no console errors."),

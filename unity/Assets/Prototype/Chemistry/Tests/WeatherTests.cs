@@ -67,7 +67,7 @@ namespace Chem.Tests
         {
             var p = R.Sim;
             var forecast = string.Join(" ", Enumerable.Range(0, 24).Select(k => Sky.KindOf(p, 1, k).ToString().ToLowerInvariant()));
-            Assert.That(forecast, Is.EqualTo("clear clear cloudy windy cloudy clear rain fog rain storm cloudy rain cloudy clear rain windy cloudy rain cloudy rain rain rain windy storm"));
+            Assert.That(forecast, Is.EqualTo("clear clear cloudy windy cloudy clear storm rain rain storm cloudy rain cloudy clear rain fog windy rain windy rain rain storm windy snow"));
         }
 
         [Test]
@@ -106,7 +106,7 @@ namespace Chem.Tests
         [Test]
         public void GoldenStormMatchesTs()
         {
-            var rules = With(Quick + ", 'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 1 }");
+            var rules = With(Quick + ", 'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 1, 'snow': 0 }");
             var a = Field(rules, 5);
             var b = Field(rules, 5);
             Run(a, 150);
@@ -122,13 +122,13 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("3b42222f 3737841178"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7dea4632 1818431910"));
         }
         [Test]
         public void GoldenMeteorShowerMatchesTs()
         {
             // The same as "a meteor shower brings meteors down..." in weather.test.ts.
-            var rules = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0 }, " +
+            var rules = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, " +
                 "'meteors': { 'showerChance': 1, 'every': 6, 'chance': 1, 'fallTicks': 11 }");
             var w = Field(rules, 6);
             (int x, int y, int lands)? seen = null;
@@ -144,6 +144,30 @@ namespace Chem.Tests
             Assert.That(strikes, Is.GreaterThan(0), "meteors landed");
             Assert.That(w.Cells.Any(c => c.Height < 0), "and left craters");
             Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("68379587 878453404 19"));
+        }
+
+        [Test]
+        public void GoldenSnowFreezesPuddlesAndADrySpellThawsThemMatchesTs()
+        {
+            // The same as "snow freezes shallow water..." in weather.test.ts.
+            var snowy = With(Quick + ", 'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 1 }, " +
+                "'snow': { 'freezeEvery': 4, 'freezeChance': 0.5 }");
+            var clear = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, " +
+                "'meteors': { 'showerChance': 0 }, 'rain': { 'dryEvery': 6, 'dryChance': 0 }, 'snow': { 'thawChance': 0.5 }");
+            var w = Field(snowy, 7);
+            for (int x = 8; x < 12; x++)
+                for (int y = 2; y < 10; y++) w.At(x, y).Water = 1 + x % 2;
+            Run(w, 150);
+            int frozen = w.Cells.Count(c => c.Frozen && c.Water > 0);
+            Assert.That(frozen, Is.GreaterThan(10), "the puddles froze");
+            Assert.That(w.Cells.Any(c => c.Water > 2 && c.Frozen), Is.False, "the deep pond did not");
+            Assert.That($"{w.CellHash()} {w.RngState} {frozen}", Is.EqualTo("95ca2729 1105483753 42"));
+
+            w.ApplyRules(clear);
+            Run(w, 150);
+            int still = w.Cells.Count(c => c.Frozen && c.Water > 0);
+            Assert.That(still, Is.LessThan(frozen / 2), "a dry spell thawed most of it");
+            Assert.That($"{w.CellHash()} {w.RngState} {still}", Is.EqualTo("85a44211 104238795 0"));
         }
     }
 }

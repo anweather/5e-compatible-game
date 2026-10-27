@@ -45,6 +45,7 @@ public class SkyProbe : ProbeScenario
 
         yield return Storm();
         yield return Shower();
+        yield return Snowfall();
 
         yield return Switch(At(10f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Only("fog") + " }");
         yield return Wait(6f);
@@ -105,6 +106,34 @@ public class SkyProbe : ProbeScenario
         yield return Wait(3f);
     }
 
+    // Snow at noon over puddles laid in the yard: flakes fall, the sky greys, the puddles freeze over.
+    IEnumerator Snowfall()
+    {
+        var puddles = new System.Collections.Generic.List<Cell>();
+        for (int x = 16; x < 24; x++)
+            for (int y = 2; y < 6; y++)
+            {
+                var cell = grid.YardCell(x, y);
+                var c = World.At(cell.x, cell.y);
+                if (c == null || c.Water > 0 || World.IsBlocking(c)) continue;
+                c.Water = 1;
+                puddles.Add(c);
+            }
+        yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Only("snow") +
+            ", 'snow': { 'freezeEvery': 4, 'freezeChance': 0.5 } }");
+        yield return Wait(8f);
+        var snowGo = fx.transform.Find("Snow");
+        var flakes = snowGo != null ? snowGo.GetComponent<ParticleSystem>() : null;
+        int frozen = puddles.Count(c => c.Frozen && c.Water > 0);
+        Metric("snowflakes", flakes != null ? flakes.particleCount : 0);
+        Metric("puddles_frozen", frozen);
+        Check("snow_falls", World.Weather.Kind == WeatherKind.Snow && flakes != null && flakes.particleCount > 2000,
+            $"{World.Weather.Kind} {World.Weather.Strength}, {(flakes != null ? flakes.particleCount : 0)} flakes in the air");
+        Check("puddles_freeze", puddles.Count > 5 && frozen > puddles.Count / 2, $"{frozen} of {puddles.Count} puddles froze");
+        Shot("snow");
+        yield return SkyShot("snow");
+    }
+
     // The sky itself (CloudSky): looking up over the trees toward the mountains, then back to the meadow.
     IEnumerator SkyShot(string label)
     {
@@ -117,6 +146,6 @@ public class SkyProbe : ProbeScenario
     }
 
     static string Only(string kind) =>
-        "{ " + string.Join(", ", new[] { "clear", "cloudy", "windy", "fog", "rain", "storm" }.Select(k => $"'{k}': {(k == kind ? 1 : 0)}")) + " }";
+        "{ " + string.Join(", ", new[] { "clear", "cloudy", "windy", "fog", "rain", "storm", "snow" }.Select(k => $"'{k}': {(k == kind ? 1 : 0)}")) + " }";
 
 }

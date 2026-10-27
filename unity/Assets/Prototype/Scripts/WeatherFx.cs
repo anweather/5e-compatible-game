@@ -3,15 +3,19 @@ using Chem;
 using UnityEngine;
 
 // What the weather looks and sounds like around the camera, from the Chem
-// world's weather (Chem.Sky): rain falling (slanted by the wind), the hiss of
-// it and the wind's gusts, and for each lightning strike the core makes, a
-// bolt, a flash and thunder that comes later the further away it struck.
+// world's weather (Chem.Sky): rain falling (slanted by the wind) and snow
+// drifting down, both in Punchy's precipitation shader (ThirdParty/Punchy),
+// the hiss of rain and the wind's gusts, and for each lightning strike the
+// core makes, a bolt, a flash and thunder that comes later the further away
+// it struck, a new clap each time (Punchy's ThunderSynth).
 // Presentation only: the strikes and what they set alight are the core's.
 [RequireComponent(typeof(SkyLight), typeof(CloudSky))]
 public class WeatherFx : MonoBehaviour
 {
     /// <summary>The rain streaks' material (ChemYardBuilder makes it); no rain is drawn without one.</summary>
     public Material rainMaterial;
+    /// <summary>The snowflakes' material; no snow is drawn without one.</summary>
+    public Material snowMaterial;
     /// <summary>The lightning bolt's material, bright enough to bloom.</summary>
     public Material boltMaterial;
 
@@ -20,7 +24,8 @@ public class WeatherFx : MonoBehaviour
     ChemGrid grid;
     SkyLight skyLight;
     CloudSky clouds;
-    ParticleSystem rain;
+    ParticleSystem rain, snow;
+    readonly System.Random thunderRandom = new();
     AudioSource rainLoop, windLoop;
     int seenTick = -1;
     SpellVisuals.Entry meteorLook;
@@ -32,7 +37,7 @@ public class WeatherFx : MonoBehaviour
         var look = caster != null && caster.visuals != null ? caster.visuals.For(SpellIds.Meteor) : null;
         return look ?? new SpellVisuals.Entry { spellId = SpellIds.Meteor, fromSky = true };
     }
-    float rainShown, windShown;
+    float rainShown, snowShown, windShown;
 
     void Start()
     {
@@ -40,6 +45,7 @@ public class WeatherFx : MonoBehaviour
         skyLight = GetComponent<SkyLight>();
         clouds = GetComponent<CloudSky>();
         if (rainMaterial != null) rain = MakeRain();
+        if (snowMaterial != null) snow = MakeSnow();
         rainLoop = MakeLoop("Rain", ProceduralSounds.RainLoop);
         windLoop = MakeLoop("Wind", ProceduralSounds.WindLoop);
     }
@@ -51,8 +57,10 @@ public class WeatherFx : MonoBehaviour
         if (world == null || cam == null) return;
         var now = world.Weather;
         rainShown = Mathf.MoveTowards(rainShown, now.Rain / 100f, Time.deltaTime * 0.25f);
+        snowShown = Mathf.MoveTowards(snowShown, now.Snow / 100f, Time.deltaTime * 0.2f);
         windShown = Mathf.MoveTowards(windShown, world.WindDir >= 0 ? 1f : 0f, Time.deltaTime * 0.3f);
         if (rain != null) Rain(cam.transform.position, world.WindDir);
+        if (snow != null) Snow(cam.transform.position, world.WindDir);
         rainLoop.volume = 0.22f * rainShown * GameVolume.Ambience;
         windLoop.volume = 0.15f * windShown * GameVolume.Ambience;
         Play(rainLoop, rainShown > 0.01f);
@@ -126,6 +134,56 @@ public class WeatherFx : MonoBehaviour
         main.startColor = new Color(0.75f * light, 0.8f * light, 0.9f * light, 0.28f);
     }
 
+    // --- snow ---------------------------------------------------------------------
+
+    ParticleSystem MakeSnow()
+    {
+        var go = new GameObject("Snow");
+        go.transform.SetParent(transform, false);
+        var ps = go.AddComponent<ParticleSystem>();
+        ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        var main = ps.main;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        main.startLifetime = 8f;
+        main.startSpeed = 0f;
+        main.startSize = new ParticleSystem.MinMaxCurve(0.03f, 0.07f);
+        main.startColor = new Color(1f, 1f, 1f, 0.9f);
+        main.maxParticles = 12000;
+        main.playOnAwake = false;
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Box;
+        shape.scale = new Vector3(45f, 1f, 45f);
+        var velocity = ps.velocityOverLifetime;
+        velocity.enabled = true;
+        velocity.space = ParticleSystemSimulationSpace.World;
+        // Flakes flutter as they fall.
+        var noise = ps.noise;
+        noise.enabled = true;
+        noise.strength = 0.6f;
+        noise.frequency = 0.4f;
+        var emission = ps.emission;
+        emission.rateOverTime = 0f;
+        var renderer = go.GetComponent<ParticleSystemRenderer>();
+        renderer.renderMode = ParticleSystemRenderMode.Billboard;
+        renderer.sharedMaterial = snowMaterial;
+        renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+        ps.Play();
+        return ps;
+    }
+
+    // Drifts down over the camera, carried downwind.
+    void Snow(Vector3 camera, int windDir)
+    {
+        snow.transform.position = camera + Vector3.up * 10f;
+        var emission = snow.emission;
+        emission.rateOverTime = 1500f * snowShown;
+        var velocity = snow.velocityOverLifetime;
+        var drift = windDir >= 0 ? Downwind(windDir) * 1.5f : Vector3.zero;
+        velocity.x = drift.x;
+        velocity.y = -1.4f;
+        velocity.z = drift.z;
+    }
+
     /// <summary>The way a world direction (0..3, N E S W; north is -y, so -z in the scene) points.</summary>
     static Vector3 Downwind(int dir) => dir switch
     {
@@ -185,23 +243,25 @@ public class WeatherFx : MonoBehaviour
         return line;
     }
 
-    // Thunder arrives at the speed of sound, quieter and duller from further off.
+    // Thunder arrives at the speed of sound: a new clap for every strike (ThunderSynth), made on a
+    // worker thread while the sound travels, a sharp crack close by and a low roll from far off.
     IEnumerator Thunder(float distance)
     {
+        int seed = thunderRandom.Next();
+        var made = System.Threading.Tasks.Task.Run(() => Punchy.Weather.ThunderSynth.Generate(distance, seed));
         yield return new WaitForSeconds(Mathf.Min(distance / SpeedOfSound, 8f));
-        var clip = GameSounds.Clip(SoundIds.Thunder);
-        if (clip == null) yield break;
+        while (!made.IsCompleted) yield return null;
+        if (made.IsFaulted) yield break;
+        var clip = Punchy.Weather.ThunderSynth.ToClip(made.Result);
         var go = new GameObject("Thunder");
         go.transform.SetParent(transform, false);
         var source = go.AddComponent<AudioSource>();
         source.clip = clip;
         source.spatialBlend = 0f;
-        source.pitch = Random.Range(0.55f, 0.75f);
-        source.volume = Mathf.Lerp(0.55f, 0.12f, distance / 700f) * GameVolume.Ambience;
-        var dull = go.AddComponent<AudioLowPassFilter>();
-        dull.cutoffFrequency = Mathf.Lerp(5000f, 600f, distance / 700f);
+        source.volume = Mathf.Lerp(0.7f, 0.2f, distance / 700f) * GameVolume.Ambience;
         source.Play();
-        Destroy(go, clip.length / source.pitch + 0.2f);
+        Destroy(go, clip.length + 0.2f);
+        Destroy(clip, clip.length + 1f);
     }
 
     // --- loops ------------------------------------------------------------------

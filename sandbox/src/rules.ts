@@ -223,9 +223,11 @@ export interface SimParams {
     periodMinutes: number;
     rampMinutes: number;
     calmPeriods: number;
-    weights: Partial<Record<"clear" | "cloudy" | "windy" | "fog" | "rain" | "storm", number>>;
+    weights: Partial<Record<"clear" | "cloudy" | "windy" | "fog" | "rain" | "storm" | "snow", number>>;
     rain: { douseChance: number; dampen: number; fillEvery: number; fillChance: number; dryEvery: number; dryChance: number };
     storm: { strikeEvery: number; strikeChance: number };
+    /** Every freezeEvery ticks of snow, a shallow square's chance its water freezes; dry spells thaw it at thawChance. */
+    snow: { freezeEvery: number; freezeChance: number; thawChance: number };
     /** A clear stretch's chance of a meteor shower; in one, every `every` ticks the chance a meteor appears, landing fallTicks later. */
     meteors: { showerChance: number; every: number; chance: number; fallTicks: number };
   };

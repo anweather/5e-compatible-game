@@ -150,7 +150,7 @@ namespace Chem
         /// <summary>Stretches of clear sky the world starts with.</summary>
         public int CalmPeriods = 2;
         /// <summary>How often each WeatherKind comes up, in WeatherKind's order (sim.json's weights by name).</summary>
-        public double[] Weights = { 4, 2, 1.5, 1, 2, 1 };
+        public double[] Weights = { 4, 2, 1.5, 1, 2, 1, 1 };
         /// <summary>At full rain: the chance per tick a fire burns down a step, and how much less fire spreads.</summary>
         public double DouseChance = 0.05, Dampen = 0.6;
         /// <summary>Every fillEvery ticks of rain, each square's chance of a unit of water; every dryEvery ticks of no rain, a shallow square's chance to dry a unit.</summary>
@@ -165,6 +165,12 @@ namespace Chem
         /// </summary>
         public double ShowerChance = 0.15, MeteorChance = 0.6;
         public int MeteorEvery = 18, MeteorFallTicks = 11;
+        /// <summary>
+        /// Every FreezeEvery ticks of snow, a shallow square's chance (at full strength) its water freezes;
+        /// every dryEvery ticks of neither rain nor snow, a shallow frozen square's chance to thaw.
+        /// </summary>
+        public int FreezeEvery = 24;
+        public double FreezeChance = 0.05, ThawChance = 0.05;
     }
 
     public sealed class SimParams
@@ -590,6 +596,12 @@ namespace Chem
             {
                 w.StrikeEvery = Int(storm["strikeEvery"]) ?? w.StrikeEvery;
                 w.StrikeChance = Num(storm["strikeChance"]) ?? w.StrikeChance;
+            }
+            if (o["snow"] is JObject snow)
+            {
+                w.FreezeEvery = Int(snow["freezeEvery"]) ?? w.FreezeEvery;
+                w.FreezeChance = Num(snow["freezeChance"]) ?? w.FreezeChance;
+                w.ThawChance = Num(snow["thawChance"]) ?? w.ThawChance;
             }
             if (o["meteors"] is JObject meteors)
             {

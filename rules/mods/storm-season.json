@@ -2,6 +2,6 @@
   "title": "Storm season",
   "idea": "Rain and thunderstorms, one after another: rain douses fires and fills the hollows, the storm's wind steers fire and smoke, and lightning strikes all over the valley.",
   "patch": {
-    "sim": { "weather": { "calmPeriods": 0, "weights": { "clear": 0, "cloudy": 0, "windy": 0, "fog": 0, "rain": 1, "storm": 3 } } }
+    "sim": { "weather": { "calmPeriods": 0, "weights": { "clear": 0, "cloudy": 0, "windy": 0, "fog": 0, "rain": 1, "storm": 3, "snow": 0 } } }
   }
 }

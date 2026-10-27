@@ -73,6 +73,7 @@ public class SkyLight : MonoBehaviour
         WeatherKind.Cloudy => now.Strength / 100f * 0.8f,
         WeatherKind.Rain => now.Strength / 100f * 0.85f,
         WeatherKind.Storm => now.Strength / 100f,
+        WeatherKind.Snow => now.Strength / 100f * 0.7f,
         WeatherKind.Fog => now.Strength / 100f * 0.5f,
         WeatherKind.Windy => now.Strength / 100f * 0.2f,
         _ => 0f,

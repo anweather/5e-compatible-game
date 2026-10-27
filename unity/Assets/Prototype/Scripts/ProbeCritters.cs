@@ -14,7 +14,7 @@ public class CrittersProbe : ProbeScenario
         Check("critters_built", critters != null && critters.fireflyMaterial != null && critters.butterflyMaterial != null,
             "AmbientCritters on the Sky object with both materials");
         if (critters == null) yield break;
-        string clear = ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0 } }";
+        string clear = ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }";
 
         Cut(V(40f, 6f, 1f), V(28f, 0f, 15f));
         yield return Switch(At(22f) + clear);

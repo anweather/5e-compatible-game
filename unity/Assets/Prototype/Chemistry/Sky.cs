@@ -7,7 +7,7 @@ using System;
 namespace Chem
 {
     /// <summary>The kinds of weather, in the fixed order sim.json's weather.weights are read in.</summary>
-    public enum WeatherKind { Clear, Cloudy, Windy, Fog, Rain, Storm }
+    public enum WeatherKind { Clear, Cloudy, Windy, Fog, Rain, Storm, Snow }
 
     /// <summary>The weather at one tick: its kind, how strong it is (0..100, ramping in and out) and the wind it brings.</summary>
     public readonly struct WeatherNow
@@ -33,6 +33,10 @@ namespace Chem
         /// <summary>How hard it rains, 0..100 (rain and storms).</summary>
         public int Rain => Kind == WeatherKind.Rain || Kind == WeatherKind.Storm ? Strength : 0;
         public int Fog => Kind == WeatherKind.Fog ? Strength : 0;
+        /// <summary>How hard it snows, 0..100.</summary>
+        public int Snow => Kind == WeatherKind.Snow ? Strength : 0;
+        /// <summary>How much the weather holds fire back, 0..100: rain fully, snow by half.</summary>
+        public int Wet => Rain + Snow / 2;
     }
 
     public static class Sky

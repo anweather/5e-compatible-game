@@ -27,3 +27,5 @@ usual (`AmbientCritters.cs` for the critters, `CloudSky.cs` for the sky,
 
 The creature files turn our style analyzers off (`#pragma warning disable`),
 so they can stay close to Punchy's code.
+| `Precipitation.shader` | `Assets/Game/Shaders/Precipitation.shader` | Header only (rain streaks and snowflakes for `WeatherFx`) |
+| `ThunderSynth.cs` | `Assets/Game/Scripts/Weather/ThunderSynth.cs` | Header only (a new thunderclap for every strike) |

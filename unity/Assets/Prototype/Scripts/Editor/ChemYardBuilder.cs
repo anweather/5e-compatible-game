@@ -196,8 +196,9 @@ public static class ChemYardBuilder
         go.AddComponent<CloudSky>().cloudNoise = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/CloudNoise.asset",
             () => Punchy.Weather.CloudNoise.Create());
         var fx = go.AddComponent<WeatherFx>();
-        fx.rainMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Rain.mat",
-            () => UrpMaterials.NewUnlitParticles("Rain", Color.white, additive: false));
+        // Rain streaks and snowflakes: Punchy's precipitation shader (_Shape 1 rain, 0 snow), lit like the sky.
+        fx.rainMaterial = Precipitation("Rain", 1f);
+        fx.snowMaterial = Precipitation("Snow", 0f);
         fx.boltMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/LightningBolt.mat",
             () => UrpMaterials.NewUnlitParticles("Lightning bolt", new Color(6f, 6.5f, 8f), additive: true));
         var critters = go.AddComponent<AmbientCritters>();
@@ -228,6 +229,16 @@ public static class ChemYardBuilder
             if (species == null) Debug.LogWarning("Fauna: no species " + name);
             else fauna.species.Add(new ValleyFauna.Entry { species = species, density = density, nearWater = nearWater });
         }
+    }
+
+    static Material Precipitation(string name, float shape)
+    {
+        var shader = Shader.Find("Punchy/Precipitation");
+        var material = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/" + name + ".mat", () => new Material(shader) { name = name });
+        material.shader = shader;
+        material.SetFloat("_Shape", shape);
+        EditorUtility.SetDirty(material);
+        return material;
     }
 
     static void Override<T>(VolumeProfile profile, System.Action<T> set) where T : VolumeComponent

@@ -1,5 +1,6 @@
 // What the weather does to cells, once a tick after gas: rain fills squares
-// and dry spells dry shallow ones, storms strike lightning, and in a meteor
+// and dry spells dry shallow ones, snow freezes shallow water (and dry spells
+// thaw it), storms strike lightning, and in a meteor
 // shower meteors appear and land a little later as the Meteor spell. Rain's hold on fire
 // (dousing, less spread) is in Burn and SpreadChance, the prevailing wind in
 // WindDir. Port of tickWeather in sandbox/src/sim.ts; the weather itself
@@ -43,8 +44,19 @@ namespace Chem
             LandMeteors();
             if (now.Period < Rules.Sim.Weather.CalmPeriods) return;
             var p = Rules.Sim.Weather;
-            if (now.Rain > 0 && Tick % p.FillEvery == 0) Fill(rows, p.FillChance * now.Rain / 100);
-            else if (now.Rain == 0 && Tick % p.DryEvery == 0) Dry(rows, p.DryChance);
+            if (now.Rain > 0)
+            {
+                if (Tick % p.FillEvery == 0) Fill(rows, p.FillChance * now.Rain / 100);
+            }
+            else if (now.Snow > 0)
+            {
+                if (Tick % p.FreezeEvery == 0) Freeze(rows, p.FreezeChance * now.Snow / 100, true);
+            }
+            else if (Tick % p.DryEvery == 0)
+            {
+                Dry(rows, p.DryChance);
+                Freeze(rows, p.ThawChance, false);
+            }
             if (now.Kind == WeatherKind.Storm && Tick % p.StrikeEvery == 0 && Rand() < p.StrikeChance * now.Strength / 100) Strike();
             if (now.Meteors > 0 && Tick % p.MeteorEvery == 0 && Rand() < p.MeteorChance * now.Meteors / 100) Meteor();
         }
@@ -102,6 +114,21 @@ namespace Chem
             }
         }
 
+        /// <summary>Snow freezes the water on squares two units deep or less; without it, that ice thaws. Lakes are left alone.</summary>
+        void Freeze(RowSpan[] rows, double chance, bool freeze)
+        {
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    var c = cells[i];
+                    if (c.Water == 0 || c.Water > 2 || c.Frozen == freeze) continue;
+                    if (Rand() < chance) c.Frozen = freeze;
+                }
+            }
+        }
+
         void Strike()
         {
             int x = (int)(Rand() * W), y = (int)(Rand() * H);
@@ -110,10 +137,10 @@ namespace Chem
             Apply(x, y, "lightning", 2, -1, false);
         }
 
-        /// <summary>Rain may burn a fire down a step; true if it went out.</summary>
+        /// <summary>Rain (or snow, by half) may burn a fire down a step; true if it went out.</summary>
         bool Doused(Cell c)
         {
-            int rain = Weather.Rain;
+            int rain = Weather.Wet;
             if (rain == 0) return false;
             if (Rand() >= Rules.Sim.Weather.DouseChance * rain / 100) return false;
             if (--c.Fire > 0) return false;
@@ -122,7 +149,7 @@ namespace Chem
             return true;
         }
 
-        /// <summary>How much of fire's spread the rain leaves, 1 when dry.</summary>
-        double RainDamp() => 1 - Rules.Sim.Weather.Dampen * Weather.Rain / 100;
+        /// <summary>How much of fire's spread the rain (or snow, by half) leaves, 1 when dry.</summary>
+        double RainDamp() => 1 - Rules.Sim.Weather.Dampen * Weather.Wet / 100;
     }
 }

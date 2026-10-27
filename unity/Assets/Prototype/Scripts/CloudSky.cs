@@ -46,6 +46,7 @@ public class CloudSky : MonoBehaviour
     static readonly Look Fog = new(0.95f, 0.2f, 0.9f, 300f, 500f, 0f);
     static readonly Look Rain = new(0.95f, 0.6f, 0.95f, 650f, 2200f, 0.6f);
     static readonly Look Storm = new(1f, 0.9f, 1f, 600f, 7500f, 1f);
+    static readonly Look Snow = new(0.95f, 0.3f, 0.9f, 700f, 1500f, 0.2f);
 
     // The clear sky through the day, by the sun's height (0 straight down, 0.5 on the horizon, 1 overhead).
     static readonly Gradient Zenith = Make(
@@ -176,6 +177,7 @@ public class CloudSky : MonoBehaviour
             WeatherKind.Fog => Look.Lerp(Clear, Fog, s),
             WeatherKind.Rain => Look.Lerp(Clear, Rain, s),
             WeatherKind.Storm => Look.Lerp(Clear, Storm, s),
+            WeatherKind.Snow => Look.Lerp(Clear, Snow, s),
             _ => Clear,
         };
     }

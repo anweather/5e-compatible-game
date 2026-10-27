@@ -5,7 +5,7 @@
 import type { SimParams } from "./rules.ts";
 
 /** In the fixed order sim.json's weather.weights are read in (C#: WeatherKind). */
-export const WEATHER_KINDS = ["clear", "cloudy", "windy", "fog", "rain", "storm"] as const;
+export const WEATHER_KINDS = ["clear", "cloudy", "windy", "fog", "rain", "storm", "snow"] as const;
 export type WeatherKind = (typeof WEATHER_KINDS)[number];
 
 export interface WeatherNow {
@@ -34,6 +34,12 @@ export const minuteOfDay = (minutes: number) => minutes % MINUTES_PER_DAY;
 
 /** How hard it rains, 0..100 (rain and storms). */
 export const rainOf = (n: WeatherNow) => (n.kind === "rain" || n.kind === "storm" ? n.strength : 0);
+
+/** How hard it snows, 0..100. */
+export const snowOf = (n: WeatherNow) => (n.kind === "snow" ? n.strength : 0);
+
+/** How much the weather holds fire back, 0..100: rain fully, snow by half (C#: WeatherNow.Wet). */
+export const wetOf = (n: WeatherNow) => rainOf(n) + Math.floor(snowOf(n) / 2);
 
 export function weatherAt(p: SimParams, seed: number, tick: number): WeatherNow {
   const wp = p.weather;

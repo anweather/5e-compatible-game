@@ -136,7 +136,7 @@ world's seed alone (`sandbox/src/sky.ts`, `Sky.cs`), so every player has
 the same sky. Weather comes in stretches of `periodMinutes` real minutes,
 each ramping in and out over `rampMinutes`; the first `calmPeriods` are
 clear, then each stretch is picked by `weights` (`clear`, `cloudy`,
-`windy`, `fog`, `rain`, `storm`; leave one out or set it to 0 and it never
+`windy`, `fog`, `rain`, `storm`, `snow`; leave one out or set it to 0 and it never
 comes). What it does to squares, at full strength:
 
 - **rain** (and storms): each tick a fire may burn down a step
@@ -145,6 +145,11 @@ comes). What it does to squares, at full strength:
   (`rain.fillChance`), so hollows and trenches fill. Without rain, every
   `rain.dryEvery` ticks a square two units deep or less may lose one
   (`rain.dryChance`): puddles dry, ponds stay.
+- **snow**: holds fire back half as much as rain does, and every
+  `snow.freezeEvery` ticks the water on a square two units deep or less may
+  freeze (`snow.freezeChance`): puddles and trenches ice over, ponds and
+  the lake don't. With neither rain nor snow, every `rain.dryEvery` ticks
+  such shallow ice may thaw again (`snow.thawChance`), a cold spell's too.
 - **windy** and **storm**: a prevailing wind that fire and gas follow like
   Gust of Wind's (which wins while it blows).
 - **storm**: every `storm.strikeEvery` ticks, lightning may strike a random

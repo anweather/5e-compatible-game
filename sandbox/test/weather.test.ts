@@ -63,7 +63,7 @@ test("the world starts calm, then the forecast matches the C# golden", () => {
   assert.equal(kindOf(p, 1, 0), "clear");
   assert.equal(kindOf(p, 1, 1), "clear");
   const forecast = Array.from({ length: 24 }, (_, k) => kindOf(p, 1, k)).join(" ");
-  assert.equal(forecast, "clear clear cloudy windy cloudy clear rain fog rain storm cloudy rain cloudy clear rain windy cloudy rain cloudy rain rain rain windy storm");
+  assert.equal(forecast, "clear clear cloudy windy cloudy clear storm rain rain storm cloudy rain cloudy clear rain fog windy rain windy rain rain storm windy snow");
   // Same seed, same tick: the same weather.
   assert.deepEqual(weatherAt(p, 9, 5000), weatherAt(p, 9, 5000));
 });
@@ -85,7 +85,7 @@ test("weather ramps in and out, and storms bring wind", () => {
 });
 
 test("rain douses a fire and fills the field; storms strike; matches the C# golden", () => {
-  withRules({ sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 0, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 1 } } } } as ModPatch, () => {
+  withRules({ sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 0, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 1, snow: 0 } } } } as ModPatch, () => {
     const a = field(5), b = field(5);
     run(a, 150);
     run(b, 150);
@@ -103,12 +103,12 @@ test("mixed quick weather over many stretches matches the C# golden", () => {
     const w = field(8);
     run(w, 1200);
     const kinds = Array.from({ length: 17 }, (_, k) => kindOf(RULES.sim, 8, k)).join(" ");
-    assert.equal(`${cellHash(w)} ${w.rng}`, "3b42222f 3737841178", kinds);
+    assert.equal(`${cellHash(w)} ${w.rng}`, "7dea4632 1818431910", kinds);
   });
 });
 
 test("a meteor shower brings meteors down a little later as craters, and matches the C# golden", () => {
-  withRules({ sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 1, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 0 },
+  withRules({ sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 1, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 0, snow: 0 },
     meteors: { showerChance: 1, every: 6, chance: 1, fallTicks: 11 } } } } as ModPatch, () => {
     const w = field(6);
     let seen: [number, number, number] | undefined, appeared = -1;
@@ -122,5 +122,28 @@ test("a meteor shower brings meteors down a little later as craters, and matches
     assert.ok(strikes > 0, "meteors landed");
     assert.ok(w.cells.some((c) => c.h < 0), "and left craters");
     assert.equal(`${cellHash(w)} ${w.rng} ${strikes}`, "68379587 878453404 19");
+  });
+});
+
+test("snow freezes shallow water and damps the fire; a dry spell thaws it; matches the C# golden", () => {
+  const snowy = { sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 0, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 0, snow: 1 },
+    snow: { freezeEvery: 4, freezeChance: 0.5 } } } } as ModPatch;
+  const clear = { sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 1, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 0, snow: 0 },
+    meteors: { showerChance: 0 }, rain: { dryEvery: 6, dryChance: 0 }, snow: { thawChance: 0.5 } } } } as ModPatch;
+  const w = field(7);
+  for (let x = 8; x < 12; x++) for (let y = 2; y < 10; y++) cellAt(w, x, y)!.water = 1 + (x % 2);
+  let frozen = 0;
+  withRules(snowy, () => {
+    run(w, 150);
+    frozen = w.cells.filter((c) => c.frozen && c.water > 0).length;
+    assert.ok(frozen > 10, `the puddles froze (${frozen})`);
+    assert.ok(w.cells.filter((c) => c.water > 2 && c.frozen).length === 0, "the deep pond did not");
+    assert.equal(`${cellHash(w)} ${w.rng} ${frozen}`, "95ca2729 1105483753 42");
+  });
+  withRules(clear, () => {
+    run(w, 150);
+    const still = w.cells.filter((c) => c.frozen && c.water > 0).length;
+    assert.ok(still < frozen / 2, `a dry spell thawed most of it (${still} of ${frozen} still ice)`);
+    assert.equal(`${cellHash(w)} ${w.rng} ${still}`, "85a44211 104238795 0");
   });
 });

@@ -8,7 +8,7 @@ import {
   DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
   log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
-import { rainOf, weatherAt } from "./sky.ts";
+import { rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
 import { METEOR_SPELL, landSpell, spellById } from "./actions.ts";
 
 export function step(w: World): void {
@@ -252,16 +252,23 @@ export { ignite };
 // ---------- weather ----------
 
 // What the weather does to cells, after gas: rain fills squares and dry spells
-// dry shallow ones, storms strike lightning (World.Weather.cs ports this).
+// dry shallow ones, snow freezes shallow water (and dry spells thaw it), storms
+// strike lightning (World.Weather.cs ports this).
 // Nothing happens during the calm stretches the world starts with.
 function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
   w.newMeteors = [];
   landMeteors(w);
   if (now.period < p.calmPeriods) return;
-  const rain = rainOf(now);
-  if (rain > 0 && w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);
-  else if (rain === 0 && w.tick % p.rain.dryEvery === 0) dry(w, p.rain.dryChance);
+  const rain = rainOf(now), snow = snowOf(now);
+  if (rain > 0) {
+    if (w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);
+  } else if (snow > 0) {
+    if (w.tick % p.snow.freezeEvery === 0) freeze(w, (p.snow.freezeChance * snow) / 100, true);
+  } else if (w.tick % p.rain.dryEvery === 0) {
+    dry(w, p.rain.dryChance);
+    freeze(w, p.snow.thawChance, false);
+  }
   if (now.kind === "storm" && w.tick % p.storm.strikeEvery === 0 && rand(w) < (p.storm.strikeChance * now.strength) / 100) strike(w);
   if (now.meteors > 0 && w.tick % p.meteors.every === 0 && rand(w) < (p.meteors.chance * now.meteors) / 100) meteor(w);
 }
@@ -301,6 +308,14 @@ function dry(w: World, chance: number) {
   }
 }
 
+/** Snow freezes the water on squares two units deep or less; without it, that ice thaws. Lakes are left alone. */
+function freeze(w: World, chance: number, frozen: boolean) {
+  for (const c of w.cells) {
+    if (c.water === 0 || c.water > 2 || !!c.frozen === frozen) continue;
+    if (rand(w) < chance) c.frozen = frozen;
+  }
+}
+
 function strike(w: World) {
   const x = Math.floor(rand(w) * w.w), y = Math.floor(rand(w) * w.h);
   w.strikes.push([x, y]);
@@ -308,9 +323,9 @@ function strike(w: World) {
   applyElement(w, x, y, "lightning", { power: 2, direct: false });
 }
 
-/** Rain may burn a fire down a step; true if it went out. */
+/** Rain (or snow, by half) may burn a fire down a step; true if it went out. */
 function doused(w: World, c: Cell): boolean {
-  const rain = rainOf(w.weather);
+  const rain = wetOf(w.weather);
   if (rain === 0) return false;
   if (rand(w) >= (RULES.sim.weather.rain.douseChance * rain) / 100) return false;
   if (--c.fire > 0) return false;
@@ -319,5 +334,5 @@ function doused(w: World, c: Cell): boolean {
   return true;
 }
 
-/** How much of fire's spread the rain leaves, 1 when dry. */
-const rainDamp = (w: World) => 1 - (RULES.sim.weather.rain.dampen * rainOf(w.weather)) / 100;
+/** How much of fire's spread the rain (or snow, by half) leaves, 1 when dry. */
+const rainDamp = (w: World) => 1 - (RULES.sim.weather.rain.dampen * wetOf(w.weather)) / 100;
