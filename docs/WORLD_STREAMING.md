@@ -25,12 +25,12 @@ fixed size.
 | Ring | State |
 |---|---|
 | The player's chunk and its 8 neighbours | Loaded, full detail, simulated (chemistry and physics) |
-| The next ring | Loaded and drawn, simulation paused, props asleep |
+| The next ring | Loaded and drawn, inactive, props asleep |
 | Further out | Coarse terrain only (distant hills) |
 | Beyond | Not loaded; changes saved to disk |
 
-Fire reaching the edge of the simulated area wakes the next chunk, up to a cap
-on simulated chunks. A chunk that wakes after a long pause fast-forwards a
+Fire reaching the edge of the active chunks activates the next chunk, up to a cap
+on active chunks. A chunk that activates after a long time inactive fast-forwards a
 bounded number of ticks (fires burn out, water settles). That's believable,
 not exact.
 
@@ -137,10 +137,10 @@ grass).
   "Two-machine online check"), not yet with 3 or 4.
 
 Not in part 1: streaming to disk, seed generation, floating origin, the
-server/interest-management change, the fast-forward on wake. Part 2 is in
+server/interest-management change, the fast-forward on activating. Part 2 is in
 `docs/BACKLOG.md` §11.
 
-## Part 2, first slice: the whole valley, waking around the players (built 2026-10-26)
+## Part 2, first slice: the whole valley, active around the players (built 2026-10-26)
 
 Asked for after the 0.1.1 playtest (P1: "I want to be able to go explore
 with friends").
@@ -150,27 +150,191 @@ with friends").
   315). `world/things.json`'s chunks moved by (3, 4) with it, so ids are
   now like `4,5#2`.
 - **Rings:** each player's chunk and the ring around it are simulated; a
-  chunk sleeps once no player is within 2 chunks (`ChunkStreaming`). Solo
+  chunk deactivates once no player is within 2 chunks (`ChunkStreaming`). Solo
   the grid applies the plan before each tick; online the host stamps it
   into its tick batches and history (`ChunkIntent`), so every machine
-  pauses the same chunks at the same tick. A sleeping chunk is frozen,
+  switches the same chunks at the same tick. An inactive chunk is held as it is,
   spells cast into it do nothing, and its neighbours' fire and water stop
   at its edge.
 - **View:** the grid draws, and the fire lights scan, only active chunks;
-  every cell is drawn once when a world starts (so sleeping chunks' trees
+  every cell is drawn once when a world starts (so inactive chunks' trees
   and walls have their blockers). Chunk terrains are copied only when the
   cells first change them (`ValleyGround`).
 - **The edge of the land** holds you: walls 3 m inside the last terrain,
   marked by rocks.
 - **Checked:** probe `explore` (Fire Bolt on a hillside 300 m from the
-  yard spreads; the yard sleeps unchanged and wakes on return), `online`
+  yard spreads; the yard stays unchanged while inactive and activates on return), `online`
   (checksums equal with the switches travelling), `ChunkStreamingTests`
   (the plan, and a replay matching the live run).
 
-Still open: fire reaching a sleeping chunk doesn't wake it, a chunk that
-wakes doesn't fast-forward, props in sleeping chunks stay spawned (and
+Still open: fire reaching an inactive chunk doesn't activate it, a chunk that
+activates doesn't fast-forward, props in inactive chunks stay spawned (and
 awake to physics), the netcode checksum still hashes every cell, and
 players far apart are still all simulated by the host (interest by chunk).
+
+## Part 2, second slice (agreed 2026-10-27): reach, the active region, and what's still burning
+
+Agreed with Andrew (see "Decided" below); being built in the slices listed. The words are the glossary's
+(`docs/GLOSSARY.md`): a chunk is **active** or **inactive**, a character's
+**reach** is the chunks kept active around it, a **live** cell is one where
+something is still changing on its own.
+
+### What we have and where it hurts
+
+- Each wizard activates the 3×3 chunks round the one it stands in, and a
+  chunk deactivates once no wizard is within 2 chunks (`ChunkStreaming`).
+  Online the host stamps the switches into its tick batches.
+- An inactive chunk is a wall: nothing in it changes, and fire, water and
+  gas beside it stop at its edge.
+- So a fire you start and walk away from **freezes mid-flame** the moment
+  its chunk deactivates, and is still burning, unchanged, when you come
+  back an hour later. Fire is fast (a chance in two each tick to catch each
+  neighbour): a fire started near the edge of the active chunks reaches the
+  wall within seconds and stops dead in a straight line.
+
+Measured in the Editor (the valley as it is, one machine): an active chunk
+costs 0.02 ms a tick on dry land, about 0.2 ms over the lake and 0.3 to 0.4
+ms over the sea, because water is worked every tick even at rest. 3×3
+chunks round the yard cost 0.65 ms a tick, 5×5 cost 1.7 ms, and the whole
+valley (81 chunks, much of it sea) 14.7 ms.
+
+### 1. Reach: how far is far enough
+
+A character's reach is every chunk within **R** chunks of the chunk it
+stands in (a square, 2R+1 across). Today R is 1 and every wizard is a
+character. It has to cover three things:
+
+- **What the character can touch.** The longest spell reaches 12 cells
+  (18 m) and a blast a few more, so this is the smallest need.
+- **What the character can watch.** A fire a hundred metres off should keep
+  burning while you watch it. That's a chunk beyond where you stand.
+- **Room to run.** Something started at the edge of your reach needs space
+  before it meets the wall. Fire covers a chunk in about ten seconds.
+
+**Proposal:** R = 2 (5×5 chunks, at least 128 m of active world in every
+direction), and a chunk deactivates once no character is within R + 1 (as
+today, so walking along a chunk edge doesn't flicker it). That costs about
+1.7 ms a tick per lone character over land, more over water. R, and how
+far past it a chunk stays, go in `sim.json` (`streaming`) so mods and
+slower machines can change them.
+
+Characters are every wizard now. Later anything that should keep the world
+round it running (a raider wave in the defense field, villagers that
+matter) can be a character, with its own, smaller R.
+
+### 2. Overlapping reaches: one active region
+
+Every tick there is one **active region**: the union of all characters'
+reaches. Where reaches overlap, the chunks are simply active once; nothing
+is simulated twice and there's no seam between two players' areas. Two
+groups of players far apart give two separate islands of active chunks, and
+the cost is their sum.
+
+- **Merging and splitting:** as two players walk towards each other their
+  reaches join; as they part, the chunks between them deactivate once
+  neither is within R + 1, the same rule as for one player.
+- **Order:** the plan is worked out from all characters at once and sorted
+  by chunk (as `ChunkStreaming.Plan` already does), so it doesn't depend on
+  who is listed first. Online the host plans it and stamps it into tick
+  batches, so every peer activates and deactivates the same chunks at the
+  same tick. That doesn't change.
+- **Later, with interest by chunk** (each peer simulating only what's near
+  it): overlap is where it gets hard, because two peers then simulate the
+  same chunks and must agree. That's for when interest by chunk is built;
+  with today's lockstep, overlap costs nothing.
+
+### 3. When the reach moves off something still reacting
+
+The choice is what happens to a chunk that leaves every reach while
+something in it is live: a fire burning, water flowing, gas drifting,
+charge fading, shoots growing. Four ways, which combine:
+
+| | What happens | For | Against |
+|---|---|---|---|
+| **A. Hold it** (today) | It deactivates at once; the fire waits mid-flame | Simplest; costs nothing | You come back to a fire that's still burning a day later |
+| **B. Let it run out** | It stays active, outside any reach, until it's **settled** (nothing live in it), then deactivates. Activity crossing into an inactive neighbour activates that one too | The world keeps burning while you walk away; a wildfire really spreads | Unbounded without caps: a forest fire could activate half the valley |
+| **C. Catch up when you return** | When an inactive chunk activates, it first runs the ticks it missed, up to a cap, before play goes on | Bounded cost; fires you left have burned out when you return | A chunk caught up alone treats its inactive neighbours as walls; a burst of work on the tick it activates |
+| **D. Resolve it by rule** | On deactivating, live cells jump to how they'd end: a fire burns its fuel to the burnt terrain, water levels out | Cheap and instant | A second, approximate version of every rule, to keep in step with the real one and the sandbox |
+
+**Proposal: B with caps, then C for whatever the caps left behind.** D only
+if B and C prove too slow.
+
+- **Linger.** A chunk that leaves every reach stays active while it isn't
+  settled. A chunk is **settled** when no cell in it has been live for a
+  few ticks (`settleTicks`, about 2 s), so a fire that has burned out, or
+  water that has stopped moving, lets it go. The core already knows most of
+  this as it ticks (burning cells, gas, charge, `Life`, and water flow
+  marks), so it only has to remember, per chunk, the last tick anything in
+  it was live.
+- **Spread.** When fire, water or gas in an active chunk would cross into
+  an inactive one, that chunk activates too and lingers. This is
+  part 2's plan for fire reaching the edge of the active chunks.
+- **Caps.** At most `lingerChunks` chunks (say 16) linger at once, and none
+  for longer than `lingerTicks` (say 5 minutes). When the cap is full, the
+  lingering chunks furthest from any character deactivate first. Rain,
+  which touches every cell outdoors, would otherwise keep everything live:
+  rain alone doesn't count as live.
+- **Catch up.** A chunk that deactivated while still live remembers the
+  tick it stopped. When it next activates, it first runs the ticks it
+  missed, up to `catchUpTicks` (say 2 minutes of game time), with the
+  weather of each of those ticks (D10 makes that a function of the tick).
+  So a fire you abandoned has burned out when you come back. Neighbours
+  that are still inactive are walls during the catch-up, as today.
+- **Determinism.** "Live", "settled", the caps and the catch-up are all
+  worked out in the core from the cells, the same on every peer. The
+  host's plan (and so the tick batches) carries the activations and
+  deactivations. The catch-up is a command in the batch ("chunk 6,7
+  activates and catches up 340 ticks"), so every peer runs it at the same
+  tick and a late joiner's replay matches.
+- **Props.** Physics props in inactive chunks go to sleep (Rigidbody sleep,
+  and the spawner keeps them but stops them) and wake when their chunk
+  activates. That's part 2's other leftover, and it fits here.
+
+### What this needs (slices)
+
+1. **Reach and the active region** (built 2026-10-27). R and the deactivate distance in
+   `sim.json`; the plan works from all characters (no change in
+   behaviour at R = 1); the tests and the `explore` probe at R = 2.
+2. **Live and settled** (built 2026-10-27). The core keeps, per chunk, the last tick
+   anything was live (`World.LastLive`, `IsSettled`, after `streaming.settleTicks`);
+   a test for each kind of live cell (`LiveChunkTests`). Rain only counts once its water moves.
+3. **Linger and spread** (built 2026-10-27, `ChunkPlanner`). The plan keeps unsettled chunks active within
+   the caps, and activity reaching an inactive chunk activates it; replay
+   tests online; probe: walk away from a fire and watch it burn on, then
+   out (the probe checks it burns on; `LingerTests` that it burns out and lets go).
+4. **Catch up** (built 2026-10-27, `World.CatchUp`). The switch itself is the command (every peer runs it the same); run in the core over one chunk;
+   a test that a chunk caught up matches one that was never deactivated
+   (when its neighbours were quiet), `CatchUpTests`. A full catch-up of a burning
+   chunk costs about 25 ms in .NET, once, as it activates; no probe yet (the caps rarely cut a fire off in the valley).
+5. **Props sleep with their chunk.** Part A (World lane, built 2026-10-27): `World.ChunkSwitched`
+   and `ChemGrid.ChunkSwitched` (a `ChunkSwitch`: CX, CY, Active), raised once a chunk has
+   switched and caught up, the same on every peer; `ChemGrid.WorldReset`, `ChunkAt`,
+   `IsChunkActive`. Part B (Gameplay lane, built 2026-10-27): `PhysicsProp` puts a chunk's
+   physics props to sleep (kinematic, velocity and ticks held) when it deactivates, or when one
+   rolls into an inactive chunk, and wakes them when it activates or the world resets; the
+   spawner keeps them. A puppet or a prop in a hand is left alone. Probe `sleep`.
+
+The golden hashes don't move: with everything active (the tests' worlds),
+none of this does anything.
+
+6. **Still water costs nothing** (built 2026-10-27, `World.StillWater`). Before
+   each water pass a chunk compares what the pass reads (water, height,
+   frozen, terrain) with the last pass; a chunk where nothing changed and no
+   water moved, round it included, skips its springs and flows, and water
+   moving anywhere disturbs the chunks round it for the rest of the pass. It
+   is exact, not approximate, so the sandbox needs no change and the goldens
+   stand (`StillWaterTests` compare skipping on and off, tick by tick). A
+   settled lake of 5×5 chunks: 5.0 ms a tick worked, 0.7 ms skipped.
+
+### Decided (Andrew, 2026-10-27)
+
+- **R = 2:** every character keeps the 5×5 chunks round it active.
+- **Run out, then catch up:** chunks still live when they leave every reach
+  linger until settled, within the caps; what the caps cut off catches up
+  its missed ticks when it next activates.
+- **Still water costs nothing** (slice 6).
+- **Characters are wizards only** for now: raiders and the defense field
+  wait while no wizard is near.
 
 ## The land around the valley (built 2026-10-27)
 
@@ -237,7 +401,7 @@ kept as a diff against the generated chunk (below).
   position. Built on a worker thread so travelling doesn't hitch.
 
 **When chunks are made and dropped (lockstep).** `ChunkStreaming`
-already plans which chunks are simulated, asleep or far, and online the
+already plans which chunks are active, inactive or far, and online the
 host stamps the plan into its tick batches. It also says when a chunk is
 first generated, so every machine generates it at the same tick, and a
 late joiner replaying from tick 0 does too. Nothing extra is sent: the

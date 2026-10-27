@@ -39,12 +39,29 @@ namespace Chem
         public int WindDir => Wind.HasValue ? Wind.Value.dir : Weather.WindDir;
 
 
+        /// <summary>Whether the weather changes the cells this tick: not in the calm first periods, unless a spell set it.</summary>
+        bool WeatherActs => Weather.Period >= Rules.Sim.Weather.CalmPeriods || WeatherSet.HasValue;
+
+        /// <summary>Whether rain is falling on the cells this tick, filling them here and there.</summary>
+        bool Raining => WeatherActs && Weather.Rain > 0;
+
         void TickWeather(RowSpan[] rows)
         {
             var now = Weather;
             newMeteors.Clear();
             LandMeteors();
-            if (now.Period < Rules.Sim.Weather.CalmPeriods && !WeatherSet.HasValue) return;
+            if (!WeatherActs) return;
+            WeatherOnCells(rows);
+            var p = Rules.Sim.Weather;
+            if (now.Kind == WeatherKind.Storm && Tick % p.StrikeEvery == 0 && Rand() < p.StrikeChance * now.Strength / 100) Strike();
+            if (now.Meteors > 0 && Tick % p.MeteorEvery == 0 && Rand() < p.MeteorChance * now.Meteors / 100) Meteor();
+        }
+
+        /// <summary>What the weather does to each cell (rain fills, snow freezes and settles, dry weather dries and thaws), without strikes or meteors.</summary>
+        void WeatherOnCells(RowSpan[] rows)
+        {
+            if (!WeatherActs) return;
+            var now = Weather;
             var p = Rules.Sim.Weather;
             if (now.Rain > 0)
             {
@@ -64,8 +81,6 @@ namespace Chem
                 Freeze(rows, p.ThawChance, false);
                 Melt(rows, p.ThawChance);
             }
-            if (now.Kind == WeatherKind.Storm && Tick % p.StrikeEvery == 0 && Rand() < p.StrikeChance * now.Strength / 100) Strike();
-            if (now.Meteors > 0 && Tick % p.MeteorEvery == 0 && Rand() < p.MeteorChance * now.Meteors / 100) Meteor();
         }
 
         void Meteor()

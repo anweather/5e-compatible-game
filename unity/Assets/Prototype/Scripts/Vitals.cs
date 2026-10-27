@@ -53,6 +53,15 @@ public class Vitals : MonoBehaviour
     }
 
     /// <summary>Gives back up to <paramref name="amount"/> health (scripts and the probe).</summary>
+    /// <summary>Everything full again (an online reset: OnlineReset).</summary>
+    public void Refill()
+    {
+        Health = HealthMax;
+        Stamina = StaminaMax;
+        Magic = MagicMax;
+        lastHurt = float.NegativeInfinity;
+    }
+
     public void Heal(float amount) => Health = Mathf.Min(HealthMax, Health + Mathf.Max(0f, amount));
 
     /// <summary>Takes <paramref name="amount"/> health away (in the sandbox, never the last point).</summary>

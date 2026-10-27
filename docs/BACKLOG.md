@@ -494,7 +494,49 @@ Make the world feel lived in from generated content (D12,
   `docs/WORLD_LIFE.md`, "Backlog: a world that's lived in".
 - **Size:** M per layer.
 
-## Suggested order)
+## Priority (groomed 2026-10-27, Andrew approved; J-012 in `JUDGMENT_CALLS.md`)
+
+This is the order to work in. Each item names its lane (see
+`COORDINATION.md`). When a lane goes idle, it takes the next item in its
+lane from here. The playtest bot's paper cuts (`playtest/BACKLOG.md`, once
+it runs) are merged into this list every few days.
+
+**Now:** small, high value, unblocks other work.
+
+| # | Item | Lane | Size |
+|---|---|---|---|
+| 1 | The Windows quit crash: the game ends itself on quit (J-010) | Gameplay | S |
+| 2 | The playtest bot (`playtest/DESIGN.md`) | World | M |
+| 3 | Performance pass (19): a player build, the wildfire spikes | Build leads; PC tests through Gameplay | M |
+| 4 | Reset the world online (12) | Gameplay, with World for the `NetChem` command | S–M |
+| 5 | Terrain hardness (4) | World | S–M |
+
+**Next:** builds on Now.
+
+| # | Item | Lane | Size |
+|---|---|---|---|
+| 6 | Components in the rules (10.1), before more items | World | M |
+| 7 | Items and an inventory (5), digging tools first | Gameplay | M |
+| 8 | What night does (1): stars, lights at dusk, night in the rules | World, with Gameplay | M |
+| 9 | World life (20): villagers' routines, a soundscape per place | Gameplay, with World | M |
+| 10 | Swimming (13: animation, diving, drowning), then climbing (14) | Gameplay | M each |
+| 11 | World streaming, the rest (11): to disk, interest by chunk, floating origin | World, alongside everything else | L |
+
+**Later:** bigger, or waiting on a decision.
+
+| # | Item | Lane | Size |
+|---|---|---|---|
+| 12 | First person (7), then weapons (6). Weapons need a decision on fit first | Gameplay | M, then L |
+| 13 | Proximity voice (8), once online play is regular | Gameplay | M |
+| 14 | Caves (3), after a representation spike | World | XL |
+| 15 | Finer ground (18) | World | M–L |
+| 16 | IK and animation (9), whenever a feature's look needs it | Gameplay | ongoing |
+
+**Polish:** 15 (scoreboard), 16 (tower) and 17 (tower defense) are built.
+Their "still open" lines are small polish items, to pick up between bigger
+items or when the playtest bot ranks them.
+
+## Dependencies (the older suggested order)
 
 Dependencies, roughly:
 

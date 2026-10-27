@@ -24,6 +24,20 @@ namespace Chem
 
         /// <summary>One number per chunk coordinate, for the chunk store's dictionary.</summary>
         public static long Key(int cx, int cy) => ((long)cy << 32) | (uint)cx;
+
+        /// <summary>
+        /// The chunk edges a local cell index lies on, as bits 1 &lt;&lt; d for d = 0 to 3 (N, E, S, W,
+        /// the order of Chunk.Next): 0 inside, two bits in a corner.
+        /// </summary>
+        public static int EdgesOf(int i)
+        {
+            int lx = i & Mask, edges = 0;
+            if (i < Size) edges |= 1;
+            if (lx == Mask) edges |= 2;
+            if (i >= Area - Size) edges |= 4;
+            if (lx == 0) edges |= 8;
+            return edges;
+        }
     }
 
     /// <summary>
@@ -44,6 +58,34 @@ namespace Chem
         /// <summary>Loaded neighbours, or null at the edge of what is loaded.</summary>
         public Chunk North, East, South, West;
         public bool Active = true;
+        /// <summary>
+        /// The last tick anything in it was live: fire, gas, charge, a timer counting down (Life), or
+        /// water moving (docs/WORLD_STREAMING.md, "Part 2, second slice"). World.NeverLive for a
+        /// chunk nothing has happened in. Kept outside Cell, like FireGeneration, so cell hashes are
+        /// unaffected.
+        /// </summary>
+        public int LastLive = World.NeverLive;
+        /// <summary>LastLive for the cells along each edge, N, E, S, W (the order of Next).</summary>
+        public readonly int[] EdgeLive = { World.NeverLive, World.NeverLive, World.NeverLive, World.NeverLive };
+        /// <summary>The tick it deactivated while still live, to catch up from (World.CatchUp); World.NeverLive if it settled first.</summary>
+        public int StoppedAt = World.NeverLive;
+        /// <summary>The ticks it caught up when it last activated (0 if it had none to catch up).</summary>
+        public int CaughtUp;
+
+        // Still water (World.StillWater): what the water pass reads of each cell (water, height,
+        // frozen, terrain) as it was at the last pass, and the neighbours' active state then.
+        public int[] SnapWater, SnapHeight;
+        public bool[] SnapFrozen;
+        public string[] SnapT;
+        public readonly bool[] SnapNeighbourActive = new bool[4];
+        /// <summary>The snapshot is from the last water pass (false after activating or a rule switch).</summary>
+        public bool SnapValid;
+        /// <summary>Nothing the water pass reads changed since the last pass.</summary>
+        public bool Unchanged;
+        /// <summary>The last tick water moved into, out of or within it.</summary>
+        public int LastFlowTick = World.NeverLive;
+        /// <summary>This tick's water pass may skip it (until water moves in it or next to it: Disturbed).</summary>
+        public bool WaterStill, WaterDisturbed;
 
         public Chunk(int x, int y)
         {

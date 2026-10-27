@@ -9,6 +9,8 @@
 
   <ItemGroup>
     <Compile Include="../../unity/Assets/Prototype/Chemistry/*.cs" Link="Chemistry/%(Filename)%(Extension)" />
+    <!-- The playtest bot's Unity-free logic (unity/Assets/Prototype/Scripts/Playtest/Logic, playtest/DESIGN.md). -->
+    <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Logic/*.cs" Link="Playtest/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

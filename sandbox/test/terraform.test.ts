@@ -261,6 +261,44 @@ test("charged spots, squares and bursts grow; earth shaping keeps its patch (as 
   assert.equal(cells("misty-step", 3), 1, "a target stays one square");
 });
 
+/** A row of raised rock (hardness 3) and a row of metal plate (hardness 4) across a room of dirt. */
+function hardRoom(): World {
+  const w = room(20, 12, 9);
+  for (let x = 2; x <= 17; x++) {
+    cellAt(w, x, 3)!.t = "rock";
+    cellAt(w, x, 6)!.t = "metal";
+  }
+  return w;
+}
+
+test("a dig weaker than the ground leaves it: Shape Earth digs dirt, a Meteor digs rock, nothing digs metal; matches the C# golden", () => {
+  const w = hardRoom();
+  castSpell(w, "mold-earth", 4, 3, 1);
+  assert.equal(cellAt(w, 4, 3)!.h, 0, "Lower Earth can't dig rock");
+  assert.ok(w.log.some((l) => l.text === "The raised rock is too hard to dig"));
+  castSpell(w, "earthen-trench", 3, 9, 1);
+  assert.equal(cellAt(w, 5, 9)!.h, -2, "Earthen Trench digs dirt");
+  castSpell(w, "fireball", 10, 3, 0);
+  assert.equal(cellAt(w, 10, 3)!.h, 0, "Fireball's crater (strength 2) can't dig rock");
+  castSpell(w, "meteor", 14, 4, 0);
+  assert.ok(cellAt(w, 14, 3)!.h < 0, "Meteor's crater (strength 3) digs rock");
+  assert.equal(cellAt(w, 14, 3)!.t, "rubble");
+  assert.equal(cellAt(w, 14, 6)!.h, 0, "metal never digs");
+  run(w, 30);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "58631e96 9");
+});
+
+test("hardness and strength are checked", () => {
+  const r = composeRules([]);
+  const errors = validateRules({
+    ...r,
+    terrain: { ...r.terrain, granite: { name: "Granite", tags: ["ground"], hardness: 0 } },
+    spells: [...r.spells, { ...r.spells.find((s) => s.id === "mold-earth")!, id: "chisel", strength: 1.5 }],
+  });
+  assert.ok(errors.includes("terrain granite: hardness must be a whole number from 1"));
+  assert.ok(errors.includes("spell chisel: strength must be a whole number from 1"));
+});
+
 test("Burning Hands is a cone from the caster, longer when charged, and matches the C# golden", () => {
   const w = room(20, 14, 4);
   for (let x = 1; x < 19; x++) for (let y = 1; y < 13; y++) cellAt(w, x, y)!.t = "grass";

@@ -36,8 +36,13 @@ using UnityEngine;
 //   tick's batch, so the waves start on the same tick everywhere. The waves
 //   and raiders are then pure chemistry: every machine runs them, and the
 //   checksum's last part is their hash (World.DefenseHash).
+// - The host can reset the world for everyone (J-014, StampReset): every machine hears
+//   ResetComing at once (a countdown), and at that tick rebuilds the world from its seed
+//   (ChemGrid.ResetWorld), the mods in force re-stamped in the same batch. The network's ticks
+//   keep counting; the rebuilt world's own tick starts again at 0 (tickBase), and so do its clock
+//   and weather. The host keeps the history from the last reset on only.
 // - A late joiner asks for the history (casts, rule switches, prop effects, defense commands
-//   and chunk switches) and replays it from tick 0.
+//   and chunk switches) and replays it from tick 0, or from the last reset, which it replays first.
 [RequireComponent(typeof(ChemGrid))]
 public class NetChem : NetworkBehaviour
 {
@@ -60,6 +65,8 @@ public class NetChem : NetworkBehaviour
     readonly List<DefenseIntent> defenseHistory = new();
     // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
     readonly HashSet<(int cx, int cy)> plannedAwake = new();
+    // Plans the switches, lingering chunks still live; host only, since only the switches are shared.
+    ChunkPlanner planner = new();
     RuleSet stampNext;
     // Chunks are planned every few ticks: players move a chunk in seconds, not ticks.
     const int PlanEvery = 3;
@@ -86,6 +93,39 @@ public class NetChem : NetworkBehaviour
     /// <summary>True once this client has found a checksum that differs from the host's.</summary>
     public bool DesyncSeen => desyncReported;
 
+    // The network tick the world's tick 0 sits at: 0 until an online reset rebuilds the world
+    // (J-014), after which the world counts from 0 again (so its clock and weather start again)
+    // while the network's ticks keep counting.
+    int tickBase;
+    // Joining, the history up to this tick was replayed: a reset in it is a replay, not live.
+    int replayedUpTo;
+    // Host only: the tick a stamped reset happens at (0: none coming), and where the kept history starts.
+    int resetAt, historyFrom = 1;
+
+    /// <summary>The network's tick: the world's own, plus the ticks before the last online reset.</summary>
+    public int NetTick => tickBase + grid.World.Tick;
+
+    /// <summary>The countdown to an online reset, in seconds (J-014).</summary>
+    public const float ResetCountdownSeconds = 3f;
+
+    /// <summary>The countdown in ticks at the rules' tick rate (18 at 6 a second): the delay to pass StampReset.</summary>
+    public int ResetCountdownTicks => Mathf.RoundToInt(ResetCountdownSeconds * Mathf.Max(1, grid.World.Rules.Sim.TicksPerSecond));
+
+    /// <summary>
+    /// A reset is coming at this network tick: raised on every machine as soon as the host stamps
+    /// it, for a countdown. At that tick the world is rebuilt (ChemGrid.WorldReset fires).
+    /// </summary>
+    public event System.Action<int> ResetComing;
+
+    /// <summary>
+    /// While ChemGrid.WorldReset fires for an online reset: true for a late joiner replaying the
+    /// history (the reset that heads it), false for a reset happening now.
+    /// </summary>
+    public bool ResetIsReplay { get; private set; }
+
+    /// <summary>The network tick of the last online reset (0 for none).</summary>
+    public int LastResetTick { get; private set; }
+
     void Awake() => grid = GetComponent<ChemGrid>();
 
     /// <summary>Host only: the rules the host has most recently stamped (or will stamp next), or null if none since spawn.</summary>
@@ -109,11 +149,17 @@ public class NetChem : NetworkBehaviour
         defenseFor.Clear();
         plannedAwake.Clear();
         foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
+        planner = new ChunkPlanner();
         stampNext = null;
         HostUpcoming = null;
         hostHashes.Clear();
         knownUpTo = 0;
         desyncReported = false;
+        tickBase = 0;
+        replayedUpTo = 0;
+        resetAt = 0;
+        historyFrom = 1;
+        LastResetTick = 0;
         if (IsServer)
         {
             hostTick = 0;
@@ -165,6 +211,22 @@ public class NetChem : NetworkBehaviour
         HostUpcoming = next;
     }
 
+    /// <summary>
+    /// Host only: the world resets for everyone after <paramref name="delayTicks"/> (at least 1;
+    /// ResetCountdownTicks for the 3 s countdown). Every machine hears ResetComing at once, and at
+    /// that tick rebuilds the world from its seed, the mods in force re-stamped with it (J-014).
+    /// A reset already coming isn't moved.
+    /// </summary>
+    public void StampReset(int delayTicks)
+    {
+        if (!IsServer || resetAt > hostTick) return;
+        resetAt = hostTick + Mathf.Max(1, delayTicks);
+        ResetComingRpc(resetAt);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    void ResetComingRpc(int tick) => ResetComing?.Invoke(tick);
+
     /// <summary>Client: asks the host to switch a mod on or off (the host checks it with its own copy of the file).</summary>
     public void RequestToggle(string modId) => RequestToggleRpc(new FixedString128Bytes(modId));
 
@@ -205,23 +267,51 @@ public class NetChem : NetworkBehaviour
             pendingEffects.Clear();
             for (int i = 0; i < effects.Length; i++) effects[i].Tick = hostTick;
             effectHistory.AddRange(effects);
-            var rules = RuleChangeMsg.None;
-            if (stampNext != null)
-            {
-                rules = RuleChangeMsg.From(new RuleChange(hostTick, stampNext.Mods));
-                ruleHistory.Add(rules);
-                stampNext = null;
-            }
+            bool reset = hostTick == resetAt;
+            var rules = reset ? StampResetRules() : TakeRuleSwitch();
 
             var chunks = PlanChunks();
             chunkHistory.AddRange(chunks);
             StampDefense();
 
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
-            int hashTick = grid.World.Tick;
-            string hash = hashTick % HashEvery == 0 ? Checksum(grid) : "";
+            // Never the hash of a tick still part done (World.StepSome): that one is skipped, and peers check the next.
+            int hashTick = NetTick;
+            string hash = hashTick % HashEvery == 0 && !grid.World.TickInProgress ? Checksum(grid) : "";
             ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, hashTick, new FixedString64Bytes(hash));
         }
+    }
+
+    // A rule switch waiting to go out, stamped into this tick's batch (or none).
+    RuleChangeMsg TakeRuleSwitch()
+    {
+        if (stampNext == null) return RuleChangeMsg.None;
+        var rules = RuleChangeMsg.From(new RuleChange(hostTick, stampNext.Mods));
+        ruleHistory.Add(rules);
+        stampNext = null;
+        return rules;
+    }
+
+    // The reset's batch (J-014): the mods in force (or about to be) re-stamped, since a rebuilt world
+    // starts on the base rules; the history from here on only, headed by them, so a late joiner never
+    // replays what came before; and the chunk plan starting again from a world all awake.
+    RuleChangeMsg StampResetRules()
+    {
+        var mods = (stampNext ?? HostUpcoming ?? grid.CurrentRules)?.Mods ?? System.Array.Empty<ActiveMod>();
+        var rules = RuleChangeMsg.From(new RuleChange(hostTick, mods));
+        rules.Reset = true;
+        stampNext = null;
+        history.RemoveAll(c => c.Tick < hostTick);
+        effectHistory.RemoveAll(e => e.Tick < hostTick);
+        chunkHistory.RemoveAll(c => c.Tick < hostTick);
+        defenseHistory.RemoveAll(d => d.Tick < hostTick);
+        ruleHistory.Clear();
+        ruleHistory.Add(rules);
+        historyFrom = hostTick;
+        plannedAwake.Clear();
+        foreach (var c in grid.World.ChunkCoords) plannedAwake.Add(c);
+        planner = new ChunkPlanner();
+        return rules;
     }
 
     // The defense commands asked for since the last tick go out for this one, just before its batch
@@ -250,7 +340,7 @@ public class NetChem : NetworkBehaviour
     ChunkIntent[] PlanChunks()
     {
         if (!grid.streamChunks || hostTick % PlanEvery != 1) return System.Array.Empty<ChunkIntent>();
-        var plan = ChunkStreaming.Plan(grid.World.ChunkCoords, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells());
+        var plan = planner.Plan(grid.World, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells());
         var stamped = new ChunkIntent[plan.Count];
         for (int i = 0; i < plan.Count; i++)
         {
@@ -322,7 +412,7 @@ public class NetChem : NetworkBehaviour
     void ApplyBatchRpc(int tick, CastIntent[] casts, EffectIntent[] effects, RuleChangeMsg rules, ChunkIntent[] chunks, int hashTick, FixedString64Bytes hash)
     {
         batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null, effects.Select(e => e.ToCommand()),
-            chunks.Select(c => c.ToSwitch()));
+            chunks.Select(c => c.ToSwitch())) { Reset = rules.Has && rules.Reset };
         if (defenseFor.Remove(tick, out var defense)) batches[tick].Defense.AddRange(defense.Select(d => d.ToCommand()));
         if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
@@ -333,10 +423,15 @@ public class NetChem : NetworkBehaviour
     void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, ChunkIntent[] chunks, DefenseIntent[] defense,
         RpcParams rpc = default)
     {
+        // Since an online reset the host keeps the history from it on, headed by the reset's rules:
+        // the replay starts there, on a fresh world counting from that tick (the reset itself replays first).
+        int from = ruleChanges.Where(r => r.Reset).Select(r => r.Tick).DefaultIfEmpty(1).Max();
         var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
-            effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), defense.Select(d => (d.Tick, d.ToCommand())));
-        for (int t = 1; t <= upToTick; t++)
+            effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), defense.Select(d => (d.Tick, d.ToCommand())), from);
+        for (int t = from; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
+        tickBase = from - 1;
+        replayedUpTo = upToTick;
         knownUpTo = upToTick;
         synced = true;
         ExtendKnown();
@@ -355,17 +450,54 @@ public class NetChem : NetworkBehaviour
     void Advance()
     {
         if (!synced) return;
-        var world = grid.World;
         var budget = System.Diagnostics.Stopwatch.StartNew();
-        while (world.Tick < knownUpTo && budget.Elapsed.TotalMilliseconds < CatchUpBudgetMs)
+        bool Over() => budget.Elapsed.TotalMilliseconds >= CatchUpBudgetMs;
+        // A tick a busy frame left part done carries on first. Ticks run in slices within the
+        // frame's budget (World.StepSome); a batch's commands only ever land between whole ticks,
+        // so every peer computes the same ticks however its frames slice them. (grid.World is read
+        // afresh each time: a reset replaces it.)
+        if (grid.World.TickInProgress)
         {
-            int next = world.Tick + 1;
-            if (batches.TryGetValue(next, out var batch)) batches.Remove(next);
-            grid.RunBatch(batch ?? new TickBatch(next));
-            if (liveCasts.Remove(next, out var casts)) Shove(casts);
-            CheckHash(world.Tick);
-            TickApplied?.Invoke(world.Tick, world.Tick % HashEvery == 0 ? Checksum(grid) : null);
+            if (!grid.World.StepSome(Over)) return;
+            Applied(NetTick);
         }
+        while (NetTick < knownUpTo && !Over())
+        {
+            int next = NetTick + 1;
+            if (!batches.TryGetValue(next, out var batch)) batch = new TickBatch(next);
+            batches.Remove(next);
+            if (batch.Reset) Rebuild(next);
+            grid.PrepareBatch(batch);
+            if (!grid.World.StepSome(Over)) return;
+            Applied(NetTick);
+        }
+    }
+
+    // The online reset (J-014) at a network tick: the world rebuilt from its seed, things.json, the
+    // clock and the weather (ChemGrid.ResetWorld; its WorldReset listeners can read ResetIsReplay and
+    // LastResetTick), counting from 0 again from here. The batch then re-stamps the mods on it.
+    void Rebuild(int tick)
+    {
+        LastResetTick = tick;
+        ResetIsReplay = tick <= replayedUpTo;
+        try
+        {
+            grid.ResetWorld();
+        }
+        finally
+        {
+            ResetIsReplay = false;
+        }
+        tickBase = tick - 1;
+        EventLog.Add("The world resets");
+    }
+
+    // A tick has finished: the physical side of its casts, the desync check, and listeners.
+    void Applied(int tick)
+    {
+        if (liveCasts.Remove(tick, out var casts)) Shove(casts);
+        CheckHash(tick);
+        TickApplied?.Invoke(tick, tick % HashEvery == 0 ? Checksum(grid) : null);
     }
 
     // The physical side of the casts just applied: the host moves the props (its physics is the
@@ -486,6 +618,8 @@ public struct RuleChangeMsg : INetworkSerializable
 {
     public bool Has;
     public int Tick;
+    /// <summary>The world resets at this tick (J-014): these are the mods in force, re-stamped on the rebuilt world.</summary>
+    public bool Reset;
     public string[] Ids;
     public string[] Jsons;
 
@@ -515,6 +649,7 @@ public struct RuleChangeMsg : INetworkSerializable
             return;
         }
         serializer.SerializeValue(ref Tick);
+        serializer.SerializeValue(ref Reset);
         int count = Ids?.Length ?? 0;
         serializer.SerializeValue(ref count);
         if (serializer.IsReader)

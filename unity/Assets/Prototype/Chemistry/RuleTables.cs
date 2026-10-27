@@ -28,6 +28,8 @@ namespace Chem
         public string UprootsTo, UprootLog;
         /// <summary>What digging leaves (grass is dug down to dirt), or null to keep the terrain.</summary>
         public string DugTo;
+        /// <summary>How hard it is to dig (materials.json "hardness", 1 when absent): a dig needs at least this strength.</summary>
+        public int Hardness = 1;
         /// <summary>
         /// What it grows into once its Cell.Life runs out (green shoots into grass, a sapling into a
         /// tree), or null; and the line logged when it does.
@@ -93,6 +95,8 @@ namespace Chem
         /// from the target over Radius (a hill or a crater).
         /// </summary>
         public int Raise, Dig;
+        /// <summary>A digging spell's strength (spells.json "strength", 1 when absent): it digs terrain no harder than this.</summary>
+        public int Strength = 1;
         public int? Height;
         public string Terrain;
         public bool Taper;
@@ -107,6 +111,8 @@ namespace Chem
     public sealed class CraterDef
     {
         public int Radius, Depth;
+        /// <summary>How hard a ground the blast can dig (1 when absent), against a terrain's hardness.</summary>
+        public int Strength = 1;
     }
 
     /// <summary>What an entity leaves behind when it blows up (entities.json "explodes").</summary>
@@ -164,6 +170,24 @@ namespace Chem
         public double LengthMinutes = 24, StartHour = 9;
     }
 
+    /// <summary>
+    /// sim.json's streaming (ChunkStreaming, docs/WORLD_STREAMING.md): a character's reach, the
+    /// chunks within Reach of the one it stands in, is kept active; a chunk deactivates once no
+    /// character is within Keep. C# only: the sandbox has no chunks.
+    /// </summary>
+    public sealed class StreamingParams
+    {
+        public int Reach = 2, Keep = 3;
+        /// <summary>A chunk is settled once nothing in it has been live for this many ticks.</summary>
+        public int SettleTicks = 12;
+        /// <summary>At most this many chunks out of every reach stay active while live (linger).</summary>
+        public int LingerChunks = 16;
+        /// <summary>A chunk lingers at most this many ticks before it deactivates, live or not.</summary>
+        public int LingerTicks = 1800;
+        /// <summary>A chunk let go while live runs at most this many of the ticks it missed when it next activates.</summary>
+        public int CatchUpTicks = 720;
+    }
+
     /// <summary>sim.json's weather (Sky.cs picks it, World.Weather.cs applies it).</summary>
     public sealed class WeatherParams
     {
@@ -204,6 +228,7 @@ namespace Chem
     {
         public int TicksPerSecond = 6;
         public DayParams Day = new DayParams();
+        public StreamingParams Streaming = new StreamingParams();
         public WeatherParams Weather = new WeatherParams();
         public FireParams Fire = new FireParams();
         public GasParams Gas = new GasParams();
@@ -429,6 +454,7 @@ namespace Chem
             UprootsTo = Str(o["uprootsTo"]),
             UprootLog = Str(o["uprootLog"]),
             DugTo = Str(o["dugTo"]),
+            Hardness = Int(o["hardness"]) ?? 1,
             GrowsTo = Str(o["growsTo"]),
             GrowLog = Str(o["growLog"]),
         };
@@ -502,6 +528,7 @@ namespace Chem
             Damage = Dice(o["damage"]),
             Raise = Int(o["raise"]) ?? 0,
             Dig = Int(o["dig"]) ?? 0,
+            Strength = Int(o["strength"]) ?? 1,
             Height = Int(o["height"]),
             Terrain = Str(o["terrain"]),
             Taper = Truthy(o["taper"]),
@@ -509,7 +536,7 @@ namespace Chem
         };
 
         static CraterDef ParseCrater(JToken t) =>
-            t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1 } : null;
+            t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1, Strength = Int(c["strength"]) ?? 1 } : null;
 
         static CellRule ParseRule(JObject o)
         {
@@ -639,6 +666,15 @@ namespace Chem
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;
                 s.Day.StartHour = Num(day["startHour"]) ?? s.Day.StartHour;
+            }
+            if (o["streaming"] is JObject so)
+            {
+                s.Streaming.Reach = Int(so["reach"]) ?? s.Streaming.Reach;
+                s.Streaming.Keep = Int(so["keep"]) ?? s.Streaming.Keep;
+                s.Streaming.SettleTicks = Int(so["settleTicks"]) ?? s.Streaming.SettleTicks;
+                s.Streaming.LingerChunks = Int(so["lingerChunks"]) ?? s.Streaming.LingerChunks;
+                s.Streaming.LingerTicks = Int(so["lingerTicks"]) ?? s.Streaming.LingerTicks;
+                s.Streaming.CatchUpTicks = Int(so["catchUpTicks"]) ?? s.Streaming.CatchUpTicks;
             }
             if (o["weather"] is JObject wo) ParseWeather(wo, s.Weather);
             return s;

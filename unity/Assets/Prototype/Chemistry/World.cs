@@ -60,7 +60,9 @@ namespace Chem
         /// </summary>
         public void ApplyRules(Rules rules)
         {
+            FinishTick(); // a rule switch lands between whole ticks (StepSome)
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
+            ForgetWaterSnapshots(); // terrain may mean something else now
             var height = rules.Sim.Height;
             Weather = SkyNow();
             foreach (var c in Cells)
@@ -200,6 +202,7 @@ namespace Chem
 
         public void AddLog(string text, LogKind kind = LogKind.Info)
         {
+            if (catchingUp) return;
             var last = log.Count > 0 ? log[log.Count - 1] : null;
             if (last != null && last.Text == text && Tick - last.Tick < 40)
             {

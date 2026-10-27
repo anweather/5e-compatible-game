@@ -45,6 +45,32 @@ public partial class ChemGrid : MonoBehaviour
     /// </summary>
     public bool streamChunks = true;
 
+    /// <summary>Plans the chunks solo, lingering what is still live (ChunkPlanner); online the host keeps its own. New with each world.</summary>
+    public ChunkPlanner ChunkPlanner { get; private set; } = new();
+
+    /// <summary>
+    /// A chunk of the current world activated or deactivated (ChunkSwitch: CX, CY, Active), after
+    /// it caught up; World.ChunkSwitched passed on, so it keeps working across ResetWorld. Solo and
+    /// online alike: switches reach the world only as commands (the solo plan, or the host's tick
+    /// batches on every peer), so every peer hears the same switches at the same tick. Chunk
+    /// coordinates are world cells / 64 (ChunkAt, ThingId's chunk). For the view only: a handler
+    /// mustn't change the world.
+    /// </summary>
+    public event System.Action<ChunkSwitch> ChunkSwitched;
+
+    /// <summary>A new world was built (ResetWorld, or going online): every chunk starts active again, with no ChunkSwitched for it.</summary>
+    public event System.Action WorldReset;
+
+    /// <summary>The chunk a scene position is in (world chunk coordinates, as ChunkSwitched and ThingId use).</summary>
+    public Vector2Int ChunkAt(Vector3 p)
+    {
+        var cell = CellAt(p);
+        return new Vector2Int(Chunks.ChunkOf(cell.x), Chunks.ChunkOf(cell.y));
+    }
+
+    /// <summary>Whether a chunk is simulated now; false for one outside the world.</summary>
+    public bool IsChunkActive(int cx, int cy) => World != null && World.HasChunk(cx, cy) && World.IsActive(cx, cy);
+
     readonly List<(int x, int y)> playerCells = new();
     readonly System.Diagnostics.Stopwatch timer = new();
 
@@ -113,11 +139,14 @@ public partial class ChemGrid : MonoBehaviour
         var rules = StartRules();
 
         World = MapWorld(rules, map, seed, out var start);
+        World.ChunkSwitched += s => ChunkSwitched?.Invoke(s);
+        ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
         if (valley != null) valley.Bind(World);
 
         InitVisuals();
         RenderAll();
+        WorldReset?.Invoke();
     }
 
     /// <summary>
@@ -165,18 +194,9 @@ public partial class ChemGrid : MonoBehaviour
         }
 
         tickTimer += Time.deltaTime;
-        float tick = 1f / Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
-        int guard = 4;
-        bool stepped = false;
         timer.Restart();
-        while (tickTimer >= tick && guard-- > 0)
-        {
-            tickTimer -= tick;
-            ApplyQueuedRules();
-            if (streamChunks) ChunkStreaming.Apply(World, ChunkStreaming.Plan(World, PlayerCells()));
-            using (StepMarker.Auto()) World.Step();
-            stepped = true;
-        }
+        bool stepped;
+        using (StepMarker.Auto()) stepped = StepWithinBudget();
         StepMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         using (RenderMarker.Auto()) Render();
@@ -207,6 +227,34 @@ public partial class ChemGrid : MonoBehaviour
 
     // world/ (things.json) sits next to rules/: the repo's in the Editor, StreamingAssets/world in a build.
     public static string FindWorldDir() => Path.Combine(Path.GetDirectoryName(FindRulesDir()), "world");
+
+    // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
+    // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather
+    // than one frame stalling for the whole tick. Meanwhile the view may show a tick half done for
+    // a frame or two (fire spread this tick, say, but water not yet moved).
+    const double StepBudgetMs = 6.0;
+
+    // Runs the ticks that are due, a tick in progress first, within the frame's budget: rule
+    // switches and the chunk plan apply only between whole ticks. True if a tick finished.
+    bool StepWithinBudget()
+    {
+        float tick = 1f / Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
+        bool Over() => timer.Elapsed.TotalMilliseconds >= StepBudgetMs;
+        int guard = 4;
+        bool stepped = false;
+        while (true)
+        {
+            if (!World.TickInProgress)
+            {
+                if (tickTimer < tick || guard-- <= 0 || Over()) return stepped;
+                tickTimer -= tick;
+                ApplyQueuedRules();
+                if (streamChunks) ChunkStreaming.Apply(World, ChunkPlanner.Plan(World, PlayerCells()));
+            }
+            if (!World.StepSome(Over)) return stepped;
+            stepped = true;
+        }
+    }
 
     /// <summary>The cells every wizard in the scene stands on (the solo one, or every player's online), for ChunkStreaming.</summary>
     public IReadOnlyList<(int x, int y)> PlayerCells()

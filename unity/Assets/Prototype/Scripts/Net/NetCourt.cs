@@ -20,11 +20,30 @@ public class NetCourt : NetworkBehaviour
     public int West => west.Value;
     public int East => east.Value;
 
-    public override void OnNetworkSpawn() => Live = this;
+    ChemGrid grid;
+    NetChem net;
+
+    public override void OnNetworkSpawn()
+    {
+        Live = this;
+        if (!IsServer) return;
+        grid = FindAnyObjectByType<ChemGrid>();
+        net = grid != null ? grid.GetComponent<NetChem>() : null;
+        if (grid != null) grid.WorldReset += Nil;
+    }
 
     public override void OnNetworkDespawn()
     {
         if (Live == this) Live = null;
+        if (grid != null) grid.WorldReset -= Nil;
+    }
+
+    // Host, at an online reset (OnlineReset): 0-0 for everyone. The ball is a thing, back on its spot.
+    void Nil()
+    {
+        if (!OnlineReset.Happened(net)) return;
+        west.Value = 0;
+        east.Value = 0;
     }
 
     /// <summary>Host: a goal at the east end (or the west), counted and announced to everyone.</summary>

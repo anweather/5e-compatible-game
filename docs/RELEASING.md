@@ -1,9 +1,10 @@
 # Releasing an alpha
 
 Alphas are on GitHub Releases, marked **pre-release**, tagged `alpha-X.Y.Z`.
-Up to 0.1.x they are Windows zips that players unzip and run; copies
-installed with Velopack update themselves in place (see "Updates in place"
-below).
+Since 0.1.2 each release has Velopack installers and packages for Windows
+and macOS, and installed copies update themselves in place (see "Updates in
+place" below). 0.1.0 and 0.1.1 were Windows zips, described in "What a
+release contains".
 
 ## What a release contains
 
@@ -21,40 +22,47 @@ The build carries `StreamingAssets/build.json` (version, commit, date). The
 game logs "Spell Chemistry Valley alpha X.Y.Z (abc1234), built ..." at
 startup and shows "alpha X.Y.Z (abc1234)" at the bottom of the Esc menu.
 
-## Steps
+## Steps: the release candidate
 
-1. **Get main ready.** Everything for the release is merged and pushed, CI
-   is green, and the smoke and online probes pass (`tools/probe.sh smoke`,
-   `tools/probe.sh online`).
-2. **Bump the version.** Set `bundleVersion` in
-   `unity/ProjectSettings/ProjectSettings.asset` (Player Settings →
-   Version) to `X.Y.Z`, commit it on main (`chore: version X.Y.Z`) and push.
-   Application.version comes from it.
-3. **Build.** In the Editor, on main's HEAD with a clean tree:
-   **Prototype → Build → Release (Windows zip)**, or
-   `unity command script eval -- --code 'return PrototypeBuild.Release();'`.
-   It refuses a dirty tree (untracked `_Recovery*` aside) and unstable
-   network ids, and logs `Release: OK, alpha X.Y.Z (abc1234), N MB -> path`.
-   Check the commit in that line is main's HEAD.
-4. **Draft the release.** Notes from the log since the last tag:
+A release about every 2 days, or sooner after a big fix (J-019 in
+`JUDGMENT_CALLS.md`). The Build lane runs it; the coordinator calls the
+freeze. The draft on GitHub *is* the release candidate (RC): the same
+files players will get, tested before anyone can see it.
 
-   ```sh
-   last=$(git describe --tags --abbrev=0 --match 'alpha-*' 2>/dev/null)
-   git log --no-merges --pretty='- %s' ${last:+$last..}HEAD > /tmp/notes.md   # edit it down
-   gh release create alpha-X.Y.Z \
-     unity/Builds/Release/SpellChemistryValley-alpha-X.Y.Z-windows.zip \
-     --target <FULL 40-char SHA from step 3; a short one gives HTTP 422> --prerelease --draft \
-     --title "alpha X.Y.Z" --notes-file /tmp/notes.md
-   ```
-
-5. **Test the draft on the PC.** Download the zip from the draft (not the
-   local build), unzip into a fresh folder, run it (the exe is unsigned:
-   Windows may show any of: Defender's "Windows Security: Scan required"
-   (seen on 0.1.0), "Open File – Security Warning: Unknown Publisher" with
-   Run (seen on 0.1.1), or SmartScreen's More info → Run anyway), check the Esc menu shows the right version, then play a
-   Relay game against another machine on the same release (Esc → Play
-   together → Host online / Join code).
-6. **Publish:** `gh release edit alpha-X.Y.Z --draft=false`.
+1. **Freeze dev.** The coordinator stops merges into `dev`. Everything for the
+   release is merged and pushed, CI is green on `dev`, and the smoke and
+   online probes pass (`tools/probe.sh smoke`, `tools/probe.sh online`).
+2. **Merge dev into main** (`git switch main`, `git merge --ff-only
+   origin/main`, `git merge --no-ff origin/dev`, push).
+3. **Bump the version** on main: `bundleVersion` in
+   `unity/ProjectSettings/ProjectSettings.asset` (Player Settings → Version)
+   to `X.Y.Z`, committed as `chore: version X.Y.Z` and pushed. After a pull
+   that changes ProjectSettings, restart the Editor before building.
+4. **Build the RC** on the Mac (it has Mac and Windows build support; the PC
+   has no Mac support): Editor open on main's HEAD, a clean tree, the yard
+   rebuilt, then `tools/ship-update.sh X.Y.Z`. It builds both players, packs
+   them with Velopack (deltas from the last release on each channel) and
+   uploads the **draft** `alpha-X.Y.Z` (see "Updates in place" below). Check
+   the two builds log the same `NET CONFIG` hash (`-host-online`).
+5. **Notes:** player-facing, from the merges since the last release
+   (`git log origin/main@{1}..origin/main --first-parent`, or
+   `alpha-<last>..main`): new, faster, fixed, how to install. Then
+   `gh release edit alpha-X.Y.Z --notes-file notes.md`.
+6. **Test the RC** (the PC's steps; the coordinator schedules them):
+   - Windows: install from the draft's `SpellChemistryValley-win-Setup.exe`
+     (not a local build); the Esc menu shows `alpha X.Y.Z (<sha>)`.
+   - The playtest bot runs on the Windows RC (`-playtest`, J-018); findings
+     are checked against dev before anything is filed.
+   - A quick human look, and a Mac↔PC Relay game: `players=2`,
+     `desync=False`, no exceptions in either `Player.log`.
+   - Mac: the portable zip into `~/Applications`, the right version shows.
+   - When quitting has changed: the Velopack restart check under "Updates
+     in place" (test channel).
+7. **Fix blockers on main** (a branch off main, merged into main, then main
+   merged back into dev), rebuild the RC with `ship-update.sh X.Y.Z`
+   (`--clobber` replaces the draft's files) and test again.
+8. **Publish** on the go-ahead: `gh release edit alpha-X.Y.Z --draft=false`.
+   Installed copies pick it up at their next start.
 
 ## Versions and players
 
@@ -125,6 +133,32 @@ vpk`) and `gh` signed in.
 - A copy unzipped from the portable zip has no local package to patch, so
   its first update downloads the full package; every one after that is a
   delta. The installers don't have that cost.
+
+**Check the restart on Windows before publishing** (new since QuickExit, the
+quit-crash fix in J-010). A Windows player no longer lets Unity shut down:
+`QuickExit.cs` catches every quit, runs `BeforeExit`, leaves an online
+session and ends the process. So an update's restart (`SelfUpdate` calls
+Velopack's `WaitExitThenApplyUpdates`, then `Application.Quit`) goes through
+it. Velopack waits for the process to end however it ends, so it should be
+fine, but test it on the first ship after QuickExit and after any change to
+quitting:
+
+1. On the PC, install the current test release with its
+   `SpellChemistryValley-win-Setup.exe` (`update-test-*`, app id
+   `SpellChemistryValleyTest`), start it once, quit.
+2. Ship the next one with `tools/ship-update.sh X.Y.Z --test`.
+3. Start the installed copy: "Updating to alpha X.Y.Z...", then it closes
+   and comes back by itself within a few seconds, and the Esc menu shows the
+   new version and commit.
+4. Check that no old `SpellChemistryValley.exe` is left in Task Manager, that
+   `%LOCALAPPDATA%\SpellChemistryValleyTest\velopack.log` shows the update
+   applied with no "waiting for process" timeout, and that there's no new
+   D3D12Core crash in the Event Viewer (Windows Logs → Application).
+5. Once more with the Esc menu's "Update and restart": start with
+   `-no-auto-update` while a newer test release is out.
+
+If the restart fails only with QuickExit, `-clean-quit` turns it off for a
+comparison run.
 
 **Limits:** nothing is signed (Windows SmartScreen and macOS Gatekeeper warn
 on first install; updates after that don't prompt). A player more than one

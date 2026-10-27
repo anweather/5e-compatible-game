@@ -46,13 +46,14 @@ public static class ProbeScenarios
         new Entry("perf", typeof(PerfProbe), 330f,
             "Holds a fixed camera over the valley for seconds=N (default 10) and reports the frame times " +
             "(Editor Play mode, not a player build). Checks: no console errors."),
-        new Entry("online", typeof(OnlineProbe), 180f,
+        new Entry("online", typeof(OnlineProbe), 240f,
             "This Editor hosts and a Multiplayer Play Mode virtual player (Player 2, started if it isn't running) joins on " +
             "127.0.0.1. Each casts Fire Bolt, Earthen Trench and Wall of Stone through the network; the virtual player's " +
             "Thunderwave throws a crate and the host's wizard, and the host's wizard falls 10 m. Checks: it joined, every 30-tick checksum (cells and rules) equal on both, the same world " +
             "at the sample tick, no desync seen, the client's terrain drawn as low as the host's under the trenches, the same " +
             "water (cells and drawn surface) and walls, the crate and the host's wizard each within 5 cm on both, no console errors on either, " +
-            "reset on the host refused with both players still in, and tag passing from the host to the virtual player on touch.",
+            "then the host resets the world (a crate broken and the wizard walked off first): the countdown heard, both players still in, every thing back with its id, " +
+            "the wizard at its start, the clock from 0, and every 30-tick checksum after the reset equal on both (3 or more); and tag passing from the host to the virtual player on touch.",
             players: 2),
         new Entry("menu", typeof(MenuProbe), 60f,
             "The Esc menu with a controller: Start on a virtual gamepad opens it, the highlight moves down to Mods, A opens the " +
@@ -149,6 +150,22 @@ public static class ProbeScenarios
             "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
             "and it floats again after, no console errors."),
+        new Entry("look", typeof(LookProbe), 30f,
+            "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
+            "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
+            "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+        new Entry("villagers", typeof(VillagersProbe), 120f,
+            "Hollowmere's folk going about their day (ValleyFauna.Folk): a clear afternoon with the camera over the square, then dusk. Checks: " +
+            "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, they run from " +
+            "the house nearest the square when a Fire Bolt sets it alight, " +
+            "and at dusk they all go indoors within 45 s and stay in, no console errors."),
+        new Entry("swell", typeof(SwellProbe), 30f,
+            "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
+            "with the swell under it (Ocean.WaveOffset, the waves the shader draws): over half the swell's height, in step with it, no console errors."),
+        new Entry("sleep", typeof(SleepProbe), 60f,
+            "Props sleep with their chunk (PhysicsProp, ChemGrid.ChunkSwitched): a crate levitated in the yard, then the wizard goes beyond the keep distance and back (the crate hangs in the air while asleep and falls once awake; the camera stays on it). Checks: the yard's " +
+            "props awake while it's active, asleep and kinematic once it deactivates and none asleep in an active chunk, held still for 2 s, awake " +
+            "again when it activates, and a shoved one moves, no console errors."),
         new Entry("fauna", typeof(FaunaProbe), 90f,
             "The valley's animals (ValleyFauna, from Punchy's creatures): 10 s for them to come out round the camera, then a deer put 8 m north " +
             "from the wizard, then a deer, a rabbit, a turkey and a fox walking through the meadow. Checks: ValleyFauna is built with 10 " +

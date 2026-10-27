@@ -34,6 +34,13 @@ public class TowerCourse : MonoBehaviour
 
     static float best = -1f;
 
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        best = -1f;
+    }
+
     double clock;
     int clockFrame = -1;
     CharacterController local;

@@ -16,11 +16,15 @@ using UnityEngine;
 //
 // The animal shape a wizard has (Shapeshift: its species and coat, packed)
 // is a variable its owner writes; every other machine draws that animal in
-// place of the wizard, a late joiner too.
+// place of the wizard, a late joiner too. Its look (WizardOutfit: a seed for
+// the hat, robe, beard and staff) is another owner-written variable, so
+// every peer dresses each wizard the same.
 [RequireComponent(typeof(SpellCaster), typeof(SurfaceEffects), typeof(PlayerControls))]
 public class NetWizard : NetworkBehaviour
 {
     readonly NetworkVariable<int> form = new(Shapeshift.None, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    const int NoLook = int.MinValue;
+    readonly NetworkVariable<int> look = new(NoLook, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
     public override void OnNetworkSpawn()
     {
@@ -28,14 +32,17 @@ public class NetWizard : NetworkBehaviour
         var caster = GetComponent<SpellCaster>();
         caster.grid = grid;
         form.OnValueChanged += FormChanged;
+        look.OnValueChanged += LookChanged;
 
         if (!IsOwner)
         {
             name = $"Wizard (player {OwnerClientId + 1})";
             WizardRig.PrepareForAnimationEvents(gameObject);
             FormChanged(Shapeshift.None, form.Value);
+            LookChanged(NoLook, look.Value);
             return;
         }
+        SetLook(WizardOutfit.SavedSeed);
 
         name = WizardRig.Name;
         if (grid != null) transform.position = SpawnPoint(grid);
@@ -55,12 +62,25 @@ public class NetWizard : NetworkBehaviour
             hands.controls = controls;
             hands.view = follow;
         }
+        Local = this;
+        startGrid = grid;
+        chem = grid != null ? grid.GetComponent<NetChem>() : null;
+        if (grid != null) grid.WorldReset += BackToStart;
     }
+
+    /// <summary>This machine's own wizard while online; null solo.</summary>
+    public static NetWizard Local { get; private set; }
+
+    ChemGrid startGrid;
+    NetChem chem;
 
     // A wizard that leaves lets go of what it holds first, or the item (riding in its hand) would go with it.
     public override void OnNetworkDespawn()
     {
+        if (Local == this) Local = null;
+        if (startGrid != null) startGrid.WorldReset -= BackToStart;
         form.OnValueChanged -= FormChanged;
+        look.OnValueChanged -= LookChanged;
         if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
     }
 
@@ -68,6 +88,20 @@ public class NetWizard : NetworkBehaviour
     public void SetForm(int value)
     {
         if (IsOwner) form.Value = value;
+    }
+
+    /// <summary>Owner only: wears this look and sends it to everyone (WizardOutfit).</summary>
+    public void SetLook(int seed)
+    {
+        if (!IsOwner) return;
+        look.Value = seed;
+        if (TryGetComponent<WizardOutfit>(out var outfit)) outfit.Wear(seed);
+    }
+
+    // Someone else's wizard changed its look: dress it the same here.
+    void LookChanged(int was, int now)
+    {
+        if (!IsOwner && now != NoLook && TryGetComponent<WizardOutfit>(out var outfit)) outfit.Wear(now);
     }
 
     // Someone else's wizard changed shape: draw it as that animal (or itself again) here.
@@ -100,6 +134,31 @@ public class NetWizard : NetworkBehaviour
     void RollRpc(float seconds)
     {
         if (TryGetComponent<RollPose>(out var pose)) pose.Play(seconds);
+    }
+
+    /// <summary>Owner, a client: asks the host to reset the world (OnlineReset); the host's log says who asked.</summary>
+    public void AskForReset() => AskForResetRpc();
+
+    [Rpc(SendTo.Server)]
+    void AskForResetRpc() =>
+        EventLog.Add($"Player {OwnerClientId + 1} asks to reset the world: <b>R</b> resets it for everyone");
+
+    // The owner, at an online reset (OnlineReset.Happened): up from any seat, back in its own shape,
+    // vitals full, back at its start. What it held is the world's and comes back at its own spot
+    // (ThingSpawner), so the hand just lets go.
+    void BackToStart()
+    {
+        if (!OnlineReset.Happened(chem)) return;
+        if (TryGetComponent<Sitter>(out var sitter)) sitter.Stand();
+        if (TryGetComponent<Shapeshift>(out var shape)) shape.ChangeBack("You're yourself again", force: true);
+        if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
+        if (TryGetComponent<Vitals>(out var vitals)) vitals.Refill();
+        // The character controller keeps its own idea of where it is: off for the jump.
+        bool hasBody = TryGetComponent<CharacterController>(out var body) && body.enabled;
+        if (hasBody) body.enabled = false;
+        Teleport(SpawnPoint(startGrid));
+        Physics.SyncTransforms();
+        if (hasBody) body.enabled = true;
     }
 
     [Rpc(SendTo.Owner)]

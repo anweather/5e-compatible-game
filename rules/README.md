@@ -94,6 +94,13 @@ elevation plus height.
 - **Digging** clears the cover and turns the terrain into its `dugTo`
   (grass is dug to dirt; raised rock to rubble) unless the spell names a
   `terrain`.
+- **Hardness:** a terrain's `hardness` (a whole number from 1, default 1)
+  is how strong a dig it takes: a terraform spell's `strength` (default 1)
+  or a crater's must be at least that, or the square stays as it is and
+  "The … is too hard to dig" is logged once a tick. Soil is 1 (Lower Earth
+  and Earthen Trench dig it), raised rock 3 (only a strength-3 dig: a
+  Meteor's crater, later Stone Shape or a pick), metal plate 4 (nothing
+  digs it). Bedrock and walls are blocking, so never shaped anyway.
 - **Raising** spills the square's water onto its neighbours, nearest
   first, so no water is lost.
 - **A square raised `sim.height.blockAt` (3) steps or more is a wall:**
@@ -173,10 +180,11 @@ smothered.
 
 Any spell (Fireball), and an entity's `explodes` (the oil barrel), can blow
 a crater out of the ground where it goes off, before its element or cover
-lands: `"crater": { "radius": 1, "depth": 2 }` digs `depth` steps in the
+lands: `"crater": { "radius": 1, "depth": 2, "strength": 2 }` digs `depth` steps in the
 middle, tapering toward `radius` squares out (Chebyshev distance), like a
 tapered dig. `depth` is a whole number from 1; `radius` a whole number
-from 0 (default 1). Dug squares lose their cover and turn to their `dugTo`,
+from 0 (default 1); `strength` a whole number from 1 (default 1), against
+the ground's `hardness`. Dug squares lose their cover and turn to their `dugTo`,
 as with any digging, so the middle of a crater doesn't burn.
 
 ## Units
@@ -188,6 +196,22 @@ as with any digging, so the middle of a crater doesn't burn.
 - Time is in ticks, `sim.ticksPerSecond` (6) a second.
 - A day lasts `sim.day.lengthMinutes` (24) real minutes, so a game hour
   is a real minute; the world starts at `sim.day.startHour` (9:00).
+
+## Active chunks (`sim.streaming`)
+
+The world is simulated only around the characters (`docs/WORLD_STREAMING.md`;
+C# only, the sandbox has no chunks). Every chunk within `sim.streaming.reach`
+(2) chunks of a character's chunk is active; a chunk deactivates once no
+character is within `sim.streaming.keep` (3), which must be at least the
+reach. Distances are in chunks, the larger of the two axes. A chunk is
+settled once nothing in it has been live (fire, gas, charge, a timer, water
+moving) for `sim.streaming.settleTicks` (12) ticks. A chunk out of every
+keep distance that isn't settled lingers, and live cells on its edge
+activate the inactive chunk across it; at most `lingerChunks` (16) linger at
+once, the nearest first, and none longer than `lingerTicks` (1800 ticks, five
+minutes). While rain falls, water moving doesn't count as live. A chunk the
+caps let go while live runs the ticks it missed when it next activates, up to
+`catchUpTicks` (720, two minutes).
 
 ## Day and weather (`sim.day`, `sim.weather`)
 

@@ -16,6 +16,7 @@
     "kinds": ["bone-hound", "ash-crab", "giant-spider"]
   },
   "day": { "lengthMinutes": 24, "startHour": 9 },
+  "streaming": { "reach": 2, "keep": 3, "settleTicks": 12, "lingerChunks": 16, "lingerTicks": 1800, "catchUpTicks": 720 },
   "weather": {
     "periodMinutes": 4, "rampMinutes": 0.5, "calmPeriods": 2,
     "weights": { "clear": 4, "cloudy": 2, "windy": 1.5, "fog": 1, "rain": 2, "storm": 1, "snow": 1 },

@@ -10,7 +10,9 @@ using UnityEngine.Rendering;
 // swell over the shoals, break it into foam and wash it up the sand. Built
 // when the scene loads, in the Editor too; only its settings are saved.
 // Looks only: the sea's cells are the lake's kind of water (ValleyBuilder),
-// and the currents that push swimmers live in WaterCurrents.
+// and the currents that push swimmers live in WaterCurrents. WaveOffset works
+// out the swell's rise and fall at a point the same way the shader does, so a
+// swimmer (SurfaceEffects) rides the waves they see.
 [ExecuteAlways]
 public class Ocean : MonoBehaviour
 {
@@ -26,12 +28,28 @@ public class Ocean : MonoBehaviour
     [Tooltip("Spacing over the beaches and the near sea (m), and how far each way it holds.")]
     public float fineStep = 2.5f, fineAlong = 430f, fineOut = 330f;
 
+    /// <summary>The sea in the scene, if there is one.</summary>
+    public static Ocean Instance { get; private set; }
+
+    static readonly int ShoreDirId = Shader.PropertyToID("_ShoreDir"), SwellId = Shader.PropertyToID("_Swell"),
+        WavelengthId = Shader.PropertyToID("_Wavelength"), SpeedId = Shader.PropertyToID("_Speed");
+
     Mesh mesh;
     GameObject surface;
 
-    void OnEnable() => Build();
+    void OnEnable()
+    {
+        Instance = this;
+        Build();
+    }
 
     void OnDisable()
+    {
+        if (Instance == this) Instance = null;
+        Clear();
+    }
+
+    void Clear()
     {
         if (surface != null) DestroyNow(surface);
         if (mesh != null) DestroyNow(mesh);
@@ -40,7 +58,7 @@ public class Ocean : MonoBehaviour
     /// <summary>Builds the sea's mesh again (after the terrain under it changed shape).</summary>
     public void Build()
     {
-        OnDisable();
+        Clear();
         var out_ = seaward.normalized;
         var along = Vector2.Perpendicular(out_);
         var us = Stops(-alongHalf, alongHalf, -fineAlong, fineAlong);
@@ -87,6 +105,39 @@ public class Ocean : MonoBehaviour
         var r = surface.AddComponent<MeshRenderer>();
         r.sharedMaterial = material;
         r.shadowCastingMode = ShadowCastingMode.Off;
+    }
+
+    /// <summary>Whether a point is under the sea's mesh (seaward of where it starts inland).</summary>
+    public bool Covers(Vector2 xz) => Vector2.Dot(xz - shoreOrigin, seaward.normalized) > -inland;
+
+    /// <summary>
+    /// How far the swell lifts (or drops) the sea's surface above its level at a point, now: the
+    /// shader's four Gerstner waves (Ocean.shader, Vert), on the same clock (the time since the
+    /// scene loaded), from the material's settings. Their sideways sway is left out, and so are
+    /// the swash and the breakers, which only rise over the last metre or two of the beach.
+    /// </summary>
+    public float WaveOffset(Vector2 xz)
+    {
+        if (material == null) return 0f;
+        float outward = Vector2.Dot(xz - shoreOrigin, seaward.normalized);
+        float depth = Depth(xz, outward);
+        Vector4 dir = material.GetVector(ShoreDirId);
+        var shore = new Vector2(dir.x, dir.y).normalized;
+        var side = Vector2.Perpendicular(shore);
+        float swell = material.GetFloat(SwellId), wavelength = material.GetFloat(WavelengthId), speed = material.GetFloat(SpeedId);
+        float t = Time.timeSinceLevelLoad;
+        float shoal = Mathf.Lerp(1f, 2.4f, Mathf.Clamp01((5.5f - depth) / 3.5f)) * Mathf.Clamp01(depth / 0.5f + 0.1f);
+        return Wave(xz, shore, wavelength, swell * shoal, speed, t)
+            + Wave(xz, (shore + side * 0.35f).normalized, wavelength * 0.61f, swell * 0.45f * shoal, speed * 0.8f, t)
+            + Wave(xz, (shore - side * 0.5f).normalized, wavelength * 0.37f, swell * 0.22f, speed * 0.6f, t)
+            + Wave(xz, (side + shore * 0.2f).normalized, wavelength * 2.3f, swell * 0.35f * Mathf.Clamp01(outward / 60f), speed * 1.3f, t);
+    }
+
+    // One Gerstner wave's rise at a point (the shader's Gerstner, height only).
+    static float Wave(Vector2 xz, Vector2 dir, float wavelength, float height, float speed, float t)
+    {
+        float k = 2f * Mathf.PI / wavelength;
+        return height * 0.5f * Mathf.Sin(k * (Vector2.Dot(dir, xz) - speed * t));
     }
 
     // The water's depth at a point: the sea level less the terrain there; past the terrain, a bed

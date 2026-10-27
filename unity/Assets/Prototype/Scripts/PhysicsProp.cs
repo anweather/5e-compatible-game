@@ -14,6 +14,9 @@ using UnityEngine;
 // What it does to the cells (fire it spreads, a blast of burning oil) goes
 // through ChemEffects, the one door from physics into the chemistry.
 //
+// In an inactive chunk it sleeps (kinematic, its ticks held) and wakes as the
+// chunk activates (ChemGrid.ChunkSwitched): the view only, the world isn't touched.
+//
 // Online (NetProp) only the host runs all this; a client's copy is a puppet
 // that follows the host's and only shows its flames and its end.
 [RequireComponent(typeof(Rigidbody), typeof(Collider), typeof(Renderer))]
@@ -51,12 +54,19 @@ public class PhysicsProp : MonoBehaviour, IPushable
     int lastTick;
     bool broken;
     NetProp net;
+    // Asleep with its chunk: kinematic, holding the velocity it had. Home is the chunk it was last seen in.
+    bool asleep;
+    Vector3 heldVelocity, heldSpin;
+    Vector2Int home;
 
     /// <summary>Online on a client: the host simulates this prop, and this copy only follows it.</summary>
     public bool Puppet => net != null && net.Puppet;
 
     /// <summary>Its stable id from world/things.json (ThingSpawner), or None for a prop made some other way.</summary>
     public ThingId Thing => net != null ? net.Id : ThingId.None;
+
+    /// <summary>Its chunk is inactive, so it's held where it is until the chunk activates.</summary>
+    public bool Asleep => asleep;
 
     string Label => State.Def.Name.ToLowerInvariant();
 
@@ -85,12 +95,53 @@ public class PhysicsProp : MonoBehaviour, IPushable
         halfHeight = look.bounds.extents.y;
         lastTick = grid.World.Tick;
         grid.RulesChanged += ReadRules;
+        grid.ChunkSwitched += ChunkSwitched;
+        grid.WorldReset += Wake;
+        home = grid.ChunkAt(transform.position);
+        if (InInactiveChunk(home)) Sleep();
     }
 
     void OnDestroy()
     {
         if (flames != null) Destroy(flames);
-        if (grid != null) grid.RulesChanged -= ReadRules;
+        if (grid == null) return;
+        grid.RulesChanged -= ReadRules;
+        grid.ChunkSwitched -= ChunkSwitched;
+        grid.WorldReset -= Wake;
+    }
+
+    // --- sleeping with its chunk ----------------------------------------------------------
+
+    void ChunkSwitched(ChunkSwitch s)
+    {
+        if (State == null || s.CX != home.x || s.CY != home.y) return;
+        if (s.Active) Wake();
+        else Sleep();
+    }
+
+    // Off the edge of the world counts as active: a prop falling off it shouldn't hang in the air.
+    bool InInactiveChunk(Vector2Int chunk) =>
+        grid.World.HasChunk(chunk.x, chunk.y) && !grid.IsChunkActive(chunk.x, chunk.y);
+
+    // A body already kinematic is in a hand (Carryable) or a puppet: someone else moves it.
+    void Sleep()
+    {
+        if (asleep || Puppet || body.isKinematic) return;
+        asleep = true;
+        heldVelocity = body.linearVelocity;
+        heldSpin = body.angularVelocity;
+        body.isKinematic = true;
+    }
+
+    // Its ticks were held too, so it picks up from now rather than burning through the gap.
+    void Wake()
+    {
+        if (!asleep) return;
+        asleep = false;
+        body.isKinematic = false;
+        body.linearVelocity = heldVelocity;
+        body.angularVelocity = heldSpin;
+        if (grid.World != null) lastTick = grid.World.Tick;
     }
 
     // A live mod changed the rules: take this kind's new numbers (hit points, mass, what it does
@@ -112,6 +163,23 @@ public class PhysicsProp : MonoBehaviour, IPushable
         {
             if (flames != null) flames.transform.position = TopCentre();
             return;
+        }
+        if (asleep)
+        {
+            // Something else took it in hand (Carryable) and let it go: it's awake again.
+            if (body.isKinematic) return;
+            asleep = false;
+        }
+        // Pushed or rolled into an inactive chunk: it sleeps there.
+        var chunk = grid.ChunkAt(transform.position);
+        if (chunk != home)
+        {
+            home = chunk;
+            if (InInactiveChunk(home))
+            {
+                Sleep();
+                return;
+            }
         }
         var at = grid.CellAt(transform.position);
         var cell = grid.World.At(at.x, at.y);
@@ -200,7 +268,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
     // item weighs grams but flies off like the lightest crate, not like a bullet.
     public void Push(Vector3 impulse)
     {
-        if (State == null || Puppet) return;
+        if (State == null || Puppet || asleep) return;
         body.AddForce(impulse / (State.Def.Mass * Forces.KgPerMass), ForceMode.VelocityChange);
     }
 

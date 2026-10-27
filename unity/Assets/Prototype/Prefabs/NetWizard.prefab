@@ -171,6 +171,9 @@ PrefabInstance:
       addedObject: {fileID: 286404658758417964}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 8044595264787904889}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 1708091964083407250}
   m_SourcePrefab: {fileID: 100100000, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
 --- !u!1 &3189246001750556768 stripped
@@ -556,6 +559,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36b308039d3c4f3bbcf12bd8d85c82b3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Shapeshift
+--- !u!114 &8044595264787904889
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 58db702017967664695146063f304bbb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::WizardOutfit
+  material: {fileID: 2100000, guid: 1c2f7c809517e4946a98211dcf83ad02, type: 2}
 --- !u!114 &1708091964083407250
 MonoBehaviour:
   m_ObjectHideFlags: 0

@@ -74,6 +74,12 @@ namespace Chem
         public List<ChunkSwitch> Chunks { get; }
         /// <summary>Defense commands (the start pedestal: World.Defense.cs), applied after the effects, in order.</summary>
         public List<DefenseCommand> Defense { get; } = new List<DefenseCommand>();
+        /// <summary>
+        /// The world is rebuilt before this tick (the online reset, J-014): the view rebuilds it from
+        /// its seed (NetChem, ChemGrid.ResetWorld), then the batch runs on the fresh world. The
+        /// reset batch re-stamps the mods in force, so the rules come through a reset.
+        /// </summary>
+        public bool Reset { get; set; }
 
         /// <summary>
         /// Runs the batch: wakes or pauses chunks and switches the rules if it says to, applies its casts and then its props'
@@ -84,8 +90,21 @@ namespace Chem
         /// </summary>
         public RuleSet RunOn(World world, RuleSet rules, out IReadOnlyList<string> errors)
         {
+            var now = Prepare(world, rules, out errors);
+            world.Step();
+            return now;
+        }
+
+        /// <summary>
+        /// RunOn without the step: the batch's switches, rules, casts, effects and defense commands,
+        /// for a caller that then steps the tick in slices (World.StepSome). A tick still part done
+        /// is finished first, so the commands land between whole ticks.
+        /// </summary>
+        public RuleSet Prepare(World world, RuleSet rules, out IReadOnlyList<string> errors)
+        {
             if (world == null) throw new ArgumentNullException(nameof(world));
             if (rules == null) throw new ArgumentNullException(nameof(rules));
+            world.FinishTick(); // a batch's commands land between whole ticks
             errors = Array.Empty<string>();
             ChunkStreaming.Apply(world, Chunks);
             if (Mods != null)
@@ -103,21 +122,23 @@ namespace Chem
             foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
             foreach (var e in Effects) world.ApplyEffect(e);
             foreach (var d in Defense) world.ApplyDefense(d);
-            world.Step();
             return rules;
         }
 
         /// <summary>
-        /// Every tick's batch from 1 to <paramref name="upToTick"/>, from a recorded history of casts,
+        /// Every tick's batch from <paramref name="from"/> (1, or the last reset's tick, whose batch is
+        /// then a reset) to <paramref name="upToTick"/>, from a recorded history of casts,
         /// rule switches and props' effects (what a late joiner gets). Ticks with nothing on them get
         /// an empty batch.
         /// </summary>
         public static Dictionary<int, TickBatch> Timeline(IEnumerable<(int tick, CastCommand cast)> casts, IEnumerable<RuleChange> changes, int upToTick,
             IEnumerable<(int tick, EffectCommand effect)> effects = null, IEnumerable<(int tick, ChunkSwitch chunk)> chunks = null,
-            IEnumerable<(int tick, DefenseCommand command)> defense = null)
+            IEnumerable<(int tick, DefenseCommand command)> defense = null, int from = 1)
         {
             var batches = new Dictionary<int, TickBatch>();
-            for (int t = 1; t <= upToTick; t++) batches[t] = new TickBatch(t);
+            for (int t = from; t <= upToTick; t++) batches[t] = new TickBatch(t);
+            // A history that starts at a reset (the host keeps none from before it) begins with it.
+            if (from > 1 && batches.TryGetValue(from, out var first)) first.Reset = true;
             foreach (var (tick, cast) in casts ?? Enumerable.Empty<(int, CastCommand)>())
                 if (batches.TryGetValue(tick, out var b)) b.Casts.Add(cast);
             foreach (var change in changes ?? Enumerable.Empty<RuleChange>())
