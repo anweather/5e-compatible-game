@@ -46,5 +46,32 @@ public class FallsProbe : ProbeScenario
         Cut(lip + V(3f, 14f, 22f), lip + V(0f, -14f, -12f));
         yield return Wait(1f);
         Shot("from-the-top");
+
+        // The cliff's rocks are solid: a ray from above lands on them, not through to the ground.
+        var solid = falls.GetComponentsInChildren<MeshCollider>();
+        int landed = solid.Count(mc => Physics.Raycast(mc.bounds.center + Vector3.up * (mc.bounds.extents.y + 5f), Vector3.down, out var hit, 60f) && hit.collider.transform.IsChildOf(falls.transform));
+        Check("rocks_solid", solid.Length >= 20 && landed >= solid.Length * 0.8f, $"{landed} of {solid.Length} rock colliders under a ray from above");
+
+        // The scree ramp beside the falls walks up to the top: the controller, stepped up it.
+        var ramp = GameObject.Find("Scree ramp");
+        Check("ramp_built", ramp != null && ramp.transform.childCount > 6, "the scree ramp up the east flank, lined with rocks");
+        if (ramp == null || ramp.transform.childCount < 2) yield break;
+        var stones = ramp.transform.Cast<Transform>().OrderBy(t => t.position.y).ToArray();
+        Vector3 low = stones[0].position, high = stones[stones.Length - 1].position;
+        var up = new Vector3(high.x - low.x, 0f, high.z - low.z);
+        var body = wizard.GetComponent<CharacterController>();
+        var mover = wizard.GetComponent("ThirdPersonController") as Behaviour;
+        if (mover != null) mover.enabled = false;
+        // The ramp's crown runs between the two lines of rocks: start in the middle at the bottom.
+        var start = (stones[0].position + stones[1].position) / 2f;
+        Teleport(start + Vector3.up * 1.5f);
+        yield return Wait(0.5f);
+        float from = wizard.transform.position.y;
+        for (int i = 0; i < Mathf.RoundToInt(up.magnitude / 0.08f) + 20; i++) body.Move(up.normalized * 0.08f + Vector3.down * 0.1f);
+        float climbed = wizard.transform.position.y - from;
+        if (mover != null) mover.enabled = true;
+        Metric("ramp_climb_m", climbed);
+        Check("ramp_walks_up", wizard.transform.position.y > lip.y - 6f, $"climbed {climbed:0.0} m to {wizard.transform.position.y:0.0} (the lip is at {lip.y:0.0})");
+        Shot("up-the-ramp");
     }
 }

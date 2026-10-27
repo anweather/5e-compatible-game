@@ -146,10 +146,10 @@ public static class ValleyShape
     public static readonly Vector2 Falls = new Vector2(138f, 292f);
 
     /// <summary>The pond's radius (m): its squares are river (a spring), so it stays full and feeds the river.</summary>
-    public const float PondRadius = 8f;
+    public const float PondRadius = 10f;
 
     /// <summary>How far north of the pond's middle the cliff stands (m), and how high it rises over the pond.</summary>
-    public const float CliffNorth = 10f, CliffHeight = 26f;
+    public const float CliffNorth = 12f, CliffHeight = 36f;
 
     /// <summary>The height of the pond's floor (the ground under its water), set by Plan.</summary>
     public static float PondLevel { get; private set; }
@@ -166,11 +166,28 @@ public static class ValleyShape
     {
         var q = p - Falls;
         float d = q.magnitude;
-        // A flat floor out to the pond's edge, banks up to the meadow by 15 m.
-        if (d < 15f) h = Mathf.Lerp(PondLevel, Mathf.Min(h, PondLevel + 6f), Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(PondRadius, 15f, d)));
-        float side = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(16f, 26f, Mathf.Abs(q.x)));
+        // A flat floor out to the pond's edge, banks up to the meadow by 18 m.
+        if (d < 18f) h = Mathf.Lerp(PondLevel, Mathf.Min(h, PondLevel + 6f), Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(PondRadius, 18f, d)));
+        float side = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(21f, 32f, Mathf.Abs(q.x)));
         float shelf = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(CliffNorth - 0.5f, CliffNorth + 0.5f, q.y)) * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(30f, 48f, q.y)));
-        return Mathf.Max(h, Mathf.Lerp(h, CliffTop, side * shelf));
+        h = Mathf.Max(h, Mathf.Lerp(h, CliffTop, side * shelf));
+        return Mathf.Max(h, ScreeRamp(q));
+    }
+
+    /// <summary>The scree ramp up the east flank, from the basin to the shoulder beside the cliff top (relative to Falls).</summary>
+    public static readonly Vector2 RampFoot = new(36f, -14f), RampTop = new(24f, 34f);
+    const float RampHalfWidth = 2.5f;
+
+    // A walkable ramp (about 34 degrees) up beside the cliff: its crown rises evenly from the pond to
+    // just over the cliff top, its sides falling away over a few metres; nothing where it's below the land.
+    static float ScreeRamp(Vector2 q)
+    {
+        var along = RampTop - RampFoot;
+        float t = Mathf.Clamp01(Vector2.Dot(q - RampFoot, along) / along.sqrMagnitude);
+        float off = (q - (RampFoot + along * t)).magnitude;
+        if (off > RampHalfWidth + 4f) return float.MinValue;
+        float crown = Mathf.Lerp(PondLevel + 0.5f, CliffTop + 0.5f, t);
+        return crown - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(RampHalfWidth, RampHalfWidth + 4f, off)) * 30f;
     }
 
     /// <summary>Whether a point is in the pond at the foot of the falls.</summary>
@@ -300,7 +317,7 @@ public static class ValleyShape
 
     // The stream on the cliff top and the pond's rim keep the old river's narrow reach. The channel
     // is its full depth this far either side of the middle line before the banks rise.
-    const float StreamHalfWidth = 1.6f, ChannelCore = 0.75f;
+    const float StreamHalfWidth = 2.6f, ChannelCore = 0.75f;
 
     // Where the river's squares can be: a quick test before measuring the distance to its course.
     static readonly Rect RiverBounds = BoundsOf(RiverCourse, RiverHalfWidth);
@@ -430,7 +447,8 @@ public static class ValleyShape
     public static bool NearFalls(Vector2 p)
     {
         var q = p - Falls;
-        return q.magnitude < 16f || (Mathf.Abs(q.x) < 22f && q.y > 0f && q.y < CliffNorth + 6f);
+        // The scree ramp up the east flank is kept clear too.
+        return q.magnitude < 19f || (Mathf.Abs(q.x) < 27f && q.y > 0f && q.y < CliffNorth + 6f) || DistanceToCourse(q, new[] { RampFoot, RampTop }) < RampHalfWidth + 3f;
     }
 
     public static float Fbm(Vector2 p, int octaves)

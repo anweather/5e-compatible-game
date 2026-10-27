@@ -296,6 +296,7 @@ public static class ValleyBuilder
             bool shore = ValleyShape.DistanceToLake(w) < 12f;
             if (!mountainFoot && !shore) continue;
             var rock = (GameObject)PrefabUtility.InstantiatePrefab(rocks[rng.Next(rocks.Count)], parent);
+            Solid(rock);
             var at = new Vector3(w.x, 0f, w.y);
             at.y = ValleyTerrain.GroundAt(at) - 0.3f;
             rock.transform.SetPositionAndRotation(at, Quaternion.Euler(0f, rng.Next(360), 0f));
@@ -541,6 +542,7 @@ public static class ValleyBuilder
         var falls = ValleyShape.Falls;
         float top = ValleyShape.CliffTop, pond = ValleyShape.PondLevel, face = falls.y + ValleyShape.CliffNorth;
         CladCliff(parent, falls, face, pond, top);
+        BuildScramble(parent, falls);
 
         var streaksPath = Generated + "/WaterStreaks.png";
         File.WriteAllBytes(streaksPath, ProceduralTextures.WaterStreaks(64, 256).EncodeToPNG());
@@ -567,11 +569,11 @@ public static class ValleyBuilder
         // The water leaves the lip a little out from the face, so it falls clear of the rocks.
         var lip = new Vector3(falls.x, top + 0.3f, face - 2.4f);
         float drop = top + 0.3f - pond;
-        Sheet(parent, "Falls water", lip, drop, (4.6f, 0f), water, new Vector2(0f, -1.4f));
-        Sheet(parent, "Falls foam", lip + Vector3.back * 0.15f, drop, (4f, 0.1f), foam, new Vector2(0.03f, -2.3f));
+        Sheet(parent, "Falls water", lip, drop, (8f, 0.8f), water, new Vector2(0f, -1.4f));
+        Sheet(parent, "Falls foam", lip + Vector3.back * 0.15f, drop, (7f, 0.9f), foam, new Vector2(0.03f, -2.3f));
         // The stream pours over the rocks to the lip: a short sheet from where its squares end.
         var streamEnd = ValleyShape.Stream[ValleyShape.Stream.Length - 1];
-        Chute(parent, new Vector3(streamEnd.x, top + 0.12f, streamEnd.y), lip, 3.6f, water);
+        Chute(parent, new Vector3(streamEnd.x, top + 0.12f, streamEnd.y), lip, 6f, water);
 
         var footAt = new Vector3(falls.x, pond, face - 2.4f - 2.6f);
         Spray(parent, lip, drop);
@@ -596,17 +598,40 @@ public static class ValleyBuilder
         {
             float y = pond - 1.5f + k * course;
             float rise = k / (float)Mathf.Max(1, courses - 1);
-            float span = Mathf.Lerp(17f, 13f, rise);
+            float span = Mathf.Lerp(22f, 17f, rise);
             for (float x = -span + (k % 2) * 2.5f; x <= span; x += 5f)
             {
                 // Behind the falls the rocks stop below the lip, so the stream goes over clear.
-                if (Mathf.Abs(x) < 6f && y + course * 1.5f > top - 0.4f) continue;
-                float behind = Mathf.Abs(x) < 4f ? 1.8f : 0f;
+                if (Mathf.Abs(x) < 8f && y + course * 1.5f > top - 0.4f) continue;
+                float behind = Mathf.Abs(x) < 6f ? 1.8f : 0f;
                 float size = 7.5f + 2.5f * (float)rng.NextDouble();
                 var at = new Vector3(falls.x + x + (float)rng.NextDouble() - 0.5f, y, face + 0.6f + behind + rise * 1.2f + 0.6f * (float)rng.NextDouble());
                 FitRock(parent, rocks[rng.Next(rocks.Length)], at, new Vector3(size, course * 1.5f, size * 0.8f), Quaternion.Euler(0f, rng.Next(4) * 90f + (float)rng.NextDouble() * 25f, 0f));
             }
         }
+    }
+
+    // The way up the cliff for anyone without Misty Step: the scree ramp ValleyShape shapes up its
+    // east flank, lined with flat rocks along both edges (solid, to stand and jump on).
+    static void BuildScramble(Transform parent, Vector2 falls)
+    {
+        var rocks = LoadRocks("Rock_B_01", "Rock_C_01");
+        if (rocks.Length == 0) return;
+        var route = new GameObject("Scree ramp").transform;
+        route.SetParent(parent, false);
+        var rng = new System.Random(47);
+        Vector2 foot = falls + ValleyShape.RampFoot, end = falls + ValleyShape.RampTop;
+        var along = (end - foot).normalized;
+        var side = Vector2.Perpendicular(along);
+        float length = (end - foot).magnitude;
+        for (float d = 2f; d < length - 1f; d += 3.5f + 1.5f * (float)rng.NextDouble())
+            for (int s = -1; s <= 1; s += 2)
+            {
+                var at = foot + along * d + side * (s * (3.1f + 0.6f * (float)rng.NextDouble()));
+                float ground = ValleyTerrain.GroundAt(new Vector3(at.x, 0f, at.y));
+                float size = 1.4f + 0.9f * (float)rng.NextDouble();
+                FitRock(route, rocks[rng.Next(rocks.Length)], new Vector3(at.x, ground - 0.3f, at.y), new Vector3(size, 0.7f + 0.6f * (float)rng.NextDouble(), size), Quaternion.Euler(0f, rng.Next(360), 0f));
+            }
     }
 
     // A rock prefab stood on <paramref name="foot"/>, stretched to about <paramref name="size"/>.
@@ -626,6 +651,7 @@ public static class ValleyBuilder
         var fit = new Vector3(size.x / Mathf.Max(0.01f, b.size.x), size.y / Mathf.Max(0.01f, b.size.y), size.z / Mathf.Max(0.01f, b.size.z));
         rock.transform.localScale = Vector3.Scale(rock.transform.localScale, fit);
         rock.transform.SetPositionAndRotation(foot - turn * Vector3.Scale(new Vector3(b.center.x, b.min.y, b.center.z), fit), turn);
+        Solid(rock);
     }
 
     // A sheet of falling water: a strip of quads from the lip down to the pond, bowing out as it falls,
@@ -710,13 +736,13 @@ public static class ValleyBuilder
         main.startSize = new ParticleSystem.MinMaxCurve(0.15f, 0.5f);
         main.startColor = new Color(1f, 1f, 1f, 0.7f);
         main.gravityModifier = 1f;
-        main.maxParticles = 600;
+        main.maxParticles = 1100;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         var emission = ps.emission;
-        emission.rateOverTime = 140f;
+        emission.rateOverTime = 260f;
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Box;
-        shape.scale = new Vector3(4.6f, 0.2f, 0.4f);
+        shape.scale = new Vector3(8f, 0.2f, 0.4f);
         shape.rotation = new Vector3(0f, 180f, 0f);
         var r = go.GetComponent<ParticleSystemRenderer>();
         if (droplets != null) r.sharedMaterial = droplets;
@@ -747,6 +773,20 @@ public static class ValleyBuilder
         return null;
     }
 
+    // Makes a placed rock something to stand on and climb: a mesh collider on each mesh of its most
+    // detailed look (the demo pack's rocks come without colliders). Rocks that have their own keep them.
+    static void Solid(GameObject rock)
+    {
+        if (rock.GetComponentInChildren<Collider>() != null) return;
+        IEnumerable<Renderer> renderers = rock.GetComponentsInChildren<Renderer>();
+        if (rock.TryGetComponent<LODGroup>(out var lods) && lods.lodCount > 0) renderers = lods.GetLODs()[0].renderers;
+        foreach (var r in renderers)
+        {
+            if (r == null || !r.TryGetComponent<MeshFilter>(out var mf) || mf.sharedMesh == null) continue;
+            r.gameObject.AddComponent<MeshCollider>().sharedMesh = mf.sharedMesh;
+        }
+    }
+
     static void Rock(Transform parent, GameObject prefab, Vector2 at, Quaternion turn, Vector3 scale)
     {
         var rock = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
@@ -754,6 +794,7 @@ public static class ValleyBuilder
         p.y = ValleyTerrain.GroundAt(p) - 0.3f;
         rock.transform.SetPositionAndRotation(p, turn);
         rock.transform.localScale = scale;
+        Solid(rock);
     }
 
     // --- the world's edge ------------------------------------------------------
@@ -810,6 +851,7 @@ public static class ValleyBuilder
                 at.y = ValleyTerrain.GroundAt(at);
                 if (at.y < LakeLevel) continue;
                 var rock = (GameObject)PrefabUtility.InstantiatePrefab(rocks[rng.Next(rocks.Count)], parent);
+                Solid(rock);
                 rock.transform.SetPositionAndRotation(at - Vector3.up * 0.3f, Quaternion.Euler(0f, rng.Next(360), 0f));
                 rock.transform.localScale = Vector3.one * (0.9f + 0.8f * (float)rng.NextDouble());
             }
