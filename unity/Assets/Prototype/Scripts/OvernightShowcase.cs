@@ -231,6 +231,8 @@ public class OvernightShowcase : ShowcaseScript
         Color sunColor, fog;
         UnityEngine.Rendering.SphericalHarmonicsL2 ambient;
         Material sky, skyCopy;
+        // The clock's sky, held while the dusk is blended in (it would light the scene by the hour).
+        SkyLight skyLight;
 
         public static Lighting Capture()
         {
@@ -248,12 +250,14 @@ public class OvernightShowcase : ShowcaseScript
                 fog = RenderSettings.fogColor,
                 sky = sky,
                 exposure = sky != null && sky.HasProperty("_Exposure") ? sky.GetFloat("_Exposure") : 1f,
+                skyLight = FindAnyObjectByType<SkyLight>(),
             };
         }
 
         /// <summary>From day (0) to dusk (1).</summary>
         public void Blend(float k)
         {
+            if (skyLight != null) skyLight.Held = true;
             k = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(k));
             if (sun != null)
             {
@@ -295,6 +299,7 @@ public class OvernightShowcase : ShowcaseScript
             if (sky != null) RenderSettings.skybox = sky;
             if (skyCopy != null) Destroy(skyCopy);
             skyCopy = null;
+            if (skyLight != null) skyLight.Held = false;
         }
     }
 }

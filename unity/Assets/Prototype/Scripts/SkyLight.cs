@@ -76,10 +76,16 @@ public class SkyLight : MonoBehaviour
         ambientBaked = true;
     }
 
+    /// <summary>
+    /// While true the sky leaves the sun, the ambient light, the haze and the sky material as they
+    /// are, for a recording that lights the scene itself (OvernightShowcase's dusk).
+    /// </summary>
+    public bool Held { get; set; }
+
     void Update()
     {
         var world = grid != null ? grid.World : null;
-        if (world == null || sun == null) return;
+        if (world == null || sun == null || Held) return;
         if (!ambientBaked) BakeDaylight();
         var now = world.Weather;
         cloud = Mathf.MoveTowards(cloud, CloudOf(now), Time.deltaTime * 0.3f);
