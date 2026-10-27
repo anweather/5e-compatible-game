@@ -9,8 +9,10 @@ using UnityEngine;
 // with room for the wizard, and in sight physically as well as on the grid.
 //
 // Cast from the crosshair, the wizard lands where it points (SpellCaster
-// keeps that spot as BlinkPoint); cast by square (demos, scripts), it lands
-// on the top surface over that square. The chemistry has nothing to do with
+// keeps that spot as BlinkPoint); pointed past the range, or at somewhere it
+// can't stand (a tree, a crate), it lands on the farthest spot it can reach
+// along the same line (Reach). Cast by square (demos, scripts), it lands on
+// the top surface over that square. The chemistry has nothing to do with
 // it (World.Cast only logs it); this moves the caster's own wizard, so online
 // only the caster's machine runs it and the wizard's owner-authoritative
 // NetworkTransform carries the jump to everyone else (NetWizard.Teleport).
@@ -37,6 +39,37 @@ public static class MistyStep
         }
         return CheckSpot(grid, spell, wizard, hit.point, hit.normal, hit.collider, seen: true);
     }
+
+    /// <summary>
+    /// Where the crosshair's <paramref name="hit"/> takes <paramref name="wizard"/>: the spot itself if
+    /// it can land there (Check), else the farthest spot on the ground towards it that it can, so aiming
+    /// past the range or at a tree still blinks. Returns why not (the spot's own reason) if nowhere on
+    /// the way will do.
+    /// </summary>
+    public static string Reach(ChemGrid grid, SpellDef spell, Transform wizard, RaycastHit hit, out Vector3 landing)
+    {
+        string why = Check(grid, spell, wizard, hit, out landing);
+        if (why == null) return null;
+        var from = wizard.position;
+        var flat = new Vector3(hit.point.x - from.x, 0f, hit.point.z - from.z);
+        int range = spell.Range > 0 ? spell.Range : 6;
+        // Chebyshev squares: along a diagonal the range reaches further; a square's slack for walking on.
+        float far = Mathf.Min(flat.magnitude, (range - 0.5f) * grid.cellSize * Mathf.Sqrt(2f));
+        if (far < MinReach) return why;
+        var dir = flat / flat.magnitude;
+        for (float d = far; d >= MinReach; d -= ReachStep)
+        {
+            var at = from + dir * d;
+            if (!GroundAt(at, wizard, out var top)) continue;
+            if (CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider) != null) continue;
+            landing = top.point;
+            return null;
+        }
+        return why;
+    }
+
+    // Nearer than this isn't worth a blink; the steps back along the line towards the caster.
+    const float MinReach = 2f, ReachStep = 0.5f;
 
     /// <summary>Why <paramref name="wizard"/> can't blink onto square (x, y), or null if it can.</summary>
     public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y)
@@ -129,10 +162,14 @@ public static class MistyStep
     }
 
     // The highest thing to stand on over a square's centre (not the wizard, not a cell blocker).
-    static bool TopOf(ChemGrid grid, Transform wizard, int x, int y, out RaycastHit top)
+    static bool TopOf(ChemGrid grid, Transform wizard, int x, int y, out RaycastHit top) =>
+        GroundAt(grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 40f), wizard, out top);
+
+    // The highest thing to stand on under a point 40 m up from it (not the wizard, not a cell blocker).
+    static bool GroundAt(Vector3 at, Transform wizard, out RaycastHit top)
     {
         top = default;
-        var above = grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 40f);
+        var above = new Vector3(at.x, at.y + 40f, at.z);
         int n = Physics.RaycastNonAlloc(above, Vector3.down, Hits, 80f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         float best = float.MaxValue;
         for (int i = 0; i < n; i++)

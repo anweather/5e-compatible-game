@@ -33,6 +33,7 @@ public static class ProbeCommands
 {
     const string Group = "probe";
     const string RequestKey = "Prototype.Probe.Request";
+    const string FocusedKey = "Prototype.Probe.PlayFocused";
     const string Starting = "starting", Running = "running", Done = "done", Aborted = "aborted";
     const string SecondPlayer = "Player 2";
     // How long a virtual player may take to start, and a moment more for it to settle before Play mode.
@@ -106,7 +107,7 @@ public static class ProbeCommands
         SessionState.SetString(RequestKey, JsonConvert.SerializeObject(request));
         WriteResult(Status(request, Starting));
         if (waitForPlayer) EnterPlayModeWhenUp(request);
-        else EditorApplication.isPlaying = true;
+        else Play();
         return new
         {
             id = request.Id,
@@ -115,6 +116,27 @@ public static class ProbeCommands
             starting_player = waitForPlayer ? SecondPlayer : null,
             next = "unity command probe result --wait true --timeout 300",
         };
+    }
+
+    // Enters Play mode without focusing the Game view, which on Windows also brings the Editor to the
+    // front over whatever the user is doing; their own setting (the Game view's Play Focused) is put
+    // back once the run is over.
+    static void Play()
+    {
+        if (!SessionState.GetBool(FocusedKey + ".saved", false))
+        {
+            SessionState.SetBool(FocusedKey, PlayModeWindow.GetPlayModeFocused());
+            SessionState.SetBool(FocusedKey + ".saved", true);
+        }
+        PlayModeWindow.SetPlayModeFocused(false);
+        EditorApplication.isPlaying = true;
+    }
+
+    static void RestoreFocus()
+    {
+        if (!SessionState.GetBool(FocusedKey + ".saved", false)) return;
+        PlayModeWindow.SetPlayModeFocused(SessionState.GetBool(FocusedKey, true));
+        SessionState.EraseBool(FocusedKey + ".saved");
     }
 
     // Waits (on the Editor's update, so the CLI call can return) for the virtual player to be up, then enters Play mode.
@@ -130,7 +152,7 @@ public static class ProbeCommands
             if (upAt >= 0 && now - upAt >= LaunchGrace)
             {
                 EditorApplication.update -= wait;
-                EditorApplication.isPlaying = true;
+                Play();
                 return;
             }
             if (now - since < LaunchTimeout && state != "UnexpectedlyStopped") return;
@@ -186,7 +208,8 @@ public static class ProbeCommands
     static void OnPlayModeChanged(PlayModeStateChange state)
     {
         if (state == PlayModeStateChange.EnteredPlayMode) Begin();
-        else if (state == PlayModeStateChange.EnteredEditMode && stopAfterRun != null)
+        else if (state == PlayModeStateChange.EnteredEditMode) RestoreFocus();
+        if (state == PlayModeStateChange.EnteredEditMode && stopAfterRun != null)
         {
             string player = stopAfterRun;
             stopAfterRun = null;

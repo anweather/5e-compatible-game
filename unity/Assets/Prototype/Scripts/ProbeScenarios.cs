@@ -134,6 +134,10 @@ public static class ProbeScenarios
             "from the wizard, then a deer, a rabbit, a turkey and a fox walking through the meadow. Checks: ValleyFauna is built with 10 " +
             "species or more, 10 animals or more are out, 20 s later two kinds of activity or more under way (grazing, resting, drinking, " +
             "sleeping, play, hunting), the deer bolts (over 15 m from the wizard after 3 s), no console errors."),
+        new Entry("blink", typeof(BlinkProbe), 30f,
+            "Misty Step aimed as a player aims it (the camera's ray through the crosshair) at open ground all round the wizard, " +
+            "3 m out to just inside its range, then a few blinks for real. Checks: 80% or more of the spots can be landed on (the " +
+            "detail tallies why the rest can't), and every real blink arrives where it was aimed."),
         new Entry("snow", typeof(SnowProbe), 60f,
             "Heavy snow at noon (fast settling), then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
             "Checks: over 500 squares under snow, over 20 banks against walls and trees, the ground over a bank stands 0.25 m higher, " +
