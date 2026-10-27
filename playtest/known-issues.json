@@ -1,0 +1,9 @@
+[
+  {
+    "name": "quit-crash-d3d12",
+    "detector": "crash",
+    "messageContains": "D3D12Core",
+    "fixedIn": "4a61ee3",
+    "note": "The D3D12 fault while the player quits. Fixed in 4a61ee3 (the game ends itself on quit); on a build with that commit it is a regression and is filed. -clean-quit brings it back on purpose, so the bot never passes it."
+  }
+]
