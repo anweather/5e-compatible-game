@@ -9,7 +9,7 @@ LOG=${LOG:-/c/Users/Andrew/Development/5e-compatible-game/.claude/worktrees/_coo
 [ -s "$LOG" ] || { echo "No samples yet."; exit 0; }
 if [ "$1" = "--idle" ]; then
   awk -F, -v now="$(date +%s)" 'NR>1 { "date -d " $1 " +%s" | getline t; close("date -d " $1 " +%s"); if (NR==2) first=t; if ($4+$5+$6>0) last=t }
-    END { print int((now - (last ? last : first)) / 60) }' "$LOG"
+    END { print (first ? int((now - (last ? last : first)) / 60) : 0) }' "$LOG"   # no samples yet: not idle
   exit 0
 fi
 since=$(date -d "-${1:-4} hours" +%Y-%m-%dT%H:%M:%S)
