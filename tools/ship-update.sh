@@ -20,7 +20,9 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")/.." && pwd)"
 UNITY="${UNITY:-$(command -v unity || echo "$HOME/.unity/bin/unity")}"
 VPK="${VPK:-$(command -v vpk || echo "$HOME/.dotnet/tools/vpk")}"
-[ -d "$HOME/.dotnet" ] && export DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.dotnet}"
+# Where the .NET runtime is, for vpk: ~/.dotnet when .NET was installed there (the Mac),
+# not when it only holds global tools (Windows, where .NET is in Program Files).
+{ [ -x "$HOME/.dotnet/dotnet" ] || [ -x "$HOME/.dotnet/dotnet.exe" ]; } && export DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.dotnet}"
 export UNITY_NO_BANNER=1 UNITY_NO_PAGER=1 UNITY_NON_INTERACTIVE=1
 export UNITY_PROJECT_PATH="${UNITY_PROJECT_PATH:-$here/unity}"
 REPO=https://github.com/anweather/5e-compatible-game
