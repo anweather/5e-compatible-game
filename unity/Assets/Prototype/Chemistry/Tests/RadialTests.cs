@@ -18,11 +18,13 @@ namespace Chem.Tests
 
         static readonly RadialTuning Tuning = new RadialTuning();
 
-        // Base layout, clockwise from the top, 72° a wedge: fire 0°, water 72°, storm 144°, earth 216°, arcane 288°.
-        const int Fire = 0, Water = 1, Storm = 2, Earth = 3, Arcane = 4;
+        // The elements in order, clockwise from the top. The arc tests use FiveEarth's five wedges of
+        // 72°: fire 0°, water 72°, storm 144°, earth 216°, arcane 288°.
+        const int Fire = 0, Water = 1, Storm = 2, Earth = 3, Arcane = 4, Nature = 5;
 
         // The arc mechanics are tested on the layout they were written for: Fire Bolt alone under
-        // Fire, and an Earth wedge of five spells (Earthen Trench and Move Earth back on the radial).
+        // Fire, an Earth wedge of five spells (Earthen Trench and Move Earth back on the radial), and
+        // the five elements it had then (Nature's spells kept off the radial, so it gets no wedge).
         // TheLayoutFollowsTheGroupsAndSpellsJsonOrder checks the game's own layout.
         static Rules fiveEarth;
         static Rules FiveEarth => fiveEarth ??= With(@"{ 'spells': [
@@ -30,7 +32,8 @@ namespace Chem.Tests
             { 'id': 'fireball', 'group': 'fire', 'name': 'Fireball', 'level': 3, 'shape': 'burst', 'radius': 2, 'element': 'fire', 'radial': false, 'blurb': '' },
             { 'id': 'meteor', 'group': 'fire', 'name': 'Meteor', 'level': 7, 'shape': 'burst', 'radius': 4, 'element': 'fire', 'radial': false, 'blurb': '' },
             { 'id': 'earthen-trench', 'group': 'earth', 'name': 'Earthen Trench', 'level': 2, 'shape': 'line', 'origin': 'self', 'length': 8, 'effect': 'terraform', 'dig': 2, 'blurb': '' },
-            { 'id': 'move-earth', 'group': 'earth', 'name': 'Move Earth', 'level': 6, 'shape': 'burst', 'radius': 3, 'effect': 'terraform', 'raise': 2, 'taper': true, 'blurb': '' } ] }");
+            { 'id': 'move-earth', 'group': 'earth', 'name': 'Move Earth', 'level': 6, 'shape': 'burst', 'radius': 3, 'effect': 'terraform', 'raise': 2, 'taper': true, 'blurb': '' },
+            { 'id': 'shapeshift', 'group': 'nature', 'name': 'Shapeshift', 'level': 4, 'shape': 'target', 'effect': 'shapeshift', 'range': 12, 'radial': false, 'blurb': '' } ] }");
 
         static SpellRadial NewRadial() => new SpellRadial(RadialLayout.From(FiveEarth));
 
@@ -58,7 +61,7 @@ namespace Chem.Tests
         [Test]
         public void EveryBaseSpellIsInAKnownGroup()
         {
-            Assert.That(Base.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane" }));
+            Assert.That(Base.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane", "nature" }));
             foreach (var s in Base.Spells) Assert.That(Base.Group(s.Group), Is.Not.Null, s.Id);
             Assert.That(Base.Group("water").Name, Is.EqualTo("Water & Ice"));
             Assert.That(Base.Groups.All(g => g.Color.Length == 7 && g.Color[0] == '#'));
@@ -69,12 +72,13 @@ namespace Chem.Tests
         public void TheLayoutFollowsTheGroupsAndSpellsJsonOrder()
         {
             var layout = RadialLayout.From(Base);
-            Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane" }));
+            Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane", "nature" }));
             Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt", "fireball", "meteor" }), "Burning Hands stays off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt" }), "a group with one spell");
             Assert.That(layout.Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "wall-of-stone" }), "Earthen Trench and Move Earth stay off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "earthen-trench", "wall-of-stone", "move-earth" }), "a group with five");
             Assert.That(layout.Groups[Arcane].SpellIds, Is.EqualTo(new[] { "misty-step", "levitate", "mage-hand" }), "Grease stays off the radial");
+            Assert.That(layout.Groups[Nature].SpellIds, Does.Contain("shapeshift"));
             Assert.That(layout.GroupOfSpell("thunderwave"), Is.EqualTo(Storm));
             Assert.That(layout.IndexOf("earth"), Is.EqualTo(Earth));
             Assert.That(layout.GroupOfSpell("nope"), Is.EqualTo(-1));
@@ -94,10 +98,10 @@ namespace Chem.Tests
         {
             var r = With(@"{ 'groups': { 'frost': { 'name': 'Frost', 'order': 2.5, 'color': '#bfe6ff' }, 'empty': { 'name': 'Empty', 'order': 9 } },
                 'spells': [ { 'id': 'ray-of-frost', 'group': 'frost', 'name': 'Ray of Frost', 'level': 0, 'shape': 'line', 'element': 'cold' } ] }");
-            Assert.That(r.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "frost", "storm", "earth", "arcane", "empty" }));
+            Assert.That(r.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "frost", "storm", "earth", "arcane", "nature", "empty" }));
             Assert.That(r.Group("empty").Color, Is.EqualTo(Rules.DefaultGroupColor));
             var layout = RadialLayout.From(r);
-            Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "frost", "storm", "earth", "arcane" }), "an empty group gets no wedge");
+            Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "frost", "storm", "earth", "arcane", "nature" }), "an empty group gets no wedge");
             Assert.That(layout.Groups[1].SpellIds, Is.EqualTo(new[] { "create-water", "sleet-storm" }));
             Assert.That(layout.Groups[2].SpellIds, Is.EqualTo(new[] { "ray-of-frost" }));
             Assert.That(r.Fingerprint, Is.Not.EqualTo(Base.Fingerprint), "groups are in the fingerprint");
@@ -109,7 +113,7 @@ namespace Chem.Tests
             var r = With("{ 'spells': [ { 'id': 'meteor-swarm', 'name': 'Meteor Swarm', 'level': 9, 'shape': 'burst', 'element': 'fire' } ] }");
             var groups = RadialLayout.From(r).Groups;
             var last = groups[groups.Count - 1];
-            Assert.That(last.Id, Is.EqualTo("arcane"));
+            Assert.That(last.Id, Is.EqualTo("nature"));
             Assert.That(last.SpellIds[last.SpellIds.Count - 1], Is.EqualTo("meteor-swarm"));
         }
 

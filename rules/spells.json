@@ -36,5 +36,7 @@
   { "id": "wall-of-stone", "group": "earth", "name": "Wall of Stone", "level": 5, "shape": "line", "length": 6, "effect": "terraform", "height": 3, "terrain": "rock",
     "blurb": "A 30 ft wall of rock rises from where you click, running away from you, wall-high even across a trench; hold the cast for a taller wall. Blocks walking, sight, gas and water; dams a stream. Dig it back down to rubble." },
   { "id": "move-earth", "group": "earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3, "effect": "terraform", "raise": 2, "taper": true, "radial": false,
-    "blurb": "The ground heaves up into a hill 35 ft across, highest in the middle. Water runs off it and pools around the foot." }
+    "blurb": "The ground heaves up into a hill 35 ft across, highest in the middle. Water runs off it and pools around the foot." },
+  { "id": "shapeshift", "group": "nature", "name": "Shapeshift", "level": 4, "shape": "target", "effect": "shapeshift", "range": 12, "duration": 360,
+    "blurb": "Aim at an animal within 60 ft and take its shape for a minute (hold the cast for two or three): its speed, its size, and its own kind's trust. Cast again to change back. No spells and no hands while you're an animal, and a heavy blow knocks you back into yourself. Our reading of Polymorph, cast on yourself." }
 ]

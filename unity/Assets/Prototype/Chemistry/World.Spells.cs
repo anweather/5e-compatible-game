@@ -165,7 +165,7 @@ namespace Chem
         /// Applies the spell's element to its cells, like castSpell's cell part. Gust of
         /// Wind (air + wind) also sets the world's wind. A terraform spell raises or digs
         /// its cells first (World.Terraform.cs). The other effects (levitate, carry,
-        /// teleport) do nothing to cells. A charged cast (held: charge 2 or 3) is that many
+        /// teleport, shapeshift) do nothing to cells. A charged cast (held: charge 2 or 3) is that many
         /// times as strong, raises or digs that many times the steps, and a line reaches
         /// half again as far per level. A line or cone may be aimed off the grid's four ways
         /// (SpellCells); <paramref name="dir"/> is then the nearest of them (DirOf), which the

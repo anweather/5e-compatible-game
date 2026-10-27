@@ -117,7 +117,7 @@ export interface SpellDef {
   radius?: number;
   push?: number;
   wind?: number;
-  effect?: "levitate" | "carry" | "teleport" | "terraform";
+  effect?: "levitate" | "carry" | "teleport" | "terraform" | "shapeshift";
   /**
    * terraform: steps to raise or to dig, or a height to raise the cells to (exactly one of
    * the three), the terrain the cells become, and taper (a hill or crater over radius).
@@ -374,7 +374,7 @@ const EFFECT_KEYS = new Set([
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
-const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform"]);
+const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "shapeshift"]);
 
 function terraformErrors(r: Rules, s: SpellDef): string[] {
   const errors: string[] = [];

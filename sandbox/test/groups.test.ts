@@ -7,7 +7,7 @@ import assert from "node:assert/strict";
 import { BASE_RULES, composeRules, validateRules, type GroupDef, type SpellDef } from "../src/rules.ts";
 
 test("every base spell is in a known group", () => {
-  assert.deepEqual(Object.keys(BASE_RULES.groups), ["fire", "water", "storm", "earth", "arcane"]);
+  assert.deepEqual(Object.keys(BASE_RULES.groups), ["fire", "water", "storm", "earth", "arcane", "nature"]);
   for (const s of BASE_RULES.spells) assert.ok(s.group && s.group in BASE_RULES.groups, s.id);
   assert.equal(BASE_RULES.spells.find((s) => s.id === "grease")!.group, "arcane");
 });
