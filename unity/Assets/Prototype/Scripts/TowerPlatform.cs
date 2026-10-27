@@ -16,6 +16,7 @@ using UnityEngine;
 // - Phasing: solid for part of its cycle on the shared clock, then a ghost
 //   that can't be stood on; it flickers just before it fades.
 [DefaultExecutionOrder(-50)]
+[RequireComponent(typeof(BoxCollider))]
 public class TowerPlatform : MonoBehaviour
 {
     public enum Kind { Static, Moving, Collapsing, Phasing }

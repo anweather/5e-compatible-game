@@ -49,8 +49,9 @@ public class TowerFireworks : MonoBehaviour
         main.loop = false;
         main.startLifetime = new ParticleSystem.MinMaxCurve(1.1f, 1.8f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(7f, 10f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.25f, 0.45f);
-        main.startColor = new ParticleSystem.MinMaxGradient(colour * 2.5f, Color.Lerp(colour, Color.white, 0.5f) * 2.5f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.6f, 0.9f);
+        // Its own colour (over a bright sky, additive light much past 1 burns out to white).
+        main.startColor = new ParticleSystem.MinMaxGradient(colour * 1.3f, Color.Lerp(colour, Color.white, 0.35f) * 1.3f);
         main.gravityModifier = 0.35f;
         var emission = ps.emission;
         emission.rateOverTime = 0f;
@@ -66,18 +67,25 @@ public class TowerFireworks : MonoBehaviour
         fade.color = new ParticleSystem.MinMaxGradient(new Gradient
         {
             alphaKeys = new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.6f), new GradientAlphaKey(0f, 1f) },
-            colorKeys = new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(new Color(1f, 0.75f, 0.55f), 1f) },
+            colorKeys = new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
         });
         var look = go.GetComponent<ParticleSystemRenderer>();
-        look.sharedMaterial = Sparks();
+        look.sharedMaterial = SparkMaterial();
         look.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
         ps.Play();
         StartCoroutine(Flash(go, colour));
     }
 
-    static Material Sparks()
+    static Material SparkMaterial()
     {
-        if (sparks == null) sparks = UrpMaterials.NewUnlitParticles("Firework sparks", Color.white, additive: true);
+        if (sparks == null)
+        {
+            // Round, soft-edged sparks rather than the bare quad's squares.
+            sparks = UrpMaterials.NewUnlitParticles("Firework sparks", Color.white, additive: true);
+            var puff = ProceduralTextures.SoftPuff(64);
+            if (sparks.HasProperty("_BaseMap")) sparks.SetTexture("_BaseMap", puff);
+            sparks.mainTexture = puff;
+        }
         return sparks;
     }
 
