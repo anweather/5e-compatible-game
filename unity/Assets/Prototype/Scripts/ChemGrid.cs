@@ -45,8 +45,31 @@ public partial class ChemGrid : MonoBehaviour
     /// </summary>
     public bool streamChunks = true;
 
-    /// <summary>Plans the chunks solo, lingering what is still live (ChunkPlanner); online the host keeps its own.</summary>
-    public ChunkPlanner ChunkPlanner { get; } = new();
+    /// <summary>Plans the chunks solo, lingering what is still live (ChunkPlanner); online the host keeps its own. New with each world.</summary>
+    public ChunkPlanner ChunkPlanner { get; private set; } = new();
+
+    /// <summary>
+    /// A chunk of the current world activated or deactivated (ChunkSwitch: CX, CY, Active), after
+    /// it caught up; World.ChunkSwitched passed on, so it keeps working across ResetWorld. Solo and
+    /// online alike: switches reach the world only as commands (the solo plan, or the host's tick
+    /// batches on every peer), so every peer hears the same switches at the same tick. Chunk
+    /// coordinates are world cells / 64 (ChunkAt, ThingId's chunk). For the view only: a handler
+    /// mustn't change the world.
+    /// </summary>
+    public event System.Action<ChunkSwitch> ChunkSwitched;
+
+    /// <summary>A new world was built (ResetWorld, or going online): every chunk starts active again, with no ChunkSwitched for it.</summary>
+    public event System.Action WorldReset;
+
+    /// <summary>The chunk a scene position is in (world chunk coordinates, as ChunkSwitched and ThingId use).</summary>
+    public Vector2Int ChunkAt(Vector3 p)
+    {
+        var cell = CellAt(p);
+        return new Vector2Int(Chunks.ChunkOf(cell.x), Chunks.ChunkOf(cell.y));
+    }
+
+    /// <summary>Whether a chunk is simulated now; false for one outside the world.</summary>
+    public bool IsChunkActive(int cx, int cy) => World != null && World.HasChunk(cx, cy) && World.IsActive(cx, cy);
 
     readonly List<(int x, int y)> playerCells = new();
     readonly System.Diagnostics.Stopwatch timer = new();
@@ -116,11 +139,14 @@ public partial class ChemGrid : MonoBehaviour
         var rules = StartRules();
 
         World = MapWorld(rules, map, seed, out var start);
+        World.ChunkSwitched += s => ChunkSwitched?.Invoke(s);
+        ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
         if (valley != null) valley.Bind(World);
 
         InitVisuals();
         RenderAll();
+        WorldReset?.Invoke();
     }
 
     /// <summary>
