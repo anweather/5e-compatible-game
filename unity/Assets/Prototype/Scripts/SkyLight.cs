@@ -1,4 +1,3 @@
-using System.Collections;
 using Chem;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -9,7 +8,7 @@ using UnityEngine.Rendering;
 // the haze in. Presentation only: the time and the weather are the core's,
 // so every player sees the same sky. Also the clock line at the top right.
 //
-// The ambient light is baked from the daytime sky once, at the start, and
+// The ambient light is baked from the noon sky once, at the start, and
 // then scaled and tinted each frame for the hour, the cloud, the dawn and
 // lightning (a Custom ambient probe). Baking it again from the skybox
 // (DynamicGI.UpdateEnvironment) stalls the main thread on a GPU readback,
@@ -30,9 +29,10 @@ public class SkyLight : MonoBehaviour
     Color baseFog;
     float baseFogStart, baseFogEnd;
     float cloud, fog, flash;
-    // The daytime sky's ambient light, baked once (BakeDaylight); the hour and weather scale it.
+    // The noon sky's ambient light, baked once (BakeDaylight); the hour and weather scale it.
     SphericalHarmonicsL2 daylightAmbient;
     bool ambientBaked;
+    int bakeTries;
     GUIStyle style;
 
     /// <summary>Lights the whole sky up for a moment (lightning; 1 is a strike close by).</summary>
@@ -57,17 +57,21 @@ public class SkyLight : MonoBehaviour
         baseFog = RenderSettings.fogColor;
         baseFogStart = RenderSettings.fogStartDistance;
         baseFogEnd = RenderSettings.fogEndDistance;
-        StartCoroutine(BakeDaylight());
     }
 
-    // One bake of the sky as it starts (the daytime sky: Shine leaves it alone until this is
-    // done), read back a couple of frames later, then held as a Custom ambient that Shine scales.
-    IEnumerator BakeDaylight()
+    // One bake of the sky at noon, at the first frames and before the hour moves the sun or
+    // dims the sky, held as a Custom ambient that Shine scales. UpdateEnvironment fills
+    // ambientProbe at once, so it's read straight away; in the scene's first frames it can still
+    // give the scene's stored (dark) probe, so a bake that dark is tried again next frame.
+    void BakeDaylight()
     {
+        Place(sun.transform, Sky.MinutesPerDay / 2f);
+        RenderSettings.sun = sun;
+        RenderSettings.ambientMode = AmbientMode.Skybox;
         DynamicGI.UpdateEnvironment();
-        yield return null;
-        yield return null;
-        daylightAmbient = RenderSettings.ambientProbe;
+        var probe = RenderSettings.ambientProbe;
+        if (probe[1, 0] < 0.1f && ++bakeTries < 60) return;
+        daylightAmbient = probe;
         RenderSettings.ambientMode = AmbientMode.Custom;
         ambientBaked = true;
     }
@@ -76,6 +80,7 @@ public class SkyLight : MonoBehaviour
     {
         var world = grid != null ? grid.World : null;
         if (world == null || sun == null) return;
+        if (!ambientBaked) BakeDaylight();
         var now = world.Weather;
         cloud = Mathf.MoveTowards(cloud, CloudOf(now), Time.deltaTime * 0.3f);
         fog = Mathf.MoveTowards(fog, now.Fog / 100f, Time.deltaTime * 0.2f);
@@ -137,12 +142,12 @@ public class SkyLight : MonoBehaviour
         }
     }
 
-    // The daytime ambient, as the sky would give it now: dimmer with the hour (as the sky's
+    // The noon ambient, as the sky would give it now: dimmer with the hour and the cloud (as the sky's
     // exposure falls) and the intensity above, bluer by night, greyer under cloud, warm at dawn
     // and dusk.
     void Ambient(float sunUp, float sunLight)
     {
-        float level = RenderSettings.ambientIntensity * Mathf.Lerp(0.25f, 1f, Daylight);
+        float level = RenderSettings.ambientIntensity * Mathf.Lerp(0.25f, 1f, Daylight) * (1f - 0.45f * cloud);
         var tint = Color.Lerp(new Color(0.55f, 0.65f, 1f), Color.white, Daylight);
         tint *= Color.Lerp(Color.white, new Color(0.92f, 0.94f, 1f), cloud);
         float low = (1f - Mathf.InverseLerp(0.02f, 0.45f, sunUp)) * sunLight;
