@@ -222,7 +222,9 @@ The coordinator approves each change and schedules them one at a time.
 
 | # | File | Agent | Why | State |
 |---|---|---|---|---|
-| 1 | `docs/FAST_LOOP.md` (World's) | Gameplay | The `online` row's new reset checks, one commit on `net-reset-view` | Lent 2026-10-27 |
+| 1 | `docs/FAST_LOOP.md` (World's) | Gameplay | The `online` and `villagers` rows | Done (merged) |
+| 2 | `docs/WORLD_LIFE.md` (shared) | Gameplay | Item 4 marked built | Done (merged) |
+| 3 | `docs/GLOSSARY.md`, `docs/MODDING.md` (shared) | World | The "Component" entry and the MODDING example, on `components` | Approved; merges with 0.1.6 |
 
 ## Merge order
 
