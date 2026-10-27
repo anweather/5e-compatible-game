@@ -41,6 +41,29 @@ namespace Chem.Tests
             Assert.That(Paths.ChoosePlayer(@"C:\pb", @"C:\here", _ => false), Does.StartWith(@"C:\here"));
         }
 
+        [Test]
+        public void AGivenPlayerIsFoundInItsFolder()
+        {
+            string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "playtest-player-" + System.Guid.NewGuid().ToString("N"));
+            try
+            {
+                string deep = System.IO.Path.Combine(dir, "SpellChemistryValley-win", "Player");
+                System.IO.Directory.CreateDirectory(System.IO.Path.Combine(deep, "Extra"));
+                string exe = System.IO.Path.Combine(deep, Paths.PlayerName + ".exe");
+                System.IO.File.WriteAllText(exe, "");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(deep, "Extra", Paths.PlayerName + ".exe"), "");
+                Assert.That(Paths.GivenPlayer(dir), Is.EqualTo(exe), "the unpacked zip: the shallowest player in it");
+                Assert.That(Paths.GivenPlayer(exe), Is.EqualTo(exe), "an exe as given");
+                string empty = System.IO.Path.Combine(dir, "empty");
+                System.IO.Directory.CreateDirectory(empty);
+                Assert.That(Paths.GivenPlayer(empty), Is.EqualTo(System.IO.Path.Combine(empty, Paths.PlayerName + ".exe")), "none there: run says it is missing");
+            }
+            finally
+            {
+                System.IO.Directory.Delete(dir, true);
+            }
+        }
+
         static RunReport Run(string ended) => new RunReport { Ended = ended, Frames = 900, Goals = { "Visit:tower" } };
 
         [Test]

@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 // Where things are, for the playtest runner: the repository, the bot's own
@@ -27,8 +28,21 @@ namespace Playtest.Runner
 
         public const string PlayerName = "SpellChemistryValley";
 
-        /// <summary>The player to run: the bot's checkout's build if there is one, else this checkout's.</summary>
-        public string Player() => ChoosePlayer(Checkout, Root, File.Exists);
+        /// <summary>
+        /// The player to run: the one given (--player: an exe, or a folder with one in it, such as a
+        /// release's unpacked portable zip), else the bot's checkout's build if there is one, else this checkout's.
+        /// </summary>
+        public string Player(string given = null) => given != null ? GivenPlayer(given) : ChoosePlayer(Checkout, Root, File.Exists);
+
+        /// <summary>An exe as given, or the player found in a folder (the shallowest, then by name); the folder's own exe path if there is none.</summary>
+        public static string GivenPlayer(string given)
+        {
+            string full = Path.GetFullPath(given);
+            if (!Directory.Exists(full)) return full;
+            return Directory.EnumerateFiles(full, PlayerName + ".exe", SearchOption.AllDirectories)
+                .OrderBy(f => f.Count(ch => ch == Path.DirectorySeparatorChar)).ThenBy(f => f, StringComparer.Ordinal)
+                .FirstOrDefault() ?? Path.Combine(full, PlayerName + ".exe");
+        }
 
         public static string ChoosePlayer(string checkout, string root, Func<string, bool> exists)
         {
