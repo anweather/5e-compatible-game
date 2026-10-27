@@ -44,6 +44,13 @@ namespace Chem
         /// <summary>Loaded neighbours, or null at the edge of what is loaded.</summary>
         public Chunk North, East, South, West;
         public bool Active = true;
+        /// <summary>
+        /// The last tick anything in it was live: fire, gas, charge, a timer counting down (Life), or
+        /// water moving (docs/WORLD_STREAMING.md, "Part 2, second slice"). World.NeverLive for a
+        /// chunk nothing has happened in. Kept outside Cell, like FireGeneration, so cell hashes are
+        /// unaffected.
+        /// </summary>
+        public int LastLive = World.NeverLive;
 
         public Chunk(int x, int y)
         {

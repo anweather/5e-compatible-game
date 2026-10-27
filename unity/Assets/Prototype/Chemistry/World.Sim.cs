@@ -34,16 +34,7 @@ namespace Chem
             TickWeather(rows);
             TickRaiders();
             TickDefense();
-            foreach (var s in rows)
-            {
-                var cells = s.Chunk.Cells;
-                for (int i = s.Start; i < s.End; i++)
-                {
-                    var c = cells[i];
-                    if (c.Charge > 0) c.Charge--;
-                    if (c.Life > 0 && --c.Life == 0) Ripen(s.Chunk, i, c);
-                }
-            }
+            TickTimers(rows);
             if (Wind.HasValue)
             {
                 var (d, t) = Wind.Value;
@@ -52,6 +43,46 @@ namespace Chem
             TickClock();
             foreach (var ch in activeChunks) Array.Clear(ch.Marks, 0, ch.Marks.Length);
         }
+
+        /// <summary>
+        /// Charge decays and Life counts down (ripening when it runs out), and every chunk with a
+        /// live cell remembers this tick (Chunk.LastLive): fire, gas, charge, a timer, or water that
+        /// moved this tick (before the marks are cleared). Weather alone doesn't make a cell live.
+        /// </summary>
+        void TickTimers(RowSpan[] rows)
+        {
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                var marks = s.Chunk.Marks;
+                bool live = false;
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    var c = cells[i];
+                    if (c.Charge > 0)
+                    {
+                        c.Charge--;
+                        live = true;
+                    }
+                    if (c.Life > 0)
+                    {
+                        live = true;
+                        if (--c.Life == 0) Ripen(s.Chunk, i, c);
+                    }
+                    if (c.Fire > 0 || c.GasAmt > 0 || (marks[i] & FlowMark) != 0) live = true;
+                }
+                if (live) s.Chunk.LastLive = Tick;
+            }
+        }
+
+        /// <summary>Whether nothing in a loaded chunk has been live for sim.json's streaming.settleTicks.</summary>
+        public bool IsSettled(int cx, int cy) => Tick - ChunkOrThrow(cx, cy).LastLive >= Rules.Sim.Streaming.SettleTicks;
+
+        /// <summary>LastLive for a chunk where nothing has been live.</summary>
+        public const int NeverLive = int.MinValue / 2;
+
+        /// <summary>The last tick anything in a loaded chunk was live (NeverLive if nothing has been).</summary>
+        public int LastLive(int cx, int cy) => ChunkOrThrow(cx, cy).LastLive;
 
         /// <summary>
         /// A cell's Life ran out (ripen in sim.ts): a cover that lasts (thorns) withers away, and a

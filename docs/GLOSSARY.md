@@ -114,11 +114,11 @@ touch them.
 : A cell's `Charge` (0 to 3, decaying), which lightning leaves and
   conductors pass on. Say "charge" alone only when it's obviously this.
 
-**Live cell / settled chunk** *(proposed, for the chunk work)*
+**Live cell / settled chunk**
 : A cell is **live** while something in it is still changing on its own:
   fire burning, water flowing, gas drifting, charge decaying, something
   ripening or withering. A chunk is **settled** when none of its cells
-  are live.
+  have been live for `sim.json streaming.settleTicks` (12 ticks, two seconds).
 
 ## Spells and casting
 
