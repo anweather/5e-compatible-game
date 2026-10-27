@@ -31,6 +31,8 @@ public class PhysicsProp : MonoBehaviour, IPushable
 
     // Linear damping: in air, in water, and while levitating (so it rises and then hovers).
     const float AirDrag = 0.05f, WaterDrag = 2.5f, HoverDrag = 1.2f;
+    // How hard the water pulls a floating prop toward the current's speed (per second).
+    const float CurrentGrip = 1.5f;
     // Angular damping in air and in water (so a floating crate settles rather than spins).
     const float AirSpin = 0.05f, WaterSpin = 1.5f;
 
@@ -134,6 +136,20 @@ public class PhysicsProp : MonoBehaviour, IPushable
         bool wet = cell != null && cell.Water > 0 && !cell.Frozen && Buoy(at);
         body.linearDamping = wet ? WaterDrag : AirDrag;
         body.angularDamping = wet ? WaterSpin : AirSpin;
+        if (wet) Drift();
+    }
+
+    // Afloat in a current (WaterCurrents): pulled along until it moves with the water, so a crate
+    // floats down the river and the surf washes things up the beach.
+    void Drift()
+    {
+        var currents = WaterCurrents.Instance;
+        if (currents == null) return;
+        var flow = currents.At(transform.position);
+        if (flow.sqrMagnitude < 1e-4f) return;
+        var v = body.linearVelocity;
+        var slip = flow - new Vector3(v.x, 0f, v.z);
+        body.AddForce(slip * (body.mass * CurrentGrip));
     }
 
     void SetSlick(bool slick)

@@ -134,6 +134,9 @@ public static class ProbeScenarios
             "The waterfall at the head of the river: the wizard goes to the pond at its foot. Checks: the falls is built (its water, " +
             "twenty or more rocks on the cliff), the pond's middle is river and full, river squares run on south of it, splashes " +
             "go up at the foot, the roar plays, no console errors."),
+        new Entry("current", typeof(CurrentProbe), 40f,
+            "The water carries things (WaterCurrents): the wizard dropped mid-river and left still is swept over 2 m downstream in 3 s, dropped in the surf off the beach is " +
+            "carried over 1.5 m toward the sand in 5 s, and a crate floated on the river drifts over 2 m downstream in 4 s, no console errors."),
         new Entry("sit", typeof(SitProbe), 40f,
             "The wizard sits on the bench nearest the yard, then lies back on the nearest beach lounger (Seat, Sitter, SitPose), and gets up from each. Checks: ten or more " +
             "seats in the world, the seat in reach beside it (E goes to it), held on the seat with the pose on and the hips within 0.2 m of the seat point, and free again after standing, no console errors."),

@@ -60,6 +60,15 @@ public static class ValleyBuilder
         valley.channelCells = channelCells.ToArray();
         valley.channelDepths = channelDepths.ToArray();
         grid.valley = valley;
+
+        // The river's current along its course and the surf's on the coast (WaterCurrents).
+        var currents = grid.gameObject.AddComponent<WaterCurrents>();
+        currents.grid = grid;
+        currents.river = ValleyShape.RiverLine;
+        currents.riverHalfWidth = ValleyShape.RiverHalfWidth;
+        currents.shoreOrigin = ValleyCoast.ShoreOrigin;
+        currents.seaward = ValleyCoast.Seaward;
+        currents.seaLevel = ValleyCoast.SeaLevel;
     }
 
     // --- terrain -------------------------------------------------------------
