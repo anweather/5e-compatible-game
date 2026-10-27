@@ -88,6 +88,8 @@ public class TimeWeatherProbe : ProbeScenario
         var spell = World.Rules.Spell(SpellIds.MistyStep);
         var me = grid.YardCell(MeX, MeY);
         var past = grid.YardCell(PastX, MeY);
+        // The storm's lightning may have lit something, and fire would burn the new fog off.
+        PutOutFires();
         string before = MistyStep.Check(grid, spell, wizard.transform, past.x, past.y);
 
         yield return CastFromBar(SpellIds.FogCloud, FogX, FogY, 1, 1.5f);
