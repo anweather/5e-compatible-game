@@ -6,7 +6,7 @@ using UnityEngine.InputSystem.DualShock;
 using UnityEngine.InputSystem.XInput;
 
 /// <summary>A gamepad button by where it sits, as the Input System names them (the bottom face button is South on every pad).</summary>
-public enum PadButton { South, East, West, North, LB, RB, LT, RT, Start, Select }
+public enum PadButton { South, East, West, North, LB, RB, LT, RT, Start, Select, LS }
 
 /// <summary>The kinds of controller whose buttons are labelled differently.</summary>
 public enum PadFamily { Generic, Xbox, PlayStation4, PlayStation5, Switch, Steam }
@@ -22,12 +22,12 @@ public static class PadGlyphs
     // One row per family, in PadButton's order.
     static readonly Dictionary<PadFamily, string[]> Labels = new Dictionary<PadFamily, string[]>
     {
-        [PadFamily.Generic] = new[] { "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Start", "Select" },
-        [PadFamily.Xbox] = new[] { "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Menu", "View" },
-        [PadFamily.PlayStation4] = new[] { "✕", "○", "□", "△", "L1", "R1", "L2", "R2", "Options", "Share" },
-        [PadFamily.PlayStation5] = new[] { "✕", "○", "□", "△", "L1", "R1", "L2", "R2", "Options", "Create" },
-        [PadFamily.Switch] = new[] { "B", "A", "Y", "X", "L", "R", "ZL", "ZR", "+", "−" },
-        [PadFamily.Steam] = new[] { "A", "B", "X", "Y", "L1", "R1", "L2", "R2", "Menu", "View" },
+        [PadFamily.Generic] = new[] { "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Start", "Select", "LS" },
+        [PadFamily.Xbox] = new[] { "A", "B", "X", "Y", "LB", "RB", "LT", "RT", "Menu", "View", "LS" },
+        [PadFamily.PlayStation4] = new[] { "✕", "○", "□", "△", "L1", "R1", "L2", "R2", "Options", "Share", "L3" },
+        [PadFamily.PlayStation5] = new[] { "✕", "○", "□", "△", "L1", "R1", "L2", "R2", "Options", "Create", "L3" },
+        [PadFamily.Switch] = new[] { "B", "A", "Y", "X", "L", "R", "ZL", "ZR", "+", "−", "LS" },
+        [PadFamily.Steam] = new[] { "A", "B", "X", "Y", "L1", "R1", "L2", "R2", "Menu", "View", "L3" },
     };
 
     static readonly string[] Tokens = Array.ConvertAll(Enum.GetNames(typeof(PadButton)), n => "{" + n + "}");

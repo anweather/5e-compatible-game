@@ -242,15 +242,7 @@ public class SpellCaster : MonoBehaviour
         if (!grid.World.InBounds(target.x, target.y)) return null;
         var me = grid.CellAt(transform.position);
         if (spell.Effect == SpellShapes.TeleportEffect || spell.Effect == SpellShapes.CarryEffect)
-        {
-            error = spell.Effect == SpellShapes.TeleportEffect
-                ? CheckBlink(spell, target)
-                : MageHand.Check(grid, spell, hands, me, target.x, target.y);
-            if (error != null) return null;
-            // A blink may land short of the crosshair (Reach): mark where it will.
-            var lands = spell.Effect == SpellShapes.TeleportEffect && blinkLanding.HasValue ? grid.CellAt(blinkLanding.Value) : target;
-            return (lands.x, lands.y, 1, 0, 0);
-        }
+            return AimMove(spell, me, target, out error);
         // A line or a cone points where the crosshair is, off the grid's four ways if it is; it
         // starts beside the caster on the nearest of the four.
         var (aimX, aimY) = AimOf(spell);
@@ -260,6 +252,17 @@ public class SpellCaster : MonoBehaviour
         if (dir == null) { error = $"Click away from the wizard to point {spell.Name} that way."; return null; }
         var (dx, dy) = Step(dir.Value);
         return (me.x + dx, me.y + dy, dir.Value, aimX, aimY);
+    }
+
+    // Misty Step and Mage Hand land on one square: a blink may land short of the crosshair (Reach), so
+    // it marks where it will.
+    (int x, int y, int dir, int aimX, int aimY)? AimMove(SpellDef spell, Vector2Int me, Vector2Int target, out string error)
+    {
+        bool blink = spell.Effect == SpellShapes.TeleportEffect;
+        error = blink ? CheckBlink(spell, target) : MageHand.Check(grid, spell, hands, me, target.x, target.y);
+        if (error != null) return null;
+        var lands = blink && blinkLanding.HasValue ? grid.CellAt(blinkLanding.Value) : target;
+        return (lands.x, lands.y, 1, 0, 0);
     }
 
     /// <summary>Fine steps per square of an aim's vector: the most slant a line can take is one square in this many.</summary>
