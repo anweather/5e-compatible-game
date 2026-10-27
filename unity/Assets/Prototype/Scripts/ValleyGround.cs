@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Chem;
 using UnityEngine;
 
@@ -371,42 +372,12 @@ public sealed class ValleyGround
         for (int t = 0; t < textures.Length; t++)
         {
             WriteTexture(textures[t], t * 4, ch);
-            UploadBox(textures[t], ch);
+            // The whole texture, with its mips: a chunk's paint is only 64 × 64 texels, so
+            // uploading just the painted box saves nothing worth its staging copies.
+            textures[t].Apply(true);
         }
         ch.dx0 = ch.dz0 = int.MaxValue;
         ch.dx1 = ch.dz1 = -1;
-    }
-
-    // Sends only the painted box to the GPU: copied into a staging texture of about its size, which
-    // the GPU copies into place (Graphics.CopyTexture), instead of Apply uploading the whole texture.
-    // The texture's own pixels (WriteTexture) stay the paint's storage. A texture with mip levels, or
-    // a GPU that can't copy a region, still takes the whole upload with its mips.
-    static void UploadBox(Texture2D tex, Chunk ch)
-    {
-        if (tex.mipmapCount > 1 || SystemInfo.copyTextureSupport == UnityEngine.Rendering.CopyTextureSupport.None)
-        {
-            tex.Apply(true);
-            return;
-        }
-        int w = ch.dx1 - ch.dx0 + 1, h = ch.dz1 - ch.dz0 + 1;
-        var stage = Staging(w, h, tex.format);
-        var from = tex.GetPixelData<Color32>(0);
-        var into = stage.GetPixelData<Color32>(0);
-        for (int z = 0; z < h; z++)
-            Unity.Collections.NativeArray<Color32>.Copy(from, (ch.dz0 + z) * tex.width + ch.dx0, into, z * stage.width, w);
-        stage.Apply(false);
-        Graphics.CopyTexture(stage, 0, 0, 0, 0, w, h, tex, 0, 0, ch.dx0, ch.dz0);
-    }
-
-    // Staging textures by size, rounded up to 32 texels so a few serve every box.
-    static readonly Dictionary<(int w, int h, TextureFormat format), Texture2D> staging = new();
-
-    static Texture2D Staging(int w, int h, TextureFormat format)
-    {
-        int sw = (w + 31) / 32 * 32, sh = (h + 31) / 32 * 32;
-        if (!staging.TryGetValue((sw, sh, format), out var tex) || tex == null)
-            staging[(sw, sh, format)] = tex = new Texture2D(sw, sh, format, false, true) { name = "Paint staging", hideFlags = HideFlags.DontSave };
-        return tex;
     }
 
     // Notes which of this frame's cells lose their detail grass (bare) or get it back (grown again,
@@ -435,12 +406,7 @@ public sealed class ValleyGround
     void WriteDetail()
     {
         if (pendingDetail.Count == 0) return;
-        (int i, int j) at = default;
-        foreach (var k in pendingDetail.Keys)
-        {
-            at = k;
-            break;
-        }
+        var at = pendingDetail.Keys.First();
         var cells = pendingDetail[at];
         pendingDetail.Remove(at);
         bare.Clear();
