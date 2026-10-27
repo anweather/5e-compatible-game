@@ -8,6 +8,8 @@
 
   <ItemGroup>
     <Compile Include="../../unity/Assets/Prototype/Chemistry/Tests/*.cs" Link="Tests/%(Filename)%(Extension)" />
+    <!-- The playtest bot's tests (its logic is in Game.Core; playtest/DESIGN.md). -->
+    <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Editor/*Tests.cs" Link="Playtest/Tests/%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>
