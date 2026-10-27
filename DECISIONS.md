@@ -39,11 +39,40 @@ Each entry has:
   - Sub-answer (2026-10-27): **test A only, no download.** Test B, the
     Agility 1.618.5 swap from NuGet, isn't approved. Ask again before any
     fix that needs downloaded binaries.
-  - Test A is with Gameplay, on an existing build.
+  - Test A result (Gameplay, 2026-10-27): no dialog, and the window closes at
+    once (Alt+F4 0.9 s). But the process lingers, hidden, for 17–39 s, then
+    crashes in D3D12Core and writes a 42 MB dump to
+    `%LOCALAPPDATA%\CrashDumps` on every quit. Windows keeps 10 dumps, about
+    420 MB. Every session also shows as a crash in Reliability Monitor.
+    Shutdown seems stuck for about 20 s before the fault. A relaunch during
+    that time, and Velopack's restart, weren't tested.
 - **Why:** Andrew: "No download."
 - **Revisited:** 0.
 
 ## Decided
+
+### J-011: A growing demo reel of features
+
+- **Asked:** 2026-10-27, by Andrew. Coordinate short videos and screenshots
+  of each feature in an artifact that keeps growing, if the artifact system
+  supports that.
+- **Also comes up when:**
+  - any merge of a feature you can see;
+  - playtest fixes (their before and after);
+  - releases (a reel per alpha?);
+  - anyone asking "where can I see X?".
+- **Answer:** the existing "Valley Demo Reel" artifact
+  (https://claude.ai/artifact/MeFmq29Uv2CE6ZggRKVMkd) became data-driven: a
+  fixed page plus `reel.json`, both published beside the clips. A new
+  feature only adds its files and appends to `reel.json`, and the agent that
+  merges it supplies the clip.
+- **Why:** (recommendation)
+  - The reel is shared by public link. Published files work for signed-out
+    viewers; the db and asset store need a sign-in.
+  - Files left out of a publish are kept, so appending is cheap.
+  - A version's limit (256 MB, 511 files) leaves room for about 50 more clips
+    before a Volume 2.
+- **Revisited:** 0.
 
 ### J-001: Lanes and file ownership
 

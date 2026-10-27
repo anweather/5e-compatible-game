@@ -1,0 +1,38 @@
+{
+  "drops": [
+    {
+      "when": "27 Oct 2026 · alpha 0.1.4",
+      "title": "The overnight build",
+      "intro": "What both sessions built on the night of 26 Oct, each filmed while its automated check ran and passed in the Unity Editor.",
+      "note": "Not filmed here: the coast and island resort, Hollowmere's villagers, and the gulls, crabs and fish. They have no automated check with its own camera yet, so they're best seen in the game: the coast is south-east of the valley and Hollowmere just west of the yard.",
+      "clips": [
+        { "area": "Spells", "lane": "gameplay", "title": "Casting gestures", "length": "0:14", "video": "gestures.mp4", "poster": "gestures.jpg",
+          "summary": "A shove for Gust of Wind, a low-to-high raise for Raise Earth, an overhand throw for Fireball, and the arms-up pull-down for Meteor." },
+        { "area": "Spells", "lane": "gameplay", "title": "Ray of Frost as a beam", "length": "0:05", "video": "frost.mp4", "poster": "frost.jpg",
+          "summary": "One frost beam along the line instead of the ice sphere, freezing a path across the lake." },
+        { "area": "Spells", "lane": "gameplay", "title": "Hasten Time, Control Weather, Fog Cloud", "length": "0:32", "video": "timeweather.mp4", "poster": "timeweather.jpg",
+          "summary": "The day racing by, the weather stepped through rain, snow and storm, then a bank of fog, burnt through by a Fire Bolt and blown by Gust." },
+        { "area": "Spells", "lane": "gameplay", "title": "Plant Growth and Spike Growth", "length": "0:55", "video": "nature.mp4", "poster": "nature.jpg",
+          "summary": "A Fireball burns the meadow, Plant Growth brings the grass back and a sapling grows into a tree; then a field of thorns, walked through and set alight." },
+        { "area": "Spells", "lane": "gameplay", "title": "Shapeshift", "length": "0:09", "video": "shapeshift.mp4", "poster": "shapeshift.jpg",
+          "summary": "Aim at a deer and become one: its speed, its walk, and the herd doesn't bolt. Cast again to change back." },
+        { "area": "Moving and playing", "lane": "gameplay", "title": "Dodge roll", "length": "0:02", "video": "roll.mp4", "poster": "roll.jpg",
+          "summary": "Four metres in under half a second with a full tumble, on the left trigger or Left Ctrl." },
+        { "area": "Moving and playing", "lane": "gameplay", "title": "The climbing tower", "length": "0:20", "video": "tower.mp4", "poster": "tower.jpg",
+          "summary": "Moving, collapsing and phasing platforms up a 38 m column, a double jump, and fireworks at the flag." },
+        { "area": "Moving and playing", "lane": "gameplay", "title": "Tower defense", "length": "0:30", "video": "defense.mp4", "poster": "defense.jpg",
+          "summary": "A wave of raiders walks the path; a Fireball takes one out, a Wall of Stone sends the rest the long way round, and one reaching the flag costs a life." },
+        { "area": "Moving and playing", "lane": "gameplay", "title": "The ball court", "length": "0:15", "video": "court.mp4", "poster": "court.jpg",
+          "summary": "Bigger court and ball: the gate swings open as you come, a goal goes up on the board, and the ball comes back to the centre spot." },
+        { "area": "The world", "lane": "world", "title": "The bigger waterfall", "length": "0:06", "video": "falls.mp4", "poster": "falls.jpg",
+          "summary": "The falls at the head of the river, with solid rocks and a scree ramp up beside it." },
+        { "area": "The world", "lane": "world", "title": "Currents and surf", "length": "0:16", "video": "current.mp4", "poster": "current.jpg",
+          "summary": "The river and the surf on the new coast carry swimmers and floating things along." },
+        { "area": "The world", "lane": "world", "title": "Riding the swell", "length": "0:11", "video": "swell.mp4", "poster": "swell.jpg",
+          "summary": "A swimmer out at sea now rises and falls with the waves the sea draws, instead of lying on the calm level." },
+        { "area": "The world", "lane": "world", "title": "Seats", "length": "0:07", "video": "sit.mp4", "poster": "sit.jpg",
+          "summary": "Sit on a bench in Hollowmere, the new village west of the yard, or lie back on a lounger at the beach." }
+      ]
+    }
+  ]
+}
