@@ -126,7 +126,7 @@ ask the coordinator first.
 | Gameplay | `unity/Assets/Prototype/{Audio,Materials,Shaders,Settings}/**`, `unity/Assets/InputSystem_Actions.inputactions` |
 | Gameplay | `world/looks.json` |
 | World | `unity/Assets/Prototype/Chemistry/**` (including `Chemistry.asmdef` and `Chemistry.Tests.asmdef`) |
-| World | `unity/Assets/Prototype/Scripts/ChemGrid.cs`, `Scripts/Net/NetChem.cs`, `Scripts/ProbeExplore.cs` |
+| World | `unity/Assets/Prototype/Scripts/ChemGrid.cs` and every `ChemGrid.*.cs` partial (Effects, Rules, Shaping, Visuals), `Scripts/Net/NetChem.cs`, `Scripts/ProbeExplore.cs` |
 | World | `rules/**`, `core/**`, `sandbox/**` |
 | World | `world/` except `looks.json` |
 | World | `docs/WORLD_STREAMING.md`, `docs/FAST_LOOP.md` |
@@ -159,9 +159,9 @@ Cross-lane needs that come up often:
 
 | Agent | Task | Branch | State |
 |---|---|---|---|
-| Gameplay | 1) The demo clip for props-sleep (`sleep-clip`, `667f5ed`), when it has the Editor slot. 2) Backlog #1: the game ends itself on quit (J-010). 3) Next: backlog #4, resetting the world online | `sleep-clip`, then `quit-exit` | Code now; Editor after World |
-| World | The playtest bot (see `playtest/DESIGN.md` on the branch, and J-008 in `JUDGMENT_CALLS.md`). Phase 1: spikes (rendering minimised or off-screen, muted audio, incremental build time), then the bot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | Phase 1 started 2026-10-27; has the PC Editor slot |
-| Build | Backlog #3, the performance pass: a plan first (what to measure, where the spikes come from, which PC tests to run), then the fixes in its lane | `perf-pass` (off `dev`) | Started 2026-10-27 |
+| Gameplay | Has the PC Editor slot. In order: 1) the props-sleep clip (`sleep-clip`); 2) quit-exit tests (`quit-exit`, `47a07e5`, reviewed); 3) the perf pass's PC tests PC-1 to PC-3; 4) `fps-timing` (FrameTimingManager in FpsProbe), then PC-4. Next: backlog #4, resetting the world online | `sleep-clip`, `quit-exit`, `fps-timing` | In progress |
+| World | The playtest bot (J-008). Phase 1 spikes passed (2026-10-27; full report coming). Next: build the bot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | In progress; Editor slot released |
+| Build | Backlog #3, the performance pass. The plan is approved. Now: Mac measurements M1, M3 and M5, then B1 (URP settings) and B2 (GPU Resident Drawer occlusion), one at a time. The fixes in other lanes (W1-W3 World, G1-G3 Gameplay) wait for the profiles | `perf-pass` | In progress |
 
 ## Shared-file queue
 
