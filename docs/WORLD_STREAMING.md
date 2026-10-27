@@ -203,4 +203,68 @@ Next: roads, settlements and goal scoring from the theme engine; ids for
 things that survive regeneration; then chunks generated from the seed at
 runtime, and a bigger world.
 
+## Part 3 (plan): generating chunks as players reach them
+
+Agreed with Andrew 2026-10-27. Not built yet; build in the slices below.
+
+**The world:** one **large, bounded continent**, not an endless one. The
+world theme (D11) lays it out: the hand-made valley at the start, then
+mountains, lakes, rivers and later roads and towns round it, fading at its
+edges into a coast or impassable mountains. Its size is a setting
+(several km across); nothing assumes the 9x9 chunks of today.
+
+**Each chunk is a pure function of the world's seed.** The first time a
+player comes near a chunk it is generated, the same on every machine; an
+untouched chunk is never stored, only regenerated. What players change is
+kept as a diff against the generated chunk (below).
+
+**Two generators, one shape.**
+- **The core decides the land: cells and their height.**   (Chem, exact maths only, D11) gives a chunk's 64x64 cells from the seed
+  and the theme's blueprint: the terrain (grass, brush, trees, rock, water),
+  and the **height of the ground in whole steps**. Mountains are real: a
+  cell high on a mountain is rock or soil several steps up, so digging into
+  one (Move Earth, Fireball's crater) reaches real rock, and water runs
+  down real slopes. The big shapes (mountains, ridges, hills, the valleys
+  rivers run in) use exact noise like the theme engine's, so they are the
+  same on every machine.
+- **The view draws it: Punchy adds detail and colour.** Each chunk's Unity
+  terrain is built at runtime from the core's heights, smoothed, with
+  Punchy's noise adding only small surface detail on top, and Punchy's
+  surface rules painting it (rock on slopes, snow up high). Trees and grass
+  follow the cells. Float maths is fine here because nothing shared depends
+  on it, and chunk seams match because every value is a function of world
+  position. Built on a worker thread so travelling doesn't hitch.
+
+**When chunks are made and dropped (lockstep).** already plans which chunks are simulated, asleep or far, and online the
+host stamps the plan into its tick batches. It also says when a chunk is
+first generated, so every machine generates it at the same tick, and a
+late joiner replaying from tick 0 does too. Nothing extra is sent: the
+seed is enough. Far chunks nobody has changed are simply dropped.
+
+**What is saved: diffs.** A changed chunk keeps only what differs from its
+generated self (cells, things broken or moved), stamped with the generator
+and theme versions so a new generator never misapplies an old diff
+(PocketTactics' diffs). In a shared online world the host machine keeps
+the save, as a single-player game would; whether a shared world should
+later live on a server is open.
+
+**Things.** Generated props and items get ids from their chunk, kind and
+spot hashed together, so the same tree or barrel always has the same id;
+the hand-placed ones in  keep theirs.
+
+**The valley stays hand-made:** a fixed landmark at the start whose chunks
+come from the baked map, as today; the generator fills round it.
+
+**Slices:**
+1.  in the core: cells and heights from the theme's
+   blueprint and exact noise, with ids that survive regeneration; goldens
+   on the PC and the Mac.
+2. Generate on demand: chunks made as players come near, the generate step
+   in the host's tick batches, a replay test.
+3. Runtime terrain: each chunk's Unity terrain, trees and grass built from
+   the core's heights with Punchy's detail and paint, off the main thread.
+4. Saves: diffs on disk, far chunks dropped.
+5. The full continent: a bigger theme core, and a floating origin past
+   5-10 km.
+
 See `docs/ARCHITECTURE.md` for the current code layout.
