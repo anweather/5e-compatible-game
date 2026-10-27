@@ -219,7 +219,8 @@ untouched chunk is never stored, only regenerated. What players change is
 kept as a diff against the generated chunk (below).
 
 **Two generators, one shape.**
-- **The core decides the land: cells and their height.**   (Chem, exact maths only, D11) gives a chunk's 64x64 cells from the seed
+- **The core decides the land: cells and their height.** `ChunkGen`
+  (Chem, exact maths only, D11) gives a chunk's 64x64 cells from the seed
   and the theme's blueprint: the terrain (grass, brush, trees, rock, water),
   and the **height of the ground in whole steps**. Mountains are real: a
   cell high on a mountain is rock or soil several steps up, so digging into
@@ -235,7 +236,8 @@ kept as a diff against the generated chunk (below).
   on it, and chunk seams match because every value is a function of world
   position. Built on a worker thread so travelling doesn't hitch.
 
-**When chunks are made and dropped (lockstep).** already plans which chunks are simulated, asleep or far, and online the
+**When chunks are made and dropped (lockstep).** `ChunkStreaming`
+already plans which chunks are simulated, asleep or far, and online the
 host stamps the plan into its tick batches. It also says when a chunk is
 first generated, so every machine generates it at the same tick, and a
 late joiner replaying from tick 0 does too. Nothing extra is sent: the
@@ -250,13 +252,13 @@ later live on a server is open.
 
 **Things.** Generated props and items get ids from their chunk, kind and
 spot hashed together, so the same tree or barrel always has the same id;
-the hand-placed ones in  keep theirs.
+the hand-placed ones in `world/things.json` keep theirs.
 
 **The valley stays hand-made:** a fixed landmark at the start whose chunks
 come from the baked map, as today; the generator fills round it.
 
 **Slices:**
-1.  in the core: cells and heights from the theme's
+1. `ChunkGen` in the core: cells and heights from the theme's
    blueprint and exact noise, with ids that survive regeneration; goldens
    on the PC and the Mac.
 2. Generate on demand: chunks made as players come near, the generate step
