@@ -22,7 +22,34 @@ Each entry has:
 
 ## Open
 
-(none)
+### J-015: SSAO, off, cheap or as it is? (perf pass)
+
+- **Asked:** 2026-10-27, raised by Build (the B1 sweep).
+- **Also comes up when:** any visual-quality-versus-speed setting (shadows,
+  HDR, post-processing), and quality presets later.
+- **The evidence** (Mac player at 1080p, mean / p95 ms):
+  - base 42.0 / 70.4;
+  - off 32.7 / 61.0 (-22%);
+  - cheap (depth-only, half resolution, low samples) 35.4 / 62.4 (-16%).
+  - Off loses the contact darkening under the eaves, at the ground and
+    between bushes. Cheap looks nearly the same as base.
+  - Screenshots on the Mac:
+    `unity/Builds/demo-videos/ssao-compare-*.png`.
+- **Answer:** pending. Recommended: cheap, then measure soft shadows at
+  Medium on top of it.
+- **Revisited:** 0.
+
+### J-016: May agents force-push their own unmerged branches after a rebase?
+
+- **Asked:** 2026-10-27, by the coordinator, after World force-pushed its
+  four rebased branches. Andrew had asked to be consulted before
+  force-pushes.
+- **Also comes up when:** every rebase of a pushed feature branch, by any
+  agent.
+- **Answer:** pending. Recommended: allowed only for your OWN unmerged
+  feature branch, only with `--force-with-lease`; never `dev`, `main` or
+  another agent's branch.
+- **Revisited:** 0.
 
 ## Decided
 
