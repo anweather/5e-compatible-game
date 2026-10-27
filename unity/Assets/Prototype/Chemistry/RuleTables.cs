@@ -1,6 +1,7 @@
 // Typed view of ../rules/*.json, the same tables the web sandbox runs on
 // (sandbox/src/rules.ts). Only the cell-level parts, entities.json (for the
-// Unity physics props) and items.json (things to carry, Items.cs) are interpreted; the other files (critters, machines)
+// Unity physics props and the defense field's raiders, with reactions.json's
+// entity rules: Defense.cs) and items.json (things to carry, Items.cs) are interpreted; the other files (critters, machines)
 // are kept as JSON so live mods (Rules.Mods.cs) can patch and check them, but
 // nothing here reads them.
 using System;
@@ -127,6 +128,8 @@ namespace Chem
         public bool Flammable, Creature, Player;
         /// <summary>Null unless it blows up when destroyed.</summary>
         public ExplosionDef Explodes;
+        /// <summary>Null unless it raids the defense field (Defense.cs).</summary>
+        public RaiderDef Raider;
     }
 
     public sealed class FireParams
@@ -211,6 +214,10 @@ namespace Chem
         public int FallDamage = 4, ZapDamage = 3;
         /// <summary>A burning entity takes 1 damage on every tick divisible by this (sim.json status).</summary>
         public int BurnDamageEvery = 3;
+        /// <summary>A creature in thick steam is scalded on every tick divisible by this (sim.json status).</summary>
+        public int ScaldEvery = 6;
+        /// <summary>The defense field's waves (sim.json defense).</summary>
+        public DefenseParams Defense = new DefenseParams();
     }
 
     /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
@@ -369,6 +376,7 @@ namespace Chem
                 list.Add(rule);
             }
 
+            ParseEntityRules(r, doc["entityRules"]);
             foreach (var t in doc["spells"].OfType<JObject>()) r.spells.Add(ParseSpell(t));
             foreach (var p in ((JObject)doc["entities"]).Properties())
                 if (p.Value is JObject e) r.entities[p.Name] = ParseEntity(p.Name, e);
@@ -464,6 +472,7 @@ namespace Chem
                 Creature = Truthy(o["creature"]),
                 Player = Truthy(o["player"]),
                 Explodes = boom,
+                Raider = ParseRaider(o["raider"]),
             };
         }
 
@@ -620,7 +629,12 @@ namespace Chem
             s.ConductLimit = Int(o["conductLimit"]) ?? s.ConductLimit;
             s.FallDamage = Int(o["fallDamage"]) ?? s.FallDamage;
             s.ZapDamage = Int(o["zapDamage"]) ?? s.ZapDamage;
-            if (o["status"] is JObject st) s.BurnDamageEvery = Int(st["burnDamageEvery"]) ?? s.BurnDamageEvery;
+            if (o["status"] is JObject st)
+            {
+                s.BurnDamageEvery = Int(st["burnDamageEvery"]) ?? s.BurnDamageEvery;
+                s.ScaldEvery = Int(st["scaldEvery"]) ?? s.ScaldEvery;
+            }
+            s.Defense = ParseDefense(o["defense"]);
             if (o["day"] is JObject day)
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;

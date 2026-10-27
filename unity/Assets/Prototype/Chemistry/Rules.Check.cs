@@ -72,10 +72,30 @@ namespace Chem
                     else if (!Strings(terrain[p.Name]["tags"]).Contains("machine")) Errors.Add($"machine {p.Name}: terrain lacks the machine tag");
                 }
                 foreach (var p in ((JObject)r["entities"]).Properties()) EntityRefs(p);
+                DefenseRefs();
+            }
+
+            // A raider's pace and the elements it's weak to or resists (Defense.cs).
+            void RaiderRefs(JProperty p)
+            {
+                if (!(p.Value["raider"] is JObject raider)) return;
+                var pace = raider["ticksPerSquare"];
+                if (pace != null && !(IsWholeNumber(pace) && (double)pace >= 1)) Errors.Add($"entity {p.Name}: raider ticksPerSquare must be a whole number from 1");
+                foreach (var e in Strings(raider["weak"]).Where(e => !elements.Contains(e))) Errors.Add($"entity {p.Name}: raider is weak to unknown element {e}");
+                foreach (var e in Strings(raider["resist"]).Where(e => !elements.Contains(e))) Errors.Add($"entity {p.Name}: raider resists unknown element {e}");
+            }
+
+            // The defense field's raider kinds must be raiders.
+            void DefenseRefs()
+            {
+                var entities = (JObject)r["entities"];
+                foreach (var k in Strings(r["sim"]?["defense"]?["kinds"]))
+                    if (!(entities[k] is JObject e && e["raider"] is JObject)) Errors.Add($"sim defense: kind {k} is not a raider");
             }
 
             void EntityRefs(JProperty p)
             {
+                RaiderRefs(p);
                 var explodes = p.Value["explodes"];
                 if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
                 if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1 and radius from 0");
@@ -245,6 +265,7 @@ namespace Chem
                 foreach (var p in o.Properties())
                 {
                     var key = path + p.Name;
+                    if (key == "defense.kinds") continue; // names, checked by DefenseRefs
                     if (p.Value is JObject sub) Sim(sub, key + ".");
                     else if (key == "height.min") Number(p.Value, $"sim {key}");
                     else Number(p.Value, $"sim {key}", PositiveSim.Contains(key) ? 1 : 0);

@@ -76,7 +76,7 @@ namespace Chem
             if (t.Has("blocking") || t.Has("machine")) return uprooted;
             var range = Rules.Sim.Height;
             int height = Math.Max(range.Min, Math.Min(range.Max, c.Height + n));
-            if (height == c.Height) return uprooted;
+            if (Unmoved(c, x, y, height)) return uprooted;
             c.Height = height;
             if (n < 0) c.Cover = null;
             var to = terrain ?? (n < 0 ? t.DugTo : null);
@@ -90,6 +90,10 @@ namespace Chem
             }
             return true;
         }
+
+        /// <summary>Whether a reshape to this height changes nothing: it's the height already, or it would raise a wall under a raider.</summary>
+        bool Unmoved(Cell c, int x, int y, int height) =>
+            height == c.Height || (height >= Rules.Sim.Height.BlockAt && RaiderAt(x, y) != null);
 
         /// <summary>
         /// Moves all of a cell's water (ice melts) onto the open cells around it: one unit at a

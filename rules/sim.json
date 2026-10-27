@@ -9,6 +9,12 @@
   "fallDamage": 4,
   "zapDamage": 3,
   "conductLimit": 80,
+  "defense": {
+    "lives": 10, "waves": 5, "first": 3, "growth": 2, "hpPerWave": 2,
+    "warmup": 24, "spawnEvery": 9, "betweenWaves": 60,
+    "margin": 10, "wallCost": 30, "roughCost": 4, "roughTicks": 6, "batterTicks": 18, "deepWater": 8,
+    "kinds": ["bone-hound", "ash-crab", "giant-spider"]
+  },
   "day": { "lengthMinutes": 24, "startHour": 9 },
   "weather": {
     "periodMinutes": 4, "rampMinutes": 0.5, "calmPeriods": 2,

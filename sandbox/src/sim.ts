@@ -4,6 +4,7 @@
 import { RULES } from "./rules.ts";
 import { applyElement, displaceWater, ignite } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
+import { tickDefense } from "./defense.ts";
 import {
   type Cell, type World,
   DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
@@ -24,6 +25,7 @@ export function step(w: World): void {
   tickGas(w);
   tickWeather(w);
   tickEntities(w);
+  tickDefense(w);
   tickMachines(w);
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
