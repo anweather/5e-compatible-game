@@ -177,7 +177,7 @@ ask the coordinator first.
 | Gameplay | `unity/Assets/Prototype/{Audio,Materials,Shaders,Settings}/**`, `unity/Assets/InputSystem_Actions.inputactions` |
 | Gameplay | `world/looks.json` |
 | World | `unity/Assets/Prototype/Chemistry/**` (including `Chemistry.asmdef` and `Chemistry.Tests.asmdef`) |
-| World | `unity/Assets/Prototype/Scripts/ChemGrid.cs` and every `ChemGrid.*.cs` partial (Effects, Rules, Shaping, Visuals), `Scripts/Net/NetChem.cs`, `Scripts/ProbeExplore.cs` |
+| World | `unity/Assets/Prototype/Scripts/ChemGrid.cs` and every `ChemGrid.*.cs` partial (Effects, Rules, Shaping, Visuals), `Scripts/CellWaterMesh.cs` (the water surface ChemGrid.Visuals draws), `Scripts/Net/NetChem.cs`, `Scripts/ProbeExplore.cs` |
 | World | `rules/**`, `core/**`, `sandbox/**` |
 | World | `world/` except `looks.json` |
 | World | `docs/WORLD_STREAMING.md`, `docs/FAST_LOOP.md` |
