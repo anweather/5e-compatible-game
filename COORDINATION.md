@@ -203,7 +203,7 @@ Cross-lane needs that come up often:
 | Agent | Task | Branch | State |
 |---|---|---|---|
 | Gameplay | Has the PC Editor slot. In order: 1) the props-sleep clip (`sleep-clip`); 2) quit-exit tests (`quit-exit`, `47a07e5`, reviewed); 3) the perf pass's PC tests PC-1 to PC-3; 4) `fps-timing` (FrameTimingManager in FpsProbe), then PC-4. Next: backlog #4, resetting the world online | `sleep-clip`, `quit-exit`, `fps-timing` | In progress |
-| World | The playtest bot (J-008). Phase 1 spikes passed (`377a7e0`, see DESIGN.md "Phase 1 results"). Now phase 2: goals, the trace and replay, detectors, run.json (code only). Phase 3 needs about 27 min of the build slot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | In progress; Editor slot released |
+| World | The playtest bot (J-008). Phase 2 done (`b880057`): it compiles, runs off-screen and muted, and made 4 real runs. Its first real paper cut: Hasten Time frames take 0.8–2.2 s. Exact replay drifts (follow-up). Now phase 3, code only (coverage, crash and hang checks, build.ps1); then about 27 min of the build slot. Stop before the scheduled tasks. Queued next: perf-pass items, the tick hitch plus Hasten Time (one frame doing many ticks), and W1 (dirty-cell render) | `playtest-bot` | In progress |
 | Build | Backlog #3, the performance pass. Mac M1/M3/M5 done: the worst spikes are SkyLight's ambient readback (up to 122 ms; routed to Gameplay as `sky-ambient`) and the chemistry tick in one frame (about 15 ms; routed to World). The steady cost is ChemGrid.Render walking every cell (5.3 ms; W1, World). Now: B1 (URP settings) and B2 (occlusion), one at a time | `perf-pass` | In progress |
 
 ## Shared-file queue
