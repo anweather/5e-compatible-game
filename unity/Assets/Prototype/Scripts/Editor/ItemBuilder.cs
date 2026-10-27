@@ -61,9 +61,9 @@ public static class ItemBuilder
             }
             case ItemIds.Ball:
             {
-                // A football, a little big: easy to see and to run into.
+                // A big kickball (70 cm): easy to see and to run into on the big court.
                 var ball = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                ball.transform.localScale = Vector3.one * 0.42f;
+                ball.transform.localScale = Vector3.one * 0.7f;
                 ball.GetComponent<Collider>().sharedMaterial = Bouncy();
                 PropBuilder.Paint(ball, "ItemBall", new Color(0.95f, 0.93f, 0.86f), 0.35f);
                 return ball;
