@@ -426,7 +426,11 @@ Make the world feel lived in from generated content (D12,
   (`ValleyChemistry`), `ValleyFauna`, `AmbientCritters`, Punchy's
   approach (credited), and the theme `town` features (D11) for placing
   villages later.
-- **Size:** M per layer; the village first.
+- **Built so far:** Hollowmere, the coast and Sunward Key, seats, river and
+  surf currents, the bigger falls. The prioritized list of what's next
+  (gulls, fish, crabs, villagers, sound, boats, ...) is in
+  `docs/WORLD_LIFE.md`, "Backlog: a world that's lived in".
+- **Size:** M per layer.
 
 ## Suggested order)
 
