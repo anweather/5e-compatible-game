@@ -144,20 +144,20 @@ changes what players can do.
 
 ### Next: cheap and very visible
 
-1. **Gulls over the beach.**
+1. **Gulls over the beach.** Built (AmbientLife).
    - A flock circling the surf and crying.
    - They land on the dock's bollard, the palms and the umbrellas.
    - They scatter from fire, thunder or a wizard running at them.
    - The first sky layer: light flocking on the CPU, one instanced batch.
-2. **Fish.**
+2. **Fish.** Built (AmbientLife).
    - Shoals in the lake, the river and the shallows, moved in the shader like the fireflies.
    - Now and then one jumps.
    - They scatter from lightning, and freeze in place under ice.
    - Later: catchable (then they're core).
-3. **Crabs on the beach.**
+3. **Crabs on the beach.** Built (AmbientLife).
    - They scuttle sideways and dig into the sand when you come close.
    - At night they come out by the water.
-4. **Villagers.**
+4. **Villagers.** Started: they wander their village, leashed to it (ValleyFauna, Village.residents). Still to do:
    - Hollowmere's and Sunward Key's folk walk between their doors, the well and the benches, and sit on the benches (`Seat` already poses any humanoid).
    - They run from a burning house, and go indoors at night and in rain.
    - The barkeep stands behind the beach bar.
@@ -192,7 +192,7 @@ changes what players can do.
     - Fences, a hay cart, a scarecrow, a sheep pasture.
 13. **Lights at night.**
     - Lanterns on the dock, torches by the inn door.
-    - The window glow checked in play: the overnight screenshot hack couldn't confirm it.
+    - The window glow already works (checked at 22:00: windows, the inn's door lamp, the island's glowbulbs).
 14. **Wind made visible.**
     - Palm fronds, grass and laundry lines sway with the weather's wind (`World.Weather`), and the inn's sign swings.
 15. **Day and night.**
