@@ -216,6 +216,11 @@ Each entry has:
   3. It makes exact replays possible.
   4. Triage only on new runs keeps the cost down.
   5. Solo first keeps v1 small.
+- **Result (2026-10-27, phase 1):** the fallback in answer 2 isn't needed. A
+  minimised or off-screen player renders every frame and never takes focus,
+  so runs can go any time the preflight passes. Sound is muted in the
+  Windows mixer (`AppMute`), so the audio detectors still hear it. An
+  incremental build takes 16 s.
 - **Revisited:** 0.
 
 ### J-009: Keep a judgment-call log?
