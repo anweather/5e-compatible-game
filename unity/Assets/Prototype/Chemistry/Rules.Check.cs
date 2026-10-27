@@ -38,7 +38,7 @@ namespace Chem
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate", "radiusPerCharge" };
             static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n", "wave" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
-            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.meteors.every", "weather.meteors.fallTicks" };
+            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep" };
 
             readonly JObject r, terrain, covers, gases;
             readonly HashSet<string> elements;
@@ -247,6 +247,13 @@ namespace Chem
                 var min = (r["sim"]["height"] as JObject)?["min"];
                 if (min != null && (min.Type == JTokenType.Integer || min.Type == JTokenType.Float) && (double)min > 0)
                     Errors.Add("sim height.min must be at most 0");
+                // A chunk must stay active at least as far out as it activates, or it would flicker.
+                var streaming = r["sim"]["streaming"] as JObject;
+                if (streaming?["reach"] is JValue reach && streaming["keep"] is JValue keep
+                    && (reach.Type == JTokenType.Integer || reach.Type == JTokenType.Float)
+                    && (keep.Type == JTokenType.Integer || keep.Type == JTokenType.Float)
+                    && (double)keep < (double)reach)
+                    Errors.Add("sim streaming.keep must be at least streaming.reach");
             }
 
             void RuleNumbers(JObject rule)

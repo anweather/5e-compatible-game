@@ -250,7 +250,8 @@ public class NetChem : NetworkBehaviour
     ChunkIntent[] PlanChunks()
     {
         if (!grid.streamChunks || hostTick % PlanEvery != 1) return System.Array.Empty<ChunkIntent>();
-        var plan = ChunkStreaming.Plan(grid.World.ChunkCoords, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells());
+        var streaming = grid.World.Rules.Sim.Streaming;
+        var plan = ChunkStreaming.Plan(grid.World.ChunkCoords, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells(), streaming.Reach, streaming.Keep);
         var stamped = new ChunkIntent[plan.Count];
         for (int i = 0; i < plan.Count; i++)
         {

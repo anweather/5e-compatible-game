@@ -185,20 +185,20 @@ touch them.
 
 ## Chunk streaming
 
-**Reach** *(proposed)*
+**Reach**
 : The chunks around a character that are kept active: within a few
   chunks of where it stands. Reaches overlap; their union is the
   **active region**.
 
-**Active region** *(proposed)*
+**Active region**
 : Every chunk that's active this tick: the union of all characters'
   reaches, plus whatever the chunk work decides to keep active beyond it
   (`WORLD_STREAMING.md`).
 
-**Activate / deactivate ring**
-: Today's reach, in `ChunkStreaming`: a chunk activates when a wizard is
-  within `WakeRing` (1) chunks and deactivates once none is within
-  `KeepRing` (2), so walking along a chunk edge doesn't flicker it.
+**Reach and keep distances**
+: `sim.json` `streaming`: a chunk activates when a character is within
+  `reach` (2) chunks and deactivates once none is within `keep` (3), so
+  walking along a chunk edge doesn't flicker it (`ChunkStreaming`).
 
 **Chunk switch**
 : The command that activates or deactivates a chunk, stamped into tick

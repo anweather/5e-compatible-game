@@ -292,7 +292,7 @@ if B and C prove too slow.
 
 ### What this needs (slices)
 
-1. **Reach and the active region.** R and the deactivate distance in
+1. **Reach and the active region** (built 2026-10-27). R and the deactivate distance in
    `sim.json`; the plan works from all characters (no change in
    behaviour at R = 1); the tests and the `explore` probe at R = 2.
 2. **Live and settled.** The core keeps, per chunk, the last tick
