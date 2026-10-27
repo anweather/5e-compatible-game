@@ -24,12 +24,17 @@ if (-not $Force -and (Test-Path $stamp) -and ((Get-Content $stamp -Raw).Trim() -
 $why = Test-Preflight -MinFreeGB 10
 if ($why -and -not $Force) { Say "skipped: $why"; exit 0 }
 
+# The checkout is the bot's own throwaway tree (COORDINATION.md): the yard it generates there, and
+# NetWizard.prefab with it, are never committed or pushed, and each build starts from origin/dev
+# exactly. This script never commits or pushes; the reset is only ever for that one tree.
+if ((Split-Path $wt -Leaf) -ne 'playtest-build') { Say "FAILED: refusing to reset $wt, which isn't the playtest-build checkout"; exit 1 }
 if (-not (Test-Path $wt)) {
     Say "making the playtest-build checkout at $wt"
     git -C $main worktree add --detach $wt $target
 } else {
     git -C $wt checkout -q --detach $target
-    if ($LASTEXITCODE -ne 0) { Say "FAILED: couldn't check out $target in $wt (local changes?)"; exit 1 }
+    git -C $wt reset -q --hard $target
+    if ($LASTEXITCODE -ne 0) { Say "FAILED: couldn't reset $wt to $target"; exit 1 }
 }
 
 # The Asset Store packs, copied from the main checkout (never edited there).
