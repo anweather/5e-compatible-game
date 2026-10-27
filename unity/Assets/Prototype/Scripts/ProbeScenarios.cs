@@ -221,6 +221,14 @@ public static class ProbeScenarios
             "moving one moves over 0.1 m, the phasing one is solid and a ghost in turn, the collapsing one drops within 1.5 s and is back within 6 s, " +
             "the second jump is taken and goes over 0.6 m higher than a single, the clock starts off the pad, the flag sets off fireworks and logs " +
             "\"You reached the top in m:ss!\", no console errors."),
+        new Entry("defense", typeof(DefenseProbe), 150f,
+            "The defense field north of the yard (DefenseFieldBuilder, DefenseField, World.Defense.cs): the wizard stands on the start plate, " +
+            "watches the first raiders come through the gate, casts a Fireball a square ahead of the leader, raises a Wall of Stone across the " +
+            "path 8 squares short of the flag and waits for a raider to get through. Checks: the field is built, its path one row of dirt 50 to " +
+            "70 m long, the plate starts the waves, a raider spawns within 10 s and is over 2 squares nearer the flag 3 s on, raiders are drawn, " +
+            "the Fireball beats at least one, the wall stands 4 squares or more and the next raider passes its column off the wall's rows (the way " +
+            "costs more), a raider reaching the flag costs a life (banner and HUD line show it), no console errors. Shots: the field, mid-wave, " +
+            "the wall, the end."),
     };
 
     public static Entry Find(string name) =>

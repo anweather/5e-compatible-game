@@ -31,7 +31,12 @@ using UnityEngine;
 // - Which chunks are simulated follows the players (ChunkStreaming): the host
 //   plans it from every wizard's position and stamps the switches into its
 //   batches, so every machine pauses the same chunks at the same tick.
-// - A late joiner asks for the history (casts, rule switches, prop effects
+// - The defense field's start command (DefenseField) travels like a cast:
+//   anyone asks the host, which sends it for the next tick just before that
+//   tick's batch, so the waves start on the same tick everywhere. The waves
+//   and raiders are then pure chemistry: every machine runs them, and the
+//   checksum's last part is their hash (World.DefenseHash).
+// - A late joiner asks for the history (casts, rule switches, prop effects, defense commands
 //   and chunk switches) and replays it from tick 0.
 [RequireComponent(typeof(ChemGrid))]
 public class NetChem : NetworkBehaviour
@@ -51,6 +56,8 @@ public class NetChem : NetworkBehaviour
     readonly List<EffectIntent> pendingEffects = new();
     readonly List<EffectIntent> effectHistory = new();
     readonly List<ChunkIntent> chunkHistory = new();
+    readonly List<DefenseIntent> pendingDefense = new();
+    readonly List<DefenseIntent> defenseHistory = new();
     // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
     readonly HashSet<(int cx, int cy)> plannedAwake = new();
     RuleSet stampNext;
@@ -61,6 +68,8 @@ public class NetChem : NetworkBehaviour
     readonly Dictionary<int, TickBatch> batches = new();
     // The casts of batches that arrived live (not replayed history), for their shoves.
     readonly Dictionary<int, CastIntent[]> liveCasts = new();
+    // Defense commands stamped for a tick, sent just before its batch, waiting to join it.
+    readonly Dictionary<int, DefenseIntent[]> defenseFor = new();
     readonly Dictionary<int, string> hostHashes = new();
     int knownUpTo;
     bool synced;
@@ -95,6 +104,9 @@ public class NetChem : NetworkBehaviour
         pendingEffects.Clear();
         effectHistory.Clear();
         chunkHistory.Clear();
+        pendingDefense.Clear();
+        defenseHistory.Clear();
+        defenseFor.Clear();
         plannedAwake.Clear();
         foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
         stampNext = null;
@@ -138,6 +150,12 @@ public class NetChem : NetworkBehaviour
         if (!IsServer) return;
         pendingEffects.Add(EffectIntent.From(effect, 0));
     }
+
+    /// <summary>
+    /// Asks the host to run a defense command (the start pedestal: DefenseField). Anyone may ask; the
+    /// host stamps it into the next tick's batch, so every machine starts the waves on the same tick.
+    /// </summary>
+    public void RequestDefense(DefenseCommand command) => RequestDefenseRpc(DefenseIntent.From(command, 0));
 
     /// <summary>Host only: stamps a checked rule switch into the next tick's batch, for every machine.</summary>
     public void StampRules(RuleSet next)
@@ -197,12 +215,35 @@ public class NetChem : NetworkBehaviour
 
             var chunks = PlanChunks();
             chunkHistory.AddRange(chunks);
+            StampDefense();
 
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
             int hashTick = grid.World.Tick;
             string hash = hashTick % HashEvery == 0 ? Checksum(grid) : "";
             ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, hashTick, new FixedString64Bytes(hash));
         }
+    }
+
+    // The defense commands asked for since the last tick go out for this one, just before its batch
+    // (the same reliable channel keeps them in order), and into the history for late joiners.
+    void StampDefense()
+    {
+        if (pendingDefense.Count == 0) return;
+        var stamped = pendingDefense.ToArray();
+        pendingDefense.Clear();
+        for (int i = 0; i < stamped.Length; i++) stamped[i].Tick = hostTick;
+        defenseHistory.AddRange(stamped);
+        DefenseStampedRpc(hostTick, stamped);
+    }
+
+    [Rpc(SendTo.Server)]
+    void RequestDefenseRpc(DefenseIntent command) => pendingDefense.Add(command);
+
+    [Rpc(SendTo.ClientsAndHost)]
+    void DefenseStampedRpc(int tick, DefenseIntent[] commands)
+    {
+        if (batches.TryGetValue(tick, out var batch)) batch.Defense.AddRange(commands.Select(c => c.ToCommand()));
+        else defenseFor[tick] = commands;
     }
 
     // The chunk switches for this tick's batch: around every wizard, against what is already planned.
@@ -237,7 +278,8 @@ public class NetChem : NetworkBehaviour
     [Rpc(SendTo.Server)]
     void RequestHistoryRpc(RpcParams rpc = default)
     {
-        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
+        SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defenseHistory.ToArray(),
+            RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
     }
 
     [Rpc(SendTo.Server)]
@@ -262,7 +304,8 @@ public class NetChem : NetworkBehaviour
     /// things' (world/things.json: the props' stable ids) and, last, the sky's (Hasten Time's clock
     /// and Control Weather's weather, World.SkyHash; a sky that differs reports like the cells).
     /// </summary>
-    static string Checksum(ChemGrid grid) => grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash();
+    static string Checksum(ChemGrid grid) =>
+        grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash();
 
     // --- everyone --------------------------------------------------------------
 
@@ -280,16 +323,18 @@ public class NetChem : NetworkBehaviour
     {
         batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null, effects.Select(e => e.ToCommand()),
             chunks.Select(c => c.ToSwitch()));
+        if (defenseFor.Remove(tick, out var defense)) batches[tick].Defense.AddRange(defense.Select(d => d.ToCommand()));
         if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
         if (synced) ExtendKnown();
     }
 
     [Rpc(SendTo.SpecifiedInParams)]
-    void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, ChunkIntent[] chunks, RpcParams rpc = default)
+    void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, ChunkIntent[] chunks, DefenseIntent[] defense,
+        RpcParams rpc = default)
     {
         var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
-            effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())));
+            effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), defense.Select(d => (d.Tick, d.ToCommand())));
         for (int t = 1; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
         knownUpTo = upToTick;
@@ -501,5 +546,34 @@ public struct ChunkIntent : INetworkSerializable
         serializer.SerializeValue(ref CY);
         serializer.SerializeValue(ref Tick);
         serializer.SerializeValue(ref Active);
+    }
+}
+
+/// <summary>A defense command (Chem.DefenseCommand: the start pedestal's), stamped with the sim tick it takes effect on.</summary>
+public struct DefenseIntent : INetworkSerializable
+{
+    public byte Kind;
+    public int GateX, GateY, FlagX, FlagY, Tick;
+
+    public static DefenseIntent From(DefenseCommand d, int tick) => new DefenseIntent
+    {
+        Kind = (byte)d.Kind,
+        GateX = d.GateX,
+        GateY = d.GateY,
+        FlagX = d.FlagX,
+        FlagY = d.FlagY,
+        Tick = tick,
+    };
+
+    public DefenseCommand ToCommand() => new DefenseCommand((DefenseKind)Kind, GateX, GateY, FlagX, FlagY);
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref Kind);
+        serializer.SerializeValue(ref GateX);
+        serializer.SerializeValue(ref GateY);
+        serializer.SerializeValue(ref FlagX);
+        serializer.SerializeValue(ref FlagY);
+        serializer.SerializeValue(ref Tick);
     }
 }

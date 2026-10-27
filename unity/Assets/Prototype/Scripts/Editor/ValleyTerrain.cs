@@ -312,6 +312,7 @@ public static class ValleyTerrain
         float u = (dx + 0.5f) / DetailRes, v = (dz + 0.5f) / DetailRes;
         var w = corner + new Vector2(u, v) * Layout.ChunkSize;
         if (ValleyShape.KeepClearOfCabinAndLake(w) || ValleyShape.NearTower(w, 0f)) return;
+        if (DefenseFieldBuilder.NearDefenseField(w, 0f)) return;
         if (ValleyShape.HeightAt(w) > 70f || data.GetSteepness(u, v) > 28f) return;
         float lush = Mathf.Clamp01(0.55f + ValleyShape.Fbm(w * 0.05f, 2));
         if (rng.NextDouble() < 1.4 * lush * DetailDensity) layers[Mathf.Min(GrassKind(w, rng), layers.Length - 1)][dz, dx] = 2 + rng.Next(3);
