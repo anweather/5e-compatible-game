@@ -227,7 +227,14 @@ The coordinator approves each change and schedules them one at a time.
 5. ~~`sleep-clip` (Gameplay: the probe films the crate)~~. Merged as `e517d79`; on the reel.
 6. ~~`quit-exit` (Gameplay: the game ends itself on quit)~~. Merged as `4a61ee3`: quits take 0.15–0.3 s, with no crash or dump; `-clean-quit` restores Unity's own shutdown. Velopack's restart is untested (Build checks it at the next ship-update).
 7. `playtest-bot` (World), in phases, when each is ready.
-8. `perf-pass` (Build), in slices.
+8. `perf-pass` (Build), in slices (the SSAO choice waits on Andrew).
+9. World, in this order once each passes its Editor turn:
+   a. `gas-pool` and `rain-water-mesh`;
+   b. `tick-spread`;
+   c. `still-water` and `net-reset` (both stacked on tick-spread);
+   d. `hardness`;
+   e. `playtest-bot`.
+10. Gameplay: reset part B (stacked on `net-reset`), and the G1 perf items.
 
 The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 
