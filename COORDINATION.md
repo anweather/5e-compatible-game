@@ -250,7 +250,7 @@ The coordinator approves each change and schedules them one at a time.
 Waiting on, before the freeze:
 1. `net-reset` and `net-reset-view`: Gameplay's solo online run.
 2. `perf-pass`: PC-5 on a solo PC.
-3. `playtest-bot`: merge after the demo run, with the .ps1 files removed.
+3. ~~`playtest-bot`~~ `20c499a` (the .ps1 files are gone; `playtest build --ref <tag>` is required).
 
 Then:
 1. Freeze dev (the coordinator calls it).
