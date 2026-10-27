@@ -89,10 +89,10 @@ Cross-lane needs that come up often:
 
 | Agent | Task | Branch | State |
 |---|---|---|---|
-| Gameplay | Measure `perf/no-static-batching` on Windows (two player builds, `-fps-probe`) and send the numbers to the coordinator and Build. Don't commit or merge it | a throwaway local branch | In progress |
-| World | Slice 5, part A: a chunk activate/deactivate event in `ChemGrid`/`NetChem`, with tests. Its Editor and MPPM stay closed until the PC's Editor slot is free | `streaming-sleep` (off `dev`) | Started 2026-10-27 |
-| Gameplay (next) | Slice 5, part B: a subscriber in `ThingSpawner`/`PhysicsProp` that puts props to sleep in inactive chunks and wakes them on activation | off `dev`, after part A merges | Queued after the perf measurement |
-| Build | Merge `perf/no-static-batching` into `dev` once the Windows numbers hold up | `perf/no-static-batching` | Waiting on Gameplay's numbers |
+| World | Slice 5, part A: `ChemGrid.ChunkSwitched` / `WorldReset` / `IsChunkActive`, with tests. Rebase on `d4ae548`, check in the Editor, merge | `streaming-sleep` (`77d9023`) | Has the PC Editor slot; its turn to merge |
+| Gameplay | The player segfaults on quit after the fps probe (exit 139, in both builds). Code-only work until it gets the Editor slot back | its own branch off `dev` | Follow-up |
+| Gameplay (next) | Slice 5, part B: subscribe to `ChemGrid.ChunkSwitched` in `ThingSpawner`/`PhysicsProp`; props sleep in inactive chunks and wake on activation | off `dev`, after part A merges | Queued; has the API |
+| Build | (free) | | Waiting for its next task |
 
 ## Shared-file queue
 
@@ -105,7 +105,9 @@ The coordinator approves each change and schedules them one at a time.
 ## Merge order
 
 1. ~~`git-path` (Gameplay: builds find git off the PATH)~~. Merged as `0bf2208`.
-2. `perf/no-static-batching` (Build), after the Windows check.
+2. ~~`perf/no-static-batching` (Build)~~. Merged as `d4ae548` (473 → 267 MB on
+   Windows, frame times within noise). Restart Unity after pulling; the first
+   player build takes about 14 min to compile shader variants.
 3. Slice 5, part A (World: the chunk event). Rebase on `dev` after step 2.
 4. Slice 5, part B (Gameplay: props sleep and wake). Rebase on `dev` after step 3.
 
