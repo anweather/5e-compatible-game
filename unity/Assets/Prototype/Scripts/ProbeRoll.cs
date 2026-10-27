@@ -39,13 +39,16 @@ public class RollProbe : ProbeScenario
         Metric("end_tilt_deg", tilt);
         Check("rolls", roll.Count >= before + 1, $"{roll.Count - before} rolls from the trigger");
         Check("quick", past3m > 0f && past3m < 0.6f, past3m > 0f ? $"3 m in {past3m:0.00} s" : "never 3 m from the start");
-        Check("tumbles_once", Mathf.Abs(turned) > 300f && Mathf.Abs(turned) < 420f, $"the body turned {turned:0} degrees");
+        // The pose's own turn (RollPose.Angle); the bones' turn as read here is a metric, as when the
+        // probe's frame comes before the pose is laid on it reads nothing.
+        Metric("pose_turn_deg", posed);
+        Check("tumbles_once", posed > 300f && posed < 420f, $"the pose turned {posed:0} degrees (the bones as read: {turned:0})");
         Check("ends_upright", tilt < 25f, $"hips to head {tilt:0} degrees off upright");
         Check("cooldown_holds", secondPressed && roll.Count == before + 1, $"{roll.Count - before} rolls with the second pull {SecondPress:0.00} s in");
         Shot("after");
     }
 
-    float turned, past3m;
+    float turned, past3m, posed;
     bool secondPressed;
 
     // Pulls the trigger and follows the roll for Watch seconds: how far the body turns, when it's 3 m
@@ -56,6 +59,8 @@ public class RollProbe : ProbeScenario
         float start = Time.time;
         turned = 0f;
         past3m = -1f;
+        posed = 0f;
+        wizard.TryGetComponent<RollPose>(out var pose);
         bool shot = false;
         var was = head.position - hips.position;
         Press(up, true);
@@ -70,6 +75,7 @@ public class RollProbe : ProbeScenario
             Press(up, t < 0.04f || second);
             var now = head.position - hips.position;
             turned += Vector3.SignedAngle(was, now, wizard.transform.right);
+            if (pose != null) posed = Mathf.Max(posed, Mathf.Abs(pose.Angle));
             was = now;
             var d = wizard.transform.position - from;
             d.y = 0f;
