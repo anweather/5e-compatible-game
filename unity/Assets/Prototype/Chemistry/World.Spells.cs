@@ -16,6 +16,13 @@ namespace Chem
         public static int ChargedLength(int length, int charge) => length + length * (ClampCharge(charge) - 1) / 2;
 
         /// <summary>
+        /// How many squares a charged spot, square or burst grows by: one for each level past a tap
+        /// (a bolt spreads to the squares round it, a burst's radius and a square's side grow).
+        /// Earth shaping digs or raises more steps instead, so its patch stays the same.
+        /// </summary>
+        public static int ChargedGrowth(SpellDef s, int charge) => s.Effect == "terraform" ? 0 : ClampCharge(charge) - 1;
+
+        /// <summary>
         /// An aim (a whole-number vector on the grid, x east and y south) snapped to the grid's four
         /// ways when it's within about 5 degrees of one (its smaller part under a 11th of its
         /// larger), so a nearly straight line comes out straight. (0, 0) stays (0, 0).
@@ -50,6 +57,8 @@ namespace Chem
             switch (s.Shape)
             {
                 case "point":
+                    SpotCells(x, y, ChargedGrowth(s, charge), Add);
+                    break;
                 case "target":
                     Add(x, y);
                     break;
@@ -73,20 +82,30 @@ namespace Chem
                 }
                 case "square":
                 {
-                    int n = s.Size, off = FloorDiv(n - 1, 2);
+                    int n = s.Size + ChargedGrowth(s, charge), off = FloorDiv(n - 1, 2);
                     for (int dy = 0; dy < n; dy++)
                         for (int dx = 0; dx < n; dx++) Add(x - off + dx, y - off + dy);
                     break;
                 }
                 case "burst":
                 {
-                    int r = s.Radius;
+                    int r = s.Radius + ChargedGrowth(s, charge);
                     for (int dy = -r; dy <= r; dy++)
                         for (int dx = -r; dx <= r; dx++) Add(x + dx, y + dy);
                     break;
                 }
             }
             return output;
+        }
+
+        /// <summary>A spot and every square within <paramref name="r"/> steps of it (a diamond), row by row: a charged bolt.</summary>
+        static void SpotCells(int x, int y, int r, System.Action<int, int> add)
+        {
+            for (int dy = -r; dy <= r; dy++)
+            {
+                int span = r - System.Math.Abs(dy);
+                for (int dx = -span; dx <= span; dx++) add(x + dx, y + dy);
+            }
         }
 
         /// <summary>
@@ -166,8 +185,8 @@ namespace Chem
         /// Wind (air + wind) also sets the world's wind. A terraform spell raises or digs
         /// its cells first (World.Terraform.cs). The other effects (levitate, carry,
         /// teleport) do nothing to cells. A charged cast (held: charge 2 or 3) is that many
-        /// times as strong, raises or digs that many times the steps, and a line reaches
-        /// half again as far per level. A line or cone may be aimed off the grid's four ways
+        /// times as strong, raises or digs that many times the steps, a line reaches half
+        /// again as far per level, and a spot, square or burst grows (ChargedGrowth). A line or cone may be aimed off the grid's four ways
         /// (SpellCells); <paramref name="dir"/> is then the nearest of them (DirOf), which the
         /// element pushes along. A spell with a crater (Fireball) blows it out of the
         /// ground before its element lands.
