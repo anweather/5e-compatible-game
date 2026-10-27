@@ -159,9 +159,9 @@ Cross-lane needs that come up often:
 
 | Agent | Task | Branch | State |
 |---|---|---|---|
-| Gameplay | Quit-crash test A (visibility) on an existing build; no downloads, no changes (J-010) | none | Started 2026-10-27 |
+| Gameplay | 1) The demo clip for props-sleep (`sleep-clip`, `667f5ed`), when it has the Editor slot. 2) Backlog #1: the game ends itself on quit (J-010). 3) Next: backlog #4, resetting the world online | `sleep-clip`, then `quit-exit` | Code now; Editor after World |
 | World | The playtest bot (see `playtest/DESIGN.md` on the branch, and J-008 in `JUDGMENT_CALLS.md`). Phase 1: spikes (rendering minimised or off-screen, muted audio, incremental build time), then the bot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | Phase 1 started 2026-10-27; has the PC Editor slot |
-| Build | (free). The quit-crash research is done (see Open questions) | | Waiting for its next task |
+| Build | Backlog #3, the performance pass: a plan first (what to measure, where the spikes come from, which PC tests to run), then the fixes in its lane | `perf-pass` (off `dev`) | Started 2026-10-27 |
 
 ## Shared-file queue
 
@@ -179,26 +179,17 @@ The coordinator approves each change and schedules them one at a time.
    player build takes about 14 min to compile shader variants.
 3. ~~Slice 5, part A (World: the chunk event)~~. Merged as `3c1d848`.
 4. ~~Slice 5, part B (Gameplay: props sleep and wake)~~. Merged as `a473873`.
+5. `sleep-clip` (Gameplay: the probe films the crate), once it has been filmed
+   and passes.
+6. `quit-exit` (Gameplay: the game ends itself on quit).
+7. `playtest-bot` (World), in phases, when each is ready.
+8. `perf-pass` (Build), in slices.
+
+The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 
 ## Open questions
 
-1. **Windows builds crash on quit.** It's an access violation in
-   `D3D12Core.dll` (DirectX 12 Agility 1.618.1.0) during shutdown, after
-   saving. It's in every Windows build since at least 25 Oct. With
-   `-force-d3d11` the quit is clean, but frames are about 7% slower (mean) and
-   12% slower (p95). Options:
-   (1) put D3D11 first (Build);
-   (2) end the process ourselves on quit (Gameplay; check Velopack's restart);
-   (3) leave it and look for a Unity or driver fix.
-   Build's research (2026-10-27): no fixed Unity 6.3 version exists. Ranked:
-   (a) test whether players see it at all;
-   (b) drop in Agility 1.618.5's `D3D12Core.dll` (1.618.1 is a known
-   regressed build), copied in by a post-build step in Build's lane;
-   (c) end the process at quit (Velopack is safe; shut down Netcode first);
-   (d) graphics jobs off, as a test only;
-   (e) D3D11 first.
-   Proposed PC tests: A (visibility) and B (the Agility swap on an existing
-   build). Andrew to decide.
+(none: the quit crash was decided as J-010, and the backlog order as J-012)
 
 ## Log
 

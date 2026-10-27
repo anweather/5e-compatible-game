@@ -22,6 +22,37 @@ Each entry has:
 
 ## Open
 
+(none)
+
+## Decided
+
+### J-012: The backlog's priority order
+
+- **Asked:** 2026-10-27, by Andrew ("backlog grooming and prioritization").
+  The coordinator groomed `docs/BACKLOG.md` into Now / Next / Later, with a
+  lane for each item.
+- **Also comes up when:**
+  - any lane goes idle (take the next item in its lane);
+  - the playtest bot's backlog grows (merge its paper cuts in every few days);
+  - a new feature idea arrives (place it in the order).
+- **Answer:** approved as proposed (see "Suggested order" in
+  `docs/BACKLOG.md`).
+  - Now: the quit-crash fix, the playtest bot, the performance pass (19),
+    resetting the world online (12), terrain hardness (4).
+  - Next: components in the rules (10.1), items and an inventory (5), what
+    night does (1), world life (20), swimming then climbing (13, 14),
+    streaming's remaining work (11).
+  - Later: first person then weapons (7, 6; weapons need a fit decision),
+    voice (8), caves (3, a representation spike first), finer ground (18),
+    IK (9).
+- **Why:** (recommendation)
+  - Small, high-value work that unblocks others comes first.
+  - The performance pass comes before the next playtest with friends.
+  - Components come before more items and weapons, so new things combine with
+    the rest for free.
+  - Caves wait for hardness and a representation spike.
+- **Revisited:** 0.
+
 ### J-010: How should we handle the Windows quit crash (D3D12)?
 
 - **Asked:** 2026-10-27, raised by Gameplay. It's an access violation in
@@ -48,10 +79,24 @@ Each entry has:
     420 MB. Every session also shows as a crash in Reliability Monitor.
     Shutdown seems stuck for about 20 s before the fault. A relaunch during
     that time, and Velopack's restart, weren't tested.
-- **Why:** Andrew: "No download."
+- **Answer (2026-10-27):** **the game ends itself on quit** (option c), in
+  the Windows player only.
+  - Steps on quit: save, shut down Netcode (so peers see a disconnect, not a
+    timeout), flush the log, then terminate the process.
+  - Test a quick relaunch and Velopack's update-and-restart.
+  - No Agility swap (no downloads).
+  - Gameplay builds it.
+- **Why:**
+  - Andrew: "No download" (for the tests). Ending the game on quit "makes
+    sense to me".
+  - The crash is unseen, but it leaves a hidden process for 17–39 s and
+    writes a 42 MB dump on every quit.
+  - Ending the process costs no speed, and Velopack is safe with it.
+  - The known costs: Unity's own cleanup is skipped (OnDestroy and
+    OnDisable, Netcode unless shut down first, the last lines of
+    Player.log), and it could hide a real crash on quit later. Anything that
+    must happen on quit has to happen before the exit.
 - **Revisited:** 0.
-
-## Decided
 
 ### J-011: A growing demo reel of features
 
