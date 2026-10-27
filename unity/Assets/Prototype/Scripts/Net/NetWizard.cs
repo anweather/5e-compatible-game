@@ -62,11 +62,23 @@ public class NetWizard : NetworkBehaviour
             hands.controls = controls;
             hands.view = follow;
         }
+        Local = this;
+        this.grid = grid;
+        net = grid != null ? grid.GetComponent<NetChem>() : null;
+        if (grid != null) grid.WorldReset += BackToStart;
     }
+
+    /// <summary>This machine's own wizard while online; null solo.</summary>
+    public static NetWizard Local { get; private set; }
+
+    ChemGrid grid;
+    NetChem net;
 
     // A wizard that leaves lets go of what it holds first, or the item (riding in its hand) would go with it.
     public override void OnNetworkDespawn()
     {
+        if (Local == this) Local = null;
+        if (grid != null) grid.WorldReset -= BackToStart;
         form.OnValueChanged -= FormChanged;
         look.OnValueChanged -= LookChanged;
         if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
@@ -122,6 +134,26 @@ public class NetWizard : NetworkBehaviour
     void RollRpc(float seconds)
     {
         if (TryGetComponent<RollPose>(out var pose)) pose.Play(seconds);
+    }
+
+    /// <summary>Owner, a client: asks the host to reset the world (OnlineReset); the host's log says who asked.</summary>
+    public void AskForReset() => AskForResetRpc();
+
+    [Rpc(SendTo.Server)]
+    void AskForResetRpc() =>
+        EventLog.Add($"Player {OwnerClientId + 1} asks to reset the world: <b>R</b> resets it for everyone");
+
+    // The owner, at an online reset (OnlineReset.Happened): up from any seat, back in its own shape,
+    // vitals full, back at its start. What it held is the world's and comes back at its own spot
+    // (ThingSpawner), so the hand just lets go.
+    void BackToStart()
+    {
+        if (!OnlineReset.Happened(net)) return;
+        if (TryGetComponent<Sitter>(out var sitter)) sitter.Stand();
+        if (TryGetComponent<Shapeshift>(out var shape)) shape.ChangeBack("You're yourself again", force: true);
+        if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
+        if (TryGetComponent<Vitals>(out var vitals)) vitals.Refill();
+        Teleport(SpawnPoint(grid));
     }
 
     [Rpc(SendTo.Owner)]

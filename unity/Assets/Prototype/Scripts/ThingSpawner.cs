@@ -20,6 +20,8 @@ using UnityEngine;
 // - Per chunk: SpawnChunk and UnloadChunk. Nothing unloads chunks yet (no
 //   streaming); a thing that broke is remembered as gone and not spawned
 //   again when its chunk comes back.
+// - An online reset (OnlineReset): the host takes every thing away and spawns
+//   them all again from the data with their ids, the broken ones too.
 public class ThingSpawner : MonoBehaviour
 {
     /// <summary>The prefab for one kind (an id in rules/entities.json or rules/items.json).</summary>
@@ -68,13 +70,41 @@ public class ThingSpawner : MonoBehaviour
             network.OnServerStarted += SpawnOnline;
             network.OnClientStarted += DropSoloCopies;
         }
+        SpawnActive();
+        net = grid.GetComponent<NetChem>();
+        grid.WorldReset += Respawn;
+    }
+
+    NetChem net;
+
+    void SpawnActive()
+    {
         var world = grid.World;
         foreach (var (cx, cy) in grid.Things.ChunkCoords)
             if (world.HasChunk(cx, cy) && world.IsActive(cx, cy)) SpawnChunk(cx, cy);
     }
 
+    // The host, at an online reset: every thing away (for everyone) and back from the data, broken
+    // ones included. A client's things go and come with the host's despawns and spawns.
+    void Respawn()
+    {
+        if (!Hosting || !OnlineReset.Happened(net)) return;
+        foreach (var (cx, cy) in new List<(int, int)>(loaded)) UnloadChunk(cx, cy);
+        foreach (var (_, prop) in Live)
+        {
+            var obj = prop.GetComponent<NetworkObject>();
+            if (obj != null && obj.IsSpawned) obj.Despawn(true);
+            else Destroy(prop.gameObject);
+        }
+        live.Clear();
+        gone.Clear();
+        loaded.Clear();
+        SpawnActive();
+    }
+
     void OnDestroy()
     {
+        if (grid != null) grid.WorldReset -= Respawn;
         if (network == null) return;
         network.OnServerStarted -= SpawnOnline;
         network.OnClientStarted -= DropSoloCopies;

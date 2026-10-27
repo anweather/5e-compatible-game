@@ -6,7 +6,8 @@ using UnityEngine.InputSystem;
 using UnityEngine.SceneManagement;
 
 // On-screen help and a short "what happened" log, like the web sandbox's.
-// Shows the spell bar when the scene has a SpellCaster. R reloads the scene (solo only).
+// Shows the spell bar when the scene has a SpellCaster. R reloads the scene solo,
+// and online resets the world for everyone (the host) or asks the host to (OnlineReset).
 public class EventLog : MonoBehaviour
 {
     static EventLog instance;
@@ -65,16 +66,14 @@ public class EventLog : MonoBehaviour
         if (reset) ResetYard();
     }
 
-    /// <summary>Reloads the scene, solo only; returns whether it did.</summary>
+    /// <summary>
+    /// Solo, reloads the scene and returns true. Online the host resets the world for everyone and a
+    /// client asks the host to (OnlineReset); the scene isn't reloaded, so it returns false.
+    /// </summary>
     public static bool ResetYard()
     {
         // Reloading the scene online would drop this machine's world and everyone's wizards with it.
-        var net = FindAnyObjectByType<NetChem>();
-        if (net != null && net.Online)
-        {
-            Add("Reset is off while playing together (leave the game from the Esc menu first)");
-            return false;
-        }
+        if (OnlineReset.Ask()) return false;
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         return true;
     }

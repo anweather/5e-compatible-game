@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Chem;
 using Unity.Netcode;
 using UnityEngine;
 
@@ -479,13 +480,38 @@ public class OnlineProbe : ProbeScenario
         tag.Stop();
     }
 
-    // Reset (R / View) online is refused rather than reloading the host's scene from under everyone.
+    // Reset (R / View) online (J-014, OnlineReset): the host's resets the world for everyone after a
+    // countdown, without reloading the scene. Before it, a prop is broken and the wizard walks off;
+    // after it, every thing is back with its id (the broken one too) and the wizard is at its start.
     IEnumerator TryReset()
     {
+        var net = grid.GetComponent<NetChem>();
+        var spawner = FindAnyObjectByType<ThingSpawner>();
+        var before = new HashSet<ThingId>(spawner.Live.Select(t => t.id));
+        var broken = spawner.Live.Select(t => t.prop).FirstOrDefault(p => p.State != null && p.kind == EntityIds.Crate);
+        var brokenId = broken != null ? broken.Thing : ThingId.None;
+        if (broken != null) broken.Hurt(9999);
+        var start = grid.CellCenter(grid.PlayerStart.x, grid.PlayerStart.y);
+        Teleport(wizard.transform.position + new Vector3(8f, 0.5f, 0f));
+        int lastReset = net.LastResetTick, heard = -1;
+        void Heard(int tick) => heard = tick;
+        net.ResetComing += Heard;
         bool reloaded = EventLog.ResetYard();
+        float waited = 0f;
+        for (; waited < 8f && net.LastResetTick == lastReset; waited += Time.unscaledDeltaTime) yield return null;
+        net.ResetComing -= Heard;
         for (int i = 0; i < 10; i++) yield return null;
         int players = NetworkManager.Singleton.ConnectedClientsIds.Count;
-        Check("reset_refused_online", !reloaded && players == 2, $"reloaded {reloaded}, {players} players after");
+        Check("reset_online", !reloaded && players == 2 && net.LastResetTick > lastReset && heard == net.LastResetTick,
+            $"reloaded {reloaded}, {players} players; countdown heard for tick {heard}, reset at {net.LastResetTick} after {waited:0.0} s");
+        Metric("reset_wait_s", waited);
+        var after = new HashSet<ThingId>(spawner.Live.Select(t => t.id));
+        Check("reset_things_back", before.Count > 0 && before.SetEquals(after) && (brokenId.IsNone || after.Contains(brokenId)),
+            $"{after.Count} things after, {before.Count} before; {before.Except(after).Count()} missing, {after.Except(before).Count()} new; broken {brokenId} back: {after.Contains(brokenId)}");
+        var flat = wizard.transform.position - start;
+        flat.y = 0f;
+        Check("reset_wizard_at_start", flat.magnitude < 2f * grid.cellSize + 0.5f, $"{flat.magnitude:0.0} m from the start cell");
+        Check("reset_clock_restarts", World.Tick < 60, $"world tick {World.Tick} (network tick {net.NetTick})");
     }
 
     // The virtual player's client.json if it is from this run and in the given phase (any phase when null), else null.
