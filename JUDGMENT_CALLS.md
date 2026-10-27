@@ -26,6 +26,30 @@ Each entry has:
 
 ## Decided
 
+### J-017: How do we relieve the Editor-testing bottleneck?
+
+- **Asked:** 2026-10-27, by the coordinator. Code was written much faster
+  than one PC Editor could test it: 8+ branches queued, agents idle waiting.
+- **Also comes up when:** any queue for the PC Editor, memory warnings,
+  scheduling perf runs, MPPM tests.
+- **Answer (2026-10-27):**
+  - The Mac is a second test rig: it verifies other lanes' branches
+    (compile, EditMode, probes; not Windows-only or PC perf numbers) and
+    never edits them.
+  - Batch-mode tests may run in parallel, when 10 GB or more is free.
+  - Two Editors at once on the PC are allowed. Andrew: "We ran two editors
+    overnight. Why can't we do it again?"
+  - Limits:
+    - start only with 10 GB or more free;
+    - MPPM only with ONE Editor open (two Editors plus MPPM hit 52 of
+      53 GB);
+    - no perf measurements and no Windows builds beside another Editor's
+      MPPM.
+- **Why:** the earlier one-Editor rule came from the 52/53 GB incident,
+  which involved MPPM. Two Editors without MPPM fit (11 GB free with one
+  open). Perf numbers need a quiet machine.
+- **Revisited:** 0.
+
 ### J-015: SSAO, off, cheap or as it is? (perf pass)
 
 - **Asked:** 2026-10-27, raised by Build (the B1 sweep).

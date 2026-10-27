@@ -105,9 +105,11 @@ Blocked, Next, and whether they hold Unity.
    `JUDGMENT_CALLS.md` first: if a past decision covers it, follow that.
 7. Never discard, reset or overwrite work you didn't write. If you find
    uncommitted work in a file outside your lane, stop and report it.
-8. On the PC, only one heavy Unity job at a time (an Editor build, a player
-   build, or Multiplayer Play Mode). Memory runs out with two. Ask the
-   coordinator before you open an Editor or start an MPPM player.
+8. On the PC (J-017): two Editors may be open at once if 10 GB or more is
+   free. MPPM runs only with ONE Editor open. Perf measurements and Windows
+   player builds need the machine to themselves. Ask the coordinator before
+   opening an Editor, starting MPPM or measuring perf. The Mac is a second
+   test rig for other lanes' branches.
 
 ## Branch cleanup (Andrew's rule, 2026-10-27)
 
