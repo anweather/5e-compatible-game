@@ -2,7 +2,7 @@ name: sandbox
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
     paths: ["rules/**", "sandbox/**", ".github/workflows/sandbox.yml"]
   pull_request:
     paths: ["rules/**", "sandbox/**", ".github/workflows/sandbox.yml"]
