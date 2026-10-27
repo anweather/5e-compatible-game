@@ -322,6 +322,46 @@ candidates and screenshots. What the first runs showed:
 - Not set up yet, on purpose: the Task Scheduler entries and the Claude
   triage task. Andrew sees the first runs first.
 
+## Option (d) for J-013: the runner as a .NET tool (sketch, not built)
+
+This PC's execution policy blocks `.ps1` scripts. Option (d) moves
+`run.ps1`, `build.ps1` and `common.ps1` into one console program, so no
+policy is involved:
+
+- **Project:** `tools/playtest/Playtest.Runner/Playtest.Runner.csproj`
+  (net8.0, an exe), added to `core/Game.Core.sln` so it builds with
+  `dotnet build core` and inherits `core/Directory.Build.props` (the same
+  analyzers, warnings as errors, format). It references `Game.Core` for the
+  playtest logic already there (RunReport, Candidate, KnownIssues,
+  ReplayCheck), so the runner and the bot share one rule for known issues
+  instead of a C# copy and a PowerShell copy.
+- **Commands:**
+  - `playtest run [--seed N] [--seconds N] [--replay run.json] [--until-frame N]`
+  - `playtest build [--force]`
+  - `playtest check`, which prints the preflight's verdict and the player
+    and commit it would use.
+  - Task Scheduler then calls `dotnet tools\playtest\bin\playtest.dll run`
+    (or a published `playtest.exe`).
+- **What moves where:**
+  - Preflight: free memory from `GC.GetGCMemoryInfo` or
+    `GlobalMemoryStatusEx`, and the Unity processes via `System.Management`
+    (WMI command lines).
+  - The heartbeat watch and the kill: `System.Diagnostics.Process`.
+  - Muting in the mixer: `AppMute.cs` as it is (it's already C#).
+  - Crashes: `EventLog` (Application, id 1000, matched by process id) plus
+    Unity's crash folder.
+  - Known issues: `KnownIssues` with a `buildHas` that runs
+    `git merge-base --is-ancestor`.
+  - Coverage: `System.Text.Json`.
+  - `build`: the worktree add/reset, the pack copy (`Directory` copy in
+    place of robocopy), and the batch-mode Unity call.
+- **Tests:** the parts that don't launch anything (the preflight rules on
+  given numbers, known issues, coverage fading, choosing the player and the
+  commit) get unit tests under `dotnet test core`, which the PowerShell
+  version couldn't have.
+- **Cost:** about a day's work, mostly a port of what's written and tested
+  by hand. The `.ps1` files would go once it's in.
+
 ## Needs a decision from Andrew
 
 1. **Where builds come from:** a dedicated playtest-build worktree with its
