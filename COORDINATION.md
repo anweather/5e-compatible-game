@@ -107,7 +107,9 @@ Blocked, Next, and whether they hold Unity.
    uncommitted work in a file outside your lane, stop and report it.
 8. On the PC (J-017): two Editors may be open at once if 10 GB or more is
    free. MPPM runs only with ONE Editor open. Perf measurements and Windows
-   player builds need the machine to themselves. Ask the coordinator before
+   player builds need the machine to themselves. So does a first or full
+   build (a fresh import and shader compile): beside an open Editor it took
+   commit headroom down to 4 GB. Ask the coordinator before
    opening an Editor, starting MPPM or measuring perf. The Mac is a second
    test rig for other lanes' branches.
 
