@@ -1037,7 +1037,7 @@ public static class ValleyBuilder
     }
 
     // What generated things are drawn with: their colours in their vertices (VillageLit).
-    static Material VillageMaterial() =>
+    internal static Material VillageMaterial() =>
         EditorAssets.LoadOrCreate($"{Generated}/VillageLit.mat", () => new Material(Shader.Find("Prototype/VillageLit")));
 
     static Transform BuildHouse(Transform village, VillageBuilding b, string name, float level, float cs, Material material, GameObject smoke)

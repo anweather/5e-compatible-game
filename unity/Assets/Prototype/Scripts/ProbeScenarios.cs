@@ -149,6 +149,10 @@ public static class ProbeScenarios
             "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
             "and it floats again after, no console errors."),
+        new Entry("look", typeof(LookProbe), 30f,
+            "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
+            "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
+            "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
         new Entry("swell", typeof(SwellProbe), 30f,
             "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
             "with the swell under it (Ocean.WaveOffset, the waves the shader draws): over half the swell's height, in step with it, no console errors."),

@@ -346,6 +346,8 @@ public static class ChemYardBuilder
         fade.ditherLit = Shader.Find("Prototype/DitherLit");
         fade.silhouette = Shader.Find("Prototype/WizardSilhouette");
         wizard.AddComponent<Shapeshift>(); // an animal's shape: on every copy, so each machine draws the animal
+        // The wizard's look: hat, robe, beard and staff on the rig's bones, from a seed (synced by NetWizard).
+        wizard.AddComponent<WizardOutfit>().material = ValleyBuilder.VillageMaterial();
         if (playerDriven)
         {
             caster.grid = grid;

@@ -16,11 +16,15 @@ using UnityEngine;
 //
 // The animal shape a wizard has (Shapeshift: its species and coat, packed)
 // is a variable its owner writes; every other machine draws that animal in
-// place of the wizard, a late joiner too.
+// place of the wizard, a late joiner too. Its look (WizardOutfit: a seed for
+// the hat, robe, beard and staff) is another owner-written variable, so
+// every peer dresses each wizard the same.
 [RequireComponent(typeof(SpellCaster), typeof(SurfaceEffects), typeof(PlayerControls))]
 public class NetWizard : NetworkBehaviour
 {
     readonly NetworkVariable<int> form = new(Shapeshift.None, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
+    const int NoLook = int.MinValue;
+    readonly NetworkVariable<int> look = new(NoLook, NetworkVariableReadPermission.Everyone, NetworkVariableWritePermission.Owner);
 
     public override void OnNetworkSpawn()
     {
@@ -28,14 +32,17 @@ public class NetWizard : NetworkBehaviour
         var caster = GetComponent<SpellCaster>();
         caster.grid = grid;
         form.OnValueChanged += FormChanged;
+        look.OnValueChanged += LookChanged;
 
         if (!IsOwner)
         {
             name = $"Wizard (player {OwnerClientId + 1})";
             WizardRig.PrepareForAnimationEvents(gameObject);
             FormChanged(Shapeshift.None, form.Value);
+            LookChanged(NoLook, look.Value);
             return;
         }
+        SetLook(WizardOutfit.SavedSeed);
 
         name = WizardRig.Name;
         if (grid != null) transform.position = SpawnPoint(grid);
@@ -61,6 +68,7 @@ public class NetWizard : NetworkBehaviour
     public override void OnNetworkDespawn()
     {
         form.OnValueChanged -= FormChanged;
+        look.OnValueChanged -= LookChanged;
         if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
     }
 
@@ -68,6 +76,20 @@ public class NetWizard : NetworkBehaviour
     public void SetForm(int value)
     {
         if (IsOwner) form.Value = value;
+    }
+
+    /// <summary>Owner only: wears this look and sends it to everyone (WizardOutfit).</summary>
+    public void SetLook(int seed)
+    {
+        if (!IsOwner) return;
+        look.Value = seed;
+        if (TryGetComponent<WizardOutfit>(out var outfit)) outfit.Wear(seed);
+    }
+
+    // Someone else's wizard changed its look: dress it the same here.
+    void LookChanged(int was, int now)
+    {
+        if (!IsOwner && now != NoLook && TryGetComponent<WizardOutfit>(out var outfit)) outfit.Wear(now);
     }
 
     // Someone else's wizard changed shape: draw it as that animal (or itself again) here.
