@@ -3,7 +3,8 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // How each spell looks when cast, as data: an optional projectile that
-// flies from the hand, an optional effect where it lands, and the colour of
+// flies from the hand (or a meteor from the sky, or a storm over the
+// spell's squares), an optional effect where it lands, and the colour of
 // the glow in the caster's hand. The chemistry itself stays in rules/*.json;
 // this is only the show. Built by Prototype > Build Chemistry Yard.
 [CreateAssetMenu(menuName = "Prototype/Spell Visuals")]
@@ -23,6 +24,8 @@ public class SpellVisuals : ScriptableObject
         public bool fromSky;
         [Tooltip("A second effect where it lands, with the impact (a meteor's dust).")]
         public GameObject afterImpact;
+        [Tooltip("Pours down over the spell's squares from a low cloud for a while (SleetStorm) instead of flying from the hand; it lands when the first of it reaches the ground.")]
+        public bool storm;
     }
 
     public List<Entry> entries = new();

@@ -187,8 +187,18 @@ public class SpellCaster : MonoBehaviour
                 GameSounds.Play(GameSounds.LandingOf(def), landing);
                 onArrive?.Invoke();
             }, this);
+        else if (look != null && look.storm) Storm(def, landing, Land);
         else if (look?.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, Land, this);
         else Land();
+    }
+
+    // A storm over the spell's squares (a burst's radius each way of the target), for the spell's
+    // duration if it has one, else a few seconds; it lands when the first of it reaches the ground.
+    void Storm(SpellDef def, Vector3 landing, System.Action land)
+    {
+        float halfWidth = ((def?.Radius ?? 0) + 0.5f) * grid.cellSize;
+        float seconds = def != null && def.Duration > 0 ? def.Duration / (float)grid.World.Rules.Sim.TicksPerSecond : SleetStorm.Seconds;
+        SleetStorm.Launch(landing, halfWidth, seconds, transform.position, land, this);
     }
 
     // Found lazily: a networked wizard gets its grid assigned after Awake.
@@ -229,6 +239,7 @@ public class SpellCaster : MonoBehaviour
     {
         var look = LookOf(cast.Spell);
         if (look != null && look.fromSky) return MeteorFall.Seconds;
+        if (look != null && look.storm) return SleetStorm.LandSeconds;
         return look?.projectile != null ? Vector3.Distance(Hand, Landing(cast)) / SpellProjectile.DefaultSpeed : 0f;
     }
 
