@@ -25,18 +25,18 @@ namespace Chem
         {
             static readonly HashSet<string> CondKeys = new HashSet<string>
             {
-                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable",
+                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "power", "chance",
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
                 "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
-                "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul",
+                "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
             static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform" };
 
-            static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass" };
-            static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n" };
+            static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "radiusPerCharge" };
+            static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n", "wave" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
             static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.meteors.every", "weather.meteors.fallTicks" };
 
@@ -59,6 +59,8 @@ namespace Chem
             public void CrossReferences()
             {
                 foreach (var p in terrain.Properties()) TerrainRefs(p.Name, p.Value);
+                foreach (var p in covers.Properties().Where(p => p.Value["damage"] != null && !IsDice(p.Value["damage"])))
+                    Errors.Add($"cover {p.Name}: damage must be [dice, sides]");
                 var seen = new HashSet<string>();
                 foreach (var rule in r["cellRules"].Concat(r["entityRules"])) Rule(rule, seen);
                 foreach (var s in r["spells"]) SpellRefs(s);
@@ -132,6 +134,7 @@ namespace Chem
                 if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");
                 else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");
+                if (Truthy(t["growsTo"]) && !IsIn(terrain, t["growsTo"])) Errors.Add($"terrain {id}: growsTo {Show(t["growsTo"])} unknown");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
             }
@@ -166,7 +169,21 @@ namespace Chem
                 if (Truthy(e["raise"]) && !IsIn(terrain, e["raise"])) Errors.Add($"rule {id}: raise {Show(e["raise"])} unknown");
                 if (Text(e["setCover"]) != null && !IsIn(covers, e["setCover"])) Errors.Add($"rule {id}: cover {Show(e["setCover"])} unknown");
                 if (Truthy(e["gas"]) && !IsIn(gases, e["gas"])) Errors.Add($"rule {id}: gas {Show(e["gas"])} unknown");
+                if (Truthy(e["grow"]) && !IsIn(terrain, e["grow"])) Errors.Add($"rule {id}: grow {Show(e["grow"])} unknown");
+                else if (Truthy(e["grow"]) && Strings(terrain[Text(e["grow"])]["tags"]).Contains("blocking"))
+                    Errors.Add($"rule {id}: grow {Show(e["grow"])} is blocking (let it growsTo one)");
+                if (e["ticks"] != null && !IsTickRange(e["ticks"])) Errors.Add($"rule {id}: ticks must be [min, max], whole numbers from 1");
             }
+
+            /// <summary>[min, max]: whole numbers, 1 &lt;= min &lt;= max.</summary>
+            static bool IsTickRange(JToken t) =>
+                t is JArray a && a.Count == 2 && IsNumber(a[0]) && IsNumber(a[1]) && IsWholeNumber(a[0]) && IsWholeNumber(a[1])
+                && (double)a[0] >= 1 && (double)a[1] >= (double)a[0];
+
+            /// <summary>[dice, sides]: whole numbers from 1.</summary>
+            static bool IsDice(JToken t) =>
+                t is JArray a && a.Count == 2 && IsNumber(a[0]) && IsNumber(a[1]) && IsWholeNumber(a[0]) && IsWholeNumber(a[1])
+                && (double)a[0] >= 1 && (double)a[1] >= 1;
 
             bool IsElement(JToken t) => elements.Contains(Text(t) ?? "");
             static bool IsIn(JObject table, JToken id) => Text(id) != null && table[Text(id)] != null;
@@ -194,6 +211,8 @@ namespace Chem
                     Number(p.Value["flammability"], $"cover {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"cover {p.Name}: fuel", 0);
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);
+                    Number(p.Value["lasts"], $"cover {p.Name}: lasts", 0);
+                    Number(p.Value["speed"], $"cover {p.Name}: speed", 0);
                 }
                 foreach (var p in gases.Properties()) Number(p.Value["scald"], $"gas {p.Name}: scald", 0);
                 foreach (var s in r["spells"])
@@ -209,6 +228,8 @@ namespace Chem
             {
                 var id = Show(rule["id"]);
                 Number((rule["if"] as JObject)?["fireBelow"], $"rule {id}: fireBelow");
+                Number((rule["if"] as JObject)?["power"], $"rule {id}: power");
+                Number((rule["if"] as JObject)?["chance"], $"rule {id}: chance", 0);
                 if (!(rule["do"] is JArray effects)) return;
                 foreach (var e in effects.OfType<JObject>())
                     foreach (var key in EffectNumbers) Number(e[key], $"rule {id}: {key}");

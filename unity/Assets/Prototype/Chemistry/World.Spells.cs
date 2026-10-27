@@ -80,7 +80,7 @@ namespace Chem
                 }
                 case "burst":
                 {
-                    int r = s.Radius;
+                    int r = s.Radius + s.RadiusPerCharge * (ClampCharge(charge) - 1);
                     for (int dy = -r; dy <= r; dy++)
                         for (int dx = -r; dx <= r; dx++) Add(x + dx, y + dy);
                     break;
@@ -167,7 +167,7 @@ namespace Chem
         /// its cells first (World.Terraform.cs). The other effects (levitate, carry,
         /// teleport) do nothing to cells. A charged cast (held: charge 2 or 3) is that many
         /// times as strong, raises or digs that many times the steps, and a line reaches
-        /// half again as far per level. A line or cone may be aimed off the grid's four ways
+        /// half again as far per level (a burst with radiusPerCharge grows that much per level). A line or cone may be aimed off the grid's four ways
         /// (SpellCells); <paramref name="dir"/> is then the nearest of them (DirOf), which the
         /// element pushes along. A spell with a crater (Fireball) blows it out of the
         /// ground before its element lands.
@@ -191,7 +191,9 @@ namespace Chem
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
             Crater(x, y, s.Crater);
             if (s.Element == null) return;
+            waveFrom = (x, y);
             foreach (var (cx, cy) in cells) Apply(cx, cy, s.Element, s.Power * charge, dir, true);
+            waveFrom = null;
         }
     }
 }

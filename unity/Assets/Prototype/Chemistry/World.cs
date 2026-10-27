@@ -147,6 +147,14 @@ namespace Chem
         public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + c.Height) * Rules.Sim.WaterUnitsPerStep;
         public bool CoverHasTag(Cell c, string tag) =>
             c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) && cv.Has(tag);
+        /// <summary>The cell's cover's definition, or null without one (or one the rules no longer know).</summary>
+        public CoverDef CoverOf(Cell c) =>
+            c?.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) ? cv : null;
+        /// <summary>
+        /// Whether a cell's cover hinders walking (thorns: spiky, slowing or hurting with each
+        /// square walked; CoverDef.Speed and Damage say how much). A view's walkers read it.
+        /// </summary>
+        public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
         public bool IsConductive(Cell c) => (c.Water > 0 && !c.Frozen) || HasTag(c, "conductive");
 

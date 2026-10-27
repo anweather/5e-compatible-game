@@ -26,6 +26,12 @@ namespace Chem
         /// elevation, within sim.json's height range. At height.blockAt or more the cell is a wall.
         /// </summary>
         public int Height;
+        /// <summary>
+        /// Ticks until what is growing or lasting here ripens (World.Ripen): a cover with a lifespan
+        /// (thorns) withers, and a terrain with growsTo (green shoots, a sapling) grows into it.
+        /// 0: nothing pending.
+        /// </summary>
+        public int Life;
 
         // World.TerrainOf's cache: the definition of the terrain id it was looked up for.
         // Not cell state (not hashed or saved); refreshed whenever T changes.
@@ -45,7 +51,7 @@ namespace Chem
         /// <summary>Back to a bare square of the given terrain (the sandbox's erase brush).</summary>
         public void Reset(string terrain = "dirt")
         {
-            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0;
+            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0;
         }
     }
 

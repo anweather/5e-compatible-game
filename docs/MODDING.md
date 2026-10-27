@@ -65,6 +65,8 @@ The full schema is in `rules/README.md`.
 | `gas` | A gas id, or `"any"` |
 | `terrainTag`, `notTerrainTag` | The terrain has (or lacks) this tag |
 | `conductive` | Water or metal is present |
+| `power` | The element came with at least this power (a charged cast: power times charge) |
+| `chance` | Applies only this often (0 to 1), rolled last on the world's generator |
 
 **Effects** (exactly one per object):
 
@@ -73,7 +75,7 @@ The full schema is in `rules/README.md`.
 | Fire | `ignite` (a number, or `"cover"`), `extinguish` |
 | Water and gas | `boil`, `melt`, `freeze`, `condense`, `addWater`, `gas` (with `n`), `pushGas`, `clearGas` |
 | Covers | `setCover`, `spreadCover` |
-| Terrain | `break`, `setTerrain`, `raise` |
+| Terrain | `break`, `setTerrain`, `raise`, `grow` (with `ticks: [min, max]` and `wave`: it ripens into its `growsTo` later) |
 | Energy | `conduct`, `fan` |
 | Machines | `mark: "wind"` |
 | Entity rules | `status: {name: ticks}`, `clear`, `damageMul` |

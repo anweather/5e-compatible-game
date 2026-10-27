@@ -1,7 +1,7 @@
 // One tick of the world. Order matters and is fixed:
 // critters -> fire -> water -> gas -> weather -> entities -> machines -> decay.
 import { RULES } from "./rules.ts";
-import { applyElement, ignite } from "./react.ts";
+import { applyElement, displaceWater, ignite } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import {
   type Cell, type World,
@@ -23,11 +23,48 @@ export function step(w: World): void {
   tickWeather(w);
   tickEntities(w);
   tickMachines(w);
-  for (const c of w.cells) if (c.charge > 0) c.charge--;
+  for (let i = 0; i < w.cells.length; i++) {
+    const c = w.cells[i]!;
+    if (c.charge > 0) c.charge--;
+    if (c.life > 0 && --c.life === 0) ripen(w, i, c);
+  }
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
   w.marks.flow.fill(0);
   w.marks.steam.fill(0);
   w.marks.wind.fill(0);
+}
+
+/**
+ * A cell's life ran out (World.Ripen): a cover that lasts (thorns) withers away,
+ * and a terrain that grows (green shoots, a sapling) becomes its growsTo. While it
+ * burns it waits a tick at a time; a tree waits while something stands there, and
+ * pushes the water out of wet ground as it grows.
+ */
+function ripen(w: World, i: number, c: Cell) {
+  if (c.fire > 0) {
+    c.life = 1;
+    return;
+  }
+  const id = c.cover, cv = id !== null ? RULES.covers[id] : undefined;
+  if (cv && (cv.lasts ?? 0) > 0) {
+    c.cover = null;
+    if (cv.witherLog) logOnce(w, `wither-${id}`, cv.witherLog);
+  }
+  const to = terrainDef(c).growsTo;
+  const grown = to !== undefined ? RULES.terrain[to] : undefined;
+  if (!to || !grown) return;
+  const x = i % w.w, y = Math.floor(i / w.w);
+  if (grown.tags.includes("blocking")) {
+    if (entityAt(w, x, y)) {
+      c.life = 1;
+      return;
+    }
+    displaceWater(w, x, y);
+    c.cover = null;
+  }
+  const line = terrainDef(c).growLog;
+  c.t = to;
+  if (line) logOnce(w, `grow-${to}`, line);
 }
 
 export function emitCritter(w: World, kind: string, x: number, y: number, dir: 0 | 1 | 2 | 3) {

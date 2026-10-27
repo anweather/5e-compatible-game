@@ -68,11 +68,11 @@ namespace Chem.Tests
                 { 'id': 'steam-damps-fire', 'element': 'fire', 'if': { 'gas': 'steam' }, 'do': [{ 'extinguish': true }], 'stop': true },
                 { 'id': 'acid-burns', 'element': 'acid', 'do': [{ 'setCover': null }] },
                 { 'id': 'fire-ice', 'element': 'fire', 'if': { 'frozen': true }, 'do': [{ 'melt': true }], 'log': 'Replaced in place' } ] } }");
-            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "steam-damps-fire", "fire-oil", "fire-snowbank", "fire-snow", "fire-ice", "fire-flammable" }));
+            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "steam-damps-fire", "fire-oil", "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-flammable" }));
             Assert.That(r.CellRulesFor("fire").First(x => x.Id == "fire-ice").Log, Is.EqualTo("Replaced in place"));
             Assert.That(Ids(r.CellRulesFor("acid")), Is.EqualTo(new[] { "acid-burns" }));
             var elements = JObject.Parse(r.ToJson())["elements"].Select(e => (string)e);
-            Assert.That(elements, Is.EqualTo(new[] { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "acid" }));
+            Assert.That(elements, Is.EqualTo(new[] { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "growth", "thorns", "acid" }));
         }
 
         [Test]
@@ -95,7 +95,7 @@ namespace Chem.Tests
             Assert.That(r.Terrain["grass"].Has("flammable"), Is.False, "a named entry is replaced whole");
             Assert.That(r.Terrain["grass"].Fuel, Is.Null);
             Assert.That((string)json["entityRules"][0]["id"], Is.EqualTo("acid-entity"));
-            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "fire-snowbank", "fire-snow", "fire-ice", "fire-water", "fire-flammable" }));
+            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-water", "fire-flammable" }));
         }
 
         [Test]

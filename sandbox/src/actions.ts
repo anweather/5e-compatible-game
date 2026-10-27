@@ -72,7 +72,7 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
       break;
     }
     case "burst": {
-      const r = s.radius ?? 1;
+      const r = (s.radius ?? 1) + (s.radiusPerCharge ?? 0) * (clampCharge(charge) - 1);
       for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) add(x + dx, y + dy);
       break;
     }
@@ -201,7 +201,7 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
 /** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */
 export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
   const cells = spellCells(w, s, x, y, dir, charge, aim);
-  const ctx = { power: (s.power ?? 1) * charge, dir, direct: true };
+  const ctx = { power: (s.power ?? 1) * charge, dir, direct: true, at: [x, y] as [number, number] };
   if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };
   if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
   crater(w, x, y, s.crater);
