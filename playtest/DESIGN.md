@@ -139,7 +139,11 @@ A Claude scheduled task (every 2-3 hours, not every run, to keep cost down):
    as fixed when its signature hasn't appeared in the last 10 runs on newer
    builds and its replay no longer triggers it on the newest build. The
    digest takes an `after.jpg` from that replay and shows it next to
-   `before.jpg`, and lists what's new and what's still open.
+   `before.jpg`, and lists what's new and what's still open. It ends with a
+   **Fixes drop** for the Valley Demo Reel (COORDINATION.md, "Demo reel"):
+   for each fixed finding, the title, area, fixing commit, and its
+   `before.jpg` / `after.jpg` paths, which the triage task sends on to the
+   Project Manager.
 
 The bot only finds. Neither the bot nor the triage task touches game code.
 
@@ -221,6 +225,38 @@ the digest marks the finding fixed. This waits for `gh auth login`.
 4. **Triage.** The Claude scheduled task, the findings format, BACKLOG.md and
    the digest.
 5. **GitHub issues**, once `gh` is signed in.
+
+## Phase 1 results (2026-10-27)
+
+The spike (`Scripts/Playtest/PlaytestBot.cs`, `tools/playtest/spike.ps1`,
+`spike-mute.ps1`) ran a Windows player build with `-playtest` for 12 game
+seconds in four ways: a normal window, launched minimised, moved off-screen by
+the bot, and off-screen with the listener muted. On the RTX 4080 SUPER:
+
+- **Rendering out of the way works.** All four rendered every frame (360
+  frames for 12 game seconds at 30 fps, in 12.3 s real time) and walked the
+  wizard 27 m. Both kinds of screenshot (camera to RenderTexture, and the
+  screen) came out right, with the same brightness in every case, including
+  minimised and off-screen.
+- **No focus stealing.** The player was never the foreground window in any of
+  the 178 half-second samples (Windows won't hand focus to a process a script
+  starts in the background), though `Application.isFocused` reads true. So the
+  fallback to overnight and idle times isn't needed: runs can go any time the
+  preflight passes.
+- **Sound: mute in Windows, not in the game.** `AudioListener.volume = 0`
+  silences the bot's own audio tap too (peak and RMS read 0), because the tap
+  hears the mix after the volume. Muting the player's session in the Windows
+  volume mixer from the runner (`tools/playtest/AppMute.cs`, 0.8 s after
+  launch, before any sound) leaves the tap hearing everything (peak 0.036, the
+  same as unmuted) while nothing reaches the speakers.
+- **Builds.** The first build after the perf merge took 27 min (the shader
+  compile). Incremental after a script change took 16 s. The bot's builds
+  must come from a freshly built yard: this worktree's stale yard scene went
+  into the spike build (the wizard has no look), which a dedicated build
+  checkout avoids, since the yard rebuilds when missing.
+- **No errors** in any of the four Player.logs, and no crash dump on quit.
+  The D3D12Core fault on quit is a known issue (being fixed by Gameplay); the
+  crash detector records it against that known issue rather than filing it.
 
 ## Needs a decision from Andrew
 
