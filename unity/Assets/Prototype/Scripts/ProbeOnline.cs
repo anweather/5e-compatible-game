@@ -24,6 +24,8 @@ using UnityEngine;
 public static class ProbeLink
 {
     public const string Hosting = "hosting", Go = "go", Joined = "joined", Reported = "reported";
+    /// <summary>After the reset: the host asks for the checksums since it (up to startTick), the virtual player sends them.</summary>
+    public const string ResetCheck = "reset-check", ResetReported = "reset-reported";
 
     /// <summary>True in a Multiplayer Play Mode virtual player (its project is a copy under Library/VP/).</summary>
     public static bool InVirtualPlayer => Application.isEditor && VirtualRoot() != null;
@@ -385,6 +387,36 @@ public class OnlineProbeClient : MonoBehaviour
         recorder.Seen.errorCount = errorCount;
         recorder.Seen.errors = new List<string>(errors);
         ProbeLink.Write(ProbeLink.ClientFile, recorder.Seen);
+        yield return AfterReset(id, net);
+    }
+
+    // The host then resets the world (OnlineProbe.TryReset): the checksums from after the reset,
+    // sent when the host asks, up to the tick it names.
+    IEnumerator AfterReset(string id, NetChem net)
+    {
+        var after = new OnlineObservation { id = id };
+        void OnTick(int tick, string checksum)
+        {
+            if (checksum == null || net.LastResetTick <= 0 || tick <= net.LastResetTick) return;
+            after.hashTicks.Add(tick);
+            after.hashes.Add(checksum);
+        }
+        net.TickApplied += OnTick;
+        ProbeHostMessage ask = null;
+        for (float waited = 0f; waited < 90f && ask == null; waited += Time.unscaledDeltaTime)
+        {
+            ask = ProbeLink.Read<ProbeHostMessage>(ProbeLink.HostFile);
+            if (ask == null || ask.id != id || ask.phase != ProbeLink.ResetCheck) ask = null;
+            yield return null;
+        }
+        for (float waited = 0f; ask != null && waited < 20f && net.NetTick < ask.startTick; waited += Time.unscaledDeltaTime) yield return null;
+        net.TickApplied -= OnTick;
+        if (ask == null) yield break;
+        after.phase = ProbeLink.ResetReported;
+        after.desync = net.DesyncSeen;
+        after.errorCount = errorCount;
+        after.errors = new List<string>(errors);
+        ProbeLink.Write(ProbeLink.ClientFile, after);
     }
 }
 
@@ -400,6 +432,7 @@ public class OnlineProbe : ProbeScenario
     // So a virtual player started later doesn't join from this run's files.
     protected override void OnDestroy()
     {
+        if (resetNet != null) resetNet.TickApplied -= CollectAfterReset;
         ProbeLink.Clear();
         base.OnDestroy();
     }
@@ -457,6 +490,48 @@ public class OnlineProbe : ProbeScenario
         Compare(recorder.Seen, report);
         yield return TryReset();
         yield return TryTag();
+        yield return CompareAfterReset(id);
+    }
+
+    // The host's checksums since the reset (TryReset starts collecting them).
+    readonly Dictionary<int, string> afterReset = new();
+    NetChem resetNet;
+
+    void CollectAfterReset(int tick, string checksum)
+    {
+        if (checksum != null && resetNet.LastResetTick > 0 && tick > resetNet.LastResetTick) afterReset[tick] = checksum;
+    }
+
+    // Lockstep across the reset: every 30-tick checksum after it equal on both sides, three or more.
+    IEnumerator CompareAfterReset(string id)
+    {
+        for (float t = 0f; t < 30f && afterReset.Count < 3; t += Time.unscaledDeltaTime) yield return null;
+        int upTo = afterReset.Count > 0 ? afterReset.Keys.Max() : resetNet.NetTick;
+        ProbeLink.Write(ProbeLink.HostFile, new ProbeHostMessage { id = id, phase = ProbeLink.ResetCheck, startTick = upTo });
+        OnlineObservation client = null;
+        for (float t = 0f; t < 30f && client == null; t += Time.unscaledDeltaTime)
+        {
+            client = ReadClient(id, ProbeLink.ResetReported);
+            yield return null;
+        }
+        resetNet.TickApplied -= CollectAfterReset;
+        if (client == null)
+        {
+            Check("reset_checksums_equal", false, "the virtual player sent no checksums after the reset");
+            yield break;
+        }
+        int compared = 0, equal = 0;
+        string firstDiff = null;
+        for (int i = 0; i < client.hashTicks.Count; i++)
+        {
+            if (!afterReset.TryGetValue(client.hashTicks[i], out var expected)) continue;
+            compared++;
+            if (expected == client.hashes[i]) equal++;
+            else firstDiff ??= $"tick {client.hashTicks[i]}: host {expected}, client {client.hashes[i]}";
+        }
+        Metric("reset_checksums_compared", compared);
+        Check("reset_checksums_equal", compared >= 3 && equal == compared && !client.desync,
+            firstDiff ?? $"{equal}/{compared} checksums equal after the reset (tick {resetNet.LastResetTick}); client desync {client.desync}, {client.errorCount} client errors");
     }
 
     // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.
@@ -486,6 +561,8 @@ public class OnlineProbe : ProbeScenario
     IEnumerator TryReset()
     {
         var net = grid.GetComponent<NetChem>();
+        resetNet = net;
+        net.TickApplied += CollectAfterReset;
         var spawner = FindAnyObjectByType<ThingSpawner>();
         var before = new HashSet<ThingId>(spawner.Live.Select(t => t.id));
         var broken = spawner.Live.Select(t => t.prop).FirstOrDefault(p => p.State != null && p.kind == EntityIds.Crate);

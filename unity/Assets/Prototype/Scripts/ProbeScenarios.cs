@@ -46,13 +46,14 @@ public static class ProbeScenarios
         new Entry("perf", typeof(PerfProbe), 330f,
             "Holds a fixed camera over the valley for seconds=N (default 10) and reports the frame times " +
             "(Editor Play mode, not a player build). Checks: no console errors."),
-        new Entry("online", typeof(OnlineProbe), 180f,
+        new Entry("online", typeof(OnlineProbe), 240f,
             "This Editor hosts and a Multiplayer Play Mode virtual player (Player 2, started if it isn't running) joins on " +
             "127.0.0.1. Each casts Fire Bolt, Earthen Trench and Wall of Stone through the network; the virtual player's " +
             "Thunderwave throws a crate and the host's wizard, and the host's wizard falls 10 m. Checks: it joined, every 30-tick checksum (cells and rules) equal on both, the same world " +
             "at the sample tick, no desync seen, the client's terrain drawn as low as the host's under the trenches, the same " +
             "water (cells and drawn surface) and walls, the crate and the host's wizard each within 5 cm on both, no console errors on either, " +
-            "reset on the host refused with both players still in, and tag passing from the host to the virtual player on touch.",
+            "then the host resets the world (a crate broken and the wizard walked off first): the countdown heard, both players still in, every thing back with its id, " +
+            "the wizard at its start, the clock from 0, and every 30-tick checksum after the reset equal on both (3 or more); and tag passing from the host to the virtual player on touch.",
             players: 2),
         new Entry("menu", typeof(MenuProbe), 60f,
             "The Esc menu with a controller: Start on a virtual gamepad opens it, the highlight moves down to Mods, A opens the " +
