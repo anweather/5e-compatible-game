@@ -22,6 +22,75 @@ Each entry has:
 
 ## Open
 
+(none)
+
+## Decided
+
+### J-019: When do we cut releases?
+
+- **Asked:** 2026-10-27, by Andrew: "when do we want to cut a new release?
+  How many features are enough... if we wait too long we're play testing
+  really old versions".
+- **Also comes up when:** a big fix lands, the bot finds a blocker,
+  someone asks "is X out yet?", any version bump.
+- **Answer (2026-10-27):** **cut 0.1.5 today,** once the online reset
+  (net-reset and net-reset-view), cheap SSAO (perf-pass) and the playtest
+  bot have merged. After that, **a release about every 2 days,** or sooner
+  after a big fix.
+  - Each release: a merge freeze on dev, then dev → main, then the version
+    bump, then the release-candidate build, then the bot's runs and a
+    quick human look, then fix any blockers, then ship (docs/RELEASING.md).
+  - The Build lane runs the release, and the coordinator calls the freeze.
+  - Andrew (later the same day): "2 days is probably fine as a starting
+    point", but we may release more often while so much is landing. So
+    treat 2 days as the longest gap, not a fixed schedule: cut sooner when
+    a solid batch is verified.
+- **Why:** Andrew picked the recommendation. About 20 merges had landed
+  since 0.1.4 that morning. Short releases keep playtests on what players
+  actually have, and bugs found on a release candidate get checked against
+  dev before filing.
+- **Revisited:** 0.
+
+### J-018: Which build does the playtest bot run against?
+
+- **Asked:** 2026-10-27, by Andrew: don't rebuild for every playtest; use
+  the last known build.
+- **Also comes up when:** scheduling the bot, any playtest-build rebuild,
+  filing a bug found by the bot.
+- **Answer (2026-10-27):** **the current release candidate,** built once
+  per release with the bot inside (behind `-playtest`). There's no rebuild
+  per run and no rebuild on every dev change.
+- **Why:** Andrew picked the recommendation. 0.1.4 predates the bot, so it
+  can't run it; the bot has to ship inside a release build. That way it
+  plays exactly what players get.
+  - Findings are checked against dev (a replay on a dev build, or reading
+    the fix log) before filing, so nobody files a bug dev has already fixed.
+- **Revisited:** 0.
+
+### J-017: How do we relieve the Editor-testing bottleneck?
+
+- **Asked:** 2026-10-27, by the coordinator. Code was written much faster
+  than one PC Editor could test it: 8+ branches queued, agents idle waiting.
+- **Also comes up when:** any queue for the PC Editor, memory warnings,
+  scheduling perf runs, MPPM tests.
+- **Answer (2026-10-27):**
+  - The Mac is a second test rig: it verifies other lanes' branches
+    (compile, EditMode, probes; not Windows-only or PC perf numbers) and
+    never edits them.
+  - Batch-mode tests may run in parallel, when 10 GB or more is free.
+  - Two Editors at once on the PC are allowed. Andrew: "We ran two editors
+    overnight. Why can't we do it again?"
+  - Limits:
+    - start only with 10 GB or more free;
+    - MPPM only with ONE Editor open (two Editors plus MPPM hit 52 of
+      53 GB);
+    - no perf measurements and no Windows builds beside another Editor's
+      MPPM.
+- **Why:** the earlier one-Editor rule came from the 52/53 GB incident,
+  which involved MPPM. Two Editors without MPPM fit (11 GB free with one
+  open). Perf numbers need a quiet machine.
+- **Revisited:** 0.
+
 ### J-015: SSAO, off, cheap or as it is? (perf pass)
 
 - **Asked:** 2026-10-27, raised by Build (the B1 sweep).
@@ -35,8 +104,11 @@ Each entry has:
     between bushes. Cheap looks nearly the same as base.
   - Screenshots on the Mac:
     `unity/Builds/demo-videos/ssao-compare-*.png`.
-- **Answer:** pending. Recommended: cheap, then measure soft shadows at
-  Medium on top of it.
+- **Answer (2026-10-27):** **cheap SSAO.** Then measure soft shadows at
+  Medium on top of it, and measure the result on the PC (PC-5).
+- **Why:** Andrew picked the recommendation. It gets most of the gain
+  (-16% mean, -11% p95 on the Mac) without changing the look, and weaker
+  GPUs benefit most.
 - **Revisited:** 0.
 
 ### J-016: May agents force-push their own unmerged branches after a rebase?
@@ -46,12 +118,14 @@ Each entry has:
   force-pushes.
 - **Also comes up when:** every rebase of a pushed feature branch, by any
   agent.
-- **Answer:** pending. Recommended: allowed only for your OWN unmerged
-  feature branch, only with `--force-with-lease`; never `dev`, `main` or
-  another agent's branch.
+- **Answer (2026-10-27):** **allowed, with limits.** Only an agent's own
+  unmerged feature branch, after a rebase, with `--force-with-lease`. Never
+  `dev`, `main` or another agent's branch; any other force-push needs
+  Andrew.
+- **Why:** Andrew picked the recommendation. Rebasing your own pushed
+  branch is routine, and the lease stops it overwriting work.
 - **Revisited:** 0.
 
-## Decided
 
 ### J-013: How may the playtest scripts run past the PowerShell execution policy?
 

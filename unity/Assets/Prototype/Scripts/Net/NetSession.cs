@@ -51,6 +51,14 @@ public class NetSession : MonoBehaviour
     static string joinFailure;
     static float joinFailureUntil;
 
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        joinFailure = null;
+        joinFailureUntil = 0f;
+    }
+
     // The scene's NetworkManager (Netcode's singleton), looked up once it exists.
     NetworkManager Net
     {

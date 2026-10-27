@@ -32,7 +32,10 @@ public class QuickExit : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
     static void Boot()
     {
+        // Starts over each run, even with the Editor's domain reload off.
         ending = false;
+        BeforeExit = null;
+        Application.wantsToQuit -= Quitting;
         if (Application.platform != RuntimePlatform.WindowsPlayer) return;
         if (Array.IndexOf(Environment.GetCommandLineArgs(), Off) >= 0) return;
         Application.wantsToQuit += Quitting;

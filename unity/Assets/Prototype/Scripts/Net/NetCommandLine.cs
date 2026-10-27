@@ -21,6 +21,14 @@ public class NetCommandLine : MonoBehaviour
     const float StatusEvery = 10f;
 
     static bool started; // once per run: Leave reloads the scene, which mustn't host again
+
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        started = false;
+    }
+
     NetSession session;
     float nextStatus;
     bool codeLogged;

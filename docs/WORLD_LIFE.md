@@ -157,11 +157,11 @@ changes what players can do.
 3. **Crabs on the beach.** Built (AmbientLife).
    - They scuttle sideways and dig into the sand when you come close.
    - At night they come out by the water.
-4. **Villagers.** Started: they wander their village, leashed to it (ValleyFauna, Village.residents). Still to do:
-   - Hollowmere's and Sunward Key's folk walk between their doors, the well and the benches, and sit on the benches (`Seat` already poses any humanoid).
-   - They run from a burning house, and go indoors at night and in rain.
-   - The barkeep stands behind the beach bar.
-   - View-only at first: Punchy's leashed residents, using its humanoid fauna.
+4. **Villagers.** Built (ValleyFauna.Folk, probe `villagers`).
+   - Hollowmere's and Sunward Key's folk walk between their doors, the well and the benches, stop a while, and sit on the benches (lie on the island's loungers).
+   - They run from a fire within 16 m (the creature brain flees it), and walk to the nearest door and go in once the sun is halfway down or in heavy rain or snow; they come out of the doors when it's over.
+   - The beach bar's barkeep keeps to the bar (the shop's door).
+   - View-only: Punchy's humanoid fauna driven as puppets, steered round walls by the cells, which they only read.
 5. **Sound.**
    - A soundscape per place: surf and gulls on the beach, birdsong in the woods, the river's rush, chatter and a fiddle from the inn at night.
    - Today only the falls roars.

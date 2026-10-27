@@ -200,6 +200,7 @@ namespace Chem
         /// </summary>
         public void Cast(string spellId, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0)
         {
+            FinishTick(); // casts land between whole ticks (StepSome)
             var s = Rules.Spell(spellId);
             if (s == null || !InBounds(x, y)) return;
             if (s.Effect == "levitate" || s.Effect == "carry") return;

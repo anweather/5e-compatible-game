@@ -5,6 +5,9 @@
       "title": "Today on dev",
       "intro": "Features merged into dev after alpha 0.1.4.",
       "clips": [
+        { "area": "World life", "lane": "gameplay", "title": "Villagers go about their day", "length": "0:24", "commit": "4e74992",
+          "video": "villagers.mp4", "poster": "villagers.jpg",
+          "summary": "Hollowmere's folk walk between their doors, the well and the benches and sit a while. When a Fire Bolt sets a house alight they run from it, and at dusk they all head home and go in." },
         { "area": "Fixes", "lane": "fix", "title": "Sky lighting without the stalls", "commit": "057a182",
           "before": "sky-ambient-before.jpg", "after": "sky-ambient-after.jpg",
           "summary": "At sunset, before and after. The sky's lighting is now worked out on the CPU each frame instead of read back from the GPU every 1.5 s, which removes 7–43 ms hitches on the PC (up to 122 ms on the Mac). It also clears the stray cyan patches the old re-bakes left on the trees." },

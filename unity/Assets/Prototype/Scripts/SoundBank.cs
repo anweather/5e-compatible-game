@@ -25,6 +25,14 @@ public class SoundBank : ScriptableObject
     static SoundBank loaded;
     static bool looked;
 
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        loaded = null;
+        looked = false;
+    }
+
     /// <summary>The built bank, or null if the yard hasn't been built with one.</summary>
     public static SoundBank Loaded
     {

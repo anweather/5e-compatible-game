@@ -96,14 +96,22 @@ Blocked, Next, and whether they hold Unity.
 4. Commit often, in small commits.
 5. Merge to `dev` only when the coordinator says it's your turn in the merge
    order. Fetch and rebase on `origin/dev` first, and push straight after.
+   Force-pushing is allowed only for your OWN unmerged feature branch,
+   after a rebase, with `--force-with-lease`; never `dev`, `main` or
+   another agent's branch (J-016).
 6. Tell the coordinator when a task is done or blocked.
-6a. Judgment calls for Andrew go through the coordinator. Check
+6a. Judgment calls for Andrew go through the coordinator, who asks him with
+   the AskUserQuestion tool. Check
    `JUDGMENT_CALLS.md` first: if a past decision covers it, follow that.
 7. Never discard, reset or overwrite work you didn't write. If you find
    uncommitted work in a file outside your lane, stop and report it.
-8. On the PC, only one heavy Unity job at a time (an Editor build, a player
-   build, or Multiplayer Play Mode). Memory runs out with two. Ask the
-   coordinator before you open an Editor or start an MPPM player.
+8. On the PC (J-017): two Editors may be open at once if 10 GB or more is
+   free. MPPM runs only with ONE Editor open. Perf measurements and Windows
+   player builds need the machine to themselves. So does a first or full
+   build (a fresh import and shader compile): beside an open Editor it took
+   commit headroom down to 4 GB. Ask the coordinator before
+   opening an Editor, starting MPPM or measuring perf. The Mac is a second
+   test rig for other lanes' branches.
 
 ## Branch cleanup (Andrew's rule, 2026-10-27)
 
@@ -169,7 +177,7 @@ ask the coordinator first.
 | Gameplay | `unity/Assets/Prototype/{Audio,Materials,Shaders,Settings}/**`, `unity/Assets/InputSystem_Actions.inputactions` |
 | Gameplay | `world/looks.json` |
 | World | `unity/Assets/Prototype/Chemistry/**` (including `Chemistry.asmdef` and `Chemistry.Tests.asmdef`) |
-| World | `unity/Assets/Prototype/Scripts/ChemGrid.cs` and every `ChemGrid.*.cs` partial (Effects, Rules, Shaping, Visuals), `Scripts/Net/NetChem.cs`, `Scripts/ProbeExplore.cs` |
+| World | `unity/Assets/Prototype/Scripts/ChemGrid.cs` and every `ChemGrid.*.cs` partial (Effects, Rules, Shaping, Visuals), `Scripts/CellWaterMesh.cs` (the water surface ChemGrid.Visuals draws), `Scripts/Net/NetChem.cs`, `Scripts/ProbeExplore.cs` |
 | World | `rules/**`, `core/**`, `sandbox/**` |
 | World | `world/` except `looks.json` |
 | World | `docs/WORLD_STREAMING.md`, `docs/FAST_LOOP.md` |
@@ -214,7 +222,9 @@ The coordinator approves each change and schedules them one at a time.
 
 | # | File | Agent | Why | State |
 |---|---|---|---|---|
-| (none yet) | | | | |
+| 1 | `docs/FAST_LOOP.md` (World's) | Gameplay | The `online` and `villagers` rows | Done (merged) |
+| 2 | `docs/WORLD_LIFE.md` (shared) | Gameplay | Item 4 marked built | Done (merged) |
+| 3 | `docs/GLOSSARY.md`, `docs/MODDING.md` (shared) | World | The "Component" entry and the MODDING example, on `components` | Approved; merges with 0.1.6 |
 
 ## Merge order
 
@@ -229,12 +239,30 @@ The coordinator approves each change and schedules them one at a time.
 7. `playtest-bot` (World), in phases, when each is ready.
 8. `perf-pass` (Build), in slices (the SSAO choice waits on Andrew).
 9. World, in this order once each passes its Editor turn:
-   a. `gas-pool` and `rain-water-mesh`;
-   b. `tick-spread`;
-   c. `still-water` and `net-reset` (both stacked on tick-spread);
-   d. `hardness`;
+   a. ~~`rain-water-mesh`~~ `f27d0b7` (the rain worst frame from 2.7 s to 75 ms); ~~`gas-pool`~~ `afbe09d`;
+   b. ~~`tick-spread`~~ `41de805`;
+   c. ~~`still-water`~~ `f3a8964`; `net-reset` waits for the online run (with Gameplay's part B, MPPM);
+   d. `hardness`: passed, merging now;
    e. `playtest-bot`.
-10. Gameplay: reset part B (stacked on `net-reset`), and the G1 perf items.
+10. Gameplay: ~~`static-resets`~~ `46abc35`; ~~`villagers`~~ `4e74992` (on the reel); `net-reset-view` (after the online run); `ground-perf` (perf numbers need a solo slot); `showcase-fire` (the Mac is verifying it).
+11. Build: `perf-pass` (cheap SSAO and soft Medium, `49bd690`) after PC-5 on a solo PC.
+
+## Release 0.1.5 (J-019; today)
+
+Waiting on, before the freeze:
+1. ~~`net-reset`~~ `7d721a3` and ~~`net-reset-view`~~ `08ad78f` (online 20/20, checksums equal after the reset).
+2. `perf-pass`: PC-5 on a solo PC.
+3. ~~`playtest-bot`~~ `20c499a` (the .ps1 files are gone; `playtest build --ref <tag>` is required).
+
+Then:
+1. Freeze dev (the coordinator calls it).
+2. Build merges dev into main and bumps the version.
+3. The release-candidate builds: Windows on the PC, Mac on the Mac.
+4. The bot runs on the Windows RC (J-018), plus Andrew's look.
+5. Fix any blockers on main, and merge back.
+6. Publish.
+
+After that, a release at least every 2 days, and sooner while a lot is landing (J-019).
 
 The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 

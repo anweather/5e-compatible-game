@@ -19,7 +19,7 @@ using UnityEngine;
 // clear, unburnt cells.
 // Presentation only, like the fireflies: each machine has its own animals,
 // and nothing they do reaches the chemistry.
-public class ValleyFauna : MonoBehaviour, ICreatureGround
+public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 {
     [System.Serializable]
     public class Entry
@@ -55,6 +55,13 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         public int species;
         public int coat;
         public CreatureState state;
+        // One of a village's folk (ValleyFauna.Folk): its village (index in folk; -1 for an animal), what
+        // it's doing, where it's going and how long it stays; the barkeep keeps to the bar.
+        public int village = -1;
+        public FolkTask task;
+        public float2 goal;
+        public float wait;
+        public bool barkeep;
     }
 
     static readonly ProfilerMarker UpdateMarker = new("ValleyFauna.Update");
@@ -182,7 +189,8 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         if (Time.time >= nextLook) LookAround(centre);
 
         Despawn(centre);
-        BringOutFolk(centre);
+        float night = sky != null ? 1f - sky.Daylight : 0f;
+        BringOutFolk(centre, FolkGoIn(night));
         spawnBudget = math.min(spawnBudget + spawnRate * Time.deltaTime, 3f);
         while (spawnBudget >= 1f)
         {
@@ -191,7 +199,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         }
 
         float dt = math.min(Time.deltaTime, 0.1f);
-        float night = sky != null ? 1f - sky.Daylight : 0f;
+        RunFolk(dt, night);
         // Everyone as they were at the start of the frame, for seeing each other.
         herd.Clear();
         foreach (var c in creatures) herd.Add(c.id, c.species, c.state, bodies[c.species]);
@@ -362,34 +370,52 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
             }
             var p = v.transform.position + v.wellAt;
             folk.Add((v, i, new float2(p.x, p.z)));
+            places.Add(PlacesOf(v));
         }
     }
 
-    // A village's folk come out (at home, leashed to it) when someone's near and none are about;
-    // like the animals, they go when everyone has gone far off.
-    void BringOutFolk(float2 centre)
+    // A village's folk come out (at home, leashed to it) when someone's near and none are about,
+    // out of their doors (ValleyFauna.Folk), but not at night or in heavy rain; like the animals,
+    // they go when everyone has gone far off.
+    void BringOutFolk(float2 centre, bool goIn)
     {
-        foreach (var (village, kind, square) in folk)
+        for (int v = 0; v < folk.Count; v++)
         {
-            if (village == null || math.distance(square, centre) > radius) continue;
-            bool about = false;
-            foreach (var c in creatures)
-                if (c.species == kind && c.state.Leash > 0f && math.distance(c.state.Home, square) < 1f)
-                {
-                    about = true;
-                    break;
-                }
-            if (about) continue;
-            for (int n = 0; n < village.residentCount; n++)
-            {
-                var p = square + rng.NextFloat2Direction() * rng.NextFloat(2f, village.wander * 0.6f);
-                if (!Walkable(p)) continue;
-                int at = Spawn(kind, new float3(p.x, Height(p), p.y));
-                var s = creatures[at].state;
-                s.Home = square;
-                s.Leash = village.wander;
-                creatures[at].state = s;
-            }
+            var (village, kind, square) = folk[v];
+            if (village == null || goIn || places[v].indoors || math.distance(square, centre) > radius) continue;
+            if (!FolkAbout(kind, square)) ComeOut(v);
+        }
+    }
+
+    bool FolkAbout(int kind, float2 square)
+    {
+        foreach (var c in creatures)
+            if (c.species == kind && c.state.Leash > 0f && math.distance(c.state.Home, square) < 1f) return true;
+        return false;
+    }
+
+    // A village's folk out of its doors (or round its square if it has none), each with a plan for the day.
+    void ComeOut(int v)
+    {
+        var (village, kind, square) = folk[v];
+        var doors = places[v].doors;
+        for (int n = 0; n < village.residentCount; n++)
+        {
+            var p = doors.Count > 0
+                ? doors[rng.NextInt(doors.Count)] + rng.NextFloat2Direction() * 0.5f
+                : square + rng.NextFloat2Direction() * rng.NextFloat(2f, village.wander * 0.6f);
+            if (!Walkable(p)) continue;
+            int at = Spawn(kind, new float3(p.x, Height(p), p.y));
+            var c = creatures[at];
+            var s = c.state;
+            s.Home = square;
+            s.Leash = village.wander;
+            s.Mode = CreatureMode.Puppet;
+            c.state = s;
+            c.village = v;
+            c.task = FolkTask.Pause;
+            c.wait = rng.NextFloat(0f, 3f);
+            c.barkeep = n == 0 && places[v].hasBar;
         }
     }
 

@@ -7,7 +7,9 @@ using UnityEngine;
 // and smoke effects are pooled (made once, reused as they come and go), fires keep their
 // effect as the fire grows or dies down (only its size changes), and thin out
 // when much burns: a field of flames overlaps, and hundreds of particle
-// systems cost more than they add (FireDensity).
+// systems cost more than they add (FireDensity). New effects are made with
+// Prewarm off and at most a few a frame (the rest wait a frame or two), so a
+// burst of smoke never stalls a frame making and prewarming dozens at once.
 public partial class ChemGrid
 {
     // --- fire ----------------------------------------------------------------------
@@ -61,23 +63,60 @@ public partial class ChemGrid
         return (x & 1) == 0 && (y & 1) == 0;
     }
 
-    // An effect from the pool, or a new one (fresh: true) when none is free; null once this many are alive.
+    // New effects made in one frame, past which the rest wait for the next frames (the cells ask
+    // again each frame): a burst of smoke or flames would otherwise make dozens at once.
+    const int MaxNewFxPerFrame = 3;
+    int newFxFrame = -1, newFxThisFrame;
+    Transform fxStaging;
+
+    // An effect from the pool, or a new one (fresh: true) when none is free; null once this many
+    // are alive, or when this frame has made its share of new ones.
     GameObject TakeFx(GameObject prefab, Vector3 at, Quaternion turn, int limit, out bool fresh)
     {
         fresh = false;
         if (liveFx >= limit) return null;
-        liveFx++;
         if (freeFx.TryGetValue(prefab, out var free) && free.Count > 0)
         {
+            liveFx++;
             var go = free.Pop();
             go.transform.SetPositionAndRotation(at, turn);
             go.SetActive(true);
             foreach (var ps in go.GetComponentsInChildren<ParticleSystem>()) ps.Play(true);
             return go;
         }
-        var made = Instantiate(prefab, at, turn, transform);
+        if (newFxFrame != Time.frameCount)
+        {
+            newFxFrame = Time.frameCount;
+            newFxThisFrame = 0;
+        }
+        if (newFxThisFrame >= MaxNewFxPerFrame) return null;
+        newFxThisFrame++;
+        liveFx++;
+        var made = MakeFx(prefab, at, turn);
         fxPrefab[made] = prefab;
         fresh = true;
+        return made;
+    }
+
+    // A new effect, made under an inactive parent so its particle systems can be set up before they
+    // wake: Prewarm off. A prewarmed system simulates a whole cycle when it starts (thousands of
+    // particle updates, collision included, for one smoke puff), and again each time the pool
+    // replays it; a cell's gas or fire is better starting from nothing anyway.
+    GameObject MakeFx(GameObject prefab, Vector3 at, Quaternion turn)
+    {
+        if (fxStaging == null)
+        {
+            fxStaging = new GameObject("Effects being made").transform;
+            fxStaging.SetParent(transform, false);
+            fxStaging.gameObject.SetActive(false);
+        }
+        var made = Instantiate(prefab, at, turn, fxStaging);
+        foreach (var ps in made.GetComponentsInChildren<ParticleSystem>(true))
+        {
+            var main = ps.main;
+            main.prewarm = false;
+        }
+        made.transform.SetParent(transform, true);
         return made;
     }
 
@@ -112,6 +151,7 @@ public partial class ChemGrid
     {
         if (fogBank != null) Destroy(fogBank.gameObject);
         fogBank = null;
+        fxStaging = null;
         liveFx = 0;
         freeFx.Clear();
         fxPrefab.Clear();
@@ -158,7 +198,9 @@ public partial class ChemGrid
         string kind = c.Gas != null && c.GasAmt > 0 && !fog ? c.Gas : null;
         var prefab = GasPrefab(kind);
         if (prefab != null && !showFx) kind = null;
-        if (kind != v.gasKind || (kind != null && prefab == null)) SwapGasEffect(v, kind, prefab, center, ground);
+        // A cell whose effect waited (the frame's new effects were used up, or the budget was full) asks again.
+        bool waiting = kind != null && prefab != null && v.gas == null;
+        if (kind != v.gasKind || (kind != null && prefab == null) || waiting) SwapGasEffect(v, kind, prefab, center, ground);
         if (kind == null) { Hide(v.gas); return; }
         if (prefab != null) return;
         FallbackGas(v, c, kind, center, ground);

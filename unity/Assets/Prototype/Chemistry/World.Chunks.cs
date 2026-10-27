@@ -150,6 +150,7 @@ namespace Chem
         /// </summary>
         public void SetActive(int cx, int cy, bool active)
         {
+            FinishTick(); // chunk switches land between whole ticks (StepSome)
             var ch = ChunkOrThrow(cx, cy);
             if (ch.Active == active) return;
             ch.Active = active;
@@ -166,6 +167,7 @@ namespace Chem
         /// <summary>Activates or deactivates every loaded chunk (no catching up), raising ChunkSwitched for each that changed, by row then column.</summary>
         public void SetAllActive(bool active)
         {
+            FinishTick();
             var changed = new List<Chunk>();
             foreach (var ch in SortedChunks(false))
             {

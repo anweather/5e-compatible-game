@@ -94,6 +94,13 @@ elevation plus height.
 - **Digging** clears the cover and turns the terrain into its `dugTo`
   (grass is dug to dirt; raised rock to rubble) unless the spell names a
   `terrain`.
+- **Hardness:** a terrain's `hardness` (a whole number from 1, default 1)
+  is how strong a dig it takes: a terraform spell's `strength` (default 1)
+  or a crater's must be at least that, or the square stays as it is and
+  "The … is too hard to dig" is logged once a tick. Soil is 1 (Lower Earth
+  and Earthen Trench dig it), raised rock 3 (only a strength-3 dig: a
+  Meteor's crater, later Stone Shape or a pick), metal plate 4 (nothing
+  digs it). Bedrock and walls are blocking, so never shaped anyway.
 - **Raising** spills the square's water onto its neighbours, nearest
   first, so no water is lost.
 - **A square raised `sim.height.blockAt` (3) steps or more is a wall:**
@@ -173,10 +180,11 @@ smothered.
 
 Any spell (Fireball), and an entity's `explodes` (the oil barrel), can blow
 a crater out of the ground where it goes off, before its element or cover
-lands: `"crater": { "radius": 1, "depth": 2 }` digs `depth` steps in the
+lands: `"crater": { "radius": 1, "depth": 2, "strength": 2 }` digs `depth` steps in the
 middle, tapering toward `radius` squares out (Chebyshev distance), like a
 tapered dig. `depth` is a whole number from 1; `radius` a whole number
-from 0 (default 1). Dug squares lose their cover and turn to their `dugTo`,
+from 0 (default 1); `strength` a whole number from 1 (default 1), against
+the ground's `hardness`. Dug squares lose their cover and turn to their `dugTo`,
 as with any digging, so the middle of a crater doesn't burn.
 
 ## Units

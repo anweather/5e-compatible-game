@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The playtest bot's runner (playtest/DESIGN.md, J-013): runs a playtest of the
+       built player, builds the bot's player, checks the preflight. A .NET tool
+       rather than PowerShell scripts, so no execution policy is involved. The
+       Windows-only parts (WMI, the event log, the volume mixer) are guarded, so it
+       builds and its tests run anywhere. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>playtest</AssemblyName>
+    <RootNamespace>Playtest.Runner</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management" Version="8.0.0" />
+    <PackageReference Include="System.Diagnostics.EventLog" Version="8.0.1" />
+  </ItemGroup>
+</Project>

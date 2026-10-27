@@ -33,6 +33,16 @@ public class PauseMenu : MonoBehaviour
     static readonly List<(Action draw, int order)> sections = new();
     static readonly Dictionary<string, Page> pages = new();
 
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options): the
+    // sections and pages are added again as their owners start.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        instance = null;
+        sections.Clear();
+        pages.Clear();
+    }
+
     GUIStyle box, title, button, hint;
     Texture2D gold, goldTint;
 

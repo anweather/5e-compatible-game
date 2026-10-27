@@ -64,8 +64,18 @@ public partial class ChemGrid
     /// <summary>Online: runs one of the host's tick batches (a rule switch if it has one, its casts, a step).</summary>
     public void RunBatch(TickBatch batch)
     {
+        PrepareBatch(batch);
+        World.Step();
+    }
+
+    /// <summary>
+    /// Online: a tick batch's rule switch, casts and other commands, without the step, which the
+    /// caller then runs in slices (World.StepSome) so a long tick doesn't stall one frame.
+    /// </summary>
+    public void PrepareBatch(TickBatch batch)
+    {
         var before = CurrentRules;
-        CurrentRules = batch.RunOn(World, CurrentRules, out var errors);
+        CurrentRules = batch.Prepare(World, CurrentRules, out var errors);
         if (errors.Count > 0)
         {
             EventLog.Add($"<color=#ff8a80>The host's rules don't fit this machine's: {errors[0]}</color>");

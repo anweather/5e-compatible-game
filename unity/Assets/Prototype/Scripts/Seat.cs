@@ -15,6 +15,9 @@ public class Seat : MonoBehaviour
 
     static readonly List<Seat> all = new();
 
+    /// <summary>Every seat in the scene now (the villages' folk sit on them too: ValleyFauna.Folk).</summary>
+    public static IReadOnlyList<Seat> All => all;
+
     /// <summary>Where the hips go, in the world.</summary>
     public Vector3 SeatPoint => transform.TransformPoint(seatAt);
 

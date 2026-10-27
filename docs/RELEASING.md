@@ -126,6 +126,32 @@ vpk`) and `gh` signed in.
   its first update downloads the full package; every one after that is a
   delta. The installers don't have that cost.
 
+**Check the restart on Windows before publishing** (new since QuickExit, the
+quit-crash fix in J-010). A Windows player no longer lets Unity shut down:
+`QuickExit.cs` catches every quit, runs `BeforeExit`, leaves an online
+session and ends the process. So an update's restart (`SelfUpdate` calls
+Velopack's `WaitExitThenApplyUpdates`, then `Application.Quit`) goes through
+it. Velopack waits for the process to end however it ends, so it should be
+fine, but test it on the first ship after QuickExit and after any change to
+quitting:
+
+1. On the PC, install the current test release with its
+   `SpellChemistryValley-win-Setup.exe` (`update-test-*`, app id
+   `SpellChemistryValleyTest`), start it once, quit.
+2. Ship the next one with `tools/ship-update.sh X.Y.Z --test`.
+3. Start the installed copy: "Updating to alpha X.Y.Z...", then it closes
+   and comes back by itself within a few seconds, and the Esc menu shows the
+   new version and commit.
+4. Check that no old `SpellChemistryValley.exe` is left in Task Manager, that
+   `%LOCALAPPDATA%\SpellChemistryValleyTest\velopack.log` shows the update
+   applied with no "waiting for process" timeout, and that there's no new
+   D3D12Core crash in the Event Viewer (Windows Logs → Application).
+5. Once more with the Esc menu's "Update and restart": start with
+   `-no-auto-update` while a newer test release is out.
+
+If the restart fails only with QuickExit, `-clean-quit` turns it off for a
+comparison run.
+
 **Limits:** nothing is signed (Windows SmartScreen and macOS Gatekeeper warn
 on first install; updates after that don't prompt). A player more than one
 update behind needs every delta in between; if one is missing Velopack falls
