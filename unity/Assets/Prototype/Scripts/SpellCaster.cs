@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Collections.Generic;
 using Chem;
 using UnityEngine;
@@ -42,6 +43,8 @@ public class SpellCaster : MonoBehaviour
 
     /// <summary>The charge the held Cast has built so far (1 when not charging).</summary>
     public int Charge => chargeStart < 0f ? 1 : World.ClampCharge(1 + (int)((Time.time - chargeStart) / ChargeSeconds));
+    /// <summary>How long Cast has been held charging, or -1 when it isn't (CastPose holds the wind-up).</summary>
+    public float ChargingSeconds => chargeStart < 0f ? -1f : Time.time - chargeStart;
     Vector3? blinkLanding;
 
     /// <summary>
@@ -168,12 +171,27 @@ public class SpellCaster : MonoBehaviour
         var look = LookOf(spellId);
         var landing = Landing(cast);
         var def = grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null;
-        if (pose != null) pose.Play(landing, look?.glow ?? Color.white);
+        var gesture = CastGestures.For(def, look);
+        if (pose != null) pose.Play(gesture, landing, look?.glow ?? Color.white);
         GameSounds.Play(GameSounds.CastOf(def), Hand);
         // A blink shows its mist where the caster leaves as well as where they land.
         if (def?.Effect == SpellShapes.TeleportEffect && look?.impact != null)
             Destroy(Instantiate(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
+        // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
+        float release = CastGestures.Of(gesture).release;
+        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, onArrive)));
+        else Unleash(def, look, landing, onArrive);
+    }
 
+    static IEnumerator AtRelease(float seconds, System.Action then)
+    {
+        yield return new WaitForSeconds(seconds);
+        then();
+    }
+
+    // The projectile, meteor or storm, or the effect at once; onArrive when it lands.
+    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, System.Action onArrive)
+    {
         void Land()
         {
             if (look?.impact != null) Destroy(Instantiate(look.impact, landing, Quaternion.LookRotation(Flat(landing - Hand))), look.impactSeconds);
@@ -213,6 +231,13 @@ public class SpellCaster : MonoBehaviour
 
     SpellVisuals.Entry LookOf(string spellId) => visuals != null ? visuals.For(spellId) : null;
 
+    /// <summary>The gesture a spell is cast with (CastGestures.For: its look's, or one from its rules).</summary>
+    public CastGesture GestureOf(string spellId) =>
+        CastGestures.For(grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null, LookOf(spellId));
+
+    /// <summary>The colour of the glow in the caster's hand for a spell.</summary>
+    public Color GlowOf(string spellId) => LookOf(spellId)?.glow ?? Color.white;
+
     Vector3 Hand => pose != null ? pose.HandPosition : transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
 
     // Where the spell's show lands: the far end of a beam, the caster for a burst, otherwise the target cell.
@@ -238,9 +263,11 @@ public class SpellCaster : MonoBehaviour
     float FlightSeconds(CastCommand cast)
     {
         var look = LookOf(cast.Spell);
-        if (look != null && look.fromSky) return MeteorFall.Seconds;
-        if (look != null && look.storm) return SleetStorm.LandSeconds;
-        return look?.projectile != null ? Vector3.Distance(Hand, Landing(cast)) / SpellProjectile.DefaultSpeed : 0f;
+        // The gesture's wind-up comes first: the spell leaves the hands at its release (PlayCastEffect).
+        float release = CastGestures.Of(GestureOf(cast.Spell)).release;
+        if (look != null && look.fromSky) return release + MeteorFall.Seconds;
+        if (look != null && look.storm) return release + SleetStorm.LandSeconds;
+        return release + (look?.projectile != null ? Vector3.Distance(Hand, Landing(cast)) / SpellProjectile.DefaultSpeed : 0f);
     }
 
     // --- aiming ------------------------------------------------------------------------
