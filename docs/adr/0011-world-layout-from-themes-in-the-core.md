@@ -52,3 +52,8 @@
 - **Sources:** PocketTactics `docs/world-themes.md`,
   `src/core/world/theme/` (`geometry.ts` on exact maths, `blueprint.ts`,
   `steer.ts`, `schema.ts`); Punchy `Assets/Game/Scripts/Terrain/`.
+
+**2026-10-27:** checked on both machines. `WorldGenTests` and `ThemeTests`
+(the bit patterns from PocketTactics' TypeScript, and the home-valley
+blueprint digest `c3c8448e`) pass on the Windows PC (x64) and the Mac
+(ARM64, .NET 8), at bb7793e.
