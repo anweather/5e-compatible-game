@@ -25,6 +25,16 @@ it with SendMessage. It doesn't write game code.
    build, or Multiplayer Play Mode). Memory runs out with two. Ask the
    coordinator before you open an Editor or start an MPPM player.
 
+## Branch cleanup (Andrew's rule, 2026-10-27)
+
+A branch that is fully merged into `dev` can be deleted, both locally and on
+`origin`, without asking Andrew. The coordinator does this. Agents delete only
+their own branches, once their merge has been pushed. A branch counts as
+merged when `git branch --merged origin/dev` lists it, or when its commits
+reached `dev` by rebase or cherry-pick and `git cherry` / `git diff` confirm
+nothing is left. Never delete `dev`, `main`, an unmerged branch, or a branch
+a worktree has checked out.
+
 ## Agents and lanes
 
 | Agent (session name) | Machine and checkout | Lane |
@@ -105,15 +115,13 @@ The coordinator approves each change and schedules them one at a time.
    `ThingSpawner`/`PhysicsProp` that puts props to sleep (Rigidbody sleep or
    kinematic) in inactive chunks and wakes them on activation. World merges
    first, then Gameplay.
-2. **`origin/feat/spell-radial`:** it's already in `dev` (rebased as `1300ff9`
-   and `f8d1a9f`, then phase B in `e970913`), so there's nothing to merge. The
-   remote branch could be deleted. Andrew to decide.
-3. **Old local branches:** `playtest-fixes`, `streaming-live`,
-   `streaming-linger`, `village` and `feat/chunked-valley` are all merged into
-   `dev`. They could be deleted. Andrew to decide.
 
 ## Log
 
 - 2026-10-27: lanes approved. Removed 11 merged agent worktrees under
   `.claude/worktrees/agent-*` and their branches. The spell radial was
   already on `dev`.
+- 2026-10-27: branch cleanup rule added. Deleted 5 merged local branches and
+  13 merged remote branches, including `feat/spell-radial`, whose content was
+  already on `dev`. Left on `origin`: `dev`, `main`,
+  `perf/no-static-batching`.
