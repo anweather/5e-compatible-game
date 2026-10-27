@@ -138,7 +138,7 @@ public sealed class PlaytestPlayer
             }
             if (Time.time - lastProgress > NoProgressSeconds)
             {
-                Teleport(target - to.normalized * Arrive * 0.5f);
+                Teleport(target - (Arrive * 0.5f) * to.normalized);
                 yield break;
             }
             yield return null;
@@ -159,10 +159,10 @@ public sealed class PlaytestPlayer
     void Teleport(Vector3 at)
     {
         var ground = new Vector3(at.x, grid.GroundAt(at) + 0.1f, at.z);
-        var body = wizard.GetComponent<CharacterController>();
-        if (body != null) body.enabled = false;
+        bool hasBody = wizard.TryGetComponent<CharacterController>(out var body);
+        if (hasBody) body.enabled = false;
         wizard.transform.position = ground;
-        if (body != null) body.enabled = true;
+        if (hasBody) body.enabled = true;
         TeleportedOnFrame = Frame;
         trace("teleport", F("{0:0},{1:0}", ground.x, ground.z));
     }

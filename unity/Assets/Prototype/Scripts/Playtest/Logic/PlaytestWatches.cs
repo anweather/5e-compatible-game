@@ -185,8 +185,8 @@ namespace Playtest
     {
         public const double MagentaShare = 0.01, Dark = 8, Bright = 247;
 
-        /// <summary>Candidates for one screenshot, given its pixels as r, g, b bytes in a row.</summary>
-        public static IEnumerable<Candidate> Pixels(int frame, byte[] rgb, string place)
+        /// <summary>Candidates for one screenshot, given its pixels as r, g, b bytes in a row. At night (darkExpected) a black picture is fine.</summary>
+        public static IEnumerable<Candidate> Pixels(int frame, byte[] rgb, string place, bool darkExpected = false)
         {
             if (rgb == null || rgb.Length < 3) yield break;
             int n = rgb.Length / 3, magenta = 0;
@@ -201,7 +201,7 @@ namespace Playtest
             if (magenta > n * MagentaShare)
                 yield return new Candidate("image-magenta", place, Category.Visual, frame,
                     string.Format(CultureInfo.InvariantCulture, "{0:0.0}% of the picture is magenta (a missing shader?)", 100.0 * magenta / n));
-            if (mean < Dark)
+            if (mean < Dark && !darkExpected)
                 yield return new Candidate("image-black", place, Category.Visual, frame, "the picture is black");
             else if (mean > Bright)
                 yield return new Candidate("image-blown", place, Category.Visual, frame, "the picture is white");

@@ -16,10 +16,11 @@ public static class PlaytestPlaces
         Add(places, "ball court", Object.FindAnyObjectByType<BallCourt>());
         Add(places, "defense field", Object.FindAnyObjectByType<DefenseField>());
         Add(places, "village", Object.FindAnyObjectByType<Village>());
-        Add(places, "waterfall", Object.FindAnyObjectByType<WaterfallFx>());
+        // The waterfall and the sea are drawn away from their objects' origins: go by what they draw.
+        Drawn(places, "waterfall", Object.FindAnyObjectByType<WaterfallFx>());
         var bridge = GameObject.Find("Bridge");
         if (bridge != null) places.Add(("bridge", bridge.transform.position));
-        if (Ocean.Instance != null) places.Add(("sea", Ocean.Instance.transform.position));
+        Drawn(places, "sea", Ocean.Instance);
         // Put each on the ground (a landmark's own point may be up a pole or under the water).
         for (int i = 0; i < places.Count; i++)
         {
@@ -32,6 +33,21 @@ public static class PlaytestPlaces
     static void Add(List<(string, Vector3)> places, string name, Component part)
     {
         if (part != null) places.Add((name, part.transform.position));
+    }
+
+    // The middle of everything a part and its children draw (or its position if it draws nothing).
+    static void Drawn(List<(string, Vector3)> places, string name, Component part)
+    {
+        if (part == null) return;
+        var renderers = part.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0)
+        {
+            places.Add((name, part.transform.position));
+            return;
+        }
+        var bounds = renderers[0].bounds;
+        foreach (var r in renderers) bounds.Encapsulate(r.bounds);
+        places.Add((name, bounds.center));
     }
 
     /// <summary>The nearest place within a radius, for a candidate's signature; else the chunk it's in.</summary>

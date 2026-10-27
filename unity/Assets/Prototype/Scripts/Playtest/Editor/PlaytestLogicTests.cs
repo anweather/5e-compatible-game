@@ -144,6 +144,7 @@ public class PlaytestLogicTests
         Assert.That(ImageCheck.Pixels(1, Fill(255, 0, 255, 100), "x").Select(c => c.Detector), Does.Contain("image-magenta"));
         Assert.That(ImageCheck.Pixels(1, Fill(0, 0, 0, 100), "x").Single().Detector, Is.EqualTo("image-black"));
         Assert.That(ImageCheck.Pixels(1, Fill(90, 120, 60, 100), "x"), Is.Empty, "a meadow");
+        Assert.That(ImageCheck.Pixels(1, Fill(0, 0, 0, 100), "x", darkExpected: true), Is.Empty, "night is dark");
     }
 
     [Test]
@@ -173,6 +174,11 @@ public class PlaytestLogicTests
         same.Candidates.Add(new Candidate("exception", "X@Y", Category.GameBreaking, 410, "boom"));
         Assert.That(ReplayCheck.Reproduced(seen, same), Is.True);
         Assert.That(ReplayCheck.Reproduced(seen, other), Is.False);
+
+        // A replay that drifted still reproduces it if it met it doing the same thing.
+        var air = new Candidate("wizard-airborne", "waterfall", Category.Gameplay, 1955, "") { Goal = "go to the waterfall" };
+        other.Candidates.Add(new Candidate("wizard-airborne", "waterfall", Category.Gameplay, 1786, "") { Goal = "go to the waterfall" });
+        Assert.That(ReplayCheck.Reproduced(air, other), Is.True);
     }
 
     [Test]
@@ -180,8 +186,13 @@ public class PlaytestLogicTests
     {
         var run = new RunReport { RunId = "r1", Seed = 123456789012UL, Build = "abc1234", Goals = { "go to the tower" } };
         run.Trace.Add(new TraceStep { Frame = 3, Action = "goal", Detail = "go to the tower" });
-        var back = RunReport.FromJson(run.ToJson());
+        run.Candidates.Add(new Candidate("wizard-stuck", "tower", Category.Gameplay, 40, "stuck", lowConfidence: true) { Screenshot = "shots/000040.jpg" });
+        string json = run.ToJson();
+        Assert.That(json, Does.Contain("\"Gameplay\""), "categories are written by name");
+        var back = RunReport.FromJson(json);
         Assert.That(back.Seed, Is.EqualTo(run.Seed));
+        var c = back.Candidates.Single();
+        Assert.That((c.Signature, c.Category, c.Frame, c.LowConfidence, c.Screenshot), Is.EqualTo(("wizard-stuck:tower", Category.Gameplay, 40, true, "shots/000040.jpg")));
         Assert.That(back.Trace.Single().Detail, Is.EqualTo("go to the tower"));
         Assert.That(ReplayCheck.Steps(back, 100).First(), Does.Contain("go to the tower"));
     }

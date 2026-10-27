@@ -258,6 +258,33 @@ the bot, and off-screen with the listener muted. On the RTX 4080 SUPER:
   The D3D12Core fault on quit is a known issue (being fixed by Gameplay); the
   crash detector records it against that known issue rather than filing it.
 
+## Phase 2, first runs (2026-10-27)
+
+The bot plays: `tools/playtest/run.ps1 -Seed <n> -Seconds <n>` launched a
+build off-screen and muted. In 2 minutes of game time it did 6 to 20 goals
+(walks, casts, combos, throws, sits) and wrote run.json with its trace,
+candidates and screenshots. What the first runs showed:
+
+- **Replays aren't exact.** The same seed twice on the same build matched
+  for the first 7 steps, then drifted during a long walk: one run was
+  blocked and jumped where the other got through. Game time is locked, but
+  loading and physics use real time in places, so props and terrain arrive
+  on different frames. So "reproduced" now also means the same signature
+  met during the same goal, not only within a second of the same frame,
+  and triage replays up to 3 times. Making long walks replay exactly
+  (finding what in loading runs on real time) is follow-up work.
+- **A real paper cut, probably.** After the bot cast Hasten Time, frames
+  took 0.8 to 2.2 s while it ran: 20 chemistry ticks a frame over the
+  active chunks. Spikes during Hasten Time are now keyed "(hasten time)" so
+  they group as one finding.
+- **False positives fixed:** black pictures at night (Hasten Time had run
+  the clock into the evening; night is now expected to be dark); "airborne"
+  while swimming (swimming now counts as not airborne); the waterfall and
+  the sea located by what they draw, not their objects' origins (both had
+  sent the bot to the ball court).
+- Low-confidence candidates seen: stuck (twice, mid-meadow) and "Plant
+  Growth changed nothing". These are what the Claude triage pass is for.
+
 ## Needs a decision from Andrew
 
 1. **Where builds come from:** a dedicated playtest-build worktree with its

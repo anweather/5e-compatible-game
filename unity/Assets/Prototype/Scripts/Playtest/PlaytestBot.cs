@@ -46,6 +46,7 @@ public class PlaytestBot : MonoBehaviour
     ChemGrid grid;
     GameObject wizard;
     ThirdPersonController controller;
+    SurfaceEffects surface;
     PlaytestPlayer player;
     PlaytestAudioTap tap;
     List<(string name, Vector3 at)> places;
@@ -94,7 +95,7 @@ public class PlaytestBot : MonoBehaviour
             run.ReplayOf = original.RunId;
         }
         seconds = Number("-playtest-seconds", Number("-playtest-minutes", 8f) * 60f);
-        untilFrame = (int)Number("-playtest-until-frame", int.MaxValue);
+        untilFrame = int.TryParse(Arg("-playtest-until-frame"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var u) ? u : int.MaxValue;
         string cov = Arg("-playtest-coverage");
         if (cov != null && File.Exists(cov)) coverage = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(cov)) ?? new();
         offscreen = args.Contains("-playtest-offscreen");
@@ -139,6 +140,7 @@ public class PlaytestBot : MonoBehaviour
     void Setup()
     {
         controller = wizard.GetComponent<ThirdPersonController>();
+        surface = wizard.GetComponent<SurfaceEffects>();
         var listener = FindAnyObjectByType<AudioListener>();
         if (listener != null) tap = listener.gameObject.AddComponent<PlaytestAudioTap>();
         places = PlaytestPlaces.Find(grid, wizard.transform.position);
@@ -157,13 +159,25 @@ public class PlaytestBot : MonoBehaviour
         frame++;
         player.Frame = frame;
         WatchWizard();
-        foreach (var c in frameWatch.Frame(frame, Time.unscaledDeltaTime * 1000f, Here)) Add(c);
+        // Spikes while Hasten Time runs the chemistry fast are their own paper cut, not the place's.
+        string spikeAt = grid.World.Haste.HasValue ? Here + " (hasten time)" : Here;
+        foreach (var c in frameWatch.Frame(frame, Time.unscaledDeltaTime * 1000f, spikeAt)) Add(c);
         if (tap != null) WatchSound();
         if (frame % PropEvery == 0) WatchProps();
         if (frame % HeartbeatEvery == 0) File.WriteAllText(Path.Combine(outDir, "heartbeat.txt"), frame.ToString(CultureInfo.InvariantCulture));
     }
 
     string Here => PlaytestPlaces.Near(places, grid, wizard.transform.position);
+
+    // Between 20:00 and 06:00 on the world clock a dark picture is right.
+    bool Night
+    {
+        get
+        {
+            long minute = grid.World.Minutes % (24 * 60);
+            return minute < 6 * 60 || minute >= 20 * 60;
+        }
+    }
 
     void WatchWizard()
     {
@@ -172,7 +186,8 @@ public class PlaytestBot : MonoBehaviour
         {
             X = p.x, Y = p.y, Z = p.z,
             Ground = grid.GroundAt(p),
-            Grounded = controller == null || controller.Grounded,
+            // Swimming isn't on the ground but isn't airborne either.
+            Grounded = controller == null || controller.Grounded || (surface != null && surface.Swimming),
             Pushing = player.Pushing,
             BotMoved = player.TeleportedOnFrame == frame,
             Place = Here,
@@ -252,7 +267,7 @@ public class PlaytestBot : MonoBehaviour
         string file = Path.Combine("shots", $"{frame:D6}-{label}.jpg");
         File.WriteAllBytes(Path.Combine(outDir, file), tex.EncodeToJPG(80));
         Trace("shot", file);
-        foreach (var c in ImageCheck.Pixels(frame, tex.GetRawTextureData(), Here))
+        foreach (var c in ImageCheck.Pixels(frame, tex.GetRawTextureData(), Here, Night))
         {
             c.Screenshot = file;
             Add(c);

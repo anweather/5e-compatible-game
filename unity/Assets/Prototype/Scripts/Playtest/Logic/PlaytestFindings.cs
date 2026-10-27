@@ -29,6 +29,7 @@ namespace Playtest
         public string Detector { get; }
         /// <summary>What it saw, stable across runs: an exception's type and top frame, a place, a spell.</summary>
         public string Key { get; }
+        [Newtonsoft.Json.JsonConverter(typeof(Newtonsoft.Json.Converters.StringEnumConverter))]
         public Category Category { get; }
         /// <summary>The frame it was seen on (frames are locked to 1/30 s of game time, so replays line up).</summary>
         public int Frame { get; }

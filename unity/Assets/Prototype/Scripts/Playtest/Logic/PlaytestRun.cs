@@ -69,11 +69,16 @@ namespace Playtest
             return a.Count > b.Count ? a[b.Count] : b[a.Count];
         }
 
-        /// <summary>Whether the replay saw the same signature within Slack frames of the original.</summary>
+        /// <summary>
+        /// Whether the replay saw the same signature within Slack frames of the original, or during
+        /// the same goal. Replays aren't bit-exact (loading and physics run on real time in places, so
+        /// a long walk can drift), so the same paper cut met while doing the same thing counts too.
+        /// </summary>
         public static bool Reproduced(Candidate original, RunReport replay)
         {
             if (original == null || replay == null) return false;
-            return replay.Candidates.Any(c => c.Signature == original.Signature && Math.Abs(c.Frame - original.Frame) <= Slack);
+            return replay.Candidates.Any(c => c.Signature == original.Signature &&
+                (Math.Abs(c.Frame - original.Frame) <= Slack || (c.Goal != null && c.Goal == original.Goal)));
         }
 
         /// <summary>Steps to reproduce, in words, from the trace up to a frame: the goals in order, then the last few actions.</summary>
