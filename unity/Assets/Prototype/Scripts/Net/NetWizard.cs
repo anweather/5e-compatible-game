@@ -10,7 +10,9 @@ using UnityEngine;
 // Every copy has an ItemHolder, so an item someone holds rides in their hand
 // on every screen (NetItem); only the owner's copy has controls. A shove
 // another machine works out for this wizard (a barrel blast on the host) is
-// sent to the owner, who applies it (Knockback).
+// sent to the owner, who applies it (Knockback). A dodge roll's tumble is laid
+// over the bones, outside the synced animation, so the owner announces each
+// roll and every other copy plays it (RollPose).
 [RequireComponent(typeof(SpellCaster), typeof(SurfaceEffects), typeof(PlayerControls))]
 public class NetWizard : NetworkBehaviour
 {
@@ -65,6 +67,18 @@ public class NetWizard : NetworkBehaviour
         if (TryGetComponent<Unity.Netcode.Components.NetworkTransform>(out var net) && net.CanCommitToTransform)
             net.Teleport(to, transform.rotation, transform.localScale);
         else transform.position = to;
+    }
+
+    /// <summary>
+    /// Owner only: tells the other machines this wizard has started a dodge roll (DodgeRoll), so
+    /// they play its tumble too (RollPose). The roll's ground covered comes with the NetworkTransform.
+    /// </summary>
+    public void Rolled(float seconds) => RollRpc(seconds);
+
+    [Rpc(SendTo.NotOwner)]
+    void RollRpc(float seconds)
+    {
+        if (TryGetComponent<RollPose>(out var pose)) pose.Play(seconds);
     }
 
     [Rpc(SendTo.Owner)]

@@ -204,14 +204,14 @@ public class PhysicsProp : MonoBehaviour, IPushable
         body.AddForce(impulse / (State.Def.Mass * Forces.KgPerMass), ForceMode.VelocityChange);
     }
 
-    /// <summary>Floats for <paramref name="ticks"/> sim ticks, rising a little, then falls.</summary>
-    public void Levitate(int ticks)
+    /// <summary>Floats for <paramref name="ticks"/> sim ticks, rising a little (<paramref name="rise"/> times as fast for a charged cast), then falls.</summary>
+    public void Levitate(int ticks, float rise = 1f)
     {
         // A kinematic body is in someone's hand (Carryable), or a puppet of the host's.
         if (State == null || body.isKinematic || Puppet) return;
         State.Levitate(grid.World.Tick, ticks);
         body.useGravity = false;
-        body.linearVelocity += Vector3.up * levitateRise;
+        body.linearVelocity += Vector3.up * (levitateRise * rise);
         EventLog.Add($"The {Label} floats up");
     }
 

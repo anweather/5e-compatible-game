@@ -67,7 +67,8 @@ public static class ProbeScenarios
             "in it, no console errors."),
         new Entry("frost", typeof(FrostProbe), 40f,
             "Ray of Frost from the lake's shore (the dry square outside the yard nearest it with lake water two squares south) " +
-            "out over the water. Checks: the shore was found, the wet squares in the beam froze, the ice is drawn at or above " +
+            "out over the water. Checks: the shore was found, while it plays one frost beam (FrostBeam) runs from the wizard to the end " +
+            "of the line with no IceLance sphere or projectile, the wet squares in the beam froze, the ice is drawn at or above " +
             "the lake's surface and is solid (a ray down hits the Ice collider), Sleet Storm on open water freezes a wide circle, no console errors."),
         new Entry("explore", typeof(ExploreProbe), 60f,
             "The wizard goes to meadow 3 chunks or more from the yard (outside the old chemistry area) and casts Fire Bolt there. " +
@@ -149,13 +150,30 @@ public static class ProbeScenarios
             "from the wizard, then a deer, a rabbit, a turkey and a fox walking through the meadow. Checks: ValleyFauna is built with 10 " +
             "species or more, 10 animals or more are out, 20 s later two kinds of activity or more under way (grazing, resting, drinking, " +
             "sleeping, play, hunting), the deer bolts (over 15 m from the wizard after 3 s), no console errors."),
-        new Entry("blink", typeof(BlinkProbe), 30f,
+        new Entry("blink", typeof(BlinkProbe), 45f,
             "Misty Step aimed as a player aims it (the camera's ray through the crosshair) at open ground all round the wizard, " +
-            "3 m out to just inside its range, then a few blinks for real. Checks: 80% or more of the spots can be landed on (the " +
-            "detail tallies why the rest can't), and every real blink arrives where it was aimed."),
+            "3 m out to just inside its range, then a few blinks for real, then six casts through the caster two frames apart (out " +
+            "and back onto the mist it left, one straight after a Thunderwave), then one held to full charge past a tap's range. " +
+            "Checks: 80% or more of the spots can be landed on (the detail tallies why the rest can't), every real blink arrives " +
+            "where it was aimed, every cast in a row arrives (the detail names what was in the way if not), the held cast lands " +
+            "further than a tap would and arrives."),
+        new Entry("charges", typeof(ChargesProbe), 60f,
+            "Every spell is stronger held: casts through the caster at a tap and at full charge, compared. Checks: every spell " +
+            "charges (SpellCaster.Chargeable), and held does half as much again or more: Create Water's water, Grease's greased " +
+            "squares, Ray of Frost's beam length, Thunderwave's shove on the crate by yard (15, 6), Levitate's lift on the props " +
+            "by yard (17, 6), Misty Step's and Mage Hand's reach and Mage Hand's lift, no console errors. Metrics: every spell's " +
+            "squares at a tap and held."),
         new Entry("sprint", typeof(SprintProbe), 30f,
             "A virtual controller walks the wizard north, clicks the left stick, lets go of the stick and pushes again, then holds the left trigger. " +
             "Checks: the click runs (over 1.3 times the walk), letting go of the stick stops the run, the left trigger doesn't sprint, no console errors."),
+        new Entry("roll", typeof(RollProbe), 30f,
+            "A virtual controller walks the wizard north and pulls the left trigger (DodgeRoll), then pulls it again 0.55 s in, during the wait " +
+            "before the next roll. Checks: it rolls, over 3 m in under 0.6 s, the body turns once head over heels (300 to 420 degrees, hips to " +
+            "head) and ends upright (within 25 degrees), the second pull does nothing, no console errors."),
+        new Entry("dither", typeof(DitherProbe), 30f,
+            "The wizard put behind the terrain tree nearest it, the camera cut to look at it through the tree, then cut round to the open side " +
+            "(OccluderFade). Checks: the tree is found in the way, the dither fades in (fade over 0.9, the global cut over 0.5) with the " +
+            "see-through figure on; from the open side nothing is in the way, the dither is off, the figure off and every material back, no console errors."),
         new Entry("snow", typeof(SnowProbe), 60f,
             "Heavy snow at noon (fast settling), then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
             "Checks: over 500 squares under snow, over 20 banks against walls and trees, the ground over a bank stands 0.25 m higher, " +

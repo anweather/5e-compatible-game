@@ -229,7 +229,7 @@ public class NetChem : NetworkBehaviour
         var (spell, x, y, dir) = (cast.Spell, cast.X, cast.Y, cast.Dir);
         // Only the server can look a player's wizard up by client id; everyone else finds it by its object id.
         var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(caster);
-        if (wizard != null) AnnounceCastRpc(spell, x, y, dir, cast.AimX, cast.AimY, wizard.NetworkObjectId);
+        if (wizard != null) AnnounceCastRpc(spell, x, y, dir | (cast.Charge << 8), cast.AimX, cast.AimY, wizard.NetworkObjectId);
     }
 
     [Rpc(SendTo.Server)]
@@ -263,12 +263,13 @@ public class NetChem : NetworkBehaviour
 
     // --- everyone --------------------------------------------------------------
 
-    // Cosmetic only: every machine shows the cast (gesture, projectile, landing effect) before its tick arrives.
+    // Cosmetic only: every machine shows the cast (gesture, projectile, landing effect) before its tick arrives,
+    // at its charge (a held beam is longer, a held storm wider), which rides in dirAndCharge's second byte.
     [Rpc(SendTo.ClientsAndHost)]
-    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, int dir, int aimX, int aimY, ulong casterObject)
+    void AnnounceCastRpc(FixedString32Bytes spell, int x, int y, int dirAndCharge, int aimX, int aimY, ulong casterObject)
     {
         if (NetworkManager.SpawnManager.SpawnedObjects.TryGetValue(casterObject, out var player) && player.TryGetComponent<SpellCaster>(out var spellCaster))
-            spellCaster.PlayCastEffect(new CastCommand(spell.ToString(), x, y, dir, 1, aimX, aimY));
+            spellCaster.PlayCastEffect(new CastCommand(spell.ToString(), x, y, dirAndCharge & 0xff, (byte)(dirAndCharge >> 8), aimX, aimY));
     }
 
     [Rpc(SendTo.ClientsAndHost)]

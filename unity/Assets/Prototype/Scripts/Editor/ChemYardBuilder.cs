@@ -338,6 +338,12 @@ public static class ChemYardBuilder
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
         wizard.AddComponent<SpellRadialHud>(); // waits for the caster and controls to be on (solo now, the owner's on spawn)
+        // The dodge roll and its tumble, and keeping the local wizard in sight behind what's in the way.
+        wizard.AddComponent<DodgeRoll>();
+        wizard.AddComponent<RollPose>();
+        var fade = wizard.AddComponent<OccluderFade>();
+        fade.ditherLit = Shader.Find("Prototype/DitherLit");
+        fade.silhouette = Shader.Find("Prototype/WizardSilhouette");
         if (playerDriven)
         {
             caster.grid = grid;
@@ -389,7 +395,8 @@ public static class ChemYardBuilder
             Visual(SpellIds.FireBolt, new Color(1f, 0.5f, 0.15f), FireFx + "/FireBall.prefab", FireFx + "/TinyExplosion.prefab"),
             Visual(SpellIds.BurningHands, new Color(1f, 0.45f, 0.1f), null, FireFx + "/FlameThrower.prefab"),
             Visual(SpellIds.Fireball, new Color(1f, 0.4f, 0.1f), FireFx + "/FireBall.prefab", FireFx + "/BigExplosion.prefab"),
-            Visual(SpellIds.RayOfFrost, new Color(0.55f, 0.85f, 1f), null, PackPaths.MagicFx + "/IceLance.prefab"),
+            // Ray of Frost: one icy beam from the hand along its line (FrostBeam), no projectile or impact.
+            Beam(SpellIds.RayOfFrost, new Color(0.55f, 0.85f, 1f)),
             Visual(SpellIds.CreateWater, new Color(0.3f, 0.6f, 1f), null, PackPaths.WaterFx + "/BigSplash.prefab"),
             // Sleet Storm: driving sleet from a low cloud over its squares (SleetStorm), no projectile or impact.
             Storm(SpellIds.SleetStorm, new Color(0.75f, 0.9f, 1f)),
@@ -422,6 +429,13 @@ public static class ChemYardBuilder
         e.fromSky = true;
         e.afterImpact = Load(FireFx + "/DustExplosion.prefab");
         e.impactSeconds = 5f;
+        return e;
+    }
+
+    static SpellVisuals.Entry Beam(string spellId, Color glow)
+    {
+        var e = Visual(spellId, glow, null, null);
+        e.beam = true;
         return e;
     }
 

@@ -3,6 +3,7 @@ Shader "Prototype/VillageLit"
     // Generated things built with MeshKit (D12): the colour is in the vertices, alpha is glow (a
     // window lit from inside, brighter the darker the sky: the global _LampGlow, which Village sets
     // from SkyLight). Soft wrapped lighting, main-light shadows and URP's fog, like the creatures.
+    // A house between the camera and the wizard is dithered away round it (OccluderDither.hlsl).
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
@@ -39,6 +40,7 @@ Shader "Prototype/VillageLit"
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "OccluderDither.hlsl"
 
             float _LampGlow;
 
@@ -64,6 +66,7 @@ Shader "Prototype/VillageLit"
 
             half4 Frag(Varyings input) : SV_Target
             {
+                OccluderDitherClip(input.positionCS);
                 half3 n = normalize(input.normalWS);
                 Light light = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 half diffuse = saturate(dot(n, light.direction) * 0.8 + 0.2);
@@ -121,13 +124,18 @@ Shader "Prototype/VillageLit"
             #pragma target 3.5
             #pragma vertex Vert
             #pragma fragment Frag
+            #include "OccluderDither.hlsl"
 
             float4 Vert(Attributes input) : SV_POSITION
             {
                 return TransformWorldToHClip(TransformObjectToWorld(input.positionOS.xyz));
             }
 
-            half Frag(float4 positionCS : SV_POSITION) : SV_Target { return positionCS.z; }
+            half Frag(float4 positionCS : SV_POSITION) : SV_Target
+            {
+                OccluderDitherClip(positionCS);
+                return positionCS.z;
+            }
             ENDHLSL
         }
 
@@ -141,6 +149,7 @@ Shader "Prototype/VillageLit"
             #pragma target 3.5
             #pragma vertex Vert
             #pragma fragment Frag
+            #include "OccluderDither.hlsl"
 
             struct V
             {
@@ -156,7 +165,11 @@ Shader "Prototype/VillageLit"
                 return o;
             }
 
-            half4 Frag(V input) : SV_Target { return half4(normalize(input.normalWS), 0); }
+            half4 Frag(V input) : SV_Target
+            {
+                OccluderDitherClip(input.positionCS);
+                return half4(normalize(input.normalWS), 0);
+            }
             ENDHLSL
         }
     }

@@ -21,6 +21,7 @@ using UnityEngine.InputSystem;
 //                                                    M opens it on the Mods page)
 //   Pick up/drop E             X / Square
 //   Use item     F             Y / Triangle
+//   Dodge roll   Left Ctrl     left trigger (L2)       (DodgeRoll; sprint left it for the stick click)
 //   Throw item   G or right    B / Circle      (hold to throw harder)
 //                mouse
 //
@@ -42,6 +43,7 @@ public class PlayerControls : MonoBehaviour
     public InputAction Interact { get; private set; }
     public InputAction Use { get; private set; }
     public InputAction Throw { get; private set; }
+    public InputAction Roll { get; private set; }
 
     /// <summary>Set by ItemHolder: an item is in reach or in hand, so the E key goes to it.</summary>
     public bool ItemInReach { get; set; }
@@ -68,6 +70,7 @@ public class PlayerControls : MonoBehaviour
         Interact = Button("Pick up or drop", "<Keyboard>/e", "<Gamepad>/buttonWest");
         Use = Button("Use item", "<Keyboard>/f", "<Gamepad>/buttonNorth");
         Throw = Button("Throw item", "<Keyboard>/g", "<Mouse>/rightButton", "<Gamepad>/buttonEast");
+        Roll = Button("Dodge roll", "<Keyboard>/leftCtrl", "<Gamepad>/leftTrigger");
 
         Zoom = new InputAction("Zoom", InputActionType.Value);
         Zoom.AddBinding("<Mouse>/scroll/y");
@@ -75,7 +78,7 @@ public class PlayerControls : MonoBehaviour
             .With("Negative", "<Gamepad>/dpad/up")
             .With("Positive", "<Gamepad>/dpad/down");
 
-        all = new[] { Cast, RadialHold, RadialCancel, NextSpell, PrevSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Throw };
+        all = new[] { Cast, RadialHold, RadialCancel, NextSpell, PrevSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Throw, Roll };
         foreach (var a in all) a.performed += Track;
     }
 
