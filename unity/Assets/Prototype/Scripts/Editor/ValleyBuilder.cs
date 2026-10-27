@@ -627,7 +627,7 @@ public static class ValleyBuilder
         for (float d = 2f; d < length - 1f; d += 3.5f + 1.5f * (float)rng.NextDouble())
             for (int s = -1; s <= 1; s += 2)
             {
-                var at = foot + along * d + side * (s * (3.1f + 0.6f * (float)rng.NextDouble()));
+                var at = foot + along * d + side * (s * (3.1f + 0.3f * (float)rng.NextDouble()));
                 float ground = ValleyTerrain.GroundAt(new Vector3(at.x, 0f, at.y));
                 float size = 1.4f + 0.9f * (float)rng.NextDouble();
                 FitRock(route, rocks[rng.Next(rocks.Length)], new Vector3(at.x, ground - 0.3f, at.y), new Vector3(size, 0.7f + 0.6f * (float)rng.NextDouble(), size), Quaternion.Euler(0f, rng.Next(360), 0f));

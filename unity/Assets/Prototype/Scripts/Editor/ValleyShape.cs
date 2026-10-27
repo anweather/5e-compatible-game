@@ -176,7 +176,7 @@ public static class ValleyShape
 
     /// <summary>The scree ramp up the east flank, from the basin to the shoulder beside the cliff top (relative to Falls).</summary>
     public static readonly Vector2 RampFoot = new(36f, -14f), RampTop = new(24f, 34f);
-    const float RampHalfWidth = 2.5f;
+    const float RampHalfWidth = 3.5f;
 
     // A walkable ramp (about 34 degrees) up beside the cliff: its crown rises evenly from the pond to
     // just over the cliff top, its sides falling away over a few metres; nothing where it's below the land.
@@ -185,9 +185,9 @@ public static class ValleyShape
         var along = RampTop - RampFoot;
         float t = Mathf.Clamp01(Vector2.Dot(q - RampFoot, along) / along.sqrMagnitude);
         float off = (q - (RampFoot + along * t)).magnitude;
-        if (off > RampHalfWidth + 4f) return float.MinValue;
+        if (off > RampHalfWidth + 7f) return float.MinValue;
         float crown = Mathf.Lerp(PondLevel + 0.5f, CliffTop + 0.5f, t);
-        return crown - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(RampHalfWidth, RampHalfWidth + 4f, off)) * 30f;
+        return crown - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(RampHalfWidth, RampHalfWidth + 7f, off)) * 30f;
     }
 
     /// <summary>Whether a point is in the pond at the foot of the falls.</summary>

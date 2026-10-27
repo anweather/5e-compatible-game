@@ -57,13 +57,14 @@ public class FallsProbe : ProbeScenario
         Check("ramp_built", ramp != null && ramp.transform.childCount > 6, "the scree ramp up the east flank, lined with rocks");
         if (ramp == null || ramp.transform.childCount < 2) yield break;
         var stones = ramp.transform.Cast<Transform>().OrderBy(t => t.position.y).ToArray();
-        Vector3 low = stones[0].position, high = stones[stones.Length - 1].position;
+        // The crown runs between the two lines of rocks: from the middle of the lowest pair to the middle of the highest.
+        Vector3 low = (stones[0].position + stones[1].position) / 2f, high = (stones[stones.Length - 1].position + stones[stones.Length - 2].position) / 2f;
         var up = new Vector3(high.x - low.x, 0f, high.z - low.z);
         var body = wizard.GetComponent<CharacterController>();
         var mover = wizard.GetComponent("ThirdPersonController") as Behaviour;
         if (mover != null) mover.enabled = false;
-        // The ramp's crown runs between the two lines of rocks: start in the middle at the bottom.
-        var start = (stones[0].position + stones[1].position) / 2f;
+
+        var start = low;
         Teleport(start + Vector3.up * 1.5f);
         yield return Wait(0.5f);
         float from = wizard.transform.position.y;

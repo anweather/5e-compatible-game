@@ -38,6 +38,7 @@ public static class CoastBuilder
             BeachSet(beach, OnIsland(dir, 7f), dir, rng, vertexLit);
         }
         Scatter(beach, rng, vertexLit);
+        BuildLife(root, vertexLit);
         // Benches at the top of the beach where the path comes down, looking out to sea.
         foreach (float along in new[] { -6f, 6f })
             Bench(beach, OnBeach(along, -24f), Seaward, rng.Next(), vertexLit);
@@ -142,6 +143,58 @@ public static class CoastBuilder
             var kind = i % 3 == 0 ? GeneratedProp.Kind.Driftwood : GeneratedProp.Kind.Starfish;
             if (Inside(p)) Prop(parent, kind, rng.Next(), Ground(p) - 0.03f, p, Quaternion.Euler(0f, rng.Next(360), 0f), material);
         }
+    }
+
+    // --- life ---------------------------------------------------------------------------
+
+    // Where the coast's small life lives (AmbientLife): gulls over the beach and the island, crabs
+    // along the waterline, shoals in the shallows off the beach, round the island and in the lake.
+    static void BuildLife(Transform root, Material material)
+    {
+        material.enableInstancing = true;
+        EditorUtility.SetDirty(material);
+        var life = new GameObject("Coast life").AddComponent<AmbientLife>();
+        life.transform.SetParent(root, false);
+        life.material = material;
+        var rng = new System.Random(91);
+        float sea = ValleyCoast.SeaLevel;
+
+        var gulls = new List<Vector3>();
+        for (float along = -120f; along <= 120f; along += 40f)
+        {
+            var p = OnBeach(along, 6f);
+            if (Inside(p)) gulls.Add(new Vector3(p.x, sea, p.y));
+        }
+        gulls.Add(new Vector3(ValleyCoast.IslandAt.x, sea, ValleyCoast.IslandAt.y));
+        life.gullAnchors = gulls.ToArray();
+
+        var crabs = new List<Vector3>();
+        for (int i = 0; i < 40; i++)
+        {
+            var p = i < 30
+                ? OnBeach((float)(rng.NextDouble() - 0.5) * 300f, -1.2f - (float)rng.NextDouble() * 2.5f)
+                : OnIsland(Angle(rng), 1.5f + (float)rng.NextDouble() * 2f);
+            if (Inside(p) && Ground(p) > sea + 0.05f) crabs.Add(new Vector3(p.x, Ground(p), p.y));
+        }
+        life.crabSpots = crabs.ToArray();
+
+        var shoals = new List<Vector4>();
+        for (int i = 0; i < 400 && shoals.Count < 26; i++)
+        {
+            Vector2 p;
+            if (i % 3 == 0) p = ValleyShape.LakeCentre + new Vector2((float)(rng.NextDouble() - 0.5) * 120f, (float)(rng.NextDouble() - 0.5) * 70f);
+            else if (i % 3 == 1) p = OnBeach((float)(rng.NextDouble() - 0.5) * 300f, 8f + (float)rng.NextDouble() * 45f);
+            else p = OnIsland(Angle(rng), -6f - (float)rng.NextDouble() * 18f);
+            float depth = sea - ValleyShape.HeightAt(p);
+            if (Inside(p) && depth > 1.4f && depth < 12f) shoals.Add(new Vector4(p.x, sea, p.y, depth));
+        }
+        life.shoals = shoals.ToArray();
+    }
+
+    static Vector2 Angle(System.Random rng)
+    {
+        float a = (float)(rng.NextDouble() * Mathf.PI * 2.0);
+        return new Vector2(Mathf.Cos(a), Mathf.Sin(a));
     }
 
     // --- the dock ---------------------------------------------------------------------

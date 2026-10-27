@@ -1,6 +1,6 @@
 Shader "Prototype/VillageLit"
 {
-    // Generated things built with MeshKit (D12): the colour is in the vertices, alpha is glow (a
+    // Generated things built with MeshKit (D12), drawn one by one or instanced (AmbientLife): the colour is in the vertices, alpha is glow (a
     // window lit from inside, brighter the darker the sky: the global _LampGlow, which Village sets
     // from SkyLight). Soft wrapped lighting, main-light shadows and URP's fog, like the creatures.
     // A house between the camera and the wizard is dithered away round it (OccluderDither.hlsl).
@@ -24,6 +24,7 @@ Shader "Prototype/VillageLit"
             float4 positionOS : POSITION;
             float3 normalOS : NORMAL;
             half4 color : COLOR;
+            UNITY_VERTEX_INPUT_INSTANCE_ID
         };
         ENDHLSL
 
@@ -36,6 +37,7 @@ Shader "Prototype/VillageLit"
             #pragma target 3.5
             #pragma vertex Vert
             #pragma fragment Frag
+            #pragma multi_compile_instancing
             #pragma multi_compile_fog
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS _MAIN_LIGHT_SHADOWS_CASCADE _MAIN_LIGHT_SHADOWS_SCREEN
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
@@ -55,6 +57,7 @@ Shader "Prototype/VillageLit"
 
             Varyings Vert(Attributes input)
             {
+                UNITY_SETUP_INSTANCE_ID(input);
                 Varyings o;
                 o.positionWS = TransformObjectToWorld(input.positionOS.xyz);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
@@ -91,6 +94,7 @@ Shader "Prototype/VillageLit"
             #pragma target 3.5
             #pragma vertex Vert
             #pragma fragment Frag
+            #pragma multi_compile_instancing
             #pragma multi_compile_vertex _ _CASTING_PUNCTUAL_LIGHT_SHADOW
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
 
@@ -99,6 +103,7 @@ Shader "Prototype/VillageLit"
 
             float4 Vert(Attributes input) : SV_POSITION
             {
+                UNITY_SETUP_INSTANCE_ID(input);
                 float3 p = TransformObjectToWorld(input.positionOS.xyz);
                 float3 n = TransformObjectToWorldNormal(input.normalOS);
             #if _CASTING_PUNCTUAL_LIGHT_SHADOW
@@ -124,10 +129,12 @@ Shader "Prototype/VillageLit"
             #pragma target 3.5
             #pragma vertex Vert
             #pragma fragment Frag
+            #pragma multi_compile_instancing
             #include "OccluderDither.hlsl"
 
             float4 Vert(Attributes input) : SV_POSITION
             {
+                UNITY_SETUP_INSTANCE_ID(input);
                 return TransformWorldToHClip(TransformObjectToWorld(input.positionOS.xyz));
             }
 
@@ -149,6 +156,7 @@ Shader "Prototype/VillageLit"
             #pragma target 3.5
             #pragma vertex Vert
             #pragma fragment Frag
+            #pragma multi_compile_instancing
             #include "OccluderDither.hlsl"
 
             struct V
@@ -159,6 +167,7 @@ Shader "Prototype/VillageLit"
 
             V Vert(Attributes input)
             {
+                UNITY_SETUP_INSTANCE_ID(input);
                 V o;
                 o.positionCS = TransformWorldToHClip(TransformObjectToWorld(input.positionOS.xyz));
                 o.normalWS = TransformObjectToWorldNormal(input.normalOS);
