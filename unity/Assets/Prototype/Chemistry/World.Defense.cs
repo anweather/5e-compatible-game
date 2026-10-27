@@ -39,6 +39,7 @@ namespace Chem
         /// </summary>
         public void ApplyDefense(DefenseCommand command)
         {
+            FinishTick(); // commands land between whole ticks (StepSome)
             if (command.Kind != DefenseKind.Start) return;
             if (Defense != null && Defense.Phase == DefensePhase.Running)
             {

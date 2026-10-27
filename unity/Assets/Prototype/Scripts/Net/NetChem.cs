@@ -221,8 +221,9 @@ public class NetChem : NetworkBehaviour
             StampDefense();
 
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
+            // Never the hash of a tick still part done (World.StepSome): that one is skipped, and peers check the next.
             int hashTick = grid.World.Tick;
-            string hash = hashTick % HashEvery == 0 ? Checksum(grid) : "";
+            string hash = hashTick % HashEvery == 0 && !grid.World.TickInProgress ? Checksum(grid) : "";
             ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, hashTick, new FixedString64Bytes(hash));
         }
     }
@@ -360,15 +361,31 @@ public class NetChem : NetworkBehaviour
         if (!synced) return;
         var world = grid.World;
         var budget = System.Diagnostics.Stopwatch.StartNew();
-        while (world.Tick < knownUpTo && budget.Elapsed.TotalMilliseconds < CatchUpBudgetMs)
+        bool Over() => budget.Elapsed.TotalMilliseconds >= CatchUpBudgetMs;
+        // A tick a busy frame left part done carries on first. Ticks run in slices within the
+        // frame's budget (World.StepSome); a batch's commands only ever land between whole ticks,
+        // so every peer computes the same ticks however its frames slice them.
+        if (world.TickInProgress)
+        {
+            if (!world.StepSome(Over)) return;
+            Applied(world.Tick);
+        }
+        while (world.Tick < knownUpTo && !Over())
         {
             int next = world.Tick + 1;
             if (batches.TryGetValue(next, out var batch)) batches.Remove(next);
-            grid.RunBatch(batch ?? new TickBatch(next));
-            if (liveCasts.Remove(next, out var casts)) Shove(casts);
-            CheckHash(world.Tick);
-            TickApplied?.Invoke(world.Tick, world.Tick % HashEvery == 0 ? Checksum(grid) : null);
+            grid.PrepareBatch(batch ?? new TickBatch(next));
+            if (!world.StepSome(Over)) return;
+            Applied(world.Tick);
         }
+    }
+
+    // A tick has finished: the physical side of its casts, the desync check, and listeners.
+    void Applied(int tick)
+    {
+        if (liveCasts.Remove(tick, out var casts)) Shove(casts);
+        CheckHash(tick);
+        TickApplied?.Invoke(tick, tick % HashEvery == 0 ? Checksum(grid) : null);
     }
 
     // The physical side of the casts just applied: the host moves the props (its physics is the

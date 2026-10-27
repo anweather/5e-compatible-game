@@ -18,23 +18,139 @@ namespace Chem
         /// <summary>
         /// One tick of the sim, over the active chunks only. Cells are visited in world row-major
         /// order (y, then x), as on the old single grid, so with every chunk active a tick is
-        /// exactly what it was.
+        /// exactly what it was. Finishes a tick that StepSome left part done first.
         /// </summary>
         public void Step()
+        {
+            FinishTick();
+            BeginTick();
+            RunToEnd();
+        }
+
+        // A tick in slices (StepSome): the same passes over the same cells in the same order as
+        // Step, only spread over several calls, so a peer that slices its ticks one way computes
+        // exactly the ticks of a peer that slices them another (or not at all). Fire burns, then
+        // springs, water, gas, the weather, raiders and defense, then the timers, as in sim.ts.
+        enum TickStage { None, Burn, Springs, Flow, Gas, Rest, Timers, End }
+
+        // Row segments or burning cells handled per slice: small enough to stop near a frame's budget.
+        const int SliceSpans = 64, SliceBurns = 128;
+
+        TickStage stage = TickStage.None;
+        int stagePos;
+        RowSpan[] tickRows;
+
+        /// <summary>Whether a tick has begun (StepSome) and not yet finished.</summary>
+        public bool TickInProgress => stage != TickStage.None;
+
+        /// <summary>
+        /// Runs the tick in progress (beginning one if none is) a slice at a time until it finishes
+        /// (true) or <paramref name="stop"/> says to stop for now (false; the next call carries on).
+        /// For a view that spreads a tick over frames to keep each frame short. Anything that
+        /// changes the world from outside (a cast, an effect, a chunk switch, a rule switch) first
+        /// finishes the tick in progress, so commands always land between whole ticks, the same on
+        /// every peer. Meanwhile a view may see a tick half done for a frame or two.
+        /// </summary>
+        public bool StepSome(Func<bool> stop)
+        {
+            if (stop == null) throw new ArgumentNullException(nameof(stop));
+            if (stage == TickStage.None) BeginTick();
+            while (true)
+            {
+                if (RunSlice()) return true;
+                if (stop()) return false;
+            }
+        }
+
+        /// <summary>Finishes the tick in progress at once, if there is one.</summary>
+        public void FinishTick()
+        {
+            if (stage == TickStage.None) return;
+            RunToEnd();
+        }
+
+        void RunToEnd()
+        {
+            bool done;
+            do done = RunSlice();
+            while (!done);
+        }
+
+        void BeginTick()
         {
             Tick++;
             logged.Clear();
             strikes.Clear();
             EndSetWeather();
             Weather = SkyNow();
-            var rows = Spans;
-            TickFire(rows);
-            TickWater(rows);
-            TickGas(rows);
-            TickWeather(rows);
-            TickRaiders();
-            TickDefense();
-            TickTimers(rows);
+            tickRows = Spans;
+            CollectBurning(tickRows);
+            stage = TickStage.Burn;
+            stagePos = 0;
+        }
+
+        // One slice of the tick in progress; true once the tick has finished.
+        bool RunSlice()
+        {
+            switch (stage)
+            {
+                case TickStage.Burn:
+                case TickStage.Springs:
+                case TickStage.Flow:
+                case TickStage.Gas:
+                case TickStage.Timers:
+                    RunRange();
+                    return false;
+                case TickStage.Rest:
+                    TickWeather(tickRows);
+                    TickRaiders();
+                    TickDefense();
+                    NextStage(TickStage.Timers);
+                    return false;
+                case TickStage.End:
+                    EndTick();
+                    return true;
+                default:
+                    return true;
+            }
+        }
+
+        // The next slice of a stage that goes over burning cells or row segments.
+        void RunRange()
+        {
+            int count = stage == TickStage.Burn ? burning.Count : tickRows.Length;
+            int size = stage == TickStage.Burn ? SliceBurns : SliceSpans;
+            int from = stagePos, to = Math.Min(count, stagePos + size);
+            switch (stage)
+            {
+                case TickStage.Burn: BurnRange(from, to); break;
+                case TickStage.Springs: Springs(tickRows, from, to); break;
+                // Odd ticks sweep backward: the slices go from the last row segment to the first.
+                case TickStage.Flow when Tick % 2 == 0: FlowForward(tickRows, from, to); break;
+                case TickStage.Flow: FlowBackward(tickRows, count - to, count - from); break;
+                case TickStage.Gas: TickGas(tickRows, from, to); break;
+                default: TickTimers(tickRows, from, to); break;
+            }
+            stagePos = to;
+            if (to < count) return;
+            NextStage(stage switch
+            {
+                TickStage.Burn => TickStage.Springs,
+                TickStage.Springs => TickStage.Flow,
+                TickStage.Flow => TickStage.Gas,
+                TickStage.Gas => TickStage.Rest,
+                _ => TickStage.End,
+            });
+        }
+
+        void NextStage(TickStage next)
+        {
+            stage = next;
+            stagePos = 0;
+        }
+
+        void EndTick()
+        {
             if (Wind.HasValue)
             {
                 var (d, t) = Wind.Value;
@@ -42,6 +158,8 @@ namespace Chem
             }
             TickClock();
             foreach (var ch in activeChunks) Array.Clear(ch.Marks, 0, ch.Marks.Length);
+            stage = TickStage.None;
+            tickRows = null;
         }
 
         /// <summary>
@@ -51,11 +169,15 @@ namespace Chem
         /// alone doesn't make a cell live: while rain falls, water moving doesn't count, or every wet
         /// chunk would stay live for as long as it rained.
         /// </summary>
-        void TickTimers(RowSpan[] rows)
+        void TickTimers(RowSpan[] rows) => TickTimers(rows, 0, rows.Length);
+
+        // The timers of row segments [from, to).
+        void TickTimers(RowSpan[] rows, int from, int to)
         {
             byte flow = Raining ? (byte)0 : FlowMark;
-            foreach (var s in rows)
+            for (int k = from; k < to; k++)
             {
+                var s = rows[k];
                 int edges = TickTimers(s, flow);
                 if (edges < 0) continue;
                 s.Chunk.LastLive = Tick;
@@ -134,13 +256,24 @@ namespace Chem
 
         void TickFire(RowSpan[] rows)
         {
+            CollectBurning(rows);
+            BurnRange(0, burning.Count);
+        }
+
+        // The cells burning as the tick starts (cells lit during it burn from the next tick).
+        void CollectBurning(RowSpan[] rows)
+        {
             burning.Clear();
             foreach (var s in rows)
             {
                 var cells = s.Chunk.Cells;
                 for (int i = s.Start; i < s.End; i++) if (cells[i].Fire > 0) burning.Add((s.Chunk, i));
             }
-            foreach (var (ch, i) in burning) Burn(ch, i);
+        }
+
+        void BurnRange(int from, int to)
+        {
+            for (int k = from; k < to; k++) Burn(burning[k].ch, burning[k].i);
         }
 
         void Burn(Chunk ch, int i)
@@ -222,18 +355,19 @@ namespace Chem
 
         void TickWater(RowSpan[] rows)
         {
-            Springs(rows);
+            Springs(rows, 0, rows.Length);
             // Even ticks sweep forward, odd ticks backward, so water doesn't drift one way.
-            if (Tick % 2 == 0) FlowForward(rows);
-            else FlowBackward(rows);
+            if (Tick % 2 == 0) FlowForward(rows, 0, rows.Length);
+            else FlowBackward(rows, 0, rows.Length);
         }
 
         /// <summary>A spring's square (a river) refills to its level each tick, unless it is ice: water dug out of it keeps coming.</summary>
-        void Springs(RowSpan[] rows)
+        void Springs(RowSpan[] rows, int from, int to)
         {
             int max = Rules.Sim.WaterMaxLevel;
-            foreach (var s in rows)
+            for (int k = from; k < to; k++)
             {
+                var s = rows[k];
                 var cells = s.Chunk.Cells;
                 for (int i = s.Start; i < s.End; i++)
                 {
@@ -244,18 +378,21 @@ namespace Chem
             }
         }
 
-        void FlowForward(RowSpan[] rows)
+        // Row segments [from, to), first to last.
+        void FlowForward(RowSpan[] rows, int from, int to)
         {
-            foreach (var s in rows)
+            for (int k = from; k < to; k++)
             {
+                var s = rows[k];
                 var cells = s.Chunk.Cells;
                 for (int i = s.Start; i < s.End; i++) if (cells[i].Water != 0) Flow(s.Chunk, i);
             }
         }
 
-        void FlowBackward(RowSpan[] rows)
+        // Row segments [from, to), last to first.
+        void FlowBackward(RowSpan[] rows, int from, int to)
         {
-            for (int k = rows.Length - 1; k >= 0; k--)
+            for (int k = to - 1; k >= from; k--)
             {
                 var s = rows[k];
                 var cells = s.Chunk.Cells;
@@ -311,10 +448,14 @@ namespace Chem
             return drop + (downhill ? 0.5 : 0);
         }
 
-        void TickGas(RowSpan[] rows)
+        void TickGas(RowSpan[] rows) => TickGas(rows, 0, rows.Length);
+
+        // The gas of row segments [from, to).
+        void TickGas(RowSpan[] rows, int from, int to)
         {
-            foreach (var s in rows)
+            for (int k = from; k < to; k++)
             {
+                var s = rows[k];
                 var cells = s.Chunk.Cells;
                 for (int i = s.Start; i < s.End; i++) if (cells[i].Gas != null) Drift(s.Chunk, i);
             }

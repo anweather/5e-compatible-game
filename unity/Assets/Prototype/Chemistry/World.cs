@@ -60,6 +60,7 @@ namespace Chem
         /// </summary>
         public void ApplyRules(Rules rules)
         {
+            FinishTick(); // a rule switch lands between whole ticks (StepSome)
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             var height = rules.Sim.Height;
             Weather = SkyNow();

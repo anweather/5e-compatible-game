@@ -54,6 +54,7 @@ namespace Chem
         /// </summary>
         public void ApplyEffect(EffectCommand effect)
         {
+            FinishTick(); // effects land between whole ticks (StepSome)
             if (!InBounds(effect.X, effect.Y)) return;
             switch (effect.Kind)
             {
