@@ -23,7 +23,7 @@ namespace Chem
                 if (s.Taper && d > s.Radius) continue;
                 int n = s.Taper ? Tapered(steps, d, s.Radius) : steps;
                 if (toHeight) n = Math.Max(0, n - At(cx, cy).Height);
-                if (n != 0) Reshape(cx, cy, n, s.Terrain);
+                if (n != 0) Reshape(cx, cy, n, s.Terrain, s.Strength);
             }
         }
 
@@ -39,7 +39,7 @@ namespace Chem
                 for (int dx = -r; dx <= r; dx++)
                 {
                     int n = Tapered(-crater.Depth, Math.Max(Math.Abs(dx), Math.Abs(dy)), r);
-                    if (n != 0) Reshape(x + dx, y + dy, n);
+                    if (n != 0) Reshape(x + dx, y + dy, n, null, crater.Strength);
                 }
         }
 
@@ -59,9 +59,11 @@ namespace Chem
         /// range. A terrain that uproots (a tree, a cabin's log wall) turns to its UprootsTo
         /// first. Blocking terrain and machines can't be shaped. Digging strips the cover and
         /// turns the terrain to its dugTo; raised ground spills its water onto its neighbours.
-        /// A cell that ends up blocking loses its cover and fire. Returns whether it changed.
+        /// A cell that ends up blocking loses its cover and fire. A dig weaker than the terrain's
+        /// hardness (materials.json) leaves it as it is: soft ground digs, rock needs strength 3,
+        /// metal never digs. Returns whether it changed.
         /// </summary>
-        public bool Reshape(int x, int y, int n, string terrain = null)
+        public bool Reshape(int x, int y, int n, string terrain = null, int strength = 1)
         {
             var c = At(x, y);
             if (c == null || !IsActiveAt(x, y)) return false;
@@ -74,6 +76,11 @@ namespace Chem
                 t = TerrainOf(c);
             }
             if (t.Has("blocking") || t.Has("machine")) return uprooted;
+            if (n < 0 && strength < t.Hardness)
+            {
+                LogOnce($"hard#{t.Id}#{Tick}", $"The {t.Name.ToLowerInvariant()} is too hard to dig");
+                return uprooted;
+            }
             var range = Rules.Sim.Height;
             int height = Math.Max(range.Min, Math.Min(range.Max, c.Height + n));
             if (Unmoved(c, x, y, height)) return uprooted;

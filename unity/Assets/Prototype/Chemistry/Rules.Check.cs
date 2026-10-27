@@ -98,7 +98,7 @@ namespace Chem
                 RaiderRefs(p);
                 var explodes = p.Value["explodes"];
                 if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
-                if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1 and radius from 0");
+                if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1, radius from 0 and strength from 1");
             }
 
             void SpellRefs(JToken s)
@@ -108,13 +108,14 @@ namespace Chem
                 if (!Truthy(s["name"])) Errors.Add($"spell {Show(s["id"])}: needs a name");
                 if (s["effect"] != null && !SpellEffects.Contains(Text(s["effect"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown effect {Show(s["effect"])}");
                 if (Text(s["effect"]) == "terraform") TerraformRefs(s);
-                if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1 and radius from 0");
+                if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1, radius from 0 and strength from 1");
             }
 
             /// <summary>No crater, or one with a whole depth from 1 and (if given) a whole radius from 0.</summary>
             static bool IsCrater(JToken c) =>
                 c == null || (c is JObject && IsWholeNumber(c["depth"]) && (double)c["depth"] >= 1
-                    && (c["radius"] == null || (IsWholeNumber(c["radius"]) && (double)c["radius"] >= 0)));
+                    && (c["radius"] == null || (IsWholeNumber(c["radius"]) && (double)c["radius"] >= 0))
+                    && (c["strength"] == null || (IsWholeNumber(c["strength"]) && (double)c["strength"] >= 1)));
 
             void TerraformRefs(JToken s)
             {
@@ -131,6 +132,7 @@ namespace Chem
                 else if (to != null && Strings(terrain[Text(to)]["tags"]).Contains("blocking"))
                     Errors.Add($"spell {Show(s["id"])}: terrain {Show(to)} is blocking (walls come from raise)");
                 if (s["taper"] != null && s["taper"].Type != JTokenType.Boolean) Errors.Add($"spell {Show(s["id"])}: taper must be true or false");
+                if (s["strength"] != null && !(IsWholeNumber(s["strength"]) && (double)s["strength"] >= 1)) Errors.Add($"spell {Show(s["id"])}: strength must be a whole number from 1");
             }
 
             /// <summary>A whole number within sim.height min..max (a bound that isn't a number doesn't bind, as in JavaScript).</summary>
@@ -151,6 +153,7 @@ namespace Chem
                 if (Truthy(t["burnsTo"]) && !IsIn(terrain, t["burnsTo"])) Errors.Add($"terrain {id}: burnsTo {Show(t["burnsTo"])} unknown");
                 if (Truthy(t["breaksTo"]) && !IsIn(terrain, t["breaksTo"])) Errors.Add($"terrain {id}: breaksTo {Show(t["breaksTo"])} unknown");
                 if (Truthy(t["dugTo"]) && !IsIn(terrain, t["dugTo"])) Errors.Add($"terrain {id}: dugTo {Show(t["dugTo"])} unknown");
+                if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
                 if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");
                 else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");

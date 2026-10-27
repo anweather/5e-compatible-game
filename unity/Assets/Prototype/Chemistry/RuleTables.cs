@@ -28,6 +28,8 @@ namespace Chem
         public string UprootsTo, UprootLog;
         /// <summary>What digging leaves (grass is dug down to dirt), or null to keep the terrain.</summary>
         public string DugTo;
+        /// <summary>How hard it is to dig (materials.json "hardness", 1 when absent): a dig needs at least this strength.</summary>
+        public int Hardness = 1;
         /// <summary>
         /// What it grows into once its Cell.Life runs out (green shoots into grass, a sapling into a
         /// tree), or null; and the line logged when it does.
@@ -93,6 +95,8 @@ namespace Chem
         /// from the target over Radius (a hill or a crater).
         /// </summary>
         public int Raise, Dig;
+        /// <summary>A digging spell's strength (spells.json "strength", 1 when absent): it digs terrain no harder than this.</summary>
+        public int Strength = 1;
         public int? Height;
         public string Terrain;
         public bool Taper;
@@ -107,6 +111,8 @@ namespace Chem
     public sealed class CraterDef
     {
         public int Radius, Depth;
+        /// <summary>How hard a ground the blast can dig (1 when absent), against a terrain's hardness.</summary>
+        public int Strength = 1;
     }
 
     /// <summary>What an entity leaves behind when it blows up (entities.json "explodes").</summary>
@@ -448,6 +454,7 @@ namespace Chem
             UprootsTo = Str(o["uprootsTo"]),
             UprootLog = Str(o["uprootLog"]),
             DugTo = Str(o["dugTo"]),
+            Hardness = Int(o["hardness"]) ?? 1,
             GrowsTo = Str(o["growsTo"]),
             GrowLog = Str(o["growLog"]),
         };
@@ -521,6 +528,7 @@ namespace Chem
             Damage = Dice(o["damage"]),
             Raise = Int(o["raise"]) ?? 0,
             Dig = Int(o["dig"]) ?? 0,
+            Strength = Int(o["strength"]) ?? 1,
             Height = Int(o["height"]),
             Terrain = Str(o["terrain"]),
             Taper = Truthy(o["taper"]),
@@ -528,7 +536,7 @@ namespace Chem
         };
 
         static CraterDef ParseCrater(JToken t) =>
-            t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1 } : null;
+            t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1, Strength = Int(c["strength"]) ?? 1 } : null;
 
         static CellRule ParseRule(JObject o)
         {

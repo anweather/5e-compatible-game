@@ -26,6 +26,8 @@ export interface TerrainDef {
   uprootLog?: string;
   /** What digging leaves (grass is dug down to dirt); unset keeps the terrain. */
   dugTo?: string;
+  /** How hard it is to dig (1 when absent): a dig needs at least this strength. */
+  hardness?: number;
   /** What it grows into once its cell's life runs out (green shoots into grass, a sapling into a tree), and the line logged. */
   growsTo?: string;
   growLog?: string;
@@ -149,6 +151,8 @@ export interface SpellDef {
    */
   raise?: number;
   dig?: number;
+  /** A digging spell's strength (1 when absent): it digs terrain no harder than this. */
+  strength?: number;
   height?: number;
   terrain?: string;
   taper?: boolean;
@@ -200,6 +204,8 @@ export interface DefenseParams {
 export interface CraterDef {
   radius?: number;
   depth: number;
+  /** How hard a ground the blast can dig (1 when absent). */
+  strength?: number;
 }
 /**
  * A thing to carry (items.json). The Unity game picks these up, throws them and
@@ -433,14 +439,16 @@ function terraformErrors(r: Rules, s: SpellDef): string[] {
     errors.push(`spell ${s.id}: terrain ${s.terrain} is blocking (walls come from raise)`);
   }
   if (s.taper !== undefined && typeof s.taper !== "boolean") errors.push(`spell ${s.id}: taper must be true or false`);
+  if (s.strength !== undefined && (!Number.isInteger(s.strength) || s.strength < 1)) errors.push(`spell ${s.id}: strength must be a whole number from 1`);
   return errors;
 }
 
-/** No crater, or one with a whole depth from 1 and (if given) a whole radius from 0. */
+/** No crater, or one with a whole depth from 1 and (if given) a whole radius from 0 and strength from 1. */
 function isCrater(c: CraterDef | undefined): boolean {
   if (c === undefined) return true;
   return typeof c === "object" && c !== null && Number.isInteger(c.depth) && c.depth >= 1
-    && (c.radius === undefined || (Number.isInteger(c.radius) && c.radius >= 0));
+    && (c.radius === undefined || (Number.isInteger(c.radius) && c.radius >= 0))
+    && (c.strength === undefined || (Number.isInteger(c.strength) && c.strength >= 1));
 }
 
 /** A pair of whole numbers, the first from min0 and the second from min1 (dice, a tick range). */
@@ -544,6 +552,7 @@ export function validateRules(r: Rules): string[] {
     if (t.burnsTo && !terrainIds.has(t.burnsTo)) errors.push(`terrain ${id}: burnsTo ${t.burnsTo} unknown`);
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
     if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
+    if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
@@ -579,7 +588,7 @@ export function validateRules(r: Rules): string[] {
     if (!s.name) errors.push(`spell ${s.id}: needs a name`);
     if (s.effect !== undefined && !SPELL_EFFECTS.has(s.effect)) errors.push(`spell ${s.id}: unknown effect ${s.effect}`);
     if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
-    if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1 and radius from 0`);
+    if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const id of Object.keys(r.machines)) {
@@ -589,7 +598,7 @@ export function validateRules(r: Rules): string[] {
   for (const [id, e] of Object.entries(r.entities)) {
     if (e.raider) errors.push(...raiderErrors(el, id, e.raider));
     if (e.explodes && !coverIds.has(e.explodes.cover)) errors.push(`entity ${id}: explodes into unknown cover`);
-    if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1 and radius from 0`);
+    if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
