@@ -11,13 +11,13 @@ from the `CLAUDE.md` in each area as you work there: `unity/`,
 
 ## Before starting any work
 
-Get up to date with main first. More than one machine works on this repo
-(the Windows PC is the main one; a Mac too):
+Get up to date with `dev` first (or `main` for release work). More than one
+machine works on this repo (the Windows PC is the main one; a Mac too):
 
 ```
 git fetch origin
-git switch main
-git merge --ff-only origin/main
+git switch dev
+git merge --ff-only origin/dev
 ```
 
 (`git merge --ff-only` rather than `git pull`: Git for Windows sets
@@ -30,16 +30,21 @@ blocks the Editor); rebuild it with its builder menu instead.
 
 ## Committing
 
-Nothing is live yet, so `main` is the integration branch and pushing to it
-is fine; releases will be tagged once there's something to release. Do
-feature work on a short-lived branch (or worktree) off `main` for isolation,
-then merge it into `main` and push as soon as it's verified. No PR is
-needed. Never leave a finished branch unmerged. Fetch and merge
-`origin/main` again just before pushing.
+Since alpha 0.1.2 (published 2026-10-27) there are two long-lived branches:
+
+- **`dev`** is where upcoming work lands. Do feature work on a short-lived
+  branch (or worktree) off `dev`, then merge it into `dev` and push as soon
+  as it's verified. No PR is needed. Never leave a finished branch
+  unmerged. Fetch and merge `origin/dev` again just before pushing.
+- **`main`** is what's released. Releases are cut from `main` only and
+  tagged `alpha-X.Y.Z` (the `release` skill, `docs/RELEASING.md`). To ship,
+  merge `dev` into `main` when Andrew says, then cut the release there. A
+  fix for a released version goes on a branch off `main`, is merged to
+  `main`, and `main` is then merged back into `dev`.
 
 Docs-only changes (`.md` files, including `CLAUDE.md` files and ADRs) skip
-the branch: commit them on `main` and push. Branch only when code, rules,
-scenes or assets change.
+the feature branch: commit them on `dev` and push. Branch only when code,
+rules, scenes or assets change. (Workflow changes like this one go on both.)
 
 Generated output stays out of git, so rebuilding never dirties the tree:
 the yard scene (`ChemistryYard.unity`, rebuilt automatically when missing),
