@@ -23,6 +23,8 @@ public class MeteorProbe : ProbeScenario
         Check("bar_has_meteor", caster.Select(SpellIds.Meteor));
         puppet.Face(at);
         caster.Cast(SpellIds.Meteor, cell.x, cell.y, 1);
+        // It comes down at the gesture's pull (CastPose, CastGestures), not at the cast.
+        yield return Wait(CastGestures.Of(caster.GestureOf(SpellIds.Meteor)).release);
         yield return null;
         var meteor = GameObject.Find("Meteor");
         Check("meteor_falls", meteor != null && meteor.transform.position.y > at.y + 50f, meteor != null ? $"it starts {meteor.transform.position.y - at.y:0} m up" : "no Meteor");
