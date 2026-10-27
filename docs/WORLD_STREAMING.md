@@ -172,9 +172,9 @@ activates doesn't fast-forward, props in inactive chunks stay spawned (and
 awake to physics), the netcode checksum still hashes every cell, and
 players far apart are still all simulated by the host (interest by chunk).
 
-## Part 2, second slice (proposed 2026-10-27): reach, the active region, and what's still burning
+## Part 2, second slice (agreed 2026-10-27): reach, the active region, and what's still burning
 
-Proposed, not agreed or built. The words are the glossary's
+Agreed with Andrew (see "Decided" below); being built in the slices listed. The words are the glossary's
 (`docs/GLOSSARY.md`): a chunk is **active** or **inactive**, a character's
 **reach** is the chunks kept active around it, a **live** cell is one where
 something is still changing on its own.
@@ -311,14 +311,20 @@ if B and C prove too slow.
 The golden hashes don't move: with everything active (the tests' worlds),
 none of this does anything.
 
-### Open questions
+6. **Still water costs nothing.** A chunk whose water hasn't moved for a
+   few ticks skips the water pass until something disturbs it (a cast, an
+   effect, a neighbour's flow). Behaviour unchanged, in the core and the
+   sandbox together, with a golden.
 
-- R = 2 over land, or larger? A bigger reach is simple and costs about
-  0.07 ms a tick per chunk of land, much more over water.
-- Should water at rest stop costing anything (skip settled chunks' water
-  work), so the sea doesn't make every coast chunk expensive?
-- Do raiders and the defense field count as a character, so a wave keeps
-  coming while you're away?
+### Decided (Andrew, 2026-10-27)
+
+- **R = 2:** every character keeps the 5×5 chunks round it active.
+- **Run out, then catch up:** chunks still live when they leave every reach
+  linger until settled, within the caps; what the caps cut off catches up
+  its missed ticks when it next activates.
+- **Still water costs nothing** (slice 6).
+- **Characters are wizards only** for now: raiders and the defense field
+  wait while no wizard is near.
 
 ## The land around the valley (built 2026-10-27)
 
