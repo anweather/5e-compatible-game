@@ -20,6 +20,8 @@ it with SendMessage. It doesn't write game code.
 5. Merge to `dev` only when the coordinator says it's your turn in the merge
    order. Fetch and rebase on `origin/dev` first, and push straight after.
 6. Tell the coordinator when a task is done or blocked.
+6a. Judgment calls for Andrew go through the coordinator. Check
+   `DECISIONS.md` first: if a past decision covers it, follow that.
 7. Never discard, reset or overwrite work you didn't write. If you find
    uncommitted work in a file outside your lane, stop and report it.
 8. On the PC, only one heavy Unity job at a time (an Editor build, a player
@@ -91,7 +93,7 @@ Cross-lane needs that come up often:
 | Agent | Task | Branch | State |
 |---|---|---|---|
 | Gameplay | (free) | | Waiting for its next task |
-| World | The playtest bot: a nondeterministic, replayable bot in the real player that wanders and plays with goals, finds paper cuts, reproduces them, screenshots them, dedupes them into a prioritised backlog, and writes a digest every couple of days. Runs on a schedule in the background. It finds, never fixes. Phase 0: a design and feasibility report to the coordinator | `playtest-bot` (off `dev`) | Phase 0 started 2026-10-27 |
+| World | The playtest bot (see `playtest/DESIGN.md` on the branch, and J-008 in `DECISIONS.md`). Phase 1: spikes (rendering minimised or off-screen, muted audio, incremental build time), then the bot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | Phase 1 started 2026-10-27; has the PC Editor slot |
 | Build | (free). The quit-crash research is done (see Open questions) | | Waiting for its next task |
 
 ## Shared-file queue
