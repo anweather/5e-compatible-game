@@ -951,6 +951,17 @@ public static class ValleyBuilder
             village.enabled = false;
             village.enabled = true;
 
+            // A bench on each side of the square facing the well, beside the middle (where a lane may leave).
+            var square = ValleyShape.AreaOf(plan.Square);
+            var rng = new System.Random(plan.Spec.Seed);
+            foreach (var side in new[] { Vector2.up, Vector2.right, Vector2.down, Vector2.left })
+            {
+                var along = new Vector2(side.y, -side.x);
+                var at = square.center + side * (square.size.x / 2f - 1.3f) + along * 3.2f;
+                var bench = CoastBuilder.Bench(root.transform, at, -side, rng.Next(), material);
+                bench.transform.position = new Vector3(at.x, level, at.y);
+            }
+
             int n = 0;
             foreach (var b in plan.Buildings)
             {

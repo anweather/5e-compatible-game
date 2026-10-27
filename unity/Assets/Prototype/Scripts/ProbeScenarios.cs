@@ -134,6 +134,9 @@ public static class ProbeScenarios
             "The waterfall at the head of the river: the wizard goes to the pond at its foot. Checks: the falls is built (its water, " +
             "twenty or more rocks on the cliff), the pond's middle is river and full, river squares run on south of it, splashes " +
             "go up at the foot, the roar plays, no console errors."),
+        new Entry("sit", typeof(SitProbe), 40f,
+            "The wizard sits on the bench nearest the yard, then lies back on the nearest beach lounger (Seat, Sitter, SitPose), and gets up from each. Checks: ten or more " +
+            "seats in the world, the seat in reach beside it (E goes to it), held on the seat with the pose on and the hips within 0.2 m of the seat point, and free again after standing, no console errors."),
         new Entry("swim", typeof(SwimProbe), 40f,
             "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +

@@ -38,6 +38,9 @@ public static class CoastBuilder
             BeachSet(beach, OnIsland(dir, 7f), dir, rng, vertexLit);
         }
         Scatter(beach, rng, vertexLit);
+        // Benches at the top of the beach where the path comes down, looking out to sea.
+        foreach (float along in new[] { -6f, 6f })
+            Bench(beach, OnBeach(along, -24f), Seaward, rng.Next(), vertexLit);
         BuildDock(root, vertexLit);
     }
 
@@ -111,6 +114,9 @@ public static class CoastBuilder
             var box = lounger.gameObject.AddComponent<BoxCollider>();
             box.center = new Vector3(0f, 0.25f, 0.1f);
             box.size = new Vector3(0.65f, 0.5f, 1.9f);
+            var seat = lounger.gameObject.AddComponent<Seat>();
+            seat.seatAt = PropMesher.LoungerSeat;
+            seat.lounge = true;
         }
         var towel = at + side * 2.6f + facing * 0.6f;
         Prop(parent, GeneratedProp.Kind.Towel, rng.Next(), Ground(towel) + 0.02f, towel, face * Quaternion.Euler(0f, rng.Next(-20, 20), 0f), material);
@@ -167,6 +173,19 @@ public static class CoastBuilder
         const float run = 4f;
         ramp.transform.SetLocalPositionAndRotation(new Vector3(0f, PropMesher.DockDeck / 2f - 0.25f, 0f), Quaternion.Euler(-Mathf.Atan2(PropMesher.DockDeck, run) * Mathf.Rad2Deg, 0f, 0f));
         ramp.size = new Vector3(PropMesher.DockWidth, 0.5f, Mathf.Sqrt(run * run + PropMesher.DockDeck * PropMesher.DockDeck));
+    }
+
+    /// <summary>A bench to sit on, facing <paramref name="facing"/>, with a seat (Seat) and a box to bump into.</summary>
+    public static GeneratedProp Bench(Transform parent, Vector2 at, Vector2 facing, int seed, Material material)
+    {
+        var turn = Quaternion.LookRotation(new Vector3(facing.x, 0f, facing.y));
+        var bench = Prop(parent, GeneratedProp.Kind.Bench, seed, Ground(at), at, turn, material);
+        var box = bench.gameObject.AddComponent<BoxCollider>();
+        box.center = new Vector3(0f, 0.3f, -0.05f);
+        box.size = new Vector3(1.6f, 0.6f, 0.5f);
+        var seat = bench.gameObject.AddComponent<Seat>();
+        seat.seatAt = PropMesher.BenchSeat;
+        return bench;
     }
 
     // --- helpers ----------------------------------------------------------------------

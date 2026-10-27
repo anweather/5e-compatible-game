@@ -25,7 +25,8 @@ using UnityEngine.InputSystem;
 //                mouse
 //
 // E is both "next spell" and "pick up": while an item is in reach or in hand
-// (ItemHolder sets ItemInReach) it picks up or drops, and the spell stays put.
+// (ItemHolder sets ItemInReach), or a seat is (Sitter sets SeatInReach), it picks
+// up, drops, sits or stands, and the spell stays put.
 public class PlayerControls : MonoBehaviour
 {
     public InputAction Cast { get; private set; }
@@ -44,6 +45,9 @@ public class PlayerControls : MonoBehaviour
 
     /// <summary>Set by ItemHolder: an item is in reach or in hand, so the E key goes to it.</summary>
     public bool ItemInReach { get; set; }
+
+    /// <summary>Set by Sitter: a seat is in reach or the wizard is sitting, so the E key goes to it.</summary>
+    public bool SeatInReach { get; set; }
 
     /// <summary>True when the last control the player touched was on a gamepad.</summary>
     public bool UsingGamepad { get; private set; }
@@ -96,7 +100,7 @@ public class PlayerControls : MonoBehaviour
 
     /// <summary>Next spell was pressed this frame, unless it was the E key and E went to an item.</summary>
     public bool NextSpellPressed() =>
-        NextSpell.WasPressedThisFrame() && !(ItemInReach && NextSpell.activeControl?.device is Keyboard);
+        NextSpell.WasPressedThisFrame() && !((ItemInReach || SeatInReach) && NextSpell.activeControl?.device is Keyboard);
 
     /// <summary>The element (0-7, radial order) of the number key pressed this frame, or -1.</summary>
     public int PickedElement()
