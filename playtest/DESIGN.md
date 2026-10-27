@@ -271,8 +271,15 @@ candidates and screenshots. What the first runs showed:
   loading and physics use real time in places, so props and terrain arrive
   on different frames. So "reproduced" now also means the same signature
   met during the same goal, not only within a second of the same frame,
-  and triage replays up to 3 times. Making long walks replay exactly
-  (finding what in loading runs on real time) is follow-up work.
+  and triage replays up to 3 times. Making long walks replay exactly is
+  follow-up work. Suspects, to check in order: anything in loading or
+  streaming timed by `Time.realtimeSinceStartup`, a Stopwatch or a per-frame
+  time budget (props and terrain spawning on whichever frame the budget
+  allows); physics or animation on unscaled time (`Time.unscaledDeltaTime`,
+  `AnimatorUpdateMode.UnscaledTime`, Cinemachine set to ignore time scale);
+  async loads and texture streaming finishing on different frames; and
+  `Time.fixedDeltaTime` steps not dividing 1/30 s evenly, which only matters
+  if one of the above shifts a frame.
 - **A real paper cut, probably.** After the bot cast Hasten Time, frames
   took 0.8 to 2.2 s while it ran: 20 chemistry ticks a frame over the
   active chunks. Spikes during Hasten Time are now keyed "(hasten time)" so
@@ -284,6 +291,36 @@ candidates and screenshots. What the first runs showed:
   sent the bot to the ball court).
 - Low-confidence candidates seen: stuck (twice, mid-meadow) and "Plant
   Growth changed nothing". These are what the Claude triage pass is for.
+
+## Phase 3, the runner (2026-10-27)
+
+- `tools/playtest/run.ps1` runs one playtest:
+  - Preflight: it skips (logged in `playtest/runs/skipped.log`) when under
+    8 GB of memory is free, a Unity batch job or MPPM player is running, or
+    another playtest holds the lock.
+  - It runs the playtest-build checkout's player (or this checkout's),
+    off-screen and muted in the mixer, with a heartbeat watch.
+  - A crash or hang becomes a candidate. Crashes come from Windows' error
+    events matched by process id, so another session's test player isn't
+    counted, and from Unity's crash folder.
+  - It updates `playtest/coverage.json` (counts fade by a fifth a run).
+  - It never passes `-clean-quit`, which brings the old quit crash back on
+    purpose.
+- `playtest/known-issues.json` lists issues already decided. An issue is
+  known only on builds without its fix: run.ps1 asks git whether the build's
+  commit (StreamingAssets/build.json) contains `fixedIn`. On a build with it,
+  the crash is a regression and is filed. The D3D12 quit fault is fixed in
+  4a61ee3. `Playtest.KnownIssues` applies the same rule in C#.
+- `tools/playtest/build.ps1` keeps `.claude/worktrees/playtest-build`
+  detached at origin/dev:
+  - it builds only when origin/dev has moved and the preflight passes
+    (10 GB);
+  - it copies the Asset Store packs in from the main checkout;
+  - it runs Unity in batch mode on `PlaytestBuild.Build`, which builds the
+    yard (in that checkout only, never committed) and then the Windows
+    player.
+- Not set up yet, on purpose: the Task Scheduler entries and the Claude
+  triage task. Andrew sees the first runs first.
 
 ## Needs a decision from Andrew
 

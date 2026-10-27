@@ -48,22 +48,49 @@ namespace Playtest
         public override string ToString() => string.Format(CultureInfo.InvariantCulture, "[{0}] {1} at frame {2}: {3}", Category, Signature, Frame, Message);
     }
 
-    /// <summary>Issues already decided and being fixed (COORDINATION.md / JUDGMENT_CALLS.md): seen, counted, not filed.</summary>
-    public static class KnownIssues
+    /// <summary>One entry of playtest/known-issues.json.</summary>
+    public sealed class KnownIssue
     {
-        static readonly (string name, Func<Candidate, bool> matches)[] All =
-        {
-            // The D3D12 fault while the player quits; Gameplay is making the game end itself on quit.
-            ("quit-crash-d3d12", c => c.Detector == "crash" && c.Message != null && c.Message.IndexOf("D3D12Core", StringComparison.OrdinalIgnoreCase) >= 0),
-        };
+        public string Name { get; set; }
+        public string Detector { get; set; }
+        /// <summary>Text the candidate's message contains (any case).</summary>
+        public string MessageContains { get; set; }
+        /// <summary>The commit that fixed it: on a build with it, the issue is a regression and is filed. Null while unfixed.</summary>
+        public string FixedIn { get; set; }
+        public string Note { get; set; }
 
-        /// <summary>Marks the candidate if a known issue covers it; true if one does.</summary>
-        public static bool Mark(Candidate c)
+        public bool Matches(Candidate c) =>
+            c != null && c.Detector == Detector &&
+            (string.IsNullOrEmpty(MessageContains) || (c.Message != null && c.Message.Contains(MessageContains, StringComparison.OrdinalIgnoreCase)));
+    }
+
+    /// <summary>
+    /// Issues already decided (playtest/known-issues.json, the same file tools/playtest/run.ps1
+    /// reads): seen and counted, not filed, on builds that don't have their fix yet.
+    /// </summary>
+    public sealed class KnownIssues
+    {
+        readonly IReadOnlyList<KnownIssue> all;
+        readonly Func<string, bool> buildHas;
+
+        /// <param name="all">The known issues (FromJson of playtest/known-issues.json).</param>
+        /// <param name="buildHas">Whether the build has a commit (git merge-base --is-ancestor); unknown counts as not.</param>
+        public KnownIssues(IReadOnlyList<KnownIssue> all, Func<string, bool> buildHas = null)
+        {
+            this.all = all ?? Array.Empty<KnownIssue>();
+            this.buildHas = buildHas ?? (_ => false);
+        }
+
+        public static IReadOnlyList<KnownIssue> FromJson(string json) =>
+            Newtonsoft.Json.JsonConvert.DeserializeObject<List<KnownIssue>>(json) ?? new List<KnownIssue>();
+
+        /// <summary>Marks the candidate if a known issue covers it on this build; true if one does.</summary>
+        public bool Mark(Candidate c)
         {
             if (c == null) return false;
-            var hit = All.FirstOrDefault(k => k.matches(c));
-            c.KnownIssue = hit.name;
-            return hit.name != null;
+            var hit = all.FirstOrDefault(k => k.Matches(c) && (k.FixedIn == null || !buildHas(k.FixedIn)));
+            c.KnownIssue = hit?.Name;
+            return hit != null;
         }
     }
 
@@ -72,6 +99,9 @@ namespace Playtest
     {
         readonly List<Candidate> firsts = new List<Candidate>();
         readonly Dictionary<string, int> counts = new Dictionary<string, int>();
+        readonly KnownIssues known;
+
+        public CandidateLog(KnownIssues known = null) => this.known = known;
 
         public IReadOnlyList<Candidate> Candidates => firsts;
         public int CountOf(string signature) => counts.TryGetValue(signature, out int n) ? n : 0;
@@ -80,7 +110,7 @@ namespace Playtest
         public bool Add(Candidate c)
         {
             if (c == null) return false;
-            KnownIssues.Mark(c);
+            known?.Mark(c);
             counts[c.Signature] = CountOf(c.Signature) + 1;
             if (counts[c.Signature] > 1) return false;
             firsts.Add(c);

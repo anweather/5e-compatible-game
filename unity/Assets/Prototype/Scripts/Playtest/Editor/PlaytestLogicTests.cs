@@ -114,16 +114,32 @@ public class PlaytestLogicTests
         Assert.That(LogWatch.Line(5, "just a log", "", false), Is.Null);
     }
 
+    // playtest/known-issues.json, as the runner reads it.
+    static IReadOnlyList<KnownIssue> KnownFile()
+    {
+        string dir = System.IO.Path.GetDirectoryName(Chem.Tests.ChemistryTests.RulesDir());
+        return KnownIssues.FromJson(System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "playtest", "known-issues.json")));
+    }
+
     [Test]
     public void AKnownIssueIsCountedButNotFiledTwice()
     {
-        var log = new CandidateLog();
+        var log = new CandidateLog(new KnownIssues(KnownFile()));
         var crash = new Candidate("crash", "quit", Category.GameBreaking, 900, "fault in D3D12Core.dll on quit");
         Assert.That(log.Add(crash), Is.True);
-        Assert.That(crash.KnownIssue, Is.EqualTo("quit-crash-d3d12"));
+        Assert.That(crash.KnownIssue, Is.EqualTo("quit-crash-d3d12"), "on a build from before its fix");
         Assert.That(log.Add(new Candidate("crash", "quit", Category.GameBreaking, 950, "again")), Is.False);
         Assert.That(log.CountOf("crash:quit"), Is.EqualTo(2));
         Assert.That(log.Candidates.Count, Is.EqualTo(1));
+    }
+
+    [Test]
+    public void AKnownIssueOnABuildWithItsFixIsARegression()
+    {
+        var fixedBuild = new KnownIssues(KnownFile(), commit => commit == "4a61ee3");
+        var crash = new Candidate("crash", "quit", Category.GameBreaking, 900, "fault in D3D12Core.dll on quit");
+        Assert.That(fixedBuild.Mark(crash), Is.False, "filed: the fix is in this build");
+        Assert.That(crash.KnownIssue, Is.Null);
     }
 
     [Test]
