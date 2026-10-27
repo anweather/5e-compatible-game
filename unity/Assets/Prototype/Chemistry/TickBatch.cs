@@ -84,8 +84,21 @@ namespace Chem
         /// </summary>
         public RuleSet RunOn(World world, RuleSet rules, out IReadOnlyList<string> errors)
         {
+            var now = Prepare(world, rules, out errors);
+            world.Step();
+            return now;
+        }
+
+        /// <summary>
+        /// RunOn without the step: the batch's switches, rules, casts, effects and defense commands,
+        /// for a caller that then steps the tick in slices (World.StepSome). A tick still part done
+        /// is finished first, so the commands land between whole ticks.
+        /// </summary>
+        public RuleSet Prepare(World world, RuleSet rules, out IReadOnlyList<string> errors)
+        {
             if (world == null) throw new ArgumentNullException(nameof(world));
             if (rules == null) throw new ArgumentNullException(nameof(rules));
+            world.FinishTick(); // a batch's commands land between whole ticks
             errors = Array.Empty<string>();
             ChunkStreaming.Apply(world, Chunks);
             if (Mods != null)
@@ -103,7 +116,6 @@ namespace Chem
             foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
             foreach (var e in Effects) world.ApplyEffect(e);
             foreach (var d in Defense) world.ApplyDefense(d);
-            world.Step();
             return rules;
         }
 
