@@ -22,9 +22,77 @@ Each entry has:
 
 ## Open
 
-(none)
+### J-015: SSAO, off, cheap or as it is? (perf pass)
+
+- **Asked:** 2026-10-27, raised by Build (the B1 sweep).
+- **Also comes up when:** any visual-quality-versus-speed setting (shadows,
+  HDR, post-processing), and quality presets later.
+- **The evidence** (Mac player at 1080p, mean / p95 ms):
+  - base 42.0 / 70.4;
+  - off 32.7 / 61.0 (-22%);
+  - cheap (depth-only, half resolution, low samples) 35.4 / 62.4 (-16%).
+  - Off loses the contact darkening under the eaves, at the ground and
+    between bushes. Cheap looks nearly the same as base.
+  - Screenshots on the Mac:
+    `unity/Builds/demo-videos/ssao-compare-*.png`.
+- **Answer:** pending. Recommended: cheap, then measure soft shadows at
+  Medium on top of it.
+- **Revisited:** 0.
+
+### J-016: May agents force-push their own unmerged branches after a rebase?
+
+- **Asked:** 2026-10-27, by the coordinator, after World force-pushed its
+  four rebased branches. Andrew had asked to be consulted before
+  force-pushes.
+- **Also comes up when:** every rebase of a pushed feature branch, by any
+  agent.
+- **Answer:** pending. Recommended: allowed only for your OWN unmerged
+  feature branch, only with `--force-with-lease`; never `dev`, `main` or
+  another agent's branch.
+- **Revisited:** 0.
 
 ## Decided
+
+### J-013: How may the playtest scripts run past the PowerShell execution policy?
+
+- **Asked:** 2026-10-27, raised by World.
+  - This PC's policy blocks .ps1 scripts. The coordinator's own attempt to
+    pass `-ExecutionPolicy Bypass` was refused by its safety check.
+  - World had been running its spike and run scripts with
+    `-ExecutionPolicy Bypass`, which applies to one process and changes no
+    setting. It has stopped until Andrew decides.
+  - The options:
+    (a) Task Scheduler passes `-ExecutionPolicy Bypass`;
+    (b) set CurrentUser to RemoteSigned (a security setting);
+    (c) sign the scripts;
+    (d) port `run.ps1` and `build.ps1` to a small .NET console tool (no
+    policy involved).
+- **Also comes up when:** any script on this PC: the coordinator's tools,
+  `tools/playtest`, release scripts, scheduled tasks.
+- **Answer (2026-10-27):** **(d)**, a .NET console tool
+  (`tools/playtest/Playtest.Runner`, in `core/Game.Core.sln`) replaces
+  `run.ps1` and `build.ps1`. No PowerShell scripts, no Bypass, no policy
+  change.
+- **Why:** Andrew: "Agree with .NET tool." No security setting changes. It
+  shares the bot's rules and tests with the core. For any future script on
+  this PC, prefer bash (Git Bash) or .NET over .ps1 files.
+- **Revisited:** 0.
+
+### J-014: How should resetting the world online behave (backlog #4)?
+
+- **Asked:** 2026-10-27, raised by Gameplay's plan (World builds the reset
+  command, Gameplay the view).
+- **Also comes up when:** any host-versus-client authority question, mods
+  across a world rebuild, any countdown UX.
+- **Answer (2026-10-27):** all three as recommended:
+  - a 3 s countdown;
+  - the host decides (a client asks; no vote);
+  - mods stay on through a reset (re-stamped in the reset batch).
+- **Why:** Andrew: "yes that sounds great".
+  - With at most 4 players, the host is in charge.
+  - A reset restores the world, not the settings.
+- **Revisited:** 0.
+
 
 ### J-012: The backlog's priority order
 
@@ -216,6 +284,11 @@ Each entry has:
   3. It makes exact replays possible.
   4. Triage only on new runs keeps the cost down.
   5. Solo first keeps v1 small.
+- **Result (2026-10-27, phase 1):** the fallback in answer 2 isn't needed. A
+  minimised or off-screen player renders every frame and never takes focus,
+  so runs can go any time the preflight passes. Sound is muted in the
+  Windows mixer (`AppMute`), so the audio detectors still hear it. An
+  incremental build takes 16 s.
 - **Revisited:** 0.
 
 ### J-009: Keep a judgment-call log?

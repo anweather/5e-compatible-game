@@ -1,6 +1,19 @@
 {
   "drops": [
     {
+      "when": "27 Oct 2026 · dev",
+      "title": "Today on dev",
+      "intro": "Features merged into dev after alpha 0.1.4.",
+      "clips": [
+        { "area": "Fixes", "lane": "fix", "title": "Sky lighting without the stalls", "commit": "057a182",
+          "before": "sky-ambient-before.jpg", "after": "sky-ambient-after.jpg",
+          "summary": "At sunset, before and after. The sky's lighting is now worked out on the CPU each frame instead of read back from the GPU every 1.5 s, which removes 7–43 ms hitches on the PC (up to 122 ms on the Mac). It also clears the stray cyan patches the old re-bakes left on the trees." },
+        { "area": "World streaming", "lane": "gameplay", "title": "Props sleep with their chunk", "length": "0:08", "commit": "a473873",
+          "video": "props-sleep.mp4", "poster": "props-sleep.jpg",
+          "summary": "Walk far enough away and the yard's chunk deactivates. Its crates and barrels hold still, even a crate left floating in mid-air. Come back and they wake: the crate drops into the pond." }
+      ]
+    },
+    {
       "when": "27 Oct 2026 · alpha 0.1.4",
       "title": "The overnight build",
       "intro": "What both sessions built on the night of 26 Oct, each filmed while its automated check ran and passed in the Unity Editor.",

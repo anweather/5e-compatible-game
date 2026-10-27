@@ -42,6 +42,49 @@ It asks Andrew first before it:
 - resolves a conflict where one agent's work would be lost;
 - changes the overall plan.
 
+## The project update (coordinator to Andrew)
+
+Andrew gets one short update in this shape, so he doesn't have to read
+everything. It comes when he asks, and unasked after a milestone (a merge
+or a finished task), or when something needs him. It fits on one screen:
+
+```
+PROJECT UPDATE · <date time> · since <last update's time>
+
+WINS     · <what merged or was verified, one line each, with its commit>
+FAILS    · <what broke, or a test that failed, and what happens next>
+BLOCKED  · <what's stuck, and on whom>
+
+WORKERS  (active % since the last update)
+  Gameplay  <task>  <branch>  <busy / waiting on X / idle>  <n>%
+  World     <task>  <branch>  ...                            <n>%
+  Build     <task>  <branch>  ...                            <self-reported>
+
+COMPUTE  (the PC; Unity is the bottleneck)
+  Unity running <n>% · working (build, probe, player) <n>% · two Editors <n>%
+  No-Unity gaps: <time for n min: why>   · Editor slot: <who has it, and who's next>
+
+NEEDS YOU
+  1. <decision, with the options, my pick first>
+```
+
+How it's measured: `tools/coordinator/sample.sh` runs in the background on
+the PC and logs one row a minute. Each row says whether each PC worker's
+Claude transcript was written in the last 3 minutes, or a Unity batch job is
+running on its checkout. It also counts Editors, players and batch jobs, and
+records free memory and CPU. The log is
+`.claude/worktrees/_coordinator-logs/activity.csv` (not in git), and
+`tools/coordinator/report.sh <hours>` summarises it. The Mac reports its own
+busy and idle time.
+
+The rule: if no Unity has run on the PC for 15 minutes while any lane has
+work, the coordinator finds out why and fixes it. Either it gives the Editor
+slot to someone with Unity work, or it moves Unity work earlier in the
+queue. An alert fires when that happens (`report.sh --idle`).
+
+Agents report to the coordinator in the same shape, briefly: Done, Failed,
+Blocked, Next, and whether they hold Unity.
+
 ## Rules for every agent
 
 1. Read this file before you start each new task (`git fetch` first, then
@@ -126,7 +169,7 @@ ask the coordinator first.
 | Gameplay | `unity/Assets/Prototype/{Audio,Materials,Shaders,Settings}/**`, `unity/Assets/InputSystem_Actions.inputactions` |
 | Gameplay | `world/looks.json` |
 | World | `unity/Assets/Prototype/Chemistry/**` (including `Chemistry.asmdef` and `Chemistry.Tests.asmdef`) |
-| World | `unity/Assets/Prototype/Scripts/ChemGrid.cs`, `Scripts/Net/NetChem.cs`, `Scripts/ProbeExplore.cs` |
+| World | `unity/Assets/Prototype/Scripts/ChemGrid.cs` and every `ChemGrid.*.cs` partial (Effects, Rules, Shaping, Visuals), `Scripts/Net/NetChem.cs`, `Scripts/ProbeExplore.cs` |
 | World | `rules/**`, `core/**`, `sandbox/**` |
 | World | `world/` except `looks.json` |
 | World | `docs/WORLD_STREAMING.md`, `docs/FAST_LOOP.md` |
@@ -151,7 +194,9 @@ Cross-lane needs that come up often:
 - **Something needs a ProjectSettings or package change:** ask the
   coordinator, and Build makes the change.
 - **A yard rebuild rewrites `NetWizard.prefab` or the scene:** only Gameplay
-  runs it.
+  runs it in a checkout that commits. The playtest bot's detached
+  `.claude/worktrees/playtest-build` checkout may rebuild the yard for its
+  builds, because it never commits or pushes.
 - **`.meta` files:** never edit a GUID. Commit each new asset together with
   its `.meta`, in the owner's lane.
 
@@ -159,9 +204,9 @@ Cross-lane needs that come up often:
 
 | Agent | Task | Branch | State |
 |---|---|---|---|
-| Gameplay | 1) The demo clip for props-sleep (`sleep-clip`, `667f5ed`), when it has the Editor slot. 2) Backlog #1: the game ends itself on quit (J-010). 3) Next: backlog #4, resetting the world online | `sleep-clip`, then `quit-exit` | Code now; Editor after World |
-| World | The playtest bot (see `playtest/DESIGN.md` on the branch, and J-008 in `JUDGMENT_CALLS.md`). Phase 1: spikes (rendering minimised or off-screen, muted audio, incremental build time), then the bot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | Phase 1 started 2026-10-27; has the PC Editor slot |
-| Build | Backlog #3, the performance pass: a plan first (what to measure, where the spikes come from, which PC tests to run), then the fixes in its lane | `perf-pass` (off `dev`) | Started 2026-10-27 |
+| Gameplay | sky-ambient (`057a182`) and fps-timing (`cc7b22f`) are merged. Now, code only: perf G1 (ValleyGround buffers, spreading SyncHeightmap, dirty-box paint upload, a detail cap), the paint budget on tick frames, and a look at ValleyFauna. Then reset part B (J-014) after World's part A. Possible later: a terrain wetness shader for rain (rain no longer draws a film on open ground) | own branches | Editor released |
+| World | HAS THE PC EDITOR (from about 14:00): the verification script for gas-pool, tick-spread, still-water and rain-water-mesh (`a193510`), with --online. Then the .NET runner (J-013 d), reset part A (J-014), then hardness (WIP `e18a075`). The playtest bot (J-008). Phase 3 code is done (`4510dee`, `37ba28c`). Phase 2 done (`b880057`): it compiles, runs off-screen and muted, and made 4 real runs. Its first real paper cut: Hasten Time frames take 0.8–2.2 s. Exact replay drifts (follow-up). Now phase 3, code only (coverage, crash and hang checks, build.ps1); then about 27 min of the build slot. Stop before the scheduled tasks. Queued next, perf-pass items: (0) FIRST: ChemGrid.WaterMesh under rain, 2.3–2.8 s frames (the bot's Hasten Time and Control Weather spikes; branch `rain-water-mesh`); (1) RenderGas instantiating gas particle prefabs: each Awake runs a full particle update, about 36 ms (the PC's worst frames; pool them or turn Prewarm off); (2) the tick hitch: `tick-spread`, a resumable tick sliced across frames, lockstep-exact; (3) slice 6, still water costs nothing; (4) W1 (dirty-cell render). (The Hasten Time frames are NOT extra ticks: it's the sky and weather view, so they go to Gameplay) | `playtest-bot` | In progress |
+| Build | Backlog #3, the performance pass. Mac M1/M3/M5 done: the worst spikes are SkyLight's ambient readback (up to 122 ms; routed to Gameplay as `sky-ambient`) and the chemistry tick in one frame (about 15 ms; routed to World). The steady cost is ChemGrid.Render walking every cell (5.3 ms; W1, World). Now: B1 (URP settings) and B2 (occlusion), one at a time | `perf-pass` | In progress |
 
 ## Shared-file queue
 
@@ -179,11 +224,17 @@ The coordinator approves each change and schedules them one at a time.
    player build takes about 14 min to compile shader variants.
 3. ~~Slice 5, part A (World: the chunk event)~~. Merged as `3c1d848`.
 4. ~~Slice 5, part B (Gameplay: props sleep and wake)~~. Merged as `a473873`.
-5. `sleep-clip` (Gameplay: the probe films the crate), once it has been filmed
-   and passes.
-6. `quit-exit` (Gameplay: the game ends itself on quit).
+5. ~~`sleep-clip` (Gameplay: the probe films the crate)~~. Merged as `e517d79`; on the reel.
+6. ~~`quit-exit` (Gameplay: the game ends itself on quit)~~. Merged as `4a61ee3`: quits take 0.15–0.3 s, with no crash or dump; `-clean-quit` restores Unity's own shutdown. Velopack's restart is untested (Build checks it at the next ship-update).
 7. `playtest-bot` (World), in phases, when each is ready.
-8. `perf-pass` (Build), in slices.
+8. `perf-pass` (Build), in slices (the SSAO choice waits on Andrew).
+9. World, in this order once each passes its Editor turn:
+   a. `gas-pool` and `rain-water-mesh`;
+   b. `tick-spread`;
+   c. `still-water` and `net-reset` (both stacked on tick-spread);
+   d. `hardness`;
+   e. `playtest-bot`.
+10. Gameplay: reset part B (stacked on `net-reset`), and the G1 perf items.
 
 The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 
