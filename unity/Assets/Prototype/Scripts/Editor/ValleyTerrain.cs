@@ -304,7 +304,9 @@ public static class ValleyTerrain
         return new Vector2(cx, cz);
     }
 
-    // One detail cell: lush grass in the meadows, the odd fern or plant where it is drier.
+    // One detail cell: lush grass in the meadows, the odd fern or plant where it is drier. One kind
+    // of grass to a patch (tens of metres across, blending at the edges) rather than all three mixed
+    // everywhere, which read as busy.
     static void ScatterDetails(TerrainData data, int[][,] layers, System.Random rng, Vector2 corner, int dx, int dz)
     {
         float u = (dx + 0.5f) / DetailRes, v = (dz + 0.5f) / DetailRes;
@@ -312,12 +314,20 @@ public static class ValleyTerrain
         if (ValleyShape.KeepClearOfCabinAndLake(w)) return;
         if (ValleyShape.HeightAt(w) > 70f || data.GetSteepness(u, v) > 28f) return;
         float lush = Mathf.Clamp01(0.55f + ValleyShape.Fbm(w * 0.05f, 2));
-        for (int k = 0; k < layers.Length; k++)
-        {
-            bool grass = k < 3;
-            double p = (grass ? 0.55 * lush : 0.04 * (1f - lush)) * DetailDensity;
-            if (rng.NextDouble() < p) layers[k][dz, dx] = grass ? 1 + rng.Next(3) : 1;
-        }
+        if (rng.NextDouble() < 1.4 * lush * DetailDensity) layers[Mathf.Min(GrassKind(w, rng), layers.Length - 1)][dz, dx] = 2 + rng.Next(3);
+        for (int k = GrassKinds; k < layers.Length; k++)
+            if (rng.NextDouble() < 0.025 * (1f - lush) * DetailDensity) layers[k][dz, dx] = 1;
+    }
+
+    // The first three details are grass.
+    const int GrassKinds = 3;
+
+    // Which grass grows at a point: a slow noise picks the patch's kind, jittered so patches blend.
+    static int GrassKind(Vector2 w, System.Random rng)
+    {
+        float t = Mathf.Clamp01(0.5f + 1.6f * ValleyShape.Fbm(w * 0.015f + new Vector2(37f, 11f), 2));
+        t = Mathf.Clamp01(t + ((float)rng.NextDouble() - 0.5f) * 0.3f);
+        return Mathf.Min(GrassKinds - 1, (int)(t * GrassKinds));
     }
 
     // --- terrains in the scene ----------------------------------------------

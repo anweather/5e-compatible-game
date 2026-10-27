@@ -42,6 +42,12 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
     public int maxCreatures = 120;
     /// <summary>Spawn attempts per second.</summary>
     public float spawnRate = 6f;
+    /// <summary>
+    /// The species' densities times this round where the wizard starts, rising to wildDensity out in
+    /// the wilds (between homeRadius and wildRadius from the start): a quiet start, more to find exploring.
+    /// </summary>
+    public float homeDensity = 0.3f, wildDensity = 1.4f;
+    public float homeRadius = 60f, wildRadius = 300f;
 
     sealed class Creature
     {
@@ -68,6 +74,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
     Mesh capsule;
     ChemGrid grid;
     World world;
+    float2? home;
     float spawnBudget, nextLook;
     int nextId;
     Unity.Mathematics.Random rng = new(0x9E3779B9u);
@@ -138,6 +145,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         if (world == null || cam == null || material == null || bodies.Count == 0) return;
         using var _ = UpdateMarker.Auto();
         var centre = new float2(cam.transform.position.x, cam.transform.position.z);
+        home ??= centre;
         if (Time.time >= nextLook) LookAround(centre);
 
         Despawn(centre);
@@ -250,6 +258,10 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         }
     }
 
+    // How full of animals the land is at a point, by its distance from where the wizard started.
+    float Wildness(float2 at) =>
+        math.lerp(homeDensity, wildDensity, math.smoothstep(homeRadius, wildRadius, math.distance(at, home ?? at)));
+
     // A random spot in the ring round the camera: whichever species is furthest below its density gets a group there.
     void TrySpawn(float2 centre)
     {
@@ -258,7 +270,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         float distance = math.sqrt(rng.NextFloat(minSpawnDistance * minSpawnDistance, radius * radius));
         var at = centre + new float2(math.cos(angle), math.sin(angle)) * distance;
         if (!Walkable(at)) return;
-        float hectares = math.PI * radius * radius / 10000f;
+        float hectares = math.PI * radius * radius / 10000f * Wildness(at);
         bool wet = NearWater(at);
         int best = -1;
         float bestShortfall = 0f;

@@ -209,10 +209,10 @@ public static class ChemYardBuilder
     }
 
     // The valley's animals (ValleyFauna, from Punchy's creatures in ThirdParty/Punchy/Fauna): species and how many
-    // per hectare. Frogs and herons only by water.
+    // per hectare, out in the wilds (fewer round the start: ValleyFauna.homeDensity). Frogs and herons only by water.
     static readonly (string name, float density, bool nearWater)[] Fauna =
     {
-        ("Deer", 1.2f, false), ("Rabbit", 2.5f, false), ("Squirrel", 1.5f, false), ("RedFox", 0.3f, false),
+        ("Deer", 0.7f, false), ("Rabbit", 1.8f, false), ("Squirrel", 1.5f, false), ("RedFox", 0.3f, false),
         ("Turkey", 0.6f, false), ("Quail", 0.8f, false), ("Marmot", 0.4f, false), ("Skunk", 0.2f, false),
         ("GarterSnake", 0.3f, false), ("BlackBear", 0.08f, false), ("Wolf", 0.1f, false),
         ("Frog", 4f, true), ("Heron", 0.4f, true),
