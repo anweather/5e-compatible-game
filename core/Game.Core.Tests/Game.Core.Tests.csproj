@@ -10,10 +10,13 @@
     <Compile Include="../../unity/Assets/Prototype/Chemistry/Tests/*.cs" Link="Tests/%(Filename)%(Extension)" />
     <!-- The playtest bot's tests (its logic is in Game.Core; playtest/DESIGN.md). -->
     <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Editor/*Tests.cs" Link="Playtest/Tests/%(Filename)%(Extension)" />
+    <!-- The playtest runner's tests (core/Playtest.Runner): the parts that don't launch anything. -->
+    <Compile Include="Runner/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+    <ProjectReference Include="../Playtest.Runner/Playtest.Runner.csproj" />
   </ItemGroup>
 
   <ItemGroup>
