@@ -75,6 +75,7 @@ namespace Chem
                     c.GasAmt = 0;
                 }
             }
+            SanitizeRaiders();
         }
 
         // ---------- directions ----------

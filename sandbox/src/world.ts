@@ -30,6 +30,27 @@ export interface Entity {
   status: Record<string, number>; // ticks remaining
   /** For a player's wizard: the peer that controls it. */
   owner?: string;
+  /** For a raider (defense.ts): the HP it came with, and ticks until it may take its next step. */
+  maxHp?: number;
+  wait?: number;
+}
+
+export type DefensePhase = 0 | 1 | 2 | 3; // idle, running, won, lost (C#: DefensePhase)
+/** The defense field's waves (defense.ts; C#: DefenseState). */
+export interface DefenseState {
+  phase: DefensePhase;
+  wave: number;
+  lives: number;
+  toSpawn: number;
+  nextSpawn: number;
+  spawned: number;
+  gate: [number, number];
+  flag: [number, number];
+  /** The squares the raiders may walk in: [x0, x1] × [y0, y1]. */
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
 }
 
 export interface Critter {
@@ -94,6 +115,8 @@ export interface World {
   clockAhead: number;
   /** Control Weather: the weather held, the tick it was cast and the tick it ends (C#: World.WeatherSet). */
   weatherSet: { kind: WeatherKind; from: number; until: number } | null;
+  /** The defense field's waves, or null before anyone started them (defense.ts). */
+  defense: DefenseState | null;
   log: LogEntry[];
   /** Per-tick marks machines read; cleared at the end of each tick. */
   marks: { flow: Uint8Array; steam: Uint8Array; wind: Uint8Array };
@@ -130,6 +153,7 @@ export function createWorld(w: number, h: number, seed = 1): World {
     haste: null,
     clockAhead: 0,
     weatherSet: null,
+    defense: null,
     log: [],
     marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) },
     logged: new Set(),
@@ -219,7 +243,8 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet]);
+  // The defense joins only once started, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : [])]);
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -281,7 +306,7 @@ export function deserializeWorld(s: WorldSnapshot): World {
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
   // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

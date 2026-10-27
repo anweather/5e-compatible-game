@@ -116,3 +116,11 @@ public static class GasIds
     public const string Smoke = "smoke";
     public const string Fog = "fog";
 }
+
+/// <summary>The defense field's raiders (entities with a "raider" row), as in rules/entities.json.</summary>
+public static class RaiderIds
+{
+    public const string BoneHound = "bone-hound";
+    public const string AshCrab = "ash-crab";
+    public const string GiantSpider = "giant-spider";
+}

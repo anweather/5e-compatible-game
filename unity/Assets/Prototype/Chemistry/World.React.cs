@@ -32,6 +32,25 @@ namespace Chem
                 }
                 if (rule.Stop) break;
             }
+            // Then whatever stands there (a raider: World.Raiders.cs).
+            ReachRaider(x, y, element, direct);
+        }
+
+        void ReachRaider(int x, int y, string element, bool direct)
+        {
+            var raider = raiders.Count > 0 ? RaiderAt(x, y) : null;
+            if (raider != null) ApplyRaiderElement(raider, element, direct);
+        }
+
+        /// <summary>A raise effect (a pillar): the cell becomes that terrain, unless a raider stands there.</summary>
+        bool RaiseUp(int x, int y, Cell c, string terrain)
+        {
+            if (RaiderAt(x, y) != null) return false;
+            DisplaceWater(x, y);
+            c.T = terrain;
+            c.Cover = null;
+            c.Fire = 0;
+            return true;
         }
 
         string CoverName(Cell c) =>
@@ -259,15 +278,7 @@ namespace Chem
                 c.T = eff.SetTerrain;
                 return true;
             }
-            if (eff.Raise != null)
-            {
-                // The TS refuses when an entity stands here; this port has no entities.
-                DisplaceWater(x, y);
-                c.T = eff.Raise;
-                c.Cover = null;
-                c.Fire = 0;
-                return true;
-            }
+            if (eff.Raise != null) return RaiseUp(x, y, c, eff.Raise);
             if (eff.Conduct.HasValue) return Conduct(x, y, eff.Conduct.Value);
             if (eff.Fan)
             {

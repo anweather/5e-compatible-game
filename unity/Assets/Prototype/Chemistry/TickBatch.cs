@@ -1,7 +1,8 @@
 // One sim tick's inputs, in lockstep: chunks waking or sleeping (ChunkStreaming), a rule switch (mods on or off), the
 // casts stamped for that tick, and the effects physics props had on cells
 // (Effects.cs: a barrel's blast, a lantern's spill), which the host saw and
-// stamped like casts. Solo play runs one per tick; online the host
+// stamped like casts, and defense commands (the defense field's start,
+// Defense.cs). Solo play runs one per tick; online the host
 // stamps them and every machine runs the same batches in the same order
 // (NetChem), and a late joiner rebuilds them from the host's history
 // (Timeline) and replays from tick 0. Running a batch is the same code in all
@@ -71,6 +72,8 @@ namespace Chem
         public List<EffectCommand> Effects { get; }
         /// <summary>Chunks waking or going to sleep (ChunkStreaming), applied first.</summary>
         public List<ChunkSwitch> Chunks { get; }
+        /// <summary>Defense commands (the start pedestal: World.Defense.cs), applied after the effects, in order.</summary>
+        public List<DefenseCommand> Defense { get; } = new List<DefenseCommand>();
 
         /// <summary>
         /// Runs the batch: wakes or pauses chunks and switches the rules if it says to, applies its casts and then its props'
@@ -99,6 +102,7 @@ namespace Chem
             }
             foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
             foreach (var e in Effects) world.ApplyEffect(e);
+            foreach (var d in Defense) world.ApplyDefense(d);
             world.Step();
             return rules;
         }
@@ -109,7 +113,8 @@ namespace Chem
         /// an empty batch.
         /// </summary>
         public static Dictionary<int, TickBatch> Timeline(IEnumerable<(int tick, CastCommand cast)> casts, IEnumerable<RuleChange> changes, int upToTick,
-            IEnumerable<(int tick, EffectCommand effect)> effects = null, IEnumerable<(int tick, ChunkSwitch chunk)> chunks = null)
+            IEnumerable<(int tick, EffectCommand effect)> effects = null, IEnumerable<(int tick, ChunkSwitch chunk)> chunks = null,
+            IEnumerable<(int tick, DefenseCommand command)> defense = null)
         {
             var batches = new Dictionary<int, TickBatch>();
             for (int t = 1; t <= upToTick; t++) batches[t] = new TickBatch(t);
@@ -121,6 +126,8 @@ namespace Chem
                 if (batches.TryGetValue(tick, out var b)) b.Effects.Add(effect);
             foreach (var (tick, chunk) in chunks ?? Enumerable.Empty<(int, ChunkSwitch)>())
                 if (batches.TryGetValue(tick, out var b)) b.Chunks.Add(chunk);
+            foreach (var (tick, command) in defense ?? Enumerable.Empty<(int, DefenseCommand)>())
+                if (batches.TryGetValue(tick, out var b)) b.Defense.Add(command);
             return batches;
         }
     }

@@ -51,6 +51,7 @@ public static class ValleyBuilder
         BuildCourt();
         ValleyBridge.Build(LogMaterial(), CabinMaterial("Plank", new Color(0.52f, 0.37f, 0.23f), 0.12f));
         ValleyTower.Build(grid);
+        DefenseFieldBuilder.Build(grid);
         BuildLandmarks();
         BuildWaterfall();
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
@@ -92,6 +93,7 @@ public static class ValleyBuilder
         var paintedCells = YardCells(grid.yardCells);
         paintedCells.AddRange(CourtCells());
         paintedCells.AddRange(PathCells());
+        paintedCells.AddRange(DefenseFieldBuilder.PathCells());
         foreach (var plan in ValleyShape.Villages)
             foreach (var (vx, vy, _) in plan.Cells()) paintedCells.Add((vx, vy));
         ValleyTerrain.PlantTrees(assets.trees, AllTrees(valleyTrees, grid, world));
@@ -225,6 +227,7 @@ public static class ValleyBuilder
         spots.RemoveAll(s => ValleyShape.DistanceToVillage(s.Item1) < 4f);
         spots.RemoveAll(s => ValleyCoast.Coastal(s.Item1) || ValleyCoast.DistanceToPath(s.Item1) < 3.5f);
         spots.RemoveAll(s => ValleyShape.NearTower(s.Item1, 4f));
+        spots.RemoveAll(s => DefenseFieldBuilder.NearDefenseField(s.Item1, 4f));
         return spots;
     }
 
@@ -306,6 +309,7 @@ public static class ValleyBuilder
             rock.transform.localScale = Vector3.one * (0.6f + 1.2f * (float)rng.NextDouble());
             // None in a village; removed after its draws, so the other rocks stay where they were.
             if (ValleyShape.DistanceToVillage(w) < 4f || ValleyCoast.DistanceToPath(w) < 3f || ValleyShape.NearTower(w, 3f)) Object.DestroyImmediate(rock);
+            if (rock != null && DefenseFieldBuilder.NearDefenseField(w, 3f)) Object.DestroyImmediate(rock);
             placed++;
         }
     }
@@ -1386,6 +1390,7 @@ public static class ValleyBuilder
         if (ValleyShape.InCabin(p)) return 'L';
         // The ball court's floor is dirt: bare earth to look at, and nothing on it to burn.
         if (ValleyShape.InCourt(p, 0.2f)) return '.';
+        if (DefenseFieldBuilder.OnPath(p)) return '.';
         // Trees (the palms on the sand too), then the path and the beaches: bare ground, nothing to burn.
         if (tree) return 'T';
         if (ValleyCoast.OnPath(p) || ValleyCoast.OnSand(p, ground)) return '.';

@@ -384,6 +384,33 @@ get to the top of (Andrew, after the recap).
 A second play area where waves of critters walk toward a flag and the
 players stop them with spells (Andrew, after the recap).
 
+**Built (2026-10-27, MVP): the defense field** on the meadow 60 m north of
+the yard (`DefenseFieldBuilder`): a straight dirt path 60 m west to east
+from a stone gate to a flag with a lives banner, open ground either side,
+and a start plate with a sign by the flag. Standing on the plate sends a
+`DefenseCommand` (solo at once; online through `NetChem` to the host, which
+stamps it for the next tick, and a late joiner replays it from the history).
+The raiders are **core entities** (`World.Raiders.cs`, `World.Defense.cs`,
+mirrored in `sandbox/src/defense.ts` with a shared golden), so every
+machine runs the same waves with no extra networking; the defense's hash is
+the netcode checksum's last part. Their stats are data: `entities.json`
+`raider` rows (bone hound, ash crab, giant spider: pace, weak to, resists)
+and `sim.json` `defense` (10 lives, 5 waves of 3, 5, 7, 9, 11, HP up per
+wave, the schedule, path costs). They walk the cheapest way to the flag (a
+Dijkstra cost field worked out each tick, so they reroute at once): round
+raised walls (battered down a step at a time when there is no way round),
+avoiding trenches and deep water where a detour is cheaper, never through
+blocking terrain. Spells hurt them through the existing entity reactions:
+fire sets them burning, water soaks them and lightning through it hits
+twice as hard, cold freezes a soaked one in place, thorns cut and snag them,
+damage spells roll their dice. A raider at the flag costs a life; 0 lives
+loses, beating wave 5 wins; the plate starts again. The view draws them as
+Punchy creatures (placeholders) sliding square to square, with health bars,
+death puffs and a HUD line ("Wave 2/5: 7 left, lives 9/10"); probe
+`defense`. Still open: towers that shoot, upgrades and a currency,
+Andrew's models, raiders that fly or swim, shoves (raiders stand their
+ground: the core has no push), difficulty tuning, and a sandbox board for it.
+
 - **What:** press a button to start; waves of critters (placeholders until
   Andrew supplies models) walk a path toward a flag. Players raise
   barriers with earth spells (walls, trenches, water) and hurt them with

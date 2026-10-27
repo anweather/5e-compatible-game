@@ -181,6 +181,20 @@ export interface EntityDef {
   creature?: boolean;
   player?: boolean;
   explodes?: { cover: string; radius: number; fire: number; push: number; damage: [number, number]; crater?: CraterDef };
+  /** It raids the defense field (defense.ts): ticks a square takes, and elements it takes double or half (rounded up) damage from. */
+  raider?: RaiderDef;
+}
+export interface RaiderDef {
+  ticksPerSquare?: number;
+  weak?: string[];
+  resist?: string[];
+}
+/** sim.json's defense (defense.ts; C#: DefenseParams in Defense.cs). */
+export interface DefenseParams {
+  lives: number; waves: number; first: number; growth: number; hpPerWave: number;
+  warmup: number; spawnEvery: number; betweenWaves: number;
+  margin: number; wallCost: number; roughCost: number; roughTicks: number; batterTicks: number; deepWater: number;
+  kinds: string[];
 }
 /** Ground a blast digs out: depth steps in the middle, tapering to none past radius (default 1) squares. */
 export interface CraterDef {
@@ -241,6 +255,7 @@ export interface SimParams {
   fallDamage: number;
   zapDamage: number;
   conductLimit: number;
+  defense: DefenseParams;
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
   day: { lengthMinutes: number; startHour: number };
   /** The weather (sky.ts picks it, tickWeather in sim.ts applies it). */
@@ -509,6 +524,16 @@ function groupErrors(r: Rules): string[] {
   return errors;
 }
 
+/** A raider's pace and the elements it's weak to or resists (C#: RaiderRefs in Rules.Check.cs). */
+function raiderErrors(el: Set<string>, id: string, rd: RaiderDef): string[] {
+  const errors: string[] = [];
+  const pace = rd.ticksPerSquare;
+  if (pace !== undefined && !(Number.isInteger(pace) && pace >= 1)) errors.push(`entity ${id}: raider ticksPerSquare must be a whole number from 1`);
+  for (const e of (rd.weak ?? []).filter((e) => typeof e === "string" && !el.has(e))) errors.push(`entity ${id}: raider is weak to unknown element ${e}`);
+  for (const e of (rd.resist ?? []).filter((e) => typeof e === "string" && !el.has(e))) errors.push(`entity ${id}: raider resists unknown element ${e}`);
+  return errors;
+}
+
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
   const errors: string[] = [];
@@ -562,9 +587,11 @@ export function validateRules(r: Rules): string[] {
     else if (!r.terrain[id]!.tags.includes("machine")) errors.push(`machine ${id}: terrain lacks the machine tag`);
   }
   for (const [id, e] of Object.entries(r.entities)) {
+    if (e.raider) errors.push(...raiderErrors(el, id, e.raider));
     if (e.explodes && !coverIds.has(e.explodes.cover)) errors.push(`entity ${id}: explodes into unknown cover`);
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1 and radius from 0`);
   }
+  for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
   errors.push(...groupErrors(r));
   return errors;
