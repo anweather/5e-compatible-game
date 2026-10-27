@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 
 // How each spell looks when cast, as data: an optional projectile that
-// flies from the hand (or a meteor from the sky, or a storm over the
-// spell's squares), an optional effect where it lands, and the colour of
-// the glow in the caster's hand. The chemistry itself stays in rules/*.json;
-// this is only the show. Built by Prototype > Build Chemistry Yard.
+// flies from the hand (or a meteor from the sky, a storm over the spell's
+// squares, or a beam along its line), an optional effect where it lands, and
+// the colour of the glow in the caster's hand. The chemistry itself stays in
+// rules/*.json; this is only the show. Built by Prototype > Build Chemistry
+// Yard. A show is spawned without colliders (Spawn): some pack effects carry a
+// solid one (the Respawn mist's sphere), which would stand in a Misty Step's way.
 [CreateAssetMenu(menuName = "Prototype/Spell Visuals")]
 public class SpellVisuals : ScriptableObject
 {
@@ -26,9 +28,32 @@ public class SpellVisuals : ScriptableObject
         public GameObject afterImpact;
         [Tooltip("Pours down over the spell's squares from a low cloud for a while (SleetStorm) instead of flying from the hand; it lands when the first of it reaches the ground.")]
         public bool storm;
+        [Tooltip("A beam from the hand along the spell's line to where it ends (FrostBeam), instead of a projectile; it lands when the beam gets there.")]
+        public bool beam;
     }
 
     public List<Entry> entries = new();
 
     public Entry For(string spellId) => entries.Find(e => e.spellId == spellId);
+
+    /// <summary>
+    /// A copy of a show's prefab at a spot, with every collider in it switched off and removed: a
+    /// show is only to look at, and a solid one would block a blink or knock the wizard about.
+    /// </summary>
+    public static GameObject Spawn(GameObject prefab, Vector3 at, Quaternion turn)
+    {
+        var go = Instantiate(prefab, at, turn);
+        NoColliders(go);
+        return go;
+    }
+
+    /// <summary>Switches off and removes every collider in a show (off at once: Destroy waits for the frame's end).</summary>
+    public static void NoColliders(GameObject show)
+    {
+        foreach (var c in show.GetComponentsInChildren<Collider>(true))
+        {
+            c.enabled = false;
+            Destroy(c);
+        }
+    }
 }

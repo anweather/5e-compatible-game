@@ -12,7 +12,8 @@ using UnityEngine;
 // keeps that spot as BlinkPoint); pointed past the range, or at somewhere it
 // can't stand (a tree, a crate), it lands on the farthest spot it can reach
 // along the same line (Reach). Cast by square (demos, scripts), it lands on
-// the top surface over that square. The chemistry has nothing to do with
+// the top surface over that square. Held (charged), it reaches half as far
+// again, or twice as far at full charge (Range). The chemistry has nothing to do with
 // it (World.Cast only logs it); this moves the caster's own wizard, so online
 // only the caster's machine runs it and the wizard's owner-authoritative
 // NetworkTransform carries the jump to everyone else (NetWizard.Teleport).
@@ -29,23 +30,26 @@ public static class MistyStep
     /// if it can, with where it would land. Pointing at the side of something you can stand on (the
     /// cabin's wall, a rock's face) lands on its top, straight above where you pointed.
     /// </summary>
-    public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, RaycastHit hit, out Vector3 landing)
+    public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, RaycastHit hit, out Vector3 landing, int charge = 1)
     {
         landing = hit.point;
         if (hit.normal.y < MinUpward && !CellBlockers.IsBlocker(hit.collider) && TopAbove(hit, out var top))
         {
             landing = top.point;
-            return CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider, seen: true);
+            return CheckSpot(grid, spell, wizard, top, charge, seen: true);
         }
-        return CheckSpot(grid, spell, wizard, hit.point, hit.normal, hit.collider, seen: true);
+        return CheckSpot(grid, spell, wizard, hit, charge, seen: true);
     }
 
     /// <summary>Why <paramref name="wizard"/> can't blink onto square (x, y), or null if it can.</summary>
-    public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y)
+    public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y, int charge = 1)
     {
         if (!grid.World.InBounds(x, y)) return $"{spell.Name} needs a square to land on.";
-        return TopOf(grid, wizard, x, y, out var top) ? CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider) : $"{spell.Name} needs ground to land on.";
+        return TopOf(grid, wizard, x, y, out var top) ? CheckSpot(grid, spell, wizard, top, charge) : $"{spell.Name} needs ground to land on.";
     }
+
+    /// <summary>How many squares a blink reaches at a charge: the spell's range, half again held, twice at full charge.</summary>
+    public static int Range(SpellDef spell, int charge = 1) => (spell.Range > 0 ? spell.Range : 6) * (1 + World.ClampCharge(charge)) / 2;
 
     /// <summary>
     /// Where the crosshair's <paramref name="hit"/> takes <paramref name="wizard"/>: the spot itself if
@@ -53,13 +57,13 @@ public static class MistyStep
     /// past the range or at a tree still blinks. Returns why not (the spot's own reason) if nowhere on
     /// the way will do.
     /// </summary>
-    public static string Reach(ChemGrid grid, SpellDef spell, Transform wizard, RaycastHit hit, out Vector3 landing)
+    public static string Reach(ChemGrid grid, SpellDef spell, Transform wizard, RaycastHit hit, out Vector3 landing, int charge = 1)
     {
-        string why = Check(grid, spell, wizard, hit, out landing);
+        string why = Check(grid, spell, wizard, hit, out landing, charge);
         if (why == null) return null;
         var from = wizard.position;
         var flat = new Vector3(hit.point.x - from.x, 0f, hit.point.z - from.z);
-        int range = spell.Range > 0 ? spell.Range : 6;
+        int range = Range(spell, charge);
         // Chebyshev squares: along a diagonal the range reaches further; a square's slack for walking on.
         float far = Mathf.Min(flat.magnitude, (range - 0.5f) * grid.cellSize * Mathf.Sqrt(2f));
         if (far < MinReach) return why;
@@ -68,7 +72,7 @@ public static class MistyStep
         {
             var at = from + dir * d;
             if (!GroundAt(at, wizard, out var top)) continue;
-            if (CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider) != null) continue;
+            if (CheckSpot(grid, spell, wizard, top, charge) != null) continue;
             landing = top.point;
             return null;
         }
@@ -84,7 +88,7 @@ public static class MistyStep
     /// filled up since the cast was aimed). The mist at both ends is the cast's show, on every
     /// machine (SpellCaster.PlayCastEffect). Returns whether it moved.
     /// </summary>
-    public static bool Blink(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y)
+    public static bool Blink(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y, int charge = 1)
     {
         wizard.TryGetComponent<SpellCaster>(out var caster);
         Vector3 to;
@@ -93,12 +97,12 @@ public static class MistyStep
         if (aimed.HasValue && grid.CellAt(aimed.Value) == new Vector2Int(x, y) && Physics.Raycast(aimed.Value + Vector3.up * 0.5f, Vector3.down, out var spot, 1.5f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
         {
             to = spot.point;
-            why = CheckSpot(grid, spell, wizard, spot.point, spot.normal, spot.collider, seen: true);
+            why = CheckSpot(grid, spell, wizard, spot, charge, seen: true);
         }
         else if (TopOf(grid, wizard, x, y, out var top))
         {
             to = top.point;
-            why = CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider);
+            why = CheckSpot(grid, spell, wizard, top, charge);
         }
         else
         {
@@ -123,17 +127,19 @@ public static class MistyStep
     // The rules for a landing spot, in order of what a player most likely got wrong. A spot the
     // crosshair hit is already seen: the camera's ray reached it first, which is how a roof is
     // seen from below. A square's top is checked from the wizard's eyes.
-    static string CheckSpot(ChemGrid grid, SpellDef spell, Transform wizard, Vector3 point, Vector3 normal, Collider surface, bool seen = false)
+    static string CheckSpot(ChemGrid grid, SpellDef spell, Transform wizard, RaycastHit spot, int charge, bool seen = false)
     {
-        int range = spell.Range > 0 ? spell.Range : 6;
+        int range = Range(spell, charge);
+        var point = spot.point;
         var from = grid.CellAt(wizard.position);
         var to = grid.CellAt(point);
         if (Mathf.Max(Mathf.Abs(to.x - from.x), Mathf.Abs(to.y - from.y)) > range)
             return $"Too far. {spell.Name} reaches {range * 5} ft ({range} squares).";
-        if (CellBlockers.IsBlocker(surface) || normal.y < MinUpward)
+        if (CellBlockers.IsBlocker(spot.collider) || spot.normal.y < MinUpward)
             return $"{spell.Name} needs somewhere to stand: ground, a rock, a roof.";
-        if (!HasRoom(wizard, point))
-            return $"There's no room to stand there.";
+        var blocker = InTheWay(wizard, point, spot.normal);
+        if (blocker != null)
+            return $"There's no room to stand there ({blocker.name} is in the way).";
         if (!seen && !InSight(grid, wizard, point))
             return "You can't see that spot. Walls block sight; gate bars don't.";
         return null;
@@ -182,8 +188,12 @@ public static class MistyStep
         return best < float.MaxValue;
     }
 
-    // Room for the wizard's capsule standing at the spot: no prop, wall or overhang in it.
-    static bool HasRoom(Transform wizard, Vector3 point)
+    /// <summary>
+    /// What would be in the wizard's capsule standing at the spot (a prop, a wall, an overhang), or
+    /// null if there's room. The capsule's foot sits high enough over the ground it stands on that
+    /// a slope it may land on doesn't count, and the wizard's own parts (and what it holds) don't either.
+    /// </summary>
+    public static Collider InTheWay(Transform wizard, Vector3 point, Vector3 normal)
     {
         float radius = 0.3f, height = 1.8f;
         if (wizard.TryGetComponent<CharacterController>(out var body))
@@ -191,12 +201,15 @@ public static class MistyStep
             radius = body.radius;
             height = body.height;
         }
-        var bottom = point + Vector3.up * (radius + 0.08f);
-        var top = point + Vector3.up * Mathf.Max(radius + 0.1f, height - radius);
-        int n = Physics.OverlapCapsuleNonAlloc(bottom, top, radius * 0.9f, Overlaps, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+        float r = radius * 0.9f;
+        // A sphere touches a slope of this normal when its centre is less than r / normal.y over the spot.
+        float lift = r / Mathf.Max(normal.y, MinUpward) + 0.08f;
+        var bottom = point + Vector3.up * lift;
+        var top = point + Vector3.up * Mathf.Max(lift + 0.02f, height - radius);
+        int n = Physics.OverlapCapsuleNonAlloc(bottom, top, r, Overlaps, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
         for (int i = 0; i < n; i++)
-            if (!Overlaps[i].transform.IsChildOf(wizard)) return false;
-        return true;
+            if (!Overlaps[i].transform.IsChildOf(wizard)) return Overlaps[i];
+        return null;
     }
 
     // Sight in 3D, from the wizard's eyes to a little above the spot, so a roof can be seen over
