@@ -302,10 +302,10 @@ if B and C prove too slow.
    the caps, and activity reaching an inactive chunk activates it; replay
    tests online; probe: walk away from a fire and watch it burn on, then
    out (the probe checks it burns on; `LingerTests` that it burns out and lets go).
-4. **Catch up.** The catch-up command, run in the core over one chunk;
+4. **Catch up** (built 2026-10-27, `World.CatchUp`). The switch itself is the command (every peer runs it the same); run in the core over one chunk;
    a test that a chunk caught up matches one that was never deactivated
-   (when its neighbours were quiet); probe: leave, come back, it has
-   burned out.
+   (when its neighbours were quiet), `CatchUpTests`. A full catch-up of a burning
+   chunk costs about 25 ms in .NET, once, as it activates; no probe yet (the caps rarely cut a fire off in the valley).
 5. **Props sleep with their chunk.**
 
 The golden hashes don't move: with everything active (the tests' worlds),

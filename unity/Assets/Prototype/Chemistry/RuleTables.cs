@@ -178,6 +178,8 @@ namespace Chem
         public int LingerChunks = 16;
         /// <summary>A chunk lingers at most this many ticks before it deactivates, live or not.</summary>
         public int LingerTicks = 1800;
+        /// <summary>A chunk let go while live runs at most this many of the ticks it missed when it next activates.</summary>
+        public int CatchUpTicks = 720;
     }
 
     /// <summary>sim.json's weather (Sky.cs picks it, World.Weather.cs applies it).</summary>
@@ -664,6 +666,7 @@ namespace Chem
                 s.Streaming.SettleTicks = Int(so["settleTicks"]) ?? s.Streaming.SettleTicks;
                 s.Streaming.LingerChunks = Int(so["lingerChunks"]) ?? s.Streaming.LingerChunks;
                 s.Streaming.LingerTicks = Int(so["lingerTicks"]) ?? s.Streaming.LingerTicks;
+                s.Streaming.CatchUpTicks = Int(so["catchUpTicks"]) ?? s.Streaming.CatchUpTicks;
             }
             if (o["weather"] is JObject wo) ParseWeather(wo, s.Weather);
             return s;

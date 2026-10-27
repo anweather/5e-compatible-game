@@ -201,7 +201,9 @@ moving) for `sim.streaming.settleTicks` (12) ticks. A chunk out of every
 keep distance that isn't settled lingers, and live cells on its edge
 activate the inactive chunk across it; at most `lingerChunks` (16) linger at
 once, the nearest first, and none longer than `lingerTicks` (1800 ticks, five
-minutes). While rain falls, water moving doesn't count as live.
+minutes). While rain falls, water moving doesn't count as live. A chunk the
+caps let go while live runs the ticks it missed when it next activates, up to
+`catchUpTicks` (720, two minutes).
 
 ## Day and weather (`sim.day`, `sim.weather`)
 

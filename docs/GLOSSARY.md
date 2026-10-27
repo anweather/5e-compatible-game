@@ -215,9 +215,12 @@ touch them.
   batches online so every peer switches the same chunk at the same tick
   (`ChunkSwitch`, `ChunkIntent`).
 
-**Fast-forward** *(planned)*
-: Running an activating chunk a bounded number of ticks to catch up on
-  time it spent inactive.
+**Catch up** (also: fast-forward)
+: A chunk that deactivated while still live (the linger caps let it go)
+  runs the ticks it missed when it next activates, alone, with walls for
+  neighbours and each tick's own weather, up to `streaming.catchUpTicks`
+  (720, two minutes) (`World.CatchUp`). The chunk switch is the command:
+  every peer catches it up the same.
 
 **Generated chunk / diff** *(planned)*
 : A chunk made from the seed the first time anyone comes near

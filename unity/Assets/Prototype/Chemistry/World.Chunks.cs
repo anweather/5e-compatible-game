@@ -144,9 +144,11 @@ namespace Chem
             var ch = ChunkOrThrow(cx, cy);
             if (ch.Active == active) return;
             ch.Active = active;
-            // Just activated counts as live, so a chunk activated for what is about to cross into
-            // it (ChunkPlanner) isn't let go as settled before it arrives.
-            if (active) ch.LastLive = Tick;
+            // Activating, it catches up what it missed (World.CatchUp) and counts as live, so a
+            // chunk activated for what is about to cross into it (ChunkPlanner) isn't let go as
+            // settled before it arrives.
+            if (active) Resume(ch);
+            else Stop(ch);
             spans = null;
             activeCoords = null;
         }

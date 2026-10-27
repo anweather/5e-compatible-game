@@ -51,6 +51,17 @@ namespace Chem
             newMeteors.Clear();
             LandMeteors();
             if (!WeatherActs) return;
+            WeatherOnCells(rows);
+            var p = Rules.Sim.Weather;
+            if (now.Kind == WeatherKind.Storm && Tick % p.StrikeEvery == 0 && Rand() < p.StrikeChance * now.Strength / 100) Strike();
+            if (now.Meteors > 0 && Tick % p.MeteorEvery == 0 && Rand() < p.MeteorChance * now.Meteors / 100) Meteor();
+        }
+
+        /// <summary>What the weather does to each cell (rain fills, snow freezes and settles, dry weather dries and thaws), without strikes or meteors.</summary>
+        void WeatherOnCells(RowSpan[] rows)
+        {
+            if (!WeatherActs) return;
+            var now = Weather;
             var p = Rules.Sim.Weather;
             if (now.Rain > 0)
             {
@@ -70,8 +81,6 @@ namespace Chem
                 Freeze(rows, p.ThawChance, false);
                 Melt(rows, p.ThawChance);
             }
-            if (now.Kind == WeatherKind.Storm && Tick % p.StrikeEvery == 0 && Rand() < p.StrikeChance * now.Strength / 100) Strike();
-            if (now.Meteors > 0 && Tick % p.MeteorEvery == 0 && Rand() < p.MeteorChance * now.Meteors / 100) Meteor();
         }
 
         void Meteor()
