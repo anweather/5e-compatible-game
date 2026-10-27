@@ -4,7 +4,8 @@ Three Claude sessions work on this repo at once, on two machines. This file
 says who owns what, so they don't collide. Andrew approved the lanes on
 2026-10-27.
 
-The coordinator is the Claude session **"Unity skill install"** (PC). Message
+The coordinator is the Claude session **"Project Manager"** (PC; it was called
+"Unity skill install" before). Message
 it with SendMessage. It doesn't write game code.
 
 ## Rules for every agent
@@ -89,7 +90,8 @@ Cross-lane needs that come up often:
 | Agent | Task | Branch | State |
 |---|---|---|---|
 | Gameplay | Measure `perf/no-static-batching` on Windows (two player builds, `-fps-probe`) and send the numbers to the coordinator and Build. Don't commit or merge it | a throwaway local branch | In progress |
-| World | Streaming part 2, slice 5 (props sleep with their chunk) | none yet | Waiting on Andrew |
+| World | Slice 5, part A: a chunk activate/deactivate event in `ChemGrid`/`NetChem`, with tests. Its Editor and MPPM stay closed until the PC's Editor slot is free | `streaming-sleep` (off `dev`) | Started 2026-10-27 |
+| Gameplay (next) | Slice 5, part B: a subscriber in `ThingSpawner`/`PhysicsProp` that puts props to sleep in inactive chunks and wakes them on activation | off `dev`, after part A merges | Queued after the perf measurement |
 | Build | Merge `perf/no-static-batching` into `dev` once the Windows numbers hold up | `perf/no-static-batching` | Waiting on Gameplay's numbers |
 
 ## Shared-file queue
@@ -104,17 +106,12 @@ The coordinator approves each change and schedules them one at a time.
 
 1. ~~`git-path` (Gameplay: builds find git off the PATH)~~. Merged as `0bf2208`.
 2. `perf/no-static-batching` (Build), after the Windows check.
-3. Streaming slice 5 (World), once Andrew approves it. Rebase on `dev` after step 2.
+3. Slice 5, part A (World: the chunk event). Rebase on `dev` after step 2.
+4. Slice 5, part B (Gameplay: props sleep and wake). Rebase on `dev` after step 3.
 
 ## Open questions
 
-1. **Streaming slice 5:** Andrew to approve. Props are spawned by
-   `ThingSpawner.cs` and `PhysicsProp.cs`, which are in the Gameplay lane.
-   World's proposed split: World adds a chunk activate/deactivate event in
-   `ChemGrid`/`NetChem`, and Gameplay adds a small subscriber in
-   `ThingSpawner`/`PhysicsProp` that puts props to sleep (Rigidbody sleep or
-   kinematic) in inactive chunks and wakes them on activation. World merges
-   first, then Gameplay.
+(none)
 
 ## Log
 
@@ -125,3 +122,6 @@ The coordinator approves each change and schedules them one at a time.
   13 merged remote branches, including `feat/spell-radial`, whose content was
   already on `dev`. Left on `origin`: `dev`, `main`,
   `perf/no-static-batching`.
+- 2026-10-27: Andrew approved slice 5. World does part A (the chunk event),
+  then Gameplay does part B (props sleep and wake). The coordinator is now
+  named "Project Manager".
