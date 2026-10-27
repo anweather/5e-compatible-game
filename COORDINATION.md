@@ -222,9 +222,9 @@ The coordinator approves each change and schedules them one at a time.
    player build takes about 14 min to compile shader variants.
 3. ~~Slice 5, part A (World: the chunk event)~~. Merged as `3c1d848`.
 4. ~~Slice 5, part B (Gameplay: props sleep and wake)~~. Merged as `a473873`.
-5. `sleep-clip` (Gameplay: the probe films the crate), once it has been filmed
+5. ~~`sleep-clip` (Gameplay: the probe films the crate)~~. Merged as `e517d79`; on the reel.
    and passes.
-6. `quit-exit` (Gameplay: the game ends itself on quit).
+6. ~~`quit-exit` (Gameplay: the game ends itself on quit)~~. Merged as `4a61ee3`: quits take 0.15–0.3 s, with no crash or dump; `-clean-quit` restores Unity's own shutdown. Velopack's restart is untested (Build checks it at the next ship-update).
 7. `playtest-bot` (World), in phases, when each is ready.
 8. `perf-pass` (Build), in slices.
 
