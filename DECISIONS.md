@@ -35,9 +35,12 @@ Each entry has:
 - **Also comes up when:** a release (Build), any crash report or event-log
   entry from a Windows player, the playtest bot's crash detector (it will
   flag every quit), graphics API or Unity version changes.
-- **Answer:** pending.
-  - Still asked: run PC test A (visibility) and test B (the Agility swap,
-    which needs a NuGet download)? Or test A only?
+- **Answer:** pending; first, the PC tests to run.
+  - Sub-answer (2026-10-27): **test A only, no download.** Test B, the
+    Agility 1.618.5 swap from NuGet, isn't approved. Ask again before any
+    fix that needs downloaded binaries.
+  - Test A is with Gameplay, on an existing build.
+- **Why:** Andrew: "No download."
 - **Revisited:** 0.
 
 ## Decided

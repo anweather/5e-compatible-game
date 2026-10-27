@@ -92,7 +92,7 @@ Cross-lane needs that come up often:
 
 | Agent | Task | Branch | State |
 |---|---|---|---|
-| Gameplay | (free) | | Waiting for its next task |
+| Gameplay | Quit-crash test A (visibility) on an existing build; no downloads, no changes (J-010) | none | Started 2026-10-27 |
 | World | The playtest bot (see `playtest/DESIGN.md` on the branch, and J-008 in `DECISIONS.md`). Phase 1: spikes (rendering minimised or off-screen, muted audio, incremental build time), then the bot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | Phase 1 started 2026-10-27; has the PC Editor slot |
 | Build | (free). The quit-crash research is done (see Open questions) | | Waiting for its next task |
 
