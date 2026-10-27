@@ -61,6 +61,7 @@ ask the coordinator first.
 | World | `rules/**`, `core/**`, `sandbox/**` |
 | World | `world/` except `looks.json` |
 | World | `docs/WORLD_STREAMING.md`, `docs/FAST_LOOP.md` |
+| World | The playtest bot (new): `unity/Assets/Prototype/Scripts/Playtest/**`, `tools/playtest/**`, `playtest/**` |
 | Build | `unity/ProjectSettings/**` (including the version) |
 | Build | `unity/Packages/manifest.json`, `unity/Packages/packages-lock.json` |
 | Build | `unity/Assets/Settings/**` (the URP assets) |
@@ -90,7 +91,7 @@ Cross-lane needs that come up often:
 | Agent | Task | Branch | State |
 |---|---|---|---|
 | Gameplay | (free) | | Waiting for its next task |
-| World | (free); may run the quit-crash tests A and B on the PC | | Waiting on Andrew |
+| World | The playtest bot: a nondeterministic, replayable bot in the real player that wanders and plays with goals, finds paper cuts, reproduces them, screenshots them, dedupes them into a prioritised backlog, and writes a digest every couple of days. Runs on a schedule in the background. It finds, never fixes. Phase 0: a design and feasibility report to the coordinator | `playtest-bot` (off `dev`) | Phase 0 started 2026-10-27 |
 | Build | (free). The quit-crash research is done (see Open questions) | | Waiting for its next task |
 
 ## Shared-file queue
