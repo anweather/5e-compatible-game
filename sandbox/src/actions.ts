@@ -3,6 +3,7 @@ import { RULES, type SpellDef } from "./rules.ts";
 import { applyElement, applyEntityElement, displaceWater } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
+import type { WeatherKind } from "./sky.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
   type Dir, type Entity, type World,
@@ -40,6 +41,8 @@ export function snapAim(ax: number, ay: number): [number, number] {
  */
 export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge = 1, aim?: [number, number]): [number, number][] {
   const out: [number, number][] = [];
+  // The time spells (Hasten Time, Control Weather) change the sky, not squares.
+  if (isSkySpell(s)) return out;
   const add = (cx: number, cy: number) => inBounds(w, cx, cy) && out.push([cx, cy]);
   const [ax, ay] = snapAim(aim?.[0] ?? 0, aim?.[1] ?? 0);
   const slant = ax !== 0 && ay !== 0;
@@ -209,13 +212,43 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   if (s.effect === "levitate") return levitate(w, s, x, y);
   if (s.effect === "carry") return; // two taps; see carry()
   log(w, `You cast ${s.name}`, "info");
-  landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
+  if (s.effect === "haste") hastenTime(w, s, clampCharge(charge));
+  else if (s.effect === "weather") controlWeather(w, s, clampCharge(charge));
+  else landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
+}
+
+/** Whether a spell changes the sky for everyone (Hasten Time, Control Weather) rather than squares. */
+export const isSkySpell = (s: SpellDef) => s.effect === "haste" || s.effect === "weather";
+
+/** The weathers Control Weather steps through, a step a cast; from anything else it clears first. */
+export const WEATHER_CYCLE: WeatherKind[] = ["clear", "rain", "snow", "storm"];
+
+/**
+ * Hasten Time (World.Hasten). While it runs, casting it again ends it, keeping the hours gained.
+ * Otherwise the clock runs `rate` times as fast for `duration` ticks, half again per charge level.
+ */
+function hastenTime(w: World, s: SpellDef, charge: number) {
+  if (w.haste) {
+    w.haste = null;
+    log(w, "Time settles back to its own pace", "notable");
+    return;
+  }
+  w.haste = { rate: Math.max(1, s.rate ?? 1), ticks: chargedLength(Math.max(1, s.duration ?? 40), charge) };
+  log(w, "Time races: the sun hurries across the sky", "notable");
+}
+
+/** Control Weather (World.HoldWeather): the next weather in WEATHER_CYCLE after the one in force, held for `duration` ticks, half again per charge level. */
+function controlWeather(w: World, s: SpellDef, charge: number) {
+  const now = w.weatherSet ? w.weatherSet.kind : w.weather.kind;
+  const next = WEATHER_CYCLE[(WEATHER_CYCLE.indexOf(now) + 1) % WEATHER_CYCLE.length]!;
+  w.weatherSet = { kind: next, from: w.tick, until: w.tick + chargedLength(Math.max(1, s.duration ?? 40), charge) };
+  log(w, next === "clear" ? "The sky clears at your word" : `The sky turns to ${next} at your word`, "notable");
 }
 
 /** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */
 export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
   const cells = spellCells(w, s, x, y, dir, charge, aim);
-  const ctx = { power: (s.power ?? 1) * charge, dir, direct: true };
+  const ctx = { power: (s.power ?? 1) * charge, dir, direct: true, at: [x, y] as [number, number] };
   if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };
   if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
   crater(w, x, y, s.crater);

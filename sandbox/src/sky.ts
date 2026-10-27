@@ -60,6 +60,19 @@ export function weatherAt(p: SimParams, seed: number, tick: number): WeatherNow 
   return { kind, strength, windDir: windy ? hash(seed, period, 2) >>> 30 : -1, period, meteors: 0 };
 }
 
+/**
+ * Weather held by Control Weather from tick `from` until `until`, at this tick: ramping in from the
+ * cast and out toward the end over weather.rampMinutes, a storm's wind from the seed and the cast's
+ * tick. `period` is the natural weather's stretch, carried through (C#: Sky.Held).
+ */
+export function heldWeather(p: SimParams, seed: number, kind: WeatherKind, from: number, until: number, tick: number, period: number): WeatherNow {
+  if (kind === "clear") return { kind, strength: 0, windDir: -1, period, meteors: 0 };
+  const ramp = Math.max(1, ticksOf(p, p.weather.rampMinutes));
+  const strength = Math.max(0, Math.min(100, Math.floor((Math.min(tick - from, until - tick) * 100) / ramp)));
+  const windy = (kind === "windy" || kind === "storm") && strength >= 50;
+  return { kind, strength, windDir: windy ? hash(seed, from, 4) >>> 30 : -1, period, meteors: 0 };
+}
+
 /** The weather of one stretch: clear for the first weather.calmPeriods, then picked by weather.weights with the seed's hash. */
 export function kindOf(p: SimParams, seed: number, period: number): WeatherKind {
   const wp = p.weather;

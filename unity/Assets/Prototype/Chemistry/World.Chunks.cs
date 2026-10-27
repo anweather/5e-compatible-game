@@ -222,8 +222,8 @@ namespace Chem
 
         /// <summary>
         /// Stable fingerprint of the cells (FNV-1a), matching the TS golden script in the tests
-        /// (cellHash in sandbox/test/sim.test.ts). Height is written only when it isn't 0, so
-        /// worlds nobody has terraformed hash as they did before heights existed.
+        /// (cellHash in sandbox/test/sim.test.ts). Height and Life are written only when they
+        /// aren't 0, so worlds nobody has terraformed or grown hash as they did before them.
         /// </summary>
         public string CellHash()
         {
@@ -246,6 +246,7 @@ namespace Chem
               .Append(c.Cover ?? "").Append(',').Append(c.Fire).Append(',').Append(c.Fuel).Append(',')
               .Append(c.Gas ?? "").Append(',').Append(c.GasAmt).Append(',').Append(c.Charge);
             if (c.Height != 0) sb.Append(",h").Append(c.Height.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (c.Life != 0) sb.Append(",l").Append(c.Life.ToString(System.Globalization.CultureInfo.InvariantCulture));
             sb.Append(';');
         }
     }

@@ -12,6 +12,8 @@ export interface Ctx {
   dir?: Dir;
   /** Cast or emitted on purpose. Indirect reactions (spreading) log only notable rules. */
   direct: boolean;
+  /** Where the spell landed (landSpell), for a grow effect's wave (World.waveFrom). */
+  at?: [number, number];
 }
 
 // Rules grouped by element, rebuilt whenever a mod swaps the tables.
@@ -46,6 +48,34 @@ function matches(c: Cell, cond: CellCond | undefined): boolean {
   return true;
 }
 
+/**
+ * Whether a rule's "if" holds (World.Applies): the cell matches, the element came
+ * with at least its power, and its chance comes up, rolled last so the generator
+ * only turns once the rule would otherwise run.
+ */
+function applies(w: World, c: Cell, cond: CellCond | undefined, power: number): boolean {
+  if (!cond) return true;
+  if (!matches(c, cond)) return false;
+  if (cond.power !== undefined && power < cond.power) return false;
+  return cond.chance === undefined || rand(w) < cond.chance;
+}
+
+/** Lays a cover (or with null clears it); one that lasts (thorns) starts its cell's life (World.PutCover). */
+function putCover(c: Cell, cover: string | null) {
+  c.cover = cover;
+  const lasts = cover !== null ? (RULES.covers[cover]?.lasts ?? 0) : 0;
+  if (lasts > 0) c.life = lasts;
+}
+
+/** A grow effect's life: a roll within its ticks, plus its wave per square from where the spell landed (World.GrowTicks). */
+function growTicks(w: World, eff: Effect, x: number, y: number, ctx: Ctx): number {
+  const [lo, hi] = eff.ticks ?? [1, 1];
+  let n = lo;
+  if (hi > lo) n += Math.floor(rand(w) * (hi - lo + 1));
+  if (ctx.at) n += (eff.wave ?? 0) * Math.max(Math.abs(x - ctx.at[0]), Math.abs(y - ctx.at[1]));
+  return Math.max(1, n);
+}
+
 function fill(text: string, c: Cell): string {
   return text
     .replace("{cover}", c.cover ? RULES.covers[c.cover]!.name.toLowerCase() : "")
@@ -59,7 +89,7 @@ export function applyElement(w: World, x: number, y: number, element: string, ct
   index();
   const before = fill("{cover}|{terrain}", c);
   for (const rule of byElement.get(element) ?? []) {
-    if (!matches(c, rule.if)) continue;
+    if (!applies(w, c, rule.if, ctx.power)) continue;
     let changed = rule.do.length === 0;
     for (const eff of rule.do) changed = runEffect(w, x, y, c, eff, ctx) || changed;
     if (changed && rule.log && (ctx.direct || rule.notable)) {
@@ -200,7 +230,7 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
   }
   if (eff.setCover !== undefined) {
     if (c.cover === eff.setCover) return false;
-    c.cover = eff.setCover;
+    putCover(c, eff.setCover);
     return true;
   }
   if (eff.spreadCover !== undefined) {
@@ -209,7 +239,7 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     for (let i = 0; i < eff.spreadCover && options.length; i++) {
       const [nx, ny] = options.splice(Math.floor(rand(w) * options.length), 1)[0]!;
       const n = cellAt(w, nx, ny)!;
-      n.cover = c.cover;
+      putCover(n, c.cover);
       if (c.fire > 0) ignite(n, "cover");
     }
     return true;
@@ -262,6 +292,13 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
   }
   if (eff.gas !== undefined) {
     addGas(c, eff.gas, eff.n ?? 1);
+    return true;
+  }
+  if (eff.grow !== undefined) {
+    // Nothing takes root on a wall of raised earth.
+    if (isBlocking(c)) return false;
+    c.t = eff.grow;
+    c.life = growTicks(w, eff, x, y, ctx);
     return true;
   }
   return false;

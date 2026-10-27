@@ -27,6 +27,11 @@ namespace Chem
         public string UprootsTo, UprootLog;
         /// <summary>What digging leaves (grass is dug down to dirt), or null to keep the terrain.</summary>
         public string DugTo;
+        /// <summary>
+        /// What it grows into once its Cell.Life runs out (green shoots into grass, a sapling into a
+        /// tree), or null; and the line logged when it does.
+        /// </summary>
+        public string GrowsTo, GrowLog;
 
         // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
         HashSet<string> tagSet;
@@ -40,6 +45,12 @@ namespace Chem
         public double Flammability;
         public int? Fuel;
         public int? BurnIntensity;
+        /// <summary>Ticks it lasts once laid (Cell.Life) before it withers away (thorns), or 0 for good; and the line logged then.</summary>
+        public int Lasts;
+        public string WitherLog;
+        /// <summary>What it does to a creature walking through it: [dice, sides] damage a square (empty for none), and its speed (1 unhindered).</summary>
+        public int[] Damage;
+        public double Speed = 1;
         public bool Has(string tag) => Tags.Contains(tag);
     }
 
@@ -47,6 +58,10 @@ namespace Chem
     {
         public string Id, Name;
         public int Scald;
+        /// <summary>Its own chance per tick a unit decays (fog lingers), or null for sim.gas.decayChance.</summary>
+        public double? Decay;
+        /// <summary>From how many units a square of it hides what's behind (World.LineOfSight), or 0 if it never does.</summary>
+        public int BlocksSightAt;
     }
 
     /// <summary>
@@ -61,9 +76,13 @@ namespace Chem
         /// <summary>False keeps a spell off the Unity game's spell radial (it stays in the rules for mods, tests and the sandbox).</summary>
         public bool Radial = true;
         public int Level, Power, Length, Size, Radius;
+        /// <summary>Squares a burst's radius grows by for each level of charge past a tap (Plant Growth), 0 for none.</summary>
+        public int RadiusPerCharge;
         // Extras: the cell sim uses Wind and (below) the terraform fields; Push and Duration drive the Unity props (SpellForces).
         public string Effect;
         public int Push, Wind, Range, Duration, MaxMass;
+        /// <summary>Effect "haste": how many times as fast the day clock runs (World.Time.cs).</summary>
+        public int Rate;
         /// <summary>[dice, sides], or empty.</summary>
         public int[] Damage;
         /// <summary>
@@ -205,6 +224,10 @@ namespace Chem
         public double? FireBelow;
         public bool? Water, Frozen, Conductive;
         public string Gas, TerrainTag, NotTerrainTag;
+        /// <summary>The least power the element must arrive with (a charged cast's).</summary>
+        public int? Power;
+        /// <summary>The chance the rule applies, rolled last, once everything else holds.</summary>
+        public double? Chance;
     }
 
     /// <summary>One effect object; the first verb present (in TS runEffect order) wins.</summary>
@@ -222,6 +245,12 @@ namespace Chem
         public bool Fan, PushGas, ClearGas;
         public string Mark;
         public string Gas; public int? N;
+        /// <summary>
+        /// grow: the terrain the cell becomes, with a Cell.Life of TicksMin..TicksMax (a roll of
+        /// the world's generator between them) plus Wave ticks for each square from where the
+        /// spell landed, so it ripens outward from the middle.
+        /// </summary>
+        public string Grow; public int TicksMin = 1, TicksMax = 1, Wave;
     }
 
     public sealed class CellRule
@@ -235,7 +264,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -322,7 +351,14 @@ namespace Chem
             foreach (var p in ((JObject)doc["terrain"]).Properties()) r.terrain[p.Name] = ParseTerrain(p.Name, (JObject)p.Value);
             foreach (var p in ((JObject)doc["covers"]).Properties()) r.covers[p.Name] = ParseCover(p.Name, (JObject)p.Value);
             foreach (var p in ((JObject)doc["gases"]).Properties())
-                r.gases[p.Name] = new GasDef { Id = p.Name, Name = Str(p.Value["name"]) ?? p.Name, Scald = Int(p.Value["scald"]) ?? 0 };
+                r.gases[p.Name] = new GasDef
+                {
+                    Id = p.Name,
+                    Name = Str(p.Value["name"]) ?? p.Name,
+                    Scald = Int(p.Value["scald"]) ?? 0,
+                    Decay = Num(p.Value["decay"]),
+                    BlocksSightAt = Int(p.Value["blocksSightAt"]) ?? 0,
+                };
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
             {
@@ -385,6 +421,8 @@ namespace Chem
             UprootsTo = Str(o["uprootsTo"]),
             UprootLog = Str(o["uprootLog"]),
             DugTo = Str(o["dugTo"]),
+            GrowsTo = Str(o["growsTo"]),
+            GrowLog = Str(o["growLog"]),
         };
 
         static CoverDef ParseCover(string id, JObject o) => new CoverDef
@@ -395,6 +433,10 @@ namespace Chem
             Flammability = Num(o["flammability"]) ?? 0,
             Fuel = Int(o["fuel"]),
             BurnIntensity = Int(o["burnIntensity"]),
+            Lasts = Int(o["lasts"]) ?? 0,
+            WitherLog = Str(o["witherLog"]),
+            Damage = Dice(o["damage"]),
+            Speed = Num(o["speed"]) ?? 1,
         };
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
@@ -440,12 +482,14 @@ namespace Chem
             Length = Int(o["length"]) ?? 5,
             Size = Int(o["size"]) ?? 2,
             Radius = Int(o["radius"]) ?? 1,
+            RadiusPerCharge = Int(o["radiusPerCharge"]) ?? 0,
             Effect = Str(o["effect"]),
             Push = Int(o["push"]) ?? 0,
             Wind = Int(o["wind"]) ?? 0,
             Range = Int(o["range"]) ?? 6,
             Duration = Int(o["duration"]) ?? 40,
             MaxMass = Int(o["maxMass"]) ?? 1,
+            Rate = Int(o["rate"]) ?? 1,
             Damage = Dice(o["damage"]),
             Raise = Int(o["raise"]) ?? 0,
             Dig = Int(o["dig"]) ?? 0,
@@ -473,6 +517,8 @@ namespace Chem
                     Gas = Str(c["gas"]),
                     TerrainTag = Str(c["terrainTag"]),
                     NotTerrainTag = Str(c["notTerrainTag"]),
+                    Power = Int(c["power"]),
+                    Chance = Num(c["chance"]),
                 };
                 var fire = c["fire"];
                 if (fire != null && fire.Type == JTokenType.Boolean) cond.FireFlag = (bool)fire;
@@ -532,6 +578,13 @@ namespace Chem
             e.Mark = Str(o["mark"]);
             e.Gas = Str(o["gas"]);
             e.N = Int(o["n"]);
+            e.Grow = Str(o["grow"]);
+            if (o["ticks"] is JArray ticks && ticks.Count >= 2)
+            {
+                e.TicksMin = Int(ticks[0]) ?? 1;
+                e.TicksMax = Int(ticks[1]) ?? e.TicksMin;
+            }
+            e.Wave = Int(o["wave"]) ?? 0;
             return e;
         }
 

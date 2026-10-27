@@ -139,7 +139,8 @@ public abstract class ShowcaseScript : MonoBehaviour
     protected string At(float hour)
     {
         var p = World.Rules.Sim;
-        double elapsed = (double)(World.Tick + 1) * Sky.MinutesPerDay / Sky.Ticks(p, p.Day.LengthMinutes) / 60.0;
+        // The clock's tick, not the world's: Hasten Time runs it ahead (World.ClockTick).
+        double elapsed = (double)(World.ClockTick + 1) * Sky.MinutesPerDay / Sky.Ticks(p, p.Day.LengthMinutes) / 60.0;
         double start = ((hour - elapsed) % 24 + 24) % 24;
         return "'day': { 'startHour': " + start.ToString("0.###", CultureInfo.InvariantCulture) + " }";
     }

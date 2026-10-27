@@ -1,12 +1,15 @@
 {
   "terrain": {
     "bedrock":   { "name": "Bedrock", "tags": ["blocking"] },
-    "dirt":      { "name": "Dirt", "tags": ["ground"] },
-    "grass":     { "name": "Grass", "tags": ["ground", "flammable"], "flammability": 0.35, "fuel": 8, "burnsTo": "dirt", "dugTo": "dirt" },
+    "dirt":      { "name": "Dirt", "tags": ["ground", "soil"] },
+    "grass":     { "name": "Grass", "tags": ["ground", "flammable", "turf"], "flammability": 0.35, "fuel": 8, "burnsTo": "dirt", "dugTo": "dirt" },
+    "sprouts":   { "name": "Green shoots", "tags": ["ground", "turf"], "dugTo": "dirt", "growsTo": "grass" },
+    "sapling":   { "name": "Sapling", "tags": ["ground", "flammable"], "flammability": 0.3, "fuel": 6, "burnsTo": "dirt", "dugTo": "dirt",
+                   "growsTo": "tree", "growLog": "A sapling grows into a young tree" },
     "brush":     { "name": "Brambles", "tags": ["blocking", "flammable"], "flammability": 0.4, "fuel": 14, "burnsTo": "dirt", "burnLog": "The brambles burn away, opening a path" },
     "tree":      { "name": "Tree", "tags": ["blocking", "flammable"], "flammability": 0.12, "fuel": 40, "burnsTo": "stump",
                    "uprootsTo": "deadfall", "uprootLog": "The ground heaves and a tree topples" },
-    "stump":     { "name": "Stump", "tags": ["ground"] },
+    "stump":     { "name": "Stump", "tags": ["ground", "rootstock"] },
     "deadfall":  { "name": "Fallen tree", "tags": ["ground", "flammable"], "flammability": 0.3, "fuel": 50, "burnsTo": "dirt" },
     "stone":     { "name": "Stone wall", "tags": ["blocking", "breakable"], "breaksTo": "rubble" },
     "pillar":    { "name": "Earth pillar", "tags": ["blocking", "breakable"], "breaksTo": "rubble" },
@@ -31,10 +34,13 @@
     "grease": { "name": "Grease", "tags": ["flammable", "slippery"], "flammability": 0.6, "fuel": 7, "burnIntensity": 2 },
     "ash":    { "name": "Ash", "tags": [] },
     "snow":   { "name": "Snow", "tags": ["snow"] },
-    "snowbank": { "name": "Snow bank", "tags": ["snow"] }
+    "snowbank": { "name": "Snow bank", "tags": ["snow"] },
+    "thorns": { "name": "Thorns", "tags": ["flammable", "spiky"], "flammability": 0.5, "fuel": 6, "burnIntensity": 2,
+                "lasts": 360, "witherLog": "The thorns wither away", "damage": [1, 4], "speed": 0.5 }
   },
   "gases": {
     "steam": { "name": "Steam", "scald": 1 },
-    "smoke": { "name": "Smoke" }
+    "smoke": { "name": "Smoke" },
+    "fog":   { "name": "Fog", "decay": 0.015, "blocksSightAt": 2 }
   }
 }

@@ -3,5 +3,7 @@
   "water": { "name": "Water & Ice", "order": 2, "color": "#4aa8e0" },
   "storm": { "name": "Storm", "order": 3, "color": "#a98cf0" },
   "earth": { "name": "Earth", "order": 4, "color": "#b08850" },
-  "arcane": { "name": "Arcane", "order": 5, "color": "#d6c46a" }
+  "arcane": { "name": "Arcane", "order": 5, "color": "#d6c46a" },
+  "nature": { "name": "Nature", "order": 6, "color": "#6cbf4a" },
+  "time": { "name": "Time & Weather", "order": 7, "color": "#8fd8cc" }
 }

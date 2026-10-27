@@ -165,6 +165,9 @@ PrefabInstance:
       addedObject: {fileID: 3270076419434578666}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 286404658758417964}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 1708091964083407250}
   m_SourcePrefab: {fileID: 100100000, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
 --- !u!1 &3189246001750556768 stripped
@@ -524,6 +527,18 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::OccluderFade
   ditherLit: {fileID: 4800000, guid: e1e5669f31424bd28c5d5728af1ed979, type: 3}
   silhouette: {fileID: 4800000, guid: 4b7b35fb6dba49acaef080217450f9c7, type: 3}
+--- !u!114 &286404658758417964
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36b308039d3c4f3bbcf12bd8d85c82b3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::Shapeshift
 --- !u!114 &1708091964083407250
 MonoBehaviour:
   m_ObjectHideFlags: 0

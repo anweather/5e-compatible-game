@@ -28,6 +28,7 @@ public class ItemHolder : MonoBehaviour
     Transform hand;
     CharacterController body;
     SpellRadialHud radial;
+    Shapeshift shape;
     float throwPressedAt = -1f;
     GUIStyle style, shadow;
 
@@ -51,6 +52,7 @@ public class ItemHolder : MonoBehaviour
         Colliders = GetComponentsInChildren<Collider>();
         TryGetComponent(out body);
         TryGetComponent(out radial);
+        TryGetComponent(out shape);
         if (TryGetComponent<Animator>(out var animator) && animator.isHuman) hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
     }
 
@@ -88,9 +90,10 @@ public class ItemHolder : MonoBehaviour
             foreach (var use in Held.Uses) use.Use(this);
     }
 
-    // The nearest item lying about (not in anyone's hand) within reach.
+    // The nearest item lying about (not in anyone's hand) within reach. An animal has no hands (Shapeshift).
     Carryable Nearest()
     {
+        if (Animal) return null;
         Carryable best = null;
         float bestDistance = float.MaxValue;
         foreach (var item in Forces.InSphere<Carryable>(transform.position, reach, null))
@@ -116,9 +119,12 @@ public class ItemHolder : MonoBehaviour
         foreach (var use in Held.Uses) use.WhileHeld(this, useDown);
     }
 
+    // In an animal's shape (Shapeshift): no picking things up.
+    bool Animal => shape != null && shape.Shifted;
+
     public void PickUp(Carryable item)
     {
-        if (Held != null || item.Holder != null) return;
+        if (Held != null || item.Holder != null || Animal) return;
         if (item.Online)
         {
             item.Net.RequestPickUp();

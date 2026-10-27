@@ -33,6 +33,22 @@ public class SpellVisuals : ScriptableObject
         public CastGesture gesture;
         [Tooltip("A beam from the hand along the spell's line to where it ends (FrostBeam), instead of a projectile; it lands when the beam gets there.")]
         public bool beam;
+        [Tooltip("Colours the impact's particles with the glow (Shapeshift's green take on the silver mist).")]
+        public bool tinted;
+
+        /// <summary>Plays the impact at a point for impactSeconds (tinted if asked), if there is one.</summary>
+        public void PlayImpact(Vector3 at, Quaternion rotation)
+        {
+            if (impact == null) return;
+            var fx = Spawn(impact, at, rotation);
+            if (tinted)
+                foreach (var particles in fx.GetComponentsInChildren<ParticleSystem>())
+                {
+                    var main = particles.main;
+                    main.startColor = glow;
+                }
+            UnityEngine.Object.Destroy(fx, impactSeconds);
+        }
     }
 
     public List<Entry> entries = new();

@@ -1,6 +1,6 @@
 // World state and the small helpers every system shares.
 import { RULES } from "./rules.ts";
-import { type WeatherNow, weatherAt } from "./sky.ts";
+import { type WeatherKind, type WeatherNow, weatherAt } from "./sky.ts";
 
 export type Dir = 0 | 1 | 2 | 3; // N E S W
 export const DX = [0, 1, 0, -1] as const;
@@ -18,6 +18,7 @@ export interface Cell {
   gasAmt: number;
   charge: number; // 3 on the tick lightning arrives, then decays
   h: number; // steps raised (+) or dug (-) by terraform spells, on top of the terrain's elevation
+  life: number; // ticks until what grows or lasts here ripens (ripen in sim.ts): thorns wither, shoots and saplings grow; 0 for nothing
 }
 
 export interface Entity {
@@ -87,6 +88,12 @@ export interface World {
   newMeteors: [number, number, number][];
   nextId: number;
   wind: { dir: Dir; ticks: number } | null;
+  /** Hasten Time: how many times as fast the day clock runs, and the ticks it has left (C#: World.Haste). */
+  haste: { rate: number; ticks: number } | null;
+  /** Ticks of day the clock has run ahead of tick (Hasten Time); the clock reads tick + clockAhead. */
+  clockAhead: number;
+  /** Control Weather: the weather held, the tick it was cast and the tick it ends (C#: World.WeatherSet). */
+  weatherSet: { kind: WeatherKind; from: number; until: number } | null;
   log: LogEntry[];
   /** Per-tick marks machines read; cleared at the end of each tick. */
   marks: { flow: Uint8Array; steam: Uint8Array; wind: Uint8Array };
@@ -94,7 +101,7 @@ export interface World {
 }
 
 export function newCell(t = "dirt"): Cell {
-  return { t, water: 0, frozen: false, cover: null, fire: 0, fuel: 0, gas: null, gasAmt: 0, charge: 0, h: 0 };
+  return { t, water: 0, frozen: false, cover: null, fire: 0, fuel: 0, gas: null, gasAmt: 0, charge: 0, h: 0, life: 0 };
 }
 
 export function createWorld(w: number, h: number, seed = 1): World {
@@ -120,6 +127,9 @@ export function createWorld(w: number, h: number, seed = 1): World {
     newMeteors: [],
     nextId: 1,
     wind: null,
+    haste: null,
+    clockAhead: 0,
+    weatherSet: null,
     log: [],
     marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) },
     logged: new Set(),
@@ -209,7 +219,7 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick]);
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet]);
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -227,7 +237,17 @@ export function dirFrom(ax: number, ay: number, bx: number, by: number): Dir | n
 }
 
 /** Bresenham sight line. Blocking terrain stops it unless tagged seeThrough (gate bars). */
-export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: number): boolean {
+/** Whether a square's gas is thick enough to hide what's behind it (a gas's blocksSightAt: Fog Cloud). */
+export function fogged(c: Cell): boolean {
+  const at = c.gas ? RULES.gases[c.gas]?.blocksSightAt ?? 0 : 0;
+  return at > 0 && c.gasAmt >= at;
+}
+
+/**
+ * Whether (x1, y1) can be seen from (x0, y0): no blocking square between them (bar see-through ones,
+ * gate bars) and no thick fog. The ends don't count. With fogOnly, only the fog counts (C#: FogBetween).
+ */
+export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: number, fogOnly = false): boolean {
   const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
   let err = dx + dy, x = x0, y = y0;
   for (;;) {
@@ -236,10 +256,14 @@ export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: nu
     if (e2 >= dy) { err += dy; x += sx; }
     if (e2 <= dx) { err += dx; y += sy; }
     if (x === x1 && y === y1) return true;
-    const c = cellAt(w, x, y)!;
-    if (isBlocking(c) && !hasTag(c, "seeThrough")) return false;
+    const c = cellAt(w, x, y);
+    if (!c) return true;
+    if (fogged(c) || (!fogOnly && isBlocking(c) && !hasTag(c, "seeThrough"))) return false;
   }
 }
+
+/** The tick the day clock reads: Hasten Time runs it ahead of the world's (C#: World.ClockTick). */
+export const clockTick = (w: World) => w.tick + w.clockAhead;
 
 // ---------- snapshots ----------
 
@@ -256,7 +280,8 @@ export function deserializeWorld(s: WorldSnapshot): World {
   const copy = JSON.parse(JSON.stringify(s)) as WorldSnapshot;
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
-  return { ...copy, seed, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  // Snapshots from before the time spells have no clock lead, haste or held weather.
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

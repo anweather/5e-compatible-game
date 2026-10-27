@@ -6,7 +6,8 @@ using UnityEngine;
 // Picks a spell from rules/spells.json and casts it on the grid (controls
 // in PlayerControls). Aiming matches the web sandbox: beams and Gust start
 // next to the wizard and point at the target, everything else lands on the
-// targeted cell. The cells it will touch are highlighted.
+// targeted cell. The cells it will touch are highlighted. Shapeshift aims at
+// an animal instead; in an animal's shape, Cast only changes back.
 //
 // The spell to cast is picked with the spell radial (SpellRadialHud: hold Tab
 // or LB, element then spell), or Select(id) from anywhere else (demos, the
@@ -33,6 +34,7 @@ public class SpellCaster : MonoBehaviour
     CastPose pose;
     ItemHolder hands;
     SpellRadialHud radial;
+    Shapeshift shape;
     NetChem net;
     RaycastHit crosshair;
     bool hasCrosshair;
@@ -58,6 +60,7 @@ public class SpellCaster : MonoBehaviour
         TryGetComponent(out pose);
         TryGetComponent(out hands);
         TryGetComponent(out radial);
+        TryGetComponent(out shape);
     }
 
     void OnEnable() => EventLog.Track(this);
@@ -80,7 +83,8 @@ public class SpellCaster : MonoBehaviour
 
     void Update()
     {
-        if (controls == null || grid == null || grid.World == null) return;
+        // In an animal's shape, Cast only changes back (WhileShifted).
+        if (controls == null || grid == null || grid.World == null || WhileShifted()) return;
 
         hasCrosshair = Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
         // While the spell radial is open the player is choosing, not aiming: no markers, no cast.
@@ -115,6 +119,16 @@ public class SpellCaster : MonoBehaviour
         Cast(new CastCommand(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
     }
 
+    // In an animal's shape (Shapeshift) the only cast is changing back. True while shifted.
+    bool WhileShifted()
+    {
+        if (shape == null || !shape.Shifted) return false;
+        ShowMarkers(null);
+        chargeStart = -1f;
+        if (controls.Cast.WasPressedThisFrame() && (radial == null || !radial.IsOpen)) shape.ChangeBackByChoice();
+        return true;
+    }
+
     /// <summary>
     /// Whether holding Cast makes this spell stronger: every spell does. In the cells (World.Cast) a
     /// line reaches further, a spot, square or burst grows, water and earth shaping go further; in
@@ -146,6 +160,11 @@ public class SpellCaster : MonoBehaviour
     /// <summary>A cast, perhaps aimed off the grid's four ways (CastCommand.AimX, AimY).</summary>
     public void Cast(CastCommand cast)
     {
+        if (shape != null && shape.Shifted)
+        {
+            EventLog.Add($"You can't cast spells in the {shape.FormName}'s shape. Cast to change back first.");
+            return;
+        }
         var online = Net;
         if (online != null && online.Online)
         {
@@ -196,7 +215,7 @@ public class SpellCaster : MonoBehaviour
     {
         void Land()
         {
-            if (look?.impact != null) Destroy(SpellVisuals.Spawn(look.impact, landing, Quaternion.LookRotation(Flat(landing - Hand))), look.impactSeconds);
+            look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)));
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             onArrive?.Invoke();
         }
@@ -292,6 +311,7 @@ public class SpellCaster : MonoBehaviour
         error = null;
         var spell = grid.World.Rules.Spell(SelectedId);
         if (spell == null) { error = $"{SelectedId} isn't in rules/spells.json"; return null; }
+        if (spell.Effect == SpellShapes.ShapeshiftEffect) return AimShift(spell, out error);
         if (!grid.World.InBounds(target.x, target.y)) return null;
         var me = grid.CellAt(transform.position);
         if (spell.Effect == SpellShapes.TeleportEffect || spell.Effect == SpellShapes.CarryEffect)
@@ -316,6 +336,15 @@ public class SpellCaster : MonoBehaviour
         if (error != null) return null;
         var lands = blink && blinkLanding.HasValue ? grid.CellAt(blinkLanding.Value) : target;
         return (lands.x, lands.y, 1, 0, 0);
+    }
+
+    // Shapeshift lands on the animal the crosshair is on (Shapeshift.Aim), marking its square.
+    (int x, int y, int dir, int aimX, int aimY)? AimShift(SpellDef spell, out string error)
+    {
+        if (shape == null) { error = $"{spell.Name} needs a body to change"; return null; }
+        error = shape.Aim(spell, Aiming.Ray(controls), out var cell);
+        if (error != null || !grid.World.InBounds(cell.x, cell.y)) return null;
+        return (cell.x, cell.y, 1, 0, 0);
     }
 
     /// <summary>Fine steps per square of an aim's vector: the most slant a line can take is one square in this many.</summary>

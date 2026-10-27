@@ -6,7 +6,8 @@ using UnityEngine;
 // the cabin, the top of a Wall of Stone. The web sandbox's rules (range in
 // squares, walls block sight, gate bars don't) plus the 3D ones: the spot
 // must be a walkable surface (not too steep, not an invisible cell blocker)
-// with room for the wizard, and in sight physically as well as on the grid.
+// with room for the wizard, and in sight physically as well as on the grid
+// (Fog Cloud's thick fog hides a spot behind it: World.FogBetween).
 //
 // Cast from the crosshair, the wizard lands where it points (SpellCaster
 // keeps that spot as BlinkPoint); pointed past the range, or at somewhere it
@@ -135,6 +136,9 @@ public static class MistyStep
         var to = grid.CellAt(point);
         if (Mathf.Max(Mathf.Abs(to.x - from.x), Mathf.Abs(to.y - from.y)) > range)
             return $"Too far. {spell.Name} reaches {range * 5} ft ({range} squares).";
+        // Fog Cloud's fog hides what's behind it, from the crosshair too (the core's line of sight).
+        if (grid.World.FogBetween(from.x, from.y, to.x, to.y))
+            return "You can't see that spot through the fog.";
         if (CellBlockers.IsBlocker(spot.collider) || spot.normal.y < MinUpward)
             return $"{spell.Name} needs somewhere to stand: ground, a rock, a roof.";
         var blocker = InTheWay(wizard, point, spot.normal);
@@ -169,7 +173,7 @@ public static class MistyStep
 
     // The highest thing to stand on over a square's centre (not the wizard, not a cell blocker).
     static bool TopOf(ChemGrid grid, Transform wizard, int x, int y, out RaycastHit top) =>
-        GroundAt(grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 40f), wizard, out top);
+        GroundAt(grid.CellCenter(x, y) + Vector3.up * grid.SurfaceY(x, y), wizard, out top);
 
     // The highest thing to stand on under a point 40 m up from it (not the wizard, not a cell blocker).
     static bool GroundAt(Vector3 at, Transform wizard, out RaycastHit top)
