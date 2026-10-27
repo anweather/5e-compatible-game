@@ -30,7 +30,7 @@ public static class Credits
 
     /// <summary>Other people's code in the game, used with their permission (unity/Assets/Prototype/ThirdParty).</summary>
     public const string Contributions =
-        "Fireflies and butterflies adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy), used with permission.";
+        "The sky and clouds, fireflies and butterflies adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy), used with permission.";
 
     /// <summary>All of it as plain text, for CREDITS.txt (Windows line endings: it's read in Notepad).</summary>
     public static string PlainText(string versionLabel)

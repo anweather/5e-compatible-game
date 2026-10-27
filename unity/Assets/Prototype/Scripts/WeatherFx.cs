@@ -7,7 +7,7 @@ using UnityEngine;
 // it and the wind's gusts, and for each lightning strike the core makes, a
 // bolt, a flash and thunder that comes later the further away it struck.
 // Presentation only: the strikes and what they set alight are the core's.
-[RequireComponent(typeof(SkyLight))]
+[RequireComponent(typeof(SkyLight), typeof(CloudSky))]
 public class WeatherFx : MonoBehaviour
 {
     /// <summary>The rain streaks' material (ChemYardBuilder makes it); no rain is drawn without one.</summary>
@@ -19,6 +19,7 @@ public class WeatherFx : MonoBehaviour
 
     ChemGrid grid;
     SkyLight skyLight;
+    CloudSky clouds;
     ParticleSystem rain;
     AudioSource rainLoop, windLoop;
     int seenTick = -1;
@@ -37,6 +38,7 @@ public class WeatherFx : MonoBehaviour
     {
         grid = FindFirstObjectByType<ChemGrid>();
         skyLight = GetComponent<SkyLight>();
+        clouds = GetComponent<CloudSky>();
         if (rainMaterial != null) rain = MakeRain();
         rainLoop = MakeLoop("Rain", ProceduralSounds.RainLoop);
         windLoop = MakeLoop("Wind", ProceduralSounds.WindLoop);
@@ -149,6 +151,7 @@ public class WeatherFx : MonoBehaviour
         flash.color = new Color(0.8f, 0.85f, 1f);
         float distance = Vector3.Distance(at, listener);
         if (skyLight != null) skyLight.Flash(Mathf.Lerp(1f, 0.3f, distance / 700f));
+        clouds.Strike(at, 1f);
         StartCoroutine(Thunder(distance));
         for (float t = 0f; t < 0.35f; t += Time.deltaTime)
         {

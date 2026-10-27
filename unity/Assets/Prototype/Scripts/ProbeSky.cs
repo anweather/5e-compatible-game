@@ -8,7 +8,8 @@ using UnityEngine;
 // the view makes of them. Noon, then night (the clock's start hour moved so
 // the next tick lands there), then a storm with lightning every half second,
 // then a meteor shower at night (meteors every half second), then fog.
-// Screenshots of each, over the meadow toward the pond.
+// Screenshots of each, over the meadow toward the pond, and of the sky
+// (CloudSky) at noon, sunset, night and in the storm.
 public class SkyProbe : ProbeScenario
 {
     SkyLight sky;
@@ -28,6 +29,11 @@ public class SkyProbe : ProbeScenario
         Check("noon_is_bright", sky.sun.intensity > 1f && sky.Daylight > 0.9f, $"sun {sky.sun.intensity:0.00}, daylight {sky.Daylight:0.00}");
         Check("clock_line", SkyLight.ClockLine(World).Contains("12:0"), SkyLight.ClockLine(World));
         Shot("noon");
+        yield return SkyShot("noon");
+
+        yield return Switch(At(18.3f));
+        yield return Wait(2f);
+        yield return SkyShot("sunset");
 
         yield return Switch(At(22f));
         yield return Wait(2f);
@@ -35,6 +41,7 @@ public class SkyProbe : ProbeScenario
         Check("night_is_dark", sky.sun.intensity < 0.01f && sky.moon.enabled && RenderSettings.ambientIntensity < 0.4f,
             $"sun {sky.sun.intensity:0.00}, moon {sky.moon.intensity:0.00}, ambient {RenderSettings.ambientIntensity:0.00}");
         Shot("night");
+        yield return SkyShot("night");
 
         yield return Storm();
         yield return Shower();
@@ -73,6 +80,10 @@ public class SkyProbe : ProbeScenario
         Check("storm_is_dim", sky.sun.intensity < 0.8f, $"sun {sky.sun.intensity:0.00}");
         Metric("log_lines_in_storm", World.LogAppended - logged);
         Shot("storm");
+        var clouds = FindFirstObjectByType<CloudSky>();
+        Metric("storm_cloud_cover", clouds != null ? clouds.Coverage : 0f);
+        Check("storm_clouds", clouds != null && clouds.Coverage > 0.7f, $"cloud cover {(clouds != null ? clouds.Coverage : 0f):0.00}");
+        yield return SkyShot("storm");
     }
 
     // A meteor shower at night: a clear stretch that is one, meteors coming down (the core's) and drawn falling.
@@ -92,6 +103,17 @@ public class SkyProbe : ProbeScenario
         yield return Wait(0.6f);
         Shot("meteors");
         yield return Wait(3f);
+    }
+
+    // The sky itself (CloudSky): looking up over the trees toward the mountains, then back to the meadow.
+    IEnumerator SkyShot(string label)
+    {
+        Cut(V(40f, 4f, 1f), V(-40f, 45f, 160f));
+        yield return null;
+        Shot(label + "-sky");
+        // The capture is taken at the end of a later frame: hold the shot until it is.
+        for (int i = 0; i < 3; i++) yield return null;
+        Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
     }
 
     static string Only(string kind) =>

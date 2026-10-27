@@ -100,9 +100,10 @@ public static class ProbeScenarios
             "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
             "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),
         new Entry("sky", typeof(SkyProbe), 90f,
-            "The clock and the weather, switched as a mod switches them: noon, then 22:00, then a storm at 13:00 with lightning " +
+            "The clock and the weather, switched as a mod switches them: noon, sunset, then 22:00, then a storm at 13:00 with lightning " +
             "every half second, then fog. Checks: the Sky object is built, the sun is bright at noon and the clock line says so, " +
             "night is dark with the moon up, the storm is in force (wind too) with rain falling, strikes logged and a bolt drawn, " +
+            "the clouds over 70% of the sky in it, " +
             "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, fog closes the haze in, no console errors."),
         new Entry("blast", typeof(BlastProbe), 40f,
             "Fireball cast from the bar on the meadow east of the yard. Checks: its crater is in the cells (two steps down in the " +

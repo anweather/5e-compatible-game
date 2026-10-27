@@ -688,15 +688,12 @@ public static class ValleyBuilder
     // The sample project's sky and its ring of distant mountains, plus haze that blends them in.
     static void BuildSky()
     {
-        // A procedural sky: its sun follows the scene's directional light. (The sample's HDR
-        // cubemap sky is tuned for HDRP's physical exposure and washes out in URP.)
-        var sky = EditorAssets.LoadOrCreate(Generated + "/Sky.mat", () => new Material(Shader.Find("Skybox/Procedural")));
-        sky.shader = Shader.Find("Skybox/Procedural");
-        sky.SetFloat("_SunSize", 0.035f);
-        sky.SetFloat("_AtmosphereThickness", 0.9f);
-        sky.SetColor("_SkyTint", new Color(0.45f, 0.55f, 0.75f));
-        sky.SetColor("_GroundColor", new Color(0.35f, 0.38f, 0.33f));
-        sky.SetFloat("_Exposure", 1.15f);
+        // Punchy's sky (ThirdParty/Punchy): gradient, sun, moon, stars and volumetric clouds, all
+        // from globals CloudSky sets from the clock and the weather. (The sample's HDR cubemap
+        // sky is tuned for HDRP's physical exposure and washes out in URP.)
+        var shader = Shader.Find("Punchy/Sky");
+        var sky = EditorAssets.LoadOrCreate(Generated + "/Sky.mat", () => new Material(shader));
+        sky.shader = shader;
         EditorUtility.SetDirty(sky);
         RenderSettings.skybox = sky;
         var sun = Object.FindFirstObjectByType<Light>();

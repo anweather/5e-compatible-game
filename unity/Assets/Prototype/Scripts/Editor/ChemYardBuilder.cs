@@ -178,7 +178,7 @@ public static class ChemYardBuilder
     }
 
     // The clock turns the sun and a dim blue moon (SkyLight); WeatherFx draws the rain and lightning;
-    // AmbientCritters the fireflies and butterflies (Punchy's shaders, ThirdParty/Punchy).
+    // AmbientCritters the fireflies and butterflies, CloudSky the sky's clouds (Punchy's shaders, ThirdParty/Punchy).
     static void SetUpSky(Light sun)
     {
         var go = new GameObject("Sky");
@@ -192,6 +192,8 @@ public static class ChemYardBuilder
         light.sun = sun;
         light.moon = moon;
         EditorAssets.EnsureFolderFor(PropBuilder.Generated + "/Rain.mat");
+        go.AddComponent<CloudSky>().cloudNoise = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/CloudNoise.asset",
+            () => Punchy.Weather.CloudNoise.Create());
         var fx = go.AddComponent<WeatherFx>();
         fx.rainMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Rain.mat",
             () => UrpMaterials.NewUnlitParticles("Rain", Color.white, additive: false));
