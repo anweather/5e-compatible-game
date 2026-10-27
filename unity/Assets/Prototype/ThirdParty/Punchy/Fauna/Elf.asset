@@ -1,0 +1,125 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: Elf
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.192
+  BodyRadius: 0.096
+  BodyTaper: 1
+  BodyFlatten: 0.9
+  Base: {r: 0.3, g: 0.42, b: 0.3, a: 1}
+  Accent: {r: 0.93, g: 0.82, b: 0.72, a: 1}
+  AccentGlow: 0
+  Coats:
+  - Name: Moss
+    Base: {r: 0.3, g: 0.42, b: 0.3, a: 1}
+    Accent: {r: 0.93, g: 0.82, b: 0.72, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  - Name: Silver
+    Base: {r: 0.62, g: 0.66, b: 0.7, a: 1}
+    Accent: {r: 0.95, g: 0.86, b: 0.78, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  - Name: Dusk
+    Base: {r: 0.3, g: 0.28, b: 0.45, a: 1}
+    Accent: {r: 0.82, g: 0.7, b: 0.62, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  Size: {x: 0.97, y: 1.04}
+  Parts:
+  - Limb: {fileID: 11400000, guid: c1b894f5f44f21d48a9da19f903ae012, type: 2}
+    Parent: -1
+    Socket: {x: 0.7, y: -0.4, z: 0}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.16
+    Thickness: 0.78
+  - Limb: {fileID: 11400000, guid: 0898d79809b2531418e6e25db4806105, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0.6, z: 0}
+    Direction: {x: -90, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.08
+    Thickness: 0.8
+  - Limb: {fileID: 11400000, guid: 14308885bb85e944fa8b2eede60cf268, type: 2}
+    Parent: 1
+    Socket: {x: 0, y: 0, z: 0.02}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.95
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 87dfeb3512baffa468bc30d9c94d54ba, type: 2}
+    Parent: 2
+    Socket: {x: 0, y: 0.0076, z: -0.026600001}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.95
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 1b18be401cf481440b64c52c60a7d7e9, type: 2}
+    Parent: 2
+    Socket: {x: 0.0361, y: -0.09025, z: -0.095}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.95
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 6446bb73adb18454ab8e1fb210787bc3, type: 2}
+    Parent: 1
+    Socket: {x: 0.152, y: 0.01, z: -0.097200006}
+    Direction: {x: 180, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 1.12
+    Thickness: 0.78
+  - Limb: {fileID: 11400000, guid: 9fa0e00226fb0054fa826009586db045, type: 2}
+    Parent: 2
+    Socket: {x: 0.095, y: 0, z: -0.095}
+    Direction: {x: -20, y: 75, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.95
+    Thickness: 1
+  WalkSpeed: 1.6
+  RunSpeed: 6.5
+  Bob: {x: 0.012, y: 0.04}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  Upright: 1
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 12
+  IdleTime: {x: 3, y: 10}
+  FleeDistance: 0
+  TurnRate: 240
+  GroupSize: {x: 1, y: 1}
+  NearWater: 0
+  Active: 0
+  Grazing: 0
+  Thirst: 0
+  Playfulness: 0.03
+  Laziness: 0.15
+  Hunts: []
+  Hunger: 0
+  ChaseTime: 10

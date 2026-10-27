@@ -20,18 +20,22 @@ MonoBehaviour:
   BodyFlatten: 1.1
   Base: {r: 0.55, g: 0.4, b: 0.25, a: 1}
   Accent: {r: 0.9, g: 0.85, b: 0.75, a: 1}
+  AccentGlow: 0
   Coats:
   - Name: Grey
     Base: {r: 0.5, g: 0.48, b: 0.45, a: 1}
     Accent: {r: 0.84, g: 0.82, b: 0.78, a: 1}
+    AccentGlow: 0
     Weight: 3
   - Name: Black
     Base: {r: 0.13, g: 0.12, b: 0.12, a: 1}
     Accent: {r: 0.32, g: 0.3, b: 0.29, a: 1}
+    AccentGlow: 0
     Weight: 1
   - Name: White
     Base: {r: 0.88, g: 0.88, b: 0.86, a: 1}
     Accent: {r: 0.97, g: 0.97, b: 0.95, a: 1}
+    AccentGlow: 0
     Weight: 1
   Size: {x: 0.9, y: 1.1}
   Parts:
@@ -110,3 +114,16 @@ MonoBehaviour:
   TurnRate: 140
   GroupSize: {x: 2, y: 4}
   NearWater: 0
+  Active: 2
+  Grazing: 0
+  Thirst: 0.4
+  Playfulness: 0.5
+  Laziness: 0.4
+  Hunts:
+  - {fileID: 11400000, guid: 89a61bfb5e05e3b489180d7e6ff44009, type: 2}
+  - {fileID: 11400000, guid: 869ac6b5d6add0d45a009aa906d8f9e9, type: 2}
+  - {fileID: 11400000, guid: b85e826784a0af94ca6077752232e2c0, type: 2}
+  - {fileID: 11400000, guid: 415ad693352ff6144884617f030e7387, type: 2}
+  - {fileID: 11400000, guid: d90bd69ecb3316b42a677afbb0017279, type: 2}
+  Hunger: 0.4
+  ChaseTime: 10

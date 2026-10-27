@@ -56,6 +56,26 @@ public static class WizardRig
         if (field != null && field.GetValue(controller) == null) field.SetValue(controller, wizard.GetComponent<CharacterController>());
     }
 
+    // How the wizard moves: quicker and snappier than the Starter Assets' defaults (a 2 m/s walk,
+    // 5.3 m/s sprint), toward Punchy's 6 and 12; kept under about 7 m/s, past which the run
+    // animation's feet slide.
+    static readonly (string field, float value)[] Movement =
+    {
+        ("MoveSpeed", 4.5f), ("SprintSpeed", 7f), ("RotationSmoothTime", 0.08f), ("SpeedChangeRate", 14f),
+        ("JumpHeight", 1.3f), ("Gravity", -24f),
+    };
+
+    /// <summary>Sets the wizard's movement (the builder calls this for both wizards).</summary>
+    public static void TuneMovement(GameObject wizard)
+    {
+        var controller = wizard.GetComponent(ControllerComponent);
+        foreach (var (name, value) in Movement)
+        {
+            var field = Field(controller, name, isPublic: true);
+            if (field != null) field.SetValue(controller, value);
+        }
+    }
+
     /// <summary>A field of a Starter Assets component, found by name; null if the component or field is missing.</summary>
     public static FieldInfo Field(Component component, string field, bool isPublic)
     {

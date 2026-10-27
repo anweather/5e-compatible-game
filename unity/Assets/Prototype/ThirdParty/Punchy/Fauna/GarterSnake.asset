@@ -20,6 +20,7 @@ MonoBehaviour:
   BodyFlatten: 0.75
   Base: {r: 0.18, g: 0.25, b: 0.16, a: 1}
   Accent: {r: 0.55, g: 0.55, b: 0.3, a: 1}
+  AccentGlow: 0
   Coats: []
   Size: {x: 0.9, y: 1.1}
   Parts:
@@ -62,3 +63,12 @@ MonoBehaviour:
   TurnRate: 120
   GroupSize: {x: 1, y: 1}
   NearWater: 0
+  Active: 0
+  Grazing: 0
+  Thirst: 0.1
+  Playfulness: 0
+  Laziness: 0.5
+  Hunts:
+  - {fileID: 11400000, guid: 8c1d9ca02541a3244baf69032c8cc21d, type: 2}
+  Hunger: 0.3
+  ChaseTime: 10

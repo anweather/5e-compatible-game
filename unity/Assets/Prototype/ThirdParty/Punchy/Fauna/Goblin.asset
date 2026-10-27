@@ -1,0 +1,125 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: Goblin
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.204
+  BodyRadius: 0.102
+  BodyTaper: 1
+  BodyFlatten: 0.9
+  Base: {r: 0.4, g: 0.32, b: 0.22, a: 1}
+  Accent: {r: 0.45, g: 0.6, b: 0.28, a: 1}
+  AccentGlow: 0
+  Coats:
+  - Name: Rags, green
+    Base: {r: 0.4, g: 0.32, b: 0.22, a: 1}
+    Accent: {r: 0.45, g: 0.6, b: 0.28, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  - Name: Rags, olive
+    Base: {r: 0.3, g: 0.28, b: 0.24, a: 1}
+    Accent: {r: 0.55, g: 0.55, b: 0.25, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  - Name: Patchwork, grey-green
+    Base: {r: 0.5, g: 0.25, b: 0.2, a: 1}
+    Accent: {r: 0.4, g: 0.5, b: 0.35, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  Size: {x: 0.85, y: 1.02}
+  Parts:
+  - Limb: {fileID: 11400000, guid: 27135c37ce305174682a22205ec17249, type: 2}
+    Parent: -1
+    Socket: {x: 0.7, y: -0.4, z: 0}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.55
+    Thickness: 0.9
+  - Limb: {fileID: 11400000, guid: 92358068b6084f449acdba239c0b09e3, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0.6, z: 0}
+    Direction: {x: -90, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.7
+    Thickness: 0.85
+  - Limb: {fileID: 11400000, guid: 14308885bb85e944fa8b2eede60cf268, type: 2}
+    Parent: 1
+    Socket: {x: 0, y: 0, z: 0.02}
+    Direction: {x: -45, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.15
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 87dfeb3512baffa468bc30d9c94d54ba, type: 2}
+    Parent: 2
+    Socket: {x: 0, y: 0.0092, z: -0.0322}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.15
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 1b18be401cf481440b64c52c60a7d7e9, type: 2}
+    Parent: 2
+    Socket: {x: 0.0437, y: -0.109249994, z: -0.115}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.15
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 6446bb73adb18454ab8e1fb210787bc3, type: 2}
+    Parent: 1
+    Socket: {x: 0.1615, y: 0.01, z: -0.063}
+    Direction: {x: 180, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 0.95
+    Thickness: 0.85
+  - Limb: {fileID: 11400000, guid: ac16c216eac68294ba9d2f253398f0cc, type: 2}
+    Parent: 2
+    Socket: {x: 0.115, y: 0, z: -0.09199999}
+    Direction: {x: -10, y: 80, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.15
+    Thickness: 1
+  WalkSpeed: 1.3
+  RunSpeed: 5
+  Bob: {x: 0.04, y: 0.09}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  Upright: 1
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 12
+  IdleTime: {x: 3, y: 10}
+  FleeDistance: 0
+  TurnRate: 320
+  GroupSize: {x: 1, y: 1}
+  NearWater: 0
+  Active: 0
+  Grazing: 0
+  Thirst: 0
+  Playfulness: 0.6
+  Laziness: 0.1
+  Hunts: []
+  Hunger: 0
+  ChaseTime: 10

@@ -20,14 +20,17 @@ MonoBehaviour:
   BodyFlatten: 1.1
   Base: {r: 0.38, g: 0.27, b: 0.17, a: 1}
   Accent: {r: 0.62, g: 0.5, b: 0.38, a: 1}
+  AccentGlow: 0
   Coats:
   - Name: Brown
     Base: {r: 0.38, g: 0.27, b: 0.17, a: 1}
     Accent: {r: 0.62, g: 0.5, b: 0.38, a: 1}
+    AccentGlow: 0
     Weight: 2
   - Name: Blond
     Base: {r: 0.56, g: 0.44, b: 0.3, a: 1}
     Accent: {r: 0.76, g: 0.66, b: 0.52, a: 1}
+    AccentGlow: 0
     Weight: 1
   Size: {x: 0.9, y: 1.1}
   Parts: []
@@ -43,3 +46,13 @@ MonoBehaviour:
   TurnRate: 140
   GroupSize: {x: 1, y: 1}
   NearWater: 0
+  Active: 0
+  Grazing: 0.3
+  Thirst: 0.4
+  Playfulness: 0.2
+  Laziness: 0.6
+  Hunts:
+  - {fileID: 11400000, guid: a6c6bb705c9f3ab44adc7460ae96114d, type: 2}
+  - {fileID: 11400000, guid: 89a61bfb5e05e3b489180d7e6ff44009, type: 2}
+  Hunger: 0.15
+  ChaseTime: 10

@@ -76,21 +76,31 @@ public class SwimProbe : ProbeScenario
         Check("back_afloat", surface.Swimming, "after the kick it falls back in and floats");
     }
 
-    // The lake square with the most water over the ground.
+    // The lake square with the most water over the ground. The lake is the lowest water (the
+    // pond at the foot of the falls, high up, can be deeper).
     Vector2Int Deepest(out float depth)
     {
+        float lake = float.MaxValue;
+        for (int y = 0; y < World.H; y++)
+            for (int x = 0; x < World.W; x++)
+                if (Open(x, y)) lake = Mathf.Min(lake, grid.WaterSurfaceY(x, y));
         depth = 0f;
         var best = Vector2Int.zero;
         for (int y = 0; y < World.H; y++)
             for (int x = 0; x < World.W; x++)
             {
-                var c = World.At(x, y);
-                if (c.Water == 0 || c.Frozen || c.T != TerrainIds.Pit) continue;
+                if (!Open(x, y) || grid.WaterSurfaceY(x, y) > lake + 1f) continue;
                 float d = grid.WaterSurfaceY(x, y) - TerrainGround(grid.CellCenter(x, y));
                 if (d <= depth) continue;
                 depth = d;
                 best = new Vector2Int(x, y);
             }
         return best;
+    }
+
+    bool Open(int x, int y)
+    {
+        var c = World.At(x, y);
+        return c.Water > 0 && !c.Frozen && c.T == TerrainIds.Pit;
     }
 }

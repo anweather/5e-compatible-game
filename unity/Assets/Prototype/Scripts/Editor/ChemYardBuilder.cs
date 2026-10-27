@@ -309,6 +309,7 @@ public static class ChemYardBuilder
     internal static (PlayerControls controls, SpellCaster caster, ItemHolder hands) AddWizardParts(
         GameObject wizard, ChemGrid grid, SpellVisuals visuals, bool playerDriven)
     {
+        WizardRig.TuneMovement(wizard);
         var controls = wizard.AddComponent<PlayerControls>();
         controls.enabled = playerDriven;
         var caster = wizard.AddComponent<SpellCaster>();

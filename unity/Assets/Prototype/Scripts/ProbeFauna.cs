@@ -1,12 +1,13 @@
 using System.Collections;
+using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 
 // The probe's fauna scenario (docs/FAST_LOOP.md): the valley's animals
 // (ValleyFauna, from Punchy's creatures). Waits for them to come out round
-// the camera, puts a deer close to the wizard to see it bolt, then lines up a
-// deer, a rabbit, a turkey and a fox walking through the meadow for a
-// screenshot.
+// the camera and take up their activities (grazing, resting, drinking...),
+// puts a deer close to the wizard to see it bolt, then lines up a deer, a
+// rabbit, a turkey and a fox walking through the meadow for a screenshot.
 public class FaunaProbe : ProbeScenario
 {
     protected override IEnumerator Run()
@@ -19,6 +20,14 @@ public class FaunaProbe : ProbeScenario
         yield return Wait(10f);
         Metric("animals_out", fauna.Count);
         Check("animals_out", fauna.Count >= 10, $"{fauna.Count} animals round the camera");
+
+        // Their days: after a while, they're up to several different things (grazing, resting, drinking...).
+        yield return Wait(20f);
+        var doing = Enumerable.Range(0, fauna.Count).Select(k => fauna.State(k).Mode).GroupBy(m => m)
+            .OrderBy(g => g.Key).Select(g => $"{g.Key} {g.Count()}").ToList();
+        int kinds = doing.Count(d => !d.StartsWith("Idle", System.StringComparison.Ordinal) && !d.StartsWith("Wander", System.StringComparison.Ordinal));
+        Metric("activities", kinds);
+        Check("activities", kinds >= 2, string.Join(", ", doing));
 
         // A deer eight metres north of the wizard (open meadow), facing it: deer run from anyone within 18 m.
         var w = wizard.transform.position;

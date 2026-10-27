@@ -1,0 +1,78 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 708ef94d31b2ee048b32343e93f70236, type: 3}
+  m_Name: HumanLeg
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.LimbType
+  Role: 0
+  Segments:
+  - Length: 0.44
+    RadiusStart: 0.085
+    RadiusEnd: 0.06
+    Flatten: 1
+    Accent: 0
+    UseFixedColor: 0
+    FixedColor: {r: 0.1, g: 0.08, b: 0.07, a: 1}
+    Glow: 0
+  - Length: 0.43
+    RadiusStart: 0.055
+    RadiusEnd: 0.04
+    Flatten: 1
+    Accent: 0
+    UseFixedColor: 0
+    FixedColor: {r: 0.1, g: 0.08, b: 0.07, a: 1}
+    Glow: 0
+  - Length: 0.2
+    RadiusStart: 0.045
+    RadiusEnd: 0.04
+    Flatten: 0.7
+    Accent: 0
+    UseFixedColor: 1
+    FixedColor: {r: 0.2, g: 0.15, b: 0.11, a: 1}
+    Glow: 0
+  Spring: 0
+  JointPhaseStep: 0
+  FollowGround: 0
+  Idle:
+    Joints:
+    - {x: 0, y: 0, z: 0}
+    - {x: 3, y: 0, z: 0}
+    - {x: -93, y: 0, z: 0}
+  WalkReach:
+    Joints:
+    - {x: -24, y: 0, z: 0}
+    - {x: 4, y: 0, z: 0}
+    - {x: -70, y: 0, z: 0}
+  WalkPush:
+    Joints:
+    - {x: 20, y: 0, z: 0}
+    - {x: 4, y: 0, z: 0}
+    - {x: -112, y: 0, z: 0}
+  WalkLift:
+    Joints:
+    - {x: -12, y: 0, z: 0}
+    - {x: 55, y: 0, z: 0}
+    - {x: -25, y: 0, z: 0}
+  RunReach:
+    Joints:
+    - {x: -38, y: 0, z: 0}
+    - {x: 12, y: 0, z: 0}
+    - {x: -64, y: 0, z: 0}
+  RunPush:
+    Joints:
+    - {x: 32, y: 0, z: 0}
+    - {x: 8, y: 0, z: 0}
+    - {x: -128, y: 0, z: 0}
+  RunLift:
+    Joints:
+    - {x: -28, y: 0, z: 0}
+    - {x: 100, y: 0, z: 0}
+    - {x: -45, y: 0, z: 0}

@@ -153,3 +153,11 @@ MonoBehaviour:
   TurnRate: 100
   GroupSize: {x: 1, y: 3}
   NearWater: 0
+  Active: 1
+  Grazing: 0.4
+  Thirst: 0
+  Playfulness: 0.05
+  Laziness: 0.2
+  Hunts: []
+  Hunger: 0.3
+  ChaseTime: 10

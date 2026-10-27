@@ -1,0 +1,125 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: caafa1aa4ce26ac49b43f9bd4e4d1393, type: 3}
+  m_Name: Dwarf
+  m_EditorClassIdentifier: Assembly-CSharp::Punchy.Fauna.CreatureSpecies
+  VariantOf: {fileID: 0}
+  VariantScale: 1
+  BodyLength: 0.348
+  BodyRadius: 0.174
+  BodyTaper: 1
+  BodyFlatten: 0.9
+  Base: {r: 0.4, g: 0.27, b: 0.16, a: 1}
+  Accent: {r: 0.85, g: 0.6, b: 0.48, a: 1}
+  AccentGlow: 0
+  Coats:
+  - Name: Leather
+    Base: {r: 0.4, g: 0.27, b: 0.16, a: 1}
+    Accent: {r: 0.85, g: 0.6, b: 0.48, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  - Name: Iron grey
+    Base: {r: 0.35, g: 0.36, b: 0.38, a: 1}
+    Accent: {r: 0.78, g: 0.55, b: 0.44, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  - Name: Forge red
+    Base: {r: 0.5, g: 0.18, b: 0.12, a: 1}
+    Accent: {r: 0.82, g: 0.58, b: 0.45, a: 1}
+    AccentGlow: 0
+    Weight: 1
+  Size: {x: 0.95, y: 1.05}
+  Parts:
+  - Limb: {fileID: 11400000, guid: c1b894f5f44f21d48a9da19f903ae012, type: 2}
+    Parent: -1
+    Socket: {x: 0.7, y: -0.4, z: 0}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.6
+    Thickness: 1.5
+  - Limb: {fileID: 11400000, guid: 0898d79809b2531418e6e25db4806105, type: 2}
+    Parent: -1
+    Socket: {x: 0, y: 0.6, z: 0}
+    Direction: {x: -90, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 0.88
+    Thickness: 1.45
+  - Limb: {fileID: 11400000, guid: 14308885bb85e944fa8b2eede60cf268, type: 2}
+    Parent: 1
+    Socket: {x: 0, y: 0, z: 0.02}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.08
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 87dfeb3512baffa468bc30d9c94d54ba, type: 2}
+    Parent: 2
+    Socket: {x: 0, y: 0.008640001, z: -0.030240003}
+    Direction: {x: 0, y: 0, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.08
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 1b18be401cf481440b64c52c60a7d7e9, type: 2}
+    Parent: 2
+    Socket: {x: 0.04104, y: -0.1026, z: -0.108}
+    Direction: {x: 90, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.08
+    Thickness: 1
+  - Limb: {fileID: 11400000, guid: 6446bb73adb18454ab8e1fb210787bc3, type: 2}
+    Parent: 1
+    Socket: {x: 0.2755, y: 0.01, z: -0.0792}
+    Direction: {x: 180, y: 0, z: 0}
+    Mirror: 1
+    Phase: 0.5
+    MirrorPhase: 0.5
+    Scale: 0.82
+    Thickness: 1.45
+  - Limb: {fileID: 11400000, guid: f1cf8579377d0ed40ba0026e33d3945f, type: 2}
+    Parent: 2
+    Socket: {x: 0, y: -0.097200006, z: -0.1296}
+    Direction: {x: 0, y: 180, z: 0}
+    Mirror: 0
+    Phase: 0
+    MirrorPhase: 0.5
+    Scale: 1.08
+    Thickness: 1
+  WalkSpeed: 1.1
+  RunSpeed: 4.5
+  Bob: {x: 0.035, y: 0.08}
+  BobsPerCycle: {x: 2, y: 2}
+  RunRock: 0
+  Upright: 1
+  LeglessStride: {x: 0.6, y: 0.9}
+  WanderRadius: 12
+  IdleTime: {x: 3, y: 10}
+  FleeDistance: 0
+  TurnRate: 240
+  GroupSize: {x: 1, y: 1}
+  NearWater: 0
+  Active: 0
+  Grazing: 0
+  Thirst: 0
+  Playfulness: 0.03
+  Laziness: 0.2
+  Hunts: []
+  Hunger: 0
+  ChaseTime: 10

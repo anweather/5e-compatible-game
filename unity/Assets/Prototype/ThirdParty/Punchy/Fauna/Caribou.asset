@@ -20,14 +20,17 @@ MonoBehaviour:
   BodyFlatten: 1.15
   Base: {r: 0.55, g: 0.4, b: 0.25, a: 1}
   Accent: {r: 0.9, g: 0.85, b: 0.75, a: 1}
+  AccentGlow: 0
   Coats:
   - Name: Brown
     Base: {r: 0.45, g: 0.36, b: 0.27, a: 1}
     Accent: {r: 0.9, g: 0.87, b: 0.8, a: 1}
+    AccentGlow: 0
     Weight: 2
   - Name: Pale
     Base: {r: 0.62, g: 0.56, b: 0.48, a: 1}
     Accent: {r: 0.93, g: 0.91, b: 0.86, a: 1}
+    AccentGlow: 0
     Weight: 1
   Size: {x: 0.9, y: 1.1}
   Parts:
@@ -133,3 +136,11 @@ MonoBehaviour:
   TurnRate: 90
   GroupSize: {x: 3, y: 8}
   NearWater: 0
+  Active: 0
+  Grazing: 0.6
+  Thirst: 0.4
+  Playfulness: 0.1
+  Laziness: 0.3
+  Hunts: []
+  Hunger: 0.3
+  ChaseTime: 10

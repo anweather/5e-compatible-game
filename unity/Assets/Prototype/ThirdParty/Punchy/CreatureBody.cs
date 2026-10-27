@@ -3,6 +3,7 @@
 // plain class with arrays, so it runs without Entities; the maths is his.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024
+using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using Unity.Mathematics;
@@ -27,8 +28,16 @@ namespace Punchy.Fauna
         public float StandHeight;
         public float2 Bob, BobsPerCycle;
         public float RunRock;
+        /// <summary>Keeps the body level rather than tilting with the ground (two-legged walkers).</summary>
+        public bool Upright;
         public float WanderRadius, FleeDistance, TurnRate;
         public float2 IdleTime, Size;
+        public ActiveTime Active;
+        public float Grazing, Thirst, Playfulness, Laziness, Hunger, ChaseTime;
+        /// <summary>Species (indices in the caller's list) it hunts.</summary>
+        public int[] Prey = Array.Empty<int>();
+        /// <summary>Whether anything hunts it (so it needs to watch out for predators).</summary>
+        public bool Hunted;
 
         public CreaturePart[] Parts;
         public CreatureSegment[] Segments;
@@ -96,7 +105,9 @@ namespace Punchy.Fauna
         /// Builds a species. A variant takes its body, parts, gait and behaviour from the species it is a variant
         /// of, and only its own colours and size.
         /// </summary>
-        public static CreatureBody Build(CreatureSpecies variant)
+        /// <param name="prey">Indices of the species it hunts.</param>
+        /// <param name="hunted">Whether any species hunts it.</param>
+        public static CreatureBody Build(CreatureSpecies variant, IReadOnlyList<int> prey = null, bool hunted = false)
         {
             var species = variant.Body;
             // Expand slots: mirrored slots become left and right copies; children follow every copy of their parent.
@@ -138,6 +149,7 @@ namespace Punchy.Fauna
                 Bob = new float2(species.Bob.x, species.Bob.y),
                 BobsPerCycle = new float2(species.BobsPerCycle.x, species.BobsPerCycle.y),
                 RunRock = math.radians(species.RunRock),
+                Upright = species.Upright,
                 WanderRadius = species.WanderRadius,
                 FleeDistance = species.FleeDistance,
                 TurnRate = math.radians(species.TurnRate),
@@ -145,6 +157,15 @@ namespace Punchy.Fauna
             };
             var sizeScale = variant != species ? variant.VariantScale : 1f;
             root.Size = new float2(species.Size.x, species.Size.y) * sizeScale;
+            root.Active = variant.Active;
+            root.Grazing = variant.Grazing;
+            root.Thirst = variant.Thirst;
+            root.Playfulness = variant.Playfulness;
+            root.Laziness = variant.Laziness;
+            root.Hunger = variant.Hunger;
+            root.ChaseTime = variant.ChaseTime;
+            root.Hunted = hunted;
+            root.Prey = prey != null ? new List<int>(prey).ToArray() : Array.Empty<int>();
 
             root.Parts = new CreaturePart[parts.Count];
             root.Segments = new CreatureSegment[segmentCount];
@@ -322,7 +343,19 @@ namespace Punchy.Fauna
         Wander,
         Flee,
         /// <summary>Under outside control: keeps its heading and speed, ignores the player (scripts, tests).</summary>
-        Puppet
+        Puppet,
+        /// <summary>Head down, feeding on the spot.</summary>
+        Graze,
+        /// <summary>Walks to the water's edge (stage 0), then drinks (stage 1).</summary>
+        Drink,
+        /// <summary>Lying down, awake.</summary>
+        Rest,
+        /// <summary>Lying curled up, head down; slow to notice danger.</summary>
+        Sleep,
+        /// <summary>Chase with another of its kind (Partner): stage 0 chasing, stage 1 running away; a tag swaps them.</summary>
+        Play,
+        /// <summary>Chasing prey (Partner): stalking low, then sprinting.</summary>
+        Hunt
     }
 
     /// <summary>A creature's position, heading, gait and what it's up to.</summary>
@@ -343,6 +376,29 @@ namespace Punchy.Fauna
         public float Timer;
         public CreatureMode Mode;
         public uint Seed;
+
+        /// <summary>The other animal in a game of chase or a hunt, by its id (0 for none).</summary>
+        public int Partner;
+        /// <summary>What it's paying attention to: the threat it flees, the water it drinks from.</summary>
+        public float2 Focus;
+        public byte Stage;
+        /// <summary>Seconds in the current mode and stage.</summary>
+        public float ModeTime, StageTime;
+        /// <summary>Seconds alive, for breathing and chewing.</summary>
+        public float Clock;
+        /// <summary>Where it lives (a den); with Leash &gt; 0 it wanders no further than that from it.</summary>
+        public float2 Home;
+        public float Leash;
+
+        // Posture, 0..1, eased towards what the current activity wants (read by CreatureAnimator).
+        /// <summary>Lying down: body on the ground, legs folded.</summary>
+        public float Lie;
+        /// <summary>Head lowered to the ground (grazing, drinking, sleeping).</summary>
+        public float HeadDown;
+        /// <summary>Play bow: chest down, rump up.</summary>
+        public float Bow;
+        /// <summary>Curled up asleep: tail wrapped round, ears back.</summary>
+        public float Curl;
     }
 
     /// <summary>One segment as the creature shader draws it (a tapered capsule). Must match Creature.shader.</summary>
@@ -356,10 +412,11 @@ namespace Punchy.Fauna
         public float4 Color;
     }
 
-    /// <summary>The land creatures walk on: its height, and whether they may step somewhere (dry, clear, not burning).</summary>
+    /// <summary>The land creatures walk on: its height, whether they may step somewhere (dry, clear, not burning), and where water is (to drink).</summary>
     public interface ICreatureGround
     {
         float Height(float2 xz);
         bool Walkable(float2 xz);
+        bool Water(float2 xz);
     }
 }
