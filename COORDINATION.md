@@ -260,7 +260,7 @@ Then:
 5. Fix any blockers on main, and merge back.
 6. Publish.
 
-After that, a release about every 2 days.
+After that, a release at least every 2 days, and sooner while a lot is landing (J-019).
 
 The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 

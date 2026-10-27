@@ -41,6 +41,10 @@ Each entry has:
     bump, then the release-candidate build, then the bot's runs and a
     quick human look, then fix any blockers, then ship (docs/RELEASING.md).
   - The Build lane runs the release, and the coordinator calls the freeze.
+  - Andrew (later the same day): "2 days is probably fine as a starting
+    point", but we may release more often while so much is landing. So
+    treat 2 days as the longest gap, not a fixed schedule: cut sooner when
+    a solid batch is verified.
 - **Why:** Andrew picked the recommendation. About 20 merges had landed
   since 0.1.4 that morning. Short releases keep playtests on what players
   actually have, and bugs found on a release candidate get checked against
