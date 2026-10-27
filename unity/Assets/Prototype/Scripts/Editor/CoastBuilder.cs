@@ -157,8 +157,15 @@ public static class CoastBuilder
         life.transform.SetParent(root, false);
         life.material = material;
         var rng = new System.Random(91);
-        float sea = ValleyCoast.SeaLevel;
+        life.gullAnchors = GullAnchors();
+        life.crabSpots = CrabSpots(rng);
+        life.shoals = Shoals(rng);
+    }
 
+    // Over the beach every 40 m along it, and over the island.
+    static Vector3[] GullAnchors()
+    {
+        float sea = ValleyCoast.SeaLevel;
         var gulls = new List<Vector3>();
         for (float along = -120f; along <= 120f; along += 40f)
         {
@@ -166,29 +173,42 @@ public static class CoastBuilder
             if (Inside(p)) gulls.Add(new Vector3(p.x, sea, p.y));
         }
         gulls.Add(new Vector3(ValleyCoast.IslandAt.x, sea, ValleyCoast.IslandAt.y));
-        life.gullAnchors = gulls.ToArray();
+        return gulls.ToArray();
+    }
 
+    // Just up the sand from the water: thirty along the mainland beach, ten round the island.
+    static Vector3[] CrabSpots(System.Random rng)
+    {
         var crabs = new List<Vector3>();
         for (int i = 0; i < 40; i++)
         {
             var p = i < 30
                 ? OnBeach((float)(rng.NextDouble() - 0.5) * 300f, -1.2f - (float)rng.NextDouble() * 2.5f)
                 : OnIsland(Angle(rng), 1.5f + (float)rng.NextDouble() * 2f);
-            if (Inside(p) && Ground(p) > sea + 0.05f) crabs.Add(new Vector3(p.x, Ground(p), p.y));
+            if (Inside(p) && Ground(p) > ValleyCoast.SeaLevel + 0.05f) crabs.Add(new Vector3(p.x, Ground(p), p.y));
         }
-        life.crabSpots = crabs.ToArray();
+        return crabs.ToArray();
+    }
 
+    // In the lake, off the beach and round the island, wherever the water is 1.4 to 12 m deep.
+    static Vector4[] Shoals(System.Random rng)
+    {
+        float sea = ValleyCoast.SeaLevel;
         var shoals = new List<Vector4>();
         for (int i = 0; i < 400 && shoals.Count < 26; i++)
         {
-            Vector2 p;
-            if (i % 3 == 0) p = ValleyShape.LakeCentre + new Vector2((float)(rng.NextDouble() - 0.5) * 120f, (float)(rng.NextDouble() - 0.5) * 70f);
-            else if (i % 3 == 1) p = OnBeach((float)(rng.NextDouble() - 0.5) * 300f, 8f + (float)rng.NextDouble() * 45f);
-            else p = OnIsland(Angle(rng), -6f - (float)rng.NextDouble() * 18f);
+            var p = ShoalSpot(i % 3, rng);
             float depth = sea - ValleyShape.HeightAt(p);
             if (Inside(p) && depth > 1.4f && depth < 12f) shoals.Add(new Vector4(p.x, sea, p.y, depth));
         }
-        life.shoals = shoals.ToArray();
+        return shoals.ToArray();
+    }
+
+    static Vector2 ShoalSpot(int where, System.Random rng)
+    {
+        if (where == 0) return ValleyShape.LakeCentre + new Vector2((float)(rng.NextDouble() - 0.5) * 120f, (float)(rng.NextDouble() - 0.5) * 70f);
+        if (where == 1) return OnBeach((float)(rng.NextDouble() - 0.5) * 300f, 8f + (float)rng.NextDouble() * 45f);
+        return OnIsland(Angle(rng), -6f - (float)rng.NextDouble() * 18f);
     }
 
     static Vector2 Angle(System.Random rng)

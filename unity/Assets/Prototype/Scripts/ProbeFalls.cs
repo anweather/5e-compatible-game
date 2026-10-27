@@ -52,7 +52,12 @@ public class FallsProbe : ProbeScenario
         int landed = solid.Count(mc => Physics.Raycast(mc.bounds.center + Vector3.up * (mc.bounds.extents.y + 5f), Vector3.down, out var hit, 60f) && hit.collider.transform.IsChildOf(falls.transform));
         Check("rocks_solid", solid.Length >= 20 && landed >= solid.Length * 0.8f, $"{landed} of {solid.Length} rock colliders under a ray from above");
 
-        // The scree ramp beside the falls walks up to the top: the controller, stepped up it.
+        yield return ClimbRamp(lip);
+    }
+
+    // The scree ramp beside the falls walks up to the top: the controller, stepped up it.
+    IEnumerator ClimbRamp(Vector3 lip)
+    {
         var ramp = GameObject.Find("Scree ramp");
         Check("ramp_built", ramp != null && ramp.transform.childCount > 6, "the scree ramp up the east flank, lined with rocks");
         if (ramp == null || ramp.transform.childCount < 2) yield break;

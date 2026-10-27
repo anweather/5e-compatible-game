@@ -141,6 +141,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
     {
         grid = FindFirstObjectByType<ChemGrid>();
         sky = FindFirstObjectByType<SkyLight>();
+        FindVillages();
         BuildBodies();
         counts = new int[species.Count];
         drawer = new CreatureDrawer(material);
@@ -181,6 +182,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         if (Time.time >= nextLook) LookAround(centre);
 
         Despawn(centre);
+        BringOutFolk(centre);
         spawnBudget = math.min(spawnBudget + spawnRate * Time.deltaTime, 3f);
         while (spawnBudget >= 1f)
         {
@@ -339,6 +341,56 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
             if (Walkable(p)) Spawn(best, new float3(p.x, Height(p), p.y));
         }
         counts[best] += n;
+    }
+
+    // --- the villages' folk --------------------------------------------------------------
+
+    // Each village's residents (Village.residents): their species in the list (density 0, so the
+    // wilds never spawn them), where their square is, how far they wander.
+    readonly List<(Village village, int species, float2 home)> folk = new();
+
+    void FindVillages()
+    {
+        foreach (var v in FindObjectsByType<Village>(FindObjectsSortMode.None))
+        {
+            if (v.residents == null || v.residentCount <= 0) continue;
+            int i = species.FindIndex(e => e.species == v.residents);
+            if (i < 0)
+            {
+                species.Add(new Entry { species = v.residents, density = 0f });
+                i = species.Count - 1;
+            }
+            var p = v.transform.position + v.wellAt;
+            folk.Add((v, i, new float2(p.x, p.z)));
+        }
+    }
+
+    // A village's folk come out (at home, leashed to it) when someone's near and none are about;
+    // like the animals, they go when everyone has gone far off.
+    void BringOutFolk(float2 centre)
+    {
+        foreach (var (village, kind, square) in folk)
+        {
+            if (village == null || math.distance(square, centre) > radius) continue;
+            bool about = false;
+            foreach (var c in creatures)
+                if (c.species == kind && c.state.Leash > 0f && math.distance(c.state.Home, square) < 1f)
+                {
+                    about = true;
+                    break;
+                }
+            if (about) continue;
+            for (int n = 0; n < village.residentCount; n++)
+            {
+                var p = square + rng.NextFloat2Direction() * rng.NextFloat(2f, village.wander * 0.6f);
+                if (!Walkable(p)) continue;
+                int at = Spawn(kind, new float3(p.x, Height(p), p.y));
+                var s = creatures[at].state;
+                s.Home = square;
+                s.Leash = village.wander;
+                creatures[at].state = s;
+            }
+        }
     }
 
     /// <summary>Puts one animal of a species (by index in the list) at a point. Also for the probe.</summary>

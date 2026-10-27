@@ -60,7 +60,8 @@ public class CurrentProbe : ProbeScenario
         rb.position = on;
         rb.linearVelocity = Vector3.zero;
         crate.transform.position = on;
-        Teleport(start + Vector3.up * 0.5f + new Vector3(-downstream.y, 0f, downstream.x) * 8f);
+        var across = Vector2.Perpendicular(downstream);
+        Teleport(start + Vector3.up * 0.5f + new Vector3(across.x, 0f, across.y) * 8f);
         yield return Wait(2f);
         var crateFrom = crate.transform.position;
         yield return Wait(4f);

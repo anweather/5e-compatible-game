@@ -151,8 +151,6 @@ public class AmbientLife : MonoBehaviour
         }
     }
 
-    // Sideways along the waterline between pauses; from a wizard close by, a dash away and then down
-    // into the sand for a while.
     // Wings down, level or up through a flap.
     static int WingFrame(float phase)
     {
@@ -161,51 +159,61 @@ public class AmbientLife : MonoBehaviour
         return s < -0.3f ? 0 : 1;
     }
 
+    // Sideways along the waterline between pauses; from a wizard close by, a dash away and then down
+    // into the sand for a while.
     void UpdateCrabs(float dt)
     {
         for (int i = 0; i < crabs.Length; i++)
+            if (StepCrab(ref crabs[i], dt))
+            {
+                var c = crabs[i];
+                crabBatch[(int)(c.walked * 12f) % 2].Add(Matrix4x4.TRS(c.pos, Quaternion.Euler(0f, c.yaw, 0f), Vector3.one * 1.3f));
+            }
+    }
+
+    // One crab's frame; false while it's down in the sand.
+    bool StepCrab(ref Crab c, float dt)
+    {
+        if (c.buried > 0f)
         {
-            ref var c = ref crabs[i];
-            if (c.buried > 0f)
-            {
-                c.buried -= dt;
-                if (c.buried <= 0f) c.pos = c.target = c.home;
-                else continue;
-            }
-            var toWizard = wizard != null ? Flat(wizard.position - c.pos) : Vector3.one * 99f;
-            float speed = 0.5f;
-            if (toWizard.sqrMagnitude < 1.4f * 1.4f)
-            {
-                c.buried = R(6f, 14f);
-                continue;
-            }
-            if (toWizard.sqrMagnitude < 4f * 4f)
-            {
-                c.target = c.pos - toWizard.normalized * 2f;
-                c.wait = 0f;
-                speed = 2.6f;
-            }
-            var to = Flat(c.target - c.pos);
-            if (to.sqrMagnitude < 0.01f)
-            {
-                c.wait -= dt;
-                if (c.wait <= 0f)
-                {
-                    c.target = c.home + new Vector3(R(-2.5f, 2.5f), 0f, R(-2.5f, 2.5f));
-                    c.wait = R(1f, 5f);
-                }
-            }
-            else
-            {
-                var step = to.normalized * Mathf.Min(speed * dt, to.magnitude);
-                c.pos += step;
-                c.walked += step.magnitude;
-                // Crabs go sideways: face across the way they're going.
-                c.yaw = Mathf.MoveTowardsAngle(c.yaw, Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg + 90f, 400f * dt);
-            }
-            c.pos.y = Ground(c.pos, c.home.y);
-            crabBatch[(int)(c.walked * 12f) % 2].Add(Matrix4x4.TRS(c.pos, Quaternion.Euler(0f, c.yaw, 0f), Vector3.one * 1.3f));
+            c.buried -= dt;
+            if (c.buried > 0f) return false;
+            c.pos = c.target = c.home;
         }
+        var toWizard = wizard != null ? Flat(wizard.position - c.pos) : Vector3.one * 99f;
+        float speed = 0.5f;
+        if (toWizard.sqrMagnitude < 1.4f * 1.4f)
+        {
+            c.buried = R(6f, 14f);
+            return false;
+        }
+        if (toWizard.sqrMagnitude < 4f * 4f)
+        {
+            c.target = c.pos - toWizard.normalized * 2f;
+            c.wait = 0f;
+            speed = 2.6f;
+        }
+        var to = Flat(c.target - c.pos);
+        if (to.sqrMagnitude < 0.01f) Pause(ref c, dt);
+        else
+        {
+            var step = to.normalized * Mathf.Min(speed * dt, to.magnitude);
+            c.pos += step;
+            c.walked += step.magnitude;
+            // Crabs go sideways: face across the way they're going.
+            c.yaw = Mathf.MoveTowardsAngle(c.yaw, Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg + 90f, 400f * dt);
+        }
+        c.pos.y = Ground(c.pos, c.home.y);
+        return true;
+    }
+
+    // Stopped: wait a while, then pick somewhere near home to go next.
+    void Pause(ref Crab c, float dt)
+    {
+        c.wait -= dt;
+        if (c.wait > 0f) return;
+        c.target = c.home + new Vector3(R(-2.5f, 2.5f), 0f, R(-2.5f, 2.5f));
+        c.wait = R(1f, 5f);
     }
 
     // Each shoal circles its spot under the surface, slipping away from a swimmer; one fish now and
@@ -220,7 +228,7 @@ public class AmbientLife : MonoBehaviour
             if (wizard != null)
             {
                 var away = Flat(s.centre + s.drift - wizard.position);
-                if (away.sqrMagnitude < 5f * 5f && wizard.position.y < s.surface + 0.5f) s.drift += away.normalized * 3f * dt;
+                if (away.sqrMagnitude < 5f * 5f && wizard.position.y < s.surface + 0.5f) s.drift += away.normalized * (3f * dt);
             }
             s.drift = Vector3.MoveTowards(s.drift, Vector3.zero, 0.15f * dt);
             for (int k = 0; k < fishPerShoal; k++)

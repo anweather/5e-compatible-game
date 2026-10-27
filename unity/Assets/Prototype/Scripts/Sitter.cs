@@ -11,6 +11,7 @@ using UnityEngine.InputSystem;
 public class Sitter : MonoBehaviour
 {
     const float Reach = 1.7f;
+    static readonly int SpeedId = Animator.StringToHash("Speed"), GroundedId = Animator.StringToHash("Grounded");
 
     PlayerControls controls;
     ItemHolder hands;
@@ -73,8 +74,8 @@ public class Sitter : MonoBehaviour
         Place(Seated.Foot, Seated.Facing);
         if (animator != null)
         {
-            animator.SetFloat("Speed", 0f);
-            animator.SetBool("Grounded", true);
+            animator.SetFloat(SpeedId, 0f);
+            animator.SetBool(GroundedId, true);
         }
     }
 
@@ -127,7 +128,8 @@ public class Sitter : MonoBehaviour
             shadow.normal.textColor = new Color(0f, 0f, 0f, 0.7f);
         }
         string key = controls.UsingGamepad ? PadGlyphs.Label(PadButton.West) : "E";
-        string hint = Seated != null ? $"<b>{key}</b>: get up" : $"<b>{key}</b>: {(inReach.lounge ? "lie back" : "sit")}";
+        string action = inReach != null && inReach.lounge ? "lie back" : "sit";
+        string hint = Seated != null ? $"<b>{key}</b>: get up" : $"<b>{key}</b>: {action}";
         var at = new Rect(0, Screen.height / 2f + 34, Screen.width, 28);
         GUI.Label(new Rect(at.x + 1, at.y + 1, at.width, at.height), hint, shadow);
         GUI.Label(at, hint, style);
