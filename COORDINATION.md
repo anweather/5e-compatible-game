@@ -248,7 +248,7 @@ The coordinator approves each change and schedules them one at a time.
 ## Release 0.1.5 (J-019; today)
 
 Waiting on, before the freeze:
-1. `net-reset` and `net-reset-view`: Gameplay's solo online run.
+1. ~~`net-reset`~~ `7d721a3` and ~~`net-reset-view`~~ `08ad78f` (online 20/20, checksums equal after the reset).
 2. `perf-pass`: PC-5 on a solo PC.
 3. ~~`playtest-bot`~~ `20c499a` (the .ps1 files are gone; `playtest build --ref <tag>` is required).
 
