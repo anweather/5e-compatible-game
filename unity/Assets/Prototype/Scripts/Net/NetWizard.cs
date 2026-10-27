@@ -63,22 +63,22 @@ public class NetWizard : NetworkBehaviour
             hands.view = follow;
         }
         Local = this;
-        this.grid = grid;
-        net = grid != null ? grid.GetComponent<NetChem>() : null;
+        startGrid = grid;
+        chem = grid != null ? grid.GetComponent<NetChem>() : null;
         if (grid != null) grid.WorldReset += BackToStart;
     }
 
     /// <summary>This machine's own wizard while online; null solo.</summary>
     public static NetWizard Local { get; private set; }
 
-    ChemGrid grid;
-    NetChem net;
+    ChemGrid startGrid;
+    NetChem chem;
 
     // A wizard that leaves lets go of what it holds first, or the item (riding in its hand) would go with it.
     public override void OnNetworkDespawn()
     {
         if (Local == this) Local = null;
-        if (grid != null) grid.WorldReset -= BackToStart;
+        if (startGrid != null) startGrid.WorldReset -= BackToStart;
         form.OnValueChanged -= FormChanged;
         look.OnValueChanged -= LookChanged;
         if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
@@ -148,12 +148,17 @@ public class NetWizard : NetworkBehaviour
     // (ThingSpawner), so the hand just lets go.
     void BackToStart()
     {
-        if (!OnlineReset.Happened(net)) return;
+        if (!OnlineReset.Happened(chem)) return;
         if (TryGetComponent<Sitter>(out var sitter)) sitter.Stand();
         if (TryGetComponent<Shapeshift>(out var shape)) shape.ChangeBack("You're yourself again", force: true);
         if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
         if (TryGetComponent<Vitals>(out var vitals)) vitals.Refill();
-        Teleport(SpawnPoint(grid));
+        // The character controller keeps its own idea of where it is: off for the jump.
+        bool hasBody = TryGetComponent<CharacterController>(out var body) && body.enabled;
+        if (hasBody) body.enabled = false;
+        Teleport(SpawnPoint(startGrid));
+        Physics.SyncTransforms();
+        if (hasBody) body.enabled = true;
     }
 
     [Rpc(SendTo.Owner)]

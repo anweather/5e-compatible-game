@@ -71,11 +71,11 @@ public class ThingSpawner : MonoBehaviour
             network.OnClientStarted += DropSoloCopies;
         }
         SpawnActive();
-        net = grid.GetComponent<NetChem>();
+        chem = grid.GetComponent<NetChem>();
         grid.WorldReset += Respawn;
     }
 
-    NetChem net;
+    NetChem chem;
 
     void SpawnActive()
     {
@@ -88,7 +88,7 @@ public class ThingSpawner : MonoBehaviour
     // ones included. A client's things go and come with the host's despawns and spawns.
     void Respawn()
     {
-        if (!Hosting || !OnlineReset.Happened(net)) return;
+        if (!Hosting || !OnlineReset.Happened(chem)) return;
         foreach (var (cx, cy) in new List<(int, int)>(loaded)) UnloadChunk(cx, cy);
         foreach (var (_, prop) in Live)
         {
