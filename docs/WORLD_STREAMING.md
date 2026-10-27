@@ -295,9 +295,9 @@ if B and C prove too slow.
 1. **Reach and the active region** (built 2026-10-27). R and the deactivate distance in
    `sim.json`; the plan works from all characters (no change in
    behaviour at R = 1); the tests and the `explore` probe at R = 2.
-2. **Live and settled.** The core keeps, per chunk, the last tick
-   anything was live; a test for each kind of live cell, and for rain not
-   counting.
+2. **Live and settled** (built 2026-10-27). The core keeps, per chunk, the last tick
+   anything was live (`World.LastLive`, `IsSettled`, after `streaming.settleTicks`);
+   a test for each kind of live cell (`LiveChunkTests`). Rain only counts once its water moves.
 3. **Linger and spread.** The plan keeps unsettled chunks active within
    the caps, and activity reaching an inactive chunk activates it; replay
    tests online; probe: walk away from a fire and watch it burn on, then

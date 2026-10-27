@@ -195,7 +195,9 @@ The world is simulated only around the characters (`docs/WORLD_STREAMING.md`;
 C# only, the sandbox has no chunks). Every chunk within `sim.streaming.reach`
 (2) chunks of a character's chunk is active; a chunk deactivates once no
 character is within `sim.streaming.keep` (3), which must be at least the
-reach. Distances are in chunks, the larger of the two axes.
+reach. Distances are in chunks, the larger of the two axes. A chunk is
+settled once nothing in it has been live (fire, gas, charge, a timer, water
+moving) for `sim.streaming.settleTicks` (12) ticks.
 
 ## Day and weather (`sim.day`, `sim.weather`)
 
