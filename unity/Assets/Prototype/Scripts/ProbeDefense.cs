@@ -13,15 +13,15 @@ using UnityEngine;
 // the wall.
 public class DefenseProbe : ProbeScenario
 {
-    DefenseField field;
+    DefenseField defense;
 
     protected override IEnumerator Run()
     {
-        field = FindFirstObjectByType<DefenseField>();
-        Check("field_built", field != null && field.gate != null && field.flag != null && field.banner != null, "a Defense field with its gate, flag and banner");
-        if (field == null || field.gate == null || field.flag == null) yield break;
-        var gate = field.GateCell;
-        var flag = field.FlagCell;
+        defense = FindFirstObjectByType<DefenseField>();
+        Check("field_built", defense != null && defense.gate != null && defense.flag != null && defense.banner != null, "a Defense field with its gate, flag and banner");
+        if (defense == null || defense.gate == null || defense.flag == null) yield break;
+        var gate = defense.GateCell;
+        var flag = defense.FlagCell;
         Metric("path_squares", Mathf.Abs(flag.x - gate.x) + Mathf.Abs(flag.y - gate.y));
         Check("path_length", Mathf.Abs(flag.x - gate.x) >= 33 && Mathf.Abs(flag.x - gate.x) <= 47 && flag.y == gate.y, $"gate {gate}, flag {flag}: one row, 50 to 70 m");
         Check("path_is_dirt", Enumerable.Range(gate.x, flag.x - gate.x + 1).Count(x => World.At(x, gate.y)?.T == "dirt") >= (flag.x - gate.x) * 0.8f, "the path's squares are dirt");
@@ -30,27 +30,27 @@ public class DefenseProbe : ProbeScenario
         Shot("field");
 
         yield return StartWaves();
-        if (!field.Running) yield break;
+        if (!defense.Running) yield break;
         yield return Walking(flag);
         yield return Fireball(flag);
         yield return Wall(flag);
         yield return LifeLost();
     }
 
-    Vector3 Middle => (field.gate.position + field.flag.position) / 2f;
+    Vector3 Middle => (defense.gate.position + defense.flag.position) / 2f;
 
     // From the south, high, looking over the whole path.
     void Overview() => Cut(Middle + V(0f, 26f, -34f), Middle);
 
     IEnumerator StartWaves()
     {
-        Teleport(field.startPlate + Vector3.up * 0.1f);
+        Teleport(defense.startPlate + Vector3.up * 0.1f);
         int mark = ConsoleMark;
         yield return Wait(2f);
-        Check("plate_starts_waves", field.Running, "standing on the start plate started the waves");
+        Check("plate_starts_waves", defense.Running, "standing on the start plate started the waves");
         Check("start_logged", ConsoleSaid("raiders are coming", mark) || LogSince(0).Any(l => l.Contains("Wave 1 of")), "the start in the log");
         // Off the plate, beside the flag, to watch.
-        var watch = field.flag.position + V(-4f, 0f, -9f);
+        var watch = defense.flag.position + V(-4f, 0f, -9f);
         Teleport(new Vector3(watch.x, TerrainGround(watch) + 0.05f, watch.z));
     }
 
@@ -72,10 +72,10 @@ public class DefenseProbe : ProbeScenario
         int after = first.Alive ? Mathf.Abs(flag.x - first.X) + Mathf.Abs(flag.y - first.Y) : -1;
         Metric("raider_squares_walked_3s", before - after);
         Check("raiders_walk_to_flag", after >= 0 && after < before - 2, $"{before} squares from the flag, then {after} three seconds on");
-        Cut(field.gate.position + V(6f, 9f, -14f), field.gate.position + V(14f, 0f, 0f));
+        Cut(defense.gate.position + V(6f, 9f, -14f), defense.gate.position + V(14f, 0f, 0f));
         yield return Wait(0.6f);
         Shot("mid-wave");
-        Check("raiders_drawn", field.DrawnRaiders > 0, $"{field.DrawnRaiders} raiders drawn as creatures");
+        Check("raiders_drawn", defense.DrawnRaiders > 0, $"{defense.DrawnRaiders} raiders drawn as creatures");
     }
 
     // A Fireball a square ahead of the leader, where it will be when the bead lands.
@@ -83,13 +83,13 @@ public class DefenseProbe : ProbeScenario
     {
         if (World.Raiders.Count == 0) yield break;
         var lead = World.Raiders[0];
-        int alive = World.Raiders.Count, puffs = field.Puffs;
+        int alive = World.Raiders.Count, puffs = defense.Puffs;
         int x = lead.X + System.Math.Sign(flag.x - lead.X);
         puppet.Face(grid.CellCenter(x, lead.Y));
         caster.Cast(SpellIds.Fireball, x, lead.Y, 1);
         yield return Wait(2.5f);
-        Metric("fireball_kills", field.Puffs - puffs);
-        Check("fireball_kills", field.Puffs > puffs, $"{field.Puffs - puffs} raider(s) beaten ({alive} on the board before, {World.Raiders.Count} after)");
+        Metric("fireball_kills", defense.Puffs - puffs);
+        Check("fireball_kills", defense.Puffs > puffs, $"{defense.Puffs - puffs} raider(s) beaten ({alive} on the board before, {World.Raiders.Count} after)");
     }
 
     // A Wall of Stone across the path, eight squares short of the flag: the raiders go round its ends.
@@ -132,8 +132,8 @@ public class DefenseProbe : ProbeScenario
         Metric("lives_left", World.Defense.Lives);
         Check("flag_costs_a_life", World.Defense.Lives < lives, $"lives {World.Defense.Lives}/{lives} after {waited:0.0} s more");
         yield return Wait(0.2f);
-        Check("banner_shows_lives", field.banner.text.Contains($"LIVES {World.Defense.Lives}"), $"the banner reads \"{field.banner.text.Replace('\n', ' ')}\"");
-        Check("hud_line", field.HudLine().StartsWith("Wave ", System.StringComparison.Ordinal), field.HudLine());
+        Check("banner_shows_lives", defense.banner.text.Contains($"LIVES {World.Defense.Lives}"), $"the banner reads \"{defense.banner.text.Replace('\n', ' ')}\"");
+        Check("hud_line", defense.HudLine().StartsWith("Wave ", System.StringComparison.Ordinal), defense.HudLine());
         Overview();
         yield return Wait(0.5f);
         Shot("end");

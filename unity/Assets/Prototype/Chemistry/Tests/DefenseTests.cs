@@ -85,7 +85,7 @@ namespace Chem.Tests
             for (int y = 4; y <= 9; y++) w.Reshape(20, y, 3);
             w.ApplyDefense(Field);
             var seen = Watch(w, 400);
-            for (int y = 4; y <= 9; y++) Assert.That(seen, Does.Not.Contain((20, y)), $"nobody stood in the wall at (20, {y})");
+            for (int y = 4; y <= 9; y++) Assert.That(seen.Contains((20, y)), Is.False, $"nobody stood in the wall at (20, {y})");
             Assert.That(seen.Contains((20, 3)) || seen.Contains((20, 10)), "they went round an end");
         }
 
@@ -109,7 +109,7 @@ namespace Chem.Tests
             Assert.That(w.PathCostAt(19, 7), Is.EqualTo(17), "straight along the row");
             for (int y = 6; y <= 8; y++) w.Reshape(20, y, -2);
             var seen = Watch(w, 300);
-            for (int y = 6; y <= 8; y++) Assert.That(seen, Does.Not.Contain((20, y)), $"nobody went down into the trench at (20, {y})");
+            for (int y = 6; y <= 8; y++) Assert.That(seen.Contains((20, y)), Is.False, $"nobody went down into the trench at (20, {y})");
             Assert.That(seen.Contains((20, 5)) || seen.Contains((20, 9)));
             Assert.That(w.PathCostAt(19, 7), Is.EqualTo(21), "round the trench's end");
         }
