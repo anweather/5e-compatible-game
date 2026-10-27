@@ -245,6 +245,23 @@ The coordinator approves each change and schedules them one at a time.
 10. Gameplay: ~~`static-resets`~~ `46abc35`; ~~`villagers`~~ `4e74992` (on the reel); `net-reset-view` (after the online run); `ground-perf` (perf numbers need a solo slot); `showcase-fire` (the Mac is verifying it).
 11. Build: `perf-pass` (cheap SSAO and soft Medium, `49bd690`) after PC-5 on a solo PC.
 
+## Release 0.1.5 (J-019; today)
+
+Waiting on, before the freeze:
+1. `net-reset` and `net-reset-view`: Gameplay's solo online run.
+2. `perf-pass`: PC-5 on a solo PC.
+3. `playtest-bot`: merge after the demo run, with the .ps1 files removed.
+
+Then:
+1. Freeze dev (the coordinator calls it).
+2. Build merges dev into main and bumps the version.
+3. The release-candidate builds: Windows on the PC, Mac on the Mac.
+4. The bot runs on the Windows RC (J-018), plus Andrew's look.
+5. Fix any blockers on main, and merge back.
+6. Publish.
+
+After that, a release about every 2 days.
+
 The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 
 ## Open questions
