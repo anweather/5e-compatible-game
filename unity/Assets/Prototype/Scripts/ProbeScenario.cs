@@ -90,6 +90,9 @@ public abstract class ProbeScenario : ShowcaseScript
     /// <summary>How many console lines there have been so far, to pass to ConsoleSaid later.</summary>
     protected int ConsoleMark => consoleLines.Count;
 
+    /// <summary>The console lines since <paramref name="mark"/>.</summary>
+    protected IEnumerable<string> ConsoleSince(int mark) => consoleLines.Skip(mark);
+
     /// <summary>Whether a console line since <paramref name="mark"/> contains <paramref name="text"/> (EventLog writes there).</summary>
     protected bool ConsoleSaid(string text, int mark) =>
         consoleLines.Skip(mark).Any(l => l.Contains(text, System.StringComparison.Ordinal));

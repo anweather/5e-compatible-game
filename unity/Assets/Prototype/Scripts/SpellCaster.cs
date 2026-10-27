@@ -246,7 +246,10 @@ public class SpellCaster : MonoBehaviour
             error = spell.Effect == SpellShapes.TeleportEffect
                 ? CheckBlink(spell, target)
                 : MageHand.Check(grid, spell, hands, me, target.x, target.y);
-            return error == null ? (target.x, target.y, 1, 0, 0) : null;
+            if (error != null) return null;
+            // A blink may land short of the crosshair (Reach): mark where it will.
+            var lands = spell.Effect == SpellShapes.TeleportEffect && blinkLanding.HasValue ? grid.CellAt(blinkLanding.Value) : target;
+            return (lands.x, lands.y, 1, 0, 0);
         }
         // A line or a cone points where the crosshair is, off the grid's four ways if it is; it
         // starts beside the caster on the nearest of the four.
@@ -272,12 +275,13 @@ public class SpellCaster : MonoBehaviour
     }
 
     // Misty Step checks what the crosshair points at when it's in the target square (a roof, a rock,
-    // or its side, which lands on its top), else the top of the square.
+    // or its side, which lands on its top), or the farthest spot it can reach towards it, else the
+    // top of the square.
     string CheckBlink(SpellDef spell, Vector2Int target)
     {
         blinkLanding = null;
         if (!hasCrosshair || CrosshairCell != target) return MistyStep.Check(grid, spell, transform, target.x, target.y);
-        string why = MistyStep.Check(grid, spell, transform, crosshair, out var landing);
+        string why = MistyStep.Reach(grid, spell, transform, crosshair, out var landing);
         if (why == null) blinkLanding = landing;
         return why;
     }
