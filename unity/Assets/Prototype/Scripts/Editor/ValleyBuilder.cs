@@ -68,10 +68,12 @@ public static class ValleyBuilder
         var world = ChemGrid.MapWorld(grid.LoadBaseRules(), grid.map, grid.seed, out _);
         ValleyTerrain.BakeCells(world, grid.stepHeight);
 
-        var yardCells = YardCells(grid.yardCells);
+        // The cells painted as they are: the old yard's, and the ball court's dirt floor (CellKind).
+        var paintedCells = YardCells(grid.yardCells);
+        paintedCells.AddRange(CourtCells());
         ValleyTerrain.PlantTrees(assets.trees, AllTrees(valleyTrees, grid, world));
-        ValleyTerrain.Paint(assets.layers, world, yardCells);
-        ValleyTerrain.PaintDetails(assets.details, world, yardCells);
+        ValleyTerrain.Paint(assets.layers, world, paintedCells);
+        ValleyTerrain.PaintDetails(assets.details, world, paintedCells);
         return ValleyTerrain.PlaceTerrains(grid.yardCells.position);
     }
 
@@ -81,6 +83,17 @@ public static class ValleyBuilder
         for (int y = yard.yMin; y < yard.yMax; y++)
             for (int x = yard.xMin; x < yard.xMax; x++) cells.Add((x, y));
         return cells;
+    }
+
+    // The cells on and just round the court; only the ones that are dirt paint (the rest stay grass).
+    static IEnumerable<(int x, int y)> CourtCells()
+    {
+        var layout = ValleyTerrain.Layout;
+        foreach (var (x, y) in layout.Cells())
+        {
+            var (cx, cz) = layout.CellCenter(x, y);
+            if (ValleyShape.InCourt(new Vector2(cx, cz), -1f)) yield return (x, y);
+        }
     }
 
     // Grass on flat ground, moss in the meadows, rock on slopes, snow up high, sand at the lake.
@@ -172,6 +185,8 @@ public static class ValleyBuilder
             float scale = 0.8f + 0.5f * (float)rng.NextDouble();
             spots.Add((w, scale, rng.NextDouble() < 0.35 ? 1 : 0, (float)(rng.NextDouble() * Mathf.PI * 2)));
         }
+        // None on the ball court. Dropped afterwards, so every other tree stands where it always has.
+        spots.RemoveAll(s => ValleyShape.InCourt(s.Item1, -1.5f));
         return spots;
     }
 
@@ -258,9 +273,14 @@ public static class ValleyBuilder
 
     // A walled court on the flat meadow east of the yard, with a goal in each end wall and the
     // ball in the middle (world/things.json). Wooden rails a ball bounces off, low enough to step
-    // over a corner of; the goal mouths are open.
-    static readonly Vector2 CourtCentre = new Vector2(61f, 5f);
-    const float CourtLength = 26f, CourtWidth = 18f, RailHeight = 0.9f, GoalWidth = 4f, GoalHeight = 1.8f;
+    // over a corner of; the goal mouths are open. Its floor is dirt (CellKind). A gate in the
+    // west rail, the yard's side, opens as a wizard comes up to it (CourtGate); a scoreboard
+    // stands by the north rail, and BallCourt counts the goals and puts the ball back.
+    static Vector2 CourtCentre => ValleyShape.CourtCentre;
+    const float CourtLength = ValleyShape.CourtLength, CourtWidth = ValleyShape.CourtWidth;
+    const float RailHeight = 0.9f, GoalWidth = 4f, GoalHeight = 1.8f, GoalDepth = 1.2f;
+    // The gate: how wide, and where its middle is along the west rail north of the goal (z).
+    const float GateWidth = 2.4f, GateZ = 10.5f;
 
     static void BuildCourt()
     {
@@ -269,15 +289,128 @@ public static class ValleyBuilder
         var wood = LogMaterial();
         float x0 = CourtCentre.x - CourtLength / 2f, x1 = CourtCentre.x + CourtLength / 2f;
         float z0 = CourtCentre.y - CourtWidth / 2f, z1 = CourtCentre.y + CourtWidth / 2f;
-        // The long sides, whole; the ends, either side of a goal mouth.
+        // The long sides, whole; the ends, either side of a goal mouth, the west one's north part
+        // either side of the gate.
         Rail(parent, wood, new Vector3(x0, 0f, z0), new Vector3(x1, 0f, z0));
         Rail(parent, wood, new Vector3(x0, 0f, z1), new Vector3(x1, 0f, z1));
+        float gateFrom = GateZ - GateWidth / 2f, gateTo = GateZ + GateWidth / 2f;
+        Rail(parent, wood, new Vector3(x0, 0f, CourtCentre.y + GoalWidth / 2f), new Vector3(x0, 0f, gateFrom - 0.15f));
+        Rail(parent, wood, new Vector3(x0, 0f, gateTo + 0.15f), new Vector3(x0, 0f, z1));
+        Gate(parent, wood, new Vector3(x0, 0f, gateFrom));
+        Rail(parent, wood, new Vector3(x1, 0f, CourtCentre.y + GoalWidth / 2f), new Vector3(x1, 0f, z1));
         foreach (float x in new[] { x0, x1 })
         {
             Rail(parent, wood, new Vector3(x, 0f, z0), new Vector3(x, 0f, CourtCentre.y - GoalWidth / 2f));
-            Rail(parent, wood, new Vector3(x, 0f, CourtCentre.y + GoalWidth / 2f), new Vector3(x, 0f, z1));
             Goal(parent, wood, new Vector3(x, 0f, CourtCentre.y), x < CourtCentre.x ? -1f : 1f);
         }
+
+        var spot = new Vector3(CourtCentre.x, 0f, CourtCentre.y);
+        spot.y = ValleyTerrain.GroundAt(spot);
+        var game = parent.gameObject.AddComponent<BallCourt>();
+        game.centre = spot;
+        game.length = CourtLength;
+        game.width = CourtWidth;
+        game.goalWidth = GoalWidth;
+        game.goalHeight = GoalHeight;
+        game.goalDepth = GoalDepth;
+        game.board = Scoreboard(parent, wood, new Vector3(CourtCentre.x, 0f, z1 + 1.8f));
+    }
+
+    // The gate, hinged at its south post, shut along the rail (local +z) and swinging east into
+    // the court: three logs like the rail's on two uprights, around an unseen box that stops the
+    // ball and the wizard, with a post either side of the gateway.
+    static void Gate(Transform parent, Material mat, Vector3 hinge)
+    {
+        hinge.y = ValleyTerrain.GroundAt(hinge);
+        var gate = new GameObject("Court gate");
+        gate.transform.SetParent(parent, false);
+        gate.transform.position = hinge;
+        float leaf = GateWidth - 0.1f;
+        var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        box.name = "Gate leaf";
+        box.transform.SetParent(gate.transform, false);
+        box.transform.localPosition = new Vector3(0f, RailHeight / 2f, leaf / 2f + 0.05f);
+        box.transform.localScale = new Vector3(0.15f, RailHeight, leaf);
+        box.GetComponent<Renderer>().enabled = false;
+        const int logs = 3;
+        float r = RailHeight / logs / 2f * 0.85f;
+        for (int i = 0; i < logs; i++)
+            GatePart(gate.transform, mat, new Vector3(0f, RailHeight / logs * (i + 0.5f), leaf / 2f + 0.05f), Quaternion.Euler(90f, 0f, 0f), new Vector3(2f * r, leaf / 2f, 2f * r));
+        foreach (float z in new[] { 0.15f, leaf - 0.05f })
+            GatePart(gate.transform, mat, new Vector3(0f, RailHeight / 2f, z), Quaternion.identity, new Vector3(0.12f, RailHeight / 2f, 0.12f));
+        // The gateposts stand still, a little taller than the rail.
+        foreach (float z in new[] { -0.05f, GateWidth + 0.05f })
+            GatePart(parent, mat, hinge + new Vector3(0f, (RailHeight + 0.3f) / 2f, z), Quaternion.identity, new Vector3(0.2f, (RailHeight + 0.3f) / 2f, 0.2f), local: false);
+        var body = gate.AddComponent<Rigidbody>();
+        body.isKinematic = true;
+        // Heavy, so a wizard walking into it never counts it as something to kick (Kicker).
+        body.mass = 200f;
+        body.interpolation = RigidbodyInterpolation.Interpolate;
+        var swing = gate.AddComponent<CourtGate>();
+        swing.width = GateWidth;
+        swing.openAngle = 95f;
+    }
+
+    static void GatePart(Transform parent, Material mat, Vector3 at, Quaternion turn, Vector3 size, bool local = true)
+    {
+        var part = Primitives.Visual(PrimitiveType.Cylinder, "Gate log");
+        part.transform.SetParent(parent, false);
+        if (local) part.transform.SetLocalPositionAndRotation(at, turn);
+        else part.transform.SetPositionAndRotation(at, turn);
+        part.transform.localScale = size;
+        part.GetComponent<Renderer>().sharedMaterial = mat;
+    }
+
+    // Where each segment of a seven-segment figure sits (a to g, CourtScoreboard), in figure
+    // heights from its middle, and whether it lies across (else upright).
+    static readonly (float x, float y, bool across)[] Segments =
+    {
+        (0f, 0.5f, true), (0.25f, 0.25f, false), (0.25f, -0.25f, false), (0f, -0.5f, true),
+        (-0.25f, -0.25f, false), (-0.25f, 0.25f, false), (0f, 0f, true),
+    };
+
+    // A dark board on two log posts, facing the court (south), with four lit figures: the west
+    // end's goals on the left, the east end's on the right, a colon between.
+    static CourtScoreboard Scoreboard(Transform parent, Material wood, Vector3 at)
+    {
+        at.y = ValleyTerrain.GroundAt(at);
+        var root = new GameObject("Court scoreboard");
+        root.transform.SetParent(parent, false);
+        root.transform.position = at;
+        var face = EditorAssets.LitMaterial($"{Generated}/CourtBoard.mat", new Color(0.07f, 0.09f, 0.08f), 0.2f);
+        var lit = EditorAssets.LitMaterial($"{Generated}/CourtDigit.mat", new Color(1f, 0.78f, 0.35f), 0.3f, new Color(1f, 0.6f, 0.2f) * 2.5f);
+        const float boardY = 2.6f, height = 1.0f, front = -0.09f;
+        foreach (float x in new[] { -2.1f, 2.1f })
+            BoardPart(root.transform, PrimitiveType.Cylinder, wood, new Vector3(x, boardY / 2f + 0.4f, 0f), new Vector3(0.2f, boardY / 2f + 0.4f, 0.2f));
+        BoardPart(root.transform, PrimitiveType.Cube, face, new Vector3(0f, boardY, 0f), new Vector3(4.6f, 1.6f, 0.14f));
+        foreach (float y in new[] { -0.2f, 0.2f })
+            BoardPart(root.transform, PrimitiveType.Cube, lit, new Vector3(0f, boardY + y, front), new Vector3(0.1f, 0.1f, 0.04f));
+        var digits = new[] { -1.55f, -0.85f, 0.85f, 1.55f };
+        var segments = new Renderer[CourtScoreboard.DigitCount * CourtScoreboard.SegmentsPerDigit];
+        for (int d = 0; d < digits.Length; d++)
+        {
+            for (int s = 0; s < Segments.Length; s++)
+            {
+                var (x, y, across) = Segments[s];
+                var size = across ? new Vector3(height * 0.5f, 0.1f, 0.04f) : new Vector3(0.1f, height * 0.5f, 0.04f);
+                var pos = new Vector3(digits[d] + x * height, boardY + y * height, front);
+                segments[d * Segments.Length + s] = BoardPart(root.transform, PrimitiveType.Cube, lit, pos, size);
+            }
+        }
+        var board = root.AddComponent<CourtScoreboard>();
+        board.segments = segments;
+        return board;
+    }
+
+    static Renderer BoardPart(Transform parent, PrimitiveType shape, Material mat, Vector3 at, Vector3 size)
+    {
+        var part = Primitives.Visual(shape, "Scoreboard part");
+        part.transform.SetParent(parent, false);
+        part.transform.localPosition = at;
+        part.transform.localScale = size;
+        var look = part.GetComponent<Renderer>();
+        look.sharedMaterial = mat;
+        return look;
     }
 
     // A solid rail between two points on the ground: logs stacked to the rail's height, around an
@@ -312,7 +445,7 @@ public static class ValleyBuilder
         foreach (float side in new[] { -1f, 1f })
             Bar(parent, mat, mouth + new Vector3(0f, GoalHeight / 2f, side * GoalWidth / 2f), new Vector3(0.12f, GoalHeight, 0.12f));
         Bar(parent, mat, mouth + new Vector3(0f, GoalHeight, 0f), new Vector3(0.12f, 0.12f, GoalWidth + 0.12f));
-        Bar(parent, mat, mouth + new Vector3(outward * 1.2f, GoalHeight / 2f, 0f), new Vector3(0.1f, GoalHeight, GoalWidth));
+        Bar(parent, mat, mouth + new Vector3(outward * GoalDepth, GoalHeight / 2f, 0f), new Vector3(0.1f, GoalHeight, GoalWidth));
     }
 
     static void Bar(Transform parent, Material mat, Vector3 at, Vector3 size)
@@ -993,6 +1126,8 @@ public static class ValleyBuilder
         }
         if (ValleyShape.DistanceToRiver(p) < ValleyShape.RiverHalfWidth) return 'r';
         if (ValleyShape.InCabin(p)) return 'L';
+        // The ball court's floor is dirt: bare earth to look at, and nothing on it to burn.
+        if (ValleyShape.InCourt(p, 0.2f)) return '.';
         if (tree) return 'T';
         if (ValleyShape.DistanceToLake(p) < 6f && ground < 0.6f) return '.';
         return ',';

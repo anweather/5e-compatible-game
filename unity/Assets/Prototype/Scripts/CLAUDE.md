@@ -10,7 +10,7 @@ things go" table is the recipe for adding a spell, material, prop or item.
   to cells goes through `ChemEffects.Request` as an `EffectCommand` (applied
   at once solo, stamped into the host's next `NetChem` tick batch online).
 - Networking may use the view; the view reaches networking only through its
-  doors (`NetChem`, `NetProp`, `NetItem`, `NetWizard`), and solo none of
+  doors (`NetChem`, `NetProp`, `NetItem`, `NetWizard`, `NetCourt`), and solo none of
   them are used.
 - Editor code may use everything; nothing may use editor code.
 - Asset Store packs are optional at runtime: Starter Assets parts are

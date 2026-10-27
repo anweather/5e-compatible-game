@@ -5,10 +5,24 @@ using UnityEngine;
 // The probe's ball scenario (docs/FAST_LOOP.md): the court east of the yard
 // and its ball (ThingSpawner spawns it from world/things.json). The wizard
 // runs at the ball from 6 m away (Kicker). Checks the court is built, the ball
-// is there, the run kicks it more than 2 m and it stays inside the court.
+// is there, the run kicks it more than 2 m and it stays inside the court. A
+// kick into a goal puts the ball back on the centre spot (BallCourt), so how
+// far it went is the farthest it got.
 public class BallProbe : ProbeScenario
 {
     float ballYAtSpawn = float.NaN;
+    float farthest;
+
+    // Waits, noting the farthest the ball gets from where it started (on the ground plane).
+    IEnumerator Follow(Transform ball, Vector3 start, float seconds)
+    {
+        for (float t = 0f; t < seconds; t += Time.deltaTime)
+        {
+            var off = ball.position - start;
+            farthest = Mathf.Max(farthest, new Vector2(off.x, off.z).magnitude);
+            yield return null;
+        }
+    }
 
     protected override IEnumerator Run()
     {
@@ -37,16 +51,17 @@ public class BallProbe : ProbeScenario
         Metric("ball_kinematic", rb != null && rb.isKinematic ? 1 : 0);
         Metric("ball_kg", rb != null ? rb.mass : -1);
         puppet.Move(Vector2.up);
-        yield return Wait(4f);
+        yield return Follow(ball.transform, start, 4f);
         puppet.Move(Vector2.zero);
         Metric("wizard_end_x", wizard.transform.position.x);
         Metric("wizard_ball_gap_m", Vector3.Distance(wizard.transform.position, ball.transform.position));
-        yield return Wait(2f);
+        yield return Follow(ball.transform, start, 2f);
         Shot("kicked");
 
         var end = ball.transform.position;
-        float moved = Vector3.Distance(new Vector3(start.x, 0f, start.z), new Vector3(end.x, 0f, end.z));
+        float moved = farthest;
         Metric("ball_moved_m", moved);
+        Metric("ball_end_from_start_m", Vector3.Distance(new Vector3(start.x, 0f, start.z), new Vector3(end.x, 0f, end.z)));
         Check("run_kicks_ball", moved > 2f, $"the ball went {moved:0.0} m");
         var walls = court.GetComponentsInChildren<Renderer>();
         var inside = walls[0].bounds;
