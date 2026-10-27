@@ -208,12 +208,19 @@ public partial class ChemGrid
 
     // --- water and ice ----------------------------------------------------------
 
+    // Water the surface draws: at least 2 units, or any water on low or dug ground (a pit, the
+    // river, a trench). A lone unit on open ground is the film rain leaves on a quarter of the
+    // meadow, a cell here and there; drawn, it turned every tile into thousands of specks and
+    // stalled the frame for seconds while rain fell. (A wet look for the ground in rain would
+    // be the terrain's to show.) Ice follows the same rule.
+    bool Standing(Cell c) => c.Water >= 2 || c.Height < 0 || World.TerrainOf(c).Elevation < 0;
+
     // Water joins the wet cells' surface (CellWaterMesh); the lake's own surface stands for its
     // cells, except where they freeze: lake ice joins the ice, at the lake's surface. Returns the
     // height that covers and effects sit on.
     float RenderWater(View v, Cell c, int x, int y, float ground, float groundTop, bool lake)
     {
-        bool wet = c.Water > 0 && (!lake || c.Frozen);
+        bool wet = c.Water > 0 && (!lake || c.Frozen) && Standing(c);
         if (wet || v.wet) waterSurface.Changed(x, y, wet);
         v.wet = wet;
         if (lake) return c.Water > 0 ? Mathf.Max(ground, valley.lakeLevel) : ground;
