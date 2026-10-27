@@ -9,6 +9,25 @@ from the `CLAUDE.md` in each area as you work there: `unity/`,
 `unity/Assets/Prototype/Chemistry/`, `unity/Assets/Prototype/Scripts/`,
 `sandbox/`, `rules/`.
 
+## Words
+
+The game has one vocabulary, in `docs/GLOSSARY.md`: use its words in code,
+docs, commits and talk, and add a word there before naming a new idea. The
+ones that trip people up:
+
+- **cell**, never "square" (square is a spell shape). A **chunk** is
+  64 × 64 cells and is **active** (simulated) or **inactive** (held as it
+  is), never awake, asleep, paused or frozen.
+- **tick** for a step of the simulation; a **height step** is 0.5 m.
+- A **thing** is a **prop** (pushed, not carried) or an **item** (carried),
+  from `world/things.json`. **Entity** is the rules' word for anything on
+  cells. "Critter" is retired: say raider or ambient life.
+- **peer** for a player's copy of the game (a **machine** is a boiler or a
+  wheel). A **command** goes into the core; an **intent** asks the host for
+  one.
+- **element** is chemistry; the spell radial's top ring is **groups**.
+- A character's **reach** is the chunks kept active around it.
+
 ## Before starting any work
 
 Get up to date with `dev` first (or `main` for release work). More than one
@@ -63,7 +82,7 @@ stable), not something to commit or keep reverting.
 | `core/` | .NET projects that *link* the Chemistry sources and tests from `unity/` so they build and test without Unity (CI runs these) |
 | `sandbox/` | A TypeScript web paper prototype running the same `rules/`; its sim mirrors the C# core |
 | `tools/probe.sh` | Runs a scripted scenario in the open Editor and prints pass/fail JSON (`docs/FAST_LOOP.md`) |
-| `docs/` | Design and engineering docs; start with `ARCHITECTURE.md` (layers, patterns, "where new things go") |
+| `docs/` | Design and engineering docs; start with `ARCHITECTURE.md` (layers, patterns, "where new things go") and `GLOSSARY.md` (the words we use) |
 
 ## Commands
 
