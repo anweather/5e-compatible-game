@@ -243,9 +243,22 @@ test("charged casts dig deeper, build higher and reach further, and match the C#
   castSpell(w, "ray-of-frost", 5, 6, 3, undefined, 3);
   assert.ok(cellAt(w, 2, 6)!.frozen, "a held Ray of Frost reaches 10 squares, across the pond");
   for (let x = 16; x <= 22; x++) for (let y = 6; y <= 10; y++) cellAt(w, x, y)!.t = "grass";
+  assert.equal(spellCells(w, spellById("fire-bolt")!, 18, 8, 1, 3).length, 13, "a held Fire Bolt spreads two squares round its spot");
   castSpell(w, "fire-bolt", 18, 8, 1, undefined, 3);
   for (let i = 0; i < 60; i++) step(w);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "6467c88a 2424605280");
+  // The hash changed when a charged spot, square or burst began to grow (chargedGrowth): the bolt lights 13 squares, not 1.
+  assert.equal(`${cellHash(w)} ${w.rng}`, "1e7f4b73 3022804953");
+});
+
+test("charged spots, squares and bursts grow; earth shaping keeps its patch (as in C#)", () => {
+  const w = room(24, 24, 3);
+  const cells = (id: string, charge: number) => spellCells(w, spellById(id)!, 12, 12, 1, charge).length;
+  assert.equal(cells("fireball", 3), 9 * 9, "radius 2 + 2");
+  assert.equal(cells("grease", 2), 3 * 3, "side 2 + 1");
+  assert.equal(cells("shocking-grasp", 2), 5, "a spot and its four sides");
+  assert.equal(cells("mold-earth", 3), 2 * 2, "Lower Earth digs deeper instead");
+  assert.equal(cells("move-earth", 3), 7 * 7, "Move Earth heaves higher instead");
+  assert.equal(cells("misty-step", 3), 1, "a target stays one square");
 });
 
 test("Burning Hands is a cone from the caster, longer when charged, and matches the C# golden", () => {

@@ -17,6 +17,11 @@ export const MAX_CHARGE = 3;
 export const clampCharge = (charge: number) => Math.max(1, Math.min(MAX_CHARGE, Math.floor(charge)));
 /** A line spell's length at a charge: half again for each level past a tap. */
 export const chargedLength = (length: number, charge: number) => length + Math.floor((length * (clampCharge(charge) - 1)) / 2);
+/**
+ * How many squares a charged spot, square or burst grows by: one for each level past a tap.
+ * Earth shaping digs or raises more steps instead, so its patch stays the same (World.ChargedGrowth).
+ */
+export const chargedGrowth = (s: SpellDef, charge: number) => (s.effect === "terraform" ? 0 : clampCharge(charge) - 1);
 
 /**
  * An aim (a whole-number vector, x east and y south) snapped to the four ways
@@ -41,7 +46,15 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
   if (slant && s.shape === "line") return slantCells(w, s, x, y, dir, chargedLength(s.length ?? 5, charge), ax, ay);
   if (slant && s.shape === "cone") return slantCone(w, x, y, chargedLength(s.length ?? 5, charge), ax, ay);
   switch (s.shape) {
-    case "point":
+    case "point": {
+      // Charged, it spreads to every square within a step (or two) of it, a diamond, row by row.
+      const r = chargedGrowth(s, charge);
+      for (let dy = -r; dy <= r; dy++) {
+        const span = r - Math.abs(dy);
+        for (let dx = -span; dx <= span; dx++) add(x + dx, y + dy);
+      }
+      break;
+    }
     case "target":
       add(x, y);
       break;
@@ -67,12 +80,12 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
       break;
     }
     case "square": {
-      const n = s.size ?? 2, off = Math.floor((n - 1) / 2);
+      const n = (s.size ?? 2) + chargedGrowth(s, charge), off = Math.floor((n - 1) / 2);
       for (let dy = 0; dy < n; dy++) for (let dx = 0; dx < n; dx++) add(x - off + dx, y - off + dy);
       break;
     }
     case "burst": {
-      const r = s.radius ?? 1;
+      const r = (s.radius ?? 1) + chargedGrowth(s, charge);
       for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) add(x + dx, y + dy);
       break;
     }
@@ -183,7 +196,8 @@ function mistyStep(w: World, s: SpellDef, tx: number, ty: number, owner?: string
 
 /**
  * A charged cast (held: charge 2 or 3) is that many times as strong, raises or digs
- * that many times the steps, and a line reaches half again as far per level
+ * that many times the steps, a line reaches half again as far per level, and a
+ * spot, square or burst grows a square (chargedGrowth)
  * (World.Cast in the C# core).
  */
 /** The spell a meteor lands as (World.MeteorSpell). */

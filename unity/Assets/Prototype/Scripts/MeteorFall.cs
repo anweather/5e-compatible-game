@@ -77,6 +77,7 @@ public class MeteorFall : MonoBehaviour
         if (look?.projectile != null)
         {
             var flames = Instantiate(look.projectile, transform);
+            SpellVisuals.NoColliders(flames);
             flames.transform.localScale = Vector3.one * 3f;
         }
         Trail("Fire trail", trail, 0.9f, 2.4f, 0f, new Gradient
@@ -170,7 +171,7 @@ public class MeteorFall : MonoBehaviour
     void Blast(GameObject prefab, float scale)
     {
         if (prefab == null) return;
-        var fx = Instantiate(prefab, to, Quaternion.identity);
+        var fx = SpellVisuals.Spawn(prefab, to, Quaternion.identity);
         fx.transform.localScale = Vector3.one * scale;
         Destroy(fx, Mathf.Max(3f, look?.impactSeconds ?? 3f));
     }

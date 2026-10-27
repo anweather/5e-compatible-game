@@ -216,9 +216,24 @@ namespace Chem.Tests
             Assert.That(w.At(2, 6).Frozen, "a held Ray of Frost reaches 10 squares, across the pond");
             for (int x = 16; x <= 22; x++)
                 for (int y = 6; y <= 10; y++) w.At(x, y).T = "grass";
+            Assert.That(w.SpellCells(R.Spell("fire-bolt"), 18, 8, 1, 3).Count, Is.EqualTo(13), "a held Fire Bolt spreads two squares round its spot");
             w.Cast("fire-bolt", 18, 8, 1, 3);
             Run(w, 60);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("6467c88a 2424605280"));
+            // The hash changed when a charged spot, square or burst began to grow (World.ChargedGrowth): the bolt lights 13 squares, not 1.
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1e7f4b73 3022804953"));
+        }
+
+        [Test]
+        public void ChargedAreasGrowButEarthShapingKeepsItsPatch()
+        {
+            // The same as "charged spots, squares and bursts grow..." in terraform.test.ts.
+            var w = Room(24, 24, 3);
+            Assert.That(w.SpellCells(R.Spell("fireball"), 12, 12, 1, 3).Count, Is.EqualTo(9 * 9), "radius 2 + 2");
+            Assert.That(w.SpellCells(R.Spell("grease"), 12, 12, 1, 2).Count, Is.EqualTo(3 * 3), "side 2 + 1");
+            Assert.That(w.SpellCells(R.Spell("shocking-grasp"), 12, 12, 1, 2).Count, Is.EqualTo(5), "a spot and its four sides");
+            Assert.That(w.SpellCells(R.Spell("mold-earth"), 12, 12, 1, 3).Count, Is.EqualTo(2 * 2), "Lower Earth digs deeper instead");
+            Assert.That(w.SpellCells(R.Spell("move-earth"), 12, 12, 1, 3).Count, Is.EqualTo(7 * 7), "Move Earth heaves higher instead");
+            Assert.That(w.SpellCells(R.Spell("misty-step"), 12, 12, 1, 3).Count, Is.EqualTo(1), "a target stays one square");
         }
 
         [Test]
