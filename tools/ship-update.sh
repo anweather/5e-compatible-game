@@ -8,6 +8,7 @@
 #   tools/ship-update.sh 0.1.3              # the alpha-0.1.3 release, left as a draft
 #   tools/ship-update.sh 0.1.3 --test       # update-test-0.1.3 on the test channels, published
 #   tools/ship-update.sh 0.1.3 --skip-build # pack and upload what Builds/Update already holds
+#   tools/ship-update.sh 0.1.3 --windows-only # no macOS (an Editor without Mac Build Support)
 #
 # --test uses the channels osx-test and win-test and the app id
 # SpellChemistryValleyTest, which only test installs have, so trying the update
@@ -28,15 +29,16 @@ TITLE="Spell Chemistry Valley"
 
 version="${1:-}"
 if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "usage: tools/ship-update.sh X.Y.Z [--test] [--skip-build]" >&2
+  echo "usage: tools/ship-update.sh X.Y.Z [--test] [--skip-build] [--windows-only]" >&2
   exit 2
 fi
 shift
-test=0; build=1
+test=0; build=1; mac=1
 for arg in "$@"; do
   case "$arg" in
     --test) test=1 ;;
     --skip-build) build=0 ;;
+    --windows-only) mac=0 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
@@ -60,12 +62,12 @@ out="$here/unity/Builds/Update"
 step() { echo; echo "== $*"; }
 
 if [ $build = 1 ]; then
-  step "Building $version for macOS and Windows at ${commit:0:7}"
+  step "Building $version for $([ $mac = 1 ] && echo "macOS and ")Windows at ${commit:0:7}"
   # Pick up the checked-out code before building (a build on stale code rewrites assets).
   "$UNITY" command eval 'UnityEditor.AssetDatabase.Refresh(); return "refreshed";' --result-only >/dev/null
   sleep 5
   "$UNITY" status --until-ready >/dev/null
-  result=$("$UNITY" command eval "return UpdateBuild.Players(\"$version\");" --result-only --timeout 3600)
+  result=$("$UNITY" command eval "return UpdateBuild.Players(\"$version\", $([ $mac = 1 ] && echo true || echo false));" --result-only --timeout 3600)
   echo "$result" | grep -o '"result": *"[^"]*"' || echo "$result"
   echo "$result" | grep -q 'Update build: OK' || { echo "build failed" >&2; exit 1; }
 fi
@@ -81,7 +83,7 @@ pack() { # channel, extra vpk args...
   "$VPK" "$@" -u "$APP_ID" -v "$version" --packTitle "$TITLE" --packAuthors anweather -c "$channel" -o "$dir" --yes
 }
 
-pack "osx$suffix" pack -p "$out/osx/$TITLE.app" -e "$TITLE"
+[ $mac = 0 ] || pack "osx$suffix" pack -p "$out/osx/$TITLE.app" -e "$TITLE"
 pack "win$suffix" "[win]" pack -r win-x64 -p "$out/win" -e SpellChemistryValley.exe
 
 # Upload with gh rather than `vpk upload github`: vpk finds a release by its tag,
@@ -92,7 +94,8 @@ if ! gh release view "$tag" -R "$REPO" >/dev/null 2>&1; then
   gh release create "$tag" -R "$REPO" --target "$commit" --prerelease $draft \
     --title "$name" --notes "In-place update $version for macOS and Windows (Velopack)."
 fi
-for channel in "osx$suffix" "win$suffix"; do
+channels=("win$suffix"); [ $mac = 0 ] || channels=("osx$suffix" "win$suffix")
+for channel in "${channels[@]}"; do
   dir="$out/releases-$channel"
   # The feed plus what this pack made (assets.<channel>.json lists it: the full and
   # delta packages, the installer, the portable zip). Package names differ by

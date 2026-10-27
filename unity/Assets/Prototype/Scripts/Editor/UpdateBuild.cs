@@ -10,11 +10,12 @@ using UnityEngine;
 public static class UpdateBuild
 {
     /// <summary>
-    /// Builds Builds/Update/osx/Spell Chemistry Valley.app and
-    /// Builds/Update/win/SpellChemistryValley.exe at the given version. Refuses a dirty
-    /// git tree. Returns a one-line summary that starts "Update build: OK" on success.
+    /// Builds Builds/Update/osx/Spell Chemistry Valley.app (unless <paramref name="mac"/> is false:
+    /// an Editor without Mac Build Support) and Builds/Update/win/SpellChemistryValley.exe at the
+    /// given version. Refuses a dirty git tree. Returns a one-line summary that starts
+    /// "Update build: OK" on success.
     /// </summary>
-    public static string Players(string version)
+    public static string Players(string version, bool mac = true)
     {
         if (BuildVersion.Parse(version) == null) return Fail($"'{version}' isn't an X.Y.Z version.");
         var dirty = PrototypeBuild.DirtyFiles();
@@ -28,8 +29,8 @@ public static class UpdateBuild
         PackRulesIntoBuild.VersionOnlyInMemory = was != version;
         try
         {
-            string mac = BuildOnce(BuildTarget.StandaloneOSX, $"{root}/osx/{PrototypeBuild.ProductName}.app");
-            if (!mac.Contains(": OK")) return Fail(mac);
+            string osx = mac ? BuildOnce(BuildTarget.StandaloneOSX, $"{root}/osx/{PrototypeBuild.ProductName}.app") : ": OK";
+            if (!osx.Contains(": OK")) return Fail(osx);
             string win = BuildOnce(BuildTarget.StandaloneWindows64, $"{root}/win/SpellChemistryValley.exe");
             if (!win.Contains(": OK")) return Fail(win);
             // Burst's debug information is for us, not for players ("DoNotShip").
@@ -44,7 +45,7 @@ public static class UpdateBuild
         }
         var after = PrototypeBuild.DirtyFiles();
         string warning = after != null && after.Length > 0 ? $" WARNING: the build changed tracked files: {string.Join(", ", after)}" : "";
-        string done = $"Update build: OK, {version} for macOS and Windows -> {Path.GetFullPath(root)}{warning}";
+        string done = $"Update build: OK, {version} for {(mac ? "macOS and Windows" : "Windows")} -> {Path.GetFullPath(root)}{warning}";
         Debug.Log(done);
         return done;
     }
