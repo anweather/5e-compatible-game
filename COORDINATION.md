@@ -38,6 +38,39 @@ reached `dev` by rebase or cherry-pick and `git cherry` / `git diff` confirm
 nothing is left. Never delete `dev`, `main`, an unmerged branch, or a branch
 a worktree has checked out.
 
+## Demo reel (every feature ships with a clip)
+
+The reel is the "Valley Demo Reel" artifact:
+https://claude.ai/artifact/MeFmq29Uv2CE6ZggRKVMkd. The coordinator owns it.
+Its source is `showcase/reel.html` (the page, which never changes) and
+`showcase/reel.json` (the clip list, which only grows). See J-011.
+
+When you merge a feature with something to see, also make:
+- a clip: MP4 (H.264), 720p, 30 s at most, 5 MB at most. Film it with
+  `DemoRecorder` while the feature's probe runs, or in the player;
+- a poster JPEG for it;
+- or just a screenshot, if a clip doesn't suit the feature.
+
+Fixes get a before and an after: the playtest bot's `before.jpg` and
+`after.jpg` are ideal. Save the files in `unity/Builds/demo-videos/`, which
+git ignores, using short, unique, plain names (`props-sleep.mp4`).
+
+Then send the coordinator:
+- the file names;
+- a title;
+- the lane;
+- an area (Spells, Moving and playing, The world, Menus, Fixes, ...);
+- the length;
+- the merge commit;
+- one or two plain sentences on what the clip shows.
+
+The coordinator appends the entry to `reel.json` and republishes. Filming
+uses the Editor, so ask for the PC's Editor slot as usual.
+
+Space: one artifact version holds at most 256 MB and 511 files, and the
+reel uses about 50 MB now. Near 200 MB, the coordinator starts a
+"Volume 2" artifact and links the two.
+
 ## Agents and lanes
 
 | Agent (session name) | Machine and checkout | Lane |
