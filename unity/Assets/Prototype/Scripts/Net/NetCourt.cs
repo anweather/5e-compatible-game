@@ -37,5 +37,9 @@ public class NetCourt : NetworkBehaviour
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    void GoalRpc(bool eastEnd, int westGoals, int eastGoals) => BallCourt.Announce(eastEnd, westGoals, eastGoals);
+    void GoalRpc(bool eastEnd, int westGoals, int eastGoals)
+    {
+        // The counts travel with the call: the network variables may not have arrived yet.
+        if (IsSpawned) BallCourt.Announce(eastEnd, westGoals, eastGoals);
+    }
 }
