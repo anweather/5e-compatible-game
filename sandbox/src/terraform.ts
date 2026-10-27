@@ -16,7 +16,7 @@ export function terraform(w: World, s: SpellDef, cells: [number, number][], x: n
     if (s.taper && d > radius) continue;
     let n = s.taper ? tapered(steps, d, radius) : steps;
     if (toHeight) n = Math.max(0, n - cellAt(w, cx, cy)!.h);
-    if (n !== 0) reshape(w, cx, cy, n, s.terrain);
+    if (n !== 0) reshape(w, cx, cy, n, s.terrain, s.strength ?? 1);
   }
 }
 
@@ -30,7 +30,7 @@ export function crater(w: World, x: number, y: number, c: CraterDef | undefined)
   for (let dy = -r; dy <= r; dy++) {
     for (let dx = -r; dx <= r; dx++) {
       const n = tapered(-c.depth, Math.max(Math.abs(dx), Math.abs(dy)), r);
-      if (n !== 0) reshape(w, x + dx, y + dy, n);
+      if (n !== 0) reshape(w, x + dx, y + dy, n, undefined, c.strength ?? 1);
     }
   }
 }
@@ -52,7 +52,7 @@ function tapered(steps: number, d: number, radius: number): number {
  * turns the terrain to its dugTo; raised ground spills its water onto its
  * neighbours. A cell that ends up blocking loses its cover and fire.
  */
-export function reshape(w: World, x: number, y: number, n: number, terrain?: string): boolean {
+export function reshape(w: World, x: number, y: number, n: number, terrain?: string, strength = 1): boolean {
   const c = cellAt(w, x, y);
   if (!c) return false;
   let t = terrainDef(c);
@@ -63,6 +63,10 @@ export function reshape(w: World, x: number, y: number, n: number, terrain?: str
     t = terrainDef(c);
   }
   if (t.tags.includes("blocking") || t.tags.includes("machine")) return uprooted;
+  if (n < 0 && strength < (t.hardness ?? 1)) {
+    logOnce(w, `hard#${c.t}#${w.tick}`, `The ${t.name.toLowerCase()} is too hard to dig`);
+    return uprooted;
+  }
   const { min, max, blockAt } = RULES.sim.height;
   const h = Math.max(min, Math.min(max, c.h + n));
   if (h === c.h || (h >= blockAt && entityAt(w, x, y))) return uprooted;

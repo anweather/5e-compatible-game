@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -234,6 +235,69 @@ namespace Chem.Tests
             Assert.That(w.SpellCells(R.Spell("mold-earth"), 12, 12, 1, 3).Count, Is.EqualTo(2 * 2), "Lower Earth digs deeper instead");
             Assert.That(w.SpellCells(R.Spell("move-earth"), 12, 12, 1, 3).Count, Is.EqualTo(7 * 7), "Move Earth heaves higher instead");
             Assert.That(w.SpellCells(R.Spell("misty-step"), 12, 12, 1, 3).Count, Is.EqualTo(1), "a target stays one square");
+        }
+
+        // A row of raised rock (hardness 3) and a row of metal plate (hardness 4) across a room of dirt.
+        static World HardRoom()
+        {
+            var w = Room(20, 12, 9);
+            for (int x = 2; x <= 17; x++)
+            {
+                w.At(x, 3).T = "rock";
+                w.At(x, 6).T = "metal";
+            }
+            return w;
+        }
+
+        [Test]
+        public void ShapeEarthDigsDirtButNotRockOrMetal()
+        {
+            var w = HardRoom();
+            w.Cast("mold-earth", 4, 3, 1);
+            w.Cast("mold-earth", 4, 6, 1);
+            w.Cast("mold-earth", 4, 9, 1);
+            Assert.That(w.At(4, 3).Height, Is.Zero, "Lower Earth can't dig rock");
+            Assert.That(w.At(4, 6).Height, Is.Zero, "nor metal");
+            Assert.That(w.At(4, 9).Height, Is.EqualTo(-1), "dirt digs");
+            Assert.That(w.Log, Has.Some.Matches<LogEntry>(l => l.Text == "The raised rock is too hard to dig"));
+        }
+
+        [Test]
+        public void ABlastDigsAsHardAGroundAsItsStrength()
+        {
+            var w = HardRoom();
+            w.Cast("fireball", 10, 3, 0);
+            Assert.That(w.At(10, 3).Height, Is.Zero, "Fireball's crater (strength 2) can't dig rock");
+            w.Cast("meteor", 14, 4, 0);
+            Assert.That(w.At(14, 3).Height, Is.LessThan(0), "Meteor's crater (strength 3) digs rock");
+            Assert.That(w.At(14, 3).T, Is.EqualTo("rubble"), "rock is dug to rubble");
+            Assert.That(w.At(14, 6).Height, Is.Zero, "metal never digs");
+            Assert.That(w.At(14, 5).Height, Is.LessThan(0), "the dirt between digs");
+        }
+
+        [Test]
+        public void HardnessAndStrengthAreChecked()
+        {
+            IReadOnlyList<string> Errors(string patch) =>
+                Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(patch.Replace('\'', '"')) })).Errors;
+            Assert.That(Errors("{ 'terrain': { 'granite': { 'name': 'Granite', 'tags': ['ground'], 'hardness': 0 } } }"), Does.Contain("terrain granite: hardness must be a whole number from 1"));
+            Assert.That(Errors("{ 'spells': [{ 'id': 'chisel', 'group': 'earth', 'name': 'Chisel', 'level': 1, 'shape': 'point', 'effect': 'terraform', 'dig': 1, 'strength': 1.5, 'radial': false, 'blurb': 'b' }] }"),
+                Does.Contain("spell chisel: strength must be a whole number from 1"));
+            Assert.That(Errors("{ 'spells': [{ 'id': 'pop', 'group': 'fire', 'name': 'Pop', 'level': 1, 'shape': 'burst', 'radius': 1, 'element': 'fire', 'crater': { 'depth': 1, 'strength': 0 }, 'radial': false, 'blurb': 'b' }] }"),
+                Does.Contain("spell pop: crater needs a whole depth from 1, radius from 0 and strength from 1"));
+        }
+
+        [Test]
+        public void GoldenHardnessMatchesTs()
+        {
+            // The same as "a dig weaker than the ground..." in terraform.test.ts.
+            var w = HardRoom();
+            w.Cast("mold-earth", 4, 3, 1);
+            w.Cast("earthen-trench", 3, 9, 1);
+            w.Cast("fireball", 10, 3, 0);
+            w.Cast("meteor", 14, 4, 0);
+            Run(w, 30);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("58631e96 9"));
         }
 
         [Test]
