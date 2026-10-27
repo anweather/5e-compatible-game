@@ -187,7 +187,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
         var c = world.At(cell.x, cell.y);
         if (c == null || c.Water > 0 || c.Fire > 0) return false;
-        return c.T != TerrainIds.Tree && c.T != TerrainIds.LogWall && c.T != TerrainIds.Rock && c.T != TerrainIds.Metal;
+        return c.T != TerrainIds.Tree && c.T != TerrainIds.LogWall && c.T != TerrainIds.Stone && c.T != TerrainIds.Rock && c.T != TerrainIds.Metal;
     }
 
     bool NearWater(float2 xz)

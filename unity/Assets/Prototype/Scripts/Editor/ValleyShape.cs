@@ -1,3 +1,4 @@
+using Chem;
 using UnityEngine;
 
 // The valley's shape as functions of a point on the ground plane (x, z in
@@ -6,7 +7,8 @@ using UnityEngine;
 // bridge over the river, level pads for the cabins, and which terrain layers
 // each point gets. Past the valley floor the land is generated
 // (ValleySurroundings: Punchy's biomes, mountains to the north). ValleyBuilder
-// and ValleyTerrain sample it; it never touches assets. Set by Plan.
+// and ValleyTerrain sample it; it never touches assets. Set by Plan, which also
+// lays out the villages (world/villages.json) and levels a pad for each.
 public static class ValleyShape
 {
     public const float LakeLevel = -0.6f;
@@ -59,10 +61,76 @@ public static class ValleyShape
         PlanBridge();
         var cabinSpots = new Vector2[Cabins.Length];
         for (int i = 0; i < Cabins.Length; i++) cabinSpots[i] = Cabins[i].At;
-        ValleySurroundings.Plan(Centre, LakeCentre, Falls, cabinSpots, cellSize);
+        LayVillages();
+        var flat = new (Vector2, float)[Villages.Length];
+        for (int i = 0; i < Villages.Length; i++) flat[i] = (villageAreas[i].center, villageAreas[i].size.magnitude / 2f + 15f);
+        ValleySurroundings.Plan(Centre, LakeCentre, Falls, cabinSpots, flat, cellSize);
         padLevels = new float[Cabins.Length];
         for (int i = 1; i < Cabins.Length; i++) padLevels[i] = Mathf.Max(Unlevelled(Cabins[i].At), 0f);
+        for (int i = 0; i < Villages.Length; i++) VillageLevels[i] = Mathf.Max(Unlevelled(villageAreas[i].center), 0f);
         PondLevel = Unlevelled(Falls) - 2f;
+    }
+
+    // --- villages (world/villages.json, D12) -------------------------------------------
+
+    /// <summary>The villages, laid out on cells by the core (VillageLayout); empty without a villages file.</summary>
+    public static VillagePlan[] Villages { get; private set; } = System.Array.Empty<VillagePlan>();
+
+    /// <summary>The ground each village's pad is levelled to, by Villages' index.</summary>
+    public static float[] VillageLevels { get; private set; } = System.Array.Empty<float>();
+
+    // Each village's cells' extent on the ground plane.
+    static Rect[] villageAreas = System.Array.Empty<Rect>();
+
+    static void LayVillages()
+    {
+        var layout = ValleyTerrain.Layout;
+        var specs = VillageLayout.Load(ChemGrid.FindWorldDir());
+        Villages = new VillagePlan[specs.Count];
+        villageAreas = new Rect[specs.Count];
+        VillageLevels = new float[specs.Count];
+        for (int i = 0; i < specs.Count; i++)
+        {
+            Villages[i] = VillageLayout.Lay(specs[i], (x, y) => layout.InGrid(x, y) && VillageMayStand(CellWorld(x, y)));
+            villageAreas[i] = AreaOf(Villages[i].Bounds);
+        }
+    }
+
+    // Whether a building or a street may go on a point: not in the lake, the river or the falls,
+    // and clear of the yard, the cabins and the court.
+    static bool VillageMayStand(Vector2 p) =>
+        LakeDepth(p) <= 0f && DistanceToLake(p) > 8f && DistanceToRiver(p) > RiverHalfWidth + 4f && !NearFalls(p)
+        && DistanceToYard(p) > 8f && DistanceToCabin(p) > 10f && !InCourt(p, -8f);
+
+    /// <summary>The centre of a world cell on the ground plane (x, z).</summary>
+    public static Vector2 CellWorld(int x, int y)
+    {
+        var (wx, wz) = ValleyTerrain.Layout.CellCenter(x, y);
+        return new Vector2(wx, wz);
+    }
+
+    /// <summary>A rectangle of cells' extent on the ground plane, to the cells' outer edges.</summary>
+    public static Rect AreaOf(CellRect cells)
+    {
+        float half = ValleyTerrain.Layout.CellSize / 2f;
+        var a = CellWorld(cells.X, cells.Y);
+        var b = CellWorld(cells.Right - 1, cells.Bottom - 1);
+        return Rect.MinMaxRect(Mathf.Min(a.x, b.x) - half, Mathf.Min(a.y, b.y) - half, Mathf.Max(a.x, b.x) + half, Mathf.Max(a.y, b.y) + half);
+    }
+
+    /// <summary>The distance from a point to the nearest village's cells (0 inside one).</summary>
+    public static float DistanceToVillage(Vector2 p)
+    {
+        float best = float.MaxValue;
+        foreach (var r in villageAreas) best = Mathf.Min(best, DistanceToRect(p, r));
+        return best;
+    }
+
+    static float DistanceToRect(Vector2 p, Rect r)
+    {
+        float dx = Mathf.Max(r.xMin - p.x, 0f, p.x - r.xMax);
+        float dy = Mathf.Max(r.yMin - p.y, 0f, p.y - r.yMax);
+        return Mathf.Sqrt(dx * dx + dy * dy);
     }
 
     // --- the falls ----------------------------------------------------------------
@@ -150,6 +218,12 @@ public static class ValleyShape
         {
             float pad = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(6f, 14f, (p - Cabins[i].At).magnitude));
             h = Mathf.Lerp(padLevels[i], h, pad);
+        }
+        // And one for each village, out to a few metres past its cells.
+        for (int i = 0; i < villageAreas.Length; i++)
+        {
+            float pad = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(3f, 14f, DistanceToRect(p, villageAreas[i])));
+            h = Mathf.Lerp(VillageLevels[i], h, pad);
         }
         // Near the yard and the first cabin the ground never dips below their level.
         if (DistanceToYard(p) < 45f || (p - Cabin).magnitude < 20f) h = Mathf.Max(h, 0f);
@@ -337,8 +411,9 @@ public static class ValleyShape
     public static bool KeepClear(Vector2 p, float margin) =>
         DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p) || DistanceToRiver(p) < RiverHalfWidth + 3f || NearBridge(p, 3f);
 
-    /// <summary>Kept clear of grass and plants: the cabins' pads, the lake, the river and the falls (its basin, cliff and shelf).</summary>
-    public static bool KeepClearOfCabinAndLake(Vector2 p) => DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p) || InRiver(p);
+    /// <summary>Kept clear of grass and plants: the cabins' pads, the lake, the river, the falls (its basin, cliff and shelf) and the villages.</summary>
+    public static bool KeepClearOfCabinAndLake(Vector2 p) =>
+        DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p) || InRiver(p) || DistanceToVillage(p) < 1f;
 
     /// <summary>The pond's basin, the cliff and the shelf above it: nothing grows or stands there.</summary>
     public static bool NearFalls(Vector2 p)
