@@ -115,10 +115,20 @@ public class PlaytestLogicTests
     }
 
     // playtest/known-issues.json, as the runner reads it.
-    static IReadOnlyList<KnownIssue> KnownFile()
+    static IReadOnlyList<KnownIssue> KnownFile() =>
+        KnownIssues.FromJson(System.IO.File.ReadAllText(System.IO.Path.Combine(RepoRoot(), "playtest", "known-issues.json")));
+
+    // The repository's root: above the Unity project in the Editor, else up from the test's folder.
+    // (Chem.Tests.ChemistryTests.RulesDir is in another assembly in Unity, so it can't be used here.)
+    static string RepoRoot()
     {
-        string dir = System.IO.Path.GetDirectoryName(Chem.Tests.ChemistryTests.RulesDir());
-        return KnownIssues.FromJson(System.IO.File.ReadAllText(System.IO.Path.Combine(dir, "playtest", "known-issues.json")));
+#if UNITY_5_3_OR_NEWER
+        return System.IO.Path.GetFullPath(System.IO.Path.Combine(UnityEngine.Application.dataPath, "..", ".."));
+#else
+        for (var dir = new System.IO.DirectoryInfo(TestContext.CurrentContext.TestDirectory); dir != null; dir = dir.Parent)
+            if (System.IO.File.Exists(System.IO.Path.Combine(dir.FullName, "playtest", "known-issues.json"))) return dir.FullName;
+        throw new System.IO.FileNotFoundException("playtest/known-issues.json not found above the tests");
+#endif
     }
 
     [Test]
