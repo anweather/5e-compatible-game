@@ -1,35 +1,59 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
 using System.Linq;
-using System.Text;
+using Newtonsoft.Json;
+using Playtest;
 using StarterAssets;
 using UnityEngine;
 
 // The playtest bot (playtest/DESIGN.md). Start a player build with -playtest
-// and it plays on its own, then writes what it found to its run folder and
-// quits; without the flag it does nothing. This is phase 1's spike: it
-// checks the player can run out of the way (unfocused, minimised or moved
-// off-screen, muted) and still render, take screenshots and hear its sound.
-// It walks the wizard forward, screenshots from a RenderTexture and from the
-// screen, measures them, and writes result.json.
+// and it plays on its own for a while, then writes what it found to its run
+// folder and quits; without the flag it does nothing. It picks goals from the
+// run's seed (PlaytestPlayer carries them out), feeds the detectors
+// (Logic/PlaytestWatches) every frame, takes a screenshot for each goal and
+// each new candidate, writes a heartbeat for the runner, and writes run.json.
+// Game time is locked to 1/30 s a frame, so the same seed on the same build
+// replays the same run.
 //
-// Flags: -playtest-out <dir> (default <persistentDataPath>/playtest/<time>),
-// -playtest-seconds <n>, -playtest-offscreen, -playtest-mute. (-playtest-mute
-// sets the listener's volume, which silences the bot's own audio checks too;
-// tools/playtest mutes the player in the Windows mixer instead.)
+// Flags: -playtest-out <dir>, -playtest-seed <n>, -playtest-minutes <n> (or
+// -playtest-seconds <n>), -playtest-replay <run.json> (replays its seed),
+// -playtest-until-frame <n>, -playtest-coverage <coverage.json>,
+// -playtest-offscreen, -playtest-mute (mutes the listener, which also
+// deafens the sound detectors; tools/playtest mutes the player in the
+// Windows mixer instead).
 public class PlaytestBot : MonoBehaviour
 {
-    const int Fps = 30;
-    const int ShotWidth = 960, ShotHeight = 540;
+    const int Fps = 30, ShotWidth = 960, ShotHeight = 540, PropEvery = 15, SoundEvery = 30, HeartbeatEvery = 30;
 
+    // Settings, from the command line.
     string outDir;
-    float seconds = 12f;
+    float seconds = 480f;
+    int untilFrame = int.MaxValue;
     bool offscreen, mute;
-    PlaytestAudioTap tap;
+    Dictionary<string, int> coverage = new();
+
+    // The run.
+    readonly RunReport run = new();
+    readonly CandidateLog found = new();
+    readonly FrameWatch frameWatch = new();
+    readonly AudioWatch audioWatch = new();
+    readonly PropWatch propWatch = new();
+    readonly Dictionary<PhysicsProp, (Vector3 spawn, Rigidbody body)> props = new();
+    WizardWatch wizardWatch;
+    ChemGrid grid;
     GameObject wizard;
-    readonly StringBuilder notes = new();
+    ThirdPersonController controller;
+    PlaytestPlayer player;
+    PlaytestAudioTap tap;
+    List<(string name, Vector3 at)> places;
+    PlaytestRandom dice;
+    int frame;
+    bool running, soundsPlaying;
+    string goal = "starting";
+    float startedReal;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartIfAsked()
@@ -41,17 +65,42 @@ public class PlaytestBot : MonoBehaviour
     void Awake()
     {
         DontDestroyOnLoad(gameObject);
-        var args = Environment.GetCommandLineArgs();
+        ReadSettings(Environment.GetCommandLineArgs());
+        Directory.CreateDirectory(Path.Combine(outDir, "shots"));
+        Application.logMessageReceived += OnLog;
+    }
+
+    void OnDestroy() => Application.logMessageReceived -= OnLog;
+
+    void ReadSettings(string[] args)
+    {
         string Arg(string name)
         {
             int i = Array.IndexOf(args, name);
             return i >= 0 && i + 1 < args.Length ? args[i + 1] : null;
         }
-        outDir = Arg("-playtest-out") ?? Path.Combine(Application.persistentDataPath, "playtest", DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture));
-        if (float.TryParse(Arg("-playtest-seconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out var s)) seconds = s;
+        float Number(string name, float fallback) =>
+            float.TryParse(Arg(name), NumberStyles.Float, CultureInfo.InvariantCulture, out var v) ? v : fallback;
+
+        run.RunId = DateTime.Now.ToString("yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+        run.Started = DateTime.Now.ToString("s", CultureInfo.InvariantCulture);
+        run.Build = BuildInfo.Label;
+        run.Seed = ulong.TryParse(Arg("-playtest-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : (ulong)DateTime.Now.Ticks;
+        string replay = Arg("-playtest-replay");
+        if (replay != null && File.Exists(replay))
+        {
+            var original = RunReport.FromJson(File.ReadAllText(replay));
+            run.Seed = original.Seed;
+            run.ReplayOf = original.RunId;
+        }
+        seconds = Number("-playtest-seconds", Number("-playtest-minutes", 8f) * 60f);
+        untilFrame = (int)Number("-playtest-until-frame", int.MaxValue);
+        string cov = Arg("-playtest-coverage");
+        if (cov != null && File.Exists(cov)) coverage = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(cov)) ?? new();
         offscreen = args.Contains("-playtest-offscreen");
         mute = args.Contains("-playtest-mute");
-        Directory.CreateDirectory(outDir);
+        outDir = Arg("-playtest-out") ?? Path.Combine(Application.persistentDataPath, "playtest", run.RunId);
+        dice = new PlaytestRandom(run.Seed);
     }
 
     IEnumerator Start()
@@ -60,120 +109,173 @@ public class PlaytestBot : MonoBehaviour
         Time.captureFramerate = Fps;
         Application.targetFrameRate = Fps;
         QualitySettings.vSyncCount = 0;
+        var notes = new System.Text.StringBuilder();
         if (offscreen) PlaytestWindow.MoveOffScreen(notes);
-
-        var listener = FindAnyObjectByType<AudioListener>();
-        if (listener != null) tap = listener.gameObject.AddComponent<PlaytestAudioTap>();
         if (mute) AudioListener.volume = 0f;
 
-        // Wait for the yard and the wizard.
-        for (int i = 0; i < 300 && wizard == null; i++)
+        for (int i = 0; i < 600 && (wizard == null || grid == null || grid.World == null); i++)
         {
             wizard = WizardRig.FindLocal();
+            grid = FindAnyObjectByType<ChemGrid>();
             yield return null;
         }
-        float started = Time.realtimeSinceStartup;
-        int frame0 = Time.frameCount;
-        var from = wizard != null ? wizard.transform.position : Vector3.zero;
-
-        yield return Shoot("start");
-        // Walk forward for half the run, then stand.
-        yield return Walk(new Vector2(0f, 1f), seconds / 2f);
-        var to = wizard != null ? wizard.transform.position : Vector3.zero;
-        yield return Shoot("walked");
-        float standUntil = Time.time + seconds / 2f;
-        while (Time.time < standUntil) yield return null;
-        yield return Shoot("end");
-
-        Write(new
+        if (wizard == null || grid == null)
         {
-            wizardFound = wizard != null,
-            walkedMetres = Vector3.Distance(from, to),
-            gameSeconds = Time.time,
-            realSeconds = Time.realtimeSinceStartup - started,
-            frames = Time.frameCount - frame0,
-            focused = Application.isFocused,
-            screen = $"{Screen.width}x{Screen.height}",
-            offscreen,
-            mute,
-            listenerVolume = AudioListener.volume,
-            audioPeak = tap != null ? tap.Peak : -1f,
-            audioRms = tap != null ? tap.Rms : -1f,
-            audioNaN = tap != null && tap.SawNaN,
-            audioFrames = tap != null ? tap.Frames : -1,
-            gpu = SystemInfo.graphicsDeviceName,
-            notes = notes.ToString(),
-        });
-        Application.Quit();
+            Finish("error: no wizard or world");
+            yield break;
+        }
+        Setup();
+        while (running && frame < untilFrame && Time.realtimeSinceStartup - startedReal < seconds * 3f && Time.time < seconds)
+        {
+            var next = GoalPicker.Next(dice, player.Options(), coverage);
+            goal = next.ToString();
+            run.Goals.Add(next.Key);
+            Shoot("goal");
+            yield return player.Do(next);
+        }
+        Finish(frame >= untilFrame ? "until-frame" : "done");
     }
 
-    // Holds a move on the wizard's input (as a stick would) for some game seconds, then lets go.
-    IEnumerator Walk(Vector2 move, float forSeconds)
+    void Setup()
     {
-        var inputs = wizard != null ? wizard.GetComponent<StarterAssetsInputs>() : null;
-        float until = Time.time + forSeconds;
-        while (Time.time < until)
-        {
-            if (inputs != null) inputs.move = move;
-            yield return null;
-        }
-        if (inputs != null) inputs.move = Vector2.zero;
+        controller = wizard.GetComponent<ThirdPersonController>();
+        var listener = FindAnyObjectByType<AudioListener>();
+        if (listener != null) tap = listener.gameObject.AddComponent<PlaytestAudioTap>();
+        places = PlaytestPlaces.Find(grid, wizard.transform.position);
+        var lo = grid.CellCenter(0, grid.World.H - 1);
+        var hi = grid.CellCenter(grid.World.W - 1, 0);
+        wizardWatch = new WizardWatch(Mathf.Min(lo.x, hi.x) - 5f, Mathf.Min(lo.z, hi.z) - 5f, Mathf.Max(lo.x, hi.x) + 5f, Mathf.Max(lo.z, hi.z) + 5f);
+        player = new PlaytestPlayer(grid, wizard, dice, places, Trace, Add);
+        run.Quiet = Environment.GetCommandLineArgs().Contains("-playtest-quiet");
+        startedReal = Time.realtimeSinceStartup;
+        running = true;
     }
 
-    // A RenderTexture shot from the main camera (doesn't need the window) and a screen shot, each with its mean brightness.
-    IEnumerator Shoot(string label)
+    void LateUpdate()
+    {
+        if (!running) return;
+        frame++;
+        player.Frame = frame;
+        WatchWizard();
+        foreach (var c in frameWatch.Frame(frame, Time.unscaledDeltaTime * 1000f, Here)) Add(c);
+        if (tap != null) WatchSound();
+        if (frame % PropEvery == 0) WatchProps();
+        if (frame % HeartbeatEvery == 0) File.WriteAllText(Path.Combine(outDir, "heartbeat.txt"), frame.ToString(CultureInfo.InvariantCulture));
+    }
+
+    string Here => PlaytestPlaces.Near(places, grid, wizard.transform.position);
+
+    void WatchWizard()
+    {
+        var p = wizard.transform.position;
+        var sample = new WizardWatch.Sample
+        {
+            X = p.x, Y = p.y, Z = p.z,
+            Ground = grid.GroundAt(p),
+            Grounded = controller == null || controller.Grounded,
+            Pushing = player.Pushing,
+            BotMoved = player.TeleportedOnFrame == frame,
+            Place = Here,
+        };
+        foreach (var c in wizardWatch.Frame(frame, sample)) Add(c);
+    }
+
+    void WatchSound()
+    {
+        if (frame % SoundEvery == 0)
+            soundsPlaying = FindObjectsByType<AudioSource>(FindObjectsSortMode.None).Any(s => s.isPlaying && s.volume > 0.01f && !s.mute);
+        foreach (var c in audioWatch.Frame(frame, tap.TakePeak(), tap.SawNaN, soundsPlaying, Here)) Add(c);
+    }
+
+    void WatchProps()
+    {
+        foreach (var prop in FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None))
+        {
+            if (!props.TryGetValue(prop, out var known))
+            {
+                known = (prop.transform.position, prop.GetComponent<Rigidbody>());
+                props[prop] = known;
+            }
+            var p = prop.transform.position;
+            var chunk = grid.ChunkAt(p);
+            var sample = new PropWatch.Sample
+            {
+                Id = prop.Thing.ToString(), Kind = prop.kind,
+                X = p.x, Y = p.y, Z = p.z,
+                Speed = known.body != null ? known.body.linearVelocity.magnitude : 0f,
+                Ground = grid.GroundAt(p),
+                SpawnX = known.spawn.x, SpawnZ = known.spawn.z,
+                Asleep = prop.Asleep,
+                ChunkActive = grid.IsChunkActive(chunk.x, chunk.y),
+            };
+            foreach (var c in propWatch.Frame(frame, sample)) Add(c);
+        }
+    }
+
+    void OnLog(string message, string stack, LogType type)
+    {
+        bool error = type == LogType.Error || type == LogType.Exception || type == LogType.Assert;
+        // The bot's own lines never count against the game.
+        if (!error || message.StartsWith("PLAYTEST", StringComparison.Ordinal)) return;
+        var c = LogWatch.Line(frame, message, stack, true);
+        if (c != null) Add(c);
+    }
+
+    void Trace(string action, string detail) => run.Trace.Add(new TraceStep { Frame = frame, Action = action, Detail = detail });
+
+    // Records a candidate; the first of its signature in this run gets a screenshot.
+    void Add(Candidate c)
+    {
+        c.Goal = goal;
+        if (found.Add(c) && !c.Detector.StartsWith("image-", StringComparison.Ordinal)) c.Screenshot = Shoot(c.Detector);
+    }
+
+    // A screenshot from the main camera into a RenderTexture (it doesn't need the window), saved as
+    // shots/<frame>-<label>.jpg and checked for magenta, black and white. Returns its path in the run.
+    string Shoot(string label)
     {
         var cam = Camera.main;
-        if (cam != null)
-        {
-            var rt = RenderTexture.GetTemporary(ShotWidth, ShotHeight, 24);
-            var was = cam.targetTexture;
-            cam.targetTexture = rt;
-            cam.Render();
-            cam.targetTexture = was;
-            var tex = Read(rt);
-            RenderTexture.ReleaseTemporary(rt);
-            Save(tex, $"{label}-rt");
-        }
-        yield return new WaitForEndOfFrame();
-        var screen = ScreenCapture.CaptureScreenshotAsTexture();
-        Save(screen, $"{label}-screen");
-    }
-
-    static Texture2D Read(RenderTexture rt)
-    {
+        if (cam == null) return null;
+        var rt = RenderTexture.GetTemporary(ShotWidth, ShotHeight, 24);
+        var was = cam.targetTexture;
+        cam.targetTexture = rt;
+        cam.Render();
+        cam.targetTexture = was;
         var active = RenderTexture.active;
         RenderTexture.active = rt;
-        var tex = new Texture2D(rt.width, rt.height, TextureFormat.RGB24, false);
-        tex.ReadPixels(new Rect(0, 0, rt.width, rt.height), 0, 0);
+        var tex = new Texture2D(ShotWidth, ShotHeight, TextureFormat.RGB24, false);
+        tex.ReadPixels(new Rect(0, 0, ShotWidth, ShotHeight), 0, 0);
         tex.Apply();
         RenderTexture.active = active;
-        return tex;
-    }
+        RenderTexture.ReleaseTemporary(rt);
 
-    void Save(Texture2D tex, string name)
-    {
-        if (tex == null)
+        string file = Path.Combine("shots", $"{frame:D6}-{label}.jpg");
+        File.WriteAllBytes(Path.Combine(outDir, file), tex.EncodeToJPG(80));
+        Trace("shot", file);
+        foreach (var c in ImageCheck.Pixels(frame, tex.GetRawTextureData(), Here))
         {
-            notes.Append($"{name}: no texture; ");
-            return;
+            c.Screenshot = file;
+            Add(c);
         }
-        File.WriteAllBytes(Path.Combine(outDir, name + ".jpg"), tex.EncodeToJPG(80));
-        var px = tex.GetPixels32();
-        double sum = 0;
-        int magenta = 0;
-        foreach (var p in px)
-        {
-            sum += (p.r + p.g + p.b) / 3.0;
-            if (p.r > 200 && p.b > 200 && p.g < 60) magenta++;
-        }
-        notes.Append(string.Format(CultureInfo.InvariantCulture, "{0} {1}x{2} brightness {3:0} magenta {4}; ", name, tex.width, tex.height, sum / px.Length, magenta));
         Destroy(tex);
+        return file;
     }
 
-    void Write(object result)
+    void Finish(string ended)
     {
-        File.WriteAllText(Path.Combine(outDir, "result.json"), Newtonsoft.Json.JsonConvert.SerializeObject(result, Newtonsoft.Json.Formatting.Indented));
-        Debug.Log($"PLAYTEST: wrote {outDir}");
+        running = false;
+        run.Ended = ended;
+        run.Frames = frame;
+        run.RealSeconds = Time.realtimeSinceStartup - startedReal;
+        run.Candidates = found.Candidates.ToList();
+        foreach (var c in run.Candidates) run.Counts[c.Signature] = found.CountOf(c.Signature);
+        run.Metrics["frame_ms_p50"] = frameWatch.Percentile(0.5);
+        run.Metrics["frame_ms_p95"] = frameWatch.Percentile(0.95);
+        run.Metrics["frame_ms_worst"] = frameWatch.Times.Count == 0 ? 0f : frameWatch.Times.Max();
+        run.Metrics["audio_peak"] = tap != null ? tap.Peak : -1f;
+        run.Metrics["memory_mb"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024f * 1024f);
+        File.WriteAllText(Path.Combine(outDir, "run.json"), run.ToJson());
+        Debug.Log($"PLAYTEST: {ended}; {frame} frames, {run.Goals.Count} goals, {run.Candidates.Count} candidates; wrote {outDir}");
+        Application.Quit();
     }
 }

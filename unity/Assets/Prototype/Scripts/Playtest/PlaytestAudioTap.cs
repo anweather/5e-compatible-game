@@ -6,7 +6,7 @@ using UnityEngine;
 // stores numbers.
 public class PlaytestAudioTap : MonoBehaviour
 {
-    float peak;
+    float peak, recentPeak;
     double sumSquares;
     long samples, frames;
     bool sawNaN;
@@ -16,6 +16,14 @@ public class PlaytestAudioTap : MonoBehaviour
     public bool SawNaN => sawNaN;
     /// <summary>Audio frames heard (samples per channel), to tell silence from no audio at all.</summary>
     public long Frames => frames;
+
+    /// <summary>The loudest sample since the last call (once a frame, from the main thread).</summary>
+    public float TakePeak()
+    {
+        float p = recentPeak;
+        recentPeak = 0f;
+        return p;
+    }
 
     void OnAudioFilterRead(float[] data, int channels)
     {
@@ -29,6 +37,7 @@ public class PlaytestAudioTap : MonoBehaviour
             }
             float a = v < 0 ? -v : v;
             if (a > peak) peak = a;
+            if (a > recentPeak) recentPeak = a;
             sumSquares += v * v;
         }
         samples += data.Length;
