@@ -19,8 +19,8 @@ namespace Chem.Tests
         static readonly RadialTuning Tuning = new RadialTuning();
 
         // The arc layout below (FiveEarth), clockwise from the top, 72° a wedge: fire 0°, water 72°, storm 144°, earth 216°, arcane 288°.
-        // The game's own layout has a sixth, Time & Weather, after Arcane.
-        const int Fire = 0, Water = 1, Storm = 2, Earth = 3, Arcane = 4;
+        // The game's own layout has two more after Arcane: Nature, then Time & Weather.
+        const int Fire = 0, Water = 1, Storm = 2, Earth = 3, Arcane = 4, Nature = 5;
 
         // The arc mechanics are tested on the layout they were written for: Fire Bolt alone under
         // Fire, an Earth wedge of five spells (Earthen Trench and Move Earth back on the radial), and
@@ -37,7 +37,8 @@ namespace Chem.Tests
             { 'id': 'control-weather', 'group': 'time', 'name': 'Control Weather', 'level': 8, 'shape': 'burst', 'origin': 'self', 'radius': 0, 'effect': 'weather', 'duration': 720, 'radial': false, 'blurb': '' },
             { 'id': 'fog-cloud', 'group': 'time', 'name': 'Fog Cloud', 'level': 1, 'shape': 'burst', 'radius': 4, 'element': 'fog', 'radial': false, 'blurb': '' },
             { 'id': 'plant-growth', 'group': 'nature', 'name': 'Plant Growth', 'level': 3, 'shape': 'burst', 'radius': 4, 'element': 'growth', 'radial': false, 'blurb': '' },
-            { 'id': 'spike-growth', 'group': 'nature', 'name': 'Spike Growth', 'level': 2, 'shape': 'burst', 'radius': 4, 'element': 'thorns', 'radial': false, 'blurb': '' } ] }");
+            { 'id': 'spike-growth', 'group': 'nature', 'name': 'Spike Growth', 'level': 2, 'shape': 'burst', 'radius': 4, 'element': 'thorns', 'radial': false, 'blurb': '' },
+            { 'id': 'shapeshift', 'group': 'nature', 'name': 'Shapeshift', 'level': 4, 'shape': 'target', 'effect': 'shapeshift', 'range': 12, 'radial': false, 'blurb': '' } ] }");
 
         static SpellRadial NewRadial() => new SpellRadial(RadialLayout.From(FiveEarth));
 
@@ -78,11 +79,13 @@ namespace Chem.Tests
             var layout = RadialLayout.From(Base);
             Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane", "nature", "time" }));
             Assert.That(layout.Groups[6].SpellIds, Is.EqualTo(new[] { "hasten-time", "control-weather", "fog-cloud" }));
+            Assert.That(layout.Groups[Nature].SpellIds, Is.EqualTo(new[] { "plant-growth", "spike-growth", "shapeshift" }));
             Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt", "fireball", "meteor" }), "Burning Hands stays off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt" }), "a group with one spell");
             Assert.That(layout.Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "wall-of-stone" }), "Earthen Trench and Move Earth stay off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "earthen-trench", "wall-of-stone", "move-earth" }), "a group with five");
             Assert.That(layout.Groups[Arcane].SpellIds, Is.EqualTo(new[] { "misty-step", "levitate", "mage-hand" }), "Grease stays off the radial");
+            Assert.That(layout.Groups[Nature].SpellIds, Does.Contain("shapeshift"));
             Assert.That(layout.GroupOfSpell("thunderwave"), Is.EqualTo(Storm));
             Assert.That(layout.IndexOf("earth"), Is.EqualTo(Earth));
             Assert.That(layout.GroupOfSpell("nope"), Is.EqualTo(-1));

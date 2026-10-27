@@ -159,6 +159,7 @@ function renderDetail() {
       ? carryFrom ? "Now click where to set it down." : "Click something light to pick it up."
       : s.effect === "teleport" ? `Click an empty square you can see, up to ${s.range ?? 6} squares away.`
       : s.effect === "levitate" ? "Click a thing to float it. Click your wizard to float yourself over pits."
+      : s.effect === "shapeshift" ? "Taking an animal's shape needs the 3D game's animals: here the cast is only logged."
       : s.origin === "self" ? (s.shape === "burst" ? "Click anywhere: it goes off all around your wizard." : "Click toward where you want it: it shoots out of your wizard in that direction.")
       : "Click a square to cast it there.";
   } else if (tool.tab === "critters") {

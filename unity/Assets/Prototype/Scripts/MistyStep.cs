@@ -173,7 +173,7 @@ public static class MistyStep
 
     // The highest thing to stand on over a square's centre (not the wizard, not a cell blocker).
     static bool TopOf(ChemGrid grid, Transform wizard, int x, int y, out RaycastHit top) =>
-        GroundAt(grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 40f), wizard, out top);
+        GroundAt(grid.CellCenter(x, y) + Vector3.up * grid.SurfaceY(x, y), wizard, out top);
 
     // The highest thing to stand on under a point 40 m up from it (not the wizard, not a cell blocker).
     static bool GroundAt(Vector3 at, Transform wizard, out RaycastHit top)

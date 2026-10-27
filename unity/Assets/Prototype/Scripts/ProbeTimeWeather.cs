@@ -115,18 +115,37 @@ public class TimeWeatherProbe : ProbeScenario
             $"before the fog: {before ?? "ok"}; through it: {through ?? "ok"}; the wizard moved {Vector3.Distance(from, wizard.transform.position):0.0} m");
 
         // A Fire Bolt into the middle burns the fog off there.
+        // The fog round it drifts straight back in, so the rule's own line in the log counts too.
         var mid = grid.YardCell(FogX, FogY);
+        int boltTick = World.Tick;
         yield return CastFromBar(SpellIds.FireBolt, FogX, FogY, 1, 0.8f);
         var c = World.At(mid.x, mid.y);
-        Check("fire_burns_fog", c.Gas != GasIds.Fog, $"the middle square's gas: {c.Gas ?? "none"} {c.GasAmt}");
+        bool burnt = LogSince(boltTick).Any(l => l.Contains("burns the fog away", System.StringComparison.Ordinal));
+        Check("fire_burns_fog", burnt || c.Gas != GasIds.Fog, $"burnt {burnt}; the middle square's gas now: {c.Gas ?? "none"} {c.GasAmt}");
         PutOutFires();
 
         // A Gust of Wind east through it blows it away.
-        int beforeGust = squares.Count(s => World.At(s.x, s.y).Gas == GasIds.Fog);
+        // As the core's test measures it: the fog's middle (weighted by how thick) moves east.
+        float beforeGust = FogMiddleX(mid);
         yield return CastFromBar(SpellIds.GustOfWind, MeX + 3, MeY, 1, 2f);
-        int afterGust = squares.Count(s => World.At(s.x, s.y).Gas == GasIds.Fog);
-        Metric("fog_before_gust", beforeGust);
-        Metric("fog_after_gust", afterGust);
-        Check("gust_blows_fog", afterGust < beforeGust / 2, $"{beforeGust} fogged squares before the gust, {afterGust} after");
+        float afterGust = FogMiddleX(mid);
+        Metric("fog_middle_x_before_gust", beforeGust);
+        Metric("fog_middle_x_after_gust", afterGust);
+        Check("gust_blows_fog", afterGust > beforeGust + 1f, $"the fog's middle from square x {beforeGust:0.0} to {afterGust:0.0}");
+    }
+
+    // The x of the fog's middle round a square (20 squares each way), weighted by how thick it is.
+    float FogMiddleX(Vector2Int around)
+    {
+        float sum = 0f, weight = 0f;
+        for (int y = around.y - 20; y <= around.y + 20; y++)
+            for (int x = around.x - 20; x <= around.x + 20; x++)
+            {
+                var c = World.At(x, y);
+                if (c == null || c.Gas != GasIds.Fog) continue;
+                sum += x * c.GasAmt;
+                weight += c.GasAmt;
+            }
+        return weight > 0f ? sum / weight : around.x;
     }
 }

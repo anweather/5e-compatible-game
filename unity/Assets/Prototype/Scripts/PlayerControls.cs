@@ -6,7 +6,7 @@ using UnityEngine.InputSystem;
 // its keyboard/mouse and gamepad bindings in one place; Xbox and
 // PlayStation controllers both map to <Gamepad>.
 //
-//   Cast spell   left mouse    right trigger
+//   Cast spell   left mouse    right trigger           (in an animal's shape: change back)
 //   Spell radial hold Tab      hold left bumper (L1)   (SpellRadialHud: aim with the
 //                                                        mouse / right stick, release to pick;
 //                                                        a tap swaps to the previous spell)

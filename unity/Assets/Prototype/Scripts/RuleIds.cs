@@ -30,6 +30,7 @@ public static class SpellIds
     public const string FogCloud = "fog-cloud";
     public const string PlantGrowth = "plant-growth";
     public const string SpikeGrowth = "spike-growth";
+    public const string Shapeshift = "shapeshift";
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
@@ -45,6 +46,7 @@ public static class SpellShapes
     public const string TerraformEffect = "terraform";
     public const string HasteEffect = Chem.World.HasteEffect;
     public const string WeatherEffect = Chem.World.WeatherEffect;
+    public const string ShapeshiftEffect = "shapeshift";
 }
 
 /// <summary>Element ids (what a spell or a reaction brings to a cell), as in rules/reactions.json.</summary>

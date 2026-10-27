@@ -46,5 +46,7 @@
   { "id": "plant-growth", "group": "nature", "name": "Plant Growth", "level": 3, "shape": "burst", "radius": 4, "element": "growth",
     "blurb": "Level 3. Life floods back into burnt land 45 ft across: the ash clears, green shoots spread out from the middle and are grass again in a few seconds, and saplings rise from old stumps and grow into trees. Hold the cast to reach further and seed saplings in the ash too; held all the way, young trees sprout in the meadow as well. Our reading: the SRD's spell overgrows or enriches plants; here it heals what fire took." },
   { "id": "spike-growth", "group": "nature", "name": "Spike Growth", "level": 2, "shape": "burst", "radius": 4, "element": "thorns",
-    "blurb": "Level 2. The ground 40 ft across bristles with hard thorns for a minute: anything walking through is slowed to half speed and cut with every step (1d4 a square; the SRD's 2d4 would kill a wizard in three steps). Thorns burn, leaving ash. Hold the cast to spread them wider." }
+    "blurb": "Level 2. The ground 40 ft across bristles with hard thorns for a minute: anything walking through is slowed to half speed and cut with every step (1d4 a square; the SRD's 2d4 would kill a wizard in three steps). Thorns burn, leaving ash. Hold the cast to spread them wider." },
+  { "id": "shapeshift", "group": "nature", "name": "Shapeshift", "level": 4, "shape": "target", "effect": "shapeshift", "range": 12, "duration": 360,
+    "blurb": "Aim at an animal within 60 ft and take its shape for a minute (hold the cast for two or three): its speed, its size, and its own kind's trust. Cast again to change back. No spells and no hands while you're an animal, and a heavy blow knocks you back into yourself. Our reading of Polymorph, cast on yourself." }
 ]

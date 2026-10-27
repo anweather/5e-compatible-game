@@ -157,6 +157,12 @@ public static class ProbeScenarios
             "squares, Ray of Frost's beam length, Thunderwave's shove on the crate by yard (15, 6), Levitate's lift on the props " +
             "by yard (17, 6), Misty Step's and Mage Hand's reach and Mage Hand's lift, no console errors. Metrics: every spell's " +
             "squares at a tap and held."),
+        new Entry("shapeshift", typeof(ShapeshiftProbe), 60f,
+            "Shapeshift in the meadow: a deer put 8 m in front of the wizard (held still), aimed at through a ray from the wizard's eyes and cast " +
+            "at; the wizard walks as a deer, tries Fire Bolt, a second deer is put 6 m away, then Cast changes it back; shifted again, a heavy blow. " +
+            "Checks: the ray finds the deer (and the sky fizzles), the wizard's model is hidden and a deer's body drawn where it stands, the controller " +
+            "has the deer's speeds, walking moves it with a gait, Fire Bolt is refused, the near deer doesn't bolt, changing back restores the model " +
+            "and speeds, the blow changes it back, no console errors. `--shots` saves the wizard as a deer."),
         new Entry("sprint", typeof(SprintProbe), 30f,
             "A virtual controller walks the wizard north, clicks the left stick, lets go of the stick and pushes again, then holds the left trigger. " +
             "Checks: the click runs (over 1.3 times the walk), letting go of the stick stops the run, the left trigger doesn't sprint, no console errors."),

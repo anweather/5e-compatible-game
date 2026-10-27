@@ -115,6 +115,8 @@ public class NatureProbe : ProbeScenario
 
         Place(SpikeX - 4, SpikeY);
         yield return Wait(0.3f);
+        // The Fireball earlier may have caught the wizard; start the walk whole, so the thorns can hurt.
+        if (vitals != null) vitals.Heal(vitals.HealthMax);
         float health = vitals != null ? vitals.Health : 0f;
         yield return Timed(SpikeX + 4, SpikeY, 1.6f);
         float slow = lastSpeed;

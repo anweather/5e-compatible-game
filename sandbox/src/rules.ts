@@ -140,7 +140,7 @@ export interface SpellDef {
   radiusPerCharge?: number;
   push?: number;
   wind?: number;
-  effect?: "levitate" | "carry" | "teleport" | "terraform" | "haste" | "weather";
+  effect?: "levitate" | "carry" | "teleport" | "terraform" | "haste" | "weather" | "shapeshift";
   /** haste (Hasten Time): how many times as fast the day clock runs. */
   rate?: number;
   /**
@@ -399,7 +399,7 @@ const EFFECT_KEYS = new Set([
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
-const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather"]);
+const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift"]);
 
 function terraformErrors(r: Rules, s: SpellDef): string[] {
   const errors: string[] = [];

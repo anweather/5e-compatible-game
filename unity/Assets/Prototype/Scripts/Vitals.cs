@@ -8,6 +8,9 @@ using UnityEngine;
 // stamina (TrySpendStamina), which comes back over time; magic doesn't drain
 // yet. While `infinite` is on (the sandbox) health never drops below 1 and
 // comes back a few seconds after the last hurt, and stamina stays full.
+// Spells that catch a wizard hurt it too (TakeDamage, SpellForces), and an
+// animal shape takes that first (Shapeshift: when the animal drops to 0 the
+// wizard changes back, and what's left over carries on to the wizard).
 public class Vitals : MonoBehaviour
 {
     public const float StaminaMax = 100f, MagicMax = 100f;
@@ -25,6 +28,9 @@ public class Vitals : MonoBehaviour
     public float Magic { get; private set; } = MagicMax;
 
     float lastHurt = float.NegativeInfinity;
+
+    /// <summary>Takes damage before the wizard does, and returns what's left over (Shapeshift's animal form).</summary>
+    public System.Func<float, float> Absorb { get; set; }
 
     void Start()
     {
@@ -46,6 +52,9 @@ public class Vitals : MonoBehaviour
         return true;
     }
 
+    /// <summary>Gives back up to <paramref name="amount"/> health (scripts and the probe).</summary>
+    public void Heal(float amount) => Health = Mathf.Min(HealthMax, Health + Mathf.Max(0f, amount));
+
     /// <summary>Takes <paramref name="amount"/> health away (in the sandbox, never the last point).</summary>
     public void Hurt(float amount)
     {
@@ -59,5 +68,13 @@ public class Vitals : MonoBehaviour
         if (!infinite && Stamina < StaminaMax) Stamina = Mathf.Min(StaminaMax, Stamina + StaminaRegen * Time.deltaTime);
         if (!infinite || Health >= HealthMax || Time.time - lastHurt < RecoverAfter) return;
         Health = Mathf.Min(HealthMax, Health + RecoverPerSecond * Time.deltaTime);
+    }
+
+    /// <summary>The wizard is hurt: an animal shape takes it first; the rest comes off health unless it's infinite.</summary>
+    public void TakeDamage(float amount)
+    {
+        if (amount <= 0f) return;
+        if (Absorb != null) amount = Absorb(amount);
+        Hurt(amount);
     }
 }
