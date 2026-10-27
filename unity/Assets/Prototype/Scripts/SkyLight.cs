@@ -1,3 +1,4 @@
+using System.Collections;
 using Chem;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -7,6 +8,12 @@ using UnityEngine.Rendering;
 // moon lights the night, and clouds, rain and fog dull the light and close
 // the haze in. Presentation only: the time and the weather are the core's,
 // so every player sees the same sky. Also the clock line at the top right.
+//
+// The ambient light is baked from the daytime sky once, at the start, and
+// then scaled and tinted each frame for the hour, the cloud, the dawn and
+// lightning (a Custom ambient probe). Baking it again from the skybox
+// (DynamicGI.UpdateEnvironment) stalls the main thread on a GPU readback,
+// up to 120 ms, so it's never done after the start.
 public class SkyLight : MonoBehaviour
 {
     public Light sun;
@@ -22,7 +29,10 @@ public class SkyLight : MonoBehaviour
     Color baseTint = new Color(0.45f, 0.55f, 0.75f);
     Color baseFog;
     float baseFogStart, baseFogEnd;
-    float cloud, fog, flash, nextAmbient;
+    float cloud, fog, flash;
+    // The daytime sky's ambient light, baked once (BakeDaylight); the hour and weather scale it.
+    SphericalHarmonicsL2 daylightAmbient;
+    bool ambientBaked;
     GUIStyle style;
 
     /// <summary>Lights the whole sky up for a moment (lightning; 1 is a strike close by).</summary>
@@ -47,6 +57,19 @@ public class SkyLight : MonoBehaviour
         baseFog = RenderSettings.fogColor;
         baseFogStart = RenderSettings.fogStartDistance;
         baseFogEnd = RenderSettings.fogEndDistance;
+        StartCoroutine(BakeDaylight());
+    }
+
+    // One bake of the sky as it starts (the daytime sky: Shine leaves it alone until this is
+    // done), read back a couple of frames later, then held as a Custom ambient that Shine scales.
+    IEnumerator BakeDaylight()
+    {
+        DynamicGI.UpdateEnvironment();
+        yield return null;
+        yield return null;
+        daylightAmbient = RenderSettings.ambientProbe;
+        RenderSettings.ambientMode = AmbientMode.Custom;
+        ambientBaked = true;
     }
 
     void Update()
@@ -104,18 +127,34 @@ public class SkyLight : MonoBehaviour
         flash = Mathf.MoveTowards(flash, 0f, Time.deltaTime * 3f);
         RenderSettings.ambientIntensity = Mathf.Lerp(0.3f, 1f, Daylight) * (1f - 0.3f * cloud) + 1.5f * flash;
         RenderSettings.reflectionIntensity = Mathf.Lerp(0.15f, 1f, Daylight);
+        if (!ambientBaked) return;
+        Ambient(sunUp, sunLight);
         if (sky != null)
         {
             if (sky.HasProperty("_Exposure")) sky.SetFloat("_Exposure", baseExposure * Mathf.Lerp(0.25f, 1f, Daylight) * (1f - 0.45f * cloud) + flash);
             if (sky.HasProperty("_AtmosphereThickness")) sky.SetFloat("_AtmosphereThickness", baseThickness + 0.8f * cloud);
             if (sky.HasProperty("_SkyTint")) sky.SetColor("_SkyTint", Color.Lerp(baseTint, new Color(0.5f, 0.5f, 0.52f), cloud));
         }
-        // The ambient light comes from the sky: bake it again now and then as the sky changes.
-        if (Time.unscaledTime >= nextAmbient)
+    }
+
+    // The daytime ambient, as the sky would give it now: dimmer with the hour (as the sky's
+    // exposure falls) and the intensity above, bluer by night, greyer under cloud, warm at dawn
+    // and dusk.
+    void Ambient(float sunUp, float sunLight)
+    {
+        float level = RenderSettings.ambientIntensity * Mathf.Lerp(0.25f, 1f, Daylight);
+        var tint = Color.Lerp(new Color(0.55f, 0.65f, 1f), Color.white, Daylight);
+        tint *= Color.Lerp(Color.white, new Color(0.92f, 0.94f, 1f), cloud);
+        float low = (1f - Mathf.InverseLerp(0.02f, 0.45f, sunUp)) * sunLight;
+        tint *= Color.Lerp(Color.white, sun.color, 0.35f * low);
+        var probe = daylightAmbient;
+        for (int c = 0; c < 9; c++)
         {
-            nextAmbient = Time.unscaledTime + 1.5f;
-            DynamicGI.UpdateEnvironment();
+            probe[0, c] *= tint.r * level;
+            probe[1, c] *= tint.g * level;
+            probe[2, c] *= tint.b * level;
         }
+        RenderSettings.ambientProbe = probe;
     }
 
     // The haze darkens with the light and greys under cloud; fog closes it right in, rain partway.
