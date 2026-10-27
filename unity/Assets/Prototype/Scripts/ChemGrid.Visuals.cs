@@ -70,6 +70,10 @@ public partial class ChemGrid
         fireLights = new FireLightPool(this, maxFireLights);
     }
 
+    /// <summary>What stands on a cell (its CellDressing: a wall's crags, a stone block), or null; OccluderFade dithers one that hides the wizard.</summary>
+    public GameObject DressingAt(int x, int y) =>
+        views != null && World != null && x >= 0 && y >= 0 && x < World.W && y < World.H ? views[y * World.W + x].dressing : null;
+
     /// <summary>The top of the water drawn on a cell (CellWaterMesh), or null where none is drawn.</summary>
     public float? DrawnWaterTop(int x, int y)
     {

@@ -335,6 +335,12 @@ public static class ChemYardBuilder
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
         wizard.AddComponent<SpellRadialHud>(); // waits for the caster and controls to be on (solo now, the owner's on spawn)
+        // The dodge roll and its tumble, and keeping the local wizard in sight behind what's in the way.
+        wizard.AddComponent<DodgeRoll>();
+        wizard.AddComponent<RollPose>();
+        var fade = wizard.AddComponent<OccluderFade>();
+        fade.ditherLit = Shader.Find("Prototype/DitherLit");
+        fade.silhouette = Shader.Find("Prototype/WizardSilhouette");
         if (playerDriven)
         {
             caster.grid = grid;
