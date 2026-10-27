@@ -89,9 +89,8 @@ Cross-lane needs that come up often:
 
 | Agent | Task | Branch | State |
 |---|---|---|---|
-| World | Slice 5, part A: `ChemGrid.ChunkSwitched` / `WorldReset` / `IsChunkActive`, with tests. Rebase on `d4ae548`, check in the Editor, merge | `streaming-sleep` (`77d9023`) | Has the PC Editor slot; its turn to merge |
-| Gameplay | The player segfaults on quit after the fps probe (exit 139, in both builds). Code-only work until it gets the Editor slot back | its own branch off `dev` | Follow-up |
-| Gameplay (next) | Slice 5, part B: subscribe to `ChemGrid.ChunkSwitched` in `ThingSpawner`/`PhysicsProp`; props sleep in inactive chunks and wake on activation | off `dev`, after part A merges | Queued; has the API |
+| Gameplay | Slice 5, part B: subscribe to `ChemGrid.ChunkSwitched` in `ThingSpawner`/`PhysicsProp`; props sleep in inactive chunks and wake on activation. Rebuild the yard first and check `WizardPartsTests.TheSoloAndNetworkedWizardsHaveTheSameParts` | off `dev` (`3c1d848`) | In progress; has the PC Editor slot |
+| World | (free) | | Waiting for its next task |
 | Build | (free) | | Waiting for its next task |
 
 ## Shared-file queue
@@ -108,12 +107,20 @@ The coordinator approves each change and schedules them one at a time.
 2. ~~`perf/no-static-batching` (Build)~~. Merged as `d4ae548` (473 → 267 MB on
    Windows, frame times within noise). Restart Unity after pulling; the first
    player build takes about 14 min to compile shader variants.
-3. Slice 5, part A (World: the chunk event). Rebase on `dev` after step 2.
+3. ~~Slice 5, part A (World: the chunk event)~~. Merged as `3c1d848`.
 4. Slice 5, part B (Gameplay: props sleep and wake). Rebase on `dev` after step 3.
 
 ## Open questions
 
-(none)
+1. **Windows builds crash on quit.** It's an access violation in
+   `D3D12Core.dll` (DirectX 12 Agility 1.618.1.0) during shutdown, after
+   saving. It's in every Windows build since at least 25 Oct. With
+   `-force-d3d11` the quit is clean, but frames are about 7% slower (mean) and
+   12% slower (p95). Options:
+   (1) put D3D11 first (Build);
+   (2) end the process ourselves on quit (Gameplay; check Velopack's restart);
+   (3) leave it and look for a Unity or driver fix.
+   Andrew to decide.
 
 ## Log
 
