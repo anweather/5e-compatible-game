@@ -185,7 +185,7 @@ public class WeatherFx : MonoBehaviour
     }
 
     /// <summary>The way a world direction (0..3, N E S W; north is -y, so -z in the scene) points.</summary>
-    static Vector3 Downwind(int dir) => dir switch
+    public static Vector3 Downwind(int dir) => dir switch
     {
         0 => Vector3.forward,
         1 => Vector3.right,

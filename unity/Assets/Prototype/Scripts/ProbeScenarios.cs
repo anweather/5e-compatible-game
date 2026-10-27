@@ -149,6 +149,11 @@ public static class ProbeScenarios
             "The ambient fireflies and butterflies (AmbientCritters, from Punchy): a clear 22:00 over the meadow toward the pond, then " +
             "a clear noon close to the grass. Checks: AmbientCritters is built with both materials, fireflies are out at night (and no " +
             "butterflies) with over 50 homes near, butterflies by day (and no fireflies) with over 50 homes near, no console errors."),
+        new Entry("sleet", typeof(SleetProbe), 40f,
+            "Sleet Storm cast from the bar on the meadow east of the yard, after a Fire Bolt lit its middle and puddles were laid round " +
+            "the fire. Checks: a storm (SleetStorm: cloud, sleet, pellets) over the target the burst's width each way, its cloud overhead, " +
+            "no projectile or ice impact, nothing frozen before the sleet lands, over 500 streaks falling with those near the ground over " +
+            "the spell's squares, every puddle frozen and the fire out once it lands, the storm weaker near its end and gone after, no console errors."),
     };
 
     public static Entry Find(string name) =>
