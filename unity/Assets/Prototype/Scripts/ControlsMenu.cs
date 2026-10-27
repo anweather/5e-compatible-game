@@ -19,6 +19,7 @@ public class ControlsMenu : MonoBehaviour
         ("Look", "Mouse", "Right stick"),
         ("Jump", "Space", "{South}"),
         ("Sprint", "Hold Shift", "Click {LS} (toggles)"),
+        ("Dodge roll", "Left Ctrl", "{LT}"),
         ("Zoom", "Mouse wheel", "D-pad ▲ ▼"),
         ("Spells: aim at an element, then a spell", "Hold Tab", "Hold {LB}, right stick"),
         ("Back to your last spell", "Tap Tab", "Tap {LB}"),

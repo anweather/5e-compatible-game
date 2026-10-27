@@ -160,6 +160,14 @@ public static class ProbeScenarios
         new Entry("sprint", typeof(SprintProbe), 30f,
             "A virtual controller walks the wizard north, clicks the left stick, lets go of the stick and pushes again, then holds the left trigger. " +
             "Checks: the click runs (over 1.3 times the walk), letting go of the stick stops the run, the left trigger doesn't sprint, no console errors."),
+        new Entry("roll", typeof(RollProbe), 30f,
+            "A virtual controller walks the wizard north and pulls the left trigger (DodgeRoll), then pulls it again 0.55 s in, during the wait " +
+            "before the next roll. Checks: it rolls, over 3 m in under 0.6 s, the body turns once head over heels (300 to 420 degrees, hips to " +
+            "head) and ends upright (within 25 degrees), the second pull does nothing, no console errors."),
+        new Entry("dither", typeof(DitherProbe), 30f,
+            "The wizard put behind the terrain tree nearest it, the camera cut to look at it through the tree, then cut round to the open side " +
+            "(OccluderFade). Checks: the tree is found in the way, the dither fades in (fade over 0.9, the global cut over 0.5) with the " +
+            "see-through figure on; from the open side nothing is in the way, the dither is off, the figure off and every material back, no console errors."),
         new Entry("snow", typeof(SnowProbe), 60f,
             "Heavy snow at noon (fast settling), then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
             "Checks: over 500 squares under snow, over 20 banks against walls and trees, the ground over a bank stands 0.25 m higher, " +
