@@ -171,6 +171,12 @@ namespace Chem
     public sealed class DayParams
     {
         public double LengthMinutes = 24, StartHour = 9;
+        /// <summary>The hours of dawn and dusk: dim light from the first to the second, bright between them, dark between dusk and dawn (Sky.Daylight).</summary>
+        public double DawnFrom = 5, DawnTo = 7, DuskFrom = 18, DuskTo = 20;
+        /// <summary>How many times as fast snow freezes standing water at night.</summary>
+        public double NightFreeze = 2;
+        /// <summary>The light a burning cell sheds, in feet as items.json lights are: bright out to FireBright, dim for FireDim beyond.</summary>
+        public double FireBright = 20, FireDim = 20;
     }
 
     /// <summary>
@@ -673,6 +679,11 @@ namespace Chem
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;
                 s.Day.StartHour = Num(day["startHour"]) ?? s.Day.StartHour;
+                if (day["dawn"] is JArray dawn && dawn.Count == 2) (s.Day.DawnFrom, s.Day.DawnTo) = ((double)dawn[0], (double)dawn[1]);
+                if (day["dusk"] is JArray dusk && dusk.Count == 2) (s.Day.DuskFrom, s.Day.DuskTo) = ((double)dusk[0], (double)dusk[1]);
+                s.Day.NightFreeze = Num(day["nightFreeze"]) ?? s.Day.NightFreeze;
+                s.Day.FireBright = Num(day["fireLight"]?["bright"]) ?? s.Day.FireBright;
+                s.Day.FireDim = Num(day["fireLight"]?["dim"]) ?? s.Day.FireDim;
             }
             if (o["streaming"] is JObject so)
             {

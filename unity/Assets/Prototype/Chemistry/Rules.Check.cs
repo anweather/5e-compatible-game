@@ -67,6 +67,8 @@ namespace Chem
                 foreach (var s in r["spells"]) SpellRefs(s);
                 foreach (var c in r["critters"].Where(c => !IsElement(c["element"])))
                     Errors.Add($"critter {Show(c["id"])}: unknown element {Show(c["element"])}");
+                foreach (var c in r["critters"].Where(c => c["hours"] != null && !IsHours(c["hours"])))
+                    Errors.Add($"critter {Show(c["id"])}: hours must be [from, to], hours from 0 to 24");
                 foreach (var p in ((JObject)r["machines"]).Properties())
                 {
                     if (terrain[p.Name] == null) Errors.Add($"machine {p.Name}: no terrain with that id");
@@ -280,11 +282,20 @@ namespace Chem
                 {
                     var key = path + p.Name;
                     if (key == "defense.kinds") continue; // names, checked by DefenseRefs
+                    if (key == "day.dawn" || key == "day.dusk")
+                    {
+                        if (!IsHours(p.Value)) Errors.Add($"sim {key} must be [from, to], hours from 0 to 24");
+                        continue;
+                    }
                     if (p.Value is JObject sub) Sim(sub, key + ".");
                     else if (key == "height.min") Number(p.Value, $"sim {key}");
                     else Number(p.Value, $"sim {key}", PositiveSim.Contains(key) ? 1 : 0);
                 }
             }
+
+            /// <summary>[from, to]: two hours of the day, 0 to 24 (Sky.InHours; from after to runs across midnight).</summary>
+            static bool IsHours(JToken t) =>
+                t is JArray a && a.Count == 2 && a.All(h => (h.Type == JTokenType.Integer || h.Type == JTokenType.Float) && (double)h >= 0 && (double)h <= 24);
 
             void Number(JToken v, string what, int? min = null)
             {
