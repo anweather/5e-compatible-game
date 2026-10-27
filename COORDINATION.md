@@ -194,6 +194,9 @@ Cross-lane needs that come up often:
 - **Something needs a ProjectSettings or package change:** ask the
   coordinator, and Build makes the change.
 - **A yard rebuild rewrites `NetWizard.prefab` or the scene:** only Gameplay
+  runs it in a checkout that commits. The playtest bot's detached
+  `.claude/worktrees/playtest-build` checkout may rebuild the yard for its
+  builds, because it never commits or pushes. Before that, only Gameplay
   runs it.
 - **`.meta` files:** never edit a GUID. Commit each new asset together with
   its `.meta`, in the owner's lane.
