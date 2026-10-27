@@ -249,10 +249,16 @@ The coordinator approves each change and schedules them one at a time.
 
 ## Release 0.1.5 (J-019; today)
 
-Waiting on, before the freeze:
+FROZEN at `0bd59b6` (16:20). Nobody merges into dev until 0.1.5 ships.
+
+Landed before the freeze:
+0. ~~`perf-pass`~~ `0bd59b6` (cheap SSAO, soft shadows Medium: PC -9% mean, Mac -13%).
 1. ~~`net-reset`~~ `7d721a3` and ~~`net-reset-view`~~ `08ad78f` (online 20/20, checksums equal after the reset).
-2. `perf-pass`: PC-5 on a solo PC.
 3. ~~`playtest-bot`~~ `20c499a` (the .ps1 files are gone; `playtest build --ref <tag>` is required).
+
+RC tests: PC-R1 install over 0.1.4 and update (Gameplay); PC-R2 the bot on the
+Windows RC portable zip (World); PC-R3 a Mac-to-PC Relay game (Gameplay and
+Build); PC-R4 the Velopack restart check, after the publish.
 
 Then:
 1. Freeze dev (the coordinator calls it).
