@@ -22,7 +22,36 @@ Each entry has:
 
 ## Open
 
-(none)
+### J-013: How may the playtest scripts run past the PowerShell execution policy?
+
+- **Asked:** 2026-10-27, raised by World.
+  - This PC's policy blocks .ps1 scripts. The coordinator's own attempt to
+    pass `-ExecutionPolicy Bypass` was refused by its safety check.
+  - World had been running its spike and run scripts with
+    `-ExecutionPolicy Bypass`, which applies to one process and changes no
+    setting. It has stopped until Andrew decides.
+  - The options:
+    (a) Task Scheduler passes `-ExecutionPolicy Bypass`;
+    (b) set CurrentUser to RemoteSigned (a security setting);
+    (c) sign the scripts;
+    (d) port `run.ps1` and `build.ps1` to a small .NET console tool (no
+    policy involved).
+- **Also comes up when:** any script on this PC: the coordinator's tools,
+  `tools/playtest`, release scripts, scheduled tasks.
+- **Answer:** pending. The coordinator recommends (d).
+- **Revisited:** 0.
+
+### J-014: How should resetting the world online behave (backlog #4)?
+
+- **Asked:** 2026-10-27, raised by Gameplay's plan (World builds the reset
+  command, Gameplay the view).
+- **Also comes up when:** any host-versus-client authority question, mods
+  across a world rebuild, any countdown UX.
+- **Answer:** pending. Recommended:
+  - a 3 s countdown;
+  - the host decides (a client asks; no vote);
+  - mods stay on through a reset.
+- **Revisited:** 0.
 
 ## Decided
 
