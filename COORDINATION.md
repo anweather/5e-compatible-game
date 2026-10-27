@@ -91,7 +91,7 @@ Cross-lane needs that come up often:
 |---|---|---|---|
 | Gameplay | Slice 5, part B: subscribe to `ChemGrid.ChunkSwitched` in `ThingSpawner`/`PhysicsProp`; props sleep in inactive chunks and wake on activation. Rebuild the yard first and check `WizardPartsTests.TheSoloAndNetworkedWizardsHaveTheSameParts` | off `dev` (`3c1d848`) | In progress; has the PC Editor slot |
 | World | (free) | | Waiting for its next task |
-| Build | (free) | | Waiting for its next task |
+| Build | Research the D3D12 crash on quit (Unity, Agility SDK and driver fixes, settings, Velopack with an early exit). Research only, no changes | none | Started 2026-10-27 |
 
 ## Shared-file queue
 
@@ -120,7 +120,7 @@ The coordinator approves each change and schedules them one at a time.
    (1) put D3D11 first (Build);
    (2) end the process ourselves on quit (Gameplay; check Velopack's restart);
    (3) leave it and look for a Unity or driver fix.
-   Andrew to decide.
+   Build is researching first; Andrew decides after that.
 
 ## Log
 
