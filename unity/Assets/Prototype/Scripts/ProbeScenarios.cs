@@ -98,10 +98,13 @@ public static class ProbeScenarios
             "cell painted bare earth with no grass, the gate is shut, opens wide as the wizard comes up and lets it 3 m onto the " +
             "court, shuts once it has gone; the goal counts one at the east end (logged, on the board) and the ball is back on " +
             "the centre spot after it and after going out, no console errors."),
-        new Entry("river", typeof(RiverProbe), 40f,
-            "The river from the foothills into the lake (river terrain refills itself): the wizard goes to it east of the yard and digs " +
-            "from its edge with Lower Earth, charged. Checks: a river square near world (120, 30), full; the dug square fills from it; " +
-            "the river full again after, no console errors."),
+        new Entry("river", typeof(RiverProbe), 90f,
+            "The river from the falls into the lake (river terrain refills itself) and the bridge over it: the river measured across at " +
+            "three places down its course, the wizard dropped into its middle, then walked over the bridge from the west landing to the " +
+            "east, then digging from the river's edge east of the yard with Lower Earth, charged. Checks: 5 squares across or more and " +
+            "over 1.8 m of water in the middle everywhere measured, the wizard swims there, the bridge is built over the river with its deck " +
+            "over 1.2 m above the water, the wizard crosses it without swimming, over the deck, to within 1.5 m of the east landing; a " +
+            "river square near world (120, 30), full; the dug square fills from it; the river full again after, no console errors."),
         new Entry("edge", typeof(EdgeProbe), 90f,
             "The wizard runs at each end of the land (where the valley's terrains stop: north, east, south, west) from 15 m inside it, " +
             "for 10 s. Checks per edge: the wizard is still over the land and standing on the ground, no console errors."),

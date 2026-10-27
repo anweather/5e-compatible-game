@@ -20,6 +20,10 @@ public class ValleyChemistry : MonoBehaviour
     public Transform[] cabins;
     [Tooltip("Height of the lake's surface; lake cells' effects sit on it.")]
     public float lakeLevel = -0.6f;
+    [Tooltip("The river's squares (world cell indices) whose ground is cut deep below their water: the river's channel.")]
+    public int[] channelCells = System.Array.Empty<int>();
+    [Tooltip("How far each of channelCells' ground is cut below the banks (metres); its water stands at the banks' level, over the cut.")]
+    public float[] channelDepths = System.Array.Empty<float>();
 
     readonly TerrainGrid layout = TerrainGrid.Valley();
     ValleyGround ground;
@@ -49,6 +53,9 @@ public class ValleyChemistry : MonoBehaviour
             Debug.LogError($"The valley's chunk layout is for a {layout.GridW}×{layout.GridH} world, not {world.W}×{world.H}");
         ground ??= new ValleyGround(layout, chunks);
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
+        // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
+        // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
+        ground.RaiseBase(channelCells, channelDepths);
         scorched.Clear();
         IndexTrees();
         int n = cabins?.Length ?? 0;

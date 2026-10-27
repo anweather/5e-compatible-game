@@ -44,6 +44,7 @@ public static class ValleyBuilder
         ScatterRocks();
         BuildWorldEdge();
         BuildCourt();
+        ValleyBridge.Build(LogMaterial(), CabinMaterial("Plank", new Color(0.52f, 0.37f, 0.23f), 0.12f));
         BuildLandmarks();
         BuildWaterfall();
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
@@ -51,6 +52,8 @@ public static class ValleyBuilder
         valley.chunks = terrains;
         valley.cabins = cabins;
         valley.lakeLevel = LakeLevel;
+        valley.channelCells = channelCells.ToArray();
+        valley.channelDepths = channelDepths.ToArray();
         grid.valley = valley;
     }
 
@@ -1091,6 +1094,8 @@ public static class ValleyBuilder
         foreach (var t in trees) treeCells.Add(CellOf(t.at, cs, left, top, yh));
 
         var rows = new System.Text.StringBuilder(w * h + h);
+        channelCells.Clear();
+        channelDepths.Clear();
         for (int y = 0; y < h; y++)
         {
             for (int x = 0; x < w; x++)
@@ -1099,7 +1104,10 @@ public static class ValleyBuilder
                 bool inYard = yx >= 0 && yx < yw && yy >= 0 && yy < yh;
                 // Cell centre on the ground plane (yard cell (0, 0) is at (0, (yh - 1) * cs)).
                 var p = new Vector2(yx * cs, (yh - 1 - yy) * cs);
-                rows.Append(inYard ? yardRows[yy][yx] : CellKind(p, treeCells.Contains(new Vector2Int(x, y))));
+                var sample = SampleOf(layout, x, y);
+                char kind = inYard ? yardRows[yy][yx] : CellKind(p, sample, treeCells.Contains(new Vector2Int(x, y)));
+                if (kind == 'r') NoteChannel(sample, y * w + x);
+                rows.Append(kind);
             }
             if (y < h - 1) rows.Append('\n');
         }
@@ -1110,21 +1118,48 @@ public static class ValleyBuilder
         grid.conductLimit = LightningReach;
     }
 
+    // The river's squares whose ground is cut below their water (ValleyShape.ChannelDepth) and how deep,
+    // as world cell indices, for ValleyChemistry: the water stands at the banks' level, over the channel.
+    static readonly List<int> channelCells = new();
+    static readonly List<float> channelDepths = new();
+
+    // Where ValleyGround reads a cell's ground: its heightmap sample (the cell's centre on a
+    // full-detail chunk, its south-west corner on a coarse one).
+    static Vector2 SampleOf(TerrainGrid layout, int x, int y)
+    {
+        var (i, j, sx, sz) = layout.CellSample(x, y);
+        var (wx, wz) = layout.SamplePosition(i, j, sx, sz);
+        return new Vector2(wx, wz);
+    }
+
+    // Notes a river square's channel (world cell <paramref name="index"/>), measured at its sample, so
+    // the depth ValleyGround adds back is the depth that was cut there.
+    static void NoteChannel(Vector2 sample, int index)
+    {
+        float depth = ValleyShape.ChannelDepth(sample);
+        if (depth <= 0f) return;
+        channelCells.Add(index);
+        channelDepths.Add(depth);
+    }
+
     static Vector2Int CellOf(Vector2 p, float cs, int left, int top, int yh) =>
         new Vector2Int(Mathf.RoundToInt(p.x / cs) + left, top + yh - 1 - Mathf.RoundToInt(p.y / cs));
 
-    // Lake water (where the ground is under the lake's surface), the generated land's lakes and rivers
-    // (ValleySurroundings, from the world theme), cabin wall, a tree, bare shore, or meadow grass.
-    static char CellKind(Vector2 p, bool tree)
+    // Lake water (where the ground is under the lake's surface: the river's banks, not its channel's
+    // bed, so the river runs on at its own level until it meets the lake), the generated land's lakes
+    // and rivers (ValleySurroundings, from the world theme), cabin wall, a tree, bare shore, or meadow grass.
+    // The river is decided at the cell's heightmap sample, where its channel is measured
+    // (NoteChannel), so no dry cell's ground is cut into the channel.
+    static char CellKind(Vector2 p, Vector2 sample, bool tree)
     {
-        float ground = ValleyShape.HeightAt(p);
+        float ground = ValleyShape.BankHeightAt(p);
         if (ground < LakeLevel) return 'w';
         if (ValleySurroundings.Mask(p) > 0.5f)
         {
             char water = ValleySurroundings.Water(p);
             if (water != '\0') return water;
         }
-        if (ValleyShape.DistanceToRiver(p) < ValleyShape.RiverHalfWidth) return 'r';
+        if (ValleyShape.InRiver(sample)) return 'r';
         if (ValleyShape.InCabin(p)) return 'L';
         // The ball court's floor is dirt: bare earth to look at, and nothing on it to burn.
         if (ValleyShape.InCourt(p, 0.2f)) return '.';
