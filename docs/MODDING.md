@@ -134,8 +134,13 @@ Earth and Wall of Stone). A spell with no group goes under the last element.
 
 **Charged casts.** Holding the cast charges a spell (1, a tap, to 3): its
 power times the charge, a terraform's raise or dig times the charge (a
-`height` 2 more per level), a line half again as long per level. A mod
-that changes `power`, `raise`, `dig`, `height` or `length` changes what
+`height` 2 more per level), a line half again as long per level, and a
+spot, square or burst a square bigger per level (a point spreads to the
+squares within a step or two; earth shaping goes deeper instead). In the
+Unity game a push is half again as hard per level, and the spells that
+move things reach further (Misty Step, Mage Hand) or last longer
+(Levitate). A mod that changes `power`, `raise`, `dig`, `height`,
+`length`, `size`, `radius`, `push`, `range` or `duration` changes what
 each charge does.
 
 **A new element on the spell radial.** Frost gets its own wedge; Ray of

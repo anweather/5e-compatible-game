@@ -109,16 +109,18 @@ public class SpellCaster : MonoBehaviour
         {
             BlinkPoint = blinkLanding;
             var at = grid.CellAt(blinkLanding.Value);
-            Cast(SelectedId, at.x, at.y, 1);
+            Cast(SelectedId, at.x, at.y, 1, charge);
             return;
         }
         Cast(new CastCommand(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
     }
 
-    /// <summary>Whether holding Cast makes this spell stronger (World.Cast): one with an element, a line, or earth shaping.</summary>
-    public static bool Chargeable(SpellDef spell) =>
-        spell != null && spell.Effect != SpellShapes.TeleportEffect && spell.Effect != SpellShapes.LevitateEffect && spell.Effect != SpellShapes.CarryEffect
-        && (spell.Element != null || spell.Shape == SpellShapes.Line || spell.Effect == SpellShapes.TerraformEffect);
+    /// <summary>
+    /// Whether holding Cast makes this spell stronger: every spell does. In the cells (World.Cast) a
+    /// line reaches further, a spot, square or burst grows, water and earth shaping go further; in
+    /// what moves (SpellForces) a push is harder, Misty Step and Mage Hand reach further, Levitate lasts.
+    /// </summary>
+    public static bool Chargeable(SpellDef spell) => spell != null;
 
     // Three pips under the crosshair fill as the held Cast charges.
     void OnGUI()
@@ -176,11 +178,11 @@ public class SpellCaster : MonoBehaviour
         GameSounds.Play(GameSounds.CastOf(def), Hand);
         // A blink shows its mist where the caster leaves as well as where they land.
         if (def?.Effect == SpellShapes.TeleportEffect && look?.impact != null)
-            Destroy(Instantiate(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
+            Destroy(SpellVisuals.Spawn(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
         // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
         float release = CastGestures.Of(gesture).release;
-        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, onArrive)));
-        else Unleash(def, look, landing, onArrive);
+        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast.Charge, onArrive)));
+        else Unleash(def, look, landing, cast.Charge, onArrive);
     }
 
     static IEnumerator AtRelease(float seconds, System.Action then)
@@ -190,31 +192,40 @@ public class SpellCaster : MonoBehaviour
     }
 
     // The projectile, meteor or storm, or the effect at once; onArrive when it lands.
-    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, System.Action onArrive)
+    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, int charge, System.Action onArrive)
     {
         void Land()
         {
-            if (look?.impact != null) Destroy(Instantiate(look.impact, landing, Quaternion.LookRotation(Flat(landing - Hand))), look.impactSeconds);
+            if (look?.impact != null) Destroy(SpellVisuals.Spawn(look.impact, landing, Quaternion.LookRotation(Flat(landing - Hand))), look.impactSeconds);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             onArrive?.Invoke();
         }
 
-        if (look != null && look.fromSky)
+        if (look == null) Land();
+        else if (look.fromSky)
             MeteorFall.Launch(landing, transform.position, look, () =>
             {
                 GameSounds.Play(GameSounds.LandingOf(def), landing);
                 onArrive?.Invoke();
             }, this);
-        else if (look != null && look.storm) Storm(def, landing, Land);
-        else if (look?.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, Land, this);
-        else Land();
+        else Travel(look, def, charge, landing, Land);
+    }
+
+    // How a show that doesn't fall from the sky gets where it lands: a storm, a beam, a projectile, or at once.
+    void Travel(SpellVisuals.Entry look, SpellDef def, int charge, Vector3 landing, System.Action land)
+    {
+        if (look.storm) Storm(def, charge, landing, land);
+        else if (look.beam) FrostBeam.Launch(Hand, landing + Vector3.up * BeamLift, look.glow, land, this);
+        else if (look.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, land, this);
+        else land();
     }
 
     // A storm over the spell's squares (a burst's radius each way of the target), for the spell's
     // duration if it has one, else a few seconds; it lands when the first of it reaches the ground.
-    void Storm(SpellDef def, Vector3 landing, System.Action land)
+    void Storm(SpellDef def, int charge, Vector3 landing, System.Action land)
     {
-        float halfWidth = ((def?.Radius ?? 0) + 0.5f) * grid.cellSize;
+        int radius = def != null ? def.Radius + World.ChargedGrowth(def, charge) : 0;
+        float halfWidth = (radius + 0.5f) * grid.cellSize;
         float seconds = def != null && def.Duration > 0 ? def.Duration / (float)grid.World.Rules.Sim.TicksPerSecond : SleetStorm.Seconds;
         SleetStorm.Launch(landing, halfWidth, seconds, transform.position, land, this);
     }
@@ -230,6 +241,9 @@ public class SpellCaster : MonoBehaviour
     }
 
     SpellVisuals.Entry LookOf(string spellId) => visuals != null ? visuals.For(spellId) : null;
+
+    // A beam ends this far over where a line's show lands, about knee high, so it runs out low over the ground.
+    const float BeamLift = 0.4f;
 
     /// <summary>The gesture a spell is cast with (CastGestures.For: its look's, or one from its rules).</summary>
     public CastGesture GestureOf(string spellId) =>
@@ -267,6 +281,7 @@ public class SpellCaster : MonoBehaviour
         float release = CastGestures.Of(GestureOf(cast.Spell)).release;
         if (look != null && look.fromSky) return release + MeteorFall.Seconds;
         if (look != null && look.storm) return release + SleetStorm.LandSeconds;
+        if (look != null && look.beam) return release + FrostBeam.ReachSeconds;
         return release + (look?.projectile != null ? Vector3.Distance(Hand, Landing(cast)) / SpellProjectile.DefaultSpeed : 0f);
     }
 
@@ -297,7 +312,7 @@ public class SpellCaster : MonoBehaviour
     (int x, int y, int dir, int aimX, int aimY)? AimMove(SpellDef spell, Vector2Int me, Vector2Int target, out string error)
     {
         bool blink = spell.Effect == SpellShapes.TeleportEffect;
-        error = blink ? CheckBlink(spell, target) : MageHand.Check(grid, spell, hands, me, target.x, target.y);
+        error = blink ? CheckBlink(spell, target) : MageHand.Check(grid, spell, hands, me, target.x, target.y, Charge);
         if (error != null) return null;
         var lands = blink && blinkLanding.HasValue ? grid.CellAt(blinkLanding.Value) : target;
         return (lands.x, lands.y, 1, 0, 0);
@@ -317,12 +332,12 @@ public class SpellCaster : MonoBehaviour
 
     // Misty Step checks what the crosshair points at when it's in the target square (a roof, a rock,
     // or its side, which lands on its top), or the farthest spot it can reach towards it, else the
-    // top of the square.
+    // top of the square. Held, it reaches further (MistyStep.Range).
     string CheckBlink(SpellDef spell, Vector2Int target)
     {
         blinkLanding = null;
-        if (!hasCrosshair || CrosshairCell != target) return MistyStep.Check(grid, spell, transform, target.x, target.y);
-        string why = MistyStep.Reach(grid, spell, transform, crosshair, out var landing);
+        if (!hasCrosshair || CrosshairCell != target) return MistyStep.Check(grid, spell, transform, target.x, target.y, Charge);
+        string why = MistyStep.Reach(grid, spell, transform, crosshair, out var landing, Charge);
         if (why == null) blinkLanding = landing;
         return why;
     }

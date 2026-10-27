@@ -12,6 +12,9 @@ using UnityEngine;
 // wizards in its squares (Hit): fire throws them back from the blast, frost
 // slows them, lightning jolts (a moment's stop and a knock), water shoves;
 // a charged cast hits that much harder. Enough to matter, not to stop the fun.
+// Held, every one is stronger: a push half again as hard per level (a burst
+// reaching its grown squares), Levitate up longer and higher, Misty Step and
+// Mage Hand further (MistyStep.Range, MageHand.Range).
 //
 // Solo: SpellCaster calls Apply when a cast lands, and it moves everything.
 // Online: NetChem calls ApplyOnline on every machine when the cast's tick
@@ -45,14 +48,16 @@ public static class SpellForces
         var (x, y, dir) = (cast.X, cast.Y, cast.Dir);
         var spell = grid.World.Rules.Spell(cast.Spell);
         if (spell == null) return 0;
-        if (spell.Effect == SpellShapes.LevitateEffect) return levitate && Levitate(grid, spell, x, y) ? 1 : 0;
-        if (spell.Effect == SpellShapes.TeleportEffect) return ownCaster != null && MistyStep.Blink(grid, spell, ownCaster, x, y) ? 1 : 0;
-        if (spell.Effect == SpellShapes.CarryEffect) return ownCaster != null && MageHand.Cast(grid, spell, ownCaster, x, y) ? 1 : 0;
+        int charge = World.ClampCharge(cast.Charge);
+        if (spell.Effect == SpellShapes.LevitateEffect) return levitate && Levitate(grid, spell, x, y, charge) ? 1 : 0;
+        if (spell.Effect == SpellShapes.TeleportEffect) return ownCaster != null && MistyStep.Blink(grid, spell, ownCaster, x, y, charge) ? 1 : 0;
+        if (spell.Effect == SpellShapes.CarryEffect) return ownCaster != null && MageHand.Cast(grid, spell, ownCaster, x, y, charge) ? 1 : 0;
         if (spell.Push <= 0) return HitWizards(grid, spell, cast, except, only);
-        float impulse = spell.Push * Forces.ImpulsePerPush;
+        // Held, a push is half again as hard per level, and a burst reaches as far as its grown squares.
+        float impulse = spell.Push * Forces.ImpulsePerPush * (1f + 0.5f * (charge - 1));
         return spell.Shape switch
         {
-            SpellShapes.Burst => Forces.Radial(from, (spell.Radius + 1) * grid.cellSize, impulse, except, only),
+            SpellShapes.Burst => Forces.Radial(from, (spell.Radius + World.ChargedGrowth(spell, charge) + 1) * grid.cellSize, impulse, except, only),
             SpellShapes.Line => Forces.Along(grid, grid.World.SpellCells(spell, x, y, dir, cast.Charge, cast.AimX, cast.AimY), Along(cast), impulse, except, only),
             _ => 0,
         };
@@ -117,7 +122,8 @@ public static class SpellForces
         return ax != 0 && ay != 0 ? new Vector3(ax, 0f, -ay).normalized : Direction(cast.Dir);
     }
 
-    static bool Levitate(ChemGrid grid, SpellDef spell, int x, int y)
+    // Held, it stays up that many times as long and rises half again as fast per level.
+    static bool Levitate(ChemGrid grid, SpellDef spell, int x, int y, int charge)
     {
         var target = grid.CellCenter(x, y) + Vector3.up * grid.SurfaceY(x, y);
         var prop = Forces.Nearest<PhysicsProp>(target, grid.cellSize * 1.5f);
@@ -126,7 +132,7 @@ public static class SpellForces
             EventLog.Add($"{spell.Name}: nothing there to lift");
             return false;
         }
-        prop.Levitate(spell.Duration);
+        prop.Levitate(spell.Duration * charge, 1f + 0.5f * (charge - 1));
         return true;
     }
 }
