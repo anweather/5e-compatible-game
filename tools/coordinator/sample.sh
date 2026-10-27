@@ -28,7 +28,7 @@ while true; do
     "MEM " + [math]::Round($os.FreePhysicalMemory / 1MB, 1)
     "CPU " + [int](Get-CimInstance Win32_Processor | Measure-Object LoadPercentage -Average).Average
     "PLAYERS " + @(Get-Process SpellChemistryValley -ErrorAction SilentlyContinue).Count
-    Get-CimInstance Win32_Process -Filter "Name=''Unity.exe''" | ForEach-Object { "U " + $_.CommandLine }' 2>/dev/null | tr -d '\r')
+    Get-CimInstance Win32_Process | Where-Object { $_.Name -eq "Unity.exe" } | ForEach-Object { "U " + $_.CommandLine }' 2>/dev/null | tr -d '\r')
   mem=$(sed -n 's/^MEM //p' <<<"$snap"); cpu=$(sed -n 's/^CPU //p' <<<"$snap"); players=$(sed -n 's/^PLAYERS //p' <<<"$snap")
   procs=$(sed -n 's/^U //p' <<<"$snap" | tr 'A-Z' 'a-z' | sed 's#\\#/#g' | grep -v assetimportworker)
   # An Editor: -projectpath without -batchmode. A batch job: -batchmode, or the unity CLI's "command ... --project-path".
