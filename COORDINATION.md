@@ -89,9 +89,9 @@ Cross-lane needs that come up often:
 
 | Agent | Task | Branch | State |
 |---|---|---|---|
-| Gameplay | Slice 5, part B: subscribe to `ChemGrid.ChunkSwitched` in `ThingSpawner`/`PhysicsProp`; props sleep in inactive chunks and wake on activation. Rebuild the yard first and check `WizardPartsTests.TheSoloAndNetworkedWizardsHaveTheSameParts` | off `dev` (`3c1d848`) | In progress; has the PC Editor slot |
-| World | (free) | | Waiting for its next task |
-| Build | Research the D3D12 crash on quit (Unity, Agility SDK and driver fixes, settings, Velopack with an early exit). Research only, no changes | none | Started 2026-10-27 |
+| Gameplay | (free) | | Waiting for its next task |
+| World | (free); may run the quit-crash tests A and B on the PC | | Waiting on Andrew |
+| Build | (free). The quit-crash research is done (see Open questions) | | Waiting for its next task |
 
 ## Shared-file queue
 
@@ -108,7 +108,7 @@ The coordinator approves each change and schedules them one at a time.
    Windows, frame times within noise). Restart Unity after pulling; the first
    player build takes about 14 min to compile shader variants.
 3. ~~Slice 5, part A (World: the chunk event)~~. Merged as `3c1d848`.
-4. Slice 5, part B (Gameplay: props sleep and wake). Rebase on `dev` after step 3.
+4. ~~Slice 5, part B (Gameplay: props sleep and wake)~~. Merged as `a473873`.
 
 ## Open questions
 
@@ -120,7 +120,15 @@ The coordinator approves each change and schedules them one at a time.
    (1) put D3D11 first (Build);
    (2) end the process ourselves on quit (Gameplay; check Velopack's restart);
    (3) leave it and look for a Unity or driver fix.
-   Build is researching first; Andrew decides after that.
+   Build's research (2026-10-27): no fixed Unity 6.3 version exists. Ranked:
+   (a) test whether players see it at all;
+   (b) drop in Agility 1.618.5's `D3D12Core.dll` (1.618.1 is a known
+   regressed build), copied in by a post-build step in Build's lane;
+   (c) end the process at quit (Velopack is safe; shut down Netcode first);
+   (d) graphics jobs off, as a test only;
+   (e) D3D11 first.
+   Proposed PC tests: A (visibility) and B (the Agility swap on an existing
+   build). Andrew to decide.
 
 ## Log
 
@@ -134,3 +142,7 @@ The coordinator approves each change and schedules them one at a time.
 - 2026-10-27: Andrew approved slice 5. World does part A (the chunk event),
   then Gameplay does part B (props sleep and wake). The coordinator is now
   named "Project Manager".
+- 2026-10-27: the perf branch merged (`d4ae548`), then slice 5 parts A
+  (`3c1d848`) and B (`a473873`). Lane slip: part B added a row to
+  `docs/FAST_LOOP.md` and a paragraph to `docs/WORLD_STREAMING.md`, both
+  World's. Accepted, World told, Gameplay reminded to ask first.
