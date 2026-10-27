@@ -10,6 +10,8 @@ public static class PlaytestBuild
 {
     public static void Build()
     {
+        // A fresh checkout has no Generated folder (it isn't in git): the builders write into it.
+        if (!AssetDatabase.IsValidFolder("Assets/Prototype/Generated")) AssetDatabase.CreateFolder("Assets/Prototype", "Generated");
         ChemYardBuilder.Build();
         string line = PrototypeBuild.Build(BuildTarget.StandaloneWindows64, "Builds/Windows/SpellChemistryValley.exe");
         bool ok = line.Contains(": OK");
