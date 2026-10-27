@@ -70,14 +70,23 @@ namespace Chem.Tests
         {
             var layout = RadialLayout.From(Base);
             Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane" }));
-            Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt", "burning-hands", "fireball", "meteor" }));
+            Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt", "fireball", "meteor" }), "Burning Hands stays off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt" }), "a group with one spell");
             Assert.That(layout.Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "wall-of-stone" }), "Earthen Trench and Move Earth stay off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "earthen-trench", "wall-of-stone", "move-earth" }), "a group with five");
-            Assert.That(layout.Groups[Arcane].SpellIds, Does.Contain("grease"));
+            Assert.That(layout.Groups[Arcane].SpellIds, Is.EqualTo(new[] { "misty-step", "levitate", "mage-hand" }), "Grease stays off the radial");
             Assert.That(layout.GroupOfSpell("thunderwave"), Is.EqualTo(Storm));
             Assert.That(layout.IndexOf("earth"), Is.EqualTo(Earth));
             Assert.That(layout.GroupOfSpell("nope"), Is.EqualTo(-1));
+        }
+
+        [Test]
+        public void NoElementHasMoreThanThreeSpells()
+        {
+            // Andrew's rule for the bar (2026-10-27): at most three spells to an element. A spell
+            // past three stays in the rules with "radial": false (for mods, tests and demos).
+            foreach (var g in RadialLayout.From(Base).Groups)
+                Assert.That(g.SpellIds.Count, Is.LessThanOrEqualTo(3), g.Id + ": " + string.Join(", ", g.SpellIds));
         }
 
         [Test]
@@ -375,9 +384,9 @@ namespace Chem.Tests
             var r = NewRadial();
             Assert.That(r.StepInElement(1), Is.EqualTo("fire-bolt"), "nothing chosen yet: the first spell");
             Assert.That(r.StepInElement(1), Is.EqualTo("fire-bolt"), "one spell wraps to itself");
-            r.Chose("grease");
-            Assert.That(r.StepInElement(1), Is.EqualTo("misty-step"));
-            Assert.That(r.StepInElement(-1), Is.EqualTo("grease"));
+            r.Chose("misty-step");
+            Assert.That(r.StepInElement(1), Is.EqualTo("levitate"));
+            Assert.That(r.StepInElement(-1), Is.EqualTo("misty-step"));
             Assert.That(r.StepInElement(-1), Is.EqualTo("mage-hand"), "wraps");
             Assert.That(r.StepElement(1), Is.EqualTo("fire-bolt"), "arcane wraps to fire");
             Assert.That(r.StepElement(-1), Is.EqualTo("mage-hand"), "back to arcane's last choice");
