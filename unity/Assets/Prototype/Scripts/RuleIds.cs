@@ -81,6 +81,7 @@ public static class TerrainIds
     public const string River = "river";
     public const string Metal = "metal";
     public const string LogWall = "logwall";
+    public const string Stone = "stone";
     public const string Rock = "rock";
     public const string Wood = "wood";
 }

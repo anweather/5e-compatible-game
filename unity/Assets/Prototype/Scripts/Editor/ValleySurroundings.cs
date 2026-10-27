@@ -48,12 +48,14 @@ public static class ValleySurroundings
     static float[] lakeLevels;
 
     /// <summary>Sets the land up around the valley as ValleyShape.Plan laid it out.</summary>
-    public static void Plan(Vector2 valleyCentre, Vector2 lakeCentre, Vector2 falls, IEnumerable<Vector2> cabins, float cells)
+    public static void Plan(Vector2 valleyCentre, Vector2 lakeCentre, Vector2 falls, IEnumerable<Vector2> cabins,
+        IEnumerable<(Vector2 at, float radius)> villages, float cells)
     {
         centre = valleyCentre;
         cellSize = cells;
         var shapes = new List<(Vector2, float)> { (valleyCentre, 150f), (lakeCentre, 130f), (falls, 45f) };
         foreach (var c in cabins) shapes.Add((c, 28f));
+        shapes.AddRange(villages);
         floor = shapes.ToArray();
         land = new BiomeTerrain(new BiomeNoiseSettings
         {

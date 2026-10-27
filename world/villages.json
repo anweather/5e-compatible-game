@@ -1,6 +1,6 @@
 {
   "about": "The world's villages (docs/WORLD_LIFE.md, D12). at is the world cell the square is centred on (world cell = chunk * 64 + cell; y grows south); seed picks the layout and every building's look, so change it to see another village. square and laneLength are [smallest, largest] in cells (1.5 m); houses is the most houses; lanes is 1 (just the road) or 2; stoneInTen is how many buildings in ten are stone (stone doesn't burn).",
   "villages": [
-    { "name": "Hollowmere", "at": [222, 300], "seed": 12, "square": [10, 13], "houses": 12, "lanes": 2, "laneLength": [14, 22], "stoneInTen": 3 }
+    { "name": "Hollowmere", "at": [222, 300], "seed": 56, "square": [10, 13], "houses": 12, "lanes": 2, "laneLength": [14, 22], "stoneInTen": 3 }
   ]
 }

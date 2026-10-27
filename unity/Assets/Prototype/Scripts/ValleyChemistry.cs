@@ -4,9 +4,10 @@ using UnityEngine;
 
 // Shows the chemistry of the cells on the valley's chunk terrains (ValleyGround
 // does their heights and paint): trees that burn down to charred stumps, burnt
-// grass leaving scorched ground with its grass cleared, a cabin charring and
-// losing its roof once half its log walls have burned, and earth shaping
-// raising or sinking the ground under reshaped cells. Every cell is on the
+// grass leaving scorched ground with its grass cleared, a cabin or a village
+// house (VillageHouse) charring and losing its roof once half its walls have
+// burned (or caving in once they're broken), and earth shaping raising or
+// sinking the ground under reshaped cells. Every cell is on the
 // terrain, the old yard included; the lake's cells are pits under the lake's
 // own surface.
 // Works on runtime copies of the terrain data, so playing never changes the
@@ -16,7 +17,7 @@ public class ValleyChemistry : MonoBehaviour
     public ChemGrid grid;
     [Tooltip("The chunk terrains, chunk (i, j) at j * 9 + i (TerrainGrid.Valley()).")]
     public Terrain[] chunks;
-    [Tooltip("The cabins; a log wall cell belongs to the nearest.")]
+    [Tooltip("The cabins and village buildings; a wall cell belongs to the one whose box holds it, else a log wall to the nearest.")]
     public Transform[] cabins;
     [Tooltip("Height of the lake's surface; lake cells' effects sit on it.")]
     public float lakeLevel = -0.6f;
@@ -59,7 +60,7 @@ public class ValleyChemistry : MonoBehaviour
         for (int y = 0; y < world.H; y++)
             for (int x = 0; x < world.W; x++)
             {
-                int k = world.At(x, y).T == TerrainIds.LogWall ? CabinAt(x, y) : -1;
+                int k = BuildingWallAt(world.At(x, y).T, x, y);
                 if (k >= 0) cabinCells[k]++;
             }
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
@@ -164,7 +165,10 @@ public class ValleyChemistry : MonoBehaviour
     {
         if (from == TerrainIds.Tree) BurnTrees(x, y);
         if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorched.Add(grid.World.Idx(x, y));
-        if (from == TerrainIds.LogWall) CabinWallLost(CabinAt(x, y), burning: grid.World.At(x, y).Fire > 0);
+        // A wall that burned out is no longer alight (the core puts the fire out as it turns to rubble),
+        // but it leaves ash; one that caved in under earth shaping doesn't.
+        var now = grid.World.At(x, y);
+        if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
     void BurnTrees(int x, int y)
@@ -179,6 +183,33 @@ public class ValleyChemistry : MonoBehaviour
             treesChanged.Add(at);
         }
     }
+
+    // The building a wall cell belongs to, or -1: a log wall is the cabin or house whose box it's
+    // in (village houses stand close), else the nearest; a stone wall only one it's in, since the
+    // yard has stone walls of its own.
+    int BuildingWallAt(string terrain, int x, int y)
+    {
+        if (terrain != TerrainIds.LogWall && terrain != TerrainIds.Stone) return -1;
+        int inside = CabinAround(x, y);
+        if (inside >= 0 || terrain == TerrainIds.Stone) return inside;
+        return CabinAt(x, y);
+    }
+
+    // The cabin or house whose box (its BoxCollider, a little grown) holds a cell, or -1.
+    int CabinAround(int x, int y)
+    {
+        var at = grid.CellCenter(x, y);
+        for (int i = 0; i < (cabins?.Length ?? 0); i++)
+        {
+            if (cabins[i] == null || !cabins[i].TryGetComponent<BoxCollider>(out var box)) continue;
+            var q = cabins[i].InverseTransformPoint(at) - box.center;
+            if (Mathf.Abs(q.x) <= box.size.x / 2f + 0.3f && Mathf.Abs(q.z) <= box.size.z / 2f + 0.3f) return i;
+        }
+        return -1;
+    }
+
+    static string LabelOf(Transform building) =>
+        building.TryGetComponent<VillageHouse>(out var house) ? house.Label : "cabin";
 
     // The cabin nearest a cell, or -1 without any.
     int CabinAt(int x, int y)
@@ -219,7 +250,7 @@ public class ValleyChemistry : MonoBehaviour
             else if (r.GetComponent<ParticleSystem>() == null) r.sharedMaterial = charred;
         }
         foreach (var l in cabin.GetComponentsInChildren<Light>()) l.enabled = false;
-        EventLog.Add("The cabin burns down");
+        EventLog.Add($"The {LabelOf(cabin)} burns down");
     }
 
     static void CaveIn(Transform cabin)
@@ -228,7 +259,7 @@ public class ValleyChemistry : MonoBehaviour
             if (r.name == "Roof" || r.GetComponent<ParticleSystem>() != null) r.enabled = false;
         foreach (var l in cabin.GetComponentsInChildren<Light>()) l.enabled = false;
         cabin.SetPositionAndRotation(cabin.position + Vector3.down * 1.3f, cabin.rotation * Quaternion.Euler(4f, 0f, -3f));
-        EventLog.Add("The cabin caves in");
+        EventLog.Add($"The {LabelOf(cabin)} caves in");
     }
 
     bool IsScorched(int x, int y) => scorched.Contains(grid.World.Idx(x, y));

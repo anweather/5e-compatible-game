@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using Chem;
 using UnityEditor;
 using UnityEngine;
@@ -10,7 +11,8 @@ using UnityEngine.Rendering;
 // with its pond, pits and oil slick in the ground, a ridged mountain to the
 // north, a lake to the south, hills closing the sides, trees, grass and rocks
 // from the terrain packs, the sample project's mountain skybox, haze, and a
-// few small log cabins. Everything is generated from code, so rebuilding gives the
+// few small log cabins, and the villages of world/villages.json (VillageHouse).
+// Everything is generated from code, so rebuilding gives the
 // same valley. The chemistry map covers the yard and about 300 m × 260 m of
 // valley around it; every cell is on the terrain.
 public static class ValleyBuilder
@@ -41,6 +43,7 @@ public static class ValleyBuilder
         grid.wallStones = LoadRocks("Rock_B_01", "Rock_C_01");
         BuildSky();
         var cabins = BuildCabins();
+        var houses = BuildVillages();
         ScatterRocks();
         BuildWorldEdge();
         BuildCourt();
@@ -49,7 +52,8 @@ public static class ValleyBuilder
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.chunks = terrains;
-        valley.cabins = cabins;
+        // Village buildings burn and cave in by the cabins' rules.
+        valley.cabins = cabins.Concat(houses).ToArray();
         valley.lakeLevel = LakeLevel;
         grid.valley = valley;
     }
@@ -68,9 +72,12 @@ public static class ValleyBuilder
         var world = ChemGrid.MapWorld(grid.LoadBaseRules(), grid.map, grid.seed, out _);
         ValleyTerrain.BakeCells(world, grid.stepHeight);
 
-        // The cells painted as they are: the old yard's, and the ball court's dirt floor (CellKind).
+        // The cells painted as they are: the old yard's, the ball court's dirt floor (CellKind), and the
+        // villages' squares, lanes and walls.
         var paintedCells = YardCells(grid.yardCells);
         paintedCells.AddRange(CourtCells());
+        foreach (var plan in ValleyShape.Villages)
+            foreach (var (vx, vy, _) in plan.Cells()) paintedCells.Add((vx, vy));
         ValleyTerrain.PlantTrees(assets.trees, AllTrees(valleyTrees, grid, world));
         ValleyTerrain.Paint(assets.layers, world, paintedCells);
         ValleyTerrain.PaintDetails(assets.details, world, paintedCells);
@@ -185,8 +192,9 @@ public static class ValleyBuilder
             float scale = 0.8f + 0.5f * (float)rng.NextDouble();
             spots.Add((w, scale, rng.NextDouble() < 0.35 ? 1 : 0, (float)(rng.NextDouble() * Mathf.PI * 2)));
         }
-        // None on the ball court. Dropped afterwards, so every other tree stands where it always has.
+        // None on the ball court or in a village. Dropped afterwards, so every other tree stands where it always has.
         spots.RemoveAll(s => ValleyShape.InCourt(s.Item1, -1.5f));
+        spots.RemoveAll(s => ValleyShape.DistanceToVillage(s.Item1) < 4f);
         return spots;
     }
 
@@ -265,6 +273,8 @@ public static class ValleyBuilder
             at.y = ValleyTerrain.GroundAt(at) - 0.3f;
             rock.transform.SetPositionAndRotation(at, Quaternion.Euler(0f, rng.Next(360), 0f));
             rock.transform.localScale = Vector3.one * (0.6f + 1.2f * (float)rng.NextDouble());
+            // None in a village; removed after its draws, so the other rocks stay where they were.
+            if (ValleyShape.DistanceToVillage(w) < 4f) Object.DestroyImmediate(rock);
             placed++;
         }
     }
@@ -883,6 +893,93 @@ public static class ValleyBuilder
         return roots;
     }
 
+    // --- villages (D12, docs/WORLD_LIFE.md) ----------------------------------------------
+
+    // Each village ValleyShape laid out (its cells are already in the map, WireChemistry): a root
+    // with the well, and a VillageHouse per building, which builds its own meshes when the scene
+    // loads, so only its plan is saved. A box keeps players out of each; chimneys smoke, and the
+    // inn and the shop have a lamp by the door. Returns the buildings, which burn like cabins.
+    static Transform[] BuildVillages()
+    {
+        var houses = new List<Transform>();
+        if (ValleyShape.Villages.Length == 0) return houses.ToArray();
+        var material = EditorAssets.LoadOrCreate($"{Generated}/VillageLit.mat", () => new Material(Shader.Find("Prototype/VillageLit")));
+        var smoke = EditorAssets.LoadPrefab(PackPaths.SmokeFx + "/SmokeEffect.prefab");
+        float cs = ValleyTerrain.Layout.CellSize;
+        for (int v = 0; v < ValleyShape.Villages.Length; v++)
+        {
+            var plan = ValleyShape.Villages[v];
+            float level = ValleyShape.VillageLevels[v];
+            var well = ValleyShape.CellWorld(plan.Well.x, plan.Well.y);
+            var root = new GameObject($"Village {plan.Spec.Name}");
+            root.transform.position = new Vector3(well.x, level, well.y);
+            var village = root.AddComponent<Village>();
+            village.villageName = plan.Spec.Name;
+            village.material = material;
+            village.seed = plan.Spec.Seed;
+            village.enabled = false;
+            village.enabled = true;
+
+            int n = 0;
+            foreach (var b in plan.Buildings)
+            {
+                var name = b.Kind == BuildingKind.House ? $"House {++n}" : b.Kind.ToString();
+                var house = BuildHouse(root.transform, b, name, level, cs, material, smoke);
+                houses.Add(house);
+            }
+        }
+        return houses.ToArray();
+    }
+
+    static Transform BuildHouse(Transform village, VillageBuilding b, string name, float level, float cs, Material material, GameObject smoke)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(village, false);
+        var mid = ValleyShape.AreaOf(b.Footprint).center;
+        var (dx, dy) = Sides.Step(b.Door);
+        // Grid y grows south; world z grows north.
+        var door = new Vector3(dx, 0f, -dy);
+        go.transform.SetPositionAndRotation(new Vector3(mid.x, level - 0.05f, mid.y), Quaternion.LookRotation(-door));
+
+        var house = go.AddComponent<VillageHouse>();
+        house.kind = b.Kind;
+        house.walls = b.Walls;
+        house.roof = b.Roof;
+        house.cover = b.Cover;
+        house.storeys = b.Storeys;
+        house.chimney = b.Chimney;
+        house.seed = b.Seed;
+        house.width = b.Width * cs;
+        house.depth = b.Depth * cs;
+        house.material = material;
+        house.Rebuild();
+
+        var made = BuildingMesher.Make(house.Spec);
+        var block = go.AddComponent<BoxCollider>();
+        block.center = new Vector3(0f, made.size.y / 2f, 0f);
+        block.size = made.size;
+        Object.DestroyImmediate(made.body);
+        Object.DestroyImmediate(made.roof);
+
+        if (smoke != null && !float.IsNaN(made.chimneyTop.x))
+        {
+            var puff = (GameObject)PrefabUtility.InstantiatePrefab(smoke, go.transform);
+            puff.transform.localPosition = made.chimneyTop;
+            puff.transform.localScale = Vector3.one * 0.3f;
+        }
+        if (b.Kind != BuildingKind.House)
+        {
+            var lamp = new GameObject("Door light").AddComponent<Light>();
+            lamp.transform.SetParent(go.transform, false);
+            lamp.transform.localPosition = made.lamp;
+            lamp.type = LightType.Point;
+            lamp.color = new Color(1f, 0.7f, 0.4f);
+            lamp.intensity = 2.5f;
+            lamp.range = 7f;
+        }
+        return go.transform;
+    }
+
     static Material LogMaterial() => CabinMaterial("Log", new Color(0.42f, 0.29f, 0.18f), 0.15f);
 
     // A small log cabin from primitives: log walls, a pitched roof, a door, a lit window and a
@@ -1089,6 +1186,9 @@ public static class ValleyBuilder
 
         var treeCells = new HashSet<Vector2Int>();
         foreach (var t in trees) treeCells.Add(CellOf(t.at, cs, left, top, yh));
+        var villageCells = new Dictionary<Vector2Int, char>();
+        foreach (var plan in ValleyShape.Villages)
+            foreach (var (vx, vy, c) in plan.Cells()) villageCells[new Vector2Int(vx, vy)] = c;
 
         var rows = new System.Text.StringBuilder(w * h + h);
         for (int y = 0; y < h; y++)
@@ -1099,7 +1199,9 @@ public static class ValleyBuilder
                 bool inYard = yx >= 0 && yx < yw && yy >= 0 && yy < yh;
                 // Cell centre on the ground plane (yard cell (0, 0) is at (0, (yh - 1) * cs)).
                 var p = new Vector2(yx * cs, (yh - 1 - yy) * cs);
-                rows.Append(inYard ? yardRows[yy][yx] : CellKind(p, treeCells.Contains(new Vector2Int(x, y))));
+                if (inYard) rows.Append(yardRows[yy][yx]);
+                else if (villageCells.TryGetValue(new Vector2Int(x, y), out char v)) rows.Append(v);
+                else rows.Append(CellKind(p, treeCells.Contains(new Vector2Int(x, y))));
             }
             if (y < h - 1) rows.Append('\n');
         }

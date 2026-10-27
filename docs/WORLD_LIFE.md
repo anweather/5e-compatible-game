@@ -84,6 +84,14 @@ A `Village` component in the scene holds the spec. It builds the meshes
 when it loads, so the scene stores only the spec and nothing generated
 reaches git.
 
+### Trying it
+
+Change `seed` in `world/villages.json` (or `houses`, `square`, `lanes`,
+`stoneInTen`) and run **Prototype > Build Chemistry Yard**. The first
+village, Hollowmere, stands west of the yard. Set fire to it: timber walls
+burn and spread from house to house, a burnt building chars and loses its
+roof ("The inn burns down"), and stone houses stand.
+
 ### Where villages go
 
 To start with, one village west of the yard, from `world/villages.json`,
