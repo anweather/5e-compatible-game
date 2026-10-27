@@ -34,7 +34,8 @@ public class SleepProbe : ProbeScenario
         }
         // One crate up in the air for the camera (a few seconds of Levitate): asleep, it hangs
         // there; back awake, with its float long run out, it falls.
-        var floater = props.FirstOrDefault(p => p.kind == EntityIds.Crate) ?? props[0];
+        var floater = props.Find(p => p.kind == EntityIds.Crate);
+        if (floater == null) floater = props[0];
         var seen = floater.transform.position;
         Cut(seen + V(-7f, 3.5f, -7f), seen + Vector3.up * 1.5f);
         floater.Levitate(3 * World.Rules.Sim.TicksPerSecond, 1.5f);
