@@ -163,6 +163,12 @@ public static class ProbeScenarios
             "the fire. Checks: a storm (SleetStorm: cloud, sleet, pellets) over the target the burst's width each way, its cloud overhead, " +
             "no projectile or ice impact, nothing frozen before the sleet lands, over 500 streaks falling with those near the ground over " +
             "the spell's squares, every puddle frozen and the fire out once it lands, the storm weaker near its end and gone after, no console errors."),
+        new Entry("nature", typeof(NatureProbe), 120f,
+            "A Fireball burns the meadow round the yard's tree at (5, 8), then Plant Growth (charge 2) lands on it; later Spike Growth on the " +
+            "south meadow, the wizard walking through it, and a Fire Bolt into it. Checks: the fire leaves ash and the tree a stump, Plant Growth " +
+            "clears the ash into green shoots that are grass six seconds on (grass counted before and after), the stump sprouts a sapling that " +
+            "grows into a tree drawn on its square, thorns on 60 squares or more with their clumps drawn, the wizard slower through them " +
+            "(under 0.75 of its speed on open grass) and losing health, the Fire Bolt sets them alight and they burn to ash, no console errors."),
     };
 
     public static Entry Find(string name) =>

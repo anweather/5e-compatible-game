@@ -405,6 +405,10 @@ public static class ChemYardBuilder
             Visual(SpellIds.EarthenTrench, new Color(0.7f, 0.5f, 0.28f), null, null),
             Visual(SpellIds.WallOfStone, new Color(0.7f, 0.68f, 0.62f), null, null),
             Visual(SpellIds.MoveEarth, new Color(0.65f, 0.5f, 0.3f), null, null),
+            // Nature: green motes drifting up where it lands, no projectile; the ground itself shows the rest
+            // (shoots and saplings in CellPaint and CellDressing, thorns in CellThorns).
+            Visual(SpellIds.PlantGrowth, new Color(0.45f, 0.9f, 0.35f), null, MiscFx + "/FireFlies.prefab"),
+            Visual(SpellIds.SpikeGrowth, new Color(0.35f, 0.6f, 0.2f), null, MiscFx + "/FireFlies.prefab"),
             Meteor(),
         };
         EditorUtility.SetDirty(visuals);

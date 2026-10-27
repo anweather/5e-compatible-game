@@ -5,7 +5,8 @@ using UnityEngine;
 // What stands on a cell, on top of the chunk terrain (the terrain itself is the
 // ground: CellHeightfield shapes it, CellPaint colours it): bramble bushes, a
 // charred stump, rubble, a stone block here; the planks of a bridge, an iron
-// plate and the crags along a raised wall in CellDressing.Built.cs. Trees are the terrain's own trees
+// plate and the crags along a raised wall in CellDressing.Built.cs; Plant Growth's saplings and the trees
+// they grow into in CellDressing.Growth.cs. Otherwise trees are the terrain's own trees
 // (ValleyChemistry burns them); grass is the terrain's detail grass. Each
 // cell's dressing is seeded from its position, so a rebuilt one looks the same.
 //
@@ -22,12 +23,13 @@ public sealed partial class CellDressing
         ["brush"] = (new Color(0.20f, 0.36f, 0.14f), 0.6f), ["tree"] = (new Color(0.16f, 0.38f, 0.15f), 2.2f),
         ["stump"] = (new Color(0.13f, 0.10f, 0.08f), 0.15f), ["wood"] = (new Color(0.58f, 0.40f, 0.22f), 0f),
         ["deadfall"] = (new Color(0.32f, 0.23f, 0.15f), 0.4f),
+        ["sprouts"] = (new Color(0.42f, 0.55f, 0.28f), 0f), ["sapling"] = (new Color(0.22f, 0.45f, 0.18f), 0.8f),
         ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.30f, 0.29f, 0.28f), 0.06f),
         ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f),
     };
 
     // Terrains drawn as ground with something standing on it; effects sit on their ground, not on top.
-    static readonly HashSet<string> Dressed = new() { TerrainIds.Tree, TerrainIds.Brush, TerrainIds.Stump, TerrainIds.Rubble, TerrainIds.Deadfall };
+    static readonly HashSet<string> Dressed = new() { TerrainIds.Tree, TerrainIds.Sapling, TerrainIds.Brush, TerrainIds.Stump, TerrainIds.Rubble, TerrainIds.Deadfall };
     // Terrains that stand up as a solid block of their own height.
     static readonly HashSet<string> Blocks = new() { "bedrock", "stone", "pillar" };
 
@@ -54,19 +56,20 @@ public sealed partial class CellDressing
     public GameObject Build(Cell c, int x, int y, float ground)
     {
         bool wall = grid.World.IsRaisedWall(c);
-        if (!wall && !HasParts(c.T)) return null;
+        bool parts = HasParts(c.T) || IsGrownTree(c.T, x, y);
+        if (!wall && !parts) return null;
         var center = grid.CellCenter(x, y);
         var surface = new Vector3(center.x, ground, center.z);
         var root = new GameObject($"{c.T} {x},{y}");
         root.transform.SetParent(grid.transform, false);
         root.transform.position = surface;
-        if (HasParts(c.T)) Dress(root.transform, c.T, Look(c.T), surface, x, y);
+        if (parts) Dress(root.transform, c.T, Look(c.T), surface, x, y);
         if (wall) DressWall(root.transform, surface, c.Height, x, y);
         return root;
     }
 
     static bool HasParts(string terrain) =>
-        terrain == TerrainIds.Brush || terrain == TerrainIds.Stump || terrain == TerrainIds.Rubble || terrain == TerrainIds.Deadfall ||
+        terrain == TerrainIds.Brush || terrain == TerrainIds.Sapling || terrain == TerrainIds.Stump || terrain == TerrainIds.Rubble || terrain == TerrainIds.Deadfall ||
         terrain == TerrainIds.Wood || terrain == TerrainIds.Metal || Blocks.Contains(terrain);
 
     void Dress(Transform root, string terrain, (Color color, float height) look, Vector3 surface, int x, int y)
@@ -79,6 +82,10 @@ public sealed partial class CellDressing
                 break;
             case TerrainIds.Stump:
                 Part(root, PrimitiveType.Cylinder, surface + Vector3.up * 0.15f, new Vector3(0.45f, 0.15f, 0.45f), "Charred", look.color, 0.05f);
+                break;
+            case TerrainIds.Sapling:
+            case TerrainIds.Tree:
+                DressTree(root, surface, rng, x, y, terrain == TerrainIds.Sapling);
                 break;
             case TerrainIds.Rubble:
                 DressRubble(root, surface, rng, look.color);

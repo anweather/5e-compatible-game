@@ -34,6 +34,8 @@ public class ValleyChemistry : MonoBehaviour
     readonly Dictionary<int, List<((int i, int j) chunk, int index)>> treesByCell = new();
     readonly HashSet<(int i, int j)> treesChanged = new();
     readonly HashSet<int> scorched = new();
+    // Cells whose tree grew from a sapling in this world (Grown).
+    readonly HashSet<int> grown = new();
     int[] cabinCells, cabinBurnt, cabinWrecked;
     bool[] cabinCharred;
     Material charred;
@@ -58,6 +60,7 @@ public class ValleyChemistry : MonoBehaviour
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         ground.RaiseBase(channelCells, channelDepths);
         scorched.Clear();
+        grown.Clear();
         IndexTrees();
         int n = cabins?.Length ?? 0;
         cabinCells = new int[n];
@@ -170,8 +173,16 @@ public class ValleyChemistry : MonoBehaviour
 
     void TerrainChanged(int x, int y, string from, string to)
     {
-        if (from == TerrainIds.Tree) BurnTrees(x, y);
-        if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorched.Add(grid.World.Idx(x, y));
+        int key = grid.World.Idx(x, y);
+        if (from == TerrainIds.Tree)
+        {
+            BurnTrees(x, y);
+            grown.Remove(key);
+        }
+        if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorched.Add(key);
+        // Plant Growth: green ground again, and a sapling grown into a tree is drawn by its dressing (Grown).
+        if (to == TerrainIds.Sprouts || to == TerrainIds.Grass || to == TerrainIds.Sapling) scorched.Remove(key);
+        if (from == TerrainIds.Sapling && to == TerrainIds.Tree) grown.Add(key);
         // A wall that burned out is no longer alight (the core puts the fire out as it turns to rubble),
         // but it leaves ash; one that caved in under earth shaping doesn't.
         var now = grid.World.At(x, y);
@@ -270,6 +281,30 @@ public class ValleyChemistry : MonoBehaviour
     }
 
     bool IsScorched(int x, int y) => scorched.Contains(grid.World.Idx(x, y));
+
+    /// <summary>
+    /// Whether a cell's tree grew there from a sapling while this world ran (Plant Growth): the
+    /// valley's terrain has no tree standing for it, so CellDressing draws one. A late joiner
+    /// sees such trees as blockers only (the cells don't say how a tree came to be).
+    /// </summary>
+    public bool Grown(int x, int y) => grown.Contains(grid.World.Idx(x, y));
+
+    /// <summary>
+    /// A tree model to draw growing in a cell (CellDressing): the valley's own tree that stood
+    /// there if one did (a stump's tree grows back), else one of its chunk's kinds picked by the
+    /// cell, at its usual size; false without a valley tree to copy.
+    /// </summary>
+    public bool TreeModel(int x, int y, out GameObject prefab, out Vector3 scale)
+    {
+        if (FelledTree(x, y, out prefab, out scale)) return true;
+        scale = Vector3.one;
+        var at = layout.ChunkOfCell(x, y);
+        if (!ground.HasChunk(at)) return false;
+        var protos = ground.Data(at).treePrototypes;
+        if (protos.Length == 0) return false;
+        prefab = protos[(int)((uint)(x * 73856093 ^ y * 19349663) % (uint)protos.Length)].prefab;
+        return prefab != null;
+    }
 
     // Terrain edits are batched once per frame.
     readonly System.Diagnostics.Stopwatch timer = new();
