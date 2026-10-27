@@ -240,7 +240,7 @@ The coordinator approves each change and schedules them one at a time.
    c. ~~`still-water`~~ `f3a8964`; `net-reset` waits for the online run (with Gameplay's part B, MPPM);
    d. `hardness`: passed, merging now;
    e. `playtest-bot`.
-10. Gameplay: ~~`static-resets`~~ `46abc35`; `villagers` (testing); `net-reset-view` (after the online run); `ground-perf` (perf numbers need a solo slot); `showcase-fire` (the Mac is verifying it).
+10. Gameplay: ~~`static-resets`~~ `46abc35`; ~~`villagers`~~ `4e74992` (on the reel); `net-reset-view` (after the online run); `ground-perf` (perf numbers need a solo slot); `showcase-fire` (the Mac is verifying it).
 11. Build: `perf-pass` (cheap SSAO and soft Medium, `49bd690`) after PC-5 on a solo PC.
 
 The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
