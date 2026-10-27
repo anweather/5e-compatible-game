@@ -70,21 +70,12 @@ public static class SelfUpdate
     }
 
     // A hook run (Setup or Update.exe started the game with --veloapp-...) has nothing more
-    // to do: end at once with success, without Unity's shutdown. On Windows that's
-    // TerminateProcess: ExitProcess would run every DLL's detach under the loader lock,
-    // which deadlocks with Unity's threads already running (seen on the PC).
+    // to do: end at once with success, without Unity's shutdown (QuickExit.Now).
     static void EndHookRun()
     {
         Debug.Log("Self update: Velopack hook done; ending this run.");
-        if (Application.platform == RuntimePlatform.WindowsPlayer) TerminateProcess(GetCurrentProcess(), 0);
-        System.Diagnostics.Process.GetCurrentProcess().Kill();
+        QuickExit.Now(0);
     }
-
-    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
-    static extern IntPtr GetCurrentProcess();
-
-    [System.Runtime.InteropServices.DllImport("kernel32.dll")]
-    static extern bool TerminateProcess(IntPtr process, uint exitCode);
 
     // GitHub's pre-releases, or the folder or URL after -update-source.
     static IUpdateSource Source()
