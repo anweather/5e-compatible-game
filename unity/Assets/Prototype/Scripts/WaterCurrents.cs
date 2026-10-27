@@ -42,7 +42,7 @@ public class WaterCurrents : MonoBehaviour
         var c = grid.World.At(cell.x, cell.y);
         if (c == null || c.Water <= 0 || c.Frozen) return Vector3.zero;
         if (c.T == TerrainIds.River) return River(new Vector2(p.x, p.z));
-        if (grid.valley != null && grid.valley.IsLake(c, cell.x, cell.y) && AtSea(p)) return Sea(p, cell);
+        if (grid.valley != null && grid.valley.IsLake(c, cell.x, cell.y) && IsSea(p)) return Sea(p, cell);
         return Vector3.zero;
     }
 
@@ -67,8 +67,8 @@ public class WaterCurrents : MonoBehaviour
         return new Vector3(along.x, 0f, along.y) * speed;
     }
 
-    // The sea is the water past the coast's hill: anything seaward of a line well inland of the shore.
-    bool AtSea(Vector3 p) => Vector2.Dot(new Vector2(p.x, p.z) - shoreOrigin, seaward.normalized) > -60f;
+    /// <summary>Whether a point is out at sea (seaward of a line well inland of the shore), not the lake.</summary>
+    public bool IsSea(Vector3 p) => Vector2.Dot(new Vector2(p.x, p.z) - shoreOrigin, seaward.normalized) > -60f;
 
     // Ashore in pulses as each breaker comes in over the shallows; a steady drift ashore further out.
     Vector3 Sea(Vector3 p, Vector2Int cell)

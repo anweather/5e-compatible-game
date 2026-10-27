@@ -104,6 +104,9 @@ public class SwimProbe : ProbeScenario
     bool Open(int x, int y)
     {
         var c = World.At(x, y);
-        return c.Water > 0 && !c.Frozen && c.T == TerrainIds.Pit;
+        if (c.Water <= 0 || c.Frozen || c.T != TerrainIds.Pit) return false;
+        // The lake, not the sea (whose deepest water is out by the world's edge).
+        var currents = WaterCurrents.Instance;
+        return currents == null || !currents.IsSea(grid.CellCenter(x, y));
     }
 }
