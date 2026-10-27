@@ -36,5 +36,11 @@
   { "id": "wall-of-stone", "group": "earth", "name": "Wall of Stone", "level": 5, "shape": "line", "length": 6, "effect": "terraform", "height": 3, "terrain": "rock",
     "blurb": "A 30 ft wall of rock rises from where you click, running away from you, wall-high even across a trench; hold the cast for a taller wall. Blocks walking, sight, gas and water; dams a stream. Dig it back down to rubble." },
   { "id": "move-earth", "group": "earth", "name": "Move Earth", "level": 6, "shape": "burst", "radius": 3, "effect": "terraform", "raise": 2, "taper": true, "radial": false,
-    "blurb": "The ground heaves up into a hill 35 ft across, highest in the middle. Water runs off it and pools around the foot." }
+    "blurb": "The ground heaves up into a hill 35 ft across, highest in the middle. Water runs off it and pools around the foot." },
+  { "id": "hasten-time", "group": "time", "name": "Hasten Time", "level": 3, "shape": "burst", "origin": "self", "radius": 0, "effect": "haste", "rate": 20, "duration": 180,
+    "blurb": "Level 3. For half a minute the day runs twenty times as fast for everyone: the sun races across the sky and about ten hours go by, so dusk or dawn comes. Hold the cast and it runs longer (fifteen hours, then twenty). Cast it again while it runs and time settles back to its own pace. Our own spell, in the spirit of the SRD's time magic." },
+  { "id": "control-weather", "group": "time", "name": "Control Weather", "level": 8, "shape": "burst", "origin": "self", "radius": 0, "effect": "weather", "duration": 720,
+    "blurb": "Level 8. You turn the weather for everyone, a step each cast: clear, then rain, then snow, then a storm, then clear again. It holds for two minutes (hold the cast for three, or four), then the natural weather comes back. The SRD's spell takes 10 minutes to set in and lasts 8 hours; ours ramps in over half a minute." },
+  { "id": "fog-cloud", "group": "time", "name": "Fog Cloud", "level": 1, "shape": "burst", "radius": 4, "element": "fog",
+    "blurb": "Level 1. Thick fog fills a 20 ft radius where you point. Nothing sees through it (Misty Step can't blink past it), it drifts with the wind, a Gust of Wind blows it away, fire burns it off, and it thins out over a minute or so." }
 ]

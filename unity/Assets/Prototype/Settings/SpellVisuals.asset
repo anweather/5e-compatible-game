@@ -165,3 +165,27 @@ MonoBehaviour:
     fromSky: 1
     afterImpact: {fileID: 1025285306637258, guid: d8f0099df63275647a8bcf646df1ca00, type: 3}
     storm: 0
+  - spellId: hasten-time
+    projectile: {fileID: 0}
+    impact: {fileID: 1000011210275196, guid: 61a6b3a108030e54ba372fe7097916d0, type: 3}
+    impactSeconds: 2
+    glow: {r: 0.56, g: 0.85, b: 0.8, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
+    storm: 0
+  - spellId: control-weather
+    projectile: {fileID: 0}
+    impact: {fileID: 1000010715882420, guid: 14d81e2c407975245973a11cdfbeb902, type: 3}
+    impactSeconds: 2
+    glow: {r: 0.56, g: 0.85, b: 0.8, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
+    storm: 0
+  - spellId: fog-cloud
+    projectile: {fileID: 0}
+    impact: {fileID: 3281665843732006339, guid: bd2fe1eb2e3ba454088c57397144535f, type: 3}
+    impactSeconds: 2
+    glow: {r: 0.85, g: 0.9, b: 0.92, a: 1}
+    fromSky: 0
+    afterImpact: {fileID: 0}
+    storm: 0

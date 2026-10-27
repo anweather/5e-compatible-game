@@ -18,8 +18,10 @@ using UnityEngine;
 //   host checks it and stamps it into the next batch with the full mod list
 //   and each mod's JSON, and every machine switches at that tick.
 // - Every batch carries the host's checksum of an earlier tick, the cells'
-//   hash, the rules' fingerprint and the world's things' (the props' stable
-//   ids); a client that disagrees logs a desync.
+//   hash, the rules' fingerprint, the world's things' (the props' stable
+//   ids) and the sky's (the time spells' clock and weather); a client that
+//   disagrees logs a desync. The time spells are casts like any other, so a
+//   late joiner's replay rebuilds the clock and the held weather too.
 // - What physics props do to cells (a barrel's blast, a lantern's spill;
 //   ChemEffects) is seen by the host, whose physics is the only one that
 //   counts, and stamped into the next batch like a cast.
@@ -256,10 +258,11 @@ public class NetChem : NetworkBehaviour
     }
 
     /// <summary>
-    /// The checksum every machine compares: the cells' hash, the rules' fingerprint and the world's
-    /// things' (world/things.json: the props' stable ids).
+    /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
+    /// things' (world/things.json: the props' stable ids) and, last, the sky's (Hasten Time's clock
+    /// and Control Weather's weather, World.SkyHash; a sky that differs reports like the cells).
     /// </summary>
-    static string Checksum(ChemGrid grid) => grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint;
+    static string Checksum(ChemGrid grid) => grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash();
 
     // --- everyone --------------------------------------------------------------
 

@@ -40,7 +40,14 @@ namespace Chem
         /// cone points along <paramref name="dir"/>, or along an aim off the grid's four ways
         /// (<paramref name="aimX"/>, <paramref name="aimY"/>; SnapAim) when one is given.
         /// </summary>
-        public List<(int x, int y)> SpellCells(SpellDef s, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0)
+        public List<(int x, int y)> SpellCells(SpellDef s, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0) =>
+            // The time spells (Hasten Time, Control Weather) change the sky, not squares.
+            IsSkySpell(s) ? new List<(int x, int y)>() : ShapeCells(s, x, y, dir, charge, aimX, aimY);
+
+        /// <summary>Whether a spell changes the sky for everyone (Hasten Time, Control Weather) rather than squares.</summary>
+        public static bool IsSkySpell(SpellDef s) => s != null && (s.Effect == HasteEffect || s.Effect == WeatherEffect);
+
+        List<(int x, int y)> ShapeCells(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
         {
             var output = new List<(int x, int y)>();
             if (s == null) return output;
@@ -178,7 +185,9 @@ namespace Chem
             if (s == null || !InBounds(x, y)) return;
             if (s.Effect == "levitate" || s.Effect == "carry") return;
             AddLog($"You cast {s.Name}", LogKind.Info);
-            Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
+            if (s.Effect == HasteEffect) Hasten(s, ClampCharge(charge));
+            else if (s.Effect == WeatherEffect) HoldWeather(s, ClampCharge(charge));
+            else Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
         }
 
         /// <summary>What a spell does to cells where it lands, without the cast's log line (a meteor's landing too).</summary>

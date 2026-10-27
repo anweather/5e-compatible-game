@@ -20,8 +20,9 @@ prototype**. Nothing in this folder is specific to the sandbox.
 
 ## Elements
 
-`fire`, `cold`, `water`, `air`, `earth`, `lightning`, `grease`, `oil` and
-`thunder`. A spell, a critter, spreading fire or a conducting charge
+`fire`, `cold`, `water`, `air`, `earth`, `lightning`, `grease`, `oil`,
+`thunder` and `fog` (Fog Cloud: lays the `fog` gas). A spell, a critter,
+spreading fire or a conducting charge
 *applies an element to a square*. That is the only way anything reacts.
 
 ## How `reactions.json` is read
@@ -108,6 +109,31 @@ elevation plus height.
   measured as the crow flies. A slanted cone takes every square within 45
   degrees of the aim. The element still pushes along the nearest grid way.
 - An element on the spell, if any, is applied after the shaping.
+
+## Time and weather (`"effect": "haste"`, `"effect": "weather"`)
+
+Spells that change the sky for everyone rather than squares (they touch
+none; the cast is still a command, so every peer, and a late joiner
+replaying the casts, has the same clock and weather):
+
+- **`haste`** (Hasten Time): the day clock runs `rate` times as fast for
+  `duration` ticks, half again as long per charge level past a tap. Cast
+  again while it runs and the clock settles back to its own pace, keeping
+  the hours gained.
+- **`weather`** (Control Weather): each cast holds the next weather after the
+  one in force, in the cycle clear, rain, snow, storm (from cloudy, windy or
+  fog it clears first), for `duration` ticks (half again per charge level),
+  ramping in over `weather.rampMinutes`; then the seed's weather resumes.
+  Held weather works even in the calm start.
+
+## Gases (`materials.json` `gases`)
+
+`scald` (damage a creature in it takes), `decay` (its own chance per tick a
+unit decays, instead of `sim.gas.decayChance`: fog lingers) and
+`blocksSightAt` (from this many units a square of it hides what's behind it:
+line of sight, so Misty Step can't blink past thick fog). Fire burns fog off
+(`fire-fog`, first of the fire rules so it always runs), wind and Gust of
+Wind blow it like any gas, and Thunderwave scatters it.
 
 ## Craters (`"crater"`)
 

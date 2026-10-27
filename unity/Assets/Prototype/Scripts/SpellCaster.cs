@@ -112,10 +112,14 @@ public class SpellCaster : MonoBehaviour
         Cast(new CastCommand(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
     }
 
-    /// <summary>Whether holding Cast makes this spell stronger (World.Cast): one with an element, a line, or earth shaping.</summary>
+    /// <summary>
+    /// Whether holding Cast makes this spell stronger (World.Cast): one with an element, a line, or
+    /// earth shaping; or a time spell, which a held cast makes last longer.
+    /// </summary>
     public static bool Chargeable(SpellDef spell) =>
-        spell != null && spell.Effect != SpellShapes.TeleportEffect && spell.Effect != SpellShapes.LevitateEffect && spell.Effect != SpellShapes.CarryEffect
-        && (spell.Element != null || spell.Shape == SpellShapes.Line || spell.Effect == SpellShapes.TerraformEffect);
+        World.IsSkySpell(spell)
+        || (spell != null && spell.Effect != SpellShapes.TeleportEffect && spell.Effect != SpellShapes.LevitateEffect && spell.Effect != SpellShapes.CarryEffect
+            && (spell.Element != null || spell.Shape == SpellShapes.Line || spell.Effect == SpellShapes.TerraformEffect));
 
     // Three pips under the crosshair fill as the held Cast charges.
     void OnGUI()
