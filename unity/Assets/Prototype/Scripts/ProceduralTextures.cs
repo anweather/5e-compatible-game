@@ -35,6 +35,29 @@ public static class ProceduralTextures
         return tex;
     }
 
+    /// <summary>
+    /// A puff of fog for FogBank's billboards: white, its alpha a soft round falloff broken up by
+    /// value noise (so the puffs don't read as discs), clear at the edges.
+    /// </summary>
+    public static Texture2D SoftPuff(int size)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, true) { name = "Fog puff", wrapMode = TextureWrapMode.Clamp };
+        var pixels = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float u = (x + 0.5f) / size - 0.5f, v = (y + 0.5f) / size - 0.5f;
+                float r = Mathf.Sqrt(u * u + v * v) * 2f;
+                float falloff = Mathf.Clamp01(1f - r);
+                float noise = Chem.ValueNoise.Twice(x * 6f / size, y * 6f / size, 7);
+                float a = falloff * falloff * (0.55f + 0.45f * noise);
+                pixels[y * size + x] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(a) * 255f));
+            }
+        tex.SetPixels32(pixels);
+        tex.Apply(true);
+        return tex;
+    }
+
     public static Texture2D RippleNormals(int size)
     {
         var tex = new Texture2D(size, size, TextureFormat.RGBA32, true, true) { name = "Ripples", wrapMode = TextureWrapMode.Repeat };

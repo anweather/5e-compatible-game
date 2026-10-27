@@ -7,9 +7,9 @@ prototype**. Nothing in this folder is specific to the sandbox.
 
 | File | What it holds |
 |---|---|
-| `materials.json` | Terrain (tags, flammability, fuel, what it burns, breaks or is dug into, elevation), covers (oil, grease, ash) and gases (steam, smoke) | A terrain with `spring` (units) refills to that much water each tick unless frozen: the valley's river.
+| `materials.json` | Terrain (tags, flammability, fuel, what it burns, breaks, is dug or grows into, elevation), covers (oil, grease, ash, snow, thorns) and gases (steam, smoke) | A terrain with `spring` (units) refills to that much water each tick unless frozen: the valley's river.
 | `reactions.json` | **The chemistry table.** What each element does when it reaches a square (`cell`), and to a creature or object standing there (`entity`) |
-| `spells.json` | The shared SRD spell kit: element, shape (point, line, square, burst, target, or cone: from the caster, widening a square each side per square out), power, damage, push force, earth shaping. `"radial": false` keeps a spell off the Unity game's spell radial. A cast can be charged (held) 1 to 3: power and raise / dig times the charge, height 2 more per level, lines half again as long per level, a point, square or burst a square bigger per level (not earth shaping) |
+| `spells.json` | The shared SRD spell kit: element, shape (point, line, square, burst, target, or cone: from the caster, widening a square each side per square out), power, damage, push force, earth shaping. `"effect"` is one of `levitate`, `carry`, `teleport`, `terraform`, `haste`, `weather` or `shapeshift`; all but `terraform` change no squares (the Unity game does them: `shapeshift` takes the shape of an animal within `range` for `duration` ticks, times the charge; the sandbox only logs it). `"radial": false` keeps a spell off the Unity game's spell radial. A cast can be charged (held) 1 to 3: power and raise / dig times the charge, height 2 more per level, lines half again as long per level, a point, square or burst a square bigger per level (not earth shaping) |
 | `critters.json` | Critters: what each emits, how often, and in what shape |
 | `entities.json` | Things on the board: HP, mass, flammable, explodes |
 | `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`), `breaks` (impact speed in m/s and what it spills). The sandbox carries and checks them but has no items |
@@ -20,8 +20,9 @@ prototype**. Nothing in this folder is specific to the sandbox.
 
 ## Elements
 
-`fire`, `cold`, `water`, `air`, `earth`, `lightning`, `grease`, `oil` and
-`thunder`. A spell, a critter, spreading fire or a conducting charge
+`fire`, `cold`, `water`, `air`, `earth`, `lightning`, `grease`, `oil`,
+`thunder`, `fog` (Fog Cloud: lays the `fog` gas), `growth` (Plant Growth) and
+`thorns` (Spike Growth). A spell, a critter, spreading fire or a conducting charge
 *applies an element to a square*. That is the only way anything reacts.
 
 ## How `reactions.json` is read
@@ -47,12 +48,15 @@ prototype**. Nothing in this folder is specific to the sandbox.
   - `gas` (`"any"` or an id)
   - `terrainTag`, `notTerrainTag`
   - `conductive`
+  - `power` (the least power the element came with: a charged cast's power times its charge)
+  - `chance` (applies this often, 0 to 1; rolled last on the world's generator, so it only turns when the rest holds)
 - **Effects:**
   - `ignite` (an intensity, or `"cover"`), `extinguish`
   - `boil`, `melt`, `freeze`, `condense`
   - `addWater` (a number, or `"power"` for the caster's power)
   - `setCover`, `spreadCover`
   - `break`, `setTerrain`, `raise`
+  - `grow` (a non-blocking terrain the square becomes, with `ticks: [min, max]` and `wave`; see "Growing" below)
   - `conduct`
   - `fan`, `pushGas`, `clearGas`
   - `mark` (machines read it)
@@ -108,6 +112,62 @@ elevation plus height.
   measured as the crow flies. A slanted cone takes every square within 45
   degrees of the aim. The element still pushes along the nearest grid way.
 - An element on the spell, if any, is applied after the shaping.
+
+## Time and weather (`"effect": "haste"`, `"effect": "weather"`)
+
+Spells that change the sky for everyone rather than squares (they touch
+none; the cast is still a command, so every peer, and a late joiner
+replaying the casts, has the same clock and weather):
+
+- **`haste`** (Hasten Time): the day clock runs `rate` times as fast for
+  `duration` ticks, half again as long per charge level past a tap. Cast
+  again while it runs and the clock settles back to its own pace, keeping
+  the hours gained.
+- **`weather`** (Control Weather): each cast holds the next weather after the
+  one in force, in the cycle clear, rain, snow, storm (from cloudy, windy or
+  fog it clears first), for `duration` ticks (half again per charge level),
+  ramping in over `weather.rampMinutes`; then the seed's weather resumes.
+  Held weather works even in the calm start.
+
+## Gases (`materials.json` `gases`)
+
+`scald` (damage a creature in it takes), `decay` (its own chance per tick a
+unit decays, instead of `sim.gas.decayChance`: fog lingers) and
+`blocksSightAt` (from this many units a square of it hides what's behind it:
+line of sight, so Misty Step can't blink past thick fog). Fire burns fog off
+(`fire-fog`, first of the fire rules so it always runs), wind and Gust of
+Wind blow it like any gas, and Thunderwave scatters it.
+
+## Growing and lasting (`Cell.life`)
+
+Each square keeps a **life**: ticks until what grows or lasts there
+ripens (0 for nothing). When it runs out, a cover with `lasts` withers away
+(its `witherLog` logged), then a terrain with `growsTo` becomes it (its
+`growLog` logged); a blocking one (a tree) pushes the square's water out
+and, in the sandbox, waits while something stands there. A burning square
+waits a tick at a time.
+
+- **Terrain `growsTo`, `growLog`:** green shoots (`sprouts`) grow into
+  grass, a `sapling` into a tree.
+- **Effect `grow`** sets the terrain (not on a raised wall) and its life:
+  a roll within `ticks: [min, max]` (default 1), plus `wave` ticks for
+  each square (Chebyshev) from where the spell landed, so Plant Growth's
+  grass ripens outward from the middle.
+- **Cover `lasts`:** the life a cover starts with when laid (`setCover`,
+  `spreadCover`): Spike Growth's thorns last 360 ticks, a minute. A cover
+  can also say what it does to a creature walking through it: `damage`
+  (`[dice, sides]` a square) and `speed` (1 unhindered; thorns 0.5). The
+  sandbox hurts and snags creatures that step in (a step takes 1/speed as
+  long); the Unity game slows and hurts the wizard (`SurfaceEffects`).
+- **Spell `radiusPerCharge`:** a burst's radius grows by this many more
+  squares for each level of charge past a tap, on top of the square every
+  burst gains per level (`ChargedGrowth`).
+
+The `growth` element's rules (Plant Growth) read tags: `rootstock` (a stump
+sprouts a sapling), `soil` under `ash` (burnt ground: green shoots, or with
+power 2 a chance of a sapling), `turf` (with power 3 a small chance of a
+sapling in the meadow). A blaze (`fire` 2 or more) stops it; embers are
+smothered.
 
 ## Craters (`"crater"`)
 

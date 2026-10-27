@@ -66,6 +66,9 @@ public sealed class ValleyGround
     /// <summary>One of the chunks the cells reach, as drawn now.</summary>
     public TerrainData Data((int i, int j) at) => Shown(chunks[at]);
 
+    /// <summary>Whether the cells reach this chunk (it has a terrain).</summary>
+    public bool HasChunk((int i, int j) at) => chunks.ContainsKey(at);
+
     /// <summary>One of the chunks the cells reach, to change: its runtime copy, made now if it has none yet.</summary>
     public TerrainData WritableData((int i, int j) at) => Writable(chunks[at]);
 
@@ -106,6 +109,7 @@ public sealed class ValleyGround
         heightfield = new CellHeightfield(layout, stepHeight, shapeSpeed) { FlatUnderWalls = flatUnderWalls };
         heightfield.Reset(w);
         repaint.Clear();
+        cleared.Clear();
         reshaped.Clear();
         foreach (var kv in chunks) Recover(kv.Key, kv.Value);
         cellBase = new float[w.W * w.H];
@@ -341,23 +345,70 @@ public sealed class ValleyGround
     // Clears the grass under this frame's bare cells, one read and one write per chunk and grass
     // kind (each SetDetailLayer rebuilds the terrain's grass patches there, so a call per cell made a
     // big fire's frames stall).
+    // Grass that grows back (Plant Growth) gets the valley's own detail grass back from the saved chunk.
     void ClearBareDetail(System.Func<int, int, bool> scorched)
     {
         bareByChunk.Clear();
+        regrownByChunk.Clear();
         foreach (var (x, y) in batch)
         {
-            // Snow only lies on the grass (clearing it would be for good: nothing regrows it).
+            // Snow only lies on the grass (clearing it under snow would leave the grass bare after the thaw).
             var c = world.At(x, y);
-            if (CellPaint.IsSnowy(c) || CellPaint.IsGrassy(CellPaint.Mix(world, c, scorched(x, y)))) continue;
+            if (CellPaint.IsSnowy(c)) continue;
+            bool grassy = CellPaint.IsGrassy(CellPaint.Mix(world, c, scorched(x, y)));
+            int key = world.Idx(x, y);
+            if (grassy && !cleared.Remove(key)) continue;
+            if (!grassy) cleared.Add(key);
             var r = layout.TexelRect(x, y);
             if (!chunks.ContainsKey((r.I, r.J))) continue;
-            if (!bareByChunk.TryGetValue((r.I, r.J), out var list)) bareByChunk[(r.I, r.J)] = list = new List<ChunkRect>();
+            var byChunk = grassy ? regrownByChunk : bareByChunk;
+            if (!byChunk.TryGetValue((r.I, r.J), out var list)) byChunk[(r.I, r.J)] = list = new List<ChunkRect>();
             list.Add(r);
         }
         foreach (var kv in bareByChunk) ClearDetail(Writable(chunks[kv.Key]), kv.Value);
+        foreach (var kv in regrownByChunk) RestoreDetail(chunks[kv.Key], kv.Value);
     }
 
-    readonly Dictionary<(int i, int j), List<ChunkRect>> bareByChunk = new();
+    readonly Dictionary<(int i, int j), List<ChunkRect>> bareByChunk = new(), regrownByChunk = new();
+    // Cells whose detail grass was cleared (world cell indices), so grass growing back there gets it back.
+    readonly HashSet<int> cleared = new();
+
+    // The saved chunk's detail grass copied back over texel rectangles of its runtime copy: like
+    // ClearDetail, the box round them read once per grass kind (from both) and written back once.
+    static void RestoreDetail(Chunk ch, List<ChunkRect> rects)
+    {
+        var data = Writable(ch);
+        var spans = DetailSpans(data, rects, out int bx0, out int bz0, out int w, out int h);
+        for (int layer = 0; layer < data.detailPrototypes.Length; layer++)
+        {
+            var map = data.GetDetailLayer(bx0, bz0, w, h, layer);
+            var saved = ch.original.GetDetailLayer(bx0, bz0, w, h, layer);
+            foreach (var (x0, z0, x1, z1) in spans)
+                for (int z = z0; z <= z1; z++)
+                    for (int x = x0; x <= x1; x++) map[z - bz0, x - bx0] = saved[z - bz0, x - bx0];
+            data.SetDetailLayer(bx0, bz0, layer, map);
+        }
+    }
+
+    // Texel rectangles as detail-map spans, and the box round them (detail and alphamap resolutions may differ).
+    static List<(int x0, int z0, int x1, int z1)> DetailSpans(TerrainData data, List<ChunkRect> rects, out int bx0, out int bz0, out int w, out int h)
+    {
+        float k = data.detailResolution / (float)data.alphamapResolution;
+        bx0 = int.MaxValue;
+        bz0 = int.MaxValue;
+        int bx1 = int.MinValue, bz1 = int.MinValue;
+        var spans = new List<(int x0, int z0, int x1, int z1)>(rects.Count);
+        foreach (var r in rects)
+        {
+            int x0 = Mathf.FloorToInt(r.X * k), z0 = Mathf.FloorToInt(r.Z * k);
+            int x1 = Mathf.Max(x0, Mathf.CeilToInt((r.XMax + 1) * k) - 1), z1 = Mathf.Max(z0, Mathf.CeilToInt((r.ZMax + 1) * k) - 1);
+            spans.Add((x0, z0, x1, z1));
+            bx0 = Mathf.Min(bx0, x0); bz0 = Mathf.Min(bz0, z0); bx1 = Mathf.Max(bx1, x1); bz1 = Mathf.Max(bz1, z1);
+        }
+        w = bx1 - bx0 + 1;
+        h = bz1 - bz0 + 1;
+        return spans;
+    }
 
     /// <summary>
     /// A CellPaint block laid over a terrain's paint (<paramref name="baseAlpha"/>, the whole
@@ -397,17 +448,7 @@ public sealed class ValleyGround
     public static void ClearDetail(TerrainData data, List<ChunkRect> rects)
     {
         if (rects.Count == 0) return;
-        float k = data.detailResolution / (float)data.alphamapResolution;
-        int bx0 = int.MaxValue, bz0 = int.MaxValue, bx1 = int.MinValue, bz1 = int.MinValue;
-        var spans = new List<(int x0, int z0, int x1, int z1)>(rects.Count);
-        foreach (var r in rects)
-        {
-            int x0 = Mathf.FloorToInt(r.X * k), z0 = Mathf.FloorToInt(r.Z * k);
-            int x1 = Mathf.Max(x0, Mathf.CeilToInt((r.XMax + 1) * k) - 1), z1 = Mathf.Max(z0, Mathf.CeilToInt((r.ZMax + 1) * k) - 1);
-            spans.Add((x0, z0, x1, z1));
-            bx0 = Mathf.Min(bx0, x0); bz0 = Mathf.Min(bz0, z0); bx1 = Mathf.Max(bx1, x1); bz1 = Mathf.Max(bz1, z1);
-        }
-        int w = bx1 - bx0 + 1, h = bz1 - bz0 + 1;
+        var spans = DetailSpans(data, rects, out int bx0, out int bz0, out int w, out int h);
         for (int layer = 0; layer < data.detailPrototypes.Length; layer++)
         {
             var map = data.GetDetailLayer(bx0, bz0, w, h, layer);

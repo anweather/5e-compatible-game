@@ -164,6 +164,12 @@ public static class ProbeScenarios
             "squares, Ray of Frost's beam length, Thunderwave's shove on the crate by yard (15, 6), Levitate's lift on the props " +
             "by yard (17, 6), Misty Step's and Mage Hand's reach and Mage Hand's lift, no console errors. Metrics: every spell's " +
             "squares at a tap and held."),
+        new Entry("shapeshift", typeof(ShapeshiftProbe), 60f,
+            "Shapeshift in the meadow: a deer put 8 m in front of the wizard (held still), aimed at through a ray from the wizard's eyes and cast " +
+            "at; the wizard walks as a deer, tries Fire Bolt, a second deer is put 6 m away, then Cast changes it back; shifted again, a heavy blow. " +
+            "Checks: the ray finds the deer (and the sky fizzles), the wizard's model is hidden and a deer's body drawn where it stands, the controller " +
+            "has the deer's speeds, walking moves it with a gait, Fire Bolt is refused, the near deer doesn't bolt, changing back restores the model " +
+            "and speeds, the blow changes it back, no console errors. `--shots` saves the wizard as a deer."),
         new Entry("sprint", typeof(SprintProbe), 30f,
             "A virtual controller walks the wizard north, clicks the left stick, lets go of the stick and pushes again, then holds the left trigger. " +
             "Checks: the click runs (over 1.3 times the walk), letting go of the stick stops the run, the left trigger doesn't sprint, no console errors."),
@@ -193,6 +199,18 @@ public static class ProbeScenarios
             "Fireball, Meteor. Checks: each plays its gesture (Shove, Raise, Throw, CallDown); both hands push forward over 0.4 m for Gust; both hands " +
             "go below 0.95 m then over the head for Raise Earth; the casting hand goes back behind the shoulder then over 0.3 m forward for Fireball; " +
             "both hands go over the head then below the shoulders for Meteor, the meteor appearing at the pull; no console errors."),
+        new Entry("timeweather", typeof(TimeWeatherProbe), 60f,
+            "The Time & Weather spells cast from the bar on a clear morning: Hasten Time (and again to settle it), Control Weather four times, " +
+            "then Fog Cloud in the yard with a Misty Step aimed through it, a Fire Bolt into it and a Gust of Wind through it. Checks: the clock " +
+            "runs 90 game minutes or more in 6 s and back to its own pace after the second cast, the weather turns rain, snow, storm, clear " +
+            "with WeatherFx drawing the rain and the snow, two thirds of the fog's squares thick and drawn (FogBank), no line of sight through " +
+            "it and the blink refused, the bolt burns the fog off where it lands, the gust blows the fog east, no console errors."),
+        new Entry("nature", typeof(NatureProbe), 120f,
+            "A Fireball burns the meadow round the yard's tree at (5, 8), then Plant Growth (charge 2) lands on it; later Spike Growth on the " +
+            "south meadow, the wizard walking through it, and a Fire Bolt into it. Checks: the fire leaves ash and the tree a stump, Plant Growth " +
+            "clears the ash into green shoots that are grass six seconds on (grass counted before and after), the stump sprouts a sapling that " +
+            "grows into a tree drawn on its square, thorns on 60 squares or more with their clumps drawn, the wizard slower through them " +
+            "(under 0.75 of its speed on open grass) and losing health, the Fire Bolt sets them alight and they burn to ash, no console errors."),
     };
 
     public static Entry Find(string name) =>

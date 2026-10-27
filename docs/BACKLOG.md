@@ -18,6 +18,14 @@ starting at 9:00), the sun and a moon, the sky, ambient light and haze by
 the hour (`SkyLight`), and the clock line on the HUD. Still open: anything
 the night *does* (below), stars, and lights that switch on at dusk.
 
+**Built (2026-10-27): Hasten Time**, under the new Time & Weather element:
+the day clock runs 20 times as fast for 30 s for everyone (about ten game
+hours; held, 15 or 20), and casting it again settles it back. The clock
+reads `World.ClockTick` (the tick plus the lead Hasten Time gave it), so it
+is lockstep state set by a cast (`World.Time.cs`, `sim.ts`'s `tickClock`).
+Still open: slowing or stopping time, and time that runs differently in one
+place.
+
 - **Influenced by:** spells and items that make light or dark (Daylight,
   Darkness, the lantern's light `use`, burning things); maybe a spell that
   speeds or stops time locally.
@@ -44,6 +52,16 @@ wind loops (`WeatherFx`). The Storm season mod. Still open: snow and
 cold (freezing), heat, fronts per chunk, weather that reacts to the world
 (a big fire's updraft), Control Weather, rain that stops under roofs,
 splashes, and recorded rain and wind instead of procedural loops.
+
+**Built (2026-10-27): Control Weather and Fog Cloud** (Time & Weather).
+Control Weather turns the weather for everyone a step a cast (clear, rain,
+snow, storm), holding it 2 minutes (held, 3 or 4) before the seed's
+weather resumes; it rains and snows even in the calm start. Fog Cloud lays
+a `fog` gas (`materials.json`: lingers, `blocksSightAt`) that hides what's
+behind it (`World.LineOfSight`, Misty Step), drifts and is blown by wind
+and Gust of Wind, is burnt off by fire (`fire-fog`) and thins away; the
+view draws it as soft billboards (`FogBank`). Still open: the fog weather
+laying fog gas, Control Weather choosing wind or fog.
 
 - **Influenced by:** Create Water and fire at scale (a big fire makes
   smoke and an updraft), Gust of Wind, lightning spells, Control Weather

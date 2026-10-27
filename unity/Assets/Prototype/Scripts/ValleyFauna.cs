@@ -1,11 +1,9 @@
 using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using Chem;
 using Punchy.Fauna;
 using Unity.Mathematics;
 using Unity.Profiling;
 using UnityEngine;
-using UnityEngine.Rendering;
 
 // The valley's animals: deer, rabbits, foxes, turkeys, frogs by the water and
 // the odd bear, kept around the camera. Built from Punchy's creatures
@@ -15,8 +13,10 @@ using UnityEngine.Rendering;
 // walking to the water to drink, lying down to rest, sleeping at night (or by
 // day, for night animals), playing chase with its own kind, and hunting what
 // it hunts (wolves and foxes); prey runs from a hunter, and everything bolts
-// from a wizard who comes too close, and from fire. They keep to dry, clear,
-// unburnt cells.
+// from a wizard who comes too close, and from fire. A wizard in an animal's
+// shape (Shapeshift) is one of the animals to them: its own kind and the
+// rest let it be, and what that animal hunts runs from it. They keep to dry,
+// clear, unburnt cells.
 // Presentation only, like the fireflies: each machine has its own animals,
 // and nothing they do reaches the chemistry.
 public class ValleyFauna : MonoBehaviour, ICreatureGround
@@ -58,20 +58,19 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
     }
 
     static readonly ProfilerMarker UpdateMarker = new("ValleyFauna.Update");
-    static readonly int SegmentsId = Shader.PropertyToID("_Segments");
 
     readonly List<Creature> creatures = new();
     readonly List<CreatureBody> bodies = new();
-    readonly List<Vector2> wizards = new(), fires = new();
+    readonly List<Vector2> fires = new();
+    // The wizards, and the species each has the shape of (-1: itself).
+    readonly List<(Vector2 at, int form)> wizards = new();
     readonly CreatureAnimator animator = new();
     readonly CreatureBrain brain = new();
     readonly Herd herd = new();
     SkyLight sky;
     int[] counts;
     SegmentInstance[] instances = new SegmentInstance[256];
-    GraphicsBuffer buffer;
-    MaterialPropertyBlock props;
-    Mesh capsule;
+    CreatureDrawer drawer;
     ChemGrid grid;
     World world;
     float2? home;
@@ -100,14 +99,51 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         c.state.Speed = speed;
     }
 
+    /// <summary>An animal's species, as its index in the list.</summary>
+    public int SpeciesOf(int index) => creatures[index].species;
+
+    /// <summary>An animal's colouring (one of its species' coats).</summary>
+    public int Coat(int index) => creatures[index].coat;
+
+    /// <summary>A species' body (by index in the list), or null; built in Start.</summary>
+    public CreatureBody Body(int speciesIndex) =>
+        speciesIndex >= 0 && speciesIndex < bodies.Count ? bodies[speciesIndex] : null;
+
+    /// <summary>A species' name as its asset has it ("RedFox"), or null.</summary>
+    public string SpeciesName(int speciesIndex) =>
+        speciesIndex >= 0 && speciesIndex < species.Count && species[speciesIndex].species != null ? species[speciesIndex].species.name : null;
+
+    /// <summary>
+    /// The animal <paramref name="ray"/> points at, the nearest along it within
+    /// <paramref name="maxDistance"/>, or -1. Animals have no colliders, so it is a near miss of
+    /// the ray past each body's middle, by about the body's size.
+    /// </summary>
+    public int Aimed(Ray ray, float maxDistance)
+    {
+        int best = -1;
+        float bestAlong = maxDistance;
+        for (int i = 0; i < creatures.Count; i++)
+        {
+            var b = bodies[creatures[i].species];
+            var s = creatures[i].state;
+            var middle = new Vector3(s.Position.x, s.Position.y + b.StandHeight * s.Scale, s.Position.z);
+            float along = Vector3.Dot(middle - ray.origin, ray.direction);
+            if (along <= 0f || along >= bestAlong) continue;
+            float reach = math.max(0.45f, b.BodyLength * s.Scale * 0.6f);
+            if ((ray.GetPoint(along) - middle).sqrMagnitude > reach * reach) continue;
+            best = i;
+            bestAlong = along;
+        }
+        return best;
+    }
+
     void Start()
     {
         grid = FindFirstObjectByType<ChemGrid>();
         sky = FindFirstObjectByType<SkyLight>();
         BuildBodies();
         counts = new int[species.Count];
-        capsule = CreatureCapsule.Build(12, 6, 4);
-        props = new MaterialPropertyBlock();
+        drawer = new CreatureDrawer(material);
     }
 
     // Each species' body, with what it hunts and whether anything hunts it (a listed species' variants count).
@@ -132,11 +168,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
             bodies.Add(species[i].species != null ? CreatureBody.Build(species[i].species, prey[i], hunted[i]) : null);
     }
 
-    void OnDestroy()
-    {
-        buffer?.Release();
-        if (capsule != null) Destroy(capsule);
-    }
+    void OnDestroy() => drawer?.Dispose();
 
     void Update()
     {
@@ -163,7 +195,7 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         foreach (var c in creatures) herd.Add(c.id, c.species, c.state, bodies[c.species]);
         foreach (var c in creatures)
         {
-            var (threat, isFire) = Nearest(c.state.Position.xz);
+            var (threat, isFire) = Nearest(c.state.Position.xz, c.species);
             brain.Step(ref c.state, c.id, c.species, bodies[c.species], herd, this, threat, isFire, night, dt);
         }
         Draw(cam);
@@ -181,12 +213,12 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         return c != null && c.Water > 0 && !c.Frozen;
     }
 
-    /// <summary>Dry, clear of trees and walls, and not burning.</summary>
+    /// <summary>Dry, clear of trees, walls and thorns, and not burning.</summary>
     public bool Walkable(float2 xz)
     {
         var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
         var c = world.At(cell.x, cell.y);
-        if (c == null || c.Water > 0 || c.Fire > 0) return false;
+        if (c == null || c.Water > 0 || c.Fire > 0 || world.IsSpiky(c)) return false;
         return c.T != TerrainIds.Tree && c.T != TerrainIds.LogWall && c.T != TerrainIds.Stone && c.T != TerrainIds.Rock && c.T != TerrainIds.Metal;
     }
 
@@ -204,13 +236,16 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
 
     // --- what animals are wary of ----------------------------------------------
 
-    // Twice a second: where the wizards are, and the fires near the camera.
+    // Twice a second: where the wizards are (and what shape they're in), and the fires near the camera.
     void LookAround(float2 centre)
     {
         nextLook = Time.time + 0.5f;
         wizards.Clear();
         foreach (var w in FindObjectsByType<SpellCaster>(FindObjectsSortMode.None))
-            wizards.Add(new Vector2(w.transform.position.x, w.transform.position.z));
+        {
+            int form = w.TryGetComponent<Shapeshift>(out var shape) && shape.Shifted ? shape.Species : -1;
+            wizards.Add((new Vector2(w.transform.position.x, w.transform.position.z), form));
+        }
         fires.Clear();
         var mid = grid.CellAt(new Vector3(centre.x, 0f, centre.y));
         int reach = Mathf.CeilToInt(despawnDistance / grid.cellSize);
@@ -226,12 +261,15 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
             }
     }
 
-    (float2 at, bool fire) Nearest(float2 from)
+    // The nearest danger to an animal of a species: a fire, a wizard, or a wizard in the shape of
+    // something that hunts it (a wizard in any other animal's shape is no danger).
+    (float2 at, bool fire) Nearest(float2 from, int speciesIndex)
     {
         float2 best = new(1e9f, 1e9f);
         float bestSq = float.MaxValue;
         bool fire = false;
-        foreach (var w in wizards) Consider(w, false);
+        foreach (var (at, form) in wizards)
+            if (form < 0 || Hunts(form, speciesIndex)) Consider(at, false);
         foreach (var f in fires) Consider(f, true);
         return (best, fire);
 
@@ -243,6 +281,13 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
             best = p;
             fire = isFire;
         }
+    }
+
+    /// <summary>Whether the species <paramref name="hunter"/> hunts the species <paramref name="quarry"/> (indices in the list).</summary>
+    public bool Hunts(int hunter, int quarry)
+    {
+        var b = Body(hunter);
+        return b != null && System.Array.IndexOf(b.Prey, quarry) >= 0;
     }
 
     // --- population --------------------------------------------------------------
@@ -335,20 +380,6 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
             animator.Evaluate(b, c.state, c.coat, this, instances, offset);
             offset += b.Segments.Length;
         }
-        if (buffer == null || buffer.count < total)
-        {
-            buffer?.Release();
-            buffer = new GraphicsBuffer(GraphicsBuffer.Target.Structured, instances.Length, Marshal.SizeOf<SegmentInstance>());
-        }
-        buffer.SetData(instances, 0, 0, total);
-        props.SetBuffer(SegmentsId, buffer);
-        var rp = new RenderParams(material)
-        {
-            worldBounds = new Bounds(cam.transform.position, Vector3.one * 2000f),
-            matProps = props,
-            shadowCastingMode = ShadowCastingMode.On,
-            receiveShadows = true,
-        };
-        Graphics.RenderMeshPrimitives(rp, capsule, 0, total);
+        drawer.Draw(instances, total, cam.transform.position);
     }
 }

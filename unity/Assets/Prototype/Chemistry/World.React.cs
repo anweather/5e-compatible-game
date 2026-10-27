@@ -22,7 +22,7 @@ namespace Chem
             string beforeCover = CoverName(c), beforeTerrain = TerrainOf(c).Name.ToLowerInvariant();
             foreach (var rule in Rules.CellRulesFor(element))
             {
-                if (!Matches(c, rule.If)) continue;
+                if (!Applies(c, rule.If, power)) continue;
                 bool changed = rule.Do.Count == 0;
                 foreach (var eff in rule.Do) changed = RunEffect(x, y, c, eff, power, dir) || changed;
                 if (changed && rule.Log != null && (direct || rule.Notable))
@@ -58,6 +58,41 @@ namespace Chem
             if (!string.IsNullOrEmpty(cond.NotTerrainTag) && HasTag(c, cond.NotTerrainTag)) return false;
             if (cond.Conductive.HasValue && IsConductive(c) != cond.Conductive.Value) return false;
             return true;
+        }
+
+        /// <summary>
+        /// Whether a rule's "if" holds (applies in the TS): the cell matches, the element came with
+        /// at least its power, and its chance comes up, rolled last so the generator only turns
+        /// once the rule would otherwise run.
+        /// </summary>
+        bool Applies(Cell c, CellCond cond, int power)
+        {
+            if (cond == null) return true;
+            if (!Matches(c, cond)) return false;
+            if (cond.Power.HasValue && power < cond.Power.Value) return false;
+            return !cond.Chance.HasValue || Rand() < cond.Chance.Value;
+        }
+
+        /// <summary>Lays a cover (or with null clears it); one that lasts (thorns) starts its Cell.Life.</summary>
+        void PutCover(Cell c, string coverId)
+        {
+            c.Cover = coverId;
+            if (coverId != null && Rules.Covers.TryGetValue(coverId, out var cv) && cv.Lasts > 0) c.Life = cv.Lasts;
+        }
+
+        /// <summary>
+        /// The landing square of the spell being applied (Land), for a grow effect's wave: what it
+        /// grows ripens later the further it is from there. Null outside a landing.
+        /// </summary>
+        (int x, int y)? waveFrom;
+
+        /// <summary>A grow effect's Cell.Life: a roll between its ticks, plus its wave per square from the landing.</summary>
+        int GrowTicks(Effect eff, int x, int y)
+        {
+            int n = eff.TicksMin;
+            if (eff.TicksMax > eff.TicksMin) n += (int)Math.Floor(Rand() * (eff.TicksMax - eff.TicksMin + 1));
+            if (waveFrom.HasValue) n += eff.Wave * Math.Max(Math.Abs(x - waveFrom.Value.x), Math.Abs(y - waveFrom.Value.y));
+            return Math.Max(1, n);
         }
 
         static bool Contains(IReadOnlyList<string> list, string s)
@@ -190,7 +225,7 @@ namespace Chem
             if (eff.HasSetCover)
             {
                 if (c.Cover == eff.SetCover) return false;
-                c.Cover = eff.SetCover;
+                PutCover(c, eff.SetCover);
                 return true;
             }
             if (eff.SpreadCover.HasValue)
@@ -205,7 +240,7 @@ namespace Chem
                     var (nx, ny) = options[k];
                     options.RemoveAt(k);
                     var n = At(nx, ny);
-                    n.Cover = c.Cover;
+                    PutCover(n, c.Cover);
                     if (c.Fire > 0) IgniteCover(n);
                 }
                 return true;
@@ -266,6 +301,14 @@ namespace Chem
             if (eff.Gas != null)
             {
                 AddGas(c, eff.Gas, eff.N ?? 1);
+                return true;
+            }
+            if (eff.Grow != null)
+            {
+                // Nothing takes root on a wall of raised earth.
+                if (IsBlocking(c)) return false;
+                c.T = eff.Grow;
+                c.Life = GrowTicks(eff, x, y);
                 return true;
             }
             return false;

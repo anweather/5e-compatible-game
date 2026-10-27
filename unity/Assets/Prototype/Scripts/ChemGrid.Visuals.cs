@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 // and, for any cell whose state changed, updates what stands on it: its
 // dressing (CellDressing: brambles, a stump, planks, crags), its invisible
 // blocker (CellBlockers), its water or ice (one surface over all the wet
-// cells: CellWaterMesh), oil or grease (one film: CellSlickMesh), and its fire, gas and
+// cells: CellWaterMesh), oil or grease (one film: CellSlickMesh), thorns (CellThorns), and its fire, gas and
 // charge effects (ChemGrid.Effects.cs).
 // Reshaped ground eases to its new height (ChemGrid.Shaping.cs). A small pool
 // of flickering lights follows the biggest fires (FireLightPool). Cubes stand
@@ -36,7 +36,7 @@ public partial class ChemGrid
     // What is currently shown for one cell, so a cell is only redrawn when it changes.
     sealed class View
     {
-        public GameObject dressing, cover, fire, gas, spark;
+        public GameObject dressing, cover, fire, gas, spark, thorns;
         public string terrain, coverId;
         public int height, elevation;
         public int key = int.MinValue;
@@ -44,6 +44,7 @@ public partial class ChemGrid
         public string gasKind;
         public bool charged;
         public bool wet;
+        public bool fogged;
     }
 
     View[] views;
@@ -52,6 +53,7 @@ public partial class ChemGrid
     CellBlockers blockers;
     CellWaterMesh waterSurface;
     CellSlickMesh slicks;
+    CellThorns thornClumps;
     FireLightPool fireLights;
 
     void InitVisuals()
@@ -65,6 +67,7 @@ public partial class ChemGrid
             materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f));
         slicks?.Destroy();
         slicks = new CellSlickMesh(this, slickMaterial != null ? slickMaterial : materials.Slick());
+        thornClumps ??= new CellThorns(this, materials);
         shaping.Clear();
         ForgetFx();
         fireLights = new FireLightPool(this, maxFireLights);
@@ -147,7 +150,7 @@ public partial class ChemGrid
         using (WaterMarker.Auto()) ground = RenderWater(v, c, x, y, ground, groundTop, lake);
         RenderCover(v, c, x, y, center, ground);
         using (FireMarker.Auto()) RenderFire(v, c, x, y, center, ground + ValleyChemistry.FireHeight(c.T), c.T == TerrainIds.Tree ? 1.8f : 1f);
-        using (GasMarker.Auto()) RenderGas(v, c, center, ground, GasDrawnAt(x, y));
+        using (GasMarker.Auto()) RenderGas(v, c, x, y, center, ground, GasDrawnAt(x, y));
         // A lightning strike across the lake charges thousands of cells; on the lake, sparks on
         // one cell in 25 read the same without thousands of effects.
         if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
@@ -239,6 +242,7 @@ public partial class ChemGrid
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
         slicks.Changed(x, y, c.Cover);
+        RenderThorns(v, c, x, y, center, ground);
         if (c.Cover != CoverIds.Ash || valley != null)
         {
             Hide(v.cover);
@@ -248,6 +252,19 @@ public partial class ChemGrid
         film.transform.position = new Vector3(center.x, ground + 0.02f, center.z);
         film.transform.localScale = new Vector3(0.96f * cellSize, 0.03f, 0.96f * cellSize);
         film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-ash", new Color(0.35f, 0.34f, 0.33f), 0.05f);
+    }
+
+    // Spike Growth's thorns: a clump of spikes on the cell (CellThorns) while the cover is there.
+    void RenderThorns(View v, Cell c, int x, int y, Vector3 center, float ground)
+    {
+        if (c.Cover != CoverIds.Thorns)
+        {
+            if (v.thorns != null) Destroy(v.thorns);
+            v.thorns = null;
+            return;
+        }
+        if (v.thorns == null) v.thorns = thornClumps.Build(x, y, center, ground);
+        else CellThorns.Place(v.thorns, center, ground);
     }
 
     // --- stand-in cubes ------------------------------------------------------------
@@ -278,6 +295,7 @@ public partial class ChemGrid
         materials.Destroy();
         waterSurface?.Destroy();
         slicks?.Destroy();
+        thornClumps?.Destroy();
         if (plainDust != null) Destroy(plainDust);
     }
 }

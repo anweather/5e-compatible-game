@@ -1,6 +1,8 @@
 {
   "cell": [
+    { "id": "fire-fog", "element": "fire", "if": { "gas": "fog" }, "do": [{ "clearGas": true }], "log": "The heat burns the fog away" },
     { "id": "fire-oil", "element": "fire", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} ignites", "notable": true, "stop": true },
+    { "id": "fire-thorns", "element": "fire", "if": { "cover": ["thorns"] }, "do": [{ "ignite": "cover" }], "log": "The thorns catch fire", "stop": true },
     { "id": "fire-snowbank", "element": "fire", "if": { "cover": ["snowbank"] }, "do": [{ "setCover": "snow" }, { "addWater": 1 }], "log": "The snow bank slumps into slush", "stop": true },
     { "id": "fire-snow", "element": "fire", "if": { "cover": ["snow"] }, "do": [{ "setCover": null }, { "addWater": 1 }], "log": "The snow melts", "stop": true },
     { "id": "fire-ice", "element": "fire", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water", "stop": true },
@@ -35,7 +37,21 @@
     { "id": "oil-into-fire", "element": "oil", "if": { "notTerrainTag": "blocking", "fire": true }, "do": [{ "setCover": "oil" }, { "ignite": "cover" }], "log": "Oil hits the flames. Whoosh!", "notable": true, "stop": true },
     { "id": "oil-spill", "element": "oil", "if": { "notTerrainTag": "blocking" }, "do": [{ "setCover": "oil" }], "stop": true },
 
-    { "id": "thunder-gas", "element": "thunder", "if": { "gas": "any" }, "do": [{ "clearGas": true }], "log": "The thunderclap scatters the vapour" }
+    { "id": "fog-cloud", "element": "fog", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "fog", "n": 6 }], "stop": true },
+
+    { "id": "thunder-gas", "element": "thunder", "if": { "gas": "any" }, "do": [{ "clearGas": true }], "log": "The thunderclap scatters the vapour" },
+
+    { "id": "growth-blaze", "element": "growth", "if": { "fire": 2 }, "do": [], "stop": true },
+    { "id": "growth-embers", "element": "growth", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "New growth smothers the embers" },
+    { "id": "growth-stump", "element": "growth", "if": { "terrainTag": "rootstock" }, "do": [{ "setCover": null }, { "grow": "sapling", "ticks": [90, 150], "wave": 4 }], "log": "Saplings spring from the old stumps", "stop": true },
+    { "id": "growth-seedlings", "element": "growth", "if": { "cover": ["ash"], "terrainTag": "soil", "power": 2, "chance": 0.25 }, "do": [{ "setCover": null }, { "grow": "sapling", "ticks": [120, 240], "wave": 4 }], "log": "Saplings take root in the ash", "stop": true },
+    { "id": "growth-ash", "element": "growth", "if": { "cover": ["ash"], "terrainTag": "soil" }, "do": [{ "setCover": null }, { "grow": "sprouts", "ticks": [3, 9], "wave": 4 }], "log": "Green shoots push up through the ash", "stop": true },
+    { "id": "growth-meadow", "element": "growth", "if": { "terrainTag": "turf", "fire": false, "power": 3, "chance": 0.08 }, "do": [{ "grow": "sapling", "ticks": [150, 240], "wave": 4 }], "log": "Saplings sprout in the grass", "stop": true },
+    { "id": "growth-clear-ash", "element": "growth", "if": { "cover": ["ash"] }, "do": [{ "setCover": null }], "stop": true },
+
+    { "id": "thorns-into-fire", "element": "thorns", "if": { "notTerrainTag": "blocking", "fire": true }, "do": [{ "setCover": "thorns" }, { "ignite": "cover" }], "log": "Thorns burst up into the flames and catch", "notable": true, "stop": true },
+    { "id": "thorns-water", "element": "thorns", "if": { "water": true }, "do": [], "stop": true },
+    { "id": "thorns-grow", "element": "thorns", "if": { "notTerrainTag": "blocking" }, "do": [{ "setCover": "thorns" }], "log": "The ground bristles with thorns", "stop": true }
   ],
   "entity": [
     { "id": "e-fire-wet", "element": "fire", "if": { "status": "wet" }, "do": [{ "clear": "wet" }], "log": "{name} is soaked, so the fire only sizzles", "stop": true },

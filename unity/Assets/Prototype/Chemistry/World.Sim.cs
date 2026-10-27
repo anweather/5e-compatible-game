@@ -1,6 +1,7 @@
 // One tick of the cell world. Port of sandbox/src/sim.ts with the entity,
 // critter and machine systems left out. The order of what remains is the TS
-// order: fire -> water -> gas -> weather -> charge decay -> wind decay.
+// order: fire -> water -> gas -> weather -> charge decay -> wind decay, then
+// the day clock (Hasten Time, World.Time.cs).
 using System;
 using System.Collections.Generic;
 
@@ -22,7 +23,8 @@ namespace Chem
             Tick++;
             logged.Clear();
             strikes.Clear();
-            Weather = Sky.Weather(Rules.Sim, Seed, Tick);
+            EndSetWeather();
+            Weather = SkyNow();
             var rows = Spans;
             TickFire(rows);
             TickWater(rows);
@@ -31,14 +33,50 @@ namespace Chem
             foreach (var s in rows)
             {
                 var cells = s.Chunk.Cells;
-                for (int i = s.Start; i < s.End; i++) if (cells[i].Charge > 0) cells[i].Charge--;
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    var c = cells[i];
+                    if (c.Charge > 0) c.Charge--;
+                    if (c.Life > 0 && --c.Life == 0) Ripen(s.Chunk, i, c);
+                }
             }
             if (Wind.HasValue)
             {
                 var (d, t) = Wind.Value;
                 Wind = t - 1 <= 0 ? ((int, int)?)null : (d, t - 1);
             }
+            TickClock();
             foreach (var ch in activeChunks) Array.Clear(ch.Marks, 0, ch.Marks.Length);
+        }
+
+        /// <summary>
+        /// A cell's Life ran out (ripen in sim.ts): a cover that lasts (thorns) withers away, and a
+        /// terrain that grows (green shoots, a sapling) becomes its growsTo. While it burns it waits
+        /// a tick at a time; a tree growing on wet ground pushes the water out.
+        /// </summary>
+        void Ripen(Chunk ch, int i, Cell c)
+        {
+            if (c.Fire > 0)
+            {
+                c.Life = 1;
+                return;
+            }
+            if (c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) && cv.Lasts > 0)
+            {
+                c.Cover = null;
+                if (cv.WitherLog != null) LogOnce("wither-" + cv.Id, cv.WitherLog);
+            }
+            var to = TerrainOf(c).GrowsTo;
+            if (to == null || !Rules.Terrain.TryGetValue(to, out var grown)) return;
+            // The TS waits while a creature or object stands where a tree would grow; this port has no entities.
+            if (grown.Has("blocking"))
+            {
+                DisplaceWater(CellX(ch, i), CellY(ch, i));
+                c.Cover = null;
+            }
+            var line = TerrainOf(c).GrowLog;
+            c.T = to;
+            if (line != null) LogOnce("grow-" + to, line);
         }
 
         void TickFire(RowSpan[] rows)
@@ -240,12 +278,15 @@ namespace Chem
             return true;
         }
 
+        /// <summary>A gas's chance per tick to lose a unit: its own decay (fog lingers), else sim.gas.decayChance.</summary>
+        double DecayOf(string gas) =>
+            Rules.Gases.TryGetValue(gas, out var g) && g.Decay.HasValue ? g.Decay.Value : Rules.Sim.Gas.DecayChance;
+
         /// <summary>A gas cell decays, blows downwind, or spreads to a thinner neighbour.</summary>
         void Drift(Chunk ch, int i)
         {
-            var p = Rules.Sim.Gas;
             var c = ch.Cells[i];
-            if (Rand() < p.DecayChance) c.GasAmt--;
+            if (Rand() < DecayOf(c.Gas)) c.GasAmt--;
             if (c.GasAmt <= 0)
             {
                 c.Gas = null;

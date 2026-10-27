@@ -62,7 +62,7 @@ namespace Chem
         {
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             var height = rules.Sim.Height;
-            Weather = Sky.Weather(rules.Sim, Seed, Tick);
+            Weather = SkyNow();
             foreach (var c in Cells)
             {
                 c.ForgetDef();
@@ -115,10 +115,19 @@ namespace Chem
 
         /// <summary>
         /// Whether (x1, y1) can be seen from (x0, y0): no blocking square between them on a
-        /// Bresenham line, except see-through ones (gate bars). The ends don't count. Mirrors
-        /// lineOfSight in sandbox/src/world.ts (Misty Step's "a square you can see").
+        /// Bresenham line, except see-through ones (gate bars), and no thick fog (a gas's
+        /// blocksSightAt). The ends don't count. Mirrors lineOfSight in sandbox/src/world.ts
+        /// (Misty Step's "a square you can see").
         /// </summary>
-        public bool LineOfSight(int x0, int y0, int x1, int y1)
+        public bool LineOfSight(int x0, int y0, int x1, int y1) => SightLine(x0, y0, x1, y1, false);
+
+        /// <summary>
+        /// Whether thick fog (Fog Cloud) hides (x1, y1) from (x0, y0): LineOfSight's line, counting
+        /// only the fog. For a view that checks walls in 3D itself (Unity's Misty Step).
+        /// </summary>
+        public bool FogBetween(int x0, int y0, int x1, int y1) => !SightLine(x0, y0, x1, y1, true);
+
+        bool SightLine(int x0, int y0, int x1, int y1, bool fogOnly)
         {
             int dx = Math.Abs(x1 - x0), dy = -Math.Abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
             int err = dx + dy, x = x0, y = y0;
@@ -127,9 +136,15 @@ namespace Chem
                 if (x == x1 && y == y1) return true;
                 (x, y, err) = LineStep(x, y, err, dx, dy, sx, sy);
                 if (x == x1 && y == y1) return true;
-                if (BlocksSight(At(x, y))) return false;
+                var c = At(x, y);
+                if (c == null) return true;
+                if (Fogged(c) || (!fogOnly && BlocksSight(c))) return false;
             }
         }
+
+        /// <summary>Whether a square's gas is thick enough to hide what's behind it (gases.json blocksSightAt).</summary>
+        public bool Fogged(Cell c) =>
+            c.Gas != null && Rules.Gases.TryGetValue(c.Gas, out var g) && g.BlocksSightAt > 0 && c.GasAmt >= g.BlocksSightAt;
 
         // One step of Bresenham's line (lineOfSight's loop body).
         static (int x, int y, int err) LineStep(int x, int y, int err, int dx, int dy, int sx, int sy)
@@ -147,6 +162,14 @@ namespace Chem
         public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + c.Height) * Rules.Sim.WaterUnitsPerStep;
         public bool CoverHasTag(Cell c, string tag) =>
             c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) && cv.Has(tag);
+        /// <summary>The cell's cover's definition, or null without one (or one the rules no longer know).</summary>
+        public CoverDef CoverOf(Cell c) =>
+            c?.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) ? cv : null;
+        /// <summary>
+        /// Whether a cell's cover hinders walking (thorns: spiky, slowing or hurting with each
+        /// square walked; CoverDef.Speed and Damage say how much). A view's walkers read it.
+        /// </summary>
+        public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
         public bool IsConductive(Cell c) => (c.Water > 0 && !c.Frozen) || HasTag(c, "conductive");
 

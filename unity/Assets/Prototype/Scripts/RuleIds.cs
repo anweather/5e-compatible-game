@@ -25,6 +25,12 @@ public static class SpellIds
     public const string MoveEarth = "move-earth";
     public const string MistyStep = "misty-step";
     public const string MageHand = "mage-hand";
+    public const string HastenTime = "hasten-time";
+    public const string ControlWeather = "control-weather";
+    public const string FogCloud = "fog-cloud";
+    public const string PlantGrowth = "plant-growth";
+    public const string SpikeGrowth = "spike-growth";
+    public const string Shapeshift = "shapeshift";
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
@@ -38,6 +44,9 @@ public static class SpellShapes
     public const string TeleportEffect = "teleport";
     public const string CarryEffect = "carry";
     public const string TerraformEffect = "terraform";
+    public const string HasteEffect = Chem.World.HasteEffect;
+    public const string WeatherEffect = Chem.World.WeatherEffect;
+    public const string ShapeshiftEffect = "shapeshift";
 }
 
 /// <summary>Element ids (what a spell or a reaction brings to a cell), as in rules/reactions.json.</summary>
@@ -85,6 +94,8 @@ public static class TerrainIds
     public const string Stone = "stone";
     public const string Rock = "rock";
     public const string Wood = "wood";
+    public const string Sprouts = "sprouts";
+    public const string Sapling = "sapling";
 }
 
 /// <summary>Cover ids (a film on a cell), as in rules/materials.json.</summary>
@@ -95,6 +106,7 @@ public static class CoverIds
     public const string Ash = "ash";
     public const string Snow = "snow";
     public const string Snowbank = "snowbank";
+    public const string Thorns = "thorns";
 }
 
 /// <summary>Gas ids, as in rules/materials.json.</summary>
@@ -102,4 +114,5 @@ public static class GasIds
 {
     public const string Steam = "steam";
     public const string Smoke = "smoke";
+    public const string Fog = "fog";
 }
