@@ -74,7 +74,7 @@ public class GameInfoMenu : MonoBehaviour
     static string CreditsText()
     {
         var assets = string.Join("\n", System.Array.ConvertAll(Credits.Assets, a => "· " + a));
-        return $"{Credits.Game}\n\n<b>Rules</b>\n{Credits.Srd}\n\n<b>Assets</b>\n{assets}\n\n<b>Engine</b>\n{Credits.Engine}\n\n<b>Libraries</b>\n{Credits.Libraries}";
+        return $"{Credits.Game}\n\n<b>Rules</b>\n{Credits.Srd}\n\n<b>Assets</b>\n{assets}\n\n<b>Engine</b>\n{Credits.Engine}\n\n<b>Libraries</b>\n{Credits.Libraries}\n\n<b>With thanks</b>\n{Credits.Contributions}";
     }
 
     /// <summary>Opens the folder with Player.log (the Editor's own log in the Editor), to attach to a bug report.</summary>

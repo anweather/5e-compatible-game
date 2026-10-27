@@ -177,7 +177,8 @@ public static class ChemYardBuilder
         SetUpSky(sun);
     }
 
-    // The clock turns the sun and a dim blue moon (SkyLight); WeatherFx draws the rain and lightning.
+    // The clock turns the sun and a dim blue moon (SkyLight); WeatherFx draws the rain and lightning;
+    // AmbientCritters the fireflies and butterflies (Punchy's shaders, ThirdParty/Punchy).
     static void SetUpSky(Light sun)
     {
         var go = new GameObject("Sky");
@@ -196,6 +197,11 @@ public static class ChemYardBuilder
             () => UrpMaterials.NewUnlitParticles("Rain", Color.white, additive: false));
         fx.boltMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/LightningBolt.mat",
             () => UrpMaterials.NewUnlitParticles("Lightning bolt", new Color(6f, 6.5f, 8f), additive: true));
+        var critters = go.AddComponent<AmbientCritters>();
+        critters.fireflyMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Fireflies.mat",
+            () => new Material(Shader.Find("Punchy/Fireflies")) { name = "Fireflies" });
+        critters.butterflyMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Butterflies.mat",
+            () => new Material(Shader.Find("Punchy/Butterflies")) { name = "Butterflies" });
     }
 
     static void Override<T>(VolumeProfile profile, System.Action<T> set) where T : VolumeComponent

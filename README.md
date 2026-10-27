@@ -115,3 +115,10 @@ front.**
 compiler enforces the engine-free boundary. It is tested with `dotnet
 test` outside Unity. That is also the part an AI agent in a cloud
 container (no Unity Editor) can build and test end to end.
+
+## Thanks
+
+The fireflies and butterflies are adapted from
+[Punchy](https://github.com/Skeleman/Punchy) by Zachary Franklin, used with
+his permission (`unity/Assets/Prototype/ThirdParty/Punchy/`). The game's
+Credits name him too.

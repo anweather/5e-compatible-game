@@ -28,6 +28,10 @@ public static class Credits
     /// <summary>Libraries in the build whose licences ask to be credited.</summary>
     public const string Libraries = "Velopack (updates in place), MIT License. Copyright (c) 2021 Caelan Sayler, (c) 2024 Velopack Ltd.";
 
+    /// <summary>Other people's code in the game, used with their permission (unity/Assets/Prototype/ThirdParty).</summary>
+    public const string Contributions =
+        "Fireflies and butterflies adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy), used with permission.";
+
     /// <summary>All of it as plain text, for CREDITS.txt (Windows line endings: it's read in Notepad).</summary>
     public static string PlainText(string versionLabel)
     {
@@ -40,7 +44,8 @@ public static class Credits
         foreach (var a in Assets) text.Append("- ").Append(a).Append(nl);
         text.Append("Used under the Unity Asset Store End User License Agreement.").Append(nl).Append(nl);
         text.Append("ENGINE").Append(nl).Append(Engine).Append(nl).Append(nl);
-        text.Append("LIBRARIES").Append(nl).Append(Libraries).Append(nl);
+        text.Append("LIBRARIES").Append(nl).Append(Libraries).Append(nl).Append(nl);
+        text.Append("WITH THANKS").Append(nl).Append(Contributions).Append(nl);
         return text.ToString();
     }
 }

@@ -127,6 +127,10 @@ public static class ProbeScenarios
             "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
             "and it floats again after, no console errors."),
+        new Entry("critters", typeof(CrittersProbe), 60f,
+            "The ambient fireflies and butterflies (AmbientCritters, from Punchy): a clear 22:00 over the meadow toward the pond, then " +
+            "a clear noon close to the grass. Checks: AmbientCritters is built with both materials, fireflies are out at night (and no " +
+            "butterflies) with over 50 homes near, butterflies by day (and no fireflies) with over 50 homes near, no console errors."),
     };
 
     public static Entry Find(string name) =>
