@@ -1,6 +1,6 @@
 // The rule interpreter: an element arrives at a cell (from a spell, a
 // critter, or spreading fire) and reactions.json decides what happens.
-import { RULES, type CellCond, type CellRule, type Effect, type EntityRule } from "./rules.ts";
+import { RULES, entityCondHolds, type CellCond, type CellRule, type Effect, type EntityRule } from "./rules.ts";
 import {
   type Cell, type Dir, type Entity, type World,
   DX, DY, addGas, cellAt, coverHasTag, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
@@ -110,8 +110,7 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
   let mul = 1;
   for (const rule of entityByElement.get(element) ?? []) {
     const cond = rule.if;
-    if (cond?.status && !(e.status[cond.status]! > 0)) continue;
-    if (cond?.flammable !== undefined && def.flammable !== cond.flammable) continue;
+    if (cond && !entityCondHolds(cond, def, e.status)) continue;
     for (const eff of rule.do) {
       if (eff.status) for (const [k, v] of Object.entries(eff.status)) e.status[k] = Math.max(e.status[k] ?? 0, v);
       if (eff.clear) delete e.status[eff.clear];

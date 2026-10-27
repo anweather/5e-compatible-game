@@ -24,6 +24,7 @@ namespace Chem
                 Range(i["mass"], $"{what}: mass", 0, above: true);
                 Range(i["zoom"], $"{what}: zoom", 1);
                 Range(i["reach"], $"{what}: reach", 0);
+                ComponentList(what, i["components"]);
                 bool lit = Section(i, "light", what, out var light);
                 bool breakable = Section(i, "breaks", what, out var breaks);
                 if (lit) Light(what, light);

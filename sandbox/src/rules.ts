@@ -9,6 +9,7 @@ import items from "../../rules/items.json" with { type: "json" };
 import machines from "../../rules/machines.json" with { type: "json" };
 import sim from "../../rules/sim.json" with { type: "json" };
 import groups from "../../rules/groups.json" with { type: "json" };
+import components from "../../rules/components.json" with { type: "json" };
 
 export interface TerrainDef {
   name: string;
@@ -71,6 +72,10 @@ export interface CellCond {
 }
 export interface EntityCond {
   status?: string;
+  /** Components it must have, and must lack (a name or a list; components.json). */
+  has?: string | string[];
+  lacks?: string | string[];
+  /** Old shorthand: true is has flammable, false is lacks flammable. */
   flammable?: boolean;
 }
 
@@ -181,7 +186,10 @@ export interface EntityDef {
   name: string;
   hp: number;
   mass: number;
-  flammable: boolean;
+  /** What it is made of or does (components.json); read through hasComponent. */
+  components?: string[];
+  /** Old shorthand for the flammable and creature components. */
+  flammable?: boolean;
   creature?: boolean;
   player?: boolean;
   explodes?: { cover: string; radius: number; fire: number; push: number; damage: [number, number]; crater?: CraterDef };
@@ -214,6 +222,8 @@ export interface CraterDef {
  */
 export interface ItemDef {
   name: string;
+  /** What it is made of or does (components.json). */
+  components?: string[];
   /** Kilograms. */
   mass?: number;
   use?: "light" | "zoom" | "send" | "point";
@@ -295,6 +305,8 @@ export interface Rules {
   machines: Record<string, MachineDef>;
   sim: SimParams;
   groups: Record<string, GroupDef>;
+  /** Component names and what each means (components.json; C#: Components.cs). */
+  components: Record<string, string>;
 }
 
 export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns"];
@@ -316,6 +328,7 @@ export const BASE_RULES: Readonly<Rules> = Object.freeze({
   machines: machines as Record<string, MachineDef>,
   sim: sim as SimParams,
   groups: groups as Record<string, GroupDef>,
+  components: components as Record<string, string>,
 });
 
 /**
@@ -337,6 +350,7 @@ export interface ModPatch {
   items?: Record<string, ItemDef>;
   machines?: Record<string, MachineDef>;
   groups?: Record<string, GroupDef>;
+  components?: Record<string, string>;
   /** New or replaced reaction rules. New ones go to the top of their element's list, so they win. */
   reactions?: { add?: CellRule[]; addEntity?: EntityRule[]; remove?: string[] };
   spells?: SpellDef[];
@@ -392,6 +406,7 @@ export function composeRules(patches: ModPatch[], base: Readonly<Rules> = BASE_R
     Object.assign(r.items, clone(p.items ?? {}));
     Object.assign(r.machines, clone(p.machines ?? {}));
     Object.assign(r.groups, clone(p.groups ?? {}));
+    Object.assign(r.components, clone(p.components ?? {}));
     if (p.reactions?.remove) {
       const drop = new Set(p.reactions.remove);
       r.cellRules = r.cellRules.filter((x) => !drop.has(x.id));
@@ -414,7 +429,7 @@ export function installRules(r: Rules) {
 /** Kept for older imports: the base element list. */
 export const ELEMENTS = BASE_ELEMENTS;
 
-const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "power", "chance"]);
+const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance"]);
 const EFFECT_KEYS = new Set([
   "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
@@ -487,6 +502,7 @@ function itemErrors(r: Rules, id: string, it: ItemDef): string[] {
   errors.push(...rangeError(i.mass, `${what}: mass`, 0, { above: true }));
   errors.push(...rangeError(i.zoom, `${what}: zoom`, 1));
   errors.push(...rangeError(i.reach, `${what}: reach`, 0));
+  errors.push(...componentListErrors(r, what, i.components));
   const light = section(errors, i, "light", what);
   const breaks = section(errors, i, "breaks", what);
   if (light) {
@@ -542,6 +558,57 @@ function raiderErrors(el: Set<string>, id: string, rd: RaiderDef): string[] {
   return errors;
 }
 
+// ---------- components (C#: Components.cs, Rules.CheckComponents.cs) ----------
+
+/** The components the engine itself reads, there whatever components.json says. */
+export const ENGINE_COMPONENTS = ["flammable", "creature"];
+/** At most this many components (the C# keeps a thing's as one 64-bit set). */
+export const MAX_COMPONENTS = 64;
+
+/** Every component name the rules know, sorted (the C# numbers them in this order). */
+export function componentNames(r: Rules = RULES): string[] {
+  return [...new Set([...Object.keys(r.components ?? {}), ...ENGINE_COMPONENTS])].sort();
+}
+
+/** Whether an entity or item has a component, honouring the old flammable / creature keys. */
+export function hasComponent(def: { components?: string[]; flammable?: boolean; creature?: boolean }, name: string): boolean {
+  return (def.components ?? []).includes(name) || (name === "flammable" && !!def.flammable) || (name === "creature" && !!def.creature);
+}
+
+const namesOf = (v: string | string[] | undefined): string[] => (v === undefined ? [] : typeof v === "string" ? [v] : v);
+
+/** Whether an entity rule's "if" holds for this entity: its status, and the components it has and lacks. */
+export function entityCondHolds(cond: EntityCond, def: EntityDef, status: Record<string, number>): boolean {
+  if (cond.status && !(status[cond.status]! > 0)) return false;
+  const has = [...namesOf(cond.has), ...(cond.flammable === true ? ["flammable"] : [])];
+  const lacks = [...namesOf(cond.lacks), ...(cond.flammable === false ? ["flammable"] : [])];
+  return has.every((n) => hasComponent(def, n)) && !lacks.some((n) => hasComponent(def, n));
+}
+
+function componentListErrors(r: Rules, what: string, list: unknown): string[] {
+  if (list === undefined) return [];
+  if (!(Array.isArray(list) && list.every((n) => typeof n === "string"))) return [`${what}: components must be a list of component names`];
+  const known = new Set(componentNames(r));
+  return list.filter((n) => !known.has(n)).map((n) => `${what}: unknown component ${n}`);
+}
+
+function componentCondErrors(r: Rules, id: string, cond: EntityCond | undefined, key: "has" | "lacks"): string[] {
+  const v: unknown = cond?.[key];
+  if (v === undefined) return [];
+  const names = typeof v === "string" ? [v] : Array.isArray(v) ? v : undefined;
+  if (!names || names.some((n) => typeof n !== "string")) return [`rule ${id}: ${key} must be a component name or a list of them`];
+  const known = new Set(componentNames(r));
+  return names.filter((n) => !known.has(n as string)).map((n) => `rule ${id}: unknown component ${n}`);
+}
+
+function componentTableErrors(r: Rules): string[] {
+  const errors: string[] = [];
+  for (const [name, d] of Object.entries(r.components ?? {})) if (!(typeof d === "string" && d)) errors.push(`component ${name}: needs a description`);
+  const n = componentNames(r).length;
+  if (n > MAX_COMPONENTS) errors.push(`components: at most ${MAX_COMPONENTS}, not ${n}`);
+  return errors;
+}
+
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
   const errors: string[] = [];
@@ -579,6 +646,7 @@ export function validateRules(r: Rules): string[] {
       else if (e.grow && r.terrain[e.grow]!.tags.includes("blocking")) errors.push(`rule ${rule.id}: grow ${e.grow} is blocking (let it growsTo one)`);
       if (e.ticks !== undefined && !(isWholeRange(e.ticks, 1, 1) && e.ticks[1] >= e.ticks[0])) errors.push(`rule ${rule.id}: ticks must be [min, max], whole numbers from 1`);
     }
+    errors.push(...componentCondErrors(r, rule.id, (rule as EntityRule).if, "has"), ...componentCondErrors(r, rule.id, (rule as EntityRule).if, "lacks"));
     const c = (rule as CellRule).if;
     for (const cv of c?.cover ?? []) if (!coverIds.has(cv)) errors.push(`rule ${rule.id}: cover ${cv} unknown`);
   }
@@ -597,11 +665,13 @@ export function validateRules(r: Rules): string[] {
   }
   for (const [id, e] of Object.entries(r.entities)) {
     if (e.raider) errors.push(...raiderErrors(el, id, e.raider));
+    errors.push(...componentListErrors(r, `entity ${id}`, e.components));
     if (e.explodes && !coverIds.has(e.explodes.cover)) errors.push(`entity ${id}: explodes into unknown cover`);
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
+  errors.push(...componentTableErrors(r));
   errors.push(...groupErrors(r));
   return errors;
 }

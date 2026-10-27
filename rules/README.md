@@ -11,8 +11,9 @@ prototype**. Nothing in this folder is specific to the sandbox.
 | `reactions.json` | **The chemistry table.** What each element does when it reaches a square (`cell`), and to a creature or object standing there (`entity`) |
 | `spells.json` | The shared SRD spell kit: element, shape (point, line, square, burst, target, or cone: from the caster, widening a square each side per square out), power, damage, push force, earth shaping. `"effect"` is one of `levitate`, `carry`, `teleport`, `terraform`, `haste`, `weather` or `shapeshift`; all but `terraform` change no squares (the Unity game does them: `shapeshift` takes the shape of an animal within `range` for `duration` ticks, times the charge; the sandbox only logs it). `"radial": false` keeps a spell off the Unity game's spell radial. A cast can be charged (held) 1 to 3: power and raise / dig times the charge, height 2 more per level, lines half again as long per level, a point, square or burst a square bigger per level (not earth shaping) |
 | `critters.json` | Critters: what each emits, how often, and in what shape |
-| `entities.json` | Things on the board: HP, mass, flammable, explodes. A `raider` row makes one a defense-field raider: `ticksPerSquare` (its pace), and the elements it's `weak` to (double damage) or `resist`s (half, rounded up) |
-| `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`), `breaks` (impact speed in m/s and what it spills). The sandbox carries and checks them but has no items |
+| `components.json` | What a thing can be made of or do, by name, each with what it means: `flammable`, `creature`, `conducts`, `floats`, `breakable`, `heavy`, `brittle`. Entities and items list theirs (`"components": ["flammable", "breakable"]`) and entity rules match on them, so one rule covers everything with a component. At most 64; `flammable` and `creature` are always there (the engine reads them) |
+| `entities.json` | Things on the board: HP, mass, `components`, explodes. The old `"flammable": true` and `"creature": true` still load, as shorthand for those components. A `raider` row makes one a defense-field raider: `ticksPerSquare` (its pace), and the elements it's `weak` to (double damage) or `resist`s (half, rounded up) |
+| `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`), `breaks` (impact speed in m/s and what it spills), `components`. The sandbox carries and checks them but has no items |
 | `machines.json` | What each machine needs before it powers the gates |
 | `groups.json` | The Unity game's spell radial: its elements by id (`name`, `order` around the ring from the top, `color` as `#rrggbb`). Each spell in `spells.json` names one with `"group"`; one with none goes under the last. UI only, but mods can regroup or add elements |
 | `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage, the length of a day and the weather. `defense`: the defense field's waves (`lives`, `waves`, `first` raiders and `growth` per wave, `hpPerWave`, the `warmup`, `spawnEvery` and `betweenWaves` ticks, the raider `kinds` in turn) and how raiders find their way (`margin` squares round the path, path costs `wallCost` for a raised wall they batter down a step every `batterTicks`, `roughCost` and `roughTicks` for deep water from `deepWater` units or a climb of more than a step) |
@@ -61,7 +62,11 @@ prototype**. Nothing in this folder is specific to the sandbox.
   - `fan`, `pushGas`, `clearGas`
   - `mark` (machines read it)
   - `gas` + `n`
-- **Entity rules** use `if.status` and `if.flammable`. Their effects
+- **Entity rules** use `if.status`, and `if.has` / `if.lacks` (a component
+  name or a list of them: the entity must have every one, and none it
+  lacks). Match on components, never on entity ids, so a new thing joins
+  every rule its components name. The old `if.flammable` (`true` is has
+  flammable, `false` lacks it) still loads. Their effects
   are `status` (`{ "name": ticks }`), `clear` and `damageMul`.
 
 ## Earth shaping (`"effect": "terraform"`)

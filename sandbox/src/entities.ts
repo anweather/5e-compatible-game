@@ -1,5 +1,5 @@
 // Things on the board: damage, death, explosions, and being shoved around.
-import { RULES } from "./rules.ts";
+import { RULES, hasComponent } from "./rules.ts";
 import { applyElement, applyEntityElement, ignite } from "./react.ts";
 import { crater } from "./terraform.ts";
 import {
@@ -29,7 +29,7 @@ export function damage(w: World, e: Entity, amount: number, cause: string, eleme
   if (def.hp >= 999) return; // boulders shrug
   amount = scaleDamage(def, element, amount);
   e.hp -= amount;
-  if (def.creature) logOnce(w, `hurt#${e.id}#${cause}`, `${def.name} takes ${amount} ${cause} damage (${Math.max(0, e.hp)}/${def.hp} HP)`, "hurt");
+  if (hasComponent(def, "creature")) logOnce(w, `hurt#${e.id}#${cause}`, `${def.name} takes ${amount} ${cause} damage (${Math.max(0, e.hp)}/${def.hp} HP)`, "hurt");
   if (e.hp <= 0) destroy(w, e);
 }
 
@@ -50,7 +50,7 @@ export function destroy(w: World, e: Entity) {
   if (def.explodes) return explode(w, e.x, e.y, def.explodes);
   if (def.player) {
     log(w, "You're down! Press Reset to try again.", "hurt");
-  } else if (def.creature) {
+  } else if (hasComponent(def, "creature")) {
     log(w, `${def.name} is defeated`, "hurt");
   } else if (e.status.burning) {
     const c = cellAt(w, e.x, e.y)!;
@@ -147,7 +147,7 @@ function travel(w: World, e: Entity, dir: Dir, dist: number, hard: boolean): voi
  */
 export function thorns(w: World, e: Entity, c: Cell) {
   const cv = c.cover !== null ? RULES.covers[c.cover] : undefined;
-  if (!cv || !defOf(e).creature) return;
+  if (!cv || !hasComponent(defOf(e), "creature")) return;
   if (cv.damage) damage(w, e, roll(w, cv.damage), cv.name.toLowerCase());
   const speed = cv.speed ?? 1;
   if (speed > 0 && speed < 1 && w.entities.includes(e)) {
@@ -182,9 +182,9 @@ export function tickEntities(w: World) {
 
     if ((e.status.burning ?? 0) > 0 && w.tick % s.status.burnDamageEvery === 0) {
       damage(w, e, 1, "fire", "fire");
-      if (def.flammable && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
+      if (hasComponent(def, "flammable") && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
     }
-    if (c.gas === "steam" && c.gasAmt >= 2 && def.creature && w.tick % s.status.scaldEvery === 0) {
+    if (c.gas === "steam" && c.gasAmt >= 2 && hasComponent(def, "creature") && w.tick % s.status.scaldEvery === 0) {
       damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding");
     }
     if (c.charge === 3 && w.entities.includes(e)) {

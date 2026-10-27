@@ -56,12 +56,12 @@
   "entity": [
     { "id": "e-fire-wet", "element": "fire", "if": { "status": "wet" }, "do": [{ "clear": "wet" }], "log": "{name} is soaked, so the fire only sizzles", "stop": true },
     { "id": "e-fire-frozen", "element": "fire", "if": { "status": "frozen" }, "do": [{ "clear": "frozen" }, { "status": { "wet": 30 } }], "log": "{name} thaws out", "stop": true },
-    { "id": "e-fire-flammable", "element": "fire", "if": { "flammable": true }, "do": [{ "status": { "burning": 24 } }], "log": "{name} catches fire" },
-    { "id": "e-fire-creature", "element": "fire", "if": { "flammable": false }, "do": [{ "status": { "burning": 9 } }] },
+    { "id": "e-fire-flammable", "element": "fire", "if": { "has": "flammable" }, "do": [{ "status": { "burning": 24 } }], "log": "{name} catches fire" },
+    { "id": "e-fire-creature", "element": "fire", "if": { "lacks": "flammable" }, "do": [{ "status": { "burning": 9 } }] },
     { "id": "e-water", "element": "water", "do": [{ "clear": "burning" }, { "status": { "wet": 60 } }] },
     { "id": "e-cold-wet", "element": "cold", "if": { "status": "wet" }, "do": [{ "clear": "wet" }, { "status": { "frozen": 30 } }], "log": "{name} is wet, and freezes solid", "notable": true, "stop": true },
     { "id": "e-cold", "element": "cold", "do": [{ "clear": "burning" }] },
-    { "id": "e-lightning-flammable", "element": "lightning", "if": { "flammable": true }, "do": [{ "status": { "burning": 24 } }], "log": "{name} catches a spark" },
+    { "id": "e-lightning-flammable", "element": "lightning", "if": { "has": "flammable" }, "do": [{ "status": { "burning": 24 } }], "log": "{name} catches a spark" },
     { "id": "e-lightning-wet", "element": "lightning", "if": { "status": "wet" }, "do": [{ "damageMul": 2 }], "log": "{name} is wet, so the shock hits twice as hard", "notable": true }
   ]
 }

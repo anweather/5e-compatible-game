@@ -13,7 +13,7 @@ namespace Chem
     public sealed class ModPatch
     {
         /// <summary>The id tables a mod adds to or replaces entries in, whole entries at a time.</summary>
-        internal static readonly string[] Tables = { "terrain", "covers", "gases", "entities", "items", "machines", "groups" };
+        internal static readonly string[] Tables = { "terrain", "covers", "gases", "entities", "items", "machines", "groups", "components" };
 
         ModPatch(string title, JObject patch)
         {
@@ -68,8 +68,9 @@ namespace Chem
             }
 
             Expect("elements", ListOf(p["elements"], JTokenType.String), "a list of names");
-            foreach (var table in Tables)
+            foreach (var table in Tables.Where(t => t != "components"))
                 Expect(table, p[table] is JObject t && t.PropertyValues().All(v => v is JObject), "an object of entries by id");
+            Expect("components", p["components"] is JObject cs && cs.PropertyValues().All(v => v.Type == JTokenType.String), "an object of descriptions by name");
             Expect("reactions", p["reactions"] is JObject, "an object");
             if (p["reactions"] is JObject rx)
             {

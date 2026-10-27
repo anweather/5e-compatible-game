@@ -161,6 +161,14 @@ touch them.
 : The rules' word for anything standing on cells that reactions can act
   on: wizards, creatures, raiders and props (`entities.json`, `EntityDef`).
 
+**Component**
+: What an entity or item is made of or does, as data: `flammable`,
+  `creature`, `conducts`, `floats`, `breakable`, `heavy`, `brittle`
+  (`components.json`, `ComponentSet`). Entity rules match on components
+  (`if.has`, `if.lacks`), never on ids. The `creature` component means
+  alive in the rules (moves, takes statuses, is hurt); it isn't the view's
+  creatures below.
+
 **Wizard**
 : A player's character (the solo wizard, the `NetWizard` prefab).
 
