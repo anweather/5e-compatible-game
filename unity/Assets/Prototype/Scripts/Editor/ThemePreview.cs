@@ -47,7 +47,7 @@ public static class ThemePreview
     {
         float h = ValleyShape.HeightAt(p);
         if (h < ValleyShape.LakeLevel || (ValleySurroundings.Mask(p) > 0.5f && ValleySurroundings.Water(p) != '\0')
-            || ValleyShape.DistanceToRiver(p) < ValleyShape.RiverHalfWidth)
+            || ValleyShape.InRiver(p))
             return new Color(0.2f, 0.4f, 0.75f);
         // The slope from the neighbouring heights, for the layers and the hill shading.
         float dx = ValleyShape.HeightAt(p + Vector2.right * cs) - h, dz = ValleyShape.HeightAt(p + Vector2.up * cs) - h;

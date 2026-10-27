@@ -158,6 +158,19 @@ public sealed class ValleyGround
     /// <summary>The valley's own ground at a cell, before the cell's offset.</summary>
     public float BaseHeight(int x, int y) => cellBase != null && world.InBounds(x, y) ? cellBase[world.Idx(x, y)] : 0f;
 
+    /// <summary>
+    /// Counts some cells' ground from higher than the terrain is drawn there (after Bind): the river's
+    /// cells over its channel, whose water stands at the banks' level. <paramref name="cells"/> are
+    /// world cell indices, <paramref name="metres"/> how much higher each.
+    /// </summary>
+    public void RaiseBase(int[] cells, float[] metres)
+    {
+        if (cellBase == null || cells == null || metres == null) return;
+        int n = Mathf.Min(cells.Length, metres.Length);
+        for (int k = 0; k < n; k++)
+            if (cells[k] >= 0 && cells[k] < cellBase.Length) cellBase[cells[k]] += metres[k];
+    }
+
     /// <summary>The ground drawn at a cell's centre now (it lags its target while easing).</summary>
     public float ShownGround(int x, int y)
     {

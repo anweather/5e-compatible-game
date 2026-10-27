@@ -2,7 +2,8 @@ using UnityEngine;
 
 // The valley's shape as functions of a point on the ground plane (x, z in
 // metres): the flat meadow where the old yard was, the lake to the south, the
-// river and the falls, level pads for the cabins, and which terrain layers
+// river and the falls (the river's channel cut deep into the ground), the
+// bridge over the river, level pads for the cabins, and which terrain layers
 // each point gets. Past the valley floor the land is generated
 // (ValleySurroundings: Punchy's biomes, mountains to the north). ValleyBuilder
 // and ValleyTerrain sample it; it never touches assets. Set by Plan.
@@ -55,6 +56,7 @@ public static class ValleyShape
             new CabinSite(new Vector2(155f, 62f), Vector2.left),
             new CabinSite(new Vector2(-95f, 140f), new Vector2(0.6f, -0.8f)),
         };
+        PlanBridge();
         var cabinSpots = new Vector2[Cabins.Length];
         for (int i = 0; i < Cabins.Length; i++) cabinSpots[i] = Cabins[i].At;
         ValleySurroundings.Plan(Centre, LakeCentre, Falls, cabinSpots, cellSize);
@@ -133,8 +135,14 @@ public static class ValleyShape
         return best;
     }
 
-    /// <summary>World height (metres above the yard) at a point on the ground plane.</summary>
-    public static float HeightAt(Vector2 p)
+    /// <summary>World height (metres above the yard) at a point on the ground plane: the ground, the river's channel cut in.</summary>
+    public static float HeightAt(Vector2 p) => BankHeightAt(p) - ChannelDepth(p);
+
+    /// <summary>
+    /// The ground's height before the river's channel is cut into it: over the river's squares, where
+    /// its water stands (ValleyChemistry draws it there).
+    /// </summary>
+    public static float BankHeightAt(Vector2 p)
     {
         float h = Unlevelled(p);
         // A level pad for each cabin, easing back into the meadow.
@@ -186,42 +194,151 @@ public static class ValleyShape
 
     /// <summary>
     /// The river's course, from the pond at the foot of the falls under the northern mountain down into the
-    /// lake's north-east shore, east of the yard and the court (world x, z).
+    /// lake's north-east shore, east of the yard and the court (world x, z): the points it bends through.
     /// </summary>
     public static readonly Vector2[] River =
     {
         Falls, new(150f, 250f), new(128f, 170f), new(142f, 95f), new(120f, 30f), new(100f, -45f),
     };
 
-    /// <summary>How far from its middle the river's squares reach (metres): two or three squares across.</summary>
-    public const float RiverHalfWidth = 1.6f;
+    /// <summary>
+    /// The river's middle line: a smooth curve through the River points (Catmull-Rom), so it bends
+    /// rather than turning a sharp corner at each point.
+    /// </summary>
+    static readonly Vector2[] RiverCourse = Smooth(River, 16);
 
-    /// <summary>Distance from a point to the river's middle line.</summary>
+    /// <summary>How far from its middle the river's squares reach (metres): six squares across.</summary>
+    public const float RiverHalfWidth = 4.5f;
+
+    /// <summary>How deep the river's channel is cut along its middle and under the pond (metres), under the river square's own step.</summary>
+    public const float RiverBedDepth = 2f;
+
+    // The stream on the cliff top and the pond's rim keep the old river's narrow reach. The channel
+    // is its full depth this far either side of the middle line before the banks rise.
+    const float StreamHalfWidth = 1.6f, ChannelCore = 0.75f;
+
+    // Where the river's squares can be: a quick test before measuring the distance to its course.
+    static readonly Rect RiverBounds = BoundsOf(RiverCourse, RiverHalfWidth);
+
+    /// <summary>Whether a point is one of the river's squares: the river, the stream that feeds the falls, or the pond.</summary>
+    public static bool InRiver(Vector2 p) =>
+        (RiverBounds.Contains(p) && DistanceToCourse(p, RiverCourse) < RiverHalfWidth)
+        || DistanceToCourse(p, Stream) < StreamHalfWidth || (p - Falls).magnitude < PondRadius + StreamHalfWidth;
+
+    /// <summary>
+    /// How deep the river's channel is cut into the ground at a point (metres): its full depth along the
+    /// middle and over the pond, the banks easing up to nothing at the edge of its squares, so the
+    /// wizard can walk out.
+    /// </summary>
+    public static float ChannelDepth(Vector2 p)
+    {
+        float depth = RiverBounds.Contains(p) ? Channel(DistanceToCourse(p, RiverCourse), ChannelCore, RiverHalfWidth) : 0f;
+        float pond = (p - Falls).magnitude;
+        if (pond < PondRadius + StreamHalfWidth) depth = Mathf.Max(depth, Channel(pond, PondRadius - 3f, PondRadius + StreamHalfWidth));
+        return depth;
+    }
+
+    static float Channel(float d, float core, float edge) =>
+        RiverBedDepth * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(core, edge, d)));
+
+    /// <summary>Distance from a point to the river's middle line (the stream and the pond's rim count too).</summary>
     public static float DistanceToRiver(Vector2 p)
     {
         float best = Mathf.Min(DistanceToCourse(p, Stream), Mathf.Max(0f, (p - Falls).magnitude - PondRadius));
-        return Mathf.Min(best, DistanceToCourse(p, River));
+        return Mathf.Min(best, DistanceToCourse(p, RiverCourse));
     }
 
-    internal static float DistanceToCourse(Vector2 p, Vector2[] course)
+    internal static float DistanceToCourse(Vector2 p, Vector2[] course) => (p - NearestOnCourse(p, course, out _)).magnitude;
+
+    // The point of a course nearest a point, and the course's direction there.
+    static Vector2 NearestOnCourse(Vector2 p, Vector2[] course, out Vector2 along)
     {
         float best = float.MaxValue;
+        var nearest = course[0];
+        along = course[1] - course[0];
         for (int i = 0; i + 1 < course.Length; i++)
         {
             var a = course[i];
             var ab = course[i + 1] - a;
             float t = Mathf.Clamp01(Vector2.Dot(p - a, ab) / ab.sqrMagnitude);
-            best = Mathf.Min(best, (p - (a + ab * t)).magnitude);
+            var q = a + ab * t;
+            float d = (p - q).sqrMagnitude;
+            if (d >= best) continue;
+            best = d;
+            nearest = q;
+            along = ab;
         }
-        return best;
+        return nearest;
     }
 
-    /// <summary>Kept clear of trees and rocks: near the yard, the cabins' pads, and the lake.</summary>
-    public static bool KeepClear(Vector2 p, float margin) =>
-        DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p) || DistanceToRiver(p) < RiverHalfWidth + 3f;
+    // A Catmull-Rom curve through the points, each stretch between two of them in <paramref name="steps"/> straight pieces.
+    static Vector2[] Smooth(Vector2[] points, int steps)
+    {
+        int last = points.Length - 1;
+        var curve = new Vector2[last * steps + 1];
+        for (int i = 0; i < last; i++)
+        {
+            Vector2 p0 = points[Mathf.Max(i - 1, 0)], p1 = points[i], p2 = points[i + 1], p3 = points[Mathf.Min(i + 2, last)];
+            for (int k = 0; k < steps; k++)
+            {
+                float t = k / (float)steps, t2 = t * t, t3 = t2 * t;
+                curve[i * steps + k] = 0.5f * (2f * p1 + (p2 - p0) * t + (2f * p0 - 5f * p1 + 4f * p2 - p3) * t2 + (3f * p1 - p0 - 3f * p2 + p3) * t3);
+            }
+        }
+        curve[last * steps] = points[last];
+        return curve;
+    }
 
-    /// <summary>Kept clear of grass and plants: the cabins' pads, the lake and the falls (its basin, cliff and shelf).</summary>
-    public static bool KeepClearOfCabinAndLake(Vector2 p) => DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p);
+    static Rect BoundsOf(Vector2[] points, float margin)
+    {
+        Vector2 min = points[0], max = points[0];
+        foreach (var q in points)
+        {
+            min = Vector2.Min(min, q);
+            max = Vector2.Max(max, q);
+        }
+        return Rect.MinMaxRect(min.x - margin, min.y - margin, max.x + margin, max.y + margin);
+    }
+
+    // --- the bridge -------------------------------------------------------------------
+
+    /// <summary>
+    /// The middle of the bridge over the river (x, z): where the river passes nearest the cabin on its
+    /// east bank, whose door faces back across it to the court and the yard. Set by Plan.
+    /// </summary>
+    public static Vector2 Bridge { get; private set; }
+
+    /// <summary>The way across the bridge, from the west bank to the east (a unit direction on the ground plane), square to the river.</summary>
+    public static Vector2 BridgeAcross { get; private set; }
+
+    /// <summary>How long each ramp down from the bridge's deck is (metres).</summary>
+    public const float BridgeRamp = 6.5f;
+
+    /// <summary>How far the bridge's deck reaches either side of its middle (metres): over the river and a step onto each bank.</summary>
+    public const float BridgeSpan = RiverHalfWidth + 1.5f;
+
+    // The bridge's line, from the foot of one ramp to the other.
+    static Vector2[] bridgeLine;
+
+    static void PlanBridge()
+    {
+        var cabin = Cabins[2].At;
+        Bridge = NearestOnCourse(cabin, RiverCourse, out var along);
+        var across = Vector2.Perpendicular(along).normalized; // which side, the next line settles
+        BridgeAcross = Vector2.Dot(across, cabin - Bridge) >= 0f ? across : -across;
+        float reach = BridgeSpan + BridgeRamp;
+        bridgeLine = new[] { Bridge - BridgeAcross * reach, Bridge + BridgeAcross * reach };
+    }
+
+    /// <summary>Whether a point is within <paramref name="margin"/> of the bridge's line.</summary>
+    public static bool NearBridge(Vector2 p, float margin) => bridgeLine != null && DistanceToCourse(p, bridgeLine) < margin;
+
+    /// <summary>Kept clear of trees and rocks: near the yard, the cabins' pads, the lake, the river's banks and the bridge.</summary>
+    public static bool KeepClear(Vector2 p, float margin) =>
+        DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p) || DistanceToRiver(p) < RiverHalfWidth + 3f || NearBridge(p, 3f);
+
+    /// <summary>Kept clear of grass and plants: the cabins' pads, the lake, the river and the falls (its basin, cliff and shelf).</summary>
+    public static bool KeepClearOfCabinAndLake(Vector2 p) => DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p) || InRiver(p);
 
     /// <summary>The pond's basin, the cliff and the shelf above it: nothing grows or stands there.</summary>
     public static bool NearFalls(Vector2 p)

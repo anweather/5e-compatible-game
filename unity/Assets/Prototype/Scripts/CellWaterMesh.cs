@@ -15,7 +15,8 @@ using UnityEngine;
 //  - a body of water (wet cells connected to each other) stays a little under
 //    the lowest bank around it, a bank being dry ground higher than the wet
 //    cell beside it, so a full pond reads as a pond below the meadow and not as
-//    a slab on it;
+//    a slab on it (the level passes only to water standing no higher, so a
+//    river running downhill stays under its own banks all along);
 //  - where a wet cell meets dry ground no higher than its own (a puddle on flat
 //    ground, water reaching the dry end of a fresh trench), it is a thin film.
 // Points between cells take the blended top of the wet cells around them, so
@@ -157,19 +158,21 @@ public sealed class CellWaterMesh
             cap[key] = LowestBank(key);
             queue.Enqueue(key);
         }
-        // Each body of water takes the lowest dry ground around any of its cells.
+        float perUnit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
+        // Each body of water takes the lowest dry ground around any of its cells, passed on only to
+        // water standing no higher: a pond is held to its lowest bank all over, but a river running
+        // downhill isn't held to the banks far down its course.
         while (queue.Count > 0)
         {
             int key = queue.Dequeue();
             foreach (int n in WetNeighbours(key))
             {
-                if (cap[n] <= cap[key]) continue;
+                if (cap[n] <= cap[key] || Standing(n, perUnit) > Standing(key, perUnit) + perUnit) continue;
                 cap[n] = cap[key];
                 queue.Enqueue(n);
             }
         }
         tops.Clear();
-        float perUnit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         foreach (int key in wet)
         {
             int x = key % world.W, y = key / world.W;
@@ -203,6 +206,9 @@ public sealed class CellWaterMesh
     const float Level = 0.01f;
 
     float OwnGround(int key) => grid.GroundTop(key % grid.World.W, key / grid.World.W, grid.World.Cells[key]);
+
+    // Where a wet cell's water stands: its ground and its water's depth.
+    float Standing(int key, float perUnit) => OwnGround(key) + grid.World.Cells[key].Water * perUnit;
 
     // The ground of each dry neighbour (of 8).
     IEnumerable<float> DryAround(int key)
@@ -275,12 +281,22 @@ public sealed class CellWaterMesh
         return wet.Contains(key) && world.Cells[key].Frozen == frozen;
     }
 
-    // In, a bank or the other kind (water beside ice: they meet under each other's edge), or out.
+    // In, a bank or the other kind where it meets this kind (water beside ice: they meet under each
+    // other's edge), or out. Only beside it: open water far from any ice scores nothing for the ice,
+    // or the outline's wobble would lift patches of ice out of the middle of a wide river.
     float Value(int x, int y, bool frozen)
     {
         if (Holds(x, y, frozen)) return 1f;
-        if (Holds(x, y, !frozen)) return ShoreValue;
+        if (Holds(x, y, !frozen)) return Beside(x, y, frozen) ? ShoreValue : 0f;
         return grid.World.InBounds(x, y) && banks.Contains(grid.World.Idx(x, y)) ? BankValue : 0f;
+    }
+
+    // Whether one of the 8 cells round (x, y) holds this kind.
+    bool Beside(int x, int y, bool frozen)
+    {
+        foreach (var (dx, dy) in Ring)
+            if (Holds(x + dx, y + dy, frozen)) return true;
+        return false;
     }
 
     // Ice stands a hair above the water it meets, so the two never flicker where they overlap.
