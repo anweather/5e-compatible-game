@@ -214,7 +214,7 @@ The coordinator approves each change and schedules them one at a time.
 
 | # | File | Agent | Why | State |
 |---|---|---|---|---|
-| (none yet) | | | | |
+| 1 | `docs/FAST_LOOP.md` (World's) | Gameplay | The `online` row's new reset checks, one commit on `net-reset-view` | Lent 2026-10-27 |
 
 ## Merge order
 
