@@ -92,6 +92,12 @@ public static class ProbeScenarios
         new Entry("ball", typeof(BallProbe), 40f,
             "The court east of the yard and its ball: the wizard runs at the ball from 6 m away (Kicker). Checks: the court is " +
             "built (rails and goals), the ball spawned, the run kicks it over 2 m and it stays inside the court, no console errors."),
+        new Entry("court", typeof(CourtProbe), 60f,
+            "The court's floor, gate and score (BallCourt, CourtGate): the wizard walks from 9 m west of the gate onto the court, " +
+            "then the ball is sent into the east goal and later left outside the south rail. Checks: the centre spot is a dirt " +
+            "cell painted bare earth with no grass, the gate is shut, opens wide as the wizard comes up and lets it 3 m onto the " +
+            "court, shuts once it has gone; the goal counts one at the east end (logged, on the board) and the ball is back on " +
+            "the centre spot after it and after going out, no console errors."),
         new Entry("river", typeof(RiverProbe), 40f,
             "The river from the foothills into the lake (river terrain refills itself): the wizard goes to it east of the yard and digs " +
             "from its edge with Lower Earth, charged. Checks: a river square near world (120, 30), full; the dug square fills from it; " +

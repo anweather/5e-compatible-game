@@ -198,7 +198,9 @@ by that id, and the checksum includes the things file's fingerprint. `NetItem.cs
 wizard's object id; the host grants pick-ups and flies throws), whether its
 light is uncovered, the Dancing Lights mote's position (from the holder),
 and carries a sending stone's message to the machine of whoever holds the
-other stone. Measured numbers are in `docs/MULTIPLAYER.md` §7. `NetSession.cs` is playing together:
+other stone. `NetCourt.cs` keeps the ball court's score: the host's physics
+decides goals (`BallCourt`) and every scoreboard shows the host's count.
+Measured numbers are in `docs/MULTIPLAYER.md` §7. `NetSession.cs` is playing together:
 the Play together section of the Esc menu (Relay join codes, or same-network
 IP) and a one-line status with the join code while online. `NetCommandLine.cs`
 lets a player build host (`-host-online`) or join (`-join-code CODE`) from the
