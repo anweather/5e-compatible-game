@@ -64,13 +64,13 @@ public sealed class Occluders
             var c = hits[i].collider;
             if (c.transform.IsChildOf(wizard) || (held != null && c.transform.IsChildOf(held))) continue;
             any = true;
-            Swap(c);
+            SwapFor(c);
         }
         return any;
     }
 
     // The renderers drawn for a collider: its body's, or for a raised wall's invisible blocker, the wall's crags.
-    void Swap(Collider c)
+    void SwapFor(Collider c)
     {
         if (ditherLit == null || swapped.Count >= MaxSwapped || c is TerrainCollider) return;
         GameObject drawn;

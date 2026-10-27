@@ -14,7 +14,8 @@ public class DitherProbe : ProbeScenario
     {
         wizard.TryGetComponent<OccluderFade>(out var fade);
         bool found = NearestTree(wizard.transform.position, out var tree);
-        Check("dither_parts", fade != null && found, fade == null ? "no OccluderFade on the wizard" : found ? "a tree near the wizard" : "no terrain tree found");
+        string parts = found ? "a tree near the wizard" : "no terrain tree found";
+        Check("dither_parts", fade != null && found, fade == null ? "no OccluderFade on the wizard" : parts);
         if (fade == null || !found) yield break;
 
         // The wizard 2.5 m beyond the tree, the camera 7 m before it and 6 m up, looking at the wizard's chest.

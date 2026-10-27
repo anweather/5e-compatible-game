@@ -29,31 +29,7 @@ public class RollProbe : ProbeScenario
         yield return Wait(1f);
 
         int before = roll.Count;
-        var from = wizard.transform.position;
-        float start = Time.time, turned = 0f, past3m = -1f;
-        bool shot = false, secondPressed = false;
-        var was = head.position - hips.position;
-        Press(up, true);
-        while (Time.time - start < Watch)
-        {
-            yield return null;
-            float t = Time.time - start;
-            // Let go after a couple of frames; pull again just after the roll, inside its wait.
-            bool second = t >= SecondPress && !secondPressed;
-            secondPressed |= second;
-            Press(up, t < 0.04f || second);
-            var now = head.position - hips.position;
-            turned += Vector3.SignedAngle(was, now, wizard.transform.right);
-            was = now;
-            var d = wizard.transform.position - from;
-            d.y = 0f;
-            if (past3m < 0f && d.magnitude > 3f) past3m = t;
-            if (!shot && t > 0.2f)
-            {
-                shot = true;
-                Shot("mid-roll");
-            }
-        }
+        yield return WatchRoll(up, head, hips);
         Press(up, false);
         yield return Wait(0.3f);
 
@@ -67,6 +43,41 @@ public class RollProbe : ProbeScenario
         Check("ends_upright", tilt < 25f, $"hips to head {tilt:0} degrees off upright");
         Check("cooldown_holds", secondPressed && roll.Count == before + 1, $"{roll.Count - before} rolls with the second pull {SecondPress:0.00} s in");
         Shot("after");
+    }
+
+    float turned, past3m;
+    bool secondPressed;
+
+    // Pulls the trigger and follows the roll for Watch seconds: how far the body turns, when it's 3 m
+    // out, and a second pull just after the roll, inside its wait.
+    IEnumerator WatchRoll(Vector2 up, Transform head, Transform hips)
+    {
+        var from = wizard.transform.position;
+        float start = Time.time;
+        turned = 0f;
+        past3m = -1f;
+        bool shot = false;
+        var was = head.position - hips.position;
+        Press(up, true);
+        var endOfFrame = new WaitForEndOfFrame();
+        while (Time.time - start < Watch)
+        {
+            // The tumble is laid on the bones late in the frame (RollPose): read them after it.
+            yield return endOfFrame;
+            float t = Time.time - start;
+            bool second = t >= SecondPress && !secondPressed;
+            secondPressed |= second;
+            Press(up, t < 0.04f || second);
+            var now = head.position - hips.position;
+            turned += Vector3.SignedAngle(was, now, wizard.transform.right);
+            was = now;
+            var d = wizard.transform.position - from;
+            d.y = 0f;
+            if (past3m < 0f && d.magnitude > 3f) past3m = t;
+            if (shot || t <= 0.2f) continue;
+            shot = true;
+            Shot("mid-roll");
+        }
     }
 
     protected override void OnDestroy()
