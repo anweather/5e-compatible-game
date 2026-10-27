@@ -309,8 +309,10 @@ if B and C prove too slow.
 5. **Props sleep with their chunk.** Part A (World lane, built 2026-10-27): `World.ChunkSwitched`
    and `ChemGrid.ChunkSwitched` (a `ChunkSwitch`: CX, CY, Active), raised once a chunk has
    switched and caught up, the same on every peer; `ChemGrid.WorldReset`, `ChunkAt`,
-   `IsChunkActive`. Part B (Gameplay lane): `ThingSpawner` / `PhysicsProp` put a chunk's
-   physics props to sleep when it deactivates and wake them when it activates.
+   `IsChunkActive`. Part B (Gameplay lane, built 2026-10-27): `PhysicsProp` puts a chunk's
+   physics props to sleep (kinematic, velocity and ticks held) when it deactivates, or when one
+   rolls into an inactive chunk, and wakes them when it activates or the world resets; the
+   spawner keeps them. A puppet or a prop in a hand is left alone. Probe `sleep`.
 
 The golden hashes don't move: with everything active (the tests' worlds),
 none of this does anything.

@@ -156,6 +156,10 @@ public static class ProbeScenarios
         new Entry("swell", typeof(SwellProbe), 30f,
             "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
             "with the swell under it (Ocean.WaveOffset, the waves the shader draws): over half the swell's height, in step with it, no console errors."),
+        new Entry("sleep", typeof(SleepProbe), 60f,
+            "Props sleep with their chunk (PhysicsProp, ChemGrid.ChunkSwitched): the wizard goes beyond the keep distance and back. Checks: the yard's " +
+            "props awake while it's active, asleep and kinematic once it deactivates and none asleep in an active chunk, held still for 2 s, awake " +
+            "again when it activates, and a shoved one moves, no console errors."),
         new Entry("fauna", typeof(FaunaProbe), 90f,
             "The valley's animals (ValleyFauna, from Punchy's creatures): 10 s for them to come out round the camera, then a deer put 8 m north " +
             "from the wizard, then a deer, a rabbit, a turkey and a fox walking through the meadow. Checks: ValleyFauna is built with 10 " +
