@@ -55,6 +55,7 @@ public class FpsProbe : MonoBehaviour
     }
 
     const float BurnSeconds = 20f;
+    static readonly WaitForSeconds BoltGap = new(0.4f);
 
     // Then a wildfire, as the probe's wildfire scenario sets it (the Wildfire mod on, Fire Bolts
     // into the meadow north of the yard, 20 s burning with the camera on it), so a build's numbers
@@ -74,7 +75,7 @@ public class FpsProbe : MonoBehaviour
         {
             var cell = grid.YardCell(x, 0);
             caster.Cast(SpellIds.FireBolt, cell.x, cell.y, 0);
-            yield return new WaitForSeconds(0.4f);
+            yield return BoltGap;
         }
         frameMs.Clear();
         mainMs.Clear();
