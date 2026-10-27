@@ -1,7 +1,7 @@
 [
   { "id": "fire-bolt", "group": "fire", "name": "Fire Bolt", "level": 0, "shape": "point", "element": "fire", "power": 2, "damage": [1, 10],
     "blurb": "Cantrip. Hits one spot and lights anything flammable there." },
-  { "id": "burning-hands", "group": "fire", "name": "Burning Hands", "level": 1, "shape": "cone", "origin": "self", "length": 3, "element": "fire", "power": 2, "damage": [3, 6],
+  { "id": "burning-hands", "group": "fire", "name": "Burning Hands", "level": 1, "shape": "cone", "origin": "self", "length": 3, "element": "fire", "power": 2, "damage": [3, 6], "radial": false,
     "blurb": "Level 1. A 15 ft cone of flame from your hands: everything that can burn in it catches. Hold the cast and it reaches further." },
   { "id": "fireball", "group": "fire", "name": "Fireball", "level": 3, "shape": "burst", "radius": 2, "element": "fire", "power": 2, "damage": [8, 6], "push": 2, "crater": { "radius": 1, "depth": 2 },
     "blurb": "Level 3. A bead of flame that bursts where it lands, 25 ft across, setting it all alight. It goes off with a bang: things near it are thrown back and it blows a small crater in the ground. Our blast is smaller than the SRD's 20 ft radius; the Big fireball mod gives you that." },
@@ -13,7 +13,7 @@
     "blurb": "Cantrip. Lightning travels through water and metal that touch the spot." },
   { "id": "gust-of-wind", "group": "storm", "name": "Gust of Wind", "level": 2, "shape": "line", "origin": "self", "length": 12, "element": "air", "push": 2, "wind": 18,
     "blurb": "A 60 ft line of wind from you toward where you click. Pushes light things, blows out small flames, fans big ones, drives windmills." },
-  { "id": "grease", "group": "arcane", "name": "Grease", "level": 1, "shape": "square", "size": 2, "element": "grease",
+  { "id": "grease", "group": "arcane", "name": "Grease", "level": 1, "shape": "square", "size": 2, "element": "grease", "radial": false,
     "blurb": "A slick 10 ft square. Things slide across it. Flammable here, as in BG3; check the SRD text before relying on that." },
   { "id": "create-water", "group": "water", "name": "Create Water", "level": 1, "shape": "square", "size": 3, "element": "water", "power": 6,
     "blurb": "Pours water that flows downhill, fills pits and boilers, douses fire, and soaks creatures." },

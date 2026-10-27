@@ -19,3 +19,8 @@ documents every file and the full condition and effect vocabulary of
 - Adding a material, spell or item also needs Unity-side work (ids in
   `RuleIds.cs`, looks and builders); see "Where new things go" in
   `docs/ARCHITECTURE.md`.
+- **At most three spells per element** on the bar (Andrew, 2026-10-27;
+  `RadialTests.NoElementHasMoreThanThreeSpells`). A spell past three stays
+  in `spells.json` with `"radial": false`, so mods, tests and demos can
+  still cast it by id. A new element goes in `groups.json` together with
+  its spells (a test pins the group list).
