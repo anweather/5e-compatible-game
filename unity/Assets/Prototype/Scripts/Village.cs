@@ -1,7 +1,9 @@
+using Punchy.Fauna;
 using UnityEngine;
 
 // A village in the scene (D12, docs/WORLD_LIFE.md): the root of its
-// buildings (VillageHouse, each building its own meshes) and its square's
+// buildings (VillageHouse, each building its own meshes), its folk (residents,
+// whom ValleyFauna brings out leashed to the square) and its square's
 // well, which this builds the same way. It also sets how brightly every
 // village window glows (VillageLit's _LampGlow) from the sky's daylight.
 // ValleyBuilder lays it out from world/villages.json through the core's
@@ -16,6 +18,10 @@ public class Village : MonoBehaviour
     [Tooltip("Where the well stands, on the square (local).")]
     public Vector3 wellAt;
     public int seed;
+    [Tooltip("Who lives here (one of Punchy's folk), how many are out and about, and how far they wander from the square (m). ValleyFauna brings them out when someone comes near.")]
+    public CreatureSpecies residents;
+    public int residentCount = 6;
+    public float wander = 22f;
 
     static readonly int LampGlow = Shader.PropertyToID("_LampGlow");
 
