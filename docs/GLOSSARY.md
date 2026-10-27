@@ -200,6 +200,16 @@ touch them.
   `reach` (2) chunks and deactivates once none is within `keep` (3), so
   walking along a chunk edge doesn't flicker it (`ChunkStreaming`).
 
+**Linger**
+: A chunk **lingers** when it stays active out of every keep distance
+  because it isn't settled yet (a fire left burning). Live cells on an
+  active chunk's edge activate the inactive chunk across it, which
+  lingers too: that's **spread**. Capped by `streaming.lingerChunks`
+  (16, nearest first) and `lingerTicks` (1800, five minutes); a chunk the
+  caps let go while live is **cut off**, and stays inactive until a
+  character's reach comes back to it (`ChunkPlanner`). Rain alone
+  doesn't keep a chunk live.
+
 **Chunk switch**
 : The command that activates or deactivates a chunk, stamped into tick
   batches online so every peer switches the same chunk at the same tick

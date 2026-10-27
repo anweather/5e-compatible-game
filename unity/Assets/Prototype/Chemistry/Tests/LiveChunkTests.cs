@@ -104,6 +104,31 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void WaterMovingInTheRainIsNotLive()
+        {
+            var w = Meadow();
+            w.WeatherSet = (WeatherKind.Rain, 0, 10000);
+            for (int i = 0; i < 1000 && w.Weather.Rain == 0; i++) w.Step();
+            Assert.That(w.Weather.Rain, Is.GreaterThan(0), "raining");
+            int before = w.LastLive(1, 1);
+            w.AddWater(Middle.x, Middle.y, 12);
+            for (int i = 0; i < 5; i++) w.Step();
+            Assert.That(w.At(Middle.x + 1, Middle.y).Water, Is.GreaterThan(0), "the water spread");
+            Assert.That(w.LastLive(1, 1), Is.EqualTo(before), "rain touches every wet chunk; it alone mustn't keep them running");
+        }
+
+        [Test]
+        public void LiveCellsOnAnEdgeAreSeenFromThatSide()
+        {
+            var w = Meadow();
+            w.At(2 * S - 1, Middle.y).Charge = 3;
+            w.Step();
+            Assert.That(w.IsLiveAtEdge(1, 1, 1), Is.True, "east");
+            Assert.That(w.IsLiveAtEdge(1, 1, 3), Is.False, "west");
+            Assert.That(Chunks.EdgesOf(0), Is.EqualTo(1 | 8), "the north-west corner is on two edges");
+        }
+
+        [Test]
         public void AnInactiveChunkIsNeverMarkedLive()
         {
             var w = Meadow();

@@ -39,12 +39,18 @@ namespace Chem
         public int WindDir => Wind.HasValue ? Wind.Value.dir : Weather.WindDir;
 
 
+        /// <summary>Whether the weather changes the cells this tick: not in the calm first periods, unless a spell set it.</summary>
+        bool WeatherActs => Weather.Period >= Rules.Sim.Weather.CalmPeriods || WeatherSet.HasValue;
+
+        /// <summary>Whether rain is falling on the cells this tick, filling them here and there.</summary>
+        bool Raining => WeatherActs && Weather.Rain > 0;
+
         void TickWeather(RowSpan[] rows)
         {
             var now = Weather;
             newMeteors.Clear();
             LandMeteors();
-            if (now.Period < Rules.Sim.Weather.CalmPeriods && !WeatherSet.HasValue) return;
+            if (!WeatherActs) return;
             var p = Rules.Sim.Weather;
             if (now.Rain > 0)
             {

@@ -45,6 +45,9 @@ public partial class ChemGrid : MonoBehaviour
     /// </summary>
     public bool streamChunks = true;
 
+    /// <summary>Plans the chunks solo, lingering what is still live (ChunkPlanner); online the host keeps its own.</summary>
+    public ChunkPlanner ChunkPlanner { get; } = new();
+
     readonly List<(int x, int y)> playerCells = new();
     readonly System.Diagnostics.Stopwatch timer = new();
 
@@ -173,7 +176,7 @@ public partial class ChemGrid : MonoBehaviour
         {
             tickTimer -= tick;
             ApplyQueuedRules();
-            if (streamChunks) ChunkStreaming.Apply(World, ChunkStreaming.Plan(World, PlayerCells()));
+            if (streamChunks) ChunkStreaming.Apply(World, ChunkPlanner.Plan(World, PlayerCells()));
             using (StepMarker.Auto()) World.Step();
             stepped = true;
         }

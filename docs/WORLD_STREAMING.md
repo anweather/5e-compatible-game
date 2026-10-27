@@ -298,10 +298,10 @@ if B and C prove too slow.
 2. **Live and settled** (built 2026-10-27). The core keeps, per chunk, the last tick
    anything was live (`World.LastLive`, `IsSettled`, after `streaming.settleTicks`);
    a test for each kind of live cell (`LiveChunkTests`). Rain only counts once its water moves.
-3. **Linger and spread.** The plan keeps unsettled chunks active within
+3. **Linger and spread** (built 2026-10-27, `ChunkPlanner`). The plan keeps unsettled chunks active within
    the caps, and activity reaching an inactive chunk activates it; replay
    tests online; probe: walk away from a fire and watch it burn on, then
-   out.
+   out (the probe checks it burns on; `LingerTests` that it burns out and lets go).
 4. **Catch up.** The catch-up command, run in the core over one chunk;
    a test that a chunk caught up matches one that was never deactivated
    (when its neighbours were quiet); probe: leave, come back, it has

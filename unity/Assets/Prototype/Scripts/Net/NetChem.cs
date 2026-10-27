@@ -60,6 +60,8 @@ public class NetChem : NetworkBehaviour
     readonly List<DefenseIntent> defenseHistory = new();
     // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
     readonly HashSet<(int cx, int cy)> plannedAwake = new();
+    // Plans the switches, lingering chunks still live; host only, since only the switches are shared.
+    ChunkPlanner planner = new();
     RuleSet stampNext;
     // Chunks are planned every few ticks: players move a chunk in seconds, not ticks.
     const int PlanEvery = 3;
@@ -109,6 +111,7 @@ public class NetChem : NetworkBehaviour
         defenseFor.Clear();
         plannedAwake.Clear();
         foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
+        planner = new ChunkPlanner();
         stampNext = null;
         HostUpcoming = null;
         hostHashes.Clear();
@@ -250,8 +253,7 @@ public class NetChem : NetworkBehaviour
     ChunkIntent[] PlanChunks()
     {
         if (!grid.streamChunks || hostTick % PlanEvery != 1) return System.Array.Empty<ChunkIntent>();
-        var streaming = grid.World.Rules.Sim.Streaming;
-        var plan = ChunkStreaming.Plan(grid.World.ChunkCoords, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells(), streaming.Reach, streaming.Keep);
+        var plan = planner.Plan(grid.World, (cx, cy) => plannedAwake.Contains((cx, cy)), grid.PlayerCells());
         var stamped = new ChunkIntent[plan.Count];
         for (int i = 0; i < plan.Count; i++)
         {
