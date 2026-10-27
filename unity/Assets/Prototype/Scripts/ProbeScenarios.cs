@@ -168,6 +168,13 @@ public static class ProbeScenarios
             "Fireball, Meteor. Checks: each plays its gesture (Shove, Raise, Throw, CallDown); both hands push forward over 0.4 m for Gust; both hands " +
             "go below 0.95 m then over the head for Raise Earth; the casting hand goes back behind the shoulder then over 0.3 m forward for Fireball; " +
             "both hands go over the head then below the shoulders for Meteor, the meteor appearing at the pull; no console errors."),
+        new Entry("tower", typeof(TowerProbe), 60f,
+            "The climbing tower south-west of the yard (ValleyTower, TowerCourse) and the double jump: a moving platform watched for 1 s, a phasing " +
+            "one for a whole cycle, the wizard put on a collapsing one, a single jump and a double jump off the start pad, then the start pad, off it, " +
+            "and the summit by the flag. Checks: 3 or more platforms of each kind (static, moving, collapsing, phasing), the summit 30 to 45 m up, the " +
+            "moving one moves over 0.1 m, the phasing one is solid and a ghost in turn, the collapsing one drops within 1.5 s and is back within 6 s, " +
+            "the second jump is taken and goes over 0.6 m higher than a single, the clock starts off the pad, the flag sets off fireworks and logs " +
+            "\"You reached the top in m:ss!\", no console errors."),
     };
 
     public static Entry Find(string name) =>

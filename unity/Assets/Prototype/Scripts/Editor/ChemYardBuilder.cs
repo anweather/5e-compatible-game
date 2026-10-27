@@ -334,6 +334,7 @@ public static class ChemYardBuilder
         wizard.AddComponent<Vitals>();
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
+        wizard.AddComponent<DoubleJump>(); // a second jump in mid-air (the climbing tower, ValleyTower)
         wizard.AddComponent<SpellRadialHud>(); // waits for the caster and controls to be on (solo now, the owner's on spawn)
         if (playerDriven)
         {

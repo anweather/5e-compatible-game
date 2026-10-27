@@ -48,6 +48,7 @@ public static class ValleyBuilder
         BuildWorldEdge();
         BuildCourt();
         ValleyBridge.Build(LogMaterial(), CabinMaterial("Plank", new Color(0.52f, 0.37f, 0.23f), 0.12f));
+        ValleyTower.Build(grid);
         BuildLandmarks();
         BuildWaterfall();
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
@@ -198,6 +199,7 @@ public static class ValleyBuilder
         // None on the ball court or in a village. Dropped afterwards, so every other tree stands where it always has.
         spots.RemoveAll(s => ValleyShape.InCourt(s.Item1, -1.5f));
         spots.RemoveAll(s => ValleyShape.DistanceToVillage(s.Item1) < 4f);
+        spots.RemoveAll(s => ValleyShape.NearTower(s.Item1, 4f));
         return spots;
     }
 
@@ -277,7 +279,7 @@ public static class ValleyBuilder
             rock.transform.SetPositionAndRotation(at, Quaternion.Euler(0f, rng.Next(360), 0f));
             rock.transform.localScale = Vector3.one * (0.6f + 1.2f * (float)rng.NextDouble());
             // None in a village; removed after its draws, so the other rocks stay where they were.
-            if (ValleyShape.DistanceToVillage(w) < 4f) Object.DestroyImmediate(rock);
+            if (ValleyShape.DistanceToVillage(w) < 4f || ValleyShape.NearTower(w, 3f)) Object.DestroyImmediate(rock);
             placed++;
         }
     }

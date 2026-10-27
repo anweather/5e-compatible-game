@@ -17,7 +17,7 @@ public class ControlsMenu : MonoBehaviour
     {
         ("Move", "WASD", "Left stick"),
         ("Look", "Mouse", "Right stick"),
-        ("Jump", "Space", "{South}"),
+        ("Jump (again in the air: double jump)", "Space", "{South}"),
         ("Sprint", "Hold Shift", "Click {LS} (toggles)"),
         ("Zoom", "Mouse wheel", "D-pad ▲ ▼"),
         ("Spells: aim at an element, then a spell", "Hold Tab", "Hold {LB}, right stick"),

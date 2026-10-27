@@ -340,8 +340,25 @@ get to the top of (Andrew, after the recap).
   a `SurfaceEffects`-style correction), the swim kick's vertical speed,
   `CellBlockers` for walk-on boxes, the meteor's lights and particles for
   the fireworks. A builder like the court's places the tower.
-- **Open:** online: moving and collapsing platforms run off the shared tick
-  (like the weather) so every player sees the same; a best time per player.
+- **Built (first pass):** the tower stands on the open meadow at world
+  (-60, -20), about 80 m south-west of the yard's middle (`ValleyTower`; kept
+  clear of trees, rocks and grass by `ValleyShape.NearTower`): a stone column
+  38 m tall ringed by a spiral of 38 platforms, about four turns
+  anticlockwise, from a start pad and sign on the yard's side to a red flag on
+  the summit, straw mats round the foot. 18 static steps (three with
+  double-jump gaps), 6 moving (sliding along the ring, lifting, circling), 8
+  collapsing (shake 0.5 s after a wizard lands, gone 4 s), 6 phasing (solid
+  60% of a 5 s cycle, flickering before they fade); harder higher.
+  `TowerCourse` times the climb from stepping off the pad to the flag, logs
+  "You reached the top in 1:23!" with the session's best and sets off
+  `TowerFireworks`; a clock shows top middle while climbing. `DoubleJump`
+  gives every wizard a second jump in the air, anywhere. Moving and phasing
+  platforms are functions of the chemistry's tick (`World.Tick`, smoothed),
+  so they agree online with no networking; a collapse starts on each machine
+  when it sees any wizard land. Probe: `tower`.
+- **Open:** a wall jump; a best time per player kept past the session (and
+  shown to others online); a collapse shared through the tick; the column
+  blocking the follow camera on the far side.
 - **Size:** M.
 
 ## 17. Tower defense
