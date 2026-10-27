@@ -7,7 +7,8 @@ using UnityEngine;
 // outline (ContourSurface), and a second one for ice, which is solid to walk
 // on. Both are drawn in tiles of TileCells × TileCells cells, each its own
 // mesh (and, for ice, its own collider), and only the tiles near a change
-// are rebuilt: the river runs the length of the valley, and one mesh over all
+// are rebuilt, nearest the camera first and a few milliseconds a frame: the
+// river runs the length of the valley, and one mesh over all
 // of it took over 100 ms to rebuild for a single puddle.
 //
 // Each wet cell's surface is its ground plus its water depth, but never above
@@ -72,13 +73,23 @@ public sealed class CellWaterMesh
         if (isWet) wet.Add(key);
         else wet.Remove(key);
         MarkAround(x, y);
+        stale = true;
     }
 
     /// <summary>Ground moved at a cell: the water beside it may sit differently against its banks.</summary>
     public void GroundChanged(int x, int y)
     {
-        if (wet.Count > 0) MarkAround(x, y);
+        if (wet.Count == 0) return;
+        MarkAround(x, y);
+        stale = true;
     }
+
+    // The surface's levels and banks need working out again (something changed since).
+    bool stale;
+    // Milliseconds a frame may spend drawing tiles; the rest wait for the next frames, nearest first.
+    const double DrawBudgetMs = 3.0;
+    readonly System.Diagnostics.Stopwatch drawTimer = new();
+    readonly List<int> drawOrder = new();
 
     // A cell's change reaches two cells round it (its outline reads one ring out, a bank's another):
     // the tiles under that square are redrawn.
@@ -96,20 +107,53 @@ public sealed class CellWaterMesh
     /// <summary>Drifts the water's ripples, as the lake's do (once a frame).</summary>
     public void Scroll(float time) => waterMaterial.SetTextureOffset("_BaseMap", new Vector2(0.004f, 0.003f) * time);
 
-    /// <summary>Redraws the tiles near any change since the last time.</summary>
+    /// <summary>
+    /// Redraws the tiles near any change since the last time: the levels and banks are worked out
+    /// again only when something changed, and the tiles are drawn nearest the camera first, within
+    /// a few milliseconds a frame (the rest next frame), so a burst of changes never stalls one.
+    /// </summary>
     public void Rebuild()
     {
         if (dirtyTiles.Count == 0) return;
+        if (stale) Recompute();
+        drawTimer.Restart();
+        drawOrder.Clear();
+        drawOrder.AddRange(dirtyTiles);
+        var cam = Camera.main;
+        if (cam != null && drawOrder.Count > 1)
+        {
+            var eye = cam.transform.position;
+            drawOrder.Sort((a, b) => TileDistance(a, eye).CompareTo(TileDistance(b, eye)));
+        }
+        foreach (int tile in drawOrder)
+        {
+            if (drawTimer.Elapsed.TotalMilliseconds > DrawBudgetMs) break;
+            DrawTile(tile);
+            dirtyTiles.Remove(tile);
+        }
+    }
+
+    // The levels of every body of water and the banks round them; where a level moved, far from
+    // the cell that changed, those tiles are redrawn too.
+    void Recompute()
+    {
+        stale = false;
         oldTops.Clear();
         foreach (var kv in tops) oldTops[kv.Key] = kv.Value;
         ComputeTops();
-        // Where a body of water's level moved, far from the cell that changed, redraw there too.
         var world = grid.World;
         foreach (var kv in tops)
             if (!oldTops.TryGetValue(kv.Key, out var was) || !Mathf.Approximately(was, kv.Value)) MarkAround(kv.Key % world.W, kv.Key / world.W);
         FindBanks();
-        foreach (int tile in dirtyTiles) DrawTile(tile);
-        dirtyTiles.Clear();
+    }
+
+    // Squared distance on the ground from a point to a tile's middle.
+    float TileDistance(int tile, Vector3 eye)
+    {
+        int cx = (tile % tilesX) * TileCells + TileCells / 2, cy = (tile / tilesX) * TileCells + TileCells / 2;
+        var mid = grid.CellCenter(Mathf.Min(cx, grid.World.W - 1), Mathf.Min(cy, grid.World.H - 1));
+        float dx = mid.x - eye.x, dz = mid.z - eye.z;
+        return dx * dx + dz * dz;
     }
 
     // A tile's water and ice: made the first time it has any, emptied when it has none.
@@ -148,11 +192,17 @@ public sealed class CellWaterMesh
 
     // --- heights -------------------------------------------------------------------
 
+    // Reused by ComputeTops, so working out the levels allocates nothing.
+    readonly Dictionary<int, float> capWork = new();
+    readonly Queue<int> queueWork = new();
+
     void ComputeTops()
     {
         var world = grid.World;
-        var cap = new Dictionary<int, float>();
-        var queue = new Queue<int>();
+        var cap = capWork;
+        cap.Clear();
+        var queue = queueWork;
+        queue.Clear();
         foreach (int key in wet)
         {
             cap[key] = LowestBank(key);
