@@ -11,3 +11,6 @@ core/**/obj/
 
 # The Performance Testing package writes these during a build (left behind if one fails)
 unity/Assets/Resources/PerformanceTestRun*
+
+# The playtest bot's raw runs (findings and screenshots worth keeping go in playtest/findings)
+playtest/runs/
