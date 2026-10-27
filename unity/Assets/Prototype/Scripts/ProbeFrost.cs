@@ -29,7 +29,8 @@ public class FrostProbe : ProbeScenario
         puppet.Face(at);
         caster.Cast(SpellIds.RayOfFrost, shore.x, shore.y + 1, 2);
         var line = World.SpellCells(World.Rules.Spell(SpellIds.RayOfFrost), shore.x, shore.y + 1, 2);
-        yield return Wait(0.25f);
+        // The thrust releases the beam (0.14 s), it reaches the end (0.12 s), then holds 0.4 s.
+        yield return Wait(0.4f);
         CheckBeam(line[line.Count - 1]);
         Shot("beam");
         yield return Wait(1.75f);

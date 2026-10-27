@@ -21,6 +21,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: burning-hands
     projectile: {fileID: 0}
@@ -30,6 +31,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: fireball
     projectile: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
@@ -39,6 +41,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: ray-of-frost
     projectile: {fileID: 0}
@@ -48,6 +51,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 1
   - spellId: create-water
     projectile: {fileID: 0}
@@ -57,6 +61,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: sleet-storm
     projectile: {fileID: 0}
@@ -66,6 +71,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 1
+    gesture: 0
     beam: 0
   - spellId: grease
     projectile: {fileID: 0}
@@ -75,6 +81,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: shocking-grasp
     projectile: {fileID: 0}
@@ -84,6 +91,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: gust-of-wind
     projectile: {fileID: 0}
@@ -93,6 +101,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: thunderwave
     projectile: {fileID: 0}
@@ -102,6 +111,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: levitate
     projectile: {fileID: 0}
@@ -111,6 +121,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: misty-step
     projectile: {fileID: 0}
@@ -120,6 +131,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: mage-hand
     projectile: {fileID: 0}
@@ -129,6 +141,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: mold-earth
     projectile: {fileID: 0}
@@ -138,6 +151,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: mold-earth-heap
     projectile: {fileID: 0}
@@ -147,6 +161,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: earthen-trench
     projectile: {fileID: 0}
@@ -156,6 +171,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: wall-of-stone
     projectile: {fileID: 0}
@@ -165,6 +181,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: move-earth
     projectile: {fileID: 0}
@@ -174,6 +191,7 @@ MonoBehaviour:
     fromSky: 0
     afterImpact: {fileID: 0}
     storm: 0
+    gesture: 0
     beam: 0
   - spellId: meteor
     projectile: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
@@ -183,4 +201,5 @@ MonoBehaviour:
     fromSky: 1
     afterImpact: {fileID: 1025285306637258, guid: d8f0099df63275647a8bcf646df1ca00, type: 3}
     storm: 0
+    gesture: 0
     beam: 0
