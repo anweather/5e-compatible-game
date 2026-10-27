@@ -21,6 +21,14 @@ public static class BuildInfo
     static BuildVersion.Stamp stamp;
     static string builtOn;
 
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        stamp = null;
+        builtOn = null;
+    }
+
     /// <summary>Where the build stamp lives inside a player build.</summary>
     public const string FileName = "build.json";
 

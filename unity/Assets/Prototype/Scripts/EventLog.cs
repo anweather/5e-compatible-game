@@ -13,6 +13,14 @@ public class EventLog : MonoBehaviour
 
     /// <summary>False hides all on-screen UI (help, spell bar, log, the online status line), e.g. for trailer recordings.</summary>
     public static bool HudVisible { get; set; } = true;
+
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        HudVisible = true;
+    }
+
     readonly List<string> lines = new List<string>();
     GUIStyle style, barText;
     SpellCaster caster;

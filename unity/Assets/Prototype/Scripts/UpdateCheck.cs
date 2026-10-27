@@ -14,6 +14,14 @@ public class UpdateCheck : MonoBehaviour
     const int TimeoutSeconds = 5;
 
     static bool checkedThisLaunch;
+
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        checkedThisLaunch = false;
+    }
+
     static UpdateCheck instance;
 
     /// <summary>The newer release, once the check has found one; null otherwise.</summary>

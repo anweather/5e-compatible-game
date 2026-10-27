@@ -10,6 +10,14 @@ public static class GameVolume
     const string MasterKey = "volume.master", EffectsKey = "volume.effects", AmbienceKey = "volume.ambience";
 
     static bool loaded;
+
+    // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options).
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics()
+    {
+        loaded = false;
+    }
+
     static float master = 0.8f, effects = 1f, ambience = 0.7f;
 
     public static float Master
