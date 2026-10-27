@@ -80,11 +80,35 @@ public static class BuildInfo
 
 #if UNITY_EDITOR
     /// <summary>Runs git in the project's folder and returns its trimmed output, or null if it failed.</summary>
+    // Git's usual homes, for an Editor started without git on its PATH (from a shortcut or the
+    // Hub after a restart): Git for Windows, Homebrew on Apple silicon and Intel, the system's.
+    static readonly string[] GitHomes =
+    {
+        "C:/Program Files/Git/cmd/git.exe", "C:/Program Files (x86)/Git/cmd/git.exe",
+        "/opt/homebrew/bin/git", "/usr/local/bin/git", "/usr/bin/git",
+    };
+
+    // "git" if the PATH has it, else the first of GitHomes that exists (or "git", to fail as before).
+    static string GitExe()
+    {
+        // Windows runs only git.exe off the PATH (an extensionless "git" there is a shell script).
+        string name = Application.platform == RuntimePlatform.WindowsEditor || Application.platform == RuntimePlatform.WindowsPlayer ? "git.exe" : "git";
+        string path = Environment.GetEnvironmentVariable("PATH") ?? "";
+        foreach (string dir in path.Split(Path.PathSeparator))
+        {
+            if (dir.Length == 0 || dir.IndexOfAny(Path.GetInvalidPathChars()) >= 0) continue;
+            if (File.Exists(Path.Combine(dir, name))) return "git";
+        }
+        foreach (string home in GitHomes)
+            if (File.Exists(home)) return home;
+        return "git";
+    }
+
     public static string RunGit(string arguments)
     {
         try
         {
-            using var git = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo("git", arguments)
+            using var git = System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo(GitExe(), arguments)
             {
                 WorkingDirectory = Path.GetFullPath(Path.Combine(Application.dataPath, "..")),
                 RedirectStandardOutput = true,
