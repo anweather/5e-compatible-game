@@ -23,7 +23,7 @@ asks. It is responsible for:
    finishes, and keeps "Current tasks" here up to date.
 5. **This file:** it keeps COORDINATION.md current and pushes it to `dev`
    from its own worktree, `.claude/worktrees/coordinator`.
-6. **Judgment calls:** it checks `DECISIONS.md` before asking Andrew
+6. **Judgment calls:** it checks `JUDGMENT_CALLS.md` before asking Andrew
    anything. It asks Andrew only when no decision covers the question, then
    records the answer, the reason, where else it comes up, and how many
    times it has been revisited.
@@ -55,7 +55,7 @@ It asks Andrew first before it:
    order. Fetch and rebase on `origin/dev` first, and push straight after.
 6. Tell the coordinator when a task is done or blocked.
 6a. Judgment calls for Andrew go through the coordinator. Check
-   `DECISIONS.md` first: if a past decision covers it, follow that.
+   `JUDGMENT_CALLS.md` first: if a past decision covers it, follow that.
 7. Never discard, reset or overwrite work you didn't write. If you find
    uncommitted work in a file outside your lane, stop and report it.
 8. On the PC, only one heavy Unity job at a time (an Editor build, a player
@@ -160,7 +160,7 @@ Cross-lane needs that come up often:
 | Agent | Task | Branch | State |
 |---|---|---|---|
 | Gameplay | Quit-crash test A (visibility) on an existing build; no downloads, no changes (J-010) | none | Started 2026-10-27 |
-| World | The playtest bot (see `playtest/DESIGN.md` on the branch, and J-008 in `DECISIONS.md`). Phase 1: spikes (rendering minimised or off-screen, muted audio, incremental build time), then the bot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | Phase 1 started 2026-10-27; has the PC Editor slot |
+| World | The playtest bot (see `playtest/DESIGN.md` on the branch, and J-008 in `JUDGMENT_CALLS.md`). Phase 1: spikes (rendering minimised or off-screen, muted audio, incremental build time), then the bot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | Phase 1 started 2026-10-27; has the PC Editor slot |
 | Build | (free). The quit-crash research is done (see Open questions) | | Waiting for its next task |
 
 ## Shared-file queue

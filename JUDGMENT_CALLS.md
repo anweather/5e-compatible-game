@@ -1,5 +1,7 @@
 # Judgment calls
 
+(Not to be confused with `docs/DECISIONS.md`, the architecture decisions D1, D2, ...)
+
 Every decision the coordinator asked Andrew for. **Before you ask Andrew
 anything, look here first.** If a past decision covers the question, follow
 it, and add 1 to its *Revisited* count when the question came up again.
