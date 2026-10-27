@@ -26,6 +26,43 @@ Each entry has:
 
 ## Decided
 
+### J-019: When do we cut releases?
+
+- **Asked:** 2026-10-27, by Andrew: "when do we want to cut a new release?
+  How many features are enough... if we wait too long we're play testing
+  really old versions".
+- **Also comes up when:** a big fix lands, the bot finds a blocker,
+  someone asks "is X out yet?", any version bump.
+- **Answer (2026-10-27):** **cut 0.1.5 today,** once the online reset
+  (net-reset and net-reset-view), cheap SSAO (perf-pass) and the playtest
+  bot have merged. After that, **a release about every 2 days,** or sooner
+  after a big fix.
+  - Each release: a merge freeze on dev, then dev → main, then the version
+    bump, then the release-candidate build, then the bot's runs and a
+    quick human look, then fix any blockers, then ship (docs/RELEASING.md).
+  - The Build lane runs the release, and the coordinator calls the freeze.
+- **Why:** Andrew picked the recommendation. About 20 merges had landed
+  since 0.1.4 that morning. Short releases keep playtests on what players
+  actually have, and bugs found on a release candidate get checked against
+  dev before filing.
+- **Revisited:** 0.
+
+### J-018: Which build does the playtest bot run against?
+
+- **Asked:** 2026-10-27, by Andrew: don't rebuild for every playtest; use
+  the last known build.
+- **Also comes up when:** scheduling the bot, any playtest-build rebuild,
+  filing a bug found by the bot.
+- **Answer (2026-10-27):** **the current release candidate,** built once
+  per release with the bot inside (behind `-playtest`). There's no rebuild
+  per run and no rebuild on every dev change.
+- **Why:** Andrew picked the recommendation. 0.1.4 predates the bot, so it
+  can't run it; the bot has to ship inside a release build. That way it
+  plays exactly what players get.
+  - Findings are checked against dev (a replay on a dev build, or reading
+    the fix log) before filing, so nobody files a bug dev has already fixed.
+- **Revisited:** 0.
+
 ### J-017: How do we relieve the Editor-testing bottleneck?
 
 - **Asked:** 2026-10-27, by the coordinator. Code was written much faster
