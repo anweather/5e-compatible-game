@@ -8,8 +8,8 @@ using UnityEngine.InputSystem;
 // and skids; in unfrozen water deeper than a puddle it wades at reduced
 // speed; deeper than the wizard's chest it swims: it floats with its head
 // above the surface, slower still, and jump kicks it up out of the water onto
-// a bank. Spells slow it too (Slow: frost chills, lightning jolts;
-// SpellForces). Runs after the Starter Assets controller has moved the wizard
+// a bank. Over the water (crossing the bridge) it's dry. Spells slow it too
+// (Slow: frost chills, lightning jolts; SpellForces). Runs after the Starter Assets controller has moved the wizard
 // and corrects that move, so the controller itself stays untouched (its
 // gravity is switched off while afloat and its animator told it's standing).
 //
@@ -39,6 +39,8 @@ public class SurfaceEffects : MonoBehaviour
     // Afloat until the water under the feet is shallower than this (metres), so a wave doesn't flicker it.
     static readonly int GroundedId = Animator.StringToHash("Grounded"), FreeFallId = Animator.StringToHash("FreeFall"), JumpId = Animator.StringToHash("Jump");
     const float StopSwimming = 1.1f, KickTime = 0.8f, Buoyancy = 4f, BobHeight = 0.04f;
+    // Feet this far over a cell's surface are on something built over it (the bridge), not on the cell.
+    const float AboveSurface = 1f;
 
     CharacterController body;
     Component controller;
@@ -104,8 +106,12 @@ public class SurfaceEffects : MonoBehaviour
         if (grid == null || grid.World == null || !body.enabled) return;
         var cell = grid.CellAt(transform.position);
         var c = grid.World.At(cell.x, cell.y);
-        bool slippery = c != null && body.isGrounded && grid.World.IsSlippery(c);
-        bool wading = c != null && !c.Frozen && c.Water >= wadingDepth;
+        // The cell's water (or its ground, dry): on the bridge over the river the wizard stands well
+        // above it, out of its water and off its ice.
+        float surface = grid.WaterSurfaceY(cell.x, cell.y);
+        bool above = transform.position.y > surface + AboveSurface;
+        bool slippery = c != null && !above && body.isGrounded && grid.World.IsSlippery(c);
+        bool wading = c != null && !c.Frozen && c.Water >= wadingDepth && surface > transform.position.y;
 
         Swim(c, cell);
         Slide(slippery && !swimming);
