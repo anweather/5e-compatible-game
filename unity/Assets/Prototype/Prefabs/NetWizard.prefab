@@ -153,6 +153,9 @@ PrefabInstance:
       addedObject: {fileID: 8468277508970147663}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 2820677389166082708}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 6970996195446869681}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
@@ -477,6 +480,20 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: be93a05fae330eb4bb124cef397dfa46, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::SprintToggle
+--- !u!114 &2820677389166082708
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5775ada086756d95d8377fb01427ab75, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DoubleJump
+  height: 1.2
+  after: 0.08
 --- !u!114 &6970996195446869681
 MonoBehaviour:
   m_ObjectHideFlags: 0

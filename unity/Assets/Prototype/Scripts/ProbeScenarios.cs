@@ -214,6 +214,13 @@ public static class ProbeScenarios
             "clears the ash into green shoots that are grass six seconds on (grass counted before and after), the stump sprouts a sapling that " +
             "grows into a tree drawn on its square, thorns on 60 squares or more with their clumps drawn, the wizard slower through them " +
             "(under 0.75 of its speed on open grass) and losing health, the Fire Bolt sets them alight and they burn to ash, no console errors."),
+        new Entry("tower", typeof(TowerProbe), 60f,
+            "The climbing tower south-west of the yard (ValleyTower, TowerCourse) and the double jump: a moving platform watched for 1 s, a phasing " +
+            "one for a whole cycle, the wizard put on a collapsing one, a single jump and a double jump off the start pad, then the start pad, off it, " +
+            "and the summit by the flag. Checks: 3 or more platforms of each kind (static, moving, collapsing, phasing), the summit 30 to 45 m up, the " +
+            "moving one moves over 0.1 m, the phasing one is solid and a ghost in turn, the collapsing one drops within 1.5 s and is back within 6 s, " +
+            "the second jump is taken and goes over 0.6 m higher than a single, the clock starts off the pad, the flag sets off fireworks and logs " +
+            "\"You reached the top in m:ss!\", no console errors."),
     };
 
     public static Entry Find(string name) =>
