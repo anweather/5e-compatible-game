@@ -22,6 +22,23 @@ Each entry has:
 
 ## Open
 
+### J-021: Finer ground, five design questions (backlog #15, Later)
+
+- **Asked:** 2026-10-27, raised by World's spike (`docs/FINER_GROUND.md` on
+  `finer-spike`, never merged). It recommends option 2: finer height only
+  (four 0.75 m sub-heights per cell), with water reading the mean.
+- **Also comes up when:** earth shaping, trenches, the save format, cave
+  shafts.
+- **The questions:**
+  1. Which shapes go finer? Proposed: slanted lines and round craters only.
+  2. Is a half-raised cell a wall at its highest sub-square, or at its mean?
+  3. Is water moving a cell at a time acceptable along a smooth channel?
+  4. Should it land before saves ship?
+  5. Does a shaft open when all four sub-squares reach the bottom, or when
+     their mean does?
+- **Answer:** pending; ask when it comes up in the order.
+- **Revisited:** 0.
+
 ### J-020: Caves, the six design questions (backlog #14, Later)
 
 - **Asked:** 2026-10-27, raised by World's spike (`docs/CAVES.md` on
