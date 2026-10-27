@@ -204,7 +204,7 @@ Cross-lane needs that come up often:
 |---|---|---|---|
 | Gameplay | Has the PC Editor slot. In order: 1) the props-sleep clip (`sleep-clip`); 2) quit-exit tests (`quit-exit`, `47a07e5`, reviewed); 3) the perf pass's PC tests PC-1 to PC-3; 4) `fps-timing` (FrameTimingManager in FpsProbe), then PC-4. Next: backlog #4, resetting the world online | `sleep-clip`, `quit-exit`, `fps-timing` | In progress |
 | World | The playtest bot (J-008). Phase 1 spikes passed (`377a7e0`, see DESIGN.md "Phase 1 results"). Now phase 2: goals, the trace and replay, detectors, run.json (code only). Phase 3 needs about 27 min of the build slot. Stop before the scheduled tasks are set up | `playtest-bot` (off `dev`) | In progress; Editor slot released |
-| Build | Backlog #3, the performance pass. The plan is approved. Now: Mac measurements M1, M3 and M5, then B1 (URP settings) and B2 (GPU Resident Drawer occlusion), one at a time. The fixes in other lanes (W1-W3 World, G1-G3 Gameplay) wait for the profiles | `perf-pass` | In progress |
+| Build | Backlog #3, the performance pass. Mac M1/M3/M5 done: the worst spikes are SkyLight's ambient readback (up to 122 ms; routed to Gameplay as `sky-ambient`) and the chemistry tick in one frame (about 15 ms; routed to World). The steady cost is ChemGrid.Render walking every cell (5.3 ms; W1, World). Now: B1 (URP settings) and B2 (occlusion), one at a time | `perf-pass` | In progress |
 
 ## Shared-file queue
 
