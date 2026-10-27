@@ -193,10 +193,10 @@ public static class ValleyShape
     // --- the ball court -------------------------------------------------------------
 
     /// <summary>The middle of the ball court east of the yard (x, z), where the ball starts (ValleyBuilder.BuildCourt).</summary>
-    public static readonly Vector2 CourtCentre = new Vector2(61f, 5f);
+    public static readonly Vector2 CourtCentre = new Vector2(67f, 5f);
 
     /// <summary>The court inside its rails (m): its length, west to east, and its width, south to north.</summary>
-    public const float CourtLength = 26f, CourtWidth = 18f;
+    public const float CourtLength = 40f, CourtWidth = 26f;
 
     /// <summary>Whether a point is on the court's floor, at least <paramref name="margin"/> metres inside its rails (a negative margin reaches past them).</summary>
     public static bool InCourt(Vector2 p, float margin = 0f) =>

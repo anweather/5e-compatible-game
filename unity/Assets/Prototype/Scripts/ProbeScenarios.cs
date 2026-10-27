@@ -163,6 +163,11 @@ public static class ProbeScenarios
             "the fire. Checks: a storm (SleetStorm: cloud, sleet, pellets) over the target the burst's width each way, its cloud overhead, " +
             "no projectile or ice impact, nothing frozen before the sleet lands, over 500 streaks falling with those near the ground over " +
             "the spell's squares, every puddle frozen and the fire out once it lands, the storm weaker near its end and gone after, no console errors."),
+        new Entry("gestures", typeof(GesturesProbe), 40f,
+            "The casting gestures (CastPose, CastGestures), each cast from the bar with the camera beside the wizard: Gust of Wind, Raise Earth, " +
+            "Fireball, Meteor. Checks: each plays its gesture (Shove, Raise, Throw, CallDown); both hands push forward over 0.4 m for Gust; both hands " +
+            "go below 0.95 m then over the head for Raise Earth; the casting hand goes back behind the shoulder then over 0.3 m forward for Fireball; " +
+            "both hands go over the head then below the shoulders for Meteor, the meteor appearing at the pull; no console errors."),
     };
 
     public static Entry Find(string name) =>

@@ -306,7 +306,7 @@ public static class ValleyBuilder
     // stands by the north rail, and BallCourt counts the goals and puts the ball back.
     static Vector2 CourtCentre => ValleyShape.CourtCentre;
     const float CourtLength = ValleyShape.CourtLength, CourtWidth = ValleyShape.CourtWidth;
-    const float RailHeight = 0.9f, GoalWidth = 4f, GoalHeight = 1.8f, GoalDepth = 1.2f;
+    const float RailHeight = 0.9f, GoalWidth = 6f, GoalHeight = 2.2f, GoalDepth = 1.4f;
     // The gate: how wide, and where its middle is along the west rail north of the goal (z).
     const float GateWidth = 2.4f, GateZ = 10.5f;
 
