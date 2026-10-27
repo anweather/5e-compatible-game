@@ -72,7 +72,7 @@ public partial class ValleyFauna
     bool FolkGoIn(float night)
     {
         var weather = world.Weather;
-        return night > 0.75f || weather.Rain > 30 || (weather.Kind == WeatherKind.Snow && weather.Strength > 50);
+        return night > 0.55f || weather.Rain > 30 || (weather.Kind == WeatherKind.Snow && weather.Strength > 50);
     }
 
     // Once a frame, before the brains: every one of the folk takes its next step.
@@ -190,12 +190,16 @@ public partial class ValleyFauna
             s.YawRate = 0f;
             return true;
         }
-        float want = math.atan2(to.x, to.y);
+        // Yaw is the heading from north (+z) toward east (+x): forward is (sin, cos).
+        float east = to.x, north = to.y;
+        float want = math.atan2(east, north);
         float yaw = s.Yaw + math.clamp(Wrap(want - s.Yaw), -3f * dt, 3f * dt);
-        // Round a wall: the first clear heading either side of the way it wants to go.
+        // Round a wall: the first clear heading either side of the way it wants to go
+        // (0, then +0.6, -0.6, +1.2, -1.2 radians).
         for (int k = 0; k < 5; k++)
         {
-            float tryYaw = yaw + (k == 0 ? 0f : ((k & 1) == 1 ? 1f : -1f) * 0.6f * ((k + 1) / 2));
+            float side = (k & 1) == 1 ? 1f : -1f;
+            float tryYaw = yaw + side * 0.6f * ((k + 1) / 2);
             var ahead = s.Position.xz + new float2(math.sin(tryYaw), math.cos(tryYaw)) * 1.2f;
             if (!Walkable(ahead)) continue;
             yaw = tryYaw;
@@ -236,6 +240,22 @@ public partial class ValleyFauna
             if (c.task == FolkTask.Sit) sitting++;
         }
         return at;
+    }
+
+    /// <summary>For the probe: one of a village's folk sitting now, where and facing which way.</summary>
+    public bool FirstSitter(Village village, out Vector3 at, out float yaw)
+    {
+        int v = folk.FindIndex(f => f.village == village);
+        foreach (var c in creatures)
+        {
+            if (v < 0 || c.village != v || c.task != FolkTask.Sit) continue;
+            at = c.state.Position;
+            yaw = c.state.Yaw;
+            return true;
+        }
+        at = default;
+        yaw = 0f;
+        return false;
     }
 
     bool FireNear(float2 at)

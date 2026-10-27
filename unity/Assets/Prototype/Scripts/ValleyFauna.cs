@@ -383,33 +383,39 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         {
             var (village, kind, square) = folk[v];
             if (village == null || goIn || places[v].indoors || math.distance(square, centre) > radius) continue;
-            bool about = false;
-            foreach (var c in creatures)
-                if (c.species == kind && c.state.Leash > 0f && math.distance(c.state.Home, square) < 1f)
-                {
-                    about = true;
-                    break;
-                }
-            if (about) continue;
-            var doors = places[v].doors;
-            for (int n = 0; n < village.residentCount; n++)
-            {
-                var p = doors.Count > 0
-                    ? doors[rng.NextInt(doors.Count)] + rng.NextFloat2Direction() * 0.5f
-                    : square + rng.NextFloat2Direction() * rng.NextFloat(2f, village.wander * 0.6f);
-                if (!Walkable(p)) continue;
-                int at = Spawn(kind, new float3(p.x, Height(p), p.y));
-                var c = creatures[at];
-                var s = c.state;
-                s.Home = square;
-                s.Leash = village.wander;
-                s.Mode = CreatureMode.Puppet;
-                c.state = s;
-                c.village = v;
-                c.task = FolkTask.Pause;
-                c.wait = rng.NextFloat(0f, 3f);
-                c.barkeep = n == 0 && places[v].hasBar;
-            }
+            if (!FolkAbout(kind, square)) ComeOut(v);
+        }
+    }
+
+    bool FolkAbout(int kind, float2 square)
+    {
+        foreach (var c in creatures)
+            if (c.species == kind && c.state.Leash > 0f && math.distance(c.state.Home, square) < 1f) return true;
+        return false;
+    }
+
+    // A village's folk out of its doors (or round its square if it has none), each with a plan for the day.
+    void ComeOut(int v)
+    {
+        var (village, kind, square) = folk[v];
+        var doors = places[v].doors;
+        for (int n = 0; n < village.residentCount; n++)
+        {
+            var p = doors.Count > 0
+                ? doors[rng.NextInt(doors.Count)] + rng.NextFloat2Direction() * 0.5f
+                : square + rng.NextFloat2Direction() * rng.NextFloat(2f, village.wander * 0.6f);
+            if (!Walkable(p)) continue;
+            int at = Spawn(kind, new float3(p.x, Height(p), p.y));
+            var c = creatures[at];
+            var s = c.state;
+            s.Home = square;
+            s.Leash = village.wander;
+            s.Mode = CreatureMode.Puppet;
+            c.state = s;
+            c.village = v;
+            c.task = FolkTask.Pause;
+            c.wait = rng.NextFloat(0f, 3f);
+            c.barkeep = n == 0 && places[v].hasBar;
         }
     }
 

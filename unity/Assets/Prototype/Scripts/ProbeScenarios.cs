@@ -155,7 +155,8 @@ public static class ProbeScenarios
             "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
         new Entry("villagers", typeof(VillagersProbe), 120f,
             "Hollowmere's folk going about their day (ValleyFauna.Folk): a clear afternoon with the camera over the square, then dusk. Checks: " +
-            "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, " +
+            "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, they run from " +
+            "the house nearest the square when a Fire Bolt sets it alight, " +
             "and at dusk they all go indoors within 45 s and stay in, no console errors."),
         new Entry("swell", typeof(SwellProbe), 30f,
             "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
