@@ -11,8 +11,12 @@ using UnityEngine.Rendering;
 // the odd bear, kept around the camera. Built from Punchy's creatures
 // (Zachary Franklin, ThirdParty/Punchy): each species is parts on a body,
 // posed procedurally with feet placed on the ground, all drawn in one
-// instanced call. They wander, glance at a wizard, bolt from one who comes too
-// close, and run from fire. They keep to dry, clear, unburnt cells.
+// instanced call. Each lives its own day (Punchy's activities): grazing,
+// walking to the water to drink, lying down to rest, sleeping at night (or by
+// day, for night animals), playing chase with its own kind, and hunting what
+// it hunts (wolves and foxes); prey runs from a hunter, and everything bolts
+// from a wizard who comes too close, and from fire. They keep to dry, clear,
+// unburnt cells.
 // Presentation only, like the fireflies: each machine has its own animals,
 // and nothing they do reaches the chemistry.
 public class ValleyFauna : MonoBehaviour, ICreatureGround
@@ -54,6 +58,9 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
     readonly List<CreatureBody> bodies = new();
     readonly List<Vector2> wizards = new(), fires = new();
     readonly CreatureAnimator animator = new();
+    readonly CreatureBrain brain = new();
+    readonly Herd herd = new();
+    SkyLight sky;
     int[] counts;
     SegmentInstance[] instances = new SegmentInstance[256];
     GraphicsBuffer buffer;
@@ -89,10 +96,33 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
     void Start()
     {
         grid = FindFirstObjectByType<ChemGrid>();
-        foreach (var e in species) bodies.Add(e.species != null ? CreatureBody.Build(e.species) : null);
+        sky = FindFirstObjectByType<SkyLight>();
+        BuildBodies();
         counts = new int[species.Count];
         capsule = CreatureCapsule.Build(12, 6, 4);
         props = new MaterialPropertyBlock();
+    }
+
+    // Each species' body, with what it hunts and whether anything hunts it (a listed species' variants count).
+    void BuildBodies()
+    {
+        var hunted = new bool[species.Count];
+        var prey = new List<int>[species.Count];
+        for (int i = 0; i < species.Count; i++)
+        {
+            prey[i] = new List<int>();
+            var hunter = species[i].species;
+            if (hunter == null) continue;
+            for (int j = 0; j < species.Count; j++)
+            {
+                var quarry = species[j].species;
+                if (quarry == null || j == i || !hunter.Hunts.Exists(h => h != null && h.Body == quarry.Body)) continue;
+                prey[i].Add(j);
+                hunted[j] = true;
+            }
+        }
+        for (int i = 0; i < species.Count; i++)
+            bodies.Add(species[i].species != null ? CreatureBody.Build(species[i].species, prey[i], hunted[i]) : null);
     }
 
     void OnDestroy()
@@ -119,11 +149,14 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
         }
 
         float dt = math.min(Time.deltaTime, 0.1f);
+        float night = sky != null ? 1f - sky.Daylight : 0f;
+        // Everyone as they were at the start of the frame, for seeing each other.
+        herd.Clear();
+        foreach (var c in creatures) herd.Add(c.id, c.species, c.state, bodies[c.species]);
         foreach (var c in creatures)
         {
-            var at = c.state.Position.xz;
-            var (threat, isFire) = Nearest(at);
-            CreatureBrain.Step(ref c.state, bodies[c.species], this, threat, isFire, dt);
+            var (threat, isFire) = Nearest(c.state.Position.xz);
+            brain.Step(ref c.state, c.id, c.species, bodies[c.species], herd, this, threat, isFire, night, dt);
         }
         Draw(cam);
     }
@@ -131,6 +164,14 @@ public class ValleyFauna : MonoBehaviour, ICreatureGround
     // --- the ground (ICreatureGround) -----------------------------------------
 
     public float Height(float2 xz) => grid.GroundAt(new Vector3(xz.x, 0f, xz.y));
+
+    /// <summary>Water to drink from: a wet, unfrozen cell.</summary>
+    public bool Water(float2 xz)
+    {
+        var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
+        var c = world.At(cell.x, cell.y);
+        return c != null && c.Water > 0 && !c.Frozen;
+    }
 
     /// <summary>Dry, clear of trees and walls, and not burning.</summary>
     public bool Walkable(float2 xz)

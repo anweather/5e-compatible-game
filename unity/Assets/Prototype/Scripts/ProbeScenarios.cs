@@ -129,10 +129,11 @@ public static class ProbeScenarios
             "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
             "and it floats again after, no console errors."),
-        new Entry("fauna", typeof(FaunaProbe), 60f,
+        new Entry("fauna", typeof(FaunaProbe), 90f,
             "The valley's animals (ValleyFauna, from Punchy's creatures): 10 s for them to come out round the camera, then a deer put 8 m north " +
             "from the wizard, then a deer, a rabbit, a turkey and a fox walking through the meadow. Checks: ValleyFauna is built with 10 " +
-            "species or more, 10 animals or more are out, the deer bolts (over 15 m from the wizard after 3 s), no console errors."),
+            "species or more, 10 animals or more are out, 20 s later two kinds of activity or more under way (grazing, resting, drinking, " +
+            "sleeping, play, hunting), the deer bolts (over 15 m from the wizard after 3 s), no console errors."),
         new Entry("snow", typeof(SnowProbe), 60f,
             "Heavy snow at noon (fast settling), then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
             "Checks: over 500 squares under snow, over 20 banks against walls and trees, the ground over a bank stands 0.25 m higher, " +

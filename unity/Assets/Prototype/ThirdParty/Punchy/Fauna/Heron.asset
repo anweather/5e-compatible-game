@@ -90,3 +90,12 @@ MonoBehaviour:
   TurnRate: 120
   GroupSize: {x: 1, y: 1}
   NearWater: 1
+  Active: 0
+  Grazing: 0.3
+  Thirst: 0
+  Playfulness: 0
+  Laziness: 0.3
+  Hunts:
+  - {fileID: 11400000, guid: 8c1d9ca02541a3244baf69032c8cc21d, type: 2}
+  Hunger: 0.5
+  ChaseTime: 10

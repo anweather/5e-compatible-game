@@ -49,6 +49,9 @@ namespace Punchy.Fauna
         public Vector2Int BobsPerCycle = new Vector2Int(2, 2);
         [Tooltip("Rocking of the body nose-up / nose-down per cycle when running, in degrees (bounding, hopping).")]
         public float RunRock = 0f;
+        [Tooltip("Stands upright on two legs (humanoids): the body stays level on slopes instead of tilting with " +
+                 "the ground, and the legs reach for the ground on their own.")]
+        public bool Upright;
         [Tooltip("Distance travelled per gait cycle, walking and running, for animals without legs (snakes). " +
                  "Animals with legs measure it from their leg poses.")]
         public Vector2 LeglessStride = new Vector2(0.6f, 0.9f);
@@ -67,6 +70,24 @@ namespace Punchy.Fauna
         [Tooltip("Only appears close to rivers, lakes and the sea (frogs).")]
         public bool NearWater;
 
+        [Header("Activities (each species' own, variants included)")]
+        [Tooltip("When it's awake: it sleeps through the rest of the day. Always = naps now and then.")]
+        public ActiveTime Active = ActiveTime.Day;
+        [Tooltip("How much of its time it spends head-down feeding (grazing, pecking, foraging).")]
+        [Range(0f, 1f)] public float Grazing;
+        [Tooltip("How often it walks to nearby water to drink.")]
+        [Range(0f, 1f)] public float Thirst = 0.3f;
+        [Tooltip("How keen it is to play chase with others of its kind.")]
+        [Range(0f, 1f)] public float Playfulness;
+        [Tooltip("How often it lies down to rest.")]
+        [Range(0f, 1f)] public float Laziness = 0.25f;
+        [Tooltip("Animals it chases (any variant of a listed species counts).")]
+        public List<CreatureSpecies> Hunts = new List<CreatureSpecies>();
+        [Tooltip("How keen it is to hunt when prey is about.")]
+        [Range(0f, 1f)] public float Hunger = 0.3f;
+        [Tooltip("Seconds it keeps up a chase before giving up.")]
+        [Min(1f)] public float ChaseTime = 10f;
+
         /// <summary>The species whose body, gait and behaviour this one uses (itself unless it's a variant).</summary>
         public CreatureSpecies Body
         {
@@ -78,6 +99,13 @@ namespace Punchy.Fauna
                 return s;
             }
         }
+    }
+
+    public enum ActiveTime : byte
+    {
+        [Tooltip("Sleeps at night.")] Day,
+        [Tooltip("Sleeps by day.")] Night,
+        [Tooltip("Awake at all hours, taking naps.")] Always
     }
 
     [Serializable]

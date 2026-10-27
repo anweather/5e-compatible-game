@@ -20,14 +20,17 @@ MonoBehaviour:
   BodyFlatten: 0.7
   Base: {r: 0.55, g: 0.4, b: 0.25, a: 1}
   Accent: {r: 0.9, g: 0.85, b: 0.75, a: 1}
+  AccentGlow: 0
   Coats:
   - Name: Green
     Base: {r: 0.3, g: 0.45, b: 0.2, a: 1}
     Accent: {r: 0.75, g: 0.72, b: 0.45, a: 1}
+    AccentGlow: 0
     Weight: 2
   - Name: Brown
     Base: {r: 0.42, g: 0.36, b: 0.24, a: 1}
     Accent: {r: 0.7, g: 0.64, b: 0.48, a: 1}
+    AccentGlow: 0
     Weight: 1
   Size: {x: 0.9, y: 1.1}
   Parts:
@@ -79,3 +82,11 @@ MonoBehaviour:
   TurnRate: 200
   GroupSize: {x: 1, y: 3}
   NearWater: 1
+  Active: 2
+  Grazing: 0.2
+  Thirst: 0
+  Playfulness: 0
+  Laziness: 0.4
+  Hunts: []
+  Hunger: 0.3
+  ChaseTime: 10
