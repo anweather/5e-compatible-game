@@ -18,6 +18,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 | D9 | [ECS as a pattern in the core, not Unity Entities](adr/0009-ecs-as-a-pattern-in-the-core-not-unity-entities.md) | Accepted (2026-10-25) |
 | D10 | [Time and weather are a function of the tick](adr/0010-time-and-weather-are-a-function-of-the-tick.md) | Accepted (2026-10-25) |
 | D11 | [World layout from themes, in the core](adr/0011-world-layout-from-themes-in-the-core.md) | Accepted (2026-10-27) |
+| D12 | [Generated content from seeded recipes](adr/0012-generated-content-from-seeded-recipes.md) | Proposed (2026-10-26) |
 
 How to add one: see [`adr/README.md`](adr/README.md).
 

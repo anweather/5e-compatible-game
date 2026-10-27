@@ -410,6 +410,24 @@ entering Play mode takes about 60 s.
 - **Builds on:** the wildfire and perf probes (their timing metrics).
 - **Size:** M.
 
+
+## 20. World life: villages, creatures, wizards' looks
+
+Make the world feel lived in from generated content (D12,
+`docs/WORLD_LIFE.md`).
+
+- **What:**
+  1. A seeded village: a square with a well, an inn, a shop and houses
+     along lanes, with footprints as cells that burn.
+  2. `world/life.json` layers: fish in water, birds in the sky, pollen
+     and mist, village smoke and villagers.
+  3. Generated wizard looks: hat, robe, beard and staff from a seed.
+- **Builds on:** `ValleyBuilder`'s cabins and their burn rules
+  (`ValleyChemistry`), `ValleyFauna`, `AmbientCritters`, Punchy's
+  approach (credited), and the theme `town` features (D11) for placing
+  villages later.
+- **Size:** M per layer; the village first.
+
 ## Suggested order)
 
 Dependencies, roughly:
