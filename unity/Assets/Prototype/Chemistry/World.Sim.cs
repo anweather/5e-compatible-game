@@ -46,37 +46,50 @@ namespace Chem
 
         /// <summary>
         /// Charge decays and Life counts down (ripening when it runs out), and every chunk with a
-        /// live cell remembers this tick (Chunk.LastLive): fire, gas, charge, a timer, or water that
-        /// moved this tick (before the marks are cleared). Weather alone doesn't make a cell live.
+        /// live cell remembers this tick (Chunk.LastLive), and on which of its edges (EdgeLive): fire,
+        /// gas, charge, a timer, or water that moved this tick (before the marks are cleared). Weather
+        /// alone doesn't make a cell live: while rain falls, water moving doesn't count, or every wet
+        /// chunk would stay live for as long as it rained.
         /// </summary>
         void TickTimers(RowSpan[] rows)
         {
+            byte flow = Raining ? (byte)0 : FlowMark;
             foreach (var s in rows)
             {
-                var cells = s.Chunk.Cells;
-                var marks = s.Chunk.Marks;
-                bool live = false;
-                for (int i = s.Start; i < s.End; i++)
-                {
-                    var c = cells[i];
-                    if (c.Charge > 0)
-                    {
-                        c.Charge--;
-                        live = true;
-                    }
-                    if (c.Life > 0)
-                    {
-                        live = true;
-                        if (--c.Life == 0) Ripen(s.Chunk, i, c);
-                    }
-                    if (c.Fire > 0 || c.GasAmt > 0 || (marks[i] & FlowMark) != 0) live = true;
-                }
-                if (live) s.Chunk.LastLive = Tick;
+                int edges = TickTimers(s, flow);
+                if (edges < 0) continue;
+                s.Chunk.LastLive = Tick;
+                for (int d = 0; d < 4; d++) if ((edges & (1 << d)) != 0) s.Chunk.EdgeLive[d] = Tick;
             }
+        }
+
+        // One row segment's timers: the edges its live cells lie on (Chunks.EdgesOf), or -1 if none was live.
+        int TickTimers(RowSpan s, byte flow)
+        {
+            var ch = s.Chunk;
+            var cells = ch.Cells;
+            var marks = ch.Marks;
+            int edges = -1;
+            for (int i = s.Start; i < s.End; i++)
+            {
+                var c = cells[i];
+                bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
+                if (c.Charge > 0) c.Charge--;
+                if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
+                if (live) edges = Math.Max(edges, 0) | Chunks.EdgesOf(i);
+            }
+            return edges;
         }
 
         /// <summary>Whether nothing in a loaded chunk has been live for sim.json's streaming.settleTicks.</summary>
         public bool IsSettled(int cx, int cy) => Tick - ChunkOrThrow(cx, cy).LastLive >= Rules.Sim.Streaming.SettleTicks;
+
+        /// <summary>
+        /// Whether something on a loaded chunk's edge facing direction d (0 to 3: N, E, S, W, as
+        /// Neighbours) has been live within streaming.settleTicks: fire, water or gas there may cross
+        /// into the chunk next door.
+        /// </summary>
+        public bool IsLiveAtEdge(int cx, int cy, int d) => Tick - ChunkOrThrow(cx, cy).EdgeLive[d] < Rules.Sim.Streaming.SettleTicks;
 
         /// <summary>LastLive for a chunk where nothing has been live.</summary>
         public const int NeverLive = int.MinValue / 2;

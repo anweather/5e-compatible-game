@@ -8,7 +8,8 @@ using UnityEngine;
 // goes far from the yard, to meadow outside the old chemistry area, and casts
 // Fire Bolt on the grass there. Checks that the chunks around them activated
 // and the yard's deactivated, that the fire took and spreads there, and that
-// the yard is as it was left when the wizard comes back.
+// the yard is as it was left when the wizard comes back, while the fire left
+// behind lingers (ChunkPlanner) and burns on.
 public class ExploreProbe : ProbeScenario
 {
     protected override IEnumerator Run()
@@ -25,7 +26,6 @@ public class ExploreProbe : ProbeScenario
             yield break;
         }
         Check("far_meadow_found", true, $"cell {far}, {Vector2Int.Distance(far, home) * grid.cellSize:0} m from the yard");
-        string yardBefore = World.ChunkHash(homeChunk, homeRow);
 
         // Go there (a few cells short, so the bolt flies over grass) and let the chunks follow.
         Place(far.x - 3 - yard.x, far.y - yard.y);
@@ -35,11 +35,11 @@ public class ExploreProbe : ProbeScenario
         yield return Wait(1f);
         int farChunk = Chunks.ChunkOf(far.x), farRow = Chunks.ChunkOf(far.y);
         Metric("active_chunks", World.ActiveChunks.Count);
-        // At most the square the keep distance spans round the player stays active (7×7 at keep 3).
+        // Besides chunks lingering, at most the square the keep distance spans round the player stays active (7×7 at keep 3).
         int keep = World.Rules.Sim.Streaming.Keep, most = (2 * keep + 1) * (2 * keep + 1);
-        Check("chunks_activate_around_player", World.IsActive(farChunk, farRow) && World.ActiveChunks.Count <= most,
-            $"chunk ({farChunk}, {farRow}) active: {World.IsActive(farChunk, farRow)}; {World.ActiveChunks.Count} of {World.ChunkCoords.Count} active (at most {most})");
-        Check("yard_inactive", !World.IsActive(homeChunk, homeRow), $"the yard's chunk ({homeChunk}, {homeRow})");
+        int held = World.ActiveChunks.Count - grid.ChunkPlanner.Lingering.Count;
+        Check("chunks_activate_around_player", World.IsActive(farChunk, farRow) && held <= most,
+            $"chunk ({farChunk}, {farRow}) active: {World.IsActive(farChunk, farRow)}; {World.ActiveChunks.Count} of {World.ChunkCoords.Count} active, {grid.ChunkPlanner.Lingering.Count} of them lingering (at most {most} besides)");
 
         Check("bar_has_fire_bolt", caster.Select(SpellIds.FireBolt));
         puppet.Face(at);
@@ -51,11 +51,25 @@ public class ExploreProbe : ProbeScenario
             $"{burning} burning squares within 12 of the bolt");
         Shot("far-fire");
 
-        // Home again: the yard was inactive, so it is exactly as it was.
+        // By now the yard has settled (it may linger a moment after the wizard leaves, if something
+        // there was live) and deactivated; inactive, it stays exactly as it is.
+        Check("yard_inactive", !World.IsActive(homeChunk, homeRow),
+            $"the yard's chunk ({homeChunk}, {homeRow}), last live {World.Tick - World.LastLive(homeChunk, homeRow)} ticks ago");
+        string yardBefore = World.ChunkHash(homeChunk, homeRow);
+        yield return Wait(2f);
         Check("yard_unchanged_while_inactive", World.ChunkHash(homeChunk, homeRow) == yardBefore);
         Place(yard.width / 2, yard.height / 2);
         yield return Wait(1f);
         Check("yard_activates_on_return", World.IsActive(homeChunk, homeRow));
+
+        // The fire left behind lingers: its chunk stays active, out of reach, and burns on.
+        bool lingers = grid.ChunkPlanner.Lingering.Contains((farChunk, farRow));
+        Metric("lingering_chunks", grid.ChunkPlanner.Lingering.Count);
+        Check("far_fire_lingers", World.IsActive(farChunk, farRow) && lingers,
+            $"chunk ({farChunk}, {farRow}) active: {World.IsActive(farChunk, farRow)}, lingering: {lingers}; {grid.ChunkPlanner.Lingering.Count} lingering");
+        string farBefore = World.ChunkHash(farChunk, farRow);
+        yield return Wait(2f);
+        Check("far_fire_burns_on", World.ChunkHash(farChunk, farRow) != farBefore, "the far chunk changed over 2 s with no one near");
     }
 
     int Burning(Vector2Int around, int r)

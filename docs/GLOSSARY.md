@@ -200,14 +200,27 @@ touch them.
   `reach` (2) chunks and deactivates once none is within `keep` (3), so
   walking along a chunk edge doesn't flicker it (`ChunkStreaming`).
 
+**Linger**
+: A chunk **lingers** when it stays active out of every keep distance
+  because it isn't settled yet (a fire left burning). Live cells on an
+  active chunk's edge activate the inactive chunk across it, which
+  lingers too: that's **spread**. Capped by `streaming.lingerChunks`
+  (16, nearest first) and `lingerTicks` (1800, five minutes); a chunk the
+  caps let go while live is **cut off**, and stays inactive until a
+  character's reach comes back to it (`ChunkPlanner`). Rain alone
+  doesn't keep a chunk live.
+
 **Chunk switch**
 : The command that activates or deactivates a chunk, stamped into tick
   batches online so every peer switches the same chunk at the same tick
   (`ChunkSwitch`, `ChunkIntent`).
 
-**Fast-forward** *(planned)*
-: Running an activating chunk a bounded number of ticks to catch up on
-  time it spent inactive.
+**Catch up** (also: fast-forward)
+: A chunk that deactivated while still live (the linger caps let it go)
+  runs the ticks it missed when it next activates, alone, with walls for
+  neighbours and each tick's own weather, up to `streaming.catchUpTicks`
+  (720, two minutes) (`World.CatchUp`). The chunk switch is the command:
+  every peer catches it up the same.
 
 **Generated chunk / diff** *(planned)*
 : A chunk made from the seed the first time anyone comes near
