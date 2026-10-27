@@ -203,13 +203,29 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         // Everyone as they were at the start of the frame, for seeing each other.
         herd.Clear();
         foreach (var c in creatures) herd.Add(c.id, c.species, c.state, bodies[c.species]);
-        foreach (var c in creatures)
+        using (BrainMarker.Auto())
         {
-            var (threat, isFire) = Nearest(c.state.Position.xz, c.species);
-            brain.Step(ref c.state, c.id, c.species, bodies[c.species], herd, this, threat, isFire, night, dt);
+            // Animals far off think every other frame (half of them each frame) over twice the time:
+            // nobody sees the difference out there, and it halves most of the herd's thinking.
+            bool odd = (Time.frameCount & 1) == 1;
+            foreach (var c in creatures)
+            {
+                float step = dt;
+                if (math.distancesq(c.state.Position.xz, centre) > FarThinkingSq)
+                {
+                    if (((c.id & 1) == 1) != odd) continue;
+                    step = math.min(2f * dt, 0.1f);
+                }
+                var (threat, isFire) = Nearest(c.state.Position.xz, c.species);
+                brain.Step(ref c.state, c.id, c.species, bodies[c.species], herd, this, threat, isFire, night, step);
+            }
         }
-        Draw(cam);
+        using (DrawMarker.Auto()) Draw(cam);
     }
+
+    // Beyond this (40 m, squared) from the camera an animal thinks every other frame.
+    const float FarThinkingSq = 40f * 40f;
+    static readonly ProfilerMarker BrainMarker = new("ValleyFauna.Think"), DrawMarker = new("ValleyFauna.Draw");
 
     // --- the ground (ICreatureGround) -----------------------------------------
 
