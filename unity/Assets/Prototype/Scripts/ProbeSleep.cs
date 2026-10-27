@@ -8,7 +8,8 @@ using UnityEngine;
 // their chunk (PhysicsProp, ChemGrid.ChunkSwitched). The wizard walks off
 // beyond the keep distance, so the yard's chunk deactivates: its props go
 // kinematic and stay where they are. Back in the yard they wake, and a shove
-// moves one again.
+// moves one again. For the camera, a levitated crate hangs in the air while
+// it sleeps and falls once it wakes.
 public class SleepProbe : ProbeScenario
 {
     protected override IEnumerator Run()
@@ -31,6 +32,13 @@ public class SleepProbe : ProbeScenario
             Check("far_ground_found", false, "no dry ground beyond the keep distance");
             yield break;
         }
+        // One crate up in the air for the camera (a few seconds of Levitate): asleep, it hangs
+        // there; back awake, with its float long run out, it falls.
+        var floater = props.FirstOrDefault(p => p.kind == EntityIds.Crate) ?? props[0];
+        var seen = floater.transform.position;
+        Cut(seen + V(-7f, 3.5f, -7f), seen + Vector3.up * 1.5f);
+        floater.Levitate(3 * World.Rules.Sim.TicksPerSecond, 1.5f);
+        yield return Wait(1.5f);
         Place(far.x - yard.x, far.y - yard.y);
         // The yard may linger while anything there is still live; wait for it to deactivate.
         for (float t = 0f; t < 20f && grid.IsChunkActive(homeChunk.x, homeChunk.y); t += 0.5f)
@@ -49,6 +57,11 @@ public class SleepProbe : ProbeScenario
         Metric("moved_while_asleep_m", moved);
         Check("held_while_asleep", moved < 0.01f, $"moved at most {moved:0.000} m");
 
+        Metric("floater_held_up_m", floater.transform.position.y - seen.y);
+        Shot("held");
+        yield return Wait(1f);
+
+        float hung = floater.transform.position.y;
         Place(yard.width / 2, yard.height / 2);
         yield return Wait(1.5f);
         Check("yard_activates_on_return", grid.IsChunkActive(homeChunk.x, homeChunk.y));
@@ -56,7 +69,8 @@ public class SleepProbe : ProbeScenario
         int woke = live.Count(p => !p.Asleep);
         Metric("woke", woke);
         Check("props_wake_with_chunk", woke == live.Count, $"{woke} of {live.Count} awake");
-        var pushed = live.FirstOrDefault(p => !p.GetComponent<Rigidbody>().isKinematic);
+        Metric("floater_fell_m", hung - floater.transform.position.y);
+        var pushed = live.FirstOrDefault(p => p != floater && !p.GetComponent<Rigidbody>().isKinematic);
         if (pushed != null)
         {
             var start = pushed.transform.position;
