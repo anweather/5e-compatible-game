@@ -6,7 +6,8 @@ using System.Globalization;
 //
 //   playtest check                      what the preflight says, and which player and build it would run
 //   playtest run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--force]
-//   playtest build [--force] [--ref b]   builds the bot's player in .claude/worktrees/playtest-build, from origin/<b> (dev)
+//   playtest build --ref <r> [--force]  builds the bot's player in .claude/worktrees/playtest-build from
+//                                       origin/<r> (a release candidate: main or a tag; J-018)
 //
 // Run it with `dotnet core/Playtest.Runner/bin/<config>/net8.0/playtest.dll <command>`
 // from anywhere in the repository.
@@ -18,7 +19,7 @@ namespace Playtest.Runner
         {
             if (args.Length == 0)
             {
-                Console.Error.WriteLine("usage: playtest check | run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--force] | build [--force] [--ref branch]");
+                Console.Error.WriteLine("usage: playtest check | run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--force] | build --ref <branch or tag> [--force]");
                 return 2;
             }
             var options = Options(args);
@@ -27,7 +28,14 @@ namespace Playtest.Runner
             {
                 case "check": return Check(paths);
                 case "run": return PlaytestRun.Run(paths, options);
-                case "build": return PlaytestBuild.Build(paths, options.ContainsKey("force"), options.TryGetValue("ref", out var gitRef) ? gitRef : "dev");
+                case "build":
+                    // J-018: built for a release candidate when asked (main or a tag), never just because dev moved.
+                    if (!options.TryGetValue("ref", out var gitRef) || gitRef == "true")
+                    {
+                        Console.Error.WriteLine("playtest build needs --ref <branch or tag> (the release candidate: main, or a tag)");
+                        return 2;
+                    }
+                    return PlaytestBuild.Build(paths, options.ContainsKey("force"), gitRef);
                 default:
                     Console.Error.WriteLine($"unknown command {args[0]}");
                     return 2;

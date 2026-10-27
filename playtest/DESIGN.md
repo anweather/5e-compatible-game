@@ -34,8 +34,8 @@ built on it:
 ```
 Task Scheduler (every 45 min)        Claude scheduled task (every 2-3 h, and a digest every 2 days)
         |                                     |
-tools/playtest/run.ps1               reads playtest/runs/* --> dedupes against playtest/findings/
-  preflight (memory, Unity jobs)       replays new candidates (run.ps1 -replay) --> confirmed?
+playtest run (core/Playtest.Runner)            reads playtest/runs/* --> dedupes against playtest/findings/
+  preflight (memory, Unity jobs)       replays new candidates (playtest run --replay) --> confirmed?
   launch player -playtest ...          reviews screenshots for visual oddities
   wait / time out / collect            writes findings, re-ranks playtest/BACKLOG.md, writes digests
   quick code-only replays              (later: gh issues)
@@ -122,8 +122,8 @@ A Claude scheduled task (every 2-3 hours, not every run, to keep cost down):
 1. **Read new runs.** Group their candidates by signature, and match them
    against open findings: the same signature adds an occurrence, and nothing
    new is filed.
-2. **Reproduce each new signature.** Run `tools/playtest/run.ps1 -replay
-   <run> -at <frame>` up to 3 times; this starts from the run's seed and
+2. **Reproduce each new signature.** Run `playtest run --replay
+   <run>/run.json --until-frame <frame>` up to 3 times; this starts from the run's seed and
    replays its trace. Confirmed means it reproduced at least once (the rate
    is recorded). If it doesn't reproduce, it stays a candidate and is filed
    only if it turns up in 3 separate runs.
@@ -197,7 +197,7 @@ and are sometimes stale.
 | Path | What | In git |
 |---|---|---|
 | `unity/Assets/Prototype/Scripts/Playtest/**` | The bot, detectors, trace and replay | yes |
-| `tools/playtest/run.ps1`, `build.ps1`, `install-schedule.ps1` | The runner, the builder, the Task Scheduler entries | yes |
+| `core/Playtest.Runner` (`playtest check`, `run`, `build`) | The runner and the builder (J-013; the `.ps1` scripts are gone); the Task Scheduler entries come later | yes |
 | `playtest/runs/<run-id>/` | Raw runs: run.json, Player.log, screenshots | **no** (needs a `.gitignore` line, which is shared, so it goes through the Project Manager). Pruned after 7 days |
 | `playtest/findings/F-NNNN/` | finding.md, before.jpg, after.jpg | yes |
 | `playtest/BACKLOG.md`, `playtest/digests/`, `playtest/coverage.json` | The ranked list, the digests, where it has been | yes |
@@ -361,6 +361,20 @@ policy is involved:
   version couldn't have.
 - **Cost:** about a day's work, mostly a port of what's written and tested
   by hand. The `.ps1` files would go once it's in.
+
+## Release candidates (J-018, J-019, 2026-10-27)
+
+The bot runs against the current release candidate, built once per release
+with the bot inside (it ships behind `-playtest`, harmless to players). It
+never rebuilds per run, and never just because dev moved:
+`playtest build --ref <main or a tag>` builds when asked, and `--ref` is
+required. Each release (about every 2 days) gets its runs before it ships:
+for 0.1.5, 6 runs of 8 minutes on the candidate, and triage checks each
+finding against dev before filing it (it may be fixed already). The first
+build through the runner (from `playtest-bot` with dev merged, `ba23624`,
+29 min, most of it the first shader compile) and a 2-minute demo run
+(`demo-1`: 9 goals, one 105 ms frame spike at the defense field) worked
+end to end on 2026-10-27, with no PowerShell.
 
 ## Needs a decision from Andrew
 

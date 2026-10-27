@@ -4,21 +4,22 @@ using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
-// `playtest build` (playtest/DESIGN.md, section 6): the bot's player, built in
-// its own checkout (.claude/worktrees/playtest-build, detached at origin/dev, or
-// another branch with --ref while the bot itself isn't on dev yet)
-// so nobody's Editor is locked and its Library keeps builds incremental. It
-// builds only when origin/dev has moved since the last build (or --force) and
-// the preflight passes. The checkout is the bot's throwaway tree
-// (COORDINATION.md): reset hard to origin/dev before each build, never
-// committed or pushed; the yard it generates there stays there. The Asset
+// `playtest build --ref <r>` (playtest/DESIGN.md, "Release candidates"): the
+// bot's player for a release candidate (J-018: main or a tag, when asked; never
+// just because dev moved), built in its own checkout
+// (.claude/worktrees/playtest-build, detached at origin/<r>) so nobody's Editor
+// is locked and its Library keeps builds incremental. It skips a commit it has
+// already built (unless --force), and builds only when the preflight passes.
+// The checkout is the bot's throwaway tree (COORDINATION.md): reset hard to the
+// commit before each build, never committed or pushed; the yard it generates
+// there stays there. The Asset
 // Store packs are copied in from the main checkout (they aren't in git);
 // PlaytestBuild.Build in the Unity project builds the yard and the player.
 namespace Playtest.Runner
 {
     public static class PlaytestBuild
     {
-        public static int Build(Paths paths, bool force, string branch = "dev")
+        public static int Build(Paths paths, bool force, string branch)
         {
             string wt = paths.Checkout;
             string log = Path.Combine(paths.Runs, "build.log");
