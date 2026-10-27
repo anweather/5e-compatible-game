@@ -1,0 +1,15 @@
+{
+  "id": "volcano-core",
+  "name": "Volcano core (mixin)",
+  "description": "Reusable mixin: volcanic ground ringed by ash around a lava lake with an obsidian island, and a lava river pouring out of it. The land scorches toward it: ash plains thicken the closer you get, and the lava river's banks are burned. A theme that pulls it in can override any piece by id (e.g. move the lake with a new `at`).",
+  "revision": 2,
+  "mixin": true,
+  "features": [
+    {"id": "volcanic-land", "kind": "zone", "biome": "volcanic", "at": "northeast", "distance": "far", "size": "large", "stretch": 1.3},
+    {"id": "ash-skirt", "kind": "zone", "biome": "ashflats", "at": "northeast", "distance": "mid", "size": "large", "stretch": 1.4, "near": "volcanic-land"},
+    {"id": "lava-lake", "kind": "lake", "at": "northeast", "distance": "far", "size": "medium", "material": "lava", "island": {"size": "small", "biome": "ashflats"}, "near": "volcanic-land"},
+    {"id": "lava-river", "kind": "river", "from": "northeast", "to": "south", "meander": "medium", "width": "medium", "material": "lava", "through": ["lava-lake"]},
+    {"id": "volcano-heat", "kind": "influence", "look": "ashplains", "around": "volcanic-land", "reach": 0.75, "falloff": 1, "strength": 1},
+    {"id": "lava-scorch", "kind": "influence", "look": "ashplains", "along": "lava-river", "reach": 0.07, "falloff": 0.7, "strength": 0.9}
+  ]
+}

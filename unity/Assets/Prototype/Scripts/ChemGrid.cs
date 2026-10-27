@@ -206,7 +206,7 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     // world/ (things.json) sits next to rules/: the repo's in the Editor, StreamingAssets/world in a build.
-    internal static string FindWorldDir() => Path.Combine(Path.GetDirectoryName(FindRulesDir()), "world");
+    public static string FindWorldDir() => Path.Combine(Path.GetDirectoryName(FindRulesDir()), "world");
 
     /// <summary>The cells every wizard in the scene stands on (the solo one, or every player's online), for ChunkStreaming.</summary>
     public IReadOnlyList<(int x, int y)> PlayerCells()

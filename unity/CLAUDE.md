@@ -21,7 +21,7 @@ unity command console get --level error --result-only
 unity command script eval -- --code '<C#>'      # read or poke live state
 ```
 
-Menu items worth knowing (all under **Prototype**): Restore Asset Packs,
+Menu items worth knowing (all under **Prototype**): Restore Asset Packs, Preview World Theme (a map of the valley and its generated land),
 Build Chemistry Yard (also builds the valley), Build > Windows / macOS
 (player builds into `Builds/`; slow, run only when asked), Record Valley
 Showcase.

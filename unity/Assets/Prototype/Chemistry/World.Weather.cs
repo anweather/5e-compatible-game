@@ -143,19 +143,19 @@ namespace Chem
         {
             int upwind = WindDir >= 0 ? (WindDir + 2) % 4 : -1;
             foreach (var s in rows)
+                for (int i = s.Start; i < s.End; i++) SettleOn(s.Chunk, i, upwind, cover, bank);
+        }
+
+        // Snow on one square: a cover on open ground, a bank where it's sheltered.
+        void SettleOn(Chunk ch, int i, int upwind, double cover, double bank)
+        {
+            var c = ch.Cells[i];
+            if (c.Water > 0 || c.Fire > 0 || IsBlocking(c)) return;
+            if (c.Cover == null)
             {
-                var cells = s.Chunk.Cells;
-                for (int i = s.Start; i < s.End; i++)
-                {
-                    var c = cells[i];
-                    if (c.Water > 0 || c.Fire > 0 || IsBlocking(c)) continue;
-                    if (c.Cover == null)
-                    {
-                        if (Rand() < cover) c.Cover = SnowCover;
-                    }
-                    else if (c.Cover == SnowCover && Sheltered(s.Chunk, i, upwind) && Rand() < bank) c.Cover = BankCover;
-                }
+                if (Rand() < cover) c.Cover = SnowCover;
             }
+            else if (c.Cover == SnowCover && Sheltered(ch, i, upwind) && Rand() < bank) c.Cover = BankCover;
         }
 
         /// <summary>Whether something blocking stands next to a square: on its upwind side in a wind, any side without.</summary>
@@ -176,19 +176,22 @@ namespace Chem
             foreach (var s in rows)
             {
                 var cells = s.Chunk.Cells;
-                for (int i = s.Start; i < s.End; i++)
-                {
-                    var c = cells[i];
-                    if (c.Cover != SnowCover && c.Cover != BankCover) continue;
-                    if (Rand() >= chance) continue;
-                    if (c.Cover == BankCover) c.Cover = SnowCover;
-                    else
-                    {
-                        c.Cover = null;
-                        if (c.Water == 0) c.Water = 1;
-                    }
-                }
+                for (int i = s.Start; i < s.End; i++) MeltOn(cells[i], chance);
             }
+        }
+
+        // One square's snow: a bank sinks to snow, snow melts into a puddle.
+        void MeltOn(Cell c, double chance)
+        {
+            if (c.Cover != SnowCover && c.Cover != BankCover) return;
+            if (Rand() >= chance) return;
+            if (c.Cover == BankCover)
+            {
+                c.Cover = SnowCover;
+                return;
+            }
+            c.Cover = null;
+            if (c.Water == 0) c.Water = 1;
         }
 
         void Strike()

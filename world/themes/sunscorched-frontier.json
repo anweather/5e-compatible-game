@@ -1,0 +1,22 @@
+{
+  "id": "sunscorched-frontier",
+  "name": "Sunscorched Frontier",
+  "description": "You wake at an oasis town in the middle of a wide desert. A thin river trickles down from the northern highlands into the oasis; greener land lies far to the east, where the only city stands at the end of a long caravan road. Rocky badlands rise in the south.",
+  "revision": 3,
+  "climate": {"temperature": 0.1, "moisture": -0.3, "temperate": 0.5},
+  "start": {"setting": "desert", "settlement": "town"},
+  "features": [
+    {"id": "great-desert", "kind": "zone", "biome": "desert", "at": "center", "size": "huge", "stretch": 1.5, "orientation": "ew"},
+    {"id": "green-east", "kind": "zone", "biome": "grassland", "at": "east", "distance": "far", "size": "medium", "stretch": 1.6, "orientation": "ns"},
+    {"id": "southern-badlands", "kind": "mountains", "at": "south", "distance": "far", "size": "medium", "stretch": 3, "orientation": "ew", "peaks": false},
+    {"id": "northern-highlands", "kind": "zone", "biome": "highlands", "at": "north", "distance": "far", "size": "medium", "stretch": 2.5, "orientation": "ew"},
+    {"id": "oasis", "kind": "lake", "at": "center", "size": "small", "near": "start"},
+    {"id": "dry-river", "kind": "river", "from": "north", "to": {"x": -0.3, "y": 0.28}, "meander": "medium", "width": "narrow", "through": ["oasis"]},
+    {"id": "trade-city", "kind": "city", "at": "east", "distance": "far", "on": "caravan-road"},
+    {"id": "waystations", "kind": "town", "count": 3, "farFrom": {"id": "trade-city", "min": 0.5}, "minSpacing": 0.4},
+    {"id": "caravan-road", "kind": "road", "from": "west", "to": "east", "rank": "main", "via": ["trade-city"], "branches": 2},
+    {"id": "sun-baked", "kind": "influence", "look": "dunes", "area": "continent", "strength": 0.85},
+    {"id": "oases", "kind": "influence", "look": "oasis", "area": "continent", "patches": {"share": 0.035, "size": "small"}, "heart": {"terrain": "water", "above": 0.75}, "onto": ["filler", "desert", "dunes"]},
+    {"id": "oasis-green", "kind": "influence", "look": "oasis", "around": "oasis", "reach": 0.06, "falloff": 0.8, "strength": 0.9, "onto": "any"}
+  ]
+}

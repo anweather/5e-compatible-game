@@ -2,8 +2,9 @@
 // used with permission. From Punchy's BiomeData.cs (BiomeSampling), BiomeBaking.cs
 // and TerrainSource.ShapeHeight: the Entities blobs are plain classes, a surface
 // stack gives per-surface weights (to paint Unity terrain layers) instead of
-// blended material properties, and a biome's chance in a region can be biased
-// by where the region is (CellBias). The maths is his. Editor-only: it bakes
+// blended material properties, a biome's chance in a region can be biased by
+// where the region is (CellBias), and heights and surfaces can take biome
+// weights from outside (a world theme's layout, ValleySurroundings). The maths is his. Editor-only: it bakes
 // terrain, and its float noise is not lockstep-safe, so it stays out of Chem.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S1066, S3358
@@ -162,9 +163,11 @@ namespace Punchy.Terrain
         }
 
         /// <summary>Biome base elevations plus each biome's relief, blended by shape weight (Punchy's ShapeHeight).</summary>
-        public float Height(float2 xz)
+        public float Height(float2 xz) => Height(xz, Weights(xz, true));
+
+        /// <summary>Height with the biome weights given (Ids index the biome list), e.g. from a world theme's layout.</summary>
+        public float Height(float2 xz, BiomeWeights shape)
         {
-            var shape = Weights(xz, true);
             float height = 0f;
             for (int i = 0; i < 4; i++)
             {
@@ -181,10 +184,12 @@ namespace Punchy.Terrain
         /// Each surface's share at a point, summing to 1 (Punchy's EvaluateBiome, as weights: a rule laid
         /// over the stack with mask m scales what's under it by 1 - m and adds m to its surface).
         /// </summary>
-        public float[] SurfaceWeights(float2 xz, float height, float slopeDegrees)
+        public float[] SurfaceWeights(float2 xz, float height, float slopeDegrees) => SurfaceWeights(xz, height, slopeDegrees, Weights(xz, false));
+
+        /// <summary>Surface weights with the biome weights given (Ids index the biome list).</summary>
+        public float[] SurfaceWeights(float2 xz, float height, float slopeDegrees, BiomeWeights surface)
         {
             var result = new float[surfaceCount];
-            var surface = Weights(xz, false);
             float edgeNoise = noise.snoise(xz * 0.045f) * 0.7f + noise.snoise(xz * 0.17f) * 0.3f;
             var stack = new float[surfaceCount];
             for (int k = 0; k < 4; k++)

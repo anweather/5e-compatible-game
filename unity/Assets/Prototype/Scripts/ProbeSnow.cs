@@ -64,13 +64,18 @@ public class SnowProbe : ProbeScenario
         yield return null;
         yield return null;
 
-        // A Fire Bolt into the snow: it melts where it lands; nothing catches.
+        // A Fire Bolt into the snow: it melts where it lands (a bank to snow); nothing catches.
+        // The snow stops first (this snowfall would cover the spot again within the second), and nothing thaws.
+        yield return Switch(At(12.5f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, " +
+            "'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, 'snow': { 'thawChance': 0 } }");
         var target = grid.YardCell(20, 8);
-        bool before = Snowy(World.At(target.x, target.y));
+        string before = World.At(target.x, target.y).Cover;
         yield return CastFromBar(SpellIds.FireBolt, 20, 8, 0, 1f);
         var hit = World.At(target.x, target.y);
-        Check("fire_melts_snow", before && !Snowy(hit) && hit.Fire == 0,
-            $"snow before {before}, after {Snowy(hit)} (cover {hit.Cover ?? "none"}), water {hit.Water}, fire {hit.Fire}");
+        // A bank slumps to snow (its slush boiled off by the rest of the bolt); snow melts away.
+        bool melted = before == World.BankCover ? hit.Cover != World.BankCover : before == World.SnowCover && !Snowy(hit);
+        Check("fire_melts_snow", melted && hit.Fire == 0,
+            $"cover before {before ?? "none"}, after {hit.Cover ?? "none"}, water {hit.Water}, fire {hit.Fire}");
     }
 
     // A snow bank on open ground (a wall or tree beside it), nearest the yard.

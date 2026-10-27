@@ -176,17 +176,31 @@ players far apart are still all simulated by the host (interest by chunk).
 
 The valley floor (the yard, the cabins, the lake, the river and the falls)
 is still shaped by hand (`ValleyShape`), climbing gently north into the
-foothills. Past it, over a 90 m blend, the land is generated: Punchy's
-biome noise (`ThirdParty/Punchy/Terrain/Editor/BiomeTerrain.cs`,
-`ValleySurroundings`), grassland and forest to the sides and south, ridged
-mountains and fells to the north. It paints the valley's own terrain layers
-and sets how thick the forest grows. It is baked in the editor with the rest
-of the valley (terrains and the cell map), so every machine loads the same
-world and its float noise never decides shared state.
+foothills. Past it, over a 90 m blend, the land is generated, in two layers
+(D11):
 
-Next: Punchy's rivers and lakes; then laying the world out from a theme (the
-PocketTactics open-world blueprint: zones, mountains, rivers, roads,
-towns), ported to the core so chunks can generate from the seed at runtime;
-then a bigger world.
+- **Layout: a world theme.** `world/themes/home-valley.json` says what goes
+  where (mountains far north with a tarn in their foothills, a brook down
+  the west, woods to the sides, fields to the south, groves and meadows
+  between). The PocketTactics theme engine, ported to the core
+  (`ThemeSchema`, `ThemeRegistry`, `ThemeBlueprint`, `ThemeField`, on
+  `WorldHash`, `WorldNoise`, `ThemeGeometry`), solves it for a seed and
+  says, for any cell, which look the theme paints there and whether a lake
+  or river fills it. Exact maths only, pinned against PocketTactics' own
+  TypeScript (`WorldGenTests`) and by a golden (`ThemeTests`).
+- **Look: Punchy's biome terrain.** `world/looks.json` maps each look to
+  one of Punchy's lands (grassland, forest, mountains, fells), which give
+  the height, the terrain layers and how thick the forest grows
+  (`ThirdParty/Punchy/Terrain/Editor/BiomeTerrain.cs`, `ValleySurroundings`);
+  where the theme says nothing, Punchy's own random regions fill in. The
+  theme's lakes and rivers are carved in and baked as cells.
+
+All of it is baked in the editor with the rest of the valley (terrains and
+the cell map), so every machine loads the same world. **Prototype > Preview
+World Theme** draws the map to `Generated/ThemePreview.png`.
+
+Next: roads, settlements and goal scoring from the theme engine; ids for
+things that survive regeneration; then chunks generated from the seed at
+runtime, and a bigger world.
 
 See `docs/ARCHITECTURE.md` for the current code layout.

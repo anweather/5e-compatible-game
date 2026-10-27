@@ -26,7 +26,7 @@ public static class ChemYardBuilder
     // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
     // w pond  _ pit  = wooden bridge  m metal  ~ puddle  % bedrock  @ start
     // The edge is open grass: the yard sits in the valley (ValleyBuilder).
-    const string Map =
+    internal const string Map =
         ",,T,,,,,,,,,,,,,,,,,,,,T,,\n" +
         ",,,,,,T,,,,,,,,,,.......,,\n" +
         ",,,T,,,,,\"\",,,,,...oo...,,\n" +

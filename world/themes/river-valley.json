@@ -1,0 +1,20 @@
+{
+  "id": "river-valley",
+  "name": "River Valley",
+  "description": "A great east-west road through a lush green valley of meadows and ponds. A winding river runs from the north-east to the south-west through a large central lake with an island; mountains wall the far north and a desert fills the west. You wake in a meadow by the lake; one great walled city stands on the road, and only small towns lie far from it.",
+  "revision": 3,
+  "start": {"setting": "lakeshore", "settlement": "town", "biome": "meadow"},
+  "features": [
+    {"id": "northern-range", "kind": "mountains", "at": "north", "distance": "far", "size": "large", "stretch": 4, "orientation": "ew"},
+    {"id": "western-desert", "kind": "zone", "biome": "desert", "at": "west", "distance": "far", "size": "large", "stretch": 1.8, "orientation": "ns"},
+    {"id": "great-lake", "kind": "lake", "at": "center", "size": "large", "island": true},
+    {"id": "long-river", "kind": "river", "from": "northeast", "to": "southwest", "meander": "high", "width": "medium", "through": ["great-lake"]},
+    {"id": "capital", "kind": "city", "on": "kings-road", "farFrom": {"id": "start", "min": 0.5}},
+    {"id": "hamlets", "kind": "town", "count": 4, "farFrom": {"id": "capital", "min": 0.75}, "minSpacing": 0.35},
+    {"id": "kings-road", "kind": "road", "from": "east", "to": "west", "rank": "main", "via": ["capital"], "branches": 3},
+    {"id": "valley-green", "kind": "influence", "look": "meadow", "area": "continent", "strength": 0.6},
+    {"id": "ponds", "kind": "influence", "look": "water-meadow", "area": "continent", "patches": {"share": 0.06, "size": "small"}, "heart": {"terrain": "water", "above": 0.7}},
+    {"id": "riverside", "kind": "influence", "look": "water-meadow", "along": "long-river", "reach": 0.07, "falloff": 0.7, "strength": 0.9},
+    {"id": "desert-fringe", "kind": "influence", "look": "scrubland", "around": "western-desert", "reach": 0.2, "falloff": 0.9, "strength": 0.9}
+  ]
+}

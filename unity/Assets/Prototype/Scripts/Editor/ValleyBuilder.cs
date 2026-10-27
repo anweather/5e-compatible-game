@@ -980,12 +980,17 @@ public static class ValleyBuilder
     static Vector2Int CellOf(Vector2 p, float cs, int left, int top, int yh) =>
         new Vector2Int(Mathf.RoundToInt(p.x / cs) + left, top + yh - 1 - Mathf.RoundToInt(p.y / cs));
 
-    // Lake water (where the ground is under the lake's surface), cabin wall, a tree, bare shore,
-    // or meadow grass.
+    // Lake water (where the ground is under the lake's surface), the generated land's lakes and rivers
+    // (ValleySurroundings, from the world theme), cabin wall, a tree, bare shore, or meadow grass.
     static char CellKind(Vector2 p, bool tree)
     {
         float ground = ValleyShape.HeightAt(p);
         if (ground < LakeLevel) return 'w';
+        if (ValleySurroundings.Mask(p) > 0.5f)
+        {
+            char water = ValleySurroundings.Water(p);
+            if (water != '\0') return water;
+        }
         if (ValleyShape.DistanceToRiver(p) < ValleyShape.RiverHalfWidth) return 'r';
         if (ValleyShape.InCabin(p)) return 'L';
         if (tree) return 'T';

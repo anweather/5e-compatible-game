@@ -1,0 +1,18 @@
+{
+  "id": "home-valley",
+  "name": "Home Valley",
+  "description": "The valley you know at the heart of it: a ridge of snow-capped mountains walls the far north, with a tarn in their foothills feeding a brook that winds down the west; woods close in to the east and west, and open fields roll away south. Groves and meadows patch the land between.",
+  "revision": 1,
+  "start": { "setting": "meadow", "settlement": "town" },
+  "features": [
+    { "id": "north-range", "kind": "mountains", "at": "north", "distance": "far", "size": "large", "stretch": 4, "orientation": "ew" },
+    { "id": "west-woods", "kind": "zone", "biome": "deepwood", "at": "west", "distance": "mid", "size": "medium", "stretch": 1.6, "orientation": "ns" },
+    { "id": "east-woods", "kind": "zone", "biome": "deepwood", "at": "east", "distance": "mid", "size": "medium", "stretch": 1.6, "orientation": "ns" },
+    { "id": "south-fields", "kind": "zone", "biome": "plains", "at": "south", "distance": "far", "size": "large", "stretch": 3, "orientation": "ew" },
+    { "id": "tarn", "kind": "lake", "at": "northwest", "distance": "far", "size": "small", "near": "north-range" },
+    { "id": "west-brook", "kind": "river", "from": "northwest", "to": "southwest", "meander": "medium", "width": "narrow", "through": ["tarn"] },
+    { "id": "valley-green", "kind": "influence", "look": "meadow", "area": "continent", "strength": 0.4 },
+    { "id": "groves", "kind": "influence", "look": "deepwood", "area": "continent", "patches": { "share": 0.15, "size": "medium" } },
+    { "id": "brookside", "kind": "influence", "look": "water-meadow", "along": "west-brook", "reach": 0.06, "falloff": 0.7, "strength": 0.8 }
+  ]
+}

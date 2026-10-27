@@ -57,7 +57,7 @@ public static class ValleyShape
         };
         var cabinSpots = new Vector2[Cabins.Length];
         for (int i = 0; i < Cabins.Length; i++) cabinSpots[i] = Cabins[i].At;
-        ValleySurroundings.Plan(Centre, LakeCentre, Falls, cabinSpots);
+        ValleySurroundings.Plan(Centre, LakeCentre, Falls, cabinSpots, cellSize);
         padLevels = new float[Cabins.Length];
         for (int i = 1; i < Cabins.Length; i++) padLevels[i] = Mathf.Max(Unlevelled(Cabins[i].At), 0f);
         PondLevel = Unlevelled(Falls) - 2f;

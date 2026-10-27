@@ -327,13 +327,16 @@ const SNOW = "snow", BANK = "snowbank";
 /** Snow settles on open, dry, unburnt ground, and drifts into banks where it's sheltered (World.Settle). */
 function settle(w: World, cover: number, bank: number) {
   const wind = windDir(w), upwind = wind >= 0 ? (wind + 2) % 4 : -1;
-  for (let i = 0; i < w.cells.length; i++) {
-    const c = w.cells[i];
-    if (c.water > 0 || c.fire > 0 || isBlocking(c)) continue;
-    if (c.cover === null) {
-      if (rand(w) < cover) c.cover = SNOW;
-    } else if (c.cover === SNOW && sheltered(w, i % w.w, Math.floor(i / w.w), upwind) && rand(w) < bank) c.cover = BANK;
-  }
+  for (let i = 0; i < w.cells.length; i++) settleOn(w, i, upwind, cover, bank);
+}
+
+/** Snow on one square: a cover on open ground, a bank where it's sheltered (World.SettleOn). */
+function settleOn(w: World, i: number, upwind: number, cover: number, bank: number) {
+  const c = w.cells[i];
+  if (c.water > 0 || c.fire > 0 || isBlocking(c)) return;
+  if (c.cover === null) {
+    if (rand(w) < cover) c.cover = SNOW;
+  } else if (c.cover === SNOW && sheltered(w, i % w.w, Math.floor(i / w.w), upwind) && rand(w) < bank) c.cover = BANK;
 }
 
 /** Whether something blocking stands next to a square: on its upwind side in a wind, any side without. */
@@ -348,15 +351,19 @@ function sheltered(w: World, x: number, y: number, upwind: number): boolean {
 
 /** Banks sink back to snow, and snow melts into a puddle (World.Melt). */
 function melt(w: World, chance: number) {
-  for (const c of w.cells) {
-    if (c.cover !== SNOW && c.cover !== BANK) continue;
-    if (rand(w) >= chance) continue;
-    if (c.cover === BANK) c.cover = SNOW;
-    else {
-      c.cover = null;
-      if (c.water === 0) c.water = 1;
-    }
+  for (const c of w.cells) meltOn(w, c, chance);
+}
+
+/** One square's snow: a bank sinks to snow, snow melts into a puddle (World.MeltOn). */
+function meltOn(w: World, c: Cell, chance: number) {
+  if (c.cover !== SNOW && c.cover !== BANK) return;
+  if (rand(w) >= chance) return;
+  if (c.cover === BANK) {
+    c.cover = SNOW;
+    return;
   }
+  c.cover = null;
+  if (c.water === 0) c.water = 1;
 }
 
 function strike(w: World) {

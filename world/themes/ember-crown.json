@@ -1,0 +1,19 @@
+{
+  "id": "ember-crown",
+  "name": "Ember Crown",
+  "description": "You wake inside a walled city on a cindered shelf. To the north-east a volcano smoulders over a lava lake with an obsidian island, and a river of lava runs down to the south-east; the land grows ashier the closer you go. Frozen peaks stand in the far north-west; small towns keep to the cooler west.",
+  "revision": 2,
+  "mixins": ["volcano-core"],
+  "climate": {"temperature": 0.06},
+  "start": {"setting": "field", "settlement": "city", "biome": "cinderfield"},
+  "features": [
+    {"id": "lava-river", "to": "southeast"},
+    {"id": "ember-tint", "kind": "influence", "look": "cinderfield", "area": "continent", "strength": 0.4},
+    {"id": "frost-peaks", "kind": "mountains", "at": "northwest", "distance": "far", "size": "medium", "stretch": 2.2, "orientation": "nesw"},
+    {"id": "west-woods", "kind": "zone", "biome": "deepwood", "at": "west", "distance": "mid", "size": "medium", "stretch": 1.5, "orientation": "ns"},
+    {"id": "crown-city", "kind": "city", "on": "high-road"},
+    {"id": "west-towns", "kind": "town", "count": 3, "at": "west", "distance": "mid", "farFrom": {"id": "lava-lake", "min": 0.9}, "minSpacing": 0.35},
+    {"id": "high-road", "kind": "road", "from": "south", "to": "north", "rank": "main", "via": ["crown-city"], "branches": 2},
+    {"id": "frost-chill", "kind": "influence", "look": "tundra", "around": "frost-peaks", "reach": 0.3, "falloff": 0.9, "strength": 0.9}
+  ]
+}
