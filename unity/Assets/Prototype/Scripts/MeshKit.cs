@@ -57,10 +57,10 @@ public sealed class MeshKit
     }
 
     /// <summary>A flat triangle facing <paramref name="outward"/>, whichever way its corners run.</summary>
-    public void Tri(Vector3 a, Vector3 b, Vector3 c, Color color, Vector3 outward)
+    public void Tri(Vector3 p0, Vector3 p1, Vector3 p2, Color color, Vector3 outward)
     {
-        if (Vector3.Dot(Vector3.Cross(b - a, c - a), outward) < 0f) Tri(a, c, b, color);
-        else Tri(a, b, c, color);
+        if (Vector3.Dot(Vector3.Cross(p1 - p0, p2 - p0), outward) < 0f) Tri(p0, p2, p1, color);
+        else Tri(p0, p1, p2, color);
     }
 
     /// <summary>A flat quad a b c d (in order round its edge) facing <paramref name="outward"/>.</summary>
@@ -114,11 +114,11 @@ public sealed class MeshKit
         for (int side = -1; side <= 1; side += 2)
         {
             float x = side * width / 2f;
-            var a = new Vector3(x, baseY, -depth / 2f);
-            var b = new Vector3(x, baseY, depth / 2f);
-            var c = new Vector3(x, baseY + rise, 0f);
-            if (side > 0) Tri(a, c, b, color);
-            else Tri(a, b, c, color);
+            var front = new Vector3(x, baseY, -depth / 2f);
+            var back = new Vector3(x, baseY, depth / 2f);
+            var peak = new Vector3(x, baseY + rise, 0f);
+            if (side > 0) Tri(front, peak, back, color);
+            else Tri(front, back, peak, color);
         }
     }
 

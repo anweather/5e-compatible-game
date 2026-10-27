@@ -59,6 +59,7 @@ public static class ValleyShape
             new CabinSite(new Vector2(-95f, 140f), new Vector2(0.6f, -0.8f)),
         };
         PlanBridge();
+        ValleyCoast.PlanPath(new Vector2(yard.xMax + 3f, yard.yMax - 4f), bridgeLine[0], bridgeLine[1]);
         var cabinSpots = new Vector2[Cabins.Length];
         for (int i = 0; i < Cabins.Length; i++) cabinSpots[i] = Cabins[i].At;
         LayVillages();
@@ -67,7 +68,11 @@ public static class ValleyShape
         ValleySurroundings.Plan(Centre, LakeCentre, Falls, cabinSpots, flat, cellSize);
         padLevels = new float[Cabins.Length];
         for (int i = 1; i < Cabins.Length; i++) padLevels[i] = Mathf.Max(Unlevelled(Cabins[i].At), 0f);
-        for (int i = 0; i < Villages.Length; i++) VillageLevels[i] = Mathf.Max(Unlevelled(villageAreas[i].center), 0f);
+        for (int i = 0; i < Villages.Length; i++)
+        {
+            var at = villageAreas[i].center;
+            VillageLevels[i] = Mathf.Max(ValleyCoast.Shape(at, Unlevelled(at)), 0f);
+        }
         PondLevel = Unlevelled(Falls) - 2f;
     }
 
@@ -100,7 +105,9 @@ public static class ValleyShape
     // and clear of the yard, the cabins and the court.
     static bool VillageMayStand(Vector2 p) =>
         LakeDepth(p) <= 0f && DistanceToLake(p) > 8f && DistanceToRiver(p) > RiverHalfWidth + 4f && !NearFalls(p)
-        && DistanceToYard(p) > 8f && DistanceToCabin(p) > 10f && !InCourt(p, -8f);
+        && DistanceToYard(p) > 8f && DistanceToCabin(p) > 10f && !InCourt(p, -8f)
+        // On the mainland well back from the coast and its path, or on the island well up from its beach.
+        && (ValleyCoast.InIsland(p) > 13f || (ValleyCoast.Out(p) < -95f && ValleyCoast.DistanceToPath(p) > 4f));
 
     /// <summary>The centre of a world cell on the ground plane (x, z).</summary>
     public static Vector2 CellWorld(int x, int y)
@@ -212,7 +219,8 @@ public static class ValleyShape
     /// </summary>
     public static float BankHeightAt(Vector2 p)
     {
-        float h = Unlevelled(p);
+        // The coast south-east: over a hill, down the dunes and beach into the sea (ValleyCoast).
+        float h = ValleyCoast.Shape(p, Unlevelled(p));
         // A level pad for each cabin, easing back into the meadow.
         for (int i = 0; i < Cabins.Length; i++)
         {
@@ -411,9 +419,9 @@ public static class ValleyShape
     public static bool KeepClear(Vector2 p, float margin) =>
         DistanceToYard(p) < margin || KeepClearOfCabinAndLake(p) || DistanceToRiver(p) < RiverHalfWidth + 3f || NearBridge(p, 3f);
 
-    /// <summary>Kept clear of grass and plants: the cabins' pads, the lake, the river, the falls (its basin, cliff and shelf) and the villages.</summary>
+    /// <summary>Kept clear of grass and plants: the cabins' pads, the lake, the river, the falls (its basin, cliff and shelf), the villages, and the beaches, sea and path.</summary>
     public static bool KeepClearOfCabinAndLake(Vector2 p) =>
-        DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p) || InRiver(p) || DistanceToVillage(p) < 1f;
+        DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p) || InRiver(p) || DistanceToVillage(p) < 1f || ValleyCoast.NoGrass(p);
 
     /// <summary>The pond's basin, the cliff and the shelf above it: nothing grows or stands there.</summary>
     public static bool NearFalls(Vector2 p)
@@ -437,10 +445,31 @@ public static class ValleyShape
     {
         var floor = FloorLayerWeights(w, slope);
         float t = ValleySurroundings.Mask(w);
-        if (t <= 0f) return floor;
-        var land = ValleySurroundings.LayerWeights(w, HeightAt(w), slope);
-        for (int k = 0; k < floor.Length; k++) floor[k] = Mathf.Lerp(floor[k], land[k], t);
-        return floor;
+        if (t > 0f)
+        {
+            var land = ValleySurroundings.LayerWeights(w, HeightAt(w), slope);
+            for (int k = 0; k < floor.Length; k++) floor[k] = Mathf.Lerp(floor[k], land[k], t);
+        }
+        return WithSand(WithIsland(floor, ValleyCoast.Lush(w)), ValleyCoast.Sand(w, HeightAt(w)));
+    }
+
+    // The island's own ground inside its beach: lush moss and grass, whatever the land round it was.
+    static float[] WithIsland(float[] mix, float lush)
+    {
+        if (lush <= 0f) return mix;
+        for (int k = 0; k < mix.Length; k++) mix[k] *= 1f - lush;
+        mix[0] += lush * 0.45f;
+        mix[1] += lush * 0.55f;
+        return mix;
+    }
+
+    // The coast's sand laid over a mix (sand is index 4, LayerNames order).
+    static float[] WithSand(float[] mix, float sand)
+    {
+        if (sand <= 0f) return mix;
+        for (int k = 0; k < mix.Length; k++) mix[k] *= 1f - sand;
+        mix[4] += sand;
+        return mix;
     }
 
     static float[] FloorLayerWeights(Vector2 w, float slope)

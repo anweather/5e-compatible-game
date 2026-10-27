@@ -34,6 +34,8 @@ public class ValleyChemistry : MonoBehaviour
     readonly Dictionary<int, List<((int i, int j) chunk, int index)>> treesByCell = new();
     readonly HashSet<(int i, int j)> treesChanged = new();
     readonly HashSet<int> scorched = new();
+    // The coast's palms (GeneratedProp) by the square they stand on: they burn with it.
+    readonly Dictionary<int, List<GeneratedProp>> palmsByCell = new();
     int[] cabinCells, cabinBurnt, cabinWrecked;
     bool[] cabinCharred;
     Material charred;
@@ -59,6 +61,7 @@ public class ValleyChemistry : MonoBehaviour
         ground.RaiseBase(channelCells, channelDepths);
         scorched.Clear();
         IndexTrees();
+        IndexPalms();
         int n = cabins?.Length ?? 0;
         cabinCells = new int[n];
         cabinBurnt = new int[n];
@@ -178,8 +181,24 @@ public class ValleyChemistry : MonoBehaviour
         if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
+    void IndexPalms()
+    {
+        palmsByCell.Clear();
+        foreach (var prop in FindObjectsByType<GeneratedProp>(FindObjectsSortMode.None))
+        {
+            if (prop.kind != GeneratedProp.Kind.Palm) continue;
+            var cell = grid.CellAt(prop.transform.position);
+            if (!layout.InGrid(cell.x, cell.y)) continue;
+            int key = grid.World.Idx(cell.x, cell.y);
+            if (!palmsByCell.TryGetValue(key, out var list)) palmsByCell[key] = list = new();
+            list.Add(prop);
+        }
+    }
+
     void BurnTrees(int x, int y)
     {
+        if (palmsByCell.TryGetValue(grid.World.Idx(x, y), out var palms))
+            foreach (var palm in palms) palm.Burn(charred);
         if (!treesByCell.TryGetValue(grid.World.Idx(x, y), out var list)) return;
         foreach (var (at, n) in list)
         {

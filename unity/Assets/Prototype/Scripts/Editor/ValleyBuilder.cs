@@ -44,6 +44,7 @@ public static class ValleyBuilder
         BuildSky();
         var cabins = BuildCabins();
         var houses = BuildVillages();
+        CoastBuilder.Build(VillageMaterial());
         ScatterRocks();
         BuildWorldEdge();
         BuildCourt();
@@ -79,6 +80,7 @@ public static class ValleyBuilder
         // villages' squares, lanes and walls.
         var paintedCells = YardCells(grid.yardCells);
         paintedCells.AddRange(CourtCells());
+        paintedCells.AddRange(PathCells());
         foreach (var plan in ValleyShape.Villages)
             foreach (var (vx, vy, _) in plan.Cells()) paintedCells.Add((vx, vy));
         ValleyTerrain.PlantTrees(assets.trees, AllTrees(valleyTrees, grid, world));
@@ -96,6 +98,17 @@ public static class ValleyBuilder
     }
 
     // The cells on and just round the court; only the ones that are dirt paint (the rest stay grass).
+    // The path's cells, painted as the dirt they are.
+    static IEnumerable<(int x, int y)> PathCells()
+    {
+        var layout = ValleyTerrain.Layout;
+        foreach (var (x, y) in layout.Cells())
+        {
+            var (cx, cz) = layout.CellCenter(x, y);
+            if (ValleyCoast.OnPath(new Vector2(cx, cz))) yield return (x, y);
+        }
+    }
+
     static IEnumerable<(int x, int y)> CourtCells()
     {
         var layout = ValleyTerrain.Layout;
@@ -195,9 +208,11 @@ public static class ValleyBuilder
             float scale = 0.8f + 0.5f * (float)rng.NextDouble();
             spots.Add((w, scale, rng.NextDouble() < 0.35 ? 1 : 0, (float)(rng.NextDouble() * Mathf.PI * 2)));
         }
-        // None on the ball court or in a village. Dropped afterwards, so every other tree stands where it always has.
+        // None on the ball court, in a village, on the coast or by the path. Dropped afterwards, so every
+        // other tree stands where it always has.
         spots.RemoveAll(s => ValleyShape.InCourt(s.Item1, -1.5f));
         spots.RemoveAll(s => ValleyShape.DistanceToVillage(s.Item1) < 4f);
+        spots.RemoveAll(s => ValleyCoast.Coastal(s.Item1) || ValleyCoast.DistanceToPath(s.Item1) < 3.5f);
         return spots;
     }
 
@@ -277,7 +292,7 @@ public static class ValleyBuilder
             rock.transform.SetPositionAndRotation(at, Quaternion.Euler(0f, rng.Next(360), 0f));
             rock.transform.localScale = Vector3.one * (0.6f + 1.2f * (float)rng.NextDouble());
             // None in a village; removed after its draws, so the other rocks stay where they were.
-            if (ValleyShape.DistanceToVillage(w) < 4f) Object.DestroyImmediate(rock);
+            if (ValleyShape.DistanceToVillage(w) < 4f || ValleyCoast.DistanceToPath(w) < 3f) Object.DestroyImmediate(rock);
             placed++;
         }
     }
@@ -851,6 +866,19 @@ public static class ValleyBuilder
         {
             var ring = (GameObject)PrefabUtility.InstantiatePrefab(mountains);
             ring.transform.position = new Vector3(Centre.x, -22f, Centre.y);
+            // The sea is to the south-east: no mountains on its horizon (the ring's 05 and 06
+            // stand from east to south). Only this scene's copy; the pack is untouched.
+            foreach (var name in new[] { "SkyboxMountains05", "SkyboxMountains06" })
+            {
+                var piece = ring.transform.Find(name);
+                if (piece != null) piece.gameObject.SetActive(false);
+            }
+            // Their neighbours sink lower, so the ends they leave stand short and lost in the haze.
+            foreach (var name in new[] { "SkyboxMountains04", "SkyboxMountains07" })
+            {
+                var piece = ring.transform.Find(name);
+                if (piece != null) piece.localPosition += Vector3.down * 550f;
+            }
         }
         else Debug.LogWarning("Sample skybox missing: plain sky. Run Prototype > Restore Asset Packs.");
 
@@ -906,7 +934,7 @@ public static class ValleyBuilder
     {
         var houses = new List<Transform>();
         if (ValleyShape.Villages.Length == 0) return houses.ToArray();
-        var material = EditorAssets.LoadOrCreate($"{Generated}/VillageLit.mat", () => new Material(Shader.Find("Prototype/VillageLit")));
+        var material = VillageMaterial();
         var smoke = EditorAssets.LoadPrefab(PackPaths.SmokeFx + "/SmokeEffect.prefab");
         float cs = ValleyTerrain.Layout.CellSize;
         for (int v = 0; v < ValleyShape.Villages.Length; v++)
@@ -933,6 +961,10 @@ public static class ValleyBuilder
         }
         return houses.ToArray();
     }
+
+    // What generated things are drawn with: their colours in their vertices (VillageLit).
+    static Material VillageMaterial() =>
+        EditorAssets.LoadOrCreate($"{Generated}/VillageLit.mat", () => new Material(Shader.Find("Prototype/VillageLit")));
 
     static Transform BuildHouse(Transform village, VillageBuilding b, string name, float level, float cs, Material material, GameObject smoke)
     {
@@ -1189,9 +1221,8 @@ public static class ValleyBuilder
 
         var treeCells = new HashSet<Vector2Int>();
         foreach (var t in trees) treeCells.Add(CellOf(t.at, cs, left, top, yh));
-        var villageCells = new Dictionary<Vector2Int, char>();
-        foreach (var plan in ValleyShape.Villages)
-            foreach (var (vx, vy, c) in plan.Cells()) villageCells[new Vector2Int(vx, vy)] = c;
+        foreach (var palm in CoastBuilder.PalmSpots()) treeCells.Add(CellOf(palm, cs, left, top, yh));
+        var villageCells = VillageCells();
 
         var rows = new System.Text.StringBuilder(w * h + h);
         channelCells.Clear();
@@ -1205,10 +1236,7 @@ public static class ValleyBuilder
                 // Cell centre on the ground plane (yard cell (0, 0) is at (0, (yh - 1) * cs)).
                 var p = new Vector2(yx * cs, (yh - 1 - yy) * cs);
                 var sample = SampleOf(layout, x, y);
-                char kind;
-                if (inYard) kind = yardRows[yy][yx];
-                else if (villageCells.TryGetValue(new Vector2Int(x, y), out char v)) kind = v;
-                else kind = CellKind(p, sample, treeCells.Contains(new Vector2Int(x, y)));
+                char kind = inYard ? yardRows[yy][yx] : OutsideYard(x, y, p, sample, villageCells, treeCells);
                 if (kind == 'r') NoteChannel(sample, y * w + x);
                 rows.Append(kind);
             }
@@ -1253,20 +1281,44 @@ public static class ValleyBuilder
     // and rivers (ValleySurroundings, from the world theme), cabin wall, a tree, bare shore, or meadow grass.
     // The river is decided at the cell's heightmap sample, where its channel is measured
     // (NoteChannel), so no dry cell's ground is cut into the channel.
+    // Every village's cells (ValleyShape.Villages), by world cell.
+    static Dictionary<Vector2Int, char> VillageCells()
+    {
+        var cells = new Dictionary<Vector2Int, char>();
+        foreach (var plan in ValleyShape.Villages)
+            foreach (var (x, y, c) in plan.Cells()) cells[new Vector2Int(x, y)] = c;
+        return cells;
+    }
+
+    // A cell outside the old yard: a village's, else what the valley's shapes make it.
+    static char OutsideYard(int x, int y, Vector2 p, Vector2 sample, Dictionary<Vector2Int, char> villageCells, HashSet<Vector2Int> treeCells)
+    {
+        var cell = new Vector2Int(x, y);
+        return villageCells.TryGetValue(cell, out char v) ? v : CellKind(p, sample, treeCells.Contains(cell));
+    }
+
+    // The generated land's own lakes and rivers past the valley floor ('\0' for none); the coast
+    // decides its own water.
+    static char GeneratedWater(Vector2 p)
+    {
+        bool coast = ValleyCoast.Weight(p) > 0.05f || ValleyCoast.InIsland(p) > -40f;
+        return !coast && ValleySurroundings.Mask(p) > 0.5f ? ValleySurroundings.Water(p) : '\0';
+    }
+
     static char CellKind(Vector2 p, Vector2 sample, bool tree)
     {
         float ground = ValleyShape.BankHeightAt(p);
+        // Under the lake's or the sea's surface (one level): water.
         if (ground < LakeLevel) return 'w';
-        if (ValleySurroundings.Mask(p) > 0.5f)
-        {
-            char water = ValleySurroundings.Water(p);
-            if (water != '\0') return water;
-        }
+        char water = GeneratedWater(p);
+        if (water != '\0') return water;
         if (ValleyShape.InRiver(sample)) return 'r';
         if (ValleyShape.InCabin(p)) return 'L';
         // The ball court's floor is dirt: bare earth to look at, and nothing on it to burn.
         if (ValleyShape.InCourt(p, 0.2f)) return '.';
+        // Trees (the palms on the sand too), then the path and the beaches: bare ground, nothing to burn.
         if (tree) return 'T';
+        if (ValleyCoast.OnPath(p) || ValleyCoast.OnSand(p, ground)) return '.';
         if (ValleyShape.DistanceToLake(p) < 6f && ground < 0.6f) return '.';
         return ',';
     }

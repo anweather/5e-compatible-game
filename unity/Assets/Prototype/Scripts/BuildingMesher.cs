@@ -429,13 +429,13 @@ public static class BuildingMesher
         Vector3 R1 = new(-r, ridgeY, 0f), R2 = new(r, ridgeY, 0f);
         var kit = b.kit;
         var under = b.roof * 0.55f;
-        void Face(Vector3 a, Vector3 c, Vector3 d, Vector3 e, Vector3 outward, bool tri)
+        void Face(Vector3 p0, Vector3 p1, Vector3 p2, Vector3 p3, Vector3 outward, bool tri)
         {
             var up = Vector3.up * lift;
-            if (tri) kit.Tri(a + up, c + up, d + up, b.Jitter(b.roof, 0.05f), outward);
-            else kit.Quad(a + up, c + up, d + up, e + up, b.Jitter(b.roof, 0.05f), outward);
-            if (tri) kit.Tri(a, c, d, under, -outward);
-            else kit.Quad(a, c, d, e, under, -outward);
+            if (tri) kit.Tri(p0 + up, p1 + up, p2 + up, b.Jitter(b.roof, 0.05f), outward);
+            else kit.Quad(p0 + up, p1 + up, p2 + up, p3 + up, b.Jitter(b.roof, 0.05f), outward);
+            if (tri) kit.Tri(p0, p1, p2, under, -outward);
+            else kit.Quad(p0, p1, p2, p3, under, -outward);
         }
         Face(E1, E2, R2, R1, new Vector3(0f, 1f, -1f), false);
         Face(E3, E4, R1, R2, new Vector3(0f, 1f, 1f), false);
