@@ -387,7 +387,8 @@ public static class ChemYardBuilder
             Visual(SpellIds.Fireball, new Color(1f, 0.4f, 0.1f), FireFx + "/FireBall.prefab", FireFx + "/BigExplosion.prefab"),
             Visual(SpellIds.RayOfFrost, new Color(0.55f, 0.85f, 1f), null, PackPaths.MagicFx + "/IceLance.prefab"),
             Visual(SpellIds.CreateWater, new Color(0.3f, 0.6f, 1f), null, PackPaths.WaterFx + "/BigSplash.prefab"),
-            Visual(SpellIds.SleetStorm, new Color(0.75f, 0.9f, 1f), null, PackPaths.MagicFx + "/IceLance.prefab"),
+            // Sleet Storm: driving sleet from a low cloud over its squares (SleetStorm), no projectile or impact.
+            Storm(SpellIds.SleetStorm, new Color(0.75f, 0.9f, 1f)),
             Visual(SpellIds.Grease, new Color(0.9f, 0.8f, 0.3f), null, PackPaths.GoopFx + "/GoopSpray.prefab"),
             Visual(SpellIds.ShockingGrasp, new Color(1f, 0.95f, 0.4f), null, MiscFx + "/ElectricalSparks.prefab"),
             Visual(SpellIds.GustOfWind, new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),
@@ -417,6 +418,13 @@ public static class ChemYardBuilder
         e.fromSky = true;
         e.afterImpact = Load(FireFx + "/DustExplosion.prefab");
         e.impactSeconds = 5f;
+        return e;
+    }
+
+    static SpellVisuals.Entry Storm(string spellId, Color glow)
+    {
+        var e = Visual(spellId, glow, null, null);
+        e.storm = true;
         return e;
     }
 

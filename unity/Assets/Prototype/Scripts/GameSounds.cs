@@ -18,6 +18,8 @@ public static class SoundIds
     public const string Explosion = "explosion";
     public const string Break = "break";
     public const string FireLoop = "fire-loop";
+    public const string RainLoop = "rain-loop";
+    public const string WindLoop = "wind-loop";
 }
 
 // Where the game's sound effects come from and how they play: which sound a
@@ -73,6 +75,8 @@ public static class GameSounds
         SoundIds.Explosion => ProceduralSounds.Explosion,
         SoundIds.Break => ProceduralSounds.Break,
         SoundIds.FireLoop => ProceduralSounds.FireLoop,
+        SoundIds.RainLoop => ProceduralSounds.RainLoop,
+        SoundIds.WindLoop => ProceduralSounds.WindLoop,
         _ => ProceduralSounds.Shimmer,
     };
 
