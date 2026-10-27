@@ -212,6 +212,16 @@ public class SurfaceEffects : MonoBehaviour
 
     // Afloat in water deeper than the wizard's chest (unfrozen): held at the surface with a
     // gentle bob, until the ground under it rises (walking out) or it kicks up out of the water.
+    // The sea's waves under the wizard (0 off the sea: the lake and the river lie still).
+    float Swell(Vector2Int cell)
+    {
+        var ocean = Ocean.Instance;
+        var xz = new Vector2(transform.position.x, transform.position.z);
+        if (ocean == null || !ocean.Covers(xz) || grid.valley == null) return 0f;
+        var c = grid.World.At(cell.x, cell.y);
+        return grid.valley.IsLake(c, cell.x, cell.y) ? ocean.WaveOffset(xz) : 0f;
+    }
+
     void Swim(Cell c, Vector2Int cell)
     {
         if (gravity == null || fall == null) return;
@@ -222,8 +232,9 @@ public class SurfaceEffects : MonoBehaviour
         if (!afloat) return;
 
         // Rise or sink toward floating height through the controller's own fall speed (gravity is off),
-        // so its move each frame stays one move and its run speed isn't disturbed.
-        float target = transform.position.y + depth - floatDepth + BobHeight * Mathf.Sin(Time.time * 2.4f);
+        // so its move each frame stays one move and its run speed isn't disturbed. At sea it rides the
+        // swell (Ocean.WaveOffset); whether it swims at all is still judged on the calm level.
+        float target = transform.position.y + depth + Swell(cell) - floatDepth + BobHeight * Mathf.Sin(Time.time * 2.4f);
         fall.SetValue(controller, (target - transform.position.y) * Buoyancy);
         if (animator != null)
         {
