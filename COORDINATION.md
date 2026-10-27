@@ -8,6 +8,40 @@ The coordinator is the Claude session **"Project Manager"** (PC; it was called
 "Unity skill install" before). Message
 it with SendMessage. It doesn't write game code.
 
+## The coordinator's responsibilities
+
+The coordinator ("Project Manager") doesn't write game code unless Andrew
+asks. It is responsible for:
+
+1. **Lanes and ownership:** each file has one owner. It approves and
+   schedules every edit outside a lane, and every shared-file change.
+2. **Merges:** it sets the merge order, reviews each branch on `origin/dev`
+   (the files touched, staying in lane), and has agents rebase in turn.
+3. **The PC's Editor slot:** one heavy Unity job at a time. It hands the slot
+   from session to session.
+4. **Handing out work:** it gives the next task to each agent as it
+   finishes, and keeps "Current tasks" here up to date.
+5. **This file:** it keeps COORDINATION.md current and pushes it to `dev`
+   from its own worktree, `.claude/worktrees/coordinator`.
+6. **Judgment calls:** it checks `DECISIONS.md` before asking Andrew
+   anything. It asks Andrew only when no decision covers the question, then
+   records the answer, the reason, where else it comes up, and how many
+   times it has been revisited.
+7. **Branch cleanup:** it deletes branches merged into `dev` (J-004).
+8. **The demo reel:** it collects a clip or screenshot of every feature you
+   can see from the agent that merges it, and appends it to the Valley Demo
+   Reel artifact (see "Demo reel" below and J-011).
+9. **The playtest bot:** it oversees the bot (World's lane) and relays its
+   backlog and digests to Andrew. The bot finds; it never fixes.
+10. **Reporting to Andrew:** status, findings from the other sessions, and
+    the decisions that are his to make.
+
+It asks Andrew first before it:
+- deletes files or unmerged branches;
+- force-pushes;
+- resolves a conflict where one agent's work would be lost;
+- changes the overall plan.
+
 ## Rules for every agent
 
 1. Read this file before you start each new task (`git fetch` first, then
