@@ -306,7 +306,11 @@ if B and C prove too slow.
    a test that a chunk caught up matches one that was never deactivated
    (when its neighbours were quiet), `CatchUpTests`. A full catch-up of a burning
    chunk costs about 25 ms in .NET, once, as it activates; no probe yet (the caps rarely cut a fire off in the valley).
-5. **Props sleep with their chunk.**
+5. **Props sleep with their chunk.** Part A (World lane, built 2026-10-27): `World.ChunkSwitched`
+   and `ChemGrid.ChunkSwitched` (a `ChunkSwitch`: CX, CY, Active), raised once a chunk has
+   switched and caught up, the same on every peer; `ChemGrid.WorldReset`, `ChunkAt`,
+   `IsChunkActive`. Part B (Gameplay lane): `ThingSpawner` / `PhysicsProp` put a chunk's
+   physics props to sleep when it deactivates and wake them when it activates.
 
 The golden hashes don't move: with everything active (the tests' worlds),
 none of this does anything.

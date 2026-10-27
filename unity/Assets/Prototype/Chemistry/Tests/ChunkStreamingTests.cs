@@ -171,5 +171,73 @@ namespace Chem.Tests
             Assert.That(Active(replay), Is.EquivalentTo(Active(live)));
             Assert.That(Active(live).Count, Is.LessThan(49), "some chunks deactivated");
         }
+
+        [Test]
+        public void EverySwitchIsReportedOnceAfterItHappens()
+        {
+            var w = Meadow();
+            var heard = new List<ChunkSwitch>();
+            w.ChunkSwitched += s =>
+            {
+                heard.Add(s);
+                Assert.That(w.IsActive(s.CX, s.CY), Is.EqualTo(s.Active), "reported once switched");
+            };
+            w.SetActive(2, 3, false);
+            w.SetActive(2, 3, false);
+            w.SetActive(2, 3, true);
+            Assert.That(heard, Is.EqualTo(new[] { new ChunkSwitch(2, 3, false), new ChunkSwitch(2, 3, true) }), "no report when nothing changes");
+        }
+
+        [Test]
+        public void SwitchingEveryChunkReportsEachThatChangedInRowOrder()
+        {
+            var w = Meadow(3, 3);
+            w.SetActive(1, 0, false);
+            var heard = new List<ChunkSwitch>();
+            w.ChunkSwitched += heard.Add;
+            w.SetAllActive(false);
+            Assert.That(heard.Select(s => (s.CX, s.CY)), Is.EqualTo(Square(0, 0, 2, 2).Where(c => c != (1, 0)).OrderBy(c => c.Item2).ThenBy(c => c.Item1)));
+            Assert.That(heard.All(s => !s.Active), Is.True);
+        }
+
+        [Test]
+        public void AChunkIsReportedActiveOnlyOnceItHasCaughtUp()
+        {
+            var w = Meadow();
+            var (x, y) = Middle(3, 3);
+            w.Cast("fire-bolt", x, y, 0);
+            w.Step();
+            w.SetActive(3, 3, false);
+            for (int i = 0; i < 20; i++) w.Step();
+            string caughtUp = null;
+            w.ChunkSwitched += s => caughtUp = s.Active ? w.ChunkHash(3, 3) : caughtUp;
+            w.SetActive(3, 3, true);
+            Assert.That(w.CaughtUp(3, 3), Is.EqualTo(20));
+            Assert.That(caughtUp, Is.EqualTo(w.ChunkHash(3, 3)), "the cells were already caught up when it was reported");
+        }
+
+        [Test]
+        public void EveryPeerHearsTheSameSwitchesAtTheSameTicks()
+        {
+            // The host plans as a wizard walks east; a peer (or a late joiner) runs the stamped batches.
+            var host = Meadow(9);
+            var peer = Meadow(9);
+            var planner = new ChunkPlanner();
+            var rules = RuleSet.Plain(R);
+            var peerRules = RuleSet.Plain(R);
+            var hostHeard = new List<(int, ChunkSwitch)>();
+            var peerHeard = new List<(int, ChunkSwitch)>();
+            host.ChunkSwitched += s => hostHeard.Add((host.Tick, s));
+            peer.ChunkSwitched += s => peerHeard.Add((peer.Tick, s));
+            for (int t = 1; t <= 90; t++)
+            {
+                var batch = new TickBatch(t);
+                if (t % 3 == 1) batch.Chunks.AddRange(planner.Plan(host, new[] { (t * 3, 4 * S) }));
+                rules = batch.RunOn(host, rules, out _);
+                peerRules = batch.RunOn(peer, peerRules, out _);
+            }
+            Assert.That(hostHeard, Is.Not.Empty);
+            Assert.That(peerHeard, Is.EqualTo(hostHeard));
+        }
     }
 }

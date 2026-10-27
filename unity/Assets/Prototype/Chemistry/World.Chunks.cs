@@ -135,7 +135,16 @@ namespace Chem
         public bool IsActive(int cx, int cy) => ChunkOrThrow(cx, cy).Active;
 
         /// <summary>
-        /// Starts or pauses simulating a loaded chunk. A paused chunk keeps its cells exactly as
+        /// A chunk activated (Active) or deactivated, raised by SetActive and SetAllActive once it
+        /// has switched (and, activating, caught up), so its cells are as they now are. Switches
+        /// only come from commands (ChunkSwitch in tick batches, or the solo plan), so every peer
+        /// raises the same ones at the same tick. For the view (props sleeping with their chunk):
+        /// a handler must not change the world, only send commands.
+        /// </summary>
+        public event Action<ChunkSwitch> ChunkSwitched;
+
+        /// <summary>
+        /// Activates or deactivates a loaded chunk. An inactive chunk keeps its cells exactly as
         /// they are; fire, water and gas next to it stop at its edge. Call it between ticks, the
         /// same on every peer.
         /// </summary>
@@ -151,14 +160,22 @@ namespace Chem
             else Stop(ch);
             spans = null;
             activeCoords = null;
+            ChunkSwitched?.Invoke(new ChunkSwitch(cx, cy, active));
         }
 
-        /// <summary>Starts or pauses every loaded chunk.</summary>
+        /// <summary>Activates or deactivates every loaded chunk (no catching up), raising ChunkSwitched for each that changed, by row then column.</summary>
         public void SetAllActive(bool active)
         {
-            foreach (var ch in chunks.Values) ch.Active = active;
+            var changed = new List<Chunk>();
+            foreach (var ch in SortedChunks(false))
+            {
+                if (ch.Active == active) continue;
+                ch.Active = active;
+                changed.Add(ch);
+            }
             spans = null;
             activeCoords = null;
+            foreach (var ch in changed) ChunkSwitched?.Invoke(new ChunkSwitch(ch.X, ch.Y, active));
         }
 
         Chunk ChunkOrThrow(int cx, int cy) =>
