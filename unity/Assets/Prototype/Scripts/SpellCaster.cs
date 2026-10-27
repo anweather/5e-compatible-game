@@ -99,11 +99,7 @@ public class SpellCaster : MonoBehaviour
         var spell = grid.World.Rules.Spell(SelectedId);
         ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir, Charge, aim.Value.aimX, aim.Value.aimY) : null);
 
-        // A spell that charges starts charging on the press and casts on the release; the rest cast on the press.
-        bool charges = Chargeable(spell);
-        if (charges && controls.Cast.WasPressedThisFrame()) { chargeStart = Time.time; return; }
-        if (charges && !controls.Cast.WasReleasedThisFrame()) return;
-        if (!charges && !controls.Cast.WasPressedThisFrame()) return;
+        if (!CastNow(spell)) return;
         int charge = Charge;
         chargeStart = -1f;
         if (error != null) { EventLog.Add(error); return; }
@@ -117,6 +113,19 @@ public class SpellCaster : MonoBehaviour
             return;
         }
         Cast(new CastCommand(SelectedId, aim.Value.x, aim.Value.y, aim.Value.dir, charge, aim.Value.aimX, aim.Value.aimY));
+    }
+
+    // Whether Cast lets the spell go this frame: a spell that charges starts charging on the press
+    // and goes on the release; the rest go on the press.
+    bool CastNow(SpellDef spell)
+    {
+        bool charges = Chargeable(spell);
+        if (charges && controls.Cast.WasPressedThisFrame())
+        {
+            chargeStart = Time.time;
+            return false;
+        }
+        return charges ? controls.Cast.WasReleasedThisFrame() : controls.Cast.WasPressedThisFrame();
     }
 
     // In an animal's shape (Shapeshift) the only cast is changing back. True while shifted.
