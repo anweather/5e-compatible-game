@@ -5,3 +5,6 @@ sandbox/dist/
 # .NET build output for core/
 core/**/bin/
 core/**/obj/
+
+# Agents' git worktrees (Claude Code)
+.claude/worktrees/
