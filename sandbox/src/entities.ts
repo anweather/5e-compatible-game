@@ -19,13 +19,27 @@ export function spawn(w: World, kind: string, x: number, y: number): Entity | un
   return e;
 }
 
-export function damage(w: World, e: Entity, amount: number, cause: string) {
+/**
+ * Hurts an entity. `element` (if the harm has one) doubles it for a raider weak to
+ * it and halves it, rounded up, for one that resists it (C#: World.DamageRaider).
+ */
+export function damage(w: World, e: Entity, amount: number, cause: string, element?: string) {
   if (amount <= 0 || !w.entities.includes(e)) return;
   const def = defOf(e);
   if (def.hp >= 999) return; // boulders shrug
+  amount = scaleDamage(def, element, amount);
   e.hp -= amount;
   if (def.creature) logOnce(w, `hurt#${e.id}#${cause}`, `${def.name} takes ${amount} ${cause} damage (${Math.max(0, e.hp)}/${def.hp} HP)`, "hurt");
   if (e.hp <= 0) destroy(w, e);
+}
+
+/** Damage after a raider's weaknesses and resistances (C#: World.Scaled). */
+export function scaleDamage(def: ReturnType<typeof defOf>, element: string | undefined, amount: number): number {
+  const r = def.raider;
+  if (!r || element === undefined) return amount;
+  if (r.weak?.includes(element)) return amount * 2;
+  if (r.resist?.includes(element)) return amount - Math.floor(amount / 2);
+  return amount;
 }
 
 export function destroy(w: World, e: Entity) {
@@ -78,6 +92,7 @@ export function awayDir(dx: number, dy: number, fallback: Dir = 0): Dir {
 /** Shoves an entity. Distance = force - mass + 1; slick ground adds a slide. */
 export function push(w: World, e: Entity, dir: Dir, force: number, direct: boolean): void {
   const def = defOf(e);
+  if (def.raider) return; // raiders stand their ground (the C# core has no shoves)
   const dist = force - massOf(e) + 1;
   if (dist <= 0) {
     if (direct) logOnce(w, `budge#${e.id}`, `The ${def.name.toLowerCase()} doesn't budge`, "info");
@@ -130,7 +145,7 @@ function travel(w: World, e: Entity, dir: Dir, dist: number, hard: boolean): voi
  * damage, and one that slows (speed below 1) is snagged: a step takes 1/speed as
  * long, so it can't take the next one for the rest of that time. Objects shrug.
  */
-function thorns(w: World, e: Entity, c: Cell) {
+export function thorns(w: World, e: Entity, c: Cell) {
   const cv = c.cover !== null ? RULES.covers[c.cover] : undefined;
   if (!cv || !defOf(e).creature) return;
   if (cv.damage) damage(w, e, roll(w, cv.damage), cv.name.toLowerCase());
@@ -166,7 +181,7 @@ export function tickEntities(w: World) {
     if (c.water > 0 && !c.frozen && !lev) applyEntityElement(w, e, "water", { power: 1, direct: false });
 
     if ((e.status.burning ?? 0) > 0 && w.tick % s.status.burnDamageEvery === 0) {
-      damage(w, e, 1, "fire");
+      damage(w, e, 1, "fire", "fire");
       if (def.flammable && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
     }
     if (c.gas === "steam" && c.gasAmt >= 2 && def.creature && w.tick % s.status.scaldEvery === 0) {
@@ -174,7 +189,7 @@ export function tickEntities(w: World) {
     }
     if (c.charge === 3 && w.entities.includes(e)) {
       const mul = applyEntityElement(w, e, "lightning", { power: 1, direct: false });
-      damage(w, e, s.zapDamage * mul, "lightning");
+      damage(w, e, s.zapDamage * mul, "lightning", "lightning");
     }
     if (!w.entities.includes(e)) continue;
 

@@ -1,7 +1,9 @@
-// One tick of the cell world. Port of sandbox/src/sim.ts with the entity,
-// critter and machine systems left out. The order of what remains is the TS
-// order: fire -> water -> gas -> weather -> charge decay -> wind decay, then
-// the day clock (Hasten Time, World.Time.cs).
+// One tick of the cell world. Port of sandbox/src/sim.ts with the critter and
+// machine systems left out, and of its entities only the defense field's
+// raiders. The order of what remains is the TS order: fire -> water -> gas ->
+// weather -> raiders (World.Raiders.cs) -> the defense's waves
+// (World.Defense.cs) -> charge decay -> wind decay, then the day clock
+// (Hasten Time, World.Time.cs).
 using System;
 using System.Collections.Generic;
 
@@ -30,6 +32,8 @@ namespace Chem
             TickWater(rows);
             TickGas(rows);
             TickWeather(rows);
+            TickRaiders();
+            TickDefense();
             foreach (var s in rows)
             {
                 var cells = s.Chunk.Cells;
@@ -68,9 +72,14 @@ namespace Chem
             }
             var to = TerrainOf(c).GrowsTo;
             if (to == null || !Rules.Terrain.TryGetValue(to, out var grown)) return;
-            // The TS waits while a creature or object stands where a tree would grow; this port has no entities.
+            // A tree waits while a raider stands where it would grow.
             if (grown.Has("blocking"))
             {
+                if (RaiderAt(CellX(ch, i), CellY(ch, i)) != null)
+                {
+                    c.Life = 1;
+                    return;
+                }
                 DisplaceWater(CellX(ch, i), CellY(ch, i));
                 c.Cover = null;
             }

@@ -260,7 +260,7 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
       .filter((e): e is Entity => e !== undefined && e.id !== casterId)
       .sort((a, b) => (b.x - x) ** 2 + (b.y - y) ** 2 - ((a.x - x) ** 2 + (a.y - y) ** 2) || a.id - b.id);
     for (const e of hit) {
-      if (s.damage) damage(w, e, roll(w, s.damage), s.name.toLowerCase());
+      if (s.damage) damage(w, e, roll(w, s.damage), s.name.toLowerCase(), s.element);
       if (!w.entities.includes(e)) continue;
       const d = s.shape === "burst" ? awayDir(e.x - x, e.y - y, dir) : dir;
       push(w, e, d, s.push, true);
@@ -274,9 +274,9 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
       if (e && e.id === casterId) continue;
       if (e && defOf(e).creature) {
         const mul = s.element === "lightning" ? applyEntityElement(w, e, "lightning", { ...ctx, direct: false }) : 1;
-        damage(w, e, roll(w, s.damage) * mul, s.name.toLowerCase());
+        damage(w, e, roll(w, s.damage) * mul, s.name.toLowerCase(), s.element);
       } else if (e && s.element === "fire" && defOf(e).flammable) {
-        damage(w, e, roll(w, s.damage), "fire");
+        damage(w, e, roll(w, s.damage), "fire", "fire");
       }
     }
   }
