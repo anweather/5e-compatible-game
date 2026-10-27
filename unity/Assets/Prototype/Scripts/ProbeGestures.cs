@@ -51,23 +51,24 @@ public class GesturesProbe : ProbeScenario
         scale = Mathf.Max(0.3f, (shoulder.position.y - wizard.transform.position.y) / 1.45f);
         Metric("shoulder_height_m", shoulder.position.y - wizard.transform.position.y);
 
-        yield return Perform("gust", SpellIds.GustOfWind, 5, 10, 1, CastGesture.Shove, 0.18f, 0.4f);
+        yield return Perform("gust", SpellIds.GustOfWind, (5, 10, 1), CastGesture.Shove, 0.18f, 0.4f);
         CheckGust();
         yield return Wait(1f);
-        yield return Perform("raise", SpellIds.MoldEarthHeap, 8, 10, 1, CastGesture.Raise, 0.32f, 0.7f);
+        yield return Perform("raise", SpellIds.MoldEarthHeap, (8, 10, 1), CastGesture.Raise, 0.32f, 0.7f);
         CheckRaise();
         yield return Wait(1f);
-        yield return Perform("fireball", SpellIds.Fireball, 14, 10, 1, CastGesture.Throw, 0.3f, 0.46f);
+        yield return Perform("fireball", SpellIds.Fireball, (14, 10, 1), CastGesture.Throw, 0.3f, 0.46f);
         CheckFireball();
         yield return Wait(1.5f);
-        yield return Perform("meteor", SpellIds.Meteor, 14, 3, 1, CastGesture.CallDown, 0.5f, 0.95f);
+        yield return Perform("meteor", SpellIds.Meteor, (14, 3, 1), CastGesture.CallDown, 0.5f, 0.95f);
         CheckMeteor();
         yield return Wait(2f);
     }
 
     // Faces the target, casts from the bar, and follows the hands until the gesture is over; two shots on the way.
-    IEnumerator Perform(string label, string spellId, int x, int y, int dir, CastGesture expected, float shotA, float shotB)
+    IEnumerator Perform(string label, string spellId, (int x, int y, int dir) at, CastGesture expected, float shotA, float shotB)
     {
+        var (x, y, dir) = at;
         samples.Clear();
         meteorAt = -1f;
         Check($"bar_has_{spellId}", caster.Select(spellId));

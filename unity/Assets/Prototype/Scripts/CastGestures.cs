@@ -99,6 +99,30 @@ public static class CastGestures
             }
             return keys[keys.Length - 1];
         }
+    
+        static float Eased(Ease ease, float k)
+        {
+            k = Mathf.Clamp01(k);
+            return ease switch
+            {
+                Ease.In => k * k,
+                Ease.Out => 1f - (1f - k) * (1f - k),
+                _ => Mathf.SmoothStep(0f, 1f, k),
+            };
+        }
+
+        static Key Blend(Key a, Key b, float k) => new Key
+        {
+            time = Mathf.Lerp(a.time, b.time, k),
+            right = Vector3.Lerp(a.right, b.right, k),
+            left = Vector3.Lerp(a.left, b.left, k),
+            weight = Mathf.Lerp(a.weight, b.weight, k),
+            leftWeight = Mathf.Lerp(a.leftWeight, b.leftWeight, k),
+            dip = Mathf.Lerp(a.dip, b.dip, k),
+            lean = Mathf.Lerp(a.lean, b.lean, k),
+            twist = Mathf.Lerp(a.twist, b.twist, k),
+            ease = b.ease,
+        };
     }
 
     // Where a hand hangs at rest, so a gesture starts and ends from the arm's natural place.
@@ -211,27 +235,4 @@ public static class CastGestures
 
     static Vector3 Mirror(Vector3 v) => new Vector3(-v.x, v.y, v.z);
 
-    static float Eased(Ease ease, float k)
-    {
-        k = Mathf.Clamp01(k);
-        return ease switch
-        {
-            Ease.In => k * k,
-            Ease.Out => 1f - (1f - k) * (1f - k),
-            _ => Mathf.SmoothStep(0f, 1f, k),
-        };
-    }
-
-    static Key Blend(Key a, Key b, float k) => new Key
-    {
-        time = Mathf.Lerp(a.time, b.time, k),
-        right = Vector3.Lerp(a.right, b.right, k),
-        left = Vector3.Lerp(a.left, b.left, k),
-        weight = Mathf.Lerp(a.weight, b.weight, k),
-        leftWeight = Mathf.Lerp(a.leftWeight, b.leftWeight, k),
-        dip = Mathf.Lerp(a.dip, b.dip, k),
-        lean = Mathf.Lerp(a.lean, b.lean, k),
-        twist = Mathf.Lerp(a.twist, b.twist, k),
-        ease = b.ease,
-    };
 }
