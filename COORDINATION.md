@@ -100,7 +100,11 @@ The coordinator approves each change and schedules them one at a time.
 
 1. **Streaming slice 5:** Andrew to approve. Props are spawned by
    `ThingSpawner.cs` and `PhysicsProp.cs`, which are in the Gameplay lane.
-   Slice 5 will need those files lent to World, or done jointly.
+   World's proposed split: World adds a chunk activate/deactivate event in
+   `ChemGrid`/`NetChem`, and Gameplay adds a small subscriber in
+   `ThingSpawner`/`PhysicsProp` that puts props to sleep (Rigidbody sleep or
+   kinematic) in inactive chunks and wakes them on activation. World merges
+   first, then Gameplay.
 2. **`origin/feat/spell-radial`:** it's already in `dev` (rebased as `1300ff9`
    and `f8d1a9f`, then phase B in `e970913`), so there's nothing to merge. The
    remote branch could be deleted. Andrew to decide.
