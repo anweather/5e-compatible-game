@@ -128,7 +128,7 @@ public static class PropMesher
             kit.Box(new Vector3(0f, 0.36f, z + 0.1f), new Vector3(0.58f, 0.03f, 0.21f), i % 2 == 0 ? fabric : Cream);
         }
         // The back, tilted up at the -z end.
-        var turn = Quaternion.Euler(-55f, 0f, 0f);
+        var turn = Quaternion.Euler(55f, 0f, 0f);
         for (int i = 0; i < 3; i++)
             kit.Box(new Vector3(0f, 0.36f, -0.2f) + turn * new Vector3(0f, 0f, -0.1f - i * 0.21f), new Vector3(0.58f, 0.03f, 0.21f), i % 2 == 0 ? Cream : fabric, turn);
         return kit.ToMesh("Lounger");

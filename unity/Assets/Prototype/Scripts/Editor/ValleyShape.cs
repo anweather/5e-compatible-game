@@ -289,6 +289,9 @@ public static class ValleyShape
     /// </summary>
     static readonly Vector2[] RiverCourse = Smooth(River, 16);
 
+    /// <summary>The river's smoothed line, from the falls down to the lake (WaterCurrents runs along it).</summary>
+    public static Vector2[] RiverLine => (Vector2[])RiverCourse.Clone();
+
     /// <summary>How far from its middle the river's squares reach (metres): six squares across.</summary>
     public const float RiverHalfWidth = 4.5f;
 

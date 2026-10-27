@@ -328,9 +328,12 @@ public static class ChemYardBuilder
         surface.enabled = playerDriven;
         var knockback = wizard.AddComponent<Knockback>();
         var hands = wizard.AddComponent<ItemHolder>();
-        // Poses laid over the animation with IK: swimming, throwing (casting is CastPose, above).
+        // Poses laid over the animation with IK: swimming, throwing, sitting (casting is CastPose, above).
         wizard.AddComponent<SwimPose>();
         wizard.AddComponent<ThrowPose>();
+        wizard.AddComponent<SitPose>();
+        wizard.AddComponent<Sitter>(); // sits the local wizard on a Seat (E); the pose above is every machine's
+        wizard.AddComponent<CurrentRider>(); // the river and the surf carry the local wizard (WaterCurrents)
         wizard.AddComponent<Vitals>();
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
