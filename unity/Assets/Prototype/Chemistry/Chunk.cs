@@ -72,6 +72,21 @@ namespace Chem
         /// <summary>The ticks it caught up when it last activated (0 if it had none to catch up).</summary>
         public int CaughtUp;
 
+        // Still water (World.StillWater): what the water pass reads of each cell (water, height,
+        // frozen, terrain) as it was at the last pass, and the neighbours' active state then.
+        public int[] SnapWater, SnapHeight;
+        public bool[] SnapFrozen;
+        public string[] SnapT;
+        public readonly bool[] SnapNeighbourActive = new bool[4];
+        /// <summary>The snapshot is from the last water pass (false after activating or a rule switch).</summary>
+        public bool SnapValid;
+        /// <summary>Nothing the water pass reads changed since the last pass.</summary>
+        public bool Unchanged;
+        /// <summary>The last tick water moved into, out of or within it.</summary>
+        public int LastFlowTick = World.NeverLive;
+        /// <summary>This tick's water pass may skip it (until water moves in it or next to it: Disturbed).</summary>
+        public bool WaterStill, WaterDisturbed;
+
         public Chunk(int x, int y)
         {
             X = x;

@@ -28,6 +28,7 @@ namespace Chem
         {
             int stopped = ch.StoppedAt;
             ch.StoppedAt = NeverLive;
+            ch.SnapValid = false; // its water is checked afresh (World.StillWater)
             ch.CaughtUp = stopped == NeverLive ? 0 : Math.Max(0, Math.Min(Tick - stopped, Rules.Sim.Streaming.CatchUpTicks));
             if (ch.CaughtUp > 0) CatchUp(ch, stopped, ch.CaughtUp);
             ch.LastLive = Tick;

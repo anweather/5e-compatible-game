@@ -317,10 +317,14 @@ if B and C prove too slow.
 The golden hashes don't move: with everything active (the tests' worlds),
 none of this does anything.
 
-6. **Still water costs nothing.** A chunk whose water hasn't moved for a
-   few ticks skips the water pass until something disturbs it (a cast, an
-   effect, a neighbour's flow). Behaviour unchanged, in the core and the
-   sandbox together, with a golden.
+6. **Still water costs nothing** (built 2026-10-27, `World.StillWater`). Before
+   each water pass a chunk compares what the pass reads (water, height,
+   frozen, terrain) with the last pass; a chunk where nothing changed and no
+   water moved, round it included, skips its springs and flows, and water
+   moving anywhere disturbs the chunks round it for the rest of the pass. It
+   is exact, not approximate, so the sandbox needs no change and the goldens
+   stand (`StillWaterTests` compare skipping on and off, tick by tick). A
+   settled lake of 5×5 chunks: 5.0 ms a tick worked, 0.7 ms skipped.
 
 ### Decided (Andrew, 2026-10-27)
 

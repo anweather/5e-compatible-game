@@ -31,14 +31,15 @@ namespace Chem
         // Step, only spread over several calls, so a peer that slices its ticks one way computes
         // exactly the ticks of a peer that slices them another (or not at all). Fire burns, then
         // springs, water, gas, the weather, raiders and defense, then the timers, as in sim.ts.
-        enum TickStage { None, Burn, Springs, Flow, Gas, Rest, Timers, End }
+        enum TickStage { None, Burn, WaterCheck, Springs, Flow, Gas, Rest, Timers, End }
 
         // Row segments or burning cells handled per slice: small enough to stop near a frame's budget.
-        const int SliceSpans = 64, SliceBurns = 128;
+        const int SliceSpans = 64, SliceBurns = 128, SliceChunks = 4;
 
         TickStage stage = TickStage.None;
         int stagePos;
         RowSpan[] tickRows;
+        Chunk[] tickChunks;
 
         /// <summary>Whether a tick has begun (StepSome) and not yet finished.</summary>
         public bool TickInProgress => stage != TickStage.None;
@@ -84,6 +85,7 @@ namespace Chem
             EndSetWeather();
             Weather = SkyNow();
             tickRows = Spans;
+            tickChunks = activeChunks;
             CollectBurning(tickRows);
             stage = TickStage.Burn;
             stagePos = 0;
@@ -95,6 +97,7 @@ namespace Chem
             switch (stage)
             {
                 case TickStage.Burn:
+                case TickStage.WaterCheck:
                 case TickStage.Springs:
                 case TickStage.Flow:
                 case TickStage.Gas:
@@ -115,27 +118,34 @@ namespace Chem
             }
         }
 
-        // The next slice of a stage that goes over burning cells or row segments.
+        // The next slice of a stage that goes over burning cells, chunks or row segments.
         void RunRange()
         {
-            int count = stage == TickStage.Burn ? burning.Count : tickRows.Length;
-            int size = stage == TickStage.Burn ? SliceBurns : SliceSpans;
+            var (count, size) = stage switch
+            {
+                TickStage.Burn => (burning.Count, SliceBurns),
+                TickStage.WaterCheck => (tickChunks.Length, SliceChunks),
+                _ => (tickRows.Length, SliceSpans),
+            };
             int from = stagePos, to = Math.Min(count, stagePos + size);
             switch (stage)
             {
                 case TickStage.Burn: BurnRange(from, to); break;
-                case TickStage.Springs: Springs(tickRows, from, to); break;
+                case TickStage.WaterCheck: CheckWater(tickChunks, from, to); break;
+                case TickStage.Springs: Springs(tickRows, from, to, true); break;
                 // Odd ticks sweep backward: the slices go from the last row segment to the first.
-                case TickStage.Flow when Tick % 2 == 0: FlowForward(tickRows, from, to); break;
-                case TickStage.Flow: FlowBackward(tickRows, count - to, count - from); break;
+                case TickStage.Flow when Tick % 2 == 0: FlowForward(tickRows, from, to, true); break;
+                case TickStage.Flow: FlowBackward(tickRows, count - to, count - from, true); break;
                 case TickStage.Gas: TickGas(tickRows, from, to); break;
                 default: TickTimers(tickRows, from, to); break;
             }
             stagePos = to;
             if (to < count) return;
+            if (stage == TickStage.WaterCheck) MarkStill(tickChunks);
             NextStage(stage switch
             {
-                TickStage.Burn => TickStage.Springs,
+                TickStage.Burn => TickStage.WaterCheck,
+                TickStage.WaterCheck => TickStage.Springs,
                 TickStage.Springs => TickStage.Flow,
                 TickStage.Flow => TickStage.Gas,
                 TickStage.Gas => TickStage.Rest,
@@ -160,6 +170,7 @@ namespace Chem
             foreach (var ch in activeChunks) Array.Clear(ch.Marks, 0, ch.Marks.Length);
             stage = TickStage.None;
             tickRows = null;
+            tickChunks = null;
         }
 
         /// <summary>
@@ -355,46 +366,53 @@ namespace Chem
 
         void TickWater(RowSpan[] rows)
         {
-            Springs(rows, 0, rows.Length);
+            Springs(rows, 0, rows.Length, false);
             // Even ticks sweep forward, odd ticks backward, so water doesn't drift one way.
-            if (Tick % 2 == 0) FlowForward(rows, 0, rows.Length);
-            else FlowBackward(rows, 0, rows.Length);
+            if (Tick % 2 == 0) FlowForward(rows, 0, rows.Length, false);
+            else FlowBackward(rows, 0, rows.Length, false);
         }
 
         /// <summary>A spring's square (a river) refills to its level each tick, unless it is ice: water dug out of it keeps coming.</summary>
-        void Springs(RowSpan[] rows, int from, int to)
+        // Row segments [from, to); skipStill passes over still chunks (World.StillWater). A refill
+        // counts as water moving, so the chunks round it aren't skipped this tick.
+        void Springs(RowSpan[] rows, int from, int to, bool skipStill)
         {
             int max = Rules.Sim.WaterMaxLevel;
             for (int k = from; k < to; k++)
             {
                 var s = rows[k];
+                if (skipStill && Skips(s.Chunk)) continue;
                 var cells = s.Chunk.Cells;
                 for (int i = s.Start; i < s.End; i++)
                 {
                     var c = cells[i];
                     int level = TerrainOf(c).Spring;
-                    if (level > 0 && !c.Frozen && c.Water < level) c.Water = Math.Min(level, max);
+                    if (level <= 0 || c.Frozen || c.Water >= level) continue;
+                    c.Water = Math.Min(level, max);
+                    WaterMoved(s.Chunk);
                 }
             }
         }
 
         // Row segments [from, to), first to last.
-        void FlowForward(RowSpan[] rows, int from, int to)
+        void FlowForward(RowSpan[] rows, int from, int to, bool skipStill)
         {
             for (int k = from; k < to; k++)
             {
                 var s = rows[k];
+                if (skipStill && Skips(s.Chunk)) continue;
                 var cells = s.Chunk.Cells;
                 for (int i = s.Start; i < s.End; i++) if (cells[i].Water != 0) Flow(s.Chunk, i);
             }
         }
 
         // Row segments [from, to), last to first.
-        void FlowBackward(RowSpan[] rows, int from, int to)
+        void FlowBackward(RowSpan[] rows, int from, int to, bool skipStill)
         {
             for (int k = to - 1; k >= from; k--)
             {
                 var s = rows[k];
+                if (skipStill && Skips(s.Chunk)) continue;
                 var cells = s.Chunk.Cells;
                 for (int i = s.End - 1; i >= s.Start; i--) if (cells[i].Water != 0) Flow(s.Chunk, i);
             }
@@ -432,6 +450,8 @@ namespace Chem
             best.Cells[bestI].Water++;
             ch.Marks[i] |= FlowMark;
             best.Marks[bestI] |= FlowMark;
+            WaterMoved(ch);
+            if (best != ch) WaterMoved(best);
         }
 
         /// <summary>How much water at this level and elevation wants to run onto nc; 0 if it can't.</summary>
