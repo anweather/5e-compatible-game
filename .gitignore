@@ -8,3 +8,6 @@ core/**/obj/
 
 # Agents' git worktrees (Claude Code)
 .claude/worktrees/
+
+# The Performance Testing package writes these during a build (left behind if one fails)
+unity/Assets/Resources/PerformanceTestRun*
