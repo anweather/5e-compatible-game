@@ -40,6 +40,13 @@ public static class MistyStep
         return CheckSpot(grid, spell, wizard, hit.point, hit.normal, hit.collider, seen: true);
     }
 
+    /// <summary>Why <paramref name="wizard"/> can't blink onto square (x, y), or null if it can.</summary>
+    public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y)
+    {
+        if (!grid.World.InBounds(x, y)) return $"{spell.Name} needs a square to land on.";
+        return TopOf(grid, wizard, x, y, out var top) ? CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider) : $"{spell.Name} needs ground to land on.";
+    }
+
     /// <summary>
     /// Where the crosshair's <paramref name="hit"/> takes <paramref name="wizard"/>: the spot itself if
     /// it can land there (Check), else the farthest spot on the ground towards it that it can, so aiming
@@ -70,13 +77,6 @@ public static class MistyStep
 
     // Nearer than this isn't worth a blink; the steps back along the line towards the caster.
     const float MinReach = 2f, ReachStep = 0.5f;
-
-    /// <summary>Why <paramref name="wizard"/> can't blink onto square (x, y), or null if it can.</summary>
-    public static string Check(ChemGrid grid, SpellDef spell, Transform wizard, int x, int y)
-    {
-        if (!grid.World.InBounds(x, y)) return $"{spell.Name} needs a square to land on.";
-        return TopOf(grid, wizard, x, y, out var top) ? CheckSpot(grid, spell, wizard, top.point, top.normal, top.collider) : $"{spell.Name} needs ground to land on.";
-    }
 
     /// <summary>
     /// Moves <paramref name="wizard"/> to square (x, y): to its BlinkPoint when it aimed at a spot

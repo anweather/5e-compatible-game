@@ -310,6 +310,13 @@ public static class ChemYardBuilder
         GameObject wizard, ChemGrid grid, SpellVisuals visuals, bool playerDriven)
     {
         WizardRig.TuneMovement(wizard);
+        // Set by reflection, so tell the prefab instance (or prefab) the fields changed, or saving drops them.
+        var mover = wizard.GetComponent(WizardRig.ControllerComponent);
+        if (mover != null)
+        {
+            EditorUtility.SetDirty(mover);
+            if (PrefabUtility.IsPartOfPrefabInstance(mover)) PrefabUtility.RecordPrefabInstancePropertyModifications(mover);
+        }
         var controls = wizard.AddComponent<PlayerControls>();
         controls.enabled = playerDriven;
         var caster = wizard.AddComponent<SpellCaster>();
@@ -325,6 +332,7 @@ public static class ChemYardBuilder
         wizard.AddComponent<ThrowPose>();
         wizard.AddComponent<Vitals>();
         wizard.AddComponent<Kicker>();
+        wizard.AddComponent<SprintToggle>();
         wizard.AddComponent<SpellRadialHud>(); // waits for the caster and controls to be on (solo now, the owner's on spawn)
         if (playerDriven)
         {

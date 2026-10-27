@@ -89,14 +89,17 @@ public class SwimProbe : ProbeScenario
         for (int y = 0; y < World.H; y++)
             for (int x = 0; x < World.W; x++)
             {
-                if (!Open(x, y) || grid.WaterSurfaceY(x, y) > lake + 1f) continue;
-                float d = grid.WaterSurfaceY(x, y) - TerrainGround(grid.CellCenter(x, y));
+                float d = LakeDepth(x, y, lake);
                 if (d <= depth) continue;
                 depth = d;
                 best = new Vector2Int(x, y);
             }
         return best;
     }
+
+    // Water over the ground in a lake square (one whose surface is the lake's), else 0.
+    float LakeDepth(int x, int y, float lake) =>
+        Open(x, y) && grid.WaterSurfaceY(x, y) <= lake + 1f ? grid.WaterSurfaceY(x, y) - TerrainGround(grid.CellCenter(x, y)) : 0f;
 
     bool Open(int x, int y)
     {
