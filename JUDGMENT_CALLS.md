@@ -22,6 +22,10 @@ Each entry has:
 
 ## Open
 
+(none)
+
+## Decided
+
 ### J-015: SSAO, off, cheap or as it is? (perf pass)
 
 - **Asked:** 2026-10-27, raised by Build (the B1 sweep).
@@ -35,8 +39,11 @@ Each entry has:
     between bushes. Cheap looks nearly the same as base.
   - Screenshots on the Mac:
     `unity/Builds/demo-videos/ssao-compare-*.png`.
-- **Answer:** pending. Recommended: cheap, then measure soft shadows at
-  Medium on top of it.
+- **Answer (2026-10-27):** **cheap SSAO.** Then measure soft shadows at
+  Medium on top of it, and measure the result on the PC (PC-5).
+- **Why:** Andrew picked the recommendation. It gets most of the gain
+  (-16% mean, -11% p95 on the Mac) without changing the look, and weaker
+  GPUs benefit most.
 - **Revisited:** 0.
 
 ### J-016: May agents force-push their own unmerged branches after a rebase?
@@ -46,12 +53,14 @@ Each entry has:
   force-pushes.
 - **Also comes up when:** every rebase of a pushed feature branch, by any
   agent.
-- **Answer:** pending. Recommended: allowed only for your OWN unmerged
-  feature branch, only with `--force-with-lease`; never `dev`, `main` or
-  another agent's branch.
+- **Answer (2026-10-27):** **allowed, with limits.** Only an agent's own
+  unmerged feature branch, after a rebase, with `--force-with-lease`. Never
+  `dev`, `main` or another agent's branch; any other force-push needs
+  Andrew.
+- **Why:** Andrew picked the recommendation. Rebasing your own pushed
+  branch is routine, and the lease stops it overwriting work.
 - **Revisited:** 0.
 
-## Decided
 
 ### J-013: How may the playtest scripts run past the PowerShell execution policy?
 

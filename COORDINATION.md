@@ -96,8 +96,12 @@ Blocked, Next, and whether they hold Unity.
 4. Commit often, in small commits.
 5. Merge to `dev` only when the coordinator says it's your turn in the merge
    order. Fetch and rebase on `origin/dev` first, and push straight after.
+   Force-pushing is allowed only for your OWN unmerged feature branch,
+   after a rebase, with `--force-with-lease`; never `dev`, `main` or
+   another agent's branch (J-016).
 6. Tell the coordinator when a task is done or blocked.
-6a. Judgment calls for Andrew go through the coordinator. Check
+6a. Judgment calls for Andrew go through the coordinator, who asks him with
+   the AskUserQuestion tool. Check
    `JUDGMENT_CALLS.md` first: if a past decision covers it, follow that.
 7. Never discard, reset or overwrite work you didn't write. If you find
    uncommitted work in a file outside your lane, stop and report it.
