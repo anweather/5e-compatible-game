@@ -251,7 +251,7 @@ The coordinator approves each change and schedules them one at a time.
 
 ## Release 0.1.5 (J-019; today)
 
-FROZEN at `0bd59b6` (16:20). Nobody merges into dev until 0.1.5 ships.
+FREEZE LIFTED 19:16. The RC (main `4a9af50`, the draft alpha-0.1.5) is built and fully tested; publishing waits on Andrew's approval on the Mac. dev is open for 0.1.6, one merge at a time on the coordinator's go.
 
 Landed before the freeze:
 0. ~~`perf-pass`~~ `0bd59b6` (cheap SSAO, soft shadows Medium: PC -9% mean, Mac -13%).
