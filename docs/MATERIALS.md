@@ -1,0 +1,164 @@
+# One material model (design note)
+
+Andrew, 2026-10-28: a **material** is the single source of what something
+does when an effect reaches it. A material has one settings group per
+**verb** (what happens to it). Having the group is what turns the behaviour
+on: the `flammable` tag and component go away, and a `burn` group takes
+their place. Terrain cells, covers, built things (walls, roofs), props,
+items and, later, creatures all *name* a material; none of them carry
+behaviour of their own.
+
+This is a plan, not built yet. The steps at the end keep the shared
+goldens (`CellHash`) and lockstep exact at every merge.
+
+## Where we are (2026-10-28)
+
+| What | Where its behaviour lives today |
+|---|---|
+| Terrain (dirt, grass, logwall, stone, thatch, timber, arid, arctic, lava...) | `materials.json` `terrain`: tags (`flammable`, `blocking`, `breakable`, `conductive`, `soil`, `turf`, `low`, `vessel`, `roof`...) plus loose keys (`flammability`, `fuel`, `heat`, `burnsTo`, `breaksTo`, `dugTo`, `hardness`, `soakEvery`, `soakEveryWet`, `waterTo`, `fireLook`, `spring`, `elevation`, `growsTo`) |
+| Covers (oil, grease, ash, snow, snowbank, thorns) | `materials.json` `covers`: tags (`flammable`, `slippery`, `spiky`, `snow`) plus `flammability`, `fuel`, `burnIntensity`, `lasts`, `damage`, `fireLook` |
+| Gases (steam, smoke, fog) | `materials.json` `gases` (decay, how they move) |
+| Props (crate, barrel, boulder) | `entities.json`: `components` (`flammable`, `breakable`, `heavy`), `hp`, `mass`, and since today a `material` (timber, rock) that sets catching and burning |
+| Items (lantern, spyglass...) | `items.json`: `components` (`brittle`), `mass`, `breaks`, and a `material` that nothing reads yet |
+| Creatures (wizard, goblin, raiders) | `entities.json`: the `creature` component, `hp`, statuses (`wet`, `frozen`, `burning`) through `entityRules` in `reactions.json` |
+| Buildings | `world/villages.json` `materials`: a wall material (stamped on the footprint's cells) and a roof material (the view's roof) |
+| Components | `components.json`: `flammable`, `creature`, `conducts`, `floats`, `breakable`, `heavy`, `brittle` |
+
+So one idea, "this burns", is spelled four ways: the `flammable` terrain
+tag with `flammability`/`fuel`, the `flammable` cover tag, the `flammable`
+component, and the `burning` status rule. The model folds them into one.
+
+## The data shape
+
+`materials.json` gains a `materials` table. Each entry has a name, the
+tags that are *properties* rather than behaviours (`ground`, `blocking`,
+`low`, `soil`...), and one group per verb it has. Leaving a group out
+means the verb does nothing to it.
+
+```json
+"materials": {
+  "thatch": {
+    "name": "Thatch",
+    "burn":  { "catch": 0.6, "fuel": 18, "heat": 2.5, "leaves": "rubble", "look": "flare" },
+    "soak":  { "dry": 80, "wet": 400, "dampens": 0.5 }
+  },
+  "logwall": {
+    "name": "Log wall", "tags": ["blocking"],
+    "burn":  { "catch": 0.15, "fuel": 140, "leaves": "rubble", "look": "wood", "log": "Log walls burn and collapse" },
+    "break": { "hardness": 2, "leaves": "rubble" }
+  },
+  "stone": {
+    "name": "Stone wall", "tags": ["blocking"],
+    "break": { "hardness": 3, "leaves": "rubble" }
+  },
+  "metal": {
+    "name": "Metal", "tags": ["ground"],
+    "conduct": { "chance": 1 }, "rust": { "every": 2000, "leaves": "rusted-metal" }, "dig": { "hardness": 4 }
+  },
+  "glass":  { "name": "Glass", "shatter": { "drop": 1.5, "leaves": "shards" } },
+  "flesh":  { "name": "Flesh", "burn": { "catch": 0.5, "status": 24 }, "freeze": { "status": 30 }, "soak": { "status": 30 } }
+}
+```
+
+Terrain, covers, props, items and creatures then *name* one:
+
+```json
+"terrain":  { "grass": { "material": "grass", "elevation": 0 } },
+"entities": { "crate": { "name": "Crate", "hp": 6, "mass": 1, "material": "timber" } },
+"items":    { "bullseye-lantern": { "name": "Bullseye lantern", "material": "glass" } }
+```
+
+A terrain keeps what is about *the cell* (elevation, spring, growing
+into): the material keeps what the stuff does. A thing keeps what is about
+*the thing* (hp, mass, use).
+
+## The verbs
+
+Each group's keys, and what reads them today.
+
+| Verb | Group keys | Replaces |
+|---|---|---|
+| **burn** | `catch` (0..1, chance a fire lights it; a prop counts 1/catch ticks), `fuel` (ticks), `heat` (spread multiplier), `leaves` (material after), `look` (flare / wood / oil), `log`, `status` (ticks, for things) | `flammable` tag, `flammability`, `fuel`, `heat`, `burnsTo`, `burnLog`, `fireLook`, `burnIntensity`, the `flammable` component, `e-fire-flammable` |
+| **melt** | `at` (heat that melts it), `leaves` (water units or a material) | `fire-ice`, `fire-snow`, `fire-snowbank` in reactions |
+| **freeze** | `leaves` or `status` (ice, frozen) | `waterTo: "ice"` (arctic), Ray of Frost's freeze, the `frozen` status |
+| **soak** | `dry`, `wet` (ticks per unit soaked in), `dampens` (how much a damp cell's `burn.catch` drops), `status` (wet, for things) | `soakEvery`, `soakEveryWet`, the `wet` status |
+| **boil** | `leaves` (steam) | `waterTo: "steam"` (lava) |
+| **break** | `hardness`, `leaves`, `hp` for things | `breakable` tag/component, `breaksTo`, `hardness` |
+| **shatter** | `drop` (fall height that breaks it), `leaves` | `brittle` component, items' `breaks` |
+| **conduct** | `chance`, `chainsWet` (through water next to it) | `conductive` tag, `conducts` component |
+| **float** | `lift` (above 1 floats) | `floats` component, PropState's mass rule |
+| **grow** | `into`, `every` | `growsTo`, `growLog`, Cell.Life ripening |
+| **rot / rust** | `every`, `leaves` | new |
+| **dissolve** | `by` (acid), `leaves` | new, later |
+| **dig** | `hardness`, `leaves` | `dugTo`, `hardness` |
+
+## How the verbs combine
+
+Each verb reads the cell's or thing's current state, so the combinations
+fall out of order and one rule each. These are already true today unless
+marked *new*.
+
+- **Soaked burns poorly:** a damp cell (`Cell.DampUntil`, or raining) has
+  its `burn.catch` scaled by `soak.dampens` (*new*; today rain damps
+  spread globally through `RainDamp`).
+- **Wet puts fire out:** water on a burning cell puts it out, unless the
+  burning thing floats on it (oil, grease). That's today's `Burn` rule;
+  it becomes "a `burn` without `float` is put out by water".
+- **Frozen things shatter:** a thing with the `frozen` status gains a
+  `shatter` it lacks (a struck frozen goblin breaks) (*new*).
+- **Wet ground conducts:** lightning chains through water. That's today's
+  conduct over wet cells; `conduct.chainsWet` makes it a key, not code.
+- **Heat melts, cold freezes:** `melt` and `freeze` check the cell's water
+  and cover first, as the fire and frost rules in `reactions.json` do now.
+- **Hot burns light neighbours:** `burn.heat` (thatch flaring lights log
+  walls), as built today.
+
+## Creatures as flesh
+
+A creature names `flesh` (or `bone`, `chitin` for raiders) like anything
+else. Its `burn.status`, `freeze.status` and `soak.status` replace the
+creature branch of `entityRules`. `hp` stays on the thing. A bone-hound
+can resist fire because bone has no `burn` group, not because of a raider
+`resist` list. The `creature` component stays: it's about moving and
+taking damage, not about a material.
+
+## Migration, in small test-guarded steps
+
+Each step merges on its own with the usual checks (core and sandbox suites,
+both checkers with the same messages, smoke and a probe). The rule for
+every step: **the same rules give the same world**. Goldens move only in a
+step that says so, and then in both engines together.
+
+1. **Read the groups as aliases (no behaviour change).** The loaders turn
+   today's keys into the groups (`flammable` tag + `flammability` + `fuel`
+   → `burn`). The checkers accept either spelling. Goldens untouched. Test:
+   every terrain and cover yields the same groups both ways, in C# and TS.
+2. **Code reads groups, not tags.** Replace `Has("flammable")`,
+   `CoverHasTag(c, "flammable")`, `conductive` and the component checks
+   with "has a `burn` (`conduct`, `float`...) group". Goldens untouched,
+   since the data didn't change. The two `burning` paths (cells and props)
+   share one `Catches`.
+3. **Move `materials.json` to the new shape** (a one-off script, its
+   output committed), with terrain and covers naming materials. The aliases
+   from step 1 still read old mods, so `docs/MODDING.md` examples keep
+   passing. Goldens untouched.
+4. **Things name materials only.** `entities.json` and `items.json` drop
+   `flammable`, `conducts`, `floats`, `brittle` and `breakable` in favour of
+   their material. `components.json` keeps `creature` and `heavy`.
+   PropState and the sandbox's entities read the material. Goldens
+   untouched where the numbers match; where a component had no matching
+   material (a brittle item), add the material first, in its own commit.
+5. **Creatures as flesh, bone or chitin.** Move the creature branch of
+   `entityRules` into those materials' `status` keys. The defense golden
+   is the guard: unchanged, or moved in both engines with the reason in
+   the commit.
+6. **New combinations, one per merge,** each with its golden moved in both
+   engines and a probe: damp ground dampens catching, frozen things
+   shatter, rust, then dissolve.
+7. **Drop the aliases** once no rules file or mod example uses the old
+   keys. The checkers then reject them with a message naming the new key.
+
+Lockstep: materials are rules, and rules reach every peer the same way they
+do now (`NetChem`'s rule switches), so no step changes how peers agree.
+Everything a verb does stays integer state through the world's seeded
+generator, as it is today.
