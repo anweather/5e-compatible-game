@@ -42,7 +42,7 @@ public class UnderwaterView : MonoBehaviour
     {
         if (grid == null || grid.World == null) return;
         var eye = transform.position;
-        float top = SurfaceAbove(eye);
+        float top = WaterTop(grid, eye);
         bool now = eye.y < top - 0.05f;
         if (now != under) Switch(now);
         if (!under) return;
@@ -53,8 +53,12 @@ public class UnderwaterView : MonoBehaviour
         sheet.transform.position = new Vector3(eye.x, top, eye.z);
     }
 
-    // The water's top over the eye, or negative infinity where there's none.
-    float SurfaceAbove(Vector3 eye)
+    /// <summary>
+    /// The top of the water over a point: a cell's drawn water (lakes, rivers, pools; not ice) or
+    /// the sea with its swell, seaward of the coast over ground below it; negative infinity where
+    /// there's none. WaterSplashes uses it too.
+    /// </summary>
+    public static float WaterTop(ChemGrid grid, Vector3 eye)
     {
         var cell = grid.CellAt(eye);
         var world = grid.World;

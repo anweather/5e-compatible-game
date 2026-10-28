@@ -41,6 +41,29 @@ Each entry has:
 
 ## Decided
 
+### J-032: The 0.1.6 RC has a harmless error burst online. Fix it, or ship?
+
+- **Asked:** 2026-10-27. WaterSplashes threw a NullReferenceException for
+  about 1 s after every host or join (it held the destroyed solo wizard's
+  transform). The one-line fix is `fix/splash-online` (`b45a82b`).
+- **Answer (2026-10-27):** ship 0.1.6 AS IS. Don't delete the draft or
+  rebuild. The fix goes into dev after the publish, for 0.1.7. The notes
+  mention the known log error.
+- **Why:** Andrew's call: speed over a harmless log error, in alpha
+  (J-026).
+- **Revisited:** 0.
+
+### J-031: When do we cut 0.1.6?
+
+- **Asked:** 2026-10-27, by Andrew ("how soon until we can cut a 0.1.6?").
+- **Answer (2026-10-27):** cut it as soon as the cloth's cost is proven (at
+  most about +1 ms a frame at 4 wizards; Andrew's "good enough if
+  performance holds"). It ships what's on dev then. The paper cuts still in
+  flight go into 0.1.7.
+- **Why:** Andrew's choice over waiting 3–4 h for the paper-cut batches:
+  ship sooner (J-019).
+- **Revisited:** 0.
+
 ### J-030: Add a light-making spell?
 
 - **Asked:** 2026-10-27, from Andrew's playtest (#15). There's no light
