@@ -231,16 +231,28 @@ public static class CoastBuilder
     {
         DockOut = (ValleyCoast.ShoreOrigin - ValleyCoast.IslandAt).normalized;
         DockFoot = OnIsland(DockOut, 1.5f);
-        float foot = Ground(DockFoot);
-        var dock = Prop(root, GeneratedProp.Kind.Dock, 5, foot, DockFoot, Quaternion.LookRotation(new Vector3(DockOut.x, 0f, DockOut.y)), material);
-        dock.length = DockLength;
+        Pier(root, material, "Dock", DockFoot, DockOut, DockLength, 5);
+        // And a pier out from the island's south side, into open water (Andrew's playtest #14).
+        var south = new Vector2(0f, -1f);
+        Pier(root, material, "South pier", OnIsland(south, 1.5f), south, PierLength, 9);
+    }
+
+    const float PierLength = 16f;
+
+    // A deck on posts running out over the water from a foot on the beach, with an unseen walkway
+    // to stand on and a ramp up from the sand.
+    static void Pier(Transform root, Material material, string name, Vector2 footAt, Vector2 outward, float length, int seed)
+    {
+        float foot = Ground(footAt);
+        var dock = Prop(root, GeneratedProp.Kind.Dock, seed, foot, footAt, Quaternion.LookRotation(new Vector3(outward.x, 0f, outward.y)), material);
+        dock.length = length;
         dock.Rebuild();
-        dock.name = "Dock";
+        dock.name = name;
         // The deck sits PropMesher.DockDeck above the foot; walk on an unseen box, up a ramp from the sand.
         var deck = new GameObject("Walkway").AddComponent<BoxCollider>();
         deck.transform.SetParent(dock.transform, false);
-        deck.center = new Vector3(0f, PropMesher.DockDeck - 0.25f, DockLength / 2f + 1f);
-        deck.size = new Vector3(PropMesher.DockWidth, 0.5f, DockLength - 2f);
+        deck.center = new Vector3(0f, PropMesher.DockDeck - 0.25f, length / 2f + 1f);
+        deck.size = new Vector3(PropMesher.DockWidth, 0.5f, length - 2f);
         var ramp = new GameObject("Ramp").AddComponent<BoxCollider>();
         ramp.transform.SetParent(dock.transform, false);
         const float run = 4f;
