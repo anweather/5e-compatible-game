@@ -132,7 +132,12 @@ namespace Chem
         public static bool IsGrassy(IReadOnlyList<float> w) => w[0] + w[1] >= 0.5f;
 
         /// <summary>How far a mix reaches past its cell: 1 to the cell's border, more for walls.</summary>
-        static float Spread(IReadOnlyList<float> mix) => ReferenceEquals(mix, WallMix) ? 2f : 1f;
+        // Snow reaches a little past its cell too, over its bank's rounded skirt (CellHeightfield.BankAt).
+        static float Spread(IReadOnlyList<float> mix)
+        {
+            if (ReferenceEquals(mix, WallMix)) return 2f;
+            return ReferenceEquals(mix, SnowMix) ? 1.3f : 1f;
+        }
 
         /// <summary>The texel blocks to repaint when these cells change, one rectangle per chunk.</summary>
         public static List<ChunkRect> DirtyRects(TerrainGrid grid, IEnumerable<(int x, int y)> cells)
