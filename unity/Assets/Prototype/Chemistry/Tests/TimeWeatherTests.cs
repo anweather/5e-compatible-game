@@ -246,5 +246,25 @@ namespace Chem.Tests
                 "spell slow: rate must be at least 0",
             }));
         }
+
+        [Test]
+        public void AViewThatStepsSeveralTicksAFrameStillSeesEveryStrike()
+        {
+            var w = ChemistryTests.Room(40, 30, 5);
+            w.WeatherSet = (WeatherKind.Storm, 0, 100000);
+            int counted = 0, from = w.Tick;
+            for (int t = 0; t < 400; t++)
+            {
+                w.Step();
+                counted += w.Strikes.Count; // what a view stepping one tick a frame sees
+            }
+            Assert.That(counted, Is.GreaterThan(0), "a storm strikes");
+            var seen = w.StrikesSince(from).ToList();   // what a view that stepped all 400 in one frame reads
+            Assert.That(seen.Count, Is.EqualTo(counted));
+            Assert.That(seen.Select(s => s.tick), Is.Ordered);
+            Assert.That(w.StrikesSince(w.Tick), Is.Empty);
+            for (int t = 0; t < 700; t++) w.Step();
+            Assert.That(w.StrikesSince(from).All(s => s.tick > w.Tick - 600), "only the last 600 ticks are kept");
+        }
     }
 }
