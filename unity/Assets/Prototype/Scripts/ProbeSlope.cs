@@ -32,6 +32,9 @@ public class SlopeProbe : ProbeScenario
         PlaceCell(best.x - down.x * 3, best.y - down.y * 3);
         // From high on one side, over the hill and the way down it (a low camera sat inside the hill).
         var far = grid.CellCenter(best.x + down.x * Reach * 3, best.y + down.y * Reach * 3);
+        // A cell's centre is at the core's height; the valley's ground stands over it.
+        at.y = grid.GroundAt(at);
+        far.y = grid.GroundAt(far);
         var look = (at + far) / 2f;
         look.y = grid.GroundAt(look);
         // From straight above, nearly: trees round a hillside hid it from the side.
