@@ -44,7 +44,9 @@ namespace Punchy.Fauna
             for (int s = 0; s < sides; s++)
             {
                 int a = r * sides + s, b = r * sides + (s + 1) % sides;
-                indices.AddRange(new[] { a, a + sides, b, b, a + sides, b + sides });
+                // Wound so the outside faces out (Unity's clockwise front faces): the other way round
+                // showed every creature's insides, the villagers' heads most plainly.
+                indices.AddRange(new[] { a, b, a + sides, b, b + sides, a + sides });
             }
             var mesh = new Mesh { name = "Creature Capsule" };
             mesh.SetVertices(positions);

@@ -74,6 +74,13 @@ public class EventLog : MonoBehaviour
     {
         // Reloading the scene online would drop this machine's world and everyone's wizards with it.
         if (OnlineReset.Ask()) return false;
+        // Nor under a playtest run: a stray R or pad press on the bot's window reloaded the scene
+        // and destroyed its wizard (seed 103, 2026-10-27).
+        if (PlaytestBot.Active)
+        {
+            Debug.Log("PLAYTEST: reset ignored while the bot runs");
+            return false;
+        }
         SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         return true;
     }

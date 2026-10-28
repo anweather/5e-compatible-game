@@ -175,6 +175,20 @@ namespace Chem
         /// <summary>The chunk a grid cell lies in.</summary>
         public (int i, int j) ChunkOfCell(int x, int y) => (Chunks.ChunkOf(x + U0), Chunks.ChunkOf(V0 - y));
 
+        /// <summary>
+        /// The chunk terrains any part of which lies within <paramref name="radius"/> cells of world
+        /// cell (x, y)'s centre, as (i, j) by row then column: the ones whose details (grass) can be
+        /// in sight from there (ChemGrid.DetailChunks). The terrains are offset from the chemistry's
+        /// chunks and run north to south the other way, so this works in their own grid.
+        /// </summary>
+        public List<(int i, int j)> ChunksWithin(int x, int y, double radius)
+        {
+            var all = new List<(int cx, int cy)>(ChunksX * ChunksZ);
+            for (int j = 0; j < ChunksZ; j++)
+                for (int i = 0; i < ChunksX; i++) all.Add((i, j));
+            return ChunkStreaming.Within(all, x + U0 + 0.5, V0 - y + 0.5, radius);
+        }
+
         public (float x, float z) CellCenter(int x, int y) =>
             (OriginX + (x + U0 + 0.5f) * CellSize, OriginZ + (V0 - y + 0.5f) * CellSize);
 

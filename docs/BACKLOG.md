@@ -532,6 +532,15 @@ it runs) are merged into this list every few days.
 | 15 | Finer ground (18) | World | M–L |
 | 16 | IK and animation (9), whenever a feature's look needs it | Gameplay | ongoing |
 
+**Backlogged 2026-10-28 (Andrew; J-034, J-035):**
+
+| # | Item | Lane | Size |
+|---|---|---|---|
+| 17 | Punchy animal port, 1: cornered and leashed animals mill about (upstream 7ee4511). First record the vendored base, b183507, in the Punchy README | Gameplay | 0.5 d |
+| 18 | Punchy animal port, 2: per-animal variety (traits, hairstyles and hair colour; StyleGroup) on our arrays | Gameplay | 2 d |
+| 19 | Punchy animal port, 3: water life (fish, ducks, eels, dolphins; Habitat Swims/Floats/Leaps; water depth through ICreatureGround) | Gameplay | 2–3 d |
+| 20 | Generated areas from Punchy's biomes: B, baked from seed and theme (about 2–4 d), or A, runtime generation in the core (about 10–15 d, streaming part 3). Build's plan is in J-034 | World with Gameplay | M or L |
+
 **Polish:** 15 (scoreboard), 16 (tower) and 17 (tower defense) are built.
 Their "still open" lines are small polish items, to pick up between bigger
 items or when the playtest bot ranks them.

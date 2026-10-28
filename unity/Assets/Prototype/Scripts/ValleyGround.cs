@@ -23,6 +23,8 @@ public sealed class ValleyGround
     sealed class Chunk
     {
         public Terrain terrain;
+        // How far it drew details (grass, small plants) as built.
+        public float detailDistance;
         public TerrainData original, data;
         // Heights in metres above the terrain's position, before the cells' offsets: [z, x].
         public float[,] baseHeights;
@@ -54,8 +56,21 @@ public sealed class ValleyGround
         foreach (var (i, j) in layout.GridChunks())
         {
             var terrain = terrains[j * layout.ChunksX + i];
-            if (terrain != null) chunks[(i, j)] = new Chunk { terrain = terrain, original = terrain.terrainData };
+            if (terrain != null) chunks[(i, j)] = new Chunk { terrain = terrain, original = terrain.terrainData, detailDistance = terrain.detailObjectDistance };
         }
+    }
+
+    /// <summary>How far the terrains draw details as built (ChemGrid.DetailDistance takes it).</summary>
+    public float DetailDistance => chunks.Count > 0 ? chunks.Values.Max(c => c.detailDistance) : 0f;
+
+    /// <summary>
+    /// Only the terrains <paramref name="near"/> the camera draw their details (ChemGrid.DetailChunks):
+    /// the others would draw none at that range anyway but still cost a detail pass a frame.
+    /// </summary>
+    public void DrawDetails(IReadOnlyCollection<(int i, int j)> near)
+    {
+        foreach (var kv in chunks)
+            if (kv.Value.terrain != null) kv.Value.terrain.detailObjectDistance = near.Contains(kv.Key) ? kv.Value.detailDistance : 0f;
     }
 
     /// <summary>The chunks the cells reach as drawn now: a runtime copy once one changed, else the saved one.</summary>
@@ -102,6 +117,9 @@ public sealed class ValleyGround
 
     /// <summary>True while reshaped ground is still easing to its new height.</summary>
     public bool Shaping => heightfield != null && !heightfield.Settled;
+
+    /// <summary>For the probe: cells still waiting for their paint (a valley-wide snowfall takes a minute or two).</summary>
+    public int Repainting => repaint.Count;
 
     /// <summary>Starts over on a world: the saved chunks again (copied when first changed), their base heights recovered.</summary>
     public void Bind(World w, float stepHeight, float shapeSpeed, bool flatUnderWalls = false)
@@ -516,6 +534,10 @@ public sealed class ValleyGround
     /// <summary>Frees the runtime copies, the saved chunks back on the terrains.</summary>
     public void Destroy()
     {
-        foreach (var ch in chunks.Values) Restore(ch);
+        foreach (var ch in chunks.Values)
+        {
+            Restore(ch);
+            if (ch.terrain != null) ch.terrain.detailObjectDistance = ch.detailDistance;
+        }
     }
 }

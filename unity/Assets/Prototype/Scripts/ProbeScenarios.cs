@@ -154,6 +154,10 @@ public static class ProbeScenarios
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
             "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+        new Entry("papercuts", typeof(PaperCutsProbe), 180f,
+            "Andrew's playtest paper cuts of 2026-10-27, framed for before/after pictures (the same script with or without the fixes). Checks: the " +
+            "signs drawn with SignText (one-sided), a villager sitting on the seat, the house roof solid and landed on, the well wall stopping you, " +
+            "the beach off-limits to wild animals, the island's south pier, and a burnt-down inn's door light out at night."),
         new Entry("villagers", typeof(VillagersProbe), 120f,
             "Hollowmere's folk going about their day (ValleyFauna.Folk): a clear afternoon with the camera over the square, then dusk. Checks: " +
             "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, they run from " +
@@ -212,8 +216,8 @@ public static class ProbeScenarios
             "The wizard put behind the terrain tree nearest it, the camera cut to look at it through the tree, then cut round to the open side " +
             "(OccluderFade). Checks: the tree is found in the way, the dither fades in (fade over 0.9, the global cut over 0.5) with the " +
             "see-through figure on; from the open side nothing is in the way, the dither is off, the figure off and every material back, no console errors."),
-        new Entry("snow", typeof(SnowProbe), 60f,
-            "Heavy snow at noon (fast settling), then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
+        new Entry("snow", typeof(SnowProbe), 240f,
+            "Heavy snow at noon (fast settling), a wait of up to 150 s for its paint, then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
             "Checks: over 500 squares under snow, over 20 banks against walls and trees, the ground over a bank stands 0.25 m higher, " +
             "4 footprints or more from the walk, the bolt melts the snow where it lands and nothing catches, no console errors."),
         new Entry("critters", typeof(CrittersProbe), 60f,

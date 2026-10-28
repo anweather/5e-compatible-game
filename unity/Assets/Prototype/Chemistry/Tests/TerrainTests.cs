@@ -191,6 +191,25 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void SnowBankIsARoundedMound()
+        {
+            // Andrew's playtest #30: a bank showed as a square block on its cell.
+            var w = Meadow();
+            w.At(55, 81).Cover = World.BankCover;
+            var field = new CellHeightfield(G, Step);
+            var (i, j, sx, sz) = G.CellSample(55, 81);
+            var h = field.Compute(w, i, j);
+            float top = h[sz, sx];
+            Assert.That(top, Is.InRange(0.8f * CellHeightfield.BankDepth, 1.2f * CellHeightfield.BankDepth), "its top");
+            Assert.AreEqual(top, h[sz, sx + 1], 1e-4f, "a flat crown a quarter of a cell out");
+            float side = h[sz, sx + 4], corner = h[sz + 4, sx + 4];
+            Assert.That(side, Is.GreaterThan(0f).And.LessThan(top), "its skirt reaches into the next cell");
+            Assert.That(corner, Is.LessThan(side), "and is round: lower toward the corner than to the side");
+            Assert.AreEqual(0f, h[sz, sx + 6], "gone a cell and a half out");
+            Assert.AreEqual(side, h[sz + 4, sx], 1e-4f, "the same every way round");
+        }
+
+        [Test]
         public void PitTerrainSinksAndWallsStayWalls()
         {
             var w = Meadow();
@@ -451,6 +470,26 @@ namespace Chem.Tests
             int texels = rects.Sum(r => r.Width * r.Height);
             int expected = G.Cells().Sum(c => { var t = G.TexelRect(c.x, c.y); return t.Width * t.Height; });
             Assert.AreEqual(expected, texels, "the rectangles hold exactly the grid's texels");
+        }
+
+        [Test]
+        public void TheTerrainsInDetailRangeAreFoundInTheirOwnGrid()
+        {
+            var g = TerrainGrid.Valley();
+            // The middle of terrain (4, 4): world cell x 288, y 575 - 288.
+            var near = g.ChunksWithin(288, 575 - 288, 100);
+            Assert.That(near.Count, Is.EqualTo(13), "the 3 x 3 round it and the 4 two away along the axes");
+            Assert.That(near, Has.Member((4, 2)));
+            Assert.That(near, Has.Member((4, 6)));
+            Assert.That(near, Has.Member((2, 4)));
+            Assert.That(near, Has.Member((6, 4)));
+            Assert.That(near, Has.No.Member((2, 2)));
+            // Its own chunk is always in, wherever the camera is in it.
+            for (int y = 0; y < 576; y += 37)
+                for (int x = 0; x < 576; x += 41)
+                    Assert.That(g.ChunksWithin(x, y, 0), Has.Member(g.ChunkOfCell(x, y)), $"cell ({x}, {y})");
+            // The terrains run north to south the other way: a camera at the north edge (y 0) is in row 8.
+            Assert.That(g.ChunksWithin(288, 0, 10), Is.EqualTo(new[] { (4, 8) }));
         }
     }
 }

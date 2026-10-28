@@ -488,6 +488,22 @@ whole history: joins stop growing with the length of the game.
 4. **Do far players hear about each other's world?** A meteor or a "notable"
    log line in an island you don't run: shown to everyone (from the host) or
    only to those there?
+## The drawn ring: details only near the camera (2026-10-27)
+
+All 81 chunk terrains took a detail pass on the main thread every frame
+(`Terrain.Details.Render` 81 calls, about 0.26 ms on the Mac), though
+grass only draws within the terrains' `detailObjectDistance` (120 m, a
+chunk and a quarter) of the camera. So only the terrains any part of which is
+within that distance of the camera keep their details on
+(`TerrainGrid.ChunksWithin`, `ChemGrid.DetailChunks` and
+`DetailChunksChanged`, worked out when the camera changes cell); the rest
+set `detailObjectDistance` to 0 (`ValleyGround.DrawDetails`). Nothing in
+sight changes: a terrain left out had no grass near enough to draw. Trees
+aren't details and every terrain keeps them (to 900 m), so the horizon has no
+holes. The terrains are offset from the chemistry's chunks and run north to
+south the other way, so the ring is worked out in their own grid. It is the
+view's, from the camera, not the chunk plan's (which follows characters and is
+shared). Still to measure on both machines: what it saves.
 
 ## The land around the valley (built 2026-10-27)
 

@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Playtest;
 using StarterAssets;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 // The playtest bot (playtest/DESIGN.md). Start a player build with -playtest
 // and it plays on its own for a while, then writes what it found to its run
@@ -25,6 +26,7 @@ using UnityEngine;
 // Flags: -playtest-out <dir>, -playtest-seed <n>, -playtest-minutes <n> (or
 // -playtest-seconds <n>), -playtest-replay <run.json> (replays its seed),
 // -playtest-until-frame <n>, -playtest-coverage <coverage.json>,
+// -playtest-goals <key,key,...> (these goals first, in order, then the dice's),
 // -playtest-offscreen, -playtest-mute (mutes the listener, which also
 // deafens the sound detectors; tools/playtest mutes the player in the
 // Windows mixer instead).
@@ -37,6 +39,12 @@ public class PlaytestBot : MonoBehaviour
     float seconds = 480f;
     int untilFrame = int.MaxValue;
     bool offscreen, mute;
+    // The window in front when the runner started this player (-playtest-hand-focus), and how often
+    // the front was handed back to it.
+    long handFocus;
+    int handedBack;
+    float handUntil;
+    const float HandFocusSeconds = 20f;
     Dictionary<string, int> coverage = new();
 
     // The run.
@@ -96,6 +104,20 @@ public class PlaytestBot : MonoBehaviour
         return ulong.TryParse(Arg(args, "-playtest-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : (ulong)DateTime.Now.Ticks;
     }
 
+    // The window is up by the splash screen and before the valley loads (half a minute): give the
+    // front back then too, so keys typed elsewhere during the load stay there.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
+    static void HandBackAtSplash() => HandBackEarly();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void HandBackBeforeLoad() => HandBackEarly();
+
+    static void HandBackEarly()
+    {
+        if (long.TryParse(Arg(Environment.GetCommandLineArgs(), "-playtest-hand-focus"), NumberStyles.Integer, CultureInfo.InvariantCulture, out long window) && window != 0)
+            PlaytestWindow.HandBack(window);
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartIfAsked()
     {
@@ -103,15 +125,24 @@ public class PlaytestBot : MonoBehaviour
             new GameObject("Playtest bot").AddComponent<PlaytestBot>();
     }
 
+    /// <summary>Whether a playtest run is going (EventLog.ResetYard won't reload the scene under it).</summary>
+    public static bool Active { get; private set; }
+
     void Awake()
     {
+        Active = true;
+        handUntil = Time.realtimeSinceStartup + HandFocusSeconds;
         DontDestroyOnLoad(gameObject);
         ReadSettings(Environment.GetCommandLineArgs());
         Directory.CreateDirectory(Path.Combine(outDir, "shots"));
         Application.logMessageReceived += OnLog;
     }
 
-    void OnDestroy() => Application.logMessageReceived -= OnLog;
+    void OnDestroy()
+    {
+        Active = false;
+        Application.logMessageReceived -= OnLog;
+    }
 
     void ReadSettings(string[] args)
     {
@@ -128,12 +159,14 @@ public class PlaytestBot : MonoBehaviour
         if (original != null) run.ReplayOf = original.RunId;
         seconds = Number("-playtest-seconds", Number("-playtest-minutes", 8f) * 60f);
         untilFrame = int.TryParse(Arg("-playtest-until-frame"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var u) ? u : int.MaxValue;
+        goalsFirst = (Arg("-playtest-goals") ?? "").Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToList();
         string cov = Arg("-playtest-coverage");
         if (cov != null && File.Exists(cov)) coverage = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(cov)) ?? new();
         // A replay chooses against what the original knew (coverage.json has moved on since).
         if (original != null) coverage = original.Coverage ?? new();
         run.Coverage = new Dictionary<string, int>(coverage);
         offscreen = args.Contains("-playtest-offscreen");
+        long.TryParse(Arg("-playtest-hand-focus"), NumberStyles.Integer, CultureInfo.InvariantCulture, out handFocus);
         mute = args.Contains("-playtest-mute");
         outDir = Arg("-playtest-out") ?? Path.Combine(Application.persistentDataPath, "playtest", run.RunId);
         dice = new PlaytestRandom(run.Seed);
@@ -159,13 +192,31 @@ public class PlaytestBot : MonoBehaviour
         Setup();
         while (running && frame < untilFrame && Time.realtimeSinceStartup - startedReal < seconds * 3f && Time.time < seconds)
         {
-            var next = GoalPicker.Next(dice, player.Options(), coverage);
+            var next = NextGoal();
             goal = next.ToString();
             run.Goals.Add(next.Key);
             Shoot("goal");
             yield return player.Do(next);
         }
         Finish(frame >= untilFrame ? "until-frame" : "done");
+    }
+
+    // Goals asked for on the command line come first, in order (one the options don't allow is
+    // skipped, and logged); then the dice choose as usual.
+    List<string> goalsFirst = new();
+
+    Goal NextGoal()
+    {
+        var options = player.Options();
+        while (goalsFirst.Count > 0)
+        {
+            string key = goalsFirst[0];
+            goalsFirst.RemoveAt(0);
+            var asked = GoalPicker.ByKey(dice, options, key);
+            if (asked != null) return asked;
+            Trace("no goal", key + " isn't possible here");
+        }
+        return GoalPicker.Next(dice, options, coverage);
     }
 
     void Setup()
@@ -182,13 +233,45 @@ public class PlaytestBot : MonoBehaviour
         run.Quiet = Environment.GetCommandLineArgs().Contains("-playtest-quiet");
         startedReal = Time.realtimeSinceStartup;
         running = true;
+        DeafToRealInput();
+    }
+
+    // The bot drives the wizard through its inputs, never the real devices: a key or pad press that
+    // reaches the bot's window (it took focus once, seed 103) mustn't change the run or reset it.
+    static void DeafToRealInput()
+    {
+        foreach (var device in InputSystem.devices.ToList())
+            if (device is Keyboard || device is Mouse || device is Gamepad || device is Joystick)
+                InputSystem.DisableDevice(device);
+        InputSystem.onDeviceChange += (device, change) =>
+        {
+            if (change == InputDeviceChange.Added && (device is Keyboard || device is Mouse || device is Gamepad || device is Joystick))
+                InputSystem.DisableDevice(device);
+        };
+    }
+
+    // From the bot's first frame (the valley takes half a minute to load, so not from the process's
+    // start): Unity raises its window as it starts up, whatever the runner asked.
+    void Update()
+    {
+        if (handFocus == 0 || Time.realtimeSinceStartup > handUntil || !PlaytestWindow.HandBack(handFocus)) return;
+        if (handedBack++ == 0) Debug.Log($"PLAYTEST: handed the front back to window {handFocus} at {Time.realtimeSinceStartup:0.0} s");
     }
 
     void LateUpdate()
     {
         if (!running) return;
+        // The scene went away under the run (seed 103 on a development build: a reload, every frame
+        // after it a NullReferenceException here): stop cleanly with what was found so far.
+        if (wizard == null || grid == null)
+        {
+            Add(new Candidate("bot-lost-wizard", Here0, Category.GameBreaking, frame, "the wizard or the world was destroyed mid-run (a scene reload?)"));
+            Finish("bot-lost-wizard");
+            return;
+        }
         frame++;
         player.Frame = frame;
+        player.HoldLook();
         WatchWizard();
         if (frame % ReplayCheck.SyncEvery == 0)
         {
@@ -205,15 +288,9 @@ public class PlaytestBot : MonoBehaviour
 
     string Here => PlaytestPlaces.Near(places, grid, wizard.transform.position);
 
-    // Between 20:00 and 06:00 on the world clock a dark picture is right.
-    bool Night
-    {
-        get
-        {
-            long minute = grid.World.Minutes % (24 * 60);
-            return minute < 6 * 60 || minute >= 20 * 60;
-        }
-    }
+    // A dark picture is right whenever the sky isn't bright: at night, and at dawn and dusk
+    // (World.Daylight, sim.json day), which Hasten Time often runs the clock into.
+    bool Night => grid.World.Daylight != Chem.LightLevel.Bright;
 
     void WatchWizard()
     {
@@ -285,6 +362,7 @@ public class PlaytestBot : MonoBehaviour
     // shots/<frame>-<label>.jpg and checked for magenta, black and white. Returns its path in the run.
     string Shoot(string label)
     {
+        frameWatch.ShotTaken(frame);
         var cam = Camera.main;
         if (cam == null) return null;
         var rt = RenderTexture.GetTemporary(ShotWidth, ShotHeight, 24);
@@ -302,7 +380,7 @@ public class PlaytestBot : MonoBehaviour
 
         string file = Path.Combine("shots", $"{frame:D6}-{label}.jpg");
         File.WriteAllBytes(Path.Combine(outDir, file), tex.EncodeToJPG(80));
-        Trace("shot", file);
+        Trace(ReplayCheck.Shot, file);
         foreach (var c in ImageCheck.Pixels(frame, tex.GetRawTextureData(), Here, Night))
         {
             c.Screenshot = file;
@@ -312,8 +390,12 @@ public class PlaytestBot : MonoBehaviour
         return file;
     }
 
+    // Where the run was last, for a candidate raised once the wizard is gone.
+    string Here0 => run.Goals.Count > 0 ? run.Goals[run.Goals.Count - 1] : "start";
+
     void Finish(string ended)
     {
+        if (run.Ended != null) return;
         running = false;
         run.Ended = ended;
         run.Frames = frame;
@@ -324,6 +406,7 @@ public class PlaytestBot : MonoBehaviour
         run.Metrics["frame_ms_p95"] = frameWatch.Percentile(0.95);
         run.Metrics["frame_ms_worst"] = frameWatch.Times.Count == 0 ? 0f : frameWatch.Times.Max();
         run.Metrics["audio_peak"] = tap != null ? tap.Peak : -1f;
+        run.Metrics["focus_handed_back"] = handedBack;
         run.Metrics["memory_mb"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024f * 1024f);
         File.WriteAllText(Path.Combine(outDir, "run.json"), run.ToJson());
         Debug.Log($"PLAYTEST: {ended}; {frame} frames, {run.Goals.Count} goals, {run.Candidates.Count} candidates; wrote {outDir}");

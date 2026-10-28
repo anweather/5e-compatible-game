@@ -372,11 +372,15 @@ public class RobeCloth : MonoBehaviour
         return frontPanel[i] ? LegWay.Ahead : LegWay.Round;
     }
 
-    // Out of both legs: thigh and shin capsules.
+    // Out of both legs: thigh and shin capsules, the leg on the cloth's own side last so it has the
+    // last word (always left then right left cloth between the legs pushed by the right one, and the
+    // robe draped to the wizard's left).
     Vector3 OffLegs(Vector3 p, LegWay way, Vector3 ahead, Vector3 right)
     {
-        for (int s = 0; s < 2; s++)
+        int first = Vector3.Dot(p - hipsAt, right) > 0f ? 0 : 1;
+        for (int n = 0; n < 2; n++)
         {
+            int s = (first + n) % 2;
             if (!legFound[s]) continue;
             var thigh = legAt[s * 3];
             var knee = legAt[s * 3 + 1];

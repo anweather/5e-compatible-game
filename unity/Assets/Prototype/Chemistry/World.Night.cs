@@ -36,21 +36,46 @@ namespace Chem
         {
             var day = Daylight;
             for (int i = 0; i < w * h; i++) into[i] = day;
-            if (day == LightLevel.Bright) return;
+            if (day != LightLevel.Bright) ShineFires(x0, y0, w, h, into);
+        }
+
+        // Every burning cell within reach of the block raises the light round it.
+        void ShineFires(int x0, int y0, int w, int h, LightLevel[] into)
+        {
             var d = Rules.Sim.Day;
-            int bright = FeetToCells(d.FireBright), reach = FeetToCells(d.FireBright + d.FireDim);
-            for (int y = y0 - reach; y < y0 + h + reach; y++)
-                for (int x = x0 - reach; x < x0 + w + reach; x++)
+            var block = new LightBlock(x0, y0, w, h, into, FeetToCells(d.FireBright), FeetToCells(d.FireBright + d.FireDim));
+            for (int y = y0 - block.Reach; y < y0 + h + block.Reach; y++)
+                for (int x = x0 - block.Reach; x < x0 + w + block.Reach; x++)
                 {
                     var c = Locate(x, y, out _, out _);
-                    if (c != null && c.Fire > 0) Shine(x, y);
+                    if (c != null && c.Fire > 0) block.Shine(x, y);
                 }
+        }
 
-            // One fire's light on the block: bright within `bright` cells, dim out to `reach`.
-            void Shine(int fx, int fy)
+        // A block of cells being lit, and how far a fire's bright and dim light reach, in cells.
+        readonly struct LightBlock
+        {
+            readonly int x0, y0, w, h, bright;
+            readonly LightLevel[] into;
+
+            public LightBlock(int x0, int y0, int w, int h, LightLevel[] into, int bright, int reach)
             {
-                for (int y = Math.Max(y0, fy - reach); y <= Math.Min(y0 + h - 1, fy + reach); y++)
-                    for (int x = Math.Max(x0, fx - reach); x <= Math.Min(x0 + w - 1, fx + reach); x++)
+                this.x0 = x0;
+                this.y0 = y0;
+                this.w = w;
+                this.h = h;
+                this.into = into;
+                this.bright = bright;
+                Reach = reach;
+            }
+
+            public int Reach { get; }
+
+            // One fire's light on the block: bright within `bright` cells, dim out to Reach.
+            public void Shine(int fx, int fy)
+            {
+                for (int y = Math.Max(y0, fy - Reach); y <= Math.Min(y0 + h - 1, fy + Reach); y++)
+                    for (int x = Math.Max(x0, fx - Reach); x <= Math.Min(x0 + w - 1, fx + Reach); x++)
                     {
                         var level = Math.Max(Math.Abs(x - fx), Math.Abs(y - fy)) <= bright ? LightLevel.Bright : LightLevel.Dim;
                         int i = (y - y0) * w + (x - x0);

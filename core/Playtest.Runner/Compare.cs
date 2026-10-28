@@ -32,7 +32,7 @@ namespace Playtest.Runner
             var diff = ReplayCheck.FirstDifference(a, b, upTo);
             if (diff == null) return (true, $"the same for all {upTo} frames ({a.Trace.Count(s => s.Frame <= upTo && s.Action == ReplayCheck.Sync)} sync steps)");
             string Doing(RunReport r) => r.Trace.LastOrDefault(s => s.Frame <= diff.Frame && s.Action == "goal")?.Detail ?? "starting";
-            string At(RunReport r) => r.Trace.FirstOrDefault(s => s.Frame >= diff.Frame)?.ToString().Trim() ?? "(nothing)";
+            string At(RunReport r) => r.Trace.FirstOrDefault(s => s.Frame >= diff.Frame && s.Action != ReplayCheck.Shot)?.ToString().Trim() ?? "(nothing)";
             return (false, $"parted at frame {diff.Frame} ({diff.Frame / 30.0:0.0} s)\n  a: {At(a)}   while: {Doing(a)}\n  b: {At(b)}   while: {Doing(b)}");
         }
     }
