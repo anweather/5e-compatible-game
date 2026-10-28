@@ -31,7 +31,7 @@ public class RockWake : MonoBehaviour
             float a = Random.Range(-1f, 1f) * Mathf.PI * 0.5f;
             var round = -downstream * Mathf.Cos(a) + across * Mathf.Sin(a);
             var at = new Vector3(transform.position.x, waterY + 0.03f, transform.position.z) + round * radius;
-            var velocity = downstream * Carry * Random.Range(0.7f, 1.2f) + across * (Mathf.Sin(a) * 0.35f);
+            var velocity = downstream * (Carry * Random.Range(0.7f, 1.2f)) + across * (Mathf.Sin(a) * 0.35f);
             foam.Emit(new ParticleSystem.EmitParams
             {
                 position = at,

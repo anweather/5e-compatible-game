@@ -330,7 +330,7 @@ public static class ValleyBuilder
         for (int n = 0; n < RiverRockTries; n++)
         {
             var (along, way) = OnCourse(line, (float)rng.NextDouble() * total);
-            var w = along + new Vector2(-way.y, way.x) * ((float)(rng.NextDouble() * 2.0 - 1.0) * ValleyShape.RiverHalfWidth * 0.6f);
+            var w = along + Vector2.Perpendicular(way) * ((float)(rng.NextDouble() * 2.0 - 1.0) * ValleyShape.RiverHalfWidth * 0.6f);
             var prefab = rocks[rng.Next(rocks.Length)];
             float turn = rng.Next(360), extra = (float)rng.NextDouble();
             if (!ValleyShape.InRiver(w) || ValleyShape.NearBridge(w, 6f) || ValleyShape.NearFalls(w)) continue;
