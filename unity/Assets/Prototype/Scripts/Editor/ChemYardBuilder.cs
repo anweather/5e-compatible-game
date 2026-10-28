@@ -96,6 +96,8 @@ public static class ChemYardBuilder
         var third = follow.GetComponent<CinemachineThirdPersonFollow>();
         var avoid = third.AvoidObstacles;
         avoid.CameraRadius = 0.3f;
+        // Eased back out after an obstacle rather than snapped (Andrew: the camera still snaps).
+        avoid.DampingFromCollision = 0.4f;
         third.AvoidObstacles = avoid;
         hands.view = follow.GetComponent<CinemachineCamera>();
         // Meteors shake it (MeteorFall).

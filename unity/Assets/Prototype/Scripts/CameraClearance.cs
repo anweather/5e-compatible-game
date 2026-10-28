@@ -15,6 +15,10 @@ public class CameraClearance : CinemachineExtension
 {
     // How far over the ground the lens keeps, and how near the head hides the wizard.
     const float OverGround = 0.35f, InsideWizard = 0.55f;
+    // How fast a lift eases off (m/s).
+    const float SettleSpeed = 1.5f;
+
+    float lift;
 
     ChemGrid grid;
     Transform hiddenWizard;
@@ -25,8 +29,11 @@ public class CameraClearance : CinemachineExtension
     {
         if (stage != CinemachineCore.Stage.Finalize) return;
         var at = state.GetFinalPosition();
-        float ground = GroundUnder(at);
-        if (at.y < ground + OverGround) state.PositionCorrection += Vector3.up * (ground + OverGround - at.y);
+        // Up at once (never into the ground), back down gently (the cells' ground steps by half a
+        // metre, which would jolt it).
+        float need = Mathf.Max(0f, GroundUnder(at) + OverGround - at.y);
+        lift = need >= lift || deltaTime < 0f ? need : Mathf.MoveTowards(lift, need, deltaTime * SettleSpeed);
+        if (lift > 0f) state.PositionCorrection += Vector3.up * lift;
 
         var target = vcam.Follow;
         bool inside = target != null && Vector3.Distance(state.GetFinalPosition(), target.position) < InsideWizard;
