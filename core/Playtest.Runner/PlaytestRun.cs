@@ -97,6 +97,7 @@ namespace Playtest.Runner
             if (options.TryGetValue("seed", out var seed)) a.AddRange(new[] { "-playtest-seed", seed });
             if (options.TryGetValue("replay", out var replay)) a.AddRange(new[] { "-playtest-replay", Q(Path.GetFullPath(replay)) });
             if (options.TryGetValue("until-frame", out var until)) a.AddRange(new[] { "-playtest-until-frame", until });
+            if (options.TryGetValue("goals", out var goals)) a.AddRange(new[] { "-playtest-goals", goals });
             if (File.Exists(paths.Coverage)) a.AddRange(new[] { "-playtest-coverage", Q(paths.Coverage) });
             // Performance findings only count from runs with no Unity Editor open.
             if (!Preflight.Now().Unity.Any(Preflight.IsEditor)) a.Add("-playtest-quiet");
