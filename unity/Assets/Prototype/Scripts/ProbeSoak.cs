@@ -46,5 +46,5 @@ public class SoakProbe : ProbeScenario
     }
 
     // Deep water's units (cells over sim.water.thin): the lake, the river, the sea.
-    int BodyWater() => World.Cells.Where(c => c != null && c.Water > World.Rules.Sim.ThinWater).Sum(c => c.Water);
+    int BodyWater() => World.Cells.Where(c => c != null && c.Water > World.Rules.Sim.WaterUnitsPerStep / 2).Sum(c => c.Water);
 }
