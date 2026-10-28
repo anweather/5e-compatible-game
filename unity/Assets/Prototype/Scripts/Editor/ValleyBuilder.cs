@@ -1036,9 +1036,30 @@ public static class ValleyBuilder
         return houses.ToArray();
     }
 
-    // What generated things are drawn with: their colours in their vertices (VillageLit).
-    internal static Material VillageMaterial() =>
-        EditorAssets.LoadOrCreate($"{Generated}/VillageLit.mat", () => new Material(Shader.Find("Prototype/VillageLit")));
+    // What generated things are drawn with: their colours in their vertices (VillageLit). Generated/
+    // isn't in git, but the NetWizard prefab (which is) points at this material from WizardOutfit, so
+    // it has the same GUID on every machine: made under it when missing, or remade if it has another.
+    const string VillageMaterialGuid = "1c2f7c809517e4946a98211dcf83ad02";
+
+    internal static Material VillageMaterial()
+    {
+        string path = $"{Generated}/VillageLit.mat";
+        var existing = AssetDatabase.LoadAssetAtPath<Material>(path);
+        if (existing != null && AssetDatabase.AssetPathToGUID(path) == VillageMaterialGuid) return existing;
+        if (existing != null) AssetDatabase.DeleteAsset(path);
+        EditorAssets.EnsureFolderFor(path);
+        // Made at a scratch path, then its file moved into place beside a .meta that carries the GUID.
+        string scratch = $"{Generated}/VillageLit.scratch.mat";
+        AssetDatabase.CreateAsset(new Material(Shader.Find("Prototype/VillageLit")), scratch);
+        AssetDatabase.SaveAssets();
+        // Its file names it after the scratch path; it's VillageLit where it goes.
+        File.WriteAllText(path, File.ReadAllText(scratch).Replace("m_Name: VillageLit.scratch", "m_Name: VillageLit"));
+        File.WriteAllText(path + ".meta",
+            "fileFormatVersion: 2\nguid: " + VillageMaterialGuid + "\nNativeFormatImporter:\n  externalObjects: {}\n  mainObjectFileID: 2100000\n  userData: \n  assetBundleName: \n  assetBundleVariant: \n");
+        AssetDatabase.DeleteAsset(scratch);
+        AssetDatabase.ImportAsset(path, ImportAssetOptions.ForceUpdate);
+        return AssetDatabase.LoadAssetAtPath<Material>(path);
+    }
 
     static Transform BuildHouse(Transform village, VillageBuilding b, string name, float level, float cs, Material material, GameObject smoke)
     {
