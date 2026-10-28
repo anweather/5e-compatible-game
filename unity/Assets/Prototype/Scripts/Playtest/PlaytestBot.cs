@@ -25,6 +25,7 @@ using UnityEngine;
 // Flags: -playtest-out <dir>, -playtest-seed <n>, -playtest-minutes <n> (or
 // -playtest-seconds <n>), -playtest-replay <run.json> (replays its seed),
 // -playtest-until-frame <n>, -playtest-coverage <coverage.json>,
+// -playtest-goals <key,key,...> (these goals first, in order, then the dice's),
 // -playtest-offscreen, -playtest-mute (mutes the listener, which also
 // deafens the sound detectors; tools/playtest mutes the player in the
 // Windows mixer instead).
@@ -128,6 +129,7 @@ public class PlaytestBot : MonoBehaviour
         if (original != null) run.ReplayOf = original.RunId;
         seconds = Number("-playtest-seconds", Number("-playtest-minutes", 8f) * 60f);
         untilFrame = int.TryParse(Arg("-playtest-until-frame"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var u) ? u : int.MaxValue;
+        goalsFirst = (Arg("-playtest-goals") ?? "").Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToList();
         string cov = Arg("-playtest-coverage");
         if (cov != null && File.Exists(cov)) coverage = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(cov)) ?? new();
         // A replay chooses against what the original knew (coverage.json has moved on since).
@@ -159,13 +161,31 @@ public class PlaytestBot : MonoBehaviour
         Setup();
         while (running && frame < untilFrame && Time.realtimeSinceStartup - startedReal < seconds * 3f && Time.time < seconds)
         {
-            var next = GoalPicker.Next(dice, player.Options(), coverage);
+            var next = NextGoal();
             goal = next.ToString();
             run.Goals.Add(next.Key);
             Shoot("goal");
             yield return player.Do(next);
         }
         Finish(frame >= untilFrame ? "until-frame" : "done");
+    }
+
+    // Goals asked for on the command line come first, in order (one the options don't allow is
+    // skipped, and logged); then the dice choose as usual.
+    List<string> goalsFirst = new();
+
+    Goal NextGoal()
+    {
+        var options = player.Options();
+        while (goalsFirst.Count > 0)
+        {
+            string key = goalsFirst[0];
+            goalsFirst.RemoveAt(0);
+            var asked = GoalPicker.ByKey(dice, options, key);
+            if (asked != null) return asked;
+            Trace("no goal", key + " isn't possible here");
+        }
+        return GoalPicker.Next(dice, options, coverage);
     }
 
     void Setup()
@@ -189,6 +209,7 @@ public class PlaytestBot : MonoBehaviour
         if (!running) return;
         frame++;
         player.Frame = frame;
+        player.HoldLook();
         WatchWizard();
         if (frame % ReplayCheck.SyncEvery == 0)
         {
@@ -205,15 +226,9 @@ public class PlaytestBot : MonoBehaviour
 
     string Here => PlaytestPlaces.Near(places, grid, wizard.transform.position);
 
-    // Between 20:00 and 06:00 on the world clock a dark picture is right.
-    bool Night
-    {
-        get
-        {
-            long minute = grid.World.Minutes % (24 * 60);
-            return minute < 6 * 60 || minute >= 20 * 60;
-        }
-    }
+    // A dark picture is right whenever the sky isn't bright: at night, and at dawn and dusk
+    // (World.Daylight, sim.json day), which Hasten Time often runs the clock into.
+    bool Night => grid.World.Daylight != Chem.LightLevel.Bright;
 
     void WatchWizard()
     {
@@ -285,6 +300,7 @@ public class PlaytestBot : MonoBehaviour
     // shots/<frame>-<label>.jpg and checked for magenta, black and white. Returns its path in the run.
     string Shoot(string label)
     {
+        frameWatch.ShotTaken(frame);
         var cam = Camera.main;
         if (cam == null) return null;
         var rt = RenderTexture.GetTemporary(ShotWidth, ShotHeight, 24);
@@ -302,7 +318,7 @@ public class PlaytestBot : MonoBehaviour
 
         string file = Path.Combine("shots", $"{frame:D6}-{label}.jpg");
         File.WriteAllBytes(Path.Combine(outDir, file), tex.EncodeToJPG(80));
-        Trace("shot", file);
+        Trace(ReplayCheck.Shot, file);
         foreach (var c in ImageCheck.Pixels(frame, tex.GetRawTextureData(), Here, Night))
         {
             c.Screenshot = file;

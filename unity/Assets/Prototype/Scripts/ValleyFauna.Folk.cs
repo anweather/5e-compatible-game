@@ -159,7 +159,8 @@ public partial class ValleyFauna
             // probe saw folk 0.6 m off it).
             s.Position = new float3(at.x, s.Position.y, at.y);
             s.Yaw = yaw;
-            s.Lie = lounge ? 1f : 0.6f;
+            // A bench is sat on upright-ish: 0.6 leant villagers back over the backrest (Andrew's playtest #3).
+            s.Lie = lounge ? 1f : 0.35f;
             c.task = FolkTask.Sit;
             c.wait = rng.NextFloat(12f, 30f);
             return;
