@@ -59,6 +59,22 @@ Each entry has:
 
 ## Decided
 
+### J-026: Publish 0.1.5 before the bot's RC runs finish?
+
+- **Asked:** 2026-10-27, by Andrew ("are we good to publish 0.1.5?").
+  - Passed: R1 (the install), R3 (Relay both ways, with a reset), and the
+    dev probes.
+  - R2 (the bot): only 1 of 6 runs done. A bot bug (its sea place) left
+    almost no on-world time.
+  - Not done: Andrew's own look.
+- **Also comes up when:** every release: how much RC testing is enough.
+- **Answer (2026-10-27):** **publish now.** The bot keeps running on 0.1.5,
+  and findings go to 0.1.6 (or a hotfix if serious).
+- **Why:** Andrew's call. Everything a person tested passed. The bot's
+  findings so far were all its own bug. Shipping sooner keeps playtests on
+  what players actually have (J-019).
+- **Revisited:** 0.
+
 ### J-025: Where are release-candidate builds made?
 
 - **Asked:** 2026-10-27, by the coordinator, when the Mac spent 40+ min
