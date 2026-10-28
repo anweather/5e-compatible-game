@@ -369,3 +369,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   3. Gameplay: #33 rocks in the river.
   4. World: #31 water down slopes, then #32 a flowing river surface.
   Then stop. Nothing new is started without Andrew.
+- 2026-10-28: Frugal queue done (#33 20a67f8, #31+#32 bcb7aba, soaking and
+  ground types 44ea217). Andrew: the next direction is refining the systems:
+  material types, their properties, and how they react to effects. First step,
+  World: an optional "material" on entities.json and items.json, a building
+  spec (wall material per WallKind/RoofCover), and the house builders stamping
+  their footprint as cells of that material, as the cabins do. LEND to World
+  for this step: the village and house builders (Gameplay's; Gameplay is
+  idle). "flesh" for creatures comes later. Merge pre-approved on checks.
