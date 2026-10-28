@@ -31,8 +31,12 @@ public class SlopeProbe : ProbeScenario
         var at = grid.CellCenter(best.x, best.y);
         var below = grid.CellCenter(best.x + down.x * Reach, best.y + down.y * Reach);
         PlaceCell(best.x - down.x * 3, best.y - down.y * 3);
-        var side = Vector3.Cross(below - at, Vector3.up).normalized;
-        Cut((at + below) / 2f + side * 9f + Vector3.up * 5f, (at + below) / 2f);
+        // From high on one side, over the hill and the way down it (a low camera sat inside the hill).
+        var far = grid.CellCenter(best.x + down.x * Reach * 3, best.y + down.y * Reach * 3);
+        var look = (at + far) / 2f;
+        look.y = grid.GroundAt(look);
+        var side = Vector3.Cross(far - at, Vector3.up).normalized;
+        Cut(look + side * 18f + Vector3.up * 22f, look);
         caster.Cast(SpellIds.CreateWater, best.x, best.y, dir);
         yield return Wait(12f);
 
