@@ -320,3 +320,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   stream-disk `be437fa`. Merged branches that sessions couldn't delete
   (their permissions refuse it): net-reset, playtest-findings-0.1.5,
   playtest-player, components, night, stream-disk. Andrew can delete them.
+- 2026-10-27 (evening): Andrew is low on tokens. No new big features until
+  THURSDAY 2026-10-29: caves (J-020 decided), finer ground (J-021 open) and
+  interest by chunk (J-028, waits for the continent) all start then or later.
+  Until then, agents finish what's in flight (cloth round 3 and the beard;
+  check-bot-sparks and the D3D12 warm-up; the Metal warm-up), merge on the
+  coordinator's go, and then stop. Idle is fine. Held, unmerged:
+  `soundscape`, `terrain-reach`, `bot-fixes`, `spark-pool`, `perf/pso-trace`,
+  `wizard-cloth-v2`.
