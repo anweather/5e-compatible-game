@@ -104,15 +104,23 @@ public class PlaytestBot : MonoBehaviour
             new GameObject("Playtest bot").AddComponent<PlaytestBot>();
     }
 
+    /// <summary>Whether a playtest run is going (EventLog.ResetYard won't reload the scene under it).</summary>
+    public static bool Active { get; private set; }
+
     void Awake()
     {
+        Active = true;
         DontDestroyOnLoad(gameObject);
         ReadSettings(Environment.GetCommandLineArgs());
         Directory.CreateDirectory(Path.Combine(outDir, "shots"));
         Application.logMessageReceived += OnLog;
     }
 
-    void OnDestroy() => Application.logMessageReceived -= OnLog;
+    void OnDestroy()
+    {
+        Active = false;
+        Application.logMessageReceived -= OnLog;
+    }
 
     void ReadSettings(string[] args)
     {
@@ -207,6 +215,14 @@ public class PlaytestBot : MonoBehaviour
     void LateUpdate()
     {
         if (!running) return;
+        // The scene went away under the run (seed 103 on a development build: a reload, every frame
+        // after it a NullReferenceException here): stop cleanly with what was found so far.
+        if (wizard == null || grid == null)
+        {
+            Add(new Candidate("bot-lost-wizard", Here0, Category.GameBreaking, frame, "the wizard or the world was destroyed mid-run (a scene reload?)"));
+            Finish("bot-lost-wizard");
+            return;
+        }
         frame++;
         player.Frame = frame;
         player.HoldLook();
@@ -328,8 +344,12 @@ public class PlaytestBot : MonoBehaviour
         return file;
     }
 
+    // Where the run was last, for a candidate raised once the wizard is gone.
+    string Here0 => run.Goals.Count > 0 ? run.Goals[run.Goals.Count - 1] : "start";
+
     void Finish(string ended)
     {
+        if (run.Ended != null) return;
         running = false;
         run.Ended = ended;
         run.Frames = frame;
