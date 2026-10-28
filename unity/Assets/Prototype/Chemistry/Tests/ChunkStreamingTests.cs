@@ -248,9 +248,11 @@ namespace Chem.Tests
                 for (int cx = 0; cx < 9; cx++) all.Add((cx, cy));
             // The middle of chunk (4, 4), 100 cells: chunk 2's near edge is 96 cells off along an axis.
             var near = ChunkStreaming.Within(all, 4.5 * 64, 4.5 * 64, 100);
-            Assert.That(near, Does.Contain((2, 4)).And.Contain((6, 4)).And.Contain((3, 3)));
-            Assert.That(near, Does.Not.Contain((2, 2)), "its nearest corner is about 136 cells away");
-            Assert.That(near, Does.Not.Contain((1, 4)));
+            Assert.That(near, Has.Member((2, 4)));
+            Assert.That(near, Has.Member((6, 4)));
+            Assert.That(near, Has.Member((3, 3)));
+            Assert.That(near, Has.No.Member((2, 2)), "its nearest corner is about 136 cells away");
+            Assert.That(near, Has.No.Member((1, 4)));
             Assert.That(near.Count, Is.EqualTo(13), "the 3 x 3 round it and the 4 two away along the axes ((2, 3) is 101 cells off)");
             Assert.That(near, Is.EqualTo(near.OrderBy(c => c.Item2).ThenBy(c => c.Item1)), "by row then column");
             // On the edge of the valley: only what is there.

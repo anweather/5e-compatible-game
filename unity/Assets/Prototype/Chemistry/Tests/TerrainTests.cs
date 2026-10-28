@@ -460,12 +460,15 @@ namespace Chem.Tests
             // The middle of terrain (4, 4): world cell x 288, y 575 - 288.
             var near = g.ChunksWithin(288, 575 - 288, 100);
             Assert.That(near.Count, Is.EqualTo(13), "the 3 x 3 round it and the 4 two away along the axes");
-            Assert.That(near, Does.Contain((4, 2)).And.Contain((4, 6)).And.Contain((2, 4)).And.Contain((6, 4)));
-            Assert.That(near, Does.Not.Contain((2, 2)));
+            Assert.That(near, Has.Member((4, 2)));
+            Assert.That(near, Has.Member((4, 6)));
+            Assert.That(near, Has.Member((2, 4)));
+            Assert.That(near, Has.Member((6, 4)));
+            Assert.That(near, Has.No.Member((2, 2)));
             // Its own chunk is always in, wherever the camera is in it.
             for (int y = 0; y < 576; y += 37)
                 for (int x = 0; x < 576; x += 41)
-                    Assert.That(g.ChunksWithin(x, y, 0), Does.Contain(g.ChunkOfCell(x, y)), $"cell ({x}, {y})");
+                    Assert.That(g.ChunksWithin(x, y, 0), Has.Member(g.ChunkOfCell(x, y)), $"cell ({x}, {y})");
             // The terrains run north to south the other way: a camera at the north edge (y 0) is in row 8.
             Assert.That(g.ChunksWithin(288, 0, 10), Is.EqualTo(new[] { (4, 8) }));
         }
