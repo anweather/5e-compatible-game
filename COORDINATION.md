@@ -294,3 +294,8 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   (`3c1d848`) and B (`a473873`). Lane slip: part B added a row to
   `docs/FAST_LOOP.md` and a paragraph to `docs/WORLD_STREAMING.md`, both
   World's. Accepted, World told, Gameplay reminded to ask first.
+- 2026-10-27: 0.1.6 merges, World: playtest-findings-0.1.5 `bf848c8`,
+  playtest-player `1049b53`, components `5a2c9f6`, night `6213c4b`,
+  stream-disk `be437fa`. Merged branches that sessions couldn't delete
+  (their permissions refuse it): net-reset, playtest-findings-0.1.5,
+  playtest-player, components, night, stream-disk. Andrew can delete them.
