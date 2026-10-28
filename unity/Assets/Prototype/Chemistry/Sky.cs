@@ -39,6 +39,9 @@ namespace Chem
         public int Wet => Rain + Snow / 2;
     }
 
+    /// <summary>The SRD's light levels, in order: darkness, dim light, bright light.</summary>
+    public enum LightLevel { Dark, Dim, Bright }
+
     public static class Sky
     {
         public const int MinutesPerDay = 24 * 60;
@@ -57,6 +60,25 @@ namespace Chem
 
         public static int Day(long minutes) => (int)(minutes / MinutesPerDay) + 1;
         public static int MinuteOfDay(long minutes) => (int)(minutes % MinutesPerDay);
+
+        /// <summary>
+        /// The daylight at this many game minutes (World.Minutes): bright from the end of dawn to the
+        /// start of dusk, dark from the end of dusk to the start of dawn, dim at dawn and dusk (sim.json day).
+        /// </summary>
+        public static LightLevel Daylight(DayParams d, long minutes)
+        {
+            int m = MinuteOfDay(minutes);
+            if (InHours(d.DawnTo, d.DuskFrom, m)) return LightLevel.Bright;
+            if (InHours(d.DuskTo, d.DawnFrom, m)) return LightLevel.Dark;
+            return LightLevel.Dim;
+        }
+
+        /// <summary>Whether a minute of the day is from hour <paramref name="from"/> up to <paramref name="to"/>, across midnight when from is the later (critters.json hours).</summary>
+        public static bool InHours(double from, double to, int minuteOfDay)
+        {
+            int a = (int)Math.Floor(from * 60), b = (int)Math.Floor(to * 60);
+            return a <= b ? minuteOfDay >= a && minuteOfDay < b : minuteOfDay >= a || minuteOfDay < b;
+        }
 
         /// <summary>The weather at this tick.</summary>
         public static WeatherNow Weather(SimParams p, uint seed, int tick)

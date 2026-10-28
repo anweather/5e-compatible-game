@@ -15,7 +15,7 @@
     "margin": 10, "wallCost": 30, "roughCost": 4, "roughTicks": 6, "batterTicks": 18, "deepWater": 8,
     "kinds": ["bone-hound", "ash-crab", "giant-spider"]
   },
-  "day": { "lengthMinutes": 24, "startHour": 9 },
+  "day": { "lengthMinutes": 24, "startHour": 9, "dawn": [5, 7], "dusk": [18, 20], "nightFreeze": 2, "fireLight": { "bright": 20, "dim": 20 } },
   "streaming": { "reach": 2, "keep": 3, "settleTicks": 12, "lingerChunks": 16, "lingerTicks": 1800, "catchUpTicks": 720 },
   "weather": {
     "periodMinutes": 4, "rampMinutes": 0.5, "calmPeriods": 2,

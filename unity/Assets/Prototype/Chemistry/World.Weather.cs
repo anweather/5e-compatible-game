@@ -6,7 +6,8 @@
 // (dousing, less spread) is in Burn and SpreadChance, the prevailing wind in
 // WindDir. Port of tickWeather in sandbox/src/sim.ts; the weather itself
 // comes from Sky.cs. Nothing happens during the calm stretches the world
-// starts with.
+// starts with. At night (World.Night.cs) snow freezes water day.nightFreeze
+// times as fast, and dry weather leaves the ice and snow till morning.
 using System.Collections.Generic;
 
 namespace Chem
@@ -71,13 +72,14 @@ namespace Chem
             {
                 if (Tick % p.FreezeEvery == 0)
                 {
-                    Freeze(rows, p.FreezeChance * now.Snow / 100, true);
+                    Freeze(rows, p.FreezeChance * now.Snow / 100 * (IsNight ? Rules.Sim.Day.NightFreeze : 1), true);
                     Settle(rows, p.CoverChance * now.Snow / 100, p.BankChance * now.Snow / 100);
                 }
             }
             else if (Tick % p.DryEvery == 0)
             {
                 Dry(rows, p.DryChance);
+                if (IsNight) return;
                 Freeze(rows, p.ThawChance, false);
                 Melt(rows, p.ThawChance);
             }

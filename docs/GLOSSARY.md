@@ -90,6 +90,16 @@ touch them.
   Time runs ahead; `Sky.Minutes`). *Avoid:* reading time of day from
   `World.Tick`.
 
+**Daylight / night / dawn / dusk**
+: The light the sky gives by the clock (`World.Daylight`, `sim.json`
+  `day`): bright by day, dim at dawn and dusk, dark at night, which runs
+  from the end of dusk to the start of dawn (`World.IsNight`).
+
+**Light level**
+: The SRD's light on a cell: bright, dim or darkness (`LightLevel`,
+  `World.LightAt`): the daylight, or a fire's light if brighter. Worked out
+  when asked, never kept.
+
 ## Chemistry
 
 **Rules**

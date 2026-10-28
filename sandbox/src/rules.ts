@@ -180,6 +180,8 @@ export interface CritterDef {
   radius?: number;
   length?: number;
   directional?: boolean;
+  /** [from, to]: the hours it is out (across midnight when from is the later); it does nothing outside them. Always out without. */
+  hours?: [number, number];
   blurb: string;
 }
 export interface EntityDef {
@@ -273,7 +275,15 @@ export interface SimParams {
   conductLimit: number;
   defense: DefenseParams;
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
-  day: { lengthMinutes: number; startHour: number };
+  day: {
+    lengthMinutes: number; startHour: number;
+    /** [from, to] hours: dim light from the first to the second (night.ts, sky.ts daylight). */
+    dawn: [number, number]; dusk: [number, number];
+    /** How many times as fast snow freezes standing water at night. */
+    nightFreeze: number;
+    /** The light a burning cell sheds, in feet as items.json lights are. */
+    fireLight: { bright: number; dim: number };
+  };
   /** The weather (sky.ts picks it, tickWeather in sim.ts applies it). */
   weather: {
     periodMinutes: number;
@@ -326,7 +336,7 @@ export const BASE_RULES: Readonly<Rules> = Object.freeze({
   entities: entities as unknown as Record<string, EntityDef>,
   items: items as Record<string, ItemDef>,
   machines: machines as Record<string, MachineDef>,
-  sim: sim as SimParams,
+  sim: sim as unknown as SimParams,
   groups: groups as Record<string, GroupDef>,
   components: components as Record<string, string>,
 });
@@ -609,6 +619,9 @@ function componentTableErrors(r: Rules): string[] {
   return errors;
 }
 
+/** [from, to]: two hours of the day, 0 to 24 (sky.ts inHours). */
+const isHours = (v: unknown) => Array.isArray(v) && v.length === 2 && v.every((h) => typeof h === "number" && h >= 0 && h <= 24);
+
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
   const errors: string[] = [];
@@ -659,6 +672,7 @@ export function validateRules(r: Rules): string[] {
     if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
+  for (const c of r.critters) if (c.hours !== undefined && !isHours(c.hours)) errors.push(`critter ${c.id}: hours must be [from, to], hours from 0 to 24`);
   for (const id of Object.keys(r.machines)) {
     if (!terrainIds.has(id)) errors.push(`machine ${id}: no terrain with that id`);
     else if (!r.terrain[id]!.tags.includes("machine")) errors.push(`machine ${id}: terrain lacks the machine tag`);

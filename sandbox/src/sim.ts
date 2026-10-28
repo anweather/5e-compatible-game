@@ -8,9 +8,10 @@ import { tickDefense } from "./defense.ts";
 import {
   type Cell, type World,
   DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
-  log, logOnce, neighbours, rand, terrainDef, windDir,
+  clockTick, log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
-import { type WeatherNow, heldWeather, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
+import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
+import { isNight } from "./night.ts";
 import { METEOR_SPELL, landSpell, spellById } from "./actions.ts";
 
 export function step(w: World): void {
@@ -122,6 +123,7 @@ function tickCritters(w: World) {
   for (const cr of w.critters) {
     const def = RULES.critters.find((c) => c.id === cr.kind);
     if (!def || def.mode !== "emit") continue;
+    if (def.hours && !inHours(def.hours[0], def.hours[1], minuteOfDay(minutesAt(RULES.sim, clockTick(w))))) continue;
     if (--cr.timer > 0) continue;
     cr.timer = def.every ?? 6;
     emitCritter(w, cr.kind, cr.x, cr.y, cr.dir);
@@ -335,13 +337,16 @@ function tickWeather(w: World) {
     if (w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);
   } else if (snow > 0) {
     if (w.tick % p.snow.freezeEvery === 0) {
-      freeze(w, (p.snow.freezeChance * snow) / 100, true);
+      freeze(w, ((p.snow.freezeChance * snow) / 100) * (isNight(w) ? RULES.sim.day.nightFreeze : 1), true);
       settle(w, (p.snow.coverChance * snow) / 100, (p.snow.bankChance * snow) / 100);
     }
   } else if (w.tick % p.rain.dryEvery === 0) {
     dry(w, p.rain.dryChance);
-    freeze(w, p.snow.thawChance, false);
-    melt(w, p.snow.thawChance);
+    // At night the ice and snow keep till morning.
+    if (!isNight(w)) {
+      freeze(w, p.snow.thawChance, false);
+      melt(w, p.snow.thawChance);
+    }
   }
   if (now.kind === "storm" && w.tick % p.storm.strikeEvery === 0 && rand(w) < (p.storm.strikeChance * now.strength) / 100) strike(w);
   if (now.meteors > 0 && w.tick % p.meteors.every === 0 && rand(w) < (p.meteors.chance * now.meteors) / 100) meteor(w);

@@ -32,6 +32,24 @@ export const minutesAt = (p: SimParams, tick: number) =>
 export const dayOf = (minutes: number) => Math.floor(minutes / MINUTES_PER_DAY) + 1;
 export const minuteOfDay = (minutes: number) => minutes % MINUTES_PER_DAY;
 
+/** The SRD's light levels: 0 darkness, 1 dim light, 2 bright light (C#: LightLevel). */
+export type LightLevel = 0 | 1 | 2;
+export const DARK: LightLevel = 0, DIM: LightLevel = 1, BRIGHT: LightLevel = 2;
+
+/** Whether a minute of the day is from hour `from` up to `to`, across midnight when from is the later (critters.json hours). */
+export function inHours(from: number, to: number, minute: number): boolean {
+  const a = Math.floor(from * 60), b = Math.floor(to * 60);
+  return a <= b ? minute >= a && minute < b : minute >= a || minute < b;
+}
+
+/** The daylight at this many game minutes: bright from the end of dawn to the start of dusk, dark from the end of dusk to the start of dawn, dim at dawn and dusk. */
+export function daylight(d: SimParams["day"], minutes: number): LightLevel {
+  const m = minuteOfDay(minutes);
+  if (inHours(d.dawn[1], d.dusk[0], m)) return BRIGHT;
+  if (inHours(d.dusk[1], d.dawn[0], m)) return DARK;
+  return DIM;
+}
+
 /** How hard it rains, 0..100 (rain and storms). */
 export const rainOf = (n: WeatherNow) => (n.kind === "rain" || n.kind === "storm" ? n.strength : 0);
 
