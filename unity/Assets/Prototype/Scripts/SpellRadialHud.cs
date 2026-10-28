@@ -34,6 +34,10 @@ public class SpellRadialHud : MonoBehaviour
     readonly Dictionary<int, Texture2D> wedgeTextures = new();
     Texture2D disc;
     GUIStyle label, small, slot;
+    // The element whose spells are out (-1: none), since when, and how long they take to unfold (s).
+    int arcElement = -1;
+    float arcOpenedAt;
+    const float UnfoldSeconds = 0.14f;
 
     /// <summary>The radial's state, for the HUD and the probe (null until the wizard is in a world).</summary>
     public SpellRadial Radial => radial;
@@ -213,18 +217,27 @@ public class SpellRadialHud : MonoBehaviour
         GUI.color = new Color(0f, 0f, 0f, 0.45f);
         GUI.DrawTexture(new Rect(centre.x - r * 1.05f, centre.y - r * 1.05f, r * 2.1f, r * 2.1f), Disc());
         GUI.color = Color.white;
-        for (int i = 0; i < groups.Count; i++) DrawWedge(centre, r, i, groups);
-        if (radial.State == RadialState.Spells && radial.Element >= 0) DrawArc(centre, r, radial.Element, groups);
+        bool spellsOut = radial.State == RadialState.Spells && radial.Element >= 0;
+        int arcFor = spellsOut ? radial.Element : -1;
+        if (arcFor != arcElement)
+        {
+            arcElement = arcFor;
+            arcOpenedAt = Time.unscaledTime;
+        }
+        for (int i = 0; i < groups.Count; i++) DrawWedge(centre, r, i, groups, spellsOut);
+        if (spellsOut) DrawArc(centre, r, radial.Element, groups);
         DrawCentre(centre, r);
         GUI.color = Color.white;
     }
 
-    void DrawWedge(Vector2 centre, float r, int i, IReadOnlyList<RadialGroup> groups)
+    // An element's wedge: lit when highlighted; once an element's spells are out the others fall
+    // back, so the spells read as a second pick inside the first.
+    void DrawWedge(Vector2 centre, float r, int i, IReadOnlyList<RadialGroup> groups, bool spellsOut)
     {
         double angle = RadialGeometry.WedgeCentre(i, groups.Count);
         bool lit = radial.Element == i;
         var colour = ParseColor(groups[i].Color);
-        colour.a = lit ? 0.9f : 0.45f;
+        colour.a = WedgeAlpha(lit, spellsOut);
         var matrix = GUI.matrix;
         GUIUtility.RotateAroundPivot((float)angle, centre);
         GUI.color = colour;
@@ -245,13 +258,21 @@ public class SpellRadialHud : MonoBehaviour
             double angle = RadialGeometry.SlotCentre(element, groups.Count, s, spells.Count, radial.Tuning);
             var def = rules.Spell(spells[s]);
             bool lit = radial.Spell == s;
-            var at = Polar(centre, angle, r * 1.45f);
+            // Unfolding out of the ring's edge as the arc opens.
+            var at = Polar(centre, angle, r * Mathf.Lerp(1.02f, 1.45f, Unfold()));
             string level = LevelOf(def);
             string name = def?.Name ?? spells[s];
             string text = lit ? $"<color=#ffd24a><b>{name}</b></color>\n<size={small.fontSize}>{level}</size>" : $"<b>{name}</b>\n<size={small.fontSize}>{level}</size>";
             var size = new Vector2(210f, 58f) * Scale;
-            GUI.color = lit ? new Color(0.15f, 0.12f, 0.05f, 0.92f) : new Color(0.05f, 0.06f, 0.08f, 0.8f);
-            GUI.DrawTexture(new Rect(at.x - size.x / 2f, at.y - size.y / 2f, size.x, size.y), Texture2D.whiteTexture);
+            var box = new Rect(at.x - size.x / 2f, at.y - size.y / 2f, size.x, size.y);
+            if (lit)
+            {
+                // Edged in the element's colour.
+                GUI.color = ParseColor(groups[element].Color);
+                GUI.DrawTexture(new Rect(box.x - 3f, box.y - 3f, box.width + 6f, box.height + 6f), Texture2D.whiteTexture);
+            }
+            GUI.color = lit ? new Color(0.15f, 0.12f, 0.05f, 0.95f) : new Color(0.05f, 0.06f, 0.08f, 0.8f);
+            GUI.DrawTexture(box, Texture2D.whiteTexture);
             GUI.color = Color.white;
             Centred(at, text, slot);
         }
@@ -263,7 +284,7 @@ public class SpellRadialHud : MonoBehaviour
         var id = radial.HighlightedSpell;
         var def = id != null ? caster.grid.World.Rules.Spell(id) : null;
         bool pad = controls.UsingGamepad;
-        string text = def != null ? $"<b>{def.Name}</b>" : CancelHint(pad);
+        string text = def != null ? $"<b>{def.Name}</b>" : $"{StepHint()}\n{CancelHint(pad)}";
         label.fontSize = Mathf.RoundToInt(17 * Scale);
         Centred(centre, text, label);
         if (def?.Blurb != null)
@@ -282,6 +303,26 @@ public class SpellRadialHud : MonoBehaviour
             var cursor = new Vector2(centre.x + (float)radial.CursorX * r, centre.y - (float)radial.CursorY * r);
             GUI.DrawTexture(new Rect(cursor.x - 5f, cursor.y - 5f, 10f, 10f), Disc());
         }
+    }
+
+    // How far the arc has unfolded since it opened (0 to 1, eased over UnfoldSeconds).
+    float Unfold() => Mathf.SmoothStep(0f, 1f, (Time.unscaledTime - arcOpenedAt) / UnfoldSeconds);
+
+    // A wedge's opacity: highlighted, ordinary, or fallen back while an element's spells are out.
+    static float WedgeAlpha(bool lit, bool spellsOut)
+    {
+        if (lit) return 0.9f;
+        return spellsOut ? 0.18f : 0.45f;
+    }
+
+    // Andrew: it wasn't clear it's two picks. The centre says which step it's on.
+    string StepHint()
+    {
+        int size = Mathf.RoundToInt(15 * Scale);
+        string step = radial.State == RadialState.Spells && radial.Element >= 0
+            ? $"2 · pick a {radial.Layout.Groups[radial.Element].Name} spell"
+            : "1 · pick an element, then push out for its spells";
+        return $"<size={size}><color=#ffffffcc>{step}</color></size>";
     }
 
     static string LevelOf(SpellDef def)
