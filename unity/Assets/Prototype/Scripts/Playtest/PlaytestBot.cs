@@ -300,6 +300,7 @@ public class PlaytestBot : MonoBehaviour
     // shots/<frame>-<label>.jpg and checked for magenta, black and white. Returns its path in the run.
     string Shoot(string label)
     {
+        frameWatch.ShotTaken(frame);
         var cam = Camera.main;
         if (cam == null) return null;
         var rt = RenderTexture.GetTemporary(ShotWidth, ShotHeight, 24);

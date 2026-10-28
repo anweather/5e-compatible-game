@@ -322,4 +322,14 @@ public class PlaytestLogicTests
         Assert.That(GoalPicker.ByKey(dice, Options(), "Visit:the moon"), Is.Null, "not a place here");
         Assert.That(GoalPicker.ByKey(dice, Options(), "Idle").Kind, Is.EqualTo(GoalKind.Idle));
     }
+
+    [Test]
+    public void ASpikeJustAfterTheBotsOwnScreenshotIsntTheGames()
+    {
+        var watch = new FrameWatch();
+        watch.ShotTaken(100);
+        Assert.That(watch.Frame(102, 140f, "tower"), Is.Empty, "the screenshot's readback");
+        Assert.That(watch.Frame(103, 140f, "tower"), Is.Empty);
+        Assert.That(watch.Frame(104, 140f, "tower").Single().Detector, Is.EqualTo("frame-spike"), "past the shot's frames, a spike counts");
+    }
 }
