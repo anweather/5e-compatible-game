@@ -38,12 +38,24 @@ files players will get, tested before anyone can see it.
    `unity/ProjectSettings/ProjectSettings.asset` (Player Settings → Version)
    to `X.Y.Z`, committed as `chore: version X.Y.Z` and pushed. After a pull
    that changes ProjectSettings, restart the Editor before building.
-4. **Build the RC** on the Mac (it has Mac and Windows build support; the PC
-   has no Mac support): Editor open on main's HEAD, a clean tree, the yard
-   rebuilt, then `tools/ship-update.sh X.Y.Z`. It builds both players, packs
-   them with Velopack (deltas from the last release on each channel) and
-   uploads the **draft** `alpha-X.Y.Z` (see "Updates in place" below). Check
-   the two builds log the same `NET CONFIG` hash (`-host-online`).
+4. **Build the RC in two halves, at the same time** (J-025): the PC builds
+   Windows (its shader cache is warm; the Mac compiles every Direct3D
+   variant from scratch, about 35 minutes) and the Mac builds macOS (the PC
+   has no Mac Build Support). On each machine: Editor open on main's HEAD
+   (the same commit on both), a clean tree, the yard rebuilt, then
+   - the Mac: `tools/ship-update.sh X.Y.Z --mac-only`
+   - the PC: `tools/ship-update.sh X.Y.Z --windows-only`
+
+   Each builds its player, packs it with Velopack (a delta from the last
+   release on its channel) and uploads only its own files (`releases.osx.json`
+   and the `osx` packages, or `releases.win.json` and the `win` ones) into
+   the one **draft** `alpha-X.Y.Z` (see "Updates in place" below). Start one
+   machine first and the other once it prints "Release alpha-X.Y.Z is ready":
+   whichever starts first creates the draft before building. The script
+   refuses a draft that targets another commit, and stops if both made one
+   (two releases with the tag: delete the extra, then `--skip-build`). Both
+   halves must log the same `NET CONFIG` hash (`-host-online`).
+   One machine can still build both: `tools/ship-update.sh X.Y.Z` on the Mac.
 5. **Notes:** player-facing, from the merges since the last release
    (`git log origin/main@{1}..origin/main --first-parent`, or
    `alpha-<last>..main`): new, faster, fixed, how to install. Then
