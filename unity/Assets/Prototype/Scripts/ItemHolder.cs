@@ -131,9 +131,16 @@ public class ItemHolder : MonoBehaviour
     public void HoldInHand()
     {
         if (Held == null) return;
-        var aim = controls != null ? AimDirection : transform.forward;
+        var aim = controls != null ? FrontArc(AimDirection) : transform.forward;
         Held.transform.SetPositionAndRotation(HandPosition, Quaternion.LookRotation(aim));
     }
+
+    // How far from straight ahead a held item may point (Andrew: the lantern pointed where the camera
+    // looked, back through the wizard when the camera came round in front).
+    const float FrontArcDegrees = 70f;
+
+    // An aim kept within the front arc: turned toward the wizard's front where it points further round.
+    Vector3 FrontArc(Vector3 aim) => Vector3.RotateTowards(transform.forward, aim, FrontArcDegrees * Mathf.Deg2Rad, 0f);
 
     // In an animal's shape (Shapeshift): no picking things up.
     bool Animal => shape != null && shape.Shifted;
