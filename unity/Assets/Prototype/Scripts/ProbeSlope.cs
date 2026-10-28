@@ -8,7 +8,8 @@ using UnityEngine;
 // the before and after pictures come from the same script.
 public class SlopeProbe : ProbeScenario
 {
-    const int Reach = 6, Search = 90;
+    // Measure: how far round the cast cell the water is looked for (a stream runs a cell a tick).
+    const int Reach = 6, Search = 90, Measure = 40;
 
     protected override IEnumerator Run()
     {
@@ -39,8 +40,8 @@ public class SlopeProbe : ProbeScenario
         // (spread evenly it stays near 0; running downhill it moves down), and the lowest wet ground.
         float top = ground.BaseHeight(best.x, best.y), lowest = top;
         double units = 0, along = 0;
-        for (int y = best.y - Reach * 2; y <= best.y + Reach * 2; y++)
-            for (int x = best.x - Reach * 2; x <= best.x + Reach * 2; x++)
+        for (int y = best.y - Measure; y <= best.y + Measure; y++)
+            for (int x = best.x - Measure; x <= best.x + Measure; x++)
             {
                 var c = World.InBounds(x, y) ? World.At(x, y) : null;
                 if (c == null || c.Water == 0) continue;
