@@ -40,7 +40,15 @@ public class SlopeProbe : ProbeScenario
         // From straight above, nearly: trees round a hillside hid it from the side.
         Cut(look + (at - far).normalized * 6f + Vector3.up * 20f, look);
         caster.Cast(SpellIds.CreateWater, best.x, best.y, dir);
-        yield return Wait(12f);
+        // While it runs: close, from up the hill.
+        yield return Wait(2.5f);
+        foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = false;
+        Cut(at + (at - far).normalized * 5f + Vector3.up * 4f, at + (far - at).normalized * 4f);
+        yield return Wait(0.3f);
+        Shot("slope-running");
+        yield return null;
+        yield return null;
+        yield return Wait(9f);
 
         // Where the water went: its centre's distance down the hill from the cast cell, in cells
         // (spread evenly it stays near 0; running downhill it moves down), and the lowest wet ground.
