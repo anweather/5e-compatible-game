@@ -29,6 +29,14 @@ public class PaperCutsProbe : ProbeScenario
         if (village != null) yield return BurntLights(village);
     }
 
+    // A picture, then a frame before the camera moves on: ScreenCapture takes it at the frame's end.
+    IEnumerator Snap(string label)
+    {
+        Shot(label);
+        yield return null;
+        yield return null;
+    }
+
     const string Clear = "{ 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }";
 
     // #1: each sign's words from the front and from behind, and whether they're drawn with the
@@ -48,10 +56,10 @@ public class PaperCutsProbe : ProbeScenario
             Teleport(at - forward * 6f + Vector3.up * 0.1f);
             Cut(at - forward * 3f + Vector3.up * 0.3f, at);
             yield return Wait(0.5f);
-            Shot(label + "-front");
+            yield return Snap(label + "-front");
             Cut(at + forward * 3f + Vector3.up * 0.3f, at);
             yield return Wait(0.5f);
-            Shot(label + "-back");
+            yield return Snap(label + "-back");
         }
     }
 
@@ -69,10 +77,10 @@ public class PaperCutsProbe : ProbeScenario
             var eye = p + Vector3.up * 1.55f;
             Cut(eye + (square - p).normalized * 1.4f + Vector3.up * 0.1f, eye);
             yield return Wait(0.3f);
-            Shot("villager-face");
+            yield return Snap("villager-face");
             Cut(eye + Quaternion.Euler(0f, 120f, 0f) * (square - p).normalized * 1.4f, eye);
             yield return Wait(0.3f);
-            Shot("villager-face-2");
+            yield return Snap("villager-face-2");
         }
         for (float t = 0f; t < 45f && !fauna.FirstSitter(village, out _, out _); t += 1f) yield return Wait(1f);
         if (fauna.FirstSitter(village, out var sitter, out float facing))
@@ -84,10 +92,10 @@ public class PaperCutsProbe : ProbeScenario
             Check("sits_on_the_seat", seat != null && off < 0.25f, $"{off:0.00} m from the seat's foot");
             Cut(sitter + front * 2.6f + Quaternion.Euler(0f, 90f, 0f) * front * 1.4f + Vector3.up * 1.3f, sitter + Vector3.up * 0.6f);
             yield return Wait(0.3f);
-            Shot("sitting");
+            yield return Snap("sitting");
             Cut(sitter + Quaternion.Euler(0f, 90f, 0f) * front * 3f + Vector3.up * 1f, sitter + Vector3.up * 0.6f);
             yield return Wait(0.3f);
-            Shot("sitting-side");
+            yield return Snap("sitting-side");
         }
         else Check("sits_on_the_seat", false, "no one sat within 45 s");
     }
@@ -116,10 +124,10 @@ public class PaperCutsProbe : ProbeScenario
         Teleport(t.position + front * 9f + Vector3.up * 0.1f);
         Cut(t.position + front * 7f + Vector3.up * 2.2f, t.position + Vector3.up * 1.6f);
         yield return Wait(0.5f);
-        Shot("house-front");
+        yield return Snap("house-front");
         Cut(t.position + front * 3.2f + t.right * 1.5f + Vector3.up * 1.8f, t.position + front * 0.2f + Vector3.up * 1.4f);
         yield return Wait(0.3f);
-        Shot("house-close");
+        yield return Snap("house-close");
     }
 
     // #5: walking at the well from beside it, does the wall stop you?
@@ -130,7 +138,7 @@ public class PaperCutsProbe : ProbeScenario
         Check("well_wall_stops_you", hit && h.distance < 2.2f, hit ? $"stopped by {h.collider.name} {h.distance:0.0} m in" : "walked straight through");
         Cut(well + new Vector3(3f, 2f, -3f), well + Vector3.up * 0.6f);
         yield return Wait(0.3f);
-        Shot("well");
+        yield return Snap("well");
     }
 
     // #8: is a point on the beach somewhere a wild animal may walk?
@@ -154,7 +162,7 @@ public class PaperCutsProbe : ProbeScenario
         Teleport(at + Vector3.up * 0.5f);
         Cut(at + new Vector3(-14f, 9f, -14f), at + Vector3.up * 2f);
         yield return Wait(1f);
-        Shot("island");
+        yield return Snap("island");
     }
 
     // #10c: at dusk, an inn whose roof is gone (as a burnt-down one's is) keeps its door light out.
