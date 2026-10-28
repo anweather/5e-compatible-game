@@ -55,6 +55,15 @@ public class VillagersProbe : ProbeScenario
             yield return Wait(0.3f);
             Shot("sitting");
             yield return Wait(0.3f);
+            // The head close up, from the front, the side and behind (Andrew: the faces).
+            var head = sitter + Vector3.up * 1.15f;
+            foreach (var (turn, name) in new[] { (0f, "face-front"), (90f, "face-side"), (180f, "face-back") })
+            {
+                Cut(head + Quaternion.Euler(0f, turn, 0f) * front * 0.9f, head);
+                yield return Wait(0.3f);
+                Shot(name);
+                yield return Wait(0.2f);
+            }
             Cut(overview, square);
         }
 
