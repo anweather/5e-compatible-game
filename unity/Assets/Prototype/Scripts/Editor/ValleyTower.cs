@@ -188,15 +188,7 @@ public static class ValleyTower
         var go = new GameObject("Tower sign words");
         go.transform.SetParent(board, false);
         go.transform.localPosition = new Vector3(0f, 1.55f, -0.06f);
-        var words = go.AddComponent<TextMesh>();
-        words.text = text;
-        words.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        words.fontSize = 64;
-        words.characterSize = 0.035f;
-        words.anchor = TextAnchor.MiddleCenter;
-        words.alignment = TextAlignment.Center;
-        words.color = new Color(0.98f, 0.94f, 0.82f);
-        if (words.font != null) go.GetComponent<MeshRenderer>().sharedMaterial = words.font.material;
+        SignWords.Write(go, text, 0.035f, 1.8f, 0.85f);
     }
 
     // Straw mats in a ring round the column's foot: where a fall from the tower lands (only a look;
