@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using Chem;
 using UnityEngine;
 
@@ -107,6 +108,7 @@ public class Carryable : MonoBehaviour
         body.interpolation = RigidbodyInterpolation.None;
         IgnoreHolder(holder, true);
         transform.SetParent(holder.transform, true);
+        OutOfTheCamerasWay(true);
     }
 
     /// <summary>
@@ -118,6 +120,7 @@ public class Carryable : MonoBehaviour
         var from = Holder;
         Holder = null;
         transform.SetParent(restParent, true);
+        OutOfTheCamerasWay(false);
         foreach (var use in Uses) use.Released();
         if (from != null) StartCoroutine(StopIgnoring(from));
         if (Puppet) return;
@@ -134,6 +137,29 @@ public class Carryable : MonoBehaviour
         transform.position = from;
         body.position = from;
     }
+
+    // Held, on the Ignore Raycast layer: the follow camera's obstacle check (Default only) no longer
+    // hits it and snaps in when the hand swings into its line (Andrew's camera snapping), and rays
+    // pass it by. Its own layers back on letting go.
+    void OutOfTheCamerasWay(bool held)
+    {
+        if (held)
+        {
+            layers.Clear();
+            foreach (var t in GetComponentsInChildren<Transform>(true))
+            {
+                layers.Add((t.gameObject, t.gameObject.layer));
+                t.gameObject.layer = HeldLayer;
+            }
+            return;
+        }
+        foreach (var (go, layer) in layers)
+            if (go != null) go.layer = layer;
+        layers.Clear();
+    }
+
+    const int HeldLayer = 2; // Ignore Raycast
+    readonly List<(GameObject go, int layer)> layers = new();
 
     IEnumerator StopIgnoring(ItemHolder from)
     {

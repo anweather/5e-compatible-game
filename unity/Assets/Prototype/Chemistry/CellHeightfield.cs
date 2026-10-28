@@ -152,13 +152,58 @@ namespace Chem
                 }
             }
             if (!float.IsNegativeInfinity(wall)) return wall;
-            if (p == 1) return sum / ((u1 - u0 + 1) * (v1 - v0 + 1));
-            return Blended(world, i, j, sx, sz, p, Offset(world, CellAt(world, u1, v1)));
+            float fu = i * TerrainGrid.ChunkCells + (float)sx / p - 0.5f, fv = j * TerrainGrid.ChunkCells + (float)sz / p - 0.5f;
+            float mound = BankAt(world, fu, fv);
+            if (p == 1) return sum / ((u1 - u0 + 1) * (v1 - v0 + 1)) + mound;
+            return Blended(world, i, j, sx, sz, p, Offset(world, CellAt(world, u1, v1))) + mound;
+        }
+
+        // ---------- snow banks as mounds ----------
+
+        // A snow bank is a rounded mound (Andrew's playtest #30: banks showed as squares, a flat
+        // 0.45 m block per cell): each bank cell raises a bump centred on it, full height within
+        // MoundCore cells of its centre and easing to nothing at MoundReach; each a little higher
+        // or lower (its own hash), and where bumps overlap the higher wins, so a row of banks is one
+        // drift with a rounded top. The terrain is also the ground walked on, so the walking follows.
+        const float MoundCore = 0.3f, MoundReach = 1.45f;
+
+        /// <summary>The snow banks' height at a point in cell units (cell centres on whole numbers).</summary>
+        float BankAt(World world, float fu, float fv)
+        {
+            float best = 0f;
+            for (int v = (int)Math.Floor(fv - MoundReach); v <= (int)Math.Ceiling(fv + MoundReach); v++)
+                for (int u = (int)Math.Floor(fu - MoundReach); u <= (int)Math.Ceiling(fu + MoundReach); u++)
+                {
+                    var c = CellAt(world, u, v);
+                    if (c == null || c.Cover != World.BankCover) continue;
+                    float du = fu - u, dv = fv - v;
+                    float d = (float)Math.Sqrt(du * du + dv * dv);
+                    if (d >= MoundReach) continue;
+                    float t = Math.Max(0f, (d - MoundCore) / (MoundReach - MoundCore));
+                    best = Math.Max(best, BankDepth * MoundJitter(u, v) * (1f - t * t * (3f - 2f * t)));
+                }
+            return best;
+        }
+
+        // 0.8 to 1.2, the same for a cell every time (a view-only look, not world state).
+        static float MoundJitter(int u, int v)
+        {
+            unchecked
+            {
+                uint h = (uint)u * 0x8da6b343u ^ (uint)v * 0xd8163841u;
+                h ^= h >> 15;
+                h *= 0x2c1b3c6du;
+                h ^= h >> 12;
+                return 0.8f + 0.4f * (h & 0xffff) / 65535f;
+            }
         }
 
         // A cell's offset as the ground under it is drawn (a raised wall over FlatUnderWalls drawn flat).
         float Offset(World world, Cell c) =>
-            c != null && FlatUnderWalls && world.IsRaisedWall(c) ? (world.TerrainOf(c).Elevation + Math.Min(c.Height, 0)) * StepHeight : CellOffset(world, c);
+            c != null && FlatUnderWalls && world.IsRaisedWall(c) ? (world.TerrainOf(c).Elevation + Math.Min(c.Height, 0)) * StepHeight : GroundOffset(world, c);
+
+        // A cell's ground without its snow bank (BankAt draws the banks as mounds).
+        float GroundOffset(World world, Cell c) => c == null ? 0f : (world.TerrainOf(c).Elevation + c.Height) * StepHeight;
 
         // Bilinear between the centres of the four cells round a full-detail sample. A neighbour that
         // is a raised wall (drawn by its own rule) counts as the sample's own cell; one off the grid as 0.
@@ -220,11 +265,12 @@ namespace Chem
             foreach (var (x, y) in cells)
             {
                 var (u, v) = grid.WorldCell(x, y);
-                var (iLo, iHi) = TerrainGrid.ChunkSpan(u - 1, u + 2);
-                var (jLo, jHi) = TerrainGrid.ChunkSpan(v - 1, v + 2);
+                // Two cells round it: a snow bank's mound reaches past its own cell (BankAt).
+                var (iLo, iHi) = TerrainGrid.ChunkSpan(u - 2, u + 3);
+                var (jLo, jHi) = TerrainGrid.ChunkSpan(v - 2, v + 3);
                 for (int j = jLo; j <= jHi; j++)
                     for (int i = iLo; i <= iHi; i++)
-                        if (Shapes(i, j)) rects.Add(Clip(i, j, u - 1, v - 1, u + 2, v + 2));
+                        if (Shapes(i, j)) rects.Add(Clip(i, j, u - 2, v - 2, u + 3, v + 3));
             }
             return rects.ToList();
         }

@@ -42,7 +42,7 @@ namespace Playtest
         public List<Candidate> Candidates { get; set; } = new List<Candidate>();
         public Dictionary<string, int> Counts { get; set; } = new Dictionary<string, int>();
         public Dictionary<string, float> Metrics { get; set; } = new Dictionary<string, float>();
-        /// <summary>How it ended: "done", "until-frame", "error".</summary>
+        /// <summary>How it ended: "done", "until-frame", "error", "bot-lost-wizard".</summary>
         public string Ended { get; set; }
 
         public string ToJson() => JsonConvert.SerializeObject(this, Formatting.Indented);
@@ -74,16 +74,19 @@ namespace Playtest
         /// </summary>
         public static int UnitySeed(ulong seed) => unchecked((int)(seed ^ (seed >> 32)));
 
+        /// <summary>A screenshot step: taken for a goal or a candidate, and a frame spike's is timed by the wall clock, so it isn't compared.</summary>
+        public const string Shot = "shot";
+
         /// <summary>
         /// The first trace step where a replay did something else (a different action or detail, or
-        /// at a different frame) up to the given frame; null if it matches all the way.
+        /// at a different frame) up to the given frame, screenshots aside; null if it matches all the way.
         /// </summary>
         public static TraceStep FirstDifference(RunReport original, RunReport replay, int upToFrame)
         {
             if (original == null) throw new ArgumentNullException(nameof(original));
             if (replay == null) throw new ArgumentNullException(nameof(replay));
-            var a = original.Trace.Where(s => s.Frame <= upToFrame).ToList();
-            var b = replay.Trace.Where(s => s.Frame <= upToFrame).ToList();
+            var a = original.Trace.Where(s => s.Frame <= upToFrame && s.Action != Shot).ToList();
+            var b = replay.Trace.Where(s => s.Frame <= upToFrame && s.Action != Shot).ToList();
             for (int i = 0; i < Math.Min(a.Count, b.Count); i++)
                 if (a[i].Frame != b[i].Frame || a[i].Action != b[i].Action || a[i].Detail != b[i].Detail) return b[i];
             if (a.Count == b.Count) return null;
@@ -108,7 +111,7 @@ namespace Playtest
             if (run == null) yield break;
             var before = run.Trace.Where(s => s.Frame <= upToFrame).ToList();
             foreach (var g in before.Where(s => s.Action == "goal")) yield return Seconds(g.Frame) + " " + g.Detail;
-            var actions = before.Where(s => s.Action != "goal" && s.Action != "shot" && s.Action != Sync).ToList();
+            var actions = before.Where(s => s.Action != "goal" && s.Action != Shot && s.Action != Sync).ToList();
             foreach (var s in actions.Skip(Math.Max(0, actions.Count - lastActions)))
                 yield return Seconds(s.Frame) + "   then " + s.Action + " " + s.Detail;
         }

@@ -53,17 +53,9 @@ namespace Playtest.Runner
 
             var started = DateTime.Now;
             var clock = Stopwatch.StartNew();
-            // The player's own console output (its boot settings) is read and dropped: it logs to Player.log.
-            using var p = Process.Start(new ProcessStartInfo(exe, Arguments(paths, outDir, seconds, options))
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            });
-            p.OutputDataReceived += (_, _) => { };
-            p.ErrorDataReceived += (_, _) => { };
-            p.BeginOutputReadLine();
-            p.BeginErrorReadLine();
+            // Started without taking the front (Launch); it logs to Player.log.
+            string args = Arguments(paths, outDir, seconds, options) + " -playtest-hand-focus " + Launch.FrontWindow().ToString(CultureInfo.InvariantCulture);
+            using var p = Launch.Start(exe, args);
             var (hung, muted) = Watch(p, Path.Combine(outDir, "heartbeat.txt"), clock, Math.Max(300, seconds * 3));
             System.Threading.Thread.Sleep(2000); // let Windows write any crash report
             int took = (int)clock.Elapsed.TotalSeconds;
@@ -97,6 +89,11 @@ namespace Playtest.Runner
             if (options.TryGetValue("seed", out var seed)) a.AddRange(new[] { "-playtest-seed", seed });
             if (options.TryGetValue("replay", out var replay)) a.AddRange(new[] { "-playtest-replay", Q(Path.GetFullPath(replay)) });
             if (options.TryGetValue("until-frame", out var until)) a.AddRange(new[] { "-playtest-until-frame", until });
+            if (options.TryGetValue("goals", out var goals)) a.AddRange(new[] { "-playtest-goals", goals });
+            // GPU pipeline states (the Build lane's Scripts/Perf/PsoTrace.cs): record them, or warm them up at start.
+            if (options.TryGetValue("pso-trace", out var trace)) a.AddRange(new[] { "-pso-trace", Q(Path.GetFullPath(trace)) });
+            if (options.TryGetValue("pso-warmup", out var warmup)) a.AddRange(new[] { "-pso-warmup", Q(Path.GetFullPath(warmup)) });
+            if (options.ContainsKey("no-pso-warmup")) a.Add("-no-pso-warmup");
             if (File.Exists(paths.Coverage)) a.AddRange(new[] { "-playtest-coverage", Q(paths.Coverage) });
             // Performance findings only count from runs with no Unity Editor open.
             if (!Preflight.Now().Unity.Any(Preflight.IsEditor)) a.Add("-playtest-quiet");

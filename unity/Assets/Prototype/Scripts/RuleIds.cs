@@ -89,6 +89,8 @@ public static class TerrainIds
     public const string Dirt = "dirt";
     public const string Pit = "pit";
     public const string River = "river";
+    // Roof materials (world/villages.json "materials"): not cells, a building's roof.
+    public const string Thatch = "thatch", Shingle = "shingle", Slate = "slate";
     public const string Metal = "metal";
     public const string LogWall = "logwall";
     public const string Stone = "stone";

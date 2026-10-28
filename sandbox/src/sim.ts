@@ -7,7 +7,7 @@ import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
 import {
   type Cell, type World,
-  DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
+  DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
   clockTick, log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
 import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
@@ -28,10 +28,12 @@ export function step(w: World): void {
   tickEntities(w);
   tickDefense(w);
   tickMachines(w);
+  const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (c.charge > 0) c.charge--;
     if (c.life > 0 && --c.life === 0) ripen(w, i, c);
+    if (soaking && c.water > 0) soak(w, i, c);
   }
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
   tickClock(w);
@@ -73,6 +75,35 @@ function tickClock(w: World) {
  * burns it waits a tick at a time; a tree waits while something stands there, and
  * pushes the water out of wet ground as it grows.
  */
+/** World.Soak: water on ground that turns it freezes or boils off; thin water soaks in and dries up, more slowly on damp ground, and leaves it damp. */
+function soak(w: World, i: number, c: Cell) {
+  const t = terrainDef(c), p = RULES.sim.water;
+  if (t.waterTo === "ice") {
+    c.frozen = true;
+    return;
+  }
+  if (t.waterTo === "steam") {
+    c.water--;
+    c.frozen = false;
+    addGas(c, "steam", 1);
+    return;
+  }
+  if (c.frozen || c.water > p.thin) return;
+  const x = i % w.w, y = Math.floor(i / w.w);
+  for (let d = 0; d < 4; d++) {
+    const n = cellAt(w, x + DX[d]!, y + DY[d]!);
+    if (n && n.water > p.thin) return;
+  }
+  const now = w.weather, weather = RULES.sim.weather;
+  const raining = (now.period >= weather.calmPeriods || !!w.weatherSet) && rainOf(now) > 0;
+  const every = (raining || w.tick < (c.dampUntil ?? 0) ? t.soakEveryWet : t.soakEvery) ?? 0;
+  if (every <= 0) return;
+  const turns = Math.max(1, Math.floor(every / p.soakPass));
+  if ((Math.floor(w.tick / p.soakPass) + x * 7 + y * 13) % turns !== 0) return;
+  c.water--;
+  c.dampUntil = w.tick + p.dampTicks;
+}
+
 function ripen(w: World, i: number, c: Cell) {
   if (c.fire > 0) {
     c.life = 1;
@@ -139,7 +170,7 @@ function tickFire(w: World) {
     if (c.fire === 0) continue;
     const x = i % w.w, y = Math.floor(i / w.w);
     // Water puts out anything but a floating oil or grease fire.
-    if (c.water > 0 && !c.frozen && !coverHasTag(c, "flammable")) {
+    if (c.water > 0 && !c.frozen && !coverBurns(c)) {
       c.fire = 0;
       c.fuel = 0;
       addGas(c, "steam", 1);
@@ -153,14 +184,16 @@ function tickFire(w: World) {
       const flam = flammability(n);
       const downwind = windDir(w) === d ? p.downwindBonus : 0;
       const wet = n.water > 0 && !n.frozen;
-      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) + downwind * flam) * rainDamp(w) : wet ? p.boilChance : p.heatChance;
+      // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
+      const heat = coverBurns(c) ? 1 : (terrainDef(c).heat ?? 1);
+      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) * heat + downwind * flam) * rainDamp(w) : wet ? p.boilChance : p.heatChance;
       if (rand(w) < chance) applyElement(w, nx, ny, "fire", { power: 1, direct: false });
     }
     if (--c.fuel > 0) continue;
-    if (coverHasTag(c, "flammable")) {
+    if (coverBurns(c)) {
       c.cover = null;
       const t = terrainDef(c);
-      if (t.tags.includes("flammable")) {
+      if (burns(t)) {
         c.fuel = t.fuel ?? 5;
         c.fire = 2;
       } else {
@@ -198,6 +231,7 @@ function tickWater(w: World) {
     if (c.water === 0 || c.frozen || isBlocking(c)) continue;
     const x = i % w.w, y = Math.floor(i / w.w);
     const level = elevation(c) + c.water;
+    const here = w.land ? w.land[i]! : NO_LAND;
     // Water always runs onto lower ground; on the flat it needs a 2-step
     // difference, so a still puddle doesn't slosh back and forth forever.
     let best = -1, bestScore = 0;
@@ -206,8 +240,11 @@ function tickWater(w: World) {
       if (nc.frozen && nc.water > 0) continue;
       if ((hasTag(nc, "blocking") && !hasTag(nc, "vessel")) || isRaisedWall(nc)) continue;
       if (nc.water >= RULES.sim.water.maxLevel) continue;
-      const drop = level - (elevation(nc) + nc.water);
-      const downhill = elevation(nc) < elevation(c);
+      // Between two dry-land cells the land's slope counts too; a water body's cells keep level.
+      const there = here === NO_LAND ? NO_LAND : w.land![idx(w, nx, ny)]!;
+      const slope = there === NO_LAND ? 0 : here - there;
+      const drop = level + slope - (elevation(nc) + nc.water);
+      const downhill = elevation(nc) < elevation(c) + slope;
       if (!(drop >= 2 || (downhill && drop >= 1))) continue;
       const score = drop + (downhill ? 0.5 : 0);
       if (score > bestScore) {

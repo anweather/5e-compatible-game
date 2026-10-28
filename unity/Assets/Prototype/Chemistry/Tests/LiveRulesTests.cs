@@ -144,15 +144,98 @@ namespace Chem.Tests
             Assert.That(errors, Is.EqualTo(new[] { "rule x: unknown effect \"teleportEverything\" (new verbs need code; see docs/MODDING.md)" }));
         }
 
+        // materials.json (spelled as verb groups since step 3) with every terrain and cover spelled flat,
+        // the old way (MaterialGroups.Ungroup).
+        static Rules Flat()
+        {
+            var files = Directory.GetFiles(ChemistryTests.RulesDir(), "*.json").ToDictionary(Path.GetFileName, File.ReadAllText);
+            var materials = JObject.Parse(files["materials.json"]);
+            Assert.That(MaterialGroups.Ungroup(materials), Is.Empty);
+            files["materials.json"] = materials.ToString();
+            return Rules.FromJson(files);
+        }
+
+        [Test]
+        public void MaterialsJsonIsSpelledAsVerbGroups()
+        {
+            // docs/MATERIALS.md, step 3: no terrain or cover in the committed file uses a flat verb key.
+            var materials = JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "materials.json")));
+            string[] flatKeys = { "flammability", "fuel", "heat", "burnsTo", "burnLog", "fireLook", "breaksTo", "dugTo", "hardness", "soakEvery", "soakEveryWet", "waterTo", "growsTo", "growLog", "uprootsTo", "uprootLog", "burnIntensity" };
+            foreach (var table in new[] { "terrain", "covers" })
+                foreach (var p in ((JObject)materials[table]).Properties())
+                {
+                    var flat = flatKeys.Where(k => p.Value[k] != null).ToList();
+                    Assert.That(flat, Is.Empty, $"{table} {p.Name} still has {string.Join(", ", flat)}");
+                    var tags = ((JObject)p.Value)["tags"]?.Select(t => (string)t).ToList() ?? new List<string>();
+                    Assert.That(tags.Intersect(new[] { "flammable", "breakable", "conductive" }), Is.Empty, $"{table} {p.Name}: a verb's tag comes from its group");
+                }
+        }
+
+        [Test]
+        public void MaterialsSpelledAsVerbGroupsReadTheSame()
+        {
+            // docs/MATERIALS.md, step 1: the grouped spelling is an alias; nothing reads differently.
+            var grouped = Base;
+            var flat = Flat();
+            Assert.That(grouped.Terrain.Keys, Is.EqualTo(flat.Terrain.Keys));
+            foreach (var (id, t) in flat.Terrain)
+            {
+                var g = grouped.Terrain[id];
+                Assert.That(g.Tags.OrderBy(x => x, System.StringComparer.Ordinal), Is.EqualTo(t.Tags.OrderBy(x => x, System.StringComparer.Ordinal)), id);
+                Assert.That((g.Name, g.Elevation, g.Spring, g.Flammability, g.Heat, g.Fuel, g.BurnsTo, g.BreaksTo, g.BurnLog, g.FireLook),
+                    Is.EqualTo((t.Name, t.Elevation, t.Spring, t.Flammability, t.Heat, t.Fuel, t.BurnsTo, t.BreaksTo, t.BurnLog, t.FireLook)), id);
+                Assert.That((g.UprootsTo, g.UprootLog, g.DugTo, g.Hardness, g.GrowsTo, g.GrowLog, g.SoakEvery, g.SoakEveryWet, g.WaterTo),
+                    Is.EqualTo((t.UprootsTo, t.UprootLog, t.DugTo, t.Hardness, t.GrowsTo, t.GrowLog, t.SoakEvery, t.SoakEveryWet, t.WaterTo)), id);
+            }
+            foreach (var (id, c) in flat.Covers)
+            {
+                var g = grouped.Covers[id];
+                Assert.That(g.Tags.OrderBy(x => x, System.StringComparer.Ordinal), Is.EqualTo(c.Tags.OrderBy(x => x, System.StringComparer.Ordinal)), id);
+                Assert.That((g.Flammability, g.Fuel, g.BurnIntensity, g.FireLook, g.Lasts), Is.EqualTo((c.Flammability, c.Fuel, c.BurnIntensity, c.FireLook, c.Lasts)), id);
+            }
+            // The same world from either: a fire through grass, brambles and oil, and a soaking puddle.
+            string Run(Rules r)
+            {
+                var w = new World(r, 12, 8, 3, "grass");
+                w.At(6, 4).T = "brush";
+                w.At(7, 4).Cover = "oil";
+                w.At(2, 2).Water = 1;
+                w.Apply(5, 4, "fire", 3, -1, false);
+                for (int t = 0; t < 120; t++) w.Step();
+                return w.CellHash() + " " + w.RngState;
+            }
+            Assert.That(Run(grouped), Is.EqualTo(Run(flat)));
+        }
+
+        [Test]
+        public void AnUnknownKeyInAVerbGroupIsReportedLikeTheSandbox()
+        {
+            var errors = ErrorsOf("{ 'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground'], 'burn': { 'catch': 0.4, 'fuel': 9, 'smoulder': 3 } } } }");
+            Assert.That(errors, Is.EqualTo(new[] { "terrain mud: burn.smoulder unknown" }));
+            var mud = With("{ 'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground'], 'burn': { 'catch': 0.4, 'fuel': 9 }, 'soak': { 'dry': 30 } } } }").Terrain["mud"];
+            Assert.That((mud.Has("flammable"), mud.Flammability, mud.Fuel, mud.SoakEvery), Is.EqualTo((true, 0.4, (int?)9, 30)));
+        }
+
+        [Test]
+        public void AThingsMaterialIsATerrainLikeTheSandbox()
+        {
+            var errors = ErrorsOf("{ 'entities': { 'crate': { 'name': 'Crate', 'hp': 6, 'mass': 1, 'material': 'cardboard' } }, " +
+                "'items': { 'spyglass': { 'name': 'Spyglass', 'mass': 0.45, 'material': 'brass' } } }");
+            Assert.That(errors, Is.EqualTo(new[] { "entity crate: material cardboard unknown", "item spyglass: material brass unknown" }));
+            var r = ChemistryTests.R;
+            Assert.That(r.Entities["crate"].Material, Is.EqualTo("timber"));
+            Assert.That(r.Items["bullseye-lantern"].Material, Is.EqualTo("glass"));
+        }
+
         [Test]
         public void CrossReferenceErrorsMatchTheSandbox()
         {
             var errors = ErrorsOf(@"{
-                'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground', 'flammable'], 'burnsTo': 'lava', 'breaksTo': '' } },
+                'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground', 'flammable'], 'burnsTo': 'magma', 'breaksTo': '' } },
                 'machines': { 'dirt': { 'name': 'M', 'needs': 'steam', 'how': 'x' }, 'nowhere': { 'name': 'N', 'needs': 'wind', 'how': 'y' } },
                 'entities': { 'keg': { 'name': 'Keg', 'hp': 1, 'mass': 1, 'flammable': true, 'explodes': { 'cover': 'goo', 'radius': 1, 'fire': 1, 'push': 1, 'damage': [1, 4] } } },
                 'reactions': { 'add': [
-                    { 'id': 'a', 'element': 'plasma', 'if': { 'cover': ['goo'], 'smell': true }, 'do': [{ 'setTerrain': 'lava', 'raise': 'x' }, { 'setCover': 'goo' }, { 'gas': 'nerve' }] },
+                    { 'id': 'a', 'element': 'plasma', 'if': { 'cover': ['goo'], 'smell': true }, 'do': [{ 'setTerrain': 'magma', 'raise': 'x' }, { 'setCover': 'goo' }, { 'gas': 'nerve' }] },
                     { 'id': 'b', 'element': 'fire', 'do': 'melt' } ],
                   'addEntity': [{ 'id': 'a', 'element': 'cold', 'do': [] }] },
                 'spells': [{ 'id': 's1', 'name': '', 'level': 1, 'shape': 'blob', 'element': 'plasma', 'blurb': '' }],
@@ -160,12 +243,12 @@ namespace Chem.Tests
             // validateRules' output for the same patch, in its order.
             Assert.That(errors, Is.EqualTo(new[]
             {
-                "terrain mud: burnsTo lava unknown",
+                "terrain mud: burnsTo magma unknown",
                 "terrain mud: flammable without fuel/flammability",
                 "rule b: \"do\" must be a list",
                 "rule a: unknown element plasma",
                 "rule a: unknown condition \"smell\"",
-                "rule a: setTerrain lava unknown",
+                "rule a: setTerrain magma unknown",
                 "rule a: raise x unknown",
                 "rule a: cover goo unknown",
                 "rule a: gas nerve unknown",

@@ -7,7 +7,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 
 | File | What it holds |
 |---|---|
-| `materials.json` | Terrain (tags, flammability, fuel, what it burns, breaks, is dug or grows into, elevation), covers (oil, grease, ash, snow, thorns) and gases (steam, smoke) | A terrain with `spring` (units) refills to that much water each tick unless frozen: the valley's river.
+| `materials.json` | Terrain (tags, flammability, fuel, what it burns, breaks, is dug or grows into, elevation), covers (oil, grease, ash, snow, thorns) and gases (steam, smoke) | A terrain with `spring` (units) refills to that much water each tick unless frozen: the valley's river. `soakEvery` / `soakEveryWet` (ticks): thin water on it soaks in and dries up a unit that often, on dry and on damp ground (see Water below). `waterTo`: `ice` (arctic ground: water on it freezes) or `steam` (lava: it boils off a unit at a time).
 | `reactions.json` | **The chemistry table.** What each element does when it reaches a square (`cell`), and to a creature or object standing there (`entity`) |
 | `spells.json` | The shared SRD spell kit: element, shape (point, line, square, burst, target, or cone: from the caster, widening a square each side per square out), power, damage, push force, earth shaping. `"effect"` is one of `levitate`, `carry`, `teleport`, `terraform`, `haste`, `weather` or `shapeshift`; all but `terraform` change no squares (the Unity game does them: `shapeshift` takes the shape of an animal within `range` for `duration` ticks, times the charge; the sandbox only logs it). `"radial": false` keeps a spell off the Unity game's spell radial. A cast can be charged (held) 1 to 3: power and raise / dig times the charge, height 2 more per level, lines half again as long per level, a point, square or burst a square bigger per level (not earth shaping) |
 | `critters.json` | The sandbox's critters (its emitters): what each emits, how often, and in what shape. `hours` (`[from, to]`, across midnight when from is the later) are when it's out; outside them it does nothing. Without, it's always out |
@@ -198,6 +198,22 @@ as with any digging, so the middle of a crater doesn't burn.
 - Water is measured in units: `sim.water.unitsPerStep` (4) units make
   one step of depth. A pit is one step below the ground, so a full pond
   holds 4 units.
+- A thing in `entities.json` or `items.json` names its `material` (a terrain id) and takes what it gives: `burn` makes it `flammable`, `break` `breakable`, `conduct` `conducts`, `shatter` `brittle` (`Rules.MaterialComponents`, the sandbox's `MATERIAL_COMPONENTS`). Its `components` list only the rest (`creature`, `heavy`).
+- `materials.json` spells its terrain and covers by **verb groups** (`docs/MATERIALS.md`; the flat keys below still read the same, for mods):
+  `"burn": { "catch", "fuel", "heat", "leaves", "log", "look" }` (cover: `catch`,
+  `fuel`, `intensity`, `look`), `"break": { "leaves" }`, `"dig": { "hardness",
+  "leaves" }`, `"soak": { "dry", "wet" }`, `"freeze": {}`, `"boil": {}`,
+  `"conduct": {}`, `"grow": { "into", "log" }`, `"uproot": { "leaves", "log" }`.
+  Having `burn`, `break` or `conduct` gives the `flammable`, `breakable` or
+  `conductive` tag. The loaders read them as the flat keys
+  (`MaterialGroups.cs`, `sandbox/src/materials.ts`); either spelling works.
+- Thin water soaks in (`World.Soak`): every `sim.water.soakPass` (8)
+  ticks, water no deeper than `sim.water.thin` (2) units, with no
+  neighbour deeper either (so not a lake's shore, the river, the sea or a
+  filled pit), loses a unit every `soakEvery` ticks of its terrain, or
+  `soakEveryWet` when the ground is damp: raining, or damp for
+  `sim.water.dampTicks` (600) after water soaked in there. A terrain
+  without them never soaks; `soakPass` 0 turns soaking off.
 - Time is in ticks, `sim.ticksPerSecond` (6) a second.
 - A day lasts `sim.day.lengthMinutes` (24) real minutes, so a game hour
   is a real minute; the world starts at `sim.day.startHour` (9:00).

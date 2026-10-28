@@ -59,6 +59,8 @@ namespace Chem
     public sealed class ItemDef
     {
         public string Id, Name, Use, Message, Srd;
+        /// <summary>What it's made of: a terrain id in materials.json (a lantern is metal), or null.</summary>
+        public string Material;
         /// <summary>What it is made of or does (items.json "components"; Components.cs).</summary>
         public ComponentSet Components;
         /// <summary>Kilograms. The physics body's mass; a shove moves it like the lightest entity (Forces).</summary>
@@ -115,6 +117,7 @@ namespace Chem
             {
                 Id = id,
                 Name = Str(o["name"]) ?? id,
+                Material = Str(o["material"]),
                 Components = ThingComponents(o),
                 Use = Str(o["use"]),
                 Message = Str(o["message"]),

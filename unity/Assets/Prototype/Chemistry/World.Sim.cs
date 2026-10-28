@@ -82,6 +82,7 @@ namespace Chem
             Tick++;
             logged.Clear();
             strikes.Clear();
+            TrimWeatherHistory();
             EndSetWeather();
             Weather = SkyNow();
             tickRows = Spans;
@@ -182,14 +183,17 @@ namespace Chem
         /// </summary>
         void TickTimers(RowSpan[] rows) => TickTimers(rows, 0, rows.Length);
 
+
         // The timers of row segments [from, to).
         void TickTimers(RowSpan[] rows, int from, int to)
         {
             byte flow = Raining ? (byte)0 : FlowMark;
+            // sim.water.soakPass 0: no soaking (tests of the flow alone).
+            bool soak = Rules.Sim.SoakPass > 0 && Tick % Rules.Sim.SoakPass == 0;
             for (int k = from; k < to; k++)
             {
                 var s = rows[k];
-                int edges = TickTimers(s, flow);
+                int edges = TickTimers(s, flow, soak);
                 if (edges < 0) continue;
                 s.Chunk.LastLive = Tick;
                 for (int d = 0; d < 4; d++) if ((edges & (1 << d)) != 0) s.Chunk.EdgeLive[d] = Tick;
@@ -197,7 +201,7 @@ namespace Chem
         }
 
         // One row segment's timers: the edges its live cells lie on (Chunks.EdgesOf), or -1 if none was live.
-        int TickTimers(RowSpan s, byte flow)
+        int TickTimers(RowSpan s, byte flow, bool soak)
         {
             var ch = s.Chunk;
             var cells = ch.Cells;
@@ -209,9 +213,54 @@ namespace Chem
                 bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
                 if (c.Charge > 0) c.Charge--;
                 if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
+                if (soak && c.Water > 0 && Soak(ch, i, c)) live = true;
                 if (live) edges = Math.Max(edges, 0) | Chunks.EdgesOf(i);
             }
             return edges;
+        }
+
+        /// <summary>
+        /// Water on the ground, every sim.water.soakPass ticks (materials.json): on ground whose water
+        /// turns (waterTo) it freezes (arctic) or boils off a unit to steam (lava), any depth; thin water
+        /// (it and its four neighbours no deeper than sim.water.thin, so not a lake's shore, the river,
+        /// the sea or a filled pit) soaks in and dries up a unit every soakEvery ticks of its terrain,
+        /// soakEveryWet on damp ground (raining, or damp from water soaked in before), and leaves it damp.
+        /// Each cell on its own turn of the count, so a puddle shrinks from all over. True if it changed.
+        /// </summary>
+        bool Soak(Chunk ch, int i, Cell c)
+        {
+            var t = TerrainOf(c);
+            if (t.WaterTo == "ice")
+            {
+                if (c.Frozen) return false;
+                c.Frozen = true;
+                WaterMoved(ch);
+                return true;
+            }
+            if (t.WaterTo == "steam")
+            {
+                c.Water--;
+                c.Frozen = false;
+                AddGas(c, "steam", 1);
+                WaterMoved(ch);
+                return true;
+            }
+            int thin = Rules.Sim.ThinWater;
+            if (c.Frozen || c.Water > thin) return false;
+            for (int d = 0; d < 4; d++)
+            {
+                var n = Chunk.Next(ch, i, d, out _, out _);
+                if (n != null && n.Water > thin) return false;
+            }
+            int every = Raining || Tick < c.DampUntil ? t.SoakEveryWet : t.SoakEvery;
+            if (every <= 0) return false;
+            int turns = Math.Max(1, every / Rules.Sim.SoakPass);
+            int x = (ch.X << Chunks.Shift) + (i & Chunks.Mask), y = (ch.Y << Chunks.Shift) + (i >> Chunks.Shift);
+            if ((Tick / Rules.Sim.SoakPass + x * 7 + y * 13) % turns != 0) return false;
+            c.Water--;
+            c.DampUntil = Tick + Rules.Sim.DampTicks;
+            WaterMoved(ch);
+            return true;
         }
 
         /// <summary>Whether nothing in a loaded chunk has been live for sim.json's streaming.settleTicks.</summary>
@@ -293,7 +342,7 @@ namespace Chem
             var c = ch.Cells[i];
             if (c.Fire == 0) return;
             // Water puts out anything but a floating oil or grease fire.
-            if (c.Water > 0 && !c.Frozen && !CoverHasTag(c, "flammable"))
+            if (c.Water > 0 && !c.Frozen && !CoverBurns(c))
             {
                 c.Fire = 0;
                 c.Fuel = 0;
@@ -310,11 +359,11 @@ namespace Chem
         /// <summary>Out of fuel: a burning cover leaves ash or the terrain under it alight; terrain burns to its BurnsTo.</summary>
         void BurnOut(Chunk ch, int i, Cell c)
         {
-            if (CoverHasTag(c, "flammable"))
+            if (CoverBurns(c))
             {
                 c.Cover = null;
                 var tt = TerrainOf(c);
-                if (tt.Has("flammable"))
+                if (tt.Burns)
                 {
                     c.Fuel = tt.Fuel ?? 5;
                     c.Fire = 2;
@@ -360,7 +409,9 @@ namespace Chem
         {
             double flam = Flammability(n);
             double downwind = WindDir == d ? p.DownwindBonus : 0;
-            if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam) * RainDamp();
+            // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
+            double heat = CoverBurns(c) ? 1 : TerrainOf(c).Heat;
+            if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) * heat + downwind * flam) * RainDamp();
             return n.Water > 0 && !n.Frozen ? p.BoilChance : p.HeatChance;
         }
 
@@ -425,6 +476,7 @@ namespace Chem
             if (c.Frozen || IsBlocking(c)) return;
             int elevation = ElevationUnits(c);
             int level = elevation + c.Water;
+            int here = LandOf(ch, i);
             // Water always runs onto lower ground; on the flat it needs a 2-step
             // difference, so a still puddle doesn't slosh back and forth forever.
             // Neighbours are visited inline in N, E, S, W order (the order Neighbours()
@@ -437,7 +489,10 @@ namespace Chem
             {
                 var nc = Chunk.Next(ch, i, d, out var nch, out int ni);
                 if (nc == null || !nch.Active) continue;
-                double score = FlowScore(nc, elevation, level);
+                // Between two dry-land cells the land's slope counts too; a water body's cells keep level.
+                int there = here == NoLand ? NoLand : LandOf(nch, ni);
+                int slope = there == NoLand ? 0 : here - there;
+                double score = FlowScore(nc, elevation + slope, level + slope);
                 if (score > bestScore)
                 {
                     bestScore = score;

@@ -25,6 +25,25 @@ namespace Chem
 
     public sealed class PropState
     {
+        /// <summary>How long it burns once alight: its material's fuel (a wooden crate burns as wood does), else BurnTicks.</summary>
+        public int BurnTime => Def.MaterialDef?.Burns == true ? Def.MaterialDef.Fuel ?? BurnTicks : BurnTicks;
+
+        // How often it loses a hit point burning: one of a flammable material burns its fuel down over its hit
+        // points (a timber crate smoulders for a while), never faster than the sim's burn damage.
+        int DamageEvery(int burnEvery) =>
+            Def.MaterialDef?.Burns == true ? Math.Max(burnEvery, BurnTime / Math.Max(1, Def.Hp)) : burnEvery;
+
+        // Whether this tick in fire sets it going: at once without a material, else once it has stood in
+        // fire for 1/flammability ticks running (counted from the tick it first stood in it, so a prop needs
+        // no random numbers and catches the same however often it's stepped).
+        bool Catches(int tick)
+        {
+            var m = Def.MaterialDef;
+            if (Burning || m == null || !m.Burns || m.Flammability <= 0) return true;
+            if (heatedSince < 0) heatedSince = tick;
+            return (tick - heatedSince + 1) * m.Flammability >= 1;
+        }
+
         /// <summary>Ticks a flammable thing burns after its last touch of fire (e-fire-flammable: burning 24).</summary>
         public const int BurnTicks = 24;
         /// <summary>Anything heavier than this sinks (crates and barrels float, boulders don't).</summary>
@@ -44,6 +63,9 @@ namespace Chem
         public int Hp { get; private set; }
         public bool Destroyed => Hp <= 0;
         public int BurningTicks { get; private set; }
+        // The tick it began standing in fire (-1: not in fire): one of a flammable material catches after
+        // 1/flammability ticks of it.
+        int heatedSince = -1;
         public bool Burning => BurningTicks > 0;
 
         /// <summary>The first tick it no longer levitates on, or -1 when it isn't levitating.</summary>
@@ -98,23 +120,24 @@ namespace Chem
                 LevitateUntil = -1;
                 events |= PropEvents.Landed;
             }
-            if (c != null && !floating) events |= Touch(c);
+            if (c != null && !floating) events |= Touch(c, tick);
             if (!Burning) return events;
             BurningTicks--;
-            if (tick % Math.Max(1, burnEvery) != 0) return events;
+            if (tick % Math.Max(1, DamageEvery(burnEvery)) != 0) return events;
             events |= PropEvents.Burned;
             if (Damage(1)) events |= PropEvents.Destroyed;
             return events;
         }
 
-        PropEvents Touch(Cell c)
+        PropEvents Touch(Cell c, int tick)
         {
             var events = PropEvents.None;
-            if (c.Fire > 0 && Def.Flammable)
+            if (c.Fire > 0 && Def.Flammable && Catches(tick))
             {
                 if (!Burning) events |= PropEvents.Ignited;
-                BurningTicks = BurnTicks;
+                BurningTicks = BurnTime;
             }
+            else if (c.Fire == 0) heatedSince = -1;
             if (c.Water > 0 && !c.Frozen && Burning)
             {
                 BurningTicks = 0;

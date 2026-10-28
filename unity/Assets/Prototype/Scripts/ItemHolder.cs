@@ -30,6 +30,9 @@ public class ItemHolder : MonoBehaviour
     SpellRadialHud radial;
     Shapeshift shape;
     float throwPressedAt = -1f;
+    // A throw under way: when it leaves the hand (the arm part way through its whip), and how fast.
+    float releaseAt = -1f, releaseSpeed;
+    const float ReleaseDelay = 0.1f;
     GUIStyle style, shadow;
 
     public Carryable Held { get; private set; }
@@ -58,6 +61,7 @@ public class ItemHolder : MonoBehaviour
 
     void Update()
     {
+        if (releaseAt >= 0f && Time.time >= releaseAt) LetFly();
         if (controls == null) return;
         InReach = Held == null ? Nearest() : null;
         controls.ItemInReach = Held != null || InReach != null;
@@ -75,6 +79,8 @@ public class ItemHolder : MonoBehaviour
     // while the radial has it (open, or closed by it this frame) it doesn't throw.
     void HandleHeld()
     {
+        // Mid-throw: the item is on its way out of the hand.
+        if (releaseAt >= 0f) return;
         if (radial != null && radial.BusyThisFrame)
         {
             throwPressedAt = -1f;
@@ -112,12 +118,29 @@ public class ItemHolder : MonoBehaviour
     void LateUpdate()
     {
         if (Held == null) return;
-        var aim = controls != null ? AimDirection : transform.forward;
-        Held.transform.SetPositionAndRotation(HandPosition, Quaternion.LookRotation(aim));
+        HoldInHand();
         if (controls == null) return;
         bool useDown = controls.Use.IsPressed();
         foreach (var use in Held.Uses) use.WhileHeld(this, useDown);
     }
+
+    /// <summary>
+    /// Puts the held item in the hand where it is now. Again after a pose has moved the arm (ThrowPose
+    /// draws it back and whips it through), so the item goes with the hand, not where it held still.
+    /// </summary>
+    public void HoldInHand()
+    {
+        if (Held == null) return;
+        var aim = controls != null ? FrontArc(AimDirection) : transform.forward;
+        Held.transform.SetPositionAndRotation(HandPosition, Quaternion.LookRotation(aim));
+    }
+
+    // How far from straight ahead a held item may point (Andrew: the lantern pointed where the camera
+    // looked, back through the wizard when the camera came round in front).
+    const float FrontArcDegrees = 70f;
+
+    // An aim kept within the front arc: turned toward the wizard's front where it points further round.
+    Vector3 FrontArc(Vector3 aim) => Vector3.RotateTowards(transform.forward, aim, FrontArcDegrees * Mathf.Deg2Rad, 0f);
 
     // In an animal's shape (Shapeshift): no picking things up.
     bool Animal => shape != null && shape.Shifted;
@@ -188,10 +211,21 @@ public class ItemHolder : MonoBehaviour
     /// <summary>Throws the held item along the aim at <paramref name="speed"/> m/s, on top of the wizard's own pace.</summary>
     public void Throw(float speed)
     {
-        if (Held != null) Thrown?.Invoke(Mathf.InverseLerp(gentleThrow, hardThrow, speed));
+        if (Held == null) return;
+        Thrown?.Invoke(Mathf.InverseLerp(gentleThrow, hardThrow, speed));
+        throwPressedAt = -1f;
+        releaseAt = Time.time + ReleaseDelay;
+        releaseSpeed = speed;
+    }
+
+    // The throw's release, from the hand as the arm whips through (ThrowPose), along the aim then.
+    void LetFly()
+    {
+        releaseAt = -1f;
+        if (Held == null) return;
         var dir = (AimDirection + Vector3.up * Loft).normalized;
         var pace = body != null ? body.velocity : Vector3.zero;
-        Let(pace + dir * speed, speed >= (gentleThrow + hardThrow) / 2f ? "hurl" : "toss");
+        Let(pace + dir * releaseSpeed, releaseSpeed >= (gentleThrow + hardThrow) / 2f ? "hurl" : "toss");
     }
 
     // Solo the item leaves the hand at once; online the host lets it go, from where this screen
@@ -201,6 +235,7 @@ public class ItemHolder : MonoBehaviour
         var item = Held;
         Held = null;
         throwPressedAt = -1f;
+        releaseAt = -1f;
         if (item.Online) item.Net.RequestRelease(HandPosition, velocity);
         else item.Release(velocity);
         EventLog.Add($"You {verb} the {item.Name.ToLowerInvariant()}");

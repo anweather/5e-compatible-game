@@ -1,12 +1,13 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RULES, validateRules } from "../src/rules.ts";
+import { withoutSoaking } from "./soak.ts";
 import { step } from "../src/sim.ts";
 import { castAt, castSpell, carry, paint, placeCritter, previewCells } from "../src/actions.ts";
 import { push, spawn, walk } from "../src/entities.ts";
 import { applyElement } from "../src/react.ts";
 import { SCENARIOS, goalState, loadScenario } from "../src/scenarios.ts";
-import { type World, cellAt, createWorld, entityAt, hashWorld, playerOf } from "../src/world.ts";
+import { type World, NO_LAND, cellAt, setLand, createWorld, entityAt, hashWorld, playerOf } from "../src/world.ts";
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
 const direct = { power: 2, direct: true };
@@ -297,4 +298,56 @@ test("Misty Step between the Steam Gate's bars counts as getting through", () =>
   Object.assign(me, { x: 25, y: 9 });
   assert.equal(castAt(w, "misty-step", 28, 9), null);
   assert.equal(goalState(w, s)!.via, "blink");
+});
+
+// Mirrors ChemistryTests.WaterRunsDownTheLandsSlope (playtest #31).
+test("water runs down the land's slope", () => withoutSoaking(() => {
+  const spread = (land: number[] | null) => {
+    const w = createWorld(16, 9, 1);
+    for (const c of w.cells) c.t = "grass";
+    setLand(w, land);
+    cellAt(w, 8, 4)!.water = 12;
+    run(w, 300);
+    let west = 0, east = 0;
+    w.cells.forEach((c, i) => { if (i % 16 < 8) west += c.water; if (i % 16 > 8) east += c.water; });
+    return { west, east };
+  };
+  const slope = Array.from({ length: 16 * 9 }, (_, k) => (k % 16) * 3);
+  const onSlope = spread(slope);
+  assert.equal(onSlope.east, 0, "none runs uphill");
+  assert.ok(onSlope.west >= 10, "it runs down the slope");
+  const onFlat = spread(null);
+  assert.ok(onFlat.east > 0, "on the flat it spreads both ways");
+  assert.ok(onFlat.west < onSlope.west);
+  const lake = slope.map((v, k) => (k % 16 >= 8 ? NO_LAND : v));
+  assert.ok(spread(lake).east > 0, "inside a water body it spreads as on the flat");
+}));
+
+// Mirrors ChemistryTests.ThatchFlaresAndLightsTheLogWallWhichBurnsLong: thatch at (2,1) and (3,1) against a
+// log wall at (4,1), the thatch set alight; how often the logs catch in 30 ticks over 40 seeds, hot and at heat 1.
+test("thatch's heat lights the log wall beside it", () => {
+  const lit = (heat: number) => {
+    const thatch = RULES.terrain.thatch!, was = thatch.heat;
+    thatch.heat = heat;
+    try {
+      let n = 0;
+      for (let seed = 1; seed <= 40; seed++) {
+        const w = createWorld(8, 3, seed);
+        for (const c of w.cells) c.t = "dirt";
+        cellAt(w, 2, 1)!.t = "thatch";
+        cellAt(w, 3, 1)!.t = "thatch";
+        cellAt(w, 4, 1)!.t = "logwall";
+        applyElement(w, 2, 1, "fire", { power: 3, direct: false });
+        run(w, 30);
+        const logs = cellAt(w, 4, 1)!;
+        if (logs.fire > 0 || logs.t !== "logwall") n++;
+      }
+      return n;
+    } finally {
+      thatch.heat = was;
+    }
+  };
+  const hot = lit(2.5), plain = lit(1);
+  assert.ok(hot > plain, `hot ${hot}, plain ${plain}`);
+  assert.equal(`${hot} ${plain}`, "32 23"); // the same in the C# core
 });

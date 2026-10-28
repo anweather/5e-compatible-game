@@ -89,8 +89,54 @@ namespace Chem
         /// <summary>Its own seed, for the view's details and colours.</summary>
         public int Seed { get; internal set; }
 
-        /// <summary>The cell character its walls are in a map: log wall (burns) or stone wall.</summary>
-        public char WallCell => Walls == WallKind.Stone ? '#' : 'L';
+        /// <summary>What its walls and roof are made of: terrain ids (world/villages.json "materials").</summary>
+        public string WallMaterial { get; internal set; } = "logwall";
+        public string RoofMaterial { get; internal set; } = "thatch";
+
+        /// <summary>The cell character its walls are in a map (ChemGrid's legend), from their material.</summary>
+        public char WallCell => BuildingMaterials.CellOf(WallMaterial);
+    }
+
+    /// <summary>
+    /// What a building's walls and roof are made of, by kind (world/villages.json "materials"): terrain
+    /// ids in materials.json, so a timber house's walls burn like log walls and a stone one's don't, and a
+    /// thatch roof burns where slate doesn't. The walls stand on the footprint's cells; the roof isn't a
+    /// cell (yet), but carries its material.
+    /// </summary>
+    public sealed class BuildingMaterials
+    {
+        public Dictionary<WallKind, string> Walls { get; } = new Dictionary<WallKind, string>
+        {
+            [WallKind.Timber] = "logwall",
+            [WallKind.Stone] = "stone",
+            [WallKind.Log] = "logwall",
+        };
+        public Dictionary<RoofCover, string> Roofs { get; } = new Dictionary<RoofCover, string>
+        {
+            [RoofCover.Thatch] = "thatch",
+            [RoofCover.Slate] = "slate",
+            [RoofCover.Shingle] = "shingle",
+        };
+
+        public string WallOf(WallKind k) => Walls[k];
+        public string RoofOf(RoofCover c) => Roofs[c];
+
+        // The map characters wall materials stand as (ChemGrid's legend).
+        static readonly Dictionary<string, char> Cells = new Dictionary<string, char>
+        {
+            ["logwall"] = 'L',
+            ["stone"] = '#',
+            ["wood"] = '=',
+            ["metal"] = 'm',
+            ["bedrock"] = '%',
+        };
+
+        /// <summary>A wall material's map character; throws for one the map has no character for.</summary>
+        public static char CellOf(string material) =>
+            Cells.TryGetValue(material, out char c) ? c : throw new FormatException($"villages.json: no map cell for wall material {material}");
+
+        /// <summary>Whether a wall material can stand on a map (has a character).</summary>
+        public static bool CanBeWall(string material) => Cells.ContainsKey(material);
     }
 
     /// <summary>What a village should have (world/villages.json).</summary>
@@ -114,6 +160,8 @@ namespace Chem
         public bool Shop { get; set; } = true;
         /// <summary>How many buildings in ten are stone (the rest timber, a few log).</summary>
         public int StoneInTen { get; set; } = 3;
+        /// <summary>What the buildings' walls and roofs are made of (the file's "materials", shared by all).</summary>
+        public BuildingMaterials Materials { get; set; } = new BuildingMaterials();
     }
 
     /// <summary>A laid-out village: its square, well, lanes and buildings, in world cells.</summary>
@@ -302,6 +350,8 @@ namespace Chem
             {
                 b.Seed = (int)WorldHash.Hash4(spec.Seed, SaltLook, counter++, 1);
                 Look(b, spec.StoneInTen);
+                b.WallMaterial = spec.Materials.WallOf(b.Walls);
+                b.RoofMaterial = spec.Materials.RoofOf(b.Cover);
                 plan.Buildings.Add(b);
                 Take(b.Footprint.Grown(1));
             }
@@ -412,9 +462,46 @@ namespace Chem
             try { doc = JObject.Parse(json); }
             catch (JsonException e) { throw new FormatException($"{FileName}: {e.Message}", e); }
             var list = new List<VillageSpec>();
+            var materials = ReadMaterials(doc["materials"]);
             if (doc["villages"] is JArray villages)
-                foreach (var v in villages) list.Add(ReadSpec(v));
+                foreach (var v in villages)
+                {
+                    var spec = ReadSpec(v);
+                    spec.Materials = materials;
+                    list.Add(spec);
+                }
             return list;
+        }
+
+        // "materials": { "walls": { "timber": "logwall", ... }, "roofs": { "thatch": "thatch", ... } },
+        // keyed by the kinds' names in lower case; a kind left out keeps its default.
+        static BuildingMaterials ReadMaterials(JToken t)
+        {
+            var m = new BuildingMaterials();
+            if (!(t is JObject o)) return m;
+            if (o["walls"] is JObject walls) ReadWalls(walls, m);
+            if (o["roofs"] is JObject roofs) ReadRoofs(roofs, m);
+            return m;
+        }
+
+        static void ReadWalls(JObject walls, BuildingMaterials m)
+        {
+            foreach (var p in walls.Properties())
+            {
+                if (!Enum.TryParse(p.Name, true, out WallKind k)) throw new FormatException($"{FileName}: unknown wall kind {p.Name}");
+                string material = (string)p.Value;
+                if (!BuildingMaterials.CanBeWall(material)) throw new FormatException($"{FileName}: wall material {material} can't stand on a map");
+                m.Walls[k] = material;
+            }
+        }
+
+        static void ReadRoofs(JObject roofs, BuildingMaterials m)
+        {
+            foreach (var p in roofs.Properties())
+            {
+                if (!Enum.TryParse(p.Name, true, out RoofCover c)) throw new FormatException($"{FileName}: unknown roof cover {p.Name}");
+                m.Roofs[c] = (string)p.Value;
+            }
         }
 
         static VillageSpec ReadSpec(JToken v)

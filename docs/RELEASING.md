@@ -76,6 +76,32 @@ files players will get, tested before anyone can see it.
 8. **Publish** on the go-ahead: `gh release edit alpha-X.Y.Z --draft=false`.
    Installed copies pick it up at their next start.
 
+## Pipeline warm-up (the first-sight hitches)
+
+A player makes each graphics pipeline state the first time something is drawn
+with it, and that can stall a frame for seconds (a first Hasten Time took
+2.6 s on the Mac, F-0002). `PsoWarmUp` makes the known states before the first
+frame from `Scripts/Perf/Resources/Pso<API>.graphicsstate` (`PsoMetal` from
+the Mac, `PsoDirect3D12` from the PC), about 0.1 s for 200 states.
+
+**Record them again** when shaders, materials or effects change (new spells,
+new props, URP settings), or when a run's log shows `PSO TRACE` frames with
+new states (a stale collection only brings those hitches back):
+
+1. On each platform, run a development player with the bot and the trace,
+   for a few seeds:
+   `<player> -playtest -playtest-seed N -playtest-minutes 5 -playtest-mute
+   -pso-trace <folder>/trace-N.graphicsstate` (on the PC through the runner's
+   passthrough). `-pso-trace` turns the warm-up off, so every state the game
+   makes is recorded.
+2. In the Editor, merge that platform's traces into its collection:
+   `unity command eval 'return PsoCollections.Merge("<folder>/trace-101.graphicsstate", ...);'`.
+   All traces must be the same graphics API; it writes
+   `Resources/Pso<API>.graphicsstate`.
+3. Commit the collection, and check: the same seed again without `-pso-trace`
+   logs `PSO WARMUP: N of N states in M ms` at start and its frame spikes are
+   gone.
+
 ## Versions and players
 
 - **Both players need the same build.** The joining player sends its

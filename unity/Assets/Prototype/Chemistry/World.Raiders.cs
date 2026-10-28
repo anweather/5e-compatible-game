@@ -55,13 +55,26 @@ namespace Chem
             foreach (var rule in Rules.EntityRulesFor(element))
             {
                 if (!Holds(rule.If, r, def)) continue;
-                foreach (var eff in rule.Do) mul *= RunEntityEffect(r, eff);
+                foreach (var eff in rule.Do) mul *= RunEntityEffect(r, def, eff);
                 if (rule.Log != null && (direct || rule.Notable))
                     LogOnce(rule.Id + "#" + r.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
                         ReplaceFirst(rule.Log, "{name}", def.Name), rule.Notable ? LogKind.Notable : LogKind.Info);
                 if (rule.Stop) break;
             }
             return mul;
+        }
+
+        /// <summary>
+        /// A status's ticks, but burning on a thing of a flammable material (a wooden crate) catches only
+        /// with the material's flammability and lasts its fuel; 0 when it didn't catch. (The TS's
+        /// materialBurn.)
+        /// </summary>
+        int MaterialBurn(EntityDef def, string status, int ticks)
+        {
+            var m = def.MaterialDef;
+            if (status != "burning" || m == null || !m.Burns) return ticks;
+            if (Rand() >= m.Flammability) return 0;
+            return m.Fuel ?? ticks;
         }
 
         static bool Holds(EntityCond cond, Raider r, EntityDef def)
@@ -72,9 +85,13 @@ namespace Chem
         }
 
         // Sets and clears the effect's statuses; returns its damage multiplier (1 for none).
-        static int RunEntityEffect(Raider r, EntityEffect eff)
+        int RunEntityEffect(Raider r, EntityDef def, EntityEffect eff)
         {
-            foreach (var kv in eff.Status) r.Status[kv.Key] = Math.Max(r.StatusOf(kv.Key), kv.Value);
+            foreach (var kv in eff.Status)
+            {
+                int ticks = MaterialBurn(def, kv.Key, kv.Value);
+                if (ticks > 0) r.Status[kv.Key] = Math.Max(r.StatusOf(kv.Key), ticks);
+            }
             if (eff.Clear != null) r.Status.Remove(eff.Clear);
             return eff.DamageMul != 0 ? eff.DamageMul : 1;
         }

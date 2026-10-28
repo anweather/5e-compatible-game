@@ -55,6 +55,23 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ThingsTakeWhatTheirMaterialGivesFromIt()
+        {
+            // docs/MATERIALS.md, step 4: a crate is flammable and breakable because it's timber, a lantern
+            // brittle because it's glass; entities.json and items.json list only creature and heavy.
+            Assert.That(R.EntityHas("crate", "flammable") && R.EntityHas("crate", "breakable") && R.Entity("crate").Flammable);
+            Assert.That(R.ItemHas("bullseye-lantern", "brittle"));
+            string Path(string file) => System.IO.Path.Combine(ChemistryTests.RulesDir(), file);
+            var given = Rules.MaterialComponents.Select(m => m.component).ToList();
+            foreach (var file in new[] { "entities.json", "items.json" })
+                foreach (var p in Newtonsoft.Json.Linq.JObject.Parse(System.IO.File.ReadAllText(Path(file))).Properties())
+                {
+                    var listed = (p.Value["components"] as Newtonsoft.Json.Linq.JArray)?.Select(c => (string)c).ToList() ?? new List<string>();
+                    Assert.That(listed.Intersect(given), Is.Empty, $"{file} {p.Name}: those come from its material");
+                }
+        }
+
+        [Test]
         public void TheOldFlammableAndCreatureKeysStillLoad()
         {
             var r = With("{ 'entities': { 'hay': { 'name': 'Hay bale', 'hp': 2, 'flammable': true }, 'imp': { 'name': 'Imp', 'hp': 4, 'creature': true, 'components': ['floats'] } } }");

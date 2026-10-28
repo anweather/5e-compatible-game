@@ -21,6 +21,10 @@ namespace Chem
         /// <summary>Water a spring keeps the square filled to each tick (units; a river, a spring), or 0.</summary>
         public int Spring;
         public double Flammability;
+        /// <summary>How hot it burns (materials.json "heat", 1 when absent): a burning cell of it is this many times as likely to light its neighbours (thatch flares, so it lights the log walls beside it).</summary>
+        public double Heat = 1;
+        /// <summary>How its fire looks (materials.json "fireLook": flare, wood or oil; null the plain fire). The view's only.</summary>
+        public string FireLook;
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
@@ -35,10 +39,25 @@ namespace Chem
         /// tree), or null; and the line logged when it does.
         /// </summary>
         public string GrowsTo, GrowLog;
+        /// <summary>
+        /// Thin water on it soaks in and dries up a unit every this many ticks (World.Soak), on dry
+        /// ground and on damp ground (wet from rain or water that soaked in); 0 never.
+        /// </summary>
+        public int SoakEvery, SoakEveryWet;
+        /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
+        public string WaterTo;
 
         // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
         HashSet<string> tagSet;
         public bool Has(string tag) => (tagSet ??= new HashSet<string>(Tags)).Contains(tag);
+
+        /// <summary>
+        /// Its verbs (docs/MATERIALS.md): it burns, breaks, conducts. What code asks instead of the
+        /// tags, read from them once (a burn group gives the flammable tag, MaterialGroups).
+        /// </summary>
+        public bool Burns => Has("flammable");
+        public bool Breaks => Has("breakable");
+        public bool Conducts => Has("conductive");
     }
 
     public sealed class CoverDef
@@ -48,6 +67,8 @@ namespace Chem
         public double Flammability;
         public int? Fuel;
         public int? BurnIntensity;
+        /// <summary>How its fire looks (materials.json "fireLook"); the view's only.</summary>
+        public string FireLook;
         /// <summary>Ticks it lasts once laid (Cell.Life) before it withers away (thorns), or 0 for good; and the line logged then.</summary>
         public int Lasts;
         public string WitherLog;
@@ -55,6 +76,8 @@ namespace Chem
         public int[] Damage;
         public double Speed = 1;
         public bool Has(string tag) => Tags.Contains(tag);
+        /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
+        public bool Burns => Has("flammable");
     }
 
     public sealed class GasDef
@@ -133,6 +156,10 @@ namespace Chem
         public int Hp, Mass;
         /// <summary>Flammable and Creature mirror those components (Components.cs), for the code that reads them.</summary>
         public bool Flammable, Creature, Player;
+        /// <summary>What it's made of: a terrain id in materials.json (a crate is wood), or null.</summary>
+        public string Material;
+        /// <summary>That material's definition, or null (set once the rules are read).</summary>
+        public TerrainDef MaterialDef;
         /// <summary>What it is made of or does (entities.json "components").</summary>
         public ComponentSet Components;
         /// <summary>Null unless it blows up when destroyed.</summary>
@@ -243,6 +270,12 @@ namespace Chem
         public GasParams Gas = new GasParams();
         public HeightParams Height = new HeightParams();
         public int WaterMaxLevel = 16, WaterUnitsPerStep = 4;
+        /// <summary>
+        /// Soaking (World.Soak): water this deep or less is thin (it and its four neighbours, so a
+        /// lake's shore isn't), the pass runs every SoakPass ticks, and soaked-in water leaves the
+        /// ground damp for DampTicks. SoakPass 0: no soaking.
+        /// </summary>
+        public int ThinWater = 2, SoakPass = 8, DampTicks = 600;
         public int ConductLimit = 80;
         // Not used by the cell port, carried so a view can read them.
         public int FallDamage = 4, ZapDamage = 3;
@@ -365,9 +398,19 @@ namespace Chem
                 return JValue.CreateNull();
             }
 
-            var materials = (JObject)Get("materials.json", true);
-            var reactions = (JObject)Get("reactions.json", true);
-            return FromDoc(new JObject
+            var doc = Doc(Get);
+            // A material spelled as verb groups reads as the flat keys (MaterialGroups).
+            var grouping = MaterialGroups.Ungroup(doc);
+            if (grouping.Count > 0) throw new ArgumentException("Rules: " + string.Join("; ", grouping));
+            return FromDoc(doc);
+        }
+
+        // The rule document from the files (get: a file's JSON, or null for an optional one that's missing).
+        static JObject Doc(Func<string, bool, JToken> get)
+        {
+            var materials = (JObject)get("materials.json", true);
+            var reactions = (JObject)get("reactions.json", true);
+            return new JObject
             {
                 ["elements"] = new JArray(BaseElements),
                 ["terrain"] = materials["terrain"] as JObject ?? new JObject(),
@@ -375,15 +418,15 @@ namespace Chem
                 ["gases"] = materials["gases"] as JObject ?? new JObject(),
                 ["cellRules"] = reactions["cell"] as JArray ?? new JArray(),
                 ["entityRules"] = reactions["entity"] as JArray ?? new JArray(),
-                ["spells"] = Get("spells.json", false) as JArray ?? new JArray(),
-                ["critters"] = Get("critters.json", false) as JArray ?? new JArray(),
-                ["entities"] = Get("entities.json", false) as JObject ?? new JObject(),
-                ["items"] = Get("items.json", false) as JObject ?? new JObject(),
-                ["machines"] = Get("machines.json", false) as JObject ?? new JObject(),
-                ["sim"] = Get("sim.json", false) as JObject ?? new JObject(),
-                ["groups"] = Get("groups.json", false) as JObject ?? new JObject(),
-                ["components"] = Get("components.json", false) as JObject ?? new JObject(),
-            });
+                ["spells"] = get("spells.json", false) as JArray ?? new JArray(),
+                ["critters"] = get("critters.json", false) as JArray ?? new JArray(),
+                ["entities"] = get("entities.json", false) as JObject ?? new JObject(),
+                ["items"] = get("items.json", false) as JObject ?? new JObject(),
+                ["machines"] = get("machines.json", false) as JObject ?? new JObject(),
+                ["sim"] = get("sim.json", false) as JObject ?? new JObject(),
+                ["groups"] = get("groups.json", false) as JObject ?? new JObject(),
+                ["components"] = get("components.json", false) as JObject ?? new JObject(),
+            };
         }
 
         /// <summary>The typed tables for a rule document (see <see cref="doc"/>), which the result keeps.</summary>
@@ -418,6 +461,7 @@ namespace Chem
                 if (p.Value is JObject e) r.entities[p.Name] = r.ParseEntity(p.Name, e);
             foreach (var p in ((JObject)doc["items"]).Properties())
                 if (p.Value is JObject i) r.items[p.Name] = r.ParseItem(p.Name, i);
+            r.ResolveMaterials();
             r.Sim = ParseSim((JObject)doc["sim"]);
             ParseGroups(r, (JObject)doc["groups"]);
             return r;
@@ -458,6 +502,8 @@ namespace Chem
             Elevation = Int(o["elevation"]) ?? 0,
             Spring = Int(o["spring"]) ?? 0,
             Flammability = Num(o["flammability"]) ?? 0,
+            Heat = Num(o["heat"]) ?? 1,
+            FireLook = Str(o["fireLook"]),
             Fuel = Int(o["fuel"]),
             BurnsTo = Str(o["burnsTo"]),
             BreaksTo = Str(o["breaksTo"]),
@@ -468,6 +514,9 @@ namespace Chem
             Hardness = Int(o["hardness"]) ?? 1,
             GrowsTo = Str(o["growsTo"]),
             GrowLog = Str(o["growLog"]),
+            SoakEvery = Int(o["soakEvery"]) ?? 0,
+            SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
+            WaterTo = Str(o["waterTo"]),
         };
 
         static CoverDef ParseCover(string id, JObject o) => new CoverDef
@@ -478,6 +527,7 @@ namespace Chem
             Flammability = Num(o["flammability"]) ?? 0,
             Fuel = Int(o["fuel"]),
             BurnIntensity = Int(o["burnIntensity"]),
+            FireLook = Str(o["fireLook"]),
             Lasts = Int(o["lasts"]) ?? 0,
             WitherLog = Str(o["witherLog"]),
             Damage = Dice(o["damage"]),
@@ -485,6 +535,13 @@ namespace Chem
         };
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
+
+        // Each thing's material, from its id (read once the terrain is).
+        void ResolveMaterials()
+        {
+            foreach (var e in entities.Values)
+                if (e.Material != null && terrain.TryGetValue(e.Material, out var m)) e.MaterialDef = m;
+        }
 
         EntityDef ParseEntity(string id, JObject o)
         {
@@ -510,6 +567,7 @@ namespace Chem
                 Flammable = components.Has(Component(Rules.Flammable)),
                 Creature = components.Has(Component(Rules.Creature)),
                 Player = Truthy(o["player"]),
+                Material = Str(o["material"]),
                 Explodes = boom,
                 Raider = ParseRaider(o["raider"]),
             };
@@ -654,6 +712,9 @@ namespace Chem
             {
                 s.WaterMaxLevel = Int(w["maxLevel"]) ?? s.WaterMaxLevel;
                 s.WaterUnitsPerStep = Int(w["unitsPerStep"]) ?? s.WaterUnitsPerStep;
+                s.ThinWater = Int(w["thin"]) ?? s.ThinWater;
+                s.SoakPass = Int(w["soakPass"]) ?? s.SoakPass;
+                s.DampTicks = Int(w["dampTicks"]) ?? s.DampTicks;
             }
             if (o["height"] is JObject ht)
             {

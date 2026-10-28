@@ -1,7 +1,7 @@
 {
   "ticksPerSecond": 6,
   "fire": { "spreadChance": 0.5, "heatChance": 0.04, "boilChance": 0.35, "downwindBonus": 0.35, "smokeChance": 0.25 },
-  "water": { "maxLevel": 32, "unitsPerStep": 4 },
+  "water": { "maxLevel": 32, "unitsPerStep": 4, "thin": 2, "soakPass": 8, "dampTicks": 600 },
   "height": { "min": -6, "max": 8, "blockAt": 3 },
   "gas": { "decayChance": 0.07, "maxAmount": 6 },
   "status": { "burnDamageEvery": 3, "scaldEvery": 6 },

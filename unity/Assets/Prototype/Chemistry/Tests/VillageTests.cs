@@ -117,5 +117,25 @@ namespace Chem.Tests
         {
             Assert.That(VillageLayout.Lay(Spec(7), Anywhere).Digest().ToString("x8", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("6c384925"));
         }
+
+        [Test]
+        public void BuildingsAreMadeOfTheMaterialsInVillagesJson()
+        {
+            // world/villages.json "materials": walls and roofs by kind, terrain ids in materials.json.
+            var specs = VillageLayout.Load(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(ChemistryTests.RulesDir()), "world"));
+            var m = specs[0].Materials;
+            foreach (var material in m.Walls.Values.Concat(m.Roofs.Values))
+                Assert.That(ChemistryTests.R.Terrain.ContainsKey(material), $"{material} is a terrain");
+            var plan = VillageLayout.Lay(specs[0], Anywhere);
+            foreach (var b in plan.Buildings)
+            {
+                Assert.That(b.WallMaterial, Is.EqualTo(m.WallOf(b.Walls)));
+                Assert.That(b.RoofMaterial, Is.EqualTo(m.RoofOf(b.Cover)));
+                Assert.That(b.WallCell, Is.EqualTo(b.Walls == WallKind.Stone ? '#' : 'L'), "stone stands, timber and log burn");
+            }
+            Assert.That(plan.Buildings.Any(b => b.Walls == WallKind.Stone) && plan.Buildings.Any(b => b.Walls != WallKind.Stone));
+            Assert.Throws<System.FormatException>(() => VillageLayout.FromJson("{ 'materials': { 'walls': { 'timber': 'thatch' } }, 'villages': [] }"),
+                "a wall material must stand on a map");
+        }
     }
 }

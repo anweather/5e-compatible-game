@@ -184,6 +184,7 @@ public partial class ChemGrid : MonoBehaviour
 
     void Update()
     {
+        UpdateDetailChunks();
         if (ExternalTicks)
         {
             Render();

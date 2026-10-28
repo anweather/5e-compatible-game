@@ -18,6 +18,7 @@ export interface Cell {
   gasAmt: number;
   charge: number; // 3 on the tick lightning arrives, then decays
   h: number; // steps raised (+) or dug (-) by terraform spells, on top of the terrain's elevation
+  dampUntil?: number; // the tick until which the ground is damp from water soaked in (soak in sim.ts)
   life: number; // ticks until what grows or lasts here ripens (ripen in sim.ts): thorns wither, shoots and saplings grow; 0 for nothing
 }
 
@@ -90,6 +91,8 @@ export interface World {
   w: number;
   h: number;
   cells: Cell[];
+  /** The land under each cell in water units (hills the cells don't hold), NO_LAND for a water body's cell; absent for flat land. Only the water reads it (World.SetLand). */
+  land?: number[] | null;
   entities: Entity[];
   critters: Critter[];
   machines: Record<number, MachineState>;
@@ -171,17 +174,31 @@ export const hasTag = (c: Cell, tag: string) => terrainDef(c).tags.includes(tag)
 export const isRaisedWall = (c: Cell) => c.h >= RULES.sim.height.blockAt;
 export const isBlocking = (c: Cell) => hasTag(c, "blocking") || isRaisedWall(c);
 /** Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.water. */
+export const NO_LAND = -2147483648;
+
+/** World.SetLand: the land copied, with each cell that has water or a spring now (a lake, the river, the sea) marked NO_LAND; null for flat land. */
+export function setLand(w: World, land: number[] | null) {
+  w.land = land ? w.cells.map((c, i) => (c.water > 0 || (terrainDef(c).spring ?? 0) > 0 ? NO_LAND : land[i]!)) : null;
+}
+
 export const elevation = (c: Cell) => ((terrainDef(c).elevation ?? 0) + c.h) * RULES.sim.water.unitsPerStep;
+/** A material's verbs (docs/MATERIALS.md): what code asks instead of the tags (TerrainDef.Burns, Breaks, Conducts). */
+export const burns = (m: { tags: string[] }) => m.tags.includes("flammable");
+export const breaks = (m: { tags: string[] }) => m.tags.includes("breakable");
+export const conducts = (m: { tags: string[] }) => m.tags.includes("conductive");
+/** Whether the cell's cover burns (oil, grease, thorns): World.CoverBurns. */
+export const coverBurns = (c: Cell) => c.cover !== null && RULES.covers[c.cover] !== undefined && burns(RULES.covers[c.cover]!);
+
 export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.covers[c.cover]?.tags.includes(tag) ?? false);
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);
-export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || hasTag(c, "conductive");
+export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || conducts(terrainDef(c));
 /** The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none. */
 export const windDir = (w: World): number => (w.wind ? w.wind.dir : w.weather.windDir);
 
 export function flammability(c: Cell): number {
-  if (coverHasTag(c, "flammable")) return RULES.covers[c.cover!]!.flammability ?? 0;
+  if (coverBurns(c)) return RULES.covers[c.cover!]!.flammability ?? 0;
   const t = terrainDef(c);
-  return t.tags.includes("flammable") ? (t.flammability ?? 0) : 0;
+  return burns(t) ? (t.flammability ?? 0) : 0;
 }
 
 /** mulberry32: small, seedable, and its whole state is one uint32 in the world. */

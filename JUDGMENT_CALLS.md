@@ -41,6 +41,33 @@ Each entry has:
 
 ## Decided
 
+### J-034 to J-036: Punchy upgrades (from Build's research, 2026-10-28)
+
+- **J-034, generated areas from Punchy's biomes:** NOT YET. Paper cuts
+  first. Build's plan stays on file: B, baked areas, about 2–4 days; A,
+  runtime generation in the core, about 10–15 days, as streaming part 3.
+- **J-035, animals:** BACKLOGGED, not started (Andrew: "backlog these"; docs/BACKLOG.md 17–19). When picked up, port ALL THREE, in Gameplay's lane, one small branch
+  each, tested in the valley each time:
+  1. cornered and leashed animals mill about (upstream 7ee4511);
+  2. per-animal variety (traits, StyleGroup hairstyles and hair colour);
+  3. water life (fish, ducks, eels, dolphins; Habitat Swims/Floats/Leaps).
+  First, record the vendored base (upstream b183507) in the Punchy README.
+- **J-036, "normal maps":** skipped. Punchy has no creature normal maps.
+- **Why:** Andrew's choices.
+- **Revisited:** 0.
+
+### J-032: The 0.1.6 RC has a harmless error burst online. Fix it, or ship?
+
+- **Asked:** 2026-10-27. WaterSplashes threw a NullReferenceException for
+  about 1 s after every host or join (it held the destroyed solo wizard's
+  transform). The one-line fix is `fix/splash-online` (`b45a82b`).
+- **Answer (2026-10-27):** ship 0.1.6 AS IS. Don't delete the draft or
+  rebuild. The fix goes into dev after the publish, for 0.1.7. The notes
+  mention the known log error.
+- **Why:** Andrew's call: speed over a harmless log error, in alpha
+  (J-026).
+- **Revisited:** 0.
+
 ### J-031: When do we cut 0.1.6?
 
 - **Asked:** 2026-10-27, by Andrew ("how soon until we can cut a 0.1.6?").

@@ -96,10 +96,17 @@ namespace Chem
                     if (!(entities[k] is JObject e && e["raider"] is JObject)) Errors.Add($"sim defense: kind {k} is not a raider");
             }
 
+            // A thing's material is a terrain (what it's made of).
+            internal void MaterialRef(string what, JToken m)
+            {
+                if (m != null && !IsIn(terrain, m)) Errors.Add($"{what}: material {Show(m)} unknown");
+            }
+
             void EntityRefs(JProperty p)
             {
                 RaiderRefs(p);
                 ComponentList($"entity {p.Name}", p.Value["components"]);
+                MaterialRef($"entity {p.Name}", p.Value["material"]);
                 var explodes = p.Value["explodes"];
                 if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
                 if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1, radius from 0 and strength from 1");
@@ -131,6 +138,12 @@ namespace Chem
                         Errors.Add($"spell {Show(s["id"])}: {key} must be a whole number of steps from 1");
                 if (s["height"] != null && !IsHeightIn(s["height"], range))
                     Errors.Add($"spell {Show(s["id"])}: height must be a whole number from {Show(range?["min"])} to {Show(range?["max"])} (sim.height)");
+                TerraformExtras(s);
+            }
+
+            // A terraform's terrain to leave, taper and strength.
+            void TerraformExtras(JToken s)
+            {
                 var to = s["terrain"];
                 if (to != null && !IsIn(terrain, to)) Errors.Add($"spell {Show(s["id"])}: terrain {Show(to)} unknown");
                 else if (to != null && Strings(terrain[Text(to)]["tags"]).Contains("blocking"))
@@ -152,18 +165,40 @@ namespace Chem
             static bool IsWholeNumber(JToken v) =>
                 v.Type == JTokenType.Integer || (v.Type == JTokenType.Float && System.Math.Abs((double)v - System.Math.Floor((double)v)) < 1e-9);
 
+            // What water does on it: soak rates (whole ticks) and what it turns into.
+            void WaterOn(string id, JToken t)
+            {
+                foreach (var key in new[] { "soakEvery", "soakEveryWet" })
+                    if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
+                if (t["waterTo"] != null && Text(t["waterTo"]) != "ice" && Text(t["waterTo"]) != "steam") Errors.Add($"terrain {id}: waterTo must be ice or steam");
+            }
+
+            static readonly string[] FireLooks = { "flare", "wood", "oil" };
+
+            // How a terrain's or cover's fire looks: one the view knows.
+            void FireLookOf(string what, JToken t)
+            {
+                if (t["fireLook"] != null && !FireLooks.Contains(Text(t["fireLook"]))) Errors.Add($"{what}: fireLook must be flare, wood or oil");
+            }
+
             void TerrainRefs(string id, JToken t)
             {
-                if (Truthy(t["burnsTo"]) && !IsIn(terrain, t["burnsTo"])) Errors.Add($"terrain {id}: burnsTo {Show(t["burnsTo"])} unknown");
-                if (Truthy(t["breaksTo"]) && !IsIn(terrain, t["breaksTo"])) Errors.Add($"terrain {id}: breaksTo {Show(t["breaksTo"])} unknown");
-                if (Truthy(t["dugTo"]) && !IsIn(terrain, t["dugTo"])) Errors.Add($"terrain {id}: dugTo {Show(t["dugTo"])} unknown");
+                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
+                WaterOn(id, t);
+                FireLookOf($"terrain {id}", t);
                 if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");
                 else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");
-                if (Truthy(t["growsTo"]) && !IsIn(terrain, t["growsTo"])) Errors.Add($"terrain {id}: growsTo {Show(t["growsTo"])} unknown");
+                KnownTerrain(id, t, "growsTo");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
+            }
+
+            // A terrain's link to another (burnsTo, breaksTo, dugTo, growsTo) names a terrain there is.
+            void KnownTerrain(string id, JToken t, string key)
+            {
+                if (Truthy(t[key]) && !IsIn(terrain, t[key])) Errors.Add($"terrain {id}: {key} {Show(t[key])} unknown");
             }
 
             void Rule(JToken rule, HashSet<string> seen)
@@ -232,11 +267,13 @@ namespace Chem
                     Number(p.Value["flammability"], $"terrain {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"terrain {p.Name}: fuel", 0);
                     Number(p.Value["spring"], $"terrain {p.Name}: spring", 0);
+                    Number(p.Value["heat"], $"terrain {p.Name}: heat", 0);
                     Number(p.Value["elevation"], $"terrain {p.Name}: elevation");
                 }
                 foreach (var p in covers.Properties())
                 {
                     Tags(p.Value["tags"], $"cover {p.Name}");
+                    FireLookOf($"cover {p.Name}", p.Value);
                     Number(p.Value["flammability"], $"cover {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"cover {p.Name}: fuel", 0);
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);
@@ -278,19 +315,21 @@ namespace Chem
 
             void Sim(JObject o, string path)
             {
-                foreach (var p in o.Properties())
+                foreach (var p in o.Properties()) SimEntry(path + p.Name, p.Value);
+            }
+
+            // One sim.json entry: a section to go into, hours, names, or a number.
+            void SimEntry(string key, JToken value)
+            {
+                if (key == "defense.kinds") return; // names, checked by DefenseRefs
+                if (key == "day.dawn" || key == "day.dusk")
                 {
-                    var key = path + p.Name;
-                    if (key == "defense.kinds") continue; // names, checked by DefenseRefs
-                    if (key == "day.dawn" || key == "day.dusk")
-                    {
-                        if (!IsHours(p.Value)) Errors.Add($"sim {key} must be [from, to], hours from 0 to 24");
-                        continue;
-                    }
-                    if (p.Value is JObject sub) Sim(sub, key + ".");
-                    else if (key == "height.min") Number(p.Value, $"sim {key}");
-                    else Number(p.Value, $"sim {key}", PositiveSim.Contains(key) ? 1 : 0);
+                    if (!IsHours(value)) Errors.Add($"sim {key} must be [from, to], hours from 0 to 24");
+                    return;
                 }
+                if (value is JObject sub) Sim(sub, key + ".");
+                else if (key == "height.min") Number(value, $"sim {key}");
+                else Number(value, $"sim {key}", PositiveSim.Contains(key) ? 1 : 0);
             }
 
             /// <summary>[from, to]: two hours of the day, 0 to 24 (Sky.InHours; from after to runs across midnight).</summary>

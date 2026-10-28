@@ -79,6 +79,7 @@ public sealed class CellWaterMesh
     /// <summary>Ground moved at a cell: the water beside it may sit differently against its banks.</summary>
     public void GroundChanged(int x, int y)
     {
+        flowOf.Clear();
         if (wet.Count == 0) return;
         MarkAround(x, y);
         stale = true;
@@ -107,7 +108,11 @@ public sealed class CellWaterMesh
     public float Top(int x, int y, float fallback) => tops.TryGetValue(grid.World.Idx(x, y), out var t) ? t : fallback;
 
     /// <summary>Drifts the water's ripples, as the lake's do (once a frame).</summary>
-    public void Scroll(float time) => waterMaterial.SetTextureOffset("_BaseMap", new Vector2(0.004f, 0.003f) * time);
+    public void Scroll(float time)
+    {
+        // Prototype/CellWater moves its own ripples with the flow; a plain Lit material drifts its map.
+        if (waterMaterial.HasProperty("_BaseMap")) waterMaterial.SetTextureOffset("_BaseMap", new Vector2(0.004f, 0.003f) * time);
+    }
 
     /// <summary>
     /// Redraws the tiles near any change since the last time: the levels and banks are worked out
@@ -321,9 +326,80 @@ public sealed class CellWaterMesh
     {
         surface.Build(box, (x, y) => Value(x, y, frozen),
             (gx, gy) => ContourSurface.BlendAround(gx, gy, (x, y) => TopOf(x, y, frozen), 0f),
-            (gx, gy, v) => new Color(1f, 1f, 1f, Opacity(v, frozen)),
-            (x, y) => grid.World.InBounds(x, y) && calm.Contains(grid.World.Idx(x, y)) ? 0f : 1f);
+            (gx, gy, v) => new Color(1f, 1f, 1f, Mathf.Max(Opacity(v, frozen), RunoffOpacity(gx, gy, v))),
+            (x, y) => grid.World.InBounds(x, y) && calm.Contains(grid.World.Idx(x, y)) ? 0f : 1f,
+            frozen ? null : (gx, gy, v) => FlowAndFoam(surface, gx, gy, v));
     }
+
+    // ---------- flow (Prototype/CellWater: its ripples move with the water, foam where it's broken) ----------
+
+    // Each wet cell's flow (world x, z in m/s): the river's current along its course, or water on a
+    // hillside running down it; kept until the ground changes (the river's line doesn't).
+    readonly Dictionary<int, Vector2> flowOf = new();
+    RockWake[] rocks;
+    // Runoff: metres a second per unit of slope, and its fastest.
+    const float RunoffSpeed = 4f, RunoffMax = 1.6f;
+
+    Vector2 FlowOf(int x, int y)
+    {
+        var world = grid.World;
+        if (!world.InBounds(x, y)) return Vector2.zero;
+        int key = world.Idx(x, y);
+        if (flowOf.TryGetValue(key, out var flow)) return flow;
+        var c = world.Cells[key];
+        var at = grid.CellCenter(x, y);
+        at.y = grid.GroundTop(x, y, c);
+        var current = WaterCurrents.Instance != null ? WaterCurrents.Instance.At(at) : Vector3.zero;
+        flow = new Vector2(current.x, current.z);
+        if (flow.sqrMagnitude < 0.0001f && c.T != TerrainIds.River) flow = Downhill(x, y);
+        flowOf[key] = flow;
+        return flow;
+    }
+
+    // The way the ground falls at a cell, as a runoff's speed (cells run +x east and +y south, -z).
+    Vector2 Downhill(int x, int y)
+    {
+        var world = grid.World;
+        if (x <= 0 || y <= 0 || x >= world.W - 1 || y >= world.H - 1) return Vector2.zero;
+        float east = OwnGround(world.Idx(x + 1, y)) - OwnGround(world.Idx(x - 1, y));
+        float south = OwnGround(world.Idx(x, y + 1)) - OwnGround(world.Idx(x, y - 1));
+        var slope = new Vector2(east, -south) / (2f * grid.cellSize);
+        return Vector2.ClampMagnitude(-slope * RunoffSpeed, RunoffMax);
+    }
+
+    Vector2 BlendedFlow(float gx, float gy) => new(
+        ContourSurface.BlendAround(gx, gy, (x, y) => FlowOf(x, y).x, 0f),
+        ContourSurface.BlendAround(gx, gy, (x, y) => FlowOf(x, y).y, 0f));
+
+    // A point's flow, and its foam: where moving water meets its edge (a bank, the end of a runoff)
+    // and round the river's rocks, trailing off downstream.
+    Vector3 FlowAndFoam(ContourSurface surface, float gx, float gy, float value)
+    {
+        var flow = BlendedFlow(gx, gy);
+        float speed = flow.magnitude;
+        float edge = 1f - Mathf.InverseLerp(Outline.Iso, Outline.Iso + 0.35f, value);
+        // Banks foam where the river runs; a runoff is all edge, and only flecks.
+        var c = grid.World.InBounds((int)gx, (int)gy) ? grid.World.At((int)gx, (int)gy) : null;
+        float foam = edge * Mathf.Clamp01(speed / 1.2f) * (c != null && c.T == TerrainIds.River ? 1f : 0.15f);
+        var p = surface.Flat(gx, gy);
+        rocks ??= Object.FindObjectsByType<RockWake>(FindObjectsSortMode.None);
+        foreach (var rock in rocks)
+        {
+            if (rock == null) continue;
+            var d = new Vector2(p.x - rock.transform.position.x, p.z - rock.transform.position.z);
+            var down = new Vector2(rock.downstream.x, rock.downstream.z).normalized;
+            float along = Vector2.Dot(d, down), across = Mathf.Abs(d.x * down.y - d.y * down.x);
+            // Round its upstream face, then a wake three times as long as it is wide.
+            float reach = along > 0f ? new Vector2(along / 3f, across).magnitude : d.magnitude;
+            foam = Mathf.Max(foam, 1f - Mathf.InverseLerp(rock.radius * 0.8f, rock.radius * 2.2f, reach));
+        }
+        return new Vector3(flow.x, flow.y, foam);
+    }
+
+    // A thin runoff down a hillside is a line one cell wide, whose soft outline would fade it to
+    // nothing: running water keeps most of its colour.
+    float RunoffOpacity(float gx, float gy, float value) =>
+        value >= Outline.Iso && BlendedFlow(gx, gy).sqrMagnitude > 0.04f ? 0.7f : 0f;
 
     bool Holds(int x, int y, bool frozen)
     {

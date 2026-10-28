@@ -352,3 +352,39 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   cache) builds Windows with ship-update --windows-only and the Mac builds
   macOS → R1 install plus R3 Relay (no bot run: alpha, J-026) → publish on
   Andrew's go. Every other job yields the PC to the release.
+- 2026-10-28 05:56 UTC: 0.1.6 PUBLISHED on Andrew's go (J-033), https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.6 (the tag is at `18d10c6`). main merged back into dev (`8e9db46`); fix/splash-online on dev (`502d4d8`) for 0.1.7. R1 install and R3
+  Relay passed; the only known issue is the splash log error, fixed in
+  `fix/splash-online` for 0.1.7. FREEZE LIFTED: paper-cut verification
+  resumes (World's Editor batch, then Gameplay's), merges one at a time on
+  the coordinator's go.
+- 2026-10-28: FRUGAL MODE (Andrew: running low on usage). One agent works
+  at a time, on small goals, in this order; the others stay idle until
+  called. To save round trips, a step's merge is PRE-APPROVED when its own
+  checks pass (compile clean, no new warnings, its probes, a before/after
+  shot where visual); report once per step, in a few lines.
+  1. World: finish the current slot (the snow-mounds look and merge;
+     bot-lost-wizard plus the no-activate test and merge; D3D12 traces for
+     seeds 103/104, the merge and the commit onto perf/pso-trace).
+  2. Build (Mac): merge perf/pso-trace once PsoDirect3D12 is in.
+  3. Gameplay: #33 rocks in the river.
+  4. World: #31 water down slopes, then #32 a flowing river surface.
+  Then stop. Nothing new is started without Andrew.
+- 2026-10-28: Frugal queue done (#33 20a67f8, #31+#32 bcb7aba, soaking and
+  ground types 44ea217). Andrew: the next direction is refining the systems:
+  material types, their properties, and how they react to effects. First step,
+  World: an optional "material" on entities.json and items.json, a building
+  spec (wall material per WallKind/RoofCover), and the house builders stamping
+  their footprint as cells of that material, as the cabins do. LEND to World
+  for this step: the village and house builders (Gameplay's; Gameplay is
+  idle). "flesh" for creatures comes later. Merge pre-approved on checks.
+- 2026-10-28: FOCUS (Andrew). The game is about material interactions,
+  attributes and effects, spell effects, and the little mini games (finding
+  what's fun). World look and feel is a side quest, not critical. Zach is
+  improving terrain and looks in Punchy: don't spend effort porting it
+  (BACKLOG 17-20 drop to the bottom). The coordinator challenges any plan,
+  Andrew's included, that drifts off this focus before queuing it.
+- 2026-10-28: Release 0.1.7 approved (Andrew), to be cut after World's
+  materials migration steps 1-4. Low tokens: the release runs as scripted
+  (RELEASING.md, ship-update.sh) with no extra exploration. PC: World runs
+  --windows-only; then Mac: --mac-only into the same draft; then the bot
+  runs on the RC; then Andrew publishes.

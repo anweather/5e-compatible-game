@@ -1,8 +1,8 @@
 using System.Reflection;
 using UnityEngine;
 
-// A dodge roll on the left trigger (or Left Ctrl): a quick tumble about 4 m
-// the way the wizard is being steered (straight ahead standing still) in under
+// A dodge roll on the left trigger (or Left Ctrl): a quick tumble about 5 m
+// the way the wizard is being steered (straight ahead standing still) in
 // half a second, then a short wait before the next. It costs a little stamina
 // (Vitals), and there's no roll while swimming, in the air or carrying
 // something heavy. Like Knockback it runs after the Starter Assets controller
@@ -15,7 +15,8 @@ using UnityEngine;
 public class DodgeRoll : MonoBehaviour
 {
     /// <summary>How far a roll goes (m), how long it takes and the wait after it before the next (s).</summary>
-    public const float Distance = 4f, Duration = 0.45f, Cooldown = 0.35f;
+    // 4 m in 0.45 s was a touch short (Andrew, 2026-10-27).
+    public const float Distance = 5f, Duration = 0.5f, Cooldown = 0.35f;
     /// <summary>The stamina a roll costs (out of Vitals.StaminaMax).</summary>
     public const float StaminaCost = 15f;
     // Holding something heavier than this (kg), the wizard can't roll.

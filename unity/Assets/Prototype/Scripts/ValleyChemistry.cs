@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Chem;
 using UnityEngine;
 
@@ -13,7 +14,7 @@ using UnityEngine;
 // own surface.
 // Works on runtime copies of the terrain data, so playing never changes the
 // saved valley.
-public class ValleyChemistry : MonoBehaviour
+public partial class ValleyChemistry : MonoBehaviour
 {
     public ChemGrid grid;
     [Tooltip("The chunk terrains, chunk (i, j) at j * 9 + i (TerrainGrid.Valley()).")]
@@ -66,11 +67,19 @@ public class ValleyChemistry : MonoBehaviour
     {
         if (world.W != layout.GridW || world.H != layout.GridH)
             Debug.LogError($"The valley's chunk layout is for a {layout.GridW}×{layout.GridH} world, not {world.W}×{world.H}");
-        ground ??= new ValleyGround(layout, chunks);
+        if (ground == null)
+        {
+            ground = new ValleyGround(layout, chunks);
+            // Details only on the terrains near the camera (ChemGrid.Detail).
+            grid.DetailDistance = ground.DetailDistance;
+            grid.DetailChunksChanged += ground.DrawDetails;
+            if (grid.DetailChunks.Count > 0) ground.DrawDetails(grid.DetailChunks);
+        }
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         ground.RaiseBase(channelCells, channelDepths);
+        SetLand(world);
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
@@ -83,11 +92,14 @@ public class ValleyChemistry : MonoBehaviour
         cabinBurnt = new int[n];
         cabinWrecked = new int[n];
         cabinCharred = new bool[n];
+        BindRoofs(n);
         for (int y = 0; y < world.H; y++)
             for (int x = 0; x < world.W; x++)
             {
                 int k = BuildingWallAt(world.At(x, y).T, x, y);
-                if (k >= 0) cabinCells[k]++;
+                if (k < 0) continue;
+                cabinCells[k]++;
+                buildingCells[k].Add(world.Idx(x, y));
             }
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
     }
@@ -163,6 +175,43 @@ public class ValleyChemistry : MonoBehaviour
     public bool IsLake(Cell c, int x, int y) => c.T == TerrainIds.Pit && BaseHeight(x, y) < lakeLevel;
 
     /// <summary>How high above the ground a cell's fire burns: in the crown of a tree, along a cabin wall.</summary>
+    // The water runs down the valley's hills (playtest #31), which only the baked ground holds. The
+    // land comes from world/land.json, integers baked once from this terrain and committed, so every
+    // peer on every platform has the same (BakeLand writes it); without it the land is flat.
+    static int[] landFromFile;
+
+    static void SetLand(World world)
+    {
+        if (landFromFile == null || landFromFile.Length != world.W * world.H)
+        {
+            string path = Path.Combine(ChemGrid.FindWorldDir(), "land.json");
+            landFromFile = File.Exists(path) ? LandFile.Read(File.ReadAllText(path), world.W, world.H) : null;
+            if (landFromFile != null && landFromFile.Length == 0) landFromFile = null;
+            if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
+        }
+        world.SetLand(landFromFile);
+    }
+
+    /// <summary>
+    /// Writes world/land.json from the terrain as drawn now (in Play mode, once the valley is bound):
+    /// each cell's baked ground in whole water units. Run after the valley's land changes
+    /// (Prototype > Bake Valley Land) and commit the file.
+    /// </summary>
+    public string BakeLand()
+    {
+        var world = grid.World;
+        float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
+        var land = new int[world.W * world.H];
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
+                land[world.Idx(x, y)] = Mathf.RoundToInt(ground.BaseHeight(x, y) / unit);
+        string path = Path.Combine(ChemGrid.FindWorldDir(), "land.json");
+        File.WriteAllText(path, LandFile.Write(land, world.W, world.H, unit));
+        landFromFile = null;
+        SetLand(world);
+        return $"wrote {path} ({new FileInfo(path).Length / 1024} KB)";
+    }
+
     public static float FireHeight(string terrainType) => terrainType switch
     {
         TerrainIds.Tree => 2.6f,
@@ -295,12 +344,10 @@ public class ValleyChemistry : MonoBehaviour
             return;
         }
         foreach (var r in cabin.GetComponentsInChildren<Renderer>())
-        {
-            if (r.name == "Roof") r.enabled = false;
-            else if (r.GetComponent<ParticleSystem>() == null) r.sharedMaterial = charred;
-        }
+            if (r.name != "Roof" && r.GetComponent<ParticleSystem>() == null) r.sharedMaterial = charred;
         foreach (var l in cabin.GetComponentsInChildren<Light>()) l.enabled = false;
         EventLog.Add($"The {LabelOf(cabin)} burns down");
+        WallsBurnDown(k);
     }
 
     static void CaveIn(Transform cabin)
@@ -354,12 +401,14 @@ public class ValleyChemistry : MonoBehaviour
         TreesMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         ground.Flush(IsScorched);
+        WatchRoofs(Time.deltaTime);
         if (wet != null && grid.World != null) wet.Advance(grid.World.Weather.Rain, Time.deltaTime);
         GroundMs = timer.Elapsed.TotalMilliseconds;
     }
 
     void OnDestroy()
     {
+        if (grid != null && ground != null) grid.DetailChunksChanged -= ground.DrawDetails;
         if (charred != null) Destroy(charred);
         wet?.Destroy();
         ground?.Destroy();

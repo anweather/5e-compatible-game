@@ -103,7 +103,7 @@ namespace Chem.Tests
             string pinned = save.Replace(R.Fingerprint, "rules");
             uint hash = 0x811c9dc5;
             foreach (char c in pinned) hash = (hash ^ c) * 0x01000193;
-            Assert.That(hash.ToString("x", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("153e8400"), "the format (a change here means old saves need a new SaveFormat)");
+            Assert.That(hash.ToString("x", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("2713c18f"), "the format (a change here means old saves need a new SaveFormat)");
         }
 
         [Test]

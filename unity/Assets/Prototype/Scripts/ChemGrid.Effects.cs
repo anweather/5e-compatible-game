@@ -10,6 +10,9 @@ using UnityEngine;
 // systems cost more than they add (FireDensity). New effects are made with
 // Prewarm off and at most a few a frame (the rest wait a frame or two), so a
 // burst of smoke never stalls a frame making and prewarming dozens at once.
+// Lightning's sparks come from the same pool: a Shocking Grasp into water charges
+// up to sim.conductLimit cells at once, and making a sparks effect for each in
+// one frame stalled it (playtest F-0001: 199 ms on 0.1.5, 663 ms on dev).
 public partial class ChemGrid
 {
     // --- fire ----------------------------------------------------------------------
@@ -41,8 +44,22 @@ public partial class ChemGrid
         // A fire that grows or dies down keeps its effect; it only changes size.
         if (v.fire == null) v.fire = TakeFx(prefab, new Vector3(center.x + offset.x, ground, center.z + offset.y), Quaternion.Euler(0f, turn, 0f), MaxLiveFx, out _);
         if (v.fire == null) return; // over the effects budget: drawn when it next changes
-        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f * scale * size * FlameScale(c.Fire));
+        FireLook.Flames(v.fire, FireLookOf(c), Vector3.one * (cellSize / 1.5f * scale * size * FlameScale(c.Fire)));
         v.fireLevel = c.Fire;
+    }
+
+    // Smoke over a fire takes its look: darker over wood, black over oil.
+    void LookOfSmoke(View v, Cell c, string kind)
+    {
+        if (v.gas != null && kind == GasIds.Smoke) FireLook.SmokeOf(v.gas, c.Fire > 0 ? FireLookOf(c) : null);
+    }
+
+    /// <summary>How a burning cell's fire looks (materials.json "fireLook"): its burning cover's, else its terrain's.</summary>
+    string FireLookOf(Cell c)
+    {
+        var cover = World.CoverOf(c);
+        if (cover != null && cover.Burns) return cover.FireLook;
+        return World.TerrainOf(c).FireLook;
     }
 
     static float FlameScale(int fire) => fire switch { >= 3 => 1.25f, 2 => 1f, _ => 0.8f };
@@ -129,9 +146,32 @@ public partial class ChemGrid
         fadingFx.Add((go, Time.time + FxFadeSeconds));
     }
 
-    // Faded effects back into the pool; call once a frame.
+    // A burst of sparks at a point, from the pool; false if none can be had this frame.
+    bool Spark(Vector3 at)
+    {
+        var fx = TakeFx(sparksFx, at, Quaternion.identity, SparkLimit, out _);
+        if (fx == null) return false;
+        sparking.Add((fx, Time.time + SparkSeconds));
+        return true;
+    }
+
+    // Faded effects back into the pool, played sparks retired first, and waiting sparks tried
+    // again (those whose cell has lost its charge are dropped); call once a frame.
     void RecycleFx()
     {
+        int tried = 0;
+        for (; tried < sparksWaiting.Count; tried++)
+        {
+            var (v, c, at) = sparksWaiting[tried];
+            if (c.Charge > 0 && v.charged && !Spark(at)) break;
+        }
+        sparksWaiting.RemoveRange(0, tried);
+        for (int i = sparking.Count - 1; i >= 0; i--)
+        {
+            if (Time.time < sparking[i].until) continue;
+            RetireFx(sparking[i].go);
+            sparking.RemoveAt(i);
+        }
         for (int i = fadingFx.Count - 1; i >= 0; i--)
         {
             var (go, until) = fadingFx[i];
@@ -156,6 +196,8 @@ public partial class ChemGrid
         freeFx.Clear();
         fxPrefab.Clear();
         fadingFx.Clear();
+        sparking.Clear();
+        sparksWaiting.Clear();
     }
 
     // Where in its cell a fire burns, how it is turned and sized, from the cell alone (so a
@@ -202,7 +244,11 @@ public partial class ChemGrid
         bool waiting = kind != null && prefab != null && v.gas == null;
         if (kind != v.gasKind || (kind != null && prefab == null) || waiting) SwapGasEffect(v, kind, prefab, center, ground);
         if (kind == null) { Hide(v.gas); return; }
-        if (prefab != null) return;
+        if (prefab != null)
+        {
+            LookOfSmoke(v, c, kind);
+            return;
+        }
         FallbackGas(v, c, kind, center, ground);
     }
 
@@ -255,7 +301,19 @@ public partial class ChemGrid
 
     // --- charge --------------------------------------------------------------------
 
-    // With the sparks effect, a burst plays when a cell becomes charged; without it, a glowing plate shows while it is.
+    // Sparks alive at once (a charged pond needs a few to read as charged, not one per cell), and
+    // how long a burst plays before its effect goes back to the pool.
+    const int SparkLimit = 24;
+    const float SparkSeconds = 1f;
+    readonly System.Collections.Generic.List<(GameObject go, float until)> sparking = new();
+    // Charged cells still waiting for their sparks (this frame's share was used up), tried again
+    // each frame while they stay charged. Only the sparks are retried, not the whole cell: a
+    // cell drawn again would also mark its water surface for working out again.
+    readonly System.Collections.Generic.List<(View v, Cell c, Vector3 at)> sparksWaiting = new();
+
+    // With the sparks effect, a burst plays when a cell becomes charged, from the effects pool and a
+    // few new ones a frame (a cell that misses this frame's share asks again the next, while it is
+    // still charged); without it, a glowing plate shows while it is.
     void RenderCharge(View v, Cell c, Vector3 center, float ground)
     {
         bool on = c.Charge > 0;
@@ -263,8 +321,8 @@ public partial class ChemGrid
         {
             if (on && !v.charged)
             {
-                var fx = Instantiate(sparksFx, new Vector3(center.x, ground + 0.1f, center.z), Quaternion.identity, transform);
-                Destroy(fx, 1.5f);
+                var at = new Vector3(center.x, ground + 0.1f, center.z);
+                if (!Spark(at)) sparksWaiting.Add((v, c, at));
             }
             v.charged = on;
             return;

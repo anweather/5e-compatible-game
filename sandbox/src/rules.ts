@@ -10,11 +10,14 @@ import machines from "../../rules/machines.json" with { type: "json" };
 import sim from "../../rules/sim.json" with { type: "json" };
 import groups from "../../rules/groups.json" with { type: "json" };
 import components from "../../rules/components.json" with { type: "json" };
+import { materialGroupErrors, ungroupMaterials } from "./materials.ts";
 
 export interface TerrainDef {
   name: string;
   tags: string[];
   flammability?: number;
+  /** How hot it burns (1 when absent): a burning cell of it is this many times as likely to light its neighbours. */
+  heat?: number;
   fuel?: number;
   burnsTo?: string;
   breaksTo?: string;
@@ -32,10 +35,22 @@ export interface TerrainDef {
   /** What it grows into once its cell's life runs out (green shoots into grass, a sapling into a tree), and the line logged. */
   growsTo?: string;
   growLog?: string;
+  /** Thin water on it soaks in and dries up a unit every this many ticks (soak in sim.ts), on dry ground and on damp; unset never. */
+  soakEvery?: number;
+  soakEveryWet?: number;
+  /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
+  waterTo?: "ice" | "steam";
+  /** How its fire looks (flare, wood, oil); the view's only. */
+  fireLook?: string;
 }
+
+/** The fire looks a material can name (fireLook); Rules.Check.cs's FireLooks. */
+export const FIRE_LOOKS = ["flare", "wood", "oil"];
 export interface CoverDef {
   name: string;
   tags: string[];
+  /** How its fire looks (flare, wood, oil); the view's only. */
+  fireLook?: string;
   flammability?: number;
   fuel?: number;
   burnIntensity?: number;
@@ -188,6 +203,8 @@ export interface EntityDef {
   name: string;
   hp: number;
   mass: number;
+  /** What it's made of: a terrain id (a crate is wood). */
+  material?: string;
   /** What it is made of or does (components.json); read through hasComponent. */
   components?: string[];
   /** Old shorthand for the flammable and creature components. */
@@ -224,6 +241,8 @@ export interface CraterDef {
  */
 export interface ItemDef {
   name: string;
+  /** What it's made of: a terrain id (a lantern is metal). */
+  material?: string;
   /** What it is made of or does (components.json). */
   components?: string[];
   /** Kilograms. */
@@ -264,7 +283,7 @@ export interface GroupDef {
 export interface SimParams {
   ticksPerSecond: number;
   fire: { spreadChance: number; heatChance: number; boilChance: number; downwindBonus: number; smokeChance: number };
-  water: { maxLevel: number; unitsPerStep: number };
+  water: { maxLevel: number; unitsPerStep: number; thin: number; soakPass: number; dampTicks: number };
   /** Range of Cell.h in steps; from blockAt up a cell is a wall. */
   height: { min: number; max: number; blockAt: number };
   gas: { decayChance: number; maxAmount: number };
@@ -323,11 +342,18 @@ export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightnin
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
-/** The rule tables exactly as committed in ../../rules/. Never mutated. */
+// materials.json with any verb groups turned into the flat keys (materials.ts).
+const baseMaterials = (() => {
+  const m = clone(materials) as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown>; gases: unknown };
+  ungroupMaterials(m);
+  return m;
+})();
+
+/** The rule tables exactly as committed in ../../rules/ (verb groups read as flat keys). Never mutated. */
 export const BASE_RULES: Readonly<Rules> = Object.freeze({
   elements: BASE_ELEMENTS,
-  terrain: materials.terrain as Record<string, TerrainDef>,
-  covers: materials.covers as unknown as Record<string, CoverDef>,
+  terrain: baseMaterials.terrain as Record<string, TerrainDef>,
+  covers: baseMaterials.covers as unknown as Record<string, CoverDef>,
   gases: materials.gases as Record<string, GasDef>,
   cellRules: reactions.cell as CellRule[],
   entityRules: reactions.entity as EntityRule[],
@@ -428,6 +454,8 @@ export function composeRules(patches: ModPatch[], base: Readonly<Rules> = BASE_R
     if (p.critters) r.critters = upsertById(r.critters, clone(p.critters));
     if (p.sim) mergeDeep(r.sim as unknown as Record<string, unknown>, clone(p.sim));
   }
+  // A mod may spell a material as verb groups too.
+  ungroupMaterials(r as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown> });
   return r;
 }
 
@@ -509,6 +537,7 @@ function itemErrors(r: Rules, id: string, it: ItemDef): string[] {
   const i = it as unknown as Record<string, unknown>;
   if (!it.name) errors.push(`${what}: needs a name`);
   if (id in r.entities) errors.push(`${what}: id is taken by an entity`);
+  if (it.material !== undefined && !(it.material in r.terrain)) errors.push(`${what}: material ${it.material} unknown`);
   errors.push(...rangeError(i.mass, `${what}: mass`, 0, { above: true }));
   errors.push(...rangeError(i.zoom, `${what}: zoom`, 1));
   errors.push(...rangeError(i.reach, `${what}: reach`, 0));
@@ -581,8 +610,15 @@ export function componentNames(r: Rules = RULES): string[] {
 }
 
 /** Whether an entity or item has a component, honouring the old flammable / creature keys. */
-export function hasComponent(def: { components?: string[]; flammable?: boolean; creature?: boolean }, name: string): boolean {
-  return (def.components ?? []).includes(name) || (name === "flammable" && !!def.flammable) || (name === "creature" && !!def.creature);
+/** Each component a material's verb gives a thing, and the verb's tag (Rules.MaterialComponents). */
+export const MATERIAL_COMPONENTS: Record<string, string> = { flammable: "flammable", breakable: "breakable", conducts: "conductive", brittle: "brittle" };
+
+export function hasComponent(def: { components?: string[]; flammable?: boolean; creature?: boolean; material?: string }, name: string): boolean {
+  if ((def.components ?? []).includes(name) || (name === "flammable" && !!def.flammable) || (name === "creature" && !!def.creature)) return true;
+  // What its material makes it (docs/MATERIALS.md, step 4).
+  const tag = MATERIAL_COMPONENTS[name];
+  const m = def.material !== undefined ? RULES.terrain[def.material] : undefined;
+  return tag !== undefined && m !== undefined && m.tags.includes(tag);
 }
 
 const namesOf = (v: string | string[] | undefined): string[] => (v === undefined ? [] : typeof v === "string" ? [v] : v);
@@ -624,7 +660,7 @@ const isHours = (v: unknown) => Array.isArray(v) && v.length === 2 && v.every((h
 
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
-  const errors: string[] = [];
+  const errors: string[] = materialGroupErrors(r as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown> });
   const el = new Set<string>(r.elements);
   const terrainIds = new Set(Object.keys(r.terrain));
   const coverIds = new Set(Object.keys(r.covers));
@@ -633,12 +669,17 @@ export function validateRules(r: Rules): string[] {
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
     if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
+    for (const key of ["soakEvery", "soakEveryWet"] as const)
+      if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
+    if (t.waterTo !== undefined && t.waterTo !== "ice" && t.waterTo !== "steam") errors.push(`terrain ${id}: waterTo must be ice or steam`);
+    if (t.fireLook !== undefined && !FIRE_LOOKS.includes(t.fireLook)) errors.push(`terrain ${id}: fireLook must be flare, wood or oil`);
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
   }
   for (const [id, cv] of Object.entries(r.covers)) {
+    if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
     if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);
   }
   const seen = new Set<string>();
@@ -680,6 +721,7 @@ export function validateRules(r: Rules): string[] {
   for (const [id, e] of Object.entries(r.entities)) {
     if (e.raider) errors.push(...raiderErrors(el, id, e.raider));
     errors.push(...componentListErrors(r, `entity ${id}`, e.components));
+    if (e.material !== undefined && !(e.material in r.terrain)) errors.push(`entity ${id}: material ${e.material} unknown`);
     if (e.explodes && !coverIds.has(e.explodes.cover)) errors.push(`entity ${id}: explodes into unknown cover`);
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }

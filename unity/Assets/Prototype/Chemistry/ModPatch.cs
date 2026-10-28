@@ -72,16 +72,19 @@ namespace Chem
                 Expect(table, p[table] is JObject t && t.PropertyValues().All(v => v is JObject), "an object of entries by id");
             Expect("components", p["components"] is JObject cs && cs.PropertyValues().All(v => v.Type == JTokenType.String), "an object of descriptions by name");
             Expect("reactions", p["reactions"] is JObject, "an object");
-            if (p["reactions"] is JObject rx)
-            {
-                if (Present(rx, "add") && !ListOf(rx["add"], JTokenType.Object)) errors.Add("\"reactions.add\" must be a list of rules");
-                if (Present(rx, "addEntity") && !ListOf(rx["addEntity"], JTokenType.Object)) errors.Add("\"reactions.addEntity\" must be a list of rules");
-                if (Present(rx, "remove") && !ListOf(rx["remove"], JTokenType.String)) errors.Add("\"reactions.remove\" must be a list of rule ids");
-            }
+            if (p["reactions"] is JObject rx) ReactionShapeErrors(rx, errors);
             Expect("spells", ListOf(p["spells"], JTokenType.Object), "a list of spells");
             Expect("critters", ListOf(p["critters"], JTokenType.Object), "a list of critters");
             Expect("sim", p["sim"] is JObject, "an object");
             return errors;
+        }
+
+        // The reactions section's lists: rules to add, entity rules to add, ids to remove.
+        static void ReactionShapeErrors(JObject rx, List<string> errors)
+        {
+            if (Present(rx, "add") && !ListOf(rx["add"], JTokenType.Object)) errors.Add("\"reactions.add\" must be a list of rules");
+            if (Present(rx, "addEntity") && !ListOf(rx["addEntity"], JTokenType.Object)) errors.Add("\"reactions.addEntity\" must be a list of rules");
+            if (Present(rx, "remove") && !ListOf(rx["remove"], JTokenType.String)) errors.Add("\"reactions.remove\" must be a list of rule ids");
         }
 
         static bool Present(JObject o, string key) => o[key] != null && o[key].Type != JTokenType.Null;

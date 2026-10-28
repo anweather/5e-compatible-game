@@ -127,7 +127,7 @@ test("a raider reaching the flag costs a life; out of lives the defense is lost"
 test("the defense is deterministic and matches the C# golden", () => {
   const a = goldenWave(11), b = goldenWave(11);
   assert.equal(hashWorld(a), hashWorld(b));
-  assert.equal(`${fnv(defenseText(a))} ${cellHash(a)} ${a.rng}`, "7bea4d9e a8fce715 3663131637");
+  assert.equal(`${fnv(defenseText(a))} ${cellHash(a)} ${a.rng}`, "a8f8f66b a34f278b 3663131637");
   // Wave 2 is under way: one raider is going round the wall's south end, three are wading the pool.
   assert.equal(defenseText(a).split("|")[0], "1/2/9/0/346/8");
   assert.ok(raiders(a).some((r) => r.x === 19 && r.y === 10));

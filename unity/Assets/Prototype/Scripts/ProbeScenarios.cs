@@ -154,6 +154,29 @@ public static class ProbeScenarios
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
             "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+        new Entry("firelooks", typeof(FireLooksProbe), 150f,
+            "Fire by material: a row of thatch, a row of log wall and a strip of oil in the yard set alight, a picture of them burning, then a crate " +
+            "stood in fire. Numbers: how long a thatch cell and a log wall cell burn, when the crate catches and is gone. Checks: thatch burns 2 to 6 s, " +
+            "wood over three times as long, the crate catches."),
+        new Entry("thatch", typeof(ThatchProbe), 150f,
+            "Thatch and wood burn differently: a Fire Bolt on a wall of a thatch-roofed timber house. Numbers: how soon the thatch catches, how long " +
+            "it burns, how long the log walls burn. Checks: the thatch catches and burns out within 3 s each, it lights more of the walls, the wood burns over 20 s."),
+        new Entry("roofs", typeof(RoofsProbe), 120f,
+            "Walls and roofs fail separately: a Fire Bolt on a timber house with a slate roof, and grease set alight beside a stone house with a " +
+            "thatch roof, 50 s. Checks: the log walls burn down and the slate falls onto them, the thatch burns away, the stone stands, sooted. Before and after pictures."),
+        new Entry("houses", typeof(HousesProbe), 120f,
+            "The materials step: a Fire Bolt on one of Hollowmere's timber houses and one of its stone houses, clear noon, 45 s. Checks: each has " +
+            "wall cells of its material (world/villages.json), the timber house's log walls burn down, the stone house's stand, no console errors."),
+        new Entry("soak", typeof(SoakProbe), 120f,
+            "Andrew, 2026-10-28: Create Water on open ground in the yard at noon, clear, then a minute. Checks: water poured, under half of it left " +
+            "(thin water soaks in and dries up, World.Soak), the river's and lake's deep water kept, no console errors."),
+        new Entry("slope", typeof(SlopeProbe), 60f,
+            "Playtest #31: Create Water on the steepest dry hillside near the start (a 1.5 to 6 m fall over 6 cells of the valley's baked ground), " +
+            "12 s later a picture from the side. Checks: a hillside found, the water reached over 1 m below where it was cast, no console errors."),
+        new Entry("papercuts", typeof(PaperCutsProbe), 180f,
+            "Andrew's playtest paper cuts of 2026-10-27, framed for before/after pictures (the same script with or without the fixes). Checks: the " +
+            "signs drawn with SignText (one-sided), a villager sitting on the seat, the house roof solid and landed on, the well wall stopping you, " +
+            "the beach off-limits to wild animals, the island's south pier, and a burnt-down inn's door light out at night."),
         new Entry("villagers", typeof(VillagersProbe), 120f,
             "Hollowmere's folk going about their day (ValleyFauna.Folk): a clear afternoon with the camera over the square, then dusk. Checks: " +
             "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, they run from " +
@@ -212,8 +235,8 @@ public static class ProbeScenarios
             "The wizard put behind the terrain tree nearest it, the camera cut to look at it through the tree, then cut round to the open side " +
             "(OccluderFade). Checks: the tree is found in the way, the dither fades in (fade over 0.9, the global cut over 0.5) with the " +
             "see-through figure on; from the open side nothing is in the way, the dither is off, the figure off and every material back, no console errors."),
-        new Entry("snow", typeof(SnowProbe), 60f,
-            "Heavy snow at noon (fast settling), then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
+        new Entry("snow", typeof(SnowProbe), 240f,
+            "Heavy snow at noon (fast settling), a wait of up to 150 s for its paint, then the wizard walks south through the yard, then a Fire Bolt lands in the snow. " +
             "Checks: over 500 squares under snow, over 20 banks against walls and trees, the ground over a bank stands 0.25 m higher, " +
             "4 footprints or more from the walk, the bolt melts the snow where it lands and nothing catches, no console errors."),
         new Entry("critters", typeof(CrittersProbe), 60f,

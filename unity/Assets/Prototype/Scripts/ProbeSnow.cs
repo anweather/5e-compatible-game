@@ -29,6 +29,13 @@ public class SnowProbe : ProbeScenario
         Check("snow_lies", snowy > 500, $"{snowy} squares under snow");
         Check("banks_drift", banks > 20, $"{banks} snow banks against walls and trees");
 
+        // The valley's snow is painted a few dozen cells a frame: wait for it, for the pictures.
+        var valley = FindAnyObjectByType<ValleyChemistry>();
+        var ground = valley != null ? valley.Ground : null;
+        float waited = 0f;
+        for (; ground != null && (ground.Repainting > 0 || ground.Shaping) && waited < 150f; waited += 1f) yield return Wait(1f);
+        Metric("paint_settle_s", waited);
+
         // A bank stands over the ground beside it (the terrain eases toward its new height).
         var bank = BankCell();
         if (bank.HasValue)

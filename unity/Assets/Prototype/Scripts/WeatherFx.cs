@@ -28,6 +28,7 @@ public class WeatherFx : MonoBehaviour
     readonly System.Random thunderRandom = new();
     AudioSource rainLoop, windLoop;
     int seenTick = -1;
+    Chem.World seenWorld;
     SpellVisuals.Entry meteorLook;
 
     // The Meteor spell's look (its flames, blast and dust), from a wizard's spell visuals; a bare one without.
@@ -69,11 +70,19 @@ public class WeatherFx : MonoBehaviour
         windLoop.volume = 0.15f * windShown * GameVolume.Ambience;
         Play(rainLoop, rainShown > 0.01f);
         Play(windLoop, windShown > 0.01f);
+        // Everything since the last tick seen, however many ticks this frame stepped (a new world
+        // counts from its own start).
+        if (world != seenWorld)
+        {
+            seenWorld = world;
+            seenTick = world.Tick - 1;
+        }
         if (world.Tick == seenTick) return;
+        int since = seenTick;
         seenTick = world.Tick;
-        foreach (var (x, y) in world.Strikes) StartCoroutine(Strike(Ground(grid.CellCenter(x, y)), cam.transform.position));
+        foreach (var (x, y, _) in world.StrikesSince(since)) StartCoroutine(Strike(Ground(grid.CellCenter(x, y)), cam.transform.position));
         // A meteor shower's meteors: each falls for the ticks until it lands, from beyond it as seen from here.
-        foreach (var (x, y, lands) in world.NewMeteors)
+        foreach (var (x, y, lands, _) in world.MeteorsSince(since))
         {
             meteorLook ??= MeteorLook();
             float seconds = (lands - world.Tick) / (float)world.Rules.Sim.TicksPerSecond;

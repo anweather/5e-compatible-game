@@ -1,9 +1,9 @@
 // The rule interpreter: an element arrives at a cell (from a spell, a
 // critter, or spreading fire) and reactions.json decides what happens.
-import { RULES, entityCondHolds, type CellCond, type CellRule, type Effect, type EntityRule } from "./rules.ts";
+import { RULES, entityCondHolds, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
 import {
   type Cell, type Dir, type Entity, type World,
-  DX, DY, addGas, cellAt, coverHasTag, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
+  DX, DY, addGas, burns, cellAt, coverBurns, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
   logOnce, neighbours, rand, terrainDef,
 } from "./world.ts";
 
@@ -103,6 +103,17 @@ export function applyElement(w: World, x: number, y: number, element: string, ct
   if (e) applyEntityElement(w, e, element, ctx);
 }
 
+/**
+ * A status's ticks, but burning on a thing of a flammable material (a wooden crate) catches only with the
+ * material's flammability and lasts its fuel; 0 when it didn't catch (World.MaterialBurn).
+ */
+function materialBurn(w: World, def: EntityDef, status: string, ticks: number): number {
+  const m = def.material ? RULES.terrain[def.material] : undefined;
+  if (status !== "burning" || !m || !burns(m)) return ticks;
+  if (rand(w) >= (m.flammability ?? 0)) return 0;
+  return m.fuel ?? ticks;
+}
+
 /** Returns the damage multiplier the entity's state adds (wet + lightning = 2). */
 export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ctx): number {
   index();
@@ -112,7 +123,11 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
     const cond = rule.if;
     if (cond && !entityCondHolds(cond, def, e.status)) continue;
     for (const eff of rule.do) {
-      if (eff.status) for (const [k, v] of Object.entries(eff.status)) e.status[k] = Math.max(e.status[k] ?? 0, v);
+      if (eff.status)
+        for (const [k, v] of Object.entries(eff.status)) {
+          const ticks = materialBurn(w, def, k, v);
+          if (ticks > 0) e.status[k] = Math.max(e.status[k] ?? 0, ticks);
+        }
       if (eff.clear) delete e.status[eff.clear];
       if (eff.damageMul) mul *= eff.damageMul;
     }
@@ -126,7 +141,7 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
 
 export function ignite(c: Cell, intensity: number | "cover"): boolean {
   if (intensity === "cover") {
-    if (!coverHasTag(c, "flammable")) return false;
+    if (!coverBurns(c)) return false;
     const cv = RULES.covers[c.cover!]!;
     const n = cv.burnIntensity ?? 2;
     if (c.fire >= n) return false;
@@ -135,9 +150,9 @@ export function ignite(c: Cell, intensity: number | "cover"): boolean {
     return true;
   }
   const t = terrainDef(c);
-  if (!t.tags.includes("flammable") && !coverHasTag(c, "flammable")) return false;
+  if (!burns(t) && !coverBurns(c)) return false;
   if (c.fire >= intensity) return false;
-  if (c.fire === 0) c.fuel = coverHasTag(c, "flammable") ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5);
+  if (c.fire === 0) c.fuel = coverBurns(c) ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5);
   c.fire = intensity;
   return true;
 }
@@ -173,7 +188,7 @@ function conduct(w: World, x: number, y: number, charge: number): boolean {
     const [cx, cy] = queue.shift()!;
     const c = cellAt(w, cx, cy)!;
     c.charge = Math.max(c.charge, charge);
-    if (coverHasTag(c, "flammable")) ignite(c, "cover");
+    if (coverBurns(c)) ignite(c, "cover");
     count++;
     for (const [nx, ny] of neighbours(w, cx, cy)) {
       const k = idx(w, nx, ny);

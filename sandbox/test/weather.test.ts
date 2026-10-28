@@ -95,7 +95,7 @@ test("rain douses a fire and fills the field; storms strike; matches the C# gold
     assert.ok(strikes > 0, "lightning struck");
     assert.ok(a.log.some((l) => l.text === "The rain puts out a fire"), "the rain put a fire out");
     assert.ok(cellAt(a, 20, 2)!.water > 0 || a.cells.filter((c) => c.t === "grass" && c.water > 0).length > 10, "the grass is wet");
-    assert.equal(`${cellHash(a)} ${a.rng} ${strikes}`, "9e5b6275 507542730 23");
+    assert.equal(`${cellHash(a)} ${a.rng} ${strikes}`, "b4a67f55 4042791962 23");
   });
 });
 
@@ -104,7 +104,7 @@ test("mixed quick weather over many stretches matches the C# golden", () => {
     const w = field(8);
     run(w, 1200);
     const kinds = Array.from({ length: 17 }, (_, k) => kindOf(RULES.sim, 8, k)).join(" ");
-    assert.equal(`${cellHash(w)} ${w.rng}`, "7dea4632 1818431910", kinds);
+    assert.equal(`${cellHash(w)} ${w.rng}`, "6d146020 1611455719", kinds);
   });
 });
 
@@ -122,7 +122,7 @@ test("a meteor shower brings meteors down a little later as craters, and matches
     const strikes = w.log.filter((l) => l.text === "A meteor strikes").reduce((n, l) => n + l.count, 0);
     assert.ok(strikes > 0, "meteors landed");
     assert.ok(w.cells.some((c) => c.h < 0), "and left craters");
-    assert.equal(`${cellHash(w)} ${w.rng} ${strikes}`, "68379587 878453404 19");
+    assert.equal(`${cellHash(w)} ${w.rng} ${strikes}`, "e9d48abc 2710019217 19");
   });
 });
 
@@ -143,7 +143,7 @@ test("snow freezes shallow water, lies on the field and banks against the walls;
     const banks = w.cells.filter((c) => c.cover === "snowbank").length;
     assert.ok(snowy > 50, `snow lies on the field (${snowy})`);
     assert.ok(banks > 0, `and drifts into banks against the walls (${banks})`);
-    assert.equal(`${cellHash(w)} ${w.rng} ${frozen} ${snowy} ${banks}`, "893f5dee 3623420721 42 119 26");
+    assert.equal(`${cellHash(w)} ${w.rng} ${frozen} ${snowy} ${banks}`, "e1e5624 4247680091 39 121 26");
   });
   withRules(clear, () => {
     run(w, 150);
@@ -151,7 +151,7 @@ test("snow freezes shallow water, lies on the field and banks against the walls;
     assert.ok(still < frozen / 2, `a dry spell thawed most of it (${still} of ${frozen} still ice)`);
     const left = w.cells.filter((c) => c.cover === "snow" || c.cover === "snowbank").length;
     assert.ok(left < 20, `the snow melted (${left} left)`);
-    assert.equal(`${cellHash(w)} ${w.rng} ${still} ${left}`, "751afd98 2063358975 0 0");
+    assert.equal(`${cellHash(w)} ${w.rng} ${still} ${left}`, "b2481d88 2377318072 0 0");
   });
 });
 
@@ -166,4 +166,23 @@ test("fire melts snow into water instead of lighting the grass under it", () => 
   assert.equal(c.cover, null, "then melts");
   assert.equal(c.water, 2, "into water");
   assert.equal(c.fire, 0, "and the grass doesn't catch");
+});
+
+// Mirrors ChemistryTests.SoakingMatchesTs: thin water soaks in on dirt, arid ground and rock; a pond stays.
+test("thin water soaks in and a pond stays, matching the C# golden", () => {
+  const w = createWorld(14, 9, 1);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 3, 3)!.water = 1;
+  cellAt(w, 3, 6)!.water = 1;
+  for (let y = 3; y <= 5; y++)
+    for (let x = 8; x <= 10; x++) {
+      cellAt(w, x, y)!.t = "pit";
+      cellAt(w, x, y)!.water = 4;
+    }
+  cellAt(w, 5, 1)!.t = "arid";
+  cellAt(w, 5, 1)!.water = 2;
+  cellAt(w, 12, 7)!.t = "rock";
+  cellAt(w, 12, 7)!.water = 1;
+  for (let i = 0; i < 20; i++) step(w);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "20661f72 1");
 });

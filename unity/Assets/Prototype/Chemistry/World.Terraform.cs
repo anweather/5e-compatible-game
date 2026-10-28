@@ -67,20 +67,9 @@ namespace Chem
         {
             var c = At(x, y);
             if (c == null || !IsActiveAt(x, y)) return false;
+            bool uprooted = Uproot(c);
             var t = TerrainOf(c);
-            bool uprooted = t.UprootsTo != null;
-            if (uprooted)
-            {
-                if (t.UprootLog != null) LogOnce($"uproot#{t.Id}#{Tick}", t.UprootLog, LogKind.Notable);
-                c.T = t.UprootsTo;
-                t = TerrainOf(c);
-            }
-            if (t.Has("blocking") || t.Has("machine")) return uprooted;
-            if (n < 0 && strength < t.Hardness)
-            {
-                LogOnce($"hard#{t.Id}#{Tick}", $"The {t.Name.ToLowerInvariant()} is too hard to dig");
-                return uprooted;
-            }
+            if (t.Has("blocking") || t.Has("machine") || TooHard(t, n, strength)) return uprooted;
             var range = Rules.Sim.Height;
             int height = Math.Max(range.Min, Math.Min(range.Max, c.Height + n));
             if (Unmoved(c, x, y, height)) return uprooted;
@@ -89,13 +78,37 @@ namespace Chem
             var to = terrain ?? (n < 0 ? t.DugTo : null);
             if (to != null) c.T = to;
             if (n > 0) SpillWater(x, y);
+            SettleReshaped(c);
+            return true;
+        }
+
+        // A plant shaped under is uprooted first (its terrain becomes UprootsTo); true if it was.
+        bool Uproot(Cell c)
+        {
+            var t = TerrainOf(c);
+            if (t.UprootsTo == null) return false;
+            if (t.UprootLog != null) LogOnce($"uproot#{t.Id}#{Tick}", t.UprootLog, LogKind.Notable);
+            c.T = t.UprootsTo;
+            return true;
+        }
+
+        // Digging (n below 0) harder ground than the dig's strength: refused, and said once a tick.
+        bool TooHard(TerrainDef t, int n, int strength)
+        {
+            if (n >= 0 || strength >= t.Hardness) return false;
+            LogOnce($"hard#{t.Id}#{Tick}", $"The {t.Name.ToLowerInvariant()} is too hard to dig");
+            return true;
+        }
+
+        // A reshaped cell that's now a wall loses its cover; a wall, or bare ground that can't burn, its fire.
+        void SettleReshaped(Cell c)
+        {
             if (IsBlocking(c)) c.Cover = null;
-            if (IsBlocking(c) || (!HasTag(c, "flammable") && c.Cover == null))
+            if (IsBlocking(c) || (!TerrainOf(c).Burns && c.Cover == null))
             {
                 c.Fire = 0;
                 c.Fuel = 0;
             }
-            return true;
         }
 
         /// <summary>Whether a reshape to this height changes nothing: it's the height already, or it would raise a wall under a raider.</summary>

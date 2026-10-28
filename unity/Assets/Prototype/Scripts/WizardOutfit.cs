@@ -227,6 +227,9 @@ public class WizardOutfit : MonoBehaviour
     // upper chest and neck (and, at the shoulders' sides, the upper arms), so it bends with the
     // torso: a wizard lying back has it lying along the backrest. Built in the idle pose, in the
     // body's own space; each vertex blends the bones of the two rings it lies between.
+    // How far forward of the spine the bodice's upper rings sit.
+    static readonly Vector3 BodiceForward = new(0f, 0f, 0.012f);
+
     void SkinnedBodice()
     {
         var hips = Bone(HumanBodyBones.Hips);
@@ -246,10 +249,12 @@ public class WizardOutfit : MonoBehaviour
         var rings = new (Vector3 at, float half, float depth, Transform bone)[]
         {
             (At(hips) + Vector3.up * 0.06f, 0.175f, 1f, hips),
-            (At(chest), 0.165f, 0.8f, chest),
-            (At(upper), 0.17f, 0.72f, upper),
-            (Vector3.Lerp(At(upper), new Vector3(At(upper).x, shoulderY, At(upper).z), 0.55f), 0.18f, 0.7f, upper),
-            (new Vector3(At(neck).x, shoulderY, At(upper).z), 0.19f, 0.62f, upper),
+            (At(chest), 0.165f, 0.85f, chest),
+            // Deeper over the chest and a little forward, so the robot's chest plate doesn't show
+            // through under the beard.
+            (At(upper) + BodiceForward, 0.17f, 0.82f, upper),
+            (Vector3.Lerp(At(upper), new Vector3(At(upper).x, shoulderY, At(upper).z), 0.55f) + BodiceForward, 0.18f, 0.8f, upper),
+            (new Vector3(At(neck).x, shoulderY, At(upper).z) + BodiceForward, 0.19f, 0.72f, upper),
             (At(neck) + Vector3.down * 0.01f, 0.085f, 0.9f, neck),
             (At(neck) + Vector3.up * 0.05f, 0.065f, 1f, neck),
         };

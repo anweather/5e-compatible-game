@@ -15,6 +15,9 @@ namespace Chem.Tests
         static Rules rules;
 
         internal static Rules R => rules ??= Rules.Load(RulesDir());
+        static Rules noSoak;
+        /// <summary>The rules without soaking (sim.water.soakPass 0), for tests of the flow alone.</summary>
+        internal static Rules NoSoak => noSoak ??= R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"water\": { \"soakPass\": 0 } } }") });
 
         /// <summary>
         /// The repo's rules/ folder. In Unity it sits next to the project; under
@@ -170,7 +173,7 @@ namespace Chem.Tests
             w.Cast("create-water", 9, 6, 1);
             Run(w, 120);
 
-            Assert.That(w.CellHash(), Is.EqualTo("8324eabc"));
+            Assert.That(w.CellHash(), Is.EqualTo("61ea6063"));
             Assert.That(w.RngState, Is.EqualTo(939719859u));
             CollectionAssert.AreEqual(new[]
             {
@@ -293,6 +296,220 @@ namespace Chem.Tests
             Assert.That(w.IsSlippery(w.At(6, 3)));
         }
 
+        // 12 units poured mid-way along a 16×9 meadow on this land; the water west and east of it after 300 ticks.
+        static int Spread(int[] land, out int east)
+        {
+            var w = new World(NoSoak, 16, 9, 1, "grass");
+            w.SetLand(land);
+            w.At(8, 4).Water = 12;
+            Run(w, 300);
+            int west = w.Cells.Where((c, k) => k % 16 < 8).Sum(c => c.Water);
+            east = w.Cells.Where((c, k) => k % 16 > 8).Sum(c => c.Water);
+            return west;
+        }
+
+        [Test]
+        public void WaterRunsDownTheLandsSlope()
+        {
+            // Playtest #31: Create Water on a hillside pooled where it landed. The hill is the land's
+            // (the valley's baked ground), which the cells don't hold: SetLand tells the water.
+            var slope = new int[16 * 9];
+            for (int k = 0; k < slope.Length; k++) slope[k] = (k % 16) * 3; // rising east, 0.375 m a cell
+            int westOnSlope = Spread(slope, out int eastOnSlope);
+            Assert.That(eastOnSlope, Is.EqualTo(0), "none runs uphill");
+            Assert.That(westOnSlope, Is.GreaterThanOrEqualTo(10), "it runs down the slope");
+            int westOnFlat = Spread(null, out int eastOnFlat);
+            Assert.That(eastOnFlat, Is.GreaterThan(0), "on the flat it spreads both ways");
+            Assert.That(westOnFlat, Is.LessThan(westOnSlope));
+            // A water body's cells keep level: no land between them and the slope.
+            var lake = (int[])slope.Clone();
+            for (int k = 0; k < lake.Length; k++) if (k % 16 >= 8) lake[k] = World.NoLand;
+            Spread(lake, out int eastOfLake);
+            Assert.That(eastOfLake, Is.GreaterThan(0), "inside a water body it spreads as on the flat");
+        }
+
+        [Test]
+        public void LandFileRoundTripsAndSetLandKeepsWaterBodiesLevel()
+        {
+            var rng = new Random(3);
+            var land = new int[7 * 5];
+            for (int k = 0; k < land.Length; k++) land[k] = rng.Next(-900, 900);
+            string json = LandFile.Write(land, 7, 5, 0.125);
+            Assert.That(LandFile.Read(json, 7, 5), Is.EqualTo(land));
+            Assert.That(LandFile.Read(json, 5, 7), Is.Empty, "another world's size");
+            // A pond on low land among high land: as a water body it keeps the flat rules and spills
+            // out; were its cell dry land, the high land round it would hold the water in.
+            var w = new World(R, 7, 5, 1, "grass");
+            w.At(3, 2).Water = 6;
+            var high = new int[7 * 5];
+            for (int k = 0; k < high.Length; k++) high[k] = 400;
+            high[2 * 7 + 3] = 0;
+            w.SetLand(high);
+            high[0] = 1; // a copy: changing the array after doesn't move the land
+            Run(w, 20);
+            Assert.That(w.At(2, 2).Water + w.At(4, 2).Water + w.At(3, 1).Water + w.At(3, 3).Water, Is.GreaterThan(0), "the pond spills as on the flat");
+        }
+
+        [Test]
+        public void TheValleysLandIsPinned()
+        {
+            // world/land.json is the same integers on every peer (lockstep): a re-bake that moves them
+            // shows here first. Rebake (Prototype > Bake Valley Land) and update these if the valley's
+            // shape changed on purpose.
+            string path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(RulesDir()), "world", "land.json");
+            var land = LandFile.Read(System.IO.File.ReadAllText(path), 576, 576);
+            Assert.That(land.Length, Is.EqualTo(576 * 576));
+            Assert.That(land[0], Is.EqualTo(665), "the north-west corner, up in the hills");
+            Assert.That(land[418 * 576 + 202], Is.EqualTo(103), "the slope probe's hillside");
+            Assert.That(land[418 * 576 + 208], Is.EqualTo(64), "six cells down it");
+            Assert.That(land[288 * 576 + 288], Is.EqualTo(0), "the middle");
+            Assert.That(land[575 * 576 + 575], Is.EqualTo(-174), "the south-east corner, by the sea");
+        }
+
+        // A dirt field with a puddle (a unit: too little to run on the flat) at (3, 3), another at (3, 6),
+        // and a pond (4 units a cell, as deep as the field is high) in a 3 × 3 pit at (8..10, 3..5).
+        static World Puddles(Rules rules = null)
+        {
+            var w = new World(rules ?? R, 14, 9, 1, "dirt");
+            w.At(3, 3).Water = 1;
+            w.At(3, 6).Water = 1;
+            for (int y = 3; y <= 5; y++)
+                for (int x = 8; x <= 10; x++)
+                {
+                    w.At(x, y).T = "pit";
+                    w.At(x, y).Water = 4;
+                }
+            return w;
+        }
+
+        static int PondWater(World w)
+        {
+            int sum = 0;
+            for (int y = 3; y <= 5; y++) for (int x = 8; x <= 10; x++) sum += w.At(x, y).Water;
+            return sum;
+        }
+
+        [Test]
+        public void ThinWaterSoaksInAndDeepWaterStays()
+        {
+            // Andrew, 2026-10-28: thin water on open ground soaks in and dries up (materials.json
+            // soakEvery), more slowly on damp ground (soakEveryWet), and leaves the ground damp.
+            var w = Puddles();
+            w.At(3, 6).DampUntil = 100000; // already damp
+            Run(w, 80);
+            Assert.That(w.At(3, 3).Water, Is.EqualTo(0), "dry dirt: a unit in 64 ticks");
+            Assert.That(w.At(3, 3).DampUntil, Is.GreaterThan(w.Tick), "and it's damp now");
+            Assert.That(w.At(3, 6).Water, Is.EqualTo(1), "damp dirt soaks five times slower");
+            Run(w, 320);
+            Assert.That(w.At(3, 3).Water + w.At(3, 6).Water, Is.EqualTo(0), "both puddles gone");
+            Assert.That(PondWater(w), Is.EqualTo(36), "the pond is deep: it stays");
+            var off = Puddles(NoSoak);
+            Run(off, 800);
+            Assert.That(off.At(3, 3).Water, Is.EqualTo(1), "sim.water.soakPass 0: no soaking");
+        }
+
+        [Test]
+        public void SoakingMatchesTs()
+        {
+            var w = Puddles();
+            w.At(5, 1).T = "arid";
+            w.At(5, 1).Water = 2;
+            w.At(12, 7).T = "rock";
+            w.At(12, 7).Water = 1;
+            Run(w, 20); // part way: some puddles gone, some not
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("20661f72 1"));
+        }
+
+        [Test]
+        public void AridGroundSoaksWaterUpFast()
+        {
+            var w = new World(R, 6, 6, 1, "arid");
+            w.At(2, 2).Water = 2;
+            Run(w, 40);
+            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(0), "gone in a few passes (dirt takes over a hundred ticks)");
+        }
+
+        [Test]
+        public void WaterOnArcticGroundFreezes()
+        {
+            var w = new World(R, 6, 6, 1, "arctic");
+            w.At(2, 2).Water = 6;
+            Run(w, 16);
+            var wet = w.Cells.Where(c => c.Water > 0).ToList();
+            Assert.That(wet, Is.Not.Empty);
+            Assert.That(wet.All(c => c.Frozen), "every wet cell is ice, deep or thin");
+        }
+
+        [Test]
+        public void WaterOnLavaBoilsToSteam()
+        {
+            var w = new World(R, 6, 6, 1, "lava");
+            w.At(2, 2).Water = 6;
+            bool steamed = false;
+            for (int t = 0; t < 160; t++)
+            {
+                w.Step();
+                steamed |= w.Cells.Any(c => c.Gas == "steam");
+            }
+            Assert.That(steamed, "it boils off as steam");
+            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(0), "all of it");
+        }
+
+        // Thatch at (2, 1) and (3, 1) against a log wall at (4, 1), on dirt; the thatch set alight.
+        static World ThatchByLogs(uint seed, Rules rules = null)
+        {
+            var w = new World(rules ?? R, 8, 3, seed, "dirt");
+            w.At(2, 1).T = "thatch";
+            w.At(3, 1).T = "thatch";
+            w.At(4, 1).T = "logwall";
+            w.Apply(2, 1, "fire", 3, -1, false);
+            return w;
+        }
+
+        // The tick the thatch burnt out, the logs caught (-1 never) and they burnt out.
+        static (int thatchOut, int logsLit, int logsOut) BurnTimes(uint seed)
+        {
+            var w = ThatchByLogs(seed);
+            int thatchOut = -1, logsLit = -1, logsOut = -1;
+            for (int t = 1; t <= 400 && logsOut < 0; t++)
+            {
+                w.Step();
+                if (thatchOut < 0 && w.At(2, 1).T != "thatch") thatchOut = t;
+                if (logsLit < 0 && w.At(4, 1).Fire > 0) logsLit = t;
+                if (logsLit >= 0 && w.At(4, 1).T != "logwall") logsOut = t;
+            }
+            return (thatchOut, logsLit, logsOut);
+        }
+
+        [Test]
+        public void ThatchFlaresAndLightsTheLogWallWhichBurnsLong()
+        {
+            // Andrew, 2026-10-28: thatch catches easily, burns hot and fast and is soon out; wood is slow to
+            // catch and burns long; the thatch's heat (materials.json "heat") is what lights the wood.
+            int Lit(Rules rules)
+            {
+                int lit = 0;
+                for (uint seed = 1; seed <= 40; seed++)
+                {
+                    var w = ThatchByLogs(seed, rules);
+                    Run(w, 30);
+                    if (w.At(4, 1).Fire > 0 || w.At(4, 1).T != "logwall") lit++;
+                }
+                return lit;
+            }
+            var cool = R.WithMods(new[] { ModPatch.Parse("{ \"terrain\": { \"thatch\": { \"name\": \"Thatch roof\", \"tags\": [\"roof\", \"flammable\"], \"flammability\": 0.6, \"fuel\": 18, \"heat\": 1, \"burnsTo\": \"rubble\" } } }") });
+            int hot = Lit(R), plain = Lit(cool);
+            Assert.That(hot, Is.GreaterThan(plain), $"hot thatch lit the logs {hot} times in 40, at heat 1 {plain}");
+            Assert.That($"{hot} {plain}", Is.EqualTo("32 23"), "the same in the sandbox");
+
+            // The first of those runs where the logs caught: when the thatch was out, the logs lit, and they burnt out.
+            var (thatchOut, logsLit, logsOut) = (-1, -1, -1);
+            for (uint seed = 1; seed <= 40 && logsLit < 0; seed++) (thatchOut, logsLit, logsOut) = BurnTimes(seed);
+            Assert.That(thatchOut, Is.InRange(12, 24), "thatch burns a few seconds, then is out");
+            Assert.That(logsLit, Is.GreaterThan(0), "the logs catch from it");
+            Assert.That(logsOut - logsLit, Is.GreaterThanOrEqualTo(100), $"and burn long: lit at {logsLit}, out at {logsOut}");
+        }
+
         [Test]
         public void RayOfFrostFreezesAPondIntoInsulatingIce()
         {
@@ -412,7 +629,7 @@ namespace Chem.Tests
         [Test]
         public void CreateWaterRunsDownAChannel()
         {
-            var w = Room(16, 5);
+            var w = Room(16, 5, rules: NoSoak);
             for (int x = 2; x <= 13; x++) w.At(x, 2).T = "pit";
             w.Cast("create-water", 3, 2, 0);
             int total = w.Cells.Sum(c => c.Water);

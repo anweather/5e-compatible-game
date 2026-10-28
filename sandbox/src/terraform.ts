@@ -1,7 +1,7 @@
 // Earth shaping: terraform spells raise and dig cells (Cell.h), and raised
 // ground sheds its water. Unity's port is Chemistry/World.Terraform.cs.
 import { type CraterDef, RULES, type SpellDef } from "./rules.ts";
-import { type World, cellAt, entityAt, hasTag, idx, isBlocking, logOnce, neighbours, terrainDef } from "./world.ts";
+import { type World, burns, cellAt, entityAt, idx, isBlocking, logOnce, neighbours, terrainDef } from "./world.ts";
 
 /**
  * Raises or digs every cell of a terraform spell aimed at (x, y): by raise or dig
@@ -76,7 +76,7 @@ export function reshape(w: World, x: number, y: number, n: number, terrain?: str
   if (to !== undefined) c.t = to;
   if (n > 0) spillWater(w, x, y);
   if (isBlocking(c)) c.cover = null;
-  if (isBlocking(c) || (!hasTag(c, "flammable") && c.cover === null)) {
+  if (isBlocking(c) || (!burns(terrainDef(c)) && c.cover === null)) {
     c.fire = 0;
     c.fuel = 0;
   }
