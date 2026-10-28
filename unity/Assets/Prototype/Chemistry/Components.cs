@@ -85,8 +85,25 @@ namespace Chem
             var set = Names(o["components"]);
             if (Truthy(o["flammable"])) set = set.With(Component(Flammable));
             if (Truthy(o["creature"])) set = set.With(Component(Creature));
+            return new ComponentSet(set.Bits | FromMaterial(Str(o["material"])).Bits);
+        }
+
+        // What a thing's material makes it (docs/MATERIALS.md, step 4): its verbs as the components the
+        // rules ask for. A burn makes it flammable, a break breakable, a conduct conducts, a shatter brittle.
+        ComponentSet FromMaterial(string material)
+        {
+            var set = ComponentSet.Empty;
+            if (material == null || !terrain.TryGetValue(material, out var m)) return set;
+            foreach (var (name, verb) in MaterialComponents)
+                if (m.Has(verb)) set = set.With(Component(name));
             return set;
         }
+
+        /// <summary>Each component a material's verb gives a thing, and the verb's tag (sandbox: MATERIAL_COMPONENTS).</summary>
+        public static readonly IReadOnlyList<(string component, string tag)> MaterialComponents = new[]
+        {
+            ("flammable", "flammable"), ("breakable", "breakable"), ("conducts", "conductive"), ("brittle", "brittle"),
+        };
 
         /// <summary>A component name or a list of them, as a set (unknown names left out; the checks report them).</summary>
         ComponentSet Names(JToken t)

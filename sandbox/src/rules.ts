@@ -610,8 +610,15 @@ export function componentNames(r: Rules = RULES): string[] {
 }
 
 /** Whether an entity or item has a component, honouring the old flammable / creature keys. */
-export function hasComponent(def: { components?: string[]; flammable?: boolean; creature?: boolean }, name: string): boolean {
-  return (def.components ?? []).includes(name) || (name === "flammable" && !!def.flammable) || (name === "creature" && !!def.creature);
+/** Each component a material's verb gives a thing, and the verb's tag (Rules.MaterialComponents). */
+export const MATERIAL_COMPONENTS: Record<string, string> = { flammable: "flammable", breakable: "breakable", conducts: "conductive", brittle: "brittle" };
+
+export function hasComponent(def: { components?: string[]; flammable?: boolean; creature?: boolean; material?: string }, name: string): boolean {
+  if ((def.components ?? []).includes(name) || (name === "flammable" && !!def.flammable) || (name === "creature" && !!def.creature)) return true;
+  // What its material makes it (docs/MATERIALS.md, step 4).
+  const tag = MATERIAL_COMPONENTS[name];
+  const m = def.material !== undefined ? RULES.terrain[def.material] : undefined;
+  return tag !== undefined && m !== undefined && m.tags.includes(tag);
 }
 
 const namesOf = (v: string | string[] | undefined): string[] => (v === undefined ? [] : typeof v === "string" ? [v] : v);

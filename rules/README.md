@@ -198,6 +198,7 @@ as with any digging, so the middle of a crater doesn't burn.
 - Water is measured in units: `sim.water.unitsPerStep` (4) units make
   one step of depth. A pit is one step below the ground, so a full pond
   holds 4 units.
+- A thing in `entities.json` or `items.json` names its `material` (a terrain id) and takes what it gives: `burn` makes it `flammable`, `break` `breakable`, `conduct` `conducts`, `shatter` `brittle` (`Rules.MaterialComponents`, the sandbox's `MATERIAL_COMPONENTS`). Its `components` list only the rest (`creature`, `heavy`).
 - `materials.json` spells its terrain and covers by **verb groups** (`docs/MATERIALS.md`; the flat keys below still read the same, for mods):
   `"burn": { "catch", "fuel", "heat", "leaves", "log", "look" }` (cover: `catch`,
   `fuel`, `intensity`, `look`), `"break": { "leaves" }`, `"dig": { "hardness",
