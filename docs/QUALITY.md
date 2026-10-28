@@ -101,7 +101,7 @@ npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
 In Unity: change any script (or **Assets → Refresh**). The warnings appear in
 the Console once compiling finishes.
 
-## Baseline (2026-10-25, after the clean-up)
+## Baseline (2026-10-25, after the clean-up; World.Spells.cs added 2026-10-27)
 
 What the analyzers report on our code now. The architecture the code follows
 is in `docs/ARCHITECTURE.md`.
@@ -110,11 +110,12 @@ is in `docs/ARCHITECTURE.md`.
 |---|---|---|
 | Chemistry/World.React.cs | 3 | S3776 ×3 (complexity 18, 28, 69) |
 | Chemistry/World.Terraform.cs | 1 | S3776 (23) |
+| Chemistry/World.Spells.cs | 2 | S3776 ×2 (ShapeCells, SlantCells: they mirror the sandbox, to be split with the TS) |
 | *Starter Assets ReadmeEditor.cs (pack)* | 2 | S1066, S1199 |
 
-Totals: **Scripts/ 0**, **Chemistry/ 4** (all cognitive complexity; the
-terraform line fix split `World.Spells.cs`'s, and the chunked tick split
-`World.Sim.cs`'s three), pack 2, which makes 6 in the Unity console.
+Totals: **Scripts/ 0**, **Chemistry/ 6** (all cognitive complexity; the
+chunked tick split `World.Sim.cs`'s three; `World.Spells.cs`'s two came back
+with aiming any way and Time & Weather), pack 2, which makes 8 in the Unity console.
 
 Before the clean-up (2026-10-25, the code had grown since the first baseline
 of 39) it was **Scripts/ 65**, **Chemistry/ 8**, pack 2: S3776 21, UNT0039 10,
