@@ -426,6 +426,7 @@ namespace Chem
             if (c.Frozen || IsBlocking(c)) return;
             int elevation = ElevationUnits(c);
             int level = elevation + c.Water;
+            int here = LandOf(ch, i);
             // Water always runs onto lower ground; on the flat it needs a 2-step
             // difference, so a still puddle doesn't slosh back and forth forever.
             // Neighbours are visited inline in N, E, S, W order (the order Neighbours()
@@ -438,7 +439,10 @@ namespace Chem
             {
                 var nc = Chunk.Next(ch, i, d, out var nch, out int ni);
                 if (nc == null || !nch.Active) continue;
-                double score = FlowScore(nc, elevation, level);
+                // Between two dry-land cells the land's slope counts too; a water body's cells keep level.
+                int there = here == NoLand ? NoLand : LandOf(nch, ni);
+                int slope = there == NoLand ? 0 : here - there;
+                double score = FlowScore(nc, elevation + slope, level + slope);
                 if (score > bestScore)
                 {
                     bestScore = score;

@@ -293,6 +293,76 @@ namespace Chem.Tests
             Assert.That(w.IsSlippery(w.At(6, 3)));
         }
 
+        // 12 units poured mid-way along a 16×9 meadow on this land; the water west and east of it after 300 ticks.
+        static int Spread(int[] land, out int east)
+        {
+            var w = new World(R, 16, 9, 1, "grass");
+            w.SetLand(land);
+            w.At(8, 4).Water = 12;
+            Run(w, 300);
+            int west = w.Cells.Where((c, k) => k % 16 < 8).Sum(c => c.Water);
+            east = w.Cells.Where((c, k) => k % 16 > 8).Sum(c => c.Water);
+            return west;
+        }
+
+        [Test]
+        public void WaterRunsDownTheLandsSlope()
+        {
+            // Playtest #31: Create Water on a hillside pooled where it landed. The hill is the land's
+            // (the valley's baked ground), which the cells don't hold: SetLand tells the water.
+            var slope = new int[16 * 9];
+            for (int k = 0; k < slope.Length; k++) slope[k] = (k % 16) * 3; // rising east, 0.375 m a cell
+            int westOnSlope = Spread(slope, out int eastOnSlope);
+            Assert.That(eastOnSlope, Is.EqualTo(0), "none runs uphill");
+            Assert.That(westOnSlope, Is.GreaterThanOrEqualTo(10), "it runs down the slope");
+            int westOnFlat = Spread(null, out int eastOnFlat);
+            Assert.That(eastOnFlat, Is.GreaterThan(0), "on the flat it spreads both ways");
+            Assert.That(westOnFlat, Is.LessThan(westOnSlope));
+            // A water body's cells keep level: no land between them and the slope.
+            var lake = (int[])slope.Clone();
+            for (int k = 0; k < lake.Length; k++) if (k % 16 >= 8) lake[k] = World.NoLand;
+            Spread(lake, out int eastOfLake);
+            Assert.That(eastOfLake, Is.GreaterThan(0), "inside a water body it spreads as on the flat");
+        }
+
+        [Test]
+        public void LandFileRoundTripsAndSetLandKeepsWaterBodiesLevel()
+        {
+            var rng = new Random(3);
+            var land = new int[7 * 5];
+            for (int k = 0; k < land.Length; k++) land[k] = rng.Next(-900, 900);
+            string json = LandFile.Write(land, 7, 5, 0.125);
+            Assert.That(LandFile.Read(json, 7, 5), Is.EqualTo(land));
+            Assert.That(LandFile.Read(json, 5, 7), Is.Empty, "another world's size");
+            // A pond on low land among high land: as a water body it keeps the flat rules and spills
+            // out; were its cell dry land, the high land round it would hold the water in.
+            var w = new World(R, 7, 5, 1, "grass");
+            w.At(3, 2).Water = 6;
+            var high = new int[7 * 5];
+            for (int k = 0; k < high.Length; k++) high[k] = 400;
+            high[2 * 7 + 3] = 0;
+            w.SetLand(high);
+            high[0] = 1; // a copy: changing the array after doesn't move the land
+            Run(w, 20);
+            Assert.That(w.At(2, 2).Water + w.At(4, 2).Water + w.At(3, 1).Water + w.At(3, 3).Water, Is.GreaterThan(0), "the pond spills as on the flat");
+        }
+
+        [Test]
+        public void TheValleysLandIsPinned()
+        {
+            // world/land.json is the same integers on every peer (lockstep): a re-bake that moves them
+            // shows here first. Rebake (Prototype > Bake Valley Land) and update these if the valley's
+            // shape changed on purpose.
+            string path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(RulesDir()), "world", "land.json");
+            var land = LandFile.Read(System.IO.File.ReadAllText(path), 576, 576);
+            Assert.That(land.Length, Is.EqualTo(576 * 576));
+            Assert.That(land[0], Is.EqualTo(665), "the north-west corner, up in the hills");
+            Assert.That(land[418 * 576 + 202], Is.EqualTo(103), "the slope probe's hillside");
+            Assert.That(land[418 * 576 + 208], Is.EqualTo(64), "six cells down it");
+            Assert.That(land[288 * 576 + 288], Is.EqualTo(0), "the middle");
+            Assert.That(land[575 * 576 + 575], Is.EqualTo(-174), "the south-east corner, by the sea");
+        }
+
         [Test]
         public void RayOfFrostFreezesAPondIntoInsulatingIce()
         {

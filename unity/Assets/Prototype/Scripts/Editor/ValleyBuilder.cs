@@ -33,11 +33,15 @@ public static class ValleyBuilder
         AssetDatabase.Refresh();
 
         var terrains = BuildTerrain(grid, yardRows);
-        var ripples = BuildLake();
-        // The cells' water (the pond, trenches, puddles) and their oil and grease: films whose
-        // meshes fade their own edges (vertex alpha). The water has the lake's colour and
-        // ripples, gentler, so a small pool doesn't glint in rings.
-        grid.waterMaterial = SoftMaterial("CellWater", new Color(0.12f, 0.32f, 0.42f, 0.8f), 0.93f, ripples, 0.12f);
+        BuildLake();
+        // The cells' water (the river, pond, trenches, puddles) and their oil and grease: films whose
+        // meshes fade their own edges (vertex alpha). The water flows (Prototype/CellWater: ripples
+        // and foam carried along the river's current and down hillsides; Andrew's playtest #32).
+        var cellWater = EditorAssets.LoadOrCreate($"{Generated}/CellWaterFlow.mat", () => new Material(Shader.Find("Prototype/CellWater")));
+        cellWater.shader = Shader.Find("Prototype/CellWater");
+        cellWater.SetColor("_Color", new Color(0.12f, 0.32f, 0.42f, 0.8f));
+        EditorUtility.SetDirty(cellWater);
+        grid.waterMaterial = cellWater;
         grid.slickMaterial = SoftMaterial("Slick", Color.white, 0.92f, null, 0f);
         // Raised walls are built of the demo pack's rocks: upright crags and slabs for their faces, flat stones on top.
         grid.wallRocks = LoadRocks("Rock_A_01", "Rock_A_02", "Rock_C_02");
@@ -930,8 +934,8 @@ public static class ValleyBuilder
 
     // --- lake ----------------------------------------------------------------
 
-    // Builds the lake; returns its ripples (a normal map).
-    static Texture2D BuildLake()
+    // Builds the lake.
+    static void BuildLake()
     {
         var ripplesPath = Generated + "/LakeRipples.png";
         File.WriteAllBytes(ripplesPath, ProceduralTextures.RippleNormals(512).EncodeToPNG());
@@ -954,7 +958,6 @@ public static class ValleyBuilder
         r.sharedMaterial = mat;
         r.shadowCastingMode = ShadowCastingMode.Off;
         lake.AddComponent<ScrollingTexture>().speed = new Vector2(0.004f, 0.003f);
-        return AssetDatabase.LoadAssetAtPath<Texture2D>(ripplesPath);
     }
 
     // A see-through material tinted by its mesh's vertex colours (UrpMaterials.ConfigureSoftSurface).

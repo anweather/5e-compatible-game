@@ -6,7 +6,7 @@ import { castAt, castSpell, carry, paint, placeCritter, previewCells } from "../
 import { push, spawn, walk } from "../src/entities.ts";
 import { applyElement } from "../src/react.ts";
 import { SCENARIOS, goalState, loadScenario } from "../src/scenarios.ts";
-import { type World, cellAt, createWorld, entityAt, hashWorld, playerOf } from "../src/world.ts";
+import { type World, NO_LAND, cellAt, setLand, createWorld, entityAt, hashWorld, playerOf } from "../src/world.ts";
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
 const direct = { power: 2, direct: true };
@@ -297,4 +297,27 @@ test("Misty Step between the Steam Gate's bars counts as getting through", () =>
   Object.assign(me, { x: 25, y: 9 });
   assert.equal(castAt(w, "misty-step", 28, 9), null);
   assert.equal(goalState(w, s)!.via, "blink");
+});
+
+// Mirrors ChemistryTests.WaterRunsDownTheLandsSlope (playtest #31).
+test("water runs down the land's slope", () => {
+  const spread = (land: number[] | null) => {
+    const w = createWorld(16, 9, 1);
+    for (const c of w.cells) c.t = "grass";
+    setLand(w, land);
+    cellAt(w, 8, 4)!.water = 12;
+    run(w, 300);
+    let west = 0, east = 0;
+    w.cells.forEach((c, i) => { if (i % 16 < 8) west += c.water; if (i % 16 > 8) east += c.water; });
+    return { west, east };
+  };
+  const slope = Array.from({ length: 16 * 9 }, (_, k) => (k % 16) * 3);
+  const onSlope = spread(slope);
+  assert.equal(onSlope.east, 0, "none runs uphill");
+  assert.ok(onSlope.west >= 10, "it runs down the slope");
+  const onFlat = spread(null);
+  assert.ok(onFlat.east > 0, "on the flat it spreads both ways");
+  assert.ok(onFlat.west < onSlope.west);
+  const lake = slope.map((v, k) => (k % 16 >= 8 ? NO_LAND : v));
+  assert.ok(spread(lake).east > 0, "inside a water body it spreads as on the flat");
 });

@@ -154,6 +154,9 @@ public static class ProbeScenarios
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
             "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+        new Entry("slope", typeof(SlopeProbe), 60f,
+            "Playtest #31: Create Water on the steepest dry hillside near the start (a 1.5 to 6 m fall over 6 cells of the valley's baked ground), " +
+            "12 s later a picture from the side. Checks: a hillside found, the water reached over 1 m below where it was cast, no console errors."),
         new Entry("papercuts", typeof(PaperCutsProbe), 180f,
             "Andrew's playtest paper cuts of 2026-10-27, framed for before/after pictures (the same script with or without the fixes). Checks: the " +
             "signs drawn with SignText (one-sided), a villager sitting on the seat, the house roof solid and landed on, the well wall stopping you, " +

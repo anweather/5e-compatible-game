@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Chem;
 using UnityEngine;
 
@@ -78,6 +79,7 @@ public class ValleyChemistry : MonoBehaviour
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         ground.RaiseBase(channelCells, channelDepths);
+        SetLand(world);
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
@@ -170,6 +172,43 @@ public class ValleyChemistry : MonoBehaviour
     public bool IsLake(Cell c, int x, int y) => c.T == TerrainIds.Pit && BaseHeight(x, y) < lakeLevel;
 
     /// <summary>How high above the ground a cell's fire burns: in the crown of a tree, along a cabin wall.</summary>
+    // The water runs down the valley's hills (playtest #31), which only the baked ground holds. The
+    // land comes from world/land.json, integers baked once from this terrain and committed, so every
+    // peer on every platform has the same (BakeLand writes it); without it the land is flat.
+    static int[] landFromFile;
+
+    static void SetLand(World world)
+    {
+        if (landFromFile == null || landFromFile.Length != world.W * world.H)
+        {
+            string path = Path.Combine(ChemGrid.FindWorldDir(), "land.json");
+            landFromFile = File.Exists(path) ? LandFile.Read(File.ReadAllText(path), world.W, world.H) : null;
+            if (landFromFile != null && landFromFile.Length == 0) landFromFile = null;
+            if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
+        }
+        world.SetLand(landFromFile);
+    }
+
+    /// <summary>
+    /// Writes world/land.json from the terrain as drawn now (in Play mode, once the valley is bound):
+    /// each cell's baked ground in whole water units. Run after the valley's land changes
+    /// (Prototype > Bake Valley Land) and commit the file.
+    /// </summary>
+    public string BakeLand()
+    {
+        var world = grid.World;
+        float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
+        var land = new int[world.W * world.H];
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
+                land[world.Idx(x, y)] = Mathf.RoundToInt(ground.BaseHeight(x, y) / unit);
+        string path = Path.Combine(ChemGrid.FindWorldDir(), "land.json");
+        File.WriteAllText(path, LandFile.Write(land, world.W, world.H, unit));
+        landFromFile = null;
+        SetLand(world);
+        return $"wrote {path} ({new FileInfo(path).Length / 1024} KB)";
+    }
+
     public static float FireHeight(string terrainType) => terrainType switch
     {
         TerrainIds.Tree => 2.6f,

@@ -90,6 +90,8 @@ export interface World {
   w: number;
   h: number;
   cells: Cell[];
+  /** The land under each cell in water units (hills the cells don't hold), NO_LAND for a water body's cell; absent for flat land. Only the water reads it (World.SetLand). */
+  land?: number[] | null;
   entities: Entity[];
   critters: Critter[];
   machines: Record<number, MachineState>;
@@ -171,6 +173,13 @@ export const hasTag = (c: Cell, tag: string) => terrainDef(c).tags.includes(tag)
 export const isRaisedWall = (c: Cell) => c.h >= RULES.sim.height.blockAt;
 export const isBlocking = (c: Cell) => hasTag(c, "blocking") || isRaisedWall(c);
 /** Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.water. */
+export const NO_LAND = -2147483648;
+
+/** World.SetLand: the land copied, with each cell that has water or a spring now (a lake, the river, the sea) marked NO_LAND; null for flat land. */
+export function setLand(w: World, land: number[] | null) {
+  w.land = land ? w.cells.map((c, i) => (c.water > 0 || (terrainDef(c).spring ?? 0) > 0 ? NO_LAND : land[i]!)) : null;
+}
+
 export const elevation = (c: Cell) => ((terrainDef(c).elevation ?? 0) + c.h) * RULES.sim.water.unitsPerStep;
 export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.covers[c.cover]?.tags.includes(tag) ?? false);
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);

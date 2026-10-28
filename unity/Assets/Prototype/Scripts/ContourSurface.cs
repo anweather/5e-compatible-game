@@ -18,6 +18,7 @@ public sealed class ContourSurface
     readonly List<Vector3> vertices = new();
     readonly List<Color> colors = new();
     readonly List<Vector2> uvs = new();
+    readonly List<Vector2> flows = new(), foams = new();
     readonly float uvMetres;
 
     /// <param name="uvMetres">Metres per texture repeat (UVs are world x, z over this).</param>
@@ -44,14 +45,19 @@ public sealed class ContourSurface
     /// Rebuilds the mesh around cells (x0, y0)..(x1, y1): <paramref name="value"/> per cell (1 in,
     /// 0 out, see CellContour), <paramref name="height"/> and <paramref name="color"/> per point
     /// (grid units; the colour also gets the point's blended value, for fading the edge);
-    /// <paramref name="wobble"/> optionally calms the outline's wobble per cell (see CellContour.Build).
+    /// <paramref name="wobble"/> optionally calms the outline's wobble per cell (see CellContour.Build);
+    /// <paramref name="flow"/> optionally gives each point the water's flow (x, z in m/s, into uv1)
+    /// and its foam (z, into uv2.x), from its blended value too.
     /// </summary>
     public void Build(RectInt cells, System.Func<int, int, float> value, System.Func<float, float, float> height,
-        System.Func<float, float, float, Color> color, System.Func<int, int, float> wobble = null)
+        System.Func<float, float, float, Color> color, System.Func<int, int, float> wobble = null,
+        System.Func<float, float, float, Vector3> flow = null)
     {
         vertices.Clear();
         colors.Clear();
         uvs.Clear();
+        flows.Clear();
+        foams.Clear();
         contour.Build(cells.xMin, cells.yMin, cells.xMax - 1, cells.yMax - 1, value, shape, wobble);
         for (int n = 0; n < shape.Points.Count; n++)
         {
@@ -61,11 +67,20 @@ public sealed class ContourSurface
             vertices.Add(at);
             colors.Add(color(gx, gy, shape.Values[n]));
             uvs.Add(new Vector2(at.x / uvMetres, at.z / uvMetres));
+            if (flow == null) continue;
+            var f = flow(gx, gy, shape.Values[n]);
+            flows.Add(f);
+            foams.Add(new Vector2(f.z, 0f));
         }
         mesh.Clear();
         mesh.SetVertices(vertices);
         mesh.SetColors(colors);
         mesh.SetUVs(0, uvs);
+        if (flow != null)
+        {
+            mesh.SetUVs(1, flows);
+            mesh.SetUVs(2, foams);
+        }
         mesh.SetTriangles(shape.Triangles, 0);
         mesh.RecalculateNormals();
         mesh.RecalculateBounds();

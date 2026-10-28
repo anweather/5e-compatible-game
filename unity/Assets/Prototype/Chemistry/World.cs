@@ -161,6 +161,37 @@ namespace Chem
         bool BlocksSight(Cell c) => IsBlocking(c) && !HasTag(c, "seeThrough");
         /// <summary>Raised height.blockAt steps or more: a wall of earth, whatever the terrain.</summary>
         public bool IsRaisedWall(Cell c) => c.Height >= Rules.Sim.Height.BlockAt;
+        // The land under each cell in water units (the valley's baked ground: hills the cells don't
+        // hold), or NoLand for a cell of a water body; null for flat land. Only the water reads it.
+        int[] land;
+        public const int NoLand = int.MinValue;
+
+        /// <summary>
+        /// The land's height under each cell (Idx order), in water units, so water on a hillside runs
+        /// down it (playtest #31): world/land.json (LandFile), the same integers on every peer. A cell
+        /// with water or a spring now (a lake, the river, the sea) is marked NoLand, as is any NoLand
+        /// given. Copied; null makes the land flat again.
+        /// </summary>
+        public void SetLand(int[] units)
+        {
+            if (units != null && units.Length != W * H) throw new ArgumentException($"land needs {W * H} cells, got {units.Length}");
+            if (units == null)
+            {
+                land = null;
+                return;
+            }
+            land = (int[])units.Clone();
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    var c = At(x, y);
+                    if (c == null || c.Water > 0 || TerrainOf(c).Spring > 0) land[Idx(x, y)] = NoLand;
+                }
+        }
+
+        int LandOf(Chunk ch, int i) =>
+            land == null ? NoLand : land[Idx((ch.X << Chunks.Shift) + (i & Chunks.Mask), (ch.Y << Chunks.Shift) + (i >> Chunks.Shift))];
+
         /// <summary>Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.Water.</summary>
         public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + c.Height) * Rules.Sim.WaterUnitsPerStep;
         public bool CoverHasTag(Cell c, string tag) =>
