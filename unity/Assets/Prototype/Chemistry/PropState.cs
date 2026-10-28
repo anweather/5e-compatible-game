@@ -28,6 +28,11 @@ namespace Chem
         /// <summary>How long it burns once alight: its material's fuel (a wooden crate burns as wood does), else BurnTicks.</summary>
         public int BurnTime => Def.MaterialDef?.Has("flammable") == true ? Def.MaterialDef.Fuel ?? BurnTicks : BurnTicks;
 
+        // How often it loses a hit point burning: one of a flammable material burns its fuel down over its hit
+        // points (a timber crate smoulders for a while), never faster than the sim's burn damage.
+        int DamageEvery(int burnEvery) =>
+            Def.MaterialDef?.Has("flammable") == true ? Math.Max(burnEvery, BurnTime / Math.Max(1, Def.Hp)) : burnEvery;
+
         // Whether this tick in fire sets it going: at once without a material, else once it has stood in
         // fire for 1/flammability ticks running (counted from the tick it first stood in it, so a prop needs
         // no random numbers and catches the same however often it's stepped).
@@ -118,7 +123,7 @@ namespace Chem
             if (c != null && !floating) events |= Touch(c, tick);
             if (!Burning) return events;
             BurningTicks--;
-            if (tick % Math.Max(1, burnEvery) != 0) return events;
+            if (tick % Math.Max(1, DamageEvery(burnEvery)) != 0) return events;
             events |= PropEvents.Burned;
             if (Damage(1)) events |= PropEvents.Destroyed;
             return events;

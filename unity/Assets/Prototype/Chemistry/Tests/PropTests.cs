@@ -105,12 +105,13 @@ namespace Chem.Tests
             Assert.That(crate.Step(fire, 7, 3) & PropEvents.Ignited, Is.EqualTo(PropEvents.Ignited));
             Assert.That(crate.BurnTime, Is.EqualTo(Crate.MaterialDef.Fuel));
             int burns = 0, tick = 7;
-            while (!crate.Destroyed && tick < 100)
+            while (!crate.Destroyed && tick < 300)
             {
                 var events = crate.Step(fire, ++tick, 3);
                 if ((events & PropEvents.Burned) != 0) burns++;
             }
-            Assert.That(tick, Is.EqualTo(24), "6 HP, 1 damage every 3rd tick from the 9th");
+            // Timber's fuel over its 6 HP: a hit point every 23 ticks, so it burns about as long as its fuel.
+            Assert.That(tick, Is.InRange(130, 150), "it burns about as long as timber's fuel");
             Assert.That(burns, Is.EqualTo(6));
         }
 
