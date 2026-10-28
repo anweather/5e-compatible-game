@@ -377,3 +377,14 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   their footprint as cells of that material, as the cabins do. LEND to World
   for this step: the village and house builders (Gameplay's; Gameplay is
   idle). "flesh" for creatures comes later. Merge pre-approved on checks.
+- 2026-10-28: FOCUS (Andrew). The game is about material interactions,
+  attributes and effects, spell effects, and the little mini games (finding
+  what's fun). World look and feel is a side quest, not critical. Zach is
+  improving terrain and looks in Punchy: don't spend effort porting it
+  (BACKLOG 17-20 drop to the bottom). The coordinator challenges any plan,
+  Andrew's included, that drifts off this focus before queuing it.
+- 2026-10-28: Release 0.1.7 approved (Andrew), to be cut after World's
+  materials migration steps 1-4. Low tokens: the release runs as scripted
+  (RELEASING.md, ship-update.sh) with no extra exploration. PC: World runs
+  --windows-only; then Mac: --mac-only into the same draft; then the bot
+  runs on the RC; then Andrew publishes.
