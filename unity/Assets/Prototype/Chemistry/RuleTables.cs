@@ -131,7 +131,10 @@ namespace Chem
     {
         public string Id, Name;
         public int Hp, Mass;
+        /// <summary>Flammable and Creature mirror those components (Components.cs), for the code that reads them.</summary>
         public bool Flammable, Creature, Player;
+        /// <summary>What it is made of or does (entities.json "components").</summary>
+        public ComponentSet Components;
         /// <summary>Null unless it blows up when destroyed.</summary>
         public ExplosionDef Explodes;
         /// <summary>Null unless it raids the defense field (Defense.cs).</summary>
@@ -373,6 +376,7 @@ namespace Chem
                 ["machines"] = Get("machines.json", false) as JObject ?? new JObject(),
                 ["sim"] = Get("sim.json", false) as JObject ?? new JObject(),
                 ["groups"] = Get("groups.json", false) as JObject ?? new JObject(),
+                ["components"] = Get("components.json", false) as JObject ?? new JObject(),
             });
         }
 
@@ -380,6 +384,7 @@ namespace Chem
         static Rules FromDoc(JObject doc)
         {
             var r = new Rules(doc);
+            ParseComponents(r, doc["components"] as JObject ?? new JObject());
             foreach (var p in ((JObject)doc["terrain"]).Properties()) r.terrain[p.Name] = ParseTerrain(p.Name, (JObject)p.Value);
             foreach (var p in ((JObject)doc["covers"]).Properties()) r.covers[p.Name] = ParseCover(p.Name, (JObject)p.Value);
             foreach (var p in ((JObject)doc["gases"]).Properties())
@@ -404,9 +409,9 @@ namespace Chem
             ParseEntityRules(r, doc["entityRules"]);
             foreach (var t in doc["spells"].OfType<JObject>()) r.spells.Add(ParseSpell(t));
             foreach (var p in ((JObject)doc["entities"]).Properties())
-                if (p.Value is JObject e) r.entities[p.Name] = ParseEntity(p.Name, e);
+                if (p.Value is JObject e) r.entities[p.Name] = r.ParseEntity(p.Name, e);
             foreach (var p in ((JObject)doc["items"]).Properties())
-                if (p.Value is JObject i) r.items[p.Name] = ParseItem(p.Name, i);
+                if (p.Value is JObject i) r.items[p.Name] = r.ParseItem(p.Name, i);
             r.Sim = ParseSim((JObject)doc["sim"]);
             ParseGroups(r, (JObject)doc["groups"]);
             return r;
@@ -475,7 +480,7 @@ namespace Chem
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
 
-        static EntityDef ParseEntity(string id, JObject o)
+        EntityDef ParseEntity(string id, JObject o)
         {
             ExplosionDef boom = null;
             if (o["explodes"] is JObject x)
@@ -488,14 +493,16 @@ namespace Chem
                     Damage = Dice(x["damage"]),
                     Crater = ParseCrater(x["crater"]),
                 };
+            var components = ThingComponents(o);
             return new EntityDef
             {
                 Id = id,
                 Name = Str(o["name"]) ?? id,
                 Hp = Int(o["hp"]) ?? 1,
                 Mass = Int(o["mass"]) ?? 1,
-                Flammable = Truthy(o["flammable"]),
-                Creature = Truthy(o["creature"]),
+                Components = components,
+                Flammable = components.Has(Component(Rules.Flammable)),
+                Creature = components.Has(Component(Rules.Creature)),
                 Player = Truthy(o["player"]),
                 Explodes = boom,
                 Raider = ParseRaider(o["raider"]),

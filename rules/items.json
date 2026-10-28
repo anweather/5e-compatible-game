@@ -8,7 +8,7 @@
   "glow-ball-rose": { "name": "Rose glowing ball", "mass": 0.3, "use": "light",
     "light": { "bright": 20, "dim": 20, "color": "#ff6fae" },
     "srd": "A ball with the Light cantrip on it: bright light in a 20 ft radius and dim light for 20 ft more, for an hour." },
-  "bullseye-lantern": { "name": "Bullseye lantern", "mass": 0.9, "use": "light",
+  "bullseye-lantern": { "name": "Bullseye lantern", "mass": 0.9, "use": "light", "components": ["brittle"],
     "light": { "bright": 60, "dim": 60, "color": "#ffd9a0", "cone": 53.13 },
     "breaks": { "speed": 8, "spill": { "cover": "oil", "radius": 0, "fire": 3 } },
     "srd": "Bright light in a 60 ft cone and dim light for 60 ft more, burning a flask of oil. A 5e cone is as wide as it is long (about 53 degrees). Smashing it on landing (8 m/s or harder) splashes its burning oil over the 5 ft square, as a thrown oil flask does: our physical reading." },

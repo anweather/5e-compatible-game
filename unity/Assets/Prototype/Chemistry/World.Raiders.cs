@@ -68,7 +68,7 @@ namespace Chem
         {
             if (cond == null) return true;
             if (cond.Status != null && r.StatusOf(cond.Status) <= 0) return false;
-            return cond.Flammable == null || def.Flammable == cond.Flammable.Value;
+            return def.Components.HasAll(cond.Has) && !def.Components.HasAny(cond.Lacks);
         }
 
         // Sets and clears the effect's statuses; returns its damage multiplier (1 for none).

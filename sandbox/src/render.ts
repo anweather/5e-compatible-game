@@ -1,6 +1,6 @@
 // Canvas renderer. The board keeps one palette in both themes on purpose:
 // it is a place, not page chrome.
-import { RULES } from "./rules.ts";
+import { RULES, hasComponent } from "./rules.ts";
 import { defOf, isLevitating } from "./entities.ts";
 import { type Cell, type Dir, type World, DX, DY } from "./world.ts";
 
@@ -365,7 +365,7 @@ function drawEntity(ctx: CanvasRenderingContext2D, e: World["entities"][number],
     ctx.beginPath(); ctx.arc(cx + s * 0.32, cy + s * 0.28, s * 0.09, 0, 7); ctx.fill();
   }
   if ((e.status.burning ?? 0) > 0) drawFire(ctx, cx - s * 0.5, cy - s * 0.75, s, 1, t, e.id);
-  if (def.creature && e.hp < def.hp) {
+  if (hasComponent(def, "creature") && e.hp < def.hp) {
     const f = Math.max(0, e.hp / def.hp);
     ctx.fillStyle = "#1b1d1f"; ctx.fillRect(cx - s * 0.4, cy - s * 0.52, s * 0.8, s * 0.12);
     ctx.fillStyle = f > 0.5 ? "#7bd66b" : f > 0.25 ? "#ffcf4a" : "#ff5a4a";

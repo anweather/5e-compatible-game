@@ -1,10 +1,10 @@
 {
-  "wizard":  { "name": "Wizard", "hp": 12, "mass": 1, "flammable": false, "creature": true, "player": true },
-  "goblin":  { "name": "Goblin", "hp": 10, "mass": 1, "flammable": false, "creature": true },
-  "crate":   { "name": "Crate", "hp": 6, "mass": 1, "flammable": true },
-  "barrel":  { "name": "Oil barrel", "hp": 3, "mass": 1, "flammable": true, "explodes": { "cover": "oil", "radius": 1, "fire": 3, "push": 2, "damage": [2, 6], "crater": { "radius": 1, "depth": 1 } } },
-  "boulder": { "name": "Boulder", "hp": 999, "mass": 3, "flammable": false },
-  "bone-hound":   { "name": "Bone hound", "hp": 6, "mass": 1, "flammable": false, "creature": true, "raider": { "ticksPerSquare": 3, "weak": ["fire"] } },
-  "ash-crab":     { "name": "Ash crab", "hp": 9, "mass": 1, "flammable": false, "creature": true, "raider": { "ticksPerSquare": 4, "weak": ["cold", "lightning"], "resist": ["fire"] } },
-  "giant-spider": { "name": "Giant spider", "hp": 12, "mass": 1, "flammable": false, "creature": true, "raider": { "ticksPerSquare": 5, "weak": ["lightning"] } }
+  "wizard":  { "name": "Wizard", "hp": 12, "mass": 1, "components": ["creature"], "player": true },
+  "goblin":  { "name": "Goblin", "hp": 10, "mass": 1, "components": ["creature"] },
+  "crate":   { "name": "Crate", "hp": 6, "mass": 1, "components": ["flammable", "breakable"] },
+  "barrel":  { "name": "Oil barrel", "hp": 3, "mass": 1, "components": ["flammable", "breakable"], "explodes": { "cover": "oil", "radius": 1, "fire": 3, "push": 2, "damage": [2, 6], "crater": { "radius": 1, "depth": 1 } } },
+  "boulder": { "name": "Boulder", "hp": 999, "mass": 3, "components": ["heavy"] },
+  "bone-hound":   { "name": "Bone hound", "hp": 6, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 3, "weak": ["fire"] } },
+  "ash-crab":     { "name": "Ash crab", "hp": 9, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 4, "weak": ["cold", "lightning"], "resist": ["fire"] } },
+  "giant-spider": { "name": "Giant spider", "hp": 12, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 5, "weak": ["lightning"] } }
 }

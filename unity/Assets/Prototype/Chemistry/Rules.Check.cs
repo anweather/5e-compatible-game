@@ -16,6 +16,7 @@ namespace Chem
             var check = new Checker(r);
             check.CrossReferences();
             check.Items();
+            check.Components();
             check.Groups();
             check.Numbers();
             return check.Errors;
@@ -25,7 +26,7 @@ namespace Chem
         {
             static readonly HashSet<string> CondKeys = new HashSet<string>
             {
-                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "power", "chance",
+                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance",
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
@@ -96,6 +97,7 @@ namespace Chem
             void EntityRefs(JProperty p)
             {
                 RaiderRefs(p);
+                ComponentList($"entity {p.Name}", p.Value["components"]);
                 var explodes = p.Value["explodes"];
                 if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
                 if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1, radius from 0 and strength from 1");
@@ -182,6 +184,8 @@ namespace Chem
                 foreach (var k in effects.SelectMany(Keys).Where(k => !EffectKeys.Contains(k)))
                     Errors.Add($"rule {id}: unknown effect \"{k}\" (new verbs need code; see docs/MODDING.md)");
                 foreach (var e in effects.OfType<JObject>()) EffectRefs(id, e);
+                ComponentCond(id, cond, "has");
+                ComponentCond(id, cond, "lacks");
                 if (cond?["cover"] is JArray coverIds)
                     foreach (var cv in coverIds.Where(cv => !IsIn(covers, cv))) Errors.Add($"rule {id}: cover {Show(cv)} unknown");
             }

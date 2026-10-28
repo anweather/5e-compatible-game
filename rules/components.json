@@ -1,0 +1,9 @@
+{
+  "flammable": "Catches fire: fire on its square sets it burning, and while it burns it lights the square under it.",
+  "creature": "Alive: it moves on its own, takes statuses (wet, frozen, burning) and is hurt.",
+  "conducts": "Carries lightning: a charge reaching it passes on to what touches it.",
+  "floats": "Floats on water rather than sinking.",
+  "breakable": "Can be broken: it has hit points, and a hard enough blow or fall destroys it.",
+  "heavy": "Too heavy to lift or throw: it can only be pushed.",
+  "brittle": "Breaks when it lands hard or is struck: glass, a lantern."
+}

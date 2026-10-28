@@ -1,5 +1,5 @@
 // What the player does: cast a spell, place a critter, paint the map.
-import { RULES, type SpellDef } from "./rules.ts";
+import { RULES, hasComponent, type SpellDef } from "./rules.ts";
 import { applyElement, applyEntityElement, displaceWater } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
@@ -272,10 +272,10 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
     if (!s.push && s.damage) {
       const e = entityAt(w, cx, cy);
       if (e && e.id === casterId) continue;
-      if (e && defOf(e).creature) {
+      if (e && hasComponent(defOf(e), "creature")) {
         const mul = s.element === "lightning" ? applyEntityElement(w, e, "lightning", { ...ctx, direct: false }) : 1;
         damage(w, e, roll(w, s.damage) * mul, s.name.toLowerCase(), s.element);
-      } else if (e && s.element === "fire" && defOf(e).flammable) {
+      } else if (e && s.element === "fire" && hasComponent(defOf(e), "flammable")) {
         damage(w, e, roll(w, s.damage), "fire", "fire");
       }
     }
