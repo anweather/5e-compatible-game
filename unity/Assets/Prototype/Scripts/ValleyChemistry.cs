@@ -14,7 +14,7 @@ using UnityEngine;
 // own surface.
 // Works on runtime copies of the terrain data, so playing never changes the
 // saved valley.
-public class ValleyChemistry : MonoBehaviour
+public partial class ValleyChemistry : MonoBehaviour
 {
     public ChemGrid grid;
     [Tooltip("The chunk terrains, chunk (i, j) at j * 9 + i (TerrainGrid.Valley()).")]
@@ -92,11 +92,14 @@ public class ValleyChemistry : MonoBehaviour
         cabinBurnt = new int[n];
         cabinWrecked = new int[n];
         cabinCharred = new bool[n];
+        BindRoofs(n);
         for (int y = 0; y < world.H; y++)
             for (int x = 0; x < world.W; x++)
             {
                 int k = BuildingWallAt(world.At(x, y).T, x, y);
-                if (k >= 0) cabinCells[k]++;
+                if (k < 0) continue;
+                cabinCells[k]++;
+                buildingCells[k].Add(world.Idx(x, y));
             }
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
     }
@@ -341,12 +344,10 @@ public class ValleyChemistry : MonoBehaviour
             return;
         }
         foreach (var r in cabin.GetComponentsInChildren<Renderer>())
-        {
-            if (r.name == "Roof") r.enabled = false;
-            else if (r.GetComponent<ParticleSystem>() == null) r.sharedMaterial = charred;
-        }
+            if (r.name != "Roof" && r.GetComponent<ParticleSystem>() == null) r.sharedMaterial = charred;
         foreach (var l in cabin.GetComponentsInChildren<Light>()) l.enabled = false;
         EventLog.Add($"The {LabelOf(cabin)} burns down");
+        WallsBurnDown(k);
     }
 
     static void CaveIn(Transform cabin)
@@ -400,6 +401,7 @@ public class ValleyChemistry : MonoBehaviour
         TreesMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         ground.Flush(IsScorched);
+        WatchRoofs(Time.deltaTime);
         if (wet != null && grid.World != null) wet.Advance(grid.World.Weather.Rain, Time.deltaTime);
         GroundMs = timer.Elapsed.TotalMilliseconds;
     }
