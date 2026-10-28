@@ -15,6 +15,8 @@ export interface TerrainDef {
   name: string;
   tags: string[];
   flammability?: number;
+  /** How hot it burns (1 when absent): a burning cell of it is this many times as likely to light its neighbours. */
+  heat?: number;
   fuel?: number;
   burnsTo?: string;
   breaksTo?: string;

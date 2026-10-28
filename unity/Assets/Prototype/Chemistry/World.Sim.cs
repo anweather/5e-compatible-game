@@ -409,7 +409,9 @@ namespace Chem
         {
             double flam = Flammability(n);
             double downwind = WindDir == d ? p.DownwindBonus : 0;
-            if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) + downwind * flam) * RainDamp();
+            // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
+            double heat = CoverHasTag(c, "flammable") ? 1 : TerrainOf(c).Heat;
+            if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) * heat + downwind * flam) * RainDamp();
             return n.Water > 0 && !n.Frozen ? p.BoilChance : p.HeatChance;
         }
 

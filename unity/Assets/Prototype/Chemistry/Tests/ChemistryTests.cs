@@ -455,6 +455,61 @@ namespace Chem.Tests
             Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(0), "all of it");
         }
 
+        // Thatch at (2, 1) and (3, 1) against a log wall at (4, 1), on dirt; the thatch set alight.
+        static World ThatchByLogs(uint seed, Rules rules = null)
+        {
+            var w = new World(rules ?? R, 8, 3, seed, "dirt");
+            w.At(2, 1).T = "thatch";
+            w.At(3, 1).T = "thatch";
+            w.At(4, 1).T = "logwall";
+            w.Apply(2, 1, "fire", 3, -1, false);
+            return w;
+        }
+
+        // The tick the thatch burnt out, the logs caught (-1 never) and they burnt out.
+        static (int thatchOut, int logsLit, int logsOut) BurnTimes(uint seed)
+        {
+            var w = ThatchByLogs(seed);
+            int thatchOut = -1, logsLit = -1, logsOut = -1;
+            for (int t = 1; t <= 400 && logsOut < 0; t++)
+            {
+                w.Step();
+                if (thatchOut < 0 && w.At(2, 1).T != "thatch") thatchOut = t;
+                if (logsLit < 0 && w.At(4, 1).Fire > 0) logsLit = t;
+                if (logsLit >= 0 && w.At(4, 1).T != "logwall") logsOut = t;
+            }
+            return (thatchOut, logsLit, logsOut);
+        }
+
+        [Test]
+        public void ThatchFlaresAndLightsTheLogWallWhichBurnsLong()
+        {
+            // Andrew, 2026-10-28: thatch catches easily, burns hot and fast and is soon out; wood is slow to
+            // catch and burns long; the thatch's heat (materials.json "heat") is what lights the wood.
+            int Lit(Rules rules)
+            {
+                int lit = 0;
+                for (uint seed = 1; seed <= 40; seed++)
+                {
+                    var w = ThatchByLogs(seed, rules);
+                    Run(w, 30);
+                    if (w.At(4, 1).Fire > 0 || w.At(4, 1).T != "logwall") lit++;
+                }
+                return lit;
+            }
+            var cool = R.WithMods(new[] { ModPatch.Parse("{ \"terrain\": { \"thatch\": { \"name\": \"Thatch roof\", \"tags\": [\"roof\", \"flammable\"], \"flammability\": 0.9, \"fuel\": 4, \"heat\": 1, \"burnsTo\": \"rubble\" } } }") });
+            int hot = Lit(R), plain = Lit(cool);
+            Assert.That(hot, Is.GreaterThan(plain), $"hot thatch lit the logs {hot} times in 40, at heat 1 {plain}");
+            Assert.That($"{hot} {plain}", Is.EqualTo("15 2"), "the same in the sandbox");
+
+            // The first of those runs where the logs caught: when the thatch was out, the logs lit, and they burnt out.
+            var (thatchOut, logsLit, logsOut) = (-1, -1, -1);
+            for (uint seed = 1; seed <= 40 && logsLit < 0; seed++) (thatchOut, logsLit, logsOut) = BurnTimes(seed);
+            Assert.That(thatchOut, Is.InRange(1, 8), "thatch burns out in a few ticks");
+            Assert.That(logsLit, Is.GreaterThan(0), "the logs catch from it");
+            Assert.That(logsOut - logsLit, Is.GreaterThanOrEqualTo(100), $"and burn long: lit at {logsLit}, out at {logsOut}");
+        }
+
         [Test]
         public void RayOfFrostFreezesAPondIntoInsulatingIce()
         {

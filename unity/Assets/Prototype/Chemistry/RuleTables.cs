@@ -21,6 +21,8 @@ namespace Chem
         /// <summary>Water a spring keeps the square filled to each tick (units; a river, a spring), or 0.</summary>
         public int Spring;
         public double Flammability;
+        /// <summary>How hot it burns (materials.json "heat", 1 when absent): a burning cell of it is this many times as likely to light its neighbours (thatch flares, so it lights the log walls beside it).</summary>
+        public double Heat = 1;
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
@@ -473,6 +475,7 @@ namespace Chem
             Elevation = Int(o["elevation"]) ?? 0,
             Spring = Int(o["spring"]) ?? 0,
             Flammability = Num(o["flammability"]) ?? 0,
+            Heat = Num(o["heat"]) ?? 1,
             Fuel = Int(o["fuel"]),
             BurnsTo = Str(o["burnsTo"]),
             BreaksTo = Str(o["breaksTo"]),

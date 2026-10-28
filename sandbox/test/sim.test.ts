@@ -322,3 +322,32 @@ test("water runs down the land's slope", () => withoutSoaking(() => {
   const lake = slope.map((v, k) => (k % 16 >= 8 ? NO_LAND : v));
   assert.ok(spread(lake).east > 0, "inside a water body it spreads as on the flat");
 }));
+
+// Mirrors ChemistryTests.ThatchFlaresAndLightsTheLogWallWhichBurnsLong: thatch at (2,1) and (3,1) against a
+// log wall at (4,1), the thatch set alight; how often the logs catch in 30 ticks over 40 seeds, hot and at heat 1.
+test("thatch's heat lights the log wall beside it", () => {
+  const lit = (heat: number) => {
+    const thatch = RULES.terrain.thatch!, was = thatch.heat;
+    thatch.heat = heat;
+    try {
+      let n = 0;
+      for (let seed = 1; seed <= 40; seed++) {
+        const w = createWorld(8, 3, seed);
+        for (const c of w.cells) c.t = "dirt";
+        cellAt(w, 2, 1)!.t = "thatch";
+        cellAt(w, 3, 1)!.t = "thatch";
+        cellAt(w, 4, 1)!.t = "logwall";
+        applyElement(w, 2, 1, "fire", { power: 3, direct: false });
+        run(w, 30);
+        const logs = cellAt(w, 4, 1)!;
+        if (logs.fire > 0 || logs.t !== "logwall") n++;
+      }
+      return n;
+    } finally {
+      thatch.heat = was;
+    }
+  };
+  const hot = lit(2.5), plain = lit(1);
+  assert.ok(hot > plain, `hot ${hot}, plain ${plain}`);
+  assert.equal(`${hot} ${plain}`, "15 2"); // the same in the C# core
+});

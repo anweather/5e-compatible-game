@@ -258,6 +258,7 @@ namespace Chem
                     Number(p.Value["flammability"], $"terrain {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"terrain {p.Name}: fuel", 0);
                     Number(p.Value["spring"], $"terrain {p.Name}: spring", 0);
+                    Number(p.Value["heat"], $"terrain {p.Name}: heat", 0);
                     Number(p.Value["elevation"], $"terrain {p.Name}: elevation");
                 }
                 foreach (var p in covers.Properties())

@@ -16,7 +16,7 @@
     "rubble":    { "name": "Rubble", "tags": ["ground"], "soakEvery": 48, "soakEveryWet": 240 },
     "rock":      { "name": "Raised rock", "tags": ["ground"], "dugTo": "rubble", "hardness": 3, "soakEvery": 160, "soakEveryWet": 800 },
     "wood":      { "name": "Wooden bridge", "tags": ["ground", "flammable"], "flammability": 0.25, "fuel": 18, "burnsTo": "pit", "burnLog": "The bridge burns through and collapses" },
-    "logwall":   { "name": "Log wall", "tags": ["blocking", "flammable"], "flammability": 0.3, "fuel": 60, "burnsTo": "rubble", "burnLog": "Log walls burn and collapse",
+    "logwall":   { "name": "Log wall", "tags": ["blocking", "flammable"], "flammability": 0.15, "fuel": 140, "burnsTo": "rubble", "burnLog": "Log walls burn and collapse",
                    "uprootsTo": "rubble", "uprootLog": "The ground heaves and log walls cave in" },
     "pit":       { "name": "Pit", "tags": ["low"], "elevation": -1 },
     "river":     { "name": "River", "tags": ["low"], "elevation": -1, "spring": 4 },
@@ -31,8 +31,8 @@
     "arid":      { "name": "Arid ground", "tags": ["ground", "soil"], "soakEvery": 8, "soakEveryWet": 24 },
     "arctic":    { "name": "Arctic ground", "tags": ["ground"], "waterTo": "ice" },
     "lava":      { "name": "Lava", "tags": ["ground"], "waterTo": "steam" },
-    "thatch":    { "name": "Thatch roof", "tags": ["roof", "flammable"], "flammability": 0.5, "fuel": 10, "burnsTo": "rubble" },
-    "shingle":   { "name": "Shingle roof", "tags": ["roof", "flammable"], "flammability": 0.3, "fuel": 20, "burnsTo": "rubble" },
+    "thatch":    { "name": "Thatch roof", "tags": ["roof", "flammable"], "flammability": 0.9, "fuel": 4, "heat": 2.5, "burnsTo": "rubble" },
+    "shingle":   { "name": "Shingle roof", "tags": ["roof", "flammable"], "flammability": 0.15, "fuel": 120, "burnsTo": "rubble" },
     "slate":     { "name": "Slate roof", "tags": ["roof"] }
   },
   "covers": {
