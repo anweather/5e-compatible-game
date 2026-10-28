@@ -50,6 +50,7 @@ public static class ValleyBuilder
         BuildWorldEdge();
         BuildCourt();
         ValleyBridge.Build(LogMaterial(), CabinMaterial("Plank", new Color(0.52f, 0.37f, 0.23f), 0.12f));
+        RiverRocks();
         ValleyTower.Build(grid);
         DefenseFieldBuilder.Build(grid);
         BuildLandmarks();
@@ -312,6 +313,66 @@ public static class ValleyBuilder
             if (rock != null && DefenseFieldBuilder.NearDefenseField(w, 3f)) Object.DestroyImmediate(rock);
             placed++;
         }
+    }
+
+    // Rocks in the river (Andrew's playtest #33): a seeded scatter of the demo pack's rocks along the
+    // river's course, their tops out of the water, clear of the bridge and the
+    // falls, each with white water breaking round it (RockWake).
+    static void RiverRocks()
+    {
+        var rocks = LoadRocks("Rock_A_01", "Rock_B_01", "Rock_C_01");
+        var line = ValleyShape.RiverLine;
+        if (rocks.Length == 0 || line.Length < 2) return;
+        var parent = new GameObject("River rocks").transform;
+        var rng = new System.Random(33);
+        float total = 0f;
+        for (int i = 1; i < line.Length; i++) total += (line[i] - line[i - 1]).magnitude;
+        for (int n = 0; n < RiverRockTries; n++)
+        {
+            var (along, way) = OnCourse(line, (float)rng.NextDouble() * total);
+            var w = along + Vector2.Perpendicular(way) * ((float)(rng.NextDouble() * 2.0 - 1.0) * ValleyShape.RiverHalfWidth * 0.6f);
+            var prefab = rocks[rng.Next(rocks.Length)];
+            float turn = rng.Next(360), extra = (float)rng.NextDouble();
+            if (!ValleyShape.InRiver(w) || ValleyShape.NearBridge(w, 6f) || ValleyShape.NearFalls(w)) continue;
+            var at = new Vector3(w.x, 0f, w.y);
+            float bed = ValleyTerrain.GroundAt(at), water = bed + ValleyShape.ChannelDepth(w);
+            var rock = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
+            Solid(rock);
+            rock.transform.rotation = Quaternion.Euler(0f, turn, 0f);
+            // 1.2 to 2.2 m across, its top 0.3 to 0.6 m out of the water (the rest under it, toward the bed).
+            var size = BoundsOf(rock).size;
+            rock.transform.localScale = Vector3.one * ((1.2f + extra) / Mathf.Max(Mathf.Max(size.x, size.z), 0.1f));
+            var placed = BoundsOf(rock);
+            float top = water + 0.3f + 0.3f * extra;
+            rock.transform.position += new Vector3(w.x - placed.center.x, Mathf.Max(bed - 0.2f - placed.min.y, top - placed.max.y), w.y - placed.center.z);
+            var wake = rock.AddComponent<RockWake>();
+            wake.downstream = new Vector3(way.x, 0f, way.y);
+            wake.waterY = water;
+            wake.radius = Mathf.Max(0.3f, 0.45f * Mathf.Min(BoundsOf(rock).size.x, BoundsOf(rock).size.z));
+        }
+    }
+
+    const int RiverRockTries = 16;
+
+    // The point <paramref name="distance"/> along a course and the way it runs there.
+    static (Vector2 at, Vector2 way) OnCourse(Vector2[] line, float distance)
+    {
+        for (int i = 1; i < line.Length; i++)
+        {
+            var seg = line[i] - line[i - 1];
+            if (distance <= seg.magnitude) return (line[i - 1] + seg.normalized * distance, seg.normalized);
+            distance -= seg.magnitude;
+        }
+        return (line[^1], (line[^1] - line[^2]).normalized);
+    }
+
+    static Bounds BoundsOf(GameObject go)
+    {
+        var renderers = go.GetComponentsInChildren<Renderer>();
+        if (renderers.Length == 0) return new Bounds(go.transform.position, Vector3.one);
+        var b = renderers[0].bounds;
+        foreach (var r in renderers) b.Encapsulate(r.bounds);
+        return b;
     }
 
     // --- the ball court --------------------------------------------------------

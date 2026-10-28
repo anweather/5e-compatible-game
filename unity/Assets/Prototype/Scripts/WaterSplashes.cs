@@ -151,7 +151,8 @@ public class WaterSplashes : MonoBehaviour
         into.Emit(p, 1);
     }
 
-    static ParticleSystem MakeSystem(GameObject go, string name, float gravity)
+    // Also RockWake's white water.
+    internal static ParticleSystem MakeSystem(GameObject go, string name, float gravity)
     {
         var ps = go.AddComponent<ParticleSystem>();
         ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
