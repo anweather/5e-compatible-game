@@ -54,7 +54,8 @@ public class WaterSplashes : MonoBehaviour
         if (Time.time >= nextFind) FindWaders();
         bool wake = Time.time >= nextWake;
         if (wake) nextWake = Time.time + WakeEvery;
-        foreach (var w in waders) Watch(w, wake);
+        // A wizard can go between finds (going online swaps the solo one for the networked one).
+        foreach (var w in waders) if (w.body != null) Watch(w, wake);
         if (Time.time >= nextMist)
         {
             nextMist = Time.time + MistEvery;
