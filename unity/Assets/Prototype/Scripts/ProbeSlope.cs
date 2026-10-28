@@ -64,26 +64,24 @@ public class SlopeProbe : ProbeScenario
     // The dry, open cell near the start whose ground falls furthest over Reach cells in one direction.
     (Vector2Int at, int dir, float fall) Steepest(ValleyGround ground, Vector2Int start)
     {
-        var best = start;
-        int bestDir = 0;
-        float bestFall = 0f;
+        var best = (at: start, dir: 0, fall: 0f);
         for (int y = start.y - Search; y <= start.y + Search; y += 2)
             for (int x = start.x - Search; x <= start.x + Search; x += 2)
-            {
-                if (!Dry(x, y)) continue;
-                for (int d = 0; d < 4; d++)
-                {
-                    int tx = x + DirX(d) * Reach, ty = y + DirY(d) * Reach;
-                    if (!Dry(tx, ty)) continue;
-                    float fall = ground.BaseHeight(x, y) - ground.BaseHeight(tx, ty);
-                    // A hillside, not a cliff (a wall of the river's cut or the coast).
-                    if (fall <= bestFall || fall > 6f) continue;
-                    best = new Vector2Int(x, y);
-                    bestDir = d;
-                    bestFall = fall;
-                }
-            }
-        return (best, bestDir, bestFall);
+                if (Dry(x, y)) best = SteepestFrom(ground, x, y, best);
+        return best;
+    }
+
+    // The best so far, or this cell if one of its directions falls further (a hillside, not a cliff:
+    // over 6 m is a wall of the river's cut or the coast).
+    (Vector2Int at, int dir, float fall) SteepestFrom(ValleyGround ground, int x, int y, (Vector2Int at, int dir, float fall) best)
+    {
+        for (int d = 0; d < 4; d++)
+        {
+            int tx = x + DirX(d) * Reach, ty = y + DirY(d) * Reach;
+            float fall = ground.BaseHeight(x, y) - ground.BaseHeight(tx, ty);
+            if (fall > best.fall && fall <= 6f && Dry(tx, ty)) best = (new Vector2Int(x, y), d, fall);
+        }
+        return best;
     }
 
     bool Dry(int x, int y)
