@@ -25,6 +25,18 @@ namespace Chem
 
     public sealed class PropState
     {
+        /// <summary>How long it burns once alight: its material's fuel (a wooden crate burns as wood does), else BurnTicks.</summary>
+        public int BurnTime => Def.MaterialDef?.Has("flammable") == true ? Def.MaterialDef.Fuel ?? BurnTicks : BurnTicks;
+
+        // Whether this tick in fire sets it going: at once without a material, else after 1/flammability
+        // ticks in fire (counted, not rolled, so a prop needs no random numbers).
+        bool Catches()
+        {
+            var m = Def.MaterialDef;
+            if (Burning || m == null || !m.Has("flammable") || m.Flammability <= 0) return true;
+            return ++heated * m.Flammability >= 1;
+        }
+
         /// <summary>Ticks a flammable thing burns after its last touch of fire (e-fire-flammable: burning 24).</summary>
         public const int BurnTicks = 24;
         /// <summary>Anything heavier than this sinks (crates and barrels float, boulders don't).</summary>
@@ -44,6 +56,8 @@ namespace Chem
         public int Hp { get; private set; }
         public bool Destroyed => Hp <= 0;
         public int BurningTicks { get; private set; }
+        // Ticks in fire since it last caught: one of a flammable material catches after 1/flammability of them.
+        int heated;
         public bool Burning => BurningTicks > 0;
 
         /// <summary>The first tick it no longer levitates on, or -1 when it isn't levitating.</summary>
@@ -110,11 +124,12 @@ namespace Chem
         PropEvents Touch(Cell c)
         {
             var events = PropEvents.None;
-            if (c.Fire > 0 && Def.Flammable)
+            if (c.Fire > 0 && Def.Flammable && Catches())
             {
                 if (!Burning) events |= PropEvents.Ignited;
-                BurningTicks = BurnTicks;
+                BurningTicks = BurnTime;
             }
+            else if (c.Fire == 0) heated = 0;
             if (c.Water > 0 && !c.Frozen && Burning)
             {
                 BurningTicks = 0;

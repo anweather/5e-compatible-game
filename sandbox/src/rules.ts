@@ -39,10 +39,17 @@ export interface TerrainDef {
   soakEveryWet?: number;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
   waterTo?: "ice" | "steam";
+  /** How its fire looks (flare, wood, oil); the view's only. */
+  fireLook?: string;
 }
+
+/** The fire looks a material can name (fireLook); Rules.Check.cs's FireLooks. */
+export const FIRE_LOOKS = ["flare", "wood", "oil"];
 export interface CoverDef {
   name: string;
   tags: string[];
+  /** How its fire looks (flare, wood, oil); the view's only. */
+  fireLook?: string;
   flammability?: number;
   fuel?: number;
   burnIntensity?: number;
@@ -648,12 +655,14 @@ export function validateRules(r: Rules): string[] {
     for (const key of ["soakEvery", "soakEveryWet"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
     if (t.waterTo !== undefined && t.waterTo !== "ice" && t.waterTo !== "steam") errors.push(`terrain ${id}: waterTo must be ice or steam`);
+    if (t.fireLook !== undefined && !FIRE_LOOKS.includes(t.fireLook)) errors.push(`terrain ${id}: fireLook must be flare, wood or oil`);
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
   }
   for (const [id, cv] of Object.entries(r.covers)) {
+    if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
     if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);
   }
   const seen = new Set<string>();

@@ -23,6 +23,8 @@ namespace Chem
         public double Flammability;
         /// <summary>How hot it burns (materials.json "heat", 1 when absent): a burning cell of it is this many times as likely to light its neighbours (thatch flares, so it lights the log walls beside it).</summary>
         public double Heat = 1;
+        /// <summary>How its fire looks (materials.json "fireLook": flare, wood or oil; null the plain fire). The view's only.</summary>
+        public string FireLook;
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
@@ -57,6 +59,8 @@ namespace Chem
         public double Flammability;
         public int? Fuel;
         public int? BurnIntensity;
+        /// <summary>How its fire looks (materials.json "fireLook"); the view's only.</summary>
+        public string FireLook;
         /// <summary>Ticks it lasts once laid (Cell.Life) before it withers away (thorns), or 0 for good; and the line logged then.</summary>
         public int Lasts;
         public string WitherLog;
@@ -144,6 +148,8 @@ namespace Chem
         public bool Flammable, Creature, Player;
         /// <summary>What it's made of: a terrain id in materials.json (a crate is wood), or null.</summary>
         public string Material;
+        /// <summary>That material's definition, or null (set once the rules are read).</summary>
+        public TerrainDef MaterialDef;
         /// <summary>What it is made of or does (entities.json "components").</summary>
         public ComponentSet Components;
         /// <summary>Null unless it blows up when destroyed.</summary>
@@ -435,6 +441,8 @@ namespace Chem
                 if (p.Value is JObject e) r.entities[p.Name] = r.ParseEntity(p.Name, e);
             foreach (var p in ((JObject)doc["items"]).Properties())
                 if (p.Value is JObject i) r.items[p.Name] = r.ParseItem(p.Name, i);
+            foreach (var e in r.entities.Values)
+                if (e.Material != null && r.terrain.TryGetValue(e.Material, out var m)) e.MaterialDef = m;
             r.Sim = ParseSim((JObject)doc["sim"]);
             ParseGroups(r, (JObject)doc["groups"]);
             return r;
@@ -476,6 +484,7 @@ namespace Chem
             Spring = Int(o["spring"]) ?? 0,
             Flammability = Num(o["flammability"]) ?? 0,
             Heat = Num(o["heat"]) ?? 1,
+            FireLook = Str(o["fireLook"]),
             Fuel = Int(o["fuel"]),
             BurnsTo = Str(o["burnsTo"]),
             BreaksTo = Str(o["breaksTo"]),
@@ -499,6 +508,7 @@ namespace Chem
             Flammability = Num(o["flammability"]) ?? 0,
             Fuel = Int(o["fuel"]),
             BurnIntensity = Int(o["burnIntensity"]),
+            FireLook = Str(o["fireLook"]),
             Lasts = Int(o["lasts"]) ?? 0,
             WitherLog = Str(o["witherLog"]),
             Damage = Dice(o["damage"]),

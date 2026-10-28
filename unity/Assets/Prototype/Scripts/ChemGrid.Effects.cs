@@ -44,8 +44,16 @@ public partial class ChemGrid
         // A fire that grows or dies down keeps its effect; it only changes size.
         if (v.fire == null) v.fire = TakeFx(prefab, new Vector3(center.x + offset.x, ground, center.z + offset.y), Quaternion.Euler(0f, turn, 0f), MaxLiveFx, out _);
         if (v.fire == null) return; // over the effects budget: drawn when it next changes
-        v.fire.transform.localScale = Vector3.one * (cellSize / 1.5f * scale * size * FlameScale(c.Fire));
+        FireLook.Flames(v.fire, FireLookOf(c), Vector3.one * (cellSize / 1.5f * scale * size * FlameScale(c.Fire)));
         v.fireLevel = c.Fire;
+    }
+
+    /// <summary>How a burning cell's fire looks (materials.json "fireLook"): its burning cover's, else its terrain's.</summary>
+    string FireLookOf(Cell c)
+    {
+        var cover = World.CoverOf(c);
+        if (cover != null && cover.Has("flammable")) return cover.FireLook;
+        return World.TerrainOf(c).FireLook;
     }
 
     static float FlameScale(int fire) => fire switch { >= 3 => 1.25f, 2 => 1f, _ => 0.8f };
@@ -230,6 +238,8 @@ public partial class ChemGrid
         bool waiting = kind != null && prefab != null && v.gas == null;
         if (kind != v.gasKind || (kind != null && prefab == null) || waiting) SwapGasEffect(v, kind, prefab, center, ground);
         if (kind == null) { Hide(v.gas); return; }
+        // Smoke over a fire takes its look: darker over wood, black over oil.
+        if (prefab != null && v.gas != null && kind == GasIds.Smoke) FireLook.SmokeOf(v.gas, c.Fire > 0 ? FireLookOf(c) : null);
         if (prefab != null) return;
         FallbackGas(v, c, kind, center, ground);
     }

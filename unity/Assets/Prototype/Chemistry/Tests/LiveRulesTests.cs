@@ -151,7 +151,7 @@ namespace Chem.Tests
                 "'items': { 'spyglass': { 'name': 'Spyglass', 'mass': 0.45, 'material': 'brass' } } }");
             Assert.That(errors, Is.EqualTo(new[] { "entity crate: material cardboard unknown", "item spyglass: material brass unknown" }));
             var r = ChemistryTests.R;
-            Assert.That(r.Entities["crate"].Material, Is.EqualTo("wood"));
+            Assert.That(r.Entities["crate"].Material, Is.EqualTo("timber"));
             Assert.That(r.Items["bullseye-lantern"].Material, Is.EqualTo("metal"));
         }
 

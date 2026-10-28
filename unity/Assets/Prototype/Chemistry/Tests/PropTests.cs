@@ -95,18 +95,22 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void FireBurnsACrateDownInEighteenTicks()
+        public void ATimberCrateCatchesSlowlyThenBurnsDown()
         {
+            // A crate is timber (entities.json material): it catches after 1/flammability ticks in fire
+            // (0.15: seven) and burns as long as timber's fuel.
             var crate = new PropState(Crate);
             var fire = new Cell("dirt") { Fire = 2 };
-            Assert.That(crate.Step(fire, 1, 3), Is.EqualTo(PropEvents.Ignited));
-            int burns = 0, tick = 1;
+            for (int t = 1; t < 7; t++) Assert.That(crate.Step(fire, t, 3), Is.EqualTo(PropEvents.None), $"not yet at tick {t}");
+            Assert.That(crate.Step(fire, 7, 3) & PropEvents.Ignited, Is.EqualTo(PropEvents.Ignited));
+            Assert.That(crate.BurnTime, Is.EqualTo(Crate.MaterialDef.Fuel));
+            int burns = 0, tick = 7;
             while (!crate.Destroyed && tick < 100)
             {
                 var events = crate.Step(fire, ++tick, 3);
                 if ((events & PropEvents.Burned) != 0) burns++;
             }
-            Assert.That(tick, Is.EqualTo(18), "6 HP, 1 damage every 3rd tick");
+            Assert.That(tick, Is.EqualTo(24), "6 HP, 1 damage every 3rd tick from the 9th");
             Assert.That(burns, Is.EqualTo(6));
         }
 
@@ -114,11 +118,11 @@ namespace Chem.Tests
         public void ABurningCrateKeepsBurningAwayFromTheFireUntilWaterDousesIt()
         {
             var crate = new PropState(Crate);
-            crate.Step(new Cell("dirt") { Fire = 1 }, 1, 3);
-            crate.Step(new Cell("dirt"), 2, 3);
-            Assert.That(crate.Burning, "burning lasts BurnTicks after the fire");
+            for (int t = 1; t <= 7; t++) crate.Step(new Cell("dirt") { Fire = 1 }, t, 3);
+            crate.Step(new Cell("dirt"), 8, 3);
+            Assert.That(crate.Burning, "burning lasts its material's fuel after the fire");
             var pond = new Cell("pit") { Water = 4 };
-            Assert.That(crate.Step(pond, 3, 3) & PropEvents.Doused, Is.EqualTo(PropEvents.Doused));
+            Assert.That(crate.Step(pond, 10, 3) & PropEvents.Doused, Is.EqualTo(PropEvents.Doused));
             Assert.That(crate.Burning, Is.False);
             Assert.That(crate.Hp, Is.EqualTo(6));
         }
