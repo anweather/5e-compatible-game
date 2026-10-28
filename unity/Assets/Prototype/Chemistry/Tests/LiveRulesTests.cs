@@ -145,6 +145,17 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AThingsMaterialIsATerrainLikeTheSandbox()
+        {
+            var errors = ErrorsOf("{ 'entities': { 'crate': { 'name': 'Crate', 'hp': 6, 'mass': 1, 'material': 'cardboard' } }, " +
+                "'items': { 'spyglass': { 'name': 'Spyglass', 'mass': 0.45, 'material': 'brass' } } }");
+            Assert.That(errors, Is.EqualTo(new[] { "entity crate: material cardboard unknown", "item spyglass: material brass unknown" }));
+            var r = ChemistryTests.R;
+            Assert.That(r.Entities["crate"].Material, Is.EqualTo("wood"));
+            Assert.That(r.Items["bullseye-lantern"].Material, Is.EqualTo("metal"));
+        }
+
+        [Test]
         public void CrossReferenceErrorsMatchTheSandbox()
         {
             var errors = ErrorsOf(@"{

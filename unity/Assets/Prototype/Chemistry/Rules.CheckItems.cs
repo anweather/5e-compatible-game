@@ -21,6 +21,7 @@ namespace Chem
             {
                 if (!Truthy(i["name"])) Errors.Add($"{what}: needs a name");
                 if (takenByEntity) Errors.Add($"{what}: id is taken by an entity");
+                MaterialRef(what, i["material"]);
                 Range(i["mass"], $"{what}: mass", 0, above: true);
                 Range(i["zoom"], $"{what}: zoom", 1);
                 Range(i["reach"], $"{what}: reach", 0);

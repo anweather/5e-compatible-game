@@ -33,3 +33,9 @@ test("unknown and broken groups are refused with the C# wording", () => {
     "group bad: color must be #rrggbb",
   ]);
 });
+
+// Mirrors LiveRulesTests.AThingsMaterialIsATerrainLikeTheSandbox.
+test("a thing's material is a terrain", () => {
+  const r = composeRules([{ entities: { crate: { name: "Crate", hp: 6, mass: 1, material: "cardboard" } }, items: { spyglass: { name: "Spyglass", mass: 0.45, material: "brass" } } } as never]);
+  assert.deepEqual(validateRules(r), ["entity crate: material cardboard unknown", "item spyglass: material brass unknown"]);
+});

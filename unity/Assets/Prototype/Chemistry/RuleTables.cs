@@ -140,6 +140,8 @@ namespace Chem
         public int Hp, Mass;
         /// <summary>Flammable and Creature mirror those components (Components.cs), for the code that reads them.</summary>
         public bool Flammable, Creature, Player;
+        /// <summary>What it's made of: a terrain id in materials.json (a crate is wood), or null.</summary>
+        public string Material;
         /// <summary>What it is made of or does (entities.json "components").</summary>
         public ComponentSet Components;
         /// <summary>Null unless it blows up when destroyed.</summary>
@@ -526,6 +528,7 @@ namespace Chem
                 Flammable = components.Has(Component(Rules.Flammable)),
                 Creature = components.Has(Component(Rules.Creature)),
                 Player = Truthy(o["player"]),
+                Material = Str(o["material"]),
                 Explodes = boom,
                 Raider = ParseRaider(o["raider"]),
             };
