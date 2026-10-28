@@ -93,6 +93,27 @@ namespace Chem
                 if (world.HasChunk(s.CX, s.CY)) world.SetActive(s.CX, s.CY, s.Active);
         }
 
+        /// <summary>
+        /// The chunks any part of which lies within <paramref name="radius"/> cells of (x, y), a point
+        /// in cell units (cell (0, 0) spans 0 to 1), by row then column. For what a view draws by
+        /// distance from its camera, such as the terrains' grass (ChemGrid.DetailChunks): a chunk
+        /// left out has no part near enough to draw any.
+        /// </summary>
+        public static List<(int cx, int cy)> Within(IReadOnlyList<(int cx, int cy)> chunks, double x, double y, double radius)
+        {
+            if (chunks == null) throw new ArgumentNullException(nameof(chunks));
+            var near = new List<(int cx, int cy)>();
+            foreach (var (cx, cy) in chunks)
+            {
+                double x0 = cx * Chunks.Size, y0 = cy * Chunks.Size;
+                double dx = Math.Max(0, Math.Max(x0 - x, x - (x0 + Chunks.Size)));
+                double dy = Math.Max(0, Math.Max(y0 - y, y - (y0 + Chunks.Size)));
+                if (dx * dx + dy * dy <= radius * radius) near.Add((cx, cy));
+            }
+            near.Sort((a, b) => a.cy != b.cy ? a.cy.CompareTo(b.cy) : a.cx.CompareTo(b.cx));
+            return near;
+        }
+
         // How many chunks the nearest character is from a chunk (for ChunkPlanner).
         internal static int Distance(IReadOnlyList<(int x, int y)> characters, int cx, int cy) => Nearest(characters, cx, cy);
     }
