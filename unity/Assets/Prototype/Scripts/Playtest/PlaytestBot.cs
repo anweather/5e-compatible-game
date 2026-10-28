@@ -25,6 +25,7 @@ using UnityEngine;
 // Flags: -playtest-out <dir>, -playtest-seed <n>, -playtest-minutes <n> (or
 // -playtest-seconds <n>), -playtest-replay <run.json> (replays its seed),
 // -playtest-until-frame <n>, -playtest-coverage <coverage.json>,
+// -playtest-goals <key,key,...> (these goals first, in order, then the dice's),
 // -playtest-offscreen, -playtest-mute (mutes the listener, which also
 // deafens the sound detectors; tools/playtest mutes the player in the
 // Windows mixer instead).
@@ -128,6 +129,7 @@ public class PlaytestBot : MonoBehaviour
         if (original != null) run.ReplayOf = original.RunId;
         seconds = Number("-playtest-seconds", Number("-playtest-minutes", 8f) * 60f);
         untilFrame = int.TryParse(Arg("-playtest-until-frame"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var u) ? u : int.MaxValue;
+        goalsFirst = (Arg("-playtest-goals") ?? "").Split(',').Select(k => k.Trim()).Where(k => k.Length > 0).ToList();
         string cov = Arg("-playtest-coverage");
         if (cov != null && File.Exists(cov)) coverage = JsonConvert.DeserializeObject<Dictionary<string, int>>(File.ReadAllText(cov)) ?? new();
         // A replay chooses against what the original knew (coverage.json has moved on since).
@@ -159,13 +161,31 @@ public class PlaytestBot : MonoBehaviour
         Setup();
         while (running && frame < untilFrame && Time.realtimeSinceStartup - startedReal < seconds * 3f && Time.time < seconds)
         {
-            var next = GoalPicker.Next(dice, player.Options(), coverage);
+            var next = NextGoal();
             goal = next.ToString();
             run.Goals.Add(next.Key);
             Shoot("goal");
             yield return player.Do(next);
         }
         Finish(frame >= untilFrame ? "until-frame" : "done");
+    }
+
+    // Goals asked for on the command line come first, in order (one the options don't allow is
+    // skipped, and logged); then the dice choose as usual.
+    List<string> goalsFirst = new();
+
+    Goal NextGoal()
+    {
+        var options = player.Options();
+        while (goalsFirst.Count > 0)
+        {
+            string key = goalsFirst[0];
+            goalsFirst.RemoveAt(0);
+            var asked = GoalPicker.ByKey(dice, options, key);
+            if (asked != null) return asked;
+            Trace("no goal", key + " isn't possible here");
+        }
+        return GoalPicker.Next(dice, options, coverage);
     }
 
     void Setup()

@@ -108,6 +108,19 @@ namespace Playtest
         }
 
         // Every goal the options allow; Idle always.
+        /// <summary>
+        /// The goal with this coverage key (Goal.Key: "Combo:create-water+shocking-grasp",
+        /// "Visit:bridge", "Idle"), if the options allow it; null otherwise. For a run that does
+        /// set goals in order (playtest run --goals), to check one finding on purpose.
+        /// </summary>
+        public static Goal ByKey(PlaytestRandom dice, GoalOptions options, string key)
+        {
+            if (dice is null) throw new ArgumentNullException(nameof(dice));
+            if (options is null) throw new ArgumentNullException(nameof(options));
+            var goal = Candidates(options).FirstOrDefault(g => g.Key == key);
+            return goal == null ? null : Seconds(goal, dice);
+        }
+
         static IEnumerable<Goal> Candidates(GoalOptions o)
         {
             foreach (var p in o.Places) yield return new Goal(GoalKind.Visit, p);
