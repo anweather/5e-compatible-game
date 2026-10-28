@@ -107,11 +107,15 @@ namespace Chem
     {
         public Dictionary<WallKind, string> Walls { get; } = new Dictionary<WallKind, string>
         {
-            [WallKind.Timber] = "logwall", [WallKind.Stone] = "stone", [WallKind.Log] = "logwall",
+            [WallKind.Timber] = "logwall",
+            [WallKind.Stone] = "stone",
+            [WallKind.Log] = "logwall",
         };
         public Dictionary<RoofCover, string> Roofs { get; } = new Dictionary<RoofCover, string>
         {
-            [RoofCover.Thatch] = "thatch", [RoofCover.Slate] = "slate", [RoofCover.Shingle] = "shingle",
+            [RoofCover.Thatch] = "thatch",
+            [RoofCover.Slate] = "slate",
+            [RoofCover.Shingle] = "shingle",
         };
 
         public string WallOf(WallKind k) => Walls[k];
@@ -120,7 +124,11 @@ namespace Chem
         // The map characters wall materials stand as (ChemGrid's legend).
         static readonly Dictionary<string, char> Cells = new Dictionary<string, char>
         {
-            ["logwall"] = 'L', ["stone"] = '#', ["wood"] = '=', ["metal"] = 'm', ["bedrock"] = '%',
+            ["logwall"] = 'L',
+            ["stone"] = '#',
+            ["wood"] = '=',
+            ["metal"] = 'm',
+            ["bedrock"] = '%',
         };
 
         /// <summary>A wall material's map character; throws for one the map has no character for.</summary>
