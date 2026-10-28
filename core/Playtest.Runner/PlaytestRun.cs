@@ -98,6 +98,9 @@ namespace Playtest.Runner
             if (options.TryGetValue("replay", out var replay)) a.AddRange(new[] { "-playtest-replay", Q(Path.GetFullPath(replay)) });
             if (options.TryGetValue("until-frame", out var until)) a.AddRange(new[] { "-playtest-until-frame", until });
             if (options.TryGetValue("goals", out var goals)) a.AddRange(new[] { "-playtest-goals", goals });
+            // GPU pipeline states (the Build lane's Scripts/Perf/PsoTrace.cs): record them, or warm them up at start.
+            if (options.TryGetValue("pso-trace", out var trace)) a.AddRange(new[] { "-pso-trace", Q(Path.GetFullPath(trace)) });
+            if (options.TryGetValue("pso-warmup", out var warmup)) a.AddRange(new[] { "-pso-warmup", Q(Path.GetFullPath(warmup)) });
             if (File.Exists(paths.Coverage)) a.AddRange(new[] { "-playtest-coverage", Q(paths.Coverage) });
             // Performance findings only count from runs with no Unity Editor open.
             if (!Preflight.Now().Unity.Any(Preflight.IsEditor)) a.Add("-playtest-quiet");
