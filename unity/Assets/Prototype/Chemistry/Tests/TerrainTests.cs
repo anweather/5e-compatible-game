@@ -191,6 +191,25 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void SnowBankIsARoundedMound()
+        {
+            // Andrew's playtest #30: a bank showed as a square block on its cell.
+            var w = Meadow();
+            w.At(55, 81).Cover = World.BankCover;
+            var field = new CellHeightfield(G, Step);
+            var (i, j, sx, sz) = G.CellSample(55, 81);
+            var h = field.Compute(w, i, j);
+            float top = h[sz, sx];
+            Assert.That(top, Is.InRange(0.8f * CellHeightfield.BankDepth, 1.2f * CellHeightfield.BankDepth), "its top");
+            Assert.AreEqual(top, h[sz, sx + 1], 1e-4f, "a flat crown a quarter of a cell out");
+            float side = h[sz, sx + 4], corner = h[sz + 4, sx + 4];
+            Assert.That(side, Is.GreaterThan(0f).And.LessThan(top), "its skirt reaches into the next cell");
+            Assert.That(corner, Is.LessThan(side), "and is round: lower toward the corner than to the side");
+            Assert.AreEqual(0f, h[sz, sx + 6], "gone a cell and a half out");
+            Assert.AreEqual(side, h[sz + 4, sx], 1e-4f, "the same every way round");
+        }
+
+        [Test]
         public void PitTerrainSinksAndWallsStayWalls()
         {
             var w = Meadow();

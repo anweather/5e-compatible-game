@@ -118,6 +118,9 @@ public sealed class ValleyGround
     /// <summary>True while reshaped ground is still easing to its new height.</summary>
     public bool Shaping => heightfield != null && !heightfield.Settled;
 
+    /// <summary>For the probe: cells still waiting for their paint (a valley-wide snowfall takes a minute or two).</summary>
+    public int Repainting => repaint.Count;
+
     /// <summary>Starts over on a world: the saved chunks again (copied when first changed), their base heights recovered.</summary>
     public void Bind(World w, float stepHeight, float shapeSpeed, bool flatUnderWalls = false)
     {
