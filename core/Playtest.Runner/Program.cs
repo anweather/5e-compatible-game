@@ -8,6 +8,7 @@ using System.Globalization;
 //   playtest run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--goals k1,k2] [--player <exe or folder>] [--force]
 //                                       --goals: these goals first, in order (Goal.Key: Combo:create-water+shocking-grasp, Visit:bridge)
 //                                       --pso-trace <file> / --pso-warmup <file>: record GPU pipeline states, or warm them up (PsoTrace)
+//                                       --no-pso-warmup: skip the built-in warm-up (a before run to compare with)
 //   playtest compare <run.json> <run.json>   whether two runs of one seed matched, and where they parted
 //   playtest build --ref <r> [--force]  builds the bot's player in .claude/worktrees/playtest-build from
 //                                       origin/<r> (a release candidate: main or a tag; J-018)
@@ -22,7 +23,7 @@ namespace Playtest.Runner
         {
             if (args.Length == 0)
             {
-                Console.Error.WriteLine("usage: playtest check [--player P] | run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--goals k1,k2] [--pso-trace F] [--pso-warmup F] [--player <exe or folder>] [--force] | compare <run.json> <run.json> | build --ref <branch or tag> [--force]");
+                Console.Error.WriteLine("usage: playtest check [--player P] | run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--goals k1,k2] [--pso-trace F] [--pso-warmup F] [--no-pso-warmup] [--player <exe or folder>] [--force] | compare <run.json> <run.json> | build --ref <branch or tag> [--force]");
                 return 2;
             }
             var options = Options(args);
