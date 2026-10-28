@@ -144,24 +144,39 @@ namespace Chem.Tests
             Assert.That(errors, Is.EqualTo(new[] { "rule x: unknown effect \"teleportEverything\" (new verbs need code; see docs/MODDING.md)" }));
         }
 
-        // materials.json with every terrain and cover spelled as verb groups (MaterialGroups.Group).
-        static Rules Grouped()
+        // materials.json (spelled as verb groups since step 3) with every terrain and cover spelled flat,
+        // the old way (MaterialGroups.Ungroup).
+        static Rules Flat()
         {
             var files = Directory.GetFiles(ChemistryTests.RulesDir(), "*.json").ToDictionary(Path.GetFileName, File.ReadAllText);
-            var materials = Newtonsoft.Json.Linq.JObject.Parse(files["materials.json"]);
-            foreach (var table in new[] { "terrain", "covers" })
-                foreach (var p in ((Newtonsoft.Json.Linq.JObject)materials[table]).Properties().ToList())
-                    p.Value = MaterialGroups.Group((Newtonsoft.Json.Linq.JObject)p.Value, table == "covers");
+            var materials = JObject.Parse(files["materials.json"]);
+            Assert.That(MaterialGroups.Ungroup(materials), Is.Empty);
             files["materials.json"] = materials.ToString();
             return Rules.FromJson(files);
+        }
+
+        [Test]
+        public void MaterialsJsonIsSpelledAsVerbGroups()
+        {
+            // docs/MATERIALS.md, step 3: no terrain or cover in the committed file uses a flat verb key.
+            var materials = JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "materials.json")));
+            string[] flatKeys = { "flammability", "fuel", "heat", "burnsTo", "burnLog", "fireLook", "breaksTo", "dugTo", "hardness", "soakEvery", "soakEveryWet", "waterTo", "growsTo", "growLog", "uprootsTo", "uprootLog", "burnIntensity" };
+            foreach (var table in new[] { "terrain", "covers" })
+                foreach (var p in ((JObject)materials[table]).Properties())
+                {
+                    var flat = flatKeys.Where(k => p.Value[k] != null).ToList();
+                    Assert.That(flat, Is.Empty, $"{table} {p.Name} still has {string.Join(", ", flat)}");
+                    var tags = ((JObject)p.Value)["tags"]?.Select(t => (string)t).ToList() ?? new List<string>();
+                    Assert.That(tags.Intersect(new[] { "flammable", "breakable", "conductive" }), Is.Empty, $"{table} {p.Name}: a verb's tag comes from its group");
+                }
         }
 
         [Test]
         public void MaterialsSpelledAsVerbGroupsReadTheSame()
         {
             // docs/MATERIALS.md, step 1: the grouped spelling is an alias; nothing reads differently.
-            var flat = Base;
-            var grouped = Grouped();
+            var grouped = Base;
+            var flat = Flat();
             Assert.That(grouped.Terrain.Keys, Is.EqualTo(flat.Terrain.Keys));
             foreach (var (id, t) in flat.Terrain)
             {
