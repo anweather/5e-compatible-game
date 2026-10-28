@@ -9,6 +9,7 @@ using UnityEngine;
 public sealed class WizardLook
 {
     public enum StaffKind { None, Gnarled, Crystal, Orb }
+    public enum BeardStyle { Long, Forked, Full, Goatee }
 
     // Robe and hat colours, in pairs that sit well together: the cloth, and its trim.
     static readonly (Color cloth, Color trim)[] Palettes =
@@ -37,6 +38,9 @@ public sealed class WizardLook
     public float HatHeight, Brim, Droop, Bend;
     /// <summary>The beard's length (m); 0 for none.</summary>
     public float BeardLength;
+    /// <summary>The beard's cut, how many tufts it's made of, and a seed for their small differences.</summary>
+    public BeardStyle BeardCut;
+    public int BeardTufts, BeardJitter;
     public StaffKind Staff;
     public Color StaffGlow;
 
@@ -67,6 +71,10 @@ public sealed class WizardLook
         look.Beard = BeardColours[Pick(BeardColours.Length)];
         look.Staff = (StaffKind)Pick(4);
         look.StaffGlow = Color.Lerp(trim, Color.white, 0.3f);
+        // Drawn last, so the looks seeds gave before the beard had a cut stay as they were.
+        look.BeardCut = (BeardStyle)Pick(4);
+        look.BeardTufts = 6 + Pick(5);
+        look.BeardJitter = (int)(Next() * int.MaxValue);
         // VillageLit reads a vertex colour's alpha as glow: cloth and hair don't glow.
         look.Robe = Matte(look.Robe);
         look.Trim = Matte(look.Trim);
