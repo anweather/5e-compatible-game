@@ -60,10 +60,11 @@ public partial class ValleyFauna
         {
             var foot = seat.Foot;
             if (math.distance(new float2(foot.x, foot.z), new float2(square.x, square.z)) > reach) continue;
-            // Just in front of the seat, facing out from it.
+            // On the seat itself (its feet under the seat point, as a sitting wizard's go), facing
+            // out from it; a spot 0.35 m in front sat folk on the air before the bench (Andrew's
+            // playtest #3).
             var f = seat.Facing * Vector3.forward;
-            var spot = foot + f * 0.35f;
-            p.benches.Add((new float2(spot.x, spot.z), math.atan2(f.x, f.z), seat.lounge));
+            p.benches.Add((new float2(foot.x, foot.z), math.atan2(f.x, f.z), seat.lounge));
         }
         return p;
     }
@@ -173,9 +174,39 @@ public partial class ValleyFauna
             return;
         }
         float roll = rng.NextFloat();
-        if (roll < 0.35f && p.benches.Count > 0) c.goal = p.benches[rng.NextInt(p.benches.Count)].at;
+        if (roll < 0.35f && FreeSeat(c, p, out var seat)) c.goal = seat;
         else if (roll < 0.65f || p.doors.Count == 0) c.goal = p.well + rng.NextFloat2Direction() * 0.8f;
         else c.goal = p.doors[rng.NextInt(p.doors.Count)];
+    }
+
+    // A seat no one else sits on or is walking to, at random; false if all are taken. One
+    // villager to a seat (Andrew's playtest #3: too many sat on one bench).
+    bool FreeSeat(Creature c, FolkPlaces p, out float2 seat)
+    {
+        seat = default;
+        int free = 0;
+        foreach (var (at, _, _) in p.benches) if (!SeatTaken(c, at)) free++;
+        if (free == 0) return false;
+        int pick = rng.NextInt(free);
+        foreach (var (at, _, _) in p.benches)
+        {
+            if (SeatTaken(c, at)) continue;
+            if (pick-- == 0)
+            {
+                seat = at;
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool SeatTaken(Creature self, float2 at)
+    {
+        foreach (var other in creatures)
+            if (other != self && other.village >= 0 && (other.task == FolkTask.Sit || other.task == FolkTask.Walk)
+                && math.distancesq(other.goal, at) < 0.01f)
+                return true;
+        return false;
     }
 
     // Walks toward the goal at the body's walking pace, turning round anything it can't walk on
