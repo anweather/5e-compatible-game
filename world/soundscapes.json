@@ -1,0 +1,25 @@
+{
+  "about": "What the world sounds like where the listener stands (Soundscapes.cs, backlog #9). Every soundscape whose 'near' and 'hours' hold plays its loops together; a loop in several plays once, at the loudest volume. 'near' counts cells within 'within' cells (a square round the listener): 'terrain' ids or a terrain 'tag', or cells holding at least 'water' units, and holds when there are 'atLeast' of them. 'village': true holds inside a village (its bounds grown by 'within'); 'building' holds within 'within' cells of a village building of that kind (inn, shop, house). 'hours' is [from, to] on the world clock, across midnight when from is the later (Sky.InHours); without it, any hour. 'sound' names a loop for the view to play (Gameplay maps the names to clips); 'volume' is 0 to 1. The falls' roar is the view's own (WaterfallFx), not here.",
+  "soundscapes": [
+    { "id": "meadow", "near": { "tag": "turf", "within": 6, "atLeast": 40 }, "hours": [6, 20],
+      "loops": [{ "sound": "wind-in-grass", "volume": 0.35 }, { "sound": "skylark", "volume": 0.25 }] },
+    { "id": "meadow-night", "near": { "tag": "turf", "within": 6, "atLeast": 40 }, "hours": [20, 6],
+      "loops": [{ "sound": "crickets", "volume": 0.4 }] },
+    { "id": "woods", "near": { "terrain": ["tree"], "within": 8, "atLeast": 20 }, "hours": [5, 20],
+      "loops": [{ "sound": "birdsong", "volume": 0.6 }, { "sound": "leaves", "volume": 0.3 }] },
+    { "id": "woods-night", "near": { "terrain": ["tree"], "within": 8, "atLeast": 20 }, "hours": [20, 5],
+      "loops": [{ "sound": "owl", "volume": 0.35 }, { "sound": "crickets", "volume": 0.45 }, { "sound": "leaves", "volume": 0.25 }] },
+    { "id": "river", "near": { "terrain": ["river"], "within": 6, "atLeast": 6 },
+      "loops": [{ "sound": "river", "volume": 0.7 }] },
+    { "id": "lakeside", "near": { "water": 8, "within": 8, "atLeast": 30 },
+      "loops": [{ "sound": "lapping-water", "volume": 0.5 }] },
+    { "id": "shore", "near": { "water": 8, "within": 16, "atLeast": 400 }, "hours": [6, 20],
+      "loops": [{ "sound": "surf", "volume": 0.7 }, { "sound": "gulls", "volume": 0.4 }] },
+    { "id": "shore-night", "near": { "water": 8, "within": 16, "atLeast": 400 }, "hours": [20, 6],
+      "loops": [{ "sound": "surf", "volume": 0.6 }] },
+    { "id": "village", "near": { "village": true, "within": 4 }, "hours": [7, 20],
+      "loops": [{ "sound": "village-day", "volume": 0.4 }] },
+    { "id": "inn-evening", "near": { "building": "inn", "within": 10 }, "hours": [18, 1],
+      "loops": [{ "sound": "inn-chatter", "volume": 0.6 }, { "sound": "fiddle", "volume": 0.5 }] }
+  ]
+}

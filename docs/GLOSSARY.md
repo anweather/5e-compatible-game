@@ -193,6 +193,12 @@ touch them.
 : Animals and folk drawn in the view (`ValleyFauna`, Punchy's creatures).
   View-only, never in the rules.
 
+**Soundscape**
+: The loops a place plays round the listener (`world/soundscapes.json`,
+  `Soundscapes`): birdsong in the woods, the river, surf and gulls on the
+  shore, a fiddle at the inn in the evening. Keyed by what is round the
+  listener's cell and the hour; the falls' roar is the view's own.
+
 **Ambient life**
 : View-only life that makes the world feel lived in: gulls, fish, crabs,
   fireflies, villagers (`AmbientLife`, `AmbientCritters`, D12).
