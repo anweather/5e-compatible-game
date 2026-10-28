@@ -13,7 +13,7 @@ public class RockWake : MonoBehaviour
     public float waterY, radius = 0.8f;
 
     // Foam a second, how fast it's carried off (m/s), and how near the camera it's drawn (m).
-    const float Rate = 22f, Carry = 1.4f, Near = 70f;
+    const float Rate = 30f, Carry = 1.4f, Near = 70f;
     ParticleSystem foam;
     float owed;
 
@@ -36,9 +36,9 @@ public class RockWake : MonoBehaviour
             {
                 position = at,
                 velocity = velocity,
-                startSize = Random.Range(0.2f, 0.45f),
-                startLifetime = Random.Range(1f, 2f),
-                startColor = new Color(1f, 1f, 1f, 0.75f),
+                startSize = Random.Range(0.08f, 0.2f),
+                startLifetime = Random.Range(0.6f, 1.3f),
+                startColor = new Color(1f, 1f, 1f, 0.9f),
             }, 1);
         }
     }

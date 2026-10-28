@@ -316,7 +316,7 @@ public static class ValleyBuilder
     }
 
     // Rocks in the river (Andrew's playtest #33): a seeded scatter of the demo pack's rocks along the
-    // river's course, standing on its channel's bed and out of the water, clear of the bridge and the
+    // river's course, their tops out of the water, clear of the bridge and the
     // falls, each with white water breaking round it (RockWake).
     static void RiverRocks()
     {
@@ -338,10 +338,13 @@ public static class ValleyBuilder
             float bed = ValleyTerrain.GroundAt(at), water = bed + ValleyShape.ChannelDepth(w);
             var rock = (GameObject)PrefabUtility.InstantiatePrefab(prefab, parent);
             Solid(rock);
-            rock.transform.SetPositionAndRotation(new Vector3(w.x, bed - 0.15f, w.y), Quaternion.Euler(0f, turn, 0f));
-            // Tall enough to stand 0.3 to 0.8 m out of the water.
+            rock.transform.rotation = Quaternion.Euler(0f, turn, 0f);
+            // 1.2 to 2.2 m across, its top 0.3 to 0.6 m out of the water (the rest under it, toward the bed).
             var size = BoundsOf(rock).size;
-            rock.transform.localScale = Vector3.one * Mathf.Max(0.4f, (water - bed + 0.45f + 0.5f * extra) / Mathf.Max(size.y, 0.1f));
+            rock.transform.localScale = Vector3.one * ((1.2f + extra) / Mathf.Max(Mathf.Max(size.x, size.z), 0.1f));
+            var placed = BoundsOf(rock);
+            float top = water + 0.3f + 0.3f * extra;
+            rock.transform.position += new Vector3(w.x - placed.center.x, Mathf.Max(bed - 0.2f - placed.min.y, top - placed.max.y), w.y - placed.center.z);
             var wake = rock.AddComponent<RockWake>();
             wake.downstream = new Vector3(way.x, 0f, way.y);
             wake.waterY = water;
