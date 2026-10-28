@@ -11,8 +11,8 @@ using UnityEngine;
 // legs and a sphere at the hips (so the legs no longer poke through it), the
 // ground under the feet, and a seat's top when the wizard sits; in water it
 // floats and drags; the weather's wind and the wizard's own moves sway it. The
-// mesh is rebuilt from the particles every frame, flat-shaded like the rest of
-// the outfit (VillageLit). It snaps back to rest after a jump of more than 2 m
+// mesh is rebuilt from the particles every frame, smooth-shaded like the bodice
+// (VillageLit). It snaps back to rest after a jump of more than 2 m
 // (a teleport, Misty Step, the online reset), runs at a third of the rate far
 // off and stops while off screen. View only: every peer runs its own, nothing
 // is shared.
@@ -31,6 +31,8 @@ public class RobeCloth : MonoBehaviour
     // The cloth's half-thickness against what it touches, and how far it may stretch.
     const float Skin = 0.02f, MaxStretch = 1.15f;
     const float SnapDistance = 2f, FarDistance = 25f;
+    // The share of the hips' move each step that the cloth takes on at once.
+    const float Follow = 0.8f;
     // The legs and hips it falls round (radii in metres).
     // A little wider than the legs themselves: the cloth's faces sag between its particles.
     const float ThighRadius = 0.115f, ShinRadius = 0.09f, HipsRadius = 0.15f;
@@ -53,6 +55,8 @@ public class RobeCloth : MonoBehaviour
     // The rest shape from the hips in the body's own upright frame (its heading, not the hips' tilt):
     // what the cloth hangs toward, so a tilted pelvis (sitting, lying back) lets it fall, not stick out.
     Vector3[] hang;
+    // The particles of the robe's front panel (within 60° of straight ahead), kept in front of the legs.
+    bool[] frontPanel;
     Transform body;
     Vector3[] pos, prev;     // in the world
     struct Link { public int a, b; public float length; public bool vertical; }
@@ -60,7 +64,7 @@ public class RobeCloth : MonoBehaviour
     Vector3[] vertices, normals;
     bool[] flipped;
     float clock;
-    Vector3 lastHips;
+    Vector3 lastHips, lastStepHips;
     bool ready;
 
     /// <summary>How far the cloth's farthest particle is from a point (the probe checks it holds together).</summary>
@@ -103,7 +107,12 @@ public class RobeCloth : MonoBehaviour
         prev = new Vector3[n];
         body = animator.transform;
         hang = new Vector3[n];
-        for (int i = 0; i < n; i++) hang[i] = Quaternion.Inverse(body.rotation) * (hips.TransformPoint(rest[i]) - hips.position);
+        frontPanel = new bool[n];
+        for (int i = 0; i < n; i++)
+        {
+            hang[i] = Quaternion.Inverse(body.rotation) * (hips.TransformPoint(rest[i]) - hips.position);
+            frontPanel[i] = hang[i].z > 0.5f * new Vector2(hang[i].x, hang[i].z).magnitude;
+        }
         Snap();
         MakeLinks();
         MakeMesh(robe, trim);
@@ -142,7 +151,7 @@ public class RobeCloth : MonoBehaviour
     void Snap()
     {
         for (int i = 0; i < pos.Length; i++) pos[i] = prev[i] = hips.TransformPoint(rest[i]);
-        lastHips = hips.position;
+        lastHips = lastStepHips = hips.position;
     }
 
     void LateUpdate()
@@ -187,18 +196,70 @@ public class RobeCloth : MonoBehaviour
         }
     }
 
-    bool seated, lounging;
+    bool seated;
+    // How long it has been seated: just sat down, the cloth is settled onto the lap (the legs swing
+    // up through it as the wizard sits, which would leave it caught under the thighs).
+    float seatedFor;
+    const float Settle = 0.8f, SettleRate = 0.2f;
+
+    // Seated, the lap: the hip joints, knees and feet between both legs, and how long the thighs and shins are.
+    Vector3 lapHip, lapKnee, lapFoot, lapRight;
+    float lapThigh, lapShin;
+    bool lapFound;
+
+    void ReadLap()
+    {
+        lapFound = seated && legFound[0] && legFound[1];
+        if (!lapFound) return;
+        lapHip = (legAt[0] + legAt[3]) / 2f;
+        lapKnee = (legAt[1] + legAt[4]) / 2f;
+        lapFoot = (legAt[2] + legAt[5]) / 2f;
+        lapThigh = Vector3.Distance(lapHip, lapKnee);
+        lapShin = Vector3.Distance(lapKnee, lapFoot);
+        lapRight = bodyTurn * Vector3.right;
+    }
 
     // Where a particle is pulled back to: the robe's shape hanging from the hips in the body's upright
-    // frame; lying back on a lounger, the shape the pelvis gives it, so it lies along the body.
-    Vector3 Target(int i) => lounging ? hipsMatrix.MultiplyPoint3x4(rest[i]) : hipsAt + bodyTurn * hang[i];
-
-    // How hard a ring is pulled back: firm near the waist, loose at the hem (so the legs win), and
-    // gently when seated (so it drapes over the lap and down past the knees).
-    float Keep(int ring)
+    // frame (so a tilted pelvis, sitting or lying back, lets it fall onto the seat). Seated, the front
+    // goes over the lap instead (Andrew: cover the thighs to the knee, then down the shins).
+    Vector3 Target(int i)
     {
-        float k = Mathf.Lerp(1.5f, 0.35f, ring / (float)(rings - 1));
-        return seated && !lounging ? k * 0.25f : k;
+        var hangs = hipsAt + bodyTurn * hang[i];
+        float front = Front(i);
+        return front > 0f ? Vector3.Lerp(hangs, OverLap(i), front) : hangs;
+    }
+
+    // How much of a particle is the robe's front (none at its back), seated with the lap found.
+    float Front(int i)
+    {
+        if (!lapFound) return 0f;
+        var h = hang[i];
+        float across = new Vector2(h.x, h.z).magnitude;
+        return across < 1e-4f ? 0f : Mathf.Clamp01((h.z / across + 0.3f) / 0.8f);
+    }
+
+    // A front particle laid along the legs as far down the robe as it hangs: over the thighs to the
+    // knees, then over the shins (down a bench's front, along a lounger), just clear of them.
+    Vector3 OverLap(int i)
+    {
+        // From where its line leaves the waist (the pinned ring above it), so the lap doesn't fold back.
+        float d = rest[sides].y - rest[i].y + Mathf.Max(0f, Vector3.Dot(pos[sides + i % sides] - lapHip, (lapKnee - lapHip).normalized));
+        Vector3 from, way;
+        float along;
+        if (d < lapThigh) (from, way, along) = (lapHip, lapKnee - lapHip, d);
+        else if (d < lapThigh + lapShin) (from, way, along) = (lapKnee, lapFoot - lapKnee, d - lapThigh);
+        else (from, way, along) = (lapFoot, Vector3.down, d - lapThigh - lapShin);
+        way.Normalize();
+        var clear = Vector3.Cross(way, lapRight).normalized * (ThighRadius + Skin);
+        return from + way * along + clear + lapRight * (hang[i].x * 0.8f);
+    }
+
+    // How hard a particle is pulled back: firm near the waist, loose at the hem (so the legs win); seated,
+    // the back only gently (so it falls onto the seat and over its edge), the front over the lap firmly.
+    float Keep(int i)
+    {
+        float k = Mathf.Lerp(1.5f, 0.35f, i / sides / (float)(rings - 1));
+        return seated ? k * Mathf.Lerp(0.25f, 3f, Front(i)) : k;
     }
 
     void Simulate(float dt)
@@ -207,8 +268,14 @@ public class RobeCloth : MonoBehaviour
         var accel = Vector3.down * Gravity + Wind();
         float waterY = WaterTop();
         var seat = sitter != null ? sitter.Seated : null;
-        lounging = seat != null && seat.lounge;
         seated = seat != null;
+        seatedFor = seated ? seatedFor + dt : 0f;
+        bool settling = seated && seatedFor < Settle;
+        ReadLap();
+        // Most of the hips' own move goes straight to the cloth, so running it swings round the legs
+        // instead of streaming behind like a cape.
+        var carried = (hipsAt - lastStepHips) * Follow;
+        lastStepHips = hipsAt;
         for (int i = 0; i < pos.Length; i++)
         {
             if (Pinned(i))
@@ -218,9 +285,11 @@ public class RobeCloth : MonoBehaviour
             }
             bool wet = pos[i].y < waterY;
             var v = (pos[i] - prev[i]) * (wet ? WaterDamping : Damping);
+            pos[i] += carried;
             prev[i] = pos[i];
             pos[i] += v + (accel + (wet ? Vector3.up * WaterLift : Vector3.zero)) * (dt * dt);
-            pos[i] += (Target(i) - pos[i]) * (ShapeKeep * Keep(i / sides));
+            pos[i] += (Target(i) - pos[i]) * (ShapeKeep * Keep(i));
+            if (settling) prev[i] = pos[i] = Vector3.Lerp(pos[i], Target(i), SettleRate);
         }
         float ground = Ground();
         for (int it = 0; it < Iterations; it++)
@@ -252,19 +321,32 @@ public class RobeCloth : MonoBehaviour
     void Collide(float ground)
     {
         var seat = sitter != null ? sitter.Seated : null;
+        var ahead = bodyTurn * Vector3.forward;
+        var right = bodyTurn * Vector3.right;
         for (int i = 2 * sides; i < pos.Length; i++)
         {
             var p = OutOfSphere(pos[i], hipsAt, HipsRadius);
-            // Seated, the robe's front lies over the lap: caught by a thigh, it goes up onto it.
-            p = OffLegs(p, seat != null && hang[i].z > 0f);
+            // Seated, the robe's front lies over the lap: caught by a thigh, it goes up onto it. Up, the
+            // front panel always goes out in front of a leg, never back through it (Andrew: the front
+            // leg came through the robe at a run).
+            p = OffLegs(p, WayOffLegs(i, seat != null), ahead, right);
             if (seat != null) p = OffSeat(p, seat);
             if (p.y < ground) p.y = ground;
             pos[i] = p;
         }
     }
 
-    // Out of both legs: thigh and shin capsules (over the thighs rather than out round them, for a lap).
-    Vector3 OffLegs(Vector3 p, bool overThighs)
+    // Which way cloth leaves a leg: the nearest way, up over it (a lap), or out in front of it.
+    enum LegWay { Round, Over, Ahead }
+
+    LegWay WayOffLegs(int i, bool sitting)
+    {
+        if (sitting) return hang[i].z > 0f ? LegWay.Over : LegWay.Round;
+        return frontPanel[i] ? LegWay.Ahead : LegWay.Round;
+    }
+
+    // Out of both legs: thigh and shin capsules.
+    Vector3 OffLegs(Vector3 p, LegWay way, Vector3 ahead, Vector3 right)
     {
         for (int s = 0; s < 2; s++)
         {
@@ -272,12 +354,34 @@ public class RobeCloth : MonoBehaviour
             var thigh = legAt[s * 3];
             var knee = legAt[s * 3 + 1];
             var foot = legAt[s * 3 + 2];
-            p = overThighs
-                ? OntoCapsule(p, thigh, knee, ThighRadius)
-                : OutOfCapsule(p, thigh, knee, ThighRadius);
-            p = OutOfCapsule(p, knee, foot, ShinRadius);
+            p = way switch
+            {
+                LegWay.Over => OntoCapsule(p, thigh, knee, ThighRadius),
+                LegWay.Ahead => InFrontOfCapsule(p, thigh, knee, ThighRadius, ahead, right),
+                _ => OutOfCapsule(p, thigh, knee, ThighRadius),
+            };
+            p = way == LegWay.Ahead ? InFrontOfCapsule(p, knee, foot, ShinRadius, ahead, right) : OutOfCapsule(p, knee, foot, ShinRadius);
         }
         return p;
+    }
+
+    // Out of a capsule toward the body's front, from wherever it is beside it (so cloth that slipped
+    // behind a striding leg is brought back in front); the nearest way where the leg points ahead.
+    static Vector3 InFrontOfCapsule(Vector3 p, Vector3 a, Vector3 b, float r, Vector3 ahead, Vector3 right)
+    {
+        var ab = b - a;
+        float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / Mathf.Max(ab.sqrMagnitude, 1e-6f));
+        var c = a + ab * t;
+        var d = p - c;
+        float min = r + Skin;
+        float side = Vector3.Dot(d, right);
+        if (Mathf.Abs(side) >= min) return p;
+        var axis = ab.normalized;
+        var front = ahead - axis * Vector3.Dot(ahead, axis);
+        if (front.sqrMagnitude < 0.04f) return OutOfSphere(p, c, r);
+        front.Normalize();
+        float need = Mathf.Sqrt(min * min - side * side), now = Vector3.Dot(d, front);
+        return now >= need ? p : p + front * (need - now);
     }
 
     static Vector3 OutOfSphere(Vector3 p, Vector3 centre, float r)
@@ -294,11 +398,13 @@ public class RobeCloth : MonoBehaviour
         return OutOfSphere(p, a + ab * t, r);
     }
 
-    // Out of a capsule by going up over it: to the top of the capsule above the nearest point.
+    // Out of a capsule by going up over it: to the top of the capsule above the nearest point. Past
+    // its ends (in front of a knee) just out of it, so cloth there falls on past rather than up.
     static Vector3 OntoCapsule(Vector3 p, Vector3 a, Vector3 b, float r)
     {
         var ab = b - a;
-        float t = Mathf.Clamp01(Vector3.Dot(p - a, ab) / Mathf.Max(ab.sqrMagnitude, 1e-6f));
+        float t = Vector3.Dot(p - a, ab) / Mathf.Max(ab.sqrMagnitude, 1e-6f);
+        if (t <= 0f || t >= 1f) return OutOfSphere(p, t <= 0f ? a : b, r);
         var c = a + ab * t;
         var d = p - c;
         float min = r + Skin;
@@ -360,7 +466,7 @@ public class RobeCloth : MonoBehaviour
         return dir * (4f * strength * gust);
     }
 
-    // --- the mesh: two flat faces per quad (outside, and a darker inside) --------------------------
+    // --- the mesh: two faces per quad (outside, and a darker inside) --------------------------
 
     void MakeMesh(Color robe, Color trim)
     {
@@ -420,31 +526,51 @@ public class RobeCloth : MonoBehaviour
         d = At(i + 1, k);
     }
 
-    // The particles into the mesh, in this object's space, with each quad's flat normal.
+    // The particles into the mesh, in this object's space, each corner with the normal of the quads
+    // round its particle averaged (smooth shading, Andrew: not faceted).
     void Fill()
     {
         var space = transform;
+        smooth ??= new Vector3[pos.Length];
+        local ??= new Vector3[pos.Length];
+        for (int p = 0; p < pos.Length; p++)
+        {
+            local[p] = space.InverseTransformPoint(pos[p]);
+            smooth[p] = Vector3.zero;
+        }
         for (int i = 0; i + 1 < rings; i++)
             for (int k = 0; k < sides; k++)
             {
-                int q = i * sides + k, o = q * 8;
                 Quad(i, k, out var a, out var b, out var c, out var d);
-                Vector3 pa = space.InverseTransformPoint(pos[a]), pb = space.InverseTransformPoint(pos[b]),
-                    pc = space.InverseTransformPoint(pos[c]), pd = space.InverseTransformPoint(pos[d]);
                 // Outward: the a-b-c face's normal, turned round where the quad's winding was flipped.
-                var n = Vector3.Cross(pb - pa, pc - pa).normalized;
-                if (flipped[q]) n = -n;
-                vertices[o] = vertices[o + 4] = pa;
-                vertices[o + 1] = vertices[o + 5] = pb;
-                vertices[o + 2] = vertices[o + 6] = pc;
-                vertices[o + 3] = vertices[o + 7] = pd;
-                for (int v = 0; v < 4; v++)
-                {
-                    normals[o + v] = n;
-                    normals[o + 4 + v] = -n;
-                }
+                var n = Vector3.Cross(local[b] - local[a], local[c] - local[a]);
+                if (flipped[i * sides + k]) n = -n;
+                smooth[a] += n;
+                smooth[b] += n;
+                smooth[c] += n;
+                smooth[d] += n;
             }
+        for (int p = 0; p < pos.Length; p++) smooth[p].Normalize();
+        for (int i = 0; i + 1 < rings; i++)
+            for (int k = 0; k < sides; k++)
+            {
+                int o = (i * sides + k) * 8;
+                Quad(i, k, out var a, out var b, out var c, out var d);
+                Corner(o, a);
+                Corner(o + 1, b);
+                Corner(o + 2, c);
+                Corner(o + 3, d);
+            }
+
+        void Corner(int v, int p)
+        {
+            vertices[v] = vertices[v + 4] = local[p];
+            normals[v] = smooth[p];
+            normals[v + 4] = -smooth[p];
+        }
     }
+
+    Vector3[] smooth, local;
 
     void Draw()
     {

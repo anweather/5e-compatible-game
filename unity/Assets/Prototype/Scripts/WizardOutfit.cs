@@ -90,13 +90,21 @@ public class WizardOutfit : MonoBehaviour
         if (animator == null || material == null) return;
         var kit = new MeshKit { Occlusion = 0f };
         Hat(kit, Bone(HumanBodyBones.Head));
-        Beard(kit, Bone(HumanBodyBones.Head));
+        Beard(Bone(HumanBodyBones.Head));
         var chest = Bone(HumanBodyBones.Chest);
         if (RigidRobe) Bodice(kit, chest != null ? chest : Bone(HumanBodyBones.Spine));
         else SkinnedBodice();
         Skirt(kit, Bone(HumanBodyBones.Hips));
-        Sleeve(kit, HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm, HumanBodyBones.LeftHand);
-        Sleeve(kit, HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand);
+        if (RigidRobe)
+        {
+            Sleeve(kit, HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm, HumanBodyBones.LeftHand);
+            Sleeve(kit, HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand);
+        }
+        else
+        {
+            SkinnedSleeve(HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm, HumanBodyBones.LeftHand);
+            SkinnedSleeve(HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand);
+        }
         Staff(kit, Bone(HumanBodyBones.LeftHand));
     }
 
@@ -108,9 +116,10 @@ public class WizardOutfit : MonoBehaviour
     // The staff's length and its grip, in the hand's space as built.
     Vector3 staffAxis, staffGrip;
     Sitter sitter;
-    // How far a moving staff leans out from the body (so its foot clears the leg), and how far the
-    // hat tips forward over the face when lying back.
-    const float StaffLeanOut = 0.2f, HatTip = 45f;
+    // How far a moving staff leans out from the body (so its foot clears the leg and its top the
+    // hat's brim), how far down it's held (its top below the hat), and how far the hat tips forward
+    // over the face when lying back.
+    const float StaffLeanOut = 0.35f, StaffDrop = 0.15f, HatTip = 45f;
 
     void LateUpdate()
     {
@@ -120,8 +129,14 @@ public class WizardOutfit : MonoBehaviour
         if (staff != null)
         {
             staff.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
-            if (seat == null) HoldStaff((Vector3.up - transform.right * StaffLeanOut).normalized, null);
-            else if (seat.lounge) HoldStaff(seat.Facing * Vector3.forward, Bone(HumanBodyBones.Hips).position - transform.right * 0.32f + Vector3.up * 0.05f);
+            if (seat == null)
+            {
+                var along = (Vector3.up - transform.right * StaffLeanOut).normalized;
+                HoldStaff(along, null);
+                staff.position -= along * StaffDrop;
+            }
+            // Lying back: stood upright beside the lounger, by the hand.
+            else if (seat.lounge) HoldStaff(Vector3.up, Bone(HumanBodyBones.Hips).position - transform.right * 0.45f + Vector3.up * 0.4f);
         }
         if (hat != null)
         {
@@ -198,14 +213,13 @@ public class WizardOutfit : MonoBehaviour
         hat = Last("Outfit hat");
     }
 
-    void Beard(MeshKit kit, Transform head)
+    // The beard: tufts along the jaw on spring chains (WizardBeard).
+    void Beard(Transform head)
     {
-        if (head == null || Look.BeardLength <= 0f) return;
-        // From the chin, down and a little forward, to a point.
-        var chin = new Vector3(0f, -0.04f, 0.075f);
-        Tube(kit, new[] { chin, chin + new Vector3(0f, -Look.BeardLength * 0.6f, 0.03f), chin + new Vector3(0f, -Look.BeardLength, 0.02f) },
-            new[] { 0.07f, 0.055f, 0.004f }, Look.Beard, Ends.Both);
-        Hang(kit, head, "beard");
+        var (mesh, springs) = WizardBeard.Build(Look, transform, head, new[] { Bone(HumanBodyBones.UpperChest), Bone(HumanBodyBones.Chest) }, material);
+        if (mesh == null) return;
+        parts.Add(mesh);
+        parts.Add(springs);
     }
 
     // The bodice as clothing, not a shell (Andrew: "rough"): slim elliptical rings from the waist up
@@ -239,50 +253,57 @@ public class WizardOutfit : MonoBehaviour
             (At(neck) + Vector3.down * 0.01f, 0.085f, 0.9f, neck),
             (At(neck) + Vector3.up * 0.05f, 0.065f, 1f, neck),
         };
-        const int sides = 14;
-        var points = new Vector3[rings.Length][];
-        for (int i = 0; i < rings.Length; i++)
-        {
-            points[i] = new Vector3[sides];
-            for (int k = 0; k < sides; k++)
-            {
-                float a = 2f * Mathf.PI * k / sides;
-                var (at, half, depth, _) = rings[i];
-                points[i][k] = at + new Vector3(Mathf.Cos(a) * half, 0f, Mathf.Sin(a) * half * depth);
-            }
-        }
-        var kit = new MeshKit { Occlusion = 0f };
-        for (int i = 0; i + 1 < rings.Length; i++)
-        {
-            var colour = i >= rings.Length - 2 ? Look.Trim : Look.Robe;
-            for (int k = 0; k < sides; k++)
-            {
-                int n = (k + 1) % sides;
-                Vector3 a = points[i][k], b = points[i][n], c = points[i + 1][n], d = points[i + 1][k];
-                kit.Quad(a, b, c, d, colour, (a + c) / 2f - (rings[i].at + rings[i + 1].at) / 2f);
-            }
-        }
-        var mesh = kit.ToMesh("Wizard bodice");
         var bones = new[] { hips, spine, chest, upper, neck, leftArm, rightArm };
         int Index(Transform t) => System.Array.IndexOf(bones, t);
-        var verts = mesh.vertices;
-        var weights = new BoneWeight[verts.Length];
         var heights = System.Array.ConvertAll(rings, r => r.at.y);
         var ringBones = System.Array.ConvertAll(rings, r => Index(r.bone));
         var shoulders = (centre: rings[4].at.x, half: rings[4].half, y: shoulderY, left: Index(leftArm), right: Index(rightArm));
-        for (int v = 0; v < verts.Length; v++) weights[v] = Weigh(verts[v], heights, ringBones, shoulders);
-        mesh.boneWeights = weights;
-        var binds = new Matrix4x4[bones.Length];
-        for (int j = 0; j < bones.Length; j++) binds[j] = bones[j].worldToLocalMatrix * root.localToWorldMatrix;
-        mesh.bindposes = binds;
-        var go = new GameObject("Outfit bodice");
-        go.transform.SetParent(root, false);
-        var skin = go.AddComponent<SkinnedMeshRenderer>();
-        skin.sharedMesh = mesh;
-        skin.bones = bones;
-        skin.rootBone = hips;
-        skin.sharedMaterial = material;
-        parts.Add(go);
+        var tube = new SkinnedTube.Ring[rings.Length];
+        for (int i = 0; i < rings.Length; i++)
+            tube[i] = new SkinnedTube.Ring { at = rings[i].at, along = Vector3.up, half = rings[i].half, depth = rings[i].depth, colour = i >= rings.Length - 2 ? Look.Trim : Look.Robe };
+        parts.Add(SkinnedTube.Make(root, "Outfit bodice", tube, 16, bones, (p, _) => Weigh(p, heights, ringBones, shoulders), material));
+    }
+
+    // A sleeve as clothing: slim down the upper arm and the forearm, flaring a little to a cuff
+    // at the wrist, skinned to the upper arm, forearm and hand, its cuff partly to a spring bone at
+    // the wrist (ClothSpring) so it hangs and sways. Built in the idle pose like the bodice.
+    void SkinnedSleeve(HumanBodyBones upperBone, HumanBodyBones lowerBone, HumanBodyBones handBone)
+    {
+        Transform upper = Bone(upperBone), lower = Bone(lowerBone), hand = Bone(handBone);
+        if (upper == null || lower == null || hand == null) return;
+        var root = transform;
+        Vector3 shoulder = root.InverseTransformPoint(upper.position), elbow = root.InverseTransformPoint(lower.position),
+            wrist = root.InverseTransformPoint(hand.position);
+        var cuffBone = new GameObject("Sleeve hang").transform;
+        cuffBone.SetParent(lower, false);
+        cuffBone.position = hand.position;
+        cuffBone.gameObject.AddComponent<ClothSpring>();
+        Vector3 upperWay = elbow - shoulder, lowerWay = wrist - elbow;
+        var rings = new[]
+        {
+            Ring(shoulder - upperWay.normalized * 0.02f, upperWay, 0.066f, Look.Robe),
+            Ring(Vector3.Lerp(shoulder, elbow, 0.5f), upperWay, 0.058f, Look.Robe),
+            Ring(elbow, (upperWay + lowerWay) / 2f, 0.056f, Look.Robe),
+            Ring(Vector3.Lerp(elbow, wrist, 0.5f), lowerWay, 0.058f, Look.Robe),
+            Ring(wrist - lowerWay.normalized * 0.06f, lowerWay, 0.068f, Look.Robe),
+            Ring(wrist - lowerWay.normalized * 0.035f, lowerWay, 0.074f, Look.Trim),
+            Ring(wrist - lowerWay.normalized * 0.005f, lowerWay, 0.078f, Look.Trim),
+        };
+        var bones = new[] { upper, lower, hand, cuffBone };
+        // Upper arm to the elbow, forearm on, the cuff mostly with the hanging spring.
+        static BoneWeight Share(Vector3 _, int ring) => ring switch
+        {
+            <= 1 => SkinnedTube.Blend(0, 1, 0f),
+            2 => SkinnedTube.Blend(0, 1, 0.5f),
+            3 => SkinnedTube.Blend(1, 2, 0f),
+            4 => SkinnedTube.Blend(1, 3, 0.3f),
+            _ => SkinnedTube.Blend(1, 3, 0.65f),
+        };
+        parts.Add(SkinnedTube.Make(root, "Outfit sleeve " + upperBone, rings, 12, bones, Share, material));
+        parts.Add(cuffBone.gameObject);
+
+        static SkinnedTube.Ring Ring(Vector3 at, Vector3 along, float radius, Color colour) =>
+            new() { at = at, along = along, half = radius, depth = 1f, colour = colour };
     }
 
     // A bodice vertex's bones: the two rings it lies between, by height; at the shoulders' sides, a
