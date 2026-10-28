@@ -30,7 +30,10 @@
     "windmill":  { "name": "Windmill", "tags": ["blocking", "machine"] },
     "arid":      { "name": "Arid ground", "tags": ["ground", "soil"], "soakEvery": 8, "soakEveryWet": 24 },
     "arctic":    { "name": "Arctic ground", "tags": ["ground"], "waterTo": "ice" },
-    "lava":      { "name": "Lava", "tags": ["ground"], "waterTo": "steam" }
+    "lava":      { "name": "Lava", "tags": ["ground"], "waterTo": "steam" },
+    "thatch":    { "name": "Thatch roof", "tags": ["roof", "flammable"], "flammability": 0.5, "fuel": 10, "burnsTo": "rubble" },
+    "shingle":   { "name": "Shingle roof", "tags": ["roof", "flammable"], "flammability": 0.3, "fuel": 20, "burnsTo": "rubble" },
+    "slate":     { "name": "Slate roof", "tags": ["roof"] }
   },
   "covers": {
     "oil":    { "name": "Oil", "tags": ["flammable", "slippery"], "flammability": 0.95, "fuel": 10, "burnIntensity": 3 },

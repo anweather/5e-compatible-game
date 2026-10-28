@@ -96,10 +96,17 @@ namespace Chem
                     if (!(entities[k] is JObject e && e["raider"] is JObject)) Errors.Add($"sim defense: kind {k} is not a raider");
             }
 
+            // A thing's material is a terrain (what it's made of).
+            internal void MaterialRef(string what, JToken m)
+            {
+                if (m != null && !IsIn(terrain, m)) Errors.Add($"{what}: material {Show(m)} unknown");
+            }
+
             void EntityRefs(JProperty p)
             {
                 RaiderRefs(p);
                 ComponentList($"entity {p.Name}", p.Value["components"]);
+                MaterialRef($"entity {p.Name}", p.Value["material"]);
                 var explodes = p.Value["explodes"];
                 if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
                 if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1, radius from 0 and strength from 1");

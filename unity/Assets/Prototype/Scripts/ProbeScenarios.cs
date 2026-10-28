@@ -154,6 +154,9 @@ public static class ProbeScenarios
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
             "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+        new Entry("houses", typeof(HousesProbe), 120f,
+            "The materials step: a Fire Bolt on one of Hollowmere's timber houses and one of its stone houses, clear noon, 45 s. Checks: each has " +
+            "wall cells of its material (world/villages.json), the timber house's log walls burn down, the stone house's stand, no console errors."),
         new Entry("soak", typeof(SoakProbe), 120f,
             "Andrew, 2026-10-28: Create Water on open ground in the yard at noon, clear, then a minute. Checks: water poured, under half of it left " +
             "(thin water soaks in and dries up, World.Soak), the river's and lake's deep water kept, no console errors."),

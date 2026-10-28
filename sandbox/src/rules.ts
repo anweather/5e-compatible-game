@@ -193,6 +193,8 @@ export interface EntityDef {
   name: string;
   hp: number;
   mass: number;
+  /** What it's made of: a terrain id (a crate is wood). */
+  material?: string;
   /** What it is made of or does (components.json); read through hasComponent. */
   components?: string[];
   /** Old shorthand for the flammable and creature components. */
@@ -229,6 +231,8 @@ export interface CraterDef {
  */
 export interface ItemDef {
   name: string;
+  /** What it's made of: a terrain id (a lantern is metal). */
+  material?: string;
   /** What it is made of or does (components.json). */
   components?: string[];
   /** Kilograms. */
@@ -514,6 +518,7 @@ function itemErrors(r: Rules, id: string, it: ItemDef): string[] {
   const i = it as unknown as Record<string, unknown>;
   if (!it.name) errors.push(`${what}: needs a name`);
   if (id in r.entities) errors.push(`${what}: id is taken by an entity`);
+  if (it.material !== undefined && !(it.material in r.terrain)) errors.push(`${what}: material ${it.material} unknown`);
   errors.push(...rangeError(i.mass, `${what}: mass`, 0, { above: true }));
   errors.push(...rangeError(i.zoom, `${what}: zoom`, 1));
   errors.push(...rangeError(i.reach, `${what}: reach`, 0));
@@ -688,6 +693,7 @@ export function validateRules(r: Rules): string[] {
   for (const [id, e] of Object.entries(r.entities)) {
     if (e.raider) errors.push(...raiderErrors(el, id, e.raider));
     errors.push(...componentListErrors(r, `entity ${id}`, e.components));
+    if (e.material !== undefined && !(e.material in r.terrain)) errors.push(`entity ${id}: material ${e.material} unknown`);
     if (e.explodes && !coverIds.has(e.explodes.cover)) errors.push(`entity ${id}: explodes into unknown cover`);
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
