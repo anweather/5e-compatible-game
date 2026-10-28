@@ -31,9 +31,18 @@ public static class PlaytestWindow
     public static bool HandBack(long window)
     {
         var user = new IntPtr(window);
-        if (user == IntPtr.Zero || !IsWindow(user)) return false;
+        if (user == IntPtr.Zero || !IsWindow(user)) return Say(false, $"window {window} isn't a window");
         GetWindowThreadProcessId(GetForegroundWindow(), out uint pid);
-        return pid == (uint)System.Diagnostics.Process.GetCurrentProcess().Id && SetForegroundWindow(user);
+        if (pid != (uint)System.Diagnostics.Process.GetCurrentProcess().Id) return Say(false, $"process {pid} is in front, not this player");
+        return SetForegroundWindow(user) || Say(false, "SetForegroundWindow refused");
+    }
+
+    // Says why the front wasn't handed back, once per reason (the playtest's Player.log).
+    static readonly System.Collections.Generic.HashSet<string> said = new();
+    static bool Say(bool result, string why)
+    {
+        if (said.Add(why)) UnityEngine.Debug.Log("PLAYTEST: front not handed back: " + why);
+        return result;
     }
 
     // This process's Unity window, found by its window class (no callbacks, so it works under IL2CPP).
