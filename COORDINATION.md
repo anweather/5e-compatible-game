@@ -185,7 +185,7 @@ ask the coordinator first.
 | Build | `unity/ProjectSettings/**` (including the version) |
 | Build | `unity/Packages/manifest.json`, `unity/Packages/packages-lock.json` |
 | Build | `unity/Assets/Settings/**` (the URP assets) |
-| Build | `unity/Assets/Prototype/Scripts/Editor/AssetPacks/**`, `unity/AssetPacks.json` |
+| Build | `unity/Assets/Prototype/Scripts/Editor/AssetPacks/**`, `unity/AssetPacks.json`, `unity/Assets/Prototype/Scripts/Editor/UpdateBuild.cs` (release builds) |
 | Build | `tools/ship-update.sh`, `docs/RELEASING.md`, `unity/ReleaseReadme.txt` |
 
 These shared files have **no owner**. Changes go through the coordinator's
