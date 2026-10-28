@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using Chem;
 using UnityEngine;
 
@@ -110,6 +111,7 @@ public sealed class ValleyGround
         heightfield.Reset(w);
         repaint.Clear();
         cleared.Clear();
+        pendingDetail.Clear();
         reshaped.Clear();
         foreach (var kv in chunks) Recover(kv.Key, kv.Value);
         cellBase = new float[w.W * w.H];
@@ -216,45 +218,53 @@ public sealed class ValleyGround
         var offsets = heightfield.Current(r.I, r.J);
         var data = Writable(ch);
         float size = data.size.y;
-        var heights = new float[r.Height, r.Width];
+        var heights = HeightBuffer(r.Width, r.Height);
         for (int z = 0; z < r.Height; z++)
             for (int x = 0; x < r.Width; x++) heights[z, x] = (ch.baseHeights[r.Z + z, r.X + x] + offsets[r.Z + z, r.X + x]) / size;
         data.SetHeightsDelayLOD(r.X, r.Z, heights);
         ch.heightsChanged = true;
     }
 
+    // The easing writes the same few rectangle sizes every frame: one buffer per size, reused.
+    readonly Dictionary<(int w, int h), float[,]> heightBuffers = new();
+
+    float[,] HeightBuffer(int w, int h)
+    {
+        if (!heightBuffers.TryGetValue((w, h), out var buffer)) heightBuffers[(w, h)] = buffer = new float[h, w];
+        return buffer;
+    }
+
     /// <summary>Once a frame: the batched paint, and the terrains' LOD and colliders for moved ground.</summary>
     public void Flush(System.Func<int, int, bool> scorched)
     {
         using var marked = FlushMarker.Auto();
-        foreach (var ch in chunks.Values)
-        {
-            if (!ch.heightsChanged) continue;
-            ch.data.SyncHeightmap();
-            ch.heightsChanged = false;
-        }
+        SyncOneHeightmap();
+        using (DetailMarker.Auto()) WriteDetail();
         if (repaint.Count == 0)
         {
             // The paint composed in earlier frames still goes out, a chunk a frame.
             WriteOnePaint();
             return;
         }
-        // A big fire scorches hundreds of cells a tick: repaint at most so many a frame, the rest
-        // over the next frames, so the terrain's paint never stalls a frame.
+        // A big fire scorches hundreds of cells a tick: repaint only as many as fit the frame's
+        // budget, the rest over the next frames, so the terrain's paint never stalls a frame.
         batch.Clear();
+        int most = PaintCellsThisFrame();
         foreach (var cell in repaint)
         {
             batch.Add(cell);
-            if (batch.Count == RepaintPerFrame) break;
+            if (batch.Count == most) break;
         }
         foreach (var cell in batch) repaint.Remove(cell);
         // A cell's paint reaches its neighbours' texels: repaint them too, as strips of cells.
         System.Func<int, int, IReadOnlyList<float>> paintOf = (x, y) => PaintOf(x, y, scorched(x, y));
+        paintTimer.Restart();
         using (PaintMarker.Auto())
         {
             foreach (var r in CellPaint.Runs(layout, CellPaint.Around(layout, batch))) Paint(r, paintOf);
-            WriteOnePaint();
         }
+        msPerCell = Mathf.Lerp(msPerCell, (float)paintTimer.Elapsed.TotalMilliseconds / batch.Count, 0.3f);
+        WriteOnePaint();
         using (DetailMarker.Auto()) ClearBareDetail(scorched);
     }
 
@@ -262,8 +272,34 @@ public sealed class ValleyGround
     static readonly Unity.Profiling.ProfilerMarker FlushMarker = new("ValleyGround.Flush"),
         PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint");
 
-    const int RepaintPerFrame = 48;
+    // Composing paint gets about this much of a frame (ms); the cells it takes follow from how long
+    // the last ones took, between the bounds below.
+    const float PaintBudgetMs = 1f;
+    const int FewestRepaints = 8, MostRepaints = 48;
     readonly List<(int x, int y)> batch = new();
+    readonly System.Diagnostics.Stopwatch paintTimer = new();
+    float msPerCell = 0.02f;
+
+    int PaintCellsThisFrame() => Mathf.Clamp(Mathf.FloorToInt(PaintBudgetMs / Mathf.Max(msPerCell, 1e-4f)), FewestRepaints, MostRepaints);
+
+    // Moved ground reaches a terrain's LOD and collider (SyncHeightmap, a few ms on a full chunk)
+    // one chunk a frame, taking them in turn; the rest stay marked for the next frames.
+    void SyncOneHeightmap()
+    {
+        if (syncOrder.Count != chunks.Count) syncOrder = new List<Chunk>(chunks.Values);
+        for (int k = 0; k < syncOrder.Count; k++)
+        {
+            nextSync = (nextSync + 1) % syncOrder.Count;
+            var ch = syncOrder[nextSync];
+            if (!ch.heightsChanged) continue;
+            ch.data.SyncHeightmap();
+            ch.heightsChanged = false;
+            return;
+        }
+    }
+
+    List<Chunk> syncOrder = new();
+    int nextSync;
 
     // What a cell paints over the saved paint: nothing while it paints as it was baked.
     IReadOnlyList<float> PaintOf(int x, int y, bool scorched)
@@ -336,20 +372,20 @@ public sealed class ValleyGround
         for (int t = 0; t < textures.Length; t++)
         {
             WriteTexture(textures[t], t * 4, ch);
+            // The whole texture, with its mips: a chunk's paint is only 64 × 64 texels, so
+            // uploading just the painted box saves nothing worth its staging copies.
             textures[t].Apply(true);
         }
         ch.dx0 = ch.dz0 = int.MaxValue;
         ch.dx1 = ch.dz1 = -1;
     }
 
-    // Clears the grass under this frame's bare cells, one read and one write per chunk and grass
-    // kind (each SetDetailLayer rebuilds the terrain's grass patches there, so a call per cell made a
-    // big fire's frames stall).
-    // Grass that grows back (Plant Growth) gets the valley's own detail grass back from the saved chunk.
+    // Notes which of this frame's cells lose their detail grass (bare) or get it back (grown again,
+    // Plant Growth: the valley's own grass from the saved chunk). WriteDetail writes them a chunk a
+    // frame: one read and one write per grass kind (each SetDetailLayer rebuilds the terrain's grass
+    // patches there, so a call per cell, or every chunk of a big fire in one frame, stalled it).
     void ClearBareDetail(System.Func<int, int, bool> scorched)
     {
-        bareByChunk.Clear();
-        regrownByChunk.Clear();
         foreach (var (x, y) in batch)
         {
             // Snow only lies on the grass (clearing it under snow would leave the grass bare after the thaw).
@@ -361,15 +397,28 @@ public sealed class ValleyGround
             if (!grassy) cleared.Add(key);
             var r = layout.TexelRect(x, y);
             if (!chunks.ContainsKey((r.I, r.J))) continue;
-            var byChunk = grassy ? regrownByChunk : bareByChunk;
-            if (!byChunk.TryGetValue((r.I, r.J), out var list)) byChunk[(r.I, r.J)] = list = new List<ChunkRect>();
-            list.Add(r);
+            if (!pendingDetail.TryGetValue((r.I, r.J), out var cells)) pendingDetail[(r.I, r.J)] = cells = new Dictionary<int, (ChunkRect, bool)>();
+            cells[key] = (r, grassy); // a cell bared and grown again before its chunk's turn: the last wins
         }
-        foreach (var kv in bareByChunk) ClearDetail(Writable(chunks[kv.Key]), kv.Value);
-        foreach (var kv in regrownByChunk) RestoreDetail(chunks[kv.Key], kv.Value);
     }
 
-    readonly Dictionary<(int i, int j), List<ChunkRect>> bareByChunk = new(), regrownByChunk = new();
+    // One chunk's waiting grass changes a frame.
+    void WriteDetail()
+    {
+        if (pendingDetail.Count == 0) return;
+        var at = pendingDetail.Keys.First();
+        var cells = pendingDetail[at];
+        pendingDetail.Remove(at);
+        bare.Clear();
+        regrown.Clear();
+        foreach (var (r, grassy) in cells.Values) (grassy ? regrown : bare).Add(r);
+        if (bare.Count > 0) ClearDetail(Writable(chunks[at]), bare);
+        if (regrown.Count > 0) RestoreDetail(chunks[at], regrown);
+    }
+
+    // Grass changes waiting for their chunk's turn: by chunk, then by world cell index.
+    readonly Dictionary<(int i, int j), Dictionary<int, (ChunkRect rect, bool grassy)>> pendingDetail = new();
+    readonly List<ChunkRect> bare = new(), regrown = new();
     // Cells whose detail grass was cleared (world cell indices), so grass growing back there gets it back.
     readonly HashSet<int> cleared = new();
 
