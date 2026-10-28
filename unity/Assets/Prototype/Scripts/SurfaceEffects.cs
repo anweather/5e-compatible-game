@@ -30,8 +30,9 @@ public class SurfaceEffects : MonoBehaviour
     public int wadingDepth = 2;
     [Tooltip("Highest ledge the wizard steps up without jumping: a little over one step of the grid.")]
     public float climbStep = 0.55f;
+    // 0.45 was too slow once walking got faster (Andrew, 2026-10-27).
     [Tooltip("Speed multiplier while swimming.")]
-    public float swimmingSpeed = 0.45f;
+    public float swimmingSpeed = 0.65f;
     [Tooltip("Water this deep over the wizard's feet (metres) floats it; it floats with its feet this far down.")]
     public float swimDepth = 1.3f, floatDepth = 1.45f;
     [Tooltip("How high a kick out of the water lifts the wizard (metres).")]
