@@ -26,7 +26,8 @@ namespace Chem
         {
             var r = (JObject)doc.DeepClone();
             foreach (var mod in mods) ApplyPatch(r, mod.Json);
-            var errors = Check(r);
+            var errors = MaterialGroups.Ungroup(r);
+            errors.AddRange(Check(r));
             if (errors.Count > 0) throw new ModException(errors);
             try
             {

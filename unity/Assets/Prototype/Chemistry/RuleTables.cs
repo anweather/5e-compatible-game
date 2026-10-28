@@ -390,7 +390,7 @@ namespace Chem
 
             var materials = (JObject)Get("materials.json", true);
             var reactions = (JObject)Get("reactions.json", true);
-            return FromDoc(new JObject
+            var doc = new JObject
             {
                 ["elements"] = new JArray(BaseElements),
                 ["terrain"] = materials["terrain"] as JObject ?? new JObject(),
@@ -406,7 +406,11 @@ namespace Chem
                 ["sim"] = Get("sim.json", false) as JObject ?? new JObject(),
                 ["groups"] = Get("groups.json", false) as JObject ?? new JObject(),
                 ["components"] = Get("components.json", false) as JObject ?? new JObject(),
-            });
+            };
+            // A material spelled as verb groups reads as the flat keys (MaterialGroups).
+            var grouping = MaterialGroups.Ungroup(doc);
+            if (grouping.Count > 0) throw new ArgumentException("Rules: " + string.Join("; ", grouping));
+            return FromDoc(doc);
         }
 
         /// <summary>The typed tables for a rule document (see <see cref="doc"/>), which the result keeps.</summary>
@@ -441,8 +445,7 @@ namespace Chem
                 if (p.Value is JObject e) r.entities[p.Name] = r.ParseEntity(p.Name, e);
             foreach (var p in ((JObject)doc["items"]).Properties())
                 if (p.Value is JObject i) r.items[p.Name] = r.ParseItem(p.Name, i);
-            foreach (var e in r.entities.Values)
-                if (e.Material != null && r.terrain.TryGetValue(e.Material, out var m)) e.MaterialDef = m;
+            r.ResolveMaterials();
             r.Sim = ParseSim((JObject)doc["sim"]);
             ParseGroups(r, (JObject)doc["groups"]);
             return r;
@@ -516,6 +519,13 @@ namespace Chem
         };
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
+
+        // Each thing's material, from its id (read once the terrain is).
+        void ResolveMaterials()
+        {
+            foreach (var e in entities.Values)
+                if (e.Material != null && terrain.TryGetValue(e.Material, out var m)) e.MaterialDef = m;
+        }
 
         EntityDef ParseEntity(string id, JObject o)
         {

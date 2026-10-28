@@ -1,0 +1,122 @@
+// A material's settings grouped by verb (docs/MATERIALS.md, step 1): what
+// happens to it when an effect reaches it. materials.json may spell a terrain
+// or a cover either way, and the loaders turn the groups into the flat keys
+// the rest of the rules read, before checking:
+//
+//   burn    { catch, fuel, heat, leaves, log, look, intensity }  flammable tag, flammability, fuel, heat, burnsTo, burnLog, fireLook, burnIntensity
+//   break   { leaves }                                            breakable tag, breaksTo
+//   dig     { hardness, leaves }                                  hardness, dugTo
+//   soak    { dry, wet }                                          soakEvery, soakEveryWet
+//   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
+//   conduct {}                                                    conductive tag
+//   grow    { into, log }                                         growsTo, growLog
+//   uproot  { leaves, log }                                       uprootsTo, uprootLog
+//
+// Group is the other way, for the parity test (and the move to the grouped
+// shape): a flat entry as groups, keys moved only where the verb's tag says
+// it applies, so the two spellings read the same. Mirrored by
+// sandbox/src/materials.ts with the same messages.
+using System.Collections.Generic;
+using System.Linq;
+using Newtonsoft.Json.Linq;
+
+namespace Chem
+{
+    public static class MaterialGroups
+    {
+        // Each verb: the tag having it implies (or null), and its keys as (group key, flat key).
+        static readonly (string verb, string tag, (string group, string flat)[] keys)[] TerrainVerbs =
+        {
+            ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("heat", "heat"), ("leaves", "burnsTo"), ("log", "burnLog"), ("look", "fireLook") }),
+            ("break", "breakable", new[] { ("leaves", "breaksTo") }),
+            ("dig", null, new[] { ("hardness", "hardness"), ("leaves", "dugTo") }),
+            ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet") }),
+            ("conduct", "conductive", System.Array.Empty<(string, string)>()),
+            ("grow", null, new[] { ("into", "growsTo"), ("log", "growLog") }),
+            ("uproot", null, new[] { ("leaves", "uprootsTo"), ("log", "uprootLog") }),
+        };
+
+        static readonly (string verb, string tag, (string group, string flat)[] keys)[] CoverVerbs =
+        {
+            ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("intensity", "burnIntensity"), ("look", "fireLook") }),
+        };
+
+        // What water on it turns into: freeze {} for "ice", boil {} for "steam".
+        static readonly (string verb, string water)[] WaterVerbs = { ("freeze", "ice"), ("boil", "steam") };
+
+        /// <summary>Turns the grouped spelling of every terrain and cover in a rule document into the flat keys, in place; the problems found (unknown keys in a group).</summary>
+        public static List<string> Ungroup(JObject doc)
+        {
+            var errors = new List<string>();
+            if (doc["terrain"] is JObject terrain)
+                foreach (var p in terrain.Properties())
+                    if (p.Value is JObject t) Ungroup($"terrain {p.Name}", t, TerrainVerbs, true, errors);
+            if (doc["covers"] is JObject covers)
+                foreach (var p in covers.Properties())
+                    if (p.Value is JObject c) Ungroup($"cover {p.Name}", c, CoverVerbs, false, errors);
+            return errors;
+        }
+
+        static void Ungroup(string what, JObject entry, (string verb, string tag, (string group, string flat)[] keys)[] verbs, bool water, List<string> errors)
+        {
+            foreach (var (verb, tag, keys) in verbs)
+            {
+                if (!(entry[verb] is JObject g)) continue;
+                entry.Remove(verb);
+                foreach (var p in g.Properties())
+                {
+                    var key = keys.FirstOrDefault(k => k.group == p.Name);
+                    if (key.flat == null) errors.Add($"{what}: {verb}.{p.Name} unknown");
+                    else entry[key.flat] = p.Value.DeepClone();
+                }
+                if (tag != null) AddTag(entry, tag);
+            }
+            if (!water) return;
+            foreach (var (verb, to) in WaterVerbs)
+            {
+                if (entry[verb] == null) continue;
+                entry.Remove(verb);
+                entry["waterTo"] = to;
+            }
+        }
+
+        static void AddTag(JObject entry, string tag)
+        {
+            if (!(entry["tags"] is JArray tags)) entry["tags"] = tags = new JArray();
+            if (!tags.Any(t => t.Type == JTokenType.String && (string)t == tag)) tags.Add(tag);
+        }
+
+        /// <summary>A flat terrain (or cover) entry spelled as groups: the inverse of Ungroup, for the parity test.</summary>
+        public static JObject Group(JObject flat, bool cover)
+        {
+            var entry = (JObject)flat.DeepClone();
+            var tags = entry["tags"] as JArray;
+            foreach (var (verb, tag, keys) in cover ? CoverVerbs : TerrainVerbs)
+            {
+                bool tagged = tag != null && tags != null && tags.Any(t => (string)t == tag);
+                if (tag != null && !tagged) continue;
+                var g = new JObject();
+                foreach (var (group, f) in keys)
+                {
+                    if (entry[f] == null) continue;
+                    g[group] = entry[f];
+                    entry.Remove(f);
+                }
+                if (tag == null && g.Count == 0) continue;
+                entry[verb] = g;
+                if (tagged) tags.Remove(tags.First(t => (string)t == tag));
+            }
+            if (!cover && entry["waterTo"] != null)
+            {
+                string to = (string)entry["waterTo"];
+                var (verb, _) = WaterVerbs.FirstOrDefault(w => w.water == to);
+                if (verb != null)
+                {
+                    entry.Remove("waterTo");
+                    entry[verb] = new JObject();
+                }
+            }
+            return entry;
+        }
+    }
+}
