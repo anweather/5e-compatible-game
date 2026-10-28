@@ -1087,9 +1087,10 @@ public static class ValleyBuilder
         house.Rebuild();
 
         var made = BuildingMesher.Make(house.Spec);
+        // The walls, to the eaves; the roof and the window boxes have their own (VillageHouse).
         var block = go.AddComponent<BoxCollider>();
-        block.center = new Vector3(0f, made.size.y / 2f, 0f);
-        block.size = made.size;
+        block.center = new Vector3(0f, made.eaves / 2f, 0f);
+        block.size = new Vector3(made.size.x, made.eaves, made.size.z);
         Object.DestroyImmediate(made.body);
         Object.DestroyImmediate(made.roof);
 
