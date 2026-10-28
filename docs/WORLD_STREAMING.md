@@ -336,6 +336,55 @@ none of this does anything.
 - **Characters are wizards only** for now: raiders and the defense field
   wait while no wizard is near.
 
+## Part 2, third slice: saving to disk (core built 2026-10-27; the view's save slot is next)
+
+Backlog #11. Solo only for now; online interest by chunk is a later slice.
+
+**A save is what play changed.** Every chunk starts as its **source** made
+it: today the baked valley map, later `ChunkGen` from the world seed (part
+3). A save keeps, per chunk, only the cells that differ from what the
+source gives for them, and an untouched chunk is not in the save at all: on
+load it is made again from the source. The source is an `IChunkSource` (a
+pure function from a cell's world position to its cell as made, with a
+`Version` string), so the save never has to know whether it was baked or
+generated.
+
+**What goes in (`World.Save`, `World.Load`):**
+
+- A header: the format version, the source's `Version`, the rules'
+  `Fingerprint` (base rules and mods), the world's size and seed. A save
+  loads only over the same source and rules; anything else is refused
+  rather than misapplied (PocketTactics' stamped diffs).
+- The world's state between ticks: the tick, the RNG, the clock's lead and
+  Hasten Time, held weather, Gust of Wind, meteors still falling, the next
+  entity id, and the defense field (its state and raiders).
+- Per changed chunk, by row then column: its changed cells, whole (terrain,
+  water, ice, cover, fire, fuel, gas, charge, height, life), by local index;
+  and its streaming state where it isn't the default (inactive, last live,
+  edges, stopped at, caught up, fire generations). A chunk with no changed
+  cells is still saved if its streaming state isn't the default.
+
+**Not in it:** caches the core rebuilds (still-water snapshots, path costs,
+the burning list, row spans), the event log, and the view. **Things**
+(props and items) are view state today (`ThingSpawner`, `PropState`); their
+diffs come with the generated thing ids of part 3.
+
+**Deterministic.** Saving finishes the tick in progress first, writes
+integers and ids only, in a fixed order (chunks by row then column, cells
+by index, statuses sorted), so the same world always gives the same text.
+The tests (`SaveTests`): save, load and step equals stepping straight
+through (cell hash and chunk state, on a burning, flooding, terraformed
+world with chunks inactive and raiders marching); save of a load is the
+save again; an untouched world saves no chunks; a mismatched source or
+rules is refused. Behaviour doesn't change, so no golden moves; a save
+golden pins the format (`153e8400`, with the rules' fingerprint left out; a change means a new `SaveFormat`).
+
+**Later slices:** the view writes saves (a slot under
+`persistentDataPath`, on quit and from the pause menu) and loads one at
+start; far chunks nobody changed are dropped from memory and made again
+from the source when a player comes back (needs part 3's generator for
+anything past the valley); online, the host keeps the save.
+
 ## The land around the valley (built 2026-10-27)
 
 The valley floor (the yard, the cabins, the lake, the river and the falls)
