@@ -37,6 +37,10 @@ public static class BuildingMesher
         public Vector3 lamp;
         /// <summary>The walls' extent and the roof's top, for a collider.</summary>
         public Vector3 size;
+        /// <summary>The walls' top (the eaves): a collider for the walls stops here, the roof has its own.</summary>
+        public float eaves;
+        /// <summary>Things on the walls to bump into, as local boxes: window boxes and planters.</summary>
+        public System.Collections.Generic.List<(Vector3 at, Vector3 size)> solids;
     }
 
     const float Plinth = 0.35f, Storey = 2.7f, Inset = 0.15f, Jetty = 0.3f;
@@ -64,6 +68,7 @@ public static class BuildingMesher
         public System.Random rng;
         public Spec s;
         public MeshKit kit;
+        public readonly System.Collections.Generic.List<(Vector3 at, Vector3 size)> solids = new();
         public Color wall, timber, stone, roof, paint, door;
         // The walls' half extents (ground storey), their top, the roof's overhang, pitch and rise.
         public float ex, ez, top, over, pitch, rise, doorX;
@@ -126,6 +131,8 @@ public static class BuildingMesher
         result.roof = kit.ToMesh("Roof");
         float ridge = b.top + b.rise + 0.2f;
         result.size = new Vector3(b.ex * 2f + 0.3f, ridge, b.StoreyEz(storeys - 1) * 2f + 0.3f);
+        result.eaves = b.top;
+        result.solids = b.solids;
         return result;
     }
 
@@ -288,9 +295,11 @@ public static class BuildingMesher
     {
         float z = -b.ez, x = b.doorX;
         var kit = b.kit;
-        kit.Box(new Vector3(x, Plinth + 1.1f, z - 0.06f), new Vector3(1.3f, 2.25f, 0.12f), b.timber);
-        kit.Box(new Vector3(x, Plinth + 1.02f, z - 0.1f), new Vector3(1.0f, 2.02f, 0.1f), b.door);
-        kit.Box(new Vector3(x + 0.35f, Plinth + 1.0f, z - 0.17f), new Vector3(0.08f, 0.08f, 0.06f), Rgb(0.7f, 0.6f, 0.3f));
+        // Stood clear of the wall's face: a stone wall's jittered blocks poked through a door set
+        // in it (Andrew's playtest #4).
+        kit.Box(new Vector3(x, Plinth + 1.1f, z - 0.12f), new Vector3(1.3f, 2.25f, 0.2f), b.timber);
+        kit.Box(new Vector3(x, Plinth + 1.02f, z - 0.18f), new Vector3(1.0f, 2.02f, 0.1f), b.door);
+        kit.Box(new Vector3(x + 0.35f, Plinth + 1.0f, z - 0.25f), new Vector3(0.08f, 0.08f, 0.06f), Rgb(0.7f, 0.6f, 0.3f));
         kit.Box(new Vector3(x, Plinth / 2f, z - 0.45f), new Vector3(1.4f, Plinth, 0.6f), b.Jitter(b.stone, 0.05f));
     }
 
@@ -323,10 +332,11 @@ public static class BuildingMesher
         kit.Box(at + facing * 0.12f, Size(0.75f, 0.06f, 0.03f), b.timber);
         if (b.s.walls != WallKind.Log)
             for (int side = -1; side <= 1; side += 2)
-                kit.Box(at + along * (side * 0.72f) + facing * 0.09f, Size(0.42f, 0.95f, 0.05f), b.paint);
+                kit.Box(at + along * (side * 0.72f) + facing * 0.15f, Size(0.4f, 0.95f, 0.05f), b.paint); // clear of the wall and its beams
         if (!b.Chance(0.35f)) return;
         var box = at + Vector3.down * 0.6f + facing * 0.18f;
         kit.Box(box, Size(0.95f, 0.18f, 0.25f), b.timber);
+        b.solids.Add((box + Vector3.up * 0.1f, Size(0.95f, 0.4f, 0.25f)));
         kit.Box(box + Vector3.up * 0.12f, Size(0.85f, 0.08f, 0.2f), Leaves);
         for (int f = 0; f < 4; f++)
             kit.Box(box + along * (-0.32f + f * 0.21f) + Vector3.up * 0.18f, Vector3.one * 0.11f, b.Pick(Flowers));
@@ -381,6 +391,7 @@ public static class BuildingMesher
         {
             float x = (k == 0 ? -1f : 1f) * Mathf.Min(half - 0.4f, 1.6f);
             b.kit.Box(new Vector3(x, 0.3f, z - 0.75f), new Vector3(0.6f, 0.6f, 0.55f), b.Jitter(Rgb(0.55f, 0.4f, 0.24f), 0.1f));
+            b.solids.Add((new Vector3(x, 0.36f, z - 0.75f), new Vector3(0.6f, 0.72f, 0.55f)));
             b.kit.Box(new Vector3(x, 0.66f, z - 0.75f), new Vector3(0.5f, 0.12f, 0.45f), b.Pick(Flowers));
         }
         return new Vector3(0f, y0 - 0.3f, z - 0.6f);
