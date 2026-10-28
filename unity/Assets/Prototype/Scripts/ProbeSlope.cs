@@ -35,21 +35,25 @@ public class SlopeProbe : ProbeScenario
         caster.Cast(SpellIds.CreateWater, best.x, best.y, dir);
         yield return Wait(12f);
 
-        // How far down the hill the water ran: the lowest wet cell's ground under the cast cell's.
+        // Where the water went: its centre's distance down the hill from the cast cell, in cells
+        // (spread evenly it stays near 0; running downhill it moves down), and the lowest wet ground.
         float top = ground.BaseHeight(best.x, best.y), lowest = top;
-        int wet = 0;
+        double units = 0, along = 0;
         for (int y = best.y - Reach * 2; y <= best.y + Reach * 2; y++)
             for (int x = best.x - Reach * 2; x <= best.x + Reach * 2; x++)
             {
                 var c = World.InBounds(x, y) ? World.At(x, y) : null;
                 if (c == null || c.Water == 0) continue;
-                wet++;
+                units += c.Water;
+                along += c.Water * ((x - best.x) * down.x + (y - best.y) * down.y);
                 lowest = Mathf.Min(lowest, ground.BaseHeight(x, y));
             }
+        float centre = units > 0 ? (float)(along / units) : 0f;
         Metric("hill_fall_m", fall);
-        Metric("wet_cells", wet);
+        Metric("water_units", units);
         Metric("ran_down_m", top - lowest);
-        Check("water_runs_downhill", top - lowest > 1f, $"the water reached {top - lowest:0.0} m below where it was cast ({wet} wet cells)");
+        Metric("centre_downhill_cells", centre);
+        Check("water_runs_downhill", centre > 1.5f, $"the water's centre is {centre:0.0} cells down the hill from where it was cast; its lowest {top - lowest:0.0} m below");
         yield return Wait(0.3f);
         Shot("slope");
         yield return null;
