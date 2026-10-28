@@ -125,7 +125,8 @@ public static class DefenseFieldBuilder
         var words = new GameObject("Defense banner words");
         words.transform.SetParent(board.transform.parent, true);
         words.transform.SetPositionAndRotation(board.transform.position + new Vector3(-0.06f, 0f, 0f), Quaternion.LookRotation(Vector3.right));
-        return Text(words, "LIVES 10", 0.05f);
+        // Fitted to the longest it gets in a game (the lives and the wave), inside the board.
+        return SignWords.Write(words, "LIVES 10", 0.05f, 1.9f, 1.1f, "LIVES 10\nWAVE 10/10");
     }
 
     // The start plate south-west of the flag, with a sign; returns the middle of the plate's top.
@@ -139,28 +140,15 @@ public static class DefenseFieldBuilder
         board.SetParent(root, true);
         // Facing the path (north), where players come from.
         board.SetPositionAndRotation(signAt, Quaternion.LookRotation(Vector3.back));
-        foreach (float x in new[] { -0.9f, 0.9f })
+        // A wider, taller board, and the words in short lines that fit it.
+        foreach (float x in new[] { -1.2f, 1.2f })
             Local(board, PrimitiveType.Cylinder, new Vector3(x, 0.9f, 0f), new Vector3(0.12f, 0.9f, 0.12f), looks.wood);
-        Local(board, PrimitiveType.Cube, new Vector3(0f, 1.6f, 0f), new Vector3(2.2f, 1.1f, 0.08f), looks.wood);
+        Local(board, PrimitiveType.Cube, new Vector3(0f, 1.75f, 0f), new Vector3(2.8f, 1.4f, 0.08f), looks.wood);
         var words = new GameObject("Defense sign words");
         words.transform.SetParent(board, false);
-        words.transform.localPosition = new Vector3(0f, 1.6f, -0.06f);
-        Text(words, "THE DEFENSE FIELD\nStand on the plate to call the raiders.\nWall, dig, flood and burn:\nkeep them from the flag!", 0.03f);
+        words.transform.localPosition = new Vector3(0f, 1.75f, -0.06f);
+        SignWords.Write(words, "THE DEFENSE FIELD\nStand on the plate\nto call the raiders.\nWall, dig, flood, burn:\nkeep them from the flag!", 0.03f, 2.5f, 1.2f);
         return at;
-    }
-
-    static TextMesh Text(GameObject go, string text, float size)
-    {
-        var words = go.AddComponent<TextMesh>();
-        words.text = text;
-        words.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
-        words.fontSize = 64;
-        words.characterSize = size;
-        words.anchor = TextAnchor.MiddleCenter;
-        words.alignment = TextAlignment.Center;
-        words.color = new Color(0.98f, 0.94f, 0.82f);
-        if (words.font != null) go.GetComponent<MeshRenderer>().sharedMaterial = words.font.material;
-        return words;
     }
 
     // A drawn piece the wizard bumps into (its own mesh as the collider).
