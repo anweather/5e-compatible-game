@@ -35,6 +35,13 @@ namespace Chem
         /// tree), or null; and the line logged when it does.
         /// </summary>
         public string GrowsTo, GrowLog;
+        /// <summary>
+        /// Thin water on it soaks in and dries up a unit every this many ticks (World.Soak), on dry
+        /// ground and on damp ground (wet from rain or water that soaked in); 0 never.
+        /// </summary>
+        public int SoakEvery, SoakEveryWet;
+        /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
+        public string WaterTo;
 
         // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
         HashSet<string> tagSet;
@@ -243,6 +250,12 @@ namespace Chem
         public GasParams Gas = new GasParams();
         public HeightParams Height = new HeightParams();
         public int WaterMaxLevel = 16, WaterUnitsPerStep = 4;
+        /// <summary>
+        /// Soaking (World.Soak): water this deep or less is thin (it and its four neighbours, so a
+        /// lake's shore isn't), the pass runs every SoakPass ticks, and soaked-in water leaves the
+        /// ground damp for DampTicks. SoakPass 0: no soaking.
+        /// </summary>
+        public int ThinWater = 2, SoakPass = 8, DampTicks = 600;
         public int ConductLimit = 80;
         // Not used by the cell port, carried so a view can read them.
         public int FallDamage = 4, ZapDamage = 3;
@@ -468,6 +481,9 @@ namespace Chem
             Hardness = Int(o["hardness"]) ?? 1,
             GrowsTo = Str(o["growsTo"]),
             GrowLog = Str(o["growLog"]),
+            SoakEvery = Int(o["soakEvery"]) ?? 0,
+            SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
+            WaterTo = Str(o["waterTo"]),
         };
 
         static CoverDef ParseCover(string id, JObject o) => new CoverDef
@@ -654,6 +670,9 @@ namespace Chem
             {
                 s.WaterMaxLevel = Int(w["maxLevel"]) ?? s.WaterMaxLevel;
                 s.WaterUnitsPerStep = Int(w["unitsPerStep"]) ?? s.WaterUnitsPerStep;
+                s.ThinWater = Int(w["thin"]) ?? s.ThinWater;
+                s.SoakPass = Int(w["soakPass"]) ?? s.SoakPass;
+                s.DampTicks = Int(w["dampTicks"]) ?? s.DampTicks;
             }
             if (o["height"] is JObject ht)
             {

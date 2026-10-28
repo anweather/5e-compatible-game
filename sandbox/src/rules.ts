@@ -32,6 +32,11 @@ export interface TerrainDef {
   /** What it grows into once its cell's life runs out (green shoots into grass, a sapling into a tree), and the line logged. */
   growsTo?: string;
   growLog?: string;
+  /** Thin water on it soaks in and dries up a unit every this many ticks (soak in sim.ts), on dry ground and on damp; unset never. */
+  soakEvery?: number;
+  soakEveryWet?: number;
+  /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
+  waterTo?: "ice" | "steam";
 }
 export interface CoverDef {
   name: string;
@@ -264,7 +269,7 @@ export interface GroupDef {
 export interface SimParams {
   ticksPerSecond: number;
   fire: { spreadChance: number; heatChance: number; boilChance: number; downwindBonus: number; smokeChance: number };
-  water: { maxLevel: number; unitsPerStep: number };
+  water: { maxLevel: number; unitsPerStep: number; thin: number; soakPass: number; dampTicks: number };
   /** Range of Cell.h in steps; from blockAt up a cell is a wall. */
   height: { min: number; max: number; blockAt: number };
   gas: { decayChance: number; maxAmount: number };
@@ -633,6 +638,9 @@ export function validateRules(r: Rules): string[] {
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
     if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
+    for (const key of ["soakEvery", "soakEveryWet"] as const)
+      if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
+    if (t.waterTo !== undefined && t.waterTo !== "ice" && t.waterTo !== "steam") errors.push(`terrain ${id}: waterTo must be ice or steam`);
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);

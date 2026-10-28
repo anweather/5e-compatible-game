@@ -76,7 +76,7 @@ namespace Chem.Tests
         [TestCase(true, 0)]
         public void AWallOfStoneDamsTheFlow(bool wall, int behindExpected)
         {
-            var w = Room(16, 8);
+            var w = Room(16, 8, with: ChemistryTests.NoSoak);
             if (wall) w.Cast("wall-of-stone", 6, 1, 2);
             for (int y = 1; y <= 6; y++)
                 for (int x = 1; x <= 3; x++) w.At(x, y).Water = 16;
@@ -105,7 +105,7 @@ namespace Chem.Tests
         [Test]
         public void RaisingAndDiggingConserveWaterAndSoDoesTheFlowAfter()
         {
-            var w = Room(16, 16);
+            var w = Room(16, 16, with: ChemistryTests.NoSoak);
             Pond(w, 4, 10, 4, 10);
             w.At(6, 6).Frozen = true;
             w.Cast("move-earth", 7, 7, 1);
@@ -178,7 +178,7 @@ namespace Chem.Tests
                 'spells': [
                     { 'id': 'a', 'name': 'A', 'level': 1, 'shape': 'point', 'effect': 'terraform', 'blurb': '' },
                     { 'id': 'b', 'name': 'B', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'raise': 2, 'dig': 1, 'blurb': '' },
-                    { 'id': 'c', 'name': 'C', 'level': 1, 'shape': 'square', 'effect': 'terraform', 'dig': 1.5, 'terrain': 'lava', 'taper': 'yes', 'blurb': '' },
+                    { 'id': 'c', 'name': 'C', 'level': 1, 'shape': 'square', 'effect': 'terraform', 'dig': 1.5, 'terrain': 'magma', 'taper': 'yes', 'blurb': '' },
                     { 'id': 'd', 'name': 'D', 'level': 1, 'shape': 'burst', 'effect': 'terraform', 'raise': 0, 'terrain': 'bedrock', 'blurb': '' },
                     { 'id': 'f', 'name': 'F', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': 9, 'blurb': '' },
                     { 'id': 'g', 'name': 'G', 'level': 1, 'shape': 'line', 'effect': 'terraform', 'height': -1.5, 'dig': 1, 'blurb': '' },
@@ -190,7 +190,7 @@ namespace Chem.Tests
                 "spell a: terraform needs exactly one of raise, dig or height",
                 "spell b: terraform needs exactly one of raise, dig or height",
                 "spell c: dig must be a whole number of steps from 1",
-                "spell c: terrain lava unknown",
+                "spell c: terrain magma unknown",
                 "spell c: taper must be true or false",
                 "spell d: raise must be a whole number of steps from 1",
                 "spell d: terrain bedrock is blocking (walls come from raise)",
@@ -452,7 +452,7 @@ namespace Chem.Tests
         {
             var w = EarthShaping(11);
             Assert.That(EarthShaping(11).CellHash(), Is.EqualTo(w.CellHash()), "deterministic");
-            Assert.That(w.CellHash(), Is.EqualTo("93d9117b"));
+            Assert.That(w.CellHash(), Is.EqualTo("34860e77"));
             Assert.That(w.RngState, Is.EqualTo(3719496534u));
             Assert.That(w.At(5, 4).Height, Is.EqualTo(-2), "the trench starts at the caster's feet");
             Assert.That(w.IsRaisedWall(w.At(12, 4)), "the wall closes the trench");

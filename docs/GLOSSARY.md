@@ -58,6 +58,12 @@ touch them.
   Land) so every peer has the same integers; only the water reads it, so
   water runs down a hillside (`World.SetLand`).
 
+**Soak, damp**
+: Thin water on open ground **soaks** in (and dries up) a unit at a time,
+  at its terrain's rate (`soakEvery`); ground it soaked into is **damp**
+  for a while (`Cell.DampUntil`) and soaks more slowly, as in rain. Deep
+  water (lakes, the river, the sea, a filled pit) doesn't soak.
+
 **The yard**
 : The old 64 × 64 play area, now meadow in the middle of the valley
   (`ChemistryYard.unity` keeps the name).

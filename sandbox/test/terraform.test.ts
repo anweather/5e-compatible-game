@@ -2,6 +2,7 @@
 // GoldenEarthShapingMatchesTs (unity/Assets/Prototype/Chemistry/Tests/TerraformTests.cs).
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import { withoutSoaking } from "./soak.ts";
 import { RULES, composeRules, installRules, validateRules, type ModPatch } from "../src/rules.ts";
 import { step } from "../src/sim.ts";
 import { castSpell, spellById, spellCells } from "../src/actions.ts";
@@ -77,7 +78,7 @@ test("lightning runs along a flooded trench", () => {
   assert.equal(cellAt(w, 12, 4)!.charge, 0, "the dry end isn't");
 });
 
-test("a Wall of Stone dams the flow: the far side stays dry", () => {
+test("a Wall of Stone dams the flow: the far side stays dry", () => withoutSoaking(() => {
   for (const wall of [false, true]) {
     const w = room(16, 8);
     if (wall) castSpell(w, "wall-of-stone", 6, 1, 2);
@@ -93,7 +94,7 @@ test("a Wall of Stone dams the flow: the far side stays dry", () => {
       assert.ok(isBlocking(cellAt(w, 6, 3)!), "three steps up is a wall");
     }
   }
-});
+}));
 
 test("a Wall of Stone across a dug trench walls every square, trench included", () => {
   const w = room(12, 12);
@@ -117,7 +118,7 @@ test("Move Earth heaves up a hill, highest in the middle", () => {
   assert.ok(!isBlocking(cellAt(w, 8, 8)!), "a hill you can walk up");
 });
 
-test("raising and digging conserve water, and so does the flow after", () => {
+test("raising and digging conserve water, and so does the flow after", () => withoutSoaking(() => {
   const w = room(16, 16);
   pond(w, 4, 10, 4, 10);
   cellAt(w, 6, 6)!.frozen = true;
@@ -128,7 +129,7 @@ test("raising and digging conserve water, and so does the flow after", () => {
   assert.equal(totalWater(w), 196);
   run(w, 150);
   assert.equal(totalWater(w), 196);
-});
+}));
 
 test("digging strips grass and covers; raising stays within the height range", () => {
   const w = room(8, 8);
@@ -167,7 +168,7 @@ test("bad terraform spells are refused with clear messages", () => {
     spells: [
       { id: "a", name: "A", level: 1, shape: "point", effect: "terraform", blurb: "" },
       { id: "b", name: "B", level: 1, shape: "line", effect: "terraform", raise: 2, dig: 1, blurb: "" },
-      { id: "c", name: "C", level: 1, shape: "square", effect: "terraform", dig: 1.5, terrain: "lava", taper: "yes", blurb: "" },
+      { id: "c", name: "C", level: 1, shape: "square", effect: "terraform", dig: 1.5, terrain: "magma", taper: "yes", blurb: "" },
       { id: "d", name: "D", level: 1, shape: "burst", effect: "terraform", raise: 0, terrain: "bedrock", blurb: "" },
       { id: "f", name: "F", level: 1, shape: "line", effect: "terraform", height: 9, blurb: "" },
       { id: "g", name: "G", level: 1, shape: "line", effect: "terraform", height: -1.5, dig: 1, blurb: "" },
@@ -179,7 +180,7 @@ test("bad terraform spells are refused with clear messages", () => {
     "spell a: terraform needs exactly one of raise, dig or height",
     "spell b: terraform needs exactly one of raise, dig or height",
     "spell c: dig must be a whole number of steps from 1",
-    "spell c: terrain lava unknown",
+    "spell c: terrain magma unknown",
     "spell c: taper must be true or false",
     "spell d: raise must be a whole number of steps from 1",
     "spell d: terrain bedrock is blocking (walls come from raise)",
@@ -213,7 +214,7 @@ function earthShaping(seed: number): World {
 test("earth shaping is deterministic and matches the C# golden", () => {
   const a = earthShaping(11), b = earthShaping(11);
   assert.equal(hashWorld(a), hashWorld(b));
-  assert.equal(cellHash(a), "93d9117b");
+  assert.equal(cellHash(a), "34860e77");
   assert.equal(a.rng, 3719496534);
   assert.equal(cellAt(a, 5, 4)!.h, -2, "the trench starts at the caster's feet");
   assert.ok(isRaisedWall(cellAt(a, 12, 4)!), "the wall closes the trench");

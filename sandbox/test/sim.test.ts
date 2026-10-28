@@ -1,6 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { RULES, validateRules } from "../src/rules.ts";
+import { withoutSoaking } from "./soak.ts";
 import { step } from "../src/sim.ts";
 import { castAt, castSpell, carry, paint, placeCritter, previewCells } from "../src/actions.ts";
 import { push, spawn, walk } from "../src/entities.ts";
@@ -300,7 +301,7 @@ test("Misty Step between the Steam Gate's bars counts as getting through", () =>
 });
 
 // Mirrors ChemistryTests.WaterRunsDownTheLandsSlope (playtest #31).
-test("water runs down the land's slope", () => {
+test("water runs down the land's slope", () => withoutSoaking(() => {
   const spread = (land: number[] | null) => {
     const w = createWorld(16, 9, 1);
     for (const c of w.cells) c.t = "grass";
@@ -320,4 +321,4 @@ test("water runs down the land's slope", () => {
   assert.ok(onFlat.west < onSlope.west);
   const lake = slope.map((v, k) => (k % 16 >= 8 ? NO_LAND : v));
   assert.ok(spread(lake).east > 0, "inside a water body it spreads as on the flat");
-});
+}));
