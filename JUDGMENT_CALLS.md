@@ -59,6 +59,30 @@ Each entry has:
 
 ## Decided
 
+### J-024: Should rain make the ground look wet?
+
+- **Asked:** 2026-10-27, by the coordinator. The rain WaterMesh fix stopped
+  drawing rain's 1-unit film on open ground.
+- **Also comes up when:** any weather visuals, terrain shaders, snow.
+- **Answer (2026-10-27):** yes, a terrain wetness shader: darker and glossier
+  while it rains, drying after. A view-only change (Gameplay), for 0.1.6.
+- **Why:** Andrew picked it. It brings back the "wet" read without the
+  chemistry or mesh cost.
+- **Revisited:** 0.
+
+### J-023: Skip the Editor's domain reload on entering Play mode?
+
+- **Asked:** 2026-10-27, by the coordinator, after static-resets
+  (`46abc35`) made the code safe for it.
+- **Also comes up when:** Editor start-up time, new static fields (they
+  must reset in SubsystemRegistration), Editor-only bugs on a second Play.
+- **Answer (2026-10-27):** try it in 0.1.6. Build flips Enter Play Mode
+  Options on a branch, measures Play-mode start (about 11 s now), and runs
+  the probes twice in a row. It's Editor-only, so players aren't affected.
+- **Why:** Andrew picked the recommendation. It saves most of the ~11 s on
+  every Play, for every agent, and reverts easily.
+- **Revisited:** 0.
+
 ### J-022: Does Zachary Franklin's permission cover modifying all of Punchy?
 
 - **Asked:** 2026-10-27, by the coordinator, after Gameplay changed
