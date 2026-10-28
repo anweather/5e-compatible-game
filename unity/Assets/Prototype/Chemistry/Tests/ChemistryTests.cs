@@ -293,27 +293,23 @@ namespace Chem.Tests
             Assert.That(w.IsSlippery(w.At(6, 3)));
         }
 
+        // 12 units poured mid-way along a 16×9 meadow on this land; the water west and east of it after 300 ticks.
+        static int Spread(int[] land, out int east)
+        {
+            var w = new World(R, 16, 9, 1, "grass");
+            w.SetLand(land);
+            w.At(8, 4).Water = 12;
+            Run(w, 300);
+            int west = w.Cells.Where((c, k) => k % 16 < 8).Sum(c => c.Water);
+            east = w.Cells.Where((c, k) => k % 16 > 8).Sum(c => c.Water);
+            return west;
+        }
+
         [Test]
         public void WaterRunsDownTheLandsSlope()
         {
             // Playtest #31: Create Water on a hillside pooled where it landed. The hill is the land's
             // (the valley's baked ground), which the cells don't hold: SetLand tells the water.
-            int Spread(int[] land, out int east)
-            {
-                var w = new World(R, 16, 9, 1, "grass");
-                w.SetLand(land);
-                w.At(8, 4).Water = 12;
-                Run(w, 300);
-                int west = 0;
-                east = 0;
-                for (int y = 0; y < w.H; y++)
-                    for (int x = 0; x < w.W; x++)
-                    {
-                        if (x < 8) west += w.At(x, y).Water;
-                        if (x > 8) east += w.At(x, y).Water;
-                    }
-                return west;
-            }
             var slope = new int[16 * 9];
             for (int k = 0; k < slope.Length; k++) slope[k] = (k % 16) * 3; // rising east, 0.375 m a cell
             int westOnSlope = Spread(slope, out int eastOnSlope);
