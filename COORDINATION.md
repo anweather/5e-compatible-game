@@ -96,6 +96,8 @@ Blocked, Next, and whether they hold Unity.
 4. Commit often, in small commits.
 5. Merge to `dev` only when the coordinator says it's your turn in the merge
    order. Fetch and rebase on `origin/dev` first, and push straight after.
+   Never pass `--force` past the playtest runner's preflight: if it says
+   no, wait for the PC.
    Force-pushing is allowed only for your OWN unmerged feature branch,
    after a rebase, with `--force-with-lease`; never `dev`, `main` or
    another agent's branch (J-016).
@@ -186,6 +188,7 @@ ask the coordinator first.
 | Build | `unity/Packages/manifest.json`, `unity/Packages/packages-lock.json` |
 | Build | `unity/Assets/Settings/**` (the URP assets) |
 | Build | `unity/Assets/Prototype/Scripts/Editor/AssetPacks/**`, `unity/AssetPacks.json`, `unity/Assets/Prototype/Scripts/Editor/UpdateBuild.cs` (release builds) |
+| Build | `unity/Assets/Prototype/Scripts/Perf/**` (new: rendering and perf tooling, e.g. the pipeline-state trace and warm-up) |
 | Build | `tools/ship-update.sh`, `docs/RELEASING.md`, `unity/ReleaseReadme.txt` |
 
 These shared files have **no owner**. Changes go through the coordinator's
