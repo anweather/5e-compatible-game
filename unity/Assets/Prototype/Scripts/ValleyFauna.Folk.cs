@@ -155,6 +155,9 @@ public partial class ValleyFauna
         foreach (var (at, yaw, lounge) in p.benches)
         {
             if (math.distancesq(at, c.goal) > 0.01f) continue;
+            // Walking stops within arm's reach of the goal; sitting, it is on the seat itself (the
+            // probe saw folk 0.6 m off it).
+            s.Position = new float3(at.x, s.Position.y, at.y);
             s.Yaw = yaw;
             s.Lie = lounge ? 1f : 0.6f;
             c.task = FolkTask.Sit;
