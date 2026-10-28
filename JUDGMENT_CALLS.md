@@ -59,6 +59,31 @@ Each entry has:
 
 ## Decided
 
+### J-029: Should far-apart players see each other's big moments?
+
+- **Asked:** 2026-10-27, by the coordinator, from World's interest-by-chunk
+  plan.
+- **Also comes up when:** interest by chunk, the event log online, sky
+  effects.
+- **Answer (2026-10-27):** yes, the notable ones (a meteor in the sky, a big
+  fire's smoke, important log lines) reach everyone; the detail stays
+  local.
+- **Why:** Andrew picked the recommendation.
+- **Revisited:** 0.
+
+### J-028: When should we do online interest by chunk?
+
+- **Asked:** 2026-10-27, by the coordinator, from World's plan
+  (WORLD_STREAMING.md, "Part 2, next slice", `ebb1d75`).
+- **Also comes up when:** the continent and world size, host CPU, late-join
+  time, order-free randomness.
+- **Answer (2026-10-27):** later, with the continent. The valley (9×9
+  chunks, 4 players) runs whole cheaply today. World's other questions
+  (moving every golden for order-free randomness; the host running every
+  island) wait until then.
+- **Why:** Andrew picked the recommendation, to keep the core stable now.
+- **Revisited:** 0.
+
 ### J-026: Publish 0.1.5 before the bot's RC runs finish?
 
 - **Asked:** 2026-10-27, by Andrew ("are we good to publish 0.1.5?").
