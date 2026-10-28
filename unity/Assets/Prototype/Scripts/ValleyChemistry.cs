@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.IO;
 using Chem;
 using UnityEngine;
 
@@ -171,21 +172,41 @@ public class ValleyChemistry : MonoBehaviour
     public bool IsLake(Cell c, int x, int y) => c.T == TerrainIds.Pit && BaseHeight(x, y) < lakeLevel;
 
     /// <summary>How high above the ground a cell's fire burns: in the crown of a tree, along a cabin wall.</summary>
-    // The water runs down the valley's hills (playtest #31), which only the baked ground holds: each
-    // dry cell's ground in water units (whole units of stepHeight / unitsPerStep, the same numbers on
-    // every peer of one build); a cell of a lake, the river or the sea keeps its water level.
+    // The water runs down the valley's hills (playtest #31), which only the baked ground holds. The
+    // land comes from world/land.json, integers baked once from this terrain and committed, so every
+    // peer on every platform has the same (BakeLand writes it); without it the land is flat.
+    static int[] landFromFile;
+
     void SetLand(World world)
     {
+        if (landFromFile == null || landFromFile.Length != world.W * world.H)
+        {
+            string path = Path.Combine(ChemGrid.FindWorldDir(), "land.json");
+            landFromFile = File.Exists(path) ? LandFile.Read(File.ReadAllText(path), world.W, world.H) : null;
+            if (landFromFile != null && landFromFile.Length == 0) landFromFile = null;
+            if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
+        }
+        world.SetLand(landFromFile);
+    }
+
+    /// <summary>
+    /// Writes world/land.json from the terrain as drawn now (in Play mode, once the valley is bound):
+    /// each cell's baked ground in whole water units. Run after the valley's land changes
+    /// (Prototype > Bake Valley Land) and commit the file.
+    /// </summary>
+    public string BakeLand()
+    {
+        var world = grid.World;
         float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         var land = new int[world.W * world.H];
         for (int y = 0; y < world.H; y++)
             for (int x = 0; x < world.W; x++)
-            {
-                var c = world.At(x, y);
-                bool body = c == null || c.Water > 0 || world.TerrainOf(c).Spring > 0;
-                land[world.Idx(x, y)] = body ? World.NoLand : Mathf.RoundToInt(ground.BaseHeight(x, y) / unit);
-            }
-        world.SetLand(land);
+                land[world.Idx(x, y)] = Mathf.RoundToInt(ground.BaseHeight(x, y) / unit);
+        string path = Path.Combine(ChemGrid.FindWorldDir(), "land.json");
+        File.WriteAllText(path, LandFile.Write(land, world.W, world.H, unit));
+        landFromFile = null;
+        SetLand(world);
+        return $"wrote {path} ({new FileInfo(path).Length / 1024} KB)";
     }
 
     public static float FireHeight(string terrainType) => terrainType switch

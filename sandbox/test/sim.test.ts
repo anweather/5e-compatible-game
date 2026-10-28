@@ -6,7 +6,7 @@ import { castAt, castSpell, carry, paint, placeCritter, previewCells } from "../
 import { push, spawn, walk } from "../src/entities.ts";
 import { applyElement } from "../src/react.ts";
 import { SCENARIOS, goalState, loadScenario } from "../src/scenarios.ts";
-import { type World, NO_LAND, cellAt, createWorld, entityAt, hashWorld, playerOf } from "../src/world.ts";
+import { type World, NO_LAND, cellAt, setLand, createWorld, entityAt, hashWorld, playerOf } from "../src/world.ts";
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
 const direct = { power: 2, direct: true };
@@ -304,7 +304,7 @@ test("water runs down the land's slope", () => {
   const spread = (land: number[] | null) => {
     const w = createWorld(16, 9, 1);
     for (const c of w.cells) c.t = "grass";
-    w.land = land;
+    setLand(w, land);
     cellAt(w, 8, 4)!.water = 12;
     run(w, 300);
     let west = 0, east = 0;

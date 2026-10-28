@@ -168,13 +168,25 @@ namespace Chem
 
         /// <summary>
         /// The land's height under each cell (Idx order), in water units, so water on a hillside runs
-        /// down it (playtest #31); NoLand where a lake, the river or the sea lies. The view sets it from
-        /// the baked ground once the world is bound; null makes the land flat again.
+        /// down it (playtest #31): world/land.json (LandFile), the same integers on every peer. A cell
+        /// with water or a spring now (a lake, the river, the sea) is marked NoLand, as is any NoLand
+        /// given. Copied; null makes the land flat again.
         /// </summary>
         public void SetLand(int[] units)
         {
             if (units != null && units.Length != W * H) throw new ArgumentException($"land needs {W * H} cells, got {units.Length}");
-            land = units;
+            if (units == null)
+            {
+                land = null;
+                return;
+            }
+            land = (int[])units.Clone();
+            for (int y = 0; y < H; y++)
+                for (int x = 0; x < W; x++)
+                {
+                    var c = At(x, y);
+                    if (c == null || c.Water > 0 || TerrainOf(c).Spring > 0) land[Idx(x, y)] = NoLand;
+                }
         }
 
         int LandOf(Chunk ch, int i) =>

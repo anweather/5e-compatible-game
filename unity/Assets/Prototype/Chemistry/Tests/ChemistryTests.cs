@@ -326,6 +326,28 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void LandFileRoundTripsAndSetLandKeepsWaterBodiesLevel()
+        {
+            var rng = new Random(3);
+            var land = new int[7 * 5];
+            for (int k = 0; k < land.Length; k++) land[k] = rng.Next(-900, 900);
+            string json = LandFile.Write(land, 7, 5, 0.125);
+            Assert.That(LandFile.Read(json, 7, 5), Is.EqualTo(land));
+            Assert.That(LandFile.Read(json, 5, 7), Is.Empty, "another world's size");
+            // A pond on low land among high land: as a water body it keeps the flat rules and spills
+            // out; were its cell dry land, the high land round it would hold the water in.
+            var w = new World(R, 7, 5, 1, "grass");
+            w.At(3, 2).Water = 6;
+            var high = new int[7 * 5];
+            for (int k = 0; k < high.Length; k++) high[k] = 400;
+            high[2 * 7 + 3] = 0;
+            w.SetLand(high);
+            high[0] = 1; // a copy: changing the array after doesn't move the land
+            Run(w, 20);
+            Assert.That(w.At(2, 2).Water + w.At(4, 2).Water + w.At(3, 1).Water + w.At(3, 3).Water, Is.GreaterThan(0), "the pond spills as on the flat");
+        }
+
+        [Test]
         public void RayOfFrostFreezesAPondIntoInsulatingIce()
         {
             var w = Room();
