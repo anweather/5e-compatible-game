@@ -34,8 +34,8 @@ public class SlopeProbe : ProbeScenario
         var far = grid.CellCenter(best.x + down.x * Reach * 3, best.y + down.y * Reach * 3);
         var look = (at + far) / 2f;
         look.y = grid.GroundAt(look);
-        var side = Vector3.Cross(far - at, Vector3.up).normalized;
-        Cut(look + side * 18f + Vector3.up * 22f, look);
+        // From straight above, nearly: trees round a hillside hid it from the side.
+        Cut(look + (at - far).normalized * 6f + Vector3.up * 35f, look);
         caster.Cast(SpellIds.CreateWater, best.x, best.y, dir);
         yield return Wait(12f);
 
@@ -91,7 +91,8 @@ public class SlopeProbe : ProbeScenario
     {
         if (!World.InBounds(x, y)) return false;
         var c = World.At(x, y);
-        return c != null && c.Water == 0 && !World.IsBlocking(c) && World.TerrainOf(c).Spring == 0;
+        // Open ground: the woods' cells hide the water from the camera.
+        return c != null && c.Water == 0 && (c.T == "grass" || c.T == "dirt") && !World.IsBlocking(c);
     }
 
     // N, E, S, W as the core's directions (north is -y).
