@@ -198,7 +198,7 @@ as with any digging, so the middle of a crater doesn't burn.
 - Water is measured in units: `sim.water.unitsPerStep` (4) units make
   one step of depth. A pit is one step below the ground, so a full pond
   holds 4 units.
-- A terrain or cover may also be spelled by **verb groups** (`docs/MATERIALS.md`):
+- `materials.json` spells its terrain and covers by **verb groups** (`docs/MATERIALS.md`; the flat keys below still read the same, for mods):
   `"burn": { "catch", "fuel", "heat", "leaves", "log", "look" }` (cover: `catch`,
   `fuel`, `intensity`, `look`), `"break": { "leaves" }`, `"dig": { "hardness",
   "leaves" }`, `"soak": { "dry", "wet" }`, `"freeze": {}`, `"boil": {}`,
