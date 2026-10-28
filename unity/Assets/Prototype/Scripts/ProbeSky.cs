@@ -63,11 +63,13 @@ public class SkyProbe : ProbeScenario
             ", 'storm': { 'strikeEvery': 3, 'strikeChance': 1 } }");
         bool boltSeen = false;
         // Up to 20 s (8 s was too short about half the time: the storm can take a while to come in).
-        for (float t = 0f; t < 20f && !boltSeen; t += Time.deltaTime)
+        float waited = 0f;
+        for (; waited < 20f && !boltSeen; waited += Time.deltaTime)
         {
             boltSeen = GameObject.Find("Lightning bolt") != null;
             yield return null;
         }
+        Metric("first_bolt_s", waited);
         if (boltSeen) Shot("lightning");
         yield return Wait(4f);
         var now = World.Weather;
