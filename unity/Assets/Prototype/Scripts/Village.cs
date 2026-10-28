@@ -69,17 +69,20 @@ public class Village : MonoBehaviour
     const string DoorLight = "Door light";
     const float WellRange = 8f, WellIntensity = 1.6f;
     static readonly Color LampColour = new(1f, 0.72f, 0.42f);
-    readonly System.Collections.Generic.List<(Light lamp, float full)> lamps = new();
+    // Each lamp with its building's roof: a building that burnt down or caved in has its roof hidden
+    // (ValleyChemistry), and its lamp stays out (Andrew's playtest #10c). The well's lamp has none.
+    readonly System.Collections.Generic.List<(Light lamp, float full, Renderer roof)> lamps = new();
     ChemGrid grid;
     bool lampsFound;
 
     void LightLamps(float lit)
     {
         if (!lampsFound) FindLamps();
-        foreach (var (lamp, full) in lamps)
+        foreach (var (lamp, full, roof) in lamps)
         {
             if (lamp == null) continue;
-            lamp.enabled = lit > 0.02f;
+            bool standing = roof == null || roof.enabled;
+            lamp.enabled = standing && lit > 0.02f;
             lamp.intensity = full * lit;
         }
     }
@@ -88,7 +91,14 @@ public class Village : MonoBehaviour
     {
         lampsFound = true;
         foreach (var light in GetComponentsInChildren<Light>(true))
-            if (light.name == DoorLight) lamps.Add((light, light.intensity));
+        {
+            if (light.name != DoorLight) continue;
+            Renderer roof = null;
+            if (light.transform.parent != null)
+                foreach (var r in light.transform.parent.GetComponentsInChildren<Renderer>(true))
+                    if (r.name == "Roof") { roof = r; break; }
+            lamps.Add((light, light.intensity, roof));
+        }
         var go = new GameObject("Well lamp") { hideFlags = HideFlags.DontSave };
         go.transform.SetParent(transform, false);
         go.transform.position = transform.TransformPoint(wellAt) + Vector3.up * 2.2f;
@@ -98,7 +108,7 @@ public class Village : MonoBehaviour
         lamp.range = WellRange;
         lamp.shadows = LightShadows.None;
         lamp.enabled = false;
-        lamps.Add((lamp, WellIntensity));
+        lamps.Add((lamp, WellIntensity, null));
     }
 
     // A round stone well with two posts, a little shingled roof, a windlass and a bucket.
