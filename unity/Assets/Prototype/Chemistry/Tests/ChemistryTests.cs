@@ -15,6 +15,9 @@ namespace Chem.Tests
         static Rules rules;
 
         internal static Rules R => rules ??= Rules.Load(RulesDir());
+        static Rules noSoak;
+        /// <summary>The rules without soaking (sim.water.soakPass 0), for tests of the flow alone.</summary>
+        internal static Rules NoSoak => noSoak ??= R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"water\": { \"soakPass\": 0 } } }") });
 
         /// <summary>
         /// The repo's rules/ folder. In Unity it sits next to the project; under
@@ -170,7 +173,7 @@ namespace Chem.Tests
             w.Cast("create-water", 9, 6, 1);
             Run(w, 120);
 
-            Assert.That(w.CellHash(), Is.EqualTo("8324eabc"));
+            Assert.That(w.CellHash(), Is.EqualTo("61ea6063"));
             Assert.That(w.RngState, Is.EqualTo(939719859u));
             CollectionAssert.AreEqual(new[]
             {
@@ -296,7 +299,7 @@ namespace Chem.Tests
         // 12 units poured mid-way along a 16×9 meadow on this land; the water west and east of it after 300 ticks.
         static int Spread(int[] land, out int east)
         {
-            var w = new World(R, 16, 9, 1, "grass");
+            var w = new World(NoSoak, 16, 9, 1, "grass");
             w.SetLand(land);
             w.At(8, 4).Water = 12;
             Run(w, 300);
@@ -361,6 +364,95 @@ namespace Chem.Tests
             Assert.That(land[418 * 576 + 208], Is.EqualTo(64), "six cells down it");
             Assert.That(land[288 * 576 + 288], Is.EqualTo(0), "the middle");
             Assert.That(land[575 * 576 + 575], Is.EqualTo(-174), "the south-east corner, by the sea");
+        }
+
+        // A dirt field with a puddle (a unit: too little to run on the flat) at (3, 3), another at (3, 6),
+        // and a pond (4 units a cell, as deep as the field is high) in a 3 × 3 pit at (8..10, 3..5).
+        static World Puddles(Rules rules = null)
+        {
+            var w = new World(rules ?? R, 14, 9, 1, "dirt");
+            w.At(3, 3).Water = 1;
+            w.At(3, 6).Water = 1;
+            for (int y = 3; y <= 5; y++)
+                for (int x = 8; x <= 10; x++)
+                {
+                    w.At(x, y).T = "pit";
+                    w.At(x, y).Water = 4;
+                }
+            return w;
+        }
+
+        static int PondWater(World w)
+        {
+            int sum = 0;
+            for (int y = 3; y <= 5; y++) for (int x = 8; x <= 10; x++) sum += w.At(x, y).Water;
+            return sum;
+        }
+
+        [Test]
+        public void ThinWaterSoaksInAndDeepWaterStays()
+        {
+            // Andrew, 2026-10-28: thin water on open ground soaks in and dries up (materials.json
+            // soakEvery), more slowly on damp ground (soakEveryWet), and leaves the ground damp.
+            var w = Puddles();
+            w.At(3, 6).DampUntil = 100000; // already damp
+            Run(w, 80);
+            Assert.That(w.At(3, 3).Water, Is.EqualTo(0), "dry dirt: a unit in 64 ticks");
+            Assert.That(w.At(3, 3).DampUntil, Is.GreaterThan(w.Tick), "and it's damp now");
+            Assert.That(w.At(3, 6).Water, Is.EqualTo(1), "damp dirt soaks five times slower");
+            Run(w, 320);
+            Assert.That(w.At(3, 3).Water + w.At(3, 6).Water, Is.EqualTo(0), "both puddles gone");
+            Assert.That(PondWater(w), Is.EqualTo(36), "the pond is deep: it stays");
+            var off = Puddles(NoSoak);
+            Run(off, 800);
+            Assert.That(off.At(3, 3).Water, Is.EqualTo(1), "sim.water.soakPass 0: no soaking");
+        }
+
+        [Test]
+        public void SoakingMatchesTs()
+        {
+            var w = Puddles();
+            w.At(5, 1).T = "arid";
+            w.At(5, 1).Water = 2;
+            w.At(12, 7).T = "rock";
+            w.At(12, 7).Water = 1;
+            Run(w, 20); // part way: some puddles gone, some not
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("20661f72 1"));
+        }
+
+        [Test]
+        public void AridGroundSoaksWaterUpFast()
+        {
+            var w = new World(R, 6, 6, 1, "arid");
+            w.At(2, 2).Water = 2;
+            Run(w, 40);
+            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(0), "gone in a few passes (dirt takes over a hundred ticks)");
+        }
+
+        [Test]
+        public void WaterOnArcticGroundFreezes()
+        {
+            var w = new World(R, 6, 6, 1, "arctic");
+            w.At(2, 2).Water = 6;
+            Run(w, 16);
+            var wet = w.Cells.Where(c => c.Water > 0).ToList();
+            Assert.That(wet, Is.Not.Empty);
+            Assert.That(wet.All(c => c.Frozen), "every wet cell is ice, deep or thin");
+        }
+
+        [Test]
+        public void WaterOnLavaBoilsToSteam()
+        {
+            var w = new World(R, 6, 6, 1, "lava");
+            w.At(2, 2).Water = 6;
+            bool steamed = false;
+            for (int t = 0; t < 160; t++)
+            {
+                w.Step();
+                steamed |= w.Cells.Any(c => c.Gas == "steam");
+            }
+            Assert.That(steamed, "it boils off as steam");
+            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(0), "all of it");
         }
 
         [Test]
@@ -482,7 +574,7 @@ namespace Chem.Tests
         [Test]
         public void CreateWaterRunsDownAChannel()
         {
-            var w = Room(16, 5);
+            var w = Room(16, 5, rules: NoSoak);
             for (int x = 2; x <= 13; x++) w.At(x, 2).T = "pit";
             w.Cast("create-water", 3, 2, 0);
             int total = w.Cells.Sum(c => c.Water);

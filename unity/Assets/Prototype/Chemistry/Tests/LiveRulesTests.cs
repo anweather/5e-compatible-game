@@ -148,11 +148,11 @@ namespace Chem.Tests
         public void CrossReferenceErrorsMatchTheSandbox()
         {
             var errors = ErrorsOf(@"{
-                'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground', 'flammable'], 'burnsTo': 'lava', 'breaksTo': '' } },
+                'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground', 'flammable'], 'burnsTo': 'magma', 'breaksTo': '' } },
                 'machines': { 'dirt': { 'name': 'M', 'needs': 'steam', 'how': 'x' }, 'nowhere': { 'name': 'N', 'needs': 'wind', 'how': 'y' } },
                 'entities': { 'keg': { 'name': 'Keg', 'hp': 1, 'mass': 1, 'flammable': true, 'explodes': { 'cover': 'goo', 'radius': 1, 'fire': 1, 'push': 1, 'damage': [1, 4] } } },
                 'reactions': { 'add': [
-                    { 'id': 'a', 'element': 'plasma', 'if': { 'cover': ['goo'], 'smell': true }, 'do': [{ 'setTerrain': 'lava', 'raise': 'x' }, { 'setCover': 'goo' }, { 'gas': 'nerve' }] },
+                    { 'id': 'a', 'element': 'plasma', 'if': { 'cover': ['goo'], 'smell': true }, 'do': [{ 'setTerrain': 'magma', 'raise': 'x' }, { 'setCover': 'goo' }, { 'gas': 'nerve' }] },
                     { 'id': 'b', 'element': 'fire', 'do': 'melt' } ],
                   'addEntity': [{ 'id': 'a', 'element': 'cold', 'do': [] }] },
                 'spells': [{ 'id': 's1', 'name': '', 'level': 1, 'shape': 'blob', 'element': 'plasma', 'blurb': '' }],
@@ -160,12 +160,12 @@ namespace Chem.Tests
             // validateRules' output for the same patch, in its order.
             Assert.That(errors, Is.EqualTo(new[]
             {
-                "terrain mud: burnsTo lava unknown",
+                "terrain mud: burnsTo magma unknown",
                 "terrain mud: flammable without fuel/flammability",
                 "rule b: \"do\" must be a list",
                 "rule a: unknown element plasma",
                 "rule a: unknown condition \"smell\"",
-                "rule a: setTerrain lava unknown",
+                "rule a: setTerrain magma unknown",
                 "rule a: raise x unknown",
                 "rule a: cover goo unknown",
                 "rule a: gas nerve unknown",

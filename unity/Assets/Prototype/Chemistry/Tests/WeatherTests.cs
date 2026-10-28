@@ -97,6 +97,7 @@ namespace Chem.Tests
         {
             // The base rules start with calm stretches, so every other golden in the suite is untouched.
             var w = new World(R, 8, 8, 1);
+            w.At(3, 3).T = "pit"; // a puddle in a hollow: it doesn't soak in (World.Soak)
             w.At(3, 3).Water = 1;
             Run(w, 2 * 4 * 60 * R.Sim.TicksPerSecond - 1);
             Assert.That(w.Weather.Kind, Is.EqualTo(WeatherKind.Clear));
@@ -114,7 +115,7 @@ namespace Chem.Tests
             Assert.That(a.CellHash(), Is.EqualTo(b.CellHash()), "deterministic");
             Assert.That(Strikes(a), Is.GreaterThan(0), "lightning struck");
             Assert.That(a.Log.Any(l => l.Text == "The rain puts out a fire"), "the rain put a fire out");
-            Assert.That($"{a.CellHash()} {a.RngState} {Strikes(a)}", Is.EqualTo("9e5b6275 507542730 23"));
+            Assert.That($"{a.CellHash()} {a.RngState} {Strikes(a)}", Is.EqualTo("b4a67f55 4042791962 23"));
         }
 
         [Test]
@@ -122,7 +123,7 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7dea4632 1818431910"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("6d146020 1611455719"));
         }
         [Test]
         public void GoldenMeteorShowerMatchesTs()
@@ -143,7 +144,7 @@ namespace Chem.Tests
             int strikes = w.Log.Where(l => l.Text == "A meteor strikes").Sum(l => l.Count);
             Assert.That(strikes, Is.GreaterThan(0), "meteors landed");
             Assert.That(w.Cells.Any(c => c.Height < 0), "and left craters");
-            Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("68379587 878453404 19"));
+            Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("e9d48abc 2710019217 19"));
         }
 
         [Test]
@@ -165,7 +166,7 @@ namespace Chem.Tests
             int banks = w.Cells.Count(c => c.Cover == World.BankCover);
             Assert.That(covered, Is.GreaterThan(50), "snow lies on the field");
             Assert.That(banks, Is.GreaterThan(0), "and drifts into banks against the walls");
-            Assert.That($"{w.CellHash()} {w.RngState} {frozen} {covered} {banks}", Is.EqualTo("893f5dee 3623420721 42 119 26"));
+            Assert.That($"{w.CellHash()} {w.RngState} {frozen} {covered} {banks}", Is.EqualTo("e1e5624 4247680091 39 121 26"));
 
             w.ApplyRules(clear);
             Run(w, 150);
@@ -173,7 +174,7 @@ namespace Chem.Tests
             Assert.That(still, Is.LessThan(frozen / 2), "a dry spell thawed most of it");
             int left = w.Cells.Count(c => c.Cover == World.SnowCover || c.Cover == World.BankCover);
             Assert.That(left, Is.LessThan(20), "the snow melted");
-            Assert.That($"{w.CellHash()} {w.RngState} {still} {left}", Is.EqualTo("751afd98 2063358975 0 0"));
+            Assert.That($"{w.CellHash()} {w.RngState} {still} {left}", Is.EqualTo("b2481d88 2377318072 0 0"));
         }
 
         [Test]

@@ -76,8 +76,8 @@ namespace Chem.Tests
             // began toppling the trees it heaves (one more log line: "a tree topples").
             var w = Valley();
             ValleyScript(w, 300);
-            Assert.That(w.CellHash(), Is.EqualTo("f2de2b59"));
-            Assert.That(w.RngState, Is.EqualTo(3574071908u));
+            Assert.That(w.CellHash(), Is.EqualTo("4cb62bf"));
+            Assert.That(w.RngState, Is.EqualTo(1664339835u));
             Assert.That(w.Log.Count, Is.EqualTo(37));
         }
 
@@ -156,7 +156,7 @@ namespace Chem.Tests
         [Test]
         public void WaterAndGasStopAtAPausedChunk()
         {
-            var w = TwoChunks("dirt");
+            var w = TwoChunks("pit"); // ground that doesn't soak water up
             for (int y = 10; y < 20; y++) w.AddWater(63, y, 16);
             w.At(63, 30).Gas = "smoke";
             w.At(63, 30).GasAmt = 8;

@@ -162,6 +162,9 @@ namespace Chem
             {
                 foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
+                foreach (var key in new[] { "soakEvery", "soakEveryWet" })
+                    if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
+                if (t["waterTo"] != null && Text(t["waterTo"]) != "ice" && Text(t["waterTo"]) != "steam") Errors.Add($"terrain {id}: waterTo must be ice or steam");
                 if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");
                 else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");

@@ -215,7 +215,7 @@ namespace Chem
 
         static bool SameCell(Cell a, Cell b) =>
             a.T == b.T && a.Water == b.Water && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
-            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life;
+            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil;
 
         // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither).
         static JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
@@ -234,7 +234,7 @@ namespace Chem
         }
 
         static JArray SaveCell(int i, Cell c) =>
-            new JArray(i, c.T, c.Water, c.Frozen ? 1 : 0, c.Cover, c.Fire, c.Fuel, c.Gas, c.GasAmt, c.Charge, c.Height, c.Life);
+            new JArray(i, c.T, c.Water, c.Frozen ? 1 : 0, c.Cover, c.Fire, c.Fuel, c.Gas, c.GasAmt, c.Charge, c.Height, c.Life, c.DampUntil);
 
         void LoadChunk(JObject o)
         {
@@ -259,6 +259,7 @@ namespace Chem
                 c.Charge = (int)a[9];
                 c.Height = (int)a[10];
                 c.Life = (int)a[11];
+                c.DampUntil = a is JArray all && all.Count > 12 ? (int)all[12] : 0;
                 c.ForgetDef();
             }
         }

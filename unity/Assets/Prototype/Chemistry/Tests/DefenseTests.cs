@@ -200,7 +200,7 @@ namespace Chem.Tests
         {
             World a = GoldenWave(11), b = GoldenWave(11);
             Assert.That(a.DefenseText(), Is.EqualTo(b.DefenseText()));
-            Assert.That($"{a.DefenseHash()} {a.CellHash()} {a.RngState}", Is.EqualTo("7bea4d9e a8fce715 3663131637"));
+            Assert.That($"{a.DefenseHash()} {a.CellHash()} {a.RngState}", Is.EqualTo("a8f8f66b a34f278b 3663131637"));
             Assert.That(a.DefenseText().Split('|')[0], Is.EqualTo("1/2/9/0/346/8"));
             Assert.That(a.Raiders.Any(r => r.X == 19 && r.Y == 10), "one is going round the wall's south end");
         }
