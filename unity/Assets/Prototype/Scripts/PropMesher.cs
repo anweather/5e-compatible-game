@@ -50,10 +50,15 @@ public static class PropMesher
         float turn = Range(rng, 0f, 360f);
         for (int f = 0; f < count; f++)
             Frond(kit, rng, at, turn + f * 360f / count + Range(rng, -12f, 12f), Range(rng, 2.6f, 3.6f), Jitter(rng, frond, 0.12f));
-        for (int c = 0; c < rng.Next(2, 5); c++)
+        // A bunch of coconuts slung under the crown: round-ish (short fat drums), big enough to see
+        // from the beach (Andrew's playtest #14; small cubes there were lost in the fronds).
+        int nuts = rng.Next(3, 7);
+        for (int c = 0; c < nuts; c++)
         {
-            float a = c * 2.1f;
-            kit.Box(at + new Vector3(Mathf.Cos(a) * 0.22f, -0.25f, Mathf.Sin(a) * 0.22f), Vector3.one * 0.22f, Rgb(0.38f, 0.28f, 0.12f), Quaternion.Euler(30f, a * 50f, 20f));
+            float a = c * 2.4f + Range(rng, -0.3f, 0.3f), r = Range(rng, 0.22f, 0.32f), drop = Range(rng, 0.3f, 0.5f);
+            var nut = at + new Vector3(Mathf.Cos(a) * r, -drop, Mathf.Sin(a) * r);
+            var axis = new Vector3(Mathf.Cos(a), 0.6f, Mathf.Sin(a)).normalized * 0.13f;
+            kit.Cylinder(nut - axis, nut + axis, 0.17f, 7, Jitter(rng, Rgb(0.36f, 0.25f, 0.1f), 0.12f));
         }
         return kit.ToMesh("Palm");
     }
