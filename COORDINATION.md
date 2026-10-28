@@ -328,3 +328,20 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   coordinator's go, and then stop. Idle is fine. Held, unmerged:
   `soundscape`, `terrain-reach`, `bot-fixes`, `spark-pool`, `perf/pso-trace`,
   `wizard-cloth-v2`.
+- 2026-10-27 (late): Andrew wants the playtest paper cuts
+  (`playtest/andrew-2026-10-27.md`) worked NOW, in priority order (P1, then
+  P2). Only caves stay paused. To work them in parallel, the coordinator
+  lends Gameplay-lane files per item (one small branch per item; merge on
+  the coordinator's go; a before/after screenshot each):
+  - World: P1 #1 signs (and the mirrored-text audit), #2 villager faces,
+    #3 villagers sitting, #4 houses (roofs, doors, shutters, pots), #5 well
+    collision, #8 deer habitat, #10c lights in burnt houses. Lent: the
+    village, defense and coast builders, Village.cs, ValleyFauna (folk and
+    habitat), Seat.cs.
+  - Build (Mac): #6 Hasten Time sun smoothing (SkyLight.cs), #10 court gate
+    direction (CourtGate.cs), #10a meteor shake (its camera-shake code),
+    #7 underwater view. Lent: those files.
+  - Gameplay: after cloth round 3 and the beard: #9 swim speed, #10b camera
+    in the ground, #10d throwing, #10e lantern, #10f roll, #10g tree
+    see-through, #10h camera snapping. Then the P2s, shared out the same
+    way.
