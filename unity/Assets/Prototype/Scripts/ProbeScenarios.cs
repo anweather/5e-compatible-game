@@ -154,6 +154,10 @@ public static class ProbeScenarios
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
             "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+        new Entry("papercuts", typeof(PaperCutsProbe), 180f,
+            "Andrew's playtest paper cuts of 2026-10-27, framed for before/after pictures (the same script with or without the fixes). Checks: the " +
+            "signs drawn with SignText (one-sided), a villager sitting on the seat, the house roof solid and landed on, the well wall stopping you, " +
+            "the beach off-limits to wild animals, the island's south pier, and a burnt-down inn's door light out at night."),
         new Entry("villagers", typeof(VillagersProbe), 120f,
             "Hollowmere's folk going about their day (ValleyFauna.Folk): a clear afternoon with the camera over the square, then dusk. Checks: " +
             "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, they run from " +
