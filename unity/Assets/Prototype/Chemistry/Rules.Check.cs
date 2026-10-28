@@ -131,6 +131,12 @@ namespace Chem
                         Errors.Add($"spell {Show(s["id"])}: {key} must be a whole number of steps from 1");
                 if (s["height"] != null && !IsHeightIn(s["height"], range))
                     Errors.Add($"spell {Show(s["id"])}: height must be a whole number from {Show(range?["min"])} to {Show(range?["max"])} (sim.height)");
+                TerraformExtras(s);
+            }
+
+            // A terraform's terrain to leave, taper and strength.
+            void TerraformExtras(JToken s)
+            {
                 var to = s["terrain"];
                 if (to != null && !IsIn(terrain, to)) Errors.Add($"spell {Show(s["id"])}: terrain {Show(to)} unknown");
                 else if (to != null && Strings(terrain[Text(to)]["tags"]).Contains("blocking"))
@@ -154,16 +160,20 @@ namespace Chem
 
             void TerrainRefs(string id, JToken t)
             {
-                if (Truthy(t["burnsTo"]) && !IsIn(terrain, t["burnsTo"])) Errors.Add($"terrain {id}: burnsTo {Show(t["burnsTo"])} unknown");
-                if (Truthy(t["breaksTo"]) && !IsIn(terrain, t["breaksTo"])) Errors.Add($"terrain {id}: breaksTo {Show(t["breaksTo"])} unknown");
-                if (Truthy(t["dugTo"]) && !IsIn(terrain, t["dugTo"])) Errors.Add($"terrain {id}: dugTo {Show(t["dugTo"])} unknown");
+                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
                 if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");
                 else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");
-                if (Truthy(t["growsTo"]) && !IsIn(terrain, t["growsTo"])) Errors.Add($"terrain {id}: growsTo {Show(t["growsTo"])} unknown");
+                KnownTerrain(id, t, "growsTo");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
+            }
+
+            // A terrain's link to another (burnsTo, breaksTo, dugTo, growsTo) names a terrain there is.
+            void KnownTerrain(string id, JToken t, string key)
+            {
+                if (Truthy(t[key]) && !IsIn(terrain, t[key])) Errors.Add($"terrain {id}: {key} {Show(t[key])} unknown");
             }
 
             void Rule(JToken rule, HashSet<string> seen)
@@ -278,19 +288,21 @@ namespace Chem
 
             void Sim(JObject o, string path)
             {
-                foreach (var p in o.Properties())
+                foreach (var p in o.Properties()) SimEntry(path + p.Name, p.Value);
+            }
+
+            // One sim.json entry: a section to go into, hours, names, or a number.
+            void SimEntry(string key, JToken value)
+            {
+                if (key == "defense.kinds") return; // names, checked by DefenseRefs
+                if (key == "day.dawn" || key == "day.dusk")
                 {
-                    var key = path + p.Name;
-                    if (key == "defense.kinds") continue; // names, checked by DefenseRefs
-                    if (key == "day.dawn" || key == "day.dusk")
-                    {
-                        if (!IsHours(p.Value)) Errors.Add($"sim {key} must be [from, to], hours from 0 to 24");
-                        continue;
-                    }
-                    if (p.Value is JObject sub) Sim(sub, key + ".");
-                    else if (key == "height.min") Number(p.Value, $"sim {key}");
-                    else Number(p.Value, $"sim {key}", PositiveSim.Contains(key) ? 1 : 0);
+                    if (!IsHours(value)) Errors.Add($"sim {key} must be [from, to], hours from 0 to 24");
+                    return;
                 }
+                if (value is JObject sub) Sim(sub, key + ".");
+                else if (key == "height.min") Number(value, $"sim {key}");
+                else Number(value, $"sim {key}", PositiveSim.Contains(key) ? 1 : 0);
             }
 
             /// <summary>[from, to]: two hours of the day, 0 to 24 (Sky.InHours; from after to runs across midnight).</summary>
