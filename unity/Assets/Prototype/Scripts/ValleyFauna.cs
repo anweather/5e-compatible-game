@@ -255,8 +255,8 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     {
         var ocean = Ocean.Instance;
         if (ocean == null || !ocean.Covers(new Vector2(xz.x, xz.y))) return false;
-        foreach (var (village, _, home) in folk)
-            if (math.distance(home, xz) <= village.wander + 12f) return false;
+        foreach (var (v, _, home) in folk)
+            if (math.distance(home, xz) <= v.wander + 12f) return false;
         return true;
     }
 
