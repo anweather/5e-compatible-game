@@ -29,7 +29,6 @@ public class SlopeProbe : ProbeScenario
 
         var down = new Vector2Int(DirX(dir), DirY(dir));
         var at = grid.CellCenter(best.x, best.y);
-        var below = grid.CellCenter(best.x + down.x * Reach, best.y + down.y * Reach);
         PlaceCell(best.x - down.x * 3, best.y - down.y * 3);
         // From high on one side, over the hill and the way down it (a low camera sat inside the hill).
         var far = grid.CellCenter(best.x + down.x * Reach * 3, best.y + down.y * Reach * 3);
