@@ -41,6 +41,21 @@ Each entry has:
 
 ## Decided
 
+### J-034 to J-036: Punchy upgrades (from Build's research, 2026-10-28)
+
+- **J-034, generated areas from Punchy's biomes:** NOT YET. Paper cuts
+  first. Build's plan stays on file: B, baked areas, about 2–4 days; A,
+  runtime generation in the core, about 10–15 days, as streaming part 3.
+- **J-035, animals:** port ALL THREE, in Gameplay's lane, one small branch
+  each, tested in the valley each time:
+  1. cornered and leashed animals mill about (upstream 7ee4511);
+  2. per-animal variety (traits, StyleGroup hairstyles and hair colour);
+  3. water life (fish, ducks, eels, dolphins; Habitat Swims/Floats/Leaps).
+  First, record the vendored base (upstream b183507) in the Punchy README.
+- **J-036, "normal maps":** skipped. Punchy has no creature normal maps.
+- **Why:** Andrew's choices.
+- **Revisited:** 0.
+
 ### J-032: The 0.1.6 RC has a harmless error burst online. Fix it, or ship?
 
 - **Asked:** 2026-10-27. WaterSplashes threw a NullReferenceException for
