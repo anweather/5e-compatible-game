@@ -39,7 +39,9 @@ Each entry has:
 - **Answer:** pending; ask when it comes up in the order.
 - **Revisited:** 0.
 
-### J-020: Caves, the six design questions (backlog #14, Later)
+## Decided
+
+### J-020: Caves, the six design questions (backlog #14)
 
 - **Asked:** 2026-10-27, raised by World's spike (`docs/CAVES.md` on
   `caves-spike`, never merged). It recommends C: levels linked by shafts.
@@ -53,11 +55,19 @@ Each entry has:
      (SRD damage past 10 ft) or climbing; no spells.
   5. Are caves always dark? Yes.
   6. Solo first, or online from the start?
-- **Answer:** pending. Ask Andrew (with the question tool) when caves comes
-  up in the priority order. Not urgent.
+- **Answer (2026-10-27):**
+  1. One level, about 6 m down.
+  2. Players only reach caves that exist: digging opens into them where they
+     lie, and doesn't make new cave space.
+  3. Fixed levels joined by shafts, stairs and ramps.
+  4. Water falls and gas rises through them; wizards fall (SRD damage past
+     10 ft) or climb. No spells cross (World's proposal; not asked).
+  5. Caves are dark (World's proposal; not asked; Andrew can overrule).
+  6. ONLINE FROM THE START: lockstep and the online probe from the first
+     slice, not solo first.
+- **Why:** Andrew picked the recommendations on 1–3. On 6 he chose online
+  from the start over solo first.
 - **Revisited:** 0.
-
-## Decided
 
 ### J-029: Should far-apart players see each other's big moments?
 
