@@ -41,6 +41,17 @@ Each entry has:
 
 ## Decided
 
+### J-031: When do we cut 0.1.6?
+
+- **Asked:** 2026-10-27, by Andrew ("how soon until we can cut a 0.1.6?").
+- **Answer (2026-10-27):** cut it as soon as the cloth's cost is proven (at
+  most about +1 ms a frame at 4 wizards; Andrew's "good enough if
+  performance holds"). It ships what's on dev then. The paper cuts still in
+  flight go into 0.1.7.
+- **Why:** Andrew's choice over waiting 3–4 h for the paper-cut batches:
+  ship sooner (J-019).
+- **Revisited:** 0.
+
 ### J-030: Add a light-making spell?
 
 - **Asked:** 2026-10-27, from Andrew's playtest (#15). There's no light
