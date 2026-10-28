@@ -9,8 +9,8 @@ using UnityEngine.Rendering;
 // TileSize metres gets a fixed set of home spots, picked from the cells under
 // it (butterflies over dry grass and brush, fireflies there too and thicker by
 // water; none where snow lies), and the shaders fly each one around its home, so nothing moves on
-// the CPU. How many are out comes from the clock and the weather (SkyLight,
-// Chem.Sky): each critter has its own threshold, so they come and go
+// the CPU. How many are out comes from the rules' hours (Chem.Sky.InHours over
+// sim.json's dawn and dusk) and the weather: each critter has its own threshold, so they come and go
 // gradually. Presentation only; a tile's homes are picked when it streams in.
 [RequireComponent(typeof(SkyLight))]
 public class AmbientCritters : MonoBehaviour
@@ -66,7 +66,6 @@ public class AmbientCritters : MonoBehaviour
     readonly List<Vector2Int> scratch = new();
     readonly List<Critter> fireflies = new(), butterflies = new();
     ChemGrid grid;
-    SkyLight skyLight;
     Vector2 shown;   // x fireflies, y butterflies: how many are out, 0..1
 
     /// <summary>How many fireflies and butterflies are out (0..1 each), for the probe.</summary>
@@ -87,7 +86,6 @@ public class AmbientCritters : MonoBehaviour
     void Start()
     {
         grid = FindAnyObjectByType<ChemGrid>();
-        skyLight = GetComponent<SkyLight>();
     }
 
     void OnDisable()
@@ -110,13 +108,18 @@ public class AmbientCritters : MonoBehaviour
         Draw();
     }
 
-    // Fireflies come out as the light goes, butterflies in full day; rain and snow keep both in, wind most of them.
-    Vector2 Wanted(World world)
+    // Fireflies by the rules' hours (Sky.InHours over sim.json's day): out from halfway through dusk
+    // to halfway through dawn; butterflies from the end of dawn to the start of dusk. Rain and snow
+    // keep both in, wind most of them. (Update eases between, so they come and go gradually.)
+    static Vector2 Wanted(World world)
     {
-        float day = skyLight.Daylight;
+        var d = world.Rules.Sim.Day;
+        int minute = Sky.MinuteOfDay(world.Minutes);
+        float firefliesOut = Sky.InHours((d.DuskFrom + d.DuskTo) / 2, (d.DawnFrom + d.DawnTo) / 2, minute) ? 1f : 0f;
+        float butterfliesOut = Sky.InHours(d.DawnTo, d.DuskFrom, minute) ? 1f : 0f;
         var now = world.Weather;
         float calm = (1f - now.Rain / 100f) * (1f - now.Snow / 100f) * (1f - now.Fog / 200f) * (world.WindDir >= 0 ? 0.4f : 1f);
-        return new Vector2(Mathf.InverseLerp(0.45f, 0.1f, day), Mathf.InverseLerp(0.5f, 0.9f, day)) * calm;
+        return new Vector2(firefliesOut, butterfliesOut) * calm;
     }
 
     Vector2 TileCentre(Vector2Int c) => ((Vector2)c + Vector2.one * 0.5f) * tileSize;

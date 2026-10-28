@@ -162,6 +162,10 @@ public static class ProbeScenarios
         new Entry("wet", typeof(WetProbe), 75f,
             "Rain wets the ground (WetGround, J-024): the meadow north of the yard at noon, clear, then heavy rain, then clear. Checks: dry in the sun, " +
             "soaked (wetness over 0.8) after 14 s of rain, still drying 20 s after it stops, with a dry and a wet shot from the same place, no console errors."),
+        new Entry("night", typeof(NightProbe), 90f,
+            "The night's view (Nightfall, World.Night): Hollowmere's square at 16:00, then dusk (18:30) and night (21:30), clear, the wizard out on open ground. " +
+            "Checks: the rules' light bright, dim and dark in turn, the village's door lamps off by day and lit from dusk with the windows glowing, the stars " +
+            "out at night, the fireflies out by the hour, the wizard told how to see in the dark, no console errors."),
         new Entry("swell", typeof(SwellProbe), 30f,
             "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
             "with the swell under it (Ocean.WaveOffset, the waves the shader draws): over half the swell's height, in step with it, no console errors."),
