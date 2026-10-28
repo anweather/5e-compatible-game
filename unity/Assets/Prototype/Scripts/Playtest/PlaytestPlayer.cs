@@ -17,6 +17,8 @@ using UnityEngine;
 public sealed class PlaytestPlayer
 {
     const float Arrive = 4f, NoProgressSeconds = 12f, JumpCheckSeconds = 1f;
+    // How near an item must be to pick it up (metres).
+    const float Reach = 3f;
 
     static readonly (string first, string then)[] ComboPairs =
     {
@@ -50,6 +52,16 @@ public sealed class PlaytestPlayer
         caster = wizard.GetComponent<SpellCaster>();
         hands = wizard.GetComponent<ItemHolder>();
         sitter = wizard.GetComponent<Sitter>();
+    }
+
+    /// <summary>
+    /// The bot owns the wizard's input: the real mouse and stick never turn the camera. Menus turn
+    /// look back on as they close (PauseMenu.SetLook), so PlaytestBot calls this every frame. The
+    /// bot's own look (LookAround) writes look directly and still works.
+    /// </summary>
+    public void HoldLook()
+    {
+        if (inputs != null) inputs.cursorInputForLook = false;
     }
 
     /// <summary>Whether the bot is pushing the stick (for the stuck detector).</summary>
@@ -158,6 +170,12 @@ public sealed class PlaytestPlayer
 
     void Teleport(Vector3 at)
     {
+        // Never off the world: a place out there is the bot's mistake, not the game's.
+        if (!PlaytestPlaces.InWorld(grid, at))
+        {
+            trace("no teleport", F("{0:0},{1:0} is off the world", at.x, at.z));
+            return;
+        }
         var ground = new Vector3(at.x, grid.GroundAt(at) + 0.1f, at.z);
         bool hasBody = wizard.TryGetComponent<CharacterController>(out var body);
         if (hasBody) body.enabled = false;
@@ -218,6 +236,12 @@ public sealed class PlaytestPlayer
             .FirstOrDefault();
         if (item == null || hands == null) yield break;
         yield return Visit(item.transform.position, seconds);
+        // Only within reach: a wizard who didn't get there doesn't pick it up from afar.
+        if (Flat(item.transform.position - wizard.transform.position).magnitude > Reach)
+        {
+            trace("no pickup", item.name + " is out of reach");
+            yield break;
+        }
         trace("pickup", item.name);
         hands.PickUp(item);
         yield return Wait(1f);

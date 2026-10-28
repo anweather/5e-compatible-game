@@ -301,4 +301,25 @@ public class PlaytestLogicTests
         Assert.That(ReplayCheck.UnitySeed(42), Is.EqualTo(42));
         Assert.That(ReplayCheck.UnitySeed(1UL << 32), Is.EqualTo(1), "the high half counts too");
     }
+
+    [Test]
+    public void ScreenshotsDontCountWhenTwoRunsAreCompared()
+    {
+        var a = ScriptedRun(7, Lately);
+        var b = ScriptedRun(7, Lately);
+        // A frame spike's picture is timed by the wall clock: one run took it, the other didn't.
+        b.Trace.Insert(5, new TraceStep { Frame = b.Trace[5].Frame, Action = ReplayCheck.Shot, Detail = "shots/000123-frame-spike.jpg" });
+        Assert.That(ReplayCheck.FirstDifference(a, b, int.MaxValue), Is.Null);
+    }
+
+    [Test]
+    public void AGoalCanBeAskedForByItsKey()
+    {
+        var dice = new PlaytestRandom(3);
+        var combo = GoalPicker.ByKey(dice, Options(), "Combo:grease+fire-bolt");
+        Assert.That((combo.Kind, combo.Spell, combo.Spell2), Is.EqualTo((GoalKind.Combo, "grease", "fire-bolt")));
+        Assert.That(GoalPicker.ByKey(dice, Options(), "Visit:tower").Target, Is.EqualTo("tower"));
+        Assert.That(GoalPicker.ByKey(dice, Options(), "Visit:the moon"), Is.Null, "not a place here");
+        Assert.That(GoalPicker.ByKey(dice, Options(), "Idle").Kind, Is.EqualTo(GoalKind.Idle));
+    }
 }
