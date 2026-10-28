@@ -154,6 +154,9 @@ public static class ProbeScenarios
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
             "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+        new Entry("roofs", typeof(RoofsProbe), 120f,
+            "Walls and roofs fail separately: a Fire Bolt on a timber house with a slate roof, and grease set alight beside a stone house with a " +
+            "thatch roof, 50 s. Checks: the log walls burn down and the slate falls onto them, the thatch burns away, the stone stands, sooted. Before and after pictures."),
         new Entry("houses", typeof(HousesProbe), 120f,
             "The materials step: a Fire Bolt on one of Hollowmere's timber houses and one of its stone houses, clear noon, 45 s. Checks: each has " +
             "wall cells of its material (world/villages.json), the timber house's log walls burn down, the stone house's stand, no console errors."),
