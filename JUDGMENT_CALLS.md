@@ -70,7 +70,10 @@ Each entry has:
 - **Also comes up when:** every release: how much RC testing is enough.
 - **Answer (2026-10-27):** **publish now.** The bot keeps running on 0.1.5,
   and findings go to 0.1.6 (or a hotfix if serious).
-- **Why:** Andrew's call. Everything a person tested passed. The bot's
+- **Why:** Andrew: "Deciding to publish now since we are still alpha and
+  pre 1.0." So while in alpha, a release can ship on the human-run tests
+  (the install, Relay) and the dev probes, without waiting for the bot's
+  full RC coverage. Everything a person tested passed. The bot's
   findings so far were all its own bug. Shipping sooner keeps playtests on
   what players actually have (J-019).
 - **Revisited:** 0.
