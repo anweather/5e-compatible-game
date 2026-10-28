@@ -66,7 +66,12 @@ public class FireLooksProbe : ProbeScenario
         float start = Time.time, caught = -1f;
         while (Time.time - start < 60f && crate != null && !crate.State.Destroyed)
         {
-            World.Apply(cell.x, cell.y, "fire", 2, -1, false);
+            // Oil under it, kept alight: the dirt it may stand on doesn't burn.
+            if (World.At(cell.x, cell.y).Fire == 0)
+            {
+                World.SetCover(cell.x, cell.y, CoverIds.Oil);
+                World.Apply(cell.x, cell.y, "fire", 2, -1, false);
+            }
             if (caught < 0f && crate.State.Burning) caught = Time.time - start;
             yield return Wait(0.25f);
         }
