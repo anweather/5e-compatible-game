@@ -123,7 +123,7 @@ namespace Chem
         /// <summary>Lights the cell's flammable cover at the cover's burn intensity.</summary>
         public bool IgniteCover(Cell c)
         {
-            if (!CoverHasTag(c, "flammable")) return false;
+            if (!CoverBurns(c)) return false;
             var cv = Rules.Covers[c.Cover];
             int n = cv.BurnIntensity ?? 2;
             if (c.Fire >= n) return false;
@@ -136,8 +136,8 @@ namespace Chem
         public bool Ignite(Cell c, int intensity)
         {
             var t = TerrainOf(c);
-            bool coverFlammable = CoverHasTag(c, "flammable");
-            if (!t.Has("flammable") && !coverFlammable) return false;
+            bool coverFlammable = CoverBurns(c);
+            if (!t.Burns && !coverFlammable) return false;
             if (c.Fire >= intensity) return false;
             if (c.Fire == 0) c.Fuel = coverFlammable ? (Rules.Covers[c.Cover].Fuel ?? 5) : (t.Fuel ?? 5);
             c.Fire = intensity;
@@ -180,7 +180,7 @@ namespace Chem
                 var (cx, cy) = queue.Dequeue();
                 var c = At(cx, cy);
                 c.Charge = Math.Max(c.Charge, charge);
-                if (CoverHasTag(c, "flammable")) IgniteCover(c);
+                if (CoverBurns(c)) IgniteCover(c);
                 count++;
                 foreach (var (nx, ny, _) in ActiveNeighbours(cx, cy))
                 {

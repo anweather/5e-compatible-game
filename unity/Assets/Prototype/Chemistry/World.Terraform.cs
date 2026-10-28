@@ -104,7 +104,7 @@ namespace Chem
         void SettleReshaped(Cell c)
         {
             if (IsBlocking(c)) c.Cover = null;
-            if (IsBlocking(c) || (!HasTag(c, "flammable") && c.Cover == null))
+            if (IsBlocking(c) || (!TerrainOf(c).Burns && c.Cover == null))
             {
                 c.Fire = 0;
                 c.Fuel = 0;

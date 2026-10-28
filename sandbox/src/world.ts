@@ -182,16 +182,23 @@ export function setLand(w: World, land: number[] | null) {
 }
 
 export const elevation = (c: Cell) => ((terrainDef(c).elevation ?? 0) + c.h) * RULES.sim.water.unitsPerStep;
+/** A material's verbs (docs/MATERIALS.md): what code asks instead of the tags (TerrainDef.Burns, Breaks, Conducts). */
+export const burns = (m: { tags: string[] }) => m.tags.includes("flammable");
+export const breaks = (m: { tags: string[] }) => m.tags.includes("breakable");
+export const conducts = (m: { tags: string[] }) => m.tags.includes("conductive");
+/** Whether the cell's cover burns (oil, grease, thorns): World.CoverBurns. */
+export const coverBurns = (c: Cell) => c.cover !== null && RULES.covers[c.cover] !== undefined && burns(RULES.covers[c.cover]!);
+
 export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.covers[c.cover]?.tags.includes(tag) ?? false);
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);
-export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || hasTag(c, "conductive");
+export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || conducts(terrainDef(c));
 /** The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none. */
 export const windDir = (w: World): number => (w.wind ? w.wind.dir : w.weather.windDir);
 
 export function flammability(c: Cell): number {
-  if (coverHasTag(c, "flammable")) return RULES.covers[c.cover!]!.flammability ?? 0;
+  if (coverBurns(c)) return RULES.covers[c.cover!]!.flammability ?? 0;
   const t = terrainDef(c);
-  return t.tags.includes("flammable") ? (t.flammability ?? 0) : 0;
+  return burns(t) ? (t.flammability ?? 0) : 0;
 }
 
 /** mulberry32: small, seedable, and its whole state is one uint32 in the world. */

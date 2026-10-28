@@ -7,7 +7,7 @@ import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
 import {
   type Cell, type World,
-  DX, DY, NO_LAND, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
+  DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
   clockTick, log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
 import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
@@ -170,7 +170,7 @@ function tickFire(w: World) {
     if (c.fire === 0) continue;
     const x = i % w.w, y = Math.floor(i / w.w);
     // Water puts out anything but a floating oil or grease fire.
-    if (c.water > 0 && !c.frozen && !coverHasTag(c, "flammable")) {
+    if (c.water > 0 && !c.frozen && !coverBurns(c)) {
       c.fire = 0;
       c.fuel = 0;
       addGas(c, "steam", 1);
@@ -185,15 +185,15 @@ function tickFire(w: World) {
       const downwind = windDir(w) === d ? p.downwindBonus : 0;
       const wet = n.water > 0 && !n.frozen;
       // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
-      const heat = coverHasTag(c, "flammable") ? 1 : (terrainDef(c).heat ?? 1);
+      const heat = coverBurns(c) ? 1 : (terrainDef(c).heat ?? 1);
       const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) * heat + downwind * flam) * rainDamp(w) : wet ? p.boilChance : p.heatChance;
       if (rand(w) < chance) applyElement(w, nx, ny, "fire", { power: 1, direct: false });
     }
     if (--c.fuel > 0) continue;
-    if (coverHasTag(c, "flammable")) {
+    if (coverBurns(c)) {
       c.cover = null;
       const t = terrainDef(c);
-      if (t.tags.includes("flammable")) {
+      if (burns(t)) {
         c.fuel = t.fuel ?? 5;
         c.fire = 2;
       } else {

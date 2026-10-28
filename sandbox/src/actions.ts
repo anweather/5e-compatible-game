@@ -7,7 +7,7 @@ import type { WeatherKind } from "./sky.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
   type Dir, type Entity, type World,
-  DX, DY, cellAt, critterAt, dirFrom, entityAt, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, roll,
+  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, roll,
 } from "./world.ts";
 
 export const spellById = (id: string) => RULES.spells.find((s) => s.id === id);
@@ -374,7 +374,7 @@ export function paint(w: World, brush: string, x: number, y: number): void {
   }
   c.t = brush;
   if (brush === "gate" && w.gatesOpen) c.t = "gate_open";
-  if (!def.tags.includes("flammable") && !c.cover) {
+  if (!burns(def) && !c.cover) {
     c.fire = 0;
   }
 }

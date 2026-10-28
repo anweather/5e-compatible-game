@@ -56,7 +56,7 @@ public partial class ValleyChemistry
 
     TerrainDef RoofOf(int k) => grid.World.Rules.Terrain.TryGetValue(RoofMaterialOf(k), out var t) ? t : null;
 
-    bool RoofBurns(int k) => RoofOf(k)?.Has("flammable") == true;
+    bool RoofBurns(int k) => RoofOf(k)?.Burns == true;
 
     /// <summary>For the probe: when a building's roof caught and when it was gone (Time.time), -1 for not yet.</summary>
     public (float caught, float gone) RoofTimes(Transform building)

@@ -342,7 +342,7 @@ namespace Chem
             var c = ch.Cells[i];
             if (c.Fire == 0) return;
             // Water puts out anything but a floating oil or grease fire.
-            if (c.Water > 0 && !c.Frozen && !CoverHasTag(c, "flammable"))
+            if (c.Water > 0 && !c.Frozen && !CoverBurns(c))
             {
                 c.Fire = 0;
                 c.Fuel = 0;
@@ -359,11 +359,11 @@ namespace Chem
         /// <summary>Out of fuel: a burning cover leaves ash or the terrain under it alight; terrain burns to its BurnsTo.</summary>
         void BurnOut(Chunk ch, int i, Cell c)
         {
-            if (CoverHasTag(c, "flammable"))
+            if (CoverBurns(c))
             {
                 c.Cover = null;
                 var tt = TerrainOf(c);
-                if (tt.Has("flammable"))
+                if (tt.Burns)
                 {
                     c.Fuel = tt.Fuel ?? 5;
                     c.Fire = 2;
@@ -410,7 +410,7 @@ namespace Chem
             double flam = Flammability(n);
             double downwind = WindDir == d ? p.DownwindBonus : 0;
             // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
-            double heat = CoverHasTag(c, "flammable") ? 1 : TerrainOf(c).Heat;
+            double heat = CoverBurns(c) ? 1 : TerrainOf(c).Heat;
             if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) * heat + downwind * flam) * RainDamp();
             return n.Water > 0 && !n.Frozen ? p.BoilChance : p.HeatChance;
         }

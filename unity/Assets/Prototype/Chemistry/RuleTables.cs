@@ -50,6 +50,14 @@ namespace Chem
         // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
         HashSet<string> tagSet;
         public bool Has(string tag) => (tagSet ??= new HashSet<string>(Tags)).Contains(tag);
+
+        /// <summary>
+        /// Its verbs (docs/MATERIALS.md): it burns, breaks, conducts. What code asks instead of the
+        /// tags, read from them once (a burn group gives the flammable tag, MaterialGroups).
+        /// </summary>
+        public bool Burns => Has("flammable");
+        public bool Breaks => Has("breakable");
+        public bool Conducts => Has("conductive");
     }
 
     public sealed class CoverDef
@@ -68,6 +76,8 @@ namespace Chem
         public int[] Damage;
         public double Speed = 1;
         public bool Has(string tag) => Tags.Contains(tag);
+        /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
+        public bool Burns => Has("flammable");
     }
 
     public sealed class GasDef
