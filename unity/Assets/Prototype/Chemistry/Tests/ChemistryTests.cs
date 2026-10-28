@@ -348,6 +348,22 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TheValleysLandIsPinned()
+        {
+            // world/land.json is the same integers on every peer (lockstep): a re-bake that moves them
+            // shows here first. Rebake (Prototype > Bake Valley Land) and update these if the valley's
+            // shape changed on purpose.
+            string path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(RulesDir()), "world", "land.json");
+            var land = LandFile.Read(System.IO.File.ReadAllText(path), 576, 576);
+            Assert.That(land.Length, Is.EqualTo(576 * 576));
+            Assert.That(land[0], Is.EqualTo(665), "the north-west corner, up in the hills");
+            Assert.That(land[418 * 576 + 202], Is.EqualTo(103), "the slope probe's hillside");
+            Assert.That(land[418 * 576 + 208], Is.EqualTo(64), "six cells down it");
+            Assert.That(land[288 * 576 + 288], Is.EqualTo(0), "the middle");
+            Assert.That(land[575 * 576 + 575], Is.EqualTo(-174), "the south-east corner, by the sea");
+        }
+
+        [Test]
         public void RayOfFrostFreezesAPondIntoInsulatingIce()
         {
             var w = Room();
