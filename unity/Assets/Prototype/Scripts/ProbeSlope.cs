@@ -50,25 +50,12 @@ public class SlopeProbe : ProbeScenario
         yield return null;
         yield return Wait(9f);
 
-        // Where the water went: its centre's distance down the hill from the cast cell, in cells
-        // (spread evenly it stays near 0; running downhill it moves down), and the lowest wet ground.
-        float top = ground.BaseHeight(best.x, best.y), lowest = top;
-        double units = 0, along = 0;
-        for (int y = best.y - Measure; y <= best.y + Measure; y++)
-            for (int x = best.x - Measure; x <= best.x + Measure; x++)
-            {
-                var c = World.InBounds(x, y) ? World.At(x, y) : null;
-                if (c == null || c.Water == 0) continue;
-                units += c.Water;
-                along += c.Water * ((x - best.x) * down.x + (y - best.y) * down.y);
-                lowest = Mathf.Min(lowest, ground.BaseHeight(x, y));
-            }
-        float centre = units > 0 ? (float)(along / units) : 0f;
+        var (centre, ranDown, units) = WhereItWent(ground, best, down);
         Metric("hill_fall_m", fall);
         Metric("water_units", units);
-        Metric("ran_down_m", top - lowest);
+        Metric("ran_down_m", ranDown);
         Metric("centre_downhill_cells", centre);
-        Check("water_runs_downhill", centre > 1.5f, $"the water's centre is {centre:0.0} cells down the hill from where it was cast; its lowest {top - lowest:0.0} m below");
+        Check("water_runs_downhill", centre > 1.5f, $"the water's centre is {centre:0.0} cells down the hill from where it was cast; its lowest {ranDown:0.0} m below");
         // The hillsides are wooded with the terrains' own trees: hidden for the picture, then back.
         foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = false;
         yield return Wait(0.3f);
@@ -82,6 +69,25 @@ public class SlopeProbe : ProbeScenario
         yield return null;
         yield return null;
         foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = true;
+    }
+
+    // Where the water went: its centre's distance down the hill from the cast cell, in cells (spread
+    // evenly it stays near 0; running downhill it moves down), how far below the cast its lowest wet
+    // ground is, and how much there is.
+    (float centre, float ranDown, double units) WhereItWent(ValleyGround ground, Vector2Int best, Vector2Int down)
+    {
+        float top = ground.BaseHeight(best.x, best.y), lowest = top;
+        double units = 0, along = 0;
+        for (int y = best.y - Measure; y <= best.y + Measure; y++)
+            for (int x = best.x - Measure; x <= best.x + Measure; x++)
+            {
+                var c = World.InBounds(x, y) ? World.At(x, y) : null;
+                if (c == null || c.Water == 0) continue;
+                units += c.Water;
+                along += c.Water * ((x - best.x) * down.x + (y - best.y) * down.y);
+                lowest = Mathf.Min(lowest, ground.BaseHeight(x, y));
+            }
+        return (units > 0 ? (float)(along / units) : 0f, top - lowest, units);
     }
 
     // The dry, open cell near the start whose ground falls furthest over Reach cells in one direction.

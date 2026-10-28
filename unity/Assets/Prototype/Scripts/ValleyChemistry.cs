@@ -177,7 +177,7 @@ public class ValleyChemistry : MonoBehaviour
     // peer on every platform has the same (BakeLand writes it); without it the land is flat.
     static int[] landFromFile;
 
-    void SetLand(World world)
+    static void SetLand(World world)
     {
         if (landFromFile == null || landFromFile.Length != world.W * world.H)
         {

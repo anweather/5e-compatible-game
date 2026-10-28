@@ -378,7 +378,9 @@ public sealed class CellWaterMesh
         var flow = BlendedFlow(gx, gy);
         float speed = flow.magnitude;
         float edge = 1f - Mathf.InverseLerp(Outline.Iso, Outline.Iso + 0.35f, value);
-        float foam = edge * Mathf.Clamp01(speed / 1.2f);
+        // Banks foam where the river runs; a runoff is all edge, and only flecks.
+        var c = grid.World.InBounds((int)gx, (int)gy) ? grid.World.At((int)gx, (int)gy) : null;
+        float foam = edge * Mathf.Clamp01(speed / 1.2f) * (c != null && c.T == TerrainIds.River ? 1f : 0.15f);
         var p = surface.Flat(gx, gy);
         rocks ??= Object.FindObjectsByType<RockWake>(FindObjectsSortMode.None);
         foreach (var rock in rocks)

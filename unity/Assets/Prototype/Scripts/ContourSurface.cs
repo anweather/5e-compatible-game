@@ -69,7 +69,7 @@ public sealed class ContourSurface
             uvs.Add(new Vector2(at.x / uvMetres, at.z / uvMetres));
             if (flow == null) continue;
             var f = flow(gx, gy, shape.Values[n]);
-            flows.Add(new Vector2(f.x, f.y));
+            flows.Add(f);
             foams.Add(new Vector2(f.z, 0f));
         }
         mesh.Clear();

@@ -11,7 +11,7 @@ Shader "Prototype/CellWater"
     {
         _Color ("Water (alpha: how clear)", Color) = (0.12, 0.32, 0.42, 0.8)
         _Foam ("Foam", Color) = (0.93, 0.96, 0.97, 1)
-        _RippleMetres ("Ripple size (m)", Float) = 2.2
+        _RippleMetres ("Ripple size (m)", Float) = 1.1
         _Cycle ("Flow cycle (s)", Float) = 1.6
     }
     SubShader
@@ -107,7 +107,7 @@ Shader "Prototype/CellWater"
                 float2 s0 = RippleSlope(q - carry * phase0 + drift);
                 float2 s1 = RippleSlope(q - carry * phase1 + drift + 0.37);
                 float w0 = 1.0 - abs(2.0 * phase0 - 1.0);
-                float2 slope = (s0 * w0 + s1 * (1.0 - w0)) * (0.16 + 0.12 * saturate(speed));
+                float2 slope = (s0 * w0 + s1 * (1.0 - w0)) * (0.05 + 0.05 * saturate(speed));
                 half3 n = normalize(input.normalWS + float3(-slope.x, 0, -slope.y));
 
                 float3 v = GetWorldSpaceNormalizeViewDir(p);
@@ -116,7 +116,7 @@ Shader "Prototype/CellWater"
                 half3 color = _Color.rgb * (SampleSH(n) * 0.8 + sun * saturate(dot(n, light.direction)) * 0.35);
                 half fresnel = 0.03 + 0.97 * pow(1.0 - saturate(dot(n, v)), 5.0);
                 half3 sky = GlossyEnvironmentReflection(reflect(-v, n), 0.1, 1.0);
-                color = lerp(color, sky, fresnel * 0.8);
+                color = lerp(color, sky, fresnel * 0.6);
                 float3 h = normalize(light.direction + v);
                 color += sun * pow(saturate(dot(n, h)), 300.0) * 2.0;
 
@@ -127,7 +127,7 @@ Shader "Prototype/CellWater"
                 float c0 = Noise(f - float2(speed * _Cycle * phase0 * 0.9, 0)) * Noise(f * 1.9 + 3.1 - float2(speed * _Cycle * phase0 * 1.7, 0));
                 float c1 = Noise(f + 11.0 - float2(speed * _Cycle * phase1 * 0.9, 0)) * Noise(f * 1.9 + 7.7 - float2(speed * _Cycle * phase1 * 1.7, 0));
                 float streak = c0 * w0 + c1 * (1.0 - w0);
-                float foam = saturate(input.flowFoam.z * 1.4) * smoothstep(0.12, 0.35, streak + input.flowFoam.z * 0.25);
+                float foam = saturate(input.flowFoam.z * 1.2) * smoothstep(0.2, 0.42, streak + input.flowFoam.z * 0.2);
                 color = lerp(color, _Foam.rgb * (SampleSH(half3(0, 1, 0)) + sun * 0.6), foam);
 
                 half alpha = input.flowFoam.w * lerp(_Color.a, 1.0, max(fresnel * 0.5, foam));

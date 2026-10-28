@@ -934,8 +934,8 @@ public static class ValleyBuilder
 
     // --- lake ----------------------------------------------------------------
 
-    // Builds the lake; returns its ripples (a normal map).
-    static Texture2D BuildLake()
+    // Builds the lake.
+    static void BuildLake()
     {
         var ripplesPath = Generated + "/LakeRipples.png";
         File.WriteAllBytes(ripplesPath, ProceduralTextures.RippleNormals(512).EncodeToPNG());
@@ -958,7 +958,6 @@ public static class ValleyBuilder
         r.sharedMaterial = mat;
         r.shadowCastingMode = ShadowCastingMode.Off;
         lake.AddComponent<ScrollingTexture>().speed = new Vector2(0.004f, 0.003f);
-        return AssetDatabase.LoadAssetAtPath<Texture2D>(ripplesPath);
     }
 
     // A see-through material tinted by its mesh's vertex colours (UrpMaterials.ConfigureSoftSurface).
