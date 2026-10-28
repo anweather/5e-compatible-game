@@ -23,9 +23,9 @@ public class EventLog : MonoBehaviour
     }
 
     readonly List<string> lines = new List<string>();
-    GUIStyle style, barText;
+    GUIStyle style;
     SpellCaster caster;
-    Vitals vitals;
+    readonly VitalsHud vitalsHud = new();
 
     void Awake() => instance = this;
     void Start()
@@ -105,34 +105,9 @@ public class EventLog : MonoBehaviour
     void DrawCasterHud()
     {
         bool pad = caster.controls != null && caster.controls.UsingGamepad;
-        DrawVitals();
+        float vitalsHeight = vitalsHud.Draw(caster.gameObject, style);
         if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
-        GUI.Label(new Rect(16, 40, 1400, 30), SpellChip(pad), style);
-    }
-
-    static readonly Color HealthColor = new(0.85f, 0.25f, 0.25f), StaminaColor = new(0.9f, 0.75f, 0.2f), MagicColor = new(0.35f, 0.55f, 1f);
-
-    // Health, stamina and magic (Vitals), side by side at the top left.
-    void DrawVitals()
-    {
-        if (vitals == null || vitals.gameObject != caster.gameObject) vitals = caster.GetComponent<Vitals>();
-        if (vitals == null) return;
-        Bar(0, "Health", vitals.Health, vitals.HealthMax, HealthColor);
-        Bar(1, "Stamina", vitals.Stamina, Vitals.StaminaMax, StaminaColor);
-        Bar(2, "Magic", vitals.Magic, Vitals.MagicMax, MagicColor);
-    }
-
-    void Bar(int slot, string name, float value, float max, Color colour)
-    {
-        const float width = 170f, height = 20f;
-        var r = new Rect(16f + slot * (width + 10f), 14f, width, height);
-        GUI.color = new Color(0f, 0f, 0f, 0.55f);
-        GUI.DrawTexture(r, Texture2D.whiteTexture);
-        GUI.color = colour;
-        GUI.DrawTexture(new Rect(r.x + 2f, r.y + 2f, (r.width - 4f) * Mathf.Clamp01(value / max), r.height - 4f), Texture2D.whiteTexture);
-        GUI.color = Color.white;
-        barText ??= new GUIStyle(style) { fontSize = 13, alignment = TextAnchor.MiddleCenter };
-        GUI.Label(r, $"<b>{name}</b> {Mathf.CeilToInt(value)}/{Mathf.CeilToInt(max)}", barText);
+        GUI.Label(new Rect(16, 12 + vitalsHeight + 6, 1400, 30), SpellChip(pad), style);
     }
 
     string SpellChip(bool pad)
