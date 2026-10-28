@@ -51,6 +51,13 @@ touch them.
   the lake, the river, the falls, Hollowmere and the coast. Shaped by
   `ValleyShape` and baked in the Editor.
 
+**Land**
+: The valley's baked ground under each cell, in water units: the hills
+  the cells themselves don't hold (a cell's elevation and height are on
+  top of it). Baked once into `world/land.json` (Prototype > Bake Valley
+  Land) so every peer has the same integers; only the water reads it, so
+  water runs down a hillside (`World.SetLand`).
+
 **The yard**
 : The old 64 × 64 play area, now meadow in the middle of the valley
   (`ChemistryYard.unity` keeps the name).
