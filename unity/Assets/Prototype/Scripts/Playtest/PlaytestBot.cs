@@ -8,6 +8,7 @@ using Newtonsoft.Json;
 using Playtest;
 using StarterAssets;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 // The playtest bot (playtest/DESIGN.md). Start a player build with -playtest
 // and it plays on its own for a while, then writes what it found to its run
@@ -210,6 +211,21 @@ public class PlaytestBot : MonoBehaviour
         run.Quiet = Environment.GetCommandLineArgs().Contains("-playtest-quiet");
         startedReal = Time.realtimeSinceStartup;
         running = true;
+        DeafToRealInput();
+    }
+
+    // The bot drives the wizard through its inputs, never the real devices: a key or pad press that
+    // reaches the bot's window (it took focus once, seed 103) mustn't change the run or reset it.
+    static void DeafToRealInput()
+    {
+        foreach (var device in InputSystem.devices.ToList())
+            if (device is Keyboard || device is Mouse || device is Gamepad || device is Joystick)
+                InputSystem.DisableDevice(device);
+        InputSystem.onDeviceChange += (device, change) =>
+        {
+            if (change == InputDeviceChange.Added && (device is Keyboard || device is Mouse || device is Gamepad || device is Joystick))
+                InputSystem.DisableDevice(device);
+        };
     }
 
     void LateUpdate()
