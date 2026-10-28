@@ -111,12 +111,22 @@ namespace Playtest
 
         public IReadOnlyList<float> Times => ms;
 
+        /// <summary>Frames after a screenshot of the bot's own that a spike isn't counted on.</summary>
+        public const int AfterShotFrames = 3;
+        int quietUntil = -1;
+
+        /// <summary>
+        /// The bot took a screenshot on this frame: its readback, encode and write cost 40-60 ms
+        /// and more, and the next few frames' spikes are the bot's, not the game's (the Mac's profile).
+        /// </summary>
+        public void ShotTaken(int frame) => quietUntil = frame + AfterShotFrames;
+
         /// <summary>One frame's real time; a spike is reported once per place.</summary>
         public IEnumerable<Candidate> Frame(int frame, float frameMs, string place)
         {
             ms.Add(frameMs);
-            // The first frames load the world: no spikes counted there.
-            if (frame > 60 && frameMs > SpikeMs && spikedAt.Add(place ?? ""))
+            // The first frames load the world: no spikes counted there; nor just after a screenshot.
+            if (frame > 60 && frame > quietUntil && frameMs > SpikeMs && spikedAt.Add(place ?? ""))
                 yield return new Candidate("frame-spike", place, Category.Performance, frame,
                     string.Format(CultureInfo.InvariantCulture, "one frame took {0:0} ms", frameMs));
         }
