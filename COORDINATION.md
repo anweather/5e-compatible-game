@@ -225,6 +225,7 @@ The coordinator approves each change and schedules them one at a time.
 | 1 | `docs/FAST_LOOP.md` (World's) | Gameplay | The `online` and `villagers` rows | Done (merged) |
 | 2 | `docs/WORLD_LIFE.md` (shared) | Gameplay | Item 4 marked built | Done (merged) |
 | 3 | `docs/GLOSSARY.md`, `docs/MODDING.md` (shared) | World | The "Component" entry and the MODDING example, on `components` | Approved; merges with 0.1.6 |
+| 4 | `unity/Assets/Prototype/ThirdParty/Punchy/Sky.hlsl` (shared, third-party) | Gameplay | A second star layer and _PunchyStarBright, on `night-view` | Approved after the fact; needs a change comment and a licence check |
 
 ## Merge order
 
