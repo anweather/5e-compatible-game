@@ -64,6 +64,12 @@ public class SlopeProbe : ProbeScenario
         Shot("slope");
         yield return null;
         yield return null;
+        // Close, from up the hill: where it was cast and the first cells it ran down.
+        Cut(at + (at - far).normalized * 5f + Vector3.up * 4f, at + (far - at).normalized * 4f);
+        yield return Wait(0.3f);
+        Shot("slope-close");
+        yield return null;
+        yield return null;
         foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = true;
     }
 
