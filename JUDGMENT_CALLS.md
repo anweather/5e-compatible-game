@@ -59,6 +59,19 @@ Each entry has:
 
 ## Decided
 
+### J-022: Does Zachary Franklin's permission cover modifying all of Punchy?
+
+- **Asked:** 2026-10-27, by the coordinator, after Gameplay changed
+  `ThirdParty/Punchy/Sky.hlsl` (Punchy has no LICENSE file).
+- **Also comes up when:** any edit to or reuse of files in
+  `ThirdParty/Punchy/`, the credits, and releases.
+- **Answer (2026-10-27):** yes. "Permission applies. We are writing
+  together on this."
+- **Why:** Andrew and Zachary Franklin are writing it together. Keep the
+  attribution in Credits.cs, and record each change in the file's header
+  and the Punchy README.
+- **Revisited:** 0.
+
 ### J-019: When do we cut releases?
 
 - **Asked:** 2026-10-27, by Andrew: "when do we want to cut a new release?
