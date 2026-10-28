@@ -137,6 +137,32 @@ public class Village : MonoBehaviour
         well.transform.localPosition = wellAt;
         well.AddComponent<MeshFilter>().sharedMesh = wellMesh;
         well.AddComponent<MeshRenderer>().sharedMaterial = material;
+        WellColliders(stones, radius);
+    }
+
+    // The wall stands in your way, a box for each column of stones, its full height (Andrew's
+    // playtest #5): a ring, not a solid, so you can still jump in and the water still slows you.
+    // The two posts stop you too.
+    void WellColliders(int stones, float radius)
+    {
+        const float wallHeight = 0.9f;
+        for (int i = 0; i < stones; i++)
+        {
+            float t = i * Mathf.PI * 2f / stones;
+            var part = new GameObject("Well wall") { hideFlags = HideFlags.DontSave | HideFlags.NotEditable };
+            part.transform.SetParent(well.transform, false);
+            part.transform.SetLocalPositionAndRotation(new Vector3(Mathf.Cos(t) * radius, wallHeight / 2f, Mathf.Sin(t) * radius),
+                Quaternion.Euler(0f, -t * Mathf.Rad2Deg + 90f, 0f));
+            // Wide enough to meet its neighbours round the ring.
+            part.AddComponent<BoxCollider>().size = new Vector3(2f * Mathf.PI * radius / stones + 0.05f, wallHeight, 0.3f);
+        }
+        for (int side = -1; side <= 1; side += 2)
+        {
+            var post = new GameObject("Well post") { hideFlags = HideFlags.DontSave | HideFlags.NotEditable };
+            post.transform.SetParent(well.transform, false);
+            post.transform.localPosition = new Vector3(side * 0.85f, 1.15f, 0f);
+            post.AddComponent<BoxCollider>().size = new Vector3(0.14f, 2.3f, 0.14f);
+        }
     }
 
     static void DestroyNow(Object o)
