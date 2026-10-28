@@ -59,6 +59,21 @@ Each entry has:
 
 ## Decided
 
+### J-025: Where are release-candidate builds made?
+
+- **Asked:** 2026-10-27, by the coordinator, when the Mac spent 40+ min
+  compiling Windows shader variants from scratch for the 0.1.5 RC, while
+  the PC had them warm in its cache from PC-5.
+- **Also comes up when:** every release, a shader or graphics settings
+  change, the time to ship.
+- **Answer (2026-10-27):** let 0.1.5's Mac build finish. From 0.1.6 on,
+  **the PC builds the Windows half** (warm cache) and the Mac builds macOS,
+  in parallel, both from the same main commit. Build updates RELEASING.md
+  and ship-update to match.
+- **Why:** Andrew picked the recommendation. Don't throw away nearly-done
+  work. Each platform builds fastest on its own machine.
+- **Revisited:** 0.
+
 ### J-024: Should rain make the ground look wet?
 
 - **Asked:** 2026-10-27, by the coordinator. The rain WaterMesh fix stopped
