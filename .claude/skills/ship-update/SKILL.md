@@ -6,7 +6,9 @@ description: Push an in-place update of Spell Chemistry Valley to installed copi
 # Ship an update in place
 
 `docs/RELEASING.md`, "Updates in place", is the reference. The work is one
-script: `tools/ship-update.sh X.Y.Z [--test]`.
+script: `tools/ship-update.sh X.Y.Z [--test] [--mac-only | --windows-only]`.
+A real release is built in two halves (J-025): `--mac-only` on the Mac,
+`--windows-only` on the PC, the same commit, into one draft.
 
 ## Pick the mode
 

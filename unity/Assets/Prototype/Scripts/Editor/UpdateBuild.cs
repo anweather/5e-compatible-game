@@ -11,12 +11,14 @@ public static class UpdateBuild
 {
     /// <summary>
     /// Builds Builds/Update/osx/Spell Chemistry Valley.app (unless <paramref name="mac"/> is false:
-    /// an Editor without Mac Build Support) and Builds/Update/win/SpellChemistryValley.exe at the
-    /// given version. Refuses a dirty git tree. Returns a one-line summary that starts
+    /// an Editor without Mac Build Support) and Builds/Update/win/SpellChemistryValley.exe (unless
+    /// <paramref name="windows"/> is false: the Mac's half of a release the PC builds for Windows)
+    /// at the given version. Refuses a dirty git tree. Returns a one-line summary that starts
     /// "Update build: OK" on success.
     /// </summary>
-    public static string Players(string version, bool mac = true)
+    public static string Players(string version, bool mac = true, bool windows = true)
     {
+        if (!mac && !windows) return Fail("nothing to build: both macOS and Windows are off.");
         if (BuildVersion.Parse(version) == null) return Fail($"'{version}' isn't an X.Y.Z version.");
         var dirty = PrototypeBuild.DirtyFiles();
         if (dirty == null || dirty.Length > 0)
@@ -31,11 +33,14 @@ public static class UpdateBuild
         {
             string osx = mac ? BuildOnce(BuildTarget.StandaloneOSX, $"{root}/osx/{PrototypeBuild.ProductName}.app") : ": OK";
             if (!osx.Contains(": OK")) return Fail(osx);
-            string win = BuildOnce(BuildTarget.StandaloneWindows64, $"{root}/win/SpellChemistryValley.exe");
-            if (!win.Contains(": OK")) return Fail(win);
-            // Burst's debug information is for us, not for players ("DoNotShip").
-            foreach (var debug in Directory.GetDirectories($"{root}/win", "*_DoNotShip")) Directory.Delete(debug, true);
-            File.WriteAllText($"{root}/win/CREDITS.txt", Credits.PlainText($"alpha {version}"));
+            if (windows)
+            {
+                string win = BuildOnce(BuildTarget.StandaloneWindows64, $"{root}/win/SpellChemistryValley.exe");
+                if (!win.Contains(": OK")) return Fail(win);
+                // Burst's debug information is for us, not for players ("DoNotShip").
+                foreach (var debug in Directory.GetDirectories($"{root}/win", "*_DoNotShip")) Directory.Delete(debug, true);
+                File.WriteAllText($"{root}/win/CREDITS.txt", Credits.PlainText($"alpha {version}"));
+            }
         }
         finally
         {
@@ -45,7 +50,7 @@ public static class UpdateBuild
         }
         var after = PrototypeBuild.DirtyFiles();
         string warning = after != null && after.Length > 0 ? $" WARNING: the build changed tracked files: {string.Join(", ", after)}" : "";
-        string done = $"Update build: OK, {version} for {(mac ? "macOS and Windows" : "Windows")} -> {Path.GetFullPath(root)}{warning}";
+        string done = $"Update build: OK, {version} for {(mac && windows ? "macOS and Windows" : mac ? "macOS" : "Windows")} -> {Path.GetFullPath(root)}{warning}";
         Debug.Log(done);
         return done;
     }
