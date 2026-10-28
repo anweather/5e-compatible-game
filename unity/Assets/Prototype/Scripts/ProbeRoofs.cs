@@ -22,7 +22,7 @@ public class RoofsProbe : ProbeScenario
         if (timber == null || stone == null) yield break;
 
         float roofBefore = Roof(timber).transform.position.y;
-        float sootBefore = Soot(stone);
+        var colorsBefore = BodyColors(stone);
         int stoneBefore = Cells(stone).Count(c => World.At(c.x, c.y).T == TerrainIds.Stone);
         Frame(timber);
         yield return Snap("timber-slate-before");
@@ -46,7 +46,9 @@ public class RoofsProbe : ProbeScenario
         float drop = roofBefore - slate.transform.position.y;
         int stoneLeft = Cells(stone).Count(c => World.At(c.x, c.y).T == TerrainIds.Stone);
         bool thatchGone = !Roof(stone).enabled;
-        float soot = Soot(stone) - sootBefore;
+        var colorsAfter = BodyColors(stone);
+        float soot = colorsBefore.Length == 0 || colorsAfter.Length != colorsBefore.Length ? 0f
+            : (float)Enumerable.Range(0, colorsBefore.Length).Count(v => colorsAfter[v].grayscale < colorsBefore[v].grayscale * 0.8f) / colorsBefore.Length;
         Metric("timber_log_walls_left", logLeft);
         Metric("slate_drop_m", drop);
         Metric("stone_walls_left", stoneLeft);
@@ -55,7 +57,7 @@ public class RoofsProbe : ProbeScenario
         Check("slate_falls_in", slate.enabled && drop > 1f, $"the slate roof is {(slate.enabled ? "there" : "gone")}, {drop:0.0} m lower");
         Check("thatch_burns_away", thatchGone, thatchGone ? "the thatch is gone" : "the thatch still stands");
         Check("stone_stands", stoneLeft > 0 && stoneLeft == stoneBefore, $"stone wall cells {stoneBefore} -> {stoneLeft}");
-        Check("stone_sooted", soot > 0.02f, $"the stone darkened by {soot:0.00}");
+        Check("stone_sooted", soot > 0.02f, $"{soot:P0} of the stone house's vertices sooted");
         Frame(timber);
         yield return Snap("timber-slate-after");
         Frame(stone);
@@ -72,13 +74,11 @@ public class RoofsProbe : ProbeScenario
 
     static Renderer Roof(VillageHouse h) => h.GetComponentsInChildren<Renderer>(true).First(r => r.name == "Roof");
 
-    // How dark the body's vertex colours are on average (0 none, 1 black).
-    static float Soot(VillageHouse h)
+    // The body's vertex colours (CharNear darkens them round a fire).
+    static Color[] BodyColors(VillageHouse h)
     {
         var body = h.GetComponentsInChildren<MeshFilter>(true).FirstOrDefault(f => f.name == "Body");
-        if (body == null) return 0f;
-        var colors = body.sharedMesh.colors;
-        return colors.Length == 0 ? 0f : 1f - colors.Average(c => c.grayscale);
+        return body != null ? body.sharedMesh.colors : System.Array.Empty<Color>();
     }
 
     // The house's footprint cells: wall cells under its box.
@@ -109,6 +109,7 @@ public class RoofsProbe : ProbeScenario
     void Frame(VillageHouse h)
     {
         var t = h.transform;
-        Cut(t.position - t.forward * 13f + t.right * 5f + Vector3.up * 6f, t.position + Vector3.up * 1.5f);
+        // High over its street, so neighbouring houses aren't in the way.
+        Cut(t.position - t.forward * 10f + t.right * 4f + Vector3.up * 11f, t.position + Vector3.up * 1f);
     }
 }
