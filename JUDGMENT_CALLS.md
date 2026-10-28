@@ -41,6 +41,18 @@ Each entry has:
 
 ## Decided
 
+### J-032: The 0.1.6 RC has a harmless error burst online. Fix it, or ship?
+
+- **Asked:** 2026-10-27. WaterSplashes threw a NullReferenceException for
+  about 1 s after every host or join (it held the destroyed solo wizard's
+  transform). The one-line fix is `fix/splash-online` (`b45a82b`).
+- **Answer (2026-10-27):** ship 0.1.6 AS IS. Don't delete the draft or
+  rebuild. The fix goes into dev after the publish, for 0.1.7. The notes
+  mention the known log error.
+- **Why:** Andrew's call: speed over a harmless log error, in alpha
+  (J-026).
+- **Revisited:** 0.
+
 ### J-031: When do we cut 0.1.6?
 
 - **Asked:** 2026-10-27, by Andrew ("how soon until we can cut a 0.1.6?").
