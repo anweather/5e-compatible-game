@@ -98,8 +98,10 @@ public class WizardOutfit : MonoBehaviour
 
     Transform Bone(HumanBodyBones b) => animator.isHuman ? animator.GetBoneTransform(b) : null;
 
+    static readonly int SteadyGlow = Shader.PropertyToID("_SteadyGlow");
+
     // Builds what the kit holds into a part on a bone, then empties the kit.
-    void Hang(MeshKit kit, Transform bone, string name)
+    void Hang(MeshKit kit, Transform bone, string name, bool steadyGlow = false)
     {
         if (bone == null || kit.VertexCount == 0)
         {
@@ -111,6 +113,13 @@ public class WizardOutfit : MonoBehaviour
         go.AddComponent<MeshFilter>().sharedMesh = kit.ToMesh("Wizard " + name);
         var r = go.AddComponent<MeshRenderer>();
         r.sharedMaterial = material;
+        if (steadyGlow)
+        {
+            // A glow carried about: steady, no window flicker (VillageLit's _SteadyGlow).
+            var block = new MaterialPropertyBlock();
+            block.SetFloat(SteadyGlow, 1f);
+            r.SetPropertyBlock(block);
+        }
         parts.Add(go);
         kit.Clear();
     }
@@ -213,7 +222,7 @@ public class WizardOutfit : MonoBehaviour
             else
                 Tube(kit, Arc(top + up * 0.1f, up, 0.07f), OrbRadii(0.07f), glow, Ends.Both);
         }
-        Hang(kit, hand, "staff");
+        Hang(kit, hand, "staff", steadyGlow: true);
     }
 
     static Vector3[] Arc(Vector3 centre, Vector3 up, float r)
