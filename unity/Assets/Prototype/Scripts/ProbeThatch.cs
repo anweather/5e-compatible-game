@@ -22,7 +22,7 @@ public class ThatchProbe : ProbeScenario
         Check("house_found", house != null && valley != null, house != null ? house.name : "no thatch-roofed timber house");
         if (house == null || valley == null) yield break;
         var cells = RoofsProbe.HouseCells(grid, World, house).Where(c => World.At(c.x, c.y).T == TerrainIds.LogWall).ToList();
-        var wall = cells.First();
+        var wall = cells[0];
         Teleport(house.transform.position - house.transform.forward * 7f + Vector3.up * 0.1f);
         var t = house.transform;
         Cut(t.position - t.forward * 10f + t.right * 4f + Vector3.up * 11f, t.position + Vector3.up * 1f);
