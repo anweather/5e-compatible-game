@@ -60,6 +60,7 @@ public class FpsProbe : MonoBehaviour
     }
 
     const float ClothSeconds = 15f;
+    static readonly WaitForSeconds SettleWait = new(2f);
 
     // The N after -cloth-wizards, or 0.
     static int ClothWizards()
@@ -94,7 +95,7 @@ public class FpsProbe : MonoBehaviour
         var eye = middle + new Vector3(0f, 2.2f, -4f - count * 0.5f);
         Camera.main.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(middle + Vector3.up - eye));
         // A moment for the copies to dress and their robes to settle.
-        yield return new WaitForSeconds(2f);
+        yield return SettleWait;
 
         frameMs.Clear();
         mainMs.Clear();
