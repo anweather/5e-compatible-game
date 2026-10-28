@@ -78,7 +78,7 @@ public class ValleyChemistry : MonoBehaviour
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         ground.RaiseBase(channelCells, channelDepths);
-        SetLand();
+        SetLand(world);
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
@@ -174,7 +174,7 @@ public class ValleyChemistry : MonoBehaviour
     // The water runs down the valley's hills (playtest #31), which only the baked ground holds: each
     // dry cell's ground in water units (whole units of stepHeight / unitsPerStep, the same numbers on
     // every peer of one build); a cell of a lake, the river or the sea keeps its water level.
-    void SetLand()
+    void SetLand(World world)
     {
         float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
         var land = new int[world.W * world.H];
