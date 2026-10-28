@@ -35,7 +35,7 @@ public class SlopeProbe : ProbeScenario
         var look = (at + far) / 2f;
         look.y = grid.GroundAt(look);
         // From straight above, nearly: trees round a hillside hid it from the side.
-        Cut(look + (at - far).normalized * 6f + Vector3.up * 35f, look);
+        Cut(look + (at - far).normalized * 6f + Vector3.up * 20f, look);
         caster.Cast(SpellIds.CreateWater, best.x, best.y, dir);
         yield return Wait(12f);
 
@@ -58,10 +58,13 @@ public class SlopeProbe : ProbeScenario
         Metric("ran_down_m", top - lowest);
         Metric("centre_downhill_cells", centre);
         Check("water_runs_downhill", centre > 1.5f, $"the water's centre is {centre:0.0} cells down the hill from where it was cast; its lowest {top - lowest:0.0} m below");
+        // The hillsides are wooded with the terrains' own trees: hidden for the picture, then back.
+        foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = false;
         yield return Wait(0.3f);
         Shot("slope");
         yield return null;
         yield return null;
+        foreach (var t in Terrain.activeTerrains) t.drawTreesAndFoliage = true;
     }
 
     // The dry, open cell near the start whose ground falls furthest over Reach cells in one direction.
