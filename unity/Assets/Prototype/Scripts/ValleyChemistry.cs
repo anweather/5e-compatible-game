@@ -66,7 +66,14 @@ public class ValleyChemistry : MonoBehaviour
     {
         if (world.W != layout.GridW || world.H != layout.GridH)
             Debug.LogError($"The valley's chunk layout is for a {layout.GridW}×{layout.GridH} world, not {world.W}×{world.H}");
-        ground ??= new ValleyGround(layout, chunks);
+        if (ground == null)
+        {
+            ground = new ValleyGround(layout, chunks);
+            // Details only on the terrains near the camera (ChemGrid.Detail).
+            grid.DetailDistance = ground.DetailDistance;
+            grid.DetailChunksChanged += ground.DrawDetails;
+            if (grid.DetailChunks.Count > 0) ground.DrawDetails(grid.DetailChunks);
+        }
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
@@ -360,6 +367,7 @@ public class ValleyChemistry : MonoBehaviour
 
     void OnDestroy()
     {
+        if (grid != null && ground != null) grid.DetailChunksChanged -= ground.DrawDetails;
         if (charred != null) Destroy(charred);
         wet?.Destroy();
         ground?.Destroy();
