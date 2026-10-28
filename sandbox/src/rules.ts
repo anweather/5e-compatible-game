@@ -10,6 +10,7 @@ import machines from "../../rules/machines.json" with { type: "json" };
 import sim from "../../rules/sim.json" with { type: "json" };
 import groups from "../../rules/groups.json" with { type: "json" };
 import components from "../../rules/components.json" with { type: "json" };
+import { materialGroupErrors, ungroupMaterials } from "./materials.ts";
 
 export interface TerrainDef {
   name: string;
@@ -341,11 +342,18 @@ export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightnin
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
-/** The rule tables exactly as committed in ../../rules/. Never mutated. */
+// materials.json with any verb groups turned into the flat keys (materials.ts).
+const baseMaterials = (() => {
+  const m = clone(materials) as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown>; gases: unknown };
+  ungroupMaterials(m);
+  return m;
+})();
+
+/** The rule tables exactly as committed in ../../rules/ (verb groups read as flat keys). Never mutated. */
 export const BASE_RULES: Readonly<Rules> = Object.freeze({
   elements: BASE_ELEMENTS,
-  terrain: materials.terrain as Record<string, TerrainDef>,
-  covers: materials.covers as unknown as Record<string, CoverDef>,
+  terrain: baseMaterials.terrain as Record<string, TerrainDef>,
+  covers: baseMaterials.covers as unknown as Record<string, CoverDef>,
   gases: materials.gases as Record<string, GasDef>,
   cellRules: reactions.cell as CellRule[],
   entityRules: reactions.entity as EntityRule[],
@@ -446,6 +454,8 @@ export function composeRules(patches: ModPatch[], base: Readonly<Rules> = BASE_R
     if (p.critters) r.critters = upsertById(r.critters, clone(p.critters));
     if (p.sim) mergeDeep(r.sim as unknown as Record<string, unknown>, clone(p.sim));
   }
+  // A mod may spell a material as verb groups too.
+  ungroupMaterials(r as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown> });
   return r;
 }
 
@@ -643,7 +653,7 @@ const isHours = (v: unknown) => Array.isArray(v) && v.length === 2 && v.every((h
 
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
-  const errors: string[] = [];
+  const errors: string[] = materialGroupErrors(r as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown> });
   const el = new Set<string>(r.elements);
   const terrainIds = new Set(Object.keys(r.terrain));
   const coverIds = new Set(Object.keys(r.covers));

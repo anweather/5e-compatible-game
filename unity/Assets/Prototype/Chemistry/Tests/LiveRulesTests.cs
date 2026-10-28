@@ -144,6 +144,63 @@ namespace Chem.Tests
             Assert.That(errors, Is.EqualTo(new[] { "rule x: unknown effect \"teleportEverything\" (new verbs need code; see docs/MODDING.md)" }));
         }
 
+        // materials.json with every terrain and cover spelled as verb groups (MaterialGroups.Group).
+        static Rules Grouped()
+        {
+            var files = Directory.GetFiles(ChemistryTests.RulesDir(), "*.json").ToDictionary(Path.GetFileName, File.ReadAllText);
+            var materials = Newtonsoft.Json.Linq.JObject.Parse(files["materials.json"]);
+            foreach (var table in new[] { "terrain", "covers" })
+                foreach (var p in ((Newtonsoft.Json.Linq.JObject)materials[table]).Properties().ToList())
+                    p.Value = MaterialGroups.Group((Newtonsoft.Json.Linq.JObject)p.Value, table == "covers");
+            files["materials.json"] = materials.ToString();
+            return Rules.FromJson(files);
+        }
+
+        [Test]
+        public void MaterialsSpelledAsVerbGroupsReadTheSame()
+        {
+            // docs/MATERIALS.md, step 1: the grouped spelling is an alias; nothing reads differently.
+            var flat = Base;
+            var grouped = Grouped();
+            Assert.That(grouped.Terrain.Keys, Is.EqualTo(flat.Terrain.Keys));
+            foreach (var (id, t) in flat.Terrain)
+            {
+                var g = grouped.Terrain[id];
+                Assert.That(g.Tags.OrderBy(x => x, System.StringComparer.Ordinal), Is.EqualTo(t.Tags.OrderBy(x => x, System.StringComparer.Ordinal)), id);
+                Assert.That((g.Name, g.Elevation, g.Spring, g.Flammability, g.Heat, g.Fuel, g.BurnsTo, g.BreaksTo, g.BurnLog, g.FireLook),
+                    Is.EqualTo((t.Name, t.Elevation, t.Spring, t.Flammability, t.Heat, t.Fuel, t.BurnsTo, t.BreaksTo, t.BurnLog, t.FireLook)), id);
+                Assert.That((g.UprootsTo, g.UprootLog, g.DugTo, g.Hardness, g.GrowsTo, g.GrowLog, g.SoakEvery, g.SoakEveryWet, g.WaterTo),
+                    Is.EqualTo((t.UprootsTo, t.UprootLog, t.DugTo, t.Hardness, t.GrowsTo, t.GrowLog, t.SoakEvery, t.SoakEveryWet, t.WaterTo)), id);
+            }
+            foreach (var (id, c) in flat.Covers)
+            {
+                var g = grouped.Covers[id];
+                Assert.That(g.Tags.OrderBy(x => x, System.StringComparer.Ordinal), Is.EqualTo(c.Tags.OrderBy(x => x, System.StringComparer.Ordinal)), id);
+                Assert.That((g.Flammability, g.Fuel, g.BurnIntensity, g.FireLook, g.Lasts), Is.EqualTo((c.Flammability, c.Fuel, c.BurnIntensity, c.FireLook, c.Lasts)), id);
+            }
+            // The same world from either: a fire through grass, brambles and oil, and a soaking puddle.
+            string Run(Rules r)
+            {
+                var w = new World(r, 12, 8, 3, "grass");
+                w.At(6, 4).T = "brush";
+                w.At(7, 4).Cover = "oil";
+                w.At(2, 2).Water = 1;
+                w.Apply(5, 4, "fire", 3, -1, false);
+                for (int t = 0; t < 120; t++) w.Step();
+                return w.CellHash() + " " + w.RngState;
+            }
+            Assert.That(Run(grouped), Is.EqualTo(Run(flat)));
+        }
+
+        [Test]
+        public void AnUnknownKeyInAVerbGroupIsReportedLikeTheSandbox()
+        {
+            var errors = ErrorsOf("{ 'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground'], 'burn': { 'catch': 0.4, 'fuel': 9, 'smoulder': 3 } } } }");
+            Assert.That(errors, Is.EqualTo(new[] { "terrain mud: burn.smoulder unknown" }));
+            var mud = With("{ 'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground'], 'burn': { 'catch': 0.4, 'fuel': 9 }, 'soak': { 'dry': 30 } } } }").Terrain["mud"];
+            Assert.That((mud.Has("flammable"), mud.Flammability, mud.Fuel, mud.SoakEvery), Is.EqualTo((true, 0.4, (int?)9, 30)));
+        }
+
         [Test]
         public void AThingsMaterialIsATerrainLikeTheSandbox()
         {

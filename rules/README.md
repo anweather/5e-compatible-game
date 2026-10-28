@@ -198,6 +198,14 @@ as with any digging, so the middle of a crater doesn't burn.
 - Water is measured in units: `sim.water.unitsPerStep` (4) units make
   one step of depth. A pit is one step below the ground, so a full pond
   holds 4 units.
+- A terrain or cover may also be spelled by **verb groups** (`docs/MATERIALS.md`):
+  `"burn": { "catch", "fuel", "heat", "leaves", "log", "look" }` (cover: `catch`,
+  `fuel`, `intensity`, `look`), `"break": { "leaves" }`, `"dig": { "hardness",
+  "leaves" }`, `"soak": { "dry", "wet" }`, `"freeze": {}`, `"boil": {}`,
+  `"conduct": {}`, `"grow": { "into", "log" }`, `"uproot": { "leaves", "log" }`.
+  Having `burn`, `break` or `conduct` gives the `flammable`, `breakable` or
+  `conductive` tag. The loaders read them as the flat keys
+  (`MaterialGroups.cs`, `sandbox/src/materials.ts`); either spelling works.
 - Thin water soaks in (`World.Soak`): every `sim.water.soakPass` (8)
   ticks, water no deeper than `sim.water.thin` (2) units, with no
   neighbour deeper either (so not a lake's shore, the river, the sea or a
