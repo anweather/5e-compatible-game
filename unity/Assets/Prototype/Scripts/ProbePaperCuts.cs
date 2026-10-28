@@ -157,8 +157,9 @@ public class PaperCutsProbe : ProbeScenario
         var pier = GameObject.Find("South pier");
         Check("south_pier", pier != null, pier != null ? "built" : "none");
         var dock = GameObject.Find("Dock");
-        var at = pier != null ? pier.transform.position : dock != null ? dock.transform.position : Vector3.zero;
-        if (at == Vector3.zero) yield break;
+        var place = pier != null ? pier : dock;
+        if (place == null) yield break;
+        var at = place.transform.position;
         Teleport(at + Vector3.up * 0.5f);
         Cut(at + new Vector3(-14f, 9f, -14f), at + Vector3.up * 2f);
         yield return Wait(1f);
