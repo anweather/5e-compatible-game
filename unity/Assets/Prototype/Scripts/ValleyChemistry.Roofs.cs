@@ -8,8 +8,11 @@ using UnityEngine;
 //  - its walls stand on its cells: when they burn down, a roof that burns goes
 //    with them, and one that doesn't (slate) falls onto what's left of the walls;
 //  - its roof isn't a cell: a roof that burns (thatch, shingle) catches from a
-//    fire on or beside its walls and burns away after a while, leaving the walls
-//    standing, charred around where the fire was.
+//    fire on or beside its walls (sooner the more flammable it is), burns as long
+//    as its fuel lasts, and is gone, leaving the walls standing, charred around
+//    where the fire was. A hot roof (thatch, materials.json "heat") flares as it
+//    goes and sets the walls nearest the fire alight: through the core, as an
+//    effect command (ChemEffects), so every peer's walls burn alike.
 // View only, like the rest of the burnt look: every peer sees the same cells burn.
 public partial class ValleyChemistry
 {
@@ -18,11 +21,16 @@ public partial class ValleyChemistry
     List<int>[] buildingCells;
     float[] roofFire;
     bool[] roofGone;
+    // When (Time.time) each roof caught and was gone, -1 not yet: the probe's numbers.
+    float[] roofCaughtAt, roofGoneAt;
+    int[] lastFire;
     float roofTimer;
     BuildingMaterials buildingMaterials;
 
-    // Seconds of fire at its walls before a roof that burns catches and burns away; how often to look.
-    const float RoofBurnSeconds = 4f, RoofLook = 0.25f;
+    // How often to look; a roof catches after this many seconds of fire beside it over its flammability;
+    // a roof this hot (heat) or hotter lights the walls as it burns away, this many of them.
+    const float RoofLook = 0.25f, RoofCatch = 1f, FlareHeat = 2f;
+    const int FlareCells = 4;
     // A burnt-out building's walls: this much of their height is left.
     const float BurntWallsLeft = 0.35f;
 
@@ -32,6 +40,9 @@ public partial class ValleyChemistry
         for (int k = 0; k < buildings; k++) buildingCells[k] = new List<int>();
         roofFire = new float[buildings];
         roofGone = new bool[buildings];
+        roofCaughtAt = Enumerable.Repeat(-1f, buildings).ToArray();
+        roofGoneAt = Enumerable.Repeat(-1f, buildings).ToArray();
+        lastFire = new int[buildings];
         if (buildingMaterials == null)
         {
             var specs = VillageLayout.Load(ChemGrid.FindWorldDir());
@@ -43,8 +54,16 @@ public partial class ValleyChemistry
     string RoofMaterialOf(int k) =>
         cabins[k] != null && cabins[k].TryGetComponent<VillageHouse>(out var house) ? buildingMaterials.RoofOf(house.cover) : TerrainIds.Shingle;
 
-    bool RoofBurns(int k) =>
-        grid.World.Rules.Terrain.TryGetValue(RoofMaterialOf(k), out var t) && t.Has("flammable");
+    TerrainDef RoofOf(int k) => grid.World.Rules.Terrain.TryGetValue(RoofMaterialOf(k), out var t) ? t : null;
+
+    bool RoofBurns(int k) => RoofOf(k)?.Has("flammable") == true;
+
+    /// <summary>For the probe: when a building's roof caught and when it was gone (Time.time), -1 for not yet.</summary>
+    public (float caught, float gone) RoofTimes(Transform building)
+    {
+        int k = System.Array.IndexOf(cabins, building);
+        return k < 0 || roofCaughtAt == null ? (-1f, -1f) : (roofCaughtAt[k], roofGoneAt[k]);
+    }
 
     // A few times a second: fire on or beside a building's walls sets a roof that burns going.
     void WatchRoofs(float dt)
@@ -56,12 +75,29 @@ public partial class ValleyChemistry
         roofTimer = 0f;
         for (int k = 0; k < buildingCells.Length; k++)
         {
-            if (roofGone[k] || cabinCharred[k] || buildingCells[k].Count == 0 || !RoofBurns(k)) continue;
-            int at = FireAt(buildingCells[k]);
-            if (at < 0) continue;
-            roofFire[k] += step;
-            if (roofFire[k] >= RoofBurnSeconds) RoofBurnsAway(k, at);
+            if (!roofGone[k] && buildingCells[k].Count > 0 && RoofBurns(k)) RoofStep(k, step);
         }
+    }
+
+    // A roof that burns: catching from fire beside it (a flammable one sooner: thatch in about a second,
+    // shingle in several), then burning as long as its fuel lasts (ticks at the sim's rate).
+    void RoofStep(int k, float step)
+    {
+        var roof = RoofOf(k);
+        int at = FireAt(buildingCells[k]);
+        if (roofCaughtAt[k] < 0)
+        {
+            if (at < 0 || cabinCharred[k]) return;
+            roofFire[k] += step;
+            if (roofFire[k] < RoofCatch / Mathf.Max(0.05f, (float)roof.Flammability)) return;
+            roofCaughtAt[k] = Time.time;
+            roofFire[k] = 0f;
+            lastFire[k] = at;
+            return;
+        }
+        if (at >= 0) lastFire[k] = at;
+        roofFire[k] += step;
+        if (roofFire[k] >= (roof.Fuel ?? 5) / (float)grid.World.Rules.Sim.TicksPerSecond) RoofBurnsAway(k, lastFire[k]);
     }
 
     // The cell itself, then north, east, south and west.
@@ -86,6 +122,8 @@ public partial class ValleyChemistry
     void RoofBurnsAway(int k, int fireCell)
     {
         roofGone[k] = true;
+        roofGoneAt[k] = Time.time;
+        if (RoofOf(k).Heat >= FlareHeat && !cabinCharred[k]) Flare(k, fireCell);
         var building = cabins[k];
         HideRoof(building);
         var world = grid.World;
@@ -93,6 +131,15 @@ public partial class ValleyChemistry
         foreach (var f in building.GetComponentsInChildren<MeshFilter>())
             if (f.name != "Roof") CharNear(f, at, 6f);
         EventLog.Add($"The roof of the {LabelOf(building)} burns away");
+    }
+
+    // A hot roof flaring as it goes sets the walls nearest the fire alight (they burn as long as wood does).
+    void Flare(int k, int fireCell)
+    {
+        var world = grid.World;
+        int fx = fireCell % world.W, fy = fireCell / world.W;
+        foreach (int i in buildingCells[k].OrderBy(i => (i % world.W - fx) * (i % world.W - fx) + (i / world.W - fy) * (i / world.W - fy)).Take(FlareCells))
+            ChemEffects.Request(grid, new EffectCommand(EffectKind.Burn, i % world.W, i / world.W, null));
     }
 
     static void HideRoof(Transform building)

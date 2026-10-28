@@ -471,21 +471,29 @@ namespace Chem
         {
             var m = new BuildingMaterials();
             if (!(t is JObject o)) return m;
-            if (o["walls"] is JObject walls)
-                foreach (var p in walls.Properties())
-                {
-                    if (!Enum.TryParse(p.Name, true, out WallKind k)) throw new FormatException($"{FileName}: unknown wall kind {p.Name}");
-                    string material = (string)p.Value;
-                    if (!BuildingMaterials.CanBeWall(material)) throw new FormatException($"{FileName}: wall material {material} can't stand on a map");
-                    m.Walls[k] = material;
-                }
-            if (o["roofs"] is JObject roofs)
-                foreach (var p in roofs.Properties())
-                {
-                    if (!Enum.TryParse(p.Name, true, out RoofCover c)) throw new FormatException($"{FileName}: unknown roof cover {p.Name}");
-                    m.Roofs[c] = (string)p.Value;
-                }
+            if (o["walls"] is JObject walls) ReadWalls(walls, m);
+            if (o["roofs"] is JObject roofs) ReadRoofs(roofs, m);
             return m;
+        }
+
+        static void ReadWalls(JObject walls, BuildingMaterials m)
+        {
+            foreach (var p in walls.Properties())
+            {
+                if (!Enum.TryParse(p.Name, true, out WallKind k)) throw new FormatException($"{FileName}: unknown wall kind {p.Name}");
+                string material = (string)p.Value;
+                if (!BuildingMaterials.CanBeWall(material)) throw new FormatException($"{FileName}: wall material {material} can't stand on a map");
+                m.Walls[k] = material;
+            }
+        }
+
+        static void ReadRoofs(JObject roofs, BuildingMaterials m)
+        {
+            foreach (var p in roofs.Properties())
+            {
+                if (!Enum.TryParse(p.Name, true, out RoofCover c)) throw new FormatException($"{FileName}: unknown roof cover {p.Name}");
+                m.Roofs[c] = (string)p.Value;
+            }
         }
 
         static VillageSpec ReadSpec(JToken v)

@@ -184,7 +184,9 @@ function tickFire(w: World) {
       const flam = flammability(n);
       const downwind = windDir(w) === d ? p.downwindBonus : 0;
       const wet = n.water > 0 && !n.frozen;
-      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) + downwind * flam) * rainDamp(w) : wet ? p.boilChance : p.heatChance;
+      // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
+      const heat = coverHasTag(c, "flammable") ? 1 : (terrainDef(c).heat ?? 1);
+      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) * heat + downwind * flam) * rainDamp(w) : wet ? p.boilChance : p.heatChance;
       if (rand(w) < chance) applyElement(w, nx, ny, "fire", { power: 1, direct: false });
     }
     if (--c.fuel > 0) continue;

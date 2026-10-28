@@ -81,8 +81,10 @@ public class RoofsProbe : ProbeScenario
         return body != null ? body.sharedMesh.colors : System.Array.Empty<Color>();
     }
 
-    // The house's footprint cells: wall cells under its box.
-    System.Collections.Generic.List<Vector2Int> Cells(VillageHouse h)
+    System.Collections.Generic.List<Vector2Int> Cells(VillageHouse h) => HouseCells(grid, World, h);
+
+    /// <summary>A house's footprint cells: those under its box (a little grown), for the probes.</summary>
+    internal static System.Collections.Generic.List<Vector2Int> HouseCells(ChemGrid grid, World world, VillageHouse h)
     {
         var box = h.GetComponent<BoxCollider>();
         var list = new System.Collections.Generic.List<Vector2Int>();
@@ -90,7 +92,7 @@ public class RoofsProbe : ProbeScenario
         for (int y = centre.y - 6; y <= centre.y + 6; y++)
             for (int x = centre.x - 6; x <= centre.x + 6; x++)
             {
-                if (!World.InBounds(x, y)) continue;
+                if (!world.InBounds(x, y)) continue;
                 var q = h.transform.InverseTransformPoint(grid.CellCenter(x, y)) - box.center;
                 if (Mathf.Abs(q.x) <= box.size.x / 2f + 0.3f && Mathf.Abs(q.z) <= box.size.z / 2f + 0.3f) list.Add(new Vector2Int(x, y));
             }
