@@ -91,7 +91,7 @@ public partial class ValleyChemistry
         var world = grid.World;
         var at = grid.CellCenter(fireCell % world.W, fireCell / world.W);
         foreach (var f in building.GetComponentsInChildren<MeshFilter>())
-            if (f.name != "Roof") CharNear(f, at, 4f);
+            if (f.name != "Roof") CharNear(f, at, 6f);
         EventLog.Add($"The roof of the {LabelOf(building)} burns away");
     }
 
@@ -143,7 +143,7 @@ public partial class ValleyChemistry
         for (int v = 0; v < vertices.Length; v++)
         {
             float d = Vector3.Distance(vertices[v], local) * scale;
-            float soot = Mathf.Clamp01(1f - d / radius) * 0.85f;
+            float soot = Mathf.Sqrt(Mathf.Clamp01(1f - d / radius)) * 0.9f;
             var c = colors[v];
             colors[v] = new Color(c.r * (1f - soot), c.g * (1f - soot), c.b * (1f - soot), c.a);
         }
