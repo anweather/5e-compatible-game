@@ -33,6 +33,32 @@ namespace Chem
         /// <summary>Squares lightning struck this tick, for a view's flash and thunder.</summary>
         public IReadOnlyList<(int x, int y)> Strikes => strikes;
 
+        // The strikes and the new meteors of the last HistoryTicks ticks, stamped with their tick, for
+        // a view that steps several ticks in one frame (tick-spread, catch-up) and would otherwise see
+        // only the last tick's. Not world state: never hashed or saved.
+        const int HistoryTicks = 600;
+        readonly List<(int x, int y, int tick)> strikeHistory = new List<(int x, int y, int tick)>();
+        readonly List<(int x, int y, int lands, int tick)> meteorHistory = new List<(int x, int y, int lands, int tick)>();
+
+        /// <summary>Strikes after <paramref name="tick"/> (within the last 600 ticks), oldest first, each with its tick.</summary>
+        public IEnumerable<(int x, int y, int tick)> StrikesSince(int tick)
+        {
+            foreach (var s in strikeHistory) if (s.tick > tick) yield return s;
+        }
+
+        /// <summary>Meteors that appeared after <paramref name="tick"/> (within the last 600 ticks), oldest first: where, the tick they land on, the tick they appeared.</summary>
+        public IEnumerable<(int x, int y, int lands, int tick)> MeteorsSince(int tick)
+        {
+            foreach (var m in meteorHistory) if (m.tick > tick) yield return m;
+        }
+
+        // Drops what is older than HistoryTicks (each new tick).
+        void TrimWeatherHistory()
+        {
+            strikeHistory.RemoveAll(s => s.tick <= Tick - HistoryTicks);
+            meteorHistory.RemoveAll(m => m.tick <= Tick - HistoryTicks);
+        }
+
         /// <summary>Meteors that appeared this tick, for a view to bring down: where, and the tick they land on.</summary>
         public IReadOnlyList<(int x, int y, int lands)> NewMeteors => newMeteors;
 
@@ -91,6 +117,7 @@ namespace Chem
             var m = (x, y, Tick + Rules.Sim.Weather.MeteorFallTicks);
             falling.Add(m);
             newMeteors.Add(m);
+            meteorHistory.Add((m.x, m.y, m.Item3, Tick));
         }
 
         // Meteors whose tick has come land as the Meteor spell, in the order they appeared; one that
@@ -213,6 +240,7 @@ namespace Chem
         {
             int x = (int)(Rand() * W), y = (int)(Rand() * H);
             strikes.Add((x, y));
+            strikeHistory.Add((x, y, Tick));
             AddLog("Lightning strikes", LogKind.Notable);
             Apply(x, y, "lightning", 2, -1, false);
         }

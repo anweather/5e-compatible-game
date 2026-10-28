@@ -82,6 +82,7 @@ namespace Chem
             Tick++;
             logged.Clear();
             strikes.Clear();
+            TrimWeatherHistory();
             EndSetWeather();
             Weather = SkyNow();
             tickRows = Spans;
