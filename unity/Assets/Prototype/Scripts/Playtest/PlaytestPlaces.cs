@@ -20,14 +20,33 @@ public static class PlaytestPlaces
         Drawn(places, "waterfall", Object.FindAnyObjectByType<WaterfallFx>());
         var bridge = GameObject.Find("Bridge");
         if (bridge != null) places.Add(("bridge", bridge.transform.position));
-        Drawn(places, "sea", Ocean.Instance);
-        // Put each on the ground (a landmark's own point may be up a pole or under the water).
-        for (int i = 0; i < places.Count; i++)
+        // The sea: a few metres out from the shore nearest the valley. Its drawing reaches the
+        // horizon, so the middle of what it draws is kilometres off the world.
+        var ocean = Ocean.Instance;
+        if (ocean != null)
+        {
+            var shore = ocean.shoreOrigin + ocean.seaward.normalized * SeaWade;
+            places.Add(("sea", new Vector3(shore.x, 0f, shore.y)));
+        }
+        // Put each on the ground (a landmark's own point may be up a pole or under the water),
+        // and leave out any that isn't on the world.
+        for (int i = places.Count - 1; i >= 0; i--)
         {
             var (name, at) = places[i];
-            places[i] = (name, new Vector3(at.x, grid.GroundAt(at), at.z));
+            if (InWorld(grid, at)) places[i] = (name, new Vector3(at.x, grid.GroundAt(at), at.z));
+            else places.RemoveAt(i);
         }
         return places;
+    }
+
+    /// <summary>Metres from the shore into the sea that "the sea" is: wading depth.</summary>
+    const float SeaWade = 8f;
+
+    /// <summary>Whether a point is over the world's cells (the bot never sends the wizard anywhere else).</summary>
+    public static bool InWorld(ChemGrid grid, Vector3 p)
+    {
+        var cell = grid.CellAt(p);
+        return grid.World.InBounds(cell.x, cell.y);
     }
 
     static void Add(List<(string, Vector3)> places, string name, Component part)

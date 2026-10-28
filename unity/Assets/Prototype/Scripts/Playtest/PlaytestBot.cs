@@ -189,6 +189,7 @@ public class PlaytestBot : MonoBehaviour
         if (!running) return;
         frame++;
         player.Frame = frame;
+        player.HoldLook();
         WatchWizard();
         if (frame % ReplayCheck.SyncEvery == 0)
         {
@@ -205,15 +206,9 @@ public class PlaytestBot : MonoBehaviour
 
     string Here => PlaytestPlaces.Near(places, grid, wizard.transform.position);
 
-    // Between 20:00 and 06:00 on the world clock a dark picture is right.
-    bool Night
-    {
-        get
-        {
-            long minute = grid.World.Minutes % (24 * 60);
-            return minute < 6 * 60 || minute >= 20 * 60;
-        }
-    }
+    // A dark picture is right whenever the sky isn't bright: at night, and at dawn and dusk
+    // (World.Daylight, sim.json day), which Hasten Time often runs the clock into.
+    bool Night => grid.World.Daylight != Chem.LightLevel.Bright;
 
     void WatchWizard()
     {
@@ -302,7 +297,7 @@ public class PlaytestBot : MonoBehaviour
 
         string file = Path.Combine("shots", $"{frame:D6}-{label}.jpg");
         File.WriteAllBytes(Path.Combine(outDir, file), tex.EncodeToJPG(80));
-        Trace("shot", file);
+        Trace(ReplayCheck.Shot, file);
         foreach (var c in ImageCheck.Pixels(frame, tex.GetRawTextureData(), Here, Night))
         {
             c.Screenshot = file;
