@@ -52,7 +52,7 @@ for arg in "$@"; do
   esac
 done
 if [ $mac = 0 ] && [ $win = 0 ]; then echo "--windows-only and --mac-only together leave nothing to ship" >&2; exit 2; fi
-platforms="$([ $mac = 1 ] && echo macOS)$([ $mac = 1 ] && [ $win = 1 ] && echo " and ")$([ $win = 1 ] && echo Windows)"
+case "$mac$win" in 11) platforms="macOS and Windows" ;; 10) platforms=macOS ;; *) platforms=Windows ;; esac
 
 if [ $test = 1 ]; then
   # Its own app id too: test installs get their own install folder and update cache,
