@@ -1,9 +1,22 @@
 {
   "drops": [
     {
-      "when": "27 Oct 2026 · dev",
-      "title": "Today on dev",
-      "intro": "Features merged into dev after alpha 0.1.4.",
+      "when": "28 Oct 2026 · dev, for 0.1.6",
+      "title": "Coming in 0.1.6",
+      "intro": "Merged into dev since alpha 0.1.5 shipped.",
+      "clips": [
+        { "area": "Night", "lane": "gameplay", "title": "Night falls", "length": "0:21", "commit": "828b0a6",
+          "video": "night.mp4", "poster": "night.jpg",
+          "summary": "From afternoon through dusk to night over Hollowmere: the windows and door lights come on as the light fails, fireflies come out by the hour, and the stars fill the sky." },
+        { "area": "Weather", "lane": "gameplay", "title": "Rain wets the ground", "commit": "89cf485",
+          "before": "rain-wet-before.jpg", "after": "rain-wet-after.jpg",
+          "summary": "Rain now darkens the valley's ground and makes it shine. It soaks in within seconds, and dries over a minute and a half after the rain stops." }
+      ]
+    },
+    {
+      "when": "27 Oct 2026 · alpha 0.1.5",
+      "title": "Shipped in 0.1.5",
+      "intro": "Features merged into dev after alpha 0.1.4, released as alpha 0.1.5.",
       "clips": [
         { "area": "World life", "lane": "gameplay", "title": "Villagers go about their day", "length": "0:24", "commit": "4e74992",
           "video": "villagers.mp4", "poster": "villagers.jpg",

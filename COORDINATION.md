@@ -249,7 +249,25 @@ The coordinator approves each change and schedules them one at a time.
 10. Gameplay: ~~`static-resets`~~ `46abc35`; ~~`villagers`~~ `4e74992` (on the reel); `net-reset-view` (after the online run); `ground-perf` (perf numbers need a solo slot); `showcase-fire` (the Mac is verifying it).
 11. Build: `perf-pass` (cheap SSAO and soft Medium, `49bd690`) after PC-5 on a solo PC.
 
-## Release 0.1.5 (J-019; today)
+## Release 0.1.5: SHIPPED
+
+Published 2026-10-28 02:23 UTC as a pre-release:
+https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.5
+(the tag is at `4a9af50`).
+- Size: Windows 442 → 134 MB, Mac 458 → 153 MB.
+- The in-place update 0.1.2 → 0.1.5 was checked on the Mac.
+- Still to check: the Windows in-place update with QuickExit (PC-R4: the
+  test channel's 0.1.104 → 0.1.105).
+
+Finding (Build, 2026-10-27), for Gameplay, low priority: on the FIRST online
+probe after an Editor start (with either domain-reload setting),
+prop_moved_matches and player_knockback_matches can fail. After a client's
+Thunderwave, the crate was 63 cm off and the host wizard's copy about 16 m off
+on the client. It's possibly a first-frame or physics warm-up issue on the
+virtual player. Real, but not caused by J-023.
+
+Next release: 0.1.6, within about 2 days (J-019). The PC builds Windows and
+the Mac builds macOS (J-025).
 
 FREEZE LIFTED 19:16. The RC (main `4a9af50`, the draft alpha-0.1.5) is built and fully tested; publishing waits on Andrew's approval on the Mac. dev is open for 0.1.6, one merge at a time on the coordinator's go.
 
