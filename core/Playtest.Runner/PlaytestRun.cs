@@ -53,17 +53,9 @@ namespace Playtest.Runner
 
             var started = DateTime.Now;
             var clock = Stopwatch.StartNew();
-            // The player's own console output (its boot settings) is read and dropped: it logs to Player.log.
-            using var p = Process.Start(new ProcessStartInfo(exe, Arguments(paths, outDir, seconds, options))
-            {
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            });
-            p.OutputDataReceived += (_, _) => { };
-            p.ErrorDataReceived += (_, _) => { };
-            p.BeginOutputReadLine();
-            p.BeginErrorReadLine();
+            // Started without taking the front (Launch); it logs to Player.log.
+            string args = Arguments(paths, outDir, seconds, options) + " -playtest-hand-focus " + Launch.FrontWindow().ToString(CultureInfo.InvariantCulture);
+            using var p = Launch.Start(exe, args);
             var (hung, muted) = Watch(p, Path.Combine(outDir, "heartbeat.txt"), clock, Math.Max(300, seconds * 3));
             System.Threading.Thread.Sleep(2000); // let Windows write any crash report
             int took = (int)clock.Elapsed.TotalSeconds;

@@ -42,7 +42,7 @@ namespace Playtest
         public List<Candidate> Candidates { get; set; } = new List<Candidate>();
         public Dictionary<string, int> Counts { get; set; } = new Dictionary<string, int>();
         public Dictionary<string, float> Metrics { get; set; } = new Dictionary<string, float>();
-        /// <summary>How it ended: "done", "until-frame", "error".</summary>
+        /// <summary>How it ended: "done", "until-frame", "error", "bot-lost-wizard".</summary>
         public string Ended { get; set; }
 
         public string ToJson() => JsonConvert.SerializeObject(this, Formatting.Indented);
