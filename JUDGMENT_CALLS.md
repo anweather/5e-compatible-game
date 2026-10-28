@@ -46,7 +46,7 @@ Each entry has:
 - **J-034, generated areas from Punchy's biomes:** NOT YET. Paper cuts
   first. Build's plan stays on file: B, baked areas, about 2–4 days; A,
   runtime generation in the core, about 10–15 days, as streaming part 3.
-- **J-035, animals:** port ALL THREE, in Gameplay's lane, one small branch
+- **J-035, animals:** BACKLOGGED, not started (Andrew: "backlog these"; docs/BACKLOG.md 17–19). When picked up, port ALL THREE, in Gameplay's lane, one small branch
   each, tested in the valley each time:
   1. cornered and leashed animals mill about (upstream 7ee4511);
   2. per-animal variety (traits, StyleGroup hairstyles and hair colour);
