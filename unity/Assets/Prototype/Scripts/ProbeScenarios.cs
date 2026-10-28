@@ -166,6 +166,10 @@ public static class ProbeScenarios
             "The night's view (Nightfall, World.Night): Hollowmere's square at 16:00, then dusk (18:30) and night (21:30), clear, the wizard out on open ground. " +
             "Checks: the rules' light bright, dim and dark in turn, the village's door lamps off by day and lit from dusk with the windows glowing, the stars " +
             "out at night, the fireflies out by the hour, the wizard told how to see in the dark, no console errors."),
+        new Entry("cloth", typeof(ClothProbe), 90f,
+            "The wizard's robe as cloth (RobeCloth): walking and running across the yard, a dodge roll, sitting on a bench, lying on a lounger and swimming " +
+            "in the lake, each filmed from the side (WizardOutfit.RigidRobe set first gives the old rigid robe, for comparing). Checks: the robe is cloth, " +
+            "it's stepping, and it holds together (no particle over 1.5 m from the hips), no console errors."),
         new Entry("swell", typeof(SwellProbe), 30f,
             "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
             "with the swell under it (Ocean.WaveOffset, the waves the shader draws): over half the swell's height, in step with it, no console errors."),

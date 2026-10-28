@@ -172,15 +172,57 @@ public class WizardOutfit : MonoBehaviour
         Hang(kit, chest, "bodice");
     }
 
+    /// <summary>
+    /// Off: the skirt is the old rigid shell instead of cloth (RobeCloth). For before-and-after
+    /// comparisons only (the cloth probe); not reset between Play sessions on purpose.
+    /// </summary>
+    public static bool RigidRobe;
+
+    // The cloth's rings: 14 round (a little finer than the rigid parts), from the waist to the hem.
+    const int ClothSides = 14;
+
     void Skirt(MeshKit kit, Transform hips)
     {
         if (hips == null) return;
+        if (!RigidRobe)
+        {
+            ClothSkirt();
+            return;
+        }
         float hem = -Look.RobeLength;
         Tube(kit, new[] { new Vector3(0f, 0.10f, 0f), new Vector3(0f, -0.10f, 0f), new Vector3(0f, hem * 0.6f, 0f), new Vector3(0f, hem, 0f) },
             new[] { 0.165f, 0.19f, Mathf.Lerp(0.19f, Look.RobeFlare, 0.6f), Look.RobeFlare }, Look.Robe, Ends.None, inside: true);
         // A trim band at the hem.
         Tube(kit, new[] { new Vector3(0f, hem + 0.05f, 0f), new Vector3(0f, hem, 0f) }, new[] { Look.RobeFlare * 0.985f + 0.004f, Look.RobeFlare + 0.006f }, Look.Trim, Ends.None, inside: true);
         Hang(kit, hips, "robe");
+    }
+
+    // The skirt as cloth: rings from the waist (two pinned to the hips) down to a trim band at the
+    // hem, flaring as the rigid robe does.
+    void ClothSkirt()
+    {
+        float hem = -Look.RobeLength;
+        var heights = new List<float> { 0.10f, -0.10f };
+        var radii = new List<float> { 0.165f, 0.19f };
+        const int Middle = 4;
+        float trimTop = hem + 0.05f;
+        for (int i = 1; i <= Middle; i++)
+        {
+            float t = i / (float)(Middle + 1);
+            heights.Add(Mathf.Lerp(-0.10f, trimTop, t));
+            radii.Add(Mathf.Lerp(0.19f, Look.RobeFlare, Mathf.Sqrt(t)));
+        }
+        heights.Add(trimTop);
+        radii.Add(Look.RobeFlare * 0.985f);
+        heights.Add(hem);
+        radii.Add(Look.RobeFlare);
+
+        var go = new GameObject("Outfit robe");
+        go.transform.SetParent(transform, false);
+        go.AddComponent<MeshFilter>();
+        go.AddComponent<MeshRenderer>().sharedMaterial = material;
+        go.AddComponent<RobeCloth>().Init(animator, heights.ToArray(), radii.ToArray(), ClothSides, Look.Robe, Look.Trim);
+        parts.Add(go);
     }
 
     // A sleeve down the upper arm, then a bell from the elbow, open at the wrist.
