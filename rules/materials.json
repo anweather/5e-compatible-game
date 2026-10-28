@@ -31,7 +31,8 @@
     "thatch":    { "name": "Thatch roof", "tags": ["roof"], "burn": { "catch": 0.6, "fuel": 18, "heat": 2.5, "leaves": "rubble", "look": "flare" } },
     "shingle":   { "name": "Shingle roof", "tags": ["roof"], "burn": { "catch": 0.15, "fuel": 120, "leaves": "rubble", "look": "wood" } },
     "slate":     { "name": "Slate roof", "tags": ["roof"] },
-    "timber":    { "name": "Timber", "tags": [], "burn": { "catch": 0.15, "fuel": 140, "look": "wood" } }
+    "glass":     { "name": "Glass", "tags": [], "shatter": {} },
+    "timber":    { "name": "Timber", "tags": [], "burn": { "catch": 0.15, "fuel": 140, "look": "wood" }, "break": {} }
   },
   "covers": {
     "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" } },
