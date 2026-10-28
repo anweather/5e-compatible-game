@@ -177,6 +177,13 @@ public class SpellCaster : MonoBehaviour
         var online = Net;
         if (online != null && online.Online)
         {
+            // Just joined and still replaying the game so far: the world on this screen is behind
+            // the host's, so aiming at it would cast at what isn't there any more. A moment's wait.
+            if (!online.CaughtUp)
+            {
+                EventLog.Add("Still catching up with the game: cast again in a moment", "Still catching up");
+                return;
+            }
             int delay = Mathf.CeilToInt(FlightSeconds(cast) * grid.World.Rules.Sim.TicksPerSecond);
             online.RequestCast(cast, delay, transform.position);
             return;
