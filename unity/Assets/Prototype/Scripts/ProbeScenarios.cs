@@ -159,6 +159,9 @@ public static class ProbeScenarios
             "the folk come out (half or more), walk about between the doors, the well and the benches, someone sits on a bench within 40 s, they run from " +
             "the house nearest the square when a Fire Bolt sets it alight, " +
             "and at dusk they all go indoors within 45 s and stay in, no console errors."),
+        new Entry("wet", typeof(WetProbe), 75f,
+            "Rain wets the ground (WetGround, J-024): the meadow north of the yard at noon, clear, then heavy rain, then clear. Checks: dry in the sun, " +
+            "soaked (wetness over 0.8) after 14 s of rain, still drying 20 s after it stops, with a dry and a wet shot from the same place, no console errors."),
         new Entry("swell", typeof(SwellProbe), 30f,
             "The wizard dropped into the sea 30 m out from the shore, floating for ten seconds. Checks: it swims, and it rises and falls " +
             "with the swell under it (Ocean.WaveOffset, the waves the shader draws): over half the swell's height, in step with it, no console errors."),
