@@ -62,7 +62,8 @@ public class SkyProbe : ProbeScenario
         yield return Switch(At(13f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " + Only("storm") +
             ", 'storm': { 'strikeEvery': 3, 'strikeChance': 1 } }");
         bool boltSeen = false;
-        for (float t = 0f; t < 8f && !boltSeen; t += Time.deltaTime)
+        // Up to 20 s (8 s was too short about half the time: the storm can take a while to come in).
+        for (float t = 0f; t < 20f && !boltSeen; t += Time.deltaTime)
         {
             boltSeen = GameObject.Find("Lightning bolt") != null;
             yield return null;
