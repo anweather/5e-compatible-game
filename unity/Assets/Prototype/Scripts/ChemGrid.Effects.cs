@@ -48,6 +48,12 @@ public partial class ChemGrid
         v.fireLevel = c.Fire;
     }
 
+    // Smoke over a fire takes its look: darker over wood, black over oil.
+    void LookOfSmoke(View v, Cell c, string kind)
+    {
+        if (v.gas != null && kind == GasIds.Smoke) FireLook.SmokeOf(v.gas, c.Fire > 0 ? FireLookOf(c) : null);
+    }
+
     /// <summary>How a burning cell's fire looks (materials.json "fireLook"): its burning cover's, else its terrain's.</summary>
     string FireLookOf(Cell c)
     {
@@ -238,9 +244,11 @@ public partial class ChemGrid
         bool waiting = kind != null && prefab != null && v.gas == null;
         if (kind != v.gasKind || (kind != null && prefab == null) || waiting) SwapGasEffect(v, kind, prefab, center, ground);
         if (kind == null) { Hide(v.gas); return; }
-        // Smoke over a fire takes its look: darker over wood, black over oil.
-        if (prefab != null && v.gas != null && kind == GasIds.Smoke) FireLook.SmokeOf(v.gas, c.Fire > 0 ? FireLookOf(c) : null);
-        if (prefab != null) return;
+        if (prefab != null)
+        {
+            LookOfSmoke(v, c, kind);
+            return;
+        }
         FallbackGas(v, c, kind, center, ground);
     }
 
