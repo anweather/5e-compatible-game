@@ -194,6 +194,9 @@ namespace Chem
 
         /// <summary>Terrain elevation plus raised or dug height, in water units, so it compares directly with Cell.Water.</summary>
         public int ElevationUnits(Cell c) => (TerrainOf(c).Elevation + c.Height) * Rules.Sim.WaterUnitsPerStep;
+        /// <summary>Whether the cell's cover burns (oil, grease, thorns).</summary>
+        public bool CoverBurns(Cell c) => CoverOf(c)?.Burns == true;
+
         public bool CoverHasTag(Cell c, string tag) =>
             c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) && cv.Has(tag);
         /// <summary>The cell's cover's definition, or null without one (or one the rules no longer know).</summary>
@@ -205,13 +208,13 @@ namespace Chem
         /// </summary>
         public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
-        public bool IsConductive(Cell c) => (c.Water > 0 && !c.Frozen) || HasTag(c, "conductive");
+        public bool IsConductive(Cell c) => (c.Water > 0 && !c.Frozen) || TerrainOf(c).Conducts;
 
         public double Flammability(Cell c)
         {
-            if (CoverHasTag(c, "flammable")) return Rules.Covers[c.Cover].Flammability;
+            if (CoverBurns(c)) return Rules.Covers[c.Cover].Flammability;
             var t = TerrainOf(c);
-            return t.Has("flammable") ? t.Flammability : 0;
+            return t.Burns ? t.Flammability : 0;
         }
 
         // ---------- randomness ----------
@@ -283,7 +286,7 @@ namespace Chem
                 c.Cover = null;
             }
             c.T = terrainId;
-            if (!def.Has("flammable") && c.Cover == null) c.Fire = 0;
+            if (!def.Burns && c.Cover == null) c.Fire = 0;
         }
 
         /// <summary>Pours water units onto a square (not onto blocking terrain), capped at maxLevel.</summary>

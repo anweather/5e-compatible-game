@@ -58,7 +58,7 @@ public partial class ChemGrid
     string FireLookOf(Cell c)
     {
         var cover = World.CoverOf(c);
-        if (cover != null && cover.Has("flammable")) return cover.FireLook;
+        if (cover != null && cover.Burns) return cover.FireLook;
         return World.TerrainOf(c).FireLook;
     }
 

@@ -3,7 +3,7 @@
 import { RULES, entityCondHolds, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
 import {
   type Cell, type Dir, type Entity, type World,
-  DX, DY, addGas, cellAt, coverHasTag, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
+  DX, DY, addGas, burns, cellAt, coverBurns, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
   logOnce, neighbours, rand, terrainDef,
 } from "./world.ts";
 
@@ -109,7 +109,7 @@ export function applyElement(w: World, x: number, y: number, element: string, ct
  */
 function materialBurn(w: World, def: EntityDef, status: string, ticks: number): number {
   const m = def.material ? RULES.terrain[def.material] : undefined;
-  if (status !== "burning" || !m || !m.tags.includes("flammable")) return ticks;
+  if (status !== "burning" || !m || !burns(m)) return ticks;
   if (rand(w) >= (m.flammability ?? 0)) return 0;
   return m.fuel ?? ticks;
 }
@@ -141,7 +141,7 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
 
 export function ignite(c: Cell, intensity: number | "cover"): boolean {
   if (intensity === "cover") {
-    if (!coverHasTag(c, "flammable")) return false;
+    if (!coverBurns(c)) return false;
     const cv = RULES.covers[c.cover!]!;
     const n = cv.burnIntensity ?? 2;
     if (c.fire >= n) return false;
@@ -150,9 +150,9 @@ export function ignite(c: Cell, intensity: number | "cover"): boolean {
     return true;
   }
   const t = terrainDef(c);
-  if (!t.tags.includes("flammable") && !coverHasTag(c, "flammable")) return false;
+  if (!burns(t) && !coverBurns(c)) return false;
   if (c.fire >= intensity) return false;
-  if (c.fire === 0) c.fuel = coverHasTag(c, "flammable") ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5);
+  if (c.fire === 0) c.fuel = coverBurns(c) ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5);
   c.fire = intensity;
   return true;
 }
@@ -188,7 +188,7 @@ function conduct(w: World, x: number, y: number, charge: number): boolean {
     const [cx, cy] = queue.shift()!;
     const c = cellAt(w, cx, cy)!;
     c.charge = Math.max(c.charge, charge);
-    if (coverHasTag(c, "flammable")) ignite(c, "cover");
+    if (coverBurns(c)) ignite(c, "cover");
     count++;
     for (const [nx, ny] of neighbours(w, cx, cy)) {
       const k = idx(w, nx, ny);

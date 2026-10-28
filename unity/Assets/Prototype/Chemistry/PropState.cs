@@ -26,12 +26,12 @@ namespace Chem
     public sealed class PropState
     {
         /// <summary>How long it burns once alight: its material's fuel (a wooden crate burns as wood does), else BurnTicks.</summary>
-        public int BurnTime => Def.MaterialDef?.Has("flammable") == true ? Def.MaterialDef.Fuel ?? BurnTicks : BurnTicks;
+        public int BurnTime => Def.MaterialDef?.Burns == true ? Def.MaterialDef.Fuel ?? BurnTicks : BurnTicks;
 
         // How often it loses a hit point burning: one of a flammable material burns its fuel down over its hit
         // points (a timber crate smoulders for a while), never faster than the sim's burn damage.
         int DamageEvery(int burnEvery) =>
-            Def.MaterialDef?.Has("flammable") == true ? Math.Max(burnEvery, BurnTime / Math.Max(1, Def.Hp)) : burnEvery;
+            Def.MaterialDef?.Burns == true ? Math.Max(burnEvery, BurnTime / Math.Max(1, Def.Hp)) : burnEvery;
 
         // Whether this tick in fire sets it going: at once without a material, else once it has stood in
         // fire for 1/flammability ticks running (counted from the tick it first stood in it, so a prop needs
@@ -39,7 +39,7 @@ namespace Chem
         bool Catches(int tick)
         {
             var m = Def.MaterialDef;
-            if (Burning || m == null || !m.Has("flammable") || m.Flammability <= 0) return true;
+            if (Burning || m == null || !m.Burns || m.Flammability <= 0) return true;
             if (heatedSince < 0) heatedSince = tick;
             return (tick - heatedSince + 1) * m.Flammability >= 1;
         }
