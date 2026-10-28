@@ -36,6 +36,8 @@ namespace Playtest
         /// <summary>No Unity Editor was open (performance findings count only from quiet runs).</summary>
         public bool Quiet { get; set; }
         public List<string> Goals { get; set; } = new List<string>();
+        /// <summary>What had been done lately when the run began (coverage.json then): a replay picks its goals against this, not today's.</summary>
+        public Dictionary<string, int> Coverage { get; set; } = new Dictionary<string, int>();
         public List<TraceStep> Trace { get; set; } = new List<TraceStep>();
         public List<Candidate> Candidates { get; set; } = new List<Candidate>();
         public Dictionary<string, int> Counts { get; set; } = new Dictionary<string, int>();
@@ -52,6 +54,25 @@ namespace Playtest
     {
         /// <summary>Frames either side of the original a replayed candidate may land and still count.</summary>
         public const int Slack = 30;
+
+        /// <summary>
+        /// The trace step the bot writes every SyncEvery frames: the world tick and where the wizard
+        /// is. Two runs of one seed should match on every one, so the first that differs is where
+        /// they drifted apart.
+        /// </summary>
+        public const string Sync = "sync";
+        public const int SyncEvery = 30;
+
+        /// <summary>A sync step's detail: the chemistry tick and the wizard to the centimetre.</summary>
+        public static string SyncDetail(long tick, float x, float y, float z) =>
+            string.Format(CultureInfo.InvariantCulture, "tick {0} at {1:F2},{2:F2},{3:F2}", tick, x, y, z);
+
+        /// <summary>
+        /// The seed for UnityEngine.Random in a playtest run, from the run's seed: the game's own
+        /// random touches (a thrown item's spin, fire spreading between props, dice for damage) then
+        /// come out the same in a replay.
+        /// </summary>
+        public static int UnitySeed(ulong seed) => unchecked((int)(seed ^ (seed >> 32)));
 
         /// <summary>
         /// The first trace step where a replay did something else (a different action or detail, or
@@ -87,7 +108,8 @@ namespace Playtest
             if (run == null) yield break;
             var before = run.Trace.Where(s => s.Frame <= upToFrame).ToList();
             foreach (var g in before.Where(s => s.Action == "goal")) yield return Seconds(g.Frame) + " " + g.Detail;
-            foreach (var s in before.Where(s => s.Action != "goal" && s.Action != "shot").Skip(Math.Max(0, before.Count(s => s.Action != "goal" && s.Action != "shot") - lastActions)))
+            var actions = before.Where(s => s.Action != "goal" && s.Action != "shot" && s.Action != Sync).ToList();
+            foreach (var s in actions.Skip(Math.Max(0, actions.Count - lastActions)))
                 yield return Seconds(s.Frame) + "   then " + s.Action + " " + s.Detail;
         }
 

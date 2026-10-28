@@ -95,5 +95,30 @@ namespace Chem.Tests
             Assert.That(Program.IntOption(o, "seconds", 480), Is.EqualTo(90));
             Assert.That(Program.IntOption(o, "until-frame", 7), Is.EqualTo(7));
         }
+
+        static RunReport Synced(params string[] syncs)
+        {
+            var r = new RunReport { Seed = 5, Frames = syncs.Length * 30 };
+            r.Trace.Add(new TraceStep { Frame = 1, Action = "goal", Detail = "go to the tower" });
+            for (int i = 0; i < syncs.Length; i++) r.Trace.Add(new TraceStep { Frame = (i + 1) * 30, Action = ReplayCheck.Sync, Detail = syncs[i] });
+            return r;
+        }
+
+        [Test]
+        public void CompareSaysWhereTwoRunsParted()
+        {
+            var a = Synced("tick 3 at 1.00,0.00,1.00", "tick 6 at 2.00,0.00,2.00", "tick 9 at 3.00,0.00,3.00");
+            var (same, text) = Compare.Describe(a, Synced("tick 3 at 1.00,0.00,1.00", "tick 6 at 2.00,0.00,2.00", "tick 9 at 3.00,0.00,3.00"));
+            Assert.That(same, Is.True);
+            Assert.That(text, Does.Contain("all 90 frames").And.Contain("3 sync steps"));
+
+            (same, text) = Compare.Describe(a, Synced("tick 3 at 1.00,0.00,1.00", "tick 7 at 2.00,0.00,2.00", "tick 9 at 3.00,0.00,3.00"));
+            Assert.That(same, Is.False);
+            Assert.That(text, Does.StartWith("parted at frame 60 (2.0 s)").And.Contain("tick 7").And.Contain("while: go to the tower"));
+
+            var other = Synced("tick 3 at 1.00,0.00,1.00");
+            other.Seed = 6;
+            Assert.That(Compare.Describe(a, other).same, Is.False);
+        }
     }
 }
