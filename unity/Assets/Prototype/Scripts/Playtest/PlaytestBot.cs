@@ -39,6 +39,11 @@ public class PlaytestBot : MonoBehaviour
     float seconds = 480f;
     int untilFrame = int.MaxValue;
     bool offscreen, mute;
+    // The window in front when the runner started this player (-playtest-hand-focus), and how often
+    // the front was handed back to it.
+    long handFocus;
+    int handedBack;
+    const float HandFocusSeconds = 20f;
     Dictionary<string, int> coverage = new();
 
     // The run.
@@ -145,6 +150,7 @@ public class PlaytestBot : MonoBehaviour
         if (original != null) coverage = original.Coverage ?? new();
         run.Coverage = new Dictionary<string, int>(coverage);
         offscreen = args.Contains("-playtest-offscreen");
+        long.TryParse(Arg("-playtest-hand-focus"), NumberStyles.Integer, CultureInfo.InvariantCulture, out handFocus);
         mute = args.Contains("-playtest-mute");
         outDir = Arg("-playtest-out") ?? Path.Combine(Application.persistentDataPath, "playtest", run.RunId);
         dice = new PlaytestRandom(run.Seed);
@@ -226,6 +232,12 @@ public class PlaytestBot : MonoBehaviour
             if (change == InputDeviceChange.Added && (device is Keyboard || device is Mouse || device is Gamepad || device is Joystick))
                 InputSystem.DisableDevice(device);
         };
+    }
+
+    // From the first frame, before the run starts: Unity can raise its window as it starts up.
+    void Update()
+    {
+        if (handFocus != 0 && Time.realtimeSinceStartup < HandFocusSeconds && PlaytestWindow.HandBack(handFocus)) handedBack++;
     }
 
     void LateUpdate()
@@ -376,6 +388,7 @@ public class PlaytestBot : MonoBehaviour
         run.Metrics["frame_ms_p95"] = frameWatch.Percentile(0.95);
         run.Metrics["frame_ms_worst"] = frameWatch.Times.Count == 0 ? 0f : frameWatch.Times.Max();
         run.Metrics["audio_peak"] = tap != null ? tap.Peak : -1f;
+        run.Metrics["focus_handed_back"] = handedBack;
         run.Metrics["memory_mb"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024f * 1024f);
         File.WriteAllText(Path.Combine(outDir, "run.json"), run.ToJson());
         Debug.Log($"PLAYTEST: {ended}; {frame} frames, {run.Goals.Count} goals, {run.Candidates.Count} candidates; wrote {outDir}");
