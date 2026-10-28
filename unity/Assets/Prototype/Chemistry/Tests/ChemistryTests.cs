@@ -497,15 +497,15 @@ namespace Chem.Tests
                 }
                 return lit;
             }
-            var cool = R.WithMods(new[] { ModPatch.Parse("{ \"terrain\": { \"thatch\": { \"name\": \"Thatch roof\", \"tags\": [\"roof\", \"flammable\"], \"flammability\": 0.9, \"fuel\": 4, \"heat\": 1, \"burnsTo\": \"rubble\" } } }") });
+            var cool = R.WithMods(new[] { ModPatch.Parse("{ \"terrain\": { \"thatch\": { \"name\": \"Thatch roof\", \"tags\": [\"roof\", \"flammable\"], \"flammability\": 0.6, \"fuel\": 18, \"heat\": 1, \"burnsTo\": \"rubble\" } } }") });
             int hot = Lit(R), plain = Lit(cool);
             Assert.That(hot, Is.GreaterThan(plain), $"hot thatch lit the logs {hot} times in 40, at heat 1 {plain}");
-            Assert.That($"{hot} {plain}", Is.EqualTo("15 2"), "the same in the sandbox");
+            Assert.That($"{hot} {plain}", Is.EqualTo("32 23"), "the same in the sandbox");
 
             // The first of those runs where the logs caught: when the thatch was out, the logs lit, and they burnt out.
             var (thatchOut, logsLit, logsOut) = (-1, -1, -1);
             for (uint seed = 1; seed <= 40 && logsLit < 0; seed++) (thatchOut, logsLit, logsOut) = BurnTimes(seed);
-            Assert.That(thatchOut, Is.InRange(1, 8), "thatch burns out in a few ticks");
+            Assert.That(thatchOut, Is.InRange(12, 24), "thatch burns a few seconds, then is out");
             Assert.That(logsLit, Is.GreaterThan(0), "the logs catch from it");
             Assert.That(logsOut - logsLit, Is.GreaterThanOrEqualTo(100), $"and burn long: lit at {logsLit}, out at {logsOut}");
         }

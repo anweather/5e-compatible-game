@@ -349,5 +349,5 @@ test("thatch's heat lights the log wall beside it", () => {
   };
   const hot = lit(2.5), plain = lit(1);
   assert.ok(hot > plain, `hot ${hot}, plain ${plain}`);
-  assert.equal(`${hot} ${plain}`, "15 2"); // the same in the C# core
+  assert.equal(`${hot} ${plain}`, "32 23"); // the same in the C# core
 });

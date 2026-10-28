@@ -154,6 +154,10 @@ public static class ProbeScenarios
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
             "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+        new Entry("firelooks", typeof(FireLooksProbe), 150f,
+            "Fire by material: a row of thatch, a row of log wall and a strip of oil in the yard set alight, a picture of them burning, then a crate " +
+            "stood in fire. Numbers: how long a thatch cell and a log wall cell burn, when the crate catches and is gone. Checks: thatch burns 2 to 6 s, " +
+            "wood over three times as long, the crate catches."),
         new Entry("thatch", typeof(ThatchProbe), 150f,
             "Thatch and wood burn differently: a Fire Bolt on a wall of a thatch-roofed timber house. Numbers: how soon the thatch catches, how long " +
             "it burns, how long the log walls burn. Checks: the thatch catches and burns out within 3 s each, it lights more of the walls, the wood burns over 20 s."),

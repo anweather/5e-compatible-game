@@ -173,11 +173,20 @@ namespace Chem
                 if (t["waterTo"] != null && Text(t["waterTo"]) != "ice" && Text(t["waterTo"]) != "steam") Errors.Add($"terrain {id}: waterTo must be ice or steam");
             }
 
+            static readonly string[] FireLooks = { "flare", "wood", "oil" };
+
+            // How a terrain's or cover's fire looks: one the view knows.
+            void FireLookOf(string what, JToken t)
+            {
+                if (t["fireLook"] != null && !FireLooks.Contains(Text(t["fireLook"]))) Errors.Add($"{what}: fireLook must be flare, wood or oil");
+            }
+
             void TerrainRefs(string id, JToken t)
             {
                 foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
                 WaterOn(id, t);
+                FireLookOf($"terrain {id}", t);
                 if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");
                 else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");
@@ -264,6 +273,7 @@ namespace Chem
                 foreach (var p in covers.Properties())
                 {
                     Tags(p.Value["tags"], $"cover {p.Name}");
+                    FireLookOf($"cover {p.Name}", p.Value);
                     Number(p.Value["flammability"], $"cover {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"cover {p.Name}: fuel", 0);
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);

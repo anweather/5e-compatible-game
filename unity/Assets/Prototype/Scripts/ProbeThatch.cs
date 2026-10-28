@@ -35,7 +35,7 @@ public class ThatchProbe : ProbeScenario
         Metric("wood_burn_s", allOut < 0 ? -1 : allOut - cast);
         Metric("walls_alight_at_most", mostAlight);
         Check("thatch_catches_fast", caught >= 0 && caught - cast < 3f, $"the thatch caught {caught - cast:0.0} s after the bolt");
-        Check("thatch_burns_fast", gone >= 0 && gone - caught < 3f, $"and was gone {gone - caught:0.0} s later");
+        Check("thatch_burns_seconds", gone >= 0 && gone - caught >= 2f && gone - caught <= 6f, $"and was gone {gone - caught:0.0} s later");
         Check("wood_burns_long", allOut < 0 || allOut - cast > 20f, allOut < 0 ? "the log walls still burning after 110 s" : $"the log walls burned {allOut - cast:0} s");
         Check("thatch_lights_the_walls", mostAlight > 1, $"{mostAlight} wall cells alight at once");
         yield return Wait(0.3f);
