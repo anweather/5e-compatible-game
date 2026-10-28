@@ -352,7 +352,7 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   cache) builds Windows with ship-update --windows-only and the Mac builds
   macOS → R1 install plus R3 Relay (no bot run: alpha, J-026) → publish on
   Andrew's go. Every other job yields the PC to the release.
-- 2026-10-27 late: 0.1.6 PUBLISHED on Andrew's go (J-033). R1 install and R3
+- 2026-10-28 05:56 UTC: 0.1.6 PUBLISHED on Andrew's go (J-033), https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.6 (the tag is at `18d10c6`). main merged back into dev (`8e9db46`); fix/splash-online on dev (`502d4d8`) for 0.1.7. R1 install and R3
   Relay passed; the only known issue is the splash log error, fixed in
   `fix/splash-online` for 0.1.7. FREEZE LIFTED: paper-cut verification
   resumes (World's Editor batch, then Gameplay's), merges one at a time on
