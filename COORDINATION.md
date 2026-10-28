@@ -388,3 +388,8 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   (RELEASING.md, ship-update.sh) with no extra exploration. PC: World runs
   --windows-only; then Mac: --mac-only into the same draft; then the bot
   runs on the RC; then Andrew publishes.
+- 2026-10-28: RULE (Andrew): every release gets player-facing notes before it
+  is published: what's new, what's fixed, performance, any first-launch
+  notes. The coordinator writes them from the merges since the last release
+  and sets them on the draft; always keep budget for this. 0.1.7's notes
+  were added after publishing.
