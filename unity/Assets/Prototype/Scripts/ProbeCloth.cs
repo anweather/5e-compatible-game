@@ -26,11 +26,13 @@ public class ClothProbe : ProbeScenario
 
         yield return Filmed(WalkFor(20, 10, 3f));
         Shot("walk");
+        yield return Wait(0.2f);
         Place(6, 10);
         input.SprintInput(true);
         yield return Filmed(WalkFor(20, 10, 2.2f));
         input.SprintInput(false);
         Shot("run");
+        yield return Wait(0.2f);
 
         // A dodge roll.
         Place(8, 10);
@@ -40,6 +42,7 @@ public class ClothProbe : ProbeScenario
         if (wizard.TryGetComponent<DodgeRoll>(out var roll)) roll.TryRoll();
         yield return Wait(0.25f);
         Shot("roll");
+        yield return Wait(0.2f);
         yield return Wait(1f);
 
         // A bench, then a lounger.
@@ -54,6 +57,7 @@ public class ClothProbe : ProbeScenario
             Cut(seat.Foot + seat.Facing * V(1.8f, 1.1f, 1.6f), seat.SeatPoint);
             yield return Wait(2.5f);
             Shot(lounge ? "lounger" : "bench");
+            yield return Wait(0.2f);
             sitter.Stand();
             yield return Wait(0.5f);
         }

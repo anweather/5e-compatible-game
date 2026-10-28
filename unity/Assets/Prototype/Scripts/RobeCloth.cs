@@ -32,7 +32,8 @@ public class RobeCloth : MonoBehaviour
     const float Skin = 0.02f, MaxStretch = 1.15f;
     const float SnapDistance = 2f, FarDistance = 25f;
     // The legs and hips it falls round (radii in metres).
-    const float ThighRadius = 0.09f, ShinRadius = 0.07f, HipsRadius = 0.15f;
+    // A little wider than the legs themselves: the cloth's faces sag between its particles.
+    const float ThighRadius = 0.115f, ShinRadius = 0.09f, HipsRadius = 0.15f;
     // The feet among the legs' bones.
     static readonly int[] Feet = { 2, 5 };
 
@@ -186,11 +187,28 @@ public class RobeCloth : MonoBehaviour
         }
     }
 
+    bool seated, lounging;
+
+    // Where a particle is pulled back to: the robe's shape hanging from the hips in the body's upright
+    // frame; lying back on a lounger, the shape the pelvis gives it, so it lies along the body.
+    Vector3 Target(int i) => lounging ? hipsMatrix.MultiplyPoint3x4(rest[i]) : hipsAt + bodyTurn * hang[i];
+
+    // How hard a ring is pulled back: firm near the waist, loose at the hem (so the legs win), and
+    // gently when seated (so it drapes over the lap and down past the knees).
+    float Keep(int ring)
+    {
+        float k = Mathf.Lerp(1.5f, 0.35f, ring / (float)(rings - 1));
+        return seated && !lounging ? k * 0.25f : k;
+    }
+
     void Simulate(float dt)
     {
         ReadBones();
         var accel = Vector3.down * Gravity + Wind();
         float waterY = WaterTop();
+        var seat = sitter != null ? sitter.Seated : null;
+        lounging = seat != null && seat.lounge;
+        seated = seat != null;
         for (int i = 0; i < pos.Length; i++)
         {
             if (Pinned(i))
@@ -202,7 +220,7 @@ public class RobeCloth : MonoBehaviour
             var v = (pos[i] - prev[i]) * (wet ? WaterDamping : Damping);
             prev[i] = pos[i];
             pos[i] += v + (accel + (wet ? Vector3.up * WaterLift : Vector3.zero)) * (dt * dt);
-            pos[i] += (hipsAt + bodyTurn * hang[i] - pos[i]) * ShapeKeep;
+            pos[i] += (Target(i) - pos[i]) * (ShapeKeep * Keep(i / sides));
         }
         float ground = Ground();
         for (int it = 0; it < Iterations; it++)

@@ -12,6 +12,8 @@ using UnityEngine;
 // wizard. The local player's seed is kept in PlayerPrefs ("New look" in the
 // Esc menu draws another); online the owner sends it and every peer dresses
 // that wizard the same (NetWizard).
+// After the poses (SitPose and the rest) and the robe's cloth: the staff and hat are set by pose last.
+[DefaultExecutionOrder(310)]
 [RequireComponent(typeof(Animator))]
 public class WizardOutfit : MonoBehaviour
 {
@@ -82,6 +84,7 @@ public class WizardOutfit : MonoBehaviour
     {
         pending = int.MinValue;
         foreach (var p in parts) Destroy(p);
+        staff = hat = null;
         parts.Clear();
         Look = WizardLook.From(seed);
         if (animator == null || material == null) return;
@@ -89,7 +92,8 @@ public class WizardOutfit : MonoBehaviour
         Hat(kit, Bone(HumanBodyBones.Head));
         Beard(kit, Bone(HumanBodyBones.Head));
         var chest = Bone(HumanBodyBones.Chest);
-        Bodice(kit, chest != null ? chest : Bone(HumanBodyBones.Spine));
+        if (RigidRobe) Bodice(kit, chest != null ? chest : Bone(HumanBodyBones.Spine));
+        else SkinnedBodice();
         Skirt(kit, Bone(HumanBodyBones.Hips));
         Sleeve(kit, HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm, HumanBodyBones.LeftHand);
         Sleeve(kit, HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand);
@@ -97,6 +101,48 @@ public class WizardOutfit : MonoBehaviour
     }
 
     Transform Bone(HumanBodyBones b) => animator.isHuman ? animator.GetBoneTransform(b) : null;
+
+    // --- the staff and hat by pose (Andrew: no staff through the body, no crushed hat) --------------
+
+    Transform staff, hat;
+    // The staff's length and its grip, in the hand's space as built.
+    Vector3 staffAxis, staffGrip;
+    Sitter sitter;
+    // How far a moving staff leans out from the body (so its foot clears the leg), and how far the
+    // hat tips forward over the face when lying back.
+    const float StaffLeanOut = 0.2f, HatTip = 45f;
+
+    void LateUpdate()
+    {
+        if (staff == null && hat == null) return;
+        if (sitter == null) TryGetComponent(out sitter);
+        var seat = sitter != null ? sitter.Seated : null;
+        if (staff != null)
+        {
+            staff.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            if (seat == null) HoldStaff((Vector3.up - transform.right * StaffLeanOut).normalized, null);
+            else if (seat.lounge) HoldStaff(seat.Facing * Vector3.forward, Bone(HumanBodyBones.Hips).position - transform.right * 0.32f + Vector3.up * 0.05f);
+        }
+        if (hat != null)
+        {
+            hat.SetLocalPositionAndRotation(Vector3.zero, Quaternion.identity);
+            var head = Bone(HumanBodyBones.Head);
+            if (seat != null && seat.lounge && head != null) hat.RotateAround(head.position, transform.right, HatTip);
+        }
+    }
+
+    // Turns the staff to lie along <paramref name="along"/> (its top that way), its grip in the hand
+    // or at <paramref name="grip"/>.
+    void HoldStaff(Vector3 along, Vector3? grip)
+    {
+        var axis = staff.TransformDirection(staffAxis);
+        staff.rotation = Quaternion.FromToRotation(axis, along) * staff.rotation;
+        var at = grip ?? staff.parent.TransformPoint(staffGrip);
+        staff.position += at - staff.TransformPoint(staffGrip);
+    }
+
+    // The part just hung, if it's the one named (Hang skips a part with no bone).
+    Transform Last(string name) => parts.Count > 0 && parts[^1].name == name ? parts[^1].transform : null;
 
     static readonly int SteadyGlow = Shader.PropertyToID("_SteadyGlow");
 
@@ -131,7 +177,7 @@ public class WizardOutfit : MonoBehaviour
         if (head == null) return;
         var look = Look;
         // Down over the head, the brim at the brow: the rig's head rises 0.15 m above its bone, 0.11 m round.
-        float crown = 0.10f;
+        float crown = 0.09f;
         // The brim: a thin disc, a touch down at the back.
         Tube(kit, new[] { new Vector3(0f, crown - 0.012f, -0.01f), new Vector3(0f, crown + 0.012f, -0.01f) }, new[] { look.Brim, look.Brim }, look.Hat, Ends.Both);
         // The band round the cone's foot.
@@ -149,6 +195,7 @@ public class WizardOutfit : MonoBehaviour
         }
         Tube(kit, spine, radii, look.Hat, Ends.End);
         Hang(kit, head, "hat");
+        hat = Last("Outfit hat");
     }
 
     void Beard(MeshKit kit, Transform head)
@@ -159,6 +206,101 @@ public class WizardOutfit : MonoBehaviour
         Tube(kit, new[] { chin, chin + new Vector3(0f, -Look.BeardLength * 0.6f, 0.03f), chin + new Vector3(0f, -Look.BeardLength, 0.02f) },
             new[] { 0.07f, 0.055f, 0.004f }, Look.Beard, Ends.Both);
         Hang(kit, head, "beard");
+    }
+
+    // The bodice as clothing, not a shell (Andrew: "rough"): slim elliptical rings from the waist up
+    // the spine to the shoulders and a collar up the neck, skinned to the rig's hips, spine, chest,
+    // upper chest and neck (and, at the shoulders' sides, the upper arms), so it bends with the
+    // torso: a wizard lying back has it lying along the backrest. Built in the idle pose, in the
+    // body's own space; each vertex blends the bones of the two rings it lies between.
+    void SkinnedBodice()
+    {
+        var hips = Bone(HumanBodyBones.Hips);
+        var spine = Bone(HumanBodyBones.Spine);
+        var chest = Bone(HumanBodyBones.Chest);
+        var upper = Bone(HumanBodyBones.UpperChest);
+        var neck = Bone(HumanBodyBones.Neck);
+        var leftArm = Bone(HumanBodyBones.LeftUpperArm);
+        var rightArm = Bone(HumanBodyBones.RightUpperArm);
+        if (hips == null || chest == null || neck == null || leftArm == null || rightArm == null) return;
+        if (spine == null) spine = hips;
+        if (upper == null) upper = chest;
+        var root = transform;
+        Vector3 At(Transform t) => root.InverseTransformPoint(t.position);
+        float shoulderY = (At(leftArm).y + At(rightArm).y) / 2f;
+        // Each ring: its centre on the spine, half its width, its depth as a share of that, its bone.
+        var rings = new (Vector3 at, float half, float depth, Transform bone)[]
+        {
+            (At(hips) + Vector3.up * 0.06f, 0.175f, 1f, hips),
+            (At(chest), 0.165f, 0.8f, chest),
+            (At(upper), 0.17f, 0.72f, upper),
+            (Vector3.Lerp(At(upper), new Vector3(At(upper).x, shoulderY, At(upper).z), 0.55f), 0.18f, 0.7f, upper),
+            (new Vector3(At(neck).x, shoulderY, At(upper).z), 0.19f, 0.62f, upper),
+            (At(neck) + Vector3.down * 0.01f, 0.085f, 0.9f, neck),
+            (At(neck) + Vector3.up * 0.05f, 0.065f, 1f, neck),
+        };
+        const int sides = 14;
+        var points = new Vector3[rings.Length][];
+        for (int i = 0; i < rings.Length; i++)
+        {
+            points[i] = new Vector3[sides];
+            for (int k = 0; k < sides; k++)
+            {
+                float a = 2f * Mathf.PI * k / sides;
+                var (at, half, depth, _) = rings[i];
+                points[i][k] = at + new Vector3(Mathf.Cos(a) * half, 0f, Mathf.Sin(a) * half * depth);
+            }
+        }
+        var kit = new MeshKit { Occlusion = 0f };
+        for (int i = 0; i + 1 < rings.Length; i++)
+        {
+            var colour = i >= rings.Length - 2 ? Look.Trim : Look.Robe;
+            for (int k = 0; k < sides; k++)
+            {
+                int n = (k + 1) % sides;
+                Vector3 a = points[i][k], b = points[i][n], c = points[i + 1][n], d = points[i + 1][k];
+                kit.Quad(a, b, c, d, colour, (a + c) / 2f - (rings[i].at + rings[i + 1].at) / 2f);
+            }
+        }
+        var mesh = kit.ToMesh("Wizard bodice");
+        var bones = new[] { hips, spine, chest, upper, neck, leftArm, rightArm };
+        int Index(Transform t) => System.Array.IndexOf(bones, t);
+        var verts = mesh.vertices;
+        var weights = new BoneWeight[verts.Length];
+        var heights = System.Array.ConvertAll(rings, r => r.at.y);
+        var ringBones = System.Array.ConvertAll(rings, r => Index(r.bone));
+        var shoulders = (centre: rings[4].at.x, half: rings[4].half, y: shoulderY, left: Index(leftArm), right: Index(rightArm));
+        for (int v = 0; v < verts.Length; v++) weights[v] = Weigh(verts[v], heights, ringBones, shoulders);
+        mesh.boneWeights = weights;
+        var binds = new Matrix4x4[bones.Length];
+        for (int j = 0; j < bones.Length; j++) binds[j] = bones[j].worldToLocalMatrix * root.localToWorldMatrix;
+        mesh.bindposes = binds;
+        var go = new GameObject("Outfit bodice");
+        go.transform.SetParent(root, false);
+        var skin = go.AddComponent<SkinnedMeshRenderer>();
+        skin.sharedMesh = mesh;
+        skin.bones = bones;
+        skin.rootBone = hips;
+        skin.sharedMaterial = material;
+        parts.Add(go);
+    }
+
+    // A bodice vertex's bones: the two rings it lies between, by height; at the shoulders' sides, a
+    // share to that side's upper arm.
+    static BoneWeight Weigh(Vector3 p, float[] heights, int[] ringBones, (float centre, float half, float y, int left, int right) shoulders)
+    {
+        int below = 0;
+        while (below + 2 < heights.Length && p.y > heights[below + 1]) below++;
+        float t = Mathf.InverseLerp(heights[below], heights[below + 1], p.y);
+        var w = new BoneWeight { boneIndex0 = ringBones[below], weight0 = 1f - t, boneIndex1 = ringBones[below + 1], weight1 = t };
+        float side = (p.x - shoulders.centre) / shoulders.half;
+        float arm = Mathf.Clamp01((Mathf.Abs(side) - 0.55f) / 0.45f) * Mathf.Clamp01(1f - Mathf.Abs(p.y - shoulders.y) / 0.12f) * 0.4f;
+        if (arm <= 0f) return w;
+        w.weight0 *= 1f - arm;
+        w.weight1 *= 1f - arm;
+        w.boneIndex2 = side < 0f ? shoulders.left : shoulders.right;
+        w.weight2 = arm;
+        return w;
     }
 
     void Bodice(MeshKit kit, Transform chest)
@@ -264,7 +406,10 @@ public class WizardOutfit : MonoBehaviour
             else
                 Tube(kit, Arc(top + up * 0.1f, up, 0.07f), OrbRadii(0.07f), glow, Ends.Both);
         }
+        staffAxis = up;
+        staffGrip = grip;
         Hang(kit, hand, "staff", steadyGlow: true);
+        staff = Last("Outfit staff");
     }
 
     static Vector3[] Arc(Vector3 centre, Vector3 up, float r)
