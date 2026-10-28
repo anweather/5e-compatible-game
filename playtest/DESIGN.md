@@ -280,6 +280,42 @@ candidates and screenshots. What the first runs showed:
   async loads and texture streaming finishing on different frames; and
   `Time.fixedDeltaTime` steps not dividing 1/30 s evenly, which only matters
   if one of the above shifts a frame.
+
+  **The hunt (2026-10-27, branch `replay-exact`).** Found and fixed in code;
+  the Unity check (one seed twice, `playtest compare`) is still to run:
+  1. *Chemistry sliced by real milliseconds.* `ChemGrid.StepWithinBudget`
+     ran tick slices until 6 ms had gone, so a faster frame got further
+     through a tick: fire, water and raised ground reached the same tick on
+     different frames. In a playtest run (`ChemGrid.ExactFrames`) the budget
+     is 256 slices a frame instead (`ChemGrid.FrameBudget`).
+  2. *Ice colliders drawn by real milliseconds.* `CellWaterMesh` draws water
+     tiles for 3 ms a frame, and ice tiles carry the colliders the wizard
+     walks on. Exactly 24 tiles a frame in a playtest run.
+  3. *The first frames on real time.* The bot locked `captureFramerate` in
+     `Start`, after the scene's first frames had run on real deltaTime, which
+     the chemistry clock adds up. The lock now comes before the scene loads.
+  4. *Replays chose against new coverage.* A replay was handed today's
+     coverage.json, which every run changes, so its goals could differ from
+     the original's. run.json now keeps the coverage a run began with
+     (`RunReport.Coverage`) and a replay picks against that.
+  5. *Unseeded `UnityEngine.Random`.* A thrown item's spin, fire spreading
+     between props, damage dice and more drew from Unity's generator, seeded
+     differently every launch. It is seeded from the run before the scene
+     loads (`ReplayCheck.UnitySeed`).
+  6. *A real-time chore.* The grid looked for the wizards once a real second
+     (the chunk plan reads them); on game time in a playtest run
+     (`ChemGrid.ChoreClock`).
+
+  And a *sync* step in the trace every 30 frames (the tick and the wizard to
+  the centimetre), so two runs show the frame they part at rather than the
+  next goal. Still suspects if the check shows drift: PhysX itself (the same
+  machine and build should repeat, but it isn't promised), `AmbientLife`
+  (instance-id seeds, real-time lookups; view only), `FindObjectsByType`
+  with no sort where the first match is used (`BallCourt`, `DefenseField`),
+  and anything still on `Time.unscaledTime` that changes play. Checked and
+  fine: `Time.time` and `Time.deltaTime` (game time under the lock),
+  Cinemachine (scaled time), the bot's own dice, goal options (fixed order),
+  and Dictionary/HashSet use in the bot (lookups, never iterated in order).
 - **A real paper cut, probably.** After the bot cast Hasten Time, frames
   took 0.8 to 2.2 s while it ran: 20 chemistry ticks a frame over the
   active chunks. Spikes during Hasten Time are now keyed "(hasten time)" so
@@ -340,6 +376,8 @@ policy is involved:
   - `playtest build [--force]`
   - `playtest check`, which prints the preflight's verdict and the player
     and commit it would use.
+  - `playtest compare <run.json> <run.json>`: whether two runs of one seed
+    matched, and if not, the first frame they parted and what each was doing.
   - Task Scheduler then calls `dotnet tools\playtest\bin\playtest.dll run`
     (or a published `playtest.exe`).
 - **What moves where:**

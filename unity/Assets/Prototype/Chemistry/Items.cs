@@ -59,6 +59,8 @@ namespace Chem
     public sealed class ItemDef
     {
         public string Id, Name, Use, Message, Srd;
+        /// <summary>What it is made of or does (items.json "components"; Components.cs).</summary>
+        public ComponentSet Components;
         /// <summary>Kilograms. The physics body's mass; a shove moves it like the lightest entity (Forces).</summary>
         public double Mass;
         /// <summary>Null when it sheds no light.</summary>
@@ -89,7 +91,7 @@ namespace Chem
         /// <summary>The item with this id, or null.</summary>
         public ItemDef Item(string id) => id != null && items.TryGetValue(id, out var i) ? i : null;
 
-        static ItemDef ParseItem(string id, JObject o)
+        ItemDef ParseItem(string id, JObject o)
         {
             ItemLightDef light = null;
             if (o["light"] is JObject l)
@@ -113,6 +115,7 @@ namespace Chem
             {
                 Id = id,
                 Name = Str(o["name"]) ?? id,
+                Components = ThingComponents(o),
                 Use = Str(o["use"]),
                 Message = Str(o["message"]),
                 Srd = Str(o["srd"]) ?? "",

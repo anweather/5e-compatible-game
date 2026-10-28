@@ -13,7 +13,7 @@ public class LookProbe : ProbeScenario
     {
         int parts = 0;
         hat = null;
-        foreach (var r in wizard.GetComponentsInChildren<MeshRenderer>())
+        foreach (var r in wizard.GetComponentsInChildren<Renderer>())
         {
             if (!r.name.StartsWith("Outfit ", System.StringComparison.Ordinal)) continue;
             parts++;

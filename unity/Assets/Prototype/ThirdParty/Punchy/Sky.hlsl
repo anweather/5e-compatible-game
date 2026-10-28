@@ -1,5 +1,8 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
-// used with permission. Unchanged but for this header.
+// used with permission. Changed (Spell Chemistry Valley, 2026-10-27, backlog #8 night):
+// the stars are two layers, PunchyStarLayer, the original plus a fainter, denser one,
+// scaled by a new global _PunchyStarBright that CloudSky sets from the rules' light
+// level (Nightfall). Keep this when updating from Punchy; see README.md.
 #ifndef PUNCHY_SKY_INCLUDED
 #define PUNCHY_SKY_INCLUDED
 
@@ -38,6 +41,7 @@ half3  _PunchySkyGround;
 half4  _PunchyClouds;          // x coverage at the camera (dims the sun's glow), z noise scale
 float2 _PunchyCloudOffset;     // cloud drift with the wind (× CLOUD_FEATURE = metres)
 half   _PunchyNight;           // 0 day … 1 night
+half   _PunchyStarBright;      // how bright the stars are (0 unset: as 1); the clock's dark night raises it
 float4 _PunchyLightning;       // xyz towards the strike, w flash brightness as seen from the camera
 float4 _PunchyLightningPos;    // xyz strike position in the cloud, w raw flash brightness
 
@@ -368,17 +372,26 @@ half PunchyCirrus(float3 dir)
     return smoothstep(1 - amount * 0.55, 1.05, n) * 0.55 * smoothstep(0.01, 0.15, dir.y);
 }
 
-half3 PunchyStars(float3 dir)
+// [Spell Chemistry Valley change: Punchy had one layer, the first below, at full brightness.]
+// One layer of stars: one in (1 - keep) of the cells of a sphere `scale` cells round, `size` wide.
+half3 PunchyStarLayer(float3 dir, float scale, float keep, float size)
 {
-    float3 p = dir * 260;
+    float3 p = dir * scale;
     float3 cell = floor(p);
     float h = PunchyHash3(cell);
-    if (h < 0.9965)
+    if (h < keep)
         return 0;
     float3 centre = cell + 0.5 + (float3(PunchyHash3(cell + 1.7), PunchyHash3(cell + 3.1), PunchyHash3(cell + 5.3)) - 0.5) * 0.6;
     float d = length(p - centre);
     float twinkle = 0.6 + 0.4 * sin(_Time.y * (2 + h * 30) + h * 100);
-    return smoothstep(0.25, 0, d) * twinkle * lerp(half3(0.8, 0.85, 1.0), half3(1.0, 0.9, 0.75), frac(h * 731));
+    return smoothstep(size, 0, d) * twinkle * lerp(half3(0.8, 0.85, 1.0), half3(1.0, 0.9, 0.75), frac(h * 731));
+}
+
+// The bright stars, and a fainter field of many more; both by _PunchyStarBright.
+half3 PunchyStars(float3 dir)
+{
+    half bright = _PunchyStarBright > 0 ? _PunchyStarBright : 1;
+    return (PunchyStarLayer(dir, 260, 0.9965, 0.25) + PunchyStarLayer(dir, 520, 0.985, 0.2) * 0.35) * bright;
 }
 
 // The sky without the volumetric clouds: gradient, sun and moon, stars, cirrus, horizon haze. With

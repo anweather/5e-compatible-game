@@ -90,6 +90,16 @@ touch them.
   Time runs ahead; `Sky.Minutes`). *Avoid:* reading time of day from
   `World.Tick`.
 
+**Daylight / night / dawn / dusk**
+: The light the sky gives by the clock (`World.Daylight`, `sim.json`
+  `day`): bright by day, dim at dawn and dusk, dark at night, which runs
+  from the end of dusk to the start of dawn (`World.IsNight`).
+
+**Light level**
+: The SRD's light on a cell: bright, dim or darkness (`LightLevel`,
+  `World.LightAt`): the daylight, or a fire's light if brighter. Worked out
+  when asked, never kept.
+
 ## Chemistry
 
 **Rules**
@@ -160,6 +170,14 @@ touch them.
 **Entity**
 : The rules' word for anything standing on cells that reactions can act
   on: wizards, creatures, raiders and props (`entities.json`, `EntityDef`).
+
+**Component**
+: What an entity or item is made of or does, as data: `flammable`,
+  `creature`, `conducts`, `floats`, `breakable`, `heavy`, `brittle`
+  (`components.json`, `ComponentSet`). Entity rules match on components
+  (`if.has`, `if.lacks`), never on ids. The `creature` component means
+  alive in the rules (moves, takes statuses, is hurt); it isn't the view's
+  creatures below.
 
 **Wizard**
 : A player's character (the solo wizard, the `NetWizard` prefab).

@@ -57,14 +57,16 @@ record its **full 40-character SHA**.
 
 The other machine: pull, then restart its Editor (a ProjectSettings change).
 
-## 3. Build, pack and draft (one script, either machine)
+## 3. Build, pack and draft (two halves, J-025)
 
-`tools/ship-update.sh X.Y.Z` (no `--test`), run in the background: it builds
-the macOS app and the Windows folder at the release commit, packs both with
-Velopack (installers, portable zips, full packages, a delta from the last
-published release) and uploads them to the **draft** `alpha-X.Y.Z`. Both
-platforms build on the Mac, so the PC can keep working. Details:
-`docs/RELEASING.md`, "Updates in place", and the `ship-update` skill.
+On the Mac `tools/ship-update.sh X.Y.Z --mac-only`, on the PC
+`tools/ship-update.sh X.Y.Z --windows-only` (no `--test`), both at the release
+commit, run in the background; start the second once the first prints
+"Release alpha-X.Y.Z is ready". Each builds its player, packs it with Velopack
+(installer, portable zip, full package, a delta from the last published
+release) and uploads only its own files to the one **draft** `alpha-X.Y.Z`.
+Without either flag the Mac builds both. Details: `docs/RELEASING.md` step 4,
+"Updates in place", and the `ship-update` skill.
 
 Then the notes: `git log --no-merges --pretty='- %s' alpha-<previous>..HEAD`,
 rewritten as a short player-facing list (what's new, what's fixed, known

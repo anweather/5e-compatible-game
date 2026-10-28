@@ -41,6 +41,29 @@ namespace Chem.Tests
             Assert.That(Paths.ChoosePlayer(@"C:\pb", @"C:\here", _ => false), Does.StartWith(@"C:\here"));
         }
 
+        [Test]
+        public void AGivenPlayerIsFoundInItsFolder()
+        {
+            string dir = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "playtest-player-" + System.Guid.NewGuid().ToString("N"));
+            try
+            {
+                string deep = System.IO.Path.Combine(dir, "SpellChemistryValley-win", "Player");
+                System.IO.Directory.CreateDirectory(System.IO.Path.Combine(deep, "Extra"));
+                string exe = System.IO.Path.Combine(deep, Paths.PlayerName + ".exe");
+                System.IO.File.WriteAllText(exe, "");
+                System.IO.File.WriteAllText(System.IO.Path.Combine(deep, "Extra", Paths.PlayerName + ".exe"), "");
+                Assert.That(Paths.GivenPlayer(dir), Is.EqualTo(exe), "the unpacked zip: the shallowest player in it");
+                Assert.That(Paths.GivenPlayer(exe), Is.EqualTo(exe), "an exe as given");
+                string empty = System.IO.Path.Combine(dir, "empty");
+                System.IO.Directory.CreateDirectory(empty);
+                Assert.That(Paths.GivenPlayer(empty), Is.EqualTo(System.IO.Path.Combine(empty, Paths.PlayerName + ".exe")), "none there: run says it is missing");
+            }
+            finally
+            {
+                System.IO.Directory.Delete(dir, true);
+            }
+        }
+
         static RunReport Run(string ended) => new RunReport { Ended = ended, Frames = 900, Goals = { "Visit:tower" } };
 
         [Test]
@@ -71,6 +94,31 @@ namespace Chem.Tests
             Assert.That(o, Is.EqualTo(new Dictionary<string, string> { ["seed"] = "1234", ["force"] = "true", ["seconds"] = "90" }));
             Assert.That(Program.IntOption(o, "seconds", 480), Is.EqualTo(90));
             Assert.That(Program.IntOption(o, "until-frame", 7), Is.EqualTo(7));
+        }
+
+        static RunReport Synced(params string[] syncs)
+        {
+            var r = new RunReport { Seed = 5, Frames = syncs.Length * 30 };
+            r.Trace.Add(new TraceStep { Frame = 1, Action = "goal", Detail = "go to the tower" });
+            for (int i = 0; i < syncs.Length; i++) r.Trace.Add(new TraceStep { Frame = (i + 1) * 30, Action = ReplayCheck.Sync, Detail = syncs[i] });
+            return r;
+        }
+
+        [Test]
+        public void CompareSaysWhereTwoRunsParted()
+        {
+            var a = Synced("tick 3 at 1.00,0.00,1.00", "tick 6 at 2.00,0.00,2.00", "tick 9 at 3.00,0.00,3.00");
+            var (same, text) = Compare.Describe(a, Synced("tick 3 at 1.00,0.00,1.00", "tick 6 at 2.00,0.00,2.00", "tick 9 at 3.00,0.00,3.00"));
+            Assert.That(same, Is.True);
+            Assert.That(text, Does.Contain("all 90 frames").And.Contain("3 sync steps"));
+
+            (same, text) = Compare.Describe(a, Synced("tick 3 at 1.00,0.00,1.00", "tick 7 at 2.00,0.00,2.00", "tick 9 at 3.00,0.00,3.00"));
+            Assert.That(same, Is.False);
+            Assert.That(text, Does.StartWith("parted at frame 60 (2.0 s)").And.Contain("tick 7").And.Contain("while: go to the tower"));
+
+            var other = Synced("tick 3 at 1.00,0.00,1.00");
+            other.Seed = 6;
+            Assert.That(Compare.Describe(a, other).same, Is.False);
         }
     }
 }

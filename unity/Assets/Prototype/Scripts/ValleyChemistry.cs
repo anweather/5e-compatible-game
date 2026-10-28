@@ -7,7 +7,8 @@ using UnityEngine;
 // grass leaving scorched ground with its grass cleared, a cabin or a village
 // house (VillageHouse) charring and losing its roof once half its walls have
 // burned (or caving in once they're broken), and earth shaping raising or
-// sinking the ground under reshaped cells. Every cell is on the
+// sinking the ground under reshaped cells, and rain darkening the ground and making
+// it shine (WetGround). Every cell is on the
 // terrain, the old yard included; the lake's cells are pits under the lake's
 // own surface.
 // Works on runtime copies of the terrain data, so playing never changes the
@@ -28,6 +29,12 @@ public class ValleyChemistry : MonoBehaviour
 
     readonly TerrainGrid layout = TerrainGrid.Valley();
     ValleyGround ground;
+    WetGround wet;
+
+    static IEnumerable<TerrainData> DataOf(ValleyGround g)
+    {
+        foreach (var (_, data) in g.Chunks()) yield return data;
+    }
     readonly Dictionary<(int i, int j), TreeInstance[]> trees = new();
     // The trees as the valley was baked, untouched by burning or felling: what a fallen tree was.
     readonly Dictionary<(int i, int j), TreeInstance[]> bakedTrees = new();
@@ -51,6 +58,9 @@ public class ValleyChemistry : MonoBehaviour
     /// <summary>The ground under the cells; null before the first Bind.</summary>
     public ValleyGround Ground => ground;
 
+    /// <summary>How wet the ground looks, 0 dry to 1 soaked (WetGround).</summary>
+    public float Wetness => wet != null ? wet.Wetness : 0f;
+
     /// <summary>Starts over on a world (ChemGrid calls this for every new world): fresh terrain copies, trees and cabin counted.</summary>
     public void Bind(World world)
     {
@@ -61,6 +71,9 @@ public class ValleyChemistry : MonoBehaviour
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         ground.RaiseBase(channelCells, channelDepths);
+        // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
+        wet?.Destroy();
+        wet = new WetGround(DataOf(ground));
         scorched.Clear();
         grown.Clear();
         IndexTrees();
@@ -341,12 +354,14 @@ public class ValleyChemistry : MonoBehaviour
         TreesMs = timer.Elapsed.TotalMilliseconds;
         timer.Restart();
         ground.Flush(IsScorched);
+        if (wet != null && grid.World != null) wet.Advance(grid.World.Weather.Rain, Time.deltaTime);
         GroundMs = timer.Elapsed.TotalMilliseconds;
     }
 
     void OnDestroy()
     {
         if (charred != null) Destroy(charred);
+        wet?.Destroy();
         ground?.Destroy();
     }
 }

@@ -4,8 +4,9 @@ using System.Globalization;
 
 // The playtest runner's command line (playtest/DESIGN.md, J-013):
 //
-//   playtest check                      what the preflight says, and which player and build it would run
-//   playtest run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--force]
+//   playtest check [--player <exe or folder>]   what the preflight says, and which player and build it would run
+//   playtest run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--player <exe or folder>] [--force]
+//   playtest compare <run.json> <run.json>   whether two runs of one seed matched, and where they parted
 //   playtest build --ref <r> [--force]  builds the bot's player in .claude/worktrees/playtest-build from
 //                                       origin/<r> (a release candidate: main or a tag; J-018)
 //
@@ -19,15 +20,16 @@ namespace Playtest.Runner
         {
             if (args.Length == 0)
             {
-                Console.Error.WriteLine("usage: playtest check | run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--force] | build --ref <branch or tag> [--force]");
+                Console.Error.WriteLine("usage: playtest check [--player P] | run [--seed N] [--seconds N] [--replay run.json] [--until-frame N] [--player <exe or folder>] [--force] | compare <run.json> <run.json> | build --ref <branch or tag> [--force]");
                 return 2;
             }
             var options = Options(args);
             var paths = Paths.Find(Environment.CurrentDirectory);
             switch (args[0])
             {
-                case "check": return Check(paths);
+                case "check": return Check(paths, options.TryGetValue("player", out var given) ? given : null);
                 case "run": return PlaytestRun.Run(paths, options);
+                case "compare": return Compare.Run(args.Length > 1 ? args[1] : null, args.Length > 2 ? args[2] : null);
                 case "build":
                     // J-018: built for a release candidate when asked (main or a tag), never just because dev moved.
                     if (!options.TryGetValue("ref", out var gitRef) || gitRef == "true")
@@ -42,11 +44,12 @@ namespace Playtest.Runner
             }
         }
 
-        static int Check(Paths paths)
+        static int Check(Paths paths, string player)
         {
+            string exe = paths.Player(player);
             Console.WriteLine($"repository:  {paths.Root}");
-            Console.WriteLine($"player:      {paths.Player()}");
-            Console.WriteLine($"build:       {Paths.BuildCommit(paths.Player())}");
+            Console.WriteLine($"player:      {exe}{(System.IO.File.Exists(exe) ? "" : " (missing)")}");
+            Console.WriteLine($"build:       {Paths.BuildCommit(exe)}");
             string why = Preflight.Why(Preflight.Now(), 8);
             Console.WriteLine($"preflight:   {why ?? "clear"}");
             return 0;

@@ -222,4 +222,83 @@ public class PlaytestLogicTests
         Assert.That(back.Trace.Single().Detail, Is.EqualTo("go to the tower"));
         Assert.That(ReplayCheck.Steps(back, 100).First(), Does.Contain("go to the tower"));
     }
+
+    // A run with a scripted body instead of the game: the same logic as PlaytestBot (goals from the
+    // dice and coverage, every frame through the detectors, a sync step every second), fed by a
+    // wizard that walks to a dice-picked spot each goal. bumpAt nudges the wizard on one frame, as a
+    // real-time leak would.
+    static RunReport ScriptedRun(ulong seed, IReadOnlyDictionary<string, int> coverage, int bumpAt = -1)
+    {
+        var dice = new PlaytestRandom(seed);
+        var run = new RunReport { Seed = seed, Coverage = new Dictionary<string, int>(coverage) };
+        var wizard = new WizardWatch(-100, -100, 100, 100);
+        var frames = new FrameWatch();
+        float x = 0, z = 0, tx = 0, tz = 0;
+        int goalEnds = 0;
+        string place = "start";
+        for (int frame = 1; frame <= 1800; frame++)
+        {
+            if (frame >= goalEnds)
+            {
+                var g = GoalPicker.Next(dice, Options(), run.Coverage);
+                run.Goals.Add(g.Key);
+                run.Trace.Add(new TraceStep { Frame = frame, Action = "goal", Detail = g.ToString() });
+                (tx, tz) = (dice.Range(-50f, 50f), dice.Range(-50f, 50f));
+                goalEnds = frame + dice.Range(60, 300);
+                place = g.Target ?? "start";
+            }
+            x += System.Math.Sign(tx - x) * 0.1f;
+            z += System.Math.Sign(tz - z) * 0.1f;
+            if (frame == bumpAt) x += 1f;
+            run.Candidates.AddRange(wizard.Frame(frame, W(x, 10, z, true, false, place)));
+            run.Candidates.AddRange(frames.Frame(frame, dice.Range(10f, 40f), place));
+            if (frame % ReplayCheck.SyncEvery == 0)
+                run.Trace.Add(new TraceStep { Frame = frame, Action = ReplayCheck.Sync, Detail = ReplayCheck.SyncDetail(frame / 3, x, 10, z) });
+        }
+        return run;
+    }
+
+    static readonly Dictionary<string, int> Lately = new() { ["Visit:tower"] = 3, ["Cast:fire-bolt"] = 2 };
+
+    [Test]
+    public void TheSameSeedAndFramesGiveTheSameTrace()
+    {
+        var a = ScriptedRun(7, Lately);
+        var b = ScriptedRun(7, Lately);
+        Assert.That(ReplayCheck.FirstDifference(a, b, int.MaxValue), Is.Null);
+        Assert.That(b.ToJson(), Is.EqualTo(a.ToJson()), "goals, trace and candidates alike");
+        Assert.That(a.Trace.Count(s => s.Action == ReplayCheck.Sync), Is.EqualTo(1800 / ReplayCheck.SyncEvery));
+        Assert.That(ScriptedRun(8, Lately).Goals, Is.Not.EqualTo(a.Goals), "another seed, another run");
+    }
+
+    [Test]
+    public void TheFirstSyncStepThatDiffersIsWhereARunDrifted()
+    {
+        var a = ScriptedRun(7, Lately);
+        var drifted = ScriptedRun(7, Lately, bumpAt: 700);
+        var d = ReplayCheck.FirstDifference(a, drifted, int.MaxValue);
+        Assert.That((d.Frame, d.Action), Is.EqualTo((720, ReplayCheck.Sync)), "the sync after the nudge, not the next goal");
+        Assert.That(ReplayCheck.FirstDifference(a, drifted, 719), Is.Null);
+        Assert.That(ReplayCheck.Steps(a, 1800).Any(s => s.Contains(ReplayCheck.Sync)), Is.False, "sync steps aren't steps to reproduce");
+    }
+
+    [Test]
+    public void AReplayPicksItsGoalsAgainstTheOriginalsCoverage()
+    {
+        var original = ScriptedRun(11, Lately);
+        var saved = RunReport.FromJson(original.ToJson());
+        Assert.That(saved.Coverage, Is.EqualTo(Lately));
+        Assert.That(ScriptedRun(11, saved.Coverage).Goals, Is.EqualTo(original.Goals));
+        // coverage.json moves on after every run; picking against today's changes the run.
+        var today = original.Goals.GroupBy(g => g).ToDictionary(g => g.Key, g => g.Count());
+        Assert.That(ScriptedRun(11, today).Goals, Is.Not.EqualTo(original.Goals));
+    }
+
+    [Test]
+    public void UnitysRandomIsSeededFromTheRun()
+    {
+        Assert.That(ReplayCheck.UnitySeed(0x0123456789ABCDEFUL), Is.EqualTo(unchecked((int)0x88888888)));
+        Assert.That(ReplayCheck.UnitySeed(42), Is.EqualTo(42));
+        Assert.That(ReplayCheck.UnitySeed(1UL << 32), Is.EqualTo(1), "the high half counts too");
+    }
 }

@@ -14,7 +14,7 @@ usual (`AmbientCritters.cs` for the critters, `CloudSky.cs` for the sky,
 | `Critters.hlsl` | `Assets/Game/Shaders/Critters.hlsl` | Header only |
 | `Fireflies.shader` | `Assets/Game/Shaders/Fireflies.shader` | Header only |
 | `Butterflies.shader` | `Assets/Game/Shaders/Butterflies.shader` | Punchy's sky (cloud shadow, atmosphere) swapped for URP's fog |
-| `Sky.hlsl` | `Assets/Game/Shaders/Sky.hlsl` | Header only |
+| `Sky.hlsl` | `Assets/Game/Shaders/Sky.hlsl` | Stars: a second, fainter and denser layer, both scaled by `_PunchyStarBright` (set by `CloudSky` from the rules' light level, `Nightfall`) |
 | `Sky.shader` | `Assets/Game/Shaders/Sky.shader` | Header only (the skybox; `CloudSky.cs` drives it) |
 | `CloudNoise.cs` | `Assets/Game/Scripts/Weather/CloudNoise.cs` | A parameter name and loop indents, for our analyzers |
 | `Creature.shader` | `Assets/Game/Shaders/Creature.shader` | Punchy's atmosphere swapped for URP's fog |

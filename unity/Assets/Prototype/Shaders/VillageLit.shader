@@ -7,6 +7,9 @@ Shader "Prototype/VillageLit"
     Properties
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
+        // 1 for a glow that's carried about (a wizard's staff): steady, the same by day and night, no
+        // window flicker (that's phased by world position, so on a swinging staff it pulsed with each step).
+        _SteadyGlow ("Steady glow", Float) = 0
     }
     SubShader
     {
@@ -17,6 +20,7 @@ Shader "Prototype/VillageLit"
 
         CBUFFER_START(UnityPerMaterial)
         half4 _Tint;
+        half _SteadyGlow;
         CBUFFER_END
 
         struct Attributes
@@ -76,8 +80,10 @@ Shader "Prototype/VillageLit"
                 half3 albedo = input.color.rgb;
                 half3 color = albedo * (light.color * light.shadowAttenuation * diffuse + SampleSH(n));
                 // Lit windows: a dim warmth by day, bright enough to bloom at night, with a slow flicker.
-                half glow = input.color.a * lerp(0.15, 2.4, saturate(_LampGlow));
-                color += albedo * glow * (0.9 + 0.1 * sin(_Time.y * 3.1 + input.positionWS.x * 2.0 + input.positionWS.z));
+                half lamp = lerp(lerp(0.15, 2.4, saturate(_LampGlow)), 1.2, _SteadyGlow);
+                half flicker = lerp(0.9 + 0.1 * sin(_Time.y * 3.1 + input.positionWS.x * 2.0 + input.positionWS.z), 1.0, _SteadyGlow);
+                half glow = input.color.a * lamp;
+                color += albedo * glow * flicker;
                 return half4(MixFog(color, input.fogFactor), 1);
             }
             ENDHLSL

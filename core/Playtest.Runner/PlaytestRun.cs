@@ -22,7 +22,7 @@ namespace Playtest.Runner
         public static int Run(Paths paths, Dictionary<string, string> options)
         {
             Directory.CreateDirectory(paths.Runs);
-            string exe = paths.Player();
+            string exe = paths.Player(options.TryGetValue("player", out var given) ? given : null);
             string lockFile = Path.Combine(paths.Runs, ".lock");
             string why = File.Exists(exe) ? Preflight.Why(Preflight.Now(), 8) : $"no player build at {exe}";
             if (why == null && File.Exists(lockFile)) why = "another playtest is running";

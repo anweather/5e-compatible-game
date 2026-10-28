@@ -76,6 +76,7 @@ public class CloudSky : MonoBehaviour
     static readonly int CloudsId = Shader.PropertyToID("_PunchyClouds");
     static readonly int CloudOffsetId = Shader.PropertyToID("_PunchyCloudOffset");
     static readonly int NightId = Shader.PropertyToID("_PunchyNight");
+    static readonly int StarBrightId = Shader.PropertyToID("_PunchyStarBright");
     static readonly int LightningId = Shader.PropertyToID("_PunchyLightning");
     static readonly int LightningPosId = Shader.PropertyToID("_PunchyLightningPos");
 
@@ -157,6 +158,9 @@ public class CloudSky : MonoBehaviour
         Shader.SetGlobalVector(CloudsId, new Vector4(shown.coverage, 0f, 1f, 0f));
         Shader.SetGlobalVector(CloudOffsetId, cloudOffset);
         Shader.SetGlobalFloat(NightId, night);
+        // The stars by the rules' light level (Nightfall), hidden as the cloud thickens; a tiny floor
+        // keeps the shader from reading 0 as unset.
+        Shader.SetGlobalFloat(StarBrightId, Mathf.Max(0.001f, Nightfall.Stars(world) * (1f - shown.coverage)));
         var toStrike = (strikeAt - cam.transform.position).normalized;
         Shader.SetGlobalVector(LightningId, new Vector4(toStrike.x, toStrike.y, toStrike.z, strike));
         Shader.SetGlobalVector(LightningPosId, new Vector4(strikeAt.x, strikeAt.y, strikeAt.z, strike));

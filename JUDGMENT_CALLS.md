@@ -22,9 +22,170 @@ Each entry has:
 
 ## Open
 
-(none)
+### J-021: Finer ground, five design questions (backlog #15, Later)
+
+- **Asked:** 2026-10-27, raised by World's spike (`docs/FINER_GROUND.md` on
+  `finer-spike`, never merged). It recommends option 2: finer height only
+  (four 0.75 m sub-heights per cell), with water reading the mean.
+- **Also comes up when:** earth shaping, trenches, the save format, cave
+  shafts.
+- **The questions:**
+  1. Which shapes go finer? Proposed: slanted lines and round craters only.
+  2. Is a half-raised cell a wall at its highest sub-square, or at its mean?
+  3. Is water moving a cell at a time acceptable along a smooth channel?
+  4. Should it land before saves ship?
+  5. Does a shaft open when all four sub-squares reach the bottom, or when
+     their mean does?
+- **Answer:** pending; ask when it comes up in the order.
+- **Revisited:** 0.
 
 ## Decided
+
+### J-031: When do we cut 0.1.6?
+
+- **Asked:** 2026-10-27, by Andrew ("how soon until we can cut a 0.1.6?").
+- **Answer (2026-10-27):** cut it as soon as the cloth's cost is proven (at
+  most about +1 ms a frame at 4 wizards; Andrew's "good enough if
+  performance holds"). It ships what's on dev then. The paper cuts still in
+  flight go into 0.1.7.
+- **Why:** Andrew's choice over waiting 3–4 h for the paper-cut batches:
+  ship sooner (J-019).
+- **Revisited:** 0.
+
+### J-030: Add a light-making spell?
+
+- **Asked:** 2026-10-27, from Andrew's playtest (#15). There's no light
+  spell; only items make light.
+- **Answer (2026-10-27):** add the LIGHT cantrip (SRD: an object sheds bright
+  light 20 ft and dim 20 ft for an hour). Not Daylight for now. World builds
+  the rules and the radial spot; Gameplay builds the glow.
+- **Why:** Andrew picked the recommendation: cheap, and it fits night and
+  caves.
+- **Revisited:** 0.
+
+### J-020: Caves, the six design questions (backlog #14)
+
+- **Asked:** 2026-10-27, raised by World's spike (`docs/CAVES.md` on
+  `caves-spike`, never merged). It recommends C: levels linked by shafts.
+- **Also comes up when:** anything underground, digging, shafts, light in
+  caves, saves (SaveFormat 2).
+- **The questions,** with World's proposals:
+  1. How deep, and how many levels? One, about 6 m down.
+  2. Can players dig new caves anywhere, or only reach caves that exist?
+  3. Fixed levels with stairs, ramps and shafts, or continuous slopes?
+  4. What crosses a shaft? Water down, gas and smoke up, wizards falling
+     (SRD damage past 10 ft) or climbing; no spells.
+  5. Are caves always dark? Yes.
+  6. Solo first, or online from the start?
+- **Answer (2026-10-27):**
+  1. One level, about 6 m down.
+  2. Players only reach caves that exist: digging opens into them where they
+     lie, and doesn't make new cave space.
+  3. Fixed levels joined by shafts, stairs and ramps.
+  4. Water falls and gas rises through them; wizards fall (SRD damage past
+     10 ft) or climb. No spells cross (World's proposal; not asked).
+  5. Caves are dark (World's proposal; not asked; Andrew can overrule).
+  6. ONLINE FROM THE START: lockstep and the online probe from the first
+     slice, not solo first.
+- **Why:** Andrew picked the recommendations on 1–3. On 6 he chose online
+  from the start over solo first.
+- **Revisited:** 0.
+
+### J-029: Should far-apart players see each other's big moments?
+
+- **Asked:** 2026-10-27, by the coordinator, from World's interest-by-chunk
+  plan.
+- **Also comes up when:** interest by chunk, the event log online, sky
+  effects.
+- **Answer (2026-10-27):** yes, the notable ones (a meteor in the sky, a big
+  fire's smoke, important log lines) reach everyone; the detail stays
+  local.
+- **Why:** Andrew picked the recommendation.
+- **Revisited:** 0.
+
+### J-028: When should we do online interest by chunk?
+
+- **Asked:** 2026-10-27, by the coordinator, from World's plan
+  (WORLD_STREAMING.md, "Part 2, next slice", `ebb1d75`).
+- **Also comes up when:** the continent and world size, host CPU, late-join
+  time, order-free randomness.
+- **Answer (2026-10-27):** later, with the continent. The valley (9×9
+  chunks, 4 players) runs whole cheaply today. World's other questions
+  (moving every golden for order-free randomness; the host running every
+  island) wait until then.
+- **Why:** Andrew picked the recommendation, to keep the core stable now.
+- **Revisited:** 0.
+
+### J-026: Publish 0.1.5 before the bot's RC runs finish?
+
+- **Asked:** 2026-10-27, by Andrew ("are we good to publish 0.1.5?").
+  - Passed: R1 (the install), R3 (Relay both ways, with a reset), and the
+    dev probes.
+  - R2 (the bot): only 1 of 6 runs done. A bot bug (its sea place) left
+    almost no on-world time.
+  - Not done: Andrew's own look.
+- **Also comes up when:** every release: how much RC testing is enough.
+- **Answer (2026-10-27):** **publish now.** The bot keeps running on 0.1.5,
+  and findings go to 0.1.6 (or a hotfix if serious).
+- **Why:** Andrew: "Deciding to publish now since we are still alpha and
+  pre 1.0." So while in alpha, a release can ship on the human-run tests
+  (the install, Relay) and the dev probes, without waiting for the bot's
+  full RC coverage. Everything a person tested passed. The bot's
+  findings so far were all its own bug. Shipping sooner keeps playtests on
+  what players actually have (J-019).
+- **Revisited:** 0.
+
+### J-025: Where are release-candidate builds made?
+
+- **Asked:** 2026-10-27, by the coordinator, when the Mac spent 40+ min
+  compiling Windows shader variants from scratch for the 0.1.5 RC, while
+  the PC had them warm in its cache from PC-5.
+- **Also comes up when:** every release, a shader or graphics settings
+  change, the time to ship.
+- **Answer (2026-10-27):** let 0.1.5's Mac build finish. From 0.1.6 on,
+  **the PC builds the Windows half** (warm cache) and the Mac builds macOS,
+  in parallel, both from the same main commit. Build updates RELEASING.md
+  and ship-update to match.
+- **Why:** Andrew picked the recommendation. Don't throw away nearly-done
+  work. Each platform builds fastest on its own machine.
+- **Revisited:** 0.
+
+### J-024: Should rain make the ground look wet?
+
+- **Asked:** 2026-10-27, by the coordinator. The rain WaterMesh fix stopped
+  drawing rain's 1-unit film on open ground.
+- **Also comes up when:** any weather visuals, terrain shaders, snow.
+- **Answer (2026-10-27):** yes, a terrain wetness shader: darker and glossier
+  while it rains, drying after. A view-only change (Gameplay), for 0.1.6.
+- **Why:** Andrew picked it. It brings back the "wet" read without the
+  chemistry or mesh cost.
+- **Revisited:** 0.
+
+### J-023: Skip the Editor's domain reload on entering Play mode?
+
+- **Asked:** 2026-10-27, by the coordinator, after static-resets
+  (`46abc35`) made the code safe for it.
+- **Also comes up when:** Editor start-up time, new static fields (they
+  must reset in SubsystemRegistration), Editor-only bugs on a second Play.
+- **Answer (2026-10-27):** try it in 0.1.6. Build flips Enter Play Mode
+  Options on a branch, measures Play-mode start (about 11 s now), and runs
+  the probes twice in a row. It's Editor-only, so players aren't affected.
+- **Why:** Andrew picked the recommendation. It saves most of the ~11 s on
+  every Play, for every agent, and reverts easily.
+- **Revisited:** 0.
+
+### J-022: Does Zachary Franklin's permission cover modifying all of Punchy?
+
+- **Asked:** 2026-10-27, by the coordinator, after Gameplay changed
+  `ThirdParty/Punchy/Sky.hlsl` (Punchy has no LICENSE file).
+- **Also comes up when:** any edit to or reuse of files in
+  `ThirdParty/Punchy/`, the credits, and releases.
+- **Answer (2026-10-27):** yes. "Permission applies. We are writing
+  together on this."
+- **Why:** Andrew and Zachary Franklin are writing it together. Keep the
+  attribution in Credits.cs, and record each change in the file's header
+  and the Punchy README.
+- **Revisited:** 0.
 
 ### J-019: When do we cut releases?
 

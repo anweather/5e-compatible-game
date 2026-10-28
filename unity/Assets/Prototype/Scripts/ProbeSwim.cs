@@ -78,18 +78,22 @@ public class SwimProbe : ProbeScenario
 
     // The lake square with the most water over the ground. The lake is the lowest water (the
     // pond at the foot of the falls, high up, can be deeper).
-    Vector2Int Deepest(out float depth)
+    Vector2Int Deepest(out float depth) => DeepestLake(grid, out depth);
+
+    /// <summary>The lake square with the most water over the ground, and how deep (also for the cloth probe).</summary>
+    internal static Vector2Int DeepestLake(ChemGrid grid, out float depth)
     {
         float lake = float.MaxValue;
-        for (int y = 0; y < World.H; y++)
-            for (int x = 0; x < World.W; x++)
-                if (Open(x, y)) lake = Mathf.Min(lake, grid.WaterSurfaceY(x, y));
+        var world = grid.World;
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
+                if (Open(grid, x, y)) lake = Mathf.Min(lake, grid.WaterSurfaceY(x, y));
         depth = 0f;
         var best = Vector2Int.zero;
-        for (int y = 0; y < World.H; y++)
-            for (int x = 0; x < World.W; x++)
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
             {
-                float d = LakeDepth(x, y, lake);
+                float d = LakeDepth(grid, x, y, lake);
                 if (d <= depth) continue;
                 depth = d;
                 best = new Vector2Int(x, y);
@@ -98,12 +102,12 @@ public class SwimProbe : ProbeScenario
     }
 
     // Water over the ground in a lake square (one whose surface is the lake's), else 0.
-    float LakeDepth(int x, int y, float lake) =>
-        Open(x, y) && grid.WaterSurfaceY(x, y) <= lake + 1f ? grid.WaterSurfaceY(x, y) - TerrainGround(grid.CellCenter(x, y)) : 0f;
+    static float LakeDepth(ChemGrid grid, int x, int y, float lake) =>
+        Open(grid, x, y) && grid.WaterSurfaceY(x, y) <= lake + 1f ? grid.WaterSurfaceY(x, y) - TerrainGround(grid.CellCenter(x, y)) : 0f;
 
-    bool Open(int x, int y)
+    static bool Open(ChemGrid grid, int x, int y)
     {
-        var c = World.At(x, y);
+        var c = grid.World.At(x, y);
         if (c.Water <= 0 || c.Frozen || c.T != TerrainIds.Pit) return false;
         // The lake, not the sea (whose deepest water is out by the world's edge).
         var currents = WaterCurrents.Instance;

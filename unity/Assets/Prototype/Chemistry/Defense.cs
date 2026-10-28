@@ -41,11 +41,12 @@ namespace Chem
         public IReadOnlyList<string> Kinds = Array.Empty<string>();
     }
 
-    /// <summary>The "if" of an entity rule (reactions.json "entity"): a status it has, whether it burns.</summary>
+    /// <summary>The "if" of an entity rule (reactions.json "entity"): a status it has, components it has and lacks.</summary>
     public sealed class EntityCond
     {
         public string Status;
-        public bool? Flammable;
+        /// <summary>Components it must have, and must lack (Components.cs).</summary>
+        public ComponentSet Has, Lacks;
     }
 
     /// <summary>One effect of an entity rule: statuses set (at least this many ticks), one cleared, a damage multiplier.</summary>
@@ -85,7 +86,7 @@ namespace Chem
                     Log = Str(o["log"]),
                     Notable = Truthy(o["notable"]),
                     Stop = Truthy(o["stop"]),
-                    If = o["if"] is JObject c ? new EntityCond { Status = Str(c["status"]), Flammable = Bool(c["flammable"]) } : null,
+                    If = o["if"] is JObject c ? r.ParseEntityCond(c) : null,
                     Do = o["do"] is JArray d ? d.OfType<JObject>().Select(ParseEntityEffect).ToList() : new List<EntityEffect>(),
                 };
                 if (rule.Element == null) continue;

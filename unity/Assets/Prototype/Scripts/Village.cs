@@ -5,7 +5,8 @@ using UnityEngine;
 // buildings (VillageHouse, each building its own meshes), its folk (residents,
 // whom ValleyFauna brings out leashed to the square) and its square's
 // well, which this builds the same way. It also sets how brightly every
-// village window glows (VillageLit's _LampGlow) from the sky's daylight.
+// village window glows (VillageLit's _LampGlow), and lights the inn's and the shop's
+// door lights and a lamp over the well as the rules' daylight drops at dusk (Nightfall).
 // ValleyBuilder lays it out from world/villages.json through the core's
 // VillageLayout, so its walls are cells like the cabins'.
 [ExecuteAlways]
@@ -47,9 +48,57 @@ public class Village : MonoBehaviour
         if (sky == null && Time.unscaledTime >= nextSkyLookup)
         {
             sky = FindAnyObjectByType<SkyLight>();
+            grid = FindAnyObjectByType<ChemGrid>();
             nextSkyLookup = Time.unscaledTime + 2f;
         }
-        if (sky != null) Shader.SetGlobalFloat(LampGlow, Mathf.SmoothStep(0f, 1f, 1f - sky.Daylight));
+        // Playing, the windows and door lamps light as the rules' daylight drops from bright
+        // (Nightfall); in the Editor, from the sky as it stands.
+        var world = grid != null ? grid.World : null;
+        float lit;
+        if (world != null) lit = Nightfall.Lamps(world);
+        else if (sky != null) lit = Mathf.SmoothStep(0f, 1f, 1f - sky.Daylight);
+        else return;
+        Shader.SetGlobalFloat(LampGlow, lit);
+        if (Application.isPlaying) LightLamps(lit);
+    }
+
+    // --- door lamps --------------------------------------------------------------------------
+
+    // The inn's and the shop's door lights (the buildings' own) and a lamp over the well, lit at dusk:
+    // each at its own brightness times how lit the lamps are.
+    const string DoorLight = "Door light";
+    const float WellRange = 8f, WellIntensity = 1.6f;
+    static readonly Color LampColour = new(1f, 0.72f, 0.42f);
+    readonly System.Collections.Generic.List<(Light lamp, float full)> lamps = new();
+    ChemGrid grid;
+    bool lampsFound;
+
+    void LightLamps(float lit)
+    {
+        if (!lampsFound) FindLamps();
+        foreach (var (lamp, full) in lamps)
+        {
+            if (lamp == null) continue;
+            lamp.enabled = lit > 0.02f;
+            lamp.intensity = full * lit;
+        }
+    }
+
+    void FindLamps()
+    {
+        lampsFound = true;
+        foreach (var light in GetComponentsInChildren<Light>(true))
+            if (light.name == DoorLight) lamps.Add((light, light.intensity));
+        var go = new GameObject("Well lamp") { hideFlags = HideFlags.DontSave };
+        go.transform.SetParent(transform, false);
+        go.transform.position = transform.TransformPoint(wellAt) + Vector3.up * 2.2f;
+        var lamp = go.AddComponent<Light>();
+        lamp.type = LightType.Point;
+        lamp.color = LampColour;
+        lamp.range = WellRange;
+        lamp.shadows = LightShadows.None;
+        lamp.enabled = false;
+        lamps.Add((lamp, WellIntensity));
     }
 
     // A round stone well with two posts, a little shingled roof, a windlass and a bucket.

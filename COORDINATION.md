@@ -96,6 +96,8 @@ Blocked, Next, and whether they hold Unity.
 4. Commit often, in small commits.
 5. Merge to `dev` only when the coordinator says it's your turn in the merge
    order. Fetch and rebase on `origin/dev` first, and push straight after.
+   Never pass `--force` past the playtest runner's preflight: if it says
+   no, wait for the PC.
    Force-pushing is allowed only for your OWN unmerged feature branch,
    after a rebase, with `--force-with-lease`; never `dev`, `main` or
    another agent's branch (J-016).
@@ -185,7 +187,8 @@ ask the coordinator first.
 | Build | `unity/ProjectSettings/**` (including the version) |
 | Build | `unity/Packages/manifest.json`, `unity/Packages/packages-lock.json` |
 | Build | `unity/Assets/Settings/**` (the URP assets) |
-| Build | `unity/Assets/Prototype/Scripts/Editor/AssetPacks/**`, `unity/AssetPacks.json` |
+| Build | `unity/Assets/Prototype/Scripts/Editor/AssetPacks/**`, `unity/AssetPacks.json`, `unity/Assets/Prototype/Scripts/Editor/UpdateBuild.cs` (release builds) |
+| Build | `unity/Assets/Prototype/Scripts/Perf/**` (new: rendering and perf tooling, e.g. the pipeline-state trace and warm-up) |
 | Build | `tools/ship-update.sh`, `docs/RELEASING.md`, `unity/ReleaseReadme.txt` |
 
 These shared files have **no owner**. Changes go through the coordinator's
@@ -225,6 +228,8 @@ The coordinator approves each change and schedules them one at a time.
 | 1 | `docs/FAST_LOOP.md` (World's) | Gameplay | The `online` and `villagers` rows | Done (merged) |
 | 2 | `docs/WORLD_LIFE.md` (shared) | Gameplay | Item 4 marked built | Done (merged) |
 | 3 | `docs/GLOSSARY.md`, `docs/MODDING.md` (shared) | World | The "Component" entry and the MODDING example, on `components` | Approved; merges with 0.1.6 |
+| 5 | `docs/FAST_LOOP.md` (World's) | Gameplay | The `wet` and `night` probe rows, on `rain-wet` and `night-view` | Lent 2026-10-27 |
+| 4 | `unity/Assets/Prototype/ThirdParty/Punchy/Sky.hlsl` (shared, third-party) | Gameplay | A second star layer and _PunchyStarBright, on `night-view` | Approved after the fact; change comment and README row added; used under Zachary Franklin's permission, confirmed by Andrew 2026-10-27: it covers all of Punchy, as they are writing it together (J-022) |
 
 ## Merge order
 
@@ -247,9 +252,27 @@ The coordinator approves each change and schedules them one at a time.
 10. Gameplay: ~~`static-resets`~~ `46abc35`; ~~`villagers`~~ `4e74992` (on the reel); `net-reset-view` (after the online run); `ground-perf` (perf numbers need a solo slot); `showcase-fire` (the Mac is verifying it).
 11. Build: `perf-pass` (cheap SSAO and soft Medium, `49bd690`) after PC-5 on a solo PC.
 
-## Release 0.1.5 (J-019; today)
+## Release 0.1.5: SHIPPED
 
-FROZEN at `0bd59b6` (16:20). Nobody merges into dev until 0.1.5 ships.
+Published 2026-10-28 02:23 UTC as a pre-release:
+https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.5
+(the tag is at `4a9af50`).
+- Size: Windows 442 → 134 MB, Mac 458 → 153 MB.
+- The in-place update 0.1.2 → 0.1.5 was checked on the Mac.
+- Still to check: the Windows in-place update with QuickExit (PC-R4: the
+  test channel's 0.1.104 → 0.1.105).
+
+Finding (Build, 2026-10-27), for Gameplay, low priority: on the FIRST online
+probe after an Editor start (with either domain-reload setting),
+prop_moved_matches and player_knockback_matches can fail. After a client's
+Thunderwave, the crate was 63 cm off and the host wizard's copy about 16 m off
+on the client. It's possibly a first-frame or physics warm-up issue on the
+virtual player. Real, but not caused by J-023.
+
+Next release: 0.1.6, within about 2 days (J-019). The PC builds Windows and
+the Mac builds macOS (J-025).
+
+FREEZE LIFTED 19:16. The RC (main `4a9af50`, the draft alpha-0.1.5) is built and fully tested; publishing waits on Andrew's approval on the Mac. dev is open for 0.1.6, one merge at a time on the coordinator's go.
 
 Landed before the freeze:
 0. ~~`perf-pass`~~ `0bd59b6` (cheap SSAO, soft shadows Medium: PC -9% mean, Mac -13%).
@@ -292,3 +315,40 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   (`3c1d848`) and B (`a473873`). Lane slip: part B added a row to
   `docs/FAST_LOOP.md` and a paragraph to `docs/WORLD_STREAMING.md`, both
   World's. Accepted, World told, Gameplay reminded to ask first.
+- 2026-10-27: 0.1.6 merges, World: playtest-findings-0.1.5 `bf848c8`,
+  playtest-player `1049b53`, components `5a2c9f6`, night `6213c4b`,
+  stream-disk `be437fa`. Merged branches that sessions couldn't delete
+  (their permissions refuse it): net-reset, playtest-findings-0.1.5,
+  playtest-player, components, night, stream-disk. Andrew can delete them.
+- 2026-10-27 (evening): Andrew is low on tokens. No new big features until
+  THURSDAY 2026-10-29: caves (J-020 decided), finer ground (J-021 open) and
+  interest by chunk (J-028, waits for the continent) all start then or later.
+  Until then, agents finish what's in flight (cloth round 3 and the beard;
+  check-bot-sparks and the D3D12 warm-up; the Metal warm-up), merge on the
+  coordinator's go, and then stop. Idle is fine. Held, unmerged:
+  `soundscape`, `terrain-reach`, `bot-fixes`, `spark-pool`, `perf/pso-trace`,
+  `wizard-cloth-v2`.
+- 2026-10-27 (late): Andrew wants the playtest paper cuts
+  (`playtest/andrew-2026-10-27.md`) worked NOW, in priority order (P1, then
+  P2). Only caves stay paused. To work them in parallel, the coordinator
+  lends Gameplay-lane files per item (one small branch per item; merge on
+  the coordinator's go; a before/after screenshot each):
+  - World: P1 #1 signs (and the mirrored-text audit), #2 villager faces,
+    #3 villagers sitting, #4 houses (roofs, doors, shutters, pots), #5 well
+    collision, #8 deer habitat, #10c lights in burnt houses. Lent: the
+    village, defense and coast builders, Village.cs, ValleyFauna (folk and
+    habitat), Seat.cs.
+  - Build (Mac): #6 Hasten Time sun smoothing (SkyLight.cs), #10 court gate
+    direction (CourtGate.cs), #10a meteor shake (its camera-shake code),
+    #7 underwater view. Lent: those files.
+  - Gameplay: after cloth round 3 and the beard: #9 swim speed, #10b camera
+    in the ground, #10d throwing, #10e lantern, #10f roll, #10g tree
+    see-through, #10h camera snapping. Then the P2s, shared out the same
+    way.
+- 2026-10-27 21:45: FREEZE for 0.1.6 (J-031; Andrew: "prioritize it"). dev
+  takes no merges except the splashes already approved. The release goes:
+  Mac measures cloth cost → if it passes, Build merges dev into main and
+  bumps to 0.1.6 → in parallel the PC (Gameplay, main checkout, warm shader
+  cache) builds Windows with ship-update --windows-only and the Mac builds
+  macOS → R1 install plus R3 Relay (no bot run: alpha, J-026) → publish on
+  Andrew's go. Every other job yields the PC to the release.

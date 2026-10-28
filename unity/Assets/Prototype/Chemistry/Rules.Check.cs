@@ -16,6 +16,7 @@ namespace Chem
             var check = new Checker(r);
             check.CrossReferences();
             check.Items();
+            check.Components();
             check.Groups();
             check.Numbers();
             return check.Errors;
@@ -25,7 +26,7 @@ namespace Chem
         {
             static readonly HashSet<string> CondKeys = new HashSet<string>
             {
-                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "power", "chance",
+                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance",
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
@@ -66,6 +67,8 @@ namespace Chem
                 foreach (var s in r["spells"]) SpellRefs(s);
                 foreach (var c in r["critters"].Where(c => !IsElement(c["element"])))
                     Errors.Add($"critter {Show(c["id"])}: unknown element {Show(c["element"])}");
+                foreach (var c in r["critters"].Where(c => c["hours"] != null && !IsHours(c["hours"])))
+                    Errors.Add($"critter {Show(c["id"])}: hours must be [from, to], hours from 0 to 24");
                 foreach (var p in ((JObject)r["machines"]).Properties())
                 {
                     if (terrain[p.Name] == null) Errors.Add($"machine {p.Name}: no terrain with that id");
@@ -96,6 +99,7 @@ namespace Chem
             void EntityRefs(JProperty p)
             {
                 RaiderRefs(p);
+                ComponentList($"entity {p.Name}", p.Value["components"]);
                 var explodes = p.Value["explodes"];
                 if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
                 if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1, radius from 0 and strength from 1");
@@ -182,6 +186,8 @@ namespace Chem
                 foreach (var k in effects.SelectMany(Keys).Where(k => !EffectKeys.Contains(k)))
                     Errors.Add($"rule {id}: unknown effect \"{k}\" (new verbs need code; see docs/MODDING.md)");
                 foreach (var e in effects.OfType<JObject>()) EffectRefs(id, e);
+                ComponentCond(id, cond, "has");
+                ComponentCond(id, cond, "lacks");
                 if (cond?["cover"] is JArray coverIds)
                     foreach (var cv in coverIds.Where(cv => !IsIn(covers, cv))) Errors.Add($"rule {id}: cover {Show(cv)} unknown");
             }
@@ -276,11 +282,20 @@ namespace Chem
                 {
                     var key = path + p.Name;
                     if (key == "defense.kinds") continue; // names, checked by DefenseRefs
+                    if (key == "day.dawn" || key == "day.dusk")
+                    {
+                        if (!IsHours(p.Value)) Errors.Add($"sim {key} must be [from, to], hours from 0 to 24");
+                        continue;
+                    }
                     if (p.Value is JObject sub) Sim(sub, key + ".");
                     else if (key == "height.min") Number(p.Value, $"sim {key}");
                     else Number(p.Value, $"sim {key}", PositiveSim.Contains(key) ? 1 : 0);
                 }
             }
+
+            /// <summary>[from, to]: two hours of the day, 0 to 24 (Sky.InHours; from after to runs across midnight).</summary>
+            static bool IsHours(JToken t) =>
+                t is JArray a && a.Count == 2 && a.All(h => (h.Type == JTokenType.Integer || h.Type == JTokenType.Float) && (double)h >= 0 && (double)h <= 24);
 
             void Number(JToken v, string what, int? min = null)
             {
