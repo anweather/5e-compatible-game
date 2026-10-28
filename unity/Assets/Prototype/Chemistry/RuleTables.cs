@@ -398,9 +398,19 @@ namespace Chem
                 return JValue.CreateNull();
             }
 
-            var materials = (JObject)Get("materials.json", true);
-            var reactions = (JObject)Get("reactions.json", true);
-            var doc = new JObject
+            var doc = Doc(Get);
+            // A material spelled as verb groups reads as the flat keys (MaterialGroups).
+            var grouping = MaterialGroups.Ungroup(doc);
+            if (grouping.Count > 0) throw new ArgumentException("Rules: " + string.Join("; ", grouping));
+            return FromDoc(doc);
+        }
+
+        // The rule document from the files (get: a file's JSON, or null for an optional one that's missing).
+        static JObject Doc(Func<string, bool, JToken> get)
+        {
+            var materials = (JObject)get("materials.json", true);
+            var reactions = (JObject)get("reactions.json", true);
+            return new JObject
             {
                 ["elements"] = new JArray(BaseElements),
                 ["terrain"] = materials["terrain"] as JObject ?? new JObject(),
@@ -408,19 +418,15 @@ namespace Chem
                 ["gases"] = materials["gases"] as JObject ?? new JObject(),
                 ["cellRules"] = reactions["cell"] as JArray ?? new JArray(),
                 ["entityRules"] = reactions["entity"] as JArray ?? new JArray(),
-                ["spells"] = Get("spells.json", false) as JArray ?? new JArray(),
-                ["critters"] = Get("critters.json", false) as JArray ?? new JArray(),
-                ["entities"] = Get("entities.json", false) as JObject ?? new JObject(),
-                ["items"] = Get("items.json", false) as JObject ?? new JObject(),
-                ["machines"] = Get("machines.json", false) as JObject ?? new JObject(),
-                ["sim"] = Get("sim.json", false) as JObject ?? new JObject(),
-                ["groups"] = Get("groups.json", false) as JObject ?? new JObject(),
-                ["components"] = Get("components.json", false) as JObject ?? new JObject(),
+                ["spells"] = get("spells.json", false) as JArray ?? new JArray(),
+                ["critters"] = get("critters.json", false) as JArray ?? new JArray(),
+                ["entities"] = get("entities.json", false) as JObject ?? new JObject(),
+                ["items"] = get("items.json", false) as JObject ?? new JObject(),
+                ["machines"] = get("machines.json", false) as JObject ?? new JObject(),
+                ["sim"] = get("sim.json", false) as JObject ?? new JObject(),
+                ["groups"] = get("groups.json", false) as JObject ?? new JObject(),
+                ["components"] = get("components.json", false) as JObject ?? new JObject(),
             };
-            // A material spelled as verb groups reads as the flat keys (MaterialGroups).
-            var grouping = MaterialGroups.Ungroup(doc);
-            if (grouping.Count > 0) throw new ArgumentException("Rules: " + string.Join("; ", grouping));
-            return FromDoc(doc);
         }
 
         /// <summary>The typed tables for a rule document (see <see cref="doc"/>), which the result keeps.</summary>
