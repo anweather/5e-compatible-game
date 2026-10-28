@@ -83,6 +83,8 @@ public class OnlineObservation
     public string id;
     public string phase;
     public int joinedTick;
+    /// <summary>The virtual player's lag at the start tick: ticks it knew of but hadn't run yet (0 caught up).</summary>
+    public int lagAtStart;
     public List<int> hashTicks = new();
     public List<string> hashes = new();
     public bool desync;
@@ -147,19 +149,19 @@ public static class OnlineSchedule
     {
         S(0, false, null, (15, 7), (15, 7), 0),                 // the host stands beside the client, to be thrown too
         S(0, true, SpellIds.Thunderwave, (15, 6), (15, 6), 1),
-        S(18, false, SpellIds.FireBolt, (5, 13), (2, 12), 3),         // the meadow, west of the old yard
-        S(24, true, SpellIds.FireBolt, (16, 11), (19, 3), 0),         // the oil spill by the barrels
-        S(30, false, SpellIds.EarthenTrench, (16, 5), (15, 5), 3),    // west from the pond's bank: fills
-        S(36, true, SpellIds.EarthenTrench, (16, 8), (15, 8), 3),
-        S(42, false, SpellIds.WallOfStone, (10, 6), (12, 7), 0),
-        S(48, true, SpellIds.WallOfStone, (6, 4), (8, 4), 0),
-        S(60, false, Fall, (10, 6), (10, 6), 0),                  // the host's wizard falls and lands
+        S(30, false, SpellIds.FireBolt, (5, 13), (2, 12), 3),         // the meadow, west of the old yard
+        S(36, true, SpellIds.FireBolt, (16, 11), (19, 3), 0),         // the oil spill by the barrels
+        S(42, false, SpellIds.EarthenTrench, (16, 5), (15, 5), 3),    // west from the pond's bank: fills
+        S(48, true, SpellIds.EarthenTrench, (16, 8), (15, 8), 3),
+        S(54, false, SpellIds.WallOfStone, (10, 6), (12, 7), 0),
+        S(60, true, SpellIds.WallOfStone, (6, 4), (8, 4), 0),
+        S(72, false, Fall, (10, 6), (10, 6), 0),                  // the host's wizard falls and lands
     };
 
     /// <summary>When the shoved crate has settled (before any fire can reach it).</summary>
     public const int PropTick = 15;
     /// <summary>When both sides write down what they see: 20 s after the fall, while the fires still spread.</summary>
-    public const int SampleTick = 180;
+    public const int SampleTick = 192;
 
     /// <summary>The earth spells' lines, whose cells are observed.</summary>
     public static IEnumerable<Step> Lines => Steps.Where(s => s.Spell == SpellIds.EarthenTrench || s.Spell == SpellIds.WallOfStone);
@@ -339,6 +341,14 @@ public class OnlineProbeClient : MonoBehaviour
         }
     }
 
+    // This side's wizard once it's in the game and caught up with the host's history, else null.
+    static GameObject JoinedWizard(ChemGrid grid, NetChem net)
+    {
+        var network = NetworkManager.Singleton;
+        var local = network != null && network.IsConnectedClient ? network.SpawnManager.GetLocalPlayerObject() : null;
+        return local != null && net.Online && grid.World.Tick > 0 && net.CaughtUp ? local.gameObject : null;
+    }
+
     IEnumerator Take(string id)
     {
         errorCount = 0;
@@ -347,15 +357,11 @@ public class OnlineProbeClient : MonoBehaviour
         session.Join("127.0.0.1");
         var grid = FindAnyObjectByType<ChemGrid>();
         var net = grid.GetComponent<NetChem>();
-        float waited = 0f;
         GameObject wizard = null;
-        while (waited < 30f)
+        for (float waited = 0f; waited < 30f && wizard == null; waited += Time.unscaledDeltaTime)
         {
-            var local = NetworkManager.Singleton != null && NetworkManager.Singleton.IsConnectedClient
-                ? NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject() : null;
-            if (local != null && net.Online && grid.World.Tick > 0) { wizard = local.gameObject; break; }
-            waited += Time.unscaledDeltaTime;
-            yield return null;
+            wizard = JoinedWizard(grid, net);
+            if (wizard == null) yield return null;
         }
         if (wizard == null) yield break;   // the host times out waiting for "joined"
         var recorder = new OnlineProbeRecorder(grid, client: true);
@@ -365,7 +371,7 @@ public class OnlineProbeClient : MonoBehaviour
         ProbeLink.Write(ProbeLink.ClientFile, recorder.Seen);
 
         ProbeHostMessage go = null;
-        for (waited = 0f; waited < 60f; waited += Time.unscaledDeltaTime)
+        for (float waited = 0f; waited < 60f; waited += Time.unscaledDeltaTime)
         {
             go = ProbeLink.Read<ProbeHostMessage>(ProbeLink.HostFile);
             if (go != null && go.id == id && go.phase == ProbeLink.Go) break;
@@ -374,7 +380,11 @@ public class OnlineProbeClient : MonoBehaviour
         }
         if (go == null) { recorder.Stop(); yield break; }
         recorder.StartTick = go.startTick;
+        // At the start tick: how far behind the host this side still is (ticks it knows of but
+        // hasn't run), then caught up before it casts anything.
         while (grid.World.Tick < go.startTick) yield return null;
+        recorder.Seen.lagAtStart = Lag(net);
+        while (!net.CaughtUp) yield return null;
         recorder.Play(wizard);
         recorder.RecordProp(after: false);
         while (!recorder.Sampled)
@@ -388,6 +398,13 @@ public class OnlineProbeClient : MonoBehaviour
         recorder.Seen.errors = new List<string>(errors);
         ProbeLink.Write(ProbeLink.ClientFile, recorder.Seen);
         yield return AfterReset(id, net);
+    }
+
+    // Ticks this side knows of but hasn't run yet (NetChem's knownUpTo - NetTick; 0 when caught up).
+    static int Lag(NetChem net)
+    {
+        var known = typeof(NetChem).GetField("knownUpTo", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+        return known != null ? System.Math.Max(0, (int)known.GetValue(net) - net.NetTick) : -1;
     }
 
     // The host then resets the world (OnlineProbe.TryReset): the checksums from after the reset,
@@ -485,7 +502,7 @@ public class OnlineProbe : ProbeScenario
             report = ReadClient(id, ProbeLink.Reported);
             yield return null;
         }
-        Check("virtual_player_reported", report != null, report != null ? $"sampled at tick {report.sampledTick}" : $"no report in {ReportSeconds:0} s");
+        Check("virtual_player_reported", report != null, report != null ? $"sampled at tick {report.sampledTick}; client {report.lagAtStart} ticks behind at the start tick" : $"no report in {ReportSeconds:0} s");
         if (report == null) yield break;
         Compare(recorder.Seen, report);
         yield return TryReset();
@@ -627,10 +644,11 @@ public class OnlineProbe : ProbeScenario
         }
         Metric("checksums_compared", compared);
         Metric("checksums_equal", equal);
+        Metric("client_lag_at_start", client.lagAtStart);
         Metric("first_checksum_tick", compared > 0 ? client.hashTicks.First(mine.ContainsKey) : -1);
         Metric("last_checksum_tick", compared > 0 ? client.hashTicks.Last(mine.ContainsKey) : -1);
         Check("checksums_equal", compared >= 3 && equal == compared,
-            firstDiff ?? $"{equal}/{compared} checksums equal (every 30 ticks, {client.hashTicks.FirstOrDefault()} to {client.hashTicks.LastOrDefault()})");
+            (firstDiff ?? $"{equal}/{compared} checksums equal (every 30 ticks, {client.hashTicks.FirstOrDefault()} to {client.hashTicks.LastOrDefault()})") + $"; client {client.lagAtStart} ticks behind at the start tick");
         Check("sampled_same_world", host.sampledTick == client.sampledTick && host.sampledChecksum == client.sampledChecksum,
             $"tick {host.sampledTick}: host {host.sampledChecksum}, client {client.sampledChecksum}");
         Check("client_saw_no_desync", !client.desync);
