@@ -68,6 +68,9 @@ public class PlaytestBot : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void LockTimeIfAsked()
     {
+        // Statics outlive a Play session when the Editor skips the domain reload: start each one clean.
+        ChemGrid.ExactFrames = false;
+        runSeed = null;
         var args = Environment.GetCommandLineArgs();
         if (!args.Contains("-playtest")) return;
         // Game time moves exactly 1/30 s a frame; the cap keeps the bot from spinning the GPU.
