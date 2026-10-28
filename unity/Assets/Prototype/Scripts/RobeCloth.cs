@@ -11,18 +11,19 @@ using UnityEngine;
 // legs and a sphere at the hips (so the legs no longer poke through it), the
 // ground under the feet, and a seat's top when the wizard sits; in water it
 // floats and drags; the weather's wind and the wizard's own moves sway it. The
-// mesh is rebuilt from the particles every frame, smooth-shaded like the bodice
-// (VillageLit). It snaps back to rest after a jump of more than 2 m
-// (a teleport, Misty Step, the online reset), runs at a third of the rate far
-// off and stops while off screen. View only: every peer runs its own, nothing
-// is shared.
+// mesh is rebuilt from the particles after each step, smooth-shaded like the
+// bodice (VillageLit). It snaps back to rest after a jump of more than 2 m (a
+// teleport, Misty Step, the online reset). The local player's robe steps at 60
+// Hz, everyone else's at 30 and any far off at 20; it stops while off screen.
+// View only: every peer runs its own, nothing is shared.
 // After the poses (SitPose, SwimPose, RollPose, CastPose) have set the bones, so it hangs on them.
 [DefaultExecutionOrder(300)]
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class RobeCloth : MonoBehaviour
 {
     const float Step = 1f / 60f;
-    const int MaxStepsPerFrame = 3, Iterations = 4;
+    // Two passes of the links and collisions a step (four cost too much: the Mac's cost bar).
+    const int MaxStepsPerFrame = 3, Iterations = 2;
     // Velocity kept per step (air drag), and in water.
     const float Damping = 0.985f, WaterDamping = 0.8f;
     const float Gravity = 9.81f, WaterLift = 7f;
@@ -57,6 +58,9 @@ public class RobeCloth : MonoBehaviour
     Vector3[] hang;
     // The particles of the robe's front panel (within 60° of straight ahead), kept in front of the legs.
     bool[] frontPanel;
+    float[] frontShare;
+    // What moves the wizard: on for the local player (its robe steps every time), off for the rest.
+    CharacterController driver;
     Transform body;
     Vector3[] pos, prev;     // in the world
     struct Link { public int a, b; public float length; public bool vertical; }
@@ -77,6 +81,12 @@ public class RobeCloth : MonoBehaviour
 
     /// <summary>The steps run so far (the probe checks it's moving).</summary>
     public int Steps { get; private set; }
+
+    /// <summary>Seconds spent stepping every robe since it was last set to 0 (FpsProbe's cloth line).</summary>
+    public static double StepSeconds;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() => StepSeconds = 0;
 
     /// <summary>
     /// Builds the cloth on the hips: rings at these heights (in the hips' space, the first two
@@ -108,10 +118,13 @@ public class RobeCloth : MonoBehaviour
         body = animator.transform;
         hang = new Vector3[n];
         frontPanel = new bool[n];
+        frontShare = new float[n];
+        animator.TryGetComponent(out driver);
         for (int i = 0; i < n; i++)
         {
             hang[i] = Quaternion.Inverse(body.rotation) * (hips.TransformPoint(rest[i]) - hips.position);
             frontPanel[i] = hang[i].z > 0.5f * new Vector2(hang[i].x, hang[i].z).magnitude;
+            frontShare[i] = FrontShare(hang[i]);
         }
         Snap();
         MakeLinks();
@@ -160,10 +173,10 @@ public class RobeCloth : MonoBehaviour
         if (Vector3.Distance(hips.position, lastHips) > SnapDistance) Snap();
         lastHips = hips.position;
         if (!look.isVisible) return;
-        var cam = Camera.main;
-        bool far = cam != null && Vector3.Distance(cam.transform.position, hips.position) > FarDistance;
-        clock += Mathf.Min(Time.deltaTime, Step * MaxStepsPerFrame * (far ? 3 : 1));
-        float step = far ? Step * 3 : Step;
+        float step = Step * Slowdown();
+        clock += Mathf.Min(Time.deltaTime, step * MaxStepsPerFrame);
+        long from = System.Diagnostics.Stopwatch.GetTimestamp();
+        bool stepped = false;
         using (StepMarker.Auto())
         {
             while (clock >= step)
@@ -171,9 +184,22 @@ public class RobeCloth : MonoBehaviour
                 clock -= step;
                 Simulate(step);
                 Steps++;
+                stepped = true;
             }
         }
-        Draw();
+        StepSeconds += (System.Diagnostics.Stopwatch.GetTimestamp() - from) / (double)System.Diagnostics.Stopwatch.Frequency;
+        // Between steps the mesh rides on the wizard as it is.
+        if (stepped) Draw();
+    }
+
+    // How many 60 Hz steps one step stands for: the local player's own robe every step; anyone
+    // else's (another player's, a copy) at 30 Hz, and every third step far off (the cost bar:
+    // about 1 ms a frame at 4 wizards on the Mac).
+    int Slowdown()
+    {
+        var cam = Camera.main;
+        if (cam != null && Vector3.Distance(cam.transform.position, hips.position) > FarDistance) return 3;
+        return driver != null && driver.enabled ? 1 : 2;
     }
 
     // The bones read once a step (a transform read per particle per pass cost most of the time).
@@ -230,10 +256,11 @@ public class RobeCloth : MonoBehaviour
     }
 
     // How much of a particle is the robe's front (none at its back), seated with the lap found.
-    float Front(int i)
+    float Front(int i) => lapFound ? frontShare[i] : 0f;
+
+    // Each particle's share of the front, from its rest place (worked out once).
+    static float FrontShare(Vector3 h)
     {
-        if (!lapFound) return 0f;
-        var h = hang[i];
         float across = new Vector2(h.x, h.z).magnitude;
         return across < 1e-4f ? 0f : Mathf.Clamp01((h.z / across + 0.3f) / 0.8f);
     }
