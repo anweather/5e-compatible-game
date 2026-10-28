@@ -78,6 +78,12 @@ public class RobeCloth : MonoBehaviour
     /// <summary>The steps run so far (the probe checks it's moving).</summary>
     public int Steps { get; private set; }
 
+    /// <summary>Seconds spent stepping every robe since it was last set to 0 (FpsProbe's cloth line).</summary>
+    public static double StepSeconds;
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    static void ResetStatics() => StepSeconds = 0;
+
     /// <summary>
     /// Builds the cloth on the hips: rings at these heights (in the hips' space, the first two
     /// pinned), these radii, <paramref name="sides"/> particles round each; robe-coloured, the last
@@ -164,6 +170,7 @@ public class RobeCloth : MonoBehaviour
         bool far = cam != null && Vector3.Distance(cam.transform.position, hips.position) > FarDistance;
         clock += Mathf.Min(Time.deltaTime, Step * MaxStepsPerFrame * (far ? 3 : 1));
         float step = far ? Step * 3 : Step;
+        long from = System.Diagnostics.Stopwatch.GetTimestamp();
         using (StepMarker.Auto())
         {
             while (clock >= step)
@@ -173,6 +180,7 @@ public class RobeCloth : MonoBehaviour
                 Steps++;
             }
         }
+        StepSeconds += (System.Diagnostics.Stopwatch.GetTimestamp() - from) / (double)System.Diagnostics.Stopwatch.Frequency;
         Draw();
     }
 
