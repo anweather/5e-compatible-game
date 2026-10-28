@@ -357,3 +357,15 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   `fix/splash-online` for 0.1.7. FREEZE LIFTED: paper-cut verification
   resumes (World's Editor batch, then Gameplay's), merges one at a time on
   the coordinator's go.
+- 2026-10-28: FRUGAL MODE (Andrew: running low on usage). One agent works
+  at a time, on small goals, in this order; the others stay idle until
+  called. To save round trips, a step's merge is PRE-APPROVED when its own
+  checks pass (compile clean, no new warnings, its probes, a before/after
+  shot where visual); report once per step, in a few lines.
+  1. World: finish the current slot (the snow-mounds look and merge;
+     bot-lost-wizard plus the no-activate test and merge; D3D12 traces for
+     seeds 103/104, the merge and the commit onto perf/pso-trace).
+  2. Build (Mac): merge perf/pso-trace once PsoDirect3D12 is in.
+  3. Gameplay: #33 rocks in the river.
+  4. World: #31 water down slopes, then #32 a flowing river surface.
+  Then stop. Nothing new is started without Andrew.
