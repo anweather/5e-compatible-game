@@ -43,6 +43,7 @@ public class PlaytestBot : MonoBehaviour
     // the front was handed back to it.
     long handFocus;
     int handedBack;
+    float handUntil;
     const float HandFocusSeconds = 20f;
     Dictionary<string, int> coverage = new();
 
@@ -116,6 +117,7 @@ public class PlaytestBot : MonoBehaviour
     void Awake()
     {
         Active = true;
+        handUntil = Time.realtimeSinceStartup + HandFocusSeconds;
         DontDestroyOnLoad(gameObject);
         ReadSettings(Environment.GetCommandLineArgs());
         Directory.CreateDirectory(Path.Combine(outDir, "shots"));
@@ -234,10 +236,12 @@ public class PlaytestBot : MonoBehaviour
         };
     }
 
-    // From the first frame, before the run starts: Unity can raise its window as it starts up.
+    // From the bot's first frame (the valley takes half a minute to load, so not from the process's
+    // start): Unity raises its window as it starts up, whatever the runner asked.
     void Update()
     {
-        if (handFocus != 0 && Time.realtimeSinceStartup < HandFocusSeconds && PlaytestWindow.HandBack(handFocus)) handedBack++;
+        if (handFocus == 0 || Time.realtimeSinceStartup > handUntil || !PlaytestWindow.HandBack(handFocus)) return;
+        if (handedBack++ == 0) Debug.Log($"PLAYTEST: handed the front back to window {handFocus} at {Time.realtimeSinceStartup:0.0} s");
     }
 
     void LateUpdate()
