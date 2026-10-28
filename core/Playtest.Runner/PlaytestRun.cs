@@ -101,6 +101,7 @@ namespace Playtest.Runner
             // GPU pipeline states (the Build lane's Scripts/Perf/PsoTrace.cs): record them, or warm them up at start.
             if (options.TryGetValue("pso-trace", out var trace)) a.AddRange(new[] { "-pso-trace", Q(Path.GetFullPath(trace)) });
             if (options.TryGetValue("pso-warmup", out var warmup)) a.AddRange(new[] { "-pso-warmup", Q(Path.GetFullPath(warmup)) });
+            if (options.ContainsKey("no-pso-warmup")) a.Add("-no-pso-warmup");
             if (File.Exists(paths.Coverage)) a.AddRange(new[] { "-playtest-coverage", Q(paths.Coverage) });
             // Performance findings only count from runs with no Unity Editor open.
             if (!Preflight.Now().Unity.Any(Preflight.IsEditor)) a.Add("-playtest-quiet");
