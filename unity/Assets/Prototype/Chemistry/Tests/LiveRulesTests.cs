@@ -167,7 +167,7 @@ namespace Chem.Tests
                     var flat = flatKeys.Where(k => p.Value[k] != null).ToList();
                     Assert.That(flat, Is.Empty, $"{table} {p.Name} still has {string.Join(", ", flat)}");
                     var tags = ((JObject)p.Value)["tags"]?.Select(t => (string)t).ToList() ?? new List<string>();
-                    Assert.That(tags, Has.None.AnyOf("flammable", "breakable", "conductive"), $"{table} {p.Name}: a verb's tag comes from its group");
+                    Assert.That(tags.Intersect(new[] { "flammable", "breakable", "conductive" }), Is.Empty, $"{table} {p.Name}: a verb's tag comes from its group");
                 }
         }
 
