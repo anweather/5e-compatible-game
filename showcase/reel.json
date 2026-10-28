@@ -1,10 +1,13 @@
 {
   "drops": [
     {
-      "when": "28 Oct 2026 · dev, for 0.1.6",
-      "title": "Coming in 0.1.6",
-      "intro": "Merged into dev since alpha 0.1.5 shipped.",
+      "when": "28 Oct 2026 · alpha 0.1.6",
+      "title": "Shipped in 0.1.6",
+      "intro": "Merged after alpha 0.1.5, released as alpha 0.1.6.",
       "clips": [
+        { "area": "The wizard's look", "lane": "gameplay", "title": "The wizard's robe as cloth, and a beard", "length": "0:20", "commit": "fa60aa6",
+          "video": "wizard-cloth-beard.mp4", "poster": "wizard-cloth-beard.jpg",
+          "summary": "The robe is real cloth now: it swings round the legs at a run, drapes over the lap on a bench and lies along the legs on a lounger. Slim sleeves sway at the cuff, and every wizard grows a beard of tufts from its own seed: long, forked, full or a goatee." },
         { "area": "Night", "lane": "gameplay", "title": "Night falls", "length": "0:21", "commit": "828b0a6",
           "video": "night.mp4", "poster": "night.jpg",
           "summary": "From afternoon through dusk to night over Hollowmere: the windows and door lights come on as the light fails, fireflies come out by the hour, and the stars fill the sky." },

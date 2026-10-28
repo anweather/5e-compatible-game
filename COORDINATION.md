@@ -320,3 +320,40 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   stream-disk `be437fa`. Merged branches that sessions couldn't delete
   (their permissions refuse it): net-reset, playtest-findings-0.1.5,
   playtest-player, components, night, stream-disk. Andrew can delete them.
+- 2026-10-27 (evening): Andrew is low on tokens. No new big features until
+  THURSDAY 2026-10-29: caves (J-020 decided), finer ground (J-021 open) and
+  interest by chunk (J-028, waits for the continent) all start then or later.
+  Until then, agents finish what's in flight (cloth round 3 and the beard;
+  check-bot-sparks and the D3D12 warm-up; the Metal warm-up), merge on the
+  coordinator's go, and then stop. Idle is fine. Held, unmerged:
+  `soundscape`, `terrain-reach`, `bot-fixes`, `spark-pool`, `perf/pso-trace`,
+  `wizard-cloth-v2`.
+- 2026-10-27 (late): Andrew wants the playtest paper cuts
+  (`playtest/andrew-2026-10-27.md`) worked NOW, in priority order (P1, then
+  P2). Only caves stay paused. To work them in parallel, the coordinator
+  lends Gameplay-lane files per item (one small branch per item; merge on
+  the coordinator's go; a before/after screenshot each):
+  - World: P1 #1 signs (and the mirrored-text audit), #2 villager faces,
+    #3 villagers sitting, #4 houses (roofs, doors, shutters, pots), #5 well
+    collision, #8 deer habitat, #10c lights in burnt houses. Lent: the
+    village, defense and coast builders, Village.cs, ValleyFauna (folk and
+    habitat), Seat.cs.
+  - Build (Mac): #6 Hasten Time sun smoothing (SkyLight.cs), #10 court gate
+    direction (CourtGate.cs), #10a meteor shake (its camera-shake code),
+    #7 underwater view. Lent: those files.
+  - Gameplay: after cloth round 3 and the beard: #9 swim speed, #10b camera
+    in the ground, #10d throwing, #10e lantern, #10f roll, #10g tree
+    see-through, #10h camera snapping. Then the P2s, shared out the same
+    way.
+- 2026-10-27 21:45: FREEZE for 0.1.6 (J-031; Andrew: "prioritize it"). dev
+  takes no merges except the splashes already approved. The release goes:
+  Mac measures cloth cost → if it passes, Build merges dev into main and
+  bumps to 0.1.6 → in parallel the PC (Gameplay, main checkout, warm shader
+  cache) builds Windows with ship-update --windows-only and the Mac builds
+  macOS → R1 install plus R3 Relay (no bot run: alpha, J-026) → publish on
+  Andrew's go. Every other job yields the PC to the release.
+- 2026-10-28 05:56 UTC: 0.1.6 PUBLISHED on Andrew's go (J-033), https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.6 (the tag is at `18d10c6`). main merged back into dev (`8e9db46`); fix/splash-online on dev (`502d4d8`) for 0.1.7. R1 install and R3
+  Relay passed; the only known issue is the splash log error, fixed in
+  `fix/splash-online` for 0.1.7. FREEZE LIFTED: paper-cut verification
+  resumes (World's Editor batch, then Gameplay's), merges one at a time on
+  the coordinator's go.

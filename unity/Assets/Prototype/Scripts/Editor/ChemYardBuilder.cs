@@ -90,6 +90,15 @@ public static class ChemYardBuilder
         var cameraRoot = player.transform.Find(WizardRig.CameraRoot);
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
         follow.AddComponent<CameraZoom>().controls = controls;
+        // Out of the ground and the wizard (CameraClearance), and a wider check for what it backs into
+        // than the pack's 0.15 m, so the lens's corners don't see through a slope.
+        follow.AddComponent<CameraClearance>();
+        var third = follow.GetComponent<CinemachineThirdPersonFollow>();
+        var avoid = third.AvoidObstacles;
+        avoid.CameraRadius = 0.3f;
+        // Eased back out after an obstacle rather than snapped (Andrew: the camera still snaps).
+        avoid.DampingFromCollision = 0.4f;
+        third.AvoidObstacles = avoid;
         hands.view = follow.GetComponent<CinemachineCamera>();
         // Meteors shake it (MeteorFall).
         follow.AddComponent<CinemachineImpulseListener>();

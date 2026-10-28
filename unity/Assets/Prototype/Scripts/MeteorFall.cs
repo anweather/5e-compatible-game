@@ -176,7 +176,8 @@ public class MeteorFall : MonoBehaviour
         Destroy(fx, Mathf.Max(3f, look?.impactSeconds ?? 3f));
     }
 
-    // The camera shakes, hardest near the blast (CinemachineImpulseListener on the follow camera).
+    // The camera shakes, hardest near the blast (CinemachineImpulseListener on the follow camera):
+    // a short, light jolt (Andrew's playtest: the old 1.2 s one was too strong).
     static void Shake(Vector3 at)
     {
         if (shaker == null)
@@ -185,10 +186,10 @@ public class MeteorFall : MonoBehaviour
             var d = shaker.ImpulseDefinition;
             d.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Explosion;
             d.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Dissipating;
-            d.ImpulseDuration = 1.2f;
+            d.ImpulseDuration = 0.5f;
             d.DissipationDistance = 160f;
             d.DissipationRate = 0.4f;
         }
-        shaker.GenerateImpulseAtPositionWithVelocity(at, Vector3.down * 1.4f);
+        shaker.GenerateImpulseAtPositionWithVelocity(at, Vector3.down * 0.5f);
     }
 }

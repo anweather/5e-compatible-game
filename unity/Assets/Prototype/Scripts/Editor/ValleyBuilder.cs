@@ -317,13 +317,15 @@ public static class ValleyBuilder
     // --- the ball court --------------------------------------------------------
 
     // A walled court on the flat meadow east of the yard, with a goal in each end wall and the
-    // ball in the middle (world/things.json). Wooden rails a ball bounces off, low enough to step
-    // over a corner of; the goal mouths are open. Its floor is dirt (CellKind). A gate in the
+    // ball in the middle (world/things.json). Wooden rails of four logs, which a ball bounces off
+    // and keeps in (Andrew's playtest #13: one log higher); the goal mouths are open. Its floor is dirt (CellKind). A gate in the
     // west rail, the yard's side, opens as a wizard comes up to it (CourtGate); a scoreboard
     // stands by the north rail, and BallCourt counts the goals and puts the ball back.
     static Vector2 CourtCentre => ValleyShape.CourtCentre;
     const float CourtLength = ValleyShape.CourtLength, CourtWidth = ValleyShape.CourtWidth;
-    const float RailHeight = 0.9f, GoalWidth = 6f, GoalHeight = 2.2f, GoalDepth = 1.4f;
+    const float RailHeight = 1.2f, GoalWidth = 6f, GoalHeight = 2.2f, GoalDepth = 1.4f;
+    // The logs in a rail, each RailHeight / RailLogs thick.
+    const int RailLogs = 4;
     // The gate: how wide, and where its middle is along the west rail north of the goal (z).
     const float GateWidth = 2.4f, GateZ = 10.5f;
 
@@ -362,7 +364,7 @@ public static class ValleyBuilder
     }
 
     // The gate, hinged at its south post, shut along the rail (local +z) and swinging east into
-    // the court: three logs like the rail's on two uprights, around an unseen box that stops the
+    // the court: logs like the rail's on two uprights, around an unseen box that stops the
     // ball and the wizard, with a post either side of the gateway.
     static void Gate(Transform parent, Material mat, Vector3 hinge)
     {
@@ -377,7 +379,7 @@ public static class ValleyBuilder
         box.transform.localPosition = new Vector3(0f, RailHeight / 2f, leaf / 2f + 0.05f);
         box.transform.localScale = new Vector3(0.15f, RailHeight, leaf);
         box.GetComponent<Renderer>().enabled = false;
-        const int logs = 3;
+        const int logs = RailLogs;
         float r = RailHeight / logs / 2f * 0.85f;
         for (int i = 0; i < logs; i++)
             GatePart(gate.transform, mat, new Vector3(0f, RailHeight / logs * (i + 0.5f), leaf / 2f + 0.05f), Quaternion.Euler(90f, 0f, 0f), new Vector3(2f * r, leaf / 2f, 2f * r));
@@ -471,7 +473,7 @@ public static class ValleyBuilder
         float length = Vector3.Distance(a, b) + 0.15f;
         rail.transform.localScale = new Vector3(0.15f, RailHeight, length);
         rail.GetComponent<Renderer>().enabled = false;
-        const int logs = 3;
+        const int logs = RailLogs;
         float r = RailHeight / logs / 2f;
         for (int i = 0; i < logs; i++)
         {
@@ -1085,9 +1087,10 @@ public static class ValleyBuilder
         house.Rebuild();
 
         var made = BuildingMesher.Make(house.Spec);
+        // The walls, to the eaves; the roof and the window boxes have their own (VillageHouse).
         var block = go.AddComponent<BoxCollider>();
-        block.center = new Vector3(0f, made.size.y / 2f, 0f);
-        block.size = made.size;
+        block.center = new Vector3(0f, made.eaves / 2f, 0f);
+        block.size = new Vector3(made.size.x, made.eaves, made.size.z);
         Object.DestroyImmediate(made.body);
         Object.DestroyImmediate(made.roof);
 

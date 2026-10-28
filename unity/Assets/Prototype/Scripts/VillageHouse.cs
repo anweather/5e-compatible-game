@@ -23,6 +23,9 @@ public class VillageHouse : MonoBehaviour
     public Material material;
 
     Mesh body, roofMesh;
+    MeshCollider roofCollider;
+    MeshRenderer roofRenderer;
+    readonly System.Collections.Generic.List<GameObject> solids = new();
     GameObject bodyGo, roofGo;
 
     /// <summary>What a burning or wrecked house is called in the log.</summary>
@@ -64,6 +67,27 @@ public class VillageHouse : MonoBehaviour
         roofMesh = made.roof;
         bodyGo = Part("Body", body);
         roofGo = Part("Roof", roofMesh);
+        // The roof can be stood on, and the window boxes and planters bumped into (Andrew's
+        // playtest #4); the builder's box for the walls stops at the eaves.
+        roofCollider = roofGo.AddComponent<MeshCollider>();
+        roofCollider.sharedMesh = roofMesh;
+        roofRenderer = roofGo.GetComponent<MeshRenderer>();
+        foreach (var (at, size) in made.solids)
+        {
+            var solid = new GameObject("Solid") { hideFlags = HideFlags.DontSave | HideFlags.NotEditable };
+            solid.transform.SetParent(transform, false);
+            solid.transform.localPosition = at;
+            solid.AddComponent<BoxCollider>().size = size;
+            solids.Add(solid);
+        }
+    }
+
+    // A building that burns down or caves in has its roof hidden (ValleyChemistry): its roof
+    // stops being something to stand on with it.
+    void Update()
+    {
+        if (roofCollider != null && roofRenderer != null && roofCollider.enabled != roofRenderer.enabled)
+            roofCollider.enabled = roofRenderer.enabled;
     }
 
     GameObject Part(string name, Mesh mesh)
@@ -81,6 +105,10 @@ public class VillageHouse : MonoBehaviour
     {
         DestroyNow(bodyGo);
         DestroyNow(roofGo);
+        foreach (var solid in solids) DestroyNow(solid);
+        solids.Clear();
+        roofCollider = null;
+        roofRenderer = null;
         DestroyNow(body);
         DestroyNow(roofMesh);
         bodyGo = roofGo = null;

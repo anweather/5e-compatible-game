@@ -69,17 +69,20 @@ public class Village : MonoBehaviour
     const string DoorLight = "Door light";
     const float WellRange = 8f, WellIntensity = 1.6f;
     static readonly Color LampColour = new(1f, 0.72f, 0.42f);
-    readonly System.Collections.Generic.List<(Light lamp, float full)> lamps = new();
+    // Each lamp with its building's roof: a building that burnt down or caved in has its roof hidden
+    // (ValleyChemistry), and its lamp stays out (Andrew's playtest #10c). The well's lamp has none.
+    readonly System.Collections.Generic.List<(Light lamp, float full, Renderer roof)> lamps = new();
     ChemGrid grid;
     bool lampsFound;
 
     void LightLamps(float lit)
     {
         if (!lampsFound) FindLamps();
-        foreach (var (lamp, full) in lamps)
+        foreach (var (lamp, full, roof) in lamps)
         {
             if (lamp == null) continue;
-            lamp.enabled = lit > 0.02f;
+            bool standing = roof == null || roof.enabled;
+            lamp.enabled = standing && lit > 0.02f;
             lamp.intensity = full * lit;
         }
     }
@@ -88,7 +91,14 @@ public class Village : MonoBehaviour
     {
         lampsFound = true;
         foreach (var light in GetComponentsInChildren<Light>(true))
-            if (light.name == DoorLight) lamps.Add((light, light.intensity));
+        {
+            if (light.name != DoorLight) continue;
+            Renderer roof = null;
+            if (light.transform.parent != null)
+                foreach (var r in light.transform.parent.GetComponentsInChildren<Renderer>(true))
+                    if (r.name == "Roof") { roof = r; break; }
+            lamps.Add((light, light.intensity, roof));
+        }
         var go = new GameObject("Well lamp") { hideFlags = HideFlags.DontSave };
         go.transform.SetParent(transform, false);
         go.transform.position = transform.TransformPoint(wellAt) + Vector3.up * 2.2f;
@@ -98,7 +108,7 @@ public class Village : MonoBehaviour
         lamp.range = WellRange;
         lamp.shadows = LightShadows.None;
         lamp.enabled = false;
-        lamps.Add((lamp, WellIntensity));
+        lamps.Add((lamp, WellIntensity, null));
     }
 
     // A round stone well with two posts, a little shingled roof, a windlass and a bucket.
@@ -137,6 +147,32 @@ public class Village : MonoBehaviour
         well.transform.localPosition = wellAt;
         well.AddComponent<MeshFilter>().sharedMesh = wellMesh;
         well.AddComponent<MeshRenderer>().sharedMaterial = material;
+        WellColliders(stones, radius);
+    }
+
+    // The wall stands in your way, a box for each column of stones, its full height (Andrew's
+    // playtest #5): a ring, not a solid, so you can still jump in and the water still slows you.
+    // The two posts stop you too.
+    void WellColliders(int stones, float radius)
+    {
+        const float wallHeight = 0.9f;
+        for (int i = 0; i < stones; i++)
+        {
+            float t = i * Mathf.PI * 2f / stones;
+            var part = new GameObject("Well wall") { hideFlags = HideFlags.DontSave | HideFlags.NotEditable };
+            part.transform.SetParent(well.transform, false);
+            part.transform.SetLocalPositionAndRotation(new Vector3(Mathf.Cos(t) * radius, wallHeight / 2f, Mathf.Sin(t) * radius),
+                Quaternion.Euler(0f, -t * Mathf.Rad2Deg + 90f, 0f));
+            // Wide enough to meet its neighbours round the ring.
+            part.AddComponent<BoxCollider>().size = new Vector3(2f * Mathf.PI * radius / stones + 0.05f, wallHeight, 0.3f);
+        }
+        for (int side = -1; side <= 1; side += 2)
+        {
+            var post = new GameObject("Well post") { hideFlags = HideFlags.DontSave | HideFlags.NotEditable };
+            post.transform.SetParent(well.transform, false);
+            post.transform.localPosition = new Vector3(side * 0.85f, 1.15f, 0f);
+            post.AddComponent<BoxCollider>().size = new Vector3(0.14f, 2.3f, 0.14f);
+        }
     }
 
     static void DestroyNow(Object o)

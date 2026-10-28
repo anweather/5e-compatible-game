@@ -39,7 +39,43 @@ Each entry has:
 - **Answer:** pending; ask when it comes up in the order.
 - **Revisited:** 0.
 
-### J-020: Caves, the six design questions (backlog #14, Later)
+## Decided
+
+### J-032: The 0.1.6 RC has a harmless error burst online. Fix it, or ship?
+
+- **Asked:** 2026-10-27. WaterSplashes threw a NullReferenceException for
+  about 1 s after every host or join (it held the destroyed solo wizard's
+  transform). The one-line fix is `fix/splash-online` (`b45a82b`).
+- **Answer (2026-10-27):** ship 0.1.6 AS IS. Don't delete the draft or
+  rebuild. The fix goes into dev after the publish, for 0.1.7. The notes
+  mention the known log error.
+- **Why:** Andrew's call: speed over a harmless log error, in alpha
+  (J-026).
+- **Revisited:** 0.
+
+### J-031: When do we cut 0.1.6?
+
+- **Asked:** 2026-10-27, by Andrew ("how soon until we can cut a 0.1.6?").
+- **Answer (2026-10-27):** cut it as soon as the cloth's cost is proven (at
+  most about +1 ms a frame at 4 wizards; Andrew's "good enough if
+  performance holds"). It ships what's on dev then. The paper cuts still in
+  flight go into 0.1.7.
+- **Why:** Andrew's choice over waiting 3–4 h for the paper-cut batches:
+  ship sooner (J-019).
+- **Revisited:** 0.
+
+### J-030: Add a light-making spell?
+
+- **Asked:** 2026-10-27, from Andrew's playtest (#15). There's no light
+  spell; only items make light.
+- **Answer (2026-10-27):** add the LIGHT cantrip (SRD: an object sheds bright
+  light 20 ft and dim 20 ft for an hour). Not Daylight for now. World builds
+  the rules and the radial spot; Gameplay builds the glow.
+- **Why:** Andrew picked the recommendation: cheap, and it fits night and
+  caves.
+- **Revisited:** 0.
+
+### J-020: Caves, the six design questions (backlog #14)
 
 - **Asked:** 2026-10-27, raised by World's spike (`docs/CAVES.md` on
   `caves-spike`, never merged). It recommends C: levels linked by shafts.
@@ -53,11 +89,44 @@ Each entry has:
      (SRD damage past 10 ft) or climbing; no spells.
   5. Are caves always dark? Yes.
   6. Solo first, or online from the start?
-- **Answer:** pending. Ask Andrew (with the question tool) when caves comes
-  up in the priority order. Not urgent.
+- **Answer (2026-10-27):**
+  1. One level, about 6 m down.
+  2. Players only reach caves that exist: digging opens into them where they
+     lie, and doesn't make new cave space.
+  3. Fixed levels joined by shafts, stairs and ramps.
+  4. Water falls and gas rises through them; wizards fall (SRD damage past
+     10 ft) or climb. No spells cross (World's proposal; not asked).
+  5. Caves are dark (World's proposal; not asked; Andrew can overrule).
+  6. ONLINE FROM THE START: lockstep and the online probe from the first
+     slice, not solo first.
+- **Why:** Andrew picked the recommendations on 1–3. On 6 he chose online
+  from the start over solo first.
 - **Revisited:** 0.
 
-## Decided
+### J-029: Should far-apart players see each other's big moments?
+
+- **Asked:** 2026-10-27, by the coordinator, from World's interest-by-chunk
+  plan.
+- **Also comes up when:** interest by chunk, the event log online, sky
+  effects.
+- **Answer (2026-10-27):** yes, the notable ones (a meteor in the sky, a big
+  fire's smoke, important log lines) reach everyone; the detail stays
+  local.
+- **Why:** Andrew picked the recommendation.
+- **Revisited:** 0.
+
+### J-028: When should we do online interest by chunk?
+
+- **Asked:** 2026-10-27, by the coordinator, from World's plan
+  (WORLD_STREAMING.md, "Part 2, next slice", `ebb1d75`).
+- **Also comes up when:** the continent and world size, host CPU, late-join
+  time, order-free randomness.
+- **Answer (2026-10-27):** later, with the continent. The valley (9×9
+  chunks, 4 players) runs whole cheaply today. World's other questions
+  (moving every golden for order-free randomness; the host running every
+  island) wait until then.
+- **Why:** Andrew picked the recommendation, to keep the core stable now.
+- **Revisited:** 0.
 
 ### J-026: Publish 0.1.5 before the bot's RC runs finish?
 

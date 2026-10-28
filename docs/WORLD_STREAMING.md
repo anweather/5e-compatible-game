@@ -385,6 +385,110 @@ start; far chunks nobody changed are dropped from memory and made again
 from the source when a player comes back (needs part 3's generator for
 anything past the valley); online, the host keeps the save.
 
+## Part 2, next slice (plan, 2026-10-27): online interest by chunk
+
+Backlog #11's online half. Not built: a plan to agree before code.
+
+**Today** every peer runs every active chunk (the union of all the players'
+reaches), and a late joiner replays the whole history from tick 0. The aim:
+each peer runs only the chunks near its own player, and coming near
+someone else's chunks is a late join of just those chunks (a snapshot at a
+tick), with a per-chunk checksum as the safety net.
+
+### Lockstep: islands, and one blocker first
+
+- **Islands.** Chemistry only crosses between neighbouring active chunks;
+  an inactive chunk between two groups holds still, and catches up the same
+  on every peer. So the active chunks fall into islands (8-connected groups),
+  and nothing in one island can reach another. A peer runs the islands that
+  hold its own player; **the host runs every island** (it stamps the batches
+  and keeps the truth). Two players far apart are two islands, and neither
+  client runs the other's.
+- **The blocker: the world's one RNG.** Every random draw (fire spread, water,
+  gas, weather, raiders) comes from one mulberry32 stream in a fixed order
+  across all active cells (`RngState`, about 20 call sites). A peer that
+  skipped an island would draw different numbers from the first tick. Fix
+  first: **stateless randomness**, a hash of (seed, tick, cell, salt) for
+  everything that happens at a cell, and a world stream only for world-wide
+  events (weather, where a meteor or strike lands), which every peer runs.
+  It is order-free, so any subset of chunks draws the same numbers. It moves
+  **every golden** in both engines once (the sandbox mirrors it, keyed by
+  cell position), so it is its own slice, before anything else here.
+- **World-level things** stay on every peer: the tick, clock, weather and
+  held weather, wind, and the chunk plan's switches (already stamped by the
+  host). Things tied to a place go with their island: the defense field's
+  raiders run on the peers whose island holds the field, and a meteor landing
+  in an island a peer doesn't run leaves no mark there (as on inactive ground
+  today) and arrives with that island's snapshot.
+
+### Joining an island: snapshots in the save format
+
+When islands merge (players walk towards each other), or a peer comes near
+an island it doesn't run, the host sends that island's chunks **as of a tick
+boundary**, in the save format (`World.Save`'s per-chunk records: the cells
+that differ from the chunk source, the streaming state, fire generations;
+plus the island's raiders). The peer lays them over the chunks as made by
+the source (`World.Load`'s chunk half), then runs the batches from that
+tick on, which it has kept as now. A split simply stops a peer running the
+island it left; its copy is dropped, and a later join snapshots again.
+**Late joiners** get their island the same way instead of replaying the
+whole history: joins stop growing with the length of the game.
+
+### Bandwidth
+
+- Tick batches don't change (commands are small and world-wide).
+- A snapshot is the island's *changed* cells: an untouched chunk is a header
+  (the source makes the rest). A worked-over chunk is at most 4 096 cells of
+  about 16 bytes, 64 KB; a 5 × 5 island fully worked over, 1.6 MB, and a
+  typical one a few KB. Sent once, split over frames, as a reliable message
+  (a relay carries it in a second or two at worst).
+- Checksums: one per active chunk a peer runs, every `HashEvery` ticks
+  (`World.ChunkHash`, 8 bytes each): about 200 bytes per check for a 5 × 5
+  island.
+
+### What changes
+
+- **Core:** stateless randomness (the first slice, with new goldens);
+  islands from the active set (`ChunkStreaming`); `World.Save`/`Load`
+  for a set of chunks rather than the whole world.
+- **NetChem:** the host tracks each client's islands from the chunk plan,
+  sends a snapshot on a join, and stamps which island each command belongs
+  to; a client applies only its islands' commands. Checksums go per chunk,
+  and a client compares only the chunks it runs. The history replay for late
+  joiners is replaced by an island snapshot, and the online reset (J-014)
+  becomes "snapshot every island at the reset tick".
+- **The online probe:** two players far apart (two islands, each client
+  running one, per-chunk checksums equal), then walking together (a merge
+  and a snapshot join mid-fire, checksums still equal), then apart again.
+  Plus a late join mid-game.
+
+### Risks
+
+- The randomness change touches every system and every golden, in both
+  engines: a big, careful slice, with no behaviour change meant apart from
+  which numbers come out.
+- A snapshot taken anywhere but a tick boundary would be wrong (`World.Save`
+  already finishes the tick first). Commands stamped for a tick while a join
+  is in flight need care at the seam.
+- Fewer peers check each chunk, so a desync in an island only one client
+  runs is caught only against the host.
+- The host runs every island: with players far apart its tick costs the sum
+  of theirs.
+- A bug in island membership shows as a desync, not a crash. The per-chunk
+  checksum must name the chunk.
+
+### Andrew's questions
+
+1. **Now or later?** The valley is 9 × 9 chunks with up to 4 players, where
+   running everything costs little. The win is large for the continent
+   (part 3). Build it now, or when the world grows?
+2. **Moving every golden once** for order-free randomness: acceptable?
+3. **The host runs every island:** fine for 4 players, or should islands
+   have their own owner later?
+4. **Do far players hear about each other's world?** A meteor or a "notable"
+   log line in an island you don't run: shown to everyone (from the host) or
+   only to those there?
+
 ## The land around the valley (built 2026-10-27)
 
 The valley floor (the yard, the cabins, the lake, the river and the falls)

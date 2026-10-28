@@ -43,9 +43,19 @@ public class BallCourt : MonoBehaviour
     /// <summary>The court's ball, once it has spawned.</summary>
     public PhysicsProp Ball => ball;
 
-    /// <summary>A goal, in everyone's log (solo from here, online from NetCourt).</summary>
-    public static void Announce(bool eastEnd, int westGoals, int eastGoals) =>
+    /// <summary>A goal, in everyone's log and with fireworks over that goal (solo from here, online from NetCourt).</summary>
+    public static void Announce(bool eastEnd, int westGoals, int eastGoals)
+    {
         EventLog.Add($"Goal at the {(eastEnd ? "east" : "west")} end! West {westGoals}, east {eastGoals}");
+        var court = FindFirstObjectByType<BallCourt>();
+        if (court != null) TowerFireworks.Launch(court.GoalMouth(eastEnd) + Vector3.up * FireworksHeight);
+    }
+
+    // How high over the goal mouth the fireworks go up (m).
+    const float FireworksHeight = 3f;
+
+    /// <summary>The middle of a goal mouth, on the ground.</summary>
+    public Vector3 GoalMouth(bool eastEnd) => centre + Vector3.right * ((eastEnd ? 1f : -1f) * length / 2f);
 
     void Update()
     {

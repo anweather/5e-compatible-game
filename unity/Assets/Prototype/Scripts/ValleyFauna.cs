@@ -244,8 +244,20 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     {
         var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
         var c = world.At(cell.x, cell.y);
-        if (c == null || c.Water > 0 || c.Fire > 0 || world.IsSpiky(c)) return false;
+        if (c == null || c.Water > 0 || c.Fire > 0 || world.IsSpiky(c) || OnWildCoast(xz)) return false;
         return c.T != TerrainIds.Tree && c.T != TerrainIds.LogWall && c.T != TerrainIds.Stone && c.T != TerrainIds.Rock && c.T != TerrainIds.Metal;
+    }
+
+    // The beach and the coast (the sea and the strip inland of its shore, Ocean.Covers) are no
+    // place for the valley's wild animals (Andrew's playtest #8: deer on the beach); but a village
+    // there is its folk's, out to where they wander (as FolkPlaces reaches).
+    bool OnWildCoast(float2 xz)
+    {
+        var ocean = Ocean.Instance;
+        if (ocean == null || !ocean.Covers(new Vector2(xz.x, xz.y))) return false;
+        foreach (var (village, _, home) in folk)
+            if (math.distance(home, xz) <= village.wander + 12f) return false;
+        return true;
     }
 
     bool NearWater(float2 xz)

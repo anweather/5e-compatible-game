@@ -28,6 +28,9 @@ public class SkyLight : MonoBehaviour
     Color baseTint = new Color(0.45f, 0.55f, 0.75f);
     Color baseFog;
     float baseFogStart, baseFogEnd;
+    // How long the shown clock takes to catch up with a jump of the world's clock (s).
+    const float ClockGlide = 0.3f;
+    double shownClock = -1;
     float cloud, fog, flash;
     // The noon sky's ambient light, baked once (BakeDaylight); the hour and weather scale it.
     SphericalHarmonicsL2 daylightAmbient;
@@ -82,6 +85,19 @@ public class SkyLight : MonoBehaviour
     /// </summary>
     public bool Held { get; set; }
 
+    // The clock the sun is drawn at. The world's clock moves a whole tick at a time, and Hasten
+    // Time makes that dozens of ticks, so the sun and every shadow jumped at each tick; this one
+    // glides after it instead (Andrew's playtest #6). It snaps after a reset or a jump of more
+    // than a quarter of a day.
+    double ShownClock(World world)
+    {
+        double target = world.ClockTick;
+        double quarterDay = Sky.Ticks(world.Rules.Sim, world.Rules.Sim.Day.LengthMinutes) / 4.0;
+        if (shownClock < 0 || target < shownClock - 1 || target - shownClock > quarterDay) shownClock = target;
+        else shownClock += (target - shownClock) * Mathf.Min(1f, Time.deltaTime / ClockGlide);
+        return shownClock;
+    }
+
     void Update()
     {
         var world = grid != null ? grid.World : null;
@@ -91,7 +107,7 @@ public class SkyLight : MonoBehaviour
         cloud = Mathf.MoveTowards(cloud, CloudOf(now), Time.deltaTime * 0.3f);
         fog = Mathf.MoveTowards(fog, now.Fog / 100f, Time.deltaTime * 0.2f);
         // The clock, not the tick: Hasten Time runs it ahead (World.ClockTick).
-        float minute = (float)(Sky.MinutesSmooth(world.Rules.Sim, world.ClockTick) % Sky.MinutesPerDay);
+        float minute = (float)(Sky.MinutesSmooth(world.Rules.Sim, ShownClock(world)) % Sky.MinutesPerDay);
         float sunUp = Place(sun.transform, minute);
         float moonUp = moon != null ? Place(moon.transform, minute + Sky.MinutesPerDay / 2f) : 0f;
         // The procedural sky lights itself from RenderSettings.sun: the sun by day, the moon by night
