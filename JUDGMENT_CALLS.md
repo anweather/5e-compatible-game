@@ -41,6 +41,17 @@ Each entry has:
 
 ## Decided
 
+### J-030: Add a light-making spell?
+
+- **Asked:** 2026-10-27, from Andrew's playtest (#15). There's no light
+  spell; only items make light.
+- **Answer (2026-10-27):** add the LIGHT cantrip (SRD: an object sheds bright
+  light 20 ft and dim 20 ft for an hour). Not Daylight for now. World builds
+  the rules and the radial spot; Gameplay builds the glow.
+- **Why:** Andrew picked the recommendation: cheap, and it fits night and
+  caves.
+- **Revisited:** 0.
+
 ### J-020: Caves, the six design questions (backlog #14)
 
 - **Asked:** 2026-10-27, raised by World's spike (`docs/CAVES.md` on
