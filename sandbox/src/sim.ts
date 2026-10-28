@@ -7,7 +7,7 @@ import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
 import {
   type Cell, type World,
-  DX, DY, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
+  DX, DY, NO_LAND, addGas, cellAt, coverHasTag, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
   clockTick, log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
 import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
@@ -198,6 +198,7 @@ function tickWater(w: World) {
     if (c.water === 0 || c.frozen || isBlocking(c)) continue;
     const x = i % w.w, y = Math.floor(i / w.w);
     const level = elevation(c) + c.water;
+    const here = w.land ? w.land[i]! : NO_LAND;
     // Water always runs onto lower ground; on the flat it needs a 2-step
     // difference, so a still puddle doesn't slosh back and forth forever.
     let best = -1, bestScore = 0;
@@ -206,8 +207,11 @@ function tickWater(w: World) {
       if (nc.frozen && nc.water > 0) continue;
       if ((hasTag(nc, "blocking") && !hasTag(nc, "vessel")) || isRaisedWall(nc)) continue;
       if (nc.water >= RULES.sim.water.maxLevel) continue;
-      const drop = level - (elevation(nc) + nc.water);
-      const downhill = elevation(nc) < elevation(c);
+      // Between two dry-land cells the land's slope counts too; a water body's cells keep level.
+      const there = here === NO_LAND ? NO_LAND : w.land![idx(w, nx, ny)]!;
+      const slope = there === NO_LAND ? 0 : here - there;
+      const drop = level + slope - (elevation(nc) + nc.water);
+      const downhill = elevation(nc) < elevation(c) + slope;
       if (!(drop >= 2 || (downhill && drop >= 1))) continue;
       const score = drop + (downhill ? 0.5 : 0);
       if (score > bestScore) {

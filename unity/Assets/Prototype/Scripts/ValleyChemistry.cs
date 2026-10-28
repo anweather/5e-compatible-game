@@ -78,6 +78,7 @@ public class ValleyChemistry : MonoBehaviour
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
         ground.RaiseBase(channelCells, channelDepths);
+        SetLand();
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
@@ -170,6 +171,23 @@ public class ValleyChemistry : MonoBehaviour
     public bool IsLake(Cell c, int x, int y) => c.T == TerrainIds.Pit && BaseHeight(x, y) < lakeLevel;
 
     /// <summary>How high above the ground a cell's fire burns: in the crown of a tree, along a cabin wall.</summary>
+    // The water runs down the valley's hills (playtest #31), which only the baked ground holds: each
+    // dry cell's ground in water units (whole units of stepHeight / unitsPerStep, the same numbers on
+    // every peer of one build); a cell of a lake, the river or the sea keeps its water level.
+    void SetLand()
+    {
+        float unit = grid.stepHeight / world.Rules.Sim.WaterUnitsPerStep;
+        var land = new int[world.W * world.H];
+        for (int y = 0; y < world.H; y++)
+            for (int x = 0; x < world.W; x++)
+            {
+                var c = world.At(x, y);
+                bool body = c == null || c.Water > 0 || world.TerrainOf(c).Spring > 0;
+                land[world.Idx(x, y)] = body ? World.NoLand : Mathf.RoundToInt(ground.BaseHeight(x, y) / unit);
+            }
+        world.SetLand(land);
+    }
+
     public static float FireHeight(string terrainType) => terrainType switch
     {
         TerrainIds.Tree => 2.6f,

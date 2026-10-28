@@ -294,6 +294,42 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void WaterRunsDownTheLandsSlope()
+        {
+            // Playtest #31: Create Water on a hillside pooled where it landed. The hill is the land's
+            // (the valley's baked ground), which the cells don't hold: SetLand tells the water.
+            int Spread(int[] land, out int east)
+            {
+                var w = new World(R, 16, 9, 1, "grass");
+                w.SetLand(land);
+                w.At(8, 4).Water = 12;
+                Run(w, 300);
+                int west = 0;
+                east = 0;
+                for (int y = 0; y < w.H; y++)
+                    for (int x = 0; x < w.W; x++)
+                    {
+                        if (x < 8) west += w.At(x, y).Water;
+                        if (x > 8) east += w.At(x, y).Water;
+                    }
+                return west;
+            }
+            var slope = new int[16 * 9];
+            for (int k = 0; k < slope.Length; k++) slope[k] = (k % 16) * 3; // rising east, 0.375 m a cell
+            int westOnSlope = Spread(slope, out int eastOnSlope);
+            Assert.That(eastOnSlope, Is.EqualTo(0), "none runs uphill");
+            Assert.That(westOnSlope, Is.GreaterThanOrEqualTo(10), "it runs down the slope");
+            int westOnFlat = Spread(null, out int eastOnFlat);
+            Assert.That(eastOnFlat, Is.GreaterThan(0), "on the flat it spreads both ways");
+            Assert.That(westOnFlat, Is.LessThan(westOnSlope));
+            // A water body's cells keep level: no land between them and the slope.
+            var lake = (int[])slope.Clone();
+            for (int k = 0; k < lake.Length; k++) if (k % 16 >= 8) lake[k] = World.NoLand;
+            Spread(lake, out int eastOfLake);
+            Assert.That(eastOfLake, Is.GreaterThan(0), "inside a water body it spreads as on the flat");
+        }
+
+        [Test]
         public void RayOfFrostFreezesAPondIntoInsulatingIce()
         {
             var w = Room();
