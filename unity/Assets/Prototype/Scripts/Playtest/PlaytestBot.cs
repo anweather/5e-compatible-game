@@ -104,6 +104,20 @@ public class PlaytestBot : MonoBehaviour
         return ulong.TryParse(Arg(args, "-playtest-seed"), NumberStyles.Integer, CultureInfo.InvariantCulture, out var s) ? s : (ulong)DateTime.Now.Ticks;
     }
 
+    // The window is up by the splash screen and before the valley loads (half a minute): give the
+    // front back then too, so keys typed elsewhere during the load stay there.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSplashScreen)]
+    static void HandBackAtSplash() => HandBackEarly();
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void HandBackBeforeLoad() => HandBackEarly();
+
+    static void HandBackEarly()
+    {
+        if (long.TryParse(Arg(Environment.GetCommandLineArgs(), "-playtest-hand-focus"), NumberStyles.Integer, CultureInfo.InvariantCulture, out long window) && window != 0)
+            PlaytestWindow.HandBack(window);
+    }
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartIfAsked()
     {
