@@ -105,6 +105,15 @@ public class NetChem : NetworkBehaviour
     /// <summary>The network's tick: the world's own, plus the ticks before the last online reset.</summary>
     public int NetTick => tickBase + grid.World.Tick;
 
+    /// <summary>
+    /// Whether this machine is playing live: the host always; a client once it has the history
+    /// (SendHistoryRpc) and has replayed all of it. Joining, the replay
+    /// runs CatchUpBudgetMs a frame, so for a while the world is in the past; a probe or a
+    /// scenario waits on this before it acts. It stays true after (live batches keep it within a
+    /// tick or two of the host), so it doesn't flicker with each batch's arrival.
+    /// </summary>
+    public bool CaughtUp => synced && NetTick >= replayedUpTo;
+
     /// <summary>The countdown to an online reset, in seconds (J-014).</summary>
     public const float ResetCountdownSeconds = 3f;
 

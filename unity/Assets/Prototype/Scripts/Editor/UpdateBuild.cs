@@ -18,11 +18,8 @@ public static class UpdateBuild
     /// </summary>
     public static string Players(string version, bool mac = true, bool windows = true)
     {
-        if (!mac && !windows) return Fail("nothing to build: both macOS and Windows are off.");
-        if (BuildVersion.Parse(version) == null) return Fail($"'{version}' isn't an X.Y.Z version.");
-        var dirty = PrototypeBuild.DirtyFiles();
-        if (dirty == null || dirty.Length > 0)
-            return Fail(dirty == null ? "couldn't ask git whether the tree is clean." : $"the git tree has changes ({string.Join(", ", dirty.Take(8))}). Commit them first.");
+        string refused = Refusal(version, mac, windows);
+        if (refused != null) return Fail(refused);
 
         const string root = "Builds/Update";
         if (Directory.Exists(root)) Directory.Delete(root, true);
@@ -33,14 +30,8 @@ public static class UpdateBuild
         {
             string osx = mac ? BuildOnce(BuildTarget.StandaloneOSX, $"{root}/osx/{PrototypeBuild.ProductName}.app") : ": OK";
             if (!osx.Contains(": OK")) return Fail(osx);
-            if (windows)
-            {
-                string win = BuildOnce(BuildTarget.StandaloneWindows64, $"{root}/win/SpellChemistryValley.exe");
-                if (!win.Contains(": OK")) return Fail(win);
-                // Burst's debug information is for us, not for players ("DoNotShip").
-                foreach (var debug in Directory.GetDirectories($"{root}/win", "*_DoNotShip")) Directory.Delete(debug, true);
-                File.WriteAllText($"{root}/win/CREDITS.txt", Credits.PlainText($"alpha {version}"));
-            }
+            string win = windows ? BuildWindows($"{root}/win", version) : ": OK";
+            if (!win.Contains(": OK")) return Fail(win);
         }
         finally
         {
@@ -50,9 +41,36 @@ public static class UpdateBuild
         }
         var after = PrototypeBuild.DirtyFiles();
         string warning = after != null && after.Length > 0 ? $" WARNING: the build changed tracked files: {string.Join(", ", after)}" : "";
-        string done = $"Update build: OK, {version} for {(mac && windows ? "macOS and Windows" : mac ? "macOS" : "Windows")} -> {Path.GetFullPath(root)}{warning}";
+        string done = $"Update build: OK, {version} for {Platforms(mac, windows)} -> {Path.GetFullPath(root)}{warning}";
         Debug.Log(done);
         return done;
+    }
+
+    // Why the build can't start, or null when it can.
+    static string Refusal(string version, bool mac, bool windows)
+    {
+        if (!mac && !windows) return "nothing to build: both macOS and Windows are off.";
+        if (BuildVersion.Parse(version) == null) return $"'{version}' isn't an X.Y.Z version.";
+        var dirty = PrototypeBuild.DirtyFiles();
+        if (dirty == null) return "couldn't ask git whether the tree is clean.";
+        return dirty.Length > 0 ? $"the git tree has changes ({string.Join(", ", dirty.Take(8))}). Commit them first." : null;
+    }
+
+    // The Windows folder, without Burst's debug information (for us, not players: "DoNotShip")
+    // and with the credits beside the exe.
+    static string BuildWindows(string folder, string version)
+    {
+        string line = BuildOnce(BuildTarget.StandaloneWindows64, $"{folder}/SpellChemistryValley.exe");
+        if (!line.Contains(": OK")) return line;
+        foreach (var debug in Directory.GetDirectories(folder, "*_DoNotShip")) Directory.Delete(debug, true);
+        File.WriteAllText($"{folder}/CREDITS.txt", Credits.PlainText($"alpha {version}"));
+        return line;
+    }
+
+    static string Platforms(bool mac, bool windows)
+    {
+        if (mac && windows) return "macOS and Windows";
+        return mac ? "macOS" : "Windows";
     }
 
     // The first build after switching platform can fail on an import; once more fixes it.
