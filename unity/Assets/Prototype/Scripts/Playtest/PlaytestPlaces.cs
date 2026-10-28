@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 
 // Where the playtest bot can go (playtest/DESIGN.md, section 2): the valley's
@@ -11,13 +12,13 @@ public static class PlaytestPlaces
     public static List<(string name, Vector3 at)> Find(ChemGrid grid, Vector3 start)
     {
         var places = new List<(string, Vector3)> { ("start", start) };
-        var tower = Object.FindAnyObjectByType<TowerCourse>();
+        var tower = One<TowerCourse>(start);
         if (tower != null) places.Add(("tower", tower.startPad));
-        Add(places, "ball court", Object.FindAnyObjectByType<BallCourt>());
-        Add(places, "defense field", Object.FindAnyObjectByType<DefenseField>());
-        Add(places, "village", Object.FindAnyObjectByType<Village>());
-        // The waterfall and the sea are drawn away from their objects' origins: go by what they draw.
-        Drawn(places, "waterfall", Object.FindAnyObjectByType<WaterfallFx>());
+        Add(places, "ball court", One<BallCourt>(start));
+        Add(places, "defense field", One<DefenseField>(start));
+        Add(places, "village", One<Village>(start));
+        // The waterfall is drawn away from its object's origin: go by what it draws.
+        Drawn(places, "waterfall", One<WaterfallFx>(start));
         var bridge = GameObject.Find("Bridge");
         if (bridge != null) places.Add(("bridge", bridge.transform.position));
         // The sea: a few metres out from the shore nearest the valley. Its drawing reaches the
@@ -48,6 +49,14 @@ public static class PlaytestPlaces
         var cell = grid.CellAt(p);
         return grid.World.InBounds(cell.x, cell.y);
     }
+
+    // The one nearest the start, if there are several (there are villages): FindAnyObjectByType
+    // promises no order, so a run and its replay could each go to a different one.
+    static T One<T>(Vector3 start) where T : Component =>
+        Object.FindObjectsByType<T>(FindObjectsSortMode.None)
+            .OrderBy(c => (c.transform.position - start).sqrMagnitude)
+            .ThenBy(c => c.transform.position.x).ThenBy(c => c.transform.position.z)
+            .FirstOrDefault();
 
     static void Add(List<(string, Vector3)> places, string name, Component part)
     {
