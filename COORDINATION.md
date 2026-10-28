@@ -345,3 +345,10 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
     in the ground, #10d throwing, #10e lantern, #10f roll, #10g tree
     see-through, #10h camera snapping. Then the P2s, shared out the same
     way.
+- 2026-10-27 21:45: FREEZE for 0.1.6 (J-031; Andrew: "prioritize it"). dev
+  takes no merges except the splashes already approved. The release goes:
+  Mac measures cloth cost → if it passes, Build merges dev into main and
+  bumps to 0.1.6 → in parallel the PC (Gameplay, main checkout, warm shader
+  cache) builds Windows with ship-update --windows-only and the Mac builds
+  macOS → R1 install plus R3 Relay (no bot run: alpha, J-026) → publish on
+  Andrew's go. Every other job yields the PC to the release.
