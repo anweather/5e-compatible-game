@@ -24,7 +24,7 @@ namespace Chem
             {
                 if (!Applies(c, rule.If, power)) continue;
                 bool changed = rule.Do.Count == 0;
-                foreach (var eff in rule.Do) changed = RunEffect(x, y, c, eff, power, dir) || changed;
+                foreach (var eff in rule.Do) changed = RunEffect(x, y, c, eff, power, dir, element) || changed;
                 if (changed && rule.Log != null && (direct || rule.Notable))
                 {
                     var text = ReplaceFirst(ReplaceFirst(rule.Log, "{cover}", beforeCover), "{terrain}", beforeTerrain);
@@ -50,6 +50,24 @@ namespace Chem
             c.T = terrain;
             c.Cover = null;
             c.Fire = 0;
+            return true;
+        }
+
+        /// <summary>
+        /// A dissolve effect (react.ts dissolve): the cell's cover or terrain, if <paramref name="element"/>
+        /// is what dissolves it, is eaten away into what it leaves (a cover can leave none).
+        /// </summary>
+        bool Dissolve(Cell c, string what, string element)
+        {
+            if (what == "cover")
+            {
+                if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.DissolvedBy != element) return false;
+                PutCover(c, cv.DissolvesTo);
+                return true;
+            }
+            var t = TerrainOf(c);
+            if (t.DissolvedBy != element || t.DissolvesTo == null) return false;
+            c.T = t.DissolvesTo;
             return true;
         }
 
@@ -194,7 +212,7 @@ namespace Chem
             return true;
         }
 
-        bool RunEffect(int x, int y, Cell c, Effect eff, int power, int dir)
+        bool RunEffect(int x, int y, Cell c, Effect eff, int power, int dir, string element)
         {
             int max = Rules.Sim.WaterMaxLevel;
             if (eff.HasIgnite) return eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN, Dryness(c));
@@ -267,6 +285,7 @@ namespace Chem
                 }
                 return true;
             }
+            if (eff.Dissolve != null) return Dissolve(c, eff.Dissolve, element);
             if (eff.Break)
             {
                 var to = TerrainOf(c).BreaksTo;

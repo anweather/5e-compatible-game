@@ -53,6 +53,8 @@ namespace Chem
         /// <summary>Wet (water on it, raining, or damp) this many ticks in all, it rusts through into RustsTo (materials.json rust.every, rust.leaves; World.Rust); 0 never.</summary>
         public int RustEvery;
         public string RustsTo;
+        /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves; null neither.</summary>
+        public string DissolvedBy, DissolvesTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
 
@@ -84,6 +86,8 @@ namespace Chem
         /// <summary>What it does to a creature walking through it: [dice, sides] damage a square (empty for none), and its speed (1 unhindered).</summary>
         public int[] Damage;
         public double Speed = 1;
+        /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the cover it leaves (null, none).</summary>
+        public string DissolvedBy, DissolvesTo;
         public bool Has(string tag) => Tags.Contains(tag);
         /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
@@ -329,6 +333,8 @@ namespace Chem
         public bool HasSetCover; public string SetCover;
         public int? SpreadCover;
         public bool Break;
+        /// <summary>dissolve: "cover" or "terrain", eaten away into its dissolvesTo when the rule's element is its dissolvedBy.</summary>
+        public string Dissolve;
         public string SetTerrain, Raise;
         public int? Conduct;
         public bool Fan, PushGas, ClearGas;
@@ -353,7 +359,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -529,6 +535,8 @@ namespace Chem
             Hardness = Int(o["hardness"]) ?? 1,
             GrowsTo = Str(o["growsTo"]),
             GrowLog = Str(o["growLog"]),
+            DissolvedBy = Str(o["dissolvedBy"]),
+            DissolvesTo = Str(o["dissolvesTo"]),
             SoakEvery = Int(o["soakEvery"]) ?? 0,
             SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
             Dampens = Num(o["dampens"]) ?? 0,
@@ -550,6 +558,8 @@ namespace Chem
             WitherLog = Str(o["witherLog"]),
             Damage = Dice(o["damage"]),
             Speed = Num(o["speed"]) ?? 1,
+            DissolvedBy = Str(o["dissolvedBy"]),
+            DissolvesTo = Str(o["dissolvesTo"]),
         };
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
@@ -694,6 +704,7 @@ namespace Chem
             }
             e.SpreadCover = Int(o["spreadCover"]);
             e.Break = Truthy(o["break"]);
+            e.Dissolve = Str(o["dissolve"]);
             e.SetTerrain = Str(o["setTerrain"]);
             e.Raise = Str(o["raise"]);
             e.Conduct = Int(o["conduct"]);

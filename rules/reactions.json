@@ -37,6 +37,9 @@
     { "id": "oil-into-fire", "element": "oil", "if": { "notTerrainTag": "blocking", "fire": true }, "do": [{ "setCover": "oil" }, { "ignite": "cover" }], "log": "Oil hits the flames. Whoosh!", "notable": true, "stop": true },
     { "id": "oil-spill", "element": "oil", "if": { "notTerrainTag": "blocking" }, "do": [{ "setCover": "oil" }], "stop": true },
 
+    { "id": "acid-cover", "element": "acid", "do": [{ "dissolve": "cover" }], "log": "The acid eats the {cover} away" },
+    { "id": "acid-terrain", "element": "acid", "do": [{ "dissolve": "terrain" }], "log": "The acid eats the {terrain} away", "stop": true },
+
     { "id": "fog-cloud", "element": "fog", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "fog", "n": 6 }], "stop": true },
 
     { "id": "thunder-gas", "element": "thunder", "if": { "gas": "any" }, "do": [{ "clearGas": true }], "log": "The thunderclap scatters the vapour" },

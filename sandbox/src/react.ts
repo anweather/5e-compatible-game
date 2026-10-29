@@ -83,6 +83,23 @@ function fill(text: string, c: Cell): string {
     .replace("{terrain}", terrainDef(c).name.toLowerCase());
 }
 
+/**
+ * A dissolve effect (World.Dissolve): the cell's cover or terrain, if `element` is what dissolves it, is eaten
+ * away into what it leaves (a cover can leave none).
+ */
+function dissolve(c: Cell, what: "cover" | "terrain", element: string): boolean {
+  if (what === "cover") {
+    const cv = c.cover !== null ? RULES.covers[c.cover] : undefined;
+    if (!cv || cv.dissolvedBy !== element) return false;
+    putCover(c, cv.dissolvesTo ?? null);
+    return true;
+  }
+  const t = terrainDef(c);
+  if (t.dissolvedBy !== element || !t.dissolvesTo) return false;
+  c.t = t.dissolvesTo;
+  return true;
+}
+
 /** Applies one element to one cell, then to whatever stands there. */
 export function applyElement(w: World, x: number, y: number, element: string, ctx: Ctx): void {
   const c = cellAt(w, x, y);
@@ -92,7 +109,7 @@ export function applyElement(w: World, x: number, y: number, element: string, ct
   for (const rule of byElement.get(element) ?? []) {
     if (!applies(w, c, rule.if, ctx.power)) continue;
     let changed = rule.do.length === 0;
-    for (const eff of rule.do) changed = runEffect(w, x, y, c, eff, ctx) || changed;
+    for (const eff of rule.do) changed = runEffect(w, x, y, c, eff, ctx, element) || changed;
     if (changed && rule.log && (ctx.direct || rule.notable)) {
       const [cover, terrain] = before.split("|");
       const text = rule.log.replace("{cover}", cover!).replace("{terrain}", terrain!);
@@ -207,7 +224,7 @@ function conduct(w: World, x: number, y: number, charge: number): boolean {
   return true;
 }
 
-function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ctx): boolean {
+function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ctx, element: string): boolean {
   const max = RULES.sim.water.maxLevel;
   if (eff.ignite !== undefined) return ignite(c, eff.ignite, dryness(w, c));
   if (eff.boil !== undefined) {
@@ -265,6 +282,7 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     }
     return true;
   }
+  if (eff.dissolve !== undefined) return dissolve(c, eff.dissolve, element);
   if (eff.break) {
     const to = terrainDef(c).breaksTo;
     if (!to) return false;

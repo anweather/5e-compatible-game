@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(42));
+            Assert.That(R.CellRules.Count, Is.EqualTo(44));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -635,6 +635,27 @@ namespace Chem.Tests
             for (int x = 3; x <= 7; x++) Assert.That(w.At(x, 4).Frozen, $"x={x} frozen");
             Direct(w, 5, 4, "lightning");
             Assert.That(w.At(6, 4).Charge, Is.EqualTo(0), "ice doesn't conduct");
+        }
+
+        [Test]
+        public void AcidSplashEatsBramblesThornsAndOilAndBurnsAGoblin()
+        {
+            // docs/MATERIALS.md dissolve: a row of brambles, thorns, grease and oil round a goblin; Acid Splash
+            // on the goblin eats them all (dissolve.by acid) and hurts it. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 12, 9, 3, "dirt");
+            for (int x = 5; x <= 7; x++) w.At(x, 3).T = "brush";
+            w.At(5, 4).Cover = "grease";
+            w.At(7, 4).Cover = "thorns";
+            w.At(6, 5).Cover = "oil";
+            w.At(4, 4).Cover = "oil"; // outside the splash
+            var gob = w.SpawnRaider("goblin", 6, 4, 10);
+            w.Cast("acid-splash", 6, 4, 0);
+            for (int x = 5; x <= 7; x++) Assert.That(w.At(x, 3).T, Is.EqualTo("dirt"), $"brambles at {x} eaten");
+            Assert.That(new[] { w.At(5, 4).Cover, w.At(7, 4).Cover, w.At(6, 5).Cover, w.At(4, 4).Cover }, Is.EqualTo(new[] { null, null, null, "oil" }));
+            Assert.That(w.Log.Any(l => l.Text == "The acid eats the brambles away"));
+            Assert.That($"{w.CellHash()} {w.RngState} {gob.Hp}", Is.EqualTo("d9c38f7d 1831565816 5"), "the same in the sandbox");
+            var ex = Assert.Throws<ModException>(() => RuleSet.Plain(R).WithMods(new[] { new ActiveMod("bad", "{ \"covers\": { \"slime\": { \"name\": \"Slime\", \"tags\": [], \"dissolve\": { \"by\": \"vinegar\", \"leaves\": \"goo\" } } } }") }));
+            Assert.That(ex.Errors, Is.EqualTo(new[] { "cover slime: dissolves by unknown element vinegar", "cover slime: dissolvesTo goo unknown" }));
         }
 
         // Over 40 seeds, a goblin (wet or not) hit by Ray of Frost, then Shocking Grasp: how many are gone,

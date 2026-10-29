@@ -13,6 +13,7 @@
 //   shatter {}                                                    brittle tag (a thing of it breaks when it lands hard)
 //   grow    { into, log }                                         growsTo, growLog
 //   uproot  { leaves, log }                                       uprootsTo, uprootLog
+//   dissolve { by, leaves }                                       dissolvedBy, dissolvesTo (covers too; a cover's leaves is a cover, or none)
 //
 // Group is the other way, for the parity test (and the move to the grouped
 // shape): a flat entry as groups, keys moved only where the verb's tag says
@@ -38,11 +39,13 @@ namespace Chem
             ("shatter", "brittle", System.Array.Empty<(string, string)>()),
             ("grow", null, new[] { ("into", "growsTo"), ("log", "growLog") }),
             ("uproot", null, new[] { ("leaves", "uprootsTo"), ("log", "uprootLog") }),
+            ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
         };
 
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] CoverVerbs =
         {
             ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("intensity", "burnIntensity"), ("look", "fireLook") }),
+            ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
         };
 
         // What water on it turns into: freeze {} for "ice", boil {} for "steam".

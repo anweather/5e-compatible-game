@@ -57,6 +57,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
   - `addWater` (a number, or `"power"` for the caster's power)
   - `setCover`, `spreadCover`
   - `break`, `setTerrain`, `raise`
+  - `dissolve` (`"cover"` or `"terrain"`: eaten away into its material's `dissolve.leaves`, when the rule's element is its `dissolve.by`; a cover can leave none)
   - `grow` (a non-blocking terrain the square becomes, with `ticks: [min, max]` and `wave`; see "Growing" below)
   - `conduct`
   - `fan`, `pushGas`, `clearGas`

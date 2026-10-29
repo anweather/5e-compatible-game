@@ -70,7 +70,7 @@ namespace Chem.Tests
                 { 'id': 'fire-ice', 'element': 'fire', 'if': { 'frozen': true }, 'do': [{ 'melt': true }], 'log': 'Replaced in place' } ] } }");
             Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "steam-damps-fire", "fire-fog", "fire-oil", "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-flammable" }));
             Assert.That(r.CellRulesFor("fire").First(x => x.Id == "fire-ice").Log, Is.EqualTo("Replaced in place"));
-            Assert.That(Ids(r.CellRulesFor("acid")), Is.EqualTo(new[] { "acid-burns" }));
+            Assert.That(Ids(r.CellRulesFor("acid")), Is.EqualTo(new[] { "acid-burns", "acid-cover", "acid-terrain" }), "on top of the base acid rules");
             var elements = JObject.Parse(r.ToJson())["elements"].Select(e => (string)e);
             Assert.That(elements, Is.EqualTo(new[] { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid" }));
         }

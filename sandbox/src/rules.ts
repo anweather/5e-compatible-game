@@ -43,6 +43,9 @@ export interface TerrainDef {
   /** Wet (water on it, raining, or damp) this many ticks in all, it rusts through into rustsTo (rust.every, rust.leaves; rust in sim.ts); unset never. */
   rustEvery?: number;
   rustsTo?: string;
+  /** The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves. */
+  dissolvedBy?: string;
+  dissolvesTo?: string;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
   waterTo?: "ice" | "steam";
   /** How its fire looks (flare, wood, oil); the view's only. */
@@ -65,6 +68,9 @@ export interface CoverDef {
   /** What it does to a creature walking through: [dice, sides] damage a square, and its speed (1 unhindered). */
   damage?: [number, number];
   speed?: number;
+  /** The element that dissolves it (materials.json dissolve.by, acid) and the cover it leaves (unset, none). */
+  dissolvedBy?: string;
+  dissolvesTo?: string;
 }
 export interface GasDef {
   name: string;
@@ -111,6 +117,8 @@ export interface Effect {
   setCover?: string | null;
   spreadCover?: number;
   break?: boolean;
+  /** Eats away the cell's cover or terrain into its dissolvesTo, when the rule's element is its dissolvedBy. */
+  dissolve?: "cover" | "terrain";
   setTerrain?: string;
   raise?: string;
   conduct?: number;
@@ -344,7 +352,7 @@ export interface Rules {
   components: Record<string, string>;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -475,7 +483,7 @@ export const ELEMENTS = BASE_ELEMENTS;
 
 const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance"]);
 const EFFECT_KEYS = new Set([
-  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
+  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "dissolve",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
@@ -664,6 +672,14 @@ function componentTableErrors(r: Rules): string[] {
 /** [from, to]: two hours of the day, 0 to 24 (sky.ts inHours). */
 const isHours = (v: unknown) => Array.isArray(v) && v.length === 2 && v.every((h) => typeof h === "number" && h >= 0 && h <= 24);
 
+/** What dissolves a terrain or cover (an element) and what it leaves (one of its own kind): Rules.Check.cs's Dissolves. */
+function dissolveErrors(what: string, t: { dissolvedBy?: string; dissolvesTo?: string }, elements: Set<string>, kind: Set<string>): string[] {
+  const errors: string[] = [];
+  if (t.dissolvedBy && !elements.has(t.dissolvedBy)) errors.push(`${what}: dissolves by unknown element ${t.dissolvedBy}`);
+  if (t.dissolvesTo && !kind.has(t.dissolvesTo)) errors.push(`${what}: dissolvesTo ${t.dissolvesTo} unknown`);
+  return errors;
+}
+
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
   const errors: string[] = materialGroupErrors(r as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown> });
@@ -684,11 +700,14 @@ export function validateRules(r: Rules): string[] {
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
+    errors.push(...dissolveErrors(`terrain ${id}`, t, el, terrainIds));
+    if (t.dissolvedBy && !t.dissolvesTo) errors.push(`terrain ${id}: dissolve without leaves`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
   }
   for (const [id, cv] of Object.entries(r.covers)) {
     if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
     if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);
+    errors.push(...dissolveErrors(`cover ${id}`, cv, el, coverIds));
   }
   const seen = new Set<string>();
   for (const rule of [...r.cellRules, ...r.entityRules]) {
@@ -701,6 +720,7 @@ export function validateRules(r: Rules): string[] {
     for (const e of rule.do) for (const k of Object.keys(e)) if (!EFFECT_KEYS.has(k)) errors.push(`rule ${rule.id}: unknown effect "${k}" (new verbs need code; see docs/MODDING.md)`);
     for (const e of rule.do) {
       if (e.setTerrain && !terrainIds.has(e.setTerrain)) errors.push(`rule ${rule.id}: setTerrain ${e.setTerrain} unknown`);
+      if (e.dissolve !== undefined && e.dissolve !== "cover" && e.dissolve !== "terrain") errors.push(`rule ${rule.id}: dissolve must be cover or terrain`);
       if (e.raise && !terrainIds.has(e.raise)) errors.push(`rule ${rule.id}: raise ${e.raise} unknown`);
       if (typeof e.setCover === "string" && !coverIds.has(e.setCover)) errors.push(`rule ${rule.id}: cover ${e.setCover} unknown`);
       if (e.gas && !(e.gas in r.gases)) errors.push(`rule ${rule.id}: gas ${e.gas} unknown`);

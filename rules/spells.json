@@ -19,6 +19,8 @@
     "blurb": "Pours water that flows downhill, fills pits and boilers, douses fire, and soaks creatures. Hold the cast for more water over a wider patch." },
   { "id": "sleet-storm", "group": "water", "name": "Sleet Storm", "level": 3, "shape": "burst", "radius": 5, "element": "cold",
     "blurb": "Level 3. Freezing sleet over a wide circle where you point: ponds and puddles freeze into walkable ice and flames go out. RAW it also makes the ground slick and breaks concentration. Hold the cast for a wider storm." },
+  { "id": "acid-splash", "group": "nature", "name": "Acid Splash", "level": 0, "shape": "burst", "radius": 1, "element": "acid", "damage": [1, 6], "radial": false,
+    "blurb": "Cantrip. A bubble of acid bursts where you point, 15 ft across, and eats away what acid can: brambles, thorns, spilt oil and grease. It burns any creature in the splash. RAW each creature makes a Dex save, and the damage grows with your level; here it is always 1d6. Hold the cast for a wider splash." },
   { "id": "thunderwave", "group": "storm", "name": "Thunderwave", "level": 1, "shape": "burst", "origin": "self", "radius": 1, "element": "thunder", "push": 3, "damage": [2, 8],
     "blurb": "A wave of force all around you. Throws everything next to you away from you, even a boulder, a little. Hold the cast for a wider wave that throws harder." },
   { "id": "misty-step", "group": "arcane", "name": "Misty Step", "level": 2, "shape": "target", "effect": "teleport", "range": 12,
