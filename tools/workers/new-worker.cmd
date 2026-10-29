@@ -4,7 +4,7 @@ powershell -NoProfile -Command "& ([scriptblock]::Create(((Get-Content -Raw -Lit
 exit /b %errorlevel%
 #PS
 # new-worker.cmd <template> <name>: clones a worker VM from a sealed template
-# (a full copy with a new id and MAC). It is left off; start it with start.cmd.
+# (a full copy with a new id; the MAC stays the same per name). It is left off; start it with start.cmd.
 # VMs live under C:\HyperV\Workers (the 980 PRO SSD); pass -Root to change it.
 param([Parameter(Mandatory)][string]$Template, [Parameter(Mandatory)][string]$Name, [string]$Root = 'C:\HyperV\Workers')
 if (-not (Get-Command Get-VM -ErrorAction SilentlyContinue)) { throw "Hyper-V PowerShell module missing" }
@@ -17,4 +17,16 @@ $cfg = Get-ChildItem (Join-Path $Root "templates\$Template") -Recurse -Filter *.
 if (-not $cfg) { throw "No sealed template at $Root\templates\$Template (run seal-template.cmd)." }
 $vm = Import-VM -Path $cfg.FullName -Copy -GenerateNewId -VirtualMachinePath $dir -VhdDestinationPath "$dir\Virtual Hard Disks" -SnapshotFilePath "$dir\Snapshots" -SmartPagingFilePath $dir
 Rename-VM -VM $vm -NewName $Name
-"Cloned $Name from $Template. Start it with: start.cmd $Name"
+# The same MAC every time this name is cloned: Unity's licence file is bound to
+# it (with the Windows product id and BIOS serial, which clones share), so a
+# licence saved in the worker's sign-in slot stays valid. Chosen once per name,
+# from Hyper-V's own prefix (00-15-5D), outside the range it hands out (01).
+$macFile = Join-Path $Root "macs\$Name.txt"
+if (-not (Test-Path $macFile)) {
+  New-Item -ItemType Directory -Force (Split-Path $macFile) | Out-Null
+  $b = [byte[]]::new(2); [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($b)
+  Set-Content -LiteralPath $macFile -Value ('00155DF0{0:X2}{1:X2}' -f $b[0], $b[1])
+}
+$mac = (Get-Content -LiteralPath $macFile -Raw).Trim()
+Get-VMNetworkAdapter -VM $vm | Set-VMNetworkAdapter -StaticMacAddress $mac
+"Cloned $Name from $Template (MAC $mac). Start it with: start.cmd $Name"
