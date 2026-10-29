@@ -6,6 +6,7 @@ import {
   DX, DY, addGas, burns, cellAt, coverBurns, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
   logOnce, neighbours, rand, terrainDef,
 } from "./world.ts";
+import { dryness } from "./sim.ts";
 
 export interface Ctx {
   power: number;
@@ -105,15 +106,15 @@ export function applyElement(w: World, x: number, y: number, element: string, ct
 
 /**
  * A status's ticks, but burning on a thing of a flammable material (a wooden crate) catches only with the
- * material's flammability (less its soak.dampens while the thing is wet) and lasts its fuel; 0 when it didn't
- * catch (World.MaterialBurn).
+ * material's flammability and lasts its fuel, both less its soak.dampens while the thing is wet; 0 when it
+ * didn't catch (World.MaterialBurn).
  */
 function materialBurn(w: World, e: Entity, def: EntityDef, status: string, ticks: number): number {
   const m = def.material ? RULES.terrain[def.material] : undefined;
   if (status !== "burning" || !m || !burns(m)) return ticks;
   const dryness = (e.status["wet"] ?? 0) > 0 ? 1 - (m.dampens ?? 0) : 1;
   if (rand(w) >= (m.flammability ?? 0) * dryness) return 0;
-  return m.fuel ?? ticks;
+  return dampFuel(m.fuel ?? ticks, dryness);
 }
 
 /** Returns the damage multiplier the entity's state adds (wet + lightning = 2). */
@@ -141,7 +142,8 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
   return mul;
 }
 
-export function ignite(c: Cell, intensity: number | "cover"): boolean {
+/** Lights flammable terrain or cover; caught at `dryness` (sim.ts dryness), it burns that much of its fuel (World.Ignite). */
+export function ignite(c: Cell, intensity: number | "cover", dryness = 1): boolean {
   if (intensity === "cover") {
     if (!coverBurns(c)) return false;
     const cv = RULES.covers[c.cover!]!;
@@ -154,10 +156,13 @@ export function ignite(c: Cell, intensity: number | "cover"): boolean {
   const t = terrainDef(c);
   if (!burns(t) && !coverBurns(c)) return false;
   if (c.fire >= intensity) return false;
-  if (c.fire === 0) c.fuel = coverBurns(c) ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5);
+  if (c.fire === 0) c.fuel = dampFuel(coverBurns(c) ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5), dryness);
   c.fire = intensity;
   return true;
 }
+
+/** Fuel caught damp (soaked burns poorly, docs/MATERIALS.md): scaled by the dryness, rounded down, at least 1 (World.DampFuel). */
+export const dampFuel = (fuel: number, dryness: number) => (dryness >= 1 ? fuel : Math.max(1, Math.floor(fuel * dryness)));
 
 /** Moves water out of a cell that just became solid. */
 export function displaceWater(w: World, x: number, y: number) {
@@ -204,7 +209,7 @@ function conduct(w: World, x: number, y: number, charge: number): boolean {
 
 function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ctx): boolean {
   const max = RULES.sim.water.maxLevel;
-  if (eff.ignite !== undefined) return ignite(c, eff.ignite);
+  if (eff.ignite !== undefined) return ignite(c, eff.ignite, dryness(w, c));
   if (eff.boil !== undefined) {
     if (c.water === 0 || c.frozen) return false;
     c.water--;

@@ -365,7 +365,7 @@ namespace Chem
                 var tt = TerrainOf(c);
                 if (tt.Burns)
                 {
-                    c.Fuel = tt.Fuel ?? 5;
+                    c.Fuel = DampFuel(tt.Fuel ?? 5, Dryness(c));
                     c.Fire = 2;
                 }
                 else

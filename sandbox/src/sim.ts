@@ -2,7 +2,7 @@
 // critters -> fire -> water -> gas -> weather -> entities -> machines -> decay
 // -> the day clock (Hasten Time).
 import { RULES } from "./rules.ts";
-import { applyElement, displaceWater, ignite } from "./react.ts";
+import { applyElement, dampFuel, displaceWater, ignite } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
 import {
@@ -192,7 +192,7 @@ function tickFire(w: World) {
       c.cover = null;
       const t = terrainDef(c);
       if (burns(t)) {
-        c.fuel = t.fuel ?? 5;
+        c.fuel = dampFuel(t.fuel ?? 5, dryness(w, c));
         c.fire = 2;
       } else {
         c.fire = 0;
@@ -502,7 +502,7 @@ const raining = (w: World) => (w.weather.period >= RULES.sim.weather.calmPeriods
  * from water soaked in, dampUntil) loses its terrain's soak.dampens of it; 1 when dry, or when what would
  * catch is its cover (covers don't soak). World.Dryness.
  */
-function dryness(w: World, c: Cell): number {
+export function dryness(w: World, c: Cell): number {
   if (coverBurns(c)) return 1;
   const dampens = terrainDef(c).dampens ?? 0;
   if (dampens <= 0 || !(raining(w) || w.tick < (c.dampUntil ?? 0))) return 1;

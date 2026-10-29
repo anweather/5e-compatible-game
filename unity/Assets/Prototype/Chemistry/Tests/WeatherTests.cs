@@ -115,7 +115,7 @@ namespace Chem.Tests
             Assert.That(a.CellHash(), Is.EqualTo(b.CellHash()), "deterministic");
             Assert.That(Strikes(a), Is.GreaterThan(0), "lightning struck");
             Assert.That(a.Log.Any(l => l.Text == "The rain puts out a fire"), "the rain put a fire out");
-            Assert.That($"{a.CellHash()} {a.RngState} {Strikes(a)}", Is.EqualTo("6e1dc9c1 3363082401 24"));
+            Assert.That($"{a.CellHash()} {a.RngState} {Strikes(a)}", Is.EqualTo("a80f8ead 275421548 24"));
         }
 
         [Test]

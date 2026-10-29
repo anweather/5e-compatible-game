@@ -95,7 +95,7 @@ test("rain douses a fire and fills the field; storms strike; matches the C# gold
     assert.ok(strikes > 0, "lightning struck");
     assert.ok(a.log.some((l) => l.text === "The rain puts out a fire"), "the rain put a fire out");
     assert.ok(cellAt(a, 20, 2)!.water > 0 || a.cells.filter((c) => c.t === "grass" && c.water > 0).length > 10, "the grass is wet");
-    assert.equal(`${cellHash(a)} ${a.rng} ${strikes}`, "6e1dc9c1 3363082401 24");
+    assert.equal(`${cellHash(a)} ${a.rng} ${strikes}`, "a80f8ead 275421548 24");
   });
 });
 

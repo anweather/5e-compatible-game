@@ -540,6 +540,31 @@ namespace Chem.Tests
             Assert.That(ThatchCaught(5, 10), Is.EqualTo(ThatchCaught(0, 10)), "once it has dried, it catches as dry thatch does");
         }
 
+        // How many ticks a lone thatch (3, 1) on dirt burns once lit; damp sets its Cell.DampUntil.
+        static int ThatchBurnTicks(int dampUntil)
+        {
+            var w = new World(R, 8, 3, 1, "dirt");
+            w.At(3, 1).T = "thatch";
+            w.At(3, 1).DampUntil = dampUntil;
+            w.Apply(3, 1, "fire", 3, -1, false);
+            int ticks = 0;
+            while (w.At(3, 1).Fire > 0 && ticks < 100)
+            {
+                w.Step();
+                ticks++;
+            }
+            return ticks;
+        }
+
+        [Test]
+        public void SoakedThatchBurnsOutSooner()
+        {
+            // docs/MATERIALS.md "Soaked burns poorly": caught damp, its fuel is scaled by 1 - soak.dampens too.
+            int dry = ThatchBurnTicks(0), damp = ThatchBurnTicks(int.MaxValue);
+            Assert.That(damp, Is.LessThan(dry), $"damp thatch burnt {damp} ticks, dry {dry}");
+            Assert.That($"{dry} {damp}", Is.EqualTo("18 9"), "the same in the sandbox");
+        }
+
         [Test]
         public void AWetThingOfADampenedMaterialCatchesPoorly()
         {
