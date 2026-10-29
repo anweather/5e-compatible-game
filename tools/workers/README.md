@@ -121,9 +121,9 @@ Set it up once per template, before sealing (Claude must already be signed in):
   (sudo password once). It also turns on the KVP daemon. Log:
   `journalctl --user -u claude-rc`.
 
-Untested so far, including whether Remote Control starts cleanly with no
-terminal attached, and whether a first run in the repo asks to trust the folder
-(if so, run `claude` there once by hand before sealing).
+First, in each template, run `claude` once in `~/5e-compatible-game` and
+accept the workspace trust dialog: Remote Control refuses an untrusted folder
+("Error: Workspace not trusted"). Trust is per user, so clones inherit it.
 
 ## Memory
 
