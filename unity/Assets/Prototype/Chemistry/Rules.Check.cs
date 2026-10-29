@@ -323,6 +323,11 @@ namespace Chem
             void SimEntry(string key, JToken value)
             {
                 if (key == "defense.kinds") return; // names, checked by DefenseRefs
+                if (key == "status.shatter.when" || key == "status.shatter.notBy")
+                {
+                    if (value.Type != JTokenType.String) Errors.Add($"sim {key} must be a name");
+                    return;
+                }
                 if (key == "day.dawn" || key == "day.dusk")
                 {
                     if (!IsHours(value)) Errors.Add($"sim {key} must be [from, to], hours from 0 to 24");

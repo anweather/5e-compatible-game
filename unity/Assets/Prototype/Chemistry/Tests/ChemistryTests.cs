@@ -600,6 +600,42 @@ namespace Chem.Tests
             Assert.That(w.At(6, 4).Charge, Is.EqualTo(0), "ice doesn't conduct");
         }
 
+        // Over 40 seeds, a goblin (wet or not) hit by Ray of Frost, then Shocking Grasp: how many are gone,
+        // and the sum of the worlds' RngStates.
+        static string FrostThenSpark(bool wet)
+        {
+            int gone = 0;
+            uint rng = 0;
+            for (uint seed = 1; seed <= 40; seed++)
+            {
+                var w = new World(R, 20, 9, seed, "dirt");
+                var r = w.SpawnRaider("goblin", 8, 4, 10);
+                if (wet) r.Status["wet"] = 60;
+                w.Cast("ray-of-frost", 8, 4, 0);
+                Assert.That(r.Alive, "the cold that froze it doesn't shatter it (status.shatter notBy)");
+                w.Cast("shocking-grasp", 8, 4, 0);
+                if (!r.Alive) gone++;
+                rng += w.RngState;
+            }
+            return $"{gone} {rng}";
+        }
+
+        [Test]
+        public void AStruckFrozenGoblinShatters()
+        {
+            // docs/MATERIALS.md "Frozen things shatter": a wet goblin freezes solid under Ray of Frost, and
+            // the spark that follows (any hurt but cold) shatters it; a dry one only takes the damage.
+            Assert.That($"{FrostThenSpark(true)} | {FrostThenSpark(false)}", Is.EqualTo("40 496377796 | 18 496377796"), "the same in the sandbox");
+            var w = new World(R, 20, 9, 1, "dirt");
+            var r = w.SpawnRaider("goblin", 8, 4, 10);
+            r.Status["wet"] = 60;
+            w.Cast("ray-of-frost", 8, 4, 0);
+            w.Cast("shocking-grasp", 8, 4, 0);
+            Assert.That(w.Log.Any(l => l.Text == "Goblin shatters"));
+            var ex = Assert.Throws<ModException>(() => RuleSet.Plain(R).WithMods(new[] { new ActiveMod("bad", "{ \"sim\": { \"status\": { \"shatter\": { \"when\": 3 } } } }") }));
+            Assert.That(ex.Errors, Is.EqualTo(new[] { "sim status.shatter.when must be a name" }));
+        }
+
         [Test]
         public void FireMeltsIceThenBoilsTheWater()
         {

@@ -95,6 +95,36 @@ test("a wet goblin takes double lightning damage", () => {
   assert.equal(10 - wet.hp, RULES.sim.zapDamage * 2);
 });
 
+// Mirrors ChemistryTests.FrostThenSpark: over 40 seeds, a goblin (wet or not) hit by Ray of Frost, then Shocking
+// Grasp: how many are gone, and the sum of the worlds' rng states.
+const frostThenSpark = (wet: boolean) => {
+  let gone = 0, rng = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const w = createWorld(20, 9, seed);
+    for (const c of w.cells) c.t = "dirt";
+    const e = spawn(w, "goblin", 8, 4)!;
+    if (wet) e.status.wet = 60;
+    castSpell(w, "ray-of-frost", 8, 4, 0);
+    assert.ok(w.entities.includes(e), "the cold that froze it doesn't shatter it (status.shatter notBy)");
+    castSpell(w, "shocking-grasp", 8, 4, 0);
+    if (!w.entities.includes(e)) gone++;
+    rng = (rng + w.rng) >>> 0;
+  }
+  return `${gone} ${rng}`;
+};
+
+// Mirrors ChemistryTests.AStruckFrozenGoblinShatters (docs/MATERIALS.md "Frozen things shatter").
+test("a struck frozen goblin shatters", () => {
+  assert.equal(`${frostThenSpark(true)} | ${frostThenSpark(false)}`, "40 496377796 | 18 496377796"); // the same in the C# core
+  const w = createWorld(20, 9, 1);
+  for (const c of w.cells) c.t = "dirt";
+  spawn(w, "goblin", 8, 4)!.status.wet = 60;
+  castSpell(w, "ray-of-frost", 8, 4, 0);
+  castSpell(w, "shocking-grasp", 8, 4, 0);
+  assert.ok(w.log.some((l) => l.text === "Goblin shatters"));
+  assert.deepEqual(validateRules(composeRules([{ sim: { status: { shatter: { when: 3 } } } } as unknown as ModPatch])), ["sim status.shatter.when must be a name"]);
+});
+
 test("steam engine: frog fills the boiler, newt heats it, the gate opens", () => {
   const w = room(14, 8);
   cellAt(w, 6, 3)!.t = "boiler";

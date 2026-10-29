@@ -21,13 +21,16 @@ export function spawn(w: World, kind: string, x: number, y: number): Entity | un
 
 /**
  * Hurts an entity. `element` (if the harm has one) doubles it for a raider weak to
- * it and halves it, rounded up, for one that resists it (C#: World.DamageRaider).
+ * it and halves it, rounded up, for one that resists it (C#: World.DamageRaider). With the sim's
+ * status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it.
  */
 export function damage(w: World, e: Entity, amount: number, cause: string, element?: string) {
   if (amount <= 0 || !w.entities.includes(e)) return;
   const def = defOf(e);
   if (def.hp >= 999) return; // boulders shrug
   amount = scaleDamage(def, element, amount);
+  const shatter = RULES.sim.status.shatter;
+  if (shatter?.when && (e.status[shatter.when] ?? 0) > 0 && (shatter.notBy === undefined || element !== shatter.notBy)) return destroy(w, e, "shatters");
   e.hp -= amount;
   if (hasComponent(def, "creature")) logOnce(w, `hurt#${e.id}#${cause}`, `${def.name} takes ${amount} ${cause} damage (${Math.max(0, e.hp)}/${def.hp} HP)`, "hurt");
   if (e.hp <= 0) destroy(w, e);
@@ -42,7 +45,7 @@ export function scaleDamage(def: ReturnType<typeof defOf>, element: string | und
   return amount;
 }
 
-export function destroy(w: World, e: Entity) {
+export function destroy(w: World, e: Entity, how = "is defeated") {
   const i = w.entities.indexOf(e);
   if (i < 0) return;
   w.entities.splice(i, 1);
@@ -51,7 +54,7 @@ export function destroy(w: World, e: Entity) {
   if (def.player) {
     log(w, "You're down! Press Reset to try again.", "hurt");
   } else if (hasComponent(def, "creature")) {
-    log(w, `${def.name} is defeated`, "hurt");
+    log(w, `${def.name} ${how}`, "hurt");
   } else if (e.status.burning) {
     const c = cellAt(w, e.x, e.y)!;
     c.fire = Math.max(c.fire, 2);

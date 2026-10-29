@@ -99,7 +99,8 @@ namespace Chem
 
         /// <summary>
         /// Hurts a raider (damage in the TS): <paramref name="element"/> (or null) doubles the damage
-        /// if it's weak to it and halves it (rounded up) if it resists. At 0 HP it's defeated.
+        /// if it's weak to it and halves it (rounded up) if it resists. At 0 HP it's defeated; with the
+        /// sim's status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it.
         /// </summary>
         void DamageRaider(Raider r, int amount, string cause, string element)
         {
@@ -107,6 +108,12 @@ namespace Chem
             var def = Rules.Entity(r.Kind);
             if (def.Hp >= 999) return;
             amount = Scaled(def, element, amount);
+            var sim = Rules.Sim;
+            if (sim.ShatterWhen != null && r.StatusOf(sim.ShatterWhen) > 0 && (sim.ShatterNotBy == null || element != sim.ShatterNotBy))
+            {
+                DefeatRaider(r, "shatters");
+                return;
+            }
             r.Hp -= amount;
             if (def.Creature)
                 LogOnce($"hurt#{r.Id}#{cause}", $"{def.Name} takes {amount} {cause} damage ({Math.Max(0, r.Hp)}/{def.Hp} HP)", LogKind.Hurt);
@@ -123,11 +130,11 @@ namespace Chem
             return amount;
         }
 
-        void DefeatRaider(Raider r)
+        void DefeatRaider(Raider r, string how = "is defeated")
         {
             if (!raiders.Remove(r)) return;
             r.Alive = false;
-            AddLog($"{Rules.Entity(r.Kind).Name} is defeated", LogKind.Hurt);
+            AddLog($"{Rules.Entity(r.Kind).Name} {how}", LogKind.Hurt);
         }
 
         /// <summary>Takes every raider off the board (a lost defense, a restart), without a word.</summary>
