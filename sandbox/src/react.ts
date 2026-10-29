@@ -105,12 +105,14 @@ export function applyElement(w: World, x: number, y: number, element: string, ct
 
 /**
  * A status's ticks, but burning on a thing of a flammable material (a wooden crate) catches only with the
- * material's flammability and lasts its fuel; 0 when it didn't catch (World.MaterialBurn).
+ * material's flammability (less its soak.dampens while the thing is wet) and lasts its fuel; 0 when it didn't
+ * catch (World.MaterialBurn).
  */
-function materialBurn(w: World, def: EntityDef, status: string, ticks: number): number {
+function materialBurn(w: World, e: Entity, def: EntityDef, status: string, ticks: number): number {
   const m = def.material ? RULES.terrain[def.material] : undefined;
   if (status !== "burning" || !m || !burns(m)) return ticks;
-  if (rand(w) >= (m.flammability ?? 0)) return 0;
+  const dryness = (e.status["wet"] ?? 0) > 0 ? 1 - (m.dampens ?? 0) : 1;
+  if (rand(w) >= (m.flammability ?? 0) * dryness) return 0;
   return m.fuel ?? ticks;
 }
 
@@ -125,7 +127,7 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
     for (const eff of rule.do) {
       if (eff.status)
         for (const [k, v] of Object.entries(eff.status)) {
-          const ticks = materialBurn(w, def, k, v);
+          const ticks = materialBurn(w, e, def, k, v);
           if (ticks > 0) e.status[k] = Math.max(e.status[k] ?? 0, ticks);
         }
       if (eff.clear) delete e.status[eff.clear];

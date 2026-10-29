@@ -6,7 +6,7 @@
 //   burn    { catch, fuel, heat, leaves, log, look, intensity }  flammable tag, flammability, fuel, heat, burnsTo, burnLog, fireLook, burnIntensity
 //   break   { leaves }                                            breakable tag, breaksTo
 //   dig     { hardness, leaves }                                  hardness, dugTo
-//   soak    { dry, wet }                                          soakEvery, soakEveryWet
+//   soak    { dry, wet, dampens }                                 soakEvery, soakEveryWet, dampens
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
 //   conduct {}                                                    conductive tag
 //   shatter {}                                                    brittle tag (a thing of it breaks when it lands hard)
@@ -31,7 +31,7 @@ namespace Chem
             ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("heat", "heat"), ("leaves", "burnsTo"), ("log", "burnLog"), ("look", "fireLook") }),
             ("break", "breakable", new[] { ("leaves", "breaksTo") }),
             ("dig", null, new[] { ("hardness", "hardness"), ("leaves", "dugTo") }),
-            ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet") }),
+            ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens") }),
             ("conduct", "conductive", System.Array.Empty<(string, string)>()),
             ("shatter", "brittle", System.Array.Empty<(string, string)>()),
             ("grow", null, new[] { ("into", "growsTo"), ("log", "growLog") }),

@@ -66,14 +66,15 @@ namespace Chem
 
         /// <summary>
         /// A status's ticks, but burning on a thing of a flammable material (a wooden crate) catches only
-        /// with the material's flammability and lasts its fuel; 0 when it didn't catch. (The TS's
-        /// materialBurn.)
+        /// with the material's flammability (less its soak.dampens while the thing is wet) and lasts its
+        /// fuel; 0 when it didn't catch. (The TS's materialBurn.)
         /// </summary>
-        int MaterialBurn(EntityDef def, string status, int ticks)
+        int MaterialBurn(Raider r, EntityDef def, string status, int ticks)
         {
             var m = def.MaterialDef;
             if (status != "burning" || m == null || !m.Burns) return ticks;
-            if (Rand() >= m.Flammability) return 0;
+            double dryness = r.StatusOf("wet") > 0 ? 1 - m.Dampens : 1;
+            if (Rand() >= m.Flammability * dryness) return 0;
             return m.Fuel ?? ticks;
         }
 
@@ -89,7 +90,7 @@ namespace Chem
         {
             foreach (var kv in eff.Status)
             {
-                int ticks = MaterialBurn(def, kv.Key, kv.Value);
+                int ticks = MaterialBurn(r, def, kv.Key, kv.Value);
                 if (ticks > 0) r.Status[kv.Key] = Math.Max(r.StatusOf(kv.Key), ticks);
             }
             if (eff.Clear != null) r.Status.Remove(eff.Clear);

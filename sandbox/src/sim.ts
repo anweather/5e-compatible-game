@@ -94,9 +94,7 @@ function soak(w: World, i: number, c: Cell) {
     const n = cellAt(w, x + DX[d]!, y + DY[d]!);
     if (n && n.water > p.thin) return;
   }
-  const now = w.weather, weather = RULES.sim.weather;
-  const raining = (now.period >= weather.calmPeriods || !!w.weatherSet) && rainOf(now) > 0;
-  const every = (raining || w.tick < (c.dampUntil ?? 0) ? t.soakEveryWet : t.soakEvery) ?? 0;
+  const every = (raining(w) || w.tick < (c.dampUntil ?? 0) ? t.soakEveryWet : t.soakEvery) ?? 0;
   if (every <= 0) return;
   const turns = Math.max(1, Math.floor(every / p.soakPass));
   if ((Math.floor(w.tick / p.soakPass) + x * 7 + y * 13) % turns !== 0) return;
@@ -181,7 +179,7 @@ function tickFire(w: World) {
     for (const [nx, ny, d] of neighbours(w, x, y)) {
       const n = cellAt(w, nx, ny)!;
       if (n.fire > 0) continue;
-      const flam = flammability(n);
+      const flam = flammability(n) * dryness(w, n);
       const downwind = windDir(w) === d ? p.downwindBonus : 0;
       const wet = n.water > 0 && !n.frozen;
       // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
@@ -496,4 +494,19 @@ function doused(w: World, c: Cell): boolean {
 }
 
 /** How much of fire's spread the rain (or snow, by half) leaves, 1 when dry. */
+/** Whether rain is falling on the cells this tick (World.Raining). */
+const raining = (w: World) => (w.weather.period >= RULES.sim.weather.calmPeriods || !!w.weatherSet) && rainOf(w.weather) > 0;
+
+/**
+ * How much of its catch a cell keeps (soaked burns poorly, docs/MATERIALS.md): damp ground (raining, or damp
+ * from water soaked in, dampUntil) loses its terrain's soak.dampens of it; 1 when dry, or when what would
+ * catch is its cover (covers don't soak). World.Dryness.
+ */
+function dryness(w: World, c: Cell): number {
+  if (coverBurns(c)) return 1;
+  const dampens = terrainDef(c).dampens ?? 0;
+  if (dampens <= 0 || !(raining(w) || w.tick < (c.dampUntil ?? 0))) return 1;
+  return 1 - dampens;
+}
+
 const rainDamp = (w: World) => 1 - (RULES.sim.weather.rain.dampen * wetOf(w.weather)) / 100;

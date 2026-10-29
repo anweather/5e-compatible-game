@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { RULES, validateRules } from "../src/rules.ts";
+import { RULES, type ModPatch, composeRules, installRules, validateRules } from "../src/rules.ts";
 import { withoutSoaking } from "./soak.ts";
 import { step } from "../src/sim.ts";
 import { castAt, castSpell, carry, paint, placeCritter, previewCells } from "../src/actions.ts";
@@ -350,4 +350,59 @@ test("thatch's heat lights the log wall beside it", () => {
   const hot = lit(2.5), plain = lit(1);
   assert.ok(hot > plain, `hot ${hot}, plain ${plain}`);
   assert.equal(`${hot} ${plain}`, "32 23"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.ThatchCaught: over 40 seeds, how often the second thatch (3,1) caught from the first in
+// one tick; dampUntil is its damp, and the fire is lit at tick lightAt.
+const thatchCaught = (dampUntil: number, lightAt: number) => {
+  let caught = 0;
+  for (let seed = 1; seed <= 40; seed++) {
+    const w = createWorld(8, 3, seed);
+    for (const c of w.cells) c.t = "dirt";
+    cellAt(w, 2, 1)!.t = "thatch";
+    cellAt(w, 3, 1)!.t = "thatch";
+    cellAt(w, 3, 1)!.dampUntil = dampUntil;
+    run(w, lightAt);
+    applyElement(w, 2, 1, "fire", { power: 3, direct: false });
+    step(w);
+    if (cellAt(w, 3, 1)!.fire > 0) caught++;
+  }
+  return caught;
+};
+
+// Mirrors ChemistryTests.SoakedThatchCatchesPoorlyUntilItDries (docs/MATERIALS.md "Soaked burns poorly").
+test("soaked thatch catches poorly until it dries", () => {
+  assert.equal(RULES.terrain.thatch!.dampens, 0.5);
+  const dry = thatchCaught(0, 0), damp = thatchCaught(2147483647, 0);
+  assert.ok(damp < dry, `damp thatch caught ${damp} times in 40, dry ${dry}`);
+  assert.equal(`${dry} ${damp}`, "21 10"); // the same in the C# core
+  assert.equal(thatchCaught(5, 10), thatchCaught(0, 10), "once it has dried, it catches as dry thatch does");
+});
+
+// Mirrors ChemistryTests.AWetThingOfADampenedMaterialCatchesPoorly: a spark lights a thing of thatch with its
+// material's flammability, less its soak.dampens while it is wet.
+test("a wet thing of a dampened material catches poorly", () => {
+  const before = composeRules([]);
+  installRules(composeRules([{ entities: { strawman: { name: "Straw man", material: "thatch", hp: 999, raider: { ticksPerSquare: 5 } } } } as unknown as ModPatch]));
+  try {
+    const caught = (wet: boolean) => {
+      let n = 0;
+      for (let seed = 1; seed <= 40; seed++) {
+        const w = createWorld(20, 9, seed);
+        for (const c of w.cells) c.t = "stone";
+        // Stood on the stone as World.SpawnRaider stands it (spawn keeps off blocking cells).
+        const e = { id: w.nextId++, kind: "strawman", x: 8, y: 4, hp: 999, status: {} as Record<string, number> };
+        w.entities.push(e);
+        if (wet) e.status["wet"] = 60;
+        castSpell(w, "shocking-grasp", 8, 4, 0);
+        if ((e.status["burning"] ?? 0) > 0) n++;
+      }
+      return n;
+    };
+    const dry = caught(false), soaked = caught(true);
+    assert.ok(soaked < dry, `wet it caught ${soaked} times in 40, dry ${dry}`);
+    assert.equal(`${dry} ${soaked}`, "25 10"); // the same in the C# core
+  } finally {
+    installRules(before);
+  }
 });
