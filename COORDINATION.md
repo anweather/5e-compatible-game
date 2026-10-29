@@ -394,3 +394,9 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   notes. The coordinator writes them from the merges since the last release
   and sets them on the draft; always keep budget for this. 0.1.7's notes
   were added after publishing.
+- 2026-10-29: BUDGET (Andrew). Frugal mode is for when usage is low; the
+  normal mode is now LEAN, so the weekly plan lasts the week while features
+  keep landing: screenshots only when they decide something, short
+  fixed-shape briefs and reports, analysis sized to the decision, batched
+  tasks, cheaper models for read-only jobs, the reel at release time, and a
+  mid-week usage check. See .claude/skills/agent-coordinator ("Budget").

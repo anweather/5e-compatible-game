@@ -137,10 +137,31 @@ and report. Never let anyone discard it without the user's OK.
   another agent to do it for you. Write the tool in bash or .NET, or bring
   the options to the user.
 
-## Frugal mode (when usage runs low)
+## Budget: lean by default, frugal when low
 
-Parallel agents burn tokens fast, and the coordinator relaying everything
-doubles it. When the user says usage is low:
+The plan's usage has to last the whole week while features keep landing, so
+the default mode is lean. Parallel agents are fine, but every token should
+buy progress.
+
+**Lean (the default):**
+- **Screenshots and images only when they decide something:** a visual bug,
+  a before/after for a merge, or a shot for the reel. Read text output,
+  logs and probe numbers instead of pictures, and look at a picture once.
+- **Short, fixed-shape messages both ways:** briefs say goal, files, checks
+  and stop point; reports are a few lines (DONE / FAILED / BLOCKED / NEXT).
+  Don't restate a report to the user; summarise it in a line or two.
+- **Analysis sized to the decision.** Don't read whole files, logs or diffs
+  when a grep, a `--stat` or one function answers it. Don't re-read what's
+  already in context.
+- **Batch:** one message carries the whole task and its follow-ups, and the
+  next task is queued in COORDINATION.md so agents don't wait on you.
+- **Cheaper models for read-only or mechanical jobs** (audits, searches,
+  scripted releases); the strongest model for design and tricky code.
+- **The demo reel and big reports at release time,** not after every merge.
+- **Pace the week:** check usage mid-week. If it's ahead of the days elapsed,
+  tighten toward frugal before it runs out, not after.
+
+**Frugal (when the user says usage is low)** adds these on top:
 - **Go serial.** One agent works at a time on a small, clear goal, then
   stops. Write the queue in COORDINATION.md, so each step is known in advance.
 - **Pre-approve merges on checks.** "The merge is pre-approved if it compiles
