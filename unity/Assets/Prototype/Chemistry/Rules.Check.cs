@@ -230,17 +230,26 @@ namespace Chem
                 foreach (var k in Keys(cond).Where(k => !CondKeys.Contains(k))) Errors.Add($"rule {id}: unknown condition \"{k}\"");
                 foreach (var k in effects.SelectMany(Keys).Where(k => !EffectKeys.Contains(k)))
                     Errors.Add($"rule {id}: unknown effect \"{k}\" (new verbs need code; see docs/MODDING.md)");
-                foreach (var e in effects.OfType<JObject>()) EffectRefs(id, e);
+                foreach (var e in effects.OfType<JObject>())
+                {
+                    EffectRefs(id, e);
+                    DissolveRef(id, e);
+                }
                 ComponentCond(id, cond, "has");
                 ComponentCond(id, cond, "lacks");
                 if (cond?["cover"] is JArray coverIds)
                     foreach (var cv in coverIds.Where(cv => !IsIn(covers, cv))) Errors.Add($"rule {id}: cover {Show(cv)} unknown");
             }
 
+            // A dissolve effect eats the cover or the terrain.
+            void DissolveRef(string id, JObject e)
+            {
+                if (e["dissolve"] != null && Text(e["dissolve"]) != "cover" && Text(e["dissolve"]) != "terrain") Errors.Add($"rule {id}: dissolve must be cover or terrain");
+            }
+
             void EffectRefs(string id, JObject e)
             {
                 if (Truthy(e["setTerrain"]) && !IsIn(terrain, e["setTerrain"])) Errors.Add($"rule {id}: setTerrain {Show(e["setTerrain"])} unknown");
-                if (e["dissolve"] != null && Text(e["dissolve"]) != "cover" && Text(e["dissolve"]) != "terrain") Errors.Add($"rule {id}: dissolve must be cover or terrain");
                 if (Truthy(e["raise"]) && !IsIn(terrain, e["raise"])) Errors.Add($"rule {id}: raise {Show(e["raise"])} unknown");
                 if (Text(e["setCover"]) != null && !IsIn(covers, e["setCover"])) Errors.Add($"rule {id}: cover {Show(e["setCover"])} unknown");
                 if (Truthy(e["gas"]) && !IsIn(gases, e["gas"])) Errors.Add($"rule {id}: gas {Show(e["gas"])} unknown");
