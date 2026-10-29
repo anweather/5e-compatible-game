@@ -289,6 +289,12 @@ namespace Chem
         public int BurnDamageEvery = 3;
         /// <summary>A creature in thick steam is scalded on every tick divisible by this (sim.json status).</summary>
         public int ScaldEvery = 6;
+        /// <summary>
+        /// A thing with status ShatterWhen (frozen) shatters when it takes damage of any element but
+        /// ShatterNotBy (cold only chills it): frozen things shatter, docs/MATERIALS.md (sim.json
+        /// status.shatter when, notBy); null never.
+        /// </summary>
+        public string ShatterWhen, ShatterNotBy;
         /// <summary>The defense field's waves (sim.json defense).</summary>
         public DefenseParams Defense = new DefenseParams();
     }
@@ -702,6 +708,16 @@ namespace Chem
             return e;
         }
 
+        /// <summary>sim.json status: burning and scalding rates, and what shatters.</summary>
+        static void ParseStatus(SimParams s, JObject st)
+        {
+            s.BurnDamageEvery = Int(st["burnDamageEvery"]) ?? s.BurnDamageEvery;
+            s.ScaldEvery = Int(st["scaldEvery"]) ?? s.ScaldEvery;
+            if (!(st["shatter"] is JObject sh)) return;
+            s.ShatterWhen = Str(sh["when"]);
+            s.ShatterNotBy = Str(sh["notBy"]);
+        }
+
         static SimParams ParseSim(JObject o)
         {
             var s = new SimParams();
@@ -737,11 +753,7 @@ namespace Chem
             s.ConductLimit = Int(o["conductLimit"]) ?? s.ConductLimit;
             s.FallDamage = Int(o["fallDamage"]) ?? s.FallDamage;
             s.ZapDamage = Int(o["zapDamage"]) ?? s.ZapDamage;
-            if (o["status"] is JObject st)
-            {
-                s.BurnDamageEvery = Int(st["burnDamageEvery"]) ?? s.BurnDamageEvery;
-                s.ScaldEvery = Int(st["scaldEvery"]) ?? s.ScaldEvery;
-            }
+            if (o["status"] is JObject st) ParseStatus(s, st);
             s.Defense = ParseDefense(o["defense"]);
             if (o["day"] is JObject day)
             {

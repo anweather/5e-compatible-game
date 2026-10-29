@@ -4,7 +4,7 @@
   "water": { "maxLevel": 32, "unitsPerStep": 4, "thin": 2, "soakPass": 8, "dampTicks": 600 },
   "height": { "min": -6, "max": 8, "blockAt": 3 },
   "gas": { "decayChance": 0.07, "maxAmount": 6 },
-  "status": { "burnDamageEvery": 3, "scaldEvery": 6 },
+  "status": { "burnDamageEvery": 3, "scaldEvery": 6, "shatter": { "when": "frozen", "notBy": "cold" } },
   "push": { "slideCells": 3, "collisionDamage": 2 },
   "fallDamage": 4,
   "zapDamage": 3,

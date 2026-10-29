@@ -289,7 +289,8 @@ export interface SimParams {
   /** Range of Cell.h in steps; from blockAt up a cell is a wall. */
   height: { min: number; max: number; blockAt: number };
   gas: { decayChance: number; maxAmount: number };
-  status: { burnDamageEvery: number; scaldEvery: number };
+  /** shatter: a thing with status `when` (frozen) shatters when hurt by any element but `notBy` (cold); World.Sim ShatterWhen, ShatterNotBy. */
+  status: { burnDamageEvery: number; scaldEvery: number; shatter?: { when?: string; notBy?: string } };
   push: { slideCells: number; collisionDamage: number };
   fallDamage: number;
   zapDamage: number;
@@ -729,6 +730,8 @@ export function validateRules(r: Rules): string[] {
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
+  for (const k of ["when", "notBy"] as const)
+    if (r.sim.status.shatter?.[k] != null && typeof r.sim.status.shatter[k] !== "string") errors.push(`sim status.shatter.${k} must be a name`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
   errors.push(...componentTableErrors(r));
   errors.push(...groupErrors(r));
