@@ -9,18 +9,21 @@ exit /b %errorlevel%
 # starts Claude Code's Remote Control, named after the worker (w1, w2...) so
 # every clone shows up as its own session. Run it from an elevated prompt
 # (automatic sign-in, and replacing the task). Log: %TEMP%\claude-rc.log.
-param([string]$PermissionMode = 'auto')
+# -Password sets the account's password too (Andrew chose "password": these VMs
+# sit on the private NAT switch). With a password the host can reach the guest
+# over PowerShell Direct (Invoke-Command -VMName); Windows refuses that for an
+# account with a blank password.
+param([string]$PermissionMode = 'auto', [string]$Password)
 $ErrorActionPreference = 'Stop'
 $user = "$env:COMPUTERNAME\$env:USERNAME"
-# Automatic sign-in at boot (a blank password is allowed here).
+if ($PSBoundParameters.ContainsKey('Password')) { net user $env:USERNAME $Password | Out-Null }
+# Automatic sign-in at boot, with the account's password (blank if it has none).
 $winlogon = 'HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon'
-$wl = Get-ItemProperty $winlogon
-if ($wl.AutoAdminLogon -ne '1' -or $wl.DefaultUserName -ne $env:USERNAME) {
-  Set-ItemProperty $winlogon AutoAdminLogon '1'
-  Set-ItemProperty $winlogon DefaultUserName $env:USERNAME
-  Set-ItemProperty $winlogon DefaultDomainName $env:COMPUTERNAME
-  if ($null -eq $wl.DefaultPassword) { Set-ItemProperty $winlogon DefaultPassword '' }
-}
+Set-ItemProperty $winlogon AutoAdminLogon '1'
+Set-ItemProperty $winlogon DefaultUserName $env:USERNAME
+Set-ItemProperty $winlogon DefaultDomainName $env:COMPUTERNAME
+if ($PSBoundParameters.ContainsKey('Password')) { Set-ItemProperty $winlogon DefaultPassword $Password }
+elseif ($null -eq (Get-ItemProperty $winlogon).DefaultPassword) { Set-ItemProperty $winlogon DefaultPassword '' }
 # The name: start.cmd copies "<name> <unix seconds>" into C:\ProgramData\worker\name.txt
 # after each boot. The registry's VirtualMachineName can still hold the
 # template's name this early, so it is only the fallback.
