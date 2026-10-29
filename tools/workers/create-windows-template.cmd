@@ -4,7 +4,7 @@ powershell -NoProfile -Command "& ([scriptblock]::Create(((Get-Content -Raw -Lit
 exit /b %errorlevel%
 #PS
 # Copies Andrew's Quick Create VM "Windows 11 dev environment" into a new VM,
-# windows-template (4 vCPU, 8 GB start, 4-12 GB dynamic). The original is only
+# windows-template (4 vCPU, 4 GB start, 4-8 GB dynamic: two fit beside J-017). The original is only
 # exported (read), never changed. The copy's inherited checkpoints are merged away.
 # VMs live under C:\HyperV\Workers (the 980 PRO SSD); pass -Root to change it.
 param([string]$Root = 'C:\HyperV\Workers', [string]$Source = 'Windows 11 dev environment', [string]$Name = 'windows-template')
@@ -21,7 +21,7 @@ $dir = Join-Path $Root $Name
 $vm = Import-VM -Path $cfg.FullName -Copy -GenerateNewId -VirtualMachinePath $dir -VhdDestinationPath "$dir\Virtual Hard Disks" -SnapshotFilePath "$dir\Snapshots" -SmartPagingFilePath $dir
 Rename-VM -VM $vm -NewName $Name
 Get-VMSnapshot -VM $vm | Remove-VMSnapshot
-Set-VM -VM $vm -ProcessorCount 4 -DynamicMemory -MemoryStartupBytes 8GB -MemoryMinimumBytes 4GB -MemoryMaximumBytes 12GB -AutomaticCheckpointsEnabled $false -AutomaticStopAction ShutDown
+Set-VM -VM $vm -ProcessorCount 4 -DynamicMemory -MemoryStartupBytes 4GB -MemoryMinimumBytes 4GB -MemoryMaximumBytes 8GB -AutomaticCheckpointsEnabled $false -AutomaticStopAction ShutDown
 Enable-VMIntegrationService -VM $vm -Name 'Guest Service Interface'
 Remove-Item -Recurse $tmp
 Start-VM -VM $vm

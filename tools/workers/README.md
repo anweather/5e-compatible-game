@@ -7,7 +7,7 @@ templates, cloned into workers:
 | Template | For | vCPU | Memory (dynamic) | Disk |
 |---|---|---|---|---|
 | `ubuntu-template` (Ubuntu 24.04 LTS server) | Headless work: core and sandbox tests, compiling, batch builds of the Windows player (Mono) | 2 | 4 GB start, 2–8 GB | 128 GB, grows as used |
-| `windows-template` (copy of Quick Create's "Windows 11 dev environment") | Windows-only work | 4 | 8 GB start, 4–12 GB | as Quick Create made it |
+| `windows-template` (copy of Quick Create's "Windows 11 dev environment") | Windows-only work | 4 | 4 GB start, 4–8 GB (two run side by side) | as Quick Create made it |
 
 Each has git + git-lfs, the .NET 8 SDK, Node 22, Unity Hub and Editor
 6000.3.27f1 (Windows Build Support, Mono; Mac Build Support, Mono if it

@@ -17,6 +17,8 @@ $cfg = Get-ChildItem (Join-Path $Root "templates\$Template") -Recurse -Filter *.
 if (-not $cfg) { throw "No sealed template at $Root\templates\$Template (run seal-template.cmd)." }
 $vm = Import-VM -Path $cfg.FullName -Copy -GenerateNewId -VirtualMachinePath $dir -VhdDestinationPath "$dir\Virtual Hard Disks" -SnapshotFilePath "$dir\Snapshots" -SmartPagingFilePath $dir
 Rename-VM -VM $vm -NewName $Name
+# Windows workers: 4 GB start, 8 GB cap, so two run side by side within J-017 (busy Unity peaked at 7.8 GB).
+if ((Get-VMFirmware -VM $vm).SecureBootTemplate -eq 'MicrosoftWindows') { Set-VMMemory -VM $vm -StartupBytes 4GB -MinimumBytes 4GB -MaximumBytes 8GB }
 # The same MAC every time this name is cloned: Unity's licence file is bound to
 # it (with the Windows product id and BIOS serial, which clones share), so a
 # licence saved in the worker's sign-in slot stays valid. Chosen once per name,
