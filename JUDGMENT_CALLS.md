@@ -41,6 +41,19 @@ Each entry has:
 
 ## Decided
 
+### J-037: How much RAM must stay free to start a worker VM?
+
+- **Asked:** 2026-10-29, by Andrew (to run two worker VMs side by side).
+- **Also comes up when:** start.cmd refuses a VM, adding a worker, opening
+  an Editor on the PC while workers run.
+- **Answer (2026-10-29):** Workers do the Unity work in VMs; the PC runs no
+  Editor. So start.cmd keeps 6 GB free when no host Unity is running, and
+  J-017's 10 GB when one is. Windows workers start at 4 GB and cap at 8 GB.
+- **Why:** each VM has a hard cap, so two busy workers (16 GB) plus the
+  host (~11 GB) leave about 4 GB of 31 in the worst case; idle they sit at
+  4 GB each. The 10 GB came from a host Editor's first build.
+- **Revisited:** 0.
+
 ### J-034 to J-036: Punchy upgrades (from Build's research, 2026-10-28)
 
 - **J-034, generated areas from Punchy's biomes:** NOT YET. Paper cuts
