@@ -379,6 +379,28 @@ test("soaked thatch catches poorly until it dries", () => {
   assert.equal(thatchCaught(5, 10), thatchCaught(0, 10), "once it has dried, it catches as dry thatch does");
 });
 
+// Mirrors ChemistryTests.ThatchBurnTicks: how many ticks a lone thatch (3,1) on dirt burns once lit.
+const thatchBurnTicks = (dampUntil: number) => {
+  const w = createWorld(8, 3, 1);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 3, 1)!.t = "thatch";
+  cellAt(w, 3, 1)!.dampUntil = dampUntil;
+  applyElement(w, 3, 1, "fire", { power: 3, direct: false });
+  let ticks = 0;
+  while (cellAt(w, 3, 1)!.fire > 0 && ticks < 100) {
+    step(w);
+    ticks++;
+  }
+  return ticks;
+};
+
+// Mirrors ChemistryTests.SoakedThatchBurnsOutSooner: caught damp, its fuel is scaled by 1 - soak.dampens too.
+test("soaked thatch burns out sooner", () => {
+  const dry = thatchBurnTicks(0), damp = thatchBurnTicks(2147483647);
+  assert.ok(damp < dry, `damp thatch burnt ${damp} ticks, dry ${dry}`);
+  assert.equal(`${dry} ${damp}`, "18 9"); // the same in the C# core
+});
+
 // Mirrors ChemistryTests.AWetThingOfADampenedMaterialCatchesPoorly: a spark lights a thing of thatch with its
 // material's flammability, less its soak.dampens while it is wet.
 test("a wet thing of a dampened material catches poorly", () => {

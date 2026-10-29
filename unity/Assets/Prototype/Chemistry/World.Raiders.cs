@@ -66,8 +66,8 @@ namespace Chem
 
         /// <summary>
         /// A status's ticks, but burning on a thing of a flammable material (a wooden crate) catches only
-        /// with the material's flammability (less its soak.dampens while the thing is wet) and lasts its
-        /// fuel; 0 when it didn't catch. (The TS's materialBurn.)
+        /// with the material's flammability and lasts its fuel, both less its soak.dampens while the thing
+        /// is wet; 0 when it didn't catch. (The TS's materialBurn.)
         /// </summary>
         int MaterialBurn(Raider r, EntityDef def, string status, int ticks)
         {
@@ -75,7 +75,7 @@ namespace Chem
             if (status != "burning" || m == null || !m.Burns) return ticks;
             double dryness = r.StatusOf("wet") > 0 ? 1 - m.Dampens : 1;
             if (Rand() >= m.Flammability * dryness) return 0;
-            return m.Fuel ?? ticks;
+            return DampFuel(m.Fuel ?? ticks, dryness);
         }
 
         static bool Holds(EntityCond cond, Raider r, EntityDef def)

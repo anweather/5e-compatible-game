@@ -132,17 +132,20 @@ namespace Chem
             return true;
         }
 
-        /// <summary>Lights flammable terrain or cover at the given intensity.</summary>
-        public bool Ignite(Cell c, int intensity)
+        /// <summary>Lights flammable terrain or cover at the given intensity; caught at <paramref name="dryness"/> (World.Dryness), it burns that much of its fuel.</summary>
+        public bool Ignite(Cell c, int intensity, double dryness = 1)
         {
             var t = TerrainOf(c);
             bool coverFlammable = CoverBurns(c);
             if (!t.Burns && !coverFlammable) return false;
             if (c.Fire >= intensity) return false;
-            if (c.Fire == 0) c.Fuel = coverFlammable ? (Rules.Covers[c.Cover].Fuel ?? 5) : (t.Fuel ?? 5);
+            if (c.Fire == 0) c.Fuel = DampFuel(coverFlammable ? (Rules.Covers[c.Cover].Fuel ?? 5) : (t.Fuel ?? 5), dryness);
             c.Fire = intensity;
             return true;
         }
+
+        /// <summary>Fuel caught damp (soaked burns poorly, docs/MATERIALS.md): scaled by the dryness, rounded down, at least 1.</summary>
+        static int DampFuel(int fuel, double dryness) => dryness >= 1 ? fuel : Math.Max(1, (int)Math.Floor(fuel * dryness));
 
         /// <summary>Moves water out of a cell that just became solid.</summary>
         public void DisplaceWater(int x, int y)
@@ -194,7 +197,7 @@ namespace Chem
         bool RunEffect(int x, int y, Cell c, Effect eff, int power, int dir)
         {
             int max = Rules.Sim.WaterMaxLevel;
-            if (eff.HasIgnite) return eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN);
+            if (eff.HasIgnite) return eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN, Dryness(c));
             if (eff.Boil.HasValue)
             {
                 if (c.Water == 0 || c.Frozen) return false;
