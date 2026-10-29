@@ -38,6 +38,8 @@ export interface TerrainDef {
   /** Thin water on it soaks in and dries up a unit every this many ticks (soak in sim.ts), on dry ground and on damp; unset never. */
   soakEvery?: number;
   soakEveryWet?: number;
+  /** How much of its catch (flammability) it loses while damp (soak.dampens, 0 to 1, 0 when absent): a damp cell of it (raining, or dampUntil) or a wet thing of it catches with flammability * (1 - dampens). */
+  dampens?: number;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
   waterTo?: "ice" | "steam";
   /** How its fire looks (flare, wood, oil); the view's only. */
@@ -671,6 +673,7 @@ export function validateRules(r: Rules): string[] {
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
     for (const key of ["soakEvery", "soakEveryWet"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
+    if (t.dampens !== undefined && !(typeof t.dampens === "number" && t.dampens >= 0 && t.dampens <= 1)) errors.push(`terrain ${id}: dampens must be a number from 0 to 1`);
     if (t.waterTo !== undefined && t.waterTo !== "ice" && t.waterTo !== "steam") errors.push(`terrain ${id}: waterTo must be ice or steam`);
     if (t.fireLook !== undefined && !FIRE_LOOKS.includes(t.fireLook)) errors.push(`terrain ${id}: fireLook must be flare, wood or oil`);
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
