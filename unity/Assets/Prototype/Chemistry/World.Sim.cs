@@ -407,12 +407,25 @@ namespace Chem
 
         double SpreadChance(Cell c, Cell n, int d, FireParams p)
         {
-            double flam = Flammability(n);
+            double flam = Flammability(n) * Dryness(n);
             double downwind = WindDir == d ? p.DownwindBonus : 0;
             // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
             double heat = CoverBurns(c) ? 1 : TerrainOf(c).Heat;
             if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) * heat + downwind * flam) * RainDamp();
             return n.Water > 0 && !n.Frozen ? p.BoilChance : p.HeatChance;
+        }
+
+        /// <summary>
+        /// How much of its catch a cell keeps (soaked burns poorly, docs/MATERIALS.md): damp ground
+        /// (raining, or damp from water soaked in, Cell.DampUntil) loses its terrain's soak.dampens of
+        /// it; 1 when dry, or when what would catch is its cover (covers don't soak).
+        /// </summary>
+        double Dryness(Cell c)
+        {
+            if (CoverBurns(c)) return 1;
+            double dampens = TerrainOf(c).Dampens;
+            if (dampens <= 0 || !(Raining || Tick < c.DampUntil)) return 1;
+            return 1 - dampens;
         }
 
         void TickWater(RowSpan[] rows)

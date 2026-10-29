@@ -76,8 +76,8 @@ namespace Chem.Tests
             // began toppling the trees it heaves (one more log line: "a tree topples").
             var w = Valley();
             ValleyScript(w, 300);
-            Assert.That(w.CellHash(), Is.EqualTo("4cb62bf"));
-            Assert.That(w.RngState, Is.EqualTo(1664339835u));
+            Assert.That(w.CellHash(), Is.EqualTo("58955550"));
+            Assert.That(w.RngState, Is.EqualTo(2969690249u));
             Assert.That(w.Log.Count, Is.EqualTo(37));
         }
 

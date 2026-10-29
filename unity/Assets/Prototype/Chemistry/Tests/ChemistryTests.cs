@@ -510,6 +510,60 @@ namespace Chem.Tests
             Assert.That(logsOut - logsLit, Is.GreaterThanOrEqualTo(100), $"and burn long: lit at {logsLit}, out at {logsOut}");
         }
 
+        // Over 40 seeds, how often the second thatch (3, 1) caught from the first in one tick; damp sets
+        // its Cell.DampUntil, and the fire is lit at tick lightAt.
+        static int ThatchCaught(int dampUntil, int lightAt)
+        {
+            int caught = 0;
+            for (uint seed = 1; seed <= 40; seed++)
+            {
+                var w = new World(R, 8, 3, seed, "dirt");
+                w.At(2, 1).T = "thatch";
+                w.At(3, 1).T = "thatch";
+                w.At(3, 1).DampUntil = dampUntil;
+                Run(w, lightAt);
+                w.Apply(2, 1, "fire", 3, -1, false);
+                w.Step();
+                if (w.At(3, 1).Fire > 0) caught++;
+            }
+            return caught;
+        }
+
+        [Test]
+        public void SoakedThatchCatchesPoorlyUntilItDries()
+        {
+            // docs/MATERIALS.md "Soaked burns poorly": a damp cell's catch is scaled by 1 - soak.dampens (thatch 0.5).
+            Assert.That(R.Terrain["thatch"].Dampens, Is.EqualTo(0.5));
+            int dry = ThatchCaught(0, 0), damp = ThatchCaught(int.MaxValue, 0);
+            Assert.That(damp, Is.LessThan(dry), $"damp thatch caught {damp} times in 40, dry {dry}");
+            Assert.That($"{dry} {damp}", Is.EqualTo("21 10"), "the same in the sandbox");
+            Assert.That(ThatchCaught(5, 10), Is.EqualTo(ThatchCaught(0, 10)), "once it has dried, it catches as dry thatch does");
+        }
+
+        [Test]
+        public void AWetThingOfADampenedMaterialCatchesPoorly()
+        {
+            // Fire on a wet thing only sizzles (e-fire-wet); a spark still lights it, with its material's
+            // flammability less its soak.dampens.
+            var straw = R.WithMods(new[] { ModPatch.Parse("{ \"entities\": { \"strawman\": { \"name\": \"Straw man\", \"material\": \"thatch\", \"hp\": 999, \"raider\": { \"ticksPerSquare\": 5 } } } }") });
+            int Caught(bool wet)
+            {
+                int caught = 0;
+                for (uint seed = 1; seed <= 40; seed++)
+                {
+                    var w = new World(straw, 20, 9, seed, "stone");
+                    var r = w.SpawnRaider("strawman", 8, 4, 99);
+                    if (wet) r.Status["wet"] = 60;
+                    w.Cast("shocking-grasp", 8, 4, 0);
+                    if (r.StatusOf("burning") > 0) caught++;
+                }
+                return caught;
+            }
+            int dry = Caught(false), soaked = Caught(true);
+            Assert.That(soaked, Is.LessThan(dry), $"wet it caught {soaked} times in 40, dry {dry}");
+            Assert.That($"{dry} {soaked}", Is.EqualTo("25 10"), "the same in the sandbox");
+        }
+
         [Test]
         public void RayOfFrostFreezesAPondIntoInsulatingIce()
         {

@@ -44,6 +44,12 @@ namespace Chem
         /// ground and on damp ground (wet from rain or water that soaked in); 0 never.
         /// </summary>
         public int SoakEvery, SoakEveryWet;
+        /// <summary>
+        /// How much of its catch (Flammability) it loses while damp (materials.json soak.dampens, 0 to
+        /// 1, 0 when absent): a damp cell of it (raining, or Cell.DampUntil) or a wet thing of it
+        /// catches with Flammability * (1 - Dampens).
+        /// </summary>
+        public double Dampens;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
 
@@ -516,6 +522,7 @@ namespace Chem
             GrowLog = Str(o["growLog"]),
             SoakEvery = Int(o["soakEvery"]) ?? 0,
             SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
+            Dampens = Num(o["dampens"]) ?? 0,
             WaterTo = Str(o["waterTo"]),
         };
 

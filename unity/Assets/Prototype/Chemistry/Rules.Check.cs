@@ -165,11 +165,12 @@ namespace Chem
             static bool IsWholeNumber(JToken v) =>
                 v.Type == JTokenType.Integer || (v.Type == JTokenType.Float && System.Math.Abs((double)v - System.Math.Floor((double)v)) < 1e-9);
 
-            // What water does on it: soak rates (whole ticks) and what it turns into.
+            // What water does on it: soak rates (whole ticks), how much being damp dampens its burning, and what it turns into.
             void WaterOn(string id, JToken t)
             {
                 foreach (var key in new[] { "soakEvery", "soakEveryWet" })
                     if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
+                if (t["dampens"] != null && !(IsNumber(t["dampens"]) && (double)t["dampens"] >= 0 && (double)t["dampens"] <= 1)) Errors.Add($"terrain {id}: dampens must be a number from 0 to 1");
                 if (t["waterTo"] != null && Text(t["waterTo"]) != "ice" && Text(t["waterTo"]) != "steam") Errors.Add($"terrain {id}: waterTo must be ice or steam");
             }
 
