@@ -18,4 +18,17 @@ for ($i = 0; $i -lt 60; $i++) {
   if ($ip) { "$Name is running at $ip"; break }
   Start-Sleep 5
 }
-if (-not $ip) { "$Name started; no IP reported yet (normal during an OS install)." }
+if (-not $ip) { "$Name started; no IP reported yet (normal during an OS install)."; return }
+# Tell the guest its worker name (Remote Control names its session after it):
+# "<name> <unix seconds>", newer than the guest's boot. Windows path first, then Linux.
+$tmp = Join-Path $env:TEMP "worker-name-$Name.txt"
+Set-Content -LiteralPath $tmp -NoNewline -Encoding ascii -Value ("$Name " + [DateTimeOffset]::UtcNow.ToUnixTimeSeconds())
+$sent = $false
+for ($i = 0; $i -lt 12 -and -not $sent; $i++) {
+  foreach ($dest in 'C:\ProgramData\worker\name.txt', '/var/lib/worker/name.txt') {
+    try { Copy-VMFile -VM $vm -SourcePath $tmp -DestinationPath $dest -FileSource Host -CreateFullPath -Force -ErrorAction Stop; $sent = $true; break } catch { }
+  }
+  if (-not $sent) { Start-Sleep 5 }
+}
+Remove-Item -LiteralPath $tmp
+if ($sent) { "Told the guest its name ($Name)." } else { "Could not copy the name in (Guest Service Interface off?); Remote Control falls back to the registry/KVP name." }
