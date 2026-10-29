@@ -24,8 +24,18 @@ for _ in \$(seq 36); do
   sleep 5
 done
 [[ -n \$name ]] || name=\$(tr -s '\0' '\n' < /var/lib/hyperv/.kvp_pool_3 2>/dev/null | grep -A1 -x VirtualMachineName | tail -1 || true)
+name=\${name:-\$(hostname)}
+# A clone carries the template's Remote Control registration (environment id in
+# bridge-pointer.json, machine id in .claude.json) and would come back under the
+# template's name. When the name changes, drop both so Claude registers afresh.
+last=~/.local/state/worker/rc-name
+if [[ \$(cat "\$last" 2>/dev/null) != "\$name" ]]; then
+  rm -f ~/.claude/projects/-home-\$USER-5e-compatible-game/bridge-pointer.json
+  [[ -f ~/.claude.json ]] && python3 -c 'import json,sys; p=sys.argv[1]; j=json.load(open(p)); j.pop("remoteControlMachineId",None); json.dump(j,open(p,"w"),indent=2)' ~/.claude.json
+  mkdir -p "\$(dirname "\$last")" && echo "\$name" > "\$last"
+fi
 cd ~/5e-compatible-game
-exec ~/.local/bin/claude remote-control --spawn=worktree --permission-mode $MODE --name "\${name:-\$(hostname)}"
+exec ~/.local/bin/claude remote-control --spawn=worktree --permission-mode $MODE --name "\$name"
 EOF
 chmod +x ~/.local/bin/claude-rc
 

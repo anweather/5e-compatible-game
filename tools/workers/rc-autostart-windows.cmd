@@ -33,7 +33,24 @@ for ($i = 0; $i -lt 36 -and -not $n; $i++) {
 }
 if (-not $n) { $n = (Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Virtual Machine\Guest\Parameters' -ErrorAction SilentlyContinue).VirtualMachineName }
 if (-not $n) { $n = $env:COMPUTERNAME }
-Set-Location "$env:USERPROFILE\5e-compatible-game"
+# A clone carries the template's Remote Control registration (environment id in
+# bridge-pointer.json, machine id in .claude.json) and would come back under the
+# template's name. When the name changes, drop both so Claude registers afresh.
+$repo = "$env:USERPROFILE\5e-compatible-game"
+$last = "$env:LOCALAPPDATA\worker\rc-name.txt"
+if (-not (Test-Path $last) -or (Get-Content $last -Raw).Trim() -ne $n) {
+  Remove-Item "$env:USERPROFILE\.claude\projects\$($repo -replace '[:\\]', '-')\bridge-pointer.json" -ErrorAction SilentlyContinue
+  $cfg = "$env:USERPROFILE\.claude.json"
+  if (Test-Path $cfg) {
+    $j = Get-Content $cfg -Raw
+    $k = '"remoteControlMachineId"\s*:\s*"[^"]*"'
+    $j2 = $j -replace "$k\s*,", '' -replace ",\s*$k", ''
+    if ($j2 -ne $j) { [IO.File]::WriteAllText($cfg, $j2) }
+  }
+  New-Item -ItemType Directory -Force (Split-Path $last) | Out-Null
+  Set-Content $last $n
+}
+Set-Location $repo
 & "$env:USERPROFILE\.local\bin\claude.exe" remote-control --spawn=worktree --permission-mode PERMISSION_MODE --name $n *> "$env:TEMP\claude-rc.log"
 '@ -replace 'PERMISSION_MODE', $PermissionMode
 $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($run))
