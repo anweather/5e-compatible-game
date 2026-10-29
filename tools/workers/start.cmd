@@ -12,7 +12,9 @@ $os = Get-CimInstance Win32_OperatingSystem
 $free = $os.FreePhysicalMemory/1MB
 $vm = Get-VM -Name $Name -ErrorAction Stop
 $need = $vm.MemoryStartup/1GB
-if ($vm.State -eq 'Off' -and $free - $need -lt 10) { throw ("Only {0:N1} GB free; J-017 keeps 10 GB free. Not starting." -f $free) }
+# J-017 keeps 10 GB free beside a host Editor; with none open (workers do the Unity work), 6 GB (J-037).
+$keep = if (Get-Process Unity -ErrorAction SilentlyContinue) { 10 } else { 6 }
+if ($vm.State -eq 'Off' -and $free - $need -lt $keep) { throw ("Only {0:N1} GB free; {1} GB must stay free (J-017, J-037). Not starting." -f $free, $keep) }
 Start-VM -VM $vm
 for ($i = 0; $i -lt 60; $i++) {
   $ip = (Get-VMNetworkAdapter -VM $vm).IPAddresses | Where-Object { $_ -match '^\d+\.' } | Select-Object -First 1

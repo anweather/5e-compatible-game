@@ -93,7 +93,7 @@ That's fine on the NAT switch; rename one inside the guest
 
 ```
 new-worker.cmd windows-template w1     # full copy, new id, same MAC per name; left off
-start.cmd u1                           # refuses if <10 GB would stay free (J-017); prints the IP
+start.cmd u1                           # refuses if <6 GB would stay free (10 with a host Editor open; J-017, J-037)
 sleep.cmd u1                           # saves state to disk: frees all its RAM, resumes in seconds
 stop.cmd u1                            # clean guest shutdown
 status.cmd                             # state, CPU, assigned and demanded RAM, host free RAM
