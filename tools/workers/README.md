@@ -111,13 +111,22 @@ signed in to it, each template runs `claude remote-control` at boot, named
 after the Hyper-V VM (`w1`, `u1`...; start.cmd copies the name in).
 Set it up once per template, before sealing:
 
-- **Claude sign-in is per worker (Andrew, once per clone).** Seal the template
-  signed out. A claude.ai sign-in's refresh token is single-use, so clones
-  sharing one void each other within minutes, and Remote Control refuses the
-  long-lived `claude setup-token` token ("only available with claude.ai
-  subscriptions"). On Windows, an unsigned worker opens a sign-in window on
-  its desktop at boot; sign in there and Remote Control starts by itself. The
-  sign-in then stays with that worker.
+- **Claude sign-ins live in slots on the host, one per worker name.** Seal
+  the template signed out. A claude.ai sign-in's refresh token is single-use,
+  so clones sharing one void each other within minutes, and Remote Control
+  refuses the long-lived `claude setup-token` token ("only available with
+  claude.ai subscriptions"). So `signins.cmd` keeps each worker's sign-in in
+  `C:\HyperV\Workers\signins\<name>` (this account and SYSTEM only):
+  `start.cmd` copies the slot in before Remote Control starts; `stop`,
+  `sleep` and `remove-worker` copy the refreshed sign-in back; the newer
+  token always wins. The first time a slot is used it's empty: the worker
+  opens a sign-in window on its desktop, Andrew signs in, Remote Control
+  starts. After that, `remove-worker w1` + `new-worker` + `start w1` comes up
+  signed in with no clicks. Four slots (`w1`–`w4`) cover 2–3 running workers
+  with headroom. Andrew, once: `signins.cmd install` registers a host task
+  that saves running workers' sign-ins every 5 minutes, so a worker that
+  crashes or is turned off hard doesn't leave its slot stale. Windows workers
+  only (PowerShell Direct).
 - **Windows:** in the VM, elevated PowerShell,
   `.\rc-autostart-windows.cmd -Password password` (or the host runs it over
   PowerShell Direct once the account has a password). It turns on automatic

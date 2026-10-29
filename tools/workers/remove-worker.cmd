@@ -1,5 +1,6 @@
 @echo off
 rem The PowerShell below the #PS line runs as a script block (.ps1 files are blocked on this PC).
+set "WORKERS_DIR=%~dp0"
 powershell -NoProfile -Command "& ([scriptblock]::Create(((Get-Content -Raw -LiteralPath '%~f0') -split '(?m)^#PS\r?$')[1])) %*"
 exit /b %errorlevel%
 #PS
@@ -19,6 +20,8 @@ if ($vm) {
   foreach ($p in $paths) {
     if (-not ([IO.Path]::GetFullPath($p).TrimEnd('\') + '\').StartsWith($dir, 'OrdinalIgnoreCase')) { throw "$Name has files outside $dir ($p); not removing it." }
   }
+  # Keep its sign-in (its slot outlives it; the next clone of that name reuses it).
+  if ($vm.State -eq 'Running') { cmd /c (Join-Path $env:WORKERS_DIR 'signins.cmd') pull $Name }
   if ($vm.State -ne 'Off') { Stop-VM -VM $vm -TurnOff }
   Remove-VM -VM $vm -Force
 }

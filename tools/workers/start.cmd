@@ -1,5 +1,6 @@
 @echo off
 rem The PowerShell below the #PS line runs as a script block (.ps1 files are blocked on this PC).
+set "WORKERS_DIR=%~dp0"
 powershell -NoProfile -Command "& ([scriptblock]::Create(((Get-Content -Raw -LiteralPath '%~f0') -split '(?m)^#PS\r?$')[1])) %*"
 exit /b %errorlevel%
 #PS
@@ -19,6 +20,9 @@ for ($i = 0; $i -lt 60; $i++) {
   Start-Sleep 5
 }
 if (-not $ip) { "$Name started; no IP reported yet (normal during an OS install)."; return }
+# Sign the worker in from its slot before it learns its name (Remote Control
+# waits for the name). It skips templates and Ubuntu workers.
+cmd /c (Join-Path $env:WORKERS_DIR 'signins.cmd') push $Name
 # Tell the guest its worker name (Remote Control names its session after it):
 # "<name> <unix seconds>", newer than the guest's boot. Windows path first, then Linux.
 $tmp = Join-Path $env:TEMP "worker-name-$Name.txt"
