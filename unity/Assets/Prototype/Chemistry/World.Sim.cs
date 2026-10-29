@@ -213,10 +213,29 @@ namespace Chem
                 bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
                 if (c.Charge > 0) c.Charge--;
                 if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
+                if (soak && Rust(c)) live = true;
                 if (soak && c.Water > 0 && Soak(ch, i, c)) live = true;
                 if (live) edges = Math.Max(edges, 0) | Chunks.EdgesOf(i);
             }
             return edges;
+        }
+
+        /// <summary>
+        /// Wet metal rusts (materials.json rust), on the soak pass: a cell whose terrain rusts and is
+        /// wet (unfrozen water on it, raining, or damp, Cell.DampUntil) counts the pass's ticks in
+        /// Cell.Rust; at rust.every it becomes rust.leaves. True if it did.
+        /// </summary>
+        bool Rust(Cell c)
+        {
+            if (!((c.Water > 0 && !c.Frozen) || Raining || Tick < c.DampUntil)) return false;
+            var t = TerrainOf(c);
+            if (t.RustEvery <= 0) return false;
+            c.Rust += Rules.Sim.SoakPass;
+            if (c.Rust < t.RustEvery) return false;
+            c.Rust = 0;
+            c.T = t.RustsTo;
+            LogOnce("rust", "The metal rusts through");
+            return true;
         }
 
         /// <summary>

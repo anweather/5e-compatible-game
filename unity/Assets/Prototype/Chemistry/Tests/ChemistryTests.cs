@@ -173,7 +173,7 @@ namespace Chem.Tests
             w.Cast("create-water", 9, 6, 1);
             Run(w, 120);
 
-            Assert.That(w.CellHash(), Is.EqualTo("61ea6063"));
+            Assert.That(w.CellHash(), Is.EqualTo("b93a9aee"));
             Assert.That(w.RngState, Is.EqualTo(939719859u));
             CollectionAssert.AreEqual(new[]
             {
@@ -563,6 +563,43 @@ namespace Chem.Tests
             int dry = ThatchBurnTicks(0), damp = ThatchBurnTicks(int.MaxValue);
             Assert.That(damp, Is.LessThan(dry), $"damp thatch burnt {damp} ticks, dry {dry}");
             Assert.That($"{dry} {damp}", Is.EqualTo("18 9"), "the same in the sandbox");
+        }
+
+        // Metal 8 x 4, its left half under 2 water, run for ticks; and how many cells rusted through and log lines it gave.
+        static (World w, int rusted, int lines) WetMetal(int ticks)
+        {
+            var w = new World(R, 8, 4, 1, "metal");
+            for (int x = 0; x < 4; x++) for (int y = 0; y < 4; y++) w.At(x, y).Water = 2;
+            Run(w, ticks);
+            return (w, w.Cells.Count(c => c.T == "rusted-metal"), w.Log.Count(l => l.Text == "The metal rusts through"));
+        }
+
+        [Test]
+        public void WetMetalRustsThroughAndDryMetalDoesNot()
+        {
+            // docs/MATERIALS.md: metal's rust { every 2000, leaves rusted-metal }, counted on the soak pass while wet.
+            Assert.That(R.Terrain["metal"].RustEvery, Is.EqualTo(2000));
+            var (early, none, _) = WetMetal(1000);
+            Assert.That(none, Is.EqualTo(0), "not yet");
+            Assert.That(early.Cells.Count(c => c.Rust > 0), Is.GreaterThan(0), "but counting");
+            var (w, rusted, lines) = WetMetal(2400);
+            Assert.That(rusted, Is.GreaterThan(0));
+            Assert.That(lines, Is.InRange(1, rusted - 1), "a line a pass, not a line a cell");
+            Assert.That(R.Terrain["rusted-metal"].Hardness, Is.LessThan(R.Terrain["metal"].Hardness), "weaker");
+            Assert.That(R.Terrain["rusted-metal"].Has("conductive"), Is.False, "and it doesn't conduct");
+            Assert.That($"{rusted} {lines} {w.CellHash()}", Is.EqualTo("20 1 1dc2aae5"), "the same in the sandbox");
+
+            var dry = new World(R, 8, 4, 1, "metal");
+            Run(dry, 2400);
+            Assert.That(dry.Cells.All(c => c.T == "metal" && c.Rust == 0), "dry metal keeps");
+        }
+
+        [Test]
+        public void BrokenRustIsRefusedWithTheTsWording()
+        {
+            var errors = Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(
+                "{ 'terrain': { 'tin': { 'name': 'Tin', 'tags': ['ground'], 'rust': { 'every': 0.5, 'leaves': 'nope' } } } }".Replace('\'', '"')) })).Errors;
+            Assert.That(errors, Is.EqualTo(new[] { "terrain tin: rustsTo nope unknown", "terrain tin: rustEvery must be a whole number from 1" }));
         }
 
         [Test]

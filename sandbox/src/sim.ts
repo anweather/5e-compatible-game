@@ -33,6 +33,7 @@ export function step(w: World): void {
     const c = w.cells[i]!;
     if (c.charge > 0) c.charge--;
     if (c.life > 0 && --c.life === 0) ripen(w, i, c);
+    if (soaking) rust(w, c);
     if (soaking && c.water > 0) soak(w, i, c);
   }
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
@@ -100,6 +101,22 @@ function soak(w: World, i: number, c: Cell) {
   if ((Math.floor(w.tick / p.soakPass) + x * 7 + y * 13) % turns !== 0) return;
   c.water--;
   c.dampUntil = w.tick + p.dampTicks;
+}
+
+/**
+ * Wet metal rusts (materials.json rust), on the soak pass: a cell whose terrain rusts and is wet (unfrozen water
+ * on it, raining, or damp, dampUntil) counts the pass's ticks in rust; at rust.every it becomes rust.leaves
+ * (World.Rust).
+ */
+function rust(w: World, c: Cell) {
+  if (!((c.water > 0 && !c.frozen) || raining(w) || w.tick < (c.dampUntil ?? 0))) return;
+  const t = terrainDef(c);
+  if (!t.rustEvery || t.rustEvery <= 0) return;
+  c.rust = (c.rust ?? 0) + RULES.sim.water.soakPass;
+  if (c.rust < t.rustEvery) return;
+  c.rust = 0;
+  c.t = t.rustsTo!;
+  logOnce(w, "rust", "The metal rusts through");
 }
 
 function ripen(w: World, i: number, c: Cell) {

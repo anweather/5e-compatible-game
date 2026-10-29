@@ -7,6 +7,7 @@
 //   break   { leaves }                                            breakable tag, breaksTo
 //   dig     { hardness, leaves }                                  hardness, dugTo
 //   soak    { dry, wet, dampens }                                 soakEvery, soakEveryWet, dampens
+//   rust    { every, leaves }                                     rustEvery, rustsTo
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
 //   conduct {}                                                    conductive tag
 //   shatter {}                                                    brittle tag (a thing of it breaks when it lands hard)
@@ -32,6 +33,7 @@ namespace Chem
             ("break", "breakable", new[] { ("leaves", "breaksTo") }),
             ("dig", null, new[] { ("hardness", "hardness"), ("leaves", "dugTo") }),
             ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens") }),
+            ("rust", null, new[] { ("every", "rustEvery"), ("leaves", "rustsTo") }),
             ("conduct", "conductive", System.Array.Empty<(string, string)>()),
             ("shatter", "brittle", System.Array.Empty<(string, string)>()),
             ("grow", null, new[] { ("into", "growsTo"), ("log", "growLog") }),

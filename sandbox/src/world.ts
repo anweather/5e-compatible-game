@@ -19,6 +19,7 @@ export interface Cell {
   charge: number; // 3 on the tick lightning arrives, then decays
   h: number; // steps raised (+) or dug (-) by terraform spells, on top of the terrain's elevation
   dampUntil?: number; // the tick until which the ground is damp from water soaked in (soak in sim.ts)
+  rust?: number; // ticks it has been wet in all, toward its terrain's rust (rust in sim.ts); unset or 0 for none
   life: number; // ticks until what grows or lasts here ripens (ripen in sim.ts): thorns wither, shoots and saplings grow; 0 for nothing
 }
 

@@ -431,6 +431,47 @@ test("soaked thatch burns out sooner", () => {
   assert.equal(`${dry} ${damp}`, "18 9"); // the same in the C# core
 });
 
+/** World.CellHash in the C# port, rust included (written only when it isn't 0). */
+function rustHash(w: World): string {
+  const s = w.cells.map((c) =>
+    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""};`).join("");
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
+  return (h >>> 0).toString(16);
+}
+
+// Mirrors ChemistryTests.WetMetal: metal 8 x 4, its left half under 2 water, run for ticks.
+const wetMetal = (ticks: number) => {
+  const w = createWorld(8, 4, 1);
+  for (const c of w.cells) c.t = "metal";
+  for (let x = 0; x < 4; x++) for (let y = 0; y < 4; y++) cellAt(w, x, y)!.water = 2;
+  run(w, ticks);
+  return { w, rusted: w.cells.filter((c) => c.t === "rusted-metal").length, lines: w.log.filter((l) => l.text === "The metal rusts through").length };
+};
+
+// Mirrors ChemistryTests.WetMetalRustsThroughAndDryMetalDoesNot (docs/MATERIALS.md rust).
+test("wet metal rusts through and dry metal does not", () => {
+  assert.equal(RULES.terrain.metal!.rustEvery, 2000);
+  const early = wetMetal(1000);
+  assert.equal(early.rusted, 0, "not yet");
+  assert.ok(early.w.cells.some((c) => (c.rust ?? 0) > 0), "but counting");
+  const { w, rusted, lines } = wetMetal(2400);
+  assert.ok(rusted > 0);
+  assert.ok(lines >= 1 && lines < rusted, "a line a pass, not a line a cell");
+  assert.ok(RULES.terrain["rusted-metal"]!.hardness! < RULES.terrain.metal!.hardness!, "weaker");
+  assert.ok(!RULES.terrain["rusted-metal"]!.tags.includes("conductive"), "and it doesn't conduct");
+  assert.equal(`${rusted} ${lines} ${rustHash(w)}`, "20 1 1dc2aae5"); // the same in the C# core
+  const dry = createWorld(8, 4, 1);
+  for (const c of dry.cells) c.t = "metal";
+  run(dry, 2400);
+  assert.ok(dry.cells.every((c) => c.t === "metal" && !c.rust), "dry metal keeps");
+});
+
+test("broken rust is refused with the C# wording", () => {
+  const r = composeRules([{ terrain: { tin: { name: "Tin", tags: ["ground"], rust: { every: 0.5, leaves: "nope" } } } } as unknown as ModPatch]);
+  assert.deepEqual(validateRules(r), ["terrain tin: rustsTo nope unknown", "terrain tin: rustEvery must be a whole number from 1"]);
+});
+
 // Mirrors ChemistryTests.AWetThingOfADampenedMaterialCatchesPoorly: a spark lights a thing of thatch with its
 // material's flammability, less its soak.dampens while it is wet.
 test("a wet thing of a dampened material catches poorly", () => {

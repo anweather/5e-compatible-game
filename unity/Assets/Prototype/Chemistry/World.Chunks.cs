@@ -271,6 +271,7 @@ namespace Chem
               .Append(c.Gas ?? "").Append(',').Append(c.GasAmt).Append(',').Append(c.Charge);
             if (c.Height != 0) sb.Append(",h").Append(c.Height.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Life != 0) sb.Append(",l").Append(c.Life.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (c.Rust != 0) sb.Append(",r").Append(c.Rust.ToString(System.Globalization.CultureInfo.InvariantCulture));
             sb.Append(';');
         }
     }

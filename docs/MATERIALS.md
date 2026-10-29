@@ -88,7 +88,7 @@ Each group's keys, and what reads them today.
 | **conduct** | `chance`, `chainsWet` (through water next to it) | `conductive` tag, `conducts` component |
 | **float** | `lift` (above 1 floats) | `floats` component, PropState's mass rule |
 | **grow** | `into`, `every` | `growsTo`, `growLog`, Cell.Life ripening |
-| **rot / rust** | `every`, `leaves` | new |
+| **rot / rust** | `every` (ticks wet in all), `leaves` | rust built: `rustEvery`, `rustsTo`; `Cell.Rust` counts a wet cell's ticks on the soak pass (`World.Rust`). Rot is new |
 | **dissolve** | `by` (acid), `leaves` | new, later |
 | **dig** | `hardness`, `leaves` | `dugTo`, `hardness` |
 

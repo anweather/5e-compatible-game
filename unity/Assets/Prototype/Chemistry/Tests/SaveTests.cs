@@ -107,6 +107,18 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ACellsRustIsSaved()
+        {
+            var source = new Meadow(W, H);
+            var w = Fresh(source);
+            w.At(5, 5).T = "metal";
+            w.At(5, 5).Rust = 640;
+            var loaded = World.Load(w.Save(source), R, source);
+            Assert.That(loaded.At(5, 5).Rust, Is.EqualTo(640));
+            Assert.That(loaded.CellHash(), Is.EqualTo(w.CellHash()));
+        }
+
+        [Test]
         public void OnlyChangedChunksAreSaved()
         {
             var source = new Meadow(W, H);

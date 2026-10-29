@@ -168,7 +168,7 @@ namespace Chem
             // What water does on it: soak rates (whole ticks), how much being damp dampens its burning, and what it turns into.
             void WaterOn(string id, JToken t)
             {
-                foreach (var key in new[] { "soakEvery", "soakEveryWet" })
+                foreach (var key in new[] { "soakEvery", "soakEveryWet", "rustEvery" })
                     if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
                 if (t["dampens"] != null && !(IsNumber(t["dampens"]) && (double)t["dampens"] >= 0 && (double)t["dampens"] <= 1)) Errors.Add($"terrain {id}: dampens must be a number from 0 to 1");
                 if (t["waterTo"] != null && Text(t["waterTo"]) != "ice" && Text(t["waterTo"]) != "steam") Errors.Add($"terrain {id}: waterTo must be ice or steam");
@@ -184,7 +184,7 @@ namespace Chem
 
             void TerrainRefs(string id, JToken t)
             {
-                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo" }) KnownTerrain(id, t, key);
+                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
                 WaterOn(id, t);
                 FireLookOf($"terrain {id}", t);
@@ -196,7 +196,7 @@ namespace Chem
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
             }
 
-            // A terrain's link to another (burnsTo, breaksTo, dugTo, growsTo) names a terrain there is.
+            // A terrain's link to another (burnsTo, breaksTo, dugTo, rustsTo, growsTo) names a terrain there is.
             void KnownTerrain(string id, JToken t, string key)
             {
                 if (Truthy(t[key]) && !IsIn(terrain, t[key])) Errors.Add($"terrain {id}: {key} {Show(t[key])} unknown");
