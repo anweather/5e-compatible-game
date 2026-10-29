@@ -31,12 +31,23 @@ if (-not (Test-Path $bank)) {
   icacls $bank /inheritance:r /grant:r "${env:USERNAME}:(OI)(CI)F" 'SYSTEM:(OI)(CI)F' | Out-Null
 }
 $cred = New-Object PSCredential('User', (ConvertTo-SecureString $GuestPassword -AsPlainText -Force))
-# What a slot holds: the guest's files and the slot folder they go in.
+# What a slot holds: the guest's files (a path ending in \ is every file in
+# that folder), kept in the slot folder named after the item.
+# - unity-hub: Hub keeps its tokens in Windows Credential Manager. Clones can
+#   read each other's entries because they share the account's DPAPI keys,
+#   so keep User's password fixed: resetting it (net user) orphans every entry.
+# - github: gh signed in with --insecure-storage (a file, not Credential
+#   Manager) plus `gh auth setup-git` in .gitconfig. Its token doesn't rotate.
 $items = @(
   @{ Item = 'claude'; Files = @('C:\Users\User\.claude\.credentials.json') }
-  @{ Item = 'unity-hub'; Files = @('C:\Users\User\AppData\Roaming\UnityHub\accounts.db', 'C:\Users\User\AppData\Roaming\UnityHub\accounts.db-wal', 'C:\Users\User\AppData\Roaming\UnityHub\accounts.db-shm') }
+  @{ Item = 'unity-hub'; Files = @('C:\Users\User\AppData\Roaming\UnityHub\accounts.db', 'C:\Users\User\AppData\Roaming\UnityHub\accounts.db-wal', 'C:\Users\User\AppData\Roaming\UnityHub\accounts.db-shm',
+      'C:\Users\User\AppData\Local\Microsoft\Credentials\', 'C:\Users\User\AppData\Roaming\Microsoft\Credentials\') }
   @{ Item = 'unity-licence'; Files = @('C:\Users\User\AppData\Local\Unity\licenses\UnityEntitlementLicense.xml') }
+  @{ Item = 'github'; Files = @('C:\Users\User\AppData\Roaming\GitHub CLI\hosts.yml', 'C:\Users\User\.gitconfig') }
 )
+# A slot file is named after its guest path under C:\Users\User, with \ as ~.
+$guestHome = 'C:\Users\User\'
+function SlotName([string]$p) { $p.Substring($guestHome.Length).Replace('\', '~') }
 # How new a copy is: Claude's token expiry (0 when signed out); otherwise file time.
 function Stamp([string]$item, $files) {
   if (-not $files.Count) { return 0 }
@@ -54,26 +65,26 @@ function IsWorker($vm) {
 }
 function Guest([string]$w, [scriptblock]$sb, $arg) {
   for ($i = 0; $i -lt 12; $i++) {
-    try { return Invoke-Command -VMName $w -Credential $cred -ScriptBlock $sb -ArgumentList $arg -ErrorAction Stop } catch { Start-Sleep 5 }
+    try { return Invoke-Command -VMName $w -Credential $cred -ScriptBlock $sb -ArgumentList $arg -ErrorAction Stop } catch { $last = $_; Start-Sleep 5 }
   }
-  throw "Can't reach $w over PowerShell Direct (account User)."
+  throw "Can't reach $w over PowerShell Direct (account User): $last"
 }
 # Files as { Path, Data (base64), Time (UTC ticks) }, from the guest or a slot.
-# (Shared read: Hub keeps its database open while it runs.)
+# (Shared read: Hub keeps its database open while it runs. -Force: Credential
+# Manager's files are hidden.)
 $readGuest = { param($paths)
-  foreach ($p in $paths) {
-    if (Test-Path $p) {
+  $all = foreach ($p in $paths) { if ($p.EndsWith('\')) { (Get-ChildItem -LiteralPath $p -File -Force -ErrorAction SilentlyContinue).FullName } else { $p } }
+  foreach ($p in $all) {
+    if ($p -and (Test-Path -LiteralPath $p)) {
       $fs = [IO.File]::Open($p, 'Open', 'Read', 'ReadWrite, Delete'); $ms = New-Object IO.MemoryStream
       try { $fs.CopyTo($ms) } finally { $fs.Dispose() }
-      [pscustomobject]@{ Path = $p; Data = [Convert]::ToBase64String($ms.ToArray()); Time = (Get-Item $p).LastWriteTimeUtc.Ticks }
+      [pscustomobject]@{ Path = $p; Data = [Convert]::ToBase64String($ms.ToArray()); Time = (Get-Item -LiteralPath $p -Force).LastWriteTimeUtc.Ticks }
     }
   }
 }
 function ReadSlot([string]$w, $it) {
-  $dir = Join-Path $bank "$w\$($it.Item)"
-  foreach ($p in $it.Files) {
-    $f = Join-Path $dir (Split-Path $p -Leaf)
-    if (Test-Path $f) { [pscustomobject]@{ Path = $p; Data = [Convert]::ToBase64String([IO.File]::ReadAllBytes($f)); Time = (Get-Item $f).LastWriteTimeUtc.Ticks } }
+  foreach ($f in Get-ChildItem -LiteralPath (Join-Path $bank "$w\$($it.Item)") -File -ErrorAction SilentlyContinue) {
+    [pscustomobject]@{ Path = $guestHome + $f.Name.Replace('~', '\'); Data = [Convert]::ToBase64String([IO.File]::ReadAllBytes($f.FullName)); Time = $f.LastWriteTimeUtc.Ticks }
   }
 }
 function Pull([string]$w) {
@@ -85,7 +96,7 @@ function Pull([string]$w) {
       if (Test-Path $dir) { Remove-Item -LiteralPath $dir -Recurse -Force }
       New-Item -ItemType Directory -Force $dir | Out-Null
       foreach ($f in $g) {
-        $out = Join-Path $dir (Split-Path $f.Path -Leaf)
+        $out = Join-Path $dir (SlotName $f.Path)
         [IO.File]::WriteAllBytes($out, [Convert]::FromBase64String($f.Data))
         (Get-Item $out).LastWriteTimeUtc = [datetime]::new([long]$f.Time, 'Utc')
       }
@@ -101,12 +112,16 @@ function Push([string]$w) {
     $s = @(ReadSlot $w $it)
     if (-not $s.Count) { "Slot $w has no $($it.Item) yet: sign in on $w once."; continue }
     if ($it.Item -eq 'claude' -and (Stamp 'claude' @(Guest $w $readGuest (, $it.Files))) -ge (Stamp 'claude' $s)) { continue }
+    # Single files the slot lacks are removed; folders only gain files.
     Guest $w { param($files, $all)
-      foreach ($p in $all) { if ($files.Path -notcontains $p) { Remove-Item -LiteralPath $p -ErrorAction SilentlyContinue } }
+      foreach ($p in $all) { if (-not $p.EndsWith('\') -and $files.Path -notcontains $p) { Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue } }
       foreach ($f in $files) {
         New-Item -ItemType Directory -Force (Split-Path $f.Path) | Out-Null
+        if (Test-Path -LiteralPath $f.Path) { (Get-Item -LiteralPath $f.Path -Force).Attributes = 'Normal' }
         [IO.File]::WriteAllBytes($f.Path, [Convert]::FromBase64String($f.Data))
-        (Get-Item $f.Path).LastWriteTimeUtc = [datetime]::new([long]$f.Time, 'Utc')
+        $item = Get-Item -LiteralPath $f.Path -Force
+        $item.LastWriteTimeUtc = [datetime]::new([long]$f.Time, 'Utc')
+        if ($f.Path -like '*\Microsoft\Credentials\*') { $item.Attributes = 'Hidden, System' }
       }
     } @($s, $it.Files)
     "Signed $w in to $($it.Item) from its slot."
