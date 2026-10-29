@@ -15,6 +15,8 @@ exit /b %errorlevel%
 # account with a blank password.
 param([string]$PermissionMode = 'auto', [string]$Password)
 $ErrorActionPreference = 'Stop'
+# An earlier attempt stored a `claude setup-token` token; it would override the sign-in.
+[Environment]::SetEnvironmentVariable('CLAUDE_CODE_OAUTH_TOKEN', $null, 'User')
 $user = "$env:COMPUTERNAME\$env:USERNAME"
 if ($PSBoundParameters.ContainsKey('Password')) { net user $env:USERNAME $Password | Out-Null }
 # Automatic sign-in at boot, with the account's password (blank if it has none).
@@ -57,7 +59,17 @@ Set-Location $repo
 # Unity's batch mode finds the signed-in licence only while Hub is running.
 $hub = 'C:\Program Files\Unity Hub\Unity Hub.exe'
 if ((Test-Path $hub) -and -not (Get-Process 'Unity Hub' -ErrorAction SilentlyContinue)) { Start-Process $hub -WindowStyle Minimized }
-& "$env:USERPROFILE\.local\bin\claude.exe" remote-control --spawn=worktree --permission-mode PERMISSION_MODE --name $n *> "$env:TEMP\claude-rc.log"
+# Each worker needs its own sign-in: a claude.ai sign-in's refresh token is
+# single-use, so clones sharing the template's void each other, and Remote
+# Control refuses `claude setup-token` tokens. Unsigned, open the sign-in
+# window on the desktop and wait for it.
+$claude = "$env:USERPROFILE\.local\bin\claude.exe"
+$signedIn = { ((& $claude auth status 2>$null) -join '') -match '"loggedIn":\s*true' }
+if (-not (& $signedIn)) {
+  Start-Process powershell.exe -ArgumentList '-NoExit', '-Command', "Write-Host 'Sign in to Claude for $n. Remote Control starts once you have.'; & '$claude' auth login"
+  while (-not (& $signedIn)) { Start-Sleep 10 }
+}
+& $claude remote-control --spawn=worktree --permission-mode PERMISSION_MODE --name $n *> "$env:TEMP\claude-rc.log"
 '@ -replace 'PERMISSION_MODE', $PermissionMode
 $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($run))
 $action = New-ScheduledTaskAction -Execute powershell.exe -Argument "-NoProfile -WindowStyle Hidden -EncodedCommand $enc"
