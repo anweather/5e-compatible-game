@@ -123,7 +123,7 @@ Set it up once per template, before sealing:
   opens a sign-in window on its desktop, Andrew signs in, Remote Control
   starts. After that, `remove-worker w1` + `new-worker` + `start w1` comes up
   signed in with no clicks. Four slots (`w1`–`w4`) cover 2–3 running workers
-  with headroom. Andrew, once: `signins.cmd install` registers a host task
+  with headroom. Andrew, once, from an admin prompt: `signins.cmd install` registers a host task
   that saves running workers' sign-ins every 5 minutes, so a worker that
   crashes or is turned off hard doesn't leave its slot stale. Windows workers
   only (PowerShell Direct).
