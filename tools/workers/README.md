@@ -104,12 +104,30 @@ as old as the template. Delete a worker in Hyper-V Manager (Andrew: it deletes
 files on the host). To refresh a template: start it, update, shut down, and
 seal again after Andrew removes `C:\HyperV\Workers\templates\<name>`.
 
+## Remote Control at boot
+
+So a started worker shows up in claude.ai/code (and `ListAgents`) with nobody
+signed in to it, each template runs `claude remote-control` at boot, named
+after the Hyper-V VM (`w1`, `u1`...; the host passes the name in through KVP).
+Set it up once per template, before sealing (Claude must already be signed in):
+
+- **Windows (Andrew):** in the VM, elevated PowerShell, from the repo's
+  `tools\workers`: `.\rc-autostart-windows.cmd`. It asks for the VM account's
+  password (the task runs as that account at startup). Log:
+  `%TEMP%\claude-rc.log`.
+- **Ubuntu:** in the VM, `bash ~/5e-compatible-game/tools/workers/rc-autostart-ubuntu.sh`
+  (sudo password once). It also turns on the KVP daemon. Log:
+  `journalctl --user -u claude-rc`.
+
+Untested so far, including whether Remote Control starts cleanly with no
+terminal attached, and whether a first run in the repo asks to trust the folder
+(if so, run `claude` there once by hand before sealing).
+
 ## Memory
 
-Measured with `status.cmd` (DemandGB). Not yet measured; fill in once the
-templates exist.
+Measured with Hyper-V's memory demand (`status.cmd`, DemandGB).
 
 | VM | Idle | Busy (what) |
 |---|---|---|
-| Ubuntu worker | – | – (dotnet test core / Unity batch build) |
-| Windows worker | – | – (Unity batch build) |
+| Ubuntu worker | – (template, no Unity licence yet: 0.8 GB used of 1.8 GB assigned) | – (dotnet test core / Unity batch build) |
+| Windows worker `w1` | 1.5 GB demand; Hyper-V trims it to the 4 GB minimum | – (Unity batch build; needs a session in the VM) |
