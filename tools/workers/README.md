@@ -39,7 +39,7 @@ blocked on this PC). Run them from `cmd` or PowerShell as `.\name.cmd args`.
 - **U2. (Andrew)** In the VM window run the installer: defaults, user name
   `worker`, a password of your choice, **tick "Install OpenSSH server"**, no
   snaps. Reboot when it says so (press Enter if it asks to remove the media).
-  Then, in the VM (console or `ssh worker@<ip>` from `start.cmd`'s output):
+  Then, in the VM (console or `ssh anweather@<ip>` from `start.cmd`'s output):
 
   ```
   curl -fsSL https://raw.githubusercontent.com/anweather/5e-compatible-game/dev/tools/workers/provision-ubuntu.sh | bash
