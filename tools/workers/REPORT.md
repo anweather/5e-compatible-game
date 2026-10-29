@@ -5,5 +5,5 @@
 - New: rc-autostart-windows.cmd / rc-autostart-ubuntu.sh start `claude remote-control` at boot, named after the VM, so workers are reachable without a sign-in. Untested.
 - `ubuntu-template`: provisioned (same tools, gh signed in), shut down, NOT sealed. Blocked on the Unity licence: Personal can't activate offline; needs Hub sign-in on a VM console (startx) or batch-mode -username/-password.
 - Fixes found by running: winget `--source winget` (msstore cert fails in the image), claude PATH, gh added, headless Hub never exits (script now stops it), Ubuntu KVP daemon package + enable.
-- Waiting on Andrew: Ubuntu Unity sign-in; rc-autostart in each template (Windows needs the account password; then re-seal after removing templates\windows-template).
+- Waiting on Andrew: Ubuntu Unity sign-in; rc-autostart in each template (Windows: auto sign-in, no password needed; then re-seal after removing templates\windows-template).
 - Merge: branch `workers`, tools/workers/** only.

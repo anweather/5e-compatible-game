@@ -111,10 +111,12 @@ signed in to it, each template runs `claude remote-control` at boot, named
 after the Hyper-V VM (`w1`, `u1`...; the host passes the name in through KVP).
 Set it up once per template, before sealing (Claude must already be signed in):
 
-- **Windows (Andrew):** in the VM, elevated PowerShell, from the repo's
-  `tools\workers`: `.\rc-autostart-windows.cmd`. It asks for the VM account's
-  password (the task runs as that account at startup). Log:
-  `%TEMP%\claude-rc.log`.
+- **Windows (Andrew, for the UAC prompt):** in the VM, elevated PowerShell,
+  `.\rc-autostart-windows.cmd`. The dev environment's `User` account has no
+  password, so the script turns on automatic sign-in for it and starts Remote
+  Control at that sign-in (a signed-out startup task would need a password).
+  Fine on the NAT switch; set a password and use Sysinternals Autologon if a
+  worker ever faces a real network. Log: `%TEMP%\claude-rc.log`.
 - **Ubuntu:** in the VM, `bash ~/5e-compatible-game/tools/workers/rc-autostart-ubuntu.sh`
   (sudo password once). It also turns on the KVP daemon. Log:
   `journalctl --user -u claude-rc`.
