@@ -15,9 +15,9 @@ REPO_DIR=$HOME/5e-compatible-game
 
 step() { printf '\n== %s\n' "$*"; }
 
-step "apt packages: git, git-lfs, .NET 8 SDK, xvfb (Unity Hub runs headless under it), Hyper-V KVP daemon (host sees the IP)"
+step "apt packages: git, git-lfs, gh, .NET 8 SDK, xvfb (Unity Hub runs headless under it), Hyper-V KVP daemon (host sees the IP)"
 sudo apt-get update
-sudo apt-get install -y git git-lfs curl ca-certificates gnupg xz-utils xvfb dotnet-sdk-8.0 linux-cloud-tools-virtual
+sudo apt-get install -y git git-lfs curl ca-certificates gnupg xz-utils xvfb dotnet-sdk-8.0 linux-cloud-tools-virtual gh
 git lfs install
 
 step "Node 22 from nodejs.org"
