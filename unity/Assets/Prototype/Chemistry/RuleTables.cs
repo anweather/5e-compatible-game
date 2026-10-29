@@ -50,6 +50,9 @@ namespace Chem
         /// catches with Flammability * (1 - Dampens).
         /// </summary>
         public double Dampens;
+        /// <summary>Wet (water on it, raining, or damp) this many ticks in all, it rusts through into RustsTo (materials.json rust.every, rust.leaves; World.Rust); 0 never.</summary>
+        public int RustEvery;
+        public string RustsTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
 
@@ -529,6 +532,8 @@ namespace Chem
             SoakEvery = Int(o["soakEvery"]) ?? 0,
             SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
             Dampens = Num(o["dampens"]) ?? 0,
+            RustEvery = Int(o["rustEvery"]) ?? 0,
+            RustsTo = Str(o["rustsTo"]),
             WaterTo = Str(o["waterTo"]),
         };
 

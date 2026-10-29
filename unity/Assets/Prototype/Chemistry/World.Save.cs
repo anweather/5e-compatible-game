@@ -215,7 +215,7 @@ namespace Chem
 
         static bool SameCell(Cell a, Cell b) =>
             a.T == b.T && a.Water == b.Water && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
-            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil;
+            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust;
 
         // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither).
         static JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
@@ -233,8 +233,13 @@ namespace Chem
             return o;
         }
 
-        static JArray SaveCell(int i, Cell c) =>
-            new JArray(i, c.T, c.Water, c.Frozen ? 1 : 0, c.Cover, c.Fire, c.Fuel, c.Gas, c.GasAmt, c.Charge, c.Height, c.Life, c.DampUntil);
+        // Rust only when it has some, so saves without it read as they did.
+        static JArray SaveCell(int i, Cell c)
+        {
+            var a = new JArray(i, c.T, c.Water, c.Frozen ? 1 : 0, c.Cover, c.Fire, c.Fuel, c.Gas, c.GasAmt, c.Charge, c.Height, c.Life, c.DampUntil);
+            if (c.Rust != 0) a.Add(c.Rust);
+            return a;
+        }
 
         void LoadChunk(JObject o)
         {
@@ -260,6 +265,7 @@ namespace Chem
                 c.Height = (int)a[10];
                 c.Life = (int)a[11];
                 c.DampUntil = a is JArray all && all.Count > 12 ? (int)all[12] : 0;
+                c.Rust = a is JArray rusted && rusted.Count > 13 ? (int)rusted[13] : 0;
                 c.ForgetDef();
             }
         }
