@@ -16,7 +16,7 @@ cat > ~/.local/bin/claude-rc <<'EOF'
 # Pool 3 holds what the host pushes, including VirtualMachineName.
 name=$(tr -s '\0' '\n' < /var/lib/hyperv/.kvp_pool_3 2>/dev/null | grep -A1 -x VirtualMachineName | tail -1 || true)
 cd ~/5e-compatible-game
-exec ~/.local/bin/claude remote-control --name "${name:-$(hostname)}"
+exec ~/.local/bin/claude remote-control --spawn=worktree --name "${name:-$(hostname)}"
 EOF
 chmod +x ~/.local/bin/claude-rc
 

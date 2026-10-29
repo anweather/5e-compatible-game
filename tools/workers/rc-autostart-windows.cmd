@@ -22,7 +22,7 @@ $run = @'
 $p = Get-ItemProperty 'HKLM:\SOFTWARE\Microsoft\Virtual Machine\Guest\Parameters' -ErrorAction SilentlyContinue
 $n = if ($p.VirtualMachineName) { $p.VirtualMachineName } else { $env:COMPUTERNAME }
 Set-Location "$env:USERPROFILE\5e-compatible-game"
-& "$env:USERPROFILE\.local\bin\claude.exe" remote-control --name $n *> "$env:TEMP\claude-rc.log"
+& "$env:USERPROFILE\.local\bin\claude.exe" remote-control --spawn=worktree --name $n *> "$env:TEMP\claude-rc.log"
 '@
 $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($run))
 $action = New-ScheduledTaskAction -Execute powershell.exe -Argument "-NoProfile -WindowStyle Hidden -EncodedCommand $enc"
