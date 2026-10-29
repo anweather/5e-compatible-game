@@ -14,7 +14,7 @@ UNITY_CHANGESET=672d562a42a7
 REPO_DIR=$HOME/5e-compatible-game
 
 step() { printf '\n== %s\n' "$*"; }
-
+step "apt packages: git, git-lfs, .NET 8 SDK, xvfb (Unity Hub runs headless under it), Hyper-V KVP daemon (host sees the IP)"
 step "apt packages: git, git-lfs, .NET 8 SDK, xvfb (Unity Hub runs headless under it)"
 sudo apt-get update
 sudo apt-get install -y git git-lfs curl ca-certificates gnupg xz-utils xvfb dotnet-sdk-8.0
