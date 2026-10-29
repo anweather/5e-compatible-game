@@ -92,7 +92,7 @@ That's fine on the NAT switch; rename one inside the guest
 ## Workers
 
 ```
-new-worker.cmd ubuntu-template  u1     # full copy, new id and MAC; left off
+new-worker.cmd windows-template w1     # full copy, new id, same MAC per name; left off
 start.cmd u1                           # refuses if <10 GB would stay free (J-017); prints the IP
 sleep.cmd u1                           # saves state to disk: frees all its RAM, resumes in seconds
 stop.cmd u1                            # clean guest shutdown
@@ -100,9 +100,28 @@ status.cmd                             # state, CPU, assigned and demanded RAM, 
 ```
 
 Inside a worker, `git fetch && git switch <branch>` before work: the clone is
-as old as the template. Delete a worker in Hyper-V Manager (Andrew: it deletes
-files on the host). To refresh a template: start it, update, shut down, and
-seal again after Andrew removes `C:\HyperV\Workers\templates\<name>`.
+as old as the template. `remove-worker.cmd w1` deletes a worker (VM and disk;
+it refuses templates).
+
+### Refreshing the template (new asset packs)
+
+Clones get the Asset Store packs, Unity's imported `Library/` and the built
+yard from the template, so their first Unity job runs in about 2 minutes
+instead of importing 3 GB. When an agent needs a new pack it adds it to
+`unity/AssetPacks.json` on its branch and says so; it can't download one (that
+needs the Unity account that owns it). Then:
+
+1. Andrew, on the PC: Prototype > Restore Asset Packs in the main checkout.
+2. `refresh-template.cmd` (stop running workers first for RAM): starts the
+   template, updates its repo to `dev`, copies the packs in from the main
+   checkout, builds the yard, runs EditMode tests (all must pass), checks git
+   is clean, shuts down and re-seals.
+3. `remove-worker` + `new-worker` + `start` for each worker: they come back
+   signed in from their slots, on the new template.
+
+Run it too when `dev` has moved a long way. The template also holds Andrew's
+Google accounts, signed in in Edge, so any sign-in a worker needs is one
+click; Google sessions don't rotate, so clones can share them.
 
 ## Remote Control at boot
 
@@ -111,22 +130,39 @@ signed in to it, each template runs `claude remote-control` at boot, named
 after the Hyper-V VM (`w1`, `u1`...; start.cmd copies the name in).
 Set it up once per template, before sealing:
 
-- **Claude sign-ins live in slots on the host, one per worker name.** Seal
-  the template signed out. A claude.ai sign-in's refresh token is single-use,
-  so clones sharing one void each other within minutes, and Remote Control
-  refuses the long-lived `claude setup-token` token ("only available with
-  claude.ai subscriptions"). So `signins.cmd` keeps each worker's sign-in in
+- **Sign-ins live in slots on the host, one per worker name.** Seal the
+  template signed out of Claude, Unity Hub and GitHub. Claude's and Hub's
+  refresh tokens are single-use, so clones sharing one void each other
+  within minutes, and Remote Control refuses the long-lived
+  `claude setup-token` token ("only available with claude.ai
+  subscriptions"). So `signins.cmd` keeps each worker's sign-ins in
   `C:\HyperV\Workers\signins\<name>` (this account and SYSTEM only):
-  `start.cmd` copies the slot in before Remote Control starts; `stop`,
-  `sleep` and `remove-worker` copy the refreshed sign-in back; the newer
-  token always wins. The first time a slot is used it's empty: the worker
-  opens a sign-in window on its desktop, Andrew signs in, Remote Control
-  starts. After that, `remove-worker w1` + `new-worker` + `start w1` comes up
-  signed in with no clicks. Four slots (`w1`–`w4`) cover 2–3 running workers
-  with headroom. Andrew, once, from an admin prompt: `signins.cmd install` registers a host task
-  that saves running workers' sign-ins every 5 minutes, so a worker that
-  crashes or is turned off hard doesn't leave its slot stale. Windows workers
-  only (PowerShell Direct).
+  - `claude`: `.claude\.credentials.json`.
+  - `unity-hub`: Hub's tokens, in Windows Credential Manager, plus its
+    `accounts.db`. Clones can read each other's Credential Manager entries
+    because they share the account's encryption keys; **never reset
+    `User`'s password** (`net user`): that orphans every entry.
+  - `unity-licence`: the licence file. It's bound to the Windows product id,
+    BIOS serial and MAC; clones share the first two, and `new-worker` gives
+    each worker name the same MAC every time (`C:\HyperV\Workers\macs`).
+  - `github`: `gh auth login --insecure-storage` (a file, not Credential
+    Manager) and `.gitconfig` with `gh auth setup-git`. Its token doesn't
+    rotate, so one sign-in can be copied into every slot.
+
+  `start.cmd` copies the slot in before Remote Control starts (stopping Hub
+  first); `stop`, `sleep` and `remove-worker` copy newer sign-ins back
+  (Claude: the later-expiring token; the rest: the later file). Filling a
+  slot, once per worker name: start the worker, sign in to Claude in the
+  window it opens, to Unity Hub, and run
+  `gh auth login --insecure-storage -h github.com -p https -w; gh auth setup-git`.
+  After that, `remove-worker w1` + `new-worker` + `start w1` comes up with
+  everything signed in and licensed, no clicks (verified on `w1`). Four slots
+  (`w1`–`w4`) cover 2–3 running workers with headroom. Andrew, once, from an
+  admin prompt: `signins.cmd install` registers a host task that saves
+  running workers' sign-ins every 5 minutes, so a worker that crashes or is
+  turned off hard doesn't leave its slot stale. An unused Claude slot lapses
+  after about 4 weeks (its refresh token expires). Windows workers only
+  (PowerShell Direct).
 - **Windows:** in the VM, elevated PowerShell,
   `.\rc-autostart-windows.cmd -Password password` (or the host runs it over
   PowerShell Direct once the account has a password). It turns on automatic
@@ -149,9 +185,7 @@ Measured with Hyper-V's memory demand (`status.cmd`, DemandGB).
 | VM | Idle | Busy (what) |
 |---|---|---|
 | Ubuntu worker | – (template, no Unity licence yet: 0.8 GB used of 1.8 GB assigned) | – (dotnet test core / Unity batch build) |
-| Windows worker `w1` | 1.5–2.4 GB demand; Hyper-V trims it to the 4 GB minimum | 3.1 GB: `dotnet test core` (386 pass, ~1 min). 6.7 GB demand, 7.8 GB assigned: Unity batch EditMode run, first import + compile (~4 min) |
+| Windows worker `w1` | 1.5–2.4 GB demand; Hyper-V trims it to the 4 GB minimum | 3.1 GB: `dotnet test core` (386 pass, ~1 min). 6.7 GB demand, 7.8 GB assigned: Unity batch first import + compile without packs (~4 min). With the refreshed template (packs, Library, yard): Unity EditMode 441/441 pass in 2.1 min |
 
 Unity batch mode needs Unity Hub running (it holds the signed-in licence);
-the startup task starts it. The Asset Store packs aren't in the template yet,
-so the project doesn't compile there: open the Editor in the template once,
-run Prototype > Restore Asset Packs, and re-seal.
+the startup task starts it.
