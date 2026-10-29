@@ -77,13 +77,13 @@ switch ($Action) {
     $copy = Join-Path $bank 'sync.cmd'
     Copy-Item -LiteralPath (Join-Path $env:WORKERS_DIR 'signins.cmd') -Destination $copy -Force
     # A headless console, so no window flashes up every 5 minutes.
-    $action = New-ScheduledTaskAction -Execute conhost.exe -Argument "--headless cmd.exe /c `"$copy`" sync -Root `"$Root`""
+    $run = New-ScheduledTaskAction -Execute conhost.exe -Argument "--headless cmd.exe /c `"$copy`" sync -Root `"$Root`""
     $trigger = New-ScheduledTaskTrigger -Once -At (Get-Date) -RepetitionInterval (New-TimeSpan -Minutes 5)
     $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 4) -MultipleInstances IgnoreNew -StartWhenAvailable
     # Interactive (while Andrew is signed in): a normal prompt can register it,
     # and no password is stored. S4U would run signed out but needs an admin prompt.
     $principal = New-ScheduledTaskPrincipal -UserId "$env:USERDOMAIN\$env:USERNAME" -LogonType Interactive -RunLevel Limited
-    Register-ScheduledTask -TaskName 'Worker sign-in sync' -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+    Register-ScheduledTask -TaskName 'Worker sign-in sync' -Action $run -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
     "Registered 'Worker sign-in sync': every 5 minutes, saves running workers' sign-ins to $bank."
   }
 }
