@@ -5,7 +5,7 @@
     "grass":     { "name": "Grass", "tags": ["ground", "turf"], "burn": { "catch": 0.35, "fuel": 8, "leaves": "dirt" }, "dig": { "leaves": "dirt" }, "soak": { "dry": 80, "wet": 400, "dampens": 0.5 } },
     "sprouts":   { "name": "Green shoots", "tags": ["ground", "turf"], "dig": { "leaves": "dirt" }, "soak": { "dry": 80, "wet": 400 }, "grow": { "into": "grass" } },
     "sapling":   { "name": "Sapling", "tags": ["ground"], "burn": { "catch": 0.3, "fuel": 6, "leaves": "dirt" }, "dig": { "leaves": "dirt" }, "grow": { "into": "tree", "log": "A sapling grows into a young tree" } },
-    "brush":     { "name": "Brambles", "tags": ["blocking"], "burn": { "catch": 0.4, "fuel": 14, "leaves": "dirt", "log": "The brambles burn away, opening a path" } },
+    "brush":     { "name": "Brambles", "tags": ["blocking"], "burn": { "catch": 0.4, "fuel": 14, "leaves": "dirt", "log": "The brambles burn away, opening a path" }, "dissolve": { "by": "acid", "leaves": "dirt" } },
     "tree":      { "name": "Tree", "tags": ["blocking"], "burn": { "catch": 0.12, "fuel": 40, "leaves": "stump", "look": "wood" }, "uproot": { "leaves": "deadfall", "log": "The ground heaves and a tree topples" } },
     "stump":     { "name": "Stump", "tags": ["ground", "rootstock"], "soak": { "dry": 80, "wet": 400 } },
     "deadfall":  { "name": "Fallen tree", "tags": ["ground"], "burn": { "catch": 0.3, "fuel": 50, "leaves": "dirt", "look": "wood" }, "soak": { "dry": 96, "wet": 480 } },
@@ -36,12 +36,12 @@
     "timber":    { "name": "Timber", "tags": [], "burn": { "catch": 0.15, "fuel": 140, "look": "wood" }, "break": {}, "soak": { "dampens": 0.5 } }
   },
   "covers": {
-    "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" } },
-    "grease":   { "name": "Grease", "tags": ["slippery"], "burn": { "catch": 0.6, "fuel": 7, "intensity": 2, "look": "oil" } },
+    "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" }, "dissolve": { "by": "acid" } },
+    "grease":   { "name": "Grease", "tags": ["slippery"], "burn": { "catch": 0.6, "fuel": 7, "intensity": 2, "look": "oil" }, "dissolve": { "by": "acid" } },
     "ash":      { "name": "Ash", "tags": [] },
     "snow":     { "name": "Snow", "tags": ["snow"] },
     "snowbank": { "name": "Snow bank", "tags": ["snow"] },
-    "thorns":   { "name": "Thorns", "tags": ["spiky"], "lasts": 360, "witherLog": "The thorns wither away", "damage": [1, 4], "speed": 0.5, "burn": { "catch": 0.5, "fuel": 6, "intensity": 2 } }
+    "thorns":   { "name": "Thorns", "tags": ["spiky"], "lasts": 360, "witherLog": "The thorns wither away", "damage": [1, 4], "speed": 0.5, "burn": { "catch": 0.5, "fuel": 6, "intensity": 2 }, "dissolve": { "by": "acid" } }
   },
   "gases": {
     "steam": { "name": "Steam", "scald": 1 },

@@ -15,10 +15,12 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "shatter", tag: "brittle", keys: [] },
   { verb: "grow", tag: null, keys: [["into", "growsTo"], ["log", "growLog"]] },
   { verb: "uproot", tag: null, keys: [["leaves", "uprootsTo"], ["log", "uprootLog"]] },
+  { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
 ];
 
 const COVER_VERBS: Verb[] = [
   { verb: "burn", tag: "flammable", keys: [["catch", "flammability"], ["fuel", "fuel"], ["intensity", "burnIntensity"], ["look", "fireLook"]] },
+  { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
 ];
 
 /** What water on it turns into: freeze {} for ice, boil {} for steam. */

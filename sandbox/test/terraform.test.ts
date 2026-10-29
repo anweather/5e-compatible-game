@@ -372,3 +372,23 @@ test("earth shaping topples trees into deadfall that burns, and matches the C# g
   run(w, 40);
   assert.equal(`${cellHash(w)} ${w.rng}`, "1213368f 1054537720");
 });
+
+// Mirrors ChemistryTests.AcidSplashEatsBramblesThornsAndOilAndBurnsAGoblin (docs/MATERIALS.md dissolve): a row of
+// brambles, thorns, grease and oil round a goblin; Acid Splash on the goblin eats them all and hurts it.
+test("Acid Splash eats brambles, thorns and oil and burns a goblin, matching the C# golden", () => {
+  const w = createWorld(12, 9, 3);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 5; x <= 7; x++) cellAt(w, x, 3)!.t = "brush";
+  cellAt(w, 5, 4)!.cover = "grease";
+  cellAt(w, 7, 4)!.cover = "thorns";
+  cellAt(w, 6, 5)!.cover = "oil";
+  cellAt(w, 4, 4)!.cover = "oil"; // outside the splash
+  const gob = spawn(w, "goblin", 6, 4)!;
+  castSpell(w, "acid-splash", 6, 4, 0);
+  for (let x = 5; x <= 7; x++) assert.equal(cellAt(w, x, 3)!.t, "dirt", `brambles at ${x} eaten`);
+  assert.deepEqual([cellAt(w, 5, 4)!.cover, cellAt(w, 7, 4)!.cover, cellAt(w, 6, 5)!.cover, cellAt(w, 4, 4)!.cover], [null, null, null, "oil"]);
+  assert.ok(w.log.some((l) => l.text === "The acid eats the brambles away"));
+  assert.equal(`${cellHash(w)} ${w.rng} ${gob.hp}`, "d9c38f7d 1831565816 5"); // the same in the C# core
+  const slime = { covers: { slime: { name: "Slime", tags: [], dissolve: { by: "vinegar", leaves: "goo" } } } } as unknown as ModPatch;
+  assert.deepEqual(validateRules(composeRules([slime])), ["cover slime: dissolves by unknown element vinegar", "cover slime: dissolvesTo goo unknown"]);
+});

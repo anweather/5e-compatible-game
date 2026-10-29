@@ -30,7 +30,7 @@ namespace Chem
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
-                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
+                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "dissolve",
                 "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
@@ -192,8 +192,17 @@ namespace Chem
                 else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");
                 KnownTerrain(id, t, "growsTo");
+                Dissolves($"terrain {id}", t, terrain);
+                if (Truthy(t["dissolvedBy"]) && !Truthy(t["dissolvesTo"])) Errors.Add($"terrain {id}: dissolve without leaves");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
+            }
+
+            // What dissolves a terrain or cover (an element) and what it leaves (one of its own kind).
+            void Dissolves(string what, JToken t, JObject kind)
+            {
+                if (Truthy(t["dissolvedBy"]) && !IsElement(t["dissolvedBy"])) Errors.Add($"{what}: dissolves by unknown element {Show(t["dissolvedBy"])}");
+                if (Truthy(t["dissolvesTo"]) && !IsIn(kind, t["dissolvesTo"])) Errors.Add($"{what}: dissolvesTo {Show(t["dissolvesTo"])} unknown");
             }
 
             // A terrain's link to another (burnsTo, breaksTo, dugTo, rustsTo, growsTo) names a terrain there is.
@@ -221,11 +230,21 @@ namespace Chem
                 foreach (var k in Keys(cond).Where(k => !CondKeys.Contains(k))) Errors.Add($"rule {id}: unknown condition \"{k}\"");
                 foreach (var k in effects.SelectMany(Keys).Where(k => !EffectKeys.Contains(k)))
                     Errors.Add($"rule {id}: unknown effect \"{k}\" (new verbs need code; see docs/MODDING.md)");
-                foreach (var e in effects.OfType<JObject>()) EffectRefs(id, e);
+                foreach (var e in effects.OfType<JObject>())
+                {
+                    EffectRefs(id, e);
+                    DissolveRef(id, e);
+                }
                 ComponentCond(id, cond, "has");
                 ComponentCond(id, cond, "lacks");
                 if (cond?["cover"] is JArray coverIds)
                     foreach (var cv in coverIds.Where(cv => !IsIn(covers, cv))) Errors.Add($"rule {id}: cover {Show(cv)} unknown");
+            }
+
+            // A dissolve effect eats the cover or the terrain.
+            void DissolveRef(string id, JObject e)
+            {
+                if (e["dissolve"] != null && Text(e["dissolve"]) != "cover" && Text(e["dissolve"]) != "terrain") Errors.Add($"rule {id}: dissolve must be cover or terrain");
             }
 
             void EffectRefs(string id, JObject e)
@@ -280,6 +299,7 @@ namespace Chem
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);
                     Number(p.Value["lasts"], $"cover {p.Name}: lasts", 0);
                     Number(p.Value["speed"], $"cover {p.Name}: speed", 0);
+                    Dissolves($"cover {p.Name}", p.Value, covers);
                 }
                 foreach (var p in gases.Properties())
                 {
