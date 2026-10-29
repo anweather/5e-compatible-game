@@ -6,3 +6,10 @@
 - Both VMs ran side by side, after Andrew's J-037: Windows workers start at 4 GB and cap at 8 GB; start.cmd keeps 6 GB free with no host Editor (10 GB with one).
 - Briefs and reports went over Remote Control messages (same Pro account); no Unity needed. The VMs have no git identity, so commits are authored as Andrew.
 - Follow-ups for the PM: decide whether damp should also shorten burning (scale fuel) and whether RainDamp should fold into dampens; give workers a git identity.
+
+## Round 2 (2026-10-29, both VMs in parallel, one feature each, both engines per branch)
+
+- w1, damp-fuel (merged at 4d42d9c), about 8 min: damp or wet things that catch now burn shorter. Fuel is x (1 - dampens), at least 1 (Andrew's call). A lone thatch burns 18 ticks dry and 9 damp. The storm and valley goldens moved. A cell that's already burning when it turns damp is unchanged (no one-line way; rain douses it already). RAM: 5.2 GB assigned at peak, 4.3 GB demand.
+- w2, frozen-shatter (merged at d5214d8), about 13 min by the clock: a thing with the frozen status shatters on any hit except cold ("Goblin shatters"). The data is in sim.json status.shatter; there's a shared golden in both engines, and no goldens changed. RAM: 7.3 GB assigned at peak, 6.3 GB demand.
+- One branch per feature covering both engines worked better than splitting the engines across VMs: nothing broke between merges. w2 rebased on w1's merge before pushing. Core 390/390, sandbox 124/124.
+- Follow-ups: the view for a shatter (shards and sound instead of the defeat animation; Gameplay's lane) and probes for both features (they need the host Editor).
