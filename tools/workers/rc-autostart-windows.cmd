@@ -51,6 +51,9 @@ if (-not (Test-Path $last) -or (Get-Content $last -Raw).Trim() -ne $n) {
   Set-Content $last $n
 }
 Set-Location $repo
+# Unity's batch mode finds the signed-in licence only while Hub is running.
+$hub = 'C:\Program Files\Unity Hub\Unity Hub.exe'
+if ((Test-Path $hub) -and -not (Get-Process 'Unity Hub' -ErrorAction SilentlyContinue)) { Start-Process $hub -WindowStyle Minimized }
 & "$env:USERPROFILE\.local\bin\claude.exe" remote-control --spawn=worktree --permission-mode PERMISSION_MODE --name $n *> "$env:TEMP\claude-rc.log"
 '@ -replace 'PERMISSION_MODE', $PermissionMode
 $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($run))

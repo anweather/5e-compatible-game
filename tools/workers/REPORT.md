@@ -1,9 +1,9 @@
 # Workers report (for the coordinator)
 
-- Works: Hyper-V access without elevation; `windows-template` provisioned (git, lfs, gh, claude, dotnet 8, node 22, Unity 6000.3.27f1 + Windows/Mac Mono, repo on dev; Unity, GitHub, Claude signed in) and sealed; worker `w1` cloned and started (J-017 guard refused it correctly at 17.9 GB free, started at 21 GB).
-- RAM: `w1` idle 1.5 GB demand, trimmed to its 4 GB minimum. Busy not measured (no way into the guest yet; see next line).
-- New: rc-autostart-windows.cmd / rc-autostart-ubuntu.sh start `claude remote-control` at boot, named after the VM, so workers are reachable without a sign-in. Untested.
-- `ubuntu-template`: provisioned (same tools, gh signed in), shut down, NOT sealed. Blocked on the Unity licence: Personal can't activate offline; needs Hub sign-in on a VM console (startx) or batch-mode -username/-password.
-- Fixes found by running: winget `--source winget` (msstore cert fails in the image), claude PATH, gh added, headless Hub never exits (script now stops it), Ubuntu KVP daemon package + enable.
-- Waiting on Andrew: Ubuntu Unity sign-in; rc-autostart in each template (Windows: auto sign-in, no password needed; then re-seal after removing templates\windows-template).
+- Works: `windows-template` (git, lfs, gh, claude, dotnet 8, node 22, Unity 6000.3.27f1 + Windows/Mac Mono; Unity, GitHub, Claude signed in), sealed. Clones sign in by themselves and start `claude remote-control` named after the VM (`w1` shows in ListAgents); start.cmd copies the name in, the task resets the template's RC registration. remove-worker.cmd and seal-template -Replace: no manual deletes.
+- RAM (`w1`, 4 vCPU, 4-12 GB): idle 1.5-2.4 GB demand; `dotnet test core` 3.1 GB (386 pass); Unity batch import + compile 6.7 GB demand / 7.8 GB assigned.
+- Unity batch needs Hub running for the licence (startup task now starts it; template needs that re-run). Project doesn't compile in workers yet: Asset Store packs missing (Andrew: Restore Asset Packs once in the template, re-seal).
+- `ubuntu-template`: provisioned, gh signed in, shut down, not sealed. Blocked on Unity licence (Personal can't activate offline; needs Hub sign-in on the VM console).
+- Fixes found by running: winget msstore cert, claude PATH, gh, headless Hub never exits, KVP daemon, workspace trust, spawn-mode prompt, task needs elevation.
+- No GPU in VMs: probes, shots, clips, perf, MPPM stay on the host. J-017 guard works (refused at 17.9 GB free).
 - Merge: branch `workers`, tools/workers/** only.

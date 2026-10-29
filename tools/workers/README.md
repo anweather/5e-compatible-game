@@ -132,4 +132,9 @@ Measured with Hyper-V's memory demand (`status.cmd`, DemandGB).
 | VM | Idle | Busy (what) |
 |---|---|---|
 | Ubuntu worker | – (template, no Unity licence yet: 0.8 GB used of 1.8 GB assigned) | – (dotnet test core / Unity batch build) |
-| Windows worker `w1` | 1.5 GB demand; Hyper-V trims it to the 4 GB minimum | – (Unity batch build; needs a session in the VM) |
+| Windows worker `w1` | 1.5–2.4 GB demand; Hyper-V trims it to the 4 GB minimum | 3.1 GB: `dotnet test core` (386 pass, ~1 min). 6.7 GB demand, 7.8 GB assigned: Unity batch EditMode run, first import + compile (~4 min) |
+
+Unity batch mode needs Unity Hub running (it holds the signed-in licence);
+the startup task starts it. The Asset Store packs aren't in the template yet,
+so the project doesn't compile there: open the Editor in the template once,
+run Prototype > Restore Asset Packs, and re-seal.
