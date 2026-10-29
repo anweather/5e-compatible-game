@@ -7,8 +7,8 @@ exit /b %errorlevel%
 # environment's account has no password, so instead of a task that runs signed
 # out (which needs one), Windows signs that account in at boot and a logon task
 # starts Claude Code's Remote Control, named after the worker (w1, w2...) so
-# every clone shows up as its own session. The first run needs an elevated
-# prompt (it turns on automatic sign-in); re-runs don't. Log: %TEMP%\claude-rc.log.
+# every clone shows up as its own session. Run it from an elevated prompt
+# (automatic sign-in, and replacing the task). Log: %TEMP%\claude-rc.log.
 param([string]$PermissionMode = 'auto')
 $ErrorActionPreference = 'Stop'
 $user = "$env:COMPUTERNAME\$env:USERNAME"
@@ -58,5 +58,5 @@ $action = New-ScheduledTaskAction -Execute powershell.exe -Argument "-NoProfile 
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
 $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit 0 -RestartCount 5 -RestartInterval (New-TimeSpan -Minutes 1) -StartWhenAvailable
 $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType Interactive -RunLevel Limited
-Register-ScheduledTask -TaskName 'Claude Remote Control' -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null
+Register-ScheduledTask -TaskName 'Claude Remote Control' -Action $action -Trigger $trigger -Settings $settings -Principal $principal -Force -ErrorAction Stop | Out-Null
 "Registered. $user signs in at boot and Remote Control starts at the next boot (spawned sessions: $PermissionMode); log: $env:TEMP\claude-rc.log."

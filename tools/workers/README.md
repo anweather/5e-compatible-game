@@ -111,7 +111,7 @@ signed in to it, each template runs `claude remote-control` at boot, named
 after the Hyper-V VM (`w1`, `u1`...; the host passes the name in through KVP).
 Set it up once per template, before sealing (Claude must already be signed in):
 
-- **Windows (Andrew, for the UAC prompt):** in the VM, elevated PowerShell,
+- **Windows (Andrew, for the UAC prompt; re-runs too):** in the VM, elevated PowerShell,
   `.\rc-autostart-windows.cmd`. The dev environment's `User` account has no
   password, so the script turns on automatic sign-in for it and starts Remote
   Control at that sign-in (a signed-out startup task would need a password).
