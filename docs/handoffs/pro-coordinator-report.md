@@ -13,3 +13,11 @@
 - w2, frozen-shatter (merged at d5214d8), about 13 min by the clock: a thing with the frozen status shatters on any hit except cold ("Goblin shatters"). The data is in sim.json status.shatter; there's a shared golden in both engines, and no goldens changed. RAM: 7.3 GB assigned at peak, 6.3 GB demand.
 - One branch per feature covering both engines worked better than splitting the engines across VMs: nothing broke between merges. w2 rebased on w1's merge before pushing. Core 390/390, sandbox 124/124.
 - Follow-ups: the view for a shatter (shards and sound instead of the defeat animation; Gameplay's lane) and probes for both features (they need the host Editor).
+
+## Round 3: corrosion (MATERIALS step 6 done; parallel, both engines per branch)
+
+- w1, rust (merged at 8d05ccd), 8 min: metal that's been wet for 2000 ticks rusts into rusted-metal (dig hardness 2, doesn't conduct), with "The metal rusts through". Cell.Rust is saved and in CellHash. The mixed-elements golden moved (its rust count shows). RAM: 6.5 GB assigned at peak, 5.5 GB demand.
+- w2, acid (merged at de14cc1), 13 min: the acid element; Acid Splash (cantrip, nature group, off the radial: every group already has 3); a dissolve verb (brambles to dirt; oil, grease and thorns eaten). No goldens moved; two rule-count tests updated. RAM: 6.6 GB assigned at peak, 5.1 GB demand.
+- Core 394/394, sandbox 127/127.
+- For Gameplay (view): rusted-metal's colour (CellDressing.cs; sandbox render.ts too); Acid Splash's radial slot (a decision), icon, VFX, hiss and the "eaten" look; a shatter effect (round 2).
+- For Andrew: merged branches (dampens-core, dampens-sandbox, damp-fuel, frozen-shatter, rust, acid) wait for cleanup. Acid Splash's blurb says "RAW", which players may not know.
