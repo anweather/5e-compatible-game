@@ -1,0 +1,175 @@
+<title>Project Demo Reel</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Atkinson+Hyperlegible:wght@400;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a screening-room reel, newest drop first; each drop is a grid of clip cards, two up on wide screens, one on phones.
+   The page never changes: every clip lives in reel.json, published beside it, so new features only append to that file. */
+:root {
+  --bg: #f1f3f0; --surface: #ffffff; --ink: #1c2420; --muted: #5d6a62; --line: #d4dcd6; --accent: #2f6f4f;
+  --gameplay: #c46a1f; --world: #2f7f8f; --build: #6d6a5c; --before: #8a5a2b; --after: #2f6f4f;
+  --display: "Bricolage Grotesque", "Segoe UI", system-ui, sans-serif;
+  --body: "Atkinson Hyperlegible", "Segoe UI", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #0f1412; --surface: #182019; --ink: #e5ece7; --muted: #9baba1; --line: #29342d; --accent: #74d1a0;
+  --gameplay: #f0a35c; --world: #6fc6d4; --build: #c3bea6; --before: #e0a36b; --after: #74d1a0; color-scheme: dark } }
+:root[data-theme="dark"] {
+  --bg: #0f1412; --surface: #182019; --ink: #e5ece7; --muted: #9baba1; --line: #29342d; --accent: #74d1a0;
+  --gameplay: #f0a35c; --world: #6fc6d4; --build: #c3bea6; --before: #e0a36b; --after: #74d1a0; color-scheme: dark }
+* { box-sizing: border-box }
+body { background: var(--bg); color: var(--ink); font: 16px/1.55 var(--body) }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 40px 64px;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)) }
+h1, h2, h3 { font-family: var(--display); margin: 0; text-wrap: balance; line-height: 1.15 }
+h1 { font-size: clamp(2rem, 5vw, 2.9rem) }
+h2 { font-size: 1.4rem }
+h3 { font-size: 1.05rem }
+p { margin: 0; max-width: 70ch }
+.eyebrow { font: 500 0.72rem/1 var(--mono); letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent) }
+.lede { color: var(--muted); margin-top: 10px; font-size: 1.05rem }
+header { display: flex; flex-direction: column; gap: 8px }
+.bar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin-top: 18px }
+.stats { font: 500 0.78rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums }
+.filters { display: flex; flex-wrap: wrap; gap: 6px }
+.filters button { font: 700 0.8rem/1 var(--body); padding: 7px 11px; border-radius: 999px; border: 1px solid var(--line);
+  background: transparent; color: var(--ink); cursor: pointer }
+.filters button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink) }
+.drop { margin-top: 44px; display: flex; flex-direction: column; gap: 6px }
+.drop > .when { font: 500 0.72rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted) }
+.drop > p { color: var(--muted) }
+.area { margin-top: 18px; font: 700 0.95rem var(--display); color: var(--muted) }
+.grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap: 18px; margin-top: 10px }
+.clip { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; display: flex; flex-direction: column; min-width: 0 }
+.clip video, .clip img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: #000; max-width: 100% }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; background: var(--line) }
+.pair figure { margin: 0; position: relative; min-width: 0 }
+.pair figcaption { position: absolute; left: 8px; top: 8px; font: 500 0.66rem/1 var(--mono); letter-spacing: 0.1em; text-transform: uppercase;
+  padding: 4px 7px; border-radius: 4px; background: var(--surface); }
+.pair .b { color: var(--before) } .pair .a { color: var(--after) }
+.meta { padding: 12px 14px 14px; display: flex; flex-direction: column; gap: 6px }
+.row { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap }
+.tag { font: 500 0.68rem/1 var(--mono); text-transform: uppercase; letter-spacing: 0.08em; padding: 4px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap }
+.tag.gameplay { color: var(--gameplay) } .tag.world { color: var(--world) } .tag.build { color: var(--build) } .tag.fix { color: var(--after) }
+.len { font: 500 0.75rem var(--mono); color: var(--muted); font-variant-numeric: tabular-nums; display: flex; gap: 12px; flex-wrap: wrap }
+.meta p { color: var(--muted); font-size: 0.93rem }
+.note { margin-top: 36px; color: var(--muted); font-size: 0.9rem; border-top: 1px solid var(--line); padding-top: 16px }
+.empty { margin-top: 36px; color: var(--muted); border: 1px dashed var(--line); border-radius: 12px; padding: 28px; text-align: center }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">My Game · dev</span>
+    <h1>Project Demo Reel</h1>
+    <p class="lede">Short clips and screenshots of each feature as it lands, newest first. Most are filmed while the feature's automated check runs and passes, so expect the checks' own quick camera cuts. Fixes show a before and an after.</p>
+    <div class="bar">
+      <div class="filters" id="filters" role="group" aria-label="Show one lane">
+        <button type="button" id="f-all" data-lane="" aria-pressed="true">All</button>
+        <button type="button" id="f-gameplay" data-lane="gameplay" aria-pressed="false">Gameplay</button>
+        <button type="button" id="f-world" data-lane="world" aria-pressed="false">World</button>
+        <button type="button" id="f-build" data-lane="build" aria-pressed="false">Build</button>
+        <button type="button" id="f-fix" data-lane="fix" aria-pressed="false">Fixes</button>
+      </div>
+      <span class="stats" id="stats">Loading the reel…</span>
+    </div>
+  </header>
+  <main id="reel"></main>
+</div>
+
+<script>
+(() => {
+  const reel = document.getElementById("reel");
+  const stats = document.getElementById("stats");
+  let data = { drops: [] };
+  let lane = "";
+  try { lane = localStorage.getItem("reel-lane") || ""; } catch (e) {}
+
+  const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+  // Only files published beside the page (plain names, no paths or schemes).
+  const file = (s) => typeof s === "string" && /^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(s) ? s : "";
+
+  function video(src, poster, label) {
+    const v = el("video");
+    v.controls = true; v.playsInline = true; v.preload = "none"; v.src = src;
+    if (file(poster)) v.poster = file(poster);
+    if (label) v.setAttribute("aria-label", label);
+    return v;
+  }
+  function still(src, alt) { const i = el("img"); i.src = src; i.alt = alt || ""; i.loading = "lazy"; return i; }
+  function media(c) {
+    if (file(c.before) && file(c.after)) {
+      const p = el("div", "pair");
+      [["before", "b"], ["after", "a"]].forEach(([k, cls]) => {
+        const f = el("figure"); const s = file(c[k]);
+        f.append(/\.mp4$/i.test(s) ? video(s, c[k + "Poster"], c.title + ", " + k) : still(s, c.title + ", " + k), el("figcaption", cls, k));
+        p.append(f);
+      });
+      return p;
+    }
+    if (file(c.video)) return video(file(c.video), c.poster, c.title);
+    if (file(c.image)) return still(file(c.image), c.title);
+    return null;
+  }
+  function card(c) {
+    const a = el("article", "clip");
+    const m = media(c); if (m) a.append(m);
+    const meta = el("div", "meta");
+    const row = el("div", "row"); row.append(el("h3", null, c.title || "Untitled"));
+    if (c.lane) row.append(el("span", "tag " + c.lane, c.lane));
+    meta.append(row);
+    const len = el("div", "len");
+    if (c.length) len.append(el("span", null, c.length));
+    if (c.commit) len.append(el("span", null, String(c.commit).slice(0, 7)));
+    if (len.childNodes.length) meta.append(len);
+    if (c.summary) meta.append(el("p", null, c.summary));
+    a.append(meta);
+    return a;
+  }
+
+  function render() {
+    const drops = Array.isArray(data.drops) ? data.drops : [];
+    let total = 0, shown = 0;
+    const out = [];
+    drops.forEach((d) => {
+      const clips = (Array.isArray(d.clips) ? d.clips : []);
+      total += clips.length;
+      const keep = clips.filter((c) => !lane || c.lane === lane);
+      if (!keep.length) return;
+      shown += keep.length;
+      const sec = el("section", "drop");
+      if (d.when) sec.append(el("span", "when", d.when));
+      sec.append(el("h2", null, d.title || "Untitled drop"));
+      if (d.intro) sec.append(el("p", null, d.intro));
+      const areas = [];
+      keep.forEach((c) => { const k = c.area || ""; let g = areas.find((x) => x.k === k); if (!g) { g = { k, list: [] }; areas.push(g); } g.list.push(c); });
+      areas.forEach((g) => {
+        if (g.k) sec.append(el("h3", "area", g.k));
+        const grid = el("div", "grid"); g.list.forEach((c) => grid.append(card(c))); sec.append(grid);
+      });
+      if (d.note) sec.append(el("p", "note", d.note));
+      out.push(sec);
+    });
+    if (!out.length) {
+      const e = el("div", "empty", total ? "Nothing in this lane yet. Pick another, or All." : "No clips yet. Each feature appears here when it lands.");
+      out.push(e);
+    }
+    reel.replaceChildren(...out);
+    stats.textContent = total + " clips in " + drops.length + (drops.length === 1 ? " drop" : " drops") + (lane ? " · showing " + shown : "");
+    document.querySelectorAll("#filters button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.lane === lane)));
+  }
+
+  document.getElementById("filters").addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    lane = b.dataset.lane;
+    try { localStorage.setItem("reel-lane", lane); } catch (err) {}
+    render();
+  });
+
+  fetch("reel.json", { cache: "no-cache" })
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then((j) => { data = j && typeof j === "object" ? j : { drops: [] }; render(); })
+    .catch(() => { stats.textContent = "The clip list didn't load. Reload the page to try again."; render(); });
+})();
+</script>
