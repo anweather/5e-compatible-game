@@ -66,7 +66,7 @@ namespace Chem.Tests
             string s = string.Join(",", R.Components) + "|" + string.Join(";", Bits(R.Entities, e => e.Components)) + "|" + string.Join(";", Bits(R.Items, i => i.Components));
             uint h = 0x811c9dc5;
             foreach (char c in s) h = (h ^ c) * 0x01000193;
-            Assert.That(h.ToString("x", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("92654856"), s);
+            Assert.That(h.ToString("x", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("6c22a0dc"), s);
         }
 
         [Test]

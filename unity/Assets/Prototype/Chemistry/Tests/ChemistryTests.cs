@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(44));
+            Assert.That(R.CellRules.Count, Is.EqualTo(45));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -643,6 +643,24 @@ namespace Chem.Tests
             var errors = Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(
                 "{ 'covers': { 'tar': { 'name': 'Tar', 'tags': [], 'float': { 'every': 0 } } } }".Replace('\'', '"')) })).Errors;
             Assert.That(errors, Is.EqualTo(new[] { "cover tar: floatEvery must be a whole number from 1" }));
+        }
+
+        [Test]
+        public void LightningFusesSandIntoGlass()
+        {
+            // A strike on sand (tag fuses) fuses it into glass (reactions.json lightning-fuse): glass is
+            // brittle, and doesn't burn or conduct. The glow balls are glass.
+            var w = new World(R, 9, 5, 1, "sand");
+            w.At(6, 2).Water = 2;
+            w.Cast("shocking-grasp", 2, 2, 2);
+            int glass = w.Cells.Count(c => c.T == "glass");
+            Assert.That(glass, Is.GreaterThan(0), "the strike fused some of the sand");
+            Assert.That(w.Log.Any(l => l.Text == "The strike fuses the sand into glass"));
+            var g = R.Terrain["glass"];
+            Assert.That(g.Has("brittle") && !g.Burns && !g.Has("conductive"), "brittle; doesn't burn or conduct");
+            Assert.That(new[] { "glow-ball-amber", "glow-ball-azure", "glow-ball-rose" }.All(id => R.Items[id].Material == "glass"));
+            Run(w, 40);
+            Assert.That($"{glass} {w.CellHash()} {w.RngState}", Is.EqualTo("1 e8b4e694 1"), "the same in the sandbox");
         }
 
         [Test]
