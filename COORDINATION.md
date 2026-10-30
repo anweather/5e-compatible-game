@@ -467,3 +467,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   4. BACKLOG 21 (player saves): a design note only, no code.
   Stop when the queue is empty or usage runs low, and leave a morning report
   in docs/handoffs/morning-2026-10-30.md.
+- 2026-10-29: Host UX Part 1 merged (96c7e10): every new effect seen and
+  fixed on screen; panes now break on heavy hits (threshold 120, measured).
+  Pitfalls: seed a new worktree's Library only from a checkout whose licence
+  was good (a copy taken after a licence failure left pack scripts
+  unresolved until a clean rebuild), and copy UserSettings/Search.index too.
+  Lend: docs/FAST_LOOP.md to DesktopUnity for the `looks` probe row.
+  Queue: S3776 warnings are 8 against the baseline of 6 (Chemistry/), a
+  worker task.
