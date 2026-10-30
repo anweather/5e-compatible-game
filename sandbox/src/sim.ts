@@ -401,12 +401,22 @@ function rainFrom(w: World, c: Cell) {
   c.water = Math.min(RULES.sim.water.maxLevel, c.water + 1);
 }
 
+/** A gas that sheds (a storm cloud's lightning, a snow cloud's snow) lets its element fall on its cell every so often, at its chance (World.ShedFrom). */
+function shedFrom(w: World, i: number, c: Cell) {
+  const sh = RULES.gases[c.gas!]?.sheds;
+  if (!sh || sh.every <= 0 || w.tick % sh.every !== 0) return;
+  if ((sh.chance ?? 1) < 1 && rand(w) >= sh.chance!) return;
+  applyElement(w, i % w.w, Math.floor(i / w.w), sh.element, { power: 1, direct: false });
+}
+
 function tickGas(w: World) {
   const p = RULES.sim.gas;
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (!c.gas) continue;
     rainFrom(w, c);
+    shedFrom(w, i, c);
+    if (!c.gas) continue;
     if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) {
       c.gasAmt--;
       condense(w, i, c);

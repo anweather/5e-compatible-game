@@ -55,10 +55,10 @@ namespace Chem.Tests
             // The mod from net.test.ts "a mod switched on mid-game changes the rules ...".
             var r = With(@"{ 'sim': { 'push': { 'slideCells': 7 } }, 'reactions': { 'add': [
                 { 'id': 'frost-on-grass', 'element': 'cold', 'if': { 'terrainTag': 'flammable' }, 'do': [{ 'extinguish': true }], 'log': 'Frost settles on the grass' } ] } }");
-            Assert.That(Ids(r.CellRulesFor("cold")), Is.EqualTo(new[] { "frost-on-grass", "cold-fire", "cold-steam", "cold-water", "cold-covered", "cold-frost" }));
+            Assert.That(Ids(r.CellRulesFor("cold")), Is.EqualTo(new[] { "frost-on-grass", "cold-cloud", "cold-fire", "cold-steam", "cold-water", "cold-covered", "cold-frost" }));
             Assert.That((int)JObject.Parse(r.ToJson())["sim"]["push"]["slideCells"], Is.EqualTo(7));
             Assert.That((int)JObject.Parse(Base.ToJson())["sim"]["push"]["slideCells"], Is.EqualTo(3), "the base rules are untouched");
-            Assert.That(Base.CellRulesFor("cold")[0].Id, Is.EqualTo("cold-fire"));
+            Assert.That(Base.CellRulesFor("cold")[0].Id, Is.EqualTo("cold-cloud"));
         }
 
         [Test]

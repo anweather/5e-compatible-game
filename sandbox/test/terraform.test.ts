@@ -10,7 +10,7 @@ import { applyElement, ignite, shatter } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
 import { dig, reshape } from "../src/terraform.ts";
 import { whirlState } from "../src/combos.ts";
-import { type Cell, type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
+import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -722,6 +722,87 @@ test("Wall of Stone makes steps over water, a ramp when held, and only hard blow
   assert.ok(cellAt(w, 3, 3)!.h < 3, "a falling star breaks it");
   run(w, 6);
   assert.equal(`${cellHash(w)} ${w.rng}`, "1946386c 1872778120"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.ADustFlashShovesARaiderTheSameAsTheSandbox.
+test("a dust flash shoves a raider the same in both engines, matching the C# golden", () => {
+  const w = createWorld(10, 5, 11);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 3; x <= 5; x++) addGas(cellAt(w, x, 2)!, "dust", 3);
+  const hound = spawn(w, "bone-hound", 5, 2)!;
+  applyElement(w, 3, 2, "fire", { power: 1, direct: true });
+  assert.deepEqual([hound.x, hound.y], [7, 2], "shoved two cells away from the spark");
+  run(w, 6);
+  assert.equal(`${cellHash(w)} ${w.rng} ${hound.x},${hound.y} ${hound.hp}`, "31a36a85 3279484455 7,2 6"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.LightningJumpsToAPuddleAndItsChargeOpensTheGate.
+test("lightning jumps to a puddle and its charge opens the gate, matching the C# golden", () => {
+  const w = createWorld(16, 7, 12);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 4; x <= 6; x++) cellAt(w, x, 5)!.water = 2;
+  cellAt(w, 7, 5)!.t = "coil";
+  cellAt(w, 12, 3)!.t = "gate";
+  castSpell(w, "lightning-bolt", 2, 3, 1);
+  assert.ok(cellAt(w, 4, 5)!.charge > 0, "it jumped to the puddle");
+  assert.ok(cellAt(w, 7, 5)!.charge > 0, "and ran through it to the coil");
+  assert.equal(w.gatesOpen, false);
+  step(w);
+  assert.equal(w.gatesOpen, true);
+  assert.equal(cellAt(w, 12, 3)!.t, "gate_open");
+  assert.ok(w.log.some((l) => l.text === "The gate grinds open, powered by the lightning coil"));
+  run(w, 30);
+  assert.equal(cellAt(w, 12, 3)!.t, "gate", "it shuts once the coil's hold runs out");
+  const dry = createWorld(16, 7, 12);
+  for (const c of dry.cells) c.t = "dirt";
+  cellAt(dry, 10, 3)!.t = "sand";
+  castSpell(dry, "lightning-bolt", 2, 3, 1);
+  assert.equal(cellAt(dry, 10, 3)!.t, "glass", "with nothing to jump to it flies straight");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "c4741e7f 12"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.RainCloudsGreenAshLightningMakesAStormAndColdMakesSnow.
+test("rain clouds green ash, lightning makes a storm and cold makes snow, matching the C# golden", () => {
+  const w = createWorld(16, 7, 13);
+  for (const c of w.cells) c.t = "dirt";
+  for (let y = 1; y <= 5; y++) for (let x = 1; x <= 5; x++) cellAt(w, x, y)!.cover = "ash";
+  castSpell(w, "rain-cloud", 3, 3, 0);
+  castSpell(w, "rain-cloud", 11, 3, 0);
+  castSpell(w, "shocking-grasp", 3, 3, 0);
+  assert.equal(cellAt(w, 3, 3)!.gas, "storm");
+  applyElement(w, 11, 3, "cold", { power: 1, direct: true });
+  assert.equal(cellAt(w, 11, 3)!.gas, "snowcloud");
+  run(w, 120);
+  assert.ok(w.cells.some((c) => c.t === "sprouts" || c.t === "grass"), "the rain greens the ash");
+  assert.ok(w.cells.some((c) => c.cover === "snow"), "the snow cloud snows");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "788f5f20 1615770602"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.SandBlastScoursWearsAndLeavesSandAndGustDrivesOilAcrossAPond.
+test("Sand Blast scours, wears and leaves sand, and Gust drives oil across a pond, matching the C# golden", () => {
+  const w = createWorld(14, 7, 14);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 2, 2)!.cover = "snow";
+  cellAt(w, 3, 2)!.t = "rusted-metal";
+  cellAt(w, 4, 2)!.h = 2;
+  cellAt(w, 5, 2)!.t = "logwall";
+  castSpell(w, "sand-blast", 1, 2, 1);
+  assert.equal(cellAt(w, 2, 2)!.cover, null);
+  assert.equal(cellAt(w, 2, 2)!.t, "sand");
+  assert.equal(cellAt(w, 3, 2)!.t, "metal", "the rust scoured off");
+  assert.equal(cellAt(w, 4, 2)!.h, 1, "raised earth worn down a step");
+  assert.equal(cellAt(w, 5, 2)!.t, "worn-logwall");
+  castSpell(w, "sand-blast", 1, 2, 1);
+  assert.equal(cellAt(w, 5, 2)!.t, "rubble", "and then through");
+  castSpell(w, "forge", 2, 2, 0);
+  assert.equal(cellAt(w, 2, 2)!.t, "glass");
+  for (let x = 3; x <= 9; x++) cellAt(w, x, 5)!.water = 3;
+  cellAt(w, 3, 5)!.cover = "oil";
+  castSpell(w, "gust-of-wind", 1, 5, 1);
+  assert.equal(cellAt(w, 3, 5)!.cover, null);
+  assert.equal(cellAt(w, 9, 5)!.cover, "oil", "driven across the pond");
+  run(w, 6);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "7716f25c 14"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AFallingStarMarksItsTargetThenStrikes: a mark for a second (6 ticks), then a crater with a

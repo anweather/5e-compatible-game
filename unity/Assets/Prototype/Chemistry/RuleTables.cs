@@ -91,6 +91,9 @@ namespace Chem
         public double Speed = 1;
         /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves; null neither.</summary>
         public string DissolvedBy, DissolvesTo;
+        /// <summary>What a sand blast turns it into (materials.json scour.leaves: rusted metal back to metal, a log wall worn thin), or null; and whether raised ground of it wears down a step (scour.wears).</summary>
+        public string ScoursTo;
+        public bool ScourWears;
         /// <summary>The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick), or null.</summary>
         public string BakesTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
@@ -156,6 +159,17 @@ namespace Chem
         public int RainEvery;
         /// <summary>A gas that goes up all at once when fire meets it (burn.flash: dust, World.FlashGas), or null.</summary>
         public FlashDef Flash;
+        /// <summary>An element a cell of it lets fall on its cell every ShedEvery ticks, at ShedChance (sheds: a storm cloud's lightning, a snow cloud's snow, a rain cloud's growth; World.ShedFrom), or null.</summary>
+        public string Sheds;
+        public int ShedEvery;
+        public double ShedChance = 1;
+    }
+
+    /// <summary>A machine (machines.json): what powers it, how much pressure it builds and holds (steam), the mass that presses it (a plate), and how long a hit holds it (flow, charge, wind).</summary>
+    public sealed class MachineDef
+    {
+        public string Id, Name, Needs;
+        public int Build = 4, Max = 10, DecayEvery = 8, Mass = 3, Hold = 10;
     }
 
     /// <summary>A gas's burn.flash: the fire each of its cells goes up with, how hard that shoves what's there, and the line it logs.</summary>
@@ -234,6 +248,9 @@ namespace Chem
         public bool Rolls;
         /// <summary>The gas a rolling boulder leaves behind it (dust), or null.</summary>
         public string Trail;
+        /// <summary>A spell that seeks (Lightning): it strikes the nearest cell within SeekRange of where it's aimed that matches SeekIf (metal or water) instead of its shape, and its shape when there is none.</summary>
+        public int SeekRange;
+        public CellCond SeekIf;
         /// <summary>Earth shaping to a Height: cells holding open water rise only this high (Wall of Stone's stepping stones); 0 as high as the rest.</summary>
         public int Stepping;
         /// <summary>Earth shaping to a Height along a line: a step higher each cell from the first, up to the height (Stone Ramp).</summary>
@@ -463,6 +480,10 @@ namespace Chem
         public string SetTerrain, Raise;
         public int? Conduct;
         public bool Fan, PushGas, ClearGas;
+        /// <summary>scour: a blast of sand strips a cover that scours (scourable), or turns the terrain to its scoursTo, or wears raised ground of it (scour.wears) down a step.</summary>
+        public bool Scour;
+        /// <summary>pushCover: a cover that floats (float) is pushed a cell along the element's way onto open water with no cover (a gust drives oil across a pond).</summary>
+        public bool PushCover;
         public string Mark;
         public string Gas; public int? N;
         /// <summary>
@@ -493,11 +514,14 @@ namespace Chem
         readonly Dictionary<string, EntityDef> entities = new Dictionary<string, EntityDef>();
         readonly List<CellRule> cellRules = new List<CellRule>();
         readonly Dictionary<string, List<CellRule>> byElement = new Dictionary<string, List<CellRule>>();
+        readonly Dictionary<string, MachineDef> machines = new Dictionary<string, MachineDef>();
         static readonly IReadOnlyList<CellRule> NoRules = Array.Empty<CellRule>();
 
         public IReadOnlyDictionary<string, TerrainDef> Terrain => terrain;
         public IReadOnlyDictionary<string, CoverDef> Covers => covers;
         public IReadOnlyDictionary<string, GasDef> Gases => gases;
+        /// <summary>machines.json by terrain id: what powers each machine (World.TickMachines).</summary>
+        public IReadOnlyDictionary<string, MachineDef> Machines => machines;
         public IReadOnlyList<SpellDef> Spells => spells;
         public IReadOnlyDictionary<string, EntityDef> Entities => entities;
         /// <summary>reactions.json "cell", in file order.</summary>
@@ -577,6 +601,22 @@ namespace Chem
         }
 
         /// <summary>The typed tables for a rule document (see <see cref="doc"/>), which the result keeps.</summary>
+        static void ParseMachines(Rules r, JObject machines)
+        {
+            foreach (var p in machines.Properties())
+                r.machines[p.Name] = new MachineDef
+                {
+                    Id = p.Name,
+                    Name = Str(p.Value["name"]) ?? p.Name,
+                    Needs = Str(p.Value["needs"]),
+                    Build = Int(p.Value["build"]) ?? 4,
+                    Max = Int(p.Value["max"]) ?? 10,
+                    DecayEvery = Int(p.Value["decayEvery"]) ?? 8,
+                    Mass = Int(p.Value["mass"]) ?? 3,
+                    Hold = Int(p.Value["hold"]) ?? 10,
+                };
+        }
+
         static Rules FromDoc(JObject doc)
         {
             var r = new Rules(doc);
@@ -595,7 +635,11 @@ namespace Chem
                     CondenseAway = Int(p.Value["condenseAway"]) ?? 0,
                     RainEvery = Int(p.Value["rainEvery"]) ?? 0,
                     Flash = ParseFlash(p.Value["burn"]?["flash"]),
+                    Sheds = Str(p.Value["sheds"]?["element"]),
+                    ShedEvery = Int(p.Value["sheds"]?["every"]) ?? 0,
+                    ShedChance = Num(p.Value["sheds"]?["chance"]) ?? 1,
                 };
+            ParseMachines(r, doc["machines"] as JObject ?? new JObject());
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
             {
@@ -668,6 +712,8 @@ namespace Chem
             GrowLog = Str(o["growLog"]),
             DissolvedBy = Str(o["dissolvedBy"]),
             DissolvesTo = Str(o["dissolvesTo"]),
+            ScoursTo = Str(o["scoursTo"]),
+            ScourWears = Truthy(o["scourWears"]),
             BakesTo = Str(o["bakesTo"]),
             SoakEvery = Int(o["soakEvery"]) ?? 0,
             SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
@@ -792,6 +838,8 @@ namespace Chem
             Rolls = Truthy(o["rolls"]),
             Trail = Str(o["trail"]),
             Stepping = Int(o["stepping"]) ?? 0,
+            SeekRange = Int(o["seeks"]?["range"]) ?? 0,
+            SeekIf = o["seeks"]?["if"] is JObject si ? ParseCond(si) : null,
             Ramp = Truthy(o["ramp"]),
             Carries = (o["carries"] as JArray)?.OfType<JObject>().Select(ParseCarry).ToList() ?? (IReadOnlyList<CarryDef>)Array.Empty<CarryDef>(),
             LightBright = Int((o["light"] as JObject)?["bright"]) ?? 0,
@@ -895,6 +943,8 @@ namespace Chem
             e.Fan = Truthy(o["fan"]);
             e.PushGas = Truthy(o["pushGas"]);
             e.ClearGas = Truthy(o["clearGas"]);
+            e.Scour = Truthy(o["scour"]);
+            e.PushCover = Truthy(o["pushCover"]);
             e.Mark = Str(o["mark"]);
             e.Gas = Str(o["gas"]);
             e.N = Int(o["n"]);

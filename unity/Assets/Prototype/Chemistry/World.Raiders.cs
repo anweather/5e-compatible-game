@@ -210,6 +210,30 @@ namespace Chem
             }
         }
 
+        /// <summary>The way from a blast's middle out through (dx, dy) off it, along the longer axis, east or west on a tie; north at the middle (awayDir in the TS).</summary>
+        static int AwayDir(int dx, int dy)
+        {
+            if (dx == 0 && dy == 0) return 0;
+            if (Math.Abs(dx) >= Math.Abs(dy)) return dx > 0 ? 1 : 3;
+            return dy > 0 ? 2 : 0;
+        }
+
+        /// <summary>
+        /// A blast's shove on a raider (shoveRaider in the TS: a dust flash): force less its mass, plus 1, cells along dir,
+        /// stopping at a wall, an inactive chunk or another raider.
+        /// </summary>
+        void ShoveRaider(Raider r, int dir, int force)
+        {
+            int dist = force - Rules.Entity(r.Kind).Mass + 1;
+            for (int k = 0; k < dist; k++)
+            {
+                int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
+                if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) return;
+                r.X = nx;
+                r.Y = ny;
+            }
+        }
+
         /// <summary>[n, sides] dice with the world's generator (roll in the TS).</summary>
         int Roll(int[] dice)
         {

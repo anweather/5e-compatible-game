@@ -79,6 +79,46 @@ namespace Chem
             return Shatter(x, y) || c.Cracked != was;
         }
 
+        /// <summary>
+        /// A scour effect (react.ts scour): a cover that scours is stripped; else the terrain becomes its scoursTo (rusted
+        /// metal back to metal, a log wall worn thin); else raised ground that wears is worn down a step.
+        /// </summary>
+        bool Scour(int x, int y, Cell c)
+        {
+            if (c.Cover != null && CoverHasTag(c, "scourable"))
+            {
+                PutCover(c, null);
+                return true;
+            }
+            var t = TerrainOf(c);
+            if (t.ScoursTo != null)
+            {
+                bool wall = IsBlocking(c);
+                c.T = t.ScoursTo;
+                if (wall && !IsBlocking(c)) WallLost(x, y);
+                return true;
+            }
+            return t.ScourWears && c.Height > 0 && Reshape(x, y, -1, null, int.MaxValue);
+        }
+
+        /// <summary>A pushCover effect (react.ts pushCover): a floating cover moves a cell along dir onto open water with no cover, its slick's reach with it.</summary>
+        bool PushCover(int x, int y, Cell c, int dir)
+        {
+            if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
+            int nx = x + DirX(dir), ny = y + DirY(dir);
+            var n = LocateActive(nx, ny, out _, out _);
+            if (n == null || IsBlocking(n) || n.Cover != null || n.Water == 0 || n.Frozen) return false;
+            n.Cover = c.Cover;
+            n.Slick = c.Slick;
+            n.Fire = c.Fire;
+            n.Fuel = c.Fuel;
+            c.Cover = null;
+            c.Slick = 0;
+            c.Fire = 0;
+            c.Fuel = 0;
+            return true;
+        }
+
         /// <summary>A bake effect (react.ts bake): heat turns the terrain into its bakesTo.</summary>
         bool Bake(Cell c)
         {
@@ -339,6 +379,8 @@ namespace Chem
                 return true;
             }
             if (eff.Shatter) return Struck(x, y, c);
+            if (eff.Scour) return Scour(x, y, c);
+            if (eff.PushCover) return dir >= 0 && PushCover(x, y, c, dir);
             if (eff.Bake) return Bake(c);
             if (eff.MeltCover) return MeltCover(c);
             if (eff.Break)

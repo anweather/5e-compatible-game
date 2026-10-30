@@ -16,6 +16,7 @@
     { "id": "heat-water", "element": "heat", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam" },
     { "id": "heat-hot", "element": "heat", "do": [{ "heat": true }], "log": "The {terrain} glows hot" },
 
+    { "id": "cold-cloud", "element": "cold", "if": { "gas": "cloud" }, "do": [{ "clearGas": true }, { "gas": "snowcloud", "n": 4 }], "log": "The rain cloud chills into a snow cloud", "notable": true },
     { "id": "cold-fire", "element": "cold", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "Frost snuffs out the flames" },
     { "id": "cold-steam", "element": "cold", "if": { "gas": "steam" }, "do": [{ "condense": true }], "log": "Steam condenses back into water" },
     { "id": "cold-water", "element": "cold", "if": { "water": true }, "do": [{ "freeze": true }], "log": "The water freezes solid", "stop": true },
@@ -34,6 +35,7 @@
     { "id": "air-small-fire", "element": "air", "if": { "fire": 1, "fireBelow": 2 }, "do": [{ "extinguish": true }], "log": "The gust blows the little flame out" },
     { "id": "air-big-fire", "element": "air", "if": { "fire": 2 }, "do": [{ "fan": true }], "log": "The wind fans the fire downwind", "notable": true },
     { "id": "air-gas", "element": "air", "if": { "gas": "any" }, "do": [{ "pushGas": true }] },
+    { "id": "air-float", "element": "air", "if": { "water": true }, "do": [{ "pushCover": true }], "log": "The wind drives the {cover} across the water" },
     { "id": "air-hot", "element": "air", "if": { "hot": true }, "do": [{ "heat": true }], "log": "The wind keeps the {terrain} hot" },
     { "id": "air-mark", "element": "air", "do": [{ "mark": "wind" }] },
 
@@ -41,6 +43,7 @@
     { "id": "earth-fill", "element": "earth", "if": { "terrainTag": "low", "notTerrainTag": "machine" }, "do": [{ "setTerrain": "dirt" }], "log": "Earth fills the pit", "stop": true },
     { "id": "earth-raise", "element": "earth", "if": { "terrainTag": "ground", "notTerrainTag": "machine" }, "do": [{ "raise": "pillar" }], "log": "A pillar of earth rises", "stop": true },
 
+    { "id": "lightning-cloud", "element": "lightning", "if": { "gas": "cloud" }, "do": [{ "clearGas": true }, { "gas": "storm", "n": 4 }], "log": "Lightning charges the rain cloud into a storm", "notable": true },
     { "id": "lightning-conduct", "element": "lightning", "if": { "conductive": true }, "do": [{ "conduct": 3 }], "log": "Lightning arcs through everything conductive that touches", "notable": true },
     { "id": "lightning-oil", "element": "lightning", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "A spark lights the {cover}", "notable": true, "stop": true },
     { "id": "lightning-ice", "element": "lightning", "if": { "frozen": true }, "do": [{ "shatter": true }], "log": "The ice insulates and the spark fizzles", "stop": true },
@@ -65,6 +68,7 @@
     { "id": "fog-cloud", "element": "fog", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "fog", "n": 6 }], "stop": true },
     { "id": "steam-cloud", "element": "steam", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "steam", "n": 6 }], "stop": true },
     { "id": "rain-cloud", "element": "rain", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "cloud", "n": 4 }], "log": "A rain cloud gathers", "notable": true, "stop": true },
+    { "id": "sand-scour", "element": "sand", "do": [{ "scour": true }], "log": "The blast scours the {terrain}" },
     { "id": "sand-blast-soil", "element": "sand", "if": { "terrainTag": "soil", "water": false }, "do": [{ "setTerrain": "sand" }], "log": "The blast leaves sand behind", "stop": true },
     { "id": "sand-blast-turf", "element": "sand", "if": { "terrainTag": "turf", "water": false }, "do": [{ "setTerrain": "sand" }], "stop": true },
     { "id": "lava-pool", "element": "lava", "if": { "notTerrainTag": "blocking" }, "do": [{ "grow": "lava-pool", "ticks": [300, 300] }, { "heat": true }], "log": "Lava wells up and pools", "notable": true, "stop": true },

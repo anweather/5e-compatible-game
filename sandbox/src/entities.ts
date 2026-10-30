@@ -105,6 +105,21 @@ export function awayDir(dx: number, dy: number, fallback: Dir = 0): Dir {
   return dy > 0 ? 2 : 0;
 }
 
+/**
+ * A blast's shove on a raider (a dust flash; World.ShoveRaider): force less its mass, plus 1, squares along dir, stopping
+ * at a wall or another entity. No slide and no slam, the same in the C# core.
+ */
+export function shoveRaider(w: World, e: Entity, dir: Dir, force: number): void {
+  const dist = force - massOf(e) + 1;
+  for (let k = 0; k < dist; k++) {
+    const nx = e.x + DX[dir], ny = e.y + DY[dir];
+    const n = cellAt(w, nx, ny);
+    if (!n || isBlocking(n) || entityAt(w, nx, ny)) return;
+    e.x = nx;
+    e.y = ny;
+  }
+}
+
 /** Shoves an entity. Distance = force - mass + 1; slick ground adds a slide. */
 export function push(w: World, e: Entity, dir: Dir, force: number, direct: boolean): void {
   const def = defOf(e);
