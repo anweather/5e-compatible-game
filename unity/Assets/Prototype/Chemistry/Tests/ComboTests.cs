@@ -67,9 +67,17 @@ namespace Chem.Tests
             var all = Base.Combos.All;
             Assert.That(all, Has.Count.EqualTo(20));
             foreach (var d in all) Assert.That(d.Shape, Is.EqualTo(Base.Spell(d.Spell).Shape), d.Id);
+<<<<<<< HEAD
             Assert.That(all.Count(d => d.Todo != null), Is.EqualTo(7));
             Assert.That(Base.Combos.Combo("fire+water").Spell, Is.EqualTo("fog-cloud"));
             Assert.That(Base.Combos.Combo("fire+water").Todo, Is.Not.Null);
+=======
+            Assert.That(all.Count(d => d.Todo != null), Is.EqualTo(8));
+            Assert.That(Base.Combos.Combo("fire+water").Spell, Is.EqualTo("scalding-steam"));
+            Assert.That(Base.Combos.Combo("fire+water").Todo, Is.Null, "a real spell now");
+            Assert.That(Base.Combos.Combo("water+water").Spell, Is.EqualTo("create-water"));
+            Assert.That(Base.Combos.Combo("water+water").Todo, Is.Not.Null, "still a stand-in");
+>>>>>>> origin/dev
         }
 
         [Test]

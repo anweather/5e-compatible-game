@@ -595,6 +595,32 @@ test("steam condenses only away from heat", () => {
   assert.equal(`${near} ${far} ${coldNear} ${rustHash(w)} ${w.rng}`, "0 77 2 d6bb1743 3544326918"); // the same in the C# core
 });
 
+// Mirrors ChemistryTests.TheFireCombosCastScaldingSteamALavaPoolAndAFlameWave.
+test("the fire combos cast scalding steam, a lava pool and a flame wave", () => {
+  const w = createWorld(24, 9, 1);
+  for (const c of w.cells) c.t = "grass";
+  // Stood as World.SpawnRaider stands them.
+  const goblin = { id: w.nextId++, kind: "goblin", x: 18, y: 4, hp: 99, status: {} as Record<string, number> };
+  const hound = { id: w.nextId++, kind: "bone-hound", x: 10, y: 4, hp: 99, status: {} as Record<string, number> };
+  w.entities.push(goblin, hound);
+  castSpell(w, "flame-wave", 2, 4, 1);
+  assert.deepEqual(w.wind, { dir: 1, ticks: 18 }, "the flame wave raises a wind along it");
+  assert.ok(w.cells.filter((c) => c.fire > 0).length > 3, "and sets its cone alight");
+  castSpell(w, "lava-pool", 10, 4, 0);
+  const pool = w.cells.filter((c) => c.t === "lava-pool").length;
+  assert.ok(pool > 0);
+  assert.equal(cellAt(w, 10, 4)!.heat, 300, "the lava is hot");
+  castSpell(w, "scalding-steam", 18, 4, 0);
+  assert.ok(cellAt(w, 18, 4)!.gas === "steam" && cellAt(w, 18, 4)!.gasAmt === 6, "a burst of thick steam");
+  run(w, 30);
+  assert.ok(goblin.hp < 99, "the steam scalds the goblin");
+  assert.ok(hound.hp < 99, "the lava burns the hound");
+  run(w, 300);
+  assert.equal(w.cells.filter((c) => c.t === "lava-pool").length, 0, "the lava pool cools");
+  assert.ok(w.log.some((l) => l.text === "The lava pool cools into rock"));
+  assert.equal(`${pool} ${goblin.hp} ${hound.hp} ${rustHash(w)} ${w.rng}`, "9 90 -1 d6bc3323 2450008921"); // the same in the C# core
+});
+
 // Mirrors ChemistryTests.AGustPushesSmokeAndSteamFansTheFireAndKeepsMetalHot.
 test("a gust pushes smoke and steam, fans the fire, and keeps metal hot", () => {
   const w = createWorld(16, 5, 1);

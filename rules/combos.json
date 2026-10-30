@@ -11,9 +11,9 @@
   "pairs": {
     "fire": {
       "fire":  { "name": "Fireball", "spell": "fireball", "shape": "burst", "castTicks": 12, "held": "meteor" },
-      "water": { "name": "Scalding Steam", "spell": "fog-cloud", "shape": "burst", "castTicks": 9, "todo": "A burst of scalding steam; Fog Cloud until there is a steam spell" },
-      "earth": { "name": "Lava Pool", "spell": "fireball", "shape": "burst", "castTicks": 12, "todo": "A pool of lava; Fireball until there is a lava spell" },
-      "air":   { "name": "Flame Wave", "spell": "burning-hands", "shape": "cone", "castTicks": 9, "todo": "Wind-driven fire; Burning Hands until there is a flame wave spell" }
+      "water": { "name": "Scalding Steam", "spell": "scalding-steam", "shape": "burst", "castTicks": 9 },
+      "earth": { "name": "Lava Pool", "spell": "lava-pool", "shape": "burst", "castTicks": 12 },
+      "air":   { "name": "Flame Wave", "spell": "flame-wave", "shape": "cone", "castTicks": 9 }
     },
     "water": {
       "fire":  { "name": "Fog Bank", "spell": "fog-cloud", "shape": "burst", "castTicks": 9 },

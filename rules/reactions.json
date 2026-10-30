@@ -49,6 +49,8 @@
     { "id": "dust-cloud", "element": "dust", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "dust", "n": 4 }], "stop": true },
 
     { "id": "fog-cloud", "element": "fog", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "fog", "n": 6 }], "stop": true },
+    { "id": "steam-cloud", "element": "steam", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "steam", "n": 6 }], "stop": true },
+    { "id": "lava-pool", "element": "lava", "if": { "notTerrainTag": "blocking" }, "do": [{ "grow": "lava-pool", "ticks": [300, 300] }, { "heat": true }], "log": "Lava wells up and pools", "notable": true, "stop": true },
 
     { "id": "thunder-gas", "element": "thunder", "if": { "gas": "any" }, "do": [{ "clearGas": true }], "log": "The thunderclap scatters the vapour" },
 

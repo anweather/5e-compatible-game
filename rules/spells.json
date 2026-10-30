@@ -58,5 +58,11 @@
   { "id": "shapeshift", "group": "nature", "name": "Shapeshift", "level": 4, "shape": "target", "effect": "shapeshift", "range": 12, "duration": 360,
     "blurb": "Aim at an animal within 60 ft and take its shape for a minute (hold the cast for two or three): its speed, its size, and its own kind's trust. Cast again to change back. No spells and no hands while you're an animal, and a heavy blow knocks you back into yourself. Our reading of Polymorph, cast on yourself." },
   { "id": "acid-splash", "group": "nature", "name": "Acid Splash", "level": 0, "shape": "burst", "radius": 1, "element": "acid", "damage": [1, 6],
-    "blurb": "Cantrip. A bubble of acid bursts where you point, 15 ft across, and eats away what acid can: brambles, thorns, spilt oil and grease. It burns any creature in the splash. RAW each creature makes a Dex save, and the damage grows with your level; here it is always 1d6. Hold the cast for a wider splash." }
+    "blurb": "Cantrip. A bubble of acid bursts where you point, 15 ft across, and eats away what acid can: brambles, thorns, spilt oil and grease. It burns any creature in the splash. RAW each creature makes a Dex save, and the damage grows with your level; here it is always 1d6. Hold the cast for a wider splash." },
+  { "id": "scalding-steam", "group": "fire", "name": "Scalding Steam", "level": 2, "shape": "burst", "radius": 2, "element": "steam", "radial": false,
+    "blurb": "Fire and water together: a burst of thick steam, 25 ft across, where you point. It scalds anything of flesh standing in it, drifts with the wind, and rains back down as water once it has drifted away from any heat." },
+  { "id": "lava-pool", "group": "fire", "name": "Lava Pool", "level": 3, "shape": "burst", "radius": 1, "element": "lava", "radial": false,
+    "blurb": "Fire and earth together: the ground where you point melts into a 15 ft pool of lava. It burns whatever stands on it, boils water poured on it into steam, and cools into rock after a while." },
+  { "id": "flame-wave", "group": "fire", "name": "Flame Wave", "level": 2, "shape": "cone", "origin": "self", "length": 4, "element": "fire", "power": 2, "damage": [3, 6], "wind": 18, "radial": false,
+    "blurb": "Fire and air together: a 20 ft cone of flame driven by a gust behind it. Everything that can burn in it catches, and the wind it raises carries the fire on and drives smoke and steam downwind." }
 ]

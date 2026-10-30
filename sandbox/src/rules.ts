@@ -421,7 +421,11 @@ export interface Rules {
   combos: CombosDef;
 }
 
+<<<<<<< HEAD
 export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "mud", "dust"];
+=======
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava"];
+>>>>>>> origin/dev
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 

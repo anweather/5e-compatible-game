@@ -72,7 +72,11 @@ namespace Chem.Tests
             Assert.That(r.CellRulesFor("fire").First(x => x.Id == "fire-ice").Log, Is.EqualTo("Replaced in place"));
             Assert.That(Ids(r.CellRulesFor("acid")), Is.EqualTo(new[] { "acid-burns", "acid-cover", "acid-terrain" }), "on top of the base acid rules");
             var elements = JObject.Parse(r.ToJson())["elements"].Select(e => (string)e);
+<<<<<<< HEAD
             Assert.That(elements, Is.EqualTo(new[] { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "mud", "dust" }));
+=======
+            Assert.That(elements, Is.EqualTo(new[] { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava" }));
+>>>>>>> origin/dev
         }
 
         [Test]
