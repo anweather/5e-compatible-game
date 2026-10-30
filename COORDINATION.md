@@ -402,7 +402,7 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   fixed-shape briefs and reports, analysis sized to the decision, batched
   tasks, cheaper models for read-only jobs, the reel at release time, and a
   mid-week usage check. See .claude/skills/agent-coordinator ("Budget").
-- 2026-10-29: WORKERS (Pro coordinator). Worker VMs w1 and w2 built 6 materials
+- 2026-10-29: WORKERS (Pro coordinator). Worker VMs w1 and w2 built five materials
   features headless, in both engines, merged on core and sandbox checks:
   soak.dampens (8823b4c), damp burns shorter (4d42d9c), frozen things
   shatter (d5214d8), rust (8d05ccd), acid and Acid Splash with a dissolve
