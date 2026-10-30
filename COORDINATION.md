@@ -533,3 +533,12 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   the transcript file's time, but an idle Remote Control session's file is
   still touched; it now goes by the last message's own time. w1 is briefed
   (combo-water).
+- 2026-10-30 13:50: Release 0.1.8 (Andrew: Option C, "publish when checks
+  are passed", notes of the same calibre, and squeeze in the crack polish).
+  The combo table's rules are all on dev (b33c6bd). Order: UX pass 3 on the
+  PC (DesktopUnity, docs/handoffs/ux-pass-3-brief.md, about 1.5 h) → FREEZE
+  → dev into main, version 0.1.8 → the PC builds --windows-only and the Mac
+  --mac-only into one draft (RELEASING.md step 4) → notes on the draft
+  (docs/handoffs/release-0.1.8-notes.md, finished from UX pass 3) → the
+  Windows install from the draft, a quick look, the Mac install → publish.
+  No worker VMs until it's out; the PC is the release's.
