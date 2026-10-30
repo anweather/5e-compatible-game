@@ -9,7 +9,7 @@ import { castSpell, spellById, spellCells } from "../src/actions.ts";
 import { applyElement } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
 import { reshape } from "../src/terraform.ts";
-import { type World, cellAt, createWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld } from "../src/world.ts";
+import { type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -459,4 +459,45 @@ test("Flood, Mud, Molten Boulder and Dust Storm, matching the C# golden", () => 
   const crate = spawn(v, "crate", 2, 2)!;
   castSpell(v, "flood", 1, 2, 1);
   assert.equal(crate.x, 4, "the wave shoves the crate along");
+});
+
+// Mirrors ChemistryTests.AWhirlwindDrawsGasAndCreaturesInAndRunsFireRoundItsRing: a whirlwind on a field with smoke off
+// to one side, a goblin and a bone hound on its edge and grass along its top ring; fire lit on the ring runs round it,
+// the smoke and the creatures come in toward the middle, and after its ten seconds it's gone.
+test("a whirlwind draws gas and creatures in and runs fire round its ring, matching the C# golden", () => {
+  const w = createWorld(15, 9, 4);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 5; x <= 9; x++) cellAt(w, x, 2)!.t = "grass";
+  const gob = spawn(w, "goblin", 5, 4)!, hound = spawn(w, "bone-hound", 9, 6)!;
+  castSpell(w, "whirlwind", 7, 4, 0);
+  assert.equal(w.whirls.length, 1);
+  cellAt(w, 9, 4)!.gas = "smoke";
+  cellAt(w, 9, 4)!.gasAmt = 3;
+  applyElement(w, 5, 2, "fire", { power: 3, direct: true });
+  run(w, 3);
+  assert.ok(cellAt(w, 6, 2)!.fire > 0, "the fire runs east along the top ring");
+  assert.deepEqual([gob.x, gob.y], [6, 4], "the goblin is drawn a cell in");
+  assert.equal(cellAt(w, 8, 4)!.gas, "smoke", "and the smoke");
+  run(w, 30);
+  const mid = `${cellHash(w)} ${w.rng} ${gob.x},${gob.y} ${hound.x},${hound.y}`;
+  run(w, 30);
+  assert.equal(w.whirls.length, 0, "gone after its duration");
+  assert.equal(`${mid} | ${cellHash(w)} ${w.rng}`, "a37e3fd7 1921566711 7,4 7,5 | 44fe5e41 657895371"); // the same in the C# core
+});
+
+test("a whirlwind drags loose props in, leaves the heavy ones and the player, and comes through a snapshot", () => {
+  const w = createWorld(15, 9, 4);
+  for (const c of w.cells) c.t = "dirt";
+  const crate = spawn(w, "crate", 5, 4)!, boulder = spawn(w, "boulder", 9, 4)!, wizard = spawn(w, "wizard", 7, 2)!;
+  castSpell(w, "whirlwind", 7, 4, 0);
+  run(w, 3);
+  assert.deepEqual([crate.x, crate.y], [6, 4], "the crate comes a cell in");
+  assert.deepEqual([boulder.x, boulder.y], [9, 4], "the boulder is too heavy");
+  assert.deepEqual([wizard.x, wizard.y], [7, 2], "the player stays put");
+  const back = deserializeWorld(serializeWorld(w));
+  assert.equal(hashWorld(back), hashWorld(w));
+  run(w, 3);
+  run(back, 3);
+  assert.equal(back.entities.find((e) => e.kind === "crate")!.x, 7, "and on into the middle");
+  assert.equal(hashWorld(back), hashWorld(w));
 });

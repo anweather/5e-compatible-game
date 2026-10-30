@@ -1,6 +1,7 @@
 // Spell shapes and the cell part of casting. Port of spellCells / castSpell
 // in sandbox/src/actions.ts, without pushes, damage, levitate or carry.
 using System.Collections.Generic;
+using System.Linq;
 
 namespace Chem
 {
@@ -236,6 +237,82 @@ namespace Chem
             return dy > 0 ? 0 : 2;
         }
 
+        /// <summary>
+        /// The next cell clockwise round the square ring d out from a whirlwind's middle, from (dx, dy) on it
+        /// (ringNext in the TS): east along the top, south down the right, west along the bottom, north up the left.
+        /// </summary>
+        static int RingNext(int dx, int dy, int d)
+        {
+            if (dy == -d && dx < d) return 1;
+            if (dx == d && dy < d) return 2;
+            if (dy == d && dx > -d) return 3;
+            return 0;
+        }
+
+        /// <summary>
+        /// Each whirlwind, in the order cast (tickWhirlwinds in the TS): every Every ticks it whirls once
+        /// (Spin), and it's gone once its ticks are up.
+        /// </summary>
+        void TickWhirlwinds()
+        {
+            foreach (var ww in whirls)
+                if (++ww.Age % ww.Every == 0) Spin(ww);
+            whirls.RemoveAll(ww => ww.Age >= ww.Ticks);
+        }
+
+        /// <summary>
+        /// One turn of a whirlwind (spin in the TS), over the square of cells round its middle: fire burning
+        /// on a ring lights the next cell clockwise round it; gas moves a cell in toward the middle, the inner
+        /// rings first, each gas once; creatures of MaxMass or less, nearest first, step a cell in where it's
+        /// open. Things (props, items) are the view's, not the core's.
+        /// </summary>
+        void Spin(Whirl ww)
+        {
+            int r = ww.Radius;
+            var lit = new List<(int x, int y, int dir)>();
+            for (int dy = -r; dy <= r; dy++)
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    int d = System.Math.Max(System.Math.Abs(dx), System.Math.Abs(dy));
+                    if (d > 0 && IsActiveAt(ww.X + dx, ww.Y + dy) && At(ww.X + dx, ww.Y + dy).Fire > 0) lit.Add((ww.X + dx, ww.Y + dy, RingNext(dx, dy, d)));
+                }
+            foreach (var (bx, by, dir) in lit) Apply(bx + DirX(dir), by + DirY(dir), "fire", 1, -1, false);
+            WhirlGas(ww);
+            WhirlCreatures(ww);
+        }
+
+        void WhirlGas(Whirl ww)
+        {
+            var moved = new HashSet<(int, int)>();
+            for (int d = 1; d <= ww.Radius; d++)
+                for (int dy = -d; dy <= d; dy++)
+                    for (int dx = -d; dx <= d; dx++)
+                    {
+                        int cx = ww.X + dx, cy = ww.Y + dy;
+                        if (System.Math.Max(System.Math.Abs(dx), System.Math.Abs(dy)) != d || !IsActiveAt(cx, cy) || At(cx, cy).Gas == null || moved.Contains((cx, cy))) continue;
+                        int dir = InwardDir(dx, dy);
+                        if (ShoveGas(cx, cy, dir)) moved.Add((cx + DirX(dir), cy + DirY(dir)));
+                    }
+        }
+
+        void WhirlCreatures(Whirl ww)
+        {
+            int Ring(Raider r) => System.Math.Max(System.Math.Abs(r.X - ww.X), System.Math.Abs(r.Y - ww.Y));
+            var pulled = raiders.Where(r =>
+            {
+                var def = Rules.Entity(r.Kind);
+                return r.Alive && Ring(r) > 0 && Ring(r) <= ww.Radius && def.Creature && def.Mass <= ww.MaxMass;
+            }).OrderBy(Ring).ThenBy(r => r.Id).ToList();
+            foreach (var r in pulled)
+            {
+                int dir = InwardDir(r.X - ww.X, r.Y - ww.Y);
+                int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
+                if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) continue;
+                r.X = nx;
+                r.Y = ny;
+            }
+        }
+
         /// <summary>What a spell does to cells where it lands, without the cast's log line (a meteor's landing too).</summary>
         void Land(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
         {
@@ -244,6 +321,8 @@ namespace Chem
             cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
             // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction.
             if (s.Wind > 0) Wind = (dir, s.Wind);
+            if (s.Inward && s.PullEvery > 0 && s.Duration > 0)
+                whirls.Add(new Whirl { X = x, Y = y, Radius = s.Radius + ChargedGrowth(s, charge), Ticks = s.Duration, Every = s.PullEvery, MaxMass = s.MaxMass });
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
             if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);

@@ -1,13 +1,13 @@
 // What the player does: cast a spell, place a critter, paint the map.
 import { RULES, hasComponent, type SpellDef } from "./rules.ts";
-import { applyElement, applyEntityElement, displaceWater, shatter } from "./react.ts";
+import { applyElement, applyEntityElement, displaceWater, shatter, shoveGas } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
-  type Dir, type Entity, type World,
-  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, roll,
+  type Dir, type Entity, type Whirl, type World,
+  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, roll,
 } from "./world.ts";
 
 export const spellById = (id: string) => RULES.spells.find((s) => s.id === id);
@@ -264,12 +264,81 @@ function inwardDir(dx: number, dy: number): Dir | undefined {
   return dy > 0 ? 0 : 2;
 }
 
+/**
+ * The next cell clockwise round the square ring d out from a whirlwind's middle, from (dx, dy) on it (World.RingNext):
+ * east along the top, south down the right, west along the bottom, north up the left.
+ */
+function ringNext(dx: number, dy: number, d: number): Dir {
+  if (dy === -d && dx < d) return 1;
+  if (dx === d && dy < d) return 2;
+  if (dy === d && dx > -d) return 3;
+  return 0;
+}
+
+/** Each whirlwind, in the order cast (World.TickWhirlwinds): every so many ticks it whirls once (spin), and it's gone once its ticks are up. */
+export function tickWhirlwinds(w: World): void {
+  for (const ww of w.whirls) if (++ww.age % ww.every === 0) spin(w, ww);
+  w.whirls = w.whirls.filter((ww) => ww.age < ww.ticks);
+}
+
+/**
+ * One turn of a whirlwind (World.Spin), over the square of cells round its middle: fire burning on a ring lights the
+ * next cell clockwise round it; gas moves a cell in toward the middle, the inner rings first, each gas once;
+ * entities of maxMass or less, nearest first, step a cell in where it's open. Loose props move here but in the view
+ * in the Unity game, where the C# core only drags creatures; the player, who that core doesn't hold, stays put.
+ */
+function spin(w: World, ww: Whirl): void {
+  const r = ww.radius;
+  const lit: [number, number, Dir][] = [];
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const d = Math.max(Math.abs(dx), Math.abs(dy));
+      if (d > 0 && (cellAt(w, ww.x + dx, ww.y + dy)?.fire ?? 0) > 0) lit.push([ww.x + dx, ww.y + dy, ringNext(dx, dy, d)]);
+    }
+  }
+  for (const [bx, by, dir] of lit) applyElement(w, bx + DX[dir], by + DY[dir], "fire", { power: 1, direct: false });
+  whirlGas(w, ww);
+  whirlEntities(w, ww);
+}
+
+function whirlGas(w: World, ww: Whirl): void {
+  const moved = new Set<number>();
+  for (let d = 1; d <= ww.radius; d++) {
+    for (let dy = -d; dy <= d; dy++) {
+      for (let dx = -d; dx <= d; dx++) {
+        const cx = ww.x + dx, cy = ww.y + dy;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== d || !inBounds(w, cx, cy) || cellAt(w, cx, cy)!.gas === null || moved.has(idx(w, cx, cy))) continue;
+        const dir = inwardDir(dx, dy)!;
+        if (shoveGas(w, cx, cy, dir)) moved.add(idx(w, cx + DX[dir], cy + DY[dir]));
+      }
+    }
+  }
+}
+
+function whirlEntities(w: World, ww: Whirl): void {
+  const ring = (e: Entity) => Math.max(Math.abs(e.x - ww.x), Math.abs(e.y - ww.y));
+  const pulled = w.entities
+    .filter((e) => ring(e) > 0 && ring(e) <= ww.radius && !defOf(e).player && massOf(e) <= ww.maxMass)
+    .sort((a, b) => ring(a) - ring(b) || a.id - b.id);
+  for (const e of pulled) {
+    const dir = inwardDir(e.x - ww.x, e.y - ww.y)!;
+    const nx = e.x + DX[dir], ny = e.y + DY[dir];
+    const n = cellAt(w, nx, ny);
+    if (!n || isBlocking(n) || entityAt(w, nx, ny)) continue;
+    e.x = nx;
+    e.y = ny;
+  }
+}
+
 /** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */
 export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
   const cells = spellCells(w, s, x, y, dir, charge, aim);
   const ctx = { power: (s.power ?? 1) * charge, dir, direct: true, at: [x, y] as [number, number] };
   // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction (World.Land).
   if (s.wind) w.wind = { dir, ticks: s.wind };
+  if (s.inward && s.pullEvery && s.duration) {
+    w.whirls.push({ x, y, radius: (s.radius ?? 1) + chargedGrowth(s, charge), ticks: s.duration, age: 0, every: s.pullEvery, maxMass: s.maxMass ?? 1 });
+  }
   if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
   if (s.crater) for (const [cx, cy] of cells) shatter(w, cx, cy);
   crater(w, x, y, s.crater);

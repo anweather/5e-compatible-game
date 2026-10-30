@@ -113,6 +113,7 @@ namespace Chem
                     TickRaiders();
                     TickDefense();
                     TickCombos();
+                    TickWhirlwinds();
                     NextStage(TickStage.Timers);
                     return false;
                 case TickStage.End:

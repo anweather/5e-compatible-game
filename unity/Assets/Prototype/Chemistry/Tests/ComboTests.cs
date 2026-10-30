@@ -191,6 +191,21 @@ namespace Chem.Tests
             Assert.That(w.CastOf("ann").Known, Is.Empty);
         }
 
+        [Test]
+        public void ADpadSlotWithNoSpellIsRefused()
+        {
+            // The base d-pad has no spell-less slot since Light got its spell, so a test-only d-pad gives it
+            // one. Mirrors sandbox/test/combos.test.ts.
+            var r = Base.WithMods(new[] { ModPatch.Parse("{ 'combos': { 'dpad': [ { 'name': 'Hasten Time', 'spell': 'hasten-time', 'castTicks': 12 }, { 'name': 'Mystery', 'castTicks': 6 } ] } }") });
+            var w = new World(r, 8, 8, 1);
+            Cycle(w, "ann", 1);
+            Assert.That(w.SelectedDpad("ann").Name, Is.EqualTo("Mystery"));
+            Assert.That(CastSelected(w, "ann"), Is.False, "Mystery has no spell");
+            Assert.That(w.CastOf("ann").Meter, Is.EqualTo(0));
+            Cycle(w, "ann", -1);
+            Assert.That(CastSelected(w, "ann"), "Hasten Time casts");
+        }
+
         sealed class Blank : IChunkSource
         {
             public string Version => "blank";
@@ -212,6 +227,23 @@ namespace Chem.Tests
             Assert.That(back.CastState(), Is.EqualTo("ann:air:fire:8:9:0:0:-1:fire/bob:-:-:0:0:0:1:-1:"));
             Assert.That(UntilFired(back), Is.EqualTo(8));
             Assert.That(back.KnowsCombo("ann", "air+fire"));
+        }
+
+        [Test]
+        public void AWhirlwindStillWhirlingComesThroughASave()
+        {
+            var w = Small();
+            w.Cast("whirlwind", 4, 4, 0);
+            w.At(6, 4).Gas = "smoke";
+            w.At(6, 4).GasAmt = 3;
+            Run(w, 7);
+            var back = World.Load(w.Save(new Blank()), Base, new Blank());
+            Assert.That(back.Whirls.Single().Age, Is.EqualTo(7));
+            Run(w, 20);
+            Run(back, 20);
+            Assert.That(back.CellHash(), Is.EqualTo(w.CellHash()));
+            Run(back, 40);
+            Assert.That(back.Whirls, Is.Empty);
         }
 
         [Test]

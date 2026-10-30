@@ -226,6 +226,8 @@ export interface SpellDef {
   taper?: boolean;
   /** A burst whose element arrives at each cell heading in toward its middle (Whirlwind): air shoves gas and fans fire inward. */
   inward?: boolean;
+  /** An inward burst that keeps whirling for duration ticks (Whirlwind): every pullEvery ticks it draws gas and entities of maxMass or less a cell inward and runs fire round its rings (tickWhirlwinds). */
+  pullEvery?: number;
   /** The light the Light effect sheds, in feet (bright, dim), for the view to draw (SpellDef.LightBright, LightDim). */
   light?: { bright: number; dim: number };
   /** The ground it blows out where it lands (Fireball). */
@@ -888,6 +890,7 @@ export function validateRules(r: Rules): string[] {
     if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
     if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
     if (s.crater?.leaves && !terrainIds.has(s.crater.leaves)) errors.push(`spell ${s.id}: crater leaves ${s.crater.leaves} unknown`);
+    if (s.pullEvery !== undefined && !(Number.isInteger(s.pullEvery) && s.pullEvery >= 1)) errors.push(`spell ${s.id}: pullEvery must be a whole number from 1`);
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const c of r.critters) if (c.hours !== undefined && !isHours(c.hours)) errors.push(`critter ${c.id}: hours must be [from, to], hours from 0 to 24`);
