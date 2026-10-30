@@ -19,6 +19,21 @@ namespace Chem.Tests
         static IReadOnlyList<string> ErrorsOf(string mod) => Assert.Throws<ModException>(() => With(mod)).Errors;
 
         [Test]
+        public void EveryCreatureNamesAKnownMaterialThatGivesItNothingYet()
+        {
+            // docs/MATERIALS.md step 5, part 1: creatures name flesh, bone or chitin, which have no verbs
+            // yet, so they still burn, freeze and soak as creatures (no MaterialBurn, no components).
+            var creatures = R.Entities.Where(e => e.Value.Creature).ToList();
+            Assert.That(creatures, Is.Not.Empty);
+            foreach (var (id, def) in creatures.Select(e => (e.Key, e.Value)))
+            {
+                Assert.That(def.MaterialDef, Is.Not.Null, $"{id} names a known material");
+                Assert.That(new[] { "flesh", "bone", "chitin" }, Does.Contain(def.Material), id);
+                Assert.That(def.MaterialDef.Burns || def.MaterialDef.Tags.Count > 0, Is.False, $"{id}'s {def.Material} gives it nothing");
+            }
+        }
+
+        [Test]
         public void ThingsCarryTheirComponents()
         {
             Assert.That(R.Components, Is.Ordered.Using((IComparer<string>)System.StringComparer.Ordinal));

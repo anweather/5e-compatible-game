@@ -39,6 +39,18 @@ test("things carry their components, and the bits match the C# port", () => {
   assert.deepEqual(Object.keys(e).filter((k) => hasComponent(e[k]!, "creature")).sort(), ["ash-crab", "bone-hound", "giant-spider", "goblin", "wizard"]);
 });
 
+// Mirrors ComponentTests.EveryCreatureNamesAKnownMaterialThatGivesItNothingYet (docs/MATERIALS.md step 5, part 1).
+test("every creature names a known material that gives it nothing yet", () => {
+  const creatures = Object.entries(RULES.entities).filter(([, def]) => hasComponent(def, "creature"));
+  assert.ok(creatures.length > 0);
+  for (const [id, def] of creatures) {
+    const m = def.material !== undefined ? RULES.terrain[def.material] : undefined;
+    assert.ok(m, `${id} names a known material`);
+    assert.ok(["flesh", "bone", "chitin"].includes(def.material!), id);
+    assert.equal(m.tags.length, 0, `${id}'s ${def.material} gives it nothing`);
+  }
+});
+
 test("the old flammable and creature keys still load", () => {
   const r = composeRules([{ entities: { hay: { name: "Hay bale", hp: 2, mass: 1, flammable: true }, imp: { name: "Imp", hp: 4, mass: 1, creature: true, components: ["floats"] } } }]);
   assert.deepEqual(validateRules(r), []);
