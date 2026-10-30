@@ -451,3 +451,19 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   runs it only in .claude/worktrees/host-ux, counting the repo-root folder
   (the folder that session started in). Add a case there for each new host
   worktree.
+- 2026-10-29 night: OVERNIGHT PLAN (Andrew: "keep the lean mode going ... use
+  the Pro sessions if you can ... picking stuff off our backlog until
+  morning"). Merges pre-approved when their checks pass. Memory: while the
+  host Editor (DesktopUnity) works, no worker VMs; after it closes, at most 2
+  VMs, Pro first, Max (w3, w4) when Pro is out. Queue, in order:
+  1. DesktopUnity: host UX Part 1 (effects shots and fixes), then Part 2 (the
+     combo UI and Andrew's HUD layout). Then it closes the Editor.
+  2. The combo stand-ins: the 11 of 20 combos marked todo in rules get real
+     spells (flame wave, scalding steam burst, fog bank, wave, mud, frost,
+     molten boulder, plant growth, dust storm, rain cloud, sand blast,
+     whirlwind: whichever are stand-ins), 3 or 4 per worker task, headless.
+  3. Tuning from tonight: the oil slick's spread limit and boil-off; Light
+     gets a real spell for its d-pad slot.
+  4. BACKLOG 21 (player saves): a design note only, no code.
+  Stop when the queue is empty or usage runs low, and leave a morning report
+  in docs/handoffs/morning-2026-10-30.md.
