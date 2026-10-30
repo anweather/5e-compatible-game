@@ -9,7 +9,7 @@
 #      "<account> out until <time>", with what it stopped.
 #   2. Back: two minutes after the reset time it mails both roles "<account> is back", and wakes
 #      the account's role (bridge.sh wake) if its listener isn't running.
-#   3. Delivery: mail unread for 5 min while its role's listener isn't running and its account
+#   3. Delivery: mail taken but not acked in 10 min goes back to the inbox; mail unread for 5 min while its role's listener isn't running and its account
 #      isn't out wakes the role (at most once every 30 min); the PM has no wake recipe, so its
 #      mail is only logged as waiting.
 # Everything is logged in bridge.log as "watch". State: $BRIDGE/watch/.
@@ -115,8 +115,15 @@ wake() { # wake <role>, at most once every 30 min
 }
 
 check_delivery() { # $1 = role
-  local r="$1" a="${of_role[$1]}" oldest age
-  shopt -s nullglob; local mailbox=("$root/$r"/*.md); shopt -u nullglob
+  local r="$1" a="${of_role[$1]}" oldest age t
+  # Taken but not acked in 10 min: back to the inbox. `wait` does this too, but only while a
+  # listener runs; a listener whose session never reacts leaves the mail here (2026-10-30).
+  shopt -s nullglob
+  for t in "$root/$r"/taken/*.md; do
+    (( $(date +%s) - $(date -r "$t" +%s) >= 600 )) || continue
+    mv "$t" "$root/$r/" && log "returned $(basename "$t") to $r (taken, not acked in 10 min)"
+  done
+  local mailbox=("$root/$r"/*.md); shopt -u nullglob
   (( ${#mailbox[@]} )) || return 0
   oldest="$(ls -tr "${mailbox[@]}" | head -1)"
   age=$(( $(date +%s) - $(date -r "$oldest" +%s) ))

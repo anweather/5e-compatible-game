@@ -93,10 +93,18 @@ case "$cmd" in
         prompt="Your inbox listener had stopped, so bridge.sh restarted you, continuing this conversation. Run 'bash tools/workers/bridge.sh read coordinator' from your worktree, ack what you read ('bridge.sh ack coordinator all'), start 'bash tools/workers/bridge.sh wait coordinator' as a background command, then carry on with what the PM asks, reporting with 'BRIDGE_FROM=coordinator bash tools/workers/bridge.sh send pm <subject>'." ;;
       *) echo "No wake recipe for $who."; exit 2 ;;
     esac
-    # Busy, not gone: a session that wrote its transcript in the last 5 min is mid-turn and starts
-    # its wait again when the turn ends. Restarting it would cut that turn off.
-    newest="$(find "$config/projects" -name '*.jsonl' -mmin -5 2>/dev/null | head -1)"
-    [[ -z "$newest" ]] || { log "not woken: busy (wrote its log in the last 5 min)"; echo "$who is busy (wrote its log in the last 5 min); not waking it."; exit 0; }
+    # Busy, not gone: a session with a message in its transcript in the last 5 min is mid-turn and
+    # starts its wait again when the turn ends. Restarting it would cut that turn off. By the
+    # messages' own times, not the file's: an idle session's file is still touched (Remote Control
+    # bookkeeping), which kept a dead listener's session from being woken (2026-10-30).
+    busy="$(find "$config/projects" -name '*.jsonl' -mmin -5 -print0 2>/dev/null | xargs -0 -r tail -q -n 200 2>/dev/null | node -e '
+      let last = 0;
+      for (const l of require("fs").readFileSync(0, "utf8").split("\n")) {
+        let o; try { o = JSON.parse(l); } catch { continue; }
+        if ((o.type === "user" || o.type === "assistant") && o.timestamp) last = Math.max(last, Date.parse(o.timestamp));
+      }
+      if (Date.now() - last < 300000) console.log("busy");' 2>/dev/null)"
+    [[ -z "$busy" ]] || { log "not woken: busy (a message in the last 5 min)"; echo "$who is busy (a message in its transcript in the last 5 min); not waking it."; exit 0; }
     # Replace, don't add: stop the role's running Claude (found by its launcher), so there's only
     # ever one, then continue its last conversation in the main checkout, where it was started.
     pids="$(powershell -NoProfile -Command "\$p = Get-CimInstance Win32_Process; \$p | Where-Object { \$_.Name -eq 'claude.exe' -and \$_.CommandLine -like '*.local\\bin\\claude.exe*' } | Where-Object { \$c = \$_.ParentProcessId; (\$p | Where-Object ProcessId -eq \$c).CommandLine -match '$launcher' } | ForEach-Object ProcessId" 2>/dev/null | tr -d '\r' | xargs)"

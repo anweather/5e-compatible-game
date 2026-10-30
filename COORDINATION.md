@@ -524,3 +524,12 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   WizardBeard unused with the new face (Andrew's call); the WizardFace and
   CellLava shaders not yet checked in a player build; NetWizard.prefab
   changed, so other checkouts rebuild.
+- 2026-10-30: The first real wake (11:56) worked, after two fixes. The Pro
+  coordinator went idle and compacted at 09:17; its listener took the w1
+  water brief at 11:29, but the session never reacted, and the mail sat in
+  taken/ for 27 min. (1) Taken mail went back to the inbox only inside a
+  running `wait`, so with no listener nothing returned it; bridge-watch.sh
+  now returns mail taken and not acked in 10 min. (2) wake judged "busy" by
+  the transcript file's time, but an idle Remote Control session's file is
+  still touched; it now goes by the last message's own time. w1 is briefed
+  (combo-water).
