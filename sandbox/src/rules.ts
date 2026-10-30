@@ -267,6 +267,12 @@ export interface SpellDef {
   dropPower?: number;
   /** What a whirling spell can take on, strongest first: one replaces any after it. */
   carries?: CarryDef[];
+  /** A spell that acts on what's already there (Geyser on water): it lands only on the cells matching this, and with none fizzles (fizzle logged). */
+  needs?: CellCond;
+  /** The line logged when a spell with needs finds no cell to act on; unset, "{name} fizzles". */
+  fizzle?: string;
+  /** A travelling wave's element where it stops (Wave's mud; tickWaves). */
+  leaves?: string;
   /** The light the Light effect sheds, in feet (bright, dim), for the view to draw (SpellDef.LightBright, LightDim). */
   light?: { bright: number; dim: number };
   /** The ground it blows out where it lands (Fireball). */
@@ -472,7 +478,7 @@ export interface Rules {
   combos: CombosDef;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow", "geyser", "wave"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -943,6 +949,8 @@ export function validateRules(r: Rules): string[] {
     if (s.delay !== undefined && !(Number.isInteger(s.delay) && s.delay >= 1)) errors.push(`spell ${s.id}: delay must be a whole number from 1`);
     if (s.scatter !== undefined && !(coverIds.has(s.scatter.cover) && Number.isInteger(s.scatter.count) && s.scatter.count >= 1 && Number.isInteger(s.scatter.reach) && s.scatter.reach >= 1)) errors.push(`spell ${s.id}: scatter needs a known cover and a whole count and reach from 1`);
     if (s.core !== undefined && !el.has(s.core)) errors.push(`spell ${s.id}: unknown core ${s.core}`);
+    if (s.leaves !== undefined && !el.has(s.leaves)) errors.push(`spell ${s.id}: unknown leaves ${s.leaves}`);
+    for (const k of Object.keys(s.needs ?? {})) if (!COND_KEYS.has(k)) errors.push(`spell ${s.id}: needs has unknown condition "${k}"`);
     for (const key of ["travelEvery", "dropPower"] as const)
       if (s[key] !== undefined && !(Number.isInteger(s[key]) && s[key]! >= 1)) errors.push(`spell ${s.id}: ${key} must be a whole number from 1`);
     for (const c of s.carries ?? []) {

@@ -6,7 +6,7 @@ import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
-  type Dir, type Entity, type Star, type Whirl, type World,
+  type Dir, type Entity, type Star, type Wave, type Whirl, type World,
   DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, logOnce, newCell, playerOf, rand, roll, windDir,
 } from "./world.ts";
 
@@ -218,6 +218,7 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   else if (s.effect === "weather") controlWeather(w, s, clampCharge(charge));
   else if (s.effect === "light") lightUp(w, s, x, y);
   else if (s.delay) aimStar(w, s, x, y, dir, clampCharge(charge));
+  else if (isWave(s)) startWave(w, s, x, y, dir, clampCharge(charge));
   else landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
 }
 
@@ -444,9 +445,92 @@ function whirlEntities(w: World, ww: Whirl): void {
   }
 }
 
+/** Whether a spell rolls out as a wave (a line with travelEvery that doesn't whirl) rather than landing at once (World.IsWave). */
+export const isWave = (s: SpellDef) => !!s.travelEvery && !s.inward && s.shape === "line";
+
+/**
+ * A wave's cast (World.StartWave): the front starts on the cast's square, a line across the way it rolls, width cells
+ * to each side, and washes over it; it rolls one cell every travelEvery ticks, to the line's length in all (tickWaves).
+ */
+function startWave(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number): void {
+  const wv: Wave = {
+    spell: s.id, x, y, dir, width: (s.radius ?? 1) + chargedGrowth(s, charge), left: chargedLength(s.length ?? 5, charge) - 1,
+    every: s.travelEvery!, age: 0, power: (s.power ?? 1) * charge, maxMass: s.maxMass ?? 1,
+  };
+  wash(w, wv, s);
+  if (wv.left > 0) w.waves.push(wv);
+  else breakWave(w, wv, s);
+}
+
+/** Each wave, in the order cast, rolls a cell when its time comes; against a wall or its length's end it breaks and is gone (World.TickWaves). */
+export function tickWaves(w: World): void {
+  if (!w.waves.length) return;
+  for (const wv of w.waves) {
+    if (++wv.age % wv.every !== 0) continue;
+    const s = spellById(wv.spell);
+    const nx = wv.x + DX[wv.dir], ny = wv.y + DY[wv.dir];
+    const n = cellAt(w, nx, ny);
+    if (s && n && !isBlocking(n)) {
+      wv.x = nx;
+      wv.y = ny;
+      wv.left--;
+      wash(w, wv, s);
+    } else wv.left = 0;
+    if (wv.left <= 0) breakWave(w, wv, s);
+  }
+  w.waves = w.waves.filter((wv) => wv.left > 0);
+}
+
+/** The open cells of a wave's front, from one side to the other (World.Front). */
+function front(w: World, wv: Wave): [number, number][] {
+  const out: [number, number][] = [];
+  const px = DY[wv.dir], py = DX[wv.dir];
+  for (let o = -wv.width; o <= wv.width; o++) {
+    const cx = wv.x + px * o, cy = wv.y + py * o;
+    const c = cellAt(w, cx, cy);
+    if (c && !isBlocking(c)) out.push([cx, cy]);
+  }
+  return out;
+}
+
+/**
+ * The wave's element lands on its front (it douses fires and soaks what it meets), then each thing there light
+ * enough is knocked a cell on ahead of it, where that's open (World.Wash). The player stays put, as in the C# core.
+ */
+function wash(w: World, wv: Wave, s: SpellDef): void {
+  const cells = front(w, wv);
+  for (const [cx, cy] of cells) applyElement(w, cx, cy, s.element!, { power: wv.power, dir: wv.dir, direct: true });
+  for (const [cx, cy] of cells) {
+    const e = entityAt(w, cx, cy);
+    if (!e || defOf(e).player || massOf(e) > wv.maxMass) continue;
+    const nx = cx + DX[wv.dir], ny = cy + DY[wv.dir];
+    const n = cellAt(w, nx, ny);
+    if (!n || isBlocking(n) || entityAt(w, nx, ny)) continue;
+    e.x = nx;
+    e.y = ny;
+  }
+}
+
+/** Where it stops it breaks, and its leaves (mud) lands over the front (World.Break). */
+function breakWave(w: World, wv: Wave, s: SpellDef | undefined): void {
+  wv.left = 0;
+  if (!s) return;
+  logOnce(w, `wave#${s.id}`, `The ${s.name.toLowerCase()} breaks`, "info");
+  if (!s.leaves) return;
+  for (const [cx, cy] of front(w, wv)) applyElement(w, cx, cy, s.leaves, { power: 1, direct: true });
+}
+
 /** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */
 export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
-  const cells = spellCells(w, s, x, y, dir, charge, aim);
+  let cells = spellCells(w, s, x, y, dir, charge, aim);
+  // A spell that acts on what's already there (Geyser on water) lands only where that is, and fizzles where it isn't.
+  if (s.needs) {
+    cells = cells.filter(([cx, cy]) => matches(cellAt(w, cx, cy)!, s.needs));
+    if (!cells.length) {
+      log(w, s.fizzle ?? `${s.name} fizzles`, "notable");
+      return;
+    }
+  }
   const ctx = { power: (s.power ?? 1) * charge, dir, direct: true, at: [x, y] as [number, number] };
   // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction (World.Land).
   if (s.wind) w.wind = { dir, ticks: s.wind };

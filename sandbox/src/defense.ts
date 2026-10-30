@@ -89,7 +89,7 @@ function march(w: World, d: DefenseState, p: DefenseParams) {
       r.wait = r.wait! - 1;
       continue;
     }
-    if ((r.status.frozen ?? 0) > 0 || (r.status.snagged ?? 0) > 0) continue;
+    if ((r.status.frozen ?? 0) > 0 || (r.status.snagged ?? 0) > 0 || (r.status.thrown ?? 0) > 0) continue;
     advance(w, d, p, r, cost);
     if (d.phase !== RUNNING) return;
   }
@@ -242,6 +242,8 @@ export function defenseText(w: World): string {
   for (const r of raiders(w)) {
     s += `${r.id},${r.kind},${r.x},${r.y},${r.hp},${r.wait ?? 0}`;
     for (const k of HASHED_STATUSES) s += `,${r.status[k] ?? 0}`;
+    // Thrown (a Geyser's jet) joins only while it lasts, so older defenses hash as they did (World.DefenseText).
+    if ((r.status.thrown ?? 0) > 0) s += `,t${r.status.thrown}`;
     s += ";";
   }
   return s;

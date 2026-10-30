@@ -222,6 +222,12 @@ namespace Chem
         public string Core;
         /// <summary>A whirling spell moves a cell every this many ticks (World.Travel), 0 never; it drops what it carries at DropPower.</summary>
         public int TravelEvery, DropPower = 1;
+        /// <summary>A spell that acts on what's already there (Geyser on water): it lands only on the cells matching this, and with none fizzles (Fizzle logged); null lands everywhere.</summary>
+        public CellCond Needs;
+        /// <summary>The line logged when a spell with Needs finds no cell to act on, or null for "{Name} fizzles".</summary>
+        public string Fizzle;
+        /// <summary>A travelling wave's element where it stops (Wave's mud; World.Waves), or null.</summary>
+        public string Leaves;
         /// <summary>What a whirling spell can take on, strongest first: one replaces any after it (CarryDef); empty for none.</summary>
         public IReadOnlyList<CarryDef> Carries = Array.Empty<CarryDef>();
         /// <summary>The light the Light effect sheds, in feet (spells.json light { bright, dim }), for the view to draw; 0 none.</summary>
@@ -468,7 +474,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow", "geyser", "wave" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -769,6 +775,9 @@ namespace Chem
             Core = Str(o["core"]),
             TravelEvery = Int(o["travelEvery"]) ?? 0,
             DropPower = Int(o["dropPower"]) ?? 1,
+            Needs = o["needs"] is JObject nd ? ParseCond(nd) : null,
+            Fizzle = Str(o["fizzle"]),
+            Leaves = Str(o["leaves"]),
             Carries = (o["carries"] as JArray)?.OfType<JObject>().Select(ParseCarry).ToList() ?? (IReadOnlyList<CarryDef>)Array.Empty<CarryDef>(),
             LightBright = Int((o["light"] as JObject)?["bright"]) ?? 0,
             LightDim = Int((o["light"] as JObject)?["dim"]) ?? 0,

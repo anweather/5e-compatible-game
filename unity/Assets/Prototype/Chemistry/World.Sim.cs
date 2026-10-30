@@ -114,6 +114,7 @@ namespace Chem
                     TickDefense();
                     TickCombos();
                     TickWhirlwinds();
+                    TickWaves();
                     NextStage(TickStage.Timers);
                     return false;
                 case TickStage.End:

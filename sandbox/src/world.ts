@@ -150,6 +150,8 @@ export interface World {
   stars: Star[];
   /** The whirlwinds still whirling, in the order cast (World.Whirls): middle, radius, ticks it lasts and has run, how often it pulls, the heaviest creature it drags. */
   whirls: Whirl[];
+  /** The waves still rolling, in the order cast (World.Waves). */
+  waves: Wave[];
   /** Hasten Time: how many times as fast the day clock runs, and the ticks it has left (C#: World.Haste). */
   haste: { rate: number; ticks: number } | null;
   /** Ticks of day the clock has run ahead of tick (Hasten Time); the clock reads tick + clockAhead. */
@@ -199,6 +201,7 @@ export function createWorld(w: number, h: number, seed = 1): World {
     wind: null,
     stars: [],
     whirls: [],
+    waves: [],
     haste: null,
     clockAhead: 0,
     weatherSet: null,
@@ -248,6 +251,23 @@ export interface Star {
   charge: number;
   radius: number;
   lands: number;
+}
+
+/**
+ * A wave still rolling (Wave; World.Wave): its front's middle, the way it rolls, how far the front reaches to each side,
+ * the cells it may still roll, how often it rolls one, its age, the power its element lands with and the heaviest thing it knocks back.
+ */
+export interface Wave {
+  spell: string;
+  x: number;
+  y: number;
+  dir: Dir;
+  width: number;
+  left: number;
+  every: number;
+  age: number;
+  power: number;
+  maxMass: number;
 }
 
 /** A whirlwind still whirling (spells.json pullEvery: Whirlwind; World.Whirl). */
@@ -333,8 +353,8 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  // The defense, the casts, the whirlwinds and the stars join only once there are any, so older worlds hash as they did.
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : [])]);
+  // The defense, the casts, the whirlwinds, the stars and the waves join only once there are any, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : []), ...(w.waves.length ? [w.waves] : [])]);
   return fnv1a(s);
 }
 
@@ -401,7 +421,7 @@ export function deserializeWorld(s: WorldSnapshot): World {
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
   // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], stars: copy.stars ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], stars: copy.stars ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

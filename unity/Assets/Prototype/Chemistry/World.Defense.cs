@@ -114,7 +114,7 @@ namespace Chem
                     r.Wait--;
                     continue;
                 }
-                if (r.StatusOf("frozen") > 0 || r.StatusOf("snagged") > 0) continue;
+                if (r.StatusOf("frozen") > 0 || r.StatusOf("snagged") > 0 || r.StatusOf(ThrownStatus) > 0) continue;
                 Advance(d, p, r);
                 if (d.Phase != DefensePhase.Running) return;
             }
@@ -318,11 +318,16 @@ namespace Chem
                 sb.Append(r.Id.ToString(inv)).Append(',').Append(r.Kind).Append(',').Append(r.X.ToString(inv)).Append(',').Append(r.Y.ToString(inv)).Append(',')
                   .Append(r.Hp.ToString(inv)).Append(',').Append(r.Wait.ToString(inv));
                 foreach (var s in HashedStatuses) sb.Append(',').Append(r.StatusOf(s).ToString(inv));
+                // Thrown (a Geyser's jet) joins only while it lasts, so older defenses hash as they did.
+                if (r.StatusOf(ThrownStatus) > 0) sb.Append(",t").Append(r.StatusOf(ThrownStatus).ToString(inv));
                 sb.Append(';');
             }
             return sb.ToString();
         }
 
         static readonly string[] HashedStatuses = { "burning", "wet", "frozen", "snagged" };
+
+        /// <summary>The status of a raider thrown up in the air (a Geyser's jet, reactions.json e-geyser): it can't walk until it lands.</summary>
+        public const string ThrownStatus = "thrown";
     }
 }

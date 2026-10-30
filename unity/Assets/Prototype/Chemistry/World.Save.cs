@@ -90,6 +90,7 @@ namespace Chem
             if (crackedThings.Count > 0) save["crackedThings"] = new JArray(crackedThings.Select(t => t.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
             if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
+            if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass)));
             var made = new Cell();
             var saved = new JArray();
             foreach (var ch in SortedChunks(false))
@@ -194,6 +195,8 @@ namespace Chem
                 stars.Add(new Star { Spell = (string)st[0], X = (int)st[1], Y = (int)st[2], Dir = (int)st[3], Charge = (int)st[4], Radius = (int)st[5], Lands = (int)st[6] });
             foreach (var ww in s["whirls"] ?? new JArray())
                 whirls.Add(new Whirl { X = (int)ww[0], Y = (int)ww[1], Radius = (int)ww[2], Ticks = (int)ww[3], Age = (int)ww[4], Every = (int)ww[5], MaxMass = (int)ww[6], Spell = (string)ww[7], Dir = (int)ww[8], Travel = (int)ww[9], Carrying = (string)ww[10] });
+            foreach (var wv in s["waves"] ?? new JArray())
+                waves.Add(new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] });
             NextEntityId = (int)s["nextEntityId"];
             if (s["defense"] is JObject d)
             {

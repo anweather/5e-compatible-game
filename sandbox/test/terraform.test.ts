@@ -6,11 +6,11 @@ import { withoutSoaking } from "./soak.ts";
 import { RULES, composeRules, installRules, validateRules, type ModPatch } from "../src/rules.ts";
 import { step } from "../src/sim.ts";
 import { castSpell, spellById, spellCells } from "../src/actions.ts";
-import { applyElement, shatter } from "../src/react.ts";
+import { applyElement, ignite, shatter } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
 import { dig, reshape } from "../src/terraform.ts";
 import { whirlState } from "../src/combos.ts";
-import { type Cell, type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld, serializeWorld } from "../src/world.ts";
+import { type Cell, type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -581,6 +581,76 @@ test("Forge heats and the material decides, matching the C# golden", () => {
   assert.equal(RULES.terrain.brick!.hardness, 3);
   run(w, 12);
   assert.equal(`${cellHash(w)} ${w.rng}`, "1124f40e 3023719660"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.AGeyserBoilsThePondIntoAJetAndFizzlesOnDryGround: it acts on water already there; on dry
+// ground it fizzles and says so.
+test("a geyser boils the pond into a jet and fizzles on dry ground, matching the C# golden", () => {
+  const w = createWorld(12, 7, 5);
+  for (const c of w.cells) c.t = "dirt";
+  for (let y = 2; y <= 4; y++) for (let x = 6; x <= 8; x++) cellAt(w, x, y)!.water = 3;
+  const gob = spawn(w, "goblin", 7, 3)!;
+  const dry = cellHash(w);
+  castSpell(w, "geyser", 2, 3, 0);
+  assert.equal(w.log[w.log.length - 1]!.text, "The geyser fizzles: there's no water there to boil");
+  assert.equal(cellHash(w), dry, "nothing changes on dry ground");
+  castSpell(w, "geyser", 6, 3, 0);
+  assert.equal(cellAt(w, 7, 3)!.gas, "steam");
+  assert.equal(cellAt(w, 7, 3)!.water, 2);
+  assert.equal(cellAt(w, 5, 3)!.gas, null, "only the water jets");
+  assert.ok((gob.status.thrown ?? 0) > 0);
+  run(w, 12);
+  assert.ok(gob.hp < 10, "the steam scalds it");
+  assert.equal(`${cellHash(w)} ${w.rng} ${gob.hp}`, "4209bc06 3136449455 5"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.AWaveRollsOutDousesKnocksBackAndLeavesMud.
+test("a wave rolls out, douses, knocks back and leaves mud, matching the C# golden", () => {
+  const w = createWorld(16, 7, 6);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 6, 3)!.t = "grass";
+  ignite(cellAt(w, 6, 3)!, 2);
+  const gob = spawn(w, "goblin", 4, 2)!;
+  castSpell(w, "wave", 1, 3, 1);
+  assert.equal(w.waves.length, 1);
+  assert.equal(cellAt(w, 1, 3)!.water, 0, "it rolls on rather than flooding");
+  run(w, 6);
+  assert.equal(w.waves[0]!.x, 4);
+  assert.deepEqual([gob.x, gob.y], [5, 2], "knocked back ahead of the wave");
+  assert.ok((gob.status.wet ?? 0) > 0);
+  run(w, 10);
+  assert.equal(w.waves.length, 0, "it breaks at its length's end");
+  assert.equal(cellAt(w, 6, 3)!.fire, 0, "the fire is out");
+  assert.deepEqual([gob.x, gob.y], [9, 2]);
+  for (const y of [2, 3, 4]) assert.equal(cellAt(w, 8, y)!.t, "mud", "mud where it stopped");
+  assert.equal(cellAt(w, 7, 3)!.t, "dirt");
+  run(w, 4);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "4b82ec13 752141770"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.FrostBridgesWaterFreezesTheWetAndGlazesTheGround.
+test("frost bridges water, freezes the wet and glazes the ground, matching the C# golden", () => {
+  const w = createWorld(14, 7, 7);
+  for (const c of w.cells) c.t = "dirt";
+  for (let y = 0; y <= 6; y++) for (let x = 6; x <= 8; x++) cellAt(w, x, y)!.water = 3;
+  const gob = spawn(w, "goblin", 3, 3)!;
+  applyElement(w, 3, 3, "water", { power: 1, direct: true });
+  castSpell(w, "frost", 1, 3, 1);
+  for (const x of [6, 7, 8]) assert.equal(cellAt(w, x, 3)!.frozen, true, "an ice bridge");
+  assert.equal(cellAt(w, 7, 2)!.frozen, false);
+  assert.equal(cellAt(w, 2, 3)!.cover, "frost");
+  assert.ok(isSlippery(cellAt(w, 2, 3)!) && isSlippery(cellAt(w, 7, 3)!), "slippery underfoot");
+  assert.ok((gob.status.frozen ?? 0) > 0);
+  castSpell(w, "ray-of-frost", 1, 5, 1);
+  assert.equal(cellAt(w, 2, 5)!.cover, null, "a cantrip doesn't frost the ground");
+  castSpell(w, "acid-splash", 3, 3, 0);
+  assert.ok(w.entities.includes(gob) && (gob.status.cracked ?? 0) > 0, "the first hit cracks it");
+  castSpell(w, "acid-splash", 3, 3, 0);
+  assert.ok(!w.entities.includes(gob), "the next shatters it");
+  castSpell(w, "fire-bolt", 2, 3, 0);
+  assert.equal(cellAt(w, 2, 3)!.cover, null, "fire melts the frost");
+  run(w, 12);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "4f8ffa48 1199730150"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AFallingStarMarksItsTargetThenStrikes: a mark for a second (6 ticks), then a crater with a

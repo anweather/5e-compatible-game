@@ -212,6 +212,7 @@ namespace Chem
             else if (s.Effect == WeatherEffect) HoldWeather(s, ClampCharge(charge));
             else if (s.Effect == LightEffect) LightUp(s, x, y);
             else if (s.Delay > 0) AimStar(s, x, y, dir, ClampCharge(charge));
+            else if (IsWave(s)) StartWave(s, x, y, dir, ClampCharge(charge));
             else Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
         }
 
@@ -441,6 +442,16 @@ namespace Chem
             var cells = SpellCells(s, x, y, dir, charge, aimX, aimY);
             // Squares in paused chunks are left alone (World.Chunks.cs).
             cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
+            // A spell that acts on what's already there (Geyser on water) lands only where that is, and fizzles where it isn't.
+            if (s.Needs != null)
+            {
+                cells.RemoveAll(c => !Matches(At(c.x, c.y), s.Needs));
+                if (cells.Count == 0)
+                {
+                    AddLog(s.Fizzle ?? $"{s.Name} fizzles", LogKind.Notable);
+                    return;
+                }
+            }
             // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction.
             if (s.Wind > 0) Wind = (dir, s.Wind);
             if (s.Inward && s.PullEvery > 0 && s.Duration > 0)

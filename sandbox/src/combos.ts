@@ -137,5 +137,8 @@ export const castState = (w: World): string =>
 /** The whirlwinds as text, "" when there are none: where, its age, and what it carries (C#: World.WhirlState). */
 export const whirlState = (w: World): string => w.whirls.map((ww) => `|${ww.x}:${ww.y}:${ww.age}:${ww.carrying ?? "-"}`).join("");
 
-/** A fingerprint (FNV-1a) of every player's cast state and grimoire and the whirlwinds still whirling (C#: World.CastHash). */
-export const castHash = (w: World): string => fnv1a(castState(w) + whirlState(w));
+/** The waves as text, "" when there are none: where each front is, the cells it has left and its age (C#: World.WaveState). */
+export const waveState = (w: World): string => w.waves.map((wv) => `|~${wv.x}:${wv.y}:${wv.left}:${wv.age}`).join("");
+
+/** A fingerprint (FNV-1a) of every player's cast state and grimoire, the whirlwinds still whirling and the waves still rolling (C#: World.CastHash). */
+export const castHash = (w: World): string => fnv1a(castState(w) + whirlState(w) + waveState(w));

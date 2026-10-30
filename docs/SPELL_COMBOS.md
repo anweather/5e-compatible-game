@@ -138,6 +138,8 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   smoke column, a snow flurry. It carries what it picks up and drops it all
   when it dies out.
 
+**Built (2026-10-30), the water row:** Geyser (a spell `needs` water: the pond boils to steam, a `thrown` status and a scald, a fizzle on dry ground), Wave (a rolling front, `World.Waves` for the view's props: douses, soaks, knocks back, mud where it breaks) and Frost (ice bridges, the wet frozen solid and shattered by the existing cracked stage, and a slippery `frost` cover from cold of power 4), in the rules and both engines. The view still needs the jet launching players and props, props riding the wave, and the frost's look.
+
 **Built (2026-10-30):** Whirlwind taking on elements and the dust explosion,
 in the rules and both engines (`rules/README.md`).
 
