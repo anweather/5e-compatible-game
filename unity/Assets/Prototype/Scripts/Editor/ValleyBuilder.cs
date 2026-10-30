@@ -1127,6 +1127,14 @@ public static class ValleyBuilder
         return AssetDatabase.LoadAssetAtPath<Material>(path);
     }
 
+    // Window glass: a material asset, so the shader is in the build.
+    internal static Material GlassMaterial()
+    {
+        var glass = EditorAssets.LoadOrCreate($"{Generated}/WindowGlass.mat", () => new Material(Shader.Find("Prototype/WindowGlass")));
+        glass.shader = Shader.Find("Prototype/WindowGlass");
+        return glass;
+    }
+
     static Transform BuildHouse(Transform village, VillageBuilding b, string name, float level, float cs, Material material, GameObject smoke)
     {
         var go = new GameObject(name);
@@ -1148,6 +1156,22 @@ public static class ValleyBuilder
         house.width = b.Width * cs;
         house.depth = b.Depth * cs;
         house.material = material;
+        house.glass = GlassMaterial();
+        // The plan's windows and door, along their walls in the house's own space.
+        Vector3 Local((int x, int y) cell)
+        {
+            var at = ValleyShape.AreaOf(new CellRect(cell.x, cell.y, 1, 1)).center;
+            return go.transform.InverseTransformPoint(new Vector3(at.x, go.transform.position.y, at.y));
+        }
+        house.doorAt = Local(b.DoorCell).x;
+        house.windows = b.Windows.Select(w =>
+        {
+            var at = Local((w.X, w.Y));
+            var (wx, wy) = Sides.Step(w.Face);
+            var way = go.transform.InverseTransformDirection(new Vector3(wx, 0f, -wy));
+            if (Mathf.Abs(way.x) > 0.5f) return new Vector2(way.x > 0f ? BuildingMesher.Spec.Right : BuildingMesher.Spec.Left, at.z);
+            return new Vector2(way.z > 0f ? BuildingMesher.Spec.Back : BuildingMesher.Spec.Front, at.x);
+        }).ToArray();
         house.Rebuild();
 
         var made = BuildingMesher.Make(house.Spec);
@@ -1229,6 +1253,9 @@ public static class ValleyBuilder
         Part(root, PrimitiveType.Cube, new Vector3(-1.6f, 1.6f, -l / 2f - 0.17f), new Vector3(0.9f, 0.7f, 0.05f), glow);      // window
         var chimney = new Vector3(-w / 2f + 0.8f, wallTop + rise / 2f + 0.9f, l / 4f);
         Part(root, PrimitiveType.Cube, chimney, new Vector3(0.7f, rise + 1.8f, 0.7f), stone);
+        var glass = root.gameObject.AddComponent<WindowPanes>();
+        glass.material = GlassMaterial();
+        glass.panes = new[] { new WindowPanes.Pane { at = new Vector3(ValleyShape.CabinWindow.x, 1.6f, ValleyShape.CabinWindow.y), along = Vector3.right * 0.45f, up = Vector3.up * 0.35f, facing = Vector3.back } };
 
         var lamp = new GameObject("Window light").AddComponent<Light>();
         lamp.transform.SetParent(root, false);
@@ -1475,6 +1502,7 @@ public static class ValleyBuilder
         char water = GeneratedWater(p);
         if (water != '\0') return water;
         if (ValleyShape.InRiver(sample)) return 'r';
+        if (ValleyShape.OnCabinWindow(p)) return 'P';
         if (ValleyShape.InCabin(p)) return 'L';
         // The ball court's floor is dirt: bare earth to look at, and nothing on it to burn.
         if (ValleyShape.InCourt(p, 0.2f)) return '.';

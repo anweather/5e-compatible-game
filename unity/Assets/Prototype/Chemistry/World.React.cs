@@ -298,6 +298,7 @@ namespace Chem
                 var to = TerrainOf(c).BreaksTo;
                 if (to == null) return false;
                 c.T = to;
+                WallLost(x, y);
                 return true;
             }
             if (eff.SetTerrain != null)

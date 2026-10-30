@@ -26,6 +26,11 @@ public static class BuildingMesher
         public int seed;
         /// <summary>The footprint in metres: along the front, and front to back.</summary>
         public float width, depth;
+        /// <summary>The plan's windows: x its wall (Front, Back, Left, Right), y its place along that wall in metres; null, the mesher spaces them itself.</summary>
+        public Vector2[] windows;
+        /// <summary>Where the plan puts the door along the front (m), or null for the seed's choice.</summary>
+        public float? doorAt;
+        public const int Front = 0, Back = 1, Left = 2, Right = 3;
     }
 
     public struct Result
@@ -41,6 +46,8 @@ public static class BuildingMesher
         public float eaves;
         /// <summary>Things on the walls to bump into, as local boxes: window boxes and planters.</summary>
         public System.Collections.Generic.List<(Vector3 at, Vector3 size)> solids;
+        /// <summary>The windows' glass (WindowPanes).</summary>
+        public WindowPanes.Pane[] panes;
     }
 
     const float Plinth = 0.35f, Storey = 2.7f, Inset = 0.15f, Jetty = 0.3f;
@@ -69,6 +76,7 @@ public static class BuildingMesher
         public Spec s;
         public MeshKit kit;
         public readonly System.Collections.Generic.List<(Vector3 at, Vector3 size)> solids = new();
+        public readonly System.Collections.Generic.List<WindowPanes.Pane> panes = new();
         public Color wall, timber, stone, roof, paint, door;
         // The walls' half extents (ground storey), their top, the roof's overhang, pitch and rise.
         public float ex, ez, top, over, pitch, rise, doorX;
@@ -85,6 +93,14 @@ public static class BuildingMesher
 
         // The half depth of a storey: the timber frame's upper storeys jut out front and back.
         public float StoreyEz(int storey) => s.walls == WallKind.Timber && storey > 0 ? ez + Jetty : ez;
+    }
+
+    // Where the door stands along the front: the plan's, else the seed's for a house, the middle for the rest.
+    static float DoorX(Build b)
+    {
+        float slack = Mathf.Max(0f, b.ex - 1.6f);
+        float seeded = b.s.kind == BuildingKind.House ? b.Range(-slack, slack) : 0f;
+        return b.s.doorAt ?? seeded;
     }
 
     public static Result Make(Spec spec)
@@ -109,8 +125,8 @@ public static class BuildingMesher
         b.pitch = (spec.cover == RoofCover.Thatch ? 50f : 40f) * Mathf.Deg2Rad;
         b.over = spec.cover == RoofCover.Thatch ? 0.55f : 0.4f;
         b.rise = (b.StoreyEz(storeys - 1) + b.over) * Mathf.Tan(b.pitch) - b.over * Mathf.Tan(b.pitch);
-        float slack = Mathf.Max(0f, b.ex - 1.6f);
-        b.doorX = spec.kind == BuildingKind.House ? b.Range(-slack, slack) : 0f;
+        b.doorX = DoorX(b);
+
 
         var result = new Result { chimneyTop = new Vector3(float.NaN, 0f, 0f) };
         var kit = b.kit;
@@ -133,6 +149,7 @@ public static class BuildingMesher
         result.size = new Vector3(b.ex * 2f + 0.3f, ridge, b.StoreyEz(storeys - 1) * 2f + 0.3f);
         result.eaves = b.top;
         result.solids = b.solids;
+        result.panes = b.panes.ToArray();
         return result;
     }
 
@@ -306,6 +323,11 @@ public static class BuildingMesher
     static void Windows(Build b, int storey)
     {
         float y = Plinth + storey * Storey + 1.45f, ez = b.StoreyEz(storey);
+        if (b.s.windows != null && b.s.windows.Length > 0)
+        {
+            foreach (var w in b.s.windows) PlannedWindow(b, w, y, ez);
+            return;
+        }
         int count = Mathf.Max(1, Mathf.FloorToInt(b.ex * 2f / 2.2f));
         for (int i = 0; i < count; i++)
         {
@@ -319,6 +341,18 @@ public static class BuildingMesher
         Window(b, new Vector3(b.ex, y, 0f), Vector3.right);
     }
 
+    // A window from the plan: x its wall (Spec.windows), y its place along that wall.
+    static void PlannedWindow(Build b, Vector2 w, float y, float ez)
+    {
+        switch ((int)w.x)
+        {
+            case Spec.Front: Window(b, new Vector3(w.y, y, -ez), Vector3.back); break;
+            case Spec.Back: Window(b, new Vector3(w.y, y, ez), Vector3.forward); break;
+            case Spec.Left: Window(b, new Vector3(-b.ex, y, w.y), Vector3.left); break;
+            default: Window(b, new Vector3(b.ex, y, w.y), Vector3.right); break;
+        }
+    }
+
     // A lit window in a wall facing out, with a frame, shutters folded back and maybe flowers.
     static void Window(Build b, Vector3 at, Vector3 facing)
     {
@@ -330,6 +364,8 @@ public static class BuildingMesher
         // Mullions: a cross of timber over the glass.
         kit.Box(at + facing * 0.12f, Size(0.06f, 0.85f, 0.03f), b.timber);
         kit.Box(at + facing * 0.12f, Size(0.75f, 0.06f, 0.03f), b.timber);
+        // Its glass, over all that (WindowPanes draws it, apart from the walls).
+        b.panes.Add(new WindowPanes.Pane { at = at + facing * 0.145f, along = along * 0.375f, up = Vector3.up * 0.425f, facing = facing });
         if (b.s.walls != WallKind.Log)
             for (int side = -1; side <= 1; side += 2)
                 kit.Box(at + along * (side * 0.72f) + facing * 0.15f, Size(0.4f, 0.95f, 0.05f), b.paint); // clear of the wall and its beams

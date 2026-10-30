@@ -84,7 +84,7 @@ Each group's keys, and what reads them today.
 | **soak** | `dry`, `wet` (ticks per unit soaked in), `dampens` (how much a damp cell's or wet thing's `burn.catch` and `burn.fuel` drop), `leaves` (what water soaking in turns it to: dirt to mud), `dries` (what it turns back to once no longer damp: mud to dirt), `status` (wet, for things) | `soakEvery`, `soakEveryWet`, the `wet` status |
 | **boil** | `leaves` (steam) | `waterTo: "steam"` (lava) |
 | **break** | `hardness`, `leaves`, `hp` for things | `breakable` tag/component, `breaksTo`, `hardness` |
-| **shatter** | `drop` (fall height that breaks it), `leaves` | `brittle` component, items' `breaks` |
+| **shatter** | `drop` (fall height that breaks it), `leaves` | `brittle` component, items' `breaks`; `leaves` built on terrain: a blast, shaken ground or a heavy thing turns a cell of it to that (`World.Shatter`: a window `pane` to an open gap of rubble), and a pane with no wall beside it falls (`WallLost`) |
 | **conduct** | `chance`, `chainsWet` (through water next to it) | `conductive` tag, `conducts` component; `chainsWet` built: on flesh, bone and chitin, a wet creature beside freshly charged water is shocked as if in it (`World.ShockedFromBeside`); a group holding only `chainsWet` doesn't make the material conduct |
 | **float** | `lift` (above 1 floats), `every` (a cover: on open water it spreads to the open water beside it every this many ticks; built for oil, `floatEvery`, `World.Float`) | `floats` component, PropState's mass rule |
 | **grow** | `into`, `every` | `growsTo`, `growLog`, Cell.Life ripening |

@@ -100,6 +100,7 @@ public static class TerrainIds
     // Sand a lightning strike fused (lightning-fuse in reactions.json).
     public const string Glass = "glass";
     public const string LogWall = "logwall";
+    public const string Pane = "pane";
     public const string Stone = "stone";
     public const string Rock = "rock";
     public const string Wood = "wood";

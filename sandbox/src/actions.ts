@@ -1,6 +1,6 @@
 // What the player does: cast a spell, place a critter, paint the map.
 import { RULES, hasComponent, type SpellDef } from "./rules.ts";
-import { applyElement, applyEntityElement, displaceWater } from "./react.ts";
+import { applyElement, applyEntityElement, displaceWater, shatter } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
@@ -251,6 +251,7 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
   const ctx = { power: (s.power ?? 1) * charge, dir, direct: true, at: [x, y] as [number, number] };
   if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };
   if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
+  if (s.crater) for (const [cx, cy] of cells) shatter(w, cx, cy);
   crater(w, x, y, s.crater);
 
   // Shove first (furthest first, so a line of goblins doesn't jam), then react.

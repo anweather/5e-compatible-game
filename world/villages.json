@@ -2,7 +2,8 @@
   "about": "The world's villages (docs/WORLD_LIFE.md, D12). at is the world cell the square is centred on (world cell = chunk * 64 + cell; y grows south); seed picks the layout and every building's look, so change it to see another village. square and laneLength are [smallest, largest] in cells (1.5 m); houses is the most houses; lanes is 1 (just the road) or 2; stoneInTen is how many buildings in ten are stone (stone doesn't burn).",
   "materials": { "about": "What the buildings are made of, by wall kind and roof cover: terrain ids in rules/materials.json. The walls stand on the footprint's cells (log walls burn to rubble, stone walls stand); the roof carries its material.",
     "walls": { "timber": "logwall", "stone": "stone", "log": "logwall" },
-    "roofs": { "thatch": "thatch", "slate": "slate", "shingle": "shingle" } },
+    "roofs": { "thatch": "thatch", "slate": "slate", "shingle": "shingle" },
+    "windows": { "about": "Window openings are cells of glass in the walls: a terrain id, a window every this many cells along a front (clear of the door), and how many backs in ten have them; each side deep enough has one in its middle. Where they fall follows from each building's seed (VillageLayout).", "material": "pane", "every": 2, "backInTen": 8 } },
   "villages": [
     { "name": "Hollowmere", "at": [222, 300], "seed": 56, "square": [10, 13], "houses": 12, "lanes": 2, "laneLength": [14, 22], "stoneInTen": 3 },
     { "name": "Sunward Key", "at": [512, 520], "seed": 7, "square": [8, 9], "houses": 6, "lanes": 2, "laneLength": [6, 9], "inn": false, "shop": true, "stoneInTen": 0, "note": "the island resort: a little plaza, a beach bar (the shop) and cottages" }

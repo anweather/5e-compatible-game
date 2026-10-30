@@ -3,8 +3,10 @@
 // leading out, and houses on plots along the square and the lanes, each facing
 // its street. Only the layout lives here: footprints are wall cells (timber
 // burns like the cabins' log walls, stone doesn't), so every machine must lay
-// the same village. How a building looks is the view's (BuildingMesher), from
-// the building's own seed.
+// the same village. Its door and windows are in the plan too: a window is a
+// pane cell in the wall (glass that shatters to a gap), so they are shared
+// state. How a building looks is the view's (BuildingMesher), from the
+// building's own seed.
 //
 // Every choice is a WorldHash of the village's seed and a counter, never a
 // stream, and all maths is integer, so a plan is the same everywhere and
@@ -70,6 +72,20 @@ namespace Chem
         public static bool operator !=(CellRect a, CellRect b) => !a.Equals(b);
     }
 
+    /// <summary>A window in a building's wall: the pane cell it stands on, and the way it faces.</summary>
+    public readonly struct VillageWindow
+    {
+        public readonly int X, Y;
+        public readonly Side Face;
+
+        public VillageWindow(int x, int y, Side face)
+        {
+            X = x;
+            Y = y;
+            Face = face;
+        }
+    }
+
     /// <summary>One building of a village plan: what it is, where it stands and how it's built.</summary>
     public sealed class VillageBuilding
     {
@@ -92,6 +108,11 @@ namespace Chem
         /// <summary>What its walls and roof are made of: terrain ids (world/villages.json "materials").</summary>
         public string WallMaterial { get; internal set; } = "logwall";
         public string RoofMaterial { get; internal set; } = "thatch";
+
+        /// <summary>The cell on its front the door stands in; no window takes it or the cells beside it.</summary>
+        public (int x, int y) DoorCell { get; internal set; }
+        /// <summary>Its windows (world/villages.json "materials" windows): cells of glass in its walls, never a corner.</summary>
+        public List<VillageWindow> Windows { get; } = new List<VillageWindow>();
 
         /// <summary>The cell character its walls are in a map (ChemGrid's legend), from their material.</summary>
         public char WallCell => BuildingMaterials.CellOf(WallMaterial);
@@ -118,6 +139,12 @@ namespace Chem
             [RoofCover.Shingle] = "shingle",
         };
 
+        /// <summary>What window cells are made of: a terrain id.</summary>
+        public string Window { get; set; } = "pane";
+        /// <summary>Along a wall, a window every this many cells; and how many walls' backs in ten have theirs.</summary>
+        public int WindowEvery { get; set; } = 2;
+        public int BackInTen { get; set; } = 8;
+
         public string WallOf(WallKind k) => Walls[k];
         public string RoofOf(RoofCover c) => Roofs[c];
 
@@ -129,6 +156,7 @@ namespace Chem
             ["wood"] = '=',
             ["metal"] = 'm',
             ["bedrock"] = '%',
+            ["pane"] = 'P',
         };
 
         /// <summary>A wall material's map character; throws for one the map has no character for.</summary>
@@ -188,6 +216,8 @@ namespace Chem
                 foreach (var (x, y) in lane.Cells()) yield return (x, y, '.');
             foreach (var b in Buildings)
                 foreach (var (x, y) in b.Footprint.Cells()) yield return (x, y, b.WallCell);
+            foreach (var b in Buildings)
+                foreach (var w in b.Windows) yield return (w.X, w.Y, BuildingMaterials.CellOf(Spec.Materials.Window));
             yield return (Well.x, Well.y, 'w');
         }
 
@@ -225,6 +255,14 @@ namespace Chem
                 Mix((int)b.Cover);
                 Mix(b.Chimney ? 1 : 0);
                 Mix(b.Seed);
+                Mix(b.DoorCell.x);
+                Mix(b.DoorCell.y);
+                foreach (var w in b.Windows)
+                {
+                    Mix(w.X);
+                    Mix(w.Y);
+                    Mix((int)w.Face);
+                }
             }
             return h;
         }
@@ -262,7 +300,7 @@ namespace Chem
         // is a hash of the seed, its kind and this count).
         sealed class Layer
         {
-            const int SaltSquare = 1, SaltRoad = 2, SaltShopSide = 3, SaltLane = 4, SaltSize = 5, SaltLook = 6, SaltGap = 7;
+            const int SaltSquare = 1, SaltRoad = 2, SaltShopSide = 3, SaltLane = 4, SaltSize = 5, SaltLook = 6, SaltGap = 7, SaltDoor = 8, SaltBack = 9;
 
             readonly VillageSpec spec;
             readonly Func<int, int, bool> buildable;
@@ -352,8 +390,54 @@ namespace Chem
                 Look(b, spec.StoneInTen);
                 b.WallMaterial = spec.Materials.WallOf(b.Walls);
                 b.RoofMaterial = spec.Materials.RoofOf(b.Cover);
+                Openings(b);
                 plan.Buildings.Add(b);
                 Take(b.Footprint.Grown(1));
+            }
+
+            // The door on the front (a house's anywhere along it, a landmark's in the middle) and the
+            // windows: along the front clear of the door, along most backs, one in the middle of each
+            // side deep enough. Never at a corner, so a window always has wall to stand in.
+            void Openings(VillageBuilding b)
+            {
+                var m = spec.Materials;
+                int every = Math.Max(1, m.WindowEvery), front = LengthOf(b, b.Door);
+                int door = (front - 1) / 2;
+                if (b.Kind == BuildingKind.House && front > 2) door = 1 + (int)(WorldHash.Hash4(b.Seed, SaltDoor, 0, 0) % (uint)(front - 2));
+                b.DoorCell = CellOf(b, b.Door, door);
+                for (int i = 1; i < front - 1; i++)
+                    if (Math.Abs(i - door) >= 2 && (i - door) % every == 0) AddWindow(b, b.Door, i);
+                var back = Sides.Opposite(b.Door);
+                for (int i = 1; i < front - 1; i++)
+                    if (i % every == 1 % every && WorldHash.Hash4(b.Seed, SaltBack, i, 0) % 10 < (uint)m.BackInTen) AddWindow(b, back, i);
+                foreach (var side in new[] { (Side)(((int)b.Door + 1) % 4), (Side)(((int)b.Door + 3) % 4) })
+                {
+                    int length = LengthOf(b, side);
+                    if (length >= 3) AddWindow(b, side, (length - 1) / 2);
+                }
+            }
+
+            static void AddWindow(VillageBuilding b, Side side, int at)
+            {
+                var (x, y) = CellOf(b, side, at);
+                b.Windows.Add(new VillageWindow(x, y, side));
+            }
+
+            // How many cells a side of the footprint has.
+            static int LengthOf(VillageBuilding b, Side side) =>
+                side == Side.North || side == Side.South ? b.Footprint.W : b.Footprint.H;
+
+            // The cell at a place along a side of the footprint, counted from its north or west end.
+            static (int x, int y) CellOf(VillageBuilding b, Side side, int at)
+            {
+                var r = b.Footprint;
+                return side switch
+                {
+                    Side.North => (r.X + at, r.Y),
+                    Side.South => (r.X + at, r.Bottom - 1),
+                    Side.West => (r.X, r.Y + at),
+                    _ => (r.Right - 1, r.Y + at),
+                };
             }
 
             bool Fits(CellRect r)
@@ -481,7 +565,17 @@ namespace Chem
             if (!(t is JObject o)) return m;
             if (o["walls"] is JObject walls) ReadWalls(walls, m);
             if (o["roofs"] is JObject roofs) ReadRoofs(roofs, m);
+            if (o["windows"] is JObject windows) ReadWindows(windows, m);
             return m;
+        }
+
+        static void ReadWindows(JObject windows, BuildingMaterials m)
+        {
+            string material = (string)windows["material"] ?? m.Window;
+            if (!BuildingMaterials.CanBeWall(material)) throw new FormatException($"{FileName}: window material {material} can't stand on a map");
+            m.Window = material;
+            m.WindowEvery = (int?)windows["every"] ?? m.WindowEvery;
+            m.BackInTen = (int?)windows["backInTen"] ?? m.BackInTen;
         }
 
         static void ReadWalls(JObject walls, BuildingMaterials m)
