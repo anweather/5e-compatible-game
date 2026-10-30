@@ -7,8 +7,10 @@ exit /b %errorlevel%
 # remove-worker.cmd <name>: turns a worker off, deletes the VM and its folder
 # (<Root>\<name>, disk included; Hyper-V's own Delete leaves the disk behind).
 # Refuses templates, the Quick Create original, and any VM whose files are not
-# all inside <Root>\<name>.
-param([Parameter(Mandatory)][string]$Name, [string]$Root = 'C:\HyperV\Workers')
+# all inside <Root>\<name>. Its disk goes, so its work in progress is pushed
+# first (wip.cmd); it refuses unless -Force if that fails, or if the worker is
+# off or asleep (rescue.cmd pushes an off one's work).
+param([Parameter(Mandatory)][string]$Name, [string]$Root = 'C:\HyperV\Workers', [switch]$Force)
 if (-not (Get-Command Get-VM -ErrorAction SilentlyContinue)) { throw "Hyper-V PowerShell module missing" }
 try { Get-VM -ErrorAction Stop | Out-Null } catch { throw "No Hyper-V access: run grant-hyperv-access.cmd as admin once, then sign out and in." }
 $ErrorActionPreference = 'Stop'
@@ -20,6 +22,12 @@ if ($vm) {
   foreach ($p in $paths) {
     if (-not ([IO.Path]::GetFullPath($p).TrimEnd('\') + '\').StartsWith($dir, 'OrdinalIgnoreCase')) { throw "$Name has files outside $dir ($p); not removing it." }
   }
+  # Never with its work unpushed (COORDINATION, 2026-10-29).
+  if ($vm.State -eq 'Running') {
+    cmd /c (Join-Path $env:WORKERS_DIR 'wip.cmd') $Name
+    if ($LASTEXITCODE -and -not $Force) { throw "Not removing ${Name}: its work in progress couldn't be pushed (see above). Fix that, or add -Force to delete it anyway." }
+  }
+  elseif (-not $Force) { throw "Not removing ${Name}: it's $($vm.State), so its work in progress can't be checked. rescue.cmd $Name pushes it; or add -Force to delete it anyway." }
   # Keep its sign-in (its slot outlives it; the next clone of that name reuses it).
   if ($vm.State -eq 'Running') { cmd /c (Join-Path $env:WORKERS_DIR 'signins.cmd') pull $Name }
   if ($vm.State -ne 'Off') { Stop-VM -VM $vm -TurnOff }
