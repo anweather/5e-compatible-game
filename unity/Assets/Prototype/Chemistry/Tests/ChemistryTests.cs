@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(72));
+            Assert.That(R.CellRules.Count, Is.EqualTo(73));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -174,7 +174,7 @@ namespace Chem.Tests
             w.Cast("create-water", 9, 6, 1);
             Run(w, 120);
 
-            Assert.That(w.CellHash(), Is.EqualTo("f682e4fb"));
+            Assert.That(w.CellHash(), Is.EqualTo("bd0d8a05"));
             Assert.That(w.RngState, Is.EqualTo(819413765u));
             CollectionAssert.AreEqual(new[]
             {
@@ -800,7 +800,7 @@ namespace Chem.Tests
             int rained = 0;
             for (int x = 14; x <= 18; x++) rained += w.At(x, 2).Water;
             Assert.That(rained, Is.GreaterThan(0), "the cloud rains on the cells under it");
-            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 11 25151b2e 1746655754"), "the same in the sandbox");
+            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 9 ef434c7d 269346629"), "the same in the sandbox");
         }
 
         [Test]
@@ -1234,6 +1234,23 @@ namespace Chem.Tests
             Assert.That(w.At(5, 2).Rust, Is.GreaterThan(2 * w.At(2, 2).Rust), "faster under steam");
             Assert.That(w.At(2, 2).Rust, Is.GreaterThan(0));
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("3bf05b30 2775531184"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void CreateWaterWatersBurntGround()
+        {
+            // docs/SPELL_COMBOS.md: Create Water waters plants: on ash over soil, green shoots come up (reactions.json
+            // water-ash, the same grow as Plant Growth on ash). Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 8, 6, 17, "dirt");
+            for (int y = 1; y <= 4; y++)
+                for (int x = 1; x <= 4; x++) w.At(x, y).Cover = "ash";
+            w.Cast("create-water", 2, 2, 0);
+            Assert.That(w.At(2, 2).Cover, Is.Null);
+            Assert.That(w.At(2, 2).Water, Is.GreaterThan(0));
+            Run(w, 80);
+            Assert.That(w.At(2, 2).T, Is.EqualTo("sprouts").Or.EqualTo("grass"), "green shoots in the ash");
+            Assert.That(w.At(4, 4).Cover, Is.EqualTo("ash"), "only where the water landed");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("49ebceb 3599190446"), "the same in the sandbox");
         }
 
         [Test]

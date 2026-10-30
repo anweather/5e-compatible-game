@@ -16,7 +16,7 @@
   { "id": "grease", "group": "arcane", "name": "Grease", "level": 1, "shape": "square", "size": 2, "element": "grease", "radial": false,
     "blurb": "A slick 10 ft square. Things slide across it. Flammable here, as in BG3; check the SRD text before relying on that. Hold the cast for a bigger slick." },
   { "id": "create-water", "group": "water", "name": "Create Water", "level": 1, "shape": "square", "size": 3, "element": "water", "power": 6,
-    "blurb": "Pours water that flows downhill, fills pits and boilers, douses fire, and soaks creatures. Hold the cast for more water over a wider patch." },
+    "blurb": "Pours water that flows downhill, fills pits and boilers, douses fire, soaks fuel so it burns poorly, waters burnt ground so green shoots come up through the ash, and soaks creatures. Hold the cast for more water over a wider patch." },
   { "id": "sleet-storm", "group": "water", "name": "Sleet Storm", "level": 3, "shape": "burst", "radius": 5, "element": "cold",
     "blurb": "Level 3. Freezing sleet over a wide circle where you point: ponds and puddles freeze into walkable ice and flames go out. RAW it also makes the ground slick and breaks concentration. Hold the cast for a wider storm." },
   { "id": "flood", "group": "water", "name": "Flood", "level": 3, "shape": "line", "origin": "self", "length": 6, "element": "water", "power": 3, "push": 2, "radial": false,
