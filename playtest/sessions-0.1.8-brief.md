@@ -65,6 +65,8 @@ CLAUDE_CONFIG_DIR=$HOME/.claude-pro COMMIT_COST_ROLE=Host COMMIT_COST_NAME=playt
 `tools/telemetry/feature-costs.mjs` shows it under "Work with no commit",
 beside the median feature.
 
+If the transcript isn't on disk (a sub-agent's often isn't, and the Pro sessions' stopped being written on 2026-10-30), record the harness's own count instead: the sub-agent's total tokens and minutes, by hand, as a line in the same file.
+
 ## 5. Push, then file the issues on GitHub (Andrew asked for this)
 
 1. Commit the findings (with their screenshots), playtest/sessions/0.1.8.md and
@@ -76,7 +78,7 @@ beside the median feature.
    - **Title:** what's wrong, in a player's words.
    - **Body:** the build (`alpha 0.1.8 (<sha>)`), the run's seed and frame,
      steps to reproduce, what was expected, and the screenshot linked on the
-     `playtest-0.1.8` branch (`https://github.com/anweather/5e-compatible-game/blob/playtest-0.1.8/<path>`).
+     pushed commit by its SHA (`https://github.com/anweather/5e-compatible-game/blob/<sha>/<path>`), never the branch: merged branches are deleted, and a branch link breaks.
    - **Discovery cost**, as a section at the end, from the step 4 record:
      the session's total (its `Host-Tokens`, `Host-Time` and ite), the issues
      it found, and this issue's share (the session's ite ÷ issues found, new

@@ -563,3 +563,14 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   build. Known issue: the robe tail after a long walk (also 0.1.7); the fix
   (snap on resume) goes to DesktopUnity after the playtest. main merged back
   into dev. FREEZE LIFTED.
+- 2026-10-30 16:50: Playtest of 0.1.8 on Pro (seeds 811-813, merged as
+  c486d84): #2 new and a real 0.1.8 regression (cracked ground and ice draw as
+  cream squares in the player; the Editor draws the web), #3-#5 rediscovered
+  (waterfall pool band, robe tail, 185 ms walking hitch). 9.6 issues/hour
+  against 9.5 for 0.1.5's runs; about 200k tokens, 50k per issue. DesktopUnity
+  has #2 and #4 for a 0.1.9 hotfix. Gaps: the bot can't cast by elements (the
+  12 combo spells untested); the runner crashes with no default audio device
+  (AppMute); the cost hook can't see the Pro sessions (no transcript on disk
+  for the sub-agent, and the coordinator's own file unwritten since 15:56),
+  so the cost is the harness's count. Issue links now point at commits, not
+  branches (merged branches are deleted).
