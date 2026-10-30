@@ -6,7 +6,7 @@
 //   burn    { catch, fuel, heat, leaves, log, look, intensity }  flammable tag, flammability, fuel, heat, burnsTo, burnLog, fireLook, burnIntensity
 //   break   { leaves }                                            breakable tag, breaksTo
 //   dig     { hardness, leaves }                                  hardness, dugTo
-//   soak    { dry, wet, dampens }                                 soakEvery, soakEveryWet, dampens
+//   soak    { dry, wet, dampens, leaves, dries }                  soakEvery, soakEveryWet, dampens, soaksTo, driesTo
 //   rust    { every, leaves }                                     rustEvery, rustsTo
 //   float   { every }                                             floatEvery (covers: oil floats and spreads on open water)
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
@@ -34,7 +34,7 @@ namespace Chem
             ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("heat", "heat"), ("leaves", "burnsTo"), ("log", "burnLog"), ("look", "fireLook") }),
             ("break", "breakable", new[] { ("leaves", "breaksTo") }),
             ("dig", null, new[] { ("hardness", "hardness"), ("leaves", "dugTo") }),
-            ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens") }),
+            ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens"), ("leaves", "soaksTo"), ("dries", "driesTo") }),
             ("rust", null, new[] { ("every", "rustEvery"), ("leaves", "rustsTo") }),
             ("conduct", "conductive", System.Array.Empty<(string, string)>()),
             ("shatter", "brittle", System.Array.Empty<(string, string)>()),

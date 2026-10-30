@@ -161,5 +161,5 @@ test("the time spells' state survives a snapshot, and the same casts give the C#
   assert.equal(hashWorld(a), hashWorld(b));
   // Goldens shared with TimeWeatherTests.TheTimeSpellsAreDeterministicAndMatchTheSandbox.
   assert.equal(skyState(a), "5130/-/6:40:760");
-  assert.equal(cellHash(a), "a754b5cb"); // night (day.nightFreeze) since 2026-10-27
+  assert.equal(cellHash(a), "d3900222"); // night (day.nightFreeze) since 2026-10-27
 });

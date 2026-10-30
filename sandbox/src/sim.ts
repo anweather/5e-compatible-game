@@ -37,6 +37,7 @@ export function step(w: World): void {
     if (soaking) rust(w, c);
     if (soaking && c.water > 0 && c.cover !== null) float(w, i, c, floating);
     if (soaking && c.water > 0) soak(w, i, c);
+    if (soaking) dryOut(w, c);
   }
   for (const [n, cover] of floating) if (n.cover === null) putCover(n, cover);
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
@@ -79,7 +80,7 @@ function tickClock(w: World) {
  * burns it waits a tick at a time; a tree waits while something stands there, and
  * pushes the water out of wet ground as it grows.
  */
-/** World.Soak: water on ground that turns it freezes or boils off; thin water soaks in and dries up, more slowly on damp ground, and leaves it damp. */
+/** World.Soak: water on ground that turns it freezes or boils off; thin water soaks in and dries up, more slowly on damp ground, and leaves it damp (and its soak.leaves: dirt turns to mud). */
 function soak(w: World, i: number, c: Cell) {
   const t = terrainDef(c), p = RULES.sim.water;
   if (t.waterTo === "ice") {
@@ -104,6 +105,17 @@ function soak(w: World, i: number, c: Cell) {
   if ((Math.floor(w.tick / p.soakPass) + x * 7 + y * 13) % turns !== 0) return;
   c.water--;
   c.dampUntil = w.tick + p.dampTicks;
+  if (t.soaksTo) c.t = t.soaksTo;
+}
+
+/**
+ * Mud dries (materials.json soak.dries), on the soak pass: a cell whose terrain dries, with no water on it, not
+ * rained on and no longer damp (dampUntil), becomes its driesTo (World.DryOut).
+ */
+function dryOut(w: World, c: Cell) {
+  const to = terrainDef(c).driesTo;
+  if (!to || c.water > 0 || raining(w) || w.tick < (c.dampUntil ?? 0)) return;
+  c.t = to;
 }
 
 /**

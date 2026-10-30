@@ -330,7 +330,7 @@ namespace Chem.Tests
             Assert.That(w.At(3, 6).Water, Is.EqualTo(4), "the river is full again");
             Assert.That(new[] { 12, 14, 16 }.All(x => w.At(x, 6).Water > 0), "water ran down the trench");
             Assert.That(TotalWater(w), Is.GreaterThan(40), "more water than the river held: the spring keeps giving");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("602cdf19 6"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("64047114 6"));
         }
 
         [Test]
@@ -381,7 +381,7 @@ namespace Chem.Tests
             w.Cast("earthen-trench", 6, 6, 1, 1, 6, 2);
             Run(w, 60);
             Assert.That(cells.Take(8).All(c => w.At(c.x, c.y).Water > 0), "water ran along it, round its corners, as far as along a straight one");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("62e0b220 9"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("99221231 9"));
         }
 
         [Test]
@@ -452,7 +452,7 @@ namespace Chem.Tests
         {
             var w = EarthShaping(11);
             Assert.That(EarthShaping(11).CellHash(), Is.EqualTo(w.CellHash()), "deterministic");
-            Assert.That(w.CellHash(), Is.EqualTo("34860e77"));
+            Assert.That(w.CellHash(), Is.EqualTo("7175c6c6"));
             Assert.That(w.RngState, Is.EqualTo(3719496534u));
             Assert.That(w.At(5, 4).Height, Is.EqualTo(-2), "the trench starts at the caster's feet");
             Assert.That(w.IsRaisedWall(w.At(12, 4)), "the wall closes the trench");

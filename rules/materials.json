@@ -1,7 +1,8 @@
 {
   "terrain": {
     "bedrock":   { "name": "Bedrock", "tags": ["blocking"] },
-    "dirt":      { "name": "Dirt", "tags": ["ground", "soil"], "soak": { "dry": 64, "wet": 320 } },
+    "dirt":      { "name": "Dirt", "tags": ["ground", "soil"], "soak": { "dry": 64, "wet": 320, "leaves": "mud" } },
+    "mud":       { "name": "Mud", "tags": ["ground", "soil", "muddy"], "speed": 0.5, "soak": { "dry": 64, "wet": 320, "dries": "dirt" } },
     "grass":     { "name": "Grass", "tags": ["ground", "turf"], "burn": { "catch": 0.35, "fuel": 8, "leaves": "dirt" }, "dig": { "leaves": "dirt" }, "soak": { "dry": 80, "wet": 400, "dampens": 0.5 } },
     "sprouts":   { "name": "Green shoots", "tags": ["ground", "turf"], "dig": { "leaves": "dirt" }, "soak": { "dry": 80, "wet": 400 }, "grow": { "into": "grass" } },
     "sapling":   { "name": "Sapling", "tags": ["ground"], "burn": { "catch": 0.3, "fuel": 6, "leaves": "dirt" }, "dig": { "leaves": "dirt" }, "grow": { "into": "tree", "log": "A sapling grows into a young tree" } },

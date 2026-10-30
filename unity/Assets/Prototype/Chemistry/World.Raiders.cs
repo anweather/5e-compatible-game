@@ -194,15 +194,15 @@ namespace Chem
         }
 
         /// <summary>
-        /// A creature stepping onto a cover that hurts (thorns) takes its damage, and one that slows is
-        /// snagged for the rest of the step's time (thorns in the TS).
+        /// A creature stepping onto a cover that hurts (thorns) takes its damage, and one that slows (or
+        /// ground that does: mud) is snagged for the rest of the step's time (thorns in the TS).
         /// </summary>
         void Thorns(Raider r, Cell c)
         {
+            if (!Rules.Entity(r.Kind).Creature) return;
             var cv = CoverOf(c);
-            if (cv == null || !Rules.Entity(r.Kind).Creature) return;
-            if (cv.Damage.Length == 2) DamageRaider(r, Roll(cv.Damage), cv.Name.ToLowerInvariant(), null);
-            double speed = cv.Speed;
+            if (cv != null && cv.Damage.Length == 2) DamageRaider(r, Roll(cv.Damage), cv.Name.ToLowerInvariant(), null);
+            double speed = Math.Min(cv != null ? cv.Speed : 1, TerrainOf(c).Speed);
             if (speed > 0 && speed < 1 && r.Alive)
                 r.Status["snagged"] = Math.Max(r.StatusOf("snagged"), (int)Math.Floor(Rules.Sim.TicksPerSecond * (1 / speed - 1) + 0.5));
         }

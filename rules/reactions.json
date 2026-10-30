@@ -1,6 +1,7 @@
 {
   "cell": [
     { "id": "fire-fog", "element": "fire", "if": { "gas": "fog" }, "do": [{ "clearGas": true }], "log": "The heat burns the fog away" },
+    { "id": "fire-mud", "element": "fire", "if": { "terrainTag": "muddy" }, "do": [{ "extinguish": true }], "log": "The mud smothers the fire", "stop": true },
     { "id": "fire-oil", "element": "fire", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} ignites", "notable": true, "stop": true },
     { "id": "fire-thorns", "element": "fire", "if": { "cover": ["thorns"] }, "do": [{ "ignite": "cover" }], "log": "The thorns catch fire", "stop": true },
     { "id": "fire-snowbank", "element": "fire", "if": { "cover": ["snowbank"] }, "do": [{ "setCover": "snow" }, { "addWater": 1 }], "log": "The snow bank slumps into slush", "stop": true },

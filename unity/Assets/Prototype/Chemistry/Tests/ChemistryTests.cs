@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(44));
+            Assert.That(R.CellRules.Count, Is.EqualTo(45));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -173,8 +173,8 @@ namespace Chem.Tests
             w.Cast("create-water", 9, 6, 1);
             Run(w, 120);
 
-            Assert.That(w.CellHash(), Is.EqualTo("b93a9aee"));
-            Assert.That(w.RngState, Is.EqualTo(939719859u));
+            Assert.That(w.CellHash(), Is.EqualTo("19ccbc27"));
+            Assert.That(w.RngState, Is.EqualTo(819413765u));
             CollectionAssert.AreEqual(new[]
             {
                 "0|info|1|You cast Create Water",
@@ -195,7 +195,6 @@ namespace Chem.Tests
                 "60|info|1|You cast Thunderwave",
                 "60|info|1|A pillar of earth rises",
                 "60|info|1|Earth fills the pit",
-                "60|info|1|Water boils into steam",
                 "60|info|1|You cast Create Water",
             }, w.Log.Select(Entry).ToArray());
         }
@@ -678,6 +677,29 @@ namespace Chem.Tests
             for (int x = 3; x <= 7; x++) Assert.That(w.At(x, 4).Frozen, $"x={x} frozen");
             Direct(w, 5, 4, "lightning");
             Assert.That(w.At(6, 4).Charge, Is.EqualTo(0), "ice doesn't conduct");
+        }
+
+        [Test]
+        public void WaterSoaksDirtToMudWhichDriesBack()
+        {
+            // docs/MATERIALS.md soak.leaves, soak.dries: shallow water over dirt, grass and rock; the dirt turns
+            // to mud as it soaks in (grass and rock don't), fire on the mud is smothered (fire-mud) even where
+            // oil lies, and once it's dry the mud is dirt again. Mirrors sandbox/test/terraform.test.ts (which
+            // also walks a goblin into it: Thorns snags it for 1/speed - 1 of a second).
+            Assert.That(R.Terrain["mud"].Speed, Is.EqualTo(0.5));
+            var w = new World(R, 10, 5, 1, "dirt");
+            w.At(6, 2).T = "grass";
+            w.At(7, 2).T = "rock";
+            for (int x = 3; x <= 7; x++) w.At(x, 2).Water = 2;
+            w.At(4, 2).Cover = "oil";
+            Run(w, 200);
+            Assert.That(new[] { 3, 4, 5, 6, 7 }.Select(x => w.At(x, 2).T), Is.EqualTo(new[] { "mud", "mud", "mud", "grass", "rock" }));
+            w.Apply(4, 2, "fire", 3, -1, true);
+            Assert.That(w.At(4, 2).Fire, Is.EqualTo(0), "the mud smothers it, oil or no");
+            string wet = w.CellHash();
+            Run(w, 800);
+            Assert.That(new[] { 3, 4, 5 }.Select(x => w.At(x, 2).T), Is.EqualTo(new[] { "dirt", "dirt", "dirt" }), "dried back to dirt");
+            Assert.That($"{wet} {w.CellHash()} {w.RngState}", Is.EqualTo("efb1f804 2143a548 1"), "the same in the sandbox");
         }
 
         [Test]

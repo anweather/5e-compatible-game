@@ -6,7 +6,8 @@ import { withoutSoaking } from "./soak.ts";
 import { RULES, composeRules, installRules, validateRules, type ModPatch } from "../src/rules.ts";
 import { step } from "../src/sim.ts";
 import { castSpell, spellById, spellCells } from "../src/actions.ts";
-import { spawn } from "../src/entities.ts";
+import { applyElement } from "../src/react.ts";
+import { spawn, walk } from "../src/entities.ts";
 import { reshape } from "../src/terraform.ts";
 import { type World, cellAt, createWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
@@ -214,7 +215,7 @@ function earthShaping(seed: number): World {
 test("earth shaping is deterministic and matches the C# golden", () => {
   const a = earthShaping(11), b = earthShaping(11);
   assert.equal(hashWorld(a), hashWorld(b));
-  assert.equal(cellHash(a), "34860e77");
+  assert.equal(cellHash(a), "7175c6c6");
   assert.equal(a.rng, 3719496534);
   assert.equal(cellAt(a, 5, 4)!.h, -2, "the trench starts at the caster's feet");
   assert.ok(isRaisedWall(cellAt(a, 12, 4)!), "the wall closes the trench");
@@ -320,7 +321,7 @@ test("a river refills, so a trench cut from it fills and the river stays full; m
   assert.equal(cellAt(w, 3, 6)!.water, 4, "the river is full again");
   assert.ok([12, 14, 16].every((x) => cellAt(w, x, 6)!.water > 0), "water ran down the trench");
   assert.ok(totalWater(w) > 40, "more water than the river held: the spring keeps giving");
-  assert.equal(`${cellHash(w)} ${w.rng}`, "602cdf19 6");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "64047114 6");
 });
 
 test("Fireball blows a small crater before it burns, and matches the C# golden", () => {
@@ -347,7 +348,7 @@ test("a slanted trench runs off the grid, side to side, and the river's water fo
   castSpell(w, "earthen-trench", 6, 6, 1, undefined, 1, [6, 2]);
   run(w, 60);
   assert.ok(cells.slice(0, 8).every(([x, y]) => cellAt(w, x, y)!.water > 0), "water ran along it, round its corners, as far as along a straight one");
-  assert.equal(`${cellHash(w)} ${w.rng}`, "62e0b220 9");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "99221231 9");
 });
 
 test("a slanted cone fans along the aim", () => {
@@ -391,4 +392,28 @@ test("Acid Splash eats brambles, thorns and oil and burns a goblin, matching the
   assert.equal(`${cellHash(w)} ${w.rng} ${gob.hp}`, "d9c38f7d 1831565816 5"); // the same in the C# core
   const slime = { covers: { slime: { name: "Slime", tags: [], dissolve: { by: "vinegar", leaves: "goo" } } } } as unknown as ModPatch;
   assert.deepEqual(validateRules(composeRules([slime])), ["cover slime: dissolves by unknown element vinegar", "cover slime: dissolvesTo goo unknown"]);
+});
+
+// Mirrors ChemistryTests.WaterSoaksDirtToMudWhichDriesBack (docs/MATERIALS.md soak.leaves, soak.dries): shallow water
+// over dirt, grass and rock; the dirt turns to mud as it soaks in (grass and rock don't), fire on the mud is
+// smothered (fire-mud) even where oil lies, a goblin on it is held, and once it's dry the mud is dirt again.
+test("water soaks dirt to mud, which slows, smothers fire and dries back to dirt; matches the C# golden", () => {
+  const w = createWorld(10, 5, 1);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 6, 2)!.t = "grass";
+  cellAt(w, 7, 2)!.t = "rock";
+  for (let x = 3; x <= 7; x++) cellAt(w, x, 2)!.water = 2;
+  cellAt(w, 4, 2)!.cover = "oil";
+  run(w, 200);
+  assert.deepEqual([3, 4, 5, 6, 7].map((x) => cellAt(w, x, 2)!.t), ["mud", "mud", "mud", "grass", "rock"]);
+  applyElement(w, 4, 2, "fire", { power: 3, direct: true });
+  assert.equal(cellAt(w, 4, 2)!.fire, 0, "the mud smothers it, oil or no");
+  const gob = spawn(w, "goblin", 2, 2)!;
+  walk(w, gob, 1);
+  assert.equal(gob.status.snagged, RULES.sim.ticksPerSecond, "a step in mud (speed 0.5) takes twice as long");
+  w.entities.length = 0;
+  const wet = cellHash(w);
+  run(w, 800);
+  assert.deepEqual([3, 4, 5].map((x) => cellAt(w, x, 2)!.t), ["dirt", "dirt", "dirt"], "dried back to dirt");
+  assert.equal(`${wet} ${cellHash(w)} ${w.rng}`, "efb1f804 2143a548 1"); // the same in the C# core
 });

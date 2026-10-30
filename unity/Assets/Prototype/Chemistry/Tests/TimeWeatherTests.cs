@@ -229,7 +229,7 @@ namespace Chem.Tests
             Assert.That(a.SkyHash(), Is.EqualTo(b.SkyHash()));
             // Golden from sandbox/test/time.test.ts (the same world there).
             Assert.That(a.SkyState(), Is.EqualTo("5130/-/6:40:760"));
-            Assert.That(a.CellHash(), Is.EqualTo("a754b5cb")); // night (day.nightFreeze) since 2026-10-27
+            Assert.That(a.CellHash(), Is.EqualTo("d3900222")); // night (day.nightFreeze) since 2026-10-27
         }
 
         [Test]

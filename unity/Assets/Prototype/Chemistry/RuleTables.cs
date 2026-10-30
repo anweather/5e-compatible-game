@@ -53,6 +53,13 @@ namespace Chem
         /// <summary>Wet (water on it, raining, or damp) this many ticks in all, it rusts through into RustsTo (materials.json rust.every, rust.leaves; World.Rust); 0 never.</summary>
         public int RustEvery;
         public string RustsTo;
+        /// <summary>
+        /// What water soaking into it turns it into (dirt to mud: soak.leaves) and what it dries back to once
+        /// it is dry again (mud to dirt: soak.dries, World.DryOut); null neither.
+        /// </summary>
+        public string SoaksTo, DriesTo;
+        /// <summary>How fast a creature walks across it (mud 0.5: a step takes 1/speed as long, World.Thorns); 1 unhindered.</summary>
+        public double Speed = 1;
         /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves; null neither.</summary>
         public string DissolvedBy, DissolvesTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
@@ -544,6 +551,9 @@ namespace Chem
             Dampens = Num(o["dampens"]) ?? 0,
             RustEvery = Int(o["rustEvery"]) ?? 0,
             RustsTo = Str(o["rustsTo"]),
+            SoaksTo = Str(o["soaksTo"]),
+            DriesTo = Str(o["driesTo"]),
+            Speed = Num(o["speed"]) ?? 1,
             WaterTo = Str(o["waterTo"]),
         };
 

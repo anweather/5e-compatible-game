@@ -43,6 +43,11 @@ export interface TerrainDef {
   /** Wet (water on it, raining, or damp) this many ticks in all, it rusts through into rustsTo (rust.every, rust.leaves; rust in sim.ts); unset never. */
   rustEvery?: number;
   rustsTo?: string;
+  /** What water soaking into it turns it into (dirt to mud: soak.leaves) and what it dries back to once dry again (mud to dirt: soak.dries, dryOut in sim.ts). */
+  soaksTo?: string;
+  driesTo?: string;
+  /** How fast a creature walks across it (mud 0.5: a step takes 1/speed as long, thorns in entities.ts); 1 when unset. */
+  speed?: number;
   /** The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves. */
   dissolvedBy?: string;
   dissolvesTo?: string;
@@ -693,6 +698,7 @@ export function validateRules(r: Rules): string[] {
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
     if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
     if (t.rustsTo && !terrainIds.has(t.rustsTo)) errors.push(`terrain ${id}: rustsTo ${t.rustsTo} unknown`);
+    for (const key of ["soaksTo", "driesTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
     for (const key of ["soakEvery", "soakEveryWet", "rustEvery"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
