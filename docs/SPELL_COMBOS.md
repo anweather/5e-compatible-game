@@ -8,9 +8,9 @@ and experiment tool. The real input becomes elements combined in sequence.
   bumpers and triggers. Face buttons stay jump and interact; sticks move and
   look; the d-pad is to be decided.
 - **Sequence, not chord:** tap one element, then optionally a second, to load
-  them. **Unordered for now** (fire then air = air then fire), giving 4
-  singles + 6 pairs + 4 doubles = 14 casts. Ordered pairs can come later,
-  since a sequence makes order readable.
+  them. **Ordered from the start** (Andrew): fire then air is a different
+  spell from air then fire, giving 4 singles + 16 ordered pairs (4 of them
+  doubles) = 20 casts.
 - **The elements are the wizard's own.** Players combine with each other
   through what their spells leave in the world (water, mud, oil, steam), not
   by mixing elements between players.
@@ -23,15 +23,18 @@ and experiment tool. The real input becomes elements combined in sequence.
   under them.
 
 ## Draft combo table (to tune)
-Combos make the materials the chemistry already simulates.
+Combos make the materials the chemistry already simulates. Rule of thumb: the
+**first** element is what the spell is made of, the **second** is how it
+moves or changes.
 
-| | Fire | Water | Earth | Air |
+Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
+
+| first ↓ / then → | Fire | Water | Earth | Air |
 |---|---|---|---|---|
-| **single** | Fire Bolt | Create Water | Raise Earth | Gust of Wind |
-| **Fire** | Fireball (held, at the ground: Meteor) | Steam / fog | Lava | Lightning |
-| **Water** | | Wave / flood | Mud, plant growth | Frost / ice |
-| **Earth** | | | Wall of Stone | Sand / dust storm |
-| **Air** | | | | Whirlwind / weather |
+| **Fire** | Fireball (held, at the ground: Meteor) | Scalding steam burst | Lava pool | Flame wave (wind-driven fire) |
+| **Water** | Fog bank | Wave / flood | Mud | Frost (Ray of Frost) |
+| **Earth** | Molten boulder (leaves lava) | Plant growth | Wall of Stone | Dust storm |
+| **Air** | Lightning | Rain cloud / storm | Sand blast (leaves sand) | Whirlwind |
 
 Shape from how the cast is released, the same for every combo: tap for a
 projectile, hold for a beam or stream (trigger depth for power), aim at the
