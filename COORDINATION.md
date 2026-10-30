@@ -117,8 +117,10 @@ Blocked, Next, and whether they hold Unity.
 
 ## Branch cleanup (Andrew's rule, 2026-10-27)
 
-A branch that is fully merged into `dev` can be deleted, both locally and on
-`origin`, without asking Andrew. The coordinator does this. Agents delete only
+A branch that is fully merged into `dev` is deleted, both locally and on
+`origin`, right after the merge is pushed, always (Andrew, 2026-10-29), without
+asking. The coordinator does this (`tools/workers/land.sh push` does it for
+worker branches). Agents delete only
 their own branches, once their merge has been pushed. A branch counts as
 merged when `git branch --merged origin/dev` lists it, or when its commits
 reached `dev` by rebase or cherry-pick and `git cherry` / `git diff` confirm
@@ -165,7 +167,7 @@ reel uses about 50 MB now. Near 200 MB, the coordinator starts a
 | **Gameplay** (`gameplay-session-player-look`) | PC, main checkout `C:\Users\Andrew\Development\5e-compatible-game` | The player and the wizard: controls, looks, spells and casting, items, menus and HUD, sound, the scene and yard builders, and the yard scene |
 | **World** (`world-look-and-streaming`) | PC, worktree `.claude/worktrees/village` | Simulation and streaming: the chemistry, chunks, streaming, weather and fire, the rules data, and the C# core and TS sandbox that mirror them |
 | **Build** (`unity-game-macbook`) | Mac, `/Users/anweather/Documents/Development/5e-compatible-game` | Build size, performance settings, packages, versions and releases |
-| **Workers** (`w1`, `w2` on the Pro account; `w3`, `w4` on Max once signed in) | Hyper-V VMs on the PC (`tools/workers/README.md`), each with its own clone; driven by the Pro coordinator (`coordinator`, reached through `tools/workers/bridge.sh`) | Headless work, no Editor: core and sandbox code with tests, in both engines on one branch per feature. They take World-lane items when the coordinator assigns them; World rebases on what they merge |
+| **Workers** (`w1`, `w2` on the Pro account; `w3`, `w4` on Max once signed in) | Hyper-V VMs on the PC (`tools/workers/README.md`), each with its own clone; driven by the Pro coordinator (`coordinator`, reached through `tools/workers/bridge.sh`) | Headless work, no Editor: core and sandbox code with tests, in both engines on one branch per feature. They take World-lane items when the coordinator assigns them; World rebases on what they merge. One task per boot: once its branch is merged the coordinator stops the VM, which ends its Claude session, so the next task starts with an empty context. The coordinator lands each branch with `tools/workers/land.sh` (its merge commit carries Coordinator-* cost lines beside the worker's Worker-* ones, and the branch is deleted) |
 
 ## File ownership
 
