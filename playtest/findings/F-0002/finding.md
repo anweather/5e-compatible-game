@@ -12,3 +12,10 @@
 **Replay:** `playtest run --replay playtest/runs/rc015-3/run.json --until-frame 8800 --player .claude/worktrees/rc-0.1.5/player`
 
 ![before](before.jpg)
+
+## Seen again on alpha 0.1.8 (4378764), 2026-10-30
+
+Run rc018-811, frame 11315: one frame of 185 ms while walking through the
+forest at night toward the sea (chunk 6,6). Nothing was cast in the 4 s before.
+It's the only spike over 100 ms in the three runs, and the longest so far
+(0.1.5 had 100-135 ms). Picture: `rc018-811-11315.jpg`.
