@@ -556,3 +556,10 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   duplicate. Issues we keep paying to find again rank first for fixing.
   The steps: playtest/sessions-0.1.8-brief.md, step 5. Gameplay sessions run
   on the Pro account, as a fresh sub-agent on the host.
+- 2026-10-30 16:15 (23:15 UTC): 0.1.8 PUBLISHED on Andrew's go,
+  https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.8
+  (tag at 4378764), Windows only, pre-release. RC checks: install from the
+  draft, 0.1.7 → 0.1.8 in place, no exceptions; the crack webs not seen in a
+  build. Known issue: the robe tail after a long walk (also 0.1.7); the fix
+  (snap on resume) goes to DesktopUnity after the playtest. main merged back
+  into dev. FREEZE LIFTED.
