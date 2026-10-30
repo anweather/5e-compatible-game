@@ -459,7 +459,7 @@ test("wet metal rusts through and dry metal does not", () => {
   const { w, rusted, lines } = wetMetal(2400);
   assert.ok(rusted > 0);
   assert.ok(lines >= 1 && lines < rusted, "a line a pass, not a line a cell");
-  assert.ok(RULES.terrain["rusted-metal"]!.hardness! < RULES.terrain.metal!.hardness!, "weaker");
+  assert.ok(RULES.terrain.metal!.hardness === 0 && RULES.terrain["rusted-metal"]!.hardness! > 0, "weaker: rusted metal digs, metal never does");
   assert.ok(!RULES.terrain["rusted-metal"]!.tags.includes("conductive"), "and it doesn't conduct");
   assert.equal(`${rusted} ${lines} ${rustHash(w)}`, "20 1 1dc2aae5"); // the same in the C# core
   const dry = createWorld(8, 4, 1);

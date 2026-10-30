@@ -585,7 +585,7 @@ namespace Chem.Tests
             var (w, rusted, lines) = WetMetal(2400);
             Assert.That(rusted, Is.GreaterThan(0));
             Assert.That(lines, Is.InRange(1, rusted - 1), "a line a pass, not a line a cell");
-            Assert.That(R.Terrain["rusted-metal"].Hardness, Is.LessThan(R.Terrain["metal"].Hardness), "weaker");
+            Assert.That(R.Terrain["metal"].Hardness == 0 && R.Terrain["rusted-metal"].Hardness > 0, "weaker: rusted metal digs, metal never does");
             Assert.That(R.Terrain["rusted-metal"].Has("conductive"), Is.False, "and it doesn't conduct");
             Assert.That($"{rusted} {lines} {w.CellHash()}", Is.EqualTo("20 1 1dc2aae5"), "the same in the sandbox");
 

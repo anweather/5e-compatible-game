@@ -35,11 +35,11 @@
     "blurb": "One thing floats for a while, you included. It ignores pits and slick ground, and the lightest gust carries it. Hold the cast and it floats higher and stays up longer." },
   { "id": "mage-hand", "group": "arcane", "name": "Mage Hand", "level": 0, "shape": "target", "effect": "carry", "maxMass": 1, "range": 6,
     "blurb": "Pick up something light (tap it), then set it down within 30 ft (tap the spot). Hold the cast and the hand reaches further and lifts heavier things." },
-  { "id": "mold-earth", "group": "earth", "name": "Lower Earth", "level": 0, "shape": "square", "size": 2, "effect": "terraform", "dig": 1,
+  { "id": "mold-earth", "group": "earth", "name": "Lower Earth", "level": 0, "shape": "square", "size": 2, "effect": "terraform", "dig": 1, "strength": 1,
     "blurb": "Cantrip. Digs a 10 ft patch down a step, or more the longer you hold the cast, stripping grass and anything spilled on it. Water runs in. Our reading of Mold Earth." },
   { "id": "mold-earth-heap", "group": "earth", "name": "Raise Earth", "level": 0, "shape": "square", "size": 2, "effect": "terraform", "raise": 1,
     "blurb": "Cantrip. Heaps a 10 ft patch up a step, or more the longer you hold the cast: three steps make a wall. Water on it spills off. Our reading of Mold Earth." },
-  { "id": "earthen-trench", "group": "earth", "name": "Earthen Trench", "level": 2, "shape": "line", "origin": "self", "length": 8, "effect": "terraform", "dig": 2, "radial": false,
+  { "id": "earthen-trench", "group": "earth", "name": "Earthen Trench", "level": 2, "shape": "line", "origin": "self", "length": 8, "effect": "terraform", "dig": 2, "strength": 1, "radial": false,
     "blurb": "Gouges a 40 ft channel two steps deep from your feet toward where you click. Cut it from a pond and the water follows. Hold the cast for a longer, deeper channel. Our reading of earth shaping; not an SRD spell." },
   { "id": "wall-of-stone", "group": "earth", "name": "Wall of Stone", "level": 5, "shape": "line", "length": 6, "effect": "terraform", "height": 3, "terrain": "rock",
     "blurb": "A 30 ft wall of rock rises from where you click, running away from you, wall-high even across a trench; hold the cast for a taller wall. Blocks walking, sight, gas and water; dams a stream. Dig it back down to rubble." },
@@ -74,5 +74,7 @@
   { "id": "whirlwind", "group": "storm", "name": "Whirlwind", "level": 3, "shape": "burst", "radius": 2, "element": "air", "inward": true, "duration": 60, "pullEvery": 3, "maxMass": 1, "radial": false,
     "blurb": "Air and air together: a whirling column of wind 25 ft across where you point, for ten seconds. It draws smoke, fog and steam in toward its middle and drags small creatures and loose things in with them, blows small flames out and fans big ones in toward the eye, and fire caught in it races round the ring." },
   { "id": "light", "group": "arcane", "name": "Light", "level": 0, "shape": "point", "effect": "light", "duration": 21600, "light": { "bright": 20, "dim": 20 }, "radial": false,
-    "blurb": "Cantrip. Touch something and it sheds bright light in a 20 ft radius and dim light for 20 ft more, for an hour." }
+    "blurb": "Cantrip. Touch something and it sheds bright light in a 20 ft radius and dim light for 20 ft more, for an hour." },
+  { "id": "stone-shape", "group": "earth", "name": "Stone Shape", "level": 4, "shape": "square", "size": 1, "effect": "terraform", "dig": 1, "strength": 3, "radial": false,
+    "blurb": "Level 4. You work a cell of stone like clay: raised rock where you point gives way a step, broken into rubble. Rock is too hard for the lesser earth spells; metal and bedrock never give way." }
 ]
