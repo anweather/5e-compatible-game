@@ -189,6 +189,8 @@ namespace Chem
         public int Radius, Depth;
         /// <summary>How hard a ground the blast can dig (1 when absent), against a terrain's hardness.</summary>
         public int Strength = 1;
+        /// <summary>What its middle cell becomes once dug (Molten Boulder's lava); null stays.</summary>
+        public string Leaves;
     }
 
     /// <summary>What an entity leaves behind when it blows up (entities.json "explodes").</summary>
@@ -403,7 +405,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "mud", "dust" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -694,7 +696,7 @@ namespace Chem
         };
 
         static CraterDef ParseCrater(JToken t) =>
-            t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1, Strength = Int(c["strength"]) ?? 1 } : null;
+            t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1, Strength = Int(c["strength"]) ?? 1, Leaves = Str(c["leaves"]) } : null;
 
         static CellRule ParseRule(JObject o)
         {

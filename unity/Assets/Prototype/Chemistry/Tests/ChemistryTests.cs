@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(48));
+            Assert.That(R.CellRules.Count, Is.EqualTo(51));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -806,6 +806,31 @@ namespace Chem.Tests
             for (int x = 3; x <= 7; x++) Assert.That(w.At(x, 4).Frozen, $"x={x} frozen");
             Direct(w, 5, 4, "lightning");
             Assert.That(w.At(6, 4).Charge, Is.EqualTo(0), "ice doesn't conduct");
+        }
+
+        [Test]
+        public void TheWaterAndEarthCombosCastTheirOwnSpells()
+        {
+            // docs/SPELL_COMBOS.md: Flood fills two pits (and in the sandbox shoves a crate along; pushing
+            // things is the view's here); Mud churns a patch of grass to
+            // mud; Molten Boulder blasts a crater with lava in it; Dust Storm raises a cloud of dust that hides
+            // what's behind it. Mirrors sandbox/test/terraform.test.ts.
+            foreach (var (combo, spell) in new[] { ("water+water", "flood"), ("water+earth", "mud"), ("earth+fire", "molten-boulder"), ("earth+air", "dust-storm") })
+                Assert.That(R.Combos.Combo(combo).Spell, Is.EqualTo(spell), combo);
+            var w = new World(R, 20, 12, 9, "dirt");
+            w.At(5, 2).T = "pit";
+            w.At(6, 2).T = "pit";
+            for (int x = 3; x <= 5; x++) w.At(x, 7).T = "grass";
+            w.Cast("flood", 1, 2, 1);
+            w.Cast("mud", 4, 7, 0);
+            w.Cast("molten-boulder", 14, 3, 0);
+            w.Cast("dust-storm", 14, 9, 0);
+            Assert.That(w.At(5, 2).Water > 0 && w.At(6, 2).Water > 0, "and fills the pits");
+            Assert.That(new[] { 3, 4, 5 }.Select(x => w.At(x, 7).T), Is.EqualTo(new[] { "mud", "mud", "mud" }));
+            Assert.That(w.At(14, 3).T, Is.EqualTo("lava"));
+            Assert.That(w.At(14, 9).Gas, Is.EqualTo("dust"));
+            Run(w, 12);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7a38bb69 939719861"), "the same in the sandbox");
         }
 
         [Test]

@@ -17,15 +17,15 @@
     },
     "water": {
       "fire":  { "name": "Fog Bank", "spell": "fog-cloud", "shape": "burst", "castTicks": 9 },
-      "water": { "name": "Flood", "spell": "create-water", "shape": "square", "castTicks": 9, "todo": "A wave or flood; Create Water until there is a wave spell" },
-      "earth": { "name": "Mud", "spell": "create-water", "shape": "square", "castTicks": 9, "todo": "Ground turned to mud; Create Water until there is a mud spell" },
+      "water": { "name": "Flood", "spell": "flood", "shape": "line", "castTicks": 9 },
+      "earth": { "name": "Mud", "spell": "mud", "shape": "square", "castTicks": 9 },
       "air":   { "name": "Frost", "spell": "ray-of-frost", "shape": "line", "castTicks": 6 }
     },
     "earth": {
-      "fire":  { "name": "Molten Boulder", "spell": "meteor", "shape": "burst", "castTicks": 15, "todo": "A boulder that leaves lava; Meteor until there is a molten boulder spell" },
+      "fire":  { "name": "Molten Boulder", "spell": "molten-boulder", "shape": "burst", "castTicks": 15 },
       "water": { "name": "Plant Growth", "spell": "plant-growth", "shape": "burst", "castTicks": 9 },
       "earth": { "name": "Wall of Stone", "spell": "wall-of-stone", "shape": "line", "castTicks": 12 },
-      "air":   { "name": "Dust Storm", "spell": "fog-cloud", "shape": "burst", "castTicks": 9, "todo": "A cloud of dust; Fog Cloud until there is a dust spell" }
+      "air":   { "name": "Dust Storm", "spell": "dust-storm", "shape": "burst", "castTicks": 9 }
     },
     "air": {
       "fire":  { "name": "Lightning", "spell": "shocking-grasp", "shape": "point", "castTicks": 9, "todo": "A lightning bolt; Shocking Grasp until there is a ranged one" },

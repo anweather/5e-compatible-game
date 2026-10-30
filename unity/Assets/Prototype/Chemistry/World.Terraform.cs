@@ -29,7 +29,8 @@ namespace Chem
 
         /// <summary>
         /// A blast's crater at (x, y), like crater in the TS: the ground dug Depth steps in the
-        /// middle, tapering to none past Radius, in row order. Nothing for a null crater.
+        /// middle, tapering to none past Radius, in row order; then its middle becomes its Leaves (lava),
+        /// unless that is blocking. Nothing for a null crater.
         /// </summary>
         public void Crater(int x, int y, CraterDef crater)
         {
@@ -41,6 +42,8 @@ namespace Chem
                     int n = Tapered(-crater.Depth, Math.Max(Math.Abs(dx), Math.Abs(dy)), r);
                     if (n != 0) Reshape(x + dx, y + dy, n, null, crater.Strength);
                 }
+            var mid = crater.Leaves != null ? At(x, y) : null;
+            if (mid != null && !IsBlocking(mid)) mid.T = crater.Leaves;
         }
 
         /// <summary>

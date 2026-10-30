@@ -277,6 +277,8 @@ export interface CraterDef {
   depth: number;
   /** How hard a ground the blast can dig (1 when absent). */
   strength?: number;
+  /** What its middle cell becomes once dug (Molten Boulder's lava); unset stays. */
+  leaves?: string;
 }
 /**
  * A thing to carry (items.json). The Unity game picks these up, throws them and
@@ -419,7 +421,7 @@ export interface Rules {
   combos: CombosDef;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "mud", "dust"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -872,6 +874,7 @@ export function validateRules(r: Rules): string[] {
     if (s.effect !== undefined && !SPELL_EFFECTS.has(s.effect)) errors.push(`spell ${s.id}: unknown effect ${s.effect}`);
     if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
     if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
+    if (s.crater?.leaves && !terrainIds.has(s.crater.leaves)) errors.push(`spell ${s.id}: crater leaves ${s.crater.leaves} unknown`);
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const c of r.critters) if (c.hours !== undefined && !isHours(c.hours)) errors.push(`critter ${c.id}: hours must be [from, to], hours from 0 to 24`);

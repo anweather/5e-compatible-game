@@ -50,7 +50,7 @@ test("a combo with no todo casts its real spell, in that spell's shape", () => {
   const all = [...Object.values(c.singles), ...Object.values(c.pairs).flatMap((p) => Object.values(p))];
   assert.equal(all.length, 20);
   for (const d of all) assert.equal(d.shape, BASE_RULES.spells.find((s) => s.id === d.spell)!.shape, d.name);
-  assert.equal(all.filter((d) => d.todo).length, 11);
+  assert.equal(all.filter((d) => d.todo).length, 7);
   assert.equal(comboById("fire+water")!.spell, "fog-cloud");
   assert.ok(comboById("fire+water")!.todo);
 });

@@ -67,7 +67,7 @@ namespace Chem.Tests
             var all = Base.Combos.All;
             Assert.That(all, Has.Count.EqualTo(20));
             foreach (var d in all) Assert.That(d.Shape, Is.EqualTo(Base.Spell(d.Spell).Shape), d.Id);
-            Assert.That(all.Count(d => d.Todo != null), Is.EqualTo(11));
+            Assert.That(all.Count(d => d.Todo != null), Is.EqualTo(7));
             Assert.That(Base.Combos.Combo("fire+water").Spell, Is.EqualTo("fog-cloud"));
             Assert.That(Base.Combos.Combo("fire+water").Todo, Is.Not.Null);
         }
