@@ -6,6 +6,7 @@ import {
   DX, DY, addGas, burns, cellAt, coverBurns, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
   logOnce, neighbours, rand, terrainDef,
 } from "./world.ts";
+import { awayDir, push } from "./entities.ts";
 import { dryness } from "./sim.ts";
 
 export interface Ctx {
@@ -31,7 +32,7 @@ function index() {
   indexedEntity = RULES.entityRules;
 }
 
-function matches(c: Cell, cond: CellCond | undefined): boolean {
+export function matches(c: Cell, cond: CellCond | undefined): boolean {
   if (!cond) return true;
   if (cond.cover && !(c.cover !== null && cond.cover.includes(c.cover))) return false;
   if (cond.fire !== undefined) {
@@ -118,11 +119,50 @@ function meltCover(c: Cell): boolean {
   return true;
 }
 
+const flashOf = (c: Cell) => (c.gas ? RULES.gases[c.gas]?.burn?.flash : undefined);
+
+/**
+ * Fire has met a gas that flashes (burn.flash: dust): the whole cloud joined to (x, y) goes up at once and is used up.
+ * Each of its cells burns for a moment at the flash's fire, the fire reaches what's there through the rules like any
+ * other, and it shoves things away from where it caught. World.FlashGas; the C# core's shove is the view's.
+ */
+export function flashGas(w: World, x: number, y: number): void {
+  const first = flashOf(cellAt(w, x, y)!);
+  if (!first) return;
+  const seen = new Set([idx(w, x, y)]);
+  const cloud: [number, number][] = [[x, y]];
+  const flashes = cloud.map(([cx, cy]) => flashOf(cellAt(w, cx, cy)!)!);
+  for (let k = 0; k < cloud.length; k++) {
+    for (const [nx, ny] of neighbours(w, cloud[k]![0], cloud[k]![1])) {
+      const next = flashOf(cellAt(w, nx, ny)!);
+      if (!next || seen.has(idx(w, nx, ny))) continue;
+      seen.add(idx(w, nx, ny));
+      cloud.push([nx, ny]);
+      flashes.push(next);
+    }
+  }
+  for (const [cx, cy] of cloud) {
+    const c = cellAt(w, cx, cy)!;
+    c.gas = null;
+    c.gasAmt = 0;
+  }
+  if (first.log) logOnce(w, `flash#${w.tick}`, first.log, "notable");
+  cloud.forEach(([cx, cy], k) => {
+    const c = cellAt(w, cx, cy)!, f = flashes[k]!;
+    c.fire = Math.max(c.fire, f.fire);
+    c.fuel = Math.max(c.fuel, f.fire);
+    applyElement(w, cx, cy, "fire", { power: f.fire, direct: false });
+    const e = entityAt(w, cx, cy);
+    if (e && f.push) push(w, e, awayDir(cx - x, cy - y), f.push, false);
+  });
+}
+
 /** Applies one element to one cell, then to whatever stands there. */
 export function applyElement(w: World, x: number, y: number, element: string, ctx: Ctx): void {
   const c = cellAt(w, x, y);
   if (!c) return;
   index();
+  if (element === "fire") flashGas(w, x, y);
   const before = fill("{cover}|{terrain}", c);
   for (const rule of byElement.get(element) ?? []) {
     if (!applies(w, c, rule.if, ctx.power)) continue;

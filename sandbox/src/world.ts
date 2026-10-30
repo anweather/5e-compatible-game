@@ -259,6 +259,11 @@ export interface Whirl {
   age: number;
   every: number;
   maxMass: number;
+  /** The spell it came from, the way it was cast, how often it moves, and what it carries (a CarryDef's id, or null). */
+  spell: string;
+  dir: Dir;
+  travel: number;
+  carrying: string | null;
 }
 
 export const windDir = (w: World): number => (w.wind ? w.wind.dir : w.weather.windDir);

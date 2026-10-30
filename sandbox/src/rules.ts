@@ -100,6 +100,19 @@ export interface CoverDef {
   /** How many cells a slick of it reaches from where it was laid (float.reach; slick in sim.ts); unset without end. */
   floatReach?: number;
 }
+export interface FlashDef {
+  fire: number;
+  push?: number;
+  log?: string;
+}
+/** What a travelling whirlwind can take on (C#: CarryDef): crossing a cell matching if, it carries this, shedding the element sheds. */
+export interface CarryDef {
+  id: string;
+  name: string;
+  if?: CellCond;
+  sheds: string;
+  log?: string;
+}
 export interface GasDef {
   name: string;
   scald?: number;
@@ -107,6 +120,8 @@ export interface GasDef {
   decay?: number;
   /** From how many units a square of it hides what's behind (lineOfSight); unset never does. */
   blocksSightAt?: number;
+  /** burn.flash: it goes up all at once when fire meets it (dust): the fire each cell goes up with, the shove, the line it logs (flashGas). */
+  burn?: { flash?: FlashDef };
   /** Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); unset never. */
   condenseEvery?: number;
   /** It condenses only this many cells or more from heat: none within it burning or hot, so steam doesn't rain straight back onto a fire (World.NearHeat). */
@@ -247,6 +262,11 @@ export interface SpellDef {
   scatter?: { cover: string; count: number; reach: number };
   /** An element that lands on its middle cell last of all (Falling Star's lava). */
   core?: string;
+  /** A whirling spell moves a cell every this many ticks (Travel in World.Spells.cs), and drops what it carries at dropPower (default 1). */
+  travelEvery?: number;
+  dropPower?: number;
+  /** What a whirling spell can take on, strongest first: one replaces any after it. */
+  carries?: CarryDef[];
   /** The light the Light effect sheds, in feet (bright, dim), for the view to draw (SpellDef.LightBright, LightDim). */
   light?: { bright: number; dim: number };
   /** The ground it blows out where it lands (Fireball). */
@@ -452,7 +472,7 @@ export interface Rules {
   combos: CombosDef;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -869,6 +889,9 @@ export function validateRules(r: Rules): string[] {
     if (g.condenseEvery !== undefined && (!Number.isInteger(g.condenseEvery) || g.condenseEvery < 1)) errors.push(`gas ${id}: condenseEvery must be a whole number from 1`);
     if (g.condenseAway !== undefined && (!Number.isInteger(g.condenseAway) || g.condenseAway < 0)) errors.push(`gas ${id}: condenseAway must be a whole number from 0`);
     if (g.rainEvery !== undefined && (!Number.isInteger(g.rainEvery) || g.rainEvery < 1)) errors.push(`gas ${id}: rainEvery must be a whole number from 1`);
+    const flash = g.burn?.flash;
+    if (flash && !(Number.isInteger(flash.fire) && flash.fire >= 1)) errors.push(`gas ${id}: burn.flash.fire must be a whole number from 1`);
+    if (flash?.push !== undefined && !(Number.isInteger(flash.push) && flash.push >= 0)) errors.push(`gas ${id}: burn.flash.push must be a whole number from 0`);
   }
   for (const [id, cv] of Object.entries(r.covers)) {
     if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
@@ -920,6 +943,12 @@ export function validateRules(r: Rules): string[] {
     if (s.delay !== undefined && !(Number.isInteger(s.delay) && s.delay >= 1)) errors.push(`spell ${s.id}: delay must be a whole number from 1`);
     if (s.scatter !== undefined && !(coverIds.has(s.scatter.cover) && Number.isInteger(s.scatter.count) && s.scatter.count >= 1 && Number.isInteger(s.scatter.reach) && s.scatter.reach >= 1)) errors.push(`spell ${s.id}: scatter needs a known cover and a whole count and reach from 1`);
     if (s.core !== undefined && !el.has(s.core)) errors.push(`spell ${s.id}: unknown core ${s.core}`);
+    for (const key of ["travelEvery", "dropPower"] as const)
+      if (s[key] !== undefined && !(Number.isInteger(s[key]) && s[key]! >= 1)) errors.push(`spell ${s.id}: ${key} must be a whole number from 1`);
+    for (const c of s.carries ?? []) {
+      if (!el.has(c.sheds)) errors.push(`spell ${s.id}: carries ${c.id} sheds unknown element ${c.sheds}`);
+      for (const k of Object.keys(c.if ?? {})) if (!COND_KEYS.has(k)) errors.push(`spell ${s.id}: carries ${c.id} has unknown condition "${k}"`);
+    }
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const c of r.critters) if (c.hours !== undefined && !isHours(c.hours)) errors.push(`critter ${c.id}: hours must be [from, to], hours from 0 to 24`);

@@ -3,7 +3,7 @@
 // -> the day clock (Hasten Time).
 import { tickCombos } from "./combos.ts";
 import { RULES } from "./rules.ts";
-import { applyElement, dampFuel, displaceWater, ignite, putCover, wallLost } from "./react.ts";
+import { applyElement, dampFuel, displaceWater, flashGas, ignite, putCover, wallLost } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
 import {
@@ -267,6 +267,7 @@ function tickFire(w: World) {
       continue;
     }
     if (doused(w, c)) continue;
+    flashGas(w, x, y);
     if (c.gas !== "steam" && rand(w) < p.smokeChance) addGas(c, "smoke", 1);
     for (const [nx, ny, d] of neighbours(w, x, y)) {
       const n = cellAt(w, nx, ny)!;

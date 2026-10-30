@@ -137,6 +137,8 @@ public partial class ChemGrid
         cracks.Rebuild();
         cellFx.Advance(Time.deltaTime);
         WatchAcidCells();
+        RenderWhirls();
+        RenderFlashes();
         materials.ScrollWater(Time.time);
         waterSurface.Scroll(Time.time);
         using (ShapingMarker.Auto()) AnimateShaping();

@@ -88,6 +88,15 @@ touch them.
 **Height step**
 : One unit of a cell's `Height`: 0.5 m raised or dug.
 
+**Carrying**
+: What a whirlwind has taken on and sheds as it travels (`carries` in
+  `spells.json`): a fire tornado, a waterspout, a sandstorm, a smoke column
+  or a snow flurry. One at a time per whirlwind.
+
+**Flash**
+: A gas going up all at once when fire meets it (`burn.flash`: dust). The
+  whole joined cloud is used up: the dust explosion.
+
 **Hardness**
 : How hard a terrain is to dig (`dig.hardness`). A dig's **strength** (a
   spell's, a crater's, a pick's) must reach it; hardness 0 never digs.

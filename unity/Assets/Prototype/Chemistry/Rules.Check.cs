@@ -127,6 +127,7 @@ namespace Chem
                 CraterLeaves(s);
                 PullEvery(s);
                 Landing(s);
+                Carries(s);
             }
 
             // A delayed cast's ticks, what it scatters and the element at its core.
@@ -144,6 +145,27 @@ namespace Chem
             void PullEvery(JToken s)
             {
                 if (s["pullEvery"] != null && !(IsWholeNumber(s["pullEvery"]) && (double)s["pullEvery"] >= 1)) Errors.Add($"spell {Show(s["id"])}: pullEvery must be a whole number from 1");
+            }
+
+            // How a whirling spell travels, and what it can take on: known conditions and a known element.
+            void Carries(JToken s)
+            {
+                foreach (var key in new[] { "travelEvery", "dropPower" })
+                    if (s[key] != null && !(IsWholeNumber(s[key]) && (double)s[key] >= 1)) Errors.Add($"spell {Show(s["id"])}: {key} must be a whole number from 1");
+                foreach (var c in (s["carries"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
+                {
+                    if (!IsElement(c["sheds"])) Errors.Add($"spell {Show(s["id"])}: carries {Show(c["id"])} sheds unknown element {Show(c["sheds"])}");
+                    foreach (var k in Keys(c["if"] as JObject).Where(k => !CondKeys.Contains(k))) Errors.Add($"spell {Show(s["id"])}: carries {Show(c["id"])} has unknown condition \"{k}\"");
+                }
+            }
+
+            // A gas's flash goes up with a whole fire from 1 and a whole push from 0.
+            void GasFlash(JProperty gas)
+            {
+                var f = gas.Value["burn"]?["flash"];
+                if (f == null) return;
+                if (!(IsWholeNumber(f["fire"]) && (double)f["fire"] >= 1)) Errors.Add($"gas {gas.Name}: burn.flash.fire must be a whole number from 1");
+                if (f["push"] != null && !(IsWholeNumber(f["push"]) && (double)f["push"] >= 0)) Errors.Add($"gas {gas.Name}: burn.flash.push must be a whole number from 0");
             }
 
             // A crater's leaves names a terrain there is.
@@ -374,6 +396,7 @@ namespace Chem
                     if (p.Value["condenseEvery"] != null && !(IsWholeNumber(p.Value["condenseEvery"]) && (double)p.Value["condenseEvery"] >= 1)) Errors.Add($"gas {p.Name}: condenseEvery must be a whole number from 1");
                     if (p.Value["condenseAway"] != null && !(IsWholeNumber(p.Value["condenseAway"]) && (double)p.Value["condenseAway"] >= 0)) Errors.Add($"gas {p.Name}: condenseAway must be a whole number from 0");
                     if (p.Value["rainEvery"] != null && !(IsWholeNumber(p.Value["rainEvery"]) && (double)p.Value["rainEvery"] >= 1)) Errors.Add($"gas {p.Name}: rainEvery must be a whole number from 1");
+                    GasFlash(p);
                 }
                 foreach (var s in r["spells"])
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);

@@ -648,7 +648,7 @@ test("the air combos cast lightning bolt, rain cloud, sand blast and whirlwind",
   let rained = 0;
   for (let x = 14; x <= 18; x++) rained += cellAt(w, x, 2)!.water;
   assert.ok(rained > 0, "the cloud rains on the cells under it");
-  assert.equal(`${sand} ${glass} ${rained} ${rustHash(w)} ${w.rng}`, "8 8 4 49129c87 1083013499"); // the same in the C# core
+  assert.equal(`${sand} ${glass} ${rained} ${rustHash(w)} ${w.rng}`, "8 8 10 60622e1c 398143729"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.LightLastsItsDurationThenFades.

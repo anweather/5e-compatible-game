@@ -52,6 +52,9 @@
     { "id": "mud-soil", "element": "mud", "if": { "terrainTag": "soil" }, "do": [{ "setTerrain": "mud" }, { "addWater": 1 }], "log": "The ground churns to mud", "stop": true },
     { "id": "mud-turf", "element": "mud", "if": { "terrainTag": "turf" }, "do": [{ "setTerrain": "mud" }, { "addWater": 1 }], "log": "The ground churns to mud", "stop": true },
     { "id": "dust-cloud", "element": "dust", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "dust", "n": 4 }], "stop": true },
+    { "id": "smoke-cloud", "element": "smoke", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "smoke", "n": 3 }], "stop": true },
+    { "id": "snow-fire", "element": "snow", "if": { "fire": true }, "do": [{ "extinguish": true }] },
+    { "id": "snow-fall", "element": "snow", "if": { "notTerrainTag": "blocking", "water": false }, "do": [{ "setCover": "snow" }], "stop": true },
 
     { "id": "fog-cloud", "element": "fog", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "fog", "n": 6 }], "stop": true },
     { "id": "steam-cloud", "element": "steam", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "steam", "n": 6 }], "stop": true },
