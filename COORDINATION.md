@@ -423,3 +423,10 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   batch work: compiling, imports, EditMode tests and batch builds. The desktop
   is left free for playing. Workers w3 and w4 (Max) get set up tonight. The
   GPU-partitioning test for VMs is parked.
+- 2026-10-29: RULE (Andrew): effects are GPU-first. Show materials and
+  effects with shaders, vertex colours and pooled particles, not by spawning
+  many entities or GameObjects. When objects are really needed, build them
+  procedurally from small simple pieces (as the world builders do), not
+  high-detail models. LEND to the Workers (Pro coordinator) for the view pass
+  on the new materials: the Gameplay view files those features need, listed
+  in its report. The host Editor does one probe and screenshot pass after.
