@@ -38,4 +38,7 @@ Every spell works through what things are made of, so they chain: one spell's le
 - Lightning in storms and meteor showers were often not drawn at all; now they are.
 - Sand Blast no longer leaves the ground scorched black.
 
+### Known issues
+- After a long walk the robe can stretch out into a long tail behind the wizard (0.1.7 did this too). A fix is coming in the next release.
+
 Bugs and the log: Esc → Open log folder, and send `Player.log`.
