@@ -508,6 +508,23 @@ or override (lockstep: the host stamps it into the world state on join).
 Not urgent; build toward it.
 Design: `docs/PLAYER_SAVE.md`.
 
+## 22. Weather casts and three-element casts (Andrew, 2026-10-30; later)
+
+Not yet: first see how the one-verb combo table (J-039) feels in play.
+The idea: a cast that is already loaded (a two-element combo, or a d-pad
+spell such as Control Weather) turns the orbs in the hands into that spell
+instead of firing it, and one more element changes it. "Spell plus element"
+is easy to learn, and it's the shape for three-element casts.
+- Control Weather + water: rain over the area (the weather has rain).
+- + air: a hurricane or tornado (a big version of Whirlwind's carrying).
+- + fire: a meteor shower (the weather already has meteor showers).
+- + air, then fire: a thunderstorm (the mastery tier).
+- + earth: an earthquake: loose things fall, rock cracks, brittle things
+  shatter (existing material verbs, plus the cracked stage).
+- Weather casts cover a region, last long and come on slowly; the
+  two-element casts stay local and immediate, so they don't overlap.
+- **Size:** M for the "loaded spell plus element" input; S per weather cast.
+
 ## Priority (groomed 2026-10-27, Andrew approved; J-012 in `JUDGMENT_CALLS.md`)
 
 This is the order to work in. Each item names its lane (see
