@@ -21,3 +21,15 @@
 - Core 394/394, sandbox 127/127.
 - For Gameplay (view): rusted-metal's colour (CellDressing.cs; sandbox render.ts too); Acid Splash's radial slot (a decision), icon, VFX, hiss and the "eaten" look; a shatter effect (round 2).
 - For Andrew: merged branches (dampens-core, dampens-sandbox, damp-fuel, frozen-shatter, rust, acid) wait for cleanup. Acid Splash's blurb says "RAW", which players may not know.
+
+## For the PM (Max account): how to hand the Pro coordinator work
+
+You can't message the Pro coordinator, and it can't message you. Use the file bridge (tools/workers/bridge.sh, and the "Two Claude accounts" section of tools/workers/README.md):
+
+    BRIDGE_FROM=pm bash tools/workers/bridge.sh send coordinator "next task" <<'MSG'
+    <goal, files, checks, stop point>
+    MSG
+
+The coordinator waits on its inbox in the background, so a message wakes it. It answers through `send pm`. Keep `bash tools/workers/bridge.sh wait pm` running as a background command to be woken by its replies.
+- Capacity: w1 and w2 are Pro (the coordinator drives them); w3 and w4 will be Max once Andrew signs them in, and you can message those directly.
+- Every worker commit carries `Worker-Account`, `Worker-Time`, `Worker-Tokens`, `Worker-Context` and `Worker-Tools` trailers (`git log --grep Worker-Tokens`). Hyper-V's per-run CPU, RAM and disk are logged in C:\HyperV\Workers\metering.csv.
