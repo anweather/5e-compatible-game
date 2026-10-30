@@ -249,7 +249,8 @@ function controlWeather(w: World, s: SpellDef, charge: number) {
 export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
   const cells = spellCells(w, s, x, y, dir, charge, aim);
   const ctx = { power: (s.power ?? 1) * charge, dir, direct: true, at: [x, y] as [number, number] };
-  if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };
+  // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction (World.Land).
+  if (s.wind) w.wind = { dir, ticks: s.wind };
   if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
   if (s.crater) for (const [cx, cy] of cells) shatter(w, cx, cy);
   crater(w, x, y, s.crater);

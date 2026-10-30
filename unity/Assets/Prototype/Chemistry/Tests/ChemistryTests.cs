@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(48));
+            Assert.That(R.CellRules.Count, Is.EqualTo(50));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -746,6 +746,31 @@ namespace Chem.Tests
             var (_, coldNear, _) = SteamByHeat(false);
             Assert.That(coldNear, Is.GreaterThan(0), "and with no heat, there too");
             Assert.That($"{near} {far} {coldNear} {hot.CellHash()} {hot.RngState}", Is.EqualTo("0 77 2 d6bb1743 3544326918"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void TheFireCombosCastScaldingSteamALavaPoolAndAFlameWave()
+        {
+            // rules/combos.json fire+water, fire+earth and fire+air, each its own spell now.
+            var w = new World(R, 24, 9, 1, "grass");
+            var goblin = w.SpawnRaider("goblin", 18, 4, 99);
+            var hound = w.SpawnRaider("bone-hound", 10, 4, 99);
+            w.Cast("flame-wave", 2, 4, 1);
+            Assert.That(w.Wind, Is.EqualTo(((int, int)?)(1, 18)), "the flame wave raises a wind along it");
+            Assert.That(w.Cells.Count(c => c.Fire > 0), Is.GreaterThan(3), "and sets its cone alight");
+            w.Cast("lava-pool", 10, 4, 0);
+            int pool = w.Cells.Count(c => c.T == "lava-pool");
+            Assert.That(pool, Is.GreaterThan(0));
+            Assert.That(w.At(10, 4).Heat, Is.EqualTo(300), "the lava is hot");
+            w.Cast("scalding-steam", 18, 4, 0);
+            Assert.That(w.At(18, 4).Gas == "steam" && w.At(18, 4).GasAmt == 6, "a burst of thick steam");
+            Run(w, 30);
+            Assert.That(goblin.Hp, Is.LessThan(99), "the steam scalds the goblin");
+            Assert.That(hound.Hp, Is.LessThan(99), "the lava burns the hound");
+            Run(w, 300);
+            Assert.That(w.Cells.Count(c => c.T == "lava-pool"), Is.EqualTo(0), "the lava pool cools");
+            Assert.That(w.Log.Any(l => l.Text == "The lava pool cools into rock"));
+            Assert.That($"{pool} {goblin.Hp} {hound.Hp} {w.CellHash()} {w.RngState}", Is.EqualTo("9 90 -1 d6bc3323 2450008921"), "the same in the sandbox");
         }
 
         [Test]

@@ -216,7 +216,8 @@ namespace Chem
             var cells = SpellCells(s, x, y, dir, charge, aimX, aimY);
             // Squares in paused chunks are left alone (World.Chunks.cs).
             cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
-            if (s.Element == "air" && s.Wind > 0) Wind = (dir, s.Wind);
+            // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction.
+            if (s.Wind > 0) Wind = (dir, s.Wind);
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
             if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);
