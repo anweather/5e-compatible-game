@@ -78,7 +78,7 @@ namespace Chem.Tests
         public void TheDpadListsTheSpellsWithNoElement()
         {
             Assert.That(Base.Combos.Dpad.Select(d => d.Name), Is.EqualTo(new[] { "Hasten Time", "Shapeshift", "Light", "Control Weather" }));
-            Assert.That(Base.Combos.Dpad.Select(d => d.Spell), Is.EqualTo(new[] { "hasten-time", "shapeshift", null, "control-weather" }));
+            Assert.That(Base.Combos.Dpad.Select(d => d.Spell), Is.EqualTo(new[] { "hasten-time", "shapeshift", "light", "control-weather" }));
         }
 
         [Test]
@@ -168,7 +168,7 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void TheDpadCyclesBothWaysCastsThroughTheMeterAndRefusesASlotWithNoSpell()
+        public void TheDpadCyclesBothWaysAndCastsThroughTheMeter()
         {
             var w = Small();
             Assert.That(w.SelectedDpad("ann").Name, Is.EqualTo("Hasten Time"));
@@ -179,7 +179,7 @@ namespace Chem.Tests
             Assert.That(w.CastOf("ann").Slot, Is.EqualTo(1));
             Cycle(w, "ann", 1);
             Assert.That(w.SelectedDpad("ann").Name, Is.EqualTo("Light"));
-            Assert.That(CastSelected(w, "ann"), Is.False, "Light has no spell yet");
+            Assert.That(w.SelectedDpad("ann").Spell, Is.EqualTo("light"), "Light is a real spell now");
             Cycle(w, "ann", -1);
             Assert.That(CastSelected(w, "ann"));
             Assert.That(w.MoveFactorOf("ann"), Is.EqualTo(0.6));

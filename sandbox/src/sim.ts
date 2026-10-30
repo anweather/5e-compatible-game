@@ -36,6 +36,7 @@ export function step(w: World): void {
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (c.charge > 0) c.charge--;
+    if ((c.lit ?? 0) > 0) c.lit!--;
     if (c.life > 0 && --c.life === 0) ripen(w, i, c);
     if ((c.heat ?? 0) > 0) cool(w, c);
     if (soaking) rust(w, c);

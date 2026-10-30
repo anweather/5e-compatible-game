@@ -208,7 +208,7 @@ export interface SpellDef {
   radiusPerCharge?: number;
   push?: number;
   wind?: number;
-  effect?: "levitate" | "carry" | "teleport" | "terraform" | "haste" | "weather" | "shapeshift";
+  effect?: "levitate" | "carry" | "teleport" | "terraform" | "haste" | "weather" | "shapeshift" | "light";
   /** haste (Hasten Time): how many times as fast the day clock runs. */
   rate?: number;
   /**
@@ -224,6 +224,8 @@ export interface SpellDef {
   taper?: boolean;
   /** A burst whose element arrives at each cell heading in toward its middle (Whirlwind): air shoves gas and fans fire inward. */
   inward?: boolean;
+  /** The light the Light effect sheds, in feet (bright, dim), for the view to draw (SpellDef.LightBright, LightDim). */
+  light?: { bright: number; dim: number };
   /** The ground it blows out where it lands (Fireball). */
   crater?: CraterDef;
   duration?: number;
@@ -564,7 +566,7 @@ const EFFECT_KEYS = new Set([
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
-const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift"]);
+const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift", "light"]);
 
 function terraformErrors(r: Rules, s: SpellDef): string[] {
   const errors: string[] = [];
@@ -877,6 +879,8 @@ export function validateRules(r: Rules): string[] {
     if (!SHAPES.has(s.shape)) errors.push(`spell ${s.id}: unknown shape ${s.shape}`);
     if (!s.name) errors.push(`spell ${s.id}: needs a name`);
     if (s.inward !== undefined && typeof s.inward !== "boolean") errors.push(`spell ${s.id}: inward must be true or false`);
+    if (s.light !== undefined && !(typeof s.light === "object" && s.light !== null && (["bright", "dim"] as const).every((k) => Number.isInteger(s.light![k]) && s.light![k] >= 0)))
+      errors.push(`spell ${s.id}: light must be { bright, dim }, whole feet from 0`);
     if (s.effect !== undefined && !SPELL_EFFECTS.has(s.effect)) errors.push(`spell ${s.id}: unknown effect ${s.effect}`);
     if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
     if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);

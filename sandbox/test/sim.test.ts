@@ -435,7 +435,7 @@ test("soaked thatch burns out sooner", () => {
 /** World.CellHash in the C# port, rust included (written only when it isn't 0). */
 function rustHash(w: World): string {
   const s = w.cells.map((c) =>
-    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""};`).join("");
+    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""}${c.lit ? `,b${c.lit}` : ""};`).join("");
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -645,6 +645,23 @@ test("the air combos cast lightning bolt, rain cloud, sand blast and whirlwind",
   for (let x = 14; x <= 18; x++) rained += cellAt(w, x, 2)!.water;
   assert.ok(rained > 0, "the cloud rains on the cells under it");
   assert.equal(`${sand} ${glass} ${rained} ${rustHash(w)} ${w.rng}`, "8 8 4 49212457 399058435"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.LightLastsItsDurationThenFades.
+test("light lasts its duration, then fades", () => {
+  const s = RULES.spells.find((x) => x.id === "light")!;
+  assert.deepEqual([s.light!.bright, s.light!.dim, s.duration], [20, 20, 21600]);
+  const w = createWorld(7, 5, 1);
+  for (const c of w.cells) c.t = "dirt";
+  castSpell(w, "light", 3, 2, 0);
+  assert.equal(cellAt(w, 3, 2)!.lit, 21600, "lit for the hour");
+  assert.equal(w.cells.filter((c) => (c.lit ?? 0) > 0).length, 1, "on the cell touched only");
+  run(w, 10800);
+  const half = rustHash(w);
+  assert.equal(cellAt(w, 3, 2)!.lit, 10800, "half way");
+  run(w, 10800);
+  assert.equal(cellAt(w, 3, 2)!.lit, 0, "and it fades");
+  assert.equal(`${half} ${rustHash(w)} ${w.rng}`, "53f7abc0 1e6d522 2668737540"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AGustPushesSmokeAndSteamFansTheFireAndKeepsMetalHot.
