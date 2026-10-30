@@ -92,6 +92,12 @@ public static class TerrainIds
     // Roof materials (world/villages.json "materials"): not cells, a building's roof.
     public const string Thatch = "thatch", Shingle = "shingle", Slate = "slate";
     public const string Metal = "metal";
+    // Metal left wet long enough (materials.json rust).
+    public const string RustedMetal = "rusted-metal";
+    public const string Mud = "mud";
+    public const string Sand = "sand";
+    // Sand a lightning strike fused (lightning-fuse in reactions.json).
+    public const string Glass = "glass";
     public const string LogWall = "logwall";
     public const string Stone = "stone";
     public const string Rock = "rock";

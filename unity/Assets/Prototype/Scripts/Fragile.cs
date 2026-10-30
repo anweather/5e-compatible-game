@@ -3,7 +3,9 @@ using UnityEngine;
 
 // An item that breaks when it lands hard (items.json "breaks"): a bullseye
 // lantern dropped from a height or hurled at the ground smashes and splashes
-// its burning oil over the square, through ChemEffects like a barrel's blast.
+// its burning oil over the square, through ChemEffects like a barrel's blast;
+// a glow ball thrown hard, or struck by something fast, shatters into a spray
+// of glass shards (PhysicsProp.ShowBreak, ShardBurst) with the break sound.
 // A drop from the hand (about 4.5 m/s) doesn't break it; a hard throw does.
 // Online only the host's copy lands for real (a client's is a puppet); the
 // spill is stamped for every machine and the item is gone from all of them.
@@ -27,8 +29,12 @@ public class Fragile : MonoBehaviour
         broken = true;
         var grid = item.Grid;
         bool spills = item.Def.Breaks.Spill != null;
-        if (spills) ChemEffects.Request(grid, ChemEffects.By(item.Prop, EffectKind.Spill, grid.CellAt(transform.position)));
-        else EventLog.Add($"The {item.Name.ToLowerInvariant()} shatters");
+        if (spills)
+        {
+            ChemEffects.Request(grid, ChemEffects.By(item.Prop, EffectKind.Spill, grid.CellAt(transform.position)));
+            if (item.Prop.Shatters(out var tint)) ShardBurst.At(transform.position, tint);
+        }
+        else item.Prop.ShowBreak(false);
         if (TryGetComponent<NetProp>(out var net) && net.Hosting) net.Broke(false, quiet: spills);
         else Destroy(gameObject);
     }

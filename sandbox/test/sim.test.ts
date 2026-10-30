@@ -518,6 +518,7 @@ test("lightning fuses sand into glass", () => {
   const g = RULES.terrain.glass!;
   assert.ok(g.tags.includes("brittle") && !g.tags.includes("flammable") && !g.tags.includes("conductive"), "brittle; doesn't burn or conduct");
   assert.ok(["glow-ball-amber", "glow-ball-azure", "glow-ball-rose"].every((id) => RULES.items[id]!.material === "glass"));
+  assert.ok(["glow-ball-amber", "glow-ball-azure", "glow-ball-rose"].every((id) => RULES.items[id]!.breaks?.speed === 8 && !RULES.items[id]!.breaks.spill), "glow balls shatter thrown hard");
   run(w, 40);
   assert.equal(`${glass} ${rustHash(w)} ${w.rng}`, "1 e8b4e694 1"); // the same in the C# core
 });

@@ -46,6 +46,13 @@ namespace Chem.Tests
             Assert.That(Lantern.BreaksAt(8), Is.True);
             Assert.That(Lantern.BreaksAt(12), Is.True, "thrown hard");
             Assert.That(R.Item("spyglass").BreaksAt(100), Is.False, "no breaks: never breaks");
+            foreach (var ball in new[] { "glow-ball-amber", "glow-ball-azure", "glow-ball-rose" })
+            {
+                Assert.That(R.Item(ball).BreaksAt(4.4), Is.False, $"{ball}: a drop from the hand");
+                Assert.That(R.Item(ball).BreaksAt(12), Is.True, $"{ball}: glass, thrown hard");
+                Assert.That(R.Item(ball).Breaks.Spill, Is.Null, $"{ball}: nothing to spill, it just shatters");
+                Assert.That(R.ItemHas(ball, "brittle"), Is.True, $"{ball}: brittle from its glass, so it shatters into shards");
+            }
         }
 
         [Test]

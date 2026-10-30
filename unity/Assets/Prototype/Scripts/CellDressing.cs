@@ -26,6 +26,8 @@ public sealed partial class CellDressing
         ["sprouts"] = (new Color(0.42f, 0.55f, 0.28f), 0f), ["sapling"] = (new Color(0.22f, 0.45f, 0.18f), 0.8f),
         ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.30f, 0.29f, 0.28f), 0.06f),
         ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f),
+        ["rusted-metal"] = (new Color(0.42f, 0.22f, 0.12f), 0.06f), ["mud"] = (new Color(0.24f, 0.17f, 0.10f), 0f),
+        ["sand"] = (new Color(0.86f, 0.77f, 0.56f), 0f), ["glass"] = (new Color(0.73f, 0.87f, 0.89f), 0f),
     };
 
     // Terrains drawn as ground with something standing on it; effects sit on their ground, not on top.
@@ -70,7 +72,7 @@ public sealed partial class CellDressing
 
     static bool HasParts(string terrain) =>
         terrain == TerrainIds.Brush || terrain == TerrainIds.Sapling || terrain == TerrainIds.Stump || terrain == TerrainIds.Rubble || terrain == TerrainIds.Deadfall ||
-        terrain == TerrainIds.Wood || terrain == TerrainIds.Metal || Blocks.Contains(terrain);
+        terrain == TerrainIds.Wood || terrain == TerrainIds.Metal || terrain == TerrainIds.RustedMetal || Blocks.Contains(terrain);
 
     void Dress(Transform root, string terrain, (Color color, float height) look, Vector3 surface, int x, int y)
     {
@@ -97,7 +99,8 @@ public sealed partial class CellDressing
                 DressPlanks(root, surface, look.color, rng, x, y);
                 break;
             case TerrainIds.Metal:
-                DressPlate(root, surface, rng, x, y);
+            case TerrainIds.RustedMetal:
+                DressPlate(root, surface, rng, x, y, terrain == TerrainIds.RustedMetal);
                 break;
             default:
                 var block = Part(root, PrimitiveType.Cube, surface + Vector3.up * (look.height / 2f - 0.1f), new Vector3(CellSize, look.height + 0.2f, CellSize), "Stone", look.color);
