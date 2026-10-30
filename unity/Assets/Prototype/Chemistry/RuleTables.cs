@@ -139,6 +139,8 @@ namespace Chem
         public int BlocksSightAt;
         /// <summary>Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); 0 never.</summary>
         public int CondenseEvery;
+        /// <summary>It condenses only this many cells or more from heat: none within it burning or hot (Cell.Heat), so steam doesn't rain straight back onto a fire (World.NearHeat).</summary>
+        public int CondenseAway;
     }
 
     /// <summary>
@@ -509,6 +511,7 @@ namespace Chem
                     Decay = Num(p.Value["decay"]),
                     BlocksSightAt = Int(p.Value["blocksSightAt"]) ?? 0,
                     CondenseEvery = Int(p.Value["condenseEvery"]) ?? 0,
+                    CondenseAway = Int(p.Value["condenseAway"]) ?? 0,
                 };
 
             foreach (var t in doc["cellRules"].OfType<JObject>())

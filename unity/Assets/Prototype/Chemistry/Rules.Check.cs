@@ -327,6 +327,7 @@ namespace Chem
                     Number(p.Value["decay"], $"gas {p.Name}: decay", 0);
                     Number(p.Value["blocksSightAt"], $"gas {p.Name}: blocksSightAt", 0);
                     if (p.Value["condenseEvery"] != null && !(IsWholeNumber(p.Value["condenseEvery"]) && (double)p.Value["condenseEvery"] >= 1)) Errors.Add($"gas {p.Name}: condenseEvery must be a whole number from 1");
+                    if (p.Value["condenseAway"] != null && !(IsWholeNumber(p.Value["condenseAway"]) && (double)p.Value["condenseAway"] >= 0)) Errors.Add($"gas {p.Name}: condenseAway must be a whole number from 0");
                 }
                 foreach (var s in r["spells"])
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);

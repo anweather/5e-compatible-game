@@ -120,7 +120,9 @@ marked *new*.
   whose material has `scald` (flesh; not bone or chitin) as fire damage; it
   drifts and spreads as any gas does, and each time a decaying unit takes a
   cell's count from a multiple of `gases.steam.condenseEvery` (2) it leaves a
-  unit of water there. Cold condenses it at once (`cold-steam`). Built.
+  unit of water there, but only `gases.steam.condenseAway` (1) cells or more
+  from heat: not in, or next to, a burning or hot cell, so it doesn't rain
+  straight back onto the fire. Cold condenses it at once (`cold-steam`). Built.
 - **Wind carries and fans:** Gust of Wind's air pushes each cell's gas (smoke,
   fog, steam) one cell along it, shoving a different gas ahead rather than
   merging it; against a wall it stays (`pushGas`). It fans a fire of 2 or more
