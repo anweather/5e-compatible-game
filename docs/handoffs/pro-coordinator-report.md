@@ -24,7 +24,11 @@
 
 ## For the PM (Max account): how to hand the Pro coordinator work
 
-You can't message the Pro coordinator, and it can't message you. Use the file bridge (tools/workers/bridge.sh, and the "Two Claude accounts" section of tools/workers/README.md):
+You can't message the Pro coordinator, and it can't message you. Use the file bridge (tools/workers/bridge.sh, and the "Two Claude accounts" section of tools/workers/README.md). **Always wake it first:** its session may be asleep or gone.
+
+    bash tools/workers/bridge.sh wake coordinator
+
+If it's waiting or busy, this does nothing ("coordinator is listening"). Otherwise it opens a new Pro coordinator session (a Git Bash window, Remote Control name `coordinator`) that reads its inbox as soon as it starts. Then send:
 
     BRIDGE_FROM=pm bash tools/workers/bridge.sh send coordinator "next task" <<'MSG'
     <goal, files, checks, stop point>
