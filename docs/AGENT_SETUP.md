@@ -6,47 +6,25 @@ overview; the details are in COORDINATION.md (lanes and rules) and
 [tools/workers/README.md](../tools/workers/README.md) (the VMs).
 
 ```mermaid
-flowchart LR
-  phone["Andrew's phone<br/>Remote Control into any session"]
-
-  subgraph PC["PC: Windows 11 Pro, 31 GB RAM, the GPU"]
-    direction TB
-    subgraph MAX["Max account"]
-      pm["PM (Project Manager)<br/>lanes, merge order, releases"]
-      gp["Gameplay session<br/>+ Unity Editor (host)"]
-      wd["World session<br/>+ Unity Editor (host)"]
-    end
-    subgraph PRO["Pro account"]
-      co["Pro coordinator<br/>Git Bash, Remote Control 'coordinator'"]
-    end
-    bridge[("Mailbox: ~/.agent-bridge<br/>pm/ and coordinator/ inboxes<br/>tools/workers/bridge.sh")]
-    subgraph HV["Hyper-V worker VMs (no GPU)"]
-      w1["w1 (Pro)<br/>Claude RC + Unity batch + own clone"]
-      w2["w2 (Pro)<br/>Claude RC + Unity batch + own clone"]
-      w3["w3 (Max, planned)"]
-      w4["w4 (Max, planned)"]
-    end
-    slots[("Sign-in slots + templates<br/>signins.cmd, windows-template")]
+flowchart TB
+  subgraph MAX["Max account"]
+    pm["PM<br/>plans, merges, releases"]
+    host["Gameplay + World<br/>Unity Editor on the PC's GPU"]
+    mac["Build<br/>on the Mac"]
+    mw["Workers w3, w4<br/>(planned)"]
   end
-
-  subgraph MAC["Mac"]
-    bd["Build session (Max)<br/>macOS builds, performance"]
+  subgraph PRO["Pro account"]
+    co["Pro coordinator"]
+    pw["Workers w1, w2<br/>Hyper-V VMs: Claude + Unity, no GPU"]
   end
-
-  gh[("GitHub<br/>dev branch, releases")]
-
-  pm <-->|send / wait| bridge
-  co <-->|send / wait| bridge
-  pm -. messages .-> gp & wd & bd
-  pm -. messages .-> w3 & w4
-  co -. messages .-> w1 & w2
-  slots -->|start.cmd copies sign-ins in| HV
-  w1 & w2 & w3 & w4 -->|branches| gh
-  gp & wd & bd -->|branches| gh
-  co -->|land.sh merges| gh
-  pm -->|merges, releases| gh
-  phone -.-> pm & co & gp & wd & bd
+  pm <-->|"mailbox (bridge.sh)"| co
+  pm --> host & mac & mw
+  co --> pw
 ```
+
+Arrows are who hands work to whom. Every session works on its own branch and
+pushes it to GitHub, and the PM or the Pro coordinator merges into `dev`.
+Andrew reaches any session from his phone with Remote Control.
 
 ## Who does what
 
