@@ -7,7 +7,7 @@
 #   bridge.sh ack <me> <id>|all             "a Claude has read it": file it in done/
 #   bridge.sh status <to> <id>              unread, taken (not acked yet) or acked, with times
 #   bridge.sh alive <who>                   exit 0 if <who>'s listener is running
-#   bridge.sh wake <who>                    if it isn't, start a new session for it (see roles below)
+#   bridge.sh wake <who>                    if it isn't, restart its session (replacing the old one, same conversation)
 # A session waits with `wait` as a background command: polling files costs no tokens, and the
 # command ending is what wakes the session. On each message: ack it as soon as you've read it,
 # start the next wait right away (before doing the work), then do the work.
@@ -86,21 +86,30 @@ case "$cmd" in
     [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null && (( $(age "$inbox/.waiting") < 60 )) ;;
   wake)
     if bash "$0" alive "$who"; then echo "$who is listening; just send."; exit 0; fi
-    # Roles: the account's config folder and the first prompt of its new session.
+    # Roles: the account's config folder, how to find its running Claude (the command line of the
+    # bash that launched it), and the prompt it's restarted with.
     case "$who" in
-      coordinator) config="$HOME/.claude-pro"
-        prompt="You are the Pro account's coordinator of the worker VMs w1 and w2 (your earlier session ended). Update this worktree to origin/dev (git fetch; git switch -C $who origin/dev), then read docs/handoffs/pro-coordinator.md, docs/handoffs/pro-coordinator-report.md and tools/workers/README.md. Run 'bash tools/workers/bridge.sh read coordinator', ack what you read ('bridge.sh ack coordinator all'), start 'bash tools/workers/bridge.sh wait coordinator' as a background command, then do what the PM asks, reporting back with 'BRIDGE_FROM=coordinator bash tools/workers/bridge.sh send pm <subject>'. Keep that wait running whenever it isn't, and ack each message as soon as you've read it." ;;
+      coordinator) config="$HOME/.claude-pro"; launcher='workers-startup|\.wake\.sh|claude-pro'
+        prompt="Your inbox listener had stopped, so bridge.sh restarted you, continuing this conversation. Run 'bash tools/workers/bridge.sh read coordinator' from your worktree, ack what you read ('bridge.sh ack coordinator all'), start 'bash tools/workers/bridge.sh wait coordinator' as a background command, then carry on with what the PM asks, reporting with 'BRIDGE_FROM=coordinator bash tools/workers/bridge.sh send pm <subject>'." ;;
       *) echo "No wake recipe for $who."; exit 2 ;;
     esac
-    # Its own worktree, so the main checkout's branch is left alone.
+    # Busy, not gone: a session that wrote its transcript in the last 5 min is mid-turn and starts
+    # its wait again when the turn ends. Restarting it would cut that turn off.
+    newest="$(find "$config/projects" -name '*.jsonl' -mmin -5 2>/dev/null | head -1)"
+    [[ -z "$newest" ]] || { log "not woken: busy (wrote its log in the last 5 min)"; echo "$who is busy (wrote its log in the last 5 min); not waking it."; exit 0; }
+    # Replace, don't add: stop the role's running Claude (found by its launcher), so there's only
+    # ever one, then continue its last conversation in the main checkout, where it was started.
+    pids="$(powershell -NoProfile -Command "\$p = Get-CimInstance Win32_Process; \$p | Where-Object { \$_.Name -eq 'claude.exe' -and \$_.CommandLine -like '*.local\\bin\\claude.exe*' } | Where-Object { \$c = \$_.ParentProcessId; (\$p | Where-Object ProcessId -eq \$c).CommandLine -match '$launcher' } | ForEach-Object ProcessId" 2>/dev/null | tr -d '\r' | xargs)"
+    if [[ -n "$pids" ]]; then
+      for p in $pids; do powershell -NoProfile -Command "Stop-Process -Id $p -Force" 2>/dev/null; done
+      log "stopped the old $who session (pid $pids)"
+    fi
     main="$(cd "$(dirname "$(git -C "$(dirname "$0")" rev-parse --path-format=absolute --git-common-dir)")" && pwd)"
-    repo="$main/.claude/worktrees/$who"
-    [[ -d "$repo" ]] || git -C "$main" worktree add -q --detach "$repo" origin/dev
     # The launch goes in a script file: quotes don't survive cmd's start. The listener is a
     # background command, which Claude Code would otherwise stop when memory runs low.
-    printf 'cd %q && CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1 CLAUDE_CONFIG_DIR=%q claude --remote-control %q %q\nexec bash\n' "$repo" "$config" "$who" "$prompt" > "$inbox/.wake.sh"
+    printf 'cd %q && CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1 CLAUDE_CONFIG_DIR=%q ~/.local/bin/claude.exe --continue --remote-control %q %q\nexec bash\n' "$main" "$config" "$who" "$prompt" > "$inbox/.wake.sh"
     cmd //c start "" "C:\Program Files\Git\git-bash.exe" "$(cygpath -w "$inbox/.wake.sh")"
-    log "woke a new session"
-    echo "Started a new $who session (a Git Bash window; Remote Control name: $who). Your mail waits in its inbox." ;;
+    log "woke $who (continuing its last conversation)"
+    echo "Restarted $who, continuing its last conversation (a Git Bash window; Remote Control name: $who). Your mail waits in its inbox." ;;
   *) sed -n 2,18p "$0"; exit 2 ;;
 esac
