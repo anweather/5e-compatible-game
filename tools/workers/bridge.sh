@@ -29,7 +29,11 @@ case "$cmd" in
   send)
     subject="${3:?subject}"
     f="$inbox/$(date +%Y%m%d-%H%M%S)-${subject//[^A-Za-z0-9-]/-}.md"
-    { echo "# $subject"; echo "From: ${BRIDGE_FROM:-?}, $(date '+%Y-%m-%d %H:%M')"; echo; cat; } > "$f.tmp"
+    body="$(cat)"
+    # A heredoc that didn't reach stdin sends an empty message (it happened): refuse it.
+    [[ -n "${body//[[:space:]]/}" ]] || { echo "Empty message body: nothing sent. Pipe the body in (< file, or a heredoc)."; exit 1; }
+    { echo "# $subject"; echo "From: ${BRIDGE_FROM:-?}, $(date '+%Y-%m-%d %H:%M')"; echo; printf '%s
+' "$body"; } > "$f.tmp"
     mv "$f.tmp" "$f"   # whole files only: a waiting reader never sees half a message
     log "sent $(basename "$f") from ${BRIDGE_FROM:-?}"
     echo "Sent to $who: $(basename "$f")" ;;
