@@ -34,6 +34,7 @@ export function step(w: World): void {
     const c = w.cells[i]!;
     if (c.charge > 0) c.charge--;
     if (c.life > 0 && --c.life === 0) ripen(w, i, c);
+    if ((c.heat ?? 0) > 0) cool(w, c);
     if (soaking) rust(w, c);
     if (soaking && c.water > 0 && c.cover !== null) float(w, i, c, floating);
     if (soaking && c.water > 0) soak(w, i, c);
@@ -116,6 +117,25 @@ function dryOut(w: World, c: Cell) {
   const to = terrainDef(c).driesTo;
   if (!to || c.water > 0 || raining(w) || w.tick < (c.dampUntil ?? 0)) return;
   c.t = to;
+}
+
+/**
+ * Hot metal cools a tick at a time (materials.json hot): water on it boils off a unit a tick as steam, each unit
+ * taking hot.quench ticks of its heat. A terrain that can't be hot drops it (World.Cool).
+ */
+function cool(w: World, c: Cell) {
+  const t = terrainDef(c);
+  if (!t.hotFor || t.hotFor <= 0) {
+    c.heat = 0;
+    return;
+  }
+  if (c.water > 0 && !c.frozen) {
+    c.water--;
+    addGas(c, "steam", 1);
+    c.heat = Math.max(0, c.heat! - (t.hotQuench ?? 0));
+    logOnce(w, "hot-quench", "Water hisses into steam on the hot metal");
+  }
+  if (c.heat! > 0) c.heat!--;
 }
 
 /**

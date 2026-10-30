@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(46));
+            Assert.That(R.CellRules.Count, Is.EqualTo(47));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -660,6 +660,32 @@ namespace Chem.Tests
             Assert.That(new[] { "glow-ball-amber", "glow-ball-azure", "glow-ball-rose" }.All(id => R.Items[id].Material == "glass"));
             Run(w, 40);
             Assert.That($"{glass} {w.CellHash()} {w.RngState}", Is.EqualTo("1 e8b4e694 1"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void MetalStaysHotAfterFireBurnsWhatStandsOnItAndSteamsWater()
+        {
+            // materials.json metal hot { for 120, quench 30 }: fire leaves it hot, the heat burns a creature
+            // on it, and water on it boils off as steam, cooling it.
+            var w = new World(R, 9, 5, 1, "metal");
+            var r = w.SpawnRaider("giant-spider", 4, 2, 99);
+            w.Cast("fire-bolt", 4, 2, 1);
+            Assert.That(w.At(4, 2).Heat, Is.EqualTo(120), "the fire left it hot");
+            int hp = r.Hp;
+            Run(w, 12);
+            Assert.That(w.At(4, 2).Heat, Is.EqualTo(108), "and it stays hot, cooling a tick at a time");
+            Assert.That(r.Hp, Is.LessThan(hp), "it burns what stands on it");
+            w.Cast("create-water", 4, 2, 1);
+            int steam = 0;
+            for (int t = 0; t < 10; t++)
+            {
+                w.Step();
+                steam = Math.Max(steam, w.Cells.Sum(c => c.Gas == "steam" ? c.GasAmt : 0));
+            }
+            Assert.That(steam, Is.GreaterThan(0), "the water hisses into steam");
+            Assert.That(w.Log.Any(l => l.Text == "Water hisses into steam on the hot metal"));
+            Assert.That(w.At(4, 2).Heat, Is.LessThan(98), "and cools it faster than time alone");
+            Assert.That($"{r.Hp} {steam} {w.At(4, 2).Heat} {w.CellHash()} {w.RngState}", Is.EqualTo("84 3 0 519dc5ad 1639742223"), "the same in the sandbox");
         }
 
         [Test]

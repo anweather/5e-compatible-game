@@ -8,6 +8,7 @@
 //   dig     { hardness, leaves }                                  hardness, dugTo
 //   soak    { dry, wet, dampens, leaves, dries }                  soakEvery, soakEveryWet, dampens, soaksTo, driesTo
 //   rust    { every, leaves }                                     rustEvery, rustsTo
+//   hot     { for, quench }                                       hotFor, hotQuench
 //   float   { every }                                             floatEvery (covers: oil floats and spreads on open water)
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
 //   conduct {}                                                    conductive tag
@@ -36,6 +37,7 @@ namespace Chem
             ("dig", null, new[] { ("hardness", "hardness"), ("leaves", "dugTo") }),
             ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens"), ("leaves", "soaksTo"), ("dries", "driesTo") }),
             ("rust", null, new[] { ("every", "rustEvery"), ("leaves", "rustsTo") }),
+            ("hot", null, new[] { ("for", "hotFor"), ("quench", "hotQuench") }),
             ("conduct", "conductive", System.Array.Empty<(string, string)>()),
             ("shatter", "brittle", System.Array.Empty<(string, string)>()),
             ("grow", null, new[] { ("into", "growsTo"), ("log", "growLog") }),

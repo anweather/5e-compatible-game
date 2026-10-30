@@ -53,6 +53,8 @@ namespace Chem
         /// <summary>Wet (water on it, raining, or damp) this many ticks in all, it rusts through into RustsTo (materials.json rust.every, rust.leaves; World.Rust); 0 never.</summary>
         public int RustEvery;
         public string RustsTo;
+        /// <summary>Fire reaching it leaves it hot this many ticks (materials.json hot.for; World.Cool), and each unit of water it boils off takes hot.quench of them; 0 never hot.</summary>
+        public int HotFor, HotQuench;
         /// <summary>
         /// What water soaking into it turns it into (dirt to mud: soak.leaves) and what it dries back to once
         /// it is dry again (mud to dirt: soak.dries, World.DryOut); null neither.
@@ -342,6 +344,8 @@ namespace Chem
         public bool HasSetCover; public string SetCover;
         public int? SpreadCover;
         public bool Break;
+        /// <summary>heat: a terrain that gets hot (hot.for) is left hot for that long (World.Cool).</summary>
+        public bool Heat;
         /// <summary>dissolve: "cover" or "terrain", eaten away into its dissolvesTo when the rule's element is its dissolvedBy.</summary>
         public string Dissolve;
         public string SetTerrain, Raise;
@@ -551,6 +555,8 @@ namespace Chem
             Dampens = Num(o["dampens"]) ?? 0,
             RustEvery = Int(o["rustEvery"]) ?? 0,
             RustsTo = Str(o["rustsTo"]),
+            HotFor = Int(o["hotFor"]) ?? 0,
+            HotQuench = Int(o["hotQuench"]) ?? 0,
             SoaksTo = Str(o["soaksTo"]),
             DriesTo = Str(o["driesTo"]),
             Speed = Num(o["speed"]) ?? 1,
@@ -717,6 +723,7 @@ namespace Chem
             }
             e.SpreadCover = Int(o["spreadCover"]);
             e.Break = Truthy(o["break"]);
+            e.Heat = Truthy(o["heat"]);
             e.Dissolve = Str(o["dissolve"]);
             e.SetTerrain = Str(o["setTerrain"]);
             e.Raise = Str(o["raise"]);

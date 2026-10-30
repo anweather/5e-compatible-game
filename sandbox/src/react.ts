@@ -283,6 +283,12 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     return true;
   }
   if (eff.dissolve !== undefined) return dissolve(c, eff.dissolve, element);
+  if (eff.heat) {
+    const hot = terrainDef(c).hotFor ?? 0;
+    if (hot <= 0 || (c.heat ?? 0) >= hot) return false;
+    c.heat = hot;
+    return true;
+  }
   if (eff.break) {
     const to = terrainDef(c).breaksTo;
     if (!to) return false;

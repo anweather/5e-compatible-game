@@ -110,6 +110,10 @@ marked *new*.
   `shatter` it lacks (a struck frozen goblin breaks) (*new*).
 - **Wet ground conducts:** lightning chains through water. That's today's
   conduct over wet cells; `conduct.chainsWet` makes it a key, not code.
+- **Hot metal:** fire reaching metal leaves it hot for `hot.for` ticks
+  (`Cell.Heat`, the `fire-heat` reaction). A creature on it takes 1 fire damage
+  every `burnDamageEvery` ticks; water on it boils off a unit a tick as steam,
+  each unit taking `hot.quench` ticks of its heat (built).
 - **Lightning fuses sand:** a strike on terrain tagged `fuses` (sand) turns
   it into glass (`lightning-fuse` in reactions; built).
 - **Heat melts, cold freezes:** `melt` and `freeze` check the cell's water

@@ -43,6 +43,9 @@ export interface TerrainDef {
   /** Wet (water on it, raining, or damp) this many ticks in all, it rusts through into rustsTo (rust.every, rust.leaves; rust in sim.ts); unset never. */
   rustEvery?: number;
   rustsTo?: string;
+  /** Fire reaching it leaves it hot this many ticks (hot.for; cool in sim.ts), and each unit of water it boils off takes hot.quench of them; unset never hot. */
+  hotFor?: number;
+  hotQuench?: number;
   /** What water soaking into it turns it into (dirt to mud: soak.leaves) and what it dries back to once dry again (mud to dirt: soak.dries, dryOut in sim.ts). */
   soaksTo?: string;
   driesTo?: string;
@@ -124,6 +127,8 @@ export interface Effect {
   setCover?: string | null;
   spreadCover?: number;
   break?: boolean;
+  /** A terrain that gets hot (hot.for) is left hot for that long (cool in sim.ts). */
+  heat?: boolean;
   /** Eats away the cell's cover or terrain into its dissolvesTo, when the rule's element is its dissolvedBy. */
   dissolve?: "cover" | "terrain";
   setTerrain?: string;
@@ -490,7 +495,7 @@ export const ELEMENTS = BASE_ELEMENTS;
 
 const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance"]);
 const EFFECT_KEYS = new Set([
-  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "dissolve",
+  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "dissolve",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
@@ -700,7 +705,7 @@ export function validateRules(r: Rules): string[] {
     if (t.rustsTo && !terrainIds.has(t.rustsTo)) errors.push(`terrain ${id}: rustsTo ${t.rustsTo} unknown`);
     for (const key of ["soaksTo", "driesTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
-    for (const key of ["soakEvery", "soakEveryWet", "rustEvery"] as const)
+    for (const key of ["soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
     if (t.dampens !== undefined && !(typeof t.dampens === "number" && t.dampens >= 0 && t.dampens <= 1)) errors.push(`terrain ${id}: dampens must be a number from 0 to 1`);
     if (t.waterTo !== undefined && t.waterTo !== "ice" && t.waterTo !== "steam") errors.push(`terrain ${id}: waterTo must be ice or steam`);

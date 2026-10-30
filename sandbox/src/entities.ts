@@ -188,6 +188,7 @@ export function tickEntities(w: World) {
       damage(w, e, 1, "fire", "fire");
       if (hasComponent(def, "flammable") && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
     }
+    if ((c.heat ?? 0) > 0 && hasComponent(def, "creature") && w.tick % s.status.burnDamageEvery === 0) damage(w, e, 1, "hot metal", "fire");
     if (c.gas === "steam" && c.gasAmt >= 2 && hasComponent(def, "creature") && w.tick % s.status.scaldEvery === 0) {
       damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding");
     }

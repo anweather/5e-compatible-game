@@ -297,7 +297,7 @@ namespace Chem.Tests
             w.Cast("fireball", 10, 3, 0);
             w.Cast("meteor", 14, 4, 0);
             Run(w, 30);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("58631e96 9"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("fe1217a6 9"));
         }
 
         [Test]

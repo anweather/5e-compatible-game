@@ -18,7 +18,7 @@
     "logwall":   { "name": "Log wall", "tags": ["blocking"], "burn": { "catch": 0.15, "fuel": 140, "leaves": "rubble", "log": "Log walls burn and collapse", "look": "wood" }, "uproot": { "leaves": "rubble", "log": "The ground heaves and log walls cave in" } },
     "pit":       { "name": "Pit", "tags": ["low"], "elevation": -1 },
     "river":     { "name": "River", "tags": ["low"], "elevation": -1, "spring": 4 },
-    "metal":     { "name": "Metal plate", "tags": ["ground"], "dig": { "hardness": 4 }, "conduct": {}, "rust": { "every": 2000, "leaves": "rusted-metal" } },
+    "metal":     { "name": "Metal plate", "tags": ["ground"], "dig": { "hardness": 4 }, "conduct": {}, "rust": { "every": 2000, "leaves": "rusted-metal" }, "hot": { "for": 120, "quench": 30 } },
     "rusted-metal": { "name": "Rusted metal", "tags": ["ground"], "dig": { "hardness": 2 } },
     "gate":      { "name": "Gate (shut)", "tags": ["blocking", "gate", "seeThrough"] },
     "gate_open": { "name": "Gate (open)", "tags": ["ground", "gate"] },
