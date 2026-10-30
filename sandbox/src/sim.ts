@@ -334,12 +334,27 @@ function tickWater(w: World) {
   }
 }
 
+/**
+ * A unit of gas just decayed: a gas with condenseEvery (steam) leaves a unit of water each time its cell's count
+ * falls from a multiple of it (2 to 1, not 1 to 0), so thick steam cools back into water and thin steam fades. Not into a wall, but into
+ * a vessel (World.Condense).
+ */
+function condense(c: Cell) {
+  const every = RULES.gases[c.gas!]?.condenseEvery ?? 0;
+  if (every <= 0 || (c.gasAmt + 1) % every !== 0) return;
+  if (isBlocking(c) && !hasTag(c, "vessel")) return;
+  c.water = Math.min(RULES.sim.water.maxLevel, c.water + 1);
+}
+
 function tickGas(w: World) {
   const p = RULES.sim.gas;
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (!c.gas) continue;
-    if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) c.gasAmt--;
+    if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) {
+      c.gasAmt--;
+      condense(c);
+    }
     if (c.gasAmt <= 0) {
       c.gas = null;
       c.gasAmt = 0;

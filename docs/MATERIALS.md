@@ -116,6 +116,11 @@ marked *new*.
   (`Cell.Heat`, the `fire-heat` reaction). A creature on it takes 1 fire damage
   every `burnDamageEvery` ticks; water on it boils off a unit a tick as steam,
   each unit taking `hot.quench` ticks of its heat (built).
+- **Steam scalds flesh and condenses:** thick steam (2 or more) scalds a creature
+  whose material has `scald` (flesh; not bone or chitin) as fire damage; it
+  drifts and spreads as any gas does, and each time a decaying unit takes a
+  cell's count from a multiple of `gases.steam.condenseEvery` (2) it leaves a
+  unit of water there. Cold condenses it at once (`cold-steam`). Built.
 - **Lightning fuses sand:** a strike on terrain tagged `fuses` (sand) turns
   it into glass (`lightning-fuse` in reactions; built).
 - **Heat melts, cold freezes:** `melt` and `freeze` check the cell's water

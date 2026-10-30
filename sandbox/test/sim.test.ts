@@ -499,7 +499,7 @@ test("oil floats out over water and burns across it until it is used up", () => 
   assert.equal(w.cells.filter((c) => c.cover !== null).length, 0, "with the oil used up, and no ash on the water");
   const water = w.cells.reduce((s, c) => s + c.water, 0);
   assert.ok(water >= 1 && water <= 149, "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
-  assert.equal(`${slick} ${most} ${water} ${rustHash(w)} ${w.rng}`, "29 28 52 a1f460b7 189079474"); // the same in the C# core
+  assert.equal(`${slick} ${most} ${water} ${rustHash(w)} ${w.rng}`, "29 28 90 87abc88e 662727550"); // the same in the C# core
 });
 
 test("a broken float is refused with the C# wording", () => {
@@ -547,6 +547,24 @@ test("metal stays hot after fire, burns what stands on it, and steams water", ()
   assert.ok(w.log.some((l) => l.text === "Water hisses into steam on the hot metal"));
   assert.ok(cellAt(w, 4, 2)!.heat! < 98, "and cools it faster than time alone");
   assert.equal(`${e.hp} ${steam} ${cellAt(w, 4, 2)!.heat ?? 0} ${rustHash(w)} ${w.rng}`, "84 3 0 519dc5ad 1639742223"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.SteamScaldsFleshNotBoneAndCondensesBackIntoWater.
+test("steam scalds flesh, not bone, and condenses back into water", () => {
+  const w = createWorld(9, 5, 1);
+  for (const c of w.cells) c.t = "metal";
+  for (const c of w.cells) Object.assign(c, { gas: "steam", gasAmt: 6 });
+  // Stood as World.SpawnRaider stands them.
+  const goblin = { id: w.nextId++, kind: "goblin", x: 3, y: 2, hp: 99, status: {} as Record<string, number> };
+  const hound = { id: w.nextId++, kind: "bone-hound", x: 5, y: 2, hp: 99, status: {} as Record<string, number> };
+  w.entities.push(goblin, hound);
+  run(w, 30);
+  assert.ok(goblin.hp < 99, "flesh scalds");
+  assert.equal(hound.hp, 99, "bone doesn't");
+  run(w, 150);
+  const steam = w.cells.reduce((s, c) => s + (c.gas === "steam" ? c.gasAmt : 0), 0), water = w.cells.reduce((s, c) => s + c.water, 0);
+  assert.ok(water > 0, "it cooled back into water");
+  assert.equal(`${goblin.hp} ${hound.hp} ${steam} ${water} ${rustHash(w)} ${w.rng}`, "89 99 0 112 d06de483 2670964354"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AWetThingOfADampenedMaterialCatchesPoorly: a spark lights a thing of thatch with its

@@ -104,7 +104,7 @@ test("mixed quick weather over many stretches matches the C# golden", () => {
     const w = field(8);
     run(w, 1200);
     const kinds = Array.from({ length: 17 }, (_, k) => kindOf(RULES.sim, 8, k)).join(" ");
-    assert.equal(`${cellHash(w)} ${w.rng}`, "7068b942 787796458", kinds);
+    assert.equal(`${cellHash(w)} ${w.rng}`, "b3cf730b 3302074602", kinds);
   });
 });
 
@@ -122,7 +122,7 @@ test("a meteor shower brings meteors down a little later as craters, and matches
     const strikes = w.log.filter((l) => l.text === "A meteor strikes").reduce((n, l) => n + l.count, 0);
     assert.ok(strikes > 0, "meteors landed");
     assert.ok(w.cells.some((c) => c.h < 0), "and left craters");
-    assert.equal(`${cellHash(w)} ${w.rng} ${strikes}`, "3120c0fd 2710019217 19");
+    assert.equal(`${cellHash(w)} ${w.rng} ${strikes}`, "f1ed5b5f 515705710 18");
   });
 });
 

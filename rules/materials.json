@@ -37,7 +37,7 @@
     "glass":     { "name": "Glass", "tags": ["ground"], "shatter": {} },
     "pane":      { "name": "Window pane", "tags": ["blocking", "seeThrough"], "shatter": { "leaves": "rubble" } },
     "timber":    { "name": "Timber", "tags": [], "burn": { "catch": 0.15, "fuel": 140, "look": "wood" }, "break": {}, "soak": { "dampens": 0.5 } },
-    "flesh":     { "name": "Flesh", "tags": [], "burn": { "status": 9 }, "freeze": { "status": 30 }, "soak": { "status": 60 }, "conduct": { "chainsWet": true } },
+    "flesh":     { "name": "Flesh", "tags": [], "burn": { "status": 9 }, "scald": {}, "freeze": { "status": 30 }, "soak": { "status": 60 }, "conduct": { "chainsWet": true } },
     "bone":      { "name": "Bone", "tags": [], "freeze": { "status": 30 }, "soak": { "status": 60 }, "conduct": { "chainsWet": true } },
     "chitin":    { "name": "Chitin", "tags": [], "burn": { "status": 9 }, "soak": { "status": 60 }, "conduct": { "chainsWet": true } }
   },
@@ -50,7 +50,7 @@
     "thorns":   { "name": "Thorns", "tags": ["spiky"], "lasts": 360, "witherLog": "The thorns wither away", "damage": [1, 4], "speed": 0.5, "burn": { "catch": 0.5, "fuel": 6, "intensity": 2 }, "dissolve": { "by": "acid" } }
   },
   "gases": {
-    "steam": { "name": "Steam", "scald": 1 },
+    "steam": { "name": "Steam", "scald": 1, "condenseEvery": 2 },
     "smoke": { "name": "Smoke" },
     "fog":   { "name": "Fog", "decay": 0.015, "blocksSightAt": 2 }
   }

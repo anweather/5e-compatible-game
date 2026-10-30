@@ -29,7 +29,8 @@ namespace Chem.Tests
             {
                 Assert.That(def.MaterialDef, Is.Not.Null, $"{id} names a known material");
                 Assert.That(new[] { "flesh", "bone", "chitin" }, Does.Contain(def.Material), id);
-                Assert.That(def.MaterialDef.Burns || def.MaterialDef.Tags.Count > 0, Is.False, $"{id}'s {def.Material} gives it nothing");
+                // Only scalds (steam scalds flesh), which is a hazard, not a component.
+                Assert.That(def.MaterialDef.Burns || def.MaterialDef.Tags.Any(t => t != "scalds"), Is.False, $"{id}'s {def.Material} gives it nothing");
             }
         }
 

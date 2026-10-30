@@ -123,7 +123,7 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7068b942 787796458"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("b3cf730b 3302074602"));
         }
         [Test]
         public void GoldenMeteorShowerMatchesTs()
@@ -144,7 +144,7 @@ namespace Chem.Tests
             int strikes = w.Log.Where(l => l.Text == "A meteor strikes").Sum(l => l.Count);
             Assert.That(strikes, Is.GreaterThan(0), "meteors landed");
             Assert.That(w.Cells.Any(c => c.Height < 0), "and left craters");
-            Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("3120c0fd 2710019217 19"));
+            Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("f1ed5b5f 515705710 18"));
         }
 
         [Test]
