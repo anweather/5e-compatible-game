@@ -197,6 +197,11 @@ accept the workspace trust dialog: Remote Control refuses an untrusted folder
   nothing while it waits and wakes the session when mail arrives. Roles so far:
   `pm` (the Max account's project manager) and `coordinator` (the Pro account's
   coordinator of `w1`/`w2`). Set `BRIDGE_FROM` to your role when sending.
+  `bridge.sh wake coordinator` before sending: if the coordinator isn't
+  waiting (heartbeat over 2 min old) or busy (took mail under an hour ago), it
+  opens a new Pro coordinator session in a Git Bash window, in its own
+  worktree, reachable by Remote Control as `coordinator`, which reads its
+  inbox first. So send after waking: the mail waits for it.
 
 ## Memory
 
