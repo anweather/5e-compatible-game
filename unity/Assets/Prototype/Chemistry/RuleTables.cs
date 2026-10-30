@@ -403,7 +403,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
