@@ -68,6 +68,11 @@ export interface TerrainDef {
   /** What a sand blast turns it into (scour.leaves: rusted metal back to metal, a log wall worn thin), and whether raised ground of it wears down a step (scour.wears). */
   scoursTo?: string;
   scourWears?: boolean;
+  /** A hot liquid terrain (lava) runs to its lowest lower neighbour every this many ticks, leaving its growsTo (run.every; run in sim.ts). */
+  runsEvery?: number;
+  /** Water on it while hot sets it at once into this (quench.into: lava to rock), with this line (quench.log). */
+  quenchesTo?: string;
+  quenchLog?: string;
   /** The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick). */
   bakesTo?: string;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
@@ -133,6 +138,8 @@ export interface GasDef {
   condenseAway?: number;
   /** A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); unset never. */
   rainEvery?: number;
+  /** It adds this to the rust of metal under it each tick (steam rusts metal faster; rustUnder in sim.ts). */
+  rusts?: number;
   /** An element a cell of it lets fall on its cell every so many ticks, at a chance (a storm cloud's lightning, a snow cloud's snow, a rain cloud's growth; shedFrom). */
   sheds?: { element: string; every: number; chance?: number };
 }
@@ -143,6 +150,8 @@ export interface CellCond {
   fireBelow?: number;
   water?: boolean;
   frozen?: boolean;
+  /** Whether the cell's cover melts (its material has melt.water: snow, a snow bank, frost; World.CoverMelts). */
+  melts?: boolean;
   /** Whether the cell is hot (heat above 0). */
   hot?: boolean;
   gas?: string;
@@ -284,6 +293,8 @@ export interface SpellDef {
   fizzle?: string;
   /** A travelling wave's or rolling boulder's element where it stops (Wave's mud, the boulder's earth; tickWaves, tickBoulders). */
   leaves?: string;
+  /** Its force on what stands in each cell it reaches (Geyser and Rolling Boulder throw, Wave knocks back; force in actions.ts): ticks thrown off its feet, and cells pushed along the cast's way (maxMass or lighter). */
+  force?: { throw?: number; push?: number };
   /** A spell that seeks (Lightning): it strikes the nearest cell within range of where it's aimed matching if (metal or water) instead of its shape, and its shape when there is none. */
   seeks?: { range: number; if: CellCond };
   /** A line with travelEvery that rolls rather than washes (Rolling Boulder; tickBoulders): one cell that follows the ground downhill. */
@@ -499,7 +510,7 @@ export interface Rules {
   combos: CombosDef;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow", "geyser", "wave"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -632,7 +643,7 @@ export function installRules(r: Rules) {
 /** Kept for older imports: the base element list. */
 export const ELEMENTS = BASE_ELEMENTS;
 
-const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
+const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "melts", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
 const EFFECT_KEYS = new Set([
   "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve", "scour", "pushCover",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",

@@ -44,6 +44,7 @@ export function matches(c: Cell, cond: CellCond | undefined): boolean {
   if (cond.fireBelow !== undefined && c.fire >= cond.fireBelow) return false;
   if (cond.water !== undefined && (c.water > 0 && !c.frozen) !== cond.water) return false;
   if (cond.frozen !== undefined && (c.frozen && c.water > 0) !== cond.frozen) return false;
+  if (cond.melts !== undefined && (c.cover !== null && (RULES.covers[c.cover]?.meltWater ?? 0) > 0) !== cond.melts) return false;
   if (cond.gas !== undefined && (cond.gas === "any" ? c.gas === null : c.gas !== cond.gas)) return false;
   if (cond.terrainTag && !hasTag(c, cond.terrainTag)) return false;
   if (cond.notTerrainTag && hasTag(c, cond.notTerrainTag)) return false;

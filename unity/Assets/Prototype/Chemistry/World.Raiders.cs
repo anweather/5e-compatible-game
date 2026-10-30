@@ -234,6 +234,34 @@ namespace Chem
             }
         }
 
+        /// <summary>
+        /// A spell's force on the raider at (x, y) (force in the TS; spells.json force): pushed ForcePush cells along dir
+        /// where that's open, if it's MaxMass or lighter (a wave knocks it back), and thrown off its feet for ForceThrow
+        /// ticks (a geyser's jet, a boulder), so it can't walk.
+        /// </summary>
+        void Force(SpellDef s, int x, int y, int dir)
+        {
+            if (s.ForcePush <= 0 && s.ForceThrow <= 0) return;
+            var r = RaiderAt(x, y);
+            if (r == null || !r.Alive) return;
+            var def = Rules.Entity(r.Kind);
+            string by = s.Name.ToLowerInvariant();
+            if (s.ForcePush > 0 && dir >= 0 && def.Mass <= s.MaxMass)
+            {
+                for (int k = 0; k < s.ForcePush; k++)
+                {
+                    int nx = r.X + DirX(dir), ny = r.Y + DirY(dir);
+                    if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) break;
+                    r.X = nx;
+                    r.Y = ny;
+                }
+                LogOnce($"pushed#{r.Id}", $"The {by} knocks {def.Name} back", LogKind.Notable);
+            }
+            if (s.ForceThrow <= 0) return;
+            r.Status[ThrownStatus] = Math.Max(r.StatusOf(ThrownStatus), s.ForceThrow);
+            LogOnce($"thrown#{r.Id}", $"The {by} throws {def.Name} off its feet", LogKind.Notable);
+        }
+
         /// <summary>[n, sides] dice with the world's generator (roll in the TS).</summary>
         int Roll(int[] dice)
         {

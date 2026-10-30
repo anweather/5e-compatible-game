@@ -365,7 +365,7 @@ namespace Chem.Tests
             w.Cast("fireball", 10, 3, 0);
             w.Cast("meteor", 14, 4, 0);
             Run(w, 30);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("fe1217a6 9"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("48b09445 2346426195"));
         }
 
         [Test]
@@ -414,7 +414,7 @@ namespace Chem.Tests
             Assert.That(w.At(12, 6).Height, Is.EqualTo(0), "the blast's edge isn't dug");
             Assert.That(w.At(12, 6).Fire, Is.GreaterThan(0), "but it burns");
             Run(w, 40);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("b1b430e0 3300970619"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7b41057e 1796687091"));
         }
 
         [Test]
@@ -478,7 +478,7 @@ namespace Chem.Tests
             Assert.That(w.At(15, 8).T, Is.EqualTo("deadfall"), "a crater fells the tree it lands on");
             w.Cast("fire-bolt", 5, 5, 0);
             Run(w, 40);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1213368f 1054537720"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("aa411832 2208810063"));
         }
 
         [Test]

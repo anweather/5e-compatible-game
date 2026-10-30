@@ -288,7 +288,7 @@ test("a dig weaker than the ground leaves it: Shape Earth digs dirt, a Meteor di
   assert.equal(cellAt(w, 14, 3)!.t, "rubble");
   assert.equal(cellAt(w, 14, 6)!.h, 0, "metal never digs");
   run(w, 30);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "fe1217a6 9");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "48b09445 2346426195");
 });
 
 test("hardness and strength are checked", () => {
@@ -389,7 +389,7 @@ test("Fireball blows a small crater before it burns, and matches the C# golden",
   assert.equal(cellAt(w, 12, 6)!.h, 0, "the blast's edge isn't dug");
   assert.ok(cellAt(w, 12, 6)!.fire > 0, "but it burns");
   run(w, 40);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "b1b430e0 3300970619");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "7b41057e 1796687091");
 });
 
 test("a slanted trench runs off the grid, side to side, and the river's water follows it; matches the C# golden", () => {
@@ -427,7 +427,7 @@ test("earth shaping topples trees into deadfall that burns, and matches the C# g
   assert.equal(cellAt(w, 15, 8)!.t, "deadfall", "a crater fells the tree it lands on");
   castSpell(w, "fire-bolt", 5, 5, 0);
   run(w, 40);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "1213368f 1054537720");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "aa411832 2208810063");
 });
 
 // Mirrors ChemistryTests.AcidSplashEatsBramblesThornsAndOilAndBurnsAGoblin (docs/MATERIALS.md dissolve): a row of
@@ -625,7 +625,7 @@ test("a wave rolls out, douses, knocks back and leaves mud, matching the C# gold
   for (const y of [2, 3, 4]) assert.equal(cellAt(w, 8, y)!.t, "mud", "mud where it stopped");
   assert.equal(cellAt(w, 7, 3)!.t, "dirt");
   run(w, 4);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "4b82ec13 752141770"); // the same in the C# core
+  assert.equal(`${cellHash(w)} ${w.rng}`, "8c0f542d 752141770"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.FrostBridgesWaterFreezesTheWetAndGlazesTheGround.
@@ -721,7 +721,7 @@ test("Wall of Stone makes steps over water, a ramp when held, and only hard blow
   run(w, 6);
   assert.ok(cellAt(w, 3, 3)!.h < 3, "a falling star breaks it");
   run(w, 6);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "1946386c 1872778120"); // the same in the C# core
+  assert.equal(`${cellHash(w)} ${w.rng}`, "4432219c 1218213550"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.ADustFlashShovesARaiderTheSameAsTheSandbox.
@@ -803,6 +803,52 @@ test("Sand Blast scours, wears and leaves sand, and Gust drives oil across a pon
   assert.equal(cellAt(w, 9, 5)!.cover, "oil", "driven across the pond");
   run(w, 6);
   assert.equal(`${cellHash(w)} ${w.rng}`, "7716f25c 14"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.LavaRunsDownhillLeavingACrustAndSetsAtOnceInWater.
+test("lava runs downhill leaving a crust and sets at once in water, matching the C# golden", () => {
+  const w = createWorld(12, 7, 15);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 5, 3)!.h = -1;
+  cellAt(w, 6, 3)!.h = -2;
+  Object.assign(cellAt(w, 7, 3)!, { t: "pit", h: -2, water: 3 });
+  castSpell(w, "lava-pool", 3, 3, 0);
+  assert.equal(cellAt(w, 4, 3)!.t, "lava-pool");
+  run(w, 6);
+  assert.equal(cellAt(w, 5, 3)!.t, "lava-pool", "it runs downhill");
+  assert.equal(cellAt(w, 4, 3)!.t, "rock", "leaving a crust to walk on");
+  run(w, 13);
+  assert.equal(cellAt(w, 7, 3)!.t, "rock", "and sets at once in the water");
+  assert.ok(w.log.some((l) => l.text === "The lava hisses and sets into rock"));
+  run(w, 6);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "811d9fa2 2967354774"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.ScaldingSteamRustsMetalFaster.
+test("Scalding Steam rusts metal faster, matching the C# golden", () => {
+  const w = createWorld(8, 5, 16);
+  for (const c of w.cells) c.t = "dirt";
+  Object.assign(cellAt(w, 2, 2)!, { t: "metal", water: 1 });
+  Object.assign(cellAt(w, 5, 2)!, { t: "metal", water: 1 });
+  addGas(cellAt(w, 5, 2)!, "steam", 30);
+  run(w, 8);
+  assert.ok(cellAt(w, 5, 2)!.rust! > 2 * cellAt(w, 2, 2)!.rust!, "faster under steam");
+  assert.ok((cellAt(w, 2, 2)!.rust ?? 0) > 0);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "3bf05b30 2775531184"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.CreateWaterWatersBurntGround.
+test("Create Water waters burnt ground, matching the C# golden", () => {
+  const w = createWorld(8, 6, 17);
+  for (const c of w.cells) c.t = "dirt";
+  for (let y = 1; y <= 4; y++) for (let x = 1; x <= 4; x++) cellAt(w, x, y)!.cover = "ash";
+  castSpell(w, "create-water", 2, 2, 0);
+  assert.equal(cellAt(w, 2, 2)!.cover, null);
+  assert.ok(cellAt(w, 2, 2)!.water > 0);
+  run(w, 80);
+  assert.ok(["sprouts", "grass"].includes(cellAt(w, 2, 2)!.t), "green shoots in the ash");
+  assert.equal(cellAt(w, 4, 4)!.cover, "ash", "only where the water landed");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "49ebceb 3599190446"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AFallingStarMarksItsTargetThenStrikes: a mark for a second (6 ticks), then a crater with a

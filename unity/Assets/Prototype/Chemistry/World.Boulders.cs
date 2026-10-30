@@ -88,7 +88,7 @@ namespace Chem
         }
 
         // The boulder strikes the cell it rolls onto: what is brittle there cracks or shatters (World.Shatter), it
-        // leaves its trail of gas, and the creature there takes its damage and is knocked over.
+        // leaves its trail of gas, and the creature there takes its damage and its force (thrown off its feet).
         void Strike(Boulder b, SpellDef s)
         {
             Shatter(b.X, b.Y);
@@ -96,15 +96,8 @@ namespace Chem
             var r = RaiderAt(b.X, b.Y);
             if (r == null || !r.Alive) return;
             if (s.Damage.Length == 2) DamageRaider(r, Roll(s.Damage), s.Name.ToLowerInvariant(), s.Element);
-            if (r.Alive)
-            {
-                r.Status[ThrownStatus] = System.Math.Max(r.StatusOf(ThrownStatus), KnockedTicks);
-                LogOnce($"knocked#{r.Id}", $"The {s.Name.ToLowerInvariant()} knocks {Rules.Entity(r.Kind).Name} over", LogKind.Notable);
-            }
+            Force(s, b.X, b.Y, b.Dir);
         }
-
-        // How long a creature a boulder knocks over stays down, in ticks.
-        const int KnockedTicks = 6;
 
         // Where it stops it comes to rest, and its Leaves (earth) lands there: in a stream it fills the bed (a dam), on
         // dry ground it stands as a boulder.

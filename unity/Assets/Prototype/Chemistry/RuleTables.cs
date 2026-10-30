@@ -94,6 +94,10 @@ namespace Chem
         /// <summary>What a sand blast turns it into (materials.json scour.leaves: rusted metal back to metal, a log wall worn thin), or null; and whether raised ground of it wears down a step (scour.wears).</summary>
         public string ScoursTo;
         public bool ScourWears;
+        /// <summary>A hot liquid terrain (lava) runs to its lowest lower neighbour every this many ticks, leaving its GrowsTo (run.every; World.Run); 0 never.</summary>
+        public int RunsEvery;
+        /// <summary>Water on it while hot sets it at once into this (quench.into: lava to rock), with this line (quench.log); null never.</summary>
+        public string QuenchesTo, QuenchLog;
         /// <summary>The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick), or null.</summary>
         public string BakesTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
@@ -157,6 +161,8 @@ namespace Chem
         public int CondenseAway;
         /// <summary>A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); 0 never.</summary>
         public int RainEvery;
+        /// <summary>It adds this to the rust of metal under it each tick (steam rusts metal faster; World.RustUnder); 0 none.</summary>
+        public int Rusts;
         /// <summary>A gas that goes up all at once when fire meets it (burn.flash: dust, World.FlashGas), or null.</summary>
         public FlashDef Flash;
         /// <summary>An element a cell of it lets fall on its cell every ShedEvery ticks, at ShedChance (sheds: a storm cloud's lightning, a snow cloud's snow, a rain cloud's growth; World.ShedFrom), or null.</summary>
@@ -248,6 +254,8 @@ namespace Chem
         public bool Rolls;
         /// <summary>The gas a rolling boulder leaves behind it (dust), or null.</summary>
         public string Trail;
+        /// <summary>A spell's force on the creature in each cell it reaches (spells.json force: Geyser and Rolling Boulder throw, Wave knocks back; World.Force): ticks thrown off its feet, and cells pushed along the cast's way (MaxMass or lighter).</summary>
+        public int ForceThrow, ForcePush;
         /// <summary>A spell that seeks (Lightning): it strikes the nearest cell within SeekRange of where it's aimed that matches SeekIf (metal or water) instead of its shape, and its shape when there is none.</summary>
         public int SeekRange;
         public CellCond SeekIf;
@@ -448,6 +456,8 @@ namespace Chem
         public double? FireMin;
         public double? FireBelow;
         public bool? Water, Frozen, Conductive;
+        /// <summary>melts: whether the cell's cover melts (its material has melt.water: snow, a snow bank, frost).</summary>
+        public bool? Melts;
         /// <summary>hot: whether the cell is hot (Cell.Heat above 0).</summary>
         public bool? Hot;
         public string Gas, TerrainTag, NotTerrainTag;
@@ -505,7 +515,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow", "geyser", "wave" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -634,6 +644,7 @@ namespace Chem
                     CondenseEvery = Int(p.Value["condenseEvery"]) ?? 0,
                     CondenseAway = Int(p.Value["condenseAway"]) ?? 0,
                     RainEvery = Int(p.Value["rainEvery"]) ?? 0,
+                    Rusts = Int(p.Value["rusts"]) ?? 0,
                     Flash = ParseFlash(p.Value["burn"]?["flash"]),
                     Sheds = Str(p.Value["sheds"]?["element"]),
                     ShedEvery = Int(p.Value["sheds"]?["every"]) ?? 0,
@@ -713,6 +724,9 @@ namespace Chem
             DissolvedBy = Str(o["dissolvedBy"]),
             DissolvesTo = Str(o["dissolvesTo"]),
             ScoursTo = Str(o["scoursTo"]),
+            RunsEvery = Int(o["runsEvery"]) ?? 0,
+            QuenchesTo = Str(o["quenchesTo"]),
+            QuenchLog = Str(o["quenchLog"]),
             ScourWears = Truthy(o["scourWears"]),
             BakesTo = Str(o["bakesTo"]),
             SoakEvery = Int(o["soakEvery"]) ?? 0,
@@ -838,6 +852,8 @@ namespace Chem
             Rolls = Truthy(o["rolls"]),
             Trail = Str(o["trail"]),
             Stepping = Int(o["stepping"]) ?? 0,
+            ForceThrow = Int(o["force"]?["throw"]) ?? 0,
+            ForcePush = Int(o["force"]?["push"]) ?? 0,
             SeekRange = Int(o["seeks"]?["range"]) ?? 0,
             SeekIf = o["seeks"]?["if"] is JObject si ? ParseCond(si) : null,
             Ramp = Truthy(o["ramp"]),
@@ -870,6 +886,7 @@ namespace Chem
                 FireBelow = Num(c["fireBelow"]),
                 Water = Bool(c["water"]),
                 Frozen = Bool(c["frozen"]),
+                Melts = Bool(c["melts"]),
                 Hot = Bool(c["hot"]),
                 Conductive = Bool(c["conductive"]),
                 Gas = Str(c["gas"]),

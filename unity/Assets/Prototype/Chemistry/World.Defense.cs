@@ -327,7 +327,7 @@ namespace Chem
 
         static readonly string[] HashedStatuses = { "burning", "wet", "frozen", "snagged" };
 
-        /// <summary>The status of a raider thrown up in the air (a Geyser's jet, reactions.json e-geyser): it can't walk until it lands.</summary>
+        /// <summary>The status of a raider thrown off its feet (a spell's force.throw: a Geyser's jet, a Rolling Boulder): it can't walk until it lands.</summary>
         public const string ThrownStatus = "thrown";
     }
 }

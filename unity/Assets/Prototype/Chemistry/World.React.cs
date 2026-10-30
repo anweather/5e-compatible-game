@@ -137,6 +137,8 @@ namespace Chem
             return true;
         }
 
+        bool CoverMelts(Cell c) => c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) && cv.MeltWater > 0;
+
         string CoverName(Cell c) =>
             c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) ? cv.Name.ToLowerInvariant() : "";
 
@@ -156,6 +158,7 @@ namespace Chem
             if (cond.FireBelow.HasValue && c.Fire >= cond.FireBelow.Value) return false;
             if (cond.Water.HasValue && (c.Water > 0 && !c.Frozen) != cond.Water.Value) return false;
             if (cond.Frozen.HasValue && (c.Frozen && c.Water > 0) != cond.Frozen.Value) return false;
+            if (cond.Melts.HasValue && CoverMelts(c) != cond.Melts.Value) return false;
             if (cond.Gas != null && (cond.Gas == "any" ? c.Gas == null : c.Gas != cond.Gas)) return false;
             if (!string.IsNullOrEmpty(cond.TerrainTag) && !HasTag(c, cond.TerrainTag)) return false;
             if (!string.IsNullOrEmpty(cond.NotTerrainTag) && HasTag(c, cond.NotTerrainTag)) return false;

@@ -36,14 +36,16 @@ export function step(w: World): void {
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
   const floating: [Cell, string, number][] = []; // what floating covers reached, laid after the pass (World.floating)
+  const runs: [Cell, Cell][] = []; // lava running this tick, from and to, moved after the pass (World.runs)
   for (let i = 0; i < w.cells.length; i++) {
-    tickCell(w, i, w.cells[i]!, soaking, floating);
+    tickCell(w, i, w.cells[i]!, soaking, floating, runs);
   }
   for (const [n, cover, slick] of floating) {
     if (n.cover !== null) continue;
     putCover(n, cover);
     n.slick = slick;
   }
+  for (const [from, to] of runs) runInto(from, to);
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
   tickClock(w);
   w.marks.flow.fill(0);
@@ -67,7 +69,7 @@ function endHeldWeather(w: World) {
 }
 
 /** One cell's timers, and its soak pass on soak ticks (World.TickCell, SoakPass). */
-function tickCell(w: World, i: number, c: Cell, soaking: boolean, floating: [Cell, string, number][]) {
+function tickCell(w: World, i: number, c: Cell, soaking: boolean, floating: [Cell, string, number][], runs: [Cell, Cell][]) {
   if (c.charge > 0) c.charge--;
   if ((c.lit ?? 0) > 0) c.lit!--;
   // A slick's reach goes with its oil.
@@ -75,7 +77,7 @@ function tickCell(w: World, i: number, c: Cell, soaking: boolean, floating: [Cel
   // A crack goes with its ice or terrain.
   if (c.cracked && !c.frozen && !terrainDef(c).cracks) delete c.cracked;
   if (c.life > 0 && --c.life === 0) ripen(w, i, c);
-  if ((c.heat ?? 0) > 0) cool(w, c);
+  if ((c.heat ?? 0) > 0) cool(w, i, c, runs);
   if (soaking) rust(w, c);
   if (soaking && c.water > 0 && c.cover !== null) float(w, i, c, floating);
   if (soaking && c.water > 0) soak(w, i, c);
@@ -142,12 +144,55 @@ function dryOut(w: World, c: Cell) {
  * Hot metal cools a tick at a time (materials.json hot): water on it boils off a unit a tick as steam, each unit
  * taking hot.quench ticks of its heat. A terrain that can't be hot drops it (World.Cool).
  */
-function cool(w: World, c: Cell) {
+/** Water on hot lava (quench.into): it sets at once into rock, a unit of the water flashing to steam (World.Quench). */
+function quench(w: World, c: Cell, into: string, line: string | undefined) {
+  const was = c.t;
+  c.water--;
+  addGas(c, "steam", 2);
+  c.t = into;
+  c.heat = 0;
+  c.life = 0;
+  if (line) logOnce(w, `quench-${was}`, line, "notable");
+}
+
+/** Lava's run (run.every; World.Run): to the lowest open neighbour lower than it, N, E, S, W on a tie, if not taken yet this tick; moved after the pass. */
+function run(w: World, i: number, c: Cell, runs: [Cell, Cell][]) {
+  const x = i % w.w, y = Math.floor(i / w.w);
+  let best = elevation(c), to: Cell | undefined;
+  for (let d = 0; d < 4; d++) {
+    const n = cellAt(w, x + DX[d]!, y + DY[d]!);
+    if (!n || isBlocking(n) || hasTag(n, "machine") || n.t === c.t) continue;
+    const level = elevation(n);
+    if (level >= best || runs.some(([, t]) => t === n)) continue;
+    best = level;
+    to = n;
+  }
+  if (to) runs.push([c, to]);
+}
+
+/** The lava moves on: the lower cell becomes it, with its time and heat, and it leaves its crust (grow.into; World.RunInto). */
+function runInto(from: Cell, to: Cell) {
+  if (isBlocking(to)) return;
+  to.t = from.t;
+  to.life = from.life;
+  to.heat = from.heat;
+  to.cover = null;
+  from.t = terrainDef(from).growsTo ?? from.t;
+  from.life = 0;
+  from.heat = 0;
+}
+
+function cool(w: World, i: number, c: Cell, runs: [Cell, Cell][]) {
   const t = terrainDef(c);
   if (!t.hotFor || t.hotFor <= 0) {
     c.heat = 0;
     return;
   }
+  if (c.water > 0 && !c.frozen && t.quenchesTo) {
+    quench(w, c, t.quenchesTo, t.quenchLog);
+    return;
+  }
+  if (t.runsEvery && w.tick % t.runsEvery === 0) run(w, i, c, runs);
   if (c.water > 0 && !c.frozen) {
     c.water--;
     addGas(c, "steam", 1);
@@ -409,6 +454,13 @@ function shedFrom(w: World, i: number, c: Cell) {
   applyElement(w, i % w.w, Math.floor(i / w.w), sh.element, { power: 1, direct: false });
 }
 
+/** A gas that rusts (steam, gases rusts) adds that much to the rust of metal under it each tick (World.RustUnder). */
+function rustUnder(c: Cell) {
+  const n = RULES.gases[c.gas!]?.rusts ?? 0;
+  if (n <= 0 || !(terrainDef(c).rustEvery ?? 0)) return;
+  c.rust = (c.rust ?? 0) + n;
+}
+
 function tickGas(w: World) {
   const p = RULES.sim.gas;
   for (let i = 0; i < w.cells.length; i++) {
@@ -417,6 +469,7 @@ function tickGas(w: World) {
     rainFrom(w, c);
     shedFrom(w, i, c);
     if (!c.gas) continue;
+    rustUnder(c);
     if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) {
       c.gasAmt--;
       condense(w, i, c);

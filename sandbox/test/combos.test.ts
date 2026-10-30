@@ -241,7 +241,7 @@ test("golden: a combo cast", () => {
   const f = w.combosFired[0]!;
   castSpell(w, f.spell, 8, 6, 1);
   run(w, 6);
-  assert.equal(`${castHash(w)} ${cellHash(w)} ${w.rng}`, "55751533 6184569 368494589");
+  assert.equal(`${castHash(w)} ${cellHash(w)} ${w.rng}`, "55751533 ae02931b 3576461536");
 });
 
 test("golden: a cancel", () => {

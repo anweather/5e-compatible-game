@@ -83,21 +83,13 @@ namespace Chem
             return cells;
         }
 
-        // The wave's element lands on its front (it douses fires and soaks what it meets), then each creature
-        // there light enough is knocked a cell on ahead of it, where that's open.
+        // The wave's element lands on its front (water at power 0: it douses fires and soaks what it meets but leaves no
+        // water), then its force knocks each creature there light enough on ahead of it, where that's open (Force).
         void Wash(Wave wv, SpellDef s)
         {
             var front = Front(wv);
             foreach (var (cx, cy) in front) Apply(cx, cy, s.Element, wv.Power, wv.Dir, true);
-            foreach (var (cx, cy) in front)
-            {
-                var r = RaiderAt(cx, cy);
-                if (r == null || !r.Alive || Rules.Entity(r.Kind).Mass > wv.MaxMass) continue;
-                int nx = cx + DirX(wv.Dir), ny = cy + DirY(wv.Dir);
-                if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny)) || RaiderAt(nx, ny) != null) continue;
-                r.X = nx;
-                r.Y = ny;
-            }
+            foreach (var (cx, cy) in front) Force(s, cx, cy, wv.Dir);
         }
 
         // Where it stops it breaks, and its Leaves (mud) lands over the front.
