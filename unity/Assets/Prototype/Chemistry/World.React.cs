@@ -19,12 +19,13 @@ namespace Chem
             if (c == null) return;
             // A spell's fire (or a fresh fire from any direct source) starts at full strength.
             if (direct && element == "fire") ch.FireGeneration[i] = 0;
+            if (element == "fire") FlashGas(x, y);
             string beforeCover = CoverName(c), beforeTerrain = TerrainOf(c).Name.ToLowerInvariant();
             foreach (var rule in Rules.CellRulesFor(element))
             {
                 if (!Applies(c, rule.If, power)) continue;
                 bool changed = rule.Do.Count == 0;
-                foreach (var eff in rule.Do) changed = RunEffect(x, y, c, eff, power, dir) || changed;
+                foreach (var eff in rule.Do) changed = RunEffect(x, y, c, eff, power, dir, element) || changed;
                 if (changed && rule.Log != null && (direct || rule.Notable))
                 {
                     var text = ReplaceFirst(ReplaceFirst(rule.Log, "{cover}", beforeCover), "{terrain}", beforeTerrain);
@@ -53,6 +54,91 @@ namespace Chem
             return true;
         }
 
+        /// <summary>
+        /// A dissolve effect (react.ts dissolve): the cell's cover or terrain, if <paramref name="element"/>
+        /// is what dissolves it, is eaten away into what it leaves (a cover can leave none).
+        /// </summary>
+        bool Dissolve(Cell c, string what, string element)
+        {
+            if (what == "cover")
+            {
+                if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.DissolvedBy != element) return false;
+                PutCover(c, cv.DissolvesTo);
+                return true;
+            }
+            var t = TerrainOf(c);
+            if (t.DissolvedBy != element || t.DissolvesTo == null) return false;
+            c.T = t.DissolvesTo;
+            return true;
+        }
+
+        /// <summary>A shatter effect (react.ts struck): true if the hit cracked or shattered something.</summary>
+        bool Struck(int x, int y, Cell c)
+        {
+            int was = c.Cracked;
+            return Shatter(x, y) || c.Cracked != was;
+        }
+
+        /// <summary>
+        /// A scour effect (react.ts scour): a cover that scours is stripped; else the terrain becomes its scoursTo (rusted
+        /// metal back to metal, a log wall worn thin); else raised ground that wears is worn down a step.
+        /// </summary>
+        bool Scour(int x, int y, Cell c)
+        {
+            if (c.Cover != null && CoverHasTag(c, "scourable"))
+            {
+                PutCover(c, null);
+                return true;
+            }
+            var t = TerrainOf(c);
+            if (t.ScoursTo != null)
+            {
+                bool wall = IsBlocking(c);
+                c.T = t.ScoursTo;
+                if (wall && !IsBlocking(c)) WallLost(x, y);
+                return true;
+            }
+            return t.ScourWears && c.Height > 0 && Reshape(x, y, -1, null, int.MaxValue);
+        }
+
+        /// <summary>A pushCover effect (react.ts pushCover): a floating cover moves a cell along dir onto open water with no cover, its slick's reach with it.</summary>
+        bool PushCover(int x, int y, Cell c, int dir)
+        {
+            if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
+            int nx = x + DirX(dir), ny = y + DirY(dir);
+            var n = LocateActive(nx, ny, out _, out _);
+            if (n == null || IsBlocking(n) || n.Cover != null || n.Water == 0 || n.Frozen) return false;
+            n.Cover = c.Cover;
+            n.Slick = c.Slick;
+            n.Fire = c.Fire;
+            n.Fuel = c.Fuel;
+            c.Cover = null;
+            c.Slick = 0;
+            c.Fire = 0;
+            c.Fuel = 0;
+            return true;
+        }
+
+        /// <summary>A bake effect (react.ts bake): heat turns the terrain into its bakesTo.</summary>
+        bool Bake(Cell c)
+        {
+            var to = TerrainOf(c).BakesTo;
+            if (to == null) return false;
+            c.T = to;
+            return true;
+        }
+
+        /// <summary>A meltCover effect (react.ts meltCover): heat turns the cover into its meltsTo, and its meltWater.</summary>
+        bool MeltCover(Cell c)
+        {
+            if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.MeltWater <= 0) return false;
+            PutCover(c, cv.MeltsTo);
+            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + cv.MeltWater);
+            return true;
+        }
+
+        bool CoverMelts(Cell c) => c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) && cv.MeltWater > 0;
+
         string CoverName(Cell c) =>
             c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) ? cv.Name.ToLowerInvariant() : "";
 
@@ -72,10 +158,12 @@ namespace Chem
             if (cond.FireBelow.HasValue && c.Fire >= cond.FireBelow.Value) return false;
             if (cond.Water.HasValue && (c.Water > 0 && !c.Frozen) != cond.Water.Value) return false;
             if (cond.Frozen.HasValue && (c.Frozen && c.Water > 0) != cond.Frozen.Value) return false;
+            if (cond.Melts.HasValue && CoverMelts(c) != cond.Melts.Value) return false;
             if (cond.Gas != null && (cond.Gas == "any" ? c.Gas == null : c.Gas != cond.Gas)) return false;
             if (!string.IsNullOrEmpty(cond.TerrainTag) && !HasTag(c, cond.TerrainTag)) return false;
             if (!string.IsNullOrEmpty(cond.NotTerrainTag) && HasTag(c, cond.NotTerrainTag)) return false;
             if (cond.Conductive.HasValue && IsConductive(c) != cond.Conductive.Value) return false;
+            if (cond.Hot.HasValue && (c.Heat > 0) != cond.Hot.Value) return false;
             return true;
         }
 
@@ -132,17 +220,20 @@ namespace Chem
             return true;
         }
 
-        /// <summary>Lights flammable terrain or cover at the given intensity.</summary>
-        public bool Ignite(Cell c, int intensity)
+        /// <summary>Lights flammable terrain or cover at the given intensity; caught at <paramref name="dryness"/> (World.Dryness), it burns that much of its fuel.</summary>
+        public bool Ignite(Cell c, int intensity, double dryness = 1)
         {
             var t = TerrainOf(c);
             bool coverFlammable = CoverBurns(c);
             if (!t.Burns && !coverFlammable) return false;
             if (c.Fire >= intensity) return false;
-            if (c.Fire == 0) c.Fuel = coverFlammable ? (Rules.Covers[c.Cover].Fuel ?? 5) : (t.Fuel ?? 5);
+            if (c.Fire == 0) c.Fuel = DampFuel(coverFlammable ? (Rules.Covers[c.Cover].Fuel ?? 5) : (t.Fuel ?? 5), dryness);
             c.Fire = intensity;
             return true;
         }
+
+        /// <summary>Fuel caught damp (soaked burns poorly, docs/MATERIALS.md): scaled by the dryness, rounded down, at least 1.</summary>
+        static int DampFuel(int fuel, double dryness) => dryness >= 1 ? fuel : Math.Max(1, (int)Math.Floor(fuel * dryness));
 
         /// <summary>Moves water out of a cell that just became solid.</summary>
         public void DisplaceWater(int x, int y)
@@ -191,10 +282,28 @@ namespace Chem
             return true;
         }
 
-        bool RunEffect(int x, int y, Cell c, Effect eff, int power, int dir)
+        /// <summary>
+        /// Moves a cell's gas one cell along dir (pushGas: a gust carries smoke, fog and steam). A different
+        /// gas there is shoved on ahead first, so gases neither merge nor vanish; against a wall, or a
+        /// paused chunk, it stays. True if it moved.
+        /// </summary>
+        bool ShoveGas(int x, int y, int dir)
+        {
+            var c = At(x, y);
+            int nx = x + DirX(dir), ny = y + DirY(dir);
+            var n = At(nx, ny);
+            if (n == null || !IsActiveAt(nx, ny) || IsBlocking(n)) return false;
+            if (n.Gas != null && n.Gas != c.Gas && !ShoveGas(nx, ny, dir)) return false;
+            AddGas(n, c.Gas, c.GasAmt);
+            c.Gas = null;
+            c.GasAmt = 0;
+            return true;
+        }
+
+        bool RunEffect(int x, int y, Cell c, Effect eff, int power, int dir, string element)
         {
             int max = Rules.Sim.WaterMaxLevel;
-            if (eff.HasIgnite) return eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN);
+            if (eff.HasIgnite) return eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN, Dryness(c));
             if (eff.Boil.HasValue)
             {
                 if (c.Water == 0 || c.Frozen) return false;
@@ -264,11 +373,25 @@ namespace Chem
                 }
                 return true;
             }
+            if (eff.Dissolve != null) return Dissolve(c, eff.Dissolve, element);
+            if (eff.Heat)
+            {
+                int hot = TerrainOf(c).HotFor;
+                if (hot <= 0 || c.Heat >= hot) return false;
+                c.Heat = hot;
+                return true;
+            }
+            if (eff.Shatter) return Struck(x, y, c);
+            if (eff.Scour) return Scour(x, y, c);
+            if (eff.PushCover) return dir >= 0 && PushCover(x, y, c, dir);
+            if (eff.Bake) return Bake(c);
+            if (eff.MeltCover) return MeltCover(c);
             if (eff.Break)
             {
                 var to = TerrainOf(c).BreaksTo;
                 if (to == null) return false;
                 c.T = to;
+                WallLost(x, y);
                 return true;
             }
             if (eff.SetTerrain != null)
@@ -288,15 +411,7 @@ namespace Chem
                 if (InBounds(nx, ny)) Apply(nx, ny, "fire", 2, -1, false);
                 return true;
             }
-            if (eff.PushGas)
-            {
-                if (c.Gas == null || dir < 0) return false;
-                var n = At(x + DirX(dir), y + DirY(dir));
-                if (n != null && IsActiveAt(x + DirX(dir), y + DirY(dir)) && !IsBlocking(n)) AddGas(n, c.Gas, c.GasAmt);
-                c.Gas = null;
-                c.GasAmt = 0;
-                return true;
-            }
+            if (eff.PushGas) return c.Gas != null && dir >= 0 && ShoveGas(x, y, dir);
             if (eff.ClearGas)
             {
                 if (c.Gas == null) return false;

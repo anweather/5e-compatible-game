@@ -9,8 +9,12 @@ using UnityEngine.InputSystem;
 // speed; deeper than the wizard's chest it swims: it floats with its head
 // above the surface, slower still, and jump kicks it up out of the water onto
 // a bank. Over the water (crossing the bridge) it's dry. Thorns (Spike Growth's spiky
-// cover) slow it to the cover's speed and cut it (Vitals) every square it walks. Spells slow it too
-// (Slow: frost chills, lightning jolts; SpellForces). Runs after the Starter Assets controller has moved the wizard
+// cover) slow it to the cover's speed and cut it (Vitals) every square it walks. Heavy ground slows
+// it to its terrain's speed (mud: the move cost raiders pay too, World.Thorns), and hot metal (Cell.Heat)
+// burns it 1 fire damage every sim.burnDamageEvery ticks, as it does a raider. Spells slow it too
+// (Slow: frost chills, lightning jolts; SpellForces). Lightning in the water it stands in shocks it
+// (shock-water: the charge runs through all the connected water), twice the zap, as the core does a
+// wet creature. Runs after the Starter Assets controller has moved the wizard
 // and corrects that move, so the controller itself stays untouched (its
 // gravity is switched off while afloat and its animator told it's standing).
 //
@@ -54,16 +58,31 @@ public class SurfaceEffects : MonoBehaviour
     bool wasSlipping, wasWading, swimming;
     float kickedUntil;
     bool kick;
+    const float ClimbReach = 1f, ClimbSpeed = 2.6f;
     float slowUntil, slowFactor = 1f, appliedSpeed = 1f;
     Vitals vitals;
     // Thorns underfoot (Spike Growth): the cover's speed, and how far the wizard has walked through them since the last cut.
     float thornSpeed = 1f, thornsWalked;
+    // In charged water since the charge came (one shock a strike, not one a frame).
+    bool shocked;
 
     /// <summary>True while the wizard walks on thorns (a spiky cover): slowed, and cut every square walked.</summary>
     public bool InThorns { get; private set; }
 
+    // The ground underfoot's speed (mud: 0.5; 1 for most), and how long the wizard has stood on hot metal since its last burn.
+    float groundSpeed = 1f, onHotMetal;
+
+    /// <summary>True while heavy ground (mud) slows the wizard.</summary>
+    public bool InMud { get; private set; }
+
+    /// <summary>True while the wizard stands on hot metal, burning.</summary>
+    public bool OnHotMetal { get; private set; }
+
     /// <summary>True while a spell has the wizard slowed.</summary>
     public bool Slowed => Time.time < slowUntil;
+
+    /// <summary>What the cast meter leaves of the wizard's speed (World.MoveFactorOf); SpellCaster sets it.</summary>
+    public float CastFactor { get; set; } = 1f;
 
     /// <summary>True while the wizard is afloat in deep water.</summary>
     public bool Swimming => swimming;
@@ -140,8 +159,12 @@ public class SurfaceEffects : MonoBehaviour
         bool wading = c != null && !c.Frozen && c.Water >= wadingDepth && surface > transform.position.y;
 
         Swim(c, cell);
+        Climb(cell);
         Slide(slippery && !swimming);
-        Thorns(c != null && !above && body.isGrounded && !swimming && grid.World.IsSpiky(c) ? grid.World.CoverOf(c) : null);
+        bool underfoot = c != null && !above && body.isGrounded && !swimming;
+        Thorns(underfoot && grid.World.IsSpiky(c) ? grid.World.CoverOf(c) : null);
+        Ground(underfoot ? c : null);
+        Shock(c != null && !above && !c.Frozen && c.Water > 0 && surface > transform.position.y && c.Charge > 0);
         SetSpeed(wading);
         lastPosition = transform.position;
     }
@@ -188,6 +211,52 @@ public class SurfaceEffects : MonoBehaviour
         if (vitals != null && thorns.Damage.Length == 2) vitals.Hurt(Roll(thorns.Damage));
     }
 
+    // The ground underfoot (its cell, or null off it: afloat, in the air, on the bridge): heavy ground
+    // (mud) slows the wizard to its terrain's speed, and hot metal burns it 1 fire damage every
+    // sim.burnDamageEvery ticks' worth of seconds while it stands there, the raiders' rate
+    // (World.Hazards). Health is the wizard's own (Vitals), so the timing is Unity's, not the world's.
+    void Ground(Cell c)
+    {
+        var world = grid.World;
+        float speed = c != null ? Mathf.Clamp((float)world.TerrainOf(c).Speed, 0.05f, 1f) : 1f;
+        bool mud = speed < 1f;
+        if (mud && !InMud) EventLog.Add($"You slog into the {world.TerrainOf(c).Name.ToLowerInvariant()}");
+        InMud = mud;
+        groundSpeed = speed;
+
+        bool hot = c != null && c.Heat > 0;
+        if (!hot)
+        {
+            OnHotMetal = false;
+            onHotMetal = 0f;
+            return;
+        }
+        float every = world.Rules.Sim.BurnDamageEvery / (float)world.Rules.Sim.TicksPerSecond;
+        if (!OnHotMetal)
+        {
+            EventLog.Add("The hot metal burns you");
+            onHotMetal = every; // the first touch burns at once
+        }
+        OnHotMetal = true;
+        onHotMetal += Time.deltaTime;
+        if (onHotMetal < every) return;
+        onHotMetal -= every;
+        if (vitals != null) vitals.TakeDamage(1f);
+    }
+
+    // Freshly charged water round the wizard's feet: one shock a strike, wet so twice the zap, and a jolt.
+    // Health is the wizard's own (Vitals), as with the thorns.
+    void Shock(bool charged)
+    {
+        if (charged && !shocked)
+        {
+            EventLog.Add("The charged water shocks you");
+            if (vitals != null) vitals.Hurt(grid.World.Rules.Sim.ZapDamage * 2);
+            Slow(0.35f, 0.8f);
+        }
+        shocked = charged;
+    }
+
     static int Roll(int[] dice)
     {
         int total = 0;
@@ -195,7 +264,7 @@ public class SurfaceEffects : MonoBehaviour
         return total;
     }
 
-    // Wading, thorns and a spell's slow, together.
+    // Wading, thorns, heavy ground, a spell's slow and casting, together.
     void SetSpeed(bool wading)
     {
         if (moveSpeed == null) return;
@@ -204,7 +273,8 @@ public class SurfaceEffects : MonoBehaviour
         float k = Slowed ? slowFactor : 1f;
         if (swimming) k *= swimmingSpeed;
         else if (wading) k *= wadingSpeed;
-        else if (InThorns) k *= thornSpeed;
+        else k *= Mathf.Min(InThorns ? thornSpeed : 1f, groundSpeed);
+        k *= CastFactor;
         if (Mathf.Approximately(k, appliedSpeed)) return;
         appliedSpeed = k;
         moveSpeed.SetValue(controller, baseMove * k);
@@ -250,6 +320,26 @@ public class SurfaceEffects : MonoBehaviour
         SetAfloat(false);
         fall.SetValue(controller, Mathf.Sqrt(swimKick * -2f * baseGravity));
         if (animator != null) animator.SetBool(JumpId, true);
+    }
+
+    /// <summary>Thrown straight up at this speed (a Geyser's jet), out of the water if afloat.</summary>
+    public void Toss(float speed)
+    {
+        if (fall == null) return;
+        kickedUntil = Time.time + KickTime;
+        SetAfloat(false);
+        fall.SetValue(controller, speed);
+        if (animator != null) animator.SetBool(JumpId, true);
+    }
+
+    // Walking into vines on what stands ahead climbs them, up over the top.
+    void Climb(Vector2Int cell)
+    {
+        if (fall == null || ((int)body.collisionFlags & (int)CollisionFlags.Sides) == 0) return;
+        var ahead = grid.CellAt(transform.position + transform.forward * ClimbReach);
+        var c = grid.World.At(ahead.x, ahead.y);
+        if (ahead == cell || c == null || c.Cover != CoverIds.Vines || !grid.World.IsBlocking(c)) return;
+        fall.SetValue(controller, ClimbSpeed);
     }
 
     void SetAfloat(bool on)

@@ -38,7 +38,8 @@ namespace Chem.Tests
             { 'id': 'fog-cloud', 'group': 'time', 'name': 'Fog Cloud', 'level': 1, 'shape': 'burst', 'radius': 4, 'element': 'fog', 'radial': false, 'blurb': '' },
             { 'id': 'plant-growth', 'group': 'nature', 'name': 'Plant Growth', 'level': 3, 'shape': 'burst', 'radius': 4, 'element': 'growth', 'radial': false, 'blurb': '' },
             { 'id': 'spike-growth', 'group': 'nature', 'name': 'Spike Growth', 'level': 2, 'shape': 'burst', 'radius': 4, 'element': 'thorns', 'radial': false, 'blurb': '' },
-            { 'id': 'shapeshift', 'group': 'nature', 'name': 'Shapeshift', 'level': 4, 'shape': 'target', 'effect': 'shapeshift', 'range': 12, 'radial': false, 'blurb': '' } ] }");
+            { 'id': 'shapeshift', 'group': 'nature', 'name': 'Shapeshift', 'level': 4, 'shape': 'target', 'effect': 'shapeshift', 'range': 12, 'radial': false, 'blurb': '' },
+            { 'id': 'acid-splash', 'group': 'nature', 'name': 'Acid Splash', 'level': 0, 'shape': 'burst', 'radius': 1, 'element': 'acid', 'radial': false, 'blurb': '' } ] }");
 
         static SpellRadial NewRadial() => new SpellRadial(RadialLayout.From(FiveEarth));
 
@@ -79,7 +80,7 @@ namespace Chem.Tests
             var layout = RadialLayout.From(Base);
             Assert.That(layout.Groups.Select(g => g.Id), Is.EqualTo(new[] { "fire", "water", "storm", "earth", "arcane", "nature", "time" }));
             Assert.That(layout.Groups[6].SpellIds, Is.EqualTo(new[] { "hasten-time", "control-weather", "fog-cloud" }));
-            Assert.That(layout.Groups[Nature].SpellIds, Is.EqualTo(new[] { "plant-growth", "spike-growth", "shapeshift" }));
+            Assert.That(layout.Groups[Nature].SpellIds, Is.EqualTo(new[] { "plant-growth", "spike-growth", "shapeshift", "acid-splash" }), "Acid Splash a temporary 4th");
             Assert.That(layout.Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt", "fireball", "meteor" }), "Burning Hands stays off the radial");
             Assert.That(RadialLayout.From(FiveEarth).Groups[Fire].SpellIds, Is.EqualTo(new[] { "fire-bolt" }), "a group with one spell");
             Assert.That(layout.Groups[Earth].SpellIds, Is.EqualTo(new[] { "mold-earth", "mold-earth-heap", "wall-of-stone" }), "Earthen Trench and Move Earth stay off the radial");
@@ -95,9 +96,11 @@ namespace Chem.Tests
         public void NoElementHasMoreThanThreeSpells()
         {
             // Andrew's rule for the bar (2026-10-27): at most three spells to an element. A spell
-            // past three stays in the rules with "radial": false (for mods, tests and demos).
+            // past three stays in the rules with "radial": false (for mods, tests and demos). One
+            // exception until element combos replace the radial (docs/SPELL_COMBOS.md): Acid Splash, a
+            // temporary 4th in nature (the view pass, 2026-10-29).
             foreach (var g in RadialLayout.From(Base).Groups)
-                Assert.That(g.SpellIds.Count, Is.LessThanOrEqualTo(3), g.Id + ": " + string.Join(", ", g.SpellIds));
+                Assert.That(g.SpellIds.Count, Is.LessThanOrEqualTo(g.Id == "nature" ? 4 : 3), g.Id + ": " + string.Join(", ", g.SpellIds));
         }
 
         [Test]

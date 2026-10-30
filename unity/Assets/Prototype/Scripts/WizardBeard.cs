@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using UnityEngine;
 
+// Unused since UX pass 2 (the new face); kept for a later look option (BACKLOG 23, Andrew 2026-10-30).
 // The wizard's beard (WizardOutfit; Andrew: a beard, not a cone): tapered tufts
 // rooted along the jaw from ear to ear, each a little different in length,
 // width, curl and shade (darker at the root, lighter at the tip), overlapping

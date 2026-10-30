@@ -31,12 +31,25 @@ function componentGolden(r: Rules): string {
 
 test("things carry their components, and the bits match the C# port", () => {
   assert.deepEqual(validateRules(BASE_RULES as Rules), []);
-  assert.equal(componentGolden(BASE_RULES as Rules), "92654856");
+  assert.equal(componentGolden(BASE_RULES as Rules), "b4bce67a");
   const e = BASE_RULES.entities;
   assert.ok(hasComponent(e.crate!, "flammable") && hasComponent(e.crate!, "breakable"));
   assert.ok(!hasComponent(e.boulder!, "flammable") && hasComponent(e.boulder!, "heavy"));
   assert.ok(hasComponent(BASE_RULES.items["bullseye-lantern"]!, "brittle"));
   assert.deepEqual(Object.keys(e).filter((k) => hasComponent(e[k]!, "creature")).sort(), ["ash-crab", "bone-hound", "giant-spider", "goblin", "wizard"]);
+});
+
+// Mirrors ComponentTests.EveryCreatureNamesAKnownMaterialThatGivesItNothingYet (docs/MATERIALS.md step 5, part 1).
+test("every creature names a known material that gives it nothing yet", () => {
+  const creatures = Object.entries(RULES.entities).filter(([, def]) => hasComponent(def, "creature"));
+  assert.ok(creatures.length > 0);
+  for (const [id, def] of creatures) {
+    const m = def.material !== undefined ? RULES.terrain[def.material] : undefined;
+    assert.ok(m, `${id} names a known material`);
+    assert.ok(["flesh", "bone", "chitin"].includes(def.material!), id);
+    // Only scalds (steam scalds flesh), which is a hazard, not a component.
+    assert.equal(m.tags.filter((t) => t !== "scalds").length, 0, `${id}'s ${def.material} gives it nothing`);
+  }
 });
 
 test("the old flammable and creature keys still load", () => {

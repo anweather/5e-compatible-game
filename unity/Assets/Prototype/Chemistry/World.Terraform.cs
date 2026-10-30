@@ -10,26 +10,32 @@ namespace Chem
         /// <summary>
         /// Raises or digs every cell of a terraform spell aimed at (x, y): by Raise or Dig
         /// steps (times the charge), or (Height) up to that height (2 more per charge level),
-        /// leaving higher cells alone.
+        /// leaving higher cells alone. A ramp rises a step a cell from the first up to that height, and
+        /// cells holding open water rise only to Stepping (stepping stones) when it is set.
         /// </summary>
         void Terraform(SpellDef s, List<(int x, int y)> cells, int x, int y, int charge)
         {
             bool toHeight = s.Height.HasValue;
             int steps = (s.Raise > 0 ? s.Raise : -s.Dig) * charge;
             if (toHeight) steps = s.Height.Value + 2 * (charge - 1);
+            int k = 0;
             foreach (var (cx, cy) in cells)
             {
                 int d = Math.Max(Math.Abs(cx - x), Math.Abs(cy - y));
                 if (s.Taper && d > s.Radius) continue;
                 int n = s.Taper ? Tapered(steps, d, s.Radius) : steps;
-                if (toHeight) n = Math.Max(0, n - At(cx, cy).Height);
-                if (n != 0) Reshape(cx, cy, n, s.Terrain, s.Strength);
+                if (s.Ramp) n = Math.Min(n, ++k);
+                var c = At(cx, cy);
+                if (toHeight && s.Stepping > 0 && c.Water > 0 && !c.Frozen) n = Math.Min(n, s.Stepping);
+                if (toHeight) n = Math.Max(0, n - c.Height);
+                if (n != 0) Reshape(cx, cy, n, s.Terrain, s.Strength, s.Name);
             }
         }
 
         /// <summary>
         /// A blast's crater at (x, y), like crater in the TS: the ground dug Depth steps in the
-        /// middle, tapering to none past Radius, in row order. Nothing for a null crater.
+        /// middle, tapering to none past Radius, in row order; then its middle becomes its Leaves (lava),
+        /// unless that is blocking. Nothing for a null crater.
         /// </summary>
         public void Crater(int x, int y, CraterDef crater)
         {
@@ -41,6 +47,17 @@ namespace Chem
                     int n = Tapered(-crater.Depth, Math.Max(Math.Abs(dx), Math.Abs(dy)), r);
                     if (n != 0) Reshape(x + dx, y + dy, n, null, crater.Strength);
                 }
+            var mid = crater.Leaves != null ? At(x, y) : null;
+            if (mid != null && !IsBlocking(mid)) mid.T = crater.Leaves;
+        }
+
+        /// <summary>
+        /// A held tool's swing at (x, y): one step down, at the tool's strength (items.json "use": "dig").
+        /// Nothing for an item that doesn't dig (a mod removed it).
+        /// </summary>
+        public void Dig(int x, int y, ItemDef tool)
+        {
+            if (tool != null && tool.Use == ItemUses.Dig) Reshape(x, y, -1, null, tool.Strength, tool.Name);
         }
 
         /// <summary>
@@ -57,19 +74,21 @@ namespace Chem
         /// <summary>
         /// Raises (n &gt; 0) or digs (n &lt; 0) one cell by n steps, clamped to the sim's height
         /// range. A terrain that uproots (a tree, a cabin's log wall) turns to its UprootsTo
-        /// first. Blocking terrain and machines can't be shaped. Digging strips the cover and
+        /// first, and one that shatters (a window pane) shatters. Blocking terrain and machines can't be shaped. Digging strips the cover and
         /// turns the terrain to its dugTo; raised ground spills its water onto its neighbours.
         /// A cell that ends up blocking loses its cover and fire. A dig weaker than the terrain's
         /// hardness (materials.json) leaves it as it is: soft ground digs, rock needs strength 3,
-        /// metal never digs. Returns whether it changed.
+        /// metal and bedrock (hardness 0) never dig. Returns whether it changed.
         /// </summary>
-        public bool Reshape(int x, int y, int n, string terrain = null, int strength = 1)
+        public bool Reshape(int x, int y, int n, string terrain = null, int strength = 1, string by = null)
         {
             var c = At(x, y);
             if (c == null || !IsActiveAt(x, y)) return false;
-            bool uprooted = Uproot(c);
+            bool shattered = Shatter(x, y);
+            bool uprooted = Uproot(c) || shattered;
+            if (uprooted) WallLost(x, y);
             var t = TerrainOf(c);
-            if (t.Has("blocking") || t.Has("machine") || TooHard(t, n, strength)) return uprooted;
+            if (TooHard(t, n, strength, by) || Unshapeable(t)) return uprooted;
             var range = Rules.Sim.Height;
             int height = Math.Max(range.Min, Math.Min(range.Max, c.Height + n));
             if (Unmoved(c, x, y, height)) return uprooted;
@@ -92,11 +111,20 @@ namespace Chem
             return true;
         }
 
-        // Digging (n below 0) harder ground than the dig's strength: refused, and said once a tick.
-        bool TooHard(TerrainDef t, int n, int strength)
+        static bool Unshapeable(TerrainDef t) => t.Has("blocking") || t.Has("machine");
+
+        // Digging (n below 0) harder ground than the dig's strength, or what never digs (hardness 0, walls,
+        // machines): refused, and said once a tick, naming the spell or tool that tried (by) when there is one.
+        bool TooHard(TerrainDef t, int n, int strength, string by)
         {
-            if (n >= 0 || strength >= t.Hardness) return false;
-            LogOnce($"hard#{t.Id}#{Tick}", $"The {t.Name.ToLowerInvariant()} is too hard to dig");
+            bool never = t.Hardness <= 0 || Unshapeable(t);
+            if (n >= 0 || (!never && strength >= t.Hardness)) return false;
+            string name = t.Name.ToLowerInvariant();
+            string why;
+            if (never) why = $"The {name} can't be dug";
+            else if (by == null) why = $"The {name} is too hard to dig";
+            else why = $"The {name} is too hard for {by}";
+            LogOnce($"hard#{t.Id}#{Tick}", why);
             return true;
         }
 

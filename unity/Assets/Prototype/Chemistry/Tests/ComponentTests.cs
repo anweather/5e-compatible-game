@@ -19,6 +19,22 @@ namespace Chem.Tests
         static IReadOnlyList<string> ErrorsOf(string mod) => Assert.Throws<ModException>(() => With(mod)).Errors;
 
         [Test]
+        public void EveryCreatureNamesAKnownMaterialThatGivesItNothingYet()
+        {
+            // docs/MATERIALS.md step 5, part 1: creatures name flesh, bone or chitin, which have no verbs
+            // yet, so they still burn, freeze and soak as creatures (no MaterialBurn, no components).
+            var creatures = R.Entities.Where(e => e.Value.Creature).ToList();
+            Assert.That(creatures, Is.Not.Empty);
+            foreach (var (id, def) in creatures.Select(e => (e.Key, e.Value)))
+            {
+                Assert.That(def.MaterialDef, Is.Not.Null, $"{id} names a known material");
+                Assert.That(new[] { "flesh", "bone", "chitin" }, Does.Contain(def.Material), id);
+                // Only scalds (steam scalds flesh), which is a hazard, not a component.
+                Assert.That(def.MaterialDef.Burns || def.MaterialDef.Tags.Any(t => t != "scalds"), Is.False, $"{id}'s {def.Material} gives it nothing");
+            }
+        }
+
+        [Test]
         public void ThingsCarryTheirComponents()
         {
             Assert.That(R.Components, Is.Ordered.Using((IComparer<string>)System.StringComparer.Ordinal));
@@ -51,7 +67,7 @@ namespace Chem.Tests
             string s = string.Join(",", R.Components) + "|" + string.Join(";", Bits(R.Entities, e => e.Components)) + "|" + string.Join(";", Bits(R.Items, i => i.Components));
             uint h = 0x811c9dc5;
             foreach (char c in s) h = (h ^ c) * 0x01000193;
-            Assert.That(h.ToString("x", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("92654856"), s);
+            Assert.That(h.ToString("x", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("b4bce67a"), s);
         }
 
         [Test]

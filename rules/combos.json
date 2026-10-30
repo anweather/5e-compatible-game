@@ -1,0 +1,43 @@
+{
+  "elements": ["fire", "water", "earth", "air"],
+  "window": 4,
+  "moveFactor": 0.6,
+  "singles": {
+    "fire":  { "name": "Fire Bolt", "spell": "fire-bolt", "shape": "point", "castTicks": 6 },
+    "water": { "name": "Create Water", "spell": "create-water", "shape": "square", "castTicks": 6 },
+    "earth": { "name": "Raise Earth", "spell": "mold-earth-heap", "shape": "square", "castTicks": 6 },
+    "air":   { "name": "Gust of Wind", "spell": "gust-of-wind", "shape": "line", "castTicks": 6 }
+  },
+  "pairs": {
+    "fire": {
+      "fire":  { "name": "Fireball", "spell": "fireball", "shape": "burst", "castTicks": 12 },
+      "water": { "name": "Scalding Steam", "spell": "scalding-steam", "shape": "burst", "castTicks": 9 },
+      "earth": { "name": "Lava Pool", "spell": "lava-pool", "shape": "burst", "castTicks": 12 },
+      "air":   { "name": "Falling Star", "spell": "falling-star", "shape": "burst", "castTicks": 9 }
+    },
+    "water": {
+      "fire":  { "name": "Geyser", "spell": "geyser", "shape": "burst", "castTicks": 9 },
+      "water": { "name": "Wave", "spell": "wave", "shape": "line", "castTicks": 9 },
+      "earth": { "name": "Mud", "spell": "mud", "shape": "square", "castTicks": 9 },
+      "air":   { "name": "Frost", "spell": "frost", "shape": "line", "castTicks": 6 }
+    },
+    "earth": {
+      "fire":  { "name": "Forge", "spell": "forge", "shape": "burst", "castTicks": 12 },
+      "water": { "name": "Plant Growth", "spell": "plant-growth", "shape": "burst", "castTicks": 9 },
+      "earth": { "name": "Wall of Stone", "spell": "wall-of-stone", "shape": "line", "castTicks": 12, "held": "stone-ramp" },
+      "air":   { "name": "Rolling Boulder", "spell": "rolling-boulder", "shape": "line", "castTicks": 9 }
+    },
+    "air": {
+      "fire":  { "name": "Lightning", "spell": "lightning-bolt", "shape": "line", "castTicks": 9 },
+      "water": { "name": "Rain Cloud", "spell": "rain-cloud", "shape": "burst", "castTicks": 12 },
+      "earth": { "name": "Sand Blast", "spell": "sand-blast", "shape": "line", "castTicks": 9 },
+      "air":   { "name": "Whirlwind", "spell": "whirlwind", "shape": "burst", "castTicks": 9 }
+    }
+  },
+  "dpad": [
+    { "name": "Hasten Time", "spell": "hasten-time", "castTicks": 12 },
+    { "name": "Shapeshift", "spell": "shapeshift", "castTicks": 12 },
+    { "name": "Light", "spell": "light", "castTicks": 6 },
+    { "name": "Control Weather", "spell": "control-weather", "castTicks": 18 }
+  ]
+}

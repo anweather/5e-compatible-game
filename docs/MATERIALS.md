@@ -53,7 +53,7 @@ means the verb does nothing to it.
   },
   "metal": {
     "name": "Metal", "tags": ["ground"],
-    "conduct": { "chance": 1 }, "rust": { "every": 2000, "leaves": "rusted-metal" }, "dig": { "hardness": 4 }
+    "conduct": { "chance": 1 }, "rust": { "every": 2000, "leaves": "rusted-metal" }, "dig": { "hardness": 0 }
   },
   "glass":  { "name": "Glass", "shatter": { "drop": 1.5, "leaves": "shards" } },
   "flesh":  { "name": "Flesh", "burn": { "catch": 0.5, "status": 24 }, "freeze": { "status": 30 }, "soak": { "status": 30 } }
@@ -79,17 +79,18 @@ Each group's keys, and what reads them today.
 | Verb | Group keys | Replaces |
 |---|---|---|
 | **burn** | `catch` (0..1, chance a fire lights it; a prop counts 1/catch ticks), `fuel` (ticks), `heat` (spread multiplier), `leaves` (material after), `look` (flare / wood / oil), `log`, `status` (ticks, for things) | `flammable` tag, `flammability`, `fuel`, `heat`, `burnsTo`, `burnLog`, `fireLook`, `burnIntensity`, the `flammable` component, `e-fire-flammable` |
-| **melt** | `at` (heat that melts it), `leaves` (water units or a material) | `fire-ice`, `fire-snow`, `fire-snowbank` in reactions |
+| **melt** | `into` (the cover left, or none), `water` (units it gives) | built on covers (snow, snow bank): the `meltCover` effect, from fire and heat; `fire-ice` is still a reaction |
+| **bake** | `into` (the terrain heat turns it into) | built: sand to glass, mud to brick, through the `heat` element (Forge) and the `bake` effect; plain fire bakes nothing |
 | **freeze** | `leaves` or `status` (ice, frozen) | `waterTo: "ice"` (arctic), Ray of Frost's freeze, the `frozen` status |
-| **soak** | `dry`, `wet` (ticks per unit soaked in), `dampens` (how much a damp cell's `burn.catch` drops), `status` (wet, for things) | `soakEvery`, `soakEveryWet`, the `wet` status |
+| **soak** | `dry`, `wet` (ticks per unit soaked in), `dampens` (how much a damp cell's or wet thing's `burn.catch` and `burn.fuel` drop), `leaves` (what water soaking in turns it to: dirt to mud), `dries` (what it turns back to once no longer damp: mud to dirt), `status` (wet, for things) | `soakEvery`, `soakEveryWet`, the `wet` status |
 | **boil** | `leaves` (steam) | `waterTo: "steam"` (lava) |
 | **break** | `hardness`, `leaves`, `hp` for things | `breakable` tag/component, `breaksTo`, `hardness` |
-| **shatter** | `drop` (fall height that breaks it), `leaves` | `brittle` component, items' `breaks` |
-| **conduct** | `chance`, `chainsWet` (through water next to it) | `conductive` tag, `conducts` component |
-| **float** | `lift` (above 1 floats) | `floats` component, PropState's mass rule |
+| **shatter** | `drop` (fall height that breaks it), `leaves`, `cracks` (built: intact, cracked, shattered; the first hit cracks it, the next breaks it. Glass ground, window panes, things of glass, and the material `ice`, which is frozen water's and frozen creatures') | `brittle` component, items' `breaks`; `leaves` built on terrain: a blast, shaken ground or a heavy thing turns a cell of it to that (`World.Shatter`: a window `pane` to an open gap of rubble), and a pane with no wall beside it falls (`WallLost`) |
+| **conduct** | `chance`, `chainsWet` (through water next to it) | `conductive` tag, `conducts` component; `chainsWet` built: on flesh, bone and chitin, a wet creature beside freshly charged water is shocked as if in it (`World.ShockedFromBeside`); a group holding only `chainsWet` doesn't make the material conduct |
+| **float** | `lift` (above 1 floats), `every` (a cover: on open water it spreads to the open water beside it every this many ticks), `reach` (how many cells from where it was laid; `Cell.Slick` counts down; built for oil, `floatEvery`, `floatReach`, `World.Float`) | `floats` component, PropState's mass rule |
 | **grow** | `into`, `every` | `growsTo`, `growLog`, Cell.Life ripening |
-| **rot / rust** | `every`, `leaves` | new |
-| **dissolve** | `by` (acid), `leaves` | new, later |
+| **rot / rust** | `every` (ticks wet in all), `leaves` | rust built: `rustEvery`, `rustsTo`; `Cell.Rust` counts a wet cell's ticks on the soak pass (`World.Rust`). Rot is new |
+| **dissolve** | `by` (an element: acid), `leaves` (a terrain's is a terrain; a cover's a cover, or none) | built: the `dissolve` effect of `acid-cover` / `acid-terrain` in reactions; brambles to dirt, oil, grease and thorns eaten (Acid Splash) |
 | **dig** | `hardness`, `leaves` | `dugTo`, `hardness` |
 
 ## How the verbs combine
@@ -98,16 +99,38 @@ Each verb reads the cell's or thing's current state, so the combinations
 fall out of order and one rule each. These are already true today unless
 marked *new*.
 
-- **Soaked burns poorly:** a damp cell (`Cell.DampUntil`, or raining) has
-  its `burn.catch` scaled by `soak.dampens` (*new*; today rain damps
-  spread globally through `RainDamp`).
+- **Soaked burns poorly:** a damp cell (`Cell.DampUntil`, or raining), or a
+  thing with the wet status, catches with its `burn.catch` scaled by
+  1 - `soak.dampens`, and what catches burns its `burn.fuel` scaled the same
+  (rounded down, at least 1 tick). Built (`World.Dryness`, `DampFuel`); rain
+  also still damps spread globally through `RainDamp`.
 - **Wet puts fire out:** water on a burning cell puts it out, unless the
   burning thing floats on it (oil, grease). That's today's `Burn` rule;
   it becomes "a `burn` without `float` is put out by water".
 - **Frozen things shatter:** a thing with the `frozen` status gains a
   `shatter` it lacks (a struck frozen goblin breaks) (*new*).
-- **Wet ground conducts:** lightning chains through water. That's today's
-  conduct over wet cells; `conduct.chainsWet` makes it a key, not code.
+- **Wet ground conducts:** lightning chains through water (conduct over wet
+  cells, up to `sim.conductLimit`) and shocks every creature in it; with
+  `conduct.chainsWet` a wet creature on the bank beside it is shocked too
+  (shock-water, built).
+- **Hot metal:** fire reaching metal leaves it hot for `hot.for` ticks
+  (`Cell.Heat`, the `fire-heat` reaction). A creature on it takes 1 fire damage
+  every `burnDamageEvery` ticks; water on it boils off a unit a tick as steam,
+  each unit taking `hot.quench` ticks of its heat (built).
+- **Steam scalds flesh and condenses:** thick steam (2 or more) scalds a creature
+  whose material has `scald` (flesh; not bone or chitin) as fire damage; it
+  drifts and spreads as any gas does, and each time a decaying unit takes a
+  cell's count from a multiple of `gases.steam.condenseEvery` (2) it leaves a
+  unit of water there, but only `gases.steam.condenseAway` (1) cells or more
+  from heat: not in, or next to, a burning or hot cell, so it doesn't rain
+  straight back onto the fire. Cold condenses it at once (`cold-steam`). Built.
+- **Wind carries and fans:** Gust of Wind's air pushes each cell's gas (smoke,
+  fog, steam) one cell along it, shoving a different gas ahead rather than
+  merging it; against a wall it stays (`pushGas`). It fans a fire of 2 or more
+  hotter and on downwind (`fan`), blows out a small one, and keeps hot metal
+  hot (`air-hot`, the `hot` condition). Built.
+- **Lightning fuses sand:** a strike on terrain tagged `fuses` (sand) turns
+  it into glass (`lightning-fuse` in reactions; built).
 - **Heat melts, cold freezes:** `melt` and `freeze` check the cell's water
   and cover first, as the fire and frost rules in `reactions.json` do now.
 - **Hot burns light neighbours:** `burn.heat` (thatch flaring lights log
@@ -151,7 +174,12 @@ step that says so, and then in both engines together.
 5. **Creatures as flesh, bone or chitin.** Move the creature branch of
    `entityRules` into those materials' `status` keys. The defense golden
    is the guard: unchanged, or moved in both engines with the reason in
-   the commit.
+   the commit. *Built:* `burn`, `freeze` and `soak` take a `status`
+   (flesh 9 / 30 / 60, bone no burn, chitin no freeze); the creature rules
+   (`e-fire-creature`, `e-water-creature`, `e-cold-wet`) read it through
+   `if.verb` and `statusOf`, and things keep their fixed ticks. A group
+   holding only its `status` doesn't make the material flammable or freeze
+   water. The defense golden didn't move.
 6. **New combinations, one per merge,** each with its golden moved in both
    engines and a probe: damp ground dampens catching, frozen things
    shatter, rust, then dissolve.

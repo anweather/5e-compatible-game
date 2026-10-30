@@ -117,8 +117,10 @@ Blocked, Next, and whether they hold Unity.
 
 ## Branch cleanup (Andrew's rule, 2026-10-27)
 
-A branch that is fully merged into `dev` can be deleted, both locally and on
-`origin`, without asking Andrew. The coordinator does this. Agents delete only
+A branch that is fully merged into `dev` is deleted, both locally and on
+`origin`, right after the merge is pushed, always (Andrew, 2026-10-29), without
+asking. The coordinator does this (`tools/workers/land.sh push` does it for
+worker branches). Agents delete only
 their own branches, once their merge has been pushed. A branch counts as
 merged when `git branch --merged origin/dev` lists it, or when its commits
 reached `dev` by rebase or cherry-pick and `git cherry` / `git diff` confirm
@@ -165,6 +167,7 @@ reel uses about 50 MB now. Near 200 MB, the coordinator starts a
 | **Gameplay** (`gameplay-session-player-look`) | PC, main checkout `C:\Users\Andrew\Development\5e-compatible-game` | The player and the wizard: controls, looks, spells and casting, items, menus and HUD, sound, the scene and yard builders, and the yard scene |
 | **World** (`world-look-and-streaming`) | PC, worktree `.claude/worktrees/village` | Simulation and streaming: the chemistry, chunks, streaming, weather and fire, the rules data, and the C# core and TS sandbox that mirror them |
 | **Build** (`unity-game-macbook`) | Mac, `/Users/anweather/Documents/Development/5e-compatible-game` | Build size, performance settings, packages, versions and releases |
+| **Workers** (`w1`, `w2` on the Pro account; `w3`, `w4` on Max once signed in) | Hyper-V VMs on the PC (`tools/workers/README.md`), each with its own clone; driven by the Pro coordinator (`coordinator`, reached through `tools/workers/bridge.sh`) | Headless work, no Editor: core and sandbox code with tests, in both engines on one branch per feature. They take World-lane items when the coordinator assigns them; World rebases on what they merge. One task per boot: once its branch is merged the coordinator stops the VM, which ends its Claude session, so the next task starts with an empty context. The coordinator lands each branch with `tools/workers/land.sh` (its merge commit carries Coordinator-* cost lines beside the worker's Worker-* ones, and the branch is deleted) |
 
 ## File ownership
 
@@ -190,6 +193,7 @@ ask the coordinator first.
 | Build | `unity/Assets/Prototype/Scripts/Editor/AssetPacks/**`, `unity/AssetPacks.json`, `unity/Assets/Prototype/Scripts/Editor/UpdateBuild.cs` (release builds) |
 | Build | `unity/Assets/Prototype/Scripts/Perf/**` (new: rendering and perf tooling, e.g. the pipeline-state trace and warm-up) |
 | Build | `tools/ship-update.sh`, `docs/RELEASING.md`, `unity/ReleaseReadme.txt` |
+| Workers (the Pro coordinator) | `tools/workers/**`, `docs/handoffs/pro-coordinator-report.md` |
 
 These shared files have **no owner**. Changes go through the coordinator's
 queue, and only one agent edits them at a time: `CLAUDE.md` (every level),
@@ -388,3 +392,159 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   (RELEASING.md, ship-update.sh) with no extra exploration. PC: World runs
   --windows-only; then Mac: --mac-only into the same draft; then the bot
   runs on the RC; then Andrew publishes.
+- 2026-10-28: RULE (Andrew): every release gets player-facing notes before it
+  is published: the intro, the Install (new players) section copied from
+  the last release, what's new, what's fixed, performance, any first-launch
+  notes. The coordinator writes them from the merges since the last release
+  and sets them on the draft; always keep budget for this. 0.1.7's notes
+  were added after publishing.
+- 2026-10-29: BUDGET (Andrew). Frugal mode is for when usage is low; the
+  normal mode is now LEAN, so the weekly plan lasts the week while features
+  keep landing: screenshots only when they decide something, short
+  fixed-shape briefs and reports, analysis sized to the decision, batched
+  tasks, cheaper models for read-only jobs, the reel at release time, and a
+  mid-week usage check. See .claude/skills/agent-coordinator ("Budget").
+- 2026-10-29: WORKERS (Pro coordinator). Worker VMs w1 and w2 built five materials
+  features headless, in both engines, merged on core and sandbox checks:
+  soak.dampens (8823b4c), damp burns shorter (4d42d9c), frozen things
+  shatter (d5214d8), rust (8d05ccd), acid and Acid Splash with a dissolve
+  verb (de14cc1). MATERIALS step 6 is done. Each took 8-20 min, and two VMs
+  run side by side within J-037. They worked in World's lane (rules/, core/,
+  sandbox/, Chemistry/): World, rebase on dev before continuing your branches.
+  The view still needs Gameplay: rusted-metal's colour (CellDressing.cs),
+  Acid Splash's radial slot (a decision: every group is full), icon, VFX and
+  sound, a shatter effect, and probes for all of them (host Editor).
+  Worker commits carry Worker-* cost trailers (git log --grep Worker-Tokens).
+  Report and how the PM reaches the coordinator:
+  docs/handoffs/pro-coordinator-report.md.
+- 2026-10-29: RULE (Andrew): the host's Unity Editor and GPU are used only
+  when a task needs them (views, shaders, probes, screenshots, clips,
+  performance runs). Everything else runs in the worker VMs, including Unity
+  batch work: compiling, imports, EditMode tests and batch builds. The desktop
+  is left free for playing. Workers w3 and w4 (Max) get set up tonight. The
+  GPU-partitioning test for VMs is parked.
+- 2026-10-29: RULE (Andrew): effects are GPU-first. Show materials and
+  effects with shaders, vertex colours and pooled particles, not by spawning
+  many entities or GameObjects. When objects are really needed, build them
+  procedurally from small simple pieces (as the world builders do), not
+  high-detail models. LEND to the Workers (Pro coordinator) for the view pass
+  on the new materials: the Gameplay view files those features need, listed
+  in its report. The host Editor does one probe and screenshot pass after.
+- 2026-10-29: RULE (Andrew): never stop a worker VM with unpushed work.
+  Before stopping one for any reason (usage limit, swapping accounts, memory),
+  commit its work in progress and push it as `wip/<worker>-<feature>`. Lost
+  today: w1's shock-water, redone on w4. TODO (Workers lane): stop.cmd does
+  this itself (commit and push WIP over PowerShell Direct) before shutting
+  down, and refuses if the push fails unless -Force is given.
+- 2026-10-29: DONE: the WIP TODO above (21d7df6). stop, sleep and
+  remove-worker push unpushed work as wip/<worker>-<branch> first and refuse
+  unless -Force; rescue.cmd recovers a stopped worker whose account is out
+  of usage. Tested on the host: w3's stop (nothing unpushed) and a rescue of
+  w1 (pushed wip/w1-shock-water).
+- 2026-10-29: Host Editor pitfall: start Unity Hub before the Editor, or it
+  waits at a licence prompt (it looked like a slow Editor). Host sessions
+  check for Hub first.
+- 2026-10-29: Host sessions' commits carry cost trailers too (Host-*), like the
+  workers' (Worker-*). commit-cost.mjs takes COMMIT_COST_PROJECT, the exact
+  Claude transcript folder to count (on the host one account runs many
+  sessions). The host repo's .git/hooks/prepare-commit-msg (not versioned)
+  runs it only in .claude/worktrees/host-ux, counting the repo-root folder
+  (the folder that session started in). Add a case there for each new host
+  worktree.
+- 2026-10-29 night: OVERNIGHT PLAN (Andrew: "keep the lean mode going ... use
+  the Pro sessions if you can ... picking stuff off our backlog until
+  morning"). Merges pre-approved when their checks pass. Memory: while the
+  host Editor (DesktopUnity) works, no worker VMs; after it closes, at most 2
+  VMs, Pro first, Max (w3, w4) when Pro is out. Queue, in order:
+  1. DesktopUnity: host UX Part 1 (effects shots and fixes), then Part 2 (the
+     combo UI and Andrew's HUD layout). Then it closes the Editor.
+  2. The combo stand-ins: the 11 of 20 combos marked todo in rules get real
+     spells (flame wave, scalding steam burst, fog bank, wave, mud, frost,
+     molten boulder, plant growth, dust storm, rain cloud, sand blast,
+     whirlwind: whichever are stand-ins), 3 or 4 per worker task, headless.
+  3. Tuning from tonight: the oil slick's spread limit and boil-off; Light
+     gets a real spell for its d-pad slot.
+  4. BACKLOG 21 (player saves): a design note only, no code.
+  Stop when the queue is empty or usage runs low, and leave a morning report
+  in docs/handoffs/morning-2026-10-30.md.
+- 2026-10-29: Host UX Part 1 merged (96c7e10): every new effect seen and
+  fixed on screen; panes now break on heavy hits (threshold 120, measured).
+  Pitfalls: seed a new worktree's Library only from a checkout whose licence
+  was good (a copy taken after a licence failure left pack scripts
+  unresolved until a clean rebuild), and copy UserSettings/Search.index too.
+  Lend: docs/FAST_LOOP.md to DesktopUnity for the `looks` probe row.
+  Queue: S3776 warnings are 8 against the baseline of 6 (Chemistry/), a
+  worker task.
+- 2026-10-30: Host UX Part 2 merged (cbe8547): the combo UI, Andrew's HUD
+  layout, and the combo input online (host-stamped ComboIntent, late-join
+  replay, CastHash in the checksum). Controller changes: elements on the
+  bumpers and triggers, dodge roll moved to right-stick click, pad zoom
+  gone, F2 swaps back to the old layout, the radial stays on Tab. Gaps:
+  casts have no tap, hold or ground shapes yet; other players' hand orbs
+  aren't drawn; the HUD drawing is untested in a player build (check it in
+  the next release candidate). Pitfall: exclude Library/VP when seeding a
+  worktree's Library, or Player 2 runs the source worktree's old code. The
+  host-ux worktree holds tonight's screenshots: keep it until they're copied.
+- 2026-10-30: The mailbox was unreliable (Andrew: "unacceptable"). Mail only
+  arrived while the receiving session kept a background `bridge.sh wait`
+  alive, and three things killed it unnoticed: Claude Code reaping it when
+  memory ran low (the Pro session's launcher lacked the setting that stops
+  that), the session ending, and the account hitting its usage limit (the
+  coordinator then can't act, so nobody stopped its workers or told the PM;
+  w2 idled 3 h overnight). Fix: `tools/workers/bridge-watch.sh`, a watchdog
+  with no Claude in it, started at sign-in. It stops an out account's
+  workers (work pushed to wip/), mails the other account "out until",
+  mails and wakes the role when usage is back, and wakes a role whose mail
+  sits unread while nobody listens. Both Pro launchers now keep their
+  listener under memory pressure. Tested dry against fake and real
+  transcripts; running since 08:39.
+- 2026-10-30: Workers stuck at a prompt nobody sees (w3 waited 1 h 40 min
+  to push whirl-dust). Cause: in auto mode a worker session may push only
+  the branch of its first task; a new task's branch needs Andrew's approval.
+  Detection: `start.cmd` installs an attention hook in each worker
+  (attention.mjs: Claude Code's Notification hook, permission prompts only),
+  and bridge-watch.sh reads it once a minute and mails the PM, who tells
+  Andrew. Prevention is Andrew's call, not the agents': a permission rule in
+  the workers' settings allowing pushes to any branch but dev and main
+  (never forced, never deleting). The auto-mode check refused to let the PM
+  write it into the workers, and refused a brief rule that would have
+  pushed to another branch to avoid the prompt (rightly: that routes round
+  the approval). Until Andrew applies the rule, a worker's push may wait
+  for him, and the attention hook makes sure he hears of it in a minute.
+- 2026-10-30: UX pass 2 merged (411bea6, DesktopUnity; Editor closed).
+  Wizard: robe hides the robot but hands, shins and feet; black fuzzy face,
+  red slit eyes; hat or cowl (Esc menu, sent with the seed). Looks for
+  Forge, Falling Star, Whirlwind's carries, the dust flash, Lava Pool, Rain
+  Cloud, Sand Blast, Light, the pick, frozen raiders; spiderweb cracks. Bugs
+  fixed: a cast's dust flash never drawn, sand left the ground black, a
+  Whirlwind particle warning. 509/509 EditMode, 453/453 core. New probe
+  `spelllooks` (row added to FAST_LOOP.md). Open: cracks break up on bulging
+  ice; frozen raiders show cracks as colours, not a web; a crate at 8 m/s
+  can land flat and miss the pane threshold (149 vs 120, flaky in `looks`);
+  WizardBeard unused with the new face (Andrew's call); the WizardFace and
+  CellLava shaders not yet checked in a player build; NetWizard.prefab
+  changed, so other checkouts rebuild.
+- 2026-10-30: The first real wake (11:56) worked, after two fixes. The Pro
+  coordinator went idle and compacted at 09:17; its listener took the w1
+  water brief at 11:29, but the session never reacted, and the mail sat in
+  taken/ for 27 min. (1) Taken mail went back to the inbox only inside a
+  running `wait`, so with no listener nothing returned it; bridge-watch.sh
+  now returns mail taken and not acked in 10 min. (2) wake judged "busy" by
+  the transcript file's time, but an idle Remote Control session's file is
+  still touched; it now goes by the last message's own time. w1 is briefed
+  (combo-water).
+- 2026-10-30 13:50: Release 0.1.8 (Andrew: Option C, "publish when checks
+  are passed", notes of the same calibre, and squeeze in the crack polish).
+  The combo table's rules are all on dev (b33c6bd). Order: UX pass 3 on the
+  PC (DesktopUnity, docs/handoffs/ux-pass-3-brief.md, about 1.5 h) → FREEZE
+  → dev into main, version 0.1.8 → the PC builds --windows-only and the Mac
+  --mac-only into one draft (RELEASING.md step 4) → notes on the draft
+  (docs/handoffs/release-0.1.8-notes.md, finished from UX pass 3) → the
+  Windows install from the draft, a quick look, the Mac install → publish.
+  No worker VMs until it's out; the PC is the release's.
+- 2026-10-30 14:00: 0.1.8 is Windows only (Andrew: the MacBook isn't signed in; skip the Mac build). The PC builds with --windows-only; the Mac stays on 0.1.7 and catches up at 0.1.9 (its feed only reads releases with osx files, so it simply sees no update). The notes say so, including that 0.1.7 Macs and 0.1.8 PCs can't play online together.
+- 2026-10-30 15:45: UX pass 3 landed (39ee1a7, fa76118; DesktopUnity): all of
+  part 1 and part 2 (crack webs on windows, ice and frozen raiders; the crate
+  throw at 11 m/s), plus Andrew's staff flare (one NaN pixel). EditMode
+  522/522, core 466/466, sandbox 190/190. FREEZE for 0.1.8 (Windows only):
+  dev takes no merges until it's published.

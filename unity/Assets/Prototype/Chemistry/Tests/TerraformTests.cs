@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
@@ -259,7 +260,8 @@ namespace Chem.Tests
             Assert.That(w.At(4, 3).Height, Is.Zero, "Lower Earth can't dig rock");
             Assert.That(w.At(4, 6).Height, Is.Zero, "nor metal");
             Assert.That(w.At(4, 9).Height, Is.EqualTo(-1), "dirt digs");
-            Assert.That(w.Log, Has.Some.Matches<LogEntry>(l => l.Text == "The raised rock is too hard to dig"));
+            Assert.That(w.Log, Has.Some.Matches<LogEntry>(l => l.Text == "The raised rock is too hard for Lower Earth"), "the refusal names the spell");
+            Assert.That(w.Log, Has.Some.Matches<LogEntry>(l => l.Text == "The metal plate can't be dug"), "metal never digs");
         }
 
         [Test]
@@ -280,11 +282,77 @@ namespace Chem.Tests
         {
             IReadOnlyList<string> Errors(string patch) =>
                 Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(patch.Replace('\'', '"')) })).Errors;
-            Assert.That(Errors("{ 'terrain': { 'granite': { 'name': 'Granite', 'tags': ['ground'], 'hardness': 0 } } }"), Does.Contain("terrain granite: hardness must be a whole number from 1"));
+            Assert.That(Errors("{ 'terrain': { 'granite': { 'name': 'Granite', 'tags': ['ground'], 'hardness': -1 } } }"), Does.Contain("terrain granite: hardness must be a whole number from 0 (0 never digs)"));
             Assert.That(Errors("{ 'spells': [{ 'id': 'chisel', 'group': 'earth', 'name': 'Chisel', 'level': 1, 'shape': 'point', 'effect': 'terraform', 'dig': 1, 'strength': 1.5, 'radial': false, 'blurb': 'b' }] }"),
                 Does.Contain("spell chisel: strength must be a whole number from 1"));
             Assert.That(Errors("{ 'spells': [{ 'id': 'pop', 'group': 'fire', 'name': 'Pop', 'level': 1, 'shape': 'burst', 'radius': 1, 'element': 'fire', 'crater': { 'depth': 1, 'strength': 0 }, 'radial': false, 'blurb': 'b' }] }"),
                 Does.Contain("spell pop: crater needs a whole depth from 1, radius from 0 and strength from 1"));
+        }
+
+        [Test]
+        public void StoneShapeDigsRockButNothingDigsMetalOrBedrock()
+        {
+            // BACKLOG 4: Lower Earth (strength 1) digs dirt, sand and mud; rock (hardness 3) needs Stone Shape
+            // (strength 3); metal and bedrock (hardness 0) never dig, and each refusal says why.
+            var w = new World(R, 12, 5, 1, "dirt");
+            w.At(2, 2).T = "sand";
+            w.At(4, 2).T = "mud";
+            w.At(6, 2).T = "rock";
+            w.At(8, 2).T = "metal";
+            w.At(10, 2).T = "bedrock";
+            foreach (int x in new[] { 2, 4, 6, 8 }) w.Cast("mold-earth", x, 2, 1);
+            Assert.That(new[] { 2, 4, 6, 8 }.Select(x => w.At(x, 2).Height), Is.EqualTo(new[] { -1, -1, 0, 0 }), "sand and mud dig; rock and metal don't");
+            Assert.That(w.Log.Any(l => l.Text == "The raised rock is too hard for Lower Earth"));
+            foreach (int x in new[] { 6, 8, 10 }) w.Cast("stone-shape", x, 2, 1);
+            Assert.That(w.At(6, 2).Height, Is.EqualTo(-1), "Stone Shape digs rock");
+            Assert.That(w.At(6, 2).T, Is.EqualTo("rubble"));
+            Assert.That(w.At(8, 2).Height, Is.Zero, "but not metal");
+            Assert.That(w.Log.Any(l => l.Text == "The metal plate can't be dug"));
+            Assert.That(w.At(10, 2).T, Is.EqualTo("bedrock"), "nor bedrock");
+            Assert.That(w.Log.Any(l => l.Text == "The bedrock can't be dug"));
+            Run(w, 20);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f57b067a 1"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void APickDigsRockThroughAnEffect()
+        {
+            // BACKLOG 4: the pick (strength 3) digs what Stone Shape digs; it stops at metal and bedrock.
+            var w = new World(R, 10, 3, 1, "dirt");
+            w.At(2, 1).T = "rock";
+            w.At(4, 1).T = "metal";
+            w.At(6, 1).T = "bedrock";
+            foreach (int x in new[] { 2, 4, 6, 8 }) w.ApplyEffect(new EffectCommand(EffectKind.Dig, x, 1, "pick"));
+            Assert.That(w.At(2, 1).Height, Is.EqualTo(-1));
+            Assert.That(w.At(2, 1).T, Is.EqualTo("rubble"));
+            Assert.That(w.At(4, 1).Height, Is.Zero);
+            Assert.That(w.At(8, 1).Height, Is.EqualTo(-1), "dirt digs too");
+            Assert.That(w.Log.Any(l => l.Text == "The metal plate can't be dug"));
+            Assert.That(w.Log.Any(l => l.Text == "The bedrock can't be dug"));
+            w.ApplyEffect(new EffectCommand(EffectKind.Dig, 3, 1, "ball"));
+            Assert.That(w.At(3, 1).Height, Is.Zero, "an item that doesn't dig does nothing");
+            Run(w, 20);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1c4e549b 1"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void DigToolsNeedAStrength()
+        {
+            IReadOnlyList<string> Errors(string patch) =>
+                Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(patch.Replace('\'', '"')) })).Errors;
+            Assert.That(Errors("{ 'items': { 'spade': { 'name': 'Spade', 'use': 'dig', 'strength': 0 } } }"), Does.Contain("item spade: use dig needs a whole strength from 1"));
+        }
+
+        [Test]
+        public void EveryGroundSaysHowHardItIs()
+        {
+            var terrain = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "materials.json")))["terrain"];
+            foreach (var p in terrain.Properties())
+            {
+                var t = R.Terrain[p.Name];
+                if ((t.Has("ground") || t.Has("low")) && !t.Has("machine"))
+                    Assert.That(p.Value["dig"]?["hardness"], Is.Not.Null, p.Name);
+            }
         }
 
         [Test]
@@ -297,7 +365,7 @@ namespace Chem.Tests
             w.Cast("fireball", 10, 3, 0);
             w.Cast("meteor", 14, 4, 0);
             Run(w, 30);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("58631e96 9"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("48b09445 2346426195"));
         }
 
         [Test]
@@ -330,7 +398,7 @@ namespace Chem.Tests
             Assert.That(w.At(3, 6).Water, Is.EqualTo(4), "the river is full again");
             Assert.That(new[] { 12, 14, 16 }.All(x => w.At(x, 6).Water > 0), "water ran down the trench");
             Assert.That(TotalWater(w), Is.GreaterThan(40), "more water than the river held: the spring keeps giving");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("602cdf19 6"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("64047114 6"));
         }
 
         [Test]
@@ -346,7 +414,7 @@ namespace Chem.Tests
             Assert.That(w.At(12, 6).Height, Is.EqualTo(0), "the blast's edge isn't dug");
             Assert.That(w.At(12, 6).Fire, Is.GreaterThan(0), "but it burns");
             Run(w, 40);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("b1b430e0 3300970619"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7b41057e 1796687091"));
         }
 
         [Test]
@@ -381,7 +449,7 @@ namespace Chem.Tests
             w.Cast("earthen-trench", 6, 6, 1, 1, 6, 2);
             Run(w, 60);
             Assert.That(cells.Take(8).All(c => w.At(c.x, c.y).Water > 0), "water ran along it, round its corners, as far as along a straight one");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("62e0b220 9"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("99221231 9"));
         }
 
         [Test]
@@ -410,7 +478,7 @@ namespace Chem.Tests
             Assert.That(w.At(15, 8).T, Is.EqualTo("deadfall"), "a crater fells the tree it lands on");
             w.Cast("fire-bolt", 5, 5, 0);
             Run(w, 40);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1213368f 1054537720"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("aa411832 2208810063"));
         }
 
         [Test]
@@ -452,7 +520,7 @@ namespace Chem.Tests
         {
             var w = EarthShaping(11);
             Assert.That(EarthShaping(11).CellHash(), Is.EqualTo(w.CellHash()), "deterministic");
-            Assert.That(w.CellHash(), Is.EqualTo("34860e77"));
+            Assert.That(w.CellHash(), Is.EqualTo("7175c6c6"));
             Assert.That(w.RngState, Is.EqualTo(3719496534u));
             Assert.That(w.At(5, 4).Height, Is.EqualTo(-2), "the trench starts at the caster's feet");
             Assert.That(w.IsRaisedWall(w.At(12, 4)), "the wall closes the trench");
@@ -469,6 +537,135 @@ namespace Chem.Tests
                 "20|notable|1|Lightning arcs through everything conductive that touches",
                 "20|info|1|You cast Raise Earth",
             }, w.Log.Select(l => $"{l.Tick}|{l.Kind.ToString().ToLowerInvariant()}|{l.Count}|{l.Text}").ToArray());
+        }
+
+        // A whirlwind cast south of a cell and heading north, 15 ticks on: its eye has crossed it.
+        static World Crossing(System.Action<Cell> set)
+        {
+            var w = new World(R, 9, 12, 1, "dirt");
+            set(w.At(4, 5));
+            w.Cast("whirlwind", 4, 8, 0);
+            Run(w, 15);
+            return w;
+        }
+
+        [Test]
+        public void AWhirlwindTakesOnWhatItCrosses()
+        {
+            Assert.That(Crossing(c => { c.Fire = 3; c.Fuel = 40; }).Whirls[0].Carrying, Is.EqualTo("fire"));
+            Assert.That(Crossing(c => { c.T = "pit"; c.Water = 4; }).Whirls[0].Carrying, Is.EqualTo("water"));
+            Assert.That(Crossing(c => c.T = "sand").Whirls[0].Carrying, Is.EqualTo("sand"));
+            Assert.That(Crossing(c => { c.Gas = "smoke"; c.GasAmt = 6; }).Whirls[0].Carrying, Is.EqualTo("smoke"));
+            Assert.That(Crossing(c => c.Cover = "snow").Whirls[0].Carrying, Is.EqualTo("snow"));
+            Assert.That(Crossing(c => { }).Whirls[0].Carrying, Is.Null, "bare ground gives it nothing");
+            Assert.That(Crossing(c => c.T = "sand").Log.Any(l => l.Text == "The whirlwind whips the sand into a sandstorm"));
+        }
+
+        [Test]
+        public void AWhirlwindGoesWithTheWindOrTheWayItWasCastAndAWallStopsIt()
+        {
+            var cast = new World(R, 12, 9, 1, "dirt");
+            cast.Cast("whirlwind", 4, 4, 1);
+            Run(cast, 12);
+            Assert.That((cast.Whirls[0].X, cast.Whirls[0].Y), Is.EqualTo((6, 4)), "east, as cast, a cell every 6 ticks");
+            var windy = new World(R, 12, 9, 1, "dirt");
+            windy.Wind = (2, 100);
+            windy.Cast("whirlwind", 4, 2, 1);
+            Run(windy, 12);
+            Assert.That((windy.Whirls[0].X, windy.Whirls[0].Y), Is.EqualTo((4, 4)), "the wind wins: south");
+            var walled = new World(R, 12, 9, 1, "dirt");
+            walled.At(5, 4).T = "bedrock";
+            walled.Cast("whirlwind", 4, 4, 1);
+            Run(walled, 12);
+            Assert.That(walled.Whirls[0].X, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void AWaterspoutDropsItsWaterWhereItDiesOut()
+        {
+            var w = new World(R, 20, 9, 1, "dirt");
+            w.At(4, 4).T = "pit";
+            w.At(4, 4).Water = 4;
+            w.Cast("whirlwind", 4, 4, 1);
+            Run(w, 60);
+            Assert.That(w.Whirls, Is.Empty);
+            Assert.That(w.At(14, 4).Water, Is.GreaterThanOrEqualTo(2));
+            Assert.That(w.Log.Any(l => l.Text == "The waterspout dies out and drops what it carried"));
+        }
+
+        [Test]
+        public void GoldenFireTornadoMatchesTs()
+        {
+            // It starts on a fire, heads east over dry grass, lights what it passes and drops fire where it ends.
+            var w = new World(R, 20, 9, 3, "grass");
+            w.At(4, 4).Fire = 3;
+            w.At(4, 4).Fuel = 8;
+            w.Cast("whirlwind", 4, 4, 1);
+            Run(w, 30);
+            string mid = $"{w.WhirlState()} {w.CellHash()} {w.RngState}";
+            Run(w, 30);
+            Assert.That(w.Whirls, Is.Empty);
+            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("|9:4:30:fire e6fa9db8 2713091359 | 47709c01 321794052"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void GoldenDustFlashMatchesTs()
+        {
+            // A dust cloud goes up as one from a spark at its edge, all of it used up; a cloud apart from it doesn't.
+            var w = new World(R, 16, 9, 1, "dirt");
+            for (int y = 0; y < 9; y++)
+                for (int x = 10; x < 16; x++) w.At(x, y).T = "grass";
+            w.Cast("dust-storm", 6, 4, 0);
+            w.At(13, 4).Gas = "dust";
+            w.At(13, 4).GasAmt = 3;
+            w.Apply(4, 4, "fire", 1, -1, true);
+            Assert.That(w.Cells.Count(c => c.Gas == "dust"), Is.EqualTo(1), "only the far cloud is left");
+            Assert.That(w.At(6, 4).Fire, Is.EqualTo(3));
+            Assert.That(w.Log.Any(l => l.Text == "The dust goes up in a flash"));
+            Assert.That(w.FlashesSince(-1).Count(), Is.GreaterThan(1), "the view hears of each cell");
+            Run(w, 20);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("28826ce6 2354002487"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void DustDriftingOverAFireFlashes()
+        {
+            var w = new World(R, 8, 8, 1, "dirt");
+            w.At(3, 3).Fire = 2;
+            w.At(3, 3).Fuel = 6;
+            w.At(3, 3).Gas = "dust";
+            w.At(3, 3).GasAmt = 2;
+            w.At(4, 3).Gas = "dust";
+            w.At(4, 3).GasAmt = 2;
+            w.Step();
+            Assert.That(w.At(3, 3).Gas, Is.Null);
+            Assert.That(w.At(4, 3).Gas, Is.Null);
+            Assert.That(w.At(4, 3).Fire, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void ASandstormsDustGoesUpToo()
+        {
+            var w = new World(R, 14, 9, 1, "sand");
+            w.Cast("whirlwind", 4, 4, 1);
+            Run(w, 9);
+            Assert.That(w.Whirls[0].Carrying, Is.EqualTo("sand"));
+            int x = w.Whirls[0].X;
+            Assert.That(w.At(x, 4).Gas, Is.EqualTo("dust"));
+            w.Apply(x, 4, "fire", 1, -1, true);
+            Assert.That(w.At(x, 4).Gas, Is.Null);
+            Assert.That(w.Log.Any(l => l.Text == "The dust goes up in a flash"));
+        }
+
+        [Test]
+        public void CarriesAndFlashesAreChecked()
+        {
+            IReadOnlyList<string> Errors(string patch) =>
+                Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(patch.Replace('\'', '"')) })).Errors;
+            Assert.That(Errors("{ 'gases': { 'flour': { 'name': 'Flour', 'burn': { 'flash': { 'fire': 0, 'push': -1 } } } } }"),
+                Is.EquivalentTo(new[] { "gas flour: burn.flash.fire must be a whole number from 1", "gas flour: burn.flash.push must be a whole number from 0" }));
+            Assert.That(Errors("{ 'spells': [{ 'id': 'gyre', 'group': 'storm', 'name': 'Gyre', 'level': 1, 'shape': 'burst', 'element': 'air', 'radial': false, 'blurb': 'b', 'travelEvery': 0, 'carries': [{ 'id': 'x', 'if': { 'hue': 1 }, 'sheds': 'nothing' }] }] }"),
+                Is.EquivalentTo(new[] { "spell gyre: travelEvery must be a whole number from 1", "spell gyre: carries x sheds unknown element nothing", "spell gyre: carries x has unknown condition \"hue\"" }));
         }
     }
 }

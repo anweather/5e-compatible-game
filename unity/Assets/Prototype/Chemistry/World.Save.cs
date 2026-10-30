@@ -86,6 +86,14 @@ namespace Chem
                 ["defense"] = SaveDefense(),
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
+            if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
+            if (crackedThings.Count > 0) save["crackedThings"] = new JArray(crackedThings.Select(t => t.ToString(System.Globalization.CultureInfo.InvariantCulture)));
+            if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
+            if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
+            if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass)));
+            if (GatesOpen) save["gatesOpen"] = true;
+            if (machines.Count > 0) save["machines"] = new JArray(machines.OrderBy(m => m.Key).Select(m => new JArray(m.Key, m.Value.Level, m.Value.Hold, m.Value.Powered)));
+            if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age)));
             var made = new Cell();
             var saved = new JArray();
             foreach (var ch in SortedChunks(false))
@@ -156,6 +164,36 @@ namespace Chem
             };
         }
 
+        // A player's cast in progress and grimoire. Only when there are any, so saves without read as they did.
+        static JArray SaveCast(PlayerCast c) => new JArray(c.Player, c.First, c.Second, c.Meter, c.Total, c.Window, c.Slot, c.DpadCasting, new JArray(c.Known));
+
+        void LoadCast(JToken a)
+        {
+            var c = new PlayerCast
+            {
+                Player = (string)a[0],
+                First = (string)a[1],
+                Second = (string)a[2],
+                Meter = (int)a[3],
+                Total = (int)a[4],
+                Window = (int)a[5],
+                Slot = (int)a[6],
+                DpadCasting = (int)a[7],
+            };
+            foreach (var id in a[8]) c.Known.Add((string)id);
+            casts[c.Player] = c;
+        }
+
+        // The machines, whether they have the gates open, and the boulders still rolling.
+        void LoadMachinesAndBoulders(JObject s)
+        {
+            GatesOpen = s["gatesOpen"] != null && (bool)s["gatesOpen"];
+            foreach (var m in s["machines"] ?? new JArray())
+                machines[(int)m[0]] = new MachineState { Level = (int)m[1], Hold = (int)m[2], Powered = (bool)m[3] };
+            foreach (var b in s["boulders"] ?? new JArray())
+                boulders.Add(new Boulder { Spell = (string)b[0], X = (int)b[1], Y = (int)b[2], Dir = (int)b[3], Left = (int)b[4], Every = (int)b[5], Age = (int)b[6] });
+        }
+
         void LoadState(JObject s)
         {
             Tick = (int)s["tick"];
@@ -165,6 +203,14 @@ namespace Chem
             WeatherSet = s["weather"] is JArray ws ? ((WeatherKind)(int)ws[0], (int)ws[1], (int)ws[2]) : ((WeatherKind, int, int)?)null;
             Wind = s["wind"] is JArray wd ? ((int)wd[0], (int)wd[1]) : ((int, int)?)null;
             foreach (var m in s["meteors"] ?? new JArray()) falling.Add(((int)m[0], (int)m[1], (int)m[2]));
+            foreach (var t in s["crackedThings"] ?? new JArray()) crackedThings.Add(ulong.Parse((string)t, System.Globalization.CultureInfo.InvariantCulture));
+            foreach (var st in s["stars"] ?? new JArray())
+                stars.Add(new Star { Spell = (string)st[0], X = (int)st[1], Y = (int)st[2], Dir = (int)st[3], Charge = (int)st[4], Radius = (int)st[5], Lands = (int)st[6] });
+            foreach (var ww in s["whirls"] ?? new JArray())
+                whirls.Add(new Whirl { X = (int)ww[0], Y = (int)ww[1], Radius = (int)ww[2], Ticks = (int)ww[3], Age = (int)ww[4], Every = (int)ww[5], MaxMass = (int)ww[6], Spell = (string)ww[7], Dir = (int)ww[8], Travel = (int)ww[9], Carrying = (string)ww[10] });
+            foreach (var wv in s["waves"] ?? new JArray())
+                waves.Add(new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] });
+            LoadMachinesAndBoulders(s);
             NextEntityId = (int)s["nextEntityId"];
             if (s["defense"] is JObject d)
             {
@@ -189,6 +235,7 @@ namespace Chem
                     Y1 = (int)field[3],
                 };
             }
+            foreach (var a in s["casts"] ?? new JArray()) LoadCast(a);
             foreach (var o in s["raiders"] ?? new JArray())
             {
                 var at = o["at"];
@@ -215,7 +262,7 @@ namespace Chem
 
         static bool SameCell(Cell a, Cell b) =>
             a.T == b.T && a.Water == b.Water && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
-            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil;
+            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust && a.Heat == b.Heat && a.Star == b.Star && a.Cracked == b.Cracked && a.Lit == b.Lit && a.Slick == b.Slick;
 
         // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither).
         static JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
@@ -233,8 +280,18 @@ namespace Chem
             return o;
         }
 
-        static JArray SaveCell(int i, Cell c) =>
-            new JArray(i, c.T, c.Water, c.Frozen ? 1 : 0, c.Cover, c.Fire, c.Fuel, c.Gas, c.GasAmt, c.Charge, c.Height, c.Life, c.DampUntil);
+        // Rust only when it has some, so saves without it read as they did.
+        static JArray SaveCell(int i, Cell c)
+        {
+            var a = new JArray(i, c.T, c.Water, c.Frozen ? 1 : 0, c.Cover, c.Fire, c.Fuel, c.Gas, c.GasAmt, c.Charge, c.Height, c.Life, c.DampUntil);
+            if (c.Rust != 0 || c.Heat != 0 || c.Lit != 0 || c.Slick != 0 || c.Star != 0 || c.Cracked != 0) a.Add(c.Rust);
+            if (c.Heat != 0 || c.Lit != 0 || c.Slick != 0 || c.Star != 0 || c.Cracked != 0) a.Add(c.Heat);
+            if (c.Lit != 0 || c.Slick != 0 || c.Star != 0 || c.Cracked != 0) a.Add(c.Lit);
+            if (c.Slick != 0 || c.Star != 0 || c.Cracked != 0) a.Add(c.Slick);
+            if (c.Star != 0 || c.Cracked != 0) a.Add(c.Star);
+            if (c.Cracked != 0) a.Add(c.Cracked);
+            return a;
+        }
 
         void LoadChunk(JObject o)
         {
@@ -245,23 +302,34 @@ namespace Chem
             ch.StoppedAt = (int?)o["stopped"] ?? NeverLive;
             ch.CaughtUp = (int?)o["caughtUp"] ?? 0;
             foreach (var f in o["fireGen"] ?? new JArray()) ch.FireGeneration[(int)f[0]] = (int)f[1];
-            foreach (var a in o["cells"] ?? new JArray())
-            {
-                var c = ch.Cells[(int)a[0]];
-                c.T = (string)a[1];
-                c.Water = (int)a[2];
-                c.Frozen = (int)a[3] != 0;
-                c.Cover = (string)a[4];
-                c.Fire = (int)a[5];
-                c.Fuel = (int)a[6];
-                c.Gas = (string)a[7];
-                c.GasAmt = (int)a[8];
-                c.Charge = (int)a[9];
-                c.Height = (int)a[10];
-                c.Life = (int)a[11];
-                c.DampUntil = a is JArray all && all.Count > 12 ? (int)all[12] : 0;
-                c.ForgetDef();
-            }
+            foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.Cells[(int)a[0]], (JArray)a);
         }
+
+        // One saved cell (SaveCell): the fields every save has, then the later ones, 0 when a save leaves them out.
+        static void LoadCell(Cell c, JArray a)
+        {
+            c.T = (string)a[1];
+            c.Water = (int)a[2];
+            c.Frozen = (int)a[3] != 0;
+            c.Cover = (string)a[4];
+            c.Fire = (int)a[5];
+            c.Fuel = (int)a[6];
+            c.Gas = (string)a[7];
+            c.GasAmt = (int)a[8];
+            c.Charge = (int)a[9];
+            c.Height = (int)a[10];
+            c.Life = (int)a[11];
+            c.DampUntil = Later(a, 12);
+            c.Rust = Later(a, 13);
+            c.Heat = Later(a, 14);
+            c.Lit = Later(a, 15);
+            c.Slick = Later(a, 16);
+            c.Star = Later(a, 17);
+            c.Cracked = Later(a, 18);
+            c.ForgetDef();
+        }
+
+        // A field added after the first save format: 0 when the cell's array stops short of it.
+        static int Later(JArray a, int i) => a.Count > i ? (int)a[i] : 0;
     }
 }

@@ -6,7 +6,9 @@ Shader "Prototype/CellWater"
     // ripples are noise carried along the flow, two layers half a cycle apart cross-faded so the
     // pattern never stretches (a flow map); foam is streaks carried the same way, where the mesh
     // asks for it (a bank of moving water, round a rock). Lit like Prototype/Ocean: the sky's
-    // reflection at grazing angles and the sun's glint. No textures.
+    // reflection at grazing angles and the sun's glint. No textures of its own; the cells' effects
+    // (CellFxTexture, a global texel a cell) add a lightning flash over charged water and an oil
+    // slick's dark rainbow sheen where oil floats.
     Properties
     {
         _Color ("Water (alpha: how clear)", Color) = (0.12, 0.32, 0.42, 0.8)
@@ -38,6 +40,12 @@ Shader "Prototype/CellWater"
             half4 _Color, _Foam;
             float _RippleMetres, _Cycle;
             CBUFFER_END
+
+            // The cells' effects (CellFxTexture): r flash, g slick. Global, set by ChemGrid; unset (no
+            // grid yet) _CellFxSize is 0 and nothing shows.
+            TEXTURE2D(_CellFxTex);
+            SAMPLER(sampler_CellFxTex);
+            float4 _CellFxMap, _CellFxSize;
 
             struct Attributes
             {
@@ -81,6 +89,13 @@ Shader "Prototype/CellWater"
                 return float2(nx - n, nz - n) / e;
             }
 
+            half4 CellFx(float3 p)
+            {
+                if (_CellFxSize.x <= 0.0) return 0;
+                float2 cell = float2(p.x * _CellFxMap.x + _CellFxMap.y, _CellFxMap.z - p.z * _CellFxMap.x);
+                return SAMPLE_TEXTURE2D(_CellFxTex, sampler_CellFxTex, (cell + 0.5) * _CellFxSize.zw);
+            }
+
             Varyings Vert(Attributes input)
             {
                 Varyings o;
@@ -120,6 +135,16 @@ Shader "Prototype/CellWater"
                 float3 h = normalize(light.direction + v);
                 color += sun * pow(saturate(dot(n, h)), 300.0) * 2.0;
 
+                // Oil afloat: near black, with a thin film's rainbow drifting in it, glossier than water.
+                half4 fx = CellFx(p);
+                float film = Noise(p.xz * 0.6 + drift * 3.0) + 0.5 * Noise(p.xz * 1.7 - drift * 2.0);
+                half3 rainbow = 0.5 + 0.5 * cos(6.2831 * (film + fresnel * 1.5 + float3(0.0, 0.33, 0.67)));
+                half3 slick = half3(0.02, 0.02, 0.025) + rainbow * 0.05 + sky * fresnel * 0.5 + sun * pow(saturate(dot(n, h)), 90.0) * 0.8;
+                color = lerp(color, slick, fx.g * 0.9);
+                // A lightning flash: a pale blue glow over the charged water, crackling as it fades.
+                float crackle = pow(1.0 - abs(2.0 * Noise(p.xz * 1.1 + t * 37.0) - 1.0), 14.0) * smoothstep(0.3, 0.6, Noise(p.xz * 0.5 - t * 23.0));
+                color += half3(0.5, 0.75, 1.0) * fx.r * (0.18 + 3.0 * crackle);
+
                 // Foam: streaks drawn out along the flow and carried with it, the same two layers.
                 float2 along = speed > 0.01 ? flow / speed : float2(1, 0);
                 float2 across = float2(-along.y, along.x);
@@ -130,7 +155,7 @@ Shader "Prototype/CellWater"
                 float foam = saturate(input.flowFoam.z * 1.2) * smoothstep(0.2, 0.42, streak + input.flowFoam.z * 0.2);
                 color = lerp(color, _Foam.rgb * (SampleSH(half3(0, 1, 0)) + sun * 0.6), foam);
 
-                half alpha = input.flowFoam.w * lerp(_Color.a, 1.0, max(fresnel * 0.5, foam));
+                half alpha = input.flowFoam.w * lerp(_Color.a, 1.0, max(max(fresnel * 0.5, foam), max(fx.g * 0.85, fx.r * 0.7)));
                 color = MixFog(color, input.fogFactor);
                 return half4(color, alpha);
             }

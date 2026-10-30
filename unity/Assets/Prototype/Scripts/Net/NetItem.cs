@@ -19,6 +19,8 @@ using UnityEngine;
 //   second, and everyone else eases it there.
 // - Sending stones: the message goes to the machine of whoever holds the
 //   other stone, and only that player sees it.
+// - A pick: the holder asks the host to swing at a cell near them; the host
+//   stamps the dig for every machine (Pick, ChemEffects).
 // The spyglass needs nothing: zooming is the holder's own view.
 [RequireComponent(typeof(Carryable))]
 public class NetItem : NetworkBehaviour
@@ -32,6 +34,8 @@ public class NetItem : NetworkBehaviour
     const float MaxGrantReach = 12f;
     // How often the holder sends the mote's position, per second.
     const float MoteRate = 15f;
+    // How far (in cells) from its holder the host lets a pick land: Pick.Reach, plus lag.
+    const int SwingReachCells = 4;
 
     readonly NetworkVariable<ulong> holder = new(Nobody);
     readonly NetworkVariable<bool> lit = new(true);
@@ -150,6 +154,21 @@ public class NetItem : NetworkBehaviour
     void MoteRpc(bool isOut, Vector3 at)
     {
         if (TryGetComponent<DancingLights>(out var lights)) lights.Follow(isOut, at);
+    }
+
+    // --- a pick ----------------------------------------------------------------------------
+
+    /// <summary>Asks the host to swing this pick at a cell.</summary>
+    public void RequestDig(Vector2Int cell) => DigRpc(cell.x, cell.y);
+
+    [Rpc(SendTo.Server)]
+    void DigRpc(int x, int y, RpcParams rpc = default)
+    {
+        var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(rpc.Receive.SenderClientId);
+        if (wizard == null || wizard.NetworkObjectId != holder.Value || !TryGetComponent<Pick>(out var pick)) return;
+        var cell = new Vector2Int(x, y);
+        if ((item.Grid.CellAt(wizard.transform.position) - cell).sqrMagnitude > SwingReachCells * SwingReachCells) return;
+        pick.Swing(cell);
     }
 
     // --- sending stones ---------------------------------------------------------------------

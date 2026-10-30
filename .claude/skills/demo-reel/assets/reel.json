@@ -1,0 +1,17 @@
+{
+  "drops": [
+    {
+      "when": "27 Oct 2026 · dev",
+      "title": "Today on dev",
+      "intro": "Features merged since the last release.",
+      "clips": [
+        { "area": "Fixes", "lane": "fix", "title": "Example fix with a before and after", "commit": "abc1234",
+          "before": "example-before.jpg", "after": "example-after.jpg",
+          "summary": "One or two plain sentences on what changed and why it matters." },
+        { "area": "Gameplay", "lane": "gameplay", "title": "Example feature clip", "length": "0:08", "commit": "def5678",
+          "video": "example.mp4", "poster": "example.jpg",
+          "summary": "What the clip shows, in the words a player would use." }
+      ]
+    }
+  ]
+}

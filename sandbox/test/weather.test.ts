@@ -95,7 +95,7 @@ test("rain douses a fire and fills the field; storms strike; matches the C# gold
     assert.ok(strikes > 0, "lightning struck");
     assert.ok(a.log.some((l) => l.text === "The rain puts out a fire"), "the rain put a fire out");
     assert.ok(cellAt(a, 20, 2)!.water > 0 || a.cells.filter((c) => c.t === "grass" && c.water > 0).length > 10, "the grass is wet");
-    assert.equal(`${cellHash(a)} ${a.rng} ${strikes}`, "b4a67f55 4042791962 23");
+    assert.equal(`${cellHash(a)} ${a.rng} ${strikes}`, "a80f8ead 275421548 24");
   });
 });
 
@@ -104,7 +104,7 @@ test("mixed quick weather over many stretches matches the C# golden", () => {
     const w = field(8);
     run(w, 1200);
     const kinds = Array.from({ length: 17 }, (_, k) => kindOf(RULES.sim, 8, k)).join(" ");
-    assert.equal(`${cellHash(w)} ${w.rng}`, "6d146020 1611455719", kinds);
+    assert.equal(`${cellHash(w)} ${w.rng}`, "41514104 3951220311", kinds);
   });
 });
 
@@ -122,7 +122,7 @@ test("a meteor shower brings meteors down a little later as craters, and matches
     const strikes = w.log.filter((l) => l.text === "A meteor strikes").reduce((n, l) => n + l.count, 0);
     assert.ok(strikes > 0, "meteors landed");
     assert.ok(w.cells.some((c) => c.h < 0), "and left craters");
-    assert.equal(`${cellHash(w)} ${w.rng} ${strikes}`, "e9d48abc 2710019217 19");
+    assert.equal(`${cellHash(w)} ${w.rng} ${strikes}`, "89885246 991183198 16");
   });
 });
 

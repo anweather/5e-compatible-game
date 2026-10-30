@@ -19,14 +19,17 @@ public class ControlsMenu : MonoBehaviour
         ("Look", "Mouse", "Right stick"),
         ("Jump (again in the air: double jump)", "Space", "{South}"),
         ("Sprint", "Hold Shift", "Click {LS} (toggles)"),
-        ("Dodge roll", "Left Ctrl", "{LT}"),
-        ("Zoom", "Mouse wheel", "D-pad ▲ ▼"),
-        ("Spells: aim at an element, then a spell", "Hold Tab", "Hold {LB}, right stick"),
-        ("Back to your last spell", "Tap Tab", "Tap {LB}"),
-        ("Next / previous spell", "E / Q", "{RB}"),
-        ("Open an element's spells", "1 – 8", "D-pad ◀ ▶ (steps)"),
-        ("Cast (hold: stronger)", "Left click", "{RT}"),
-        ("In an animal's shape: change back", "Left click", "{RT}"),
+        ("Dodge roll", "Left Ctrl", "Click the right stick"),
+        ("Zoom", "Mouse wheel", "—"),
+        ("Fire, then perhaps a second element", "Z", "{LB}"),
+        ("Water", "X", "{RB}"),
+        ("Earth", "C", "{LT}"),
+        ("Air", "V", "{RT}"),
+        ("Cancel a cast", "B", "{East}"),
+        ("Other spells: choose, cast", "[ ]   T", "D-pad ◀ ▶   ▲"),
+        ("Grimoire", "J", "D-pad ▼"),
+        ("Debug: the spell radial", "Hold Tab, then left click", "F2 swaps the controller to it"),
+        ("In an animal's shape: change back", "Left click", "—"),
         ("Pick up / drop", "E (near a thing)", "{West}"),
         ("Use what you hold", "F", "{North}"),
         ("Throw (hold: harder)", "G / right click", "{East}"),
@@ -72,7 +75,7 @@ public class ControlsMenu : MonoBehaviour
     void DrawPage()
     {
         MakeStyles();
-        scroll = PauseMenu.ScrollView(scroll, Mathf.Clamp(Screen.height - 260f, 200f, 520f), () => Table());
+        scroll = PauseMenu.ScrollView(scroll, Mathf.Clamp(HudScale.Height - 260f, 200f, 520f), () => Table());
     }
 
     // The first time a player is in a game with spells, the table shows for a few seconds.
@@ -86,12 +89,13 @@ public class ControlsMenu : MonoBehaviour
 
     void OnGUI()
     {
+        HudScale.Apply();
         if (shownAt < 0f || !EventLog.HudVisible) return;
         float age = Time.unscaledTime - shownAt;
         if (age > ShowSeconds || (PauseMenu.Instance != null && PauseMenu.Instance.Open)) return;
         MakeStyles();
         float alpha = Mathf.Clamp01((ShowSeconds - age) / FadeSeconds);
-        var area = new Rect(Screen.width / 2f - 330f, 80f, 660f, Mathf.Min(Screen.height - 100f, 600f));
+        var area = new Rect(HudScale.Width / 2f - 330f, 80f, 660f, Mathf.Min(HudScale.Height - 100f, 600f));
         GUI.color = new Color(0f, 0f, 0f, 0.7f * alpha);
         GUI.DrawTexture(area, Texture2D.whiteTexture);
         GUI.color = new Color(1f, 1f, 1f, alpha);

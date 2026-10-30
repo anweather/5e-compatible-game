@@ -17,6 +17,8 @@ public static class SoundIds
     public const string Blink = "blink";
     public const string Explosion = "explosion";
     public const string Break = "break";
+    public const string Shatter = "shatter";
+    public const string Hiss = "hiss";
     public const string FireLoop = "fire-loop";
     public const string RainLoop = "rain-loop";
     public const string WindLoop = "wind-loop";
@@ -48,6 +50,7 @@ public static class GameSounds
             case "lightning": return SoundIds.Zap;
             case "air": return SoundIds.Gust;
             case "thunder": return SoundIds.Thunder;
+            case "acid": return SoundIds.Hiss;
         }
         if (spell.Effect == "terraform") return SoundIds.Earth;
         return spell.Effect == "teleport" ? SoundIds.Blink : SoundIds.Arcane;
@@ -74,6 +77,8 @@ public static class GameSounds
         SoundIds.Earth => ProceduralSounds.Rumble,
         SoundIds.Explosion => ProceduralSounds.Explosion,
         SoundIds.Break => ProceduralSounds.Break,
+        SoundIds.Shatter => ProceduralSounds.Shatter,
+        SoundIds.Hiss => ProceduralSounds.Hiss,
         SoundIds.FireLoop => ProceduralSounds.FireLoop,
         SoundIds.RainLoop => ProceduralSounds.RainLoop,
         SoundIds.WindLoop => ProceduralSounds.WindLoop,

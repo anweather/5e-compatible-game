@@ -18,6 +18,12 @@ namespace Chem
         Explode,
         /// <summary>An item landed hard enough to break and spilled what it held (items.json "breaks").</summary>
         Spill,
+        /// <summary>A heavy thing hit a window pane hard (World.Shatter): it cracks, or if cracked shatters.</summary>
+        Shatter,
+        /// <summary>A held tool swung at a cell (items.json "use": "dig").</summary>
+        Dig,
+        /// <summary>A thing of a material that cracks took its first hard hit (shatter.cracks): cracked by its Thing id, not a cell.</summary>
+        Crack,
     }
 
     /// <summary>A prop's effect on one cell: small enough to send like a cast.</summary>
@@ -69,6 +75,15 @@ namespace Chem
                     break;
                 case EffectKind.Spill:
                     Spill(effect.X, effect.Y, Rules.Item(effect.Entity));
+                    break;
+                case EffectKind.Shatter:
+                    Shatter(effect.X, effect.Y);
+                    break;
+                case EffectKind.Dig:
+                    Dig(effect.X, effect.Y, Rules.Item(effect.Entity));
+                    break;
+                case EffectKind.Crack:
+                    if (!effect.Thing.Equals(ThingId.None)) crackedThings.Add(effect.Thing.Value);
                     break;
             }
         }

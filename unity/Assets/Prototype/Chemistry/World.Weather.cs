@@ -57,6 +57,8 @@ namespace Chem
         {
             strikeHistory.RemoveAll(s => s.tick <= Tick - HistoryTicks);
             meteorHistory.RemoveAll(m => m.tick <= Tick - HistoryTicks);
+            flashHistory.RemoveAll(f => f.tick <= Tick - HistoryTicks);
+            shedStrikes.RemoveAll(s => s.tick <= Tick - HistoryTicks);
         }
 
         /// <summary>Meteors that appeared this tick, for a view to bring down: where, and the tick they land on.</summary>
@@ -77,6 +79,7 @@ namespace Chem
             var now = Weather;
             newMeteors.Clear();
             LandMeteors();
+            LandStars();
             if (!WeatherActs) return;
             WeatherOnCells(rows);
             var p = Rules.Sim.Weather;

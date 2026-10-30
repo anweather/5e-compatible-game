@@ -9,13 +9,14 @@ prototype**. Nothing in this folder is specific to the sandbox.
 |---|---|
 | `materials.json` | Terrain (tags, flammability, fuel, what it burns, breaks, is dug or grows into, elevation), covers (oil, grease, ash, snow, thorns) and gases (steam, smoke) | A terrain with `spring` (units) refills to that much water each tick unless frozen: the valley's river. `soakEvery` / `soakEveryWet` (ticks): thin water on it soaks in and dries up a unit that often, on dry and on damp ground (see Water below). `waterTo`: `ice` (arctic ground: water on it freezes) or `steam` (lava: it boils off a unit at a time).
 | `reactions.json` | **The chemistry table.** What each element does when it reaches a square (`cell`), and to a creature or object standing there (`entity`) |
-| `spells.json` | The shared SRD spell kit: element, shape (point, line, square, burst, target, or cone: from the caster, widening a square each side per square out), power, damage, push force, earth shaping. `"effect"` is one of `levitate`, `carry`, `teleport`, `terraform`, `haste`, `weather` or `shapeshift`; all but `terraform` change no squares (the Unity game does them: `shapeshift` takes the shape of an animal within `range` for `duration` ticks, times the charge; the sandbox only logs it). `"radial": false` keeps a spell off the Unity game's spell radial. A cast can be charged (held) 1 to 3: power and raise / dig times the charge, height 2 more per level, lines half again as long per level, a point, square or burst a square bigger per level (not earth shaping) |
+| `spells.json` | The shared SRD spell kit: element, shape (point, line, square, burst, target, or cone: from the caster, widening a square each side per square out), power, damage, push force, earth shaping. `"effect"` is one of `levitate`, `carry`, `teleport`, `terraform`, `haste`, `weather` or `shapeshift`; all but `terraform` change no squares (the Unity game does them: `shapeshift` takes the shape of an animal within `range` for `duration` ticks, times the charge; the sandbox only logs it). `"delay"` lands it that many ticks after the cast, with a target mark on its cells until then. `"scatter"` (`cover`, `count`, `reach`) throws that cover, burning, round where it lands, and `"core"` is an element that lands on its middle last. `"force"` (`throw`: ticks the creature in each cell it reaches is thrown off its feet; `push`: cells it is knocked along the cast's way, if `maxMass` or lighter) is how a cast shoves (Geyser, Wave, Rolling Boulder). `"seeks"` (`range`, `if`: reaction conditions) strikes the nearest cell within `range` of where it is aimed that matches, instead of its shape, when there is one (Lightning to water or metal). `"needs"` (reaction conditions) lands it only on the cells that match, and with none it does nothing but log its `"fizzle"` line (Geyser on water). A line from the caster with `"travelEvery"` (not inward) rolls out as a wave (Wave): its front, `radius` cells to each side, lands its element and knocks things of `maxMass` or less a cell on, rolls a cell every `travelEvery` ticks to the line's length or a wall, then lands its `"leaves"` element there. With `"rolls": true` it rolls as one boulder instead (Rolling Boulder): each turn to the lowest open cell ahead, left or right that is no higher, striking it (a shatter hit, its `"trail"` gas, its damage and a knock over), until it is shut in, reaches water or its length, where its `leaves` lands. `"radial": false` keeps a spell off the Unity game's spell radial. A cast can be charged (held) 1 to 3: power and raise / dig times the charge, height 2 more per level, lines half again as long per level, a point, square or burst a square bigger per level (not earth shaping) |
 | `critters.json` | The sandbox's critters (its emitters): what each emits, how often, and in what shape. `hours` (`[from, to]`, across midnight when from is the later) are when it's out; outside them it does nothing. Without, it's always out |
 | `components.json` | What a thing can be made of or do, by name, each with what it means: `flammable`, `creature`, `conducts`, `floats`, `breakable`, `heavy`, `brittle`. Entities and items list theirs (`"components": ["flammable", "breakable"]`) and entity rules match on them, so one rule covers everything with a component. At most 64; `flammable` and `creature` are always there (the engine reads them) |
 | `entities.json` | Things on the board: HP, mass, `components`, explodes. The old `"flammable": true` and `"creature": true` still load, as shorthand for those components. A `raider` row makes one a defense-field raider: `ticksPerSquare` (its pace), and the elements it's `weak` to (double damage) or `resist`s (half, rounded up) |
-| `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`), `breaks` (impact speed in m/s and what it spills), `components`. The sandbox carries and checks them but has no items |
-| `machines.json` | What each machine needs before it powers the gates |
+| `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`, `dig` with a whole `strength` from 1), `breaks` (impact speed in m/s and what it spills), `components`. The sandbox carries and checks them but has no items |
+| `machines.json` | What each machine needs before it powers the gates: `steam` (a boiler builds pressure to `build`, up to `max`, losing a unit every `decayEvery` ticks), `mass` (a plate pressed by `mass` or more), or `flow`, `charge` or `wind` (it holds `hold` ticks after the hit). Any one powered opens every gate, in both engines (World.Machines.cs) |
 | `groups.json` | The Unity game's spell radial: its elements by id (`name`, `order` around the ring from the top, `color` as `#rrggbb`). Each spell in `spells.json` names one with `"group"`; one with none goes under the last. UI only, but mods can regroup or add elements |
+| `combos.json` | Casting by elements (`docs/SPELL_COMBOS.md`): the four `elements`, the `window` in ticks for a second one, `moveFactor` (walking speed while the cast meter drains, for the view), `singles` by element and `pairs` by first then second element, each with `name`, `spell`, `shape`, `castTicks` and optional `held` (the spell when held at the ground) and `todo` (the spell is a stand-in for one not made yet). A single's `castTicks` must be at least the window. `dpad` lists the spells with no element, in cycling order: `name`, `castTicks`, and `spell` (without one the slot shows but can't be cast). Mods deep-merge over it; lists replace whole |
 | `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage, the length of a day and the weather. `defense`: the defense field's waves (`lives`, `waves`, `first` raiders and `growth` per wave, `hpPerWave`, the `warmup`, `spawnEvery` and `betweenWaves` ticks, the raider `kinds` in turn) and how raiders find their way (`margin` squares round the path, path costs `wallCost` for a raised wall they batter down a step every `batterTicks`, `roughCost` and `roughTicks` for deep water from `deepWater` units or a climb of more than a step) |
 | `mods/` | Example live mods (`docs/MODDING.md`), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
 
@@ -46,6 +47,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
   - `fireBelow`
   - `water` (unfrozen water present)
   - `frozen`
+  - `melts` (the cover melts: its material has `melt.water`)
   - `gas` (`"any"` or an id)
   - `terrainTag`, `notTerrainTag`
   - `conductive`
@@ -57,6 +59,11 @@ prototype**. Nothing in this folder is specific to the sandbox.
   - `addWater` (a number, or `"power"` for the caster's power)
   - `setCover`, `spreadCover`
   - `break`, `setTerrain`, `raise`
+  - `shatter` (a hit on the cell's ice or terrain: it cracks, or if cracked shatters)
+  - `scour` (a sand blast: a cover with the `scourable` tag from its material's `scour {}` is stripped; else the terrain becomes its `scour.leaves`; else raised ground whose material has `scour.wears` is worn down a step)
+  - `pushCover` (a floating cover moves a cell along the element's way onto open water with no cover)
+  - `bake` (the terrain becomes its material's `bake.into`), `meltCover` (the cover becomes its `melt.into` and gives `melt.water`)
+  - `dissolve` (`"cover"` or `"terrain"`: eaten away into its material's `dissolve.leaves`, when the rule's element is its `dissolve.by`; a cover can leave none)
   - `grow` (a non-blocking terrain the square becomes, with `ticks: [min, max]` and `wave`; see "Growing" below)
   - `conduct`
   - `fan`, `pushGas`, `clearGas`
@@ -66,8 +73,13 @@ prototype**. Nothing in this folder is specific to the sandbox.
   name or a list of them: the entity must have every one, and none it
   lacks). Match on components, never on entity ids, so a new thing joins
   every rule its components name. The old `if.flammable` (`true` is has
-  flammable, `false` lacks it) still loads. Their effects
-  are `status` (`{ "name": ticks }`), `clear` and `damageMul`.
+  flammable, `false` lacks it) still loads. `if.verb` (`burn`, `freeze`
+  or `soak`) holds when the thing's material gives a status by that verb
+  (`materials.json` `burn.status` and so on). Their effects are `status`
+  (`{ "name": ticks }`), `statusOf` (a verb: the status it gives, burning,
+  frozen or wet, for the material's ticks of it), `clear` and `damageMul`.
+  A creature's burning, frozen and wet come from its material this way
+  (flesh burns, freezes and soaks; bone doesn't burn; chitin doesn't freeze).
 
 ## Earth shaping (`"effect": "terraform"`)
 
@@ -86,11 +98,22 @@ elevation plus height.
                         // within sim.height min..max, leaving higher squares alone, so
                         // "height": 3 (blockAt) always walls, even across a trench.
   "terrain": "rock",    // optional: what the squares become (not a blocking terrain)
-  "taper": true }       // optional: a hill or crater, full height in the middle, 1 at the radius
+  "strength": 1,        // optional: a dig's strength, a whole number from 1 (default 1)
+  "taper": true,       // optional: a hill or crater, full height in the middle, 1 at the radius
+  "stepping": 1,        // optional, with height: cells holding open water rise only this high (stepping stones)
+  "ramp": true }        // optional, with height on a line: a step higher each cell, up to the height
 ```
 
 - **Blocking terrain and machines** (bedrock, trees, gates, boilers)
   can't be shaped.
+- **Hardness:** a dig needs a `strength` of at least the terrain's
+  `dig.hardness` (1 when absent), and hardness 0 never digs. Lower Earth
+  and Earthen Trench (strength 1) move soil, sand, mud and rubble; Fireball
+  (strength 2) breaks frozen ground, bridges and glass; Stone Shape and a pick
+  (`items.json` `"use": "dig"`, strength 3) dig rock; metal, bedrock, walls
+  and machines never dig. Each refusal is logged once a tick with its
+  reason: "The raised rock is too hard for Lower Earth", "The metal plate
+  can't be dug". Raising isn't affected.
 - **Uprooting:** a terrain with `uprootsTo` (a tree topples into
   `deadfall`; a cabin's log wall caves in to rubble) turns into it as soon
   as any shaping touches it, its `uprootLog` logged once a tick, and the
@@ -99,13 +122,14 @@ elevation plus height.
 - **Digging** clears the cover and turns the terrain into its `dugTo`
   (grass is dug to dirt; raised rock to rubble) unless the spell names a
   `terrain`.
-- **Hardness:** a terrain's `hardness` (a whole number from 1, default 1)
-  is how strong a dig it takes: a terraform spell's `strength` (default 1)
-  or a crater's must be at least that, or the square stays as it is and
-  "The … is too hard to dig" is logged once a tick. Soil is 1 (Lower Earth
-  and Earthen Trench dig it), raised rock 3 (only a strength-3 dig: a
-  Meteor's crater, later Stone Shape or a pick), metal plate 4 (nothing
-  digs it). Bedrock and walls are blocking, so never shaped anyway.
+- **Whirling spells** (`"inward": true` with `pullEvery`: Whirlwind): every
+  `pullEvery` ticks one draws gas and light creatures in and runs fire round
+  its rings. Every `travelEvery` ticks it moves a square, with the wind or
+  else the way it was cast. `carries` lists what it can take on, strongest
+  first: `{ "id", "name", "if", "sheds", "log" }`. When the squares round its
+  eye match a row's `if` (the reaction conditions), it carries that, and one
+  row replaces any after it. It then applies the element `sheds` around its
+  eye each turn, and over its whole radius at `dropPower` where it dies out.
 - **Raising** spills the square's water onto its neighbours, nearest
   first, so no water is lost.
 - **A square raised `sim.height.blockAt` (3) steps or more is a wall:**
@@ -146,7 +170,12 @@ replaying the casts, has the same clock and weather):
 `scald` (damage a creature in it takes), `decay` (its own chance per tick a
 unit decays, instead of `sim.gas.decayChance`: fog lingers) and
 `blocksSightAt` (from this many units a square of it hides what's behind it:
-line of sight, so Misty Step can't blink past thick fog). Fire burns fog off
+line of sight, so Misty Step can't blink past thick fog). `burn.flash`
+(`{ "fire", "push", "log" }`) makes it go up all at once when fire meets it,
+from an element or a burning square it drifts over: the whole cloud joined to
+that square is used up, each square burns for a moment at `fire`, the fire
+reaches what's there through the rules, and things are shoved `push` hard
+(dust). Fire burns fog off
 (`fire-fog`, first of the fire rules so it always runs), wind and Gust of
 Wind blow it like any gas, and Thunderwave scatters it.
 
@@ -266,7 +295,7 @@ comes). What it does to squares, at full strength:
   `snow` cover (`snow.coverChance`), and a snowy square with something
   blocking beside it (on its upwind side in a wind: a wall, a tree, a rock)
   may drift into a `snowbank` (`snow.bankChance`), which stands the ground
-  half a metre higher. Fire melts them (`fire-snowbank`, `fire-snow` in
+  half a metre higher. Fire melts them (`fire-melt` in
   `reactions.json`, before `fire-flammable`, so snowy grass won't burn
   until the snow is gone). With neither rain nor snow, every
   `rain.dryEvery` ticks such shallow ice may thaw again

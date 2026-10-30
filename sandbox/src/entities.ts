@@ -1,10 +1,10 @@
 // Things on the board: damage, death, explosions, and being shoved around.
 import { RULES, hasComponent } from "./rules.ts";
-import { applyElement, applyEntityElement, ignite } from "./react.ts";
+import { applyElement, applyEntityElement, blastAround, ignite } from "./react.ts";
 import { crater } from "./terraform.ts";
 import {
   type Cell, type Dir, type Entity, type World,
-  DX, DY, cellAt, entityAt, hasTag, isBlocking, isSlippery, log, logOnce, roll, terrainDef,
+  DX, DY, cellAt, entityAt, hasTag, isBlocking, isSlippery, log, logOnce, neighbours, roll, terrainDef,
 } from "./world.ts";
 
 export const defOf = (e: Entity) => RULES.entities[e.kind]!;
@@ -21,16 +21,31 @@ export function spawn(w: World, kind: string, x: number, y: number): Entity | un
 
 /**
  * Hurts an entity. `element` (if the harm has one) doubles it for a raider weak to
- * it and halves it, rounded up, for one that resists it (C#: World.DamageRaider).
+ * it and halves it, rounded up, for one that resists it (C#: World.DamageRaider). With the sim's
+ * status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it; if the material ice
+ * cracks, only the second: the first leaves it cracked for as long as it stays frozen.
  */
 export function damage(w: World, e: Entity, amount: number, cause: string, element?: string) {
   if (amount <= 0 || !w.entities.includes(e)) return;
   const def = defOf(e);
   if (def.hp >= 999) return; // boulders shrug
   amount = scaleDamage(def, element, amount);
+  const shatter = RULES.sim.status.shatter;
+  if (shatter?.when && (e.status[shatter.when] ?? 0) > 0 && (shatter.notBy === undefined || element !== shatter.notBy)) {
+    if (!(cracksFirst(w, e, shatter.when))) destroy(w, e, "shatters");
+    return;
+  }
   e.hp -= amount;
   if (hasComponent(def, "creature")) logOnce(w, `hurt#${e.id}#${cause}`, `${def.name} takes ${amount} ${cause} damage (${Math.max(0, e.hp)}/${def.hp} HP)`, "hurt");
   if (e.hp <= 0) destroy(w, e);
+}
+
+/** The first hit on a frozen entity of cracking ice: it cracks, and takes no harm yet (World.CracksFirst). */
+function cracksFirst(w: World, e: Entity, frozen: string): boolean {
+  if ((e.status.cracked ?? 0) > 0 || !RULES.terrain.ice?.cracks) return false;
+  e.status.cracked = e.status[frozen]!;
+  logOnce(w, `cracked#${e.id}`, `${defOf(e).name} cracks`, "notable");
+  return true;
 }
 
 /** Damage after a raider's weaknesses and resistances (C#: World.Scaled). */
@@ -42,7 +57,7 @@ export function scaleDamage(def: ReturnType<typeof defOf>, element: string | und
   return amount;
 }
 
-export function destroy(w: World, e: Entity) {
+export function destroy(w: World, e: Entity, how = "is defeated") {
   const i = w.entities.indexOf(e);
   if (i < 0) return;
   w.entities.splice(i, 1);
@@ -51,7 +66,7 @@ export function destroy(w: World, e: Entity) {
   if (def.player) {
     log(w, "You're down! Press Reset to try again.", "hurt");
   } else if (hasComponent(def, "creature")) {
-    log(w, `${def.name} is defeated`, "hurt");
+    log(w, `${def.name} ${how}`, "hurt");
   } else if (e.status.burning) {
     const c = cellAt(w, e.x, e.y)!;
     c.fire = Math.max(c.fire, 2);
@@ -64,6 +79,7 @@ export function destroy(w: World, e: Entity) {
 
 function explode(w: World, x: number, y: number, ex: NonNullable<ReturnType<typeof defOf>["explodes"]>) {
   log(w, "KABOOM! The oil barrel explodes", "notable");
+  blastAround(w, x, y, ex.radius);
   crater(w, x, y, ex.crater);
   for (let dy = -ex.radius; dy <= ex.radius; dy++) {
     for (let dx = -ex.radius; dx <= ex.radius; dx++) {
@@ -87,6 +103,21 @@ export function awayDir(dx: number, dy: number, fallback: Dir = 0): Dir {
   if (dx === 0 && dy === 0) return fallback;
   if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 1 : 3;
   return dy > 0 ? 2 : 0;
+}
+
+/**
+ * A blast's shove on a raider (a dust flash; World.ShoveRaider): force less its mass, plus 1, squares along dir, stopping
+ * at a wall or another entity. No slide and no slam, the same in the C# core.
+ */
+export function shoveRaider(w: World, e: Entity, dir: Dir, force: number): void {
+  const dist = force - massOf(e) + 1;
+  for (let k = 0; k < dist; k++) {
+    const nx = e.x + DX[dir], ny = e.y + DY[dir];
+    const n = cellAt(w, nx, ny);
+    if (!n || isBlocking(n) || entityAt(w, nx, ny)) return;
+    e.x = nx;
+    e.y = ny;
+  }
 }
 
 /** Shoves an entity. Distance = force - mass + 1; slick ground adds a slide. */
@@ -142,14 +173,15 @@ function travel(w: World, e: Entity, dir: Dir, dist: number, hard: boolean): voi
 
 /**
  * A creature stepping onto a cover that hurts (thorns: Spike Growth) takes its
- * damage, and one that slows (speed below 1) is snagged: a step takes 1/speed as
- * long, so it can't take the next one for the rest of that time. Objects shrug.
+ * damage, and one that slows (speed below 1), or ground that does (mud), is snagged:
+ * a step takes 1/speed as long, so it can't take the next one for the rest of that
+ * time. Objects shrug.
  */
 export function thorns(w: World, e: Entity, c: Cell) {
+  if (!hasComponent(defOf(e), "creature")) return;
   const cv = c.cover !== null ? RULES.covers[c.cover] : undefined;
-  if (!cv || !hasComponent(defOf(e), "creature")) return;
-  if (cv.damage) damage(w, e, roll(w, cv.damage), cv.name.toLowerCase());
-  const speed = cv.speed ?? 1;
+  if (cv?.damage) damage(w, e, roll(w, cv.damage), cv.name.toLowerCase());
+  const speed = Math.min(cv?.speed ?? 1, terrainDef(c).speed ?? 1);
   if (speed > 0 && speed < 1 && w.entities.includes(e)) {
     e.status.snagged = Math.max(e.status.snagged ?? 0, Math.round(RULES.sim.ticksPerSecond * (1 / speed - 1)));
   }
@@ -157,7 +189,7 @@ export function thorns(w: World, e: Entity, c: Cell) {
 
 /** One step of walking. Returns why not, or null if the step happened. */
 export function walk(w: World, e: Entity, dir: Dir): string | null {
-  if ((e.status.snagged ?? 0) > 0) return "Thorns snag you. Pull free in a moment.";
+  if ((e.status.snagged ?? 0) > 0) return (terrainDef(cellAt(w, e.x, e.y)!).speed ?? 1) < 1 ? "The mud holds your feet. Pull free in a moment." : "Thorns snag you. Pull free in a moment.";
   const nx = e.x + DX[dir], ny = e.y + DY[dir];
   const n = cellAt(w, nx, ny);
   if (!n || isBlocking(n)) return n ? `The ${terrainDef(n).name.toLowerCase()} is in the way.` : "That's the edge of the map.";
@@ -166,6 +198,33 @@ export function walk(w: World, e: Entity, dir: Dir): string | null {
   if (hasTag(n, "low") && n.water === 0 && !isLevitating(e)) return "That's a drop into a pit. Levitate yourself, fill it, or bridge it.";
   travel(w, e, dir, 1, false);
   return null;
+}
+
+/**
+ * Shock-water (conduct.chainsWet): a wet creature of a material that chains wet is shocked by freshly charged
+ * water beside it too, not only under it (World.ShockedFromBeside).
+ */
+function shockedFromBeside(w: World, e: Entity, def: (typeof RULES.entities)[string]): boolean {
+  if (!((e.status.wet ?? 0) > 0) || !def.material || !RULES.terrain[def.material]?.chainsWet) return false;
+  for (const [nx, ny] of neighbours(w, e.x, e.y)) {
+    const n = cellAt(w, nx, ny)!;
+    if (n.charge === 3 && n.water > 0 && !n.frozen) return true;
+  }
+  return false;
+}
+
+/** The heat that hurts an entity this tick: burning, a hot cell, thick steam (World.HeatHazards). */
+function heatHazards(w: World, e: Entity, c: Cell, def: (typeof RULES.entities)[string]) {
+  const s = RULES.sim;
+  if ((e.status.burning ?? 0) > 0 && w.tick % s.status.burnDamageEvery === 0) {
+    damage(w, e, 1, "fire", "fire");
+    if (hasComponent(def, "flammable") && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
+  }
+  if ((c.heat ?? 0) > 0 && hasComponent(def, "creature") && w.tick % s.status.burnDamageEvery === 0) damage(w, e, 1, "hot metal", "fire");
+  // Thick steam scalds what is made of a material that scalds (flesh; not bone or chitin).
+  if (c.gas === "steam" && c.gasAmt >= 2 && !!def.material && !!RULES.terrain[def.material]?.tags.includes("scalds") && w.tick % s.status.scaldEvery === 0) {
+    damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding", "fire");
+  }
 }
 
 /** Per-tick entity upkeep: statuses, burning, wading, zaps, falls. */
@@ -180,14 +239,8 @@ export function tickEntities(w: World) {
     if (c.fire > 0 && !lev) applyEntityElement(w, e, "fire", { power: c.fire, direct: false });
     if (c.water > 0 && !c.frozen && !lev) applyEntityElement(w, e, "water", { power: 1, direct: false });
 
-    if ((e.status.burning ?? 0) > 0 && w.tick % s.status.burnDamageEvery === 0) {
-      damage(w, e, 1, "fire", "fire");
-      if (hasComponent(def, "flammable") && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
-    }
-    if (c.gas === "steam" && c.gasAmt >= 2 && hasComponent(def, "creature") && w.tick % s.status.scaldEvery === 0) {
-      damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding");
-    }
-    if (c.charge === 3 && w.entities.includes(e)) {
+    heatHazards(w, e, c, def);
+    if ((c.charge === 3 || shockedFromBeside(w, e, def)) && w.entities.includes(e)) {
       const mul = applyEntityElement(w, e, "lightning", { power: 1, direct: false });
       damage(w, e, s.zapDamage * mul, "lightning", "lightning");
     }

@@ -120,6 +120,7 @@ public class Sitter : MonoBehaviour
 
     void OnGUI()
     {
+        HudScale.Apply();
         if (!EventLog.HudVisible || !Driven || (Seated == null && inReach == null)) return;
         if (style == null)
         {
@@ -130,7 +131,7 @@ public class Sitter : MonoBehaviour
         string key = controls.UsingGamepad ? PadGlyphs.Label(PadButton.West) : "E";
         string action = inReach != null && inReach.lounge ? "lie back" : "sit";
         string hint = Seated != null ? $"<b>{key}</b>: get up" : $"<b>{key}</b>: {action}";
-        var at = new Rect(0, Screen.height / 2f + 34, Screen.width, 28);
+        var at = new Rect(0, HudScale.Height / 2f + 34, HudScale.Width, 28);
         GUI.Label(new Rect(at.x + 1, at.y + 1, at.width, at.height), hint, shadow);
         GUI.Label(at, hint, style);
     }

@@ -11,6 +11,11 @@ touch them.
 
 ## The world and its space
 
+**Pane**
+: A window's glass: a `pane` cell in a building's wall (`world/villages.json`,
+  a cabin's map), which blocks like the wall, doesn't burn, and shatters to an
+  open gap under force. *Not* the walkable `glass` a strike fuses from sand.
+
 **Cell**
 : The unit of chemistry: 1.5 m (5 ft) square. It holds a terrain, water,
   a cover, fire and fuel, gas, charge, height and life (`Chem.Cell`).
@@ -82,6 +87,19 @@ touch them.
 
 **Height step**
 : One unit of a cell's `Height`: 0.5 m raised or dug.
+
+**Carrying**
+: What a whirlwind has taken on and sheds as it travels (`carries` in
+  `spells.json`): a fire tornado, a waterspout, a sandstorm, a smoke column
+  or a snow flurry. One at a time per whirlwind.
+
+**Flash**
+: A gas going up all at once when fire meets it (`burn.flash`: dust). The
+  whole joined cloud is used up: the dust explosion.
+
+**Hardness**
+: How hard a terrain is to dig (`dig.hardness`). A dig's **strength** (a
+  spell's, a crater's, a pick's) must reach it; hardness 0 never digs.
 
 **Tick batch**
 : Everything that happens to the world at one tick, in order: chunk

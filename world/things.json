@@ -26,7 +26,8 @@
         { "kind": "bullseye-lantern", "cell": [35, 10] },
         { "kind": "spyglass", "cell": [39, 9] },
         { "kind": "dancing-lights", "cell": [33, 9] },
-        { "kind": "sending-stone", "cell": [36, 6], "link": "stones", "note": "by the start" }
+        { "kind": "sending-stone", "cell": [36, 6], "link": "stones", "note": "by the start" },
+        { "kind": "pick", "cell": [37, 11], "note": "by the start: digs rock" }
       ]
     },
     {

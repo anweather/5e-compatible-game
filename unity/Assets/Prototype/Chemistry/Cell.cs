@@ -37,6 +37,21 @@ namespace Chem
         /// ground soaks more slowly, as in rain. 0: dry.
         /// </summary>
         public int DampUntil;
+        /// <summary>
+        /// Ticks it has been wet in all, toward its terrain's rust (World.Rust): at rust.every it rusts
+        /// through. 0: none.
+        /// </summary>
+        public int Rust;
+        /// <summary>Ticks it stays hot (World.Cool): metal fire reached stays hot after the fire goes, and burns creatures on it. 0: cold.</summary>
+        public int Heat;
+        /// <summary>Ticks it still sheds the Light spell's light (World.LightUp; the radius is the spell's light, for the view). 0: unlit.</summary>
+        public int Lit;
+        /// <summary>How many more cells the floating cover here may spread (float.reach, World.Float); 0 when it has no cover, or no end to its reach.</summary>
+        public int Slick;
+        /// <summary>How many falling stars are aimed here (World.AimStar): the target mark the view tints. 0: none.</summary>
+        public int Star;
+        /// <summary>Its ice or terrain is cracked (shatter.cracks, World.Shatter): the tick it cracked, plus 1, so a blast that hits it twice cracks it once. 0: whole.</summary>
+        public int Cracked;
 
         // World.TerrainOf's cache: the definition of the terrain id it was looked up for.
         // Not cell state (not hashed or saved); refreshed whenever T changes.
@@ -56,7 +71,7 @@ namespace Chem
         /// <summary>Back to a bare square of the given terrain (the sandbox's erase brush).</summary>
         public void Reset(string terrain = "dirt")
         {
-            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0; DampUntil = 0;
+            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0; DampUntil = 0; Rust = 0; Heat = 0; Lit = 0; Slick = 0; Star = 0; Cracked = 0;
         }
     }
 

@@ -310,12 +310,39 @@ public class PhysicsProp : MonoBehaviour, IPushable
         gameObject.SetActive(false);
     }
 
-    /// <summary>How it goes: a blast for a barrel, a line in the log otherwise. Its cells are the chemistry's.</summary>
+    void OnCollisionEnter(Collision hit)
+    {
+        if (!Puppet) WindowPanes.Struck(grid, hit);
+    }
+
+    /// <summary>
+    /// How it goes: a blast for a barrel, a spray of shards for something brittle (glass: a glow ball,
+    /// ShardBurst), a line in the log otherwise. Its cells are the chemistry's.
+    /// </summary>
     public void ShowBreak(bool exploded)
     {
         GameSounds.Play(exploded ? SoundIds.Explosion : SoundIds.Break, transform.position);
         if (exploded && explosionFx != null) Destroy(Instantiate(explosionFx, transform.position, Quaternion.identity), 4f);
+        if (!exploded && Shatters(out var tint))
+        {
+            ShardBurst.At(transform.position, tint);
+            EventLog.Add($"The {Label} shatters");
+        }
         else if (!exploded && (State == null || !State.Burning) && !(net != null && net.Burning)) EventLog.Add($"The {Label} breaks apart");
+    }
+
+    /// <summary>
+    /// Whether it's brittle (its material shatters: glass), and the tint of its shards: its light's
+    /// colour for a glow ball, else white.
+    /// </summary>
+    public bool Shatters(out Color tint)
+    {
+        tint = Color.white;
+        var rules = grid != null && grid.World != null ? grid.World.Rules : null;
+        if (rules == null || !rules.ItemHas(kind, "brittle")) return false;
+        var light = rules.Item(kind).Light;
+        if (light != null) ColorUtility.TryParseHtmlString(light.Color, out tint);
+        return true;
     }
 
     // The blast's cells go to the chemistry; its shove and its damage are physics, so they stay here.

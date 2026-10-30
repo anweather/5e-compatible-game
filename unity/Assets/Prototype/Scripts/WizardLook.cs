@@ -1,8 +1,10 @@
 using UnityEngine;
 
-// A wizard's look (docs/WORLD_LIFE.md, "Wizards"): the hat, the robe, the
-// beard and the staff, every size and colour drawn from one seed, so a seed
-// is all a peer needs to send for everyone to see the same wizard. The parts
+// A wizard's look (docs/WORLD_LIFE.md, "Wizards"): the headwear, the robe and
+// the staff, every size and colour drawn from one seed, so a seed is all a
+// peer needs to send for everyone to see the same wizard. The top bits of the
+// seed choose the headwear on their own (the Esc menu changes it and nothing
+// else); the rest are hashed for everything else. The parts
 // themselves are built on the rig's bones by WizardOutfit. The draw is our own
 // small hash, not System.Random, so the same seed gives the same wizard on
 // every platform.
@@ -10,6 +12,11 @@ public sealed class WizardLook
 {
     public enum StaffKind { None, Gnarled, Crystal, Orb }
     public enum BeardStyle { Long, Forked, Full, Goatee }
+    /// <summary>What's worn on the head. Add a kind here and a part in WizardOutfit.Headwear.</summary>
+    public enum HeadwearKind { Hat, Cowl }
+
+    const int HeadwearShift = 28, DrawnBits = (1 << HeadwearShift) - 1;
+    static readonly int HeadwearKinds = System.Enum.GetValues(typeof(HeadwearKind)).Length;
 
     // Robe and hat colours, in pairs that sit well together: the cloth, and its trim.
     static readonly (Color cloth, Color trim)[] Palettes =
@@ -31,6 +38,7 @@ public sealed class WizardLook
     };
 
     public int Seed { get; private set; }
+    public HeadwearKind Headwear { get; private set; }
     public Color Robe, Trim, Hat, Band, Beard;
     /// <summary>Hem below the hips (m), the skirt's flare at the hem (radius, m).</summary>
     public float RobeLength, RobeFlare;
@@ -46,7 +54,7 @@ public sealed class WizardLook
 
     public static WizardLook From(int seed)
     {
-        uint s = (uint)seed * 2654435761u + 0x9E3779B9u;
+        uint s = (uint)(seed & DrawnBits) * 2654435761u + 0x9E3779B9u;
         float Next()
         {
             s = s * 1664525u + 1013904223u;
@@ -54,7 +62,7 @@ public sealed class WizardLook
         }
         int Pick(int n) => Mathf.Min(n - 1, (int)(Next() * n));
 
-        var look = new WizardLook { Seed = seed };
+        var look = new WizardLook { Seed = seed, Headwear = (HeadwearKind)((seed >> HeadwearShift) % HeadwearKinds) };
         var (cloth, trim) = Palettes[Pick(Palettes.Length)];
         look.Robe = cloth;
         look.Trim = trim;
@@ -82,6 +90,13 @@ public sealed class WizardLook
         look.Band = Matte(look.Band);
         look.Beard = Matte(look.Beard);
         return look;
+    }
+
+    /// <summary>The same look in the next kind of headwear.</summary>
+    public static int NextHeadwear(int seed)
+    {
+        int next = ((seed >> HeadwearShift) + 1) % HeadwearKinds;
+        return (seed & DrawnBits) | (next << HeadwearShift);
     }
 
     static Color Matte(Color c) => new(c.r, c.g, c.b, 0f);

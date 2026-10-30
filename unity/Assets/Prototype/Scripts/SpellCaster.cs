@@ -17,7 +17,7 @@ using UnityEngine;
 // world when the show lands, and its shove to whatever moves (SpellForces);
 // online it goes to NetChem, which applies it on every machine at the same
 // tick, with where the caster stood (the centre of a burst's shove).
-public class SpellCaster : MonoBehaviour
+public partial class SpellCaster : MonoBehaviour
 {
     public ChemGrid grid;
     public PlayerControls controls;
@@ -40,6 +40,8 @@ public class SpellCaster : MonoBehaviour
     bool hasCrosshair;
     // Holding Cast charges a spell that can be (ChargeSeconds a level, to World.MaxCharge); release casts it.
     const float ChargeSeconds = 0.45f;
+    // The element that eats things away (Acid Splash): its splash, hiss and eaten stain.
+    const string AcidElement = "acid", HeatElement = "heat", SandElement = "sand", LightningElement = "lightning";
     float chargeStart = -1f;
     GUIStyle pips;
 
@@ -70,7 +72,11 @@ public class SpellCaster : MonoBehaviour
         markerMat = UrpMaterials.NewLit("Aim marker", new Color(1f, 0.85f, 0.3f), emission: new Color(1f, 0.8f, 0.2f) * 1.5f);
     }
 
-    void OnDestroy() => Destroy(markerMat);
+    void OnDestroy()
+    {
+        Destroy(markerMat);
+        orbs?.Destroy();
+    }
 
     /// <summary>Selects a spell by id; false (and nothing changes) if the rules in force don't have it.</summary>
     public bool Select(string spellId)
@@ -84,7 +90,9 @@ public class SpellCaster : MonoBehaviour
     void Update()
     {
         // In an animal's shape, Cast only changes back (WhileShifted).
-        if (controls == null || grid == null || grid.World == null || WhileShifted()) return;
+        if (controls == null || grid == null || grid.World == null) return;
+        UpdateElements();
+        if (WhileShifted()) return;
 
         hasCrosshair = Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
         // While the spell radial is open the player is choosing, not aiming: no markers, no cast.
@@ -95,7 +103,7 @@ public class SpellCaster : MonoBehaviour
             return;
         }
         var target = CrosshairCell;
-        var aim = Aim(target, out var error);
+        var aim = Aim(SelectedId, target, out var error);
         var spell = grid.World.Rules.Spell(SelectedId);
         ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir, Charge, aim.Value.aimX, aim.Value.aimY) : null);
 
@@ -149,11 +157,12 @@ public class SpellCaster : MonoBehaviour
     void OnGUI()
     {
         if (chargeStart < 0f || !EventLog.HudVisible) return;
+        HudScale.Apply();
         pips ??= new GUIStyle(GUI.skin.label) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
         int charge = Charge;
         var text = new System.Text.StringBuilder();
         for (int i = 1; i <= World.MaxCharge; i++) text.Append(i <= charge ? "<color=#ffd24a>●</color> " : "<color=#ffffff55>●</color> ");
-        GUI.Label(new Rect(Screen.width / 2f - 60f, Screen.height / 2f + 18f, 120f, 30f), text.ToString(), pips);
+        GUI.Label(new Rect(HudScale.Width / 2f - 60f, HudScale.Height / 2f + 18f, 120f, 30f), text.ToString(), pips);
     }
 
     Vector2Int CrosshairCell => grid.CellAt(crosshair.point - crosshair.normal * 0.05f);
@@ -211,6 +220,8 @@ public class SpellCaster : MonoBehaviour
         var gesture = CastGestures.For(def, look);
         if (pose != null) pose.Play(gesture, landing, look?.glow ?? Color.white);
         GameSounds.Play(GameSounds.CastOf(def), Hand);
+        // Acid: what it can eat is noted now, before it lands, so the cells it eats get the eaten stain.
+        if (def?.Element == AcidElement && grid != null) grid.WatchAcid(cast);
         // A blink shows its mist where the caster leaves as well as where they land.
         if (def?.Effect == SpellShapes.TeleportEffect && look?.impact != null)
             Destroy(SpellVisuals.Spawn(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
@@ -226,16 +237,57 @@ public class SpellCaster : MonoBehaviour
         then();
     }
 
+    // The elements with a burst of their own where they land (BurstFx); sand blasts from the hand.
+    void ElementBurst(SpellDef def, Vector3 landing, int charge)
+    {
+        float size = 1f + 0.5f * (World.ClampCharge(charge) - 1);
+        switch (def?.Element)
+        {
+            case AcidElement:
+                BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, size);
+                break;
+            case HeatElement when def.Needs != null:
+                Jet(landing, size);
+                break;
+            case HeatElement:
+                BurstFx.Play(BurstFx.Kind.Forge, landing + Vector3.up * 0.1f, size);
+                break;
+            case SandElement:
+                BurstFx.Play(BurstFx.Kind.SandBlast, Hand, size, Quaternion.LookRotation(landing - Hand));
+                break;
+        }
+        if (def?.Scatter != null) BurstFx.Play(BurstFx.Kind.Debris, landing, size);
+    }
+
+    // A Geyser's jet out of the water; on dry ground, only a little puff.
+    void Jet(Vector3 landing, float size)
+    {
+        var cell = grid.CellAt(landing);
+        var c = grid.World.At(cell.x, cell.y);
+        if (c != null && c.Water > 0 && !c.Frozen) BurstFx.Play(BurstFx.Kind.Geyser, landing, size, Quaternion.Euler(-90f, 0f, 0f));
+        else BurstFx.Play(BurstFx.Kind.Chips, landing, 0.6f);
+    }
+
+    // A bolt from the hand to where it strikes, and the charge runs on from there (ChemGrid.Charge).
+    void Bolt(Vector3 landing)
+    {
+        ArcFx.Play(Hand, landing, 0.16f, 0f, 0.45f);
+        ArcFx.Play(Hand, landing, 0.07f, 0.04f, 0.4f);
+        grid.ChargeStartsAt(landing);
+    }
+
     // The projectile, meteor or storm, or the effect at once; onArrive when it lands.
     void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, int charge, System.Action onArrive)
     {
         void Land()
         {
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)));
+            ElementBurst(def, landing, charge);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             onArrive?.Invoke();
         }
 
+        if (def?.Element == LightningElement && def.Shape == SpellShapes.Line) Bolt(landing);
         if (look == null) Land();
         else if (look.fromSky)
             MeteorFall.Launch(landing, transform.position, look, () =>
@@ -298,6 +350,7 @@ public class SpellCaster : MonoBehaviour
         {
             var cells = grid.World.SpellCells(spell, x, y, cast.Dir, cast.Charge, cast.AimX, cast.AimY);
             if (cells.Count > 0) (x, y) = cells[cells.Count - 1];
+            if (grid.World.Sought(spell, cast.X, cast.Y) is (int, int) sought) (x, y) = sought;
         }
         else if (spell != null && spell.Shape == SpellShapes.Burst && spell.Origin == "self") return transform.position + Vector3.up;
         return grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);
@@ -322,11 +375,11 @@ public class SpellCaster : MonoBehaviour
 
     // --- aiming ------------------------------------------------------------------------
 
-    (int x, int y, int dir, int aimX, int aimY)? Aim(Vector2Int target, out string error)
+    (int x, int y, int dir, int aimX, int aimY)? Aim(string spellId, Vector2Int target, out string error)
     {
         error = null;
-        var spell = grid.World.Rules.Spell(SelectedId);
-        if (spell == null) { error = $"{SelectedId} isn't in rules/spells.json"; return null; }
+        var spell = grid.World.Rules.Spell(spellId);
+        if (spell == null) { error = $"{spellId} isn't in rules/spells.json"; return null; }
         if (spell.Effect == SpellShapes.ShapeshiftEffect) return AimShift(spell, out error);
         if (!grid.World.InBounds(target.x, target.y)) return null;
         var me = grid.CellAt(transform.position);

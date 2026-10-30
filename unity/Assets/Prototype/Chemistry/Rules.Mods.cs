@@ -74,6 +74,7 @@ namespace Chem
             Upsert((JArray)r["spells"], p["spells"], false);
             Upsert((JArray)r["critters"], p["critters"], false);
             if (p["sim"] is JObject sim) MergeDeep((JObject)r["sim"], sim);
+            if (p["combos"] is JObject combos) MergeDeep((JObject)r["combos"], combos);
         }
 
         /// <summary>

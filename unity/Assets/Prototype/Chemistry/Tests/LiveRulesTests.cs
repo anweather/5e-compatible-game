@@ -55,10 +55,10 @@ namespace Chem.Tests
             // The mod from net.test.ts "a mod switched on mid-game changes the rules ...".
             var r = With(@"{ 'sim': { 'push': { 'slideCells': 7 } }, 'reactions': { 'add': [
                 { 'id': 'frost-on-grass', 'element': 'cold', 'if': { 'terrainTag': 'flammable' }, 'do': [{ 'extinguish': true }], 'log': 'Frost settles on the grass' } ] } }");
-            Assert.That(Ids(r.CellRulesFor("cold")), Is.EqualTo(new[] { "frost-on-grass", "cold-fire", "cold-steam", "cold-water" }));
+            Assert.That(Ids(r.CellRulesFor("cold")), Is.EqualTo(new[] { "frost-on-grass", "cold-cloud", "cold-fire", "cold-steam", "cold-water", "cold-covered", "cold-frost" }));
             Assert.That((int)JObject.Parse(r.ToJson())["sim"]["push"]["slideCells"], Is.EqualTo(7));
             Assert.That((int)JObject.Parse(Base.ToJson())["sim"]["push"]["slideCells"], Is.EqualTo(3), "the base rules are untouched");
-            Assert.That(Base.CellRulesFor("cold")[0].Id, Is.EqualTo("cold-fire"));
+            Assert.That(Base.CellRulesFor("cold")[0].Id, Is.EqualTo("cold-cloud"));
         }
 
         [Test]
@@ -68,11 +68,11 @@ namespace Chem.Tests
                 { 'id': 'steam-damps-fire', 'element': 'fire', 'if': { 'gas': 'steam' }, 'do': [{ 'extinguish': true }], 'stop': true },
                 { 'id': 'acid-burns', 'element': 'acid', 'do': [{ 'setCover': null }] },
                 { 'id': 'fire-ice', 'element': 'fire', 'if': { 'frozen': true }, 'do': [{ 'melt': true }], 'log': 'Replaced in place' } ] } }");
-            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "steam-damps-fire", "fire-fog", "fire-oil", "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-flammable" }));
+            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "steam-damps-fire", "fire-fog", "fire-mud", "fire-oil", "fire-thorns", "fire-melt", "fire-ice", "fire-flammable", "fire-heat" }));
             Assert.That(r.CellRulesFor("fire").First(x => x.Id == "fire-ice").Log, Is.EqualTo("Replaced in place"));
-            Assert.That(Ids(r.CellRulesFor("acid")), Is.EqualTo(new[] { "acid-burns" }));
+            Assert.That(Ids(r.CellRulesFor("acid")), Is.EqualTo(new[] { "acid-burns", "acid-cover", "acid-terrain" }), "on top of the base acid rules");
             var elements = JObject.Parse(r.ToJson())["elements"].Select(e => (string)e);
-            Assert.That(elements, Is.EqualTo(new[] { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid" }));
+            Assert.That(elements, Is.EqualTo(new[] { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow" }));
         }
 
         [Test]
@@ -95,7 +95,7 @@ namespace Chem.Tests
             Assert.That(r.Terrain["grass"].Has("flammable"), Is.False, "a named entry is replaced whole");
             Assert.That(r.Terrain["grass"].Fuel, Is.Null);
             Assert.That((string)json["entityRules"][0]["id"], Is.EqualTo("acid-entity"));
-            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "fire-fog", "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-water", "fire-flammable" }));
+            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "fire-fog", "fire-mud", "fire-thorns", "fire-melt", "fire-ice", "fire-water", "fire-flammable", "fire-heat" }));
         }
 
         [Test]
@@ -382,8 +382,8 @@ namespace Chem.Tests
         [Test]
         public void ThingsTheNewRulesDontDefineAreClearedLikeTheSandbox()
         {
-            var w = new World(With("{ 'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground'] } }, 'covers': { 'tar': { 'name': 'Tar', 'tags': [] } }, 'gases': { 'spores': { 'name': 'Spores' } } }"), 3, 1);
-            w.Paint(0, 0, "mud");
+            var w = new World(With("{ 'terrain': { 'bog': { 'name': 'Bog', 'tags': ['ground'] } }, 'covers': { 'tar': { 'name': 'Tar', 'tags': [] } }, 'gases': { 'spores': { 'name': 'Spores' } } }"), 3, 1);
+            w.Paint(0, 0, "bog");
             w.SetCover(1, 0, "tar");
             w.AddGas(w.At(2, 0), "spores", 3);
             w.ApplyRules(Base);

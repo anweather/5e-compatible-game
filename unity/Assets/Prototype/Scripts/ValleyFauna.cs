@@ -245,7 +245,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
         var c = world.At(cell.x, cell.y);
         if (c == null || c.Water > 0 || c.Fire > 0 || world.IsSpiky(c) || OnWildCoast(xz)) return false;
-        return c.T != TerrainIds.Tree && c.T != TerrainIds.LogWall && c.T != TerrainIds.Stone && c.T != TerrainIds.Rock && c.T != TerrainIds.Metal;
+        return c.T != TerrainIds.Tree && c.T != TerrainIds.LogWall && c.T != TerrainIds.Pane && c.T != TerrainIds.Stone && c.T != TerrainIds.Rock && c.T != TerrainIds.Metal;
     }
 
     // The beach and the coast (the sea and the strip inland of its shore, Ocean.Covers) are no

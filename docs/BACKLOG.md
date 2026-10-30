@@ -113,6 +113,8 @@ Dig dirt, but not rock.
   `World.Terraform.cs`, mirrored in the TS sandbox.
 - **Size:** S to M. A natural first step toward 3 (it decides where
   tunnels can go).
+- **Done:** `dig.hardness` on every ground, `strength` on digs, Stone Shape
+  and the pick; each refusal is logged (`rules/README.md`, Earth shaping).
 
 ## 5. Items
 
@@ -493,6 +495,39 @@ Make the world feel lived in from generated content (D12,
   (gulls, fish, crabs, villagers, sound, boats, ...) is in
   `docs/WORLD_LIFE.md`, "Backlog: a world that's lived in".
 - **Size:** M per layer.
+
+## 21. Player saves: progress travels with the player (J-038)
+
+Per-player progress lives with the player, not the world, and comes along
+when they join another host's world or the world is reset: the grimoire's
+discovered combos first, later unlocks and kept items. Today the grimoire is
+in the world save (combo-core, d81c0ae). Needs: a player identity that's
+stable across sessions and hosts, a small player-save file on each player's
+own machine, sent to the host on join, and a rule for what a host may trust
+or override (lockstep: the host stamps it into the world state on join).
+Not urgent; build toward it.
+Design: `docs/PLAYER_SAVE.md`.
+
+## 22. Weather casts and three-element casts (Andrew, 2026-10-30; later)
+
+Not yet: first see how the one-verb combo table (J-039) feels in play.
+The idea: a cast that is already loaded (a two-element combo, or a d-pad
+spell such as Control Weather) turns the orbs in the hands into that spell
+instead of firing it, and one more element changes it. "Spell plus element"
+is easy to learn, and it's the shape for three-element casts.
+- Control Weather + water: rain over the area (the weather has rain).
+- + air: a hurricane or tornado (a big version of Whirlwind's carrying).
+- + fire: a meteor shower (the weather already has meteor showers).
+- + air, then fire: a thunderstorm (the mastery tier).
+- + earth: an earthquake: loose things fall, rock cracks, brittle things
+  shatter (existing material verbs, plus the cracked stage).
+- Weather casts cover a region, last long and come on slowly; the
+  two-element casts stay local and immediate, so they don't overlap.
+- **Size:** M for the "loaded spell plus element" input; S per weather cast.
+
+## 23. The beard as a look option (Andrew, 2026-10-30; later)
+
+UX pass 2 turned beards off with the new face (the black fuzzy sphere with red slit eyes). WizardBeard.cs stays in the code, unused, for a later option: a beard (or none) picked like the hat or cowl in the Esc menu and sent with the seed, fitted to the new face. Don't delete it as dead code.
 
 ## Priority (groomed 2026-10-27, Andrew approved; J-012 in `JUDGMENT_CALLS.md`)
 

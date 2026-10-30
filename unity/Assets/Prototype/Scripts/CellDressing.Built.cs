@@ -11,6 +11,7 @@ public sealed partial class CellDressing
 
     static readonly Color Iron = new(0.30f, 0.29f, 0.28f);
     static readonly Color Bronze = new(0.45f, 0.32f, 0.18f);
+    static readonly Color Rusted = new(0.42f, 0.22f, 0.12f);
 
     // A bridge's deck: boards across the cell, uneven and with gaps, on two beams.
     void DressPlanks(Transform root, Vector3 surface, Color color, System.Random rng, int x, int y)
@@ -32,10 +33,12 @@ public sealed partial class CellDressing
     }
 
     // An iron (now and then bronze) plate lying on the ground: sized, shifted, turned and tilted a little, a
-    // raised face on a thicker rim, and a rivet at each corner.
-    void DressPlate(Transform root, Vector3 surface, System.Random rng, int x, int y)
+    // raised face on a thicker rim, and a rivet at each corner. A rusted one (metal left wet, materials.json
+    // rust) is the same plate gone orange-brown, flaking and dull.
+    void DressPlate(Transform root, Vector3 surface, System.Random rng, int x, int y, bool rusted = false)
     {
         var color = rng.NextDouble() < 0.25 ? Bronze : Iron;
+        if (rusted) color = Rusted;
         var plate = new GameObject("Plate").transform;
         plate.SetParent(root, false);
         // Shifted off the cell's centre too, so a run of plates is a scatter, not a tiled path.
@@ -44,14 +47,32 @@ public sealed partial class CellDressing
         float w = CellSize * (0.7f + 0.2f * (float)rng.NextDouble()), d = CellSize * (0.66f + 0.22f * (float)rng.NextDouble());
         var rim = PlatePart(plate, PrimitiveType.Cube, Vector3.zero, new Vector3(w, 0.05f, d));
         var face = PlatePart(plate, PrimitiveType.Cube, Vector3.up * 0.02f, new Vector3(w - 0.12f, 0.03f, d - 0.12f));
-        PaintMetal(rim.GetComponent<Renderer>(), color * 0.8f, x, y);
-        PaintMetal(face.GetComponent<Renderer>(), color, x, y);
+        PaintMetal(rim.GetComponent<Renderer>(), color * 0.8f, x, y, rusted);
+        PaintMetal(face.GetComponent<Renderer>(), color, x, y, rusted);
         foreach (var (cx, cz) in new[] { (-1, -1), (1, -1), (1, 1), (-1, 1) })
         {
             var rivet = PlatePart(plate, PrimitiveType.Sphere, new Vector3(cx * (w / 2f - 0.07f), 0.03f, cz * (d / 2f - 0.07f)), new Vector3(0.07f, 0.035f, 0.07f));
-            PaintMetal(rivet.GetComponent<Renderer>(), color * 0.65f, x + cx, y + cz);
+            PaintMetal(rivet.GetComponent<Renderer>(), color * 0.65f, x + cx, y + cz, rusted);
         }
     }
+
+    /// <summary>
+    /// Hot metal's glow (Cell.Heat, the fire-heat reaction): 0 cold to 1 just heated, from dull red to
+    /// orange, on the plate's own material through its emission (no new objects). Rusted plates glow too.
+    /// </summary>
+    public void Glow(GameObject dressing, float heat)
+    {
+        if (dressing == null) return;
+        var glow = heat <= 0f ? Color.black : Color.Lerp(new Color(0.5f, 0.05f, 0.02f), new Color(1f, 0.3f, 0.05f), heat) * (0.5f + 0.5f * heat * heat);
+        foreach (var r in dressing.GetComponentsInChildren<Renderer>())
+        {
+            r.GetPropertyBlock(tint);
+            tint.SetColor(EmissionColorId, glow);
+            r.SetPropertyBlock(tint);
+        }
+    }
+
+    static readonly int EmissionColorId = Shader.PropertyToID("_EmissionColor");
 
     // A part of a plate, placed and sized in the plate's own (turned) frame.
     static GameObject PlatePart(Transform plate, PrimitiveType type, Vector3 local, Vector3 scale)
@@ -63,13 +84,15 @@ public sealed partial class CellDressing
         return go;
     }
 
-    // Worn metal: one shared metallic material, each part's shade (some rust in it) per cell.
-    void PaintMetal(Renderer r, Color color, int x, int y)
+    // Worn metal: one shared metallic material (another, rough and barely metallic, for rust), each
+    // part's shade (some rust in it) per cell. Both take hot metal's glow (Glow): emission on, black.
+    void PaintMetal(Renderer r, Color color, int x, int y, bool rusted = false)
     {
-        r.sharedMaterial = materials.Metal("Plate", Color.white, 0.45f, 0.75f);
+        var m = rusted ? materials.Metal("Rusted plate", Color.white, 0.12f, 0.2f) : materials.Metal("Plate", Color.white, 0.45f, 0.75f);
+        if (!m.IsKeywordEnabled("_EMISSION")) UrpMaterials.Configure(m, Color.white, null, Color.black);
+        r.sharedMaterial = m;
         float n = Mathf.PerlinNoise(x * 0.61f + 0.3f, y * 0.61f + 0.7f);
-        var rust = new Color(0.42f, 0.22f, 0.12f);
-        UrpMaterials.SetColor(r, tint, Color.Lerp(color, rust, 0.35f * n) * (0.85f + 0.3f * n));
+        UrpMaterials.SetColor(r, tint, Color.Lerp(color, Rusted, (rusted ? 0.6f : 0.35f) * n) * (0.85f + 0.3f * n));
     }
 
     // A raised wall: a rock model per square, big enough to cover the square's face from below the

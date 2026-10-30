@@ -13,6 +13,8 @@ namespace Chem
     {
         // Reused by TickFire so a tick allocates nothing.
         readonly List<(Chunk ch, int i)> burning = new List<(Chunk ch, int i)>();
+        // What floating covers reached this tick (World.Float), laid at its end.
+        readonly List<(Cell cell, string cover, int slick)> floating = new List<(Cell cell, string cover, int slick)>();
         readonly List<Cell> gasOptions = new List<Cell>(4);
 
         /// <summary>
@@ -30,7 +32,7 @@ namespace Chem
         // A tick in slices (StepSome): the same passes over the same cells in the same order as
         // Step, only spread over several calls, so a peer that slices its ticks one way computes
         // exactly the ticks of a peer that slices them another (or not at all). Fire burns, then
-        // springs, water, gas, the weather, raiders and defense, then the timers, as in sim.ts.
+        // springs, water, gas, the weather, raiders, defense and cast meters, then the timers, as in sim.ts.
         enum TickStage { None, Burn, WaterCheck, Springs, Flow, Gas, Rest, Timers, End }
 
         // Row segments or burning cells handled per slice: small enough to stop near a frame's budget.
@@ -82,6 +84,7 @@ namespace Chem
             Tick++;
             logged.Clear();
             strikes.Clear();
+            combosFired.Clear();
             TrimWeatherHistory();
             EndSetWeather();
             Weather = SkyNow();
@@ -109,6 +112,11 @@ namespace Chem
                     TickWeather(tickRows);
                     TickRaiders();
                     TickDefense();
+                    TickCombos();
+                    TickWhirlwinds();
+                    TickWaves();
+                    TickBoulders();
+                    TickMachines(tickRows);
                     NextStage(TickStage.Timers);
                     return false;
                 case TickStage.End:
@@ -160,8 +168,30 @@ namespace Chem
             stagePos = 0;
         }
 
+        // The lava moves on: the lower cell becomes it, with its time and heat, and it leaves its crust (grow.into).
+        void RunInto(Cell from, Cell to)
+        {
+            if (IsBlocking(to)) return;
+            to.T = from.T;
+            to.Life = from.Life;
+            to.Heat = from.Heat;
+            to.Cover = null;
+            from.T = TerrainOf(from).GrowsTo ?? from.T;
+            from.Life = 0;
+            from.Heat = 0;
+        }
+
         void EndTick()
         {
+            foreach (var (cell, cover, slick) in floating)
+            {
+                if (cell.Cover != null) continue;
+                PutCover(cell, cover);
+                cell.Slick = slick;
+            }
+            floating.Clear();
+            foreach (var (from, to) in runs) RunInto(from, to);
+            runs.Clear();
             if (Wind.HasValue)
             {
                 var (d, t) = Wind.Value;
@@ -210,13 +240,138 @@ namespace Chem
             for (int i = s.Start; i < s.End; i++)
             {
                 var c = cells[i];
-                bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
-                if (c.Charge > 0) c.Charge--;
-                if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
-                if (soak && c.Water > 0 && Soak(ch, i, c)) live = true;
+                bool live = TickCell(ch, i, c, c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0, soak);
                 if (live) edges = Math.Max(edges, 0) | Chunks.EdgesOf(i);
             }
             return edges;
+        }
+
+        /// <summary>One cell's timers, and its soak pass on soak ticks; true if it is live (it was, or something changed).</summary>
+        bool TickCell(Chunk ch, int i, Cell c, bool live, bool soak)
+        {
+            if (c.Charge > 0) c.Charge--;
+            if (c.Lit > 0) c.Lit--;
+            // A slick's reach goes with its oil.
+            if (c.Slick != 0 && c.Cover == null) c.Slick = 0;
+            // A crack goes with its ice or terrain.
+            if (c.Cracked != 0 && !c.Frozen && !TerrainOf(c).Cracks) c.Cracked = 0;
+            if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
+            if (c.Heat > 0 && Cool(ch, i, c)) live = true;
+            if (soak && SoakPass(ch, i, c)) live = true;
+            return live;
+        }
+
+        /// <summary>The soak pass on one cell: rust, a cover floating off, water soaking in, mud drying. True if anything changed.</summary>
+        bool SoakPass(Chunk ch, int i, Cell c)
+        {
+            bool changed = Rust(c);
+            if (c.Water > 0 && c.Cover != null && Float(ch, i, c)) changed = true;
+            if (c.Water > 0 && Soak(ch, i, c)) changed = true;
+            if (DryOut(c)) changed = true;
+            return changed;
+        }
+
+        /// <summary>
+        /// Hot metal cools a tick at a time (materials.json hot): water on it boils off a unit a tick as
+        /// steam, each unit taking hot.quench ticks of its heat. A terrain that can't be hot drops it.
+        /// </summary>
+        bool Cool(Chunk ch, int i, Cell c)
+        {
+            var t = TerrainOf(c);
+            if (t.HotFor <= 0)
+            {
+                c.Heat = 0;
+                return true;
+            }
+            if (c.Water > 0 && !c.Frozen && t.QuenchesTo != null)
+            {
+                Quench(ch, c, t);
+                return true;
+            }
+            if (t.RunsEvery > 0 && Tick % t.RunsEvery == 0) Run(ch, i, c);
+            if (c.Water > 0 && !c.Frozen)
+            {
+                c.Water--;
+                AddGas(c, "steam", 1);
+                c.Heat = Math.Max(0, c.Heat - t.HotQuench);
+                WaterMoved(ch);
+                LogOnce("hot-quench", "Water hisses into steam on the hot metal");
+            }
+            if (c.Heat > 0) c.Heat--;
+            return true;
+        }
+
+        // Water on hot lava (quench.into): it sets at once into rock, a unit of the water flashing to steam.
+        void Quench(Chunk ch, Cell c, TerrainDef t)
+        {
+            c.Water--;
+            AddGas(c, "steam", 2);
+            c.T = t.QuenchesTo;
+            c.Heat = 0;
+            c.Life = 0;
+            WaterMoved(ch);
+            if (t.QuenchLog != null) LogOnce("quench-" + t.Id, t.QuenchLog, LogKind.Notable);
+        }
+
+        // Lava's run (run.every): to the lowest open neighbour lower than it, in N, E, S, W order on a tie, if one
+        // isn't taken yet this tick; the move is made at the end of the tick (EndTick), so it goes a cell a turn.
+        void Run(Chunk ch, int i, Cell c)
+        {
+            int here = ElevationUnits(c), best = here;
+            Cell to = null;
+            for (int d = 0; d < 4; d++)
+            {
+                var n = Chunk.Next(ch, i, d, out var nch, out _);
+                if (n == null || !nch.Active || IsBlocking(n) || HasTag(n, "machine") || n.T == c.T) continue;
+                int level = ElevationUnits(n);
+                if (level >= best || runs.Exists(r => r.to == n)) continue;
+                best = level;
+                to = n;
+            }
+            if (to != null) runs.Add((c, to));
+        }
+
+        /// <summary>
+        /// Wet metal rusts (materials.json rust), on the soak pass: a cell whose terrain rusts and is
+        /// wet (unfrozen water on it, raining, or damp, Cell.DampUntil) counts the pass's ticks in
+        /// Cell.Rust (steam over it adds more each tick, RustUnder); at rust.every it becomes rust.leaves. True if it did.
+        /// </summary>
+        bool Rust(Cell c)
+        {
+            if (!((c.Water > 0 && !c.Frozen) || Raining || Tick < c.DampUntil)) return false;
+            var t = TerrainOf(c);
+            if (t.RustEvery <= 0) return false;
+            c.Rust += Rules.Sim.SoakPass;
+            if (c.Rust < t.RustEvery) return false;
+            c.Rust = 0;
+            c.T = t.RustsTo;
+            LogOnce("rust", "The metal rusts through");
+            return true;
+        }
+
+        /// <summary>
+        /// Floating oil (a cover with float.every, materials.json): on open water it spreads to each open,
+        /// uncovered water cell next to it, on the soak passes of every float.every ticks. What it
+        /// reaches is laid at the end of the tick (EndTick), so the slick grows a cell a turn whichever
+        /// way the rows run. It reaches float.reach cells from where it was laid (Cell.Slick counts down
+        /// the cells it has left), so a slick on a lake stops. True if it spread.
+        /// </summary>
+        bool Float(Chunk ch, int i, Cell c)
+        {
+            if (c.Frozen || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
+            if (Tick / Rules.Sim.SoakPass % Math.Max(1, cv.FloatEvery / Rules.Sim.SoakPass) != 0) return false;
+            // Its reach left (fresh oil has its float.reach); a slick at the end of its reach spreads no further.
+            int reach = c.Slick > 0 ? c.Slick : cv.FloatReach;
+            if (cv.FloatReach > 0 && reach <= 1) return false;
+            bool spread = false;
+            for (int d = 0; d < 4; d++)
+            {
+                var n = Chunk.Next(ch, i, d, out var nch, out _);
+                if (n == null || !nch.Active || n.Cover != null || n.Water == 0 || n.Frozen || IsBlocking(n)) continue;
+                floating.Add((n, c.Cover, cv.FloatReach > 0 ? reach - 1 : 0));
+                spread = true;
+            }
+            return spread;
         }
 
         /// <summary>
@@ -224,7 +379,8 @@ namespace Chem
         /// turns (waterTo) it freezes (arctic) or boils off a unit to steam (lava), any depth; thin water
         /// (it and its four neighbours no deeper than sim.water.thin, so not a lake's shore, the river,
         /// the sea or a filled pit) soaks in and dries up a unit every soakEvery ticks of its terrain,
-        /// soakEveryWet on damp ground (raining, or damp from water soaked in before), and leaves it damp.
+        /// soakEveryWet on damp ground (raining, or damp from water soaked in before), and leaves it damp
+        /// (and its soak.leaves: dirt turns to mud).
         /// Each cell on its own turn of the count, so a puddle shrinks from all over. True if it changed.
         /// </summary>
         bool Soak(Chunk ch, int i, Cell c)
@@ -259,7 +415,20 @@ namespace Chem
             if ((Tick / Rules.Sim.SoakPass + x * 7 + y * 13) % turns != 0) return false;
             c.Water--;
             c.DampUntil = Tick + Rules.Sim.DampTicks;
+            if (t.SoaksTo != null) c.T = t.SoaksTo;
             WaterMoved(ch);
+            return true;
+        }
+
+        /// <summary>
+        /// Mud dries (materials.json soak.dries), on the soak pass: a cell whose terrain dries, with no water
+        /// on it, not rained on and no longer damp (Cell.DampUntil), becomes its driesTo. True if it did.
+        /// </summary>
+        bool DryOut(Cell c)
+        {
+            var to = TerrainOf(c).DriesTo;
+            if (to == null || c.Water > 0 || Raining || Tick < c.DampUntil) return false;
+            c.T = to;
             return true;
         }
 
@@ -279,8 +448,18 @@ namespace Chem
         /// <summary>The last tick anything in a loaded chunk was live (NeverLive if nothing has been).</summary>
         public int LastLive(int cx, int cy) => ChunkOrThrow(cx, cy).LastLive;
 
+        // A cover that rots (vines) dies: its roots break the terrain it held to its BreaksTo (a stone wall to rubble).
+        void RootsBreak(Chunk ch, int i, Cell c)
+        {
+            var t = TerrainOf(c);
+            if (t.BreaksTo == null) return;
+            LogOnce("roots-" + t.Id, $"Roots crack the {t.Name.ToLowerInvariant()} apart", LogKind.Notable);
+            c.T = t.BreaksTo;
+            WallLost(CellX(ch, i), CellY(ch, i));
+        }
+
         /// <summary>
-        /// A cell's Life ran out (ripen in sim.ts): a cover that lasts (thorns) withers away, and a
+        /// A cell's Life ran out (ripen in sim.ts): a cover that lasts (thorns) withers away (one that rots breaks the terrain it held), and a
         /// terrain that grows (green shoots, a sapling) becomes its growsTo. While it burns it waits
         /// a tick at a time; a tree growing on wet ground pushes the water out.
         /// </summary>
@@ -295,6 +474,7 @@ namespace Chem
             {
                 c.Cover = null;
                 if (cv.WitherLog != null) LogOnce("wither-" + cv.Id, cv.WitherLog);
+                if (cv.RotBreaks) RootsBreak(ch, i, c);
             }
             var to = TerrainOf(c).GrowsTo;
             if (to == null || !Rules.Terrain.TryGetValue(to, out var grown)) return;
@@ -350,6 +530,7 @@ namespace Chem
                 return;
             }
             if (Doused(c)) return;
+            if (c.Gas != null) FlashGas(CellX(ch, i), CellY(ch, i));
             if (c.Gas != "steam" && Rand() < p.SmokeChance) AddGas(c, "smoke", 1);
             Spread(ch, i, c, p);
             if (--c.Fuel > 0) return;
@@ -365,13 +546,14 @@ namespace Chem
                 var tt = TerrainOf(c);
                 if (tt.Burns)
                 {
-                    c.Fuel = tt.Fuel ?? 5;
+                    c.Fuel = DampFuel(tt.Fuel ?? 5, Dryness(c));
                     c.Fire = 2;
                 }
                 else
                 {
                     c.Fire = 0;
-                    if (!IsBlocking(c)) c.Cover = "ash";
+                    // Burnt off open water (an oil slick) leaves no ash.
+                    if (!IsBlocking(c) && !(c.Water > 0 && !c.Frozen)) c.Cover = "ash";
                 }
                 return;
             }
@@ -383,6 +565,7 @@ namespace Chem
                 c.T = t.BurnsTo;
                 c.Cover = IsBlocking(c) || HasTag(c, "low") ? null : "ash";
                 if (t.BurnLog != null) AddLog(t.BurnLog, LogKind.Notable);
+                WallLost(CellX(ch, i), CellY(ch, i));
             }
         }
 
@@ -407,12 +590,27 @@ namespace Chem
 
         double SpreadChance(Cell c, Cell n, int d, FireParams p)
         {
-            double flam = Flammability(n);
+            double flam = Flammability(n) * Dryness(n);
             double downwind = WindDir == d ? p.DownwindBonus : 0;
             // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
             double heat = CoverBurns(c) ? 1 : TerrainOf(c).Heat;
             if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) * heat + downwind * flam) * RainDamp();
-            return n.Water > 0 && !n.Frozen ? p.BoilChance : p.HeatChance;
+            // Bare water beside a burning slick (a burning cover on water) boils at its own, lower chance.
+            if (n.Water > 0 && !n.Frozen) return CoverBurns(c) && c.Water > 0 && !c.Frozen ? p.SlickBoilChance : p.BoilChance;
+            return p.HeatChance;
+        }
+
+        /// <summary>
+        /// How much of its catch a cell keeps (soaked burns poorly, docs/MATERIALS.md): damp ground
+        /// (raining, or damp from water soaked in, Cell.DampUntil) loses its terrain's soak.dampens of
+        /// it; 1 when dry, or when what would catch is its cover (covers don't soak).
+        /// </summary>
+        double Dryness(Cell c)
+        {
+            if (CoverBurns(c)) return 1;
+            double dampens = TerrainOf(c).Dampens;
+            if (dampens <= 0 || !(Raining || Tick < c.DampUntil)) return 1;
+            return 1 - dampens;
         }
 
         void TickWater(RowSpan[] rows)
@@ -532,8 +730,41 @@ namespace Chem
             {
                 var s = rows[k];
                 var cells = s.Chunk.Cells;
-                for (int i = s.Start; i < s.End; i++) if (cells[i].Gas != null) Drift(s.Chunk, i);
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    if (cells[i].Gas == null) continue;
+                    RainFrom(s.Chunk, cells[i]);
+                    ShedFrom(s.Chunk, i, cells[i]);
+                    if (cells[i].Gas == null) continue;
+                    RustUnder(cells[i]);
+                    Drift(s.Chunk, i);
+                }
             }
+        }
+
+        /// <summary>A rain cloud (a gas with rainEvery) rains a unit of water on its cell every rainEvery ticks; not into a wall, but into a vessel.</summary>
+        void RainFrom(Chunk ch, Cell c)
+        {
+            if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.RainEvery <= 0 || Tick % g.RainEvery != 0) return;
+            if (IsBlocking(c) && !HasTag(c, "vessel")) return;
+            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
+            WaterMoved(ch);
+        }
+
+        /// <summary>A gas that rusts (steam, gases rusts) adds that much to the rust of metal under it each tick, on top of being wet (World.Rust turns it).</summary>
+        void RustUnder(Cell c)
+        {
+            if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.Rusts <= 0 || TerrainOf(c).RustEvery <= 0) return;
+            c.Rust += g.Rusts;
+        }
+
+        /// <summary>A gas that sheds (a storm cloud's lightning, a snow cloud's snow) lets its element fall on its cell every ShedEvery ticks, at its ShedChance.</summary>
+        void ShedFrom(Chunk ch, int i, Cell c)
+        {
+            if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.Sheds == null || g.ShedEvery <= 0 || Tick % g.ShedEvery != 0) return;
+            if (g.ShedChance < 1 && Rand() >= g.ShedChance) return;
+            Apply(CellX(ch, i), CellY(ch, i), g.Sheds, 1, -1, false);
+            if (g.Sheds == "lightning") shedStrikes.Add((CellX(ch, i), CellY(ch, i), Tick));
         }
 
         /// <summary>Moves one unit of gas downwind, unless something (or a paused chunk) is in the way.</summary>
@@ -551,11 +782,42 @@ namespace Chem
         double DecayOf(string gas) =>
             Rules.Gases.TryGetValue(gas, out var g) && g.Decay.HasValue ? g.Decay.Value : Rules.Sim.Gas.DecayChance;
 
+        /// <summary>
+        /// A unit of gas just decayed: a gas with condenseEvery (steam) leaves a unit of water each time
+        /// its cell's count falls from a multiple of it (2 to 1, not 1 to 0), so thick steam cools back
+        /// into water and thin steam fades. Not into a wall, but into a vessel.
+        /// </summary>
+        void Condense(Chunk ch, int i, Cell c)
+        {
+            if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.CondenseEvery <= 0 || (c.GasAmt + 1) % g.CondenseEvery != 0) return;
+            if (IsBlocking(c) && !HasTag(c, "vessel")) return;
+            if (NearHeat(CellX(ch, i), CellY(ch, i), g.CondenseAway)) return;
+            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
+            WaterMoved(ch);
+        }
+
+        /// <summary>Whether a cell within <paramref name="radius"/> of (x, y), this one too, is burning or hot (Cell.Heat); never with radius 0.</summary>
+        bool NearHeat(int x, int y, int radius)
+        {
+            if (radius <= 0) return false;
+            for (int dy = -radius; dy <= radius; dy++)
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    var n = At(x + dx, y + dy);
+                    if (n != null && (n.Fire > 0 || n.Heat > 0)) return true;
+                }
+            return false;
+        }
+
         /// <summary>A gas cell decays, blows downwind, or spreads to a thinner neighbour.</summary>
         void Drift(Chunk ch, int i)
         {
             var c = ch.Cells[i];
-            if (Rand() < DecayOf(c.Gas)) c.GasAmt--;
+            if (Rand() < DecayOf(c.Gas))
+            {
+                c.GasAmt--;
+                Condense(ch, i, c);
+            }
             if (c.GasAmt <= 0)
             {
                 c.Gas = null;

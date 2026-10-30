@@ -39,6 +39,12 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>When true, something else (NetChem in multiplayer) steps the world; the grid only draws it.</summary>
     public bool ExternalTicks { get; set; }
 
+    /// <summary>A whole tick has run, solo or online (a tick's World.CombosFired last until the next).</summary>
+    public event System.Action TickDone;
+
+    /// <summary>Raises TickDone; NetChem calls it for the ticks it runs.</summary>
+    public void NoteTickDone() => TickDone?.Invoke();
+
     /// <summary>
     /// Simulate only the chunks around the players (ChunkStreaming). Solo the grid applies the plan
     /// before each tick; online NetChem's host stamps it into its batches.
@@ -93,7 +99,7 @@ public partial class ChemGrid : MonoBehaviour
         ['w'] = ("pit", 4, false, null), ['*'] = ("pit", 4, true, null), ['r'] = ("river", 4, false, null),
         ['~'] = ("dirt", 2, false, null), ['m'] = ("metal", 0, false, null),
         ['o'] = ("dirt", 0, false, "oil"), ['@'] = ("grass", 0, false, null),
-        ['L'] = ("logwall", 0, false, null),
+        ['L'] = ("logwall", 0, false, null), ['P'] = ("pane", 0, false, null),
     };
 
     float tickTimer;
@@ -258,6 +264,7 @@ public partial class ChemGrid : MonoBehaviour
             }
             if (!World.StepSome(Over)) return stepped;
             stepped = true;
+            NoteTickDone();
         }
     }
 

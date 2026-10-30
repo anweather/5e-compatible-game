@@ -329,6 +329,9 @@ namespace Chem.Tests
         [TestCase("dirt", CellPaint.Earth)]
         [TestCase("pit", CellPaint.Earth)]
         [TestCase("wood", CellPaint.Earth)]
+        [TestCase("sand", CellPaint.Sand)]
+        [TestCase("glass", CellPaint.Sand)]
+        [TestCase("mud", CellPaint.Earth)]
         public void TerrainPaintsItsLayer(string terrain, string layer)
         {
             Assert.AreEqual(layer, Top(CellPaint.Weights(new Cell(terrain))));

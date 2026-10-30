@@ -9,16 +9,32 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "burn", tag: "flammable", keys: [["catch", "flammability"], ["fuel", "fuel"], ["heat", "heat"], ["leaves", "burnsTo"], ["log", "burnLog"], ["look", "fireLook"]] },
   { verb: "break", tag: "breakable", keys: [["leaves", "breaksTo"]] },
   { verb: "dig", tag: null, keys: [["hardness", "hardness"], ["leaves", "dugTo"]] },
-  { verb: "soak", tag: null, keys: [["dry", "soakEvery"], ["wet", "soakEveryWet"]] },
+  { verb: "soak", tag: null, keys: [["dry", "soakEvery"], ["wet", "soakEveryWet"], ["dampens", "dampens"], ["leaves", "soaksTo"], ["dries", "driesTo"]] },
+  { verb: "rust", tag: null, keys: [["every", "rustEvery"], ["leaves", "rustsTo"]] },
+  { verb: "hot", tag: null, keys: [["for", "hotFor"], ["quench", "hotQuench"]] },
+  { verb: "bake", tag: "bakes", keys: [["into", "bakesTo"]] },
   { verb: "conduct", tag: "conductive", keys: [] },
-  { verb: "shatter", tag: "brittle", keys: [] },
+  { verb: "shatter", tag: "brittle", keys: [["leaves", "shattersTo"], ["cracks", "cracks"]] },
+  { verb: "scald", tag: "scalds", keys: [] },
   { verb: "grow", tag: null, keys: [["into", "growsTo"], ["log", "growLog"]] },
   { verb: "uproot", tag: null, keys: [["leaves", "uprootsTo"], ["log", "uprootLog"]] },
+  { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
+  { verb: "scour", tag: null, keys: [["leaves", "scoursTo"], ["wears", "scourWears"]] },
+  { verb: "run", tag: null, keys: [["every", "runsEvery"]] },
+  { verb: "quench", tag: null, keys: [["into", "quenchesTo"], ["log", "quenchLog"]] },
 ];
 
 const COVER_VERBS: Verb[] = [
   { verb: "burn", tag: "flammable", keys: [["catch", "flammability"], ["fuel", "fuel"], ["intensity", "burnIntensity"], ["look", "fireLook"]] },
+  { verb: "float", tag: null, keys: [["every", "floatEvery"], ["reach", "floatReach"]] },
+  { verb: "melt", tag: null, keys: [["into", "meltsTo"], ["water", "meltWater"]] },
+  { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
+  { verb: "rot", tag: null, keys: [["breaks", "rotBreaks"]] },
+  { verb: "scour", tag: "scourable", keys: [] },
 ];
+
+/** A creature's statuses from its material: each verb's status key and the flat key it becomes (MaterialGroups.StatusVerbs). */
+const STATUS_VERBS: [verb: string, flat: string][] = [["burn", "burnStatus"], ["freeze", "freezeStatus"], ["soak", "soakStatus"]];
 
 /** What water on it turns into: freeze {} for ice, boil {} for steam. */
 const WATER_VERBS: [verb: string, water: string][] = [["freeze", "ice"], ["boil", "steam"]];
@@ -32,6 +48,8 @@ export function ungroupMaterials(r: { terrain: Record<string, unknown>; covers: 
 }
 
 function ungroup(entry: Entry, verbs: Verb[], water: boolean) {
+  if (water) ungroupStatuses(entry);
+  if (water) ungroupChainsWet(entry);
   for (const { verb, tag, keys } of verbs) {
     const g = entry[verb];
     if (!g || typeof g !== "object" || Array.isArray(g)) continue;
@@ -53,6 +71,41 @@ function ungroup(entry: Entry, verbs: Verb[], water: boolean) {
     if (entry[verb] === undefined) continue;
     delete entry[verb];
     entry.waterTo = to;
+  }
+}
+
+/**
+ * Takes each verb's status out of its group; a group left empty goes too, so burn { status } doesn't make the
+ * material flammable, nor freeze { status } freeze the water on it (MaterialGroups.UngroupStatuses).
+ */
+function ungroupStatuses(entry: Entry) {
+  for (const [verb, flat] of STATUS_VERBS) {
+    const g = entry[verb] as Record<string, unknown> | undefined;
+    if (!g || typeof g !== "object" || Array.isArray(g) || g.status === undefined) continue;
+    entry[flat] = g.status;
+    delete g.status;
+    if (Object.keys(g).length === 0) delete entry[verb];
+  }
+}
+
+/**
+ * Takes conduct.chainsWet out of its group; a group left empty goes too, so flesh's conduct { chainsWet }
+ * doesn't make it conduct like metal (MaterialGroups.UngroupChainsWet).
+ */
+function ungroupChainsWet(entry: Entry) {
+  const g = entry.conduct as Record<string, unknown> | undefined;
+  if (!g || typeof g !== "object" || Array.isArray(g) || g.chainsWet === undefined) return;
+  entry.chainsWet = g.chainsWet;
+  delete g.chainsWet;
+  if (Object.keys(g).length === 0) delete entry.conduct;
+}
+
+function groupStatuses(entry: Entry) {
+  for (const [verb, flat] of STATUS_VERBS) {
+    if (entry[flat] === undefined) continue;
+    const g = (entry[verb] ??= {}) as Record<string, unknown>;
+    g.status = entry[flat];
+    delete entry[flat];
   }
 }
 
@@ -92,6 +145,11 @@ export function groupMaterial(flat: Entry, cover: boolean): Entry {
       delete entry.waterTo;
       entry[w[0]] = {};
     }
+  }
+  if (!cover) groupStatuses(entry);
+  if (!cover && entry.chainsWet !== undefined) {
+    ((entry.conduct ??= {}) as Record<string, unknown>).chainsWet = entry.chainsWet;
+    delete entry.chainsWet;
   }
   return entry;
 }

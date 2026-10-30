@@ -173,8 +173,9 @@ public class TowerCourse : MonoBehaviour
     // The climb's time, top middle, while it runs.
     void OnGUI()
     {
+        HudScale.Apply();
         if (!Timing || !EventLog.HudVisible) return;
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 26, alignment = TextAnchor.MiddleCenter, richText = true };
-        GUI.Label(new Rect(Screen.width / 2f - 120f, 12f, 240f, 40f), $"<b>{Clock(Time.time - startedAt)}</b>", style);
+        GUI.Label(new Rect(HudScale.Width / 2f - 120f, 12f, 240f, 40f), $"<b>{Clock(Time.time - startedAt)}</b>", style);
     }
 }

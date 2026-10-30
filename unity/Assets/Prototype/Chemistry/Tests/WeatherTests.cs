@@ -115,7 +115,7 @@ namespace Chem.Tests
             Assert.That(a.CellHash(), Is.EqualTo(b.CellHash()), "deterministic");
             Assert.That(Strikes(a), Is.GreaterThan(0), "lightning struck");
             Assert.That(a.Log.Any(l => l.Text == "The rain puts out a fire"), "the rain put a fire out");
-            Assert.That($"{a.CellHash()} {a.RngState} {Strikes(a)}", Is.EqualTo("b4a67f55 4042791962 23"));
+            Assert.That($"{a.CellHash()} {a.RngState} {Strikes(a)}", Is.EqualTo("a80f8ead 275421548 24"));
         }
 
         [Test]
@@ -123,7 +123,7 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("6d146020 1611455719"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("41514104 3951220311"));
         }
         [Test]
         public void GoldenMeteorShowerMatchesTs()
@@ -144,7 +144,7 @@ namespace Chem.Tests
             int strikes = w.Log.Where(l => l.Text == "A meteor strikes").Sum(l => l.Count);
             Assert.That(strikes, Is.GreaterThan(0), "meteors landed");
             Assert.That(w.Cells.Any(c => c.Height < 0), "and left craters");
-            Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("e9d48abc 2710019217 19"));
+            Assert.That($"{w.CellHash()} {w.RngState} {strikes}", Is.EqualTo("89885246 991183198 16"));
         }
 
         [Test]

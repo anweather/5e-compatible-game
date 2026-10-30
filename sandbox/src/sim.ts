@@ -1,8 +1,9 @@
 // One tick of the world. Order matters and is fixed:
-// critters -> fire -> water -> gas -> weather -> entities -> machines -> decay
+// critters -> fire -> water -> gas -> weather -> entities -> cast meters -> machines -> decay
 // -> the day clock (Hasten Time).
+import { tickCombos } from "./combos.ts";
 import { RULES } from "./rules.ts";
-import { applyElement, displaceWater, ignite } from "./react.ts";
+import { applyElement, dampFuel, displaceWater, flashGas, ignite, putCover, wallLost } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
 import {
@@ -12,12 +13,13 @@ import {
 } from "./world.ts";
 import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
 import { isNight } from "./night.ts";
-import { METEOR_SPELL, landSpell, spellById } from "./actions.ts";
+import { METEOR_SPELL, landSpell, landStars, spellById, tickBoulders, tickWaves, tickWhirlwinds } from "./actions.ts";
 
 export function step(w: World): void {
   w.tick++;
   w.logged.clear();
   w.strikes = [];
+  w.combosFired = [];
   endHeldWeather(w);
   w.weather = skyNow(w);
   tickCritters(w);
@@ -27,14 +29,23 @@ export function step(w: World): void {
   tickWeather(w);
   tickEntities(w);
   tickDefense(w);
+  tickCombos(w);
+  tickWhirlwinds(w);
+  tickWaves(w);
+  tickBoulders(w);
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
+  const floating: [Cell, string, number][] = []; // what floating covers reached, laid after the pass (World.floating)
+  const runs: [Cell, Cell][] = []; // lava running this tick, from and to, moved after the pass (World.runs)
   for (let i = 0; i < w.cells.length; i++) {
-    const c = w.cells[i]!;
-    if (c.charge > 0) c.charge--;
-    if (c.life > 0 && --c.life === 0) ripen(w, i, c);
-    if (soaking && c.water > 0) soak(w, i, c);
+    tickCell(w, i, w.cells[i]!, soaking, floating, runs);
   }
+  for (const [n, cover, slick] of floating) {
+    if (n.cover !== null) continue;
+    putCover(n, cover);
+    n.slick = slick;
+  }
+  for (const [from, to] of runs) runInto(from, to);
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
   tickClock(w);
   w.marks.flow.fill(0);
@@ -57,6 +68,22 @@ function endHeldWeather(w: World) {
   log(w, "The weather goes its own way again", "info");
 }
 
+/** One cell's timers, and its soak pass on soak ticks (World.TickCell, SoakPass). */
+function tickCell(w: World, i: number, c: Cell, soaking: boolean, floating: [Cell, string, number][], runs: [Cell, Cell][]) {
+  if (c.charge > 0) c.charge--;
+  if ((c.lit ?? 0) > 0) c.lit!--;
+  // A slick's reach goes with its oil.
+  if ((c.slick ?? 0) !== 0 && c.cover === null) c.slick = 0;
+  // A crack goes with its ice or terrain.
+  if (c.cracked && !c.frozen && !terrainDef(c).cracks) delete c.cracked;
+  if (c.life > 0 && --c.life === 0) ripen(w, i, c);
+  if ((c.heat ?? 0) > 0) cool(w, i, c, runs);
+  if (soaking) rust(w, c);
+  if (soaking && c.water > 0 && c.cover !== null) float(w, i, c, floating);
+  if (soaking && c.water > 0) soak(w, i, c);
+  if (soaking) dryOut(w, c);
+}
+
 /** At the end of a tick: a hastened clock runs `rate` ticks of day for this one. */
 function tickClock(w: World) {
   if (!w.haste) return;
@@ -75,7 +102,7 @@ function tickClock(w: World) {
  * burns it waits a tick at a time; a tree waits while something stands there, and
  * pushes the water out of wet ground as it grows.
  */
-/** World.Soak: water on ground that turns it freezes or boils off; thin water soaks in and dries up, more slowly on damp ground, and leaves it damp. */
+/** World.Soak: water on ground that turns it freezes or boils off; thin water soaks in and dries up, more slowly on damp ground, and leaves it damp (and its soak.leaves: dirt turns to mud). */
 function soak(w: World, i: number, c: Cell) {
   const t = terrainDef(c), p = RULES.sim.water;
   if (t.waterTo === "ice") {
@@ -94,14 +121,133 @@ function soak(w: World, i: number, c: Cell) {
     const n = cellAt(w, x + DX[d]!, y + DY[d]!);
     if (n && n.water > p.thin) return;
   }
-  const now = w.weather, weather = RULES.sim.weather;
-  const raining = (now.period >= weather.calmPeriods || !!w.weatherSet) && rainOf(now) > 0;
-  const every = (raining || w.tick < (c.dampUntil ?? 0) ? t.soakEveryWet : t.soakEvery) ?? 0;
+  const every = (raining(w) || w.tick < (c.dampUntil ?? 0) ? t.soakEveryWet : t.soakEvery) ?? 0;
   if (every <= 0) return;
   const turns = Math.max(1, Math.floor(every / p.soakPass));
   if ((Math.floor(w.tick / p.soakPass) + x * 7 + y * 13) % turns !== 0) return;
   c.water--;
   c.dampUntil = w.tick + p.dampTicks;
+  if (t.soaksTo) c.t = t.soaksTo;
+}
+
+/**
+ * Mud dries (materials.json soak.dries), on the soak pass: a cell whose terrain dries, with no water on it, not
+ * rained on and no longer damp (dampUntil), becomes its driesTo (World.DryOut).
+ */
+function dryOut(w: World, c: Cell) {
+  const to = terrainDef(c).driesTo;
+  if (!to || c.water > 0 || raining(w) || w.tick < (c.dampUntil ?? 0)) return;
+  c.t = to;
+}
+
+/**
+ * Hot metal cools a tick at a time (materials.json hot): water on it boils off a unit a tick as steam, each unit
+ * taking hot.quench ticks of its heat. A terrain that can't be hot drops it (World.Cool).
+ */
+/** Water on hot lava (quench.into): it sets at once into rock, a unit of the water flashing to steam (World.Quench). */
+function quench(w: World, c: Cell, into: string, line: string | undefined) {
+  const was = c.t;
+  c.water--;
+  addGas(c, "steam", 2);
+  c.t = into;
+  c.heat = 0;
+  c.life = 0;
+  if (line) logOnce(w, `quench-${was}`, line, "notable");
+}
+
+/** Lava's run (run.every; World.Run): to the lowest open neighbour lower than it, N, E, S, W on a tie, if not taken yet this tick; moved after the pass. */
+function run(w: World, i: number, c: Cell, runs: [Cell, Cell][]) {
+  const x = i % w.w, y = Math.floor(i / w.w);
+  let best = elevation(c), to: Cell | undefined;
+  for (let d = 0; d < 4; d++) {
+    const n = cellAt(w, x + DX[d]!, y + DY[d]!);
+    if (!n || isBlocking(n) || hasTag(n, "machine") || n.t === c.t) continue;
+    const level = elevation(n);
+    if (level >= best || runs.some(([, t]) => t === n)) continue;
+    best = level;
+    to = n;
+  }
+  if (to) runs.push([c, to]);
+}
+
+/** The lava moves on: the lower cell becomes it, with its time and heat, and it leaves its crust (grow.into; World.RunInto). */
+function runInto(from: Cell, to: Cell) {
+  if (isBlocking(to)) return;
+  to.t = from.t;
+  to.life = from.life;
+  to.heat = from.heat;
+  to.cover = null;
+  from.t = terrainDef(from).growsTo ?? from.t;
+  from.life = 0;
+  from.heat = 0;
+}
+
+function cool(w: World, i: number, c: Cell, runs: [Cell, Cell][]) {
+  const t = terrainDef(c);
+  if (!t.hotFor || t.hotFor <= 0) {
+    c.heat = 0;
+    return;
+  }
+  if (c.water > 0 && !c.frozen && t.quenchesTo) {
+    quench(w, c, t.quenchesTo, t.quenchLog);
+    return;
+  }
+  if (t.runsEvery && w.tick % t.runsEvery === 0) run(w, i, c, runs);
+  if (c.water > 0 && !c.frozen) {
+    c.water--;
+    addGas(c, "steam", 1);
+    c.heat = Math.max(0, c.heat! - (t.hotQuench ?? 0));
+    logOnce(w, "hot-quench", "Water hisses into steam on the hot metal");
+  }
+  if (c.heat! > 0) c.heat!--;
+}
+
+/**
+ * Wet metal rusts (materials.json rust), on the soak pass: a cell whose terrain rusts and is wet (unfrozen water
+ * on it, raining, or damp, dampUntil) counts the pass's ticks in rust; at rust.every it becomes rust.leaves
+ * (World.Rust).
+ */
+function rust(w: World, c: Cell) {
+  if (!((c.water > 0 && !c.frozen) || raining(w) || w.tick < (c.dampUntil ?? 0))) return;
+  const t = terrainDef(c);
+  if (!t.rustEvery || t.rustEvery <= 0) return;
+  c.rust = (c.rust ?? 0) + RULES.sim.water.soakPass;
+  if (c.rust < t.rustEvery) return;
+  c.rust = 0;
+  c.t = t.rustsTo!;
+  logOnce(w, "rust", "The metal rusts through");
+}
+
+/**
+ * Floating oil (a cover with float.every, materials.json): on open water it spreads to each open, uncovered water
+ * cell next to it, on the soak passes of every float.every ticks. What it reaches is laid after the pass, so the
+ * slick grows a cell a turn whichever way the rows run. It reaches float.reach cells from where it was laid (slick
+ * counts down the cells it has left), so a slick on a lake stops (World.Float).
+ */
+function float(w: World, i: number, c: Cell, floating: [Cell, string, number][]) {
+  const cv = RULES.covers[c.cover!];
+  if (c.frozen || !cv || !cv.floatEvery || cv.floatEvery <= 0) return;
+  const pass = RULES.sim.water.soakPass;
+  if (Math.floor(w.tick / pass) % Math.max(1, Math.floor(cv.floatEvery / pass)) !== 0) return;
+  // Its reach left (fresh oil has its float.reach); a slick at the end of its reach spreads no further.
+  const reachOf = cv.floatReach ?? 0;
+  const reach = (c.slick ?? 0) > 0 ? c.slick! : reachOf;
+  if (reachOf > 0 && reach <= 1) return;
+  const x = i % w.w, y = Math.floor(i / w.w);
+  for (let d = 0; d < 4; d++) {
+    const n = cellAt(w, x + DX[d]!, y + DY[d]!);
+    if (!n || n.cover !== null || n.water === 0 || n.frozen || isBlocking(n)) continue;
+    floating.push([n, c.cover!, reachOf > 0 ? reach - 1 : 0]);
+  }
+}
+
+/** A cover that rots (vines) dies: its roots break the terrain it held to its breaksTo, a stone wall to rubble (World.RootsBreak). */
+function rootsBreak(w: World, i: number, c: Cell) {
+  const t = terrainDef(c);
+  if (!t.breaksTo) return;
+  logOnce(w, `roots-${c.t}`, `Roots crack the ${t.name.toLowerCase()} apart`, "notable");
+  c.t = t.breaksTo;
+  wallLost(w, i % w.w, Math.floor(i / w.w));
 }
 
 function ripen(w: World, i: number, c: Cell) {
@@ -113,6 +259,7 @@ function ripen(w: World, i: number, c: Cell) {
   if (cv && (cv.lasts ?? 0) > 0) {
     c.cover = null;
     if (cv.witherLog) logOnce(w, `wither-${id}`, cv.witherLog);
+    if (cv.rotBreaks) rootsBreak(w, i, c);
   }
   const to = terrainDef(c).growsTo;
   const grown = to !== undefined ? RULES.terrain[to] : undefined;
@@ -177,16 +324,19 @@ function tickFire(w: World) {
       continue;
     }
     if (doused(w, c)) continue;
+    flashGas(w, x, y);
     if (c.gas !== "steam" && rand(w) < p.smokeChance) addGas(c, "smoke", 1);
     for (const [nx, ny, d] of neighbours(w, x, y)) {
       const n = cellAt(w, nx, ny)!;
       if (n.fire > 0) continue;
-      const flam = flammability(n);
+      const flam = flammability(n) * dryness(w, n);
       const downwind = windDir(w) === d ? p.downwindBonus : 0;
       const wet = n.water > 0 && !n.frozen;
       // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
       const heat = coverBurns(c) ? 1 : (terrainDef(c).heat ?? 1);
-      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) * heat + downwind * flam) * rainDamp(w) : wet ? p.boilChance : p.heatChance;
+      // Bare water beside a burning slick (a burning cover on water) boils at its own, lower chance (World.SpreadChance).
+      const slickBoil = coverBurns(c) && c.water > 0 && !c.frozen ? (p.slickBoilChance ?? p.boilChance) : p.boilChance;
+      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) * heat + downwind * flam) * rainDamp(w) : wet ? slickBoil : p.heatChance;
       if (rand(w) < chance) applyElement(w, nx, ny, "fire", { power: 1, direct: false });
     }
     if (--c.fuel > 0) continue;
@@ -194,11 +344,12 @@ function tickFire(w: World) {
       c.cover = null;
       const t = terrainDef(c);
       if (burns(t)) {
-        c.fuel = t.fuel ?? 5;
+        c.fuel = dampFuel(t.fuel ?? 5, dryness(w, c));
         c.fire = 2;
       } else {
         c.fire = 0;
-        if (!isBlocking(c)) c.cover = "ash";
+        // Burnt off open water (an oil slick) leaves no ash.
+        if (!isBlocking(c) && !(c.water > 0 && !c.frozen)) c.cover = "ash";
       }
       continue;
     }
@@ -208,6 +359,7 @@ function tickFire(w: World) {
       c.t = t.burnsTo;
       c.cover = isBlocking(c) || hasTag(c, "low") ? null : "ash";
       if (t.burnLog) log(w, t.burnLog, "notable");
+      wallLost(w, x, y);
     }
   }
 }
@@ -261,12 +413,67 @@ function tickWater(w: World) {
   }
 }
 
+/**
+ * A unit of gas just decayed: a gas with condenseEvery (steam) leaves a unit of water each time its cell's count
+ * falls from a multiple of it (2 to 1, not 1 to 0), so thick steam cools back into water and thin steam fades. Not into a wall, but into
+ * a vessel (World.Condense).
+ */
+function condense(w: World, i: number, c: Cell) {
+  const g = RULES.gases[c.gas!];
+  const every = g?.condenseEvery ?? 0;
+  if (every <= 0 || (c.gasAmt + 1) % every !== 0) return;
+  if (isBlocking(c) && !hasTag(c, "vessel")) return;
+  if (nearHeat(w, i % w.w, Math.floor(i / w.w), g?.condenseAway ?? 0)) return;
+  c.water = Math.min(RULES.sim.water.maxLevel, c.water + 1);
+}
+
+/** Whether a cell within radius of (x, y), this one too, is burning or hot; never with radius 0 (World.NearHeat). */
+function nearHeat(w: World, x: number, y: number, radius: number): boolean {
+  if (radius <= 0) return false;
+  for (let dy = -radius; dy <= radius; dy++)
+    for (let dx = -radius; dx <= radius; dx++) {
+      const n = cellAt(w, x + dx, y + dy);
+      if (n && (n.fire > 0 || (n.heat ?? 0) > 0)) return true;
+    }
+  return false;
+}
+
+/** A rain cloud (a gas with rainEvery) rains a unit of water on its cell every rainEvery ticks; not into a wall, but into a vessel (World.RainFrom). */
+function rainFrom(w: World, c: Cell) {
+  const every = RULES.gases[c.gas!]?.rainEvery ?? 0;
+  if (every <= 0 || w.tick % every !== 0) return;
+  if (isBlocking(c) && !hasTag(c, "vessel")) return;
+  c.water = Math.min(RULES.sim.water.maxLevel, c.water + 1);
+}
+
+/** A gas that sheds (a storm cloud's lightning, a snow cloud's snow) lets its element fall on its cell every so often, at its chance (World.ShedFrom). */
+function shedFrom(w: World, i: number, c: Cell) {
+  const sh = RULES.gases[c.gas!]?.sheds;
+  if (!sh || sh.every <= 0 || w.tick % sh.every !== 0) return;
+  if ((sh.chance ?? 1) < 1 && rand(w) >= sh.chance!) return;
+  applyElement(w, i % w.w, Math.floor(i / w.w), sh.element, { power: 1, direct: false });
+}
+
+/** A gas that rusts (steam, gases rusts) adds that much to the rust of metal under it each tick (World.RustUnder). */
+function rustUnder(c: Cell) {
+  const n = RULES.gases[c.gas!]?.rusts ?? 0;
+  if (n <= 0 || !(terrainDef(c).rustEvery ?? 0)) return;
+  c.rust = (c.rust ?? 0) + n;
+}
+
 function tickGas(w: World) {
   const p = RULES.sim.gas;
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (!c.gas) continue;
-    if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) c.gasAmt--;
+    rainFrom(w, c);
+    shedFrom(w, i, c);
+    if (!c.gas) continue;
+    rustUnder(c);
+    if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) {
+      c.gasAmt--;
+      condense(w, i, c);
+    }
     if (c.gasAmt <= 0) {
       c.gas = null;
       c.gasAmt = 0;
@@ -368,6 +575,7 @@ function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
   w.newMeteors = [];
   landMeteors(w);
+  landStars(w);
   if (now.period < p.calmPeriods && !w.weatherSet) return;
   const rain = rainOf(now), snow = snowOf(now);
   if (rain > 0) {
@@ -496,4 +704,19 @@ function doused(w: World, c: Cell): boolean {
 }
 
 /** How much of fire's spread the rain (or snow, by half) leaves, 1 when dry. */
+/** Whether rain is falling on the cells this tick (World.Raining). */
+const raining = (w: World) => (w.weather.period >= RULES.sim.weather.calmPeriods || !!w.weatherSet) && rainOf(w.weather) > 0;
+
+/**
+ * How much of its catch a cell keeps (soaked burns poorly, docs/MATERIALS.md): damp ground (raining, or damp
+ * from water soaked in, dampUntil) loses its terrain's soak.dampens of it; 1 when dry, or when what would
+ * catch is its cover (covers don't soak). World.Dryness.
+ */
+export function dryness(w: World, c: Cell): number {
+  if (coverBurns(c)) return 1;
+  const dampens = terrainDef(c).dampens ?? 0;
+  if (dampens <= 0 || !(raining(w) || w.tick < (c.dampUntil ?? 0))) return 1;
+  return 1 - dampens;
+}
+
 const rainDamp = (w: World) => 1 - (RULES.sim.weather.rain.dampen * wetOf(w.weather)) / 100;

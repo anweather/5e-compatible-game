@@ -153,6 +153,32 @@ public abstract class ShowcaseScript : MonoBehaviour
         yield return Wait(0.5f);
     }
 
+    /// <summary>The ground point in the middle of a w by h patch of world cells from <paramref name="o"/>.</summary>
+    protected Vector3 Mid(Vector2Int o, int w, int h)
+    {
+        var a = grid.CellCenter(o.x, o.y);
+        var b = grid.CellCenter(o.x + w - 1, o.y + h - 1);
+        var mid = (a + b) / 2f;
+        mid.y = grid.GroundAt(mid);
+        return mid;
+    }
+
+    /// <summary>Paints a w by h patch of world cells bare <paramref name="terrain"/>.</summary>
+    protected void Patch(Vector2Int o, int w, int h, string terrain)
+    {
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                World.Paint(o.x + x, o.y + y, terrain);
+                World.SetCover(o.x + x, o.y + y, null);
+                var c = World.At(o.x + x, o.y + y);
+                c.Water = 0;
+                c.Frozen = false;
+                c.Gas = null;
+                c.GasAmt = 0;
+            }
+    }
+
     protected IEnumerator Cast(string spell, int x, int y, int dir, float wait)
     {
         var cell = grid.YardCell(x, y);

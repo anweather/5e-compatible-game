@@ -66,6 +66,21 @@ public static class ProbeScenarios
             "the arc opens with Thunderwave highlighted, release picks it and camera look comes back, a tap swaps back to " +
             "Fire Bolt, B cancels without changing the spell, the d-pad steps to the next element and RB to the next spell " +
             "in it, no console errors."),
+        new Entry("looks", typeof(LooksProbe), 120f,
+            "The material effects staged in the yard at noon, one picture each (--shots): rust, sand and glass, a glow ball breaking, ice shards, mud, hot metal, " +
+            "Acid Splash and its stain, oil on the pond and fire across it, the shock flash, a window pane before, shattering and after. Checks: lightning fuses sand, " +
+            "a ball survives a drop, breaks on a hard throw and leaves nothing behind, mud slows the wizard, hot metal burns it, acid eats a cover, fire runs over oil on water, the charge runs " +
+            "through the pond, a crate tossed softly leaves a pane whole and one thrown hard breaks it, no console errors."),
+        new Entry("castlooks", typeof(CastLooksProbe), 200f,
+            "The new casts' looks alone: spelllooks' second half, for working on them. Shots with --shots."),
+        new Entry("spelllooks", typeof(SpellLooksProbe), 400f,
+            "The combo table's new spells staged in the yard, one picture or more each (--shots): Forge on sand, mud and metal; Falling Star's mark, fall, impact and embers; Whirlwind " +
+            "carrying sand, water, fire, smoke and snow; a dust cloud flashing in fire; Lava Pool; Rain Cloud; Sand Blast; Light at night; the pick's swing; cracked glass, ice and a frozen " +
+            "raider. Checks: what each does to the cells, no console errors."),
+        new Entry("combo", typeof(ComboProbe), 70f,
+            "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
+            "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +
+            "grimoire. Shots of each and of the whole HUD (--shots). Checks: each of those, no console errors."),
         new Entry("frost", typeof(FrostProbe), 40f,
             "Ray of Frost from the lake's shore (the dry square outside the yard nearest it with lake water two squares south) " +
             "out over the water. Checks: the shore was found, while it plays one frost beam (FrostBeam) runs from the wizard to the end " +

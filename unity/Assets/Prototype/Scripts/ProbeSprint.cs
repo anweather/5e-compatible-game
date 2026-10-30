@@ -12,6 +12,7 @@ public class SprintProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
+        RadialPad();
         pad = InputSystem.AddDevice<Gamepad>("ProbePad");
         var up = new Vector2(0f, 1f);
 

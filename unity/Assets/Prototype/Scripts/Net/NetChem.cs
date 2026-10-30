@@ -36,13 +36,17 @@ using UnityEngine;
 //   tick's batch, so the waves start on the same tick everywhere. The waves
 //   and raiders are then pure chemistry: every machine runs them, and the
 //   checksum's last part is their hash (World.DefenseHash).
+// - Players' combo input (ComboCommand: an element loaded, a cast cancelled, the d-pad's spells)
+//   travels like a cast: anyone asks, the host names the player and stamps it into the next
+//   batch, and every machine drains the same meters. A cast that goes off is then aimed by the
+//   player whose it is (SpellCaster.Combos), as an ordinary cast.
 // - The host can reset the world for everyone (J-014, StampReset): every machine hears
 //   ResetComing at once (a countdown), and at that tick rebuilds the world from its seed
 //   (ChemGrid.ResetWorld), the mods in force re-stamped in the same batch. The network's ticks
 //   keep counting; the rebuilt world's own tick starts again at 0 (tickBase), and so do its clock
 //   and weather. The host keeps the history from the last reset on only.
-// - A late joiner asks for the history (casts, rule switches, prop effects, defense commands
-//   and chunk switches) and replays it from tick 0, or from the last reset, which it replays first.
+// - A late joiner asks for the history (casts, rule switches, prop effects, defense commands,
+//   combo input and chunk switches) and replays it from tick 0, or from the last reset, which it replays first.
 [RequireComponent(typeof(ChemGrid))]
 public class NetChem : NetworkBehaviour
 {
@@ -63,6 +67,8 @@ public class NetChem : NetworkBehaviour
     readonly List<ChunkIntent> chunkHistory = new();
     readonly List<DefenseIntent> pendingDefense = new();
     readonly List<DefenseIntent> defenseHistory = new();
+    readonly List<ComboIntent> pendingCombos = new();
+    readonly List<ComboIntent> comboHistory = new();
     // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
     readonly HashSet<(int cx, int cy)> plannedAwake = new();
     // Plans the switches, lingering chunks still live; host only, since only the switches are shared.
@@ -77,6 +83,10 @@ public class NetChem : NetworkBehaviour
     readonly Dictionary<int, CastIntent[]> liveCasts = new();
     // Defense commands stamped for a tick, sent just before its batch, waiting to join it.
     readonly Dictionary<int, DefenseIntent[]> defenseFor = new();
+    // The same for combo input.
+    readonly Dictionary<int, ComboIntent[]> combosFor = new();
+    // Joining: the combo input of the history, sent just before the rest of it.
+    ComboIntent[] pastCombos = System.Array.Empty<ComboIntent>();
     readonly Dictionary<int, string> hostHashes = new();
     int knownUpTo;
     bool synced;
@@ -156,6 +166,10 @@ public class NetChem : NetworkBehaviour
         pendingDefense.Clear();
         defenseHistory.Clear();
         defenseFor.Clear();
+        combosFor.Clear();
+        pastCombos = System.Array.Empty<ComboIntent>();
+        pendingCombos.Clear();
+        comboHistory.Clear();
         plannedAwake.Clear();
         foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
         planner = new ChunkPlanner();
@@ -211,6 +225,14 @@ public class NetChem : NetworkBehaviour
     /// host stamps it into the next tick's batch, so every machine starts the waves on the same tick.
     /// </summary>
     public void RequestDefense(DefenseCommand command) => RequestDefenseRpc(DefenseIntent.From(command, 0));
+
+    /// <summary>This player's name in the core's casts (World.CastOf).</summary>
+    public string LocalPlayer => PlayerName(NetworkManager.LocalClientId);
+
+    static string PlayerName(ulong clientId) => $"p{clientId}";
+
+    /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick.</summary>
+    public void RequestCombo(ComboCommand command) => RequestComboRpc(ComboIntent.From(command, 0));
 
     /// <summary>Host only: stamps a checked rule switch into the next tick's batch, for every machine.</summary>
     public void StampRules(RuleSet next)
@@ -282,12 +304,13 @@ public class NetChem : NetworkBehaviour
             var chunks = PlanChunks();
             chunkHistory.AddRange(chunks);
             StampDefense();
+            StampCombos();
 
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
             // Never the hash of a tick still part done (World.StepSome): that one is skipped, and peers check the next.
             int hashTick = NetTick;
             string hash = hashTick % HashEvery == 0 && !grid.World.TickInProgress ? Checksum(grid) : "";
-            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, hashTick, new FixedString64Bytes(hash));
+            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, hashTick, new FixedString128Bytes(hash));
         }
     }
 
@@ -314,6 +337,7 @@ public class NetChem : NetworkBehaviour
         effectHistory.RemoveAll(e => e.Tick < hostTick);
         chunkHistory.RemoveAll(c => c.Tick < hostTick);
         defenseHistory.RemoveAll(d => d.Tick < hostTick);
+        comboHistory.RemoveAll(c => c.Tick < hostTick);
         ruleHistory.Clear();
         ruleHistory.Add(rules);
         historyFrom = hostTick;
@@ -337,6 +361,32 @@ public class NetChem : NetworkBehaviour
 
     [Rpc(SendTo.Server)]
     void RequestDefenseRpc(DefenseIntent command) => pendingDefense.Add(command);
+
+    // As StampDefense: the input asked for since the last tick goes out just before this tick's batch.
+    void StampCombos()
+    {
+        if (pendingCombos.Count == 0) return;
+        var stamped = pendingCombos.ToArray();
+        pendingCombos.Clear();
+        for (int i = 0; i < stamped.Length; i++) stamped[i].Tick = hostTick;
+        comboHistory.AddRange(stamped);
+        CombosStampedRpc(hostTick, stamped);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    void CombosStampedRpc(int tick, ComboIntent[] commands)
+    {
+        if (batches.TryGetValue(tick, out var batch)) batch.Combos.AddRange(commands.Select(c => c.ToCommand()));
+        else combosFor[tick] = commands;
+    }
+
+    // The sender is who the input is for, whatever it says.
+    [Rpc(SendTo.Server)]
+    void RequestComboRpc(ComboIntent command, RpcParams rpc = default)
+    {
+        command.Player = new FixedString32Bytes(PlayerName(rpc.Receive.SenderClientId));
+        pendingCombos.Add(command);
+    }
 
     [Rpc(SendTo.ClientsAndHost)]
     void DefenseStampedRpc(int tick, DefenseIntent[] commands)
@@ -377,8 +427,10 @@ public class NetChem : NetworkBehaviour
     [Rpc(SendTo.Server)]
     void RequestHistoryRpc(RpcParams rpc = default)
     {
+        var joiner = RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp);
+        SendComboHistoryRpc(comboHistory.ToArray(), joiner);
         SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defenseHistory.ToArray(),
-            RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
+            joiner);
     }
 
     [Rpc(SendTo.Server)]
@@ -400,11 +452,12 @@ public class NetChem : NetworkBehaviour
 
     /// <summary>
     /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
-    /// things' (world/things.json: the props' stable ids) and, last, the sky's (Hasten Time's clock
-    /// and Control Weather's weather, World.SkyHash; a sky that differs reports like the cells).
+    /// things' (world/things.json: the props' stable ids), the sky's (Hasten Time's clock and Control
+    /// Weather's weather, World.SkyHash; a sky that differs reports like the cells), the defense's and,
+    /// last, the players' casts and grimoires (World.CastHash).
     /// </summary>
     static string Checksum(ChemGrid grid) =>
-        grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash();
+        grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash();
 
     // --- everyone --------------------------------------------------------------
 
@@ -418,15 +471,19 @@ public class NetChem : NetworkBehaviour
     }
 
     [Rpc(SendTo.ClientsAndHost)]
-    void ApplyBatchRpc(int tick, CastIntent[] casts, EffectIntent[] effects, RuleChangeMsg rules, ChunkIntent[] chunks, int hashTick, FixedString64Bytes hash)
+    void ApplyBatchRpc(int tick, CastIntent[] casts, EffectIntent[] effects, RuleChangeMsg rules, ChunkIntent[] chunks, int hashTick, FixedString128Bytes hash)
     {
         batches[tick] = new TickBatch(tick, casts.Select(c => c.ToCommand()), rules.Has ? rules.ToChange().Mods : null, effects.Select(e => e.ToCommand()),
             chunks.Select(c => c.ToSwitch())) { Reset = rules.Has && rules.Reset };
         if (defenseFor.Remove(tick, out var defense)) batches[tick].Defense.AddRange(defense.Select(d => d.ToCommand()));
+        if (combosFor.Remove(tick, out var combos)) batches[tick].Combos.AddRange(combos.Select(c => c.ToCommand()));
         if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
         if (synced) ExtendKnown();
     }
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    void SendComboHistoryRpc(ComboIntent[] combos, RpcParams rpc = default) => pastCombos = combos;
 
     [Rpc(SendTo.SpecifiedInParams)]
     void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, ChunkIntent[] chunks, DefenseIntent[] defense,
@@ -437,6 +494,7 @@ public class NetChem : NetworkBehaviour
         int from = ruleChanges.Where(r => r.Reset).Select(r => r.Tick).DefaultIfEmpty(1).Max();
         var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
             effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), defense.Select(d => (d.Tick, d.ToCommand())), from);
+        TickBatch.AddCombos(timeline, pastCombos.Select(c => (c.Tick, c.ToCommand())));
         for (int t = from; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
         tickBase = from - 1;
@@ -505,6 +563,7 @@ public class NetChem : NetworkBehaviour
     void Applied(int tick)
     {
         if (liveCasts.Remove(tick, out var casts)) Shove(casts);
+        grid.NoteTickDone();
         CheckHash(tick);
         TickApplied?.Invoke(tick, tick % HashEvery == 0 ? Checksum(grid) : null);
     }
@@ -690,6 +749,34 @@ public struct ChunkIntent : INetworkSerializable
         serializer.SerializeValue(ref CY);
         serializer.SerializeValue(ref Tick);
         serializer.SerializeValue(ref Active);
+    }
+}
+
+/// <summary>A player's combo input (Chem.ComboCommand), stamped with the sim tick it takes effect on.</summary>
+public struct ComboIntent : INetworkSerializable
+{
+    public byte Kind;
+    public FixedString32Bytes Player, Element;
+    public int Step, Tick;
+
+    public static ComboIntent From(ComboCommand c, int tick) => new ComboIntent
+    {
+        Kind = (byte)c.Kind,
+        Player = new FixedString32Bytes(c.Player ?? ""),
+        Element = new FixedString32Bytes(c.Element ?? ""),
+        Step = c.Step,
+        Tick = tick,
+    };
+
+    public ComboCommand ToCommand() => new ComboCommand(Player.ToString(), (ComboCommandKind)Kind, Element.Length > 0 ? Element.ToString() : null, Step);
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref Kind);
+        serializer.SerializeValue(ref Player);
+        serializer.SerializeValue(ref Element);
+        serializer.SerializeValue(ref Step);
+        serializer.SerializeValue(ref Tick);
     }
 }
 

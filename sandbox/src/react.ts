@@ -1,11 +1,14 @@
 // The rule interpreter: an element arrives at a cell (from a spell, a
 // critter, or spreading fire) and reactions.json decides what happens.
-import { RULES, entityCondHolds, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
+import { RULES, VERB_STATUS, entityCondHolds, hasComponent, statusTicks, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
 import {
   type Cell, type Dir, type Entity, type World,
-  DX, DY, addGas, burns, cellAt, coverBurns, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
+  DX, DY, addGas, burns, cellAt, coverBurns, coverHasTag, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
   logOnce, neighbours, rand, terrainDef,
 } from "./world.ts";
+import { awayDir, push, shoveRaider } from "./entities.ts";
+import { reshape } from "./terraform.ts";
+import { dryness } from "./sim.ts";
 
 export interface Ctx {
   power: number;
@@ -30,7 +33,7 @@ function index() {
   indexedEntity = RULES.entityRules;
 }
 
-function matches(c: Cell, cond: CellCond | undefined): boolean {
+export function matches(c: Cell, cond: CellCond | undefined): boolean {
   if (!cond) return true;
   if (cond.cover && !(c.cover !== null && cond.cover.includes(c.cover))) return false;
   if (cond.fire !== undefined) {
@@ -41,10 +44,12 @@ function matches(c: Cell, cond: CellCond | undefined): boolean {
   if (cond.fireBelow !== undefined && c.fire >= cond.fireBelow) return false;
   if (cond.water !== undefined && (c.water > 0 && !c.frozen) !== cond.water) return false;
   if (cond.frozen !== undefined && (c.frozen && c.water > 0) !== cond.frozen) return false;
+  if (cond.melts !== undefined && (c.cover !== null && (RULES.covers[c.cover]?.meltWater ?? 0) > 0) !== cond.melts) return false;
   if (cond.gas !== undefined && (cond.gas === "any" ? c.gas === null : c.gas !== cond.gas)) return false;
   if (cond.terrainTag && !hasTag(c, cond.terrainTag)) return false;
   if (cond.notTerrainTag && hasTag(c, cond.notTerrainTag)) return false;
   if (cond.conductive !== undefined && isConductive(c) !== cond.conductive) return false;
+  if (cond.hot !== undefined && ((c.heat ?? 0) > 0) !== cond.hot) return false;
   return true;
 }
 
@@ -61,7 +66,7 @@ function applies(w: World, c: Cell, cond: CellCond | undefined, power: number): 
 }
 
 /** Lays a cover (or with null clears it); one that lasts (thorns) starts its cell's life (World.PutCover). */
-function putCover(c: Cell, cover: string | null) {
+export function putCover(c: Cell, cover: string | null) {
   c.cover = cover;
   const lasts = cover !== null ? (RULES.covers[cover]?.lasts ?? 0) : 0;
   if (lasts > 0) c.life = lasts;
@@ -82,16 +87,92 @@ function fill(text: string, c: Cell): string {
     .replace("{terrain}", terrainDef(c).name.toLowerCase());
 }
 
+/**
+ * A dissolve effect (World.Dissolve): the cell's cover or terrain, if `element` is what dissolves it, is eaten
+ * away into what it leaves (a cover can leave none).
+ */
+function dissolve(c: Cell, what: "cover" | "terrain", element: string): boolean {
+  if (what === "cover") {
+    const cv = c.cover !== null ? RULES.covers[c.cover] : undefined;
+    if (!cv || cv.dissolvedBy !== element) return false;
+    putCover(c, cv.dissolvesTo ?? null);
+    return true;
+  }
+  const t = terrainDef(c);
+  if (t.dissolvedBy !== element || !t.dissolvesTo) return false;
+  c.t = t.dissolvesTo;
+  return true;
+}
+
+/** A bake effect (World.Bake): heat turns the terrain into its bakesTo. */
+function bake(c: Cell): boolean {
+  const to = terrainDef(c).bakesTo;
+  if (!to) return false;
+  c.t = to;
+  return true;
+}
+
+/** A meltCover effect (World.MeltCover): heat turns the cover into its meltsTo, and its meltWater. */
+function meltCover(c: Cell): boolean {
+  const cv = c.cover !== null ? RULES.covers[c.cover] : undefined;
+  if (!cv?.meltWater) return false;
+  putCover(c, cv.meltsTo ?? null);
+  c.water = Math.min(RULES.sim.water.maxLevel, c.water + cv.meltWater);
+  return true;
+}
+
+const flashOf = (c: Cell) => (c.gas ? RULES.gases[c.gas]?.burn?.flash : undefined);
+
+/**
+ * Fire has met a gas that flashes (burn.flash: dust): the whole cloud joined to (x, y) goes up at once and is used up.
+ * Each of its cells burns for a moment at the flash's fire, the fire reaches what's there through the rules like any
+ * other, and it shoves things away from where it caught. World.FlashGas, which shoves raiders the same way.
+ */
+export function flashGas(w: World, x: number, y: number): void {
+  const first = flashOf(cellAt(w, x, y)!);
+  if (!first) return;
+  const seen = new Set([idx(w, x, y)]);
+  const cloud: [number, number][] = [[x, y]];
+  const flashes = cloud.map(([cx, cy]) => flashOf(cellAt(w, cx, cy)!)!);
+  for (let k = 0; k < cloud.length; k++) {
+    for (const [nx, ny] of neighbours(w, cloud[k]![0], cloud[k]![1])) {
+      const next = flashOf(cellAt(w, nx, ny)!);
+      if (!next || seen.has(idx(w, nx, ny))) continue;
+      seen.add(idx(w, nx, ny));
+      cloud.push([nx, ny]);
+      flashes.push(next);
+    }
+  }
+  for (const [cx, cy] of cloud) {
+    const c = cellAt(w, cx, cy)!;
+    c.gas = null;
+    c.gasAmt = 0;
+  }
+  if (first.log) logOnce(w, `flash#${w.tick}`, first.log, "notable");
+  cloud.forEach(([cx, cy], k) => {
+    const c = cellAt(w, cx, cy)!, f = flashes[k]!;
+    c.fire = Math.max(c.fire, f.fire);
+    c.fuel = Math.max(c.fuel, f.fire);
+    applyElement(w, cx, cy, "fire", { power: f.fire, direct: false });
+    const e = entityAt(w, cx, cy);
+    if (!e || !f.push) return;
+    // A raider is shoved the same way in the C# core (World.ShoveRaider); anything else as any blast shoves it.
+    if (RULES.entities[e.kind]?.raider) shoveRaider(w, e, awayDir(cx - x, cy - y), f.push);
+    else push(w, e, awayDir(cx - x, cy - y), f.push, false);
+  });
+}
+
 /** Applies one element to one cell, then to whatever stands there. */
 export function applyElement(w: World, x: number, y: number, element: string, ctx: Ctx): void {
   const c = cellAt(w, x, y);
   if (!c) return;
   index();
+  if (element === "fire") flashGas(w, x, y);
   const before = fill("{cover}|{terrain}", c);
   for (const rule of byElement.get(element) ?? []) {
     if (!applies(w, c, rule.if, ctx.power)) continue;
     let changed = rule.do.length === 0;
-    for (const eff of rule.do) changed = runEffect(w, x, y, c, eff, ctx) || changed;
+    for (const eff of rule.do) changed = runEffect(w, x, y, c, eff, ctx, element) || changed;
     if (changed && rule.log && (ctx.direct || rule.notable)) {
       const [cover, terrain] = before.split("|");
       const text = rule.log.replace("{cover}", cover!).replace("{terrain}", terrain!);
@@ -105,13 +186,25 @@ export function applyElement(w: World, x: number, y: number, element: string, ct
 
 /**
  * A status's ticks, but burning on a thing of a flammable material (a wooden crate) catches only with the
- * material's flammability and lasts its fuel; 0 when it didn't catch (World.MaterialBurn).
+ * material's flammability and lasts its fuel, both less its soak.dampens while the thing is wet; 0 when it
+ * didn't catch (World.MaterialBurn).
  */
-function materialBurn(w: World, def: EntityDef, status: string, ticks: number): number {
+function materialBurn(w: World, e: Entity, def: EntityDef, status: string, ticks: number): number {
   const m = def.material ? RULES.terrain[def.material] : undefined;
   if (status !== "burning" || !m || !burns(m)) return ticks;
-  if (rand(w) >= (m.flammability ?? 0)) return 0;
-  return m.fuel ?? ticks;
+  const dryness = (e.status["wet"] ?? 0) > 0 ? 1 - (m.dampens ?? 0) : 1;
+  if (rand(w) >= (m.flammability ?? 0) * dryness) return 0;
+  return dampFuel(m.fuel ?? ticks, dryness);
+}
+
+/**
+ * A statusOf effect (World.MaterialStatus): the status the verb gives (burn burning, freeze frozen, soak wet), for
+ * as many ticks as the thing's material says (flesh burns 9, bone not at all).
+ */
+function materialStatus(e: Entity, def: EntityDef, verb: string) {
+  const ticks = statusTicks(def.material ? RULES.terrain[def.material] : undefined, verb);
+  const status = VERB_STATUS[verb];
+  if (ticks > 0 && status) e.status[status] = Math.max(e.status[status] ?? 0, ticks);
 }
 
 /** Returns the damage multiplier the entity's state adds (wet + lightning = 2). */
@@ -125,9 +218,10 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
     for (const eff of rule.do) {
       if (eff.status)
         for (const [k, v] of Object.entries(eff.status)) {
-          const ticks = materialBurn(w, def, k, v);
+          const ticks = materialBurn(w, e, def, k, v);
           if (ticks > 0) e.status[k] = Math.max(e.status[k] ?? 0, ticks);
         }
+      if (eff.statusOf) materialStatus(e, def, eff.statusOf);
       if (eff.clear) delete e.status[eff.clear];
       if (eff.damageMul) mul *= eff.damageMul;
     }
@@ -139,7 +233,8 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
   return mul;
 }
 
-export function ignite(c: Cell, intensity: number | "cover"): boolean {
+/** Lights flammable terrain or cover; caught at `dryness` (sim.ts dryness), it burns that much of its fuel (World.Ignite). */
+export function ignite(c: Cell, intensity: number | "cover", dryness = 1): boolean {
   if (intensity === "cover") {
     if (!coverBurns(c)) return false;
     const cv = RULES.covers[c.cover!]!;
@@ -152,10 +247,13 @@ export function ignite(c: Cell, intensity: number | "cover"): boolean {
   const t = terrainDef(c);
   if (!burns(t) && !coverBurns(c)) return false;
   if (c.fire >= intensity) return false;
-  if (c.fire === 0) c.fuel = coverBurns(c) ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5);
+  if (c.fire === 0) c.fuel = dampFuel(coverBurns(c) ? (RULES.covers[c.cover!]!.fuel ?? 5) : (t.fuel ?? 5), dryness);
   c.fire = intensity;
   return true;
 }
+
+/** Fuel caught damp (soaked burns poorly, docs/MATERIALS.md): scaled by the dryness, rounded down, at least 1 (World.DampFuel). */
+export const dampFuel = (fuel: number, dryness: number) => (dryness >= 1 ? fuel : Math.max(1, Math.floor(fuel * dryness)));
 
 /** Moves water out of a cell that just became solid. */
 export function displaceWater(w: World, x: number, y: number) {
@@ -176,6 +274,83 @@ export function displaceWater(w: World, x: number, y: number) {
   }
   c.water = 0;
   c.frozen = false;
+}
+
+/** Ice that cracks, on this cell (World.IceOver); a mod's ice that doesn't crack doesn't shatter either. */
+function iceOver(c: Cell) {
+  const ice = c.frozen ? RULES.terrain.ice : undefined;
+  return ice?.cracks ? ice : undefined;
+}
+
+const logShattered = (w: World, stage: { name: string }) => logOnce(w, `shatter#${stage.name}#${w.tick}`, `The ${stage.name.toLowerCase()} shatters`, "notable");
+
+/**
+ * A hit on the cell: a blast, ground shaken under it, a heavy thing or lightning on ice. Its ice first, else its
+ * terrain if that has a shatter.leaves (a window pane, glass ground); fire does nothing to it. With shatter.cracks
+ * the first hit cracks it (once a tick, so one blast is one hit) and the next shatters it (World.Shatter). Returns
+ * whether it shattered.
+ */
+export function shatter(w: World, x: number, y: number): boolean {
+  const c = cellAt(w, x, y);
+  if (!c) return false;
+  const ice = iceOver(c), t = terrainDef(c);
+  if (!ice && !t.shattersTo) return false;
+  const stage = ice ?? t;
+  if (stage.cracks) {
+    if (c.cracked === w.tick + 1) return false;
+    if (!c.cracked) {
+      crack(w, x, y, c, stage.name);
+      return false;
+    }
+  }
+  if (ice) c.frozen = false;
+  else c.t = t.shattersTo!;
+  delete c.cracked;
+  logShattered(w, stage);
+  return true;
+}
+
+/** Cracked, with a warning if a creature stands on it (World.Crack). */
+function crack(w: World, x: number, y: number, c: Cell, stageName: string) {
+  c.cracked = w.tick + 1;
+  const name = stageName.toLowerCase();
+  const on = entityAt(w, x, y), def = on && RULES.entities[on.kind];
+  const line = def && hasComponent(def, "creature") ? `The ${name} cracks under ${def.name}` : `The ${name} cracks`;
+  logOnce(w, `crack#${line}#${w.tick}`, line, "notable");
+}
+
+/** A shatter effect (World.Struck): true if the hit cracked or shattered something. */
+function struck(w: World, x: number, y: number, c: Cell): boolean {
+  const was = c.cracked;
+  return shatter(w, x, y) || c.cracked !== was;
+}
+
+/** A blast's shock round (x, y) (World.BlastAround). */
+export function blastAround(w: World, x: number, y: number, radius: number) {
+  for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) shatter(w, x + dx, y + dy);
+}
+
+/** A wall at (x, y) is gone: a pane beside it with no wall left to stand in falls (World.WallLost). */
+export function wallLost(w: World, x: number, y: number) {
+  for (const [nx, ny] of neighbours(w, x, y)) {
+    const n = cellAt(w, nx, ny)!;
+    const t = terrainDef(n);
+    // A pane with nothing to stand in goes at once, cracked or not.
+    if (isBlocking(n) && t.shattersTo && !held(w, nx, ny)) {
+      n.t = t.shattersTo;
+      delete n.cracked;
+      logShattered(w, t);
+    }
+  }
+}
+
+/** Whether a wall stands beside a pane (panes don't hold each other up). */
+function held(w: World, x: number, y: number): boolean {
+  for (const [nx, ny] of neighbours(w, x, y)) {
+    const n = cellAt(w, nx, ny)!;
+    if (isBlocking(n) && !terrainDef(n).shattersTo) return true;
+  }
+  return false;
 }
 
 function conduct(w: World, x: number, y: number, charge: number): boolean {
@@ -200,9 +375,61 @@ function conduct(w: World, x: number, y: number, charge: number): boolean {
   return true;
 }
 
-function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ctx): boolean {
+/**
+ * Moves a cell's gas one cell along dir (pushGas: a gust carries smoke, fog and steam). A different gas there is
+ * shoved on ahead first, so gases neither merge nor vanish; against a wall it stays. True if it moved (World.ShoveGas).
+ */
+export function shoveGas(w: World, x: number, y: number, dir: Dir): boolean {
+  const c = cellAt(w, x, y)!;
+  const nx = x + DX[dir], ny = y + DY[dir];
+  const n = cellAt(w, nx, ny);
+  if (!n || isBlocking(n)) return false;
+  if (n.gas !== null && n.gas !== c.gas && !shoveGas(w, nx, ny, dir)) return false;
+  addGas(n, c.gas!, c.gasAmt);
+  c.gas = null;
+  c.gasAmt = 0;
+  return true;
+}
+
+/**
+ * A sand blast (World.Scour): a cover that scours is stripped; else the terrain becomes its scoursTo (rusted metal
+ * back to metal, a log wall worn thin); else raised ground that wears is worn down a step.
+ */
+function scour(w: World, x: number, y: number, c: Cell): boolean {
+  if (c.cover !== null && coverHasTag(c, "scourable")) {
+    putCover(c, null);
+    return true;
+  }
+  const t = terrainDef(c);
+  if (t.scoursTo) {
+    const wall = isBlocking(c);
+    c.t = t.scoursTo;
+    if (wall && !isBlocking(c)) wallLost(w, x, y);
+    return true;
+  }
+  return !!t.scourWears && c.h > 0 && reshape(w, x, y, -1, undefined, Number.MAX_SAFE_INTEGER);
+}
+
+/** A floating cover moves a cell along dir onto open water with no cover, its slick's reach with it (World.PushCover). */
+function pushCover(w: World, x: number, y: number, c: Cell, dir: Dir): boolean {
+  if (c.cover === null || !(RULES.covers[c.cover]?.floatEvery ?? 0)) return false;
+  const n = cellAt(w, x + DX[dir], y + DY[dir]);
+  if (!n || isBlocking(n) || n.cover !== null || n.water === 0 || n.frozen) return false;
+  n.cover = c.cover;
+  if (c.slick) n.slick = c.slick;
+  else delete n.slick;
+  n.fire = c.fire;
+  n.fuel = c.fuel;
+  c.cover = null;
+  delete c.slick;
+  c.fire = 0;
+  c.fuel = 0;
+  return true;
+}
+
+function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ctx, element: string): boolean {
   const max = RULES.sim.water.maxLevel;
-  if (eff.ignite !== undefined) return ignite(c, eff.ignite);
+  if (eff.ignite !== undefined) return ignite(c, eff.ignite, dryness(w, c));
   if (eff.boil !== undefined) {
     if (c.water === 0 || c.frozen) return false;
     c.water--;
@@ -258,10 +485,23 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     }
     return true;
   }
+  if (eff.dissolve !== undefined) return dissolve(c, eff.dissolve, element);
+  if (eff.heat) {
+    const hot = terrainDef(c).hotFor ?? 0;
+    if (hot <= 0 || (c.heat ?? 0) >= hot) return false;
+    c.heat = hot;
+    return true;
+  }
+  if (eff.shatter) return struck(w, x, y, c);
+  if (eff.scour) return scour(w, x, y, c);
+  if (eff.pushCover) return ctx.dir !== undefined && pushCover(w, x, y, c, ctx.dir);
+  if (eff.bake) return bake(c);
+  if (eff.meltCover) return meltCover(c);
   if (eff.break) {
     const to = terrainDef(c).breaksTo;
     if (!to) return false;
     c.t = to;
+    wallLost(w, x, y);
     return true;
   }
   if (eff.setTerrain !== undefined) {
@@ -286,14 +526,7 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     if (inBounds(w, nx, ny)) applyElement(w, nx, ny, "fire", { power: 2, direct: false });
     return true;
   }
-  if (eff.pushGas) {
-    if (!c.gas || ctx.dir === undefined) return false;
-    const n = cellAt(w, x + DX[ctx.dir], y + DY[ctx.dir]);
-    if (n && !isBlocking(n)) addGas(n, c.gas, c.gasAmt);
-    c.gas = null;
-    c.gasAmt = 0;
-    return true;
-  }
+  if (eff.pushGas) return !!c.gas && ctx.dir !== undefined && shoveGas(w, x, y, ctx.dir);
   if (eff.clearGas) {
     if (!c.gas) return false;
     c.gas = null;

@@ -1,10 +1,10 @@
 {
-  "wizard":  { "name": "Wizard", "hp": 12, "mass": 1, "components": ["creature"], "player": true },
-  "goblin":  { "name": "Goblin", "hp": 10, "mass": 1, "components": ["creature"] },
+  "wizard":  { "name": "Wizard", "material": "flesh", "hp": 12, "mass": 1, "components": ["creature"], "player": true },
+  "goblin":  { "name": "Goblin", "material": "flesh", "hp": 10, "mass": 1, "components": ["creature"] },
   "crate":   { "name": "Crate", "material": "timber", "hp": 6, "mass": 1 },
   "barrel":  { "name": "Oil barrel", "material": "timber", "hp": 3, "mass": 1, "explodes": { "cover": "oil", "radius": 1, "fire": 3, "push": 2, "damage": [2, 6], "crater": { "radius": 1, "depth": 1 } } },
   "boulder": { "name": "Boulder", "material": "rock", "hp": 999, "mass": 3, "components": ["heavy"] },
-  "bone-hound":   { "name": "Bone hound", "hp": 6, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 3, "weak": ["fire"] } },
-  "ash-crab":     { "name": "Ash crab", "hp": 9, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 4, "weak": ["cold", "lightning"], "resist": ["fire"] } },
-  "giant-spider": { "name": "Giant spider", "hp": 12, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 5, "weak": ["lightning"] } }
+  "bone-hound":   { "name": "Bone hound", "material": "bone", "hp": 6, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 3, "weak": ["fire"] } },
+  "ash-crab":     { "name": "Ash crab", "material": "chitin", "hp": 9, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 4, "weak": ["cold", "lightning"], "resist": ["fire"] } },
+  "giant-spider": { "name": "Giant spider", "material": "chitin", "hp": 12, "mass": 1, "components": ["creature"], "raider": { "ticksPerSquare": 5, "weak": ["lightning"] } }
 }

@@ -91,8 +91,9 @@ public sealed class FireLightPool
             {
                 for (int x = x0; x < x1; x++)
                 {
-                    int f = cells[y * world.W + x].Fire;
-                    if (f > 0) burning.Add((x, y, f));
+                    var c = cells[y * world.W + x];
+                    if (c.Fire > 0) burning.Add((x, y, c.Fire));
+                    else if (CellLavaMesh.IsLava(c)) burning.Add((x, y, 1));
                 }
             }
         }

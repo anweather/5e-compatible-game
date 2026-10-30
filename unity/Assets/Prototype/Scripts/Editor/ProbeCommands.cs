@@ -303,9 +303,24 @@ public static class ProbeCommands
         Directory.CreateDirectory(Path.GetDirectoryName(ResultPath));
         string temp = ResultPath + ".tmp";
         File.WriteAllText(temp, result.ToString(Formatting.Indented));
-        if (File.Exists(ResultPath)) File.Delete(ResultPath);
-        File.Move(temp, ResultPath);
+        // The waiting `probe result` may be reading the old file: losing this write would leave the
+        // run "running" for good, in Play mode, so it's tried again for a moment.
+        for (int tries = 1; tries < WriteTries; tries++)
+        {
+            try
+            {
+                File.Copy(temp, ResultPath, true);
+                return;
+            }
+            catch (IOException)
+            {
+                System.Threading.Thread.Sleep(WriteRetryMs);
+            }
+        }
+        File.Copy(temp, ResultPath, true);
     }
+
+    const int WriteTries = 40, WriteRetryMs = 50;
 
     static JObject ReadResult()
     {

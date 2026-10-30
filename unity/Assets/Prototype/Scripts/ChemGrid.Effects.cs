@@ -233,9 +233,9 @@ public partial class ChemGrid
     // reduced emission; a full effect per cell turns into a wall.
     void RenderGas(View v, Cell c, int x, int y, Vector3 center, float ground, bool showFx)
     {
-        // Fog Cloud's fog is a bank of soft billboards on every square of it (FogBank), not an effect.
-        bool fog = c.Gas == GasIds.Fog && c.GasAmt > 0;
-        if (fog || v.fogged) Fog.Set(y * World.W + x, center, ground, fog ? c.GasAmt : 0, World.Rules.Sim.Gas.MaxAmount);
+        // Fog, dust and every cloud are a bank of soft billboards on every square of them (FogBank), not an effect.
+        bool fog = c.GasAmt > 0 && FogBank.Draws(c.Gas);
+        if (fog || v.fogged) Fog.Set(y * World.W + x, center, ground, fog ? c.GasAmt : 0, World.Rules.Sim.Gas.MaxAmount, c.Gas);
         v.fogged = fog;
         string kind = c.Gas != null && c.GasAmt > 0 && !fog ? c.Gas : null;
         var prefab = GasPrefab(kind);
@@ -313,10 +313,15 @@ public partial class ChemGrid
 
     // With the sparks effect, a burst plays when a cell becomes charged, from the effects pool and a
     // few new ones a frame (a cell that misses this frame's share asks again the next, while it is
-    // still charged); without it, a glowing plate shows while it is.
-    void RenderCharge(View v, Cell c, Vector3 center, float ground)
+    // still charged); without it, a glowing plate shows while it is. Charged water flashes too, the
+    // whole connected pond at once (CellFxTexture, drawn by the water's shader: no objects).
+    void RenderCharge(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
         bool on = c.Charge > 0;
+        bool flash = on && c.Water > 0 && !c.Frozen;
+        if (flash && !v.flashed) cellFx.Flash(x, y);
+        v.flashed = flash;
+        if (on && !v.charged) NoteCharged(c, new Vector3(center.x, ground, center.z));
         if (sparksFx != null)
         {
             if (on && !v.charged)

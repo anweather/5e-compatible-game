@@ -15,6 +15,7 @@ public class RollProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
+        RadialPad();
         pad = InputSystem.AddDevice<Gamepad>("ProbePad");
         wizard.TryGetComponent<DodgeRoll>(out var roll);
         wizard.TryGetComponent<Animator>(out var animator);

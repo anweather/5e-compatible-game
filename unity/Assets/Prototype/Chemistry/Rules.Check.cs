@@ -18,6 +18,7 @@ namespace Chem
             check.Items();
             check.Components();
             check.Groups();
+            check.Combos();
             check.Numbers();
             return check.Errors;
         }
@@ -26,15 +27,15 @@ namespace Chem
         {
             static readonly HashSet<string> CondKeys = new HashSet<string>
             {
-                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance",
+                "cover", "fire", "fireBelow", "water", "frozen", "melts", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb",
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
-                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
-                "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
+                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve", "scour", "pushCover",
+                "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
-            static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift" };
+            static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift", "light" };
 
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate", "radiusPerCharge" };
             static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n", "wave" };
@@ -117,9 +118,64 @@ namespace Chem
                 if (Truthy(s["element"]) && !IsElement(s["element"])) Errors.Add($"spell {Show(s["id"])}: unknown element {Show(s["element"])}");
                 if (!Shapes.Contains(Text(s["shape"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown shape {Show(s["shape"])}");
                 if (!Truthy(s["name"])) Errors.Add($"spell {Show(s["id"])}: needs a name");
+                if (s["inward"] != null && s["inward"].Type != JTokenType.Boolean) Errors.Add($"spell {Show(s["id"])}: inward must be true or false");
+                if (s["light"] != null && !(s["light"] is JObject l && new[] { "bright", "dim" }.All(k => l[k] != null && IsWholeNumber(l[k]) && (double)l[k] >= 0)))
+                    Errors.Add($"spell {Show(s["id"])}: light must be {{ bright, dim }}, whole feet from 0");
                 if (s["effect"] != null && !SpellEffects.Contains(Text(s["effect"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown effect {Show(s["effect"])}");
                 if (Text(s["effect"]) == "terraform") TerraformRefs(s);
                 if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1, radius from 0 and strength from 1");
+                CraterLeaves(s);
+                PullEvery(s);
+                Landing(s);
+                Carries(s);
+            }
+
+            // A delayed cast's ticks, what it scatters and the element at its core.
+            void Landing(JToken s)
+            {
+                if (s["delay"] != null && !(IsWholeNumber(s["delay"]) && (double)s["delay"] >= 1)) Errors.Add($"spell {Show(s["id"])}: delay must be a whole number from 1");
+                if (s["scatter"] != null && !IsScatter(s["scatter"])) Errors.Add($"spell {Show(s["id"])}: scatter needs a known cover and a whole count and reach from 1");
+                if (s["core"] != null && !IsElement(s["core"])) Errors.Add($"spell {Show(s["id"])}: unknown core {Show(s["core"])}");
+                if (s["leaves"] != null && !IsElement(s["leaves"])) Errors.Add($"spell {Show(s["id"])}: unknown leaves {Show(s["leaves"])}");
+                if (s["trail"] != null && !IsIn(gases, s["trail"])) Errors.Add($"spell {Show(s["id"])}: trail {Show(s["trail"])} is not a gas");
+                foreach (var k in Keys(s["needs"] as JObject).Where(k => !CondKeys.Contains(k))) Errors.Add($"spell {Show(s["id"])}: needs has unknown condition \"{k}\"");
+            }
+
+            bool IsScatter(JToken c) =>
+                c is JObject && IsIn(covers, c["cover"]) && IsWholeNumber(c["count"]) && (double)c["count"] >= 1 && IsWholeNumber(c["reach"]) && (double)c["reach"] >= 1;
+
+            // How often a whirling spell pulls is a whole number of ticks.
+            void PullEvery(JToken s)
+            {
+                if (s["pullEvery"] != null && !(IsWholeNumber(s["pullEvery"]) && (double)s["pullEvery"] >= 1)) Errors.Add($"spell {Show(s["id"])}: pullEvery must be a whole number from 1");
+            }
+
+            // How a whirling spell travels, and what it can take on: known conditions and a known element.
+            void Carries(JToken s)
+            {
+                foreach (var key in new[] { "travelEvery", "dropPower" })
+                    if (s[key] != null && !(IsWholeNumber(s[key]) && (double)s[key] >= 1)) Errors.Add($"spell {Show(s["id"])}: {key} must be a whole number from 1");
+                foreach (var c in (s["carries"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
+                {
+                    if (!IsElement(c["sheds"])) Errors.Add($"spell {Show(s["id"])}: carries {Show(c["id"])} sheds unknown element {Show(c["sheds"])}");
+                    foreach (var k in Keys(c["if"] as JObject).Where(k => !CondKeys.Contains(k))) Errors.Add($"spell {Show(s["id"])}: carries {Show(c["id"])} has unknown condition \"{k}\"");
+                }
+            }
+
+            // A gas's flash goes up with a whole fire from 1 and a whole push from 0.
+            void GasFlash(JProperty gas)
+            {
+                var f = gas.Value["burn"]?["flash"];
+                if (f == null) return;
+                if (!(IsWholeNumber(f["fire"]) && (double)f["fire"] >= 1)) Errors.Add($"gas {gas.Name}: burn.flash.fire must be a whole number from 1");
+                if (f["push"] != null && !(IsWholeNumber(f["push"]) && (double)f["push"] >= 0)) Errors.Add($"gas {gas.Name}: burn.flash.push must be a whole number from 0");
+            }
+
+            // A crater's leaves names a terrain there is.
+            void CraterLeaves(JToken s)
+            {
+                var leaves = (s["crater"] as JObject)?["leaves"];
+                if (Truthy(leaves) && !IsIn(terrain, leaves)) Errors.Add($"spell {Show(s["id"])}: crater leaves {Show(leaves)} unknown");
             }
 
             /// <summary>No crater, or one with a whole depth from 1 and (if given) a whole radius from 0.</summary>
@@ -165,11 +221,12 @@ namespace Chem
             static bool IsWholeNumber(JToken v) =>
                 v.Type == JTokenType.Integer || (v.Type == JTokenType.Float && System.Math.Abs((double)v - System.Math.Floor((double)v)) < 1e-9);
 
-            // What water does on it: soak rates (whole ticks) and what it turns into.
+            // What water does on it: soak rates (whole ticks), how much being damp dampens its burning, and what it turns into.
             void WaterOn(string id, JToken t)
             {
-                foreach (var key in new[] { "soakEvery", "soakEveryWet" })
+                foreach (var key in new[] { "soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench" })
                     if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
+                if (t["dampens"] != null && !(IsNumber(t["dampens"]) && (double)t["dampens"] >= 0 && (double)t["dampens"] <= 1)) Errors.Add($"terrain {id}: dampens must be a number from 0 to 1");
                 if (t["waterTo"] != null && Text(t["waterTo"]) != "ice" && Text(t["waterTo"]) != "steam") Errors.Add($"terrain {id}: waterTo must be ice or steam");
             }
 
@@ -183,19 +240,43 @@ namespace Chem
 
             void TerrainRefs(string id, JToken t)
             {
-                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo" }) KnownTerrain(id, t, key);
-                if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
+                StatusTicks(id, t);
+                if (t["chainsWet"] != null && t["chainsWet"].Type != JTokenType.Boolean) Errors.Add($"terrain {id}: conduct.chainsWet must be true or false");
+                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo", "bakesTo" }) KnownTerrain(id, t, key);
+                if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 0)) Errors.Add($"terrain {id}: hardness must be a whole number from 0 (0 never digs)");
                 WaterOn(id, t);
                 FireLookOf($"terrain {id}", t);
                 if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");
                 else if (Truthy(t["uprootsTo"]) && Strings(terrain[Text(t["uprootsTo"])]["tags"]).Contains("blocking"))
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");
                 KnownTerrain(id, t, "growsTo");
+                Dissolves($"terrain {id}", t, terrain);
+                Cracks(id, t);
+                if (Truthy(t["dissolvedBy"]) && !Truthy(t["dissolvesTo"])) Errors.Add($"terrain {id}: dissolve without leaves");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
             }
 
-            // A terrain's link to another (burnsTo, breaksTo, dugTo, growsTo) names a terrain there is.
+            void Cracks(string id, JToken t)
+            {
+                if (t["cracks"] != null && t["cracks"].Type != JTokenType.Boolean) Errors.Add($"terrain {id}: cracks must be true or false");
+            }
+
+            // What a cover melts into (one of the covers) and the water it gives.
+            void Melts(string id, JToken t)
+            {
+                if (Truthy(t["meltsTo"]) && !IsIn(covers, t["meltsTo"])) Errors.Add($"cover {id}: meltsTo {Show(t["meltsTo"])} unknown");
+                if (t["meltWater"] != null && !(IsWholeNumber(t["meltWater"]) && (double)t["meltWater"] >= 1)) Errors.Add($"cover {id}: meltWater must be a whole number from 1");
+            }
+
+            // What dissolves a terrain or cover (an element) and what it leaves (one of its own kind).
+            void Dissolves(string what, JToken t, JObject kind)
+            {
+                if (Truthy(t["dissolvedBy"]) && !IsElement(t["dissolvedBy"])) Errors.Add($"{what}: dissolves by unknown element {Show(t["dissolvedBy"])}");
+                if (Truthy(t["dissolvesTo"]) && !IsIn(kind, t["dissolvesTo"])) Errors.Add($"{what}: dissolvesTo {Show(t["dissolvesTo"])} unknown");
+            }
+
+            // A terrain's link to another (burnsTo, breaksTo, dugTo, rustsTo, soaksTo, driesTo, growsTo) names a terrain there is.
             void KnownTerrain(string id, JToken t, string key)
             {
                 if (Truthy(t[key]) && !IsIn(terrain, t[key])) Errors.Add($"terrain {id}: {key} {Show(t[key])} unknown");
@@ -220,11 +301,36 @@ namespace Chem
                 foreach (var k in Keys(cond).Where(k => !CondKeys.Contains(k))) Errors.Add($"rule {id}: unknown condition \"{k}\"");
                 foreach (var k in effects.SelectMany(Keys).Where(k => !EffectKeys.Contains(k)))
                     Errors.Add($"rule {id}: unknown effect \"{k}\" (new verbs need code; see docs/MODDING.md)");
-                foreach (var e in effects.OfType<JObject>()) EffectRefs(id, e);
+                foreach (var e in effects.OfType<JObject>())
+                {
+                    EffectRefs(id, e);
+                    DissolveRef(id, e);
+                }
                 ComponentCond(id, cond, "has");
                 ComponentCond(id, cond, "lacks");
+                VerbCond(id, cond);
                 if (cond?["cover"] is JArray coverIds)
                     foreach (var cv in coverIds.Where(cv => !IsIn(covers, cv))) Errors.Add($"rule {id}: cover {Show(cv)} unknown");
+            }
+
+            // A dissolve effect eats the cover or the terrain; a statusOf names a verb a material gives a status by.
+            void DissolveRef(string id, JObject e)
+            {
+                if (e["dissolve"] != null && Text(e["dissolve"]) != "cover" && Text(e["dissolve"]) != "terrain") Errors.Add($"rule {id}: dissolve must be cover or terrain");
+                if (e["statusOf"] != null && TerrainDef.StatusOfVerb(Text(e["statusOf"])) == null) Errors.Add($"rule {id}: statusOf must be burn, freeze or soak");
+            }
+
+            // An entity rule's verb condition names a verb a material gives a status by.
+            void VerbCond(string id, JToken cond)
+            {
+                if (cond?["verb"] != null && TerrainDef.StatusOfVerb(Text(cond["verb"])) == null) Errors.Add($"rule {id}: verb must be burn, freeze or soak");
+            }
+
+            // A material's status ticks (burn.status, freeze.status, soak.status) are whole numbers from 1.
+            void StatusTicks(string id, JToken t)
+            {
+                foreach (var key in new[] { "burnStatus", "freezeStatus", "soakStatus" })
+                    if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
             }
 
             void EffectRefs(string id, JObject e)
@@ -268,6 +374,7 @@ namespace Chem
                     Number(p.Value["fuel"], $"terrain {p.Name}: fuel", 0);
                     Number(p.Value["spring"], $"terrain {p.Name}: spring", 0);
                     Number(p.Value["heat"], $"terrain {p.Name}: heat", 0);
+                    Number(p.Value["speed"], $"terrain {p.Name}: speed", 0);
                     Number(p.Value["elevation"], $"terrain {p.Name}: elevation");
                 }
                 foreach (var p in covers.Properties())
@@ -279,12 +386,20 @@ namespace Chem
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);
                     Number(p.Value["lasts"], $"cover {p.Name}: lasts", 0);
                     Number(p.Value["speed"], $"cover {p.Name}: speed", 0);
+                    if (p.Value["floatEvery"] != null && !(IsWholeNumber(p.Value["floatEvery"]) && (double)p.Value["floatEvery"] >= 1)) Errors.Add($"cover {p.Name}: floatEvery must be a whole number from 1");
+                    if (p.Value["floatReach"] != null && !(IsWholeNumber(p.Value["floatReach"]) && (double)p.Value["floatReach"] >= 1)) Errors.Add($"cover {p.Name}: floatReach must be a whole number from 1");
+                    Dissolves($"cover {p.Name}", p.Value, covers);
+                    Melts(p.Name, p.Value);
                 }
                 foreach (var p in gases.Properties())
                 {
                     Number(p.Value["scald"], $"gas {p.Name}: scald", 0);
                     Number(p.Value["decay"], $"gas {p.Name}: decay", 0);
                     Number(p.Value["blocksSightAt"], $"gas {p.Name}: blocksSightAt", 0);
+                    if (p.Value["condenseEvery"] != null && !(IsWholeNumber(p.Value["condenseEvery"]) && (double)p.Value["condenseEvery"] >= 1)) Errors.Add($"gas {p.Name}: condenseEvery must be a whole number from 1");
+                    if (p.Value["condenseAway"] != null && !(IsWholeNumber(p.Value["condenseAway"]) && (double)p.Value["condenseAway"] >= 0)) Errors.Add($"gas {p.Name}: condenseAway must be a whole number from 0");
+                    if (p.Value["rainEvery"] != null && !(IsWholeNumber(p.Value["rainEvery"]) && (double)p.Value["rainEvery"] >= 1)) Errors.Add($"gas {p.Name}: rainEvery must be a whole number from 1");
+                    GasFlash(p);
                 }
                 foreach (var s in r["spells"])
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);
@@ -322,6 +437,11 @@ namespace Chem
             void SimEntry(string key, JToken value)
             {
                 if (key == "defense.kinds") return; // names, checked by DefenseRefs
+                if (key == "status.shatter.when" || key == "status.shatter.notBy")
+                {
+                    if (value.Type != JTokenType.String) Errors.Add($"sim {key} must be a name");
+                    return;
+                }
                 if (key == "day.dawn" || key == "day.dusk")
                 {
                     if (!IsHours(value)) Errors.Add($"sim {key} must be [from, to], hours from 0 to 24");

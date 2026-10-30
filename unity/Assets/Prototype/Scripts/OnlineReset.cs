@@ -68,6 +68,7 @@ public class OnlineReset : MonoBehaviour
     // The countdown, big at the top of the screen, until the reset's tick.
     void OnGUI()
     {
+        HudScale.Apply();
         if (resetAt < 0 || net == null || !EventLog.HudVisible) return;
         if (!net.Online || net.NetTick >= resetAt)
         {
@@ -77,6 +78,6 @@ public class OnlineReset : MonoBehaviour
         int tps = Mathf.Max(1, Mathf.RoundToInt(net.ResetCountdownTicks / NetChem.ResetCountdownSeconds));
         int seconds = Mathf.CeilToInt((resetAt - net.NetTick) / (float)tps);
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 34, alignment = TextAnchor.MiddleCenter, richText = true };
-        GUI.Label(new Rect(0, Screen.height * 0.18f, Screen.width, 50), $"<b>The world resets in {seconds}</b>", style);
+        GUI.Label(new Rect(0, HudScale.Height * 0.18f, HudScale.Width, 50), $"<b>The world resets in {seconds}</b>", style);
     }
 }

@@ -196,6 +196,20 @@ public static class ValleyShape
     /// <summary>The rotation of a cabin's root: its local -z (the door) toward the site's door direction.</summary>
     public static Quaternion CabinRotation(CabinSite site) => Quaternion.LookRotation(new Vector3(-site.Door.x, 0f, -site.Door.y));
 
+    /// <summary>Where a cabin's window stands in its own space (x, z): on the door's wall, clear of the door.</summary>
+    public static readonly Vector2 CabinWindow = new Vector2(-1.6f, -2.45f);
+
+    /// <summary>Whether a point is in the cell of a cabin's window: a pane cell in its wall.</summary>
+    public static bool OnCabinWindow(Vector2 p)
+    {
+        foreach (var site in Cabins)
+        {
+            var w = CabinRotation(site) * new Vector3(CabinWindow.x, 0f, CabinWindow.y);
+            if (Mathf.Abs(p.x - site.At.x - w.x) <= 0.75f && Mathf.Abs(p.y - site.At.y - w.z) <= 0.75f) return true;
+        }
+        return false;
+    }
+
     /// <summary>Whether a point is inside a cabin's walls (its 6 m width along local x, 4.5 m depth along z, and the log ends).</summary>
     public static bool InCabin(Vector2 p)
     {

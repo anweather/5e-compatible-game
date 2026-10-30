@@ -1,0 +1,5 @@
+# One line per LOCAL worker: name|transcript file|Unity project folder
+# Transcripts: ~/.claude/projects/<project-folder-slug>/<session-id>.jsonl
+# The project folder is the one an Editor of that worker opens (the folder with Assets/).
+gameplay|~/.claude/projects/C--Users-me-Dev-my-game/1111aaaa-0000-0000-0000-000000000000.jsonl|C:/Users/me/Dev/my-game/unity
+world|~/.claude/projects/C--Users-me-Dev-my-game/2222bbbb-0000-0000-0000-000000000000.jsonl|C:/Users/me/Dev/my-game/.claude/worktrees/world/unity

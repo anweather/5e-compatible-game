@@ -19,6 +19,12 @@ export interface Cell {
   charge: number; // 3 on the tick lightning arrives, then decays
   h: number; // steps raised (+) or dug (-) by terraform spells, on top of the terrain's elevation
   dampUntil?: number; // the tick until which the ground is damp from water soaked in (soak in sim.ts)
+  rust?: number; // ticks it has been wet in all, toward its terrain's rust (rust in sim.ts); unset or 0 for none
+  heat?: number; // ticks it stays hot (cool in sim.ts): metal fire reached burns creatures on it; unset or 0 cold
+  lit?: number; // ticks it still sheds the Light spell's light (lightUp in actions.ts); unset or 0 unlit
+  cracked?: number; // its ice or terrain is cracked (shatter in react.ts): the tick it cracked, plus 1; unset whole
+  star?: number; // how many falling stars are aimed here (aimStar in actions.ts): the target mark; unset none
+  slick?: number; // how many more cells the floating cover here may spread (float.reach, float in sim.ts); unset or 0 none or no end
   life: number; // ticks until what grows or lasts here ripens (ripen in sim.ts): thorns wither, shoots and saplings grow; 0 for nothing
 }
 
@@ -37,6 +43,34 @@ export interface Entity {
 }
 
 export type DefensePhase = 0 | 1 | 2 | 3; // idle, running, won, lost (C#: DefensePhase)
+/** One player's cast state and grimoire (combos.ts; C#: PlayerCast). Integers and ids only. */
+export interface PlayerCast {
+  player: string;
+  /** The loaded elements, in order; null for none. */
+  first: string | null;
+  second: string | null;
+  /** Ticks until the cast goes off, the meter's full length, and ticks left to load a second element. */
+  meter: number;
+  total: number;
+  window: number;
+  /** The d-pad's selected slot, and the slot being cast, or -1. */
+  slot: number;
+  dpadCasting: number;
+  /** The ids of the combos this player has cast, sorted: the grimoire. */
+  known: string[];
+}
+
+/** A meter that reached zero this tick (C#: ComboFired); combo is null for a d-pad spell. */
+export interface ComboFired {
+  player: string;
+  combo: string | null;
+  name: string;
+  spell: string;
+  shape: string | undefined;
+  /** This was the player's first cast of the combo: it just joined the grimoire. */
+  discovered: boolean;
+}
+
 /** The defense field's waves (defense.ts; C#: DefenseState). */
 export interface DefenseState {
   phase: DefensePhase;
@@ -112,12 +146,24 @@ export interface World {
   newMeteors: [number, number, number][];
   nextId: number;
   wind: { dir: Dir; ticks: number } | null;
+  /** The delayed casts on their way down, in the order cast (World.Stars). */
+  stars: Star[];
+  /** The whirlwinds still whirling, in the order cast (World.Whirls): middle, radius, ticks it lasts and has run, how often it pulls, the heaviest creature it drags. */
+  whirls: Whirl[];
+  /** The waves still rolling, in the order cast (World.Waves). */
+  waves: Wave[];
+  /** The boulders still rolling, in the order cast (World.Boulders). */
+  boulders: Boulder[];
   /** Hasten Time: how many times as fast the day clock runs, and the ticks it has left (C#: World.Haste). */
   haste: { rate: number; ticks: number } | null;
   /** Ticks of day the clock has run ahead of tick (Hasten Time); the clock reads tick + clockAhead. */
   clockAhead: number;
   /** Control Weather: the weather held, the tick it was cast and the tick it ends (C#: World.WeatherSet). */
   weatherSet: { kind: WeatherKind; from: number; until: number } | null;
+  /** Each player's cast state and grimoire, by player (combos.ts). */
+  casts: Record<string, PlayerCast>;
+  /** The casts that went off in the last tick. */
+  combosFired: ComboFired[];
   /** The defense field's waves, or null before anyone started them (defense.ts). */
   defense: DefenseState | null;
   log: LogEntry[];
@@ -151,8 +197,14 @@ export function createWorld(w: number, h: number, seed = 1): World {
     strikes: [],
     falling: [],
     newMeteors: [],
+    casts: {},
+    combosFired: [],
     nextId: 1,
     wind: null,
+    stars: [],
+    whirls: [],
+    waves: [],
+    boulders: [],
     haste: null,
     clockAhead: 0,
     weatherSet: null,
@@ -191,8 +243,65 @@ export const coverBurns = (c: Cell) => c.cover !== null && RULES.covers[c.cover]
 
 export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.covers[c.cover]?.tags.includes(tag) ?? false);
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);
+/** Whether walkers can climb or cross a cell on its cover (vines: up a wall, over a pit or a stream), for a view (World.IsClimbable). */
+export const isClimbable = (c: Cell) => coverHasTag(c, "climbable");
 export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || conducts(terrainDef(c));
 /** The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none. */
+/** A delayed cast on its way down (spells.json delay: Falling Star; World.Star): what lands, where, how charged, the tick it lands. */
+export interface Star {
+  spell: string;
+  x: number;
+  y: number;
+  dir: Dir;
+  charge: number;
+  radius: number;
+  lands: number;
+}
+
+/** A boulder still rolling (Rolling Boulder; World.Boulder): the cell it's on, the way it rolls, the cells it may still roll, how often it rolls one and its age. */
+export interface Boulder {
+  spell: string;
+  x: number;
+  y: number;
+  dir: Dir;
+  left: number;
+  every: number;
+  age: number;
+}
+
+/**
+ * A wave still rolling (Wave; World.Wave): its front's middle, the way it rolls, how far the front reaches to each side,
+ * the cells it may still roll, how often it rolls one, its age, the power its element lands with and the heaviest thing it knocks back.
+ */
+export interface Wave {
+  spell: string;
+  x: number;
+  y: number;
+  dir: Dir;
+  width: number;
+  left: number;
+  every: number;
+  age: number;
+  power: number;
+  maxMass: number;
+}
+
+/** A whirlwind still whirling (spells.json pullEvery: Whirlwind; World.Whirl). */
+export interface Whirl {
+  x: number;
+  y: number;
+  radius: number;
+  ticks: number;
+  age: number;
+  every: number;
+  maxMass: number;
+  /** The spell it came from, the way it was cast, how often it moves, and what it carries (a CarryDef's id, or null). */
+  spell: string;
+  dir: Dir;
+  travel: number;
+  carrying: string | null;
+}
+
 export const windDir = (w: World): number => (w.wind ? w.wind.dir : w.weather.windDir);
 
 export function flammability(c: Cell): number {
@@ -260,8 +369,13 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  // The defense joins only once started, so older worlds hash as they did.
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : [])]);
+  // The defense, the casts, the whirlwinds, the stars, the waves and the boulders join only once there are any, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : []), ...(w.waves.length ? [w.waves] : []), ...(w.boulders.length ? [w.boulders] : [])]);
+  return fnv1a(s);
+}
+
+/** The FNV-1a of a string, in hex (C#: Fnv1a.Hash). */
+export function fnv1a(s: string): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -323,7 +437,7 @@ export function deserializeWorld(s: WorldSnapshot): World {
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
   // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], stars: copy.stars ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

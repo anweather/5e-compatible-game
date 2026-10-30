@@ -112,13 +112,14 @@ public class UpdateCheck : MonoBehaviour
 
     void OnGUI()
     {
+        HudScale.Apply();
         if (Available == null) return;
         if (SelfUpdate.Progress >= 0)
         {
             // Updating in place: say so over everything until the game restarts.
             GUI.depth = -200;
             updating ??= new GUIStyle(GUI.skin.box) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
-            GUI.Box(new Rect(Screen.width / 2f - 260f, Screen.height / 2f - 40f, 520f, 80f),
+            GUI.Box(new Rect(HudScale.Width / 2f - 260f, HudScale.Height / 2f - 40f, 520f, 80f),
                 $"Updating to alpha {Available.Version}...  {SelfUpdate.Progress}%\n<size=15><color=#ffffff99>The game restarts by itself when it's done.</color></size>", updating);
             return;
         }
@@ -127,7 +128,7 @@ public class UpdateCheck : MonoBehaviour
         if (menu != null && menu.Open) hintDismissed = true;
         if (hintDismissed) return;
         hint ??= new GUIStyle(GUI.skin.label) { fontSize = 15, richText = true, alignment = TextAnchor.LowerRight };
-        GUI.Label(new Rect(Screen.width - 476f, Screen.height - 40f, 460f, 28f),
+        GUI.Label(new Rect(HudScale.Width - 476f, HudScale.Height - 40f, 460f, 28f),
             $"<color=#ffd24a>alpha {Available.Version} is out</color>   <color=#ffffff88>Esc: {(SelfUpdate.Installed ? "update" : "download")}</color>", hint);
     }
 

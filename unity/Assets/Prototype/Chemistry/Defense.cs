@@ -47,6 +47,8 @@ namespace Chem
         public string Status;
         /// <summary>Components it must have, and must lack (Components.cs).</summary>
         public ComponentSet Has, Lacks;
+        /// <summary>Its material gives a status by this verb (burn, freeze, soak: TerrainDef.StatusTicks); null any.</summary>
+        public string Verb;
     }
 
     /// <summary>One effect of an entity rule: statuses set (at least this many ticks), one cleared, a damage multiplier.</summary>
@@ -55,6 +57,8 @@ namespace Chem
         public IReadOnlyList<KeyValuePair<string, int>> Status = Array.Empty<KeyValuePair<string, int>>();
         public string Clear;
         public int DamageMul;
+        /// <summary>The status a verb gives (burn burning, freeze frozen, soak wet), for its material's ticks of it.</summary>
+        public string StatusOf;
     }
 
     /// <summary>An element arriving at an entity (reactions.json "entity", applyEntityElement in the TS).</summary>
@@ -102,6 +106,7 @@ namespace Chem
                 : new List<KeyValuePair<string, int>>(),
             Clear = Str(o["clear"]),
             DamageMul = Int(o["damageMul"]) ?? 0,
+            StatusOf = Str(o["statusOf"]),
         };
 
         static RaiderDef ParseRaider(JToken t) =>
@@ -192,6 +197,8 @@ namespace Chem
         public int X, Y, Hp, MaxHp, Wait;
         public Dictionary<string, int> Status { get; } = new Dictionary<string, int>(StringComparer.Ordinal);
         public bool Alive = true;
+        /// <summary>It went by shattering (struck while frozen, sim status.shatter), for the view's shards; not part of the world's state.</summary>
+        public bool Shattered;
 
         /// <summary>Ticks left of a status, 0 without it.</summary>
         public int StatusOf(string name) => Status.TryGetValue(name, out int v) ? v : 0;

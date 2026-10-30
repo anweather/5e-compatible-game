@@ -29,6 +29,8 @@ public partial class DefenseField : ICreatureGround
         public float movedAt, stepSeconds;
         public CreatureState state;
         public int hp, maxHp;
+        public Raider raider;
+        public bool cracked;
     }
 
     readonly Dictionary<int, Shown> shown = new();
@@ -77,6 +79,7 @@ public partial class DefenseField : ICreatureGround
                 var def = world.Rules.Entity(r.Kind);
                 s.stepSeconds = (def?.Raider != null ? def.Raider.TicksPerSquare : 4) / (float)tps;
             }
+            s.raider = r;
             s.hp = Mathf.Max(0, r.Hp);
             s.maxHp = Mathf.Max(1, r.MaxHp);
         }
@@ -95,7 +98,8 @@ public partial class DefenseField : ICreatureGround
         {
             var s = shown[id];
             shown.Remove(id);
-            if (Mathf.Abs(s.cell.x - flagCell.x) + Mathf.Abs(s.cell.y - flagCell.y) > 1) Puff(s.at);
+            if (s.raider != null && s.raider.Shattered) Shatter(s.at);
+            else if (Mathf.Abs(s.cell.x - flagCell.x) + Mathf.Abs(s.cell.y - flagCell.y) > 1) Puff(s.at);
         }
     }
 
@@ -138,11 +142,35 @@ public partial class DefenseField : ICreatureGround
             int need = used + b.Segments.Length;
             if (instances.Length < need) System.Array.Resize(ref instances, Mathf.NextPowerOfTwo(need));
             animator.Evaluate(b, s.state, 0, this, instances, used);
+            Frost(s, used, need);
             used = need;
             centre = s.at;
             DrawnRaiders++;
         }
         drawer.Draw(instances, used, centre);
+    }
+
+    // A frozen raider's segments in ice; cracked, a spiderweb over the ice (Punchy/Creature draws it
+    // where an instance's Pad is set), with a spit of shards as it happens. GPU-first: only what the
+    // instances are drawn with.
+    void Frost(Shown s, int from, int to)
+    {
+        var sim = World.Rules.Sim;
+        if (s.raider == null || sim.ShatterWhen == null || s.raider.StatusOf(sim.ShatterWhen) <= 0)
+        {
+            s.cracked = false;
+            return;
+        }
+        bool cracked = s.raider.StatusOf(World.CrackedStatus) > 0;
+        if (cracked && !s.cracked) ShardBurst.At(s.at + Vector3.up * 0.5f, new Color(0.7f, 0.88f, 1f), 16);
+        s.cracked = cracked;
+        var ice = new float3(0.42f, 0.66f, 0.95f);
+        for (int i = from; i < to; i++)
+        {
+            var c = instances[i].Color;
+            instances[i].Color = new float4(math.lerp(c.xyz, ice, 0.7f), c.w);
+            instances[i].Pad = cracked ? 1f : 0f;
+        }
     }
 
     CreatureBody Body(int kind) => bodies != null && kind >= 0 && kind < bodies.Length ? bodies[kind] : null;
@@ -193,6 +221,14 @@ public partial class DefenseField : ICreatureGround
             GUI.DrawTexture(new Rect(back.x + 1f, back.y + 1f, (width - 2f) * f, height - 2f), bar);
         }
         GUI.color = before;
+    }
+
+    // A frozen raider struck: it bursts into ice shards with a crack, instead of the dust of a defeat.
+    void Shatter(Vector3 at)
+    {
+        Puffs++;
+        ShardBurst.At(at + Vector3.up * 0.5f, new Color(0.7f, 0.88f, 1f), 40);
+        GameSounds.Play(SoundIds.Shatter, at);
     }
 
     // A short burst of dark dust where a raider fell.

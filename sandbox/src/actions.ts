@@ -1,13 +1,13 @@
 // What the player does: cast a spell, place a critter, paint the map.
-import { RULES, hasComponent, type SpellDef } from "./rules.ts";
-import { applyElement, applyEntityElement, displaceWater } from "./react.ts";
+import { RULES, hasComponent, type CellCond, type SpellDef } from "./rules.ts";
+import { applyElement, applyEntityElement, displaceWater, ignite, matches, putCover, shatter, shoveGas } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
-  type Dir, type Entity, type World,
-  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, roll,
+  type Boulder, type Dir, type Entity, type Star, type Wave, type Whirl, type World,
+  DX, DY, addGas, burns, cellAt, elevation, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, logOnce, newCell, playerOf, rand, roll, windDir,
 } from "./world.ts";
 
 export const spellById = (id: string) => RULES.spells.find((s) => s.id === id);
@@ -96,6 +96,14 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
   return out;
 }
 
+/** A slanted line's next cell: added to out if it is in the world; true while the line goes on (it isn't blocking) (World.VisitSlant). */
+function visitSlant(w: World, cx: number, cy: number, out: [number, number][]): boolean {
+  const c = cellAt(w, cx, cy);
+  if (!c) return false;
+  out.push([cx, cy]);
+  return !isBlocking(c);
+}
+
 /**
  * A line along a slanted aim: from (x, y) (a trench from the caster's square
  * behind it first) out to length squares as the crow flies, up to its first
@@ -104,20 +112,14 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
  */
 function slantCells(w: World, s: SpellDef, x: number, y: number, dir: Dir, length: number, ax: number, ay: number): [number, number][] {
   const out: [number, number][] = [];
-  const visit = (cx: number, cy: number): boolean => {
-    const c = cellAt(w, cx, cy);
-    if (!c) return false;
-    out.push([cx, cy]);
-    return !isBlocking(c);
-  };
-  if (s.effect === "terraform" && s.origin === "self" && cellAt(w, x - DX[dir], y - DY[dir]) && !visit(x - DX[dir], y - DY[dir])) return out;
+  if (s.effect === "terraform" && s.origin === "self" && cellAt(w, x - DX[dir], y - DY[dir]) && !visitSlant(w, x - DX[dir], y - DY[dir], out)) return out;
   const alongX = Math.abs(ax) >= Math.abs(ay), major = Math.max(Math.abs(ax), Math.abs(ay));
   const reach = length * length * major * major, size = ax * ax + ay * ay;
   let px = x, py = y;
   for (let k = 0; k * k * size < reach; k++) {
     const cx = x + roundDiv(k * ax, major), cy = y + roundDiv(k * ay, major);
-    if (k > 0 && cx !== px && cy !== py && !visit(alongX ? cx : px, alongX ? py : cy)) return out;
-    if (!visit(cx, cy)) return out;
+    if (k > 0 && cx !== px && cy !== py && !visitSlant(w, alongX ? cx : px, alongX ? py : cy, out)) return out;
+    if (!visitSlant(w, cx, cy, out)) return out;
     [px, py] = [cx, cy];
   }
   return out;
@@ -214,7 +216,71 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   log(w, `You cast ${s.name}`, "info");
   if (s.effect === "haste") hastenTime(w, s, clampCharge(charge));
   else if (s.effect === "weather") controlWeather(w, s, clampCharge(charge));
+  else if (s.effect === "light") lightUp(w, s, x, y);
+  else if (s.delay) aimStar(w, s, x, y, dir, clampCharge(charge));
+  else if (isWave(s)) startWave(w, s, x, y, dir, clampCharge(charge));
+  else if (isBoulder(s)) startBoulder(w, s, x, y, dir, clampCharge(charge));
   else landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
+}
+
+/**
+ * A delayed cast (Falling Star, World.AimStar): the cells round where it will land wear a target mark (Cell star)
+ * until it lands, delay ticks on (landStars).
+ */
+function aimStar(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number): void {
+  const star: Star = { spell: s.id, x, y, dir, charge, radius: (s.radius ?? 1) + chargedGrowth(s, charge), lands: w.tick + s.delay! };
+  w.stars.push(star);
+  markStar(w, star, 1);
+}
+
+function markStar(w: World, star: Star, by: number): void {
+  const r = star.radius;
+  for (let y = star.y - r; y <= star.y + r; y++) {
+    for (let x = star.x - r; x <= star.x + r; x++) {
+      const c = cellAt(w, x, y);
+      if (!c) continue;
+      const n = Math.max(0, (c.star ?? 0) + by);
+      if (n > 0) c.star = n;
+      else delete c.star;
+    }
+  }
+}
+
+/** Stars whose tick has come land, in the order cast (World.LandStars). */
+export function landStars(w: World): void {
+  if (!w.stars.length) return;
+  for (const star of w.stars) {
+    if (star.lands > w.tick) continue;
+    markStar(w, star, -1);
+    const s = spellById(star.spell);
+    if (!s) continue;
+    log(w, `${s.name} strikes`, "notable");
+    landSpell(w, s, star.x, star.y, star.dir, undefined, star.charge);
+  }
+  w.stars = w.stars.filter((star) => star.lands > w.tick);
+}
+
+/** A spell's burning rock (World.Scatter): each try lays the cover, alight, on open dry ground off the middle. */
+function scatter(w: World, sc: SpellDef["scatter"], x: number, y: number): void {
+  if (!sc) return;
+  const span = sc.reach * 2 + 1;
+  for (let i = 0; i < sc.count; i++) {
+    const cx = x + Math.floor(rand(w) * span) - sc.reach;
+    const cy = y + Math.floor(rand(w) * span) - sc.reach;
+    const c = cellAt(w, cx, cy);
+    if ((cx === x && cy === y) || !c || isBlocking(c) || c.water > 0) continue;
+    putCover(c, sc.cover);
+    ignite(c, "cover");
+  }
+}
+
+/**
+ * Light (SRD 5.2.1): the object touched sheds bright light for the spell's duration. The core keeps the ticks on
+ * its cell (lit, counting down each tick); the view draws the spell's light { bright, dim } round it (World.LightUp).
+ */
+function lightUp(w: World, s: SpellDef, x: number, y: number) {
+  const c = cellAt(w, x, y)!;
+  c.lit = Math.max(c.lit ?? 0, s.duration ?? 40);
 }
 
 /** Whether a spell changes the sky for everyone (Hasten Time, Control Weather) rather than squares. */
@@ -245,12 +311,349 @@ function controlWeather(w: World, s: SpellDef, charge: number) {
   log(w, next === "clear" ? "The sky clears at your word" : `The sky turns to ${next} at your word`, "notable");
 }
 
+/** The direction from (dx, dy) off a burst's middle back toward it, none at the middle: along the longer axis, east or west on a tie (World.InwardDir). */
+function inwardDir(dx: number, dy: number): Dir | undefined {
+  if (dx === 0 && dy === 0) return undefined;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 3 : 1;
+  return dy > 0 ? 0 : 2;
+}
+
+/**
+ * The next cell clockwise round the square ring d out from a whirlwind's middle, from (dx, dy) on it (World.RingNext):
+ * east along the top, south down the right, west along the bottom, north up the left.
+ */
+function ringNext(dx: number, dy: number, d: number): Dir {
+  if (dy === -d && dx < d) return 1;
+  if (dx === d && dy < d) return 2;
+  if (dy === d && dx > -d) return 3;
+  return 0;
+}
+
+/**
+ * Each whirlwind, in the order cast (World.TickWhirlwinds): every so many ticks it whirls once (spin), every so many it
+ * moves a cell (travel), and once its ticks are up it drops what it carries and is gone.
+ */
+export function tickWhirlwinds(w: World): void {
+  for (const ww of w.whirls) {
+    if (++ww.age % ww.every === 0) spin(w, ww);
+    if (ww.travel > 0 && ww.age % ww.travel === 0) travel(w, ww);
+  }
+  for (const ww of w.whirls) if (ww.age >= ww.ticks) dropCarried(w, ww);
+  w.whirls = w.whirls.filter((ww) => ww.age < ww.ticks);
+}
+
+/** A cell with the wind, or in still air the way it was cast; a wall holds it up (World.Travel). */
+function travel(w: World, ww: Whirl): void {
+  const wind = windDir(w), dir = wind >= 0 ? (wind as Dir) : ww.dir;
+  const n = cellAt(w, ww.x + DX[dir], ww.y + DY[dir]);
+  if (!n || isBlocking(n)) return;
+  ww.x += DX[dir];
+  ww.y += DY[dir];
+}
+
+/** How far from its eye a whirlwind takes things on and sheds what it carries, in cells (World.WhirlEye). */
+const WHIRL_EYE = 1;
+
+const carriedBy = (ww: Whirl) => (ww.carrying === null ? undefined : spellById(ww.spell)?.carries?.find((c) => c.id === ww.carrying));
+
+/**
+ * The first of its spell's carries (strongest first) that the eye is over, stopping at what it already carries:
+ * a fire's smoke reaches it first, and the fire still makes it a fire tornado (World.TakeOn).
+ */
+function takeOn(w: World, ww: Whirl): void {
+  for (const carry of spellById(ww.spell)?.carries ?? []) {
+    if (carry.id === ww.carrying) return;
+    if (!eyeOver(w, ww, carry.if)) continue;
+    ww.carrying = carry.id;
+    if (carry.log) logOnce(w, `carry#${carry.id}`, carry.log, "notable");
+    return;
+  }
+}
+
+function eyeOver(w: World, ww: Whirl, cond: CellCond | undefined): boolean {
+  for (let dy = -WHIRL_EYE; dy <= WHIRL_EYE; dy++) {
+    for (let dx = -WHIRL_EYE; dx <= WHIRL_EYE; dx++) {
+      const c = cellAt(w, ww.x + dx, ww.y + dy);
+      if (c && matches(c, cond)) return true;
+    }
+  }
+  return false;
+}
+
+/** Applies what it carries over the square of cells within reach of its eye, row by row (World.Shed). */
+function shed(w: World, ww: Whirl, element: string, reach: number, power: number): void {
+  for (let dy = -reach; dy <= reach; dy++) {
+    for (let dx = -reach; dx <= reach; dx++) applyElement(w, ww.x + dx, ww.y + dy, element, { power, direct: false });
+  }
+}
+
+function dropCarried(w: World, ww: Whirl): void {
+  const carry = carriedBy(ww);
+  if (!carry) return;
+  logOnce(w, `drop#${carry.id}`, `The ${carry.name} dies out and drops what it carried`, "notable");
+  shed(w, ww, carry.sheds, ww.radius, spellById(ww.spell)?.dropPower ?? 1);
+}
+
+/**
+ * One turn of a whirlwind (World.Spin), over the square of cells round its middle: fire burning on a ring lights the
+ * next cell clockwise round it; gas moves a cell in toward the middle, the inner rings first, each gas once;
+ * entities of maxMass or less, nearest first, step a cell in where it's open. Loose props move here but in the view
+ * in the Unity game, where the C# core only drags creatures; the player, who that core doesn't hold, stays put.
+ */
+function spin(w: World, ww: Whirl): void {
+  const r = ww.radius;
+  const lit: [number, number, Dir][] = [];
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      const d = Math.max(Math.abs(dx), Math.abs(dy));
+      if (d > 0 && (cellAt(w, ww.x + dx, ww.y + dy)?.fire ?? 0) > 0) lit.push([ww.x + dx, ww.y + dy, ringNext(dx, dy, d)]);
+    }
+  }
+  for (const [bx, by, dir] of lit) applyElement(w, bx + DX[dir], by + DY[dir], "fire", { power: 1, direct: false });
+  whirlGas(w, ww);
+  whirlEntities(w, ww);
+  takeOn(w, ww);
+  const carry = carriedBy(ww);
+  if (carry) shed(w, ww, carry.sheds, WHIRL_EYE, 1);
+}
+
+function whirlGas(w: World, ww: Whirl): void {
+  const moved = new Set<number>();
+  for (let d = 1; d <= ww.radius; d++) {
+    for (let dy = -d; dy <= d; dy++) {
+      for (let dx = -d; dx <= d; dx++) {
+        const cx = ww.x + dx, cy = ww.y + dy;
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== d || !inBounds(w, cx, cy) || cellAt(w, cx, cy)!.gas === null || moved.has(idx(w, cx, cy))) continue;
+        const dir = inwardDir(dx, dy)!;
+        if (shoveGas(w, cx, cy, dir)) moved.add(idx(w, cx + DX[dir], cy + DY[dir]));
+      }
+    }
+  }
+}
+
+function whirlEntities(w: World, ww: Whirl): void {
+  const ring = (e: Entity) => Math.max(Math.abs(e.x - ww.x), Math.abs(e.y - ww.y));
+  const pulled = w.entities
+    .filter((e) => ring(e) > 0 && ring(e) <= ww.radius && !defOf(e).player && massOf(e) <= ww.maxMass)
+    .sort((a, b) => ring(a) - ring(b) || a.id - b.id);
+  for (const e of pulled) {
+    const dir = inwardDir(e.x - ww.x, e.y - ww.y)!;
+    const nx = e.x + DX[dir], ny = e.y + DY[dir];
+    const n = cellAt(w, nx, ny);
+    if (!n || isBlocking(n) || entityAt(w, nx, ny)) continue;
+    e.x = nx;
+    e.y = ny;
+  }
+}
+
+/** Whether a spell rolls out as a wave (a line with travelEvery that doesn't whirl) rather than landing at once (World.IsWave). */
+export const isWave = (s: SpellDef) => !!s.travelEvery && !s.inward && !s.rolls && s.shape === "line";
+
+/**
+ * A wave's cast (World.StartWave): the front starts on the cast's square, a line across the way it rolls, width cells
+ * to each side, and washes over it; it rolls one cell every travelEvery ticks, to the line's length in all (tickWaves).
+ */
+function startWave(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number): void {
+  const wv: Wave = {
+    spell: s.id, x, y, dir, width: (s.radius ?? 1) + chargedGrowth(s, charge), left: chargedLength(s.length ?? 5, charge) - 1,
+    every: s.travelEvery!, age: 0, power: (s.power ?? 1) * charge, maxMass: s.maxMass ?? 1,
+  };
+  wash(w, wv, s);
+  if (wv.left > 0) w.waves.push(wv);
+  else breakWave(w, wv, s);
+}
+
+/** Each wave, in the order cast, rolls a cell when its time comes; against a wall or its length's end it breaks and is gone (World.TickWaves). */
+export function tickWaves(w: World): void {
+  if (!w.waves.length) return;
+  for (const wv of w.waves) {
+    if (++wv.age % wv.every !== 0) continue;
+    const s = spellById(wv.spell);
+    const nx = wv.x + DX[wv.dir], ny = wv.y + DY[wv.dir];
+    const n = cellAt(w, nx, ny);
+    if (s && n && !isBlocking(n)) {
+      wv.x = nx;
+      wv.y = ny;
+      wv.left--;
+      wash(w, wv, s);
+    } else wv.left = 0;
+    if (wv.left <= 0) breakWave(w, wv, s);
+  }
+  w.waves = w.waves.filter((wv) => wv.left > 0);
+}
+
+/** The open cells of a wave's front, from one side to the other (World.Front). */
+function front(w: World, wv: Wave): [number, number][] {
+  const out: [number, number][] = [];
+  const px = DY[wv.dir], py = DX[wv.dir];
+  for (let o = -wv.width; o <= wv.width; o++) {
+    const cx = wv.x + px * o, cy = wv.y + py * o;
+    const c = cellAt(w, cx, cy);
+    if (c && !isBlocking(c)) out.push([cx, cy]);
+  }
+  return out;
+}
+
+/**
+ * The wave's element lands on its front (water at power 0: it douses fires and soaks what it meets but leaves no
+ * water), then its force knocks each thing there light enough on ahead of it, where that's open (World.Wash).
+ */
+function wash(w: World, wv: Wave, s: SpellDef): void {
+  const cells = front(w, wv);
+  for (const [cx, cy] of cells) applyElement(w, cx, cy, s.element!, { power: wv.power, dir: wv.dir, direct: true });
+  for (const [cx, cy] of cells) force(w, s, cx, cy, wv.dir);
+}
+
+/** Where it stops it breaks, and its leaves (mud) lands over the front (World.Break). */
+function breakWave(w: World, wv: Wave, s: SpellDef | undefined): void {
+  wv.left = 0;
+  if (!s) return;
+  logOnce(w, `wave#${s.id}`, `The ${s.name.toLowerCase()} breaks`, "info");
+  if (!s.leaves) return;
+  for (const [cx, cy] of front(w, wv)) applyElement(w, cx, cy, s.leaves, { power: 1, direct: true });
+}
+
+/** Whether a spell rolls out as a boulder (a line with travelEvery that rolls) rather than landing at once (World.IsBoulder). */
+export const isBoulder = (s: SpellDef) => !!s.travelEvery && !!s.rolls && s.shape === "line";
+
+/**
+ * A boulder's cast (World.StartBoulder): it starts on the cast's square and strikes it, then rolls a cell every
+ * travelEvery ticks, to the line's length in all (tickBoulders).
+ */
+function startBoulder(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number): void {
+  const c = cellAt(w, x, y);
+  if (!c || isBlocking(c)) return;
+  const b: Boulder = { spell: s.id, x, y, dir, left: chargedLength(s.length ?? 5, charge) - 1, every: s.travelEvery!, age: 0 };
+  strike(w, b, s);
+  if (b.left > 0 && !inWater(c)) w.boulders.push(b);
+  else rest(w, b, s);
+}
+
+/**
+ * Each boulder, in the order cast, rolls a cell when its time comes, the way the ground falls (rollTo), and strikes
+ * it; once it can't roll on, reaches water or its length's end, it comes to rest and is gone (World.TickBoulders).
+ */
+export function tickBoulders(w: World): void {
+  if (!w.boulders.length) return;
+  for (const b of w.boulders) {
+    if (++b.age % b.every !== 0) continue;
+    const s = spellById(b.spell);
+    const dir = s ? rollTo(w, b) : -1;
+    if (dir >= 0) {
+      b.dir = dir as Dir;
+      b.x += DX[b.dir];
+      b.y += DY[b.dir];
+      b.left--;
+      strike(w, b, s!);
+      if (inWater(cellAt(w, b.x, b.y)!)) b.left = 0;
+    } else b.left = 0;
+    if (b.left <= 0) rest(w, b, s);
+  }
+  w.boulders = w.boulders.filter((b) => b.left > 0);
+}
+
+const inWater = (c: { water: number; frozen: boolean }) => c.water > 0 && !c.frozen;
+
+/**
+ * Where a boulder rolls next: of the open cells ahead, to its left and to its right (in that order), the lowest that
+ * isn't higher than where it is; -1 when every way is uphill or shut (World.RollTo).
+ */
+function rollTo(w: World, b: Boulder): number {
+  let best = -1, bestLevel = elevation(cellAt(w, b.x, b.y)!);
+  for (const dir of [b.dir, (b.dir + 3) % 4, (b.dir + 1) % 4] as Dir[]) {
+    const n = cellAt(w, b.x + DX[dir], b.y + DY[dir]);
+    if (!n || isBlocking(n)) continue;
+    const level = elevation(n);
+    if (level < bestLevel || (level === bestLevel && best < 0)) {
+      best = dir;
+      bestLevel = level;
+    }
+  }
+  return best;
+}
+
+/**
+ * The boulder strikes the cell it rolls onto: what is brittle there cracks or shatters, it leaves its trail of gas,
+ * and the thing there (not the player, whom the C# core doesn't hold) takes its damage and is knocked over (World.Strike).
+ */
+function strike(w: World, b: Boulder, s: SpellDef): void {
+  shatter(w, b.x, b.y);
+  if (s.trail) addGas(cellAt(w, b.x, b.y)!, s.trail, 2);
+  const e = entityAt(w, b.x, b.y);
+  if (!e || defOf(e).player) return;
+  if (s.damage) damage(w, e, roll(w, s.damage), s.name.toLowerCase(), s.element);
+  force(w, s, b.x, b.y, b.dir);
+}
+
+/**
+ * A spell's force on what stands at (x, y), not the player (World.Force; spells.json force): pushed force.push cells
+ * along dir where that's open, if it's maxMass or lighter (a wave knocks it back), and thrown off its feet for
+ * force.throw ticks (a geyser's jet, a boulder).
+ */
+function force(w: World, s: SpellDef, x: number, y: number, dir: Dir | undefined): void {
+  const f = s.force;
+  if (!f) return;
+  const e = entityAt(w, x, y);
+  if (!e || defOf(e).player || !w.entities.includes(e)) return;
+  const by = s.name.toLowerCase(), name = defOf(e).name;
+  if ((f.push ?? 0) > 0 && dir !== undefined && massOf(e) <= (s.maxMass ?? 1)) {
+    for (let k = 0; k < f.push!; k++) {
+      const n = cellAt(w, e.x + DX[dir], e.y + DY[dir]);
+      if (!n || isBlocking(n) || entityAt(w, e.x + DX[dir], e.y + DY[dir])) break;
+      e.x += DX[dir];
+      e.y += DY[dir];
+    }
+    logOnce(w, `pushed#${e.id}`, `The ${by} knocks ${name} back`, "notable");
+  }
+  if (!f.throw) return;
+  e.status.thrown = Math.max(e.status.thrown ?? 0, f.throw);
+  logOnce(w, `thrown#${e.id}`, `The ${by} throws ${name} off its feet`, "notable");
+}
+
+/** Where it stops it comes to rest, and its leaves (earth) lands there: a dam in a stream, a boulder on dry ground (World.Rest). */
+function rest(w: World, b: Boulder, s: SpellDef | undefined): void {
+  b.left = 0;
+  if (!s) return;
+  logOnce(w, `rest#${s.id}`, `The ${s.name.toLowerCase()} comes to rest`, "info");
+  if (s.leaves) applyElement(w, b.x, b.y, s.leaves, { power: 1, direct: true });
+}
+
+/** The nearest cell within range (steps either way) of (x, y) matching if, as the crow flies, the first in row order on a tie (World.Seek). */
+function seek(w: World, sk: NonNullable<SpellDef["seeks"]>, x: number, y: number): [number, number] | undefined {
+  let best: [number, number] | undefined, bestD = Infinity;
+  for (let dy = -sk.range; dy <= sk.range; dy++) {
+    for (let dx = -sk.range; dx <= sk.range; dx++) {
+      const d = dx * dx + dy * dy, c = cellAt(w, x + dx, y + dy);
+      if (d >= bestD || !c || !matches(c, sk.if)) continue;
+      best = [x + dx, y + dy];
+      bestD = d;
+    }
+  }
+  return best;
+}
+
 /** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */
 export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
-  const cells = spellCells(w, s, x, y, dir, charge, aim);
+  let cells = spellCells(w, s, x, y, dir, charge, aim);
+  // A spell that seeks (Lightning) strikes the nearest cell it seeks near where it's aimed instead of its shape.
+  const sought = s.seeks ? seek(w, s.seeks, x, y) : undefined;
+  if (sought) cells = [sought];
+  // A spell that acts on what's already there (Geyser on water) lands only where that is, and fizzles where it isn't.
+  if (s.needs) {
+    cells = cells.filter(([cx, cy]) => matches(cellAt(w, cx, cy)!, s.needs));
+    if (!cells.length) {
+      log(w, s.fizzle ?? `${s.name} fizzles`, "notable");
+      return;
+    }
+  }
   const ctx = { power: (s.power ?? 1) * charge, dir, direct: true, at: [x, y] as [number, number] };
-  if (s.element === "air" && s.wind) w.wind = { dir, ticks: s.wind };
+  // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction (World.Land).
+  if (s.wind) w.wind = { dir, ticks: s.wind };
+  if (s.inward && s.pullEvery && s.duration) {
+    w.whirls.push({ x, y, radius: (s.radius ?? 1) + chargedGrowth(s, charge), ticks: s.duration, age: 0, every: s.pullEvery, maxMass: s.maxMass ?? 1, spell: s.id, dir, travel: s.travelEvery ?? 0, carrying: null });
+  }
   if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
+  if (s.crater) for (const [cx, cy] of cells) shatter(w, cx, cy);
   crater(w, x, y, s.crater);
 
   // Shove first (furthest first, so a line of goblins doesn't jam), then react.
@@ -268,7 +671,8 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
   }
   for (const [cx, cy] of cells) {
     if (casterId !== undefined && s.shape === "burst" && cx === x && cy === y) continue;
-    if (s.element) applyElement(w, cx, cy, s.element, ctx);
+    if (s.element) applyElement(w, cx, cy, s.element, s.inward ? { ...ctx, dir: inwardDir(cx - x, cy - y) } : ctx);
+    force(w, s, cx, cy, dir);
     if (!s.push && s.damage) {
       const e = entityAt(w, cx, cy);
       if (e && e.id === casterId) continue;
@@ -280,6 +684,8 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
       }
     }
   }
+  scatter(w, s.scatter, x, y);
+  if (s.core) applyElement(w, x, y, s.core, { power: 1, direct: true });
 }
 
 function levitate(w: World, s: SpellDef, x: number, y: number) {

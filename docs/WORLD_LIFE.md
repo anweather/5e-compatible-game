@@ -229,6 +229,16 @@ an owner-written variable, so every peer dresses each wizard the same, a
 late joiner too. Probe `look`. Still open from the plan below: the body's
 height and stoop, and a way to pick parts rather than reroll the lot.
 
+**The look changed (Andrew, UX pass 2, 2026-10-30):** the robot is hidden
+under the clothes but for its hands, shins and feet (`WizardOutfit.HideCovered`
+swaps the covered bones on its skin for stand-ins of no size, so the rig and
+its animation are untouched and nothing clips). The face is a black fuzzy ball
+with two red slits for eyes (`Prototype/WizardFace`). Headwear is a hat or a
+cowl, changed on its own in the Esc menu: the seed's top bits choose it and the
+rest draw everything else, so online it travels with the seed. To add a kind,
+add it to `WizardLook.HeadwearKind` and a part in `WizardOutfit.Headwear`.
+Beards are off with the new face: `WizardBeard` is still there, unused.
+
 ### The plan
 
 A `WizardLook` recipe and a seed give each wizard their own look: the

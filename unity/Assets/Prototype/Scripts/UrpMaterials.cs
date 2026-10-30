@@ -60,6 +60,12 @@ public static class UrpMaterials
         m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
     }
 
+    /// <summary>
+    /// How glossy a film on the ground is (oil, grease, mud, glass: CellSlickMesh). Near a mirror its
+    /// sky reflection stays at full strength however see-through the film is, and hides its colour.
+    /// </summary>
+    public const float FilmSmoothness = 0.7f;
+
     public const string UnlitParticlesShader = "Universal Render Pipeline/Particles/Unlit";
 
     /// <summary>

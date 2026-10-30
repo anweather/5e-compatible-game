@@ -28,6 +28,7 @@ public class WeatherFx : MonoBehaviour
     readonly System.Random thunderRandom = new();
     AudioSource rainLoop, windLoop;
     int seenTick = -1;
+    readonly System.Collections.Generic.HashSet<(int x, int y, int tick)> meteorsShown = new(), strikesShown = new();
     Chem.World seenWorld;
     SpellVisuals.Entry meteorLook;
 
@@ -80,14 +81,19 @@ public class WeatherFx : MonoBehaviour
         if (world.Tick == seenTick) return;
         int since = seenTick;
         seenTick = world.Tick;
-        foreach (var (x, y, _) in world.StrikesSince(since)) StartCoroutine(Strike(Ground(grid.CellCenter(x, y)), cam.transform.position));
+        // Both from the tick before too: the core stamps them with a tick already seen here (as a flash, ChemGrid.RenderFlashes).
+        foreach (var (x, y, tick) in world.StrikesSince(since - 1))
+            if (strikesShown.Add((x, y, tick))) StartCoroutine(Strike(Ground(grid.CellCenter(x, y)), cam.transform.position));
         // A meteor shower's meteors: each falls for the ticks until it lands, from beyond it as seen from here.
-        foreach (var (x, y, lands, _) in world.MeteorsSince(since))
+        foreach (var (x, y, lands, tick) in world.MeteorsSince(since - 1))
         {
+            if (!meteorsShown.Add((x, y, tick))) continue;
             meteorLook ??= MeteorLook();
             float seconds = (lands - world.Tick) / (float)world.Rules.Sim.TicksPerSecond;
             MeteorFall.Launch(Ground(grid.CellCenter(x, y)), cam.transform.position, meteorLook, null, null, seconds);
         }
+        meteorsShown.RemoveWhere(m => m.tick < since - 1);
+        strikesShown.RemoveWhere(m => m.tick < since - 1);
     }
 
     static void Play(AudioSource source, bool on)

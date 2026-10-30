@@ -41,6 +41,51 @@ Each entry has:
 
 ## Decided
 
+### J-039: Do the combo casts each need their own job?
+
+- **Asked:** 2026-10-30, by Andrew: "the first spells do the same things
+  largely, just different shapes".
+- **Also comes up when:** any new spell, item or tool; a combo that feels
+  like another one; choosing between a damage number and a material effect.
+- **Answer:** yes. One verb per cast (light, blast, scald, launch, freeze,
+  transform, roll, conduct, carry...), decided by the material system and
+  drawn with the effects library. Casts chain: an element onto a lingering
+  spell changes it. Flame Wave, Fog Bank, Flood, Molten Boulder and Dust
+  Storm are replaced by Falling Star, Geyser, Wave, Forge and Rolling
+  Boulder. The table is in docs/SPELL_COMBOS.md.
+- **Why:** the game is about material interactions and mini games; spells
+  that only differ in shape add buttons, not play. Chains give many outcomes
+  from 20 casts without new entities.
+- **Revisited:** 0
+
+### J-038: Do grimoire discoveries survive a world reset?
+
+- **Asked:** 2026-10-29, after combo-core stored the grimoire in the world
+  save, so the online world reset (J-014) wiped it.
+- **Also comes up when:** any per-player progress (discoveries, unlocks,
+  items kept), a player joining another host's world, saving and loading.
+- **Answer:** yes. Progress belongs to the player, not the world: "If you join
+  you should bring your progress." Not urgent now, but build toward a player
+  save as a system (BACKLOG 21).
+- **Why:** discovery is the player's progress; losing it on a reset or a
+  different host's world feels like a punishment.
+- **Revisited:** 0
+
+### J-037: How much RAM must stay free to start a worker VM?
+
+- **Asked:** 2026-10-29, by Andrew (to run two worker VMs side by side).
+- **Also comes up when:** start.cmd refuses a VM, adding a worker, opening
+  an Editor on the PC while workers run.
+- **Answer (2026-10-29):** Workers do the Unity work in VMs; the PC runs no
+  Editor. So start.cmd keeps 6 GB free when no host Unity is running, and
+  J-017's 10 GB when one is. Windows workers start at 4 GB and cap at 8 GB.
+  A Linux worker (1 GB start, 1.9 GB peak on the full core and sandbox
+  checks) may start down to 8 GB free beside an Editor (Andrew, 2026-10-29).
+- **Why:** each VM has a hard cap, so two busy workers (16 GB) plus the
+  host (~11 GB) leave about 4 GB of 31 in the worst case; idle they sit at
+  4 GB each. The 10 GB came from a host Editor's first build.
+- **Revisited:** 0.
+
 ### J-034 to J-036: Punchy upgrades (from Build's research, 2026-10-28)
 
 - **J-034, generated areas from Punchy's biomes:** NOT YET. Paper cuts

@@ -62,6 +62,9 @@ public class CastPose : MonoBehaviour
     }
 
     /// <summary>The hand's position, where projectiles start; the chest if the rig has no hand.</summary>
+    /// <summary>Where the other hand is (the second element's orb: CastOrbs).</summary>
+    public Vector3 LeftHandPosition => leftArm.end != null ? leftArm.end.position : transform.position + Vector3.up * 1.2f - transform.right * 0.3f;
+
     public Vector3 HandPosition => rightArm.end != null ? rightArm.end.position : transform.position + Vector3.up * 1.3f;
 
     /// <summary>Plays a cast's gesture toward <paramref name="at"/>, on from the wind-up if a held Cast was showing it.</summary>

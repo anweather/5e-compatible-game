@@ -52,6 +52,34 @@ namespace Chem
         public (int dir, int ticks)? Wind { get; set; }
 
         /// <summary>
+        /// A whirlwind still whirling (spells.json pullEvery: Whirlwind): its middle, its radius in cells, the
+        /// ticks it lasts and has run, how often it pulls and the heaviest creature it drags; the spell it came
+        /// from, the way it was cast and how often it moves; and what it carries (a CarryDef's id, or null).
+        /// </summary>
+        public sealed class Whirl
+        {
+            public int X, Y, Radius, Ticks, Age, Every, MaxMass, Dir, Travel;
+            public string Spell, Carrying;
+        }
+
+        /// <summary>A delayed cast on its way down (spells.json delay: Falling Star): what lands, where, how charged, the tick it lands.</summary>
+        public sealed class Star
+        {
+            public string Spell;
+            public int X, Y, Dir, Charge, Radius, Lands;
+        }
+
+        readonly List<Star> stars = new List<Star>();
+        /// <summary>The stars on their way down, in the order they were cast.</summary>
+        public IReadOnlyList<Star> Stars => stars;
+
+        readonly List<Whirl> whirls = new List<Whirl>();
+        // Lava running this tick (World.Run): from, to, moved at the end of the tick.
+        readonly List<(Cell from, Cell to)> runs = new List<(Cell from, Cell to)>();
+        /// <summary>The whirlwinds still whirling, in the order they were cast.</summary>
+        public IReadOnlyList<Whirl> Whirls => whirls;
+
+        /// <summary>
         /// Switches the rules on a running world (a live mod on or off; see Rules.WithMods),
         /// keeping its cells. Call it between ticks, at the same tick on every peer. Like the
         /// sandbox's applyMods and sanitizeWorld: anything the new rules no longer define is
@@ -208,6 +236,9 @@ namespace Chem
         /// </summary>
         public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
+
+        /// <summary>Whether walkers can climb or cross a cell on its cover (vines: up a wall, over a pit or a stream), for the view.</summary>
+        public bool IsClimbable(Cell c) => CoverHasTag(c, "climbable");
         public bool IsConductive(Cell c) => (c.Water > 0 && !c.Frozen) || TerrainOf(c).Conducts;
 
         public double Flammability(Cell c)

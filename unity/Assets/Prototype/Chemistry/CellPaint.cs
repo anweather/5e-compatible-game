@@ -75,6 +75,10 @@ namespace Chem
         static readonly float[] DugMix = { 0, 0, 0, 0, 0.3f, 0, 0.7f, 0 };
         // Scorched ground and ash.
         static readonly float[] CharredMix = { 0, 0, 0, 0, 0, 0.85f, 0.15f, 0 };
+        // Sand (and glass, the sand a strike fused: its glaze is a film on top, CellSlickMesh).
+        static readonly float[] SandMix = { 0, 0, 0, 1, 0, 0, 0, 0 };
+        // Mud: dark, wet earth, stony soil and a little char for the darkness (its wet sheen is a film, CellSlickMesh).
+        static readonly float[] MudMix = { 0, 0, 0, 0, 0.35f, 0.2f, 0.45f, 0 };
         // Snow lying on the ground.
         static readonly float[] SnowMix = { 0, 0, 0, 0, 0, 0, 0, 1 };
 
@@ -97,6 +101,12 @@ namespace Chem
             ["bedrock"] = RockMix,
             ["pit"] = DugMix,
             ["river"] = DugMix,
+            ["sand"] = SandMix,
+            ["glass"] = SandMix,
+            ["mud"] = MudMix,
+            ["brick"] = RockMix,
+            ["lava"] = CharredMix,
+            ["lava-pool"] = CharredMix,
         };
 
         /// <summary>

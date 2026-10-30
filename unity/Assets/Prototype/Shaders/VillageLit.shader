@@ -8,7 +8,8 @@ Shader "Prototype/VillageLit"
     {
         _Tint ("Tint", Color) = (1, 1, 1, 1)
         // 1 for a glow that's carried about (a wizard's staff): steady, the same by day and night, no
-        // window flicker (that's phased by world position, so on a swinging staff it pulsed with each step).
+        // window flicker (that's phased by world position, so on a swinging staff it pulsed with each step)
+        // and no bloom.
         _SteadyGlow ("Steady glow", Float) = 0
     }
     SubShader
@@ -74,7 +75,11 @@ Shader "Prototype/VillageLit"
             half4 Frag(Varyings input) : SV_Target
             {
                 OccluderDitherClip(input.positionCS);
-                half3 n = normalize(input.normalWS);
+                // Guarded: at a needle tip (a crystal staff's) the normal comes to nothing, and normalising it
+                // gives a pixel of NaN, which the bloom spreads into a great flare that pops as the tip moves.
+                float3 raw = input.normalWS;
+                float length2 = dot(raw, raw);
+                half3 n = length2 > 1e-8 ? raw / sqrt(length2) : half3(0, 1, 0);
                 Light light = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 half diffuse = saturate(dot(n, light.direction) * 0.8 + 0.2);
                 half3 albedo = input.color.rgb;
@@ -84,6 +89,9 @@ Shader "Prototype/VillageLit"
                 half flicker = lerp(0.9 + 0.1 * sin(_Time.y * 3.1 + input.positionWS.x * 2.0 + input.positionWS.z), 1.0, _SteadyGlow);
                 half glow = input.color.a * lamp;
                 color += albedo * glow * flicker;
+                // A steady glow is one flat colour, unlit and under the bloom's threshold (1): lit, its facets
+                // crossed that threshold as it swung.
+                color = lerp(color, albedo * 0.95, _SteadyGlow * saturate(input.color.a * 2.0));
                 return half4(MixFog(color, input.fogFactor), 1);
             }
             ENDHLSL

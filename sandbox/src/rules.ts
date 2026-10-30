@@ -9,6 +9,7 @@ import items from "../../rules/items.json" with { type: "json" };
 import machines from "../../rules/machines.json" with { type: "json" };
 import sim from "../../rules/sim.json" with { type: "json" };
 import groups from "../../rules/groups.json" with { type: "json" };
+import combos from "../../rules/combos.json" with { type: "json" };
 import components from "../../rules/components.json" with { type: "json" };
 import { materialGroupErrors, ungroupMaterials } from "./materials.ts";
 
@@ -38,6 +39,42 @@ export interface TerrainDef {
   /** Thin water on it soaks in and dries up a unit every this many ticks (soak in sim.ts), on dry ground and on damp; unset never. */
   soakEvery?: number;
   soakEveryWet?: number;
+  /** How much of its catch (flammability) it loses while damp (soak.dampens, 0 to 1, 0 when absent): a damp cell of it (raining, or dampUntil) or a wet thing of it catches with flammability * (1 - dampens). */
+  dampens?: number;
+  /** Wet (water on it, raining, or damp) this many ticks in all, it rusts through into rustsTo (rust.every, rust.leaves; rust in sim.ts); unset never. */
+  rustEvery?: number;
+  rustsTo?: string;
+  /** What a cell of it leaves when it shatters (shatter.leaves: a window pane to an open gap; shatter in react.ts). */
+  shattersTo?: string;
+  /** It goes intact, cracked, shattered (shatter.cracks): the first hit only cracks it (Cell cracked, shatter in react.ts). */
+  cracks?: boolean;
+  /** Fire reaching it leaves it hot this many ticks (hot.for; cool in sim.ts), and each unit of water it boils off takes hot.quench of them; unset never hot. */
+  hotFor?: number;
+  hotQuench?: number;
+  /** What water soaking into it turns it into (dirt to mud: soak.leaves) and what it dries back to once dry again (mud to dirt: soak.dries, dryOut in sim.ts). */
+  soaksTo?: string;
+  /** The ticks of burning, frozen and wet a creature of it takes (burn.status, freeze.status, soak.status: the entity rules' statusOf); unset none. */
+  burnStatus?: number;
+  freezeStatus?: number;
+  soakStatus?: number;
+  /** A wet creature of it is shocked by charged water next to it, not only under it (conduct.chainsWet; tickEntities). */
+  chainsWet?: boolean;
+  driesTo?: string;
+  /** How fast a creature walks across it (mud 0.5: a step takes 1/speed as long, thorns in entities.ts); 1 when unset. */
+  speed?: number;
+  /** The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves. */
+  dissolvedBy?: string;
+  dissolvesTo?: string;
+  /** What a sand blast turns it into (scour.leaves: rusted metal back to metal, a log wall worn thin), and whether raised ground of it wears down a step (scour.wears). */
+  scoursTo?: string;
+  scourWears?: boolean;
+  /** A hot liquid terrain (lava) runs to its lowest lower neighbour every this many ticks, leaving its growsTo (run.every; run in sim.ts). */
+  runsEvery?: number;
+  /** Water on it while hot sets it at once into this (quench.into: lava to rock), with this line (quench.log). */
+  quenchesTo?: string;
+  quenchLog?: string;
+  /** The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick). */
+  bakesTo?: string;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
   waterTo?: "ice" | "steam";
   /** How its fire looks (flare, wood, oil); the view's only. */
@@ -54,12 +91,37 @@ export interface CoverDef {
   flammability?: number;
   fuel?: number;
   burnIntensity?: number;
+  /** Heat turns it into this cover (melt.into; unset, none) and this much water (melt.water; unset doesn't melt). */
+  meltsTo?: string;
+  meltWater?: number;
   /** Ticks it lasts once laid (Cell.life) before it withers away (thorns), and the line logged then. */
   lasts?: number;
   witherLog?: string;
   /** What it does to a creature walking through: [dice, sides] damage a square, and its speed (1 unhindered). */
   damage?: [number, number];
   speed?: number;
+  /** The element that dissolves it (materials.json dissolve.by, acid) and the cover it leaves (unset, none). */
+  dissolvedBy?: string;
+  dissolvesTo?: string;
+  /** On open water it spreads to the open water next to it every this many ticks (float.every; float in sim.ts); unset sinks or stays. */
+  floatEvery?: number;
+  /** How many cells a slick of it reaches from where it was laid (float.reach; slick in sim.ts); unset without end. */
+  floatReach?: number;
+  /** When it withers (lasts), its roots break the terrain under it into its breaksTo (rot.breaks: vines crack a stone wall). */
+  rotBreaks?: boolean;
+}
+export interface FlashDef {
+  fire: number;
+  push?: number;
+  log?: string;
+}
+/** What a travelling whirlwind can take on (C#: CarryDef): crossing a cell matching if, it carries this, shedding the element sheds. */
+export interface CarryDef {
+  id: string;
+  name: string;
+  if?: CellCond;
+  sheds: string;
+  log?: string;
 }
 export interface GasDef {
   name: string;
@@ -68,6 +130,18 @@ export interface GasDef {
   decay?: number;
   /** From how many units a square of it hides what's behind (lineOfSight); unset never does. */
   blocksSightAt?: number;
+  /** burn.flash: it goes up all at once when fire meets it (dust): the fire each cell goes up with, the shove, the line it logs (flashGas). */
+  burn?: { flash?: FlashDef };
+  /** Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); unset never. */
+  condenseEvery?: number;
+  /** It condenses only this many cells or more from heat: none within it burning or hot, so steam doesn't rain straight back onto a fire (World.NearHeat). */
+  condenseAway?: number;
+  /** A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); unset never. */
+  rainEvery?: number;
+  /** It adds this to the rust of metal under it each tick (steam rusts metal faster; rustUnder in sim.ts). */
+  rusts?: number;
+  /** An element a cell of it lets fall on its cell every so many ticks, at a chance (a storm cloud's lightning, a snow cloud's snow, a rain cloud's growth; shedFrom). */
+  sheds?: { element: string; every: number; chance?: number };
 }
 
 export interface CellCond {
@@ -76,6 +150,10 @@ export interface CellCond {
   fireBelow?: number;
   water?: boolean;
   frozen?: boolean;
+  /** Whether the cell's cover melts (its material has melt.water: snow, a snow bank, frost; World.CoverMelts). */
+  melts?: boolean;
+  /** Whether the cell is hot (heat above 0). */
+  hot?: boolean;
   gas?: string;
   terrainTag?: string;
   notTerrainTag?: string;
@@ -92,6 +170,8 @@ export interface EntityCond {
   lacks?: string | string[];
   /** Old shorthand: true is has flammable, false is lacks flammable. */
   flammable?: boolean;
+  /** Its material gives a status by this verb (burn, freeze, soak: burn.status and so on). */
+  verb?: string;
 }
 
 /** One effect object; exactly one of the verb keys is set. */
@@ -106,6 +186,20 @@ export interface Effect {
   setCover?: string | null;
   spreadCover?: number;
   break?: boolean;
+  /** A terrain that gets hot (hot.for) is left hot for that long (cool in sim.ts). */
+  heat?: boolean;
+  /** The terrain becomes its bakesTo, if it has one. */
+  bake?: boolean;
+  /** The cover becomes its meltsTo and gives its meltWater, if it melts. */
+  meltCover?: boolean;
+  /** A hit on the cell's ice or terrain, as a blast's: it cracks, or if cracked shatters. */
+  shatter?: boolean;
+  /** A sand blast: strips a cover that scours, or turns the terrain to its scoursTo, or wears raised ground of it down a step. */
+  scour?: boolean;
+  /** A floating cover is pushed a cell along the element's way onto open water with no cover (a gust drives oil across a pond). */
+  pushCover?: boolean;
+  /** Eats away the cell's cover or terrain into its dissolvesTo, when the rule's element is its dissolvedBy. */
+  dissolve?: "cover" | "terrain";
   setTerrain?: string;
   raise?: string;
   conduct?: number;
@@ -116,6 +210,8 @@ export interface Effect {
   gas?: string;
   n?: number;
   status?: Record<string, number>;
+  /** The status a verb gives (burn burning, freeze frozen, soak wet), for its material's ticks of it; none without. */
+  statusOf?: string;
   clear?: string;
   damageMul?: number;
   /** The terrain the cell becomes, its life a roll within ticks [min, max] plus wave ticks a square from where the spell landed. */
@@ -162,7 +258,7 @@ export interface SpellDef {
   radiusPerCharge?: number;
   push?: number;
   wind?: number;
-  effect?: "levitate" | "carry" | "teleport" | "terraform" | "haste" | "weather" | "shapeshift";
+  effect?: "levitate" | "carry" | "teleport" | "terraform" | "haste" | "weather" | "shapeshift" | "light";
   /** haste (Hasten Time): how many times as fast the day clock runs. */
   rate?: number;
   /**
@@ -176,6 +272,41 @@ export interface SpellDef {
   height?: number;
   terrain?: string;
   taper?: boolean;
+  /** A burst whose element arrives at each cell heading in toward its middle (Whirlwind): air shoves gas and fans fire inward. */
+  inward?: boolean;
+  /** An inward burst that keeps whirling for duration ticks (Whirlwind): every pullEvery ticks it draws gas and entities of maxMass or less a cell inward and runs fire round its rings (tickWhirlwinds). */
+  pullEvery?: number;
+  /** Ticks between the cast and its landing, with a target mark on the cells (Falling Star; aimStar); unset lands at once. */
+  delay?: number;
+  /** Burning rock thrown round where it lands: count tries at a cell within reach of the middle (scatter). */
+  scatter?: { cover: string; count: number; reach: number };
+  /** An element that lands on its middle cell last of all (Falling Star's lava). */
+  core?: string;
+  /** A whirling spell moves a cell every this many ticks (Travel in World.Spells.cs), and drops what it carries at dropPower (default 1). */
+  travelEvery?: number;
+  dropPower?: number;
+  /** What a whirling spell can take on, strongest first: one replaces any after it. */
+  carries?: CarryDef[];
+  /** A spell that acts on what's already there (Geyser on water): it lands only on the cells matching this, and with none fizzles (fizzle logged). */
+  needs?: CellCond;
+  /** The line logged when a spell with needs finds no cell to act on; unset, "{name} fizzles". */
+  fizzle?: string;
+  /** A travelling wave's or rolling boulder's element where it stops (Wave's mud, the boulder's earth; tickWaves, tickBoulders). */
+  leaves?: string;
+  /** Its force on what stands in each cell it reaches (Geyser and Rolling Boulder throw, Wave knocks back; force in actions.ts): ticks thrown off its feet, and cells pushed along the cast's way (maxMass or lighter). */
+  force?: { throw?: number; push?: number };
+  /** A spell that seeks (Lightning): it strikes the nearest cell within range of where it's aimed matching if (metal or water) instead of its shape, and its shape when there is none. */
+  seeks?: { range: number; if: CellCond };
+  /** A line with travelEvery that rolls rather than washes (Rolling Boulder; tickBoulders): one cell that follows the ground downhill. */
+  rolls?: boolean;
+  /** The gas a rolling boulder leaves behind it (dust). */
+  trail?: string;
+  /** Earth shaping to a height: cells holding open water rise only this high (Wall of Stone's stepping stones). */
+  stepping?: number;
+  /** Earth shaping to a height along a line: a step higher each cell from the first, up to the height (Stone Ramp). */
+  ramp?: boolean;
+  /** The light the Light effect sheds, in feet (bright, dim), for the view to draw (SpellDef.LightBright, LightDim). */
+  light?: { bright: number; dim: number };
   /** The ground it blows out where it lands (Fireball). */
   crater?: CraterDef;
   duration?: number;
@@ -233,6 +364,8 @@ export interface CraterDef {
   depth: number;
   /** How hard a ground the blast can dig (1 when absent). */
   strength?: number;
+  /** What its middle cell becomes once dug (Molten Boulder's lava); unset stays. */
+  leaves?: string;
 }
 /**
  * A thing to carry (items.json). The Unity game picks these up, throws them and
@@ -247,12 +380,14 @@ export interface ItemDef {
   components?: string[];
   /** Kilograms. */
   mass?: number;
-  use?: "light" | "zoom" | "send" | "point";
+  use?: "light" | "zoom" | "send" | "point" | "dig";
   /** Feet of bright and then dim light, its colour, and a cone's full angle in degrees (0 or unset: all round). */
   light?: { bright?: number; dim?: number; color?: string; cone?: number };
   zoom?: number;
   /** use "point": how far away its light can go, in feet. */
   reach?: number;
+  /** use "dig": how hard a ground its swing can dig (terrain hardness). */
+  strength?: number;
   message?: string;
   /** Breaks when it lands at speed (m/s) or harder, spilling a cover (lit) over a radius. */
   breaks?: { speed: number; spill?: { cover: string; radius?: number; fire?: number } };
@@ -282,12 +417,13 @@ export interface GroupDef {
 }
 export interface SimParams {
   ticksPerSecond: number;
-  fire: { spreadChance: number; heatChance: number; boilChance: number; downwindBonus: number; smokeChance: number };
+  fire: { spreadChance: number; heatChance: number; boilChance: number; slickBoilChance?: number; downwindBonus: number; smokeChance: number };
   water: { maxLevel: number; unitsPerStep: number; thin: number; soakPass: number; dampTicks: number };
   /** Range of Cell.h in steps; from blockAt up a cell is a wall. */
   height: { min: number; max: number; blockAt: number };
   gas: { decayChance: number; maxAmount: number };
-  status: { burnDamageEvery: number; scaldEvery: number };
+  /** shatter: a thing with status `when` (frozen) shatters when hurt by any element but `notBy` (cold); World.Sim ShatterWhen, ShatterNotBy. */
+  status: { burnDamageEvery: number; scaldEvery: number; shatter?: { when?: string; notBy?: string } };
   push: { slideCells: number; collisionDamage: number };
   fallDamage: number;
   zapDamage: number;
@@ -319,6 +455,41 @@ export interface SimParams {
   };
 }
 
+/** What one element, or an ordered pair, casts (C#: ComboDef). */
+export interface ComboDef {
+  name: string;
+  /** The spell it casts, which may stand in for one not made yet (see todo). */
+  spell: string;
+  shape: Shape;
+  /** Ticks the cast meter takes to drain. */
+  castTicks: number;
+  /** The spell it casts when held at the ground instead. */
+  held?: string;
+  /** What's still to make, when spell is a stand-in. */
+  todo?: string;
+}
+
+/** A slot on the d-pad's list. With no spell it shows but can't be cast (C#: DpadSpellDef). */
+export interface DpadSpellDef {
+  name: string;
+  spell?: string;
+  castTicks: number;
+  todo?: string;
+}
+
+/** combos.json: the elements, the window for a second one, and what they cast (C#: CombosDef). */
+export interface CombosDef {
+  elements: string[];
+  /** Ticks after the first element in which a second is taken. */
+  window: number;
+  /** What a view multiplies walking speed by while the cast meter drains. */
+  moveFactor: number;
+  singles: Record<string, ComboDef>;
+  pairs: Record<string, Record<string, ComboDef>>;
+  /** The d-pad's list, in cycling order. */
+  dpad: DpadSpellDef[];
+}
+
 export interface Rules {
   /** Every element name a rule, spell or critter may use. Mods can add more. */
   elements: string[];
@@ -336,9 +507,10 @@ export interface Rules {
   groups: Record<string, GroupDef>;
   /** Component names and what each means (components.json; C#: Components.cs). */
   components: Record<string, string>;
+  combos: CombosDef;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -365,6 +537,7 @@ export const BASE_RULES: Readonly<Rules> = Object.freeze({
   sim: sim as unknown as SimParams,
   groups: groups as Record<string, GroupDef>,
   components: components as Record<string, string>,
+  combos: combos as CombosDef,
 });
 
 /**
@@ -393,6 +566,8 @@ export interface ModPatch {
   critters?: CritterDef[];
   /** Deep-merged over sim.json. */
   sim?: Record<string, unknown>;
+  /** Deep-merged over combos.json. */
+  combos?: Record<string, unknown>;
 }
 
 function mergeDeep(into: Record<string, unknown>, from: Record<string, unknown>) {
@@ -453,6 +628,7 @@ export function composeRules(patches: ModPatch[], base: Readonly<Rules> = BASE_R
     if (p.spells) r.spells = upsertById(r.spells, clone(p.spells));
     if (p.critters) r.critters = upsertById(r.critters, clone(p.critters));
     if (p.sim) mergeDeep(r.sim as unknown as Record<string, unknown>, clone(p.sim));
+    if (p.combos) mergeDeep(r.combos as unknown as Record<string, unknown>, clone(p.combos));
   }
   // A mod may spell a material as verb groups too.
   ungroupMaterials(r as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown> });
@@ -467,13 +643,13 @@ export function installRules(r: Rules) {
 /** Kept for older imports: the base element list. */
 export const ELEMENTS = BASE_ELEMENTS;
 
-const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance"]);
+const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "melts", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
 const EFFECT_KEYS = new Set([
-  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break",
-  "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
+  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve", "scour", "pushCover",
+  "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
-const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift"]);
+const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift", "light"]);
 
 function terraformErrors(r: Rules, s: SpellDef): string[] {
   const errors: string[] = [];
@@ -509,7 +685,7 @@ function isWholeRange(v: unknown, min0: number, min1: number): v is [number, num
   return Array.isArray(v) && v.length === 2 && Number.isInteger(v[0]) && Number.isInteger(v[1]) && v[0] >= min0 && v[1] >= min1;
 }
 
-const ITEM_USES =new Set(["light", "zoom", "send", "point"]);
+const ITEM_USES =new Set(["light", "zoom", "send", "point", "dig"]);
 const isNumber = (v: unknown): v is number => typeof v === "number";
 const absent = (v: unknown) => v === undefined || v === null;
 
@@ -565,6 +741,7 @@ function itemErrors(r: Rules, id: string, it: ItemDef): string[] {
   else if (it.use === "light" && !light) errors.push(`${what}: use light needs a light`);
   else if (it.use === "zoom" && !(isNumber(i.zoom) && i.zoom > 1)) errors.push(`${what}: use zoom needs a zoom above 1`);
   else if (it.use === "send" && !it.message) errors.push(`${what}: use send needs a message`);
+  else if (it.use === "dig" && !(Number.isInteger(i.strength) && (i.strength as number) >= 1)) errors.push(`${what}: use dig needs a whole strength from 1`);
   else if (it.use === "point") {
     if (!light) errors.push(`${what}: use point needs a light`);
     if (!(isNumber(i.reach) && i.reach > 0)) errors.push(`${what}: use point needs a reach above 0`);
@@ -584,6 +761,46 @@ function groupErrors(r: Rules): string[] {
   for (const s of r.spells) {
     if (s.group !== undefined && !(typeof s.group === "string" && Object.hasOwn(r.groups, s.group))) errors.push(`spell ${s.id}: unknown group ${s.group}`);
   }
+  return errors;
+}
+
+const wholeFromOne = (v: unknown) => Number.isInteger(v) && (v as number) >= 1;
+
+/** One combo's entry. Same wording as Combos.cs. */
+function comboEntryErrors(r: Rules, id: string, e: ComboDef | undefined): string[] {
+  if (!e || typeof e !== "object") return [`combo ${id}: missing`];
+  const errors: string[] = [];
+  const spellKnown = (s: string) => r.spells.some((x) => x.id === s);
+  if (!e.name) errors.push(`combo ${id}: needs a name`);
+  if (!spellKnown(e.spell)) errors.push(`combo ${id}: unknown spell ${e.spell}`);
+  if (!SHAPES.has(e.shape)) errors.push(`combo ${id}: unknown shape ${e.shape}`);
+  if (!wholeFromOne(e.castTicks)) errors.push(`combo ${id}: castTicks must be a whole number from 1`);
+  if (e.held !== undefined && !spellKnown(e.held)) errors.push(`combo ${id}: held spell ${e.held} unknown`);
+  return errors;
+}
+
+/** The combo table: every element and ordered pair filled in. Same wording as Combos.cs. */
+function comboErrors(r: Rules): string[] {
+  const c = r.combos;
+  if (!c || Object.keys(c).length === 0) return [];
+  const errors: string[] = [];
+  const elements = Array.isArray(c.elements) ? c.elements : [];
+  for (const e of elements.filter((e) => !r.elements.includes(e))) errors.push(`combos: unknown element ${e}`);
+  if (!wholeFromOne(c.window)) errors.push("combos: window must be a whole number from 1");
+  if (!(isNumber(c.moveFactor) && c.moveFactor > 0 && c.moveFactor <= 1)) errors.push("combos: moveFactor must be above 0 and at most 1");
+  for (const e of elements) {
+    const single = c.singles?.[e];
+    errors.push(...comboEntryErrors(r, e, single));
+    if (single && Number.isInteger(single.castTicks) && Number.isInteger(c.window) && single.castTicks < c.window) errors.push(`combo ${e}: castTicks must be at least the window`);
+  }
+  for (const first of elements) for (const second of elements) errors.push(...comboEntryErrors(r, `${first}+${second}`, c.pairs?.[first]?.[second]));
+  if (!Array.isArray(c.dpad)) return errors;
+  c.dpad.forEach((entry, i) => {
+    const d: Partial<DpadSpellDef> = entry ?? {};
+    if (!d.name) errors.push(`dpad ${i}: needs a name`);
+    if (d.spell !== undefined && !r.spells.some((x) => x.id === d.spell)) errors.push(`dpad ${i}: unknown spell ${d.spell}`);
+    if (!wholeFromOne(d.castTicks)) errors.push(`dpad ${i}: castTicks must be a whole number from 1`);
+  });
   return errors;
 }
 
@@ -624,8 +841,18 @@ export function hasComponent(def: { components?: string[]; flammable?: boolean; 
 const namesOf = (v: string | string[] | undefined): string[] => (v === undefined ? [] : typeof v === "string" ? [v] : v);
 
 /** Whether an entity rule's "if" holds for this entity: its status, and the components it has and lacks. */
+/** The verbs a material gives a creature a status by, and that status (TerrainDef.StatusOfVerb). */
+export const VERB_STATUS: Record<string, string> = { burn: "burning", freeze: "frozen", soak: "wet" };
+
+/** A verb's status ticks on a material: burn, freeze or soak (TerrainDef.StatusTicks); 0 for none. */
+export function statusTicks(m: TerrainDef | undefined, verb: string): number {
+  if (!m) return 0;
+  return (verb === "burn" ? m.burnStatus : verb === "freeze" ? m.freezeStatus : verb === "soak" ? m.soakStatus : 0) ?? 0;
+}
+
 export function entityCondHolds(cond: EntityCond, def: EntityDef, status: Record<string, number>): boolean {
   if (cond.status && !(status[cond.status]! > 0)) return false;
+  if (cond.verb && statusTicks(def.material ? RULES.terrain[def.material] : undefined, cond.verb) <= 0) return false;
   const has = [...namesOf(cond.has), ...(cond.flammable === true ? ["flammable"] : [])];
   const lacks = [...namesOf(cond.lacks), ...(cond.flammable === false ? ["flammable"] : [])];
   return has.every((n) => hasComponent(def, n)) && !lacks.some((n) => hasComponent(def, n));
@@ -658,6 +885,14 @@ function componentTableErrors(r: Rules): string[] {
 /** [from, to]: two hours of the day, 0 to 24 (sky.ts inHours). */
 const isHours = (v: unknown) => Array.isArray(v) && v.length === 2 && v.every((h) => typeof h === "number" && h >= 0 && h <= 24);
 
+/** What dissolves a terrain or cover (an element) and what it leaves (one of its own kind): Rules.Check.cs's Dissolves. */
+function dissolveErrors(what: string, t: { dissolvedBy?: string; dissolvesTo?: string }, elements: Set<string>, kind: Set<string>): string[] {
+  const errors: string[] = [];
+  if (t.dissolvedBy && !elements.has(t.dissolvedBy)) errors.push(`${what}: dissolves by unknown element ${t.dissolvedBy}`);
+  if (t.dissolvesTo && !kind.has(t.dissolvesTo)) errors.push(`${what}: dissolvesTo ${t.dissolvesTo} unknown`);
+  return errors;
+}
+
 /** Cross-checks the tables against each other. Empty means consistent. */
 export function validateRules(r: Rules): string[] {
   const errors: string[] = materialGroupErrors(r as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown> });
@@ -668,19 +903,42 @@ export function validateRules(r: Rules): string[] {
     if (t.burnsTo && !terrainIds.has(t.burnsTo)) errors.push(`terrain ${id}: burnsTo ${t.burnsTo} unknown`);
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
     if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
-    if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
-    for (const key of ["soakEvery", "soakEveryWet"] as const)
+    if (t.rustsTo && !terrainIds.has(t.rustsTo)) errors.push(`terrain ${id}: rustsTo ${t.rustsTo} unknown`);
+    for (const key of ["burnStatus", "freezeStatus", "soakStatus"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
+    if (t.chainsWet !== undefined && typeof t.chainsWet !== "boolean") errors.push(`terrain ${id}: conduct.chainsWet must be true or false`);
+    for (const key of ["soaksTo", "driesTo", "shattersTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
+    if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 0)) errors.push(`terrain ${id}: hardness must be a whole number from 0 (0 never digs)`);
+    for (const key of ["soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench"] as const)
+      if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
+    if (t.dampens !== undefined && !(typeof t.dampens === "number" && t.dampens >= 0 && t.dampens <= 1)) errors.push(`terrain ${id}: dampens must be a number from 0 to 1`);
     if (t.waterTo !== undefined && t.waterTo !== "ice" && t.waterTo !== "steam") errors.push(`terrain ${id}: waterTo must be ice or steam`);
     if (t.fireLook !== undefined && !FIRE_LOOKS.includes(t.fireLook)) errors.push(`terrain ${id}: fireLook must be flare, wood or oil`);
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
+    if (t.cracks !== undefined && typeof t.cracks !== "boolean") errors.push(`terrain ${id}: cracks must be true or false`);
+    if (t.bakesTo && !terrainIds.has(t.bakesTo)) errors.push(`terrain ${id}: bakesTo ${t.bakesTo} unknown`);
+    errors.push(...dissolveErrors(`terrain ${id}`, t, el, terrainIds));
+    if (t.dissolvedBy && !t.dissolvesTo) errors.push(`terrain ${id}: dissolve without leaves`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
+  }
+  for (const [id, g] of Object.entries(r.gases)) {
+    if (g.condenseEvery !== undefined && (!Number.isInteger(g.condenseEvery) || g.condenseEvery < 1)) errors.push(`gas ${id}: condenseEvery must be a whole number from 1`);
+    if (g.condenseAway !== undefined && (!Number.isInteger(g.condenseAway) || g.condenseAway < 0)) errors.push(`gas ${id}: condenseAway must be a whole number from 0`);
+    if (g.rainEvery !== undefined && (!Number.isInteger(g.rainEvery) || g.rainEvery < 1)) errors.push(`gas ${id}: rainEvery must be a whole number from 1`);
+    const flash = g.burn?.flash;
+    if (flash && !(Number.isInteger(flash.fire) && flash.fire >= 1)) errors.push(`gas ${id}: burn.flash.fire must be a whole number from 1`);
+    if (flash?.push !== undefined && !(Number.isInteger(flash.push) && flash.push >= 0)) errors.push(`gas ${id}: burn.flash.push must be a whole number from 0`);
   }
   for (const [id, cv] of Object.entries(r.covers)) {
     if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
     if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);
+    if (cv.meltsTo && !coverIds.has(cv.meltsTo)) errors.push(`cover ${id}: meltsTo ${cv.meltsTo} unknown`);
+    if (cv.meltWater !== undefined && !(Number.isInteger(cv.meltWater) && cv.meltWater >= 1)) errors.push(`cover ${id}: meltWater must be a whole number from 1`);
+    if (cv.floatEvery !== undefined && (!Number.isInteger(cv.floatEvery) || cv.floatEvery < 1)) errors.push(`cover ${id}: floatEvery must be a whole number from 1`);
+    if (cv.floatReach !== undefined && (!Number.isInteger(cv.floatReach) || cv.floatReach < 1)) errors.push(`cover ${id}: floatReach must be a whole number from 1`);
+    errors.push(...dissolveErrors(`cover ${id}`, cv, el, coverIds));
   }
   const seen = new Set<string>();
   for (const rule of [...r.cellRules, ...r.entityRules]) {
@@ -693,6 +951,8 @@ export function validateRules(r: Rules): string[] {
     for (const e of rule.do) for (const k of Object.keys(e)) if (!EFFECT_KEYS.has(k)) errors.push(`rule ${rule.id}: unknown effect "${k}" (new verbs need code; see docs/MODDING.md)`);
     for (const e of rule.do) {
       if (e.setTerrain && !terrainIds.has(e.setTerrain)) errors.push(`rule ${rule.id}: setTerrain ${e.setTerrain} unknown`);
+      if (e.dissolve !== undefined && e.dissolve !== "cover" && e.dissolve !== "terrain") errors.push(`rule ${rule.id}: dissolve must be cover or terrain`);
+      if (e.statusOf !== undefined && !(e.statusOf in VERB_STATUS)) errors.push(`rule ${rule.id}: statusOf must be burn, freeze or soak`);
       if (e.raise && !terrainIds.has(e.raise)) errors.push(`rule ${rule.id}: raise ${e.raise} unknown`);
       if (typeof e.setCover === "string" && !coverIds.has(e.setCover)) errors.push(`rule ${rule.id}: cover ${e.setCover} unknown`);
       if (e.gas && !(e.gas in r.gases)) errors.push(`rule ${rule.id}: gas ${e.gas} unknown`);
@@ -701,6 +961,8 @@ export function validateRules(r: Rules): string[] {
       if (e.ticks !== undefined && !(isWholeRange(e.ticks, 1, 1) && e.ticks[1] >= e.ticks[0])) errors.push(`rule ${rule.id}: ticks must be [min, max], whole numbers from 1`);
     }
     errors.push(...componentCondErrors(r, rule.id, (rule as EntityRule).if, "has"), ...componentCondErrors(r, rule.id, (rule as EntityRule).if, "lacks"));
+    const verb = (rule as EntityRule).if?.verb;
+    if (verb !== undefined && !(verb in VERB_STATUS)) errors.push(`rule ${rule.id}: verb must be burn, freeze or soak`);
     const c = (rule as CellRule).if;
     for (const cv of c?.cover ?? []) if (!coverIds.has(cv)) errors.push(`rule ${rule.id}: cover ${cv} unknown`);
   }
@@ -708,9 +970,26 @@ export function validateRules(r: Rules): string[] {
     if (s.element && !el.has(s.element)) errors.push(`spell ${s.id}: unknown element ${s.element}`);
     if (!SHAPES.has(s.shape)) errors.push(`spell ${s.id}: unknown shape ${s.shape}`);
     if (!s.name) errors.push(`spell ${s.id}: needs a name`);
+    if (s.inward !== undefined && typeof s.inward !== "boolean") errors.push(`spell ${s.id}: inward must be true or false`);
+    if (s.light !== undefined && !(typeof s.light === "object" && s.light !== null && (["bright", "dim"] as const).every((k) => Number.isInteger(s.light![k]) && s.light![k] >= 0)))
+      errors.push(`spell ${s.id}: light must be { bright, dim }, whole feet from 0`);
     if (s.effect !== undefined && !SPELL_EFFECTS.has(s.effect)) errors.push(`spell ${s.id}: unknown effect ${s.effect}`);
     if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
     if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
+    if (s.crater?.leaves && !terrainIds.has(s.crater.leaves)) errors.push(`spell ${s.id}: crater leaves ${s.crater.leaves} unknown`);
+    if (s.pullEvery !== undefined && !(Number.isInteger(s.pullEvery) && s.pullEvery >= 1)) errors.push(`spell ${s.id}: pullEvery must be a whole number from 1`);
+    if (s.delay !== undefined && !(Number.isInteger(s.delay) && s.delay >= 1)) errors.push(`spell ${s.id}: delay must be a whole number from 1`);
+    if (s.scatter !== undefined && !(coverIds.has(s.scatter.cover) && Number.isInteger(s.scatter.count) && s.scatter.count >= 1 && Number.isInteger(s.scatter.reach) && s.scatter.reach >= 1)) errors.push(`spell ${s.id}: scatter needs a known cover and a whole count and reach from 1`);
+    if (s.core !== undefined && !el.has(s.core)) errors.push(`spell ${s.id}: unknown core ${s.core}`);
+    if (s.leaves !== undefined && !el.has(s.leaves)) errors.push(`spell ${s.id}: unknown leaves ${s.leaves}`);
+    if (s.trail !== undefined && !(s.trail in r.gases)) errors.push(`spell ${s.id}: trail ${s.trail} is not a gas`);
+    for (const k of Object.keys(s.needs ?? {})) if (!COND_KEYS.has(k)) errors.push(`spell ${s.id}: needs has unknown condition "${k}"`);
+    for (const key of ["travelEvery", "dropPower"] as const)
+      if (s[key] !== undefined && !(Number.isInteger(s[key]) && s[key]! >= 1)) errors.push(`spell ${s.id}: ${key} must be a whole number from 1`);
+    for (const c of s.carries ?? []) {
+      if (!el.has(c.sheds)) errors.push(`spell ${s.id}: carries ${c.id} sheds unknown element ${c.sheds}`);
+      for (const k of Object.keys(c.if ?? {})) if (!COND_KEYS.has(k)) errors.push(`spell ${s.id}: carries ${c.id} has unknown condition "${k}"`);
+    }
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const c of r.critters) if (c.hours !== undefined && !isHours(c.hours)) errors.push(`critter ${c.id}: hours must be [from, to], hours from 0 to 24`);
@@ -726,8 +1005,11 @@ export function validateRules(r: Rules): string[] {
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
+  for (const k of ["when", "notBy"] as const)
+    if (r.sim.status.shatter?.[k] != null && typeof r.sim.status.shatter[k] !== "string") errors.push(`sim status.shatter.${k} must be a name`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
   errors.push(...componentTableErrors(r));
   errors.push(...groupErrors(r));
+  errors.push(...comboErrors(r));
   return errors;
 }
