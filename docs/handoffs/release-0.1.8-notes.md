@@ -3,6 +3,8 @@
 
 The eighth alpha of Spell Chemistry Valley, a 5E-compatible spell-chemistry sandbox. If you have 0.1.2 or later installed, it updates itself the next time you start it.
 
+**This one is Windows only.** The Mac stays on 0.1.7 for now, and the next release brings it up to date. Until then, a Mac on 0.1.7 and a PC on 0.1.8 can't play online together.
+
 ## Install (new players)
 
 **Windows:** download `SpellChemistryValley-win-Setup.exe` and run it. The game isn't code-signed yet, so Windows may warn ("Unknown Publisher", or SmartScreen's *More info → Run anyway*).
