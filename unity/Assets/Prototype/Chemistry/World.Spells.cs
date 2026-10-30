@@ -210,6 +210,14 @@ namespace Chem
             else Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
         }
 
+        /// <summary>The direction from (dx, dy) off a burst's middle back toward it, -1 at the middle: along the longer axis, east or west on a tie (Whirlwind's inward).</summary>
+        static int InwardDir(int dx, int dy)
+        {
+            if (dx == 0 && dy == 0) return -1;
+            if (System.Math.Abs(dx) >= System.Math.Abs(dy)) return dx > 0 ? 3 : 1;
+            return dy > 0 ? 0 : 2;
+        }
+
         /// <summary>What a spell does to cells where it lands, without the cast's log line (a meteor's landing too).</summary>
         void Land(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
         {
@@ -226,7 +234,7 @@ namespace Chem
             waveFrom = (x, y);
             foreach (var (cx, cy) in cells)
             {
-                Apply(cx, cy, s.Element, s.Power * charge, dir, true);
+                Apply(cx, cy, s.Element, s.Power * charge, s.Inward ? InwardDir(cx - x, cy - y) : dir, true);
                 LandOnRaider(s, cx, cy);
             }
             waveFrom = null;

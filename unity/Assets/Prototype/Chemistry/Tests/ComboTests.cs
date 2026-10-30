@@ -67,11 +67,11 @@ namespace Chem.Tests
             var all = Base.Combos.All;
             Assert.That(all, Has.Count.EqualTo(20));
             foreach (var d in all) Assert.That(d.Shape, Is.EqualTo(Base.Spell(d.Spell).Shape), d.Id);
-            Assert.That(all.Count(d => d.Todo != null), Is.EqualTo(4));
+            Assert.That(all.Count(d => d.Todo != null), Is.EqualTo(0), "no stand-ins left");
             Assert.That(Base.Combos.Combo("fire+water").Spell, Is.EqualTo("scalding-steam"));
             Assert.That(Base.Combos.Combo("fire+water").Todo, Is.Null, "a real spell now");
-            Assert.That(Base.Combos.Combo("air+fire").Spell, Is.EqualTo("shocking-grasp"));
-            Assert.That(Base.Combos.Combo("air+fire").Todo, Is.Not.Null, "still a stand-in");
+            Assert.That(Base.Combos.Combo("air+fire").Spell, Is.EqualTo("lightning-bolt"));
+            Assert.That(Base.Combos.Combo("air+fire").Todo, Is.Null, "the last stand-ins are real spells too");
         }
 
         [Test]
@@ -112,7 +112,7 @@ namespace Chem.Tests
             Assert.That(w.CastOf("ann").Total, Is.EqualTo(9));
             Assert.That(UntilFired(w), Is.EqualTo(9));
             Assert.That(w.CombosFired[0].Combo, Is.EqualTo("air+fire"));
-            Assert.That(w.CombosFired[0].Spell, Is.EqualTo("shocking-grasp"));
+            Assert.That(w.CombosFired[0].Spell, Is.EqualTo("lightning-bolt"));
         }
 
         [Test]

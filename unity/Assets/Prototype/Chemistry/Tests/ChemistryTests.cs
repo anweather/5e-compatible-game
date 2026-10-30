@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(53));
+            Assert.That(R.CellRules.Count, Is.EqualTo(56));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -771,6 +771,35 @@ namespace Chem.Tests
             Assert.That(w.Cells.Count(c => c.T == "lava-pool"), Is.EqualTo(0), "the lava pool cools");
             Assert.That(w.Log.Any(l => l.Text == "The lava pool cools into rock"));
             Assert.That($"{pool} {goblin.Hp} {hound.Hp} {w.CellHash()} {w.RngState}", Is.EqualTo("9 90 -1 d6bc3323 2450008921"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void TheAirCombosCastLightningBoltRainCloudSandBlastAndWhirlwind()
+        {
+            // rules/combos.json air+fire, air+water, air+earth and air+air, each its own spell now.
+            var w = new World(R, 24, 11, 1, "grass");
+            w.Cast("sand-blast", 1, 2, 1);
+            int sand = w.Cells.Count(c => c.T == "sand");
+            Assert.That(sand, Is.GreaterThan(0), "the blast leaves sand along its line");
+            w.Cast("lightning-bolt", 1, 2, 1);
+            int glass = w.Cells.Count(c => c.T == "glass");
+            Assert.That(glass, Is.GreaterThan(0), "the bolt fuses the sand it crosses into glass");
+            Assert.That(w.Cells.Count(c => c.Fire > 0), Is.GreaterThan(0), "and sets the grass beyond smouldering");
+            w.Cast("rain-cloud", 16, 2, 0);
+            Assert.That(w.At(16, 2).Gas, Is.EqualTo("cloud"));
+            w.At(10, 8).Gas = "smoke";
+            w.At(10, 8).GasAmt = 4;
+            w.Cast("whirlwind", 12, 8, 0);
+            Assert.That(w.At(10, 8).Gas, Is.Null, "the whirlwind draws the smoke in");
+            int drawn = 0;
+            for (int y = 7; y <= 9; y++)
+                for (int x = 11; x <= 13; x++) drawn += w.At(x, y).Gas == "smoke" ? w.At(x, y).GasAmt : 0;
+            Assert.That(drawn, Is.EqualTo(4), "toward its middle, all of it");
+            Run(w, 60);
+            int rained = 0;
+            for (int x = 14; x <= 18; x++) rained += w.At(x, 2).Water;
+            Assert.That(rained, Is.GreaterThan(0), "the cloud rains on the cells under it");
+            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 4 49212457 399058435"), "the same in the sandbox");
         }
 
         [Test]

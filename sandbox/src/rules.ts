@@ -102,6 +102,8 @@ export interface GasDef {
   condenseEvery?: number;
   /** It condenses only this many cells or more from heat: none within it burning or hot, so steam doesn't rain straight back onto a fire (World.NearHeat). */
   condenseAway?: number;
+  /** A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); unset never. */
+  rainEvery?: number;
 }
 
 export interface CellCond {
@@ -220,6 +222,8 @@ export interface SpellDef {
   height?: number;
   terrain?: string;
   taper?: boolean;
+  /** A burst whose element arrives at each cell heading in toward its middle (Whirlwind): air shoves gas and fans fire inward. */
+  inward?: boolean;
   /** The ground it blows out where it lands (Fireball). */
   crater?: CraterDef;
   duration?: number;
@@ -421,7 +425,7 @@ export interface Rules {
   combos: CombosDef;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -834,6 +838,7 @@ export function validateRules(r: Rules): string[] {
   for (const [id, g] of Object.entries(r.gases)) {
     if (g.condenseEvery !== undefined && (!Number.isInteger(g.condenseEvery) || g.condenseEvery < 1)) errors.push(`gas ${id}: condenseEvery must be a whole number from 1`);
     if (g.condenseAway !== undefined && (!Number.isInteger(g.condenseAway) || g.condenseAway < 0)) errors.push(`gas ${id}: condenseAway must be a whole number from 0`);
+    if (g.rainEvery !== undefined && (!Number.isInteger(g.rainEvery) || g.rainEvery < 1)) errors.push(`gas ${id}: rainEvery must be a whole number from 1`);
   }
   for (const [id, cv] of Object.entries(r.covers)) {
     if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
@@ -871,6 +876,7 @@ export function validateRules(r: Rules): string[] {
     if (s.element && !el.has(s.element)) errors.push(`spell ${s.id}: unknown element ${s.element}`);
     if (!SHAPES.has(s.shape)) errors.push(`spell ${s.id}: unknown shape ${s.shape}`);
     if (!s.name) errors.push(`spell ${s.id}: needs a name`);
+    if (s.inward !== undefined && typeof s.inward !== "boolean") errors.push(`spell ${s.id}: inward must be true or false`);
     if (s.effect !== undefined && !SPELL_EFFECTS.has(s.effect)) errors.push(`spell ${s.id}: unknown effect ${s.effect}`);
     if (s.effect === "terraform") errors.push(...terraformErrors(r, s));
     if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);

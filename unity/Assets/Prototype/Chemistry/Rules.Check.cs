@@ -118,6 +118,7 @@ namespace Chem
                 if (Truthy(s["element"]) && !IsElement(s["element"])) Errors.Add($"spell {Show(s["id"])}: unknown element {Show(s["element"])}");
                 if (!Shapes.Contains(Text(s["shape"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown shape {Show(s["shape"])}");
                 if (!Truthy(s["name"])) Errors.Add($"spell {Show(s["id"])}: needs a name");
+                if (s["inward"] != null && s["inward"].Type != JTokenType.Boolean) Errors.Add($"spell {Show(s["id"])}: inward must be true or false");
                 if (s["effect"] != null && !SpellEffects.Contains(Text(s["effect"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown effect {Show(s["effect"])}");
                 if (Text(s["effect"]) == "terraform") TerraformRefs(s);
                 if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1, radius from 0 and strength from 1");
@@ -336,6 +337,7 @@ namespace Chem
                     Number(p.Value["blocksSightAt"], $"gas {p.Name}: blocksSightAt", 0);
                     if (p.Value["condenseEvery"] != null && !(IsWholeNumber(p.Value["condenseEvery"]) && (double)p.Value["condenseEvery"] >= 1)) Errors.Add($"gas {p.Name}: condenseEvery must be a whole number from 1");
                     if (p.Value["condenseAway"] != null && !(IsWholeNumber(p.Value["condenseAway"]) && (double)p.Value["condenseAway"] >= 0)) Errors.Add($"gas {p.Name}: condenseAway must be a whole number from 0");
+                    if (p.Value["rainEvery"] != null && !(IsWholeNumber(p.Value["rainEvery"]) && (double)p.Value["rainEvery"] >= 1)) Errors.Add($"gas {p.Name}: rainEvery must be a whole number from 1");
                 }
                 foreach (var s in r["spells"])
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);

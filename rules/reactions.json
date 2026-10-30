@@ -50,6 +50,9 @@
 
     { "id": "fog-cloud", "element": "fog", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "fog", "n": 6 }], "stop": true },
     { "id": "steam-cloud", "element": "steam", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "steam", "n": 6 }], "stop": true },
+    { "id": "rain-cloud", "element": "rain", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "cloud", "n": 4 }], "log": "A rain cloud gathers", "notable": true, "stop": true },
+    { "id": "sand-blast-soil", "element": "sand", "if": { "terrainTag": "soil", "water": false }, "do": [{ "setTerrain": "sand" }], "log": "The blast leaves sand behind", "stop": true },
+    { "id": "sand-blast-turf", "element": "sand", "if": { "terrainTag": "turf", "water": false }, "do": [{ "setTerrain": "sand" }], "stop": true },
     { "id": "lava-pool", "element": "lava", "if": { "notTerrainTag": "blocking" }, "do": [{ "grow": "lava-pool", "ticks": [300, 300] }, { "heat": true }], "log": "Lava wells up and pools", "notable": true, "stop": true },
 
     { "id": "thunder-gas", "element": "thunder", "if": { "gas": "any" }, "do": [{ "clearGas": true }], "log": "The thunderclap scatters the vapour" },
