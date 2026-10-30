@@ -25,13 +25,12 @@ Made with `node tools/telemetry/feature-costs.mjs --out <report> --csv <csv>` on
    glass, creature-materials, hot-metal, light-spell, about 0.3-0.6M each.
 5. **Cost does follow lines changed, but weakly:** r = 0.60 on log scales. The fit is
    cost ≈ 133k × lines^0.37, so doubling a change's size adds only about 30% to its
-   cost. There is a fixed cost to every task (reading in, testing, about 0.5M), and
+   cost. Even the smallest tasks cost about 0.5M (reading in, testing), and
    batching related work into one task is cheaper per line.
 6. **Three clusters:** small rule tweaks (about 130 lines, 0.6M, 7 min), mid-size rule
    features (about 180 lines, 1.2M, 10 min) and big features or passes (about 630
-   lines, 1.9M, 22 min). The middle cluster costs twice the first for barely more code:
-   those are the features that touched both engines' goldens or needed a second try
-   (steam, mud, oil-on-water).
+   lines, 1.9M, 22 min). The middle cluster costs twice the first for barely more code;
+   the telemetry doesn't say why (a guess worth checking: more golden churn or retries).
 7. **Outliers:** none against the fit once overhead is apart; player-save is low only
    because it's a document.
 
