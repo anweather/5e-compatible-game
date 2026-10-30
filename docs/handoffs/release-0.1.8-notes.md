@@ -9,7 +9,7 @@ The eighth alpha of Spell Chemistry Valley, a 5E-compatible spell-chemistry sand
 
 **Windows:** download `SpellChemistryValley-win-Setup.exe` and run it. The game isn't code-signed yet, so Windows may warn ("Unknown Publisher", or SmartScreen's *More info → Run anyway*).
 
-**macOS:** download `SpellChemistryValley-osx-Portable.zip`, unzip it and move **Spell Chemistry Valley** into Applications (keep it out of Downloads and Documents). It isn't notarized, so the first launch is blocked: open System Settings → Privacy & Security and click *Open Anyway*. The `.pkg` installer works too.
+**macOS:** this release has no Mac files; install [0.1.7](https://github.com/anweather/5e-compatible-game/releases/tag/alpha-0.1.7) for now, and it updates itself when the Mac catches up. From 0.1.7's page: download `SpellChemistryValley-osx-Portable.zip`, unzip it and move **Spell Chemistry Valley** into Applications (keep it out of Downloads and Documents). It isn't notarized, so the first launch is blocked: open System Settings → Privacy & Security and click *Open Anyway*. The `.pkg` installer works too.
 
 ### Casting by elements
 - Cast by combining elements: fire, water, earth and air, on the bumpers and triggers (keyboard Z X C V). One element casts a simple spell; two in a row make one of 16 combinations, each its own spell.
