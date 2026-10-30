@@ -65,6 +65,8 @@ namespace Chem
         /// soak.status: the entity rules' statusOf); 0 when its material has none (bone doesn't burn).
         /// </summary>
         public int BurnStatus, FreezeStatus, SoakStatus;
+        /// <summary>A wet creature of it is shocked by charged water next to it, not only under it (conduct.chainsWet; World.Hazards).</summary>
+        public bool ChainsWet;
         /// <summary>A verb's status ticks: burn, freeze or soak (0 for any other).</summary>
         public int StatusTicks(string verb) => verb switch
         {
@@ -582,6 +584,7 @@ namespace Chem
             BurnStatus = Int(o["burnStatus"]) ?? 0,
             FreezeStatus = Int(o["freezeStatus"]) ?? 0,
             SoakStatus = Int(o["soakStatus"]) ?? 0,
+            ChainsWet = Bool(o["chainsWet"]) ?? false,
             DriesTo = Str(o["driesTo"]),
             Speed = Num(o["speed"]) ?? 1,
             WaterTo = Str(o["waterTo"]),

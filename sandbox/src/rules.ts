@@ -52,6 +52,8 @@ export interface TerrainDef {
   burnStatus?: number;
   freezeStatus?: number;
   soakStatus?: number;
+  /** A wet creature of it is shocked by charged water next to it, not only under it (conduct.chainsWet; tickEntities). */
+  chainsWet?: boolean;
   driesTo?: string;
   /** How fast a creature walks across it (mud 0.5: a step takes 1/speed as long, thorns in entities.ts); 1 when unset. */
   speed?: number;
@@ -723,6 +725,7 @@ export function validateRules(r: Rules): string[] {
     if (t.rustsTo && !terrainIds.has(t.rustsTo)) errors.push(`terrain ${id}: rustsTo ${t.rustsTo} unknown`);
     for (const key of ["burnStatus", "freezeStatus", "soakStatus"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
+    if (t.chainsWet !== undefined && typeof t.chainsWet !== "boolean") errors.push(`terrain ${id}: conduct.chainsWet must be true or false`);
     for (const key of ["soaksTo", "driesTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
     for (const key of ["soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench"] as const)

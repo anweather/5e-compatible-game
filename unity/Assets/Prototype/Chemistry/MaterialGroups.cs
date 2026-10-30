@@ -15,6 +15,8 @@
 //                                                                 frozen, wet a creature of it takes (a group holding only
 //                                                                 its status makes it neither flammable nor freezing water)
 //   conduct {}                                                    conductive tag
+//   conduct { chainsWet }                                         chainsWet: a wet creature of it is shocked by charged water
+//                                                                 next to it (a group holding only chainsWet doesn't conduct)
 //   shatter {}                                                    brittle tag (a thing of it breaks when it lands hard)
 //   grow    { into, log }                                         growsTo, growLog
 //   uproot  { leaves, log }                                       uprootsTo, uprootLog
@@ -77,6 +79,7 @@ namespace Chem
         static void Ungroup(string what, JObject entry, (string verb, string tag, (string group, string flat)[] keys)[] verbs, bool water, List<string> errors)
         {
             if (water) UngroupStatuses(entry);
+            if (water) UngroupChainsWet(entry);
             foreach (var (verb, tag, keys) in verbs)
             {
                 if (!(entry[verb] is JObject g)) continue;
@@ -109,6 +112,16 @@ namespace Chem
                 g.Remove("status");
                 if (g.Count == 0) entry.Remove(verb);
             }
+        }
+
+        // Takes conduct.chainsWet out of its group; a group left empty goes too, so flesh's
+        // conduct { chainsWet } doesn't make it conduct like metal.
+        static void UngroupChainsWet(JObject entry)
+        {
+            if (!(entry["conduct"] is JObject g) || g["chainsWet"] == null) return;
+            entry["chainsWet"] = g["chainsWet"].DeepClone();
+            g.Remove("chainsWet");
+            if (g.Count == 0) entry.Remove("conduct");
         }
 
         static void AddTag(JObject entry, string tag)
@@ -159,6 +172,12 @@ namespace Chem
                 }
             }
             if (!cover) GroupStatuses(entry);
+            if (!cover && entry["chainsWet"] != null)
+            {
+                if (!(entry["conduct"] is JObject g)) entry["conduct"] = g = new JObject();
+                g["chainsWet"] = entry["chainsWet"];
+                entry.Remove("chainsWet");
+            }
             return entry;
         }
     }

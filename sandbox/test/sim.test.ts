@@ -575,3 +575,36 @@ test("a wet thing of a dampened material catches poorly", () => {
     installRules(before);
   }
 });
+
+// Mirrors ChemistryTests.ShockWaterReachesSwimmersAndTheWetOnTheBank (conduct.chainsWet): lightning into one
+// end of a pond charges all of it; a goblin swimming at the far end is shocked, a wet one on the bank beside
+// the water is too, a dry one on the bank isn't.
+const shockWater = () => {
+  const w = createWorld(14, 8, 3);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 3; x <= 8; x++) for (let y = 2; y <= 4; y++) Object.assign(cellAt(w, x, y)!, { t: "pit", water: 3 });
+  const swimmer = spawn(w, "goblin", 8, 3)!;
+  const wetBank = spawn(w, "goblin", 9, 3)!;
+  wetBank.status.wet = 60;
+  const dryBank = spawn(w, "goblin", 6, 5)!;
+  castSpell(w, "shocking-grasp", 3, 3, 1);
+  step(w);
+  return { w, swimmer, wetBank, dryBank };
+};
+
+test("shock-water: lightning in a pond shocks swimmers and the wet beside it", () => {
+  const { w, swimmer, wetBank, dryBank } = shockWater();
+  assert.equal(10 - swimmer.hp, RULES.sim.zapDamage * 2, "the swimmer is wet, so twice");
+  assert.equal(10 - wetBank.hp, RULES.sim.zapDamage * 2, "wet beside the water: shocked too");
+  assert.equal(dryBank.hp, 10, "dry on the bank: not");
+  assert.equal(`${rustHash(w)} ${w.rng} ${swimmer.hp} ${wetBank.hp} ${dryBank.hp}`, "d2510429 3 4 4 10"); // the same in the C# core
+  const before = RULES;
+  const flesh = (chainsWet: unknown) => composeRules([{ terrain: { flesh: { ...RULES.terrain.flesh, chainsWet } } } as unknown as ModPatch]);
+  assert.deepEqual(validateRules(flesh(2)), ["terrain flesh: conduct.chainsWet must be true or false"]);
+  installRules(flesh(false));
+  try {
+    assert.equal(shockWater().wetBank.hp, 10, "without chainsWet the bank is safe");
+  } finally {
+    installRules(before);
+  }
+});
