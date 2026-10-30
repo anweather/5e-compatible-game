@@ -475,3 +475,13 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   Lend: docs/FAST_LOOP.md to DesktopUnity for the `looks` probe row.
   Queue: S3776 warnings are 8 against the baseline of 6 (Chemistry/), a
   worker task.
+- 2026-10-30: Host UX Part 2 merged (cbe8547): the combo UI, Andrew's HUD
+  layout, and the combo input online (host-stamped ComboIntent, late-join
+  replay, CastHash in the checksum). Controller changes: elements on the
+  bumpers and triggers, dodge roll moved to right-stick click, pad zoom
+  gone, F2 swaps back to the old layout, the radial stays on Tab. Gaps:
+  casts have no tap, hold or ground shapes yet; other players' hand orbs
+  aren't drawn; the HUD drawing is untested in a player build (check it in
+  the next release candidate). Pitfall: exclude Library/VP when seeding a
+  worktree's Library, or Player 2 runs the source worktree's old code. The
+  host-ux worktree holds tonight's screenshots: keep it until they're copied.
