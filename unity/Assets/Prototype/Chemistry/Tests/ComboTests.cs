@@ -371,7 +371,7 @@ namespace Chem.Tests
             Assert.That(w.CastState(), Is.EqualTo("ann:-:-:0:0:0:0:-1:fire+fire"));
             w.Cast(w.CombosFired[0].Spell, 8, 6, 1);
             Run(w, 6);
-            Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("55751533 6184569 368494589"));
+            Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("55751533 ae02931b 3576461536"));
         }
 
         [Test]

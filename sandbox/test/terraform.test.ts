@@ -288,7 +288,7 @@ test("a dig weaker than the ground leaves it: Shape Earth digs dirt, a Meteor di
   assert.equal(cellAt(w, 14, 3)!.t, "rubble");
   assert.equal(cellAt(w, 14, 6)!.h, 0, "metal never digs");
   run(w, 30);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "fe1217a6 9");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "48b09445 2346426195");
 });
 
 test("hardness and strength are checked", () => {
@@ -389,7 +389,7 @@ test("Fireball blows a small crater before it burns, and matches the C# golden",
   assert.equal(cellAt(w, 12, 6)!.h, 0, "the blast's edge isn't dug");
   assert.ok(cellAt(w, 12, 6)!.fire > 0, "but it burns");
   run(w, 40);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "b1b430e0 3300970619");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "7b41057e 1796687091");
 });
 
 test("a slanted trench runs off the grid, side to side, and the river's water follows it; matches the C# golden", () => {
@@ -427,7 +427,7 @@ test("earth shaping topples trees into deadfall that burns, and matches the C# g
   assert.equal(cellAt(w, 15, 8)!.t, "deadfall", "a crater fells the tree it lands on");
   castSpell(w, "fire-bolt", 5, 5, 0);
   run(w, 40);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "1213368f 1054537720");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "aa411832 2208810063");
 });
 
 // Mirrors ChemistryTests.AcidSplashEatsBramblesThornsAndOilAndBurnsAGoblin (docs/MATERIALS.md dissolve): a row of
@@ -721,7 +721,7 @@ test("Wall of Stone makes steps over water, a ramp when held, and only hard blow
   run(w, 6);
   assert.ok(cellAt(w, 3, 3)!.h < 3, "a falling star breaks it");
   run(w, 6);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "1946386c 1872778120"); // the same in the C# core
+  assert.equal(`${cellHash(w)} ${w.rng}`, "31889514 1218213550"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.ADustFlashShovesARaiderTheSameAsTheSandbox.

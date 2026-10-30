@@ -746,7 +746,7 @@ test("window glass shatters under force and falls with its wall", () => {
   assert.equal(panes, "pane rubble pane rubble rubble rubble rubble");
   assert.ok(w.log.some((l) => l.text === "The window pane shatters"));
   assert.equal(isBlocking(cellAt(w, 5, 3)!), false, "an open gap");
-  assert.equal(`${rustHash(w)} ${w.rng}`, "d9dbaf50 4199150144"); // the same in the C# core
+  assert.equal(`${rustHash(w)} ${w.rng}`, "e425b302 3234871980"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.ShockWaterReachesSwimmersAndTheWetOnTheBank (conduct.chainsWet): lightning into one

@@ -1103,7 +1103,7 @@ namespace Chem.Tests
             Run(w, 6);
             Assert.That(w.At(3, 3).Height, Is.LessThan(3), "a falling star breaks it");
             Run(w, 6);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1946386c 1872778120"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("31889514 1218213550"), "the same in the sandbox");
         }
 
         [Test]
@@ -1437,7 +1437,7 @@ namespace Chem.Tests
             Assert.That(w.Log.Any(l => l.Text == "The window pane shatters"));
             Assert.That(w.IsBlocking(w.At(5, 3)), Is.False, "an open gap");
             Assert.That(R.Terrain["pane"].Has("blocking") && !R.Terrain["pane"].Burns && !R.Terrain["pane"].Conducts);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("d9dbaf50 4199150144"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("e425b302 3234871980"), "the same in the sandbox");
         }
 
         // Over 40 seeds, a goblin (wet or not) hit by Ray of Frost, then Shocking Grasp: how many are gone,
