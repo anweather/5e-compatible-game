@@ -437,12 +437,33 @@ namespace Chem
             }
         }
 
+        /// <summary>
+        /// The nearest active cell within SeekRange (in steps either way) of (x, y) that matches SeekIf, by distance as the
+        /// crow flies, the first in row order on a tie (seek in the TS); null for none.
+        /// </summary>
+        (int x, int y)? Seek(SpellDef s, int x, int y)
+        {
+            (int x, int y)? best = null;
+            int bestD = int.MaxValue, r = s.SeekRange;
+            for (int dy = -r; dy <= r; dy++)
+                for (int dx = -r; dx <= r; dx++)
+                {
+                    int d = dx * dx + dy * dy;
+                    if (d >= bestD || !IsActiveAt(x + dx, y + dy) || !Matches(At(x + dx, y + dy), s.SeekIf)) continue;
+                    best = (x + dx, y + dy);
+                    bestD = d;
+                }
+            return best;
+        }
+
         /// <summary>What a spell does to cells where it lands, without the cast's log line (a meteor's landing too).</summary>
         void Land(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
         {
             var cells = SpellCells(s, x, y, dir, charge, aimX, aimY);
             // Squares in paused chunks are left alone (World.Chunks.cs).
             cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
+            // A spell that seeks (Lightning) strikes the nearest cell it seeks near where it's aimed instead of its shape.
+            if (s.SeekRange > 0 && Seek(s, x, y) is (int, int) sought) cells = new List<(int x, int y)> { sought };
             // A spell that acts on what's already there (Geyser on water) lands only where that is, and fizzles where it isn't.
             if (s.Needs != null)
             {

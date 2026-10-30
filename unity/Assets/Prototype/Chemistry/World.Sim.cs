@@ -116,6 +116,7 @@ namespace Chem
                     TickWhirlwinds();
                     TickWaves();
                     TickBoulders();
+                    TickMachines(tickRows);
                     NextStage(TickStage.Timers);
                     return false;
                 case TickStage.End:
@@ -682,6 +683,8 @@ namespace Chem
                 {
                     if (cells[i].Gas == null) continue;
                     RainFrom(s.Chunk, cells[i]);
+                    ShedFrom(s.Chunk, i, cells[i]);
+                    if (cells[i].Gas == null) continue;
                     Drift(s.Chunk, i);
                 }
             }
@@ -694,6 +697,14 @@ namespace Chem
             if (IsBlocking(c) && !HasTag(c, "vessel")) return;
             c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
             WaterMoved(ch);
+        }
+
+        /// <summary>A gas that sheds (a storm cloud's lightning, a snow cloud's snow) lets its element fall on its cell every ShedEvery ticks, at its ShedChance.</summary>
+        void ShedFrom(Chunk ch, int i, Cell c)
+        {
+            if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.Sheds == null || g.ShedEvery <= 0 || Tick % g.ShedEvery != 0) return;
+            if (g.ShedChance < 1 && Rand() >= g.ShedChance) return;
+            Apply(CellX(ch, i), CellY(ch, i), g.Sheds, 1, -1, false);
         }
 
         /// <summary>Moves one unit of gas downwind, unless something (or a paused chunk) is in the way.</summary>

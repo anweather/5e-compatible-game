@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(68));
+            Assert.That(R.CellRules.Count, Is.EqualTo(72));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -800,7 +800,7 @@ namespace Chem.Tests
             int rained = 0;
             for (int x = 14; x <= 18; x++) rained += w.At(x, 2).Water;
             Assert.That(rained, Is.GreaterThan(0), "the cloud rains on the cells under it");
-            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 10 60622e1c 398143729"), "the same in the sandbox");
+            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 11 25151b2e 1746655754"), "the same in the sandbox");
         }
 
         [Test]
@@ -1104,6 +1104,96 @@ namespace Chem.Tests
             Assert.That(w.At(3, 3).Height, Is.LessThan(3), "a falling star breaks it");
             Run(w, 6);
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1946386c 1872778120"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void ADustFlashShovesARaiderTheSameAsTheSandbox()
+        {
+            // The flash shoves what stands in it away from where it caught: a raider too, force less its mass plus 1 cells,
+            // in both engines (it was the sandbox's alone). Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 10, 5, 11, "dirt");
+            for (int x = 3; x <= 5; x++) w.AddGas(w.At(x, 2), "dust", 3);
+            var hound = w.SpawnRaider("bone-hound", 5, 2, 6);
+            w.Apply(3, 2, "fire");
+            Assert.That((hound.X, hound.Y), Is.EqualTo((7, 2)), "shoved two cells away from the spark");
+            Run(w, 6);
+            Assert.That($"{w.CellHash()} {w.RngState} {hound.X},{hound.Y} {hound.Hp}", Is.EqualTo("31a36a85 3279484455 7,2 6"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void LightningJumpsToAPuddleAndItsChargeOpensTheGate()
+        {
+            // docs/SPELL_COMBOS.md: the bolt jumps to the nearest water or metal in range instead of flying straight, runs
+            // through it, and a coil it reaches powers the gate (machines.json). Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 16, 7, 12, "dirt");
+            for (int x = 4; x <= 6; x++) w.At(x, 5).Water = 2;
+            w.At(7, 5).T = "coil";
+            w.At(12, 3).T = "gate";
+            w.Cast("lightning-bolt", 2, 3, 1);
+            Assert.That(w.At(4, 5).Charge, Is.GreaterThan(0), "it jumped to the puddle");
+            Assert.That(w.At(7, 5).Charge, Is.GreaterThan(0), "and ran through it to the coil");
+            Assert.That(w.GatesOpen, Is.False);
+            w.Step();
+            Assert.That(w.GatesOpen, Is.True);
+            Assert.That(w.At(12, 3).T, Is.EqualTo("gate_open"));
+            Assert.That(w.Log.Any(l => l.Text == "The gate grinds open, powered by the lightning coil"));
+            Run(w, 30);
+            Assert.That(w.At(12, 3).T, Is.EqualTo("gate"), "it shuts once the coil's hold runs out");
+            var dry = new World(R, 16, 7, 12, "dirt");
+            dry.At(10, 3).T = "sand";
+            dry.Cast("lightning-bolt", 2, 3, 1);
+            Assert.That(dry.At(10, 3).T, Is.EqualTo("glass"), "with nothing to jump to it flies straight");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c4741e7f 12"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void RainCloudsGreenAshLightningMakesAStormAndColdMakesSnow()
+        {
+            // docs/SPELL_COMBOS.md: rain waters plants (burnt ground greens), lightning into a cloud makes a storm cloud
+            // that keeps striking, cold turns one to snow. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 16, 7, 13, "dirt");
+            for (int y = 1; y <= 5; y++)
+                for (int x = 1; x <= 5; x++) w.At(x, y).Cover = "ash";
+            w.Cast("rain-cloud", 3, 3, 0);
+            w.Cast("rain-cloud", 11, 3, 0);
+            w.Cast("shocking-grasp", 3, 3, 0);
+            Assert.That(w.At(3, 3).Gas, Is.EqualTo("storm"));
+            w.Apply(11, 3, "cold");
+            Assert.That(w.At(11, 3).Gas, Is.EqualTo("snowcloud"));
+            Run(w, 120);
+            Assert.That(w.Cells.Count(c => c.T == "sprouts" || c.T == "grass"), Is.GreaterThan(0), "the rain greens the ash");
+            Assert.That(w.Cells.Count(c => c.Cover == "snow"), Is.GreaterThan(0), "the snow cloud snows");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("788f5f20 1615770602"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void SandBlastScoursWearsAndLeavesSandAndGustDrivesOilAcrossAPond()
+        {
+            // docs/SPELL_COMBOS.md: Sand Blast strips covers, scours rust, wears a log wall thin then through and raised
+            // earth down, and leaves sand Forge bakes to glass; Gust drives a floating cover across water. Mirrors
+            // sandbox/test/terraform.test.ts.
+            var w = new World(R, 14, 7, 14, "dirt");
+            w.At(2, 2).Cover = "snow";
+            w.At(3, 2).T = "rusted-metal";
+            w.At(4, 2).Height = 2;
+            w.At(5, 2).T = "logwall";
+            w.Cast("sand-blast", 1, 2, 1);
+            Assert.That(w.At(2, 2).Cover, Is.Null);
+            Assert.That(w.At(2, 2).T, Is.EqualTo("sand"));
+            Assert.That(w.At(3, 2).T, Is.EqualTo("metal"), "the rust scoured off");
+            Assert.That(w.At(4, 2).Height, Is.EqualTo(1), "raised earth worn down a step");
+            Assert.That(w.At(5, 2).T, Is.EqualTo("worn-logwall"));
+            w.Cast("sand-blast", 1, 2, 1);
+            Assert.That(w.At(5, 2).T, Is.EqualTo("rubble"), "and then through");
+            w.Cast("forge", 2, 2, 0);
+            Assert.That(w.At(2, 2).T, Is.EqualTo("glass"));
+            for (int x = 3; x <= 9; x++) w.At(x, 5).Water = 3;
+            w.At(3, 5).Cover = "oil";
+            w.Cast("gust-of-wind", 1, 5, 1);
+            Assert.That(w.At(3, 5).Cover, Is.Null);
+            Assert.That(w.At(9, 5).Cover, Is.EqualTo("oil"), "driven across the pond");
+            Run(w, 6);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7716f25c 14"), "the same in the sandbox");
         }
 
         [Test]

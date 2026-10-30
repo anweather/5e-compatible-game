@@ -23,7 +23,8 @@ namespace Chem
         /// <summary>
         /// Fire has met a gas that flashes at (x, y): the whole cloud joined to it goes up at once and is used up.
         /// Each of its cells burns for a moment at the flash's fire, and the fire reaches what's there through the
-        /// rules like any other. Shoving things is the view's (FlashesSince).
+        /// rules like any other, and a raider there is shoved away from where it caught (ShoveRaider). Shoving props is the
+        /// view's (FlashesSince).
         /// </summary>
         void FlashGas(int x, int y)
         {
@@ -51,6 +52,8 @@ namespace Chem
                 c.Fuel = Math.Max(c.Fuel, flash.Fire);
                 Apply(cx, cy, "fire", flash.Fire, -1, false);
                 flashHistory.Add((cx, cy, flash.Push, Tick));
+                var r = flash.Push > 0 ? RaiderAt(cx, cy) : null;
+                if (r != null) ShoveRaider(r, AwayDir(cx - x, cy - y), flash.Push);
             }
         }
     }

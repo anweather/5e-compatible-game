@@ -25,6 +25,7 @@
 //   grow    { into, log }                                         growsTo, growLog
 //   uproot  { leaves, log }                                       uprootsTo, uprootLog
 //   dissolve { by, leaves }                                       dissolvedBy, dissolvesTo (covers too; a cover's leaves is a cover, or none)
+//   scour   { leaves, wears }                                     scoursTo, scourWears (terrain: what a sand blast leaves, or wearing raised ground down); covers: scourable tag
 //   rot     { breaks }                                            rotBreaks (covers: when it withers its roots break the terrain under it)
 //
 // Group is the other way, for the parity test (and the move to the grouped
@@ -55,6 +56,7 @@ namespace Chem
             ("grow", null, new[] { ("into", "growsTo"), ("log", "growLog") }),
             ("uproot", null, new[] { ("leaves", "uprootsTo"), ("log", "uprootLog") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
+            ("scour", null, new[] { ("leaves", "scoursTo"), ("wears", "scourWears") }),
         };
 
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] CoverVerbs =
@@ -64,6 +66,7 @@ namespace Chem
             ("melt", null, new[] { ("into", "meltsTo"), ("water", "meltWater") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
             ("rot", null, new[] { ("breaks", "rotBreaks") }),
+            ("scour", "scourable", System.Array.Empty<(string, string)>()),
         };
 
         // A creature's statuses from its material: each verb's status key and the flat key it becomes.

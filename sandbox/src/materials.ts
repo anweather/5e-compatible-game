@@ -19,6 +19,7 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "grow", tag: null, keys: [["into", "growsTo"], ["log", "growLog"]] },
   { verb: "uproot", tag: null, keys: [["leaves", "uprootsTo"], ["log", "uprootLog"]] },
   { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
+  { verb: "scour", tag: null, keys: [["leaves", "scoursTo"], ["wears", "scourWears"]] },
 ];
 
 const COVER_VERBS: Verb[] = [
@@ -27,6 +28,7 @@ const COVER_VERBS: Verb[] = [
   { verb: "melt", tag: null, keys: [["into", "meltsTo"], ["water", "meltWater"]] },
   { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
   { verb: "rot", tag: null, keys: [["breaks", "rotBreaks"]] },
+  { verb: "scour", tag: "scourable", keys: [] },
 ];
 
 /** A creature's statuses from its material: each verb's status key and the flat key it becomes (MaterialGroups.StatusVerbs). */

@@ -65,6 +65,9 @@ export interface TerrainDef {
   /** The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves. */
   dissolvedBy?: string;
   dissolvesTo?: string;
+  /** What a sand blast turns it into (scour.leaves: rusted metal back to metal, a log wall worn thin), and whether raised ground of it wears down a step (scour.wears). */
+  scoursTo?: string;
+  scourWears?: boolean;
   /** The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick). */
   bakesTo?: string;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
@@ -130,6 +133,8 @@ export interface GasDef {
   condenseAway?: number;
   /** A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); unset never. */
   rainEvery?: number;
+  /** An element a cell of it lets fall on its cell every so many ticks, at a chance (a storm cloud's lightning, a snow cloud's snow, a rain cloud's growth; shedFrom). */
+  sheds?: { element: string; every: number; chance?: number };
 }
 
 export interface CellCond {
@@ -180,6 +185,10 @@ export interface Effect {
   meltCover?: boolean;
   /** A hit on the cell's ice or terrain, as a blast's: it cracks, or if cracked shatters. */
   shatter?: boolean;
+  /** A sand blast: strips a cover that scours, or turns the terrain to its scoursTo, or wears raised ground of it down a step. */
+  scour?: boolean;
+  /** A floating cover is pushed a cell along the element's way onto open water with no cover (a gust drives oil across a pond). */
+  pushCover?: boolean;
   /** Eats away the cell's cover or terrain into its dissolvesTo, when the rule's element is its dissolvedBy. */
   dissolve?: "cover" | "terrain";
   setTerrain?: string;
@@ -275,6 +284,8 @@ export interface SpellDef {
   fizzle?: string;
   /** A travelling wave's or rolling boulder's element where it stops (Wave's mud, the boulder's earth; tickWaves, tickBoulders). */
   leaves?: string;
+  /** A spell that seeks (Lightning): it strikes the nearest cell within range of where it's aimed matching if (metal or water) instead of its shape, and its shape when there is none. */
+  seeks?: { range: number; if: CellCond };
   /** A line with travelEvery that rolls rather than washes (Rolling Boulder; tickBoulders): one cell that follows the ground downhill. */
   rolls?: boolean;
   /** The gas a rolling boulder leaves behind it (dust). */
@@ -623,7 +634,7 @@ export const ELEMENTS = BASE_ELEMENTS;
 
 const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
 const EFFECT_KEYS = new Set([
-  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve",
+  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve", "scour", "pushCover",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);

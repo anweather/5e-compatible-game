@@ -3,10 +3,11 @@
 import { RULES, VERB_STATUS, entityCondHolds, hasComponent, statusTicks, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
 import {
   type Cell, type Dir, type Entity, type World,
-  DX, DY, addGas, burns, cellAt, coverBurns, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
+  DX, DY, addGas, burns, cellAt, coverBurns, coverHasTag, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
   logOnce, neighbours, rand, terrainDef,
 } from "./world.ts";
-import { awayDir, push } from "./entities.ts";
+import { awayDir, push, shoveRaider } from "./entities.ts";
+import { reshape } from "./terraform.ts";
 import { dryness } from "./sim.ts";
 
 export interface Ctx {
@@ -124,7 +125,7 @@ const flashOf = (c: Cell) => (c.gas ? RULES.gases[c.gas]?.burn?.flash : undefine
 /**
  * Fire has met a gas that flashes (burn.flash: dust): the whole cloud joined to (x, y) goes up at once and is used up.
  * Each of its cells burns for a moment at the flash's fire, the fire reaches what's there through the rules like any
- * other, and it shoves things away from where it caught. World.FlashGas; the C# core's shove is the view's.
+ * other, and it shoves things away from where it caught. World.FlashGas, which shoves raiders the same way.
  */
 export function flashGas(w: World, x: number, y: number): void {
   const first = flashOf(cellAt(w, x, y)!);
@@ -153,7 +154,10 @@ export function flashGas(w: World, x: number, y: number): void {
     c.fuel = Math.max(c.fuel, f.fire);
     applyElement(w, cx, cy, "fire", { power: f.fire, direct: false });
     const e = entityAt(w, cx, cy);
-    if (e && f.push) push(w, e, awayDir(cx - x, cy - y), f.push, false);
+    if (!e || !f.push) return;
+    // A raider is shoved the same way in the C# core (World.ShoveRaider); anything else as any blast shoves it.
+    if (RULES.entities[e.kind]?.raider) shoveRaider(w, e, awayDir(cx - x, cy - y), f.push);
+    else push(w, e, awayDir(cx - x, cy - y), f.push, false);
   });
 }
 
@@ -386,6 +390,42 @@ export function shoveGas(w: World, x: number, y: number, dir: Dir): boolean {
   return true;
 }
 
+/**
+ * A sand blast (World.Scour): a cover that scours is stripped; else the terrain becomes its scoursTo (rusted metal
+ * back to metal, a log wall worn thin); else raised ground that wears is worn down a step.
+ */
+function scour(w: World, x: number, y: number, c: Cell): boolean {
+  if (c.cover !== null && coverHasTag(c, "scourable")) {
+    putCover(c, null);
+    return true;
+  }
+  const t = terrainDef(c);
+  if (t.scoursTo) {
+    const wall = isBlocking(c);
+    c.t = t.scoursTo;
+    if (wall && !isBlocking(c)) wallLost(w, x, y);
+    return true;
+  }
+  return !!t.scourWears && c.h > 0 && reshape(w, x, y, -1, undefined, Number.MAX_SAFE_INTEGER);
+}
+
+/** A floating cover moves a cell along dir onto open water with no cover, its slick's reach with it (World.PushCover). */
+function pushCover(w: World, x: number, y: number, c: Cell, dir: Dir): boolean {
+  if (c.cover === null || !(RULES.covers[c.cover]?.floatEvery ?? 0)) return false;
+  const n = cellAt(w, x + DX[dir], y + DY[dir]);
+  if (!n || isBlocking(n) || n.cover !== null || n.water === 0 || n.frozen) return false;
+  n.cover = c.cover;
+  if (c.slick) n.slick = c.slick;
+  else delete n.slick;
+  n.fire = c.fire;
+  n.fuel = c.fuel;
+  c.cover = null;
+  delete c.slick;
+  c.fire = 0;
+  c.fuel = 0;
+  return true;
+}
+
 function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ctx, element: string): boolean {
   const max = RULES.sim.water.maxLevel;
   if (eff.ignite !== undefined) return ignite(c, eff.ignite, dryness(w, c));
@@ -452,6 +492,8 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     return true;
   }
   if (eff.shatter) return struck(w, x, y, c);
+  if (eff.scour) return scour(w, x, y, c);
+  if (eff.pushCover) return ctx.dir !== undefined && pushCover(w, x, y, c, ctx.dir);
   if (eff.bake) return bake(c);
   if (eff.meltCover) return meltCover(c);
   if (eff.break) {

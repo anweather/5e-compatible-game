@@ -606,9 +606,26 @@ function rest(w: World, b: Boulder, s: SpellDef | undefined): void {
   if (s.leaves) applyElement(w, b.x, b.y, s.leaves, { power: 1, direct: true });
 }
 
+/** The nearest cell within range (steps either way) of (x, y) matching if, as the crow flies, the first in row order on a tie (World.Seek). */
+function seek(w: World, sk: NonNullable<SpellDef["seeks"]>, x: number, y: number): [number, number] | undefined {
+  let best: [number, number] | undefined, bestD = Infinity;
+  for (let dy = -sk.range; dy <= sk.range; dy++) {
+    for (let dx = -sk.range; dx <= sk.range; dx++) {
+      const d = dx * dx + dy * dy, c = cellAt(w, x + dx, y + dy);
+      if (d >= bestD || !c || !matches(c, sk.if)) continue;
+      best = [x + dx, y + dy];
+      bestD = d;
+    }
+  }
+  return best;
+}
+
 /** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */
 export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
   let cells = spellCells(w, s, x, y, dir, charge, aim);
+  // A spell that seeks (Lightning) strikes the nearest cell it seeks near where it's aimed instead of its shape.
+  const sought = s.seeks ? seek(w, s.seeks, x, y) : undefined;
+  if (sought) cells = [sought];
   // A spell that acts on what's already there (Geyser on water) lands only where that is, and fizzles where it isn't.
   if (s.needs) {
     cells = cells.filter(([cx, cy]) => matches(cellAt(w, cx, cy)!, s.needs));
