@@ -1,0 +1,1 @@
+{"time":"2026-10-30T23:47:31.416Z","label":"playtest 0.1.8: 3 bot runs + triage","lines":["Host: playtest-0.1.8","Host-Account: pro (org 70e49c5a)","Host-Time: 42 min (sub-agent; plus 25 min of bot play)","Host-Tokens: about 200,526 total (the harness's sub-agent count; no input/output split, since its transcript was not on disk for commit-cost)","Host-Tools: 132 calls"]}
