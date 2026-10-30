@@ -24,17 +24,17 @@ and experiment tool. The real input becomes elements combined in sequence.
 
 - **Moving while casting:** yes, at 60% walking speed while the meter
   drains, for a little tension.
-- **No cancel for now.** Later, **B (east face) while casting** cancels: the
-  usual "back" button, and casting takes priority over its normal use.
+- **Cancel: B (east face) while casting** cancels the cast, from the start.
+  It's the usual "back" button, and casting takes priority over its normal
+  use.
 - **Non-elemental spells on the d-pad** (Hasten Time, Shapeshift, Light,
   Control Weather and any others): left and right cycle through them, up
-  casts the selected one, down opens the spell book.
+  casts the selected one, down opens the grimoire.
 - **The d-pad HUD:** a Dark Souls-style cross in the bottom-left corner:
   arrows on the left and right, the selected spell's icon on top, a small
   book icon on the bottom.
 - **Discovery:** combos start hidden. Casting one for the first time adds
-  it to the **spell book** (grimoire, said "GRIM-wahr"), opened with d-pad
-  down.
+  it to the **grimoire**, opened with d-pad down.
 
 ## Draft combo table (to tune)
 Combos make the materials the chemistry already simulates. Rule of thumb: the
@@ -56,7 +56,7 @@ ground for an area or wall.
 
 ## Open
 - Three-element combos: held back as a later mastery layer.
-- What the spell book shows for a found combo (name, elements in order,
+- What the grimoire shows for a found combo (name, elements in order,
   shape, a short line) and whether there are hints for unfound ones.
 
 ## Build split
