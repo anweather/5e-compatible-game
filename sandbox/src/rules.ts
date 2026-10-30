@@ -71,6 +71,8 @@ export interface CoverDef {
   /** The element that dissolves it (materials.json dissolve.by, acid) and the cover it leaves (unset, none). */
   dissolvedBy?: string;
   dissolvesTo?: string;
+  /** On open water it spreads to the open water next to it every this many ticks (float.every; float in sim.ts); unset sinks or stays. */
+  floatEvery?: number;
 }
 export interface GasDef {
   name: string;
@@ -707,6 +709,7 @@ export function validateRules(r: Rules): string[] {
   for (const [id, cv] of Object.entries(r.covers)) {
     if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
     if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);
+    if (cv.floatEvery !== undefined && (!Number.isInteger(cv.floatEvery) || cv.floatEvery < 1)) errors.push(`cover ${id}: floatEvery must be a whole number from 1`);
     errors.push(...dissolveErrors(`cover ${id}`, cv, el, coverIds));
   }
   const seen = new Set<string>();

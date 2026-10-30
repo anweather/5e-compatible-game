@@ -602,6 +602,49 @@ namespace Chem.Tests
             Assert.That(errors, Is.EqualTo(new[] { "terrain tin: rustsTo nope unknown", "terrain tin: rustEvery must be a whole number from 1" }));
         }
 
+        // A 10 x 5 pond (pit under 3 water) with oil spilt at (1, 2), left spreadTicks to float out.
+        static World OilyPond(int spreadTicks)
+        {
+            var w = new World(R, 10, 5, 1, "pit");
+            foreach (var c in w.Cells) c.Water = 3;
+            w.At(1, 2).Cover = "oil";
+            Run(w, spreadTicks);
+            return w;
+        }
+
+        [Test]
+        public void OilFloatsOutOverWaterAndBurnsAcrossItUntilItIsUsedUp()
+        {
+            // Oil floats (materials.json float.every 16): the slick grows a square a turn over open water.
+            var w = OilyPond(80);
+            int slick = w.Cells.Count(c => c.Cover == "oil");
+            Assert.That(slick, Is.GreaterThan(5), "it spread across the surface");
+            Assert.That(w.Cells.Sum(c => c.Water), Is.EqualTo(150), "and the water stays as it was");
+
+            // Lit, the fire runs across the slick; the water doesn't burn, and the fire dies with the oil.
+            w.Apply(1, 2, "fire", 1, -1, false);
+            int most = 0;
+            for (int t = 0; t < 120; t++)
+            {
+                w.Step();
+                most = Math.Max(most, w.Cells.Count(c => c.Fire > 0));
+            }
+            Assert.That(most, Is.GreaterThan(3), "the fire spread over the water");
+            Assert.That(w.Cells.Count(c => c.Fire > 0), Is.EqualTo(0), "and went out");
+            Assert.That(w.Cells.Count(c => c.Cover != null), Is.EqualTo(0), "with the oil used up, and no ash on the water");
+            int water = w.Cells.Sum(c => c.Water);
+            Assert.That(water, Is.InRange(1, 149), "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
+            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("29 28 52 a1f460b7 189079474"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void ABrokenFloatIsRefusedWithTheTsWording()
+        {
+            var errors = Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(
+                "{ 'covers': { 'tar': { 'name': 'Tar', 'tags': [], 'float': { 'every': 0 } } } }".Replace('\'', '"')) })).Errors;
+            Assert.That(errors, Is.EqualTo(new[] { "cover tar: floatEvery must be a whole number from 1" }));
+        }
+
         [Test]
         public void AWetThingOfADampenedMaterialCatchesPoorly()
         {

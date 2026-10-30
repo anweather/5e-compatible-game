@@ -8,6 +8,7 @@
 //   dig     { hardness, leaves }                                  hardness, dugTo
 //   soak    { dry, wet, dampens }                                 soakEvery, soakEveryWet, dampens
 //   rust    { every, leaves }                                     rustEvery, rustsTo
+//   float   { every }                                             floatEvery (covers: oil floats and spreads on open water)
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
 //   conduct {}                                                    conductive tag
 //   shatter {}                                                    brittle tag (a thing of it breaks when it lands hard)
@@ -45,6 +46,7 @@ namespace Chem
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] CoverVerbs =
         {
             ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("intensity", "burnIntensity"), ("look", "fireLook") }),
+            ("float", null, new[] { ("every", "floatEvery") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
         };
 

@@ -88,6 +88,8 @@ namespace Chem
         public double Speed = 1;
         /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the cover it leaves (null, none).</summary>
         public string DissolvedBy, DissolvesTo;
+        /// <summary>On open water it spreads to the open water next to it every this many ticks (materials.json float.every; World.Float); 0 sinks or stays.</summary>
+        public int FloatEvery;
         public bool Has(string tag) => Tags.Contains(tag);
         /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
@@ -560,6 +562,7 @@ namespace Chem
             Speed = Num(o["speed"]) ?? 1,
             DissolvedBy = Str(o["dissolvedBy"]),
             DissolvesTo = Str(o["dissolvesTo"]),
+            FloatEvery = Int(o["floatEvery"]) ?? 0,
         };
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();

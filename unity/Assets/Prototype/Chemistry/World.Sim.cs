@@ -13,6 +13,8 @@ namespace Chem
     {
         // Reused by TickFire so a tick allocates nothing.
         readonly List<(Chunk ch, int i)> burning = new List<(Chunk ch, int i)>();
+        // What floating covers reached this tick (World.Float), laid at its end.
+        readonly List<(Cell cell, string cover)> floating = new List<(Cell cell, string cover)>();
         readonly List<Cell> gasOptions = new List<Cell>(4);
 
         /// <summary>
@@ -162,6 +164,8 @@ namespace Chem
 
         void EndTick()
         {
+            foreach (var (cell, cover) in floating) if (cell.Cover == null) PutCover(cell, cover);
+            floating.Clear();
             if (Wind.HasValue)
             {
                 var (d, t) = Wind.Value;
@@ -214,6 +218,7 @@ namespace Chem
                 if (c.Charge > 0) c.Charge--;
                 if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
                 if (soak && Rust(c)) live = true;
+                if (soak && c.Water > 0 && c.Cover != null && Float(ch, i, c)) live = true;
                 if (soak && c.Water > 0 && Soak(ch, i, c)) live = true;
                 if (live) edges = Math.Max(edges, 0) | Chunks.EdgesOf(i);
             }
@@ -236,6 +241,27 @@ namespace Chem
             c.T = t.RustsTo;
             LogOnce("rust", "The metal rusts through");
             return true;
+        }
+
+        /// <summary>
+        /// Floating oil (a cover with float.every, materials.json): on open water it spreads to each open,
+        /// uncovered water square next to it, on the soak passes of every float.every ticks. What it
+        /// reaches is laid at the end of the tick (EndTick), so the slick grows a square a turn whichever
+        /// way the rows run. True if it spread.
+        /// </summary>
+        bool Float(Chunk ch, int i, Cell c)
+        {
+            if (c.Frozen || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
+            if (Tick / Rules.Sim.SoakPass % Math.Max(1, cv.FloatEvery / Rules.Sim.SoakPass) != 0) return false;
+            bool spread = false;
+            for (int d = 0; d < 4; d++)
+            {
+                var n = Chunk.Next(ch, i, d, out var nch, out _);
+                if (n == null || !nch.Active || n.Cover != null || n.Water == 0 || n.Frozen || IsBlocking(n)) continue;
+                floating.Add((n, c.Cover));
+                spread = true;
+            }
+            return spread;
         }
 
         /// <summary>
@@ -390,7 +416,8 @@ namespace Chem
                 else
                 {
                     c.Fire = 0;
-                    if (!IsBlocking(c)) c.Cover = "ash";
+                    // Burnt off open water (an oil slick) leaves no ash.
+                    if (!IsBlocking(c) && !(c.Water > 0 && !c.Frozen)) c.Cover = "ash";
                 }
                 return;
             }

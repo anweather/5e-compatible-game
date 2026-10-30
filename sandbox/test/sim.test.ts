@@ -472,6 +472,40 @@ test("broken rust is refused with the C# wording", () => {
   assert.deepEqual(validateRules(r), ["terrain tin: rustsTo nope unknown", "terrain tin: rustEvery must be a whole number from 1"]);
 });
 
+// Mirrors ChemistryTests.OilyPond: a 10 x 5 pond (pit under 3 water) with oil spilt at (1, 2), left to float out.
+const oilyPond = (spreadTicks: number) => {
+  const w = createWorld(10, 5, 1);
+  for (const c of w.cells) Object.assign(c, { t: "pit", water: 3 });
+  cellAt(w, 1, 2)!.cover = "oil";
+  run(w, spreadTicks);
+  return w;
+};
+
+// Mirrors ChemistryTests.OilFloatsOutOverWaterAndBurnsAcrossItUntilItIsUsedUp.
+test("oil floats out over water and burns across it until it is used up", () => {
+  const w = oilyPond(80);
+  const slick = w.cells.filter((c) => c.cover === "oil").length;
+  assert.ok(slick > 5, "it spread across the surface");
+  assert.equal(w.cells.reduce((s, c) => s + c.water, 0), 150, "and the water stays as it was");
+  applyElement(w, 1, 2, "fire", { power: 1, direct: false });
+  let most = 0;
+  for (let t = 0; t < 120; t++) {
+    step(w);
+    most = Math.max(most, w.cells.filter((c) => c.fire > 0).length);
+  }
+  assert.ok(most > 3, "the fire spread over the water");
+  assert.equal(w.cells.filter((c) => c.fire > 0).length, 0, "and went out");
+  assert.equal(w.cells.filter((c) => c.cover !== null).length, 0, "with the oil used up, and no ash on the water");
+  const water = w.cells.reduce((s, c) => s + c.water, 0);
+  assert.ok(water >= 1 && water <= 149, "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
+  assert.equal(`${slick} ${most} ${water} ${rustHash(w)} ${w.rng}`, "29 28 52 a1f460b7 189079474"); // the same in the C# core
+});
+
+test("a broken float is refused with the C# wording", () => {
+  const r = composeRules([{ covers: { tar: { name: "Tar", tags: [], float: { every: 0 } } } } as unknown as ModPatch]);
+  assert.deepEqual(validateRules(r), ["cover tar: floatEvery must be a whole number from 1"]);
+});
+
 // Mirrors ChemistryTests.AWetThingOfADampenedMaterialCatchesPoorly: a spark lights a thing of thatch with its
 // material's flammability, less its soak.dampens while it is wet.
 test("a wet thing of a dampened material catches poorly", () => {

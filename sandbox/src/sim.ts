@@ -2,7 +2,7 @@
 // critters -> fire -> water -> gas -> weather -> entities -> machines -> decay
 // -> the day clock (Hasten Time).
 import { RULES } from "./rules.ts";
-import { applyElement, dampFuel, displaceWater, ignite } from "./react.ts";
+import { applyElement, dampFuel, displaceWater, ignite, putCover } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
 import {
@@ -29,13 +29,16 @@ export function step(w: World): void {
   tickDefense(w);
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
+  const floating: [Cell, string][] = []; // what floating covers reached, laid after the pass (World.floating)
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (c.charge > 0) c.charge--;
     if (c.life > 0 && --c.life === 0) ripen(w, i, c);
     if (soaking) rust(w, c);
+    if (soaking && c.water > 0 && c.cover !== null) float(w, i, c, floating);
     if (soaking && c.water > 0) soak(w, i, c);
   }
+  for (const [n, cover] of floating) if (n.cover === null) putCover(n, cover);
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
   tickClock(w);
   w.marks.flow.fill(0);
@@ -117,6 +120,24 @@ function rust(w: World, c: Cell) {
   c.rust = 0;
   c.t = t.rustsTo!;
   logOnce(w, "rust", "The metal rusts through");
+}
+
+/**
+ * Floating oil (a cover with float.every, materials.json): on open water it spreads to each open, uncovered water
+ * square next to it, on the soak passes of every float.every ticks. What it reaches is laid after the pass, so the
+ * slick grows a square a turn whichever way the rows run (World.Float).
+ */
+function float(w: World, i: number, c: Cell, floating: [Cell, string][]) {
+  const cv = RULES.covers[c.cover!];
+  if (c.frozen || !cv || !cv.floatEvery || cv.floatEvery <= 0) return;
+  const pass = RULES.sim.water.soakPass;
+  if (Math.floor(w.tick / pass) % Math.max(1, Math.floor(cv.floatEvery / pass)) !== 0) return;
+  const x = i % w.w, y = Math.floor(i / w.w);
+  for (let d = 0; d < 4; d++) {
+    const n = cellAt(w, x + DX[d]!, y + DY[d]!);
+    if (!n || n.cover !== null || n.water === 0 || n.frozen || isBlocking(n)) continue;
+    floating.push([n, c.cover!]);
+  }
 }
 
 function ripen(w: World, i: number, c: Cell) {
@@ -213,7 +234,8 @@ function tickFire(w: World) {
         c.fire = 2;
       } else {
         c.fire = 0;
-        if (!isBlocking(c)) c.cover = "ash";
+        // Burnt off open water (an oil slick) leaves no ash.
+        if (!isBlocking(c) && !(c.water > 0 && !c.frozen)) c.cover = "ash";
       }
       continue;
     }
