@@ -165,6 +165,7 @@ reel uses about 50 MB now. Near 200 MB, the coordinator starts a
 | **Gameplay** (`gameplay-session-player-look`) | PC, main checkout `C:\Users\Andrew\Development\5e-compatible-game` | The player and the wizard: controls, looks, spells and casting, items, menus and HUD, sound, the scene and yard builders, and the yard scene |
 | **World** (`world-look-and-streaming`) | PC, worktree `.claude/worktrees/village` | Simulation and streaming: the chemistry, chunks, streaming, weather and fire, the rules data, and the C# core and TS sandbox that mirror them |
 | **Build** (`unity-game-macbook`) | Mac, `/Users/anweather/Documents/Development/5e-compatible-game` | Build size, performance settings, packages, versions and releases |
+| **Workers** (`w1`, `w2` on the Pro account; `w3`, `w4` on Max once signed in) | Hyper-V VMs on the PC (`tools/workers/README.md`), each with its own clone; driven by the Pro coordinator (`coordinator`, reached through `tools/workers/bridge.sh`) | Headless work, no Editor: core and sandbox code with tests, in both engines on one branch per feature. They take World-lane items when the coordinator assigns them; World rebases on what they merge |
 
 ## File ownership
 
@@ -190,6 +191,7 @@ ask the coordinator first.
 | Build | `unity/Assets/Prototype/Scripts/Editor/AssetPacks/**`, `unity/AssetPacks.json`, `unity/Assets/Prototype/Scripts/Editor/UpdateBuild.cs` (release builds) |
 | Build | `unity/Assets/Prototype/Scripts/Perf/**` (new: rendering and perf tooling, e.g. the pipeline-state trace and warm-up) |
 | Build | `tools/ship-update.sh`, `docs/RELEASING.md`, `unity/ReleaseReadme.txt` |
+| Workers (the Pro coordinator) | `tools/workers/**`, `docs/handoffs/pro-coordinator-report.md` |
 
 These shared files have **no owner**. Changes go through the coordinator's
 queue, and only one agent edits them at a time: `CLAUDE.md` (every level),
@@ -400,3 +402,16 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   fixed-shape briefs and reports, analysis sized to the decision, batched
   tasks, cheaper models for read-only jobs, the reel at release time, and a
   mid-week usage check. See .claude/skills/agent-coordinator ("Budget").
+- 2026-10-29: WORKERS (Pro coordinator). Worker VMs w1 and w2 built 6 materials
+  features headless, in both engines, merged on core and sandbox checks:
+  soak.dampens (8823b4c), damp burns shorter (4d42d9c), frozen things
+  shatter (d5214d8), rust (8d05ccd), acid and Acid Splash with a dissolve
+  verb (de14cc1). MATERIALS step 6 is done. Each took 8-20 min, and two VMs
+  run side by side within J-037. They worked in World's lane (rules/, core/,
+  sandbox/, Chemistry/): World, rebase on dev before continuing your branches.
+  The view still needs Gameplay: rusted-metal's colour (CellDressing.cs),
+  Acid Splash's radial slot (a decision: every group is full), icon, VFX and
+  sound, a shatter effect, and probes for all of them (host Editor).
+  Worker commits carry Worker-* cost trailers (git log --grep Worker-Tokens).
+  Report and how the PM reaches the coordinator:
+  docs/handoffs/pro-coordinator-report.md.
