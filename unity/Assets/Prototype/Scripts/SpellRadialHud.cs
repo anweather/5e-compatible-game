@@ -205,14 +205,15 @@ public class SpellRadialHud : MonoBehaviour
     static float Radius() => RingPixels * Scale;
 
     // Sizes scale with the screen, but never below a readable size on a small window.
-    static float Scale => Mathf.Max(0.85f, Screen.height / 1080f);
+    static float Scale => Mathf.Max(0.85f, HudScale.Height / 1080f);
 
     void OnGUI()
     {
         if (!IsOpen || !EventLog.HudVisible) return;
         MakeStyles();
+        HudScale.Apply();
         GUI.depth = -50; // over the HUD, under the Esc menu
-        var centre = new Vector2(Screen.width / 2f, Screen.height / 2f);
+        var centre = new Vector2(HudScale.Width / 2f, HudScale.Height / 2f);
         float r = Radius();
         var groups = radial.Layout.Groups;
         GUI.color = new Color(0f, 0f, 0f, 0.45f);

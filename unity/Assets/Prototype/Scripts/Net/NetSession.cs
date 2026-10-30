@@ -336,14 +336,15 @@ public class NetSession : MonoBehaviour
     // code is always there to share; everything else is in the Esc menu.
     void OnGUI()
     {
+        HudScale.Apply();
         if (joinFailure != null && Time.realtimeSinceStartup < joinFailureUntil && EventLog.HudVisible)
         {
             MakeStyles();
-            GUI.Label(new Rect(Screen.width - 616f, 76f, 600f, 90f), $"<color=#ff9a7a>{joinFailure}</color>", label);
+            GUI.Label(new Rect(HudScale.Width - 616f, 76f, 600f, 90f), $"<color=#ff9a7a>{joinFailure}</color>", label);
         }
         if (Net == null || !EventLog.HudVisible || !(Net.IsListening || session != null)) return;
         MakeStyles();
-        GUI.Label(new Rect(Screen.width - 456f, 76f, 440f, 30f), StatusText() + "   <color=#ffffff88>Esc: menu</color>", corner);
+        GUI.Label(new Rect(HudScale.Width - 456f, 76f, 440f, 30f), StatusText() + "   <color=#ffffff88>Esc: menu</color>", corner);
     }
 
     void MakeStyles()

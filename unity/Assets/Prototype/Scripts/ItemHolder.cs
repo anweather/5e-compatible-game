@@ -81,7 +81,7 @@ public class ItemHolder : MonoBehaviour
     {
         // Mid-throw: the item is on its way out of the hand.
         if (releaseAt >= 0f) return;
-        if (radial != null && radial.BusyThisFrame)
+        if ((radial != null && radial.BusyThisFrame) || (TryGetComponent<SpellCaster>(out var casting) && casting.CastInProgress))
         {
             throwPressedAt = -1f;
             return;
@@ -245,6 +245,7 @@ public class ItemHolder : MonoBehaviour
 
     void OnGUI()
     {
+        HudScale.Apply();
         if (!EventLog.HudVisible || controls == null || (radial != null && radial.IsOpen)) return; // the spell radial covers the middle
         string hint = Hint();
         if (hint == null) return;
@@ -255,7 +256,7 @@ public class ItemHolder : MonoBehaviour
             shadow.normal.textColor = new Color(0f, 0f, 0f, 0.7f);
         }
         // Below the crosshair, with a dark shadow so it reads against the sky and the grass.
-        var at = new Rect(0, Screen.height / 2f + 34, Screen.width, 28);
+        var at = new Rect(0, HudScale.Height / 2f + 34, HudScale.Width, 28);
         GUI.Label(new Rect(at.x + 1, at.y + 1, at.width, at.height), hint, shadow);
         GUI.Label(at, hint, style);
     }

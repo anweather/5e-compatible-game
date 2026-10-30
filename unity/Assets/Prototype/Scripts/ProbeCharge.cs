@@ -15,6 +15,7 @@ public class ChargeProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
+        RadialPad();
         var controls = caster.controls;
         bool controlsWereOn = controls != null && controls.enabled, casterWasOn = caster.enabled;
         if (controls != null) controls.enabled = true;

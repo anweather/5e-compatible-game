@@ -344,6 +344,7 @@ public class PauseMenu : MonoBehaviour
 
     void OnGUI()
     {
+        HudScale.Apply();
         if (!Open) return;
         GUI.depth = -100; // over the rest of the HUD (lower draws on top)
         MakeStyles();
@@ -371,11 +372,11 @@ public class PauseMenu : MonoBehaviour
     {
         var page = CurrentPageInfo();
         // Centred, as tall as its contents.
-        GUILayout.BeginArea(new Rect(0, 0, Screen.width, Screen.height));
+        GUILayout.BeginArea(new Rect(0, 0, HudScale.Width, HudScale.Height));
         GUILayout.FlexibleSpace();
         GUILayout.BeginHorizontal();
         GUILayout.FlexibleSpace();
-        GUILayout.BeginVertical(box, GUILayout.Width(Mathf.Min(page?.Width ?? MainWidth, Screen.width - 32)));
+        GUILayout.BeginVertical(box, GUILayout.Width(Mathf.Min(page?.Width ?? MainWidth, HudScale.Width - 32)));
         if (page != null) DrawPage(page);
         else DrawMain();
         GUILayout.EndVertical();

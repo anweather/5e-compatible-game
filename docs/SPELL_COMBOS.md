@@ -54,6 +54,14 @@ Shape from how the cast is released, the same for every combo: tap for a
 projectile, hold for a beam or stream (trigger depth for power), aim at the
 ground for an area or wall.
 
+## Built (the view, 2026-10-30)
+- **Controller:** fire {LB}, water {RB}, earth {LT}, air {RT}; {East} cancels; the d-pad cycles,
+  casts and opens the grimoire; dodge roll moved to the right stick's click; pad zoom is gone.
+- **Keyboard:** Z X C V, B to cancel, [ ] to cycle, T to cast, J for the grimoire. The mouse still
+  casts what the radial picked. Tab keeps the radial, and F2 swaps the controller to its old layout.
+- **Not yet:** tap, hold and ground shapes (every cast goes off at charge 1, from the crosshair);
+  other players' orbs aren't drawn, only their casts.
+
 ## Open
 - Three-element combos: held back as a later mastery layer.
 - What the grimoire shows for a found combo (name, elements in order,

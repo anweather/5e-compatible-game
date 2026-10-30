@@ -54,6 +54,9 @@ public static class SpellShapes
 public static class ElementIds
 {
     public const string Fire = "fire";
+    public const string Water = "water";
+    public const string Earth = "earth";
+    public const string Air = "air";
 }
 
 /// <summary>Entity ids, as in rules/entities.json.</summary>

@@ -80,6 +80,9 @@ public class SurfaceEffects : MonoBehaviour
     /// <summary>True while a spell has the wizard slowed.</summary>
     public bool Slowed => Time.time < slowUntil;
 
+    /// <summary>What the cast meter leaves of the wizard's speed (World.MoveFactorOf); SpellCaster sets it.</summary>
+    public float CastFactor { get; set; } = 1f;
+
     /// <summary>True while the wizard is afloat in deep water.</summary>
     public bool Swimming => swimming;
 
@@ -259,7 +262,7 @@ public class SurfaceEffects : MonoBehaviour
         return total;
     }
 
-    // Wading, thorns, heavy ground and a spell's slow, together.
+    // Wading, thorns, heavy ground, a spell's slow and casting, together.
     void SetSpeed(bool wading)
     {
         if (moveSpeed == null) return;
@@ -269,6 +272,7 @@ public class SurfaceEffects : MonoBehaviour
         if (swimming) k *= swimmingSpeed;
         else if (wading) k *= wadingSpeed;
         else k *= Mathf.Min(InThorns ? thornSpeed : 1f, groundSpeed);
+        k *= CastFactor;
         if (Mathf.Approximately(k, appliedSpeed)) return;
         appliedSpeed = k;
         moveSpeed.SetValue(controller, baseMove * k);

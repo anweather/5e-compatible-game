@@ -6,6 +6,15 @@ using UnityEngine.InputSystem;
 // its keyboard/mouse and gamepad bindings in one place; Xbox and
 // PlayStation controllers both map to <Gamepad>.
 //
+//   Casting by elements (docs/SPELL_COMBOS.md), the controller's layout (ElementPad):
+//   Fire, Water  Z, X          left, right bumper
+//   Earth, Air   C, V          left, right trigger
+//   Cancel cast  B             B / Circle
+//   D-pad spells [ ]           d-pad left / right    (T / d-pad up casts; J / d-pad down: the grimoire)
+//   Dodge roll   Left Ctrl     click the right stick
+//
+//   F2 swaps the controller to the debug layout below, the spell radial's:
+//
 //   Cast spell   left mouse    right trigger           (in an animal's shape: change back)
 //   Spell radial hold Tab      hold left bumper (L1)   (SpellRadialHud: aim with the
 //                                                        mouse / right stick, release to pick;
@@ -44,6 +53,27 @@ public class PlayerControls : MonoBehaviour
     public InputAction Use { get; private set; }
     public InputAction Throw { get; private set; }
     public InputAction Roll { get; private set; }
+    /// <summary>The elements' buttons, in the order of rules/combos.json.</summary>
+    public InputAction[] Elements { get; private set; }
+    public InputAction CancelCast { get; private set; }
+    public InputAction DpadNext { get; private set; }
+    public InputAction DpadPrevious { get; private set; }
+    public InputAction DpadCast { get; private set; }
+    public InputAction Grimoire { get; private set; }
+
+    /// <summary>
+    /// The controller's layout: casting by elements (the default), or with false the spell radial's,
+    /// kept as a debug tool. The two share buttons, so each turns the other's bindings off.
+    /// </summary>
+    public bool ElementPad
+    {
+        get => elementPad;
+        set
+        {
+            elementPad = value;
+            ApplyPadLayout();
+        }
+    }
 
     /// <summary>Set by ItemHolder: an item is in reach or in hand, so the E key goes to it.</summary>
     public bool ItemInReach { get; set; }
@@ -55,6 +85,10 @@ public class PlayerControls : MonoBehaviour
     public bool UsingGamepad { get; private set; }
 
     InputAction[] all;
+    InputAction swapLayout;
+    bool elementPad = true;
+    // Each layout's own bindings, by action and index.
+    (InputAction action, int binding)[] radialOnly, elementOnly;
 
     void Awake()
     {
@@ -70,7 +104,20 @@ public class PlayerControls : MonoBehaviour
         Interact = Button("Pick up or drop", "<Keyboard>/e", "<Gamepad>/buttonWest");
         Use = Button("Use item", "<Keyboard>/f", "<Gamepad>/buttonNorth");
         Throw = Button("Throw item", "<Keyboard>/g", "<Mouse>/rightButton", "<Gamepad>/buttonEast");
-        Roll = Button("Dodge roll", "<Keyboard>/leftCtrl", "<Gamepad>/leftTrigger");
+        Roll = Button("Dodge roll", "<Keyboard>/leftCtrl", "<Gamepad>/leftTrigger", "<Gamepad>/rightStickPress");
+        Elements = new[]
+        {
+            Button("Fire", "<Keyboard>/z", "<Gamepad>/leftShoulder"),
+            Button("Water", "<Keyboard>/x", "<Gamepad>/rightShoulder"),
+            Button("Earth", "<Keyboard>/c", "<Gamepad>/leftTrigger"),
+            Button("Air", "<Keyboard>/v", "<Gamepad>/rightTrigger"),
+        };
+        CancelCast = Button("Cancel cast", "<Keyboard>/b", "<Gamepad>/buttonEast");
+        DpadNext = Button("Next d-pad spell", "<Keyboard>/rightBracket", "<Gamepad>/dpad/right");
+        DpadPrevious = Button("Previous d-pad spell", "<Keyboard>/leftBracket", "<Gamepad>/dpad/left");
+        DpadCast = Button("Cast d-pad spell", "<Keyboard>/t", "<Gamepad>/dpad/up");
+        Grimoire = Button("Grimoire", "<Keyboard>/j", "<Gamepad>/dpad/down");
+        swapLayout = Button("Swap the controller's layout", "<Keyboard>/f2");
 
         Zoom = new InputAction("Zoom", InputActionType.Value);
         Zoom.AddBinding("<Mouse>/scroll/y");
@@ -78,8 +125,36 @@ public class PlayerControls : MonoBehaviour
             .With("Negative", "<Gamepad>/dpad/up")
             .With("Positive", "<Gamepad>/dpad/down");
 
-        all = new[] { Cast, RadialHold, RadialCancel, NextSpell, PrevSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Throw, Roll };
+        all = new[]
+        {
+            Cast, RadialHold, RadialCancel, NextSpell, PrevSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Throw, Roll,
+            Elements[0], Elements[1], Elements[2], Elements[3], CancelCast, DpadNext, DpadPrevious, DpadCast, Grimoire, swapLayout,
+        };
         foreach (var a in all) a.performed += Track;
+
+        const int ZoomPadUp = 2, ZoomPadDown = 3;
+        radialOnly = new[] { (Cast, 1), (RadialHold, 1), (NextSpell, 1), (NextElement, 0), (PrevElement, 0), (Zoom, ZoomPadUp), (Zoom, ZoomPadDown), (Roll, 1) };
+        elementOnly = new[]
+        {
+            (Elements[0], 1), (Elements[1], 1), (Elements[2], 1), (Elements[3], 1), (CancelCast, 1), (DpadNext, 1), (DpadPrevious, 1), (DpadCast, 1), (Grimoire, 1), (Roll, 2),
+        };
+        ApplyPadLayout();
+    }
+
+    // An override to an empty path switches a binding off.
+    void ApplyPadLayout()
+    {
+        Switch(radialOnly, !elementPad);
+        Switch(elementOnly, elementPad);
+    }
+
+    static void Switch((InputAction action, int binding)[] bindings, bool on)
+    {
+        foreach (var (action, binding) in bindings)
+        {
+            if (on) action.RemoveBindingOverride(binding);
+            else action.ApplyBindingOverride(binding, "");
+        }
     }
 
     static InputAction Button(string name, params string[] bindings)
@@ -94,6 +169,11 @@ public class PlayerControls : MonoBehaviour
     // Movement and look belong to Starter Assets, so watch the devices too.
     void Update()
     {
+        if (swapLayout.WasPressedThisFrame())
+        {
+            ElementPad = !elementPad;
+            EventLog.Add(elementPad ? "Controller: casting by elements" : "Controller: the spell radial (debug)");
+        }
         var pad = Gamepad.current;
         if (pad != null && (pad.leftStick.ReadValue().sqrMagnitude > 0.04f || pad.rightStick.ReadValue().sqrMagnitude > 0.04f || pad.buttonSouth.wasPressedThisFrame))
             UsingGamepad = true;

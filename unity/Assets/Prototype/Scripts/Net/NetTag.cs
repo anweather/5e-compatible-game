@@ -129,12 +129,13 @@ public class NetTag : NetworkBehaviour
 
     void OnGUI()
     {
+        HudScale.Apply();
         ulong who = it.Value;
         if (!IsSpawned || who == TagRules.Nobody || !EventLog.HudVisible) return;
         banner ??= new GUIStyle(GUI.skin.label) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
         string text = who == NetworkManager.LocalClientId
             ? "<b><color=#ff6a5a>TAG</color></b>  You're it! Tag someone"
             : $"<b><color=#ff6a5a>TAG</color></b>  Player {who + 1} is it: run!";
-        GUI.Label(new Rect(Screen.width / 2f - 300f, 64f, 600f, 34f), text, banner);
+        GUI.Label(new Rect(HudScale.Width / 2f - 300f, 64f, 600f, 34f), text, banner);
     }
 }

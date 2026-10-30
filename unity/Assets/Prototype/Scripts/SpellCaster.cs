@@ -17,7 +17,7 @@ using UnityEngine;
 // world when the show lands, and its shove to whatever moves (SpellForces);
 // online it goes to NetChem, which applies it on every machine at the same
 // tick, with where the caster stood (the centre of a burst's shove).
-public class SpellCaster : MonoBehaviour
+public partial class SpellCaster : MonoBehaviour
 {
     public ChemGrid grid;
     public PlayerControls controls;
@@ -72,7 +72,11 @@ public class SpellCaster : MonoBehaviour
         markerMat = UrpMaterials.NewLit("Aim marker", new Color(1f, 0.85f, 0.3f), emission: new Color(1f, 0.8f, 0.2f) * 1.5f);
     }
 
-    void OnDestroy() => Destroy(markerMat);
+    void OnDestroy()
+    {
+        Destroy(markerMat);
+        orbs?.Destroy();
+    }
 
     /// <summary>Selects a spell by id; false (and nothing changes) if the rules in force don't have it.</summary>
     public bool Select(string spellId)
@@ -86,7 +90,9 @@ public class SpellCaster : MonoBehaviour
     void Update()
     {
         // In an animal's shape, Cast only changes back (WhileShifted).
-        if (controls == null || grid == null || grid.World == null || WhileShifted()) return;
+        if (controls == null || grid == null || grid.World == null) return;
+        UpdateElements();
+        if (WhileShifted()) return;
 
         hasCrosshair = Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
         // While the spell radial is open the player is choosing, not aiming: no markers, no cast.
@@ -97,7 +103,7 @@ public class SpellCaster : MonoBehaviour
             return;
         }
         var target = CrosshairCell;
-        var aim = Aim(target, out var error);
+        var aim = Aim(SelectedId, target, out var error);
         var spell = grid.World.Rules.Spell(SelectedId);
         ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir, Charge, aim.Value.aimX, aim.Value.aimY) : null);
 
@@ -151,11 +157,12 @@ public class SpellCaster : MonoBehaviour
     void OnGUI()
     {
         if (chargeStart < 0f || !EventLog.HudVisible) return;
+        HudScale.Apply();
         pips ??= new GUIStyle(GUI.skin.label) { fontSize = 22, richText = true, alignment = TextAnchor.MiddleCenter };
         int charge = Charge;
         var text = new System.Text.StringBuilder();
         for (int i = 1; i <= World.MaxCharge; i++) text.Append(i <= charge ? "<color=#ffd24a>●</color> " : "<color=#ffffff55>●</color> ");
-        GUI.Label(new Rect(Screen.width / 2f - 60f, Screen.height / 2f + 18f, 120f, 30f), text.ToString(), pips);
+        GUI.Label(new Rect(HudScale.Width / 2f - 60f, HudScale.Height / 2f + 18f, 120f, 30f), text.ToString(), pips);
     }
 
     Vector2Int CrosshairCell => grid.CellAt(crosshair.point - crosshair.normal * 0.05f);
@@ -327,11 +334,11 @@ public class SpellCaster : MonoBehaviour
 
     // --- aiming ------------------------------------------------------------------------
 
-    (int x, int y, int dir, int aimX, int aimY)? Aim(Vector2Int target, out string error)
+    (int x, int y, int dir, int aimX, int aimY)? Aim(string spellId, Vector2Int target, out string error)
     {
         error = null;
-        var spell = grid.World.Rules.Spell(SelectedId);
-        if (spell == null) { error = $"{SelectedId} isn't in rules/spells.json"; return null; }
+        var spell = grid.World.Rules.Spell(spellId);
+        if (spell == null) { error = $"{spellId} isn't in rules/spells.json"; return null; }
         if (spell.Effect == SpellShapes.ShapeshiftEffect) return AimShift(spell, out error);
         if (!grid.World.InBounds(target.x, target.y)) return null;
         var me = grid.CellAt(transform.position);

@@ -98,7 +98,7 @@ public class ModsPanel : MonoBehaviour
         var mods = switcher.Catalog.Mods;
         GUILayout.Label("<color=#ffffff99>Click, 1–9, or highlight and A to switch one on or off. M closes.</color>", small);
         GUILayout.Label($"Rules fingerprint <b>{switcher.Rules.Fingerprint}</b>   ·   {Summary()}", small);
-        float height = Mathf.Clamp(mods.Count * 58f + 8f, 60f, Mathf.Max(120f, Screen.height - 340f));
+        float height = Mathf.Clamp(mods.Count * 58f + 8f, 60f, Mathf.Max(120f, HudScale.Height - 340f));
         scroll = PauseMenu.ScrollView(scroll, height, () =>
         {
             for (int i = 0; i < mods.Count; i++) DrawRow(i, mods[i]);

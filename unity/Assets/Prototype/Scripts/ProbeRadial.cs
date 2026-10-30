@@ -16,6 +16,7 @@ public class RadialProbe : ProbeScenario
 
     protected override IEnumerator Run()
     {
+        RadialPad();
         var hud = wizard.GetComponent<SpellRadialHud>();
         var controls = caster.controls;
         bool controlsWereOn = controls != null && controls.enabled, casterWasOn = caster.enabled, hudWasOn = EventLog.HudVisible;

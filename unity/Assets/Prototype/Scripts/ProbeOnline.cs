@@ -102,12 +102,20 @@ public class OnlineObservation
     public List<int> heightSums = new(), wetCells = new(), waterUnits = new(), raisedWalls = new(), drawnWet = new();
     public List<float> drawnGround = new(), drawnGroundAtStart = new();
     public int sampledTick;
+    /// <summary>Every player's casts and grimoire (World.CastState) at the sample tick.</summary>
+    public string castState;
+    /// <summary>The glow balls left at the sample tick (the host breaks one).</summary>
+    public int glowBalls;
     public string sampledChecksum;
 }
 
 /// <summary>The shared script, in sim ticks after the start tick (6 a second). Yard cells; directions 0 N, 1 E, 2 S, 3 W.</summary>
 public static class OnlineSchedule
 {
+    /// <summary>The glow balls still in the world, on this side.</summary>
+    public static List<Carryable> GlowBalls() => UnityEngine.Object.FindObjectsByType<Carryable>(FindObjectsSortMode.InstanceID)
+        .Where(c => c.Holder == null && c.TryGetComponent<PhysicsProp>(out var p) && p.kind.StartsWith("glow-ball", StringComparison.Ordinal)).ToList();
+
     public readonly struct Step
     {
         public readonly int At;
@@ -267,6 +275,8 @@ public sealed class OnlineProbeRecorder
         {
             OnlineSchedule.Sample(grid, lines, Seen);
             Seen.desync = net.DesyncSeen;
+            Seen.castState = grid.World.CastState();
+            Seen.glowBalls = OnlineSchedule.GlowBalls().Count;
             Sampled = true;
         }
     }
@@ -385,6 +395,8 @@ public class OnlineProbeClient : MonoBehaviour
         while (grid.World.Tick < go.startTick) yield return null;
         recorder.Seen.lagAtStart = Lag(net);
         while (!net.CaughtUp) yield return null;
+        net.RequestCombo(ComboCommand.Load("", ElementIds.Water));
+        net.RequestCombo(ComboCommand.Load("", ElementIds.Air));
         recorder.Play(wizard);
         recorder.RecordProp(after: false);
         while (!recorder.Sampled)
@@ -465,6 +477,9 @@ public class OnlineProbe : ProbeScenario
         puppet = new WizardPuppet(wizard);
         caster = wizard.GetComponent<SpellCaster>();
         caster.enabled = false;
+        // Before anyone joins, so the joiner has to replay it (NetChem's combo history).
+        var net = grid.GetComponent<NetChem>();
+        net.RequestCombo(ComboCommand.Load("", ElementIds.Water));
         ProbeLink.Write(ProbeLink.HostFile, new ProbeHostMessage { id = id, phase = ProbeLink.Hosting });
 
         OnlineObservation joined = null;
@@ -486,11 +501,20 @@ public class OnlineProbe : ProbeScenario
         // The camera over the pond, the trenches and the walls.
         Cut(Yard(13, 14) + V(0f, 22f, 0f), Yard(13, 6));
         while (World.Tick < recorder.StartTick) yield return null;
+        ballsBefore = OnlineSchedule.GlowBalls().Count;
+        net.RequestCombo(ComboCommand.Load("", ElementIds.Earth));
         recorder.Play(wizard);
         recorder.RecordProp(after: false);
+        bool ballBroken = false;
         while (!recorder.Sampled)
         {
             recorder.Play(wizard);
+            // After both sides have listed every thing (RecordProp at PropTick).
+            if (!ballBroken && World.Tick > recorder.StartTick + OnlineSchedule.PropTick)
+            {
+                ballBroken = true;
+                BreakBall();
+            }
             yield return null;
         }
         recorder.Stop();
@@ -509,6 +533,9 @@ public class OnlineProbe : ProbeScenario
         yield return TryTag();
         yield return CompareAfterReset(id);
     }
+
+    int ballsBefore;
+    ThingId ballId = ThingId.None;
 
     // The host's checksums since the reset (TryReset starts collecting them).
     readonly Dictionary<int, string> afterReset = new();
@@ -582,6 +609,7 @@ public class OnlineProbe : ProbeScenario
         net.TickApplied += CollectAfterReset;
         var spawner = FindAnyObjectByType<ThingSpawner>();
         var before = new HashSet<ThingId>(spawner.Live.Select(t => t.id));
+        if (!ballId.IsNone) before.Add(ballId); // the ball broken earlier comes back too
         var broken = spawner.Live.Select(t => t.prop).FirstOrDefault(p => p.State != null && p.kind == EntityIds.Crate);
         var brokenId = broken != null ? broken.Thing : ThingId.None;
         if (broken != null) broken.Hurt(9999);
@@ -615,9 +643,37 @@ public class OnlineProbe : ProbeScenario
         return seen != null && seen.id == id && (phase == null || seen.phase == phase) ? seen : null;
     }
 
+    // A glow ball hurled at the ground near the wizard: the host's physics breaks it for everyone.
+    void BreakBall()
+    {
+        var ball = OnlineSchedule.GlowBalls().FirstOrDefault();
+        if (ball == null) return;
+        ballId = ball.GetComponent<PhysicsProp>().Thing;
+        var from = wizard.transform.position + wizard.transform.forward * 2f + Vector3.up * 1.5f;
+        var body = ball.GetComponent<Rigidbody>();
+        body.isKinematic = false;
+        body.position = from;
+        ball.transform.position = from;
+        body.linearVelocity = Vector3.down * 12f;
+    }
+
+    void CompareCombos(OnlineObservation host, OnlineObservation client)
+    {
+        Metric("glow_balls_before", ballsBefore);
+        Metric("glow_balls_host", host.glowBalls);
+        Metric("glow_balls_client", client.glowBalls);
+        Check("broken_ball_gone_on_both", ballsBefore > 0 && host.glowBalls == ballsBefore - 1 && client.glowBalls == host.glowBalls,
+            $"{ballsBefore} glow balls, then {host.glowBalls} on the host and {client.glowBalls} on the client");
+        Check("combo_state_equal", host.castState == client.castState, $"host {host.castState}; client {client.castState}");
+        string me = NetworkManager.Singleton.LocalClientId == 0 ? "p0" : $"p{NetworkManager.Singleton.LocalClientId}";
+        Check("late_joiner_replays_combos", World.KnowsCombo(me, "water") || World.KnowsCombo(me, "water+earth"), host.castState);
+        Check("client_combo_reached_everyone", host.castState != null && host.castState.Contains("water+air", StringComparison.Ordinal), host.castState);
+    }
+
     void Compare(OnlineObservation host, OnlineObservation client)
     {
         CompareChecksums(host, client);
+        CompareCombos(host, client);
         CompareEarth(host, client);
         CompareThings(host, client);
         CompareProp(host, client);

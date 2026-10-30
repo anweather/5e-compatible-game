@@ -26,6 +26,10 @@ public class EventLog : MonoBehaviour
     GUIStyle style;
     SpellCaster caster;
     readonly VitalsHud vitalsHud = new();
+    readonly CastHud castHud = new();
+    GUIStyle logStyle, logShadow;
+    // Over the update notice in the corner (UpdateCheck).
+    const float LogWidth = 640f, LogLine = 32f, LogBottom = 56f;
 
     void Awake() => instance = this;
     void Start()
@@ -90,7 +94,7 @@ public class EventLog : MonoBehaviour
     // A plus with a dark shadow, so it reads against the sky as well as the ground.
     void Crosshair()
     {
-        var c = new Vector2(Screen.width / 2f, Screen.height / 2f);
+        var c = new Vector2(HudScale.Width / 2f, HudScale.Height / 2f);
         var cross = new GUIStyle(style) { alignment = TextAnchor.MiddleCenter, fontSize = 28 };
         GUI.Label(new Rect(c.x - 11, c.y - 14, 24, 30), "<color=#000000aa><b>+</b></color>", cross);
         GUI.Label(new Rect(c.x - 12, c.y - 15, 24, 30), "<b>+</b>", cross);
@@ -99,11 +103,26 @@ public class EventLog : MonoBehaviour
     void OnGUI()
     {
         if (!HudVisible) return;
+        HudScale.Apply();
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true };
         if (caster == null) GUI.Label(new Rect(16, 12, 900, 30), FirelineHelp, style);
         else DrawCasterHud();
+        DrawLog();
+    }
+
+    // The message log down the free right side, the newest at the bottom.
+    void DrawLog()
+    {
+        logStyle ??= new GUIStyle(style) { fontSize = 22, alignment = TextAnchor.MiddleRight };
+        logShadow ??= new GUIStyle(logStyle) { richText = false };
+        logShadow.normal.textColor = new Color(0f, 0f, 0f, 0.75f);
+        float width = LogWidth, x = HudScale.Width - width - VitalsHud.Margin;
         for (int i = 0; i < lines.Count; i++)
-            GUI.Label(new Rect(16, Screen.height - 32 - (lines.Count - i) * 26, 900, 26), lines[i], style);
+        {
+            var at = new Rect(x, HudScale.Height - LogBottom - (lines.Count - i) * LogLine, width, LogLine);
+            GUI.Label(new Rect(at.x + 1f, at.y + 1f, at.width, at.height), System.Text.RegularExpressions.Regex.Replace(lines[i], "<[^>]+>", ""), logShadow);
+            GUI.Label(at, lines[i], logStyle);
+        }
     }
 
     // The wizard's bars, the crosshair, and the spell chip: the selected spell in its element's
@@ -114,7 +133,10 @@ public class EventLog : MonoBehaviour
         bool pad = caster.controls != null && caster.controls.UsingGamepad;
         float vitalsHeight = vitalsHud.Draw(caster.gameObject, style);
         if (Cursor.lockState == CursorLockMode.Locked || pad) Crosshair();
-        GUI.Label(new Rect(16, 12 + vitalsHeight + 6, 1400, 30), SpellChip(pad), style);
+        castHud.Draw(caster, style);
+        // The spell the radial picked: what the mouse casts, and the controller in its debug layout.
+        bool radialPad = pad && caster.controls != null && !caster.controls.ElementPad;
+        if (!pad || radialPad) GUI.Label(new Rect(VitalsHud.Margin, VitalsHud.Margin + vitalsHeight + 8f, 1400, 30), SpellChip(pad), style);
     }
 
     string SpellChip(bool pad)
@@ -122,7 +144,7 @@ public class EventLog : MonoBehaviour
         var group = caster.TryGetComponent<SpellRadialHud>(out var radial) ? radial.CurrentGroup : null;
         string colour = group?.Color ?? "#ffd24a";
         string element = group != null ? $"<color={colour}>{group.Name}</color>  " : "";
-        string keys = pad ? PadGlyphs.Text("hold {LB}: spells, tap: swap  ·  {RB} next  ·  D-pad ◀ ▶ element") : "hold Tab: spells, tap: swap  ·  Q E next  ·  1–8 element";
+        string keys = pad ? PadGlyphs.Text("hold {LB}: spells, tap: swap  ·  {RB} next  ·  D-pad ◀ ▶ element") : "hold Tab: spells, tap: swap  ·  Q E next  ·  Z X C V elements";
         return $"<color={colour}>●</color> {element}<color=#ffd24a><b>{caster.SelectedName}</b></color>   <color=#ffffff88>{keys}</color>";
     }
 }

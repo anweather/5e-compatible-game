@@ -85,6 +85,9 @@ public abstract class ProbeScenario : ShowcaseScript
         Result.Screenshots.Add(file);
     }
 
+    /// <summary>The controller's debug layout, for a scenario that drives the radial's buttons.</summary>
+    protected void RadialPad() => wizard.GetComponent<PlayerControls>().ElementPad = false;
+
     protected int BurningCells() => World.Cells.Count(c => c.Fire > 0);
 
     /// <summary>How many console lines there have been so far, to pass to ConsoleSaid later.</summary>

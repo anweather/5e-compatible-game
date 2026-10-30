@@ -252,10 +252,11 @@ public partial class Shapeshift : MonoBehaviour
     // How long is left, and how to change back, under the crosshair.
     void OnGUI()
     {
+        HudScale.Apply();
         if (!local || !Shifted || !EventLog.HudVisible) return;
         hud ??= new GUIStyle(GUI.skin.label) { fontSize = 16, richText = true, alignment = TextAnchor.MiddleCenter };
         string key = controls != null && controls.UsingGamepad ? PadGlyphs.Label(PadButton.RT) : "Left click";
         string text = $"<b>{FormName}</b>  {Mathf.CeilToInt(SecondsLeft)} s   <color=#ffffffaa>{key}: change back</color>";
-        GUI.Label(new Rect(Screen.width / 2f - 200f, Screen.height - 90f, 400f, 30f), text, hud);
+        GUI.Label(new Rect(HudScale.Width / 2f - 200f, HudScale.Height - 90f, 400f, 30f), text, hud);
     }
 }
