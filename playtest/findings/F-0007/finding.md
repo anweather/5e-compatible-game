@@ -4,7 +4,7 @@
 - **Severity:** Medium (the wizard is always on screen). A known issue: the 0.1.8 release notes list it, and 0.1.7 did it too.
 - **Build:** alpha 0.1.8 (4378764), the release candidate; runs rc018-812 and rc018-813, seeds 812-813 (2026-10-30)
 - **Reproduced:** Seen in 2 of 3 runs. Not replayed.
-- **GitHub:** (issue number added when filed)
+- **GitHub:** [#4](https://github.com/anweather/5e-compatible-game/issues/4)
 
 **Steps:** From the yard, cast three spells in place, then walk to the ball
 court and on toward the waterfall (run 813). Or walk from the yard to the

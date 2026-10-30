@@ -4,6 +4,7 @@
 - **Severity:** Low (intermittent)
 - **Build:** alpha 0.1.5 (4a9af50), the shipped release; runs rc015-1 to rc015-6, seeds 101-106 (2026-10-27)
 - **Reproduced:** Not reproduced: the replay of run 3 had none. Filed because it turned up in 3 of 6 runs.
+- **GitHub:** [#5](https://github.com/anweather/5e-compatible-game/issues/5)
 
 **Steps:** Walk between places across the valley (for example the tower to the waterfall to the defense field).
 

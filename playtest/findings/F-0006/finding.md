@@ -4,7 +4,7 @@
 - **Severity:** Medium (shows wherever a spell cracks paving or ice, and stays)
 - **Build:** alpha 0.1.8 (4378764), the release candidate; runs rc018-811 to rc018-813, seeds 811-813 (2026-10-30)
 - **Reproduced:** Seen in all 3 runs. Not replayed: the shots are clear.
-- **GitHub:** (issue number added when filed)
+- **GitHub:** [#2](https://github.com/anweather/5e-compatible-game/issues/2)
 
 **Steps:** In the village, stand by the well and cast Thunderwave at the paving
 (cell 219,299). Or at the defense field at night, cast Fog Cloud, Spike Growth

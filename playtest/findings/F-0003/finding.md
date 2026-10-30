@@ -4,6 +4,7 @@
 - **Severity:** Medium (0.1.6 paper cut)
 - **Build:** alpha 0.1.5 (4a9af50), the shipped release; runs rc015-1 to rc015-6, seeds 101-106 (2026-10-27)
 - **Reproduced:** Seen once. Not yet checked on dev: dev's seed-103 run didn't stand there.
+- **GitHub:** [#3](https://github.com/anweather/5e-compatible-game/issues/3)
 
 **Steps:** Go to the waterfall's pool and look back past the wizard.
 
