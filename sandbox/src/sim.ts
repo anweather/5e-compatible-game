@@ -124,8 +124,8 @@ function rust(w: World, c: Cell) {
 
 /**
  * Floating oil (a cover with float.every, materials.json): on open water it spreads to each open, uncovered water
- * square next to it, on the soak passes of every float.every ticks. What it reaches is laid after the pass, so the
- * slick grows a square a turn whichever way the rows run (World.Float).
+ * cell next to it, on the soak passes of every float.every ticks. What it reaches is laid after the pass, so the
+ * slick grows a cell a turn whichever way the rows run (World.Float).
  */
 function float(w: World, i: number, c: Cell, floating: [Cell, string][]) {
   const cv = RULES.covers[c.cover!];

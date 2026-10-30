@@ -615,7 +615,7 @@ namespace Chem.Tests
         [Test]
         public void OilFloatsOutOverWaterAndBurnsAcrossItUntilItIsUsedUp()
         {
-            // Oil floats (materials.json float.every 16): the slick grows a square a turn over open water.
+            // Oil floats (materials.json float.every 16): the slick grows a cell a turn over open water.
             var w = OilyPond(80);
             int slick = w.Cells.Count(c => c.Cover == "oil");
             Assert.That(slick, Is.GreaterThan(5), "it spread across the surface");

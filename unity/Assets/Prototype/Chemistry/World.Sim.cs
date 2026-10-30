@@ -245,8 +245,8 @@ namespace Chem
 
         /// <summary>
         /// Floating oil (a cover with float.every, materials.json): on open water it spreads to each open,
-        /// uncovered water square next to it, on the soak passes of every float.every ticks. What it
-        /// reaches is laid at the end of the tick (EndTick), so the slick grows a square a turn whichever
+        /// uncovered water cell next to it, on the soak passes of every float.every ticks. What it
+        /// reaches is laid at the end of the tick (EndTick), so the slick grows a cell a turn whichever
         /// way the rows run. True if it spread.
         /// </summary>
         bool Float(Chunk ch, int i, Cell c)
