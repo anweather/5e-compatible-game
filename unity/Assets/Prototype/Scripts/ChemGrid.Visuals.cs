@@ -43,6 +43,7 @@ public partial class ChemGrid
         public int fireLevel;
         public string gasKind;
         public bool charged;
+        public bool flashed;
         public bool wet;
         public bool fogged;
         public int heatLevel;
@@ -54,6 +55,7 @@ public partial class ChemGrid
     CellBlockers blockers;
     CellWaterMesh waterSurface;
     CellSlickMesh slicks;
+    CellFxTexture cellFx;
     CellThorns thornClumps;
     FireLightPool fireLights;
 
@@ -68,6 +70,10 @@ public partial class ChemGrid
             materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f));
         slicks?.Destroy();
         slicks = new CellSlickMesh(this, slickMaterial != null ? slickMaterial : materials.Slick());
+        cellFx?.Destroy();
+        acidWatch.Clear();
+        var yard = Yard;
+        cellFx = new CellFxTexture(World.W, World.H, new Vector4(1f / cellSize, yard.x, yard.y + yard.height - 1, 0f));
         thornClumps ??= new CellThorns(this, materials);
         shaping.Clear();
         ForgetFx();
@@ -125,6 +131,8 @@ public partial class ChemGrid
         finishTimer.Restart();
         using (WaterMeshMarker.Auto()) waterSurface.Rebuild();
         using (SlickMeshMarker.Auto()) slicks.Rebuild();
+        cellFx.Advance(Time.deltaTime);
+        WatchAcidCells();
         materials.ScrollWater(Time.time);
         waterSurface.Scroll(Time.time);
         using (ShapingMarker.Auto()) AnimateShaping();
@@ -156,7 +164,7 @@ public partial class ChemGrid
         using (GasMarker.Auto()) RenderGas(v, c, x, y, center, ground, GasDrawnAt(x, y));
         // A lightning strike across the lake charges thousands of cells; on the lake, sparks on
         // one cell in 25 read the same without thousands of effects.
-        if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, center, ground);
+        if (!lake || (x % 5 == 0 && y % 5 == 0)) RenderCharge(v, c, x, y, center, ground);
     }
 
     // A new terrain, height or cover: the terrain is reshaped (eased, see ChemGrid.Shaping.cs)
@@ -274,6 +282,7 @@ public partial class ChemGrid
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
         slicks.Changed(x, y, c);
+        cellFx.Oil(x, y, CellSlickMesh.IsSlick(c.Cover) && c.Water > 0 && !c.Frozen);
         RenderThorns(v, c, x, y, center, ground);
         if (c.Cover != CoverIds.Ash || valley != null)
         {
@@ -327,6 +336,7 @@ public partial class ChemGrid
         materials.Destroy();
         waterSurface?.Destroy();
         slicks?.Destroy();
+        cellFx?.Destroy();
         thornClumps?.Destroy();
         if (plainDust != null) Destroy(plainDust);
     }

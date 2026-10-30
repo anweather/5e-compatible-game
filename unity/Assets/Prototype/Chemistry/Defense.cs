@@ -197,6 +197,8 @@ namespace Chem
         public int X, Y, Hp, MaxHp, Wait;
         public Dictionary<string, int> Status { get; } = new Dictionary<string, int>(StringComparer.Ordinal);
         public bool Alive = true;
+        /// <summary>It went by shattering (struck while frozen, sim status.shatter), for the view's shards; not part of the world's state.</summary>
+        public bool Shattered;
 
         /// <summary>Ticks left of a status, 0 without it.</summary>
         public int StatusOf(string name) => Status.TryGetValue(name, out int v) ? v : 0;

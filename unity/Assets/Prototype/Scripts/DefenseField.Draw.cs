@@ -29,6 +29,7 @@ public partial class DefenseField : ICreatureGround
         public float movedAt, stepSeconds;
         public CreatureState state;
         public int hp, maxHp;
+        public Raider raider;
     }
 
     readonly Dictionary<int, Shown> shown = new();
@@ -77,6 +78,7 @@ public partial class DefenseField : ICreatureGround
                 var def = world.Rules.Entity(r.Kind);
                 s.stepSeconds = (def?.Raider != null ? def.Raider.TicksPerSquare : 4) / (float)tps;
             }
+            s.raider = r;
             s.hp = Mathf.Max(0, r.Hp);
             s.maxHp = Mathf.Max(1, r.MaxHp);
         }
@@ -95,7 +97,8 @@ public partial class DefenseField : ICreatureGround
         {
             var s = shown[id];
             shown.Remove(id);
-            if (Mathf.Abs(s.cell.x - flagCell.x) + Mathf.Abs(s.cell.y - flagCell.y) > 1) Puff(s.at);
+            if (s.raider != null && s.raider.Shattered) Shatter(s.at);
+            else if (Mathf.Abs(s.cell.x - flagCell.x) + Mathf.Abs(s.cell.y - flagCell.y) > 1) Puff(s.at);
         }
     }
 
@@ -193,6 +196,14 @@ public partial class DefenseField : ICreatureGround
             GUI.DrawTexture(new Rect(back.x + 1f, back.y + 1f, (width - 2f) * f, height - 2f), bar);
         }
         GUI.color = before;
+    }
+
+    // A frozen raider struck: it bursts into ice shards with a crack, instead of the dust of a defeat.
+    void Shatter(Vector3 at)
+    {
+        Puffs++;
+        ShardBurst.At(at + Vector3.up * 0.5f, new Color(0.7f, 0.88f, 1f), 40);
+        GameSounds.Play(SoundIds.Shatter, at);
     }
 
     // A short burst of dark dust where a raider fell.

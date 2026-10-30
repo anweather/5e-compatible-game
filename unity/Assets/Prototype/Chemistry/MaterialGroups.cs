@@ -141,6 +141,14 @@ namespace Chem
             }
         }
 
+        static void GroupChainsWet(JObject entry)
+        {
+            if (entry["chainsWet"] == null) return;
+            if (!(entry["conduct"] is JObject g)) entry["conduct"] = g = new JObject();
+            g["chainsWet"] = entry["chainsWet"];
+            entry.Remove("chainsWet");
+        }
+
         /// <summary>A flat terrain (or cover) entry spelled as groups: the inverse of Ungroup, for the parity test.</summary>
         public static JObject Group(JObject flat, bool cover)
         {
@@ -172,12 +180,7 @@ namespace Chem
                 }
             }
             if (!cover) GroupStatuses(entry);
-            if (!cover && entry["chainsWet"] != null)
-            {
-                if (!(entry["conduct"] is JObject g)) entry["conduct"] = g = new JObject();
-                g["chainsWet"] = entry["chainsWet"];
-                entry.Remove("chainsWet");
-            }
+            if (!cover) GroupChainsWet(entry);
             return entry;
         }
     }

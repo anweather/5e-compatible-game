@@ -124,6 +124,7 @@ namespace Chem
             var sim = Rules.Sim;
             if (sim.ShatterWhen != null && r.StatusOf(sim.ShatterWhen) > 0 && (sim.ShatterNotBy == null || element != sim.ShatterNotBy))
             {
+                r.Shattered = true;
                 DefeatRaider(r, "shatters");
                 return;
             }
@@ -252,12 +253,15 @@ namespace Chem
             if (c.Heat > 0 && def.Creature && Tick % s.BurnDamageEvery == 0) DamageRaider(r, 1, "hot metal", "fire");
             if (c.Gas == "steam" && c.GasAmt >= 2 && def.Creature && Tick % s.ScaldEvery == 0)
                 DamageRaider(r, Rules.Gases.TryGetValue("steam", out var steam) ? steam.Scald : 1, "scalding", null);
-            if ((c.Charge == 3 || ShockedFromBeside(r, def)) && r.Alive)
+            if (Shocked(r, c, def) && r.Alive)
             {
                 int mul = ApplyRaiderElement(r, "lightning", false);
                 DamageRaider(r, s.ZapDamage * mul, "lightning", "lightning");
             }
         }
+
+        // Freshly charged water (or metal) under it, or, wet, beside it.
+        bool Shocked(Raider r, Cell c, EntityDef def) => c.Charge == 3 || ShockedFromBeside(r, def);
 
         // Shock-water (conduct.chainsWet): a wet creature of a material that chains wet is shocked by
         // freshly charged water beside it too, not only under it (the goblin on the bank of a struck pond).
