@@ -504,6 +504,7 @@ stable across sessions and hosts, a small player-save file on each player's
 own machine, sent to the host on join, and a rule for what a host may trust
 or override (lockstep: the host stamps it into the world state on join).
 Not urgent; build toward it.
+Design: `docs/PLAYER_SAVE.md`.
 
 ## Priority (groomed 2026-10-27, Andrew approved; J-012 in `JUDGMENT_CALLS.md`)
 
