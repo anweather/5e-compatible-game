@@ -35,5 +35,7 @@ If it's waiting or busy, this does nothing ("coordinator is listening"). Otherwi
     MSG
 
 The coordinator waits on its inbox in the background, so a message wakes it. It answers through `send pm`. Keep `bash tools/workers/bridge.sh wait pm` running as a background command to be woken by its replies.
+- **Check it was read:** `send` prints the message's id. After 5 min, `bash tools/workers/bridge.sh status coordinator <id>`: "acked" means a Claude has read it; "unread" or "taken, not acked" means nobody's listening, so run `wake` again (a taken message goes back to the inbox after 10 min unacked, so nothing is lost). History: `~/.agent-bridge/bridge.log`.
+- **Your side too:** when your `wait pm` hands you mail, `bash tools/workers/bridge.sh ack pm all` once you've read it, then start the next `wait pm` before doing the work.
 - Capacity: w1 and w2 are Pro (the coordinator drives them); w3 and w4 will be Max once Andrew signs them in, and you can message those directly.
 - Every worker commit carries `Worker-Account`, `Worker-Time`, `Worker-Tokens`, `Worker-Context` and `Worker-Tools` trailers (`git log --grep Worker-Tokens`). Hyper-V's per-run CPU, RAM and disk are logged in C:\HyperV\Workers\metering.csv.
