@@ -95,6 +95,14 @@ public static class BuildingMesher
         public float StoreyEz(int storey) => s.walls == WallKind.Timber && storey > 0 ? ez + Jetty : ez;
     }
 
+    // Where the door stands along the front: the plan's, else the seed's for a house, the middle for the rest.
+    static float DoorX(Build b)
+    {
+        float slack = Mathf.Max(0f, b.ex - 1.6f);
+        float seeded = b.s.kind == BuildingKind.House ? b.Range(-slack, slack) : 0f;
+        return b.s.doorAt ?? seeded;
+    }
+
     public static Result Make(Spec spec)
     {
         var b = new Build { rng = new System.Random(spec.seed), s = spec, kit = new MeshKit() };
@@ -117,10 +125,8 @@ public static class BuildingMesher
         b.pitch = (spec.cover == RoofCover.Thatch ? 50f : 40f) * Mathf.Deg2Rad;
         b.over = spec.cover == RoofCover.Thatch ? 0.55f : 0.4f;
         b.rise = (b.StoreyEz(storeys - 1) + b.over) * Mathf.Tan(b.pitch) - b.over * Mathf.Tan(b.pitch);
-        float slack = Mathf.Max(0f, b.ex - 1.6f);
-        b.doorX = spec.kind == BuildingKind.House ? b.Range(-slack, slack) : 0f;
+        b.doorX = DoorX(b);
 
-        if (spec.doorAt.HasValue) b.doorX = spec.doorAt.Value;
 
         var result = new Result { chimneyTop = new Vector3(float.NaN, 0f, 0f) };
         var kit = b.kit;
