@@ -133,6 +133,8 @@ namespace Chem
         public int FloatEvery;
         /// <summary>How many cells a slick of it reaches from where it was laid (float.reach; Cell.Slick); 0 without end.</summary>
         public int FloatReach;
+        /// <summary>When it withers (Lasts), its roots break the terrain under it into its BreaksTo (materials.json rot.breaks: vines crack a stone wall).</summary>
+        public bool RotBreaks;
         public bool Has(string tag) => Tags.Contains(tag);
         /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
@@ -226,8 +228,16 @@ namespace Chem
         public CellCond Needs;
         /// <summary>The line logged when a spell with Needs finds no cell to act on, or null for "{Name} fizzles".</summary>
         public string Fizzle;
-        /// <summary>A travelling wave's element where it stops (Wave's mud; World.Waves), or null.</summary>
+        /// <summary>A travelling wave's or rolling boulder's element where it stops (Wave's mud, the boulder's earth; World.Waves, World.Boulders), or null.</summary>
         public string Leaves;
+        /// <summary>A line with TravelEvery that rolls rather than washes (Rolling Boulder; World.Boulders): one cell that follows the ground downhill.</summary>
+        public bool Rolls;
+        /// <summary>The gas a rolling boulder leaves behind it (dust), or null.</summary>
+        public string Trail;
+        /// <summary>Earth shaping to a Height: cells holding open water rise only this high (Wall of Stone's stepping stones); 0 as high as the rest.</summary>
+        public int Stepping;
+        /// <summary>Earth shaping to a Height along a line: a step higher each cell from the first, up to the height (Stone Ramp).</summary>
+        public bool Ramp;
         /// <summary>What a whirling spell can take on, strongest first: one replaces any after it (CarryDef); empty for none.</summary>
         public IReadOnlyList<CarryDef> Carries = Array.Empty<CarryDef>();
         /// <summary>The light the Light effect sheds, in feet (spells.json light { bright, dim }), for the view to draw; 0 none.</summary>
@@ -697,6 +707,7 @@ namespace Chem
             DissolvesTo = Str(o["dissolvesTo"]),
             FloatEvery = Int(o["floatEvery"]) ?? 0,
             FloatReach = Int(o["floatReach"]) ?? 0,
+            RotBreaks = Truthy(o["rotBreaks"]),
         };
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
@@ -778,6 +789,10 @@ namespace Chem
             Needs = o["needs"] is JObject nd ? ParseCond(nd) : null,
             Fizzle = Str(o["fizzle"]),
             Leaves = Str(o["leaves"]),
+            Rolls = Truthy(o["rolls"]),
+            Trail = Str(o["trail"]),
+            Stepping = Int(o["stepping"]) ?? 0,
+            Ramp = Truthy(o["ramp"]),
             Carries = (o["carries"] as JArray)?.OfType<JObject>().Select(ParseCarry).ToList() ?? (IReadOnlyList<CarryDef>)Array.Empty<CarryDef>(),
             LightBright = Int((o["light"] as JObject)?["bright"]) ?? 0,
             LightDim = Int((o["light"] as JObject)?["dim"]) ?? 0,

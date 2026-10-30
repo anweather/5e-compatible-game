@@ -26,6 +26,7 @@ const COVER_VERBS: Verb[] = [
   { verb: "float", tag: null, keys: [["every", "floatEvery"], ["reach", "floatReach"]] },
   { verb: "melt", tag: null, keys: [["into", "meltsTo"], ["water", "meltWater"]] },
   { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
+  { verb: "rot", tag: null, keys: [["breaks", "rotBreaks"]] },
 ];
 
 /** A creature's statuses from its material: each verb's status key and the flat key it becomes (MaterialGroups.StatusVerbs). */

@@ -99,6 +99,8 @@ export interface CoverDef {
   floatEvery?: number;
   /** How many cells a slick of it reaches from where it was laid (float.reach; slick in sim.ts); unset without end. */
   floatReach?: number;
+  /** When it withers (lasts), its roots break the terrain under it into its breaksTo (rot.breaks: vines crack a stone wall). */
+  rotBreaks?: boolean;
 }
 export interface FlashDef {
   fire: number;
@@ -271,8 +273,16 @@ export interface SpellDef {
   needs?: CellCond;
   /** The line logged when a spell with needs finds no cell to act on; unset, "{name} fizzles". */
   fizzle?: string;
-  /** A travelling wave's element where it stops (Wave's mud; tickWaves). */
+  /** A travelling wave's or rolling boulder's element where it stops (Wave's mud, the boulder's earth; tickWaves, tickBoulders). */
   leaves?: string;
+  /** A line with travelEvery that rolls rather than washes (Rolling Boulder; tickBoulders): one cell that follows the ground downhill. */
+  rolls?: boolean;
+  /** The gas a rolling boulder leaves behind it (dust). */
+  trail?: string;
+  /** Earth shaping to a height: cells holding open water rise only this high (Wall of Stone's stepping stones). */
+  stepping?: number;
+  /** Earth shaping to a height along a line: a step higher each cell from the first, up to the height (Stone Ramp). */
+  ramp?: boolean;
   /** The light the Light effect sheds, in feet (bright, dim), for the view to draw (SpellDef.LightBright, LightDim). */
   light?: { bright: number; dim: number };
   /** The ground it blows out where it lands (Fireball). */
@@ -950,6 +960,7 @@ export function validateRules(r: Rules): string[] {
     if (s.scatter !== undefined && !(coverIds.has(s.scatter.cover) && Number.isInteger(s.scatter.count) && s.scatter.count >= 1 && Number.isInteger(s.scatter.reach) && s.scatter.reach >= 1)) errors.push(`spell ${s.id}: scatter needs a known cover and a whole count and reach from 1`);
     if (s.core !== undefined && !el.has(s.core)) errors.push(`spell ${s.id}: unknown core ${s.core}`);
     if (s.leaves !== undefined && !el.has(s.leaves)) errors.push(`spell ${s.id}: unknown leaves ${s.leaves}`);
+    if (s.trail !== undefined && !(s.trail in r.gases)) errors.push(`spell ${s.id}: trail ${s.trail} is not a gas`);
     for (const k of Object.keys(s.needs ?? {})) if (!COND_KEYS.has(k)) errors.push(`spell ${s.id}: needs has unknown condition "${k}"`);
     for (const key of ["travelEvery", "dropPower"] as const)
       if (s[key] !== undefined && !(Number.isInteger(s[key]) && s[key]! >= 1)) errors.push(`spell ${s.id}: ${key} must be a whole number from 1`);

@@ -24,8 +24,8 @@
     "earth": {
       "fire":  { "name": "Forge", "spell": "forge", "shape": "burst", "castTicks": 12 },
       "water": { "name": "Plant Growth", "spell": "plant-growth", "shape": "burst", "castTicks": 9 },
-      "earth": { "name": "Wall of Stone", "spell": "wall-of-stone", "shape": "line", "castTicks": 12 },
-      "air":   { "name": "Dust Storm", "spell": "dust-storm", "shape": "burst", "castTicks": 9 }
+      "earth": { "name": "Wall of Stone", "spell": "wall-of-stone", "shape": "line", "castTicks": 12, "held": "stone-ramp" },
+      "air":   { "name": "Rolling Boulder", "spell": "rolling-boulder", "shape": "line", "castTicks": 9 }
     },
     "air": {
       "fire":  { "name": "Lightning", "spell": "lightning-bolt", "shape": "line", "castTicks": 9 },

@@ -234,6 +234,9 @@ namespace Chem
         /// </summary>
         public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
+
+        /// <summary>Whether walkers can climb or cross a cell on its cover (vines: up a wall, over a pit or a stream), for the view.</summary>
+        public bool IsClimbable(Cell c) => CoverHasTag(c, "climbable");
         public bool IsConductive(Cell c) => (c.Water > 0 && !c.Frozen) || TerrainOf(c).Conducts;
 
         public double Flammability(Cell c)

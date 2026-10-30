@@ -13,7 +13,7 @@ import {
 } from "./world.ts";
 import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
 import { isNight } from "./night.ts";
-import { METEOR_SPELL, landSpell, landStars, spellById, tickWaves, tickWhirlwinds } from "./actions.ts";
+import { METEOR_SPELL, landSpell, landStars, spellById, tickBoulders, tickWaves, tickWhirlwinds } from "./actions.ts";
 
 export function step(w: World): void {
   w.tick++;
@@ -32,6 +32,7 @@ export function step(w: World): void {
   tickCombos(w);
   tickWhirlwinds(w);
   tickWaves(w);
+  tickBoulders(w);
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
   const floating: [Cell, string, number][] = []; // what floating covers reached, laid after the pass (World.floating)
@@ -195,6 +196,15 @@ function float(w: World, i: number, c: Cell, floating: [Cell, string, number][])
   }
 }
 
+/** A cover that rots (vines) dies: its roots break the terrain it held to its breaksTo, a stone wall to rubble (World.RootsBreak). */
+function rootsBreak(w: World, i: number, c: Cell) {
+  const t = terrainDef(c);
+  if (!t.breaksTo) return;
+  logOnce(w, `roots-${c.t}`, `Roots crack the ${t.name.toLowerCase()} apart`, "notable");
+  c.t = t.breaksTo;
+  wallLost(w, i % w.w, Math.floor(i / w.w));
+}
+
 function ripen(w: World, i: number, c: Cell) {
   if (c.fire > 0) {
     c.life = 1;
@@ -204,6 +214,7 @@ function ripen(w: World, i: number, c: Cell) {
   if (cv && (cv.lasts ?? 0) > 0) {
     c.cover = null;
     if (cv.witherLog) logOnce(w, `wither-${id}`, cv.witherLog);
+    if (cv.rotBreaks) rootsBreak(w, i, c);
   }
   const to = terrainDef(c).growsTo;
   const grown = to !== undefined ? RULES.terrain[to] : undefined;

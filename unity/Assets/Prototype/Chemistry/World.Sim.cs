@@ -115,6 +115,7 @@ namespace Chem
                     TickCombos();
                     TickWhirlwinds();
                     TickWaves();
+                    TickBoulders();
                     NextStage(TickStage.Timers);
                     return false;
                 case TickStage.End:
@@ -395,8 +396,18 @@ namespace Chem
         /// <summary>The last tick anything in a loaded chunk was live (NeverLive if nothing has been).</summary>
         public int LastLive(int cx, int cy) => ChunkOrThrow(cx, cy).LastLive;
 
+        // A cover that rots (vines) dies: its roots break the terrain it held to its BreaksTo (a stone wall to rubble).
+        void RootsBreak(Chunk ch, int i, Cell c)
+        {
+            var t = TerrainOf(c);
+            if (t.BreaksTo == null) return;
+            LogOnce("roots-" + t.Id, $"Roots crack the {t.Name.ToLowerInvariant()} apart", LogKind.Notable);
+            c.T = t.BreaksTo;
+            WallLost(CellX(ch, i), CellY(ch, i));
+        }
+
         /// <summary>
-        /// A cell's Life ran out (ripen in sim.ts): a cover that lasts (thorns) withers away, and a
+        /// A cell's Life ran out (ripen in sim.ts): a cover that lasts (thorns) withers away (one that rots breaks the terrain it held), and a
         /// terrain that grows (green shoots, a sapling) becomes its growsTo. While it burns it waits
         /// a tick at a time; a tree growing on wet ground pushes the water out.
         /// </summary>
@@ -411,6 +422,7 @@ namespace Chem
             {
                 c.Cover = null;
                 if (cv.WitherLog != null) LogOnce("wither-" + cv.Id, cv.WitherLog);
+                if (cv.RotBreaks) RootsBreak(ch, i, c);
             }
             var to = TerrainOf(c).GrowsTo;
             if (to == null || !Rules.Terrain.TryGetValue(to, out var grown)) return;

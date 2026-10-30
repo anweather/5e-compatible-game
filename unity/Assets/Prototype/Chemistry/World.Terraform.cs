@@ -10,19 +10,24 @@ namespace Chem
         /// <summary>
         /// Raises or digs every cell of a terraform spell aimed at (x, y): by Raise or Dig
         /// steps (times the charge), or (Height) up to that height (2 more per charge level),
-        /// leaving higher cells alone.
+        /// leaving higher cells alone. A ramp rises a step a cell from the first up to that height, and
+        /// cells holding open water rise only to Stepping (stepping stones) when it is set.
         /// </summary>
         void Terraform(SpellDef s, List<(int x, int y)> cells, int x, int y, int charge)
         {
             bool toHeight = s.Height.HasValue;
             int steps = (s.Raise > 0 ? s.Raise : -s.Dig) * charge;
             if (toHeight) steps = s.Height.Value + 2 * (charge - 1);
+            int k = 0;
             foreach (var (cx, cy) in cells)
             {
                 int d = Math.Max(Math.Abs(cx - x), Math.Abs(cy - y));
                 if (s.Taper && d > s.Radius) continue;
                 int n = s.Taper ? Tapered(steps, d, s.Radius) : steps;
-                if (toHeight) n = Math.Max(0, n - At(cx, cy).Height);
+                if (s.Ramp) n = Math.Min(n, ++k);
+                var c = At(cx, cy);
+                if (toHeight && s.Stepping > 0 && c.Water > 0 && !c.Frozen) n = Math.Min(n, s.Stepping);
+                if (toHeight) n = Math.Max(0, n - c.Height);
                 if (n != 0) Reshape(cx, cy, n, s.Terrain, s.Strength, s.Name);
             }
         }

@@ -6,17 +6,23 @@ import { type World, burns, cellAt, entityAt, idx, isBlocking, logOnce, neighbou
 
 /**
  * Raises or digs every cell of a terraform spell aimed at (x, y): by raise or dig
- * steps, or (height) up to that height, leaving higher cells alone.
+ * steps, or (height) up to that height, leaving higher cells alone. A ramp rises a step a cell
+ * from the first up to that height, and cells holding open water rise only to stepping (stepping
+ * stones) when it is set (World.Terraform).
  */
 export function terraform(w: World, s: SpellDef, cells: [number, number][], x: number, y: number, charge = 1): void {
   const toHeight = s.height !== undefined;
   // Charged: that many times the steps, or 2 more height per level.
   const steps = toHeight ? s.height! + 2 * (charge - 1) : (s.raise ? s.raise : -(s.dig ?? 0)) * charge;
+  let k = 0;
   for (const [cx, cy] of cells) {
     const d = Math.max(Math.abs(cx - x), Math.abs(cy - y)), radius = s.radius ?? 1;
     if (s.taper && d > radius) continue;
     let n = s.taper ? tapered(steps, d, radius) : steps;
-    if (toHeight) n = Math.max(0, n - cellAt(w, cx, cy)!.h);
+    if (s.ramp) n = Math.min(n, ++k);
+    const c = cellAt(w, cx, cy)!;
+    if (toHeight && s.stepping && c.water > 0 && !c.frozen) n = Math.min(n, s.stepping);
+    if (toHeight) n = Math.max(0, n - c.h);
     if (n !== 0) reshape(w, cx, cy, n, s.terrain, s.strength ?? 1, s.name);
   }
 }

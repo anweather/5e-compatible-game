@@ -144,6 +144,8 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   smoke column, a snow flurry. It carries what it picks up and drops it all
   when it dies out.
 
+**Built (2026-10-30), the earth row:** Rolling Boulder (a rolling mover, `World.Boulders`: downhill, shatter hits on glass and ice, raiders knocked over, a dust trail, earth where it rests: a dam in a stream), Plant Growth vines (a `vines` cover on `trellis` terrain: walls, pits, streams; tagged climbable, it burns, and the new `rot` verb has its roots break the stone wall it held when it withers) and Wall of Stone (stepping stones over water, Stone Ramp when held, Falling Star strong enough to break rock), in the rules and both engines. The view still needs the boulder, the vines and climbing them.
+
 **Built (2026-10-30), the water row:** Geyser (a spell `needs` water: the pond boils to steam, a `thrown` status and a scald, a fizzle on dry ground), Wave (a rolling front, `World.Waves` for the view's props: douses, soaks, knocks back, mud where it breaks) and Frost (ice bridges, the wet frozen solid and shattered by the existing cracked stage, and a slippery `frost` cover from cold of power 4), in the rules and both engines. The view still needs the jet launching players and props, props riding the wave, and the frost's look.
 
 **Built (2026-10-30):** Whirlwind taking on elements and the dust explosion,
