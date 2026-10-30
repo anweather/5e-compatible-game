@@ -134,5 +134,8 @@ function fireCast(w: World, c: PlayerCast) {
 export const castState = (w: World): string =>
   inOrder(w).map((c) => [c.player, c.first ?? "-", c.second ?? "-", c.meter, c.total, c.window, c.slot, c.dpadCasting, c.known.join(",")].join(":")).join("/");
 
-/** A fingerprint (FNV-1a) of every player's cast state and grimoire (C#: World.CastHash). */
-export const castHash = (w: World): string => fnv1a(castState(w));
+/** The whirlwinds as text, "" when there are none: where, its age, and what it carries (C#: World.WhirlState). */
+export const whirlState = (w: World): string => w.whirls.map((ww) => `|${ww.x}:${ww.y}:${ww.age}:${ww.carrying ?? "-"}`).join("");
+
+/** A fingerprint (FNV-1a) of every player's cast state and grimoire and the whirlwinds still whirling (C#: World.CastHash). */
+export const castHash = (w: World): string => fnv1a(castState(w) + whirlState(w));

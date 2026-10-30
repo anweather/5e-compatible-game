@@ -309,13 +309,74 @@ namespace Chem
 
         /// <summary>
         /// Each whirlwind, in the order cast (tickWhirlwinds in the TS): every Every ticks it whirls once
-        /// (Spin), and it's gone once its ticks are up.
+        /// (Spin), every Travel ticks it moves a cell (Travel), and once its ticks are up it drops what it
+        /// carries and is gone.
         /// </summary>
         void TickWhirlwinds()
         {
             foreach (var ww in whirls)
+            {
                 if (++ww.Age % ww.Every == 0) Spin(ww);
+                if (ww.Travel > 0 && ww.Age % ww.Travel == 0) Travel(ww);
+            }
+            foreach (var ww in whirls)
+                if (ww.Age >= ww.Ticks) DropCarried(ww);
             whirls.RemoveAll(ww => ww.Age >= ww.Ticks);
+        }
+
+        // A cell with the wind, or in still air the way it was cast; a wall or an inactive chunk holds it up.
+        void Travel(Whirl ww)
+        {
+            int dir = WindDir >= 0 ? WindDir : ww.Dir;
+            if (dir < 0) return;
+            int nx = ww.X + DirX(dir), ny = ww.Y + DirY(dir);
+            if (!IsActiveAt(nx, ny) || IsBlocking(At(nx, ny))) return;
+            ww.X = nx;
+            ww.Y = ny;
+        }
+
+        // How far from its eye a whirlwind takes things on and sheds what it carries, in cells.
+        const int WhirlEye = 1;
+
+        CarryDef CarriedBy(Whirl ww) =>
+            ww.Carrying == null ? null : Rules.Spell(ww.Spell)?.Carries.FirstOrDefault(c => c.Id == ww.Carrying);
+
+        // The first of its spell's carries (strongest first) that the eye is over, stopping at what it already
+        // carries: a fire's smoke reaches it first, and the fire still makes it a fire tornado.
+        void TakeOn(Whirl ww)
+        {
+            var carries = Rules.Spell(ww.Spell)?.Carries;
+            if (carries == null) return;
+            foreach (var carry in carries.TakeWhile(c => c.Id != ww.Carrying))
+            {
+                if (!EyeOver(ww, carry.If)) continue;
+                ww.Carrying = carry.Id;
+                if (carry.Log != null) LogOnce($"carry#{carry.Id}", carry.Log, LogKind.Notable);
+                return;
+            }
+        }
+
+        bool EyeOver(Whirl ww, CellCond cond)
+        {
+            for (int dy = -WhirlEye; dy <= WhirlEye; dy++)
+                for (int dx = -WhirlEye; dx <= WhirlEye; dx++)
+                    if (IsActiveAt(ww.X + dx, ww.Y + dy) && Matches(At(ww.X + dx, ww.Y + dy), cond)) return true;
+            return false;
+        }
+
+        // Applies what it carries over the square of cells within reach of its eye, row by row.
+        void Shed(Whirl ww, CarryDef carry, int reach, int power)
+        {
+            for (int dy = -reach; dy <= reach; dy++)
+                for (int dx = -reach; dx <= reach; dx++) Apply(ww.X + dx, ww.Y + dy, carry.Sheds, power, -1, false);
+        }
+
+        void DropCarried(Whirl ww)
+        {
+            var carry = CarriedBy(ww);
+            if (carry == null) return;
+            LogOnce($"drop#{carry.Id}", $"The {carry.Name} dies out and drops what it carried", LogKind.Notable);
+            Shed(ww, carry, ww.Radius, Rules.Spell(ww.Spell).DropPower);
         }
 
         /// <summary>
@@ -337,6 +398,9 @@ namespace Chem
             foreach (var (bx, by, dir) in lit) Apply(bx + DirX(dir), by + DirY(dir), "fire", 1, -1, false);
             WhirlGas(ww);
             WhirlCreatures(ww);
+            TakeOn(ww);
+            var carry = CarriedBy(ww);
+            if (carry != null) Shed(ww, carry, WhirlEye, 1);
         }
 
         void WhirlGas(Whirl ww)
@@ -380,7 +444,7 @@ namespace Chem
             // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction.
             if (s.Wind > 0) Wind = (dir, s.Wind);
             if (s.Inward && s.PullEvery > 0 && s.Duration > 0)
-                whirls.Add(new Whirl { X = x, Y = y, Radius = s.Radius + ChargedGrowth(s, charge), Ticks = s.Duration, Every = s.PullEvery, MaxMass = s.MaxMass });
+                whirls.Add(new Whirl { X = x, Y = y, Radius = s.Radius + ChargedGrowth(s, charge), Ticks = s.Duration, Every = s.PullEvery, MaxMass = s.MaxMass, Spell = s.Id, Dir = dir, Travel = s.TravelEvery });
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
             if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);

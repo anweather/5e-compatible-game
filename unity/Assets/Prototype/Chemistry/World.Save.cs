@@ -88,7 +88,7 @@ namespace Chem
             };
             if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
             if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
-            if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass)));
+            if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
             var made = new Cell();
             var saved = new JArray();
             foreach (var ch in SortedChunks(false))
@@ -191,7 +191,7 @@ namespace Chem
             foreach (var st in s["stars"] ?? new JArray())
                 stars.Add(new Star { Spell = (string)st[0], X = (int)st[1], Y = (int)st[2], Dir = (int)st[3], Charge = (int)st[4], Radius = (int)st[5], Lands = (int)st[6] });
             foreach (var ww in s["whirls"] ?? new JArray())
-                whirls.Add(new Whirl { X = (int)ww[0], Y = (int)ww[1], Radius = (int)ww[2], Ticks = (int)ww[3], Age = (int)ww[4], Every = (int)ww[5], MaxMass = (int)ww[6] });
+                whirls.Add(new Whirl { X = (int)ww[0], Y = (int)ww[1], Radius = (int)ww[2], Ticks = (int)ww[3], Age = (int)ww[4], Every = (int)ww[5], MaxMass = (int)ww[6], Spell = (string)ww[7], Dir = (int)ww[8], Travel = (int)ww[9], Carrying = (string)ww[10] });
             NextEntityId = (int)s["nextEntityId"];
             if (s["defense"] is JObject d)
             {

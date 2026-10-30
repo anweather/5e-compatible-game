@@ -19,6 +19,7 @@ namespace Chem
             if (c == null) return;
             // A spell's fire (or a fresh fire from any direct source) starts at full strength.
             if (direct && element == "fire") ch.FireGeneration[i] = 0;
+            if (element == "fire") FlashGas(x, y);
             string beforeCover = CoverName(c), beforeTerrain = TerrainOf(c).Name.ToLowerInvariant();
             foreach (var rule in Rules.CellRulesFor(element))
             {

@@ -53,11 +53,13 @@ namespace Chem
 
         /// <summary>
         /// A whirlwind still whirling (spells.json pullEvery: Whirlwind): its middle, its radius in cells, the
-        /// ticks it lasts and has run, how often it pulls and the heaviest creature it drags.
+        /// ticks it lasts and has run, how often it pulls and the heaviest creature it drags; the spell it came
+        /// from, the way it was cast and how often it moves; and what it carries (a CarryDef's id, or null).
         /// </summary>
         public sealed class Whirl
         {
-            public int X, Y, Radius, Ticks, Age, Every, MaxMass;
+            public int X, Y, Radius, Ticks, Age, Every, MaxMass, Dir, Travel;
+            public string Spell, Carrying;
         }
 
         /// <summary>A delayed cast on its way down (spells.json delay: Falling Star): what lands, where, how charged, the tick it lands.</summary>

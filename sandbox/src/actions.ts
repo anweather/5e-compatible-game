@@ -1,13 +1,13 @@
 // What the player does: cast a spell, place a critter, paint the map.
-import { RULES, hasComponent, type SpellDef } from "./rules.ts";
-import { applyElement, applyEntityElement, displaceWater, ignite, putCover, shatter, shoveGas } from "./react.ts";
+import { RULES, hasComponent, type CellCond, type SpellDef } from "./rules.ts";
+import { applyElement, applyEntityElement, displaceWater, ignite, matches, putCover, shatter, shoveGas } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
   type Dir, type Entity, type Star, type Whirl, type World,
-  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, rand, roll,
+  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, logOnce, newCell, playerOf, rand, roll, windDir,
 } from "./world.ts";
 
 export const spellById = (id: string) => RULES.spells.find((s) => s.id === id);
@@ -327,10 +327,69 @@ function ringNext(dx: number, dy: number, d: number): Dir {
   return 0;
 }
 
-/** Each whirlwind, in the order cast (World.TickWhirlwinds): every so many ticks it whirls once (spin), and it's gone once its ticks are up. */
+/**
+ * Each whirlwind, in the order cast (World.TickWhirlwinds): every so many ticks it whirls once (spin), every so many it
+ * moves a cell (travel), and once its ticks are up it drops what it carries and is gone.
+ */
 export function tickWhirlwinds(w: World): void {
-  for (const ww of w.whirls) if (++ww.age % ww.every === 0) spin(w, ww);
+  for (const ww of w.whirls) {
+    if (++ww.age % ww.every === 0) spin(w, ww);
+    if (ww.travel > 0 && ww.age % ww.travel === 0) travel(w, ww);
+  }
+  for (const ww of w.whirls) if (ww.age >= ww.ticks) dropCarried(w, ww);
   w.whirls = w.whirls.filter((ww) => ww.age < ww.ticks);
+}
+
+/** A cell with the wind, or in still air the way it was cast; a wall holds it up (World.Travel). */
+function travel(w: World, ww: Whirl): void {
+  const wind = windDir(w), dir = wind >= 0 ? (wind as Dir) : ww.dir;
+  const n = cellAt(w, ww.x + DX[dir], ww.y + DY[dir]);
+  if (!n || isBlocking(n)) return;
+  ww.x += DX[dir];
+  ww.y += DY[dir];
+}
+
+/** How far from its eye a whirlwind takes things on and sheds what it carries, in cells (World.WhirlEye). */
+const WHIRL_EYE = 1;
+
+const carriedBy = (ww: Whirl) => (ww.carrying === null ? undefined : spellById(ww.spell)?.carries?.find((c) => c.id === ww.carrying));
+
+/**
+ * The first of its spell's carries (strongest first) that the eye is over, stopping at what it already carries:
+ * a fire's smoke reaches it first, and the fire still makes it a fire tornado (World.TakeOn).
+ */
+function takeOn(w: World, ww: Whirl): void {
+  for (const carry of spellById(ww.spell)?.carries ?? []) {
+    if (carry.id === ww.carrying) return;
+    if (!eyeOver(w, ww, carry.if)) continue;
+    ww.carrying = carry.id;
+    if (carry.log) logOnce(w, `carry#${carry.id}`, carry.log, "notable");
+    return;
+  }
+}
+
+function eyeOver(w: World, ww: Whirl, cond: CellCond | undefined): boolean {
+  for (let dy = -WHIRL_EYE; dy <= WHIRL_EYE; dy++) {
+    for (let dx = -WHIRL_EYE; dx <= WHIRL_EYE; dx++) {
+      const c = cellAt(w, ww.x + dx, ww.y + dy);
+      if (c && matches(c, cond)) return true;
+    }
+  }
+  return false;
+}
+
+/** Applies what it carries over the square of cells within reach of its eye, row by row (World.Shed). */
+function shed(w: World, ww: Whirl, element: string, reach: number, power: number): void {
+  for (let dy = -reach; dy <= reach; dy++) {
+    for (let dx = -reach; dx <= reach; dx++) applyElement(w, ww.x + dx, ww.y + dy, element, { power, direct: false });
+  }
+}
+
+function dropCarried(w: World, ww: Whirl): void {
+  const carry = carriedBy(ww);
+  if (!carry) return;
+  logOnce(w, `drop#${carry.id}`, `The ${carry.name} dies out and drops what it carried`, "notable");
+  shed(w, ww, carry.sheds, ww.radius, spellById(ww.spell)?.dropPower ?? 1);
 }
 
 /**
@@ -351,6 +410,9 @@ function spin(w: World, ww: Whirl): void {
   for (const [bx, by, dir] of lit) applyElement(w, bx + DX[dir], by + DY[dir], "fire", { power: 1, direct: false });
   whirlGas(w, ww);
   whirlEntities(w, ww);
+  takeOn(w, ww);
+  const carry = carriedBy(ww);
+  if (carry) shed(w, ww, carry.sheds, WHIRL_EYE, 1);
 }
 
 function whirlGas(w: World, ww: Whirl): void {
@@ -389,7 +451,7 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
   // A spell with wind (Gust of Wind, Flame Wave) sets the world's wind along its direction (World.Land).
   if (s.wind) w.wind = { dir, ticks: s.wind };
   if (s.inward && s.pullEvery && s.duration) {
-    w.whirls.push({ x, y, radius: (s.radius ?? 1) + chargedGrowth(s, charge), ticks: s.duration, age: 0, every: s.pullEvery, maxMass: s.maxMass ?? 1 });
+    w.whirls.push({ x, y, radius: (s.radius ?? 1) + chargedGrowth(s, charge), ticks: s.duration, age: 0, every: s.pullEvery, maxMass: s.maxMass ?? 1, spell: s.id, dir, travel: s.travelEvery ?? 0, carrying: null });
   }
   if (s.effect === "terraform") terraform(w, s, cells, x, y, charge);
   if (s.crater) for (const [cx, cy] of cells) shatter(w, cx, cy);

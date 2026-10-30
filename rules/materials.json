@@ -29,7 +29,7 @@
     "coil":      { "name": "Lightning coil", "tags": ["ground", "machine"], "conduct": {} },
     "windmill":  { "name": "Windmill", "tags": ["blocking", "machine"] },
     "arid":      { "name": "Arid ground", "tags": ["ground", "soil"], "dig": { "hardness": 1 }, "soak": { "dry": 8, "wet": 24 } },
-    "sand":      { "name": "Sand", "tags": ["ground", "fuses"], "dig": { "hardness": 1 }, "soak": { "dry": 8, "wet": 24 }, "bake": { "into": "glass" } },
+    "sand":      { "name": "Sand", "tags": ["ground", "fuses", "sandy"], "dig": { "hardness": 1 }, "soak": { "dry": 8, "wet": 24 }, "bake": { "into": "glass" } },
     "arctic":    { "name": "Arctic ground", "tags": ["ground"], "dig": { "hardness": 2 }, "freeze": {} },
     "lava":      { "name": "Lava", "tags": ["ground"], "dig": { "hardness": 2 }, "boil": {} },
     "lava-pool": { "name": "Lava pool", "tags": ["ground"], "dig": { "hardness": 2 }, "boil": {}, "hot": { "for": 300, "quench": 30 }, "grow": { "into": "rock", "log": "The lava pool cools into rock" } },
@@ -57,6 +57,6 @@
     "smoke": { "name": "Smoke" },
     "fog":   { "name": "Fog", "decay": 0.015, "blocksSightAt": 2 },
     "cloud": { "name": "Rain cloud", "decay": 0.03, "rainEvery": 30 },
-    "dust":  { "name": "Dust", "decay": 0.04, "blocksSightAt": 2 }
+    "dust":  { "name": "Dust", "decay": 0.04, "blocksSightAt": 2, "burn": { "flash": { "fire": 3, "push": 2, "log": "The dust goes up in a flash" } } }
   }
 }

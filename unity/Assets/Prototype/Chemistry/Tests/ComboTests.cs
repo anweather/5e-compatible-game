@@ -234,12 +234,15 @@ namespace Chem.Tests
         public void AWhirlwindStillWhirlingComesThroughASave()
         {
             var w = Small();
+            w.At(4, 4).T = "sand";
             w.Cast("whirlwind", 4, 4, 0);
             w.At(6, 4).Gas = "smoke";
             w.At(6, 4).GasAmt = 3;
             Run(w, 7);
             var back = World.Load(w.Save(new Blank()), Base, new Blank());
             Assert.That(back.Whirls.Single().Age, Is.EqualTo(7));
+            Assert.That(back.Whirls.Single().Carrying, Is.EqualTo("sand"), "what it carries is saved");
+            Assert.That(back.CastHash(), Is.EqualTo(w.CastHash()), "and hashed");
             Run(w, 20);
             Run(back, 20);
             Assert.That(back.CellHash(), Is.EqualTo(w.CellHash()));

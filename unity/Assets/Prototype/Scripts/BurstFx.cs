@@ -3,17 +3,18 @@ using UnityEngine;
 
 // Short particle bursts made in code and pooled (GPU-first: a few reused
 // particle systems, no models): AcidSplash, a green spray with a little
-// drifting fume where Acid Splash lands (SpellCaster). Shards are
+// drifting fume where Acid Splash lands (SpellCaster), and Flash, a quick
+// orange blast where a gas goes up (ChemGrid.Whirls). Shards are
 // ShardBurst's. Each kind keeps at most a handful alive; past that the
 // oldest is restarted where the new one is wanted. Presentation only.
 public static class BurstFx
 {
-    public enum Kind { AcidSplash }
+    public enum Kind { AcidSplash, Flash }
 
     const int PerKind = 6;
     static readonly Dictionary<Kind, List<ParticleSystem>> pools = new();
     static readonly Dictionary<Kind, int> next = new();
-    static Material splashMaterial;
+    static Material splashMaterial, flashMaterial;
     static Transform root;
 
     /// <summary>Plays a burst at a point, <paramref name="size"/> times its usual spread.</summary>
@@ -52,8 +53,40 @@ public static class BurstFx
         ps.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
         var look = go.GetComponent<ParticleSystemRenderer>();
         look.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        Splash(ps, look);
+        if (kind == Kind.Flash) Flash(ps, look);
+        else Splash(ps, look);
         return ps;
+    }
+
+    // A gas going up: a fast ball of bright sparks and flame, gone in a moment.
+    static void Flash(ParticleSystem ps, ParticleSystemRenderer look)
+    {
+        var main = ps.main;
+        main.duration = 0.1f;
+        main.loop = false;
+        main.playOnAwake = false;
+        main.startLifetime = new ParticleSystem.MinMaxCurve(0.2f, 0.55f);
+        main.startSpeed = new ParticleSystem.MinMaxCurve(2f, 7f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.3f, 0.9f);
+        main.startColor = new ParticleSystem.MinMaxGradient(new Color(1f, 0.85f, 0.4f, 1f), new Color(1f, 0.4f, 0.08f, 0.9f));
+        main.scalingMode = ParticleSystemScalingMode.Hierarchy;
+        main.simulationSpace = ParticleSystemSimulationSpace.World;
+        var emission = ps.emission;
+        emission.rateOverTime = 0f;
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)120) });
+        var shape = ps.shape;
+        shape.shapeType = ParticleSystemShapeType.Hemisphere;
+        shape.radius = 0.8f;
+        shape.rotation = new Vector3(-90f, 0f, 0f);
+        Fade(ps, 0.3f);
+        if (flashMaterial == null)
+        {
+            flashMaterial = UrpMaterials.NewUnlitParticles("Gas flash", Color.white, additive: true);
+            var soft = ProceduralTextures.SoftPuff(64);
+            if (flashMaterial.HasProperty("_BaseMap")) flashMaterial.SetTexture("_BaseMap", soft);
+            flashMaterial.mainTexture = soft;
+        }
+        look.sharedMaterial = flashMaterial;
     }
 
     // Acid: a spray of green droplets out of the bubble's burst, and a slow pale-green fume after.

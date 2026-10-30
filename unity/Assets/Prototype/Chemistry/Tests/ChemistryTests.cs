@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(60));
+            Assert.That(R.CellRules.Count, Is.EqualTo(63));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -799,7 +799,7 @@ namespace Chem.Tests
             int rained = 0;
             for (int x = 14; x <= 18; x++) rained += w.At(x, 2).Water;
             Assert.That(rained, Is.GreaterThan(0), "the cloud rains on the cells under it");
-            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 4 49129c87 1083013499"), "the same in the sandbox");
+            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 10 60622e1c 398143729"), "the same in the sandbox");
         }
 
         [Test]
@@ -904,7 +904,7 @@ namespace Chem.Tests
             string mid = $"{w.CellHash()} {w.RngState} {gob.X},{gob.Y} {hound.X},{hound.Y}";
             Run(w, 30);
             Assert.That(w.Whirls, Is.Empty, "gone after its duration");
-            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("a37e3fd7 1921566711 7,4 7,5 | 44fe5e41 657895371"), "the same in the sandbox");
+            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("62e2a56e 3068262754 7,0 7,1 | ab58829b 901838356"), "the same in the sandbox");
         }
 
         [Test]

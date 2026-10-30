@@ -9,7 +9,8 @@ import { castSpell, spellById, spellCells } from "../src/actions.ts";
 import { applyElement } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
 import { dig, reshape } from "../src/terraform.ts";
-import { type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld, serializeWorld } from "../src/world.ts";
+import { whirlState } from "../src/combos.ts";
+import { type Cell, type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -599,7 +600,7 @@ test("a whirlwind draws gas and creatures in and runs fire round its ring, match
   const mid = `${cellHash(w)} ${w.rng} ${gob.x},${gob.y} ${hound.x},${hound.y}`;
   run(w, 30);
   assert.equal(w.whirls.length, 0, "gone after its duration");
-  assert.equal(`${mid} | ${cellHash(w)} ${w.rng}`, "a37e3fd7 1921566711 7,4 7,5 | 44fe5e41 657895371"); // the same in the C# core
+  assert.equal(`${mid} | ${cellHash(w)} ${w.rng}`, "62e2a56e 3068262754 7,0 7,1 | ab58829b 901838356"); // the same in the C# core
 });
 
 test("a whirlwind drags loose props in, leaves the heavy ones and the player, and comes through a snapshot", () => {
@@ -617,4 +618,127 @@ test("a whirlwind drags loose props in, leaves the heavy ones and the player, an
   run(back, 3);
   assert.equal(back.entities.find((e) => e.kind === "crate")!.x, 7, "and on into the middle");
   assert.equal(hashWorld(back), hashWorld(w));
+});
+
+const field = (width: number, height: number, seed: number, t: string): World => {
+  const w = createWorld(width, height, seed);
+  for (const c of w.cells) c.t = t;
+  return w;
+};
+
+// A whirlwind cast south of a cell and heading north, 15 ticks on: its eye has crossed it.
+function crossing(set: (c: Cell) => void): World {
+  const w = field(9, 12, 1, "dirt");
+  set(cellAt(w, 4, 5)!);
+  castSpell(w, "whirlwind", 4, 8, 0);
+  run(w, 15);
+  return w;
+}
+
+// Mirrors TerraformTests.AWhirlwindTakesOnWhatItCrosses.
+test("a whirlwind takes on what it crosses", () => {
+  assert.equal(crossing((c) => { c.fire = 3; c.fuel = 40; }).whirls[0]!.carrying, "fire");
+  assert.equal(crossing((c) => { c.t = "pit"; c.water = 4; }).whirls[0]!.carrying, "water");
+  assert.equal(crossing((c) => { c.t = "sand"; }).whirls[0]!.carrying, "sand");
+  assert.equal(crossing((c) => { c.gas = "smoke"; c.gasAmt = 6; }).whirls[0]!.carrying, "smoke");
+  assert.equal(crossing((c) => { c.cover = "snow"; }).whirls[0]!.carrying, "snow");
+  assert.equal(crossing(() => {}).whirls[0]!.carrying, null, "bare ground gives it nothing");
+  assert.ok(crossing((c) => { c.t = "sand"; }).log.some((l) => l.text === "The whirlwind whips the sand into a sandstorm"));
+});
+
+test("a whirlwind goes with the wind or the way it was cast, and a wall stops it", () => {
+  const cast = field(12, 9, 1, "dirt");
+  castSpell(cast, "whirlwind", 4, 4, 1);
+  run(cast, 12);
+  assert.deepEqual([cast.whirls[0]!.x, cast.whirls[0]!.y], [6, 4], "east, as cast, a cell every 6 ticks");
+  const windy = field(12, 9, 1, "dirt");
+  windy.wind = { dir: 2, ticks: 100 };
+  castSpell(windy, "whirlwind", 4, 2, 1);
+  run(windy, 12);
+  assert.deepEqual([windy.whirls[0]!.x, windy.whirls[0]!.y], [4, 4], "the wind wins: south");
+  const walled = field(12, 9, 1, "dirt");
+  cellAt(walled, 5, 4)!.t = "bedrock";
+  castSpell(walled, "whirlwind", 4, 4, 1);
+  run(walled, 12);
+  assert.equal(walled.whirls[0]!.x, 4);
+});
+
+test("a waterspout drops its water where it dies out", () => {
+  const w = field(20, 9, 1, "dirt");
+  cellAt(w, 4, 4)!.t = "pit";
+  cellAt(w, 4, 4)!.water = 4;
+  castSpell(w, "whirlwind", 4, 4, 1);
+  run(w, 60);
+  assert.equal(w.whirls.length, 0);
+  assert.ok(cellAt(w, 14, 4)!.water >= 2);
+  assert.ok(w.log.some((l) => l.text === "The waterspout dies out and drops what it carried"));
+});
+
+// Mirrors TerraformTests.GoldenFireTornadoMatchesTs.
+test("a fire tornado lights what it passes and drops fire where it ends, matching the C# golden", () => {
+  const w = field(20, 9, 3, "grass");
+  cellAt(w, 4, 4)!.fire = 3;
+  cellAt(w, 4, 4)!.fuel = 8;
+  castSpell(w, "whirlwind", 4, 4, 1);
+  run(w, 30);
+  const mid = `${whirlState(w)} ${cellHash(w)} ${w.rng}`;
+  run(w, 30);
+  assert.equal(w.whirls.length, 0);
+  assert.equal(`${mid} | ${cellHash(w)} ${w.rng}`, "|9:4:30:fire e6fa9db8 2713091359 | 47709c01 321794052");
+});
+
+// Mirrors TerraformTests.GoldenDustFlashMatchesTs.
+test("a dust cloud flashes all at once when fire meets it, matching the C# golden", () => {
+  const w = field(16, 9, 1, "dirt");
+  for (let y = 0; y < 9; y++) for (let x = 10; x < 16; x++) cellAt(w, x, y)!.t = "grass";
+  castSpell(w, "dust-storm", 6, 4, 0);
+  cellAt(w, 13, 4)!.gas = "dust";
+  cellAt(w, 13, 4)!.gasAmt = 3;
+  applyElement(w, 4, 4, "fire", { power: 1, direct: true });
+  assert.equal(w.cells.filter((c) => c.gas === "dust").length, 1, "only the far cloud is left");
+  assert.equal(cellAt(w, 6, 4)!.fire, 3);
+  assert.ok(w.log.some((l) => l.text === "The dust goes up in a flash"));
+  run(w, 20);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "28826ce6 2354002487");
+});
+
+test("dust drifting over a fire flashes", () => {
+  const w = field(8, 8, 1, "dirt");
+  Object.assign(cellAt(w, 3, 3)!, { fire: 2, fuel: 6, gas: "dust", gasAmt: 2 });
+  Object.assign(cellAt(w, 4, 3)!, { gas: "dust", gasAmt: 2 });
+  step(w);
+  assert.equal(cellAt(w, 3, 3)!.gas, null);
+  assert.equal(cellAt(w, 4, 3)!.gas, null);
+  assert.ok(cellAt(w, 4, 3)!.fire > 0);
+});
+
+test("a sandstorm's dust goes up too", () => {
+  const w = field(14, 9, 1, "sand");
+  castSpell(w, "whirlwind", 4, 4, 1);
+  run(w, 9);
+  assert.equal(w.whirls[0]!.carrying, "sand");
+  const x = w.whirls[0]!.x;
+  assert.equal(cellAt(w, x, 4)!.gas, "dust");
+  applyElement(w, x, 4, "fire", { power: 1, direct: true });
+  assert.equal(cellAt(w, x, 4)!.gas, null);
+  assert.ok(w.log.some((l) => l.text === "The dust goes up in a flash"));
+});
+
+test("a flash shoves what stands in the cloud away from where it caught", () => {
+  const w = field(14, 9, 1, "dirt");
+  const crate = spawn(w, "crate", 6, 4)!;
+  castSpell(w, "dust-storm", 6, 4, 0);
+  applyElement(w, 4, 4, "fire", { power: 1, direct: true });
+  assert.ok(crate.x > 6, "shoved east");
+});
+
+test("carries and flashes are checked", () => {
+  const r = composeRules([]);
+  const errors = validateRules({
+    ...r,
+    gases: { ...r.gases, flour: { name: "Flour", burn: { flash: { fire: 0, push: -1 } } } },
+    spells: [...r.spells, { ...r.spells.find((s) => s.id === "gust-of-wind")!, id: "gyre", travelEvery: 0, carries: [{ id: "x", name: "x", if: { hue: 1 } as never, sheds: "nothing" }] }],
+  });
+  for (const e of ["gas flour: burn.flash.fire must be a whole number from 1", "gas flour: burn.flash.push must be a whole number from 0",
+    "spell gyre: travelEvery must be a whole number from 1", "spell gyre: carries x sheds unknown element nothing", "spell gyre: carries x has unknown condition \"hue\""]) assert.ok(errors.includes(e), e);
 });

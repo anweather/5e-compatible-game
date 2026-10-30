@@ -116,6 +116,14 @@ elevation plus height.
 - **Digging** clears the cover and turns the terrain into its `dugTo`
   (grass is dug to dirt; raised rock to rubble) unless the spell names a
   `terrain`.
+- **Whirling spells** (`"inward": true` with `pullEvery`: Whirlwind): every
+  `pullEvery` ticks one draws gas and light creatures in and runs fire round
+  its rings. Every `travelEvery` ticks it moves a square, with the wind or
+  else the way it was cast. `carries` lists what it can take on, strongest
+  first: `{ "id", "name", "if", "sheds", "log" }`. When the squares round its
+  eye match a row's `if` (the reaction conditions), it carries that, and one
+  row replaces any after it. It then applies the element `sheds` around its
+  eye each turn, and over its whole radius at `dropPower` where it dies out.
 - **Raising** spills the square's water onto its neighbours, nearest
   first, so no water is lost.
 - **A square raised `sim.height.blockAt` (3) steps or more is a wall:**
@@ -156,7 +164,12 @@ replaying the casts, has the same clock and weather):
 `scald` (damage a creature in it takes), `decay` (its own chance per tick a
 unit decays, instead of `sim.gas.decayChance`: fog lingers) and
 `blocksSightAt` (from this many units a square of it hides what's behind it:
-line of sight, so Misty Step can't blink past thick fog). Fire burns fog off
+line of sight, so Misty Step can't blink past thick fog). `burn.flash`
+(`{ "fire", "push", "log" }`) makes it go up all at once when fire meets it,
+from an element or a burning square it drifts over: the whole cloud joined to
+that square is used up, each square burns for a moment at `fire`, the fire
+reaches what's there through the rules, and things are shoved `push` hard
+(dust). Fire burns fog off
 (`fire-fog`, first of the fire rules so it always runs), wind and Gust of
 Wind blow it like any gas, and Thunderwave scatters it.
 

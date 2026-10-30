@@ -133,6 +133,8 @@ public partial class ChemGrid
         using (SlickMeshMarker.Auto()) slicks.Rebuild();
         cellFx.Advance(Time.deltaTime);
         WatchAcidCells();
+        RenderWhirls();
+        RenderFlashes();
         materials.ScrollWater(Time.time);
         waterSurface.Scroll(Time.time);
         using (ShapingMarker.Auto()) AnimateShaping();

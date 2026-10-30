@@ -75,8 +75,15 @@
     "blurb": "Air and water together: a low rain cloud, 25 ft across, where you point. It rains on the cells under it for a while, wetting them and putting fires out, and drifts with the wind until it thins away." },
   { "id": "sand-blast", "group": "storm", "name": "Sand Blast", "level": 1, "shape": "line", "origin": "self", "length": 8, "element": "sand", "damage": [2, 6], "radial": false,
     "blurb": "Air and earth together: a 40 ft line of scouring sand from you toward where you point. It stings whatever it hits and leaves the ground it crosses covered in sand (which lightning fuses into glass)." },
-  { "id": "whirlwind", "group": "storm", "name": "Whirlwind", "level": 3, "shape": "burst", "radius": 2, "element": "air", "inward": true, "duration": 60, "pullEvery": 3, "maxMass": 1, "radial": false,
-    "blurb": "Air and air together: a whirling column of wind 25 ft across where you point, for ten seconds. It draws smoke, fog and steam in toward its middle and drags small creatures and loose things in with them, blows small flames out and fans big ones in toward the eye, and fire caught in it races round the ring." },
+  { "id": "whirlwind", "group": "storm", "name": "Whirlwind", "level": 3, "shape": "burst", "radius": 2, "element": "air", "inward": true, "duration": 60, "pullEvery": 3, "maxMass": 1, "travelEvery": 6, "dropPower": 2, "radial": false,
+    "carries": [
+      { "id": "water", "name": "waterspout", "if": { "water": true }, "sheds": "water", "log": "The whirlwind sucks up water into a waterspout" },
+      { "id": "fire", "name": "fire tornado", "if": { "fire": true }, "sheds": "fire", "log": "The whirlwind catches and roars into a fire tornado" },
+      { "id": "sand", "name": "sandstorm", "if": { "terrainTag": "sandy" }, "sheds": "dust", "log": "The whirlwind whips the sand into a sandstorm" },
+      { "id": "snow", "name": "snow flurry", "if": { "cover": ["snow", "snowbank"] }, "sheds": "snow", "log": "The whirlwind whitens into a snow flurry" },
+      { "id": "smoke", "name": "smoke column", "if": { "gas": "smoke" }, "sheds": "smoke", "log": "The whirlwind darkens into a column of smoke" }
+    ],
+    "blurb": "Air and air together: a whirling column of wind 25 ft across where you point, for ten seconds. It wanders with the wind, or on the way you cast it, and takes on what it crosses: a fire tornado over fire, a waterspout over water, a sandstorm over sand, a smoke column, a snow flurry. It spreads what it carries and drops the lot when it dies out. It draws smoke, fog and steam in toward its middle and drags small creatures and loose things in with them, blows small flames out and fans big ones in toward the eye, and fire caught in it races round the ring." },
   { "id": "light", "group": "arcane", "name": "Light", "level": 0, "shape": "point", "effect": "light", "duration": 21600, "light": { "bright": 20, "dim": 20 }, "radial": false,
     "blurb": "Cantrip. Touch something and it sheds bright light in a 20 ft radius and dim light for 20 ft more, for an hour." },
   { "id": "stone-shape", "group": "earth", "name": "Stone Shape", "level": 4, "shape": "square", "size": 1, "effect": "terraform", "dig": 1, "strength": 3, "radial": false,

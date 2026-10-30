@@ -463,6 +463,7 @@ namespace Chem
                 return;
             }
             if (Doused(c)) return;
+            if (c.Gas != null) FlashGas(CellX(ch, i), CellY(ch, i));
             if (c.Gas != "steam" && Rand() < p.SmokeChance) AddGas(c, "smoke", 1);
             Spread(ch, i, c, p);
             if (--c.Fuel > 0) return;

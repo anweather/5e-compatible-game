@@ -538,5 +538,134 @@ namespace Chem.Tests
                 "20|info|1|You cast Raise Earth",
             }, w.Log.Select(l => $"{l.Tick}|{l.Kind.ToString().ToLowerInvariant()}|{l.Count}|{l.Text}").ToArray());
         }
+
+        // A whirlwind cast south of a cell and heading north, 15 ticks on: its eye has crossed it.
+        static World Crossing(System.Action<Cell> set)
+        {
+            var w = new World(R, 9, 12, 1, "dirt");
+            set(w.At(4, 5));
+            w.Cast("whirlwind", 4, 8, 0);
+            Run(w, 15);
+            return w;
+        }
+
+        [Test]
+        public void AWhirlwindTakesOnWhatItCrosses()
+        {
+            Assert.That(Crossing(c => { c.Fire = 3; c.Fuel = 40; }).Whirls[0].Carrying, Is.EqualTo("fire"));
+            Assert.That(Crossing(c => { c.T = "pit"; c.Water = 4; }).Whirls[0].Carrying, Is.EqualTo("water"));
+            Assert.That(Crossing(c => c.T = "sand").Whirls[0].Carrying, Is.EqualTo("sand"));
+            Assert.That(Crossing(c => { c.Gas = "smoke"; c.GasAmt = 6; }).Whirls[0].Carrying, Is.EqualTo("smoke"));
+            Assert.That(Crossing(c => c.Cover = "snow").Whirls[0].Carrying, Is.EqualTo("snow"));
+            Assert.That(Crossing(c => { }).Whirls[0].Carrying, Is.Null, "bare ground gives it nothing");
+            Assert.That(Crossing(c => c.T = "sand").Log.Any(l => l.Text == "The whirlwind whips the sand into a sandstorm"));
+        }
+
+        [Test]
+        public void AWhirlwindGoesWithTheWindOrTheWayItWasCastAndAWallStopsIt()
+        {
+            var cast = new World(R, 12, 9, 1, "dirt");
+            cast.Cast("whirlwind", 4, 4, 1);
+            Run(cast, 12);
+            Assert.That((cast.Whirls[0].X, cast.Whirls[0].Y), Is.EqualTo((6, 4)), "east, as cast, a cell every 6 ticks");
+            var windy = new World(R, 12, 9, 1, "dirt");
+            windy.Wind = (2, 100);
+            windy.Cast("whirlwind", 4, 2, 1);
+            Run(windy, 12);
+            Assert.That((windy.Whirls[0].X, windy.Whirls[0].Y), Is.EqualTo((4, 4)), "the wind wins: south");
+            var walled = new World(R, 12, 9, 1, "dirt");
+            walled.At(5, 4).T = "bedrock";
+            walled.Cast("whirlwind", 4, 4, 1);
+            Run(walled, 12);
+            Assert.That(walled.Whirls[0].X, Is.EqualTo(4));
+        }
+
+        [Test]
+        public void AWaterspoutDropsItsWaterWhereItDiesOut()
+        {
+            var w = new World(R, 20, 9, 1, "dirt");
+            w.At(4, 4).T = "pit";
+            w.At(4, 4).Water = 4;
+            w.Cast("whirlwind", 4, 4, 1);
+            Run(w, 60);
+            Assert.That(w.Whirls, Is.Empty);
+            Assert.That(w.At(14, 4).Water, Is.GreaterThanOrEqualTo(2));
+            Assert.That(w.Log.Any(l => l.Text == "The waterspout dies out and drops what it carried"));
+        }
+
+        [Test]
+        public void GoldenFireTornadoMatchesTs()
+        {
+            // It starts on a fire, heads east over dry grass, lights what it passes and drops fire where it ends.
+            var w = new World(R, 20, 9, 3, "grass");
+            w.At(4, 4).Fire = 3;
+            w.At(4, 4).Fuel = 8;
+            w.Cast("whirlwind", 4, 4, 1);
+            Run(w, 30);
+            string mid = $"{w.WhirlState()} {w.CellHash()} {w.RngState}";
+            Run(w, 30);
+            Assert.That(w.Whirls, Is.Empty);
+            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("|9:4:30:fire e6fa9db8 2713091359 | 47709c01 321794052"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void GoldenDustFlashMatchesTs()
+        {
+            // A dust cloud goes up as one from a spark at its edge, all of it used up; a cloud apart from it doesn't.
+            var w = new World(R, 16, 9, 1, "dirt");
+            for (int y = 0; y < 9; y++)
+                for (int x = 10; x < 16; x++) w.At(x, y).T = "grass";
+            w.Cast("dust-storm", 6, 4, 0);
+            w.At(13, 4).Gas = "dust";
+            w.At(13, 4).GasAmt = 3;
+            w.Apply(4, 4, "fire", 1, -1, true);
+            Assert.That(w.Cells.Count(c => c.Gas == "dust"), Is.EqualTo(1), "only the far cloud is left");
+            Assert.That(w.At(6, 4).Fire, Is.EqualTo(3));
+            Assert.That(w.Log.Any(l => l.Text == "The dust goes up in a flash"));
+            Assert.That(w.FlashesSince(-1).Count(), Is.GreaterThan(1), "the view hears of each cell");
+            Run(w, 20);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("28826ce6 2354002487"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void DustDriftingOverAFireFlashes()
+        {
+            var w = new World(R, 8, 8, 1, "dirt");
+            w.At(3, 3).Fire = 2;
+            w.At(3, 3).Fuel = 6;
+            w.At(3, 3).Gas = "dust";
+            w.At(3, 3).GasAmt = 2;
+            w.At(4, 3).Gas = "dust";
+            w.At(4, 3).GasAmt = 2;
+            w.Step();
+            Assert.That(w.At(3, 3).Gas, Is.Null);
+            Assert.That(w.At(4, 3).Gas, Is.Null);
+            Assert.That(w.At(4, 3).Fire, Is.GreaterThan(0));
+        }
+
+        [Test]
+        public void ASandstormsDustGoesUpToo()
+        {
+            var w = new World(R, 14, 9, 1, "sand");
+            w.Cast("whirlwind", 4, 4, 1);
+            Run(w, 9);
+            Assert.That(w.Whirls[0].Carrying, Is.EqualTo("sand"));
+            int x = w.Whirls[0].X;
+            Assert.That(w.At(x, 4).Gas, Is.EqualTo("dust"));
+            w.Apply(x, 4, "fire", 1, -1, true);
+            Assert.That(w.At(x, 4).Gas, Is.Null);
+            Assert.That(w.Log.Any(l => l.Text == "The dust goes up in a flash"));
+        }
+
+        [Test]
+        public void CarriesAndFlashesAreChecked()
+        {
+            IReadOnlyList<string> Errors(string patch) =>
+                Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(patch.Replace('\'', '"')) })).Errors;
+            Assert.That(Errors("{ 'gases': { 'flour': { 'name': 'Flour', 'burn': { 'flash': { 'fire': 0, 'push': -1 } } } } }"),
+                Is.EquivalentTo(new[] { "gas flour: burn.flash.fire must be a whole number from 1", "gas flour: burn.flash.push must be a whole number from 0" }));
+            Assert.That(Errors("{ 'spells': [{ 'id': 'gyre', 'group': 'storm', 'name': 'Gyre', 'level': 1, 'shape': 'burst', 'element': 'air', 'radial': false, 'blurb': 'b', 'travelEvery': 0, 'carries': [{ 'id': 'x', 'if': { 'hue': 1 }, 'sheds': 'nothing' }] }] }"),
+                Is.EquivalentTo(new[] { "spell gyre: travelEvery must be a whole number from 1", "spell gyre: carries x sheds unknown element nothing", "spell gyre: carries x has unknown condition \"hue\"" }));
+        }
     }
 }

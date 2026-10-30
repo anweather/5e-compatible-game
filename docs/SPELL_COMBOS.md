@@ -138,6 +138,9 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   smoke column, a snow flurry. It carries what it picks up and drops it all
   when it dies out.
 
+**Built (2026-10-30):** Whirlwind taking on elements and the dust explosion,
+in the rules and both engines (`rules/README.md`).
+
 **Build order:** first Whirlwind taking on elements, the dust explosion
 (Rolling Boulder's dust or any dust cloud, plus fire), Forge on mud and sand,
 and Falling Star. Then the rest of the table, a few casts per task.

@@ -150,6 +150,25 @@ namespace Chem
         public int CondenseAway;
         /// <summary>A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); 0 never.</summary>
         public int RainEvery;
+        /// <summary>A gas that goes up all at once when fire meets it (burn.flash: dust, World.FlashGas), or null.</summary>
+        public FlashDef Flash;
+    }
+
+    /// <summary>A gas's burn.flash: the fire each of its cells goes up with, how hard that shoves what's there, and the line it logs.</summary>
+    public sealed class FlashDef
+    {
+        public int Fire, Push;
+        public string Log;
+    }
+
+    /// <summary>
+    /// What a travelling whirlwind can take on (spells.json "carries"): when its eye crosses a cell matching If, it
+    /// carries this from then on, shedding the element Sheds around its eye and dropping more where it dies out.
+    /// </summary>
+    public sealed class CarryDef
+    {
+        public string Id, Name, Sheds, Log;
+        public CellCond If;
     }
 
     /// <summary>
@@ -199,6 +218,10 @@ namespace Chem
         public ScatterDef Scatter;
         /// <summary>An element that lands on its middle cell last of all (Falling Star's lava), or null.</summary>
         public string Core;
+        /// <summary>A whirling spell moves a cell every this many ticks (World.Travel), 0 never; it drops what it carries at DropPower.</summary>
+        public int TravelEvery, DropPower = 1;
+        /// <summary>What a whirling spell can take on, strongest first: one replaces any after it (CarryDef); empty for none.</summary>
+        public IReadOnlyList<CarryDef> Carries = Array.Empty<CarryDef>();
         /// <summary>The light the Light effect sheds, in feet (spells.json light { bright, dim }), for the view to draw; 0 none.</summary>
         public int LightBright, LightDim;
         /// <summary>The ground the spell blows out where it lands (Fireball), or null.</summary>
@@ -441,7 +464,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -551,6 +574,7 @@ namespace Chem
                     CondenseEvery = Int(p.Value["condenseEvery"]) ?? 0,
                     CondenseAway = Int(p.Value["condenseAway"]) ?? 0,
                     RainEvery = Int(p.Value["rainEvery"]) ?? 0,
+                    Flash = ParseFlash(p.Value["burn"]?["flash"]),
                 };
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
@@ -738,6 +762,9 @@ namespace Chem
             Delay = Int(o["delay"]) ?? 0,
             Scatter = o["scatter"] is JObject sc ? new ScatterDef { Cover = Str(sc["cover"]), Count = Int(sc["count"]) ?? 0, Reach = Int(sc["reach"]) ?? 0 } : null,
             Core = Str(o["core"]),
+            TravelEvery = Int(o["travelEvery"]) ?? 0,
+            DropPower = Int(o["dropPower"]) ?? 1,
+            Carries = (o["carries"] as JArray)?.OfType<JObject>().Select(ParseCarry).ToList() ?? (IReadOnlyList<CarryDef>)Array.Empty<CarryDef>(),
             LightBright = Int((o["light"] as JObject)?["bright"]) ?? 0,
             LightDim = Int((o["light"] as JObject)?["dim"]) ?? 0,
             Crater = ParseCrater(o["crater"]),
@@ -746,29 +773,43 @@ namespace Chem
         static CraterDef ParseCrater(JToken t) =>
             t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1, Strength = Int(c["strength"]) ?? 1, Leaves = Str(c["leaves"]) } : null;
 
+        static FlashDef ParseFlash(JToken t) =>
+            t is JObject f ? new FlashDef { Fire = Int(f["fire"]) ?? 1, Push = Int(f["push"]) ?? 0, Log = Str(f["log"]) } : null;
+
+        static CarryDef ParseCarry(JObject o) => new CarryDef
+        {
+            Id = Str(o["id"]),
+            Name = Str(o["name"]) ?? Str(o["id"]),
+            Sheds = Str(o["sheds"]),
+            Log = Str(o["log"]),
+            If = o["if"] is JObject c ? ParseCond(c) : null,
+        };
+
+        static CellCond ParseCond(JObject c)
+        {
+            var cond = new CellCond
+            {
+                Cover = c["cover"] is JArray ? Strings(c["cover"]) : null,
+                FireBelow = Num(c["fireBelow"]),
+                Water = Bool(c["water"]),
+                Frozen = Bool(c["frozen"]),
+                Hot = Bool(c["hot"]),
+                Conductive = Bool(c["conductive"]),
+                Gas = Str(c["gas"]),
+                TerrainTag = Str(c["terrainTag"]),
+                NotTerrainTag = Str(c["notTerrainTag"]),
+                Power = Int(c["power"]),
+                Chance = Num(c["chance"]),
+            };
+            var fire = c["fire"];
+            if (fire != null && fire.Type == JTokenType.Boolean) cond.FireFlag = (bool)fire;
+            else if (fire != null && (fire.Type == JTokenType.Integer || fire.Type == JTokenType.Float)) cond.FireMin = (double)fire;
+            return cond;
+        }
+
         static CellRule ParseRule(JObject o)
         {
-            CellCond cond = null;
-            if (o["if"] is JObject c)
-            {
-                cond = new CellCond
-                {
-                    Cover = c["cover"] is JArray ? Strings(c["cover"]) : null,
-                    FireBelow = Num(c["fireBelow"]),
-                    Water = Bool(c["water"]),
-                    Frozen = Bool(c["frozen"]),
-                    Hot = Bool(c["hot"]),
-                    Conductive = Bool(c["conductive"]),
-                    Gas = Str(c["gas"]),
-                    TerrainTag = Str(c["terrainTag"]),
-                    NotTerrainTag = Str(c["notTerrainTag"]),
-                    Power = Int(c["power"]),
-                    Chance = Num(c["chance"]),
-                };
-                var fire = c["fire"];
-                if (fire != null && fire.Type == JTokenType.Boolean) cond.FireFlag = (bool)fire;
-                else if (fire != null && (fire.Type == JTokenType.Integer || fire.Type == JTokenType.Float)) cond.FireMin = (double)fire;
-            }
+            var cond = o["if"] is JObject c ? ParseCond(c) : null;
             var effects = new List<Effect>();
             if (o["do"] is JArray d)
                 foreach (var e in d.OfType<JObject>()) effects.Add(ParseEffect(e));
