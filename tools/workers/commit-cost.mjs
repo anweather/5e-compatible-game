@@ -22,6 +22,8 @@ const home = os.homedir();
 const role = process.env.COMMIT_COST_ROLE || 'Worker';
 const config = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
 const stateFile = path.join(config, `.${role.toLowerCase()}-last-commit.txt`);
+// A rebase or amend replays a message that already carries its cost: leave it as it is.
+if (new RegExp(`^${role}-Tokens: `, 'm').test(fs.readFileSync(msgFile, 'utf8'))) process.exit(0);
 let since = Number(process.env.COMMIT_COST_SINCE) || Date.now() - os.uptime() * 1000; // the override is for testing
 try { since = Math.max(since, Number(fs.readFileSync(stateFile, 'utf8'))); } catch { }
 
