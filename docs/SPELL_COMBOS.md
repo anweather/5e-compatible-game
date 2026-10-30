@@ -50,6 +50,12 @@ of thumb, unchanged: the **first** element is what the spell is made of, the
   reaction written for one spell. The hand-written spell reactions left in
   `rules/reactions.json` (`fire-mud`, `fire-ice` and the like)
   move into materials as they're touched.
+  No element for one spell: the water row (81621f0) added `geyser` and
+  `wave` elements with their own reactions (`geyser-water`, `e-geyser`,
+  `wave-fire`, `e-wave`, `e-wave-creature`); fold them into heat (strong,
+  on water) and water (moving) plus a shared force verb (throw, knock
+  back) in the cleanup step. Later casts reuse fire, water, earth, air,
+  heat, cold and lightning.
 - **Drawn with the effects library.** The pooled particles, cell tints and
   shader terms that exist; GPU first, no swarms of entities. A real object
   (the boulder) is built from simple pieces.
