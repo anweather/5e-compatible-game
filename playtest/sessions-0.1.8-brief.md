@@ -65,9 +65,28 @@ CLAUDE_CONFIG_DIR=$HOME/.claude-pro COMMIT_COST_ROLE=Host COMMIT_COST_NAME=playt
 `tools/telemetry/feature-costs.mjs` shows it under "Work with no commit",
 beside the median feature.
 
+## 5. Push, then file the issues on GitHub (Andrew asked for this)
+
+1. Commit the findings (with their screenshots), playtest/sessions/0.1.8.md and
+   the sessions.jsonl line on a branch `playtest-0.1.8` and push it (not
+   merged), so the issues can link to the files.
+2. For each NEW issue (not known, not fixed on dev), one GitHub issue on
+   anweather/5e-compatible-game with `gh issue create`, labelled `playtest`
+   (create the label once with `gh label create playtest` if it's missing):
+   - **Title:** what's wrong, in a player's words.
+   - **Body:** the build (`alpha 0.1.8 (<sha>)`), the run's seed and frame,
+     steps to reproduce, what was expected, and the screenshot linked on the
+     `playtest-0.1.8` branch (`https://github.com/anweather/5e-compatible-game/blob/playtest-0.1.8/<path>`).
+   - **Discovery cost**, as a section at the end, from the step 4 record:
+     the session's total (its `Host-Tokens`, `Host-Time` and ite), the issues
+     it found, and this issue's share (the session's ite ÷ issues found), so the
+     cost of finding it stays with it.
+3. Observations aren't issues: they stay in playtest/sessions/0.1.8.md, unless
+   one is clearly a bug.
+4. Add each issue's number to its finding (playtest/findings/F-…), and push.
+
 ## Deliver
 
-Commit the findings, playtest/sessions/0.1.8.md and the sessions.jsonl line
-on a branch `playtest-0.1.8` and push it (not merged). Report to the PM in 8
-lines or fewer: issues (new, known, fixed already), the top observations,
-issues per hour against before, and the recorded cost.
+Report to the PM in 8 lines or fewer: issues (new and filed, with their
+numbers; known; fixed already), the top observations, issues per hour against
+before, and the recorded cost and cost per issue.
