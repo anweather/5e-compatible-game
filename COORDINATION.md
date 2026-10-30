@@ -430,3 +430,9 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   high-detail models. LEND to the Workers (Pro coordinator) for the view pass
   on the new materials: the Gameplay view files those features need, listed
   in its report. The host Editor does one probe and screenshot pass after.
+- 2026-10-29: RULE (Andrew): never stop a worker VM with unpushed work.
+  Before stopping one for any reason (usage limit, swapping accounts, memory),
+  commit its work in progress and push it as `wip/<worker>-<feature>`. Lost
+  today: w1's shock-water, redone on w4. TODO (Workers lane): stop.cmd does
+  this itself (commit and push WIP over PowerShell Direct) before shutting
+  down, and refuses if the push fails unless -Force is given.
