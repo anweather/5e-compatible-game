@@ -134,13 +134,15 @@ namespace Chem.Tests
             w.Cast("fire-bolt", 6, 6, 0);
             Run(w, 150);
 
-            Assert.That(w.CellHash(), Is.EqualTo("429015b3"));
-            Assert.That(w.RngState, Is.EqualTo(2675140523u));
+            Assert.That(w.CellHash(), Is.EqualTo("8cef26c5"));
+            Assert.That(w.RngState, Is.EqualTo(2387241123u));
             CollectionAssert.AreEqual(new[]
             {
                 "0|info|1|You cast Fire Bolt",
                 "0|info|1|Fire takes hold of the grass",
                 "11|notable|3|The oil ignites",
+                "109|notable|1|The bridge burns through and collapses",
+                "110|notable|1|The brambles burn away, opening a path",
             }, w.Log.Select(Entry).ToArray());
         }
 
@@ -632,7 +634,7 @@ namespace Chem.Tests
             Assert.That(w.Cells.Count(c => c.Cover != null), Is.EqualTo(0), "with the oil used up, and no ash on the water");
             int water = w.Cells.Sum(c => c.Water);
             Assert.That(water, Is.InRange(1, 149), "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
-            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("29 28 90 87abc88e 662727550"), "the same in the sandbox");
+            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("29 28 74 78db8029 189079474"), "the same in the sandbox");
         }
 
         [Test]
@@ -707,6 +709,43 @@ namespace Chem.Tests
             int steam = w.Cells.Sum(c => c.Gas == "steam" ? c.GasAmt : 0), water = w.Cells.Sum(c => c.Water);
             Assert.That(water, Is.GreaterThan(0), "it cooled back into water");
             Assert.That($"{goblin.Hp} {hound.Hp} {steam} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("89 99 0 112 d06de483 2670964354"), "the same in the sandbox");
+        }
+
+        // A 9 x 5 metal field full of steam, (4, 2) left hot or not and the cells round it raised, run 60
+        // ticks; the water within one cell of (4, 2), and the water elsewhere.
+        static (World w, int near, int far) SteamByHeat(bool hot)
+        {
+            var w = new World(R, 9, 5, 1, "metal");
+            foreach (var c in w.Cells)
+            {
+                c.Gas = "steam";
+                c.GasAmt = 6;
+            }
+            // Raised a step, so water condensed further off can't run in.
+            for (int y = 1; y <= 3; y++)
+                for (int x = 3; x <= 5; x++) w.At(x, y).Height = 1;
+            if (hot) w.At(4, 2).Heat = 120;
+            Run(w, 60);
+            int near = 0, far = 0;
+            for (int y = 0; y < 5; y++)
+                for (int x = 0; x < 9; x++)
+                {
+                    if (Math.Abs(x - 4) <= 1 && Math.Abs(y - 2) <= 1) near += w.At(x, y).Water;
+                    else far += w.At(x, y).Water;
+                }
+            return (w, near, far);
+        }
+
+        [Test]
+        public void SteamCondensesOnlyAwayFromHeat()
+        {
+            // gases.steam condenseAway 1: none of it condenses in, or next to, a burning or hot cell.
+            var (hot, near, far) = SteamByHeat(true);
+            Assert.That(near, Is.EqualTo(0), "beside the heat it doesn't condense");
+            Assert.That(far, Is.GreaterThan(0), "drifted away from it, it does");
+            var (_, coldNear, _) = SteamByHeat(false);
+            Assert.That(coldNear, Is.GreaterThan(0), "and with no heat, there too");
+            Assert.That($"{near} {far} {coldNear} {hot.CellHash()} {hot.RngState}", Is.EqualTo("0 77 2 d6bb1743 3544326918"), "the same in the sandbox");
         }
 
         [Test]

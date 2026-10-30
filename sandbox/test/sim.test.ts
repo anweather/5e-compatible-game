@@ -499,7 +499,7 @@ test("oil floats out over water and burns across it until it is used up", () => 
   assert.equal(w.cells.filter((c) => c.cover !== null).length, 0, "with the oil used up, and no ash on the water");
   const water = w.cells.reduce((s, c) => s + c.water, 0);
   assert.ok(water >= 1 && water <= 149, "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
-  assert.equal(`${slick} ${most} ${water} ${rustHash(w)} ${w.rng}`, "29 28 90 87abc88e 662727550"); // the same in the C# core
+  assert.equal(`${slick} ${most} ${water} ${rustHash(w)} ${w.rng}`, "29 28 74 78db8029 189079474"); // the same in the C# core
 });
 
 test("a broken float is refused with the C# wording", () => {
@@ -565,6 +565,34 @@ test("steam scalds flesh, not bone, and condenses back into water", () => {
   const steam = w.cells.reduce((s, c) => s + (c.gas === "steam" ? c.gasAmt : 0), 0), water = w.cells.reduce((s, c) => s + c.water, 0);
   assert.ok(water > 0, "it cooled back into water");
   assert.equal(`${goblin.hp} ${hound.hp} ${steam} ${water} ${rustHash(w)} ${w.rng}`, "89 99 0 112 d06de483 2670964354"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.SteamByHeat: a 9 x 5 metal field full of steam, (4,2) left hot or not and the cells round
+// it raised, run 60 ticks.
+const steamByHeat = (hot: boolean) => {
+  const w = createWorld(9, 5, 1);
+  for (const c of w.cells) Object.assign(c, { t: "metal", gas: "steam", gasAmt: 6 });
+  // Raised a step, so water condensed further off can't run in.
+  for (let y = 1; y <= 3; y++) for (let x = 3; x <= 5; x++) cellAt(w, x, y)!.h = 1;
+  if (hot) cellAt(w, 4, 2)!.heat = 120;
+  run(w, 60);
+  let near = 0, far = 0;
+  for (let y = 0; y < 5; y++)
+    for (let x = 0; x < 9; x++) {
+      if (Math.abs(x - 4) <= 1 && Math.abs(y - 2) <= 1) near += cellAt(w, x, y)!.water;
+      else far += cellAt(w, x, y)!.water;
+    }
+  return { w, near, far };
+};
+
+// Mirrors ChemistryTests.SteamCondensesOnlyAwayFromHeat.
+test("steam condenses only away from heat", () => {
+  const { w, near, far } = steamByHeat(true);
+  assert.equal(near, 0, "beside the heat it doesn't condense");
+  assert.ok(far > 0, "drifted away from it, it does");
+  const coldNear = steamByHeat(false).near;
+  assert.ok(coldNear > 0, "and with no heat, there too");
+  assert.equal(`${near} ${far} ${coldNear} ${rustHash(w)} ${w.rng}`, "0 77 2 d6bb1743 3544326918"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AGustPushesSmokeAndSteamFansTheFireAndKeepsMetalHot.

@@ -665,12 +665,26 @@ namespace Chem
         /// its cell's count falls from a multiple of it (2 to 1, not 1 to 0), so thick steam cools back
         /// into water and thin steam fades. Not into a wall, but into a vessel.
         /// </summary>
-        void Condense(Chunk ch, Cell c)
+        void Condense(Chunk ch, int i, Cell c)
         {
             if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.CondenseEvery <= 0 || (c.GasAmt + 1) % g.CondenseEvery != 0) return;
             if (IsBlocking(c) && !HasTag(c, "vessel")) return;
+            if (NearHeat(CellX(ch, i), CellY(ch, i), g.CondenseAway)) return;
             c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
             WaterMoved(ch);
+        }
+
+        /// <summary>Whether a cell within <paramref name="radius"/> of (x, y), this one too, is burning or hot (Cell.Heat); never with radius 0.</summary>
+        bool NearHeat(int x, int y, int radius)
+        {
+            if (radius <= 0) return false;
+            for (int dy = -radius; dy <= radius; dy++)
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    var n = At(x + dx, y + dy);
+                    if (n != null && (n.Fire > 0 || n.Heat > 0)) return true;
+                }
+            return false;
         }
 
         /// <summary>A gas cell decays, blows downwind, or spreads to a thinner neighbour.</summary>
@@ -680,7 +694,7 @@ namespace Chem
             if (Rand() < DecayOf(c.Gas))
             {
                 c.GasAmt--;
-                Condense(ch, c);
+                Condense(ch, i, c);
             }
             if (c.GasAmt <= 0)
             {

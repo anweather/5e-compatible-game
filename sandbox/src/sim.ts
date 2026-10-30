@@ -339,11 +339,24 @@ function tickWater(w: World) {
  * falls from a multiple of it (2 to 1, not 1 to 0), so thick steam cools back into water and thin steam fades. Not into a wall, but into
  * a vessel (World.Condense).
  */
-function condense(c: Cell) {
-  const every = RULES.gases[c.gas!]?.condenseEvery ?? 0;
+function condense(w: World, i: number, c: Cell) {
+  const g = RULES.gases[c.gas!];
+  const every = g?.condenseEvery ?? 0;
   if (every <= 0 || (c.gasAmt + 1) % every !== 0) return;
   if (isBlocking(c) && !hasTag(c, "vessel")) return;
+  if (nearHeat(w, i % w.w, Math.floor(i / w.w), g?.condenseAway ?? 0)) return;
   c.water = Math.min(RULES.sim.water.maxLevel, c.water + 1);
+}
+
+/** Whether a cell within radius of (x, y), this one too, is burning or hot; never with radius 0 (World.NearHeat). */
+function nearHeat(w: World, x: number, y: number, radius: number): boolean {
+  if (radius <= 0) return false;
+  for (let dy = -radius; dy <= radius; dy++)
+    for (let dx = -radius; dx <= radius; dx++) {
+      const n = cellAt(w, x + dx, y + dy);
+      if (n && (n.fire > 0 || (n.heat ?? 0) > 0)) return true;
+    }
+  return false;
 }
 
 function tickGas(w: World) {
@@ -353,7 +366,7 @@ function tickGas(w: World) {
     if (!c.gas) continue;
     if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) {
       c.gasAmt--;
-      condense(c);
+      condense(w, i, c);
     }
     if (c.gasAmt <= 0) {
       c.gas = null;
