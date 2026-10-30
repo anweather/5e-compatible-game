@@ -1,10 +1,11 @@
 # Workers report (for the coordinator)
 
-- Built: scripts and README in tools/workers/ (branch `workers-vms`, pushed, not merged): grant access, create Ubuntu and Windows templates, provision each (in-VM), seal (checkpoint + export named `template`), new-worker, start/sleep/stop/status. All parse-checked; wrapper and access check tested; ISO, Node and winget lookups resolve.
-- NOT built: no VM exists yet. This session isn't elevated or in Hyper-V Administrators, so Get-VM is denied.
-- Waiting on Andrew: (1) run grant-hyperv-access.cmd elevated once, sign out/in; (2) Ubuntu installer in the VM window (user, password, OpenSSH); (3) UAC in the Windows VM for provision-windows.cmd; (4) Unity licence, GitHub, Claude sign-ins per VM; (5) unity CLI install per Unity's docs.
-- 2026-10-28: step 1 ran: Andrew is now in Hyper-V Administrators, but sessions started before a sign-out/in still lack it in their token (Get-VM still denied here).
-- After (1) plus a sign-out/in, any session can run U1/W1/seal/new-worker unattended.
-- RAM idle/busy: not measured (no VMs). Caps set: Ubuntu 2-8 GB, Windows 4-12 GB; start.cmd refuses to start if <10 GB would stay free (J-017).
-- No GPU in VMs: probes, shots, clips, perf, MPPM stay on the host.
-- Merge: tools/workers/** only; please merge `workers-vms` into dev so the raw.githubusercontent URLs in README work.
+- Works: `windows-template` (git, lfs, gh, claude, dotnet 8, node 22, Unity 6000.3.27f1 + Windows/Mac Mono; signed out of everything; sign-ins come from host slots), sealed. Clones sign in by themselves and start `claude remote-control` named after the VM (`w1` shows in ListAgents); start.cmd copies the name in, the task resets the template's RC registration. remove-worker.cmd and seal-template -Replace: no manual deletes.
+- RAM (`w1`, 4 vCPU, 4-12 GB): idle 1.5-2.4 GB demand; `dotnet test core` 3.1 GB (386 pass); Unity batch import + compile 6.7 GB demand / 7.8 GB assigned.
+- Template now holds the Asset Store packs, warm Library and built yard (refresh-template.cmd: packs from the host checkout, update to dev, EditMode must pass, re-seal; 5.7 min, verified). Fresh w1: Unity EditMode 441/441 in 2.1 min. Google accounts signed in in the template's Edge. New pack = agent edits AssetPacks.json, Andrew restores it on the PC, refresh-template, rebuild workers.
+- FOUND: clones can't share a `claude auth login` sign-in. Its refresh token rotates: the first VM to refresh (w1, 07:44) voided everyone else's copy, and the template wiped its tokens at 07:47 ("You must be logged in to use Remote Control"). Remote Control refuses `claude setup-token` tokens. Fix: signins.cmd keeps per-worker slots on the host (Claude creds; Hub's Credential Manager entries + accounts.db; Unity licence, bound to MAC so new-worker gives each name a fixed MAC; gh hosts.yml + .gitconfig), pushed by start.cmd, saved back by stop/sleep/remove + a 5-min host task. VERIFIED on rebuilt w1 and w2 (slots w1, w2 filled) with no clicks: RC Connected as w1, Hub signed in, gh signed in + git push --dry-run OK, Unity batch licence exit 0. Never reset User's password again (net user orphaned all Credential Manager entries once).
+- Host reaches workers over PowerShell Direct now (account `User`, password set by rc-autostart-windows -Password).
+- `ubuntu-template`: provisioned, gh signed in, shut down, not sealed. Blocked on Unity licence (Personal can't activate offline; needs Hub sign-in on the VM console).
+- Fixes found by running: winget msstore cert, claude PATH, gh, headless Hub never exits, KVP daemon, workspace trust, spawn-mode prompt, task needs elevation.
+- No GPU in VMs: probes, shots, clips, perf, MPPM stay on the host. J-017 guard works (refused at 17.9 GB free).
+- Merge: branch `workers`, tools/workers/** only.

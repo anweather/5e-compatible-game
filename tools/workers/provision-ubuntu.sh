@@ -15,9 +15,9 @@ REPO_DIR=$HOME/5e-compatible-game
 
 step() { printf '\n== %s\n' "$*"; }
 
-step "apt packages: git, git-lfs, .NET 8 SDK, xvfb (Unity Hub runs headless under it)"
+step "apt packages: git, git-lfs, gh, .NET 8 SDK, xvfb (Unity Hub runs headless under it), Hyper-V KVP daemon (host sees the IP)"
 sudo apt-get update
-sudo apt-get install -y git git-lfs curl ca-certificates gnupg xz-utils xvfb dotnet-sdk-8.0
+sudo apt-get install -y git git-lfs curl ca-certificates gnupg xz-utils xvfb dotnet-sdk-8.0 linux-cloud-tools-virtual gh
 git lfs install
 
 step "Node 22 from nodejs.org"
@@ -43,10 +43,24 @@ if ! command -v unityhub >/dev/null; then
 fi
 
 step "Unity Editor $UNITY_VERSION with Windows Build Support (Mono)"
-hub() { xvfb-run -a unityhub -- --headless "$@"; }
-hub install --version "$UNITY_VERSION" --changeset "$UNITY_CHANGESET" --module windows-mono || echo "!! Editor install reported an error; check: unityhub -- --headless editors -i"
+# Headless Hub never exits after an install, so run it in the background, wait
+# for what it installs to appear, then stop it. Skips what is already there.
+ENGINES=$HOME/Unity/Hub/Editor/$UNITY_VERSION/Editor/Data/PlaybackEngines
+hub_until() {
+  local want=$1; shift
+  [[ -e $want ]] && { echo "already there: $want"; return 0; }
+  xvfb-run -a unityhub -- --headless "$@" &
+  local pid=$! waited=0
+  while [[ ! -e $want ]] && kill -0 "$pid" 2>/dev/null && (( waited < 5400 )); do sleep 30; waited=$((waited + 30)); done
+  sleep 30   # let Hub finish writing after the folder appears
+  pkill -f unityhub || true
+  [[ -e $want ]]
+}
+hub_until "$ENGINES/WindowsStandaloneSupport" install --version "$UNITY_VERSION" --changeset "$UNITY_CHANGESET" --module windows-mono \
+  || echo "!! Editor install did not finish; check: ls ~/Unity/Hub/Editor"
 step "Mac Build Support (Mono), if it installs cleanly"
-hub install-modules --version "$UNITY_VERSION" --module mac-mono || echo "!! mac-mono did not install; Mac builds stay on the Mac"
+hub_until "$ENGINES/MacStandaloneSupport" install-modules --version "$UNITY_VERSION" --module mac-mono \
+  || echo "!! mac-mono did not install; Mac builds stay on the Mac"
 
 step "Claude Code (official installer; not signed in)"
 command -v claude >/dev/null || curl -fsSL https://claude.ai/install.sh | bash

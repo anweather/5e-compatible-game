@@ -7,7 +7,7 @@ templates, cloned into workers:
 | Template | For | vCPU | Memory (dynamic) | Disk |
 |---|---|---|---|---|
 | `ubuntu-template` (Ubuntu 24.04 LTS server) | Headless work: core and sandbox tests, compiling, batch builds of the Windows player (Mono) | 2 | 4 GB start, 2–8 GB | 128 GB, grows as used |
-| `windows-template` (copy of Quick Create's "Windows 11 dev environment") | Windows-only work | 4 | 8 GB start, 4–12 GB | as Quick Create made it |
+| `windows-template` (copy of Quick Create's "Windows 11 dev environment") | Windows-only work | 4 | 4 GB start, 4–8 GB (two run side by side) | as Quick Create made it |
 
 Each has git + git-lfs, the .NET 8 SDK, Node 22, Unity Hub and Editor
 6000.3.27f1 (Windows Build Support, Mono; Mac Build Support, Mono if it
@@ -37,9 +37,9 @@ blocked on this PC). Run them from `cmd` or PowerShell as `.\name.cmd args`.
 - **U1.** `create-ubuntu-template.cmd`: downloads the newest 24.04 server ISO
   from releases.ubuntu.com (checks its SHA256), makes the VM and opens its window.
 - **U2. (Andrew)** In the VM window run the installer: defaults, user name
-  `worker`, a password of your choice, **tick "Install OpenSSH server"**, no
+  `anweather`, a password of your choice, **tick "Install OpenSSH server"**, no
   snaps. Reboot when it says so (press Enter if it asks to remove the media).
-  Then, in the VM (console or `ssh worker@<ip>` from `start.cmd`'s output):
+  Then, in the VM (console or `ssh anweather@<ip>` from `start.cmd`'s output):
 
   ```
   curl -fsSL https://raw.githubusercontent.com/anweather/5e-compatible-game/dev/tools/workers/provision-ubuntu.sh | bash
@@ -92,24 +92,120 @@ That's fine on the NAT switch; rename one inside the guest
 ## Workers
 
 ```
-new-worker.cmd ubuntu-template  u1     # full copy, new id and MAC; left off
-start.cmd u1                           # refuses if <10 GB would stay free (J-017); prints the IP
+new-worker.cmd windows-template w1     # full copy, new id, same MAC per name; left off
+start.cmd u1                           # refuses if <6 GB would stay free (10 with a host Editor open; J-017, J-037)
 sleep.cmd u1                           # saves state to disk: frees all its RAM, resumes in seconds
 stop.cmd u1                            # clean guest shutdown
 status.cmd                             # state, CPU, assigned and demanded RAM, host free RAM
 ```
 
+Every commit made in a Windows worker ends with what its work cost, as trailers (`Worker`, `Worker-Time`, `Worker-Tokens`: new tokens apart from cache reads, which are the context re-read on every reply). `commit-cost.mjs` reads Claude Code's own logs since the VM's last commit (or its boot), so the agent spends nothing on it; `start.cmd` installs it as a `prepare-commit-msg` hook. Add them up with `git log --grep Worker-Tokens`.
+
 Inside a worker, `git fetch && git switch <branch>` before work: the clone is
-as old as the template. Delete a worker in Hyper-V Manager (Andrew: it deletes
-files on the host). To refresh a template: start it, update, shut down, and
-seal again after Andrew removes `C:\HyperV\Workers\templates\<name>`.
+as old as the template. `remove-worker.cmd w1` deletes a worker (VM and disk;
+it refuses templates).
+
+### Refreshing the template (new asset packs)
+
+Clones get the Asset Store packs, Unity's imported `Library/` and the built
+yard from the template, so their first Unity job runs in about 2 minutes
+instead of importing 3 GB. When an agent needs a new pack it adds it to
+`unity/AssetPacks.json` on its branch and says so; it can't download one (that
+needs the Unity account that owns it). Then:
+
+1. Andrew, on the PC: Prototype > Restore Asset Packs in the main checkout.
+2. `refresh-template.cmd` (stop running workers first for RAM): starts the
+   template, updates its repo to `dev`, copies the packs in from the main
+   checkout, builds the yard, runs EditMode tests (all must pass), checks git
+   is clean, shuts down and re-seals.
+3. `remove-worker` + `new-worker` + `start` for each worker: they come back
+   signed in from their slots, on the new template.
+
+Run it too when `dev` has moved a long way. The template also holds Andrew's
+Google accounts, signed in in Edge, so any sign-in a worker needs is one
+click; Google sessions don't rotate, so clones can share them.
+
+## Remote Control at boot
+
+So a started worker shows up in claude.ai/code (and `ListAgents`) with nobody
+signed in to it, each template runs `claude remote-control` at boot, named
+after the Hyper-V VM (`w1`, `u1`...; start.cmd copies the name in).
+Set it up once per template, before sealing:
+
+- **Sign-ins live in slots on the host, one per worker name.** Seal the
+  template signed out of Claude, Unity Hub and GitHub. Claude's and Hub's
+  refresh tokens are single-use, so clones sharing one void each other
+  within minutes, and Remote Control refuses the long-lived
+  `claude setup-token` token ("only available with claude.ai
+  subscriptions"). So `signins.cmd` keeps each worker's sign-ins in
+  `C:\HyperV\Workers\signins\<name>` (this account and SYSTEM only):
+  - `claude`: `.claude\.credentials.json`.
+  - `unity-hub`: Hub's tokens, in Windows Credential Manager, plus its
+    `accounts.db`. Clones can read each other's Credential Manager entries
+    because they share the account's encryption keys; **never reset
+    `User`'s password** (`net user`): that orphans every entry.
+  - `unity-licence`: the licence file. It's bound to the Windows product id,
+    BIOS serial and MAC; clones share the first two, and `new-worker` gives
+    each worker name the same MAC every time (`C:\HyperV\Workers\macs`).
+  - `github`: `gh auth login --insecure-storage` (a file, not Credential
+    Manager) and `.gitconfig` with `gh auth setup-git`. Its token doesn't
+    rotate, so one sign-in can be copied into every slot.
+
+  `start.cmd` copies the slot in before Remote Control starts (stopping Hub
+  first); `stop`, `sleep` and `remove-worker` copy newer sign-ins back
+  (Claude: the later-expiring token; the rest: the later file). Filling a
+  slot, once per worker name: start the worker, sign in to Claude in the
+  window it opens, to Unity Hub, and run
+  `gh auth login --insecure-storage -h github.com -p https -w; gh auth setup-git`.
+  After that, `remove-worker w1` + `new-worker` + `start w1` comes up with
+  everything signed in and licensed, no clicks (verified on `w1`). Four slots
+  (`w1`–`w4`) cover 2–3 running workers with headroom. Andrew, once, from an
+  admin prompt: `signins.cmd install` registers a host task that saves
+  running workers' sign-ins every 5 minutes, so a worker that crashes or is
+  turned off hard doesn't leave its slot stale. An unused Claude slot lapses
+  after about 4 weeks (its refresh token expires). Windows workers only
+  (PowerShell Direct).
+- **Windows:** in the VM, elevated PowerShell,
+  `.\rc-autostart-windows.cmd -Password password` (or the host runs it over
+  PowerShell Direct once the account has a password). It turns on automatic
+  sign-in for `User` and starts Remote Control at that sign-in (a signed-out
+  startup task would need a password). The password lets the host reach the
+  guest over PowerShell Direct (`Invoke-Command -VMName w1 -Credential User`);
+  fine on the NAT switch, not on a real network. Log: `%TEMP%\claude-rc.log`.
+- **Ubuntu:** in the VM, `bash ~/5e-compatible-game/tools/workers/rc-autostart-ubuntu.sh`
+  (sudo password once). It also turns on the KVP daemon. Log:
+  `journalctl --user -u claude-rc`.
+
+First, in each template, run `claude` once in `~/5e-compatible-game` and
+accept the workspace trust dialog: Remote Control refuses an untrusted folder
+("Error: Workspace not trusted"). Trust is per user, so clones inherit it.
+
+## Two Claude accounts
+
+- **Workers by account:** `w1` and `w2` sign in to the Pro account, `w3` and `w4`
+  to the Max one (each slot holds one worker's own sign-in, so the account is
+  just whoever signed in to that slot). Use Pro's capacity first, then start
+  `w3`/`w4`. A session can message only workers on its own account.
+- **Every worker commit says which account did it** (`Worker-Account: max
+  (org 1a2b3c4d)`) with its cost (above).
+- **Hyper-V's meter:** `start.cmd` resets it, `stop.cmd` logs CPU, RAM and disk
+  per run to `C:\HyperV\Workers\metering.csv`.
+- **Sessions on different accounts talk through `bridge.sh`:** an inbox folder
+  per role in `~/.agent-bridge` (outside the repo). `bridge.sh send coordinator
+  "subject" < brief.md` drops a message; the receiving session keeps
+  `bridge.sh wait coordinator` running as a background command, which costs
+  nothing while it waits and wakes the session when mail arrives. Roles so far:
+  `pm` (the Max account's project manager) and `coordinator` (the Pro account's
+  coordinator of `w1`/`w2`). Set `BRIDGE_FROM` to your role when sending.
 
 ## Memory
 
-Measured with `status.cmd` (DemandGB). Not yet measured; fill in once the
-templates exist.
+Measured with Hyper-V's memory demand (`status.cmd`, DemandGB).
 
 | VM | Idle | Busy (what) |
 |---|---|---|
-| Ubuntu worker | – | – (dotnet test core / Unity batch build) |
-| Windows worker | – | – (Unity batch build) |
+| Ubuntu worker | – (template, no Unity licence yet: 0.8 GB used of 1.8 GB assigned) | – (dotnet test core / Unity batch build) |
+| Windows worker `w1` | 1.5–2.4 GB demand; Hyper-V trims it to the 4 GB minimum | 3.1 GB: `dotnet test core` (386 pass, ~1 min). 6.7 GB demand, 7.8 GB assigned: Unity batch first import + compile without packs (~4 min). With the refreshed template (packs, Library, yard): Unity EditMode 441/441 pass in 2.1 min |
+
+Unity batch mode needs Unity Hub running (it holds the signed-in licence);
+the startup task starts it.

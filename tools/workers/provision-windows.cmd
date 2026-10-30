@@ -16,9 +16,10 @@ $repo = Join-Path $env:USERPROFILE '5e-compatible-game'
 function Step($t) { "`n== $t" }
 function Refresh-Path { $env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User') }
 
-Step 'winget: Git, .NET 8 SDK, Node 22, Unity Hub'
-foreach ($id in 'Git.Git', 'Microsoft.DotNet.SDK.8', 'OpenJS.NodeJS.22', 'Unity.UnityHub') {
-  winget install --id $id -e --silent --accept-package-agreements --accept-source-agreements
+Step 'winget: Git, .NET 8 SDK, Node 22, Unity Hub, GitHub CLI'
+foreach ($id in 'Git.Git', 'Microsoft.DotNet.SDK.8', 'OpenJS.NodeJS.22', 'Unity.UnityHub', 'GitHub.cli') {
+  # --source winget: the msstore source fails its certificate check in the dev environment image.
+  winget install --id $id -e --source winget --silent --accept-package-agreements --accept-source-agreements
 }
 Refresh-Path
 git config --global core.longpaths true
@@ -32,6 +33,10 @@ Step 'Mac Build Support (Mono), if it installs cleanly'
 
 Step 'Claude Code (official installer; not signed in)'
 if (-not (Get-Command claude -ErrorAction SilentlyContinue)) { Invoke-RestMethod https://claude.ai/install.ps1 | Invoke-Expression }
+# The installer leaves its folder off the PATH; add it to the user PATH once.
+$bin = Join-Path $env:USERPROFILE '.local\bin'
+$userPath = [Environment]::GetEnvironmentVariable('Path','User')
+if (($userPath -split ';') -notcontains $bin) { [Environment]::SetEnvironmentVariable('Path', "$userPath;$bin", 'User'); Refresh-Path }
 
 Step 'The repo, branch dev'
 if (-not (Test-Path "$repo\.git")) { git clone -b dev https://github.com/anweather/5e-compatible-game.git $repo }
