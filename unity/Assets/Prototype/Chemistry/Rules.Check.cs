@@ -137,6 +137,7 @@ namespace Chem
                 if (s["scatter"] != null && !IsScatter(s["scatter"])) Errors.Add($"spell {Show(s["id"])}: scatter needs a known cover and a whole count and reach from 1");
                 if (s["core"] != null && !IsElement(s["core"])) Errors.Add($"spell {Show(s["id"])}: unknown core {Show(s["core"])}");
                 if (s["leaves"] != null && !IsElement(s["leaves"])) Errors.Add($"spell {Show(s["id"])}: unknown leaves {Show(s["leaves"])}");
+                if (s["trail"] != null && !IsIn(gases, s["trail"])) Errors.Add($"spell {Show(s["id"])}: trail {Show(s["trail"])} is not a gas");
                 foreach (var k in Keys(s["needs"] as JObject).Where(k => !CondKeys.Contains(k))) Errors.Add($"spell {Show(s["id"])}: needs has unknown condition \"{k}\"");
             }
 

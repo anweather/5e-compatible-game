@@ -10,7 +10,7 @@ import { applyElement, ignite, shatter } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
 import { dig, reshape } from "../src/terraform.ts";
 import { whirlState } from "../src/combos.ts";
-import { type Cell, type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
+import { type Cell, type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -651,6 +651,77 @@ test("frost bridges water, freezes the wet and glazes the ground, matching the C
   assert.equal(cellAt(w, 2, 3)!.cover, null, "fire melts the frost");
   run(w, 12);
   assert.equal(`${cellHash(w)} ${w.rng}`, "4f8ffa48 1199730150"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.ARollingBoulderRollsDownhillSmashesKnocksOverAndDamsTheStream.
+test("a rolling boulder rolls downhill, smashes, knocks over and dams the stream, matching the C# golden", () => {
+  const w = createWorld(16, 10, 8);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 5, 4)!.t = "glass";
+  cellAt(w, 6, 4)!.water = 2;
+  cellAt(w, 6, 4)!.frozen = true;
+  cellAt(w, 8, 5)!.h = -1;
+  Object.assign(cellAt(w, 8, 6)!, { t: "pit", h: -1, water: 3 });
+  const gob = spawn(w, "goblin", 7, 4)!;
+  castSpell(w, "rolling-boulder", 1, 4, 1, undefined, 2);
+  assert.equal(w.boulders.length, 1);
+  run(w, 4);
+  assert.deepEqual([w.boulders[0]!.x, w.boulders[0]!.y], [3, 4]);
+  assert.equal(cellAt(w, 2, 4)!.gas, "dust", "a trail of dust");
+  castSpell(w, "fire-bolt", 2, 4, 0);
+  assert.ok(w.log.some((l) => l.text === "The dust goes up in a flash"));
+  run(w, 8);
+  assert.ok((gob.status.thrown ?? 0) > 0, "knocked over");
+  assert.ok(gob.hp < 10);
+  run(w, 12);
+  assert.equal(w.boulders.length, 0);
+  assert.ok((cellAt(w, 5, 4)!.cracked ?? 0) > 0, "the glass cracks");
+  assert.ok((cellAt(w, 6, 4)!.cracked ?? 0) > 0, "and the ice");
+  assert.equal(cellAt(w, 8, 6)!.t, "dirt", "it rolled down the slope and dammed the stream");
+  assert.equal(`${cellHash(w)} ${w.rng} ${gob.x},${gob.y} ${gob.hp}`, "9179f2b8 729412872 7,4 5"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.PlantGrowthVinesClimbWallsBridgeGapsBurnAndRootsCrackStone.
+test("Plant Growth's vines climb walls, bridge gaps, burn, and their roots crack stone, matching the C# golden", () => {
+  const w = createWorld(12, 7, 9);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 3, 3)!.t = "stone";
+  cellAt(w, 5, 3)!.t = "pit";
+  cellAt(w, 7, 3)!.t = "river";
+  Object.assign(cellAt(w, 9, 3)!, { t: "rock", h: 3 });
+  cellAt(w, 6, 5)!.t = "pit";
+  castSpell(w, "plant-growth", 6, 3, 0);
+  for (const x of [3, 5, 7, 9]) assert.ok(isClimbable(cellAt(w, x, 3)!), `vines at ${x}`);
+  assert.equal(cellAt(w, 4, 3)!.cover, null, "nothing to climb on open ground");
+  applyElement(w, 6, 5, "fire", { power: 1, direct: true });
+  assert.ok(cellAt(w, 6, 5)!.fire > 0, "vines burn");
+  run(w, 920);
+  assert.equal(cellAt(w, 3, 3)!.t, "rubble", "roots crack the stone wall");
+  assert.equal(cellAt(w, 9, 3)!.t, "rock");
+  assert.equal(cellAt(w, 5, 3)!.cover, null, "the vines rot away");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "f70d280c 1696107128"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.WallOfStoneMakesStepsOverWaterRampsWhenHeldAndOnlyHardBlowsBreakIt.
+test("Wall of Stone makes steps over water, a ramp when held, and only hard blows break it, matching the C# golden", () => {
+  const w = createWorld(14, 8, 10);
+  for (const c of w.cells) c.t = "dirt";
+  for (let y = 0; y <= 7; y++) for (let x = 6; x <= 7; x++) cellAt(w, x, y)!.water = 3;
+  castSpell(w, "wall-of-stone", 2, 3, 1);
+  assert.equal(cellAt(w, 4, 3)!.h, 3);
+  assert.ok(isBlocking(cellAt(w, 4, 3)!));
+  assert.equal(cellAt(w, 6, 3)!.h, 1, "a stepping stone");
+  assert.equal(cellAt(w, 6, 3)!.t, "rock");
+  assert.ok(!isBlocking(cellAt(w, 6, 3)!));
+  castSpell(w, "stone-ramp", 2, 6, 1);
+  assert.deepEqual([2, 3, 4, 5].map((x) => cellAt(w, x, 6)!.h), [1, 2, 2, 2], "a ramp up");
+  castSpell(w, "fireball", 3, 3, 0);
+  assert.equal(cellAt(w, 3, 3)!.h, 3, "too hard for a fireball");
+  castSpell(w, "falling-star", 3, 3, 0);
+  run(w, 6);
+  assert.ok(cellAt(w, 3, 3)!.h < 3, "a falling star breaks it");
+  run(w, 6);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "1946386c 1872778120"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AFallingStarMarksItsTargetThenStrikes: a mark for a second (6 ticks), then a crater with a

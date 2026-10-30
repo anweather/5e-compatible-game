@@ -91,6 +91,7 @@ namespace Chem
             if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
             if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
             if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass)));
+            if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age)));
             var made = new Cell();
             var saved = new JArray();
             foreach (var ch in SortedChunks(false))
@@ -197,6 +198,8 @@ namespace Chem
                 whirls.Add(new Whirl { X = (int)ww[0], Y = (int)ww[1], Radius = (int)ww[2], Ticks = (int)ww[3], Age = (int)ww[4], Every = (int)ww[5], MaxMass = (int)ww[6], Spell = (string)ww[7], Dir = (int)ww[8], Travel = (int)ww[9], Carrying = (string)ww[10] });
             foreach (var wv in s["waves"] ?? new JArray())
                 waves.Add(new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] });
+            foreach (var b in s["boulders"] ?? new JArray())
+                boulders.Add(new Boulder { Spell = (string)b[0], X = (int)b[1], Y = (int)b[2], Dir = (int)b[3], Left = (int)b[4], Every = (int)b[5], Age = (int)b[6] });
             NextEntityId = (int)s["nextEntityId"];
             if (s["defense"] is JObject d)
             {

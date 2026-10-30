@@ -3,7 +3,7 @@
     { "id": "fire-fog", "element": "fire", "if": { "gas": "fog" }, "do": [{ "clearGas": true }], "log": "The heat burns the fog away" },
     { "id": "fire-mud", "element": "fire", "if": { "terrainTag": "muddy" }, "do": [{ "extinguish": true }], "log": "The mud smothers the fire", "stop": true },
     { "id": "fire-oil", "element": "fire", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} ignites", "notable": true, "stop": true },
-    { "id": "fire-thorns", "element": "fire", "if": { "cover": ["thorns"] }, "do": [{ "ignite": "cover" }], "log": "The thorns catch fire", "stop": true },
+    { "id": "fire-thorns", "element": "fire", "if": { "cover": ["thorns", "vines"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} catch fire", "stop": true },
     { "id": "fire-melt", "element": "fire", "if": { "cover": ["snowbank", "snow", "frost"] }, "do": [{ "meltCover": true }], "log": "The {cover} melts", "stop": true },
     { "id": "fire-ice", "element": "fire", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water", "stop": true },
     { "id": "fire-water", "element": "fire", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam", "stop": true },
@@ -73,6 +73,7 @@
 
     { "id": "growth-blaze", "element": "growth", "if": { "fire": 2 }, "do": [], "stop": true },
     { "id": "growth-embers", "element": "growth", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "New growth smothers the embers" },
+    { "id": "growth-trellis", "element": "growth", "if": { "terrainTag": "trellis" }, "do": [{ "setCover": "vines" }], "log": "Vines climb over the {terrain}", "notable": true, "stop": true },
     { "id": "growth-stump", "element": "growth", "if": { "terrainTag": "rootstock" }, "do": [{ "setCover": null }, { "grow": "sapling", "ticks": [90, 150], "wave": 4 }], "log": "Saplings spring from the old stumps", "stop": true },
     { "id": "growth-seedlings", "element": "growth", "if": { "cover": ["ash"], "terrainTag": "soil", "power": 2, "chance": 0.25 }, "do": [{ "setCover": null }, { "grow": "sapling", "ticks": [120, 240], "wave": 4 }], "log": "Saplings take root in the ash", "stop": true },
     { "id": "growth-ash", "element": "growth", "if": { "cover": ["ash"], "terrainTag": "soil" }, "do": [{ "setCover": null }, { "grow": "sprouts", "ticks": [3, 9], "wave": 4 }], "log": "Green shoots push up through the ash", "stop": true },

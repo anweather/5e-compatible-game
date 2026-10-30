@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(67));
+            Assert.That(R.CellRules.Count, Is.EqualTo(68));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -1019,6 +1019,91 @@ namespace Chem.Tests
             Assert.That(w.At(2, 3).Cover, Is.Null, "fire melts the frost");
             Run(w, 12);
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4f8ffa48 1199730150"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void ARollingBoulderRollsDownhillSmashesKnocksOverAndDamsTheStream()
+        {
+            // docs/SPELL_COMBOS.md: it rolls on over flat ground and turns down a slope, cracks what is brittle (the
+            // first knock), knocks creatures over, leaves dust a spark sets off, and stops in water as a dam.
+            // Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 16, 10, 8, "dirt");
+            w.At(5, 4).T = "glass";
+            w.At(6, 4).Water = 2;
+            w.At(6, 4).Frozen = true;
+            w.At(8, 5).Height = -1;
+            w.At(8, 6).Height = -1;
+            w.At(8, 6).T = "pit";
+            w.At(8, 6).Water = 3;
+            var gob = w.SpawnRaider("goblin", 7, 4, 10);
+            Assert.That(R.Combos.Combo("earth+air").Spell, Is.EqualTo("rolling-boulder"));
+            w.Cast("rolling-boulder", 1, 4, 1, 2);
+            Assert.That(w.Boulders, Has.Count.EqualTo(1));
+            Run(w, 4);
+            Assert.That((w.Boulders[0].X, w.Boulders[0].Y), Is.EqualTo((3, 4)));
+            Assert.That(w.At(2, 4).Gas, Is.EqualTo("dust"), "a trail of dust");
+            w.Cast("fire-bolt", 2, 4, 0);
+            Assert.That(w.Log.Any(l => l.Text == "The dust goes up in a flash"));
+            Run(w, 8);
+            Assert.That(gob.StatusOf(World.ThrownStatus), Is.GreaterThan(0), "knocked over");
+            Assert.That(gob.Hp, Is.LessThan(10));
+            Run(w, 12);
+            Assert.That(w.Boulders, Is.Empty);
+            Assert.That(w.At(5, 4).Cracked, Is.GreaterThan(0), "the glass cracks");
+            Assert.That(w.At(6, 4).Cracked, Is.GreaterThan(0), "and the ice");
+            Assert.That(w.At(8, 6).T, Is.EqualTo("dirt"), "it rolled down the slope and dammed the stream");
+            Assert.That($"{w.CellHash()} {w.RngState} {gob.X},{gob.Y} {gob.Hp}", Is.EqualTo("9179f2b8 729412872 7,4 5"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void PlantGrowthVinesClimbWallsBridgeGapsBurnAndRootsCrackStone()
+        {
+            // docs/SPELL_COMBOS.md: vines climb walls and cross pits and streams (walkable), burn as fuel, and when they
+            // die they rot and their roots crack the stone wall they held; raised rock is too hard. Mirrors
+            // sandbox/test/terraform.test.ts.
+            var w = new World(R, 12, 7, 9, "dirt");
+            w.At(3, 3).T = "stone";
+            w.At(5, 3).T = "pit";
+            w.At(7, 3).T = "river";
+            w.At(9, 3).T = "rock";
+            w.At(9, 3).Height = 3;
+            w.At(6, 5).T = "pit";
+            w.Cast("plant-growth", 6, 3, 0);
+            foreach (int x in new[] { 3, 5, 7, 9 }) Assert.That(w.IsClimbable(w.At(x, 3)), Is.True, $"vines at {x}");
+            Assert.That(w.At(4, 3).Cover, Is.Null, "nothing to climb on open ground");
+            w.Apply(6, 5, "fire");
+            Assert.That(w.At(6, 5).Fire, Is.GreaterThan(0), "vines burn");
+            Run(w, 920);
+            Assert.That(w.At(3, 3).T, Is.EqualTo("rubble"), "roots crack the stone wall");
+            Assert.That(w.At(9, 3).T, Is.EqualTo("rock"));
+            Assert.That(w.At(5, 3).Cover, Is.Null, "the vines rot away");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f70d280c 1696107128"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void WallOfStoneMakesStepsOverWaterRampsWhenHeldAndOnlyHardBlowsBreakIt()
+        {
+            // docs/SPELL_COMBOS.md: a wall, stepping stones where it crosses water, a ramp held at the ground; rock is
+            // hard, so a Fireball doesn't dig it and a Falling Star does. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 14, 8, 10, "dirt");
+            for (int y = 0; y <= 7; y++)
+                for (int x = 6; x <= 7; x++) w.At(x, y).Water = 3;
+            Assert.That(R.Combos.Combo("earth+earth").Held, Is.EqualTo("stone-ramp"));
+            w.Cast("wall-of-stone", 2, 3, 1);
+            Assert.That(w.At(4, 3).Height, Is.EqualTo(3));
+            Assert.That(w.IsBlocking(w.At(4, 3)), Is.True);
+            Assert.That(w.At(6, 3).Height, Is.EqualTo(1), "a stepping stone");
+            Assert.That(w.At(6, 3).T, Is.EqualTo("rock"));
+            Assert.That(w.IsBlocking(w.At(6, 3)), Is.False);
+            w.Cast("stone-ramp", 2, 6, 1);
+            Assert.That(new[] { 2, 3, 4, 5 }.Select(x => w.At(x, 6).Height), Is.EqualTo(new[] { 1, 2, 2, 2 }), "a ramp up");
+            w.Cast("fireball", 3, 3, 0);
+            Assert.That(w.At(3, 3).Height, Is.EqualTo(3), "too hard for a fireball");
+            w.Cast("falling-star", 3, 3, 0);
+            Run(w, 6);
+            Assert.That(w.At(3, 3).Height, Is.LessThan(3), "a falling star breaks it");
+            Run(w, 6);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1946386c 1872778120"), "the same in the sandbox");
         }
 
         [Test]

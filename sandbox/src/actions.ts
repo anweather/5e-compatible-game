@@ -6,8 +6,8 @@ import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
-  type Dir, type Entity, type Star, type Wave, type Whirl, type World,
-  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, logOnce, newCell, playerOf, rand, roll, windDir,
+  type Boulder, type Dir, type Entity, type Star, type Wave, type Whirl, type World,
+  DX, DY, addGas, burns, cellAt, elevation, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, logOnce, newCell, playerOf, rand, roll, windDir,
 } from "./world.ts";
 
 export const spellById = (id: string) => RULES.spells.find((s) => s.id === id);
@@ -219,6 +219,7 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   else if (s.effect === "light") lightUp(w, s, x, y);
   else if (s.delay) aimStar(w, s, x, y, dir, clampCharge(charge));
   else if (isWave(s)) startWave(w, s, x, y, dir, clampCharge(charge));
+  else if (isBoulder(s)) startBoulder(w, s, x, y, dir, clampCharge(charge));
   else landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
 }
 
@@ -446,7 +447,7 @@ function whirlEntities(w: World, ww: Whirl): void {
 }
 
 /** Whether a spell rolls out as a wave (a line with travelEvery that doesn't whirl) rather than landing at once (World.IsWave). */
-export const isWave = (s: SpellDef) => !!s.travelEvery && !s.inward && s.shape === "line";
+export const isWave = (s: SpellDef) => !!s.travelEvery && !s.inward && !s.rolls && s.shape === "line";
 
 /**
  * A wave's cast (World.StartWave): the front starts on the cast's square, a line across the way it rolls, width cells
@@ -518,6 +519,91 @@ function breakWave(w: World, wv: Wave, s: SpellDef | undefined): void {
   logOnce(w, `wave#${s.id}`, `The ${s.name.toLowerCase()} breaks`, "info");
   if (!s.leaves) return;
   for (const [cx, cy] of front(w, wv)) applyElement(w, cx, cy, s.leaves, { power: 1, direct: true });
+}
+
+/** Whether a spell rolls out as a boulder (a line with travelEvery that rolls) rather than landing at once (World.IsBoulder). */
+export const isBoulder = (s: SpellDef) => !!s.travelEvery && !!s.rolls && s.shape === "line";
+
+/**
+ * A boulder's cast (World.StartBoulder): it starts on the cast's square and strikes it, then rolls a cell every
+ * travelEvery ticks, to the line's length in all (tickBoulders).
+ */
+function startBoulder(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number): void {
+  const c = cellAt(w, x, y);
+  if (!c || isBlocking(c)) return;
+  const b: Boulder = { spell: s.id, x, y, dir, left: chargedLength(s.length ?? 5, charge) - 1, every: s.travelEvery!, age: 0 };
+  strike(w, b, s);
+  if (b.left > 0 && !inWater(c)) w.boulders.push(b);
+  else rest(w, b, s);
+}
+
+/**
+ * Each boulder, in the order cast, rolls a cell when its time comes, the way the ground falls (rollTo), and strikes
+ * it; once it can't roll on, reaches water or its length's end, it comes to rest and is gone (World.TickBoulders).
+ */
+export function tickBoulders(w: World): void {
+  if (!w.boulders.length) return;
+  for (const b of w.boulders) {
+    if (++b.age % b.every !== 0) continue;
+    const s = spellById(b.spell);
+    const dir = s ? rollTo(w, b) : -1;
+    if (dir >= 0) {
+      b.dir = dir as Dir;
+      b.x += DX[b.dir];
+      b.y += DY[b.dir];
+      b.left--;
+      strike(w, b, s!);
+      if (inWater(cellAt(w, b.x, b.y)!)) b.left = 0;
+    } else b.left = 0;
+    if (b.left <= 0) rest(w, b, s);
+  }
+  w.boulders = w.boulders.filter((b) => b.left > 0);
+}
+
+const inWater = (c: { water: number; frozen: boolean }) => c.water > 0 && !c.frozen;
+
+/**
+ * Where a boulder rolls next: of the open cells ahead, to its left and to its right (in that order), the lowest that
+ * isn't higher than where it is; -1 when every way is uphill or shut (World.RollTo).
+ */
+function rollTo(w: World, b: Boulder): number {
+  let best = -1, bestLevel = elevation(cellAt(w, b.x, b.y)!);
+  for (const dir of [b.dir, (b.dir + 3) % 4, (b.dir + 1) % 4] as Dir[]) {
+    const n = cellAt(w, b.x + DX[dir], b.y + DY[dir]);
+    if (!n || isBlocking(n)) continue;
+    const level = elevation(n);
+    if (level < bestLevel || (level === bestLevel && best < 0)) {
+      best = dir;
+      bestLevel = level;
+    }
+  }
+  return best;
+}
+
+/** How long a creature a boulder knocks over stays down, in ticks (World.KnockedTicks). */
+const KNOCKED_TICKS = 6;
+
+/**
+ * The boulder strikes the cell it rolls onto: what is brittle there cracks or shatters, it leaves its trail of gas,
+ * and the thing there (not the player, whom the C# core doesn't hold) takes its damage and is knocked over (World.Strike).
+ */
+function strike(w: World, b: Boulder, s: SpellDef): void {
+  shatter(w, b.x, b.y);
+  if (s.trail) addGas(cellAt(w, b.x, b.y)!, s.trail, 2);
+  const e = entityAt(w, b.x, b.y);
+  if (!e || defOf(e).player) return;
+  if (s.damage) damage(w, e, roll(w, s.damage), s.name.toLowerCase(), s.element);
+  if (!w.entities.includes(e)) return;
+  e.status.thrown = Math.max(e.status.thrown ?? 0, KNOCKED_TICKS);
+  logOnce(w, `knocked#${e.id}`, `The ${s.name.toLowerCase()} knocks ${defOf(e).name} over`, "notable");
+}
+
+/** Where it stops it comes to rest, and its leaves (earth) lands there: a dam in a stream, a boulder on dry ground (World.Rest). */
+function rest(w: World, b: Boulder, s: SpellDef | undefined): void {
+  b.left = 0;
+  if (!s) return;
+  logOnce(w, `rest#${s.id}`, `The ${s.name.toLowerCase()} comes to rest`, "info");
+  if (s.leaves) applyElement(w, b.x, b.y, s.leaves, { power: 1, direct: true });
 }
 
 /** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */

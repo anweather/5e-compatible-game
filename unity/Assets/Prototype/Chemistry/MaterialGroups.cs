@@ -25,6 +25,7 @@
 //   grow    { into, log }                                         growsTo, growLog
 //   uproot  { leaves, log }                                       uprootsTo, uprootLog
 //   dissolve { by, leaves }                                       dissolvedBy, dissolvesTo (covers too; a cover's leaves is a cover, or none)
+//   rot     { breaks }                                            rotBreaks (covers: when it withers its roots break the terrain under it)
 //
 // Group is the other way, for the parity test (and the move to the grouped
 // shape): a flat entry as groups, keys moved only where the verb's tag says
@@ -62,6 +63,7 @@ namespace Chem
             ("float", null, new[] { ("every", "floatEvery"), ("reach", "floatReach") }),
             ("melt", null, new[] { ("into", "meltsTo"), ("water", "meltWater") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
+            ("rot", null, new[] { ("breaks", "rotBreaks") }),
         };
 
         // A creature's statuses from its material: each verb's status key and the flat key it becomes.

@@ -22,7 +22,7 @@ namespace Chem
         public IReadOnlyList<Wave> Waves => waves;
 
         /// <summary>Whether a spell rolls out as a wave (a line with travelEvery that doesn't whirl) rather than landing at once.</summary>
-        public static bool IsWave(SpellDef s) => s != null && s.TravelEvery > 0 && !s.Inward && s.Shape == "line";
+        public static bool IsWave(SpellDef s) => s != null && s.TravelEvery > 0 && !s.Inward && !s.Rolls && s.Shape == "line";
 
         /// <summary>
         /// A wave's cast (startWave in the TS): the front starts on the cast's square, a line across the way it
