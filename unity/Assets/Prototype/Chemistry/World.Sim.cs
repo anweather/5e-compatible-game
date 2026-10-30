@@ -168,6 +168,19 @@ namespace Chem
             stagePos = 0;
         }
 
+        // The lava moves on: the lower cell becomes it, with its time and heat, and it leaves its crust (grow.into).
+        void RunInto(Cell from, Cell to)
+        {
+            if (IsBlocking(to)) return;
+            to.T = from.T;
+            to.Life = from.Life;
+            to.Heat = from.Heat;
+            to.Cover = null;
+            from.T = TerrainOf(from).GrowsTo ?? from.T;
+            from.Life = 0;
+            from.Heat = 0;
+        }
+
         void EndTick()
         {
             foreach (var (cell, cover, slick) in floating)
@@ -177,6 +190,8 @@ namespace Chem
                 cell.Slick = slick;
             }
             floating.Clear();
+            foreach (var (from, to) in runs) RunInto(from, to);
+            runs.Clear();
             if (Wind.HasValue)
             {
                 var (d, t) = Wind.Value;
@@ -241,7 +256,7 @@ namespace Chem
             // A crack goes with its ice or terrain.
             if (c.Cracked != 0 && !c.Frozen && !TerrainOf(c).Cracks) c.Cracked = 0;
             if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
-            if (c.Heat > 0 && Cool(ch, c)) live = true;
+            if (c.Heat > 0 && Cool(ch, i, c)) live = true;
             if (soak && SoakPass(ch, i, c)) live = true;
             return live;
         }
@@ -260,7 +275,7 @@ namespace Chem
         /// Hot metal cools a tick at a time (materials.json hot): water on it boils off a unit a tick as
         /// steam, each unit taking hot.quench ticks of its heat. A terrain that can't be hot drops it.
         /// </summary>
-        bool Cool(Chunk ch, Cell c)
+        bool Cool(Chunk ch, int i, Cell c)
         {
             var t = TerrainOf(c);
             if (t.HotFor <= 0)
@@ -268,6 +283,12 @@ namespace Chem
                 c.Heat = 0;
                 return true;
             }
+            if (c.Water > 0 && !c.Frozen && t.QuenchesTo != null)
+            {
+                Quench(ch, c, t);
+                return true;
+            }
+            if (t.RunsEvery > 0 && Tick % t.RunsEvery == 0) Run(ch, i, c);
             if (c.Water > 0 && !c.Frozen)
             {
                 c.Water--;
@@ -278,6 +299,36 @@ namespace Chem
             }
             if (c.Heat > 0) c.Heat--;
             return true;
+        }
+
+        // Water on hot lava (quench.into): it sets at once into rock, a unit of the water flashing to steam.
+        void Quench(Chunk ch, Cell c, TerrainDef t)
+        {
+            c.Water--;
+            AddGas(c, "steam", 2);
+            c.T = t.QuenchesTo;
+            c.Heat = 0;
+            c.Life = 0;
+            WaterMoved(ch);
+            if (t.QuenchLog != null) LogOnce("quench-" + t.Id, t.QuenchLog, LogKind.Notable);
+        }
+
+        // Lava's run (run.every): to the lowest open neighbour lower than it, in N, E, S, W order on a tie, if one
+        // isn't taken yet this tick; the move is made at the end of the tick (EndTick), so it goes a cell a turn.
+        void Run(Chunk ch, int i, Cell c)
+        {
+            int here = ElevationUnits(c), best = here;
+            Cell to = null;
+            for (int d = 0; d < 4; d++)
+            {
+                var n = Chunk.Next(ch, i, d, out var nch, out _);
+                if (n == null || !nch.Active || IsBlocking(n) || HasTag(n, "machine") || n.T == c.T) continue;
+                int level = ElevationUnits(n);
+                if (level >= best || runs.Exists(r => r.to == n)) continue;
+                best = level;
+                to = n;
+            }
+            if (to != null) runs.Add((c, to));
         }
 
         /// <summary>

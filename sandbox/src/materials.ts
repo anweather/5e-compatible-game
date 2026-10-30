@@ -20,6 +20,8 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "uproot", tag: null, keys: [["leaves", "uprootsTo"], ["log", "uprootLog"]] },
   { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
   { verb: "scour", tag: null, keys: [["leaves", "scoursTo"], ["wears", "scourWears"]] },
+  { verb: "run", tag: null, keys: [["every", "runsEvery"]] },
+  { verb: "quench", tag: null, keys: [["into", "quenchesTo"], ["log", "quenchLog"]] },
 ];
 
 const COVER_VERBS: Verb[] = [

@@ -1103,7 +1103,7 @@ namespace Chem.Tests
             Run(w, 6);
             Assert.That(w.At(3, 3).Height, Is.LessThan(3), "a falling star breaks it");
             Run(w, 6);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("31889514 1218213550"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4432219c 1218213550"), "the same in the sandbox");
         }
 
         [Test]
@@ -1194,6 +1194,29 @@ namespace Chem.Tests
             Assert.That(w.At(9, 5).Cover, Is.EqualTo("oil"), "driven across the pond");
             Run(w, 6);
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7716f25c 14"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void LavaRunsDownhillLeavingACrustAndSetsAtOnceInWater()
+        {
+            // docs/SPELL_COMBOS.md: Lava Pool runs downhill like water, crusts over so it can be walked on, and turns to
+            // rock at once in water (materials.json run and quench). Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 12, 7, 15, "dirt");
+            w.At(5, 3).Height = -1;
+            w.At(6, 3).Height = -2;
+            w.At(7, 3).T = "pit";
+            w.At(7, 3).Height = -2;
+            w.At(7, 3).Water = 3;
+            w.Cast("lava-pool", 3, 3, 0);
+            Assert.That(w.At(4, 3).T, Is.EqualTo("lava-pool"));
+            Run(w, 6);
+            Assert.That(w.At(5, 3).T, Is.EqualTo("lava-pool"), "it runs downhill");
+            Assert.That(w.At(4, 3).T, Is.EqualTo("rock"), "leaving a crust to walk on");
+            Run(w, 13);
+            Assert.That(w.At(7, 3).T, Is.EqualTo("rock"), "and sets at once in the water");
+            Assert.That(w.Log.Any(l => l.Text == "The lava hisses and sets into rock"));
+            Run(w, 6);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("811d9fa2 2967354774"), "the same in the sandbox");
         }
 
         [Test]

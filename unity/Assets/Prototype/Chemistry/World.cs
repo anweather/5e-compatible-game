@@ -74,6 +74,8 @@ namespace Chem
         public IReadOnlyList<Star> Stars => stars;
 
         readonly List<Whirl> whirls = new List<Whirl>();
+        // Lava running this tick (World.Run): from, to, moved at the end of the tick.
+        readonly List<(Cell from, Cell to)> runs = new List<(Cell from, Cell to)>();
         /// <summary>The whirlwinds still whirling, in the order they were cast.</summary>
         public IReadOnlyList<Whirl> Whirls => whirls;
 

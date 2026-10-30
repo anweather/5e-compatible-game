@@ -33,7 +33,7 @@
     "sand":      { "name": "Sand", "tags": ["ground", "fuses", "sandy"], "dig": { "hardness": 1 }, "soak": { "dry": 8, "wet": 24 }, "bake": { "into": "glass" }, "scour": { "wears": true } },
     "arctic":    { "name": "Arctic ground", "tags": ["ground"], "dig": { "hardness": 2 }, "freeze": {} },
     "lava":      { "name": "Lava", "tags": ["ground"], "dig": { "hardness": 2 }, "boil": {} },
-    "lava-pool": { "name": "Lava pool", "tags": ["ground"], "dig": { "hardness": 2 }, "boil": {}, "hot": { "for": 300, "quench": 30 }, "grow": { "into": "rock", "log": "The lava pool cools into rock" } },
+    "lava-pool": { "name": "Lava pool", "tags": ["ground"], "dig": { "hardness": 2 }, "boil": {}, "hot": { "for": 300, "quench": 30 }, "grow": { "into": "rock", "log": "The lava pool cools into rock" }, "run": { "every": 6 }, "quench": { "into": "rock", "log": "The lava hisses and sets into rock" } },
     "thatch":    { "name": "Thatch roof", "tags": ["roof"], "burn": { "catch": 0.6, "fuel": 18, "heat": 2.5, "leaves": "rubble", "look": "flare" }, "soak": { "dampens": 0.5 } },
     "shingle":   { "name": "Shingle roof", "tags": ["roof"], "burn": { "catch": 0.15, "fuel": 120, "leaves": "rubble", "look": "wood" } },
     "slate":     { "name": "Slate roof", "tags": ["roof"] },

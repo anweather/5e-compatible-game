@@ -68,6 +68,11 @@ export interface TerrainDef {
   /** What a sand blast turns it into (scour.leaves: rusted metal back to metal, a log wall worn thin), and whether raised ground of it wears down a step (scour.wears). */
   scoursTo?: string;
   scourWears?: boolean;
+  /** A hot liquid terrain (lava) runs to its lowest lower neighbour every this many ticks, leaving its growsTo (run.every; run in sim.ts). */
+  runsEvery?: number;
+  /** Water on it while hot sets it at once into this (quench.into: lava to rock), with this line (quench.log). */
+  quenchesTo?: string;
+  quenchLog?: string;
   /** The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick). */
   bakesTo?: string;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */

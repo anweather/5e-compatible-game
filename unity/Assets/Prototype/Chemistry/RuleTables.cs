@@ -94,6 +94,10 @@ namespace Chem
         /// <summary>What a sand blast turns it into (materials.json scour.leaves: rusted metal back to metal, a log wall worn thin), or null; and whether raised ground of it wears down a step (scour.wears).</summary>
         public string ScoursTo;
         public bool ScourWears;
+        /// <summary>A hot liquid terrain (lava) runs to its lowest lower neighbour every this many ticks, leaving its GrowsTo (run.every; World.Run); 0 never.</summary>
+        public int RunsEvery;
+        /// <summary>Water on it while hot sets it at once into this (quench.into: lava to rock), with this line (quench.log); null never.</summary>
+        public string QuenchesTo, QuenchLog;
         /// <summary>The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick), or null.</summary>
         public string BakesTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
@@ -713,6 +717,9 @@ namespace Chem
             DissolvedBy = Str(o["dissolvedBy"]),
             DissolvesTo = Str(o["dissolvesTo"]),
             ScoursTo = Str(o["scoursTo"]),
+            RunsEvery = Int(o["runsEvery"]) ?? 0,
+            QuenchesTo = Str(o["quenchesTo"]),
+            QuenchLog = Str(o["quenchLog"]),
             ScourWears = Truthy(o["scourWears"]),
             BakesTo = Str(o["bakesTo"]),
             SoakEvery = Int(o["soakEvery"]) ?? 0,

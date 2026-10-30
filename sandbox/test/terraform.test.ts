@@ -721,7 +721,7 @@ test("Wall of Stone makes steps over water, a ramp when held, and only hard blow
   run(w, 6);
   assert.ok(cellAt(w, 3, 3)!.h < 3, "a falling star breaks it");
   run(w, 6);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "31889514 1218213550"); // the same in the C# core
+  assert.equal(`${cellHash(w)} ${w.rng}`, "4432219c 1218213550"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.ADustFlashShovesARaiderTheSameAsTheSandbox.
@@ -803,6 +803,25 @@ test("Sand Blast scours, wears and leaves sand, and Gust drives oil across a pon
   assert.equal(cellAt(w, 9, 5)!.cover, "oil", "driven across the pond");
   run(w, 6);
   assert.equal(`${cellHash(w)} ${w.rng}`, "7716f25c 14"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.LavaRunsDownhillLeavingACrustAndSetsAtOnceInWater.
+test("lava runs downhill leaving a crust and sets at once in water, matching the C# golden", () => {
+  const w = createWorld(12, 7, 15);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 5, 3)!.h = -1;
+  cellAt(w, 6, 3)!.h = -2;
+  Object.assign(cellAt(w, 7, 3)!, { t: "pit", h: -2, water: 3 });
+  castSpell(w, "lava-pool", 3, 3, 0);
+  assert.equal(cellAt(w, 4, 3)!.t, "lava-pool");
+  run(w, 6);
+  assert.equal(cellAt(w, 5, 3)!.t, "lava-pool", "it runs downhill");
+  assert.equal(cellAt(w, 4, 3)!.t, "rock", "leaving a crust to walk on");
+  run(w, 13);
+  assert.equal(cellAt(w, 7, 3)!.t, "rock", "and sets at once in the water");
+  assert.ok(w.log.some((l) => l.text === "The lava hisses and sets into rock"));
+  run(w, 6);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "811d9fa2 2967354774"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AFallingStarMarksItsTargetThenStrikes: a mark for a second (6 ticks), then a crater with a
