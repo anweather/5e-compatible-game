@@ -204,6 +204,10 @@ buy progress.
 
 ## Pitfalls seen in practice
 
+- A Unity Editor started while Unity Hub isn't running can sit at a hidden
+  licence prompt, looking slow or stuck. Start Hub first, and check for a
+  dialog before blaming memory or CPU.
+
 - A script that waits for an Editor (for example `unity status
   --until-ready || unity open`) can hang forever when none is open. Check the
   Editor is up a few minutes after an agent says "started".

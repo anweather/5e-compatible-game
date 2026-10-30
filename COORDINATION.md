@@ -441,3 +441,6 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   unless -Force; rescue.cmd recovers a stopped worker whose account is out
   of usage. Tested on the host: w3's stop (nothing unpushed) and a rescue of
   w1 (pushed wip/w1-shock-water).
+- 2026-10-29: Host Editor pitfall: start Unity Hub before the Editor, or it
+  waits at a licence prompt (it looked like a slow Editor). Host sessions
+  check for Hub first.
