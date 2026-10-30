@@ -11,14 +11,21 @@ if (-not (Get-Command Get-VM -ErrorAction SilentlyContinue)) { throw "Hyper-V Po
 try { Get-VM -ErrorAction Stop | Out-Null } catch { throw "No Hyper-V access: run grant-hyperv-access.cmd as admin once, then sign out and in." }
 # Never with its work unpushed (COORDINATION, 2026-10-29): wip.cmd pushes it as
 # wip/<worker>-<branch> first; if that fails, refuse unless -Force.
-if ((Get-VM -Name $Name -ErrorAction Stop).State -eq 'Running') {
-  cmd /c (Join-Path $env:WORKERS_DIR 'wip.cmd') $Name
+$vm = Get-VM -Name $Name -ErrorAction Stop
+# Linux workers over SSH (linux.sh), Windows ones over PowerShell Direct.
+$linux = (Get-VMFirmware -VM $vm).SecureBootTemplate -ne 'MicrosoftWindows' -and $Name -notlike '*template*'
+$ip = (Get-VMNetworkAdapter -VM $vm).IPAddresses | Where-Object { $_ -match '^\d+\.' } | Select-Object -First 1
+$sh = (Join-Path $env:WORKERS_DIR 'linux.sh') -replace '\\', '/'
+function Linux([string]$what) { & 'C:\Program Files\Git\bin\bash.exe' $sh $what $Name $ip }
+if ($vm.State -eq 'Running') {
+  if ($linux) { Linux wip } else { cmd /c (Join-Path $env:WORKERS_DIR 'wip.cmd') $Name }
   if ($LASTEXITCODE) {
     if (-not $Force) { throw "Not stopping ${Name}: its work in progress couldn't be pushed (see above). Fix that, or add -Force to go ahead with the work left unpushed." }
     "-Force: stopping $Name with its work in progress unpushed."
   }
 }
-cmd /c (Join-Path $env:WORKERS_DIR 'signins.cmd') pull $Name   # save its sign-in first (skips templates, Ubuntu)
+# Save its sign-ins first (signins.cmd skips templates and Linux workers).
+if ($linux) { if ($vm.State -eq 'Running') { Linux pull } } else { cmd /c (Join-Path $env:WORKERS_DIR 'signins.cmd') pull $Name }
 # What it used since start.cmd reset Hyper-V's meter: one line per run in metering.csv.
 $m = Measure-VM -Name $Name -ErrorAction SilentlyContinue
 if ($m -and $m.MeteringDuration) {

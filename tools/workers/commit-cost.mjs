@@ -88,7 +88,10 @@ const runs = tests.map(([name, re]) => [name, [...tools.values()].filter((cmd) =
 // The account: its plan and org from `claude auth status` (local, no tokens).
 let account = '?';
 try {
-  const s = JSON.parse(execSync('claude auth status', { encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'ignore'] }));
+  // Linux workers run Claude from ~/.local/bin, which a systemd service's PATH lacks.
+  const local = path.join(home, '.local', 'bin', 'claude');
+  const claude = fs.existsSync(local) ? `"${local}"` : 'claude';
+  const s = JSON.parse(execSync(`${claude} auth status`, { encoding: 'utf8', timeout: 20000, stdio: ['ignore', 'pipe', 'ignore'] }));
   account = `${s.subscriptionType ?? '?'}${s.orgId ? ` (org ${s.orgId.slice(0, 8)})` : ''}`;
 } catch { }
 
@@ -96,7 +99,9 @@ const n = (x) => x.toLocaleString('en-US');
 // Cache reads are the context re-read on every reply: cheap per token but huge, so they're kept apart.
 const fresh = sum.input + sum.write + sum.output;
 let name = os.hostname();
-try { name = fs.readFileSync('C:/ProgramData/worker/name.txt', 'utf8').trim().split(' ')[0] || name; } catch { }
+for (const f of ['C:/ProgramData/worker/name.txt', '/var/lib/worker/name.txt']) { // start.cmd writes it (Windows, Linux)
+  try { name = fs.readFileSync(f, 'utf8').trim().split(' ')[0] || name; break; } catch { }
+}
 if (role !== 'Worker') name = process.env.COMMIT_COST_NAME || name;
 const plural = (k, word) => `${k} ${word}${k > 1 ? 's' : ''}`;
 const trouble = [compactions && plural(compactions, 'compaction'), apiErrors && plural(apiErrors, 'API error')].filter(Boolean);

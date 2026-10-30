@@ -62,6 +62,8 @@ Each entry has:
 - **Answer (2026-10-29):** Workers do the Unity work in VMs; the PC runs no
   Editor. So start.cmd keeps 6 GB free when no host Unity is running, and
   J-017's 10 GB when one is. Windows workers start at 4 GB and cap at 8 GB.
+  A Linux worker (1 GB start, 1.9 GB peak on the full core and sandbox
+  checks) may start down to 8 GB free beside an Editor (Andrew, 2026-10-29).
 - **Why:** each VM has a hard cap, so two busy workers (16 GB) plus the
   host (~11 GB) leave about 4 GB of 31 in the worst case; idle they sit at
   4 GB each. The 10 GB came from a host Editor's first build.
