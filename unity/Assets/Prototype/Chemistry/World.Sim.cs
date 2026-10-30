@@ -32,7 +32,7 @@ namespace Chem
         // A tick in slices (StepSome): the same passes over the same cells in the same order as
         // Step, only spread over several calls, so a peer that slices its ticks one way computes
         // exactly the ticks of a peer that slices them another (or not at all). Fire burns, then
-        // springs, water, gas, the weather, raiders and defense, then the timers, as in sim.ts.
+        // springs, water, gas, the weather, raiders, defense and cast meters, then the timers, as in sim.ts.
         enum TickStage { None, Burn, WaterCheck, Springs, Flow, Gas, Rest, Timers, End }
 
         // Row segments or burning cells handled per slice: small enough to stop near a frame's budget.
@@ -84,6 +84,7 @@ namespace Chem
             Tick++;
             logged.Clear();
             strikes.Clear();
+            combosFired.Clear();
             TrimWeatherHistory();
             EndSetWeather();
             Weather = SkyNow();
@@ -111,6 +112,7 @@ namespace Chem
                     TickWeather(tickRows);
                     TickRaiders();
                     TickDefense();
+                    TickCombos();
                     NextStage(TickStage.Timers);
                     return false;
                 case TickStage.End:

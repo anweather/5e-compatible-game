@@ -1,0 +1,43 @@
+{
+  "elements": ["fire", "water", "earth", "air"],
+  "window": 4,
+  "moveFactor": 0.6,
+  "singles": {
+    "fire":  { "name": "Fire Bolt", "spell": "fire-bolt", "shape": "point", "castTicks": 6 },
+    "water": { "name": "Create Water", "spell": "create-water", "shape": "square", "castTicks": 6 },
+    "earth": { "name": "Raise Earth", "spell": "mold-earth-heap", "shape": "square", "castTicks": 6 },
+    "air":   { "name": "Gust of Wind", "spell": "gust-of-wind", "shape": "line", "castTicks": 6 }
+  },
+  "pairs": {
+    "fire": {
+      "fire":  { "name": "Fireball", "spell": "fireball", "shape": "burst", "castTicks": 12, "held": "meteor" },
+      "water": { "name": "Scalding Steam", "spell": "fog-cloud", "shape": "burst", "castTicks": 9, "todo": "A burst of scalding steam; Fog Cloud until there is a steam spell" },
+      "earth": { "name": "Lava Pool", "spell": "fireball", "shape": "burst", "castTicks": 12, "todo": "A pool of lava; Fireball until there is a lava spell" },
+      "air":   { "name": "Flame Wave", "spell": "burning-hands", "shape": "cone", "castTicks": 9, "todo": "Wind-driven fire; Burning Hands until there is a flame wave spell" }
+    },
+    "water": {
+      "fire":  { "name": "Fog Bank", "spell": "fog-cloud", "shape": "burst", "castTicks": 9 },
+      "water": { "name": "Flood", "spell": "create-water", "shape": "square", "castTicks": 9, "todo": "A wave or flood; Create Water until there is a wave spell" },
+      "earth": { "name": "Mud", "spell": "create-water", "shape": "square", "castTicks": 9, "todo": "Ground turned to mud; Create Water until there is a mud spell" },
+      "air":   { "name": "Frost", "spell": "ray-of-frost", "shape": "line", "castTicks": 6 }
+    },
+    "earth": {
+      "fire":  { "name": "Molten Boulder", "spell": "meteor", "shape": "burst", "castTicks": 15, "todo": "A boulder that leaves lava; Meteor until there is a molten boulder spell" },
+      "water": { "name": "Plant Growth", "spell": "plant-growth", "shape": "burst", "castTicks": 9 },
+      "earth": { "name": "Wall of Stone", "spell": "wall-of-stone", "shape": "line", "castTicks": 12 },
+      "air":   { "name": "Dust Storm", "spell": "fog-cloud", "shape": "burst", "castTicks": 9, "todo": "A cloud of dust; Fog Cloud until there is a dust spell" }
+    },
+    "air": {
+      "fire":  { "name": "Lightning", "spell": "shocking-grasp", "shape": "point", "castTicks": 9, "todo": "A lightning bolt; Shocking Grasp until there is a ranged one" },
+      "water": { "name": "Rain Cloud", "spell": "sleet-storm", "shape": "burst", "castTicks": 12, "todo": "A rain cloud or storm; Sleet Storm until there is a rain spell" },
+      "earth": { "name": "Sand Blast", "spell": "gust-of-wind", "shape": "line", "castTicks": 9, "todo": "A blast that leaves sand; Gust of Wind until there is a sand spell" },
+      "air":   { "name": "Whirlwind", "spell": "thunderwave", "shape": "burst", "castTicks": 9, "todo": "A whirlwind; Thunderwave until there is a whirlwind spell" }
+    }
+  },
+  "dpad": [
+    { "name": "Hasten Time", "spell": "hasten-time", "castTicks": 12 },
+    { "name": "Shapeshift", "spell": "shapeshift", "castTicks": 12 },
+    { "name": "Light", "castTicks": 6, "todo": "No Light spell yet, and nothing close, so this slot can't be cast" },
+    { "name": "Control Weather", "spell": "control-weather", "castTicks": 18 }
+  ]
+}

@@ -86,6 +86,7 @@ namespace Chem
                 ["defense"] = SaveDefense(),
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
+            if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
             var made = new Cell();
             var saved = new JArray();
             foreach (var ch in SortedChunks(false))
@@ -156,6 +157,26 @@ namespace Chem
             };
         }
 
+        // A player's cast in progress and grimoire. Only when there are any, so saves without read as they did.
+        static JArray SaveCast(PlayerCast c) => new JArray(c.Player, c.First, c.Second, c.Meter, c.Total, c.Window, c.Slot, c.DpadCasting, new JArray(c.Known));
+
+        void LoadCast(JToken a)
+        {
+            var c = new PlayerCast
+            {
+                Player = (string)a[0],
+                First = (string)a[1],
+                Second = (string)a[2],
+                Meter = (int)a[3],
+                Total = (int)a[4],
+                Window = (int)a[5],
+                Slot = (int)a[6],
+                DpadCasting = (int)a[7],
+            };
+            foreach (var id in a[8]) c.Known.Add((string)id);
+            casts[c.Player] = c;
+        }
+
         void LoadState(JObject s)
         {
             Tick = (int)s["tick"];
@@ -189,6 +210,7 @@ namespace Chem
                     Y1 = (int)field[3],
                 };
             }
+            foreach (var a in s["casts"] ?? new JArray()) LoadCast(a);
             foreach (var o in s["raiders"] ?? new JArray())
             {
                 var at = o["at"];

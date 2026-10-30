@@ -39,6 +39,34 @@ export interface Entity {
 }
 
 export type DefensePhase = 0 | 1 | 2 | 3; // idle, running, won, lost (C#: DefensePhase)
+/** One player's cast state and grimoire (combos.ts; C#: PlayerCast). Integers and ids only. */
+export interface PlayerCast {
+  player: string;
+  /** The loaded elements, in order; null for none. */
+  first: string | null;
+  second: string | null;
+  /** Ticks until the cast goes off, the meter's full length, and ticks left to load a second element. */
+  meter: number;
+  total: number;
+  window: number;
+  /** The d-pad's selected slot, and the slot being cast, or -1. */
+  slot: number;
+  dpadCasting: number;
+  /** The ids of the combos this player has cast, sorted: the grimoire. */
+  known: string[];
+}
+
+/** A meter that reached zero this tick (C#: ComboFired); combo is null for a d-pad spell. */
+export interface ComboFired {
+  player: string;
+  combo: string | null;
+  name: string;
+  spell: string;
+  shape: string | undefined;
+  /** This was the player's first cast of the combo: it just joined the grimoire. */
+  discovered: boolean;
+}
+
 /** The defense field's waves (defense.ts; C#: DefenseState). */
 export interface DefenseState {
   phase: DefensePhase;
@@ -120,6 +148,10 @@ export interface World {
   clockAhead: number;
   /** Control Weather: the weather held, the tick it was cast and the tick it ends (C#: World.WeatherSet). */
   weatherSet: { kind: WeatherKind; from: number; until: number } | null;
+  /** Each player's cast state and grimoire, by player (combos.ts). */
+  casts: Record<string, PlayerCast>;
+  /** The casts that went off in the last tick. */
+  combosFired: ComboFired[];
   /** The defense field's waves, or null before anyone started them (defense.ts). */
   defense: DefenseState | null;
   log: LogEntry[];
@@ -153,6 +185,8 @@ export function createWorld(w: number, h: number, seed = 1): World {
     strikes: [],
     falling: [],
     newMeteors: [],
+    casts: {},
+    combosFired: [],
     nextId: 1,
     wind: null,
     haste: null,
@@ -262,8 +296,13 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  // The defense joins only once started, so older worlds hash as they did.
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : [])]);
+  // The defense and the casts join only once there are any, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : [])]);
+  return fnv1a(s);
+}
+
+/** The FNV-1a of a string, in hex (C#: Fnv1a.Hash). */
+export function fnv1a(s: string): string {
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -325,7 +364,7 @@ export function deserializeWorld(s: WorldSnapshot): World {
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
   // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

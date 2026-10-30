@@ -18,6 +18,7 @@ namespace Chem
             check.Items();
             check.Components();
             check.Groups();
+            check.Combos();
             check.Numbers();
             return check.Errors;
         }
