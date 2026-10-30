@@ -195,6 +195,9 @@ buy progress.
   relay). Prepare everything up to that point, show the screen, and stop.
   Set up remote desktop and any backup account while the user is at the
   machine, not after they've left.
+- **Never stop a worker with unpushed work.** Before stopping one for any
+  reason (usage limit, swapping accounts, memory), commit and push its work
+  in progress to a `wip/` branch. Better: make the stop script do it.
 - **VMs fix memory starving and focus stealing, but they have no GPU.**
   Tests, compiling and batch builds go in VMs; probes, screenshots, clips,
   performance runs and multi-player tests stay on the host.
