@@ -436,3 +436,8 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   today: w1's shock-water, redone on w4. TODO (Workers lane): stop.cmd does
   this itself (commit and push WIP over PowerShell Direct) before shutting
   down, and refuses if the push fails unless -Force is given.
+- 2026-10-29: DONE: the WIP TODO above (21d7df6). stop, sleep and
+  remove-worker push unpushed work as wip/<worker>-<branch> first and refuse
+  unless -Force; rescue.cmd recovers a stopped worker whose account is out
+  of usage. Tested on the host: w3's stop (nothing unpushed) and a rescue of
+  w1 (pushed wip/w1-shock-water).
