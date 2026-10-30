@@ -198,6 +198,7 @@ namespace Chem.Tests
                 "60|info|1|A pillar of earth rises",
                 "60|info|1|Earth fills the pit",
                 "60|info|1|You cast Create Water",
+                "60|info|1|Watered, green shoots push up through the ash",
             }, w.Log.Select(Entry).ToArray());
         }
 
