@@ -48,6 +48,9 @@ public class ItemHolder : MonoBehaviour
     /// <summary>A throw just left the hand: how hard, 0 (a toss) to 1 (a full wind-up), for the arm's follow-through (ThrowPose).</summary>
     public event System.Action<float> Thrown;
 
+    /// <summary>The arm whips through as in a throw, the item staying in the hand: a tool's swing (Pick).</summary>
+    public void Swing(float how) => Thrown?.Invoke(how);
+
     public float WindUp => throwPressedAt < 0f ? 0f : Mathf.Clamp01((Time.time - throwPressedAt) / windUp);
 
     void Awake()

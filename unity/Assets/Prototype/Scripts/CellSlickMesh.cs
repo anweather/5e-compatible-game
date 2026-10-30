@@ -6,8 +6,8 @@ using UnityEngine;
 // over the covered cells with a rounded, wobbly outline (ContourSurface) that
 // fades out at its edge, oil near black, grease a dull yellow. Mud and glass
 // ground wear the same film, thinner: mud a wet, dark brown sheen over its
-// darker paint (CellPaint), glass a pale, glassy glaze over sand. A cover's
-// film wins over its ground's. Rebuilt when a cell's cover or terrain changes.
+// darker paint (CellPaint), glass a pale, glassy glaze over sand, brick a
+// baked red (its courses are decals, CellCrackMesh). A cover's film wins over its ground's. Rebuilt when a cell's cover or terrain changes.
 // Ash is not a film: it is the terrain's charred paint. Ground acid has eaten
 // (ChemGrid.WatchAcid) wears a stain in the same film, a dark, sour green, for
 // a while (Eaten, Expire); a slick there wins over it. A falling star's target
@@ -28,7 +28,8 @@ public sealed class CellSlickMesh
     static readonly Color MudColor = new(0.17f, 0.11f, 0.06f, 0.5f);
     static readonly Color GlassColor = new(0.2f, 0.31f, 0.35f, 0.42f);
     static readonly Color EatenColor = new(0.16f, 0.22f, 0.07f, 0.55f);
-    static readonly Color StarColor = new(1f, 0.45f, 0.08f, 0.7f);
+    static readonly Color StarColor = new(0.95f, 0.2f, 0.03f, 0.8f);
+    static readonly Color BrickColor = new(0.27f, 0.095f, 0.06f, 0.95f);
     const string StarFilm = "star";
 
     readonly ChemGrid grid;
@@ -54,8 +55,8 @@ public sealed class CellSlickMesh
     /// <summary>True for a cover drawn as a film (oil, grease).</summary>
     public static bool IsSlick(string cover) => cover == CoverIds.Oil || cover == CoverIds.Grease;
 
-    /// <summary>True for a terrain drawn with a film (mud, glass).</summary>
-    public static bool IsGlazed(string terrain) => terrain == TerrainIds.Mud || terrain == TerrainIds.Glass;
+    /// <summary>True for a terrain drawn with a film (mud, glass, brick).</summary>
+    public static bool IsGlazed(string terrain) => terrain == TerrainIds.Mud || terrain == TerrainIds.Glass || terrain == TerrainIds.Brick;
 
     /// <summary>The film a cell wears: its cover's (oil, grease), else its ground's (mud, glass), else null.</summary>
     public static string FilmOf(Cell c)
@@ -183,6 +184,7 @@ public sealed class CellSlickMesh
             CoverIds.Grease => GreaseColor,
             TerrainIds.Mud => MudColor,
             TerrainIds.Glass => GlassColor,
+            TerrainIds.Brick => BrickColor,
             StarFilm => StarColor,
             _ => OilColor,
         };

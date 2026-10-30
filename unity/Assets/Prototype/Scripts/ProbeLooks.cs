@@ -7,7 +7,7 @@ using UnityEngine;
 // effects written without a GPU, each staged in the yard on a clear noon and
 // framed for one picture: rust, sand and glass, glow balls breaking, ice shards,
 // mud, hot metal, oil on water and fire across it, the shock flash, Acid Splash,
-// window glass. It edits the yard's cells directly, so one script takes the
+// window glass, cracking on the first hard hit. It edits the yard's cells directly, so one script takes the
 // before and the after. Beside the pictures it checks what each effect does to
 // the wizard and the cells.
 public class LooksProbe : ProbeScenario
@@ -272,7 +272,11 @@ public class LooksProbe : ProbeScenario
             WindowPanes.HardestHit = 0f;
             yield return HitWith(crate, at, facing, 8f);
             Metric("crate_hit_ns_8ms", WindowPanes.HardestHit);
-            Check("hard_hit_breaks_pane", World.At(cell.x, cell.y).T != TerrainIds.Pane, $"the cell is {World.At(cell.x, cell.y).T} after 8 m/s");
+            Check("hard_hit_cracks_pane", World.At(cell.x, cell.y).Cracked != 0, $"the cell is {World.At(cell.x, cell.y).T}, cracked {World.At(cell.x, cell.y).Cracked}");
+            yield return Wait(0.6f);
+            // Harder: however the crate tumbles, a flat landing spreads the first one's 8 m/s near the threshold.
+            yield return HitWith(crate, at, facing, 13f);
+            Check("second_hit_breaks_pane", World.At(cell.x, cell.y).T != TerrainIds.Pane, $"the cell is {World.At(cell.x, cell.y).T} after a second hit at 13 m/s");
         }
         if (World.At(cell.x, cell.y).T == TerrainIds.Pane)
             ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, cell.x, cell.y, "", ThingId.None));
@@ -281,6 +285,21 @@ public class LooksProbe : ProbeScenario
         yield return null;
         yield return Wait(2.5f);
         Shot("window-gap");
+        yield return null;
+        yield return null;
+        // Another pane on its first hit, with no crate in the way: the web on the glass.
+        var others = panes.panes.Where(p => p.at != pane.at && Near(panes.transform.TransformPoint(p.at), out var c) && c != cell && Clear(panes.transform.TransformPoint(p.at), panes.transform.TransformDirection(p.facing))).ToList();
+        if (others.Count == 0) yield break;
+        var other = others[0];
+        var otherAt = panes.transform.TransformPoint(other.at);
+        Near(otherAt, out var otherCell);
+        ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, otherCell.x, otherCell.y, "", ThingId.None));
+        yield return Wait(0.3f);
+        var otherFacing = panes.transform.TransformDirection(other.facing);
+        Cut(otherAt + otherFacing * 2.4f + Vector3.Cross(Vector3.up, otherFacing) * 0.8f + Vector3.up * 0.2f, otherAt);
+        yield return Wait(0.3f);
+        Check("first_hit_cracks_glass", World.At(otherCell.x, otherCell.y).Cracked != 0, $"cracked {World.At(otherCell.x, otherCell.y).Cracked}");
+        Shot("window-crack");
         yield return null;
         yield return null;
     }
@@ -321,24 +340,5 @@ public class LooksProbe : ProbeScenario
         Shot(label);
         yield return null;
         yield return null;
-    }
-
-    Vector3 Mid(Vector2Int o, int w, int h)
-    {
-        var a = grid.CellCenter(o.x, o.y);
-        var b = grid.CellCenter(o.x + w - 1, o.y + h - 1);
-        var mid = (a + b) / 2f;
-        mid.y = grid.GroundAt(mid);
-        return mid;
-    }
-
-    void Patch(Vector2Int o, int w, int h, string terrain)
-    {
-        for (int y = 0; y < h; y++)
-            for (int x = 0; x < w; x++)
-            {
-                World.Paint(o.x + x, o.y + y, terrain);
-                World.SetCover(o.x + x, o.y + y, null);
-            }
     }
 }

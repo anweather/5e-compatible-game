@@ -5,8 +5,10 @@ Shader "Prototype/WindowGlass"
     // glows through it. A shattered pane's vertices turn opaque and dark (alpha 1), the gap it left,
     // and show no reflection. One pass, no textures; both faces, so it reads from inside a wrecked house.
     // uv.z draws a spiderweb crack (CrackWeb.hlsl): 0 none, 1 and up over the glass, 2 and up the web
-    // alone, in the vertex colour (a cell's decal, CellCrackMesh); its fraction seeds the web.
-    Properties { }
+    // alone, in the vertex colour (a cell's decal, CellCrackMesh), 3 and up a brick cell's courses
+    // instead; its fraction seeds the web.
+    // _DepthBias pulls a cell's decal forward, so it isn't cut by a surface that bulges through it.
+    Properties { _DepthBias ("Depth bias", Float) = 0 }
     SubShader
     {
         Tags { "RenderType" = "Transparent" "Queue" = "Transparent" "RenderPipeline" = "UniversalPipeline" }
@@ -17,6 +19,7 @@ Shader "Prototype/WindowGlass"
             Blend SrcAlpha OneMinusSrcAlpha
             ZWrite Off
             Cull Off
+            Offset [_DepthBias], [_DepthBias]
 
             HLSLPROGRAM
             #pragma target 3.5
@@ -70,7 +73,7 @@ Shader "Prototype/WindowGlass"
                 half3 color = input.color.rgb * lerp(half3(1, 1, 1), SampleSH(n), glass);
                 color = lerp(color, sky, fresnel * 0.75 * glass) + light.color * glint * 2.0 * glass;
                 half alpha = lerp(1.0, saturate(input.color.a + fresnel * 0.6 + glint), glass);
-                half web = input.uv.z >= 1.0 ? CrackWeb(input.uv.xy, frac(input.uv.z)) : 0.0;
+                half web = input.uv.z >= 3.0 ? BrickCourses(input.uv.xy) : input.uv.z >= 1.0 ? CrackWeb(input.uv.xy, frac(input.uv.z)) : 0.0;
                 bool decal = input.uv.z >= 2.0;
                 color = lerp(color, decal ? input.color.rgb : half3(0.92, 0.96, 1.0), web);
                 alpha = decal ? web : max(alpha, web * 0.9);

@@ -157,6 +157,14 @@ ground for an area or wall.
 - **Not yet:** tap, hold and ground shapes (every cast goes off at charge 1, from the crosshair);
   other players' orbs aren't drawn, only their casts.
 
+**The looks (UX pass 2, 2026-10-30):** each drawn from the core, GPU-first, and staged by the
+`spelllooks` probe: Forge's sparks and brick's courses, Falling Star's mark and a small meteor timed
+to `World.Stars`, Whirlwind's funnel tinted by what it carries, dust and rain clouds as soft
+billboards (`FogBank`) with rain from one particle system, lava as a contour mesh with glowing
+cracks that close as it cools (`CellLavaMesh`), Light as a pool of real lights (`CellLightPool`),
+Sand Blast's jet, the pick's swing and chips, and frozen raiders in ice, split when cracked.
+Reel clip: `spell-chain.mp4`.
+
 ## Open
 - Three-element combos: held back as a later mastery layer.
 - What the grimoire shows for a found combo (name, elements in order,

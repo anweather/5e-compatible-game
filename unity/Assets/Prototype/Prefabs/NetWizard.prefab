@@ -572,6 +572,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WizardOutfit
   material: {fileID: 2100000, guid: 1c2f7c809517e4946a98211dcf83ad02, type: 2}
+  faceShader: {fileID: 4800000, guid: d352c809965ea08448db937a3a82493a, type: 3}
 --- !u!114 &1708091964083407250
 MonoBehaviour:
   m_ObjectHideFlags: 0

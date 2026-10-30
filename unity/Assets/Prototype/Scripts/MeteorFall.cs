@@ -11,7 +11,8 @@ using UnityEngine;
 // camera that fades with distance. The chemistry happens on landing
 // (onArrive); this is only the show. If a caster is given and is destroyed in
 // flight (the solo wizard when the game goes online) it fizzles, like a
-// SpellProjectile.
+// SpellProjectile. Falling Star is a small one (size under 1), lands in a second
+// and starts from the core's World.Stars (ChemGrid.RenderStars), so it has no onArrive.
 public class MeteorFall : MonoBehaviour
 {
     /// <summary>How long a meteor takes to fall (the spell lands this long after the cast).</summary>
@@ -22,7 +23,7 @@ public class MeteorFall : MonoBehaviour
     static CinemachineImpulseSource shaker;
 
     Vector3 from, to;
-    float t, seconds = Seconds;
+    float t, seconds = Seconds, size = 1f;
     Action onArrive;
     UnityEngine.Object caster;
     bool hasCaster;
@@ -34,7 +35,7 @@ public class MeteorFall : MonoBehaviour
     /// Brings a meteor down on <paramref name="target"/>, coming in from beyond it as seen from
     /// <paramref name="viewer"/> (the caster), so it streaks across their view.
     /// </summary>
-    public static void Launch(Vector3 target, Vector3 viewer, SpellVisuals.Entry look, Action onArrive, UnityEngine.Object caster, float seconds = Seconds)
+    public static void Launch(Vector3 target, Vector3 viewer, SpellVisuals.Entry look, Action onArrive, UnityEngine.Object caster, float seconds = Seconds, float size = 1f)
     {
         var ahead = target - viewer;
         ahead.y = 0f;
@@ -43,7 +44,10 @@ public class MeteorFall : MonoBehaviour
         var side = Quaternion.Euler(0f, (target.x + target.z) % 2f < 1f ? 35f : -35f, 0f) * ahead.normalized;
         var go = new GameObject("Meteor");
         var m = go.AddComponent<MeteorFall>();
-        m.from = target + side * Reach + Vector3.up * Height;
+        m.size = size;
+        // A small one comes down steeply, near enough to see.
+        float near = size < 1f ? size : 1f;
+        m.from = target + side * (Reach * size * near) + Vector3.up * (Height * size * Mathf.Max(near, 0.5f));
         m.to = target;
         m.look = look;
         m.onArrive = onArrive;
@@ -70,7 +74,7 @@ public class MeteorFall : MonoBehaviour
             ? Instantiate(stones[0], transform)
             : Primitives.Visual(PrimitiveType.Sphere);
         body.transform.SetParent(transform, false);
-        body.transform.localScale = RockSize * (stones != null && stones.Length > 0 ? 1.4f : 1f) * Vector3.one;
+        body.transform.localScale = RockSize * size * (stones != null && stones.Length > 0 ? 1.4f : 1f) * Vector3.one;
         foreach (var r in body.GetComponentsInChildren<Renderer>()) r.sharedMaterial = hot;
         rock = body.transform;
 
@@ -78,14 +82,14 @@ public class MeteorFall : MonoBehaviour
         {
             var flames = Instantiate(look.projectile, transform);
             SpellVisuals.NoColliders(flames);
-            flames.transform.localScale = Vector3.one * 3f;
+            flames.transform.localScale = Vector3.one * (3f * size);
         }
-        Trail("Fire trail", trail, 0.9f, 2.4f, 0f, new Gradient
+        Trail("Fire trail", trail, 0.9f, 2.4f * size, 0f, new Gradient
         {
             colorKeys = new[] { new GradientColorKey(new Color(1f, 0.95f, 0.8f), 0f), new GradientColorKey(new Color(1f, 0.5f, 0.12f), 0.35f), new GradientColorKey(new Color(0.6f, 0.12f, 0.04f), 1f) },
             alphaKeys = new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.4f), new GradientAlphaKey(0f, 1f) },
         });
-        Trail("Smoke trail", smoke, 3f, 1.5f, 5f, new Gradient
+        Trail("Smoke trail", smoke, 3f, 1.5f * size, 5f * size, new Gradient
         {
             colorKeys = new[] { new GradientColorKey(new Color(0.35f, 0.3f, 0.28f), 0f), new GradientColorKey(new Color(0.2f, 0.19f, 0.18f), 1f) },
             alphaKeys = new[] { new GradientAlphaKey(0.7f, 0f), new GradientAlphaKey(0f, 1f) },
@@ -95,7 +99,7 @@ public class MeteorFall : MonoBehaviour
         glow.transform.SetParent(transform, false);
         glow.type = LightType.Point;
         glow.color = new Color(1f, 0.55f, 0.2f);
-        glow.range = 60f;
+        glow.range = 60f * size;
         glow.intensity = 4f;
     }
 
@@ -145,23 +149,31 @@ public class MeteorFall : MonoBehaviour
         onArrive = null;
         if (rock != null) Destroy(rock.gameObject);
         foreach (var ps in GetComponentsInChildren<ParticleSystem>()) ps.Stop(true, ParticleSystemStopBehavior.StopEmitting);
-        Blast(look?.impact, 2.4f);
-        Blast(look?.afterImpact, 2f);
-        Shake(to);
+        if (size >= 1f)
+        {
+            Blast(look?.impact, 2.4f);
+            Blast(look?.afterImpact, 2f);
+            Shake(to);
+        }
+        else
+        {
+            BurstFx.Play(BurstFx.Kind.Flash, to + Vector3.up * 0.2f, 4f * size);
+            BurstFx.Play(BurstFx.Kind.Chips, to, 12f * size, null, new Color(0.32f, 0.26f, 0.2f));
+        }
         var cam = Camera.main;
         float distance = cam != null ? Vector3.Distance(cam.transform.position, to) : 50f;
         var sky = FindAnyObjectByType<SkyLight>();
-        if (sky != null) sky.Flash(Mathf.Lerp(0.8f, 0.2f, distance / 400f));
+        if (sky != null) sky.Flash(Mathf.Lerp(0.8f, 0.2f, distance / 400f) * size);
 
         glow.transform.SetParent(null, true);
-        glow.transform.position = to + Vector3.up * 6f;
-        glow.range = 90f;
+        glow.transform.position = to + Vector3.up * (6f * size);
+        glow.range = 90f * size;
         glow.color = new Color(1f, 0.7f, 0.4f);
         for (float s = 0f; s < 1.6f; s += Time.deltaTime)
         {
             float f = 1f - s / 1.6f;
             // A white-hot flash, then the fire's glow dying down.
-            glow.intensity = s < 0.08f ? 120f : 60f * f * f;
+            glow.intensity = (s < 0.08f ? 120f : 60f * f * f) * size;
             yield return null;
         }
         Destroy(glow.gameObject);

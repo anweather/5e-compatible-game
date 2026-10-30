@@ -2,9 +2,11 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-// Dresses the robot as a wizard (docs/WORLD_LIFE.md, "Wizards"): a pointed hat
-// with a brim and a band, a beard, a robe that flares to the shins, bell
-// sleeves and sometimes a staff in the left hand, all from a WizardLook. The
+// Dresses the robot as a wizard (docs/WORLD_LIFE.md, "Wizards"): a black fuzzy
+// face with two red slits for eyes (Prototype/WizardFace), a pointed hat or a
+// cowl, a robe that flares to the shins, sleeves and sometimes a staff in the
+// left hand, all from a WizardLook. Under the clothes the robot is gone but for
+// its hands, shins and feet (HideCovered), so nothing clips through. The
 // parts are flat-shaded MeshKit meshes drawn with VillageLit (colours in their
 // vertices; the occluder dither cuts them like the village), each hung on one
 // of the Starter Assets rig's bones, so the animations, the casting gestures
@@ -20,9 +22,17 @@ public class WizardOutfit : MonoBehaviour
     const string SeedKey = "wizard.look";
     const int SectionOrder = 480; // the Esc menu: before Controls
     const int Sides = 12;
+    // The collar up the neck, in the shade under the face.
+    const float NeckShade = 0.3f;
+    // The face's middle in the head bone's space, and its size (the robot's head was 0.22 m wide):
+    // a little taller than wide, down to the collar.
+    static readonly Vector3 FaceAt = new(0f, 0.055f, 0.015f), FaceSize = new(0.25f, 0.31f, 0.25f);
+    static Material sharedFace;
 
     [Tooltip("What the parts are drawn with (VillageLit: colours in the vertices).")]
     public Material material;
+    [Tooltip("What the face is drawn with (Prototype/WizardFace); the builder sets it, which puts it in the build.")]
+    public Shader faceShader;
 
     /// <summary>The look worn now (null until dressed).</summary>
     public WizardLook Look { get; private set; }
@@ -41,7 +51,34 @@ public class WizardOutfit : MonoBehaviour
         }
     }
 
-    void Awake() => animator = GetComponent<Animator>();
+    void Awake()
+    {
+        animator = GetComponent<Animator>();
+        HideCovered();
+    }
+
+    // The robot under the clothes (Andrew: no more clipping). On the skin only, each bone the clothes
+    // cover is swapped for a stand-in of no size at its joint, so whatever it moved shrinks away inside
+    // the cloth. The rig itself and all its animation and IK carry on as they were.
+    void HideCovered()
+    {
+        if (animator == null || !animator.isHuman) return;
+        var kept = new[] { Bone(HumanBodyBones.LeftHand), Bone(HumanBodyBones.RightHand), Bone(HumanBodyBones.LeftLowerLeg), Bone(HumanBodyBones.RightLowerLeg) };
+        foreach (var skin in GetComponentsInChildren<SkinnedMeshRenderer>(true))
+        {
+            var bones = skin.bones;
+            for (int i = 0; i < bones.Length; i++)
+            {
+                var bone = bones[i];
+                if (bone == null || System.Array.Exists(kept, k => k != null && bone.IsChildOf(k))) continue;
+                var none = new GameObject("Hidden").transform;
+                none.SetParent(bone, false);
+                none.localScale = Vector3.zero;
+                bones[i] = none;
+            }
+            skin.bones = bones;
+        }
+    }
 
     void OnEnable() => PauseMenu.AddSection(DrawSection, SectionOrder);
 
@@ -52,6 +89,7 @@ public class WizardOutfit : MonoBehaviour
     {
         if (WizardRig.FindLocal() != gameObject) return;
         if (PauseMenu.Button("New look", PauseMenu.ButtonStyle)) Reroll();
+        if (Look != null && PauseMenu.Button($"Headwear: {Look.Headwear}", PauseMenu.ButtonStyle)) NextHeadwear();
     }
 
     IEnumerator Start()
@@ -71,9 +109,16 @@ public class WizardOutfit : MonoBehaviour
     }
 
     /// <summary>The local player draws a new look: saved, worn, and sent to everyone online.</summary>
-    public void Reroll()
+    public void Reroll() => Keep(WizardLook.NewSeed());
+
+    /// <summary>The local player changes what's on the wizard's head, and only that.</summary>
+    public void NextHeadwear()
     {
-        int seed = WizardLook.NewSeed();
+        if (Look != null) Keep(WizardLook.NextHeadwear(Look.Seed));
+    }
+
+    void Keep(int seed)
+    {
         PlayerPrefs.SetInt(SeedKey, seed);
         PlayerPrefs.Save();
         Wear(seed);
@@ -89,8 +134,9 @@ public class WizardOutfit : MonoBehaviour
         Look = WizardLook.From(seed);
         if (animator == null || material == null) return;
         var kit = new MeshKit { Occlusion = 0f };
-        Hat(kit, Bone(HumanBodyBones.Head));
-        Beard(Bone(HumanBodyBones.Head));
+        var head = Bone(HumanBodyBones.Head);
+        Face(head);
+        Headwear(kit, head);
         var chest = Bone(HumanBodyBones.Chest);
         if (RigidRobe) Bodice(kit, chest != null ? chest : Bone(HumanBodyBones.Spine));
         else SkinnedBodice();
@@ -187,9 +233,61 @@ public class WizardOutfit : MonoBehaviour
 
     // --- the parts, each in its bone's own space (metres; the rig's head, chest and hips stand upright) ---
 
-    void Hat(MeshKit kit, Transform head)
+    // A black fuzzy ball where the robot's head was, its eyes in the shader.
+    void Face(Transform head)
     {
         if (head == null) return;
+        var face = Primitives.Visual(PrimitiveType.Sphere, "Outfit face");
+        face.transform.SetParent(head, false);
+        face.transform.SetLocalPositionAndRotation(FaceAt, Quaternion.identity);
+        face.transform.localScale = FaceSize;
+        if (sharedFace == null) sharedFace = faceShader != null ? new Material(faceShader) : UrpMaterials.NewLit("Wizard face", Color.black, 0f);
+        face.GetComponent<Renderer>().sharedMaterial = sharedFace;
+        parts.Add(face);
+    }
+
+    void Headwear(MeshKit kit, Transform head)
+    {
+        if (head == null) return;
+        if (Look.Headwear == WizardLook.HeadwearKind.Cowl) Cowl(kit, head);
+        else Hat(kit, head);
+    }
+
+    // A hood: rings from the shoulders up over the head to a soft point at the back, open in front
+    // of the face, dark inside.
+    void Cowl(MeshKit kit, Transform head)
+    {
+        // Each ring: its height over the head bone, its radius, how far back it sits, and whether the front is open.
+        var rings = new (float y, float r, float back, bool open)[]
+        {
+            (-0.17f, 0.21f, 0.02f, false), (-0.09f, 0.175f, 0.015f, false), (-0.03f, 0.17f, 0.02f, true), (0.08f, 0.175f, 0.025f, true),
+            (0.17f, 0.15f, 0.04f, true), (0.235f, 0.1f, 0.075f, true), (0.27f, 0.05f, 0.12f, false), (0.285f, 0.006f, 0.17f, false),
+        };
+        const int Round = 20;
+        const float OpenHalf = 1.05f; // radians either side of straight ahead
+        Vector3 At(int ring, int k)
+        {
+            float a = 2f * Mathf.PI * k / Round;
+            var (y, r, back, _) = rings[ring];
+            return new Vector3(Mathf.Sin(a) * r, y, Mathf.Cos(a) * r - back);
+        }
+        var inside = Look.Hat * 0.25f;
+        for (int i = 0; i + 1 < rings.Length; i++)
+            for (int k = 0; k < Round; k++)
+            {
+                float middle = Mathf.Abs(Mathf.DeltaAngle(0f, (k + 0.5f) * 360f / Round)) * Mathf.Deg2Rad;
+                if (rings[i].open && rings[i + 1].open && middle < OpenHalf) continue;
+                Vector3 a = At(i, k), b = At(i, k + 1), c = At(i + 1, k + 1), d = At(i + 1, k);
+                var outward = (a + b + c + d) / 4f - new Vector3(0f, (rings[i].y + rings[i + 1].y) / 2f, -rings[i].back);
+                kit.Quad(a, b, c, d, Look.Hat, outward);
+                kit.Quad(a, b, c, d, inside, -outward);
+            }
+        Hang(kit, head, "hat");
+        hat = Last("Outfit hat");
+    }
+
+    void Hat(MeshKit kit, Transform head)
+    {
         var look = Look;
         // Down over the head, the brim at the brow: the rig's head rises 0.15 m above its bone, 0.11 m round.
         float crown = 0.09f;
@@ -211,15 +309,6 @@ public class WizardOutfit : MonoBehaviour
         Tube(kit, spine, radii, look.Hat, Ends.End);
         Hang(kit, head, "hat");
         hat = Last("Outfit hat");
-    }
-
-    // The beard: tufts along the jaw on spring chains (WizardBeard).
-    void Beard(Transform head)
-    {
-        var (mesh, springs) = WizardBeard.Build(Look, transform, head, new[] { Bone(HumanBodyBones.UpperChest), Bone(HumanBodyBones.Chest) }, material);
-        if (mesh == null) return;
-        parts.Add(mesh);
-        parts.Add(springs);
     }
 
     // The bodice as clothing, not a shell (Andrew: "rough"): slim elliptical rings from the waist up
@@ -265,7 +354,7 @@ public class WizardOutfit : MonoBehaviour
         var shoulders = (centre: rings[4].at.x, half: rings[4].half, y: shoulderY, left: Index(leftArm), right: Index(rightArm));
         var tube = new SkinnedTube.Ring[rings.Length];
         for (int i = 0; i < rings.Length; i++)
-            tube[i] = new SkinnedTube.Ring { at = rings[i].at, along = Vector3.up, half = rings[i].half, depth = rings[i].depth, colour = i >= rings.Length - 2 ? Look.Trim : Look.Robe };
+            tube[i] = new SkinnedTube.Ring { at = rings[i].at, along = Vector3.up, half = rings[i].half, depth = rings[i].depth, colour = i >= rings.Length - 2 ? Look.Robe * NeckShade : Look.Robe };
         parts.Add(SkinnedTube.Make(root, "Outfit bodice", tube, 16, bones, (p, _) => Weigh(p, heights, ringBones, shoulders), material));
     }
 

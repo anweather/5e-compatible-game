@@ -233,9 +233,9 @@ public partial class ChemGrid
     // reduced emission; a full effect per cell turns into a wall.
     void RenderGas(View v, Cell c, int x, int y, Vector3 center, float ground, bool showFx)
     {
-        // Fog Cloud's fog is a bank of soft billboards on every square of it (FogBank), not an effect.
-        bool fog = c.Gas == GasIds.Fog && c.GasAmt > 0;
-        if (fog || v.fogged) Fog.Set(y * World.W + x, center, ground, fog ? c.GasAmt : 0, World.Rules.Sim.Gas.MaxAmount);
+        // Fog, dust and rain clouds are a bank of soft billboards on every square of them (FogBank), not an effect.
+        bool fog = c.GasAmt > 0 && (c.Gas == GasIds.Fog || c.Gas == GasIds.Dust || c.Gas == GasIds.Cloud);
+        if (fog || v.fogged) Fog.Set(y * World.W + x, center, ground, fog ? c.GasAmt : 0, World.Rules.Sim.Gas.MaxAmount, c.Gas);
         v.fogged = fog;
         string kind = c.Gas != null && c.GasAmt > 0 && !fog ? c.Gas : null;
         var prefab = GasPrefab(kind);

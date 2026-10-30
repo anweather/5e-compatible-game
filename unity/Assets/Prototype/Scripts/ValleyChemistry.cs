@@ -250,7 +250,7 @@ public partial class ValleyChemistry : MonoBehaviour
         }
         if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorched.Add(key);
         // Plant Growth: green ground again, and a sapling grown into a tree is drawn by its dressing (Grown).
-        if (to == TerrainIds.Sprouts || to == TerrainIds.Grass || to == TerrainIds.Sapling) scorched.Remove(key);
+        if (to == TerrainIds.Sprouts || to == TerrainIds.Grass || to == TerrainIds.Sapling || to == TerrainIds.Sand) scorched.Remove(key);
         if (from == TerrainIds.Sapling && to == TerrainIds.Tree) grown.Add(key);
         // A wall that burned out is no longer alight (the core puts the fire out as it turns to rubble),
         // but it leaves ash; one that caved in under earth shaping doesn't.

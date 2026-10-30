@@ -91,6 +91,12 @@ public class ComboProbe : ProbeScenario
     // Walking at the rules' factor while the meter drains.
     IEnumerator Slowed()
     {
+        // The first cast left mud (water then earth), which would slow the walk too.
+        var here = grid.CellAt(wizard.transform.position);
+        const int Walked = 14;
+        for (int y = here.y - Walked; y <= here.y + Walked; y++)
+            for (int x = here.x - Walked; x <= here.x + Walked; x++)
+                if (World.InBounds(x, y) && World.At(x, y).T == TerrainIds.Mud) World.Paint(x, y, TerrainIds.Dirt);
         var from = wizard.transform.position;
         InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
         yield return Wait(0.8f);

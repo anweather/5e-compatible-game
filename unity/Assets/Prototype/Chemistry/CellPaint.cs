@@ -104,6 +104,9 @@ namespace Chem
             ["sand"] = SandMix,
             ["glass"] = SandMix,
             ["mud"] = MudMix,
+            ["brick"] = RockMix,
+            ["lava"] = CharredMix,
+            ["lava-pool"] = CharredMix,
         };
 
         /// <summary>

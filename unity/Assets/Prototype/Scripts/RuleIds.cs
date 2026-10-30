@@ -32,6 +32,14 @@ public static class SpellIds
     public const string SpikeGrowth = "spike-growth";
     public const string Shapeshift = "shapeshift";
     public const string AcidSplash = "acid-splash";
+    public const string Forge = "forge";
+    public const string FallingStar = "falling-star";
+    public const string Whirlwind = "whirlwind";
+    public const string LavaPool = "lava-pool";
+    public const string RainCloud = "rain-cloud";
+    public const string SandBlast = "sand-blast";
+    public const string DustStorm = "dust-storm";
+    public const string Light = "light";
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
@@ -106,6 +114,8 @@ public static class TerrainIds
     public const string LogWall = "logwall";
     public const string Pane = "pane";
     public const string Stone = "stone";
+    public const string Brick = "brick";
+    public const string Lava = "lava", LavaPool = "lava-pool";
     public const string Rock = "rock";
     public const string Wood = "wood";
     public const string Sprouts = "sprouts";
@@ -121,6 +131,7 @@ public static class CoverIds
     public const string Snow = "snow";
     public const string Snowbank = "snowbank";
     public const string Thorns = "thorns";
+    public const string Embers = "embers";
 }
 
 /// <summary>Gas ids, as in rules/materials.json.</summary>
@@ -129,6 +140,8 @@ public static class GasIds
     public const string Steam = "steam";
     public const string Smoke = "smoke";
     public const string Fog = "fog";
+    public const string Dust = "dust";
+    public const string Cloud = "cloud";
 }
 
 /// <summary>The defense field's raiders (entities with a "raider" row), as in rules/entities.json.</summary>

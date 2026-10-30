@@ -3,7 +3,7 @@ using UnityEngine;
 
 // The wizard's vitals on the HUD (EventLog draws it), in Andrew's layout
 // (docs/SPELL_COMBOS.md): a portrait in the top left corner (a placeholder: the
-// wizard's hat, face and robe in its look's colours) with health and magic
+// wizard's headwear, black face and red eyes, and robe in its look's colours) with health and magic
 // stacked to its right; and stamina as a green ring round the crosshair that
 // starts full and drains, shown only while it's in use (sprinting, swimming,
 // rolling, or not yet full again) and faded out a moment after, BotW-style.
@@ -18,7 +18,7 @@ public sealed class VitalsHud
     const float FadeRate = 4f, Linger = 0.8f;
 
     static readonly Color HealthColor = new(0.85f, 0.25f, 0.25f), StaminaColor = new(0.3f, 0.9f, 0.35f), MagicColor = new(0.35f, 0.55f, 1f);
-    static readonly Color Skin = new(0.86f, 0.72f, 0.6f), Frame = new(0f, 0f, 0f, 0.55f), Unknown = new(0.2f, 0.25f, 0.5f);
+    static readonly Color FaceColor = new(0.02f, 0.02f, 0.025f), EyeColor = new(1f, 0.1f, 0.06f), Frame = new(0f, 0f, 0f, 0.55f), Unknown = new(0.2f, 0.25f, 0.5f);
 
     GameObject wizard;
     Vitals vitals;
@@ -56,7 +56,7 @@ public sealed class VitalsHud
         move = inputs != null ? WizardRig.Field(inputs, "move", isPublic: true) : null;
     }
 
-    // The placeholder portrait: a framed square with the wizard's hat over a face over its robe.
+    // The placeholder portrait: a framed square with the wizard's headwear over its face over its robe.
     void Portrait(Rect r)
     {
         var look = outfit != null ? outfit.Look : null;
@@ -67,11 +67,16 @@ public sealed class VitalsHud
         Fill(inner, Color.Lerp(robe, Color.black, 0.4f));
         float w = inner.width, h = inner.height;
         Fill(new Rect(inner.x + w * 0.2f, inner.y + h * 0.62f, w * 0.6f, h * 0.38f), robe);
-        Fill(new Rect(inner.x + w * 0.32f, inner.y + h * 0.36f, w * 0.36f, h * 0.28f), Skin);
-        if (look != null && look.BeardLength > 0f) Fill(new Rect(inner.x + w * 0.36f, inner.y + h * 0.52f, w * 0.28f, h * 0.22f), Opaque(look.Beard));
-        Fill(new Rect(inner.x + w * 0.18f, inner.y + h * 0.32f, w * 0.64f, h * 0.06f), hat);
-        Fill(new Rect(inner.x + w * 0.36f, inner.y + h * 0.16f, w * 0.28f, h * 0.17f), hat);
-        Fill(new Rect(inner.x + w * 0.44f, inner.y + h * 0.04f, w * 0.12f, h * 0.13f), hat);
+        var face = new Vector2(inner.x + w * 0.5f, inner.y + h * 0.48f);
+        bool cowl = look != null && look.Headwear == WizardLook.HeadwearKind.Cowl;
+        if (cowl) HudDraw.Disc(face + new Vector2(0f, -h * 0.03f), w * 0.31f, hat);
+        HudDraw.Disc(face, w * 0.2f, FaceColor);
+        Fill(new Rect(face.x - w * 0.09f, face.y - h * 0.07f, w * 0.03f, h * 0.15f), EyeColor);
+        Fill(new Rect(face.x + w * 0.06f, face.y - h * 0.07f, w * 0.03f, h * 0.15f), EyeColor);
+        if (cowl) return;
+        Fill(new Rect(inner.x + w * 0.18f, inner.y + h * 0.3f, w * 0.64f, h * 0.06f), hat);
+        Fill(new Rect(inner.x + w * 0.36f, inner.y + h * 0.14f, w * 0.28f, h * 0.17f), hat);
+        Fill(new Rect(inner.x + w * 0.44f, inner.y + h * 0.02f, w * 0.12f, h * 0.13f), hat);
     }
 
     // Stamina round the crosshair while it's in use, fading in and out.

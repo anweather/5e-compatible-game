@@ -30,6 +30,7 @@ public partial class DefenseField : ICreatureGround
         public CreatureState state;
         public int hp, maxHp;
         public Raider raider;
+        public bool cracked;
     }
 
     readonly Dictionary<int, Shown> shown = new();
@@ -141,11 +142,35 @@ public partial class DefenseField : ICreatureGround
             int need = used + b.Segments.Length;
             if (instances.Length < need) System.Array.Resize(ref instances, Mathf.NextPowerOfTwo(need));
             animator.Evaluate(b, s.state, 0, this, instances, used);
+            Frost(s, used, need);
             used = need;
             centre = s.at;
             DrawnRaiders++;
         }
         drawer.Draw(instances, used, centre);
+    }
+
+    // A frozen raider's segments in ice; cracked, split into darker and paler pieces, with a spit of
+    // shards as it happens. GPU-first: only the colours of the instances it is drawn with.
+    void Frost(Shown s, int from, int to)
+    {
+        var sim = World.Rules.Sim;
+        if (s.raider == null || sim.ShatterWhen == null || s.raider.StatusOf(sim.ShatterWhen) <= 0)
+        {
+            s.cracked = false;
+            return;
+        }
+        bool cracked = s.raider.StatusOf(World.CrackedStatus) > 0;
+        if (cracked && !s.cracked) ShardBurst.At(s.at + Vector3.up * 0.5f, new Color(0.7f, 0.88f, 1f), 16);
+        s.cracked = cracked;
+        var ice = new float3(0.42f, 0.66f, 0.95f);
+        for (int i = from; i < to; i++)
+        {
+            var c = instances[i].Color;
+            var rgb = math.lerp(c.xyz, ice, 0.7f);
+            if (cracked) rgb *= (i - from) % 3 == 0 ? 1.7f : (i - from) % 3 == 1 ? 0.4f : 0.9f;
+            instances[i].Color = new float4(rgb, c.w);
+        }
     }
 
     CreatureBody Body(int kind) => bodies != null && kind >= 0 && kind < bodies.Length ? bodies[kind] : null;

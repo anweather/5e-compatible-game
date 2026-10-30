@@ -28,6 +28,8 @@ public partial class ChemGrid
     public Material waterMaterial;
     [Tooltip("Optional: the material of oil and grease films (tinted by vertex colours). One is made at runtime if missing.")]
     public Material slickMaterial;
+    [Tooltip("What lava is drawn with (Prototype/CellLava); the builder sets it, which puts it in the build.")]
+    public Shader lavaShader;
     [Tooltip("Optional: rock models a raised wall is built of, one per square, sized to cover its face (CellDressing). Without them, rough shapes stand in.")]
     public GameObject[] wallRocks;
     [Tooltip("Optional: smaller stones set on a raised wall's top to break its line.")]
@@ -49,6 +51,9 @@ public partial class ChemGrid
         public int heatLevel;
     }
 
+    // Lights from the Light spell at once, however many cells are lit.
+    const int MaxSpellLights = 8;
+
     View[] views;
     readonly MaterialCache materials = new();
     CellDressing dressings;
@@ -56,6 +61,8 @@ public partial class ChemGrid
     CellWaterMesh waterSurface;
     CellSlickMesh slicks;
     CellCrackMesh cracks;
+    CellLavaMesh lava;
+    CellLightPool spellLights;
     CellFxTexture cellFx;
     CellThorns thornClumps;
     FireLightPool fireLights;
@@ -71,8 +78,12 @@ public partial class ChemGrid
             materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f));
         slicks?.Destroy();
         cracks?.Destroy();
+        lava?.Destroy();
+        spellLights?.Destroy();
         slicks = new CellSlickMesh(this, slickMaterial != null ? slickMaterial : materials.Slick());
         cracks = new CellCrackMesh(this);
+        lava = new CellLavaMesh(this, lavaShader != null ? lavaShader : Shader.Find("Prototype/CellLava"));
+        spellLights = new CellLightPool(this, MaxSpellLights);
         cellFx?.Destroy();
         acidWatch.Clear();
         var yard = Yard;
@@ -135,9 +146,12 @@ public partial class ChemGrid
         using (WaterMeshMarker.Auto()) waterSurface.Rebuild();
         using (SlickMeshMarker.Auto()) slicks.Rebuild();
         cracks.Rebuild();
+        lava.Rebuild();
+        spellLights.Place();
         cellFx.Advance(Time.deltaTime);
         WatchAcidCells();
         RenderWhirls();
+        RenderStars();
         RenderFlashes();
         materials.ScrollWater(Time.time);
         waterSurface.Scroll(Time.time);
@@ -188,6 +202,7 @@ public partial class ChemGrid
         {
             waterSurface.GroundChanged(x, y);
             slicks.GroundChanged();
+            lava.GroundChanged();
         }
         v.terrain = c.T;
         v.height = c.Height;
@@ -243,6 +258,7 @@ public partial class ChemGrid
             k = k * 31 + HeatLevel(c);
             k = k * 31 + (c.Star > 0 ? 1 : 0);
             k = k * 31 + (c.Cracked != 0 ? 1 : 0);
+            k = k * 31 + (c.Lit > 0 ? 1 : 0);
             return k;
         }
     }
@@ -291,6 +307,8 @@ public partial class ChemGrid
     {
         slicks.Changed(x, y, c);
         cracks.Changed(x, y, c, ground);
+        lava.Changed(x, y, c, c.T == TerrainIds.Lava ? 1f : HeatLevel(c) / (float)HeatSteps);
+        spellLights.Changed(x, y, c, ground);
         if (valley != null) valley.PaneCracked(World.Idx(x, y), c.Cracked != 0);
         cellFx.Oil(x, y, CellSlickMesh.IsSlick(c.Cover) && c.Water > 0 && !c.Frozen);
         RenderThorns(v, c, x, y, center, ground);
@@ -346,6 +364,8 @@ public partial class ChemGrid
         materials.Destroy();
         waterSurface?.Destroy();
         slicks?.Destroy();
+        lava?.Destroy();
+        spellLights?.Destroy();
         cellFx?.Destroy();
         thornClumps?.Destroy();
         if (plainDust != null) Destroy(plainDust);

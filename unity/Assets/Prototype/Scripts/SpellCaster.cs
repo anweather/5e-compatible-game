@@ -41,7 +41,7 @@ public partial class SpellCaster : MonoBehaviour
     // Holding Cast charges a spell that can be (ChargeSeconds a level, to World.MaxCharge); release casts it.
     const float ChargeSeconds = 0.45f;
     // The element that eats things away (Acid Splash): its splash, hiss and eaten stain.
-    const string AcidElement = "acid";
+    const string AcidElement = "acid", HeatElement = "heat", SandElement = "sand";
     float chargeStart = -1f;
     GUIStyle pips;
 
@@ -237,13 +237,31 @@ public partial class SpellCaster : MonoBehaviour
         then();
     }
 
+    // The elements with a burst of their own where they land (BurstFx); sand blasts from the hand.
+    void ElementBurst(SpellDef def, Vector3 landing, int charge)
+    {
+        float size = 1f + 0.5f * (World.ClampCharge(charge) - 1);
+        switch (def?.Element)
+        {
+            case AcidElement:
+                BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, size);
+                break;
+            case HeatElement:
+                BurstFx.Play(BurstFx.Kind.Forge, landing + Vector3.up * 0.1f, size);
+                break;
+            case SandElement:
+                BurstFx.Play(BurstFx.Kind.SandBlast, Hand, size, Quaternion.LookRotation(landing - Hand));
+                break;
+        }
+    }
+
     // The projectile, meteor or storm, or the effect at once; onArrive when it lands.
     void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, int charge, System.Action onArrive)
     {
         void Land()
         {
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)));
-            if (def?.Element == AcidElement) BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, 1f + 0.5f * (World.ClampCharge(charge) - 1));
+            ElementBurst(def, landing, charge);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             onArrive?.Invoke();
         }
