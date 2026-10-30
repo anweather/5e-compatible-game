@@ -275,27 +275,32 @@ namespace Chem
             ch.StoppedAt = (int?)o["stopped"] ?? NeverLive;
             ch.CaughtUp = (int?)o["caughtUp"] ?? 0;
             foreach (var f in o["fireGen"] ?? new JArray()) ch.FireGeneration[(int)f[0]] = (int)f[1];
-            foreach (var a in o["cells"] ?? new JArray())
-            {
-                var c = ch.Cells[(int)a[0]];
-                c.T = (string)a[1];
-                c.Water = (int)a[2];
-                c.Frozen = (int)a[3] != 0;
-                c.Cover = (string)a[4];
-                c.Fire = (int)a[5];
-                c.Fuel = (int)a[6];
-                c.Gas = (string)a[7];
-                c.GasAmt = (int)a[8];
-                c.Charge = (int)a[9];
-                c.Height = (int)a[10];
-                c.Life = (int)a[11];
-                c.DampUntil = a is JArray all && all.Count > 12 ? (int)all[12] : 0;
-                c.Rust = a is JArray rusted && rusted.Count > 13 ? (int)rusted[13] : 0;
-                c.Heat = a is JArray hot && hot.Count > 14 ? (int)hot[14] : 0;
-                c.Lit = a is JArray lit && lit.Count > 15 ? (int)lit[15] : 0;
-                c.Slick = a is JArray slick && slick.Count > 16 ? (int)slick[16] : 0;
-                c.ForgetDef();
-            }
+            foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.Cells[(int)a[0]], (JArray)a);
         }
+
+        // One saved cell (SaveCell): the fields every save has, then the later ones, 0 when a save leaves them out.
+        static void LoadCell(Cell c, JArray a)
+        {
+            c.T = (string)a[1];
+            c.Water = (int)a[2];
+            c.Frozen = (int)a[3] != 0;
+            c.Cover = (string)a[4];
+            c.Fire = (int)a[5];
+            c.Fuel = (int)a[6];
+            c.Gas = (string)a[7];
+            c.GasAmt = (int)a[8];
+            c.Charge = (int)a[9];
+            c.Height = (int)a[10];
+            c.Life = (int)a[11];
+            c.DampUntil = Later(a, 12);
+            c.Rust = Later(a, 13);
+            c.Heat = Later(a, 14);
+            c.Lit = Later(a, 15);
+            c.Slick = Later(a, 16);
+            c.ForgetDef();
+        }
+
+        // A field added after the first save format: 0 when the cell's array stops short of it.
+        static int Later(JArray a, int i) => a.Count > i ? (int)a[i] : 0;
     }
 }

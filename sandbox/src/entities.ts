@@ -186,6 +186,20 @@ function shockedFromBeside(w: World, e: Entity, def: (typeof RULES.entities)[str
   return false;
 }
 
+/** The heat that hurts an entity this tick: burning, a hot cell, thick steam (World.HeatHazards). */
+function heatHazards(w: World, e: Entity, c: Cell, def: (typeof RULES.entities)[string]) {
+  const s = RULES.sim;
+  if ((e.status.burning ?? 0) > 0 && w.tick % s.status.burnDamageEvery === 0) {
+    damage(w, e, 1, "fire", "fire");
+    if (hasComponent(def, "flammable") && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
+  }
+  if ((c.heat ?? 0) > 0 && hasComponent(def, "creature") && w.tick % s.status.burnDamageEvery === 0) damage(w, e, 1, "hot metal", "fire");
+  // Thick steam scalds what is made of a material that scalds (flesh; not bone or chitin).
+  if (c.gas === "steam" && c.gasAmt >= 2 && !!def.material && !!RULES.terrain[def.material]?.tags.includes("scalds") && w.tick % s.status.scaldEvery === 0) {
+    damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding", "fire");
+  }
+}
+
 /** Per-tick entity upkeep: statuses, burning, wading, zaps, falls. */
 export function tickEntities(w: World) {
   const s = RULES.sim;
@@ -198,15 +212,7 @@ export function tickEntities(w: World) {
     if (c.fire > 0 && !lev) applyEntityElement(w, e, "fire", { power: c.fire, direct: false });
     if (c.water > 0 && !c.frozen && !lev) applyEntityElement(w, e, "water", { power: 1, direct: false });
 
-    if ((e.status.burning ?? 0) > 0 && w.tick % s.status.burnDamageEvery === 0) {
-      damage(w, e, 1, "fire", "fire");
-      if (hasComponent(def, "flammable") && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
-    }
-    if ((c.heat ?? 0) > 0 && hasComponent(def, "creature") && w.tick % s.status.burnDamageEvery === 0) damage(w, e, 1, "hot metal", "fire");
-    // Thick steam scalds what is made of a material that scalds (flesh; not bone or chitin).
-    if (c.gas === "steam" && c.gasAmt >= 2 && !!def.material && !!RULES.terrain[def.material]?.tags.includes("scalds") && w.tick % s.status.scaldEvery === 0) {
-      damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding", "fire");
-    }
+    heatHazards(w, e, c, def);
     if ((c.charge === 3 || shockedFromBeside(w, e, def)) && w.entities.includes(e)) {
       const mul = applyEntityElement(w, e, "lightning", { power: 1, direct: false });
       damage(w, e, s.zapDamage * mul, "lightning", "lightning");

@@ -34,17 +34,7 @@ export function step(w: World): void {
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
   const floating: [Cell, string, number][] = []; // what floating covers reached, laid after the pass (World.floating)
   for (let i = 0; i < w.cells.length; i++) {
-    const c = w.cells[i]!;
-    if (c.charge > 0) c.charge--;
-    if ((c.lit ?? 0) > 0) c.lit!--;
-    // A slick's reach goes with its oil.
-    if ((c.slick ?? 0) !== 0 && c.cover === null) c.slick = 0;
-    if (c.life > 0 && --c.life === 0) ripen(w, i, c);
-    if ((c.heat ?? 0) > 0) cool(w, c);
-    if (soaking) rust(w, c);
-    if (soaking && c.water > 0 && c.cover !== null) float(w, i, c, floating);
-    if (soaking && c.water > 0) soak(w, i, c);
-    if (soaking) dryOut(w, c);
+    tickCell(w, i, w.cells[i]!, soaking, floating);
   }
   for (const [n, cover, slick] of floating) {
     if (n.cover !== null) continue;
@@ -71,6 +61,20 @@ function endHeldWeather(w: World) {
   if (!w.weatherSet || w.tick < w.weatherSet.until) return;
   w.weatherSet = null;
   log(w, "The weather goes its own way again", "info");
+}
+
+/** One cell's timers, and its soak pass on soak ticks (World.TickCell, SoakPass). */
+function tickCell(w: World, i: number, c: Cell, soaking: boolean, floating: [Cell, string, number][]) {
+  if (c.charge > 0) c.charge--;
+  if ((c.lit ?? 0) > 0) c.lit!--;
+  // A slick's reach goes with its oil.
+  if ((c.slick ?? 0) !== 0 && c.cover === null) c.slick = 0;
+  if (c.life > 0 && --c.life === 0) ripen(w, i, c);
+  if ((c.heat ?? 0) > 0) cool(w, c);
+  if (soaking) rust(w, c);
+  if (soaking && c.water > 0 && c.cover !== null) float(w, i, c, floating);
+  if (soaking && c.water > 0) soak(w, i, c);
+  if (soaking) dryOut(w, c);
 }
 
 /** At the end of a tick: a hastened clock runs `rate` ticks of day for this one. */
