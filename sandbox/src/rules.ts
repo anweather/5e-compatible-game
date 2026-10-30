@@ -303,12 +303,14 @@ export interface ItemDef {
   components?: string[];
   /** Kilograms. */
   mass?: number;
-  use?: "light" | "zoom" | "send" | "point";
+  use?: "light" | "zoom" | "send" | "point" | "dig";
   /** Feet of bright and then dim light, its colour, and a cone's full angle in degrees (0 or unset: all round). */
   light?: { bright?: number; dim?: number; color?: string; cone?: number };
   zoom?: number;
   /** use "point": how far away its light can go, in feet. */
   reach?: number;
+  /** use "dig": how hard a ground its swing can dig (terrain hardness). */
+  strength?: number;
   message?: string;
   /** Breaks when it lands at speed (m/s) or harder, spilling a cover (lit) over a radius. */
   breaks?: { speed: number; spill?: { cover: string; radius?: number; fire?: number } };
@@ -606,7 +608,7 @@ function isWholeRange(v: unknown, min0: number, min1: number): v is [number, num
   return Array.isArray(v) && v.length === 2 && Number.isInteger(v[0]) && Number.isInteger(v[1]) && v[0] >= min0 && v[1] >= min1;
 }
 
-const ITEM_USES =new Set(["light", "zoom", "send", "point"]);
+const ITEM_USES =new Set(["light", "zoom", "send", "point", "dig"]);
 const isNumber = (v: unknown): v is number => typeof v === "number";
 const absent = (v: unknown) => v === undefined || v === null;
 
@@ -662,6 +664,7 @@ function itemErrors(r: Rules, id: string, it: ItemDef): string[] {
   else if (it.use === "light" && !light) errors.push(`${what}: use light needs a light`);
   else if (it.use === "zoom" && !(isNumber(i.zoom) && i.zoom > 1)) errors.push(`${what}: use zoom needs a zoom above 1`);
   else if (it.use === "send" && !it.message) errors.push(`${what}: use send needs a message`);
+  else if (it.use === "dig" && !(Number.isInteger(i.strength) && (i.strength as number) >= 1)) errors.push(`${what}: use dig needs a whole strength from 1`);
   else if (it.use === "point") {
     if (!light) errors.push(`${what}: use point needs a light`);
     if (!(isNumber(i.reach) && i.reach > 0)) errors.push(`${what}: use point needs a reach above 0`);

@@ -5,7 +5,7 @@ using UnityEngine;
 // The things to carry's prefabs (Carryable, rules/items.json), built by
 // Prototype > Build Chemistry Yard, one per item in Generated/Things/: three
 // glowing balls, a bullseye lantern, a spyglass, a Dancing Lights mote, a
-// sending stone and a ball to kick about (Kicker). Where they lie is data, world/things.json (ThingSpawner
+// sending stone, a pick and a ball to kick about (Kicker). Where they lie is data, world/things.json (ThingSpawner
 // spawns them; a pair of sending stones share a "link" there). Their light,
 // colour and use come from the rules at runtime; these are only greybox shapes.
 public static class ItemBuilder
@@ -16,7 +16,7 @@ public static class ItemBuilder
     static readonly string[] Kinds =
     {
         ItemIds.GlowBallAmber, ItemIds.GlowBallAzure, ItemIds.GlowBallRose, ItemIds.BullseyeLantern,
-        ItemIds.Spyglass, ItemIds.DancingLights, ItemIds.SendingStone, ItemIds.Ball,
+        ItemIds.Spyglass, ItemIds.DancingLights, ItemIds.SendingStone, ItemIds.Ball, ItemIds.Pick,
     };
 
     /// <summary>Builds (or rebuilds) one prefab per item.</summary>
@@ -58,6 +58,19 @@ public static class ItemBuilder
                 stone.transform.localScale = new Vector3(0.14f, 0.08f, 0.12f);
                 PropBuilder.Paint(stone, "ItemSendingStone", new Color(0.36f, 0.42f, 0.5f), 0.5f, new Color(0.2f, 0.45f, 0.8f));
                 return stone;
+            }
+            case ItemIds.Pick:
+            {
+                // A haft, and a thin head across its top (no collider of its own).
+                var haft = Solid(PrimitiveType.Cylinder, new Vector3(0.05f, 0.4f, 0.05f));
+                PropBuilder.Paint(haft, "ItemPickHaft", new Color(0.45f, 0.3f, 0.16f), 0.3f);
+                var head = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                Object.DestroyImmediate(head.GetComponent<Collider>());
+                head.transform.SetParent(haft.transform, false);
+                head.transform.localPosition = Vector3.up * 0.95f;
+                head.transform.localScale = new Vector3(9f, 0.1f, 1.2f);
+                PropBuilder.Paint(head, "ItemPickHead", new Color(0.5f, 0.52f, 0.55f), 0.6f);
+                return haft;
             }
             case ItemIds.Ball:
             {

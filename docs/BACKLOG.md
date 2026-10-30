@@ -113,6 +113,8 @@ Dig dirt, but not rock.
   `World.Terraform.cs`, mirrored in the TS sandbox.
 - **Size:** S to M. A natural first step toward 3 (it decides where
   tunnels can go).
+- **Done:** `dig.hardness` on every ground, `strength` on digs, Stone Shape
+  and the pick; each refusal is logged (`rules/README.md`, Earth shaping).
 
 ## 5. Items
 

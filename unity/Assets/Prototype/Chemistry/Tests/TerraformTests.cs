@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
@@ -308,8 +309,50 @@ namespace Chem.Tests
             Assert.That(w.At(8, 2).Height, Is.Zero, "but not metal");
             Assert.That(w.Log.Any(l => l.Text == "The metal plate can't be dug"));
             Assert.That(w.At(10, 2).T, Is.EqualTo("bedrock"), "nor bedrock");
+            Assert.That(w.Log.Any(l => l.Text == "The bedrock can't be dug"));
             Run(w, 20);
             Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f57b067a 1"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void APickDigsRockThroughAnEffect()
+        {
+            // BACKLOG 4: the pick (strength 3) digs what Stone Shape digs; it stops at metal and bedrock.
+            var w = new World(R, 10, 3, 1, "dirt");
+            w.At(2, 1).T = "rock";
+            w.At(4, 1).T = "metal";
+            w.At(6, 1).T = "bedrock";
+            foreach (int x in new[] { 2, 4, 6, 8 }) w.ApplyEffect(new EffectCommand(EffectKind.Dig, x, 1, "pick"));
+            Assert.That(w.At(2, 1).Height, Is.EqualTo(-1));
+            Assert.That(w.At(2, 1).T, Is.EqualTo("rubble"));
+            Assert.That(w.At(4, 1).Height, Is.Zero);
+            Assert.That(w.At(8, 1).Height, Is.EqualTo(-1), "dirt digs too");
+            Assert.That(w.Log.Any(l => l.Text == "The metal plate can't be dug"));
+            Assert.That(w.Log.Any(l => l.Text == "The bedrock can't be dug"));
+            w.ApplyEffect(new EffectCommand(EffectKind.Dig, 3, 1, "ball"));
+            Assert.That(w.At(3, 1).Height, Is.Zero, "an item that doesn't dig does nothing");
+            Run(w, 20);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1c4e549b 1"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void DigToolsNeedAStrength()
+        {
+            IReadOnlyList<string> Errors(string patch) =>
+                Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(patch.Replace('\'', '"')) })).Errors;
+            Assert.That(Errors("{ 'items': { 'spade': { 'name': 'Spade', 'use': 'dig', 'strength': 0 } } }"), Does.Contain("item spade: use dig needs a whole strength from 1"));
+        }
+
+        [Test]
+        public void EveryGroundSaysHowHardItIs()
+        {
+            var terrain = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "materials.json")))["terrain"];
+            foreach (var p in terrain.Properties())
+            {
+                var t = R.Terrain[p.Name];
+                if ((t.Has("ground") || t.Has("low")) && !t.Has("machine"))
+                    Assert.That(p.Value["dig"]?["hardness"], Is.Not.Null, p.Name);
+            }
         }
 
         [Test]

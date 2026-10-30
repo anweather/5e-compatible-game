@@ -1,6 +1,6 @@
 // Little things to pick up, carry, drop and throw (rules/items.json): a ball
 // with the Light cantrip on it, a bullseye lantern, a spyglass, sending
-// stones, a Dancing Lights mote. The core only reads and checks them; Unity's
+// stones, a Dancing Lights mote, a pick. The core only reads and checks them; Unity's
 // Carryable and its item behaviours do the rest. The sandbox carries the
 // table through mods (sandbox/src/rules.ts) but has no items on its board.
 using System;
@@ -20,8 +20,10 @@ namespace Chem
         public const string Send = "send";
         /// <summary>Steers a mote of light to where the holder aims, up to <see cref="ItemDef.Reach"/> feet away.</summary>
         public const string Point = "point";
+        /// <summary>Swings at the cell the holder aims at: one step down, at <see cref="ItemDef.Strength"/> (World.Dig).</summary>
+        public const string Dig = "dig";
 
-        internal static readonly HashSet<string> All = new HashSet<string> { Light, Zoom, Send, Point };
+        internal static readonly HashSet<string> All = new HashSet<string> { Light, Zoom, Send, Point, Dig };
     }
 
     /// <summary>
@@ -71,6 +73,8 @@ namespace Chem
         public double Zoom;
         /// <summary>Use "point": how far away its light can go, in feet.</summary>
         public double Reach;
+        /// <summary>Use "dig": how hard a ground its swing can dig (TerrainDef.Hardness).</summary>
+        public int Strength;
         /// <summary>Null when it doesn't break.</summary>
         public ItemBreakDef Breaks;
 
@@ -126,6 +130,7 @@ namespace Chem
                 Light = light,
                 Zoom = Num(o["zoom"]) ?? 1,
                 Reach = Num(o["reach"]) ?? 0,
+                Strength = Int(o["strength"]) ?? 0,
                 Breaks = breaks,
             };
         }

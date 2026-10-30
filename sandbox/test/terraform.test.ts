@@ -8,7 +8,7 @@ import { step } from "../src/sim.ts";
 import { castSpell, spellById, spellCells } from "../src/actions.ts";
 import { applyElement } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
-import { reshape } from "../src/terraform.ts";
+import { dig, reshape } from "../src/terraform.ts";
 import { type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
@@ -319,8 +319,41 @@ test("Stone Shape digs rock, but nothing digs metal or bedrock", () => {
   assert.equal(cellAt(w, 8, 2)!.h, 0, "but not metal");
   assert.ok(w.log.some((l) => l.text === "The metal plate can't be dug"));
   assert.equal(cellAt(w, 10, 2)!.t, "bedrock", "nor bedrock");
+  assert.ok(w.log.some((l) => l.text === "The bedrock can't be dug"));
   run(w, 20);
   assert.equal(`${cellHash(w)} ${w.rng}`, "f57b067a 1"); // the same in the C# core
+});
+
+// Mirrors TerraformTests.APickDigsRockThroughAnEffect.
+test("a pick digs rock, but not metal or bedrock", () => {
+  const w = createWorld(10, 3, 1);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 2, 1)!.t = "rock";
+  cellAt(w, 4, 1)!.t = "metal";
+  cellAt(w, 6, 1)!.t = "bedrock";
+  for (const x of [2, 4, 6, 8]) dig(w, x, 1, RULES.items.pick);
+  assert.equal(cellAt(w, 2, 1)!.h, -1);
+  assert.equal(cellAt(w, 2, 1)!.t, "rubble");
+  assert.equal(cellAt(w, 4, 1)!.h, 0);
+  assert.equal(cellAt(w, 8, 1)!.h, -1, "dirt digs too");
+  assert.ok(w.log.some((l) => l.text === "The metal plate can't be dug"));
+  assert.ok(w.log.some((l) => l.text === "The bedrock can't be dug"));
+  dig(w, 3, 1, RULES.items.ball);
+  assert.equal(cellAt(w, 3, 1)!.h, 0, "an item that doesn't dig does nothing");
+  run(w, 20);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "1c4e549b 1"); // the same in the C# core
+});
+
+test("dig tools need a strength", () => {
+  const r = composeRules([]);
+  const errors = validateRules({ ...r, items: { ...r.items, spade: { name: "Spade", use: "dig", strength: 0 } } });
+  assert.ok(errors.includes("item spade: use dig needs a whole strength from 1"));
+});
+
+test("every ground says how hard it is", () => {
+  for (const [id, t] of Object.entries(RULES.terrain)) {
+    if ((t.tags.includes("ground") || t.tags.includes("low")) && !t.tags.includes("machine")) assert.notEqual(t.hardness, undefined, id);
+  }
 });
 
 test("Burning Hands is a cone from the caster, longer when charged, and matches the C# golden", () => {

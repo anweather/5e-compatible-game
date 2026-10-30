@@ -11,7 +11,7 @@ using UnityEngine;
 //
 // What it does when used comes from its row in items.json, as behaviours
 // added at Start: a light (ItemLight), breaking on a hard landing (Fragile),
-// and its "use" (Spyglass, SendingStone, DancingLights).
+// and its "use" (Spyglass, SendingStone, DancingLights, Pick).
 //
 // Online (NetItem) the host decides who holds it and flies it when thrown;
 // a client's copy is a puppet that rides in whichever hand holds it and
@@ -97,6 +97,7 @@ public class Carryable : MonoBehaviour
             case ItemUses.Zoom: gameObject.AddComponent<Spyglass>(); break;
             case ItemUses.Send: gameObject.AddComponent<SendingStone>(); break;
             case ItemUses.Point: gameObject.AddComponent<DancingLights>(); break;
+            case ItemUses.Dig: gameObject.AddComponent<Pick>(); break;
         }
     }
 
