@@ -62,7 +62,7 @@ function applies(w: World, c: Cell, cond: CellCond | undefined, power: number): 
 }
 
 /** Lays a cover (or with null clears it); one that lasts (thorns) starts its cell's life (World.PutCover). */
-function putCover(c: Cell, cover: string | null) {
+export function putCover(c: Cell, cover: string | null) {
   c.cover = cover;
   const lasts = cover !== null ? (RULES.covers[cover]?.lasts ?? 0) : 0;
   if (lasts > 0) c.life = lasts;

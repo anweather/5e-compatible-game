@@ -39,7 +39,7 @@
     "chitin":    { "name": "Chitin", "tags": [] }
   },
   "covers": {
-    "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" }, "dissolve": { "by": "acid" } },
+    "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" }, "dissolve": { "by": "acid" }, "float": { "every": 16 } },
     "grease":   { "name": "Grease", "tags": ["slippery"], "burn": { "catch": 0.6, "fuel": 7, "intensity": 2, "look": "oil" }, "dissolve": { "by": "acid" } },
     "ash":      { "name": "Ash", "tags": [] },
     "snow":     { "name": "Snow", "tags": ["snow"] },

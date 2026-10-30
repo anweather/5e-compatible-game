@@ -299,6 +299,7 @@ namespace Chem
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);
                     Number(p.Value["lasts"], $"cover {p.Name}: lasts", 0);
                     Number(p.Value["speed"], $"cover {p.Name}: speed", 0);
+                    if (p.Value["floatEvery"] != null && !(IsWholeNumber(p.Value["floatEvery"]) && (double)p.Value["floatEvery"] >= 1)) Errors.Add($"cover {p.Name}: floatEvery must be a whole number from 1");
                     Dissolves($"cover {p.Name}", p.Value, covers);
                 }
                 foreach (var p in gases.Properties())
