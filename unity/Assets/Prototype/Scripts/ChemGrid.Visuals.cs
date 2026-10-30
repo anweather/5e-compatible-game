@@ -235,6 +235,7 @@ public partial class ChemGrid
             k = k * 31 + c.GasAmt;
             k = k * 31 + (c.Charge > 0 ? 1 : 0);
             k = k * 31 + HeatLevel(c);
+            k = k * 31 + (c.Star > 0 ? 1 : 0);
             return k;
         }
     }

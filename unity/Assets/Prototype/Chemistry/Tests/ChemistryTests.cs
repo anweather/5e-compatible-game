@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(56));
+            Assert.That(R.CellRules.Count, Is.EqualTo(60));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -908,13 +908,91 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ForgeHeatsAndTheMaterialDecides()
+        {
+            // docs/SPELL_COMBOS.md: sand to glass, mud to brick, metal hot, ice and snow melted, wet things dry,
+            // through the materials' bake and melt verbs. It lights nothing. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 24, 5, 4, "dirt");
+            w.At(2, 2).T = "sand";
+            w.At(6, 2).T = "mud";
+            w.At(6, 2).Water = 1;
+            w.At(10, 2).T = "metal";
+            w.At(14, 2).Cover = "snow";
+            w.At(18, 2).Water = 2;
+            w.At(18, 2).Frozen = true;
+            w.At(22, 2).T = "grass";
+            var gob = w.SpawnRaider("goblin", 3, 2, 10);
+            w.Apply(3, 2, "water");
+            Assert.That(gob.StatusOf("wet"), Is.GreaterThan(0));
+            Assert.That(R.Combos.Combo("earth+fire").Spell, Is.EqualTo("forge"));
+            foreach (int x in new[] { 2, 6, 10, 14, 18, 22 }) w.Cast("forge", x, 2, 0);
+            Assert.That(w.At(2, 2).T, Is.EqualTo("glass"));
+            Assert.That(w.At(6, 2).T, Is.EqualTo("brick"));
+            Assert.That(w.At(6, 2).Water, Is.EqualTo(0), "the mud dried");
+            Assert.That(w.At(10, 2).Heat, Is.EqualTo(120));
+            Assert.That(w.At(14, 2).Cover, Is.Null);
+            Assert.That(w.At(18, 2).Frozen, Is.False);
+            Assert.That(w.At(22, 2).Fire, Is.EqualTo(0), "it lights nothing");
+            Assert.That(gob.StatusOf("wet"), Is.EqualTo(0));
+            Assert.That(R.Terrain["brick"].Hardness, Is.EqualTo(3));
+            Run(w, 12);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1124f40e 3023719660"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void PlainFireBakesNothing()
+        {
+            var w = new World(R, 8, 5, 4, "dirt");
+            w.At(2, 2).T = "sand";
+            w.At(5, 2).T = "mud";
+            w.Cast("fire-bolt", 2, 2, 0);
+            w.Cast("fire-bolt", 5, 2, 0);
+            Assert.That(w.At(2, 2).T, Is.EqualTo("sand"));
+            Assert.That(w.At(5, 2).T, Is.EqualTo("mud"));
+        }
+
+        [Test]
+        public void AFallingStarMarksItsTargetThenStrikes()
+        {
+            // docs/SPELL_COMBOS.md: a mark for a second (6 ticks), then a crater with a little lava in it, burning
+            // rock round it, snow and ice melted and water flashed to steam. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 15, 9, 6, "dirt");
+            w.At(8, 4).Cover = "snow";
+            w.At(7, 3).Water = 2;
+            w.At(7, 3).Frozen = true;
+            w.At(6, 4).Water = 2;
+            Assert.That(R.Combos.Combo("fire+air").Spell, Is.EqualTo("falling-star"));
+            string before = w.CellHash();
+            w.Cast("falling-star", 7, 4, 0);
+            Assert.That(w.At(7, 4).Star, Is.EqualTo(1));
+            Assert.That(w.At(6, 3).Star, Is.EqualTo(1));
+            Assert.That(w.At(5, 4).Star, Is.EqualTo(0));
+            Assert.That(w.CellHash(), Is.Not.EqualTo(before), "the mark is shared state");
+            Run(w, 5);
+            Assert.That(w.At(7, 4).Height, Is.EqualTo(0), "still falling");
+            Assert.That(w.At(7, 4).Star, Is.EqualTo(1));
+            w.Step();
+            Assert.That(w.At(7, 4).Star, Is.EqualTo(0), "the mark goes when it lands");
+            Assert.That(w.Stars, Is.Empty);
+            Assert.That(w.At(7, 4).Height, Is.LessThan(0));
+            Assert.That(w.At(7, 4).T, Is.EqualTo("lava-pool"));
+            Assert.That(w.At(7, 4).Heat, Is.GreaterThan(0));
+            Assert.That(w.At(8, 4).Cover, Is.Not.EqualTo("snow"));
+            Assert.That(w.At(7, 3).Frozen, Is.False);
+            Assert.That(w.At(6, 4).Gas, Is.EqualTo("steam"));
+            Assert.That(w.Cells.Count(c => c.Cover == "embers" && c.Fire > 0), Is.GreaterThan(0));
+            Run(w, 12);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c91f14e2 657895373"), "the same in the sandbox");
+        }
+
+        [Test]
         public void TheWaterAndEarthCombosCastTheirOwnSpells()
         {
             // docs/SPELL_COMBOS.md: Flood fills two pits (and in the sandbox shoves a crate along; pushing
             // things is the view's here); Mud churns a patch of grass to
             // mud; Molten Boulder blasts a crater with lava in it; Dust Storm raises a cloud of dust that hides
             // what's behind it. Mirrors sandbox/test/terraform.test.ts.
-            foreach (var (combo, spell) in new[] { ("water+water", "flood"), ("water+earth", "mud"), ("earth+fire", "molten-boulder"), ("earth+air", "dust-storm") })
+            foreach (var (combo, spell) in new[] { ("water+water", "flood"), ("water+earth", "mud"), ("earth+air", "dust-storm") })
                 Assert.That(R.Combos.Combo(combo).Spell, Is.EqualTo(spell), combo);
             var w = new World(R, 20, 12, 9, "dirt");
             w.At(5, 2).T = "pit";

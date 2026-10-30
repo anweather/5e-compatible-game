@@ -10,10 +10,10 @@
   },
   "pairs": {
     "fire": {
-      "fire":  { "name": "Fireball", "spell": "fireball", "shape": "burst", "castTicks": 12, "held": "meteor" },
+      "fire":  { "name": "Fireball", "spell": "fireball", "shape": "burst", "castTicks": 12 },
       "water": { "name": "Scalding Steam", "spell": "scalding-steam", "shape": "burst", "castTicks": 9 },
       "earth": { "name": "Lava Pool", "spell": "lava-pool", "shape": "burst", "castTicks": 12 },
-      "air":   { "name": "Flame Wave", "spell": "flame-wave", "shape": "cone", "castTicks": 9 }
+      "air":   { "name": "Falling Star", "spell": "falling-star", "shape": "burst", "castTicks": 9 }
     },
     "water": {
       "fire":  { "name": "Fog Bank", "spell": "fog-cloud", "shape": "burst", "castTicks": 9 },
@@ -22,7 +22,7 @@
       "air":   { "name": "Frost", "spell": "ray-of-frost", "shape": "line", "castTicks": 6 }
     },
     "earth": {
-      "fire":  { "name": "Molten Boulder", "spell": "molten-boulder", "shape": "burst", "castTicks": 15 },
+      "fire":  { "name": "Forge", "spell": "forge", "shape": "burst", "castTicks": 12 },
       "water": { "name": "Plant Growth", "spell": "plant-growth", "shape": "burst", "castTicks": 9 },
       "earth": { "name": "Wall of Stone", "spell": "wall-of-stone", "shape": "line", "castTicks": 12 },
       "air":   { "name": "Dust Storm", "spell": "dust-storm", "shape": "burst", "castTicks": 9 }

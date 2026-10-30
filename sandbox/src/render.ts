@@ -20,11 +20,11 @@ const TERRAIN_COLOR: Record<string, string> = {
   bedrock: "#3a3d44", dirt: "#a7895f", grass: "#7aa956", brush: "#557d3c", tree: "#7aa956", stump: "#a7895f", deadfall: "#7aa956",
   sprouts: "#97a463", sapling: "#7aa956", mud: "#6e5638",
   stone: "#8b8d94", pillar: "#a59a84", rubble: "#a7895f", rock: "#9a8f7d", wood: "#b47a43", pit: "#2b2522", metal: "#9aa6b2",
-  "rusted-metal": "#8a5034", sand: "#dcc58e", glass: "#b9dde2", pane: "#a9d3e4",
+  "rusted-metal": "#8a5034", brick: "#a5523a", sand: "#dcc58e", glass: "#b9dde2", pane: "#a9d3e4",
   gate: "#a7895f", gate_open: "#a7895f", boiler: "#a7895f", plate: "#a7895f", wheel: "#2b2522", coil: "#a7895f", windmill: "#a7895f",
 };
 const ELEMENT_COLOR: Record<string, string> = {
-  fire: "#ff8a2a", cold: "#8fd8f5", water: "#3f8fd8", air: "#e8eedd", earth: "#9c7a55",
+  fire: "#ff8a2a", heat: "#ff5a2a", cold: "#8fd8f5", water: "#3f8fd8", air: "#e8eedd", earth: "#9c7a55",
   lightning: "#ffe14d", grease: "#e3cf7a", oil: "#3a2346", thunder: "#c9b8ff", growth: "#9be36b", thorns: "#4f6b2a",
 };
 export const elementColor = (el: string | undefined) => ELEMENT_COLOR[el ?? ""] ?? "#ffffff";
@@ -148,6 +148,11 @@ function drawCell(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, 
         // Flaking rust: dark orange blotches.
         ctx.fillStyle = "rgba(122,52,22,0.55)";
         for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(px + (0.15 + hash(x, y, k) * 0.7) * s, py + (0.2 + hash(y, x, k) * 0.65) * s, s * (0.06 + hash(x, y, k + 4) * 0.08), 0, 7); ctx.fill(); }
+      }
+      // A falling star's target mark.
+      if ((c.star ?? 0) > 0) {
+        ctx.fillStyle = "rgba(255,120,30,0.55)";
+        ctx.fillRect(px, py, s, s);
       }
       // Hot metal (fire reached it) glows: orange when fresh, dull red as it cools.
       const heat = c.heat ?? 0;

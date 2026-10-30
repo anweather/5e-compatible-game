@@ -60,6 +60,17 @@ namespace Chem
             public int X, Y, Radius, Ticks, Age, Every, MaxMass;
         }
 
+        /// <summary>A delayed cast on its way down (spells.json delay: Falling Star): what lands, where, how charged, the tick it lands.</summary>
+        public sealed class Star
+        {
+            public string Spell;
+            public int X, Y, Dir, Charge, Radius, Lands;
+        }
+
+        readonly List<Star> stars = new List<Star>();
+        /// <summary>The stars on their way down, in the order they were cast.</summary>
+        public IReadOnlyList<Star> Stars => stars;
+
         readonly List<Whirl> whirls = new List<Whirl>();
         /// <summary>The whirlwinds still whirling, in the order they were cast.</summary>
         public IReadOnlyList<Whirl> Whirls => whirls;

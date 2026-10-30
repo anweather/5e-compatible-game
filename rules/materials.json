@@ -1,8 +1,9 @@
 {
   "terrain": {
     "bedrock":   { "name": "Bedrock", "tags": ["blocking"], "dig": { "hardness": 0 } },
+    "brick":     { "name": "Brick", "tags": ["ground"], "dig": { "hardness": 3, "leaves": "rubble" }, "soak": { "dry": 160, "wet": 800 } },
     "dirt":      { "name": "Dirt", "tags": ["ground", "soil"], "dig": { "hardness": 1 }, "soak": { "dry": 64, "wet": 320, "leaves": "mud" } },
-    "mud":       { "name": "Mud", "tags": ["ground", "soil", "muddy"], "speed": 0.5, "dig": { "hardness": 1 }, "soak": { "dry": 64, "wet": 320, "dries": "dirt" } },
+    "mud":       { "name": "Mud", "tags": ["ground", "soil", "muddy"], "speed": 0.5, "dig": { "hardness": 1 }, "soak": { "dry": 64, "wet": 320, "dries": "dirt" }, "bake": { "into": "brick" } },
     "grass":     { "name": "Grass", "tags": ["ground", "turf"], "burn": { "catch": 0.35, "fuel": 8, "leaves": "dirt" }, "dig": { "hardness": 1, "leaves": "dirt" }, "soak": { "dry": 80, "wet": 400, "dampens": 0.5 } },
     "sprouts":   { "name": "Green shoots", "tags": ["ground", "turf"], "dig": { "hardness": 1, "leaves": "dirt" }, "soak": { "dry": 80, "wet": 400 }, "grow": { "into": "grass" } },
     "sapling":   { "name": "Sapling", "tags": ["ground"], "burn": { "catch": 0.3, "fuel": 6, "leaves": "dirt" }, "dig": { "hardness": 1, "leaves": "dirt" }, "grow": { "into": "tree", "log": "A sapling grows into a young tree" } },
@@ -28,7 +29,7 @@
     "coil":      { "name": "Lightning coil", "tags": ["ground", "machine"], "conduct": {} },
     "windmill":  { "name": "Windmill", "tags": ["blocking", "machine"] },
     "arid":      { "name": "Arid ground", "tags": ["ground", "soil"], "dig": { "hardness": 1 }, "soak": { "dry": 8, "wet": 24 } },
-    "sand":      { "name": "Sand", "tags": ["ground", "fuses"], "dig": { "hardness": 1 }, "soak": { "dry": 8, "wet": 24 } },
+    "sand":      { "name": "Sand", "tags": ["ground", "fuses"], "dig": { "hardness": 1 }, "soak": { "dry": 8, "wet": 24 }, "bake": { "into": "glass" } },
     "arctic":    { "name": "Arctic ground", "tags": ["ground"], "dig": { "hardness": 2 }, "freeze": {} },
     "lava":      { "name": "Lava", "tags": ["ground"], "dig": { "hardness": 2 }, "boil": {} },
     "lava-pool": { "name": "Lava pool", "tags": ["ground"], "dig": { "hardness": 2 }, "boil": {}, "hot": { "for": 300, "quench": 30 }, "grow": { "into": "rock", "log": "The lava pool cools into rock" } },
@@ -46,8 +47,9 @@
     "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" }, "dissolve": { "by": "acid" }, "float": { "every": 16, "reach": 4 } },
     "grease":   { "name": "Grease", "tags": ["slippery"], "burn": { "catch": 0.6, "fuel": 7, "intensity": 2, "look": "oil" }, "dissolve": { "by": "acid" } },
     "ash":      { "name": "Ash", "tags": [] },
-    "snow":     { "name": "Snow", "tags": ["snow"] },
-    "snowbank": { "name": "Snow bank", "tags": ["snow"] },
+    "snow":     { "name": "Snow", "tags": ["snow"], "melt": { "water": 1 } },
+    "snowbank": { "name": "Snow bank", "tags": ["snow"], "melt": { "into": "snow", "water": 1 } },
+    "embers":   { "name": "Burning rock", "tags": [], "burn": { "catch": 0.9, "fuel": 30, "intensity": 2 } },
     "thorns":   { "name": "Thorns", "tags": ["spiky"], "lasts": 360, "witherLog": "The thorns wither away", "damage": [1, 4], "speed": 0.5, "burn": { "catch": 0.5, "fuel": 6, "intensity": 2 }, "dissolve": { "by": "acid" } }
   },
   "gases": {

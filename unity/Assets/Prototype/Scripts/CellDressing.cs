@@ -25,7 +25,7 @@ public sealed partial class CellDressing
         ["deadfall"] = (new Color(0.32f, 0.23f, 0.15f), 0.4f),
         ["sprouts"] = (new Color(0.42f, 0.55f, 0.28f), 0f), ["sapling"] = (new Color(0.22f, 0.45f, 0.18f), 0.8f),
         ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.30f, 0.29f, 0.28f), 0.06f),
-        ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f),
+        ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f), ["brick"] = (new Color(0.55f, 0.27f, 0.19f), 0f),
         ["rusted-metal"] = (new Color(0.42f, 0.22f, 0.12f), 0.06f), ["mud"] = (new Color(0.24f, 0.17f, 0.10f), 0f),
         ["sand"] = (new Color(0.86f, 0.77f, 0.56f), 0f), ["glass"] = (new Color(0.73f, 0.87f, 0.89f), 0f),
         ["pane"] = (new Color(0.66f, 0.82f, 0.88f), 0f),

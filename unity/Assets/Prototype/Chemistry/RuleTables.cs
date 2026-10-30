@@ -89,6 +89,8 @@ namespace Chem
         public double Speed = 1;
         /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves; null neither.</summary>
         public string DissolvedBy, DissolvesTo;
+        /// <summary>The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick), or null.</summary>
+        public string BakesTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
 
@@ -114,6 +116,9 @@ namespace Chem
         public int? BurnIntensity;
         /// <summary>How its fire looks (materials.json "fireLook"); the view's only.</summary>
         public string FireLook;
+        /// <summary>Heat turns it into this cover (materials.json melt.into; null, none) and this much water (melt.water; 0 doesn't melt).</summary>
+        public string MeltsTo;
+        public int MeltWater;
         /// <summary>Ticks it lasts once laid (Cell.Life) before it withers away (thorns), or 0 for good; and the line logged then.</summary>
         public int Lasts;
         public string WitherLog;
@@ -188,6 +193,12 @@ namespace Chem
         /// (World.TickWhirlwinds); 0 lands once and is gone.
         /// </summary>
         public int PullEvery;
+        /// <summary>Ticks between the cast and its landing, with a target mark on the cells (Falling Star; World.AimStar); 0 lands at once.</summary>
+        public int Delay;
+        /// <summary>Burning rock thrown round where it lands (spells.json scatter), or null.</summary>
+        public ScatterDef Scatter;
+        /// <summary>An element that lands on its middle cell last of all (Falling Star's lava), or null.</summary>
+        public string Core;
         /// <summary>The light the Light effect sheds, in feet (spells.json light { bright, dim }), for the view to draw; 0 none.</summary>
         public int LightBright, LightDim;
         /// <summary>The ground the spell blows out where it lands (Fireball), or null.</summary>
@@ -205,6 +216,13 @@ namespace Chem
         public int Strength = 1;
         /// <summary>What its middle cell becomes once dug (Molten Boulder's lava); null stays.</summary>
         public string Leaves;
+    }
+
+    /// <summary>A spell's scatter: Count tries at a cell within Reach of the middle; each lays Cover, burning, on open dry ground.</summary>
+    public sealed class ScatterDef
+    {
+        public string Cover;
+        public int Count, Reach;
     }
 
     /// <summary>What an entity leaves behind when it blows up (entities.json "explodes").</summary>
@@ -393,6 +411,10 @@ namespace Chem
         public bool Break;
         /// <summary>heat: a terrain that gets hot (hot.for) is left hot for that long (World.Cool).</summary>
         public bool Heat;
+        /// <summary>bake: the terrain becomes its bakesTo, if it has one.</summary>
+        public bool Bake;
+        /// <summary>meltCover: the cover becomes its meltsTo and gives its meltWater, if it melts.</summary>
+        public bool MeltCover;
         /// <summary>dissolve: "cover" or "terrain", eaten away into its dissolvesTo when the rule's element is its dissolvedBy.</summary>
         public string Dissolve;
         public string SetTerrain, Raise;
@@ -419,7 +441,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -602,6 +624,7 @@ namespace Chem
             GrowLog = Str(o["growLog"]),
             DissolvedBy = Str(o["dissolvedBy"]),
             DissolvesTo = Str(o["dissolvesTo"]),
+            BakesTo = Str(o["bakesTo"]),
             SoakEvery = Int(o["soakEvery"]) ?? 0,
             SoakEveryWet = Int(o["soakEveryWet"]) ?? 0,
             Dampens = Num(o["dampens"]) ?? 0,
@@ -629,6 +652,8 @@ namespace Chem
             Fuel = Int(o["fuel"]),
             BurnIntensity = Int(o["burnIntensity"]),
             FireLook = Str(o["fireLook"]),
+            MeltsTo = Str(o["meltsTo"]),
+            MeltWater = Int(o["meltWater"]) ?? 0,
             Lasts = Int(o["lasts"]) ?? 0,
             WitherLog = Str(o["witherLog"]),
             Damage = Dice(o["damage"]),
@@ -710,6 +735,9 @@ namespace Chem
             Taper = Truthy(o["taper"]),
             Inward = Truthy(o["inward"]),
             PullEvery = Int(o["pullEvery"]) ?? 0,
+            Delay = Int(o["delay"]) ?? 0,
+            Scatter = o["scatter"] is JObject sc ? new ScatterDef { Cover = Str(sc["cover"]), Count = Int(sc["count"]) ?? 0, Reach = Int(sc["reach"]) ?? 0 } : null,
+            Core = Str(o["core"]),
             LightBright = Int((o["light"] as JObject)?["bright"]) ?? 0,
             LightDim = Int((o["light"] as JObject)?["dim"]) ?? 0,
             Crater = ParseCrater(o["crater"]),
@@ -787,6 +815,8 @@ namespace Chem
             e.SpreadCover = Int(o["spreadCover"]);
             e.Break = Truthy(o["break"]);
             e.Heat = Truthy(o["heat"]);
+            e.Bake = Truthy(o["bake"]);
+            e.MeltCover = Truthy(o["meltCover"]);
             e.Dissolve = Str(o["dissolve"]);
             e.SetTerrain = Str(o["setTerrain"]);
             e.Raise = Str(o["raise"]);

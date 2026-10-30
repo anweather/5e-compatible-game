@@ -9,6 +9,8 @@
 //   soak    { dry, wet, dampens, leaves, dries }                  soakEvery, soakEveryWet, dampens, soaksTo, driesTo
 //   rust    { every, leaves }                                     rustEvery, rustsTo
 //   hot     { for, quench }                                       hotFor, hotQuench
+//   bake    { into }                                              bakes tag, bakesTo (heat: sand to glass, mud to brick)
+//   melt    { into, water }                                       meltsTo, meltWater (covers: what's left, and the water it gives)
 //   float   { every, reach }                                      floatEvery, floatReach (covers: oil floats and spreads on open water)
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
 //   burn / freeze / soak { status }                               burnStatus, freezeStatus, soakStatus: the ticks of burning,
@@ -44,6 +46,7 @@ namespace Chem
             ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens"), ("leaves", "soaksTo"), ("dries", "driesTo") }),
             ("rust", null, new[] { ("every", "rustEvery"), ("leaves", "rustsTo") }),
             ("hot", null, new[] { ("for", "hotFor"), ("quench", "hotQuench") }),
+            ("bake", "bakes", new[] { ("into", "bakesTo") }),
             ("conduct", "conductive", System.Array.Empty<(string, string)>()),
             ("shatter", "brittle", new[] { ("leaves", "shattersTo") }),
             ("scald", "scalds", System.Array.Empty<(string, string)>()),
@@ -56,6 +59,7 @@ namespace Chem
         {
             ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("intensity", "burnIntensity"), ("look", "fireLook") }),
             ("float", null, new[] { ("every", "floatEvery"), ("reach", "floatReach") }),
+            ("melt", null, new[] { ("into", "meltsTo"), ("water", "meltWater") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
         };
 

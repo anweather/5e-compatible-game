@@ -211,7 +211,65 @@ namespace Chem
             if (s.Effect == HasteEffect) Hasten(s, ClampCharge(charge));
             else if (s.Effect == WeatherEffect) HoldWeather(s, ClampCharge(charge));
             else if (s.Effect == LightEffect) LightUp(s, x, y);
+            else if (s.Delay > 0) AimStar(s, x, y, dir, ClampCharge(charge));
             else Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
+        }
+
+        /// <summary>
+        /// A delayed cast (Falling Star, aimStar in the TS): the cells round where it will land wear a target
+        /// mark (Cell.Star) until it lands, Delay ticks on (LandStars).
+        /// </summary>
+        void AimStar(SpellDef s, int x, int y, int dir, int charge)
+        {
+            var star = new Star { Spell = s.Id, X = x, Y = y, Dir = dir, Charge = charge, Radius = s.Radius + ChargedGrowth(s, charge), Lands = Tick + s.Delay };
+            stars.Add(star);
+            MarkStar(star, 1);
+        }
+
+        // Adds to the mark on the square round a star; taking it off reaches ground that has gone inactive since.
+        void MarkStar(Star star, int by)
+        {
+            int r = star.Radius;
+            for (int y = star.Y - r; y <= star.Y + r; y++)
+                for (int x = star.X - r; x <= star.X + r; x++)
+                {
+                    if (!InBounds(x, y) || (by > 0 && !IsActiveAt(x, y))) continue;
+                    var c = At(x, y);
+                    if (c != null) c.Star = System.Math.Max(0, c.Star + by);
+                }
+        }
+
+        // Stars whose tick has come land, in the order cast; one over inactive ground leaves no mark.
+        void LandStars()
+        {
+            if (stars.Count == 0) return;
+            foreach (var star in stars)
+            {
+                if (star.Lands > Tick) continue;
+                MarkStar(star, -1);
+                var s = Rules.Spell(star.Spell);
+                if (s == null || !IsActiveAt(star.X, star.Y)) continue;
+                AddLog($"{s.Name} strikes", LogKind.Notable);
+                Land(s, star.X, star.Y, star.Dir, star.Charge, 0, 0);
+            }
+            stars.RemoveAll(st => st.Lands <= Tick);
+        }
+
+        /// <summary>A spell's burning rock (spells.json scatter; scatter in the TS): each try lays the cover, alight, on open dry ground off the middle.</summary>
+        void Scatter(ScatterDef sc, int x, int y)
+        {
+            if (sc == null) return;
+            int span = sc.Reach * 2 + 1;
+            for (int i = 0; i < sc.Count; i++)
+            {
+                int cx = x + (int)System.Math.Floor(Rand() * span) - sc.Reach;
+                int cy = y + (int)System.Math.Floor(Rand() * span) - sc.Reach;
+                if ((cx == x && cy == y) || !IsActiveAt(cx, cy)) continue;
+                var c = At(cx, cy);
+                if (IsBlocking(c) || c.Water > 0) continue;
+                PutCover(c, sc.Cover);
+                IgniteCover(c);
+            }
         }
 
         /// <summary>The Light spell's effect (SRD Light).</summary>
@@ -335,6 +393,8 @@ namespace Chem
                 LandOnRaider(s, cx, cy);
             }
             waveFrom = null;
+            Scatter(s.Scatter, x, y);
+            if (s.Core != null) Apply(x, y, s.Core, 1, -1, true);
         }
     }
 }

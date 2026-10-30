@@ -40,9 +40,10 @@ test("the table has 4 singles and 16 ordered pairs, all on real spells", () => {
   assert.deepEqual(Object.keys(c.pairs), ELEMENTS);
   for (const e of ELEMENTS) assert.deepEqual(Object.keys(c.pairs[e]!), ELEMENTS);
   assert.equal(c.moveFactor, 0.6);
-  assert.equal(comboById("fire+air")!.name, "Flame Wave");
+  assert.equal(comboById("fire+air")!.name, "Falling Star");
+  assert.equal(comboById("earth+fire")!.name, "Forge");
   assert.equal(comboById("air+fire")!.name, "Lightning");
-  assert.equal(comboById("fire+fire")!.held, "meteor");
+  assert.equal(comboById("fire+fire")!.held, undefined, "Meteor stays for showers");
 });
 
 test("a combo with no todo casts its real spell, in that spell's shape", () => {

@@ -87,6 +87,7 @@ namespace Chem
                 ["raiders"] = new JArray(raiders.Select(SaveRaider)),
             };
             if (casts.Count > 0) save["casts"] = new JArray(casts.Values.Select(SaveCast));
+            if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
             if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass)));
             var made = new Cell();
             var saved = new JArray();
@@ -187,6 +188,8 @@ namespace Chem
             WeatherSet = s["weather"] is JArray ws ? ((WeatherKind)(int)ws[0], (int)ws[1], (int)ws[2]) : ((WeatherKind, int, int)?)null;
             Wind = s["wind"] is JArray wd ? ((int)wd[0], (int)wd[1]) : ((int, int)?)null;
             foreach (var m in s["meteors"] ?? new JArray()) falling.Add(((int)m[0], (int)m[1], (int)m[2]));
+            foreach (var st in s["stars"] ?? new JArray())
+                stars.Add(new Star { Spell = (string)st[0], X = (int)st[1], Y = (int)st[2], Dir = (int)st[3], Charge = (int)st[4], Radius = (int)st[5], Lands = (int)st[6] });
             foreach (var ww in s["whirls"] ?? new JArray())
                 whirls.Add(new Whirl { X = (int)ww[0], Y = (int)ww[1], Radius = (int)ww[2], Ticks = (int)ww[3], Age = (int)ww[4], Every = (int)ww[5], MaxMass = (int)ww[6] });
             NextEntityId = (int)s["nextEntityId"];
@@ -240,7 +243,7 @@ namespace Chem
 
         static bool SameCell(Cell a, Cell b) =>
             a.T == b.T && a.Water == b.Water && a.Frozen == b.Frozen && a.Cover == b.Cover && a.Fire == b.Fire && a.Fuel == b.Fuel
-            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust && a.Heat == b.Heat && a.Lit == b.Lit && a.Slick == b.Slick;
+            && a.Gas == b.Gas && a.GasAmt == b.GasAmt && a.Charge == b.Charge && a.Height == b.Height && a.Life == b.Life && a.DampUntil == b.DampUntil && a.Rust == b.Rust && a.Heat == b.Heat && a.Star == b.Star && a.Lit == b.Lit && a.Slick == b.Slick;
 
         // A chunk's coordinates, changed cells and streaming state (just the coordinates when it has neither).
         static JObject SaveChunk(Chunk ch, IChunkSource source, Cell made)
@@ -262,10 +265,11 @@ namespace Chem
         static JArray SaveCell(int i, Cell c)
         {
             var a = new JArray(i, c.T, c.Water, c.Frozen ? 1 : 0, c.Cover, c.Fire, c.Fuel, c.Gas, c.GasAmt, c.Charge, c.Height, c.Life, c.DampUntil);
-            if (c.Rust != 0 || c.Heat != 0 || c.Lit != 0 || c.Slick != 0) a.Add(c.Rust);
-            if (c.Heat != 0 || c.Lit != 0 || c.Slick != 0) a.Add(c.Heat);
-            if (c.Lit != 0 || c.Slick != 0) a.Add(c.Lit);
-            if (c.Slick != 0) a.Add(c.Slick);
+            if (c.Rust != 0 || c.Heat != 0 || c.Lit != 0 || c.Slick != 0 || c.Star != 0) a.Add(c.Rust);
+            if (c.Heat != 0 || c.Lit != 0 || c.Slick != 0 || c.Star != 0) a.Add(c.Heat);
+            if (c.Lit != 0 || c.Slick != 0 || c.Star != 0) a.Add(c.Lit);
+            if (c.Slick != 0 || c.Star != 0) a.Add(c.Slick);
+            if (c.Star != 0) a.Add(c.Star);
             return a;
         }
 
@@ -300,6 +304,7 @@ namespace Chem
             c.Heat = Later(a, 14);
             c.Lit = Later(a, 15);
             c.Slick = Later(a, 16);
+            c.Star = Later(a, 17);
             c.ForgetDef();
         }
 

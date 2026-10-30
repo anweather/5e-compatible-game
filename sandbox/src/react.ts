@@ -101,6 +101,23 @@ function dissolve(c: Cell, what: "cover" | "terrain", element: string): boolean 
   return true;
 }
 
+/** A bake effect (World.Bake): heat turns the terrain into its bakesTo. */
+function bake(c: Cell): boolean {
+  const to = terrainDef(c).bakesTo;
+  if (!to) return false;
+  c.t = to;
+  return true;
+}
+
+/** A meltCover effect (World.MeltCover): heat turns the cover into its meltsTo, and its meltWater. */
+function meltCover(c: Cell): boolean {
+  const cv = c.cover !== null ? RULES.covers[c.cover] : undefined;
+  if (!cv?.meltWater) return false;
+  putCover(c, cv.meltsTo ?? null);
+  c.water = Math.min(RULES.sim.water.maxLevel, c.water + cv.meltWater);
+  return true;
+}
+
 /** Applies one element to one cell, then to whatever stands there. */
 export function applyElement(w: World, x: number, y: number, element: string, ctx: Ctx): void {
   const c = cellAt(w, x, y);
@@ -352,6 +369,8 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     c.heat = hot;
     return true;
   }
+  if (eff.bake) return bake(c);
+  if (eff.meltCover) return meltCover(c);
   if (eff.break) {
     const to = terrainDef(c).breaksTo;
     if (!to) return false;
