@@ -621,6 +621,32 @@ test("the fire combos cast scalding steam, a lava pool and a flame wave", () => 
   assert.equal(`${pool} ${goblin.hp} ${hound.hp} ${rustHash(w)} ${w.rng}`, "9 90 -1 d6bc3323 2450008921"); // the same in the C# core
 });
 
+// Mirrors ChemistryTests.TheAirCombosCastLightningBoltRainCloudSandBlastAndWhirlwind.
+test("the air combos cast lightning bolt, rain cloud, sand blast and whirlwind", () => {
+  const w = createWorld(24, 11, 1);
+  for (const c of w.cells) c.t = "grass";
+  castSpell(w, "sand-blast", 1, 2, 1);
+  const sand = w.cells.filter((c) => c.t === "sand").length;
+  assert.ok(sand > 0, "the blast leaves sand along its line");
+  castSpell(w, "lightning-bolt", 1, 2, 1);
+  const glass = w.cells.filter((c) => c.t === "glass").length;
+  assert.ok(glass > 0, "the bolt fuses the sand it crosses into glass");
+  assert.ok(w.cells.some((c) => c.fire > 0), "and sets the grass beyond smouldering");
+  castSpell(w, "rain-cloud", 16, 2, 0);
+  assert.equal(cellAt(w, 16, 2)!.gas, "cloud");
+  Object.assign(cellAt(w, 10, 8)!, { gas: "smoke", gasAmt: 4 });
+  castSpell(w, "whirlwind", 12, 8, 0);
+  assert.equal(cellAt(w, 10, 8)!.gas, null, "the whirlwind draws the smoke in");
+  let drawn = 0;
+  for (let y = 7; y <= 9; y++) for (let x = 11; x <= 13; x++) drawn += cellAt(w, x, y)!.gas === "smoke" ? cellAt(w, x, y)!.gasAmt : 0;
+  assert.equal(drawn, 4, "toward its middle, all of it");
+  run(w, 60);
+  let rained = 0;
+  for (let x = 14; x <= 18; x++) rained += cellAt(w, x, 2)!.water;
+  assert.ok(rained > 0, "the cloud rains on the cells under it");
+  assert.equal(`${sand} ${glass} ${rained} ${rustHash(w)} ${w.rng}`, "8 8 4 49212457 399058435"); // the same in the C# core
+});
+
 // Mirrors ChemistryTests.AGustPushesSmokeAndSteamFansTheFireAndKeepsMetalHot.
 test("a gust pushes smoke and steam, fans the fire, and keeps metal hot", () => {
   const w = createWorld(16, 5, 1);

@@ -64,5 +64,13 @@
   { "id": "lava-pool", "group": "fire", "name": "Lava Pool", "level": 3, "shape": "burst", "radius": 1, "element": "lava", "radial": false,
     "blurb": "Fire and earth together: the ground where you point melts into a 15 ft pool of lava. It burns whatever stands on it, boils water poured on it into steam, and cools into rock after a while." },
   { "id": "flame-wave", "group": "fire", "name": "Flame Wave", "level": 2, "shape": "cone", "origin": "self", "length": 4, "element": "fire", "power": 2, "damage": [3, 6], "wind": 18, "radial": false,
-    "blurb": "Fire and air together: a 20 ft cone of flame driven by a gust behind it. Everything that can burn in it catches, and the wind it raises carries the fire on and drives smoke and steam downwind." }
+    "blurb": "Fire and air together: a 20 ft cone of flame driven by a gust behind it. Everything that can burn in it catches, and the wind it raises carries the fire on and drives smoke and steam downwind." },
+  { "id": "lightning-bolt", "group": "storm", "name": "Lightning Bolt", "level": 3, "shape": "line", "origin": "self", "length": 20, "element": "lightning", "damage": [8, 6], "radial": false,
+    "blurb": "Level 3. A stroke of lightning 100 ft long from you toward where you point. It arcs through water and metal it touches, sets what can burn smouldering, fuses sand into glass, and hits every creature in the line." },
+  { "id": "rain-cloud", "group": "storm", "name": "Rain Cloud", "level": 2, "shape": "burst", "radius": 2, "element": "rain", "radial": false,
+    "blurb": "Air and water together: a low rain cloud, 25 ft across, where you point. It rains on the cells under it for a while, wetting them and putting fires out, and drifts with the wind until it thins away." },
+  { "id": "sand-blast", "group": "storm", "name": "Sand Blast", "level": 1, "shape": "line", "origin": "self", "length": 8, "element": "sand", "damage": [2, 6], "radial": false,
+    "blurb": "Air and earth together: a 40 ft line of scouring sand from you toward where you point. It stings whatever it hits and leaves the ground it crosses covered in sand (which lightning fuses into glass)." },
+  { "id": "whirlwind", "group": "storm", "name": "Whirlwind", "level": 3, "shape": "burst", "radius": 2, "element": "air", "inward": true, "radial": false,
+    "blurb": "Air and air together: a whirling column of wind 25 ft across where you point. It draws smoke, fog and steam in toward its middle, blows small flames out and fans big ones in toward the eye." }
 ]

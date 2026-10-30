@@ -141,6 +141,8 @@ namespace Chem
         public int CondenseEvery;
         /// <summary>It condenses only this many cells or more from heat: none within it burning or hot (Cell.Heat), so steam doesn't rain straight back onto a fire (World.NearHeat).</summary>
         public int CondenseAway;
+        /// <summary>A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); 0 never.</summary>
+        public int RainEvery;
     }
 
     /// <summary>
@@ -176,6 +178,8 @@ namespace Chem
         public int? Height;
         public string Terrain;
         public bool Taper;
+        /// <summary>A burst whose element arrives at each cell heading in toward its middle (Whirlwind): air shoves gas and fans fire inward.</summary>
+        public bool Inward;
         /// <summary>The ground the spell blows out where it lands (Fireball), or null.</summary>
         public CraterDef Crater;
     }
@@ -405,7 +409,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -514,6 +518,7 @@ namespace Chem
                     BlocksSightAt = Int(p.Value["blocksSightAt"]) ?? 0,
                     CondenseEvery = Int(p.Value["condenseEvery"]) ?? 0,
                     CondenseAway = Int(p.Value["condenseAway"]) ?? 0,
+                    RainEvery = Int(p.Value["rainEvery"]) ?? 0,
                 };
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
@@ -692,6 +697,7 @@ namespace Chem
             Height = Int(o["height"]),
             Terrain = Str(o["terrain"]),
             Taper = Truthy(o["taper"]),
+            Inward = Truthy(o["inward"]),
             Crater = ParseCrater(o["crater"]),
         };
 

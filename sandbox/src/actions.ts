@@ -245,6 +245,13 @@ function controlWeather(w: World, s: SpellDef, charge: number) {
   log(w, next === "clear" ? "The sky clears at your word" : `The sky turns to ${next} at your word`, "notable");
 }
 
+/** The direction from (dx, dy) off a burst's middle back toward it, none at the middle: along the longer axis, east or west on a tie (World.InwardDir). */
+function inwardDir(dx: number, dy: number): Dir | undefined {
+  if (dx === 0 && dy === 0) return undefined;
+  if (Math.abs(dx) >= Math.abs(dy)) return dx > 0 ? 3 : 1;
+  return dy > 0 ? 0 : 2;
+}
+
 /** What a spell does where it lands, without the cast's log line (a meteor's landing too; World.Land). */
 export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir, casterId: number | undefined, charge: number, aim?: [number, number]): void {
   const cells = spellCells(w, s, x, y, dir, charge, aim);
@@ -270,7 +277,7 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
   }
   for (const [cx, cy] of cells) {
     if (casterId !== undefined && s.shape === "burst" && cx === x && cy === y) continue;
-    if (s.element) applyElement(w, cx, cy, s.element, ctx);
+    if (s.element) applyElement(w, cx, cy, s.element, s.inward ? { ...ctx, dir: inwardDir(cx - x, cy - y) } : ctx);
     if (!s.push && s.damage) {
       const e = entityAt(w, cx, cy);
       if (e && e.id === casterId) continue;

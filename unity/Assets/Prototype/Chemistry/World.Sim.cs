@@ -641,8 +641,22 @@ namespace Chem
             {
                 var s = rows[k];
                 var cells = s.Chunk.Cells;
-                for (int i = s.Start; i < s.End; i++) if (cells[i].Gas != null) Drift(s.Chunk, i);
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    if (cells[i].Gas == null) continue;
+                    RainFrom(s.Chunk, cells[i]);
+                    Drift(s.Chunk, i);
+                }
             }
+        }
+
+        /// <summary>A rain cloud (a gas with rainEvery) rains a unit of water on its cell every rainEvery ticks; not into a wall, but into a vessel.</summary>
+        void RainFrom(Chunk ch, Cell c)
+        {
+            if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.RainEvery <= 0 || Tick % g.RainEvery != 0) return;
+            if (IsBlocking(c) && !HasTag(c, "vessel")) return;
+            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
+            WaterMoved(ch);
         }
 
         /// <summary>Moves one unit of gas downwind, unless something (or a paused chunk) is in the way.</summary>

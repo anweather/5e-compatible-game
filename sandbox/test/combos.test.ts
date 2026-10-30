@@ -50,11 +50,11 @@ test("a combo with no todo casts its real spell, in that spell's shape", () => {
   const all = [...Object.values(c.singles), ...Object.values(c.pairs).flatMap((p) => Object.values(p))];
   assert.equal(all.length, 20);
   for (const d of all) assert.equal(d.shape, BASE_RULES.spells.find((s) => s.id === d.spell)!.shape, d.name);
-  assert.equal(all.filter((d) => d.todo).length, 4);
+  assert.equal(all.filter((d) => d.todo).length, 0, "no stand-ins left");
   assert.equal(comboById("fire+water")!.spell, "scalding-steam");
   assert.ok(!comboById("fire+water")!.todo, "a real spell now");
-  assert.equal(comboById("air+fire")!.spell, "shocking-grasp");
-  assert.ok(comboById("air+fire")!.todo, "still a stand-in");
+  assert.equal(comboById("air+fire")!.spell, "lightning-bolt");
+  assert.ok(!comboById("air+fire")!.todo, "the last stand-ins are real spells too");
 });
 
 test("the d-pad lists the spells with no element", () => {
@@ -88,7 +88,7 @@ test("a second element inside the window makes it the ordered pair, on the pair'
   assert.equal(w.casts.ann!.total, 9);
   assert.equal(untilFired(w), 9);
   assert.equal(w.combosFired[0]!.combo, "air+fire");
-  assert.equal(w.combosFired[0]!.spell, "shocking-grasp");
+  assert.equal(w.combosFired[0]!.spell, "lightning-bolt");
 });
 
 test("the window shuts, a third element is refused, and so is an unknown one", () => {

@@ -54,6 +54,7 @@
     "steam": { "name": "Steam", "scald": 1, "condenseEvery": 2, "condenseAway": 1 },
     "smoke": { "name": "Smoke" },
     "fog":   { "name": "Fog", "decay": 0.015, "blocksSightAt": 2 },
+    "cloud": { "name": "Rain cloud", "decay": 0.03, "rainEvery": 30 },
     "dust":  { "name": "Dust", "decay": 0.04, "blocksSightAt": 2 }
   }
 }

@@ -359,11 +359,20 @@ function nearHeat(w: World, x: number, y: number, radius: number): boolean {
   return false;
 }
 
+/** A rain cloud (a gas with rainEvery) rains a unit of water on its cell every rainEvery ticks; not into a wall, but into a vessel (World.RainFrom). */
+function rainFrom(w: World, c: Cell) {
+  const every = RULES.gases[c.gas!]?.rainEvery ?? 0;
+  if (every <= 0 || w.tick % every !== 0) return;
+  if (isBlocking(c) && !hasTag(c, "vessel")) return;
+  c.water = Math.min(RULES.sim.water.maxLevel, c.water + 1);
+}
+
 function tickGas(w: World) {
   const p = RULES.sim.gas;
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (!c.gas) continue;
+    rainFrom(w, c);
     if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) {
       c.gasAmt--;
       condense(w, i, c);
