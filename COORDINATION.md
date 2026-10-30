@@ -548,3 +548,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   throw at 11 m/s), plus Andrew's staff flare (one NaN pixel). EditMode
   522/522, core 466/466, sandbox 190/190. FREEZE for 0.1.8 (Windows only):
   dev takes no merges until it's published.
+- 2026-10-30: RULE (Andrew): playtest findings go on GitHub. A new issue gets
+  a GitHub issue (label `playtest`) with a "Discovery cost" section: the
+  session's cost (commit-cost.mjs --record, docs/telemetry/sessions.jsonl)
+  and the issue's share. An issue found again gets a comment on its open
+  GitHub issue with the rediscovery's cost (label `rediscovered`), never a
+  duplicate. Issues we keep paying to find again rank first for fixing.
+  The steps: playtest/sessions-0.1.8-brief.md, step 5. Gameplay sessions run
+  on the Pro account, as a fresh sub-agent on the host.

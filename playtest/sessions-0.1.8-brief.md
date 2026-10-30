@@ -79,14 +79,26 @@ beside the median feature.
      `playtest-0.1.8` branch (`https://github.com/anweather/5e-compatible-game/blob/playtest-0.1.8/<path>`).
    - **Discovery cost**, as a section at the end, from the step 4 record:
      the session's total (its `Host-Tokens`, `Host-Time` and ite), the issues
-     it found, and this issue's share (the session's ite ÷ issues found), so the
-     cost of finding it stays with it.
-3. Observations aren't issues: they stay in playtest/sessions/0.1.8.md, unless
+     it found, and this issue's share (the session's ite ÷ issues found, new
+     and rediscovered alike), so the cost of finding it stays with it.
+3. **Rediscovered issues** (Andrew): an issue that already has an open GitHub
+   issue gets a comment on it (`gh issue comment <n>`), not a new issue:
+   "Rediscovered in alpha 0.1.8 (<sha>), run seed <N>", the screenshot link,
+   and the same **Discovery cost** section with this session's share. Add the
+   label `rediscovered` (create it once if it's missing). A known issue with
+   no GitHub issue yet gets one now, marked as a rediscovery. An issue that
+   keeps costing us to find again should be fixed: the rediscovery comments
+   add up its cost, for the backlog's priority.
+4. Observations aren't issues: they stay in playtest/sessions/0.1.8.md, unless
    one is clearly a bug.
-4. Add each issue's number to its finding (playtest/findings/F-…), and push.
+5. Add each issue's number to its finding (playtest/findings/F-…), and push.
+6. **Rediscovery ranking:** in playtest/sessions/0.1.8.md, list the open
+   `playtest` issues by how often they've been found and their summed discovery
+   cost (from their comments), most costly first: the fix-first list.
 
 ## Deliver
 
 Report to the PM in 8 lines or fewer: issues (new and filed, with their
-numbers; known; fixed already), the top observations, issues per hour against
+numbers; rediscovered, with the comments added; fixed already), the top of
+the rediscovery ranking, the top observations, issues per hour against
 before, and the recorded cost and cost per issue.
