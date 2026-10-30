@@ -4,18 +4,21 @@ using UnityEngine;
 
 // The decals on the ground: one mesh of quads drawn by Prototype/WindowGlass, a
 // quad over each cracked cell (a spiderweb, CrackWeb.hlsl) and each brick cell
-// (its courses). One object however many there are, rebuilt only when one changes.
+// (its courses). A crack in ice is a small grid of quads that follows the ice's own
+// surface, over a mound too. One object however many there are, rebuilt only when one changes.
 // A pane's crack is on its own glass (WindowPanes). Only the show: Cell.Cracked is
 // the truth.
 public sealed class CellCrackMesh
 {
     // How far the decal floats over its cell, and the dark of the lines.
-    const float Lift = 0.035f, DepthBias = -60f;
+    const float Lift = 0.035f, IceLift = 0.05f, DepthBias = -60f;
     static readonly Color32 Line = new Color(0.05f, 0.07f, 0.1f, 0f), Mortar = new Color(0.5f, 0.43f, 0.36f, 0f);
     const float WebKind = 2f, BrickKind = 3f;
+    // Quads to a side of a crack on ice.
+    const int IceGrid = 6;
 
     readonly ChemGrid grid;
-    readonly Dictionary<int, (float top, bool brick)> cracked = new();
+    readonly Dictionary<int, (float top, bool brick, bool ice)> cracked = new();
     readonly GameObject shown;
     readonly Mesh mesh;
     readonly Material material;
@@ -47,7 +50,7 @@ public sealed class CellCrackMesh
         bool brick = c.T == TerrainIds.Brick;
         bool now = brick || (c.Cracked != 0 && !grid.World.IsBlocking(c));
         bool had = cracked.TryGetValue(key, out var was);
-        if (now) cracked[key] = (top, brick);
+        if (now) cracked[key] = (top, brick, c.Frozen);
         else cracked.Remove(key);
         dirty |= had != now || (now && (was.brick != brick || !Mathf.Approximately(was.top, top)));
     }
@@ -62,7 +65,11 @@ public sealed class CellCrackMesh
         normals.Clear();
         colors.Clear();
         triangles.Clear();
-        foreach (var kv in cracked) Quad(kv.Key, kv.Value.top, kv.Value.brick);
+        foreach (var kv in cracked)
+        {
+            if (kv.Value.ice) IceQuads(kv.Key, kv.Value.top);
+            else Quad(kv.Key, kv.Value.top, kv.Value.brick);
+        }
         mesh.Clear();
         mesh.SetVertices(vertices);
         mesh.SetNormals(normals);
@@ -87,6 +94,32 @@ public sealed class CellCrackMesh
             colors.Add(brick ? Mortar : Line);
         }
         triangles.AddRange(new[] { v, v + 2, v + 1, v, v + 3, v + 2 });
+    }
+
+    // A grid of quads over the cell, each corner on the ice as it's drawn there.
+    void IceQuads(int key, float top)
+    {
+        int w = grid.World.W, x = key % w, y = key / w, first = vertices.Count, side = IceGrid + 1;
+        var middle = grid.CellCenter(x, y);
+        float half = grid.cellSize * 0.5f, kind = WebKind + Mathf.Repeat(key * 0.137f, 1f);
+        for (int j = 0; j < side; j++)
+            for (int i = 0; i < side; i++)
+            {
+                float u = i / (float)IceGrid, t = j / (float)IceGrid;
+                // The cell's +x is the world's, and its +y runs the world's -z (ContourSurface.Flat).
+                float gx = x + u, gy = y + 1f - t;
+                var at = new Vector3(middle.x + (u * 2f - 1f) * half, grid.DrawnWaterTopAt(gx, gy, top) + IceLift, middle.z + (t * 2f - 1f) * half);
+                vertices.Add(grid.transform.InverseTransformPoint(at));
+                uvs.Add(new Vector3(u, t, kind));
+                normals.Add(Vector3.up);
+                colors.Add(Line);
+            }
+        for (int j = 0; j < IceGrid; j++)
+            for (int i = 0; i < IceGrid; i++)
+            {
+                int a = first + j * side + i, b = a + 1, c = a + side, d = c + 1;
+                triangles.AddRange(new[] { a, c, d, a, d, b });
+            }
     }
 
     public void Destroy()

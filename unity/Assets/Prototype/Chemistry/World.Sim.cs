@@ -764,6 +764,7 @@ namespace Chem
             if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.Sheds == null || g.ShedEvery <= 0 || Tick % g.ShedEvery != 0) return;
             if (g.ShedChance < 1 && Rand() >= g.ShedChance) return;
             Apply(CellX(ch, i), CellY(ch, i), g.Sheds, 1, -1, false);
+            if (g.Sheds == "lightning") shedStrikes.Add((CellX(ch, i), CellY(ch, i), Tick));
         }
 
         /// <summary>Moves one unit of gas downwind, unless something (or a paused chunk) is in the way.</summary>

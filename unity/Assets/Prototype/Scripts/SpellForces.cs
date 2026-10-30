@@ -54,6 +54,7 @@ public static class SpellForces
         var moved = MovesSomeone(grid, spell, cast, levitate, ownCaster);
         if (moved.HasValue) return moved.Value;
         HurtWizards(grid, spell, cast, except, only);
+        if (spell.ForceThrow > 0 && spell.Shape == SpellShapes.Burst) return Jet(grid, spell, cast, except, only);
         if (spell.Push <= 0) return HitWizards(grid, spell, cast, except, only);
         // Held, a push is half again as hard per level, and a burst reaches as far as its grown squares.
         float impulse = spell.Push * Forces.ImpulsePerPush * (1f + 0.5f * (charge - 1));
@@ -63,6 +64,19 @@ public static class SpellForces
             SpellShapes.Line => Forces.Along(grid, grid.World.SpellCells(spell, x, y, dir, cast.Charge, cast.AimX, cast.AimY), Along(cast), impulse, except, only),
             _ => 0,
         };
+    }
+
+    // How hard a jet throws, in impulses and in a wizard's m/s, for each tick of its force.throw.
+    const float JetImpulse = 55f, JetSpeed = 1.5f;
+
+    // A Geyser's jet throws what's on its water straight up; on dry ground it fizzled and throws nothing.
+    static int Jet(ChemGrid grid, SpellDef spell, CastCommand cast, Transform except, System.Predicate<IPushable> only)
+    {
+        var c = grid.World.At(cast.X, cast.Y);
+        if (c == null || (c.Water == 0 && c.Gas != GasIds.Steam)) return 0;
+        var at = grid.CellCenter(cast.X, cast.Y) + Vector3.up * grid.SurfaceY(cast.X, cast.Y);
+        float reach = (spell.Radius + World.ChargedGrowth(spell, World.ClampCharge(cast.Charge)) + 1) * grid.cellSize;
+        return Forces.Up(at, reach, spell.ForceThrow * JetImpulse, spell.ForceThrow * JetSpeed, except, only);
     }
 
     // The spells that move or change one thing rather than push: Levitate (a prop), Misty Step and

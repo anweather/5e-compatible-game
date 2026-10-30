@@ -40,6 +40,13 @@ public static class SpellIds
     public const string SandBlast = "sand-blast";
     public const string DustStorm = "dust-storm";
     public const string Light = "light";
+    public const string Geyser = "geyser";
+    public const string Wave = "wave";
+    public const string Frost = "frost";
+    public const string RollingBoulder = "rolling-boulder";
+    public const string StoneRamp = "stone-ramp";
+    public const string LightningBolt = "lightning-bolt";
+    public const string ScaldingSteam = "scalding-steam";
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>
@@ -112,11 +119,15 @@ public static class TerrainIds
     // Sand a lightning strike fused (lightning-fuse in reactions.json).
     public const string Glass = "glass";
     public const string LogWall = "logwall";
+    // A log wall a sand blast has worn thin (materials.json scour).
+    public const string WornLogWall = "worn-logwall";
+    public const string Gate = "gate", GateOpen = "gate_open", Coil = "coil";
     public const string Pane = "pane";
     public const string Stone = "stone";
     public const string Brick = "brick";
     public const string Lava = "lava", LavaPool = "lava-pool";
     public const string Rock = "rock";
+    public const string Pillar = "pillar";
     public const string Wood = "wood";
     public const string Sprouts = "sprouts";
     public const string Sapling = "sapling";
@@ -132,6 +143,8 @@ public static class CoverIds
     public const string Snowbank = "snowbank";
     public const string Thorns = "thorns";
     public const string Embers = "embers";
+    public const string Frost = "frost";
+    public const string Vines = "vines";
 }
 
 /// <summary>Gas ids, as in rules/materials.json.</summary>
@@ -142,6 +155,8 @@ public static class GasIds
     public const string Fog = "fog";
     public const string Dust = "dust";
     public const string Cloud = "cloud";
+    public const string Storm = "storm";
+    public const string SnowCloud = "snowcloud";
 }
 
 /// <summary>The defense field's raiders (entities with a "raider" row), as in rules/entities.json.</summary>

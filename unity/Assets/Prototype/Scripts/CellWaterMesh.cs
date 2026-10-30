@@ -107,6 +107,10 @@ public sealed class CellWaterMesh
     /// <summary>The water surface drawn at a wet cell after the last Rebuild, or <paramref name="fallback"/>.</summary>
     public float Top(int x, int y, float fallback) => tops.TryGetValue(grid.World.Idx(x, y), out var t) ? t : fallback;
 
+    /// <summary>The top of the water or ice as drawn at a point in grid units, blended between the cells as its mesh is, or <paramref name="fallback"/>.</summary>
+    public float TopAt(float gx, float gy, float fallback) => ContourSurface.BlendAround(gx, gy,
+        (x, y) => grid.World.InBounds(x, y) && tops.TryGetValue(grid.World.Idx(x, y), out var t) ? t : null, fallback);
+
     /// <summary>Drifts the water's ripples, as the lake's do (once a frame).</summary>
     public void Scroll(float time)
     {

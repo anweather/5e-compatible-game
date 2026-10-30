@@ -456,6 +456,9 @@ namespace Chem
             return best;
         }
 
+        /// <summary>The cell a spell that seeks would strike if aimed at (x, y), or null, for the view's bolt.</summary>
+        public (int x, int y)? Sought(SpellDef s, int x, int y) => s != null && s.SeekRange > 0 ? Seek(s, x, y) : null;
+
         /// <summary>What a spell does to cells where it lands, without the cast's log line (a meteor's landing too).</summary>
         void Land(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
         {

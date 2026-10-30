@@ -12,6 +12,15 @@ namespace Chem
         // The flashes of the last HistoryTicks ticks, for a view that steps several ticks in one frame. Not world state.
         readonly List<(int x, int y, int push, int tick)> flashHistory = new List<(int x, int y, int push, int tick)>();
 
+        // A storm cloud's strikes of the last HistoryTicks ticks, for the view's bolts. Not world state.
+        readonly List<(int x, int y, int tick)> shedStrikes = new List<(int x, int y, int tick)>();
+
+        /// <summary>Cells a storm cloud struck after <paramref name="tick"/> (within the last 600 ticks), oldest first.</summary>
+        public IEnumerable<(int x, int y, int tick)> ShedStrikesSince(int tick)
+        {
+            foreach (var s in shedStrikes) if (s.tick > tick) yield return s;
+        }
+
         /// <summary>Cells that flashed after <paramref name="tick"/> (within the last 600 ticks), oldest first: where, the shove, the tick.</summary>
         public IEnumerable<(int x, int y, int push, int tick)> FlashesSince(int tick)
         {

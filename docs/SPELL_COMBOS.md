@@ -177,6 +177,8 @@ cracks that close as it cools (`CellLavaMesh`), Light as a pool of real lights (
 Sand Blast's jet, the pick's swing and chips, and frozen raiders in ice, split when cracked.
 Reel clip: `spell-chain.mp4`.
 
+**The looks (UX pass 3, 2026-10-30):** the casts of the water, earth, air and fire rows above, staged by the second half of the `spelllooks` probe (`castlooks` runs it alone): Geyser's jet (`BurstFx`) throws what's on the water, a wizard too (`Forces.Up`, `SurfaceEffects.Toss`); Wave is one curled crest with foam (`WaveCrest`, `ChemGrid.Movers`) that carries light props; Frost is a beam and a pale film; the boulder is a rock that turns as it rolls and stands where it rests; vines hang on what they climb and mat over pits and streams, and walking into them climbs them (`CellVines`, `SurfaceEffects.Climb`); stepping stones are flat rocks; Lightning is an arc to what it seeks, and the charge runs out through the water in arcs to a coil (`ArcFx`, `ChemGrid.Charge`); a coil, a gate whose bars rise, and a worn log wall are simple pieces (`CellDressing.Machines`); storm and snow clouds are `FogBank` styles, and a storm cloud's strikes come from `World.ShedStrikesSince`; burning debris glows in the lava's mesh, lava leaves a dark crust (a look only: the cell is plain rock); metal turns a step at a time toward rust. The crack web follows ice over a mound and is on frozen raiders' bodies (`Punchy/Creature`). Reel clip: `bolt-to-gate.mp4`. No coil or gate stands in the valley yet: they are drawn when a map or mod places them.
+
 ## Open
 - Three-element combos: held back as a later mastery layer.
 - What the grimoire shows for a found combo (name, elements in order,

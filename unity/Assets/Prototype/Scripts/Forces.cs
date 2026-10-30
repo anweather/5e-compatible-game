@@ -31,15 +31,7 @@ public static class Forces
     /// </summary>
     public static int Radial(Vector3 center, float reach, float impulse, Transform except, System.Predicate<IPushable> only = null)
     {
-        var targets = InSphere<IPushable>(center, reach, except);
-        // Other players' wizards have no live collider on this machine (their owners move them),
-        // so they are found by distance; Knockback hands their shove on to their owner.
-        foreach (var wizard in Knockback.All)
-        {
-            if (targets.Contains(wizard) || (except != null && wizard.transform.IsChildOf(except))) continue;
-            if ((wizard.transform.position - center).sqrMagnitude <= reach * reach) targets.Add(wizard);
-        }
-        if (only != null) targets.RemoveAll(t => !only(t));
+        var targets = Around(center, reach, except, only);
         foreach (var target in targets)
         {
             var away = Position(target) - center;
@@ -49,6 +41,38 @@ public static class Forces
             target.Push(Thrown(dir) * (impulse * (1f - 0.5f * Mathf.Clamp01(distance / reach))));
         }
         return targets.Count;
+    }
+
+    /// <summary>
+    /// Throws everything within <paramref name="reach"/> of <paramref name="center"/> straight up (a Geyser's jet):
+    /// a prop by the impulse, a wizard at <paramref name="wizardSpeed"/> m/s. Returns how many things it threw.
+    /// </summary>
+    public static int Up(Vector3 center, float reach, float impulse, float wizardSpeed, Transform except, System.Predicate<IPushable> only = null)
+    {
+        var targets = Around(center, reach, except, only);
+        foreach (var target in targets)
+        {
+            if (target is Knockback wizard)
+            {
+                if (wizard.TryGetComponent<SurfaceEffects>(out var feet)) feet.Toss(wizardSpeed);
+            }
+            else target.Push(Vector3.up * impulse);
+        }
+        return targets.Count;
+    }
+
+    static List<IPushable> Around(Vector3 center, float reach, Transform except, System.Predicate<IPushable> only)
+    {
+        var targets = InSphere<IPushable>(center, reach, except);
+        // Other players' wizards have no live collider on this machine (their owners move them),
+        // so they are found by distance; Knockback hands their shove on to their owner.
+        foreach (var wizard in Knockback.All)
+        {
+            if (targets.Contains(wizard) || (except != null && wizard.transform.IsChildOf(except))) continue;
+            if ((wizard.transform.position - center).sqrMagnitude <= reach * reach) targets.Add(wizard);
+        }
+        if (only != null) targets.RemoveAll(t => !only(t));
+        return targets;
     }
 
     /// <summary>

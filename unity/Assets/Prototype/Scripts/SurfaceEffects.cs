@@ -58,6 +58,7 @@ public class SurfaceEffects : MonoBehaviour
     bool wasSlipping, wasWading, swimming;
     float kickedUntil;
     bool kick;
+    const float ClimbReach = 1f, ClimbSpeed = 2.6f;
     float slowUntil, slowFactor = 1f, appliedSpeed = 1f;
     Vitals vitals;
     // Thorns underfoot (Spike Growth): the cover's speed, and how far the wizard has walked through them since the last cut.
@@ -158,6 +159,7 @@ public class SurfaceEffects : MonoBehaviour
         bool wading = c != null && !c.Frozen && c.Water >= wadingDepth && surface > transform.position.y;
 
         Swim(c, cell);
+        Climb(cell);
         Slide(slippery && !swimming);
         bool underfoot = c != null && !above && body.isGrounded && !swimming;
         Thorns(underfoot && grid.World.IsSpiky(c) ? grid.World.CoverOf(c) : null);
@@ -318,6 +320,26 @@ public class SurfaceEffects : MonoBehaviour
         SetAfloat(false);
         fall.SetValue(controller, Mathf.Sqrt(swimKick * -2f * baseGravity));
         if (animator != null) animator.SetBool(JumpId, true);
+    }
+
+    /// <summary>Thrown straight up at this speed (a Geyser's jet), out of the water if afloat.</summary>
+    public void Toss(float speed)
+    {
+        if (fall == null) return;
+        kickedUntil = Time.time + KickTime;
+        SetAfloat(false);
+        fall.SetValue(controller, speed);
+        if (animator != null) animator.SetBool(JumpId, true);
+    }
+
+    // Walking into vines on what stands ahead climbs them, up over the top.
+    void Climb(Vector2Int cell)
+    {
+        if (fall == null || ((int)body.collisionFlags & (int)CollisionFlags.Sides) == 0) return;
+        var ahead = grid.CellAt(transform.position + transform.forward * ClimbReach);
+        var c = grid.World.At(ahead.x, ahead.y);
+        if (ahead == cell || c == null || c.Cover != CoverIds.Vines || !grid.World.IsBlocking(c)) return;
+        fall.SetValue(controller, ClimbSpeed);
     }
 
     void SetAfloat(bool on)

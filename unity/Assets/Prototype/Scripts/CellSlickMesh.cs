@@ -11,7 +11,8 @@ using UnityEngine;
 // Ash is not a film: it is the terrain's charred paint. Ground acid has eaten
 // (ChemGrid.WatchAcid) wears a stain in the same film, a dark, sour green, for
 // a while (Eaten, Expire); a slick there wins over it. A falling star's target
-// mark (Cell.Star) is a hot glow in the same film, over everything else.
+// mark (Cell.Star) is a hot glow in the same film, over everything else. Frost
+// is a pale glaze in it, and the rock lava leaves (Crust) a dark, cindery crust.
 public sealed class CellSlickMesh
 {
     // How far the film floats over the terrain, how far in from its edge it turns opaque (in
@@ -30,10 +31,14 @@ public sealed class CellSlickMesh
     static readonly Color EatenColor = new(0.16f, 0.22f, 0.07f, 0.55f);
     static readonly Color StarColor = new(0.95f, 0.2f, 0.03f, 0.8f);
     static readonly Color BrickColor = new(0.27f, 0.095f, 0.06f, 0.95f);
-    const string StarFilm = "star";
+    static readonly Color FrostColor = new(0.8f, 0.9f, 0.97f, 0.62f);
+    static readonly Color CrustColor = new(0.06f, 0.05f, 0.05f, 0.82f);
+    const string StarFilm = "star", CrustFilm = "crust";
 
     readonly ChemGrid grid;
     readonly Dictionary<int, string> slicks = new();
+    // Rock cells that were lava (a look only: the core's cell is plain rock).
+    readonly HashSet<int> crusts = new();
     // Cells acid ate, and until when their stain shows.
     readonly Dictionary<int, float> eaten = new();
     readonly List<int> expired = new();
@@ -55,6 +60,14 @@ public sealed class CellSlickMesh
     /// <summary>True for a cover drawn as a film (oil, grease).</summary>
     public static bool IsSlick(string cover) => cover == CoverIds.Oil || cover == CoverIds.Grease;
 
+    /// <summary>A cell was redrawn: rock that <paramref name="cooled"/> from lava wears a crust; anything else loses it.</summary>
+    public void Crust(int x, int y, Cell c, bool cooled)
+    {
+        int key = grid.World.Idx(x, y);
+        if (cooled && c.T == TerrainIds.Rock) crusts.Add(key);
+        else if (c.T != TerrainIds.Rock) crusts.Remove(key);
+    }
+
     /// <summary>True for a terrain drawn with a film (mud, glass, brick).</summary>
     public static bool IsGlazed(string terrain) => terrain == TerrainIds.Mud || terrain == TerrainIds.Glass || terrain == TerrainIds.Brick;
 
@@ -62,7 +75,7 @@ public sealed class CellSlickMesh
     public static string FilmOf(Cell c)
     {
         if (c.Star > 0) return StarFilm;
-        if (IsSlick(c.Cover)) return c.Cover;
+        if (IsSlick(c.Cover) || c.Cover == CoverIds.Frost) return c.Cover;
         return IsGlazed(c.T) ? c.T : null;
     }
 
@@ -70,7 +83,7 @@ public sealed class CellSlickMesh
     public void Changed(int x, int y, Cell c)
     {
         int key = grid.World.Idx(x, y);
-        var film = FilmOf(c);
+        var film = FilmOf(c) ?? (crusts.Contains(key) ? CrustFilm : null);
         bool had = slicks.TryGetValue(key, out var was);
         if (film != null) slicks[key] = film;
         else slicks.Remove(key);
@@ -186,6 +199,8 @@ public sealed class CellSlickMesh
             TerrainIds.Glass => GlassColor,
             TerrainIds.Brick => BrickColor,
             StarFilm => StarColor,
+            CoverIds.Frost => FrostColor,
+            CrustFilm => CrustColor,
             _ => OilColor,
         };
     }

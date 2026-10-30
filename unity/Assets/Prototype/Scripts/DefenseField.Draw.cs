@@ -150,8 +150,9 @@ public partial class DefenseField : ICreatureGround
         drawer.Draw(instances, used, centre);
     }
 
-    // A frozen raider's segments in ice; cracked, split into darker and paler pieces, with a spit of
-    // shards as it happens. GPU-first: only the colours of the instances it is drawn with.
+    // A frozen raider's segments in ice; cracked, a spiderweb over the ice (Punchy/Creature draws it
+    // where an instance's Pad is set), with a spit of shards as it happens. GPU-first: only what the
+    // instances are drawn with.
     void Frost(Shown s, int from, int to)
     {
         var sim = World.Rules.Sim;
@@ -167,9 +168,8 @@ public partial class DefenseField : ICreatureGround
         for (int i = from; i < to; i++)
         {
             var c = instances[i].Color;
-            var rgb = math.lerp(c.xyz, ice, 0.7f);
-            if (cracked) rgb *= (i - from) % 3 == 0 ? 1.7f : (i - from) % 3 == 1 ? 0.4f : 0.9f;
-            instances[i].Color = new float4(rgb, c.w);
+            instances[i].Color = new float4(math.lerp(c.xyz, ice, 0.7f), c.w);
+            instances[i].Pad = cracked ? 1f : 0f;
         }
     }
 

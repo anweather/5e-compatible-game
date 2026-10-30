@@ -41,7 +41,7 @@ public partial class SpellCaster : MonoBehaviour
     // Holding Cast charges a spell that can be (ChargeSeconds a level, to World.MaxCharge); release casts it.
     const float ChargeSeconds = 0.45f;
     // The element that eats things away (Acid Splash): its splash, hiss and eaten stain.
-    const string AcidElement = "acid", HeatElement = "heat", SandElement = "sand";
+    const string AcidElement = "acid", HeatElement = "heat", SandElement = "sand", LightningElement = "lightning";
     float chargeStart = -1f;
     GUIStyle pips;
 
@@ -246,6 +246,9 @@ public partial class SpellCaster : MonoBehaviour
             case AcidElement:
                 BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, size);
                 break;
+            case HeatElement when def.Needs != null:
+                Jet(landing, size);
+                break;
             case HeatElement:
                 BurstFx.Play(BurstFx.Kind.Forge, landing + Vector3.up * 0.1f, size);
                 break;
@@ -253,6 +256,24 @@ public partial class SpellCaster : MonoBehaviour
                 BurstFx.Play(BurstFx.Kind.SandBlast, Hand, size, Quaternion.LookRotation(landing - Hand));
                 break;
         }
+        if (def?.Scatter != null) BurstFx.Play(BurstFx.Kind.Debris, landing, size);
+    }
+
+    // A Geyser's jet out of the water; on dry ground, only a little puff.
+    void Jet(Vector3 landing, float size)
+    {
+        var cell = grid.CellAt(landing);
+        var c = grid.World.At(cell.x, cell.y);
+        if (c != null && c.Water > 0 && !c.Frozen) BurstFx.Play(BurstFx.Kind.Geyser, landing, size, Quaternion.Euler(-90f, 0f, 0f));
+        else BurstFx.Play(BurstFx.Kind.Chips, landing, 0.6f);
+    }
+
+    // A bolt from the hand to where it strikes, and the charge runs on from there (ChemGrid.Charge).
+    void Bolt(Vector3 landing)
+    {
+        ArcFx.Play(Hand, landing, 0.16f, 0f, 0.45f);
+        ArcFx.Play(Hand, landing, 0.07f, 0.04f, 0.4f);
+        grid.ChargeStartsAt(landing);
     }
 
     // The projectile, meteor or storm, or the effect at once; onArrive when it lands.
@@ -266,6 +287,7 @@ public partial class SpellCaster : MonoBehaviour
             onArrive?.Invoke();
         }
 
+        if (def?.Element == LightningElement && def.Shape == SpellShapes.Line) Bolt(landing);
         if (look == null) Land();
         else if (look.fromSky)
             MeteorFall.Launch(landing, transform.position, look, () =>
@@ -328,6 +350,7 @@ public partial class SpellCaster : MonoBehaviour
         {
             var cells = grid.World.SpellCells(spell, x, y, cast.Dir, cast.Charge, cast.AimX, cast.AimY);
             if (cells.Count > 0) (x, y) = cells[cells.Count - 1];
+            if (grid.World.Sought(spell, cast.X, cast.Y) is (int, int) sought) (x, y) = sought;
         }
         else if (spell != null && spell.Shape == SpellShapes.Burst && spell.Origin == "self") return transform.position + Vector3.up;
         return grid.CellCenter(x, y) + Vector3.up * (grid.SurfaceY(x, y) + 0.3f);

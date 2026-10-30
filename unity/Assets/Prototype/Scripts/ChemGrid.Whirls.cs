@@ -101,15 +101,19 @@ public partial class ChemGrid
         });
         var look = go.GetComponent<ParticleSystemRenderer>();
         look.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        if (columnMaterial == null)
-        {
-            columnMaterial = UrpMaterials.NewUnlitParticles("Whirlwind", Color.white, additive: false);
-            var soft = ProceduralTextures.SoftPuff(64);
-            if (columnMaterial.HasProperty("_BaseMap")) columnMaterial.SetTexture("_BaseMap", soft);
-            columnMaterial.mainTexture = soft;
-        }
-        look.sharedMaterial = columnMaterial;
+        look.sharedMaterial = SoftParticles();
         return ps;
+    }
+
+    // Soft puffs tinted by their particles' colour: a whirlwind's column, a wave's foam.
+    Material SoftParticles()
+    {
+        if (columnMaterial != null) return columnMaterial;
+        columnMaterial = UrpMaterials.NewUnlitParticles("Whirlwind", Color.white, additive: false);
+        var soft = ProceduralTextures.SoftPuff(64);
+        if (columnMaterial.HasProperty("_BaseMap")) columnMaterial.SetTexture("_BaseMap", soft);
+        columnMaterial.mainTexture = soft;
+        return columnMaterial;
     }
 
     // A star the core has aimed starts falling, to land the moment the core does.

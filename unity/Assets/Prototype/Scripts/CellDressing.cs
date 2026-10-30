@@ -5,8 +5,8 @@ using UnityEngine;
 // What stands on a cell, on top of the chunk terrain (the terrain itself is the
 // ground: CellHeightfield shapes it, CellPaint colours it): bramble bushes, a
 // charred stump, rubble, a stone block here; the planks of a bridge, an iron
-// plate and the crags along a raised wall in CellDressing.Built.cs; Plant Growth's saplings and the trees
-// they grow into in CellDressing.Growth.cs. Otherwise trees are the terrain's own trees
+// plate and the crags along a raised wall in CellDressing.Built.cs; a boulder, a coil, a gate and a worn
+// log wall in CellDressing.Machines.cs; Plant Growth's saplings and the trees they grow into in CellDressing.Growth.cs. Otherwise trees are the terrain's own trees
 // (ValleyChemistry burns them); grass is the terrain's detail grass. Each
 // cell's dressing is seeded from its position, so a rebuilt one looks the same.
 //
@@ -28,7 +28,9 @@ public sealed partial class CellDressing
         ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f), ["brick"] = (new Color(0.55f, 0.27f, 0.19f), 0f),
         ["rusted-metal"] = (new Color(0.42f, 0.22f, 0.12f), 0.06f), ["mud"] = (new Color(0.24f, 0.17f, 0.10f), 0f),
         ["sand"] = (new Color(0.86f, 0.77f, 0.56f), 0f), ["glass"] = (new Color(0.73f, 0.87f, 0.89f), 0f),
-        ["pane"] = (new Color(0.66f, 0.82f, 0.88f), 0f),
+        ["pane"] = (new Color(0.66f, 0.82f, 0.88f), 0f), ["gate"] = (new Color(0.3f, 0.29f, 0.28f), 0f),
+        ["gate_open"] = (new Color(0.3f, 0.29f, 0.28f), 0f), ["coil"] = (new Color(0.45f, 0.32f, 0.18f), 0f),
+        ["logwall"] = (new Color(0.4f, 0.27f, 0.16f), 0f), ["worn-logwall"] = (new Color(0.52f, 0.42f, 0.3f), 0f),
     };
 
     // Terrains drawn as ground with something standing on it; effects sit on their ground, not on top.
@@ -60,7 +62,8 @@ public sealed partial class CellDressing
     {
         bool wall = grid.World.IsRaisedWall(c);
         bool parts = HasParts(c.T) || IsGrownTree(c.T, x, y);
-        if (!wall && !parts) return null;
+        bool stone = !wall && SteppingStone(c, x, y);
+        if (!wall && !parts && !stone) return null;
         var center = grid.CellCenter(x, y);
         var surface = new Vector3(center.x, ground, center.z);
         var root = new GameObject($"{c.T} {x},{y}");
@@ -68,12 +71,14 @@ public sealed partial class CellDressing
         root.transform.position = surface;
         if (parts) Dress(root.transform, c.T, Look(c.T), surface, x, y);
         if (wall) DressWall(root.transform, surface, c.Height, x, y);
+        if (stone) DressSteppingStone(root.transform, surface, x, y);
         return root;
     }
 
     static bool HasParts(string terrain) =>
         terrain == TerrainIds.Brush || terrain == TerrainIds.Sapling || terrain == TerrainIds.Stump || terrain == TerrainIds.Rubble || terrain == TerrainIds.Deadfall ||
-        terrain == TerrainIds.Wood || terrain == TerrainIds.Metal || terrain == TerrainIds.RustedMetal || Blocks.Contains(terrain);
+        terrain == TerrainIds.Wood || terrain == TerrainIds.Metal || terrain == TerrainIds.RustedMetal || Blocks.Contains(terrain) ||
+        terrain == TerrainIds.Coil || terrain == TerrainIds.Gate || terrain == TerrainIds.GateOpen || terrain == TerrainIds.WornLogWall;
 
     void Dress(Transform root, string terrain, (Color color, float height) look, Vector3 surface, int x, int y)
     {
@@ -102,6 +107,19 @@ public sealed partial class CellDressing
             case TerrainIds.Metal:
             case TerrainIds.RustedMetal:
                 DressPlate(root, surface, rng, x, y, terrain == TerrainIds.RustedMetal);
+                break;
+            case TerrainIds.Coil:
+                DressCoil(root, surface, x, y);
+                break;
+            case TerrainIds.Gate:
+            case TerrainIds.GateOpen:
+                DressGate(root, surface, x, y, terrain == TerrainIds.GateOpen);
+                break;
+            case TerrainIds.WornLogWall:
+                DressWornLogs(root, surface, rng, x, y);
+                break;
+            case TerrainIds.Pillar when grid.BoulderRestsAt(x, y):
+                DressBoulder(root, surface, rng);
                 break;
             default:
                 var block = Part(root, PrimitiveType.Cube, surface + Vector3.up * (look.height / 2f - 0.1f), new Vector3(CellSize, look.height + 0.2f, CellSize), "Stone", look.color);

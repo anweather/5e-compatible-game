@@ -270,11 +270,11 @@ public class LooksProbe : ProbeScenario
             Metric("crate_hit_ns_2_5ms", WindowPanes.HardestHit);
             Check("nudge_leaves_pane", World.At(cell.x, cell.y).T == TerrainIds.Pane, $"the cell is {World.At(cell.x, cell.y).T} after 2.5 m/s");
             WindowPanes.HardestHit = 0f;
-            yield return HitWith(crate, at, facing, 8f);
-            Metric("crate_hit_ns_8ms", WindowPanes.HardestHit);
+            // However it tumbles: at 8 m/s a flat landing came to about 125 N s, near the 120 it needs.
+            yield return HitWith(crate, at, facing, 11f);
+            Metric("crate_hit_ns_11ms", WindowPanes.HardestHit);
             Check("hard_hit_cracks_pane", World.At(cell.x, cell.y).Cracked != 0, $"the cell is {World.At(cell.x, cell.y).T}, cracked {World.At(cell.x, cell.y).Cracked}");
             yield return Wait(0.6f);
-            // Harder: however the crate tumbles, a flat landing spreads the first one's 8 m/s near the threshold.
             yield return HitWith(crate, at, facing, 13f);
             Check("second_hit_breaks_pane", World.At(cell.x, cell.y).T != TerrainIds.Pane, $"the cell is {World.At(cell.x, cell.y).T} after a second hit at 13 m/s");
         }
@@ -311,6 +311,8 @@ public class LooksProbe : ProbeScenario
         body.isKinematic = false;
         body.position = from;
         crate.transform.position = from;
+        // Not still tumbling from the throw before: that spread the hit and left it near the threshold.
+        body.angularVelocity = Vector3.zero;
         body.linearVelocity = -facing * speed;
         yield return Wait(0.5f);
     }

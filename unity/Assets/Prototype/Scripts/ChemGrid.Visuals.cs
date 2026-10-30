@@ -38,7 +38,7 @@ public partial class ChemGrid
     // What is currently shown for one cell, so a cell is only redrawn when it changes.
     sealed class View
     {
-        public GameObject dressing, cover, fire, gas, spark, thorns;
+        public GameObject dressing, cover, fire, gas, spark, thorns, vines;
         public string terrain, coverId;
         public int height, elevation;
         public int key = int.MinValue;
@@ -49,6 +49,7 @@ public partial class ChemGrid
         public bool wet;
         public bool fogged;
         public int heatLevel;
+        public int rustLevel;
     }
 
     // Lights from the Light spell at once, however many cells are lit.
@@ -65,6 +66,7 @@ public partial class ChemGrid
     CellLightPool spellLights;
     CellFxTexture cellFx;
     CellThorns thornClumps;
+    CellVines vineClumps;
     FireLightPool fireLights;
 
     void InitVisuals()
@@ -89,6 +91,8 @@ public partial class ChemGrid
         var yard = Yard;
         cellFx = new CellFxTexture(World.W, World.H, new Vector4(1f / cellSize, yard.x, yard.y + yard.height - 1, 0f));
         thornClumps ??= new CellThorns(this, materials);
+        vineClumps ??= new CellVines(this, materials);
+        boulderRests.Clear();
         shaping.Clear();
         ForgetFx();
         fireLights = new FireLightPool(this, maxFireLights);
@@ -153,6 +157,9 @@ public partial class ChemGrid
         RenderWhirls();
         RenderStars();
         RenderFlashes();
+        RenderMovers();
+        RenderChargeRun();
+        RenderShedStrikes();
         materials.ScrollWater(Time.time);
         waterSurface.Scroll(Time.time);
         using (ShapingMarker.Auto()) AnimateShaping();
@@ -173,6 +180,7 @@ public partial class ChemGrid
         if (redressed || v.coverId != c.Cover)
             using (GroundMarker.Auto()) ChangeGround(v, c, x, y);
         RenderHeat(v, c, redressed);
+        RenderRust(v, c, redressed);
         float groundTop = GroundTop(x, y, c);
         float ground = CellDressing.IsDressed(c.T) ? groundTop : groundTop + CellDressing.Look(c.T).height;
         var center = CellCenter(x, y);
@@ -196,6 +204,7 @@ public partial class ChemGrid
         bool reshaped = v.terrain != null && v.elevation != elevation;
         bool rebuild = v.terrain != c.T || v.height != c.Height;
         bool banked = (v.coverId == World.BankCover) != (c.Cover == World.BankCover);
+        if (v.terrain != c.T) TerrainTurned(v.terrain, c, x, y);
         if (valley != null) valley.CellChanged(x, y, v.terrain, c.T, reshaped || banked);
         if (rebuild) Redress(v, c, x, y, reshaped);
         if (reshaped || banked)
@@ -208,6 +217,18 @@ public partial class ChemGrid
         v.height = c.Height;
         v.elevation = elevation;
         v.coverId = c.Cover;
+    }
+
+    // A wall coming down (roots, a blast) throws up dust and stone; rust scoured off flies in flakes.
+    void TerrainTurned(string from, Cell c, int x, int y)
+    {
+        if (from == null) return;
+        var at = CellCenter(x, y);
+        at.y = GroundTop(x, y, c);
+        if (from == TerrainIds.RustedMetal && c.T == TerrainIds.Metal) BurstFx.Play(BurstFx.Kind.Chips, at, 1f, null, CellDressing.Look(TerrainIds.RustedMetal).color);
+        if (c.T != TerrainIds.Rubble || !World.Rules.Terrain.TryGetValue(from, out var was) || !was.Has("blocking")) return;
+        Dust(at + Vector3.up * 0.4f);
+        BurstFx.Play(BurstFx.Kind.Chips, at + Vector3.up * 0.3f, 1.4f, null, CellDressing.Look(TerrainIds.Rubble).color);
     }
 
     // The cell's dressing and blocker, built again where its ground stands now. A rock wall growing
@@ -243,6 +264,24 @@ public partial class ChemGrid
         dressings.Glow(v.dressing, level / (float)HeatSteps);
     }
 
+    // Metal on its way to rust (Cell.Rust, counting to its terrain's rust.every) shows it in this many steps.
+    const int RustSteps = 4;
+
+    int RustLevel(Cell c)
+    {
+        if (c.Rust <= 0) return 0;
+        int every = World.TerrainOf(c).RustEvery;
+        return every > 0 ? Mathf.Min(RustSteps, c.Rust * (RustSteps + 1) / every) : 0;
+    }
+
+    // Each step further along turns the plate a little more; a plate built new starts clean.
+    void RenderRust(View v, Cell c, bool redressed)
+    {
+        int level = RustLevel(c), from = redressed ? 0 : v.rustLevel;
+        if (level > from) dressings.Tarnish(v.dressing, (level - from) * 0.28f);
+        v.rustLevel = level;
+    }
+
     // A hash of everything drawn for a cell apart from its terrain.
     int Key(Cell c)
     {
@@ -256,6 +295,7 @@ public partial class ChemGrid
             k = k * 31 + c.GasAmt;
             k = k * 31 + (c.Charge > 0 ? 1 : 0);
             k = k * 31 + HeatLevel(c);
+            k = k * 31 + RustLevel(c);
             k = k * 31 + (c.Star > 0 ? 1 : 0);
             k = k * 31 + (c.Cracked != 0 ? 1 : 0);
             k = k * 31 + (c.Lit > 0 ? 1 : 0);
@@ -290,6 +330,9 @@ public partial class ChemGrid
     public float LakeLevelAt(int x, int y, Cell c) =>
         valley != null && valley.IsLake(c, x, y) ? valley.lakeLevel : float.NegativeInfinity;
 
+    /// <summary>The top of the water or ice drawn at a point in grid units (see CellWaterMesh.TopAt).</summary>
+    public float DrawnWaterTopAt(float gx, float gy, float fallback) => waterSurface.TopAt(gx, gy, fallback);
+
     /// <summary>Height of the water surface in a cell, as drawn (its ground when the cell is dry).</summary>
     public float WaterSurfaceY(int x, int y)
     {
@@ -305,13 +348,15 @@ public partial class ChemGrid
     // charred paint (CellPaint), or a grey sheet without a valley.
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
+        bool cooled = lava.Changed(x, y, c, LavaHeat(c));
+        slicks.Crust(x, y, c, cooled);
         slicks.Changed(x, y, c);
         cracks.Changed(x, y, c, ground);
-        lava.Changed(x, y, c, c.T == TerrainIds.Lava ? 1f : HeatLevel(c) / (float)HeatSteps);
         spellLights.Changed(x, y, c, ground);
         if (valley != null) valley.PaneCracked(World.Idx(x, y), c.Cracked != 0);
         cellFx.Oil(x, y, CellSlickMesh.IsSlick(c.Cover) && c.Water > 0 && !c.Frozen);
         RenderThorns(v, c, x, y, center, ground);
+        RenderVines(v, c, x, y, center);
         if (c.Cover != CoverIds.Ash || valley != null)
         {
             Hide(v.cover);
@@ -334,6 +379,27 @@ public partial class ChemGrid
         }
         if (v.thorns == null) v.thorns = thornClumps.Build(x, y, center, ground);
         else CellThorns.Place(v.thorns, center, ground);
+    }
+
+    // Burning debris glows at this heat in the lava's mesh, duller than a pool.
+    const float EmberHeat = 0.5f;
+
+    float LavaHeat(Cell c)
+    {
+        if (c.T == TerrainIds.Lava) return 1f;
+        return CellLavaMesh.IsLava(c) ? HeatLevel(c) / (float)HeatSteps : EmberHeat;
+    }
+
+    // Plant Growth's vines on what they climb (CellVines) while the cover is there.
+    void RenderVines(View v, Cell c, int x, int y, Vector3 center)
+    {
+        if (c.Cover != CoverIds.Vines)
+        {
+            if (v.vines != null) Destroy(v.vines);
+            v.vines = null;
+            return;
+        }
+        if (v.vines == null) v.vines = vineClumps.Build(x, y, c, center);
     }
 
     // --- stand-in cubes ------------------------------------------------------------
@@ -368,6 +434,8 @@ public partial class ChemGrid
         spellLights?.Destroy();
         cellFx?.Destroy();
         thornClumps?.Destroy();
+        vineClumps?.Destroy();
+        DestroyMovers();
         if (plainDust != null) Destroy(plainDust);
     }
 }

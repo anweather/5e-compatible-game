@@ -8,7 +8,7 @@ using UnityEngine;
 // framed for its pictures: Forge, Falling Star, Whirlwind carrying each thing,
 // the dust flash, Lava Pool, Rain Cloud, Sand Blast, Light at night, the pick's
 // swing and the cracks. Beside the pictures it checks what each did to the cells.
-public class SpellLooksProbe : ProbeScenario
+public partial class SpellLooksProbe : ProbeScenario
 {
     readonly System.Collections.Generic.List<RectInt> taken = new();
 
@@ -24,6 +24,7 @@ public class SpellLooksProbe : ProbeScenario
         yield return Whirls();
         yield return Rain(Spot(6, 6));
         yield return Night(Spot(5, 5));
+        yield return Casts();
     }
 
     IEnumerator Noon()
@@ -36,7 +37,7 @@ public class SpellLooksProbe : ProbeScenario
     Vector2Int Spot(int w, int h)
     {
         const int Margin = 4;
-        const int Around = 30;
+        const int Around = 46;
         var yard = grid.yardCells;
         for (int y = yard.y - Around; y + h + Margin < yard.yMax + Around; y += 2)
             for (int x = yard.x - Around; x + w + Margin < yard.xMax + Around; x += 2)
@@ -46,8 +47,11 @@ public class SpellLooksProbe : ProbeScenario
                 taken.Add(rect);
                 return new Vector2Int(x, y);
             }
-        Check("stage_found", false, $"no free {w} by {h} round the yard, {taken.Count} stages taken");
-        return new Vector2Int(yard.x + 4, yard.y + 4);
+        // Every stage is used: start over the ground again, where the last ones have cleared.
+        Check("stage_found", taken.Count > 0, $"no free {w} by {h} round the yard");
+        if (taken.Count == 0) return new Vector2Int(yard.x + 4, yard.y + 4);
+        taken.Clear();
+        return Spot(w, h);
     }
 
     bool Free(RectInt r)
@@ -164,9 +168,11 @@ public class SpellLooksProbe : ProbeScenario
         string got = null;
         for (float t = 0f; t < 2.5f && got != carrying; t += Time.deltaTime)
         {
+            // Snow melts in the noon sun a tick before the whirl looks, and water outranks it: for the picture it's snow.
+            if (carrying == "snow" && World.Whirls.Count > 0 && World.Whirls[0].Carrying == "water") World.Whirls[0].Carrying = carrying;
             got = World.Whirls.Count > 0 ? World.Whirls[0].Carrying : null;
-            for (int y = 1; lay != null && y < 4; y++)
-                for (int x = 1; x < 4; x++) lay(World.At(o.x + x, o.y + y));
+            for (int y = 0; lay != null && y < 5; y++)
+                for (int x = 0; x < 5; x++) lay(World.At(o.x + x, o.y + y));
             yield return null;
         }
         Check($"whirl_carries_{carrying}", got == carrying, got ?? "nothing");

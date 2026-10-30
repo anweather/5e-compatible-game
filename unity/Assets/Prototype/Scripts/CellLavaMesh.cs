@@ -5,7 +5,8 @@ using UnityEngine;
 // Lava on the ground: one mesh over the lava cells with a rounded outline
 // (ContourSurface), drawn by Prototype/CellLava as glowing cracks in a dark
 // crust. Its vertex red is how hot the cell is, so a pool's cracks close as it
-// cools towards rock; its alpha fades the edge. Rebuilt only when a cell
+// cools towards rock; its alpha fades the edge. Fireball's and a star's burning
+// debris (the embers cover) is drawn in it too, duller. Rebuilt only when a cell
 // changes (a pool's heat is drawn in steps: ChemGrid.HeatLevel). Only the show.
 public sealed class CellLavaMesh
 {
@@ -33,14 +34,15 @@ public sealed class CellLavaMesh
 
     public static bool IsLava(Cell c) => c.T == TerrainIds.Lava || c.T == TerrainIds.LavaPool;
 
-    /// <summary>A cell was redrawn: <paramref name="hot"/> is how hot it looks, 0 to 1.</summary>
-    public void Changed(int x, int y, Cell c, float hot)
+    /// <summary>A cell was redrawn: <paramref name="hot"/> is how hot it looks, 0 to 1. True if it was lava and isn't now, so the crust it left can show.</summary>
+    public bool Changed(int x, int y, Cell c, float hot)
     {
         int key = grid.World.Idx(x, y);
-        bool now = IsLava(c), had = heat.TryGetValue(key, out float was);
+        bool now = IsLava(c) || c.Cover == CoverIds.Embers, had = heat.TryGetValue(key, out float was);
         if (now) heat[key] = hot;
         else heat.Remove(key);
         dirty |= had != now || (now && !Mathf.Approximately(was, hot));
+        return had && !now;
     }
 
     /// <summary>Ground moved somewhere: the mesh follows it at the next Rebuild.</summary>

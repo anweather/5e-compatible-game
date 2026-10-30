@@ -73,7 +73,9 @@ Shader "Prototype/WindowGlass"
                 half3 color = input.color.rgb * lerp(half3(1, 1, 1), SampleSH(n), glass);
                 color = lerp(color, sky, fresnel * 0.75 * glass) + light.color * glint * 2.0 * glass;
                 half alpha = lerp(1.0, saturate(input.color.a + fresnel * 0.6 + glint), glass);
-                half web = input.uv.z >= 3.0 ? BrickCourses(input.uv.xy) : input.uv.z >= 1.0 ? CrackWeb(input.uv.xy, frac(input.uv.z)) : 0.0;
+                // The seed in steps: interpolated, it wanders in its last bits, which the web's hash turns into speckle.
+                float seed = floor(frac(input.uv.z) * 64.0) / 64.0;
+                half web = input.uv.z >= 3.0 ? BrickCourses(input.uv.xy) : input.uv.z >= 1.0 ? CrackWeb(input.uv.xy, seed) : 0.0;
                 bool decal = input.uv.z >= 2.0;
                 color = lerp(color, decal ? input.color.rgb : half3(0.92, 0.96, 1.0), web);
                 alpha = decal ? web : max(alpha, web * 0.9);

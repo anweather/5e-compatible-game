@@ -412,6 +412,12 @@ public static class ChemYardBuilder
             Visual(SpellIds.Fireball, new Color(1f, 0.4f, 0.1f), FireFx + "/FireBall.prefab", FireFx + "/BigExplosion.prefab"),
             // Ray of Frost: one icy beam from the hand along its line (FrostBeam), no projectile or impact.
             Beam(SpellIds.RayOfFrost, new Color(0.55f, 0.85f, 1f)),
+            Beam(SpellIds.Frost, new Color(0.65f, 0.9f, 1f)),
+            // Geyser, Wave and the boulder are drawn from the core (BurstFx, ChemGrid.Movers): only the hand's glow here.
+            Visual(SpellIds.Geyser, new Color(0.6f, 0.85f, 1f), null, null),
+            Visual(SpellIds.Wave, new Color(0.3f, 0.6f, 1f), null, null),
+            Visual(SpellIds.RollingBoulder, new Color(0.7f, 0.6f, 0.45f), null, null),
+            Visual(SpellIds.StoneRamp, new Color(0.7f, 0.68f, 0.62f), null, null),
             Visual(SpellIds.CreateWater, new Color(0.3f, 0.6f, 1f), null, PackPaths.WaterFx + "/BigSplash.prefab"),
             // Sleet Storm: driving sleet from a low cloud over its squares (SleetStorm), no projectile or impact.
             Storm(SpellIds.SleetStorm, new Color(0.75f, 0.9f, 1f)),

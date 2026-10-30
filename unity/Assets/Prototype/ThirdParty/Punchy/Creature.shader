@@ -21,7 +21,7 @@ Shader "Punchy/Creature"
             float radiusStart;
             float radiusEnd;
             float flatten;
-            float pad;
+            float pad;         // over 0: a crack web on it (a frozen raider, cracked)
             float4 color;
         };
 
@@ -40,9 +40,10 @@ Shader "Punchy/Creature"
             return v + q.w * t + cross(q.xyz, t);
         }
 
-        void SegmentVertex(CreatureAttributes input, out float3 positionWS, out float3 normalWS, out float4 color)
+        void SegmentVertex(CreatureAttributes input, out float3 positionWS, out float3 normalWS, out float4 color, out float crack)
         {
             Segment s = _Segments[input.instanceID];
+            crack = s.pad;
             float t = input.shape.z;
             float r = lerp(s.radiusStart, s.radiusEnd, t);
             float2 around = input.shape.xy;
@@ -53,6 +54,12 @@ Shader "Punchy/Creature"
             positionWS = s.position + Rotate(s.rotation, local);
             normalWS = Rotate(s.rotation, normalize(n));
             color = s.color;
+        }
+
+        void SegmentVertex(CreatureAttributes input, out float3 positionWS, out float3 normalWS, out float4 color)
+        {
+            float crack;
+            SegmentVertex(input, positionWS, normalWS, color, crack);
         }
         ENDHLSL
 
@@ -70,6 +77,18 @@ Shader "Punchy/Creature"
             #pragma multi_compile_fragment _ _SHADOWS_SOFT _SHADOWS_SOFT_LOW _SHADOWS_SOFT_MEDIUM _SHADOWS_SOFT_HIGH
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
             #include "Sky.hlsl"
+            #include "../../Shaders/CrackWeb.hlsl"
+
+            // Webs to the metre, tiled over the body from the side its surface faces.
+            static const float CrackTiles = 2.6;
+
+            float CreatureCrack(float3 p, float3 n)
+            {
+                float3 a = abs(n);
+                float2 uv = (a.y > a.x && a.y > a.z ? p.xz : a.x > a.z ? p.zy : p.xy) * CrackTiles;
+                float2 tile = floor(uv);
+                return CrackWeb(uv - tile, frac(tile.x * 0.37 + tile.y * 0.71));
+            }
 
             struct Varyings
             {
@@ -78,6 +97,7 @@ Shader "Punchy/Creature"
                 half3 normalWS : TEXCOORD1;
                 half4 color : TEXCOORD2;
                 half fogFactor : TEXCOORD3;
+                float crack : TEXCOORD4;
             };
 
             Varyings Vert(CreatureAttributes input)
@@ -85,7 +105,7 @@ Shader "Punchy/Creature"
                 Varyings o;
                 float3 n;
                 float4 c;
-                SegmentVertex(input, o.positionWS, n, c);
+                SegmentVertex(input, o.positionWS, n, c, o.crack);
                 o.positionCS = TransformWorldToHClip(o.positionWS);
                 o.normalWS = n;
                 o.color = c;
@@ -98,6 +118,7 @@ Shader "Punchy/Creature"
                 half3 n = normalize(input.normalWS);
                 float3 v = GetWorldSpaceNormalizeViewDir(input.positionWS);
                 half3 albedo = input.color.rgb * lerp(1, 0.75, PunchyWetnessAt(input.positionWS.xz).r);
+                if (input.crack > 0) albedo = lerp(albedo, half3(0.03, 0.05, 0.1), CreatureCrack(input.positionWS, n));
                 Light light = GetMainLight(TransformWorldToShadowCoord(input.positionWS));
                 half shadow = light.shadowAttenuation * (1 - PunchyCloudShadow(input.positionWS));
                 half diffuse = saturate(dot(n, light.direction) * 0.75 + 0.25);

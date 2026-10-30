@@ -5,13 +5,15 @@ using UnityEngine;
 // particle systems, no models): AcidSplash, a green spray with a little
 // drifting fume where Acid Splash lands (SpellCaster); Flash, a quick orange
 // blast where a gas goes up (ChemGrid.Whirls); Forge, sparks and a hot glow
-// rising off the ground; SandBlast, a jet of sand along the cast; and Chips,
-// bits of ground thrown up by a pick (Pick). Shards are ShardBurst's. Each kind
+// rising off the ground; SandBlast, a jet of sand along the cast; Chips,
+// bits of ground thrown up by a pick (Pick); Geyser, a tall roaring jet of water
+// out of a pond (turned to point up); Splash, a wave breaking; and Debris, burning
+// rock thrown out of a blast. Shards are ShardBurst's. Each kind
 // keeps at most a handful alive; past that the oldest is restarted where the
 // new one is wanted. Presentation only.
 public static class BurstFx
 {
-    public enum Kind { AcidSplash, Flash, Forge, SandBlast, Chips }
+    public enum Kind { AcidSplash, Flash, Forge, SandBlast, Chips, Geyser, Splash, Debris }
 
     const int PerKind = 6;
 
@@ -21,7 +23,7 @@ public static class BurstFx
     {
         public Vector2 life, speed, size;
         public Color hot, cool;
-        public float gravity, seconds, spread, hold, grow = 1f;
+        public float gravity, seconds, spread, hold, grow = 1f, angle = 12f;
         public (float at, short count)[] bursts;
         public bool cone, additive;
     }
@@ -52,6 +54,22 @@ public static class BurstFx
         {
             life = new(0.3f, 0.7f), speed = new(2f, 5.5f), size = new(0.05f, 0.16f), gravity = 1.6f, seconds = 0.05f, spread = 0.2f, hold = 0.7f,
             hot = Color.white, cool = Color.white, bursts = new[] { (0f, (short)34) },
+        },
+        [Kind.Geyser] = new Recipe
+        {
+            life = new(0.7f, 1.5f), speed = new(9f, 19f), size = new(0.3f, 1.05f), gravity = 1.1f, seconds = 1f, spread = 0.55f, hold = 0.5f, grow = 2f, cone = true, angle = 7f,
+            hot = new Color(0.93f, 0.97f, 1f, 0.95f), cool = new Color(0.62f, 0.8f, 0.95f, 0.7f),
+            bursts = new[] { (0f, (short)110), (0.1f, (short)90), (0.2f, (short)80), (0.3f, (short)80), (0.4f, (short)70), (0.5f, (short)70), (0.6f, (short)50), (0.75f, (short)50) },
+        },
+        [Kind.Splash] = new Recipe
+        {
+            life = new(0.4f, 1f), speed = new(2.5f, 7f), size = new(0.35f, 1.1f), gravity = 1.2f, seconds = 0.12f, spread = 1.1f, hold = 0.4f, grow = 1.6f,
+            hot = new Color(0.9f, 0.96f, 1f, 0.9f), cool = new Color(0.55f, 0.76f, 0.92f, 0.7f), bursts = new[] { (0f, (short)150), (0.08f, (short)70) },
+        },
+        [Kind.Debris] = new Recipe
+        {
+            life = new(0.6f, 1.2f), speed = new(4f, 11f), size = new(0.08f, 0.3f), gravity = 1.5f, seconds = 0.08f, spread = 0.5f, hold = 0.75f,
+            hot = new Color(1f, 0.55f, 0.15f, 1f), cool = new Color(0.14f, 0.1f, 0.08f, 1f), bursts = new[] { (0f, (short)60), (0.06f, (short)30) },
         },
     };
 
@@ -129,7 +147,7 @@ public static class BurstFx
         if (r.cone)
         {
             shape.shapeType = ParticleSystemShapeType.Cone;
-            shape.angle = 12f;
+            shape.angle = r.angle;
             shape.radius = r.spread;
         }
         else
