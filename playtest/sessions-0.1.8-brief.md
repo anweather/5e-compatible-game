@@ -4,6 +4,8 @@ Andrew (2026-10-30): a few gameplay sessions on this release, wandering with
 goals and recording issues and observations; measure what the sessions cost,
 though they make no commits; and see whether we find fewer issues than before.
 
+**Account: Pro** (Andrew). The Pro coordinator runs it on the host, as a sub-agent with a fresh context (cheaper than its own long one; feature-costs reading, 2026-10-30), and records the cost under ~/.claude-pro with `CLAUDE_CONFIG_DIR=$HOME/.claude-pro`.
+
 Run this on the PC once the 0.1.8 Windows release candidate is built, with no
 Editor open (the player renders on its own). Read playtest/DESIGN.md (the
 bot, `playtest run`), playtest/BACKLOG.md and playtest/known-issues.json
@@ -55,7 +57,7 @@ screenshots for each that came up:
 ## 4. Record the cost (no commit needed for this part)
 
 ```
-COMMIT_COST_ROLE=Host COMMIT_COST_NAME=playtest-0.1.8 COMMIT_COST_SINCE=<START> \
+CLAUDE_CONFIG_DIR=$HOME/.claude-pro COMMIT_COST_ROLE=Host COMMIT_COST_NAME=playtest-0.1.8 COMMIT_COST_SINCE=<START> \
   COMMIT_COST_PROJECT=<this session's transcript folder name> \
   node tools/workers/commit-cost.mjs --record "playtest 0.1.8: 3 bot runs + triage" docs/telemetry/sessions.jsonl
 ```
