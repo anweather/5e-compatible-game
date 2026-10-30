@@ -1,13 +1,13 @@
 // What the player does: cast a spell, place a critter, paint the map.
 import { RULES, hasComponent, type SpellDef } from "./rules.ts";
-import { applyElement, applyEntityElement, displaceWater, shatter, shoveGas } from "./react.ts";
+import { applyElement, applyEntityElement, displaceWater, ignite, putCover, shatter, shoveGas } from "./react.ts";
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
-  type Dir, type Entity, type Whirl, type World,
-  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, roll,
+  type Dir, type Entity, type Star, type Whirl, type World,
+  DX, DY, burns, cellAt, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, newCell, playerOf, rand, roll,
 } from "./world.ts";
 
 export const spellById = (id: string) => RULES.spells.find((s) => s.id === id);
@@ -217,7 +217,59 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   if (s.effect === "haste") hastenTime(w, s, clampCharge(charge));
   else if (s.effect === "weather") controlWeather(w, s, clampCharge(charge));
   else if (s.effect === "light") lightUp(w, s, x, y);
+  else if (s.delay) aimStar(w, s, x, y, dir, clampCharge(charge));
   else landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
+}
+
+/**
+ * A delayed cast (Falling Star, World.AimStar): the cells round where it will land wear a target mark (Cell star)
+ * until it lands, delay ticks on (landStars).
+ */
+function aimStar(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number): void {
+  const star: Star = { spell: s.id, x, y, dir, charge, radius: (s.radius ?? 1) + chargedGrowth(s, charge), lands: w.tick + s.delay! };
+  w.stars.push(star);
+  markStar(w, star, 1);
+}
+
+function markStar(w: World, star: Star, by: number): void {
+  const r = star.radius;
+  for (let y = star.y - r; y <= star.y + r; y++) {
+    for (let x = star.x - r; x <= star.x + r; x++) {
+      const c = cellAt(w, x, y);
+      if (!c) continue;
+      const n = Math.max(0, (c.star ?? 0) + by);
+      if (n > 0) c.star = n;
+      else delete c.star;
+    }
+  }
+}
+
+/** Stars whose tick has come land, in the order cast (World.LandStars). */
+export function landStars(w: World): void {
+  if (!w.stars.length) return;
+  for (const star of w.stars) {
+    if (star.lands > w.tick) continue;
+    markStar(w, star, -1);
+    const s = spellById(star.spell);
+    if (!s) continue;
+    log(w, `${s.name} strikes`, "notable");
+    landSpell(w, s, star.x, star.y, star.dir, undefined, star.charge);
+  }
+  w.stars = w.stars.filter((star) => star.lands > w.tick);
+}
+
+/** A spell's burning rock (World.Scatter): each try lays the cover, alight, on open dry ground off the middle. */
+function scatter(w: World, sc: SpellDef["scatter"], x: number, y: number): void {
+  if (!sc) return;
+  const span = sc.reach * 2 + 1;
+  for (let i = 0; i < sc.count; i++) {
+    const cx = x + Math.floor(rand(w) * span) - sc.reach;
+    const cy = y + Math.floor(rand(w) * span) - sc.reach;
+    const c = cellAt(w, cx, cy);
+    if ((cx === x && cy === y) || !c || isBlocking(c) || c.water > 0) continue;
+    putCover(c, sc.cover);
+    ignite(c, "cover");
+  }
 }
 
 /**
@@ -370,6 +422,8 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
       }
     }
   }
+  scatter(w, s.scatter, x, y);
+  if (s.core) applyElement(w, x, y, s.core, { power: 1, direct: true });
 }
 
 function levitate(w: World, s: SpellDef, x: number, y: number) {

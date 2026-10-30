@@ -48,7 +48,7 @@ of thumb, unchanged: the **first** element is what the spell is made of, the
   break, shatter, conduct, float, grow, rot, rust, dissolve, dig) decide what
   happens to each cell. New behaviour goes in a material verb, not in a
   reaction written for one spell. The hand-written spell reactions left in
-  `rules/reactions.json` (`fire-mud`, `fire-snow`, `fire-ice` and the like)
+  `rules/reactions.json` (`fire-mud`, `fire-ice` and the like)
   move into materials as they're touched.
 - **Drawn with the effects library.** The pooled particles, cell tints and
   shader terms that exist; GPU first, no swarms of entities. A real object

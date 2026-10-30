@@ -56,9 +56,10 @@ namespace Chem.Tests
                 foreach (var second in Elements) Assert.That(c.Combo(CombosDef.IdOf(first, second)), Is.Not.Null, first + "+" + second);
             }
             Assert.That(c.MoveFactor, Is.EqualTo(0.6));
-            Assert.That(c.Combo("fire+air").Name, Is.EqualTo("Flame Wave"));
+            Assert.That(c.Combo("fire+air").Name, Is.EqualTo("Falling Star"));
+            Assert.That(c.Combo("earth+fire").Name, Is.EqualTo("Forge"));
             Assert.That(c.Combo("air+fire").Name, Is.EqualTo("Lightning"));
-            Assert.That(c.Combo("fire+fire").Held, Is.EqualTo("meteor"));
+            Assert.That(c.Combo("fire+fire").Held, Is.Null, "Meteor stays for showers");
         }
 
         [Test]
@@ -244,6 +245,23 @@ namespace Chem.Tests
             Assert.That(back.CellHash(), Is.EqualTo(w.CellHash()));
             Run(back, 40);
             Assert.That(back.Whirls, Is.Empty);
+        }
+
+        [Test]
+        public void AFallingStarOnItsWayDownComesThroughASave()
+        {
+            var w = Small();
+            w.Cast("falling-star", 4, 4, 0);
+            w.Step();
+            var back = World.Load(w.Save(new Blank()), Base, new Blank());
+            Assert.That(back.Stars.Single().Lands, Is.EqualTo(w.Stars.Single().Lands));
+            Assert.That(back.At(3, 3).Star, Is.EqualTo(1), "and its mark");
+            Assert.That(back.CellHash(), Is.EqualTo(w.CellHash()));
+            Run(w, 9);
+            Run(back, 9);
+            Assert.That(back.Stars, Is.Empty);
+            Assert.That(back.At(4, 4).Height, Is.LessThan(0));
+            Assert.That(back.CellHash(), Is.EqualTo(w.CellHash()));
         }
 
         [Test]

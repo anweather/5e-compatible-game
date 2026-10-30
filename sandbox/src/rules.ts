@@ -63,6 +63,8 @@ export interface TerrainDef {
   /** The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves. */
   dissolvedBy?: string;
   dissolvesTo?: string;
+  /** The terrain heat turns it into (materials.json bake.into: sand to glass, mud to brick). */
+  bakesTo?: string;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
   waterTo?: "ice" | "steam";
   /** How its fire looks (flare, wood, oil); the view's only. */
@@ -79,6 +81,9 @@ export interface CoverDef {
   flammability?: number;
   fuel?: number;
   burnIntensity?: number;
+  /** Heat turns it into this cover (melt.into; unset, none) and this much water (melt.water; unset doesn't melt). */
+  meltsTo?: string;
+  meltWater?: number;
   /** Ticks it lasts once laid (Cell.life) before it withers away (thorns), and the line logged then. */
   lasts?: number;
   witherLog?: string;
@@ -150,6 +155,10 @@ export interface Effect {
   break?: boolean;
   /** A terrain that gets hot (hot.for) is left hot for that long (cool in sim.ts). */
   heat?: boolean;
+  /** The terrain becomes its bakesTo, if it has one. */
+  bake?: boolean;
+  /** The cover becomes its meltsTo and gives its meltWater, if it melts. */
+  meltCover?: boolean;
   /** Eats away the cell's cover or terrain into its dissolvesTo, when the rule's element is its dissolvedBy. */
   dissolve?: "cover" | "terrain";
   setTerrain?: string;
@@ -228,6 +237,12 @@ export interface SpellDef {
   inward?: boolean;
   /** An inward burst that keeps whirling for duration ticks (Whirlwind): every pullEvery ticks it draws gas and entities of maxMass or less a cell inward and runs fire round its rings (tickWhirlwinds). */
   pullEvery?: number;
+  /** Ticks between the cast and its landing, with a target mark on the cells (Falling Star; aimStar); unset lands at once. */
+  delay?: number;
+  /** Burning rock thrown round where it lands: count tries at a cell within reach of the middle (scatter). */
+  scatter?: { cover: string; count: number; reach: number };
+  /** An element that lands on its middle cell last of all (Falling Star's lava). */
+  core?: string;
   /** The light the Light effect sheds, in feet (bright, dim), for the view to draw (SpellDef.LightBright, LightDim). */
   light?: { bright: number; dim: number };
   /** The ground it blows out where it lands (Fireball). */
@@ -433,7 +448,7 @@ export interface Rules {
   combos: CombosDef;
 }
 
-export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand"];
+export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat"];
 
 const clone = <T>(v: T): T => JSON.parse(JSON.stringify(v)) as T;
 
@@ -568,7 +583,7 @@ export const ELEMENTS = BASE_ELEMENTS;
 
 const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
 const EFFECT_KEYS = new Set([
-  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "dissolve",
+  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "dissolve",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
@@ -840,6 +855,7 @@ export function validateRules(r: Rules): string[] {
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
+    if (t.bakesTo && !terrainIds.has(t.bakesTo)) errors.push(`terrain ${id}: bakesTo ${t.bakesTo} unknown`);
     errors.push(...dissolveErrors(`terrain ${id}`, t, el, terrainIds));
     if (t.dissolvedBy && !t.dissolvesTo) errors.push(`terrain ${id}: dissolve without leaves`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
@@ -852,6 +868,8 @@ export function validateRules(r: Rules): string[] {
   for (const [id, cv] of Object.entries(r.covers)) {
     if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
     if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);
+    if (cv.meltsTo && !coverIds.has(cv.meltsTo)) errors.push(`cover ${id}: meltsTo ${cv.meltsTo} unknown`);
+    if (cv.meltWater !== undefined && !(Number.isInteger(cv.meltWater) && cv.meltWater >= 1)) errors.push(`cover ${id}: meltWater must be a whole number from 1`);
     if (cv.floatEvery !== undefined && (!Number.isInteger(cv.floatEvery) || cv.floatEvery < 1)) errors.push(`cover ${id}: floatEvery must be a whole number from 1`);
     if (cv.floatReach !== undefined && (!Number.isInteger(cv.floatReach) || cv.floatReach < 1)) errors.push(`cover ${id}: floatReach must be a whole number from 1`);
     errors.push(...dissolveErrors(`cover ${id}`, cv, el, coverIds));
@@ -894,6 +912,9 @@ export function validateRules(r: Rules): string[] {
     if (!isCrater(s.crater)) errors.push(`spell ${s.id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
     if (s.crater?.leaves && !terrainIds.has(s.crater.leaves)) errors.push(`spell ${s.id}: crater leaves ${s.crater.leaves} unknown`);
     if (s.pullEvery !== undefined && !(Number.isInteger(s.pullEvery) && s.pullEvery >= 1)) errors.push(`spell ${s.id}: pullEvery must be a whole number from 1`);
+    if (s.delay !== undefined && !(Number.isInteger(s.delay) && s.delay >= 1)) errors.push(`spell ${s.id}: delay must be a whole number from 1`);
+    if (s.scatter !== undefined && !(coverIds.has(s.scatter.cover) && Number.isInteger(s.scatter.count) && s.scatter.count >= 1 && Number.isInteger(s.scatter.reach) && s.scatter.reach >= 1)) errors.push(`spell ${s.id}: scatter needs a known cover and a whole count and reach from 1`);
+    if (s.core !== undefined && !el.has(s.core)) errors.push(`spell ${s.id}: unknown core ${s.core}`);
   }
   for (const c of r.critters) if (!el.has(c.element)) errors.push(`critter ${c.id}: unknown element ${c.element}`);
   for (const c of r.critters) if (c.hours !== undefined && !isHours(c.hours)) errors.push(`critter ${c.id}: hours must be [from, to], hours from 0 to 24`);

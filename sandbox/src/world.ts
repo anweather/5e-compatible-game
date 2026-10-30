@@ -22,6 +22,7 @@ export interface Cell {
   rust?: number; // ticks it has been wet in all, toward its terrain's rust (rust in sim.ts); unset or 0 for none
   heat?: number; // ticks it stays hot (cool in sim.ts): metal fire reached burns creatures on it; unset or 0 cold
   lit?: number; // ticks it still sheds the Light spell's light (lightUp in actions.ts); unset or 0 unlit
+  star?: number; // how many falling stars are aimed here (aimStar in actions.ts): the target mark; unset none
   slick?: number; // how many more cells the floating cover here may spread (float.reach, float in sim.ts); unset or 0 none or no end
   life: number; // ticks until what grows or lasts here ripens (ripen in sim.ts): thorns wither, shoots and saplings grow; 0 for nothing
 }
@@ -144,6 +145,8 @@ export interface World {
   newMeteors: [number, number, number][];
   nextId: number;
   wind: { dir: Dir; ticks: number } | null;
+  /** The delayed casts on their way down, in the order cast (World.Stars). */
+  stars: Star[];
   /** The whirlwinds still whirling, in the order cast (World.Whirls): middle, radius, ticks it lasts and has run, how often it pulls, the heaviest creature it drags. */
   whirls: Whirl[];
   /** Hasten Time: how many times as fast the day clock runs, and the ticks it has left (C#: World.Haste). */
@@ -193,6 +196,7 @@ export function createWorld(w: number, h: number, seed = 1): World {
     combosFired: [],
     nextId: 1,
     wind: null,
+    stars: [],
     whirls: [],
     haste: null,
     clockAhead: 0,
@@ -234,6 +238,17 @@ export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);
 export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || conducts(terrainDef(c));
 /** The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none. */
+/** A delayed cast on its way down (spells.json delay: Falling Star; World.Star): what lands, where, how charged, the tick it lands. */
+export interface Star {
+  spell: string;
+  x: number;
+  y: number;
+  dir: Dir;
+  charge: number;
+  radius: number;
+  lands: number;
+}
+
 /** A whirlwind still whirling (spells.json pullEvery: Whirlwind; World.Whirl). */
 export interface Whirl {
   x: number;
@@ -312,8 +327,8 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  // The defense, the casts and the whirlwinds join only once there are any, so older worlds hash as they did.
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : [])]);
+  // The defense, the casts, the whirlwinds and the stars join only once there are any, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : [])]);
   return fnv1a(s);
 }
 
@@ -380,7 +395,7 @@ export function deserializeWorld(s: WorldSnapshot): World {
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
   // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], stars: copy.stars ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

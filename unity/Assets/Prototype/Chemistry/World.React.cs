@@ -71,6 +71,24 @@ namespace Chem
             return true;
         }
 
+        /// <summary>A bake effect (react.ts bake): heat turns the terrain into its bakesTo.</summary>
+        bool Bake(Cell c)
+        {
+            var to = TerrainOf(c).BakesTo;
+            if (to == null) return false;
+            c.T = to;
+            return true;
+        }
+
+        /// <summary>A meltCover effect (react.ts meltCover): heat turns the cover into its meltsTo, and its meltWater.</summary>
+        bool MeltCover(Cell c)
+        {
+            if (c.Cover == null || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.MeltWater <= 0) return false;
+            PutCover(c, cv.MeltsTo);
+            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + cv.MeltWater);
+            return true;
+        }
+
         string CoverName(Cell c) =>
             c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) ? cv.Name.ToLowerInvariant() : "";
 
@@ -312,6 +330,8 @@ namespace Chem
                 c.Heat = hot;
                 return true;
             }
+            if (eff.Bake) return Bake(c);
+            if (eff.MeltCover) return MeltCover(c);
             if (eff.Break)
             {
                 var to = TerrainOf(c).BreaksTo;

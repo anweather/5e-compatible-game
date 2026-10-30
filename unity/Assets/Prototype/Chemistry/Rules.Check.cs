@@ -31,7 +31,7 @@ namespace Chem
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
-                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "dissolve",
+                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "dissolve",
                 "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
@@ -126,7 +126,19 @@ namespace Chem
                 if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1, radius from 0 and strength from 1");
                 CraterLeaves(s);
                 PullEvery(s);
+                Landing(s);
             }
+
+            // A delayed cast's ticks, what it scatters and the element at its core.
+            void Landing(JToken s)
+            {
+                if (s["delay"] != null && !(IsWholeNumber(s["delay"]) && (double)s["delay"] >= 1)) Errors.Add($"spell {Show(s["id"])}: delay must be a whole number from 1");
+                if (s["scatter"] != null && !IsScatter(s["scatter"])) Errors.Add($"spell {Show(s["id"])}: scatter needs a known cover and a whole count and reach from 1");
+                if (s["core"] != null && !IsElement(s["core"])) Errors.Add($"spell {Show(s["id"])}: unknown core {Show(s["core"])}");
+            }
+
+            bool IsScatter(JToken c) =>
+                c is JObject && IsIn(covers, c["cover"]) && IsWholeNumber(c["count"]) && (double)c["count"] >= 1 && IsWholeNumber(c["reach"]) && (double)c["reach"] >= 1;
 
             // How often a whirling spell pulls is a whole number of ticks.
             void PullEvery(JToken s)
@@ -205,7 +217,7 @@ namespace Chem
             {
                 StatusTicks(id, t);
                 if (t["chainsWet"] != null && t["chainsWet"].Type != JTokenType.Boolean) Errors.Add($"terrain {id}: conduct.chainsWet must be true or false");
-                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo" }) KnownTerrain(id, t, key);
+                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo", "bakesTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 0)) Errors.Add($"terrain {id}: hardness must be a whole number from 0 (0 never digs)");
                 WaterOn(id, t);
                 FireLookOf($"terrain {id}", t);
@@ -217,6 +229,13 @@ namespace Chem
                 if (Truthy(t["dissolvedBy"]) && !Truthy(t["dissolvesTo"])) Errors.Add($"terrain {id}: dissolve without leaves");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
+            }
+
+            // What a cover melts into (one of the covers) and the water it gives.
+            void Melts(string id, JToken t)
+            {
+                if (Truthy(t["meltsTo"]) && !IsIn(covers, t["meltsTo"])) Errors.Add($"cover {id}: meltsTo {Show(t["meltsTo"])} unknown");
+                if (t["meltWater"] != null && !(IsWholeNumber(t["meltWater"]) && (double)t["meltWater"] >= 1)) Errors.Add($"cover {id}: meltWater must be a whole number from 1");
             }
 
             // What dissolves a terrain or cover (an element) and what it leaves (one of its own kind).
@@ -339,6 +358,7 @@ namespace Chem
                     if (p.Value["floatEvery"] != null && !(IsWholeNumber(p.Value["floatEvery"]) && (double)p.Value["floatEvery"] >= 1)) Errors.Add($"cover {p.Name}: floatEvery must be a whole number from 1");
                     if (p.Value["floatReach"] != null && !(IsWholeNumber(p.Value["floatReach"]) && (double)p.Value["floatReach"] >= 1)) Errors.Add($"cover {p.Name}: floatReach must be a whole number from 1");
                     Dissolves($"cover {p.Name}", p.Value, covers);
+                    Melts(p.Name, p.Value);
                 }
                 foreach (var p in gases.Properties())
                 {

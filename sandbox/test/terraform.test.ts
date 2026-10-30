@@ -516,6 +516,68 @@ test("Flood, Mud, Molten Boulder and Dust Storm, matching the C# golden", () => 
   assert.equal(crate.x, 4, "the wave shoves the crate along");
 });
 
+// Mirrors ChemistryTests.ForgeHeatsAndTheMaterialDecides: sand to glass, mud to brick, metal hot, ice and snow melted,
+// wet things dry, through the materials' bake and melt verbs. It lights nothing.
+test("Forge heats and the material decides, matching the C# golden", () => {
+  const w = createWorld(24, 5, 4);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 2, 2)!.t = "sand";
+  cellAt(w, 6, 2)!.t = "mud";
+  cellAt(w, 6, 2)!.water = 1;
+  cellAt(w, 10, 2)!.t = "metal";
+  cellAt(w, 14, 2)!.cover = "snow";
+  cellAt(w, 18, 2)!.water = 2;
+  cellAt(w, 18, 2)!.frozen = true;
+  cellAt(w, 22, 2)!.t = "grass";
+  const gob = spawn(w, "goblin", 3, 2)!;
+  applyElement(w, 3, 2, "water", { power: 1, direct: true });
+  assert.ok((gob.status.wet ?? 0) > 0);
+  for (const x of [2, 6, 10, 14, 18, 22]) castSpell(w, "forge", x, 2, 0);
+  assert.equal(cellAt(w, 2, 2)!.t, "glass");
+  assert.equal(cellAt(w, 6, 2)!.t, "brick");
+  assert.equal(cellAt(w, 6, 2)!.water, 0, "the mud dried");
+  assert.equal(cellAt(w, 10, 2)!.heat, 120);
+  assert.equal(cellAt(w, 14, 2)!.cover, null);
+  assert.equal(cellAt(w, 18, 2)!.frozen, false);
+  assert.equal(cellAt(w, 22, 2)!.fire, 0, "it lights nothing");
+  assert.equal(gob.status.wet ?? 0, 0);
+  assert.equal(RULES.terrain.brick!.hardness, 3);
+  run(w, 12);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "1124f40e 3023719660"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.AFallingStarMarksItsTargetThenStrikes: a mark for a second (6 ticks), then a crater with a
+// little lava in it, burning rock round it, snow and ice melted and water flashed to steam.
+test("a falling star marks its target, then strikes, matching the C# golden", () => {
+  const w = createWorld(15, 9, 6);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 8, 4)!.cover = "snow";
+  cellAt(w, 7, 3)!.water = 2;
+  cellAt(w, 7, 3)!.frozen = true;
+  cellAt(w, 6, 4)!.water = 2;
+  castSpell(w, "falling-star", 7, 4, 0);
+  assert.equal(cellAt(w, 7, 4)!.star, 1);
+  assert.equal(cellAt(w, 6, 3)!.star, 1);
+  assert.equal(cellAt(w, 5, 4)!.star, undefined);
+  const back = deserializeWorld(serializeWorld(w));
+  run(w, 5);
+  assert.equal(cellAt(w, 7, 4)!.h, 0, "still falling");
+  step(w);
+  assert.equal(cellAt(w, 7, 4)!.star, undefined, "the mark goes when it lands");
+  assert.equal(w.stars.length, 0);
+  assert.ok(cellAt(w, 7, 4)!.h < 0);
+  assert.equal(cellAt(w, 7, 4)!.t, "lava-pool");
+  assert.ok(cellAt(w, 7, 4)!.heat! > 0);
+  assert.notEqual(cellAt(w, 8, 4)!.cover, "snow");
+  assert.equal(cellAt(w, 7, 3)!.frozen, false);
+  assert.equal(cellAt(w, 6, 4)!.gas, "steam");
+  assert.ok(w.cells.some((c) => c.cover === "embers" && c.fire > 0));
+  run(w, 12);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "c91f14e2 657895373"); // the same in the C# core
+  run(back, 18);
+  assert.equal(hashWorld(back), hashWorld(w), "a star on its way down comes through a snapshot");
+});
+
 // Mirrors ChemistryTests.AWhirlwindDrawsGasAndCreaturesInAndRunsFireRoundItsRing: a whirlwind on a field with smoke off
 // to one side, a goblin and a bone hound on its edge and grass along its top ring; fire lit on the ring runs round it,
 // the smoke and the creatures come in toward the middle, and after its ten seconds it's gone.

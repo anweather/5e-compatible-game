@@ -12,6 +12,7 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "soak", tag: null, keys: [["dry", "soakEvery"], ["wet", "soakEveryWet"], ["dampens", "dampens"], ["leaves", "soaksTo"], ["dries", "driesTo"]] },
   { verb: "rust", tag: null, keys: [["every", "rustEvery"], ["leaves", "rustsTo"]] },
   { verb: "hot", tag: null, keys: [["for", "hotFor"], ["quench", "hotQuench"]] },
+  { verb: "bake", tag: "bakes", keys: [["into", "bakesTo"]] },
   { verb: "conduct", tag: "conductive", keys: [] },
   { verb: "shatter", tag: "brittle", keys: [["leaves", "shattersTo"]] },
   { verb: "scald", tag: "scalds", keys: [] },
@@ -23,6 +24,7 @@ const TERRAIN_VERBS: Verb[] = [
 const COVER_VERBS: Verb[] = [
   { verb: "burn", tag: "flammable", keys: [["catch", "flammability"], ["fuel", "fuel"], ["intensity", "burnIntensity"], ["look", "fireLook"]] },
   { verb: "float", tag: null, keys: [["every", "floatEvery"], ["reach", "floatReach"]] },
+  { verb: "melt", tag: null, keys: [["into", "meltsTo"], ["water", "meltWater"]] },
   { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
 ];
 

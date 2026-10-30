@@ -79,7 +79,8 @@ Each group's keys, and what reads them today.
 | Verb | Group keys | Replaces |
 |---|---|---|
 | **burn** | `catch` (0..1, chance a fire lights it; a prop counts 1/catch ticks), `fuel` (ticks), `heat` (spread multiplier), `leaves` (material after), `look` (flare / wood / oil), `log`, `status` (ticks, for things) | `flammable` tag, `flammability`, `fuel`, `heat`, `burnsTo`, `burnLog`, `fireLook`, `burnIntensity`, the `flammable` component, `e-fire-flammable` |
-| **melt** | `at` (heat that melts it), `leaves` (water units or a material) | `fire-ice`, `fire-snow`, `fire-snowbank` in reactions |
+| **melt** | `into` (the cover left, or none), `water` (units it gives) | built on covers (snow, snow bank): the `meltCover` effect, from fire and heat; `fire-ice` is still a reaction |
+| **bake** | `into` (the terrain heat turns it into) | built: sand to glass, mud to brick, through the `heat` element (Forge) and the `bake` effect; plain fire bakes nothing |
 | **freeze** | `leaves` or `status` (ice, frozen) | `waterTo: "ice"` (arctic), Ray of Frost's freeze, the `frozen` status |
 | **soak** | `dry`, `wet` (ticks per unit soaked in), `dampens` (how much a damp cell's or wet thing's `burn.catch` and `burn.fuel` drop), `leaves` (what water soaking in turns it to: dirt to mud), `dries` (what it turns back to once no longer damp: mud to dirt), `status` (wet, for things) | `soakEvery`, `soakEveryWet`, the `wet` status |
 | **boil** | `leaves` (steam) | `waterTo: "steam"` (lava) |

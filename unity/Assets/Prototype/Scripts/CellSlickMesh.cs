@@ -10,7 +10,8 @@ using UnityEngine;
 // film wins over its ground's. Rebuilt when a cell's cover or terrain changes.
 // Ash is not a film: it is the terrain's charred paint. Ground acid has eaten
 // (ChemGrid.WatchAcid) wears a stain in the same film, a dark, sour green, for
-// a while (Eaten, Expire); a slick there wins over it.
+// a while (Eaten, Expire); a slick there wins over it. A falling star's target
+// mark (Cell.Star) is a hot glow in the same film, over everything else.
 public sealed class CellSlickMesh
 {
     // How far the film floats over the terrain, how far in from its edge it turns opaque (in
@@ -27,6 +28,8 @@ public sealed class CellSlickMesh
     static readonly Color MudColor = new(0.17f, 0.11f, 0.06f, 0.5f);
     static readonly Color GlassColor = new(0.2f, 0.31f, 0.35f, 0.42f);
     static readonly Color EatenColor = new(0.16f, 0.22f, 0.07f, 0.55f);
+    static readonly Color StarColor = new(1f, 0.45f, 0.08f, 0.7f);
+    const string StarFilm = "star";
 
     readonly ChemGrid grid;
     readonly Dictionary<int, string> slicks = new();
@@ -57,6 +60,7 @@ public sealed class CellSlickMesh
     /// <summary>The film a cell wears: its cover's (oil, grease), else its ground's (mud, glass), else null.</summary>
     public static string FilmOf(Cell c)
     {
+        if (c.Star > 0) return StarFilm;
         if (IsSlick(c.Cover)) return c.Cover;
         return IsGlazed(c.T) ? c.T : null;
     }
@@ -179,6 +183,7 @@ public sealed class CellSlickMesh
             CoverIds.Grease => GreaseColor,
             TerrainIds.Mud => MudColor,
             TerrainIds.Glass => GlassColor,
+            StarFilm => StarColor,
             _ => OilColor,
         };
     }

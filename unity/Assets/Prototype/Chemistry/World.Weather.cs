@@ -77,6 +77,7 @@ namespace Chem
             var now = Weather;
             newMeteors.Clear();
             LandMeteors();
+            LandStars();
             if (!WeatherActs) return;
             WeatherOnCells(rows);
             var p = Rules.Sim.Weather;

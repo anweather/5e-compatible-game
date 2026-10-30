@@ -13,7 +13,7 @@ import {
 } from "./world.ts";
 import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
 import { isNight } from "./night.ts";
-import { METEOR_SPELL, landSpell, spellById, tickWhirlwinds } from "./actions.ts";
+import { METEOR_SPELL, landSpell, landStars, spellById, tickWhirlwinds } from "./actions.ts";
 
 export function step(w: World): void {
   w.tick++;
@@ -497,6 +497,7 @@ function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
   w.newMeteors = [];
   landMeteors(w);
+  landStars(w);
   if (now.period < p.calmPeriods && !w.weatherSet) return;
   const rain = rainOf(now), snow = snowOf(now);
   if (rain > 0) {
