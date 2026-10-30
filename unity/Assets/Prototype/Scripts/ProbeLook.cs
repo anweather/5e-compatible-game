@@ -24,6 +24,30 @@ public class LookProbe : ProbeScenario
         return parts;
     }
 
+    // A glowing staff through a walk's steps, at dusk's light and close to: it mustn't pulse with them.
+    IEnumerator StaffWalks(WizardOutfit outfit)
+    {
+        int seed = outfit.Look.Seed;
+        for (int s = 1; s < 500 && outfit.Look.Staff != WizardLook.StaffKind.Crystal; s++) outfit.Wear(s);
+        Check("crystal_staff", outfit.Look.Staff == WizardLook.StaffKind.Crystal, $"seed {outfit.Look.Seed}");
+        yield return Wait(0.3f);
+        var w = wizard.transform;
+        var goal = w.position + w.forward * 30f;
+        var walk = StartCoroutine(puppet.WalkTo(goal));
+        for (int i = 0; i < 6; i++)
+        {
+            yield return Wait(0.19f);
+            Cut(w.position + w.right * -1.4f + w.forward * 1.2f + Vector3.up * 1.9f, w.position + Vector3.up * 1.6f);
+            yield return null;
+            Shot($"staff-{i}");
+            yield return null;
+        }
+        StopCoroutine(walk);
+        puppet.Move(Vector2.zero);
+        outfit.Wear(seed);
+        yield return Wait(0.3f);
+    }
+
     protected override IEnumerator Run()
     {
         var outfit = wizard.GetComponent<WizardOutfit>();
@@ -52,6 +76,7 @@ public class LookProbe : ProbeScenario
         Check("same_seed_same_look", a.Robe == b.Robe && Mathf.Approximately(a.HatHeight, b.HatHeight) && a.Staff == b.Staff, "seed 12345 twice");
         Check("seeds_differ", a.Robe != c.Robe || !Mathf.Approximately(a.HatHeight, c.HatHeight) || a.Staff != c.Staff, "seeds 12345 and 54321");
 
+        yield return StaffWalks(outfit);
         // Portraits: the camera in front of the wizard, a few looks.
         var w = wizard.transform;
         Cut(w.position + w.forward * 2.6f + Vector3.up * 1.5f, w.position + Vector3.up * 1.15f);
