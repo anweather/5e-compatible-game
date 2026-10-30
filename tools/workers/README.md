@@ -94,8 +94,9 @@ That's fine on the NAT switch; rename one inside the guest
 ```
 new-worker.cmd windows-template w1     # full copy, new id, same MAC per name; left off
 start.cmd u1                           # refuses if <6 GB would stay free (10 with a host Editor open; J-017, J-037)
-sleep.cmd u1                           # saves state to disk: frees all its RAM, resumes in seconds
-stop.cmd u1                            # clean guest shutdown
+sleep.cmd w1                           # pushes its WIP, saves state to disk: frees all its RAM, resumes in seconds
+stop.cmd w1                            # pushes its WIP, clean guest shutdown
+rescue.cmd w1                          # a stopped worker's WIP pushed without starting Claude
 status.cmd                             # state, CPU, assigned and demanded RAM, host free RAM
 ```
 
@@ -111,6 +112,35 @@ account) and the merged branch is deleted on origin.
 Inside a worker, `git fetch && git switch <branch>` before work: the clone is
 as old as the template. `remove-worker.cmd w1` deletes a worker (VM and disk;
 it refuses templates).
+
+### Stopping safely
+
+A worker never stops with its work unpushed (COORDINATION, 2026-10-29).
+`stop.cmd`, `sleep.cmd` and `remove-worker.cmd` first run `wip.cmd`, which
+reaches a running Windows worker over PowerShell Direct (the account and
+password `signins.cmd` uses) and, for its repo and every worktree, pushes
+what isn't on GitHub yet as `wip/<worker>-<branch>`: uncommitted changes
+(untracked files too, not ignored ones) as one WIP commit on top of HEAD, or
+HEAD itself when only its commits are unpushed. The worker's files, index
+and branches stay as they were (the commit is made from a scratch index),
+and each stop replaces that branch's last snapshot.
+
+- If a push fails, the script says which and refuses to go on. Fix it (often
+  the worker's GitHub sign-in), or add `-Force` to stop anyway; the work then
+  stays on the worker's disk.
+- `remove-worker.cmd` also refuses a worker that's off or asleep without
+  `-Force`, since its disk is deleted: rescue it first.
+- `rescue.cmd w1` is for a stopped worker whose Claude account is out of
+  usage: it starts the VM without `start.cmd` (no sign-in copied in, no
+  name), stops its Remote Control task and Claude, then shuts it down through
+  `stop.cmd`, which pushes the work. If the push fails, it leaves the worker
+  running without Claude for a look.
+- To pick the work up: `git fetch origin wip/w1-<branch>`, then branch from it
+  (or `git reset --soft HEAD~1` on it to unpack the WIP commit). Delete the
+  `wip/` branch once its work has landed.
+- Inside a worker, `tools\workers\wip.cmd -Here` does the same by hand.
+- Ubuntu workers have no PowerShell Direct: push from inside, then stop with
+  `-Force`.
 
 ### Refreshing the template (new asset packs)
 
