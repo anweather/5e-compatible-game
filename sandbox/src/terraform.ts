@@ -34,6 +34,8 @@ export function crater(w: World, x: number, y: number, c: CraterDef | undefined)
       if (n !== 0) reshape(w, x + dx, y + dy, n, undefined, c.strength ?? 1);
     }
   }
+  const mid = c.leaves ? cellAt(w, x, y) : undefined;
+  if (mid && !isBlocking(mid)) mid.t = c.leaves!;
 }
 
 /**

@@ -44,6 +44,10 @@
     { "id": "acid-cover", "element": "acid", "do": [{ "dissolve": "cover" }], "log": "The acid eats the {cover} away" },
     { "id": "acid-terrain", "element": "acid", "do": [{ "dissolve": "terrain" }], "log": "The acid eats the {terrain} away", "stop": true },
 
+    { "id": "mud-soil", "element": "mud", "if": { "terrainTag": "soil" }, "do": [{ "setTerrain": "mud" }, { "addWater": 1 }], "log": "The ground churns to mud", "stop": true },
+    { "id": "mud-turf", "element": "mud", "if": { "terrainTag": "turf" }, "do": [{ "setTerrain": "mud" }, { "addWater": 1 }], "log": "The ground churns to mud", "stop": true },
+    { "id": "dust-cloud", "element": "dust", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "dust", "n": 4 }], "stop": true },
+
     { "id": "fog-cloud", "element": "fog", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "fog", "n": 6 }], "stop": true },
     { "id": "steam-cloud", "element": "steam", "if": { "notTerrainTag": "blocking" }, "do": [{ "gas": "steam", "n": 6 }], "stop": true },
     { "id": "lava-pool", "element": "lava", "if": { "notTerrainTag": "blocking" }, "do": [{ "grow": "lava-pool", "ticks": [300, 300] }, { "heat": true }], "log": "Lava wells up and pools", "notable": true, "stop": true },

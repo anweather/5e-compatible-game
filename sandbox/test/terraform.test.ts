@@ -435,3 +435,28 @@ test("creatures burn, freeze and soak by their material, matching the C# golden"
   const odd = { reactions: { addEntity: [{ id: "e-odd", element: "fire", if: { verb: "melt" }, do: [{ statusOf: "glow" }] }] } } as unknown as ModPatch;
   assert.deepEqual(validateRules(composeRules([odd])).sort(), ["rule e-odd: statusOf must be burn, freeze or soak", "rule e-odd: verb must be burn, freeze or soak"]);
 });
+
+// Mirrors ChemistryTests.TheWaterAndEarthCombosCastTheirOwnSpells (docs/SPELL_COMBOS.md): Flood fills two pits (and,
+// here in the sandbox, shoves a crate along: the C# core leaves pushing things to the view); Mud churns a patch of grass to mud; Molten Boulder blasts a crater with lava in it; Dust Storm
+// raises a cloud of dust that hides what's behind it.
+test("Flood, Mud, Molten Boulder and Dust Storm, matching the C# golden", () => {
+  const w = createWorld(20, 12, 9);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 5, 2)!.t = "pit";
+  cellAt(w, 6, 2)!.t = "pit";
+  for (let x = 3; x <= 5; x++) cellAt(w, x, 7)!.t = "grass";
+  castSpell(w, "flood", 1, 2, 1);
+  castSpell(w, "mud", 4, 7, 0);
+  castSpell(w, "molten-boulder", 14, 3, 0);
+  castSpell(w, "dust-storm", 14, 9, 0);
+  assert.ok(cellAt(w, 5, 2)!.water > 0 && cellAt(w, 6, 2)!.water > 0, "and fills the pits");
+  assert.deepEqual([3, 4, 5].map((x) => cellAt(w, x, 7)!.t), ["mud", "mud", "mud"]);
+  assert.equal(cellAt(w, 14, 3)!.t, "lava");
+  assert.equal(cellAt(w, 14, 9)!.gas, "dust");
+  run(w, 12);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "7a38bb69 939719861"); // the same in the C# core
+  const v = createWorld(10, 5, 1);
+  const crate = spawn(v, "crate", 2, 2)!;
+  castSpell(v, "flood", 1, 2, 1);
+  assert.equal(crate.x, 4, "the wave shoves the crate along");
+});

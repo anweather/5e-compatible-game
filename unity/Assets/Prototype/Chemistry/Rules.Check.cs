@@ -121,6 +121,14 @@ namespace Chem
                 if (s["effect"] != null && !SpellEffects.Contains(Text(s["effect"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown effect {Show(s["effect"])}");
                 if (Text(s["effect"]) == "terraform") TerraformRefs(s);
                 if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1, radius from 0 and strength from 1");
+                CraterLeaves(s);
+            }
+
+            // A crater's leaves names a terrain there is.
+            void CraterLeaves(JToken s)
+            {
+                var leaves = (s["crater"] as JObject)?["leaves"];
+                if (Truthy(leaves) && !IsIn(terrain, leaves)) Errors.Add($"spell {Show(s["id"])}: crater leaves {Show(leaves)} unknown");
             }
 
             /// <summary>No crater, or one with a whole depth from 1 and (if given) a whole radius from 0.</summary>
