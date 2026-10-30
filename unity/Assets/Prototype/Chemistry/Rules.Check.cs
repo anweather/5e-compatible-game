@@ -184,7 +184,7 @@ namespace Chem
 
             void TerrainRefs(string id, JToken t)
             {
-                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo" }) KnownTerrain(id, t, key);
+                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
                 WaterOn(id, t);
                 FireLookOf($"terrain {id}", t);
@@ -205,7 +205,7 @@ namespace Chem
                 if (Truthy(t["dissolvesTo"]) && !IsIn(kind, t["dissolvesTo"])) Errors.Add($"{what}: dissolvesTo {Show(t["dissolvesTo"])} unknown");
             }
 
-            // A terrain's link to another (burnsTo, breaksTo, dugTo, rustsTo, growsTo) names a terrain there is.
+            // A terrain's link to another (burnsTo, breaksTo, dugTo, rustsTo, soaksTo, driesTo, growsTo) names a terrain there is.
             void KnownTerrain(string id, JToken t, string key)
             {
                 if (Truthy(t[key]) && !IsIn(terrain, t[key])) Errors.Add($"terrain {id}: {key} {Show(t[key])} unknown");
@@ -288,6 +288,7 @@ namespace Chem
                     Number(p.Value["fuel"], $"terrain {p.Name}: fuel", 0);
                     Number(p.Value["spring"], $"terrain {p.Name}: spring", 0);
                     Number(p.Value["heat"], $"terrain {p.Name}: heat", 0);
+                    Number(p.Value["speed"], $"terrain {p.Name}: speed", 0);
                     Number(p.Value["elevation"], $"terrain {p.Name}: elevation");
                 }
                 foreach (var p in covers.Properties())

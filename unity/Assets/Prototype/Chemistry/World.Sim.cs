@@ -217,12 +217,20 @@ namespace Chem
                 bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
                 if (c.Charge > 0) c.Charge--;
                 if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
-                if (soak && Rust(c)) live = true;
-                if (soak && c.Water > 0 && c.Cover != null && Float(ch, i, c)) live = true;
-                if (soak && c.Water > 0 && Soak(ch, i, c)) live = true;
+                if (soak && SoakPass(ch, i, c)) live = true;
                 if (live) edges = Math.Max(edges, 0) | Chunks.EdgesOf(i);
             }
             return edges;
+        }
+
+        /// <summary>The soak pass on one cell: rust, a cover floating off, water soaking in, mud drying. True if anything changed.</summary>
+        bool SoakPass(Chunk ch, int i, Cell c)
+        {
+            bool changed = Rust(c);
+            if (c.Water > 0 && c.Cover != null && Float(ch, i, c)) changed = true;
+            if (c.Water > 0 && Soak(ch, i, c)) changed = true;
+            if (DryOut(c)) changed = true;
+            return changed;
         }
 
         /// <summary>
@@ -269,7 +277,8 @@ namespace Chem
         /// turns (waterTo) it freezes (arctic) or boils off a unit to steam (lava), any depth; thin water
         /// (it and its four neighbours no deeper than sim.water.thin, so not a lake's shore, the river,
         /// the sea or a filled pit) soaks in and dries up a unit every soakEvery ticks of its terrain,
-        /// soakEveryWet on damp ground (raining, or damp from water soaked in before), and leaves it damp.
+        /// soakEveryWet on damp ground (raining, or damp from water soaked in before), and leaves it damp
+        /// (and its soak.leaves: dirt turns to mud).
         /// Each cell on its own turn of the count, so a puddle shrinks from all over. True if it changed.
         /// </summary>
         bool Soak(Chunk ch, int i, Cell c)
@@ -304,7 +313,20 @@ namespace Chem
             if ((Tick / Rules.Sim.SoakPass + x * 7 + y * 13) % turns != 0) return false;
             c.Water--;
             c.DampUntil = Tick + Rules.Sim.DampTicks;
+            if (t.SoaksTo != null) c.T = t.SoaksTo;
             WaterMoved(ch);
+            return true;
+        }
+
+        /// <summary>
+        /// Mud dries (materials.json soak.dries), on the soak pass: a cell whose terrain dries, with no water
+        /// on it, not rained on and no longer damp (Cell.DampUntil), becomes its driesTo. True if it did.
+        /// </summary>
+        bool DryOut(Cell c)
+        {
+            var to = TerrainOf(c).DriesTo;
+            if (to == null || c.Water > 0 || Raining || Tick < c.DampUntil) return false;
+            c.T = to;
             return true;
         }
 

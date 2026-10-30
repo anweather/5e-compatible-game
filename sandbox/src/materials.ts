@@ -9,7 +9,7 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "burn", tag: "flammable", keys: [["catch", "flammability"], ["fuel", "fuel"], ["heat", "heat"], ["leaves", "burnsTo"], ["log", "burnLog"], ["look", "fireLook"]] },
   { verb: "break", tag: "breakable", keys: [["leaves", "breaksTo"]] },
   { verb: "dig", tag: null, keys: [["hardness", "hardness"], ["leaves", "dugTo"]] },
-  { verb: "soak", tag: null, keys: [["dry", "soakEvery"], ["wet", "soakEveryWet"], ["dampens", "dampens"]] },
+  { verb: "soak", tag: null, keys: [["dry", "soakEvery"], ["wet", "soakEveryWet"], ["dampens", "dampens"], ["leaves", "soaksTo"], ["dries", "driesTo"]] },
   { verb: "rust", tag: null, keys: [["every", "rustEvery"], ["leaves", "rustsTo"]] },
   { verb: "conduct", tag: "conductive", keys: [] },
   { verb: "shatter", tag: "brittle", keys: [] },
