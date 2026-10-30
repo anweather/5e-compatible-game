@@ -155,7 +155,12 @@ step that says so, and then in both engines together.
 5. **Creatures as flesh, bone or chitin.** Move the creature branch of
    `entityRules` into those materials' `status` keys. The defense golden
    is the guard: unchanged, or moved in both engines with the reason in
-   the commit.
+   the commit. *Built:* `burn`, `freeze` and `soak` take a `status`
+   (flesh 9 / 30 / 60, bone no burn, chitin no freeze); the creature rules
+   (`e-fire-creature`, `e-water-creature`, `e-cold-wet`) read it through
+   `if.verb` and `statusOf`, and things keep their fixed ticks. A group
+   holding only its `status` doesn't make the material flammable or freeze
+   water. The defense golden didn't move.
 6. **New combinations, one per merge,** each with its golden moved in both
    engines and a probe: damp ground dampens catching, frozen things
    shatter, rust, then dissolve.

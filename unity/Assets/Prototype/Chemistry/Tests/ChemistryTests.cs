@@ -698,6 +698,26 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void CreaturesBurnFreezeAndSoakByTheirMaterial()
+        {
+            // docs/MATERIALS.md "Creatures as flesh": a goblin (flesh), a bone hound (bone) and an ash crab
+            // (chitin) in fire, then water, then cold. Flesh burns, soaks and freezes; bone doesn't burn;
+            // chitin doesn't freeze (it stays wet). Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 16, 7, 5, "dirt");
+            var them = new[] { w.SpawnRaider("goblin", 3, 3, 10), w.SpawnRaider("bone-hound", 7, 3, 6), w.SpawnRaider("ash-crab", 11, 3, 9) };
+            var states = new List<string>();
+            foreach (var element in new[] { "fire", "water", "cold" })
+            {
+                foreach (var r in them) w.Apply(r.X, r.Y, element, 1, -1, false);
+                states.Add(string.Join(" ", them.Select(r => $"{r.StatusOf("burning")},{r.StatusOf("wet")},{r.StatusOf("frozen")}")));
+            }
+            Assert.That(states, Is.EqualTo(new[] { "9,0,0 0,0,0 9,0,0", "0,60,0 0,60,0 0,60,0", "0,0,30 0,0,30 0,60,0" }));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7cbe626d 5"), "the same in the sandbox");
+            var ex = Assert.Throws<ModException>(() => RuleSet.Plain(R).WithMods(new[] { new ActiveMod("bad", "{ \"reactions\": { \"addEntity\": [ { \"id\": \"e-odd\", \"element\": \"fire\", \"if\": { \"verb\": \"melt\" }, \"do\": [{ \"statusOf\": \"glow\" }] } ] } }") }));
+            Assert.That(ex.Errors, Is.EquivalentTo(new[] { "rule e-odd: statusOf must be burn, freeze or soak", "rule e-odd: verb must be burn, freeze or soak" }));
+        }
+
+        [Test]
         public void WaterSoaksDirtToMudWhichDriesBack()
         {
             // docs/MATERIALS.md soak.leaves, soak.dries: shallow water over dirt, grass and rock; the dirt turns

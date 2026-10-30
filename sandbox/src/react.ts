@@ -1,6 +1,6 @@
 // The rule interpreter: an element arrives at a cell (from a spell, a
 // critter, or spreading fire) and reactions.json decides what happens.
-import { RULES, entityCondHolds, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
+import { RULES, VERB_STATUS, entityCondHolds, statusTicks, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
 import {
   type Cell, type Dir, type Entity, type World,
   DX, DY, addGas, burns, cellAt, coverBurns, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
@@ -134,6 +134,16 @@ function materialBurn(w: World, e: Entity, def: EntityDef, status: string, ticks
   return dampFuel(m.fuel ?? ticks, dryness);
 }
 
+/**
+ * A statusOf effect (World.MaterialStatus): the status the verb gives (burn burning, freeze frozen, soak wet), for
+ * as many ticks as the thing's material says (flesh burns 9, bone not at all).
+ */
+function materialStatus(e: Entity, def: EntityDef, verb: string) {
+  const ticks = statusTicks(def.material ? RULES.terrain[def.material] : undefined, verb);
+  const status = VERB_STATUS[verb];
+  if (ticks > 0 && status) e.status[status] = Math.max(e.status[status] ?? 0, ticks);
+}
+
 /** Returns the damage multiplier the entity's state adds (wet + lightning = 2). */
 export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ctx): number {
   index();
@@ -148,6 +158,7 @@ export function applyEntityElement(w: World, e: Entity, element: string, ctx: Ct
           const ticks = materialBurn(w, e, def, k, v);
           if (ticks > 0) e.status[k] = Math.max(e.status[k] ?? 0, ticks);
         }
+      if (eff.statusOf) materialStatus(e, def, eff.statusOf);
       if (eff.clear) delete e.status[eff.clear];
       if (eff.damageMul) mul *= eff.damageMul;
     }

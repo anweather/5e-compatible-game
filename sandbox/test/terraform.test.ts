@@ -417,3 +417,21 @@ test("water soaks dirt to mud, which slows, smothers fire and dries back to dirt
   assert.deepEqual([3, 4, 5].map((x) => cellAt(w, x, 2)!.t), ["dirt", "dirt", "dirt"], "dried back to dirt");
   assert.equal(`${wet} ${cellHash(w)} ${w.rng}`, "efb1f804 2143a548 1"); // the same in the C# core
 });
+
+// Mirrors ChemistryTests.CreaturesBurnFreezeAndSoakByTheirMaterial (docs/MATERIALS.md "Creatures as flesh"): a goblin
+// (flesh), a bone hound (bone) and an ash crab (chitin) in fire, then water, then cold. Flesh burns, soaks and
+// freezes; bone doesn't burn; chitin doesn't freeze (it stays wet).
+test("creatures burn, freeze and soak by their material, matching the C# golden", () => {
+  const w = createWorld(16, 7, 5);
+  for (const c of w.cells) c.t = "dirt";
+  const them = [spawn(w, "goblin", 3, 3)!, spawn(w, "bone-hound", 7, 3)!, spawn(w, "ash-crab", 11, 3)!];
+  const states: string[] = [];
+  for (const element of ["fire", "water", "cold"]) {
+    for (const e of them) applyElement(w, e.x, e.y, element, { power: 1, direct: false });
+    states.push(them.map((e) => `${e.status.burning ?? 0},${e.status.wet ?? 0},${e.status.frozen ?? 0}`).join(" "));
+  }
+  assert.deepEqual(states, ["9,0,0 0,0,0 9,0,0", "0,60,0 0,60,0 0,60,0", "0,0,30 0,0,30 0,60,0"]);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "7cbe626d 5"); // the same in the C# core
+  const odd = { reactions: { addEntity: [{ id: "e-odd", element: "fire", if: { verb: "melt" }, do: [{ statusOf: "glow" }] }] } } as unknown as ModPatch;
+  assert.deepEqual(validateRules(composeRules([odd])).sort(), ["rule e-odd: statusOf must be burn, freeze or soak", "rule e-odd: verb must be burn, freeze or soak"]);
+});

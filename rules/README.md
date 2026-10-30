@@ -67,8 +67,13 @@ prototype**. Nothing in this folder is specific to the sandbox.
   name or a list of them: the entity must have every one, and none it
   lacks). Match on components, never on entity ids, so a new thing joins
   every rule its components name. The old `if.flammable` (`true` is has
-  flammable, `false` lacks it) still loads. Their effects
-  are `status` (`{ "name": ticks }`), `clear` and `damageMul`.
+  flammable, `false` lacks it) still loads. `if.verb` (`burn`, `freeze`
+  or `soak`) holds when the thing's material gives a status by that verb
+  (`materials.json` `burn.status` and so on). Their effects are `status`
+  (`{ "name": ticks }`), `statusOf` (a verb: the status it gives, burning,
+  frozen or wet, for the material's ticks of it), `clear` and `damageMul`.
+  A creature's burning, frozen and wet come from its material this way
+  (flesh burns, freezes and soaks; bone doesn't burn; chitin doesn't freeze).
 
 ## Earth shaping (`"effect": "terraform"`)
 

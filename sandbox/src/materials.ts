@@ -24,6 +24,9 @@ const COVER_VERBS: Verb[] = [
   { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
 ];
 
+/** A creature's statuses from its material: each verb's status key and the flat key it becomes (MaterialGroups.StatusVerbs). */
+const STATUS_VERBS: [verb: string, flat: string][] = [["burn", "burnStatus"], ["freeze", "freezeStatus"], ["soak", "soakStatus"]];
+
 /** What water on it turns into: freeze {} for ice, boil {} for steam. */
 const WATER_VERBS: [verb: string, water: string][] = [["freeze", "ice"], ["boil", "steam"]];
 
@@ -36,6 +39,7 @@ export function ungroupMaterials(r: { terrain: Record<string, unknown>; covers: 
 }
 
 function ungroup(entry: Entry, verbs: Verb[], water: boolean) {
+  if (water) ungroupStatuses(entry);
   for (const { verb, tag, keys } of verbs) {
     const g = entry[verb];
     if (!g || typeof g !== "object" || Array.isArray(g)) continue;
@@ -57,6 +61,29 @@ function ungroup(entry: Entry, verbs: Verb[], water: boolean) {
     if (entry[verb] === undefined) continue;
     delete entry[verb];
     entry.waterTo = to;
+  }
+}
+
+/**
+ * Takes each verb's status out of its group; a group left empty goes too, so burn { status } doesn't make the
+ * material flammable, nor freeze { status } freeze the water on it (MaterialGroups.UngroupStatuses).
+ */
+function ungroupStatuses(entry: Entry) {
+  for (const [verb, flat] of STATUS_VERBS) {
+    const g = entry[verb] as Record<string, unknown> | undefined;
+    if (!g || typeof g !== "object" || Array.isArray(g) || g.status === undefined) continue;
+    entry[flat] = g.status;
+    delete g.status;
+    if (Object.keys(g).length === 0) delete entry[verb];
+  }
+}
+
+function groupStatuses(entry: Entry) {
+  for (const [verb, flat] of STATUS_VERBS) {
+    if (entry[flat] === undefined) continue;
+    const g = (entry[verb] ??= {}) as Record<string, unknown>;
+    g.status = entry[flat];
+    delete entry[flat];
   }
 }
 
@@ -97,5 +124,6 @@ export function groupMaterial(flat: Entry, cover: boolean): Entry {
       entry[w[0]] = {};
     }
   }
+  if (!cover) groupStatuses(entry);
   return entry;
 }
