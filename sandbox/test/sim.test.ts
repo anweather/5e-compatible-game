@@ -550,7 +550,7 @@ test("metal stays hot after fire, burns what stands on it, and steams water", ()
   assert.ok(steam > 0, "the water hisses into steam");
   assert.ok(w.log.some((l) => l.text === "Water hisses into steam on the hot metal"));
   assert.ok(cellAt(w, 4, 2)!.heat! < 98, "and cools it faster than time alone");
-  assert.equal(`${e.hp} ${steam} ${cellAt(w, 4, 2)!.heat ?? 0} ${rustHash(w)} ${w.rng}`, "84 3 0 519dc5ad 1639742223"); // the same in the C# core
+  assert.equal(`${e.hp} ${steam} ${cellAt(w, 4, 2)!.heat ?? 0} ${rustHash(w)} ${w.rng}`, "84 3 0 4f80a218 1639742223"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.SteamScaldsFleshNotBoneAndCondensesBackIntoWater.
@@ -568,7 +568,7 @@ test("steam scalds flesh, not bone, and condenses back into water", () => {
   run(w, 150);
   const steam = w.cells.reduce((s, c) => s + (c.gas === "steam" ? c.gasAmt : 0), 0), water = w.cells.reduce((s, c) => s + c.water, 0);
   assert.ok(water > 0, "it cooled back into water");
-  assert.equal(`${goblin.hp} ${hound.hp} ${steam} ${water} ${rustHash(w)} ${w.rng}`, "89 99 0 112 d06de483 2670964354"); // the same in the C# core
+  assert.equal(`${goblin.hp} ${hound.hp} ${steam} ${water} ${rustHash(w)} ${w.rng}`, "89 99 0 112 dc213318 2670964354"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.SteamByHeat: a 9 x 5 metal field full of steam, (4,2) left hot or not and the cells round
@@ -596,7 +596,7 @@ test("steam condenses only away from heat", () => {
   assert.ok(far > 0, "drifted away from it, it does");
   const coldNear = steamByHeat(false).near;
   assert.ok(coldNear > 0, "and with no heat, there too");
-  assert.equal(`${near} ${far} ${coldNear} ${rustHash(w)} ${w.rng}`, "0 77 2 d6bb1743 3544326918"); // the same in the C# core
+  assert.equal(`${near} ${far} ${coldNear} ${rustHash(w)} ${w.rng}`, "0 77 2 62127840 3544326918"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.TheFireCombosCastScaldingSteamALavaPoolAndAFlameWave.

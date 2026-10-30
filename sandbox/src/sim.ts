@@ -454,6 +454,13 @@ function shedFrom(w: World, i: number, c: Cell) {
   applyElement(w, i % w.w, Math.floor(i / w.w), sh.element, { power: 1, direct: false });
 }
 
+/** A gas that rusts (steam, gases rusts) adds that much to the rust of metal under it each tick (World.RustUnder). */
+function rustUnder(c: Cell) {
+  const n = RULES.gases[c.gas!]?.rusts ?? 0;
+  if (n <= 0 || !(terrainDef(c).rustEvery ?? 0)) return;
+  c.rust = (c.rust ?? 0) + n;
+}
+
 function tickGas(w: World) {
   const p = RULES.sim.gas;
   for (let i = 0; i < w.cells.length; i++) {
@@ -462,6 +469,7 @@ function tickGas(w: World) {
     rainFrom(w, c);
     shedFrom(w, i, c);
     if (!c.gas) continue;
+    rustUnder(c);
     if (rand(w) < (RULES.gases[c.gas]?.decay ?? p.decayChance)) {
       c.gasAmt--;
       condense(w, i, c);

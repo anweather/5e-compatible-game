@@ -824,6 +824,19 @@ test("lava runs downhill leaving a crust and sets at once in water, matching the
   assert.equal(`${cellHash(w)} ${w.rng}`, "811d9fa2 2967354774"); // the same in the C# core
 });
 
+// Mirrors ChemistryTests.ScaldingSteamRustsMetalFaster.
+test("Scalding Steam rusts metal faster, matching the C# golden", () => {
+  const w = createWorld(8, 5, 16);
+  for (const c of w.cells) c.t = "dirt";
+  Object.assign(cellAt(w, 2, 2)!, { t: "metal", water: 1 });
+  Object.assign(cellAt(w, 5, 2)!, { t: "metal", water: 1 });
+  addGas(cellAt(w, 5, 2)!, "steam", 30);
+  run(w, 8);
+  assert.ok(cellAt(w, 5, 2)!.rust! > 2 * cellAt(w, 2, 2)!.rust!, "faster under steam");
+  assert.ok((cellAt(w, 2, 2)!.rust ?? 0) > 0);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "3bf05b30 2775531184"); // the same in the C# core
+});
+
 // Mirrors ChemistryTests.AFallingStarMarksItsTargetThenStrikes: a mark for a second (6 ticks), then a crater with a
 // little lava in it, burning rock round it, snow and ice melted and water flashed to steam.
 test("a falling star marks its target, then strikes, matching the C# golden", () => {

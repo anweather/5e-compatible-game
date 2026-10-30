@@ -138,6 +138,8 @@ export interface GasDef {
   condenseAway?: number;
   /** A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); unset never. */
   rainEvery?: number;
+  /** It adds this to the rust of metal under it each tick (steam rusts metal faster; rustUnder in sim.ts). */
+  rusts?: number;
   /** An element a cell of it lets fall on its cell every so many ticks, at a chance (a storm cloud's lightning, a snow cloud's snow, a rain cloud's growth; shedFrom). */
   sheds?: { element: string; every: number; chance?: number };
 }

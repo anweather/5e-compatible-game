@@ -334,7 +334,7 @@ namespace Chem
         /// <summary>
         /// Wet metal rusts (materials.json rust), on the soak pass: a cell whose terrain rusts and is
         /// wet (unfrozen water on it, raining, or damp, Cell.DampUntil) counts the pass's ticks in
-        /// Cell.Rust; at rust.every it becomes rust.leaves. True if it did.
+        /// Cell.Rust (steam over it adds more each tick, RustUnder); at rust.every it becomes rust.leaves. True if it did.
         /// </summary>
         bool Rust(Cell c)
         {
@@ -736,6 +736,7 @@ namespace Chem
                     RainFrom(s.Chunk, cells[i]);
                     ShedFrom(s.Chunk, i, cells[i]);
                     if (cells[i].Gas == null) continue;
+                    RustUnder(cells[i]);
                     Drift(s.Chunk, i);
                 }
             }
@@ -748,6 +749,13 @@ namespace Chem
             if (IsBlocking(c) && !HasTag(c, "vessel")) return;
             c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
             WaterMoved(ch);
+        }
+
+        /// <summary>A gas that rusts (steam, gases rusts) adds that much to the rust of metal under it each tick, on top of being wet (World.Rust turns it).</summary>
+        void RustUnder(Cell c)
+        {
+            if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.Rusts <= 0 || TerrainOf(c).RustEvery <= 0) return;
+            c.Rust += g.Rusts;
         }
 
         /// <summary>A gas that sheds (a storm cloud's lightning, a snow cloud's snow) lets its element fall on its cell every ShedEvery ticks, at its ShedChance.</summary>

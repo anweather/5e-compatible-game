@@ -161,6 +161,8 @@ namespace Chem
         public int CondenseAway;
         /// <summary>A cell of it rains a unit of water every this many ticks (a rain cloud, World.RainFrom); 0 never.</summary>
         public int RainEvery;
+        /// <summary>It adds this to the rust of metal under it each tick (steam rusts metal faster; World.RustUnder); 0 none.</summary>
+        public int Rusts;
         /// <summary>A gas that goes up all at once when fire meets it (burn.flash: dust, World.FlashGas), or null.</summary>
         public FlashDef Flash;
         /// <summary>An element a cell of it lets fall on its cell every ShedEvery ticks, at ShedChance (sheds: a storm cloud's lightning, a snow cloud's snow, a rain cloud's growth; World.ShedFrom), or null.</summary>
@@ -638,6 +640,7 @@ namespace Chem
                     CondenseEvery = Int(p.Value["condenseEvery"]) ?? 0,
                     CondenseAway = Int(p.Value["condenseAway"]) ?? 0,
                     RainEvery = Int(p.Value["rainEvery"]) ?? 0,
+                    Rusts = Int(p.Value["rusts"]) ?? 0,
                     Flash = ParseFlash(p.Value["burn"]?["flash"]),
                     Sheds = Str(p.Value["sheds"]?["element"]),
                     ShedEvery = Int(p.Value["sheds"]?["every"]) ?? 0,
