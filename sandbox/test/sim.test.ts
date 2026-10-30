@@ -506,6 +506,22 @@ test("a broken float is refused with the C# wording", () => {
   assert.deepEqual(validateRules(r), ["cover tar: floatEvery must be a whole number from 1"]);
 });
 
+// Mirrors ChemistryTests.LightningFusesSandIntoGlass.
+test("lightning fuses sand into glass", () => {
+  const w = createWorld(9, 5, 1);
+  for (const c of w.cells) c.t = "sand";
+  cellAt(w, 6, 2)!.water = 2;
+  castSpell(w, "shocking-grasp", 2, 2, 2);
+  const glass = w.cells.filter((c) => c.t === "glass").length;
+  assert.ok(glass > 0, "the strike fused some of the sand");
+  assert.ok(w.log.some((l) => l.text === "The strike fuses the sand into glass"));
+  const g = RULES.terrain.glass!;
+  assert.ok(g.tags.includes("brittle") && !g.tags.includes("flammable") && !g.tags.includes("conductive"), "brittle; doesn't burn or conduct");
+  assert.ok(["glow-ball-amber", "glow-ball-azure", "glow-ball-rose"].every((id) => RULES.items[id]!.material === "glass"));
+  run(w, 40);
+  assert.equal(`${glass} ${rustHash(w)} ${w.rng}`, "1 e8b4e694 1"); // the same in the C# core
+});
+
 // Mirrors ChemistryTests.AWetThingOfADampenedMaterialCatchesPoorly: a spark lights a thing of thatch with its
 // material's flammability, less its soak.dampens while it is wet.
 test("a wet thing of a dampened material catches poorly", () => {

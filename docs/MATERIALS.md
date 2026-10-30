@@ -110,6 +110,8 @@ marked *new*.
   `shatter` it lacks (a struck frozen goblin breaks) (*new*).
 - **Wet ground conducts:** lightning chains through water. That's today's
   conduct over wet cells; `conduct.chainsWet` makes it a key, not code.
+- **Lightning fuses sand:** a strike on terrain tagged `fuses` (sand) turns
+  it into glass (`lightning-fuse` in reactions; built).
 - **Heat melts, cold freezes:** `melt` and `freeze` check the cell's water
   and cover first, as the fire and frost rules in `reactions.json` do now.
 - **Hot burns light neighbours:** `burn.heat` (thatch flaring lights log

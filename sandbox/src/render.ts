@@ -20,6 +20,7 @@ const TERRAIN_COLOR: Record<string, string> = {
   bedrock: "#3a3d44", dirt: "#a7895f", grass: "#7aa956", brush: "#557d3c", tree: "#7aa956", stump: "#a7895f", deadfall: "#7aa956",
   sprouts: "#97a463", sapling: "#7aa956", mud: "#6e5638",
   stone: "#8b8d94", pillar: "#a59a84", rubble: "#a7895f", rock: "#9a8f7d", wood: "#b47a43", pit: "#2b2522", metal: "#9aa6b2",
+  sand: "#dcc58e", glass: "#b9dde2",
   gate: "#a7895f", gate_open: "#a7895f", boiler: "#a7895f", plate: "#a7895f", wheel: "#2b2522", coil: "#a7895f", windmill: "#a7895f",
 };
 const ELEMENT_COLOR: Record<string, string> = {

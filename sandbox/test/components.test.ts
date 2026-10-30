@@ -31,7 +31,7 @@ function componentGolden(r: Rules): string {
 
 test("things carry their components, and the bits match the C# port", () => {
   assert.deepEqual(validateRules(BASE_RULES as Rules), []);
-  assert.equal(componentGolden(BASE_RULES as Rules), "92654856");
+  assert.equal(componentGolden(BASE_RULES as Rules), "6c22a0dc");
   const e = BASE_RULES.entities;
   assert.ok(hasComponent(e.crate!, "flammable") && hasComponent(e.crate!, "breakable"));
   assert.ok(!hasComponent(e.boulder!, "flammable") && hasComponent(e.boulder!, "heavy"));

@@ -31,6 +31,7 @@
     { "id": "lightning-conduct", "element": "lightning", "if": { "conductive": true }, "do": [{ "conduct": 3 }], "log": "Lightning arcs through everything conductive that touches", "notable": true },
     { "id": "lightning-oil", "element": "lightning", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "A spark lights the {cover}", "notable": true, "stop": true },
     { "id": "lightning-ice", "element": "lightning", "if": { "frozen": true }, "do": [], "log": "The ice insulates and the spark fizzles", "stop": true },
+    { "id": "lightning-fuse", "element": "lightning", "if": { "terrainTag": "fuses" }, "do": [{ "setTerrain": "glass" }], "log": "The strike fuses the {terrain} into glass", "notable": true, "stop": true },
     { "id": "lightning-flammable", "element": "lightning", "if": { "terrainTag": "flammable", "conductive": false }, "do": [{ "ignite": 1 }], "log": "The strike sets the {terrain} smouldering", "stop": true },
 
     { "id": "grease-into-fire", "element": "grease", "if": { "notTerrainTag": "blocking", "fire": true }, "do": [{ "setCover": "grease" }, { "ignite": "cover" }], "log": "Grease hits the flames. Whoosh!", "notable": true, "stop": true },
