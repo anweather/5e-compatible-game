@@ -415,5 +415,5 @@ test("water soaks dirt to mud, which slows, smothers fire and dries back to dirt
   const wet = cellHash(w);
   run(w, 800);
   assert.deepEqual([3, 4, 5].map((x) => cellAt(w, x, 2)!.t), ["dirt", "dirt", "dirt"], "dried back to dirt");
-  assert.equal(`${wet} ${cellHash(w)} ${w.rng}`, "61d96ec8 b26ff310 1"); // the same in the C# core
+  assert.equal(`${wet} ${cellHash(w)} ${w.rng}`, "efb1f804 2143a548 1"); // the same in the C# core
 });

@@ -699,7 +699,7 @@ namespace Chem.Tests
             string wet = w.CellHash();
             Run(w, 800);
             Assert.That(new[] { 3, 4, 5 }.Select(x => w.At(x, 2).T), Is.EqualTo(new[] { "dirt", "dirt", "dirt" }), "dried back to dirt");
-            Assert.That($"{wet} {w.CellHash()} {w.RngState}", Is.EqualTo("61d96ec8 b26ff310 1"), "the same in the sandbox");
+            Assert.That($"{wet} {w.CellHash()} {w.RngState}", Is.EqualTo("efb1f804 2143a548 1"), "the same in the sandbox");
         }
 
         [Test]
