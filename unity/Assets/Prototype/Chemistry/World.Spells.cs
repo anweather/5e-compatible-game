@@ -134,6 +134,15 @@ namespace Chem
             }
         }
 
+        // A slanted line's next cell: added to output if it is in the world; true while the line goes on (it isn't blocking).
+        bool VisitSlant(int cx, int cy, List<(int x, int y)> output)
+        {
+            var c = At(cx, cy);
+            if (c == null) return false;
+            output.Add((cx, cy));
+            return !IsBlocking(c);
+        }
+
         /// <summary>
         /// A line along a slanted aim, like LineCells: from (x, y) (for a trench, from the caster's
         /// square behind it first), out to <paramref name="length"/> squares as the crow flies, up
@@ -143,14 +152,7 @@ namespace Chem
         /// </summary>
         void SlantCells(SpellDef s, int x, int y, int dir, int length, (int x, int y) aim, List<(int x, int y)> output)
         {
-            bool Visit(int cx, int cy)
-            {
-                var c = At(cx, cy);
-                if (c == null) return false;
-                output.Add((cx, cy));
-                return !IsBlocking(c);
-            }
-            if (s.Effect == "terraform" && s.Origin == "self" && At(x - DirX(dir), y - DirY(dir)) != null && !Visit(x - DirX(dir), y - DirY(dir))) return;
+            if (s.Effect == "terraform" && s.Origin == "self" && At(x - DirX(dir), y - DirY(dir)) != null && !VisitSlant(x - DirX(dir), y - DirY(dir), output)) return;
             var (aimX, aimY) = aim;
             bool alongX = System.Math.Abs(aimX) >= System.Math.Abs(aimY);
             int major = System.Math.Max(System.Math.Abs(aimX), System.Math.Abs(aimY));
@@ -159,8 +161,8 @@ namespace Chem
             for (int k = 0; (long)k * k * size < reach; k++)
             {
                 int cx = x + RoundDiv(k * aimX, major), cy = y + RoundDiv(k * aimY, major);
-                if (k > 0 && cx != px && cy != py && !Visit(alongX ? cx : px, alongX ? py : cy)) return;
-                if (!Visit(cx, cy)) return;
+                if (k > 0 && cx != px && cy != py && !VisitSlant(alongX ? cx : px, alongX ? py : cy, output)) return;
+                if (!VisitSlant(cx, cy, output)) return;
                 (px, py) = (cx, cy);
             }
         }

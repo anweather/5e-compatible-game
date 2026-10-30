@@ -239,12 +239,10 @@ namespace Chem
             }
         }
 
-        // What the raider's square does to it this tick: fire and water reach it, burning and steam hurt, a shock zaps.
-        void Hazards(Raider r, Cell c, EntityDef def)
+        // The heat that hurts a raider this tick: burning, a hot cell, thick steam (the TS's heatHazards).
+        void HeatHazards(Raider r, Cell c, EntityDef def)
         {
             var s = Rules.Sim;
-            if (c.Fire > 0) ApplyRaiderElement(r, "fire", false);
-            if (c.Water > 0 && !c.Frozen) ApplyRaiderElement(r, "water", false);
             if (r.StatusOf("burning") > 0 && Tick % s.BurnDamageEvery == 0)
             {
                 DamageRaider(r, 1, "fire", "fire");
@@ -254,6 +252,15 @@ namespace Chem
             // Thick steam scalds what is made of a material that scalds (flesh; not bone or chitin).
             if (c.Gas == "steam" && c.GasAmt >= 2 && def.MaterialDef?.Has("scalds") == true && Tick % s.ScaldEvery == 0)
                 DamageRaider(r, Rules.Gases.TryGetValue("steam", out var steam) ? steam.Scald : 1, "scalding", "fire");
+        }
+
+        // What the raider's square does to it this tick: fire and water reach it, burning and steam hurt, a shock zaps.
+        void Hazards(Raider r, Cell c, EntityDef def)
+        {
+            var s = Rules.Sim;
+            if (c.Fire > 0) ApplyRaiderElement(r, "fire", false);
+            if (c.Water > 0 && !c.Frozen) ApplyRaiderElement(r, "water", false);
+            HeatHazards(r, c, def);
             if (Shocked(r, c, def) && r.Alive)
             {
                 int mul = ApplyRaiderElement(r, "lightning", false);

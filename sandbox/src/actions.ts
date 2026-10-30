@@ -96,6 +96,14 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
   return out;
 }
 
+/** A slanted line's next cell: added to out if it is in the world; true while the line goes on (it isn't blocking) (World.VisitSlant). */
+function visitSlant(w: World, cx: number, cy: number, out: [number, number][]): boolean {
+  const c = cellAt(w, cx, cy);
+  if (!c) return false;
+  out.push([cx, cy]);
+  return !isBlocking(c);
+}
+
 /**
  * A line along a slanted aim: from (x, y) (a trench from the caster's square
  * behind it first) out to length squares as the crow flies, up to its first
@@ -104,20 +112,14 @@ export function spellCells(w: World, s: SpellDef, x: number, y: number, dir: Dir
  */
 function slantCells(w: World, s: SpellDef, x: number, y: number, dir: Dir, length: number, ax: number, ay: number): [number, number][] {
   const out: [number, number][] = [];
-  const visit = (cx: number, cy: number): boolean => {
-    const c = cellAt(w, cx, cy);
-    if (!c) return false;
-    out.push([cx, cy]);
-    return !isBlocking(c);
-  };
-  if (s.effect === "terraform" && s.origin === "self" && cellAt(w, x - DX[dir], y - DY[dir]) && !visit(x - DX[dir], y - DY[dir])) return out;
+  if (s.effect === "terraform" && s.origin === "self" && cellAt(w, x - DX[dir], y - DY[dir]) && !visitSlant(w, x - DX[dir], y - DY[dir], out)) return out;
   const alongX = Math.abs(ax) >= Math.abs(ay), major = Math.max(Math.abs(ax), Math.abs(ay));
   const reach = length * length * major * major, size = ax * ax + ay * ay;
   let px = x, py = y;
   for (let k = 0; k * k * size < reach; k++) {
     const cx = x + roundDiv(k * ax, major), cy = y + roundDiv(k * ay, major);
-    if (k > 0 && cx !== px && cy !== py && !visit(alongX ? cx : px, alongX ? py : cy)) return out;
-    if (!visit(cx, cy)) return out;
+    if (k > 0 && cx !== px && cy !== py && !visitSlant(w, alongX ? cx : px, alongX ? py : cy, out)) return out;
+    if (!visitSlant(w, cx, cy, out)) return out;
     [px, py] = [cx, cy];
   }
   return out;

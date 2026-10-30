@@ -221,17 +221,23 @@ namespace Chem
             for (int i = s.Start; i < s.End; i++)
             {
                 var c = cells[i];
-                bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
-                if (c.Charge > 0) c.Charge--;
-                if (c.Lit > 0) c.Lit--;
-                // A slick's reach goes with its oil.
-                if (c.Slick != 0 && c.Cover == null) c.Slick = 0;
-                if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
-                if (c.Heat > 0 && Cool(ch, c)) live = true;
-                if (soak && SoakPass(ch, i, c)) live = true;
+                bool live = TickCell(ch, i, c, c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0, soak);
                 if (live) edges = Math.Max(edges, 0) | Chunks.EdgesOf(i);
             }
             return edges;
+        }
+
+        /// <summary>One cell's timers, and its soak pass on soak ticks; true if it is live (it was, or something changed).</summary>
+        bool TickCell(Chunk ch, int i, Cell c, bool live, bool soak)
+        {
+            if (c.Charge > 0) c.Charge--;
+            if (c.Lit > 0) c.Lit--;
+            // A slick's reach goes with its oil.
+            if (c.Slick != 0 && c.Cover == null) c.Slick = 0;
+            if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
+            if (c.Heat > 0 && Cool(ch, c)) live = true;
+            if (soak && SoakPass(ch, i, c)) live = true;
+            return live;
         }
 
         /// <summary>The soak pass on one cell: rust, a cover floating off, water soaking in, mud drying. True if anything changed.</summary>
