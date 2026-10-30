@@ -235,6 +235,8 @@ namespace Chem
             if (c.Lit > 0) c.Lit--;
             // A slick's reach goes with its oil.
             if (c.Slick != 0 && c.Cover == null) c.Slick = 0;
+            // A crack goes with its ice or terrain.
+            if (c.Cracked != 0 && !c.Frozen && !TerrainOf(c).Cracks) c.Cracked = 0;
             if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
             if (c.Heat > 0 && Cool(ch, c)) live = true;
             if (soak && SoakPass(ch, i, c)) live = true;

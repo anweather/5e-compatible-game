@@ -149,11 +149,6 @@ function drawCell(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: number, 
         ctx.fillStyle = "rgba(122,52,22,0.55)";
         for (let k = 0; k < 4; k++) { ctx.beginPath(); ctx.arc(px + (0.15 + hash(x, y, k) * 0.7) * s, py + (0.2 + hash(y, x, k) * 0.65) * s, s * (0.06 + hash(x, y, k + 4) * 0.08), 0, 7); ctx.fill(); }
       }
-      // A falling star's target mark.
-      if ((c.star ?? 0) > 0) {
-        ctx.fillStyle = "rgba(255,120,30,0.55)";
-        ctx.fillRect(px, py, s, s);
-      }
       // Hot metal (fire reached it) glows: orange when fresh, dull red as it cools.
       const heat = c.heat ?? 0;
       if (heat > 0) {
@@ -272,6 +267,22 @@ function drawOverlay(ctx: CanvasRenderingContext2D, c: Cell, x: number, y: numbe
     for (let k = 0; k < 5; k++) ctx.fillRect(px + hash(x, y, k) * s, py + hash(y, x, k) * s, s * 0.1, s * 0.1);
   }
   if (c.fire > 0) drawFire(ctx, px, py, s, c.fire, t, hash(x, y));
+  // A falling star's target mark.
+  if ((c.star ?? 0) > 0) {
+    ctx.fillStyle = "rgba(255,120,30,0.55)";
+    ctx.fillRect(px, py, s, s);
+  }
+  // A crack: spokes from the middle of the cell.
+  if (c.cracked) {
+    ctx.strokeStyle = "rgba(30,40,50,0.8)";
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let k = 0; k < 5; k++) {
+      ctx.moveTo(px + s / 2, py + s / 2);
+      ctx.lineTo(px + s / 2 + Math.cos(k * 1.3 + x) * s * 0.45, py + s / 2 + Math.sin(k * 1.3 + y) * s * 0.45);
+    }
+    ctx.stroke();
+  }
   if (c.charge > 0) {
     ctx.strokeStyle = `rgba(255,236,90,${0.35 + c.charge * 0.2})`;
     ctx.lineWidth = Math.max(1, s / 10);

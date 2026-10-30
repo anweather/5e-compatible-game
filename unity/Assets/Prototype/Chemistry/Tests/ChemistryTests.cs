@@ -174,7 +174,7 @@ namespace Chem.Tests
             w.Cast("create-water", 9, 6, 1);
             Run(w, 120);
 
-            Assert.That(w.CellHash(), Is.EqualTo("19ccbc27"));
+            Assert.That(w.CellHash(), Is.EqualTo("f682e4fb"));
             Assert.That(w.RngState, Is.EqualTo(819413765u));
             CollectionAssert.AreEqual(new[]
             {
@@ -192,6 +192,7 @@ namespace Chem.Tests
                 "60|info|1|You cast Shocking Grasp",
                 "60|notable|1|Lightning arcs through everything conductive that touches",
                 "60|info|1|You cast Shocking Grasp",
+                "60|notable|1|The ice cracks",
                 "60|info|1|The ice insulates and the spark fizzles",
                 "60|info|1|You cast Thunderwave",
                 "60|info|1|A pillar of earth rises",
@@ -1075,8 +1076,9 @@ namespace Chem.Tests
         }
 
         // A log wall with panes in it (the sandbox's window glass test, the same steps): fire beside a pane does
-        // nothing to it; Fireball's blast and ground shaken under one break it, a heavy thing breaks one, and
-        // a pane with its only wall burnt away falls. What it leaves is an open gap.
+        // nothing to it; two of Fireball's blasts, ground shaken twice under one and two hits by a heavy thing
+        // break it (the first of each cracks it), and a pane with its only wall burnt away falls. What it leaves
+        // is an open gap.
         static (World w, string panes) WindowGlass()
         {
             var w = new World(R, 16, 10, 5, "dirt");
@@ -1087,14 +1089,88 @@ namespace Chem.Tests
             w.Apply(5, 2, "fire", 2, -1, true);
             string panes = w.At(5, 3).T;
             w.Cast("fireball", 5, 1, 0);
+            Assert.That(w.At(5, 3).T, Is.EqualTo("pane"), "one blast cracks it");
+            Assert.That(w.At(5, 3).Cracked, Is.Not.EqualTo(0));
+            Run(w, 1);
+            w.Cast("fireball", 5, 1, 0);
             panes += " " + w.At(5, 3).T + " " + w.At(7, 4).T;
             w.Reshape(3, 4, 1);
+            Run(w, 1);
+            w.Reshape(3, 4, 1);
             panes += " " + w.At(3, 4).T;
+            w.ApplyEffect(new EffectCommand(EffectKind.Shatter, 5, 5, ""));
+            Run(w, 1);
             w.ApplyEffect(new EffectCommand(EffectKind.Shatter, 5, 5, ""));
             panes += " " + w.At(5, 5).T;
             w.Apply(11, 4, "fire", 3, -1, true);
             Run(w, 400);
             return (w, panes + " " + w.At(11, 4).T + " " + w.At(11, 3).T);
+        }
+
+        [Test]
+        public void GlassAndIceGoIntactCrackedShattered()
+        {
+            // docs/MATERIALS.md shatter.cracks: glass ground, a window pane and ice take two hits. The first
+            // cracks them (a warning if a creature stands on the ice), a second in the same tick is the same hit,
+            // the next shatters them, and a crack goes with its ice. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 14, 7, 3, "dirt");
+            w.At(2, 3).T = "glass";
+            w.At(5, 3).T = "pane";
+            w.At(5, 2).T = "logwall";
+            w.At(9, 3).Water = 2;
+            w.At(9, 3).Frozen = true;
+            w.At(12, 3).Water = 2;
+            w.At(12, 3).Frozen = true;
+            w.SpawnRaider("goblin", 9, 3, 10);
+            foreach (var (x, y) in new[] { (2, 3), (5, 3), (12, 3) })
+            {
+                Assert.That(w.Shatter(x, y), Is.False, "the first hit cracks it");
+                Assert.That(w.Shatter(x, y), Is.False, "one hit a tick");
+            }
+            w.Cast("shocking-grasp", 9, 3, 0);
+            Assert.That(w.At(2, 3).T, Is.EqualTo("glass"));
+            Assert.That(w.At(5, 3).T, Is.EqualTo("pane"));
+            Assert.That(w.At(9, 3).Frozen, "lightning on ice cracks it");
+            Assert.That(w.At(9, 3).Cracked, Is.Not.EqualTo(0));
+            Assert.That(w.Log.Any(l => l.Text == "The ice cracks under Goblin"));
+            string cracked = w.CellHash();
+            Run(w, 1);
+            foreach (var (x, y) in new[] { (2, 3), (5, 3), (9, 3) }) Assert.That(w.Shatter(x, y), "the next shatters it");
+            Assert.That(w.At(2, 3).T, Is.EqualTo("sand"));
+            Assert.That(w.At(5, 3).T, Is.EqualTo("rubble"));
+            Assert.That(w.At(9, 3).Frozen, Is.False, "open water under the goblin");
+            Assert.That(new[] { w.At(2, 3).Cracked, w.At(5, 3).Cracked, w.At(9, 3).Cracked }, Is.All.EqualTo(0));
+            w.Apply(12, 3, "fire", 1, -1, true);
+            Run(w, 1);
+            Assert.That(w.At(12, 3).Cracked, Is.EqualTo(0), "a crack goes with its ice");
+            Run(w, 12);
+            Assert.That($"{cracked} {w.CellHash()} {w.RngState}", Is.EqualTo("17d9616c 4fcd46bc 1831565816"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void ACrackedCellAndThingComeThroughASave()
+        {
+            var glow = R.Item("glow-ball-amber");
+            Assert.That(R.ItemCracks(glow.Id), "a glow ball's glass cracks");
+            Assert.That(R.ItemCracks("bullseye-lantern"), Is.False);
+            var w = new World(R, 8, 8, 1, "dirt");
+            w.At(2, 2).T = "glass";
+            w.Shatter(2, 2);
+            var thing = new ThingId(0, 0, 3);
+            string whole = w.CellHash();
+            w.ApplyEffect(new EffectCommand(EffectKind.Crack, 1, 1, glow.Id, thing));
+            Assert.That(w.IsCracked(thing));
+            Assert.That(w.CellHash(), Is.Not.EqualTo(whole), "a cracked thing is hashed");
+            var back = World.Load(w.Save(new Blanks()), R, new Blanks());
+            Assert.That(back.IsCracked(thing));
+            Assert.That(back.At(2, 2).Cracked, Is.EqualTo(w.At(2, 2).Cracked));
+            Assert.That(back.CellHash(), Is.EqualTo(w.CellHash()));
+        }
+
+        sealed class Blanks : IChunkSource
+        {
+            public string Version => "blank";
+            public void Make(int x, int y, Cell cell) { }
         }
 
         [Test]
@@ -1105,7 +1181,7 @@ namespace Chem.Tests
             Assert.That(w.Log.Any(l => l.Text == "The window pane shatters"));
             Assert.That(w.IsBlocking(w.At(5, 3)), Is.False, "an open gap");
             Assert.That(R.Terrain["pane"].Has("blocking") && !R.Terrain["pane"].Burns && !R.Terrain["pane"].Conducts);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("fd5c22c2 3314880483"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("d9dbaf50 4199150144"), "the same in the sandbox");
         }
 
         // Over 40 seeds, a goblin (wet or not) hit by Ray of Frost, then Shocking Grasp: how many are gone,
@@ -1121,6 +1197,8 @@ namespace Chem.Tests
                 if (wet) r.Status["wet"] = 60;
                 w.Cast("ray-of-frost", 8, 4, 0);
                 Assert.That(r.Alive, "the cold that froze it doesn't shatter it (status.shatter notBy)");
+                w.Cast("shocking-grasp", 8, 4, 0);
+                if (wet) Assert.That(r.Alive, "the first spark only cracks it");
                 w.Cast("shocking-grasp", 8, 4, 0);
                 if (!r.Alive) gone++;
                 rng += w.RngState;
@@ -1171,12 +1249,18 @@ namespace Chem.Tests
         public void AStruckFrozenGoblinShatters()
         {
             // docs/MATERIALS.md "Frozen things shatter": a wet goblin freezes solid under Ray of Frost, and
-            // the spark that follows (any hurt but cold) shatters it; a dry one only takes the damage.
-            Assert.That($"{FrostThenSpark(true)} | {FrostThenSpark(false)}", Is.EqualTo("40 496377796 | 18 496377796"), "the same in the sandbox");
+            // of the sparks that follow (any hurt but cold) the first cracks it and the second shatters it; a dry
+            // one only takes the damage.
+            Assert.That($"{FrostThenSpark(true)} | {FrostThenSpark(false)}", Is.EqualTo("40 744566284 | 33 2136120018"), "the same in the sandbox");
             var w = new World(R, 20, 9, 1, "dirt");
             var r = w.SpawnRaider("goblin", 8, 4, 10);
             r.Status["wet"] = 60;
             w.Cast("ray-of-frost", 8, 4, 0);
+            int hp = r.Hp;
+            w.Cast("shocking-grasp", 8, 4, 0);
+            Assert.That(r.StatusOf(World.CrackedStatus), Is.GreaterThan(0));
+            Assert.That(r.Hp, Is.EqualTo(hp), "a crack takes no harm yet");
+            Assert.That(w.Log.Any(l => l.Text == "Goblin cracks"));
             w.Cast("shocking-grasp", 8, 4, 0);
             Assert.That(w.Log.Any(l => l.Text == "Goblin shatters"));
             var ex = Assert.Throws<ModException>(() => RuleSet.Plain(R).WithMods(new[] { new ActiveMod("bad", "{ \"sim\": { \"status\": { \"shatter\": { \"when\": 3 } } } }") }));

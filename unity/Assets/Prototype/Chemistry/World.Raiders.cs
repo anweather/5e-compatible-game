@@ -113,7 +113,8 @@ namespace Chem
         /// <summary>
         /// Hurts a raider (damage in the TS): <paramref name="element"/> (or null) doubles the damage
         /// if it's weak to it and halves it (rounded up) if it resists. At 0 HP it's defeated; with the
-        /// sim's status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it.
+        /// sim's status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it; if the
+        /// material ice cracks, only the second: the first leaves it cracked for as long as it stays frozen.
         /// </summary>
         void DamageRaider(Raider r, int amount, string cause, string element)
         {
@@ -124,6 +125,7 @@ namespace Chem
             var sim = Rules.Sim;
             if (sim.ShatterWhen != null && r.StatusOf(sim.ShatterWhen) > 0 && (sim.ShatterNotBy == null || element != sim.ShatterNotBy))
             {
+                if (CracksFirst(r, sim.ShatterWhen)) return;
                 r.Shattered = true;
                 DefeatRaider(r, "shatters");
                 return;
@@ -132,6 +134,15 @@ namespace Chem
             if (def.Creature)
                 LogOnce($"hurt#{r.Id}#{cause}", $"{def.Name} takes {amount} {cause} damage ({Math.Max(0, r.Hp)}/{def.Hp} HP)", LogKind.Hurt);
             if (r.Hp <= 0) DefeatRaider(r);
+        }
+
+        // The first hit on a frozen raider of cracking ice: it cracks, and takes no harm yet.
+        bool CracksFirst(Raider r, string frozen)
+        {
+            if (r.StatusOf(CrackedStatus) > 0 || !Rules.Terrain.TryGetValue(IceMaterial, out var ice) || !ice.Cracks) return false;
+            r.Status[CrackedStatus] = r.StatusOf(frozen);
+            LogOnce($"cracked#{r.Id}", $"{Rules.Entity(r.Kind).Name} cracks", LogKind.Notable);
+            return true;
         }
 
         /// <summary>Damage after a raider's weaknesses and resistances (scaleDamage in the TS).</summary>

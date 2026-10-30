@@ -17,7 +17,7 @@ const castSelected = (w: World, player: string) => applyCombo(w, { player, kind:
 
 /** World.CellHash in the C# port. */
 const cellHash = (w: World) => fnv1a(w.cells.map((c) =>
-  `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""};`).join(""));
+  `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""}${c.cracked ? `,c${c.cracked}` : ""};`).join(""));
 
 /** Steps until a cast goes off, and says how many ticks that took. */
 function untilFired(w: World): number {

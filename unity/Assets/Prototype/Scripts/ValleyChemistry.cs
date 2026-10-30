@@ -259,6 +259,12 @@ public partial class ValleyChemistry : MonoBehaviour
         if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
+    /// <summary>A cell was redrawn: a pane on it shows its crack, or not.</summary>
+    public void PaneCracked(int key, bool cracked)
+    {
+        if (panesByCell.TryGetValue(key, out var pane)) pane.Cracked(key, cracked);
+    }
+
     void IndexPalms()
     {
         palmsByCell.Clear();

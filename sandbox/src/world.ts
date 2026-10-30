@@ -22,6 +22,7 @@ export interface Cell {
   rust?: number; // ticks it has been wet in all, toward its terrain's rust (rust in sim.ts); unset or 0 for none
   heat?: number; // ticks it stays hot (cool in sim.ts): metal fire reached burns creatures on it; unset or 0 cold
   lit?: number; // ticks it still sheds the Light spell's light (lightUp in actions.ts); unset or 0 unlit
+  cracked?: number; // its ice or terrain is cracked (shatter in react.ts): the tick it cracked, plus 1; unset whole
   star?: number; // how many falling stars are aimed here (aimStar in actions.ts): the target mark; unset none
   slick?: number; // how many more cells the floating cover here may spread (float.reach, float in sim.ts); unset or 0 none or no end
   life: number; // ticks until what grows or lasts here ripens (ripen in sim.ts): thorns wither, shoots and saplings grow; 0 for nothing

@@ -70,6 +70,8 @@ function tickCell(w: World, i: number, c: Cell, soaking: boolean, floating: [Cel
   if ((c.lit ?? 0) > 0) c.lit!--;
   // A slick's reach goes with its oil.
   if ((c.slick ?? 0) !== 0 && c.cover === null) c.slick = 0;
+  // A crack goes with its ice or terrain.
+  if (c.cracked && !c.frozen && !terrainDef(c).cracks) delete c.cracked;
   if (c.life > 0 && --c.life === 0) ripen(w, i, c);
   if ((c.heat ?? 0) > 0) cool(w, c);
   if (soaking) rust(w, c);

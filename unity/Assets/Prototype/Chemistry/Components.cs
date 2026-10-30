@@ -57,6 +57,10 @@ namespace Chem
         public bool EntityHas(string entityId, string component) => Entity(entityId)?.Components.Has(Component(component)) ?? false;
 
         /// <summary>Whether the item with this id has the component (false for an unknown item or name).</summary>
+        /// <summary>Whether an item's material goes intact, cracked, shattered (shatter.cracks; a glow ball's glass). One that spills goes at once.</summary>
+        public bool ItemCracks(string itemId) =>
+            Item(itemId) is ItemDef item && item.Breaks?.Spill == null && item.Material != null && terrain.TryGetValue(item.Material, out var t) && t.Cracks;
+
         public bool ItemHas(string itemId, string component) =>
             itemId != null && items.TryGetValue(itemId, out var item) && item.Components.Has(Component(component));
 

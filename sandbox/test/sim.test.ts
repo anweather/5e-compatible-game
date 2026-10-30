@@ -108,6 +108,8 @@ const frostThenSpark = (wet: boolean) => {
     castSpell(w, "ray-of-frost", 8, 4, 0);
     assert.ok(w.entities.includes(e), "the cold that froze it doesn't shatter it (status.shatter notBy)");
     castSpell(w, "shocking-grasp", 8, 4, 0);
+    if (wet) assert.ok(w.entities.includes(e), "the first spark only cracks it");
+    castSpell(w, "shocking-grasp", 8, 4, 0);
     if (!w.entities.includes(e)) gone++;
     rng = (rng + w.rng) >>> 0;
   }
@@ -116,11 +118,13 @@ const frostThenSpark = (wet: boolean) => {
 
 // Mirrors ChemistryTests.AStruckFrozenGoblinShatters (docs/MATERIALS.md "Frozen things shatter").
 test("a struck frozen goblin shatters", () => {
-  assert.equal(`${frostThenSpark(true)} | ${frostThenSpark(false)}`, "40 496377796 | 18 496377796"); // the same in the C# core
+  assert.equal(`${frostThenSpark(true)} | ${frostThenSpark(false)}`, "40 744566284 | 33 2136120018"); // the same in the C# core
   const w = createWorld(20, 9, 1);
   for (const c of w.cells) c.t = "dirt";
   spawn(w, "goblin", 8, 4)!.status.wet = 60;
   castSpell(w, "ray-of-frost", 8, 4, 0);
+  castSpell(w, "shocking-grasp", 8, 4, 0);
+  assert.ok(w.log.some((l) => l.text === "Goblin cracks"));
   castSpell(w, "shocking-grasp", 8, 4, 0);
   assert.ok(w.log.some((l) => l.text === "Goblin shatters"));
   assert.deepEqual(validateRules(composeRules([{ sim: { status: { shatter: { when: 3 } } } } as unknown as ModPatch])), ["sim status.shatter.when must be a name"]);
@@ -435,7 +439,7 @@ test("soaked thatch burns out sooner", () => {
 /** World.CellHash in the C# port, rust included (written only when it isn't 0). */
 function rustHash(w: World): string {
   const s = w.cells.map((c) =>
-    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""}${c.lit ? `,b${c.lit}` : ""}${c.slick ? `,k${c.slick}` : ""};`).join("");
+    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""}${c.lit ? `,b${c.lit}` : ""}${c.slick ? `,k${c.slick}` : ""}${c.cracked ? `,c${c.cracked}` : ""};`).join("");
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -713,8 +717,8 @@ test("a wet thing of a dampened material catches poorly", () => {
 });
 
 // Mirrors ChemistryTests.WindowGlassShattersUnderForceAndFallsWithItsWall: fire beside a pane does nothing to
-// it; Fireball's blast and ground shaken under one break it, a heavy thing breaks one, and a pane with its only
-// wall burnt away falls. What it leaves is an open gap.
+// it; two of Fireball's blasts, ground shaken twice under one and two hits by a heavy thing break it (the first of
+// each cracks it), and a pane with its only wall burnt away falls. What it leaves is an open gap.
 test("window glass shatters under force and falls with its wall", () => {
   const w = createWorld(16, 10, 5);
   for (const c of w.cells) c.t = "dirt";
@@ -724,9 +728,16 @@ test("window glass shatters under force and falls with its wall", () => {
   applyElement(w, 5, 2, "fire", { power: 2, direct: true });
   let panes = cellAt(w, 5, 3)!.t;
   castSpell(w, "fireball", 5, 1, 0);
+  assert.equal(cellAt(w, 5, 3)!.t, "pane", "one blast cracks it");
+  run(w, 1);
+  castSpell(w, "fireball", 5, 1, 0);
   panes += ` ${cellAt(w, 5, 3)!.t} ${cellAt(w, 7, 4)!.t}`;
   reshape(w, 3, 4, 1);
+  run(w, 1);
+  reshape(w, 3, 4, 1);
   panes += ` ${cellAt(w, 3, 4)!.t}`;
+  shatter(w, 5, 5);
+  run(w, 1);
   shatter(w, 5, 5);
   panes += ` ${cellAt(w, 5, 5)!.t}`;
   applyElement(w, 11, 4, "fire", { power: 3, direct: true });
@@ -735,7 +746,7 @@ test("window glass shatters under force and falls with its wall", () => {
   assert.equal(panes, "pane rubble pane rubble rubble rubble rubble");
   assert.ok(w.log.some((l) => l.text === "The window pane shatters"));
   assert.equal(isBlocking(cellAt(w, 5, 3)!), false, "an open gap");
-  assert.equal(`${rustHash(w)} ${w.rng}`, "fd5c22c2 3314880483"); // the same in the C# core
+  assert.equal(`${rustHash(w)} ${w.rng}`, "d9dbaf50 4199150144"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.ShockWaterReachesSwimmersAndTheWetOnTheBank (conduct.chainsWet): lightning into one

@@ -71,6 +71,13 @@ namespace Chem
             return true;
         }
 
+        /// <summary>A shatter effect (react.ts struck): true if the hit cracked or shattered something.</summary>
+        bool Struck(int x, int y, Cell c)
+        {
+            int was = c.Cracked;
+            return Shatter(x, y) || c.Cracked != was;
+        }
+
         /// <summary>A bake effect (react.ts bake): heat turns the terrain into its bakesTo.</summary>
         bool Bake(Cell c)
         {
@@ -330,6 +337,7 @@ namespace Chem
                 c.Heat = hot;
                 return true;
             }
+            if (eff.Shatter) return Struck(x, y, c);
             if (eff.Bake) return Bake(c);
             if (eff.MeltCover) return MeltCover(c);
             if (eff.Break)

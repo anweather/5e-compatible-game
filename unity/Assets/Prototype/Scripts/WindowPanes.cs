@@ -12,8 +12,10 @@ using UnityEngine;
 // asks the core to shatter the pane nearest it (Struck, through ChemEffects as
 // a prop's blast does: the host decides, every machine applies it); the thing
 // reports the hit because a building's colliders are parts with no Rigidbody,
-// which never pass a collision up to this component. ValleyChemistry binds it
-// to the cells for each new world. Only the show: the cells are the truth.
+// which never pass a collision up to this component. The first hit only cracks
+// the glass (Cell.Cracked, a web drawn on the pane: CrackWeb.hlsl); the next
+// shatters it. ValleyChemistry binds it to the cells for each new world. Only
+// the show: the cells are the truth.
 [ExecuteAlways]
 public class WindowPanes : MonoBehaviour
 {
@@ -46,6 +48,8 @@ public class WindowPanes : MonoBehaviour
     // mesh may come after the binding (a new world can load before a house has drawn itself).
     int[] cellOf = System.Array.Empty<int>();
     bool[] open = System.Array.Empty<bool>();
+    bool[] cracked = System.Array.Empty<bool>();
+    Vector3[] uvs;
 
     void OnEnable() => Show();
 
@@ -89,6 +93,7 @@ public class WindowPanes : MonoBehaviour
         var normals = new Vector3[n * 4];
         var triangles = new int[n * 6];
         colors = new Color32[n * 4];
+        uvs = new Vector3[n * 4];
         for (int i = 0; i < n; i++)
         {
             var p = panes[i];
@@ -101,12 +106,21 @@ public class WindowPanes : MonoBehaviour
             {
                 normals[v + k] = p.facing;
                 colors[v + k] = i < open.Length && open[i] ? Gap : Glass;
+                uvs[v + k] = Uv(i, k);
             }
             int[] corners = { v, v + 1, v + 2, v, v + 2, v + 3 };
             System.Array.Copy(corners, 0, triangles, t, 6);
         }
         var m = new Mesh { name = "Window panes", hideFlags = HideFlags.DontSave, vertices = vertices, normals = normals, triangles = triangles, colors32 = colors };
+        m.SetUVs(0, uvs);
         return m;
+    }
+
+    // A corner's place on the pane, and in z its crack: 1 and a seed for the web (Prototype/WindowGlass), 0 for none.
+    Vector3 Uv(int pane, int corner)
+    {
+        bool web = pane < cracked.Length && cracked[pane] && !open[pane];
+        return new Vector3(corner == 1 || corner == 2 ? 1f : 0f, corner >= 2 ? 1f : 0f, web ? 1f + Mathf.Repeat(pane * 0.37f, 1f) : 0f);
     }
 
     /// <summary>
@@ -119,12 +133,17 @@ public class WindowPanes : MonoBehaviour
         var world = grid.World;
         cellOf = new int[panes.Length];
         open = new bool[panes.Length];
+        cracked = new bool[panes.Length];
         for (int i = 0; i < panes.Length; i++)
         {
             var at = grid.CellAt(transform.TransformPoint(panes[i].at));
             int cell = PaneCellAround(world, at);
             cellOf[i] = cell;
-            if (cell >= 0) byCell[cell] = this;
+            if (cell >= 0)
+            {
+                byCell[cell] = this;
+                cracked[i] = world.Cells[cell].Cracked != 0;
+            }
             else open[i] = world.InBounds(at.x, at.y) && !world.IsBlocking(world.At(at.x, at.y));
         }
         Repaint();
@@ -158,12 +177,30 @@ public class WindowPanes : MonoBehaviour
         Repaint();
     }
 
+    /// <summary>A pane cell's crack came or went: its panes show it.</summary>
+    public void Cracked(int cell, bool on)
+    {
+        bool changed = false;
+        for (int i = 0; i < cellOf.Length; i++)
+        {
+            if (cellOf[i] != cell || cracked[i] == on) continue;
+            cracked[i] = on;
+            changed = true;
+        }
+        if (changed) Repaint();
+    }
+
     void Repaint()
     {
         if (mesh == null) return;
         for (int i = 0; i < open.Length; i++)
-            for (int k = 0; k < 4; k++) colors[i * 4 + k] = open[i] ? Gap : Glass;
+            for (int k = 0; k < 4; k++)
+            {
+                colors[i * 4 + k] = open[i] ? Gap : Glass;
+                uvs[i * 4 + k] = Uv(i, k);
+            }
         mesh.colors32 = colors;
+        mesh.SetUVs(0, uvs);
     }
 
     /// <summary>The hardest hit by a thing so far (N s), for the probe's measure of HeavyImpulse.</summary>
