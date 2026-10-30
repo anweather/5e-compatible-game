@@ -525,6 +525,10 @@ is easy to learn, and it's the shape for three-element casts.
   two-element casts stay local and immediate, so they don't overlap.
 - **Size:** M for the "loaded spell plus element" input; S per weather cast.
 
+## 23. The beard as a look option (Andrew, 2026-10-30; later)
+
+UX pass 2 turned beards off with the new face (the black fuzzy sphere with red slit eyes). WizardBeard.cs stays in the code, unused, for a later option: a beard (or none) picked like the hat or cowl in the Esc menu and sent with the seed, fitted to the new face. Don't delete it as dead code.
+
 ## Priority (groomed 2026-10-27, Andrew approved; J-012 in `JUDGMENT_CALLS.md`)
 
 This is the order to work in. Each item names its lane (see
