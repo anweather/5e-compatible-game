@@ -68,7 +68,7 @@ namespace Chem.Tests
                 { 'id': 'steam-damps-fire', 'element': 'fire', 'if': { 'gas': 'steam' }, 'do': [{ 'extinguish': true }], 'stop': true },
                 { 'id': 'acid-burns', 'element': 'acid', 'do': [{ 'setCover': null }] },
                 { 'id': 'fire-ice', 'element': 'fire', 'if': { 'frozen': true }, 'do': [{ 'melt': true }], 'log': 'Replaced in place' } ] } }");
-            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "steam-damps-fire", "fire-fog", "fire-mud", "fire-oil", "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-flammable" }));
+            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "steam-damps-fire", "fire-fog", "fire-mud", "fire-oil", "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-flammable", "fire-heat" }));
             Assert.That(r.CellRulesFor("fire").First(x => x.Id == "fire-ice").Log, Is.EqualTo("Replaced in place"));
             Assert.That(Ids(r.CellRulesFor("acid")), Is.EqualTo(new[] { "acid-burns", "acid-cover", "acid-terrain" }), "on top of the base acid rules");
             var elements = JObject.Parse(r.ToJson())["elements"].Select(e => (string)e);
@@ -95,7 +95,7 @@ namespace Chem.Tests
             Assert.That(r.Terrain["grass"].Has("flammable"), Is.False, "a named entry is replaced whole");
             Assert.That(r.Terrain["grass"].Fuel, Is.Null);
             Assert.That((string)json["entityRules"][0]["id"], Is.EqualTo("acid-entity"));
-            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "fire-fog", "fire-mud", "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-water", "fire-flammable" }));
+            Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "fire-fog", "fire-mud", "fire-thorns", "fire-snowbank", "fire-snow", "fire-ice", "fire-water", "fire-flammable", "fire-heat" }));
         }
 
         [Test]

@@ -286,6 +286,13 @@ namespace Chem
                 return true;
             }
             if (eff.Dissolve != null) return Dissolve(c, eff.Dissolve, element);
+            if (eff.Heat)
+            {
+                int hot = TerrainOf(c).HotFor;
+                if (hot <= 0 || c.Heat >= hot) return false;
+                c.Heat = hot;
+                return true;
+            }
             if (eff.Break)
             {
                 var to = TerrainOf(c).BreaksTo;

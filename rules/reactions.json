@@ -9,6 +9,7 @@
     { "id": "fire-ice", "element": "fire", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water", "stop": true },
     { "id": "fire-water", "element": "fire", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam", "stop": true },
     { "id": "fire-flammable", "element": "fire", "if": { "terrainTag": "flammable" }, "do": [{ "ignite": 2 }], "log": "Fire takes hold of the {terrain}", "stop": true },
+    { "id": "fire-heat", "element": "fire", "do": [{ "heat": true }], "log": "The {terrain} glows hot" },
 
     { "id": "cold-fire", "element": "cold", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "Frost snuffs out the flames" },
     { "id": "cold-steam", "element": "cold", "if": { "gas": "steam" }, "do": [{ "condense": true }], "log": "Steam condenses back into water" },

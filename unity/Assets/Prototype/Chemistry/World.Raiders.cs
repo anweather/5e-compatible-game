@@ -249,6 +249,7 @@ namespace Chem
                 DamageRaider(r, 1, "fire", "fire");
                 if (def.Flammable && r.Alive) Apply(r.X, r.Y, "fire", 1, -1, false);
             }
+            if (c.Heat > 0 && def.Creature && Tick % s.BurnDamageEvery == 0) DamageRaider(r, 1, "hot metal", "fire");
             if (c.Gas == "steam" && c.GasAmt >= 2 && def.Creature && Tick % s.ScaldEvery == 0)
                 DamageRaider(r, Rules.Gases.TryGetValue("steam", out var steam) ? steam.Scald : 1, "scalding", null);
             if (c.Charge == 3 && r.Alive)

@@ -42,6 +42,8 @@ namespace Chem
         /// through. 0: none.
         /// </summary>
         public int Rust;
+        /// <summary>Ticks it stays hot (World.Cool): metal fire reached stays hot after the fire goes, and burns creatures on it. 0: cold.</summary>
+        public int Heat;
 
         // World.TerrainOf's cache: the definition of the terrain id it was looked up for.
         // Not cell state (not hashed or saved); refreshed whenever T changes.
@@ -61,7 +63,7 @@ namespace Chem
         /// <summary>Back to a bare square of the given terrain (the sandbox's erase brush).</summary>
         public void Reset(string terrain = "dirt")
         {
-            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0; DampUntil = 0; Rust = 0;
+            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0; DampUntil = 0; Rust = 0; Heat = 0;
         }
     }
 

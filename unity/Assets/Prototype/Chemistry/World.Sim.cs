@@ -217,6 +217,7 @@ namespace Chem
                 bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
                 if (c.Charge > 0) c.Charge--;
                 if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
+                if (c.Heat > 0 && Cool(ch, c)) live = true;
                 if (soak && SoakPass(ch, i, c)) live = true;
                 if (live) edges = Math.Max(edges, 0) | Chunks.EdgesOf(i);
             }
@@ -231,6 +232,30 @@ namespace Chem
             if (c.Water > 0 && Soak(ch, i, c)) changed = true;
             if (DryOut(c)) changed = true;
             return changed;
+        }
+
+        /// <summary>
+        /// Hot metal cools a tick at a time (materials.json hot): water on it boils off a unit a tick as
+        /// steam, each unit taking hot.quench ticks of its heat. A terrain that can't be hot drops it.
+        /// </summary>
+        bool Cool(Chunk ch, Cell c)
+        {
+            var t = TerrainOf(c);
+            if (t.HotFor <= 0)
+            {
+                c.Heat = 0;
+                return true;
+            }
+            if (c.Water > 0 && !c.Frozen)
+            {
+                c.Water--;
+                AddGas(c, "steam", 1);
+                c.Heat = Math.Max(0, c.Heat - t.HotQuench);
+                WaterMoved(ch);
+                LogOnce("hot-quench", "Water hisses into steam on the hot metal");
+            }
+            if (c.Heat > 0) c.Heat--;
+            return true;
         }
 
         /// <summary>

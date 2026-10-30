@@ -28,10 +28,10 @@ function pond(w: World, x0: number, x1: number, y0: number, y1: number) {
   for (let x = x0; x <= x1; x++) for (let y = y0; y <= y1; y++) Object.assign(cellAt(w, x, y)!, { t: "pit", water: 4 });
 }
 
-/** World.CellHash in the C# port: the golden tests compare this string's FNV-1a. */
+/** World.CellHash in the C# port (life, rust and heat written only when not 0): the golden tests compare this string's FNV-1a. */
 function cellHash(w: World): string {
   const s = w.cells.map((c) =>
-    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""};`).join("");
+    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""};`).join("");
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -287,7 +287,7 @@ test("a dig weaker than the ground leaves it: Shape Earth digs dirt, a Meteor di
   assert.equal(cellAt(w, 14, 3)!.t, "rubble");
   assert.equal(cellAt(w, 14, 6)!.h, 0, "metal never digs");
   run(w, 30);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "58631e96 9");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "fe1217a6 9");
 });
 
 test("hardness and strength are checked", () => {

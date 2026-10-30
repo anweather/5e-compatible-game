@@ -11,6 +11,7 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "dig", tag: null, keys: [["hardness", "hardness"], ["leaves", "dugTo"]] },
   { verb: "soak", tag: null, keys: [["dry", "soakEvery"], ["wet", "soakEveryWet"], ["dampens", "dampens"], ["leaves", "soaksTo"], ["dries", "driesTo"]] },
   { verb: "rust", tag: null, keys: [["every", "rustEvery"], ["leaves", "rustsTo"]] },
+  { verb: "hot", tag: null, keys: [["for", "hotFor"], ["quench", "hotQuench"]] },
   { verb: "conduct", tag: "conductive", keys: [] },
   { verb: "shatter", tag: "brittle", keys: [] },
   { verb: "grow", tag: null, keys: [["into", "growsTo"], ["log", "growLog"]] },

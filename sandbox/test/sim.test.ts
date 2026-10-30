@@ -434,7 +434,7 @@ test("soaked thatch burns out sooner", () => {
 /** World.CellHash in the C# port, rust included (written only when it isn't 0). */
 function rustHash(w: World): string {
   const s = w.cells.map((c) =>
-    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""};`).join("");
+    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""};`).join("");
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -520,6 +520,31 @@ test("lightning fuses sand into glass", () => {
   assert.ok(["glow-ball-amber", "glow-ball-azure", "glow-ball-rose"].every((id) => RULES.items[id]!.material === "glass"));
   run(w, 40);
   assert.equal(`${glass} ${rustHash(w)} ${w.rng}`, "1 e8b4e694 1"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.MetalStaysHotAfterFireBurnsWhatStandsOnItAndSteamsWater.
+test("metal stays hot after fire, burns what stands on it, and steams water", () => {
+  const w = createWorld(9, 5, 1);
+  for (const c of w.cells) c.t = "metal";
+  // Stood on the metal as World.SpawnRaider stands it.
+  const e = { id: w.nextId++, kind: "giant-spider", x: 4, y: 2, hp: 99, status: {} as Record<string, number> };
+  w.entities.push(e);
+  castSpell(w, "fire-bolt", 4, 2, 1);
+  assert.equal(cellAt(w, 4, 2)!.heat, 120, "the fire left it hot");
+  const hp = e.hp;
+  run(w, 12);
+  assert.equal(cellAt(w, 4, 2)!.heat, 108, "and it stays hot, cooling a tick at a time");
+  assert.ok(e.hp < hp, "it burns what stands on it");
+  castSpell(w, "create-water", 4, 2, 1);
+  let steam = 0;
+  for (let t = 0; t < 10; t++) {
+    step(w);
+    steam = Math.max(steam, w.cells.reduce((s, c) => s + (c.gas === "steam" ? c.gasAmt : 0), 0));
+  }
+  assert.ok(steam > 0, "the water hisses into steam");
+  assert.ok(w.log.some((l) => l.text === "Water hisses into steam on the hot metal"));
+  assert.ok(cellAt(w, 4, 2)!.heat! < 98, "and cools it faster than time alone");
+  assert.equal(`${e.hp} ${steam} ${cellAt(w, 4, 2)!.heat ?? 0} ${rustHash(w)} ${w.rng}`, "84 3 0 519dc5ad 1639742223"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.AWetThingOfADampenedMaterialCatchesPoorly: a spark lights a thing of thatch with its
