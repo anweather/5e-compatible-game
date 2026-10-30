@@ -9,6 +9,9 @@
 // It reads the token counts Claude Code already logs (~/.claude/projects/**/*.jsonl), so measuring costs
 // the agent nothing. "This commit's work" is every reply since the last commit on this VM, or since
 // boot for the first one. start.cmd installs it with the prepare-commit-msg hook in each worker.
+// The coordinator runs it on its own merges (land.sh) with COMMIT_COST_ROLE=Coordinator: the lines
+// are then Coordinator-*, from $CLAUDE_CONFIG_DIR's logs, which is every session of that account on
+// the host since its last merge.
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -16,7 +19,9 @@ import { execSync } from 'node:child_process';
 
 const msgFile = process.argv[2];
 const home = os.homedir();
-const stateFile = path.join(home, '.worker', 'last-commit.txt');
+const role = process.env.COMMIT_COST_ROLE || 'Worker';
+const config = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
+const stateFile = path.join(config, `.${role.toLowerCase()}-last-commit.txt`);
 let since = Number(process.env.COMMIT_COST_SINCE) || Date.now() - os.uptime() * 1000; // the override is for testing
 try { since = Math.max(since, Number(fs.readFileSync(stateFile, 'utf8'))); } catch { }
 
@@ -40,7 +45,7 @@ const replies = new Map();
 const tools = new Map(); // tool_use id -> its command (Bash/PowerShell), else ''
 const failed = new Set();
 let compactions = 0, apiErrors = 0;
-for (const file of transcripts(path.join(home, '.claude', 'projects'))) {
+for (const file of transcripts(path.join(config, 'projects'))) {
   for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
     let o;
     try { o = JSON.parse(line); } catch { continue; }
@@ -82,16 +87,17 @@ const n = (x) => x.toLocaleString('en-US');
 const fresh = sum.input + sum.write + sum.output;
 let name = os.hostname();
 try { name = fs.readFileSync('C:/ProgramData/worker/name.txt', 'utf8').trim().split(' ')[0] || name; } catch { }
+if (role !== 'Worker') name = process.env.COMMIT_COST_NAME || name;
 const plural = (k, word) => `${k} ${word}${k > 1 ? 's' : ''}`;
 const trouble = [compactions && plural(compactions, 'compaction'), apiErrors && plural(apiErrors, 'API error')].filter(Boolean);
 const lines = [
-  `Worker: ${name}`,
-  `Worker-Account: ${account}`,
-  `Worker-Time: ${replies.size ? Math.max(1, Math.round((Date.now() - first) / 60000)) : 0} min`,
-  `Worker-Tokens: ${n(fresh)} new + ${n(sum.read)} cache read (input ${n(sum.input)}, cache write ${n(sum.write)}, output ${n(sum.output)}; ${replies.size} replies; ${[...models].join(', ') || 'no model'})`,
-  `Worker-Context: peak ${n(peak)}`,
-  `Worker-Tools: ${tools.size} calls, ${failed.size} failed; tests: ${runs.map(([k, c]) => `${k} x${c}`).join(', ') || 'none'}`,
-  ...(trouble.length ? [`Worker-Trouble: ${trouble.join(', ')}`] : []),
+  `${role}: ${name}`,
+  `${role}-Account: ${account}`,
+  `${role}-Time: ${replies.size ? Math.max(1, Math.round((Date.now() - first) / 60000)) : 0} min`,
+  `${role}-Tokens: ${n(fresh)} new + ${n(sum.read)} cache read (input ${n(sum.input)}, cache write ${n(sum.write)}, output ${n(sum.output)}; ${replies.size} replies; ${[...models].join(', ') || 'no model'})`,
+  `${role}-Context: peak ${n(peak)}`,
+  `${role}-Tools: ${tools.size} calls, ${failed.size} failed; tests: ${runs.map(([k, c]) => `${k} x${c}`).join(', ') || 'none'}`,
+  ...(trouble.length ? [`${role}-Trouble: ${trouble.join(', ')}`] : []),
 ];
 
 const msg = fs.readFileSync(msgFile, 'utf8').replace(/\s+$/, '');
