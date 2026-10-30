@@ -53,6 +53,8 @@ namespace Chem
         /// <summary>Wet (water on it, raining, or damp) this many ticks in all, it rusts through into RustsTo (materials.json rust.every, rust.leaves; World.Rust); 0 never.</summary>
         public int RustEvery;
         public string RustsTo;
+        /// <summary>What a cell of it leaves when it shatters (shatter.leaves: a window pane to an open gap, World.Shatter); null it doesn't.</summary>
+        public string ShattersTo;
         /// <summary>Fire reaching it leaves it hot this many ticks (materials.json hot.for; World.Cool), and each unit of water it boils off takes hot.quench of them; 0 never hot.</summary>
         public int HotFor, HotQuench;
         /// <summary>
@@ -578,6 +580,7 @@ namespace Chem
             Dampens = Num(o["dampens"]) ?? 0,
             RustEvery = Int(o["rustEvery"]) ?? 0,
             RustsTo = Str(o["rustsTo"]),
+            ShattersTo = Str(o["shattersTo"]),
             HotFor = Int(o["hotFor"]) ?? 0,
             HotQuench = Int(o["hotQuench"]) ?? 0,
             SoaksTo = Str(o["soaksTo"]),

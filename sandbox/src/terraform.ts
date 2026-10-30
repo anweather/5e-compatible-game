@@ -1,6 +1,7 @@
 // Earth shaping: terraform spells raise and dig cells (Cell.h), and raised
 // ground sheds its water. Unity's port is Chemistry/World.Terraform.cs.
 import { type CraterDef, RULES, type SpellDef } from "./rules.ts";
+import { shatter, wallLost } from "./react.ts";
 import { type World, burns, cellAt, entityAt, idx, isBlocking, logOnce, neighbours, terrainDef } from "./world.ts";
 
 /**
@@ -47,7 +48,7 @@ function tapered(steps: number, d: number, radius: number): number {
 /**
  * Raises (n > 0) or digs (n < 0) one cell by n steps, clamped to the sim's
  * height range. A terrain that uproots (a tree, a cabin's log wall) turns to
- * its uprootsTo first. Blocking terrain and machines can't be shaped, and nothing
+ * its uprootsTo first, and one that shatters (a window pane) shatters. Blocking terrain and machines can't be shaped, and nothing
  * rises into a wall under a creature or object. Digging strips the cover and
  * turns the terrain to its dugTo; raised ground spills its water onto its
  * neighbours. A cell that ends up blocking loses its cover and fire.
@@ -55,13 +56,15 @@ function tapered(steps: number, d: number, radius: number): number {
 export function reshape(w: World, x: number, y: number, n: number, terrain?: string, strength = 1): boolean {
   const c = cellAt(w, x, y);
   if (!c) return false;
+  const shattered = shatter(w, x, y);
   let t = terrainDef(c);
-  const uprooted = t.uprootsTo !== undefined;
-  if (uprooted) {
+  const uprooted = t.uprootsTo !== undefined || shattered;
+  if (t.uprootsTo !== undefined) {
     if (t.uprootLog) logOnce(w, `uproot#${c.t}#${w.tick}`, t.uprootLog, "notable");
-    c.t = t.uprootsTo!;
+    c.t = t.uprootsTo;
     t = terrainDef(c);
   }
+  if (uprooted) wallLost(w, x, y);
   if (t.tags.includes("blocking") || t.tags.includes("machine")) return uprooted;
   if (n < 0 && strength < (t.hardness ?? 1)) {
     logOnce(w, `hard#${c.t}#${w.tick}`, `The ${t.name.toLowerCase()} is too hard to dig`);

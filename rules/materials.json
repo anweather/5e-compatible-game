@@ -35,6 +35,7 @@
     "shingle":   { "name": "Shingle roof", "tags": ["roof"], "burn": { "catch": 0.15, "fuel": 120, "leaves": "rubble", "look": "wood" } },
     "slate":     { "name": "Slate roof", "tags": ["roof"] },
     "glass":     { "name": "Glass", "tags": ["ground"], "shatter": {} },
+    "pane":      { "name": "Window pane", "tags": ["blocking", "seeThrough"], "shatter": { "leaves": "rubble" } },
     "timber":    { "name": "Timber", "tags": [], "burn": { "catch": 0.15, "fuel": 140, "look": "wood" }, "break": {}, "soak": { "dampens": 0.5 } },
     "flesh":     { "name": "Flesh", "tags": [], "burn": { "status": 9 }, "freeze": { "status": 30 }, "soak": { "status": 60 }, "conduct": { "chainsWet": true } },
     "bone":      { "name": "Bone", "tags": [], "freeze": { "status": 30 }, "soak": { "status": 60 }, "conduct": { "chainsWet": true } },

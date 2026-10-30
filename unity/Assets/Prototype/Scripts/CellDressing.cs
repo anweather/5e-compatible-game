@@ -28,6 +28,7 @@ public sealed partial class CellDressing
         ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f),
         ["rusted-metal"] = (new Color(0.42f, 0.22f, 0.12f), 0.06f), ["mud"] = (new Color(0.24f, 0.17f, 0.10f), 0f),
         ["sand"] = (new Color(0.86f, 0.77f, 0.56f), 0f), ["glass"] = (new Color(0.73f, 0.87f, 0.89f), 0f),
+        ["pane"] = (new Color(0.66f, 0.82f, 0.88f), 0f),
     };
 
     // Terrains drawn as ground with something standing on it; effects sit on their ground, not on top.

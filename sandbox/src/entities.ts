@@ -1,6 +1,6 @@
 // Things on the board: damage, death, explosions, and being shoved around.
 import { RULES, hasComponent } from "./rules.ts";
-import { applyElement, applyEntityElement, ignite } from "./react.ts";
+import { applyElement, applyEntityElement, blastAround, ignite } from "./react.ts";
 import { crater } from "./terraform.ts";
 import {
   type Cell, type Dir, type Entity, type World,
@@ -67,6 +67,7 @@ export function destroy(w: World, e: Entity, how = "is defeated") {
 
 function explode(w: World, x: number, y: number, ex: NonNullable<ReturnType<typeof defOf>["explodes"]>) {
   log(w, "KABOOM! The oil barrel explodes", "notable");
+  blastAround(w, x, y, ex.radius);
   crater(w, x, y, ex.crater);
   for (let dy = -ex.radius; dy <= ex.radius; dy++) {
     for (let dx = -ex.radius; dx <= ex.radius; dx++) {

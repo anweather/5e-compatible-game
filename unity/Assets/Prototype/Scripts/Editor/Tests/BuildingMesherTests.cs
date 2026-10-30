@@ -63,6 +63,21 @@ public class BuildingMesherTests
     }
 
     [Test]
+    public void ThePlansWindowsAreWhereItPutsThem()
+    {
+        var spec = Spec(WallKind.Stone, RoofKind.Gable, RoofCover.Slate, 2);
+        spec.windows = new[] { new Vector2(BuildingMesher.Spec.Front, 1.5f), new Vector2(BuildingMesher.Spec.Right, 0f) };
+        spec.doorAt = -1.5f;
+        var made = BuildingMesher.Make(spec);
+        Assert.That(made.panes.Length, Is.EqualTo(4), "two windows, each on both storeys");
+        Assert.That(made.panes[0].at.x, Is.EqualTo(1.5f).Within(1e-4f));
+        Assert.That(made.panes[0].facing, Is.EqualTo(Vector3.back));
+        Assert.That(made.panes[1].facing, Is.EqualTo(Vector3.right));
+        Object.DestroyImmediate(made.body);
+        Object.DestroyImmediate(made.roof);
+    }
+
+    [Test]
     public void TheWallsStayOnTheFootprint()
     {
         var made = BuildingMesher.Make(Spec(WallKind.Log, RoofKind.Hip, RoofCover.Shingle, 1));

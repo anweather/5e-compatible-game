@@ -18,6 +18,8 @@ namespace Chem
         Explode,
         /// <summary>An item landed hard enough to break and spilled what it held (items.json "breaks").</summary>
         Spill,
+        /// <summary>A heavy thing hit a window pane hard (World.Shatter).</summary>
+        Shatter,
     }
 
     /// <summary>A prop's effect on one cell: small enough to send like a cast.</summary>
@@ -69,6 +71,9 @@ namespace Chem
                     break;
                 case EffectKind.Spill:
                     Spill(effect.X, effect.Y, Rules.Item(effect.Entity));
+                    break;
+                case EffectKind.Shatter:
+                    Shatter(effect.X, effect.Y);
                     break;
             }
         }

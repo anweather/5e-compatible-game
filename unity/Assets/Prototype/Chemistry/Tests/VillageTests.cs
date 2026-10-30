@@ -99,8 +99,29 @@ namespace Chem.Tests
             foreach (var (x, y, c) in plan.Cells()) cells[(x, y)] = c;
             Assert.That(cells[plan.Well], Is.EqualTo('w'));
             foreach (var b in plan.Buildings)
-                foreach (var c in b.Footprint.Cells()) Assert.That(cells[c], Is.EqualTo(b.WallCell));
-            Assert.That(cells.Values.Distinct().OrderBy(c => c), Is.SubsetOf(new[] { '#', '.', 'L', 'w' }));
+            {
+                var windows = b.Windows.Select(w => (w.X, w.Y)).ToList();
+                foreach (var c in b.Footprint.Cells()) Assert.That(cells[c], Is.EqualTo(windows.Contains(c) ? 'P' : b.WallCell));
+            }
+            Assert.That(cells.Values.Distinct().OrderBy(c => c), Is.SubsetOf(new[] { '#', '.', 'L', 'P', 'w' }));
+        }
+
+        [Test]
+        public void WindowsStandInTheWallClearOfTheDoorAndTheCorners()
+        {
+            var plan = VillageLayout.Lay(Spec(1), Anywhere);
+            Assert.That(plan.Buildings.Sum(b => b.Windows.Count), Is.GreaterThan(plan.Buildings.Count));
+            foreach (var b in plan.Buildings)
+            {
+                var r = b.Footprint;
+                Assert.That(r.Contains(b.DoorCell.x, b.DoorCell.y));
+                foreach (var w in b.Windows)
+                {
+                    bool edgeX = w.X == r.X || w.X == r.Right - 1, edgeY = w.Y == r.Y || w.Y == r.Bottom - 1;
+                    Assert.That(r.Contains(w.X, w.Y) && edgeX != edgeY, $"{w.X},{w.Y} in {r}: on a wall, not a corner");
+                    Assert.That(System.Math.Abs(w.X - b.DoorCell.x) + System.Math.Abs(w.Y - b.DoorCell.y), Is.GreaterThanOrEqualTo(2), "clear of the door");
+                }
+            }
         }
 
         [Test]
@@ -115,7 +136,7 @@ namespace Chem.Tests
         [Test]
         public void TheLayoutIsPinned()
         {
-            Assert.That(VillageLayout.Lay(Spec(7), Anywhere).Digest().ToString("x8", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("6c384925"));
+            Assert.That(VillageLayout.Lay(Spec(7), Anywhere).Digest().ToString("x8", System.Globalization.CultureInfo.InvariantCulture), Is.EqualTo("7b2c5f14"));
         }
 
         [Test]

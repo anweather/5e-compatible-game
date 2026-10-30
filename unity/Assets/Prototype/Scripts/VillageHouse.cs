@@ -21,6 +21,12 @@ public class VillageHouse : MonoBehaviour
     public float width = 6f, depth = 4.5f;
     [Tooltip("Drawn with VillageLit; the Village above sets it if this is empty.")]
     public Material material;
+    [Tooltip("The window panes' material (WindowGlass).")]
+    public Material glass;
+    [Tooltip("The windows from the plan: x its wall (BuildingMesher.Spec), y its place along it in metres. Empty: the mesher spaces them itself, with no cells behind them.")]
+    public Vector2[] windows = System.Array.Empty<Vector2>();
+    [Tooltip("Where the door stands along the front (m), from the plan; NaN: the mesher picks.")]
+    public float doorAt = float.NaN;
 
     Mesh body, roofMesh;
     MeshCollider roofCollider;
@@ -47,6 +53,8 @@ public class VillageHouse : MonoBehaviour
         seed = seed,
         width = width,
         depth = depth,
+        windows = windows,
+        doorAt = float.IsNaN(doorAt) ? null : doorAt,
     };
 
     void OnEnable() => Rebuild();
@@ -67,6 +75,8 @@ public class VillageHouse : MonoBehaviour
         roofMesh = made.roof;
         bodyGo = Part("Body", body);
         roofGo = Part("Roof", roofMesh);
+        if (!TryGetComponent<WindowPanes>(out var panes)) panes = gameObject.AddComponent<WindowPanes>();
+        panes.Show(made.panes, glass);
         // The roof can be stood on, and the window boxes and planters bumped into (Andrew's
         // playtest #4); the builder's box for the walls stops at the eaves.
         roofCollider = roofGo.AddComponent<MeshCollider>();

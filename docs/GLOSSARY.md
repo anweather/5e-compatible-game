@@ -11,6 +11,11 @@ touch them.
 
 ## The world and its space
 
+**Pane**
+: A window's glass: a `pane` cell in a building's wall (`world/villages.json`,
+  a cabin's map), which blocks like the wall, doesn't burn, and shatters to an
+  open gap under force. *Not* the walkable `glass` a strike fuses from sand.
+
 **Cell**
 : The unit of chemistry: 1.5 m (5 ft) square. It holds a terrain, water,
   a cover, fire and fuel, gas, charge, height and life (`Chem.Cell`).

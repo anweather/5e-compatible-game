@@ -476,6 +476,7 @@ namespace Chem
                 c.T = t.BurnsTo;
                 c.Cover = IsBlocking(c) || HasTag(c, "low") ? null : "ash";
                 if (t.BurnLog != null) AddLog(t.BurnLog, LogKind.Notable);
+                WallLost(CellX(ch, i), CellY(ch, i));
             }
         }
 

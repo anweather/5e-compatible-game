@@ -43,6 +43,8 @@ export interface TerrainDef {
   /** Wet (water on it, raining, or damp) this many ticks in all, it rusts through into rustsTo (rust.every, rust.leaves; rust in sim.ts); unset never. */
   rustEvery?: number;
   rustsTo?: string;
+  /** What a cell of it leaves when it shatters (shatter.leaves: a window pane to an open gap; shatter in react.ts). */
+  shattersTo?: string;
   /** Fire reaching it leaves it hot this many ticks (hot.for; cool in sim.ts), and each unit of water it boils off takes hot.quench of them; unset never hot. */
   hotFor?: number;
   hotQuench?: number;
@@ -726,7 +728,7 @@ export function validateRules(r: Rules): string[] {
     for (const key of ["burnStatus", "freezeStatus", "soakStatus"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
     if (t.chainsWet !== undefined && typeof t.chainsWet !== "boolean") errors.push(`terrain ${id}: conduct.chainsWet must be true or false`);
-    for (const key of ["soaksTo", "driesTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
+    for (const key of ["soaksTo", "driesTo", "shattersTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
     for (const key of ["soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);

@@ -218,6 +218,7 @@ namespace Chem
             cells.RemoveAll(c => !IsActiveAt(c.x, c.y));
             if (s.Element == "air" && s.Wind > 0) Wind = (dir, s.Wind);
             if (s.Effect == "terraform") Terraform(s, cells, x, y, charge);
+            if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);
             BlastRaiders(s, cells, x, y);
             if (s.Element == null) return;

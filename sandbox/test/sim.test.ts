@@ -5,9 +5,10 @@ import { withoutSoaking } from "./soak.ts";
 import { step } from "../src/sim.ts";
 import { castAt, castSpell, carry, paint, placeCritter, previewCells } from "../src/actions.ts";
 import { push, spawn, walk } from "../src/entities.ts";
-import { applyElement } from "../src/react.ts";
+import { applyElement, shatter } from "../src/react.ts";
+import { reshape } from "../src/terraform.ts";
 import { SCENARIOS, goalState, loadScenario } from "../src/scenarios.ts";
-import { type World, NO_LAND, cellAt, setLand, createWorld, entityAt, hashWorld, playerOf } from "../src/world.ts";
+import { type World, NO_LAND, cellAt, setLand, createWorld, entityAt, hashWorld, isBlocking, playerOf } from "../src/world.ts";
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
 const direct = { power: 2, direct: true };
@@ -574,6 +575,32 @@ test("a wet thing of a dampened material catches poorly", () => {
   } finally {
     installRules(before);
   }
+});
+
+// Mirrors ChemistryTests.WindowGlassShattersUnderForceAndFallsWithItsWall: fire beside a pane does nothing to
+// it; Fireball's blast and ground shaken under one break it, a heavy thing breaks one, and a pane with its only
+// wall burnt away falls. What it leaves is an open gap.
+test("window glass shatters under force and falls with its wall", () => {
+  const w = createWorld(16, 10, 5);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 3; x <= 7; x++) for (let y = 3; y <= 5; y++) cellAt(w, x, y)!.t = "logwall";
+  for (const [x, y] of [[5, 3], [3, 4], [7, 4], [5, 5], [11, 3]] as const) cellAt(w, x, y)!.t = "pane";
+  cellAt(w, 11, 4)!.t = "logwall";
+  applyElement(w, 5, 2, "fire", { power: 2, direct: true });
+  let panes = cellAt(w, 5, 3)!.t;
+  castSpell(w, "fireball", 5, 1, 0);
+  panes += ` ${cellAt(w, 5, 3)!.t} ${cellAt(w, 7, 4)!.t}`;
+  reshape(w, 3, 4, 1);
+  panes += ` ${cellAt(w, 3, 4)!.t}`;
+  shatter(w, 5, 5);
+  panes += ` ${cellAt(w, 5, 5)!.t}`;
+  applyElement(w, 11, 4, "fire", { power: 3, direct: true });
+  run(w, 400);
+  panes += ` ${cellAt(w, 11, 4)!.t} ${cellAt(w, 11, 3)!.t}`;
+  assert.equal(panes, "pane rubble pane rubble rubble rubble rubble");
+  assert.ok(w.log.some((l) => l.text === "The window pane shatters"));
+  assert.equal(isBlocking(cellAt(w, 5, 3)!), false, "an open gap");
+  assert.equal(`${rustHash(w)} ${w.rng}`, "fd5c22c2 3314880483"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.ShockWaterReachesSwimmersAndTheWetOnTheBank (conduct.chainsWet): lightning into one

@@ -18,6 +18,7 @@ namespace Chem
             var ex = e?.Explodes;
             if (ex == null || !InBounds(x, y)) return 0;
             AddLog($"KABOOM! The {e.Name.ToLowerInvariant()} explodes", LogKind.Notable);
+            BlastAround(x, y, ex.Radius);
             Crater(x, y, ex.Crater);
             return Stamp(x, y, ex);
         }

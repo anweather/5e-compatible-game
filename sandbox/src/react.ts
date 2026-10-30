@@ -213,6 +213,41 @@ export function displaceWater(w: World, x: number, y: number) {
   c.frozen = false;
 }
 
+/**
+ * Shatters the cell if its terrain has a shatter.leaves (a window pane): a blast, ground shaken under it or
+ * a heavy thing hit it; fire does nothing to it (World.Shatter). Returns whether it did.
+ */
+export function shatter(w: World, x: number, y: number): boolean {
+  const c = cellAt(w, x, y);
+  if (!c) return false;
+  const t = terrainDef(c);
+  if (!t.shattersTo) return false;
+  c.t = t.shattersTo;
+  logOnce(w, `shatter#${t.name}#${w.tick}`, `The ${t.name.toLowerCase()} shatters`, "notable");
+  return true;
+}
+
+/** A blast's shock round (x, y) (World.BlastAround). */
+export function blastAround(w: World, x: number, y: number, radius: number) {
+  for (let dy = -radius; dy <= radius; dy++) for (let dx = -radius; dx <= radius; dx++) shatter(w, x + dx, y + dy);
+}
+
+/** A wall at (x, y) is gone: a pane beside it with no wall left to stand in falls (World.WallLost). */
+export function wallLost(w: World, x: number, y: number) {
+  for (const [nx, ny] of neighbours(w, x, y)) {
+    if (terrainDef(cellAt(w, nx, ny)!).shattersTo && !held(w, nx, ny)) shatter(w, nx, ny);
+  }
+}
+
+/** Whether a wall stands beside a pane (panes don't hold each other up). */
+function held(w: World, x: number, y: number): boolean {
+  for (const [nx, ny] of neighbours(w, x, y)) {
+    const n = cellAt(w, nx, ny)!;
+    if (isBlocking(n) && !terrainDef(n).shattersTo) return true;
+  }
+  return false;
+}
+
 function conduct(w: World, x: number, y: number, charge: number): boolean {
   const start = cellAt(w, x, y)!;
   if (!isConductive(start)) return false;
@@ -304,6 +339,7 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     const to = terrainDef(c).breaksTo;
     if (!to) return false;
     c.t = to;
+    wallLost(w, x, y);
     return true;
   }
   if (eff.setTerrain !== undefined) {

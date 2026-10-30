@@ -13,7 +13,7 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "rust", tag: null, keys: [["every", "rustEvery"], ["leaves", "rustsTo"]] },
   { verb: "hot", tag: null, keys: [["for", "hotFor"], ["quench", "hotQuench"]] },
   { verb: "conduct", tag: "conductive", keys: [] },
-  { verb: "shatter", tag: "brittle", keys: [] },
+  { verb: "shatter", tag: "brittle", keys: [["leaves", "shattersTo"]] },
   { verb: "grow", tag: null, keys: [["into", "growsTo"], ["log", "growLog"]] },
   { verb: "uproot", tag: null, keys: [["leaves", "uprootsTo"], ["log", "uprootLog"]] },
   { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },

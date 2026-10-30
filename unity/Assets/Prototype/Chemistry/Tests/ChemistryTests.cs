@@ -787,6 +787,40 @@ namespace Chem.Tests
             Assert.That(ex.Errors, Is.EqualTo(new[] { "cover slime: dissolves by unknown element vinegar", "cover slime: dissolvesTo goo unknown" }));
         }
 
+        // A log wall with panes in it (the sandbox's window glass test, the same steps): fire beside a pane does
+        // nothing to it; Fireball's blast and ground shaken under one break it, a heavy thing breaks one, and
+        // a pane with its only wall burnt away falls. What it leaves is an open gap.
+        static (World w, string panes) WindowGlass()
+        {
+            var w = new World(R, 16, 10, 5, "dirt");
+            for (int x = 3; x <= 7; x++)
+                for (int y = 3; y <= 5; y++) w.At(x, y).T = "logwall";
+            foreach (var (x, y) in new[] { (5, 3), (3, 4), (7, 4), (5, 5), (11, 3) }) w.At(x, y).T = "pane";
+            w.At(11, 4).T = "logwall";
+            w.Apply(5, 2, "fire", 2, -1, true);
+            string panes = w.At(5, 3).T;
+            w.Cast("fireball", 5, 1, 0);
+            panes += " " + w.At(5, 3).T + " " + w.At(7, 4).T;
+            w.Reshape(3, 4, 1);
+            panes += " " + w.At(3, 4).T;
+            w.ApplyEffect(new EffectCommand(EffectKind.Shatter, 5, 5, ""));
+            panes += " " + w.At(5, 5).T;
+            w.Apply(11, 4, "fire", 3, -1, true);
+            Run(w, 400);
+            return (w, panes + " " + w.At(11, 4).T + " " + w.At(11, 3).T);
+        }
+
+        [Test]
+        public void WindowGlassShattersUnderForceAndFallsWithItsWall()
+        {
+            var (w, panes) = WindowGlass();
+            Assert.That(panes, Is.EqualTo("pane rubble pane rubble rubble rubble rubble"), "fire leaves it; a blast and shaken ground break it; a pane out of the blast stands; it falls with its wall");
+            Assert.That(w.Log.Any(l => l.Text == "The window pane shatters"));
+            Assert.That(w.IsBlocking(w.At(5, 3)), Is.False, "an open gap");
+            Assert.That(R.Terrain["pane"].Has("blocking") && !R.Terrain["pane"].Burns && !R.Terrain["pane"].Conducts);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("fd5c22c2 3314880483"), "the same in the sandbox");
+        }
+
         // Over 40 seeds, a goblin (wet or not) hit by Ray of Frost, then Shocking Grasp: how many are gone,
         // and the sum of the worlds' RngStates.
         static string FrostThenSpark(bool wet)

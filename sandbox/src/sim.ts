@@ -2,7 +2,7 @@
 // critters -> fire -> water -> gas -> weather -> entities -> machines -> decay
 // -> the day clock (Hasten Time).
 import { RULES } from "./rules.ts";
-import { applyElement, dampFuel, displaceWater, ignite, putCover } from "./react.ts";
+import { applyElement, dampFuel, displaceWater, ignite, putCover, wallLost } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
 import {
@@ -277,6 +277,7 @@ function tickFire(w: World) {
       c.t = t.burnsTo;
       c.cover = isBlocking(c) || hasTag(c, "low") ? null : "ash";
       if (t.burnLog) log(w, t.burnLog, "notable");
+      wallLost(w, x, y);
     }
   }
 }

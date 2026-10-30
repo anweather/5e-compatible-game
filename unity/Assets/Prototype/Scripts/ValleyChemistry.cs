@@ -46,6 +46,8 @@ public partial class ValleyChemistry : MonoBehaviour
     readonly Dictionary<int, List<GeneratedProp>> palmsByCell = new();
     // Cells whose tree grew from a sapling in this world (Grown).
     readonly HashSet<int> grown = new();
+    // Every window pane by its cell (a world index).
+    readonly Dictionary<int, WindowPanes> panesByCell = new();
     int[] cabinCells, cabinBurnt, cabinWrecked;
     bool[] cabinCharred;
     Material charred;
@@ -102,6 +104,8 @@ public partial class ValleyChemistry : MonoBehaviour
                 buildingCells[k].Add(world.Idx(x, y));
             }
         if (charred == null) charred = UrpMaterials.NewLit("Charred", new Color(0.07f, 0.06f, 0.055f), 0.05f);
+        panesByCell.Clear();
+        foreach (var panes in FindObjectsByType<WindowPanes>(FindObjectsSortMode.None)) panes.Bind(grid, panesByCell);
     }
 
     void IndexTrees()
@@ -251,6 +255,7 @@ public partial class ValleyChemistry : MonoBehaviour
         // A wall that burned out is no longer alight (the core puts the fire out as it turns to rubble),
         // but it leaves ash; one that caved in under earth shaping doesn't.
         var now = grid.World.At(x, y);
+        if (from == TerrainIds.Pane && panesByCell.TryGetValue(key, out var pane)) pane.Shatter(key);
         if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
@@ -344,7 +349,7 @@ public partial class ValleyChemistry : MonoBehaviour
             return;
         }
         foreach (var r in cabin.GetComponentsInChildren<Renderer>())
-            if (r.name != "Roof" && r.GetComponent<ParticleSystem>() == null) r.sharedMaterial = charred;
+            if (r.name != "Roof" && r.name != "Panes" && r.GetComponent<ParticleSystem>() == null) r.sharedMaterial = charred;
         foreach (var l in cabin.GetComponentsInChildren<Light>()) l.enabled = false;
         EventLog.Add($"The {LabelOf(cabin)} burns down");
         WallsBurnDown(k);
