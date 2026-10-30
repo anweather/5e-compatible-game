@@ -8,7 +8,7 @@ using UnityEngine.Rendering;
 // and, for any cell whose state changed, updates what stands on it: its
 // dressing (CellDressing: brambles, a stump, planks, crags), its invisible
 // blocker (CellBlockers), its water or ice (one surface over all the wet
-// cells: CellWaterMesh), oil or grease (one film: CellSlickMesh), thorns (CellThorns), and its fire, gas and
+// cells: CellWaterMesh), oil, grease, mud or glass (one film: CellSlickMesh), thorns (CellThorns), and its fire, gas and
 // charge effects (ChemGrid.Effects.cs).
 // Reshaped ground eases to its new height (ChemGrid.Shaping.cs). A small pool
 // of flickering lights follows the biggest fires (FireLightPool). Cubes stand
@@ -45,6 +45,7 @@ public partial class ChemGrid
         public bool charged;
         public bool wet;
         public bool fogged;
+        public int heatLevel;
     }
 
     View[] views;
@@ -140,8 +141,10 @@ public partial class ChemGrid
         if (key == v.key && v.terrain == c.T && v.height == c.Height) return;
         v.key = key;
 
-        if (v.terrain != c.T || v.height != c.Height || v.coverId != c.Cover)
+        bool redressed = v.terrain != c.T || v.height != c.Height;
+        if (redressed || v.coverId != c.Cover)
             using (GroundMarker.Auto()) ChangeGround(v, c, x, y);
+        RenderHeat(v, c, redressed);
         float groundTop = GroundTop(x, y, c);
         float ground = CellDressing.IsDressed(c.T) ? groundTop : groundTop + CellDressing.Look(c.T).height;
         var center = CellCenter(x, y);
@@ -190,8 +193,29 @@ public partial class ChemGrid
         if (reshaped) StartShaping(v, x, y, shown);
     }
 
+    // Hot metal (Cell.Heat, counting down from its terrain's hot.for) glows in this many steps, so a
+    // cooling plate is redrawn a few times, not every tick.
+    const int HeatSteps = 6;
+
+    // How hot a cell looks: 0 cold, up to HeatSteps just heated.
+    int HeatLevel(Cell c)
+    {
+        if (c.Heat <= 0) return 0;
+        int hotFor = Mathf.Max(1, World.TerrainOf(c).HotFor);
+        return Mathf.Clamp(Mathf.CeilToInt(c.Heat * HeatSteps / (float)hotFor), 1, HeatSteps);
+    }
+
+    // Hot metal's glow on its plate (CellDressing.Glow), set again when the plate is rebuilt.
+    void RenderHeat(View v, Cell c, bool redressed)
+    {
+        int level = HeatLevel(c);
+        if (level == v.heatLevel && !(redressed && level > 0)) return;
+        v.heatLevel = level;
+        dressings.Glow(v.dressing, level / (float)HeatSteps);
+    }
+
     // A hash of everything drawn for a cell apart from its terrain.
-    static int Key(Cell c)
+    int Key(Cell c)
     {
         unchecked
         {
@@ -202,6 +226,7 @@ public partial class ChemGrid
             k = k * 31 + (c.Gas?.GetHashCode() ?? 0);
             k = k * 31 + c.GasAmt;
             k = k * 31 + (c.Charge > 0 ? 1 : 0);
+            k = k * 31 + HeatLevel(c);
             return k;
         }
     }
@@ -244,11 +269,11 @@ public partial class ChemGrid
 
     // --- covers ------------------------------------------------------------------
 
-    // Oil and grease are a glossy film over the cells (CellSlickMesh); ash is the terrain's own
+    // Oil and grease (and mud and glass ground) are a glossy film over the cells (CellSlickMesh); ash is the terrain's own
     // charred paint (CellPaint), or a grey sheet without a valley.
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
-        slicks.Changed(x, y, c.Cover);
+        slicks.Changed(x, y, c);
         RenderThorns(v, c, x, y, center, ground);
         if (c.Cover != CoverIds.Ash || valley != null)
         {
