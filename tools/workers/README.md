@@ -99,6 +99,8 @@ stop.cmd u1                            # clean guest shutdown
 status.cmd                             # state, CPU, assigned and demanded RAM, host free RAM
 ```
 
+Every commit made in a Windows worker ends with what its work cost, as trailers (`Worker`, `Worker-Time`, `Worker-Tokens`: new tokens apart from cache reads, which are the context re-read on every reply). `commit-cost.mjs` reads Claude Code's own logs since the VM's last commit (or its boot), so the agent spends nothing on it; `start.cmd` installs it as a `prepare-commit-msg` hook. Add them up with `git log --grep Worker-Tokens`.
+
 Inside a worker, `git fetch && git switch <branch>` before work: the clone is
 as old as the template. `remove-worker.cmd w1` deletes a worker (VM and disk;
 it refuses templates).

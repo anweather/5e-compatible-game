@@ -38,3 +38,21 @@ for ($i = 0; $i -lt 12 -and -not $sent; $i++) {
 }
 Remove-Item -LiteralPath $tmp
 if ($sent) { "Told the guest its name ($Name)." } else { "Could not copy the name in (Guest Service Interface off?); Remote Control falls back to the registry/KVP name." }
+# Each commit in a Windows worker carries what its work cost (tokens, minutes) as trailers, read from
+# Claude Code's own logs by commit-cost.mjs, so measuring costs the agent nothing.
+if ((Get-VMFirmware -VM $vm).SecureBootTemplate -eq 'MicrosoftWindows') {
+  try {
+    Copy-VMFile -VM $vm -SourcePath (Join-Path $env:WORKERS_DIR 'commit-cost.mjs') -DestinationPath 'C:\Users\User\.worker\commit-cost.mjs' -FileSource Host -CreateFullPath -Force -ErrorAction Stop
+    $cred = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force))
+    Invoke-Command -VMName $Name -Credential $cred -ErrorAction Stop -ScriptBlock {
+      $hook = @'
+#!/bin/sh
+# Worker cost trailers (tools/workers/commit-cost.mjs); not for merges, squashes or amends.
+case "$2" in merge|squash|commit) exit 0;; esac
+node "$HOME/.worker/commit-cost.mjs" "$1" || true
+'@
+      [IO.File]::WriteAllText("$env:USERPROFILE\5e-compatible-game\.git\hooks\prepare-commit-msg", ($hook -replace "`r`n", "`n"))
+    }
+    "Commits in $Name carry their token and time cost."
+  } catch { "Could not install the commit cost hook: $($_.Exception.Message)" }
+}
