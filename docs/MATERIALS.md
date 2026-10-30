@@ -121,6 +121,11 @@ marked *new*.
   drifts and spreads as any gas does, and each time a decaying unit takes a
   cell's count from a multiple of `gases.steam.condenseEvery` (2) it leaves a
   unit of water there. Cold condenses it at once (`cold-steam`). Built.
+- **Wind carries and fans:** Gust of Wind's air pushes each cell's gas (smoke,
+  fog, steam) one cell along it, shoving a different gas ahead rather than
+  merging it; against a wall it stays (`pushGas`). It fans a fire of 2 or more
+  hotter and on downwind (`fan`), blows out a small one, and keeps hot metal
+  hot (`air-hot`, the `hot` condition). Built.
 - **Lightning fuses sand:** a strike on terrain tagged `fuses` (sand) turns
   it into glass (`lightning-fuse` in reactions; built).
 - **Heat melts, cold freezes:** `melt` and `freeze` check the cell's water

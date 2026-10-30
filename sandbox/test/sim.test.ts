@@ -567,6 +567,26 @@ test("steam scalds flesh, not bone, and condenses back into water", () => {
   assert.equal(`${goblin.hp} ${hound.hp} ${steam} ${water} ${rustHash(w)} ${w.rng}`, "89 99 0 112 d06de483 2670964354"); // the same in the C# core
 });
 
+// Mirrors ChemistryTests.AGustPushesSmokeAndSteamFansTheFireAndKeepsMetalHot.
+test("a gust pushes smoke and steam, fans the fire, and keeps metal hot", () => {
+  const w = createWorld(16, 5, 1);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 5; x <= 7; x++) cellAt(w, x, 2)!.t = "grass";
+  Object.assign(cellAt(w, 10, 2)!, { t: "metal", heat: 40 });
+  Object.assign(cellAt(w, 3, 2)!, { gas: "smoke", gasAmt: 4 });
+  Object.assign(cellAt(w, 4, 2)!, { gas: "steam", gasAmt: 4 });
+  applyElement(w, 5, 2, "fire", { power: 3, direct: false });
+  assert.equal(cellAt(w, 5, 2)!.fire, 2);
+  castSpell(w, "gust-of-wind", 1, 2, 1);
+  assert.ok(cellAt(w, 3, 2)!.gas === null && cellAt(w, 4, 2)!.gas === null, "the gust swept the smoke and steam on");
+  assert.equal(w.cells.filter((c, i) => i % 16 > 4 && c.gas !== null).reduce((s, c) => s + c.gasAmt, 0), 8, "east, all of it");
+  assert.equal(cellAt(w, 5, 2)!.fire, 3, "it fanned the fire hotter");
+  assert.ok(cellAt(w, 6, 2)!.fire > 0, "and on downwind");
+  assert.equal(cellAt(w, 10, 2)!.heat, 120, "and kept the metal hot");
+  run(w, 20);
+  assert.equal(`${rustHash(w)} ${w.rng}`, "94877252 97577195"); // the same in the C# core
+});
+
 // Mirrors ChemistryTests.AWetThingOfADampenedMaterialCatchesPoorly: a spark lights a thing of thatch with its
 // material's flammability, less its soak.dampens while it is wet.
 test("a wet thing of a dampened material catches poorly", () => {

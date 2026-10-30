@@ -23,6 +23,7 @@
     { "id": "air-small-fire", "element": "air", "if": { "fire": 1, "fireBelow": 2 }, "do": [{ "extinguish": true }], "log": "The gust blows the little flame out" },
     { "id": "air-big-fire", "element": "air", "if": { "fire": 2 }, "do": [{ "fan": true }], "log": "The wind fans the fire downwind", "notable": true },
     { "id": "air-gas", "element": "air", "if": { "gas": "any" }, "do": [{ "pushGas": true }] },
+    { "id": "air-hot", "element": "air", "if": { "hot": true }, "do": [{ "heat": true }], "log": "The wind keeps the {terrain} hot" },
     { "id": "air-mark", "element": "air", "do": [{ "mark": "wind" }] },
 
     { "id": "earth-break", "element": "earth", "if": { "terrainTag": "breakable" }, "do": [{ "break": true }], "log": "The {terrain} crumbles to rubble", "stop": true },

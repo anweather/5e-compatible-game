@@ -108,6 +108,8 @@ export interface CellCond {
   fireBelow?: number;
   water?: boolean;
   frozen?: boolean;
+  /** Whether the cell is hot (heat above 0). */
+  hot?: boolean;
   gas?: string;
   terrainTag?: string;
   notTerrainTag?: string;
@@ -548,7 +550,7 @@ export function installRules(r: Rules) {
 /** Kept for older imports: the base element list. */
 export const ELEMENTS = BASE_ELEMENTS;
 
-const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
+const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
 const EFFECT_KEYS = new Set([
   "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "dissolve",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",

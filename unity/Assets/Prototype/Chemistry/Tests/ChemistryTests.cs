@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(47));
+            Assert.That(R.CellRules.Count, Is.EqualTo(48));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -707,6 +707,31 @@ namespace Chem.Tests
             int steam = w.Cells.Sum(c => c.Gas == "steam" ? c.GasAmt : 0), water = w.Cells.Sum(c => c.Water);
             Assert.That(water, Is.GreaterThan(0), "it cooled back into water");
             Assert.That($"{goblin.Hp} {hound.Hp} {steam} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("89 99 0 112 d06de483 2670964354"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void AGustPushesSmokeAndSteamFansTheFireAndKeepsMetalHot()
+        {
+            // Gust of Wind east along row 2: air-gas pushes the smoke and steam along it, air-big-fire fans
+            // the fire hotter and on downwind, and air-hot keeps the hot metal hot.
+            var w = new World(R, 16, 5, 1, "dirt");
+            for (int x = 5; x <= 7; x++) w.At(x, 2).T = "grass";
+            w.At(10, 2).T = "metal";
+            w.At(10, 2).Heat = 40;
+            w.At(3, 2).Gas = "smoke";
+            w.At(3, 2).GasAmt = 4;
+            w.At(4, 2).Gas = "steam";
+            w.At(4, 2).GasAmt = 4;
+            w.Apply(5, 2, "fire", 3, -1, false);
+            Assert.That(w.At(5, 2).Fire, Is.EqualTo(2));
+            w.Cast("gust-of-wind", 1, 2, 1);
+            Assert.That(w.At(3, 2).Gas == null && w.At(4, 2).Gas == null, "the gust swept the smoke and steam on");
+            Assert.That(w.Cells.Where((c, i) => i % 16 > 4 && c.Gas != null).Sum(c => c.GasAmt), Is.EqualTo(8), "east, all of it");
+            Assert.That(w.At(5, 2).Fire, Is.EqualTo(3), "it fanned the fire hotter");
+            Assert.That(w.At(6, 2).Fire, Is.GreaterThan(0), "and on downwind");
+            Assert.That(w.At(10, 2).Heat, Is.EqualTo(120), "and kept the metal hot");
+            Run(w, 20);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("94877252 97577195"), "the same in the sandbox");
         }
 
         [Test]
