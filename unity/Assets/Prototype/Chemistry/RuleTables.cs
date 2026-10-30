@@ -58,6 +58,27 @@ namespace Chem
         /// it is dry again (mud to dirt: soak.dries, World.DryOut); null neither.
         /// </summary>
         public string SoaksTo, DriesTo;
+        /// <summary>
+        /// The ticks of burning, frozen and wet a creature of it takes (materials.json burn.status, freeze.status,
+        /// soak.status: the entity rules' statusOf); 0 when its material has none (bone doesn't burn).
+        /// </summary>
+        public int BurnStatus, FreezeStatus, SoakStatus;
+        /// <summary>A verb's status ticks: burn, freeze or soak (0 for any other).</summary>
+        public int StatusTicks(string verb) => verb switch
+        {
+            "burn" => BurnStatus,
+            "freeze" => FreezeStatus,
+            "soak" => SoakStatus,
+            _ => 0,
+        };
+        /// <summary>The status a verb gives a creature: burn burning, freeze frozen, soak wet; null for any other.</summary>
+        public static string StatusOfVerb(string verb) => verb switch
+        {
+            "burn" => "burning",
+            "freeze" => "frozen",
+            "soak" => "wet",
+            _ => null,
+        };
         /// <summary>How fast a creature walks across it (mud 0.5: a step takes 1/speed as long, World.Thorns); 1 unhindered.</summary>
         public double Speed = 1;
         /// <summary>The element that dissolves it (materials.json dissolve.by, acid) and the terrain it leaves; null neither.</summary>
@@ -552,6 +573,9 @@ namespace Chem
             RustEvery = Int(o["rustEvery"]) ?? 0,
             RustsTo = Str(o["rustsTo"]),
             SoaksTo = Str(o["soaksTo"]),
+            BurnStatus = Int(o["burnStatus"]) ?? 0,
+            FreezeStatus = Int(o["freezeStatus"]) ?? 0,
+            SoakStatus = Int(o["soakStatus"]) ?? 0,
             DriesTo = Str(o["driesTo"]),
             Speed = Num(o["speed"]) ?? 1,
             WaterTo = Str(o["waterTo"]),

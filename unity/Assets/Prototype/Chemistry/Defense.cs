@@ -47,6 +47,8 @@ namespace Chem
         public string Status;
         /// <summary>Components it must have, and must lack (Components.cs).</summary>
         public ComponentSet Has, Lacks;
+        /// <summary>Its material gives a status by this verb (burn, freeze, soak: TerrainDef.StatusTicks); null any.</summary>
+        public string Verb;
     }
 
     /// <summary>One effect of an entity rule: statuses set (at least this many ticks), one cleared, a damage multiplier.</summary>
@@ -55,6 +57,8 @@ namespace Chem
         public IReadOnlyList<KeyValuePair<string, int>> Status = Array.Empty<KeyValuePair<string, int>>();
         public string Clear;
         public int DamageMul;
+        /// <summary>The status a verb gives (burn burning, freeze frozen, soak wet), for its material's ticks of it.</summary>
+        public string StatusOf;
     }
 
     /// <summary>An element arriving at an entity (reactions.json "entity", applyEntityElement in the TS).</summary>
@@ -102,6 +106,7 @@ namespace Chem
                 : new List<KeyValuePair<string, int>>(),
             Clear = Str(o["clear"]),
             DamageMul = Int(o["damageMul"]) ?? 0,
+            StatusOf = Str(o["statusOf"]),
         };
 
         static RaiderDef ParseRaider(JToken t) =>

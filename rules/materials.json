@@ -36,9 +36,9 @@
     "slate":     { "name": "Slate roof", "tags": ["roof"] },
     "glass":     { "name": "Glass", "tags": ["ground"], "shatter": {} },
     "timber":    { "name": "Timber", "tags": [], "burn": { "catch": 0.15, "fuel": 140, "look": "wood" }, "break": {}, "soak": { "dampens": 0.5 } },
-    "flesh":     { "name": "Flesh", "tags": [] },
-    "bone":      { "name": "Bone", "tags": [] },
-    "chitin":    { "name": "Chitin", "tags": [] }
+    "flesh":     { "name": "Flesh", "tags": [], "burn": { "status": 9 }, "freeze": { "status": 30 }, "soak": { "status": 60 } },
+    "bone":      { "name": "Bone", "tags": [], "freeze": { "status": 30 }, "soak": { "status": 60 } },
+    "chitin":    { "name": "Chitin", "tags": [], "burn": { "status": 9 }, "soak": { "status": 60 } }
   },
   "covers": {
     "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" }, "dissolve": { "by": "acid" }, "float": { "every": 16 } },

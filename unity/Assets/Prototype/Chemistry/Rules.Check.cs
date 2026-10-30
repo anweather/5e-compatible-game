@@ -26,12 +26,12 @@ namespace Chem
         {
             static readonly HashSet<string> CondKeys = new HashSet<string>
             {
-                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance",
+                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb",
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
                 "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "dissolve",
-                "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
+                "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
             static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift" };
@@ -184,6 +184,7 @@ namespace Chem
 
             void TerrainRefs(string id, JToken t)
             {
+                StatusTicks(id, t);
                 foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
                 WaterOn(id, t);
@@ -237,14 +238,29 @@ namespace Chem
                 }
                 ComponentCond(id, cond, "has");
                 ComponentCond(id, cond, "lacks");
+                VerbCond(id, cond);
                 if (cond?["cover"] is JArray coverIds)
                     foreach (var cv in coverIds.Where(cv => !IsIn(covers, cv))) Errors.Add($"rule {id}: cover {Show(cv)} unknown");
             }
 
-            // A dissolve effect eats the cover or the terrain.
+            // A dissolve effect eats the cover or the terrain; a statusOf names a verb a material gives a status by.
             void DissolveRef(string id, JObject e)
             {
                 if (e["dissolve"] != null && Text(e["dissolve"]) != "cover" && Text(e["dissolve"]) != "terrain") Errors.Add($"rule {id}: dissolve must be cover or terrain");
+                if (e["statusOf"] != null && TerrainDef.StatusOfVerb(Text(e["statusOf"])) == null) Errors.Add($"rule {id}: statusOf must be burn, freeze or soak");
+            }
+
+            // An entity rule's verb condition names a verb a material gives a status by.
+            void VerbCond(string id, JToken cond)
+            {
+                if (cond?["verb"] != null && TerrainDef.StatusOfVerb(Text(cond["verb"])) == null) Errors.Add($"rule {id}: verb must be burn, freeze or soak");
+            }
+
+            // A material's status ticks (burn.status, freeze.status, soak.status) are whole numbers from 1.
+            void StatusTicks(string id, JToken t)
+            {
+                foreach (var key in new[] { "burnStatus", "freezeStatus", "soakStatus" })
+                    if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
             }
 
             void EffectRefs(string id, JObject e)

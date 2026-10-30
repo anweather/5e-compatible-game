@@ -45,6 +45,10 @@ export interface TerrainDef {
   rustsTo?: string;
   /** What water soaking into it turns it into (dirt to mud: soak.leaves) and what it dries back to once dry again (mud to dirt: soak.dries, dryOut in sim.ts). */
   soaksTo?: string;
+  /** The ticks of burning, frozen and wet a creature of it takes (burn.status, freeze.status, soak.status: the entity rules' statusOf); unset none. */
+  burnStatus?: number;
+  freezeStatus?: number;
+  soakStatus?: number;
   driesTo?: string;
   /** How fast a creature walks across it (mud 0.5: a step takes 1/speed as long, thorns in entities.ts); 1 when unset. */
   speed?: number;
@@ -110,6 +114,8 @@ export interface EntityCond {
   lacks?: string | string[];
   /** Old shorthand: true is has flammable, false is lacks flammable. */
   flammable?: boolean;
+  /** Its material gives a status by this verb (burn, freeze, soak: burn.status and so on). */
+  verb?: string;
 }
 
 /** One effect object; exactly one of the verb keys is set. */
@@ -136,6 +142,8 @@ export interface Effect {
   gas?: string;
   n?: number;
   status?: Record<string, number>;
+  /** The status a verb gives (burn burning, freeze frozen, soak wet), for its material's ticks of it; none without. */
+  statusOf?: string;
   clear?: string;
   damageMul?: number;
   /** The terrain the cell becomes, its life a roll within ticks [min, max] plus wave ticks a square from where the spell landed. */
@@ -488,10 +496,10 @@ export function installRules(r: Rules) {
 /** Kept for older imports: the base element list. */
 export const ELEMENTS = BASE_ELEMENTS;
 
-const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance"]);
+const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
 const EFFECT_KEYS = new Set([
   "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "dissolve",
-  "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "clear", "damageMul", "grow", "ticks", "wave",
+  "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
 const SPELL_EFFECTS = new Set(["levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift"]);
@@ -645,8 +653,18 @@ export function hasComponent(def: { components?: string[]; flammable?: boolean; 
 const namesOf = (v: string | string[] | undefined): string[] => (v === undefined ? [] : typeof v === "string" ? [v] : v);
 
 /** Whether an entity rule's "if" holds for this entity: its status, and the components it has and lacks. */
+/** The verbs a material gives a creature a status by, and that status (TerrainDef.StatusOfVerb). */
+export const VERB_STATUS: Record<string, string> = { burn: "burning", freeze: "frozen", soak: "wet" };
+
+/** A verb's status ticks on a material: burn, freeze or soak (TerrainDef.StatusTicks); 0 for none. */
+export function statusTicks(m: TerrainDef | undefined, verb: string): number {
+  if (!m) return 0;
+  return (verb === "burn" ? m.burnStatus : verb === "freeze" ? m.freezeStatus : verb === "soak" ? m.soakStatus : 0) ?? 0;
+}
+
 export function entityCondHolds(cond: EntityCond, def: EntityDef, status: Record<string, number>): boolean {
   if (cond.status && !(status[cond.status]! > 0)) return false;
+  if (cond.verb && statusTicks(def.material ? RULES.terrain[def.material] : undefined, cond.verb) <= 0) return false;
   const has = [...namesOf(cond.has), ...(cond.flammable === true ? ["flammable"] : [])];
   const lacks = [...namesOf(cond.lacks), ...(cond.flammable === false ? ["flammable"] : [])];
   return has.every((n) => hasComponent(def, n)) && !lacks.some((n) => hasComponent(def, n));
@@ -698,6 +716,8 @@ export function validateRules(r: Rules): string[] {
     if (t.breaksTo && !terrainIds.has(t.breaksTo)) errors.push(`terrain ${id}: breaksTo ${t.breaksTo} unknown`);
     if (t.dugTo && !terrainIds.has(t.dugTo)) errors.push(`terrain ${id}: dugTo ${t.dugTo} unknown`);
     if (t.rustsTo && !terrainIds.has(t.rustsTo)) errors.push(`terrain ${id}: rustsTo ${t.rustsTo} unknown`);
+    for (const key of ["burnStatus", "freezeStatus", "soakStatus"] as const)
+      if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
     for (const key of ["soaksTo", "driesTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
     for (const key of ["soakEvery", "soakEveryWet", "rustEvery"] as const)
@@ -730,6 +750,7 @@ export function validateRules(r: Rules): string[] {
     for (const e of rule.do) {
       if (e.setTerrain && !terrainIds.has(e.setTerrain)) errors.push(`rule ${rule.id}: setTerrain ${e.setTerrain} unknown`);
       if (e.dissolve !== undefined && e.dissolve !== "cover" && e.dissolve !== "terrain") errors.push(`rule ${rule.id}: dissolve must be cover or terrain`);
+      if (e.statusOf !== undefined && !(e.statusOf in VERB_STATUS)) errors.push(`rule ${rule.id}: statusOf must be burn, freeze or soak`);
       if (e.raise && !terrainIds.has(e.raise)) errors.push(`rule ${rule.id}: raise ${e.raise} unknown`);
       if (typeof e.setCover === "string" && !coverIds.has(e.setCover)) errors.push(`rule ${rule.id}: cover ${e.setCover} unknown`);
       if (e.gas && !(e.gas in r.gases)) errors.push(`rule ${rule.id}: gas ${e.gas} unknown`);
@@ -738,6 +759,8 @@ export function validateRules(r: Rules): string[] {
       if (e.ticks !== undefined && !(isWholeRange(e.ticks, 1, 1) && e.ticks[1] >= e.ticks[0])) errors.push(`rule ${rule.id}: ticks must be [min, max], whole numbers from 1`);
     }
     errors.push(...componentCondErrors(r, rule.id, (rule as EntityRule).if, "has"), ...componentCondErrors(r, rule.id, (rule as EntityRule).if, "lacks"));
+    const verb = (rule as EntityRule).if?.verb;
+    if (verb !== undefined && !(verb in VERB_STATUS)) errors.push(`rule ${rule.id}: verb must be burn, freeze or soak`);
     const c = (rule as CellRule).if;
     for (const cv of c?.cover ?? []) if (!coverIds.has(cv)) errors.push(`rule ${rule.id}: cover ${cv} unknown`);
   }

@@ -10,6 +10,9 @@
 //   rust    { every, leaves }                                     rustEvery, rustsTo
 //   float   { every }                                             floatEvery (covers: oil floats and spreads on open water)
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
+//   burn / freeze / soak { status }                               burnStatus, freezeStatus, soakStatus: the ticks of burning,
+//                                                                 frozen, wet a creature of it takes (a group holding only
+//                                                                 its status makes it neither flammable nor freezing water)
 //   conduct {}                                                    conductive tag
 //   shatter {}                                                    brittle tag (a thing of it breaks when it lands hard)
 //   grow    { into, log }                                         growsTo, growLog
@@ -50,6 +53,9 @@ namespace Chem
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
         };
 
+        // A creature's statuses from its material: each verb's status key and the flat key it becomes.
+        static readonly (string verb, string flat)[] StatusVerbs = { ("burn", "burnStatus"), ("freeze", "freezeStatus"), ("soak", "soakStatus") };
+
         // What water on it turns into: freeze {} for "ice", boil {} for "steam".
         static readonly (string verb, string water)[] WaterVerbs = { ("freeze", "ice"), ("boil", "steam") };
 
@@ -68,6 +74,7 @@ namespace Chem
 
         static void Ungroup(string what, JObject entry, (string verb, string tag, (string group, string flat)[] keys)[] verbs, bool water, List<string> errors)
         {
+            if (water) UngroupStatuses(entry);
             foreach (var (verb, tag, keys) in verbs)
             {
                 if (!(entry[verb] is JObject g)) continue;
@@ -89,10 +96,34 @@ namespace Chem
             }
         }
 
+        // Takes each verb's status out of its group; a group left empty goes too, so burn { status }
+        // doesn't make the material flammable, nor freeze { status } freeze the water on it.
+        static void UngroupStatuses(JObject entry)
+        {
+            foreach (var (verb, flat) in StatusVerbs)
+            {
+                if (!(entry[verb] is JObject g) || g["status"] == null) continue;
+                entry[flat] = g["status"].DeepClone();
+                g.Remove("status");
+                if (g.Count == 0) entry.Remove(verb);
+            }
+        }
+
         static void AddTag(JObject entry, string tag)
         {
             if (!(entry["tags"] is JArray tags)) entry["tags"] = tags = new JArray();
             if (!tags.Any(t => t.Type == JTokenType.String && (string)t == tag)) tags.Add(tag);
+        }
+
+        static void GroupStatuses(JObject entry)
+        {
+            foreach (var (verb, flat) in StatusVerbs)
+            {
+                if (entry[flat] == null) continue;
+                if (!(entry[verb] is JObject g)) entry[verb] = g = new JObject();
+                g["status"] = entry[flat];
+                entry.Remove(flat);
+            }
         }
 
         /// <summary>A flat terrain (or cover) entry spelled as groups: the inverse of Ungroup, for the parity test.</summary>
@@ -125,6 +156,7 @@ namespace Chem
                     entry[verb] = new JObject();
                 }
             }
+            if (!cover) GroupStatuses(entry);
             return entry;
         }
     }

@@ -78,10 +78,22 @@ namespace Chem
             return DampFuel(m.Fuel ?? ticks, dryness);
         }
 
+        /// <summary>
+        /// A statusOf effect (react.ts materialStatus): the status the verb gives (burn burning, freeze frozen,
+        /// soak wet), for as many ticks as the thing's material says (flesh burns 9, bone not at all).
+        /// </summary>
+        static void MaterialStatus(Raider r, EntityDef def, string verb)
+        {
+            int ticks = def.MaterialDef?.StatusTicks(verb) ?? 0;
+            var status = TerrainDef.StatusOfVerb(verb);
+            if (ticks > 0 && status != null) r.Status[status] = Math.Max(r.StatusOf(status), ticks);
+        }
+
         static bool Holds(EntityCond cond, Raider r, EntityDef def)
         {
             if (cond == null) return true;
             if (cond.Status != null && r.StatusOf(cond.Status) <= 0) return false;
+            if (cond.Verb != null && (def.MaterialDef?.StatusTicks(cond.Verb) ?? 0) <= 0) return false;
             return def.Components.HasAll(cond.Has) && !def.Components.HasAny(cond.Lacks);
         }
 
@@ -93,6 +105,7 @@ namespace Chem
                 int ticks = MaterialBurn(r, def, kv.Key, kv.Value);
                 if (ticks > 0) r.Status[kv.Key] = Math.Max(r.StatusOf(kv.Key), ticks);
             }
+            if (eff.StatusOf != null) MaterialStatus(r, def, eff.StatusOf);
             if (eff.Clear != null) r.Status.Remove(eff.Clear);
             return eff.DamageMul != 0 ? eff.DamageMul : 1;
         }

@@ -118,7 +118,7 @@ namespace Chem
         /// <summary>An entity rule's "if": a status it has, components it has and lacks ("flammable": true / false are has / lacks flammable).</summary>
         EntityCond ParseEntityCond(JObject c)
         {
-            var cond = new EntityCond { Status = Str(c["status"]), Has = Names(c["has"]), Lacks = Names(c["lacks"]) };
+            var cond = new EntityCond { Status = Str(c["status"]), Has = Names(c["has"]), Lacks = Names(c["lacks"]), Verb = Str(c["verb"]) };
             var flammable = Bool(c["flammable"]);
             if (flammable == true) cond.Has = cond.Has.With(Component(Flammable));
             if (flammable == false) cond.Lacks = cond.Lacks.With(Component(Flammable));
