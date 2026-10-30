@@ -139,11 +139,11 @@ Shader "Prototype/CellWater"
                 half4 fx = CellFx(p);
                 float film = Noise(p.xz * 0.6 + drift * 3.0) + 0.5 * Noise(p.xz * 1.7 - drift * 2.0);
                 half3 rainbow = 0.5 + 0.5 * cos(6.2831 * (film + fresnel * 1.5 + float3(0.0, 0.33, 0.67)));
-                half3 slick = half3(0.02, 0.02, 0.025) + rainbow * 0.12 + sky * fresnel * 0.5 + sun * pow(saturate(dot(n, h)), 90.0) * 0.8;
+                half3 slick = half3(0.02, 0.02, 0.025) + rainbow * 0.05 + sky * fresnel * 0.5 + sun * pow(saturate(dot(n, h)), 90.0) * 0.8;
                 color = lerp(color, slick, fx.g * 0.9);
                 // A lightning flash: a pale blue glow over the charged water, crackling as it fades.
-                float crackle = smoothstep(0.62, 0.8, Noise(p.xz * 2.4 + t * 37.0)) * smoothstep(0.3, 0.6, Noise(p.xz * 0.7 - t * 23.0));
-                color += half3(0.55, 0.8, 1.0) * fx.r * (0.8 + 3.0 * crackle);
+                float crackle = pow(1.0 - abs(2.0 * Noise(p.xz * 1.1 + t * 37.0) - 1.0), 14.0) * smoothstep(0.3, 0.6, Noise(p.xz * 0.5 - t * 23.0));
+                color += half3(0.5, 0.75, 1.0) * fx.r * (0.18 + 3.0 * crackle);
 
                 // Foam: streaks drawn out along the flow and carried with it, the same two layers.
                 float2 along = speed > 0.01 ? flow / speed : float2(1, 0);

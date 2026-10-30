@@ -27,7 +27,7 @@ public static class ShardBurst
             dir.y = Mathf.Abs(dir.y) * 0.9f + 0.2f;
             emit.position = at + dir * 0.06f;
             emit.velocity = dir * Random.Range(1.2f, 4.2f);
-            emit.startSize3D = new Vector3(Random.Range(0.025f, 0.07f), Random.Range(0.05f, 0.13f), 1f);
+            emit.startSize3D = new Vector3(Random.Range(0.05f, 0.11f), Random.Range(0.09f, 0.2f), 1f);
             emit.rotation = Random.Range(0f, 360f);
             emit.angularVelocity = Random.Range(-720f, 720f);
             emit.startLifetime = Random.Range(1.2f, 2.2f);
@@ -36,7 +36,24 @@ public static class ShardBurst
         }
     }
 
-    // The one system, built in code: small sharp quads that fall, bounce off the ground and fade.
+    // A sharp sliver: a thin triangle, its point at the top, clear round it.
+    static Texture2D Sliver(int size)
+    {
+        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false) { name = "Glass sliver", wrapMode = TextureWrapMode.Clamp };
+        var pixels = new Color32[size * size];
+        for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float u = (x + 0.5f) / size, v = (y + 0.5f) / size;
+                bool inside = Mathf.Abs(u - 0.5f + 0.15f * (v - 0.5f)) < 0.42f * (1f - v);
+                pixels[y * size + x] = new Color32(255, 255, 255, inside ? (byte)255 : (byte)0);
+            }
+        tex.SetPixels32(pixels);
+        tex.Apply(false, true);
+        return tex;
+    }
+
+    // The one system, built in code: small sharp slivers that fall, bounce off the ground and fade.
     static ParticleSystem Shards()
     {
         if (shards != null) return shards;
@@ -73,7 +90,13 @@ public static class ShardBurst
             colorKeys = new[] { new GradientColorKey(Color.white, 0f), new GradientColorKey(Color.white, 1f) },
             alphaKeys = new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(1f, 0.7f), new GradientAlphaKey(0f, 1f) },
         });
-        if (material == null) material = UrpMaterials.NewUnlitParticles("Glass shard", Color.white, additive: false);
+        if (material == null)
+        {
+            material = UrpMaterials.NewUnlitParticles("Glass shard", Color.white, additive: false);
+            var sliver = Sliver(32);
+            if (material.HasProperty("_BaseMap")) material.SetTexture("_BaseMap", sliver);
+            material.mainTexture = sliver;
+        }
         var look = go.GetComponent<ParticleSystemRenderer>();
         look.sharedMaterial = material;
         look.renderMode = ParticleSystemRenderMode.Billboard;

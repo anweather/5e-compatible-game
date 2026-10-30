@@ -57,7 +57,7 @@ Shader "Prototype/WindowGlass"
                 half3 n = normalize(input.normalWS);
                 float3 v = GetWorldSpaceNormalizeViewDir(input.positionWS);
                 if (dot(n, v) < 0.0) n = -n;
-                half fresnel = 0.04 + 0.96 * pow(1.0 - saturate(dot(n, v)), 5.0);
+                half fresnel = 0.16 + 0.84 * pow(1.0 - saturate(dot(n, v)), 5.0);
                 half3 sky = GlossyEnvironmentReflection(reflect(-v, n), 0.05, 1.0);
                 Light light = GetMainLight();
                 half glint = pow(saturate(dot(n, normalize(light.direction + v))), 400.0);

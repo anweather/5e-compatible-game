@@ -42,7 +42,7 @@ public static class ValleyBuilder
         cellWater.SetColor("_Color", new Color(0.12f, 0.32f, 0.42f, 0.8f));
         EditorUtility.SetDirty(cellWater);
         grid.waterMaterial = cellWater;
-        grid.slickMaterial = SoftMaterial("Slick", Color.white, 0.92f, null, 0f);
+        grid.slickMaterial = SoftMaterial("Slick", Color.white, UrpMaterials.FilmSmoothness, null, 0f);
         // Raised walls are built of the demo pack's rocks: upright crags and slabs for their faces, flat stones on top.
         grid.wallRocks = LoadRocks("Rock_A_01", "Rock_A_02", "Rock_C_02");
         grid.wallStones = LoadRocks("Rock_B_01", "Rock_C_01");

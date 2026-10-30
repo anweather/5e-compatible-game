@@ -63,7 +63,7 @@ public sealed partial class CellDressing
     public void Glow(GameObject dressing, float heat)
     {
         if (dressing == null) return;
-        var glow = heat <= 0f ? Color.black : Color.Lerp(new Color(0.55f, 0.06f, 0.02f), new Color(1.6f, 0.55f, 0.12f), heat) * (0.6f + 1.8f * heat * heat);
+        var glow = heat <= 0f ? Color.black : Color.Lerp(new Color(0.5f, 0.05f, 0.02f), new Color(1f, 0.3f, 0.05f), heat) * (0.5f + 0.5f * heat * heat);
         foreach (var r in dressing.GetComponentsInChildren<Renderer>())
         {
             r.GetPropertyBlock(tint);

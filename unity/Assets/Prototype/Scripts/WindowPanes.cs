@@ -8,9 +8,11 @@ using UnityEngine;
 // cabin's map cell): when the cell shatters (a blast, the ground shaken, its
 // wall gone) the quad turns to the dark of an open gap, in place, with a
 // spray of shards (ShardBurst) and the break sound. A storey above stands on
-// the same cell and goes with it. A heavy thing thrown hard at the building
-// asks the core to shatter the pane nearest it (ChemEffects, as a prop's blast
-// does: the host decides, every machine applies it). ValleyChemistry binds it
+// the same cell and goes with it. A heavy thing that hits hard (PhysicsProp)
+// asks the core to shatter the pane nearest it (Struck, through ChemEffects as
+// a prop's blast does: the host decides, every machine applies it); the thing
+// reports the hit because a building's colliders are parts with no Rigidbody,
+// which never pass a collision up to this component. ValleyChemistry binds it
 // to the cells for each new world. Only the show: the cells are the truth.
 [ExecuteAlways]
 public class WindowPanes : MonoBehaviour
@@ -29,8 +31,9 @@ public class WindowPanes : MonoBehaviour
     // The tint and clearness of glass (alpha: how much it hides), and of the gap a shattered pane leaves.
     static readonly Color32 Glass = new Color(0.62f, 0.76f, 0.82f, 0.22f), Gap = new Color(0.025f, 0.022f, 0.02f, 1f);
     static readonly Color ShardTint = new(0.78f, 0.9f, 0.96f);
-    // How hard a hit on the building (N s) breaks the nearest pane, and how near it must be (m).
-    const float HeavyImpulse = 15f, Reach = 2.2f;
+    // How hard a thing's hit (N s) breaks the nearest pane, and how near it must be (m). Measured: a
+    // crate at 2.5 m/s hits at about 70, at 8 m/s about 165 (a nudge leaves the glass, a hard shove breaks it).
+    const float HeavyImpulse = 120f, Reach = 2.2f;
     const int ShardsPerPane = 24;
 
     public Pane[] panes = System.Array.Empty<Pane>();
@@ -43,7 +46,6 @@ public class WindowPanes : MonoBehaviour
     // mesh may come after the binding (a new world can load before a house has drawn itself).
     int[] cellOf = System.Array.Empty<int>();
     bool[] open = System.Array.Empty<bool>();
-    ChemGrid grid;
 
     void OnEnable() => Show();
 
@@ -113,7 +115,7 @@ public class WindowPanes : MonoBehaviour
     /// </summary>
     public void Bind(ChemGrid chemGrid, Dictionary<int, WindowPanes> byCell)
     {
-        grid = chemGrid;
+        var grid = chemGrid;
         var world = grid.World;
         cellOf = new int[panes.Length];
         open = new bool[panes.Length];
@@ -164,28 +166,34 @@ public class WindowPanes : MonoBehaviour
         mesh.colors32 = colors;
     }
 
-    // Something thrown hard at the building: the pane nearest the hit, if one is near.
-    void OnCollisionEnter(Collision hit)
-    {
-        if (grid == null || hit.impulse.magnitude < HeavyImpulse || hit.contactCount == 0) return;
-        int cell = NearestCell(hit.GetContact(0).point);
-        if (cell < 0) return;
-        var world = grid.World;
-        ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, cell % world.W, cell / world.W, "", ThingId.None));
-    }
+    /// <summary>The hardest hit by a thing so far (N s), for the probe's measure of HeavyImpulse.</summary>
+    public static float HardestHit { get; set; }
 
-    int NearestCell(Vector3 point)
+    /// <summary>
+    /// A thing hit something: if it hit hard, the pane cell nearest the hit, if one is near, shatters.
+    /// Only the sideways part of the hit counts, so a thing landing on the ground beside a wall doesn't.
+    /// </summary>
+    public static void Struck(ChemGrid grid, Collision hit)
     {
-        int best = -1;
+        float impulse = Vector3.ProjectOnPlane(hit.impulse, Vector3.up).magnitude;
+        HardestHit = Mathf.Max(HardestHit, impulse);
+        if (impulse < HeavyImpulse || hit.contactCount == 0 || grid == null || grid.World == null) return;
+        var world = grid.World;
+        var point = hit.GetContact(0).point;
+        var at = grid.CellAt(point);
+        int reach = Mathf.CeilToInt(Reach / grid.cellSize), best = -1;
         float nearest = Reach * Reach;
-        for (int i = 0; i < cellOf.Length; i++)
-        {
-            float d = (transform.TransformPoint(panes[i].at) - point).sqrMagnitude;
-            if (cellOf[i] < 0 || d >= nearest || grid.World.Cells[cellOf[i]].T != TerrainIds.Pane) continue;
-            nearest = d;
-            best = cellOf[i];
-        }
-        return best;
+        for (int y = at.y - reach; y <= at.y + reach; y++)
+            for (int x = at.x - reach; x <= at.x + reach; x++)
+            {
+                if (!world.InBounds(x, y) || world.At(x, y).T != TerrainIds.Pane) continue;
+                var c = grid.CellCenter(x, y);
+                float d = new Vector2(c.x - point.x, c.z - point.z).sqrMagnitude;
+                if (d >= nearest) continue;
+                nearest = d;
+                best = world.Idx(x, y);
+            }
+        if (best >= 0) ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, best % world.W, best / world.W, "", ThingId.None));
     }
 
     static void DestroyNow(Object o)

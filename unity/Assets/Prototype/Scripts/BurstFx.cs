@@ -65,14 +65,14 @@ public static class BurstFx
         main.playOnAwake = false;
         main.startLifetime = new ParticleSystem.MinMaxCurve(0.45f, 1.4f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(1.5f, 5f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.08f, 0.35f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.14f, 0.5f);
         main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.55f, 1f, 0.2f, 0.95f), new Color(0.25f, 0.75f, 0.12f, 0.75f));
         main.gravityModifier = 0.9f;
         main.scalingMode = ParticleSystemScalingMode.Hierarchy;
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         var emission = ps.emission;
         emission.rateOverTime = 0f;
-        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)55), new ParticleSystem.Burst(0.1f, (short)12) });
+        emission.SetBursts(new[] { new ParticleSystem.Burst(0f, (short)90), new ParticleSystem.Burst(0.1f, (short)25) });
         var shape = ps.shape;
         shape.shapeType = ParticleSystemShapeType.Hemisphere;
         shape.radius = 0.6f;

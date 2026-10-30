@@ -25,7 +25,7 @@ public sealed class CellSlickMesh
     static readonly Color OilColor = new(0.03f, 0.028f, 0.03f, 0.93f);
     static readonly Color GreaseColor = new(0.62f, 0.52f, 0.2f, 0.85f);
     static readonly Color MudColor = new(0.17f, 0.11f, 0.06f, 0.5f);
-    static readonly Color GlassColor = new(0.82f, 0.94f, 0.97f, 0.42f);
+    static readonly Color GlassColor = new(0.2f, 0.31f, 0.35f, 0.42f);
     static readonly Color EatenColor = new(0.16f, 0.22f, 0.07f, 0.55f);
 
     readonly ChemGrid grid;

@@ -365,7 +365,7 @@ public static class BuildingMesher
         kit.Box(at + facing * 0.12f, Size(0.06f, 0.85f, 0.03f), b.timber);
         kit.Box(at + facing * 0.12f, Size(0.75f, 0.06f, 0.03f), b.timber);
         // Its glass, over all that (WindowPanes draws it, apart from the walls).
-        b.panes.Add(new WindowPanes.Pane { at = at + facing * 0.145f, along = along * 0.375f, up = Vector3.up * 0.425f, facing = facing });
+        b.panes.Add(new WindowPanes.Pane { at = at + facing * 0.145f, along = along * 0.4f, up = Vector3.up * 0.45f, facing = facing });
         if (b.s.walls != WallKind.Log)
             for (int side = -1; side <= 1; side += 2)
                 kit.Box(at + along * (side * 0.72f) + facing * 0.15f, Size(0.4f, 0.95f, 0.05f), b.paint); // clear of the wall and its beams

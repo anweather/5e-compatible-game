@@ -310,6 +310,11 @@ public class PhysicsProp : MonoBehaviour, IPushable
         gameObject.SetActive(false);
     }
 
+    void OnCollisionEnter(Collision hit)
+    {
+        if (!Puppet) WindowPanes.Struck(grid, hit);
+    }
+
     /// <summary>
     /// How it goes: a blast for a barrel, a spray of shards for something brittle (glass: a glow ball,
     /// ShardBurst), a line in the log otherwise. Its cells are the chemistry's.

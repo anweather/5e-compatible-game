@@ -46,7 +46,7 @@ public sealed class MaterialCache
         const string name = "Slick";
         if (materials.TryGetValue(name, out var m)) return m;
         m = new Material(Shader.Find(UrpMaterials.LitShader)) { name = name };
-        UrpMaterials.ConfigureSoftSurface(m, Color.white, 0.92f);
+        UrpMaterials.ConfigureSoftSurface(m, Color.white, UrpMaterials.FilmSmoothness);
         materials[name] = m;
         return m;
     }
