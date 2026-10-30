@@ -41,6 +41,19 @@ Each entry has:
 
 ## Decided
 
+### J-038: Do grimoire discoveries survive a world reset?
+
+- **Asked:** 2026-10-29, after combo-core stored the grimoire in the world
+  save, so the online world reset (J-014) wiped it.
+- **Also comes up when:** any per-player progress (discoveries, unlocks,
+  items kept), a player joining another host's world, saving and loading.
+- **Answer:** yes. Progress belongs to the player, not the world: "If you join
+  you should bring your progress." Not urgent now, but build toward a player
+  save as a system (BACKLOG 21).
+- **Why:** discovery is the player's progress; losing it on a reset or a
+  different host's world feels like a punishment.
+- **Revisited:** 0
+
 ### J-037: How much RAM must stay free to start a worker VM?
 
 - **Asked:** 2026-10-29, by Andrew (to run two worker VMs side by side).

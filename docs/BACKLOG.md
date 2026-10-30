@@ -494,6 +494,17 @@ Make the world feel lived in from generated content (D12,
   `docs/WORLD_LIFE.md`, "Backlog: a world that's lived in".
 - **Size:** M per layer.
 
+## 21. Player saves: progress travels with the player (J-038)
+
+Per-player progress lives with the player, not the world, and comes along
+when they join another host's world or the world is reset: the grimoire's
+discovered combos first, later unlocks and kept items. Today the grimoire is
+in the world save (combo-core, d81c0ae). Needs: a player identity that's
+stable across sessions and hosts, a small player-save file on each player's
+own machine, sent to the host on join, and a rule for what a host may trust
+or override (lockstep: the host stamps it into the world state on join).
+Not urgent; build toward it.
+
 ## Priority (groomed 2026-10-27, Andrew approved; J-012 in `JUDGMENT_CALLS.md`)
 
 This is the order to work in. Each item names its lane (see
