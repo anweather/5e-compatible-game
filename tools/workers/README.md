@@ -101,6 +101,13 @@ status.cmd                             # state, CPU, assigned and demanded RAM, 
 
 Every commit made in a Windows worker ends with what its work cost, as trailers (`Worker`, `Worker-Time`, `Worker-Tokens`: new tokens apart from cache reads, which are the context re-read on every reply). `commit-cost.mjs` reads Claude Code's own logs since the VM's last commit (or its boot), so the agent spends nothing on it; `start.cmd` installs it as a `prepare-commit-msg` hook. Add them up with `git log --grep Worker-Tokens`.
 
+**One task per boot.** When a worker's branch is merged, stop the VM: that
+ends its Claude session, so the next task starts with an empty context (and
+cache reads stay small). The coordinator lands a branch with `land.sh merge
+<branch> < message`, runs the checks, then `land.sh push <branch>`: its merge
+commit carries Coordinator-* cost lines (`CLAUDE_CONFIG_DIR` set to its
+account) and the merged branch is deleted on origin.
+
 Inside a worker, `git fetch && git switch <branch>` before work: the clone is
 as old as the template. `remove-worker.cmd w1` deletes a worker (VM and disk;
 it refuses templates).
