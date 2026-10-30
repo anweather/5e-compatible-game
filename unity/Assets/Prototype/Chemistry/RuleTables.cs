@@ -354,6 +354,8 @@ namespace Chem
         public double? FireMin;
         public double? FireBelow;
         public bool? Water, Frozen, Conductive;
+        /// <summary>hot: whether the cell is hot (Cell.Heat above 0).</summary>
+        public bool? Hot;
         public string Gas, TerrainTag, NotTerrainTag;
         /// <summary>The least power the element must arrive with (a charged cast's).</summary>
         public int? Power;
@@ -702,6 +704,7 @@ namespace Chem
                     FireBelow = Num(c["fireBelow"]),
                     Water = Bool(c["water"]),
                     Frozen = Bool(c["frozen"]),
+                    Hot = Bool(c["hot"]),
                     Conductive = Bool(c["conductive"]),
                     Gas = Str(c["gas"]),
                     TerrainTag = Str(c["terrainTag"]),

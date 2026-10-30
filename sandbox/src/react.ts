@@ -46,6 +46,7 @@ function matches(c: Cell, cond: CellCond | undefined): boolean {
   if (cond.terrainTag && !hasTag(c, cond.terrainTag)) return false;
   if (cond.notTerrainTag && hasTag(c, cond.notTerrainTag)) return false;
   if (cond.conductive !== undefined && isConductive(c) !== cond.conductive) return false;
+  if (cond.hot !== undefined && ((c.heat ?? 0) > 0) !== cond.hot) return false;
   return true;
 }
 
@@ -270,6 +271,22 @@ function conduct(w: World, x: number, y: number, charge: number): boolean {
   return true;
 }
 
+/**
+ * Moves a cell's gas one cell along dir (pushGas: a gust carries smoke, fog and steam). A different gas there is
+ * shoved on ahead first, so gases neither merge nor vanish; against a wall it stays. True if it moved (World.ShoveGas).
+ */
+function shoveGas(w: World, x: number, y: number, dir: Dir): boolean {
+  const c = cellAt(w, x, y)!;
+  const nx = x + DX[dir], ny = y + DY[dir];
+  const n = cellAt(w, nx, ny);
+  if (!n || isBlocking(n)) return false;
+  if (n.gas !== null && n.gas !== c.gas && !shoveGas(w, nx, ny, dir)) return false;
+  addGas(n, c.gas!, c.gasAmt);
+  c.gas = null;
+  c.gasAmt = 0;
+  return true;
+}
+
 function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ctx, element: string): boolean {
   const max = RULES.sim.water.maxLevel;
   if (eff.ignite !== undefined) return ignite(c, eff.ignite, dryness(w, c));
@@ -364,14 +381,7 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     if (inBounds(w, nx, ny)) applyElement(w, nx, ny, "fire", { power: 2, direct: false });
     return true;
   }
-  if (eff.pushGas) {
-    if (!c.gas || ctx.dir === undefined) return false;
-    const n = cellAt(w, x + DX[ctx.dir], y + DY[ctx.dir]);
-    if (n && !isBlocking(n)) addGas(n, c.gas, c.gasAmt);
-    c.gas = null;
-    c.gasAmt = 0;
-    return true;
-  }
+  if (eff.pushGas) return !!c.gas && ctx.dir !== undefined && shoveGas(w, x, y, ctx.dir);
   if (eff.clearGas) {
     if (!c.gas) return false;
     c.gas = null;

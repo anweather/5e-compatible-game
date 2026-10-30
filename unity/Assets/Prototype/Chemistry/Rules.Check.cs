@@ -27,7 +27,7 @@ namespace Chem
         {
             static readonly HashSet<string> CondKeys = new HashSet<string>
             {
-                "cover", "fire", "fireBelow", "water", "frozen", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb",
+                "cover", "fire", "fireBelow", "water", "frozen", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb",
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {

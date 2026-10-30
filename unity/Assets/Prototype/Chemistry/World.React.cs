@@ -94,6 +94,7 @@ namespace Chem
             if (!string.IsNullOrEmpty(cond.TerrainTag) && !HasTag(c, cond.TerrainTag)) return false;
             if (!string.IsNullOrEmpty(cond.NotTerrainTag) && HasTag(c, cond.NotTerrainTag)) return false;
             if (cond.Conductive.HasValue && IsConductive(c) != cond.Conductive.Value) return false;
+            if (cond.Hot.HasValue && (c.Heat > 0) != cond.Hot.Value) return false;
             return true;
         }
 
@@ -212,6 +213,24 @@ namespace Chem
             return true;
         }
 
+        /// <summary>
+        /// Moves a cell's gas one cell along dir (pushGas: a gust carries smoke, fog and steam). A different
+        /// gas there is shoved on ahead first, so gases neither merge nor vanish; against a wall, or a
+        /// paused chunk, it stays. True if it moved.
+        /// </summary>
+        bool ShoveGas(int x, int y, int dir)
+        {
+            var c = At(x, y);
+            int nx = x + DirX(dir), ny = y + DirY(dir);
+            var n = At(nx, ny);
+            if (n == null || !IsActiveAt(nx, ny) || IsBlocking(n)) return false;
+            if (n.Gas != null && n.Gas != c.Gas && !ShoveGas(nx, ny, dir)) return false;
+            AddGas(n, c.Gas, c.GasAmt);
+            c.Gas = null;
+            c.GasAmt = 0;
+            return true;
+        }
+
         bool RunEffect(int x, int y, Cell c, Effect eff, int power, int dir, string element)
         {
             int max = Rules.Sim.WaterMaxLevel;
@@ -318,15 +337,7 @@ namespace Chem
                 if (InBounds(nx, ny)) Apply(nx, ny, "fire", 2, -1, false);
                 return true;
             }
-            if (eff.PushGas)
-            {
-                if (c.Gas == null || dir < 0) return false;
-                var n = At(x + DirX(dir), y + DirY(dir));
-                if (n != null && IsActiveAt(x + DirX(dir), y + DirY(dir)) && !IsBlocking(n)) AddGas(n, c.Gas, c.GasAmt);
-                c.Gas = null;
-                c.GasAmt = 0;
-                return true;
-            }
+            if (eff.PushGas) return c.Gas != null && dir >= 0 && ShoveGas(x, y, dir);
             if (eff.ClearGas)
             {
                 if (c.Gas == null) return false;
