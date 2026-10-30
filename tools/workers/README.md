@@ -244,6 +244,23 @@ accept the workspace trust dialog: Remote Control refuses an untrusted folder
   to the inbox. `send` prints the message's id; `bridge.sh status coordinator
   <id>` says unread, taken or acked. Not acked within 5 min: `wake`. Every
   send, take, ack and return is in `~/.agent-bridge/bridge.log`.
+- **`bridge-watch.sh` watches the mailbox and both accounts' usage, with no
+  Claude in it** (started at sign-in by `bridge-watch.cmd` in the Startup
+  folder; one copy runs; its lines in `bridge.log` say `watch`). Every 30 s:
+  - **An account hits its limit** (Claude Code's own `rate_limit` notice in
+    that account's transcripts, from the last 15 min): it stops that
+    account's running workers with `stop.cmd` (their work goes to `wip/`
+    branches) and mails the other account's role "<account> out until
+    <time>".
+  - **Two minutes after the reset:** it mails both roles that the account
+    is back, and wakes its role if nobody is listening.
+  - **Mail unread for 5 min, nobody listening, account not out:** it wakes
+    the coordinator (at most once every 30 min). The PM has no wake recipe,
+    so its unread mail is only logged.
+  Test it with `BRIDGE=<scratch dir> BRIDGE_WATCH_DRY=1 BRIDGE_WATCH_ONCE=1`.
+- **Sessions with a listener set `CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1`**
+  (the launchers in `tools/coordinator/` and `wake` do), or Claude Code stops
+  the background `wait` when memory runs low, and mail goes unseen.
 
 ## Memory
 

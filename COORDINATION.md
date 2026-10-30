@@ -485,3 +485,16 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   the next release candidate). Pitfall: exclude Library/VP when seeding a
   worktree's Library, or Player 2 runs the source worktree's old code. The
   host-ux worktree holds tonight's screenshots: keep it until they're copied.
+- 2026-10-30: The mailbox was unreliable (Andrew: "unacceptable"). Mail only
+  arrived while the receiving session kept a background `bridge.sh wait`
+  alive, and three things killed it unnoticed: Claude Code reaping it when
+  memory ran low (the Pro session's launcher lacked the setting that stops
+  that), the session ending, and the account hitting its usage limit (the
+  coordinator then can't act, so nobody stopped its workers or told the PM;
+  w2 idled 3 h overnight). Fix: `tools/workers/bridge-watch.sh`, a watchdog
+  with no Claude in it, started at sign-in. It stops an out account's
+  workers (work pushed to wip/), mails the other account "out until",
+  mails and wakes the role when usage is back, and wakes a role whose mail
+  sits unread while nobody listens. Both Pro launchers now keep their
+  listener under memory pressure. Tested dry against fake and real
+  transcripts; running since 08:39.
