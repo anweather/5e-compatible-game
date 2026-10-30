@@ -54,8 +54,12 @@ if ($sent) { "Told the guest its name ($Name)." } else { "Could not copy the nam
 # Claude Code's own logs by commit-cost.mjs, so measuring costs the agent nothing.
 if ((Get-VMFirmware -VM $vm).SecureBootTemplate -eq 'MicrosoftWindows') {
   try {
-    Copy-VMFile -VM $vm -SourcePath (Join-Path $env:WORKERS_DIR 'commit-cost.mjs') -DestinationPath 'C:\Users\User\.worker\commit-cost.mjs' -FileSource Host -CreateFullPath -Force -ErrorAction Stop
+    foreach ($f in 'commit-cost.mjs', 'attention.mjs', 'worker-settings.mjs') {
+      Copy-VMFile -VM $vm -SourcePath (Join-Path $env:WORKERS_DIR $f) -DestinationPath "C:\Users\User\.worker\$f" -FileSource Host -CreateFullPath -Force -ErrorAction Stop
+    }
     $cred = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force))
+    # The attention hook: a permission prompt in the worker is reported to the host.
+    Invoke-Command -VMName $Name -Credential $cred -ErrorAction Stop -ScriptBlock { node "$env:USERPROFILE\.worker\worker-settings.mjs" }
     Invoke-Command -VMName $Name -Credential $cred -ErrorAction Stop -ScriptBlock {
       $hook = @'
 #!/bin/sh

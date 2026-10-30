@@ -258,6 +258,13 @@ accept the workspace trust dialog: Remote Control refuses an untrusted folder
     the coordinator (at most once every 30 min). The PM has no wake recipe,
     so its unread mail is only logged.
   Test it with `BRIDGE=<scratch dir> BRIDGE_WATCH_DRY=1 BRIDGE_WATCH_ONCE=1`.
+- **A worker waiting at a permission prompt is reported within a minute.**
+  `start.cmd` (and `linux.sh hook`) installs `attention.mjs` as the worker
+  Claude's Notification hook (`worker-settings.mjs` merges it into
+  `~/.claude/settings.json`). On a permission prompt it writes
+  `~/.worker/attention.json`; `bridge-watch.sh` reads that from each running
+  worker once a minute and mails the PM what it's waiting for. Only Andrew
+  can answer a prompt: in the Claude app, the worker under Remote Control.
 - **Sessions with a listener set `CLAUDE_CODE_DISABLE_BG_SHELL_PRESSURE_REAP=1`**
   (the launchers in `tools/coordinator/` and `wake` do), or Claude Code stops
   the background `wait` when memory runs low, and mail goes unseen.

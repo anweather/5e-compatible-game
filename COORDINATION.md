@@ -498,3 +498,16 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   sits unread while nobody listens. Both Pro launchers now keep their
   listener under memory pressure. Tested dry against fake and real
   transcripts; running since 08:39.
+- 2026-10-30: Workers stuck at a prompt nobody sees (w3 waited 1 h 40 min
+  to push whirl-dust). Cause: in auto mode a worker session may push only
+  the branch of its first task; a new task's branch needs Andrew's approval.
+  Detection: `start.cmd` installs an attention hook in each worker
+  (attention.mjs: Claude Code's Notification hook, permission prompts only),
+  and bridge-watch.sh reads it once a minute and mails the PM, who tells
+  Andrew. Prevention is Andrew's call, not the agents': a permission rule in
+  the workers' settings allowing pushes to any branch but dev and main
+  (never forced, never deleting). The auto-mode check refused to let the PM
+  write it into the workers, and refused a brief rule that would have
+  pushed to another branch to avoid the prompt (rightly: that routes round
+  the approval). Until Andrew applies the rule, a worker's push may wait
+  for him, and the attention hook makes sure he hears of it in a minute.

@@ -132,10 +132,40 @@ check_delivery() { # $1 = role
   wake "$r"
 }
 
+guest_attention() { # the worker's ~/.worker/attention.json (attention.mjs writes it), or nothing
+  local vm="$1" ip
+  if [[ "$vm" == u* ]]; then   # Linux workers over SSH
+    ip="$(powershell -NoProfile -Command "(Get-VMNetworkAdapter -VMName $vm).IPAddresses | Where-Object { \$_ -match '^\d+\.' } | Select-Object -First 1" 2>/dev/null | tr -d '\r')"
+    [[ -n "$ip" ]] && bash "$here/linux.sh" attention "$vm" "$ip" 2>/dev/null
+  else                          # Windows workers over PowerShell Direct (the scripts' guest account)
+    powershell -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-Content \"\$env:USERPROFILE\\.worker\\attention.json\" -ErrorAction SilentlyContinue }" 2>/dev/null | tr -d '\r'
+  fi
+}
+
+check_attention() { # a running worker stopped at a permission prompt: tell the PM, who tells Andrew
+  local vm json t msg cwd seen
+  for vm in $(running_vms ${vms[pro]} ${vms[max]}); do
+    json="$(guest_attention "$vm")"; [[ -n "$json" ]] || continue
+    t="$(node -e 'try { const o = JSON.parse(process.argv[1]); console.log(o.time | 0); } catch { console.log(0); }' "$json")"
+    seen="$(cat "$state/$vm.attention" 2>/dev/null || echo 0)"
+    (( t > seen )) || continue
+    echo "$t" > "$state/$vm.attention"
+    msg="$(node -e 'try { const o = JSON.parse(process.argv[1]); console.log(o.message); } catch { }' "$json")"
+    cwd="$(node -e 'try { const o = JSON.parse(process.argv[1]); console.log(o.cwd); } catch { }' "$json")"
+    log "$vm is waiting at a prompt: $msg"
+    mail pm "$vm is waiting for an approval" \
+"$vm stopped at a permission prompt $(( ($(date +%s) - t) / 60 )) min ago: \"$msg\" (in $cwd).
+Only Andrew can answer it: in the Claude app, open $vm under Remote Control and approve or deny."
+  done
+}
+
 log "started (pid $$${dry:+, dry run})"
+n=0
 while :; do
   for a in pro max; do check_usage "$a"; check_back "$a"; done
   for r in coordinator pm; do check_delivery "$r"; done
+  # The guests answer slowly (PowerShell Direct takes seconds): every other pass, once a minute.
+  (( n++ % 2 == 0 )) && check_attention
   touch "$state/alive"
   [[ -n "${BRIDGE_WATCH_ONCE:-}" ]] && exit 0
   sleep 30

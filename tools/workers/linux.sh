@@ -4,14 +4,15 @@
 # stop.cmd call it for VMs that aren't Windows; it runs in Git Bash.
 #   linux.sh push <worker> <ip>   sign-ins slot -> worker (only what the slot has newer), then pull
 #   linux.sh pull <worker> <ip>   worker -> slot, whichever side is newer
-#   linux.sh hook <worker> <ip>   install the commit cost hook (commit-cost.mjs)
+#   linux.sh hook <worker> <ip>   install the commit cost hook (commit-cost.mjs) and the attention hook
+#   linux.sh attention <worker> <ip>   print the attention hook's last report (~/.worker/attention.json)
 #   linux.sh wip  <worker> <ip>   push uncommitted or unpushed work as wip/<worker>-<branch>
 # Slots are the Windows workers' (<Root>\signins\<worker>, this account only): claude
 # (its refresh token rotates, so one sign-in lives in one worker) and github (gh's
 # hosts.yml, which doesn't rotate, and .gitconfig). Nothing here prints a token.
 set -euo pipefail
 cmd="${1:-}"; w="${2:-}"; ip="${3:-}"
-[[ -n "$cmd" && -n "$w" && -n "$ip" ]] || { sed -n 2,11p "$0"; exit 2; }
+[[ -n "$cmd" && -n "$w" && -n "$ip" ]] || { sed -n 2,12p "$0"; exit 2; }
 here="$(cd "$(dirname "$0")" && pwd)"
 bank="${WORKERS_ROOT:-/c/HyperV/Workers}/signins/$w"
 user="${WORKER_USER:-anweather}"
@@ -59,6 +60,9 @@ push() {
 }
 hook() {
   ssh_ 'mkdir -p ~/.worker && cat > ~/.worker/commit-cost.mjs' < "$here/commit-cost.mjs"
+  # The attention hook: a permission prompt in the worker is reported to the host.
+  ssh_ 'cat > ~/.worker/attention.mjs' < "$here/attention.mjs"
+  ssh_ 'cat > ~/.worker/worker-settings.mjs && node ~/.worker/worker-settings.mjs' < "$here/worker-settings.mjs"
   ssh_ 'cat > ~/5e-compatible-game/.git/hooks/prepare-commit-msg && chmod +x ~/5e-compatible-game/.git/hooks/prepare-commit-msg' <<'EOF'
 #!/bin/sh
 # Worker cost trailers (tools/workers/commit-cost.mjs); not for merges, squashes or amends.
@@ -99,5 +103,6 @@ for _ in $(seq 24); do ssh_ true 2>/dev/null && break; sleep 5; done
 ssh_ true || { echo "Can't reach $w over SSH ($user@$ip, the host's key)."; exit 1; }
 case "$cmd" in
   push) push ;; pull) pull ;; hook) hook ;; wip) wip ;;
-  *) sed -n 2,11p "$0"; exit 2 ;;
+  attention) ssh_ 'cat ~/.worker/attention.json 2>/dev/null || true' ;;
+  *) sed -n 2,12p "$0"; exit 2 ;;
 esac
