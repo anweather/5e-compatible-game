@@ -543,3 +543,8 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   Windows install from the draft, a quick look, the Mac install → publish.
   No worker VMs until it's out; the PC is the release's.
 - 2026-10-30 14:00: 0.1.8 is Windows only (Andrew: the MacBook isn't signed in; skip the Mac build). The PC builds with --windows-only; the Mac stays on 0.1.7 and catches up at 0.1.9 (its feed only reads releases with osx files, so it simply sees no update). The notes say so, including that 0.1.7 Macs and 0.1.8 PCs can't play online together.
+- 2026-10-30 15:45: UX pass 3 landed (39ee1a7, fa76118; DesktopUnity): all of
+  part 1 and part 2 (crack webs on windows, ice and frozen raiders; the crate
+  throw at 11 m/s), plus Andrew's staff flare (one NaN pixel). EditMode
+  522/522, core 466/466, sandbox 190/190. FREEZE for 0.1.8 (Windows only):
+  dev takes no merges until it's published.
