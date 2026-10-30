@@ -12,7 +12,7 @@
     "deadfall":  { "name": "Fallen tree", "tags": ["ground"], "dig": { "hardness": 1 }, "burn": { "catch": 0.3, "fuel": 50, "leaves": "dirt", "look": "wood" }, "soak": { "dry": 96, "wet": 480 } },
     "stone":     { "name": "Stone wall", "tags": ["blocking"], "break": { "leaves": "rubble" } },
     "pillar":    { "name": "Earth pillar", "tags": ["blocking"], "break": { "leaves": "rubble" } },
-    "rubble":    { "name": "Rubble", "tags": ["ground"], "dig": { "hardness": 2 }, "soak": { "dry": 48, "wet": 240 } },
+    "rubble":    { "name": "Rubble", "tags": ["ground"], "dig": { "hardness": 1 }, "soak": { "dry": 48, "wet": 240 } },
     "rock":      { "name": "Raised rock", "tags": ["ground"], "dig": { "hardness": 3, "leaves": "rubble" }, "soak": { "dry": 160, "wet": 800 } },
     "wood":      { "name": "Wooden bridge", "tags": ["ground"], "dig": { "hardness": 2 }, "burn": { "catch": 0.25, "fuel": 18, "leaves": "pit", "log": "The bridge burns through and collapses", "look": "wood" } },
     "logwall":   { "name": "Log wall", "tags": ["blocking"], "burn": { "catch": 0.15, "fuel": 140, "leaves": "rubble", "log": "Log walls burn and collapse", "look": "wood" }, "uproot": { "leaves": "rubble", "log": "The ground heaves and log walls cave in" } },

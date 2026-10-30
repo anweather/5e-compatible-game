@@ -101,8 +101,8 @@ elevation plus height.
   can't be shaped.
 - **Hardness:** a dig needs a `strength` of at least the terrain's
   `dig.hardness` (1 when absent), and hardness 0 never digs. Lower Earth
-  and Earthen Trench (strength 1) move soil, sand and mud; Fireball
-  (strength 2) breaks rubble and frozen ground; Stone Shape and a pick
+  and Earthen Trench (strength 1) move soil, sand, mud and rubble; Fireball
+  (strength 2) breaks frozen ground, bridges and glass; Stone Shape and a pick
   (`items.json` `"use": "dig"`, strength 3) dig rock; metal, bedrock, walls
   and machines never dig. Each refusal is logged once a tick with its
   reason: "The raised rock is too hard for Lower Earth", "The metal plate
@@ -115,13 +115,6 @@ elevation plus height.
 - **Digging** clears the cover and turns the terrain into its `dugTo`
   (grass is dug to dirt; raised rock to rubble) unless the spell names a
   `terrain`.
-- **Hardness:** a terrain's `hardness` (a whole number from 1, default 1)
-  is how strong a dig it takes: a terraform spell's `strength` (default 1)
-  or a crater's must be at least that, or the square stays as it is and
-  "The … is too hard to dig" is logged once a tick. Soil is 1 (Lower Earth
-  and Earthen Trench dig it), raised rock 3 (only a strength-3 dig: a
-  Meteor's crater, later Stone Shape or a pick), metal plate 4 (nothing
-  digs it). Bedrock and walls are blocking, so never shaped anyway.
 - **Raising** spills the square's water onto its neighbours, nearest
   first, so no water is lost.
 - **A square raised `sim.height.blockAt` (3) steps or more is a wall:**
