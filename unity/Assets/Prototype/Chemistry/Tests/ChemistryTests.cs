@@ -807,6 +807,45 @@ namespace Chem.Tests
             return $"{gone} {rng}";
         }
 
+        // Lightning into one end of a pond: a goblin swimming at the far end, a wet one on the bank beside the
+        // water and a dry one on the bank.
+        static (World w, Raider swimmer, Raider wetBank, Raider dryBank) ShockWater(Rules rules)
+        {
+            var w = new World(rules, 14, 8, 3, "dirt");
+            for (int x = 3; x <= 8; x++)
+                for (int y = 2; y <= 4; y++)
+                {
+                    var c = w.At(x, y);
+                    c.T = "pit"; c.Water = 3;
+                }
+            var swimmer = w.SpawnRaider("goblin", 8, 3, 10);
+            var wetBank = w.SpawnRaider("goblin", 9, 3, 10);
+            wetBank.Status["wet"] = 60;
+            var dryBank = w.SpawnRaider("goblin", 6, 5, 10);
+            w.Cast("shocking-grasp", 3, 3, 1);
+            w.Step();
+            return (w, swimmer, wetBank, dryBank);
+        }
+
+        static Rules FleshChainsWet(string chainsWet) => R.WithMods(new[] { ModPatch.Parse(
+            "{ \"terrain\": { \"flesh\": { \"name\": \"Flesh\", \"tags\": [], \"burn\": { \"status\": 9 }, \"freeze\": { \"status\": 30 }, \"soak\": { \"status\": 60 }, \"conduct\": { \"chainsWet\": " + chainsWet + " } } } }") });
+
+        [Test]
+        public void ShockWaterReachesSwimmersAndTheWetOnTheBank()
+        {
+            // conduct.chainsWet: the charge runs through all the connected water; the swimmer (wet) takes it
+            // twice, a wet goblin beside the water is shocked too, a dry one on the bank isn't.
+            var (w, swimmer, wetBank, dryBank) = ShockWater(R);
+            int zap = R.Sim.ZapDamage;
+            Assert.That(10 - swimmer.Hp, Is.EqualTo(zap * 2), "the swimmer is wet, so twice");
+            Assert.That(10 - wetBank.Hp, Is.EqualTo(zap * 2), "wet beside the water: shocked too");
+            Assert.That(dryBank.Hp, Is.EqualTo(10), "dry on the bank: not");
+            Assert.That($"{w.CellHash()} {w.RngState} {swimmer.Hp} {wetBank.Hp} {dryBank.Hp}", Is.EqualTo("d2510429 3 4 4 10"), "the same in the sandbox");
+            Assert.That(ShockWater(FleshChainsWet("false")).wetBank.Hp, Is.EqualTo(10), "without chainsWet the bank is safe");
+            var ex = Assert.Throws<ModException>(() => RuleSet.Plain(R).WithMods(new[] { new ActiveMod("bad", "{ \"terrain\": { \"flesh\": { \"name\": \"Flesh\", \"tags\": [], \"conduct\": { \"chainsWet\": 2 } } } }") }));
+            Assert.That(ex.Errors, Is.EqualTo(new[] { "terrain flesh: conduct.chainsWet must be true or false" }));
+        }
+
         [Test]
         public void AStruckFrozenGoblinShatters()
         {

@@ -8,7 +8,9 @@ using UnityEngine;
 // ground wear the same film, thinner: mud a wet, dark brown sheen over its
 // darker paint (CellPaint), glass a pale, glassy glaze over sand. A cover's
 // film wins over its ground's. Rebuilt when a cell's cover or terrain changes.
-// Ash is not a film: it is the terrain's charred paint.
+// Ash is not a film: it is the terrain's charred paint. Ground acid has eaten
+// (ChemGrid.WatchAcid) wears a stain in the same film, a dark, sour green, for
+// a while (Eaten, Expire); a slick there wins over it.
 public sealed class CellSlickMesh
 {
     // How far the film floats over the terrain, how far in from its edge it turns opaque (in
@@ -24,9 +26,13 @@ public sealed class CellSlickMesh
     static readonly Color GreaseColor = new(0.62f, 0.52f, 0.2f, 0.85f);
     static readonly Color MudColor = new(0.17f, 0.11f, 0.06f, 0.5f);
     static readonly Color GlassColor = new(0.82f, 0.94f, 0.97f, 0.42f);
+    static readonly Color EatenColor = new(0.16f, 0.22f, 0.07f, 0.55f);
 
     readonly ChemGrid grid;
     readonly Dictionary<int, string> slicks = new();
+    // Cells acid ate, and until when their stain shows.
+    readonly Dictionary<int, float> eaten = new();
+    readonly List<int> expired = new();
     readonly ContourSurface surface;
     bool dirty;
     // ColorAt's channels, made once (Shade asks for each at every point of the film).
@@ -67,7 +73,25 @@ public sealed class CellSlickMesh
     }
 
     /// <summary>Ground moved somewhere: the film follows it at the next Rebuild.</summary>
-    public void GroundChanged() => dirty |= slicks.Count > 0;
+    public void GroundChanged() => dirty |= slicks.Count > 0 || eaten.Count > 0;
+
+    /// <summary>Acid ate something at a cell: it wears the eaten stain until <paramref name="until"/> (Time.time).</summary>
+    public void Eaten(int x, int y, float until)
+    {
+        eaten[grid.World.Idx(x, y)] = until;
+        dirty = true;
+    }
+
+    /// <summary>Stains past their time go, at the next Rebuild.</summary>
+    public void Expire(float now)
+    {
+        if (eaten.Count == 0) return;
+        expired.Clear();
+        foreach (var kv in eaten)
+            if (kv.Value <= now) expired.Add(kv.Key);
+        foreach (int key in expired) eaten.Remove(key);
+        dirty |= expired.Count > 0;
+    }
 
     /// <summary>Rebuilds the film if any cell's slick changed since the last time.</summary>
     public void Rebuild()
@@ -101,12 +125,12 @@ public sealed class CellSlickMesh
         return false;
     }
 
-    bool Has(int x, int y) => grid.World.InBounds(x, y) && slicks.ContainsKey(grid.World.Idx(x, y));
+    bool Has(int x, int y) => grid.World.InBounds(x, y) && (slicks.ContainsKey(grid.World.Idx(x, y)) || eaten.ContainsKey(grid.World.Idx(x, y)));
 
     RectInt Box()
     {
         int w = grid.World.W, x0 = int.MaxValue, y0 = int.MaxValue, x1 = int.MinValue, y1 = int.MinValue;
-        foreach (int key in slicks.Keys)
+        foreach (int key in Keys())
         {
             x0 = Mathf.Min(x0, key % w);
             y0 = Mathf.Min(y0, key / w);
@@ -114,6 +138,12 @@ public sealed class CellSlickMesh
             y1 = Mathf.Max(y1, key / w);
         }
         return x1 < x0 ? new RectInt(0, 0, 0, 0) : new RectInt(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
+    }
+
+    IEnumerable<int> Keys()
+    {
+        foreach (int key in slicks.Keys) yield return key;
+        foreach (int key in eaten.Keys) yield return key;
     }
 
     // The films' colours (blended where they meet), fading out toward the edge and on steep ground.
@@ -143,7 +173,8 @@ public sealed class CellSlickMesh
     Color? ColorAt(int x, int y)
     {
         if (!Has(x, y)) return null;
-        return slicks[grid.World.Idx(x, y)] switch
+        if (!slicks.TryGetValue(grid.World.Idx(x, y), out var film)) return EatenColor;
+        return film switch
         {
             CoverIds.Grease => GreaseColor,
             TerrainIds.Mud => MudColor,

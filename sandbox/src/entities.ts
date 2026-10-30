@@ -4,7 +4,7 @@ import { applyElement, applyEntityElement, ignite } from "./react.ts";
 import { crater } from "./terraform.ts";
 import {
   type Cell, type Dir, type Entity, type World,
-  DX, DY, cellAt, entityAt, hasTag, isBlocking, isSlippery, log, logOnce, roll, terrainDef,
+  DX, DY, cellAt, entityAt, hasTag, isBlocking, isSlippery, log, logOnce, neighbours, roll, terrainDef,
 } from "./world.ts";
 
 export const defOf = (e: Entity) => RULES.entities[e.kind]!;
@@ -172,6 +172,19 @@ export function walk(w: World, e: Entity, dir: Dir): string | null {
   return null;
 }
 
+/**
+ * Shock-water (conduct.chainsWet): a wet creature of a material that chains wet is shocked by freshly charged
+ * water beside it too, not only under it (World.ShockedFromBeside).
+ */
+function shockedFromBeside(w: World, e: Entity, def: (typeof RULES.entities)[string]): boolean {
+  if (!((e.status.wet ?? 0) > 0) || !def.material || !RULES.terrain[def.material]?.chainsWet) return false;
+  for (const [nx, ny] of neighbours(w, e.x, e.y)) {
+    const n = cellAt(w, nx, ny)!;
+    if (n.charge === 3 && n.water > 0 && !n.frozen) return true;
+  }
+  return false;
+}
+
 /** Per-tick entity upkeep: statuses, burning, wading, zaps, falls. */
 export function tickEntities(w: World) {
   const s = RULES.sim;
@@ -192,7 +205,7 @@ export function tickEntities(w: World) {
     if (c.gas === "steam" && c.gasAmt >= 2 && hasComponent(def, "creature") && w.tick % s.status.scaldEvery === 0) {
       damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding");
     }
-    if (c.charge === 3 && w.entities.includes(e)) {
+    if ((c.charge === 3 || shockedFromBeside(w, e, def)) && w.entities.includes(e)) {
       const mul = applyEntityElement(w, e, "lightning", { power: 1, direct: false });
       damage(w, e, s.zapDamage * mul, "lightning", "lightning");
     }

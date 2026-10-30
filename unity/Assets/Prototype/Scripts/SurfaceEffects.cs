@@ -12,7 +12,9 @@ using UnityEngine.InputSystem;
 // cover) slow it to the cover's speed and cut it (Vitals) every square it walks. Heavy ground slows
 // it to its terrain's speed (mud: the move cost raiders pay too, World.Thorns), and hot metal (Cell.Heat)
 // burns it 1 fire damage every sim.burnDamageEvery ticks, as it does a raider. Spells slow it too
-// (Slow: frost chills, lightning jolts; SpellForces). Runs after the Starter Assets controller has moved the wizard
+// (Slow: frost chills, lightning jolts; SpellForces). Lightning in the water it stands in shocks it
+// (shock-water: the charge runs through all the connected water), twice the zap, as the core does a
+// wet creature. Runs after the Starter Assets controller has moved the wizard
 // and corrects that move, so the controller itself stays untouched (its
 // gravity is switched off while afloat and its animator told it's standing).
 //
@@ -60,6 +62,8 @@ public class SurfaceEffects : MonoBehaviour
     Vitals vitals;
     // Thorns underfoot (Spike Growth): the cover's speed, and how far the wizard has walked through them since the last cut.
     float thornSpeed = 1f, thornsWalked;
+    // In charged water since the charge came (one shock a strike, not one a frame).
+    bool shocked;
 
     /// <summary>True while the wizard walks on thorns (a spiky cover): slowed, and cut every square walked.</summary>
     public bool InThorns { get; private set; }
@@ -155,6 +159,7 @@ public class SurfaceEffects : MonoBehaviour
         bool underfoot = c != null && !above && body.isGrounded && !swimming;
         Thorns(underfoot && grid.World.IsSpiky(c) ? grid.World.CoverOf(c) : null);
         Ground(underfoot ? c : null);
+        Shock(c != null && !above && !c.Frozen && c.Water > 0 && surface > transform.position.y && c.Charge > 0);
         SetSpeed(wading);
         lastPosition = transform.position;
     }
@@ -232,6 +237,19 @@ public class SurfaceEffects : MonoBehaviour
         if (onHotMetal < every) return;
         onHotMetal -= every;
         if (vitals != null) vitals.TakeDamage(1f);
+    }
+
+    // Freshly charged water round the wizard's feet: one shock a strike, wet so twice the zap, and a jolt.
+    // Health is the wizard's own (Vitals), as with the thorns.
+    void Shock(bool charged)
+    {
+        if (charged && !shocked)
+        {
+            EventLog.Add("The charged water shocks you");
+            if (vitals != null) vitals.Hurt(grid.World.Rules.Sim.ZapDamage * 2);
+            Slow(0.35f, 0.8f);
+        }
+        shocked = charged;
     }
 
     static int Roll(int[] dice)

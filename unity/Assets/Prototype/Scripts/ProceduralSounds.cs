@@ -66,6 +66,17 @@ public static class ProceduralSounds
     public static AudioClip Break => Make("break", 0.35f, (t, r) =>
         Decay(t, 0.03f) * Noise(r) * 0.8f + Decay(t, 0.12f) * Tone(t, 110f) * 0.5f);
 
+    /// <summary>Something frozen shattering: a bright crack, then a scatter of glassy tinkles.</summary>
+    public static AudioClip Shatter => Make("shatter", 0.8f, (t, r) =>
+        Decay(t, 0.02f) * Noise(r) * 0.9f
+        + Decay(t, 0.25f) * (r.NextDouble() < 0.004 ? 1f : 0f) * 0.8f
+        + Decay(t, 0.3f) * (Tone(t, 3520f) * 0.12f + Tone(t, 4730f) * 0.09f + Tone(t, 6150f) * 0.06f));
+
+    /// <summary>Acid eating in: a sizzling hiss that dies away, with a few small pops.</summary>
+    public static AudioClip Hiss => Make("hiss", 1.2f, (t, r) =>
+        Decay(t, 0.45f) * (1f - Decay(t, 0.02f)) * (Noise(r) - Lowpass(ref hissLp, 0.2f, Noise(r))) * 0.6f
+        + (r.NextDouble() < 0.002 ? Decay(t, 0.5f) * 0.5f : 0f));
+
     /// <summary>A fire burning, made to loop: a low roar with random pops.</summary>
     public static AudioClip FireLoop => MakeLoop("fire-loop", 3f, (t, r) =>
         Lowpass(ref loopLp, 0.06f, Noise(r)) * 1.6f + (r.NextDouble() < 0.0015 ? 1f : 0f) * Noise(r) * 0.9f);
@@ -86,7 +97,7 @@ public static class ProceduralSounds
 
     // --- building blocks -------------------------------------------------------
 
-    static float fireLp, splashLp, squelchLp, thunderLp, rumbleLp, boomLp, loopLp, shimmerLp, rainLp, rainSoftLp, windLp;
+    static float fireLp, splashLp, squelchLp, thunderLp, rumbleLp, boomLp, loopLp, shimmerLp, rainLp, rainSoftLp, windLp, hissLp;
 
     static float Noise(System.Random r) => (float)(r.NextDouble() * 2.0 - 1.0);
     static float Tone(float t, float hz) => Mathf.Sin(2f * Mathf.PI * hz * t);

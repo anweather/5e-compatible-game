@@ -40,6 +40,8 @@ public class SpellCaster : MonoBehaviour
     bool hasCrosshair;
     // Holding Cast charges a spell that can be (ChargeSeconds a level, to World.MaxCharge); release casts it.
     const float ChargeSeconds = 0.45f;
+    // The element that eats things away (Acid Splash): its splash, hiss and eaten stain.
+    const string AcidElement = "acid";
     float chargeStart = -1f;
     GUIStyle pips;
 
@@ -211,6 +213,8 @@ public class SpellCaster : MonoBehaviour
         var gesture = CastGestures.For(def, look);
         if (pose != null) pose.Play(gesture, landing, look?.glow ?? Color.white);
         GameSounds.Play(GameSounds.CastOf(def), Hand);
+        // Acid: what it can eat is noted now, before it lands, so the cells it eats get the eaten stain.
+        if (def?.Element == AcidElement && grid != null) grid.WatchAcid(cast);
         // A blink shows its mist where the caster leaves as well as where they land.
         if (def?.Effect == SpellShapes.TeleportEffect && look?.impact != null)
             Destroy(SpellVisuals.Spawn(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
@@ -232,6 +236,7 @@ public class SpellCaster : MonoBehaviour
         void Land()
         {
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)));
+            if (def?.Element == AcidElement) BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, 1f + 0.5f * (World.ClampCharge(charge) - 1));
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             onArrive?.Invoke();
         }

@@ -41,6 +41,7 @@ export function ungroupMaterials(r: { terrain: Record<string, unknown>; covers: 
 
 function ungroup(entry: Entry, verbs: Verb[], water: boolean) {
   if (water) ungroupStatuses(entry);
+  if (water) ungroupChainsWet(entry);
   for (const { verb, tag, keys } of verbs) {
     const g = entry[verb];
     if (!g || typeof g !== "object" || Array.isArray(g)) continue;
@@ -77,6 +78,18 @@ function ungroupStatuses(entry: Entry) {
     delete g.status;
     if (Object.keys(g).length === 0) delete entry[verb];
   }
+}
+
+/**
+ * Takes conduct.chainsWet out of its group; a group left empty goes too, so flesh's conduct { chainsWet }
+ * doesn't make it conduct like metal (MaterialGroups.UngroupChainsWet).
+ */
+function ungroupChainsWet(entry: Entry) {
+  const g = entry.conduct as Record<string, unknown> | undefined;
+  if (!g || typeof g !== "object" || Array.isArray(g) || g.chainsWet === undefined) return;
+  entry.chainsWet = g.chainsWet;
+  delete g.chainsWet;
+  if (Object.keys(g).length === 0) delete entry.conduct;
 }
 
 function groupStatuses(entry: Entry) {
@@ -126,5 +139,9 @@ export function groupMaterial(flat: Entry, cover: boolean): Entry {
     }
   }
   if (!cover) groupStatuses(entry);
+  if (!cover && entry.chainsWet !== undefined) {
+    ((entry.conduct ??= {}) as Record<string, unknown>).chainsWet = entry.chainsWet;
+    delete entry.chainsWet;
+  }
   return entry;
 }

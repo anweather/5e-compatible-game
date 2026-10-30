@@ -313,10 +313,14 @@ public partial class ChemGrid
 
     // With the sparks effect, a burst plays when a cell becomes charged, from the effects pool and a
     // few new ones a frame (a cell that misses this frame's share asks again the next, while it is
-    // still charged); without it, a glowing plate shows while it is.
-    void RenderCharge(View v, Cell c, Vector3 center, float ground)
+    // still charged); without it, a glowing plate shows while it is. Charged water flashes too, the
+    // whole connected pond at once (CellFxTexture, drawn by the water's shader: no objects).
+    void RenderCharge(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
         bool on = c.Charge > 0;
+        bool flash = on && c.Water > 0 && !c.Frozen;
+        if (flash && !v.flashed) cellFx.Flash(x, y);
+        v.flashed = flash;
         if (sparksFx != null)
         {
             if (on && !v.charged)

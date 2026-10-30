@@ -31,6 +31,7 @@ public static class SpellIds
     public const string PlantGrowth = "plant-growth";
     public const string SpikeGrowth = "spike-growth";
     public const string Shapeshift = "shapeshift";
+    public const string AcidSplash = "acid-splash";
 }
 
 /// <summary>Spell shapes and effects (a spell's <c>shape</c> and <c>effect</c>), as in rules/spells.json.</summary>

@@ -32,7 +32,7 @@ public class SpellRadialHud : MonoBehaviour
     Component lookInput;
     bool lookPaused, lookWasOn;
     readonly Dictionary<int, Texture2D> wedgeTextures = new();
-    Texture2D disc;
+    Texture2D disc, acidIcon;
     GUIStyle label, small, slot;
     // The element whose spells are out (-1: none), since when, and how long they take to unfold (s).
     int arcElement = -1;
@@ -102,6 +102,7 @@ public class SpellRadialHud : MonoBehaviour
         if (laidOutFor != null) laidOutFor.RulesChanged -= Relayout;
         foreach (var t in wedgeTextures.Values) Destroy(t);
         if (disc != null) Destroy(disc);
+        if (acidIcon != null) Destroy(acidIcon);
     }
 
     // --- input -------------------------------------------------------------------------
@@ -275,7 +276,40 @@ public class SpellRadialHud : MonoBehaviour
             GUI.DrawTexture(box, Texture2D.whiteTexture);
             GUI.color = Color.white;
             Centred(at, text, slot);
+            var icon = IconOf(spells[s]);
+            if (icon != null)
+            {
+                float side = 34f * Scale;
+                GUI.DrawTexture(new Rect(box.x + 6f * Scale, at.y - side / 2f, side, side), icon);
+            }
         }
+    }
+
+    // A spell's icon in its slot, or null (the slots are names; Acid Splash, the temporary 4th in
+    // nature, has a green drop to set it apart). Drawn in code: a teardrop, lit from the top left.
+    Texture2D IconOf(string spellId)
+    {
+        if (spellId != SpellIds.AcidSplash) return null;
+        if (acidIcon != null) return acidIcon;
+        const int n = 48;
+        acidIcon = new Texture2D(n, n, TextureFormat.RGBA32, false) { name = "Acid Splash icon", filterMode = FilterMode.Bilinear };
+        var px = new Color32[n * n];
+        for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                // A circle at the bottom drawn up to a point at the top (texture y runs up).
+                float u = (x + 0.5f) / n - 0.5f, v = (y + 0.5f) / n;
+                float r = 0.3f, cy = 0.36f;
+                float d = new Vector2(u, v - cy).magnitude - r;
+                if (v > cy) d = Mathf.Max(d, Mathf.Abs(u) - r * (1f - (v - cy) / (0.95f - cy)));
+                float a = Mathf.Clamp01(0.5f - d * n);
+                float shine = Mathf.Clamp01(1f - new Vector2(u + 0.1f, v - 0.45f).magnitude * 6f);
+                var c = Color.Lerp(new Color(0.25f, 0.7f, 0.1f), new Color(0.8f, 1f, 0.55f), shine);
+                px[y * n + x] = new Color(c.r, c.g, c.b, a);
+            }
+        acidIcon.SetPixels32(px);
+        acidIcon.Apply(false);
+        return acidIcon;
     }
 
     // The highlighted spell's name and its one-line effect in the centre, else how to cancel.

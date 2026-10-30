@@ -85,7 +85,7 @@ Each group's keys, and what reads them today.
 | **boil** | `leaves` (steam) | `waterTo: "steam"` (lava) |
 | **break** | `hardness`, `leaves`, `hp` for things | `breakable` tag/component, `breaksTo`, `hardness` |
 | **shatter** | `drop` (fall height that breaks it), `leaves` | `brittle` component, items' `breaks` |
-| **conduct** | `chance`, `chainsWet` (through water next to it) | `conductive` tag, `conducts` component |
+| **conduct** | `chance`, `chainsWet` (through water next to it) | `conductive` tag, `conducts` component; `chainsWet` built: on flesh, bone and chitin, a wet creature beside freshly charged water is shocked as if in it (`World.ShockedFromBeside`); a group holding only `chainsWet` doesn't make the material conduct |
 | **float** | `lift` (above 1 floats), `every` (a cover: on open water it spreads to the open water beside it every this many ticks; built for oil, `floatEvery`, `World.Float`) | `floats` component, PropState's mass rule |
 | **grow** | `into`, `every` | `growsTo`, `growLog`, Cell.Life ripening |
 | **rot / rust** | `every` (ticks wet in all), `leaves` | rust built: `rustEvery`, `rustsTo`; `Cell.Rust` counts a wet cell's ticks on the soak pass (`World.Rust`). Rot is new |
@@ -108,8 +108,10 @@ marked *new*.
   it becomes "a `burn` without `float` is put out by water".
 - **Frozen things shatter:** a thing with the `frozen` status gains a
   `shatter` it lacks (a struck frozen goblin breaks) (*new*).
-- **Wet ground conducts:** lightning chains through water. That's today's
-  conduct over wet cells; `conduct.chainsWet` makes it a key, not code.
+- **Wet ground conducts:** lightning chains through water (conduct over wet
+  cells, up to `sim.conductLimit`) and shocks every creature in it; with
+  `conduct.chainsWet` a wet creature on the bank beside it is shocked too
+  (shock-water, built).
 - **Hot metal:** fire reaching metal leaves it hot for `hot.for` ticks
   (`Cell.Heat`, the `fire-heat` reaction). A creature on it takes 1 fire damage
   every `burnDamageEvery` ticks; water on it boils off a unit a tick as steam,
