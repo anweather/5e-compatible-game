@@ -444,3 +444,10 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 - 2026-10-29: Host Editor pitfall: start Unity Hub before the Editor, or it
   waits at a licence prompt (it looked like a slow Editor). Host sessions
   check for Hub first.
+- 2026-10-29: Host sessions' commits carry cost trailers too (Host-*), like the
+  workers' (Worker-*). commit-cost.mjs takes COMMIT_COST_PROJECT, the exact
+  Claude transcript folder to count (on the host one account runs many
+  sessions). The host repo's .git/hooks/prepare-commit-msg (not versioned)
+  runs it only in .claude/worktrees/host-ux, counting the repo-root folder
+  (the folder that session started in). Add a case there for each new host
+  worktree.

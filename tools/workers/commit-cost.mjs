@@ -47,7 +47,15 @@ const replies = new Map();
 const tools = new Map(); // tool_use id -> its command (Bash/PowerShell), else ''
 const failed = new Set();
 let compactions = 0, apiErrors = 0;
-for (const file of transcripts(path.join(config, 'projects'))) {
+// On the host many sessions share one account: COMMIT_COST_PROJECT keeps only the transcript
+// folder with exactly that name (Claude Code names it after the folder the session started in).
+const only = process.env.COMMIT_COST_PROJECT;
+const projectDirs = (() => {
+  const root = path.join(config, 'projects');
+  if (!only) return [root];
+  try { return fs.readdirSync(root).filter(d => d === only).map(d => path.join(root, d)); } catch { return []; }
+})();
+for (const file of projectDirs.flatMap(d => [...transcripts(d)])) {
   for (const line of fs.readFileSync(file, 'utf8').split('\n')) {
     let o;
     try { o = JSON.parse(line); } catch { continue; }
