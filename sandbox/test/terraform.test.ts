@@ -625,7 +625,7 @@ test("a wave rolls out, douses, knocks back and leaves mud, matching the C# gold
   for (const y of [2, 3, 4]) assert.equal(cellAt(w, 8, y)!.t, "mud", "mud where it stopped");
   assert.equal(cellAt(w, 7, 3)!.t, "dirt");
   run(w, 4);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "4b82ec13 752141770"); // the same in the C# core
+  assert.equal(`${cellHash(w)} ${w.rng}`, "8c0f542d 752141770"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.FrostBridgesWaterFreezesTheWetAndGlazesTheGround.

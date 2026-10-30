@@ -495,21 +495,13 @@ function front(w: World, wv: Wave): [number, number][] {
 }
 
 /**
- * The wave's element lands on its front (it douses fires and soaks what it meets), then each thing there light
- * enough is knocked a cell on ahead of it, where that's open (World.Wash). The player stays put, as in the C# core.
+ * The wave's element lands on its front (water at power 0: it douses fires and soaks what it meets but leaves no
+ * water), then its force knocks each thing there light enough on ahead of it, where that's open (World.Wash).
  */
 function wash(w: World, wv: Wave, s: SpellDef): void {
   const cells = front(w, wv);
   for (const [cx, cy] of cells) applyElement(w, cx, cy, s.element!, { power: wv.power, dir: wv.dir, direct: true });
-  for (const [cx, cy] of cells) {
-    const e = entityAt(w, cx, cy);
-    if (!e || defOf(e).player || massOf(e) > wv.maxMass) continue;
-    const nx = cx + DX[wv.dir], ny = cy + DY[wv.dir];
-    const n = cellAt(w, nx, ny);
-    if (!n || isBlocking(n) || entityAt(w, nx, ny)) continue;
-    e.x = nx;
-    e.y = ny;
-  }
+  for (const [cx, cy] of cells) force(w, s, cx, cy, wv.dir);
 }
 
 /** Where it stops it breaks, and its leaves (mud) lands over the front (World.Break). */
@@ -580,9 +572,6 @@ function rollTo(w: World, b: Boulder): number {
   return best;
 }
 
-/** How long a creature a boulder knocks over stays down, in ticks (World.KnockedTicks). */
-const KNOCKED_TICKS = 6;
-
 /**
  * The boulder strikes the cell it rolls onto: what is brittle there cracks or shatters, it leaves its trail of gas,
  * and the thing there (not the player, whom the C# core doesn't hold) takes its damage and is knocked over (World.Strike).
@@ -593,9 +582,32 @@ function strike(w: World, b: Boulder, s: SpellDef): void {
   const e = entityAt(w, b.x, b.y);
   if (!e || defOf(e).player) return;
   if (s.damage) damage(w, e, roll(w, s.damage), s.name.toLowerCase(), s.element);
-  if (!w.entities.includes(e)) return;
-  e.status.thrown = Math.max(e.status.thrown ?? 0, KNOCKED_TICKS);
-  logOnce(w, `knocked#${e.id}`, `The ${s.name.toLowerCase()} knocks ${defOf(e).name} over`, "notable");
+  force(w, s, b.x, b.y, b.dir);
+}
+
+/**
+ * A spell's force on what stands at (x, y), not the player (World.Force; spells.json force): pushed force.push cells
+ * along dir where that's open, if it's maxMass or lighter (a wave knocks it back), and thrown off its feet for
+ * force.throw ticks (a geyser's jet, a boulder).
+ */
+function force(w: World, s: SpellDef, x: number, y: number, dir: Dir | undefined): void {
+  const f = s.force;
+  if (!f) return;
+  const e = entityAt(w, x, y);
+  if (!e || defOf(e).player || !w.entities.includes(e)) return;
+  const by = s.name.toLowerCase(), name = defOf(e).name;
+  if ((f.push ?? 0) > 0 && dir !== undefined && massOf(e) <= (s.maxMass ?? 1)) {
+    for (let k = 0; k < f.push!; k++) {
+      const n = cellAt(w, e.x + DX[dir], e.y + DY[dir]);
+      if (!n || isBlocking(n) || entityAt(w, e.x + DX[dir], e.y + DY[dir])) break;
+      e.x += DX[dir];
+      e.y += DY[dir];
+    }
+    logOnce(w, `pushed#${e.id}`, `The ${by} knocks ${name} back`, "notable");
+  }
+  if (!f.throw) return;
+  e.status.thrown = Math.max(e.status.thrown ?? 0, f.throw);
+  logOnce(w, `thrown#${e.id}`, `The ${by} throws ${name} off its feet`, "notable");
 }
 
 /** Where it stops it comes to rest, and its leaves (earth) lands there: a dam in a stream, a boulder on dry ground (World.Rest). */
@@ -660,6 +672,7 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
   for (const [cx, cy] of cells) {
     if (casterId !== undefined && s.shape === "burst" && cx === x && cy === y) continue;
     if (s.element) applyElement(w, cx, cy, s.element, s.inward ? { ...ctx, dir: inwardDir(cx - x, cy - y) } : ctx);
+    force(w, s, cx, cy, dir);
     if (!s.push && s.damage) {
       const e = entityAt(w, cx, cy);
       if (e && e.id === casterId) continue;

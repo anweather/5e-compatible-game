@@ -487,6 +487,7 @@ namespace Chem
             foreach (var (cx, cy) in cells)
             {
                 Apply(cx, cy, s.Element, s.Power * charge, s.Inward ? InwardDir(cx - x, cy - y) : dir, true);
+                Force(s, cx, cy, dir);
                 LandOnRaider(s, cx, cy);
             }
             waveFrom = null;

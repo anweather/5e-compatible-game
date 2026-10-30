@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(73));
+            Assert.That(R.CellRules.Count, Is.EqualTo(72));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -989,7 +989,7 @@ namespace Chem.Tests
             foreach (int y in new[] { 2, 3, 4 }) Assert.That(w.At(8, y).T, Is.EqualTo("mud"), "mud where it stopped");
             Assert.That(w.At(7, 3).T, Is.EqualTo("dirt"));
             Run(w, 4);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4b82ec13 752141770"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("8c0f542d 752141770"), "the same in the sandbox");
         }
 
         [Test]

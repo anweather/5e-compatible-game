@@ -254,6 +254,8 @@ namespace Chem
         public bool Rolls;
         /// <summary>The gas a rolling boulder leaves behind it (dust), or null.</summary>
         public string Trail;
+        /// <summary>A spell's force on the creature in each cell it reaches (spells.json force: Geyser and Rolling Boulder throw, Wave knocks back; World.Force): ticks thrown off its feet, and cells pushed along the cast's way (MaxMass or lighter).</summary>
+        public int ForceThrow, ForcePush;
         /// <summary>A spell that seeks (Lightning): it strikes the nearest cell within SeekRange of where it's aimed that matches SeekIf (metal or water) instead of its shape, and its shape when there is none.</summary>
         public int SeekRange;
         public CellCond SeekIf;
@@ -454,6 +456,8 @@ namespace Chem
         public double? FireMin;
         public double? FireBelow;
         public bool? Water, Frozen, Conductive;
+        /// <summary>melts: whether the cell's cover melts (its material has melt.water: snow, a snow bank, frost).</summary>
+        public bool? Melts;
         /// <summary>hot: whether the cell is hot (Cell.Heat above 0).</summary>
         public bool? Hot;
         public string Gas, TerrainTag, NotTerrainTag;
@@ -511,7 +515,7 @@ namespace Chem
     public sealed partial class Rules
     {
         /// <summary>BASE_ELEMENTS in rules.ts: the elements before any mod adds more.</summary>
-        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow", "geyser", "wave" };
+        static readonly string[] BaseElements = { "fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid", "steam", "lava", "mud", "dust", "rain", "sand", "heat", "smoke", "snow" };
 
         readonly Dictionary<string, TerrainDef> terrain = new Dictionary<string, TerrainDef>();
         readonly Dictionary<string, CoverDef> covers = new Dictionary<string, CoverDef>();
@@ -848,6 +852,8 @@ namespace Chem
             Rolls = Truthy(o["rolls"]),
             Trail = Str(o["trail"]),
             Stepping = Int(o["stepping"]) ?? 0,
+            ForceThrow = Int(o["force"]?["throw"]) ?? 0,
+            ForcePush = Int(o["force"]?["push"]) ?? 0,
             SeekRange = Int(o["seeks"]?["range"]) ?? 0,
             SeekIf = o["seeks"]?["if"] is JObject si ? ParseCond(si) : null,
             Ramp = Truthy(o["ramp"]),
@@ -880,6 +886,7 @@ namespace Chem
                 FireBelow = Num(c["fireBelow"]),
                 Water = Bool(c["water"]),
                 Frozen = Bool(c["frozen"]),
+                Melts = Bool(c["melts"]),
                 Hot = Bool(c["hot"]),
                 Conductive = Bool(c["conductive"]),
                 Gas = Str(c["gas"]),

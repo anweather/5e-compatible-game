@@ -50,12 +50,10 @@ of thumb, unchanged: the **first** element is what the spell is made of, the
   reaction written for one spell. The hand-written spell reactions left in
   `rules/reactions.json` (`fire-mud`, `fire-ice` and the like)
   move into materials as they're touched.
-  No element for one spell: the water row (81621f0) added `geyser` and
-  `wave` elements with their own reactions (`geyser-water`, `e-geyser`,
-  `wave-fire`, `e-wave`, `e-wave-creature`); fold them into heat (strong,
-  on water) and water (moving) plus a shared force verb (throw, knock
-  back) in the cleanup step. Later casts reuse fire, water, earth, air,
-  heat, cold and lightning.
+  No element for one spell: Geyser is heat at power 3 on water (`heat-water-strong`),
+  Wave is water at power 0 (it douses and soaks but leaves no water), and both, with
+  Rolling Boulder, share a spell `force` (`throw`: ticks off its feet, `push`: cells
+  knocked back). Casts use fire, water, earth, air, heat, cold and lightning.
 - **Drawn with the effects library.** The pooled particles, cell tints and
   shader terms that exist; GPU first, no swarms of entities. A real object
   (the boulder) is built from simple pieces.
@@ -143,6 +141,8 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   tornado over fire, a waterspout over water, a sandstorm over sand, a
   smoke column, a snow flurry. It carries what it picks up and drops it all
   when it dies out.
+
+**Built (2026-10-30), the fire row and the cleanup:** Fireball scatters burning debris (its `scatter`); Lava Pool runs downhill and sets at once in water (the `run` and `quench` verbs on lava-pool), leaving a rock crust to walk on; steam rusts metal faster (a gas's `rusts`); Create Water waters burnt ground (`water-ash`). Already on dev: Fireball setting off oil and dust, the lava boiling water off and cooling, Fire Bolt and the rest of Create Water. The geyser and wave elements are gone (see above); `fire-melt` and `heat-melt` read the cover's melt verb (the `melts` condition) instead of a list of covers. Left as they are: `fire-mud` (already the muddy tag), `fire-oil` and `fire-thorns` (merging them would light burning rock too, a behaviour change), `lightning-fuse` (a bake would brick mud), `cold-covered`.
 
 **Built (2026-10-30), the air row:** Lightning seeks (spells.json `seeks`: the nearest water or metal within 6 cells instead of the straight line) and the machines and gates now run in the C# core too (World.Machines.cs), so a charge through a puddle to a coil opens the gate in both engines. Clouds shed (a gas's `sheds`): a rain cloud greens burnt ground (growth), lightning into one makes a storm cloud that strikes, cold a snow cloud that snows. Sand Blast scours (the `scour` verb: covers stripped, rust off metal, log walls worn thin then through, raised earth down a step) before leaving sand. Gust pushes floating covers across water (`pushCover`). A dust flash shoves raiders in both engines alike. Already on dev before: shocks on wet creatures, smouldering fuel, shattering ice, the cloud drifting and raining, Gust steering gas, blowing out small fires and feeding big ones. The view still needs the storm and snow clouds, the worn log wall and the seeking bolt.
 
