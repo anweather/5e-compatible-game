@@ -48,6 +48,9 @@ namespace Chem
                     case ItemUses.Send:
                         if (!Truthy(i["message"])) Errors.Add($"{what}: use send needs a message");
                         break;
+                    case ItemUses.Dig:
+                        Dig(what, i);
+                        break;
                     case ItemUses.Point:
                         if (!lit) Errors.Add($"{what}: use point needs a light");
                         if (!(IsNumber(i["reach"]) && (double)i["reach"] > 0)) Errors.Add($"{what}: use point needs a reach above 0");
@@ -56,6 +59,11 @@ namespace Chem
                         Errors.Add($"{what}: unknown use {Show(use)}");
                         break;
                 }
+            }
+
+            void Dig(string what, JToken i)
+            {
+                if (!(IsWholeNumber(i["strength"]) && (double)i["strength"] >= 1)) Errors.Add($"{what}: use dig needs a whole strength from 1");
             }
 
             void Light(string what, JObject l)

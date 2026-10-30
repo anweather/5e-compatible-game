@@ -303,12 +303,14 @@ export interface ItemDef {
   components?: string[];
   /** Kilograms. */
   mass?: number;
-  use?: "light" | "zoom" | "send" | "point";
+  use?: "light" | "zoom" | "send" | "point" | "dig";
   /** Feet of bright and then dim light, its colour, and a cone's full angle in degrees (0 or unset: all round). */
   light?: { bright?: number; dim?: number; color?: string; cone?: number };
   zoom?: number;
   /** use "point": how far away its light can go, in feet. */
   reach?: number;
+  /** use "dig": how hard a ground its swing can dig (terrain hardness). */
+  strength?: number;
   message?: string;
   /** Breaks when it lands at speed (m/s) or harder, spilling a cover (lit) over a radius. */
   breaks?: { speed: number; spill?: { cover: string; radius?: number; fire?: number } };
@@ -606,7 +608,7 @@ function isWholeRange(v: unknown, min0: number, min1: number): v is [number, num
   return Array.isArray(v) && v.length === 2 && Number.isInteger(v[0]) && Number.isInteger(v[1]) && v[0] >= min0 && v[1] >= min1;
 }
 
-const ITEM_USES =new Set(["light", "zoom", "send", "point"]);
+const ITEM_USES =new Set(["light", "zoom", "send", "point", "dig"]);
 const isNumber = (v: unknown): v is number => typeof v === "number";
 const absent = (v: unknown) => v === undefined || v === null;
 
@@ -662,6 +664,7 @@ function itemErrors(r: Rules, id: string, it: ItemDef): string[] {
   else if (it.use === "light" && !light) errors.push(`${what}: use light needs a light`);
   else if (it.use === "zoom" && !(isNumber(i.zoom) && i.zoom > 1)) errors.push(`${what}: use zoom needs a zoom above 1`);
   else if (it.use === "send" && !it.message) errors.push(`${what}: use send needs a message`);
+  else if (it.use === "dig" && !(Number.isInteger(i.strength) && (i.strength as number) >= 1)) errors.push(`${what}: use dig needs a whole strength from 1`);
   else if (it.use === "point") {
     if (!light) errors.push(`${what}: use point needs a light`);
     if (!(isNumber(i.reach) && i.reach > 0)) errors.push(`${what}: use point needs a reach above 0`);
@@ -828,7 +831,7 @@ export function validateRules(r: Rules): string[] {
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
     if (t.chainsWet !== undefined && typeof t.chainsWet !== "boolean") errors.push(`terrain ${id}: conduct.chainsWet must be true or false`);
     for (const key of ["soaksTo", "driesTo", "shattersTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
-    if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 1)) errors.push(`terrain ${id}: hardness must be a whole number from 1`);
+    if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 0)) errors.push(`terrain ${id}: hardness must be a whole number from 0 (0 never digs)`);
     for (const key of ["soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
     if (t.dampens !== undefined && !(typeof t.dampens === "number" && t.dampens >= 0 && t.dampens <= 1)) errors.push(`terrain ${id}: dampens must be a number from 0 to 1`);

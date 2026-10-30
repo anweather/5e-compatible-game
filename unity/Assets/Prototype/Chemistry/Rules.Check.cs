@@ -206,7 +206,7 @@ namespace Chem
                 StatusTicks(id, t);
                 if (t["chainsWet"] != null && t["chainsWet"].Type != JTokenType.Boolean) Errors.Add($"terrain {id}: conduct.chainsWet must be true or false");
                 foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo" }) KnownTerrain(id, t, key);
-                if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 1)) Errors.Add($"terrain {id}: hardness must be a whole number from 1");
+                if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 0)) Errors.Add($"terrain {id}: hardness must be a whole number from 0 (0 never digs)");
                 WaterOn(id, t);
                 FireLookOf($"terrain {id}", t);
                 if (Truthy(t["uprootsTo"]) && !IsIn(terrain, t["uprootsTo"])) Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} unknown");

@@ -23,7 +23,7 @@ namespace Chem
                 if (s.Taper && d > s.Radius) continue;
                 int n = s.Taper ? Tapered(steps, d, s.Radius) : steps;
                 if (toHeight) n = Math.Max(0, n - At(cx, cy).Height);
-                if (n != 0) Reshape(cx, cy, n, s.Terrain, s.Strength);
+                if (n != 0) Reshape(cx, cy, n, s.Terrain, s.Strength, s.Name);
             }
         }
 
@@ -47,6 +47,15 @@ namespace Chem
         }
 
         /// <summary>
+        /// A held tool's swing at (x, y): one step down, at the tool's strength (items.json "use": "dig").
+        /// Nothing for an item that doesn't dig (a mod removed it).
+        /// </summary>
+        public void Dig(int x, int y, ItemDef tool)
+        {
+            if (tool != null && tool.Use == ItemUses.Dig) Reshape(x, y, -1, null, tool.Strength, tool.Name);
+        }
+
+        /// <summary>
         /// Steps at distance d (in squares) from the middle of a hill or crater of the given
         /// radius: all of them in the middle, rounding up toward the edge, none past it.
         /// </summary>
@@ -64,9 +73,9 @@ namespace Chem
         /// turns the terrain to its dugTo; raised ground spills its water onto its neighbours.
         /// A cell that ends up blocking loses its cover and fire. A dig weaker than the terrain's
         /// hardness (materials.json) leaves it as it is: soft ground digs, rock needs strength 3,
-        /// metal never digs. Returns whether it changed.
+        /// metal and bedrock (hardness 0) never dig. Returns whether it changed.
         /// </summary>
-        public bool Reshape(int x, int y, int n, string terrain = null, int strength = 1)
+        public bool Reshape(int x, int y, int n, string terrain = null, int strength = 1, string by = null)
         {
             var c = At(x, y);
             if (c == null || !IsActiveAt(x, y)) return false;
@@ -74,7 +83,7 @@ namespace Chem
             bool uprooted = Uproot(c) || shattered;
             if (uprooted) WallLost(x, y);
             var t = TerrainOf(c);
-            if (t.Has("blocking") || t.Has("machine") || TooHard(t, n, strength)) return uprooted;
+            if (TooHard(t, n, strength, by) || Unshapeable(t)) return uprooted;
             var range = Rules.Sim.Height;
             int height = Math.Max(range.Min, Math.Min(range.Max, c.Height + n));
             if (Unmoved(c, x, y, height)) return uprooted;
@@ -97,11 +106,20 @@ namespace Chem
             return true;
         }
 
-        // Digging (n below 0) harder ground than the dig's strength: refused, and said once a tick.
-        bool TooHard(TerrainDef t, int n, int strength)
+        static bool Unshapeable(TerrainDef t) => t.Has("blocking") || t.Has("machine");
+
+        // Digging (n below 0) harder ground than the dig's strength, or what never digs (hardness 0, walls,
+        // machines): refused, and said once a tick, naming the spell or tool that tried (by) when there is one.
+        bool TooHard(TerrainDef t, int n, int strength, string by)
         {
-            if (n >= 0 || strength >= t.Hardness) return false;
-            LogOnce($"hard#{t.Id}#{Tick}", $"The {t.Name.ToLowerInvariant()} is too hard to dig");
+            bool never = t.Hardness <= 0 || Unshapeable(t);
+            if (n >= 0 || (!never && strength >= t.Hardness)) return false;
+            string name = t.Name.ToLowerInvariant();
+            string why;
+            if (never) why = $"The {name} can't be dug";
+            else if (by == null) why = $"The {name} is too hard to dig";
+            else why = $"The {name} is too hard for {by}";
+            LogOnce($"hard#{t.Id}#{Tick}", why);
             return true;
         }
 

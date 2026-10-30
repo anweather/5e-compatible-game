@@ -88,6 +88,10 @@ touch them.
 **Height step**
 : One unit of a cell's `Height`: 0.5 m raised or dug.
 
+**Hardness**
+: How hard a terrain is to dig (`dig.hardness`). A dig's **strength** (a
+  spell's, a crater's, a pick's) must reach it; hardness 0 never digs.
+
 **Tick batch**
 : Everything that happens to the world at one tick, in order: chunk
   switches, a rule switch, casts, effects, defense (`TickBatch`). The host

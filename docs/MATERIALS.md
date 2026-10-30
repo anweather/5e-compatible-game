@@ -53,7 +53,7 @@ means the verb does nothing to it.
   },
   "metal": {
     "name": "Metal", "tags": ["ground"],
-    "conduct": { "chance": 1 }, "rust": { "every": 2000, "leaves": "rusted-metal" }, "dig": { "hardness": 4 }
+    "conduct": { "chance": 1 }, "rust": { "every": 2000, "leaves": "rusted-metal" }, "dig": { "hardness": 0 }
   },
   "glass":  { "name": "Glass", "shatter": { "drop": 1.5, "leaves": "shards" } },
   "flesh":  { "name": "Flesh", "burn": { "catch": 0.5, "status": 24 }, "freeze": { "status": 30 }, "soak": { "status": 30 } }

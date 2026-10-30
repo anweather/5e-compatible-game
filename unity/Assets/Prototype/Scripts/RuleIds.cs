@@ -79,6 +79,7 @@ public static class ItemIds
     public const string Spyglass = "spyglass";
     public const string SendingStone = "sending-stone";
     public const string DancingLights = "dancing-lights";
+    public const string Pick = "pick";
 }
 
 /// <summary>Terrain ids (a cell's <c>T</c>), as in rules/materials.json.</summary>

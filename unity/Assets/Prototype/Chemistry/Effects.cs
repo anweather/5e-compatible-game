@@ -20,6 +20,8 @@ namespace Chem
         Spill,
         /// <summary>A heavy thing hit a window pane hard (World.Shatter).</summary>
         Shatter,
+        /// <summary>A held tool swung at a cell (items.json "use": "dig").</summary>
+        Dig,
     }
 
     /// <summary>A prop's effect on one cell: small enough to send like a cast.</summary>
@@ -74,6 +76,9 @@ namespace Chem
                     break;
                 case EffectKind.Shatter:
                     Shatter(effect.X, effect.Y);
+                    break;
+                case EffectKind.Dig:
+                    Dig(effect.X, effect.Y, Rules.Item(effect.Entity));
                     break;
             }
         }

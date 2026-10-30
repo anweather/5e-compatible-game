@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
@@ -259,7 +260,8 @@ namespace Chem.Tests
             Assert.That(w.At(4, 3).Height, Is.Zero, "Lower Earth can't dig rock");
             Assert.That(w.At(4, 6).Height, Is.Zero, "nor metal");
             Assert.That(w.At(4, 9).Height, Is.EqualTo(-1), "dirt digs");
-            Assert.That(w.Log, Has.Some.Matches<LogEntry>(l => l.Text == "The raised rock is too hard to dig"));
+            Assert.That(w.Log, Has.Some.Matches<LogEntry>(l => l.Text == "The raised rock is too hard for Lower Earth"), "the refusal names the spell");
+            Assert.That(w.Log, Has.Some.Matches<LogEntry>(l => l.Text == "The metal plate can't be dug"), "metal never digs");
         }
 
         [Test]
@@ -280,11 +282,77 @@ namespace Chem.Tests
         {
             IReadOnlyList<string> Errors(string patch) =>
                 Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(patch.Replace('\'', '"')) })).Errors;
-            Assert.That(Errors("{ 'terrain': { 'granite': { 'name': 'Granite', 'tags': ['ground'], 'hardness': 0 } } }"), Does.Contain("terrain granite: hardness must be a whole number from 1"));
+            Assert.That(Errors("{ 'terrain': { 'granite': { 'name': 'Granite', 'tags': ['ground'], 'hardness': -1 } } }"), Does.Contain("terrain granite: hardness must be a whole number from 0 (0 never digs)"));
             Assert.That(Errors("{ 'spells': [{ 'id': 'chisel', 'group': 'earth', 'name': 'Chisel', 'level': 1, 'shape': 'point', 'effect': 'terraform', 'dig': 1, 'strength': 1.5, 'radial': false, 'blurb': 'b' }] }"),
                 Does.Contain("spell chisel: strength must be a whole number from 1"));
             Assert.That(Errors("{ 'spells': [{ 'id': 'pop', 'group': 'fire', 'name': 'Pop', 'level': 1, 'shape': 'burst', 'radius': 1, 'element': 'fire', 'crater': { 'depth': 1, 'strength': 0 }, 'radial': false, 'blurb': 'b' }] }"),
                 Does.Contain("spell pop: crater needs a whole depth from 1, radius from 0 and strength from 1"));
+        }
+
+        [Test]
+        public void StoneShapeDigsRockButNothingDigsMetalOrBedrock()
+        {
+            // BACKLOG 4: Lower Earth (strength 1) digs dirt, sand and mud; rock (hardness 3) needs Stone Shape
+            // (strength 3); metal and bedrock (hardness 0) never dig, and each refusal says why.
+            var w = new World(R, 12, 5, 1, "dirt");
+            w.At(2, 2).T = "sand";
+            w.At(4, 2).T = "mud";
+            w.At(6, 2).T = "rock";
+            w.At(8, 2).T = "metal";
+            w.At(10, 2).T = "bedrock";
+            foreach (int x in new[] { 2, 4, 6, 8 }) w.Cast("mold-earth", x, 2, 1);
+            Assert.That(new[] { 2, 4, 6, 8 }.Select(x => w.At(x, 2).Height), Is.EqualTo(new[] { -1, -1, 0, 0 }), "sand and mud dig; rock and metal don't");
+            Assert.That(w.Log.Any(l => l.Text == "The raised rock is too hard for Lower Earth"));
+            foreach (int x in new[] { 6, 8, 10 }) w.Cast("stone-shape", x, 2, 1);
+            Assert.That(w.At(6, 2).Height, Is.EqualTo(-1), "Stone Shape digs rock");
+            Assert.That(w.At(6, 2).T, Is.EqualTo("rubble"));
+            Assert.That(w.At(8, 2).Height, Is.Zero, "but not metal");
+            Assert.That(w.Log.Any(l => l.Text == "The metal plate can't be dug"));
+            Assert.That(w.At(10, 2).T, Is.EqualTo("bedrock"), "nor bedrock");
+            Assert.That(w.Log.Any(l => l.Text == "The bedrock can't be dug"));
+            Run(w, 20);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f57b067a 1"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void APickDigsRockThroughAnEffect()
+        {
+            // BACKLOG 4: the pick (strength 3) digs what Stone Shape digs; it stops at metal and bedrock.
+            var w = new World(R, 10, 3, 1, "dirt");
+            w.At(2, 1).T = "rock";
+            w.At(4, 1).T = "metal";
+            w.At(6, 1).T = "bedrock";
+            foreach (int x in new[] { 2, 4, 6, 8 }) w.ApplyEffect(new EffectCommand(EffectKind.Dig, x, 1, "pick"));
+            Assert.That(w.At(2, 1).Height, Is.EqualTo(-1));
+            Assert.That(w.At(2, 1).T, Is.EqualTo("rubble"));
+            Assert.That(w.At(4, 1).Height, Is.Zero);
+            Assert.That(w.At(8, 1).Height, Is.EqualTo(-1), "dirt digs too");
+            Assert.That(w.Log.Any(l => l.Text == "The metal plate can't be dug"));
+            Assert.That(w.Log.Any(l => l.Text == "The bedrock can't be dug"));
+            w.ApplyEffect(new EffectCommand(EffectKind.Dig, 3, 1, "ball"));
+            Assert.That(w.At(3, 1).Height, Is.Zero, "an item that doesn't dig does nothing");
+            Run(w, 20);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1c4e549b 1"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void DigToolsNeedAStrength()
+        {
+            IReadOnlyList<string> Errors(string patch) =>
+                Assert.Throws<ModException>(() => R.WithMods(new[] { ModPatch.Parse(patch.Replace('\'', '"')) })).Errors;
+            Assert.That(Errors("{ 'items': { 'spade': { 'name': 'Spade', 'use': 'dig', 'strength': 0 } } }"), Does.Contain("item spade: use dig needs a whole strength from 1"));
+        }
+
+        [Test]
+        public void EveryGroundSaysHowHardItIs()
+        {
+            var terrain = (JObject)JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "materials.json")))["terrain"];
+            foreach (var p in terrain.Properties())
+            {
+                var t = R.Terrain[p.Name];
+                if ((t.Has("ground") || t.Has("low")) && !t.Has("machine"))
+                    Assert.That(p.Value["dig"]?["hardness"], Is.Not.Null, p.Name);
+            }
         }
 
         [Test]

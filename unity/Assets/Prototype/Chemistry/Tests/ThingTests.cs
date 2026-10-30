@@ -28,10 +28,10 @@ namespace Chem.Tests
         public void TheValleysThingsLoadAndFitTheRules()
         {
             var things = Valley;
-            Assert.That(things.Count, Is.EqualTo(19), "10 props and 9 items: the yard's, and the court's ball");
+            Assert.That(things.Count, Is.EqualTo(20), "10 props and 10 items: the yard's, and the court's ball");
             Assert.That(things.Check(R), Is.Empty);
             Assert.That(things.All.Count(t => R.Entity(t.Kind) != null), Is.EqualTo(10));
-            Assert.That(things.All.Count(t => R.Item(t.Kind) != null), Is.EqualTo(9));
+            Assert.That(things.All.Count(t => R.Item(t.Kind) != null), Is.EqualTo(10));
             Assert.That(things.ChunkCoords, Is.EquivalentTo(new[] { (4, 4), (4, 5), (5, 5) }), "the old yard straddles two chunks; the court is east of it");
 
             // The crate the online probe throws: yard cell (16, 6), the yard at world cell (279, 315).

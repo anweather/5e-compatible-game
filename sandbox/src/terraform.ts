@@ -1,6 +1,6 @@
 // Earth shaping: terraform spells raise and dig cells (Cell.h), and raised
 // ground sheds its water. Unity's port is Chemistry/World.Terraform.cs.
-import { type CraterDef, RULES, type SpellDef } from "./rules.ts";
+import { type CraterDef, type ItemDef, RULES, type SpellDef, type TerrainDef } from "./rules.ts";
 import { shatter, wallLost } from "./react.ts";
 import { type World, burns, cellAt, entityAt, idx, isBlocking, logOnce, neighbours, terrainDef } from "./world.ts";
 
@@ -17,7 +17,7 @@ export function terraform(w: World, s: SpellDef, cells: [number, number][], x: n
     if (s.taper && d > radius) continue;
     let n = s.taper ? tapered(steps, d, radius) : steps;
     if (toHeight) n = Math.max(0, n - cellAt(w, cx, cy)!.h);
-    if (n !== 0) reshape(w, cx, cy, n, s.terrain, s.strength ?? 1);
+    if (n !== 0) reshape(w, cx, cy, n, s.terrain, s.strength ?? 1, s.name);
   }
 }
 
@@ -39,12 +39,39 @@ export function crater(w: World, x: number, y: number, c: CraterDef | undefined)
 }
 
 /**
+ * A held tool's swing at (x, y): one step down, at the tool's strength (items.json
+ * "use": "dig"). Nothing for an item that doesn't dig. Unity's is World.Dig.
+ */
+export function dig(w: World, x: number, y: number, tool: ItemDef | undefined): void {
+  if (tool?.use === "dig") reshape(w, x, y, -1, undefined, tool.strength ?? 1, tool.name);
+}
+
+/**
  * Steps at distance d (in squares) from the middle of a hill or crater of the
  * given radius: all of them in the middle, rounding up toward the edge, none past it.
  */
 function tapered(steps: number, d: number, radius: number): number {
   if (d > radius) return 0;
   return Math.sign(steps) * Math.floor((Math.abs(steps) * (radius + 1 - d) + radius) / (radius + 1));
+}
+
+const unshapeable = (t: TerrainDef) => t.tags.includes("blocking") || t.tags.includes("machine");
+
+/**
+ * Digging (n below 0) harder ground than the dig's strength, or what never digs (hardness 0, walls, machines):
+ * refused, and said once a tick, naming the spell or tool that tried (by) when there is one (World.TooHard).
+ */
+function tooHard(w: World, id: string, t: TerrainDef, n: number, strength: number, by?: string): boolean {
+  const hardness = t.hardness ?? 1;
+  const never = hardness <= 0 || unshapeable(t);
+  if (n >= 0 || (!never && strength >= hardness)) return false;
+  const name = t.name.toLowerCase();
+  let why: string;
+  if (never) why = `The ${name} can't be dug`;
+  else if (by === undefined) why = `The ${name} is too hard to dig`;
+  else why = `The ${name} is too hard for ${by}`;
+  logOnce(w, `hard#${id}#${w.tick}`, why);
+  return true;
 }
 
 /**
@@ -55,7 +82,7 @@ function tapered(steps: number, d: number, radius: number): number {
  * turns the terrain to its dugTo; raised ground spills its water onto its
  * neighbours. A cell that ends up blocking loses its cover and fire.
  */
-export function reshape(w: World, x: number, y: number, n: number, terrain?: string, strength = 1): boolean {
+export function reshape(w: World, x: number, y: number, n: number, terrain?: string, strength = 1, by?: string): boolean {
   const c = cellAt(w, x, y);
   if (!c) return false;
   const shattered = shatter(w, x, y);
@@ -67,11 +94,7 @@ export function reshape(w: World, x: number, y: number, n: number, terrain?: str
     t = terrainDef(c);
   }
   if (uprooted) wallLost(w, x, y);
-  if (t.tags.includes("blocking") || t.tags.includes("machine")) return uprooted;
-  if (n < 0 && strength < (t.hardness ?? 1)) {
-    logOnce(w, `hard#${c.t}#${w.tick}`, `The ${t.name.toLowerCase()} is too hard to dig`);
-    return uprooted;
-  }
+  if (tooHard(w, c.t, t, n, strength, by) || unshapeable(t)) return uprooted;
   const { min, max, blockAt } = RULES.sim.height;
   const h = Math.max(min, Math.min(max, c.h + n));
   if (h === c.h || (h >= blockAt && entityAt(w, x, y))) return uprooted;

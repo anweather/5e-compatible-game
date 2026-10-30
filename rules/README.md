@@ -13,7 +13,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 | `critters.json` | The sandbox's critters (its emitters): what each emits, how often, and in what shape. `hours` (`[from, to]`, across midnight when from is the later) are when it's out; outside them it does nothing. Without, it's always out |
 | `components.json` | What a thing can be made of or do, by name, each with what it means: `flammable`, `creature`, `conducts`, `floats`, `breakable`, `heavy`, `brittle`. Entities and items list theirs (`"components": ["flammable", "breakable"]`) and entity rules match on them, so one rule covers everything with a component. At most 64; `flammable` and `creature` are always there (the engine reads them) |
 | `entities.json` | Things on the board: HP, mass, `components`, explodes. The old `"flammable": true` and `"creature": true` still load, as shorthand for those components. A `raider` row makes one a defense-field raider: `ticksPerSquare` (its pace), and the elements it's `weak` to (double damage) or `resist`s (half, rounded up) |
-| `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`), `breaks` (impact speed in m/s and what it spills), `components`. The sandbox carries and checks them but has no items |
+| `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`, `dig` with a whole `strength` from 1), `breaks` (impact speed in m/s and what it spills), `components`. The sandbox carries and checks them but has no items |
 | `machines.json` | What each machine needs before it powers the gates |
 | `groups.json` | The Unity game's spell radial: its elements by id (`name`, `order` around the ring from the top, `color` as `#rrggbb`). Each spell in `spells.json` names one with `"group"`; one with none goes under the last. UI only, but mods can regroup or add elements |
 | `combos.json` | Casting by elements (`docs/SPELL_COMBOS.md`): the four `elements`, the `window` in ticks for a second one, `moveFactor` (walking speed while the cast meter drains, for the view), `singles` by element and `pairs` by first then second element, each with `name`, `spell`, `shape`, `castTicks` and optional `held` (the spell when held at the ground) and `todo` (the spell is a stand-in for one not made yet). A single's `castTicks` must be at least the window. `dpad` lists the spells with no element, in cycling order: `name`, `castTicks`, and `spell` (without one the slot shows but can't be cast). Mods deep-merge over it; lists replace whole |
@@ -93,11 +93,20 @@ elevation plus height.
                         // within sim.height min..max, leaving higher squares alone, so
                         // "height": 3 (blockAt) always walls, even across a trench.
   "terrain": "rock",    // optional: what the squares become (not a blocking terrain)
+  "strength": 1,        // optional: a dig's strength, a whole number from 1 (default 1)
   "taper": true }       // optional: a hill or crater, full height in the middle, 1 at the radius
 ```
 
 - **Blocking terrain and machines** (bedrock, trees, gates, boilers)
   can't be shaped.
+- **Hardness:** a dig needs a `strength` of at least the terrain's
+  `dig.hardness` (1 when absent), and hardness 0 never digs. Lower Earth
+  and Earthen Trench (strength 1) move soil, sand, mud and rubble; Fireball
+  (strength 2) breaks frozen ground, bridges and glass; Stone Shape and a pick
+  (`items.json` `"use": "dig"`, strength 3) dig rock; metal, bedrock, walls
+  and machines never dig. Each refusal is logged once a tick with its
+  reason: "The raised rock is too hard for Lower Earth", "The metal plate
+  can't be dug". Raising isn't affected.
 - **Uprooting:** a terrain with `uprootsTo` (a tree topples into
   `deadfall`; a cabin's log wall caves in to rubble) turns into it as soon
   as any shaping touches it, its `uprootLog` logged once a tick, and the
@@ -106,13 +115,6 @@ elevation plus height.
 - **Digging** clears the cover and turns the terrain into its `dugTo`
   (grass is dug to dirt; raised rock to rubble) unless the spell names a
   `terrain`.
-- **Hardness:** a terrain's `hardness` (a whole number from 1, default 1)
-  is how strong a dig it takes: a terraform spell's `strength` (default 1)
-  or a crater's must be at least that, or the square stays as it is and
-  "The … is too hard to dig" is logged once a tick. Soil is 1 (Lower Earth
-  and Earthen Trench dig it), raised rock 3 (only a strength-3 dig: a
-  Meteor's crater, later Stone Shape or a pick), metal plate 4 (nothing
-  digs it). Bedrock and walls are blocking, so never shaped anyway.
 - **Raising** spills the square's water onto its neighbours, nearest
   first, so no water is lost.
 - **A square raised `sim.height.blockAt` (3) steps or more is a wall:**
