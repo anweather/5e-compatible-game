@@ -326,6 +326,8 @@ export interface SimParams {
   fallDamage: number;
   zapDamage: number;
   conductLimit: number;
+  /** Unfrozen water conducts: lightning into it runs through the connected water, conductLimit cells at most (World.ChainsWet). */
+  chainsWet?: boolean;
   defense: DefenseParams;
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
   day: {
@@ -791,6 +793,7 @@ export function validateRules(r: Rules): string[] {
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
+  if (r.sim.chainsWet !== undefined && typeof r.sim.chainsWet !== "boolean") errors.push("sim chainsWet must be true or false");
   for (const k of ["when", "notBy"] as const)
     if (r.sim.status.shatter?.[k] != null && typeof r.sim.status.shatter[k] !== "string") errors.push(`sim status.shatter.${k} must be a name`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));

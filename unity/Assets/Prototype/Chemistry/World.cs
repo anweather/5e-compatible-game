@@ -208,7 +208,7 @@ namespace Chem
         /// </summary>
         public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
-        public bool IsConductive(Cell c) => (c.Water > 0 && !c.Frozen) || TerrainOf(c).Conducts;
+        public bool IsConductive(Cell c) => (Rules.Sim.ChainsWet && c.Water > 0 && !c.Frozen) || TerrainOf(c).Conducts;
 
         public double Flammability(Cell c)
         {

@@ -9,6 +9,7 @@
   "fallDamage": 4,
   "zapDamage": 3,
   "conductLimit": 80,
+  "chainsWet": true,
   "defense": {
     "lives": 10, "waves": 5, "first": 3, "growth": 2, "hpPerWave": 2,
     "warmup": 24, "spawnEvery": 9, "betweenWaves": 60,

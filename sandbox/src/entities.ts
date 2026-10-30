@@ -192,7 +192,8 @@ export function tickEntities(w: World) {
     if (c.gas === "steam" && c.gasAmt >= 2 && hasComponent(def, "creature") && w.tick % s.status.scaldEvery === 0) {
       damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding");
     }
-    if (c.charge === 3 && w.entities.includes(e)) {
+    // A strike reaching its cell shocks it; a wet one is shocked by charged water beside it too.
+    if ((c.charge === 3 || ((e.status["wet"] ?? 0) > 0 && chargedWaterBeside(w, e.x, e.y))) && w.entities.includes(e)) {
       const mul = applyEntityElement(w, e, "lightning", { power: 1, direct: false });
       damage(w, e, s.zapDamage * mul, "lightning", "lightning");
     }
@@ -216,4 +217,13 @@ export function tickEntities(w: World) {
       }
     }
   }
+}
+
+/** Whether a cell next to (x, y) is water a strike has just charged (charge 3) (World.ChargedWaterBeside). */
+function chargedWaterBeside(w: World, x: number, y: number): boolean {
+  for (const [nx, ny] of neighbours(w, x, y)) {
+    const n = cellAt(w, nx, ny)!;
+    if (n.charge === 3 && n.water > 0 && !n.frozen) return true;
+  }
+  return false;
 }

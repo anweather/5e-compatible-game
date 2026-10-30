@@ -252,11 +252,23 @@ namespace Chem
             if (c.Heat > 0 && def.Creature && Tick % s.BurnDamageEvery == 0) DamageRaider(r, 1, "hot metal", "fire");
             if (c.Gas == "steam" && c.GasAmt >= 2 && def.Creature && Tick % s.ScaldEvery == 0)
                 DamageRaider(r, Rules.Gases.TryGetValue("steam", out var steam) ? steam.Scald : 1, "scalding", null);
-            if (c.Charge == 3 && r.Alive)
+            // A strike reaching its cell shocks it; a wet one is shocked by charged water beside it too.
+            if ((c.Charge == 3 || (r.StatusOf("wet") > 0 && ChargedWaterBeside(r.X, r.Y))) && r.Alive)
             {
                 int mul = ApplyRaiderElement(r, "lightning", false);
                 DamageRaider(r, s.ZapDamage * mul, "lightning", "lightning");
             }
+        }
+
+        /// <summary>Whether a cell next to (x, y) is water a strike has just charged (Cell.Charge 3).</summary>
+        bool ChargedWaterBeside(int x, int y)
+        {
+            foreach (var (nx, ny, _) in ActiveNeighbours(x, y))
+            {
+                var n = At(nx, ny);
+                if (n.Charge == 3 && n.Water > 0 && !n.Frozen) return true;
+            }
+            return false;
         }
 
         // Into a dry pit: hurt once, until it's out again.

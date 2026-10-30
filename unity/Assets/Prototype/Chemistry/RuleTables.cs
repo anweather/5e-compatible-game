@@ -322,6 +322,8 @@ namespace Chem
         /// </summary>
         public int ThinWater = 2, SoakPass = 8, DampTicks = 600;
         public int ConductLimit = 80;
+        /// <summary>Unfrozen water conducts (sim.json chainsWet): lightning into it runs through the connected water, ConductLimit cells at most.</summary>
+        public bool ChainsWet = true;
         // Not used by the cell port, carried so a view can read them.
         public int FallDamage = 4, ZapDamage = 3;
         /// <summary>A burning entity takes 1 damage on every tick divisible by this (sim.json status).</summary>
@@ -811,6 +813,7 @@ namespace Chem
                 s.Gas.MaxAmount = Int(g["maxAmount"]) ?? s.Gas.MaxAmount;
             }
             s.ConductLimit = Int(o["conductLimit"]) ?? s.ConductLimit;
+            s.ChainsWet = Bool(o["chainsWet"]) ?? s.ChainsWet;
             s.FallDamage = Int(o["fallDamage"]) ?? s.FallDamage;
             s.ZapDamage = Int(o["zapDamage"]) ?? s.ZapDamage;
             if (o["status"] is JObject st) ParseStatus(s, st);

@@ -193,7 +193,7 @@ export const coverBurns = (c: Cell) => c.cover !== null && RULES.covers[c.cover]
 
 export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.covers[c.cover]?.tags.includes(tag) ?? false);
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);
-export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || conducts(terrainDef(c));
+export const isConductive = (c: Cell) => (RULES.sim.chainsWet !== false && c.water > 0 && !c.frozen) || conducts(terrainDef(c));
 /** The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none. */
 export const windDir = (w: World): number => (w.wind ? w.wind.dir : w.weather.windDir);
 
