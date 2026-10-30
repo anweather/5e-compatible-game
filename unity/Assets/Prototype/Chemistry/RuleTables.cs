@@ -137,6 +137,8 @@ namespace Chem
         public double? Decay;
         /// <summary>From how many units a square of it hides what's behind (World.LineOfSight), or 0 if it never does.</summary>
         public int BlocksSightAt;
+        /// <summary>Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); 0 never.</summary>
+        public int CondenseEvery;
     }
 
     /// <summary>
@@ -504,6 +506,7 @@ namespace Chem
                     Scald = Int(p.Value["scald"]) ?? 0,
                     Decay = Num(p.Value["decay"]),
                     BlocksSightAt = Int(p.Value["blocksSightAt"]) ?? 0,
+                    CondenseEvery = Int(p.Value["condenseEvery"]) ?? 0,
                 };
 
             foreach (var t in doc["cellRules"].OfType<JObject>())

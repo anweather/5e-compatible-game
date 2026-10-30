@@ -660,11 +660,28 @@ namespace Chem
         double DecayOf(string gas) =>
             Rules.Gases.TryGetValue(gas, out var g) && g.Decay.HasValue ? g.Decay.Value : Rules.Sim.Gas.DecayChance;
 
+        /// <summary>
+        /// A unit of gas just decayed: a gas with condenseEvery (steam) leaves a unit of water each time
+        /// its cell's count falls from a multiple of it (2 to 1, not 1 to 0), so thick steam cools back
+        /// into water and thin steam fades. Not into a wall, but into a vessel.
+        /// </summary>
+        void Condense(Chunk ch, Cell c)
+        {
+            if (!Rules.Gases.TryGetValue(c.Gas, out var g) || g.CondenseEvery <= 0 || (c.GasAmt + 1) % g.CondenseEvery != 0) return;
+            if (IsBlocking(c) && !HasTag(c, "vessel")) return;
+            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 1);
+            WaterMoved(ch);
+        }
+
         /// <summary>A gas cell decays, blows downwind, or spreads to a thinner neighbour.</summary>
         void Drift(Chunk ch, int i)
         {
             var c = ch.Cells[i];
-            if (Rand() < DecayOf(c.Gas)) c.GasAmt--;
+            if (Rand() < DecayOf(c.Gas))
+            {
+                c.GasAmt--;
+                Condense(ch, c);
+            }
             if (c.GasAmt <= 0)
             {
                 c.Gas = null;

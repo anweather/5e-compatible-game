@@ -98,6 +98,8 @@ export interface GasDef {
   decay?: number;
   /** From how many units a square of it hides what's behind (lineOfSight); unset never does. */
   blocksSightAt?: number;
+  /** Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); unset never. */
+  condenseEvery?: number;
 }
 
 export interface CellCond {
@@ -823,6 +825,8 @@ export function validateRules(r: Rules): string[] {
     if (t.dissolvedBy && !t.dissolvesTo) errors.push(`terrain ${id}: dissolve without leaves`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
   }
+  for (const [id, g] of Object.entries(r.gases))
+    if (g.condenseEvery !== undefined && (!Number.isInteger(g.condenseEvery) || g.condenseEvery < 1)) errors.push(`gas ${id}: condenseEvery must be a whole number from 1`);
   for (const [id, cv] of Object.entries(r.covers)) {
     if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
     if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);

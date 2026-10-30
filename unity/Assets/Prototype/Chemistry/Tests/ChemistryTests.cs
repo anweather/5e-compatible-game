@@ -134,14 +134,13 @@ namespace Chem.Tests
             w.Cast("fire-bolt", 6, 6, 0);
             Run(w, 150);
 
-            Assert.That(w.CellHash(), Is.EqualTo("73a467cc"));
-            Assert.That(w.RngState, Is.EqualTo(4226383236u));
+            Assert.That(w.CellHash(), Is.EqualTo("429015b3"));
+            Assert.That(w.RngState, Is.EqualTo(2675140523u));
             CollectionAssert.AreEqual(new[]
             {
                 "0|info|1|You cast Fire Bolt",
                 "0|info|1|Fire takes hold of the grass",
                 "11|notable|3|The oil ignites",
-                "140|notable|1|The brambles burn away, opening a path",
             }, w.Log.Select(Entry).ToArray());
         }
 
@@ -633,7 +632,7 @@ namespace Chem.Tests
             Assert.That(w.Cells.Count(c => c.Cover != null), Is.EqualTo(0), "with the oil used up, and no ash on the water");
             int water = w.Cells.Sum(c => c.Water);
             Assert.That(water, Is.InRange(1, 149), "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
-            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("29 28 52 a1f460b7 189079474"), "the same in the sandbox");
+            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("29 28 90 87abc88e 662727550"), "the same in the sandbox");
         }
 
         [Test]
@@ -686,6 +685,28 @@ namespace Chem.Tests
             Assert.That(w.Log.Any(l => l.Text == "Water hisses into steam on the hot metal"));
             Assert.That(w.At(4, 2).Heat, Is.LessThan(98), "and cools it faster than time alone");
             Assert.That($"{r.Hp} {steam} {w.At(4, 2).Heat} {w.CellHash()} {w.RngState}", Is.EqualTo("84 3 0 519dc5ad 1639742223"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void SteamScaldsFleshNotBoneAndCondensesBackIntoWater()
+        {
+            // Steam scalds a creature of a material that scalds (flesh, not bone), as fire damage; it drifts,
+            // and as it decays a cell's thick steam leaves water (gases.steam condenseEvery 2).
+            var w = new World(R, 9, 5, 1, "metal");
+            foreach (var c in w.Cells)
+            {
+                c.Gas = "steam";
+                c.GasAmt = 6;
+            }
+            var goblin = w.SpawnRaider("goblin", 3, 2, 99);
+            var hound = w.SpawnRaider("bone-hound", 5, 2, 99);
+            Run(w, 30);
+            Assert.That(goblin.Hp, Is.LessThan(99), "flesh scalds");
+            Assert.That(hound.Hp, Is.EqualTo(99), "bone doesn't");
+            Run(w, 150);
+            int steam = w.Cells.Sum(c => c.Gas == "steam" ? c.GasAmt : 0), water = w.Cells.Sum(c => c.Water);
+            Assert.That(water, Is.GreaterThan(0), "it cooled back into water");
+            Assert.That($"{goblin.Hp} {hound.Hp} {steam} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("89 99 0 112 d06de483 2670964354"), "the same in the sandbox");
         }
 
         [Test]

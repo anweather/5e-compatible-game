@@ -203,8 +203,9 @@ export function tickEntities(w: World) {
       if (hasComponent(def, "flammable") && w.entities.includes(e)) applyElement(w, e.x, e.y, "fire", { power: 1, direct: false });
     }
     if ((c.heat ?? 0) > 0 && hasComponent(def, "creature") && w.tick % s.status.burnDamageEvery === 0) damage(w, e, 1, "hot metal", "fire");
-    if (c.gas === "steam" && c.gasAmt >= 2 && hasComponent(def, "creature") && w.tick % s.status.scaldEvery === 0) {
-      damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding");
+    // Thick steam scalds what is made of a material that scalds (flesh; not bone or chitin).
+    if (c.gas === "steam" && c.gasAmt >= 2 && !!def.material && !!RULES.terrain[def.material]?.tags.includes("scalds") && w.tick % s.status.scaldEvery === 0) {
+      damage(w, e, RULES.gases.steam?.scald ?? 1, "scalding", "fire");
     }
     if ((c.charge === 3 || shockedFromBeside(w, e, def)) && w.entities.includes(e)) {
       const mul = applyEntityElement(w, e, "lightning", { power: 1, direct: false });

@@ -47,7 +47,8 @@ test("every creature names a known material that gives it nothing yet", () => {
     const m = def.material !== undefined ? RULES.terrain[def.material] : undefined;
     assert.ok(m, `${id} names a known material`);
     assert.ok(["flesh", "bone", "chitin"].includes(def.material!), id);
-    assert.equal(m.tags.length, 0, `${id}'s ${def.material} gives it nothing`);
+    // Only scalds (steam scalds flesh), which is a hazard, not a component.
+    assert.equal(m.tags.filter((t) => t !== "scalds").length, 0, `${id}'s ${def.material} gives it nothing`);
   }
 });
 

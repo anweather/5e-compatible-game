@@ -18,6 +18,7 @@
 //   conduct { chainsWet }                                         chainsWet: a wet creature of it is shocked by charged water
 //                                                                 next to it (a group holding only chainsWet doesn't conduct)
 //   shatter { leaves }                                            brittle tag (a thing of it breaks when it lands hard), shattersTo (a cell of it: World.Shatter)
+//   scald   {}                                                    scalds tag (a creature of it is scalded by steam)
 //   grow    { into, log }                                         growsTo, growLog
 //   uproot  { leaves, log }                                       uprootsTo, uprootLog
 //   dissolve { by, leaves }                                       dissolvedBy, dissolvesTo (covers too; a cover's leaves is a cover, or none)
@@ -45,6 +46,7 @@ namespace Chem
             ("hot", null, new[] { ("for", "hotFor"), ("quench", "hotQuench") }),
             ("conduct", "conductive", System.Array.Empty<(string, string)>()),
             ("shatter", "brittle", new[] { ("leaves", "shattersTo") }),
+            ("scald", "scalds", System.Array.Empty<(string, string)>()),
             ("grow", null, new[] { ("into", "growsTo"), ("log", "growLog") }),
             ("uproot", null, new[] { ("leaves", "uprootsTo"), ("log", "uprootLog") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
