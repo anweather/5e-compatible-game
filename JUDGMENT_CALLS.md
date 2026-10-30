@@ -41,6 +41,23 @@ Each entry has:
 
 ## Decided
 
+### J-039: Do the combo casts each need their own job?
+
+- **Asked:** 2026-10-30, by Andrew: "the first spells do the same things
+  largely, just different shapes".
+- **Also comes up when:** any new spell, item or tool; a combo that feels
+  like another one; choosing between a damage number and a material effect.
+- **Answer:** yes. One verb per cast (light, blast, scald, launch, freeze,
+  transform, roll, conduct, carry...), decided by the material system and
+  drawn with the effects library. Casts chain: an element onto a lingering
+  spell changes it. Flame Wave, Fog Bank, Flood, Molten Boulder and Dust
+  Storm are replaced by Falling Star, Geyser, Wave, Forge and Rolling
+  Boulder. The table is in docs/SPELL_COMBOS.md.
+- **Why:** the game is about material interactions and mini games; spells
+  that only differ in shape add buttons, not play. Chains give many outcomes
+  from 20 casts without new entities.
+- **Revisited:** 0
+
 ### J-038: Do grimoire discoveries survive a world reset?
 
 - **Asked:** 2026-10-29, after combo-core stored the grimoire in the world

@@ -1,4 +1,4 @@
-# Element combos (design draft, 2026-10-29)
+# Element combos (design, 2026-10-29; the table redone 2026-10-30)
 
 Andrew's direction, still being explored. The spell radial stays as a debug
 and experiment tool. The real input becomes elements combined in sequence.
@@ -36,19 +36,111 @@ and experiment tool. The real input becomes elements combined in sequence.
 - **Discovery:** combos start hidden. Casting one for the first time adds
   it to the **grimoire**, opened with d-pad down.
 
-## Draft combo table (to tune)
-Combos make the materials the chemistry already simulates. Rule of thumb: the
-**first** element is what the spell is made of, the **second** is how it
-moves or changes.
+## The combo table: one verb per cast (Andrew, 2026-10-30; J-039)
+The first draft gave most casts the same job ("put an element on an area,
+plus damage") in different shapes. Now each cast has **its own verb**. Rule
+of thumb, unchanged: the **first** element is what the spell is made of, the
+**second** is how it moves or changes.
 
-Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
+**How every cast is built:**
+- **Through the material system.** A spell applies its element; the
+  material verbs in `rules/materials.json` (burn, melt, freeze, soak, boil,
+  break, shatter, conduct, float, grow, rot, rust, dissolve, dig) decide what
+  happens to each cell. New behaviour goes in a material verb, not in a
+  reaction written for one spell. The hand-written spell reactions left in
+  `rules/reactions.json` (`fire-mud`, `fire-snow`, `fire-ice` and the like)
+  move into materials as they're touched.
+- **Drawn with the effects library.** The pooled particles, cell tints and
+  shader terms that exist; GPU first, no swarms of entities. A real object
+  (the boulder) is built from simple pieces.
+- **Setup or trigger.** A setup leaves something in the world that lasts and
+  changes; a trigger transforms what's already there.
+- **Chaining:** an element cast onto a spell still in the world changes that
+  spell (fire into a dust cloud explodes; lightning into a rain cloud makes a
+  storm). That one rule turns 20 casts into far more outcomes.
 
 | first ↓ / then → | Fire | Water | Earth | Air |
 |---|---|---|---|---|
-| **Fire** | Fireball (held, at the ground: Meteor) | Scalding steam burst | Lava pool | Flame wave (wind-driven fire) |
-| **Water** | Fog bank | Wave / flood | Mud | Frost (Ray of Frost) |
-| **Earth** | Molten boulder (leaves lava) | Plant growth | Wall of Stone | Dust storm |
-| **Air** | Lightning | Rain cloud / storm | Sand blast (leaves sand) | Whirlwind |
+| **Fire** | Fireball | Scalding Steam | Lava Pool | Falling Star |
+| **Water** | Geyser | Wave | Mud | Frost |
+| **Earth** | Forge | Plant Growth | Wall of Stone | Rolling Boulder |
+| **Air** | Lightning | Rain Cloud | Sand Blast | Whirlwind |
+
+Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
+
+**Fire: light, blast, scald, make terrain, strike from above.**
+- **Fire Bolt, the match:** small and exact; lights one thing (a fuse, a
+  lamp, a bush).
+- **Fireball, the explosion:** a blast that scatters burning debris a few
+  cells out and sets off oil, dust and gas. (Its "held: Meteor" goes; Meteor
+  stays for meteor showers.)
+- **Scalding Steam, the fog that hurts:** scalds, blocks sight, rusts metal
+  faster, condenses back to water.
+- **Lava Pool, the terrain maker:** runs downhill like water, crusts over so
+  it can be walked on, turns to rock at once in water.
+- **Falling Star (replaces Flame Wave), the strike from above:** the only
+  delayed cast. A glowing mark shows where it lands about a second later, so
+  you aim ahead. A crater, burning rock as fuel, hot rock or a little lava,
+  snow and ice melted, water flashed to steam. A small Meteor; the full one
+  stays for showers.
+
+**Water: fill, launch, wave, stick, freeze.**
+- **Create Water, the bucket:** fills holes, puts out a fire, soaks fuel
+  against fire, waters plants. Still, on purpose.
+- **Geyser (replaces Fog Bank), the launcher:** acts on water already
+  there. Aimed at a pond or river, it boils that spot into a jet that throws
+  players, props and creatures upward (reach a ledge, launch a goblin) and
+  scalds swimmers. Fog's hiding job goes to Fog Cloud.
+- **Wave (replaces Flood), the moving one:** travels over the ground,
+  carries light props, puts out fires on the way, knocks creatures back,
+  leaves mud where it stops.
+- **Mud, the sticky setup:** creatures get stuck. Fire (Forge) bakes it to
+  brick, a building material; frost freezes it hard; it dries to dirt over
+  time.
+- **Frost, the bridge builder:** freezes water surfaces into walkable ice
+  and wet creatures solid (a hit shatters them). Frozen ground is slippery:
+  an ice-slide mini game.
+
+**Earth: dig, transform, grow, build, roll.**
+- **Raise Earth, the shovel:** raises or digs soft ground only, by terrain
+  hardness (soil, sand, mud and rubble; not rock).
+- **Forge (replaces Molten Boulder), the transformer:** heats the ground or
+  a thing where it's aimed, and the material decides: sand to glass, mud to
+  brick, metal red-hot (it burns whoever touches it), ice and snow melt, wet
+  things dry.
+- **Plant Growth, the living one:** vines climb walls and bridge gaps;
+  roots crack stone over time (break); it grows fuel that burns, and rots
+  when it dies.
+- **Wall of Stone, the builder:** walls, ramps and dams. Stone is hard, so
+  only a pick, Shatter or Falling Star breaks it. Over water it makes
+  stepping stones.
+- **Rolling Boulder (replaces Dust Storm), earth set moving:** a boulder
+  rolls downhill with the terrain, knocks creatures over, smashes brittle
+  things (glass, ice, crates), stops in water as a dam, and leaves a trail
+  of dust (light it: a dust explosion). A bowling mini game, and a ball for
+  the ball court.
+
+**Air: fan, conduct, rain, scour, carry.**
+- **Gust of Wind, the fan:** blows gas, fog and steam away, pushes floating
+  things across water, blows out small fires and feeds big ones.
+- **Lightning, the conductor:** jumps to the nearest metal or water in range
+  instead of flying straight, and runs through it. Shocks wet creatures,
+  lights dry fuel, shatters frozen things, and powers machines (gates,
+  levers, `machines.json`): "get the charge to the gate" puzzles.
+- **Rain Cloud, weather in a bottle:** drifts with the wind; soaks, puts
+  out fires, waters plants, slowly fills holes. Lightning into it makes a
+  storm that keeps striking; cold makes snow; Gust steers it.
+- **Sand Blast, the scourer:** strips surface layers (rust, moss, snow,
+  frost, acid stains), wears wooden walls thin and raised dirt down, and
+  leaves sand that Forge turns to glass.
+- **Whirlwind, the carrier:** travels, and takes on what it crosses: a fire
+  tornado over fire, a waterspout over water, a sandstorm over sand, a
+  smoke column, a snow flurry. It carries what it picks up and drops it all
+  when it dies out.
+
+**Build order:** first Whirlwind taking on elements, the dust explosion
+(Rolling Boulder's dust or any dust cloud, plus fire), Forge on mud and sand,
+and Falling Star. Then the rest of the table, a few casts per task.
 
 Shape from how the cast is released, the same for every combo: tap for a
 projectile, hold for a beam or stream (trigger depth for power), aim at the
