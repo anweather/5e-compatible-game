@@ -50,6 +50,7 @@
     "ash":      { "name": "Ash", "tags": [] },
     "snow":     { "name": "Snow", "tags": ["snow"], "melt": { "water": 1 } },
     "snowbank": { "name": "Snow bank", "tags": ["snow"], "melt": { "into": "snow", "water": 1 } },
+    "frost":    { "name": "Frost", "tags": ["slippery"], "lasts": 240, "witherLog": "The frost thaws away", "melt": { "water": 1 } },
     "embers":   { "name": "Burning rock", "tags": [], "burn": { "catch": 0.9, "fuel": 30, "intensity": 2 } },
     "thorns":   { "name": "Thorns", "tags": ["spiky"], "lasts": 360, "witherLog": "The thorns wither away", "damage": [1, 4], "speed": 0.5, "burn": { "catch": 0.5, "fuel": 6, "intensity": 2 }, "dissolve": { "by": "acid" } }
   },

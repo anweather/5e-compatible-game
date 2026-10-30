@@ -13,7 +13,7 @@ import {
 } from "./world.ts";
 import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
 import { isNight } from "./night.ts";
-import { METEOR_SPELL, landSpell, landStars, spellById, tickWhirlwinds } from "./actions.ts";
+import { METEOR_SPELL, landSpell, landStars, spellById, tickWaves, tickWhirlwinds } from "./actions.ts";
 
 export function step(w: World): void {
   w.tick++;
@@ -31,6 +31,7 @@ export function step(w: World): void {
   tickDefense(w);
   tickCombos(w);
   tickWhirlwinds(w);
+  tickWaves(w);
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
   const floating: [Cell, string, number][] = []; // what floating covers reached, laid after the pass (World.floating)

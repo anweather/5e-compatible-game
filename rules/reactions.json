@@ -4,13 +4,13 @@
     { "id": "fire-mud", "element": "fire", "if": { "terrainTag": "muddy" }, "do": [{ "extinguish": true }], "log": "The mud smothers the fire", "stop": true },
     { "id": "fire-oil", "element": "fire", "if": { "cover": ["oil", "grease"] }, "do": [{ "ignite": "cover" }], "log": "The {cover} ignites", "notable": true, "stop": true },
     { "id": "fire-thorns", "element": "fire", "if": { "cover": ["thorns"] }, "do": [{ "ignite": "cover" }], "log": "The thorns catch fire", "stop": true },
-    { "id": "fire-melt", "element": "fire", "if": { "cover": ["snowbank", "snow"] }, "do": [{ "meltCover": true }], "log": "The {cover} melts", "stop": true },
+    { "id": "fire-melt", "element": "fire", "if": { "cover": ["snowbank", "snow", "frost"] }, "do": [{ "meltCover": true }], "log": "The {cover} melts", "stop": true },
     { "id": "fire-ice", "element": "fire", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water", "stop": true },
     { "id": "fire-water", "element": "fire", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam", "stop": true },
     { "id": "fire-flammable", "element": "fire", "if": { "terrainTag": "flammable" }, "do": [{ "ignite": 2 }], "log": "Fire takes hold of the {terrain}", "stop": true },
     { "id": "fire-heat", "element": "fire", "do": [{ "heat": true }], "log": "The {terrain} glows hot" },
 
-    { "id": "heat-melt", "element": "heat", "if": { "cover": ["snowbank", "snow"] }, "do": [{ "meltCover": true }], "log": "The {cover} melts" },
+    { "id": "heat-melt", "element": "heat", "if": { "cover": ["snowbank", "snow", "frost"] }, "do": [{ "meltCover": true }], "log": "The {cover} melts" },
     { "id": "heat-ice", "element": "heat", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water" },
     { "id": "heat-bake", "element": "heat", "if": { "terrainTag": "bakes" }, "do": [{ "bake": true }], "log": "The heat turns the {terrain} hard", "notable": true },
     { "id": "heat-water", "element": "heat", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam" },
@@ -18,7 +18,13 @@
 
     { "id": "cold-fire", "element": "cold", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "Frost snuffs out the flames" },
     { "id": "cold-steam", "element": "cold", "if": { "gas": "steam" }, "do": [{ "condense": true }], "log": "Steam condenses back into water" },
-    { "id": "cold-water", "element": "cold", "if": { "water": true }, "do": [{ "freeze": true }], "log": "The water freezes solid" },
+    { "id": "cold-water", "element": "cold", "if": { "water": true }, "do": [{ "freeze": true }], "log": "The water freezes solid", "stop": true },
+    { "id": "cold-covered", "element": "cold", "if": { "cover": ["oil", "grease", "thorns", "snow", "snowbank", "embers", "frost"] }, "do": [], "stop": true },
+    { "id": "cold-frost", "element": "cold", "if": { "notTerrainTag": "blocking", "water": false, "frozen": false, "power": 4 }, "do": [{ "setCover": "frost" }], "log": "Frost glazes the ground, slippery underfoot", "stop": true },
+
+    { "id": "geyser-water", "element": "geyser", "if": { "water": true }, "do": [{ "boil": 4 }], "log": "The water boils up in a roaring jet", "notable": true, "stop": true },
+
+    { "id": "wave-fire", "element": "wave", "if": { "fire": true }, "do": [{ "extinguish": true }, { "gas": "steam", "n": 1 }], "log": "The wave puts the fire out", "notable": true },
 
     { "id": "water-oilfire", "element": "water", "if": { "fire": true, "cover": ["oil", "grease"] }, "do": [{ "spreadCover": 2 }, { "addWater": "power" }], "log": "Water can't douse burning {cover}. It splashes the fire outward!", "notable": true, "stop": true },
     { "id": "water-fire", "element": "water", "if": { "fire": true }, "do": [{ "extinguish": true }, { "gas": "steam", "n": 2 }], "log": "Water douses the fire in a hiss of steam" },
@@ -90,6 +96,9 @@
     { "id": "e-cold-wet", "element": "cold", "if": { "status": "wet", "has": "creature", "verb": "freeze" }, "do": [{ "clear": "wet" }, { "statusOf": "freeze" }], "log": "{name} is wet, and freezes solid", "notable": true, "stop": true },
     { "id": "e-cold-wet-thing", "element": "cold", "if": { "status": "wet", "lacks": "creature" }, "do": [{ "clear": "wet" }, { "status": { "frozen": 30 } }], "log": "{name} is wet, and freezes solid", "notable": true, "stop": true },
     { "id": "e-cold", "element": "cold", "do": [{ "clear": "burning" }] },
+    { "id": "e-geyser", "element": "geyser", "do": [{ "status": { "thrown": 6 } }], "log": "{name} is thrown up on the jet", "notable": true },
+    { "id": "e-wave", "element": "wave", "if": { "lacks": "creature" }, "do": [{ "clear": "burning" }, { "status": { "wet": 60 } }] },
+    { "id": "e-wave-creature", "element": "wave", "if": { "has": "creature" }, "do": [{ "clear": "burning" }, { "statusOf": "soak" }], "log": "The wave knocks {name} back", "notable": true },
     { "id": "e-lightning-flammable", "element": "lightning", "if": { "has": "flammable" }, "do": [{ "status": { "burning": 24 } }], "log": "{name} catches a spark" },
     { "id": "e-lightning-wet", "element": "lightning", "if": { "status": "wet" }, "do": [{ "damageMul": 2 }], "log": "{name} is wet, so the shock hits twice as hard", "notable": true }
   ]

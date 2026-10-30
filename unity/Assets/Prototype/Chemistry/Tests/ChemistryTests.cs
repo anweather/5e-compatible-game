@@ -80,7 +80,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["grass"].Has("flammable"));
             Assert.That(R.Covers["oil"].BurnIntensity, Is.EqualTo(3));
             Assert.That(R.Gases.ContainsKey("steam"));
-            Assert.That(R.CellRules.Count, Is.EqualTo(63));
+            Assert.That(R.CellRules.Count, Is.EqualTo(67));
             Assert.That(R.CellRulesFor("fire")[0].Id, Is.EqualTo("fire-fog"), "fire burns fog off before any rule stops");
             Assert.That(R.Spell("fire-bolt").Power, Is.EqualTo(2));
             Assert.That(R.Spell("ray-of-frost").Length, Is.EqualTo(5));
@@ -941,6 +941,87 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AGeyserBoilsThePondIntoAJetAndFizzlesOnDryGround()
+        {
+            // docs/SPELL_COMBOS.md: it acts on water already there. The pond boils into scalding steam and throws
+            // what swims there up; on dry ground it fizzles and says so. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 12, 7, 5, "dirt");
+            for (int y = 2; y <= 4; y++)
+                for (int x = 6; x <= 8; x++) w.At(x, y).Water = 3;
+            var gob = w.SpawnRaider("goblin", 7, 3, 10);
+            Assert.That(R.Combos.Combo("water+fire").Spell, Is.EqualTo("geyser"));
+            string dry = w.CellHash();
+            w.Cast("geyser", 2, 3, 0);
+            Assert.That(w.Log[w.Log.Count - 1].Text, Is.EqualTo("The geyser fizzles: there's no water there to boil"));
+            Assert.That(w.CellHash(), Is.EqualTo(dry), "nothing changes on dry ground");
+            w.Cast("geyser", 6, 3, 0);
+            Assert.That(w.At(7, 3).Gas, Is.EqualTo("steam"));
+            Assert.That(w.At(7, 3).Water, Is.EqualTo(2));
+            Assert.That(w.At(5, 3).Gas, Is.Null, "only the water jets");
+            Assert.That(gob.StatusOf(World.ThrownStatus), Is.GreaterThan(0));
+            Run(w, 12);
+            Assert.That(gob.Hp, Is.LessThan(10), "the steam scalds it");
+            Assert.That($"{w.CellHash()} {w.RngState} {gob.Hp}", Is.EqualTo("4209bc06 3136449455 5"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void AWaveRollsOutDousesKnocksBackAndLeavesMud()
+        {
+            // docs/SPELL_COMBOS.md: it travels over the ground the way it's cast, puts fires out, soaks and knocks
+            // creatures back, and leaves mud where it stops. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 16, 7, 6, "dirt");
+            w.At(6, 3).T = "grass";
+            w.Ignite(w.At(6, 3), 2);
+            var gob = w.SpawnRaider("goblin", 4, 2, 10);
+            Assert.That(R.Combos.Combo("water+water").Spell, Is.EqualTo("wave"));
+            w.Cast("wave", 1, 3, 1);
+            Assert.That(w.Waves, Has.Count.EqualTo(1));
+            Assert.That(w.At(1, 3).Water, Is.EqualTo(0), "it rolls on rather than flooding");
+            Run(w, 6);
+            Assert.That(w.Waves[0].X, Is.EqualTo(4));
+            Assert.That((gob.X, gob.Y), Is.EqualTo((5, 2)), "knocked back ahead of the wave");
+            Assert.That(gob.StatusOf("wet"), Is.GreaterThan(0));
+            Run(w, 10);
+            Assert.That(w.Waves, Is.Empty, "it breaks at its length's end");
+            Assert.That(w.At(6, 3).Fire, Is.EqualTo(0), "the fire is out");
+            Assert.That((gob.X, gob.Y), Is.EqualTo((9, 2)));
+            foreach (int y in new[] { 2, 3, 4 }) Assert.That(w.At(8, y).T, Is.EqualTo("mud"), "mud where it stopped");
+            Assert.That(w.At(7, 3).T, Is.EqualTo("dirt"));
+            Run(w, 4);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4b82ec13 752141770"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void FrostBridgesWaterFreezesTheWetAndGlazesTheGround()
+        {
+            // docs/SPELL_COMBOS.md: water freezes into walkable ice, a wet creature freezes solid and the hits after
+            // crack then shatter it, and dry ground frosts over, slippery. Ray of Frost is too weak to frost the
+            // ground. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 14, 7, 7, "dirt");
+            for (int y = 0; y <= 6; y++)
+                for (int x = 6; x <= 8; x++) w.At(x, y).Water = 3;
+            var gob = w.SpawnRaider("goblin", 3, 3, 10);
+            w.Apply(3, 3, "water");
+            Assert.That(R.Combos.Combo("water+air").Spell, Is.EqualTo("frost"));
+            w.Cast("frost", 1, 3, 1);
+            foreach (int x in new[] { 6, 7, 8 }) Assert.That(w.At(x, 3).Frozen, Is.True, "an ice bridge");
+            Assert.That(w.At(7, 2).Frozen, Is.False);
+            Assert.That(w.At(2, 3).Cover, Is.EqualTo("frost"));
+            Assert.That(w.IsSlippery(w.At(2, 3)) && w.IsSlippery(w.At(7, 3)), "slippery underfoot");
+            Assert.That(gob.StatusOf("frozen"), Is.GreaterThan(0));
+            w.Cast("ray-of-frost", 1, 5, 1);
+            Assert.That(w.At(2, 5).Cover, Is.Null, "a cantrip doesn't frost the ground");
+            w.Cast("acid-splash", 3, 3, 0);
+            Assert.That(gob.Alive && gob.StatusOf("cracked") > 0, "the first hit cracks it");
+            w.Cast("acid-splash", 3, 3, 0);
+            Assert.That(gob.Alive, Is.False, "the next shatters it");
+            w.Cast("fire-bolt", 2, 3, 0);
+            Assert.That(w.At(2, 3).Cover, Is.Null, "fire melts the frost");
+            Run(w, 12);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4f8ffa48 1199730150"), "the same in the sandbox");
+        }
+
+        [Test]
         public void PlainFireBakesNothing()
         {
             var w = new World(R, 8, 5, 4, "dirt");
@@ -993,7 +1074,7 @@ namespace Chem.Tests
             // things is the view's here); Mud churns a patch of grass to
             // mud; Molten Boulder blasts a crater with lava in it; Dust Storm raises a cloud of dust that hides
             // what's behind it. Mirrors sandbox/test/terraform.test.ts.
-            foreach (var (combo, spell) in new[] { ("water+water", "flood"), ("water+earth", "mud"), ("earth+air", "dust-storm") })
+            foreach (var (combo, spell) in new[] { ("water+earth", "mud") })
                 Assert.That(R.Combos.Combo(combo).Spell, Is.EqualTo(spell), combo);
             var w = new World(R, 20, 12, 9, "dirt");
             w.At(5, 2).T = "pit";
