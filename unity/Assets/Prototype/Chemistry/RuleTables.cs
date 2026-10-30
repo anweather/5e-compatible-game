@@ -55,6 +55,8 @@ namespace Chem
         public string RustsTo;
         /// <summary>What a cell of it leaves when it shatters (shatter.leaves: a window pane to an open gap, World.Shatter); null it doesn't.</summary>
         public string ShattersTo;
+        /// <summary>It goes intact, cracked, shattered (shatter.cracks): the first hit only cracks it (Cell.Cracked, World.Shatter).</summary>
+        public bool Cracks;
         /// <summary>Fire reaching it leaves it hot this many ticks (materials.json hot.for; World.Cool), and each unit of water it boils off takes hot.quench of them; 0 never hot.</summary>
         public int HotFor, HotQuench;
         /// <summary>
@@ -415,6 +417,8 @@ namespace Chem
         public bool Bake;
         /// <summary>meltCover: the cover becomes its meltsTo and gives its meltWater, if it melts.</summary>
         public bool MeltCover;
+        /// <summary>shatter: a hit on the cell's ice or terrain, as a blast's (World.Shatter): it cracks, or if cracked shatters.</summary>
+        public bool Shatter;
         /// <summary>dissolve: "cover" or "terrain", eaten away into its dissolvesTo when the rule's element is its dissolvedBy.</summary>
         public string Dissolve;
         public string SetTerrain, Raise;
@@ -631,6 +635,7 @@ namespace Chem
             RustEvery = Int(o["rustEvery"]) ?? 0,
             RustsTo = Str(o["rustsTo"]),
             ShattersTo = Str(o["shattersTo"]),
+            Cracks = Truthy(o["cracks"]),
             HotFor = Int(o["hotFor"]) ?? 0,
             HotQuench = Int(o["hotQuench"]) ?? 0,
             SoaksTo = Str(o["soaksTo"]),
@@ -817,6 +822,7 @@ namespace Chem
             e.Heat = Truthy(o["heat"]);
             e.Bake = Truthy(o["bake"]);
             e.MeltCover = Truthy(o["meltCover"]);
+            e.Shatter = Truthy(o["shatter"]);
             e.Dissolve = Str(o["dissolve"]);
             e.SetTerrain = Str(o["setTerrain"]);
             e.Raise = Str(o["raise"]);

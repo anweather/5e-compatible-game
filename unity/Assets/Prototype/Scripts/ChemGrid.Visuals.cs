@@ -55,6 +55,7 @@ public partial class ChemGrid
     CellBlockers blockers;
     CellWaterMesh waterSurface;
     CellSlickMesh slicks;
+    CellCrackMesh cracks;
     CellFxTexture cellFx;
     CellThorns thornClumps;
     FireLightPool fireLights;
@@ -69,7 +70,9 @@ public partial class ChemGrid
         waterSurface = new CellWaterMesh(this, waterMaterial != null ? waterMaterial : materials.Water(),
             materials.Lit("Ice", new Color(0.80f, 0.93f, 1f), 0.97f));
         slicks?.Destroy();
+        cracks?.Destroy();
         slicks = new CellSlickMesh(this, slickMaterial != null ? slickMaterial : materials.Slick());
+        cracks = new CellCrackMesh(this);
         cellFx?.Destroy();
         acidWatch.Clear();
         var yard = Yard;
@@ -131,6 +134,7 @@ public partial class ChemGrid
         finishTimer.Restart();
         using (WaterMeshMarker.Auto()) waterSurface.Rebuild();
         using (SlickMeshMarker.Auto()) slicks.Rebuild();
+        cracks.Rebuild();
         cellFx.Advance(Time.deltaTime);
         WatchAcidCells();
         materials.ScrollWater(Time.time);
@@ -236,6 +240,7 @@ public partial class ChemGrid
             k = k * 31 + (c.Charge > 0 ? 1 : 0);
             k = k * 31 + HeatLevel(c);
             k = k * 31 + (c.Star > 0 ? 1 : 0);
+            k = k * 31 + (c.Cracked != 0 ? 1 : 0);
             return k;
         }
     }
@@ -283,6 +288,8 @@ public partial class ChemGrid
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
         slicks.Changed(x, y, c);
+        cracks.Changed(x, y, c, ground);
+        if (valley != null) valley.PaneCracked(World.Idx(x, y), c.Cracked != 0);
         cellFx.Oil(x, y, CellSlickMesh.IsSlick(c.Cover) && c.Water > 0 && !c.Frozen);
         RenderThorns(v, c, x, y, center, ground);
         if (c.Cover != CoverIds.Ash || valley != null)

@@ -31,7 +31,7 @@ namespace Chem
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
-                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "dissolve",
+                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve",
                 "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
@@ -226,9 +226,15 @@ namespace Chem
                     Errors.Add($"terrain {id}: uprootsTo {Show(t["uprootsTo"])} is blocking");
                 KnownTerrain(id, t, "growsTo");
                 Dissolves($"terrain {id}", t, terrain);
+                Cracks(id, t);
                 if (Truthy(t["dissolvedBy"]) && !Truthy(t["dissolvesTo"])) Errors.Add($"terrain {id}: dissolve without leaves");
                 if (Strings(t["tags"]).Contains("flammable") && !(Truthy(t["fuel"]) && Truthy(t["flammability"])))
                     Errors.Add($"terrain {id}: flammable without fuel/flammability");
+            }
+
+            void Cracks(string id, JToken t)
+            {
+                if (t["cracks"] != null && t["cracks"].Type != JTokenType.Boolean) Errors.Add($"terrain {id}: cracks must be true or false");
             }
 
             // What a cover melts into (one of the covers) and the water it gives.

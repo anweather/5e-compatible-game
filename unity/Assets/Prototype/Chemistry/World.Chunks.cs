@@ -253,6 +253,7 @@ namespace Chem
         {
             var sb = new StringBuilder();
             foreach (var c in Cells) AppendCell(sb, c);
+            foreach (ulong thing in crackedThings) sb.Append('!').Append(thing.ToString(System.Globalization.CultureInfo.InvariantCulture));
             return Fnv1a.Hash(sb.ToString());
         }
 
@@ -276,6 +277,7 @@ namespace Chem
             if (c.Lit != 0) sb.Append(",b").Append(c.Lit.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Slick != 0) sb.Append(",k").Append(c.Slick.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Star != 0) sb.Append(",s").Append(c.Star.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (c.Cracked != 0) sb.Append(",c").Append(c.Cracked.ToString(System.Globalization.CultureInfo.InvariantCulture));
             sb.Append(';');
         }
     }

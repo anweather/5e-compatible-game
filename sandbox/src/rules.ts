@@ -46,6 +46,8 @@ export interface TerrainDef {
   rustsTo?: string;
   /** What a cell of it leaves when it shatters (shatter.leaves: a window pane to an open gap; shatter in react.ts). */
   shattersTo?: string;
+  /** It goes intact, cracked, shattered (shatter.cracks): the first hit only cracks it (Cell cracked, shatter in react.ts). */
+  cracks?: boolean;
   /** Fire reaching it leaves it hot this many ticks (hot.for; cool in sim.ts), and each unit of water it boils off takes hot.quench of them; unset never hot. */
   hotFor?: number;
   hotQuench?: number;
@@ -159,6 +161,8 @@ export interface Effect {
   bake?: boolean;
   /** The cover becomes its meltsTo and gives its meltWater, if it melts. */
   meltCover?: boolean;
+  /** A hit on the cell's ice or terrain, as a blast's: it cracks, or if cracked shatters. */
+  shatter?: boolean;
   /** Eats away the cell's cover or terrain into its dissolvesTo, when the rule's element is its dissolvedBy. */
   dissolve?: "cover" | "terrain";
   setTerrain?: string;
@@ -583,7 +587,7 @@ export const ELEMENTS = BASE_ELEMENTS;
 
 const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
 const EFFECT_KEYS = new Set([
-  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "dissolve",
+  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
@@ -855,6 +859,7 @@ export function validateRules(r: Rules): string[] {
     if (t.uprootsTo && !terrainIds.has(t.uprootsTo)) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} unknown`);
     else if (t.uprootsTo && r.terrain[t.uprootsTo]!.tags.includes("blocking")) errors.push(`terrain ${id}: uprootsTo ${t.uprootsTo} is blocking`);
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
+    if (t.cracks !== undefined && typeof t.cracks !== "boolean") errors.push(`terrain ${id}: cracks must be true or false`);
     if (t.bakesTo && !terrainIds.has(t.bakesTo)) errors.push(`terrain ${id}: bakesTo ${t.bakesTo} unknown`);
     errors.push(...dissolveErrors(`terrain ${id}`, t, el, terrainIds));
     if (t.dissolvedBy && !t.dissolvesTo) errors.push(`terrain ${id}: dissolve without leaves`);

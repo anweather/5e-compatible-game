@@ -22,7 +22,8 @@ export function spawn(w: World, kind: string, x: number, y: number): Entity | un
 /**
  * Hurts an entity. `element` (if the harm has one) doubles it for a raider weak to
  * it and halves it, rounded up, for one that resists it (C#: World.DamageRaider). With the sim's
- * status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it.
+ * status.shatter status (frozen), a hurt of any element but its notBy (cold) shatters it; if the material ice
+ * cracks, only the second: the first leaves it cracked for as long as it stays frozen.
  */
 export function damage(w: World, e: Entity, amount: number, cause: string, element?: string) {
   if (amount <= 0 || !w.entities.includes(e)) return;
@@ -30,10 +31,21 @@ export function damage(w: World, e: Entity, amount: number, cause: string, eleme
   if (def.hp >= 999) return; // boulders shrug
   amount = scaleDamage(def, element, amount);
   const shatter = RULES.sim.status.shatter;
-  if (shatter?.when && (e.status[shatter.when] ?? 0) > 0 && (shatter.notBy === undefined || element !== shatter.notBy)) return destroy(w, e, "shatters");
+  if (shatter?.when && (e.status[shatter.when] ?? 0) > 0 && (shatter.notBy === undefined || element !== shatter.notBy)) {
+    if (!(cracksFirst(w, e, shatter.when))) destroy(w, e, "shatters");
+    return;
+  }
   e.hp -= amount;
   if (hasComponent(def, "creature")) logOnce(w, `hurt#${e.id}#${cause}`, `${def.name} takes ${amount} ${cause} damage (${Math.max(0, e.hp)}/${def.hp} HP)`, "hurt");
   if (e.hp <= 0) destroy(w, e);
+}
+
+/** The first hit on a frozen entity of cracking ice: it cracks, and takes no harm yet (World.CracksFirst). */
+function cracksFirst(w: World, e: Entity, frozen: string): boolean {
+  if ((e.status.cracked ?? 0) > 0 || !RULES.terrain.ice?.cracks) return false;
+  e.status.cracked = e.status[frozen]!;
+  logOnce(w, `cracked#${e.id}`, `${defOf(e).name} cracks`, "notable");
+  return true;
 }
 
 /** Damage after a raider's weaknesses and resistances (C#: World.Scaled). */

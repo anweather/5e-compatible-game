@@ -1,6 +1,6 @@
 // The rule interpreter: an element arrives at a cell (from a spell, a
 // critter, or spreading fire) and reactions.json decides what happens.
-import { RULES, VERB_STATUS, entityCondHolds, statusTicks, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
+import { RULES, VERB_STATUS, entityCondHolds, hasComponent, statusTicks, type CellCond, type CellRule, type Effect, type EntityDef, type EntityRule } from "./rules.ts";
 import {
   type Cell, type Dir, type Entity, type World,
   DX, DY, addGas, burns, cellAt, coverBurns, entityAt, hasTag, idx, inBounds, isBlocking, isConductive,
@@ -231,18 +231,53 @@ export function displaceWater(w: World, x: number, y: number) {
   c.frozen = false;
 }
 
+/** Ice that cracks, on this cell (World.IceOver); a mod's ice that doesn't crack doesn't shatter either. */
+function iceOver(c: Cell) {
+  const ice = c.frozen ? RULES.terrain.ice : undefined;
+  return ice?.cracks ? ice : undefined;
+}
+
+const logShattered = (w: World, stage: { name: string }) => logOnce(w, `shatter#${stage.name}#${w.tick}`, `The ${stage.name.toLowerCase()} shatters`, "notable");
+
 /**
- * Shatters the cell if its terrain has a shatter.leaves (a window pane): a blast, ground shaken under it or
- * a heavy thing hit it; fire does nothing to it (World.Shatter). Returns whether it did.
+ * A hit on the cell: a blast, ground shaken under it, a heavy thing or lightning on ice. Its ice first, else its
+ * terrain if that has a shatter.leaves (a window pane, glass ground); fire does nothing to it. With shatter.cracks
+ * the first hit cracks it (once a tick, so one blast is one hit) and the next shatters it (World.Shatter). Returns
+ * whether it shattered.
  */
 export function shatter(w: World, x: number, y: number): boolean {
   const c = cellAt(w, x, y);
   if (!c) return false;
-  const t = terrainDef(c);
-  if (!t.shattersTo) return false;
-  c.t = t.shattersTo;
-  logOnce(w, `shatter#${t.name}#${w.tick}`, `The ${t.name.toLowerCase()} shatters`, "notable");
+  const ice = iceOver(c), t = terrainDef(c);
+  if (!ice && !t.shattersTo) return false;
+  const stage = ice ?? t;
+  if (stage.cracks) {
+    if (c.cracked === w.tick + 1) return false;
+    if (!c.cracked) {
+      crack(w, x, y, c, stage.name);
+      return false;
+    }
+  }
+  if (ice) c.frozen = false;
+  else c.t = t.shattersTo!;
+  delete c.cracked;
+  logShattered(w, stage);
   return true;
+}
+
+/** Cracked, with a warning if a creature stands on it (World.Crack). */
+function crack(w: World, x: number, y: number, c: Cell, stageName: string) {
+  c.cracked = w.tick + 1;
+  const name = stageName.toLowerCase();
+  const on = entityAt(w, x, y), def = on && RULES.entities[on.kind];
+  const line = def && hasComponent(def, "creature") ? `The ${name} cracks under ${def.name}` : `The ${name} cracks`;
+  logOnce(w, `crack#${line}#${w.tick}`, line, "notable");
+}
+
+/** A shatter effect (World.Struck): true if the hit cracked or shattered something. */
+function struck(w: World, x: number, y: number, c: Cell): boolean {
+  const was = c.cracked;
+  return shatter(w, x, y) || c.cracked !== was;
 }
 
 /** A blast's shock round (x, y) (World.BlastAround). */
@@ -253,7 +288,14 @@ export function blastAround(w: World, x: number, y: number, radius: number) {
 /** A wall at (x, y) is gone: a pane beside it with no wall left to stand in falls (World.WallLost). */
 export function wallLost(w: World, x: number, y: number) {
   for (const [nx, ny] of neighbours(w, x, y)) {
-    if (terrainDef(cellAt(w, nx, ny)!).shattersTo && !held(w, nx, ny)) shatter(w, nx, ny);
+    const n = cellAt(w, nx, ny)!;
+    const t = terrainDef(n);
+    // A pane with nothing to stand in goes at once, cracked or not.
+    if (isBlocking(n) && t.shattersTo && !held(w, nx, ny)) {
+      n.t = t.shattersTo;
+      delete n.cracked;
+      logShattered(w, t);
+    }
   }
 }
 
@@ -369,6 +411,7 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
     c.heat = hot;
     return true;
   }
+  if (eff.shatter) return struck(w, x, y, c);
   if (eff.bake) return bake(c);
   if (eff.meltCover) return meltCover(c);
   if (eff.break) {

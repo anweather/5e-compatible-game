@@ -58,6 +58,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
   - `addWater` (a number, or `"power"` for the caster's power)
   - `setCover`, `spreadCover`
   - `break`, `setTerrain`, `raise`
+  - `shatter` (a hit on the cell's ice or terrain: it cracks, or if cracked shatters)
   - `bake` (the terrain becomes its material's `bake.into`), `meltCover` (the cover becomes its `melt.into` and gives `melt.water`)
   - `dissolve` (`"cover"` or `"terrain"`: eaten away into its material's `dissolve.leaves`, when the rule's element is its `dissolve.by`; a cover can leave none)
   - `grow` (a non-blocking terrain the square becomes, with `ticks: [min, max]` and `wave`; see "Growing" below)

@@ -50,6 +50,8 @@ namespace Chem
         public int Slick;
         /// <summary>How many falling stars are aimed here (World.AimStar): the target mark the view tints. 0: none.</summary>
         public int Star;
+        /// <summary>Its ice or terrain is cracked (shatter.cracks, World.Shatter): the tick it cracked, plus 1, so a blast that hits it twice cracks it once. 0: whole.</summary>
+        public int Cracked;
 
         // World.TerrainOf's cache: the definition of the terrain id it was looked up for.
         // Not cell state (not hashed or saved); refreshed whenever T changes.
@@ -69,7 +71,7 @@ namespace Chem
         /// <summary>Back to a bare square of the given terrain (the sandbox's erase brush).</summary>
         public void Reset(string terrain = "dirt")
         {
-            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0; DampUntil = 0; Rust = 0; Heat = 0; Lit = 0; Slick = 0; Star = 0;
+            T = terrain; Water = 0; Frozen = false; Cover = null; Fire = 0; Fuel = 0; Gas = null; GasAmt = 0; Charge = 0; Height = 0; Life = 0; DampUntil = 0; Rust = 0; Heat = 0; Lit = 0; Slick = 0; Star = 0; Cracked = 0;
         }
     }
 

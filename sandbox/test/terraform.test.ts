@@ -6,7 +6,7 @@ import { withoutSoaking } from "./soak.ts";
 import { RULES, composeRules, installRules, validateRules, type ModPatch } from "../src/rules.ts";
 import { step } from "../src/sim.ts";
 import { castSpell, spellById, spellCells } from "../src/actions.ts";
-import { applyElement } from "../src/react.ts";
+import { applyElement, shatter } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
 import { dig, reshape } from "../src/terraform.ts";
 import { type World, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isRaisedWall, sanitizeWorld, serializeWorld } from "../src/world.ts";
@@ -31,7 +31,7 @@ function pond(w: World, x0: number, x1: number, y0: number, y1: number) {
 /** World.CellHash in the C# port (life, rust and heat written only when not 0): the golden tests compare this string's FNV-1a. */
 function cellHash(w: World): string {
   const s = w.cells.map((c) =>
-    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""}${c.lit ? `,b${c.lit}` : ""}${c.slick ? `,k${c.slick}` : ""};`).join("");
+    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""}${c.lit ? `,b${c.lit}` : ""}${c.slick ? `,k${c.slick}` : ""}${c.cracked ? `,c${c.cracked}` : ""};`).join("");
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -514,6 +514,42 @@ test("Flood, Mud, Molten Boulder and Dust Storm, matching the C# golden", () => 
   const crate = spawn(v, "crate", 2, 2)!;
   castSpell(v, "flood", 1, 2, 1);
   assert.equal(crate.x, 4, "the wave shoves the crate along");
+});
+
+// Mirrors ChemistryTests.GlassAndIceGoIntactCrackedShattered (docs/MATERIALS.md shatter.cracks): glass ground, a
+// window pane and ice take two hits. The first cracks them (a warning if a creature stands on the ice), a second in
+// the same tick is the same hit, the next shatters them, and a crack goes with its ice.
+test("glass and ice go intact, cracked, shattered, matching the C# golden", () => {
+  const w = createWorld(14, 7, 3);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 2, 3)!.t = "glass";
+  cellAt(w, 5, 3)!.t = "pane";
+  cellAt(w, 5, 2)!.t = "logwall";
+  for (const x of [9, 12]) {
+    cellAt(w, x, 3)!.water = 2;
+    cellAt(w, x, 3)!.frozen = true;
+  }
+  spawn(w, "goblin", 9, 3);
+  for (const x of [2, 5, 12]) {
+    assert.equal(shatter(w, x, 3), false, "the first hit cracks it");
+    assert.equal(shatter(w, x, 3), false, "one hit a tick");
+  }
+  castSpell(w, "shocking-grasp", 9, 3, 0);
+  assert.equal(cellAt(w, 2, 3)!.t, "glass");
+  assert.equal(cellAt(w, 5, 3)!.t, "pane");
+  assert.ok(cellAt(w, 9, 3)!.frozen && cellAt(w, 9, 3)!.cracked, "lightning on ice cracks it");
+  assert.ok(w.log.some((l) => l.text === "The ice cracks under Goblin"));
+  const cracked = cellHash(w);
+  run(w, 1);
+  for (const x of [2, 5, 9]) assert.ok(shatter(w, x, 3), "the next shatters it");
+  assert.equal(cellAt(w, 2, 3)!.t, "sand");
+  assert.equal(cellAt(w, 5, 3)!.t, "rubble");
+  assert.equal(cellAt(w, 9, 3)!.frozen, false, "open water under the goblin");
+  applyElement(w, 12, 3, "fire", { power: 1, direct: true });
+  run(w, 1);
+  assert.equal(cellAt(w, 12, 3)!.cracked, undefined, "a crack goes with its ice");
+  run(w, 12);
+  assert.equal(`${cracked} ${cellHash(w)} ${w.rng}`, "17d9616c 4fcd46bc 1831565816"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.ForgeHeatsAndTheMaterialDecides: sand to glass, mud to brick, metal hot, ice and snow melted,
