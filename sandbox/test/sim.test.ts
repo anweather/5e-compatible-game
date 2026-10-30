@@ -435,7 +435,7 @@ test("soaked thatch burns out sooner", () => {
 /** World.CellHash in the C# port, rust included (written only when it isn't 0). */
 function rustHash(w: World): string {
   const s = w.cells.map((c) =>
-    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""}${c.lit ? `,b${c.lit}` : ""};`).join("");
+    `${c.t},${c.water},${c.frozen ? 1 : 0},${c.cover ?? ""},${c.fire},${c.fuel},${c.gas ?? ""},${c.gasAmt},${c.charge}${c.h ? `,h${c.h}` : ""}${c.life ? `,l${c.life}` : ""}${c.rust ? `,r${c.rust}` : ""}${c.heat ? `,t${c.heat}` : ""}${c.lit ? `,b${c.lit}` : ""}${c.slick ? `,k${c.slick}` : ""};`).join("");
   let h = 0x811c9dc5;
   for (let i = 0; i < s.length; i++) h = Math.imul(h ^ s.charCodeAt(i), 0x01000193);
   return (h >>> 0).toString(16);
@@ -499,7 +499,7 @@ test("oil floats out over water and burns across it until it is used up", () => 
   assert.equal(w.cells.filter((c) => c.cover !== null).length, 0, "with the oil used up, and no ash on the water");
   const water = w.cells.reduce((s, c) => s + c.water, 0);
   assert.ok(water >= 1 && water <= 149, "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
-  assert.equal(`${slick} ${most} ${water} ${rustHash(w)} ${w.rng}`, "29 28 74 78db8029 189079474"); // the same in the C# core
+  assert.equal(`${slick} ${most} ${water} ${rustHash(w)} ${w.rng}`, "19 19 147 e3e69588 2221874590"); // the same in the C# core
 });
 
 test("a broken float is refused with the C# wording", () => {

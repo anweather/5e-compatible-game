@@ -634,7 +634,7 @@ namespace Chem.Tests
             Assert.That(w.Cells.Count(c => c.Cover != null), Is.EqualTo(0), "with the oil used up, and no ash on the water");
             int water = w.Cells.Sum(c => c.Water);
             Assert.That(water, Is.InRange(1, 149), "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
-            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("29 28 74 78db8029 189079474"), "the same in the sandbox");
+            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("19 19 147 e3e69588 2221874590"), "the same in the sandbox");
         }
 
         [Test]
@@ -946,7 +946,7 @@ namespace Chem.Tests
             string wet = w.CellHash();
             Run(w, 800);
             Assert.That(new[] { 3, 4, 5 }.Select(x => w.At(x, 2).T), Is.EqualTo(new[] { "dirt", "dirt", "dirt" }), "dried back to dirt");
-            Assert.That($"{wet} {w.CellHash()} {w.RngState}", Is.EqualTo("efb1f804 2143a548 1"), "the same in the sandbox");
+            Assert.That($"{wet} {w.CellHash()} {w.RngState}", Is.EqualTo("f44639dc 668f5350 1"), "the same in the sandbox");
         }
 
         [Test]

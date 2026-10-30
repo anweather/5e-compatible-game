@@ -274,6 +274,7 @@ namespace Chem
             if (c.Rust != 0) sb.Append(",r").Append(c.Rust.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Heat != 0) sb.Append(",t").Append(c.Heat.ToString(System.Globalization.CultureInfo.InvariantCulture));
             if (c.Lit != 0) sb.Append(",b").Append(c.Lit.ToString(System.Globalization.CultureInfo.InvariantCulture));
+            if (c.Slick != 0) sb.Append(",k").Append(c.Slick.ToString(System.Globalization.CultureInfo.InvariantCulture));
             sb.Append(';');
         }
     }

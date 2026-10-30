@@ -14,7 +14,7 @@ namespace Chem
         // Reused by TickFire so a tick allocates nothing.
         readonly List<(Chunk ch, int i)> burning = new List<(Chunk ch, int i)>();
         // What floating covers reached this tick (World.Float), laid at its end.
-        readonly List<(Cell cell, string cover)> floating = new List<(Cell cell, string cover)>();
+        readonly List<(Cell cell, string cover, int slick)> floating = new List<(Cell cell, string cover, int slick)>();
         readonly List<Cell> gasOptions = new List<Cell>(4);
 
         /// <summary>
@@ -166,7 +166,12 @@ namespace Chem
 
         void EndTick()
         {
-            foreach (var (cell, cover) in floating) if (cell.Cover == null) PutCover(cell, cover);
+            foreach (var (cell, cover, slick) in floating)
+            {
+                if (cell.Cover != null) continue;
+                PutCover(cell, cover);
+                cell.Slick = slick;
+            }
             floating.Clear();
             if (Wind.HasValue)
             {
@@ -219,6 +224,8 @@ namespace Chem
                 bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
                 if (c.Charge > 0) c.Charge--;
                 if (c.Lit > 0) c.Lit--;
+                // A slick's reach goes with its oil.
+                if (c.Slick != 0 && c.Cover == null) c.Slick = 0;
                 if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
                 if (c.Heat > 0 && Cool(ch, c)) live = true;
                 if (soak && SoakPass(ch, i, c)) live = true;
@@ -283,18 +290,22 @@ namespace Chem
         /// Floating oil (a cover with float.every, materials.json): on open water it spreads to each open,
         /// uncovered water cell next to it, on the soak passes of every float.every ticks. What it
         /// reaches is laid at the end of the tick (EndTick), so the slick grows a cell a turn whichever
-        /// way the rows run. True if it spread.
+        /// way the rows run. It reaches float.reach cells from where it was laid (Cell.Slick counts down
+        /// the cells it has left), so a slick on a lake stops. True if it spread.
         /// </summary>
         bool Float(Chunk ch, int i, Cell c)
         {
             if (c.Frozen || !Rules.Covers.TryGetValue(c.Cover, out var cv) || cv.FloatEvery <= 0) return false;
             if (Tick / Rules.Sim.SoakPass % Math.Max(1, cv.FloatEvery / Rules.Sim.SoakPass) != 0) return false;
+            // Its reach left (fresh oil has its float.reach); a slick at the end of its reach spreads no further.
+            int reach = c.Slick > 0 ? c.Slick : cv.FloatReach;
+            if (cv.FloatReach > 0 && reach <= 1) return false;
             bool spread = false;
             for (int d = 0; d < 4; d++)
             {
                 var n = Chunk.Next(ch, i, d, out var nch, out _);
                 if (n == null || !nch.Active || n.Cover != null || n.Water == 0 || n.Frozen || IsBlocking(n)) continue;
-                floating.Add((n, c.Cover));
+                floating.Add((n, c.Cover, cv.FloatReach > 0 ? reach - 1 : 0));
                 spread = true;
             }
             return spread;
@@ -509,7 +520,9 @@ namespace Chem
             // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
             double heat = CoverBurns(c) ? 1 : TerrainOf(c).Heat;
             if (flam > 0) return (p.SpreadChance * flam * (c.Fire / 3.0) * heat + downwind * flam) * RainDamp();
-            return n.Water > 0 && !n.Frozen ? p.BoilChance : p.HeatChance;
+            // Bare water beside a burning slick (a burning cover on water) boils at its own, lower chance.
+            if (n.Water > 0 && !n.Frozen) return CoverBurns(c) && c.Water > 0 && !c.Frozen ? p.SlickBoilChance : p.BoilChance;
+            return p.HeatChance;
         }
 
         /// <summary>
