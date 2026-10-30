@@ -16,6 +16,8 @@ $need = $vm.MemoryStartup/1GB
 $keep = if (Get-Process Unity -ErrorAction SilentlyContinue) { 10 } else { 6 }
 if ($vm.State -eq 'Off' -and $free - $need -lt $keep) { throw ("Only {0:N1} GB free; {1} GB must stay free (J-017, J-037). Not starting." -f $free, $keep) }
 Start-VM -VM $vm
+# Hyper-V's own meter (CPU, RAM, disk) from here; stop.cmd logs it.
+Enable-VMResourceMetering -VM $vm; Reset-VMResourceMetering -VM $vm
 for ($i = 0; $i -lt 60; $i++) {
   $ip = (Get-VMNetworkAdapter -VM $vm).IPAddresses | Where-Object { $_ -match '^\d+\.' } | Select-Object -First 1
   if ($ip) { "$Name is running at $ip"; break }

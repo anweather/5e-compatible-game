@@ -180,6 +180,24 @@ First, in each template, run `claude` once in `~/5e-compatible-game` and
 accept the workspace trust dialog: Remote Control refuses an untrusted folder
 ("Error: Workspace not trusted"). Trust is per user, so clones inherit it.
 
+## Two Claude accounts
+
+- **Workers by account:** `w1` and `w2` sign in to the Pro account, `w3` and `w4`
+  to the Max one (each slot holds one worker's own sign-in, so the account is
+  just whoever signed in to that slot). Use Pro's capacity first, then start
+  `w3`/`w4`. A session can message only workers on its own account.
+- **Every worker commit says which account did it** (`Worker-Account: max
+  (org 1a2b3c4d)`) with its cost (above).
+- **Hyper-V's meter:** `start.cmd` resets it, `stop.cmd` logs CPU, RAM and disk
+  per run to `C:\HyperV\Workers\metering.csv`.
+- **Sessions on different accounts talk through `bridge.sh`:** an inbox folder
+  per role in `~/.agent-bridge` (outside the repo). `bridge.sh send coordinator
+  "subject" < brief.md` drops a message; the receiving session keeps
+  `bridge.sh wait coordinator` running as a background command, which costs
+  nothing while it waits and wakes the session when mail arrives. Roles so far:
+  `pm` (the Max account's project manager) and `coordinator` (the Pro account's
+  coordinator of `w1`/`w2`). Set `BRIDGE_FROM` to your role when sending.
+
 ## Memory
 
 Measured with Hyper-V's memory demand (`status.cmd`, DemandGB).
