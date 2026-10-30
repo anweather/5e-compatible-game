@@ -207,7 +207,23 @@ namespace Chem
             AddLog($"You cast {s.Name}", LogKind.Info);
             if (s.Effect == HasteEffect) Hasten(s, ClampCharge(charge));
             else if (s.Effect == WeatherEffect) HoldWeather(s, ClampCharge(charge));
+            else if (s.Effect == LightEffect) LightUp(s, x, y);
             else Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
+        }
+
+        /// <summary>The Light spell's effect (SRD Light).</summary>
+        public const string LightEffect = "light";
+
+        /// <summary>
+        /// Light (SRD 5.2.1): the object touched sheds bright light for the spell's duration. The core keeps
+        /// the ticks on its cell (Cell.Lit, counting down in the timer pass); the view draws the spell's light
+        /// { bright, dim } round it.
+        /// </summary>
+        void LightUp(SpellDef s, int x, int y)
+        {
+            if (!IsActiveAt(x, y)) return;
+            var c = At(x, y);
+            c.Lit = System.Math.Max(c.Lit, s.Duration);
         }
 
         /// <summary>The direction from (dx, dy) off a burst's middle back toward it, -1 at the middle: along the longer axis, east or west on a tie (Whirlwind's inward).</summary>

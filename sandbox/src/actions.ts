@@ -214,7 +214,17 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   log(w, `You cast ${s.name}`, "info");
   if (s.effect === "haste") hastenTime(w, s, clampCharge(charge));
   else if (s.effect === "weather") controlWeather(w, s, clampCharge(charge));
+  else if (s.effect === "light") lightUp(w, s, x, y);
   else landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
+}
+
+/**
+ * Light (SRD 5.2.1): the object touched sheds bright light for the spell's duration. The core keeps the ticks on
+ * its cell (lit, counting down each tick); the view draws the spell's light { bright, dim } round it (World.LightUp).
+ */
+function lightUp(w: World, s: SpellDef, x: number, y: number) {
+  const c = cellAt(w, x, y)!;
+  c.lit = Math.max(c.lit ?? 0, s.duration ?? 40);
 }
 
 /** Whether a spell changes the sky for everyone (Hasten Time, Control Weather) rather than squares. */

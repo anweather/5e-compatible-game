@@ -35,7 +35,7 @@ namespace Chem
                 "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
-            static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift" };
+            static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift", "light" };
 
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate", "radiusPerCharge" };
             static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n", "wave" };
@@ -119,6 +119,8 @@ namespace Chem
                 if (!Shapes.Contains(Text(s["shape"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown shape {Show(s["shape"])}");
                 if (!Truthy(s["name"])) Errors.Add($"spell {Show(s["id"])}: needs a name");
                 if (s["inward"] != null && s["inward"].Type != JTokenType.Boolean) Errors.Add($"spell {Show(s["id"])}: inward must be true or false");
+                if (s["light"] != null && !(s["light"] is JObject l && new[] { "bright", "dim" }.All(k => l[k] != null && IsWholeNumber(l[k]) && (double)l[k] >= 0)))
+                    Errors.Add($"spell {Show(s["id"])}: light must be {{ bright, dim }}, whole feet from 0");
                 if (s["effect"] != null && !SpellEffects.Contains(Text(s["effect"]) ?? "")) Errors.Add($"spell {Show(s["id"])}: unknown effect {Show(s["effect"])}");
                 if (Text(s["effect"]) == "terraform") TerraformRefs(s);
                 if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1, radius from 0 and strength from 1");

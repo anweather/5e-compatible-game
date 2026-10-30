@@ -59,7 +59,7 @@ test("a combo with no todo casts its real spell, in that spell's shape", () => {
 
 test("the d-pad lists the spells with no element", () => {
   assert.deepEqual(BASE_RULES.combos.dpad.map((d) => d.name), ["Hasten Time", "Shapeshift", "Light", "Control Weather"]);
-  assert.deepEqual(BASE_RULES.combos.dpad.map((d) => d.spell), ["hasten-time", "shapeshift", undefined, "control-weather"]);
+  assert.deepEqual(BASE_RULES.combos.dpad.map((d) => d.spell), ["hasten-time", "shapeshift", "light", "control-weather"]);
 });
 
 test("one element goes off when its meter drains, and the player walks slower meanwhile", () => {
@@ -134,7 +134,7 @@ test("a combo is unknown until cast, per player, and only the first cast discove
   assert.deepEqual(w.casts.ann!.known, ["fire"]);
 });
 
-test("the d-pad cycles both ways, casts through the meter, and refuses a slot with no spell", () => {
+test("the d-pad cycles both ways and casts through the meter", () => {
   const w = createWorld(8, 8);
   assert.equal(selectedDpad(w, "ann")!.name, "Hasten Time");
   cycle(w, "ann", -1);
@@ -144,7 +144,7 @@ test("the d-pad cycles both ways, casts through the meter, and refuses a slot wi
   assert.equal(w.casts.ann!.slot, 1);
   cycle(w, "ann", 1);
   assert.equal(selectedDpad(w, "ann")!.name, "Light");
-  assert.equal(castSelected(w, "ann"), false, "Light has no spell yet");
+  assert.equal(selectedDpad(w, "ann")!.spell, "light", "Light is a real spell now");
   cycle(w, "ann", -1);
   assert.ok(castSelected(w, "ann"));
   assert.equal(moveFactorOf(w, "ann"), 0.6);

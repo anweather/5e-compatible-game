@@ -803,6 +803,25 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void LightLastsItsDurationThenFades()
+        {
+            // SRD Light: the cell touched sheds the spell's light (bright 20 ft, dim 20 more, for the view) for
+            // an hour, 21600 ticks at 6 a second.
+            var s = R.Spell("light");
+            Assert.That((s.LightBright, s.LightDim, s.Duration), Is.EqualTo((20, 20, 21600)));
+            var w = new World(R, 7, 5, 1, "dirt");
+            w.Cast("light", 3, 2, 0);
+            Assert.That(w.At(3, 2).Lit, Is.EqualTo(21600), "lit for the hour");
+            Assert.That(w.Cells.Count(c => c.Lit > 0), Is.EqualTo(1), "on the cell touched only");
+            Run(w, 10800);
+            string half = w.CellHash();
+            Assert.That(w.At(3, 2).Lit, Is.EqualTo(10800), "half way");
+            Run(w, 10800);
+            Assert.That(w.At(3, 2).Lit, Is.EqualTo(0), "and it fades");
+            Assert.That($"{half} {w.CellHash()} {w.RngState}", Is.EqualTo("53f7abc0 1e6d522 2668737540"), "the same in the sandbox");
+        }
+
+        [Test]
         public void AGustPushesSmokeAndSteamFansTheFireAndKeepsMetalHot()
         {
             // Gust of Wind east along row 2: air-gas pushes the smoke and steam along it, air-big-fire fans

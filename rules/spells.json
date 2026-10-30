@@ -72,5 +72,7 @@
   { "id": "sand-blast", "group": "storm", "name": "Sand Blast", "level": 1, "shape": "line", "origin": "self", "length": 8, "element": "sand", "damage": [2, 6], "radial": false,
     "blurb": "Air and earth together: a 40 ft line of scouring sand from you toward where you point. It stings whatever it hits and leaves the ground it crosses covered in sand (which lightning fuses into glass)." },
   { "id": "whirlwind", "group": "storm", "name": "Whirlwind", "level": 3, "shape": "burst", "radius": 2, "element": "air", "inward": true, "radial": false,
-    "blurb": "Air and air together: a whirling column of wind 25 ft across where you point. It draws smoke, fog and steam in toward its middle, blows small flames out and fans big ones in toward the eye." }
+    "blurb": "Air and air together: a whirling column of wind 25 ft across where you point. It draws smoke, fog and steam in toward its middle, blows small flames out and fans big ones in toward the eye." },
+  { "id": "light", "group": "arcane", "name": "Light", "level": 0, "shape": "point", "effect": "light", "duration": 21600, "light": { "bright": 20, "dim": 20 }, "radial": false,
+    "blurb": "Cantrip. Touch something and it sheds bright light in a 20 ft radius and dim light for 20 ft more, for an hour." }
 ]

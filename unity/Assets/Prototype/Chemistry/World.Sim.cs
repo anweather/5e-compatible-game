@@ -218,6 +218,7 @@ namespace Chem
                 var c = cells[i];
                 bool live = c.Charge > 0 || c.Life > 0 || c.Fire > 0 || c.GasAmt > 0 || (marks[i] & flow) != 0;
                 if (c.Charge > 0) c.Charge--;
+                if (c.Lit > 0) c.Lit--;
                 if (c.Life > 0 && --c.Life == 0) Ripen(ch, i, c);
                 if (c.Heat > 0 && Cool(ch, c)) live = true;
                 if (soak && SoakPass(ch, i, c)) live = true;
