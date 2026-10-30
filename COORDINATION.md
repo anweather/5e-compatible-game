@@ -417,3 +417,9 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   Worker commits carry Worker-* cost trailers (git log --grep Worker-Tokens).
   Report and how the PM reaches the coordinator:
   docs/handoffs/pro-coordinator-report.md.
+- 2026-10-29: RULE (Andrew): the host's Unity Editor and GPU are used only
+  when a task needs them (views, shaders, probes, screenshots, clips,
+  performance runs). Everything else runs in the worker VMs, including Unity
+  batch work: compiling, imports, EditMode tests and batch builds. The desktop
+  is left free for playing. Workers w3 and w4 (Max) get set up tonight. The
+  GPU-partitioning test for VMs is parked.
