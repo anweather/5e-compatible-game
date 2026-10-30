@@ -1,8 +1,8 @@
 // One sim tick's inputs, in lockstep: chunks waking or sleeping (ChunkStreaming), a rule switch (mods on or off), the
 // casts stamped for that tick, and the effects physics props had on cells
 // (Effects.cs: a barrel's blast, a lantern's spill), which the host saw and
-// stamped like casts, and defense commands (the defense field's start,
-// Defense.cs). Solo play runs one per tick; online the host
+// stamped like casts, defense commands (the defense field's start,
+// Defense.cs) and players' combo input (Combos.cs). Solo play runs one per tick; online the host
 // stamps them and every machine runs the same batches in the same order
 // (NetChem), and a late joiner rebuilds them from the host's history
 // (Timeline) and replays from tick 0. Running a batch is the same code in all
@@ -74,6 +74,8 @@ namespace Chem
         public List<ChunkSwitch> Chunks { get; }
         /// <summary>Defense commands (the start pedestal: World.Defense.cs), applied after the effects, in order.</summary>
         public List<DefenseCommand> Defense { get; } = new List<DefenseCommand>();
+        /// <summary>Players' combo input (World.Combos.cs), applied last, in order.</summary>
+        public List<ComboCommand> Combos { get; } = new List<ComboCommand>();
         /// <summary>
         /// The world is rebuilt before this tick (the online reset, J-014): the view rebuilds it from
         /// its seed (NetChem, ChemGrid.ResetWorld), then the batch runs on the fresh world. The
@@ -96,7 +98,7 @@ namespace Chem
         }
 
         /// <summary>
-        /// RunOn without the step: the batch's switches, rules, casts, effects and defense commands,
+        /// RunOn without the step: the batch's switches, rules, casts, effects, defense and combo commands,
         /// for a caller that then steps the tick in slices (World.StepSome). A tick still part done
         /// is finished first, so the commands land between whole ticks.
         /// </summary>
@@ -122,6 +124,7 @@ namespace Chem
             foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
             foreach (var e in Effects) world.ApplyEffect(e);
             foreach (var d in Defense) world.ApplyDefense(d);
+            foreach (var c in Combos) world.ApplyCombo(c);
             return rules;
         }
 
@@ -150,6 +153,13 @@ namespace Chem
             foreach (var (tick, command) in defense ?? Enumerable.Empty<(int, DefenseCommand)>())
                 if (batches.TryGetValue(tick, out var b)) b.Defense.Add(command);
             return batches;
+        }
+
+        /// <summary>Adds a recorded history of combo input to a <see cref="Timeline"/>'s batches.</summary>
+        public static void AddCombos(Dictionary<int, TickBatch> batches, IEnumerable<(int tick, ComboCommand command)> combos)
+        {
+            foreach (var (tick, command) in combos)
+                if (batches.TryGetValue(tick, out var b)) b.Combos.Add(command);
         }
     }
 }

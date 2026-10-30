@@ -9,6 +9,7 @@ import items from "../../rules/items.json" with { type: "json" };
 import machines from "../../rules/machines.json" with { type: "json" };
 import sim from "../../rules/sim.json" with { type: "json" };
 import groups from "../../rules/groups.json" with { type: "json" };
+import combos from "../../rules/combos.json" with { type: "json" };
 import components from "../../rules/components.json" with { type: "json" };
 import { materialGroupErrors, ungroupMaterials } from "./materials.ts";
 
@@ -355,6 +356,41 @@ export interface SimParams {
   };
 }
 
+/** What one element, or an ordered pair, casts (C#: ComboDef). */
+export interface ComboDef {
+  name: string;
+  /** The spell it casts, which may stand in for one not made yet (see todo). */
+  spell: string;
+  shape: Shape;
+  /** Ticks the cast meter takes to drain. */
+  castTicks: number;
+  /** The spell it casts when held at the ground instead. */
+  held?: string;
+  /** What's still to make, when spell is a stand-in. */
+  todo?: string;
+}
+
+/** A slot on the d-pad's list. With no spell it shows but can't be cast (C#: DpadSpellDef). */
+export interface DpadSpellDef {
+  name: string;
+  spell?: string;
+  castTicks: number;
+  todo?: string;
+}
+
+/** combos.json: the elements, the window for a second one, and what they cast (C#: CombosDef). */
+export interface CombosDef {
+  elements: string[];
+  /** Ticks after the first element in which a second is taken. */
+  window: number;
+  /** What a view multiplies walking speed by while the cast meter drains. */
+  moveFactor: number;
+  singles: Record<string, ComboDef>;
+  pairs: Record<string, Record<string, ComboDef>>;
+  /** The d-pad's list, in cycling order. */
+  dpad: DpadSpellDef[];
+}
+
 export interface Rules {
   /** Every element name a rule, spell or critter may use. Mods can add more. */
   elements: string[];
@@ -372,6 +408,7 @@ export interface Rules {
   groups: Record<string, GroupDef>;
   /** Component names and what each means (components.json; C#: Components.cs). */
   components: Record<string, string>;
+  combos: CombosDef;
 }
 
 export const BASE_ELEMENTS = ["fire", "cold", "water", "air", "earth", "lightning", "grease", "oil", "thunder", "fog", "growth", "thorns", "acid"];
@@ -401,6 +438,7 @@ export const BASE_RULES: Readonly<Rules> = Object.freeze({
   sim: sim as unknown as SimParams,
   groups: groups as Record<string, GroupDef>,
   components: components as Record<string, string>,
+  combos: combos as CombosDef,
 });
 
 /**
@@ -429,6 +467,8 @@ export interface ModPatch {
   critters?: CritterDef[];
   /** Deep-merged over sim.json. */
   sim?: Record<string, unknown>;
+  /** Deep-merged over combos.json. */
+  combos?: Record<string, unknown>;
 }
 
 function mergeDeep(into: Record<string, unknown>, from: Record<string, unknown>) {
@@ -489,6 +529,7 @@ export function composeRules(patches: ModPatch[], base: Readonly<Rules> = BASE_R
     if (p.spells) r.spells = upsertById(r.spells, clone(p.spells));
     if (p.critters) r.critters = upsertById(r.critters, clone(p.critters));
     if (p.sim) mergeDeep(r.sim as unknown as Record<string, unknown>, clone(p.sim));
+    if (p.combos) mergeDeep(r.combos as unknown as Record<string, unknown>, clone(p.combos));
   }
   // A mod may spell a material as verb groups too.
   ungroupMaterials(r as unknown as { terrain: Record<string, unknown>; covers: Record<string, unknown> });
@@ -620,6 +661,46 @@ function groupErrors(r: Rules): string[] {
   for (const s of r.spells) {
     if (s.group !== undefined && !(typeof s.group === "string" && Object.hasOwn(r.groups, s.group))) errors.push(`spell ${s.id}: unknown group ${s.group}`);
   }
+  return errors;
+}
+
+const wholeFromOne = (v: unknown) => Number.isInteger(v) && (v as number) >= 1;
+
+/** One combo's entry. Same wording as Combos.cs. */
+function comboEntryErrors(r: Rules, id: string, e: ComboDef | undefined): string[] {
+  if (!e || typeof e !== "object") return [`combo ${id}: missing`];
+  const errors: string[] = [];
+  const spellKnown = (s: string) => r.spells.some((x) => x.id === s);
+  if (!e.name) errors.push(`combo ${id}: needs a name`);
+  if (!spellKnown(e.spell)) errors.push(`combo ${id}: unknown spell ${e.spell}`);
+  if (!SHAPES.has(e.shape)) errors.push(`combo ${id}: unknown shape ${e.shape}`);
+  if (!wholeFromOne(e.castTicks)) errors.push(`combo ${id}: castTicks must be a whole number from 1`);
+  if (e.held !== undefined && !spellKnown(e.held)) errors.push(`combo ${id}: held spell ${e.held} unknown`);
+  return errors;
+}
+
+/** The combo table: every element and ordered pair filled in. Same wording as Combos.cs. */
+function comboErrors(r: Rules): string[] {
+  const c = r.combos;
+  if (!c || Object.keys(c).length === 0) return [];
+  const errors: string[] = [];
+  const elements = Array.isArray(c.elements) ? c.elements : [];
+  for (const e of elements.filter((e) => !r.elements.includes(e))) errors.push(`combos: unknown element ${e}`);
+  if (!wholeFromOne(c.window)) errors.push("combos: window must be a whole number from 1");
+  if (!(isNumber(c.moveFactor) && c.moveFactor > 0 && c.moveFactor <= 1)) errors.push("combos: moveFactor must be above 0 and at most 1");
+  for (const e of elements) {
+    const single = c.singles?.[e];
+    errors.push(...comboEntryErrors(r, e, single));
+    if (single && Number.isInteger(single.castTicks) && Number.isInteger(c.window) && single.castTicks < c.window) errors.push(`combo ${e}: castTicks must be at least the window`);
+  }
+  for (const first of elements) for (const second of elements) errors.push(...comboEntryErrors(r, `${first}+${second}`, c.pairs?.[first]?.[second]));
+  if (!Array.isArray(c.dpad)) return errors;
+  c.dpad.forEach((entry, i) => {
+    const d: Partial<DpadSpellDef> = entry ?? {};
+    if (!d.name) errors.push(`dpad ${i}: needs a name`);
+    if (d.spell !== undefined && !r.spells.some((x) => x.id === d.spell)) errors.push(`dpad ${i}: unknown spell ${d.spell}`);
+    if (!wholeFromOne(d.castTicks)) errors.push(`dpad ${i}: castTicks must be a whole number from 1`);
+  });
   return errors;
 }
 
@@ -799,5 +880,6 @@ export function validateRules(r: Rules): string[] {
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));
   errors.push(...componentTableErrors(r));
   errors.push(...groupErrors(r));
+  errors.push(...comboErrors(r));
   return errors;
 }

@@ -417,7 +417,7 @@ namespace Chem
 
         /// <summary>
         /// Every table as JSON, in the shape of the sandbox's `Rules` object (elements, terrain,
-        /// covers, gases, cellRules, entityRules, spells, critters, entities, items, machines, sim, groups).
+        /// covers, gases, cellRules, entityRules, spells, critters, entities, items, machines, sim, groups, combos).
         /// Mods patch this, never the typed tables, so merging works exactly like composeRules.
         /// </summary>
         readonly JObject doc;
@@ -483,6 +483,7 @@ namespace Chem
                 ["sim"] = get("sim.json", false) as JObject ?? new JObject(),
                 ["groups"] = get("groups.json", false) as JObject ?? new JObject(),
                 ["components"] = get("components.json", false) as JObject ?? new JObject(),
+                ["combos"] = get("combos.json", false) as JObject ?? new JObject(),
             };
         }
 
@@ -521,6 +522,7 @@ namespace Chem
             r.ResolveMaterials();
             r.Sim = ParseSim((JObject)doc["sim"]);
             ParseGroups(r, (JObject)doc["groups"]);
+            ParseCombos(r, (JObject)doc["combos"]);
             return r;
         }
 

@@ -1,6 +1,7 @@
 // One tick of the world. Order matters and is fixed:
-// critters -> fire -> water -> gas -> weather -> entities -> machines -> decay
+// critters -> fire -> water -> gas -> weather -> entities -> cast meters -> machines -> decay
 // -> the day clock (Hasten Time).
+import { tickCombos } from "./combos.ts";
 import { RULES } from "./rules.ts";
 import { applyElement, dampFuel, displaceWater, ignite, putCover } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
@@ -18,6 +19,7 @@ export function step(w: World): void {
   w.tick++;
   w.logged.clear();
   w.strikes = [];
+  w.combosFired = [];
   endHeldWeather(w);
   w.weather = skyNow(w);
   tickCritters(w);
@@ -27,6 +29,7 @@ export function step(w: World): void {
   tickWeather(w);
   tickEntities(w);
   tickDefense(w);
+  tickCombos(w);
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
   const floating: [Cell, string][] = []; // what floating covers reached, laid after the pass (World.floating)

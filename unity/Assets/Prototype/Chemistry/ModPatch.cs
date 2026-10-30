@@ -76,6 +76,7 @@ namespace Chem
             Expect("spells", ListOf(p["spells"], JTokenType.Object), "a list of spells");
             Expect("critters", ListOf(p["critters"], JTokenType.Object), "a list of critters");
             Expect("sim", p["sim"] is JObject, "an object");
+            Expect("combos", p["combos"] is JObject, "an object");
             return errors;
         }
 
