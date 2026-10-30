@@ -511,3 +511,16 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   pushed to another branch to avoid the prompt (rightly: that routes round
   the approval). Until Andrew applies the rule, a worker's push may wait
   for him, and the attention hook makes sure he hears of it in a minute.
+- 2026-10-30: UX pass 2 merged (411bea6, DesktopUnity; Editor closed).
+  Wizard: robe hides the robot but hands, shins and feet; black fuzzy face,
+  red slit eyes; hat or cowl (Esc menu, sent with the seed). Looks for
+  Forge, Falling Star, Whirlwind's carries, the dust flash, Lava Pool, Rain
+  Cloud, Sand Blast, Light, the pick, frozen raiders; spiderweb cracks. Bugs
+  fixed: a cast's dust flash never drawn, sand left the ground black, a
+  Whirlwind particle warning. 509/509 EditMode, 453/453 core. New probe
+  `spelllooks` (row added to FAST_LOOP.md). Open: cracks break up on bulging
+  ice; frozen raiders show cracks as colours, not a web; a crate at 8 m/s
+  can land flat and miss the pane threshold (149 vs 120, flaky in `looks`);
+  WizardBeard unused with the new face (Andrew's call); the WizardFace and
+  CellLava shaders not yet checked in a player build; NetWizard.prefab
+  changed, so other checkouts rebuild.
