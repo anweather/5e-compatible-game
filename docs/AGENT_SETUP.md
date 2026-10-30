@@ -46,6 +46,10 @@ they use a file mailbox, `tools/workers/bridge.sh`:
 3. The coordinator is waiting on its inbox (`bridge.sh wait coordinator`), so
    the message wakes it. It replies with `send pm`, which wakes the PM's
    `bridge.sh wait pm`.
+4. The reader acknowledges with `bridge.sh ack <role> all`, then waits again.
+   `bridge.sh status <role> <id>` shows unread, taken or acked. No ack in 5
+   minutes means wake the receiver; unacked mail goes back to the inbox after
+   10 minutes, so nothing is lost if a session dies mid-read.
 
 ## Why VMs
 
