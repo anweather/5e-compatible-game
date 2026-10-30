@@ -65,3 +65,13 @@ ground for an area or wall.
   engines with tests.
 - **Host (Gameplay, the Editor):** the input sequence, the orbs in the
   hands, the slam animation, and the centre-bar orbs and meter.
+
+## HUD layout (Andrew, 2026-10-29)
+- Everything scales with resolution (reference 1920x1080).
+- Top left: the portrait in the corner, the health and magic bars stacked to
+  its right; large and readable.
+- Bottom left: the d-pad cross, sized like the top-left block.
+- Centre: stamina as a green ring that drains and refills, shown only in use.
+- About 2/3 down the screen, below the ring: the loaded element orbs and the
+  cast meter, at a similar size.
+- Right side (or across the bottom): the message log.
