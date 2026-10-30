@@ -90,6 +90,8 @@ export interface CoverDef {
   dissolvesTo?: string;
   /** On open water it spreads to the open water next to it every this many ticks (float.every; float in sim.ts); unset sinks or stays. */
   floatEvery?: number;
+  /** How many cells a slick of it reaches from where it was laid (float.reach; slick in sim.ts); unset without end. */
+  floatReach?: number;
 }
 export interface GasDef {
   name: string;
@@ -334,7 +336,7 @@ export interface GroupDef {
 }
 export interface SimParams {
   ticksPerSecond: number;
-  fire: { spreadChance: number; heatChance: number; boilChance: number; downwindBonus: number; smokeChance: number };
+  fire: { spreadChance: number; heatChance: number; boilChance: number; slickBoilChance?: number; downwindBonus: number; smokeChance: number };
   water: { maxLevel: number; unitsPerStep: number; thin: number; soakPass: number; dampTicks: number };
   /** Range of Cell.h in steps; from blockAt up a cell is a wall. */
   height: { min: number; max: number; blockAt: number };
@@ -846,6 +848,7 @@ export function validateRules(r: Rules): string[] {
     if (cv.fireLook !== undefined && !FIRE_LOOKS.includes(cv.fireLook)) errors.push(`cover ${id}: fireLook must be flare, wood or oil`);
     if (cv.damage !== undefined && !isWholeRange(cv.damage, 1, 1)) errors.push(`cover ${id}: damage must be [dice, sides]`);
     if (cv.floatEvery !== undefined && (!Number.isInteger(cv.floatEvery) || cv.floatEvery < 1)) errors.push(`cover ${id}: floatEvery must be a whole number from 1`);
+    if (cv.floatReach !== undefined && (!Number.isInteger(cv.floatReach) || cv.floatReach < 1)) errors.push(`cover ${id}: floatReach must be a whole number from 1`);
     errors.push(...dissolveErrors(`cover ${id}`, cv, el, coverIds));
   }
   const seen = new Set<string>();

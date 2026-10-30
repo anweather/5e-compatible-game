@@ -107,7 +107,7 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void ACellsRustHeatAndLightAreSaved()
+        public void ACellsRustHeatLightAndSlickAreSaved()
         {
             var source = new Meadow(W, H);
             var w = Fresh(source);
@@ -115,10 +115,12 @@ namespace Chem.Tests
             w.At(5, 5).Rust = 640;
             w.At(5, 5).Heat = 50;
             w.At(5, 5).Lit = 900;
+            w.At(5, 5).Slick = 3;
             var loaded = World.Load(w.Save(source), R, source);
             Assert.That(loaded.At(5, 5).Rust, Is.EqualTo(640));
             Assert.That(loaded.At(5, 5).Heat, Is.EqualTo(50));
             Assert.That(loaded.At(5, 5).Lit, Is.EqualTo(900));
+            Assert.That(loaded.At(5, 5).Slick, Is.EqualTo(3));
             Assert.That(loaded.CellHash(), Is.EqualTo(w.CellHash()));
         }
 

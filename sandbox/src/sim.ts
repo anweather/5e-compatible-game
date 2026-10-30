@@ -32,11 +32,13 @@ export function step(w: World): void {
   tickCombos(w);
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
-  const floating: [Cell, string][] = []; // what floating covers reached, laid after the pass (World.floating)
+  const floating: [Cell, string, number][] = []; // what floating covers reached, laid after the pass (World.floating)
   for (let i = 0; i < w.cells.length; i++) {
     const c = w.cells[i]!;
     if (c.charge > 0) c.charge--;
     if ((c.lit ?? 0) > 0) c.lit!--;
+    // A slick's reach goes with its oil.
+    if ((c.slick ?? 0) !== 0 && c.cover === null) c.slick = 0;
     if (c.life > 0 && --c.life === 0) ripen(w, i, c);
     if ((c.heat ?? 0) > 0) cool(w, c);
     if (soaking) rust(w, c);
@@ -44,7 +46,11 @@ export function step(w: World): void {
     if (soaking && c.water > 0) soak(w, i, c);
     if (soaking) dryOut(w, c);
   }
-  for (const [n, cover] of floating) if (n.cover === null) putCover(n, cover);
+  for (const [n, cover, slick] of floating) {
+    if (n.cover !== null) continue;
+    putCover(n, cover);
+    n.slick = slick;
+  }
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
   tickClock(w);
   w.marks.flow.fill(0);
@@ -161,18 +167,23 @@ function rust(w: World, c: Cell) {
 /**
  * Floating oil (a cover with float.every, materials.json): on open water it spreads to each open, uncovered water
  * cell next to it, on the soak passes of every float.every ticks. What it reaches is laid after the pass, so the
- * slick grows a cell a turn whichever way the rows run (World.Float).
+ * slick grows a cell a turn whichever way the rows run. It reaches float.reach cells from where it was laid (slick
+ * counts down the cells it has left), so a slick on a lake stops (World.Float).
  */
-function float(w: World, i: number, c: Cell, floating: [Cell, string][]) {
+function float(w: World, i: number, c: Cell, floating: [Cell, string, number][]) {
   const cv = RULES.covers[c.cover!];
   if (c.frozen || !cv || !cv.floatEvery || cv.floatEvery <= 0) return;
   const pass = RULES.sim.water.soakPass;
   if (Math.floor(w.tick / pass) % Math.max(1, Math.floor(cv.floatEvery / pass)) !== 0) return;
+  // Its reach left (fresh oil has its float.reach); a slick at the end of its reach spreads no further.
+  const reachOf = cv.floatReach ?? 0;
+  const reach = (c.slick ?? 0) > 0 ? c.slick! : reachOf;
+  if (reachOf > 0 && reach <= 1) return;
   const x = i % w.w, y = Math.floor(i / w.w);
   for (let d = 0; d < 4; d++) {
     const n = cellAt(w, x + DX[d]!, y + DY[d]!);
     if (!n || n.cover !== null || n.water === 0 || n.frozen || isBlocking(n)) continue;
-    floating.push([n, c.cover!]);
+    floating.push([n, c.cover!, reachOf > 0 ? reach - 1 : 0]);
   }
 }
 
@@ -258,7 +269,9 @@ function tickFire(w: World) {
       const wet = n.water > 0 && !n.frozen;
       // A burning terrain's heat (thatch flares) scales its reach; a burning cover burns at its own.
       const heat = coverBurns(c) ? 1 : (terrainDef(c).heat ?? 1);
-      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) * heat + downwind * flam) * rainDamp(w) : wet ? p.boilChance : p.heatChance;
+      // Bare water beside a burning slick (a burning cover on water) boils at its own, lower chance (World.SpreadChance).
+      const slickBoil = coverBurns(c) && c.water > 0 && !c.frozen ? (p.slickBoilChance ?? p.boilChance) : p.boilChance;
+      const chance = flam > 0 ? (p.spreadChance * flam * (c.fire / 3) * heat + downwind * flam) * rainDamp(w) : wet ? slickBoil : p.heatChance;
       if (rand(w) < chance) applyElement(w, nx, ny, "fire", { power: 1, direct: false });
     }
     if (--c.fuel > 0) continue;

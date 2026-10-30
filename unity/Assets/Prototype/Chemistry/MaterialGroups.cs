@@ -9,7 +9,7 @@
 //   soak    { dry, wet, dampens, leaves, dries }                  soakEvery, soakEveryWet, dampens, soaksTo, driesTo
 //   rust    { every, leaves }                                     rustEvery, rustsTo
 //   hot     { for, quench }                                       hotFor, hotQuench
-//   float   { every }                                             floatEvery (covers: oil floats and spreads on open water)
+//   float   { every, reach }                                      floatEvery, floatReach (covers: oil floats and spreads on open water)
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
 //   burn / freeze / soak { status }                               burnStatus, freezeStatus, soakStatus: the ticks of burning,
 //                                                                 frozen, wet a creature of it takes (a group holding only
@@ -55,7 +55,7 @@ namespace Chem
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] CoverVerbs =
         {
             ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("intensity", "burnIntensity"), ("look", "fireLook") }),
-            ("float", null, new[] { ("every", "floatEvery") }),
+            ("float", null, new[] { ("every", "floatEvery"), ("reach", "floatReach") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
         };
 

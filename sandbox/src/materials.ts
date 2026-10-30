@@ -22,7 +22,7 @@ const TERRAIN_VERBS: Verb[] = [
 
 const COVER_VERBS: Verb[] = [
   { verb: "burn", tag: "flammable", keys: [["catch", "flammability"], ["fuel", "fuel"], ["intensity", "burnIntensity"], ["look", "fireLook"]] },
-  { verb: "float", tag: null, keys: [["every", "floatEvery"]] },
+  { verb: "float", tag: null, keys: [["every", "floatEvery"], ["reach", "floatReach"]] },
   { verb: "dissolve", tag: null, keys: [["by", "dissolvedBy"], ["leaves", "dissolvesTo"]] },
 ];
 

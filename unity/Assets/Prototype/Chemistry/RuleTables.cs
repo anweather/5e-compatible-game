@@ -124,6 +124,8 @@ namespace Chem
         public string DissolvedBy, DissolvesTo;
         /// <summary>On open water it spreads to the open water next to it every this many ticks (materials.json float.every; World.Float); 0 sinks or stays.</summary>
         public int FloatEvery;
+        /// <summary>How many cells a slick of it reaches from where it was laid (float.reach; Cell.Slick); 0 without end.</summary>
+        public int FloatReach;
         public bool Has(string tag) => Tags.Contains(tag);
         /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
@@ -231,7 +233,7 @@ namespace Chem
 
     public sealed class FireParams
     {
-        public double SpreadChance = 0.5, HeatChance = 0.04, BoilChance = 0.35, DownwindBonus = 0.35, SmokeChance = 0.25;
+        public double SpreadChance = 0.5, HeatChance = 0.04, BoilChance = 0.35, SlickBoilChance = 0.35, DownwindBonus = 0.35, SmokeChance = 0.25;
 
         /// <summary>
         /// When above 0, fire weakens as it spreads: a cell this many spreads from where the fire
@@ -628,6 +630,7 @@ namespace Chem
             DissolvedBy = Str(o["dissolvedBy"]),
             DissolvesTo = Str(o["dissolvesTo"]),
             FloatEvery = Int(o["floatEvery"]) ?? 0,
+            FloatReach = Int(o["floatReach"]) ?? 0,
         };
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
@@ -816,6 +819,8 @@ namespace Chem
                 s.Fire.SpreadChance = Num(f["spreadChance"]) ?? s.Fire.SpreadChance;
                 s.Fire.HeatChance = Num(f["heatChance"]) ?? s.Fire.HeatChance;
                 s.Fire.BoilChance = Num(f["boilChance"]) ?? s.Fire.BoilChance;
+                // Bare water beside a burning slick boils at its own chance (sim.fire.slickBoilChance), else as other water does.
+                s.Fire.SlickBoilChance = Num(f["slickBoilChance"]) ?? s.Fire.BoilChance;
                 s.Fire.DownwindBonus = Num(f["downwindBonus"]) ?? s.Fire.DownwindBonus;
                 s.Fire.SmokeChance = Num(f["smokeChance"]) ?? s.Fire.SmokeChance;
                 s.Fire.FadeCells = Int(f["fadeCells"]) ?? s.Fire.FadeCells;
