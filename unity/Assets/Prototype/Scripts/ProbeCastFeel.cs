@@ -10,8 +10,9 @@ using UnityEngine;
 // at their targets once a beat has settled; the slam takes about 0.1 s; a charge
 // pulses at each level and slows the walk; the recoil moves only what's drawn.
 // With --shots, the wizard from the side at each beat, first with the pose off
-// (the "before": the old gestures, the same camera and moments).
-public class CastFeelProbe : ProbeScenario
+// (the "before": the old gestures, the same camera and moments). The impact is
+// in ProbeCastFeel.Impact.cs.
+public partial class CastFeelProbe : ProbeScenario
 {
     const float HandTolerance = 0.06f, WaitLimit = 8f;
 
@@ -54,6 +55,7 @@ public class CastFeelProbe : ProbeScenario
             yield return Charged();
             yield return Cancelled();
             if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Pictures("after");
+            yield return Impact();
         }
         finally
         {

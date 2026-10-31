@@ -86,6 +86,8 @@ public class OnlineObservation
     public bool sawForm, sawFormEnd;
     /// <summary>The beats the other wizard's cast went through here (CastBeats), one line for each copy that moved.</summary>
     public List<string> otherBeats = new();
+    /// <summary>The hit-stops that wizard's copy had here: none, they're its owner's view.</summary>
+    public int otherStops;
     public int joinedTick;
     /// <summary>The virtual player's lag at the start tick: ticks it knew of but hadn't run yet (0 caught up).</summary>
     public int lagAtStart;
@@ -470,6 +472,7 @@ public class OnlineProbeClient : MonoBehaviour
         net.TickApplied -= OnTick;
         if (other != null) other.BeatChanged -= Heard;
         if (ask == null) yield break;
+        after.otherStops = other != null ? other.Stops : 0;
         after.phase = ProbeLink.ResetReported;
         after.desync = net.DesyncSeen;
         after.errorCount = errorCount;
@@ -597,6 +600,8 @@ public class OnlineProbe : ProbeScenario
         }
         Check("shape_seen_online", client.sawForm, "the host's wizard drawn as a deer on the virtual player");
         Check("shape_ended_online", client.sawFormEnd, "and drawn as itself again once a cast button ended it (issue #6)");
+        Check("remote_wizard_has_no_hit_stop", client.otherStops == 0 && wizard.GetComponent<CastBeats>().Stops > 0,
+            $"its copy on the virtual player {client.otherStops}, the host's own {wizard.GetComponent<CastBeats>().Stops}");
         Check("beats_seen_online", client.otherBeats.SequenceEqual(hostBeats) && hostBeats.Contains(nameof(Beat.Release)) && hostBeats.Contains(nameof(Beat.Charge)),
             $"host [{string.Join(" ", hostBeats)}], its wizard on the virtual player [{string.Join(" ", client.otherBeats)}]");
         int compared = 0, equal = 0;

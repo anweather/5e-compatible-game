@@ -178,7 +178,26 @@ is the pure rule. Poses and timings are all in `Settings/CastFeel.asset`, by Lim
 6. **Recovery:** back to neutral fast; a new cast cuts it short.
 
 Cancel fizzles, and so does a cast the core fired that then couldn't go (no aim). Casts from the radial or the
-mouse keep their `CastGestures`. `CastBeats.BeatChanged` and `ChargeLevel` are the hooks for what reacts.
+mouse keep their `CastGestures`. `CastBeats.BeatChanged`, `Struck` and `ChargeLevel` are the hooks for what reacts.
+
+## Impact (the view, 2026-10-31)
+What a cast does to the player, for weight (#22): `CastImpact`, `CastCamera`, `PadRumble`, numbers in `Settings/CastFeel.asset`.
+Short, sharp hits, never a drone. None of it touches `Time`, the ticks or physics, and it's all this machine's alone.
+- **When:** at the hands' contact (`CastBeats.Struck`), not the beat's start: the slam `slam.seconds` in, the release `release.seconds` in.
+- **Hit-stop:** the local wizard's Animator and beat clock and the camera stand still for 2 frames on the slam and 3 on the release
+  (0.034 s and 0.05 s; the camera eases back over 0.05 s so a walking wizard doesn't jump it). A remote copy never stops, so its beats can't
+  drift, and on the owner's screen a beat is at most that far behind; the next beat starts clean. A run with and one without give the same hash at the same tick (the `castfeel` probe).
+- **Camera:** a Cinemachine impulse after each stop, in the camera's axes: the slam's down, the release's along the cast (with some lift, since along the view alone
+  it barely shows), a landing's by size and distance. The listener takes the strongest, so casts don't pile up. Charging tightens the lens by up to 3 degrees and adds a fine
+  shake, up to 1.6 cm, with the square of the charge; it tires to 40% past 3 s in the beat.
+- **Size:** the spell's level plus 2 for each charge past the first, over 7 (`CastImpact.SizeOf`).
+- **Landings:** `SpellCaster`'s landing runs on every peer for every caster, so anyone's big spell is felt nearby. Felt within 14 m (size 0) to 60 m (size 1), by the square of the
+  nearness. Spells with no force in them (fog, light) aren't felt. Meteors and falling stars go the same way.
+- **Rumble:** gathering ticks, a slam thump, a tick at each charge level, a release kick, landings. Pulses that die away by themselves, the strongest winning; only on the pad in use.
+  The motors stop on a cancel, the Esc menu, focus loss, pause, quit, disable and before a domain reload.
+- **Shake and rumble:** the Esc menu's page of that name (`GameFeel`, PlayerPrefs `feel.shake`), 100% by default. It scales hit-stop, impulses, tightening, charge shake and rumble;
+  at 0 there's none of them, hit-stop included (it moves the view, so it counts as shake).
+- **Not yet:** casts from the radial or the mouse have no beats, so only their landing is felt.
 
 ## Built (the view, 2026-10-30)
 - **Controller:** fire {LB}, water {RB}, earth {LT}, air {RT}; {East} cancels; the d-pad cycles,

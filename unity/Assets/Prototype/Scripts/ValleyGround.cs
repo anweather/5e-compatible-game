@@ -158,6 +158,9 @@ public sealed class ValleyGround
         ch.layers = LayerIndices(ch.original.terrainLayers);
         ch.baseAlpha = null;
         ch.frameAlpha = null;
+        // Paint still waiting was the old world's, and what it would write from has just gone.
+        ch.dx0 = ch.dz0 = int.MaxValue;
+        ch.dx1 = ch.dz1 = -1;
     }
 
     /// <summary>CellPaint's layers as indices into a terrain's layers, by name ("&lt;name&gt;_TerrainLayer...", as ValleyBuilder names them); -1 where missing.</summary>

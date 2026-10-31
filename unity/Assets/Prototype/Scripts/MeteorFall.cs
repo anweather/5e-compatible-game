@@ -1,6 +1,5 @@
 using System;
 using System.Collections;
-using Unity.Cinemachine;
 using UnityEngine;
 
 // A meteor's show (the Meteor spell; SpellVisuals.Entry.fromSky): a burning
@@ -20,7 +19,6 @@ public class MeteorFall : MonoBehaviour
     const float Height = 110f, Reach = 75f, RockSize = 1.6f;
 
     static Material hot, trail, smoke;
-    static CinemachineImpulseSource shaker;
 
     Vector3 from, to;
     float t, seconds = Seconds, size = 1f;
@@ -153,13 +151,13 @@ public class MeteorFall : MonoBehaviour
         {
             Blast(look?.impact, 2.4f);
             Blast(look?.afterImpact, 2f);
-            Shake(to);
         }
         else
         {
             BurstFx.Play(BurstFx.Kind.Flash, to + Vector3.up * 0.2f, 4f * size);
             BurstFx.Play(BurstFx.Kind.Chips, to, 12f * size, null, new Color(0.32f, 0.26f, 0.2f));
         }
+        CastImpact.Felt(to, Mathf.Clamp01(size)); // shake and rumble, hardest near the blast
         var cam = Camera.main;
         float distance = cam != null ? Vector3.Distance(cam.transform.position, to) : 50f;
         var sky = FindAnyObjectByType<SkyLight>();
@@ -186,22 +184,5 @@ public class MeteorFall : MonoBehaviour
         var fx = SpellVisuals.Spawn(prefab, to, Quaternion.identity);
         fx.transform.localScale = Vector3.one * scale;
         Destroy(fx, Mathf.Max(3f, look?.impactSeconds ?? 3f));
-    }
-
-    // The camera shakes, hardest near the blast (CinemachineImpulseListener on the follow camera):
-    // a short, light jolt (Andrew's playtest: the old 1.2 s one was too strong).
-    static void Shake(Vector3 at)
-    {
-        if (shaker == null)
-        {
-            shaker = new GameObject("Meteor shake").AddComponent<CinemachineImpulseSource>();
-            var d = shaker.ImpulseDefinition;
-            d.ImpulseShape = CinemachineImpulseDefinition.ImpulseShapes.Explosion;
-            d.ImpulseType = CinemachineImpulseDefinition.ImpulseTypes.Dissipating;
-            d.ImpulseDuration = 0.5f;
-            d.DissipationDistance = 160f;
-            d.DissipationRate = 0.4f;
-        }
-        shaker.GenerateImpulseAtPositionWithVelocity(at, Vector3.down * 0.5f);
     }
 }

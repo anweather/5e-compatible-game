@@ -288,6 +288,7 @@ public partial class SpellCaster : MonoBehaviour
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)));
             ElementBurst(def, landing, charge);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
+            CastImpact.Landed(def, landing, charge);
             onArrive?.Invoke();
         }
 

@@ -105,8 +105,10 @@ public static class ChemYardBuilder
         avoid.DampingFromCollision = 0.4f;
         third.AvoidObstacles = avoid;
         hands.view = follow.GetComponent<CinemachineCamera>();
-        // Meteors shake it (MeteorFall).
-        follow.AddComponent<CinemachineImpulseListener>();
+        // Casts and meteors shake it (CastImpact); the strongest counts, so quick casts don't pile up.
+        follow.AddComponent<CinemachineImpulseListener>().SignalCombinationMode = CinemachineImpulseListener.SignalCombinationModes.UseLargest;
+        // After CameraClearance: it holds the camera through a hit-stop.
+        follow.AddComponent<CastCamera>();
 
         SetUpLighting();
         ValleyBuilder.Dress(grid, rows);

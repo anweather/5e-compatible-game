@@ -6,7 +6,9 @@ using UnityEngine;
 // Changes show at once in Play mode. A beat's pose is where the hands go, in
 // metres from between the feet (x right, y up, z ahead, the rig's size scaling
 // it, as in CastGestures), with how the palm faces and what the body does; the
-// beat moves there over its seconds along its curve from wherever it was.
+// beat moves there over its seconds along its curve from wherever it was. The
+// impact (CastImpact, CastCamera, PadRumble) is here too; the player's Shake and
+// rumble setting (GameFeel) scales all of that, 100% being these numbers.
 [CreateAssetMenu(menuName = "Prototype/Cast Feel")]
 public class CastFeel : ScriptableObject
 {
@@ -29,6 +31,22 @@ public class CastFeel : ScriptableObject
         public float seconds = 0.2f;
         [Tooltip("The move's shape, 0 to 1. Starting steep is no ease-in.")]
         public AnimationCurve curve = AnimationCurve.EaseInOut(0f, 0f, 1f, 1f);
+    }
+
+    /// <summary>A pulse on the pad: each motor's strength (0 to 1) and how long it takes to die away.</summary>
+    [Serializable]
+    public struct Thump
+    {
+        [Range(0f, 1f), Tooltip("The heavy motor, the light one.")]
+        public float low, high;
+        public float seconds;
+
+        public Thump(float low, float high, float seconds)
+        {
+            this.low = low;
+            this.high = high;
+            this.seconds = seconds;
+        }
     }
 
     static AnimationCurve Snap() => new(new Keyframe(0f, 0f, 3.5f, 3.5f), new Keyframe(1f, 1f, 0f, 0f));
@@ -87,6 +105,51 @@ public class CastFeel : ScriptableObject
     public float pulse = 0.9f, pulseSeconds = 0.2f;
     [Tooltip("The hands' tremble while charging (m), times the level squared.")]
     public float tremble = 0.004f;
+
+    [Header("Hit-stop (this wizard's animation and the camera, never the game)")]
+    [Tooltip("How long the slam and the release stand still (s). A 60 fps frame is 0.0167 s: two frames and three.")]
+    public float slamStop = 0.034f, releaseStop = 0.05f;
+    [Tooltip("How long the camera takes to catch up after a stop (s), so a wizard walking doesn't make it jump.")]
+    public float thawSeconds = 0.05f;
+
+    [Header("Camera impulses (m at the lens, short and sharp)")]
+    [Tooltip("The slam's kick, down.")]
+    public float slamKick = 0.05f;
+    public float slamKickSeconds = 0.14f;
+    [Tooltip("The release's kick along the cast, from a spell of size 0 to one of size 1.")]
+    public float releaseKickSmall = 0.09f, releaseKickBig = 0.24f;
+    public float releaseKickSeconds = 0.2f;
+    [Tooltip("How much it also kicks up: along the view alone a kick barely shows.")]
+    public float releaseLift = 0.6f;
+    [Tooltip("A landing's kick, right beside it, from size 0 to size 1.")]
+    public float landKickSmall = 0.05f, landKickBig = 0.3f;
+    public float landKickSeconds = 0.3f;
+    [Tooltip("How far a landing is felt (m), from size 0 to size 1. It falls off with the square of the way there.")]
+    public float reachSmall = 14f, reachBig = 60f;
+
+    [Header("How big a spell is")]
+    [Tooltip("The spell level that counts as full size, and how many levels each charge past the first adds.")]
+    public float fullSizeLevel = 7f, levelsPerCharge = 2f;
+
+    [Header("Charging")]
+    [Tooltip("The lens's tightening at full charge (degrees), and how long it takes to come and go (s).")]
+    public float chargeTighten = 3f, chargeEase = 0.3f;
+    [Tooltip("The fine shake at full charge (m), and how quick it is. It grows with the square of the charge.")]
+    public float chargeShake = 0.016f, chargeShakeHertz = 9f;
+    [Tooltip("After this long in the charge (s) the shake eases over a second to this share, so a held cast stays comfortable.")]
+    public float chargeShakeTires = 3f, chargeShakeHeld = 0.4f;
+
+    [Header("Rumble (pulses, never a drone)")]
+    public Thump gatherRumble = new(0f, 0.22f, 0.06f);
+    public Thump slamRumble = new(0.55f, 0.35f, 0.1f);
+    [Tooltip("At full charge; lower levels get their share.")]
+    public Thump levelRumble = new(0.3f, 0.5f, 0.09f);
+    [Tooltip("At size 1; smaller spells get a share, from smallRumble up.")]
+    public Thump releaseRumble = new(0.85f, 0.6f, 0.16f);
+    [Tooltip("Right beside a landing of size 1.")]
+    public Thump landRumble = new(1f, 0.6f, 0.24f);
+    [Range(0f, 1f), Tooltip("The share of a release's or landing's rumble that a spell of size 0 gets.")]
+    public float smallRumble = 0.45f;
 
     /// <summary>The pose a beat moves to (Neutral: as Recovery's, nothing is held).</summary>
     public BeatPose Of(Beat beat) => beat switch

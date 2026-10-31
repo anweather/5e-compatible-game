@@ -12,9 +12,13 @@ using UnityEngine;
 // elements in the hands (CastOrbs). After CastPose, whose gesture stands aside
 // while a beat is playing, and before the robe and outfit.
 //
-// For what reacts to a cast (hit-stop, camera, rumble, sound): BeatChanged says
-// when each beat starts, ChargeLevel each level reached; IsLocal, Charge,
-// AimPoint and Elements say whose, how strong, where and what.
+// For what reacts to a cast (camera, rumble, sound): BeatChanged says when each
+// beat starts, Struck when the hands land a slam or a thrust, ChargeLevel each
+// level reached; IsLocal, Charge, AimPoint, Spell and Elements say whose, how
+// strong, where and what. This machine's own wizard tells CastImpact, whose
+// hit-stop (HitStop) stands this body's clock and Animator still for a few frames:
+// the game's clock isn't touched, and another player's copy never stops, so a
+// beat can run a frame or three behind on its owner's screen but never adds up.
 [DefaultExecutionOrder(205)]
 [RequireComponent(typeof(Animator), typeof(CastPose))]
 public class CastBeats : MonoBehaviour
@@ -24,6 +28,8 @@ public class CastBeats : MonoBehaviour
 
     /// <summary>A beat has started on this wizard, on this machine's screen.</summary>
     public event Action<Beat> BeatChanged;
+    /// <summary>The hands have got there: met, in a Slam, or thrust home, in a Release.</summary>
+    public event Action<Beat> Struck;
     /// <summary>A held cast has reached this charge level (from 2).</summary>
     public event Action<int> ChargeLevel;
 
@@ -37,12 +43,19 @@ public class CastBeats : MonoBehaviour
     public int Charge { get; private set; } = 1;
     /// <summary>Where the spell is going, from its announcement (Release on).</summary>
     public Vector3 AimPoint { get; private set; }
+    /// <summary>The spell last announced for this wizard.</summary>
+    public string Spell { get; private set; }
     /// <summary>The elements of the cast in hand, in order; null for none.</summary>
     public (string first, string second) Elements => (first, second);
     /// <summary>A beat is posing the body; CastPose stands aside.</summary>
     public bool Driving => Now != Beat.Neutral && PoseOn;
     /// <summary>Off, the beats still run and the elements still show but the body is left to CastPose (the probe's "before").</summary>
     public bool PoseOn { get; set; } = true;
+
+    /// <summary>In a hit-stop: this body and the camera stand still, the game runs on.</summary>
+    public bool Stopped => stopLeft > 0f;
+    /// <summary>How many hit-stops this wizard has had, for the probe.</summary>
+    public int Stops { get; private set; }
 
     /// <summary>Where the hands were last put, for the probe.</summary>
     public (Vector3 right, Vector3 left) HandTargets { get; private set; }
@@ -75,23 +88,32 @@ public class CastBeats : MonoBehaviour
     NetWizard net;
     CastOrbs orbs;
     ChemGrid heard;
+    Animator animator;
     Blend from, body;
     string first, second;
     // The core fired this spell, and the announcement of one: they arrive in either order.
     string firedSpell, announcedSpell;
     float firedAt, announcedAt, thrustAt, kick;
+    bool struck, standing;
+    float stopLeft, speedWas = 1f;
+    Action afterStop;
 
     void Awake()
     {
         if (feel == null) feel = ScriptableObject.CreateInstance<CastFeel>();
         pose = GetComponent<CastPose>();
+        animator = GetComponent<Animator>();
         TryGetComponent(out caster);
         TryGetComponent(out sit);
         TryGetComponent(out net);
         orbs = new CastOrbs(transform, pose);
     }
 
-    void OnDisable() => Listen(null);
+    void OnDisable()
+    {
+        Listen(null);
+        EndStop();
+    }
 
     void OnDestroy() => orbs?.Destroy();
 
@@ -105,6 +127,42 @@ public class CastBeats : MonoBehaviour
         announcedAt = Time.time;
         thrustAt = Time.time + Mathf.Max(0f, leavesIn - feel.thrustLead);
         AimPoint = at;
+        Spell = spell;
+    }
+
+    /// <summary>
+    /// Stands this body and the camera still for a moment, then runs <paramref name="after"/>.
+    /// A view of this machine's own: the Animator and the beat's clock, never the game's time.
+    /// </summary>
+    public void HitStop(float seconds, Action after)
+    {
+        if (seconds <= 0f || !IsLocal) return;
+        if (!standing) speedWas = animator.speed;
+        standing = true;
+        animator.speed = 0f;
+        stopLeft = seconds;
+        afterStop = after;
+        Stops++;
+    }
+
+    // The beat's time this frame: none in a hit-stop.
+    float BeatTime()
+    {
+        if (!Stopped) return Time.deltaTime;
+        stopLeft -= Time.deltaTime;
+        if (Stopped) return 0f;
+        var after = afterStop;
+        EndStop();
+        after?.Invoke();
+        return 0f;
+    }
+
+    void EndStop()
+    {
+        if (standing) animator.speed = speedWas;
+        standing = false;
+        stopLeft = 0f;
+        afterStop = null;
     }
 
     void Listen(ChemGrid grid)
@@ -135,14 +193,25 @@ public class CastBeats : MonoBehaviour
         var grid = caster != null ? caster.grid : null;
         Listen(grid);
         if (grid == null || grid.World == null) return;
-        InBeat += Time.deltaTime;
+        float time = BeatTime();
+        InBeat += time;
+        Strike();
         Step(caster.Replaying ? null : grid.World.CastOf(Player), grid.World);
         var p = feel.Of(Now);
         float t = p.seconds > 0f ? Mathf.Clamp01(InBeat / p.seconds) : 1f;
         body = Blend.Lerp(from, Blend.Of(p), p.curve.Evaluate(t));
         if (Driving) Lay();
-        kick = Mathf.Max(0f, kick - Time.deltaTime / Mathf.Max(0.01f, feel.pulseSeconds));
+        kick = Mathf.Max(0f, kick - time / Mathf.Max(0.01f, feel.pulseSeconds));
         Show();
+    }
+
+    // Before the beat can move on: a thrust can follow the slam in the frame the hands meet.
+    void Strike()
+    {
+        if (struck || Now is not (Beat.Slam or Beat.Release) || InBeat < feel.Of(Now).seconds) return;
+        struck = true;
+        Struck?.Invoke(Now);
+        if (IsLocal) CastImpact.Struck(this, Now);
     }
 
     // Works out the beat from the cast.
@@ -170,12 +239,14 @@ public class CastBeats : MonoBehaviour
         if (!up) return;
         kick = 1f;
         ChargeLevel?.Invoke(level);
+        if (IsLocal) CastImpact.Leveled(this, level);
     }
 
     void Enter(Beat beat)
     {
         Now = beat;
         InBeat = 0f;
+        struck = false;
         from = body;
         switch (beat)
         {
@@ -193,6 +264,7 @@ public class CastBeats : MonoBehaviour
         if (beat is Beat.Release or Beat.Fizzle or Beat.Neutral) first = second = null;
         if (beat == Beat.Neutral) Charge = 1;
         BeatChanged?.Invoke(beat);
+        if (IsLocal) CastImpact.Began(this, beat);
     }
 
     // Lays the pose on the bones: the body, then the hands on it.

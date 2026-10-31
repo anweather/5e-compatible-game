@@ -210,6 +210,11 @@ touch them.
   release, recovery, or a fizzle when it's dropped (`Beat`, `CastBeats`; poses and timings in
   `Settings/CastFeel.asset`). View only, worked out from the core's cast state on every peer.
 
+**Hit-stop**
+: A few frames in which the local wizard's Animator and beats and the camera stand still, on the slam and the
+  release (`CastBeats.HitStop`, `CastImpact`). View only and on the caster's own screen: game time, ticks and
+  physics run on, and other peers never see it. *Avoid:* "freeze" (a word of the chemistry), "hitch".
+
 **Downed**
 : A wizard at 0 health: on the ground with no controls for `sim.json` `downed.seconds`, then back at the
 yard with full health (`Downed`, `WizardDown`). Not the world reset.

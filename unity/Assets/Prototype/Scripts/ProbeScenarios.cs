@@ -95,9 +95,9 @@ public static class ProbeScenarios
             "raider. Checks: what each does to the cells, no console errors."),
         new Entry("downed", typeof(DownedProbe), 30f,
             "The punch on a virtual gamepad's Circle, and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
-        new Entry("castfeel", typeof(CastFeelProbe), 90f,
+        new Entry("castfeel", typeof(CastFeelProbe), 200f,
             "The beats of a cast by elements (CastBeats): a single, a pair, one charged and one cancelled. Checks: each beat in order, the hands at their targets once settled, " +
-            "the slam about 0.1 s, a pulse at each charge level, the slower walk, the recoil only drawn, no console errors. With --shots, the wizard from the side at each beat, before and after."),
+            "the slam about 0.1 s, a pulse at each charge level, the slower walk, the recoil only drawn, hit-stop leaving the tick and hash alone, shake and rumble by size and distance on a virtual pad, off still, the motors stopping, no console errors. With --shots, the wizard from the side at each beat, before and after."),
         new Entry("combo", typeof(ComboProbe), 70f,
             "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
             "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +
