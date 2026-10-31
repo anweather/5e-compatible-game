@@ -747,3 +747,14 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   555, sandbox 227. Free memory fell to 0.7 GB (Unity 13.7 GB building Part
   3's player, plus u1 at 3.5 GB): u1 stopped, and the watcher now stops the
   newest worker VM below 1.5 GB free. u2 (Dragon rules) waits.
+- 2026-10-31 01:05: UX pass 4 done (5ba3bce; DesktopUnity). Part 3: fire back
+  to per-type flipbooks with varied position, size and timing (wildfire p95
+  23.8 ms; close views heavy, for the perf pass); fog 588 -> 22.9 ms (clear
+  14.6); the wave carries props at its speed; golf views built (holed in 7);
+  Left Ctrl fixed; Sleet as Frost held. Player build kept in
+  unity/Builds/Windows (c5fa3c9): markers and fire draw; bot seed 821, 14
+  goals, 0 exceptions. Notes posted on #6, #7, #11, #12, #18, #19, #20, #21.
+  Andrew's eye: the wave crest and the fire; the crate punch (0.42 m). Gaps:
+  golf replays need a GolfCommand intent; golf online only has equal
+  checksums; without the Particle Pack there are no flames (builder warns).
+  Cast-feel starts now with the Editor kept open (u2 still waits).
