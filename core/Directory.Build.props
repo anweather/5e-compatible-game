@@ -23,7 +23,7 @@
     <!-- Any warning fails the build, locally and in CI. -->
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
     <!-- Known debt, reported but not failing: cognitive complexity in the
-         methods ported line by line from the TS sandbox. Remove this line once
+         methods ported line by line from the (now frozen) TS sandbox. Remove this line once
          they are split up. -->
     <WarningsNotAsErrors>$(WarningsNotAsErrors);S3776</WarningsNotAsErrors>
   </PropertyGroup>

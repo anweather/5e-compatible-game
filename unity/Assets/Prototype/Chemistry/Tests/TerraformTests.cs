@@ -7,8 +7,8 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>
-    /// Earth shaping (terraform spells). Mirrors sandbox/test/terraform.test.ts; the golden
-    /// numbers come from running the same casts there.
+    /// Earth shaping (terraform spells). Ported from sandbox/test/terraform.test.ts; the golden
+    /// numbers first came from running the same casts there (frozen 2026-10-31).
     /// </summary>
     public class TerraformTests
     {
@@ -311,7 +311,7 @@ namespace Chem.Tests
             Assert.That(w.At(10, 2).T, Is.EqualTo("bedrock"), "nor bedrock");
             Assert.That(w.Log.Any(l => l.Text == "The bedrock can't be dug"));
             Run(w, 20);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f57b067a 1"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f57b067a 1"), "the golden");
         }
 
         [Test]
@@ -332,7 +332,7 @@ namespace Chem.Tests
             w.ApplyEffect(new EffectCommand(EffectKind.Dig, 3, 1, "ball"));
             Assert.That(w.At(3, 1).Height, Is.Zero, "an item that doesn't dig does nothing");
             Run(w, 20);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1c4e549b 1"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1c4e549b 1"), "the golden");
         }
 
         [Test]
@@ -605,7 +605,7 @@ namespace Chem.Tests
             string mid = $"{w.WhirlState()} {w.CellHash()} {w.RngState}";
             Run(w, 30);
             Assert.That(w.Whirls, Is.Empty);
-            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("|9:4:30:fire e6fa9db8 2713091359 | 47709c01 321794052"), "the same in the sandbox");
+            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("|9:4:30:fire e6fa9db8 2713091359 | 47709c01 321794052"), "the golden");
         }
 
         [Test]
@@ -624,7 +624,7 @@ namespace Chem.Tests
             Assert.That(w.Log.Any(l => l.Text == "The dust goes up in a flash"));
             Assert.That(w.FlashesSince(-1).Count(), Is.GreaterThan(1), "the view hears of each cell");
             Run(w, 20);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("28826ce6 2354002487"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("28826ce6 2354002487"), "the golden");
         }
 
         [Test]

@@ -1,16 +1,16 @@
-// Typed view of ../../rules/*.json. The JSON is the asset: the future C#
-// Game.Core loads the same files, so nothing about a rule lives here.
-import materials from "../../rules/materials.json" with { type: "json" };
-import reactions from "../../rules/reactions.json" with { type: "json" };
-import spells from "../../rules/spells.json" with { type: "json" };
-import critters from "../../rules/critters.json" with { type: "json" };
-import entities from "../../rules/entities.json" with { type: "json" };
-import items from "../../rules/items.json" with { type: "json" };
-import machines from "../../rules/machines.json" with { type: "json" };
-import sim from "../../rules/sim.json" with { type: "json" };
-import groups from "../../rules/groups.json" with { type: "json" };
-import combos from "../../rules/combos.json" with { type: "json" };
-import components from "../../rules/components.json" with { type: "json" };
+// Typed view of ../rules-frozen/*.json, a snapshot of ../../rules/ frozen on
+// 2026-10-31 (J-042). The JSON is the asset: nothing about a rule lives here.
+import materials from "../rules-frozen/materials.json" with { type: "json" };
+import reactions from "../rules-frozen/reactions.json" with { type: "json" };
+import spells from "../rules-frozen/spells.json" with { type: "json" };
+import critters from "../rules-frozen/critters.json" with { type: "json" };
+import entities from "../rules-frozen/entities.json" with { type: "json" };
+import items from "../rules-frozen/items.json" with { type: "json" };
+import machines from "../rules-frozen/machines.json" with { type: "json" };
+import sim from "../rules-frozen/sim.json" with { type: "json" };
+import groups from "../rules-frozen/groups.json" with { type: "json" };
+import combos from "../rules-frozen/combos.json" with { type: "json" };
+import components from "../rules-frozen/components.json" with { type: "json" };
 import { materialGroupErrors, ungroupMaterials } from "./materials.ts";
 
 export interface TerrainDef {
@@ -557,7 +557,7 @@ const baseMaterials = (() => {
   return m;
 })();
 
-/** The rule tables exactly as committed in ../../rules/ (verb groups read as flat keys). Never mutated. */
+/** The rule tables exactly as committed in ../rules-frozen/ (verb groups read as flat keys). Never mutated. */
 export const BASE_RULES: Readonly<Rules> = Object.freeze({
   elements: BASE_ELEMENTS,
   terrain: baseMaterials.terrain as Record<string, TerrainDef>,

@@ -14,10 +14,10 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
   culture-dependent string calls, ordered iteration (`Step` visits active
   chunks as row segments in world row-major order, never the store's
   order).
-- **Mirrors the TS sandbox** (`sandbox/src/*.ts`). File headers say which
-  TS file each one ports. A behaviour change goes into both, with a golden:
-  `World.CellHash` (FNV-1a) must match between `TerraformTests.cs` /
-  `ChemistryTests.cs` and `sandbox/test/terraform.test.ts`.
+- **Ported from the TS sandbox** (`sandbox/src/*.ts`), which is now frozen
+  (J-042). File headers say which TS file each one came from. A behaviour
+  change goes here only, with a C# golden (`World.CellHash`, FNV-1a, in
+  `TerraformTests.cs` / `ChemistryTests.cs`); don't port it to the sandbox.
 - **ECS-ready (D9, `docs/adr/0009-*`).** New code keeps data apart from
   systems, reaches cells through accessors (`World.At`), prefers integer
   ids over strings in cell state, and changes shared state only through
@@ -25,12 +25,12 @@ section 2 walks through the files; `docs/WORLD_STREAMING.md` covers chunks.
 
 ## Changing it
 
-- Rule checks exist twice with the same messages: `Rules.Check.cs` /
-  `Rules.CheckItems.cs` here and `validateRules` in `sandbox/src/rules.ts`.
+- Rule checks live in `Rules.Check.cs` / `Rules.CheckItems.cs`. Their
+  messages started as the frozen sandbox's `validateRules`; no need to match it now.
 - A new effect kind from the view goes in `Chem.EffectKind` and
   `World.ApplyEffect`.
 - `S3776` (cognitive complexity) is the only warning allowed to stay; the
-  four methods carrying it mirror the TS and get split together with it.
+  four methods carrying it were ported from the TS and can be split freely.
   Everything else fails `dotnet build core -c Release -warnaserror`.
 
 ## Tests
