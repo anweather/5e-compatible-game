@@ -44,6 +44,57 @@ public class HouseCameraProbe : ProbeScenario
         Check("arm_holds_at_a_house", shortest >= full * KeepsShare, $"shortest {shortest:F2} m of {full:F2} over {runs} walks; {what}");
         yield return Wait(0.2f);
         Shot("nose-to-the-wall");
+        yield return SmallForm(houses, follow, root);
+    }
+
+    // The smallest of the animals' bodies at the same walls: its radius is under the camera's check (#20 again?).
+    IEnumerator SmallForm(VillageHouse[] houses, CinemachineThirdPersonFollow follow, Transform root)
+    {
+        var shape = wizard.GetComponent<Shapeshift>();
+        var fauna = FindAnyObjectByType<ValleyFauna>();
+        var spell = World.Rules.Spell(SpellIds.Shapeshift);
+        int small = -1;
+        float least = float.MaxValue;
+        for (int i = 0; fauna != null && fauna.SpeciesName(i) != null; i++)
+        {
+            var body = fauna.Body(i);
+            if (body == null) continue;
+            float size = body.StandHeight * (body.Size.x + body.Size.y);
+            if (size < least) (least, small) = (size, i);
+        }
+        Check("small_form_found", small >= 0, fauna != null ? fauna.SpeciesName(small) : "no fauna");
+        if (small < 0) yield break;
+        var at = houses[0].transform.position + Vector3.right * (houses[0].width / 2f + 6f);
+        Teleport(new Vector3(at.x, grid.GroundAt(at) + 0.1f, at.z));
+        var there = at + Vector3.right * 3f;
+        int animal = fauna.Spawn(small, new Unity.Mathematics.float3(there.x, grid.GroundAt(there), there.z), 0f);
+        fauna.Puppet(animal, 0f, 0f);
+        yield return null;
+        var eye = wizard.transform.position + Vector3.up * 1.6f;
+        var ray = new Ray(eye, (Vector3)fauna.State(animal).Position + Vector3.up * 0.2f - eye);
+        string why = shape.Aim(spell, ray, out var cell);
+        Check("small_form_aimed", why == null, why ?? fauna.SpeciesName(small));
+        caster.Select(SpellIds.Shapeshift);
+        caster.Cast(SpellIds.Shapeshift, cell.x, cell.y, 1);
+        yield return Wait(1.2f);
+        Check("small_form_taken", shape.Shifted, shape.FormName ?? "not shifted");
+        Metric("small_body_radius_m", wizard.GetComponent<CharacterController>().radius);
+        (shortest, what, blocked) = (float.MaxValue, "nothing", 0);
+        int runs = 0;
+        foreach (var house in houses.Take(2))
+            foreach (var side in new[] { Vector3.forward, Vector3.right, Vector3.back, Vector3.left })
+            {
+                if (!shape.Shifted) break;
+                runs++;
+                yield return WalkInto(house, side, follow, root);
+            }
+        Metric("small_runs", runs);
+        Metric("small_arm_shortest_m", shortest);
+        Check("arm_holds_in_a_small_form", shortest >= full * KeepsShare, $"shortest {shortest:F2} m of {full:F2} over {runs} walks in the {shape.FormName}; {what}");
+        Shot("small-form-at-the-wall");
+        yield return null;
+        yield return null;
+        shape.ChangeBackByChoice();
     }
 
     // Into the wall from one side and held there, as a player does.

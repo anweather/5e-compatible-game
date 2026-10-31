@@ -81,7 +81,15 @@ public static class Forces
     /// </summary>
     public static int Along(ChemGrid grid, List<(int x, int y)> cells, Vector3 direction, float impulse, Transform except, System.Predicate<IPushable> only = null)
     {
-        var pushed = new HashSet<IPushable>();
+        var pushed = OnCells(grid, cells, except, only);
+        foreach (var target in pushed) target.Push(Thrown(direction.normalized) * impulse);
+        return pushed.Count;
+    }
+
+    /// <summary>Everything pushable standing in the columns over these cells, apart from <paramref name="except"/>'s, that <paramref name="only"/> picks.</summary>
+    public static HashSet<IPushable> OnCells(ChemGrid grid, List<(int x, int y)> cells, Transform except, System.Predicate<IPushable> only = null)
+    {
+        var found = new HashSet<IPushable>();
         var half = new Vector3(grid.cellSize / 2f, ColumnHeight / 2f, grid.cellSize / 2f);
         foreach (var (x, y) in cells)
         {
@@ -90,10 +98,10 @@ public static class Forces
             for (int i = 0; i < count; i++)
             {
                 var target = Find<IPushable>(Hits[i], except);
-                if (target != null && (only == null || only(target)) && pushed.Add(target)) target.Push(Thrown(direction.normalized) * impulse);
+                if (target != null && (only == null || only(target))) found.Add(target);
             }
         }
-        return pushed.Count;
+        return found;
     }
 
     /// <summary>Every distinct <typeparamref name="T"/> with a collider within <paramref name="reach"/>, apart from <paramref name="except"/> and its children.</summary>

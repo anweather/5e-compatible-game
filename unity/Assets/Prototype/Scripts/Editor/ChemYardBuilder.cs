@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using Unity.Cinemachine;
 using Unity.Netcode;
@@ -150,13 +151,15 @@ public static class ChemYardBuilder
     static void AssignEffects(ChemGrid grid)
     {
         grid.flameShader = Shader.Find("Prototype/Flame");
+        grid.flameSheets = new[] { "TinyFlame", "MediumFlame01", "LargeFlame01" }
+            .Select(n => AssetDatabase.LoadAssetAtPath<Texture2D>(PackPaths.Effects + "/Fire & Explosion Effects/Textures/" + n + ".tif")).ToArray();
         grid.smokeFx = Load(SmokeFx + "/SmokeEffect.prefab");
         grid.steamFx = Load(SmokeFx + "/RisingSteam.prefab");
         grid.sparksFx = Load(MiscFx + "/SparksEffect.prefab");
         // The dust thrown up by earth shaping uses the Particle Pack's dust material.
         var dust = Load(FireFx + "/DustExplosion.prefab");
         grid.dustMaterial = dust != null ? dust.GetComponent<ParticleSystemRenderer>().sharedMaterial : null;
-        if (grid.smokeFx == null) Debug.LogWarning("Particle Pack missing: smoke will be cubes. Run Prototype > Restore Asset Packs.");
+        if (grid.smokeFx == null) Debug.LogWarning("Particle Pack missing: no flames, and smoke will be cubes. Run Prototype > Restore Asset Packs.");
     }
 
     // Late-afternoon sun, and a post-processing volume: bloom so fire glows,

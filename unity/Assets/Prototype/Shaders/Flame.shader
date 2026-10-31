@@ -1,11 +1,17 @@
 Shader "Prototype/Flame"
 {
-    // A burning cell's tongues of flame (FlameBank): one quad an instance, drawn with no mesh from the
-    // tongues' buffer, turned about its upright to the camera and leaning partway toward it, so a fire
-    // still reads from high up. Everything that moves is here: each tongue rises and dies back on its
-    // own clock, flickers, sways and tears apart along noise of its own, so no two look alike or keep
-    // time. A negative width marks embers: a spark climbing and fading, then starting again.
-    Properties { }
+    // A burning cell's flames (FlameBank): one quad an instance, drawn with no mesh from the flames'
+    // buffer, turned about its upright to the camera and leaning partway toward it, so a fire still
+    // reads from high up. Each plays a flipbook of real flame (the Particle Pack's tiny, medium or large
+    // fire sheet, by the fire's level) on its own clock. Each time round it starts a little elsewhere,
+    // at a little another size and perhaps mirrored, as a new particle would, so nothing keeps time or
+    // stays stamped in place. A sheet below zero marks embers: a spark climbing and fading, then again.
+    Properties
+    {
+        [NoScaleOffset] _SheetTiny ("Tiny flames (11 x 11)", 2D) = "black" {}
+        [NoScaleOffset] _SheetMedium ("Medium flames (10 x 10)", 2D) = "black" {}
+        [NoScaleOffset] _SheetLarge ("Large flames (8 x 8)", 2D) = "black" {}
+    }
     SubShader
     {
         Tags { "RenderType" = "Transparent" "Queue" = "Transparent" "RenderPipeline" = "UniversalPipeline" "IgnoreProjector" = "True" }
@@ -24,29 +30,41 @@ Shader "Prototype/Flame"
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-            struct Tongue
+            struct Flame
             {
                 float3 at;
                 float seed;
                 float wide, tall, speed, born;
-                float3 tint;
-                float gone;
+                float4 tint;
+                float gone, sheet, wander, pad;
             };
 
-            StructuredBuffer<Tongue> _Flames;
+            StructuredBuffer<Flame> _Flames;
             float _FlameTime;
+            TEXTURE2D(_SheetTiny);
+            TEXTURE2D(_SheetMedium);
+            TEXTURE2D(_SheetLarge);
+            SAMPLER(sampler_SheetTiny);
 
             struct Varyings
             {
                 float4 positionCS : SV_POSITION;
                 float2 uv : TEXCOORD0;
-                float3 tint : TEXCOORD1;
-                float clock : TEXCOORD2;
-                float seed : TEXCOORD3;
+                float4 tint : TEXCOORD1;
+                nointerpolation float sheet : TEXCOORD2;
+                nointerpolation float frame : TEXCOORD3;
                 float fade : TEXCOORD4;
-                float embers : TEXCOORD5;
-                half fogFactor : TEXCOORD6;
+                half fogFactor : TEXCOORD5;
             };
+
+            float Hash(float a, float b)
+            {
+                return frac(sin(a * 127.1 + b * 311.7) * 43758.5453);
+            }
+
+            // Frames across a sheet, and how many times it plays in one go round.
+            float Tiles(float sheet) { return sheet < 0.5 ? 11.0 : sheet < 1.5 ? 10.0 : 8.0; }
+            float Plays(float sheet) { return sheet < 1.5 ? 1.0 : 2.5; }
 
             Varyings Vert(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
             {
@@ -54,9 +72,10 @@ Shader "Prototype/Flame"
                 {
                     float2(-1, 0), float2(1, 0), float2(1, 1), float2(-1, 0), float2(1, 1), float2(-1, 1),
                 };
-                Tongue f = _Flames[instanceID];
+                Flame f = _Flames[instanceID];
                 float2 corner = Corners[vertexID];
                 float clock = _FlameTime * f.speed + f.seed * 61.0;
+                float round = floor(clock), life = clock - round;
                 float fade = saturate((_FlameTime - f.born) * 2.5);
                 if (f.gone > 0.0) fade *= saturate(1.0 - (_FlameTime - f.gone) * 1.7);
 
@@ -64,76 +83,67 @@ Shader "Prototype/Flame"
                 float3 side = normalize(cross(up, _WorldSpaceCameraPos - f.at));
                 float3 at = f.at;
                 float wide = f.wide, tall = f.tall;
-                if (wide < 0.0)
+                float frame = 0.0, mirror = 1.0;
+                if (f.sheet < 0.0)
                 {
-                    // Embers: a spark on its way up, wandering.
-                    float rise = frac(clock * 0.8);
-                    at += up * rise * f.tall + side * sin(clock * 5.0 + f.seed * 40.0) * 0.25 * rise;
-                    at += cross(up, side) * cos(clock * 3.7) * 0.25 * rise;
-                    wide = -wide;
-                    tall = wide * 2.0;
+                    // Embers: a spark on its way up, wandering, drawn out along its climb.
+                    float rise = frac(clock);
+                    at += up * rise * f.tall + side * sin(clock * 5.0 + f.seed * 40.0) * 0.3 * rise;
+                    at += cross(up, side) * cos(clock * 3.7) * 0.3 * rise;
+                    tall = wide * 5.0;
                     corner.y -= 0.5;
                     fade *= 1.0 - rise;
                 }
                 else
                 {
-                    // Each tongue swells and dies back on its own slow clock, and flickers.
-                    float life = frac(clock * 0.23);
-                    float swell = lerp(0.5, 1.05, sin(3.14159 * sqrt(life)));
-                    tall *= swell * (0.92 + 0.1 * sin(clock * 5.3) + 0.07 * sin(clock * 8.9 + f.seed * 6.0));
-                    up = normalize(up + side * (f.seed - 0.5) * 0.45);
+                    // Each go round: a new spot about its place, a new size, perhaps mirrored.
+                    float spread = f.wander;
+                    at.x += (Hash(round, f.seed) - 0.5) * spread;
+                    at.z += (Hash(round + 7.0, f.seed) - 0.5) * spread;
+                    float size = lerp(0.82, 1.2, Hash(round + 13.0, f.seed));
+                    wide *= size;
+                    tall *= size;
+                    mirror = Hash(round + 19.0, f.seed) < 0.5 ? -1.0 : 1.0;
+                    float tiles = Tiles(f.sheet);
+                    frame = floor(frac(life * Plays(f.sheet)) * tiles * tiles);
+                    // The large sheet's flames loop, so they rise out of nothing and die back; the others' frames do it themselves.
+                    if (f.sheet > 1.5) fade *= saturate(life * 8.0) * saturate((1.0 - life) * 4.5);
                 }
                 float3 world = at + side * corner.x * wide + up * corner.y * tall;
 
                 Varyings o;
                 o.positionCS = TransformWorldToHClip(world);
-                o.uv = float2(corner.x, Corners[vertexID].y);
+                o.uv = float2(corner.x * mirror * 0.5 + 0.5, Corners[vertexID].y);
                 o.tint = f.tint;
-                o.clock = clock;
-                o.seed = f.seed;
+                o.sheet = f.sheet;
+                o.frame = frame;
                 o.fade = fade;
-                o.embers = f.wide < 0.0 ? 1.0 : 0.0;
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
                 return o;
             }
 
-            float Hash(float2 p)
-            {
-                return frac(sin(dot(p, float2(127.1, 311.7))) * 43758.5453);
-            }
-
-            float Noise(float2 p)
-            {
-                float2 i = floor(p), f = frac(p);
-                f = f * f * (3.0 - 2.0 * f);
-                return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), f.x), lerp(Hash(i + float2(0, 1)), Hash(i + float2(1, 1)), f.x), f.y);
-            }
-
             half4 Frag(Varyings input) : SV_Target
             {
-                float fade = input.fade;
-                if (input.embers > 0.5)
+                if (input.sheet < 0.0)
                 {
-                    float spark = saturate(1.0 - length(float2(input.uv.x, input.uv.y * 2.0 - 1.0)));
-                    float glow = spark * spark * fade;
-                    return half4(half3(1.0, 0.45, 0.12) * glow * 3.0, glow);
+                    float2 p = input.uv * 2.0 - 1.0;
+                    float spark = saturate(1.0 - length(float2(p.x, input.uv.y * 2.0 - 1.0)));
+                    float glow = spark * spark * input.fade;
+                    return half4(half3(1.0, 0.42, 0.08) * glow * 3.0, glow);
                 }
-                float y = input.uv.y, clock = input.clock, seed = input.seed;
-                // The tongue sways along noise, more toward its tip; a seed gives it its own lean and width.
-                float sway = Noise(float2(input.uv.x * 1.3 + seed * 9.0, y * 2.4 - clock * 1.7)) - 0.5;
-                float x = input.uv.x + sway * 1.2 * y + (seed - 0.5) * 0.3 * y;
-                // A slim teardrop, widest a quarter of the way up, drawn in at the ground.
-                float width = pow(saturate(1.0 - y), 1.15) * (0.35 + 0.65 * sqrt(saturate(y * 4.0)));
-                float body = saturate(1.0 - abs(x) / max(width, 0.001));
-                // Torn into licks toward the tip, and at its edges, by faster noise.
-                float2 torn = float2(x * 2.8 + seed * 17.0, y * 4.2 - clock * 2.9);
-                float tear = 0.62 * Noise(torn) + 0.38 * Noise(torn * 2.4 + 7.0);
-                float heat = body * (1.2 - y * 0.75) - tear * (0.3 + 0.7 * y);
-                float alpha = smoothstep(0.02, 0.36, heat) * smoothstep(0.0, 0.16, y) * fade;
-                half3 color = lerp(half3(0.8, 0.1, 0.01), half3(1.0, 0.36, 0.03), smoothstep(0.08, 0.38, heat));
-                color = lerp(color, half3(1.0, 0.68, 0.16), smoothstep(0.42, 0.8, heat));
-                color *= input.tint * lerp(0.95, 1.5, saturate(heat));
-                return half4(MixFog(color * alpha, input.fogFactor), alpha * 0.9);
+                float tiles = Tiles(input.sheet);
+                float row = floor(input.frame / tiles), column = input.frame - row * tiles;
+                float2 uv = (float2(column, tiles - 1.0 - row) + input.uv * 0.992 + 0.004) / tiles;
+                float2 dx = ddx(input.uv) / tiles, dy = ddy(input.uv) / tiles;
+                half4 c;
+                if (input.sheet < 0.5) c = SAMPLE_TEXTURE2D_GRAD(_SheetTiny, sampler_SheetTiny, uv, dx, dy);
+                else if (input.sheet < 1.5) c = SAMPLE_TEXTURE2D_GRAD(_SheetMedium, sampler_SheetTiny, uv, dx, dy);
+                else c = SAMPLE_TEXTURE2D_GRAD(_SheetLarge, sampler_SheetTiny, uv, dx, dy);
+                // The frames run off their bottom edge; the pack's soft particles hid that where they met the ground.
+                float alpha = c.a * input.tint.a * input.fade * smoothstep(0.0, 0.16, input.uv.y);
+                // As the pack's materials: half again as bright as the sheet, which is what blooms.
+                half3 color = c.rgb * input.tint.rgb * 1.5;
+                return half4(MixFog(color * alpha, input.fogFactor), alpha);
             }
             ENDHLSL
         }

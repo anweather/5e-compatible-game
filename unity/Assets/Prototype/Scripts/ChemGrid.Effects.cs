@@ -37,7 +37,7 @@ public partial class ChemGrid
 
     FlameBank flameBank;
 
-    /// <summary>The cells' flames as drawn (made with the first fire); null without its shader.</summary>
+    /// <summary>The cells' flames as drawn (made with the first fire); null without its shader and sheets.</summary>
     public FlameBank Flames
     {
         get
@@ -198,10 +198,12 @@ public partial class ChemGrid
     void RenderGas(View v, Cell c, int x, int y, Vector3 center, float ground, bool showFx)
     {
         // Fog, dust and every cloud are a bank of soft billboards on every square of them (FogBank), not an effect.
-        bool fog = c.GasAmt > 0 && FogBank.Draws(c.Gas);
+        // A veil of weather's fog, on every open cell, isn't: the sky's distance fog draws that (SkyLight).
+        bool veil = FogBank.IsVeil(c.Gas, c.GasAmt);
+        bool fog = c.GasAmt > 0 && FogBank.Draws(c.Gas) && !veil;
         if (fog || v.fogged) Fog.Set(y * World.W + x, center, ground, fog ? c.GasAmt : 0, World.Rules.Sim.Gas.MaxAmount, c.Gas);
         v.fogged = fog;
-        string kind = c.Gas != null && c.GasAmt > 0 && !fog ? c.Gas : null;
+        string kind = c.Gas != null && c.GasAmt > 0 && !fog && !veil ? c.Gas : null;
         var prefab = GasPrefab(kind);
         if (prefab != null && !showFx) kind = null;
         // A cell whose effect waited (the frame's new effects were used up, or the budget was full) asks again.

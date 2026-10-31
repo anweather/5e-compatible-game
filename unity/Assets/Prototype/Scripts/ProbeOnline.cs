@@ -82,6 +82,8 @@ public class OnlineObservation
 {
     public string id;
     public string phase;
+    /// <summary>The host's wizard seen here in an animal's shape, then back in its own (Shapeshift, NetWizard's form).</summary>
+    public bool sawForm, sawFormEnd;
     public int joinedTick;
     /// <summary>The virtual player's lag at the start tick: ticks it knew of but hadn't run yet (0 caught up).</summary>
     public int lagAtStart;
@@ -412,6 +414,18 @@ public class OnlineProbeClient : MonoBehaviour
         yield return AfterReset(id, net);
     }
 
+    // The other wizard's shape as this side draws it.
+    static void WatchForms(OnlineObservation seen)
+    {
+        var mine = NetworkManager.Singleton != null ? NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject() : null;
+        foreach (var shape in FindObjectsByType<Shapeshift>(FindObjectsSortMode.None))
+        {
+            if (mine != null && shape.gameObject == mine.gameObject) continue;
+            if (shape.ModelHidden) seen.sawForm = true;
+            else if (seen.sawForm) seen.sawFormEnd = true;
+        }
+    }
+
     // Ticks this side knows of but hasn't run yet (NetChem's knownUpTo - NetTick; 0 when caught up).
     static int Lag(NetChem net)
     {
@@ -436,6 +450,7 @@ public class OnlineProbeClient : MonoBehaviour
         {
             ask = ProbeLink.Read<ProbeHostMessage>(ProbeLink.HostFile);
             if (ask == null || ask.id != id || ask.phase != ProbeLink.ResetCheck) ask = null;
+            WatchForms(after);
             yield return null;
         }
         for (float waited = 0f; ask != null && waited < 20f && net.NetTick < ask.startTick; waited += Time.unscaledDeltaTime) yield return null;
@@ -531,6 +546,7 @@ public class OnlineProbe : ProbeScenario
         Compare(recorder.Seen, report);
         yield return TryReset();
         yield return TryTag();
+        yield return TryShape();
         yield return CompareAfterReset(id);
     }
 
@@ -564,6 +580,8 @@ public class OnlineProbe : ProbeScenario
             Check("reset_checksums_equal", false, "the virtual player sent no checksums after the reset");
             yield break;
         }
+        Check("shape_seen_online", client.sawForm, "the host's wizard drawn as a deer on the virtual player");
+        Check("shape_ended_online", client.sawFormEnd, "and drawn as itself again once a cast button ended it (issue #6)");
         int compared = 0, equal = 0;
         string firstDiff = null;
         for (int i = 0; i < client.hashTicks.Count; i++)
@@ -576,6 +594,28 @@ public class OnlineProbe : ProbeScenario
         Metric("reset_checksums_compared", compared);
         Check("reset_checksums_equal", compared >= 3 && equal == compared && !client.desync,
             firstDiff ?? $"{equal}/{compared} checksums equal after the reset (tick {resetNet.LastResetTick}); client desync {client.desync}, {client.errorCount} client errors");
+    }
+
+    // The host takes a deer's shape and ends it as a cast button does (Shapeshift.ChangeBackByChoice), on its own machine;
+    // the virtual player reports what it drew (WatchForms). Every animal is local, so the deer is only this side's.
+    IEnumerator TryShape()
+    {
+        var shape = wizard.GetComponent<Shapeshift>();
+        var fauna = FindAnyObjectByType<ValleyFauna>();
+        int deer = fauna != null ? fauna.SpeciesIndex("Deer") : -1;
+        var at = wizard.transform.position + Vector3.right * 3f;
+        if (deer < 0 || shape == null)
+        {
+            Check("shape_taken_online", false, "no deer or no Shapeshift");
+            yield break;
+        }
+        fauna.Puppet(fauna.Spawn(deer, new Unity.Mathematics.float3(at.x, grid.GroundAt(at), at.z), 0f), 0f, 0f);
+        yield return null;
+        var cell = grid.CellAt(at);
+        Check("shape_taken_online", shape.Land(World.Rules.Spell(SpellIds.Shapeshift), cell.x, cell.y, 1), shape.FormName ?? "not shifted");
+        yield return new WaitForSecondsRealtime(1f);
+        Check("shape_ended_by_choice", shape.ChangeBackByChoice(), "ChangeBackByChoice");
+        yield return new WaitForSecondsRealtime(1f);
     }
 
     // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.

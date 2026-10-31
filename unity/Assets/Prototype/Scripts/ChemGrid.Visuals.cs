@@ -19,6 +19,8 @@ public partial class ChemGrid
     [Header("Effects (optional; cubes stand in when missing)")]
     [Tooltip("What flames are drawn with (Prototype/Flame); the builder sets it, which puts it in the build.")]
     public Shader flameShader;
+    [Tooltip("The flame flipbooks, tiny, medium and large (the Particle Pack's); the builder sets them.")]
+    public Texture2D[] flameSheets;
     public GameObject smokeFx;
     public GameObject steamFx;
     public GameObject sparksFx;

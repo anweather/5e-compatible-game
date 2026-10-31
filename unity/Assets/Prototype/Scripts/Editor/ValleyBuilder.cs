@@ -28,6 +28,7 @@ public static class ValleyBuilder
 
     public static void Dress(ChemGrid grid, string[] yardRows)
     {
+        playedGround = null;
         ValleyShape.Plan(yardRows[0].Length, yardRows.Length, grid.cellSize);
         Directory.CreateDirectory(Generated);
         AssetDatabase.Refresh();
@@ -91,6 +92,9 @@ public static class ValleyBuilder
         ValleyTerrain.CreateChunks(assets);
 
         var valleyTrees = TreeSpots(assets.trees.Count > 0);
+        var (left, top) = ValleyTerrain.Layout.CellAt(0f, (yardRows.Length - 1) * grid.cellSize);
+        cellAt = at => CellOf(at, grid.cellSize, left, top, yardRows.Length);
+        valleyTrees.RemoveAll(t => OnPlayedGround(t.at, 1));
         WireChemistry(grid, yardRows, valleyTrees);
         var world = ChemGrid.MapWorld(grid.LoadBaseRules(), grid.map, grid.seed, out _);
         ValleyTerrain.BakeCells(world, grid.stepHeight);
@@ -241,6 +245,26 @@ public static class ValleyBuilder
     static bool TreeFits(Vector2 w) =>
         !ValleyShape.KeepClear(w, 14f) && (w - StonesAt).magnitude > 16f && (w - OutcropAt).magnitude > 14f && ValleyShape.HeightAt(w) <= 150f && ValleyTerrain.Steepness(w) <= 34f;
 
+    // Spell golf's fairway and the world's puzzles (world/golf.json, puzzles.json), which the map's trees and
+    // rocks keep off: dropped here, so every other tree stands where it always has.
+    static bool OnPlayedGround(Vector2 at, int margin)
+    {
+        var cell = cellAt(at);
+        return PlayedGround().Any(r => cell.x >= r.xMin - margin && cell.x < r.xMax + margin && cell.y >= r.yMin - margin && cell.y < r.yMax + margin);
+    }
+
+    // The files are read for each build, not for each tree.
+    static List<RectInt> PlayedGround()
+    {
+        if (playedGround != null) return playedGround;
+        string dir = ChemGrid.FindWorldDir();
+        playedGround = WorldPuzzles.Load(dir).All.Select(p => new RectInt(p.X, p.Y, p.Width, p.Height)).ToList();
+        if (GolfCommand.Load(dir) is { } h)
+            playedGround.Add(new RectInt(Mathf.Min(h.TeeX, h.HoleX) - FairwayHalfWide, Mathf.Min(h.TeeY, h.HoleY) - FairwayHalfWide,
+                Mathf.Abs(h.HoleX - h.TeeX) + 1 + FairwayHalfWide * 2, Mathf.Abs(h.HoleY - h.TeeY) + 1 + FairwayHalfWide * 2));
+        return playedGround;
+    }
+
     // The valley's trees and one smaller conifer on each of the yard map's tree cells.
     static IEnumerable<(Vector2 at, float scale, int species, float turn)> AllTrees(
         List<(Vector2 at, float scale, int species, float turn)> valley, ChemGrid grid, Chem.World world)
@@ -293,6 +317,11 @@ public static class ValleyBuilder
         return rocks.ToArray();
     }
 
+    const int FairwayHalfWide = 4;
+    static List<RectInt> playedGround;
+    // A point's cell, before the grid has a world to ask (WireChemistry's CellOf).
+    static System.Func<Vector2, Vector2Int> cellAt;
+
     static void ScatterRocks()
     {
         var rocks = new List<GameObject>(LoadRocks("Rock_A_01", "Rock_B_01", "Rock_C_01", "Rock_Overgrown_A", "Rock_Overgrown_C"));
@@ -303,7 +332,7 @@ public static class ValleyBuilder
         for (int i = 0; i < 2000 && placed < 60; i++)
         {
             var w = new Vector2(Centre.x + (float)(rng.NextDouble() - 0.5) * 420f, Centre.y + (float)(rng.NextDouble() - 0.5) * 420f);
-            if (ValleyShape.KeepClear(w, 10f)) continue;
+            if (ValleyShape.KeepClear(w, 10f) || OnPlayedGround(w, 2)) continue;
             float h = ValleyShape.HeightAt(w);
             bool mountainFoot = h > 6f && h < 60f;
             bool shore = ValleyShape.DistanceToLake(w) < 12f;

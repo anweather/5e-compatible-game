@@ -73,6 +73,19 @@ public static class ProbeScenarios
             "through the pond, a crate tossed softly leaves a pane whole and one thrown hard breaks it, no console errors."),
         new Entry("castlooks", typeof(CastLooksProbe), 200f,
             "The new casts' looks alone: spelllooks' second half, for working on them. Shots with --shots."),
+        new Entry("movers", typeof(MoversProbe), 60f,
+            "The wave and the boulder aimed off the grid's four ways on flat dirt (issues #11, #21). Shots with --shots. Checks: each " +
+            "goes along the aim (within 8 degrees), a crate rides the wave along it, the wave leaves water, no console errors."),
+        new Entry("fogcost", typeof(FogCostProbe), 150f,
+            "What fog weather costs: frame times over the same view in clear weather and under the weather's fog, with the cells of gas and " +
+            "of FogBank drawn. Shots clear, foggy and low in it with --shots. Checks: the fog lies, its thin veil isn't drawn cell by cell, no console errors."),
+        new Entry("golf", typeof(GolfProbe), 150f,
+            "Spell golf's hole played through the caster (GolfCourse, World.Golf): the tee, flag, hole and ball drawn, the HUD's stroke line, Gust of Wind " +
+            "to the hole; then the meadow coil beside it: its cells laid, no tree on its pond, a bolt into the pond opens the gate. Shots with --shots."),
+        new Entry("feel", typeof(FeelProbe), 220f,
+            "What a hand on the controls should feel, on a virtual pad and keyboard: running onto ice and Frost's glaze keeps the speed and slides, snow and a bank slow " +
+            "the wizard to the rules' share; F cracks then breaks a pane; F and Square knock a crate, F the ball; Plant Growth charged on burnt ground and Wall of " +
+            "Stone held to a ramp, on keys and pad; Frost over a swimmer; Left Ctrl held and pressed swimming to a bank never rolls. Shots with --shots."),
         new Entry("aimlooks", typeof(AimLooksProbe), 120f,
             "The aim marker of each kind of cast, one picture each (--shots): lanes at an angle, a ring growing as Cast is held, the outlines of what rises, Spike Growth's area, " +
             "all on flat ground, on water and on a slope, and the lock-on on a deer. Checks: each spell's kind, one mesh draws it, the ring grows with the charge, no console errors."),
@@ -172,12 +185,12 @@ public static class ProbeScenarios
             "The wizard from all round, 30 to 60 degrees down, near and far, in each headwear, standing and walking: every view drawn raw into a " +
             "float target and its pixels read. `--shots` saves it walking through the post effects. Checks: no NaN or infinite pixel, no wizard's " +
             "renderer far over the eyes' brightness, no console errors. If any, a `culprit` check names the renderer that clears the worst view."),
-        new Entry("housecam", typeof(HouseCameraProbe), 120f,
+        new Entry("housecam", typeof(HouseCameraProbe), 160f,
             "The wizard walks into four of Hollowmere's houses from each side with the follow camera behind it. Checks: the camera's arm holds at " +
-            "75% of its length or more (the detail names what the arm's check hit at the shortest), no console errors."),
+            "75% of its length or more (the detail names what the arm's check hit at the shortest), then the same at two houses in the smallest animal's shape, no console errors."),
         new Entry("flames", typeof(FlamesProbe), 40f,
             "A field of grass alight at noon (FlameBank, Prototype/Flame). `--shots` saves it close and from above. Checks: flames in the camera's " +
-            "picture, every burning cell drawn, tongues off the cell's middle, sizes, speeds and seeds that vary, no two cells alike, no particle " +
+            "picture, every burning cell drawn, flames off the cell's middle, sizes, speeds and seeds that vary, no two cells alike, thatch, wood and oil each keeping their own look and each level its flipbook, no particle " +
             "system a flame, no console errors."),
         new Entry("look", typeof(LookProbe), 45f,
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +

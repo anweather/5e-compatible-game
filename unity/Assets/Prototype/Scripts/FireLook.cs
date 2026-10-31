@@ -2,7 +2,7 @@ using UnityEngine;
 
 // How a fire or its smoke looks by what burns (materials.json "fireLook",
 // Andrew, 2026-10-28). A flare (thatch, straw) is quick, tall and bright, with
-// more tongues; wood burns steady and orange under darker smoke; oil and grease
+// more flames; wood burns steady and orange under darker smoke; oil and grease
 // burn low and hot under black smoke. Flames take their numbers from here
 // (FlameBank). Smoke is a pooled effect, retuned: it keeps each particle
 // system's own settings from when the effect was made, so one taken for
@@ -15,7 +15,7 @@ public class FireLook : MonoBehaviour
     ParticleSystem.MinMaxGradient[] colors;
     string current;
 
-    /// <summary>Each look's flames: how tall and wide, their colour (multiplied), how fast they play, and how many more tongues.</summary>
+    /// <summary>Each look's flames: how tall and wide, their colour (multiplied), how fast they play, and how many more flames.</summary>
     public static (float tall, float wide, Color tint, float speed, float more) FlamesOf(string look) => look switch
     {
         Flare => (1.8f, 1.05f, new Color(1f, 0.95f, 0.75f), 1.7f, 1.6f),

@@ -176,7 +176,21 @@ public partial class ChemGrid : MonoBehaviour
             }
         }
         LayPuzzles(world);
+        LayGolf(world);
         return world;
+    }
+
+    // Spell golf's hole, the ball on its tee from the start on every machine alike (GolfCourse draws it).
+    static void LayGolf(World world)
+    {
+        try
+        {
+            if (GolfCommand.Load(FindWorldDir()) is { } hole) world.ApplyGolf(hole);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{GolfCommand.FileName} can't be read, so no golf: {e.Message}");
+        }
     }
 
     // The puzzles of world/puzzles.json (a coil and a gate by the golf course), over the map's cells:

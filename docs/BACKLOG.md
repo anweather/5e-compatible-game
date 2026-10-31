@@ -75,10 +75,10 @@ Both engines, with shared goldens (`WeatherTests` / `weather.test.ts`).
 `world/puzzles.json` (`WorldPuzzles`, laid by `ChemGrid.MapWorld`) puts a
 pond, a coil and a gate on a path at (326..338, 231..245), just east of
 spell golf's hole; a bolt into the pond opens the gate (`PuzzleTests`).
-Still open, host: the looks of falling snow and of the veil (`FogBank` would
-draw it on every cell), the wizard slowed by snow (`SurfaceEffects` reads
-only thorns and terrain speed), the puzzle's cells in the 3D valley (rebuild
-it), and the cost of a gas on every active cell.
+UX pass 4: the veil is the sky's distance fog, not billboards (`FogBank.IsVeil`;
+on every cell they cost 570 ms a frame), the `fogcost` probe measures what's
+left, the `feel` probe measures snow's slowing, and the puzzle stands in the
+rebuilt valley.
 
 - **Influenced by:** Create Water and fire at scale (a big fire makes
   smoke and an updraft), Gust of Wind, lightning spells, Control Weather
@@ -582,8 +582,13 @@ can.
   point); tuning is `sim.json golf`. It climbs slower, runs on downhill and
   bounces off rock. The course is `world/golf.json`: tee (246, 240), hole
   (306, 240), 90 m apart on the meadow north of the defense field.
-- **Open:** the views (the ball, the flag, the HUD stroke line) and a
-  `GolfCommand` intent through `NetChem` for online.
+- **Built (views, UX pass 4):** `GolfCourse` draws the tee, the flag, the hole,
+  the ball and the HUD stroke line; `ChemGrid.MapWorld` tees the ball up on
+  every machine alike, so no command travels. `ValleyBuilder` keeps trees and
+  rocks off the fairway and the puzzles (they had stood on both). The `golf`
+  probe plays it.
+- **Open:** playing again after holing out (needs a `GolfCommand` intent
+  through `NetChem`; a world reset does it today).
 
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
