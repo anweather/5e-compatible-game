@@ -602,3 +602,12 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   a second file in the inbox, which a free background listener in the worker
   wakes on. No coordinator session in between. To test: that a file landing
   in the inbox reliably wakes the worker.
+- 2026-10-30 20:00: Pro out until 23:30 (5-hour limit, hit by w1 and w2 at
+  19:56). The runner missed it ("5-hour limit" didn't match) and spent the
+  queued charged-casts brief on the refusal; fixed (4e84cac): any limit puts
+  the brief back as a resume and waits. Merged before: half-built (ba064e1:
+  snow, fog, the gate puzzle) and playtest-rules-a (00bfd3d: #11 the wave
+  aims and leaves water, #15 no brick under water). w1 and w2 stopped (WIP:
+  wip/w1-moving-b, wip/w2-playtest-rules-a). Max takes over (Pro first, then
+  Max): w3 has charged casts (#7), w4 finishes moving-b and the boulder (#21)
+  from the WIP, both through the direct mailbox.
