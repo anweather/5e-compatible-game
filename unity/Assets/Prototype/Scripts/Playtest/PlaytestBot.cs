@@ -7,6 +7,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Playtest;
 using StarterAssets;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
@@ -33,6 +34,9 @@ using UnityEngine.Rendering;
 // Windows mixer instead).
 public class PlaytestBot : MonoBehaviour
 {
+    // PerfScenario reads these, to tell the bot's own cost from the game's.
+    static readonly ProfilerMarker WatchMarker = new("PlaytestBot.LateUpdate"), ShotMarker = new("PlaytestBot.Shot");
+
     const int Fps = 30, ShotWidth = 960, ShotHeight = 540, PropEvery = 15, SoundEvery = 30, HeartbeatEvery = 30;
 
     // Settings, from the command line.
@@ -262,6 +266,7 @@ public class PlaytestBot : MonoBehaviour
     void LateUpdate()
     {
         if (!running) return;
+        using var marked = WatchMarker.Auto();
         // The scene went away under the run (seed 103 on a development build: a reload, every frame
         // after it a NullReferenceException here): stop cleanly with what was found so far.
         if (wizard == null || grid == null)
@@ -363,6 +368,7 @@ public class PlaytestBot : MonoBehaviour
     // shots/<frame>-<label>.jpg and checked for magenta, black and white. Returns its path in the run.
     string Shoot(string label)
     {
+        using var marked = ShotMarker.Auto();
         frameWatch.ShotTaken(frame);
         var cam = Camera.main;
         if (cam == null) return null;
@@ -453,6 +459,13 @@ public class PlaytestBot : MonoBehaviour
     // Where the run was last, for a candidate raised once the wizard is gone.
     string Here0 => run.Goals.Count > 0 ? run.Goals[run.Goals.Count - 1] : "start";
 
+    // For a performance pass: which frames of the run its worst frame times were.
+    void LogWorstFrames()
+    {
+        var worst = frameWatch.Times.Select((ms, at) => (ms, at)).OrderByDescending(f => f.ms).Take(10);
+        Debug.Log("PERF BOT WORST " + string.Join(" ", worst.Select(f => $"frame{f.at}={f.ms:0.0}")));
+    }
+
     void Finish(string ended)
     {
         if (run.Ended != null) return;
@@ -464,7 +477,8 @@ public class PlaytestBot : MonoBehaviour
         foreach (var c in run.Candidates) run.Counts[c.Signature] = found.CountOf(c.Signature);
         run.Metrics["frame_ms_p50"] = frameWatch.Percentile(0.5);
         run.Metrics["frame_ms_p95"] = frameWatch.Percentile(0.95);
-        run.Metrics["frame_ms_worst"] = frameWatch.Times.Count == 0 ? 0f : frameWatch.Times.Max();
+        run.Metrics["frame_ms_worst"] = frameWatch.Worst;
+        if (PerfCounts.On) LogWorstFrames();
         run.Metrics["audio_peak"] = tap != null ? tap.Peak : -1f;
         run.Metrics["focus_handed_back"] = handedBack;
         run.Metrics["memory_mb"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024f * 1024f);

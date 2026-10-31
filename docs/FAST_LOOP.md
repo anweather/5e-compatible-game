@@ -61,7 +61,8 @@ can fail to connect for a few seconds during the reload; the script retries.
 - `frames` are measured from the end of a 1 s settle to the end of the
   scenario. **They are Editor Play mode frame times**, with the Editor's own
   drawing in them: compare runs with each other, not with a player build (for
-  that, use the `-fps-probe` player flag, `FpsProbe.cs`).
+  that, use the `-fps-probe` player flag, `FpsProbe.cs`, with `-perf-scenario` for
+  one timed scenario, `PerfScenario.cs`; `docs/perf/`).
 - `chem` is the chemistry world's tick at the start and end of the
   measured part, the burning cells at the end, and `World.LogAppended`.
 - `state` is `aborted` (and `pass` false) when Play mode was stopped early or

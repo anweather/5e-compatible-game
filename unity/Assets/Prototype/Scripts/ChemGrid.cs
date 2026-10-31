@@ -84,7 +84,9 @@ public partial class ChemGrid : MonoBehaviour
     public double StepMs { get; private set; }
     public double RenderMs { get; private set; }
 
-    static readonly Unity.Profiling.ProfilerMarker StepMarker = new("ChemGrid.Step"), RenderMarker = new("ChemGrid.Render");
+    static readonly Unity.Profiling.ProfilerMarker StepMarker = new("ChemGrid.Step"), RenderMarker = new("ChemGrid.Render"),
+        ChunkPlanMarker = new("ChemGrid.ChunkPlan"), ChunkApplyMarker = new("ChemGrid.ChunkApply"), ChunkEventMarker = new("ChemGrid.ChunkEvent"),
+        DetailChunksMarker = new("ChemGrid.DetailChunks");
     public double LightsMs { get; private set; }
     SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
     float nextWizardLookup;
@@ -145,7 +147,7 @@ public partial class ChemGrid : MonoBehaviour
         var rules = StartRules();
 
         World = MapWorld(rules, map, seed, out var start);
-        World.ChunkSwitched += s => ChunkSwitched?.Invoke(s);
+        World.ChunkSwitched += OnChunkSwitched;
         ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
         if (valley != null) valley.Bind(World);
@@ -153,6 +155,13 @@ public partial class ChemGrid : MonoBehaviour
         InitVisuals();
         RenderAll();
         WorldReset?.Invoke();
+    }
+
+    void OnChunkSwitched(ChunkSwitch s)
+    {
+        PerfCounts.Add(s.Active ? "chunk.on" : "chunk.off");
+        if (s.Active) PerfCounts.Add("chunk.caught_up_ticks", World.CaughtUp(s.CX, s.CY));
+        using (ChunkEventMarker.Auto()) ChunkSwitched?.Invoke(s);
     }
 
     /// <summary>
@@ -221,7 +230,7 @@ public partial class ChemGrid : MonoBehaviour
 
     void Update()
     {
-        UpdateDetailChunks();
+        using (DetailChunksMarker.Auto()) UpdateDetailChunks();
         if (ExternalTicks)
         {
             Render();
@@ -281,22 +290,46 @@ public partial class ChemGrid : MonoBehaviour
     bool StepWithinBudget()
     {
         float tick = 1f / Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
-        bool Over() => stepBudget.Over();
+        bool Over()
+        {
+            PerfCounts.TickSlice(World.TickStageNumber);
+            return stepBudget.Over();
+        }
         int guard = 4;
         bool stepped = false;
         while (true)
         {
             if (!World.TickInProgress)
             {
-                if (tickTimer < tick || guard-- <= 0 || Over()) return stepped;
+                if (tickTimer < tick || guard-- <= 0 || Over())
+                {
+                    PerfCounts.Peak("tick.owed_ms", (long)(tickTimer * 1000f));
+                    return stepped;
+                }
                 tickTimer -= tick;
                 ApplyQueuedRules();
-                if (streamChunks) ChunkStreaming.Apply(World, ChunkPlanner.Plan(World, PlayerCells()));
+                if (streamChunks) PlanChunks();
             }
-            if (!World.StepSome(Over)) return stepped;
+            PerfCounts.SliceStart(World.TickStageNumber);
+            bool finished = World.StepSome(Over);
+            PerfCounts.SliceStop();
+            if (!finished)
+            {
+                PerfCounts.Add("tick.budget_ran_out");
+                PerfCounts.Peak("tick.owed_ms", (long)(tickTimer * 1000f));
+                return stepped;
+            }
+            PerfCounts.Add("tick.done");
             stepped = true;
             NoteTickDone();
         }
+    }
+
+    void PlanChunks()
+    {
+        System.Collections.Generic.List<ChunkSwitch> plan;
+        using (ChunkPlanMarker.Auto()) plan = ChunkPlanner.Plan(World, PlayerCells());
+        using (ChunkApplyMarker.Auto()) ChunkStreaming.Apply(World, plan);
     }
 
     /// <summary>The cells every wizard in the scene stands on (the solo one, or every player's online), for ChunkStreaming.</summary>

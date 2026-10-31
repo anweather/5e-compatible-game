@@ -20,6 +20,11 @@ public sealed class ContourSurface
     readonly List<Vector2> uvs = new();
     readonly List<Vector2> flows = new(), foams = new();
     readonly float uvMetres;
+    readonly bool tiled;
+
+    // Profiler markers: one set for water and ice (tiled), one for the slicks' one mesh.
+    static readonly Unity.Profiling.ProfilerMarker TileOutline = new("Contour.Tile.Outline"), TilePoints = new("Contour.Tile.Points"), TileUpload = new("Contour.Tile.Upload"),
+        FilmOutline = new("Contour.Film.Outline"), FilmPoints = new("Contour.Film.Points"), FilmUpload = new("Contour.Film.Upload");
 
     /// <param name="uvMetres">Metres per texture repeat (UVs are world x, z over this).</param>
     /// <param name="tiled">Draw one tile of a bigger surface (CellContour.Tiled): from the centre of the box's first cell to the centre of the cell past its last.</param>
@@ -27,6 +32,7 @@ public sealed class ContourSurface
     {
         this.grid = grid;
         this.uvMetres = uvMetres;
+        this.tiled = tiled;
         contour = new CellContour(spec) { Tiled = tiled };
         mesh = new Mesh { name = name };
         mesh.MarkDynamic();
@@ -58,7 +64,33 @@ public sealed class ContourSurface
         uvs.Clear();
         flows.Clear();
         foams.Clear();
-        contour.Build(cells.xMin, cells.yMin, cells.xMax - 1, cells.yMax - 1, value, shape, wobble);
+        using ((tiled ? TileOutline : FilmOutline).Auto())
+            contour.Build(cells.xMin, cells.yMin, cells.xMax - 1, cells.yMax - 1, value, shape, wobble);
+        string count = tiled ? "tile" : "film";
+        if (PerfCounts.On)
+        {
+            PerfCounts.Add(count + ".box_cells", cells.width * cells.height);
+            PerfCounts.Add(count + ".verts", shape.Points.Count);
+            PerfCounts.Add(count + ".tris", shape.Triangles.Count / 3);
+        }
+        using ((tiled ? TilePoints : FilmPoints).Auto()) Attributes(height, color, flow);
+        using var upload = (tiled ? TileUpload : FilmUpload).Auto();
+        mesh.Clear();
+        mesh.SetVertices(vertices);
+        mesh.SetColors(colors);
+        mesh.SetUVs(0, uvs);
+        if (flow != null)
+        {
+            mesh.SetUVs(1, flows);
+            mesh.SetUVs(2, foams);
+        }
+        mesh.SetTriangles(shape.Triangles, 0);
+        mesh.RecalculateNormals();
+        mesh.RecalculateBounds();
+    }
+
+    void Attributes(System.Func<float, float, float> height, System.Func<float, float, float, Color> color, System.Func<float, float, float, Vector3> flow)
+    {
         for (int n = 0; n < shape.Points.Count; n++)
         {
             var (gx, gy) = shape.Points[n];
@@ -72,18 +104,6 @@ public sealed class ContourSurface
             flows.Add(f);
             foams.Add(new Vector2(f.z, 0f));
         }
-        mesh.Clear();
-        mesh.SetVertices(vertices);
-        mesh.SetColors(colors);
-        mesh.SetUVs(0, uvs);
-        if (flow != null)
-        {
-            mesh.SetUVs(1, flows);
-            mesh.SetUVs(2, foams);
-        }
-        mesh.SetTriangles(shape.Triangles, 0);
-        mesh.RecalculateNormals();
-        mesh.RecalculateBounds();
     }
 
     /// <summary>A point in grid units (cell (x, y) spans x..x+1, y..y+1) on the world's ground plane (y 0).</summary>

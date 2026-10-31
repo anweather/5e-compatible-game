@@ -112,6 +112,8 @@ public class ThingSpawner : MonoBehaviour
 
     // --- per chunk -----------------------------------------------------------------
 
+    static readonly Unity.Profiling.ProfilerMarker SpawnMarker = new("ThingSpawner.SpawnChunk"), UnloadMarker = new("ThingSpawner.UnloadChunk");
+
     /// <summary>
     /// Spawns a chunk's things (all but those that broke). On a client it only notes the chunk:
     /// the host's things arrive through Netcode.
@@ -119,6 +121,7 @@ public class ThingSpawner : MonoBehaviour
     public void SpawnChunk(int cx, int cy)
     {
         if (!loaded.Add((cx, cy))) return;
+        using var marked = SpawnMarker.Auto();
         NoteGone();
         if (Client) return;
         foreach (var thing in grid.Things.InChunk(cx, cy))
@@ -136,6 +139,7 @@ public class ThingSpawner : MonoBehaviour
     public void UnloadChunk(int cx, int cy)
     {
         if (!loaded.Remove((cx, cy))) return;
+        using var marked = UnloadMarker.Auto();
         NoteGone();
         foreach (var thing in grid.Things.InChunk(cx, cy))
         {

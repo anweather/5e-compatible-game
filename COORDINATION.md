@@ -758,3 +758,29 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   golf replays need a GolfCommand intent; golf online only has equal
   checksums; without the Particle Pack there are no flames (builder warns).
   Cast-feel starts now with the Editor kept open (u2 still waits).
+- 2026-10-31 01:40: The Mac perf pass merged (b8b9ca8; 7 fixes; core 651,
+  EditMode 720): storm 67.6 -> 50 ms mean, snow worst 942 -> 207, bot worst
+  412 -> 136, #5's night hitch proven on Metal (night pipeline states not
+  warmed; the PC's D3D12 trace still to do, about 30 min). Issues #24-#33
+  filed (perf), plus a comment on #5. Still bad: storm at 20 fps, the world
+  at 59% speed, uncapped tick debt (#24-#27). Andrew: fog weather in patches
+  (#28). The Mac now takes fog-patches (for 0.1.9), then dragon-rules (after).
+  Cast feel step 3: DesktopUnity reran on Andrew's word ("Yes, rerun now");
+  beats_seen_online is a real bug, being fixed before merging. The virtual
+  player costs about 4 GB during online probes, so no VM starts beside them.
+- 2026-10-31 07:00: DECIDED (Andrew): cut 0.1.9 right after the cast-feel
+  pass (steps 3-4, the casting sounds included); the rest of the sound pass
+  moves to 0.1.10 with voice. Timebox: step 3's online beat bug gets about
+  45 more minutes, then it merges with that check as a known gap (view-only;
+  checksums match). Fog patches go in if they land first. The PM writes the
+  notes and publishes if the RC is green (Andrew's standing go).
+- 2026-10-31 07:40: Cost report 2 (agent-cost-report skill), shared as a doc:
+  https://claude.ai/artifact/2ij1kzbFVa8hBcZ7JxTAiS. Building 36.1M ite over 27
+  features; the PM session 26.5M (42% of measured spend) now that the Pro
+  relay is gone; host passes 69% of building; u1 about 10x cheaper for rules;
+  33 finds at 34k each, rediscovery 6%. Recommendations: restart the PM
+  session after each release with a handoff; keep host passes as fresh
+  sub-agents; rules work to Linux workers; fix #5 first; close the telemetry
+  gaps (Mac hook, merge lines double-count the host, Pro transcripts).
+  Outputs in docs/telemetry/*-2026-10-31.*; issue-costs.mjs fixed (a cost in
+  free text plus a line counted as two finds).
