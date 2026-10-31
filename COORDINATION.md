@@ -593,3 +593,12 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   posts it. First use: #2 is now "Redesign the spell aim markers" (label
   design; it was the aim markers, not cracks), and the fix notes are on #2
   and #4.
+- 2026-10-30 18:15: DECIDED (Andrew): workers take briefs straight from the
+  mailbox (option A), built once w1 (bot-elements) and w2 (spell-golf)
+  finish. start.cmd <vm> <brief> copies the brief into the VM
+  (~/.worker/inbox; Copy-VMFile or ssh) and the worker starts on it; its
+  report goes to ~/.worker/outbox, which bridge-watch.sh pulls into the PM's
+  mailbox on its once-a-minute pass (as with attention.json); a follow-up is
+  a second file in the inbox, which a free background listener in the worker
+  wakes on. No coordinator session in between. To test: that a file landing
+  in the inbox reliably wakes the worker.
