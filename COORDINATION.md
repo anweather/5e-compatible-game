@@ -692,3 +692,10 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 - 2026-10-30 23:40: DECIDED (Andrew): Sleet Storm becomes Frost's held form
   (Water then Air, held to full charge); digging stays with the pick (and the
   radial's Lower Earth), with no digging element combination.
+- 2026-10-30 23:55: DECIDED (Andrew): a cast-feel pass right after UX pass 4
+  on the PC, before the rest of the sound pass (docs/handoffs/cast-feel-brief.md).
+  The staff comes off the default wizard (code kept for a later "focus"
+  item); IK hands through six beats (gather, gather, slam, hold to charge,
+  release with recoil, recover); view-only hit-stop, camera impulses and
+  pad rumble, punchy by default with an Esc slider; the casting sounds built
+  here. A before and after clip goes to Andrew.
