@@ -731,3 +731,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   reset: summoned by Reset and coming on its own past a changed-cell budget,
   an ancient red wyrm whose fire breath resets the valley chunk by chunk,
   knocking down (not killing) whoever it catches. After the Gauntlet slice.
+- 2026-10-31 00:30: No idle compute (Andrew). Running: DesktopUnity (UX pass
+  4 part 3), the MacBook (overnight perf pass in a background sub-agent, on
+  perf-mac), u1 (the Gauntlet's rules, gauntlet-rules). u2 (the Dragon's
+  rules, docs/handoffs/briefs/dragon-rules.md) waits for memory (6.0 GB free
+  with the Editor, 5 must stay). Neither merges until 0.1.9 is cut. Fixed:
+  the watcher read a VM's "resets 6:30am (UTC)" as local time and kept Pro
+  marked out 7 h after it was back (reset times now parsed by Node, zones
+  included).
