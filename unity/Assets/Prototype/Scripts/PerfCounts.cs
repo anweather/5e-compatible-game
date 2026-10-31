@@ -13,7 +13,7 @@ using System.Diagnostics;
 public static class PerfCounts
 {
     /// <summary>World.TickStage by number (World.TickStageNumber).</summary>
-    static readonly string[] Stages = { "none", "burn", "watercheck", "springs", "flow", "gas", "rest", "timers", "end" };
+    static readonly string[] Stages = { "none", "burn", "watercheck", "springs", "flow", "gas", "rest", "timers", "dragon", "end" };
 
     static readonly Dictionary<string, long> frame = new();
     static readonly Stopwatch sliceWatch = new();
