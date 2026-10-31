@@ -619,6 +619,19 @@ sweeps the valley clean.
 - **Later:** a fight, driving it off with spells; other dragons (white frost, blue lightning).
 - **Size:** M-L. After the Gauntlet's slice, unless Andrew moves it up.
 
+**Rules half built (2026-10-31, branch `dragon-rules`, after 0.1.9):** both engines with a shared golden
+(`World.Dragon.cs`, `sandbox/src/dragon.ts`, `sim.json` `dragon`). The flight, the chunk-by-chunk reset, the
+knock-down and shelter, the changed-cell budget, the save and the checksum; `NetChem.SummonDragon` is
+host only. Decisions: the dive snuffs every fire (a wildfire otherwise walked back over reset chunks and
+left a third of a grass valley burnt); changed cells count ground, height and cover, not water, ice, snow or
+mud that dries (rain and snow alone passed any useful budget); the count is an audit of one active chunk a
+tick, not a write barrier. Not wired into the game yet, so nothing changes until the view half does.
+**Open, the view half:** call `World.KeepStart()` after `MapWorld` in `ChemGrid.BuildWorld`, which turns all
+of it on; the Reset (`OnlineReset.Ask`, `EventLog.ResetYard`) calls `NetChem.SummonDragon` or stamps a
+`DragonCommand` solo; `ChunkFreshened` redraws a chunk and brings its props back (`ThingSpawner`); each owner
+asks `World.CaughtByBreath` for its wizard and downs it (`Vitals`, `WizardDown`); the dragon, the breath and the
+sky read `World.Dragon` and `World.BreathBox`.
+
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,
