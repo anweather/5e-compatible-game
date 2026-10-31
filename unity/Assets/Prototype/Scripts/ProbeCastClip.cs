@@ -12,17 +12,10 @@ using UnityEngine.Rendering;
 // as they are, with sound, for Andrew's verdict. Needs --shots <folder>: a JPEG for each
 // frame at 30 fps and sound.wav. It runs on a fixed clock (Time.captureDeltaTime), the
 // frames from a RenderTexture and the sound from Unity's own mixer through AudioRenderer,
-// so it stays in step and needs no desktop session and no sound device.
-public class CastClipProbe : ProbeScenario
+// so it stays in step and needs no desktop session and no sound device (ClipProbe).
+public class CastClipProbe : ClipProbe
 {
-    const int Width = 1280, Height = 720, Fps = 30;
-
     CastBeats beats;
-    RenderTexture target;
-    int frames, saved;
-    bool filming;
-    readonly List<Task> writing = new();
-    readonly List<float> sound = new();
 
     protected override IEnumerator Run()
     {
@@ -45,41 +38,19 @@ public class CastClipProbe : ProbeScenario
         Cut(t.position - t.right * 4.2f + t.forward * 1.4f + Vector3.up * 2.3f, t.position + Vector3.up * 0.85f);
         yield return Wait(0.5f);
 
-        var lens = Camera.main;
-        target = new RenderTexture(Width, Height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-        lens.targetTexture = target;
-        Time.captureDeltaTime = 1f / Fps;
-        Check("sound_renders_offline", AudioRenderer.Start(), "AudioRenderer.Start");
-        Metric("sound_rate", AudioSettings.outputSampleRate);
-        filming = true;
-        StartCoroutine(Frames());
+        StartFilm();
 
         beats.PoseOn = beats.SoundsOn = false;
         GameFeel.Shake = 0f;
         yield return Casts();
-        Metric("after_starts_s", frames / (float)Fps);
+        Metric("after_starts_s", FilmedSeconds);
         beats.PoseOn = beats.SoundsOn = true;
         GameFeel.Shake = shakeWas;
         yield return Wait(1f);
         yield return Casts();
         yield return Wait(0.5f);
 
-        filming = false;
-        yield return null;
-        yield return null;
-        AudioRenderer.Stop();
-        Time.captureDeltaTime = 0f;
-        lens.targetTexture = null;
-        AsyncGPUReadback.WaitAllRequests();
-        target.Release();
-        Metric("seconds", frames / (float)Fps);
-        float peak = Save(Path.Combine(ScreenshotDir, "sound.wav"));
-        Metric("sound_peak", peak);
-        Metric("sound_seconds", sound.Count / (2f * AudioSettings.outputSampleRate));
-        var all = Task.WhenAll(writing.ToArray());
-        yield return new WaitUntil(() => all.IsCompleted);
-        Check("frames_saved", saved > 100, $"{saved} of {frames} frames");
-        Check("sound_heard", peak > 0.01f, $"peak {peak:0.000}");
+        yield return EndFilm();
         caster.AimOverride = null;
         caster.enabled = casterWasOn;
     }
@@ -108,6 +79,56 @@ public class CastClipProbe : ProbeScenario
         for (float t = 0f; beats.Now != Beat.Neutral && t < 8f; t += Time.deltaTime) yield return null;
         yield return Wait(after);
     }
+}
+
+// Films a probe scenario to --shots: a JPEG a frame at 30 fps and sound.wav, on a fixed clock, for ffmpeg.
+public abstract class ClipProbe : ProbeScenario
+{
+    protected const int Width = 1280, Height = 720, Fps = 30;
+
+    /// <summary>Whether frames and sound are kept; while false the game runs on, for a cut, and they're dropped.</summary>
+    protected bool Keeping { get; set; } = true;
+
+    protected float FilmedSeconds => frames / (float)Fps;
+
+    Camera lens;
+    RenderTexture target;
+    int frames, saved;
+    bool filming;
+    readonly List<Task> writing = new();
+    readonly List<float> sound = new();
+
+    protected void StartFilm()
+    {
+        lens = Camera.main;
+        target = new RenderTexture(Width, Height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+        lens.targetTexture = target;
+        Time.captureDeltaTime = 1f / Fps;
+        Check("sound_renders_offline", AudioRenderer.Start(), "AudioRenderer.Start");
+        Metric("sound_rate", AudioSettings.outputSampleRate);
+        filming = true;
+        StartCoroutine(Frames());
+    }
+
+    protected IEnumerator EndFilm()
+    {
+        filming = false;
+        yield return null;
+        yield return null;
+        AudioRenderer.Stop();
+        Time.captureDeltaTime = 0f;
+        lens.targetTexture = null;
+        AsyncGPUReadback.WaitAllRequests();
+        target.Release();
+        Metric("seconds", FilmedSeconds);
+        float peak = Save(Path.Combine(ScreenshotDir, "sound.wav"));
+        Metric("sound_peak", peak);
+        Metric("sound_seconds", sound.Count / (2f * AudioSettings.outputSampleRate));
+        var all = Task.WhenAll(writing.ToArray());
+        yield return new WaitUntil(() => all.IsCompleted);
+        Check("frames_saved", saved > 100, $"{saved} of {frames} frames");
+        Check("sound_heard", peak > 0.01f, $"peak {peak:0.000}");
+    }
 
     IEnumerator Frames()
     {
@@ -119,10 +140,11 @@ public class CastClipProbe : ProbeScenario
             if (samples > 0)
             {
                 var block = new NativeArray<float>(samples * 2, Allocator.Temp);
-                if (AudioRenderer.Render(block))
+                if (AudioRenderer.Render(block) && Keeping)
                     foreach (var s in block) sound.Add(s);
                 block.Dispose();
             }
+            if (!Keeping) continue;
             string path = Path.Combine(ScreenshotDir, $"frame_{frames++:00000}.jpg");
             AsyncGPUReadback.Request(target, 0, TextureFormat.RGBA32, request =>
             {

@@ -104,6 +104,8 @@ public static class ProbeScenarios
             "the slam about 0.1 s, a pulse at each charge level, the slower walk, the recoil only drawn, hit-stop leaving the tick and hash alone, shake and rumble by size and distance on a virtual pad, off still, the motors stopping, no console errors. With --shots, the wizard from the side at each beat, before and after."),
         new Entry("castclip", typeof(CastClipProbe), 90f,
             "Films a single, a pair, a charged and a cancelled cast from the side, the old way and then as they are, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg."),
+        new Entry("dragonclip", typeof(DragonClipProbe), 200f,
+            "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire."),
         new Entry("combo", typeof(ComboProbe), 70f,
             "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
             "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +
