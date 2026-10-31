@@ -65,7 +65,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Next, in order
 
-1. Andrew judges the wave crest (#11). Cast feel judged (J-040, #22): DesktopUnity
+1. Wave crest judged good for now (#11 closed). Cast feel judged (J-040, #22): DesktopUnity
    tunes the uncharged slam (slower, more oomph)
    and redoes the cast sounds (lower, layered per element, rising per charge step) after perf, with a new clip.
 2. Done: the Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
@@ -87,7 +87,6 @@ He reads it on his phone instead of scrolling the chat. Update it (Artifact `rea
 
 - Keep writing every rule twice (C# core and TS sandbox), or freeze the sandbox?
 - The punch knocks a crate only 0.42 m: harder?
-- The verdicts above (wave crest).
 - Unmerged branches to delete: `wip/w1-*`, `wip/w2-*` (their work landed), and about 17 old spikes.
 
 ## Telemetry
