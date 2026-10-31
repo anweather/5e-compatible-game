@@ -181,7 +181,9 @@ public class FlareProbe : ProbeScenario
             var c = pixels[i];
             float top = Mathf.Max(c.r, Mathf.Max(c.g, c.b));
             bool bad = float.IsNaN(c.r + c.g + c.b) || float.IsInfinity(top);
-            colours[i] = bad ? new Color32(255, 0, 255, 255) : top > TooBright ? new Color32(0, 255, 255, 255) : (Color32)new Color(c.r, c.g, c.b).gamma;
+            colours[i] = (Color32)new Color(c.r, c.g, c.b).gamma;
+            if (top > TooBright) colours[i] = new Color32(0, 255, 255, 255);
+            if (bad) colours[i] = new Color32(255, 0, 255, 255);
         }
         shown.SetPixels32(colours);
         System.IO.File.WriteAllBytes(System.IO.Path.Combine(ScreenshotDir, $"flare-worst-{what}.png"), shown.EncodeToPNG());
