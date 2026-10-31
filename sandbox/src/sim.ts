@@ -1,11 +1,12 @@
 // One tick of the world. Order matters and is fixed:
 // critters -> fire -> water -> gas -> weather -> entities -> cast meters -> machines -> decay
-// -> the day clock (Hasten Time).
+// -> the dragon -> the day clock (Hasten Time).
 import { tickCombos } from "./combos.ts";
 import { RULES } from "./rules.ts";
 import { applyElement, dampFuel, displaceWater, flashGas, ignite, putCover, wallLost } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
+import { tickDragon } from "./dragon.ts";
 import { tickGolf } from "./golf.ts";
 import {
   type Cell, type World,
@@ -48,6 +49,7 @@ export function step(w: World): void {
     n.slick = slick;
   }
   for (const [from, to] of runs) runInto(from, to);
+  tickDragon(w);
   if (w.wind && --w.wind.ticks <= 0) w.wind = null;
   tickClock(w);
   w.marks.flow.fill(0);

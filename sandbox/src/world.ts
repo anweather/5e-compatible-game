@@ -133,6 +133,39 @@ export interface Controls {
   speed: number;
 }
 
+/** A flight under way (dragon.ts; C#: DragonState). */
+export interface Dragon {
+  /** 1 warning, 2 passes, 3 leaving (C#: DragonPhase). */
+  phase: number;
+  /** The tick the warning or the leaving ends, or the wheeling round between passes; 0 while breathing. */
+  until: number;
+  /** From the seed: passes run east-west (else north-south), strips come from the far side, the first pass runs toward 0. */
+  alongX: boolean;
+  fromFar: boolean;
+  back: boolean;
+  pass: number;
+  passes: number;
+  /** Cells the breath's lead has come on this pass, and how many of this pass's chunks are reset. */
+  travelled: number;
+  done: number;
+}
+
+/** The world as built, for the dragon to put back (keepStart in dragon.ts), and the changed-cell count against it. */
+export interface WorldStart {
+  /** The distinct cells, and each cell's index among them. */
+  shapes: Cell[];
+  at: number[];
+  /** The ball as built, and the things that aren't creatures. */
+  golf: Golf | null;
+  props: Entity[];
+  /** Each chunk's last count, row by row, their total, and the next chunk the audit looks at. */
+  changed: number[];
+  total: number;
+  auditAt: number;
+  /** Flights begun (C#: World.DragonFlights). */
+  flights: number;
+}
+
 export interface World {
   scenarioId: string;
   /** Ids of the mods in force, in order. Their patches decide RULES. */
@@ -187,6 +220,10 @@ export interface World {
   combosFired: ComboFired[];
   /** The defense field's waves, or null before anyone started them (defense.ts). */
   defense: DefenseState | null;
+  /** The flight under way, or null (dragon.ts). */
+  dragon: Dragon | null;
+  /** The starting state, or null: then no dragon comes (keepStart in dragon.ts). */
+  start: WorldStart | null;
   log: LogEntry[];
   /** Per-tick marks machines read; cleared at the end of each tick. */
   marks: { flow: Uint8Array; steam: Uint8Array; wind: Uint8Array };
@@ -232,6 +269,8 @@ export function createWorld(w: number, h: number, seed = 1): World {
     clockAhead: 0,
     weatherSet: null,
     defense: null,
+    dragon: null,
+    start: null,
     log: [],
     marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) },
     logged: new Set(),
@@ -401,9 +440,16 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  // The defense, the casts, the whirlwinds, the stars, the waves, the boulders, the golf ball and the gate links join only once there are any, so older worlds hash as they did.
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : []), ...(w.waves.length ? [w.waves] : []), ...(w.boulders.length ? [w.boulders] : []), ...(w.golf ? [w.golf] : []), ...(w.gateLinks.length ? [w.gateLinks] : [])]);
+  // The defense, the casts, the whirlwinds, the stars, the waves, the boulders, the golf ball, the gate links and the dragon join only once there are any, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : []), ...(w.waves.length ? [w.waves] : []), ...(w.boulders.length ? [w.boulders] : []), ...(w.golf ? [w.golf] : []), ...(w.gateLinks.length ? [w.gateLinks] : []), ...(w.start ? [dragonState(w)] : [])]);
   return fnv1a(s);
+}
+
+/** The dragon's state as text, "" for a world with no starting state (World.DragonText). */
+export function dragonState(w: World): string {
+  if (!w.start) return "";
+  const d = w.dragon, s = `${w.start.flights}:${w.start.auditAt}:${w.start.total}`;
+  return d ? `${s}|${[d.phase, d.until, d.alongX ? 1 : 0, d.fromFar ? 1 : 0, d.back ? 1 : 0, d.pass, d.passes, d.travelled, d.done].join(":")}` : s;
 }
 
 /** The FNV-1a of a string, in hex (C#: Fnv1a.Hash). */
@@ -485,7 +531,16 @@ export function deserializeWorld(s: WorldSnapshot): World {
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
   // Snapshots from before the time spells have no clock lead, haste or held weather (nor gate links, before those).
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: unheld(copy.casts ?? {}), combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], golf: copy.golf ?? null, stars: copy.stars ?? [], gateLinks: copy.gateLinks ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: unheld(copy.casts ?? {}), combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], golf: copy.golf ?? null, dragon: copy.dragon ?? null, start: copy.start ?? null, stars: copy.stars ?? [], gateLinks: copy.gateLinks ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+}
+
+/** A cell made to fit the rules in force (World.Sanitize). */
+export function sanitizeCell(c: Cell) {
+  const { min, max } = RULES.sim.height;
+  c.h = Math.max(min, Math.min(max, c.h));
+  if (!RULES.terrain[c.t]) c.t = "dirt";
+  if (c.cover && !RULES.covers[c.cover]) c.cover = null;
+  if (c.gas && !RULES.gases[c.gas]) { c.gas = null; c.gasAmt = 0; }
 }
 
 /**
@@ -493,13 +548,7 @@ export function deserializeWorld(s: WorldSnapshot): World {
  * define. Replace them with something harmless, the same way on every peer.
  */
 export function sanitizeWorld(w: World) {
-  const { min, max } = RULES.sim.height;
-  for (const c of w.cells) {
-    c.h = Math.max(min, Math.min(max, c.h));
-    if (!RULES.terrain[c.t]) c.t = "dirt";
-    if (c.cover && !RULES.covers[c.cover]) c.cover = null;
-    if (c.gas && !RULES.gases[c.gas]) { c.gas = null; c.gasAmt = 0; }
-  }
+  for (const c of w.cells) sanitizeCell(c);
   w.entities = w.entities.filter((e) => RULES.entities[e.kind]);
   w.critters = w.critters.filter((c) => RULES.critters.some((d) => d.id === c.kind));
 }

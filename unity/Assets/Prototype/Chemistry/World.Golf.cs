@@ -76,6 +76,7 @@ namespace Chem
         public int TeeX, TeeY, HoleX, HoleY, X, Y, Strokes, Dir, Roll, Carry, Age;
         public bool Holed;
         public bool Moving => !Holed && (Roll > 0 || Carry > 0);
+        internal GolfState Copy() => (GolfState)MemberwiseClone();
     }
 
     public sealed partial class World
@@ -247,14 +248,18 @@ namespace Chem
         // The hole into a save, when there is one: tee, hole, ball, strokes, holed and the way on it.
         void SaveGolf(JObject save)
         {
-            var g = Golf;
-            if (g != null) save["golf"] = new JArray(g.TeeX, g.TeeY, g.HoleX, g.HoleY, g.X, g.Y, g.Strokes, g.Holed ? 1 : 0, g.Dir, g.Roll, g.Carry, g.Age);
+            if (Golf != null) save["golf"] = GolfRow(Golf);
         }
+
+        static JArray GolfRow(GolfState g) => new JArray(g.TeeX, g.TeeY, g.HoleX, g.HoleY, g.X, g.Y, g.Strokes, g.Holed ? 1 : 0, g.Dir, g.Roll, g.Carry, g.Age);
 
         void LoadGolf(JObject s)
         {
-            if (!(s["golf"] is JArray g)) return;
-            Golf = new GolfState
+            if (s["golf"] is JArray g) Golf = ReadGolf(g);
+        }
+
+        static GolfState ReadGolf(JArray g) =>
+            new GolfState
             {
                 TeeX = (int)g[0],
                 TeeY = (int)g[1],
@@ -269,6 +274,5 @@ namespace Chem
                 Carry = (int)g[10],
                 Age = (int)g[11],
             };
-        }
     }
 }

@@ -2,7 +2,7 @@
 // casts stamped for that tick, and the effects physics props had on cells
 // (Effects.cs: a barrel's blast, a lantern's spill), which the host saw and
 // stamped like casts, defense commands (the defense field's start,
-// Defense.cs) and players' combo input (Combos.cs). Solo play runs one per tick; online the host
+// Defense.cs), players' combo input (Combos.cs) and the dragon's summons (World.Dragon.cs). Solo play runs one per tick; online the host
 // stamps them and every machine runs the same batches in the same order
 // (NetChem), and a late joiner rebuilds them from the host's history
 // (Timeline) and replays from tick 0. Running a batch is the same code in all
@@ -76,6 +76,8 @@ namespace Chem
         public List<DefenseCommand> Defense { get; } = new List<DefenseCommand>();
         /// <summary>Players' combo input (World.Combos.cs), applied last, in order.</summary>
         public List<ComboCommand> Combos { get; } = new List<ComboCommand>();
+        /// <summary>The dragon's summons (World.Dragon.cs), applied after the combos.</summary>
+        public List<DragonCommand> Dragon { get; } = new List<DragonCommand>();
         /// <summary>
         /// The world is rebuilt before this tick (the online reset, J-014): the view rebuilds it from
         /// its seed (NetChem, ChemGrid.ResetWorld), then the batch runs on the fresh world. The
@@ -125,6 +127,7 @@ namespace Chem
             foreach (var e in Effects) world.ApplyEffect(e);
             foreach (var d in Defense) world.ApplyDefense(d);
             foreach (var c in Combos) world.ApplyCombo(c);
+            foreach (var d in Dragon) world.ApplyDragon(d);
             return rules;
         }
 
@@ -160,6 +163,13 @@ namespace Chem
         {
             foreach (var (tick, command) in combos)
                 if (batches.TryGetValue(tick, out var b)) b.Combos.Add(command);
+        }
+
+        /// <summary>Adds the ticks the dragon was summoned on to a <see cref="Timeline"/>'s batches.</summary>
+        public static void AddDragon(Dictionary<int, TickBatch> batches, IEnumerable<int> ticks)
+        {
+            foreach (int tick in ticks)
+                if (batches.TryGetValue(tick, out var b)) b.Dragon.Add(new DragonCommand());
         }
     }
 }

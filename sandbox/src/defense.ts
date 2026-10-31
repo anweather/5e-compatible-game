@@ -89,7 +89,7 @@ function march(w: World, d: DefenseState, p: DefenseParams) {
       r.wait = r.wait! - 1;
       continue;
     }
-    if ((r.status.frozen ?? 0) > 0 || (r.status.snagged ?? 0) > 0 || (r.status.thrown ?? 0) > 0) continue;
+    if ((r.status.frozen ?? 0) > 0 || (r.status.snagged ?? 0) > 0 || (r.status.thrown ?? 0) > 0 || (r.status.downed ?? 0) > 0) continue;
     advance(w, d, p, r, cost);
     if (d.phase !== RUNNING) return;
   }

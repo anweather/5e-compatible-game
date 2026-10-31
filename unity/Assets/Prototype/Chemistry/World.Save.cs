@@ -93,6 +93,7 @@ namespace Chem
             if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass, wv.OX, wv.OY, wv.AX, wv.AY, wv.Step)));
             SaveMachines(save);
             SaveGolf(save);
+            SaveDragon(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
             var made = new Cell();
             var saved = new JArray();
@@ -127,8 +128,10 @@ namespace Chem
             Expect((string)s["rules"] == rules.Fingerprint, "saved under other rules (or mods)");
             var w = new World(rules, (int)s["w"], (int)s["h"], (uint)s["seed"]);
             w.MakeFrom(source);
+            w.LoadStart(s);
             w.LoadState(s);
             foreach (var c in s["chunks"] ?? new JArray()) w.LoadChunk((JObject)c);
+            w.TotalChanged();
             w.spans = null;
             w.activeCoords = null;
             w.Weather = w.SkyNow();
@@ -314,6 +317,7 @@ namespace Chem
             if (ch.EdgeLive.Any(t => t != NeverLive)) o["edges"] = new JArray(ch.EdgeLive);
             if (ch.StoppedAt != NeverLive) o["stopped"] = ch.StoppedAt;
             if (ch.CaughtUp != 0) o["caughtUp"] = ch.CaughtUp;
+            if (ch.Changed != 0) o["changed"] = ch.Changed;
             var fire = Enumerable.Range(0, Chunks.Area).Where(i => ch.FireGeneration[i] != 0).Select(i => new JArray(i, ch.FireGeneration[i])).ToList();
             if (fire.Count > 0) o["fireGen"] = new JArray(fire);
             var cells = ChangedCells(ch, source, made).Select(i => SaveCell(i, ch.Cells[i])).ToList();
@@ -342,6 +346,7 @@ namespace Chem
             for (int d = 0; d < 4; d++) ch.EdgeLive[d] = o["edges"] is JArray e ? (int)e[d] : NeverLive;
             ch.StoppedAt = (int?)o["stopped"] ?? NeverLive;
             ch.CaughtUp = (int?)o["caughtUp"] ?? 0;
+            ch.Changed = (int?)o["changed"] ?? 0;
             foreach (var f in o["fireGen"] ?? new JArray()) ch.FireGeneration[(int)f[0]] = (int)f[1];
             foreach (var a in o["cells"] ?? new JArray()) LoadCell(ch.Cells[(int)a[0]], (JArray)a);
         }

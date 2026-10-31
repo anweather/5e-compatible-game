@@ -114,7 +114,7 @@ namespace Chem
                     r.Wait--;
                     continue;
                 }
-                if (r.StatusOf("frozen") > 0 || r.StatusOf("snagged") > 0 || r.StatusOf(ThrownStatus) > 0) continue;
+                if (r.StatusOf("frozen") > 0 || r.StatusOf("snagged") > 0 || r.StatusOf(ThrownStatus) > 0 || r.StatusOf(DownedStatus) > 0) continue;
                 Advance(d, p, r);
                 if (d.Phase != DefensePhase.Running) return;
             }

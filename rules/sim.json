@@ -17,6 +17,12 @@
   },
   "breath": { "seconds": 30, "refillSeconds": 3, "drownEvery": 3, "drownDice": 1, "drownSides": 6 },
   "downed": { "seconds": 3 },
+  "dragon": {
+    "warningTicks": 180, "turnTicks": 24, "leavingTicks": 120,
+    "speed": 6, "depth": 12, "breathChunks": 3, "overlapChunks": 1, "chunksPerTick": 1,
+    "budget": 100000,
+    "shelterWater": 8, "wallReach": 2, "wallTerrains": ["stone", "rock"]
+  },
   "golf": { "every": 1, "pushRoll": 5, "throwCarry": 3, "margin": 16 },
   "day": { "lengthMinutes": 24, "startHour": 9, "dawn": [5, 7], "dusk": [18, 20], "nightFreeze": 2, "fireLight": { "bright": 20, "dim": 20 } },
   "streaming": { "reach": 2, "keep": 3, "settleTicks": 12, "lingerChunks": 16, "lingerTicks": 1800, "catchUpTicks": 720 },
