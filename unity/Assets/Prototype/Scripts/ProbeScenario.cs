@@ -64,11 +64,25 @@ public abstract class ProbeScenario : ShowcaseScript
         consoleLines.Add(message);
         if (type == LogType.Warning) Result.Console.WarningCount++;
         if (type != LogType.Error && type != LogType.Exception && type != LogType.Assert) return;
+        if (IsUnitysQuickSearch(stack))
+        {
+            Result.Console.IgnoredCount++;
+            return;
+        }
         Result.Console.ErrorCount++;
         if (Result.Console.Errors.Count >= MaxErrorsKept) return;
         var firstFrame = stack?.Split('\n').FirstOrDefault(l => l.Length > 0);
         Result.Console.Errors.Add(firstFrame != null ? $"{type}: {message} (at {firstFrame})" : $"{type}: {message}");
     }
+
+    /// <summary>
+    /// Unity's own QuickSearch throwing as it indexes after a start or a reload (docs/perf/notes-2026-10-31-mac.md):
+    /// its stack runs through UnityEditor.Search with no frame of ours, so it says nothing about the game.
+    /// </summary>
+    public static bool IsUnitysQuickSearch(string stack) =>
+        stack != null
+        && stack.Contains("UnityEditor.Search.", System.StringComparison.Ordinal)
+        && !stack.Contains("Assets/Prototype/", System.StringComparison.Ordinal);
 
     // --- for scenarios -------------------------------------------------------------
 
@@ -237,5 +251,7 @@ public sealed class ProbeConsole
 {
     public int ErrorCount { get; set; }
     public int WarningCount { get; set; }
+    /// <summary>Errors of Unity's own QuickSearch, left out of ErrorCount.</summary>
+    public int IgnoredCount { get; set; }
     public List<string> Errors { get; } = new();
 }

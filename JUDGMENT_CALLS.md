@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-046: When does 0.1.10 go out?
+
+- **Asked:** 2026-10-31, by the PM.
+- **Also comes up when:** every release: ship what's on dev, or wait for what's close.
+- **Answer:** after the in-flight items: the dragon tweaks, the IK punch with the unarmed strike, the
+  cast sounds. Voice moves to 0.1.11.
+- **Why:** they're close and make the release Andrew described.
+- **Revisited:** 0.
+
 ### J-045: The punch (punch-crate.mp4, #18)
 
 - **Asked:** 2026-10-31, by the PM (board).

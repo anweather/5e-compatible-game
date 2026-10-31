@@ -106,6 +106,8 @@ public static class ProbeScenarios
             "Films a single, a pair and a charged cast from the side, none of fire, as the game is now, with the mixed sound, into --shots: frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("punchclip", typeof(PunchClipProbe), 60f,
             "Films the punch knocking a crate, from the side, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metric: how far the crate went."),
+        new Entry("dragonclip", typeof(DragonClipProbe), 200f,
+            "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire."),
         new Entry("combo", typeof(ComboProbe), 70f,
             "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
             "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +

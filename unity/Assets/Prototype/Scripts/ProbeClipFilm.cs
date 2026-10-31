@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.Experimental.Rendering;
 using UnityEngine.Rendering;
 
-// How the clip probes film (castclip, punchclip): a JPEG for each frame at 30 fps and
+// How the clip probes film (castclip, punchclip, dragonclip): a JPEG for each frame at 30 fps and
 // sound.wav, into a folder, for ffmpeg. It runs on a fixed clock (Time.captureDeltaTime),
 // the frames from a RenderTexture and the sound from Unity's own mixer through
 // AudioRenderer, so it stays in step and needs no desktop session and no sound device.
@@ -26,6 +26,8 @@ public sealed class ClipFilm
     /// <summary>The frames filmed, and saved so far.</summary>
     public int Frames { get; private set; }
     public int Saved { get; private set; }
+    /// <summary>Whether frames and sound are kept; while false the game runs on, for a cut, and they're dropped.</summary>
+    public bool Keeping { get; set; } = true;
     /// <summary>The loudest sample in the sound.</summary>
     public float Peak { get; private set; }
     public float Seconds => Frames / (float)Fps;
@@ -77,10 +79,11 @@ public sealed class ClipFilm
             if (samples > 0)
             {
                 var block = new NativeArray<float>(samples * 2, Allocator.Temp);
-                if (AudioRenderer.Render(block))
+                if (AudioRenderer.Render(block) && Keeping)
                     foreach (var s in block) sound.Add(s);
                 block.Dispose();
             }
+            if (!Keeping) continue;
             string path = Path.Combine(folder, $"frame_{Frames++:00000}.jpg");
             AsyncGPUReadback.Request(target, 0, TextureFormat.RGBA32, request =>
             {
@@ -115,5 +118,37 @@ public sealed class ClipFilm
             w.Write((short)(Mathf.Clamp(s, -1f, 1f) * 32767f));
         }
         return peak;
+    }
+}
+
+// A probe that is a film from start to end (dragonclip): ClipFilm, and the checks any film has.
+public abstract class ClipProbe : ProbeScenario
+{
+    ClipFilm film;
+
+    /// <summary>Whether frames and sound are kept (ClipFilm.Keeping).</summary>
+    protected bool Keeping
+    {
+        get => film.Keeping;
+        set => film.Keeping = value;
+    }
+
+    protected float FilmedSeconds => film.Seconds;
+
+    protected void StartFilm()
+    {
+        film = new ClipFilm(this, ScreenshotDir);
+        Check("sound_renders_offline", film.Roll(), "AudioRenderer.Start");
+        Metric("sound_rate", AudioSettings.outputSampleRate);
+    }
+
+    protected IEnumerator EndFilm()
+    {
+        yield return film.Stop();
+        Metric("seconds", film.Seconds);
+        Metric("sound_peak", film.Peak);
+        Metric("sound_seconds", film.SoundSeconds);
+        Check("frames_saved", film.Saved > 100, $"{film.Saved} of {film.Frames} frames");
+        Check("sound_heard", film.Peak > 0.01f, $"peak {film.Peak:0.000}");
     }
 }
