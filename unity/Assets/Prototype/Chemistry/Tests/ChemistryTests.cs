@@ -1002,7 +1002,7 @@ namespace Chem.Tests
             Assert.That(R.Combos.Combo("water+water").Spell, Is.EqualTo("wave"));
             w.Cast("wave", 1, 3, 1);
             Assert.That(w.Waves, Has.Count.EqualTo(1));
-            Assert.That(w.At(1, 3).Water, Is.EqualTo(0), "it rolls on rather than flooding");
+            Assert.That(w.At(1, 3).Water, Is.EqualTo(1), "it leaves shallow water as it rolls on");
             Run(w, 6);
             Assert.That(w.Waves[0].X, Is.EqualTo(4));
             Assert.That((gob.X, gob.Y), Is.EqualTo((5, 2)), "knocked back ahead of the wave");
@@ -1014,8 +1014,57 @@ namespace Chem.Tests
             foreach (int y in new[] { 2, 3, 4 }) Assert.That(w.At(8, y).T, Is.EqualTo("mud"), "mud where it stopped");
             Assert.That(w.At(7, 3).T, Is.EqualTo("dirt"));
             Run(w, 4);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("8c0f542d 752141770"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("33cc6d1f 752141770"), "the same in the sandbox");
         }
+
+        [Test]
+        public void AWaveRollsAlongASlantedAimAndLeavesWaterBehind()
+        {
+            // GitHub #11: aimed off the grid's four ways it rolls along the aim, a cell along the aim's longer part a
+            // step (like a slanted line), and its front sweeps the band with no gaps. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 20, 16, 12, "dirt");
+            w.At(6, 5).T = "grass";
+            w.Ignite(w.At(6, 5), 2);
+            w.Cast("wave", 2, 2, World.DirOf(3, 2), 1, 3, 2);
+            Assert.That(w.Waves[0].Dir, Is.EqualTo(1), "it pushes along the nearest grid way");
+            Assert.That(w.At(2, 2).Water, Is.EqualTo(1), "shallow water where it passed");
+            Run(w, 6);
+            Assert.That((w.Waves[0].X, w.Waves[0].Y), Is.EqualTo((5, 4)));
+            Run(w, 10);
+            Assert.That(w.Waves, Is.Empty);
+            Assert.That(w.At(6, 5).Fire, Is.EqualTo(0), "the fire on its slant is out");
+            foreach (int y in new[] { 6, 7, 8 }) Assert.That(w.At(9, y).T, Is.EqualTo("mud"), "mud where it broke, off the straight line");
+            Assert.That(w.At(9, 2).T, Is.EqualTo("dirt"), "it didn't go straight east");
+            Run(w, 4);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("5331a509 2455825195"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void HeatOnStandingWaterBoilsItAndBakesNothingUnderIt()
+        {
+            // GitHub #15: water on a cell takes the heat first. A Geyser on a pool over mud, or Forge on water over sand,
+            // boils the water and leaves the ground as it was; Forge on wet mud with the last of its water boiled off
+            // still bakes brick (ForgeHeatsAndTheMaterialDecides). Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 14, 5, 8, "dirt");
+            for (int x = 1; x <= 5; x++)
+                for (int y = 1; y <= 3; y++)
+                {
+                    w.At(x, y).T = "mud";
+                    w.At(x, y).Water = 3;
+                }
+            w.At(10, 2).T = "sand";
+            w.At(10, 2).Water = 2;
+            w.Cast("geyser", 3, 2, 0);
+            w.Cast("forge", 10, 2, 0);
+            Assert.That(w.At(3, 2).T, Is.EqualTo("mud"), "no brick under the pool");
+            Assert.That(w.At(3, 2).Water, Is.EqualTo(2), "the water boiled");
+            Assert.That(w.At(3, 2).Gas, Is.EqualTo("steam"));
+            Assert.That(w.At(10, 2).T, Is.EqualTo("sand"), "no glass under the water");
+            Assert.That(w.At(10, 2).Heat, Is.EqualTo(0), "the water took the heat");
+            Run(w, 12);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("cdece807 2305213897"), "the same in the sandbox");
+        }
+
 
         [Test]
         public void FrostBridgesWaterFreezesTheWetAndGlazesTheGround()

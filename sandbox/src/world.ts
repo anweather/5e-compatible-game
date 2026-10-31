@@ -288,6 +288,12 @@ export interface Wave {
   age: number;
   power: number;
   maxMass: number;
+  /** Where it was cast, the aim it rolls along (a whole-number vector) and the cells it has rolled (World.Wave OX, OY, AX, AY, Step). */
+  ox: number;
+  oy: number;
+  ax: number;
+  ay: number;
+  step: number;
 }
 
 /** A whirlwind still whirling (spells.json pullEvery: Whirlwind; World.Whirl). */

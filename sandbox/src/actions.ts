@@ -219,7 +219,7 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   else if (s.effect === "weather") controlWeather(w, s, clampCharge(charge));
   else if (s.effect === "light") lightUp(w, s, x, y);
   else if (s.delay) aimStar(w, s, x, y, dir, clampCharge(charge));
-  else if (isWave(s)) startWave(w, s, x, y, dir, clampCharge(charge));
+  else if (isWave(s)) startWave(w, s, x, y, dir, clampCharge(charge), aim);
   else if (isBoulder(s)) startBoulder(w, s, x, y, dir, clampCharge(charge));
   else landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
 }
@@ -451,30 +451,44 @@ function whirlEntities(w: World, ww: Whirl): void {
 export const isWave = (s: SpellDef) => !!s.travelEvery && !s.inward && !s.rolls && s.shape === "line";
 
 /**
- * A wave's cast (World.StartWave): the front starts on the cast's square, a line across the way it rolls, width cells
+ * A wave's cast (World.StartWave): the front starts on the cast's cell, a line across the way it rolls, width cells
  * to each side, and washes over it; it rolls one cell every travelEvery ticks, to the line's length in all (tickWaves).
+ * It rolls along the aim (snapAim), or dir without one.
  */
-function startWave(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number): void {
+function startWave(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number, aim?: [number, number]): void {
+  let [ax, ay] = snapAim(aim?.[0] ?? 0, aim?.[1] ?? 0);
+  if (ax === 0 && ay === 0) [ax, ay] = [DX[dir], DY[dir]];
   const wv: Wave = {
-    spell: s.id, x, y, dir, width: (s.radius ?? 1) + chargedGrowth(s, charge), left: chargedLength(s.length ?? 5, charge) - 1,
-    every: s.travelEvery!, age: 0, power: (s.power ?? 1) * charge, maxMass: s.maxMass ?? 1,
+    spell: s.id, x, y, dir: dirOf(ax, ay), width: (s.radius ?? 1) + chargedGrowth(s, charge), left: chargedLength(s.length ?? 5, charge) - 1,
+    every: s.travelEvery!, age: 0, power: (s.power ?? 1) * charge, maxMass: s.maxMass ?? 1, ox: x, oy: y, ax, ay, step: 0,
   };
   wash(w, wv, s);
   if (wv.left > 0) w.waves.push(wv);
   else breakWave(w, wv, s);
 }
 
-/** Each wave, in the order cast, rolls a cell when its time comes; against a wall or its length's end it breaks and is gone (World.TickWaves). */
+/** The grid way (0 north, 1 east, 2 south, 3 west) nearest a non-zero aim; ties go east or west (World.DirOf). */
+function dirOf(ax: number, ay: number): Dir {
+  if (Math.abs(ax) >= Math.abs(ay)) return ax > 0 ? 1 : 3;
+  return ay > 0 ? 2 : 0;
+}
+
+/**
+ * Each wave, in the order cast, rolls a cell when its time comes: a cell along the aim's longer part, and the shorter
+ * part's share rounded (like a slanted line, slantCells). Against a wall or its length's end it breaks and is gone
+ * (World.TickWaves).
+ */
 export function tickWaves(w: World): void {
   if (!w.waves.length) return;
   for (const wv of w.waves) {
     if (++wv.age % wv.every !== 0) continue;
     const s = spellById(wv.spell);
-    const nx = wv.x + DX[wv.dir], ny = wv.y + DY[wv.dir];
+    const [nx, ny] = waveAt(wv, wv.step + 1);
     const n = cellAt(w, nx, ny);
     if (s && n && !isBlocking(n)) {
       wv.x = nx;
       wv.y = ny;
+      wv.step++;
       wv.left--;
       wash(w, wv, s);
     } else wv.left = 0;
@@ -483,10 +497,21 @@ export function tickWaves(w: World): void {
   w.waves = w.waves.filter((wv) => wv.left > 0);
 }
 
-/** The open cells of a wave's front, from one side to the other (World.Front). */
+/** Where a wave's front's middle is after k cells (World.WaveAt). */
+function waveAt(wv: Wave, k: number): [number, number] {
+  const major = Math.max(Math.abs(wv.ax), Math.abs(wv.ay));
+  if (major === 0) return [wv.x, wv.y];
+  return [wv.ox + roundDiv(k * wv.ax, major), wv.oy + roundDiv(k * wv.ay, major)];
+}
+
+/**
+ * The open cells of a wave's front, from one side to the other: across the aim's longer part, so a slanted wave sweeps
+ * every cell of its band with no gaps (World.WaveFront).
+ */
 function front(w: World, wv: Wave): [number, number][] {
   const out: [number, number][] = [];
-  const px = DY[wv.dir], py = DX[wv.dir];
+  const alongX = Math.abs(wv.ax) >= Math.abs(wv.ay);
+  const px = alongX ? 0 : 1, py = alongX ? 1 : 0;
   for (let o = -wv.width; o <= wv.width; o++) {
     const cx = wv.x + px * o, cy = wv.y + py * o;
     const c = cellAt(w, cx, cy);
@@ -496,8 +521,9 @@ function front(w: World, wv: Wave): [number, number][] {
 }
 
 /**
- * The wave's element lands on its front (water at power 0: it douses fires and soaks what it meets but leaves no
- * water), then its force knocks each thing there light enough on ahead of it, where that's open (World.Wash).
+ * The wave's element lands on its front (water at power 1: it douses fires, soaks what it meets and leaves shallow
+ * water behind, which soaks in or runs off), then its force knocks each thing there light enough on ahead of it, where
+ * that's open (World.Wash).
  */
 function wash(w: World, wv: Wave, s: SpellDef): void {
   const cells = front(w, wv);
