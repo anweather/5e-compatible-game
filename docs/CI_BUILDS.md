@@ -1,6 +1,6 @@
 # Unity builds in GitHub Actions: the plan
 
-Status: proposed, 2026-10-31. Goal: player builds and release candidates run from GitHub, not by hand on the
+Status: shelved, 2026-10-31 (Andrew: builds stay by hand for now; revisit later). Goal: player builds and release candidates run from GitHub, not by hand on the
 PC, so the PC stays free and a release is one button.
 
 ## What decides it
