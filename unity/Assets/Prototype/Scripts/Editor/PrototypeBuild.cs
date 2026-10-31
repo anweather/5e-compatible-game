@@ -91,6 +91,9 @@ public static class PrototypeBuild
         // A fresh checkout has no Generated folder (it isn't in git): the builders write into it.
         if (!AssetDatabase.IsValidFolder("Assets/Prototype/Generated")) AssetDatabase.CreateFolder("Assets/Prototype", "Generated");
         ChemYardBuilder.Build();
+        // A material the first pass creates loses what it's set to after that (37 of them: colours,
+        // transparency, tiling), so only a pass over existing assets makes the yard the game draws.
+        ChemYardBuilder.Build();
     }
 
     static BuildContents.Summary lastContents; // of the player Build made last
