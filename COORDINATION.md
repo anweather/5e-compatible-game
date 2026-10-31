@@ -689,3 +689,6 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   Earth is radial-only; a cast at your own feet never dug). The yard must be
   rebuilt before the downed fall shows. The Mac started the overnight perf
   pass.
+- 2026-10-30 23:40: DECIDED (Andrew): Sleet Storm becomes Frost's held form
+  (Water then Air, held to full charge); digging stays with the pick (and the
+  radial's Lower Earth), with no digging element combination.
