@@ -19,7 +19,8 @@ using UnityEngine.InputSystem;
 // burns it 1 fire damage every sim.burnDamageEvery ticks, as it does a raider. Spells slow it too
 // (Slow: frost chills, lightning jolts; SpellForces). Lightning in the water it stands in shocks it
 // (shock-water: the charge runs through all the connected water), twice the zap, as the core does a
-// wet creature. Runs after the Starter Assets controller has moved the wizard
+// wet creature. Snow slows it as it does a raider (World.WalkSpeed), and ice, oil and Frost's glaze,
+// snow glazed included, cost it no speed at all: it slides. Runs after the Starter Assets controller has moved the wizard
 // and corrects that move, so the controller itself stays untouched (its
 // gravity is switched off while afloat and its animator told it's standing).
 //
@@ -60,11 +61,12 @@ public class SurfaceEffects : MonoBehaviour
     const float HeadAt = 0.9f, IceGap = 0.15f;
 
     CharacterController body;
-    Component controller;
-    FieldInfo moveSpeed, sprintSpeed, gravity, fall;
+    Component controller, inputs;
+    FieldInfo moveSpeed, sprintSpeed, gravity, fall, moveInput, sprintInput, analogInput;
     Animator animator;
     float baseMove, baseSprint, baseGravity, wizardMove, wizardSprint;
-    Vector3 lastPosition;
+    // Where the wizard stood after this script last ran, and after everything had moved it last frame.
+    Vector3 lastPosition, settled;
     Vector3 momentum;
     bool wasSlipping, wasWading, swimming;
     float kickedUntil;
@@ -160,6 +162,10 @@ public class SurfaceEffects : MonoBehaviour
         gravity = WizardRig.Field(controller, "Gravity", isPublic: true);
         fall = WizardRig.Field(controller, "_verticalVelocity", isPublic: false);
         if (gravity != null) baseGravity = (float)gravity.GetValue(controller);
+        inputs = GetComponent(WizardRig.InputsComponent);
+        moveInput = WizardRig.Field(inputs, "move", isPublic: true);
+        sprintInput = WizardRig.Field(inputs, "sprint", isPublic: true);
+        analogInput = WizardRig.Field(inputs, "analogMovement", isPublic: true);
         TryGetComponent(out animator);
     }
 
@@ -171,9 +177,13 @@ public class SurfaceEffects : MonoBehaviour
 
     void OnEnable()
     {
-        lastPosition = transform.position;
+        lastPosition = settled = transform.position;
         momentum = Vector3.zero;
     }
+
+    // After the roll, a knock and the river (which run after this script): the controller's own step
+    // next frame is what's gone on from here.
+    void LateUpdate() => settled = transform.position;
 
     void Update()
     {
@@ -199,23 +209,51 @@ public class SurfaceEffects : MonoBehaviour
         lastPosition = transform.position;
     }
 
-    // Blend the controller's move this frame with the momentum carried from before.
+    // On slippery ground the wizard keeps the momentum it came with: it eases toward the way the player
+    // wants to go (Glide) at slipperyGrip, so it's slow to turn and to stop, and keeps its speed going on.
+    // The controller's own step this frame is taken back and the glide made as one move, so the
+    // controller's velocity, which sets its next frame's speed, is the glide's. (Correcting its step with
+    // a second move left it measuring only the correction, so it started again from a crawl each frame
+    // and ice slowed the wizard down: GitHub #12.)
     void Slide(bool slippery)
     {
         float dt = Mathf.Max(Time.deltaTime, 1e-4f);
-        var moved = transform.position - lastPosition;
-        moved.y = 0f;
-        var intended = moved / dt;
+        var step = transform.position - settled;
+        var moved = new Vector3(step.x, 0f, step.z);
         if (!slippery)
         {
-            momentum = intended;
+            var whole = transform.position - lastPosition;
+            momentum = new Vector3(whole.x, 0f, whole.z) / dt;
             wasSlipping = false;
             return;
         }
         if (!wasSlipping && momentum.sqrMagnitude > 1f) EventLog.Add("You skid across the slick ground");
         wasSlipping = true;
-        momentum = Vector3.Lerp(momentum, intended, 1f - Mathf.Exp(-slipperyGrip * dt));
-        body.Move((momentum - intended) * dt);
+        momentum = Glide(momentum, Wanted(moved), slipperyGrip, dt);
+        transform.position = settled;
+        Physics.SyncTransforms();
+        body.Move(momentum * dt + Vector3.up * step.y);
+    }
+
+    /// <summary>
+    /// The momentum on slippery ground after <paramref name="dt"/> seconds: eased toward the
+    /// <paramref name="wanted"/> velocity at <paramref name="grip"/> (the share of the difference left
+    /// falls by e each 1/grip seconds, whatever the frame rate), never faster than the faster of the two.
+    /// </summary>
+    public static Vector3 Glide(Vector3 momentum, Vector3 wanted, float grip, float dt) =>
+        Vector3.Lerp(momentum, wanted, 1f - Mathf.Exp(-Mathf.Max(grip, 0f) * Mathf.Max(dt, 0f)));
+
+    // The velocity the player asks for: the controller's way, at its walk or sprint speed (the move
+    // stick's tilt for a pad), or none with the stick and keys let go.
+    Vector3 Wanted(Vector3 moved)
+    {
+        if (moveSpeed == null || inputs == null || moveInput == null) return moved / Mathf.Max(Time.deltaTime, 1e-4f);
+        var stick = (Vector2)moveInput.GetValue(inputs);
+        if (stick == Vector2.zero || moved.sqrMagnitude < 1e-8f) return Vector3.zero;
+        bool sprint = sprintInput != null && (bool)sprintInput.GetValue(inputs);
+        float tilt = analogInput != null && (bool)analogInput.GetValue(inputs) ? Mathf.Clamp01(stick.magnitude) : 1f;
+        float speed = (float)(sprint ? sprintSpeed : moveSpeed).GetValue(controller);
+        return moved.normalized * (speed * tilt);
     }
 
     // Thorns underfoot (the cover, or null off them): they slow the wizard to the cover's speed and,
@@ -242,14 +280,15 @@ public class SurfaceEffects : MonoBehaviour
     }
 
     // The ground underfoot (its cell, or null off it: afloat, in the air, on the bridge): heavy ground
-    // (mud) slows the wizard to its terrain's speed, and hot metal burns it 1 fire damage every
+    // (mud) and snow slow the wizard to their speed (World.WalkSpeed), not while it slides on anything
+    // slippery laid over them (Frost's glaze keeps its speed), and hot metal burns it 1 fire damage every
     // sim.burnDamageEvery ticks' worth of seconds while it stands there, the raiders' rate
     // (World.Hazards). Health is the wizard's own (Vitals), so the timing is Unity's, not the world's.
     void Ground(Cell c)
     {
         var world = grid.World;
-        float speed = c != null ? Mathf.Clamp((float)world.TerrainOf(c).Speed, 0.05f, 1f) : 1f;
-        bool mud = speed < 1f;
+        float speed = c != null && !world.IsSlippery(c) ? Mathf.Clamp((float)world.WalkSpeed(c), 0.05f, 1f) : 1f;
+        bool mud = speed < 1f && world.TerrainOf(c).Speed < 1;
         if (mud && !InMud) EventLog.Add($"You slog into the {world.TerrainOf(c).Name.ToLowerInvariant()}");
         InMud = mud;
         groundSpeed = speed;

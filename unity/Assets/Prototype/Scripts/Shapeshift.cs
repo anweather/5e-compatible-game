@@ -9,7 +9,8 @@ using UnityEngine;
 // (Shapeshift.Draw.cs); it has the animal's speeds, size and jump
 // (Shapeshift.Body.cs), casts nothing and holds nothing (SpellCaster,
 // ItemHolder), and the animals treat it as one of their own (ValleyFauna).
-// Cast changes back (the only thing casting does while shifted). The shape
+// Any cast button changes back, whenever you like: an element, the d-pad's
+// cast or Cast (the only thing casting does while shifted). The shape
 // wears off after the spell's duration (times the charge), and when the
 // animal form's hit points run out (Vitals.Absorb: damage the animal takes
 // first; what's left carries on to the wizard), with a puff of green mist.
@@ -129,7 +130,7 @@ public partial class Shapeshift : MonoBehaviour
         return true;
     }
 
-    /// <summary>Cast while shifted (SpellCaster): back to the wizard, if there's room to stand.</summary>
+    /// <summary>A cast button pressed while shifted (SpellCaster): back to the wizard, if there's room to stand.</summary>
     public bool ChangeBackByChoice() => ChangeBack($"You shake off the {FormName}'s shape", force: false);
 
     /// <summary>
@@ -255,7 +256,7 @@ public partial class Shapeshift : MonoBehaviour
         HudScale.Apply();
         if (!local || !Shifted || !EventLog.HudVisible) return;
         hud ??= new GUIStyle(GUI.skin.label) { fontSize = 16, richText = true, alignment = TextAnchor.MiddleCenter };
-        string key = controls != null && controls.UsingGamepad ? PadGlyphs.Label(PadButton.RT) : "Left click";
+        string key = controls != null && controls.UsingGamepad ? "Any element button" : "Z X C V or left click";
         string text = $"<b>{FormName}</b>  {Mathf.CeilToInt(SecondsLeft)} s   <color=#ffffffaa>{key}: change back</color>";
         GUI.Label(new Rect(HudScale.Width / 2f - 200f, HudScale.Height - 90f, 400f, 30f), text, hud);
     }

@@ -9,7 +9,7 @@ import { tickDefense } from "./defense.ts";
 import { tickGolf } from "./golf.ts";
 import {
   type Cell, type World,
-  DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
+  DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, inBounds, isBlocking, isRaisedWall,
   clockTick, log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
 import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, fogOf, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
@@ -533,16 +533,30 @@ function tickMachines(w: World) {
         m.powered = m.hold > 0;
       }
     }
-    if (m.powered && !poweredBy) poweredBy = def.name;
+    if (m.powered && !poweredBy && !w.gateLinks.some((l) => l.machine === i)) poweredBy = def.name;
   }
   setGates(w, poweredBy);
+  setLinkedGates(w);
 }
 
+/**
+ * Links the gate at (gx, gy) to the machine at (mx, my) (World.LinkGate in the C#): from then on that gate opens only
+ * while that machine is powered, and that machine opens no other gate. Linking a gate again moves its link.
+ */
+export function linkGate(w: World, gx: number, gy: number, mx: number, my: number) {
+  if (!inBounds(w, gx, gy) || !inBounds(w, mx, my)) return;
+  const gate = gy * w.w + gx;
+  w.gateLinks = w.gateLinks.filter((l) => l.gate !== gate);
+  w.gateLinks.push({ gate, machine: my * w.w + mx, open: w.cells[gate]!.t === "gate_open" });
+}
+
+// Opens every gate no one linked when a machine no one linked is powered, shuts them when none is, and says so.
 function setGates(w: World, poweredBy: string | null) {
   const open = poweredBy !== null;
   if (open === w.gatesOpen) return;
   let changed = false;
   w.cells.forEach((c, i) => {
+    if ((c.t === "gate" || c.t === "gate_open") && w.gateLinks.some((l) => l.gate === i)) return;
     if (open && c.t === "gate") {
       c.t = "gate_open";
       changed = true;
@@ -560,6 +574,28 @@ function setGates(w: World, poweredBy: string | null) {
     log(w, `The gate grinds open, powered by the ${poweredBy!.toLowerCase()}`, "power");
   } else {
     log(w, "The machines fall quiet and the gate slams shut", "power");
+  }
+}
+
+// Each linked gate follows its own machine, in the order they were linked: open while it's powered, shut once it
+// isn't (not while something is wedged in it: then it tries again next tick), and says so.
+function setLinkedGates(w: World) {
+  for (const l of w.gateLinks) {
+    const powered = w.machines[l.machine]?.powered === true;
+    if (powered === l.open) continue;
+    const c = w.cells[l.gate]!;
+    const x = l.gate % w.w, y = Math.floor(l.gate / w.w);
+    if (!powered && c.t === "gate_open" && entityAt(w, x, y)) continue;
+    l.open = powered;
+    const name = RULES.machines[w.cells[l.machine]!.t]?.name ?? "machine";
+    if (powered && c.t === "gate") {
+      c.t = "gate_open";
+      w.openedBy = name;
+      log(w, `The gate grinds open, powered by the ${name.toLowerCase()}`, "power");
+    } else if (!powered && c.t === "gate_open") {
+      c.t = "gate";
+      log(w, `The ${name.toLowerCase()} falls quiet and its gate slams shut`, "power");
+    }
   }
 }
 

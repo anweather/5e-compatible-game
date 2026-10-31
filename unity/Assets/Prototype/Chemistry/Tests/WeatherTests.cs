@@ -236,5 +236,26 @@ namespace Chem.Tests
             Assert.That(c.Water, Is.EqualTo(2), "into water");
             Assert.That(c.Fire, Is.EqualTo(0), "and the grass doesn't catch");
         }
+
+        [Test]
+        public void SnowSlowsWalkersAndFrostGlazesItSlippery()
+        {
+            // World.WalkSpeed: what raiders are snagged by and the wizard slowed by (SurfaceEffects), cover and ground together.
+            var w = new World(R, 8, 3, 1, "grass");
+            Assert.That(w.WalkSpeed(w.At(0, 0)), Is.EqualTo(1));
+            w.At(1, 0).Cover = "snow";
+            w.At(2, 0).Cover = "snowbank";
+            w.At(3, 0).T = "mud";
+            w.At(3, 0).Cover = "snow";
+            Assert.That(w.WalkSpeed(w.At(1, 0)), Is.EqualTo(0.85));
+            Assert.That(w.WalkSpeed(w.At(2, 0)), Is.EqualTo(0.7));
+            Assert.That(w.WalkSpeed(w.At(3, 0)), Is.EqualTo(0.5), "the slower of the snow and the mud under it");
+            // Frost glazes the snow: slippery, and no longer slow, so a runner keeps its speed and slides.
+            w.At(1, 1).Cover = "snow";
+            w.Apply(1, 1, "cold", power: 4);
+            Assert.That(w.At(1, 1).Cover, Is.EqualTo("frost"));
+            Assert.That(w.IsSlippery(w.At(1, 1)), Is.True);
+            Assert.That(w.WalkSpeed(w.At(1, 1)), Is.EqualTo(1));
+        }
     }
 }

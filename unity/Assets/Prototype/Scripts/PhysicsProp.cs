@@ -272,6 +272,16 @@ public class PhysicsProp : MonoBehaviour, IPushable
         body.AddForce(impulse / (State.Def.Mass * Forces.KgPerMass), ForceMode.VelocityChange);
     }
 
+    /// <summary>
+    /// Pushed by one wizard (a punch): only that wizard's machine knows, so online it goes to the host's
+    /// physics as a kick does (NetProp), at the same speed as Push.
+    /// </summary>
+    public void Shove(Vector3 impulse)
+    {
+        if (net == null || !net.IsSpawned || State == null) Push(impulse);
+        else net.Kick(impulse / (State.Def.Mass * Forces.KgPerMass) * body.mass);
+    }
+
     /// <summary>Floats for <paramref name="ticks"/> sim ticks, rising a little (<paramref name="rise"/> times as fast for a charged cast), then falls.</summary>
     public void Levitate(int ticks, float rise = 1f)
     {

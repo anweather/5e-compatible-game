@@ -125,7 +125,8 @@ public static class Forces
         return best;
     }
 
-    static Vector3 Thrown(Vector3 flatDirection) => (flatDirection + Vector3.up * Loft).normalized;
+    /// <summary>A flat direction with the little lift every shove has.</summary>
+    public static Vector3 Thrown(Vector3 flatDirection) => (flatDirection + Vector3.up * Loft).normalized;
 
     static Vector3 Position(IPushable target) => target is Component c ? c.transform.position : Vector3.zero;
 
