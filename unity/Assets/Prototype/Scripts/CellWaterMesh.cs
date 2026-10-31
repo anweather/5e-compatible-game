@@ -70,26 +70,28 @@ public sealed class CellWaterMesh
     public void Changed(int x, int y, bool isWet)
     {
         int key = grid.World.Idx(x, y);
-        if (PerfCounts.On) CountChange(key, isWet);
-        if (isWet) wet.Add(key);
-        else wet.Remove(key);
-        MarkAround(x, y);
-        stale = true;
+        var c = grid.World.Cells[key];
+        int level = isWet ? c.Water : 0;
+        levels.TryGetValue(key, out int was);
+        levels[key] = level;
+        // An outline moves only when a cell turns wet, dry, or to or from ice. A level alone (the
+        // river's changes on most ticks) moves the surface where its top moves: Recompute marks those.
+        bool outline = isWet ? wet.Add(key) : wet.Remove(key);
+        outline |= isWet && c.Frozen ? ice.Add(key) : ice.Remove(key);
+        if (PerfCounts.On) CountChange(c, outline, was != level);
+        if (outline) MarkAround(x, y);
+        stale |= outline || was != level;
     }
 
-    // For a performance pass: what kind of change marks the tiles, and whether the water really changed.
-    readonly Dictionary<int, int> seenWater = new();
+    // Each wet cell's water and which are frozen, as last seen (0 and absent when dry).
+    readonly Dictionary<int, int> levels = new();
+    readonly HashSet<int> ice = new();
 
-    void CountChange(int key, bool isWet)
+    // For a performance pass: what kind of change this was.
+    static void CountChange(Cell c, bool outline, bool level)
     {
-        var c = grid.World.Cells[key];
-        bool flipped = wet.Contains(key) != isWet;
-        seenWater.TryGetValue(key, out int was);
-        seenWater[key] = c.Water;
         PerfCounts.Add("water.changed");
-        if (flipped) PerfCounts.Add("water.changed_wet_or_dry");
-        else if (was != c.Water) PerfCounts.Add("water.changed_level");
-        else PerfCounts.Add("water.changed_other_only");
+        PerfCounts.Add(outline ? "water.changed_wet_or_dry" : level ? "water.changed_level" : "water.changed_other_only");
         PerfCounts.Add(c.T == TerrainIds.River ? "water.changed_on_river" : "water.changed_off_river");
     }
 
@@ -142,7 +144,7 @@ public sealed class CellWaterMesh
     /// </summary>
     public void Rebuild()
     {
-        if (dirtyTiles.Count == 0) return;
+        if (dirtyTiles.Count == 0 && !stale) return;
         PerfCounts.Add("water.rebuilds");
         if (stale)
         {
@@ -151,6 +153,7 @@ public sealed class CellWaterMesh
             using (RecomputeMarker.Auto()) Recompute();
         }
         PerfCounts.Peak("water.dirty_tiles", dirtyTiles.Count);
+        if (dirtyTiles.Count == 0) return;
         drawBudget.Start();
         drawOrder.Clear();
         drawOrder.AddRange(dirtyTiles);
@@ -189,6 +192,39 @@ public sealed class CellWaterMesh
                 PerfCounts.Add("water.tops_moved");
             }
         using (BanksMarker.Auto()) FindBanks();
+    }
+
+    /// <summary>
+    /// For a performance pass (-perf-water-check): redraws every tile that isn't waiting for a redraw
+    /// and counts those that came out different, water or ice, so a tile left stale by a skipped
+    /// redraw shows. Drawn afresh, the tile is then right: run it at the end.
+    /// </summary>
+    public (int tiles, int different) CheckTiles()
+    {
+        if (stale) Recompute();
+        int count = 0, different = 0;
+        foreach (var (tile, t) in tiles)
+        {
+            if (dirtyTiles.Contains(tile)) continue;
+            int tx = tile % tilesX, ty = tile / tilesX, x0 = tx * TileCells, y0 = ty * TileCells;
+            var box = new RectInt(x0, y0, Mathf.Min(TileCells, grid.World.W - x0), Mathf.Min(TileCells, grid.World.H - y0));
+            var (water, solid) = (Picture(t.water.mesh), Picture(t.ice.mesh));
+            Draw(t.water, box, false);
+            Draw(t.ice, box, true);
+            count++;
+            if (!Same(water, Picture(t.water.mesh)) || !Same(solid, Picture(t.ice.mesh))) different++;
+        }
+        return (count, different);
+    }
+
+    static (Vector3[] at, Color[] colors, int[] triangles) Picture(Mesh mesh) => (mesh.vertices, mesh.colors, mesh.triangles);
+
+    static bool Same((Vector3[] at, Color[] colors, int[] triangles) a, (Vector3[] at, Color[] colors, int[] triangles) b)
+    {
+        if (a.at.Length != b.at.Length || !System.Linq.Enumerable.SequenceEqual(a.triangles, b.triangles)) return false;
+        for (int n = 0; n < a.at.Length; n++)
+            if ((a.at[n] - b.at[n]).sqrMagnitude > 1e-6f || !a.colors[n].Equals(b.colors[n])) return false;
+        return true;
     }
 
     // Squared distance on the ground from a point to a tile's middle.

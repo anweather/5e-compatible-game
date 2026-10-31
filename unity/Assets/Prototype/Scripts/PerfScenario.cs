@@ -36,7 +36,8 @@ using Debug = UnityEngine.Debug;
 // -perf-exact and -perf-time-budget, which force ChemGrid.ExactFrames on or off
 // (the bot turns it on; compare a budget in work units with one in milliseconds);
 // -perf-flames-off, which draws a flamewall without its flames; and -perf-pso-diff
-// <file>, which lists what a -pso-trace file has that the shipped collection hasn't.
+// <file>, which lists what a -pso-trace file has that the shipped collection hasn't;
+// and -perf-water-check, which redraws the water tiles at the end and counts any that differ.
 //
 // The bot scenario films the playtest bot (add -playtest -playtest-seed N
 // -playtest-seconds N): it has no stage, -perf-seconds does nothing, and the
@@ -299,6 +300,11 @@ public class PerfScenario : MonoBehaviour
         var inv = CultureInfo.InvariantCulture;
         Debug.Log($"PERF COUNTS scenario={scenario} frames={frameNumber}" + string.Concat(counts.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $" {c.Key}={c.Value.sum.ToString(inv)}/{c.Value.peak.ToString(inv)}/{c.Value.frames.ToString(inv)}")));
         foreach (var (_, line) in spikes.OrderByDescending(s => s.ms).Take(MostSpikes)) Debug.Log(line);
+        if (grid != null && Environment.GetCommandLineArgs().Contains("-perf-water-check"))
+        {
+            var (tiles, different) = grid.CheckWaterTiles();
+            Debug.Log($"PERF WATER CHECK tiles={tiles} different={different}");
+        }
         if (Environment.GetCommandLineArgs().Contains("-perf-list-markers")) ListMarkers();
     }
 
