@@ -788,3 +788,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   peak 83% -> 8.3% of open cells, fog tick 16 -> 7.7 ms (clear 6.6); goldens
   moved in both engines. The patches aren't drawn yet (filed for after the
   release). The Mac now does dragon-rules (merges after 0.1.9).
+- 2026-10-31 08:30: The cast-feel pass is complete (efda2eb; DesktopUnity):
+  staff off, IK beats, impact (hit-stop, camera, rumble, a Shake and rumble
+  page), casting sounds (CC0 and made in code). Nobody has heard the sounds;
+  the clip cast-feel-sound.mp4 went to Andrew. FREEZE for 0.1.9 from now
+  (one fix first: CastImpact.Forceful treats an empty Damage array as damage,
+  so fog and light shake on landing). DesktopUnity runs the candidate; the PM
+  writes the notes and publishes if green. Not merging before the release:
+  gauntlet-rules (99fc6ec), and dragon-rules on the Mac.
