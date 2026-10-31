@@ -42,6 +42,9 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Releases
 
+- **0.1.10:** Andrew to choose: cut now, or after the dragon tweaks, punch + strike and cast sounds (PM's
+  pick). Voice moves to 0.1.11 (needs Andrew's Unity Gaming Services setup).
+
 - **0.1.9** published 2026-10-31 (Windows only, pre-release); main merged back, freeze lifted.
   DesktopUnity runs a fresh Editor, serial gates, the Windows build into the draft, install from the
   draft, then the update from 0.1.8. Notes: `docs/handoffs/release-0.1.9-notes.md`. Publish if green;
@@ -56,13 +59,13 @@ The one page a new PM session reads first. Keep it short: history goes in
 - DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
   comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
   cast-sound prototypes for Andrew to pick from before anything is built in.
-- Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. The Mac: merge
-  dev into `dragon-clip` (conflicts with today's castclip/punchclip), then `dragon-tweaks` (+50% scale, breath
+- Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. dragon-clip landed
+  (5ac59c8). The Mac: `dragon-tweaks` (+50% scale, breath
   stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
   which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
   is wiped before the breath arrives.
-- u1: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). Asleep (Saved) while
-  DesktopUnity runs dragon-view's online probe (needs ~9 GB free); wake it with `start.cmd u1` after. DesktopUnity wires it
+- Unarmed strike, core half, landed (d5af610; u1, now asleep): a punch does 1 damage at Str 10, needs 8+ to hit.
+  DesktopUnity wires it into the IK punch (Stand, Strike, Leave, TakeStrikeHits).
   into the IK punch after.
 - Sound: the generator is in the sound-design skill (1847785, stdlib only). Andrew picked B + pulse 30%
   (preset `cast-deep-hum-pulse`); DesktopUnity builds it in after the punch. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
