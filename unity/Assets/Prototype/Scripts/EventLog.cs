@@ -70,14 +70,53 @@ public class EventLog : MonoBehaviour
     {
         var controls = caster != null ? caster.controls : null;
         bool reset = controls != null ? controls.Reset.WasPressedThisFrame() : Keyboard.current != null && Keyboard.current.rKey.wasPressedThisFrame;
-        if (reset) ResetYard();
+        bool held = controls != null ? controls.Reset.IsPressed() : Keyboard.current != null && Keyboard.current.rKey.isPressed;
+        if (reset)
+        {
+            resetHeld = 0f;
+            ResetYard();
+        }
+        if (!held)
+        {
+            resetHeld = -1f;
+            return;
+        }
+        if (resetHeld < 0f) return;
+        resetHeld += Time.unscaledDeltaTime;
+        if (resetHeld < RebuildHoldSeconds) return;
+        resetHeld = -1f;
+        RebuildYard();
+    }
+
+    // How long Reset is held to rebuild the valley at once, and how long it has been (below zero: not counting).
+    const float RebuildHoldSeconds = 3f;
+    float resetHeld = -1f;
+
+    /// <summary>
+    /// The Reset: in the valley the dragon comes and puts it back (BACKLOG 26), online for everyone if the host asks, and a
+    /// client asks the host to (OnlineReset). In a scene with no valley (Fireline) it reloads the scene. True if it did.
+    /// Held for a few seconds it's RebuildYard, for a world that has gone wrong and can't wait for the dragon.
+    /// </summary>
+    public static bool ResetYard()
+    {
+        if (OnlineReset.Summon()) return false;
+        var grid = FindAnyObjectByType<ChemGrid>();
+        if (grid == null || grid.valley == null || grid.World == null || !grid.World.HasStart) return RebuildYard();
+        if (PlaytestBot.Active)
+        {
+            Debug.Log("PLAYTEST: reset ignored while the bot runs");
+            return false;
+        }
+        grid.SummonDragon();
+        return false;
     }
 
     /// <summary>
-    /// Solo, reloads the scene and returns true. Online the host resets the world for everyone and a
-    /// client asks the host to (OnlineReset); the scene isn't reloaded, so it returns false.
+    /// The way out of a world that has gone wrong, as Reset was before the dragon: solo, reloads the scene and returns true.
+    /// Online the host rebuilds the world for everyone and a client asks the host to (OnlineReset); the scene isn't
+    /// reloaded, so it returns false.
     /// </summary>
-    public static bool ResetYard()
+    public static bool RebuildYard()
     {
         // Reloading the scene online would drop this machine's world and everyone's wizards with it.
         if (OnlineReset.Ask()) return false;

@@ -77,6 +77,8 @@ public partial class ValleyChemistry : MonoBehaviour
             grid.DetailChunksChanged += ground.DrawDetails;
             if (grid.DetailChunks.Count > 0) ground.DrawDetails(grid.DetailChunks);
         }
+        grid.ChunkFreshened -= BuildingsBack;
+        grid.ChunkFreshened += BuildingsBack;
         ground.Bind(world, grid.stepHeight, grid.stepHeight / Mathf.Max(0.05f, grid.shapeSeconds), FlatUnderWalls);
         // The river's water stands at its banks' level, not on its deep channel's bed: its cells'
         // ground counts from there (the terrain is still drawn cut, so the wizard can swim in it).
@@ -248,6 +250,8 @@ public partial class ValleyChemistry : MonoBehaviour
             BurnTrees(x, y);
             grown.Remove(key);
         }
+        // Straight back to a tree, not grown from a sapling: the dragon's breath put the cell back as it was.
+        if (to == TerrainIds.Tree && from != TerrainIds.Sapling) StandTrees(x, y);
         if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorched.Add(key);
         // Plant Growth: green ground again, and a sapling grown into a tree is drawn by its dressing (Grown).
         if (to == TerrainIds.Sprouts || to == TerrainIds.Grass || to == TerrainIds.Sapling || to == TerrainIds.Sand) scorched.Remove(key);
@@ -256,6 +260,7 @@ public partial class ValleyChemistry : MonoBehaviour
         // but it leaves ash; one that caved in under earth shaping doesn't.
         var now = grid.World.At(x, y);
         if (from == TerrainIds.Pane && panesByCell.TryGetValue(key, out var pane)) pane.Shatter(key);
+        if (to == TerrainIds.Pane && panesByCell.TryGetValue(key, out var mended)) mended.Mend(key);
         if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
@@ -293,6 +298,23 @@ public partial class ValleyChemistry : MonoBehaviour
             treesChanged.Add(at);
         }
     }
+
+    // The baked trees of a cell, and its palms, as they were.
+    void StandTrees(int x, int y)
+    {
+        if (palmsByCell.TryGetValue(grid.World.Idx(x, y), out var palms))
+            foreach (var palm in palms) palm.Regrow();
+        if (!treesByCell.TryGetValue(grid.World.Idx(x, y), out var list)) return;
+        foreach (var (at, n) in list)
+        {
+            trees[at][n] = bakedTrees[at][n];
+            treesChanged.Add(at);
+        }
+    }
+
+    /// <summary>Whether a tree the valley drew in a cell stands now, for the probe; false for a cell with none.</summary>
+    public bool TreeStands(int x, int y) =>
+        treesByCell.TryGetValue(grid.World.Idx(x, y), out var list) && list.Count > 0 && trees[list[0].Item1][list[0].Item2].heightScale > 0f;
 
     // The building a wall cell belongs to, or -1: a log wall is the cabin or house whose box it's
     // in (village houses stand close), else the nearest; a stone wall only one it's in, since the
@@ -344,6 +366,7 @@ public partial class ValleyChemistry : MonoBehaviour
     void CabinWallLost(int k, bool burning)
     {
         if (k < 0) return;
+        KeepBuilding(k);
         if (burning) cabinBurnt[k]++;
         else cabinWrecked[k]++;
         if (cabinCharred[k] || (cabinBurnt[k] + cabinWrecked[k]) * 2 < cabinCells[k]) return;
@@ -420,6 +443,7 @@ public partial class ValleyChemistry : MonoBehaviour
     void OnDestroy()
     {
         if (grid != null && ground != null) grid.DetailChunksChanged -= ground.DrawDetails;
+        if (grid != null) grid.ChunkFreshened -= BuildingsBack;
         if (charred != null) Destroy(charred);
         wet?.Destroy();
         ground?.Destroy();

@@ -68,6 +68,33 @@ public class PhysicsProp : MonoBehaviour, IPushable
     /// <summary>Its chunk is inactive, so it's held where it is until the chunk activates.</summary>
     public bool Asleep => asleep;
 
+    /// <summary>In a hand: a body kinematic for any reason but its chunk's sleep (a puppet only follows, and is the host's to place).</summary>
+    public bool Held => body.isKinematic && !asleep && !Puppet;
+
+    /// <summary>
+    /// Back where the world began it, whole and unlit, and still (the dragon's breath, ThingSpawner). Its body is moved
+    /// straight away, and it sleeps if the chunk it's now in is inactive.
+    /// </summary>
+    public void BackAsBuilt(Vector3 at, Quaternion turn)
+    {
+        if (State != null) State = new PropState(State.Def);
+        ShowFlames(false);
+        if (!body.isKinematic)
+        {
+            body.linearVelocity = Vector3.zero;
+            body.angularVelocity = Vector3.zero;
+        }
+        heldVelocity = heldSpin = Vector3.zero;
+        transform.SetPositionAndRotation(at, turn);
+        body.position = at;
+        body.rotation = turn;
+        Physics.SyncTransforms();
+        if (State == null) return;
+        home = grid.ChunkAt(at);
+        if (InInactiveChunk(home)) Sleep();
+        else Wake();
+    }
+
     string Label => State.Def.Name.ToLowerInvariant();
 
     void Awake()

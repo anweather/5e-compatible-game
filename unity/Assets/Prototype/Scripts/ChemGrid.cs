@@ -67,6 +67,13 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>A new world was built (ResetWorld, or going online): every chunk starts active again, with no ChunkSwitched for it.</summary>
     public event System.Action WorldReset;
 
+    /// <summary>
+    /// The dragon's breath put a chunk back as it started, and it has been redrawn (the frame after the tick that did it,
+    /// on every peer, a replaying late joiner too). World.ChunkFreshened passed on, so it keeps working across ResetWorld.
+    /// For the view only: a handler mustn't change the world.
+    /// </summary>
+    public event System.Action<ChunkFresh> ChunkFreshened;
+
     /// <summary>The chunk a scene position is in (world chunk coordinates, as ChunkSwitched and ThingId use).</summary>
     public Vector2Int ChunkAt(Vector3 p)
     {
@@ -88,6 +95,12 @@ public partial class ChemGrid : MonoBehaviour
         ChunkPlanMarker = new("ChemGrid.ChunkPlan"), ChunkApplyMarker = new("ChemGrid.ChunkApply"), ChunkEventMarker = new("ChemGrid.ChunkEvent"),
         DetailChunksMarker = new("ChemGrid.DetailChunks");
     public double LightsMs { get; private set; }
+
+    // The chunks the dragon's breath has reset since the last frame (World.ChunkFreshened).
+    readonly List<ChunkFresh> freshChunks = new();
+
+    /// <summary>Summons the dragon (the Reset, solo); online it goes through NetChem.SummonDragon, on every peer's same tick.</summary>
+    public void SummonDragon() => World.ApplyDragon(new DragonCommand());
     SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
     float nextWizardLookup;
 
@@ -137,6 +150,7 @@ public partial class ChemGrid : MonoBehaviour
     public void ResetWorld()
     {
         foreach (Transform child in transform) Destroy(child.gameObject);
+        freshChunks.Clear();
         lastLog = null;
         tickTimer = 0f;
         BuildWorld();
@@ -146,8 +160,9 @@ public partial class ChemGrid : MonoBehaviour
     {
         var rules = StartRules();
 
-        World = MapWorld(rules, map, seed, out var start);
+        World = StartWorld(rules, map, seed, out var start);
         World.ChunkSwitched += OnChunkSwitched;
+        World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
         if (valley != null) valley.Bind(World);
@@ -162,6 +177,23 @@ public partial class ChemGrid : MonoBehaviour
         PerfCounts.Add(s.Active ? "chunk.on" : "chunk.off");
         if (s.Active) PerfCounts.Add("chunk.caught_up_ticks", World.CaughtUp(s.CX, s.CY));
         using (ChunkEventMarker.Auto()) ChunkSwitched?.Invoke(s);
+    }
+
+    /// <summary>How long the last world took to keep its starting state, in milliseconds.</summary>
+    public static double KeepStartMs { get; private set; }
+
+    /// <summary>
+    /// A world to play in: MapWorld, then its starting state kept for the dragon to put back. Every peer builds one this
+    /// way, a late joiner and an online reset too. Whatever lays cells at the start belongs in MapWorld (the puzzles, the
+    /// Gauntlet's booths among them, and golf), or the dragon wipes it: nothing may write cells between here and the first tick.
+    /// </summary>
+    public static World StartWorld(Rules rules, string map, uint seed, out Vector2Int start)
+    {
+        var world = MapWorld(rules, map, seed, out start);
+        var kept = System.Diagnostics.Stopwatch.StartNew();
+        world.KeepStart();
+        KeepStartMs = kept.Elapsed.TotalMilliseconds;
+        return world;
     }
 
     /// <summary>

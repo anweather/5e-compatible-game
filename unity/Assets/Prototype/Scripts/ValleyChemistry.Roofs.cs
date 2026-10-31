@@ -14,6 +14,11 @@ using UnityEngine;
 //    goes and sets the walls nearest the fire alight: through the core, as an
 //    effect command (ChemEffects), so every peer's walls burn alike.
 // View only, like the rest of the burnt look: every peer sees the same cells burn.
+//
+// The dragon's breath puts a building's cells back chunk by chunk, so the first harm
+// to a building keeps how it looked (KeepBuilding), and once the last of its wall
+// cells is back that look is restored (BuildingsBack). The roof isn't a cell: it
+// comes back with them, or with the first of its chunks if only the roof went.
 public partial class ValleyChemistry
 {
     // Each building's wall cells (world indices), how long fire has licked at its roof (s), and whether
@@ -34,8 +39,74 @@ public partial class ValleyChemistry
     // A burnt-out building's walls: this much of their height is left.
     const float BurntWallsLeft = 0.35f;
 
+    // How a building looked before its first harm: its parts where they stood, on or off, and each mesh's colours.
+    sealed class BuildingLook
+    {
+        public readonly List<(Transform part, Vector3 at, Quaternion turn, Vector3 scale)> parts = new();
+        public readonly List<(Renderer part, Material material, bool on)> renderers = new();
+        public readonly List<(Collider part, bool on)> colliders = new();
+        public readonly List<(Light part, bool on)> lights = new();
+        public readonly List<(MeshFilter part, Color[] colors)> colors = new();
+    }
+
+    readonly Dictionary<int, BuildingLook> kept = new();
+
+    void KeepBuilding(int k)
+    {
+        if (kept.ContainsKey(k)) return;
+        var look = new BuildingLook();
+        foreach (var t in cabins[k].GetComponentsInChildren<Transform>()) look.parts.Add((t, t.localPosition, t.localRotation, t.localScale));
+        foreach (var r in cabins[k].GetComponentsInChildren<Renderer>()) look.renderers.Add((r, r.sharedMaterial, r.enabled));
+        foreach (var c in cabins[k].GetComponentsInChildren<Collider>()) look.colliders.Add((c, c.enabled));
+        foreach (var l in cabins[k].GetComponentsInChildren<Light>()) look.lights.Add((l, l.enabled));
+        foreach (var f in cabins[k].GetComponentsInChildren<MeshFilter>())
+            if (f.sharedMesh != null) look.colors.Add((f, f.sharedMesh.colors));
+        kept[k] = look;
+    }
+
+    // A reset chunk: each harmed building with a cell in it, and with all its walls standing again, is as it was.
+    void BuildingsBack(ChunkFresh fresh)
+    {
+        var world = grid.World;
+        foreach (int k in kept.Keys.ToList())
+        {
+            var cells = buildingCells[k];
+            if (!cells.Any(i => Chunks.ChunkOf(i % world.W) == fresh.CX && Chunks.ChunkOf(i / world.W) == fresh.CY)) continue;
+            if (cells.All(i => world.Cells[i].T == TerrainIds.LogWall || world.Cells[i].T == TerrainIds.Stone)) RestoreBuilding(k);
+        }
+    }
+
+    void RestoreBuilding(int k)
+    {
+        var look = kept[k];
+        kept.Remove(k);
+        foreach (var (part, at, turn, scale) in look.parts)
+        {
+            part.SetLocalPositionAndRotation(at, turn);
+            part.localScale = scale;
+        }
+        foreach (var (part, material, on) in look.renderers)
+        {
+            part.sharedMaterial = material;
+            part.enabled = on;
+        }
+        foreach (var (part, on) in look.colliders) part.enabled = on;
+        foreach (var (part, on) in look.lights) part.enabled = on;
+        foreach (var (part, colors) in look.colors)
+            if (colors.Length > 0) part.mesh.colors = colors;
+        cabinBurnt[k] = 0;
+        cabinWrecked[k] = 0;
+        cabinCharred[k] = false;
+        roofFire[k] = 0f;
+        roofGone[k] = false;
+        roofCaughtAt[k] = -1f;
+        roofGoneAt[k] = -1f;
+        EventLog.Add($"The {LabelOf(cabins[k])} stands again");
+    }
+
     void BindRoofs(int buildings)
     {
+        kept.Clear();
         buildingCells = new List<int>[buildings];
         for (int k = 0; k < buildings; k++) buildingCells[k] = new List<int>();
         roofFire = new float[buildings];
@@ -121,6 +192,7 @@ public partial class ValleyChemistry
 
     void RoofBurnsAway(int k, int fireCell)
     {
+        KeepBuilding(k);
         roofGone[k] = true;
         roofGoneAt[k] = Time.time;
         if (RoofOf(k).Heat >= FlareHeat && !cabinCharred[k]) Flare(k, fireCell);
