@@ -6,13 +6,13 @@ import { RULES } from "./rules.ts";
 import { applyElement, dampFuel, displaceWater, flashGas, ignite, putCover, wallLost } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
-import { tickGolf } from "./golf.ts";
+import { ground, tickGolf } from "./golf.ts";
 import {
   type Cell, type World,
   DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, inBounds, isBlocking, isRaisedWall,
   clockTick, log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
-import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, fogOf, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
+import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, fogOf, hash, rainOf, snowOf, ticksOf, weatherAt, wetOf } from "./sky.ts";
 import { isNight } from "./night.ts";
 import { METEOR_SPELL, landSpell, landStars, spellById, tickBoulders, tickWaves, tickWhirlwinds } from "./actions.ts";
 
@@ -607,9 +607,9 @@ export { ignite };
 // What the weather does to cells, after gas: rain fills squares and dry spells
 // dry shallow ones, snow freezes shallow water, covers open ground and drifts
 // into banks against walls and trees, building up slowly in the open too (and
-// dry spells thaw the ice and melt the snow), fog lays a thin veil of fog gas
-// over open ground that thins away once the stretch ends, storms strike
-// lightning (World.Weather.cs ports this).
+// dry spells thaw the ice and melt the snow), fog lays patches of thin fog gas
+// on low ground near water that drift a little and thin away once the stretch
+// ends, storms strike lightning (World.Weather.cs ports this).
 // Nothing happens during the calm stretches the world starts with.
 function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
@@ -700,11 +700,70 @@ function settleOn(w: World, i: number, upwind: number, cover: number, bank: numb
   } else if (c.cover === SNOW && rand(w) < (sheltered(w, i % w.w, Math.floor(i / w.w), upwind) ? bank : deepen)) c.cover = BANK;
 }
 
-/** Fog weather: a unit of its gas on open squares with no gas yet, here and there (World.Veil). */
+/** Cells in a chunk (C#: Chunks.Size); the sandbox has none of its own, but fog's blocks are counted in them. */
+const CHUNK_CELLS = 64;
+
+/**
+ * Fog weather: patches of its gas, here and there, worked out afresh from the seed, the stretch and the cells, so it needs no
+ * state; only the patches' cells are visited. Each block of chunks has its patches, in row-major order (World.Veil).
+ */
 function veil(w: World, gas: string, chance: number) {
-  for (const c of w.cells) {
-    if (c.gas !== null || isBlocking(c)) continue;
-    if (rand(w) < chance) addGas(c, gas, 1);
+  const p = RULES.sim.weather.fog, size = p.regionChunks * CHUNK_CELLS;
+  const stretch = w.weatherSet ? w.weatherSet.from : w.weather.period;
+  const start = w.weatherSet ? w.weatherSet.from : w.weather.period * ticksOf(RULES.sim, RULES.sim.weather.periodMinutes);
+  const breeze = hash(w.seed, stretch, 6) >>> 30, drift = Math.floor((w.tick - start) / p.driftTicks);
+  for (let ry = 0; ry * size < w.h; ry++) {
+    for (let rx = 0; rx * size < w.w; rx++) {
+      const block = hash(hash(w.seed, stretch, 5), rx, ry);
+      for (let n = 0; n < p.patches; n++) {
+        const at = patchCentre(w, block, rx, ry, n);
+        if (!at) continue;
+        const radius = p.radiusMin + hash(block, n, 9) % (Math.max(0, p.radiusMax - p.radiusMin) + 1);
+        layPatch(w, at.x + DX[breeze] * drift, at.y + DY[breeze] * drift, radius, gas, chance);
+      }
+    }
+  }
+}
+
+/** The best of a block's `tries` cells for its patch n, by the hash of the block; null if none is dry and open (World.PatchCentre). */
+function patchCentre(w: World, block: number, rx: number, ry: number, n: number) {
+  const p = RULES.sim.weather.fog, size = p.regionChunks * CHUNK_CELLS, x0 = rx * size, y0 = ry * size;
+  const width = Math.min(w.w, x0 + size) - x0, height = Math.min(w.h, y0 + size) - y0;
+  let best = -Infinity, found: { x: number; y: number } | null = null;
+  for (let t = 0; t < p.tries; t++) {
+    const at = hash(block, n * p.tries + t, 7);
+    const x = x0 + (at & 0xffff) % width, y = y0 + (at >>> 16) % height;
+    const score = patchScore(w, x, y);
+    if (score <= best) continue;
+    best = score;
+    found = { x, y };
+  }
+  return found;
+}
+
+/** How much fog likes a cell: low ground with water near; never on water or anything blocking (World.PatchScore). */
+function patchScore(w: World, x: number, y: number): number {
+  const p = RULES.sim.weather.fog, c = cellAt(w, x, y);
+  if (!c || c.water > 0 || isBlocking(c)) return -Infinity;
+  let wet = 0;
+  for (let d = 0; d < 4; d++) {
+    const n = cellAt(w, x + DX[d] * p.wetReach, y + DY[d] * p.wetReach);
+    if (n && n.water > 0) wet++;
+  }
+  return p.wet * wet - p.low * ground(w, x, y);
+}
+
+/** A unit of gas on the open, gasless cells of a disc: full chance over its middle, thinning at the rim (World.LayPatch). */
+function layPatch(w: World, x: number, y: number, radius: number, gas: string, chance: number) {
+  const r2 = radius * radius;
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= r2) continue;
+      const c = cellAt(w, x + dx, y + dy);
+      if (!c || c.gas !== null || isBlocking(c)) continue;
+      if (rand(w) < chance * Math.min(1, (2 * (r2 - d2)) / r2)) addGas(c, gas, 1);
+    }
   }
 }
 

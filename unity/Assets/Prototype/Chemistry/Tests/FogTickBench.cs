@@ -10,7 +10,7 @@ namespace Chem.Tests
 {
     /// <summary>
     /// What fog weather costs a tick in the core: the valley's size, hills and water (world/land.json,
-    /// open grass otherwise), 65 active chunks, the same seed, under clear weather and then fog. Not a
+    /// open grass otherwise: the file as baked marks no water, so this is hills), 65 active chunks, the same seed, under clear weather and then fog. Not a
     /// check and not in CI (Explicit): run it by name in Release and read the last line, or the file
     /// FOG_BENCH_OUT names.
     /// <code>dotnet test core/Game.Core.sln -c Release --filter "FullyQualifiedName~FogTickBench" --logger "console;verbosity=detailed"</code>

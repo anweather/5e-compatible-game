@@ -459,8 +459,16 @@ export interface SimParams {
     /** Every freezeEvery ticks of snow, a shallow square's chance its water freezes; dry spells thaw it at thawChance. */
     /** Also on that beat: open ground's chance of a snow cover, a sheltered snowy square's chance to drift into a bank, and an unsheltered one's to build up into one. */
     snow: { freezeEvery: number; freezeChance: number; thawChance: number; coverChance: number; bankChance: number; deepenChance: number };
-    /** Every `every` ticks of fog, an open square's chance (at full strength) of a unit of the gas, where it has no gas yet. */
-    fog: { every: number; chance: number; gas: string };
+    /**
+     * Every `every` ticks of fog, an open square's chance (at full strength) of a unit of the gas inside a patch, where it has
+     * no gas yet. Each block of regionChunks by regionChunks chunks has `patches` patches a stretch, of radius radiusMin..radiusMax:
+     * each on the best of `tries` dry, open cells, `low` a water unit of lower ground and `wet` for each water wetReach cells off,
+     * moving a cell down the stretch's breeze every driftTicks ticks.
+     */
+    fog: {
+      every: number; chance: number; gas: string; regionChunks: number; patches: number; radiusMin: number; radiusMax: number;
+      tries: number; low: number; wet: number; wetReach: number; driftTicks: number;
+    };
     /** A clear stretch's chance of a meteor shower; in one, every `every` ticks the chance a meteor appears, landing fallTicks later. */
     meteors: { showerChance: number; every: number; chance: number; fallTicks: number };
   };
@@ -1023,6 +1031,10 @@ export function validateRules(r: Rules): string[] {
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
   const fogGas = r.sim.weather.fog?.gas;
   if (fogGas !== undefined && !(typeof fogGas === "string" && fogGas in r.gases)) errors.push(`sim weather.fog.gas: unknown gas ${fogGas}`);
+  for (const k of ["regionChunks", "driftTicks"] as const) {
+    const n = r.sim.weather.fog?.[k];
+    if (n !== undefined && !(typeof n === "number" && n >= 1)) errors.push(`sim weather.fog.${k} must be at least 1`);
+  }
   for (const k of ["when", "notBy"] as const)
     if (r.sim.status.shatter?.[k] != null && typeof r.sim.status.shatter[k] !== "string") errors.push(`sim status.shatter.${k} must be a name`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));

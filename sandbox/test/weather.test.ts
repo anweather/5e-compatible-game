@@ -49,6 +49,7 @@ test("the sky's rules validate, with storm season on", () => {
   assert.deepEqual(validateRules(RULES), []);
   assert.deepEqual(validateRules(composeRules([stormSeason.patch as ModPatch])), []);
   assert.deepEqual(validateRules(composeRules([{ sim: { weather: { fog: { gas: "mist" } } } } as ModPatch])), ["sim weather.fog.gas: unknown gas mist"]);
+  assert.deepEqual(validateRules(composeRules([{ sim: { weather: { fog: { regionChunks: 0 } } } } as ModPatch])), ["sim weather.fog.regionChunks must be at least 1"]);
 });
 
 test("the clock starts at day 1, 09:00, and a day lasts 24 real minutes", () => {
@@ -105,7 +106,7 @@ test("mixed quick weather over many stretches matches the C# golden", () => {
     const w = field(8);
     run(w, 1200);
     const kinds = Array.from({ length: 17 }, (_, k) => kindOf(RULES.sim, 8, k)).join(" ");
-    assert.equal(`${cellHash(w)} ${w.rng}`, "b588321f 1446209129", kinds);
+    assert.equal(`${cellHash(w)} ${w.rng}`, "41514104 3951220311", kinds);
   });
 });
 
@@ -182,13 +183,13 @@ test("fog weather veils the field so the far side is hidden, and lifts once the 
     assert.ok(veiled > 80, `fog lies over the field (${veiled})`);
     assert.ok(w.cells.every((c) => c.gas !== "fog" || c.gasAmt < 2), "thin: no square of it is thick on its own");
     assert.ok(!lineOfSight(w, 1, 6, 22, 6, true), "but the far side is hidden");
-    assert.equal(`${cellHash(w)} ${w.rng} ${veiled}`, "a3c55344 2647838055 182");
+    assert.equal(`${cellHash(w)} ${w.rng} ${veiled}`, "4237fa52 2846909919 203");
   });
   withRules(clear, () => {
     run(w, 400);
     assert.ok(fogUnits() < veiled / 10, `the fog lifts (${fogUnits()} of ${veiled} left)`);
     assert.ok(lineOfSight(w, 1, 6, 22, 6, true), "and the far side shows again");
-    assert.equal(`${cellHash(w)} ${w.rng} ${fogUnits()}`, "5b95a195 192858203 0");
+    assert.equal(`${cellHash(w)} ${w.rng} ${fogUnits()}`, "b0b71789 815874840 0");
   });
 });
 
@@ -225,4 +226,26 @@ test("thin water soaks in and a pond stays, matching the C# golden", () => {
   cellAt(w, 12, 7)!.water = 1;
   for (let i = 0; i < 20; i++) step(w);
   assert.equal(`${cellHash(w)} ${w.rng}`, "20661f72 1");
+});
+
+test("fog lies in patches, not a blanket, and hides a line through one; matches the C# golden", () => {
+  const weights = { clear: 0, cloudy: 0, windy: 0, fog: 1, rain: 0, storm: 0, snow: 0 };
+  withRules({ sim: { weather: { periodMinutes: 60, rampMinutes: 0.02, calmPeriods: 0, weights, meteors: { showerChance: 0 } } } } as ModPatch, () => {
+    const w = createWorld(256, 256, 7);
+    for (const c of w.cells) c.t = "grass";
+    for (let y = 40; y < 60; y++) {
+      for (let x = 40; x < 60; x++) {
+        const c = cellAt(w, x, y)!;
+        c.t = "pit";
+        c.water = 4;
+      }
+    }
+    run(w, 400);
+    const fog = w.cells.filter((c) => c.gas === "fog").length;
+    assert.ok(fog * 100 / (256 * 256) >= 2 && fog * 100 / (256 * 256) < 10, `${fog} cells: here and there`);
+    const rows = [...Array(256).keys()];
+    assert.ok(rows.some((y) => !lineOfSight(w, 0, y, 255, y, true)), "a line through a patch is hidden");
+    assert.ok(rows.some((y) => lineOfSight(w, 0, y, 255, y, true)), "a line past them is clear");
+    assert.equal(`${cellHash(w)} ${w.rng} ${fog}`, "9d766b76 2392649509 4549");
+  });
 });

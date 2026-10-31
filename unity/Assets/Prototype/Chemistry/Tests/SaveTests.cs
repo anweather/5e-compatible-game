@@ -76,6 +76,26 @@ namespace Chem.Tests
             string.Join(",", w.Raiders.Select(r => $"{r.Id}@{r.X},{r.Y}:{r.Hp}"));
 
         [Test]
+        public void FogPatchesComeBackTheSameFromASave()
+        {
+            var rules = R.WithMods(new[] { ModPatch.Parse("{ 'sim': { 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'periodMinutes': 60, " +
+                "'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 1, 'rain': 0, 'storm': 0, 'snow': 0 } } } }") });
+            var source = new Meadow(W, H);
+            var straight = new World(rules, W, H, 11);
+            straight.MakeFrom(source);
+            for (int i = 0; i < 120; i++) straight.Step();
+            Assert.That(straight.Cells.Any(c => c.Gas == "fog"), "it's foggy when saved");
+            var loaded = World.Load(straight.Save(source), rules, source);
+            for (int i = 0; i < 60; i++)
+            {
+                straight.Step();
+                loaded.Step();
+            }
+            Assert.That(loaded.CellHash(), Is.EqualTo(straight.CellHash()));
+            Assert.That(loaded.RngState, Is.EqualTo(straight.RngState));
+        }
+
+        [Test]
         public void SaveLoadAndStepIsTheSameAsSteppingStraightThrough()
         {
             var source = new Meadow(W, H);
