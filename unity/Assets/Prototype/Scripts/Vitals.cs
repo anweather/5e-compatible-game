@@ -11,6 +11,9 @@ using UnityEngine;
 // Spells that catch a wizard hurt it too (TakeDamage, SpellForces), and an
 // animal shape takes that first (Shapeshift: when the animal drops to 0 the
 // wizard changes back, and what's left over carries on to the wizard).
+// Breath (Breath, sim.json breath) runs down while the head is under water
+// (SurfaceEffects says when, Breathe) and drowning hurts through TakeDamage.
+// Like the rest it is the wizard's own, kept on the machine that moves it.
 public class Vitals : MonoBehaviour
 {
     public const float StaminaMax = 100f, MagicMax = 100f;
@@ -27,6 +30,9 @@ public class Vitals : MonoBehaviour
     public float Stamina { get; private set; } = StaminaMax;
     public float Magic { get; private set; } = MagicMax;
 
+    /// <summary>The wizard's breath under water (null until Start has read the rules).</summary>
+    public Breath Breath { get; private set; }
+
     float lastHurt = float.NegativeInfinity;
 
     /// <summary>Takes damage before the wizard does, and returns what's left over (Shapeshift's animal form).</summary>
@@ -37,6 +43,7 @@ public class Vitals : MonoBehaviour
         var grid = FindAnyObjectByType<ChemGrid>();
         var wizard = grid != null && grid.World != null ? grid.World.Rules.Entity(EntityIds.Wizard) : null;
         if (wizard != null) HealthMax = Mathf.Max(1, wizard.Hp);
+        Breath = new Breath(grid != null && grid.World != null ? grid.World.Rules.Sim.Breath : null, sides => Random.Range(1, sides + 1));
         Health = HealthMax;
     }
 
@@ -59,6 +66,7 @@ public class Vitals : MonoBehaviour
         Health = HealthMax;
         Stamina = StaminaMax;
         Magic = MagicMax;
+        Breath?.Refill();
         lastHurt = float.NegativeInfinity;
     }
 
@@ -77,6 +85,21 @@ public class Vitals : MonoBehaviour
         if (!infinite && Stamina < StaminaMax) Stamina = Mathf.Min(StaminaMax, Stamina + StaminaRegen * Time.deltaTime);
         if (!infinite || Health >= HealthMax || Time.time - lastHurt < RecoverAfter) return;
         Health = Mathf.Min(HealthMax, Health + RecoverPerSecond * Time.deltaTime);
+    }
+
+    /// <summary>
+    /// A frame of breathing, the head under water or not (SurfaceEffects): out of breath, the wizard
+    /// drowns, hurt every few seconds until its head comes out.
+    /// </summary>
+    public void Breathe(bool headUnder, float seconds)
+    {
+        if (Breath == null) return;
+        bool was = Breath.Drowning;
+        int damage = Breath.Step(seconds, headUnder);
+        if (Breath.Drowning && !was) EventLog.Add("You run out of breath and start to drown");
+        if (damage <= 0) return;
+        EventLog.Add($"You choke on water: {damage} damage");
+        TakeDamage(damage);
     }
 
     /// <summary>The wizard is hurt: an animal shape takes it first; the rest comes off health unless it's infinite.</summary>

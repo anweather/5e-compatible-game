@@ -161,10 +161,10 @@ public static class ProbeScenarios
         new Entry("sit", typeof(SitProbe), 40f,
             "The wizard sits on the bench nearest the yard, then lies back on the nearest beach lounger (Seat, Sitter, SitPose), and gets up from each. Checks: ten or more " +
             "seats in the world, the seat in reach beside it (E goes to it), held on the seat with the pose on and the hips within 0.2 m of the seat point, and free again after standing, no console errors."),
-        new Entry("swim", typeof(SwimProbe), 40f,
+        new Entry("swim", typeof(SwimProbe), 50f,
             "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
-            "and it floats again after, no console errors."),
+            "and it floats again after; held, the dive takes the head under over 0.8 m down, breath runs down, and let go it comes back up with its breath full again; no console errors."),
         new Entry("look", typeof(LookProbe), 30f,
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +

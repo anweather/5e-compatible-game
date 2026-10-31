@@ -15,6 +15,7 @@
     "margin": 10, "wallCost": 30, "roughCost": 4, "roughTicks": 6, "batterTicks": 18, "deepWater": 8,
     "kinds": ["bone-hound", "ash-crab", "giant-spider"]
   },
+  "breath": { "seconds": 30, "refillSeconds": 3, "drownEvery": 3, "drownDice": 1, "drownSides": 6 },
   "golf": { "every": 1, "pushRoll": 5, "throwCarry": 3, "margin": 16 },
   "day": { "lengthMinutes": 24, "startHour": 9, "dawn": [5, 7], "dusk": [18, 20], "nightFreeze": 2, "fireLight": { "bright": 20, "dim": 20 } },
   "streaming": { "reach": 2, "keep": 3, "settleTicks": 12, "lingerChunks": 16, "lingerTicks": 1800, "catchUpTicks": 720 },

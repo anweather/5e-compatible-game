@@ -4,7 +4,8 @@ using UnityEngine;
 // The probe's swim scenario (docs/FAST_LOOP.md): the wizard drops into the
 // deepest part of the lake (SurfaceEffects). Checks it floats at the surface
 // rather than sinking to the bed, stays afloat, swims along when pushed, and
-// that jump kicks it up out of the water.
+// that jump kicks it up out of the water; then that the dive takes it under,
+// its breath runs down there, and letting go brings it back up to breathe.
 public class SwimProbe : ProbeScenario
 {
     protected override IEnumerator Run()
@@ -74,6 +75,24 @@ public class SwimProbe : ProbeScenario
         Check("jump_kicks_up", highest - before > 1.5f, $"rose {highest - before:0.00} m");
         yield return Wait(2f);
         Check("back_afloat", surface.Swimming, "after the kick it falls back in and floats");
+
+        // The dive held (Left Ctrl, SurfaceEffects.HoldDive): under it goes, holding its breath, and let go it comes back up.
+        var breath = wizard.GetComponent<Vitals>().Breath;
+        float afloatY = wizard.transform.position.y;
+        surface.HoldDive = true;
+        yield return Wait(1.5f);
+        float dived = afloatY - wizard.transform.position.y;
+        double held = breath.Left;
+        Metric("dive_m", dived);
+        Check("dives_under", surface.Diving && surface.HeadUnder && dived > 0.8f, $"down {dived:0.00} m, head under {surface.HeadUnder}");
+        Shot("diving");
+        yield return Wait(1f);
+        Metric("breath_left_s", (float)breath.Left);
+        Check("holds_breath", breath.Under && breath.Left < held - 0.5, $"breath {held:0.0} s then {breath.Left:0.0} s");
+        surface.HoldDive = false;
+        yield return Wait(3f);
+        Check("comes_back_up", surface.Swimming && !surface.HeadUnder, $"head under {surface.HeadUnder}, afloat {surface.Swimming}");
+        Check("breath_refills", breath.Full, $"breath {breath.Left:0.0} of {breath.Max:0} s");
     }
 
     // The lake square with the most water over the ground. The lake is the lowest water (the
