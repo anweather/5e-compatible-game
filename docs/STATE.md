@@ -63,6 +63,9 @@ The one page a new PM session reads first. Keep it short: history goes in
   Wall of Stone is wiped by the chunk reset before the breath arrives.
   `dragon-clip` (f07aa3e, the clip probe and the QuickSearch console filter) is stacked on it: land
   dragon-view first. The Mac does the dragon tweaks, then rules MCP phase 2, procedural looks (`procedural-looks`).
+- u1: live rule changes, the core foundation (Andrew's next flagship; brief `briefs/live-rule-changes.md`).
+- DesktopUnity: slam rework landed (ec80f19); clips on the board (slam, punch, sounds A/B/C); now the
+  dragon-view online probe and the ModValidator compile check.
 - Sandbox frozen (210b047; J-042): it reads `sandbox/rules-frozen/`; nothing is ported to it.
 - Rules MCP phase 1 landed (dffbc19; u1, now asleep): `core/Rules.Mcp`, `ModValidator.cs`, budgets in
   `rules/budgets.json`, "Using the rules MCP" in MODDING.md. Unity hasn't compiled ModValidator yet
