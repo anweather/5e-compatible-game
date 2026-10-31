@@ -1402,17 +1402,10 @@ public static class ValleyBuilder
 
     // A colour-multiplied copy of a texture, saved in Generated/ (which is gitignored: it is
     // derived from Asset Store content, which a public repo can't redistribute).
-    static Texture2D Tinted(Texture2D source, Color multiply, int size = 1024)
+    internal static Texture2D Tinted(Texture2D source, Color multiply, int size = 1024)
     {
         string path = $"{Generated}/{source.name}_Tinted.png";
-        var rt = RenderTexture.GetTemporary(size, size, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-        Graphics.Blit(source, rt);
-        var previous = RenderTexture.active;
-        RenderTexture.active = rt;
-        var copy = new Texture2D(size, size, TextureFormat.RGBA32, false);
-        copy.ReadPixels(new Rect(0, 0, size, size), 0, 0);
-        RenderTexture.active = previous;
-        RenderTexture.ReleaseTemporary(rt);
+        var copy = ReadableCopy(source, size);
         var pixels = copy.GetPixels32();
         for (int i = 0; i < pixels.Length; i++)
         {
@@ -1424,6 +1417,33 @@ public static class ValleyBuilder
         Object.DestroyImmediate(copy);
         AssetDatabase.ImportAsset(path);
         return AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+    }
+
+    // An uncompressed copy of a texture, at most size wide, read through a throwaway import of its
+    // file. No GPU: a Blit draws nothing under -nographics, which left the terrain one flat colour.
+    static Texture2D ReadableCopy(Texture2D source, int size)
+    {
+        string file = AssetDatabase.GetAssetPath(source);
+        string temp = $"{Generated}/{source.name}_Readable{Path.GetExtension(file)}";
+        if (!AssetDatabase.CopyAsset(file, temp)) throw new IOException($"Couldn't copy {file} to {temp}");
+        try
+        {
+            var importer = (TextureImporter)AssetImporter.GetAtPath(temp);
+            importer.ClearPlatformTextureSettings("Standalone");
+            importer.isReadable = true;
+            importer.mipmapEnabled = false;
+            importer.maxTextureSize = size;
+            importer.textureCompression = TextureImporterCompression.Uncompressed;
+            importer.SaveAndReimport();
+            var imported = AssetDatabase.LoadAssetAtPath<Texture2D>(temp);
+            var copy = new Texture2D(imported.width, imported.height, TextureFormat.RGBA32, false);
+            copy.SetPixels32(imported.GetPixels32());
+            return copy;
+        }
+        finally
+        {
+            AssetDatabase.DeleteAsset(temp);
+        }
     }
 
     // --- chemistry ------------------------------------------------------------
