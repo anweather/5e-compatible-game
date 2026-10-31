@@ -768,3 +768,9 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   Cast feel step 3: DesktopUnity reran on Andrew's word ("Yes, rerun now");
   beats_seen_online is a real bug, being fixed before merging. The virtual
   player costs about 4 GB during online probes, so no VM starts beside them.
+- 2026-10-31 07:00: DECIDED (Andrew): cut 0.1.9 right after the cast-feel
+  pass (steps 3-4, the casting sounds included); the rest of the sound pass
+  moves to 0.1.10 with voice. Timebox: step 3's online beat bug gets about
+  45 more minutes, then it merges with that check as a known gap (view-only;
+  checksums match). Fog patches go in if they land first. The PM writes the
+  notes and publishes if the RC is green (Andrew's standing go).
