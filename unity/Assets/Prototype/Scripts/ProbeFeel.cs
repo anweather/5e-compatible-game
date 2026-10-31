@@ -212,7 +212,7 @@ public class FeelProbe : SpellLooksProbe
         Check(name + "_landing_says_who", landed.Prop == thing && landed.Puncher == fists && landed.Hit, $"{landed.Prop}, by {landed.Puncher}");
         Check(name + "_hit_stop", beats.Stops == stops + 1 && !beats.Stopped, $"{beats.Stops - stops} stops");
         Check(name + "_kick", CastImpact.Kicks == kicks + 1 && CastImpact.LastKick <= 0.06f, $"{CastImpact.Kicks - kicks} kicks, {CastImpact.LastKick:0.000} m");
-        Check(name + "_leaves_time_alone", Time.timeScale == scale && Time.fixedDeltaTime == step, $"time scale {Time.timeScale}");
+        Check(name + "_leaves_time_alone", Mathf.Approximately(Time.timeScale, scale) && Mathf.Approximately(Time.fixedDeltaTime, step), $"time scale {Time.timeScale}");
         yield return Wait(1.6f);
         float went = Vector3.Distance(from, thing.transform.position);
         Metric(name + "_m", went);
@@ -382,12 +382,12 @@ public class FeelProbe : SpellLooksProbe
         Check("held_marker_shown", caster.Marker != null, $"{caster.Marker?.Kind}");
         InputSystem.QueueStateEvent(keys, new KeyboardState());
         for (float t = 0f; t < 4f && World.CastOf(me).Casting; t += Time.deltaTime) yield return null;
-        float landed = Time.time - start;
+        float landedAt = Time.time - start;
         Metric("seconds_a_level", third - second);
         Metric("full_charge_s", full);
-        Metric("held_cast_landed_s", landed);
+        Metric("held_cast_landed_s", landedAt);
         Check("a_level_takes_half_a_second", Mathf.Abs(third - second - (float)World.SecondsPerLevel) < 0.12f, $"{third - second:0.00} s, the rules say {World.SecondsPerLevel:0.00}");
-        Check("full_charge_in_two_to_three_seconds", full >= 1.8f && full <= 3.2f, $"{full:0.0} s to full charge, landed at {landed:0.0} s");
+        Check("full_charge_in_two_to_three_seconds", full >= 1.8f && full <= 3.2f, $"{full:0.0} s to full charge, landed at {landedAt:0.0} s");
         yield return Wait(1f);
     }
 

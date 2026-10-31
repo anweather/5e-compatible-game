@@ -525,7 +525,8 @@ public class OnlineProbeClient : MonoBehaviour
 public class OnlineProbe : ProbeScenario
 {
     // What the core said of the strikes on the virtual player (TryStrikes).
-    int strikeHits, strikeDamage;
+    int strikeHits, strikeDamage, strikeMisses, strikeMoved;
+    StrikeHit strikeSeen;
     const int LeadTicks = 30;
     const float JoinSeconds = 60f, ReportSeconds = 60f;
 
@@ -666,15 +667,7 @@ public class OnlineProbe : ProbeScenario
             Check("reset_checksums_equal", false, "the virtual player sent no checksums after the reset");
             yield break;
         }
-        Check("shape_seen_online", client.sawForm, "the host's wizard drawn as a deer on the virtual player");
-        Check("shape_ended_online", client.sawFormEnd, "and drawn as itself again once a cast button ended it (issue #6)");
-        Check("strike_damage_on_the_right_wizard", client.hitsTaken == strikeHits && strikeHits > 0 && Mathf.Approximately(client.damageTaken, strikeDamage) && wizard.GetComponent<WizardStrike>().HitsTaken == 0,
-            $"the virtual player took {client.hitsTaken} hits for {client.damageTaken} health, the core says {strikeHits} for {strikeDamage}; the host took {wizard.GetComponent<WizardStrike>().HitsTaken}");
-        Check("remote_wizard_has_no_hit_stop", client.otherStops == 0 && wizard.GetComponent<CastBeats>().Stops > 0,
-            $"its copy on the virtual player {client.otherStops}, the host's own {wizard.GetComponent<CastBeats>().Stops}");
-        Check("beats_seen_online", client.otherBeats.SequenceEqual(hostBeats) && hostBeats.Contains(nameof(Beat.Release)) && hostBeats.Contains(nameof(Beat.Charge)),
-            $"host [{string.Join(" ", hostBeats)}], its wizard on the virtual player [{string.Join(" ", client.otherBeats)}]");
-        CheckRemoteSounds(client);
+        CheckSeenOnline(client);
         int compared = 0, equal = 0;
         string firstDiff = null;
         for (int i = 0; i < client.hashTicks.Count; i++)
@@ -687,6 +680,20 @@ public class OnlineProbe : ProbeScenario
         Metric("reset_checksums_compared", compared);
         Check("reset_checksums_equal", compared >= 3 && equal == compared && !client.desync,
             firstDiff ?? $"{equal}/{compared} checksums equal after the reset (tick {resetNet.LastResetTick}); client desync {client.desync}, {client.errorCount} client errors");
+    }
+
+    // What the virtual player saw of shapes, strikes and casts.
+    void CheckSeenOnline(OnlineObservation client)
+    {
+        Check("shape_seen_online", client.sawForm, "the host's wizard drawn as a deer on the virtual player");
+        Check("shape_ended_online", client.sawFormEnd, "and drawn as itself again once a cast button ended it (issue #6)");
+        Check("strike_damage_on_the_right_wizard", client.hitsTaken == strikeHits && strikeHits > 0 && Mathf.Approximately(client.damageTaken, strikeDamage) && wizard.GetComponent<WizardStrike>().HitsTaken == 0,
+            $"the virtual player took {client.hitsTaken} hits for {client.damageTaken} health, the core says {strikeHits} for {strikeDamage}; the host took {wizard.GetComponent<WizardStrike>().HitsTaken}");
+        Check("remote_wizard_has_no_hit_stop", client.otherStops == 0 && wizard.GetComponent<CastBeats>().Stops > 0,
+            $"its copy on the virtual player {client.otherStops}, the host's own {wizard.GetComponent<CastBeats>().Stops}");
+        Check("beats_seen_online", client.otherBeats.SequenceEqual(hostBeats) && hostBeats.Contains(nameof(Beat.Release)) && hostBeats.Contains(nameof(Beat.Charge)),
+            $"host [{string.Join(" ", hostBeats)}], its wizard on the virtual player [{string.Join(" ", client.otherBeats)}]");
+        CheckRemoteSounds(client);
     }
 
     // The host takes a deer's shape and ends it as a cast button does (Shapeshift.ChangeBackByChoice), on its own machine;
@@ -768,41 +775,48 @@ public class OnlineProbe : ProbeScenario
             Check("strike_rolled_both_ways", false, $"no stand for the virtual player: {World.StrikeText()}");
             yield break;
         }
-        StrikeHit seen = null;
-        void Saw(StrikeHit hit) => seen = hit;
+        void Saw(StrikeHit hit) => strikeSeen = hit;
         strike.Struck += Saw;
-        int misses = 0, moved = 0, strikes = 0;
-        while (strikes < MostStrikes && (strikeHits < Hits || misses == 0))
+        int strikes = 0;
+        while (strikes < MostStrikes && (strikeHits < Hits || strikeMisses == 0))
         {
-            var target = World.Stands[foe];
-            int x = target.X, y = target.Y;
-            var at = grid.CellCenter(x - 1, y);
-            Teleport(new Vector3(at.x, grid.GroundAt(at) + 0.05f, at.z));
-            for (float t = 0f; t < 2f && !(World.Stands[me].X == x - 1 && World.Stands[me].Y == y); t += Time.unscaledDeltaTime) yield return null;
-            int ready = World.Tick + World.Rules.Sim.Strike.CooldownTicks + 1;
-            seen = null;
-            strike.Strike(Vector3.right);
             strikes++;
-            for (float t = 0f; t < 2f && seen == null; t += Time.unscaledDeltaTime) yield return null;
-            if (seen != null && seen.Hit)
-            {
-                strikeHits++;
-                strikeDamage += seen.Damage;
-                // The owner moves it; its copy here gets there through the NetworkTransform.
-                var to = new Vector2Int(seen.ToX, seen.ToY);
-                for (float t = 0f; t < 2f && grid.CellAt(other.PlayerObject.transform.position) != to; t += Time.unscaledDeltaTime) yield return null;
-                if (to == new Vector2Int(x + 1, y) && grid.CellAt(other.PlayerObject.transform.position) == to) moved++;
-                else if (to != new Vector2Int(x, y)) Check("strike_moved_where_the_core_said", false, $"core {to}, its copy here {grid.CellAt(other.PlayerObject.transform.position)}");
-            }
-            else if (seen != null) misses++;
-            while (World.Tick < ready) yield return null;
+            yield return StrikeOnce(strike, foe, me, other);
         }
         strike.Struck -= Saw;
         Metric("strikes", strikes);
         Metric("strike_hits", strikeHits);
-        Metric("strike_misses", misses);
-        Check("strike_rolled_both_ways", strikeHits >= Hits && misses > 0, $"{strikes} strikes: {strikeHits} hits, {misses} misses");
-        Check("strike_moved_one_cell", moved > 0, $"{moved} of {strikeHits} hits moved its wizard a cell, on the owner's machine");
+        Metric("strike_misses", strikeMisses);
+        Check("strike_rolled_both_ways", strikeHits >= Hits && strikeMisses > 0, $"{strikes} strikes: {strikeHits} hits, {strikeMisses} misses");
+        Check("strike_moved_one_cell", strikeMoved > 0, $"{strikeMoved} of {strikeHits} hits moved its wizard a cell, on the owner's machine");
+    }
+
+    // One strike from the cell west of the foe, and its result; then the wait until the next may go.
+    IEnumerator StrikeOnce(WizardStrike strike, string foe, string me, NetworkClient other)
+    {
+        var target = World.Stands[foe];
+        int x = target.X, y = target.Y;
+        var at = grid.CellCenter(x - 1, y);
+        Teleport(new Vector3(at.x, grid.GroundAt(at) + 0.05f, at.z));
+        for (float t = 0f; t < 2f && !(World.Stands[me].X == x - 1 && World.Stands[me].Y == y); t += Time.unscaledDeltaTime) yield return null;
+        int ready = World.Tick + World.Rules.Sim.Strike.CooldownTicks + 1;
+        strikeSeen = null;
+        strike.Strike(Vector3.right);
+        for (float t = 0f; t < 2f && strikeSeen == null; t += Time.unscaledDeltaTime) yield return null;
+        if (strikeSeen != null && strikeSeen.Hit) yield return StrikeLanded(strikeSeen, new Vector2Int(x, y), other);
+        else if (strikeSeen != null) strikeMisses++;
+        while (World.Tick < ready) yield return null;
+    }
+
+    IEnumerator StrikeLanded(StrikeHit hit, Vector2Int from, NetworkClient other)
+    {
+        strikeHits++;
+        strikeDamage += hit.Damage;
+        // The owner moves it; its copy here gets there through the NetworkTransform.
+        var to = new Vector2Int(hit.ToX, hit.ToY);
+        for (float t = 0f; t < 2f && grid.CellAt(other.PlayerObject.transform.position) != to; t += Time.unscaledDeltaTime) yield return null;
+        if (to == from + Vector2Int.right && grid.CellAt(other.PlayerObject.transform.position) == to) strikeMoved++;
+        else if (to != from) Check("strike_moved_where_the_core_said", false, $"core {to}, its copy here {grid.CellAt(other.PlayerObject.transform.position)}");
     }
 
     // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.

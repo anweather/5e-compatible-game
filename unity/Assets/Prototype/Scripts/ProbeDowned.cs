@@ -74,7 +74,7 @@ public class DownedProbe : SpellLooksProbe
 
         PlaceCell(stand.x, stand.y);
         yield return HitBy(Other, stand);
-        Check("struck_loses_the_damage", strike.HitsTaken == 1 && Mathf.Approximately(strike.DamageTaken, 1f) && vitals.Health == vitals.HealthMax - 1f, $"{strike.HitsTaken} hits, health {vitals.Health} of {vitals.HealthMax}");
+        Check("struck_loses_the_damage", strike.HitsTaken == 1 && Mathf.Approximately(strike.DamageTaken, 1f) && Mathf.Approximately(vitals.Health, vitals.HealthMax - 1f), $"{strike.HitsTaken} hits, health {vitals.Health} of {vitals.HealthMax}");
         var now = grid.CellAt(wizard.transform.position);
         Check("struck_moves_one_cell", now == new Vector2Int(stand.x + 1, stand.y), $"from {stand} to {now}");
         Check("struck_core_agrees", World.Stands[caster.CastPlayer].X == now.x && World.Stands[caster.CastPlayer].Y == now.y && World.Stands[caster.CastPlayer].Hp == Mathf.CeilToInt(vitals.Health), World.StrikeText());

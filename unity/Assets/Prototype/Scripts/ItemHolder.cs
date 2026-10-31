@@ -11,6 +11,7 @@ using UnityEngine;
 // letting go are asked of the host (NetItem), which grants them; Grant and
 // Forget are how the answer arrives, on every machine.
 [DefaultExecutionOrder(120)] // after CastPose and Knockback have moved the arm and body
+[RequireComponent(typeof(SpellCaster))]
 public partial class ItemHolder : MonoBehaviour
 {
     public PlayerControls controls;
