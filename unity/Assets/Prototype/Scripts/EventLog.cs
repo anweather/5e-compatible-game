@@ -27,9 +27,9 @@ public class EventLog : MonoBehaviour
     SpellCaster caster;
     readonly VitalsHud vitalsHud = new();
     readonly CastHud castHud = new();
-    GUIStyle logStyle, logShadow;
+    GUIStyle logStyle, logShadow, chipStyle;
     // Over the update notice in the corner (UpdateCheck).
-    const float LogWidth = 640f, LogLine = 32f, LogBottom = 56f;
+    const float LogWidth = 640f, LogLine = 22f, LogBottom = 56f;
 
     void Awake() => instance = this;
     void Start()
@@ -40,6 +40,9 @@ public class EventLog : MonoBehaviour
     /// <summary>Shows this caster's spells and controls; the local player's caster calls it when enabled.</summary>
     /// <summary>The local player's caster, or null (e.g. the mods panel pauses its controls).</summary>
     public static SpellCaster TrackedCaster => instance != null ? instance.caster : null;
+
+    /// <summary>How full the cast bar was drawn last, 0 to 1, for the probe.</summary>
+    public static float CastBarShare => instance != null ? instance.castHud.Share : 0f;
 
     public static void Track(SpellCaster c)
     {
@@ -113,7 +116,7 @@ public class EventLog : MonoBehaviour
     // The message log down the free right side, the newest at the bottom.
     void DrawLog()
     {
-        logStyle ??= new GUIStyle(style) { fontSize = 22, alignment = TextAnchor.MiddleRight };
+        logStyle ??= new GUIStyle(style) { fontSize = 16, alignment = TextAnchor.MiddleRight };
         logShadow ??= new GUIStyle(logStyle) { richText = false };
         logShadow.normal.textColor = new Color(0f, 0f, 0f, 0.75f);
         float width = LogWidth, x = HudScale.Width - width - VitalsHud.Margin;
@@ -136,7 +139,8 @@ public class EventLog : MonoBehaviour
         castHud.Draw(caster, style);
         // The spell the radial picked: what the mouse casts, and the controller in its debug layout.
         bool radialPad = pad && caster.controls != null && !caster.controls.ElementPad;
-        if (!pad || radialPad) GUI.Label(new Rect(VitalsHud.Margin, VitalsHud.Margin + vitalsHeight + 8f, 1400, 30), SpellChip(pad), style);
+        chipStyle ??= new GUIStyle(style) { fontSize = 15 };
+        if (!pad || radialPad) GUI.Label(new Rect(VitalsHud.Margin, VitalsHud.Margin + vitalsHeight + 6f, 1400, 26), SpellChip(pad), chipStyle);
     }
 
     string SpellChip(bool pad)

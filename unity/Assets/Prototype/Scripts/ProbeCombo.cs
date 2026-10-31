@@ -39,6 +39,8 @@ public class ComboProbe : ProbeScenario
             yield return Dpad();
             yield return Grimoire();
             yield return Hands();
+            yield return BarFills();
+            yield return HeldSteps();
             yield return WholeHud();
         }
         finally
@@ -168,7 +170,19 @@ public class ComboProbe : ProbeScenario
         Shot("grimoire");
         yield return null;
         yield return null;
-        if (menu != null) menu.SetOpen(false);
+        // Back from the d-pad's grimoire is straight back to play, not to the menu (#10).
+        yield return Press(GamepadButton.East);
+        Check("back_closes_grimoire", menu != null && !menu.Open, menu != null ? $"open {menu.Open}, page {menu.CurrentPage}" : "no menu");
+        Check("back_to_play", controls.enabled, "the wizard's controls are back");
+        // From the menu's own button, Back still goes back to the menu.
+        if (menu != null)
+        {
+            menu.SetOpen(true);
+            menu.ShowPage("grimoire");
+            menu.Back();
+            Check("back_from_menu_stays_in_menu", menu.Open && menu.CurrentPage != "grimoire", $"open {menu.Open}, page {menu.CurrentPage}");
+            menu.SetOpen(false);
+        }
         yield return Wait(0.3f);
     }
 
@@ -189,7 +203,50 @@ public class ComboProbe : ProbeScenario
         yield return Wait(1.5f);
     }
 
-    // Everything on the screen at once: sprinting for the stamina ring, a pair loaded for the cast.
+    // The cast bar runs on between the core's ticks: many more steps than ticks, and only ever up (#9).
+    IEnumerator BarFills()
+    {
+        yield return Press(GamepadButton.RightShoulder);
+        var cast = World.CastOf(me);
+        int ticks = cast.Total, steps = 0;
+        float last = 0f, lowest = 1f, highest = 0f;
+        bool shot = false, onlyUp = true;
+        while (World.CastOf(me).Casting)
+        {
+            float share = EventLog.CastBarShare;
+            if (!Mathf.Approximately(share, last)) steps++;
+            onlyUp &= share >= last;
+            lowest = Mathf.Min(lowest, share);
+            highest = Mathf.Max(highest, share);
+            last = share;
+            if (!shot && share > 0.5f)
+            {
+                shot = true;
+                Shot("bar-half");
+            }
+            yield return null;
+        }
+        Metric("bar_ticks", ticks);
+        Metric("bar_steps", steps);
+        Check("bar_fills_smoothly", steps > ticks * 2 && onlyUp && lowest < 0.4f && highest > 0.85f, $"{steps} steps over {ticks} ticks, {lowest:0.00} to {highest:0.00}, only up {onlyUp}");
+        yield return Wait(1f);
+    }
+
+    // Earth held: the steps light under the bar, and the held spell's name shows at the top step (#7, #9).
+    IEnumerator HeldSteps()
+    {
+        InputSystem.QueueStateEvent(pad, new GamepadState { leftTrigger = 1f });
+        yield return Wait(ElementHold.SecondsPerLevel * 2f + 0.3f);
+        Check("held_steps_lit", caster.HoldCharge == World.MaxChargeOf(World.ComboOf(World.CastOf(me))), $"charge {caster.HoldCharge}");
+        Check("marker_on_the_held_spell", caster.Marker != null && caster.Marker.Kind == AimKind.Rising, $"{caster.Marker?.Kind}");
+        Shot("held");
+        yield return null;
+        yield return null;
+        InputSystem.QueueStateEvent(pad, new GamepadState());
+        yield return Wait(1.5f);
+    }
+
+    // Everything on the screen at once: sprinting for the stamina line, a pair loaded for the cast.
     IEnumerator WholeHud()
     {
         var sprint = new GamepadState { leftStick = Vector2.up }.WithButton(GamepadButton.LeftStick);
@@ -208,12 +265,12 @@ public class ComboProbe : ProbeScenario
         InputSystem.QueueStateEvent(pad, new GamepadState { leftStick = Vector2.up });
         yield return Wait(0.2f);
         var vitals = wizard.GetComponent<Vitals>();
-        // Stamina is infinite in the sandbox, which would leave the ring full: spent for real for the picture.
+        // Stamina is infinite in the sandbox, which would leave the line full: spent for real for the picture.
         vitals.infinite = false;
         vitals.TrySpendStamina(vitals.Stamina * 0.35f);
         yield return null;
         Metric("hud_stamina", vitals.Stamina);
-        Check("ring_drains", vitals.Stamina < Vitals.StaminaMax * 0.7f, $"stamina {vitals.Stamina:0}");
+        Check("stamina_drains", vitals.Stamina < Vitals.StaminaMax * 0.7f, $"stamina {vitals.Stamina:0}");
         Shot("hud");
         yield return null;
         yield return null;

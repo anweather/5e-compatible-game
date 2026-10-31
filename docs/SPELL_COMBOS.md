@@ -18,7 +18,7 @@ and experiment tool. The real input becomes elements combined in sequence.
   the spell casts. Every spell gets a cast time, which ends spamming.
   Later, harder combos must be entered within a time window.
 - **The look:** an element orb in each hand; casting slams them together.
-  On screen, the centre bar (where stamina shows while in use) shows the
+  On screen, the bar below the crosshair shows the
   loaded orbs (a coloured circle with the element's icon) with the cast meter
   under them.
 
@@ -204,7 +204,8 @@ Reel clip: `spell-chain.mp4`.
 - Top left: the portrait in the corner, the health and magic bars stacked to
   its right; large and readable.
 - Bottom left: the d-pad cross, sized like the top-left block.
-- Centre: stamina as a green ring that drains and refills, shown only in use.
-- About 2/3 down the screen, below the ring: the loaded element orbs and the
+- Top left: stamina as a thin green line under Health and Magic that drains and
+  refills, shown only in use (moved out of the centre, UX pass 4, #8).
+- About 2/3 down the screen: the loaded element orbs and the
   cast meter, at a similar size.
 - Right side (or across the bottom): the message log.

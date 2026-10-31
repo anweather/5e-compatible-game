@@ -4,18 +4,18 @@ using UnityEngine;
 // The wizard's vitals on the HUD (EventLog draws it), in Andrew's layout
 // (docs/SPELL_COMBOS.md): a portrait in the top left corner (a placeholder: the
 // wizard's headwear, black face and red eyes, and robe in its look's colours) with health and magic
-// stacked to its right; and stamina as a green ring round the crosshair that
-// starts full and drains, shown only while it's in use (sprinting, swimming,
-// rolling, or not yet full again) and faded out a moment after, BotW-style.
+// stacked to its right; and stamina as a thin green line under them, out of the
+// way of the aim (UX pass 4), shown only while it's in use (sprinting, swimming,
+// rolling, or not yet full again) and faded out a moment after.
 // Breath is a bar to the right of health, there only while it runs down under
 // water or fills again (Vitals.Breath), faded in and out the same way.
 public sealed class VitalsHud
 {
     /// <summary>The margin from the screen's edge, and the portrait's size: DpadHud's block matches them.</summary>
-    public const float Margin = 24f, BlockHeight = 104f;
+    public const float Margin = 24f, BlockHeight = 80f;
 
-    const float BarWidth = 300f, BarHeight = 46f, Gap = 12f;
-    const float RingInner = 40f, RingOuter = 54f;
+    const float BarWidth = 200f, BarHeight = 30f, Gap = 6f, StaminaHeight = 8f;
+    const float Inset = 2f;
     // How fast stamina fades in and out (per second), and how long it stays after the effort stops (s).
     const float FadeRate = 4f, Linger = 0.8f;
 
@@ -38,13 +38,13 @@ public sealed class VitalsHud
     {
         if (who != wizard) Find(who);
         if (vitals == null) return 0f;
-        text ??= new GUIStyle(style) { fontSize = 20, alignment = TextAnchor.MiddleCenter };
+        text ??= new GUIStyle(style) { fontSize = 15, alignment = TextAnchor.MiddleCenter };
         Portrait(new Rect(Margin, Margin, BlockHeight, BlockHeight));
         float x = Margin + BlockHeight + Gap;
         Bar(new Rect(x, Margin, BarWidth, BarHeight), $"<b>Health</b> {Mathf.CeilToInt(vitals.Health)}/{Mathf.CeilToInt(vitals.HealthMax)}", vitals.Health / vitals.HealthMax, HealthColor);
         Bar(new Rect(x, Margin + BarHeight + Gap, BarWidth, BarHeight), $"<b>Magic</b> {Mathf.CeilToInt(vitals.Magic)}/{Mathf.CeilToInt(Vitals.MagicMax)}", vitals.Magic / Vitals.MagicMax, MagicColor);
         Breath(new Rect(x + BarWidth + Gap, Margin, BarWidth, BarHeight));
-        Stamina();
+        Stamina(new Rect(x, Margin + BlockHeight - StaminaHeight, BarWidth, StaminaHeight));
         return BlockHeight;
     }
 
@@ -83,18 +83,14 @@ public sealed class VitalsHud
         Fill(new Rect(inner.x + w * 0.44f, inner.y + h * 0.02f, w * 0.12f, h * 0.13f), hat);
     }
 
-    // Stamina round the crosshair while it's in use, fading in and out.
-    void Stamina()
+    // Stamina under the bars while it's in use, fading in and out.
+    void Stamina(Rect r)
     {
         if (InUse() || vitals.Stamina < Vitals.StaminaMax) inUseUntil = Time.unscaledTime + Linger;
         float target = Time.unscaledTime < inUseUntil ? 1f : 0f;
         staminaShown = Mathf.MoveTowards(staminaShown, target, FadeRate * Time.unscaledDeltaTime);
         if (staminaShown <= 0f) return;
-        var centre = new Vector2(HudScale.Width / 2f, HudScale.Height / 2f);
-        HudDraw.Ring(centre, RingInner - 3f, RingOuter + 3f, 1f, new Color(0f, 0f, 0f, 0.45f * staminaShown));
-        var colour = StaminaColor;
-        colour.a = staminaShown;
-        HudDraw.Ring(centre, RingInner, RingOuter, vitals.Stamina / Vitals.StaminaMax, colour);
+        Bar(r, "", vitals.Stamina / Vitals.StaminaMax, StaminaColor, staminaShown);
     }
 
     // Breath while it runs down or fills again, fading in and out like stamina; drowning, the bar's empty and darker.
@@ -124,7 +120,7 @@ public sealed class VitalsHud
     {
         Fill(r, new Color(0f, 0f, 0f, 0.55f * alpha));
         colour.a *= alpha;
-        Fill(new Rect(r.x + 4f, r.y + 4f, (r.width - 8f) * Mathf.Clamp01(share), r.height - 8f), colour);
+        Fill(new Rect(r.x + Inset, r.y + Inset, (r.width - Inset * 2f) * Mathf.Clamp01(share), r.height - Inset * 2f), colour);
         GUI.color = new Color(1f, 1f, 1f, alpha);
         GUI.Label(r, label, text);
         GUI.color = Color.white;
