@@ -91,21 +91,27 @@ namespace Chem
             FinishTick(); // a rule switch lands between whole ticks (StepSome)
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             ForgetWaterSnapshots(); // terrain may mean something else now
-            var height = rules.Sim.Height;
             Weather = SkyNow();
             foreach (var c in Cells)
             {
                 c.ForgetDef();
-                c.Height = Math.Max(height.Min, Math.Min(height.Max, c.Height));
-                if (!rules.Terrain.ContainsKey(c.T)) c.T = "dirt";
-                if (c.Cover != null && !rules.Covers.ContainsKey(c.Cover)) c.Cover = null;
-                if (c.Gas != null && !rules.Gases.ContainsKey(c.Gas))
-                {
-                    c.Gas = null;
-                    c.GasAmt = 0;
-                }
+                Sanitize(c);
             }
             SanitizeRaiders();
+        }
+
+        // A cell made to fit the rules in force (sanitizeCell in the TS).
+        void Sanitize(Cell c)
+        {
+            var height = Rules.Sim.Height;
+            c.Height = Math.Max(height.Min, Math.Min(height.Max, c.Height));
+            if (!Rules.Terrain.ContainsKey(c.T)) c.T = "dirt";
+            if (c.Cover != null && !Rules.Covers.ContainsKey(c.Cover)) c.Cover = null;
+            if (c.Gas != null && !Rules.Gases.ContainsKey(c.Gas))
+            {
+                c.Gas = null;
+                c.GasAmt = 0;
+            }
         }
 
         // ---------- directions ----------

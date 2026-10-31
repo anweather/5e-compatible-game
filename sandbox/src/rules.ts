@@ -365,6 +365,7 @@ export interface RaiderDef {
   weak?: string[];
   resist?: string[];
 }
+import type { DragonParams } from "./dragon.ts";
 import type { GolfParams } from "./golf.ts";
 /** sim.json's defense (defense.ts; C#: DefenseParams in Defense.cs). */
 export interface DefenseParams {
@@ -450,6 +451,8 @@ export interface SimParams {
   breath?: { seconds: number; refillSeconds: number; drownEvery: number; drownDice: number; drownSides: number };
   /** How long a wizard at 0 health stays down, read by the Unity view only (C#: DownedParams in Downed.cs); absent uses the default. */
   downed?: { seconds: number };
+  /** The dragon's flight, the changed-cell budget and the shelter rule (dragon.ts; C#: DragonParams); absent uses the defaults. */
+  dragon?: Partial<DragonParams>;
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
   day: {
     lengthMinutes: number; startHour: number;
@@ -1042,6 +1045,7 @@ export function validateRules(r: Rules): string[] {
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
+  for (const t of r.sim.dragon?.wallTerrains ?? []) if (!(t in r.terrain)) errors.push(`sim dragon: unknown terrain ${t}`);
   const fogGas = r.sim.weather.fog?.gas;
   if (fogGas !== undefined && !(typeof fogGas === "string" && fogGas in r.gases)) errors.push(`sim weather.fog.gas: unknown gas ${fogGas}`);
   for (const k of ["regionChunks", "driftTicks"] as const) {

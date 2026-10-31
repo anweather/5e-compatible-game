@@ -3,6 +3,7 @@
 import { RULES, composeRules, installRules, validateRules, type ModPatch } from "./rules.ts";
 import { carry, castAt, paint, placeCritter } from "./actions.ts";
 import { spawn, walk } from "./entities.ts";
+import { summonDragon } from "./dragon.ts";
 import { SCENARIOS, loadScenario } from "./scenarios.ts";
 import {
   type Dir, type World,
@@ -20,6 +21,7 @@ export type Intent =
   | { k: "speed"; v: number }
   | { k: "step" }
   | { k: "mods"; ids: string[] }
+  | { k: "dragon" }
   | { k: "join"; peer: string }
   | { k: "leave"; peer: string };
 
@@ -45,7 +47,7 @@ export function sanitizeIntent(raw: unknown): Intent | null {
     case "speed": return m.v === 0.5 || m.v === 1 || m.v === 3 ? { k: "speed", v: m.v } : null;
     case "step": return { k: "step" };
     case "mods": return Array.isArray(m.ids) && m.ids.length <= 12 && m.ids.every(isId) ? { k: "mods", ids: [...m.ids] } : null;
-    default: return null; // join/leave come only from the host itself
+    default: return null; // join/leave and the dragon's summons come only from the host itself
   }
 }
 
@@ -113,6 +115,7 @@ export interface ApplyEnv {
 export function applyIntent(w: World, from: string, it: Intent, env: ApplyEnv = {}): { world: World; notice: string | null } {
   const me = playerOf(w, from);
   const down = "You're down. Press Reset to try again.";
+  if (me && (me.status.downed ?? 0) > 0 && (it.k === "walk" || it.k === "cast" || it.k === "carry")) return { world: w, notice: "You're down: the dragon's breath knocked you over." };
   switch (it.k) {
     case "walk":
       return { world: w, notice: me ? walk(w, me, it.d) : down };
@@ -152,6 +155,9 @@ export function applyIntent(w: World, from: string, it: Intent, env: ApplyEnv = 
       if (!err) log(w, it.ids.length ? `Rules changed: ${it.ids.length} mod${it.ids.length > 1 ? "s" : ""} on` : "Rules back to the base tables", "power");
       return { world: w, notice: err };
     }
+    case "dragon":
+      summonDragon(w);
+      return { world: w, notice: null };
     case "join":
       joinPlayer(w, it.peer);
       return { world: w, notice: null };

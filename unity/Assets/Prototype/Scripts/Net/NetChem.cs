@@ -46,7 +46,9 @@ using UnityEngine;
 //   keep counting; the rebuilt world's own tick starts again at 0 (tickBase), and so do its clock
 //   and weather. The host keeps the history from the last reset on only.
 // - A late joiner asks for the history (casts, rule switches, prop effects, defense commands,
-//   combo input and chunk switches) and replays it from tick 0, or from the last reset, which it replays first.
+//   combo input, the dragon's summons and chunk switches) and replays it from tick 0, or from the last reset, which it replays first.
+// - The host alone summons the dragon (SummonDragon): stamped for the next tick like a defense command,
+//   then it's rules (World.Dragon.cs): every machine flies the same flight from there.
 [RequireComponent(typeof(ChemGrid))]
 public class NetChem : NetworkBehaviour
 {
@@ -69,6 +71,8 @@ public class NetChem : NetworkBehaviour
     readonly List<DefenseIntent> defenseHistory = new();
     readonly List<ComboIntent> pendingCombos = new();
     readonly List<ComboIntent> comboHistory = new();
+    bool dragonAsked;
+    readonly List<int> dragonHistory = new();
     // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
     readonly HashSet<(int cx, int cy)> plannedAwake = new();
     // Plans the switches, lingering chunks still live; host only, since only the switches are shared.
@@ -85,8 +89,12 @@ public class NetChem : NetworkBehaviour
     readonly Dictionary<int, DefenseIntent[]> defenseFor = new();
     // The same for combo input.
     readonly Dictionary<int, ComboIntent[]> combosFor = new();
+    // And the dragon's summons, by the tick they're stamped for.
+    readonly HashSet<int> dragonFor = new();
     // Joining: the combo input of the history, sent just before the rest of it.
     ComboIntent[] pastCombos = System.Array.Empty<ComboIntent>();
+    // Joining: the ticks of the dragon's summons in the history, the same way.
+    int[] pastDragon = System.Array.Empty<int>();
     readonly Dictionary<int, string> hostHashes = new();
     int knownUpTo;
     bool synced;
@@ -170,6 +178,10 @@ public class NetChem : NetworkBehaviour
         pastCombos = System.Array.Empty<ComboIntent>();
         pendingCombos.Clear();
         comboHistory.Clear();
+        dragonAsked = false;
+        dragonHistory.Clear();
+        dragonFor.Clear();
+        pastDragon = System.Array.Empty<int>();
         plannedAwake.Clear();
         foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
         planner = new ChunkPlanner();
@@ -258,6 +270,12 @@ public class NetChem : NetworkBehaviour
         HostUpcoming = next;
     }
 
+    /// <summary>Host only: the dragon is summoned on the next tick, on every machine (a Reset, once the view has it). A client's call does nothing.</summary>
+    public void SummonDragon()
+    {
+        if (IsServer) dragonAsked = true;
+    }
+
     /// <summary>
     /// Host only: the world resets for everyone after <paramref name="delayTicks"/> (at least 1;
     /// ResetCountdownTicks for the 3 s countdown). Every machine hears ResetComing at once, and at
@@ -321,6 +339,7 @@ public class NetChem : NetworkBehaviour
             chunkHistory.AddRange(chunks);
             StampDefense();
             StampCombos();
+            StampDragon();
 
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
             // Never the hash of a tick still part done (World.StepSome): that one is skipped, and peers check the next.
@@ -354,6 +373,7 @@ public class NetChem : NetworkBehaviour
         chunkHistory.RemoveAll(c => c.Tick < hostTick);
         defenseHistory.RemoveAll(d => d.Tick < hostTick);
         comboHistory.RemoveAll(c => c.Tick < hostTick);
+        dragonHistory.RemoveAll(t => t < hostTick);
         ruleHistory.Clear();
         ruleHistory.Add(rules);
         historyFrom = hostTick;
@@ -361,6 +381,22 @@ public class NetChem : NetworkBehaviour
         foreach (var c in grid.World.ChunkCoords) plannedAwake.Add(c);
         planner = new ChunkPlanner();
         return rules;
+    }
+
+    // The dragon's summons, if the host asked since the last tick, goes out for this one, just before its batch.
+    void StampDragon()
+    {
+        if (!dragonAsked) return;
+        dragonAsked = false;
+        dragonHistory.Add(hostTick);
+        DragonStampedRpc(hostTick);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    void DragonStampedRpc(int tick)
+    {
+        if (batches.TryGetValue(tick, out var batch)) batch.Dragon.Add(new DragonCommand());
+        else dragonFor.Add(tick);
     }
 
     // The defense commands asked for since the last tick go out for this one, just before its batch
@@ -445,6 +481,7 @@ public class NetChem : NetworkBehaviour
     {
         var joiner = RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp);
         SendComboHistoryRpc(comboHistory.ToArray(), joiner);
+        SendDragonHistoryRpc(dragonHistory.ToArray(), joiner);
         SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defenseHistory.ToArray(),
             joiner);
     }
@@ -469,11 +506,11 @@ public class NetChem : NetworkBehaviour
     /// <summary>
     /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
     /// things' (world/things.json: the props' stable ids), the sky's (Hasten Time's clock and Control
-    /// Weather's weather, World.SkyHash; a sky that differs reports like the cells), the defense's and,
-    /// last, the players' casts and grimoires (World.CastHash).
+    /// Weather's weather, World.SkyHash; a sky that differs reports like the cells), the defense's, the
+    /// players' casts and grimoires (World.CastHash) and, last, the dragon's (World.DragonHash).
     /// </summary>
     static string Checksum(ChemGrid grid) =>
-        grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash();
+        grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash();
 
     // --- everyone --------------------------------------------------------------
 
@@ -493,6 +530,7 @@ public class NetChem : NetworkBehaviour
             chunks.Select(c => c.ToSwitch())) { Reset = rules.Has && rules.Reset };
         if (defenseFor.Remove(tick, out var defense)) batches[tick].Defense.AddRange(defense.Select(d => d.ToCommand()));
         if (combosFor.Remove(tick, out var combos)) batches[tick].Combos.AddRange(combos.Select(c => c.ToCommand()));
+        if (dragonFor.Remove(tick)) batches[tick].Dragon.Add(new DragonCommand());
         if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
         if (synced) ExtendKnown();
@@ -500,6 +538,9 @@ public class NetChem : NetworkBehaviour
 
     [Rpc(SendTo.SpecifiedInParams)]
     void SendComboHistoryRpc(ComboIntent[] combos, RpcParams rpc = default) => pastCombos = combos;
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    void SendDragonHistoryRpc(int[] ticks, RpcParams rpc = default) => pastDragon = ticks;
 
     [Rpc(SendTo.SpecifiedInParams)]
     void SendHistoryRpc(int upToTick, CastIntent[] past, RuleChangeMsg[] ruleChanges, EffectIntent[] effects, ChunkIntent[] chunks, DefenseIntent[] defense,
@@ -511,6 +552,7 @@ public class NetChem : NetworkBehaviour
         var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
             effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), defense.Select(d => (d.Tick, d.ToCommand())), from);
         TickBatch.AddCombos(timeline, pastCombos.Select(c => (c.Tick, c.ToCommand())));
+        TickBatch.AddDragon(timeline, pastDragon);
         for (int t = from; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
         tickBase = from - 1;

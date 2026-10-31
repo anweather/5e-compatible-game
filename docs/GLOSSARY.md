@@ -103,7 +103,7 @@ touch them.
 
 **Tick batch**
 : Everything that happens to the world at one tick, in order: chunk
-  switches, a rule switch, casts, effects, defense (`TickBatch`). The host
+  switches, a rule switch, casts, effects, defense, combos, the dragon's summons (`TickBatch`). The host
   orders them; every peer applies them the same.
 
 **Command / intent**
@@ -220,8 +220,10 @@ touch them.
   physics run on, and other peers never see it. *Avoid:* "freeze" (a word of the chemistry), "hitch".
 
 **Downed**
-: A wizard at 0 health: on the ground with no controls for `sim.json` `downed.seconds`, then back at the
-yard with full health (`Downed`, `WizardDown`), or on its last checkpoint inside the Gauntlet. Not the world reset.
+: A wizard at 0 health, or caught by the dragon's breath: on the ground with no controls for `sim.json`
+`downed.seconds`, then back at the yard with full health (`Downed`, `WizardDown`), or on its last checkpoint
+inside the Gauntlet. Not the world reset. In the core, a raider the breath catches has the `downed` status for
+that long, and doesn't march.
 
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,
@@ -380,6 +382,53 @@ yard with full health (`Downed`, `WizardDown`), or on its last checkpoint inside
   over cells; a **fingerprint** hashes the rules or the things; a
   **golden** is a hash a test pins. `WorldHash` is unrelated (the world
   generator's coordinate hashing).
+
+## The Dragon
+
+**Dragon**
+: The world reset as an event (BACKLOG §26, `World.Dragon.cs`, `sandbox/src/dragon.ts`). Summoned by a
+  `DragonCommand` (the Reset, the host alone online), or by itself past the changed-cell budget. Its path
+  comes from the seed and the flight's number, never from the world's random numbers.
+
+**Flight**
+: One visit of the dragon, in three phases (`DragonPhase`): the **warning**, then the **passes**, then
+  **leaving**. `World.DragonFlights` counts them.
+
+**Warning**
+: The ticks before the dive (`dragon.warningTicks`, about 30 s), for the view to darken the sky. As it
+  ends, the dive snuffs every fire in the world, or a wildfire would walk back over reset chunks.
+
+**Pass**
+: One long sweep of the dragon along a **strip** of chunks (`dragon.breathChunks` across, `dragon.overlapChunks`
+  of them swept again by the next pass), there and back across the valley. Between passes it wheels
+  round (`dragon.turnTicks`).
+
+**Dragon's breath**
+: The band of cells under the fire on a pass, `dragon.depth` cells long and a strip wide, moving
+  `dragon.speed` cells a tick (`World.BreathBox`). Say the whole name: *breath* alone is a swimmer's
+  (`Breath.cs`).
+
+**Leaving**
+: What's left of a flight after the last pass (`dragon.leavingTicks`): it lands, roars and goes.
+
+**Starting state**
+: The world as built, kept by `World.KeepStart` before the first tick: a palette of the distinct cells
+  and each cell's index in it, with the ball as built. A world with none has no dragon.
+
+**Fresh**
+: A chunk the dragon's breath has reached: back in its starting state, active or not (`ChunkFreshened`).
+
+**Changed cells**
+: Cells that differ from the starting state in what lasts: ground, height and cover. What goes by itself
+  doesn't count: fire, gas, charge, timers, water, ice, snow, mud that dries. **The audit** keeps the
+  count (`World.ChangedCount`): each tick it compares one active chunk with the starting state. Past
+  `dragon.budget`, the warning starts.
+
+**Sheltered**
+: Out of the dragon's breath though under it (`World.ShelteredFromBreath`): in water at least
+  `dragon.shelterWater` units deep, not frozen, or with a blocking cell of `dragon.wallTerrains`
+  (a stone wall, Wall of Stone's raised rock) within `dragon.wallReach` cells straight toward where the
+  dragon flies from.
 
 ## World generation
 

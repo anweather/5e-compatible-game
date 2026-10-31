@@ -68,6 +68,12 @@ namespace Chem
         public Cell() { }
         public Cell(string terrain) { T = terrain; }
 
+        /// <summary>Takes every field of another cell (the starting state, World.KeepStart).</summary>
+        internal void CopyFrom(Cell o)
+        {
+            T = o.T; Water = o.Water; Frozen = o.Frozen; Cover = o.Cover; Fire = o.Fire; Fuel = o.Fuel; Gas = o.Gas; GasAmt = o.GasAmt; Charge = o.Charge; Height = o.Height; Life = o.Life; DampUntil = o.DampUntil; Rust = o.Rust; Heat = o.Heat; Lit = o.Lit; Slick = o.Slick; Star = o.Star; Cracked = o.Cracked;
+        }
+
         /// <summary>Back to a bare square of the given terrain (the sandbox's erase brush).</summary>
         public void Reset(string terrain = "dirt")
         {

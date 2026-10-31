@@ -1,6 +1,7 @@
 // Checks a composed rule set before it can switch on: validateRules from
 // sandbox/src/rules.ts with the same messages, then the numbers this port
 // reads, which the TS leaves to JavaScript.
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json;
@@ -40,7 +41,7 @@ namespace Chem
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate", "radiusPerCharge" };
             static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n", "wave" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
-            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.fog.every", "weather.fog.regionChunks", "weather.fog.driftTicks", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "breath.seconds", "breath.drownEvery", "breath.drownSides" };
+            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.fog.every", "weather.fog.regionChunks", "weather.fog.driftTicks", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "dragon.speed", "dragon.depth", "dragon.breathChunks", "dragon.chunksPerTick", "breath.seconds", "breath.drownEvery", "breath.drownSides" };
 
             readonly JObject r, terrain, covers, gases;
             readonly HashSet<string> elements;
@@ -103,6 +104,8 @@ namespace Chem
                 var entities = (JObject)r["entities"];
                 foreach (var k in Strings(r["sim"]?["defense"]?["kinds"]))
                     if (!(entities[k] is JObject e && e["raider"] is JObject)) Errors.Add($"sim defense: kind {k} is not a raider");
+                foreach (var t in Strings(r["sim"]?["dragon"]?["wallTerrains"]))
+                    if (terrain[t] == null) Errors.Add($"sim dragon: unknown terrain {t}");
             }
 
             // A thing's material is a terrain (what it's made of).
@@ -448,7 +451,8 @@ namespace Chem
             // One sim.json entry: a section to go into, hours, names, or a number.
             void SimEntry(string key, JToken value)
             {
-                if (key == "defense.kinds" || key == "weather.fog.gas") return; // names, checked by DefenseRefs and FogRef
+                if (key == "defense.kinds" || key == "weather.fog.gas" || key == "dragon.wallTerrains") return; // names, checked by DefenseRefs, FogRef and DragonRefs
+                if (key.StartsWith("dragon.", StringComparison.Ordinal) && !IsWholeNumber(value)) Errors.Add($"sim {key} must be a whole number");
                 if (key == "status.shatter.when" || key == "status.shatter.notBy")
                 {
                     if (value.Type != JTokenType.String) Errors.Add($"sim {key} must be a name");
