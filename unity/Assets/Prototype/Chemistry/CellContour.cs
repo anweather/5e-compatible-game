@@ -59,6 +59,7 @@ namespace Chem
         readonly ContourSpec spec;
         readonly Dictionary<long, int> edgePoints = new Dictionary<long, int>();
         float[] cellValues, cellWobbles, field;
+        bool[] outside;
         int[] latticePoint;
         int cx0, cy0, cw, ch, lw, lh;
         float lx0, ly0;
@@ -71,6 +72,9 @@ namespace Chem
         /// last) meet exactly, with neither a gap nor an overlap: a big surface drawn in tiles.
         /// </summary>
         public bool Tiled { get; set; }
+
+        /// <summary>Works out every lattice point, skipping none (Sample): tests compare the two.</summary>
+        public bool EveryPoint { get; set; }
 
         /// <summary>
         /// Outlines the cells x0..x1, y0..y1 (inclusive) into <paramref name="mesh"/> (cleared first).
@@ -97,6 +101,7 @@ namespace Chem
             {
                 for (int i = edge; i < lw - 1; i++)
                 {
+                    if (outside[QuadOf(j, ch) * (cw - 1) + QuadOf(i, cw)]) continue;
                     int a = j * lw + i, b = a + 1, c = a + lw, d = c + 1;
                     Cut(mesh, a, b, d);
                     Cut(mesh, a, d, c);
@@ -140,10 +145,16 @@ namespace Chem
             ly0 = cy0 + 0.5f;
             Fit(ref field, lw * lh);
             Fit(ref latticePoint, lw * lh);
+            FindOutside();
             for (int j = 0; j < lh; j++)
             {
                 for (int i = 0; i < lw; i++)
                 {
+                    if (outside[QuadOf(j, ch) * (cw - 1) + QuadOf(i, cw)])
+                    {
+                        field[j * lw + i] = spec.Iso - 1f;
+                        continue;
+                    }
                     float x = lx0 + i / (float)n, y = ly0 + j / (float)n;
                     // A broad bend (a few cells across) so a long straight run of cells
                     // doesn't give a straight shore, and a finer wobble on top; blending
@@ -154,6 +165,38 @@ namespace Chem
                     field[j * lw + i] = Blend(cellValues, i, j) + spec.Wobble * Blend(cellWobbles, i, j) * noise;
                 }
             }
+        }
+
+        // Which square of four cell centres a lattice index falls in, as Blend reads it.
+        int QuadOf(int i, int cells) => Math.Min(i / spec.Lattice, cells - 2);
+
+        // The squares of four cell centres too far from anything to matter: no value near enough to
+        // reach the iso value, even at the most the noise can add. Neither a square's points nor those
+        // of the squares beside it are inside, so no triangle touches its points and no edge is cut
+        // towards them: what those points hold, beyond being outside, is never read. On a film over a
+        // wide box that's nearly every point, and noise is most of an outline's cost.
+        void FindOutside()
+        {
+            int quads = (cw - 1) * (ch - 1);
+            Fit(ref outside, quads);
+            for (int b = 0; b < ch - 1; b++)
+                for (int a = 0; a < cw - 1; a++)
+                    outside[b * (cw - 1) + a] = !EveryPoint && QuietAround(a, b);
+        }
+
+        // Whether the cells round square (a, b), one more ring out (the squares beside it), stay under the iso value.
+        bool QuietAround(int a, int b)
+        {
+            float value = float.NegativeInfinity, wobble = 0f;
+            for (int v = Math.Max(0, b - 1); v <= Math.Min(ch - 1, b + 2); v++)
+            {
+                for (int u = Math.Max(0, a - 1); u <= Math.Min(cw - 1, a + 2); u++)
+                {
+                    value = Math.Max(value, cellValues[v * cw + u]);
+                    wobble = Math.Max(wobble, Math.Abs(cellWobbles[v * cw + u]));
+                }
+            }
+            return value + Math.Abs(spec.Wobble) * wobble * 0.5f < spec.Iso;
         }
 
         // Per-cell numbers (values or wobbles) blended between the cells' centres at lattice point (i, j).
