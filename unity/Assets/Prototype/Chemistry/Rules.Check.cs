@@ -251,9 +251,27 @@ namespace Chem
                 if (t["fireLook"] != null && !FireLooks.Contains(Text(t["fireLook"]))) Errors.Add($"{what}: fireLook must be flare, wood or oil");
             }
 
+            // A "look" group's shape; which families exist is ModValidator's check (rules/looks.json).
+            void LookOf(string what, JToken t)
+            {
+                if (t["look"] == null) return;
+                if (!(t["look"] is JObject look) || Text(look["family"]) == null)
+                {
+                    Errors.Add($"{what}: look must be an object naming its family");
+                    return;
+                }
+                if (look["color"] != null && !(look["color"] is JArray c && c.Count == 3 && c.All(x => IsNumber(x) && (double)x >= 0 && (double)x <= 1)))
+                    Errors.Add($"{what}: look.color must be three numbers from 0 to 1");
+                foreach (var key in new[] { "height", "glow", "flow" })
+                    if (look[key] != null && !(IsNumber(look[key]) && (double)look[key] >= 0)) Errors.Add($"{what}: look.{key} must be a number from 0");
+                if (look["roughness"] != null && !(IsNumber(look["roughness"]) && (double)look["roughness"] >= 0 && (double)look["roughness"] <= 1))
+                    Errors.Add($"{what}: look.roughness must be a number from 0 to 1");
+            }
+
             void TerrainRefs(string id, JToken t)
             {
                 StatusTicks(id, t);
+                LookOf($"terrain {id}", t);
                 if (t["chainsWet"] != null && t["chainsWet"].Type != JTokenType.Boolean) Errors.Add($"terrain {id}: conduct.chainsWet must be true or false");
                 foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo", "bakesTo", "crustsTo", "thawsTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 0)) Errors.Add($"terrain {id}: hardness must be a whole number from 0 (0 never digs)");
@@ -394,6 +412,7 @@ namespace Chem
                 {
                     Tags(p.Value["tags"], $"cover {p.Name}");
                     FireLookOf($"cover {p.Name}", p.Value);
+                    LookOf($"cover {p.Name}", p.Value);
                     Number(p.Value["flammability"], $"cover {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"cover {p.Name}: fuel", 0);
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);
@@ -404,7 +423,11 @@ namespace Chem
                     Dissolves($"cover {p.Name}", p.Value, covers);
                     Melts(p.Name, p.Value);
                 }
-                foreach (var p in gases.Properties()) GasNumbers(p);
+                foreach (var p in gases.Properties())
+                {
+                    GasNumbers(p);
+                    LookOf($"gas {p.Name}", p.Value);
+                }
                 foreach (var s in r["spells"])
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);
                 foreach (var rule in r["cellRules"].OfType<JObject>()) RuleNumbers(rule);

@@ -42,12 +42,16 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Releases
 
+- **0.1.10 (Andrew: after the in-flight items):** cut once the dragon tweaks (Mac), the IK punch with the
+  unarmed strike and the cast sounds B + pulse 30% (DesktopUnity) are on dev. Then the release candidate on
+  the PC (no VMs), publish if green. Voice moves to 0.1.11 (needs Andrew's Unity Gaming Services setup).
+
 - **0.1.9** published 2026-10-31 (Windows only, pre-release); main merged back, freeze lifted.
   DesktopUnity runs a fresh Editor, serial gates, the Windows build into the draft, install from the
   draft, then the update from 0.1.8. Notes: `docs/handoffs/release-0.1.9-notes.md`. Publish if green;
   then merge main back into dev and lift the freeze.
-- **0.1.10:** the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`, minus the casting sounds
-  already in) and proximity voice (Vivox: Andrew sets up a Unity Gaming Services project first).
+- **0.1.11:** proximity voice (Vivox: Andrew sets up a Unity Gaming Services project first), the rest of the
+  sound pass (`docs/handoffs/sound-pass-brief.md`).
 
 ## In flight
 
@@ -56,16 +60,30 @@ The one page a new PM session reads first. Keep it short: history goes in
 - DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
   comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
   cast-sound prototypes for Andrew to pick from before anything is built in.
-- Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. The Mac: merge
-  dev into `dragon-clip` (conflicts with today's castclip/punchclip), then `dragon-tweaks` (+50% scale, breath
+- Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. dragon-clip landed
+  (5ac59c8). `dragon-tweaks` is pushed (74c4ffb: scale 1.5 as data, a
+  240-drop breath stream, a seeded barrel roll; core 746, EditMode 826, dragon probe 45/45); it waits for
+  DesktopUnity's online run, incl. the new unrun `dragon_seen_on_the_client`. Was: the Mac: `dragon-tweaks` (+50% scale, breath
   stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
   which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
   is wiped before the breath arrives.
-- u1: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). Asleep (Saved) while
-  DesktopUnity runs dragon-view's online probe (needs ~9 GB free); wake it with `start.cmd u1` after. DesktopUnity wires it
+- **Headless builds (Andrew, 2026-10-31): the Mac builds the Windows player in batch mode** (Mono, so it can
+  cross-build); branch `headless-build`. The Mac also takes `wip/punch-strike`'s non-online checks and the
+  cast sound build-in. The PC keeps only online probes and the Windows install-from-draft check.
+- **Paused (Andrew, to free the PC):** DesktopUnity is idle with the Editor closed. Its work is on
+  `wip/punch-strike` (a202fd1: the IK punch at punchShove 2.5, the strike wiring, NetProp MaxKick 300), not
+  mergeable yet. Resume on the host-ux worktree: switch to it, reopen the Editor, run compile/warnings (17
+  baseline), smoke, feel, castfeel, combo, online (from 7 GB free), downed, sit, shapeshift, punchclip,
+  format, jscpd; merge dev; push to dev. Then FAST_LOOP rows, the cast sound build-in, the 0.1.10 candidate.
+  punchShove stays 2.5 (Andrew, J-045).
+- Unarmed strike, core half, landed (d5af610; u1, now asleep): a punch does 1 damage at Str 10, needs 8+ to hit.
+  DesktopUnity wires it into the IK punch (Stand, Strike, Leave, TakeStrikeHits).
   into the IK punch after.
 - Sound: the generator is in the sound-design skill (1847785, stdlib only). Andrew picked B + pulse 30%
   (preset `cast-deep-hum-pulse`); DesktopUnity builds it in after the punch. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
+- Procedural looks (rules MCP phase 2) landed (0d8ad26; Mac): families in `rules/looks.json`, a `look` group on
+  materials and spells, redrawn on a rule switch. Online unproven (PC). Left: CellPaint first, BurstFx, sounds,
+  icons (`docs/handoffs/procedural-looks-scan.md`).
 - Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
   batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
   intent in `Net/`, the game serving the MCP on localhost, the HUD line, the M panel through the room.

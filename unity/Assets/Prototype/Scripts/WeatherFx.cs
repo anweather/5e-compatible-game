@@ -36,8 +36,8 @@ public class WeatherFx : MonoBehaviour
     static SpellVisuals.Entry MeteorLook()
     {
         var caster = FindAnyObjectByType<SpellCaster>();
-        var look = caster != null && caster.visuals != null ? caster.visuals.For(SpellIds.Meteor) : null;
-        return look ?? new SpellVisuals.Entry { spellId = SpellIds.Meteor, fromSky = true };
+        var look = caster != null ? caster.LookOf(SpellIds.Meteor) : null;
+        return look ?? new SpellVisuals.Entry { fromSky = true };
     }
     float rainShown, snowShown, windShown;
 

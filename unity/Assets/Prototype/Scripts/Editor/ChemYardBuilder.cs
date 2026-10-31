@@ -417,7 +417,8 @@ public static class ChemYardBuilder
         return prefab;
     }
 
-    // How each spell looks, from the Particle Pack. Missing prefabs leave that part out.
+    // How casts look: one show per effect family of rules/looks.json, from the Particle Pack, so
+    // nothing here names a spell. Missing prefabs leave that part out.
     static SpellVisuals BuildSpellVisuals()
     {
         var visuals = AssetDatabase.LoadAssetAtPath<SpellVisuals>(SpellVisualsPath);
@@ -427,93 +428,40 @@ public static class ChemYardBuilder
             visuals = ScriptableObject.CreateInstance<SpellVisuals>();
             AssetDatabase.CreateAsset(visuals, SpellVisualsPath);
         }
-        visuals.entries = new System.Collections.Generic.List<SpellVisuals.Entry>
-        {
-            Visual(SpellIds.FireBolt, new Color(1f, 0.5f, 0.15f), FireFx + "/FireBall.prefab", FireFx + "/TinyExplosion.prefab"),
-            Visual(SpellIds.BurningHands, new Color(1f, 0.45f, 0.1f), null, FireFx + "/FlameThrower.prefab"),
-            Visual(SpellIds.Fireball, new Color(1f, 0.4f, 0.1f), FireFx + "/FireBall.prefab", FireFx + "/BigExplosion.prefab"),
-            // Ray of Frost: one icy beam from the hand along its line (FrostBeam), no projectile or impact.
-            Beam(SpellIds.RayOfFrost, new Color(0.55f, 0.85f, 1f)),
-            Beam(SpellIds.Frost, new Color(0.65f, 0.9f, 1f)),
-            // Geyser, Wave and the boulder are drawn from the core (BurstFx, ChemGrid.Movers): only the hand's glow here.
-            Visual(SpellIds.Geyser, new Color(0.6f, 0.85f, 1f), null, null),
-            Visual(SpellIds.Wave, new Color(0.3f, 0.6f, 1f), null, null),
-            Visual(SpellIds.RollingBoulder, new Color(0.7f, 0.6f, 0.45f), null, null),
-            Visual(SpellIds.StoneRamp, new Color(0.7f, 0.68f, 0.62f), null, null),
-            Visual(SpellIds.CreateWater, new Color(0.3f, 0.6f, 1f), null, PackPaths.WaterFx + "/BigSplash.prefab"),
-            // Sleet Storm: driving sleet from a low cloud over its squares (SleetStorm), no projectile or impact.
-            Storm(SpellIds.SleetStorm, new Color(0.75f, 0.9f, 1f)),
-            Visual(SpellIds.Grease, new Color(0.9f, 0.8f, 0.3f), null, PackPaths.GoopFx + "/GoopSpray.prefab"),
-            Visual(SpellIds.ShockingGrasp, new Color(1f, 0.95f, 0.4f), null, MiscFx + "/ElectricalSparks.prefab"),
-            Visual(SpellIds.GustOfWind, new Color(0.9f, 0.95f, 1f), null, MiscFx + "/SandSwirlsEffect.prefab"),
-            Visual(SpellIds.Thunderwave, new Color(0.8f, 0.85f, 1f), null, FireFx + "/DustExplosion.prefab"),
-            Visual(SpellIds.Levitate, new Color(0.75f, 0.6f, 1f), null, MiscFx + "/ParticlesLight.prefab"),
-            // Misty Step: silver mist where the caster leaves and where they land (SpellCaster.PlayCastEffect).
-            Visual(SpellIds.MistyStep, new Color(0.85f, 0.88f, 0.95f), null, MiscFx + "/Respawn.prefab"),
-            // Mage Hand: a spectral glow where the hand reaches.
-            Visual(SpellIds.MageHand, new Color(0.6f, 0.95f, 0.8f), null, MiscFx + "/ParticlesLight.prefab"),
-            // Shapeshift: green mist, no projectile, on the animal it copies and round the wizard as it changes (Shapeshift.Puff).
-            ShapeshiftLook(),
-            // Earth shaping: the ground itself throws up dust where it moves (ChemGrid.dustFx).
-            Visual(SpellIds.MoldEarth, new Color(0.75f, 0.55f, 0.3f), null, null),
-            Visual(SpellIds.MoldEarthHeap, new Color(0.75f, 0.55f, 0.3f), null, null),
-            Visual(SpellIds.EarthenTrench, new Color(0.7f, 0.5f, 0.28f), null, null),
-            Visual(SpellIds.WallOfStone, new Color(0.7f, 0.68f, 0.62f), null, null),
-            Visual(SpellIds.MoveEarth, new Color(0.65f, 0.5f, 0.3f), null, null),
-            // Nature: green motes drifting up where it lands, no projectile; the ground itself shows the rest
-            // (shoots and saplings in CellPaint and CellDressing, thorns in CellThorns).
-            Visual(SpellIds.PlantGrowth, new Color(0.45f, 0.9f, 0.35f), null, MiscFx + "/FireFlies.prefab"),
-            Visual(SpellIds.SpikeGrowth, new Color(0.35f, 0.6f, 0.2f), null, MiscFx + "/FireFlies.prefab"),
-            Meteor(),
-            // Time & Weather: a pale teal glow and a shimmer round the caster; the sky itself is the show
-            // (SkyLight races the sun, WeatherFx and CloudSky follow the weather). Fog Cloud's fog is drawn
-            // by the grid (FogBank); a puff of mist marks where it lands.
-            Visual(SpellIds.HastenTime, new Color(0.56f, 0.85f, 0.8f), null, MiscFx + "/ParticlesLight.prefab"),
-            Visual(SpellIds.ControlWeather, new Color(0.56f, 0.85f, 0.8f), null, MiscFx + "/SandSwirlsEffect.prefab"),
-            Visual(SpellIds.FogCloud, new Color(0.85f, 0.9f, 0.92f), null, MiscFx + "/Respawn.prefab"),
-        };
+        var looks = Chem.LookFamilies.Load(ChemGrid.FindRulesDir());
+        visuals.families = looks.In("spells").Select(Show).ToList();
         EditorUtility.SetDirty(visuals);
         AssetDatabase.SaveAssets();
         return visuals;
     }
 
-    // Meteor: a burning rock from the sky (MeteorFall), the Fireball's flames on it, a big blast and dust where it lands.
-    static SpellVisuals.Entry Meteor()
+    static SpellVisuals.Entry Show(Chem.LookFamily f) => new SpellVisuals.Entry
     {
-        var e = Visual(SpellIds.Meteor, new Color(1f, 0.35f, 0.1f), FireFx + "/FireBall.prefab", FireFx + "/BigExplosion.prefab");
-        e.fromSky = true;
-        e.afterImpact = Load(FireFx + "/DustExplosion.prefab");
-        e.impactSeconds = 5f;
-        return e;
-    }
-
-    static SpellVisuals.Entry Beam(string spellId, Color glow)
-    {
-        var e = Visual(spellId, glow, null, null);
-        e.beam = true;
-        return e;
-    }
-
-    // Shapeshift: Misty Step's mist tinted green, on the animal it copies and round the wizard as it changes.
-    static SpellVisuals.Entry ShapeshiftLook()
-    {
-        var e = Visual(SpellIds.Shapeshift, new Color(0.45f, 0.85f, 0.35f), null, MiscFx + "/Respawn.prefab");
-        e.tinted = true;
-        return e;
-    }
-
-    static SpellVisuals.Entry Storm(string spellId, Color glow)
-    {
-        var e = Visual(spellId, glow, null, null);
-        e.storm = true;
-        return e;
-    }
-
-    static SpellVisuals.Entry Visual(string spellId, Color glow, string projectile, string impact) => new SpellVisuals.Entry
-    {
-        spellId = spellId,
-        glow = glow,
-        projectile = projectile != null ? Load(projectile) : null,
-        impact = impact != null ? Load(impact) : null,
+        family = f.Name,
+        projectile = Fx(f.Projectile),
+        impact = Fx(f.Impact),
+        afterImpact = Fx(f.AfterImpact),
+        impactSeconds = f.Seconds,
+        fromSky = f.FromSky,
+        storm = f.Storm,
+        beam = f.Beam,
+        tinted = f.Tinted,
+        scaleBy = f.ScaleBy,
+        scaleBase = f.Base,
     };
+
+    // "Fire/BigExplosion" as a prefab of the Particle Pack's folder for fire effects; null for none.
+    static GameObject Fx(string name)
+    {
+        if (string.IsNullOrEmpty(name)) return null;
+        var parts = name.Split('/');
+        string folder = parts[0] switch
+        {
+            "Fire" => FireFx,
+            "Water" => PackPaths.WaterFx,
+            "Goop" => PackPaths.GoopFx,
+            _ => MiscFx,
+        };
+        return Load($"{folder}/{parts[1]}.prefab");
+    }
 }

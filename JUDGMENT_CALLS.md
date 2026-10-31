@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-046: When does 0.1.10 go out?
+
+- **Asked:** 2026-10-31, by the PM.
+- **Also comes up when:** every release: ship what's on dev, or wait for what's close.
+- **Answer:** after the in-flight items: the dragon tweaks, the IK punch with the unarmed strike, the
+  cast sounds. Voice moves to 0.1.11.
+- **Why:** they're close and make the release Andrew described.
+- **Revisited:** 0.
+
 ### J-045: The punch (punch-crate.mp4, #18)
 
 - **Asked:** 2026-10-31, by the PM (board).
@@ -48,6 +57,8 @@ Each entry has:
 - **Answer:** too weak: about 2-2.5x stronger, so it's noticeable. It needs a real punch animation
   (IK). Punching other players: yes, as the SRD unarmed strike (1 + Strength modifier bludgeoning,
   plus knock-back), resolved in the core.
+  Strength setting: punchShove 2.5 (a crate flies about 4.6 m), picked from the punch-ik clip; the
+  crate's direction looked off and is to be checked in the live build.
 - **Why:** Andrew watched the clip.
 - **Revisited:** 0.
 

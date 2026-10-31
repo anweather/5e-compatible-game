@@ -5,9 +5,10 @@ using UnityEngine;
 // by Sand Blast, and metal going over to rust, a step at a time. Simple pieces.
 public sealed partial class CellDressing
 {
+    static readonly Color WornLog = new(0.52f, 0.42f, 0.3f);
     const float GateTall = 2.3f, GateRise = 2f, GateBarWidth = 0.09f, WornWallTall = 1.3f;
     static readonly Color Copper = new(0.62f, 0.36f, 0.18f);
-    static readonly Color WornLog = new(0.52f, 0.42f, 0.3f);
+    static readonly Color StumpColor = new(0.13f, 0.10f, 0.08f);
     static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
 
     /// <summary>A boulder round <paramref name="parent"/>'s middle, about <paramref name="size"/> across: a rock model, or a lump of spheres without the pack.</summary>
@@ -62,28 +63,29 @@ public sealed partial class CellDressing
             Rock(root, stones[rng.Next(stones.Length)], at, CellSize * 0.98f, 0.45f * CellSize + 0.06f, rng);
             return;
         }
-        var slab = Part(root, PrimitiveType.Cylinder, surface, new Vector3(CellSize * 0.85f, 0.25f, CellSize * 0.85f), "Stone", Look(TerrainIds.Rock).color);
-        Paint(slab.GetComponent<Renderer>(), "Stone", Look(TerrainIds.Rock).color, 0.1f, x, y);
+        var slab = Part(root, PrimitiveType.Cylinder, surface, new Vector3(CellSize * 0.85f, 0.25f, CellSize * 0.85f), "Stone", Look(grid.World.Rules, TerrainIds.Rock).color);
+        Paint(slab.GetComponent<Renderer>(), "Stone", Look(grid.World.Rules, TerrainIds.Rock).color, 0.1f, x, y);
     }
 
     // A lightning coil: a bronze post wound with copper on a plate, a knob on top.
-    void DressCoil(Transform root, Vector3 surface, int x, int y)
+    void DressCoil(Transform root, Vector3 surface, Color post, int x, int y)
     {
         var foot = Part(root, PrimitiveType.Cube, surface + Vector3.up * 0.05f, new Vector3(CellSize * 0.7f, 0.1f, CellSize * 0.7f), "Coil base", Iron);
         Paint(foot.GetComponent<Renderer>(), "Coil base", Iron, 0.3f, x, y);
-        Part(root, PrimitiveType.Cylinder, surface + Vector3.up * 0.8f, new Vector3(0.14f, 0.75f, 0.14f), "Coil post", Bronze, 0.5f);
+        Part(root, PrimitiveType.Cylinder, surface + Vector3.up * 0.8f, new Vector3(0.14f, 0.75f, 0.14f), Tinted("Coil post", post, Bronze), post, 0.5f);
         for (int i = 0; i < 7; i++)
             Part(root, PrimitiveType.Cylinder, surface + Vector3.up * (0.3f + i * 0.17f), new Vector3(0.52f - i * 0.025f, 0.05f, 0.52f - i * 0.025f), "Coil wire", Copper, 0.6f);
-        Part(root, PrimitiveType.Sphere, surface + Vector3.up * 1.6f, Vector3.one * 0.3f, "Coil post", Bronze, 0.5f);
+        Part(root, PrimitiveType.Sphere, surface + Vector3.up * 1.6f, Vector3.one * 0.3f, Tinted("Coil post", post, Bronze), post, 0.5f);
     }
 
     // A gate: iron bars and rails across the cell, its way along a run of gates. Opening, the bars rise through the lintel (DressingSlide).
-    void DressGate(Transform root, Vector3 surface, int x, int y, bool open)
+    void DressGate(Transform root, Vector3 surface, Color iron, int x, int y, bool open)
     {
         var world = grid.World;
+        string mat = Tinted("Gate", iron, Iron);
         bool alongZ = (world.InBounds(x, y + 1) && IsGate(world.At(x, y + 1))) || (world.InBounds(x, y - 1) && IsGate(world.At(x, y - 1)));
         var across = alongZ ? Vector3.forward : Vector3.right;
-        var lintel = Part(root, PrimitiveType.Cube, surface + Vector3.up * (GateTall + 0.15f), Vector3.one, "Gate", Iron * 0.8f);
+        var lintel = Part(root, PrimitiveType.Cube, surface + Vector3.up * (GateTall + 0.15f), Vector3.one, mat, iron * 0.8f);
         lintel.transform.localScale = alongZ ? new Vector3(0.34f, 0.3f, CellSize) : new Vector3(CellSize, 0.3f, 0.34f);
         var bars = new GameObject("Bars").transform;
         bars.SetParent(root, false);
@@ -92,20 +94,20 @@ public sealed partial class CellDressing
         for (int i = 0; i < Count; i++)
         {
             var at = surface + across * (((i + 0.5f) / Count - 0.5f) * CellSize) + Vector3.up * (GateTall / 2f);
-            Part(bars, PrimitiveType.Cylinder, at, new Vector3(GateBarWidth, GateTall / 2f, GateBarWidth), "Gate", Iron);
+            Part(bars, PrimitiveType.Cylinder, at, new Vector3(GateBarWidth, GateTall / 2f, GateBarWidth), mat, iron);
         }
         foreach (float height in new[] { 0.5f, 1.3f, 2.1f })
         {
-            var rail = Part(bars, PrimitiveType.Cube, surface + Vector3.up * height, Vector3.one, "Gate", Iron * 0.8f);
+            var rail = Part(bars, PrimitiveType.Cube, surface + Vector3.up * height, Vector3.one, mat, iron * 0.8f);
             rail.transform.localScale = alongZ ? new Vector3(0.08f, 0.14f, CellSize) : new Vector3(CellSize, 0.14f, 0.08f);
         }
         DressingSlide.Start(bars, open ? Vector3.zero : Vector3.up * GateRise, open ? Vector3.up * GateRise : Vector3.zero);
     }
 
-    static bool IsGate(Chem.Cell c) => c != null && (c.T == TerrainIds.Gate || c.T == TerrainIds.GateOpen);
+    bool IsGate(Chem.Cell c) => c != null && Of(grid.World.Rules, c.T) is { Family: Machine, Form: GateShut or GateOpen };
 
     // A log wall worn thin: a few pale, gapped logs on their posts, the way the wall runs.
-    void DressWornLogs(Transform root, Vector3 surface, System.Random rng, int x, int y)
+    void DressWornLogs(Transform root, Vector3 surface, Color logs, System.Random rng, int x, int y)
     {
         var world = grid.World;
         bool alongZ = (world.InBounds(x, y + 1) && IsLogs(world.At(x, y + 1))) || (world.InBounds(x, y - 1) && IsLogs(world.At(x, y - 1)));
@@ -113,15 +115,15 @@ public sealed partial class CellDressing
         foreach (float height in new[] { 0.25f, 0.62f, 1.1f })
         {
             float girth = 0.13f + 0.05f * (float)rng.NextDouble();
-            var log = Part(root, PrimitiveType.Cylinder, surface + Vector3.up * height, new Vector3(girth, CellSize * 0.52f, girth), "Worn logs", WornLog);
+            var log = Part(root, PrimitiveType.Cylinder, surface + Vector3.up * height, new Vector3(girth, CellSize * 0.52f, girth), Tinted("Worn logs", logs, WornLog), logs);
             log.transform.rotation = lay * Quaternion.Euler(0f, rng.Next(360), 0f);
-            Paint(log.GetComponent<Renderer>(), "Worn logs", WornLog, 0.1f, x + (int)(height * 10f), y);
+            Paint(log.GetComponent<Renderer>(), Tinted("Worn logs", logs, WornLog), logs, 0.1f, x + (int)(height * 10f), y);
         }
-        var post = Part(root, PrimitiveType.Cylinder, surface + Vector3.up * (WornWallTall / 2f), new Vector3(0.16f, WornWallTall / 2f, 0.16f), "Worn logs", WornLog);
-        Paint(post.GetComponent<Renderer>(), "Worn logs", WornLog * 0.75f, 0.1f, x, y + 3);
+        var post = Part(root, PrimitiveType.Cylinder, surface + Vector3.up * (WornWallTall / 2f), new Vector3(0.16f, WornWallTall / 2f, 0.16f), Tinted("Worn logs", logs, WornLog), logs);
+        Paint(post.GetComponent<Renderer>(), Tinted("Worn logs", logs, WornLog), logs * 0.75f, 0.1f, x, y + 3);
     }
 
-    static bool IsLogs(Chem.Cell c) => c != null && (c.T == TerrainIds.LogWall || c.T == TerrainIds.WornLogWall);
+    bool IsLogs(Chem.Cell c) => c != null && Of(grid.World.Rules, c.T) is { Family: Wall };
 
     /// <summary>A plate a step further to rust (Cell.Rust on the way to rust.every): its parts' shades go that much of the way to rust.</summary>
     public void Tarnish(GameObject dressing, float amount)

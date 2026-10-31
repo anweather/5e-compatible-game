@@ -106,6 +106,8 @@ public static class ProbeScenarios
             "Films a single, a pair and a charged cast from the side, none of fire, as the game is now, with the mixed sound, into --shots: frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("punchclip", typeof(PunchClipProbe), 60f,
             "Films the punch knocking a crate, from the side, then a miss, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metrics: how far the crate went, and where its start line goes."),
+        new Entry("dragonclip", typeof(DragonClipProbe), 200f,
+            "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire."),
         new Entry("combo", typeof(ComboProbe), 70f,
             "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
             "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +
@@ -161,6 +163,11 @@ public static class ProbeScenarios
             "the clouds over 70% of the sky in it, " +
             "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, snow at noon (over 2000 flakes in the air, over half " +
             "the puddles laid in the yard frozen), fog closes the haze in, no console errors."),
+        new Entry("looksmod", typeof(LooksModProbe), 120f,
+            "The view draws from the rules in force (docs/RULES_MCP.md, \"Looks\"): a Fireball, the Big fireball mod switched on mid-game, " +
+            "a Fireball beside it, the Moonstone mod and its new material, then a look-only switch. --shots films it (ClipFilm). Checks: blast, fire " +
+            "area and crater bigger in the cells and as drawn, the moonstone drawn by its family with its look's height, colour and glow, a look-only " +
+            "switch redraws and keeps the fingerprint, no scene reload, no console errors. Metrics: each number with the mod off and on."),
         new Entry("blast", typeof(BlastProbe), 40f,
             "Fireball cast from the bar on the meadow east of the yard. Checks: its crater is in the cells (two steps down in the " +
             "middle, one round it), the terrain is drawn at least 0.6 m lower there, the blast's edge burns (burning, or burnt to dirt), no console errors."),
