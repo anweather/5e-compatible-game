@@ -13,8 +13,8 @@ using Unity.Profiling.LowLevel.Unsafe;
 // build; in any other it reads nothing, and Missing says which those are.
 // Sample keeps each marker's sum and peak for the run; Breakdown writes one
 // frame's slow markers, for a line about a slow frame. A wide reader (-perf-wide)
-// also watches every timed marker of the main thread, for a hitch nothing else
-// names: costlier, and its markers overlap (a parent and its children all show).
+// also watches every timed marker of every thread, for a hitch nothing else names:
+// costlier, and its markers overlap (a parent and its children all show).
 public sealed class PerfMarkers : IDisposable
 {
     /// <summary>The bot's own screenshot: its frames aren't the game's.</summary>
@@ -85,7 +85,7 @@ public sealed class PerfMarkers : IDisposable
         shotAt = names.IndexOf(BotShot);
     }
 
-    // Every timed marker not read already, on this thread alone (a recorder sums all threads otherwise).
+    // Every timed marker not read already, summed over all threads: a wait on the main thread names no culprit.
     void WatchEverything()
     {
         var handles = new List<ProfilerRecorderHandle>();
@@ -96,7 +96,7 @@ public sealed class PerfMarkers : IDisposable
             var description = ProfilerRecorderHandle.GetDescription(handle);
             if (description.UnitType != ProfilerMarkerDataUnit.TimeNanoseconds || !known.Add(description.Name)) continue;
             names.Add(description.Name);
-            recorders.Add(new ProfilerRecorder(handle, 1, ProfilerRecorderOptions.Default | ProfilerRecorderOptions.CollectOnlyOnCurrentThread));
+            recorders.Add(new ProfilerRecorder(handle));
         }
     }
 

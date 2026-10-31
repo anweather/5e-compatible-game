@@ -35,7 +35,8 @@ using Debug = UnityEngine.Debug;
 // -perf-spike-ms N for a lower bar than 50; -perf-wide (PerfMarkers); -perf-hour H;
 // -perf-exact and -perf-time-budget, which force ChemGrid.ExactFrames on or off
 // (the bot turns it on; compare a budget in work units with one in milliseconds);
-// and -perf-flames-off, which draws a flamewall without its flames.
+// -perf-flames-off, which draws a flamewall without its flames; and -perf-pso-diff
+// <file>, which lists what a -pso-trace file has that the shipped collection hasn't.
 //
 // The bot scenario films the playtest bot (add -playtest -playtest-seed N
 // -playtest-seconds N): it has no stage, -perf-seconds does nothing, and the
@@ -93,6 +94,12 @@ public class PerfScenario : MonoBehaviour
         if (float.TryParse(Arg("-perf-spike-ms"), NumberStyles.Float, CultureInfo.InvariantCulture, out float bar) && bar > 0f) spikeMs = bar;
         seconds = scenario == Wildfire ? BurnSeconds : DefaultSeconds;
         if (float.TryParse(Arg("-perf-seconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out float asked) && asked > 0f) seconds = asked;
+        if (Arg("-perf-pso-diff") != null)
+        {
+            PerfPsoCheck.Diff(Arg("-perf-pso-diff"));
+            Application.Quit();
+            yield break;
+        }
         if (!Known.Contains(scenario) || (scenario == Bot && FindAnyObjectByType<PlaytestBot>() == null))
         {
             Debug.LogError($"PERF RESULT refused: \"{scenario}\" isn't one of {string.Join("|", Known)}, or bot without -playtest");
@@ -262,6 +269,7 @@ public class PerfScenario : MonoBehaviour
 
     void OnLog(string message, string stack, LogType type)
     {
+        if (message.Contains("Ring Buffer")) PerfCounts.Add("log.ring_buffer_full");
         if (type == LogType.Warning) warnings++;
         else if (type != LogType.Log) errors++;
     }

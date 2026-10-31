@@ -11,8 +11,9 @@ using UnityEngine;
 // when it's done; the bot's route needs none of this. The forest walks the wizard
 // through the chunks of playtest finding F-0002 by the stick, as the bot does, at
 // night unless Hour says otherwise; aim holds each kind of aim marker on a moving
-// aim; flamewall stands a wall of flames close to the camera, kept alight; pso
-// tries every loaded material on URP's Particles/Lit shader (PerfPsoCheck).
+// aim; flamewall stands a wall of flames close to the camera, kept alight (with
+// -perf-no-fire, -perf-lights-off and -perf-smoke-off to take it apart); pso tries
+// every loaded material on URP's Particles/Lit shader (PerfPsoCheck).
 public class PerfStage : ShowcaseScript
 {
     // Hollowmere's place and square in cells (world/villages.json).
@@ -162,6 +163,7 @@ public class PerfStage : ShowcaseScript
         var at = grid.CellCenter(mid.x, mid.y);
         at.y = grid.GroundAt(at) + 1f;
         Cut(at + V(0f, 1.5f, -10f), at + V(0f, 1f, 0f));
+        if (Asked("-perf-no-fire")) yield break;
         while (true)
         {
             for (int y = 0; y < WallDeep; y++)
@@ -174,6 +176,18 @@ public class PerfStage : ShowcaseScript
                 }
             yield return new WaitForSeconds(RelightSeconds);
         }
+    }
+
+    static bool Asked(string flag) => System.Environment.GetCommandLineArgs().Contains(flag);
+
+    // What else a wall of flames brings, taken away for a run: the fire lights and the smoke (every particle).
+    void LateUpdate()
+    {
+        if (Asked("-perf-lights-off"))
+            foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
+                if (light.type != LightType.Directional) light.enabled = false;
+        if (Asked("-perf-smoke-off"))
+            foreach (var look in FindObjectsByType<ParticleSystemRenderer>(FindObjectsSortMode.None)) look.enabled = false;
     }
 
     /// <summary>Takes the camera to a fixed shot; for PerfPsoCheck.</summary>

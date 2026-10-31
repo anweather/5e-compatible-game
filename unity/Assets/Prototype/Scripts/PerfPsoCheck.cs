@@ -45,6 +45,45 @@ public sealed class PerfPsoCheck
         Application.logMessageReceived -= OnLog;
     }
 
+    /// <summary>
+    /// What a -pso-trace file holds that the shipped collection doesn't: a "PERF PSO missing" line
+    /// for each shader variant, or variant with more states, by shader, pass and keywords.
+    /// </summary>
+    public static void Diff(string file)
+    {
+        var trace = new GraphicsStateCollection();
+        var shipped = Resources.Load<GraphicsStateCollection>("Pso" + SystemInfo.graphicsDeviceType);
+        if (!trace.LoadFromFile(file) || shipped == null)
+        {
+            Debug.Log($"PERF PSO can't compare {file}");
+            return;
+        }
+        var theirs = Index(shipped);
+        var ours = Index(trace);
+        Debug.Log($"PERF PSO trace variants={ours.Count} states={trace.totalGraphicsStateCount}; shipped variants={theirs.Count} states={shipped.totalGraphicsStateCount}");
+        foreach (var (key, states) in ours.OrderBy(p => p.Key, System.StringComparer.Ordinal))
+        {
+            theirs.TryGetValue(key, out int have);
+            if (states > have) Debug.Log($"PERF PSO missing {states - have} of {states}: {key}");
+        }
+    }
+
+    static Dictionary<string, int> Index(GraphicsStateCollection collection)
+    {
+        var variants = new List<GraphicsStateCollection.ShaderVariant>();
+        var states = new List<GraphicsStateCollection.GraphicsState>();
+        var index = new Dictionary<string, int>();
+        collection.GetVariants(variants);
+        foreach (var v in variants)
+        {
+            if (v.shader == null) continue;
+            collection.GetGraphicsStatesForVariant(v.shader, v.passId, v.keywords, states);
+            var words = string.Join(" ", v.keywords.Select(k => k.name).OrderBy(k => k, System.StringComparer.Ordinal));
+            index[$"{v.shader.name} pass {v.passId.SubshaderIndex}/{v.passId.PassIndex} [{words}]"] = states.Count;
+        }
+        return index;
+    }
+
     static void ListCollection()
     {
         var collection = Resources.Load<GraphicsStateCollection>("Pso" + SystemInfo.graphicsDeviceType);
