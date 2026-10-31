@@ -578,6 +578,17 @@ we see fit; one small exploratory mini game (spell golf), not polish on the
 existing ones. Ranked with the 0.1.8 playtest (`playtest/sessions/0.1.8.md`,
 GitHub #2-#5) and the cost reading (`docs/telemetry/feature-costs-2026-10-30.md`).
 
+**Andrew's playtest of 2026-10-30 (#6-#15, `docs/PLAYTESTS.md`) comes first**, in three batches:
+
+| Batch | Issues | Where |
+|---|---|---|
+| A, rules | #11 the wave aims where you cast and leaves water; #15 no brick on water (the water boils, the mud under it doesn't bake); #13 a live turkey isn't "rotten" | Worker |
+| B, casting and moving | #7 hold the trigger to charge a cast stronger as the meter fills (Andrew's proposal); #6 a way to end Shapeshift; #12 ice keeps your momentum | Worker (input and rules), host (feel) |
+| C, interface (UX pass 4) | #8 the centre stamina bar out, a smaller top bar and log text, the element icon centred; #9 a cast bar that fills smoothly; #10 Back closes the grimoire; #2 the aim markers; the looks of snow, fog, the golf flag and strokes, the wave; the swim checks | Host (DesktopUnity) |
+| Andrew's call | #14 what low and zero health do | |
+
+Done since: #4 (499774e), the bot casts by elements (7088a97), spell golf (7f0d33b), swimming with breath (58bff2f).
+
 | # | Item | Where | Size | Why now |
 |---|---|---|---|---|
 | 1 | #2 crack squares and #4 robe tail | Host (DesktopUnity) | S | In progress: a 0.1.8 regression and the most visible old bug |
