@@ -69,6 +69,8 @@ public sealed class ValleyGround
     /// </summary>
     public void DrawDetails(IReadOnlyCollection<(int i, int j)> near)
     {
+        using var marked = DrawDetailsMarker.Auto();
+        PerfCounts.Add("detail.changes");
         foreach (var kv in chunks)
             if (kv.Value.terrain != null) kv.Value.terrain.detailObjectDistance = near.Contains(kv.Key) ? kv.Value.detailDistance : 0f;
     }
@@ -224,10 +226,26 @@ public sealed class ValleyGround
         if (heightfield == null) return;
         if (reshaped.Count > 0)
         {
-            heightfield.Update(world, reshaped);
+            PerfCounts.Add("shape.reshaped_cells", reshaped.Count);
+            using (HeightUpdateMarker.Auto()) CountRects("shape.update", heightfield.Update(world, reshaped));
+            PerfCounts.Add("shape.update_filled", heightfield.SamplesFilled);
             reshaped.Clear();
         }
-        foreach (var r in heightfield.Advance(dt)) WriteHeights(r);
+        List<ChunkRect> moved;
+        using (HeightEaseMarker.Auto()) moved = heightfield.Advance(dt);
+        CountRects("shape.ease", moved);
+        using (HeightWriteMarker.Auto())
+            foreach (var r in moved) WriteHeights(r);
+    }
+
+    // For a performance pass: how many rectangles, and how many heightmap samples in them.
+    static void CountRects(string what, List<ChunkRect> rects)
+    {
+        if (!PerfCounts.On) return;
+        long samples = 0;
+        foreach (var r in rects) samples += r.Width * r.Height;
+        PerfCounts.Add(what + "_rects", rects.Count);
+        PerfCounts.Add(what + "_samples", samples);
     }
 
     void WriteHeights(ChunkRect r)
@@ -288,7 +306,9 @@ public sealed class ValleyGround
 
     // Profiler markers (Window > Analysis > Profiler) round the terrain's per-frame work.
     static readonly Unity.Profiling.ProfilerMarker FlushMarker = new("ValleyGround.Flush"),
-        PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint");
+        PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint"),
+        DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"),
+        HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite");
 
     // Composing paint gets about this much of a frame (ms); the cells it takes follow from how long
     // the last ones took, between the bounds below.

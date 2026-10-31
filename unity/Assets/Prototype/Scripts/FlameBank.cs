@@ -95,6 +95,9 @@ public class FlameBank : MonoBehaviour
     /// <summary>How many cells' fires are drawn, for the probe.</summary>
     public int CellsBurning => burning.Count;
 
+    /// <summary>Whether this machine's GPU can run Prototype/Flame, for the probe.</summary>
+    public bool ShaderSupported => material != null && material.shader.isSupported;
+
     /// <summary>The flames and embers of a burning cell that are drawn, for the probe.</summary>
     public IEnumerable<Flame> FlamesOn(int index)
     {
@@ -141,6 +144,8 @@ public class FlameBank : MonoBehaviour
     // the cell alone scatters each flame about its middle and sizes it a little up or down.
     void Write(Burn burn, int x, int y, Vector3 center)
     {
+        using var marked = WriteMarker.Auto();
+        PerfCounts.Add("flame.writes");
         var (tall, wide, tint, speed, more) = FireLook.FlamesOf(burn.look);
         var (sheet, count, small, big, seconds, alpha) = Levels[Mathf.Clamp(burn.level, 1, Levels.Length) - 1];
         float scale = burn.scale * (cellSize / 1.5f) * Mathf.Lerp(0.8f, 1.2f, ValueNoise.Hash(x, y, 80));
@@ -180,8 +185,11 @@ public class FlameBank : MonoBehaviour
         buffer.SetData(flames, start, start, FlamesPerCell);
     }
 
+    static readonly Unity.Profiling.ProfilerMarker WriteMarker = new("FlameBank.Write"), LateMarker = new("FlameBank.LateUpdate");
+
     void LateUpdate()
     {
+        using var marked = LateMarker.Auto();
         while (dying.Count > 0 && dying.Peek().until <= Time.time)
         {
             int block = dying.Dequeue().block, start = block * FlamesPerCell;

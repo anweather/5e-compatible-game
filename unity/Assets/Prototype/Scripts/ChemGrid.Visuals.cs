@@ -338,6 +338,9 @@ public partial class ChemGrid
     /// <summary>The top of the water or ice drawn at a point in grid units (see CellWaterMesh.TopAt).</summary>
     public float DrawnWaterTopAt(float gx, float gy, float fallback) => waterSurface.TopAt(gx, gy, fallback);
 
+    /// <summary>For a performance pass: the water tiles redrawn, and how many came out different (CellWaterMesh.CheckTiles).</summary>
+    public (int tiles, int different) CheckWaterTiles() => waterSurface.CheckTiles();
+
     /// <summary>Height of the water surface in a cell, as drawn (its ground when the cell is dry).</summary>
     public float WaterSurfaceY(int x, int y)
     {

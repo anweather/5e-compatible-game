@@ -16,6 +16,9 @@ using UnityEngine;
 // Release builds the zip a player downloads (docs/RELEASING.md): a
 // non-development Windows build from a clean git tree, with README.txt and
 // CREDITS.txt, zipped into Builds/Release/.
+//
+// MacOSProfiling builds a development player that can connect to the Profiler,
+// for a performance pass (docs/perf/, PerfScenario); there is no Mac release.
 public static class PrototypeBuild
 {
     public const string ProductName = "Spell Chemistry Valley";
@@ -26,6 +29,24 @@ public static class PrototypeBuild
 
     [MenuItem("Prototype/Build/Windows")]
     public static void Windows() => Build(BuildTarget.StandaloneWindows64, "Builds/Windows/SpellChemistryValley.exe");
+
+    /// <summary>
+    /// The profiling player, into Builds/macOSProfiling/ (Frame Timing Stats is already on in Player
+    /// Settings). From the command line: -batchmode -buildTarget StandaloneOSX -executeMethod
+    /// PrototypeBuild.MacOSProfiling; it exits 0 when the build is good, and with -rebuild-yard (or no
+    /// yard) it builds the yard first.
+    /// </summary>
+    [MenuItem("Prototype/Build/macOS (profiling)")]
+    public static void MacOSProfiling()
+    {
+        if (!File.Exists(Scene) || Environment.GetCommandLineArgs().Contains("-rebuild-yard"))
+        {
+            if (!AssetDatabase.IsValidFolder("Assets/Prototype/Generated")) AssetDatabase.CreateFolder("Assets/Prototype", "Generated");
+            ChemYardBuilder.Build();
+        }
+        string line = Build(BuildTarget.StandaloneOSX, $"Builds/macOSProfiling/{ProductName}.app", BuildOptions.Development | BuildOptions.ConnectWithProfiler);
+        if (Application.isBatchMode) EditorApplication.Exit(line.Contains(": OK") ? 0 : 1);
+    }
 
     const string Exe = "SpellChemistryValley.exe";
     const string ReadmeTemplate = "ReleaseReadme.txt"; // in the project folder, next to Assets/
@@ -110,7 +131,7 @@ public static class PrototypeBuild
     }
 
     /// <summary>Builds the yard for a platform and returns a one-line summary (also logged).</summary>
-    public static string Build(BuildTarget target, string path)
+    public static string Build(BuildTarget target, string path, BuildOptions options = BuildOptions.None)
     {
         // Another machine can only join a build whose network ids are the stable ones.
         var unstable = ChemYardBuilder.UnstableNetworkIds();
@@ -128,7 +149,7 @@ public static class PrototypeBuild
             scenes = new[] { Scene },
             locationPathName = path,
             target = target,
-            options = BuildOptions.None,
+            options = options,
         });
         var s = report.summary;
         // Unity can report Succeeded for a build that threw and wrote nothing (seen with a

@@ -18,6 +18,9 @@ public class PsoTrace : MonoBehaviour
     string path;
     int lastCount;
     bool saved;
+    const int QuietFrames = 100;
+    readonly System.Collections.Generic.List<GraphicsStateCollection.ShaderVariant> variants = new();
+    readonly System.Collections.Generic.HashSet<string> seen = new();
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
     static void StartIfAsked()
@@ -45,6 +48,19 @@ public class PsoTrace : MonoBehaviour
         if (count == lastCount) return;
         Debug.Log($"PSO TRACE: frame {Time.frameCount} +{count - lastCount} states (total {count}), frame {Time.unscaledDeltaTime * 1000f:0.0} ms, at {Time.realtimeSinceStartup:0.0} s");
         lastCount = count;
+        LogNewVariants();
+    }
+
+    // Which shaders those states were for, once the first frames' crowd is past.
+    void LogNewVariants()
+    {
+        trace.GetVariants(variants);
+        foreach (var v in variants)
+        {
+            if (v.shader == null) continue;
+            string key = $"{v.shader.name} pass {v.passId.SubshaderIndex}/{v.passId.PassIndex} [{string.Join(" ", System.Linq.Enumerable.Select(v.keywords, k => k.name))}]";
+            if (seen.Add(key) && Time.frameCount > QuietFrames) Debug.Log($"PSO TRACE: new {key}");
+        }
     }
 
     void OnApplicationQuit() => Save();

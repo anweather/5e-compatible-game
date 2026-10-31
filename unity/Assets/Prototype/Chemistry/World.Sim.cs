@@ -46,6 +46,9 @@ namespace Chem
         /// <summary>Whether a tick has begun (StepSome) and not yet finished.</summary>
         public bool TickInProgress => stage != TickStage.None;
 
+        /// <summary>The stage of the tick in progress as a number, for a performance pass (0 between ticks).</summary>
+        public int TickStageNumber => (int)stage;
+
         /// <summary>
         /// Runs the tick in progress (beginning one if none is) a slice at a time until it finishes
         /// (true) or <paramref name="stop"/> says to stop for now (false; the next call carries on).

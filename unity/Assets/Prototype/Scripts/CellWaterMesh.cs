@@ -70,10 +70,29 @@ public sealed class CellWaterMesh
     public void Changed(int x, int y, bool isWet)
     {
         int key = grid.World.Idx(x, y);
-        if (isWet) wet.Add(key);
-        else wet.Remove(key);
-        MarkAround(x, y);
-        stale = true;
+        var c = grid.World.Cells[key];
+        int level = isWet ? c.Water : 0;
+        levels.TryGetValue(key, out int was);
+        levels[key] = level;
+        // An outline moves only when a cell turns wet, dry, or to or from ice. A level alone (the
+        // river's changes on most ticks) moves the surface where its top moves: Recompute marks those.
+        bool outline = isWet ? wet.Add(key) : wet.Remove(key);
+        outline |= isWet && c.Frozen ? ice.Add(key) : ice.Remove(key);
+        if (PerfCounts.On) CountChange(c, outline, was != level);
+        if (outline) MarkAround(x, y);
+        stale |= outline || was != level;
+    }
+
+    // Each wet cell's water and which are frozen, as last seen (0 and absent when dry).
+    readonly Dictionary<int, int> levels = new();
+    readonly HashSet<int> ice = new();
+
+    // For a performance pass: what kind of change this was.
+    static void CountChange(Cell c, bool outline, bool level)
+    {
+        PerfCounts.Add("water.changed");
+        PerfCounts.Add(outline ? "water.changed_wet_or_dry" : level ? "water.changed_level" : "water.changed_other_only");
+        PerfCounts.Add(c.T == TerrainIds.River ? "water.changed_on_river" : "water.changed_off_river");
     }
 
     /// <summary>Ground moved at a cell: the water beside it may sit differently against its banks.</summary>
@@ -89,8 +108,10 @@ public sealed class CellWaterMesh
     bool stale;
     // Milliseconds a frame may spend drawing tiles; the rest wait for the next frames, nearest first.
     // In a playtest run a count of tiles instead (ChemGrid.ExactFrames): ice tiles carry colliders.
+    // A tile takes 14 to 25 ms on the Mac, so the real budget draws one or so a frame; at 24 the bot
+    // saw spikes of a batch no player ever gets.
     const double DrawBudgetMs = 3.0;
-    const int ExactDrawTiles = 24;
+    const int ExactDrawTiles = 2;
     readonly ChemGrid.FrameBudget drawBudget = new(DrawBudgetMs, ExactDrawTiles);
     readonly List<int> drawOrder = new();
 
@@ -125,8 +146,16 @@ public sealed class CellWaterMesh
     /// </summary>
     public void Rebuild()
     {
+        if (dirtyTiles.Count == 0 && !stale) return;
+        PerfCounts.Add("water.rebuilds");
+        if (stale)
+        {
+            PerfCounts.Add("water.recomputes");
+            PerfCounts.Peak("water.wet_cells", wet.Count);
+            using (RecomputeMarker.Auto()) Recompute();
+        }
+        PerfCounts.Peak("water.dirty_tiles", dirtyTiles.Count);
         if (dirtyTiles.Count == 0) return;
-        if (stale) Recompute();
         drawBudget.Start();
         drawOrder.Clear();
         drawOrder.AddRange(dirtyTiles);
@@ -139,10 +168,15 @@ public sealed class CellWaterMesh
         foreach (int tile in drawOrder)
         {
             if (drawBudget.Over()) break;
-            DrawTile(tile);
+            using (DrawTileMarker.Auto()) DrawTile(tile);
+            PerfCounts.Add("water.tiles_drawn");
             dirtyTiles.Remove(tile);
         }
     }
+
+    // Profiler markers round what a Rebuild is made of (ContourSurface marks inside DrawTile).
+    static readonly Unity.Profiling.ProfilerMarker RecomputeMarker = new("Water.Recompute"), TopsMarker = new("Water.ComputeTops"),
+        BanksMarker = new("Water.FindBanks"), DrawTileMarker = new("Water.DrawTile");
 
     // The levels of every body of water and the banks round them; where a level moved, far from
     // the cell that changed, those tiles are redrawn too.
@@ -151,11 +185,48 @@ public sealed class CellWaterMesh
         stale = false;
         oldTops.Clear();
         foreach (var kv in tops) oldTops[kv.Key] = kv.Value;
-        ComputeTops();
+        using (TopsMarker.Auto()) ComputeTops();
         var world = grid.World;
         foreach (var kv in tops)
-            if (!oldTops.TryGetValue(kv.Key, out var was) || !Mathf.Approximately(was, kv.Value)) MarkAround(kv.Key % world.W, kv.Key / world.W);
-        FindBanks();
+            if (!oldTops.TryGetValue(kv.Key, out var was) || !Mathf.Approximately(was, kv.Value))
+            {
+                MarkAround(kv.Key % world.W, kv.Key / world.W);
+                PerfCounts.Add("water.tops_moved");
+            }
+        using (BanksMarker.Auto()) FindBanks();
+    }
+
+    /// <summary>
+    /// For a performance pass (-perf-water-check): redraws every tile that isn't waiting for a redraw
+    /// and counts those that came out different, water or ice, so a tile left stale by a skipped
+    /// redraw shows. Drawn afresh, the tile is then right: run it at the end.
+    /// </summary>
+    public (int tiles, int different) CheckTiles()
+    {
+        if (stale) Recompute();
+        int count = 0, different = 0;
+        foreach (var (tile, t) in tiles)
+        {
+            if (dirtyTiles.Contains(tile)) continue;
+            int tx = tile % tilesX, ty = tile / tilesX, x0 = tx * TileCells, y0 = ty * TileCells;
+            var box = new RectInt(x0, y0, Mathf.Min(TileCells, grid.World.W - x0), Mathf.Min(TileCells, grid.World.H - y0));
+            var (water, solid) = (Picture(t.water.mesh), Picture(t.ice.mesh));
+            Draw(t.water, box, false);
+            Draw(t.ice, box, true);
+            count++;
+            if (!Same(water, Picture(t.water.mesh)) || !Same(solid, Picture(t.ice.mesh))) different++;
+        }
+        return (count, different);
+    }
+
+    static (Vector3[] at, Color[] colors, int[] triangles) Picture(Mesh mesh) => (mesh.vertices, mesh.colors, mesh.triangles);
+
+    static bool Same((Vector3[] at, Color[] colors, int[] triangles) a, (Vector3[] at, Color[] colors, int[] triangles) b)
+    {
+        if (a.at.Length != b.at.Length || !System.Linq.Enumerable.SequenceEqual(a.triangles, b.triangles)) return false;
+        for (int n = 0; n < a.at.Length; n++)
+            if ((a.at[n] - b.at[n]).sqrMagnitude > 1e-6f || !a.colors[n].Equals(b.colors[n])) return false;
+        return true;
     }
 
     // Squared distance on the ground from a point to a tile's middle.
@@ -186,8 +257,23 @@ public sealed class CellWaterMesh
             tiles[tile] = t;
         }
         Draw(t.water, box, false);
-        Draw(t.ice, box, true);
-        t.ice.go.GetComponent<MeshCollider>().sharedMesh = t.ice.Empty ? null : t.ice.mesh;
+        // Most tiles have no ice and never did: outlining nothing is half the cost of a tile.
+        if (!t.ice.Empty || AnyIceNear(box))
+        {
+            Draw(t.ice, box, true);
+            t.ice.go.GetComponent<MeshCollider>().sharedMesh = t.ice.Empty ? null : t.ice.mesh;
+        }
+    }
+
+    // Whether ice could show in the box: the outline reads a ring round it, and a cell only scores
+    // for the ice beside some (Value), so two rings out. Without any, only banks score, and they
+    // don't reach the outline's iso value (BankValue; calm cells don't wobble).
+    bool AnyIceNear(RectInt box)
+    {
+        for (int y = box.yMin - 2; y <= box.yMax + 1; y++)
+            for (int x = box.xMin - 2; x <= box.xMax + 1; x++)
+                if (Holds(x, y, true)) return true;
+        return false;
     }
 
     // Whether any cell in the box, or the ring round it, holds water (a tile also draws the edge of

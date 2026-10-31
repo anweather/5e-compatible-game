@@ -48,4 +48,16 @@ public static class PsoCollections
         AssetDatabase.ImportAsset(path);
         return $"PSO merge: {traces.Length} traces, {merged.totalGraphicsStateCount} states in {merged.variantCount} variants -> {path}";
     }
+
+    /// <summary>
+    /// Merge in a batch Editor: -executeMethod PsoCollections.MergeFromCommandLine -pso-merge a.pso b.pso.
+    /// Name a copy of the shipped collection first to add to it rather than replace it.
+    /// </summary>
+    public static void MergeFromCommandLine()
+    {
+        var args = System.Environment.GetCommandLineArgs();
+        var traces = new List<string>();
+        for (int i = System.Array.IndexOf(args, "-pso-merge") + 1; i > 0 && i < args.Length && !args[i].StartsWith("-"); i++) traces.Add(args[i]);
+        UnityEngine.Debug.Log(Merge(traces.ToArray()));
+    }
 }

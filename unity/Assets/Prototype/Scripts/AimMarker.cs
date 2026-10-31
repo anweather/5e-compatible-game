@@ -99,6 +99,8 @@ public sealed class AimMarker
         return s.Shape == "burst" && (s.Damage is { Length: > 0 } || s.Push != 0) ? AimKind.Ring : AimKind.Area;
     }
 
+    static readonly Unity.Profiling.ProfilerMarker RedrawMarker = new("AimMarker.Redraw");
+
     public void Hide()
     {
         if (shown != null) shown.SetActive(false);
@@ -126,6 +128,8 @@ public sealed class AimMarker
         if (kind == Kind && now == drawn && Mathf.Approximately(Radius, ringAim)) return;
         drawn = now;
         Kind = kind;
+        using var marked = RedrawMarker.Auto();
+        PerfCounts.Add("aim.redraws");
         tint = Bright(colour);
         Clear();
         float width = HalfWidth * widening / 4f;
