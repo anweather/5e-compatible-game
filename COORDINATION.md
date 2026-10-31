@@ -675,3 +675,6 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   starts, Andrew sets up a Unity Gaming Services project with Vivox and
   links it to the Unity project (the PM gives him the steps; agents don't
   enter account keys).
+- 2026-10-30 23:15: DECIDED (Andrew): the sound pass moves into 0.1.9; voice
+  (Vivox) stays in 0.1.10. The MacBook takes the sound pass after Andrew's
+  five calls, in parallel with the perf pass on the PC.
