@@ -56,7 +56,7 @@ public class PerfScenario : MonoBehaviour
     const double BytesPerMb = 1024.0 * 1024.0;
     const float EarlyMs = 100f;
     const int MostEarly = 40;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow" };
 
     readonly List<float> frameMs = new();
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();

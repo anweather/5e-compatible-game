@@ -15,7 +15,8 @@ using UnityEngine;
 // -perf-no-fire, -perf-lights-off and -perf-smoke-off to take it apart); pso tries
 // every loaded material on URP's Particles/Lit shader (PerfPsoCheck). dragon films
 // a real flight from one spot over the valley (give -perf-seconds for the length you
-// want), dragonclear the same spot without it.
+// want), dragonclear the same spot without it, and dragonlow one from a wizard's height
+// in the valley's middle, for the wall going through the camera.
 public class PerfStage : ShowcaseScript
 {
     // Hollowmere's place and square in cells (world/villages.json).
@@ -43,7 +44,7 @@ public class PerfStage : ShowcaseScript
         if (Scenario == "wildfire") yield return Wildfire();
         else if (Scenario == "village") Hollowmere();
         else if (Scenario == "forest") LogMap();
-        else if (Scenario is "dragon" or "dragonclear") DragonShot();
+        else if (Scenario is "dragon" or "dragonclear" or "dragonlow") DragonShot();
         else Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
         if (Scenario == "aim") StartCoroutine(Aim());
@@ -58,8 +59,8 @@ public class PerfStage : ShowcaseScript
     {
         var middle = grid.CellCenter(World.W / 2, World.H / 2);
         middle.y = grid.GroundAt(middle);
-        Cut(middle + V(120f, 70f, -180f), middle);
-        if (Scenario != "dragon") return;
+        Cut(middle + (Scenario == "dragonlow" ? V(0f, 3f, -6f) : V(120f, 70f, -180f)), middle + (Scenario == "dragonlow" ? V(0f, 8f, 40f) : Vector3.zero));
+        if (Scenario == "dragonclear") return;
         World.Rules.Sim.Dragon.WarningTicks = DragonWarning;
         grid.SummonDragon();
     }
