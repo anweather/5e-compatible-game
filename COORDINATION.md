@@ -584,3 +584,12 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   comments on #2 and #4 (refused to DesktopUnity as an external write), are
   Andrew's. Now: w1 bot-elements, w2 spell-golf (Pro). start.cmd no longer
   takes Unity Hub's helper for an Editor.
+- 2026-10-30: RULE (Andrew): the PM and the Pro coordinator may write to
+  this repo's GitHub issues without asking: file issues, comment on them
+  (fix notes, causes, rediscoveries), label, retitle, and close them when
+  the fix ships in a release. Each write says what changed and why. Not
+  covered: deleting issues, releases (publishing stays Andrew's go), repo
+  settings. Workers and host sessions hand their issue text to the PM, who
+  posts it. First use: #2 is now "Redesign the spell aim markers" (label
+  design; it was the aim markers, not cracks), and the fix notes are on #2
+  and #4.

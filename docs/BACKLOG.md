@@ -568,7 +568,7 @@ GitHub #2-#5) and the cost reading (`docs/telemetry/feature-costs-2026-10-30.md`
 | 3 | Spell golf (24), exploratory | Worker (rules), host (placing, looks) | S-M | Andrew's mini game to prove the idea |
 | 4 | Swimming (13): diving, a breath meter that runs down under water, drowning; then the swim animation | Worker (rules), host (view) | M | Andrew; finishes a half-built feature |
 | 5 | Sound pass and proximity voice (8): spells and big events heard by distance (a Falling Star or an explosion carries across the valley), other wizards' casts heard; then Vivox voice by distance (D8) | Host (sound), then voice | M + M | Andrew; there's next to no sound today. Voice needs Andrew's Vivox setup |
-| 6 | Playtest fix-first: #5 the 185 ms walking hitch (found 5 times), #3 the waterfall pool's band (4) | Host | S each | Most rediscovered; each rediscovery costs about 50k tokens |
+| 6 | Playtest fix-first: #5 the 185 ms walking hitch (found 5 times), #3 the waterfall pool's band (4); #2 a redesign of the spell aim markers, which read as broken ground | Host | S each | Most rediscovered; each rediscovery costs about 50k tokens |
 | 7 | Fireball's aim (lit grass away from its target in run 811), and Sleet Storm doing nothing in the RC bot run | Worker | S | Spells landing where aimed is the core of casting |
 | 8 | Workers take briefs straight from the mailbox (no coordinator relay) | PM (tooling) | S | Coordination is half of all spend |
 | 9 | Finish half-built features as we go: snow and fog as weather (2), a coil and gate placed in the valley (the charge to the gate), the ball court's clock and reset (15) | Worker, host | S each | Between bigger items |
