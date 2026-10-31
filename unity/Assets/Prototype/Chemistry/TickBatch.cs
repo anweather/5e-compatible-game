@@ -74,10 +74,12 @@ namespace Chem
         public List<ChunkSwitch> Chunks { get; }
         /// <summary>Defense commands (the start pedestal: World.Defense.cs), applied after the effects, in order.</summary>
         public List<DefenseCommand> Defense { get; } = new List<DefenseCommand>();
-        /// <summary>Players' combo input (World.Combos.cs), applied last, in order.</summary>
+        /// <summary>Players' combo input (World.Combos.cs), applied after the defense, in order.</summary>
         public List<ComboCommand> Combos { get; } = new List<ComboCommand>();
         /// <summary>The dragon's summons (World.Dragon.cs), applied after the combos.</summary>
         public List<DragonCommand> Dragon { get; } = new List<DragonCommand>();
+        /// <summary>Where players stand on the course (World.Course.cs), applied last, in order.</summary>
+        public List<CourseCommand> Course { get; } = new List<CourseCommand>();
         /// <summary>
         /// The world is rebuilt before this tick (the online reset, J-014): the view rebuilds it from
         /// its seed (NetChem, ChemGrid.ResetWorld), then the batch runs on the fresh world. The
@@ -128,6 +130,7 @@ namespace Chem
             foreach (var d in Defense) world.ApplyDefense(d);
             foreach (var c in Combos) world.ApplyCombo(c);
             foreach (var d in Dragon) world.ApplyDragon(d);
+            foreach (var c in Course) world.ApplyCourse(c);
             return rules;
         }
 
@@ -170,6 +173,13 @@ namespace Chem
         {
             foreach (int tick in ticks)
                 if (batches.TryGetValue(tick, out var b)) b.Dragon.Add(new DragonCommand());
+        }
+
+        /// <summary>Adds a recorded history of players' steps on the course to a <see cref="Timeline"/>'s batches.</summary>
+        public static void AddCourse(Dictionary<int, TickBatch> batches, IEnumerable<(int tick, CourseCommand command)> steps)
+        {
+            foreach (var (tick, command) in steps)
+                if (batches.TryGetValue(tick, out var b)) b.Course.Add(command);
         }
     }
 }

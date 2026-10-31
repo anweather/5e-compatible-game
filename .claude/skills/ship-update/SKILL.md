@@ -39,7 +39,7 @@ releases page, or `gh release list`).
    for `Self update: installed by Velopack as SpellChemistryValley X.Y.Z`. The
    Velopack log says whether it took the delta: macOS
    `~/Library/Logs/velopack_<app id>.log`, Windows
-   `%LOCALAPPDATA%\<app id>\velopack.log` (the app id is `SpellChemistryValleyTest` for test releases).
+   `%LOCALAPPDATA%\velopack\velopack_<app id>.log` (path corrected 2026-10-31; the app id is `SpellChemistryValleyTest` for test releases).
 
 ## Gotchas
 

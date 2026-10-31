@@ -94,6 +94,7 @@ namespace Chem
             SaveMachines(save);
             SaveGolf(save);
             SaveDragon(save);
+            SaveCourse(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
             var made = new Cell();
             var saved = new JArray();
@@ -255,6 +256,7 @@ namespace Chem
                 waves.Add(LoadWave((JArray)wv));
             LoadMachinesAndBoulders(s);
             LoadGolf(s);
+            LoadCourse(s);
             NextEntityId = (int)s["nextEntityId"];
             if (s["defense"] is JObject d)
             {

@@ -206,13 +206,20 @@ namespace Chem
         /// again as far per level, and a spot, square or burst grows (ChargedGrowth). A line or cone may be aimed off the grid's four ways
         /// (SpellCells); <paramref name="dir"/> is then the nearest of them (DirOf), which the
         /// element pushes along. A spell with a crater (Fireball) blows it out of the
-        /// ground before its element lands.
+        /// ground before its element lands. Cast into a spell zone that doesn't allow it
+        /// (World.Course.cs), it fizzles.
         /// </summary>
         public void Cast(string spellId, int x, int y, int dir, int charge = 1, int aimX = 0, int aimY = 0)
         {
             FinishTick(); // casts land between whole ticks (StepSome)
             var s = Rules.Spell(spellId);
             if (s == null || !InBounds(x, y)) return;
+            var zone = ZoneAgainst(s, x, y);
+            if (zone != null)
+            {
+                AddLog($"The {zone.Name}'s charm smothers your {s.Name}", LogKind.Notable);
+                return;
+            }
             if (s.Effect == "levitate" || s.Effect == "carry") return;
             AddLog($"You cast {s.Name}", LogKind.Info);
             if (s.Effect == HasteEffect) Hasten(s, ClampCharge(charge));

@@ -166,6 +166,18 @@ public partial class CastFeelProbe
         Check("landing_scales_with_distance", nearBig.camera > farBig.camera && farBig.camera > 0.005f && nearBig.motor > farBig.motor, $"{nearBig}, far {farBig}");
         Check("landing_out_of_reach_is_not_felt", CastImpact.Kicks == kicksBefore && gone.motor < Silence, gone.ToString());
 
+        // Only a spell with force in it shakes: a quiet one landing beside the wizard doesn't.
+        foreach (var quiet in new[] { "fog-cloud", "light" })
+        {
+            int quietKicks = CastImpact.Kicks;
+            yield return Watch(0.45f, () => CastImpact.Landed(World.Rules.Spell(quiet), at + side * 3f, 1));
+            Check($"quiet_landing_is_not_felt_{quiet}", CastImpact.Kicks == quietKicks && pad.PeakLow < Silence, $"{CastImpact.Kicks - quietKicks} kicks, camera {peak:0.000} m, heavy motor {pad.PeakLow:0.00}");
+        }
+        int damagingKicks = CastImpact.Kicks;
+        yield return Watch(0.45f, () => CastImpact.Landed(World.Rules.Spell("shocking-grasp"), at + side * 3f, 1));
+        Check("damaging_landing_is_felt", CastImpact.Kicks > damagingKicks && pad.PeakLow > 0f, $"{CastImpact.Kicks - damagingKicks} kicks, camera {peak:0.000} m, heavy motor {pad.PeakLow:0.00}");
+        yield return Wait(0.8f);
+
         // The way it really comes: a Fireball, with no beats (a cast from the radial), landing beside the wizard.
         var cell = grid.CellAt(at + wizard.transform.forward * 4f);
         yield return Watch(2.5f, () => caster.Cast(SpellIds.Fireball, cell.x, cell.y, 0));

@@ -57,7 +57,7 @@ public static class PsoCollections
     {
         var args = System.Environment.GetCommandLineArgs();
         var traces = new List<string>();
-        for (int i = System.Array.IndexOf(args, "-pso-merge") + 1; i > 0 && i < args.Length && !args[i].StartsWith("-"); i++) traces.Add(args[i]);
+        for (int i = System.Array.IndexOf(args, "-pso-merge") + 1; i > 0 && i < args.Length && !args[i].StartsWith('-'); i++) traces.Add(args[i]);
         UnityEngine.Debug.Log(Merge(traces.ToArray()));
     }
 }

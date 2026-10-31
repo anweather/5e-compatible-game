@@ -29,6 +29,27 @@
         "          .  ",
         "          .  "
       ]
+    },
+    {
+      "name": "The Gauntlet",
+      "note": "The obstacle course's booths (world/gauntlet.json), east to west on the lake's south shore: the lava pit (x 300-306), the Misty Step gaps (lava at x 290-294 and 285-287), the ice wall (x 279-280) over its ice chute (x 274-278), and the geyser pools (x 266-271) with the updraft vents (x 264-265) before the bell.",
+      "at": [260, 430],
+      "legend": {
+        "L": { "t": "lava" },
+        "I": { "t": "ice-wall" },
+        "c": { "t": "chute" },
+        "p": { "t": "pit", "water": 4 },
+        "u": { "t": "updraft" }
+      },
+      "rows": [
+        "              cccccII    LLL  LLLLL     LLLLLLL",
+        "              cccccII    LLL  LLLLL     LLLLLLL",
+        "    uupppppp  cccccII    LLL  LLLLL     LLLLLLL",
+        "    uupppppp  cccccII    LLL  LLLLL     LLLLLLL",
+        "    uupppppp  cccccII    LLL  LLLLL     LLLLLLL",
+        "              cccccII    LLL  LLLLL     LLLLLLL",
+        "              cccccII    LLL  LLLLL     LLLLLLL"
+      ]
     }
   ]
 }

@@ -194,7 +194,7 @@ quitting:
    and comes back by itself within a few seconds, and the Esc menu shows the
    new version and commit.
 4. Check that no old `SpellChemistryValley.exe` is left in Task Manager, that
-   `%LOCALAPPDATA%\SpellChemistryValleyTest\velopack.log` shows the update
+   `%LOCALAPPDATA%\velopack\velopack_SpellChemistryValleyTest.log` (`velopack_<app id>.log`; path corrected 2026-10-31) shows the update
    applied with no "waiting for process" timeout, and that there's no new
    D3D12Core crash in the Event Viewer (Windows Logs → Application).
 5. Once more with the Esc menu's "Update and restart": start with

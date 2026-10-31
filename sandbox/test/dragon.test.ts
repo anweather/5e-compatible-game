@@ -8,6 +8,7 @@ import { applyIntent, sanitizeIntent } from "../src/intents.ts";
 import { defenseText, startDefense } from "../src/defense.ts";
 import { spawn } from "../src/entities.ts";
 import { startGolf } from "../src/golf.ts";
+import { courseFromJson, courseRespawn, courseStep, setCourse } from "../src/course.ts";
 import { SCENARIOS, loadScenario } from "../src/scenarios.ts";
 import { breathBox, caughtByBreath, keepStart, shelteredFromBreath, summonDragon } from "../src/dragon.ts";
 import { type Entity, type World, cellAt, createWorld, deserializeWorld, dragonState, fnv1a, hashWorld, serializeWorld } from "../src/world.ts";
@@ -378,4 +379,32 @@ test("validateRules names a shelter terrain the rules lack", () => {
   } finally {
     dragon.wallTerrains = list;
   }
+});
+
+test("a flight puts the course back and keeps its zones and times", () => {
+  // Mirrors the C# DragonTests.
+  const w = createWorld(60, 12, 3);
+  for (let x = 42; x <= 46; x++) cellAt(w, x, 5)!.t = "lava";
+  setCourse(w, courseFromJson({
+    name: "The little gauntlet", area: [18, 0, 54, 11], gate: [50, 2, 52, 8], bell: [20, 2, 22, 8],
+    booths: [{ id: "lava-pit", name: "lava pit", area: [40, 0, 49, 11], checkpoint: [48, 5], allow: { elements: ["water", "air"] } }],
+  }));
+  keepStart(w);
+  courseStep(w, "ann", 51, 5);
+  run(w, 30);
+  courseStep(w, "ann", 21, 5);
+  courseStep(w, "bob", 51, 5);
+  courseStep(w, "bob", 45, 5);
+  const best = w.courseRuns["ann"]!.best;
+  assert.ok(best > 0);
+  for (let x = 42; x <= 46; x++) cellAt(w, x, 5)!.t = "lava-crust";
+
+  summonDragon(w);
+  flyOut(w);
+
+  for (let x = 42; x <= 46; x++) assert.equal(cellAt(w, x, 5)!.t, "lava", "the booth's lava is back");
+  assert.deepEqual(w.zones.map((z) => z.id), ["lava-pit"], "zones are world data");
+  assert.equal(w.courseRuns["ann"]!.best, best, "a best time is progress");
+  assert.equal(w.courseRuns["bob"]!.checkpoint, 0, "a run goes on");
+  assert.deepEqual(courseRespawn(w, "bob", 45, 5), [48, 5]);
 });

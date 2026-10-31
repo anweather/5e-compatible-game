@@ -91,7 +91,8 @@ public sealed class CellWaterMesh
     static void CountChange(Cell c, bool outline, bool level)
     {
         PerfCounts.Add("water.changed");
-        PerfCounts.Add(outline ? "water.changed_wet_or_dry" : level ? "water.changed_level" : "water.changed_other_only");
+        if (outline) PerfCounts.Add("water.changed_wet_or_dry");
+        else PerfCounts.Add(level ? "water.changed_level" : "water.changed_other_only");
         PerfCounts.Add(c.T == TerrainIds.River ? "water.changed_on_river" : "water.changed_off_river");
     }
 
