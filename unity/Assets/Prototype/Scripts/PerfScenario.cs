@@ -26,8 +26,8 @@ using Debug = UnityEngine.Debug;
 // "PERF MARKERS" line with each one's mean and peak, and a "PERF SPIKE" line for
 // every frame over 50 ms (written after the run: logging is itself slow).
 // -perf-list-markers also writes every marker there is to perf-markers.txt.
-// The wildfire ends with two shots of one view, with and without FlameBank's
-// flames, so a script can count the pixels Prototype/Flame really drew.
+// The wildfire ends with shots with and without FlameBank's flames (FlameShots),
+// so a script can count the pixels Prototype/Flame really drew.
 //
 // The bot scenario films the playtest bot (add -playtest -playtest-seed N
 // -playtest-seconds N): it has no stage, -perf-seconds does nothing, and the
@@ -101,17 +101,44 @@ public class PerfScenario : MonoBehaviour
         // Update ends the run, so the frame that crosses the end is counted, however long it took.
         while (measuring) yield return null;
         yield return Shot(scenario);
-        var flames = scenario == Wildfire ? grid.GetComponentInChildren<FlameBank>() : null;
-        if (flames != null)
-        {
-            // The same view without Prototype/Flame: what differs between the two is what it drew.
-            Debug.Log($"PERF FLAMES cells={flames.CellsBurning}");
-            flames.enabled = false;
-            yield return null;
-            yield return null;
-            yield return Shot(Wildfire + "-noflames");
-        }
+        if (scenario == Wildfire) yield return FlameShots();
         Application.Quit();
+    }
+
+    // Two shots with Prototype/Flame and one without, of the fire from the air and from close by, so
+    // a script can count what it really drew: the first two differ by a flicker, the last by the flames.
+    IEnumerator FlameShots()
+    {
+        var flames = grid.GetComponentInChildren<FlameBank>();
+        if (flames == null)
+        {
+            Debug.Log("PERF FLAMES none");
+            yield break;
+        }
+        Debug.Log($"PERF FLAMES cells={flames.CellsBurning} shader_supported={flames.ShaderSupported}");
+        yield return Shot("wildfire-wide-a");
+        yield return Shot("wildfire-wide-b");
+        flames.enabled = false;
+        yield return Shot("wildfire-wide-off");
+        flames.enabled = true;
+        LookAtFire();
+        yield return Shot("wildfire-close-a");
+        yield return Shot("wildfire-close-b");
+        flames.enabled = false;
+        yield return Shot("wildfire-close-off");
+    }
+
+    // The camera 5 m from the middle burning cell (PerfStage has taken it from Cinemachine).
+    void LookAtFire()
+    {
+        var world = grid.World;
+        var burning = Enumerable.Range(0, world.Cells.Length).Where(i => world.Cells[i].Fire > 0).ToList();
+        if (burning.Count == 0) return;
+        int cell = burning[burning.Count / 2];
+        var at = grid.CellCenter(cell % world.W, cell / world.W);
+        at.y = grid.GroundAt(at) + 0.8f;
+        var eye = at + new Vector3(0f, 1.5f, -5f);
+        Camera.main.transform.SetPositionAndRotation(eye, Quaternion.LookRotation(at - eye));
     }
 
     // A screenshot is written at the end of the frame it was asked for.

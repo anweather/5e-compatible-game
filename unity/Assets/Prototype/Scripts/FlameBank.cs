@@ -82,6 +82,9 @@ public class FlameBank : MonoBehaviour
     /// <summary>How many cells' fires are drawn, for the probe.</summary>
     public int CellsBurning => burning.Count;
 
+    /// <summary>Whether this machine's GPU can run Prototype/Flame, for the probe.</summary>
+    public bool ShaderSupported => material != null && material.shader.isSupported;
+
     /// <summary>The tongues of a burning cell that are drawn, for the probe.</summary>
     public IEnumerable<Tongue> TonguesOf(int index)
     {
