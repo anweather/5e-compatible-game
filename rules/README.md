@@ -63,6 +63,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
   - `scour` (a sand blast: a cover with the `scourable` tag from its material's `scour {}` is stripped; else the terrain becomes its `scour.leaves`; else raised ground whose material has `scour.wears` is worn down a step)
   - `pushCover` (a floating cover moves a cell along the element's way onto open water with no cover)
   - `bake` (the terrain becomes its material's `bake.into`), `meltCover` (the cover becomes its `melt.into` and gives `melt.water`)
+  - `crust` (the terrain becomes its material's `crust.into` for `crust.for` ticks, after which that terrain's `grow.into` takes it back: lava's crust), `thaw` (the terrain becomes its `thaw.into` and gives `thaw.water` of meltwater: the ice wall)
   - `dissolve` (`"cover"` or `"terrain"`: eaten away into its material's `dissolve.leaves`, when the rule's element is its `dissolve.by`; a cover can leave none)
   - `grow` (a non-blocking terrain the square becomes, with `ticks: [min, max]` and `wave`; see "Growing" below)
   - `conduct`
@@ -232,7 +233,9 @@ as with any digging, so the middle of a crater doesn't burn.
   `"burn": { "catch", "fuel", "heat", "leaves", "log", "look" }` (cover: `catch`,
   `fuel`, `intensity`, `look`), `"break": { "leaves" }`, `"dig": { "hardness",
   "leaves" }`, `"soak": { "dry", "wet" }`, `"freeze": {}`, `"boil": {}`,
-  `"conduct": {}`, `"grow": { "into", "log" }`, `"uproot": { "leaves", "log" }`.
+  `"conduct": {}`, `"grow": { "into", "log" }`, `"uproot": { "leaves", "log" }`,
+  `"crust": { "into", "for" }` (tag `crusts`), `"thaw": { "into", "water" }` (tag `thaws`),
+  `"lift": { "by" }` (tag `lifts`: an updraft lifting what stands over it `by` steps, `World.LiftAt`; the view does the lifting).
   Having `burn`, `break` or `conduct` gives the `flammable`, `breakable` or
   `conductive` tag. The loaders read them as the flat keys
   (`MaterialGroups.cs`, `sandbox/src/materials.ts`); either spelling works.
