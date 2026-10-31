@@ -8,7 +8,6 @@ using System.Runtime.Versioning;
 
 namespace Playtest.Runner
 {
-    [SupportedOSPlatform("windows")]
     public static class AppMute
     {
         [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class MMDeviceEnumerator { }
@@ -60,12 +59,35 @@ namespace Playtest.Runner
             int GetMute(out bool mute);
         }
 
-        /// <summary>Mutes every audio session of a process on the default output; how many it muted (0 if it has none yet).</summary>
+        /// <summary>What <see cref="Mute"/> returns when the PC has no default audio output: nothing can play aloud.</summary>
+        public const int NoOutput = -1;
+
+        /// <summary>Whether a <see cref="Mute"/> result means the player is silent: sessions muted, or no output to hear it on.</summary>
+        public static bool Silenced(int result) => result > 0 || result == NoOutput;
+
+        /// <summary>
+        /// Mutes every audio session of a process on the default output; how many it muted (0 if it
+        /// has none yet), or <see cref="NoOutput"/> when there is no default output (a PC with no audio
+        /// device, or a VM: Windows answers "Element not found").
+        /// </summary>
+        [SupportedOSPlatform("windows")]
         public static int Mute(int pid)
         {
+            try
+            {
+                return MuteOn(pid);
+            }
+            catch (COMException)
+            {
+                return NoOutput;
+            }
+        }
+
+        [SupportedOSPlatform("windows")]
+        static int MuteOn(int pid)
+        {
             var enumerator = (IMMDeviceEnumerator)new MMDeviceEnumerator();
-            IMMDevice device;
-            enumerator.GetDefaultAudioEndpoint(0, 1, out device);
+            if (enumerator.GetDefaultAudioEndpoint(0, 1, out IMMDevice device) != 0 || device == null) return NoOutput;
             var iid = typeof(IAudioSessionManager2).GUID;
             object o;
             device.Activate(ref iid, 23, IntPtr.Zero, out o);

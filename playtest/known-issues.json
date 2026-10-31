@@ -5,5 +5,12 @@
     "messageContains": "D3D12Core",
     "fixedIn": "4a61ee3",
     "note": "The D3D12 fault while the player quits. Fixed in 4a61ee3 (the game ends itself on quit); on a build with that commit it is a regression and is filed. -clean-quit brings it back on purpose, so the bot never passes it."
+  },
+  {
+    "name": "spell-aim-markers",
+    "detector": "visual",
+    "messageContains": "cream squares",
+    "fixedIn": null,
+    "note": "Not a bug: small flat cream (pale yellow, glowing) squares, one per cell, on the cells the selected spell will hit. They are the spell aim markers (SpellCaster.ShowMarkers, since 2026-10-24) and follow the crosshair while a spell is selected, which the bot leaves selected after every radial cast. Triage filed them as cracked ground in 0.1.8 (F-0006, #2). Crack webs are thin dark lines on glass, ice, panes and frozen raiders, not squares."
   }
 ]

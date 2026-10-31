@@ -120,5 +120,14 @@ namespace Chem.Tests
             other.Seed = 6;
             Assert.That(Compare.Describe(a, other).same, Is.False);
         }
+
+        [Test]
+        public void APcWithNoAudioOutputRunsAsMuted()
+        {
+            // Windows answers "Element not found" for the default output on a PC or VM with no audio device.
+            Assert.That(AppMute.Silenced(AppMute.NoOutput), Is.True, "nothing can play aloud");
+            Assert.That(AppMute.Silenced(0), Is.False, "no sound session yet: keep trying");
+            Assert.That(AppMute.Silenced(2), Is.True);
+        }
     }
 }
