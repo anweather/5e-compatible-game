@@ -37,6 +37,8 @@ namespace Chem
             public float[,] Current, Target;
             /// <summary>Where Current may still differ from Target; null when it has caught up.</summary>
             public ChunkRect? Moving;
+            /// <summary>The Update that last filled each sample, so cells close together fill it once.</summary>
+            public int[,] FilledBy;
         }
 
         /// <param name="grid">The chunk layout.</param>
@@ -53,6 +55,9 @@ namespace Chem
 
         public float StepHeight { get; }
         public float EaseSpeed { get; }
+
+        /// <summary>How many samples the last Update worked out: only those round the changed cells.</summary>
+        public int SamplesFilled { get; private set; }
 
         /// <summary>
         /// When set, the ground under a raised wall stays at the wall's foot (its height
@@ -262,17 +267,20 @@ namespace Chem
         public List<ChunkRect> DirtyRects(IEnumerable<(int x, int y)> cells)
         {
             var rects = new ChunkRects();
-            foreach (var (x, y) in cells)
-            {
-                var (u, v) = grid.WorldCell(x, y);
-                // Two cells round it: a snow bank's mound reaches past its own cell (BankAt).
-                var (iLo, iHi) = TerrainGrid.ChunkSpan(u - 2, u + 3);
-                var (jLo, jHi) = TerrainGrid.ChunkSpan(v - 2, v + 3);
-                for (int j = jLo; j <= jHi; j++)
-                    for (int i = iLo; i <= iHi; i++)
-                        if (Shapes(i, j)) rects.Add(Clip(i, j, u - 2, v - 2, u + 3, v + 3));
-            }
+            foreach (var (x, y) in cells) ForEachRect(x, y, rects.Add);
             return rects.ToList();
+        }
+
+        // The samples one cell's change can reach, one rectangle per chunk.
+        void ForEachRect(int x, int y, Action<ChunkRect> visit)
+        {
+            var (u, v) = grid.WorldCell(x, y);
+            // Two cells round it: a snow bank's mound reaches past its own cell (BankAt).
+            var (iLo, iHi) = TerrainGrid.ChunkSpan(u - 2, u + 3);
+            var (jLo, jHi) = TerrainGrid.ChunkSpan(v - 2, v + 3);
+            for (int j = jLo; j <= jHi; j++)
+                for (int i = iLo; i <= iHi; i++)
+                    if (Shapes(i, j)) visit(Clip(i, j, u - 2, v - 2, u + 3, v + 3));
         }
 
         /// <summary>World cell corners c0..c1 as the samples they span in chunk (i, j).</summary>
@@ -299,21 +307,45 @@ namespace Chem
 
         /// <summary>
         /// Recomputes the targets around changed cells. With snap the drawn heights jump there
-        /// too; otherwise Advance eases them. Returns the rectangles whose targets were
-        /// recomputed (with snap, where Current changed: apply them now).
+        /// too; otherwise Advance eases them. Returns one rectangle per chunk holding everything
+        /// recomputed (with snap, where Current changed: apply them now). Only the samples round
+        /// each cell are worked out, not the whole rectangle: a snowfall's few hundred cells are
+        /// scattered, and their rectangles would cover most of 50 chunks.
         /// </summary>
         public List<ChunkRect> Update(World world, IEnumerable<(int x, int y)> cells, bool snap = false)
         {
-            var rects = DirtyRects(cells);
+            var changed = new List<(int x, int y)>(cells);
+            var rects = DirtyRects(changed);
+            foreach (var r in rects)
+                if (chunks[(r.I, r.J)].Target == null) throw new InvalidOperationException("Call Reset before Update");
+            updates++;
+            SamplesFilled = 0;
+            foreach (var (x, y) in changed) ForEachRect(x, y, r => FillOnce(world, chunks[(r.I, r.J)], r));
             foreach (var r in rects)
             {
                 var s = chunks[(r.I, r.J)];
-                if (s.Target == null) throw new InvalidOperationException("Call Reset before Update");
-                Fill(world, s.Target, r);
                 if (snap) Copy(s.Target, s.Current, r);
                 else s.Moving = s.Moving.HasValue ? s.Moving.Value.Union(r) : r;
             }
             return rects;
+        }
+
+        int updates;
+
+        // Fill, skipping samples this Update has already worked out.
+        void FillOnce(World world, ChunkState s, ChunkRect r)
+        {
+            s.FilledBy ??= new int[s.Target.GetLength(0), s.Target.GetLength(1)];
+            for (int sz = r.Z; sz <= r.ZMax; sz++)
+            {
+                for (int sx = r.X; sx <= r.XMax; sx++)
+                {
+                    if (s.FilledBy[sz, sx] == updates) continue;
+                    s.FilledBy[sz, sx] = updates;
+                    s.Target[sz, sx] = SampleOffset(world, r.I, r.J, sx, sz);
+                    SamplesFilled++;
+                }
+            }
         }
 
         static void Copy(float[,] from, float[,] to, ChunkRect r)

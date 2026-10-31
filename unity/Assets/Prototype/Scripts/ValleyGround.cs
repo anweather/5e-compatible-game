@@ -228,6 +228,7 @@ public sealed class ValleyGround
         {
             PerfCounts.Add("shape.reshaped_cells", reshaped.Count);
             using (HeightUpdateMarker.Auto()) CountRects("shape.update", heightfield.Update(world, reshaped));
+            PerfCounts.Add("shape.update_filled", heightfield.SamplesFilled);
             reshaped.Clear();
         }
         List<ChunkRect> moved;

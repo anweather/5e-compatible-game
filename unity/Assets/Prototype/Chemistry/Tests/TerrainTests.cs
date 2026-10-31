@@ -281,6 +281,31 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void UpdateFillsOnlyRoundTheCellsAndMatchesAFullRecompute([Values(1, 2, 3)] int seed)
+        {
+            // Snow's shape: banks scattered over several chunks, some on their edges (RandomCells),
+            // some close together, so the samples they share are worked out once.
+            var w = Rugged(seed);
+            var field = new CellHeightfield(G, Step);
+            field.Reset(w);
+            var rng = new Random(seed);
+            var changed = RandomCells(rng, 200);
+            changed.Add((100, 100));
+            changed.Add((100, 100));
+            changed.Add((101, 100));
+            foreach (var (x, y) in changed)
+            {
+                var c = w.At(x, y);
+                c.Cover = World.BankCover;
+                if (rng.Next(3) == 0) c.Height = rng.Next(R.Sim.Height.Min, R.Sim.Height.Max + 1);
+            }
+            var rects = field.Update(w, changed);
+            foreach (var (i, j) in field.Chunks) AssertSame(field.Compute(w, i, j), field.Target(i, j), $"target ({i}, {j})");
+            Assert.Less(field.SamplesFilled, rects.Sum(r => r.Width * r.Height) / 2, "well under the rectangles it would have been");
+            Assert.Greater(field.SamplesFilled, 0);
+        }
+
+        [Test]
         public void EasingReachesTheTargetAtItsSpeed()
         {
             var w = Meadow();
