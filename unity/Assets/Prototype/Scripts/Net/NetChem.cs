@@ -757,7 +757,8 @@ public struct ComboIntent : INetworkSerializable
 {
     public byte Kind;
     public FixedString32Bytes Player, Element;
-    public int Step, Tick;
+    public int Step, Charge, Tick;
+    public bool Hold;
 
     public static ComboIntent From(ComboCommand c, int tick) => new ComboIntent
     {
@@ -765,10 +766,12 @@ public struct ComboIntent : INetworkSerializable
         Player = new FixedString32Bytes(c.Player ?? ""),
         Element = new FixedString32Bytes(c.Element ?? ""),
         Step = c.Step,
+        Charge = c.Charge,
+        Hold = c.Hold,
         Tick = tick,
     };
 
-    public ComboCommand ToCommand() => new ComboCommand(Player.ToString(), (ComboCommandKind)Kind, Element.Length > 0 ? Element.ToString() : null, Step);
+    public ComboCommand ToCommand() => new ComboCommand(Player.ToString(), (ComboCommandKind)Kind, Element.Length > 0 ? Element.ToString() : null, Step, Charge, Hold);
 
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
@@ -776,6 +779,8 @@ public struct ComboIntent : INetworkSerializable
         serializer.SerializeValue(ref Player);
         serializer.SerializeValue(ref Element);
         serializer.SerializeValue(ref Step);
+        serializer.SerializeValue(ref Charge);
+        serializer.SerializeValue(ref Hold);
         serializer.SerializeValue(ref Tick);
     }
 }

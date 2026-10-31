@@ -38,15 +38,14 @@ public partial class SpellCaster : MonoBehaviour
     NetChem net;
     RaycastHit crosshair;
     bool hasCrosshair;
-    // Holding Cast charges a spell that can be (ChargeSeconds a level, to World.MaxCharge); release casts it.
-    const float ChargeSeconds = 0.45f;
+    // Holding Cast charges a spell that can be (ElementHold.SecondsPerLevel a level, to World.MaxCharge); release casts it.
     // The element that eats things away (Acid Splash): its splash, hiss and eaten stain.
     const string AcidElement = "acid", HeatElement = "heat", SandElement = "sand", LightningElement = "lightning";
     float chargeStart = -1f;
     GUIStyle pips;
 
     /// <summary>The charge the held Cast has built so far (1 when not charging).</summary>
-    public int Charge => chargeStart < 0f ? 1 : World.ClampCharge(1 + (int)((Time.time - chargeStart) / ChargeSeconds));
+    public int Charge => chargeStart < 0f ? 1 : ElementHold.ChargeOf(Time.time - chargeStart, World.MaxCharge);
     /// <summary>How long Cast has been held charging, or -1 when it isn't (CastPose holds the wind-up).</summary>
     public float ChargingSeconds => chargeStart < 0f ? -1f : Time.time - chargeStart;
     Vector3? blinkLanding;
@@ -146,12 +145,8 @@ public partial class SpellCaster : MonoBehaviour
         return true;
     }
 
-    /// <summary>
-    /// Whether holding Cast makes this spell stronger: every spell does. In the cells (World.Cast) a
-    /// line reaches further, a spot, square or burst grows, water and earth shaping go further; in
-    /// what moves (SpellForces) a push is harder, Misty Step and Mage Hand reach further, Levitate lasts.
-    /// </summary>
-    public static bool Chargeable(SpellDef spell) => spell != null;
+    /// <summary>Whether holding Cast makes this spell stronger (World.Chargeable).</summary>
+    public static bool Chargeable(SpellDef spell) => World.Chargeable(spell);
 
     // Three pips under the crosshair fill as the held Cast charges.
     void OnGUI()

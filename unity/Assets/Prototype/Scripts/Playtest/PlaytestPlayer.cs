@@ -252,18 +252,21 @@ public sealed class PlaytestPlayer
     const float ThrownRise = 0.5f, PropSearch = 60f;
 
     // A cast by elements a few cells ahead, as a player makes it: each element pressed in order, the
-    // meter left to run out, the cast going off where it's aimed. Then a shot, and a check that a
-    // chemistry spell changed something there.
+    // last perhaps held to charge, the meter left to run out, the cast going off where it's aimed.
+    // Then a shot, and a check that a chemistry spell changed something there.
     IEnumerator CastElements(string combo)
     {
         if (caster == null) yield break;
         var at = Ahead();
         var cell = grid.CellAt(at);
-        var def = grid.World.Rules.Spell(grid.World.Rules.Combos.Combo(combo)?.Spell);
+        var world = grid.World;
+        var cast = world.Rules.Combos.Combo(combo);
+        int charge = Chains.ChargeFor(dice);
+        var def = world.Rules.Spell(cast?.SpellAt(charge, world.MaxChargeOf(cast)));
         var watched = Watched(def?.Id, cell, Dir(wizard.transform.forward));
         string before = HashIfActive(watched);
         bool went = false;
-        yield return Press(combo, at, ok => went = ok);
+        yield return Press(combo, at, ok => went = ok, charge);
         if (!went) yield break;
         yield return Wait(ResultSeconds);
         shoot("elements-" + combo.Replace('+', '-'));
@@ -273,9 +276,10 @@ public sealed class PlaytestPlayer
     }
 
     // Presses a combo's elements through the caster (the same ComboCommand as the pad and the keys),
-    // a frame apart so the second lands inside the window, with the cast aimed at a point; waits for
-    // the meter to run out. Tells whether it went off (it's in the grimoire and nothing is loaded).
-    IEnumerator Press(string combo, Vector3 at, Action<bool> went)
+    // a frame apart so the second lands inside the window, with the cast aimed at a point; holds the
+    // last to the charge asked for, and waits for the meter to run out. Tells whether it went off
+    // (it's in the grimoire and nothing is loaded).
+    IEnumerator Press(string combo, Vector3 at, Action<bool> went, int charge = 1)
     {
         var world = grid.World;
         string player = caster.CastPlayer;
@@ -283,17 +287,22 @@ public sealed class PlaytestPlayer
         float until = Time.time + MeterSeconds;
         while (world.CastOf(player)?.Casting == true && Time.time < until) yield return null;
         var cell = grid.CellAt(at);
-        trace("elements", F("{0} at {1},{2}", combo, cell.x, cell.y));
+        trace("elements", F("{0} at {1},{2} charge {3}", combo, cell.x, cell.y, charge));
         caster.AimOverride = at;
         var elements = Chains.ElementsOf(combo);
         for (int i = 0; i < elements.Length; i++)
         {
             if (i > 0) yield return null;
-            if (caster.LoadElement(elements[i])) continue;
+            if (caster.LoadElement(elements[i], charge > 1 && i == elements.Length - 1)) continue;
             report(new Candidate("element-refused", combo, Category.Gameplay, Frame, $"loading {elements[i]} for {combo} was refused"));
             caster.AimOverride = null;
             went(false);
             yield break;
+        }
+        if (charge > 1)
+        {
+            yield return Wait((charge - 1) * ElementHold.SecondsPerLevel);
+            caster.LetGo(charge);
         }
         until = Time.time + MeterSeconds;
         while (world.CastOf(player)?.Casting == true && Time.time < until) yield return null;
@@ -341,7 +350,7 @@ public sealed class PlaytestPlayer
         var (ax, ay) = aim.Value;
         int since = grid.World.Tick;
         float propFrom = prop != null ? prop.transform.position.y : 0f, propTop = propFrom;
-        yield return Press(chain.Trigger, CellPoint(ax, ay), ok => went = ok);
+        yield return Press(chain.Trigger, CellPoint(ax, ay), ok => went = ok, chain.TriggerCharge);
         if (!went) yield break;
         bool done = false;
         until = Time.time + ResultSeconds;

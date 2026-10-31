@@ -324,6 +324,16 @@ public class PlaytestLogicTests
     }
 
     [Test]
+    public void CastsByElementsAreSometimesHeldToCharge()
+    {
+        var dice = new PlaytestRandom(5);
+        var charges = Enumerable.Range(0, 300).Select(_ => Chains.ChargeFor(dice)).ToList();
+        Assert.That(charges.Distinct().OrderBy(c => c), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(charges.Count(c => c == 1), Is.InRange(100, 200), "about half are tapped");
+        Assert.That(Chains.ById("growth-on-burnt").TriggerCharge, Is.EqualTo(3), "one chain needs the full charge");
+    }
+
+    [Test]
     public void CastsByElementsLeanTowardsTheOnesNotCastLately()
     {
         var options = new GoalOptions { ElementCasts = new[] { "fire", "water+earth", "air+fire" }, ChainIds = new[] { "forge-on-mud" } };

@@ -166,8 +166,15 @@ ground for an area or wall.
   casts and opens the grimoire; dodge roll moved to the right stick's click; pad zoom is gone.
 - **Keyboard:** Z X C V, B to cancel, [ ] to cycle, T to cast, J for the grimoire. The mouse still
   casts what the radial picked. Tab keeps the radial, and F2 swaps the controller to its old layout.
-- **Not yet:** tap, hold and ground shapes (every cast goes off at charge 1, from the crosshair);
-  other players' orbs aren't drawn, only their casts.
+- **Charged casts (#7):** hold the last element's button (Z X C V, or the bumpers and triggers) and the
+  cast gains a level every 0.45 s, up to the spell's max; let go and it goes off at that charge, once its
+  meter is out. Held past the meter's end, it waits for the release. A tap is charge 1, as before. A
+  combo's `held` spell replaces it at full charge: Wall of Stone is Stone Ramp, Raise Earth digs
+  (Lower Earth). The steps and the held spell's name are on the cast meter (`CastHud`). The press sends
+  `ComboCommand.Load` with `Hold`, the release `ComboCommand.Release` with the charge (`ElementHold`
+  works it out), so every peer casts at the same strength, and it's in `CastState` and the checksum.
+- **Not yet:** tap and ground shapes (casts go from the crosshair); other players' orbs aren't drawn,
+  only their casts.
 
 **The looks (UX pass 2, 2026-10-30):** each drawn from the core, GPU-first, and staged by the
 `spelllooks` probe: Forge's sparks and brick's courses, Falling Star's mark and a small meteor timed

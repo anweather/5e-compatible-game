@@ -10,6 +10,13 @@ namespace Chem
         /// <summary>The most a cast can be charged (held before release): 1 is a tap.</summary>
         public const int MaxCharge = 3;
 
+        /// <summary>
+        /// Whether holding a cast makes this spell stronger: every spell does. In the cells (World.Cast) a
+        /// line reaches further, a spot, square or burst grows, water and earth shaping go further; in
+        /// what moves (SpellForces) a push is harder, Misty Step and Mage Hand reach further, Levitate lasts.
+        /// </summary>
+        public static bool Chargeable(SpellDef spell) => spell != null;
+
         /// <summary>A cast's charge, kept to 1..MaxCharge.</summary>
         public static int ClampCharge(int charge) => System.Math.Max(1, System.Math.Min(MaxCharge, charge));
 

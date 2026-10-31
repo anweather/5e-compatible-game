@@ -192,7 +192,7 @@ touch them.
 : A wizard using a spell at a cell and direction (`CastCommand`).
 
 **Cast charge**
-: How long a cast was held, 1 to 3 (`CastCommand.Charge`).
+: How long a cast was held, 1 to 3 (`CastCommand.Charge`, `ComboCommand.Charge`).
 
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,

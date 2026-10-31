@@ -46,6 +46,8 @@ namespace Playtest
         public bool WalkAcross { get; set; }
         /// <summary>The setup is aimed under a prop, and the prop should be thrown (Geyser).</summary>
         public bool UnderProp { get; set; }
+        /// <summary>The charge the trigger is held to (Plant Growth at full charge).</summary>
+        public int TriggerCharge { get; set; } = 1;
 
         /// <summary>
         /// The cell the trigger aims at: the one nearest (x, y) within <see cref="Near"/> that has what
@@ -110,7 +112,13 @@ namespace Playtest
                 c => c.Fire > 0, "the wave douses the fire",
                 // Doused, not just out: a small fire burns itself out within the wait anyway.
                 (w, x, y, since) => w.Log.Any(l => l.Tick >= since && l.Text == Douse) && !Chain.AnyNear(w, x, y, 1, c => c.Fire > 0)),
+            new Chain("growth-on-burnt", "Plant Growth held on burnt ground", "fire+fire", "earth+water",
+                c => c.Cover == "ash" && c.Fire == 0, "saplings take root in the ash",
+                (w, x, y, _) => Chain.AnyNear(w, x, y, Chain.Near * 2, c => c.T == "sapling")) { TriggerCharge = World.MaxCharge },
         };
+
+        /// <summary>The charge a cast by elements is held to: half the time a tap, else 2 or 3.</summary>
+        public static int ChargeFor(PlaytestRandom dice) => dice.Range(0, 2) == 0 ? 1 : dice.Range(2, World.MaxCharge + 1);
 
         /// <summary>A chain by its id, or null.</summary>
         public static Chain ById(string id) => All.FirstOrDefault(c => c.Id == id);
