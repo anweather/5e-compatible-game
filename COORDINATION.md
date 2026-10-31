@@ -611,3 +611,15 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   wip/w1-moving-b, wip/w2-playtest-rules-a). Max takes over (Pro first, then
   Max): w3 has charged casts (#7), w4 finishes moving-b and the boulder (#21)
   from the WIP, both through the direct mailbox.
+- 2026-10-30 21:00: DECIDED (Andrew, one at a time):
+  1. Charged casts cost time: each charge level adds cast time (full charge
+     about 2 s), so tapping stays the quick option (#7).
+  2. Raise Earth held is a strong raise (charge 3: a tall pillar or mound),
+     not Lower Earth; digging stays with the pick and a cast aimed at your feet.
+  3. Zero health (#14): downed, then respawn. At 0 you fall and drop what you
+     carry; about 3 s later you're back at the yard with full health.
+  4. Sleet Storm: a slippery field, as in 5e (wide frost glaze, creatures
+     slide, fires go out); Frost stays the precise one.
+  5. The punch goes on Circle (pad), when not casting (B still cancels a
+     cast); F on keys. Square keeps picking up and sitting (#18).
+  6. Voice: the sound pass first; Vivox voice waits for Andrew's setup.
