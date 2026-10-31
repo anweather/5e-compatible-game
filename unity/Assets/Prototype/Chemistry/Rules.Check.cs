@@ -125,6 +125,7 @@ namespace Chem
                 if (Text(s["effect"]) == "terraform") TerraformRefs(s);
                 if (!IsCrater(s["crater"])) Errors.Add($"spell {Show(s["id"])}: crater needs a whole depth from 1, radius from 0 and strength from 1");
                 CraterLeaves(s);
+                if (s["pullEvery"] != null && !(IsWholeNumber(s["pullEvery"]) && (double)s["pullEvery"] >= 1)) Errors.Add($"spell {Show(s["id"])}: pullEvery must be a whole number from 1");
             }
 
             // A crater's leaves names a terrain there is.

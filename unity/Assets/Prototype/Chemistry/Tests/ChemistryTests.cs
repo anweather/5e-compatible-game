@@ -799,7 +799,7 @@ namespace Chem.Tests
             int rained = 0;
             for (int x = 14; x <= 18; x++) rained += w.At(x, 2).Water;
             Assert.That(rained, Is.GreaterThan(0), "the cloud rains on the cells under it");
-            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 4 49212457 399058435"), "the same in the sandbox");
+            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 4 49129c87 1083013499"), "the same in the sandbox");
         }
 
         [Test]
@@ -879,6 +879,32 @@ namespace Chem.Tests
             for (int x = 3; x <= 7; x++) Assert.That(w.At(x, 4).Frozen, $"x={x} frozen");
             Direct(w, 5, 4, "lightning");
             Assert.That(w.At(6, 4).Charge, Is.EqualTo(0), "ice doesn't conduct");
+        }
+
+        [Test]
+        public void AWhirlwindDrawsGasAndCreaturesInAndRunsFireRoundItsRing()
+        {
+            // A whirlwind on a field with smoke off to one side, a goblin and a bone hound on its edge and grass
+            // along its top ring; fire lit on the ring runs round it, the smoke and the creatures come in toward
+            // the middle, and after its ten seconds it's gone. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 15, 9, 4, "dirt");
+            for (int x = 5; x <= 9; x++) w.At(x, 2).T = "grass";
+            var gob = w.SpawnRaider("goblin", 5, 4, 10);
+            var hound = w.SpawnRaider("bone-hound", 9, 6, 6);
+            w.Cast("whirlwind", 7, 4, 0);
+            Assert.That(w.Whirls, Has.Count.EqualTo(1));
+            w.At(9, 4).Gas = "smoke";
+            w.At(9, 4).GasAmt = 3;
+            w.Apply(5, 2, "fire", 3, -1, true);
+            Run(w, 3);
+            Assert.That(w.At(6, 2).Fire, Is.GreaterThan(0), "the fire runs east along the top ring");
+            Assert.That((gob.X, gob.Y), Is.EqualTo((6, 4)), "the goblin is drawn a cell in");
+            Assert.That(w.At(8, 4).Gas, Is.EqualTo("smoke"), "and the smoke");
+            Run(w, 30);
+            string mid = $"{w.CellHash()} {w.RngState} {gob.X},{gob.Y} {hound.X},{hound.Y}";
+            Run(w, 30);
+            Assert.That(w.Whirls, Is.Empty, "gone after its duration");
+            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("a37e3fd7 1921566711 7,4 7,5 | 44fe5e41 657895371"), "the same in the sandbox");
         }
 
         [Test]
