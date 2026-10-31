@@ -1,17 +1,23 @@
 Shader "Prototype/Ocean"
 {
     // The sea (Ocean.cs): a mesh at sea level whose vertices carry the water's depth there (uv1.x,
-    // metres to the sea bed) and how far out to sea they are (uv1.y). Swell rolls in toward the
-    // shore (_ShoreDir), growing as the water shoals and breaking into foam over the last few
-    // metres, then running up the sand as swash and draining back. Deep water is dark blue, the
-    // shallows turquoise and clear over the sand; the sky's reflection comes in at grazing angles
-    // and the sun glints. No textures: the ripples and foam are noise worked out here.
+    // metres to the sea bed). Swell rolls in toward the nearest land, growing as the water shoals
+    // and breaking into foam over the last few metres, then running up the sand as swash and
+    // draining back. The way there comes from the shore map (ShoreMap, _ShoreMap): each wave's phase
+    // is worked out from the map's distance to the shore rather than along one direction, so its
+    // crests follow the coast and meet without a seam where two shores are about as near. The
+    // crossing waves lean off that by a fixed way across (_ShoreDir, the mainland's). The waves die
+    // away before the map's edge. Deep water is dark blue, the shallows turquoise and clear over the
+    // sand; the sky's reflection comes in at grazing angles and the sun glints. The ripples and foam
+    // are noise worked out here.
     Properties
     {
         _Deep ("Deep", Color) = (0.03, 0.17, 0.32, 1)
         _Shallow ("Shallow", Color) = (0.1, 0.62, 0.66, 1)
         _Foam ("Foam", Color) = (0.95, 0.97, 0.97, 1)
-        _ShoreDir ("Toward the shore (xz)", Vector) = (-0.707, 0.707, 0, 0)
+        _ShoreDir ("Toward the mainland (xz)", Vector) = (-0.707, 0.707, 0, 0)
+        [NoScaleOffset] _ShoreMap ("Shore map (way to land, distance)", 2D) = "black" {}
+        _ShoreMapRect ("Shore map: corner xy, 1 / side, fades in the side", Vector) = (0, 0, 1, 1)
         _Swell ("Swell height (m)", Float) = 0.6
         _Wavelength ("Swell wavelength (m)", Float) = 18
         _Speed ("Swell speed (m/s)", Float) = 4.2
@@ -39,14 +45,17 @@ Shader "Prototype/Ocean"
 
             CBUFFER_START(UnityPerMaterial)
             half4 _Deep, _Shallow, _Foam;
-            float4 _ShoreDir;
+            float4 _ShoreDir, _ShoreMapRect;
             float _Swell, _Wavelength, _Speed;
             CBUFFER_END
+
+            TEXTURE2D(_ShoreMap);
+            SAMPLER(sampler_ShoreMap);
 
             struct Attributes
             {
                 float4 positionOS : POSITION;
-                float2 water : TEXCOORD1; // depth to the bed (m), distance out to sea (m)
+                float2 water : TEXCOORD1; // depth to the bed (m), in x
             };
 
             struct Varyings
@@ -56,6 +65,7 @@ Shader "Prototype/Ocean"
                 float3 normalWS : TEXCOORD1;
                 float4 surf : TEXCOORD2; // depth, the swell's phase, swash, crest
                 half fogFactor : TEXCOORD3;
+                float3 shore : TEXCOORD4; // the way to land (xz), the distance to the shore
             };
 
             float Hash(float2 p)
@@ -72,12 +82,13 @@ Shader "Prototype/Ocean"
                 return lerp(lerp(Hash(i), Hash(i + float2(1, 0)), u.x), lerp(Hash(i + float2(0, 1)), Hash(i + float2(1, 1)), u.x), u.y);
             }
 
-            // One Gerstner wave: adds its displacement and its slope (dy/dx, dy/dz).
-            void Gerstner(float2 xz, float2 dir, float wavelength, float height, float steep, float speed, float t,
+            // One Gerstner wave, given how far along its way a point is and which way that is there:
+            // adds its displacement and its slope (dy/dx, dy/dz).
+            void Gerstner(float along, float2 dir, float wavelength, float height, float steep, float speed, float t,
                 inout float3 offset, inout float2 slope)
             {
                 float k = 6.2831853 / wavelength;
-                float f = k * (dot(dir, xz) - speed * t);
+                float f = k * (along - speed * t);
                 float a = height * 0.5;
                 offset.xz += dir * (steep / k) * cos(f) * saturate(a * k * 2.0);
                 offset.y += a * sin(f);
@@ -88,31 +99,42 @@ Shader "Prototype/Ocean"
             {
                 Varyings o;
                 float3 p = TransformObjectToWorld(input.positionOS.xyz);
-                float depth = input.water.x, out_ = input.water.y;
+                float depth = input.water.x;
                 float t = _Time.y;
-                float2 shore = normalize(_ShoreDir.xy);
-                float2 side = float2(-shore.y, shore.x);
+                // The way to land, and how far in along it a point is: phases come from that distance
+                // (ShoreMap, the same as Ocean.WaveOffset), since a dot with a way that changes from
+                // place to place would crowd and stretch the waves. reach fades them out by the map's edge.
+                float2 mapUV = (p.xz - _ShoreMapRect.xy) * _ShoreMapRect.z;
+                float3 map = SAMPLE_TEXTURE2D_LOD(_ShoreMap, sampler_ShoreMap, mapUV, 0).rgb;
+                float2 shore = map.xy;
+                float fromShore = map.z, shoreward = -fromShore;
+                float2 edge = min(mapUV, 1.0 - mapUV);
+                float reach = smoothstep(0.0, 1.0, saturate(min(edge.x, edge.y) * _ShoreMapRect.w));
+                float2 prevailing = normalize(_ShoreDir.xy);
+                float2 side = float2(-prevailing.y, prevailing.x);
+                float across = dot(side, p.xz);
 
                 // The swell grows as the sea shoals (to about 1.6 times at 2 m) and is spent by the
                 // water's edge; far out it settles to a long gentle roll.
                 float shoal = lerp(1.0, 2.4, saturate((5.5 - depth) / 3.5)) * saturate(depth / 0.5 + 0.1);
                 float3 offset = 0;
                 float2 slope = 0;
-                Gerstner(p.xz, shore, _Wavelength, _Swell * shoal, 0.55, _Speed, t, offset, slope);
-                Gerstner(p.xz, normalize(shore + side * 0.35), _Wavelength * 0.61, _Swell * 0.45 * shoal, 0.4, _Speed * 0.8, t, offset, slope);
-                Gerstner(p.xz, normalize(shore - side * 0.5), _Wavelength * 0.37, _Swell * 0.22, 0.3, _Speed * 0.6, t, offset, slope);
-                Gerstner(p.xz, normalize(side + shore * 0.2), _Wavelength * 2.3, _Swell * 0.35 * saturate(out_ / 60.0), 0.2, _Speed * 1.3, t, offset, slope);
+                float swell = _Swell * reach;
+                Gerstner(shoreward, shore, _Wavelength, swell * shoal, 0.55, _Speed, t, offset, slope);
+                Gerstner(shoreward * 0.944 + across * 0.33, shore * 0.944 + side * 0.33, _Wavelength * 0.61, swell * 0.45 * shoal, 0.4, _Speed * 0.8, t, offset, slope);
+                Gerstner(shoreward * 0.894 - across * 0.447, shore * 0.894 - side * 0.447, _Wavelength * 0.37, swell * 0.22, 0.3, _Speed * 0.6, t, offset, slope);
+                Gerstner(across * 0.981 + shoreward * 0.196, side * 0.981 + shore * 0.196, _Wavelength * 2.3, swell * 0.35 * saturate(fromShore / 60.0), 0.2, _Speed * 1.3, t, offset, slope);
 
                 // Swash: after each breaker the water surges up the sand and drains back.
                 float k = 6.2831853 / _Wavelength;
-                float phase = k * (dot(shore, p.xz) - _Speed * t);
+                float phase = k * (shoreward - _Speed * t);
                 float pulse = 0.5 + 0.5 * sin(phase - 1.2);
                 float swashZone = saturate(1.0 - depth / 1.5);
                 offset.y += swashZone * (pulse * 0.32 - 0.08);
                 offset.xz += shore * swashZone * pulse * 1.2;
 
                 // Breaking: over the bar the crest heaps up and pitches forward before it spills.
-                float crestLift = pow(saturate(0.5 + 0.5 * sin(phase + 0.6)), 4.0);
+                float crestLift = reach * pow(saturate(0.5 + 0.5 * sin(phase + 0.6)), 4.0);
                 float bar = saturate((3.6 - depth) / 1.6) * saturate(depth / 0.6);
                 offset.y += bar * crestLift * _Swell * 0.6;
                 offset.xz += shore * bar * crestLift * 0.5;
@@ -123,6 +145,7 @@ Shader "Prototype/Ocean"
                 o.normalWS = normalize(float3(-slope.x, 1.0, -slope.y));
                 // The fragment works out the breakers' foam from where each point is in the swell.
                 o.surf = float4(depth, phase, swashZone * pulse, crestLift);
+                o.shore = float3(shore, fromShore);
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
                 return o;
             }
@@ -167,9 +190,9 @@ Shader "Prototype/Ocean"
                 float crestLine = smoothstep(0.9, 1.0, wave) + 1.0 - smoothstep(0.0, 0.04, wave);
                 float trail = pow(smoothstep(0.5, 0.97, wave), 1.6);
                 float bar = saturate((4.5 - depth) / 3.0) * saturate(depth / 0.2 + 0.15);
-                float2 shoreDir = normalize(_ShoreDir.xy);
-                float2 streakUV = float2(dot(p.xz, float2(-shoreDir.y, shoreDir.x)) * 0.25, dot(p.xz, shoreDir) * 1.4);
-                float tear = 0.45 + 0.9 * Noise(streakUV + float2(t * 0.15, 0)) * (0.6 + 0.6 * lace);
+                // (Stretched out along the shore: the point moved away from the land, the further the further out.)
+                float2 streakUV = (p.xz - input.shore.xy * input.shore.z * 4.6) * 0.25;
+                float tear = 0.45 + 0.9 * Noise(streakUV + float2(-input.shore.y, input.shore.x) * t * 0.15) * (0.6 + 0.6 * lace);
                 float breakers = bar * saturate(crestLine * 1.5 + trail * 1.0) * tear;
                 float swash = input.surf.z * saturate((1.0 - depth) / 1.0) * (0.4 + lace);
                 float caps = pow(input.surf.w, 3.0) * saturate(depth / 10.0 - 0.5) * step(0.8, Noise(p.xz * 0.12 + t * 0.05));

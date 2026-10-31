@@ -52,7 +52,9 @@ public static class ValleyBuilder
         BuildSky();
         var cabins = BuildCabins();
         var houses = BuildVillages();
-        CoastBuilder.Build(VillageMaterial());
+        // The way to the nearest land over the sea, for the surf's push and the waves (ShoreMap).
+        var shoreMap = ShoreMapBaker.Bake($"{Generated}/ShoreMap.asset", ValleyCoast.IsLand);
+        CoastBuilder.Build(VillageMaterial(), shoreMap);
         ScatterRocks();
         BuildWorldEdge();
         BuildCourt();
@@ -77,6 +79,7 @@ public static class ValleyBuilder
         currents.grid = grid;
         currents.river = ValleyShape.RiverLine;
         currents.riverHalfWidth = ValleyShape.RiverHalfWidth;
+        currents.shoreMap = shoreMap;
         currents.shoreOrigin = ValleyCoast.ShoreOrigin;
         currents.seaward = ValleyCoast.Seaward;
         currents.seaLevel = ValleyCoast.SeaLevel;

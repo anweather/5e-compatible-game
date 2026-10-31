@@ -178,9 +178,9 @@ public static class ProbeScenarios
         new Entry("life", typeof(LifeProbe), 30f,
             "The coast's small life (AmbientLife): gulls, crabs and shoals placed (3+ gull anchors, 15+ crab spots, 10+ shoals), and a crab the wizard " +
             "walks up to bolts over 0.8 m or burrows into the sand, no console errors."),
-        new Entry("current", typeof(CurrentProbe), 40f,
+        new Entry("current", typeof(CurrentProbe), 75f,
             "The water carries things (WaterCurrents): the wizard dropped mid-river and left still is swept over 2 m downstream in 3 s, dropped in the surf off the beach is " +
-            "carried over 1.5 m toward the sand in 5 s, and a crate floated on the river drifts over 2 m downstream in 4 s, no console errors."),
+            "carried over 1.5 m toward the sand in 5 s, dropped in the surf off the island's mainland side is carried over 1.5 m toward the island in 5 s (the nearest land, ShoreMap), and a crate floated on the river drifts over 2 m downstream in 4 s, no console errors."),
         new Entry("sit", typeof(SitProbe), 40f,
             "The wizard sits on the bench nearest the yard, then lies back on the nearest beach lounger (Seat, Sitter, SitPose), and gets up from each. Checks: ten or more " +
             "seats in the world, the seat in reach beside it (E goes to it), held on the seat with the pose on and the hips within 0.2 m of the seat point, and free again after standing, no console errors."),

@@ -130,7 +130,8 @@ all down together.
   - `Seat`, `Sitter` and `SitPose`: E sits the wizard on a bench, or lays it back on a lounger.
   - The pose is worked out on every machine from where the wizard is.
 - **Currents:**
-  - `WaterCurrents` carries swimmers (`CurrentRider`) and floating props (`PhysicsProp`): downstream in the river, and ashore with each breaker in the surf.
+  - `WaterCurrents` carries swimmers (`CurrentRider`) and floating props (`PhysicsProp`): downstream in the river, and toward the nearest land with each breaker in the surf.
+  - The surf and the sea's waves run along the shore map (`ShoreMap`), so near the island they come in toward the island. It's baked with the valley, and where two shores are about as near the push dies away and the waves meet.
   - Physics only, as D4 says.
 - **The falls:** a 36 m cliff whose rocks are solid, and a walkable scree ramp up its east flank.
 - **Probes:** `sit`, `current`, and `falls` (with its ramp).

@@ -69,6 +69,13 @@ touch them.
   for a while (`Cell.DampUntil`) and soaks more slowly, as in rain. Deep
   water (lakes, the river, the sea, a filled pit) doesn't soak.
 
+**Shore map**
+: Over the sea and out past the terrain, the way to the nearest land and
+  the distance to the shore (`ShoreMap`, baked by `ValleyBuilder` into
+  `Generated/ShoreMap.asset`). The surf's push (`WaterCurrents`) and the
+  waves (`Ocean`, the Ocean shader) both run along it, so near the island
+  they go toward the island. A view of the land, never the chemistry (D4).
+
 **The yard**
 : The old 64 × 64 play area, now meadow in the middle of the valley
   (`ChemistryYard.unity` keeps the name).

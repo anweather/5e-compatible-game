@@ -2,8 +2,9 @@ using UnityEngine;
 
 // Currents in the valley's water (docs/WORLD_LIFE.md): the river runs
 // downstream along its course, fastest mid-channel; the sea's surf surges up
-// the beach as each breaker comes in (in time with the Ocean shader's swell)
-// and drifts gently shoreward further out. The still lake has none. ValleyBuilder
+// the nearest beach, the mainland's or the island's, as each breaker comes in
+// (in time with the Ocean shader's swell) and drifts gently shoreward further
+// out, both along the shore map (ShoreMap). The still lake has none. ValleyBuilder
 // bakes the river's line and the coast in. Anyone in the water can ask At(p):
 // CurrentRider pushes the local wizard with it, PhysicsProp drifts floating
 // things on it. Physics only, never the chemistry (D4): each machine pushes
@@ -20,6 +21,9 @@ public class WaterCurrents : MonoBehaviour
     public float riverSpeed = 1.6f;
 
     [Header("Sea (match the Ocean material)")]
+    [Tooltip("The way to the nearest land over the sea, and how far off it is.")]
+    public ShoreMap shoreMap;
+    [Tooltip("A line across the coast, for telling the sea from the lake (IsSea).")]
     public Vector2 shoreOrigin;
     public Vector2 seaward = new(0.62f, -0.78f);
     public float seaLevel = -0.6f;
@@ -70,17 +74,19 @@ public class WaterCurrents : MonoBehaviour
     /// <summary>Whether a point is out at sea (seaward of a line well inland of the shore), not the lake.</summary>
     public bool IsSea(Vector3 p) => Vector2.Dot(new Vector2(p.x, p.z) - shoreOrigin, seaward.normalized) > -60f;
 
-    // Ashore in pulses as each breaker comes in over the shallows; a steady drift ashore further out.
+    // Toward the nearest land: in pulses as each breaker comes in over the shallows, a steady drift
+    // further out. Dying away where two shores are about as near, as the map's way to land does.
     Vector3 Sea(Vector3 p, Vector2Int cell)
     {
-        var toShore = -seaward.normalized;
+        if (shoreMap == null) return Vector3.zero;
+        var (toLand, distance, _) = shoreMap.At(new Vector2(p.x, p.z));
         float ground = grid.valley != null ? grid.valley.BaseHeight(cell.x, cell.y) : seaLevel - 5f;
         float depth = seaLevel - ground;
         float k = 2f * Mathf.PI / wavelength;
-        float phase = k * (Vector2.Dot(toShore, new Vector2(p.x, p.z)) - waveSpeed * Time.timeSinceLevelLoad);
+        float phase = k * (-distance - waveSpeed * Time.timeSinceLevelLoad);
         float pulse = Mathf.Max(0f, Mathf.Sin(phase - 1.2f));
         float zone = Mathf.Clamp01((4.5f - depth) / 3f);
         float speed = drift + surge * pulse * zone;
-        return new Vector3(toShore.x, 0f, toShore.y) * speed;
+        return new Vector3(toLand.x, 0f, toLand.y) * speed;
     }
 }
