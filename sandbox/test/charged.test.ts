@@ -97,7 +97,7 @@ test("a held cast waits at the end of its meter for the release", () => {
   assert.equal(w.combosFired.length, 0);
   const c = w.casts.ann!;
   assert.deepEqual([c.meter, c.holding], [1, true]);
-  assert.equal(moveFactorOf(w, "ann"), RULES.combos.moveFactor, "still slowed while held");
+  assert.equal(moveFactorOf(w, "ann"), RULES.combos.chargeMoveFactor, "slowed further while it charges");
   release(w);
   step(w);
   assert.equal(w.combosFired[0]!.charge, MAX_CHARGE);

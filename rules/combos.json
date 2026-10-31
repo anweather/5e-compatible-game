@@ -3,6 +3,7 @@
   "window": 4,
   "chargeTicks": 3,
   "moveFactor": 0.6,
+  "chargeMoveFactor": 0.3,
   "singles": {
     "fire":  { "name": "Fire Bolt", "spell": "fire-bolt", "shape": "point", "castTicks": 6 },
     "water": { "name": "Create Water", "spell": "create-water", "shape": "square", "castTicks": 6 },

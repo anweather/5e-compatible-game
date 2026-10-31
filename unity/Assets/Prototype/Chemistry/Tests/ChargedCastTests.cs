@@ -154,7 +154,7 @@ namespace Chem.Tests
             Assert.That(w.CombosFired, Is.Empty);
             var c = w.CastOf("ann");
             Assert.That((c.Casting, c.Meter, c.Holding), Is.EqualTo((true, 1, true)));
-            Assert.That(w.MoveFactorOf("ann"), Is.EqualTo(Base.Combos.MoveFactor), "still slowed while held");
+            Assert.That(w.MoveFactorOf("ann"), Is.EqualTo(Base.Combos.ChargeMoveFactor), "slowed further while it charges");
             Release(w);
             w.Step();
             Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(World.MaxCharge));

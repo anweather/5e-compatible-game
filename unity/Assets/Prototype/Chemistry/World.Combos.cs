@@ -38,7 +38,12 @@ namespace Chem
         public double SecondsPerLevel => Rules.Combos.ChargeTicks / (double)Rules.Sim.TicksPerSecond;
 
         /// <summary>What the view multiplies this player's walking speed by: the rules' factor while the meter drains, else 1.</summary>
-        public double MoveFactorOf(string player) => CastOf(player)?.Casting == true ? Rules.Combos.MoveFactor : 1;
+        public double MoveFactorOf(string player)
+        {
+            var c = CastOf(player);
+            if (c?.Casting != true) return 1;
+            return c.Charging ? Rules.Combos.ChargeMoveFactor : Rules.Combos.MoveFactor;
+        }
 
         /// <summary>Whether the combo is in this player's grimoire.</summary>
         public bool KnowsCombo(string player, string combo) => CastOf(player)?.Known.Contains(combo) == true;

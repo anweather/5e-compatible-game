@@ -43,8 +43,15 @@ const takesElement = (c: PlayerCast): boolean => c.meter === 0 || (c.first !== n
 export const heldCharge = (c: PlayerCast | undefined): number =>
   (c?.holding ? 1 + Math.trunc(Math.max(0, c.extra + 1 - c.meter) / RULES.combos.chargeTicks) : 1);
 
-/** What a view multiplies this player's walking speed by: the rules' factor while the meter drains, else 1. */
-export const moveFactorOf = (w: World, player: string): number => ((w.casts[player]?.meter ?? 0) > 0 ? RULES.combos.moveFactor : 1);
+/** Held past a tap's length: the meter is counting charge now, or waiting at its last tick. */
+export const isCharging = (c: PlayerCast | undefined): boolean => !!c && c.holding && c.meter > 0 && c.meter <= c.extra + 1;
+
+/** What a view multiplies this player's walking speed by: the rules' factor while the meter drains, less while charging, else 1. */
+export function moveFactorOf(w: World, player: string): number {
+  const c = w.casts[player];
+  if ((c?.meter ?? 0) <= 0) return 1;
+  return isCharging(c) ? RULES.combos.chargeMoveFactor : RULES.combos.moveFactor;
+}
 
 /** Whether the combo is in this player's grimoire. */
 export const knowsCombo = (w: World, player: string, combo: string): boolean => w.casts[player]?.known.includes(combo) ?? false;

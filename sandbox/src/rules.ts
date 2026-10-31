@@ -496,6 +496,7 @@ export interface CombosDef {
   /** What a view multiplies walking speed by while the cast meter drains. */
   chargeTicks: number;
   moveFactor: number;
+  chargeMoveFactor: number;
   singles: Record<string, ComboDef>;
   pairs: Record<string, Record<string, ComboDef>>;
   /** The d-pad's list, in cycling order. */
@@ -801,6 +802,7 @@ function comboErrors(r: Rules): string[] {
   if (!wholeFromOne(c.window)) errors.push("combos: window must be a whole number from 1");
   if (!wholeFromOne(c.chargeTicks)) errors.push("combos: chargeTicks must be a whole number from 1");
   if (!(isNumber(c.moveFactor) && c.moveFactor > 0 && c.moveFactor <= 1)) errors.push("combos: moveFactor must be above 0 and at most 1");
+  if (!(isNumber(c.chargeMoveFactor) && c.chargeMoveFactor > 0 && c.chargeMoveFactor <= 1)) errors.push("combos: chargeMoveFactor must be above 0 and at most 1");
   for (const e of elements) {
     const single = c.singles?.[e];
     errors.push(...comboEntryErrors(r, e, single));

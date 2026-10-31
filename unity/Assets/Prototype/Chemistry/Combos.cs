@@ -51,6 +51,8 @@ namespace Chem
         public int ChargeTicks { get; internal set; } = 1;
         /// <summary>What the view multiplies walking speed by while the cast meter drains.</summary>
         public double MoveFactor { get; internal set; } = 1;
+        /// <summary>The same once a held cast is charging (PlayerCast.Charging): the wizard is braced.</summary>
+        public double ChargeMoveFactor { get; internal set; } = 1;
         /// <summary>The d-pad's list, in cycling order.</summary>
         public IReadOnlyList<DpadSpellDef> Dpad { get; internal set; } = Array.Empty<DpadSpellDef>();
         /// <summary>Every combo: the singles, then the pairs, in the order of <see cref="Elements"/>.</summary>
@@ -160,6 +162,8 @@ namespace Chem
         public SortedSet<string> Known { get; } = new SortedSet<string>(StringComparer.Ordinal);
 
         public bool Casting => Meter > 0;
+        /// <summary>Held past a tap's length: the meter is counting charge now (World.HeldCharge), or waiting at its last tick.</summary>
+        public bool Charging => Holding && Casting && Meter <= Extra + 1;
         /// <summary>A Load would be taken now: the first element, or the second inside the window.</summary>
         public bool TakesElement => !Casting || (First != null && Second == null && Window > 0);
     }
@@ -177,6 +181,7 @@ namespace Chem
                 Window = Int(t["window"]) ?? 0,
                 ChargeTicks = Math.Max(1, Int(t["chargeTicks"]) ?? 1),
                 MoveFactor = Num(t["moveFactor"]) ?? 1,
+                ChargeMoveFactor = Num(t["chargeMoveFactor"]) ?? 1,
                 Dpad = (t["dpad"] as JArray ?? new JArray()).OfType<JObject>().Select(d => new DpadSpellDef
                 {
                     Name = Str(d["name"]),
@@ -219,6 +224,7 @@ namespace Chem
                 if (!WholeFromOne(c["window"])) Errors.Add("combos: window must be a whole number from 1");
                 if (!WholeFromOne(c["chargeTicks"])) Errors.Add("combos: chargeTicks must be a whole number from 1");
                 if (!(IsNumber(c["moveFactor"]) && (double)c["moveFactor"] > 0 && (double)c["moveFactor"] <= 1)) Errors.Add("combos: moveFactor must be above 0 and at most 1");
+                if (!(IsNumber(c["chargeMoveFactor"]) && (double)c["chargeMoveFactor"] > 0 && (double)c["chargeMoveFactor"] <= 1)) Errors.Add("combos: chargeMoveFactor must be above 0 and at most 1");
                 ComboSingles(c, names);
                 foreach (var first in names)
                     foreach (var second in names)
