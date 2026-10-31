@@ -17,7 +17,7 @@ Every issue is on GitHub (label `human-playtest`), open:
 - #10 Grimoire: Back goes to the pause menu; it should close it.
 - #11 Wave: only the four compass directions; no water left behind; its look isn't quite right.
 - #12 Ice: running onto it loses speed; it should keep your momentum.
-- #13 The log calls a live turkey "rotten turkey".
+- ~~#13 "rotten turkey"~~: not a bug (Andrew misspoke); closed.
 - #14 Health: at 1 HP nothing happens, then it regenerates (what should low and zero health do?).
 - #15 Water then fire on a pool put a brick texture on the water.
 
