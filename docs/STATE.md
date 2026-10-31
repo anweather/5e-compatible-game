@@ -53,18 +53,19 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - Landed on dev after 0.1.9: the Gauntlet's rules (22cda15), the Dragon's rules (0967b44), surf toward
   the nearest land (1671b55, #23; rebuild the yard after pulling).
-- DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Now the Windows
-  perf comparison: a release build from dev head with `-perf-offscreen` (0.1.9 lacks the flag).
+- DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
+  comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
+  cast-sound prototypes for Andrew to pick from before anything is built in.
 - Mac: the Dragon's view (item 4 below).
-- u1: the rules MCP server, phase 1 (`docs/RULES_MCP.md`, D13; brief `briefs/rules-mcp.md`). Asleep
-  (Saved) during the perf comparison; wake it with `start.cmd u1` when DesktopUnity says perf is done.
+- u1: the rules MCP server, phase 1 (`docs/RULES_MCP.md`, D13; brief `briefs/rules-mcp.md`). Awake
+  again after the perf run.
 
 ## Next, in order
 
 1. Andrew judges the wave crest (#11). Cast feel judged (J-040, #22): DesktopUnity
    tunes the uncharged slam (slower, more oomph)
    and redoes the cast sounds (lower, layered per element, rising per charge step) after perf, with a new clip.
-2. The Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
+2. Done: the Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
    run (1e8d899 split PerfScenario.Start and PerfStage.Walk). Then the `perf-pass` skill from
    `docs/perf/notes-2026-10-31-mac.md`.
 3. The Gauntlet's view: side camera, booths, carnival dressing (`docs/handoffs/obstacle-course-brief.md`).
