@@ -24,8 +24,8 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   runs a change headless for N ticks and says what happened.
 - **Everything the view draws is procedural.** A new rule that makes something bigger, hotter
   or wider must show up scaled in the game with no code change and no rebuild (see "Looks").
-- **The players bring their own Claude.** We pay only for the server's checks and short
-  simulations: lean budget.
+- **The players bring their own Claude**, and the MCP runs in their own game: we run no server
+  for it. Lean budget.
 
 ## Tools
 
@@ -34,7 +34,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   sim parameters.
 - `describe(table, id)`: the full entry, plus what refers to it.
 - `explain(a, b)`: what happens when a meets b, and which rule decides it.
-- `room_mods()` (phase 3): the mods on in a room.
+- `room()` (phase 3): the room's change mode and the mods on in it, with who added each.
 
 **Draft** (each returns a draft id and the patch so far; drafts compose)
 - `add_material`, `set_material(id, field, value)`
@@ -62,8 +62,8 @@ cell hash) plus the same run without the patch for comparison.
 
 **Save and apply**
 - `save(draft, title, idea)`: writes a mod in the `rules/mods/` format (title, idea, patch).
-- `apply_to_room(mod, room)` (phase 3): asks the room's host; on approval it switches on at a
-  tick for every peer, like the Experiments panel. `revert(mod, room)`.
+- `apply(mod)` (phase 3): sends the mod into the game this MCP is attached to. In a room it goes
+  as a rule-switch intent and follows the room's change mode (below). `revert(mod)`.
 
 ## Looks: procedural only
 
@@ -78,14 +78,31 @@ prefab per material) and lists what must become a family. That work needs Unity 
 host or the Mac; the MCP's `validate` then checks against the family list, so a mod can never
 ask for a look the game can't draw.
 
+## Change modes (chosen when a room is made)
+
+Andrew, 2026-10-31: the point is fun, not policing. A room picks one when it's created:
+- **Open:** anyone's change just appears for everyone, at the next agreed tick. Surprise is the
+  game; the log says who changed what, and anyone can revert.
+- **Host only:** only the host's changes go in; other players' are refused with a sentence.
+- **Locked:** no changes; the rules are what the room started with.
+
+Whatever the mode, **every peer validates every incoming change itself**, with the same checks in
+the core, before it switches on. A change that fails on one peer fails on all (the checks are
+deterministic), so a broken or hostile peer can't push anything the checks wouldn't pass.
+
 ## Where it runs
+
+**The MCP ships with the game.** Each player's Claude talks to the MCP of their own copy of the
+game, on their own machine. There is no hosted MCP server: what crosses the network is the mod
+patch, as the existing rule-switch intent (client to host, the host schedules a tick, every peer
+switches on), so lockstep holds and we run no servers for it.
+
 
 - **Phase 1, local:** a .NET MCP server (stdio) in `core/`, linking the core sources like the
   tests do, using the official C# MCP SDK (`ModelContextProtocol` on NuGet). Our own agents use
   it at once instead of editing rule JSON by hand.
-- **Phase 3, hosted:** the same server over HTTP with sign-in, as a connector for players'
-  Claude. Game hosts connect out to it (like a lobby), and room changes travel as the existing
-  rule-switch intents, so lockstep holds.
+- **Phase 3, in the game:** the same tools, served by the running game (or a small process it
+  starts) on localhost, so a player adds it to their Claude once. `apply` goes into that game.
 
 ## Phases
 
@@ -93,13 +110,15 @@ ask for a look the game can't draw.
    `core/`; every example in `rules/mods/` passes through it unchanged.
 2. **Procedural looks audit** (host or Mac): find id-keyed visuals, define the look and effect
    families, and confirm that switching a mod on mid-game rescales the view without a rebuild.
-3. **Hosted and live rooms**: HTTP transport, sign-in, rate limits, the host's approval or a
-   room vote, revert, a mod gallery.
+3. **In the game and live rooms**: the MCP served by the game on localhost, `apply` and
+   `revert`, the three change modes chosen at room creation, every peer validating incoming
+   changes, the log line per change, a mod gallery.
 4. **Assets**: not now. Procedural families come first, and may make most of it unnecessary.
 
 ## Open questions
 
-- Who may change a live room: the host only, a vote, or mod rooms only? (phase 3)
+- How much simulation a peer runs before switching on an incoming change: the checks only, or a
+  short simulate too (it must finish inside the tick the host scheduled).
 - The TS sandbox runs the same rules. If the MCP becomes the way rules change, do we freeze the
   sandbox? (already open in STATE)
 - Budgets: start from what the perf work measures (storm at 20 fps, #24-#33).

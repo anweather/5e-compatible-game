@@ -15,3 +15,8 @@
   makes simulating a change cheap; players' own Claude carries the cost of the conversation.
 - **Reopen if:** the checks can't keep up with what players want to change, or the hosted
   server costs more than the lean budget allows.
+
+**Amended 2026-10-31 (Andrew):** no hosted server. The MCP ships with the game and each player's
+Claude talks to their own copy; changes cross the network only as mod patches in the existing
+rule-switch intents, and every peer validates them. A room chooses a change mode when it's made:
+Open (anyone's changes just appear, for fun), Host only, or Locked.
