@@ -630,3 +630,8 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   closes the grimoire. Notes posted on the issues. Not yet played by hand or
   in a player build (part 3). FAST_LOOP: aimlooks row, combo's stamina line.
   Part 2 (head flare, hat, fire, camera at houses) running.
+- 2026-10-30 21:35: DECIDED (Andrew): a performance pass after UX pass 4
+  (docs/handoffs/perf-pass-brief.md, host, player build, -fps-probe, the
+  Profiler; issues labelled perf), then a project skill `perf-pass` written
+  from how it actually ran. Order on the PC: UX pass 4 parts 2-3, Andrew's
+  five calls (worker), the perf pass, then the sound pass.
