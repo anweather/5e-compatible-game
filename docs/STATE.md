@@ -63,10 +63,11 @@ The one page a new PM session reads first. Keep it short: history goes in
   Wall of Stone is wiped by the chunk reset before the breath arrives.
   `dragon-clip` (f07aa3e, the clip probe and the QuickSearch console filter) is stacked on it: land
   dragon-view first. The Mac does the dragon tweaks, then rules MCP phase 2, procedural looks (`procedural-looks`).
-- Queued: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). u2 wouldn't start
-  (4.0 GB free, 5 must stay): give it to u1 after live rules, or start u2 when memory frees. DesktopUnity
-  wires it into the IK punch after.
-- u1: live rule changes, the core foundation (Andrew's next flagship; brief `briefs/live-rule-changes.md`).
+- u1: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). DesktopUnity wires it
+  into the IK punch after.
+- Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
+  batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
+  intent in `Net/`, the game serving the MCP on localhost, the HUD line, the M panel through the room.
 - DesktopUnity: slam rework landed (ec80f19); clips on the board (slam, punch, sounds A/B/C); now the
   dragon-view online probe and the ModValidator compile check.
 - Sandbox frozen (210b047; J-042): it reads `sandbox/rules-frozen/`; nothing is ported to it.
