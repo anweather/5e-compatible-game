@@ -2,9 +2,9 @@ Brief from the PM: the unarmed strike in the core (Andrew, 2026-10-31: "Unarmed 
 
 You're a worker in a VM, running headless, with no Unity: core only (the sandbox is frozen; don't touch it). Your final message is your full report, and it goes straight back to the PM. Before that final message, stop every background task you started, and don't send anything after it.
 
-First run `git config user.name "u2 (worker VM)"` and `git config user.email u2@workers.invalid` in your worktree, so commits aren't authored as Andrew.
+First run `git config user.name "u1 (worker VM)"` and `git config user.email u1@workers.invalid` in your worktree, so commits aren't authored as Andrew.
 
-Setup: in ~/5e-compatible-game, run `git fetch`, then `git worktree add ../unarmed-strike origin/dev -b unarmed-strike` and work there. Read the root CLAUDE.md, `unity/Assets/Prototype/Chemistry/CLAUDE.md`, and how damage and commands work today (`Defense.cs`, `Effects.cs`, `Breath.cs`, the command types, how a downed wizard works in sim.json `downed`). Note: u1 is working on live rule changes in the core at the same time (mods, rule switches, the world log), so keep away from those files and say if you had to touch one.
+Setup: in ~/5e-compatible-game, run `git fetch`, then `git worktree add ../unarmed-strike origin/dev -b unarmed-strike` and work there. Read the root CLAUDE.md, `unity/Assets/Prototype/Chemistry/CLAUDE.md`, and how damage and commands work today (`Defense.cs`, `Effects.cs`, `Breath.cs`, the command types, how a downed wizard works in sim.json `downed`). Live rule changes (rooms, apply and revert in the tick batch) just landed on dev: build on them.
 
 Today the punch is view-only physics: it shoves props and cracks panes on the puncher's machine (`unity/.../Scripts/ItemHolder.Punch.cs`). Andrew wants punching other players to count, as the SRD 5.2.1 unarmed strike. Build the core half, deterministic and in the checksum:
 1. **A strike command** (attacker, the aim), resolved in the tick: the target is the nearest wizard or entity in reach in front, using the core's own positions, never Unity physics.
