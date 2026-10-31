@@ -691,8 +691,14 @@ public class OnlineProbe : ProbeScenario
         Metric("reset_checksums_compared", compared);
         Check("reset_checksums_equal", compared >= 3 && equal == compared && !client.desync,
             firstDiff ?? $"{equal}/{compared} checksums equal after the reset (tick {resetNet.LastResetTick}); client desync {client.desync}, {client.errorCount} client errors");
-        Check("dragon_seen_on_the_client", client.sawDragonWarning && client.dragonFlights == World.DragonFlights && client.mostMenace > 0f,
-            $"warning seen {client.sawDragonWarning}, flights {client.dragonFlights} of {World.DragonFlights}, its sky darkened to {client.mostMenace:0.00}");
+        DragonOnTheClient(client);
+    }
+
+    // The checksums carry the dragon's state; this is what the client made of it: its own core's warning and its own dark sky.
+    void DragonOnTheClient(OnlineObservation client)
+    {
+        bool seen = client.sawDragonWarning && client.dragonFlights == World.DragonFlights && client.mostMenace > 0f;
+        Check("dragon_seen_on_the_client", seen, $"warning seen {client.sawDragonWarning}, flights {client.dragonFlights} of {World.DragonFlights}, its sky darkened to {client.mostMenace:0.00}");
     }
 
     // The host takes a deer's shape and ends it as a cast button does (Shapeshift.ChangeBackByChoice), on its own machine;
