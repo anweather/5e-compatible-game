@@ -85,7 +85,7 @@ function usageOf(t) {
 
 async function take(file) {
   const id = path.basename(file, '.md');
-  const follow = id.match(/^(.+)\.followup-\d+$/);
+  const follow = id.match(/^(.+?)\.followup-[\w-]+$/); // brief.cmd's -FollowUp, or the runner's own retry
   const text = fs.readFileSync(file, 'utf8');
   fs.renameSync(file, path.join(taken, path.basename(file)));
   const args = ['-p', text, '--permission-mode', mode, '--output-format', 'json'];
@@ -113,7 +113,17 @@ async function take(file) {
     if (best && best !== lastWord) r.result = `${best}\n\n(Last word: ${lastWord})`;
   }
   const said = r.result ?? (out || err || '(no output)');
-  const limit = /hit your (\w+ )?limit/i.test(said + err) ? '\nLimit: this account hit its usage limit; the brief stopped there.' : '';
+  // "You've hit your 5-hour limit · resets 11:30pm": the run stopped there. The brief goes back
+  // in the inbox (a follow-up resumes the same session), and the runner waits before trying again,
+  // instead of spending the next briefs on the same refusal (2026-10-30).
+  const hit = (said + err).match(/hit your [^\n]*?limit[^\n]*/i);
+  const limit = hit ? `\nLimit: this account hit its usage limit ("${hit[0].trim()}"); the brief stopped there and will start again after the reset.` : '';
+  if (hit) {
+    const again = follow ? path.basename(file) : `${id}.followup-retry.md`; // resume, don't start over
+    fs.writeFileSync(path.join(inbox, again), follow ? text : 'Continue the brief you were working on from where you stopped (a usage limit interrupted it). Your final message is your full report, as the brief says.');
+    if (!follow) state.sessions[id] = args.sid;
+    pauseUntil = Date.now() + 20 * 60000;
+  }
   const u = r.usage ?? {};
   const report = [`# ${name} reports: ${id}`, '', said.trim(), '', '---',
     `Exit ${ended ? 'ended by the runner (answered, then idle: a background task kept it open)' : code}${r.is_error ? ' (error)' : ''}; ${Math.round((Date.now() - t0) / 60000)} min; ${r.num_turns ?? '?'} turns; session ${r.session_id ?? '?'}.`,
@@ -125,8 +135,10 @@ async function take(file) {
   log(`done ${id}: exit ${code}${limit ? ', usage limit' : ''}`);
 }
 
+let pauseUntil = 0; // after a usage limit: try again every 20 min (a refused call costs nothing)
 log(`started (pid ${process.pid}, mode ${mode})`);
 for (;;) {
+  if (Date.now() < pauseUntil) { await new Promise(r => setTimeout(r, 30000)); continue; }
   // A file still being copied in (Copy-VMFile, scp) is left until it's been still for 3 s.
   const next = fs.readdirSync(inbox).filter(f => f.endsWith('.md') && Date.now() - fs.statSync(path.join(inbox, f)).mtimeMs > 3000).sort()[0];
   if (next) { try { await take(path.join(inbox, next)); } catch (e) { log(`failed ${next}: ${e.stack ?? e}`); } }
