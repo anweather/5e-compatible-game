@@ -20,3 +20,7 @@
 - **Amended 2026-10-25:** a kept mod lands like code, not by PR: a
   branch, verified (tests plus the probe), merged to main. No PR, as for
   all work on this repo (`CLAUDE.md`).
+
+**Amended 2026-10-31 (Andrew): the sandbox is frozen.** It keeps working on a snapshot of the rules
+and isn't updated for new ones; the C# core is the only engine. Changing rules live, for players
+and agents, moves to the rules MCP (D13), which runs the core.

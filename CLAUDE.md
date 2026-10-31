@@ -104,11 +104,12 @@ tools/probe.sh smoke
 
 ## Invariants that span folders
 
-- **One rule set, two engines.** `rules/*.json` drive both the C# core and
-  the TS sandbox, and the core mirrors the sandbox line by line. A change
-  to chemistry behaviour changes both, with a shared golden test (the
-  `CellHash` / FNV-1a goldens in `TerraformTests.cs`, `ChemistryTests.cs`
-  and `sandbox/test/terraform.test.ts`).
+- **One rule set, one engine (the sandbox is frozen, 2026-10-31).** The C#
+  core is the only engine that follows `rules/*.json`. The TS sandbox is
+  frozen at a snapshot of the rules and isn't updated for new rules; don't
+  port changes to it. Chemistry changes get C# golden tests (the `CellHash` /
+  FNV-1a goldens in `TerraformTests.cs` and `ChemistryTests.cs`). Rules
+  change through the rules MCP (`docs/RULES_MCP.md`, D13).
 - **Lockstep multiplayer.** Every machine runs the same world from the
   same inputs (cast intents, `EffectCommand`s, rule switches), so the core
   must stay deterministic: integer state, the world's seeded RNG, ordered
