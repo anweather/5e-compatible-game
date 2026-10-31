@@ -81,6 +81,9 @@ The one page a new PM session reads first. Keep it short: history goes in
   into the IK punch after.
 - Sound: the generator is in the sound-design skill (1847785, stdlib only). Andrew picked B + pulse 30%
   (preset `cast-deep-hum-pulse`); DesktopUnity builds it in after the punch. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
+- Procedural looks (rules MCP phase 2) landed (0d8ad26; Mac): families in `rules/looks.json`, a `look` group on
+  materials and spells, redrawn on a rule switch. Online unproven (PC). Left: CellPaint first, BurstFx, sounds,
+  icons (`docs/handoffs/procedural-looks-scan.md`).
 - Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
   batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
   intent in `Net/`, the game serving the MCP on localhost, the HUD line, the M panel through the room.
