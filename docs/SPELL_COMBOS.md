@@ -105,7 +105,7 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   over a wide circle: the same frost glaze, ice on water, fires out. Frost stays the precise one.
 - **Frost, the bridge builder:** freezes water surfaces into walkable ice
   and wet creatures solid (a hit shatters them). Frozen ground is slippery:
-  an ice-slide mini game.
+  an ice-slide mini game. Held: Sleet Storm, a wide slippery field.
 
 **Earth: dig, transform, grow, build, roll.**
 - **Raise Earth, the shovel:** raises or digs soft ground only, by terrain
@@ -174,7 +174,7 @@ ground for an area or wall.
   a full charge on a single element takes 2 s and on a pair 2.5 to 3 s, and a tap stays the fastest. The
   charge only grows while the meter runs; held to the end, it waits for the release and gains nothing. Let go
   and it goes off on the next tick at the level reached (before the first level, at a tap's time). A
-  combo's `held` spell replaces it at full charge: Wall of Stone is Stone Ramp. Raise Earth has no held
+  combo's `held` spell replaces it at full charge: Wall of Stone is Stone Ramp, Frost is Sleet Storm. Raise Earth has no held
   form: charge 3 raises three steps, a wall-high mound. Digging is the pick's (and Lower Earth's, on the
   radial's debug layout). The steps and the held spell's name are on the cast meter (`CastHud`). The press
   sends `ComboCommand.Load` with `Hold`, the release `ComboCommand.Release`; the core counts the charge from

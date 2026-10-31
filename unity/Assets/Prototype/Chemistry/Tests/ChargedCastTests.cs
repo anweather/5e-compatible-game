@@ -112,6 +112,9 @@ namespace Chem.Tests
             Assert.That(wall.SpellAt(2, 3), Is.EqualTo("wall-of-stone"));
             Assert.That(wall.SpellAt(3, 3), Is.EqualTo("stone-ramp"));
             Assert.That(wall.SpellAt(1, 1), Is.EqualTo("wall-of-stone"), "a spell that can't charge has no held form");
+            var frost = Base.Combos.Combo("water+air");
+            Assert.That(frost.SpellAt(2, 3), Is.EqualTo("frost"));
+            Assert.That(frost.SpellAt(3, 3), Is.EqualTo("sleet-storm"));
             var fireball = Base.Combos.Combo("fire+fire");
             Assert.That(fireball.SpellAt(3, 3), Is.EqualTo("fireball"), "and most combos have none");
         }
@@ -287,7 +290,7 @@ namespace Chem.Tests
             Assert.That(fired.Spell, Is.EqualTo("mold-earth-heap"));
             w.Cast(fired.Spell, 5, 5, 1, fired.Charge);
             Assert.That(w.At(5, 5).Height, Is.EqualTo(3), "as high as a wall");
-            Assert.That(Base.Combos.All.Where(c => c.Held != null).Select(c => c.Id), Is.EqualTo(new[] { "earth+earth" }), "Lower Earth is nothing's held form");
+            Assert.That(Base.Combos.All.Where(c => c.Held != null).Select(c => c.Id), Is.EqualTo(new[] { "water+air", "earth+earth" }), "Lower Earth is nothing's held form");
         }
 
         // Plant Growth by elements on burnt ground and meadow: what a tap can't reach.
@@ -345,6 +348,26 @@ namespace Chem.Tests
             w.Cast(fired.Spell, 4, 6, 1, fired.Charge);
             Run(w, 2);
             Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("cdeed8e1 9aa186c6 7"));
+        }
+
+        [Test]
+        public void GoldenHeldSleetStorm()
+        {
+            // Frost held to full charge glazes the field Sleet Storm does (ChemistryTests.SleetField's ground).
+            var w = new World(Base, 20, 20, 7);
+            for (int y = 3; y <= 6; y++) w.At(5, y).T = "grass";
+            w.At(7, 8).Water = 8;
+            w.At(9, 9).Fire = 3;
+            w.At(9, 9).Fuel = 4;
+            var fired = Charged(w, "water+air", 3);
+            Assert.That((fired.Spell, fired.Name), Is.EqualTo(("sleet-storm", "Frost")));
+            w.Cast(fired.Spell, 8, 8, 1, fired.Charge);
+            Assert.That(w.Cells.Count(c => c.Cover == "frost"), Is.GreaterThan(200), "glazed, wider than a tap's");
+            Assert.That(w.At(7, 8).Frozen);
+            Assert.That(w.At(9, 9).Fire, Is.EqualTo(0));
+            Assert.That(Charged(new World(Base, 20, 20, 7), "water+air", World.MaxCharge - 1).Spell, Is.EqualTo("frost"), "a part charge stays Frost");
+            Run(w, 4);
+            Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("bdd3d4c6 20520162 1511859835"));
         }
 
         [Test]
