@@ -41,6 +41,24 @@ Each entry has:
 
 ## Decided
 
+### J-041: Who may change a live room's rules?
+
+- **Asked:** 2026-10-31, by the PM (rules MCP design).
+- **Also comes up when:** room creation UI, the MCP's `apply`, griefing reports.
+- **Answer:** the room picks a change mode when it's made: Open (anyone's changes just appear),
+  Host only, or Locked. The MCP ships with the game; every peer validates incoming changes.
+- **Why:** it's for fun, not policing; no hosted server to run (`docs/RULES_MCP.md`, D13).
+- **Revisited:** 0.
+
+### J-040: Cast feel and its sounds (`cast-feel-sound.mp4`)
+
+- **Asked:** 2026-10-31, by the PM (#22).
+- **Also comes up when:** any tuning of casting animation, hit-stop or cast sounds.
+- **Answer:** really close. The charged cast is amazing: keep it. The uncharged cast is too
+  quick for the slam together and release; the slam needs more oomph.
+- **Why:** Andrew watched the clip.
+- **Revisited:** 0.
+
 ### J-039: Do the combo casts each need their own job?
 
 - **Asked:** 2026-10-30, by Andrew: "the first spells do the same things

@@ -61,8 +61,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Next, in order
 
-1. Andrew judges the cast feel and its sounds
-   (clip `cast-feel-sound.mp4`), the fire (#19) and the wave crest (#11).
+1. Andrew judges the fire (#19) and the wave crest (#11). Cast feel judged (J-040, #22): DesktopUnity
+   tunes the uncharged slam (slower, more oomph) after perf, with a new clip.
 2. The Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
    run (1e8d899 split PerfScenario.Start and PerfStage.Walk). Then the `perf-pass` skill from
    `docs/perf/notes-2026-10-31-mac.md`.
@@ -76,7 +76,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - Keep writing every rule twice (C# core and TS sandbox), or freeze the sandbox?
 - The punch knocks a crate only 0.42 m: harder?
-- The verdicts above (cast feel and sounds, fire, wave crest).
+- The verdicts above (fire, wave crest).
 - Unmerged branches to delete: `wip/w1-*`, `wip/w2-*` (their work landed), and about 17 old spikes.
 
 ## Telemetry
