@@ -80,6 +80,9 @@ laying fog gas, Control Weather choosing wind or fog.
 
 ## 3. Layered terrain: caves, overhangs, an underground lake
 
+**DEFERRED PERMANENTLY (Andrew, 2026-10-30):** "we don't wanna do that"; too
+big for what it gives. Kept below as a record only; don't plan or spike it.
+
 Today the world is 2.5D: one `Cell` per 5 ft square, with `Height` for
 earth raised or dug. Caves need more than one walkable level per square.
 
@@ -529,26 +532,51 @@ is easy to learn, and it's the shape for three-element casts.
 
 UX pass 2 turned beards off with the new face (the black fuzzy sphere with red slit eyes). WizardBeard.cs stays in the code, unused, for a later option: a beard (or none) picked like the hat or cowl in the Esc menu and sent with the seed, fitted to the new face. Don't delete it as dead code.
 
-## Priority (groomed 2026-10-30, after 0.1.8; PM's proposal for Andrew)
+## 24. Spell golf: an exploratory mini game (Andrew, 2026-10-30)
+
+Prove the idea small; don't go deep. A big ball (the size of the ball
+court's) sits on a tee somewhere in the valley; you hit it with a spell and
+try to reach a hole with a flag across the valley in as few strokes as you
+can.
+- **The hit:** a force spell on the ball, through the shared force verb
+  (throw, push) that Geyser, Wave and Rolling Boulder use, not a new
+  element: Gust of Wind, and an earth strike (Raise Earth under the ball
+  pops it up and along). The terrain does the rest: it rolls downhill, stops
+  in water, bounces off rock.
+- **The game:** one hole, a stroke counter (a cast that moves the ball is a
+  stroke), the ball back on the tee when it's lost (water, out of bounds) at
+  one stroke's penalty, a "holed in N" line when it drops in.
+- **Not now:** more holes, a scorecard per player, other balls. An
+  alternative to try later: a cup toss, a ball thrown into cups set out as a
+  skill shot.
+- **Size:** S-M (rules in the core, a tee, flag and hole placed, the HUD line).
+
+## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,
-spell effects and mini games; look and feel is a side quest. Ranked with the
-0.1.8 playtest (`playtest/sessions/0.1.8.md`, GitHub #2-#5) and the cost
-reading (`docs/telemetry/feature-costs-2026-10-30.md`). Next release (0.1.9)
-goes out with 1-5.
+spell effects and mini games; look and feel is a side quest. Andrew,
+2026-10-30: no caves (deferred permanently); swimming with breath and
+drowning; proximity voice and a sound pass; finish half-built features as
+we see fit; one small exploratory mini game (spell golf), not polish on the
+existing ones. Ranked with the 0.1.8 playtest (`playtest/sessions/0.1.8.md`,
+GitHub #2-#5) and the cost reading (`docs/telemetry/feature-costs-2026-10-30.md`).
 
 | # | Item | Where | Size | Why now |
 |---|---|---|---|---|
 | 1 | #2 crack squares and #4 robe tail | Host (DesktopUnity) | S | In progress: a 0.1.8 regression and the most visible old bug |
-| 2 | The bot casts by elements: the 16 combinations and the chains as goals; the no-audio-device crash; fewer unusable shots | Worker (logic), host (player rebuild) | S-M | The playtest couldn't test this release's main feature; every playtest after this one does |
-| 3 | Mini games from the spells, in one "puzzle yard": the charge to the gate (place a coil and gate; none is reachable now), the ice slide (Frost), boulder bowling (Rolling Boulder) | Worker (rules), host (looks, placing) | M | The focus's mini games; the gate is in 0.1.8's notes with nowhere to use it |
-| 4 | Playtest fix-first: #5 the 185 ms walking hitch (found 5 times), #3 the waterfall pool's band (4) | Host | S each | Most rediscovered; each rediscovery costs about 50k tokens |
-| 5 | Fireball's aim (lit grass away from its target in run 811), and Sleet Storm doing nothing in the RC bot run | Worker | S | Spells landing where aimed is the core of casting |
-| 6 | Workers take briefs straight from the mailbox (no coordinator relay) | PM (tooling) | S | Coordination is half of all spend |
-| 7 | Player saves (21): the design note is in; waits on Andrew's answers | Worker | M | Unblocks progress across sessions |
-| 8 | Items and an inventory (5), digging tools first (the pick is in) | Worker, host | M | Builds on hardness |
-| 9 | Weather casts and three-element casts (22) | Later (Andrew) | L | |
+| 2 | The bot casts by elements: the 16 combinations and the chains as goals; the no-audio-device crash; fewer unusable shots | Worker (logic), host (player rebuild) | S-M | The playtest couldn't test this release's main feature |
+| 3 | Spell golf (24), exploratory | Worker (rules), host (placing, looks) | S-M | Andrew's mini game to prove the idea |
+| 4 | Swimming (13): diving, a breath meter that runs down under water, drowning; then the swim animation | Worker (rules), host (view) | M | Andrew; finishes a half-built feature |
+| 5 | Sound pass and proximity voice (8): spells and big events heard by distance (a Falling Star or an explosion carries across the valley), other wizards' casts heard; then Vivox voice by distance (D8) | Host (sound), then voice | M + M | Andrew; there's next to no sound today. Voice needs Andrew's Vivox setup |
+| 6 | Playtest fix-first: #5 the 185 ms walking hitch (found 5 times), #3 the waterfall pool's band (4) | Host | S each | Most rediscovered; each rediscovery costs about 50k tokens |
+| 7 | Fireball's aim (lit grass away from its target in run 811), and Sleet Storm doing nothing in the RC bot run | Worker | S | Spells landing where aimed is the core of casting |
+| 8 | Workers take briefs straight from the mailbox (no coordinator relay) | PM (tooling) | S | Coordination is half of all spend |
+| 9 | Finish half-built features as we go: snow and fog as weather (2), a coil and gate placed in the valley (the charge to the gate), the ball court's clock and reset (15) | Worker, host | S each | Between bigger items |
+| 10 | Player saves (21): the design note is in; waits on Andrew's answers | Worker | M | Unblocks progress across sessions |
+| 11 | Items and an inventory (5), digging tools first (the pick is in) | Worker, host | M | Builds on hardness |
+| - | Later: weather and three-element casts (22), the beard (23). Never: caves (3) | | | |
 
+0.1.9 goes out with 1-3, 6 and 7, and whatever of 4 is done.
 Windows workers start once the host Editor closes (memory: J-017); the
 Linux worker u1 could run beside it, after Andrew's one-time trust click.
 
