@@ -9,7 +9,7 @@ namespace Chem.Tests
     public class RoomTests
     {
         static ModBudgets budgets;
-        static ModBudgets Budgets => budgets ??= ModBudgets.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "budgets.json")));
+        static ModBudgets Budgets => budgets ??= ModBudgets.Load(ChemistryTests.RulesDir());
         static Rules R => ChemistryTests.R;
 
         static string Mod(string name) => File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "mods", name + ".json"));

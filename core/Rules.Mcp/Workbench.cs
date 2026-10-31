@@ -29,8 +29,7 @@ namespace Chem.Mcp
             RulesDir = rulesDir;
             ModsDir = modsDir ?? Path.Combine(rulesDir, "mods");
             Base = Rules.Load(rulesDir);
-            Budgets = ModBudgets.Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
-            Looks = LookFamilies.Load(rulesDir);
+            Budgets = ModBudgets.Load(rulesDir);
             BaseDoc = JObject.Parse(Base.ToJson());
             Raw = new Dictionary<string, JToken>(StringComparer.Ordinal);
             foreach (var path in Directory.GetFiles(rulesDir, "*.json").OrderBy(p => p, StringComparer.Ordinal))
@@ -41,7 +40,6 @@ namespace Chem.Mcp
         public string ModsDir { get; }
         public Rules Base { get; }
         public ModBudgets Budgets { get; }
-        public LookFamilies Looks { get; }
 
         /// <summary>The base rules as the engine reads them (materials ungrouped into flat keys).</summary>
         internal JObject BaseDoc { get; }
@@ -106,7 +104,7 @@ namespace Chem.Mcp
 
         // ---------- validate ----------
 
-        public IReadOnlyList<ModProblem> Validate(string draftOrMod) => ModValidator.Validate(Base, Budgets, Looks, PatchJson(draftOrMod));
+        public IReadOnlyList<ModProblem> Validate(string draftOrMod) => ModValidator.Validate(Base, Budgets, PatchJson(draftOrMod));
 
         public static string Report(IReadOnlyList<ModProblem> problems)
         {
@@ -126,7 +124,7 @@ namespace Chem.Mcp
             var draft = DraftOf(Required(draftId, "draft"));
             if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A mod needs a title.");
             if (string.IsNullOrWhiteSpace(idea)) throw new RulesToolException("A mod needs its idea in words: that is what people vote on.");
-            var problems = ModValidator.Validate(Base, Budgets, Looks, draft.Patch.ToString(Formatting.None));
+            var problems = ModValidator.Validate(Base, Budgets, draft.Patch.ToString(Formatting.None));
             if (problems.Count > 0) throw new RulesToolException("The draft doesn't validate yet. " + Report(problems));
             name = string.IsNullOrWhiteSpace(name) ? Slug(title) : name.Trim();
             if (name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains("..", StringComparison.Ordinal))

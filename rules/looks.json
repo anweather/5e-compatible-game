@@ -3,7 +3,7 @@
   "terrain": {
     "ground": { "about": "Flat ground, painted by the land; nothing stands on the cell.", "params": ["color", "height"] },
     "block": { "about": "A solid block of its own height: stone, a pillar.", "params": ["color", "height", "glow", "roughness"] },
-    "plant": { "about": "Something growing on the cell, on its own ground.", "forms": ["bush", "tree", "sapling", "stump"], "params": ["color", "height", "baked"] },
+    "plant": { "about": "Something growing on the cell, on its own ground.", "forms": ["bush", "tree", "sapling", "stump"], "params": ["color", "height", "baked"], "notes": "A tree or sapling is the valley's own tree model, so it takes no colour there." },
     "debris": { "about": "What's left lying on the cell.", "forms": ["rubble", "deadfall"], "params": ["color", "height"] },
     "deck": { "about": "A plank deck on two beams.", "params": ["color"] },
     "plate": { "about": "A riveted metal plate, shifted off the grid.", "forms": ["iron", "rusted"], "params": ["color", "height"] },
@@ -28,7 +28,7 @@
     "meteor": { "about": "A burning rock from the sky, an explosion and dust scaled to the burst's radius.", "projectile": "Fire/FireBall", "impact": "Fire/BigExplosion", "afterImpact": "Fire/DustExplosion", "seconds": 5, "fromSky": true, "scaleBy": "radius", "base": 4, "params": ["color"] },
     "beam": { "about": "A beam from the hand along the line.", "beam": true, "params": ["color"] },
     "storm": { "about": "Weather pouring from a low cloud over the burst's cells.", "storm": true, "params": ["color"] },
-    "splash": { "about": "A splash of water scaled to the square.", "impact": "Water/BigSplash", "scaleBy": "size", "base": 2, "params": ["color"] },
+    "splash": { "about": "A splash of water scaled to the square.", "impact": "Water/BigSplash", "scaleBy": "size", "base": 3, "params": ["color"] },
     "spray": { "about": "A spray of goo.", "impact": "Goop/GoopSpray", "params": ["color"] },
     "sparks": { "about": "Electric sparks where it lands.", "impact": "Misc/ElectricalSparks", "params": ["color"] },
     "swirl": { "about": "A swirl of air and sand.", "impact": "Misc/SandSwirlsEffect", "params": ["color"] },

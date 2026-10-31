@@ -8,6 +8,7 @@
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
@@ -38,7 +39,18 @@ namespace Chem
 
         internal JObject Json { get; }
 
+        /// <summary>The look and effect families a mod's new things may name (rules/looks.json); null skips that check.</summary>
+        public LookFamilies Looks { get; private set; }
+
         public static ModBudgets Parse(string json) => new ModBudgets(JObject.Parse(json));
+
+        /// <summary>rules/budgets.json with the family list of rules/looks.json: all a peer checks a mod against.</summary>
+        public static ModBudgets Load(string rulesDir)
+        {
+            var budgets = Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
+            budgets.Looks = LookFamilies.Load(rulesDir);
+            return budgets;
+        }
 
         /// <summary>A number under a dotted path such as "spells.maxRadius", or the fallback.</summary>
         public double Number(string path, double fallback) =>
@@ -61,7 +73,7 @@ namespace Chem
         /// Every problem with a patch (bare or {"title", "patch"}) over these base rules; empty means
         /// it may switch on. Stops after the shape check if the patch can't be read.
         /// </summary>
-        public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, LookFamilies looks, string patchJson)
+        public static IReadOnlyList<ModProblem> Validate(Rules baseRules, ModBudgets budgets, string patchJson)
         {
             var problems = new List<ModProblem>();
             ModPatch mod;
@@ -89,7 +101,7 @@ namespace Chem
             v.Design(composed);
             v.Determinism();
             v.Budgets(composed);
-            v.Looks(looks);
+            if (budgets.Looks != null) v.Looks(budgets.Looks);
             return problems;
         }
 
