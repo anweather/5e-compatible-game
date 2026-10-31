@@ -72,6 +72,12 @@ The one page a new PM session reads first. Keep it short: history goes in
 6. 0.1.10: the sound pass and voice.
 - Backlog and priority: `docs/BACKLOG.md` ("Priority (groomed 2026-10-30 with Andrew)", items 24-26).
 
+## Andrew's board
+
+https://claude.ai/artifact/KhW6DyMwmA1ncXCxLxbBgY: what needs his verdict, what landed, who's on what.
+He reads it on his phone instead of scrolling the chat. Update it (Artifact `read`, then publish with
+`url`) whenever a verdict, a landing or an assignment changes.
+
 ## Open questions for Andrew
 
 - Keep writing every rule twice (C# core and TS sandbox), or freeze the sandbox?

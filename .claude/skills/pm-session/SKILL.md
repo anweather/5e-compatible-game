@@ -42,6 +42,8 @@ restart after every release.
   VMs while a release candidate or perf run holds the PC. No idle compute; Pro before Max.
 - Issues: file, comment, label, close on ship, with a `Discovery-Cost:` line; a rediscovery is a
   comment, never a duplicate.
+- Keep Andrew's board current (STATE, "Andrew's board"): one small publish after each verdict,
+  landing or assignment.
 - Images: follow `screenshot-budget`. Status reports: `project-update`, one screen.
 
 ## Hand off (after each release, or when Andrew asks)
