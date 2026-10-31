@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using Chem;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 // The probe's dragon scenario (docs/BACKLOG.md 26): one whole flight, staged faster than a
 // real one by turning sim.json's dragon up (a short warning, quicker passes; the real
@@ -10,7 +12,11 @@ using UnityEngine;
 // dragon is seen; a wizard in the open is knocked down and one behind a built wall isn't;
 // every chunk comes back: its cells, the Gauntlet's lava, a felled tree, a thing that broke
 // and a thing moved. It ends with what the flight cost in a view of the breath against
-// the same view clear, and the size of the starting state.
+// the same view clear, and the size of the starting state. And the fit: how big the dragon is
+// drawn against sim.json's dragon.scale, what its shadow and the stream of fire do, and that
+// what's drawn stays on the core's breath. The stream is checked in the picture: its line,
+// frame by frame, with the stream drawn and left out, side on and from below. Last, the Reset
+// button on a virtual pad: a tap calls the dragon, and holding it rebuilds the valley.
 public class DragonProbe : ProbeScenario
 {
     const float MostSeconds = 200f, LookSeconds = 4f;
@@ -20,6 +26,18 @@ public class DragonProbe : ProbeScenario
     const int Ahead = 70;
     // A cell of the Gauntlet's lava pit (world/gauntlet.json) and of the wizard's meadow, to wreck.
     const int LavaX = 303, LavaY = 433;
+    // Points read along the stream's line; a bigger sum of red and green over a little box than with no stream counts as lit.
+    const int StreamPoints = 17, StreamBox = 4, StreamBrighter = 40;
+    // The part of those points that must be lit, in a frame with the stream drawn.
+    const float StreamLitPart = 0.75f;
+    // Frames a watcher lets the view lag the core's tick by; seconds the last drops may fly on.
+    const int LagFrames = 2;
+    const float DropsLand = 1.2f;
+    // How far off the ground the view from below stands: clear of the trees.
+    const float BelowHeight = 35f, SideOn = 330f;
+    const int Placings = 300;
+    // A tap of the Reset button, how long it's held to rebuild (EventLog), and how long the reload may take beyond that.
+    const float TapSeconds = 0.25f, RebuildSeconds = 3f, LoadSeconds = 30f;
 
     DragonView view;
     SkyLight sky;
@@ -31,6 +49,12 @@ public class DragonProbe : ProbeScenario
     int realSpeed;
     float fastest;
     bool open, sheltered;
+    int breathingFrames, litFrames, turningFrames, leavingFrames, litWhenNot, drawnAfter;
+    float leastPassGap = float.PositiveInfinity, leastTurnGap = float.PositiveInfinity;
+    float belowBody, aboveBody, mostRoll;
+    int framesOff;
+    float streamStopped = -1f;
+    bool staging;
 
     protected override IEnumerator Run()
     {
@@ -44,6 +68,7 @@ public class DragonProbe : ProbeScenario
         Measured();
         var p = World.Rules.Sim.Dragon;
         realSpeed = p.Speed;
+        int realWarning = p.WarningTicks;
         (p.WarningTicks, p.TurnTicks, p.LeavingTicks, p.Speed, p.ChunksPerTick) = (ShortWarning, ShortTurn, ShortLeaving, QuickSpeed, QuickChunks);
 
         var damage = new Damage(this);
@@ -59,6 +84,8 @@ public class DragonProbe : ProbeScenario
         }
         damage.Checked();
         Check("no_dragon_after", World.Dragon == null && World.DragonFlights == 1, $"flights {World.DragonFlights}");
+        p.WarningTicks = realWarning;
+        yield return ResetButton();
         Check("no_console_errors", Result.Console.ErrorCount == 0, $"{Result.Console.ErrorCount} errors");
     }
 
@@ -94,6 +121,8 @@ public class DragonProbe : ProbeScenario
 
         StartCoroutine(WatchTheFlight());
         StartCoroutine(WatchThePerch());
+        StartCoroutine(WatchTheStream());
+        StartCoroutine(WatchTheFit());
         int staged = -1;
         while (World.Dragon != null && Time.time - started < MostSeconds)
         {
@@ -111,6 +140,16 @@ public class DragonProbe : ProbeScenario
         Check("flies_smoothly", fastest < pace * 4f, $"at most {fastest:0} m/s on a pass of {pace:0} m/s: no jumps between ticks");
         Check("flight_ended", World.Dragon == null, $"{Time.time - started:0} s");
         Check("breath_was_drawn", view.Breath != null && lookFrames.Count > 0, $"{lookFrames.Count} frames looked at");
+        Check("stream_on_while_breathing", breathingFrames > 0 && litFrames >= breathingFrames * 0.95f, $"{litFrames} of {breathingFrames} frames of breath");
+        Check("stream_stops_when_not_breathing", litWhenNot == 0 && turningFrames > 0 && leavingFrames > 0,
+            $"{litWhenNot} frames lit of {turningFrames} turning and {leavingFrames} leaving");
+        Check("stream_dies_away", drawnAfter == 0, $"{drawnAfter} frames drawn over {DropsLand} s after it stopped");
+        Metric("most_roll_degrees", mostRoll);
+        Metric("below_body_m", belowBody);
+        Metric("above_body_m", aboveBody);
+        Metric("least_gap_on_a_pass_m", leastPassGap);
+        Metric("least_gap_on_a_turn_m", leastTurnGap);
+        Check("clears_the_land", Mathf.Min(leastPassGap, leastTurnGap) > 0f, $"at worst {leastPassGap:0.0} m on a pass and {leastTurnGap:0.0} m on a turn between its tips and the land under them");
         Check("open_wizard_downed", open, "");
         Check("sheltered_wizard_not", sheltered, "");
         Check("every_chunk_freshened", freshened.Select(f => (f.CX, f.CY)).Distinct().Count() == World.ChunkCoords.Count(),
@@ -169,7 +208,239 @@ public class DragonProbe : ProbeScenario
         yield return null;
         ShootTheDragon();
         yield return null;
+        TheFit(p);
+        NoGarbage();
+        yield return ScaleFollowsTheData(p);
+        yield return StreamSeen("stream", true);
+        yield return StreamSeen("below", false);
         p.Speed = quick;
+    }
+
+    // The numbers, as drawn, against the core's: all of this has to fit together.
+    void TheFit(DragonParams p)
+    {
+        var d = World.Dragon;
+        var flat = Vector3.ProjectOnPlane(view.Way, Vector3.up).normalized;
+        var mouth = view.Mouth;
+        var lands = view.Breath.StreamAt(1f);
+        Check("drawn_scale_is_the_datas", Mathf.Abs(view.DrawnScale - (float)p.Scale) < 0.001f, $"{view.DrawnScale:0.000} drawn, {p.Scale:0.000} in sim.json");
+        Check("shadow_scales", Mathf.Abs(view.ShadowSize - ShadowFor(p)) < 0.5f, $"{view.ShadowSize:0.0} m, {ShadowFor(p):0.0} for this scale");
+        World.BreathBox(out int x0, out int y0, out int x1, out int y1);
+        var landed = grid.CellAt(lands);
+        int sway = p.Speed + 1;
+        Check("stream_lands_on_the_breath", landed.x >= x0 - sway && landed.x < x1 + sway && landed.y >= y0 - sway && landed.y < y1 + sway,
+            $"lands on cell {landed}, the core's box [{x0}, {x1}) by [{y0}, {y1})");
+        float ground = grid.GroundAt(view.ShownAt);
+        Metric("wingspan_m", DragonFlight.Wingspan(p));
+        Metric("flight_height_m", view.ShownAt.y - ground);
+        Metric("mouth_ahead_m", Vector3.Dot(mouth - view.ShownAt, flat));
+        Metric("mouth_over_the_body_m", mouth.y - view.ShownAt.y);
+        Metric("mouth_over_the_ground_m", mouth.y - grid.GroundAt(mouth));
+        Metric("mouth_to_wall_along_m", Vector3.Dot(lands - mouth, flat));
+        Metric("shadow_m", view.ShadowSize);
+        Metric("breath_across_cells", d.AlongX ? y1 - y0 : x1 - x0);
+        Metric("breath_along_cells", d.AlongX ? x1 - x0 : y1 - y0);
+        Metric("breath_across_m", (d.AlongX ? y1 - y0 : x1 - x0) * grid.cellSize);
+        Metric("breath_along_m", (d.AlongX ? x1 - x0 : y1 - y0) * grid.cellSize);
+    }
+
+    // A frame's worth of placing the breath, over again: the stream's work is in the shader, and this makes no garbage.
+    void NoGarbage()
+    {
+        var flat = Vector3.ProjectOnPlane(view.Way, Vector3.up).normalized;
+        var (a, b) = (view.Breath.StreamAt(1f) + Vector3.Cross(Vector3.up, flat) * 100f, view.Breath.StreamAt(1f) - Vector3.Cross(Vector3.up, flat) * 100f);
+        view.Breath.Burn(a, b, -flat, view.Mouth, view.DrawnScale);
+        // GC.GetAllocatedBytesForCurrentThread says 0 here whatever is made; the heap's size moves in 4 KB blocks, so enough placings to show.
+        long before = System.GC.GetTotalMemory(false);
+        for (int i = 0; i < Placings; i++) view.Breath.Burn(a, b, -flat, view.Mouth, view.DrawnScale);
+        long made = System.GC.GetTotalMemory(false) - before;
+        Metric("burn_bytes", made);
+        Check("burn_makes_no_garbage", made == 0, $"{made} bytes over {Placings} placings");
+    }
+
+    static float ShadowFor(DragonParams p) =>
+        DragonFlight.Wingspan(p) * Mathf.Lerp(1.2f, 2.6f, Mathf.InverseLerp(0f, DragonFlight.High, DragonFlight.Cruise(p)));
+
+    // Twice the data for a moment: the drawn dragon and its shadow go with it, so neither is a number of the view's own.
+    IEnumerator ScaleFollowsTheData(DragonParams p)
+    {
+        double was = p.Scale;
+        staging = true;
+        p.Scale = was * 2.0;
+        yield return null;
+        yield return null;
+        bool drawn = Mathf.Abs(view.DrawnScale - (float)p.Scale) < 0.001f, laid = Mathf.Abs(view.ShadowSize - ShadowFor(p)) < 0.5f;
+        Check("scale_follows_the_data", drawn && laid, $"at {p.Scale:0.00}: drawn {view.DrawnScale:0.00}, shadow {view.ShadowSize:0.0} m");
+        p.Scale = was;
+        yield return Wait(1f);
+        staging = false;
+    }
+
+    // A frame with the stream and one without, from one side or from under it on the ground: its line has to be lit.
+    IEnumerator StreamSeen(string label, bool side)
+    {
+        var breath = view.Breath;
+        if (!breath.Burning)
+        {
+            Check($"stream_seen_{label}", false, "the pass ended before the look");
+            yield break;
+        }
+        var frameEnd = new WaitForEndOfFrame();
+        var mid = breath.StreamAt(0.5f);
+        var flat = Vector3.ProjectOnPlane(view.Way, Vector3.up).normalized;
+        var across = Vector3.Cross(Vector3.up, flat);
+        var eye = side ? mid + across * SideOn : breath.StreamAt(1f) + flat * 60f + across * 150f;
+        eye.y = Mathf.Max(grid.GroundAt(eye) + BelowHeight, side ? mid.y : view.Mouth.y - 130f);
+        Cut(eye, mid);
+        yield return null;
+        yield return frameEnd;
+        Shot(label);
+        yield return null;
+        yield return frameEnd;
+        var with = StreamPicture(breath);
+        breath.StreamHidden = true;
+        yield return null;
+        yield return null;
+        yield return frameEnd;
+        var without = StreamPicture(breath);
+        breath.StreamHidden = false;
+        int lit = with.Zip(without, (a, b) => a > b + StreamBrighter * (2 * StreamBox + 1) * (2 * StreamBox + 1) ? 1 : 0).Sum();
+        Metric($"stream_lit_points_{label}", lit);
+        Check($"stream_seen_{label}", lit >= StreamPoints * StreamLitPart, $"{lit} of {StreamPoints} points between the mouth and the wall lit by it");
+    }
+
+    // The sum of red and green over a little box at each point of the stream's line.
+    static int[] StreamPicture(DragonBreath breath)
+    {
+        var picture = ScreenCapture.CaptureScreenshotAsTexture();
+        var eye = Camera.main;
+        var sums = new int[StreamPoints];
+        for (int i = 0; i < StreamPoints; i++)
+        {
+            var at = eye.WorldToScreenPoint(breath.StreamAt((i + 0.5f) / StreamPoints));
+            if (at.z <= 0f) continue;
+            for (int y = (int)at.y - StreamBox; y <= (int)at.y + StreamBox; y++)
+                for (int x = (int)at.x - StreamBox; x <= (int)at.x + StreamBox; x++)
+                {
+                    if (x < 0 || y < 0 || x >= picture.width || y >= picture.height) continue;
+                    var c = (Color32)picture.GetPixel(x, y);
+                    sums[i] += c.r + c.g;
+                }
+        }
+        Destroy(picture);
+        return sums;
+    }
+
+    // The stream against the core's breath, frame by frame: on while it's out, off at the turns and on leaving, and gone once the drops land.
+    IEnumerator WatchTheStream()
+    {
+        var frameEnd = new WaitForEndOfFrame();
+        while (World.Dragon != null)
+        {
+            yield return frameEnd;
+            if (World.Dragon != null && view.Breath != null) NoteTheStream(World.Dragon, view.Breath);
+        }
+    }
+
+    void NoteTheStream(DragonState d, DragonBreath breath)
+    {
+        if (World.BreathBox(out _, out _, out _, out _))
+        {
+            framesOff = 0;
+            streamStopped = -1f;
+            breathingFrames++;
+            if (breath.Burning) litFrames++;
+            return;
+        }
+        if (streamStopped < 0f) streamStopped = Time.time;
+        if (d.Phase == DragonPhase.Passes && d.Until > 0) turningFrames++;
+        if (d.Phase == DragonPhase.Leaving) leavingFrames++;
+        if (++framesOff > LagFrames && breath.Burning) litWhenNot++;
+        if (Time.time - streamStopped > DropsLand && breath.StreamDrawn) drawnAfter++;
+    }
+
+    // The Reset button itself, on a virtual pad, after the flight, solo: a tap calls the dragon and rebuilds nothing;
+    // holding it rebuilds the valley at once, the old R: the scene reloads, so this comes last and takes the probe across.
+    IEnumerator ResetButton()
+    {
+        var controls = caster.controls;
+        bool controlsWereOn = controls != null && controls.enabled;
+        if (controls != null) controls.enabled = true;
+        var pad = InputSystem.AddDevice<Gamepad>("Reset pad");
+        try
+        {
+            int flights = World.DragonFlights;
+            var was = grid;
+            InputSystem.QueueStateEvent(pad, new GamepadState(GamepadButton.Select));
+            yield return Wait(TapSeconds);
+            InputSystem.QueueStateEvent(pad, new GamepadState());
+            yield return Wait(TapSeconds);
+            Check("reset_tap_summons", World.DragonFlights == flights + 1 && World.Dragon?.Phase == DragonPhase.Warning, $"flights {flights} to {World.DragonFlights}, phase {World.Dragon?.Phase}");
+            yield return Wait(RebuildSeconds + TapSeconds);
+            Check("reset_tap_rebuilds_nothing", grid != null && grid == was && World.Dragon != null, "the same world, the flight still on");
+            DontDestroyOnLoad(gameObject);
+            float pressed = Time.unscaledTime;
+            InputSystem.QueueStateEvent(pad, new GamepadState(GamepadButton.Select));
+            while (was != null && Time.unscaledTime - pressed < RebuildSeconds + LoadSeconds) yield return null;
+            float held = Time.unscaledTime - pressed;
+            InputSystem.QueueStateEvent(pad, new GamepadState());
+            Metric("reset_held_s", held);
+            bool rebuilt = was == null;
+            if (rebuilt) yield return TheNewYard();
+            Check("reset_hold_rebuilds", rebuilt && held >= RebuildSeconds - TapSeconds && World.Dragon == null && World.DragonFlights == 0, $"after {held:0.0} s: scene reloaded {rebuilt}, flights {(rebuilt ? World.DragonFlights : -1)}");
+        }
+        finally
+        {
+            InputSystem.RemoveDevice(pad);
+            if (controls != null) controls.enabled = controlsWereOn;
+        }
+    }
+
+    // The reloaded scene's grid, once its world is up, for what's left of the run.
+    IEnumerator TheNewYard()
+    {
+        float from = Time.unscaledTime;
+        grid = null;
+        while (Time.unscaledTime - from < LoadSeconds && (grid == null || grid.World == null))
+        {
+            yield return null;
+            grid = FindAnyObjectByType<ChemGrid>();
+        }
+    }
+
+    // How close the dragon's tips come to the land drawn under them, land past the valley's edge too, on the passes and the turns.
+    IEnumerator WatchTheFit()
+    {
+        var frameEnd = new WaitForEndOfFrame();
+        var tips = view.GetComponentsInChildren<Transform>(true).Where(t => t.name.EndsWith("_end", System.StringComparison.Ordinal)).ToList();
+        Check("tips_found", tips.Count > 0, $"{tips.Count} bones");
+        while (World.Dragon != null)
+        {
+            yield return frameEnd;
+            var d = World.Dragon;
+            if (d?.Phase != DragonPhase.Passes || !view.Seen || staging) continue;
+            float gap = tips.Min(t => t.position.y - LandAt(t.position));
+            mostRoll = Mathf.Max(mostRoll, Mathf.Abs(DragonFlight.At(World, 0f, Vector2.zero).Roll));
+            if (d.Until > 0) leastTurnGap = Mathf.Min(leastTurnGap, gap);
+            else leastPassGap = Mathf.Min(leastPassGap, gap);
+            var box = view.Extent;
+            belowBody = Mathf.Max(belowBody, view.ShownAt.y - box.min.y);
+            aboveBody = Mathf.Max(aboveBody, box.max.y - view.ShownAt.y);
+        }
+    }
+
+    // The height of the land drawn at a point: any terrain over it.
+    static float LandAt(Vector3 at)
+    {
+        float best = float.NegativeInfinity;
+        foreach (var t in Terrain.activeTerrains)
+        {
+            var from = t.transform.position;
+            var size = t.terrainData.size;
+            if (at.x < from.x || at.z < from.z || at.x > from.x + size.x || at.z > from.z + size.z) continue;
+            best = Mathf.Max(best, from.y + t.SampleHeight(at));
+        }
+        return best;
     }
 
     // The fastest the shown dragon moves on a pass, frame to frame: a jump at each tick would show here.
@@ -182,7 +453,7 @@ public class DragonProbe : ProbeScenario
             yield return frameEnd;
             var d = World.Dragon;
             bool flying = d != null && d.Phase == DragonPhase.Passes && d.Until == 0 && d.Travelled > 0;
-            if (flying && view.Seen && Time.unscaledDeltaTime < 0.1f) fastest = Mathf.Max(fastest, (view.ShownAt - was).magnitude / Mathf.Max(Time.deltaTime, 0.001f));
+            if (flying && view.Seen && !staging && Time.unscaledDeltaTime < 0.1f) fastest = Mathf.Max(fastest, (view.ShownAt - was).magnitude / Mathf.Max(Time.deltaTime, 0.001f));
             was = view.ShownAt;
         }
     }
@@ -195,6 +466,7 @@ public class DragonProbe : ProbeScenario
         if (World.Dragon == null) yield break;
         var ground = grid.GroundAt(view.ShownAt);
         Metric("perch_above_ground_m", view.ShownAt.y - ground);
+        Metric("perch_lowest_below_it_m", view.ShownAt.y - view.Extent.min.y);
         Cut(view.ShownAt - view.Way * -90f + Vector3.Cross(Vector3.up, view.Way).normalized * 60f + Vector3.up * 16f, view.ShownAt + Vector3.up * 14f);
         yield return null;
         Shot("perch");

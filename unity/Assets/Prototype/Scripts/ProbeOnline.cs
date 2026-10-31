@@ -101,6 +101,10 @@ public class OnlineObservation
 
     /// <summary>The hit-stops that wizard's copy had here: none, they're its owner's view.</summary>
     public int otherStops;
+    /// <summary>The dragon's flight in this side's world, and how far its sky darkened.</summary>
+    public int dragonFlights;
+    public bool sawDragonWarning;
+    public float mostMenace;
     public int joinedTick;
     /// <summary>The virtual player's lag at the start tick: ticks it knew of but hadn't run yet (0 caught up).</summary>
     public int lagAtStart;
@@ -431,6 +435,16 @@ public class OnlineProbeClient : MonoBehaviour
         yield return AfterReset(id, net);
     }
 
+    // The host's dragon as this side has it, in its own core and its own sky: not run yet (needs the PC's `online`).
+    static void WatchDragon(OnlineObservation seen)
+    {
+        var world = FindAnyObjectByType<ChemGrid>().World;
+        var sky = FindAnyObjectByType<SkyLight>();
+        seen.dragonFlights = world.DragonFlights;
+        seen.sawDragonWarning |= world.Dragon?.Phase == DragonPhase.Warning;
+        if (sky != null) seen.mostMenace = Mathf.Max(seen.mostMenace, sky.Menace);
+    }
+
     // The other wizard's shape as this side draws it.
     static void WatchForms(OnlineObservation seen)
     {
@@ -496,6 +510,7 @@ public class OnlineProbeClient : MonoBehaviour
             ask = ProbeLink.Read<ProbeHostMessage>(ProbeLink.HostFile);
             if (ask == null || ask.id != id || ask.phase != ProbeLink.ResetCheck) ask = null;
             WatchForms(after);
+            WatchDragon(after);
             yield return null;
         }
         for (float waited = 0f; ask != null && waited < 20f && net.NetTick < ask.startTick; waited += Time.unscaledDeltaTime) yield return null;
@@ -676,6 +691,14 @@ public class OnlineProbe : ProbeScenario
         Metric("reset_checksums_compared", compared);
         Check("reset_checksums_equal", compared >= 3 && equal == compared && !client.desync,
             firstDiff ?? $"{equal}/{compared} checksums equal after the reset (tick {resetNet.LastResetTick}); client desync {client.desync}, {client.errorCount} client errors");
+        DragonOnTheClient(client);
+    }
+
+    // The checksums carry the dragon's state; this is what the client made of it: its own core's warning and its own dark sky.
+    void DragonOnTheClient(OnlineObservation client)
+    {
+        bool seen = client.sawDragonWarning && client.dragonFlights == World.DragonFlights && client.mostMenace > 0f;
+        Check("dragon_seen_on_the_client", seen, $"warning seen {client.sawDragonWarning}, flights {client.dragonFlights} of {World.DragonFlights}, its sky darkened to {client.mostMenace:0.00}");
     }
 
     // The host takes a deer's shape and ends it as a cast button does (Shapeshift.ChangeBackByChoice), on its own machine;
