@@ -208,6 +208,7 @@ public class FeelProbe : SpellLooksProbe
         Metric(name + "_fist_m", arm.NearestFist);
         Check(name + "_arm_reaches", arm.NearestFist < FistTolerance, $"the hand came {arm.NearestFist:0.00} m from {arm.Goal}");
         Check(name + "_lands_once", landings == landingsWere + 1, $"{landings - landingsWere} landings");
+        Check(name + "_sends_the_strike", World.Stands[me].NextStrike > World.Tick - 2, $"may strike again at tick {World.Stands[me].NextStrike}, now {World.Tick}");
         Check(name + "_landing_says_who", landed.Prop == thing && landed.Puncher == fists && landed.Hit, $"{landed.Prop}, by {landed.Puncher}");
         Check(name + "_hit_stop", beats.Stops == stops + 1 && !beats.Stopped, $"{beats.Stops - stops} stops");
         Check(name + "_kick", CastImpact.Kicks == kicks + 1 && CastImpact.LastKick <= 0.06f, $"{CastImpact.Kicks - kicks} kicks, {CastImpact.LastKick:0.000} m");

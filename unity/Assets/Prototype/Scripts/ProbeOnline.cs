@@ -99,6 +99,9 @@ public class OnlineObservation
         if (Camera.main != null) otherSoundFarthest = Mathf.Max(otherSoundFarthest, Vector3.Distance(at, Camera.main.transform.position));
     }
 
+    /// <summary>The strikes this side's wizard took, and the health they cost it (WizardStrike).</summary>
+    public int hitsTaken;
+    public float damageTaken;
     /// <summary>The hit-stops that wizard's copy had here: none, they're its owner's view.</summary>
     public int otherStops;
     public int joinedTick;
@@ -504,6 +507,9 @@ public class OnlineProbeClient : MonoBehaviour
         SoundVoices.Started -= Sounded;
         if (ask == null) yield break;
         after.otherStops = other != null ? other.Stops : 0;
+        var struck = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().GetComponent<WizardStrike>();
+        after.hitsTaken = struck.HitsTaken;
+        after.damageTaken = struck.DamageTaken;
         after.phase = ProbeLink.ResetReported;
         after.desync = net.DesyncSeen;
         after.errorCount = errorCount;
@@ -518,6 +524,8 @@ public class OnlineProbeClient : MonoBehaviour
 /// </summary>
 public class OnlineProbe : ProbeScenario
 {
+    // What the core said of the strikes on the virtual player (TryStrikes).
+    int strikeHits, strikeDamage;
     const int LeadTicks = 30;
     const float JoinSeconds = 60f, ReportSeconds = 60f;
 
@@ -598,6 +606,7 @@ public class OnlineProbe : ProbeScenario
         yield return TryTag();
         yield return TryShape();
         yield return TryBeats();
+        yield return TryStrikes();
         yield return CompareAfterReset(id);
     }
 
@@ -659,6 +668,8 @@ public class OnlineProbe : ProbeScenario
         }
         Check("shape_seen_online", client.sawForm, "the host's wizard drawn as a deer on the virtual player");
         Check("shape_ended_online", client.sawFormEnd, "and drawn as itself again once a cast button ended it (issue #6)");
+        Check("strike_damage_on_the_right_wizard", client.hitsTaken == strikeHits && strikeHits > 0 && Mathf.Approximately(client.damageTaken, strikeDamage) && wizard.GetComponent<WizardStrike>().HitsTaken == 0,
+            $"the virtual player took {client.hitsTaken} hits for {client.damageTaken} health, the core says {strikeHits} for {strikeDamage}; the host took {wizard.GetComponent<WizardStrike>().HitsTaken}");
         Check("remote_wizard_has_no_hit_stop", client.otherStops == 0 && wizard.GetComponent<CastBeats>().Stops > 0,
             $"its copy on the virtual player {client.otherStops}, the host's own {wizard.GetComponent<CastBeats>().Stops}");
         Check("beats_seen_online", client.otherBeats.SequenceEqual(hostBeats) && hostBeats.Contains(nameof(Beat.Release)) && hostBeats.Contains(nameof(Beat.Charge)),
@@ -741,6 +752,57 @@ public class OnlineProbe : ProbeScenario
     {
         for (float t = 0f; t < 0.3f; t += Time.deltaTime) yield return null;
         for (float t = 0f; t < 6f && beats.Now != Beat.Neutral; t += Time.deltaTime) yield return null;
+    }
+
+    // The host stands next to the virtual player's wizard and strikes it until it has seen a hit and a miss, as rolled.
+    IEnumerator TryStrikes()
+    {
+        const int MostStrikes = 24, Hits = 2;
+        var network = NetworkManager.Singleton;
+        var other = network.ConnectedClientsList.FirstOrDefault(c => c.ClientId != network.LocalClientId);
+        var strike = wizard.GetComponent<WizardStrike>();
+        string foe = other != null ? NetChem.PlayerName(other.ClientId) : null, me = NetChem.PlayerName(network.LocalClientId);
+        for (float t = 0f; t < 5f && foe != null && !(World.Stands.ContainsKey(foe) && World.Stands.ContainsKey(me)); t += Time.unscaledDeltaTime) yield return null;
+        if (foe == null || !World.Stands.ContainsKey(foe))
+        {
+            Check("strike_rolled_both_ways", false, $"no stand for the virtual player: {World.StrikeText()}");
+            yield break;
+        }
+        StrikeHit seen = null;
+        void Saw(StrikeHit hit) => seen = hit;
+        strike.Struck += Saw;
+        int misses = 0, moved = 0, strikes = 0;
+        while (strikes < MostStrikes && (strikeHits < Hits || misses == 0))
+        {
+            var target = World.Stands[foe];
+            int x = target.X, y = target.Y;
+            var at = grid.CellCenter(x - 1, y);
+            Teleport(new Vector3(at.x, grid.GroundAt(at) + 0.05f, at.z));
+            for (float t = 0f; t < 2f && !(World.Stands[me].X == x - 1 && World.Stands[me].Y == y); t += Time.unscaledDeltaTime) yield return null;
+            int ready = World.Tick + World.Rules.Sim.Strike.CooldownTicks + 1;
+            seen = null;
+            strike.Strike(Vector3.right);
+            strikes++;
+            for (float t = 0f; t < 2f && seen == null; t += Time.unscaledDeltaTime) yield return null;
+            if (seen != null && seen.Hit)
+            {
+                strikeHits++;
+                strikeDamage += seen.Damage;
+                // The owner moves it; its copy here gets there through the NetworkTransform.
+                var to = new Vector2Int(seen.ToX, seen.ToY);
+                for (float t = 0f; t < 2f && grid.CellAt(other.PlayerObject.transform.position) != to; t += Time.unscaledDeltaTime) yield return null;
+                if (to == new Vector2Int(x + 1, y) && grid.CellAt(other.PlayerObject.transform.position) == to) moved++;
+                else if (to != new Vector2Int(x, y)) Check("strike_moved_where_the_core_said", false, $"core {to}, its copy here {grid.CellAt(other.PlayerObject.transform.position)}");
+            }
+            else if (seen != null) misses++;
+            while (World.Tick < ready) yield return null;
+        }
+        strike.Struck -= Saw;
+        Metric("strikes", strikes);
+        Metric("strike_hits", strikeHits);
+        Metric("strike_misses", misses);
+        Check("strike_rolled_both_ways", strikeHits >= Hits && misses > 0, $"{strikes} strikes: {strikeHits} hits, {misses} misses");
+        Check("strike_moved_one_cell", moved > 0, $"{moved} of {strikeHits} hits moved its wizard a cell, on the owner's machine");
     }
 
     // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.

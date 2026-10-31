@@ -46,8 +46,8 @@ public static class ProbeScenarios
         new Entry("perf", typeof(PerfProbe), 330f,
             "Holds a fixed camera over the valley for seconds=N (default 10) and reports the frame times " +
             "(Editor Play mode, not a player build). Checks: no console errors."),
-        new Entry("online", typeof(OnlineProbe), 240f,
-            "This Editor hosts and a Multiplayer Play Mode virtual player (Player 2, started if it isn't running) joins on " +
+        new Entry("online", typeof(OnlineProbe), 280f,
+            "This Editor hosts and a Multiplayer Play Mode virtual player (Player 2, started if it isn't running) joins on 127.0.0.1; among the rest, the host strikes its wizard till a hit and a miss are rolled, the damage on the right wizard, moved a cell, checksums equal. It joins on " +
             "127.0.0.1. Each casts Fire Bolt, Earthen Trench and Wall of Stone through the network; the virtual player's " +
             "Thunderwave throws a crate and the host's wizard, and the host's wizard falls 10 m. Checks: it joined, every 30-tick checksum (cells and rules) equal on both, the same world " +
             "at the sample tick, no desync seen, the client's terrain drawn as low as the host's under the trenches, the same " +
@@ -98,7 +98,7 @@ public static class ProbeScenarios
             "a wizard in the open is downed and one behind a built wall isn't, every chunk is freshened, and the Gauntlet's lava, a meadow cell, a felled tree, a moved crate and a broken one " +
             "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
         new Entry("downed", typeof(DownedProbe), 30f,
-            "The punch on a virtual gamepad's Circle, and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
+            "The punch on a virtual gamepad's Circle, being struck (open ground, a wall, water), and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
         new Entry("castfeel", typeof(CastFeelProbe), 200f,
             "The beats of a cast by elements (CastBeats): a single, a pair, one charged and one cancelled, and their sounds (CastSounds). Checks: each beat and sound in order, the thump at contact, the hum rising by level and gone after a cancel, pause, fall, Shapeshift, reset or quit, the hands at their targets once settled, " +
             "the slam about 0.1 s, a charged cast's beats to the frame as they were, an uncharged cast's wind-up and timing, casts on each other's heels all going on time, a pulse at each charge level, the slower walk, the recoil only drawn, hit-stop leaving the tick and hash alone, shake and rumble by size and distance on a virtual pad, off still, the motors stopping, no console errors. With --shots, the wizard from the side at each beat, before and after."),

@@ -12,8 +12,8 @@ using UnityEngine;
 // punch. Only the puncher's machine shows the arm (PunchPose), as with a throw.
 //
 // PunchLanded is the one moment the fist arrives, hit or miss, once for each punch that
-// gets there, on the puncher's machine: what a strike on another wizard is to be sent
-// from. Strength and timing are in Settings/CastFeel.asset.
+// gets there, on the puncher's machine: the core's unarmed strike is sent from it
+// (WizardStrike). Strength and timing are in Settings/CastFeel.asset.
 public partial class ItemHolder
 {
     // How far ahead the fist lands and how much around it counts, in metres, at what height.
@@ -27,7 +27,7 @@ public partial class ItemHolder
         public readonly PhysicsProp Prop;
         /// <summary>The pane cell it strikes, when there's no prop; null if none.</summary>
         public readonly Vector2Int? Pane;
-        /// <summary>Another wizard in reach, prop or not; null if none. Nothing happens to them yet.</summary>
+        /// <summary>Another wizard by the fist, prop or not; null if none. The arm goes to it; whether it's hit is the core's (WizardStrike).</summary>
         public readonly Knockback Wizard;
         /// <summary>Where the fist goes on what it met, or the middle of the air it punched.</summary>
         public readonly Vector3 Point;

@@ -241,6 +241,10 @@ that long, and doesn't march.
   cells. Log: "Ana punches Bo: 1 bludgeoning damage", "Ana's punch misses Bo". Say "strike" alone only where
   it can't mean lightning; the view's shove of props is still "the punch" (`ItemHolder.Punch`).
 
+**Shunt**
+: A short move through the character controller to a point, for a strike's knock-back (`Knockback.Shunt`), so
+  what stands in the way stops it.
+
 **Stand**
 : Where the core knows a wizard is and its health as its peer last said (`WizardStand`, a `StrikeCommand.Stand`),
   so strikes resolve on the core's cells. Health stays the wizard's own (`Vitals`); the stand only mirrors it.

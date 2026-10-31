@@ -551,6 +551,8 @@ MonoBehaviour:
   punchLowFrom: 1
   punchLowLean: 22
   punchLowDip: 0.14
+  punchKnockSeconds: 0.15
+  punchFelt: 0.15
   gatherRumble:
     low: 0
     high: 0.22

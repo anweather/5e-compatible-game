@@ -49,6 +49,10 @@ using UnityEngine;
 //   combo input, the dragon's summons and chunk switches) and replays it from tick 0, or from the last reset, which it replays first.
 // - The host alone summons the dragon (SummonDragon): stamped for the next tick like a defense command,
 //   then it's rules (World.Dragon.cs): every machine flies the same flight from there.
+// - A wizard's stands and unarmed strikes (WizardStrike, World.Strike.cs) travel as combo input
+//   does: its owner asks, the host names the player and stamps them into the next tick. The host
+//   sends a leaving player's Leave. A late joiner gets them with the history; a stand that a later
+//   one replaces before any strike is dropped from it, so walking doesn't make it grow.
 [RequireComponent(typeof(ChemGrid))]
 public class NetChem : NetworkBehaviour
 {
@@ -71,6 +75,10 @@ public class NetChem : NetworkBehaviour
     readonly List<DefenseIntent> defenseHistory = new();
     readonly List<ComboIntent> pendingCombos = new();
     readonly List<ComboIntent> comboHistory = new();
+    readonly List<StrikeIntent> pendingStrikes = new();
+    readonly List<StrikeIntent> strikeHistory = new();
+    // The last tick with a strike in the history: stands before it are kept.
+    int lastStrikeTick;
     bool dragonAsked;
     readonly List<int> dragonHistory = new();
     // The chunks awake once every stamped switch has run (the host's world is a tick or so behind).
@@ -89,10 +97,12 @@ public class NetChem : NetworkBehaviour
     readonly Dictionary<int, DefenseIntent[]> defenseFor = new();
     // The same for combo input.
     readonly Dictionary<int, ComboIntent[]> combosFor = new();
+    readonly Dictionary<int, StrikeIntent[]> strikesFor = new();
     // And the dragon's summons, by the tick they're stamped for.
     readonly HashSet<int> dragonFor = new();
     // Joining: the combo input of the history, sent just before the rest of it.
     ComboIntent[] pastCombos = System.Array.Empty<ComboIntent>();
+    StrikeIntent[] pastStrikes = System.Array.Empty<StrikeIntent>();
     // Joining: the ticks of the dragon's summons in the history, the same way.
     int[] pastDragon = System.Array.Empty<int>();
     readonly Dictionary<int, string> hostHashes = new();
@@ -178,6 +188,11 @@ public class NetChem : NetworkBehaviour
         pastCombos = System.Array.Empty<ComboIntent>();
         pendingCombos.Clear();
         comboHistory.Clear();
+        strikesFor.Clear();
+        pastStrikes = System.Array.Empty<StrikeIntent>();
+        pendingStrikes.Clear();
+        strikeHistory.Clear();
+        lastStrikeTick = 0;
         dragonAsked = false;
         dragonHistory.Clear();
         dragonFor.Clear();
@@ -200,6 +215,7 @@ public class NetChem : NetworkBehaviour
             hostTick = 0;
             clock = 0f;
             synced = true;
+            NetworkManager.OnClientDisconnectCallback += PlayerLeft;
             if (soloMods != null && soloMods.Count > 0) TryStamp(soloMods);
         }
         else
@@ -209,7 +225,14 @@ public class NetChem : NetworkBehaviour
         }
     }
 
-    public override void OnNetworkDespawn() => grid.ExternalTicks = false;
+    public override void OnNetworkDespawn()
+    {
+        grid.ExternalTicks = false;
+        if (NetworkManager != null) NetworkManager.OnClientDisconnectCallback -= PlayerLeft;
+    }
+
+    // Host only: the core forgets a wizard whose player has gone.
+    void PlayerLeft(ulong clientId) => pendingStrikes.Add(StrikeIntent.From(StrikeCommand.Leave(PlayerName(clientId)), 0));
 
     /// <summary>
     /// Asks the host to cast a spell. It takes effect on every machine at the same tick, after
@@ -261,6 +284,9 @@ public class NetChem : NetworkBehaviour
 
     /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick.</summary>
     public void RequestCombo(ComboCommand command) => RequestComboRpc(ComboIntent.From(command, 0));
+
+    /// <summary>Asks the host to run this wizard's stand or strike; it lands on every machine at the same tick.</summary>
+    public void RequestStrikeCommand(StrikeCommand command) => RequestStrikeCommandRpc(StrikeIntent.From(command, 0));
 
     /// <summary>Host only: stamps a checked rule switch into the next tick's batch, for every machine.</summary>
     public void StampRules(RuleSet next)
@@ -339,6 +365,7 @@ public class NetChem : NetworkBehaviour
             chunkHistory.AddRange(chunks);
             StampDefense();
             StampCombos();
+            StampStrikes();
             StampDragon();
 
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
@@ -373,6 +400,7 @@ public class NetChem : NetworkBehaviour
         chunkHistory.RemoveAll(c => c.Tick < hostTick);
         defenseHistory.RemoveAll(d => d.Tick < hostTick);
         comboHistory.RemoveAll(c => c.Tick < hostTick);
+        strikeHistory.RemoveAll(s => s.Tick < hostTick);
         dragonHistory.RemoveAll(t => t < hostTick);
         ruleHistory.Clear();
         ruleHistory.Add(rules);
@@ -432,6 +460,38 @@ public class NetChem : NetworkBehaviour
         else combosFor[tick] = commands;
     }
 
+    // As StampCombos. Replaying, a stand only has to be there for the next strike or the end, so a newer one replaces it.
+    void StampStrikes()
+    {
+        if (pendingStrikes.Count == 0) return;
+        var stamped = pendingStrikes.ToArray();
+        pendingStrikes.Clear();
+        for (int i = 0; i < stamped.Length; i++)
+        {
+            stamped[i].Tick = hostTick;
+            var player = stamped[i].Player;
+            if ((StrikeKind)stamped[i].Kind == StrikeKind.Stand) strikeHistory.RemoveAll(s => (StrikeKind)s.Kind == StrikeKind.Stand && s.Player == player && s.Tick > lastStrikeTick);
+            else lastStrikeTick = hostTick;
+            strikeHistory.Add(stamped[i]);
+        }
+        StrikesStampedRpc(hostTick, stamped);
+    }
+
+    [Rpc(SendTo.ClientsAndHost)]
+    void StrikesStampedRpc(int tick, StrikeIntent[] commands)
+    {
+        if (batches.TryGetValue(tick, out var batch)) batch.Strikes.AddRange(commands.Select(c => c.ToCommand()));
+        else strikesFor[tick] = commands;
+    }
+
+    // The sender is whose wizard it is, whatever it says.
+    [Rpc(SendTo.Server)]
+    void RequestStrikeCommandRpc(StrikeIntent command, RpcParams rpc = default)
+    {
+        command.Player = new FixedString32Bytes(PlayerName(rpc.Receive.SenderClientId));
+        pendingStrikes.Add(command);
+    }
+
     // The sender is who the input is for, whatever it says.
     [Rpc(SendTo.Server)]
     void RequestComboRpc(ComboIntent command, RpcParams rpc = default)
@@ -481,6 +541,7 @@ public class NetChem : NetworkBehaviour
     {
         var joiner = RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp);
         SendComboHistoryRpc(comboHistory.ToArray(), joiner);
+        SendStrikeHistoryRpc(strikeHistory.ToArray(), joiner);
         SendDragonHistoryRpc(dragonHistory.ToArray(), joiner);
         SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defenseHistory.ToArray(),
             joiner);
@@ -530,6 +591,7 @@ public class NetChem : NetworkBehaviour
             chunks.Select(c => c.ToSwitch())) { Reset = rules.Has && rules.Reset };
         if (defenseFor.Remove(tick, out var defense)) batches[tick].Defense.AddRange(defense.Select(d => d.ToCommand()));
         if (combosFor.Remove(tick, out var combos)) batches[tick].Combos.AddRange(combos.Select(c => c.ToCommand()));
+        if (strikesFor.Remove(tick, out var strikes)) batches[tick].Strikes.AddRange(strikes.Select(s => s.ToCommand()));
         if (dragonFor.Remove(tick)) batches[tick].Dragon.Add(new DragonCommand());
         if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
@@ -538,6 +600,9 @@ public class NetChem : NetworkBehaviour
 
     [Rpc(SendTo.SpecifiedInParams)]
     void SendComboHistoryRpc(ComboIntent[] combos, RpcParams rpc = default) => pastCombos = combos;
+
+    [Rpc(SendTo.SpecifiedInParams)]
+    void SendStrikeHistoryRpc(StrikeIntent[] strikes, RpcParams rpc = default) => pastStrikes = strikes;
 
     [Rpc(SendTo.SpecifiedInParams)]
     void SendDragonHistoryRpc(int[] ticks, RpcParams rpc = default) => pastDragon = ticks;
@@ -552,6 +617,7 @@ public class NetChem : NetworkBehaviour
         var timeline = TickBatch.Timeline(past.Select(c => (c.Tick, c.ToCommand())), ruleChanges.Select(r => r.ToChange()), upToTick,
             effects.Select(e => (e.Tick, e.ToCommand())), chunks.Select(c => (c.Tick, c.ToSwitch())), defense.Select(d => (d.Tick, d.ToCommand())), from);
         TickBatch.AddCombos(timeline, pastCombos.Select(c => (c.Tick, c.ToCommand())));
+        TickBatch.AddStrikes(timeline, pastStrikes.Select(s => (s.Tick, s.ToCommand())));
         TickBatch.AddDragon(timeline, pastDragon);
         for (int t = from; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
@@ -810,7 +876,41 @@ public struct ChunkIntent : INetworkSerializable
     }
 }
 
-/// <summary>A player's combo input (Chem.ComboCommand), stamped with the sim tick it takes effect on.</summary>
+/// <summary>A wizard's stand, strike or leaving (Chem.StrikeCommand), stamped with the sim tick it lands on.</summary>
+public struct StrikeIntent : INetworkSerializable
+{
+    public byte Kind;
+    public FixedString32Bytes Player;
+    public int X, Y, AimX, AimY, Hp, Tick;
+
+    public static StrikeIntent From(StrikeCommand c, int tick) => new StrikeIntent
+    {
+        Kind = (byte)c.Kind,
+        Player = new FixedString32Bytes(c.Player ?? ""),
+        X = c.X,
+        Y = c.Y,
+        AimX = c.AimX,
+        AimY = c.AimY,
+        Hp = c.Hp,
+        Tick = tick,
+    };
+
+    public StrikeCommand ToCommand() => new StrikeCommand(Player.ToString(), (StrikeKind)Kind, X, Y, AimX, AimY, Hp);
+
+    public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
+    {
+        serializer.SerializeValue(ref Kind);
+        serializer.SerializeValue(ref Player);
+        serializer.SerializeValue(ref X);
+        serializer.SerializeValue(ref Y);
+        serializer.SerializeValue(ref AimX);
+        serializer.SerializeValue(ref AimY);
+        serializer.SerializeValue(ref Hp);
+        serializer.SerializeValue(ref Tick);
+    }
+}
+
+/// <summary>A player's combo input (Chem.ComboCommand), stamped with the sim tick it lands on.</summary>
 public struct ComboIntent : INetworkSerializable
 {
     public byte Kind;

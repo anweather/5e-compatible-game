@@ -208,6 +208,10 @@ public class CastFeel : ScriptableObject
     public float punchClench = 70f;
     [Tooltip("A target lower than this (m) bends the body to it, and at the ground by this much more lean (degrees) and dip (m).")]
     public float punchLowFrom = 1f, punchLowLean = 22f, punchLowDip = 0.14f;
+    [Tooltip("How long a strike's knock-back takes the wizard struck to its new cell (s).")]
+    public float punchKnockSeconds = 0.15f;
+    [Range(0f, 1f), Tooltip("How big being struck feels, as a spell's size for CastImpact.Felt.")]
+    public float punchFelt = 0.15f;
 
     [Header("Rumble (pulses, never a drone)")]
     public Thump gatherRumble = new(0f, 0.22f, 0.06f);
