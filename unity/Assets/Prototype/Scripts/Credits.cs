@@ -23,6 +23,9 @@ public static class Credits
         "Unity URP Terrain Sample Project, by Unity Technologies",
     };
 
+    /// <summary>Models in the build that aren't ours (unity/Assets/Prototype/ThirdParty/Quaternius, CC0, so credited by choice).</summary>
+    public const string Models = "The dragon: Animated Monsters by Quaternius (https://www.patreon.com/quaternius), CC0 1.0 Universal.";
+
     public const string Engine = "Made with Unity. Unity is a trademark of Unity Technologies.";
 
     /// <summary>Libraries in the build whose licences ask to be credited.</summary>
@@ -43,6 +46,7 @@ public static class Credits
         text.Append("ASSETS").Append(nl);
         foreach (var a in Assets) text.Append("- ").Append(a).Append(nl);
         text.Append("Used under the Unity Asset Store End User License Agreement.").Append(nl).Append(nl);
+        text.Append("MODELS").Append(nl).Append(Models).Append(nl).Append(nl);
         text.Append("ENGINE").Append(nl).Append(Engine).Append(nl).Append(nl);
         text.Append("LIBRARIES").Append(nl).Append(Libraries).Append(nl).Append(nl);
         text.Append("WITH THANKS").Append(nl).Append(Contributions).Append(nl);

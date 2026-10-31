@@ -153,7 +153,7 @@ public class NetWizard : NetworkBehaviour
 
     [Rpc(SendTo.Server)]
     void AskForResetRpc() =>
-        EventLog.Add($"Player {OwnerClientId + 1} asks to reset the world: <b>R</b> resets it for everyone");
+        EventLog.Add($"Player {OwnerClientId + 1} asks to reset the world: <b>R</b> calls the dragon, holding it rebuilds the valley at once");
 
     // The owner, at an online reset (OnlineReset.Happened): up from any seat, back in its own shape,
     // vitals full, back at its start. What it held is the world's and comes back at its own spot
@@ -169,12 +169,15 @@ public class NetWizard : NetworkBehaviour
     }
 
     /// <summary>Owner only: straight back to this player's place at the yard.</summary>
-    public void JumpToStart()
+    public void JumpToStart() => JumpTo(SpawnPoint(startGrid));
+
+    /// <summary>Owner only: straight to a spot (a checkpoint of the Gauntlet, WizardDown).</summary>
+    public void JumpTo(Vector3 at)
     {
         // The character controller keeps its own idea of where it is: off for the jump.
         bool hasBody = TryGetComponent<CharacterController>(out var body) && body.enabled;
         if (hasBody) body.enabled = false;
-        Teleport(SpawnPoint(startGrid));
+        Teleport(at);
         Physics.SyncTransforms();
         if (hasBody) body.enabled = true;
     }

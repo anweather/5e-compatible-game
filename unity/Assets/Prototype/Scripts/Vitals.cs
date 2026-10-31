@@ -14,7 +14,9 @@ using UnityEngine;
 // wizard changes back, and what's left over carries on to the wizard).
 // Breath (Breath, sim.json breath) runs down while the head is under water
 // (SurfaceEffects says when, Breathe) and drowning hurts through TakeDamage.
-// Like the rest it is the wizard's own, kept on the machine that moves it.
+// Like the rest it is the wizard's own, kept on the machine that moves it. The
+// dragon's breath downs a wizard whatever its health (KnockDown): WizardDown asks
+// the core, on the owner's machine only.
 public class Vitals : MonoBehaviour
 {
     public const float StaminaMax = 100f, MagicMax = 100f;
@@ -46,6 +48,11 @@ public class Vitals : MonoBehaviour
 
     /// <summary>The wizard is down, and takes no more harm until it's back.</summary>
     public bool IsDown => down.IsDown;
+
+    /// <summary>What the log says of the last fall.</summary>
+    public string FellLine { get; private set; } = HealthRanOut;
+
+    const string HealthRanOut = "You fall, out of health";
 
     /// <summary>Takes damage before the wizard does, and returns what's left over (Shapeshift's animal form).</summary>
     public System.Func<float, float> Absorb { get; set; }
@@ -92,7 +99,25 @@ public class Vitals : MonoBehaviour
         if (amount <= 0f || IsDown) return;
         Health = Mathf.Max(0f, Health - amount);
         lastHurt = Time.time;
-        if (Health <= 0f && down.Fall()) Fell?.Invoke();
+        if (Health <= 0f) GoDown(HealthRanOut);
+    }
+
+    /// <summary>
+    /// Down at once whatever its health, as what knocks a wizard over doesn't hurt it (the dragon's breath: nobody
+    /// dies of it, and nothing an animal shape could soak). <paramref name="line"/> is what the log says.
+    /// </summary>
+    public void KnockDown(string line)
+    {
+        if (IsDown) return;
+        Health = 0f;
+        GoDown(line);
+    }
+
+    void GoDown(string line)
+    {
+        if (!down.Fall()) return;
+        FellLine = line;
+        Fell?.Invoke();
     }
 
     void Update()

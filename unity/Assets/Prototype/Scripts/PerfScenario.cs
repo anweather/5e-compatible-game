@@ -14,7 +14,7 @@ using Debug = UnityEngine.Debug;
 
 // One timed scenario in a player build, for a performance pass
 // (docs/perf/, the MacOSProfiling build in PrototypeBuild). Start the game with
-//   -fps-probe -perf-scenario <meadow|wildfire|storm|snow|fog|village|bot> [-perf-seconds N]
+//   -fps-probe -perf-scenario <meadow|wildfire|storm|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
 // and FpsProbe hands over to this instead of its showcase: PerfStage sets the
 // scene, it settles, every frame is measured for N seconds (30 by default, 20
 // for the wildfire), one "PERF RESULT" line of key=value pairs goes to the
@@ -61,7 +61,7 @@ public class PerfScenario : MonoBehaviour
     const float EarlyMs = 100f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow" };
 
     readonly List<float> frameMs = new();
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
@@ -341,6 +341,8 @@ public class PerfScenario : MonoBehaviour
         var inv = CultureInfo.InvariantCulture;
         var stats = FrameStats.Of(frameMs);
         var line = new StringBuilder($"PERF RESULT scenario={scenario} build={BuildInfo.Label.Replace(' ', '_')} res={Screen.width}x{Screen.height} frames={stats.Count} seconds={elapsed.ToString("0.0", inv)}");
+        var chem = FindAnyObjectByType<ChemGrid>();
+        if (chem != null) line.Append($" changed={chem.World.ChangedCount} flights={chem.World.DragonFlights} palette={chem.World.StartShapes} keep_start_ms={ChemGrid.KeepStartMs.ToString("0.0", inv)}");
         void Add(string key, double value, string format = "0.0") => line.Append($" {key}={value.ToString(format, inv)}");
         void AddSplit(string key, List<float> ms)
         {

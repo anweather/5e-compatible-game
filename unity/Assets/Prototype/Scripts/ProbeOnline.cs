@@ -594,10 +594,27 @@ public class OnlineProbe : ProbeScenario
         Compare(recorder.Seen, report);
         yield return TryReset();
         yield return ClientSettled(id);
+        Summon();
         yield return TryTag();
         yield return TryShape();
         yield return TryBeats();
         yield return CompareAfterReset(id);
+    }
+
+    // The host's R calls the dragon, not the rebuild: the warning starts for everyone, and the checksums
+    // compared after this (CompareAfterReset) carry its state, so a peer that missed it shows as a mismatch.
+    void Summon()
+    {
+        int flights = World.DragonFlights;
+        bool reloaded = EventLog.ResetYard();
+        StartCoroutine(SummonLands(flights, reloaded));
+    }
+
+    IEnumerator SummonLands(int flights, bool reloaded)
+    {
+        for (float t = 0f; t < 3f && World.DragonFlights == flights; t += Time.unscaledDeltaTime) yield return null;
+        Check("dragon_summoned_online", !reloaded && World.DragonFlights == flights + 1 && World.Dragon?.Phase == DragonPhase.Warning,
+            $"reloaded {reloaded}, flights {flights} to {World.DragonFlights}, phase {World.Dragon?.Phase}");
     }
 
     // A reset stalls a peer's frame for a couple of seconds and leaves it ticks behind. A deer that
@@ -766,7 +783,7 @@ public class OnlineProbe : ProbeScenario
         int lastReset = net.LastResetTick, heard = -1;
         void Heard(int tick) => heard = tick;
         net.ResetComing += Heard;
-        bool reloaded = EventLog.ResetYard();
+        bool reloaded = EventLog.RebuildYard();
         float waited = 0f;
         for (; waited < 8f && net.LastResetTick == lastReset; waited += Time.unscaledDeltaTime) yield return null;
         net.ResetComing -= Heard;

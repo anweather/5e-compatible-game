@@ -439,6 +439,17 @@ that long, and doesn't march.
 **Leaving**
 : What's left of a flight after the last pass (`dragon.leavingTicks`): it lands, roars and goes.
 
+**Perch**
+: Where the dragon lands as it leaves: the highest ground in the valley (`DragonView`). View only.
+
+**Menace**
+: How far the dragon has darkened the sky, 0 to 1 (`SkyLight.Menace`, from `DragonFlight.Darkness`). View only:
+  it comes from the flight, so it's the same on every machine.
+
+**The Reset / rebuild**
+: The **Reset** (R, View on a pad) calls the dragon. Held for 3 s it's a **rebuild**, the valley rebuilt at once
+  with no dragon (`EventLog.RebuildYard`): the way out of a world gone wrong.
+
 **Starting state**
 : The world as built, kept by `World.KeepStart` before the first tick: a palette of the distinct cells
   and each cell's index in it, with the ball as built. A world with none has no dragon.

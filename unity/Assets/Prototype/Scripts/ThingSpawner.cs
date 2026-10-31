@@ -22,6 +22,9 @@ using UnityEngine;
 //   again when its chunk comes back.
 // - An online reset (OnlineReset): the host takes every thing away and spawns
 //   them all again from the data with their ids, the broken ones too.
+// - The dragon's breath (ChemGrid.ChunkFreshened): the things of the chunk it
+//   reset go home, solo or by the host, and those that broke come back. Only what
+//   a wizard is carrying stays with it.
 public class ThingSpawner : MonoBehaviour
 {
     /// <summary>The prefab for one kind (an id in rules/entities.json or rules/items.json).</summary>
@@ -73,6 +76,7 @@ public class ThingSpawner : MonoBehaviour
         SpawnActive();
         chem = grid.GetComponent<NetChem>();
         grid.WorldReset += Respawn;
+        grid.ChunkFreshened += BringBack;
     }
 
     NetChem chem;
@@ -104,7 +108,11 @@ public class ThingSpawner : MonoBehaviour
 
     void OnDestroy()
     {
-        if (grid != null) grid.WorldReset -= Respawn;
+        if (grid != null)
+        {
+            grid.WorldReset -= Respawn;
+            grid.ChunkFreshened -= BringBack;
+        }
         if (network == null) return;
         network.OnServerStarted -= SpawnOnline;
         network.OnClientStarted -= DropSoloCopies;
@@ -112,7 +120,8 @@ public class ThingSpawner : MonoBehaviour
 
     // --- per chunk -----------------------------------------------------------------
 
-    static readonly Unity.Profiling.ProfilerMarker SpawnMarker = new("ThingSpawner.SpawnChunk"), UnloadMarker = new("ThingSpawner.UnloadChunk");
+    static readonly Unity.Profiling.ProfilerMarker SpawnMarker = new("ThingSpawner.SpawnChunk"), UnloadMarker = new("ThingSpawner.UnloadChunk"),
+        BringBackMarker = new("ThingSpawner.BringBack");
 
     /// <summary>
     /// Spawns a chunk's things (all but those that broke). On a client it only notes the chunk:
@@ -127,12 +136,43 @@ public class ThingSpawner : MonoBehaviour
         foreach (var thing in grid.Things.InChunk(cx, cy))
         {
             if (gone.Contains(thing.Id) || Find(thing.Id) != null) continue;
-            var prop = Place(thing);
-            if (prop == null) continue;
-            live[thing.Id] = prop;
-            if (Hosting) prop.GetComponent<NetworkObject>().Spawn(true);
-            Link(thing.Id);
+            Spawn(thing);
         }
+    }
+
+    void Spawn(ThingSpawn thing)
+    {
+        var prop = Place(thing);
+        if (prop == null) return;
+        live[thing.Id] = prop;
+        if (Hosting) prop.GetComponent<NetworkObject>().Spawn(true);
+        Link(thing.Id);
+    }
+
+    // The dragon's breath reset a chunk: what broke there comes back, and its things go home unburnt. A chunk that
+    // isn't loaded only forgets what broke, for when it is. On a client the host's things do this for it.
+    void BringBack(ChunkFresh fresh)
+    {
+        if (Client) return;
+        using var marked = BringBackMarker.Auto();
+        NoteGone();
+        foreach (var thing in grid.Things.InChunk(fresh.CX, fresh.CY))
+        {
+            gone.Remove(thing.Id);
+            if (!IsLoaded(fresh.CX, fresh.CY)) continue;
+            var prop = Find(thing.Id);
+            if (prop == null) Spawn(thing);
+            else if (!prop.Held) SendHome(prop, thing);
+        }
+    }
+
+    void SendHome(PhysicsProp prop, ThingSpawn thing)
+    {
+        var cell = new Vector2Int(thing.CellX, thing.CellY);
+        var at = grid.CellCenter(cell.x, cell.y);
+        var turn = Quaternion.Euler(0f, thing.Rotation, 0f);
+        prop.BackAsBuilt(at + Vector3.up * SpawnAbove, turn);
+        prop.BackAsBuilt(at + Vector3.up * RestHeight(prop.gameObject, thing.Kind, cell, at), turn);
     }
 
     /// <summary>Removes a chunk's things (the host despawns them for everyone); SpawnChunk brings them back.</summary>

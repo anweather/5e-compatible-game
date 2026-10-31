@@ -77,6 +77,22 @@ public static class ProceduralSounds
         Decay(t, 0.45f) * (1f - Decay(t, 0.02f)) * (Noise(r) - Lowpass(ref hissLp, 0.2f, Noise(r))) * 0.6f
         + (r.NextDouble() < 0.002 ? Decay(t, 0.5f) * 0.5f : 0f));
 
+    /// <summary>A war horn from the mountains: two low brass notes, swelling slowly.</summary>
+    public static AudioClip Horn => Make("horn", 4.5f, (t, r) =>
+    {
+        float note = t < 1.6f ? 92.5f : 123.5f, level = Swell(t < 1.6f ? t : t - 1.6f, t < 1.6f ? 1.6f : 2.9f);
+        float brass = Tone(t, note) + 0.6f * Tone(t, note * 2f) + 0.4f * Tone(t, note * 3f) + 0.25f * Tone(t, note * 4f);
+        return level * brass * 0.3f;
+    });
+
+    /// <summary>The dragon's roar: a growl sliding down under rough noise.</summary>
+    public static AudioClip Roar => Make("roar", 3.2f, (t, r) =>
+    {
+        float pitch = Mathf.Lerp(120f, 52f, t / 3.2f) * (1f + 0.04f * Tone(t, 23f));
+        float growl = Mathf.Sign(Tone(t, pitch)) * 0.5f + Tone(t, pitch * 0.5f) * 0.6f;
+        return Swell(t, 3.2f) * (growl * 0.45f + Lowpass(ref roarLp, 0.12f, Noise(r)) * 1.5f);
+    });
+
     /// <summary>A fire burning, made to loop: a low roar with random pops.</summary>
     public static AudioClip FireLoop => MakeLoop("fire-loop", 3f, (t, r) =>
         Lowpass(ref loopLp, 0.06f, Noise(r)) * 1.6f + (r.NextDouble() < 0.0015 ? 1f : 0f) * Noise(r) * 0.9f);
@@ -97,7 +113,7 @@ public static class ProceduralSounds
 
     // --- building blocks -------------------------------------------------------
 
-    static float fireLp, splashLp, squelchLp, thunderLp, rumbleLp, boomLp, loopLp, shimmerLp, rainLp, rainSoftLp, windLp, hissLp;
+    static float roarLp, fireLp, splashLp, squelchLp, thunderLp, rumbleLp, boomLp, loopLp, shimmerLp, rainLp, rainSoftLp, windLp, hissLp;
 
     static float Noise(System.Random r) => (float)(r.NextDouble() * 2.0 - 1.0);
     static float Tone(float t, float hz) => Mathf.Sin(2f * Mathf.PI * hz * t);
