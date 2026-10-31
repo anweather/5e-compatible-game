@@ -49,6 +49,8 @@ namespace Chem.Tests
             Assert.DoesNotThrow(() => StormSeason());
             var e = Assert.Throws<ModException>(() => With("'storm': { 'strikeEvery': 0 }"));
             Assert.That(e.Errors, Is.EqualTo(new[] { "sim weather.storm.strikeEvery must be at least 1" }));
+            e = Assert.Throws<ModException>(() => With("'fog': { 'gas': 'mist' }"));
+            Assert.That(e.Errors, Is.EqualTo(new[] { "sim weather.fog.gas: unknown gas mist" }));
         }
 
         [Test]
@@ -123,7 +125,7 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("41514104 3951220311"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("b588321f 1446209129"));
         }
         [Test]
         public void GoldenMeteorShowerMatchesTs()
@@ -166,7 +168,7 @@ namespace Chem.Tests
             int banks = w.Cells.Count(c => c.Cover == World.BankCover);
             Assert.That(covered, Is.GreaterThan(50), "snow lies on the field");
             Assert.That(banks, Is.GreaterThan(0), "and drifts into banks against the walls");
-            Assert.That($"{w.CellHash()} {w.RngState} {frozen} {covered} {banks}", Is.EqualTo("e1e5624 4247680091 39 121 26"));
+            Assert.That($"{w.CellHash()} {w.RngState} {frozen} {covered} {banks}", Is.EqualTo("ebb306af 3764626303 37 124 36"));
 
             w.ApplyRules(clear);
             Run(w, 150);
@@ -174,7 +176,50 @@ namespace Chem.Tests
             Assert.That(still, Is.LessThan(frozen / 2), "a dry spell thawed most of it");
             int left = w.Cells.Count(c => c.Cover == World.SnowCover || c.Cover == World.BankCover);
             Assert.That(left, Is.LessThan(20), "the snow melted");
-            Assert.That($"{w.CellHash()} {w.RngState} {still} {left}", Is.EqualTo("b2481d88 2377318072 0 0"));
+            Assert.That($"{w.CellHash()} {w.RngState} {still} {left}", Is.EqualTo("6ce8640a 1063028723 0 0"));
+        }
+
+        [Test]
+        public void GoldenFogVeilsTheFieldAndLiftsMatchesTs()
+        {
+            // The same as "fog weather veils the field..." in weather.test.ts.
+            var foggy = With(Quick + ", 'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 1, 'rain': 0, 'storm': 0, 'snow': 0 }");
+            var clear = With(Quick + ", 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 }, 'meteors': { 'showerChance': 0 }");
+            var w = Field(foggy, 4);
+            int FogUnits() => w.Cells.Where(c => c.Gas == "fog").Sum(c => c.GasAmt);
+            Assert.That(w.LineOfSight(1, 6, 22, 6), "clear across the field before");
+            Run(w, 120);
+            int veiled = FogUnits();
+            Assert.That(veiled, Is.GreaterThan(80), "fog lies over the field");
+            Assert.That(w.Cells.All(c => c.Gas != "fog" || c.GasAmt < 2), "thin: no square of it is thick on its own");
+            Assert.That(w.FogBetween(1, 6, 22, 6), "but the far side is hidden");
+            Assert.That($"{w.CellHash()} {w.RngState} {veiled}", Is.EqualTo("a3c55344 2647838055 182"));
+
+            w.ApplyRules(clear);
+            Run(w, 400);
+            Assert.That(FogUnits(), Is.LessThan(veiled / 10), "the fog lifts");
+            Assert.That(w.FogBetween(1, 6, 22, 6), Is.False, "and the far side shows again");
+            Assert.That($"{w.CellHash()} {w.RngState} {FogUnits()}", Is.EqualTo("5b95a195 192858203 0"));
+        }
+
+        [Test]
+        public void SnowSlowsWalkersFrostGlazesItAndItsMeltFreezesToIce()
+        {
+            // The same as "snow slows walkers..." in weather.test.ts.
+            Assert.That(R.Covers[World.SnowCover].Speed, Is.LessThan(1));
+            Assert.That(R.Covers[World.BankCover].Speed, Is.LessThan(R.Covers[World.SnowCover].Speed), "a bank slows more");
+            var w = Field(R, 9);
+            var c = w.At(18, 3);
+            c.Cover = World.SnowCover;
+            w.Apply(18, 3, "cold", 4, -1, false);
+            Assert.That(c.Cover, Is.EqualTo("frost"), "Frost glazes the snow");
+            Assert.That(w.IsSlippery(c), "slippery underfoot");
+            var d = w.At(18, 5);
+            d.Cover = World.SnowCover;
+            w.Apply(18, 5, "fire", 1, -1, false);
+            Assert.That(d.Water, Is.EqualTo(1), "fire melts the snow to a puddle");
+            w.Apply(18, 5, "cold", 4, -1, false);
+            Assert.That(d.Frozen && w.IsSlippery(d), "which Frost freezes into an ice slide");
         }
 
         [Test]

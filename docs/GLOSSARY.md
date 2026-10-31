@@ -155,6 +155,24 @@ touch them.
 : A cell's `Charge` (0 to 3, decaying), which lightning leaves and
   conductors pass on. Say "charge" alone only when it's obviously this.
 
+**Machine / gate**
+: A machine is a terrain that something powers (a boiler by steam, a
+  plate by weight, a wheel by flowing water, a coil by charge, a windmill
+  by wind; `machines.json`). Any machine powered opens every **gate**
+  (`World.Machines`).
+
+**Puzzle**
+: A block of cells laid into the valley when the world is built, from
+  `world/puzzles.json` (`WorldPuzzles`): the meadow coil is a pond, a
+  coil on its edge and a gate on a path. Solved through the rules, never
+  by a script of its own.
+
+**Veil (thin fog)**
+: Fog weather lays a unit of fog gas here and there on open cells. That's
+  too thin to hide anything on its own, but a line of sight through a
+  gas's `hidesAfter` cells of it is hidden (`World.LineOfSight`). It thins
+  away when the stretch ends.
+
 **Live cell / settled chunk**
 : A cell is **live** while something in it is still changing on its own:
   fire burning, water flowing, gas drifting, charge decaying, something

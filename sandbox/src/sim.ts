@@ -12,7 +12,7 @@ import {
   DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
   clockTick, log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
-import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
+import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, fogOf, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
 import { isNight } from "./night.ts";
 import { METEOR_SPELL, landSpell, landStars, spellById, tickBoulders, tickWaves, tickWhirlwinds } from "./actions.ts";
 
@@ -570,8 +570,10 @@ export { ignite };
 
 // What the weather does to cells, after gas: rain fills squares and dry spells
 // dry shallow ones, snow freezes shallow water, covers open ground and drifts
-// into banks against walls and trees (and dry spells thaw the ice and melt the
-// snow), storms strike lightning (World.Weather.cs ports this).
+// into banks against walls and trees, building up slowly in the open too (and
+// dry spells thaw the ice and melt the snow), fog lays a thin veil of fog gas
+// over open ground that thins away once the stretch ends, storms strike
+// lightning (World.Weather.cs ports this).
 // Nothing happens during the calm stretches the world starts with.
 function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
@@ -579,14 +581,16 @@ function tickWeather(w: World) {
   landMeteors(w);
   landStars(w);
   if (now.period < p.calmPeriods && !w.weatherSet) return;
-  const rain = rainOf(now), snow = snowOf(now);
+  const rain = rainOf(now), snow = snowOf(now), fog = fogOf(now);
   if (rain > 0) {
     if (w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);
   } else if (snow > 0) {
     if (w.tick % p.snow.freezeEvery === 0) {
       freeze(w, ((p.snow.freezeChance * snow) / 100) * (isNight(w) ? RULES.sim.day.nightFreeze : 1), true);
-      settle(w, (p.snow.coverChance * snow) / 100, (p.snow.bankChance * snow) / 100);
+      settle(w, (p.snow.coverChance * snow) / 100, (p.snow.bankChance * snow) / 100, (p.snow.deepenChance * snow) / 100);
     }
+  } else if (fog > 0) {
+    if (w.tick % p.fog.every === 0) veil(w, p.fog.gas, (p.fog.chance * fog) / 100);
   } else if (w.tick % p.rain.dryEvery === 0) {
     dry(w, p.rain.dryChance);
     // At night the ice and snow keep till morning.
@@ -646,18 +650,26 @@ function freeze(w: World, chance: number, frozen: boolean) {
 const SNOW = "snow", BANK = "snowbank";
 
 /** Snow settles on open, dry, unburnt ground, and drifts into banks where it's sheltered (World.Settle). */
-function settle(w: World, cover: number, bank: number) {
+function settle(w: World, cover: number, bank: number, deepen: number) {
   const wind = windDir(w), upwind = wind >= 0 ? (wind + 2) % 4 : -1;
-  for (let i = 0; i < w.cells.length; i++) settleOn(w, i, upwind, cover, bank);
+  for (let i = 0; i < w.cells.length; i++) settleOn(w, i, upwind, cover, bank, deepen);
 }
 
-/** Snow on one square: a cover on open ground, a bank where it's sheltered (World.SettleOn). */
-function settleOn(w: World, i: number, upwind: number, cover: number, bank: number) {
+/** Snow on one square: a cover on open ground, a bank where it's sheltered, and slowly in the open (World.SettleOn). */
+function settleOn(w: World, i: number, upwind: number, cover: number, bank: number, deepen: number) {
   const c = w.cells[i];
   if (c.water > 0 || c.fire > 0 || isBlocking(c)) return;
   if (c.cover === null) {
     if (rand(w) < cover) c.cover = SNOW;
-  } else if (c.cover === SNOW && sheltered(w, i % w.w, Math.floor(i / w.w), upwind) && rand(w) < bank) c.cover = BANK;
+  } else if (c.cover === SNOW && rand(w) < (sheltered(w, i % w.w, Math.floor(i / w.w), upwind) ? bank : deepen)) c.cover = BANK;
+}
+
+/** Fog weather: a unit of its gas on open squares with no gas yet, here and there (World.Veil). */
+function veil(w: World, gas: string, chance: number) {
+  for (const c of w.cells) {
+    if (c.gas !== null || isBlocking(c)) continue;
+    if (rand(w) < chance) addGas(c, gas, 1);
+  }
 }
 
 /** Whether something blocking stands next to a square: on its upwind side in a wind, any side without. */

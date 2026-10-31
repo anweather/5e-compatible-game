@@ -175,7 +175,24 @@ public partial class ChemGrid : MonoBehaviour
                 PaintCell(world, x, y, ch);
             }
         }
+        LayPuzzles(world);
         return world;
+    }
+
+    // The puzzles of world/puzzles.json (a coil and a gate by the golf course), over the map's cells:
+    // only in a world big enough to hold them (the valley, not a small test yard).
+    static void LayPuzzles(World world)
+    {
+        try
+        {
+            var puzzles = WorldPuzzles.Load(FindWorldDir());
+            foreach (var problem in puzzles.Check(world.Rules)) Debug.LogWarning(problem);
+            puzzles.LayInto(world);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{WorldPuzzles.FileName} can't be read, so no puzzles: {e.Message}");
+        }
     }
 
     // Sets up one cell from its map character (see Legend); unknown characters are dirt.

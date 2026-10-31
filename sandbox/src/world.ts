@@ -397,6 +397,12 @@ export function dirFrom(ax: number, ay: number, bx: number, by: number): Dir | n
 }
 
 /** Bresenham sight line. Blocking terrain stops it unless tagged seeThrough (gate bars). */
+/** Counts a square of thin fog on a sight line; true once the line has crossed its gas's hidesAfter of them (C#: World.Veiled). */
+function veiled(c: Cell, seen: { thin: number }): boolean {
+  const after = c.gas ? RULES.gases[c.gas]?.hidesAfter ?? 0 : 0;
+  return after > 0 && ++seen.thin >= after;
+}
+
 /** Whether a square's gas is thick enough to hide what's behind it (a gas's blocksSightAt: Fog Cloud). */
 export function fogged(c: Cell): boolean {
   const at = c.gas ? RULES.gases[c.gas]?.blocksSightAt ?? 0 : 0;
@@ -405,11 +411,12 @@ export function fogged(c: Cell): boolean {
 
 /**
  * Whether (x1, y1) can be seen from (x0, y0): no blocking square between them (bar see-through ones,
- * gate bars) and no thick fog. The ends don't count. With fogOnly, only the fog counts (C#: FogBetween).
+ * gate bars), no thick fog, nor a long reach of thin fog (a gas's hidesAfter: fog weather). The ends don't count. With fogOnly, only the fog counts (C#: FogBetween).
  */
 export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: number, fogOnly = false): boolean {
   const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
   let err = dx + dy, x = x0, y = y0;
+  const seen = { thin: 0 };
   for (;;) {
     if (x === x1 && y === y1) return true;
     const e2 = 2 * err;
@@ -419,6 +426,7 @@ export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: nu
     const c = cellAt(w, x, y);
     if (!c) return true;
     if (fogged(c) || (!fogOnly && isBlocking(c) && !hasTag(c, "seeThrough"))) return false;
+    if (veiled(c, seen)) return false;
   }
 }
 

@@ -1,0 +1,34 @@
+{
+  "about": "Puzzles laid into the valley's cells when the world is built (WorldPuzzles.cs): each is a block of rows from its top-left world cell at (y grows south), one character a cell; a space leaves the cell as the land has it, any other character is a legend entry (a terrain id from rules/materials.json and water units). Machines and gates work through rules/machines.json (World.Machines.cs): any machine powered opens every gate.",
+  "puzzles": [
+    {
+      "name": "The meadow coil",
+      "note": "Lightning into the pond runs through the water to the coil on its east edge, and the coil opens the gate on the path. On the north meadow just east of spell golf's hole, outside the course's margin (world/golf.json, sim golf.margin).",
+      "at": [326, 231],
+      "legend": {
+        "w": { "t": "pit", "water": 4 },
+        "c": { "t": "coil" },
+        "g": { "t": "gate" },
+        "#": { "t": "stone" },
+        ".": { "t": "dirt" }
+      },
+      "rows": [
+        "          .  ",
+        "          .  ",
+        "          .  ",
+        "          .  ",
+        "          .  ",
+        " wwww     .  ",
+        " wwww     .  ",
+        " wwwwc  ##g##",
+        " wwww     .  ",
+        " wwww     .  ",
+        "          .  ",
+        "          .  ",
+        "          .  ",
+        "          .  ",
+        "          .  "
+      ]
+    }
+  ]
+}
