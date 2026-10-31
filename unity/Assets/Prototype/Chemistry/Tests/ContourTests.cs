@@ -54,6 +54,69 @@ namespace Chem.Tests
             return area;
         }
 
+        static void AssertSameMesh(ContourMesh expected, ContourMesh actual, string what)
+        {
+            CollectionAssert.AreEqual(expected.Points, actual.Points, what + ": points");
+            CollectionAssert.AreEqual(expected.Values, actual.Values, what + ": values");
+            CollectionAssert.AreEqual(expected.Triangles, actual.Triangles, what + ": triangles");
+        }
+
+        // Patches scattered over a wide box, in-between values as a bank has, some on the box's edge.
+        static Dictionary<(int x, int y), float> Patches(int seed)
+        {
+            var rng = new Random(seed);
+            var cells = new Dictionary<(int x, int y), float>();
+            for (int n = 0; n < 40; n++)
+            {
+                int cx = rng.Next(0, 48), cy = rng.Next(0, 40), r = rng.Next(1, 4);
+                float v = new[] { 1f, 1f, 0.45f, 0.34f }[rng.Next(4)];
+                for (int y = cy - r; y <= cy + r; y++)
+                    for (int x = cx - r; x <= cx + r; x++)
+                        if (rng.Next(4) > 0) cells[(x, y)] = v;
+            }
+            return cells;
+        }
+
+        // The specs water and slicks really use, one whose noise alone would reach the iso value (so
+        // nothing may be skipped), and one with a coarser lattice and a lower iso value.
+        static readonly ContourSpec[] SkippingSpecs =
+        {
+            new ContourSpec(4, 0.5f, 0.7f, 31), new ContourSpec(4, 0.5f, 0.8f, 47),
+            new ContourSpec(4, 0.5f, 1.2f, 9), new ContourSpec(3, 0.3f, 0.5f, 5),
+        };
+
+        [Test]
+        public void SkippingEmptyLatticeLeavesTheOutlineAsItWas([Values(1, 2, 3, 4, 5, 6)] int seed, [Values(0, 1, 2, 3)] int which,
+            [Values(false, true)] bool tiled, [Values(false, true)] bool calmed)
+        {
+            var cells = Patches(seed);
+            var spec = SkippingSpecs[which];
+            float Value(int x, int y) => cells.TryGetValue((x, y), out var v) ? v : 0f;
+            Func<int, int, float> wobble = calmed ? (x, y) => (x * 7 + y * 3) % 5 == 0 ? 0f : 1f : (Func<int, int, float>)null;
+            var skipped = new ContourMesh();
+            var whole = new ContourMesh();
+            new CellContour(spec) { Tiled = tiled }.Build(0, 0, 47, 39, Value, skipped, wobble);
+            new CellContour(spec) { Tiled = tiled, EveryPoint = true }.Build(0, 0, 47, 39, Value, whole, wobble);
+            Assert.Greater(whole.Triangles.Count, 0);
+            AssertSameMesh(whole, skipped, $"wobble {spec.Wobble}, tiled {tiled}");
+        }
+
+        [Test]
+        public void AReusedContourDrawsWhatAFreshOneDoes()
+        {
+            // Big box, then small, then big: the arrays kept from the first must not leak into the rest.
+            Func<int, int, float> value = (x, y) => (x - 8) * (x - 8) + (y - 4) * (y - 4) < 12 ? 1f : 0f;
+            var kept = new CellContour(Wobbly);
+            var mesh = new ContourMesh();
+            foreach (var (x1, y1) in new[] { (20, 12), (15, 9), (20, 12), (16, 14) })
+            {
+                var fresh = new ContourMesh();
+                new CellContour(Wobbly).Build(0, 0, x1, y1, value, fresh);
+                kept.Build(0, 0, x1, y1, value, mesh);
+                AssertSameMesh(fresh, mesh, $"box to {x1}, {y1}");
+            }
+        }
+
         [Test]
         public void TilesSideBySideCoverWhatOneTileDoes()
         {

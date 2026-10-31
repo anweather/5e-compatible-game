@@ -93,11 +93,16 @@ new states (a stale collection only brings those hitches back):
    `<player> -playtest -playtest-seed N -playtest-minutes 5 -playtest-mute
    -pso-trace <folder>/trace-N.graphicsstate` (on the PC through the runner's
    passthrough). `-pso-trace` turns the warm-up off, so every state the game
-   makes is recorded.
+   makes is recorded. **The bot stays in daylight, so trace the forest at night
+   too:** `<player> -fps-probe -perf-scenario forest -perf-seconds 120 -pso-trace
+   <folder>/trace-forest.graphicsstate`. Its first draws are #5's hitch.
 2. In the Editor, merge that platform's traces into its collection:
    `unity command eval 'return PsoCollections.Merge("<folder>/trace-101.graphicsstate", ...);'`.
    All traces must be the same graphics API; it writes
-   `Resources/Pso<API>.graphicsstate`.
+   `Resources/Pso<API>.graphicsstate`, replacing it, so to add to the shipped states
+   name a copy of that file first. With no Editor open, in batch:
+   `Unity -batchmode -quit -projectPath unity -executeMethod
+   PsoCollections.MergeFromCommandLine -pso-merge <copy> <folder>/trace-forest.graphicsstate`.
 3. Commit the collection, and check: the same seed again without `-pso-trace`
    logs `PSO WARMUP: N of N states in M ms` at start and its frame spikes are
    gone.

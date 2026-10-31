@@ -17,6 +17,10 @@ namespace Playtest
         Cast,
         /// <summary>Two spells in a row on the same cells (oil then fire, water then frost...).</summary>
         Combo,
+        /// <summary>Cast by elements, as a player does: one element or an ordered pair (Target: the combo id, "water+earth").</summary>
+        Elements,
+        /// <summary>A setup cast by elements, then a trigger on what it left (Target: the chain id, Playtest.Chains).</summary>
+        Chain,
         /// <summary>Pick up a nearby item and throw it.</summary>
         Throw,
         /// <summary>Walk to a seat and sit.</summary>
@@ -40,7 +44,7 @@ namespace Playtest
         }
 
         public GoalKind Kind { get; }
-        /// <summary>The place (Visit, Sit), the menu page (Menu), or null.</summary>
+        /// <summary>The place (Visit, Sit), the menu page (Menu), the combo (Elements), the chain (Chain), or null.</summary>
         public string Target { get; }
         public string Spell { get; }
         public string Spell2 { get; }
@@ -52,6 +56,8 @@ namespace Playtest
             GoalKind.Visit or GoalKind.Sit or GoalKind.Menu => $"{Kind}:{Target}",
             GoalKind.Cast => $"Cast:{Spell}",
             GoalKind.Combo => $"Combo:{Spell}+{Spell2}",
+            GoalKind.Elements => $"Elements:{Target}",
+            GoalKind.Chain => $"Chain:{Target}",
             _ => Kind.ToString(),
         };
 
@@ -60,6 +66,8 @@ namespace Playtest
             GoalKind.Visit => $"go to the {Target}",
             GoalKind.Cast => $"cast {Spell}",
             GoalKind.Combo => $"cast {Spell} then {Spell2}",
+            GoalKind.Elements => $"cast {string.Join(" then ", Chains.ElementsOf(Target))} by elements",
+            GoalKind.Chain => $"play the chain {Target}",
             GoalKind.Throw => "pick up something and throw it",
             GoalKind.Sit => "sit down",
             GoalKind.Menu => $"open the {Target} menu",
@@ -73,6 +81,10 @@ namespace Playtest
         public IReadOnlyList<string> Places { get; set; } = Array.Empty<string>();
         public IReadOnlyList<string> Spells { get; set; } = Array.Empty<string>();
         public IReadOnlyList<(string first, string then)> Combos { get; set; } = Array.Empty<(string, string)>();
+        /// <summary>The casts by elements (combo ids: "fire", "water+earth").</summary>
+        public IReadOnlyList<string> ElementCasts { get; set; } = Array.Empty<string>();
+        /// <summary>The chains (Playtest.Chains ids).</summary>
+        public IReadOnlyList<string> ChainIds { get; set; } = Array.Empty<string>();
         public IReadOnlyList<string> MenuPages { get; set; } = Array.Empty<string>();
         public bool HasSeats { get; set; }
         public bool HasItems { get; set; }
@@ -83,7 +95,7 @@ namespace Playtest
         // How often each kind comes up, before coverage.
         static readonly (GoalKind kind, double weight)[] Kinds =
         {
-            (GoalKind.Visit, 4), (GoalKind.Cast, 4), (GoalKind.Combo, 2), (GoalKind.Throw, 1),
+            (GoalKind.Visit, 4), (GoalKind.Cast, 2), (GoalKind.Combo, 1), (GoalKind.Elements, 4), (GoalKind.Chain, 2), (GoalKind.Throw, 1),
             (GoalKind.Sit, 1), (GoalKind.Menu, 1), (GoalKind.Idle, 1),
         };
 
@@ -126,6 +138,8 @@ namespace Playtest
             foreach (var p in o.Places) yield return new Goal(GoalKind.Visit, p);
             foreach (var s in o.Spells) yield return new Goal(GoalKind.Cast, null, s);
             foreach (var (a, b) in o.Combos) yield return new Goal(GoalKind.Combo, null, a, b);
+            foreach (var e in o.ElementCasts) yield return new Goal(GoalKind.Elements, e);
+            foreach (var c in o.ChainIds) yield return new Goal(GoalKind.Chain, c);
             if (o.HasItems) yield return new Goal(GoalKind.Throw, null);
             if (o.HasSeats) yield return new Goal(GoalKind.Sit, "seat");
             foreach (var m in o.MenuPages) yield return new Goal(GoalKind.Menu, m);
@@ -146,6 +160,7 @@ namespace Playtest
             GoalKind.Visit => 90f,
             GoalKind.Idle => dice.Range(5f, 20f),
             GoalKind.Menu => 8f,
+            GoalKind.Chain => 40f,
             _ => 20f,
         });
     }

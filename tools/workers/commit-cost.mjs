@@ -17,13 +17,17 @@ import os from 'node:os';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
 
-const msgFile = process.argv[2];
+// Work that ends in no commit (a playtest session, a review) records its cost instead:
+//   commit-cost.mjs --record <label> <costs.jsonl>   appends {time, label, lines}, the lines a commit would get
+const record = process.argv[2] === '--record' ? { label: process.argv[3], out: process.argv[4] } : null;
+if (record && !(record.label && record.out)) { console.error('commit-cost.mjs --record <label> <costs.jsonl>'); process.exit(2); }
+const msgFile = record ? null : process.argv[2];
 const home = os.homedir();
 const role = process.env.COMMIT_COST_ROLE || 'Worker';
 const config = process.env.CLAUDE_CONFIG_DIR || path.join(home, '.claude');
 const stateFile = path.join(config, `.${role.toLowerCase()}-last-commit.txt`);
 // A rebase or amend replays a message that already carries its cost: leave it as it is.
-if (new RegExp(`^${role}-Tokens: `, 'm').test(fs.readFileSync(msgFile, 'utf8'))) process.exit(0);
+if (msgFile && new RegExp(`^${role}-Tokens: `, 'm').test(fs.readFileSync(msgFile, 'utf8'))) process.exit(0);
 let since = Number(process.env.COMMIT_COST_SINCE) || Date.now() - os.uptime() * 1000; // the override is for testing
 try { since = Math.max(since, Number(fs.readFileSync(stateFile, 'utf8'))); } catch { }
 
@@ -115,10 +119,16 @@ const lines = [
   ...(trouble.length ? [`${role}-Trouble: ${trouble.join(', ')}`] : []),
 ];
 
-const msg = fs.readFileSync(msgFile, 'utf8').replace(/\s+$/, '');
-// Trailers go in the last paragraph, beside Co-Authored-By if it's there.
-const lastPara = msg.split(/\n\s*\n/).pop();
-const sep = /^[\w-]+: /m.test(lastPara) && msg.includes('\n\n') ? '\n' : '\n\n';
-fs.writeFileSync(msgFile, msg + sep + lines.join('\n') + '\n');
+if (record) {
+  fs.mkdirSync(path.dirname(path.resolve(record.out)), { recursive: true });
+  fs.appendFileSync(record.out, JSON.stringify({ time: new Date().toISOString(), label: record.label, lines }) + '\n');
+  console.log(lines.join('\n'));
+} else {
+  const msg = fs.readFileSync(msgFile, 'utf8').replace(/\s+$/, '');
+  // Trailers go in the last paragraph, beside Co-Authored-By if it's there.
+  const lastPara = msg.split(/\n\s*\n/).pop();
+  const sep = /^[\w-]+: /m.test(lastPara) && msg.includes('\n\n') ? '\n' : '\n\n';
+  fs.writeFileSync(msgFile, msg + sep + lines.join('\n') + '\n');
+}
 fs.mkdirSync(path.dirname(stateFile), { recursive: true });
 fs.writeFileSync(stateFile, String(Date.now()));

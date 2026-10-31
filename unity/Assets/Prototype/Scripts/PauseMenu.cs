@@ -409,7 +409,7 @@ public class PauseMenu : MonoBehaviour
         page.Draw();
         GUILayout.Space(12);
         string back = Highlight ? $"Back   <color=#ffffff88>{PadGlyphs.Label(PadButton.East)}</color>" : "Back";
-        if (Button(back, button)) nav.Back();
+        if (Button(back, button) && (page.Back == null || !page.Back())) nav.Back();
     }
 
     void MakeStyles()

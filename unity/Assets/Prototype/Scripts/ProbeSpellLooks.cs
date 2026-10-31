@@ -34,7 +34,7 @@ public partial class SpellLooksProbe : ProbeScenario
     }
 
     // Ground in and round the yard for a w by h stage: no water, nothing built, no tree, clear of the stages before it.
-    Vector2Int Spot(int w, int h)
+    protected Vector2Int Spot(int w, int h)
     {
         const int Margin = 4;
         const int Around = 46;
@@ -76,7 +76,7 @@ public partial class SpellLooksProbe : ProbeScenario
         yield return Wait(0.3f);
     }
 
-    IEnumerator Picture(string label)
+    protected IEnumerator Picture(string label)
     {
         Shot(label);
         yield return null;

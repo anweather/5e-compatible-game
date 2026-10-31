@@ -10,6 +10,13 @@ namespace Chem
         /// <summary>The most a cast can be charged (held before release): 1 is a tap.</summary>
         public const int MaxCharge = 3;
 
+        /// <summary>
+        /// Whether holding a cast makes this spell stronger: every spell does. In the cells (World.Cast) a
+        /// line reaches further, a spot, square or burst grows, water and earth shaping go further; in
+        /// what moves (SpellForces) a push is harder, Misty Step and Mage Hand reach further, Levitate lasts.
+        /// </summary>
+        public static bool Chargeable(SpellDef spell) => spell != null;
+
         /// <summary>A cast's charge, kept to 1..MaxCharge.</summary>
         public static int ClampCharge(int charge) => System.Math.Max(1, System.Math.Min(MaxCharge, charge));
 
@@ -212,8 +219,8 @@ namespace Chem
             else if (s.Effect == WeatherEffect) HoldWeather(s, ClampCharge(charge));
             else if (s.Effect == LightEffect) LightUp(s, x, y);
             else if (s.Delay > 0) AimStar(s, x, y, dir, ClampCharge(charge));
-            else if (IsWave(s)) StartWave(s, x, y, dir, ClampCharge(charge));
-            else if (IsBoulder(s)) StartBoulder(s, x, y, dir, ClampCharge(charge));
+            else if (IsWave(s)) StartWave(s, x, y, dir, ClampCharge(charge), aimX, aimY);
+            else if (IsBoulder(s)) StartBoulder(s, x, y, dir, ClampCharge(charge), aimX, aimY);
             else Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
         }
 
@@ -485,12 +492,18 @@ namespace Chem
             if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);
             BlastRaiders(s, cells, x, y);
-            if (s.Element == null) return;
+            var forced = new HashSet<int>();
+            if (s.Element == null)
+            {
+                // A spell with force and no element (Raise Earth) still throws what it lands under: the golf ball.
+                foreach (var (cx, cy) in cells) Force(s, cx, cy, dir, forced);
+                return;
+            }
             waveFrom = (x, y);
             foreach (var (cx, cy) in cells)
             {
                 Apply(cx, cy, s.Element, s.Power * charge, s.Inward ? InwardDir(cx - x, cy - y) : dir, true);
-                Force(s, cx, cy, dir);
+                Force(s, cx, cy, dir, forced);
                 LandOnRaider(s, cx, cy);
             }
             waveFrom = null;

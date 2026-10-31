@@ -16,7 +16,8 @@ using UnityEngine;
 // (A game can always capture its own frames; a terminal needs macOS's Screen
 // Recording permission to capture the screen.) It also reports the CPU main
 // thread, CPU render thread and GPU time per frame, from FrameTimingManager,
-// when the build has Frame Timing Stats on (Player Settings).
+// when the build has Frame Timing Stats on (Player Settings). With
+// -perf-scenario as well it runs one timed scenario instead (PerfScenario).
 public class FpsProbe : MonoBehaviour
 {
     const float WarmUpSeconds = 3f;
@@ -26,15 +27,17 @@ public class FpsProbe : MonoBehaviour
     readonly List<float> frameMs = new();
     // CPU main thread, CPU render thread and GPU time per frame (FrameTimingManager), when the build has it.
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
-    readonly FrameTiming[] timing = new FrameTiming[1];
+    static readonly FrameTiming[] Timing = new FrameTiming[1];
     float started;
     int shot;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartIfAsked()
     {
-        if (Environment.GetCommandLineArgs().Contains("-fps-probe"))
-            new GameObject("FPS probe").AddComponent<FpsProbe>();
+        var args = Environment.GetCommandLineArgs();
+        if (!args.Contains("-fps-probe")) return;
+        if (args.Contains("-perf-scenario")) new GameObject("Perf scenario").AddComponent<PerfScenario>();
+        else new GameObject("FPS probe").AddComponent<FpsProbe>();
     }
 
     IEnumerator Start()
@@ -179,14 +182,17 @@ public class FpsProbe : MonoBehaviour
     }
 
     // The timings land a few frames late; a frame the GPU didn't report (0) is left out.
-    void ReadTiming()
+    void ReadTiming() => ReadTiming(mainMs, renderMs, gpuMs);
+
+    /// <summary>Adds the latest frame's CPU main, CPU render and GPU times to these lists.</summary>
+    public static void ReadTiming(List<float> main, List<float> render, List<float> gpu)
     {
         FrameTimingManager.CaptureFrameTimings();
-        if (FrameTimingManager.GetLatestTimings(1, timing) < 1) return;
-        var t = timing[0];
-        if (t.cpuMainThreadFrameTime > 0) mainMs.Add((float)t.cpuMainThreadFrameTime);
-        if (t.cpuRenderThreadFrameTime > 0) renderMs.Add((float)t.cpuRenderThreadFrameTime);
-        if (t.gpuFrameTime > 0) gpuMs.Add((float)t.gpuFrameTime);
+        if (FrameTimingManager.GetLatestTimings(1, Timing) < 1) return;
+        var t = Timing[0];
+        if (t.cpuMainThreadFrameTime > 0) main.Add((float)t.cpuMainThreadFrameTime);
+        if (t.cpuRenderThreadFrameTime > 0) render.Add((float)t.cpuRenderThreadFrameTime);
+        if (t.gpuFrameTime > 0) gpu.Add((float)t.gpuFrameTime);
     }
 
     static string Split(string name, List<float> ms)

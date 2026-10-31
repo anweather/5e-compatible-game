@@ -155,6 +155,8 @@ namespace Chem
         public double? Decay;
         /// <summary>From how many units a square of it hides what's behind (World.LineOfSight), or 0 if it never does.</summary>
         public int BlocksSightAt;
+        /// <summary>A line of sight through this many squares of it, however thin, is hidden too (fog weather's veil; World.LineOfSight), or 0 if thin never hides.</summary>
+        public int HidesAfter;
         /// <summary>Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); 0 never.</summary>
         public int CondenseEvery;
         /// <summary>It condenses only this many cells or more from heat: none within it burning or hot (Cell.Heat), so steam doesn't rain straight back onto a fire (World.NearHeat).</summary>
@@ -411,6 +413,23 @@ namespace Chem
         /// square's chance to drift into a bank where something blocking shelters it (upwind of it, in a wind).
         /// </summary>
         public double CoverChance = 0.08, BankChance = 0.05;
+        /// <summary>On the same beat, at full strength: a snowy square's chance to build up into a bank in the open, unsheltered (snow builds slowly).</summary>
+        public double DeepenChance = 0.004;
+        /// <summary>
+        /// Every FogEvery ticks of fog weather, an open square's chance (at full strength) of a unit of FogGas
+        /// (materials.json gases) inside a patch, where it has no gas yet; it thins away by the gas's own decay
+        /// once the stretch ends.
+        /// </summary>
+        public int FogEvery = 6;
+        public double FogChance = 0.3;
+        public string FogGas = "fog";
+        /// <summary>Each block of FogRegionChunks by FogRegionChunks chunks has FogPatches patches a stretch, of radius FogRadiusMin..FogRadiusMax cells.</summary>
+        public int FogRegionChunks = 2, FogPatches = 4, FogRadiusMin = 10, FogRadiusMax = 15;
+        /// <summary>A patch stands on the best of FogTries dry, open cells of its block: FogLow a water unit of lower ground, FogWet for each water FogWetReach cells off (N, E, S, W).</summary>
+        public int FogTries = 8, FogWetReach = 8;
+        public double FogLow = 0.02, FogWet = 2;
+        /// <summary>A patch moves a cell down the stretch's breeze every FogDriftTicks ticks.</summary>
+        public int FogDriftTicks = 90;
     }
 
     public sealed class SimParams
@@ -444,6 +463,12 @@ namespace Chem
         public string ShatterWhen, ShatterNotBy;
         /// <summary>The defense field's waves (sim.json defense).</summary>
         public DefenseParams Defense = new DefenseParams();
+        /// <summary>Spell golf's ball (sim.json golf, World.Golf.cs).</summary>
+        public GolfParams Golf = new GolfParams();
+        /// <summary>A swimmer's breath and drowning (sim.json breath, Breath.cs).</summary>
+        public BreathParams Breath = new BreathParams();
+        /// <summary>How long a wizard at 0 health stays down (sim.json downed, Downed.cs).</summary>
+        public DownedParams Downed = new DownedParams();
     }
 
     /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
@@ -641,6 +666,7 @@ namespace Chem
                     Scald = Int(p.Value["scald"]) ?? 0,
                     Decay = Num(p.Value["decay"]),
                     BlocksSightAt = Int(p.Value["blocksSightAt"]) ?? 0,
+                    HidesAfter = Int(p.Value["hidesAfter"]) ?? 0,
                     CondenseEvery = Int(p.Value["condenseEvery"]) ?? 0,
                     CondenseAway = Int(p.Value["condenseAway"]) ?? 0,
                     RainEvery = Int(p.Value["rainEvery"]) ?? 0,
@@ -1024,6 +1050,9 @@ namespace Chem
             s.ZapDamage = Int(o["zapDamage"]) ?? s.ZapDamage;
             if (o["status"] is JObject st) ParseStatus(s, st);
             s.Defense = ParseDefense(o["defense"]);
+            s.Golf = GolfParams.Parse(o["golf"]);
+            s.Breath = BreathParams.Parse(o["breath"]);
+            s.Downed = DownedParams.Parse(o["downed"]);
             if (o["day"] is JObject day)
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;
@@ -1079,6 +1108,22 @@ namespace Chem
                 w.ThawChance = Num(snow["thawChance"]) ?? w.ThawChance;
                 w.CoverChance = Num(snow["coverChance"]) ?? w.CoverChance;
                 w.BankChance = Num(snow["bankChance"]) ?? w.BankChance;
+                w.DeepenChance = Num(snow["deepenChance"]) ?? w.DeepenChance;
+            }
+            if (o["fog"] is JObject fog)
+            {
+                w.FogEvery = Int(fog["every"]) ?? w.FogEvery;
+                w.FogChance = Num(fog["chance"]) ?? w.FogChance;
+                w.FogGas = Str(fog["gas"]) ?? w.FogGas;
+                w.FogRegionChunks = Int(fog["regionChunks"]) ?? w.FogRegionChunks;
+                w.FogPatches = Int(fog["patches"]) ?? w.FogPatches;
+                w.FogRadiusMin = Int(fog["radiusMin"]) ?? w.FogRadiusMin;
+                w.FogRadiusMax = Int(fog["radiusMax"]) ?? w.FogRadiusMax;
+                w.FogTries = Int(fog["tries"]) ?? w.FogTries;
+                w.FogWetReach = Int(fog["wetReach"]) ?? w.FogWetReach;
+                w.FogLow = Num(fog["low"]) ?? w.FogLow;
+                w.FogWet = Num(fog["wet"]) ?? w.FogWet;
+                w.FogDriftTicks = Int(fog["driftTicks"]) ?? w.FogDriftTicks;
             }
             if (o["meteors"] is JObject meteors)
             {

@@ -147,7 +147,8 @@ namespace Chem
         /// <summary>
         /// Whether (x1, y1) can be seen from (x0, y0): no blocking square between them on a
         /// Bresenham line, except see-through ones (gate bars), and no thick fog (a gas's
-        /// blocksSightAt). The ends don't count. Mirrors lineOfSight in sandbox/src/world.ts
+        /// blocksSightAt) nor a long reach of thin fog (its hidesAfter squares: fog weather).
+        /// The ends don't count. Mirrors lineOfSight in sandbox/src/world.ts
         /// (Misty Step's "a square you can see").
         /// </summary>
         public bool LineOfSight(int x0, int y0, int x1, int y1) => SightLine(x0, y0, x1, y1, false);
@@ -161,7 +162,7 @@ namespace Chem
         bool SightLine(int x0, int y0, int x1, int y1, bool fogOnly)
         {
             int dx = Math.Abs(x1 - x0), dy = -Math.Abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
-            int err = dx + dy, x = x0, y = y0;
+            int err = dx + dy, x = x0, y = y0, thin = 0;
             while (true)
             {
                 if (x == x1 && y == y1) return true;
@@ -169,8 +170,19 @@ namespace Chem
                 if (x == x1 && y == y1) return true;
                 var c = At(x, y);
                 if (c == null) return true;
-                if (Fogged(c) || (!fogOnly && BlocksSight(c))) return false;
+                if (Hides(c, fogOnly, ref thin)) return false;
             }
+        }
+
+        // Whether a square on a sight line stops it: thick fog, a long reach of thin fog, or (unless fogOnly) a wall.
+        bool Hides(Cell c, bool fogOnly, ref int thin) =>
+            Fogged(c) || (!fogOnly && BlocksSight(c)) || Veiled(c, ref thin);
+
+        // Counts a square of thin fog on the line; true once the line has crossed its gas's hidesAfter of them.
+        bool Veiled(Cell c, ref int thin)
+        {
+            if (c.Gas == null || !Rules.Gases.TryGetValue(c.Gas, out var g) || g.HidesAfter <= 0) return false;
+            return ++thin >= g.HidesAfter;
         }
 
         /// <summary>Whether a square's gas is thick enough to hide what's behind it (gases.json blocksSightAt).</summary>
@@ -236,6 +248,11 @@ namespace Chem
         /// </summary>
         public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
+        /// <summary>
+        /// The share of its speed a walker keeps on a cell: the slower of its cover's and its ground's (snow 0.85, a
+        /// snow bank 0.7, thorns and mud 0.5; 1 for most). Raiders are snagged by it (Thorns) and the wizard slowed.
+        /// </summary>
+        public double WalkSpeed(Cell c) => Math.Min(CoverOf(c)?.Speed ?? 1, TerrainOf(c).Speed);
 
         /// <summary>Whether walkers can climb or cross a cell on its cover (vines: up a wall, over a pit or a stream), for the view.</summary>
         public bool IsClimbable(Cell c) => CoverHasTag(c, "climbable");

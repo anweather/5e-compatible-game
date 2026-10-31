@@ -15,6 +15,9 @@
     "margin": 10, "wallCost": 30, "roughCost": 4, "roughTicks": 6, "batterTicks": 18, "deepWater": 8,
     "kinds": ["bone-hound", "ash-crab", "giant-spider"]
   },
+  "breath": { "seconds": 30, "refillSeconds": 3, "drownEvery": 3, "drownDice": 1, "drownSides": 6 },
+  "downed": { "seconds": 3 },
+  "golf": { "every": 1, "pushRoll": 5, "throwCarry": 3, "margin": 16 },
   "day": { "lengthMinutes": 24, "startHour": 9, "dawn": [5, 7], "dusk": [18, 20], "nightFreeze": 2, "fireLight": { "bright": 20, "dim": 20 } },
   "streaming": { "reach": 2, "keep": 3, "settleTicks": 12, "lingerChunks": 16, "lingerTicks": 1800, "catchUpTicks": 720 },
   "weather": {
@@ -22,7 +25,8 @@
     "weights": { "clear": 4, "cloudy": 2, "windy": 1.5, "fog": 1, "rain": 2, "storm": 1, "snow": 1 },
     "rain": { "douseChance": 0.05, "dampen": 0.6, "fillEvery": 12, "fillChance": 0.015, "dryEvery": 30, "dryChance": 0.1 },
     "storm": { "strikeEvery": 18, "strikeChance": 0.5 },
-    "snow": { "freezeEvery": 24, "freezeChance": 0.05, "thawChance": 0.05, "coverChance": 0.08, "bankChance": 0.05 },
+    "snow": { "freezeEvery": 24, "freezeChance": 0.05, "thawChance": 0.05, "coverChance": 0.08, "bankChance": 0.05, "deepenChance": 0.004 },
+    "fog": { "every": 6, "chance": 0.3, "gas": "fog", "regionChunks": 2, "patches": 4, "radiusMin": 10, "radiusMax": 15, "tries": 8, "low": 0.02, "wet": 2, "wetReach": 8, "driftTicks": 90 },
     "meteors": { "showerChance": 0.15, "every": 18, "chance": 0.6, "fallTicks": 11 }
   }
 }

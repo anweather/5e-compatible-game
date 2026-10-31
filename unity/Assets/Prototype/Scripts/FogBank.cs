@@ -47,6 +47,9 @@ public class FogBank : MonoBehaviour
     static readonly Style StormStyle = new(new Color(0.13f, 0.14f, 0.2f, 1f), CloudHeight, 0.3f, 3.5f, 0.92f, rains: true);
     static readonly Style SnowCloudStyle = new(new Color(0.9f, 0.93f, 0.98f, 1f), CloudHeight, 0.25f, 3.2f, 0.8f, snows: true);
 
+    /// <summary>Whether it's the thin veil fog weather lays, too thin to draw on its own cell (a single unit).</summary>
+    public static bool IsVeil(string gas, int amount) => gas == GasIds.Fog && amount == 1;
+
     /// <summary>Whether a gas is drawn here rather than as a particle effect.</summary>
     public static bool Draws(string gas) => gas == GasIds.Fog || gas == GasIds.Dust || gas == GasIds.Cloud || gas == GasIds.Storm || gas == GasIds.SnowCloud;
 
@@ -122,8 +125,11 @@ public class FogBank : MonoBehaviour
         s.target = 0f;
     }
 
+    static readonly Unity.Profiling.ProfilerMarker LateMarker = new("FogBank.LateUpdate"), MakeMarker = new("FogBank.MakePuffs");
+
     void LateUpdate()
     {
+        using var marked = LateMarker.Auto();
         var cam = Camera.main;
         if (cam == null || squares.Count == 0) return;
         var turn = cam.transform.rotation;
@@ -132,6 +138,7 @@ public class FogBank : MonoBehaviour
         rainOwed += RainRate * Time.deltaTime;
         int drops = Mathf.FloorToInt(rainOwed);
         rainOwed -= drops;
+        PerfCounts.Peak("fog.squares", squares.Count);
         foreach (var pair in squares)
         {
             var s = pair.Value;
@@ -149,6 +156,7 @@ public class FogBank : MonoBehaviour
         {
             var s = squares[index];
             squares.Remove(index);
+            PerfCounts.Add("fog.squares_freed");
             foreach (var r in s.puffs) r.gameObject.SetActive(false);
             free.Push(s);
         }
@@ -244,9 +252,12 @@ public class FogBank : MonoBehaviour
         if (free.Count > 0)
         {
             var s = free.Pop();
+            PerfCounts.Add("fog.squares_reused");
             foreach (var r in s.puffs) r.gameObject.SetActive(true);
             return s;
         }
+        using var marked = MakeMarker.Auto();
+        PerfCounts.Add("fog.squares_new");
         EnsureMaterial();
         var made = new Square();
         for (int i = 0; i < PuffsPerSquare; i++)

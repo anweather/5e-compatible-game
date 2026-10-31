@@ -5,7 +5,8 @@ using UnityEngine;
 // The grimoire (docs/SPELL_COMBOS.md): a page of the Esc menu listing the combos
 // this player has found, each with its elements in order, its name and shape.
 // Combos start hidden; casting one adds it (World.KnowsCombo). Opened with the
-// d-pad's down (SpellCaster) or from the menu; the menu's own back closes it.
+// d-pad's down (SpellCaster), when Back goes straight back to play, or from the
+// menu, when Back returns to the menu.
 public class GrimoireMenu : MonoBehaviour
 {
     const string PageId = "grimoire";
@@ -17,6 +18,8 @@ public class GrimoireMenu : MonoBehaviour
     PauseMenu.Page page;
     GUIStyle row, head;
     Vector2 scroll;
+    // Opened in play, not from the menu's button: nothing to go back to.
+    bool openedInPlay;
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Create()
@@ -34,11 +37,12 @@ public class GrimoireMenu : MonoBehaviour
         if (menu == null) return;
         menu.SetOpen(true);
         menu.ShowPage(PageId);
+        if (instance != null) instance.openedInPlay = true;
     }
 
     void OnEnable()
     {
-        page ??= new PauseMenu.Page { Title = "Grimoire", Width = 520, Draw = DrawPage };
+        page ??= new PauseMenu.Page { Title = "Grimoire", Width = 520, Draw = DrawPage, Back = BackToPlay };
         PauseMenu.AddSection(DrawEntry, SectionOrder);
         PauseMenu.AddPage(PageId, page);
     }
@@ -56,7 +60,18 @@ public class GrimoireMenu : MonoBehaviour
 
     void DrawEntry()
     {
-        if (PauseMenu.Button("Grimoire", PauseMenu.ButtonStyle)) PauseMenu.Instance.ShowPage(PageId);
+        if (!PauseMenu.Button("Grimoire", PauseMenu.ButtonStyle)) return;
+        openedInPlay = false;
+        PauseMenu.Instance.ShowPage(PageId);
+    }
+
+    // Back from the page: closes the menu if it was opened in play; false leaves it to the menu.
+    bool BackToPlay()
+    {
+        if (!openedInPlay) return false;
+        openedInPlay = false;
+        PauseMenu.Instance.SetOpen(false);
+        return true;
     }
 
     void DrawPage()

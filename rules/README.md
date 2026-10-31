@@ -16,8 +16,8 @@ prototype**. Nothing in this folder is specific to the sandbox.
 | `items.json` | Things to carry in the Unity yard (SRD items and cantrips): mass in kg, light (`bright` and `dim` in feet, `color`, a `cone` in degrees), `use` (`light`, `zoom`, `send`, `point`, `dig` with a whole `strength` from 1), `breaks` (impact speed in m/s and what it spills), `components`. The sandbox carries and checks them but has no items |
 | `machines.json` | What each machine needs before it powers the gates: `steam` (a boiler builds pressure to `build`, up to `max`, losing a unit every `decayEvery` ticks), `mass` (a plate pressed by `mass` or more), or `flow`, `charge` or `wind` (it holds `hold` ticks after the hit). Any one powered opens every gate, in both engines (World.Machines.cs) |
 | `groups.json` | The Unity game's spell radial: its elements by id (`name`, `order` around the ring from the top, `color` as `#rrggbb`). Each spell in `spells.json` names one with `"group"`; one with none goes under the last. UI only, but mods can regroup or add elements |
-| `combos.json` | Casting by elements (`docs/SPELL_COMBOS.md`): the four `elements`, the `window` in ticks for a second one, `moveFactor` (walking speed while the cast meter drains, for the view), `singles` by element and `pairs` by first then second element, each with `name`, `spell`, `shape`, `castTicks` and optional `held` (the spell when held at the ground) and `todo` (the spell is a stand-in for one not made yet). A single's `castTicks` must be at least the window. `dpad` lists the spells with no element, in cycling order: `name`, `castTicks`, and `spell` (without one the slot shows but can't be cast). Mods deep-merge over it; lists replace whole |
-| `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage, the length of a day and the weather. `defense`: the defense field's waves (`lives`, `waves`, `first` raiders and `growth` per wave, `hpPerWave`, the `warmup`, `spawnEvery` and `betweenWaves` ticks, the raider `kinds` in turn) and how raiders find their way (`margin` squares round the path, path costs `wallCost` for a raised wall they batter down a step every `batterTicks`, `roughCost` and `roughTicks` for deep water from `deepWater` units or a climb of more than a step) |
+| `combos.json` | Casting by elements (`docs/SPELL_COMBOS.md`): the four `elements`, the `window` in ticks for a second one, `chargeTicks` (the cast time each level of charge past the first adds to a held cast), `moveFactor` (walking speed while the cast meter drains, for the view), `chargeMoveFactor` (the same once a held cast is charging), `singles` by element and `pairs` by first then second element, each with `name`, `spell`, `shape`, `castTicks` and optional `held` (the spell it casts instead when held to full charge) and `todo` (the spell is a stand-in for one not made yet). A single's `castTicks` must be at least the window. `dpad` lists the spells with no element, in cycling order: `name`, `castTicks`, and `spell` (without one the slot shows but can't be cast). Mods deep-merge over it; lists replace whole |
+| `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage, the length of a day and the weather. `defense`: the defense field's waves (`lives`, `waves`, `first` raiders and `growth` per wave, `hpPerWave`, the `warmup`, `spawnEvery` and `betweenWaves` ticks, the raider `kinds` in turn) and how raiders find their way (`margin` squares round the path, path costs `wallCost` for a raised wall they batter down a step every `batterTicks`, `roughCost` and `roughTicks` for deep water from `deepWater` units or a climb of more than a step). `breath`: a swimmer's held breath in `seconds`, `refillSeconds` to fill it from empty with the head out, and drowning's hits once it's gone, `drownDice` d `drownSides` every `drownEvery` seconds (read by the Unity view only, `Breath.cs`) |
 | `mods/` | Example live mods (`docs/MODDING.md`), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
 
 ## Elements
@@ -312,7 +312,20 @@ comes). What it does to squares, at full strength:
   (`meteors.chance`), and `meteors.fallTicks` later it lands as the
   `meteor` spell (its crater, its fire) with "A meteor strikes". One that
   lands where no one is near (a paused chunk) leaves no mark.
-- **cloudy** and **fog** change only how the world looks.
+- **fog**: every `fog.every` ticks fog lays a unit of `fog.gas` (`fog.chance`
+  a cell at full strength, thinning towards a patch's rim) in patches, here
+  and there. Each block of `fog.regionChunks` by `fog.regionChunks` chunks
+  has `fog.patches` of them a stretch, of radius `fog.radiusMin` to
+  `fog.radiusMax`, each on the best of `fog.tries` dry, open cells picked by
+  the seed: a score of `fog.wet` for each water `fog.wetReach` cells off
+  (north, east, south, west) less `fog.low` a water unit of ground. A patch
+  moves a cell down the stretch's own breeze every `fog.driftTicks` ticks
+  (only the patch: the weather's wind stays none, so fire ignores it, and a
+  gust still blows the gas itself). Patches are worked out afresh from the
+  seed, the stretch and the cells, so they need no saving. The gas decays
+  as usual, so the fog thins once the stretch ends, and a line of sight
+  through `hidesAfter` cells of it is hidden.
+- **cloudy** changes only how the world looks.
 
 ## The parts that are code, not data
 

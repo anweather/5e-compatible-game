@@ -1,4 +1,5 @@
 // World state and the small helpers every system shares.
+import type { Golf } from "./golf.ts";
 import { RULES } from "./rules.ts";
 import { type WeatherKind, type WeatherNow, weatherAt } from "./sky.ts";
 
@@ -56,6 +57,12 @@ export interface PlayerCast {
   /** The d-pad's selected slot, and the slot being cast, or -1. */
   slot: number;
   dpadCasting: number;
+  /** The last element's button is down: the meter runs on through the charge, then stops at its last tick until a release. */
+  holding: boolean;
+  /** The ticks a full charge adds to the meter while held; 0 otherwise. */
+  extra: number;
+  /** The charge the release gave; 1 until then. */
+  charge: number;
   /** The ids of the combos this player has cast, sorted: the grimoire. */
   known: string[];
 }
@@ -69,6 +76,8 @@ export interface ComboFired {
   shape: string | undefined;
   /** This was the player's first cast of the combo: it just joined the grimoire. */
   discovered: boolean;
+  /** The strength it goes off at. */
+  charge: number;
 }
 
 /** The defense field's waves (defense.ts; C#: DefenseState). */
@@ -103,6 +112,13 @@ export interface MachineState {
   powered: boolean;
 }
 
+/** A gate that opens only for one machine (linkGate in sim.ts; GateLink in the C#): both by their cell's index, and whether it has it open. */
+export interface GateLink {
+  gate: number;
+  machine: number;
+  open: boolean;
+}
+
 export type LogKind = "info" | "notable" | "power" | "hurt";
 export interface LogEntry {
   tick: number;
@@ -130,6 +146,9 @@ export interface World {
   entities: Entity[];
   critters: Critter[];
   machines: Record<number, MachineState>;
+  /** The gates linked to one machine, in the order they were linked (linkGate); the rest open for any machine no one linked. */
+  gateLinks: GateLink[];
+  /** Whether the machines no one linked have the gates no one linked open. */
   gatesOpen: boolean;
   openedBy: string | null;
   tick: number;
@@ -154,6 +173,8 @@ export interface World {
   waves: Wave[];
   /** The boulders still rolling, in the order cast (World.Boulders). */
   boulders: Boulder[];
+  /** Spell golf's hole being played, null before anyone teed off (golf.ts; World.Golf). */
+  golf: Golf | null;
   /** Hasten Time: how many times as fast the day clock runs, and the ticks it has left (C#: World.Haste). */
   haste: { rate: number; ticks: number } | null;
   /** Ticks of day the clock has run ahead of tick (Hasten Time); the clock reads tick + clockAhead. */
@@ -188,6 +209,7 @@ export function createWorld(w: number, h: number, seed = 1): World {
     entities: [],
     critters: [],
     machines: {},
+    gateLinks: [],
     gatesOpen: false,
     openedBy: null,
     tick: 0,
@@ -205,6 +227,7 @@ export function createWorld(w: number, h: number, seed = 1): World {
     whirls: [],
     waves: [],
     boulders: [],
+    golf: null,
     haste: null,
     clockAhead: 0,
     weatherSet: null,
@@ -259,25 +282,34 @@ export interface Star {
 }
 
 /** A boulder still rolling (Rolling Boulder; World.Boulder): the cell it's on, the way it rolls, the cells it may still roll, how often it rolls one and its age. */
-export interface Boulder {
+export interface Boulder extends Mover {
   spell: string;
-  x: number;
-  y: number;
-  dir: Dir;
   left: number;
   every: number;
   age: number;
 }
 
 /**
- * A wave still rolling (Wave; World.Wave): its front's middle, the way it rolls, how far the front reaches to each side,
- * the cells it may still roll, how often it rolls one, its age, the power its element lands with and the heaviest thing it knocks back.
+ * Something rolling along an aim (World.Mover): the cell it's on, the grid way nearest its aim (what its force pushes
+ * along), and the line it follows: from (ox, oy) along the whole-number aim (ax, ay), step cells so far.
  */
-export interface Wave {
-  spell: string;
+export interface Mover {
   x: number;
   y: number;
   dir: Dir;
+  ox: number;
+  oy: number;
+  ax: number;
+  ay: number;
+  step: number;
+}
+
+/**
+ * A wave still rolling (Wave; World.Wave): its front's middle, the way it rolls, how far the front reaches to each side,
+ * the cells it may still roll, how often it rolls one, its age, the power its element lands with and the heaviest thing it knocks back.
+ */
+export interface Wave extends Mover {
+  spell: string;
   width: number;
   left: number;
   every: number;
@@ -369,8 +401,8 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  // The defense, the casts, the whirlwinds, the stars, the waves and the boulders join only once there are any, so older worlds hash as they did.
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : []), ...(w.waves.length ? [w.waves] : []), ...(w.boulders.length ? [w.boulders] : [])]);
+  // The defense, the casts, the whirlwinds, the stars, the waves, the boulders, the golf ball and the gate links join only once there are any, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : []), ...(w.waves.length ? [w.waves] : []), ...(w.boulders.length ? [w.boulders] : []), ...(w.golf ? [w.golf] : []), ...(w.gateLinks.length ? [w.gateLinks] : [])]);
   return fnv1a(s);
 }
 
@@ -393,6 +425,12 @@ export function dirFrom(ax: number, ay: number, bx: number, by: number): Dir | n
 }
 
 /** Bresenham sight line. Blocking terrain stops it unless tagged seeThrough (gate bars). */
+/** Counts a square of thin fog on a sight line; true once the line has crossed its gas's hidesAfter of them (C#: World.Veiled). */
+function veiled(c: Cell, seen: { thin: number }): boolean {
+  const after = c.gas ? RULES.gases[c.gas]?.hidesAfter ?? 0 : 0;
+  return after > 0 && ++seen.thin >= after;
+}
+
 /** Whether a square's gas is thick enough to hide what's behind it (a gas's blocksSightAt: Fog Cloud). */
 export function fogged(c: Cell): boolean {
   const at = c.gas ? RULES.gases[c.gas]?.blocksSightAt ?? 0 : 0;
@@ -401,11 +439,12 @@ export function fogged(c: Cell): boolean {
 
 /**
  * Whether (x1, y1) can be seen from (x0, y0): no blocking square between them (bar see-through ones,
- * gate bars) and no thick fog. The ends don't count. With fogOnly, only the fog counts (C#: FogBetween).
+ * gate bars), no thick fog, nor a long reach of thin fog (a gas's hidesAfter: fog weather). The ends don't count. With fogOnly, only the fog counts (C#: FogBetween).
  */
 export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: number, fogOnly = false): boolean {
   const dx = Math.abs(x1 - x0), dy = -Math.abs(y1 - y0), sx = x0 < x1 ? 1 : -1, sy = y0 < y1 ? 1 : -1;
   let err = dx + dy, x = x0, y = y0;
+  const seen = { thin: 0 };
   for (;;) {
     if (x === x1 && y === y1) return true;
     const e2 = 2 * err;
@@ -415,6 +454,7 @@ export function lineOfSight(w: World, x0: number, y0: number, x1: number, y1: nu
     const c = cellAt(w, x, y);
     if (!c) return true;
     if (fogged(c) || (!fogOnly && isBlocking(c) && !hasTag(c, "seeThrough"))) return false;
+    if (veiled(c, seen)) return false;
   }
 }
 
@@ -431,13 +471,21 @@ export function serializeWorld(w: World): WorldSnapshot {
   return JSON.parse(JSON.stringify({ ...rest, log: w.log.slice(-40) })) as WorldSnapshot;
 }
 
+// No button is down on a loaded game, so a held cast goes off as a tap, without its hold's ticks.
+function unheld(casts: Record<string, PlayerCast>) {
+  return Object.fromEntries(Object.entries(casts).map(([p, c]) => {
+    const meter = c.holding ? Math.max(1, c.meter - (c.extra ?? 0)) : c.meter;
+    return [p, { ...c, meter, total: c.total - c.meter + meter, holding: false, extra: 0, charge: c.charge ?? 1 }];
+  }));
+}
+
 export function deserializeWorld(s: WorldSnapshot): World {
   const n = s.w * s.h;
   const copy = JSON.parse(JSON.stringify(s)) as WorldSnapshot;
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
-  // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], stars: copy.stars ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  // Snapshots from before the time spells have no clock lead, haste or held weather (nor gate links, before those).
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: unheld(copy.casts ?? {}), combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], golf: copy.golf ?? null, stars: copy.stars ?? [], gateLinks: copy.gateLinks ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

@@ -8,13 +8,19 @@ using UnityEngine.InputSystem;
 // and skids; in unfrozen water deeper than a puddle it wades at reduced
 // speed; deeper than the wizard's chest it swims: it floats with its head
 // above the surface, slower still, and jump kicks it up out of the water onto
-// a bank. Over the water (crossing the bridge) it's dry. Thorns (Spike Growth's spiky
+// a bank. Holding the dodge roll's button (Left Ctrl, the crouch key; there's
+// no roll afloat) dives: it sinks toward the bottom, slower to move, and
+// letting go swims it back up. With its head under it holds its breath
+// (Vitals.Breathe) and drowns once that runs out. Water frozen over it holds
+// it under the ice, so Frost over a swimmer is a trap (on purpose).
+// Over the water (crossing the bridge) it's dry. Thorns (Spike Growth's spiky
 // cover) slow it to the cover's speed and cut it (Vitals) every square it walks. Heavy ground slows
 // it to its terrain's speed (mud: the move cost raiders pay too, World.Thorns), and hot metal (Cell.Heat)
 // burns it 1 fire damage every sim.burnDamageEvery ticks, as it does a raider. Spells slow it too
 // (Slow: frost chills, lightning jolts; SpellForces). Lightning in the water it stands in shocks it
 // (shock-water: the charge runs through all the connected water), twice the zap, as the core does a
-// wet creature. Runs after the Starter Assets controller has moved the wizard
+// wet creature. Snow slows it as it does a raider (World.WalkSpeed), and ice, oil and Frost's glaze,
+// snow glazed included, cost it no speed at all: it slides. Runs after the Starter Assets controller has moved the wizard
 // and corrects that move, so the controller itself stays untouched (its
 // gravity is switched off while afloat and its animator told it's standing).
 //
@@ -41,26 +47,35 @@ public class SurfaceEffects : MonoBehaviour
     public float swimDepth = 1.3f, floatDepth = 1.45f;
     [Tooltip("How high a kick out of the water lifts the wizard (metres).")]
     public float swimKick = 2.2f;
+    [Tooltip("Speed multiplier with the head under water (instead of swimmingSpeed).")]
+    public float underwaterSpeed = 0.4f;
+    [Tooltip("How fast a dive sinks, and how fast letting go swims back up (metres a second).")]
+    public float diveSpeed = 1.6f, riseSpeed = 2f;
 
     // Afloat until the water under the feet is shallower than this (metres), so a wave doesn't flicker it.
     static readonly int GroundedId = Animator.StringToHash("Grounded"), FreeFallId = Animator.StringToHash("FreeFall"), JumpId = Animator.StringToHash("Jump");
     const float StopSwimming = 1.1f, KickTime = 0.8f, Buoyancy = 4f, BobHeight = 0.04f;
     // Feet this far over a cell's surface are on something built over it (the bridge), not on the cell.
     const float AboveSurface = 1f;
+    // The head's height up the wizard's capsule (a share of its height), and how far under ice the top of the head stays.
+    const float HeadAt = 0.9f, IceGap = 0.15f;
 
     CharacterController body;
-    Component controller;
-    FieldInfo moveSpeed, sprintSpeed, gravity, fall;
+    Component controller, inputs;
+    FieldInfo moveSpeed, sprintSpeed, gravity, fall, moveInput, sprintInput, analogInput;
     Animator animator;
     float baseMove, baseSprint, baseGravity, wizardMove, wizardSprint;
-    Vector3 lastPosition;
+    // Where the wizard stood after this script last ran, and after everything had moved it last frame.
+    Vector3 lastPosition, settled;
     Vector3 momentum;
     bool wasSlipping, wasWading, swimming;
     float kickedUntil;
     bool kick;
-    const float ClimbReach = 1f, ClimbSpeed = 2.6f;
+    const float ClimbReach = 1f, ClimbSpeed = 2.6f, ClimbOutSeconds = 0.6f;
+    float leftWaterAt = float.NegativeInfinity;
     float slowUntil, slowFactor = 1f, appliedSpeed = 1f;
     Vitals vitals;
+    PlayerControls controls;
     // Thorns underfoot (Spike Growth): the cover's speed, and how far the wizard has walked through them since the last cut.
     float thornSpeed = 1f, thornsWalked;
     // In charged water since the charge came (one shock a strike, not one a frame).
@@ -86,6 +101,21 @@ public class SurfaceEffects : MonoBehaviour
 
     /// <summary>True while the wizard is afloat in deep water.</summary>
     public bool Swimming => swimming;
+
+    /// <summary>True while the wizard dives (the dive held while swimming).</summary>
+    public bool Diving { get; private set; }
+
+    /// <summary>Holds the dive as the button does (the probe and the playtest bot).</summary>
+    public bool HoldDive { get; set; }
+
+    /// <summary>True while the wizard's head is under water (or under ice).</summary>
+    public bool HeadUnder { get; private set; }
+
+    /// <summary>Just out of the water: the dive's button doesn't turn into a dodge roll on the bank.</summary>
+    public bool JustClimbedOut => Time.time < leftWaterAt + ClimbOutSeconds;
+
+    /// <summary>True while the water over the swimming wizard is frozen: it can't come up.</summary>
+    public bool UnderIce { get; private set; }
 
     /// <summary>Kicks up out of the water, if swimming (what jump does afloat).</summary>
     public void Kick() => kick = swimming;
@@ -124,6 +154,7 @@ public class SurfaceEffects : MonoBehaviour
     {
         body = GetComponent<CharacterController>();
         TryGetComponent(out vitals);
+        TryGetComponent(out controls);
         body.stepOffset = Mathf.Max(body.stepOffset, climbStep);
         controller = GetComponent(WizardRig.ControllerComponent);
         if (controller == null) return;
@@ -135,16 +166,28 @@ public class SurfaceEffects : MonoBehaviour
         gravity = WizardRig.Field(controller, "Gravity", isPublic: true);
         fall = WizardRig.Field(controller, "_verticalVelocity", isPublic: false);
         if (gravity != null) baseGravity = (float)gravity.GetValue(controller);
+        inputs = GetComponent(WizardRig.InputsComponent);
+        moveInput = WizardRig.Field(inputs, "move", isPublic: true);
+        sprintInput = WizardRig.Field(inputs, "sprint", isPublic: true);
+        analogInput = WizardRig.Field(inputs, "analogMovement", isPublic: true);
         TryGetComponent(out animator);
     }
 
-    void OnDisable() => SetAfloat(false);
+    void OnDisable()
+    {
+        SetAfloat(false);
+        Diving = HeadUnder = UnderIce = false;
+    }
 
     void OnEnable()
     {
-        lastPosition = transform.position;
+        lastPosition = settled = transform.position;
         momentum = Vector3.zero;
     }
+
+    // After the roll, a knock and the river (which run after this script): the controller's own step
+    // next frame is what's gone on from here.
+    void LateUpdate() => settled = transform.position;
 
     void Update()
     {
@@ -159,6 +202,7 @@ public class SurfaceEffects : MonoBehaviour
         bool wading = c != null && !c.Frozen && c.Water >= wadingDepth && surface > transform.position.y;
 
         Swim(c, cell);
+        Breathe(surface);
         Climb(cell);
         Slide(slippery && !swimming);
         bool underfoot = c != null && !above && body.isGrounded && !swimming;
@@ -169,23 +213,51 @@ public class SurfaceEffects : MonoBehaviour
         lastPosition = transform.position;
     }
 
-    // Blend the controller's move this frame with the momentum carried from before.
+    // On slippery ground the wizard keeps the momentum it came with: it eases toward the way the player
+    // wants to go (Glide) at slipperyGrip, so it's slow to turn and to stop, and keeps its speed going on.
+    // The controller's own step this frame is taken back and the glide made as one move, so the
+    // controller's velocity, which sets its next frame's speed, is the glide's. (Correcting its step with
+    // a second move left it measuring only the correction, so it started again from a crawl each frame
+    // and ice slowed the wizard down: GitHub #12.)
     void Slide(bool slippery)
     {
         float dt = Mathf.Max(Time.deltaTime, 1e-4f);
-        var moved = transform.position - lastPosition;
-        moved.y = 0f;
-        var intended = moved / dt;
+        var step = transform.position - settled;
+        var moved = new Vector3(step.x, 0f, step.z);
         if (!slippery)
         {
-            momentum = intended;
+            var whole = transform.position - lastPosition;
+            momentum = new Vector3(whole.x, 0f, whole.z) / dt;
             wasSlipping = false;
             return;
         }
         if (!wasSlipping && momentum.sqrMagnitude > 1f) EventLog.Add("You skid across the slick ground");
         wasSlipping = true;
-        momentum = Vector3.Lerp(momentum, intended, 1f - Mathf.Exp(-slipperyGrip * dt));
-        body.Move((momentum - intended) * dt);
+        momentum = Glide(momentum, Wanted(moved), slipperyGrip, dt);
+        transform.position = settled;
+        Physics.SyncTransforms();
+        body.Move(momentum * dt + Vector3.up * step.y);
+    }
+
+    /// <summary>
+    /// The momentum on slippery ground after <paramref name="dt"/> seconds: eased toward the
+    /// <paramref name="wanted"/> velocity at <paramref name="grip"/> (the share of the difference left
+    /// falls by e each 1/grip seconds, whatever the frame rate), never faster than the faster of the two.
+    /// </summary>
+    public static Vector3 Glide(Vector3 momentum, Vector3 wanted, float grip, float dt) =>
+        Vector3.Lerp(momentum, wanted, 1f - Mathf.Exp(-Mathf.Max(grip, 0f) * Mathf.Max(dt, 0f)));
+
+    // The velocity the player asks for: the controller's way, at its walk or sprint speed (the move
+    // stick's tilt for a pad), or none with the stick and keys let go.
+    Vector3 Wanted(Vector3 moved)
+    {
+        if (moveSpeed == null || inputs == null || moveInput == null) return moved / Mathf.Max(Time.deltaTime, 1e-4f);
+        var stick = (Vector2)moveInput.GetValue(inputs);
+        if (stick == Vector2.zero || moved.sqrMagnitude < 1e-8f) return Vector3.zero;
+        bool sprint = sprintInput != null && (bool)sprintInput.GetValue(inputs);
+        float tilt = analogInput != null && (bool)analogInput.GetValue(inputs) ? Mathf.Clamp01(stick.magnitude) : 1f;
+        float speed = (float)(sprint ? sprintSpeed : moveSpeed).GetValue(controller);
+        return moved.normalized * (speed * tilt);
     }
 
     // Thorns underfoot (the cover, or null off them): they slow the wizard to the cover's speed and,
@@ -212,14 +284,15 @@ public class SurfaceEffects : MonoBehaviour
     }
 
     // The ground underfoot (its cell, or null off it: afloat, in the air, on the bridge): heavy ground
-    // (mud) slows the wizard to its terrain's speed, and hot metal burns it 1 fire damage every
+    // (mud) and snow slow the wizard to their speed (World.WalkSpeed), not while it slides on anything
+    // slippery laid over them (Frost's glaze keeps its speed), and hot metal burns it 1 fire damage every
     // sim.burnDamageEvery ticks' worth of seconds while it stands there, the raiders' rate
     // (World.Hazards). Health is the wizard's own (Vitals), so the timing is Unity's, not the world's.
     void Ground(Cell c)
     {
         var world = grid.World;
-        float speed = c != null ? Mathf.Clamp((float)world.TerrainOf(c).Speed, 0.05f, 1f) : 1f;
-        bool mud = speed < 1f;
+        float speed = c != null && !world.IsSlippery(c) ? Mathf.Clamp((float)world.WalkSpeed(c), 0.05f, 1f) : 1f;
+        bool mud = speed < 1f && world.TerrainOf(c).Speed < 1;
         if (mud && !InMud) EventLog.Add($"You slog into the {world.TerrainOf(c).Name.ToLowerInvariant()}");
         InMud = mud;
         groundSpeed = speed;
@@ -271,7 +344,7 @@ public class SurfaceEffects : MonoBehaviour
         if (wading && wasWading != wading) EventLog.Add("You wade into the water");
         wasWading = wading;
         float k = Slowed ? slowFactor : 1f;
-        if (swimming) k *= swimmingSpeed;
+        if (swimming) k *= HeadUnder ? underwaterSpeed : swimmingSpeed;
         else if (wading) k *= wadingSpeed;
         else k *= Mathf.Min(InThorns ? thornSpeed : 1f, groundSpeed);
         k *= CastFactor;
@@ -296,30 +369,53 @@ public class SurfaceEffects : MonoBehaviour
     void Swim(Cell c, Vector2Int cell)
     {
         if (gravity == null || fall == null) return;
-        float depth = c != null && !c.Frozen && c.Water > 0 ? grid.WaterSurfaceY(cell.x, cell.y) - transform.position.y : 0f;
+        // Ice is walked on; only a swimmer already in the water stays in it under the ice.
+        bool iced = c != null && c.Frozen;
+        float depth = c != null && c.Water > 0 && (!iced || swimming) ? grid.WaterSurfaceY(cell.x, cell.y) - transform.position.y : 0f;
         bool afloat = Time.time >= kickedUntil && depth > (swimming ? StopSwimming : swimDepth);
         if (afloat && !swimming) EventLog.Add("You swim");
         SetAfloat(afloat);
+        if (afloat && iced && !UnderIce) EventLog.Add("Ice closes over you: break it or swim out from under it");
+        UnderIce = afloat && iced;
+        Diving = afloat && (HoldDive || (controls != null && controls.enabled && controls.Roll.IsPressed()));
         if (!afloat) return;
 
-        // Rise or sink toward floating height through the controller's own fall speed (gravity is off),
-        // so its move each frame stays one move and its run speed isn't disturbed. At sea it rides the
-        // swell (Ocean.WaveOffset); whether it swims at all is still judged on the calm level.
-        float target = transform.position.y + depth + Swell(cell) - floatDepth + BobHeight * Mathf.Sin(Time.time * 2.4f);
-        fall.SetValue(controller, (target - transform.position.y) * Buoyancy);
-        if (animator != null)
-        {
-            animator.SetBool(GroundedId, true);
-            animator.SetBool(FreeFallId, false);
-            animator.SetBool(JumpId, false);
-        }
+        Float(depth, cell);
         if (!kick) return;
-        // A kick up out of the water, with gravity back on so it lands on a bank or falls back in.
+        // A kick up out of the water, with gravity back on so it lands on a bank or falls back in;
+        // not from under the water or the ice.
         kick = false;
+        if (HeadUnder || UnderIce) return;
         kickedUntil = Time.time + KickTime;
         SetAfloat(false);
         fall.SetValue(controller, Mathf.Sqrt(swimKick * -2f * baseGravity));
         if (animator != null) animator.SetBool(JumpId, true);
+    }
+
+    // Rise or sink toward floating height through the controller's own fall speed (gravity is off),
+    // so its move each frame stays one move and its run speed isn't disturbed. At sea it rides the
+    // swell (Ocean.WaveOffset); whether it swims at all is still judged on the calm level. A dive
+    // sinks instead, and from under the water it swims back up at riseSpeed; ice over it keeps the
+    // top of its head under the ice.
+    void Float(float depth, Vector2Int cell)
+    {
+        float y = transform.position.y;
+        float target = y + depth + Swell(cell) - floatDepth + BobHeight * Mathf.Sin(Time.time * 2.4f);
+        if (UnderIce) target = Mathf.Min(target, y + depth - body.height - IceGap);
+        fall.SetValue(controller, Diving ? -diveSpeed : Mathf.Min((target - y) * Buoyancy, riseSpeed));
+        if (animator == null) return;
+        animator.SetBool(GroundedId, true);
+        animator.SetBool(FreeFallId, false);
+        animator.SetBool(JumpId, false);
+    }
+
+    // The head under the water (a cell's drawn water or the sea over it, or ice over a swimmer):
+    // the wizard holds its breath, and drowns once it runs out (Vitals).
+    void Breathe(float surface)
+    {
+        var head = transform.position + Vector3.up * (body.center.y + body.height * (HeadAt - 0.5f));
+        HeadUnder = head.y < UnderwaterView.WaterTop(grid, head) || (UnderIce && head.y < surface);
+        if (vitals != null) vitals.Breathe(HeadUnder, Time.deltaTime);
     }
 
     /// <summary>Thrown straight up at this speed (a Geyser's jet), out of the water if afloat.</summary>
@@ -346,6 +442,7 @@ public class SurfaceEffects : MonoBehaviour
     {
         if (swimming == on || gravity == null) return;
         swimming = on;
+        if (!on) leftWaterAt = Time.time;
         kick = false;
         gravity.SetValue(controller, on ? 0f : baseGravity);
         if (on) fall.SetValue(controller, 0f);

@@ -21,6 +21,7 @@ public class SoundBank : ScriptableObject
     }
 
     public List<Entry> entries = new();
+    Dictionary<string, Entry> byName;
 
     static SoundBank loaded;
     static bool looked;
@@ -47,11 +48,15 @@ public class SoundBank : ScriptableObject
         }
     }
 
-    /// <summary>One of the sound's clips, at random, or null if the bank has none for it.</summary>
+    /// <summary>One of the sound's clips, at random, or null if the bank has none for it. Makes no garbage.</summary>
     public AudioClip Pick(string sound)
     {
-        var entry = entries.Find(e => e.sound == sound);
-        if (entry == null || entry.clips.Length == 0) return null;
+        if (byName == null || byName.Count != entries.Count)
+        {
+            byName = new Dictionary<string, Entry>();
+            foreach (var e in entries) byName[e.sound] = e;
+        }
+        if (!byName.TryGetValue(sound, out var entry) || entry.clips.Length == 0) return null;
         return entry.clips[UnityEngine.Random.Range(0, entry.clips.Length)];
     }
 }

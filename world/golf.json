@@ -1,0 +1,5 @@
+{
+  "about": "Spell golf's one hole (docs/BACKLOG.md 24; World.Golf.cs): the tee and the hole as grid cells (y grows south), on the open meadow north of the defense field, 60 cells (90 m) apart over a low rise. Clear of the yard, Hollowmere, the cabins, the tower, the court and the defense field; nothing in things.json stands between them.",
+  "tee": [246, 240],
+  "hole": [306, 240]
+}

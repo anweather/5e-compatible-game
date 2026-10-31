@@ -14,6 +14,8 @@ public abstract class ProbeScenario : ShowcaseScript
 {
     const float SettleSeconds = 1f;
     const int MaxErrorsKept = 20;
+    // The long edge of a shot's review copy (.claude/skills/screenshot-budget).
+    const int ReviewEdge = 480;
 
     public ProbeResult Result { get; } = new ProbeResult();
     /// <summary>A folder to save screenshots in, or null for none. Set before Start.</summary>
@@ -75,14 +77,52 @@ public abstract class ProbeScenario : ShowcaseScript
 
     protected void Metric(string name, double value) => Result.Metrics[name] = System.Math.Round(value, 3);
 
-    /// <summary>Saves a screenshot of the Game view as &lt;ScreenshotDir&gt;/&lt;scenario&gt;-&lt;label&gt;.png, if asked for.</summary>
+    /// <summary>Saves a screenshot of the Game view as &lt;ScreenshotDir&gt;/&lt;scenario&gt;-&lt;label&gt;.png, if asked for, and a small copy beside it as .480.png.</summary>
     protected void Shot(string label)
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) return;
         System.IO.Directory.CreateDirectory(ScreenshotDir);
         var file = System.IO.Path.Combine(ScreenshotDir, $"{Result.Scenario}-{label}.png");
-        ScreenCapture.CaptureScreenshot(file);
         Result.Screenshots.Add(file);
+        StartCoroutine(Capture(file));
+    }
+
+    // At the frame's end, the Game view: the shot, and beside it the copy with ReviewEdge on its long
+    // edge, the one the worker opens to review. Both from one picture: ScreenCapture.CaptureScreenshot
+    // wrote black alongside CaptureScreenshotAsTexture in the same frame.
+    static IEnumerator Capture(string file)
+    {
+        yield return new WaitForEndOfFrame();
+        var shown = ScreenCapture.CaptureScreenshotAsTexture();
+        int width = shown.width, height = shown.height;
+        var from = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+        Graphics.Blit(shown, from);
+        Destroy(shown);
+        SavePicture(from, file);
+        float shrink = (float)ReviewEdge / Mathf.Max(width, height);
+        int smallWidth = Mathf.Max(1, Mathf.RoundToInt(width * shrink)), smallHeight = Mathf.Max(1, Mathf.RoundToInt(height * shrink));
+        // Halved in steps: one bilinear blit of more than half skips pixels, and thin things break up.
+        while (width > smallWidth || height > smallHeight)
+        {
+            (width, height) = (Mathf.Max(width / 2, smallWidth), Mathf.Max(height / 2, smallHeight));
+            var half = RenderTexture.GetTemporary(width, height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            Graphics.Blit(from, half);
+            RenderTexture.ReleaseTemporary(from);
+            from = half;
+        }
+        SavePicture(from, System.IO.Path.ChangeExtension(file, $"{ReviewEdge}.png"));
+        RenderTexture.ReleaseTemporary(from);
+    }
+
+    static void SavePicture(RenderTexture picture, string file)
+    {
+        var active = RenderTexture.active;
+        RenderTexture.active = picture;
+        var copy = new Texture2D(picture.width, picture.height, TextureFormat.RGB24, false);
+        copy.ReadPixels(new Rect(0, 0, picture.width, picture.height), 0, 0);
+        RenderTexture.active = active;
+        System.IO.File.WriteAllBytes(file, copy.EncodeToPNG());
+        Destroy(copy);
     }
 
     /// <summary>The controller's debug layout, for a scenario that drives the radial's buttons.</summary>

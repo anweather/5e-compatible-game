@@ -43,6 +43,9 @@ public sealed class CellCrackMesh
         r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
     }
 
+    /// <summary>A web's seed, 0 to 1, in the middle of one of the shader's 64 steps: on the edge of one, it speckled from step to step.</summary>
+    public static float WebSeed(float any) => (Mathf.Floor(Mathf.Repeat(any, 1f) * 64f) + 0.5f) / 64f;
+
     /// <summary>A cell was redrawn: its crack, at the height its top is drawn, is rebuilt at the next Rebuild.</summary>
     public void Changed(int x, int y, Cell c, float top)
     {
@@ -84,7 +87,7 @@ public sealed class CellCrackMesh
         int w = grid.World.W, v = vertices.Count;
         var c = grid.CellCenter(key % w, key / w);
         c = grid.transform.InverseTransformPoint(new Vector3(c.x, top + Lift, c.z));
-        float half = grid.cellSize * 0.5f, kind = (brick ? BrickKind : WebKind) + Mathf.Repeat(key * 0.137f, 1f);
+        float half = grid.cellSize * 0.5f, kind = (brick ? BrickKind : WebKind) + WebSeed(key * 0.137f);
         for (int i = 0; i < 4; i++)
         {
             float u = i == 1 || i == 2 ? 1f : 0f, t = i >= 2 ? 1f : 0f;
@@ -101,7 +104,7 @@ public sealed class CellCrackMesh
     {
         int w = grid.World.W, x = key % w, y = key / w, first = vertices.Count, side = IceGrid + 1;
         var middle = grid.CellCenter(x, y);
-        float half = grid.cellSize * 0.5f, kind = WebKind + Mathf.Repeat(key * 0.137f, 1f);
+        float half = grid.cellSize * 0.5f, kind = WebKind + WebSeed(key * 0.137f);
         for (int j = 0; j < side; j++)
             for (int i = 0; i < side; i++)
             {

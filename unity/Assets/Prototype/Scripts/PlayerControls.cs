@@ -12,10 +12,13 @@ using UnityEngine.InputSystem;
 //   Cancel cast  B             B / Circle
 //   D-pad spells [ ]           d-pad left / right    (T / d-pad up casts; J / d-pad down: the grimoire)
 //   Dodge roll   Left Ctrl     click the right stick
+//   Punch        F             B / Circle              (empty-handed and not casting: ItemHolder.Punch.cs)
+//   Pick up/sit  E             X / Square
+//   In an animal's shape any of the cast buttons changes back.
 //
 //   F2 swaps the controller to the debug layout below, the spell radial's:
 //
-//   Cast spell   left mouse    right trigger           (in an animal's shape: change back)
+//   Cast spell   left mouse    right trigger
 //   Spell radial hold Tab      hold left bumper (L1)   (SpellRadialHud: aim with the
 //                                                        mouse / right stick, release to pick;
 //                                                        a tap swaps to the previous spell)
@@ -39,6 +42,9 @@ using UnityEngine.InputSystem;
 // up, drops, sits or stands, and the spell stays put.
 public class PlayerControls : MonoBehaviour
 {
+    /// <summary>The pad's punch shares Circle with Cancel cast, which goes first (ItemHolder.MayPunch); Square only picks up and sits.</summary>
+    public const string PadPunch = "<Gamepad>/buttonEast", PadInteract = "<Gamepad>/buttonWest";
+
     public InputAction Cast { get; private set; }
     public InputAction RadialHold { get; private set; }
     public InputAction RadialCancel { get; private set; }
@@ -51,6 +57,7 @@ public class PlayerControls : MonoBehaviour
     public InputAction Reset { get; private set; }
     public InputAction Interact { get; private set; }
     public InputAction Use { get; private set; }
+    public InputAction Punch { get; private set; }
     public InputAction Throw { get; private set; }
     public InputAction Roll { get; private set; }
     /// <summary>The elements' buttons, in the order of rules/combos.json.</summary>
@@ -101,8 +108,9 @@ public class PlayerControls : MonoBehaviour
         NextElement = Button("Next element", "<Gamepad>/dpad/right");
         PrevElement = Button("Previous element", "<Gamepad>/dpad/left");
         Reset = Button("Reset", "<Keyboard>/r", "<Gamepad>/select");
-        Interact = Button("Pick up or drop", "<Keyboard>/e", "<Gamepad>/buttonWest");
+        Interact = Button("Pick up or drop", "<Keyboard>/e", PadInteract);
         Use = Button("Use item", "<Keyboard>/f", "<Gamepad>/buttonNorth");
+        Punch = Button("Punch", "<Keyboard>/f", PadPunch);
         Throw = Button("Throw item", "<Keyboard>/g", "<Mouse>/rightButton", "<Gamepad>/buttonEast");
         Roll = Button("Dodge roll", "<Keyboard>/leftCtrl", "<Gamepad>/leftTrigger", "<Gamepad>/rightStickPress");
         Elements = new[]
@@ -127,7 +135,7 @@ public class PlayerControls : MonoBehaviour
 
         all = new[]
         {
-            Cast, RadialHold, RadialCancel, NextSpell, PrevSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Throw, Roll,
+            Cast, RadialHold, RadialCancel, NextSpell, PrevSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Punch, Throw, Roll,
             Elements[0], Elements[1], Elements[2], Elements[3], CancelCast, DpadNext, DpadPrevious, DpadCast, Grimoire, swapLayout,
         };
         foreach (var a in all) a.performed += Track;
@@ -184,6 +192,14 @@ public class PlayerControls : MonoBehaviour
     /// <summary>Next spell was pressed this frame, unless it was the E key and E went to an item.</summary>
     public bool NextSpellPressed() =>
         NextSpell.WasPressedThisFrame() && !((ItemInReach || SeatInReach) && NextSpell.activeControl?.device is Keyboard);
+
+    /// <summary>A cast button was pressed this frame, of either way of casting: Cast, an element or the d-pad's cast.</summary>
+    public bool AnyCastPressed()
+    {
+        foreach (var element in Elements)
+            if (element.WasPressedThisFrame()) return true;
+        return Cast.WasPressedThisFrame() || DpadCast.WasPressedThisFrame();
+    }
 
     /// <summary>The element (0-7, radial order) of the number key pressed this frame, or -1.</summary>
     public int PickedElement()

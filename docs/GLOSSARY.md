@@ -147,6 +147,11 @@ touch them.
   earth, lightning, thunder, grease, oil, fog, growth. *Not* the spell
   radial's top ring (that's a **group**).
 
+**Focus** *(planned)*
+: An item a wizard carries to cast through, such as a staff. Not built: the
+  default wizard's hands are free, and `WizardOutfit.carriesStaff` keeps the old
+  staff's code, unused, for it.
+
 **Reaction**
 : A rule that runs when an element arrives at a cell, in order, until
   one says `stop` (`World.React`, `reactions.json`).
@@ -154,6 +159,31 @@ touch them.
 **Electric charge**
 : A cell's `Charge` (0 to 3, decaying), which lightning leaves and
   conductors pass on. Say "charge" alone only when it's obviously this.
+
+**Machine / gate**
+: A machine is a terrain that something powers (a boiler by steam, a
+  plate by weight, a wheel by flowing water, a coil by charge, a windmill
+  by wind; `machines.json`). Any machine powered opens every **gate**
+  (`World.Machines`).
+
+**Puzzle**
+: A block of cells laid into the valley when the world is built, from
+  `world/puzzles.json` (`WorldPuzzles`): the meadow coil is a pond, a
+  coil on its edge and a gate on a path. Solved through the rules, never
+  by a script of its own.
+
+**Veil (thin fog)**
+: Fog weather lays fog gas here and there, in patches on low ground near
+  water (`weather.fog`, `World.Veil`), a unit a cell. That's too thin to
+  hide anything on its own, but a line of sight through a gas's `hidesAfter`
+  cells of it is hidden (`World.LineOfSight`). The patches drift a little
+  on the stretch's breeze and thin away when the stretch ends.
+
+**Flame**
+: One of the few flames on a burning cell (`FlameBank`, `Prototype/Flame`): a
+  quad playing the Particle Pack's flame flipbooks, by the fire's level, in the
+  look of what burns (`FireLook`), scattered about the cell at its own size,
+  speed and time, drawn on the GPU. View only: what burns is the core's.
 
 **Live cell / settled chunk**
 : A cell is **live** while something in it is still changing on its own:
@@ -174,12 +204,51 @@ touch them.
 : A wizard using a spell at a cell and direction (`CastCommand`).
 
 **Cast charge**
-: How long a cast was held, 1 to 3 (`CastCommand.Charge`).
+: How long a cast was held, 1 to 3 (`CastCommand.Charge`, counted from the meter by `World.HeldCharge`).
+
+**Beat**
+: A stage of a cast by elements on the wizard's body: first element, second element, slam, charge,
+  release, recovery, or a fizzle when it's dropped (`Beat`, `CastBeats`; poses and timings in
+  `Settings/CastFeel.asset`). View only, worked out from the core's cast state on every peer.
+
+**Voice**
+: One sound playing, from the pool of sources in `SoundVoices`. A loop must be held each frame or it lets go.
+
+**Hit-stop**
+: A few frames in which the local wizard's Animator and beats and the camera stand still, on the slam and the
+  release (`CastBeats.HitStop`, `CastImpact`). View only and on the caster's own screen: game time, ticks and
+  physics run on, and other peers never see it. *Avoid:* "freeze" (a word of the chemistry), "hitch".
+
+**Downed**
+: A wizard at 0 health: on the ground with no controls for `sim.json` `downed.seconds`, then back at the
+yard with full health (`Downed`, `WizardDown`). Not the world reset.
 
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,
   nature, time), at most three spells each (`groups.json`, `GroupDef`).
   Players see them as elements; we say group.
+
+**Force**
+: What a spell does to what it hits, apart from its element (`spells.json`
+  `force`): **push** knocks it along, **throw** throws it off its feet (the
+  golf ball: up and along). Geyser, Wave, Rolling Boulder, Gust of Wind and
+  Raise Earth have it.
+
+**Aim marker**
+: What shows on the ground where a cast will land (`AimMarker.cs`), one
+  mesh of ribbons laid over the ground and water. Its kind comes from the
+  spell's shape: a **lane** (an arrow along a line), a **wedge** (a cone), a
+  **ring** (a burst that strikes at once, or a spot; grows with the charge),
+  **rising** (an outline with a short fence: earth shaping, Geyser), an
+  **area** (dashes marching round a patch that settles and stays, like
+  Spike Growth) or a **lock** (brackets round one target).
+
+**Spell golf**
+: One hole played with spells (`World.Golf.cs`, `golf.ts`, BACKLOG §24).
+  The **ball** (core state, not a thing) starts on the **tee**; a cast
+  whose force moves it is a **stroke**; it drops in on the **hole** cell.
+  Lost in water or out of the course's bounds, it goes back on the tee for
+  a stroke's penalty. The course is `world/golf.json`.
 
 ## Things in the world
 

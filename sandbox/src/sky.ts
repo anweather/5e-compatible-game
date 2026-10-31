@@ -56,6 +56,9 @@ export const rainOf = (n: WeatherNow) => (n.kind === "rain" || n.kind === "storm
 /** How hard it snows, 0..100. */
 export const snowOf = (n: WeatherNow) => (n.kind === "snow" ? n.strength : 0);
 
+/** How thick the fog weather is, 0..100. */
+export const fogOf = (n: WeatherNow) => (n.kind === "fog" ? n.strength : 0);
+
 /** How much the weather holds fire back, 0..100: rain fully, snow by half (C#: WeatherNow.Wet). */
 export const wetOf = (n: WeatherNow) => rainOf(n) + Math.floor(snowOf(n) / 2);
 

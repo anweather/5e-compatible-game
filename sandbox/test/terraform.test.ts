@@ -10,7 +10,8 @@ import { applyElement, ignite, shatter } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
 import { dig, reshape } from "../src/terraform.ts";
 import { whirlState } from "../src/combos.ts";
-import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
+import { golfState, startGolf } from "../src/golf.ts";
+import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, fnv1a, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -613,7 +614,7 @@ test("a wave rolls out, douses, knocks back and leaves mud, matching the C# gold
   const gob = spawn(w, "goblin", 4, 2)!;
   castSpell(w, "wave", 1, 3, 1);
   assert.equal(w.waves.length, 1);
-  assert.equal(cellAt(w, 1, 3)!.water, 0, "it rolls on rather than flooding");
+  assert.equal(cellAt(w, 1, 3)!.water, 1, "it leaves shallow water as it rolls on");
   run(w, 6);
   assert.equal(w.waves[0]!.x, 4);
   assert.deepEqual([gob.x, gob.y], [5, 2], "knocked back ahead of the wave");
@@ -625,7 +626,75 @@ test("a wave rolls out, douses, knocks back and leaves mud, matching the C# gold
   for (const y of [2, 3, 4]) assert.equal(cellAt(w, 8, y)!.t, "mud", "mud where it stopped");
   assert.equal(cellAt(w, 7, 3)!.t, "dirt");
   run(w, 4);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "8c0f542d 752141770"); // the same in the C# core
+  assert.equal(`${cellHash(w)} ${w.rng}`, "33cc6d1f 752141770"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.AWaveRollsAlongASlantedAimAndLeavesWaterBehind (GitHub #11).
+test("a wave rolls along a slanted aim and leaves water behind, matching the C# golden", () => {
+  const w = createWorld(20, 16, 12);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 6, 5)!.t = "grass";
+  ignite(cellAt(w, 6, 5)!, 2);
+  castSpell(w, "wave", 2, 2, 1, undefined, 1, [3, 2]);
+  assert.equal(w.waves[0]!.dir, 1, "it pushes along the nearest grid way");
+  assert.equal(cellAt(w, 2, 2)!.water, 1, "shallow water where it passed");
+  run(w, 6);
+  assert.deepEqual([w.waves[0]!.x, w.waves[0]!.y], [5, 4]);
+  run(w, 10);
+  assert.equal(w.waves.length, 0);
+  assert.equal(cellAt(w, 6, 5)!.fire, 0, "the fire on its slant is out");
+  for (const y of [6, 7, 8]) assert.equal(cellAt(w, 9, y)!.t, "mud", "mud where it broke, off the straight line");
+  assert.equal(cellAt(w, 9, 2)!.t, "dirt", "it didn't go straight east");
+  run(w, 4);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "5331a509 2455825195"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.HeatOnStandingWaterBoilsItAndBakesNothingUnderIt (GitHub #15).
+test("heat on standing water boils it and bakes nothing under it, matching the C# golden", () => {
+  const w = createWorld(14, 5, 8);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 1; x <= 5; x++)
+    for (let y = 1; y <= 3; y++) {
+      cellAt(w, x, y)!.t = "mud";
+      cellAt(w, x, y)!.water = 3;
+    }
+  cellAt(w, 10, 2)!.t = "sand";
+  cellAt(w, 10, 2)!.water = 2;
+  castSpell(w, "geyser", 3, 2, 0);
+  castSpell(w, "forge", 10, 2, 0);
+  assert.equal(cellAt(w, 3, 2)!.t, "mud", "no brick under the pool");
+  assert.equal(cellAt(w, 3, 2)!.water, 2, "the water boiled");
+  assert.equal(cellAt(w, 3, 2)!.gas, "steam");
+  assert.equal(cellAt(w, 10, 2)!.t, "sand", "no glass under the water");
+  assert.equal(cellAt(w, 10, 2)!.heat ?? 0, 0, "the water took the heat");
+  run(w, 12);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "cdece807 2305213897"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.SleetField and its tests.
+function sleetField(): World {
+  const w = createWorld(20, 20, 7);
+  for (let y = 3; y <= 6; y++) cellAt(w, 5, y)!.t = "grass";
+  cellAt(w, 7, 8)!.water = 8;
+  cellAt(w, 9, 9)!.fire = 3;
+  cellAt(w, 9, 9)!.fuel = 4;
+  castSpell(w, "sleet-storm", 8, 8, 1);
+  return w;
+}
+
+test("Sleet Storm glazes a wide slippery field and puts out fires", () => {
+  const w = sleetField();
+  const glazed = w.cells.filter((c) => c.cover === "frost").length;
+  assert.ok(glazed > 60, `${glazed} cells glazed`);
+  assert.ok(isSlippery(cellAt(w, 8, 8)!));
+  assert.equal(cellAt(w, 7, 8)!.frozen, true, "water still freezes");
+  assert.equal(cellAt(w, 9, 9)!.fire, 0);
+});
+
+test("Sleet Storm's field, matching the C# golden", () => {
+  const w = sleetField();
+  run(w, 4);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "bcb137be 7");
 });
 
 // Mirrors ChemistryTests.FrostBridgesWaterFreezesTheWetAndGlazesTheGround.
@@ -679,6 +748,28 @@ test("a rolling boulder rolls downhill, smashes, knocks over and dams the stream
   assert.ok((cellAt(w, 6, 4)!.cracked ?? 0) > 0, "and the ice");
   assert.equal(cellAt(w, 8, 6)!.t, "dirt", "it rolled down the slope and dammed the stream");
   assert.equal(`${cellHash(w)} ${w.rng} ${gob.x},${gob.y} ${gob.hp}`, "9179f2b8 729412872 7,4 5"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.ARollingBoulderRollsAlongASlantedAimAndThenDownhill (GitHub #21).
+test("a rolling boulder rolls along a slanted aim and then downhill, matching the C# golden", () => {
+  const w = createWorld(18, 14, 8);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 5, 4)!.t = "glass";
+  for (const y of [6, 7, 8, 9, 10]) cellAt(w, 6, y)!.h = -1;
+  castSpell(w, "rolling-boulder", 2, 2, 1, undefined, 1, [3, 2]);
+  assert.equal(w.boulders[0]!.dir, 1, "it pushes along the nearest grid way");
+  run(w, 6);
+  assert.deepEqual([w.boulders[0]!.x, w.boulders[0]!.y], [5, 4], "three cells along the aim, not along a grid way");
+  assert.ok((cellAt(w, 5, 4)!.cracked ?? 0) > 0, "and it strikes what's on its slant");
+  run(w, 4);
+  assert.deepEqual([w.boulders[0]!.x, w.boulders[0]!.y], [6, 6], "the slope to its side turns it");
+  assert.equal(w.boulders[0]!.dir, 2);
+  run(w, 4);
+  assert.deepEqual([w.boulders[0]!.x, w.boulders[0]!.y], [6, 8], "on down its new way");
+  run(w, 20);
+  assert.equal(w.boulders.length, 0);
+  assert.notEqual(cellAt(w, 3, 2)!.gas, "dust", "no trail along the grid way it wasn't aimed");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "c5a8709f 3377061646"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.PlantGrowthVinesClimbWallsBridgeGapsBurnAndRootsCrackStone.
@@ -1045,4 +1136,39 @@ test("carries and flashes are checked", () => {
   });
   for (const e of ["gas flour: burn.flash.fire must be a whole number from 1", "gas flour: burn.flash.push must be a whole number from 0",
     "spell gyre: travelEvery must be a whole number from 1", "spell gyre: carries x sheds unknown element nothing", "spell gyre: carries x has unknown condition \"hue\""]) assert.ok(errors.includes(e), e);
+});
+
+// Mirrors GolfTests.ATeeShotAPenaltyACarryOverThePondAndHoledInSix.
+test("spell golf: a tee shot, a ball lost in the pond, a carry over it and holed in 6, matching the C# golden", () => {
+  const w = createWorld(40, 12, 3);
+  for (const c of w.cells) c.t = "dirt";
+  for (let y = 3; y <= 7; y++) {
+    cellAt(w, 11, y)!.h = 1; // a rise to climb
+    cellAt(w, 12, y)!.h = 1;
+    for (const x of [17, 18]) Object.assign(cellAt(w, x, y)!, { t: "pit", h: -1, water: 3 }); // a pond across the way
+  }
+  startGolf(w, 4, 5, 30, 5);
+  const stroke = (id: string, x: number, y: number) => { castSpell(w, id, x, y, 1); run(w, 24); return `${w.golf!.x},${w.golf!.y}`; };
+  assert.equal(stroke("gust-of-wind", 2, 5), "14,5", "the tee shot rolls over the rise");
+  assert.equal(stroke("gust-of-wind", 12, 5), "4,5", "into the pond: back on the tee");
+  assert.equal(w.golf!.strokes, 3, "a stroke's penalty");
+  assert.equal(stroke("gust-of-wind", 2, 5), "14,5");
+  assert.equal(stroke("mold-earth-heap", 14, 5), "22,5", "Raise Earth throws it over the pond");
+  assert.equal(stroke("gust-of-wind", 20, 5), "30,5");
+  assert.ok(w.golf!.holed && w.log.some((l) => l.text === "Holed in 6!"));
+  assert.equal(`${golfState(w)} ${fnv1a(golfState(w))} ${cellHash(w)} ${w.rng}`, "|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"); // the same in the C# core
+});
+
+// Mirrors GolfTests.GustKnocksARaiderBackOnceAndRaiseEarthThrowsOneOffItsFeet.
+test("Gust of Wind knocks a raider back once, Raise Earth throws one off its feet, matching the C# golden", () => {
+  const w = createWorld(20, 8, 5);
+  for (const c of w.cells) c.t = "dirt";
+  const hound = spawn(w, "bone-hound", 5, 3)!, crab = spawn(w, "ash-crab", 10, 6)!;
+  castSpell(w, "gust-of-wind", 2, 3, 1);
+  assert.deepEqual([hound.x, hound.y], [7, 3], "force.push 2, once: not again on the cells it's knocked onto");
+  castSpell(w, "mold-earth-heap", 10, 6, 0);
+  assert.deepEqual([crab.x, crab.y, crab.status.thrown], [10, 6, 2], "force.throw 2");
+  assert.equal(cellAt(w, 10, 6)!.h, 1);
+  run(w, 3);
+  assert.equal(`${cellHash(w)} ${w.rng} ${hound.x},${hound.y} ${crab.status.thrown ?? 0}`, "65a33bbd 5 7,3 0"); // the same in the C# core
 });

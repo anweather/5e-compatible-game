@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using Unity.Cinemachine;
 using Unity.Netcode;
@@ -21,6 +22,7 @@ public static class ChemYardBuilder
     const string VolumePath = "Assets/Prototype/Settings/YardVolume.asset";
     const string NetWizardPath = "Assets/Prototype/Prefabs/NetWizard.prefab";
     const string SpellVisualsPath = "Assets/Prototype/Settings/SpellVisuals.asset";
+    const string CastFeelPath = "Assets/Prototype/Settings/CastFeel.asset";
     const string ThingPrefabsPath = "Assets/Prototype/Generated/ThingNetworkPrefabs.asset";
 
     // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
@@ -91,17 +93,22 @@ public static class ChemYardBuilder
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
         follow.AddComponent<CameraZoom>().controls = controls;
         // Out of the ground and the wizard (CameraClearance), and a wider check for what it backs into
-        // than the pack's 0.15 m, so the lens's corners don't see through a slope.
+        // than the pack's 0.15 m, so the lens's corners don't see through a slope; but narrower than
+        // the wizard (0.28 m): the check starts at its middle, and wider than it, a wall the wizard
+        // stands against is inside the check from the start, which pulled the camera right in
+        // (issue #20: at houses, whose box walls the wizard walks flush against).
         follow.AddComponent<CameraClearance>();
         var third = follow.GetComponent<CinemachineThirdPersonFollow>();
         var avoid = third.AvoidObstacles;
-        avoid.CameraRadius = 0.3f;
+        avoid.CameraRadius = 0.25f;
         // Eased back out after an obstacle rather than snapped (Andrew: the camera still snaps).
         avoid.DampingFromCollision = 0.4f;
         third.AvoidObstacles = avoid;
         hands.view = follow.GetComponent<CinemachineCamera>();
-        // Meteors shake it (MeteorFall).
-        follow.AddComponent<CinemachineImpulseListener>();
+        // Casts and meteors shake it (CastImpact); the strongest counts, so quick casts don't pile up.
+        follow.AddComponent<CinemachineImpulseListener>().SignalCombinationMode = CinemachineImpulseListener.SignalCombinationModes.UseLargest;
+        // After CameraClearance: it holds the camera through a hit-stop.
+        follow.AddComponent<CastCamera>();
 
         SetUpLighting();
         ValleyBuilder.Dress(grid, rows);
@@ -146,16 +153,16 @@ public static class ChemYardBuilder
     // Particle Pack effects; any that are missing leave the grid's cube stand-ins.
     static void AssignEffects(ChemGrid grid)
     {
-        grid.fireSmall = Load(FireFx + "/TinyFlames.prefab");
-        grid.fireMedium = Load(FireFx + "/MediumFlames.prefab");
-        grid.fireLarge = Load(FireFx + "/LargeFlames.prefab");
+        grid.flameShader = Shader.Find("Prototype/Flame");
+        grid.flameSheets = new[] { "TinyFlame", "MediumFlame01", "LargeFlame01" }
+            .Select(n => AssetDatabase.LoadAssetAtPath<Texture2D>(PackPaths.Effects + "/Fire & Explosion Effects/Textures/" + n + ".tif")).ToArray();
         grid.smokeFx = Load(SmokeFx + "/SmokeEffect.prefab");
         grid.steamFx = Load(SmokeFx + "/RisingSteam.prefab");
         grid.sparksFx = Load(MiscFx + "/SparksEffect.prefab");
         // The dust thrown up by earth shaping uses the Particle Pack's dust material.
         var dust = Load(FireFx + "/DustExplosion.prefab");
         grid.dustMaterial = dust != null ? dust.GetComponent<ParticleSystemRenderer>().sharedMaterial : null;
-        if (grid.fireSmall == null) Debug.LogWarning("Particle Pack missing: fire and smoke will be cubes. Run Prototype > Restore Asset Packs.");
+        if (grid.smokeFx == null) Debug.LogWarning("Particle Pack missing: no flames, and smoke will be cubes. Run Prototype > Restore Asset Packs.");
     }
 
     // Late-afternoon sun, and a post-processing volume: bloom so fire glows,
@@ -333,6 +340,7 @@ public static class ChemYardBuilder
         caster.visuals = visuals;
         caster.enabled = playerDriven;
         wizard.AddComponent<CastPose>();
+        wizard.AddComponent<CastBeats>().feel = AssetDatabase.LoadAssetAtPath<CastFeel>(CastFeelPath);
         var surface = wizard.AddComponent<SurfaceEffects>();
         surface.enabled = playerDriven;
         var knockback = wizard.AddComponent<Knockback>();
@@ -344,6 +352,8 @@ public static class ChemYardBuilder
         wizard.AddComponent<Sitter>(); // sits the local wizard on a Seat (E); the pose above is every machine's
         wizard.AddComponent<CurrentRider>(); // the river and the surf carry the local wizard (WaterCurrents)
         wizard.AddComponent<Vitals>();
+        wizard.AddComponent<WizardDown>(); // at 0 health: down, then back at the yard; the pose is every machine's
+        wizard.AddComponent<DownedPose>();
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
         wizard.AddComponent<DoubleJump>(); // a second jump in mid-air (the climbing tower, ValleyTower)
@@ -355,7 +365,7 @@ public static class ChemYardBuilder
         fade.ditherLit = Shader.Find("Prototype/DitherLit");
         fade.silhouette = Shader.Find("Prototype/WizardSilhouette");
         wizard.AddComponent<Shapeshift>(); // an animal's shape: on every copy, so each machine draws the animal
-        // The wizard's look: hat, robe, beard and staff on the rig's bones, from a seed (synced by NetWizard).
+        // The wizard's look: hat, robe and beard on the rig's bones, from a seed (synced by NetWizard).
         var outfit = wizard.AddComponent<WizardOutfit>();
         outfit.material = ValleyBuilder.VillageMaterial();
         outfit.faceShader = Shader.Find("Prototype/WizardFace");

@@ -239,6 +239,12 @@ rest draw everything else, so online it travels with the seed. To add a kind,
 add it to `WizardLook.HeadwearKind` and a part in `WizardOutfit.Headwear`.
 Beards are off with the new face: `WizardBeard` is still there, unused.
 
+**The staff came off (the cast-feel pass, 2026-10-31):** both hands are free for
+the elements. `WizardLook` still draws a staff from each seed, so seeds keep
+their looks, and `WizardOutfit.Staff` is still there, unused behind
+`carriesStaff`, for when a staff comes back as an item (a **focus**). Casts
+never started at the staff: they start at the hand (`CastPose.HandPosition`).
+
 ### The plan
 
 A `WizardLook` recipe and a seed give each wizard their own look: the

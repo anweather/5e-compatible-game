@@ -130,6 +130,8 @@ export interface GasDef {
   decay?: number;
   /** From how many units a square of it hides what's behind (lineOfSight); unset never does. */
   blocksSightAt?: number;
+  /** A line of sight through this many squares of it, however thin, is hidden too (fog weather's veil; lineOfSight); unset, thin never hides. */
+  hidesAfter?: number;
   /** burn.flash: it goes up all at once when fire meets it (dust): the fire each cell goes up with, the shove, the line it logs (flashGas). */
   burn?: { flash?: FlashDef };
   /** Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); unset never. */
@@ -351,6 +353,7 @@ export interface RaiderDef {
   weak?: string[];
   resist?: string[];
 }
+import type { GolfParams } from "./golf.ts";
 /** sim.json's defense (defense.ts; C#: DefenseParams in Defense.cs). */
 export interface DefenseParams {
   lives: number; waves: number; first: number; growth: number; hpPerWave: number;
@@ -429,6 +432,12 @@ export interface SimParams {
   zapDamage: number;
   conductLimit: number;
   defense: DefenseParams;
+  /** Spell golf's ball (golf.ts; C#: GolfParams); absent uses the defaults. */
+  golf?: GolfParams;
+  /** A swimmer's breath and drowning, read by the Unity view only (C#: BreathParams in Breath.cs); absent uses the defaults. */
+  breath?: { seconds: number; refillSeconds: number; drownEvery: number; drownDice: number; drownSides: number };
+  /** How long a wizard at 0 health stays down, read by the Unity view only (C#: DownedParams in Downed.cs); absent uses the default. */
+  downed?: { seconds: number };
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
   day: {
     lengthMinutes: number; startHour: number;
@@ -448,8 +457,18 @@ export interface SimParams {
     rain: { douseChance: number; dampen: number; fillEvery: number; fillChance: number; dryEvery: number; dryChance: number };
     storm: { strikeEvery: number; strikeChance: number };
     /** Every freezeEvery ticks of snow, a shallow square's chance its water freezes; dry spells thaw it at thawChance. */
-    /** Also on that beat: open ground's chance of a snow cover, and a sheltered snowy square's chance to drift into a bank. */
-    snow: { freezeEvery: number; freezeChance: number; thawChance: number; coverChance: number; bankChance: number };
+    /** Also on that beat: open ground's chance of a snow cover, a sheltered snowy square's chance to drift into a bank, and an unsheltered one's to build up into one. */
+    snow: { freezeEvery: number; freezeChance: number; thawChance: number; coverChance: number; bankChance: number; deepenChance: number };
+    /**
+     * Every `every` ticks of fog, an open square's chance (at full strength) of a unit of the gas inside a patch, where it has
+     * no gas yet. Each block of regionChunks by regionChunks chunks has `patches` patches a stretch, of radius radiusMin..radiusMax:
+     * each on the best of `tries` dry, open cells, `low` a water unit of lower ground and `wet` for each water wetReach cells off,
+     * moving a cell down the stretch's breeze every driftTicks ticks.
+     */
+    fog: {
+      every: number; chance: number; gas: string; regionChunks: number; patches: number; radiusMin: number; radiusMax: number;
+      tries: number; low: number; wet: number; wetReach: number; driftTicks: number;
+    };
     /** A clear stretch's chance of a meteor shower; in one, every `every` ticks the chance a meteor appears, landing fallTicks later. */
     meteors: { showerChance: number; every: number; chance: number; fallTicks: number };
   };
@@ -463,7 +482,7 @@ export interface ComboDef {
   shape: Shape;
   /** Ticks the cast meter takes to drain. */
   castTicks: number;
-  /** The spell it casts when held at the ground instead. */
+  /** The spell it casts when held to its full charge instead. */
   held?: string;
   /** What's still to make, when spell is a stand-in. */
   todo?: string;
@@ -483,7 +502,9 @@ export interface CombosDef {
   /** Ticks after the first element in which a second is taken. */
   window: number;
   /** What a view multiplies walking speed by while the cast meter drains. */
+  chargeTicks: number;
   moveFactor: number;
+  chargeMoveFactor: number;
   singles: Record<string, ComboDef>;
   pairs: Record<string, Record<string, ComboDef>>;
   /** The d-pad's list, in cycling order. */
@@ -787,7 +808,9 @@ function comboErrors(r: Rules): string[] {
   const elements = Array.isArray(c.elements) ? c.elements : [];
   for (const e of elements.filter((e) => !r.elements.includes(e))) errors.push(`combos: unknown element ${e}`);
   if (!wholeFromOne(c.window)) errors.push("combos: window must be a whole number from 1");
+  if (!wholeFromOne(c.chargeTicks)) errors.push("combos: chargeTicks must be a whole number from 1");
   if (!(isNumber(c.moveFactor) && c.moveFactor > 0 && c.moveFactor <= 1)) errors.push("combos: moveFactor must be above 0 and at most 1");
+  if (!(isNumber(c.chargeMoveFactor) && c.chargeMoveFactor > 0 && c.chargeMoveFactor <= 1)) errors.push("combos: chargeMoveFactor must be above 0 and at most 1");
   for (const e of elements) {
     const single = c.singles?.[e];
     errors.push(...comboEntryErrors(r, e, single));
@@ -927,6 +950,7 @@ export function validateRules(r: Rules): string[] {
     if (g.condenseEvery !== undefined && (!Number.isInteger(g.condenseEvery) || g.condenseEvery < 1)) errors.push(`gas ${id}: condenseEvery must be a whole number from 1`);
     if (g.condenseAway !== undefined && (!Number.isInteger(g.condenseAway) || g.condenseAway < 0)) errors.push(`gas ${id}: condenseAway must be a whole number from 0`);
     if (g.rainEvery !== undefined && (!Number.isInteger(g.rainEvery) || g.rainEvery < 1)) errors.push(`gas ${id}: rainEvery must be a whole number from 1`);
+    if (g.hidesAfter !== undefined && (!Number.isInteger(g.hidesAfter) || g.hidesAfter < 1)) errors.push(`gas ${id}: hidesAfter must be a whole number from 1`);
     const flash = g.burn?.flash;
     if (flash && !(Number.isInteger(flash.fire) && flash.fire >= 1)) errors.push(`gas ${id}: burn.flash.fire must be a whole number from 1`);
     if (flash?.push !== undefined && !(Number.isInteger(flash.push) && flash.push >= 0)) errors.push(`gas ${id}: burn.flash.push must be a whole number from 0`);
@@ -1005,6 +1029,12 @@ export function validateRules(r: Rules): string[] {
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
+  const fogGas = r.sim.weather.fog?.gas;
+  if (fogGas !== undefined && !(typeof fogGas === "string" && fogGas in r.gases)) errors.push(`sim weather.fog.gas: unknown gas ${fogGas}`);
+  for (const k of ["regionChunks", "driftTicks"] as const) {
+    const n = r.sim.weather.fog?.[k];
+    if (n !== undefined && !(typeof n === "number" && n >= 1)) errors.push(`sim weather.fog.${k} must be at least 1`);
+  }
   for (const k of ["when", "notBy"] as const)
     if (r.sim.status.shatter?.[k] != null && typeof r.sim.status.shatter[k] !== "string") errors.push(`sim status.shatter.${k} must be a name`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));

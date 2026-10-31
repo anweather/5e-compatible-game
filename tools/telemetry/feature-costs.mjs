@@ -12,7 +12,7 @@
 // Cost is counted in input-token equivalents (ite): new input + 1.25 x cache write + 0.1 x cache read
 // + 5 x output, so the four kinds of token add up in one number that prices scale linearly.
 import { execFileSync } from "node:child_process";
-import { writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 
 const args = Object.fromEntries(process.argv.slice(2).reduce((acc, a, i, all) => {
   if (a.startsWith("--")) acc.push([a.slice(2), all[i + 1]?.startsWith("--") || all[i + 1] === undefined ? true : all[i + 1]]);
@@ -171,6 +171,16 @@ out.push("", "## By who did it", "", "| Who | Features | Cost (ite) | Median per
 for (const [a, fs] of Object.entries(byAgent).sort((p, q) => q[1].reduce((s, f) => s + f.ite, 0) - p[1].reduce((s, f) => s + f.ite, 0)))
   out.push(`| ${a} | ${fs.length} | ${fmtK(fs.reduce((s, f) => s + f.ite, 0))} | ${fmtK(median(fs.map(f => f.ite)))} | ${Math.round(fs.reduce((s, f) => s + f.c.minutes, 0))} |`);
 out.push("", "(A feature worked by several agents counts under each.)", "");
+// Work that ends in no commit (playtest sessions, reviews), recorded by commit-cost.mjs --record.
+const sessionsFile = args.sessions ?? "docs/telemetry/sessions.jsonl";
+let sessions = [];
+try { sessions = readFileSync(sessionsFile, "utf8").split("\n").filter(Boolean).map(l => JSON.parse(l)); } catch { }
+if (sessions.length) {
+  out.push("## Work with no commit", "", `From ${sessionsFile}, set beside the median feature (${fmtK(median(features.map(f => f.ite)))} ite).`, "",
+    "| When | Session | Cost (ite) | Min | Output |", "|---|---|---|---|---|");
+  for (const s of sessions) { const c = costOf(s.lines.join("\n")); out.push(`| ${s.time.slice(0, 16).replace("T", " ")} | ${s.label} | ${fmtK(ite(c))} | ${Math.round(c.minutes)} | ${fmtK(c.output)} |`); }
+  out.push("");
+}
 out.push("## Every feature", "", head, ...sorted.map(row), "");
 const report = out.join("\n");
 if (args.out) writeFileSync(args.out, report); else console.log(report);

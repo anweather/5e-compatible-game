@@ -6,7 +6,7 @@ using UnityEngine;
 // Picks a spell from rules/spells.json and casts it on the grid (controls
 // in PlayerControls). Aiming matches the web sandbox: beams and Gust start
 // next to the wizard and point at the target, everything else lands on the
-// targeted cell. The cells it will touch are highlighted. Shapeshift aims at
+// targeted cell. A marker on the ground shows where (AimMarker). Shapeshift aims at
 // an animal instead; in an animal's shape, Cast only changes back.
 //
 // The spell to cast is picked with the spell radial (SpellRadialHud: hold Tab
@@ -29,24 +29,23 @@ public partial class SpellCaster : MonoBehaviour
     /// <summary>Its display name (its id if the rules don't know it).</summary>
     public string SelectedName => grid != null && grid.World != null ? grid.World.Rules.Spell(SelectedId)?.Name ?? SelectedId : SelectedId;
 
-    readonly List<GameObject> markers = new();
-    Material markerMat;
+    AimMarker marker;
     CastPose pose;
+    CastBeats beats;
     ItemHolder hands;
     SpellRadialHud radial;
     Shapeshift shape;
     NetChem net;
     RaycastHit crosshair;
     bool hasCrosshair;
-    // Holding Cast charges a spell that can be (ChargeSeconds a level, to World.MaxCharge); release casts it.
-    const float ChargeSeconds = 0.45f;
+    // Holding Cast charges a spell that can be (World.SecondsPerLevel a level, to World.MaxCharge); release casts it.
     // The element that eats things away (Acid Splash): its splash, hiss and eaten stain.
     const string AcidElement = "acid", HeatElement = "heat", SandElement = "sand", LightningElement = "lightning";
     float chargeStart = -1f;
     GUIStyle pips;
 
     /// <summary>The charge the held Cast has built so far (1 when not charging).</summary>
-    public int Charge => chargeStart < 0f ? 1 : World.ClampCharge(1 + (int)((Time.time - chargeStart) / ChargeSeconds));
+    public int Charge => chargeStart < 0f ? 1 : ElementHold.ChargeOf(Time.time - chargeStart, World.MaxCharge, grid.World.SecondsPerLevel);
     /// <summary>How long Cast has been held charging, or -1 when it isn't (CastPose holds the wind-up).</summary>
     public float ChargingSeconds => chargeStart < 0f ? -1f : Time.time - chargeStart;
     Vector3? blinkLanding;
@@ -60,6 +59,7 @@ public partial class SpellCaster : MonoBehaviour
     void Awake()
     {
         TryGetComponent(out pose);
+        TryGetComponent(out beats);
         TryGetComponent(out hands);
         TryGetComponent(out radial);
         TryGetComponent(out shape);
@@ -67,15 +67,9 @@ public partial class SpellCaster : MonoBehaviour
 
     void OnEnable() => EventLog.Track(this);
 
-    void Start()
-    {
-        markerMat = UrpMaterials.NewLit("Aim marker", new Color(1f, 0.85f, 0.3f), emission: new Color(1f, 0.8f, 0.2f) * 1.5f);
-    }
-
     void OnDestroy()
     {
-        Destroy(markerMat);
-        orbs?.Destroy();
+        marker?.Destroy();
     }
 
     /// <summary>Selects a spell by id; false (and nothing changes) if the rules in force don't have it.</summary>
@@ -89,23 +83,23 @@ public partial class SpellCaster : MonoBehaviour
 
     void Update()
     {
-        // In an animal's shape, Cast only changes back (WhileShifted).
+        // In an animal's shape, the cast buttons only change back (WhileShifted).
         if (controls == null || grid == null || grid.World == null) return;
         UpdateElements();
         if (WhileShifted()) return;
 
-        hasCrosshair = Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
+        hasCrosshair = FindCrosshair();
         // While the spell radial is open the player is choosing, not aiming: no markers, no cast.
         if (!hasCrosshair || (radial != null && radial.IsOpen))
         {
-            ShowMarkers(null);
+            marker?.Hide();
             chargeStart = -1f;
             return;
         }
         var target = CrosshairCell;
         var aim = Aim(SelectedId, target, out var error);
         var spell = grid.World.Rules.Spell(SelectedId);
-        ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir, Charge, aim.Value.aimX, aim.Value.aimY) : null);
+        ShowAim(target, spell, aim);
 
         if (!CastNow(spell)) return;
         int charge = Charge;
@@ -136,22 +130,18 @@ public partial class SpellCaster : MonoBehaviour
         return charges ? controls.Cast.WasReleasedThisFrame() : controls.Cast.WasPressedThisFrame();
     }
 
-    // In an animal's shape (Shapeshift) the only cast is changing back. True while shifted.
+    // In an animal's shape (Shapeshift) any cast button changes back: an element, the d-pad's cast or Cast. True while shifted.
     bool WhileShifted()
     {
         if (shape == null || !shape.Shifted) return false;
-        ShowMarkers(null);
+        marker?.Hide();
         chargeStart = -1f;
-        if (controls.Cast.WasPressedThisFrame() && (radial == null || !radial.IsOpen)) shape.ChangeBackByChoice();
+        if (controls.AnyCastPressed() && (radial == null || !radial.IsOpen)) shape.ChangeBackByChoice();
         return true;
     }
 
-    /// <summary>
-    /// Whether holding Cast makes this spell stronger: every spell does. In the cells (World.Cast) a
-    /// line reaches further, a spot, square or burst grows, water and earth shaping go further; in
-    /// what moves (SpellForces) a push is harder, Misty Step and Mage Hand reach further, Levitate lasts.
-    /// </summary>
-    public static bool Chargeable(SpellDef spell) => spell != null;
+    /// <summary>Whether holding Cast makes this spell stronger (World.Chargeable).</summary>
+    public static bool Chargeable(SpellDef spell) => World.Chargeable(spell);
 
     // Three pips under the crosshair fill as the held Cast charges.
     void OnGUI()
@@ -163,6 +153,19 @@ public partial class SpellCaster : MonoBehaviour
         var text = new System.Text.StringBuilder();
         for (int i = 1; i <= World.MaxCharge; i++) text.Append(i <= charge ? "<color=#ffd24a>●</color> " : "<color=#ffffff55>●</color> ");
         GUI.Label(new Rect(HudScale.Width / 2f - 60f, HudScale.Height / 2f + 18f, 120f, 30f), text.ToString(), pips);
+    }
+
+    // What the crosshair is on, or where AimOverride puts it.
+    bool FindCrosshair()
+    {
+        if (AimOverride.HasValue)
+        {
+            crosshair = default;
+            crosshair.point = AimOverride.Value;
+            crosshair.normal = Vector3.up;
+            return true;
+        }
+        return controls != null && Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
     }
 
     Vector2Int CrosshairCell => grid.CellAt(crosshair.point - crosshair.normal * 0.05f);
@@ -219,7 +222,8 @@ public partial class SpellCaster : MonoBehaviour
         var def = grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null;
         var gesture = CastGestures.For(def, look);
         if (pose != null) pose.Play(gesture, landing, look?.glow ?? Color.white);
-        GameSounds.Play(GameSounds.CastOf(def), Hand);
+        // A cast by elements sounds as the hands thrust (CastSounds); this is for the rest.
+        if (beats == null || !beats.InHands(spellId)) GameSounds.Play(GameSounds.CastOf(def), Hand);
         // Acid: what it can eat is noted now, before it lands, so the cells it eats get the eaten stain.
         if (def?.Element == AcidElement && grid != null) grid.WatchAcid(cast);
         // A blink shows its mist where the caster leaves as well as where they land.
@@ -227,6 +231,7 @@ public partial class SpellCaster : MonoBehaviour
             Destroy(SpellVisuals.Spawn(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
         // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
         float release = CastGestures.Of(gesture).release;
+        if (beats != null) beats.Announce(spellId, landing, release);
         if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast.Charge, onArrive)));
         else Unleash(def, look, landing, cast.Charge, onArrive);
     }
@@ -284,6 +289,7 @@ public partial class SpellCaster : MonoBehaviour
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)));
             ElementBurst(def, landing, charge);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
+            CastImpact.Landed(def, landing, charge);
             onArrive?.Invoke();
         }
 
@@ -328,6 +334,9 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     SpellVisuals.Entry LookOf(string spellId) => visuals != null ? visuals.For(spellId) : null;
+
+    /// <summary>The spell comes down from above (a meteor, a storm) rather than from the hands.</summary>
+    public bool FallsFromSky(string spellId) => LookOf(spellId) is { fromSky: true } or { storm: true };
 
     // A beam ends this far over where a line's show lands, about knee high, so it runs out low over the ground.
     const float BeamLift = 0.4f;
@@ -451,28 +460,33 @@ public partial class SpellCaster : MonoBehaviour
 
     static (int, int) Step(int dir) => dir switch { 0 => (0, -1), 1 => (1, 0), 2 => (0, 1), _ => (-1, 0) };
 
-    void ShowMarkers(List<(int x, int y)> cells)
-    {
-        int n = cells?.Count ?? 0;
-        while (markers.Count < n) markers.Add(NewMarker());
-        for (int i = 0; i < markers.Count; i++)
-        {
-            bool on = i < n;
-            markers[i].SetActive(on);
-            if (!on) continue;
-            var (x, y) = cells[i];
-            var c = grid.CellCenter(x, y);
-            markers[i].transform.position = new Vector3(c.x, grid.SurfaceY(x, y) + 0.06f, c.z);
-            markers[i].transform.localScale = new Vector3(0.3f * grid.cellSize, 0.02f, 0.3f * grid.cellSize);
-        }
-    }
+    /// <summary>The marker on the ground (made with the first aim), for the probe.</summary>
+    public AimMarker Marker => marker;
 
-    GameObject NewMarker()
+    static readonly Unity.Profiling.ProfilerMarker ShowAimMarker = new("SpellCaster.ShowAim");
+
+    // The marker follows what will go off: the cast under way at its charge so far, else what Cast would
+    // cast. On the controller's element layout Cast isn't there, so with nothing under way there's no marker.
+    void ShowAim(Vector2Int target, SpellDef spell, (int x, int y, int dir, int aimX, int aimY)? aim)
     {
-        var m = Primitives.Visual(PrimitiveType.Cube, "Aim");
-        var r = m.GetComponent<Renderer>();
-        r.sharedMaterial = markerMat;
-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        return m;
+        using var marked = ShowAimMarker.Auto();
+        marker ??= new AimMarker(grid, grid.aimShader != null ? grid.aimShader : Shader.Find("Prototype/AimMarker"));
+        int charge = Charge;
+        var (held, heldCharge) = HeldCast();
+        if (held != null)
+        {
+            spell = grid.World.Rules.Spell(held);
+            charge = heldCharge;
+            aim = Aim(held, target, out _);
+        }
+        else if (controls.UsingGamepad && controls.ElementPad) aim = null;
+        if (spell == null || !aim.HasValue)
+        {
+            marker.Hide();
+            return;
+        }
+        var a = aim.Value;
+        var cast = new CastCommand(spell.Id, a.x, a.y, a.dir, charge, a.aimX, a.aimY);
+        marker.Show(spell, grid.World.SpellCells(spell, a.x, a.y, a.dir, charge, a.aimX, a.aimY), cast, GlowOf(spell.Id));
     }
 }

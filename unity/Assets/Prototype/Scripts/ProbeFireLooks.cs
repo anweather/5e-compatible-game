@@ -55,7 +55,8 @@ public class FireLooksProbe : ProbeScenario
     // A crate stood in fire: when it catches and when it's gone.
     IEnumerator Crate()
     {
-        var crate = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.kind == EntityIds.Crate && p.State != null);
+        // On dry ground: the pond's crates float, and fire doesn't reach them.
+        var crate = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.kind == EntityIds.Crate && p.State != null && Dry(p));
         if (crate == null)
         {
             Check("crate_found", false, "no crate");
@@ -79,6 +80,12 @@ public class FireLooksProbe : ProbeScenario
         Metric("crate_catch_s", caught);
         Metric("crate_gone_s", gone);
         Check("crate_catches", caught > 0f, $"the crate caught after {caught:0.0} s in fire, gone after {gone:0.0} s");
+    }
+
+    bool Dry(PhysicsProp prop)
+    {
+        var cell = grid.CellAt(prop.transform.position);
+        return World.At(cell.x, cell.y).Water == 0;
     }
 
     // The sandbox's paint brushes: a terrain, then a cover on it (or none).

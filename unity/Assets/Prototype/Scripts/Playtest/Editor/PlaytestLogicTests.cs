@@ -324,6 +324,47 @@ public class PlaytestLogicTests
     }
 
     [Test]
+    public void CastsByElementsAreSometimesHeldToCharge()
+    {
+        var dice = new PlaytestRandom(5);
+        var charges = Enumerable.Range(0, 300).Select(_ => Chains.ChargeFor(dice)).ToList();
+        Assert.That(charges.Distinct().OrderBy(c => c), Is.EqualTo(new[] { 1, 2, 3 }));
+        Assert.That(charges.Count(c => c == 1), Is.InRange(100, 200), "about half are tapped");
+        Assert.That(Chains.ById("growth-on-burnt").TriggerCharge, Is.EqualTo(3), "one chain needs the full charge");
+    }
+
+    [Test]
+    public void CastsByElementsLeanTowardsTheOnesNotCastLately()
+    {
+        var options = new GoalOptions { ElementCasts = new[] { "fire", "water+earth", "air+fire" }, ChainIds = new[] { "forge-on-mud" } };
+        List<string> Run(IReadOnlyDictionary<string, int> done)
+        {
+            var dice = new PlaytestRandom(5);
+            return Enumerable.Range(0, 3000).Select(_ => GoalPicker.Next(dice, options, done).Key).ToList();
+        }
+        var fresh = Run(null);
+        Assert.That(fresh, Does.Contain("Elements:water+earth").And.Contain("Chain:forge-on-mud"));
+        var stale = Run(new Dictionary<string, int> { ["Elements:water+earth"] = 9 });
+        Assert.That(stale.Count(k => k == "Elements:water+earth"), Is.LessThan(fresh.Count(k => k == "Elements:water+earth") / 3));
+        var chain = GoalPicker.ByKey(new PlaytestRandom(1), options, "Chain:forge-on-mud");
+        Assert.That((chain.Kind, chain.Target, chain.ToString()), Is.EqualTo((GoalKind.Chain, "forge-on-mud", "play the chain forge-on-mud")));
+        Assert.That(GoalPicker.ByKey(new PlaytestRandom(1), options, "Elements:air+fire").ToString(), Is.EqualTo("cast air then fire by elements"));
+    }
+
+    [Test]
+    public void TheWorstFrameLeavesOutLoadingAndTheBotsScreenshots()
+    {
+        var watch = new FrameWatch();
+        Assert.That(watch.Frame(0, 930f, "yard"), Is.Empty);
+        Assert.That(watch.Frame(1, 700f, "yard"), Is.Empty);
+        Assert.That(watch.Frame(FrameWatch.LoadingFrames + 1, 40f, "yard"), Is.Empty);
+        watch.ShotTaken(100);
+        Assert.That(watch.Frame(101, 260f, "yard"), Is.Empty);
+        Assert.That(watch.Frame(200, 55f, "yard"), Is.Empty);
+        Assert.That(watch.Worst, Is.EqualTo(55f));
+    }
+
+    [Test]
     public void ASpikeJustAfterTheBotsOwnScreenshotIsntTheGames()
     {
         var watch = new FrameWatch();

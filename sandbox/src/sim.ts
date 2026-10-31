@@ -6,12 +6,13 @@ import { RULES } from "./rules.ts";
 import { applyElement, dampFuel, displaceWater, flashGas, ignite, putCover, wallLost } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
+import { ground, tickGolf } from "./golf.ts";
 import {
   type Cell, type World,
-  DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
+  DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, inBounds, isBlocking, isRaisedWall,
   clockTick, log, logOnce, neighbours, rand, terrainDef, windDir,
 } from "./world.ts";
-import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, rainOf, snowOf, weatherAt, wetOf } from "./sky.ts";
+import { type WeatherNow, heldWeather, inHours, minuteOfDay, minutesAt, fogOf, hash, rainOf, snowOf, ticksOf, weatherAt, wetOf } from "./sky.ts";
 import { isNight } from "./night.ts";
 import { METEOR_SPELL, landSpell, landStars, spellById, tickBoulders, tickWaves, tickWhirlwinds } from "./actions.ts";
 
@@ -33,6 +34,7 @@ export function step(w: World): void {
   tickWhirlwinds(w);
   tickWaves(w);
   tickBoulders(w);
+  tickGolf(w);
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
   const floating: [Cell, string, number][] = []; // what floating covers reached, laid after the pass (World.floating)
@@ -531,16 +533,30 @@ function tickMachines(w: World) {
         m.powered = m.hold > 0;
       }
     }
-    if (m.powered && !poweredBy) poweredBy = def.name;
+    if (m.powered && !poweredBy && !w.gateLinks.some((l) => l.machine === i)) poweredBy = def.name;
   }
   setGates(w, poweredBy);
+  setLinkedGates(w);
 }
 
+/**
+ * Links the gate at (gx, gy) to the machine at (mx, my) (World.LinkGate in the C#): from then on that gate opens only
+ * while that machine is powered, and that machine opens no other gate. Linking a gate again moves its link.
+ */
+export function linkGate(w: World, gx: number, gy: number, mx: number, my: number) {
+  if (!inBounds(w, gx, gy) || !inBounds(w, mx, my)) return;
+  const gate = gy * w.w + gx;
+  w.gateLinks = w.gateLinks.filter((l) => l.gate !== gate);
+  w.gateLinks.push({ gate, machine: my * w.w + mx, open: w.cells[gate]!.t === "gate_open" });
+}
+
+// Opens every gate no one linked when a machine no one linked is powered, shuts them when none is, and says so.
 function setGates(w: World, poweredBy: string | null) {
   const open = poweredBy !== null;
   if (open === w.gatesOpen) return;
   let changed = false;
   w.cells.forEach((c, i) => {
+    if ((c.t === "gate" || c.t === "gate_open") && w.gateLinks.some((l) => l.gate === i)) return;
     if (open && c.t === "gate") {
       c.t = "gate_open";
       changed = true;
@@ -561,6 +577,28 @@ function setGates(w: World, poweredBy: string | null) {
   }
 }
 
+// Each linked gate follows its own machine, in the order they were linked: open while it's powered, shut once it
+// isn't (not while something is wedged in it: then it tries again next tick), and says so.
+function setLinkedGates(w: World) {
+  for (const l of w.gateLinks) {
+    const powered = w.machines[l.machine]?.powered === true;
+    if (powered === l.open) continue;
+    const c = w.cells[l.gate]!;
+    const x = l.gate % w.w, y = Math.floor(l.gate / w.w);
+    if (!powered && c.t === "gate_open" && entityAt(w, x, y)) continue;
+    l.open = powered;
+    const name = RULES.machines[w.cells[l.machine]!.t]?.name ?? "machine";
+    if (powered && c.t === "gate") {
+      c.t = "gate_open";
+      w.openedBy = name;
+      log(w, `The gate grinds open, powered by the ${name.toLowerCase()}`, "power");
+    } else if (!powered && c.t === "gate_open") {
+      c.t = "gate";
+      log(w, `The ${name.toLowerCase()} falls quiet and its gate slams shut`, "power");
+    }
+  }
+}
+
 // Re-exported so callers can light things without importing react.ts.
 export { ignite };
 
@@ -568,8 +606,10 @@ export { ignite };
 
 // What the weather does to cells, after gas: rain fills squares and dry spells
 // dry shallow ones, snow freezes shallow water, covers open ground and drifts
-// into banks against walls and trees (and dry spells thaw the ice and melt the
-// snow), storms strike lightning (World.Weather.cs ports this).
+// into banks against walls and trees, building up slowly in the open too (and
+// dry spells thaw the ice and melt the snow), fog lays patches of thin fog gas
+// on low ground near water that drift a little and thin away once the stretch
+// ends, storms strike lightning (World.Weather.cs ports this).
 // Nothing happens during the calm stretches the world starts with.
 function tickWeather(w: World) {
   const now = w.weather, p = RULES.sim.weather;
@@ -577,14 +617,16 @@ function tickWeather(w: World) {
   landMeteors(w);
   landStars(w);
   if (now.period < p.calmPeriods && !w.weatherSet) return;
-  const rain = rainOf(now), snow = snowOf(now);
+  const rain = rainOf(now), snow = snowOf(now), fog = fogOf(now);
   if (rain > 0) {
     if (w.tick % p.rain.fillEvery === 0) fill(w, (p.rain.fillChance * rain) / 100);
   } else if (snow > 0) {
     if (w.tick % p.snow.freezeEvery === 0) {
       freeze(w, ((p.snow.freezeChance * snow) / 100) * (isNight(w) ? RULES.sim.day.nightFreeze : 1), true);
-      settle(w, (p.snow.coverChance * snow) / 100, (p.snow.bankChance * snow) / 100);
+      settle(w, (p.snow.coverChance * snow) / 100, (p.snow.bankChance * snow) / 100, (p.snow.deepenChance * snow) / 100);
     }
+  } else if (fog > 0) {
+    if (w.tick % p.fog.every === 0) veil(w, p.fog.gas, (p.fog.chance * fog) / 100);
   } else if (w.tick % p.rain.dryEvery === 0) {
     dry(w, p.rain.dryChance);
     // At night the ice and snow keep till morning.
@@ -644,18 +686,85 @@ function freeze(w: World, chance: number, frozen: boolean) {
 const SNOW = "snow", BANK = "snowbank";
 
 /** Snow settles on open, dry, unburnt ground, and drifts into banks where it's sheltered (World.Settle). */
-function settle(w: World, cover: number, bank: number) {
+function settle(w: World, cover: number, bank: number, deepen: number) {
   const wind = windDir(w), upwind = wind >= 0 ? (wind + 2) % 4 : -1;
-  for (let i = 0; i < w.cells.length; i++) settleOn(w, i, upwind, cover, bank);
+  for (let i = 0; i < w.cells.length; i++) settleOn(w, i, upwind, cover, bank, deepen);
 }
 
-/** Snow on one square: a cover on open ground, a bank where it's sheltered (World.SettleOn). */
-function settleOn(w: World, i: number, upwind: number, cover: number, bank: number) {
+/** Snow on one square: a cover on open ground, a bank where it's sheltered, and slowly in the open (World.SettleOn). */
+function settleOn(w: World, i: number, upwind: number, cover: number, bank: number, deepen: number) {
   const c = w.cells[i];
   if (c.water > 0 || c.fire > 0 || isBlocking(c)) return;
   if (c.cover === null) {
     if (rand(w) < cover) c.cover = SNOW;
-  } else if (c.cover === SNOW && sheltered(w, i % w.w, Math.floor(i / w.w), upwind) && rand(w) < bank) c.cover = BANK;
+  } else if (c.cover === SNOW && rand(w) < (sheltered(w, i % w.w, Math.floor(i / w.w), upwind) ? bank : deepen)) c.cover = BANK;
+}
+
+/** Cells in a chunk (C#: Chunks.Size); the sandbox has none of its own, but fog's blocks are counted in them. */
+const CHUNK_CELLS = 64;
+
+/**
+ * Fog weather: patches of its gas, here and there, worked out afresh from the seed, the stretch and the cells, so it needs no
+ * state; only the patches' cells are visited. Each block of chunks has its patches, in row-major order (World.Veil).
+ */
+function veil(w: World, gas: string, chance: number) {
+  const p = RULES.sim.weather.fog, size = p.regionChunks * CHUNK_CELLS;
+  const stretch = w.weatherSet ? w.weatherSet.from : w.weather.period;
+  const start = w.weatherSet ? w.weatherSet.from : w.weather.period * ticksOf(RULES.sim, RULES.sim.weather.periodMinutes);
+  const breeze = hash(w.seed, stretch, 6) >>> 30, drift = Math.floor((w.tick - start) / p.driftTicks);
+  for (let ry = 0; ry * size < w.h; ry++) {
+    for (let rx = 0; rx * size < w.w; rx++) {
+      const block = hash(hash(w.seed, stretch, 5), rx, ry);
+      for (let n = 0; n < p.patches; n++) {
+        const at = patchCentre(w, block, rx, ry, n);
+        if (!at) continue;
+        const radius = p.radiusMin + hash(block, n, 9) % (Math.max(0, p.radiusMax - p.radiusMin) + 1);
+        layPatch(w, at.x + DX[breeze] * drift, at.y + DY[breeze] * drift, radius, gas, chance);
+      }
+    }
+  }
+}
+
+/** The best of a block's `tries` cells for its patch n, by the hash of the block; null if none is dry and open (World.PatchCentre). */
+function patchCentre(w: World, block: number, rx: number, ry: number, n: number) {
+  const p = RULES.sim.weather.fog, size = p.regionChunks * CHUNK_CELLS, x0 = rx * size, y0 = ry * size;
+  const width = Math.min(w.w, x0 + size) - x0, height = Math.min(w.h, y0 + size) - y0;
+  let best = -Infinity, found: { x: number; y: number } | null = null;
+  for (let t = 0; t < p.tries; t++) {
+    const at = hash(block, n * p.tries + t, 7);
+    const x = x0 + (at & 0xffff) % width, y = y0 + (at >>> 16) % height;
+    const score = patchScore(w, x, y);
+    if (score <= best) continue;
+    best = score;
+    found = { x, y };
+  }
+  return found;
+}
+
+/** How much fog likes a cell: low ground with water near; never on water or anything blocking (World.PatchScore). */
+function patchScore(w: World, x: number, y: number): number {
+  const p = RULES.sim.weather.fog, c = cellAt(w, x, y);
+  if (!c || c.water > 0 || isBlocking(c)) return -Infinity;
+  let wet = 0;
+  for (let d = 0; d < 4; d++) {
+    const n = cellAt(w, x + DX[d] * p.wetReach, y + DY[d] * p.wetReach);
+    if (n && n.water > 0) wet++;
+  }
+  return p.wet * wet - p.low * ground(w, x, y);
+}
+
+/** A unit of gas on the open, gasless cells of a disc: full chance over its middle, thinning at the rim (World.LayPatch). */
+function layPatch(w: World, x: number, y: number, radius: number, gas: string, chance: number) {
+  const r2 = radius * radius;
+  for (let dy = -radius; dy <= radius; dy++) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      const d2 = dx * dx + dy * dy;
+      if (d2 >= r2) continue;
+      const c = cellAt(w, x + dx, y + dy);
+      if (!c || c.gas !== null || isBlocking(c)) continue;
+      if (rand(w) < chance * Math.min(1, (2 * (r2 - d2)) / r2)) addGas(c, gas, 1);
+    }
+  }
 }
 
 /** Whether something blocking stands next to a square: on its upwind side in a wind, any side without. */

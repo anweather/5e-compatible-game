@@ -22,6 +22,17 @@ public static class ChemEffects
     /// </summary>
     public static EffectCommand By(PhysicsProp prop, EffectKind kind, Vector2Int cell) => new EffectCommand(kind, cell.x, cell.y, prop.kind, prop.Thing);
 
+    /// <summary>
+    /// A wizard hit a pane cell (a punch), the same hit as a heavy thing's. Unlike a prop's, it can start
+    /// on a client, which asks the host to stamp it (NetChem.RequestStrike).
+    /// </summary>
+    public static void Strike(ChemGrid grid, Vector2Int cell)
+    {
+        if (grid == null || grid.World == null) return;
+        if (grid.TryGetComponent<NetChem>(out var net) && net.Online && !net.IsServer) net.RequestStrike(cell);
+        else Request(grid, new EffectCommand(EffectKind.Shatter, cell.x, cell.y, "", ThingId.None));
+    }
+
     /// <summary>Asks for an effect on the grid's world (see the top of the file).</summary>
     public static void Request(ChemGrid grid, EffectCommand effect)
     {

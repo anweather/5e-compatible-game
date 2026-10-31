@@ -49,6 +49,7 @@ public sealed class WizardLook
     /// <summary>The beard's cut, how many tufts it's made of, and a seed for their small differences.</summary>
     public BeardStyle BeardCut;
     public int BeardTufts, BeardJitter;
+    // Still drawn (each seed keeps the look it gave), but no wizard carries one: WizardOutfit.carriesStaff.
     public StaffKind Staff;
     public Color StaffGlow;
 

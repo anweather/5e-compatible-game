@@ -7,8 +7,10 @@ using System.Linq;
 using Newtonsoft.Json;
 using Playtest;
 using StarterAssets;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
 
 // The playtest bot (playtest/DESIGN.md). Start a player build with -playtest
 // and it plays on its own for a while, then writes what it found to its run
@@ -32,6 +34,9 @@ using UnityEngine.InputSystem;
 // Windows mixer instead).
 public class PlaytestBot : MonoBehaviour
 {
+    // PerfScenario reads these, to tell the bot's own cost from the game's.
+    static readonly ProfilerMarker WatchMarker = new("PlaytestBot.LateUpdate"), ShotMarker = new("PlaytestBot.Shot");
+
     const int Fps = 30, ShotWidth = 960, ShotHeight = 540, PropEvery = 15, SoundEvery = 30, HeartbeatEvery = 30;
 
     // Settings, from the command line.
@@ -229,7 +234,7 @@ public class PlaytestBot : MonoBehaviour
         var lo = grid.CellCenter(0, grid.World.H - 1);
         var hi = grid.CellCenter(grid.World.W - 1, 0);
         wizardWatch = new WizardWatch(Mathf.Min(lo.x, hi.x) - 5f, Mathf.Min(lo.z, hi.z) - 5f, Mathf.Max(lo.x, hi.x) + 5f, Mathf.Max(lo.z, hi.z) + 5f);
-        player = new PlaytestPlayer(grid, wizard, dice, places, Trace, Add);
+        player = new PlaytestPlayer(grid, wizard, dice, places, Trace, Add, Shoot);
         run.Quiet = Environment.GetCommandLineArgs().Contains("-playtest-quiet");
         startedReal = Time.realtimeSinceStartup;
         running = true;
@@ -261,6 +266,7 @@ public class PlaytestBot : MonoBehaviour
     void LateUpdate()
     {
         if (!running) return;
+        using var marked = WatchMarker.Auto();
         // The scene went away under the run (seed 103 on a development build: a reload, every frame
         // after it a NullReferenceException here): stop cleanly with what was found so far.
         if (wizard == null || grid == null)
@@ -362,14 +368,32 @@ public class PlaytestBot : MonoBehaviour
     // shots/<frame>-<label>.jpg and checked for magenta, black and white. Returns its path in the run.
     string Shoot(string label)
     {
+        using var marked = ShotMarker.Auto();
         frameWatch.ShotTaken(frame);
         var cam = Camera.main;
         if (cam == null) return null;
+        // In the 0.1.8 runs a third of the shots showed only ground, sky or night. At night a goal's
+        // routine shot is skipped; a candidate's or a cast's is lit instead.
+        bool night = Night;
+        if (night && label == "goal")
+        {
+            Trace("no shot", "night");
+            return null;
+        }
+        string unusable = Unusable(cam);
+        if (unusable != null)
+        {
+            Trace("reframe", unusable);
+            cam = Reframed(cam);
+        }
+        var ambient = RenderSettings.ambientProbe;
+        if (night) RenderSettings.ambientProbe = ambient + NightFill();
         var rt = RenderTexture.GetTemporary(ShotWidth, ShotHeight, 24);
         var was = cam.targetTexture;
         cam.targetTexture = rt;
         cam.Render();
         cam.targetTexture = was;
+        RenderSettings.ambientProbe = ambient;
         var active = RenderTexture.active;
         RenderTexture.active = rt;
         var tex = new Texture2D(ShotWidth, ShotHeight, TextureFormat.RGB24, false);
@@ -390,8 +414,57 @@ public class PlaytestBot : MonoBehaviour
         return file;
     }
 
+    // Why the camera's view can't be judged, or null: inside the ground, straight down at it, or
+    // up at open sky (nothing in front of it for 500 m).
+    string Unusable(Camera cam)
+    {
+        var at = cam.transform.position;
+        var forward = cam.transform.forward;
+        if (at.y < grid.GroundAt(at) + 0.1f) return "the camera is in the ground";
+        if (forward.y < -0.9f) return "the camera looks straight down";
+        if (forward.y > 0.3f && !Physics.Raycast(at, forward, 500f)) return "the camera faces open sky";
+        return null;
+    }
+
+    Camera shotCamera;
+
+    // A camera behind and above the wizard, looking at them, with the main camera's settings: for
+    // a shot the main camera can't take.
+    Camera Reframed(Camera main)
+    {
+        if (shotCamera == null)
+        {
+            shotCamera = new GameObject("Playtest shot camera").AddComponent<Camera>();
+            shotCamera.transform.SetParent(transform);
+            shotCamera.enabled = false;
+        }
+        shotCamera.CopyFrom(main);
+        var w = wizard.transform;
+        var back = new Vector3(w.forward.x, 0f, w.forward.z).normalized;
+        var at = w.position - back * 6f + Vector3.up * 3f;
+        at.y = Mathf.Max(at.y, grid.GroundAt(at) + 2f);
+        shotCamera.transform.position = at;
+        shotCamera.transform.LookAt(w.position + Vector3.up * 1.2f);
+        return shotCamera;
+    }
+
+    // Flat grey ambient light added for a night shot, enough to see shapes and colours by.
+    static SphericalHarmonicsL2 NightFill()
+    {
+        var fill = new SphericalHarmonicsL2();
+        fill.AddAmbientLight(new Color(0.45f, 0.45f, 0.5f));
+        return fill;
+    }
+
     // Where the run was last, for a candidate raised once the wizard is gone.
     string Here0 => run.Goals.Count > 0 ? run.Goals[run.Goals.Count - 1] : "start";
+
+    // For a performance pass: which frames of the run its worst frame times were.
+    void LogWorstFrames()
+    {
+        var worst = frameWatch.Times.Select((ms, at) => (ms, at)).OrderByDescending(f => f.ms).Take(10);
+        Debug.Log("PERF BOT WORST " + string.Join(" ", worst.Select(f => $"frame{f.at}={f.ms:0.0}")));
+    }
 
     void Finish(string ended)
     {
@@ -404,7 +477,8 @@ public class PlaytestBot : MonoBehaviour
         foreach (var c in run.Candidates) run.Counts[c.Signature] = found.CountOf(c.Signature);
         run.Metrics["frame_ms_p50"] = frameWatch.Percentile(0.5);
         run.Metrics["frame_ms_p95"] = frameWatch.Percentile(0.95);
-        run.Metrics["frame_ms_worst"] = frameWatch.Times.Count == 0 ? 0f : frameWatch.Times.Max();
+        run.Metrics["frame_ms_worst"] = frameWatch.Worst;
+        if (PerfCounts.On) LogWorstFrames();
         run.Metrics["audio_peak"] = tap != null ? tap.Peak : -1f;
         run.Metrics["focus_handed_back"] = handedBack;
         run.Metrics["memory_mb"] = UnityEngine.Profiling.Profiler.GetTotalAllocatedMemoryLong() / (1024f * 1024f);

@@ -17,9 +17,10 @@ using UnityEngine.Rendering;
 public partial class ChemGrid
 {
     [Header("Effects (optional; cubes stand in when missing)")]
-    public GameObject fireSmall;
-    public GameObject fireMedium;
-    public GameObject fireLarge;
+    [Tooltip("What flames are drawn with (Prototype/Flame); the builder sets it, which puts it in the build.")]
+    public Shader flameShader;
+    [Tooltip("The flame flipbooks, tiny, medium and large (the Particle Pack's); the builder sets them.")]
+    public Texture2D[] flameSheets;
     public GameObject smokeFx;
     public GameObject steamFx;
     public GameObject sparksFx;
@@ -30,6 +31,8 @@ public partial class ChemGrid
     public Material slickMaterial;
     [Tooltip("What lava is drawn with (Prototype/CellLava); the builder sets it, which puts it in the build.")]
     public Shader lavaShader;
+    [Tooltip("Draws the aim marker (AimMarker). The builder sets it, so the shader is in the build.")]
+    public Shader aimShader;
     [Tooltip("Optional: rock models a raised wall is built of, one per square, sized to cover its face (CellDressing). Without them, rough shapes stand in.")]
     public GameObject[] wallRocks;
     [Tooltip("Optional: smaller stones set on a raised wall's top to break its line.")]
@@ -38,7 +41,7 @@ public partial class ChemGrid
     // What is currently shown for one cell, so a cell is only redrawn when it changes.
     sealed class View
     {
-        public GameObject dressing, cover, fire, gas, spark, thorns, vines;
+        public GameObject dressing, cover, gas, spark, thorns, vines;
         public string terrain, coverId;
         public int height, elevation;
         public int key = int.MinValue;
@@ -291,8 +294,10 @@ public partial class ChemGrid
             k = k * 31 + (c.Frozen ? 1 : 0);
             k = k * 31 + (c.Cover?.GetHashCode() ?? 0);
             k = k * 31 + c.Fire;
-            k = k * 31 + (c.Gas?.GetHashCode() ?? 0);
-            k = k * 31 + c.GasAmt;
+            // Weather's veil of fog draws nothing, so its coming and going over every cell redraws nothing.
+            bool gas = c.Gas != null && !FogBank.IsVeil(c.Gas, c.GasAmt);
+            k = k * 31 + (gas ? c.Gas.GetHashCode() : 0);
+            k = k * 31 + (gas ? c.GasAmt : 0);
             k = k * 31 + (c.Charge > 0 ? 1 : 0);
             k = k * 31 + HeatLevel(c);
             k = k * 31 + RustLevel(c);
@@ -332,6 +337,9 @@ public partial class ChemGrid
 
     /// <summary>The top of the water or ice drawn at a point in grid units (see CellWaterMesh.TopAt).</summary>
     public float DrawnWaterTopAt(float gx, float gy, float fallback) => waterSurface.TopAt(gx, gy, fallback);
+
+    /// <summary>For a performance pass: the water tiles redrawn, and how many came out different (CellWaterMesh.CheckTiles).</summary>
+    public (int tiles, int different) CheckWaterTiles() => waterSurface.CheckTiles();
 
     /// <summary>Height of the water surface in a cell, as drawn (its ground when the cell is dry).</summary>
     public float WaterSurfaceY(int x, int y)

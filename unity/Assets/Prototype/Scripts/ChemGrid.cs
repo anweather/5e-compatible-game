@@ -84,7 +84,9 @@ public partial class ChemGrid : MonoBehaviour
     public double StepMs { get; private set; }
     public double RenderMs { get; private set; }
 
-    static readonly Unity.Profiling.ProfilerMarker StepMarker = new("ChemGrid.Step"), RenderMarker = new("ChemGrid.Render");
+    static readonly Unity.Profiling.ProfilerMarker StepMarker = new("ChemGrid.Step"), RenderMarker = new("ChemGrid.Render"),
+        ChunkPlanMarker = new("ChemGrid.ChunkPlan"), ChunkApplyMarker = new("ChemGrid.ChunkApply"), ChunkEventMarker = new("ChemGrid.ChunkEvent"),
+        DetailChunksMarker = new("ChemGrid.DetailChunks");
     public double LightsMs { get; private set; }
     SpellCaster[] wizards = System.Array.Empty<SpellCaster>();
     float nextWizardLookup;
@@ -145,7 +147,7 @@ public partial class ChemGrid : MonoBehaviour
         var rules = StartRules();
 
         World = MapWorld(rules, map, seed, out var start);
-        World.ChunkSwitched += s => ChunkSwitched?.Invoke(s);
+        World.ChunkSwitched += OnChunkSwitched;
         ChunkPlanner = new ChunkPlanner();
         PlayerStart = start;
         if (valley != null) valley.Bind(World);
@@ -153,6 +155,13 @@ public partial class ChemGrid : MonoBehaviour
         InitVisuals();
         RenderAll();
         WorldReset?.Invoke();
+    }
+
+    void OnChunkSwitched(ChunkSwitch s)
+    {
+        PerfCounts.Add(s.Active ? "chunk.on" : "chunk.off");
+        if (s.Active) PerfCounts.Add("chunk.caught_up_ticks", World.CaughtUp(s.CX, s.CY));
+        using (ChunkEventMarker.Auto()) ChunkSwitched?.Invoke(s);
     }
 
     /// <summary>
@@ -175,7 +184,38 @@ public partial class ChemGrid : MonoBehaviour
                 PaintCell(world, x, y, ch);
             }
         }
+        LayPuzzles(world);
+        LayGolf(world);
         return world;
+    }
+
+    // Spell golf's hole, the ball on its tee from the start on every machine alike (GolfCourse draws it).
+    static void LayGolf(World world)
+    {
+        try
+        {
+            if (GolfCommand.Load(FindWorldDir()) is { } hole) world.ApplyGolf(hole);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{GolfCommand.FileName} can't be read, so no golf: {e.Message}");
+        }
+    }
+
+    // The puzzles of world/puzzles.json (a coil and a gate by the golf course), over the map's cells:
+    // only in a world big enough to hold them (the valley, not a small test yard).
+    static void LayPuzzles(World world)
+    {
+        try
+        {
+            var puzzles = WorldPuzzles.Load(FindWorldDir());
+            foreach (var problem in puzzles.Check(world.Rules)) Debug.LogWarning(problem);
+            puzzles.LayInto(world);
+        }
+        catch (System.Exception e) when (e is System.FormatException || e is IOException)
+        {
+            Debug.LogError($"world/{WorldPuzzles.FileName} can't be read, so no puzzles: {e.Message}");
+        }
     }
 
     // Sets up one cell from its map character (see Legend); unknown characters are dirt.
@@ -190,7 +230,7 @@ public partial class ChemGrid : MonoBehaviour
 
     void Update()
     {
-        UpdateDetailChunks();
+        using (DetailChunksMarker.Auto()) UpdateDetailChunks();
         if (ExternalTicks)
         {
             Render();
@@ -250,22 +290,46 @@ public partial class ChemGrid : MonoBehaviour
     bool StepWithinBudget()
     {
         float tick = 1f / Mathf.Max(1, World.Rules.Sim.TicksPerSecond);
-        bool Over() => stepBudget.Over();
+        bool Over()
+        {
+            PerfCounts.TickSlice(World.TickStageNumber);
+            return stepBudget.Over();
+        }
         int guard = 4;
         bool stepped = false;
         while (true)
         {
             if (!World.TickInProgress)
             {
-                if (tickTimer < tick || guard-- <= 0 || Over()) return stepped;
+                if (tickTimer < tick || guard-- <= 0 || Over())
+                {
+                    PerfCounts.Peak("tick.owed_ms", (long)(tickTimer * 1000f));
+                    return stepped;
+                }
                 tickTimer -= tick;
                 ApplyQueuedRules();
-                if (streamChunks) ChunkStreaming.Apply(World, ChunkPlanner.Plan(World, PlayerCells()));
+                if (streamChunks) PlanChunks();
             }
-            if (!World.StepSome(Over)) return stepped;
+            PerfCounts.SliceStart(World.TickStageNumber);
+            bool finished = World.StepSome(Over);
+            PerfCounts.SliceStop();
+            if (!finished)
+            {
+                PerfCounts.Add("tick.budget_ran_out");
+                PerfCounts.Peak("tick.owed_ms", (long)(tickTimer * 1000f));
+                return stepped;
+            }
+            PerfCounts.Add("tick.done");
             stepped = true;
             NoteTickDone();
         }
+    }
+
+    void PlanChunks()
+    {
+        System.Collections.Generic.List<ChunkSwitch> plan;
+        using (ChunkPlanMarker.Auto()) plan = ChunkPlanner.Plan(World, PlayerCells());
+        using (ChunkApplyMarker.Auto()) ChunkStreaming.Apply(World, plan);
     }
 
     /// <summary>The cells every wizard in the scene stands on (the solo one, or every player's online), for ChunkStreaming.</summary>

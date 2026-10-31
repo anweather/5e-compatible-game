@@ -115,30 +115,36 @@ public static class HudDraw
         }
     }
 
+    // Each icon's outline is centred on the orb: as far left of the middle as right, and above as below.
     static void Flame(Vector2 at, float r, Color mark)
     {
+        at += new Vector2(0f, r * 0.05f);
         Disc(at + new Vector2(0f, r * 0.2f), r * 0.38f, mark);
         Triangle(at + new Vector2(-r * 0.36f, r * 0.13f), at + new Vector2(r * 0.36f, r * 0.13f), at + new Vector2(r * 0.08f, -r * 0.68f), mark);
     }
 
     static void Drop(Vector2 at, float r, Color mark)
     {
+        at += new Vector2(0f, r * 0.04f);
         Disc(at + new Vector2(0f, r * 0.2f), r * 0.38f, mark);
         Triangle(at + new Vector2(-r * 0.34f, r * 0.05f), at + new Vector2(r * 0.34f, r * 0.05f), at + new Vector2(0f, -r * 0.66f), mark);
     }
 
     static void Peaks(Vector2 at, float r, Color mark)
     {
-        Triangle(at + new Vector2(-r * 0.68f, r * 0.45f), at + new Vector2(r * 0.25f, r * 0.45f), at + new Vector2(-r * 0.2f, -r * 0.55f), mark);
-        Triangle(at + new Vector2(-r * 0.05f, r * 0.45f), at + new Vector2(r * 0.7f, r * 0.45f), at + new Vector2(r * 0.32f, -r * 0.2f), mark);
+        at += new Vector2(0f, r * 0.05f);
+        Triangle(at + new Vector2(-r * 0.69f, r * 0.45f), at + new Vector2(r * 0.24f, r * 0.45f), at + new Vector2(-r * 0.21f, -r * 0.55f), mark);
+        Triangle(at + new Vector2(-r * 0.06f, r * 0.45f), at + new Vector2(r * 0.69f, r * 0.45f), at + new Vector2(r * 0.31f, -r * 0.2f), mark);
     }
 
     static void Gusts(Vector2 at, float r, Color mark)
     {
+        const float Inner = 0.25f, Outer = 0.36f;
         for (int i = -1; i <= 1; i++)
         {
-            var c = at + new Vector2(i * r * 0.08f, i * r * 0.42f - r * 0.2f);
-            Ring(c, r * 0.3f, r * 0.42f, 0.5f, mark);
+            // A half ring lies right of its centre, so the three are set back by half their width.
+            var c = at + new Vector2((i * 0.08f - Outer / 2f) * r, i * Outer * r);
+            Ring(c, r * Inner, r * Outer, 0.5f, mark);
         }
     }
 }

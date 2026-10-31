@@ -72,7 +72,7 @@ test("one element goes off when its meter drains, and the player walks slower me
   assert.equal(w.casts.ann!.meter, 1);
   assert.equal(w.combosFired.length, 0);
   step(w);
-  assert.deepEqual(w.combosFired, [{ player: "ann", combo: "fire", name: "Fire Bolt", spell: "fire-bolt", shape: "point", discovered: true }]);
+  assert.deepEqual(w.combosFired, [{ player: "ann", combo: "fire", name: "Fire Bolt", spell: "fire-bolt", shape: "point", discovered: true, charge: 1 }]);
   assert.equal(moveFactorOf(w, "ann"), 1);
   assert.equal(w.casts.ann!.first, null);
   step(w);
@@ -152,7 +152,7 @@ test("the d-pad cycles both ways and casts through the meter", () => {
   assert.equal(load(w, "ann", "fire"), false, "no element during a d-pad cast");
   assert.equal(castSelected(w, "ann"), false);
   assert.equal(untilFired(w), 12);
-  assert.deepEqual(w.combosFired, [{ player: "ann", combo: null, name: "Shapeshift", spell: "shapeshift", shape: "target", discovered: false }]);
+  assert.deepEqual(w.combosFired, [{ player: "ann", combo: null, name: "Shapeshift", spell: "shapeshift", shape: "target", discovered: false, charge: 1 }]);
   assert.deepEqual(w.casts.ann!.known, []);
 });
 

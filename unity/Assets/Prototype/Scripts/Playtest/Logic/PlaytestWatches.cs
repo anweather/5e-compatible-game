@@ -115,6 +115,12 @@ namespace Playtest
         public const int AfterShotFrames = 3;
         int quietUntil = -1;
 
+        /// <summary>The first frames load the world: neither spikes nor the worst frame count there.</summary>
+        public const int LoadingFrames = 60;
+
+        /// <summary>The slowest frame that counts: past loading, and not just after a screenshot.</summary>
+        public float Worst { get; private set; }
+
         /// <summary>
         /// The bot took a screenshot on this frame: its readback, encode and write cost 40-60 ms
         /// and more, and the next few frames' spikes are the bot's, not the game's (the Mac's profile).
@@ -125,8 +131,9 @@ namespace Playtest
         public IEnumerable<Candidate> Frame(int frame, float frameMs, string place)
         {
             ms.Add(frameMs);
-            // The first frames load the world: no spikes counted there; nor just after a screenshot.
-            if (frame > 60 && frame > quietUntil && frameMs > SpikeMs && spikedAt.Add(place ?? ""))
+            if (frame <= LoadingFrames || frame <= quietUntil) yield break;
+            Worst = Math.Max(Worst, frameMs);
+            if (frameMs > SpikeMs && spikedAt.Add(place ?? ""))
                 yield return new Candidate("frame-spike", place, Category.Performance, frame,
                     string.Format(CultureInfo.InvariantCulture, "one frame took {0:0} ms", frameMs));
         }

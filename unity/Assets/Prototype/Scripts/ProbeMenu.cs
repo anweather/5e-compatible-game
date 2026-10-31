@@ -92,6 +92,24 @@ public class MenuProbe : ProbeScenario
             menu.Back();
             yield return Frames(3);
 
+            // Shake and rumble: A on − turns it down a step, + puts it back.
+            yield return FocusOn(menu, "Shake and rumble");
+            menu.Submit();
+            yield return Frames(3);
+            Check("feel_page_opens", menu.CurrentPage == SettingsMenu.FeelPage && menu.ItemCount == 3, $"page '{menu.CurrentPage}', {menu.ItemCount} items");
+            float shake = GameFeel.Shake;
+            menu.Submit();
+            yield return Frames(2);
+            float softer = GameFeel.Shake;
+            menu.Navigate(1);
+            yield return Frames(2);
+            menu.Submit();
+            yield return Frames(2);
+            Check("feel_buttons_step", softer < shake && Mathf.Approximately(GameFeel.Shake, shake),
+                $"shake {shake:0.00} -> {softer:0.00} -> {GameFeel.Shake:0.00}");
+            menu.Back();
+            yield return Frames(3);
+
             // Credits, then back.
             yield return FocusOn(menu, "Credits");
             menu.Submit();

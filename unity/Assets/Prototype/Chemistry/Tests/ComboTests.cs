@@ -207,7 +207,7 @@ namespace Chem.Tests
             Assert.That(CastSelected(w, "ann"), "Hasten Time casts");
         }
 
-        sealed class Blank : IChunkSource
+        internal sealed class Blank : IChunkSource
         {
             public string Version => "blank";
             public void Make(int x, int y, Cell cell) { }

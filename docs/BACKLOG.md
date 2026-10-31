@@ -63,6 +63,24 @@ and Gust of Wind, is burnt off by fire (`fire-fog`) and thins away; the
 view draws it as soft billboards (`FogBank`). Still open: the fog weather
 laying fog gas, Control Weather choosing wind or fog.
 
+**Built (rules, 2026-10-30, branch `half-built`): snow and fog as weather,
+and the meadow coil.** Snow slows walkers (`materials.json` cover speed:
+snow 0.85, a bank 0.7), builds up into banks slowly in the open too
+(`sim.json weather.snow.deepenChance`), and Frost now glazes it to slippery
+frost (`cold-covered` no longer shields snow); its melt still freezes into
+ice. Fog weather lays a thin veil of fog gas (`weather.fog`: since #28, in
+patches on low ground near water, about 8% of open cells at peak rather than
+83%), which a line of sight crossing 12 cells of hides (`hidesAfter`,
+`World.LineOfSight`), and thins away once the stretch ends.
+Both engines, with shared goldens (`WeatherTests` / `weather.test.ts`).
+`world/puzzles.json` (`WorldPuzzles`, laid by `ChemGrid.MapWorld`) puts a
+pond, a coil and a gate on a path at (326..338, 231..245), just east of
+spell golf's hole; a bolt into the pond opens the gate (`PuzzleTests`).
+UX pass 4: the veil is the sky's distance fog, not billboards (`FogBank.IsVeil`;
+on every cell they cost 570 ms a frame), the `fogcost` probe measures what's
+left, the `feel` probe measures snow's slowing, and the puzzle stands in the
+rebuilt valley.
+
 - **Influenced by:** Create Water and fire at scale (a big fire makes
   smoke and an updraft), Gust of Wind, lightning spells, Control Weather
   later, time of day.
@@ -79,6 +97,9 @@ laying fog gas, Control Weather choosing wind or fog.
 - **Size:** L. Depends on 1 for the look.
 
 ## 3. Layered terrain: caves, overhangs, an underground lake
+
+**DEFERRED PERMANENTLY (Andrew, 2026-10-30):** "we don't wanna do that"; too
+big for what it gives. Kept below as a record only; don't plan or spike it.
 
 Today the world is 2.5D: one `Cell` per 5 ft square, with `Height` for
 earth raised or dug. Caves need more than one walkable level per square.
@@ -299,8 +320,14 @@ Wading and swimming in the pond and lake (playtest P13). **Partly built:** a
 basic version is in `SurfaceEffects`: water over the chest floats the wizard
 at the surface (the controller's gravity off, its fall speed steering it to
 floating height), slower, standing pose; jump kicks it up out onto a bank;
-walking up a bank ends it; ice is walked on (probe `swim`). Still to do:
-a swim animation, diving, drowning.
+walking up a bank ends it; ice is walked on (probe `swim`). **Diving and
+breath (branch `swim-breath`):** holding the dodge roll's button (Left Ctrl,
+L2 / the right stick) dives, sinking toward the bottom at reduced speed, and
+letting go swims back up. Breath (`Breath.cs`, `sim.json breath`: 30 s, full
+again in 3 s) runs down only with the head under, shown as a bar beside
+health while it drains or refills; at none, 1d6 every 3 s with a log line,
+until the head comes out. Water frozen over a swimmer holds it under the ice.
+Still to do: a swim animation.
 
 - **What:** deep water (a cell's water over the wizard's knees, from
   `Cell.Water` and the drawn surface) switches the wizard to swimming:
@@ -529,7 +556,110 @@ is easy to learn, and it's the shape for three-element casts.
 
 UX pass 2 turned beards off with the new face (the black fuzzy sphere with red slit eyes). WizardBeard.cs stays in the code, unused, for a later option: a beard (or none) picked like the hat or cowl in the Esc menu and sent with the seed, fitted to the new face. Don't delete it as dead code.
 
-## Priority (groomed 2026-10-27, Andrew approved; J-012 in `JUDGMENT_CALLS.md`)
+## 24. Spell golf: an exploratory mini game (Andrew, 2026-10-30)
+
+Prove the idea small; don't go deep. A big ball (the size of the ball
+court's) sits on a tee somewhere in the valley; you hit it with a spell and
+try to reach a hole with a flag across the valley in as few strokes as you
+can.
+- **The hit:** a force spell on the ball, through the shared force verb
+  (throw, push) that Geyser, Wave and Rolling Boulder use, not a new
+  element: Gust of Wind, and an earth strike (Raise Earth under the ball
+  pops it up and along). The terrain does the rest: it rolls downhill, stops
+  in water, bounces off rock.
+- **The game:** one hole, a stroke counter (a cast that moves the ball is a
+  stroke), the ball back on the tee when it's lost (water, out of bounds) at
+  one stroke's penalty, a "holed in N" line when it drops in.
+- **Not now:** more holes, a scorecard per player, other balls. An
+  alternative to try later: a cup toss, a ball thrown into cups set out as a
+  skill shot.
+- **Size:** S-M (rules in the core, a tee, flag and hole placed, the HUD line).
+- **Built (rules, 2026-10-30, branch `spell-golf`):** `World.Golf.cs` and
+  `sandbox/src/golf.ts` with a shared golden (a tee shot, a ball lost in a
+  pond, a Raise Earth carry over it, holed in 6). The ball is core state:
+  `GolfCommand` tees it up; it's saved and in `CastHash`, so in the online
+  checksum. Gust of Wind has `force.push` 2 (5 cells of roll a point), Raise
+  Earth `force.throw` 2 (3 cells of flight a point, then a cell of roll a
+  point); tuning is `sim.json golf`. It climbs slower, runs on downhill and
+  bounces off rock. The course is `world/golf.json`: tee (246, 240), hole
+  (306, 240), 90 m apart on the meadow north of the defense field.
+- **Built (views, UX pass 4):** `GolfCourse` draws the tee, the flag, the hole,
+  the ball and the HUD stroke line; `ChemGrid.MapWorld` tees the ball up on
+  every machine alike, so no command travels. `ValleyBuilder` keeps trees and
+  rocks off the fairway and the puzzles (they had stood on both). The `golf`
+  probe plays it.
+- **Open:** playing again after holing out (needs a `GolfCommand` intent
+  through `NetChem`; a world reset does it today).
+
+## 25. The Gauntlet: a carnival obstacle course across the lake, and spell-restricted zones (Andrew, 2026-10-31)
+
+Exploratory, after 0.1.9: a side-scrolling carnival funhouse with three or four depth lanes and height, booths that are spell puzzles (lava crusted by Frost, Misty Step gaps, an ice wall to melt, geyser launches, a boulder alley, updrafts, a dark tunnel, a barrel roll, a hall of mirrors, a strongman bell), each allowing only certain spells, with weird camera tricks. A small playable slice first, to find out whether there is juice in it. Brief: docs/handoffs/obstacle-course-brief.md.
+
+## 26. The Dragon: an ancient red wyrm that resets the world (Andrew, 2026-10-31)
+
+The world reset becomes an event. Today Reset reloads the scene; instead an ancient red dragon
+sweeps the valley clean.
+- **Trigger (Andrew: both):** Reset in the Esc menu summons it on demand (the host online), and
+  it comes on its own when the world has changed too much: a budget of changed cells, which also
+  protects performance (the accumulated changes are what slow a long session). Either way it
+  gives a warning first.
+- **The event:** about 30 s of warning (the sky darkens, a horn from the mountains, birds
+  scatter, a shadow crosses the valley); then the dragon dives out of the clouds and flies long
+  passes over the valley, breathing a wall of fire. **The world resets chunk by chunk where the
+  breath passes**: burnt ground, raised earth, ice, rubble and mud go back to the valley's
+  starting state, and fresh ground regrows behind it. Then it lands on the mountain, roars, and
+  leaves. Dawn, a fresh valley.
+- **Danger (Andrew: knocks down only):** caught in the breath, you're downed (the downed system)
+  and back at the yard, keeping your progress (player saves, item 21). Hiding behind stone or
+  under water avoids it, a little game in itself.
+- **How:** the flight path is seeded and deterministic, so every player's world resets the same
+  cells on the same ticks (lockstep; builds on the online reset, net-reset). The per-chunk reset
+  is rules in both engines with shared goldens; the dragon, the breath and the sky are the view
+  (GPU-first: the effects library for the breath). Model: a free CC0 dragon with flight
+  animations (for example Quaternius's monster packs), credited.
+- **Later:** a fight, driving it off with spells; other dragons (white frost, blue lightning).
+- **Size:** M-L. After the Gauntlet's slice, unless Andrew moves it up.
+
+## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
+
+The focus (Andrew, 2026-10-29): material interactions, attributes and effects,
+spell effects and mini games; look and feel is a side quest. Andrew,
+2026-10-30: no caves (deferred permanently); swimming with breath and
+drowning; proximity voice and a sound pass; finish half-built features as
+we see fit; one small exploratory mini game (spell golf), not polish on the
+existing ones. Ranked with the 0.1.8 playtest (`playtest/sessions/0.1.8.md`,
+GitHub #2-#5) and the cost reading (`docs/telemetry/feature-costs-2026-10-30.md`).
+
+**Andrew's playtest of 2026-10-30 (#6-#15, `docs/PLAYTESTS.md`) comes first**, in three batches:
+
+| Batch | Issues | Where |
+|---|---|---|
+| A, rules | #11 the wave and #21 the boulder go where you aim; the wave leaves water; #15 no brick on water (the water boils, the mud under it doesn't bake); | Worker |
+| B, casting and moving | FIRST (Andrew): #7 hold the trigger to charge a cast stronger as the meter fills (Andrew's proposal); #6 a way to end Shapeshift; #12 ice keeps your momentum; #18 a punch on a face button | Worker (input and rules), host (feel) |
+| C, interface (UX pass 4) | #8 the centre stamina bar out, a smaller top bar and log text, the element icon centred; #9 a cast bar that fills smoothly; #10 Back closes the grimoire; #2 the targeting UI (a marker per kind of cast: a direction, a top-down burst, a rising column, a lock-on); the looks of snow, fog, the golf flag and strokes, the wave; the swim checks; #16 the bloom flare on the head; #17 the hat clipping the head; #19 varied fire; #20 the camera zooming in at houses | Host (DesktopUnity) |
+
+Done since: #4 (499774e), the bot casts by elements (7088a97), spell golf (7f0d33b), swimming with breath (58bff2f).
+
+| # | Item | Where | Size | Why now |
+|---|---|---|---|---|
+| 1 | #2 crack squares and #4 robe tail | Host (DesktopUnity) | S | In progress: a 0.1.8 regression and the most visible old bug |
+| 2 | The bot casts by elements: the 16 combinations and the chains as goals; the no-audio-device crash; fewer unusable shots | Worker (logic), host (player rebuild) | S-M | The playtest couldn't test this release's main feature |
+| 3 | Spell golf (24), exploratory | Worker (rules), host (placing, looks) | S-M | Andrew's mini game to prove the idea |
+| 4 | Swimming (13): diving, a breath meter that runs down under water, drowning; then the swim animation | Worker (rules), host (view) | M | Andrew; finishes a half-built feature |
+| 5 | **Sound in 0.1.9, voice in 0.1.10 (Andrew):** Sound pass and proximity voice (8): spells and big events heard by distance (a Falling Star or an explosion carries across the valley), other wizards' casts heard; then Vivox voice by distance (D8) | Host (sound), then voice | M + M | Andrew; there's next to no sound today. Voice needs Andrew's Vivox setup |
+| 6 | Playtest fix-first: #5 the 185 ms walking hitch (found 5 times), #3 the waterfall pool's band (4); #2 a redesign of the spell aim markers, which read as broken ground | Host | S each | Most rediscovered; each rediscovery costs about 50k tokens |
+| 7 | Fireball's aim (lit grass away from its target in run 811), and Sleet Storm doing nothing in the RC bot run | Worker | S | Spells landing where aimed is the core of casting |
+| 8 | Workers take briefs straight from the mailbox (no coordinator relay) | PM (tooling) | S | Coordination is half of all spend |
+| 9 | Finish half-built features as we go: snow and fog as weather (2), a coil and gate placed in the valley (the charge to the gate), the ball court's clock and reset (15) | Worker, host | S each | Between bigger items |
+| 10 | Player saves (21): the design note is in; waits on Andrew's answers | Worker | M | Unblocks progress across sessions |
+| 11 | Items and an inventory (5), digging tools first (the pick is in) | Worker, host | M | Builds on hardness |
+| - | Later: weather and three-element casts (22), the beard (23). Never: caves (3) | | | |
+
+0.1.9 goes out with 1-3, 6 and 7, and whatever of 4 is done.
+Windows workers start once the host Editor closes (memory: J-017); the
+Linux worker u1 could run beside it, after Andrew's one-time trust click.
+
+## Priority (groomed 2026-10-27, Andrew approved; J-012 in `JUDGMENT_CALLS.md`; superseded by the list above)
 
 This is the order to work in. Each item names its lane (see
 `COORDINATION.md`). When a lane goes idle, it takes the next item in its

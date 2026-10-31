@@ -204,6 +204,31 @@ namespace Chem.Tests
 
         // ---------- fire ----------
 
+        [TestCase(1)]
+        [TestCase(2)]
+        public void AFireballBurstsOnTheCellItIsAimedAt(int charge)
+        {
+            // Playtest 0.1.8, run 811: a Fireball aimed at grass seemed to land elsewhere. In the core it
+            // bursts on the aimed cell: its crater is dug there (grass to dirt, so the middle itself
+            // doesn't burn) and the grass round it, out to the burst's radius, takes fire evenly.
+            var fireball = R.Spell("fireball");
+            var w = new World(R, 21, 21, 5, "grass");
+            w.Cast("fireball", 10, 10, 0, charge);
+            int radius = fireball.Radius + World.ChargedGrowth(fireball, charge);
+            Assert.That(w.At(10, 10).Height, Is.LessThan(0), "the crater is on the aimed cell");
+            Assert.That(w.At(10, 10).T, Is.EqualTo("dirt"));
+            int crater = fireball.Crater.Radius;
+            for (int y = 0; y < 21; y++)
+                for (int x = 0; x < 21; x++)
+                {
+                    var c = w.At(x, y);
+                    int d = System.Math.Max(System.Math.Abs(x - 10), System.Math.Abs(y - 10));
+                    if (d > crater && d <= radius) Assert.That(c.Fire, Is.GreaterThan(0), $"({x}, {y}) in the burst round the crater burns");
+                    if (d > radius && c.Fire > 0) Assert.That(c.Cover, Is.EqualTo("embers"), $"({x}, {y}) past the burst burns only as debris");
+                }
+            Assert.That(w.Log.Select(l => l.Text), Has.Member("Fire takes hold of the grass"));
+        }
+
         [Test]
         public void FireSpreadsOnGrassAndBurnsItToDirtAndAsh()
         {
@@ -977,7 +1002,7 @@ namespace Chem.Tests
             Assert.That(R.Combos.Combo("water+water").Spell, Is.EqualTo("wave"));
             w.Cast("wave", 1, 3, 1);
             Assert.That(w.Waves, Has.Count.EqualTo(1));
-            Assert.That(w.At(1, 3).Water, Is.EqualTo(0), "it rolls on rather than flooding");
+            Assert.That(w.At(1, 3).Water, Is.EqualTo(1), "it leaves shallow water as it rolls on");
             Run(w, 6);
             Assert.That(w.Waves[0].X, Is.EqualTo(4));
             Assert.That((gob.X, gob.Y), Is.EqualTo((5, 2)), "knocked back ahead of the wave");
@@ -989,7 +1014,87 @@ namespace Chem.Tests
             foreach (int y in new[] { 2, 3, 4 }) Assert.That(w.At(8, y).T, Is.EqualTo("mud"), "mud where it stopped");
             Assert.That(w.At(7, 3).T, Is.EqualTo("dirt"));
             Run(w, 4);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("8c0f542d 752141770"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("33cc6d1f 752141770"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void AWaveRollsAlongASlantedAimAndLeavesWaterBehind()
+        {
+            // GitHub #11: aimed off the grid's four ways it rolls along the aim, a cell along the aim's longer part a
+            // step (like a slanted line), and its front sweeps the band with no gaps. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 20, 16, 12, "dirt");
+            w.At(6, 5).T = "grass";
+            w.Ignite(w.At(6, 5), 2);
+            w.Cast("wave", 2, 2, World.DirOf(3, 2), 1, 3, 2);
+            Assert.That(w.Waves[0].Dir, Is.EqualTo(1), "it pushes along the nearest grid way");
+            Assert.That(w.At(2, 2).Water, Is.EqualTo(1), "shallow water where it passed");
+            Run(w, 6);
+            Assert.That((w.Waves[0].X, w.Waves[0].Y), Is.EqualTo((5, 4)));
+            Run(w, 10);
+            Assert.That(w.Waves, Is.Empty);
+            Assert.That(w.At(6, 5).Fire, Is.EqualTo(0), "the fire on its slant is out");
+            foreach (int y in new[] { 6, 7, 8 }) Assert.That(w.At(9, y).T, Is.EqualTo("mud"), "mud where it broke, off the straight line");
+            Assert.That(w.At(9, 2).T, Is.EqualTo("dirt"), "it didn't go straight east");
+            Run(w, 4);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("5331a509 2455825195"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void HeatOnStandingWaterBoilsItAndBakesNothingUnderIt()
+        {
+            // GitHub #15: water on a cell takes the heat first. A Geyser on a pool over mud, or Forge on water over sand,
+            // boils the water and leaves the ground as it was; Forge on wet mud with the last of its water boiled off
+            // still bakes brick (ForgeHeatsAndTheMaterialDecides). Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 14, 5, 8, "dirt");
+            for (int x = 1; x <= 5; x++)
+                for (int y = 1; y <= 3; y++)
+                {
+                    w.At(x, y).T = "mud";
+                    w.At(x, y).Water = 3;
+                }
+            w.At(10, 2).T = "sand";
+            w.At(10, 2).Water = 2;
+            w.Cast("geyser", 3, 2, 0);
+            w.Cast("forge", 10, 2, 0);
+            Assert.That(w.At(3, 2).T, Is.EqualTo("mud"), "no brick under the pool");
+            Assert.That(w.At(3, 2).Water, Is.EqualTo(2), "the water boiled");
+            Assert.That(w.At(3, 2).Gas, Is.EqualTo("steam"));
+            Assert.That(w.At(10, 2).T, Is.EqualTo("sand"), "no glass under the water");
+            Assert.That(w.At(10, 2).Heat, Is.EqualTo(0), "the water took the heat");
+            Run(w, 12);
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("cdece807 2305213897"), "the same in the sandbox");
+        }
+
+
+        // Shared with sandbox/test/terraform.test.ts.
+        static World SleetField()
+        {
+            var w = new World(R, 20, 20, 7);
+            for (int y = 3; y <= 6; y++) w.At(5, y).T = "grass";
+            w.At(7, 8).Water = 8;
+            w.At(9, 9).Fire = 3;
+            w.At(9, 9).Fuel = 4;
+            w.Cast("sleet-storm", 8, 8, 1);
+            return w;
+        }
+
+        [Test]
+        public void SleetStormGlazesAWideSlipperyFieldAndPutsOutFires()
+        {
+            var w = SleetField();
+            var field = w.SpellCells(R.Spell("sleet-storm"), 8, 8, 1);
+            Assert.That(field.Count(p => w.At(p.x, p.y).Cover == "frost"), Is.GreaterThan(field.Count - 3), "the same frost Frost leaves");
+            Assert.That(w.CoverHasTag(w.At(8, 8), "slippery"));
+            Assert.That(w.At(7, 8).Frozen, "water still freezes");
+            Assert.That(w.At(9, 9).Fire, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GoldenSleetStorm()
+        {
+            var w = SleetField();
+            for (int i = 0; i < 4; i++) w.Step();
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("bcb137be 7"));
         }
 
         [Test]
@@ -1054,6 +1159,34 @@ namespace Chem.Tests
             Assert.That(w.At(6, 4).Cracked, Is.GreaterThan(0), "and the ice");
             Assert.That(w.At(8, 6).T, Is.EqualTo("dirt"), "it rolled down the slope and dammed the stream");
             Assert.That($"{w.CellHash()} {w.RngState} {gob.X},{gob.Y} {gob.Hp}", Is.EqualTo("9179f2b8 729412872 7,4 5"), "the same in the sandbox");
+        }
+
+        [Test]
+        public void ARollingBoulderRollsAlongASlantedAimAndThenDownhill()
+        {
+            // GitHub #21: aimed off the grid's four ways it rolls along the aim like the wave, and a slope to its side
+            // turns it, then it keeps to the new way. Saved mid-roll it goes on the same. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 18, 14, 8, "dirt");
+            w.At(5, 4).T = "glass";
+            foreach (int y in new[] { 6, 7, 8, 9, 10 }) w.At(6, y).Height = -1;
+            w.Cast("rolling-boulder", 2, 2, World.DirOf(3, 2), 1, 3, 2);
+            Assert.That(w.Boulders[0].Dir, Is.EqualTo(1), "it pushes along the nearest grid way");
+            Run(w, 6);
+            Assert.That((w.Boulders[0].X, w.Boulders[0].Y), Is.EqualTo((5, 4)), "three cells along the aim, not along a grid way");
+            Assert.That(w.At(5, 4).Cracked, Is.GreaterThan(0), "and it strikes what's on its slant");
+            Run(w, 2);
+            var back = World.Load(w.Save(new Blanks()), R, new Blanks());
+            Run(back, 2);
+            Run(w, 2);
+            Assert.That((w.Boulders[0].X, w.Boulders[0].Y), Is.EqualTo((6, 6)), "the slope to its side turns it");
+            Assert.That((back.Boulders[0].X, back.Boulders[0].Y), Is.EqualTo((6, 6)));
+            Assert.That(w.Boulders[0].Dir, Is.EqualTo(2));
+            Run(w, 4);
+            Assert.That((w.Boulders[0].X, w.Boulders[0].Y), Is.EqualTo((6, 8)), "on down its new way");
+            Run(w, 20);
+            Assert.That(w.Boulders, Is.Empty);
+            Assert.That(w.At(3, 2).Gas, Is.Not.EqualTo("dust"), "no trail along the grid way it wasn't aimed");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c5a8709f 3377061646"), "the same in the sandbox");
         }
 
         [Test]

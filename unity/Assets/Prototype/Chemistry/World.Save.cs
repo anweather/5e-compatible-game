@@ -90,10 +90,10 @@ namespace Chem
             if (crackedThings.Count > 0) save["crackedThings"] = new JArray(crackedThings.Select(t => t.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
             if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
-            if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass)));
-            if (GatesOpen) save["gatesOpen"] = true;
-            if (machines.Count > 0) save["machines"] = new JArray(machines.OrderBy(m => m.Key).Select(m => new JArray(m.Key, m.Value.Level, m.Value.Hold, m.Value.Powered)));
-            if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age)));
+            if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass, wv.OX, wv.OY, wv.AX, wv.AY, wv.Step)));
+            SaveMachines(save);
+            SaveGolf(save);
+            if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
             var made = new Cell();
             var saved = new JArray();
             foreach (var ch in SortedChunks(false))
@@ -165,7 +165,35 @@ namespace Chem
         }
 
         // A player's cast in progress and grimoire. Only when there are any, so saves without read as they did.
-        static JArray SaveCast(PlayerCast c) => new JArray(c.Player, c.First, c.Second, c.Meter, c.Total, c.Window, c.Slot, c.DpadCasting, new JArray(c.Known));
+        // No button is down on a loaded game, so a held cast is saved as a tap, without its hold's ticks.
+        static JArray SaveCast(PlayerCast c)
+        {
+            int meter = c.Holding ? Math.Max(1, c.Meter - c.Extra) : c.Meter;
+            int total = c.Total - c.Meter + meter;
+            return new JArray(c.Player, c.First, c.Second, meter, total, c.Window, c.Slot, c.DpadCasting, new JArray(c.Known), c.Charge);
+        }
+
+        // A rolling wave; one saved before waves rolled at an angle rolls on along its grid way from where it is.
+        static Wave LoadWave(JArray wv)
+        {
+            var w = new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] };
+            bool angled = wv.Count > 14;
+            w.OX = angled ? (int)wv[10] : w.X;
+            w.OY = angled ? (int)wv[11] : w.Y;
+            w.AX = angled ? (int)wv[12] : DirX(w.Dir);
+            w.AY = angled ? (int)wv[13] : DirY(w.Dir);
+            w.Step = angled ? (int)wv[14] : 0;
+            return w;
+        }
+
+        // A boulder from before aims (a save with seven numbers) rolls on the grid way it was going.
+        static Boulder LoadBoulder(JArray b)
+        {
+            var o = new Boulder { Spell = (string)b[0], Left = (int)b[4], Every = (int)b[5], Age = (int)b[6] };
+            o.SetOff((int)b[1], (int)b[2], (int)b[3], DirX((int)b[3]), DirY((int)b[3]));
+            if (b.Count > 11) (o.OX, o.OY, o.AX, o.AY, o.Step) = ((int)b[7], (int)b[8], (int)b[9], (int)b[10], (int)b[11]);
+            return o;
+        }
 
         void LoadCast(JToken a)
         {
@@ -179,19 +207,31 @@ namespace Chem
                 Window = (int)a[5],
                 Slot = (int)a[6],
                 DpadCasting = (int)a[7],
+                Charge = a.Count() > 9 ? (int)a[9] : 1,
             };
             foreach (var id in a[8]) c.Known.Add((string)id);
             casts[c.Player] = c;
         }
 
-        // The machines, whether they have the gates open, and the boulders still rolling.
+        // The machines, whether they have the gates open, and the gates linked to one machine.
+        void SaveMachines(JObject save)
+        {
+            if (GatesOpen) save["gatesOpen"] = true;
+            if (machines.Count > 0) save["machines"] = new JArray(machines.OrderBy(m => m.Key).Select(m => new JArray(m.Key, m.Value.Level, m.Value.Hold, m.Value.Powered)));
+            if (gateLinks.Count > 0) save["gateLinks"] = new JArray(gateLinks.Select(l => new JArray(l.Gate, l.Machine, l.Open)));
+        }
+
+        // The machines, whether they have the gates open, the gates linked to one machine, and the boulders still rolling.
         void LoadMachinesAndBoulders(JObject s)
         {
             GatesOpen = s["gatesOpen"] != null && (bool)s["gatesOpen"];
             foreach (var m in s["machines"] ?? new JArray())
                 machines[(int)m[0]] = new MachineState { Level = (int)m[1], Hold = (int)m[2], Powered = (bool)m[3] };
+            foreach (var l in s["gateLinks"] ?? new JArray())
+                gateLinks.Add(new GateLink { Gate = (int)l[0], Machine = (int)l[1], Open = (bool)l[2] });
+            RelinkSets();
             foreach (var b in s["boulders"] ?? new JArray())
-                boulders.Add(new Boulder { Spell = (string)b[0], X = (int)b[1], Y = (int)b[2], Dir = (int)b[3], Left = (int)b[4], Every = (int)b[5], Age = (int)b[6] });
+                boulders.Add(LoadBoulder((JArray)b));
         }
 
         void LoadState(JObject s)
@@ -209,8 +249,9 @@ namespace Chem
             foreach (var ww in s["whirls"] ?? new JArray())
                 whirls.Add(new Whirl { X = (int)ww[0], Y = (int)ww[1], Radius = (int)ww[2], Ticks = (int)ww[3], Age = (int)ww[4], Every = (int)ww[5], MaxMass = (int)ww[6], Spell = (string)ww[7], Dir = (int)ww[8], Travel = (int)ww[9], Carrying = (string)ww[10] });
             foreach (var wv in s["waves"] ?? new JArray())
-                waves.Add(new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] });
+                waves.Add(LoadWave((JArray)wv));
             LoadMachinesAndBoulders(s);
+            LoadGolf(s);
             NextEntityId = (int)s["nextEntityId"];
             if (s["defense"] is JObject d)
             {

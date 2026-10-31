@@ -56,7 +56,17 @@ namespace Playtest.Runner
             // Started without taking the front (Launch); it logs to Player.log.
             string args = Arguments(paths, outDir, seconds, options) + " -playtest-hand-focus " + Launch.FrontWindow().ToString(CultureInfo.InvariantCulture);
             using var p = Launch.Start(exe, args);
-            var (hung, muted) = Watch(p, Path.Combine(outDir, "heartbeat.txt"), clock, Math.Max(300, seconds * 3));
+            (bool hung, bool muted) watched;
+            try
+            {
+                watched = Watch(p, Path.Combine(outDir, "heartbeat.txt"), clock, Math.Max(300, seconds * 3));
+            }
+            finally
+            {
+                // Whatever stops the watch, never leave the player running (it left three once).
+                if (!p.HasExited) p.Kill();
+            }
+            var (hung, muted) = watched;
             System.Threading.Thread.Sleep(2000); // let Windows write any crash report
             int took = (int)clock.Elapsed.TotalSeconds;
 
@@ -117,7 +127,12 @@ namespace Playtest.Runner
             bool muted = false;
             while (!p.WaitForExit(250))
             {
-                if (!muted && OperatingSystem.IsWindows()) muted = AppMute.Mute(p.Id) > 0;
+                if (!muted && OperatingSystem.IsWindows())
+                {
+                    int result = AppMute.Mute(p.Id);
+                    muted = AppMute.Silenced(result);
+                    if (result == AppMute.NoOutput) Console.WriteLine("No default audio output on this PC: nothing can play aloud, so the run goes on as muted.");
+                }
                 // The heartbeat file's age (a wall-clock difference, not a timing), or how long it has gone without one.
                 double age = File.Exists(heartbeat)
                     ? DateTime.UtcNow.Subtract(File.GetLastWriteTimeUtc(heartbeat)).TotalSeconds

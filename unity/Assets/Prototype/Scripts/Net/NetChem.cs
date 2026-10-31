@@ -220,6 +220,21 @@ public class NetChem : NetworkBehaviour
         pendingEffects.Add(EffectIntent.From(effect, 0));
     }
 
+    // How far from a client's wizard a punch may land, in cells (ChemEffects.Strike).
+    const int StrikeReachCells = 4;
+
+    /// <summary>Client: asks the host to hit a pane cell for this client's wizard (ChemEffects.Strike).</summary>
+    public void RequestStrike(Vector2Int cell) => RequestStrikeRpc(cell.x, cell.y);
+
+    [Rpc(SendTo.Server)]
+    void RequestStrikeRpc(int x, int y, RpcParams rpc = default)
+    {
+        var wizard = NetworkManager.SpawnManager.GetPlayerNetworkObject(rpc.Receive.SenderClientId);
+        if (wizard == null || !grid.World.InBounds(x, y) || grid.World.At(x, y).T != TerrainIds.Pane) return;
+        var at = grid.CellAt(wizard.transform.position);
+        if (Mathf.Max(Mathf.Abs(at.x - x), Mathf.Abs(at.y - y)) <= StrikeReachCells) StampEffect(new EffectCommand(EffectKind.Shatter, x, y, "", ThingId.None));
+    }
+
     /// <summary>
     /// Asks the host to run a defense command (the start pedestal: DefenseField). Anyone may ask; the
     /// host stamps it into the next tick's batch, so every machine starts the waves on the same tick.
@@ -229,7 +244,8 @@ public class NetChem : NetworkBehaviour
     /// <summary>This player's name in the core's casts (World.CastOf).</summary>
     public string LocalPlayer => PlayerName(NetworkManager.LocalClientId);
 
-    static string PlayerName(ulong clientId) => $"p{clientId}";
+    /// <summary>A client's name in the core's casts.</summary>
+    public static string PlayerName(ulong clientId) => $"p{clientId}";
 
     /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick.</summary>
     public void RequestCombo(ComboCommand command) => RequestComboRpc(ComboIntent.From(command, 0));
@@ -758,6 +774,7 @@ public struct ComboIntent : INetworkSerializable
     public byte Kind;
     public FixedString32Bytes Player, Element;
     public int Step, Tick;
+    public bool Hold;
 
     public static ComboIntent From(ComboCommand c, int tick) => new ComboIntent
     {
@@ -765,10 +782,11 @@ public struct ComboIntent : INetworkSerializable
         Player = new FixedString32Bytes(c.Player ?? ""),
         Element = new FixedString32Bytes(c.Element ?? ""),
         Step = c.Step,
+        Hold = c.Hold,
         Tick = tick,
     };
 
-    public ComboCommand ToCommand() => new ComboCommand(Player.ToString(), (ComboCommandKind)Kind, Element.Length > 0 ? Element.ToString() : null, Step);
+    public ComboCommand ToCommand() => new ComboCommand(Player.ToString(), (ComboCommandKind)Kind, Element.Length > 0 ? Element.ToString() : null, Step, Hold);
 
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
@@ -776,6 +794,7 @@ public struct ComboIntent : INetworkSerializable
         serializer.SerializeValue(ref Player);
         serializer.SerializeValue(ref Element);
         serializer.SerializeValue(ref Step);
+        serializer.SerializeValue(ref Hold);
         serializer.SerializeValue(ref Tick);
     }
 }

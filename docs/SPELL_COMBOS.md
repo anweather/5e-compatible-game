@@ -18,7 +18,7 @@ and experiment tool. The real input becomes elements combined in sequence.
   the spell casts. Every spell gets a cast time, which ends spamming.
   Later, harder combos must be entered within a time window.
 - **The look:** an element orb in each hand; casting slams them together.
-  On screen, the centre bar (where stamina shows while in use) shows the
+  On screen, the bar below the crosshair shows the
   loaded orbs (a coloured circle with the element's icon) with the cast meter
   under them.
 
@@ -51,7 +51,7 @@ of thumb, unchanged: the **first** element is what the spell is made of, the
   `rules/reactions.json` (`fire-mud`, `fire-ice` and the like)
   move into materials as they're touched.
   No element for one spell: Geyser is heat at power 3 on water (`heat-water-strong`),
-  Wave is water at power 0 (it douses and soaks but leaves no water), and both, with
+  Wave is water at power 1 (it douses, soaks and leaves shallow water behind), and both, with
   Rolling Boulder, share a spell `force` (`throw`: ticks off its feet, `push`: cells
   knocked back). Casts use fire, water, earth, air, heat, cold and lightning.
 - **Drawn with the effects library.** The pooled particles, cell tints and
@@ -95,15 +95,17 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   there. Aimed at a pond or river, it boils that spot into a jet that throws
   players, props and creatures upward (reach a ledge, launch a goblin) and
   scalds swimmers. Fog's hiding job goes to Fog Cloud.
-- **Wave (replaces Flood), the moving one:** travels over the ground,
-  carries light props, puts out fires on the way, knocks creatures back,
-  leaves mud where it stops.
+- **Wave (replaces Flood), the moving one:** travels over the ground the way it's aimed, at any angle,
+  carries light props, puts out fires on the way, knocks creatures back, leaves shallow water behind
+  and leaves mud where it stops.
 - **Mud, the sticky setup:** creatures get stuck. Fire (Forge) bakes it to
   brick, a building material; frost freezes it hard; it dries to dirt over
   time.
+- **Sleet Storm, the slippery field:** cold at Frost's strength (`power` 4, which `cold-frost` asks for)
+  over a wide circle: the same frost glaze, ice on water, fires out. Frost stays the precise one.
 - **Frost, the bridge builder:** freezes water surfaces into walkable ice
   and wet creatures solid (a hit shatters them). Frozen ground is slippery:
-  an ice-slide mini game.
+  an ice-slide mini game. Held: Sleet Storm, a wide slippery field.
 
 **Earth: dig, transform, grow, build, roll.**
 - **Raise Earth, the shovel:** raises or digs soft ground only, by terrain
@@ -119,7 +121,8 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   only a pick, Shatter or Falling Star breaks it. Over water it makes
   stepping stones.
 - **Rolling Boulder (replaces Dust Storm), earth set moving:** a boulder
-  rolls downhill with the terrain, knocks creatures over, smashes brittle
+  rolls the way it's aimed, at any angle, and turns downhill with the
+  terrain, knocks creatures over, smashes brittle
   things (glass, ice, crates), stops in water as a dam, and leaves a trail
   of dust (light it: a dust explosion). A bowling mini game, and a ball for
   the ball court.
@@ -161,13 +164,71 @@ Shape from how the cast is released, the same for every combo: tap for a
 projectile, hold for a beam or stream (trigger depth for power), aim at the
 ground for an area or wall.
 
+## Beats (the view, 2026-10-31)
+What a cast by elements does to the wizard's body, for weight (#22). `CastBeats` runs on every copy of every
+wizard, from the core's cast state and the cast announcement, so other players see the same; `CastBeat.Next`
+is the pure rule. Poses and timings are all in `Settings/CastFeel.asset`, by LimbIK over the animation, no clips.
+1. **First:** the right hand swings down and back, palm open, motes drawn in.
+2. **Second:** the left does the same, arms wide. A single element skips it.
+3. **Slam:** the meter's last tick (a held cast's once it passes a tap's length): the hands snap together in 0.1 s and stay there.
+4. **Charge:** held on: hands pressed, knees bent, leaning in, the orbs growing with a pulse at each level,
+   walking at `chargeMoveFactor` (`World.MoveFactorOf`).
+5. **Release:** timed so the thrust arrives as the spell leaves the hands (the gesture's `release`, unchanged;
+   the gesture itself stands aside). The body recoils half a step: only drawn, the wizard doesn't move.
+6. **Recovery:** back to neutral fast; a new cast cuts it short.
+
+Cancel fizzles, and so does a cast the core fired that then couldn't go (no aim). Casts from the radial or the
+mouse keep their `CastGestures`. `CastBeats.BeatChanged`, `Struck` and `ChargeLevel` are the hooks for what reacts.
+
+## Impact (the view, 2026-10-31)
+What a cast does to the player, for weight (#22): `CastImpact`, `CastCamera`, `PadRumble`, numbers in `Settings/CastFeel.asset`.
+Short, sharp hits, never a drone. None of it touches `Time`, the ticks or physics, and it's all this machine's alone.
+- **When:** at the hands' contact (`CastBeats.Struck`), not the beat's start: the slam `slam.seconds` in, the release `release.seconds` in.
+- **Hit-stop:** the local wizard's Animator and beat clock and the camera stand still for 2 frames on the slam and 3 on the release
+  (0.034 s and 0.05 s; the camera eases back over 0.05 s so a walking wizard doesn't jump it). A remote copy never stops, so its beats can't
+  drift, and on the owner's screen a beat is at most that far behind; the next beat starts clean. A run with and one without give the same hash at the same tick (the `castfeel` probe).
+- **Camera:** a Cinemachine impulse after each stop, in the camera's axes: the slam's down, the release's along the cast (with some lift, since along the view alone
+  it barely shows), a landing's by size and distance. The listener takes the strongest, so casts don't pile up. Charging tightens the lens by up to 3 degrees and adds a fine
+  shake, up to 1.6 cm, with the square of the charge; it tires to 40% past 3 s in the beat.
+- **Size:** the spell's level plus 2 for each charge past the first, over 7 (`CastImpact.SizeOf`).
+- **Landings:** `SpellCaster`'s landing runs on every peer for every caster, so anyone's big spell is felt nearby. Felt within 14 m (size 0) to 60 m (size 1), by the square of the
+  nearness. Spells with no force in them (fog, light) aren't felt. Meteors and falling stars go the same way.
+- **Rumble:** gathering ticks, a slam thump, a tick at each charge level, a release kick, landings. Pulses that die away by themselves, the strongest winning; only on the pad in use.
+  The motors stop on a cancel, the Esc menu, focus loss, pause, quit, disable and before a domain reload.
+- **Shake and rumble:** the Esc menu's page of that name (`GameFeel`, PlayerPrefs `feel.shake`), 100% by default. It scales hit-stop, impulses, tightening, charge shake and rumble;
+  at 0 there's none of them, hit-stop included (it moves the view, so it counts as shake).
+- **Not yet:** casts from the radial or the mouse have no beats, so only their landing is felt.
+
+## Sound (the view, 2026-10-31)
+The casting sounds (#22): `CastSounds`, one for every copy of every wizard, played from `CastBeats`' hooks, so another player's cast sounds the same, from where they stand.
+Every clip, level, pitch, carry and which-goes-with-what is in one table, `CastSoundTable`; the sound pass can add rows. Voices come from a pool (`SoundVoices`): 24 sources, no garbage per sound.
+- **Gathering:** a sound per element as each hand takes it (fire, water and air drawn in backwards), and a plain one for a d-pad cast.
+- **Slam:** a wooden thump with a kick under it, at `Struck`, the frame the hands meet, ahead of the hit-stop that starts there.
+- **Charge:** a hum that fades in at the Charge beat and glides up a third, then a fifth, getting louder, with a struck tone at each level. Held every frame: a loop nobody holds lets go in 0.25 s, so nothing can leave it playing. It's quiet in a menu and in an animal's shape.
+- **Release:** by kind of cast (`CastKind`, from the spell's rules): bolt, burst, ground, flow, sky or quiet, as the thrust lands; lower and louder with charge. Casts from the radial or the mouse keep the old whoosh.
+- **Cancel:** the hum and gathering cut, and a fizzle.
+- **Fast casts:** a wizard has one voice per job, and a new sound in a job cuts the last off, so they don't pile up.
+- **Distance:** 3D at the wizard's chest, full to 5 m, nothing past 40 m, and past that no voice is taken. Levels go through the Effects setting each frame. There's no AudioMixer in the game yet; a group goes on the pool's sources in `SoundVoices.Build`.
+- **Every machine:** all from `Audio/CC0` and `ProceduralCast`, never the Asset Store pack. The bank is built with the yard and a player build refreshes it if a row is missing; with no bank at all each sound is made from its row's `Make` when first played.
+
 ## Built (the view, 2026-10-30)
 - **Controller:** fire {LB}, water {RB}, earth {LT}, air {RT}; {East} cancels; the d-pad cycles,
   casts and opens the grimoire; dodge roll moved to the right stick's click; pad zoom is gone.
 - **Keyboard:** Z X C V, B to cancel, [ ] to cycle, T to cast, J for the grimoire. The mouse still
   casts what the radial picked. Tab keeps the radial, and F2 swaps the controller to its old layout.
-- **Not yet:** tap, hold and ground shapes (every cast goes off at charge 1, from the crosshair);
-  other players' orbs aren't drawn, only their casts.
+- **Charged casts (#7):** hold the last element's button (Z X C V, or the bumpers and triggers) and the
+  meter runs on past its `castTicks`: each level adds `chargeTicks` (`rules/combos.json`, 3 ticks, 0.5 s), so
+  a full charge on a single element takes 2 s and on a pair 2.5 to 3 s, and a tap stays the fastest. The
+  charge only grows while the meter runs; held to the end, it waits for the release and gains nothing. Let go
+  and it goes off on the next tick at the level reached (before the first level, at a tap's time). A
+  combo's `held` spell replaces it at full charge: Wall of Stone is Stone Ramp, Frost is Sleet Storm. Raise Earth has no held
+  form: charge 3 raises three steps, a wall-high mound. Digging is the pick's (and Lower Earth's, on the
+  radial's debug layout). The steps and the held spell's name are on the cast meter (`CastHud`). The press
+  sends `ComboCommand.Load` with `Hold`, the release `ComboCommand.Release`; the core counts the charge from
+  its own meter (`World.HeldCharge`), so every peer casts at the same strength, and it's in `CastState` and
+  the checksum.
+- **Not yet:** tap and ground shapes (casts go from the crosshair); other players' orbs aren't drawn,
+  only their casts.
 
 **The looks (UX pass 2, 2026-10-30):** each drawn from the core, GPU-first, and staged by the
 `spelllooks` probe: Forge's sparks and brick's courses, Falling Star's mark and a small meteor timed
@@ -196,7 +257,8 @@ Reel clip: `spell-chain.mp4`.
 - Top left: the portrait in the corner, the health and magic bars stacked to
   its right; large and readable.
 - Bottom left: the d-pad cross, sized like the top-left block.
-- Centre: stamina as a green ring that drains and refills, shown only in use.
-- About 2/3 down the screen, below the ring: the loaded element orbs and the
+- Top left: stamina as a thin green line under Health and Magic that drains and
+  refills, shown only in use (moved out of the centre, UX pass 4, #8).
+- About 2/3 down the screen: the loaded element orbs and the
   cast meter, at a similar size.
 - Right side (or across the bottom): the message log.

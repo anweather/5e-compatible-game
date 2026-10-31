@@ -8,7 +8,7 @@ import { step } from "../src/sim.ts";
 import { applyElement } from "../src/react.ts";
 import { castSpell } from "../src/actions.ts";
 import { dayOf, kindOf, minuteOfDay, minutesAt, weatherAt } from "../src/sky.ts";
-import { type World, cellAt, createWorld, hashWorld } from "../src/world.ts";
+import { type World, cellAt, createWorld, hashWorld, isSlippery, lineOfSight } from "../src/world.ts";
 import stormSeason from "../../rules/mods/storm-season.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -48,6 +48,8 @@ function field(seed: number): World {
 test("the sky's rules validate, with storm season on", () => {
   assert.deepEqual(validateRules(RULES), []);
   assert.deepEqual(validateRules(composeRules([stormSeason.patch as ModPatch])), []);
+  assert.deepEqual(validateRules(composeRules([{ sim: { weather: { fog: { gas: "mist" } } } } as ModPatch])), ["sim weather.fog.gas: unknown gas mist"]);
+  assert.deepEqual(validateRules(composeRules([{ sim: { weather: { fog: { regionChunks: 0 } } } } as ModPatch])), ["sim weather.fog.regionChunks must be at least 1"]);
 });
 
 test("the clock starts at day 1, 09:00, and a day lasts 24 real minutes", () => {
@@ -143,7 +145,7 @@ test("snow freezes shallow water, lies on the field and banks against the walls;
     const banks = w.cells.filter((c) => c.cover === "snowbank").length;
     assert.ok(snowy > 50, `snow lies on the field (${snowy})`);
     assert.ok(banks > 0, `and drifts into banks against the walls (${banks})`);
-    assert.equal(`${cellHash(w)} ${w.rng} ${frozen} ${snowy} ${banks}`, "e1e5624 4247680091 39 121 26");
+    assert.equal(`${cellHash(w)} ${w.rng} ${frozen} ${snowy} ${banks}`, "ebb306af 3764626303 37 124 36");
   });
   withRules(clear, () => {
     run(w, 150);
@@ -151,7 +153,7 @@ test("snow freezes shallow water, lies on the field and banks against the walls;
     assert.ok(still < frozen / 2, `a dry spell thawed most of it (${still} of ${frozen} still ice)`);
     const left = w.cells.filter((c) => c.cover === "snow" || c.cover === "snowbank").length;
     assert.ok(left < 20, `the snow melted (${left} left)`);
-    assert.equal(`${cellHash(w)} ${w.rng} ${still} ${left}`, "b2481d88 2377318072 0 0");
+    assert.equal(`${cellHash(w)} ${w.rng} ${still} ${left}`, "6ce8640a 1063028723 0 0");
   });
 });
 
@@ -166,6 +168,45 @@ test("fire melts snow into water instead of lighting the grass under it", () => 
   assert.equal(c.cover, null, "then melts");
   assert.equal(c.water, 2, "into water");
   assert.equal(c.fire, 0, "and the grass doesn't catch");
+});
+
+test("fog weather veils the field so the far side is hidden, and lifts once the stretch ends; matches the C# golden", () => {
+  const foggy = { sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 0, cloudy: 0, windy: 0, fog: 1, rain: 0, storm: 0, snow: 0 } } } } as ModPatch;
+  const clear = { sim: { weather: { ...QUICK.sim!.weather as object, weights: { clear: 1, cloudy: 0, windy: 0, fog: 0, rain: 0, storm: 0, snow: 0 }, meteors: { showerChance: 0 } } } } as ModPatch;
+  const w = field(4);
+  const fogUnits = () => w.cells.filter((c) => c.gas === "fog").reduce((n, c) => n + c.gasAmt, 0);
+  assert.ok(lineOfSight(w, 1, 6, 22, 6), "clear across the field before");
+  let veiled = 0;
+  withRules(foggy, () => {
+    run(w, 120);
+    veiled = fogUnits();
+    assert.ok(veiled > 80, `fog lies over the field (${veiled})`);
+    assert.ok(w.cells.every((c) => c.gas !== "fog" || c.gasAmt < 2), "thin: no square of it is thick on its own");
+    assert.ok(!lineOfSight(w, 1, 6, 22, 6, true), "but the far side is hidden");
+    assert.equal(`${cellHash(w)} ${w.rng} ${veiled}`, "4237fa52 2846909919 203");
+  });
+  withRules(clear, () => {
+    run(w, 400);
+    assert.ok(fogUnits() < veiled / 10, `the fog lifts (${fogUnits()} of ${veiled} left)`);
+    assert.ok(lineOfSight(w, 1, 6, 22, 6, true), "and the far side shows again");
+    assert.equal(`${cellHash(w)} ${w.rng} ${fogUnits()}`, "b0b71789 815874840 0");
+  });
+});
+
+test("snow slows walkers, banks more; Frost glazes it slippery, and its melt freezes to ice", () => {
+  assert.ok(RULES.covers.snow!.speed! < 1 && RULES.covers.snowbank!.speed! < RULES.covers.snow!.speed!, "snow slows, a bank more");
+  const w = field(9);
+  const c = cellAt(w, 18, 3)!;
+  c.cover = "snow";
+  applyElement(w, 18, 3, "cold", { power: 4, direct: false });
+  assert.equal(c.cover, "frost", "Frost glazes the snow");
+  assert.ok(isSlippery(c), "slippery underfoot");
+  const d = cellAt(w, 18, 5)!;
+  d.cover = "snow";
+  applyElement(w, 18, 5, "fire", { power: 1, direct: false });
+  assert.equal(d.water, 1, "fire melts the snow to a puddle");
+  applyElement(w, 18, 5, "cold", { power: 4, direct: false });
+  assert.ok(d.frozen && isSlippery(d), "which Frost freezes into an ice slide");
 });
 
 // Mirrors ChemistryTests.SoakingMatchesTs: thin water soaks in on dirt, arid ground and rock; a pond stays.
@@ -185,4 +226,26 @@ test("thin water soaks in and a pond stays, matching the C# golden", () => {
   cellAt(w, 12, 7)!.water = 1;
   for (let i = 0; i < 20; i++) step(w);
   assert.equal(`${cellHash(w)} ${w.rng}`, "20661f72 1");
+});
+
+test("fog lies in patches, not a blanket, and hides a line through one; matches the C# golden", () => {
+  const weights = { clear: 0, cloudy: 0, windy: 0, fog: 1, rain: 0, storm: 0, snow: 0 };
+  withRules({ sim: { weather: { periodMinutes: 60, rampMinutes: 0.02, calmPeriods: 0, weights, meteors: { showerChance: 0 } } } } as ModPatch, () => {
+    const w = createWorld(256, 256, 7);
+    for (const c of w.cells) c.t = "grass";
+    for (let y = 40; y < 60; y++) {
+      for (let x = 40; x < 60; x++) {
+        const c = cellAt(w, x, y)!;
+        c.t = "pit";
+        c.water = 4;
+      }
+    }
+    run(w, 400);
+    const fog = w.cells.filter((c) => c.gas === "fog").length;
+    assert.ok(fog * 100 / (256 * 256) >= 2 && fog * 100 / (256 * 256) < 10, `${fog} cells: here and there`);
+    const rows = [...Array(256).keys()];
+    assert.ok(rows.some((y) => !lineOfSight(w, 0, y, 255, y, true)), "a line through a patch is hidden");
+    assert.ok(rows.some((y) => lineOfSight(w, 0, y, 255, y, true)), "a line past them is clear");
+    assert.equal(`${cellHash(w)} ${w.rng} ${fog}`, "9d766b76 2392649509 4549");
+  });
 });
