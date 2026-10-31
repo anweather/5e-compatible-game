@@ -20,7 +20,8 @@
     "height.min": [-8, 0],
     "push.slideCells": [0, 8],
     "conductLimit": [0, 120],
-    "streaming.reach": [1, 3]
+    "streaming.reach": [1, 3],
+    "dragon.scale": [0.5, 3]
   },
   "simulate": { "defaultTicks": 300, "maxTicks": 1200, "minTicksPerSecond": 300, "maxSlowdown": 2 }
 }

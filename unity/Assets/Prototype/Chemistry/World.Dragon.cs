@@ -43,6 +43,8 @@ namespace Chem
         public int WallReach = 2;
         /// <summary>The terrains that shelter when they block: a wall of these stops the breath.</summary>
         public IReadOnlyList<string> WallTerrains = new[] { "stone", "rock" };
+        /// <summary>How big the dragon is drawn, against its model's 70 m wingspan. The view's alone: nothing in the core reads it, and no reach follows it.</summary>
+        public double Scale = 1.5;
 
         internal static DragonParams Parse(JToken t)
         {
@@ -60,6 +62,7 @@ namespace Chem
             d.ShelterWater = (int?)o["shelterWater"] ?? d.ShelterWater;
             d.WallReach = (int?)o["wallReach"] ?? d.WallReach;
             if (o["wallTerrains"] is JArray a) d.WallTerrains = a.Select(x => (string)x).ToList();
+            d.Scale = (double?)o["scale"] ?? d.Scale;
             return d;
         }
     }

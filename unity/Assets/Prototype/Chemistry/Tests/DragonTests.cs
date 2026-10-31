@@ -82,6 +82,25 @@ namespace Chem.Tests
 
         static string Line(World w) => $"{w.Tick} {w.CellHash()} {w.RngState} {w.DragonText()}";
 
+        // How big it's drawn is the view's alone: a flight runs the same at any scale, tick by tick, its reach too.
+        [Test]
+        public void ItsScaleChangesNothingInTheCore()
+        {
+            string Flight(Rules rules)
+            {
+                var w = new World(rules, 128, 128, 7u);
+                w.KeepStart();
+                w.ApplyDragon(new DragonCommand());
+                var seen = new System.Text.StringBuilder();
+                FlyOut(w, () => seen.AppendLine(Line(w)));
+                return seen.ToString();
+            }
+            var bigger = With("{ \"scale\": 3 }");
+            Assert.That(bigger.Sim.Dragon.Scale, Is.EqualTo(3.0));
+            Assert.That(Flight(bigger), Is.EqualTo(Flight(R)));
+            Assert.That(bigger.Fingerprint, Is.Not.EqualTo(R.Fingerprint), "a mod to it is in the fingerprint, like any other");
+        }
+
         [Test]
         public void GoldenAFullEventOnASmallMapMatchesTheSandbox()
         {
