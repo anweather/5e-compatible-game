@@ -54,7 +54,8 @@ public class PerfStage : ShowcaseScript
     {
         var kinds = new[] { "clear", "cloudy", "windy", "fog", "rain", "storm", "snow" };
         var weights = string.Join(", ", kinds.Select(k => $"'{k}': {(k == only ? 1 : 0)}"));
-        float hour = Hour >= 0f ? Hour : Scenario == "forest" ? Night : Noon;
+        float hour = Hour;
+        if (hour < 0f) hour = Scenario == "forest" ? Night : Noon;
         return Switch(At(hour) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { " + weights + " } }");
     }
 
@@ -92,39 +93,45 @@ public class PerfStage : ShowcaseScript
         var inputs = wizard.GetComponent<StarterAssets.StarterAssetsInputs>();
         inputs.cursorInputForLook = false;
         while (!Go) yield return null;
-        for (int leg = 1; ; leg = leg % (ForestRoute.Length - 1) + 1)
+        int leg = 1;
+        while (enabled)
         {
-            var target = ChunkMiddle(ForestRoute[leg]);
-            float stuckSince = Time.time, nextJump = Time.time + JumpEverySeconds, best = float.MaxValue;
-            var from = wizard.transform.position;
-            while (true)
-            {
-                var to = target - wizard.transform.position;
-                to.y = 0f;
-                if (to.magnitude < ArriveMetres) break;
-                if (to.magnitude < best - 1f)
-                {
-                    best = to.magnitude;
-                    stuckSince = Time.time;
-                }
-                float rel = (Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg - Camera.main.transform.eulerAngles.y) * Mathf.Deg2Rad;
-                inputs.move = new Vector2(Mathf.Sin(rel), Mathf.Cos(rel));
-                inputs.sprint = true;
-                if (Time.time >= nextJump)
-                {
-                    inputs.jump = (wizard.transform.position - from).magnitude < 0.3f;
-                    from = wizard.transform.position;
-                    nextJump = Time.time + JumpEverySeconds;
-                }
-                if (Time.time - stuckSince > StuckSeconds)
-                {
-                    PerfCounts.Add("walk.teleports");
-                    Teleport(target + Vector3.up * 0.1f);
-                    break;
-                }
-                yield return null;
-            }
+            yield return WalkTo(ChunkMiddle(ForestRoute[leg]), inputs);
             PerfCounts.Add("walk.legs");
+            leg = leg % (ForestRoute.Length - 1) + 1;
+        }
+    }
+
+    IEnumerator WalkTo(Vector3 target, StarterAssets.StarterAssetsInputs inputs)
+    {
+        float stuckSince = Time.time, nextJump = Time.time + JumpEverySeconds, best = float.MaxValue;
+        var from = wizard.transform.position;
+        while (true)
+        {
+            var to = target - wizard.transform.position;
+            to.y = 0f;
+            if (to.magnitude < ArriveMetres) yield break;
+            if (to.magnitude < best - 1f)
+            {
+                best = to.magnitude;
+                stuckSince = Time.time;
+            }
+            float rel = (Mathf.Atan2(to.x, to.z) * Mathf.Rad2Deg - Camera.main.transform.eulerAngles.y) * Mathf.Deg2Rad;
+            inputs.move = new Vector2(Mathf.Sin(rel), Mathf.Cos(rel));
+            inputs.sprint = true;
+            if (Time.time >= nextJump)
+            {
+                inputs.jump = (wizard.transform.position - from).magnitude < 0.3f;
+                from = wizard.transform.position;
+                nextJump = Time.time + JumpEverySeconds;
+            }
+            if (Time.time - stuckSince > StuckSeconds)
+            {
+                PerfCounts.Add("walk.teleports");
+                Teleport(target + Vector3.up * 0.1f);
+                yield break;
+            }
+            yield return null;
         }
     }
 
@@ -139,7 +146,8 @@ public class PerfStage : ShowcaseScript
         caster.enabled = true;
         Cursor.lockState = CursorLockMode.Locked;
         while (!Go) yield return null;
-        for (float angle = 0f; ; )
+        float angle = 0f;
+        while (enabled)
             foreach (var spell in spells)
             {
                 caster.Select(spell.Id);

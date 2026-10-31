@@ -48,6 +48,7 @@ using Debug = UnityEngine.Debug;
 [DefaultExecutionOrder(-32000)]
 public class PerfScenario : MonoBehaviour
 {
+    PerfStage stage;
     const string Bot = "bot", Wildfire = "wildfire", Fog = "fog";
     const float WarmUpSeconds = 3f, SettleSeconds = 5f, DefaultSeconds = 30f, BurnSeconds = 20f;
     const float CountEverySeconds = 2f, SpikeMs = 50f;
@@ -92,18 +93,15 @@ public class PerfScenario : MonoBehaviour
         early = new PerfMarkers();
         earlyFrom = Time.realtimeSinceStartupAsDouble;
         scenario = Arg("-perf-scenario");
-        if (float.TryParse(Arg("-perf-spike-ms"), NumberStyles.Float, CultureInfo.InvariantCulture, out float bar) && bar > 0f) spikeMs = bar;
-        seconds = scenario == Wildfire ? BurnSeconds : DefaultSeconds;
-        if (float.TryParse(Arg("-perf-seconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out float asked) && asked > 0f) seconds = asked;
+        ReadTimes();
         if (Arg("-perf-pso-diff") != null)
         {
             PerfPsoCheck.Diff(Arg("-perf-pso-diff"));
             Application.Quit();
             yield break;
         }
-        if (!Known.Contains(scenario) || (scenario == Bot && FindAnyObjectByType<PlaytestBot>() == null))
+        if (Refused())
         {
-            Debug.LogError($"PERF RESULT refused: \"{scenario}\" isn't one of {string.Join("|", Known)}, or bot without -playtest");
             Application.Quit();
             yield break;
         }
@@ -112,14 +110,7 @@ public class PerfScenario : MonoBehaviour
         if (Has("-perf-time-budget")) ChemGrid.ExactFrames = false;
         grid = FindAnyObjectByType<ChemGrid>();
         wizard = WizardRig.FindLocal();
-        PerfStage stage = null;
-        if (scenario != Bot)
-        {
-            stage = new GameObject("Perf stage").AddComponent<PerfStage>();
-            stage.Scenario = scenario;
-            if (float.TryParse(Arg("-perf-hour"), NumberStyles.Float, CultureInfo.InvariantCulture, out float hour)) stage.Hour = hour;
-            while (!stage.Ready) yield return null;
-        }
+        if (scenario != Bot) yield return SetTheStage();
         if (Has("-perf-flames-off")) grid.Flames.enabled = false;
         // A wildfire burns from the bolts, and fog's cost is in how it comes. The others settle, even a walk.
         if (scenario != Wildfire && scenario != Fog) yield return new WaitForSecondsRealtime(SettleSeconds);
@@ -138,6 +129,28 @@ public class PerfScenario : MonoBehaviour
         yield return Shot(scenario);
         if (scenario == Wildfire) yield return FlameShots();
         Application.Quit();
+    }
+
+    void ReadTimes()
+    {
+        if (float.TryParse(Arg("-perf-spike-ms"), NumberStyles.Float, CultureInfo.InvariantCulture, out float bar) && bar > 0f) spikeMs = bar;
+        seconds = scenario == Wildfire ? BurnSeconds : DefaultSeconds;
+        if (float.TryParse(Arg("-perf-seconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out float asked) && asked > 0f) seconds = asked;
+    }
+
+    bool Refused()
+    {
+        if (Known.Contains(scenario) && (scenario != Bot || FindAnyObjectByType<PlaytestBot>() != null)) return false;
+        Debug.LogError($"PERF RESULT refused: \"{scenario}\" isn't one of {string.Join("|", Known)}, or bot without -playtest");
+        return true;
+    }
+
+    IEnumerator SetTheStage()
+    {
+        stage = new GameObject("Perf stage").AddComponent<PerfStage>();
+        stage.Scenario = scenario;
+        if (float.TryParse(Arg("-perf-hour"), NumberStyles.Float, CultureInfo.InvariantCulture, out float hour)) stage.Hour = hour;
+        while (!stage.Ready) yield return null;
     }
 
     // Two shots with Prototype/Flame and one without, of the fire from the air and from close by, so
