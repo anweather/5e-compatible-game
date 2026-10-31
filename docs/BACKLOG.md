@@ -302,8 +302,14 @@ Wading and swimming in the pond and lake (playtest P13). **Partly built:** a
 basic version is in `SurfaceEffects`: water over the chest floats the wizard
 at the surface (the controller's gravity off, its fall speed steering it to
 floating height), slower, standing pose; jump kicks it up out onto a bank;
-walking up a bank ends it; ice is walked on (probe `swim`). Still to do:
-a swim animation, diving, drowning.
+walking up a bank ends it; ice is walked on (probe `swim`). **Diving and
+breath (branch `swim-breath`):** holding the dodge roll's button (Left Ctrl,
+L2 / the right stick) dives, sinking toward the bottom at reduced speed, and
+letting go swims back up. Breath (`Breath.cs`, `sim.json breath`: 30 s, full
+again in 3 s) runs down only with the head under, shown as a bar beside
+health while it drains or refills; at none, 1d6 every 3 s with a log line,
+until the head comes out. Water frozen over a swimmer holds it under the ice.
+Still to do: a swim animation.
 
 - **What:** deep water (a cell's water over the wizard's knees, from
   `Cell.Water` and the drawn surface) switches the wizard to swimming:

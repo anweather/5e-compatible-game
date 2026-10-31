@@ -432,6 +432,8 @@ export interface SimParams {
   defense: DefenseParams;
   /** Spell golf's ball (golf.ts; C#: GolfParams); absent uses the defaults. */
   golf?: GolfParams;
+  /** A swimmer's breath and drowning, read by the Unity view only (C#: BreathParams in Breath.cs); absent uses the defaults. */
+  breath?: { seconds: number; refillSeconds: number; drownEvery: number; drownDice: number; drownSides: number };
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
   day: {
     lengthMinutes: number; startHour: number;

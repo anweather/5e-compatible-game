@@ -446,6 +446,8 @@ namespace Chem
         public DefenseParams Defense = new DefenseParams();
         /// <summary>Spell golf's ball (sim.json golf, World.Golf.cs).</summary>
         public GolfParams Golf = new GolfParams();
+        /// <summary>A swimmer's breath and drowning (sim.json breath, Breath.cs).</summary>
+        public BreathParams Breath = new BreathParams();
     }
 
     /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
@@ -1027,6 +1029,7 @@ namespace Chem
             if (o["status"] is JObject st) ParseStatus(s, st);
             s.Defense = ParseDefense(o["defense"]);
             s.Golf = GolfParams.Parse(o["golf"]);
+            s.Breath = BreathParams.Parse(o["breath"]);
             if (o["day"] is JObject day)
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;

@@ -7,6 +7,8 @@ using UnityEngine;
 // stacked to its right; and stamina as a green ring round the crosshair that
 // starts full and drains, shown only while it's in use (sprinting, swimming,
 // rolling, or not yet full again) and faded out a moment after, BotW-style.
+// Breath is a bar to the right of health, there only while it runs down under
+// water or fills again (Vitals.Breath), faded in and out the same way.
 public sealed class VitalsHud
 {
     /// <summary>The margin from the screen's edge, and the portrait's size: DpadHud's block matches them.</summary>
@@ -18,6 +20,7 @@ public sealed class VitalsHud
     const float FadeRate = 4f, Linger = 0.8f;
 
     static readonly Color HealthColor = new(0.85f, 0.25f, 0.25f), StaminaColor = new(0.3f, 0.9f, 0.35f), MagicColor = new(0.35f, 0.55f, 1f);
+    static readonly Color BreathColor = new(0.75f, 0.92f, 1f), DrowningColor = new(0.3f, 0.45f, 0.9f);
     static readonly Color FaceColor = new(0.02f, 0.02f, 0.025f), EyeColor = new(1f, 0.1f, 0.06f), Frame = new(0f, 0f, 0f, 0.55f), Unknown = new(0.2f, 0.25f, 0.5f);
 
     GameObject wizard;
@@ -28,7 +31,7 @@ public sealed class VitalsHud
     Component inputs;
     FieldInfo sprint, move;
     GUIStyle text;
-    float staminaShown, inUseUntil;
+    float staminaShown, inUseUntil, breathShown, breathUntil;
 
     /// <summary>Draws the vitals for <paramref name="who"/>; the height they take at the top left.</summary>
     public float Draw(GameObject who, GUIStyle style)
@@ -40,6 +43,7 @@ public sealed class VitalsHud
         float x = Margin + BlockHeight + Gap;
         Bar(new Rect(x, Margin, BarWidth, BarHeight), $"<b>Health</b> {Mathf.CeilToInt(vitals.Health)}/{Mathf.CeilToInt(vitals.HealthMax)}", vitals.Health / vitals.HealthMax, HealthColor);
         Bar(new Rect(x, Margin + BarHeight + Gap, BarWidth, BarHeight), $"<b>Magic</b> {Mathf.CeilToInt(vitals.Magic)}/{Mathf.CeilToInt(Vitals.MagicMax)}", vitals.Magic / Vitals.MagicMax, MagicColor);
+        Breath(new Rect(x + BarWidth + Gap, Margin, BarWidth, BarHeight));
         Stamina();
         return BlockHeight;
     }
@@ -93,6 +97,20 @@ public sealed class VitalsHud
         HudDraw.Ring(centre, RingInner, RingOuter, vitals.Stamina / Vitals.StaminaMax, colour);
     }
 
+    // Breath while it runs down or fills again, fading in and out like stamina; drowning, the bar's empty and darker.
+    void Breath(Rect r)
+    {
+        var breath = vitals.Breath;
+        if (breath == null) return;
+        if (breath.Under || !breath.Full) breathUntil = Time.unscaledTime + Linger;
+        float target = Time.unscaledTime < breathUntil ? 1f : 0f;
+        breathShown = Mathf.MoveTowards(breathShown, target, FadeRate * Time.unscaledDeltaTime);
+        if (breathShown <= 0f) return;
+        var colour = breath.Drowning ? DrowningColor : BreathColor;
+        string label = breath.Drowning ? "<b>Drowning</b>" : $"<b>Breath</b> {Mathf.CeilToInt((float)breath.Left)} s";
+        Bar(r, label, (float)breath.Share, colour, breathShown);
+    }
+
     // Sprinting (the sprint held while moving), swimming or rolling.
     bool InUse()
     {
@@ -102,11 +120,14 @@ public sealed class VitalsHud
         return (bool)sprint.GetValue(inputs) && ((Vector2)move.GetValue(inputs)).sqrMagnitude > 0.01f;
     }
 
-    void Bar(Rect r, string label, float share, Color colour)
+    void Bar(Rect r, string label, float share, Color colour, float alpha = 1f)
     {
-        Fill(r, new Color(0f, 0f, 0f, 0.55f));
+        Fill(r, new Color(0f, 0f, 0f, 0.55f * alpha));
+        colour.a *= alpha;
         Fill(new Rect(r.x + 4f, r.y + 4f, (r.width - 8f) * Mathf.Clamp01(share), r.height - 8f), colour);
+        GUI.color = new Color(1f, 1f, 1f, alpha);
         GUI.Label(r, label, text);
+        GUI.color = Color.white;
     }
 
     static void Fill(Rect r, Color colour)
