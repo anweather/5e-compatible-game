@@ -20,6 +20,9 @@ public static class PerfCounts
     static readonly string[] stageKeys = MakeKeys();
     static int sliceStage;
 
+    /// <summary>The tick's stages named here, one for each of World's (TickStage).</summary>
+    public static int StageCount => Stages.Length;
+
     /// <summary>Whether anything is counted. PerfScenario sets it.</summary>
     public static bool On { get; set; }
 

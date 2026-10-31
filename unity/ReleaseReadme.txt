@@ -23,7 +23,7 @@ CONTROLS (keyboard and mouse; a gamepad works too)
   Left click      cast
   E (near a thing) pick up / drop   F            use the held item
   G / right-click throw (hold to throw harder)
-  R               reset the yard (not while playing together)
+  R               call the dragon, which sweeps the valley clean (hold 3 s to rebuild it at once)
   Esc             menu
   M               the menu's Mods page (switch rules on and off)
 With a controller, hold LB (L1) for the spell radial and aim with the right

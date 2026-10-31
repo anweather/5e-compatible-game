@@ -119,6 +119,7 @@ public static class ChemYardBuilder
         spawner.grid = grid;
         spawner.prefabs = things;
         new GameObject("EventLog").AddComponent<EventLog>();
+        SetUpDragon(grid);
         SetUpNetwork(grid, BuildNetWizard(armature), things);
 
         WriteSceneMeta();
@@ -192,6 +193,15 @@ public static class ChemYardBuilder
         volume.sharedProfile = profile;
         SetUpSky(sun);
         SetUpFauna();
+    }
+
+    // The dragon drawn (DragonView): its own object, as a new world destroys the grid's children (ChemGrid.ResetWorld).
+    static void SetUpDragon(ChemGrid grid)
+    {
+        var view = new GameObject("Dragon").AddComponent<DragonView>();
+        view.grid = grid;
+        view.model = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/Prototype/ThirdParty/Quaternius/Dragon.fbx");
+        view.shadowShader = Shader.Find("Prototype/DragonShadow");
     }
 
     // The clock turns the sun and a dim blue moon (SkyLight); WeatherFx draws the rain and lightning;

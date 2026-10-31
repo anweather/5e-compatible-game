@@ -93,6 +93,10 @@ public static class ProbeScenarios
             "The combo table's new spells staged in the yard, one picture or more each (--shots): Forge on sand, mud and metal; Falling Star's mark, fall, impact and embers; Whirlwind " +
             "carrying sand, water, fire, smoke and snow; a dust cloud flashing in fire; Lava Pool; Rain Cloud; Sand Blast; Light at night; the pick's swing; cracked glass, ice and a frozen " +
             "raider. Checks: what each does to the cells, no console errors."),
+        new Entry("dragon", typeof(DragonProbe), 260f,
+            "One whole flight of the Dragon, staged quicker than a real one (DragonView, World.Dragon). Checks: the world keeps a start, R summons it, the sky darkens and it's seen, " +
+            "a wizard in the open is downed and one behind a built wall isn't, every chunk is freshened, and the Gauntlet's lava, a meadow cell, a felled tree, a moved crate and a broken one " +
+            "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
         new Entry("downed", typeof(DownedProbe), 30f,
             "The punch on a virtual gamepad's Circle, and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
         new Entry("castfeel", typeof(CastFeelProbe), 200f,

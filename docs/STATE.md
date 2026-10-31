@@ -56,18 +56,16 @@ The one page a new PM session reads first. Keep it short: history goes in
 - DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
   comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
   cast-sound prototypes for Andrew to pick from before anything is built in.
-- Mac: the Dragon's view is pushed (`dragon-view`, efb186a), not merged: it waits on `probe.sh online`
-  in a normal Editor (DesktopUnity, queued). Every machine rebuilds the yard after it lands.  Andrew loves it
-  (J-043): +50% scale and a breath particle stream first (Mac), then it ships in 0.1.10 without
-  another review. Still to ask, with media: water never shelters (no cell reaches depth 8); a raised
-  Wall of Stone is wiped by the chunk reset before the breath arrives.
-  `dragon-clip` (f07aa3e, the clip probe and the QuickSearch console filter) is stacked on it: land
-  dragon-view first. The Mac does the dragon tweaks, then rules MCP phase 2, procedural looks (`procedural-looks`).
+- Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. The Mac: merge
+  dev into `dragon-clip` (conflicts with today's castclip/punchclip), then `dragon-tweaks` (+50% scale, breath
+  stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
+  which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
+  is wiped before the breath arrives.
 - u1: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). Asleep (Saved) while
   DesktopUnity runs dragon-view's online probe (needs ~9 GB free); wake it with `start.cmd u1` after. DesktopUnity wires it
   into the IK punch after.
-- Sound: the generator is in the sound-design skill (1847785, stdlib only). B + pulse 15/30/45% are on the board
-  for Andrew's pick. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
+- Sound: the generator is in the sound-design skill (1847785, stdlib only). Andrew picked B + pulse 30%
+  (preset `cast-deep-hum-pulse`); DesktopUnity builds it in after the punch. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
 - Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
   batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
   intent in `Net/`, the game serving the MCP on localhost, the HUD line, the M panel through the room.

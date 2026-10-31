@@ -23,6 +23,8 @@ public class GeneratedProp : MonoBehaviour
     /// <summary>Whether it has burned (a palm whose square burned).</summary>
     public bool Burnt { get; private set; }
 
+    Material unburnt;
+
     void OnEnable() => Rebuild();
 
     void OnDisable()
@@ -61,11 +63,23 @@ public class GeneratedProp : MonoBehaviour
     }
 
     /// <summary>Its square burned: a palm chars down to a stump (its fronds gone).</summary>
+    /// <summary>Back as it grew, after Burn (the dragon's breath put its cell back).</summary>
+    public void Regrow()
+    {
+        if (!Burnt || shape == null) return;
+        Burnt = false;
+        shape.GetComponent<MeshRenderer>().sharedMaterial = unburnt;
+        shape.transform.localScale = Vector3.one;
+        foreach (var c in GetComponents<Collider>()) c.enabled = true;
+    }
+
     public void Burn(Material charred)
     {
         if (Burnt || shape == null) return;
         Burnt = true;
-        shape.GetComponent<MeshRenderer>().sharedMaterial = charred;
+        var look = shape.GetComponent<MeshRenderer>();
+        unburnt = look.sharedMaterial;
+        look.sharedMaterial = charred;
         shape.transform.localScale = new Vector3(1f, 0.3f, 1f);
         foreach (var c in GetComponents<Collider>()) c.enabled = false;
     }

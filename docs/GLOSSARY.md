@@ -233,6 +233,18 @@ touch them.
 inside the Gauntlet. Not the world reset. In the core, a raider the breath catches has the `downed` status for
 that long, and doesn't march.
 
+**Unarmed strike / punch**
+: The SRD 5.2.1 unarmed strike, in the core (`StrikeCommand`, `World.Strike.cs`, sim.json `strike`): a wizard
+  punches along its aim; the nearest wizard or raider within `reach` cells in front takes an **attack roll**
+  (d20 from the world's generator + Strength modifier + proficiency bonus, against its **AC**, entities.json
+  `str` and `ac`) and on a hit 1 + Strength modifier bludgeoning damage and a **knock-back** of `knockBack`
+  cells. Log: "Ana punches Bo: 1 bludgeoning damage", "Ana's punch misses Bo". Say "strike" alone only where
+  it can't mean lightning; the view's shove of props is still "the punch" (`ItemHolder.Punch`).
+
+**Stand**
+: Where the core knows a wizard is and its health as its peer last said (`WizardStand`, a `StrikeCommand.Stand`),
+  so strikes resolve on the core's cells. Health stays the wizard's own (`Vitals`); the stand only mirrors it.
+
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,
   nature, time), at most three spells each (`groups.json`, `GroupDef`).
@@ -439,6 +451,17 @@ that long, and doesn't march.
 **Leaving**
 : What's left of a flight after the last pass (`dragon.leavingTicks`): it lands, roars and goes.
 
+**Perch**
+: Where the dragon lands as it leaves: the highest ground in the valley (`DragonView`). View only.
+
+**Menace**
+: How far the dragon has darkened the sky, 0 to 1 (`SkyLight.Menace`, from `DragonFlight.Darkness`). View only:
+  it comes from the flight, so it's the same on every machine.
+
+**The Reset / rebuild**
+: The **Reset** (R, View on a pad) calls the dragon. Held for 3 s it's a **rebuild**, the valley rebuilt at once
+  with no dragon (`EventLog.RebuildYard`): the way out of a world gone wrong.
+
 **Starting state**
 : The world as built, kept by `World.KeepStart` before the first tick: a palette of the distinct cells
   and each cell's index in it, with the ball as built. A world with none has no dragon.
@@ -478,6 +501,7 @@ that long, and doesn't march.
 |---|---|---|
 | square | a spell shape; a village square | a cell |
 | step | a height step (0.5 m) | a tick |
+| strike | the unarmed strike (a punch) | a lightning strike (say "lightning strike") |
 | element | a chemistry element | a radial group |
 | charge | a cell's electric charge | a cast charge (say "cast charge") |
 | life | a cell's `Life` timer | ambient life; the defense field's lives |

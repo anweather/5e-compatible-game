@@ -19,7 +19,7 @@ or **proposed** (our guess). Values below are option B's (`presets/b-deep-hum.js
 
 | Word | Means | Measure | Recipe | Status |
 |---|---|---|---|---|
-| **pulse** (throb) | the loudness beats in a regular rhythm | rate and depth, printed per charge step for the charged cast only | loudness modulation; `pulse.amount` is a share of option C's depth (0.55), so 0.3 = depth 0.165. Rate 7 Hz | agreed as a seasoning: "a little of C's pulse" (2026-10-31) |
+| **pulse** (throb) | the loudness beats in a regular rhythm | rate and depth, printed per charge step for the charged cast only | loudness modulation; `pulse.amount` is a share of option C's depth (0.55), so 0.3 = depth 0.165. Rate 7 Hz | agreed at 0.3 for cast sounds: Andrew picked "B + pulse 30%" (2026-10-31; preset `cast-deep-hum-pulse`) |
 | **accelerating** | the pulse speeds up as the cast builds | rates printed with pulse (7.5, 11.5, 15.0 Hz measured) | `accelerating: true` adds 4 Hz per charge step: 7, 11, 15 Hz. Only the charged series has steps; singles and the pair stay at 7 Hz | agreed with pulse (option C) |
 | **rising** | the pitch goes up | none | `rising` {semitones 3, glide_ms 150}: one shift when the elements combine | agreed: "combine goes up in pitch a little" |
 | **escalate** | each charge step is a notch bigger: louder, higher | none | `escalate` {semitones [4, 7], gain 1.2}: step n sits that many semitones above `rising`, gain 1.2 to the power n | agreed (J-040) |

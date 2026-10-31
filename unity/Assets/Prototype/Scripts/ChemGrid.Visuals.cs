@@ -132,7 +132,33 @@ public partial class ChemGrid
             for (int y = y0; y < y1; y++)
                 for (int x = x0; x < x1; x++) RenderCell(x, y);
         }
+        RenderFresh(out int fresh);
         FinishRender();
+        AnnounceFresh(fresh);
+    }
+
+    /// <summary>Inactive chunks redrawn because the dragon's breath reset them, for the probe.</summary>
+    public int FreshInactiveDrawn { get; private set; }
+
+    // A chunk the dragon's breath reset may be inactive, and those aren't walked above.
+    void RenderFresh(out int fresh)
+    {
+        fresh = freshChunks.Count;
+        foreach (var f in freshChunks)
+        {
+            if (World.IsActive(f.CX, f.CY)) continue;
+            FreshInactiveDrawn++;
+            int x0 = f.CX << Chunks.Shift, y0 = f.CY << Chunks.Shift;
+            int x1 = Mathf.Min(World.W, x0 + Chunks.Size), y1 = Mathf.Min(World.H, y0 + Chunks.Size);
+            for (int y = y0; y < y1; y++)
+                for (int x = x0; x < x1; x++) RenderCell(x, y);
+        }
+    }
+
+    void AnnounceFresh(int fresh)
+    {
+        for (int i = 0; i < fresh; i++) ChunkFreshened?.Invoke(freshChunks[i]);
+        freshChunks.RemoveRange(0, fresh);
     }
 
     readonly System.Diagnostics.Stopwatch finishTimer = new();
