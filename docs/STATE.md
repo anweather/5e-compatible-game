@@ -42,15 +42,16 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Releases
 
-- **0.1.10:** Andrew to choose: cut now, or after the dragon tweaks, punch + strike and cast sounds (PM's
-  pick). Voice moves to 0.1.11 (needs Andrew's Unity Gaming Services setup).
+- **0.1.10 (Andrew: after the in-flight items):** cut once the dragon tweaks (Mac), the IK punch with the
+  unarmed strike and the cast sounds B + pulse 30% (DesktopUnity) are on dev. Then the release candidate on
+  the PC (no VMs), publish if green. Voice moves to 0.1.11 (needs Andrew's Unity Gaming Services setup).
 
 - **0.1.9** published 2026-10-31 (Windows only, pre-release); main merged back, freeze lifted.
   DesktopUnity runs a fresh Editor, serial gates, the Windows build into the draft, install from the
   draft, then the update from 0.1.8. Notes: `docs/handoffs/release-0.1.9-notes.md`. Publish if green;
   then merge main back into dev and lift the freeze.
-- **0.1.10:** the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`, minus the casting sounds
-  already in) and proximity voice (Vivox: Andrew sets up a Unity Gaming Services project first).
+- **0.1.11:** proximity voice (Vivox: Andrew sets up a Unity Gaming Services project first), the rest of the
+  sound pass (`docs/handoffs/sound-pass-brief.md`).
 
 ## In flight
 
