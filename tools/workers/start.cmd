@@ -15,7 +15,9 @@ $need = $vm.MemoryStartup/1GB
 # J-017 keeps 10 GB free beside a host Editor; with none open (workers do the Unity work), 6 GB (J-037).
 # A Linux worker (1 GB start, peaks under 2 GB) may start down to 8 GB free beside an Editor (Andrew, 2026-10-29).
 $linuxVm = (Get-VMFirmware -VM $vm).SecureBootTemplate -ne 'MicrosoftWindows'
-$keep = if (Get-Process Unity -ErrorAction SilentlyContinue) { if ($linuxVm) { 8 } else { 10 } } else { 6 }
+# An Editor, not Unity Hub's own helper (resources\unity.exe, about 20 MB, always running).
+$editor = Get-Process Unity -ErrorAction SilentlyContinue | Where-Object { $_.Path -notlike '*\Unity Hub\*' }
+$keep = if ($editor) { if ($linuxVm) { 8 } else { 10 } } else { 6 }
 if ($vm.State -eq 'Off' -and $free - $need -lt $keep) { throw ("Only {0:N1} GB free; {1} GB must stay free (J-017, J-037). Not starting." -f $free, $keep) }
 Start-VM -VM $vm
 # Hyper-V's own meter (CPU, RAM, disk) from here; stop.cmd logs it.
