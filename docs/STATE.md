@@ -60,6 +60,8 @@ The one page a new PM session reads first. Keep it short: history goes in
   in a normal Editor (DesktopUnity, queued). Every machine rebuilds the yard after it lands. For Andrew,
   with media first: the model (reads friendly, not ancient), water never shelters (no cell reaches
   depth 8), a raised Wall of Stone is wiped by the chunk reset before the breath arrives.
+  `dragon-clip` (f07aa3e, the clip probe and the QuickSearch console filter) is stacked on it: land
+  dragon-view first. The Mac is now on rules MCP phase 2, procedural looks (`procedural-looks`).
 - Sandbox frozen (210b047; J-042): it reads `sandbox/rules-frozen/`; nothing is ported to it.
 - Rules MCP phase 1 landed (dffbc19; u1, now asleep): `core/Rules.Mcp`, `ModValidator.cs`, budgets in
   `rules/budgets.json`, "Using the rules MCP" in MODDING.md. Unity hasn't compiled ModValidator yet
