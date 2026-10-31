@@ -25,7 +25,7 @@ public static class ProbeLink
 {
     public const string Hosting = "hosting", Go = "go", Joined = "joined", Reported = "reported";
     /// <summary>After the reset: the host asks for the checksums since it (up to startTick), the virtual player sends them.</summary>
-    public const string ResetCheck = "reset-check", ResetReported = "reset-reported";
+    public const string ResetSettled = "reset-settled", ResetCheck = "reset-check", ResetReported = "reset-reported";
 
     /// <summary>True in a Multiplayer Play Mode virtual player (its project is a copy under Library/VP/).</summary>
     public static bool InVirtualPlayer => Application.isEditor && VirtualRoot() != null;
@@ -445,6 +445,20 @@ public class OnlineProbeClient : MonoBehaviour
         return known != null ? System.Math.Max(0, (int)known.GetValue(net) - net.NetTick) : -1;
     }
 
+    // Tells the host once the reset's stall is over here and this side has caught up (OnlineProbe.ClientSettled).
+    static IEnumerator TellSettled(string id, NetChem net)
+    {
+        for (float waited = 0f; waited < 90f; waited += Time.unscaledDeltaTime)
+        {
+            if (net.LastResetTick > 0 && Lag(net) <= 1)
+            {
+                ProbeLink.Write(ProbeLink.ClientFile, new OnlineObservation { id = id, phase = ProbeLink.ResetSettled });
+                yield break;
+            }
+            yield return null;
+        }
+    }
+
     // The host then resets the world (OnlineProbe.TryReset): the checksums from after the reset,
     // sent when the host asks, up to the tick it names.
     IEnumerator AfterReset(string id, NetChem net)
@@ -461,6 +475,7 @@ public class OnlineProbeClient : MonoBehaviour
         }
         net.TickApplied += OnTick;
         ProbeHostMessage ask = null;
+        StartCoroutine(TellSettled(id, net));
         for (float waited = 0f; waited < 90f && ask == null; waited += Time.unscaledDeltaTime)
         {
             ask = ProbeLink.Read<ProbeHostMessage>(ProbeLink.HostFile);
@@ -562,10 +577,21 @@ public class OnlineProbe : ProbeScenario
         if (report == null) yield break;
         Compare(recorder.Seen, report);
         yield return TryReset();
+        yield return ClientSettled(id);
         yield return TryTag();
         yield return TryShape();
         yield return TryBeats();
         yield return CompareAfterReset(id);
+    }
+
+    // A reset stalls a peer's frame for a couple of seconds and leaves it ticks behind. A deer that
+    // came and went inside that stall is never drawn there, so what follows waits for it. (A peer
+    // catching up keeps its beats too: castfeel's mid_tick cast.)
+    IEnumerator ClientSettled(string id)
+    {
+        float waited = 0f;
+        for (; waited < ReportSeconds && ReadClient(id, ProbeLink.ResetSettled) == null; waited += Time.unscaledDeltaTime) yield return null;
+        Metric("reset_client_settled_s", waited);
     }
 
     int ballsBefore;
@@ -656,6 +682,9 @@ public class OnlineProbe : ProbeScenario
         yield return Wait(0.4f);
         caster.LoadElement(ElementIds.Earth);
         yield return UntilNeutral(beats);
+        // A new cast cuts Recovery short by design, so one on the heels of Neutral could land before
+        // that beat on the other side; this compares the beats, not that race.
+        yield return Wait(0.3f);
         caster.LoadElement(ElementIds.Fire, held: true);
         yield return Wait(1.6f);
         caster.LetGo();

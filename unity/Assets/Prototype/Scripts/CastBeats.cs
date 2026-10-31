@@ -93,6 +93,10 @@ public class CastBeats : MonoBehaviour
     string first, second;
     // The core fired this spell, and the announcement of one: they arrive in either order.
     string firedSpell, announcedSpell;
+    // The cast as the last whole tick left it. A tick in slices (World.StepSome) can clear a cast
+    // a frame or two before it says it fired, so what's in the core mid-tick isn't read; the beats
+    // go on from this, as a peer catching up can be mid-tick at the end of every frame.
+    CastFacts whole;
     float firedAt, announcedAt, thrustAt, kick;
     bool struck, standing;
     float stopLeft, speedWas = 1f;
@@ -184,6 +188,7 @@ public class CastBeats : MonoBehaviour
             firedAt = Time.time;
             Charge = fired.Charge;
         }
+        if (!heard.World.TickInProgress) Read(heard.World);
     }
 
     string Player => net != null && net.IsSpawned ? net.CastPlayer : SpellCaster.SoloPlayer;
@@ -196,7 +201,7 @@ public class CastBeats : MonoBehaviour
         float time = BeatTime();
         InBeat += time;
         Strike();
-        Step(caster.Replaying ? null : grid.World.CastOf(Player), grid.World);
+        Step(grid.World);
         var p = feel.Of(Now);
         float t = p.seconds > 0f ? Mathf.Clamp01(InBeat / p.seconds) : 1f;
         body = Blend.Lerp(from, Blend.Of(p), p.curve.Evaluate(t));
@@ -215,21 +220,25 @@ public class CastBeats : MonoBehaviour
     }
 
     // Works out the beat from the cast.
-    void Step(PlayerCast cast, World world)
+    void Step(World world)
     {
-        // A tick in slices (World.StepSome) can clear a cast a frame or two before it says it fired.
-        if (world.TickInProgress) return;
-        if (cast?.Casting == true)
-        {
-            first = cast.First;
-            second = cast.Second;
-            if (firedSpell == null) Level(world.HeldCharge(cast));
-        }
+        if (!world.TickInProgress) Read(world);
         if (announcedSpell != null && announcedSpell != firedSpell && Time.time - announcedAt > feel.announceWait) announcedSpell = null;
         if (firedSpell != null && announcedSpell != firedSpell && Time.time - firedAt > feel.announceWait) firedSpell = null;
         bool thrust = firedSpell != null && announcedSpell == firedSpell && Time.time >= thrustAt;
-        var next = CastBeat.Next(Now, InBeat, CastFacts.Of(cast, feel.slamTicks, firedSpell != null, thrust), feel);
+        var next = CastBeat.Next(Now, InBeat, whole.With(firedSpell != null, thrust), feel);
         if (next != Now) Enter(next);
+    }
+
+    // Only between ticks.
+    void Read(World world)
+    {
+        var cast = caster.Replaying ? null : world.CastOf(Player);
+        whole = CastFacts.Of(cast, feel.slamTicks, false, false);
+        if (cast?.Casting != true) return;
+        first = cast.First;
+        second = cast.Second;
+        if (firedSpell == null) Level(world.HeldCharge(cast));
     }
 
     void Level(int level)

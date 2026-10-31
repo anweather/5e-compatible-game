@@ -54,6 +54,7 @@ public partial class CastFeelProbe : ProbeScenario
             yield return Cast("pair", new[] { ElementIds.Water, ElementIds.Earth }, false, new[] { Beat.First, Beat.Second, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
             yield return Charged();
             yield return Cancelled();
+            yield return MidTick();
             if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Pictures("after");
             yield return Impact();
         }
@@ -65,6 +66,25 @@ public partial class CastFeelProbe : ProbeScenario
             beats.BeatChanged -= Heard;
             beats.ChargeLevel -= Pulsed;
         }
+    }
+
+    // A peer catching up on ticks in slices can be mid-tick at the end of every frame: the beats
+    // must still play, all of them. (World.StepSome here leaves a tick begun for the grid to finish.)
+    IEnumerator MidTick()
+    {
+        bool slicing = true;
+        IEnumerator Slices()
+        {
+            while (slicing)
+            {
+                if (!World.TickInProgress) World.StepSome(() => true);
+                yield return null;
+            }
+        }
+        StartCoroutine(Slices());
+        yield return Cast("mid_tick", new[] { ElementIds.Fire }, false, new[] { Beat.First, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
+        slicing = false;
+        yield return null;
     }
 
     void Heard(Beat beat)
