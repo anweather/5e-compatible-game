@@ -12,7 +12,7 @@ namespace Chem.Tests
         static Rules Base => rules ??= Rules.Load(ChemistryTests.RulesDir());
 
         static bool Hold(World w, string element) => w.ApplyCombo(ComboCommand.Load("ann", element, true));
-        static bool Release(World w, int charge) => w.ApplyCombo(ComboCommand.Release("ann", charge));
+        static bool Release(World w) => w.ApplyCombo(ComboCommand.Release("ann"));
 
         static void Run(World w, int ticks)
         {
@@ -31,38 +31,77 @@ namespace Chem.Tests
             return 0;
         }
 
-        // Holds a combo's elements, then lets go at this charge once the meter has run out.
+        // Holds a combo's elements until the meter has reached this charge, then lets go.
         static ComboFired Charged(World w, string combo, int charge)
         {
             foreach (var element in combo.Split('+')) Hold(w, element);
-            Run(w, 20);
-            Release(w, charge);
+            while (w.HeldCharge(w.CastOf("ann")) < charge) w.Step();
+            Release(w);
             UntilFired(w);
             return w.CombosFired[0];
         }
 
         [TestCase(0.0, 3, 1)]
-        [TestCase(0.44, 3, 1)]
-        [TestCase(0.45, 3, 2)]
-        [TestCase(0.89, 3, 2)]
-        [TestCase(0.9, 3, 3)]
+        [TestCase(0.49, 3, 1)]
+        [TestCase(0.5, 3, 2)]
+        [TestCase(0.99, 3, 2)]
+        [TestCase(1.0, 3, 3)]
         [TestCase(30.0, 3, 3)]
         [TestCase(30.0, 2, 2)]
         [TestCase(30.0, 1, 1)]
-        public void TheChargeComesFromHowLongTheButtonIsHeld(double seconds, int max, int charge) =>
-            Assert.That(ElementHold.ChargeOf(seconds, max), Is.EqualTo(charge));
+        public void HoldingCastChargesByTheClock(double seconds, int max, int charge) =>
+            Assert.That(ElementHold.ChargeOf(seconds, max, new World(Base, 8, 8, 7).SecondsPerLevel), Is.EqualTo(charge));
 
         [Test]
-        public void TheClockRunsFromTheLastElementPressed()
+        public void TheHoldKnowsItsButton()
         {
             var hold = new ElementHold();
-            Assert.That((hold.Holding, hold.ChargeAt(5, 3)), Is.EqualTo((false, 1)));
-            hold.Press(0, 10);
-            Assert.That(hold.ChargeAt(10.5, 3), Is.EqualTo(2));
-            hold.Press(2, 10.5);
-            Assert.That((hold.Button, hold.ChargeAt(10.6, 3)), Is.EqualTo((2, 1)), "a second element starts the hold again");
+            Assert.That(hold.Holding, Is.False);
+            hold.Press(2);
+            Assert.That((hold.Holding, hold.Button), Is.EqualTo((true, 2)));
             hold.Drop();
-            Assert.That((hold.Holding, hold.ChargeAt(20, 3)), Is.EqualTo((false, 1)));
+            Assert.That(hold.Holding, Is.False);
+        }
+
+        [TestCase("fire", 1)]
+        [TestCase("fire", 2)]
+        [TestCase("fire", 3)]
+        [TestCase("fire+fire", 1)]
+        [TestCase("fire+fire", 3)]
+        public void EachLevelOfChargeAddsCastTime(string combo, int charge)
+        {
+            var w = new World(Base, 8, 8, 7);
+            var elements = combo.Split('+');
+            foreach (var element in elements) Hold(w, element);
+            int ticks = 0;
+            while (w.HeldCharge(w.CastOf("ann")) < charge)
+            {
+                w.Step();
+                ticks++;
+            }
+            Release(w);
+            ticks += UntilFired(w);
+            Assert.That(ticks, Is.EqualTo(Base.Combos.Combo(combo).CastTicks + (charge - 1) * Base.Combos.ChargeTicks));
+            Assert.That(w.CombosFired[0].Charge, Is.EqualTo(charge));
+        }
+
+        [Test]
+        public void AFullChargeOfASingleElementTakesAboutTwoSeconds()
+        {
+            int ticks = Base.Combos.Combo("fire").CastTicks + (World.MaxCharge - 1) * Base.Combos.ChargeTicks;
+            Assert.That(ticks / (double)Base.Sim.TicksPerSecond, Is.EqualTo(2).Within(0.25));
+        }
+
+        [Test]
+        public void HoldingPastTheFullChargeGivesNoMore()
+        {
+            var w = new World(Base, 8, 8, 7);
+            Hold(w, "fire");
+            Run(w, 200);
+            Assert.That(w.HeldCharge(w.CastOf("ann")), Is.EqualTo(World.MaxCharge));
+            Release(w);
+            Assert.That(UntilFired(w), Is.EqualTo(1));
+            Assert.That(w.CombosFired[0].Charge, Is.EqualTo(World.MaxCharge));
         }
 
         [Test]
@@ -73,6 +112,9 @@ namespace Chem.Tests
             Assert.That(wall.SpellAt(2, 3), Is.EqualTo("wall-of-stone"));
             Assert.That(wall.SpellAt(3, 3), Is.EqualTo("stone-ramp"));
             Assert.That(wall.SpellAt(1, 1), Is.EqualTo("wall-of-stone"), "a spell that can't charge has no held form");
+            var frost = Base.Combos.Combo("water+air");
+            Assert.That(frost.SpellAt(2, 3), Is.EqualTo("frost"));
+            Assert.That(frost.SpellAt(3, 3), Is.EqualTo("sleet-storm"));
             var fireball = Base.Combos.Combo("fire+fire");
             Assert.That(fireball.SpellAt(3, 3), Is.EqualTo("fireball"), "and most combos have none");
         }
@@ -96,7 +138,7 @@ namespace Chem.Tests
             var tapped = new World(Base, 8, 8, 7);
             Hold(tapped, "fire");
             tapped.Step();
-            Assert.That(Release(tapped, 1));
+            Assert.That(Release(tapped));
             Assert.That(UntilFired(tapped), Is.EqualTo(expected - 1));
             Assert.That(tapped.CombosFired[0].Charge, Is.EqualTo(1));
             Assert.That(tapped.CombosFired[0].Spell, Is.EqualTo("fire-bolt"));
@@ -113,36 +155,31 @@ namespace Chem.Tests
             var c = w.CastOf("ann");
             Assert.That((c.Casting, c.Meter, c.Holding), Is.EqualTo((true, 1, true)));
             Assert.That(w.MoveFactorOf("ann"), Is.EqualTo(Base.Combos.MoveFactor), "still slowed while held");
-            Release(w, 2);
+            Release(w);
             w.Step();
-            Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(2));
+            Assert.That(w.CombosFired.Single().Charge, Is.EqualTo(World.MaxCharge));
             Assert.That(c.Charge, Is.EqualTo(1), "and it's spent");
         }
 
         [Test]
-        public void ReleasedEarlyTheChargeWaitsForTheMeter()
+        public void ReleasedBeforeALevelItIsATap()
         {
             var w = new World(Base, 8, 8, 7);
             Hold(w, "fire");
             w.Step();
-            Release(w, 3);
+            Release(w);
             Assert.That(UntilFired(w), Is.EqualTo(Base.Combos.Combo("fire").CastTicks - 1));
-            Assert.That(w.CombosFired[0].Charge, Is.EqualTo(3));
+            Assert.That(w.CombosFired[0].Charge, Is.EqualTo(1));
         }
 
         [Test]
-        public void AReleaseIsOnlyTakenForAHoldAndKeptInRange()
+        public void AReleaseIsOnlyTakenForAHold()
         {
             var w = new World(Base, 8, 8, 7);
-            Assert.That(Release(w, 2), Is.False, "nothing held");
+            Assert.That(Release(w), Is.False, "nothing held");
             Hold(w, "fire");
-            Assert.That(Release(w, 99));
-            Assert.That(w.CastOf("ann").Charge, Is.EqualTo(World.MaxCharge));
-            Assert.That(Release(w, 1), Is.False, "let go once");
-            w.ApplyCombo(ComboCommand.Cancel("ann"));
-            Hold(w, "fire");
-            Assert.That(Release(w, -4));
-            Assert.That(w.CastOf("ann").Charge, Is.EqualTo(1));
+            Assert.That(Release(w));
+            Assert.That(Release(w), Is.False, "let go once");
         }
 
         [Test]
@@ -156,7 +193,7 @@ namespace Chem.Tests
             Assert.That(w.CastOf("ann").Second, Is.EqualTo("water"));
             Assert.That(w.ApplyCombo(ComboCommand.Cancel("ann")));
             Assert.That((w.CastOf("ann").Casting, w.CastOf("ann").Holding), Is.EqualTo((false, false)));
-            Assert.That(Release(w, 3), Is.False, "a cancelled cast is gone");
+            Assert.That(Release(w), Is.False, "a cancelled cast is gone");
             Run(w, 20);
             Assert.That(w.CombosFired, Is.Empty);
         }
@@ -182,7 +219,8 @@ namespace Chem.Tests
             Assert.That(back.CastOf("ann").Holding, Is.False, "no button is down on a loaded game");
             Assert.That(UntilFired(back), Is.EqualTo(Base.Combos.Combo("fire").CastTicks - 1));
 
-            Release(w, 3);
+            Run(w, 20);
+            Release(w);
             var charged = World.Load(w.Save(new ComboTests.Blank()), Base, new ComboTests.Blank());
             Assert.That(charged.CastState(), Is.EqualTo(w.CastState()), "a charge let go is kept");
             Assert.That(charged.CastHash(), Is.EqualTo(w.CastHash()));
@@ -198,20 +236,22 @@ namespace Chem.Tests
             Hold(b, "fire");
             Assert.That(a.CastHash(), Is.Not.EqualTo(plain));
             Assert.That(b.CastHash(), Is.EqualTo(a.CastHash()));
-            Release(a, 2);
-            Release(b, 3);
+            Run(a, 2);
+            Release(a);
+            Run(b, 9);
+            Release(b);
             Assert.That(a.CastHash(), Is.Not.EqualTo(b.CastHash()), "two peers on different charges would show as a desync");
 
             var commands = new (int tick, ComboCommand command)[]
             {
                 (1, ComboCommand.Load("ann", "earth", true)),
                 (2, ComboCommand.Load("ann", "earth", true)),
-                (16, ComboCommand.Release("ann", 3)),
+                (19, ComboCommand.Release("ann")),
             };
             var live = new World(Base, 8, 8, 7);
             var set = RuleSet.Plain(Base);
             string fired = null;
-            for (int t = 1; t <= 20; t++)
+            for (int t = 1; t <= 24; t++)
             {
                 var batch = new TickBatch(t);
                 batch.Combos.AddRange(commands.Where(c => c.tick == t).Select(c => c.command));
@@ -220,9 +260,9 @@ namespace Chem.Tests
             }
             Assert.That(fired, Is.EqualTo("stone-ramp"));
             var replay = new World(Base, 8, 8, 7);
-            var timeline = TickBatch.Timeline(null, null, 20);
+            var timeline = TickBatch.Timeline(null, null, 24);
             TickBatch.AddCombos(timeline, commands);
-            for (int t = 1; t <= 20; t++) timeline[t].RunOn(replay, set, out _);
+            for (int t = 1; t <= 24; t++) timeline[t].RunOn(replay, set, out _);
             Assert.That(replay.CastHash(), Is.EqualTo(live.CastHash()));
         }
 
@@ -243,14 +283,14 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void HeldToTheMaxRaiseEarthDigs()
+        public void HeldToTheMaxRaiseEarthRaisesItWallHigh()
         {
             var w = new World(Base, 12, 12, 7, "dirt");
             var fired = Charged(w, "earth", World.MaxCharge);
-            Assert.That(fired.Spell, Is.EqualTo("mold-earth"));
+            Assert.That(fired.Spell, Is.EqualTo("mold-earth-heap"));
             w.Cast(fired.Spell, 5, 5, 1, fired.Charge);
-            Assert.That(w.At(5, 5).Height, Is.LessThan(0));
-            Assert.That(Charged(new World(Base, 12, 12, 7, "dirt"), "earth", 2).Spell, Is.EqualTo("mold-earth-heap"));
+            Assert.That(w.At(5, 5).Height, Is.EqualTo(3), "as high as a wall");
+            Assert.That(Base.Combos.All.Where(c => c.Held != null).Select(c => c.Id), Is.EqualTo(new[] { "water+air", "earth+earth" }), "Lower Earth is nothing's held form");
         }
 
         // Plant Growth by elements on burnt ground and meadow: what a tap can't reach.
@@ -285,10 +325,11 @@ namespace Chem.Tests
             Hold(w, "earth");
             Run(w, 2);
             Hold(w, "water");
-            Run(w, 12);
-            Assert.That(w.CastState(), Is.EqualTo("ann:earth:water:1:9:0:0:-1::hold:c1"));
-            Release(w, 3);
-            Assert.That(w.CastState(), Is.EqualTo("ann:earth:water:1:9:0:0:-1::c3"));
+            Run(w, 14);
+            Assert.That(w.CastState(), Is.EqualTo("ann:earth:water:1:15:0:0:-1::hold:c1"));
+            Assert.That(w.HeldCharge(w.CastOf("ann")), Is.EqualTo(3));
+            Release(w);
+            Assert.That(w.CastState(), Is.EqualTo("ann:earth:water:1:15:0:0:-1::c3"));
             Assert.That(UntilFired(w), Is.EqualTo(1));
             var fired = w.CombosFired[0];
             Assert.That((fired.Spell, fired.Charge), Is.EqualTo(("plant-growth", 3)));
@@ -307,6 +348,36 @@ namespace Chem.Tests
             w.Cast(fired.Spell, 4, 6, 1, fired.Charge);
             Run(w, 2);
             Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("cdeed8e1 9aa186c6 7"));
+        }
+
+        [Test]
+        public void GoldenHeldSleetStorm()
+        {
+            // Frost held to full charge glazes the field Sleet Storm does (ChemistryTests.SleetField's ground).
+            var w = new World(Base, 20, 20, 7);
+            for (int y = 3; y <= 6; y++) w.At(5, y).T = "grass";
+            w.At(7, 8).Water = 8;
+            w.At(9, 9).Fire = 3;
+            w.At(9, 9).Fuel = 4;
+            var fired = Charged(w, "water+air", 3);
+            Assert.That((fired.Spell, fired.Name), Is.EqualTo(("sleet-storm", "Frost")));
+            w.Cast(fired.Spell, 8, 8, 1, fired.Charge);
+            Assert.That(w.Cells.Count(c => c.Cover == "frost"), Is.GreaterThan(200), "glazed, wider than a tap's");
+            Assert.That(w.At(7, 8).Frozen);
+            Assert.That(w.At(9, 9).Fire, Is.EqualTo(0));
+            Assert.That(Charged(new World(Base, 20, 20, 7), "water+air", World.MaxCharge - 1).Spell, Is.EqualTo("frost"), "a part charge stays Frost");
+            Run(w, 4);
+            Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("bdd3d4c6 20520162 1511859835"));
+        }
+
+        [Test]
+        public void GoldenRaiseEarthHeld()
+        {
+            var w = new World(Base, 12, 12, 7);
+            var fired = Charged(w, "earth", 3);
+            w.Cast(fired.Spell, 5, 5, 1, fired.Charge);
+            Run(w, 2);
+            Assert.That($"{w.CastHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("edf99516 a2a683ad 7"));
         }
     }
 }

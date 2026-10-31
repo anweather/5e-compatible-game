@@ -236,7 +236,9 @@ public class ComboProbe : ProbeScenario
     IEnumerator HeldSteps()
     {
         InputSystem.QueueStateEvent(pad, new GamepadState { leftTrigger = 1f });
-        yield return Wait(ElementHold.SecondsPerLevel * 2f + 0.3f);
+        yield return null;
+        yield return null;
+        yield return Wait(World.CastOf(me).Total / (float)World.Rules.Sim.TicksPerSecond + 0.3f);
         Check("held_steps_lit", caster.HoldCharge == World.MaxChargeOf(World.ComboOf(World.CastOf(me))), $"charge {caster.HoldCharge}");
         Check("marker_on_the_held_spell", caster.Marker != null && caster.Marker.Kind == AimKind.Rising, $"{caster.Marker?.Kind}");
         Shot("held");

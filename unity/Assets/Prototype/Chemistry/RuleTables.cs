@@ -459,6 +459,8 @@ namespace Chem
         public GolfParams Golf = new GolfParams();
         /// <summary>A swimmer's breath and drowning (sim.json breath, Breath.cs).</summary>
         public BreathParams Breath = new BreathParams();
+        /// <summary>How long a wizard at 0 health stays down (sim.json downed, Downed.cs).</summary>
+        public DownedParams Downed = new DownedParams();
     }
 
     /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
@@ -1042,6 +1044,7 @@ namespace Chem
             s.Defense = ParseDefense(o["defense"]);
             s.Golf = GolfParams.Parse(o["golf"]);
             s.Breath = BreathParams.Parse(o["breath"]);
+            s.Downed = DownedParams.Parse(o["downed"]);
             if (o["day"] is JObject day)
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;

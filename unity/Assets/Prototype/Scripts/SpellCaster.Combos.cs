@@ -8,10 +8,11 @@ using UnityEngine;
 // it is aims it from the crosshair and sends the usual CastCommand, since where
 // a spell lands is only known as it goes off. While the meter drains the wizard
 // walks at the rules' factor and Cancel drops the cast before anything else
-// that button does. Holding the last element charges the cast (ElementHold): the
-// core waits for the release, and the release carries the charge, so every peer
-// sees the same strength; a tap is charge 1. The radial (SpellRadialHud) stays as
-// a debug tool.
+// that button does. Holding the last element charges the cast: the meter runs on
+// through the charge (rules/combos.json chargeTicks, a level at a time) and the
+// core counts it, so every peer sees the same strength, and letting go (ElementHold
+// knows the button) sets it off; a tap is charge 1. The radial (SpellRadialHud)
+// stays as a debug tool.
 public partial class SpellCaster
 {
     const string SoloPlayer = "solo";
@@ -34,9 +35,8 @@ public partial class SpellCaster
     {
         get
         {
-            if (!hold.Holding) return 0;
-            var world = grid.World;
-            return hold.ChargeAt(Time.time, world.MaxChargeOf(world.ComboOf(world.CastOf(CastPlayer))));
+            var cast = grid.World.CastOf(CastPlayer);
+            return cast?.Holding == true ? grid.World.HeldCharge(cast) : 0;
         }
     }
 
@@ -84,12 +84,12 @@ public partial class SpellCaster
         var elements = grid.World.Rules.Combos.Elements;
         for (int i = 0; !busy && i < elements.Count && i < controls.Elements.Length; i++)
             if (controls.Elements[i].WasPressedThisFrame() && cast?.TakesElement != false && Send(ComboCommand.Load(player, elements[i], true)))
-                hold.Press(i, Time.time);
+                hold.Press(i);
         // Read from the button, not its release this frame: whatever turns the controls off lets go too,
         // or the cast would wait for ever. Below the press, so a tap inside one frame lets go at once.
         if (hold.Holding && !controls.Elements[hold.Button].IsPressed())
         {
-            Send(ComboCommand.Release(player, hold.ChargeAt(Time.time, World.MaxCharge)));
+            Send(ComboCommand.Release(player));
             hold.Drop();
         }
     }
@@ -101,8 +101,15 @@ public partial class SpellCaster
     /// </summary>
     public bool LoadElement(string element, bool held = false) => grid != null && grid.World != null && Send(ComboCommand.Load(CastPlayer, element, held));
 
-    /// <summary>Lets go of an element loaded held, at this charge.</summary>
-    public bool LetGo(int charge) => grid != null && grid.World != null && Send(ComboCommand.Release(CastPlayer, charge));
+    /// <summary>Lets go of an element loaded held, at the charge its meter has reached.</summary>
+    public bool LetGo() => grid != null && grid.World != null && Send(ComboCommand.Release(CastPlayer));
+
+    /// <summary>Drops a cast under way, as Cancel does (WizardDown: a wizard that falls loses it).</summary>
+    public void DropCast()
+    {
+        hold.Drop();
+        if (grid != null && grid.World != null && grid.World.CastOf(CastPlayer)?.Casting == true) Send(ComboCommand.Cancel(CastPlayer));
+    }
 
     /// <summary>
     /// Where the crosshair is instead, for the marker and the casts, while set: the playtest bot, which

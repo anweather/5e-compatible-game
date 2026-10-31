@@ -671,6 +671,32 @@ test("heat on standing water boils it and bakes nothing under it, matching the C
   assert.equal(`${cellHash(w)} ${w.rng}`, "cdece807 2305213897"); // the same in the C# core
 });
 
+// Mirrors ChemistryTests.SleetField and its tests.
+function sleetField(): World {
+  const w = createWorld(20, 20, 7);
+  for (let y = 3; y <= 6; y++) cellAt(w, 5, y)!.t = "grass";
+  cellAt(w, 7, 8)!.water = 8;
+  cellAt(w, 9, 9)!.fire = 3;
+  cellAt(w, 9, 9)!.fuel = 4;
+  castSpell(w, "sleet-storm", 8, 8, 1);
+  return w;
+}
+
+test("Sleet Storm glazes a wide slippery field and puts out fires", () => {
+  const w = sleetField();
+  const glazed = w.cells.filter((c) => c.cover === "frost").length;
+  assert.ok(glazed > 60, `${glazed} cells glazed`);
+  assert.ok(isSlippery(cellAt(w, 8, 8)!));
+  assert.equal(cellAt(w, 7, 8)!.frozen, true, "water still freezes");
+  assert.equal(cellAt(w, 9, 9)!.fire, 0);
+});
+
+test("Sleet Storm's field, matching the C# golden", () => {
+  const w = sleetField();
+  run(w, 4);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "bcb137be 7");
+});
+
 // Mirrors ChemistryTests.FrostBridgesWaterFreezesTheWetAndGlazesTheGround.
 test("frost bridges water, freezes the wet and glazes the ground, matching the C# golden", () => {
   const w = createWorld(14, 7, 7);

@@ -5,8 +5,9 @@ using UnityEngine;
 // the nearest prop or item through PhysicsProp.Shove, or else hits the nearest
 // pane as a heavy thing does, so the first punch cracks the glass and the next
 // breaks it (ChemEffects.Strike; the cells are the truth). Not while carrying
-// anything, casting, swimming, sitting or in an animal's shape. Only the
-// puncher's machine shows the arm, as with a throw (ThrowPose).
+// anything, casting, swimming, sitting or in an animal's shape. On the pad it's
+// Circle, which cancels a cast or the radial first, so those presses don't punch.
+// Only the puncher's machine shows the arm, as with a throw (ThrowPose).
 public partial class ItemHolder
 {
     // How far ahead the fist lands and how much around it counts, in metres, at what height.
@@ -26,12 +27,14 @@ public partial class ItemHolder
         Swing(PunchHow);
     }
 
-    bool CanPunch =>
-        !Animal
-        && (radial == null || !radial.IsOpen)
-        && !(TryGetComponent<SpellCaster>(out var caster) && caster.CastInProgress)
-        && !(TryGetComponent<SurfaceEffects>(out var feet) && feet.Swimming)
-        && !(TryGetComponent<Sitter>(out var sitter) && sitter.Seated != null);
+    bool CanPunch => MayPunch(
+        (TryGetComponent<SpellCaster>(out var caster) && caster.CastInProgress) || (radial != null && radial.BusyThisFrame),
+        Animal,
+        TryGetComponent<SurfaceEffects>(out var feet) && feet.Swimming,
+        TryGetComponent<Sitter>(out var sitter) && sitter.Seated != null);
+
+    /// <summary>Whether the punch button punches: <paramref name="cancelling"/> is a cast under way or the radial open, which that press cancels.</summary>
+    public static bool MayPunch(bool cancelling, bool animal, bool swimming, bool seated) => !cancelling && !animal && !swimming && !seated;
 
     void PunchLands()
     {

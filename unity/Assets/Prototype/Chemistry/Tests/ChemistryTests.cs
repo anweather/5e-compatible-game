@@ -1066,6 +1066,37 @@ namespace Chem.Tests
         }
 
 
+        // Shared with sandbox/test/terraform.test.ts.
+        static World SleetField()
+        {
+            var w = new World(R, 20, 20, 7);
+            for (int y = 3; y <= 6; y++) w.At(5, y).T = "grass";
+            w.At(7, 8).Water = 8;
+            w.At(9, 9).Fire = 3;
+            w.At(9, 9).Fuel = 4;
+            w.Cast("sleet-storm", 8, 8, 1);
+            return w;
+        }
+
+        [Test]
+        public void SleetStormGlazesAWideSlipperyFieldAndPutsOutFires()
+        {
+            var w = SleetField();
+            var field = w.SpellCells(R.Spell("sleet-storm"), 8, 8, 1);
+            Assert.That(field.Count(p => w.At(p.x, p.y).Cover == "frost"), Is.GreaterThan(field.Count - 3), "the same frost Frost leaves");
+            Assert.That(w.CoverHasTag(w.At(8, 8), "slippery"));
+            Assert.That(w.At(7, 8).Frozen, "water still freezes");
+            Assert.That(w.At(9, 9).Fire, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void GoldenSleetStorm()
+        {
+            var w = SleetField();
+            for (int i = 0; i < 4; i++) w.Step();
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("bcb137be 7"));
+        }
+
         [Test]
         public void FrostBridgesWaterFreezesTheWetAndGlazesTheGround()
         {

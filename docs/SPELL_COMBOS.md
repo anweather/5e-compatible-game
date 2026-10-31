@@ -101,9 +101,11 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
 - **Mud, the sticky setup:** creatures get stuck. Fire (Forge) bakes it to
   brick, a building material; frost freezes it hard; it dries to dirt over
   time.
+- **Sleet Storm, the slippery field:** cold at Frost's strength (`power` 4, which `cold-frost` asks for)
+  over a wide circle: the same frost glaze, ice on water, fires out. Frost stays the precise one.
 - **Frost, the bridge builder:** freezes water surfaces into walkable ice
   and wet creatures solid (a hit shatters them). Frozen ground is slippery:
-  an ice-slide mini game.
+  an ice-slide mini game. Held: Sleet Storm, a wide slippery field.
 
 **Earth: dig, transform, grow, build, roll.**
 - **Raise Earth, the shovel:** raises or digs soft ground only, by terrain
@@ -168,12 +170,16 @@ ground for an area or wall.
 - **Keyboard:** Z X C V, B to cancel, [ ] to cycle, T to cast, J for the grimoire. The mouse still
   casts what the radial picked. Tab keeps the radial, and F2 swaps the controller to its old layout.
 - **Charged casts (#7):** hold the last element's button (Z X C V, or the bumpers and triggers) and the
-  cast gains a level every 0.45 s, up to the spell's max; let go and it goes off at that charge, once its
-  meter is out. Held past the meter's end, it waits for the release. A tap is charge 1, as before. A
-  combo's `held` spell replaces it at full charge: Wall of Stone is Stone Ramp, Raise Earth digs
-  (Lower Earth). The steps and the held spell's name are on the cast meter (`CastHud`). The press sends
-  `ComboCommand.Load` with `Hold`, the release `ComboCommand.Release` with the charge (`ElementHold`
-  works it out), so every peer casts at the same strength, and it's in `CastState` and the checksum.
+  meter runs on past its `castTicks`: each level adds `chargeTicks` (`rules/combos.json`, 3 ticks, 0.5 s), so
+  a full charge on a single element takes 2 s and on a pair 2.5 to 3 s, and a tap stays the fastest. The
+  charge only grows while the meter runs; held to the end, it waits for the release and gains nothing. Let go
+  and it goes off on the next tick at the level reached (before the first level, at a tap's time). A
+  combo's `held` spell replaces it at full charge: Wall of Stone is Stone Ramp, Frost is Sleet Storm. Raise Earth has no held
+  form: charge 3 raises three steps, a wall-high mound. Digging is the pick's (and Lower Earth's, on the
+  radial's debug layout). The steps and the held spell's name are on the cast meter (`CastHud`). The press
+  sends `ComboCommand.Load` with `Hold`, the release `ComboCommand.Release`; the core counts the charge from
+  its own meter (`World.HeldCharge`), so every peer casts at the same strength, and it's in `CastState` and
+  the checksum.
 - **Not yet:** tap and ground shapes (casts go from the crosshair); other players' orbs aren't drawn,
   only their casts.
 

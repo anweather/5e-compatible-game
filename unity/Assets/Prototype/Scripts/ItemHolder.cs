@@ -69,7 +69,7 @@ public partial class ItemHolder : MonoBehaviour
         if (controls == null) return;
         InReach = Held == null ? Nearest() : null;
         controls.ItemInReach = Held != null || InReach != null;
-        if (Held == null && controls.PunchPressed()) TryPunch();
+        if (Held == null && controls.Punch.WasPressedThisFrame()) TryPunch();
 
         if (controls.Interact.WasPressedThisFrame())
         {

@@ -93,6 +93,8 @@ public static class ProbeScenarios
             "The combo table's new spells staged in the yard, one picture or more each (--shots): Forge on sand, mud and metal; Falling Star's mark, fall, impact and embers; Whirlwind " +
             "carrying sand, water, fire, smoke and snow; a dust cloud flashing in fire; Lava Pool; Rain Cloud; Sand Blast; Light at night; the pick's swing; cracked glass, ice and a frozen " +
             "raider. Checks: what each does to the cells, no console errors."),
+        new Entry("downed", typeof(DownedProbe), 30f,
+            "The punch on a virtual gamepad's Circle, and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
         new Entry("combo", typeof(ComboProbe), 70f,
             "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
             "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +

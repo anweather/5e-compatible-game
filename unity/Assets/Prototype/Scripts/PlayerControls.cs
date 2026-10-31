@@ -12,8 +12,8 @@ using UnityEngine.InputSystem;
 //   Cancel cast  B             B / Circle
 //   D-pad spells [ ]           d-pad left / right    (T / d-pad up casts; J / d-pad down: the grimoire)
 //   Dodge roll   Left Ctrl     click the right stick
-//   Punch        F             X / Square              (empty-handed; in reach of an item or a seat Square
-//                                                       picks up or sits; ItemHolder.Punch.cs)
+//   Punch        F             B / Circle              (empty-handed and not casting: ItemHolder.Punch.cs)
+//   Pick up/sit  E             X / Square
 //   In an animal's shape any of the cast buttons changes back.
 //
 //   F2 swaps the controller to the debug layout below, the spell radial's:
@@ -42,6 +42,9 @@ using UnityEngine.InputSystem;
 // up, drops, sits or stands, and the spell stays put.
 public class PlayerControls : MonoBehaviour
 {
+    /// <summary>The pad's punch shares Circle with Cancel cast, which goes first (ItemHolder.MayPunch); Square only picks up and sits.</summary>
+    public const string PadPunch = "<Gamepad>/buttonEast", PadInteract = "<Gamepad>/buttonWest";
+
     public InputAction Cast { get; private set; }
     public InputAction RadialHold { get; private set; }
     public InputAction RadialCancel { get; private set; }
@@ -105,9 +108,9 @@ public class PlayerControls : MonoBehaviour
         NextElement = Button("Next element", "<Gamepad>/dpad/right");
         PrevElement = Button("Previous element", "<Gamepad>/dpad/left");
         Reset = Button("Reset", "<Keyboard>/r", "<Gamepad>/select");
-        Interact = Button("Pick up or drop", "<Keyboard>/e", "<Gamepad>/buttonWest");
+        Interact = Button("Pick up or drop", "<Keyboard>/e", PadInteract);
         Use = Button("Use item", "<Keyboard>/f", "<Gamepad>/buttonNorth");
-        Punch = Button("Punch", "<Keyboard>/f", "<Gamepad>/buttonWest");
+        Punch = Button("Punch", "<Keyboard>/f", PadPunch);
         Throw = Button("Throw item", "<Keyboard>/g", "<Mouse>/rightButton", "<Gamepad>/buttonEast");
         Roll = Button("Dodge roll", "<Keyboard>/leftCtrl", "<Gamepad>/leftTrigger", "<Gamepad>/rightStickPress");
         Elements = new[]
@@ -189,13 +192,6 @@ public class PlayerControls : MonoBehaviour
     /// <summary>Next spell was pressed this frame, unless it was the E key and E went to an item.</summary>
     public bool NextSpellPressed() =>
         NextSpell.WasPressedThisFrame() && !((ItemInReach || SeatInReach) && NextSpell.activeControl?.device is Keyboard);
-
-    /// <summary>Punch was pressed this frame, unless that press belongs to picking up or sitting (PunchGivesWay).</summary>
-    public bool PunchPressed() =>
-        Punch.WasPressedThisFrame() && !PunchGivesWay(Punch.activeControl?.device is Gamepad, ItemInReach, SeatInReach);
-
-    /// <summary>The pad's punch shares its button with Pick up: an item or a seat in reach takes the press. The F key is the punch's alone.</summary>
-    public static bool PunchGivesWay(bool onPad, bool itemInReach, bool seatInReach) => onPad && (itemInReach || seatInReach);
 
     /// <summary>A cast button was pressed this frame, of either way of casting: Cast, an element or the d-pad's cast.</summary>
     public bool AnyCastPressed()

@@ -661,3 +661,69 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   rules work. First task: Andrew's five calls (branch andrew-calls), which
   had been waiting for memory on the PC. Replies come by SendMessage; that
   route doesn't confirm reading, so check its branch if it goes quiet.
+- 2026-10-30 22:30: UX pass 4 part 2 merged (46848eb; DesktopUnity): #16 the
+  head flare (hidden bones at size zero gave NaN normals at the neck), #17
+  the hat and cowl fit, #19 fire redrawn as scattered GPU flame tongues
+  (Andrew to judge the look; close views about 70 ms p95 in the Editor),
+  #20 the camera check was wider than the wizard. Notes posted. New probes
+  flare, housecam, flames in FAST_LOOP. Known: castlooks wave_carries fails
+  on base code too (part 3 takes it); a sun glint on the ground over 12x in
+  150-200 of 960 views (open); not seen on Mac (Flame uses StructuredBuffer).
+- 2026-10-30 23:10: DECIDED (Andrew): proximity voice (Vivox, D8) targets
+  release 0.1.10, with the sound pass. 0.1.9 ships what's on dev now
+  (today's rules, UX pass 4, the five calls, perf fixes). Before voice work
+  starts, Andrew sets up a Unity Gaming Services project with Vivox and
+  links it to the Unity project (the PM gives him the steps; agents don't
+  enter account keys).
+- 2026-10-30 23:15: DECIDED (Andrew): the sound pass moves into 0.1.9; voice
+  (Vivox) stays in 0.1.10. The MacBook takes the sound pass after Andrew's
+  five calls, in parallel with the perf pass on the PC.
+- 2026-10-30 23:20: DECIDED (Andrew): the MacBook profiles overnight (weaker
+  hardware, a minimum-spec baseline; a macOS player for profiling only),
+  after the five calls. The PC takes the sound pass after UX pass 4 part 3,
+  and repeats the perf measurements on Windows tomorrow for comparison.
+- 2026-10-30 23:35: Andrew's five calls merged (bd488d5, MacBook): core 549,
+  sandbox 223, EditMode 609. Caveats for Andrew: (1) Sleet Storm is on no
+  combination, so its new slippery field is only reachable from the F2 radial
+  (make it Frost's held form?); (2) no element combination digs now (Lower
+  Earth is radial-only; a cast at your own feet never dug). The yard must be
+  rebuilt before the downed fall shows. The Mac started the overnight perf
+  pass.
+- 2026-10-30 23:40: DECIDED (Andrew): Sleet Storm becomes Frost's held form
+  (Water then Air, held to full charge); digging stays with the pick (and the
+  radial's Lower Earth), with no digging element combination.
+- 2026-10-30 23:55: DECIDED (Andrew): a cast-feel pass right after UX pass 4
+  on the PC, before the rest of the sound pass (docs/handoffs/cast-feel-brief.md).
+  The staff comes off the default wizard (code kept for a later "focus"
+  item); IK hands through six beats (gather, gather, slam, hold to charge,
+  release with recoil, recover); view-only hit-stop, camera impulses and
+  pad rumble, punchy by default with an Esc slider; the casting sounds built
+  here. A before and after clip goes to Andrew.
+- 2026-10-31 00:05: ADOPTED (Andrew): the screenshot-budget skill
+  (.claude/skills/screenshot-budget). Rules for every session:
+  - Shots: true aspect, fixed conditions (noon, clear, same seed and
+    outfit), the same camera before and after, the wizard out of frame,
+    dark scenes lit, the feature framed at 3-8 m. At most 3 reviewed images
+    per report, 800 px on the long edge (sheets up to 1200 px). Crop for
+    detail. Numbers, not images, for changes you can't see.
+  - Who looks: each session checks its own shots at about 480 px. The PM
+    opens one 800 px final only for a finished visible feature going on a
+    page it vouches for (a release, a milestone); otherwise it relays the
+    session's written check ("the session reports ...").
+  - Gallery: a full-resolution set per feature under
+    unity/Builds/screens/<feature>/gallery/ for Andrew. No model opens it;
+    the report names the folder. At most 40 images.
+  The probes' --shots gain 480 px review copies (first step of the cast-feel
+  pass). Measure: the next host pass's cost per feature against 2026-10-30's.
+- 2026-10-31 00:15: DECIDED (Andrew):
+  1. Release 0.1.9 once the cast-feel and sound passes land, ready for the
+     morning. If it's green (the RC checks pass), the PM publishes without
+     asking: "You don't need my go-ahead since we're an alpha." Windows only
+     unless the Mac half is free (Andrew doesn't need a Mac build).
+  2. After the release: more mini games, exploratory, not deep: an obstacle
+     course somewhere in the valley (across the lake): a lava pit, gaps to
+     teleport across (Misty Step), platforming, ice walls to melt with
+     spells. And spell-restricted areas (only certain spells work there), for
+     a curated experience.
+  3. Surf goes toward the nearest land (the island when it's nearer than the
+     mainland), push and wave animation alike (#23).
