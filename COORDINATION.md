@@ -727,3 +727,7 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
      a curated experience.
   3. Surf goes toward the nearest land (the island when it's nearer than the
      mainland), push and wave animation alike (#23).
+- 2026-10-31 00:30: DECIDED (Andrew): the Dragon (BACKLOG 26) as the world
+  reset: summoned by Reset and coming on its own past a changed-cell budget,
+  an ancient red wyrm whose fire breath resets the valley chunk by chunk,
+  knocking down (not killing) whoever it catches. After the Gauntlet slice.

@@ -589,6 +589,31 @@ can.
 
 Exploratory, after 0.1.9: a side-scrolling carnival funhouse with three or four depth lanes and height, booths that are spell puzzles (lava crusted by Frost, Misty Step gaps, an ice wall to melt, geyser launches, a boulder alley, updrafts, a dark tunnel, a barrel roll, a hall of mirrors, a strongman bell), each allowing only certain spells, with weird camera tricks. A small playable slice first, to find out whether there is juice in it. Brief: docs/handoffs/obstacle-course-brief.md.
 
+## 26. The Dragon: an ancient red wyrm that resets the world (Andrew, 2026-10-31)
+
+The world reset becomes an event. Today Reset reloads the scene; instead an ancient red dragon
+sweeps the valley clean.
+- **Trigger (Andrew: both):** Reset in the Esc menu summons it on demand (the host online), and
+  it comes on its own when the world has changed too much: a budget of changed cells, which also
+  protects performance (the accumulated changes are what slow a long session). Either way it
+  gives a warning first.
+- **The event:** about 30 s of warning (the sky darkens, a horn from the mountains, birds
+  scatter, a shadow crosses the valley); then the dragon dives out of the clouds and flies long
+  passes over the valley, breathing a wall of fire. **The world resets chunk by chunk where the
+  breath passes**: burnt ground, raised earth, ice, rubble and mud go back to the valley's
+  starting state, and fresh ground regrows behind it. Then it lands on the mountain, roars, and
+  leaves. Dawn, a fresh valley.
+- **Danger (Andrew: knocks down only):** caught in the breath, you're downed (the downed system)
+  and back at the yard, keeping your progress (player saves, item 21). Hiding behind stone or
+  under water avoids it, a little game in itself.
+- **How:** the flight path is seeded and deterministic, so every player's world resets the same
+  cells on the same ticks (lockstep; builds on the online reset, net-reset). The per-chunk reset
+  is rules in both engines with shared goldens; the dragon, the breath and the sky are the view
+  (GPU-first: the effects library for the breath). Model: a free CC0 dragon with flight
+  animations (for example Quaternius's monster packs), credited.
+- **Later:** a fight, driving it off with spells; other dragons (white frost, blue lightning).
+- **Size:** M-L. After the Gauntlet's slice, unless Andrew moves it up.
+
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,
