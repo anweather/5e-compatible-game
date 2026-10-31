@@ -739,3 +739,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   the watcher read a VM's "resets 6:30am (UTC)" as local time and kept Pro
   marked out 7 h after it was back (reset times now parsed by Node, zones
   included).
+- 2026-10-31 00:50: gauntlet-rules done (99fc6ec, u1; not merged until 0.1.9
+  is cut): spell zones (by the cell a spell lands on), checkpoints
+  (CourseCommand, World.CourseRespawn; the host must call it from Vitals.cs
+  and send the commands), timer and best times, new verbs crust, thaw and
+  lift, the course on the lake's south shore (world/gauntlet.json). Core
+  555, sandbox 227. Free memory fell to 0.7 GB (Unity 13.7 GB building Part
+  3's player, plus u1 at 3.5 GB): u1 stopped, and the watcher now stops the
+  newest worker VM below 1.5 GB free. u2 (Dragon rules) waits.
