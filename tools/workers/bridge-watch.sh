@@ -54,9 +54,17 @@ stop_vm() {
 reset_epoch() { # "8:20am (America/Phoenix)", "6:30am (UTC)" or "Nov 3, 8pm": the next such time, else 5 h from now
   # The zone in brackets matters: a VM reports in UTC, the host in local time (2026-10-30: "6:30am (UTC)"
   # was read as local and kept Pro marked out for 7 h after it was back).
-  local time="${1%%(*}" tz t; tz="$(sed -n 's/.*(\([^)]*\)).*/\1/p' <<<"$1")"; time="${time% }"
-  if [[ -n "$tz" ]]; then t="$(date -d "TZ=\"$tz\" $time" +%s 2>/dev/null)"; else t="$(date -d "$time" +%s 2>/dev/null)"; fi
-  [[ -n "$t" ]] || { echo $(( $(date +%s) + 18000 )); return; }
+  # Node, not date: Git Bash's date has no zone database and reads any named zone as UTC.
+  local t; t="$(node -e '
+    const s = process.argv[1], m = s.match(/(\d{1,2})(?::(\d\d))?\s*(am|pm)/i); if (!m) process.exit(1);
+    const tz = (s.match(/\(([^)]+)\)/) ?? [])[1] ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const h = (+m[1] % 12) + (/pm/i.test(m[3]) ? 12 : 0), min = +(m[2] ?? 0), now = Date.now();
+    // The zone offset now, from how the zone writes this instant.
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(now).map(x => [x.type, x.value]));
+    const off = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(now / 1000) * 1000;
+    let t = Date.UTC(+p.year, +p.month - 1, +p.day, h, min) - off;
+    if (t < now - 3600e3) t += 86400e3;
+    console.log(Math.floor(t / 1000));' "$1" 2>/dev/null)" || { echo $(( $(date +%s) + 18000 )); return; }
   (( t > $(date +%s) - 3600 )) || t=$(( t + 86400 ))
   echo "$t"
 }
