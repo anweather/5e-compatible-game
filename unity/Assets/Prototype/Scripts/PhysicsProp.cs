@@ -127,6 +127,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
     void Sleep()
     {
         if (asleep || Puppet || body.isKinematic) return;
+        PerfCounts.Add("prop.sleep");
         asleep = true;
         heldVelocity = body.linearVelocity;
         heldSpin = body.angularVelocity;
@@ -137,6 +138,7 @@ public class PhysicsProp : MonoBehaviour, IPushable
     void Wake()
     {
         if (!asleep) return;
+        PerfCounts.Add("prop.wake");
         asleep = false;
         body.isKinematic = false;
         body.linearVelocity = heldVelocity;

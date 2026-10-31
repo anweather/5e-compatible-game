@@ -29,6 +29,14 @@ using Debug = UnityEngine.Debug;
 // The wildfire ends with shots with and without FlameBank's flames (FlameShots),
 // so a script can count the pixels Prototype/Flame really drew.
 //
+// Step 2 of a pass (attribution) adds: PerfCounts, read each frame into the spike
+// lines and a "PERF COUNTS" line of name=sum/peak/frames; "PERF EARLY" lines for
+// frames over 100 ms before measuring starts, from the first frame here;
+// -perf-spike-ms N for a lower bar than 50; -perf-wide (PerfMarkers); -perf-hour H;
+// -perf-exact and -perf-time-budget, which force ChemGrid.ExactFrames on or off
+// (the bot turns it on; compare a budget in work units with one in milliseconds);
+// and -perf-flames-off, which draws a flamewall without its flames.
+//
 // The bot scenario films the playtest bot (add -playtest -playtest-seed N
 // -playtest-seconds N): it has no stage, -perf-seconds does nothing, and the
 // result is written as the bot quits. Game time stays locked to 1/30 s a frame
@@ -43,7 +51,9 @@ public class PerfScenario : MonoBehaviour
     const float CountEverySeconds = 2f, SpikeMs = 50f;
     const int MostSpikes = 200, ShotQuietFrames = 3, WorstFrames = 5;
     const double BytesPerMb = 1024.0 * 1024.0;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot };
+    const float EarlyMs = 100f;
+    const int MostEarly = 40;
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso" };
 
     readonly List<float> frameMs = new();
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
@@ -58,6 +68,11 @@ public class PerfScenario : MonoBehaviour
     double lastFrame, overheadMs, startedAt, countAt;
     int tickAtStart, frameNumber, quietFrames, errors, warnings;
     int burningPeak, burningNow, fogPeak, fogNow;
+    readonly Dictionary<string, (long sum, long peak, int frames)> counts = new();
+    PerfMarkers early;
+    double earlyFrom;
+    int earlyFrame, earlyLogged;
+    float spikeMs = SpikeMs;
 
     static string Arg(string name)
     {
@@ -71,7 +86,11 @@ public class PerfScenario : MonoBehaviour
         QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = -1;
         Application.logMessageReceived += OnLog;
+        PerfCounts.On = true;
+        early = new PerfMarkers();
+        earlyFrom = Time.realtimeSinceStartupAsDouble;
         scenario = Arg("-perf-scenario");
+        if (float.TryParse(Arg("-perf-spike-ms"), NumberStyles.Float, CultureInfo.InvariantCulture, out float bar) && bar > 0f) spikeMs = bar;
         seconds = scenario == Wildfire ? BurnSeconds : DefaultSeconds;
         if (float.TryParse(Arg("-perf-seconds"), NumberStyles.Float, CultureInfo.InvariantCulture, out float asked) && asked > 0f) seconds = asked;
         if (!Known.Contains(scenario) || (scenario == Bot && FindAnyObjectByType<PlaytestBot>() == null))
@@ -81,18 +100,26 @@ public class PerfScenario : MonoBehaviour
             yield break;
         }
         yield return new WaitForSecondsRealtime(WarmUpSeconds);
+        if (Has("-perf-exact")) ChemGrid.ExactFrames = true;
+        if (Has("-perf-time-budget")) ChemGrid.ExactFrames = false;
         grid = FindAnyObjectByType<ChemGrid>();
         wizard = WizardRig.FindLocal();
+        PerfStage stage = null;
         if (scenario != Bot)
         {
-            var stage = new GameObject("Perf stage").AddComponent<PerfStage>();
+            stage = new GameObject("Perf stage").AddComponent<PerfStage>();
             stage.Scenario = scenario;
+            if (float.TryParse(Arg("-perf-hour"), NumberStyles.Float, CultureInfo.InvariantCulture, out float hour)) stage.Hour = hour;
             while (!stage.Ready) yield return null;
         }
-        // A wildfire burns from the bolts, and fog's cost is in how it comes.
+        if (Has("-perf-flames-off")) grid.Flames.enabled = false;
+        // A wildfire burns from the bolts, and fog's cost is in how it comes. The others settle, even a walk.
         if (scenario != Wildfire && scenario != Fog) yield return new WaitForSecondsRealtime(SettleSeconds);
+        if (stage != null) stage.Go = true;
 
-        markers = new PerfMarkers();
+        early.Dispose();
+        early = null;
+        markers = new PerfMarkers(Has("-perf-wide"));
         tickAtStart = grid.World.Tick;
         startedAt = countAt = lastFrame = Time.realtimeSinceStartupAsDouble;
         measuring = true;
@@ -151,9 +178,29 @@ public class PerfScenario : MonoBehaviour
         yield return null;
     }
 
+    static bool Has(string name) => Environment.GetCommandLineArgs().Contains(name);
+
+    // Before measuring starts: the slow frames of start-up, with what the markers say of them.
+    void NoteEarly()
+    {
+        if (early == null) return;
+        double now = Time.realtimeSinceStartupAsDouble;
+        float ms = (float)((now - earlyFrom) * 1000.0);
+        earlyFrom = now;
+        earlyFrame++;
+        early.Sample();
+        PerfCounts.NextFrame();
+        if (ms > EarlyMs && earlyLogged++ < MostEarly)
+            Debug.Log($"PERF EARLY frame={earlyFrame} since_start={now.ToString("0.00", CultureInfo.InvariantCulture)} ms={ms.ToString("0.0", CultureInfo.InvariantCulture)}{early.Breakdown()}");
+    }
+
     void Update()
     {
-        if (!measuring) return;
+        if (!measuring)
+        {
+            NoteEarly();
+            return;
+        }
         double now = Time.realtimeSinceStartupAsDouble;
         float ms = (float)((now - lastFrame) * 1000.0 - overheadMs);
         lastFrame = now;
@@ -165,7 +212,8 @@ public class PerfScenario : MonoBehaviour
         if (quietFrames > 0) shotMs.Add(ms);
         else frameMs.Add(ms);
         FpsProbe.ReadTiming(mainMs, renderMs, gpuMs);
-        if (ms > SpikeMs) NoteSpike(ms, now);
+        if (ms > spikeMs) NoteSpike(ms, now);
+        ReadCounts();
         if (now >= countAt)
         {
             CountCells();
@@ -174,14 +222,27 @@ public class PerfScenario : MonoBehaviour
         if (scenario != Bot && now - startedAt >= seconds) Finish();
     }
 
+    // The frame's PerfCounts into the run's, after the spike line has had them.
+    void ReadCounts()
+    {
+        foreach (var pair in PerfCounts.Frame)
+        {
+            counts.TryGetValue(pair.Key, out var had);
+            counts[pair.Key] = (had.sum + pair.Value, Math.Max(had.peak, pair.Value), had.frames + 1);
+        }
+        PerfCounts.NextFrame();
+    }
+
     void NoteSpike(float ms, double now)
     {
         var inv = CultureInfo.InvariantCulture;
         var at = wizard != null ? wizard.transform.position : Vector3.zero;
         var chunk = grid.ChunkAt(at);
         string shot = quietFrames > 0 ? " bot_shot=1" : "";
+        var counted = new StringBuilder();
+        foreach (var pair in PerfCounts.Frame.OrderBy(p => p.Key, StringComparer.Ordinal)) counted.Append(" c.").Append(pair.Key).Append('=').Append(pair.Value.ToString(inv));
         spikes.Add((ms, $"PERF SPIKE scenario={scenario} frame={frameNumber} t={(now - startedAt).ToString("0.00", inv)} ms={ms.ToString("0.0", inv)}" +
-            $" hour={(grid.World.Minutes / 60.0 % 24.0).ToString("0.0", inv)} chunk={chunk.x},{chunk.y} active_chunks={grid.World.ActiveChunks.Count}{shot}{markers.Breakdown()}"));
+            $" hour={(grid.World.Minutes / 60.0 % 24.0).ToString("0.0", inv)} chunk={chunk.x},{chunk.y} weather={grid.World.Weather.Kind} active_chunks={grid.World.ActiveChunks.Count}{shot}{markers.Breakdown()}{counted}"));
     }
 
     // How many cells burn and hold fog, over the whole world; its time doesn't count against the frame.
@@ -213,6 +274,9 @@ public class PerfScenario : MonoBehaviour
         Application.logMessageReceived -= OnLog;
         markers?.Dispose();
         markers = null;
+        early?.Dispose();
+        early = null;
+        PerfCounts.On = false;
     }
 
     void Finish()
@@ -224,6 +288,8 @@ public class PerfScenario : MonoBehaviour
         Debug.Log(ResultLine(elapsed));
         string missing = string.Join(",", markers.Missing());
         Debug.Log($"PERF MARKERS scenario={scenario}{markers.Summary()}" + (missing.Length > 0 ? $" missing={missing}" : ""));
+        var inv = CultureInfo.InvariantCulture;
+        Debug.Log($"PERF COUNTS scenario={scenario} frames={frameNumber}" + string.Concat(counts.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $" {c.Key}={c.Value.sum.ToString(inv)}/{c.Value.peak.ToString(inv)}/{c.Value.frames.ToString(inv)}")));
         foreach (var (_, line) in spikes.OrderByDescending(s => s.ms).Take(MostSpikes)) Debug.Log(line);
         if (Environment.GetCommandLineArgs().Contains("-perf-list-markers")) ListMarkers();
     }

@@ -3,6 +3,8 @@ using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
 using Unity.Profiling;
+using Unity.Profiling.LowLevel;
+using Unity.Profiling.LowLevel.Unsafe;
 
 // The main Profiler markers read every frame for PerfScenario, through
 // ProfilerRecorder: Unity's own (the player loop, script updates, camera
@@ -10,7 +12,9 @@ using Unity.Profiling;
 // RobeCloth, the playtest bot). A recorder only finds a marker in a development
 // build; in any other it reads nothing, and Missing says which those are.
 // Sample keeps each marker's sum and peak for the run; Breakdown writes one
-// frame's slow markers, for a line about a slow frame.
+// frame's slow markers, for a line about a slow frame. A wide reader (-perf-wide)
+// also watches every timed marker of the main thread, for a hitch nothing else
+// names: costlier, and its markers overlap (a parent and its children all show).
 public sealed class PerfMarkers : IDisposable
 {
     /// <summary>The bot's own screenshot: its frames aren't the game's.</summary>
@@ -18,13 +22,14 @@ public sealed class PerfMarkers : IDisposable
     const string Collect = "GC.Collect";
     const double NsPerMs = 1e6;
     /// <summary>A marker under this in a frame stays out of its breakdown.</summary>
-    const double BreakdownFloorMs = 0.5;
+    const double BreakdownFloorMs = 0.5, WideFloorMs = 2.0;
 
     static readonly (ProfilerCategory category, string[] names)[] Timed =
     {
         (ProfilerCategory.Internal, new[]
         {
             "PlayerLoop", "BehaviourUpdate", "LateBehaviourUpdate", "FixedBehaviourUpdate", "CoroutinesDelayedCalls",
+            "Terrain.Details.Render", "Physics.TerrainCollider.ForceRebuildCollisions",
             "FixedUpdate.PhysicsFixedUpdate", "Physics.Simulate", "Physics.SyncTransforms",
             "Instantiate", "Loading.ReadObject", "Loading.AwakeFromLoad", "Mesh.UploadMeshData",
             "Shader.CreateGPUProgram", "CreateGraphicsPipelineAsync", "Semaphore.WaitForSignal",
@@ -42,6 +47,14 @@ public sealed class PerfMarkers : IDisposable
             "ValleyGround.Flush", "ValleyGround.Paint", "ValleyGround.ClearGrass", "ValleyGround.UploadPaint",
             "ValleyFauna.Update", "ValleyFauna.Think", "ValleyFauna.Draw",
             "RobeCloth.Step", "PlaytestBot.LateUpdate", BotShot,
+            "ChemGrid.ChunkPlan", "ChemGrid.ChunkApply", "ChemGrid.ChunkEvent", "ChemGrid.DetailChunks",
+            "ThingSpawner.SpawnChunk", "ThingSpawner.UnloadChunk", "ValleyGround.DrawDetails",
+            "ValleyGround.HeightUpdate", "ValleyGround.HeightEase", "ValleyGround.HeightWrite",
+            "Water.Recompute", "Water.ComputeTops", "Water.FindBanks", "Water.DrawTile",
+            "Contour.Tile.Outline", "Contour.Tile.Points", "Contour.Tile.Upload",
+            "Contour.Film.Outline", "Contour.Film.Points", "Contour.Film.Upload",
+            "FogBank.LateUpdate", "FogBank.MakePuffs", "FlameBank.Write", "FlameBank.LateUpdate",
+            "SpellCaster.ShowAim", "AimMarker.Redraw",
         }),
     };
 
@@ -49,24 +62,42 @@ public sealed class PerfMarkers : IDisposable
     readonly List<ProfilerRecorder> recorders = new();
     readonly double[] sum, peak, last;
     readonly int shotAt;
+    readonly double floorMs;
     ProfilerRecorder allocated = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
     ProfilerRecorder systemUsed = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "System Used Memory");
     ProfilerRecorder gfxUsed = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Gfx Used Memory");
     long allocatedSum, allocatedPeak;
     int frames, collections;
 
-    public PerfMarkers()
+    public PerfMarkers(bool wide = false)
     {
+        floorMs = wide ? WideFloorMs : BreakdownFloorMs;
         foreach (var (category, group) in Timed)
             foreach (string name in group)
             {
                 names.Add(name);
                 recorders.Add(ProfilerRecorder.StartNew(category, name));
             }
+        if (wide) WatchEverything();
         sum = new double[names.Count];
         peak = new double[names.Count];
         last = new double[names.Count];
         shotAt = names.IndexOf(BotShot);
+    }
+
+    // Every timed marker not read already, on this thread alone (a recorder sums all threads otherwise).
+    void WatchEverything()
+    {
+        var handles = new List<ProfilerRecorderHandle>();
+        ProfilerRecorderHandle.GetAvailable(handles);
+        var known = new HashSet<string>(names);
+        foreach (var handle in handles)
+        {
+            var description = ProfilerRecorderHandle.GetDescription(handle);
+            if (description.UnitType != ProfilerMarkerDataUnit.TimeNanoseconds || !known.Add(description.Name)) continue;
+            names.Add(description.Name);
+            recorders.Add(new ProfilerRecorder(handle, 1, ProfilerRecorderOptions.Default | ProfilerRecorderOptions.CollectOnlyOnCurrentThread));
+        }
     }
 
     /// <summary>The last frame's garbage, in bytes (0 outside a development build).</summary>
@@ -108,7 +139,7 @@ public sealed class PerfMarkers : IDisposable
     {
         var line = new StringBuilder();
         for (int i = 0; i < names.Count; i++)
-            if (last[i] >= BreakdownFloorMs) line.Append(' ').Append(names[i]).Append('=').Append(last[i].ToString("0.0", CultureInfo.InvariantCulture));
+            if (last[i] >= floorMs) line.Append(' ').Append(names[i]).Append('=').Append(last[i].ToString("0.0", CultureInfo.InvariantCulture));
         line.Append(" gc_alloc_kb=").Append((AllocatedLastFrame / 1024).ToString(CultureInfo.InvariantCulture));
         return line.ToString();
     }

@@ -87,11 +87,16 @@ public sealed class CellSlickMesh
         bool had = slicks.TryGetValue(key, out var was);
         if (film != null) slicks[key] = film;
         else slicks.Remove(key);
+        if (PerfCounts.On && (had ? was != film : film != null)) PerfCounts.Add("slick.changed." + (film ?? "none_was_" + was));
         dirty |= had ? was != film : film != null;
     }
 
     /// <summary>Ground moved somewhere: the film follows it at the next Rebuild.</summary>
-    public void GroundChanged() => dirty |= slicks.Count > 0 || eaten.Count > 0;
+    public void GroundChanged()
+    {
+        PerfCounts.Add("slick.ground_changed");
+        dirty |= slicks.Count > 0 || eaten.Count > 0;
+    }
 
     /// <summary>Acid ate something at a cell: it wears the eaten stain until <paramref name="until"/> (Time.time).</summary>
     public void Eaten(int x, int y, float until)
@@ -116,6 +121,8 @@ public sealed class CellSlickMesh
     {
         if (!dirty) return;
         dirty = false;
+        PerfCounts.Add("slick.rebuilds");
+        PerfCounts.Peak("slick.film_cells", slicks.Count + eaten.Count);
         surface.Build(Box(), (x, y) => Has(x, y) ? 1f : 0f,
             Height, Shade, (x, y) => BesideStep(x, y) ? 0f : 1f);
     }

@@ -122,8 +122,11 @@ public class FogBank : MonoBehaviour
         s.target = 0f;
     }
 
+    static readonly Unity.Profiling.ProfilerMarker LateMarker = new("FogBank.LateUpdate"), MakeMarker = new("FogBank.MakePuffs");
+
     void LateUpdate()
     {
+        using var marked = LateMarker.Auto();
         var cam = Camera.main;
         if (cam == null || squares.Count == 0) return;
         var turn = cam.transform.rotation;
@@ -132,6 +135,7 @@ public class FogBank : MonoBehaviour
         rainOwed += RainRate * Time.deltaTime;
         int drops = Mathf.FloorToInt(rainOwed);
         rainOwed -= drops;
+        PerfCounts.Peak("fog.squares", squares.Count);
         foreach (var pair in squares)
         {
             var s = pair.Value;
@@ -149,6 +153,7 @@ public class FogBank : MonoBehaviour
         {
             var s = squares[index];
             squares.Remove(index);
+            PerfCounts.Add("fog.squares_freed");
             foreach (var r in s.puffs) r.gameObject.SetActive(false);
             free.Push(s);
         }
@@ -244,9 +249,12 @@ public class FogBank : MonoBehaviour
         if (free.Count > 0)
         {
             var s = free.Pop();
+            PerfCounts.Add("fog.squares_reused");
             foreach (var r in s.puffs) r.gameObject.SetActive(true);
             return s;
         }
+        using var marked = MakeMarker.Auto();
+        PerfCounts.Add("fog.squares_new");
         EnsureMaterial();
         var made = new Square();
         for (int i = 0; i < PuffsPerSquare; i++)

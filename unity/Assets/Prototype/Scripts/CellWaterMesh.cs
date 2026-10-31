@@ -70,10 +70,27 @@ public sealed class CellWaterMesh
     public void Changed(int x, int y, bool isWet)
     {
         int key = grid.World.Idx(x, y);
+        if (PerfCounts.On) CountChange(key, isWet);
         if (isWet) wet.Add(key);
         else wet.Remove(key);
         MarkAround(x, y);
         stale = true;
+    }
+
+    // For a performance pass: what kind of change marks the tiles, and whether the water really changed.
+    readonly Dictionary<int, int> seenWater = new();
+
+    void CountChange(int key, bool isWet)
+    {
+        var c = grid.World.Cells[key];
+        bool flipped = wet.Contains(key) != isWet;
+        seenWater.TryGetValue(key, out int was);
+        seenWater[key] = c.Water;
+        PerfCounts.Add("water.changed");
+        if (flipped) PerfCounts.Add("water.changed_wet_or_dry");
+        else if (was != c.Water) PerfCounts.Add("water.changed_level");
+        else PerfCounts.Add("water.changed_other_only");
+        PerfCounts.Add(c.T == TerrainIds.River ? "water.changed_on_river" : "water.changed_off_river");
     }
 
     /// <summary>Ground moved at a cell: the water beside it may sit differently against its banks.</summary>
@@ -126,7 +143,14 @@ public sealed class CellWaterMesh
     public void Rebuild()
     {
         if (dirtyTiles.Count == 0) return;
-        if (stale) Recompute();
+        PerfCounts.Add("water.rebuilds");
+        if (stale)
+        {
+            PerfCounts.Add("water.recomputes");
+            PerfCounts.Peak("water.wet_cells", wet.Count);
+            using (RecomputeMarker.Auto()) Recompute();
+        }
+        PerfCounts.Peak("water.dirty_tiles", dirtyTiles.Count);
         drawBudget.Start();
         drawOrder.Clear();
         drawOrder.AddRange(dirtyTiles);
@@ -139,10 +163,15 @@ public sealed class CellWaterMesh
         foreach (int tile in drawOrder)
         {
             if (drawBudget.Over()) break;
-            DrawTile(tile);
+            using (DrawTileMarker.Auto()) DrawTile(tile);
+            PerfCounts.Add("water.tiles_drawn");
             dirtyTiles.Remove(tile);
         }
     }
+
+    // Profiler markers round what a Rebuild is made of (ContourSurface marks inside DrawTile).
+    static readonly Unity.Profiling.ProfilerMarker RecomputeMarker = new("Water.Recompute"), TopsMarker = new("Water.ComputeTops"),
+        BanksMarker = new("Water.FindBanks"), DrawTileMarker = new("Water.DrawTile");
 
     // The levels of every body of water and the banks round them; where a level moved, far from
     // the cell that changed, those tiles are redrawn too.
@@ -151,11 +180,15 @@ public sealed class CellWaterMesh
         stale = false;
         oldTops.Clear();
         foreach (var kv in tops) oldTops[kv.Key] = kv.Value;
-        ComputeTops();
+        using (TopsMarker.Auto()) ComputeTops();
         var world = grid.World;
         foreach (var kv in tops)
-            if (!oldTops.TryGetValue(kv.Key, out var was) || !Mathf.Approximately(was, kv.Value)) MarkAround(kv.Key % world.W, kv.Key / world.W);
-        FindBanks();
+            if (!oldTops.TryGetValue(kv.Key, out var was) || !Mathf.Approximately(was, kv.Value))
+            {
+                MarkAround(kv.Key % world.W, kv.Key / world.W);
+                PerfCounts.Add("water.tops_moved");
+            }
+        using (BanksMarker.Auto()) FindBanks();
     }
 
     // Squared distance on the ground from a point to a tile's middle.

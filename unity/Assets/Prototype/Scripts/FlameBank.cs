@@ -130,6 +130,8 @@ public class FlameBank : MonoBehaviour
     // A cell's tongues: more and taller with its level, each scattered and sized from the cell alone.
     void Write(Burn burn, int x, int y, Vector3 center)
     {
+        using var marked = WriteMarker.Auto();
+        PerfCounts.Add("flame.writes");
         var (tall, wide, tint, speed, more) = FireLook.FlamesOf(burn.look);
         float height = burn.level switch { >= 3 => 1.9f, 2 => 1.25f, _ => 0.75f } * tall * burn.scale * (cellSize / 1.5f);
         int shown = Mathf.Min(Mathf.CeilToInt((1 + 2 * Mathf.Min(burn.level, 3)) * more), Embers);
@@ -162,8 +164,11 @@ public class FlameBank : MonoBehaviour
         buffer.SetData(tongues, start, start, TonguesPerCell);
     }
 
+    static readonly Unity.Profiling.ProfilerMarker WriteMarker = new("FlameBank.Write"), LateMarker = new("FlameBank.LateUpdate");
+
     void LateUpdate()
     {
+        using var marked = LateMarker.Auto();
         while (dying.Count > 0 && dying.Peek().until <= Time.time)
         {
             int block = dying.Dequeue().block, start = block * TonguesPerCell;

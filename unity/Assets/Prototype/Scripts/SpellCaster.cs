@@ -456,10 +456,13 @@ public partial class SpellCaster : MonoBehaviour
     /// <summary>The marker on the ground (made with the first aim), for the probe.</summary>
     public AimMarker Marker => marker;
 
+    static readonly Unity.Profiling.ProfilerMarker ShowAimMarker = new("SpellCaster.ShowAim");
+
     // The marker follows what will go off: the cast under way at its charge so far, else what Cast would
     // cast. On the controller's element layout Cast isn't there, so with nothing under way there's no marker.
     void ShowAim(Vector2Int target, SpellDef spell, (int x, int y, int dir, int aimX, int aimY)? aim)
     {
+        using var marked = ShowAimMarker.Auto();
         marker ??= new AimMarker(grid, grid.aimShader != null ? grid.aimShader : Shader.Find("Prototype/AimMarker"));
         int charge = Charge;
         var (held, heldCharge) = HeldCast();
