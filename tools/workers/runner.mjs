@@ -36,7 +36,7 @@ state.sessions ??= {};
 
 function run(args) {
   return new Promise(resolve => {
-    const p = spawn(claude, args, { cwd: fs.existsSync(repo) ? repo : home, env: process.env, windowsHide: true, detached: process.platform !== 'win32' });
+    const p = spawn(claude, args, { cwd: fs.existsSync(repo) ? repo : home, env: process.env, windowsHide: true, detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'pipe'] }); // no stdin: claude -p would wait 3 s for it
     let out = '', err = '', ended = false;
     p.stdout.on('data', d => out += d); p.stderr.on('data', d => err += d);
     // A headless run waits for its background tasks (a Monitor's tail -f, a dev server) before it

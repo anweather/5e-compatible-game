@@ -623,3 +623,35 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   5. The punch goes on Circle (pad), when not casting (B still cancels a
      cast); F on keys. Square keeps picking up and sitting (#18).
   6. Voice: the sound pass first; Vivox voice waits for Andrew's setup.
+- 2026-10-30 21:25: UX pass 4 part 1 merged (aeb98ad; DesktopUnity): #2
+  targeting markers by spell shape (new probe aimlooks), #8 HUD (stamina
+  a thin line under Health and Magic; the Health and Magic block read as the
+  "top bar"), #9 the cast bar fills smoothly with charge steps, #10 Back
+  closes the grimoire. Notes posted on the issues. Not yet played by hand or
+  in a player build (part 3). FAST_LOOP: aimlooks row, combo's stamina line.
+  Part 2 (head flare, hat, fire, camera at houses) running.
+- 2026-10-30 21:35: DECIDED (Andrew): a performance pass after UX pass 4
+  (docs/handoffs/perf-pass-brief.md, host, player build, -fps-probe, the
+  Profiler; issues labelled perf), then a project skill `perf-pass` written
+  from how it actually ran. Order on the PC: UX pass 4 parts 2-3, Andrew's
+  five calls (worker), the perf pass, then the sound pass.
+- 2026-10-30 21:55: Linux workers. u1 (Pro) works through the direct
+  mailbox with no trust click (headless runs skip it): its test brief came
+  back as a usage-limit report and retries itself after Pro's reset. u2
+  (Max) cloned from ubuntu-template (1-6 GB), in bridge-watch's Max list;
+  first boot waits for the host Editor to close (8.8 GB free, 8 must stay).
+  u2 needs Andrew's one-time sign-ins in the VM: Claude (Max) and GitHub.
+- 2026-10-30 22:05: DECIDED (Andrew): the Linux margin beside an open Editor
+  is 5 GB (was 8), and the idle Pro coordinator session is closed (workers
+  take briefs directly; the PM merges and files issues). bridge-watch no
+  longer wakes a role at a reset unless it has mail. Memory, for the record:
+  of 31 GB, the Editor and its compiler about 8.6, Claude sessions 2.7,
+  Andrew's apps (Firefox, Discord, Steam) about 3.8, Windows and drivers
+  about 5. u2 booted (172.26.221.64); it waits for Andrew's Claude (Max) and
+  GitHub sign-ins.
+- 2026-10-30 22:15: u2 (Linux, Max) is ready: Andrew signed in (Claude Max,
+  GitHub anweather), the sign-ins are in its slot, and a test brief came back
+  through the direct mailbox. Both accounts now have a Linux worker (u1 Pro,
+  u2 Max) for core and sandbox work beside an open Editor (5 GB margin). For
+  the next Linux clone: the template lacks /var/lib/worker (sudo mkdir it)
+  and its Guest Service Interface was off (start.cmd's name copy failed).

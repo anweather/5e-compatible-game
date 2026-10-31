@@ -36,7 +36,7 @@ fi
 declare -A home=([pro]="$HOME/.claude-pro" [max]="$HOME/.claude")
 for kv in ${BRIDGE_WATCH_HOMES:-}; do home[${kv%%=*}]="${kv#*=}"; done
 declare -A role=([pro]=coordinator [max]=pm)
-declare -A vms=([pro]="w1 w2 u1" [max]="w3 w4")
+declare -A vms=([pro]="w1 w2 u1" [max]="w3 w4 u2")
 declare -A other=([pro]=pm [max]=coordinator)
 declare -A of_role=([coordinator]=pro [pm]=max)
 
@@ -100,8 +100,12 @@ check_back() { # $1 = account
   rm -f "$state/$a.out"
   log "$a is back"
   mail "${other[$a]}" "$a is back" "The $a account's usage limit has reset."
-  mail "${role[$a]}" "your usage is back" "The $a account's usage limit has reset. Read your inbox and carry on with your queue."
-  wake "${role[$a]}"
+  # The role is told only if it has work waiting: a session closed on purpose (the Pro
+  # coordinator, out of the worker loop since 2026-10-30) isn't woken just to hear this.
+  if compgen -G "$root/${role[$a]}/*.md" >/dev/null; then
+    mail "${role[$a]}" "your usage is back" "The $a account's usage limit has reset. Read your inbox and carry on with your queue."
+    wake "${role[$a]}"
+  fi
 }
 
 wake() { # wake <role>, at most once every 30 min
