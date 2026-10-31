@@ -56,7 +56,10 @@ The one page a new PM session reads first. Keep it short: history goes in
 - DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
   comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
   cast-sound prototypes for Andrew to pick from before anything is built in.
-- Mac: the Dragon's view (item 4 below).
+- Mac: the Dragon's view is pushed (`dragon-view`, efb186a), not merged: it waits on `probe.sh online`
+  in a normal Editor (DesktopUnity, queued). Every machine rebuilds the yard after it lands. For Andrew,
+  with media first: the model (reads friendly, not ancient), water never shelters (no cell reaches
+  depth 8), a raised Wall of Stone is wiped by the chunk reset before the breath arrives.
 - u1: the rules MCP server, phase 1 (`docs/RULES_MCP.md`, D13; brief `briefs/rules-mcp.md`). Awake
   again after the perf run.
 
