@@ -39,14 +39,61 @@ public static class PrototypeBuild
     [MenuItem("Prototype/Build/macOS (profiling)")]
     public static void MacOSProfiling()
     {
-        if (!File.Exists(Scene) || Environment.GetCommandLineArgs().Contains("-rebuild-yard"))
-        {
-            if (!AssetDatabase.IsValidFolder("Assets/Prototype/Generated")) AssetDatabase.CreateFolder("Assets/Prototype", "Generated");
-            ChemYardBuilder.Build();
-        }
+        BuildYardIfAsked();
         string line = Build(BuildTarget.StandaloneOSX, $"Builds/macOSProfiling/{ProductName}.app", BuildOptions.Development | BuildOptions.ConnectWithProfiler);
         if (Application.isBatchMode) EditorApplication.Exit(line.Contains(": OK") ? 0 : 1);
     }
+
+    /// <summary>
+    /// The Windows player with no Editor window, on the Mac or the PC, from a clean tree: what
+    /// UpdateBuild.Players makes for tools/ship-update.sh, in Builds/Update/win/. From the command
+    /// line: -batchmode -nographics -buildTarget Win64 -executeMethod
+    /// PrototypeBuild.BuildWindowsFromCommandLine, with -rebuild-yard (a missing yard is built
+    /// anyway) and -build-version X.Y.Z (Player Settings' version otherwise) if wanted. It exits
+    /// by itself, 0 only for a good build with its PSO collection and shaders inside, and logs
+    /// "HEADLESS BUILD: OK" or "HEADLESS BUILD: FAILED". docs/RELEASING.md.
+    /// </summary>
+    public static void BuildWindowsFromCommandLine()
+    {
+        bool ok = false;
+        try
+        {
+            ok = BuildWindowsFolder();
+        }
+        catch (Exception e)
+        {
+            Debug.LogException(e);
+        }
+        Debug.Log($"HEADLESS BUILD: {(ok ? "OK" : "FAILED")}");
+        if (Application.isBatchMode) EditorApplication.Exit(ok ? 0 : 1);
+    }
+
+    static bool BuildWindowsFolder()
+    {
+        if (!AssetPackRestore.AllPresent)
+        {
+            Debug.LogError("Asset Store packs are missing: run Prototype > Restore Asset Packs in an Editor first.");
+            return false;
+        }
+        BuildYardIfAsked();
+        var args = Environment.GetCommandLineArgs();
+        int at = Array.IndexOf(args, "-build-version");
+        string version = at >= 0 && at + 1 < args.Length ? args[at + 1] : PlayerSettings.bundleVersion;
+        string line = UpdateBuild.Players(version, mac: false, windows: true);
+        if (!line.StartsWith("Update build: OK", StringComparison.Ordinal)) return false;
+        return lastContents.Complete;
+    }
+
+    // The yard isn't in git and YardAutoBuild doesn't run in batch mode.
+    static void BuildYardIfAsked()
+    {
+        if (File.Exists(Scene) && !Environment.GetCommandLineArgs().Contains("-rebuild-yard")) return;
+        // A fresh checkout has no Generated folder (it isn't in git): the builders write into it.
+        if (!AssetDatabase.IsValidFolder("Assets/Prototype/Generated")) AssetDatabase.CreateFolder("Assets/Prototype", "Generated");
+        ChemYardBuilder.Build();
+    }
+
+    static BuildContents.Summary lastContents; // of the player Build made last
 
     const string Exe = "SpellChemistryValley.exe";
     const string ReadmeTemplate = "ReleaseReadme.txt"; // in the project folder, next to Assets/
@@ -152,6 +199,8 @@ public static class PrototypeBuild
             target = target,
             options = options,
         });
+        lastContents = BuildContents.Of(target, report);
+        Debug.Log("PLAYER CONTENTS: " + lastContents.Line);
         var s = report.summary;
         // Unity can report Succeeded for a build that threw and wrote nothing (seen with a
         // platform module installed but not yet loaded), so check the output too.
