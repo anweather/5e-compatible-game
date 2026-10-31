@@ -14,7 +14,8 @@ using UnityEngine;
 // mesh is rebuilt from the particles after each step, smooth-shaded like the
 // bodice (VillageLit). It snaps back to rest after a jump of more than 2 m (a
 // teleport, Misty Step, the online reset). The local player's robe steps at 60
-// Hz, everyone else's at 30 and any far off at 20; it stops while off screen.
+// Hz, everyone else's at 30 and any far off at 20; it stops while off screen,
+// and snaps back to rest when it's seen again.
 // View only: every peer runs its own, nothing is shared.
 // After the poses (SitPose, SwimPose, RollPose, CastPose) have set the bones, so it hangs on them.
 [DefaultExecutionOrder(300)]
@@ -167,12 +168,21 @@ public class RobeCloth : MonoBehaviour
         lastHips = lastStepHips = hips.position;
     }
 
+    bool hidden;
+
     void LateUpdate()
     {
         if (!ready) return;
         if (Vector3.Distance(hips.position, lastHips) > SnapDistance) Snap();
         lastHips = hips.position;
-        if (!look.isVisible) return;
+        if (!look.isVisible)
+        {
+            hidden = true;
+            return;
+        }
+        // It stood still while it wasn't drawn and the wizard didn't: back on from rest, not from where it was left.
+        if (hidden) Snap();
+        hidden = false;
         float step = Step * Slowdown();
         clock += Mathf.Min(Time.deltaTime, step * MaxStepsPerFrame);
         long from = System.Diagnostics.Stopwatch.GetTimestamp();

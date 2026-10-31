@@ -27,6 +27,7 @@ public partial class SpellLooksProbe
         yield return LavaRun(Spot(12, 3));
         yield return SteamRust(Spot(6, 4));
         yield return IceOnAMound(Spot(7, 7));
+        yield return ThinIce(Spot(6, 6));
         yield return FrozenRaider(Spot(5, 5));
     }
 
@@ -370,6 +371,27 @@ public partial class SpellLooksProbe
             ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, o.x + x, o.y + y, "", ThingId.None));
         yield return Wait(0.5f);
         yield return Picture("crack-ice-mound");
+    }
+
+    // Ice that's only a film, frozen rain on dry ground: a unit here and there, too thin for the ice's mesh.
+    IEnumerator ThinIce(Vector2Int o)
+    {
+        Patch(o, 6, 6, TerrainIds.Dirt);
+        for (int y = 0; y < 6; y++)
+            for (int x = 0; x < 6; x++)
+            {
+                if ((x + y) % 2 != 0) continue;
+                var c = World.At(o.x + x, o.y + y);
+                c.Water = 1;
+                c.Frozen = true;
+            }
+        yield return Frame(o, 6, 6, V(-3f, 3f, -4f), 6f);
+        for (int y = 0; y < 6; y++)
+            for (int x = 0; x < 6; x++)
+                if ((x + y) % 2 == 0) ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, o.x + x, o.y + y, "", ThingId.None));
+        yield return Wait(0.5f);
+        Check("thin_ice_cracks", World.At(o.x + 2, o.y + 2).Cracked != 0, $"cracked {World.At(o.x + 2, o.y + 2).Cracked}");
+        yield return Picture("crack-thin-ice");
     }
 
     IEnumerator SteamRust(Vector2Int o)

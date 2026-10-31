@@ -21,3 +21,5 @@ after a short one.
 
 ![before](before.jpg)
 ![bare legs](bare-legs.jpg)
+
+**Cause (2026-10-30):** `RobeCloth` stopped while not visible and resumed from where it was left; it now snaps to rest when seen again. Bot runs on a locked PC make this far worse: the robe was visible on 14 of 2880 frames, so the player was hardly rendering outside the bot's shots. See #4.

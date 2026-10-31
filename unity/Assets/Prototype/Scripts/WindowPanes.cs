@@ -120,7 +120,7 @@ public class WindowPanes : MonoBehaviour
     Vector3 Uv(int pane, int corner)
     {
         bool web = pane < cracked.Length && cracked[pane] && !open[pane];
-        return new Vector3(corner == 1 || corner == 2 ? 1f : 0f, corner >= 2 ? 1f : 0f, web ? 1f + Mathf.Repeat(pane * 0.37f, 1f) : 0f);
+        return new Vector3(corner == 1 || corner == 2 ? 1f : 0f, corner >= 2 ? 1f : 0f, web ? 1f + CellCrackMesh.WebSeed(pane * 0.37f) : 0f);
     }
 
     /// <summary>

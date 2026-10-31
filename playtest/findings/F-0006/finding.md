@@ -21,6 +21,8 @@ its quad. Probably the web's pattern or blend isn't reaching the player build
 (the decal shares the `Prototype/WindowGlass` shader with window panes). That
 is unverified: check it in the Editor against the player.
 
+**Cause (2026-10-30):** not cracks. These are the spell aim markers (`SpellCaster.ShowMarkers`), one per cell of the selected spell's area, 0.3 of a cell wide, there since 2026-10-24. In a player build, selecting Thunderwave on uncracked ground shows 9 and Spike Growth 81, and webs staged on glass, ice and a pane draw correctly. See #2.
+
 **Replay:** `playtest run --replay playtest/runs/rc018-812/run.json --until-frame 1620 --player %LOCALAPPDATA%/SpellChemistryValley/current`
 (the run folders stay on the PC, out of git)
 
