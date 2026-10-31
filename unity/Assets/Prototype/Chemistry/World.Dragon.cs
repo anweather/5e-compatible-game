@@ -233,6 +233,16 @@ namespace Chem
         // This pass runs toward 0: passes go there and back.
         static bool Backward(DragonState d) => d.Back ^ (d.Pass % 2 == 1);
 
+        /// <summary>
+        /// A pass's line, for the view to fly: the middle of its strip, in cells across the passes, and whether it runs
+        /// toward 0. A sum on the world's size and the flight's first flags, changing nothing.
+        /// </summary>
+        public (int middle, bool back) PassLine(DragonState flight, int pass)
+        {
+            var d = new DragonState { AlongX = flight.AlongX, FromFar = flight.FromFar, Back = flight.Back, Pass = pass };
+            return ((StripOf(d) * 2 + WidthOf(d)) * Chunks.Size / 2, Backward(d));
+        }
+
         // Whether the breath is out: on a pass, not wheeling round, and started.
         static bool Breathing(DragonState d) => d != null && d.Phase == DragonPhase.Passes && d.Until == 0 && d.Travelled > 0;
 

@@ -47,6 +47,8 @@ public class CloudSky : MonoBehaviour
     static readonly Look Rain = new(0.95f, 0.6f, 0.95f, 650f, 2200f, 0.6f);
     static readonly Look Storm = new(1f, 0.9f, 1f, 600f, 7500f, 1f);
     static readonly Look Snow = new(0.95f, 0.3f, 0.9f, 700f, 1500f, 0.2f);
+    // The dragon's sky: a low dark lid, thinner than a storm's, as it's over the whole valley for minutes.
+    static readonly Look Dragon = new(1f, 1f, 1f, 700f, 1500f, 0f);
 
     // The clear sky through the day, by the sun's height (0 straight down, 0.5 on the horizon, 1 overhead).
     static readonly Gradient Zenith = Make(
@@ -130,7 +132,7 @@ public class CloudSky : MonoBehaviour
         var cam = Camera.main;
         if (world == null || cam == null || skyLight.sun == null) return;
         var now = world.Weather;
-        shown = Look.Lerp(shown, Wanted(now), 1f - Mathf.Exp(-Time.deltaTime * 0.3f));
+        shown = Look.Lerp(shown, Look.Lerp(Wanted(now), Dragon, skyLight.Menace), 1f - Mathf.Exp(-Time.deltaTime * 0.3f));
         Drift(world.WindDir);
         strike = Mathf.MoveTowards(strike, 0f, Time.deltaTime * 2.5f);
 
@@ -138,7 +140,7 @@ public class CloudSky : MonoBehaviour
         var moonDir = skyLight.moon != null ? -skyLight.moon.transform.forward : -sunDir;
         float key = sunDir.y * 0.5f + 0.5f;
         float night = 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.15f, 0.05f, sunDir.y));
-        var disc = SunDisc.Evaluate(key) * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.06f, 0.03f, sunDir.y));
+        var disc = SunDisc.Evaluate(key) * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.06f, 0.03f, sunDir.y)) * (1f - 0.92f * skyLight.Menace);
 
         // Overcast greys the sky toward its own brightness, so it works at noon and at midnight alike.
         var clearZenith = Zenith.Evaluate(key);
@@ -147,6 +149,9 @@ public class CloudSky : MonoBehaviour
         var grey = new Color(brightness, brightness * 1.02f, brightness * 1.06f);
         var zenith = Color.Lerp(clearZenith, grey * 0.78f, shown.overcast) * (1f - 0.45f * shown.darkness);
         var horizon = Color.Lerp(clearHorizon, grey, shown.overcast) * (1f - 0.35f * shown.darkness);
+        // Bruised red toward the horizon, under the dragon.
+        zenith = Color.Lerp(zenith, new Color(0.012f, 0.008f, 0.01f), skyLight.Menace);
+        horizon = Color.Lerp(horizon, new Color(0.05f, 0.02f, 0.016f), skyLight.Menace);
         var ground = GroundColor * (Mathf.Clamp01(brightness / 0.8f) * (1f - 0.4f * shown.darkness));
 
         Shader.SetGlobalVector(SunDirectionId, sunDir);

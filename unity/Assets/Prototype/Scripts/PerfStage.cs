@@ -13,7 +13,9 @@ using UnityEngine;
 // night unless Hour says otherwise; aim holds each kind of aim marker on a moving
 // aim; flamewall stands a wall of flames close to the camera, kept alight (with
 // -perf-no-fire, -perf-lights-off and -perf-smoke-off to take it apart); pso tries
-// every loaded material on URP's Particles/Lit shader (PerfPsoCheck).
+// every loaded material on URP's Particles/Lit shader (PerfPsoCheck). dragon films
+// a real flight from one spot over the valley (give -perf-seconds for the length you
+// want), dragonclear the same spot without it.
 public class PerfStage : ShowcaseScript
 {
     // Hollowmere's place and square in cells (world/villages.json).
@@ -22,7 +24,7 @@ public class PerfStage : ShowcaseScript
     const float BoltGap = 0.4f, Noon = 12f, Night = 21.5f;
     // The route in chunks: F-0002's, in a ring through the forest, walked until the run ends.
     static readonly (int cx, int cy)[] ForestRoute = { (6, 7), (6, 6), (5, 6), (5, 5), (4, 5), (4, 4), (5, 4), (6, 4), (6, 5), (7, 5), (7, 6), (6, 6) };
-    const int ChunkCells = 64, WallCells = 40, WallDeep = 6;
+    const int ChunkCells = 64, WallCells = 40, WallDeep = 6, DragonWarning = 30;
     const float StuckSeconds = 6f, JumpEverySeconds = 1f, ArriveMetres = 3f;
     const float AimSecondsEach = 5f, AimStepSeconds = 0.1f, AimRingMetres = 14f, RelightSeconds = 0.5f;
 
@@ -41,12 +43,25 @@ public class PerfStage : ShowcaseScript
         if (Scenario == "wildfire") yield return Wildfire();
         else if (Scenario == "village") Hollowmere();
         else if (Scenario == "forest") LogMap();
+        else if (Scenario is "dragon" or "dragonclear") DragonShot();
         else Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
         if (Scenario == "aim") StartCoroutine(Aim());
         if (Scenario == "flamewall") StartCoroutine(FlameWall());
         if (Scenario == "pso") yield return new PerfPsoCheck(this).Run();
         Ready = true;
+    }
+
+    // One view from above the valley's middle, for the dragon's flight (from R, at its real speed, with a short warning) and for
+    // the same view with no dragon.
+    void DragonShot()
+    {
+        var middle = grid.CellCenter(World.W / 2, World.H / 2);
+        middle.y = grid.GroundAt(middle);
+        Cut(middle + V(120f, 70f, -180f), middle);
+        if (Scenario != "dragon") return;
+        World.Rules.Sim.Dragon.WarningTicks = DragonWarning;
+        grid.SummonDragon();
     }
 
     // Noon, this weather and no other, ramped in at once.

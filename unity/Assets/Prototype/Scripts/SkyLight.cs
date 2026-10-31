@@ -7,6 +7,8 @@ using UnityEngine.Rendering;
 // moon lights the night, and clouds, rain and fog dull the light and close
 // the haze in. Presentation only: the time and the weather are the core's,
 // so every player sees the same sky. Also the clock line at the top right.
+// The dragon darkens all of it (Menace, DragonFlight.Darkness), read from the
+// core's flight, so that's the same on every machine too.
 //
 // The ambient light is baked from the noon sky once, at the start, and
 // then scaled and tinted each frame for the hour, the cloud, the dawn and
@@ -40,6 +42,12 @@ public class SkyLight : MonoBehaviour
 
     /// <summary>Lights the whole sky up for a moment (lightning; 1 is a strike close by).</summary>
     public void Flash(float amount) => flash = Mathf.Max(flash, amount);
+
+    /// <summary>How far the dragon has darkened the sky, 0..1 (eased toward the flight); CloudSky reads it for the clouds.</summary>
+    public float Menace { get; private set; }
+
+    // How fast the dark comes on and lifts (a full swing a second, times this).
+    const float MenaceEase = 0.2f;
 
     /// <summary>0 at night to 1 by day, the sun's light on the land (for WeatherFx and anything that dims at night).</summary>
     public float Daylight { get; private set; } = 1f;
@@ -105,6 +113,7 @@ public class SkyLight : MonoBehaviour
         if (!ambientBaked) BakeDaylight();
         var now = world.Weather;
         cloud = Mathf.MoveTowards(cloud, CloudOf(now), Time.deltaTime * 0.3f);
+        Menace = Mathf.MoveTowards(Menace, DragonFlight.Darkness(world), Time.deltaTime * MenaceEase);
         fog = Mathf.MoveTowards(fog, now.Fog / 100f, Time.deltaTime * 0.2f);
         // The clock, not the tick: Hasten Time runs it ahead (World.ClockTick).
         float minute = (float)(Sky.MinutesSmooth(world.Rules.Sim, ShownClock(world)) % Sky.MinutesPerDay);
@@ -140,7 +149,7 @@ public class SkyLight : MonoBehaviour
 
     void Shine(float sunUp, float moonUp)
     {
-        float clear = 1f - 0.65f * cloud;
+        float clear = (1f - 0.65f * cloud) * (1f - 0.8f * Menace);
         float sunLight = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.04f, 0.25f, sunUp));
         sun.intensity = 1.6f * sunLight * clear;
         sun.color = Color.Lerp(new Color(1f, 0.55f, 0.32f), new Color(1f, 0.92f, 0.82f), Mathf.InverseLerp(0.02f, 0.45f, sunUp));
@@ -169,7 +178,7 @@ public class SkyLight : MonoBehaviour
     // and dusk.
     void Ambient(float sunUp, float sunLight)
     {
-        float level = RenderSettings.ambientIntensity * Mathf.Lerp(0.25f, 1f, Daylight) * (1f - 0.45f * cloud);
+        float level = RenderSettings.ambientIntensity * Mathf.Lerp(0.25f, 1f, Daylight) * (1f - 0.45f * cloud) * (1f - 0.65f * Menace);
         var tint = Color.Lerp(new Color(0.55f, 0.65f, 1f), Color.white, Daylight);
         tint *= Color.Lerp(Color.white, new Color(0.92f, 0.94f, 1f), cloud);
         float low = (1f - Mathf.InverseLerp(0.02f, 0.45f, sunUp)) * sunLight;

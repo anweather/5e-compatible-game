@@ -13,7 +13,7 @@ using Debug = UnityEngine.Debug;
 
 // One timed scenario in a player build, for a performance pass
 // (docs/perf/, the MacOSProfiling build in PrototypeBuild). Start the game with
-//   -fps-probe -perf-scenario <meadow|wildfire|storm|snow|fog|village|bot> [-perf-seconds N]
+//   -fps-probe -perf-scenario <meadow|wildfire|storm|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
 // and FpsProbe hands over to this instead of its showcase: PerfStage sets the
 // scene, it settles, every frame is measured for N seconds (30 by default, 20
 // for the wildfire), one "PERF RESULT" line of key=value pairs goes to the
@@ -56,7 +56,7 @@ public class PerfScenario : MonoBehaviour
     const double BytesPerMb = 1024.0 * 1024.0;
     const float EarlyMs = 100f;
     const int MostEarly = 40;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear" };
 
     readonly List<float> frameMs = new();
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
