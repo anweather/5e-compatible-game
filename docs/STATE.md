@@ -67,6 +67,9 @@ The one page a new PM session reads first. Keep it short: history goes in
   stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
   which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
   is wiped before the breath arrives.
+- **Headless builds (Andrew, 2026-10-31): the Mac builds the Windows player in batch mode** (Mono, so it can
+  cross-build); branch `headless-build`. The Mac also takes `wip/punch-strike`'s non-online checks and the
+  cast sound build-in. The PC keeps only online probes and the Windows install-from-draft check.
 - **Paused (Andrew, to free the PC):** DesktopUnity is idle with the Editor closed. Its work is on
   `wip/punch-strike` (a202fd1: the IK punch at punchShove 2.5, the strike wiring, NetProp MaxKick 300), not
   mergeable yet. Resume on the host-ux worktree: switch to it, reopen the Editor, run compile/warnings (17
