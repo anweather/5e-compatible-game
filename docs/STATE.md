@@ -42,7 +42,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Releases
 
-- **0.1.8** (2026-10-30), Windows only. **0.1.9 is being cut now:** dev frozen at d345b7f plus fixes.
+- **0.1.9** published 2026-10-31 (Windows only, pre-release); main merged back, freeze lifted.
   DesktopUnity runs a fresh Editor, serial gates, the Windows build into the draft, install from the
   draft, then the update from 0.1.8. Notes: `docs/handoffs/release-0.1.9-notes.md`. Publish if green;
   then merge main back into dev and lift the freeze.
