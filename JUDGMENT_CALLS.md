@@ -41,6 +41,26 @@ Each entry has:
 
 ## Decided
 
+### J-045: The punch (punch-crate.mp4, #18)
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any melee, knock-back or PvP question.
+- **Answer:** too weak: about 2-2.5x stronger, so it's noticeable. It needs a real punch animation
+  (IK). Punching other players for damage "could be interesting" (open: today it only shoves props
+  and cracks panes, and only the puncher's machine shows the arm).
+- **Why:** Andrew watched the clip.
+- **Revisited:** 0.
+
+### J-044: Cast sounds A/B/C, and the new slam
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any cast-sound or casting-feel tuning.
+- **Answer:** B (deep hum, stacked fifths) as the base, with a little of C's accelerating pulse (less
+  than C). The new slam animation is good. Iterate sounds as audio files only, no video, made outside
+  Unity, in a series like the clips (earth single, water + air pair, charged fire).
+- **Why:** Andrew listened to the clips.
+- **Revisited:** 0.
+
 ### J-043: The dragon's look (dragon-view clip)
 
 - **Asked:** 2026-10-31, by the PM (board).
