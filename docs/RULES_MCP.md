@@ -113,6 +113,25 @@ switches on), so lockstep holds and we run no servers for it.
 3. **In the game and live rooms**: the MCP served by the game on localhost, `apply` and
    `revert`, the three change modes chosen at room creation, every peer validating incoming
    changes, the log line per change, a mod gallery.
+   - **Built, core half (2026-10-31, `live-rules`):** the room in the world state
+     (`Room.cs`, `World.Room.cs`): a change mode set by `World.OpenRoom` when the world is made,
+     saved with it (`World.Load` takes the budgets for a room's save) and in the checksum (through
+     `CastHash`). A `RoomCommand` (switch a mod on, or revert one, naming the peer) rides in the
+     tick batch (`TickBatch.Room`, `AddRoom` for a late joiner). At that tick every peer decides it
+     itself: the change mode (`RoomPolicy.Refusal`), then `ModValidator` against its own rules in
+     force, then the active mods composed again over the base in order. A refusal is the same
+     sentence everywhere and changes nothing the checksum sees. The active mods keep id, title, who
+     added it and the tick; a revert takes one off and recomposes the rest. One log line per change
+     ("Ana switched on Big fireball (Open room)", "Revert refused: only the host can change this
+     room"). The MCP has `apply`, `revert` and `room` against a world in memory. Tests:
+     `RoomTests.cs` (two peers side by side, a hostile patch and a good one, hashes compared),
+     `RoomToolsTests.cs`.
+   - **Still to do, Unity half:** the change-mode choice in the room-creation menu (calls
+     `OpenRoom`); `RoomIntent` in `Net/` (client to host; the host may refuse early with
+     `RoomPolicy.Refusal`, then stamps the command into a batch and the late joiner's history);
+     `RoomHash` is already inside `CastHash`, so the checksum needs no change; the game serving these
+     tools on localhost against its own world instead of the one in memory; the HUD line from the
+     world log; and the mods panel (M) going through the room when one is open, not `RuleSwitcher`.
 4. **Assets**: not now. Procedural families come first, and may make most of it unnecessary.
 
 ## Open questions
