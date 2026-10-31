@@ -128,5 +128,18 @@ namespace Chem.Mcp
         public string Save([Description("The draft.")] string draft, [Description("A short title.")] string title, [Description("The idea in a sentence or two: what people vote on.")] string idea,
             [Description("The file name without .json; from the title when left out.")] string name = null, [Description("Replace a mod with that name.")] bool overwrite = false) =>
             Do(() => $"Saved {bench.Save(draft, title, idea, name, overwrite)}.");
+
+        // ---------- the room ----------
+
+        [McpServerTool(Name = "room"), Description("The room's change mode (open, host-only or locked) and the mods on in it, in order, with who added each and the tick. With a mode, first makes a new room in that mode, as a room is made.")]
+        public string Room([Description("Optional: open, host-only or locked, to make a new room.")] string mode = null) => Do(() => bench.Room(mode));
+
+        [McpServerTool(Name = "apply"), Description("Switches a mod on in the room, at the next tick. The room's change mode decides whose changes go in, and the mod is checked first (validate); a refusal comes back as one sentence, and the world log says who changed what.")]
+        public string Apply([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string mod,
+            [Description("The peer asking, by name; the host when left out.")] string peer = null) => Do(() => bench.Apply(mod, peer));
+
+        [McpServerTool(Name = "revert"), Description("Takes a mod off in the room, at the next tick; the other mods stay on, in order. The room's change mode decides who may.")]
+        public string Revert([Description("The mod's id, as room lists it.")] string mod,
+            [Description("The peer asking, by name; the host when left out.")] string peer = null) => Do(() => bench.Revert(mod, peer));
     }
 }

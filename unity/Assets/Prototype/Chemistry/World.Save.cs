@@ -95,6 +95,7 @@ namespace Chem
             SaveGolf(save);
             SaveDragon(save);
             SaveCourse(save);
+            SaveRoom(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
             var made = new Cell();
             var saved = new JArray();
@@ -109,9 +110,10 @@ namespace Chem
 
         /// <summary>
         /// A world from a save: made from the source, then the save's changes and state laid over.
-        /// Refused (SaveException) unless the save's format, source and rules are these.
+        /// Refused (SaveException) unless the save's format, source and rules are these. A room's save
+        /// takes the room's base rules and the budgets (rules/budgets.json), and composes its mods again.
         /// </summary>
-        public static World Load(string save, Rules rules, IChunkSource source)
+        public static World Load(string save, Rules rules, IChunkSource source, ModBudgets budgets = null)
         {
             if (rules == null) throw new ArgumentNullException(nameof(rules));
             if (source == null) throw new ArgumentNullException(nameof(source));
@@ -126,8 +128,12 @@ namespace Chem
             }
             Expect((int?)s["format"] == SaveFormat, $"a save of format {s["format"]}, not {SaveFormat}");
             Expect((string)s["source"] == source.Version, $"made by {s["source"]}, not {source.Version}");
+            var room = s["room"] as JObject;
+            var roomRules = room == null ? null : SavedRoomRules(room, rules, budgets);
+            if (roomRules != null) rules = roomRules.Effective;
             Expect((string)s["rules"] == rules.Fingerprint, "saved under other rules (or mods)");
             var w = new World(rules, (int)s["w"], (int)s["h"], (uint)s["seed"]);
+            if (room != null) w.LoadRoom(room, roomRules, budgets);
             w.MakeFrom(source);
             w.LoadStart(s);
             w.LoadState(s);
