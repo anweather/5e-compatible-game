@@ -655,3 +655,9 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   u2 Max) for core and sandbox work beside an open Editor (5 GB margin). For
   the next Linux clone: the template lacks /var/lib/worker (sudo mkdir it)
   and its Guest Service Interface was off (start.cmd's name copy failed).
+- 2026-10-30 22:20: The MacBook is back (Andrew): compute only, no Mac
+  builds. Its session `unity-game-macbook` (Max, Remote Control) has Unity
+  with a GPU, so it takes Unity work the VMs can't (EditMode, probes) besides
+  rules work. First task: Andrew's five calls (branch andrew-calls), which
+  had been waiting for memory on the PC. Replies come by SendMessage; that
+  route doesn't confirm reading, so check its branch if it goes quiet.
