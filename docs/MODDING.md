@@ -170,6 +170,67 @@ about that many squares (the sandbox ignores it). It is stricter about
 types, too: a sim number that isn't a number, or is negative, is refused
 (except `sim.height.min`, which must be 0 or below).
 
+## Using the rules MCP
+
+Instead of writing the patch by hand, you can ask your own Claude to build
+it through the **rules MCP server** (`core/Rules.Mcp`, design in
+`docs/RULES_MCP.md`). Its tools are typed, every change is checked, and it
+can run the change headless before anyone plays it.
+
+**Add it to Claude Code**, from the repo root (it needs the .NET 8 SDK):
+
+```sh
+dotnet build core/Rules.Mcp -c Release
+claude mcp add rules -- dotnet core/Rules.Mcp/bin/Release/net8.0/Rules.Mcp.dll --rules "$PWD/rules"
+```
+
+**The tools:**
+
+| Kind | Tools |
+|---|---|
+| Read | `list(table)`, `describe(table, id)`, `explain(element, material)` |
+| Draft | `add_material`, `set_material`, `add_reaction`, `set_reaction`, `add_spell`, `set_spell`, `tune`, `remove` |
+| Check | `validate(draft)`: shape, references, the design rules, determinism, budgets |
+| Run | `simulate(draft, scenario, ticks)`: `fire-on-grass`, `flood` or `storm`, with and without the draft |
+| Save | `save(draft, title, idea)`: writes `rules/mods/<name>.json` once it validates |
+
+A draft is a patch held in memory under an id (`d1`, `d2`...): leave the
+draft out of the first call to start one, then pass its id to the rest.
+`set_` tools copy the whole base entry into the draft and change one field,
+so a replaced spell keeps everything else. `validate` and `simulate` also
+take a mod's name from `rules/mods` (`wildfire`) or the patch JSON itself.
+What one mod may ask for (new entries, spell sizes, spread rates, the
+ticks a run may take) is in `rules/budgets.json`.
+
+**An example conversation:**
+
+> **You:** Make steam put fires out, and check it doesn't wreck the meadow fire.
+>
+> **Claude** calls `explain(fire, steam)`: no rule for fire on a cell with
+> steam stops the list, so what burns depends only on the terrain under it.
+> It calls `add_reaction(id: "steam-damps-fire", element: "fire",
+> conditions: {"gas": "steam"}, effects: [{"extinguish": true}], log: "The
+> steam keeps everything too damp to burn", stop: true)` and gets draft
+> `d1`, then `validate(d1)`: no problems. Then `simulate(d1,
+> "fire-on-grass")`: 3,566 cells changed with the mod and without it, but
+> the fire peaks later (tick 145 against 108) and there's a third of the
+> smoke left at the end (12 cells against 34); ticks per second well within
+> the budget.
+>
+> **Claude:** Steam slows the fire where the pond boils but doesn't save the
+> meadow: it all burns either way. Save it as it is, or make it stronger?
+>
+> **You:** Save it as it is; call it "Damp steam".
+>
+> **Claude** calls `save(d1, "Damp steam", "Steam keeps everything too
+> damp to burn, so fire stops where steam hangs.")`: written to
+> `rules/mods/damp-steam.json`.
+
+If `validate` finds a problem, each one is a sentence saying what to
+change ("Spell fireball has a radius of 20; a mod's spell may have at most
+6, so one cast can't cover a chunk or stall the tick."), so Claude can fix
+the draft and try again.
+
 ## Good experiments
 
 - **One idea per mod.** Stacking three changes makes the vote mean

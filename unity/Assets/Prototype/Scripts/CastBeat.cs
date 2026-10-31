@@ -11,6 +11,8 @@ public enum Beat
     First,
     /// <summary>The second gathers at the left, arms wide. A single element skips it.</summary>
     Second,
+    /// <summary>An uncharged cast only: the arms rise and draw wide, the body rears back, before the slam.</summary>
+    WindUp,
     /// <summary>The hands snap together and stay there until the spell leaves them.</summary>
     Slam,
     /// <summary>Held: hands pressed together, knees bent, the energy growing.</summary>
@@ -38,8 +40,10 @@ public readonly struct CastFacts
     public readonly bool fired;
     /// <summary>It's time for the hands to thrust.</summary>
     public readonly bool thrust;
+    /// <summary>A tap on its last ticks: the slam can't wait for the wind-up to finish.</summary>
+    public readonly bool striking;
 
-    public CastFacts(bool casting, bool second, bool gathering, bool holding, bool fired, bool thrust)
+    public CastFacts(bool casting, bool second, bool gathering, bool holding, bool fired, bool thrust, bool striking = false)
     {
         this.casting = casting;
         this.second = second;
@@ -47,27 +51,31 @@ public readonly struct CastFacts
         this.holding = holding;
         this.fired = fired;
         this.thrust = thrust;
+        this.striking = striking;
     }
 
     /// <summary>The facts from a player's cast in the core (null with none yet).</summary>
-    public static CastFacts Of(PlayerCast cast, int slamTicks, bool fired, bool thrust)
+    public static CastFacts Of(PlayerCast cast, int slamTicks, int windUpTicks, bool fired, bool thrust)
     {
         if (cast == null || !cast.Casting) return new CastFacts(false, false, false, false, fired, thrust);
-        bool gathering = cast.Holding ? !cast.Charging : cast.Meter > slamTicks;
-        return new CastFacts(true, cast.Second != null, gathering, cast.Holding, fired, thrust);
+        bool gathering = cast.Holding ? !cast.Charging : cast.Meter > windUpTicks;
+        return new CastFacts(true, cast.Second != null, gathering, cast.Holding, fired, thrust, !cast.Holding && cast.Meter <= slamTicks);
     }
 
     /// <summary>The same cast with the firing as it stands now.</summary>
-    public CastFacts With(bool fired, bool thrust) => new(casting, second, gathering, holding, fired, thrust);
+    public CastFacts With(bool fired, bool thrust) => new(casting, second, gathering, holding, fired, thrust, striking);
 }
 
 public static class CastBeat
 {
-    /// <summary>The beat after <paramref name="now"/>, <paramref name="seconds"/> into it, given the facts; the same beat to stay in it.</summary>
-    public static Beat Next(Beat now, float seconds, in CastFacts facts, CastFeel feel)
+    /// <summary>
+    /// The beat after <paramref name="now"/>, <paramref name="seconds"/> into it, given the facts; the same
+    /// beat to stay in it. <paramref name="tap"/>: this cast's slam and thrust are an uncharged cast's (CastFeel).
+    /// </summary>
+    public static Beat Next(Beat now, float seconds, in CastFacts facts, CastFeel feel, bool tap = false)
     {
-        bool done = seconds >= feel.Of(now).seconds;
-        if (now == Beat.Release && seconds < feel.release.seconds + feel.thrustHold) return now;
+        bool done = seconds >= feel.Of(now, tap).seconds;
+        if (now == Beat.Release && seconds < feel.Of(now, tap).seconds + feel.HoldOf(tap)) return now;
         // Never skipped: a hitch can bring the firing and its thrust in one frame, and every peer must show the slam.
         if (facts.thrust) return now == Beat.Charge || (now == Beat.Slam && done) ? Beat.Release : Beat.Slam;
         if (facts.fired) return now == Beat.Charge ? now : Beat.Slam;
@@ -78,13 +86,17 @@ public static class CastBeat
     {
         if (facts.gathering) return facts.second ? Beat.Second : Beat.First;
         if (now == Beat.Charge) return now;
-        return now == Beat.Slam && done && facts.holding ? Beat.Charge : Beat.Slam;
+        if (now == Beat.Slam) return done && facts.holding ? Beat.Charge : now;
+        // A hold goes straight to the slam, as it always has. A tap winds up first, but a cast
+        // started on the heels of the last can run out of meter: then it goes without.
+        if (facts.holding || facts.striking) return Beat.Slam;
+        return now == Beat.WindUp && done ? Beat.Slam : Beat.WindUp;
     }
 
     static Beat Ended(Beat now, bool done) =>
         now switch
         {
-            Beat.First or Beat.Second or Beat.Slam or Beat.Charge => Beat.Fizzle,
+            Beat.First or Beat.Second or Beat.WindUp or Beat.Slam or Beat.Charge => Beat.Fizzle,
             Beat.Release => Beat.Recovery,
             Beat.Recovery or Beat.Fizzle when done => Beat.Neutral,
             _ => now,

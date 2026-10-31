@@ -2,7 +2,7 @@
 // groups read exactly as the flat keys, and an unknown key in a group is reported alike.
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import materials from "../../rules/materials.json" with { type: "json" };
+import materials from "../rules-frozen/materials.json" with { type: "json" };
 import { BASE_RULES, composeRules, validateRules } from "../src/rules.ts";
 import { groupMaterial, ungroupMaterials } from "../src/materials.ts";
 

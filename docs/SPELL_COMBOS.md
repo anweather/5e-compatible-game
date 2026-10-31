@@ -171,11 +171,17 @@ is the pure rule. Poses and timings are all in `Settings/CastFeel.asset`, by Lim
 1. **First:** the right hand swings down and back, palm open, motes drawn in.
 2. **Second:** the left does the same, arms wide. A single element skips it.
 3. **Slam:** the meter's last tick (a held cast's once it passes a tap's length): the hands snap together in 0.1 s and stay there.
+   An uncharged cast (J-040) has more time and weight: a **wind-up** first, three ticks from the end of the meter, arms high and wide and the body rearing back for 0.2 s,
+   then its own slam (`tapSlam`), 0.13 s, further down and deeper in the knees. All of that is inside the cast time the core already gave it, so the core's timing is unchanged, and
+   the hands stay together until the thrust: the hold on the impact. A second element loaded late takes the wind-up back. A cast on the heels of the last that's down to its last tick goes without one.
 4. **Charge:** held on: hands pressed, knees bent, leaning in, the orbs growing with a pulse at each level,
    walking at `chargeMoveFactor` (`World.MoveFactorOf`).
 5. **Release:** timed so the thrust arrives as the spell leaves the hands (the gesture's `release`, unchanged;
    the gesture itself stands aside). The body recoils half a step: only drawn, the wizard doesn't move.
+   An uncharged cast's thrust (`tapRelease`) takes 0.15 s, is held 0.11 s and recoils further. With a gesture that releases sooner than that (Reach, at once), the hands arrive just after the spell.
 6. **Recovery:** back to neutral fast; a new cast cuts it short.
+
+**Uncharged or charged:** the core's cast says, on every peer: the wind-up and the tap's tuning go with a cast not `Holding` as its meter runs out; a hold takes the path it always did, First, `slam`, Charge, and `CastBeats.Tap` is off from the Charge beat on, so a charged cast reads none of the `tap` numbers in `CastFeel`. The `castfeel` probe counts a charged cast's beats in frames on a fixed clock against dev's from before the rework, and `TheChargedTuningIsPinned` holds its numbers.
 
 Cancel fizzles, and so does a cast the core fired that then couldn't go (no aim). Casts from the radial or the
 mouse keep their `CastGestures`. `CastBeats.BeatChanged`, `Struck` and `ChargeLevel` are the hooks for what reacts.
@@ -185,9 +191,9 @@ What a cast does to the player, for weight (#22): `CastImpact`, `CastCamera`, `P
 Short, sharp hits, never a drone. None of it touches `Time`, the ticks or physics, and it's all this machine's alone.
 - **When:** at the hands' contact (`CastBeats.Struck`), not the beat's start: the slam `slam.seconds` in, the release `release.seconds` in.
 - **Hit-stop:** the local wizard's Animator and beat clock and the camera stand still for 2 frames on the slam and 3 on the release
-  (0.034 s and 0.05 s; the camera eases back over 0.05 s so a walking wizard doesn't jump it). A remote copy never stops, so its beats can't
+  (0.034 s and 0.05 s; an uncharged cast's are 5 and 4, 0.084 s and 0.067 s; the camera eases back over 0.05 s so a walking wizard doesn't jump it). A remote copy never stops, so its beats can't
   drift, and on the owner's screen a beat is at most that far behind; the next beat starts clean. A run with and one without give the same hash at the same tick (the `castfeel` probe).
-- **Camera:** a Cinemachine impulse after each stop, in the camera's axes: the slam's down, the release's along the cast (with some lift, since along the view alone
+- **Camera:** a Cinemachine impulse after each stop, in the camera's axes: the slam's down (0.05 m over 0.14 s, an uncharged cast's 0.09 m over 0.2 s, with a stronger rumble), the release's along the cast (with some lift, since along the view alone
   it barely shows), a landing's by size and distance. The listener takes the strongest, so casts don't pile up. Charging tightens the lens by up to 3 degrees and adds a fine
   shake, up to 1.6 cm, with the square of the charge; it tires to 40% past 3 s in the beat.
 - **Size:** the spell's level plus 2 for each charge past the first, over 7 (`CastImpact.SizeOf`).

@@ -1,0 +1,7 @@
+{
+  "title": "Wildfire",
+  "idea": "Fire catches easily, races downwind and burns a long way before it weakens. (fadeCells is read by the Unity game; the web sandbox has no fading and ignores it.)",
+  "patch": {
+    "sim": { "fire": { "spreadChance": 0.9, "downwindBonus": 0.6, "fadeCells": 120 } }
+  }
+}

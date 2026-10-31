@@ -14,7 +14,7 @@ import { golfState, startGolf } from "../src/golf.ts";
 import { courseFromJson, courseRespawn, courseState, courseStep, setCourse, zoneState } from "../src/course.ts";
 import gauntlet from "../../world/gauntlet.json" with { type: "json" };
 import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, fnv1a, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, liftAt, sanitizeWorld, serializeWorld } from "../src/world.ts";
-import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
+import highWalls from "../rules-frozen/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
 const totalWater = (w: World) => w.cells.reduce((sum, c) => sum + c.water, 0);

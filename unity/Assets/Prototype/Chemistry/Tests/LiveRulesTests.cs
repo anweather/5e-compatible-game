@@ -9,8 +9,8 @@ namespace Chem.Tests
 {
     /// <summary>
     /// Live mods: composing, checking, and switching rules on a running world. The
-    /// expected orders and messages come from running the TS sandbox's composeRules
-    /// and validateRules on the same patches (sandbox/src/rules.ts).
+    /// expected orders and messages first came from running the TS sandbox's composeRules
+    /// and validateRules on the same patches (sandbox/src/rules.ts, frozen 2026-10-31).
     /// </summary>
     public class LiveRulesTests
     {

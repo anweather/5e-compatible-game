@@ -412,8 +412,7 @@ tick), with a per-chunk checksum as the safety net.
   everything that happens at a cell, and a world stream only for world-wide
   events (weather, where a meteor or strike lands), which every peer runs.
   It is order-free, so any subset of chunks draws the same numbers. It moves
-  **every golden** in both engines once (the sandbox mirrors it, keyed by
-  cell position), so it is its own slice, before anything else here.
+  **every golden** once (keyed by cell position), so it is its own slice, before anything else here.
 - **World-level things** stay on every peer: the tick, clock, weather and
   held weather, wind, and the chunk plan's switches (already stamped by the
   host). Things tied to a place go with their island: the defense field's

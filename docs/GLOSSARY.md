@@ -110,12 +110,12 @@ touch them.
 
 **Tick batch**
 : Everything that happens to the world at one tick, in order: chunk
-  switches, a rule switch, casts, effects, defense, combos, the dragon's summons (`TickBatch`). The host
+  switches, a rule switch, casts, effects, defense, combos, the dragon's summons, room commands (`TickBatch`). The host
   orders them; every peer applies them the same.
 
 **Command / intent**
 : A **command** is an input to the core (`CastCommand`, `EffectCommand`,
-  `ChunkSwitch`, `RuleChange`), the only way anything changes the world.
+  `ChunkSwitch`, `RuleChange`, `RoomCommand`), the only way anything changes the world.
   An **intent** is the network message asking the host for one
   (`CastIntent`, `EffectIntent`, `ChunkIntent`).
 
@@ -142,7 +142,8 @@ touch them.
 
 **Rules**
 : What exists and how it reacts: `rules/*.json`, loaded into `Chem.Rules`.
-  The single source of truth for both engines.
+  The single source of truth for the C# core (the frozen sandbox has its
+  own copy, `sandbox/rules-frozen/`).
 
 **Terrain / cover / gas**
 : The three kinds of material a cell has: what it is (grass, stone, log
@@ -214,7 +215,7 @@ touch them.
 : How long a cast was held, 1 to 3 (`CastCommand.Charge`, counted from the meter by `World.HeldCharge`).
 
 **Beat**
-: A stage of a cast by elements on the wizard's body: first element, second element, slam, charge,
+: A stage of a cast by elements on the wizard's body: first element, second element, wind-up (an uncharged cast only), slam, charge,
   release, recovery, or a fizzle when it's dropped (`Beat`, `CastBeats`; poses and timings in
   `Settings/CastFeel.asset`). View only, worked out from the core's cast state on every peer.
 
@@ -382,6 +383,26 @@ that long, and doesn't march.
 **Late join**
 : A peer joining a running session: today it replays every tick batch
   from tick 0 (`Timeline`); per-chunk snapshots are planned.
+
+**Room**
+: A session as its peers share it: one world, its host, its change mode
+  and the mods on in it (`World.Room`, `World.Room.cs`). Solo play is a
+  room of one. Made with the world and saved with it.
+
+**Change mode**
+: How a room takes live rule changes, chosen when it's made (RULES_MCP.md):
+  **Open** (anyone's change goes in), **Host only** (only the host's) or
+  **Locked** (none: the rules stay as the room started). Written "Open
+  room", "Host-only room", "Locked room" in the log.
+
+**Mod / active mod / switch on, revert**
+: A **mod** is a JSON patch over `rules/` (`docs/MODDING.md`). A room's
+  **active mods** are the ones on, in order, each with its title, the peer
+  who added it and the tick (`RoomMod`). A `RoomCommand` **switches one
+  on** (MCP: `apply`) or **reverts** it (takes it off; the rest are
+  composed again in order). Every peer checks a mod itself
+  (`ModValidator`) before switching it on; one that fails is **refused**
+  everywhere, with a sentence. *Avoid:* "install", "enable".
 
 **Checksum / hash / fingerprint / golden**
 : The **checksum** is what peers compare every 30 ticks (cells, rules,

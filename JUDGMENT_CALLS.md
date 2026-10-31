@@ -41,6 +41,44 @@ Each entry has:
 
 ## Decided
 
+### J-045: The punch (punch-crate.mp4, #18)
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any melee, knock-back or PvP question.
+- **Answer:** too weak: about 2-2.5x stronger, so it's noticeable. It needs a real punch animation
+  (IK). Punching other players: yes, as the SRD unarmed strike (1 + Strength modifier bludgeoning,
+  plus knock-back), resolved in the core.
+- **Why:** Andrew watched the clip.
+- **Revisited:** 0.
+
+### J-044: Cast sounds A/B/C, and the new slam
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any cast-sound or casting-feel tuning.
+- **Answer:** B (deep hum, stacked fifths) as the base, with a little of C's accelerating pulse (less
+  than C). The new slam animation is good. Iterate sounds as audio files only, no video, made outside
+  Unity, in a series like the clips (earth single, water + air pair, charged fire).
+- **Why:** Andrew listened to the clips.
+- **Revisited:** 0.
+
+### J-043: The dragon's look (dragon-view clip)
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any dragon tuning; the release notes for 0.1.10.
+- **Answer:** loves it ("hilarious"); the model is fine. Scale it up 50%, add a fire particle stream
+  from the mouth to the fire wave on the land, the flight can be a little funnier. No new clip
+  needed: ship it in the next release.
+- **Why:** Andrew watched the clip.
+- **Revisited:** 0.
+
+### J-042: Keep writing every rule twice, or freeze the TS sandbox?
+
+- **Asked:** 2026-10-30, by the PM (open since then).
+- **Also comes up when:** any brief that changes chemistry; CI's sandbox workflow; the rules MCP.
+- **Answer:** freeze the TypeScript sandbox. The C# core is the only engine; no porting.
+- **Why:** writing every rule twice doubled the cost of rules work, and the rules MCP runs the core.
+- **Revisited:** 0.
+
 ### J-041: Who may change a live room's rules?
 
 - **Asked:** 2026-10-31, by the PM (rules MCP design).
@@ -56,7 +94,9 @@ Each entry has:
 - **Also comes up when:** any tuning of casting animation, hit-stop or cast sounds.
 - **Answer:** really close. The charged cast is amazing: keep it. The uncharged cast is too
   quick for the slam together and release; the slam needs more oomph.
-  The sounds are not judged yet: Andrew watched without sound (still owed).
+  Sounds (heard later): too snappy; lower and rumbly. First element low, a little different per
+  element; the second layers over it; combine rises in pitch, escalating per charge step; release a
+  short whoosh that cuts the charging sounds off.
 - **Why:** Andrew watched the clip.
 - **Revisited:** 0.
 

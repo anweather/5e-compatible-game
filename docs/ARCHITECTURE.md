@@ -10,7 +10,7 @@ Five layers. Each one only knows about the layers above it in this list.
 
 | # | Layer | Where | What it does | Knows about Unity? |
 |---|---|---|---|---|
-| 1 | **Rules data** | `rules/*.json` (repo root) | What exists and how it reacts: materials, reactions, spells, sim numbers. Shared with the web sandbox. Next to it, `world/things.json`: where the props and items stand, per chunk | No (it's data) |
+| 1 | **Rules data** | `rules/*.json` (repo root) | What exists and how it reacts: materials, reactions, spells, sim numbers. (The frozen web sandbox has its own copy, `sandbox/rules-frozen/`.) Next to it, `world/things.json`: where the props and items stand, per chunk | No (it's data) |
 | 2 | **Chem core** | `Chemistry/` (namespace `Chem`) | Loads the rules and runs the world: a grid of cells, one tick at a time. Same results on every machine | **No**, the compiler forbids it |
 | 3 | **View** (presentation) | `Scripts/` | Draws the world, reads input, plays the show (gestures, projectiles, particles), moves the wizard | Yes |
 | 4 | **Networking** | `Scripts/Net/` | Lets friends share one world: sends cast intents, not cells | Yes |
@@ -135,10 +135,9 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   joiner.
   `ModCatalog.cs` lists `rules/mods/*.json` with titles and ideas.
 
-It is a line-by-line port of the TypeScript sandbox (`sandbox/src/`), and
-the "golden" tests in `Chemistry/Tests/` check both give identical
-results. That is why its semantics must not change without changing the
-sandbox too. CI builds and tests it outside Unity (`core/`).
+It began as a line-by-line port of the TypeScript sandbox (`sandbox/src/`),
+which is now frozen on its own copy of the rules (J-042). The "golden" tests
+in `Chemistry/Tests/` pin its results; they move only on purpose. CI builds and tests it outside Unity (`core/`).
 
 ### 3. View (`Scripts/`)
 | Area | Files |
@@ -292,13 +291,13 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 
 | You want to add... | Do this |
 |---|---|
-| A **material or terrain** | Add it to `rules/materials.json` (and reactions to `rules/reactions.json`). Test it in the web sandbox first. To draw it, give it layer weights in `CellPaint` (or it reads as bare earth), its colour and height in `CellDressing.TerrainLook` (and parts in `CellDressing` if something stands on it), and a map character to `ChemGrid.Legend` if maps should use it |
+| A **material or terrain** | Add it to `rules/materials.json` (and reactions to `rules/reactions.json`). To draw it, give it layer weights in `CellPaint` (or it reads as bare earth), its colour and height in `CellDressing.TerrainLook` (and parts in `CellDressing` if something stands on it), and a map character to `ChemGrid.Legend` if maps should use it |
 | A **spell** | Add it to `rules/spells.json`. Add its id to `SpellIds` in `RuleIds.cs`, its look (glow, projectile, impact, and a `gesture` if the one `CastGestures.For` picks from its rules doesn't suit) to `ChemYardBuilder.BuildSpellVisuals`, and a `group` in its spells.json entry: the spell radial's element it sits under (`rules/groups.json`; every spell in the rules is in the radial). A spell that moves its caster runs only on the caster's machine, from `SpellForces` (see `MistyStep.cs`) |
 | A **new kind of cell effect** (e.g. a new gas) | Data first; then a `Render...` method in `ChemGrid.Effects.cs` with a prefab and a cube fallback, called from `ChemGrid.RenderCell`, and its state added to `ChemGrid.Key` |
-| A **chemistry behaviour** that data can't express | Change the TS sandbox and `Chemistry/` together, with a golden test for both |
+| A **chemistry behaviour** that data can't express | Change `Chemistry/`, with a C# golden test (the TS sandbox is frozen: don't port it) |
 | A **physics prop** | Its numbers in `rules/entities.json`, a shape in `PropBuilder` (Editor), which builds its prefab and makes it networked (`NetProp`), and where it stands in `world/things.json` (append to a chunk's list so ids don't shift). Anything it does to cells goes through `ChemEffects.Request` as an `EffectCommand`, never straight to the world: solo it applies at once; online the host stamps it into the next `NetChem` tick batch (D4 in `DECISIONS.md`) and every machine applies it at that tick. A new kind of effect goes in `Chem.EffectKind` and `World.ApplyEffect`. Then rebuild the yard (Prototype > Build Chemistry Yard) so its prefab is built and registered |
 | A **thing to carry** | Its row in `rules/items.json` (light, use, breaks; checked in both `Rules.CheckItems.cs` and `validateRules`). Its id in `ItemIds`, a shape in `ItemBuilder` (Editor), and a spot in `world/things.json` (a pair shares a `link`). A new `use` needs an `ItemUse` behaviour, added in `Carryable.AddBehaviours`, and the use name in both checkers. If what it does should show on other screens, give `NetItem` the state or message (as for the light, the mote and sending stones); a use only its holder sees (the spyglass) needs nothing |
-| A **defense-field raider** | Its row in `rules/entities.json` with a `raider` object (pace, `weak`, `resist`; checked in both `Rules.Check.cs` and `validateRules`) and its id in `sim.json`'s `defense.kinds`. Raiders are core entities (`World.Raiders.cs`, `World.Defense.cs`, mirrored in `sandbox/src/defense.ts`), so nothing about them is networked but the start command. Its id in `RaiderIds`, and the Punchy species it's drawn as in `DefenseFieldBuilder` (`kinds`, `species`, `sizes`) |
+| A **defense-field raider** | Its row in `rules/entities.json` with a `raider` object (pace, `weak`, `resist`; checked in `Rules.Check.cs`) and its id in `sim.json`'s `defense.kinds`. Raiders are core entities (`World.Raiders.cs`, `World.Defense.cs`), so nothing about them is networked but the start command. Its id in `RaiderIds`, and the Punchy species it's drawn as in `DefenseFieldBuilder` (`kinds`, `species`, `sizes`) |
 | **Scenery** | In a builder (`ValleyBuilder`), never placed by hand |
 
 ## Known debt
@@ -306,9 +305,9 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 What this clean-up left alone, roughly in order of value.
 
 - **Cognitive complexity in `Chemistry/`** (4 methods, up to 69 in
-  `World.React.cs`). They mirror the TS sandbox line by line; splitting
-  them means splitting the TS the same way, with the parity tests as the
-  safety net. Then drop `S3776` from `WarningsNotAsErrors` in
+  `World.React.cs`). They were ported from the TS sandbox line by line;
+  with the sandbox frozen they can be split on their own, with the goldens
+  as the safety net. Then drop `S3776` from `WarningsNotAsErrors` in
   `core/Directory.Build.props`.
 - **No `.asmdef` for `Scripts/`.** The view compiles into
   `Assembly-CSharp` with the Starter Assets tutorial scripts. An asmdef

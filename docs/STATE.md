@@ -53,17 +53,36 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - Landed on dev after 0.1.9: the Gauntlet's rules (22cda15), the Dragon's rules (0967b44), surf toward
   the nearest land (1671b55, #23; rebuild the yard after pulling).
-- DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Now the Windows
-  perf comparison: a release build from dev head with `-perf-offscreen` (0.1.9 lacks the flag).
-- Mac: the Dragon's view (item 4 below).
-- u1: the rules MCP server, phase 1 (`docs/RULES_MCP.md`, D13; brief `briefs/rules-mcp.md`). Asleep
-  (Saved) during the perf comparison; wake it with `start.cmd u1` when DesktopUnity says perf is done.
+- DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
+  comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
+  cast-sound prototypes for Andrew to pick from before anything is built in.
+- Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. The Mac: merge
+  dev into `dragon-clip` (conflicts with today's castclip/punchclip), then `dragon-tweaks` (+50% scale, breath
+  stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
+  which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
+  is wiped before the breath arrives.
+- u1: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). Asleep (Saved) while
+  DesktopUnity runs dragon-view's online probe (needs ~9 GB free); wake it with `start.cmd u1` after. DesktopUnity wires it
+  into the IK punch after.
+- Sound: the generator is in the sound-design skill (1847785, stdlib only). B + pulse 15/30/45% are on the board
+  for Andrew's pick. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
+- Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
+  batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
+  intent in `Net/`, the game serving the MCP on localhost, the HUD line, the M panel through the room.
+- DesktopUnity: slam rework landed (ec80f19); clips on the board (slam, punch, sounds A/B/C); now the
+  dragon-view online probe and the ModValidator compile check.
+- Sandbox frozen (210b047; J-042): it reads `sandbox/rules-frozen/`; nothing is ported to it.
+- Rules MCP phase 1 landed (dffbc19; u1, now asleep): `core/Rules.Mcp`, `ModValidator.cs`, budgets in
+  `rules/budgets.json`, "Using the rules MCP" in MODDING.md. Unity hasn't compiled ModValidator yet
+  (DesktopUnity checks on its next pull). Phase 2 (procedural looks) starts from
+  `docs/handoffs/procedural-looks-scan.md` (~70 id-keyed places); it needs Unity.
 
 ## Next, in order
 
-1. Andrew judges the wave crest (#11). Cast feel judged (J-040, #22): DesktopUnity
-   tunes the uncharged slam (slower, more oomph) after perf, with a new clip.
-2. The Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
+1. Wave crest judged good for now (#11 closed). Cast feel judged (J-040, #22): DesktopUnity
+   tunes the uncharged slam (slower, more oomph)
+   and redoes the cast sounds (lower, layered per element, rising per charge step) after perf, with a new clip.
+2. Done: the Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
    run (1e8d899 split PerfScenario.Start and PerfStage.Walk). Then the `perf-pass` skill from
    `docs/perf/notes-2026-10-31-mac.md`.
 3. The Gauntlet's view: side camera, booths, carnival dressing (`docs/handoffs/obstacle-course-brief.md`).
@@ -80,10 +99,7 @@ He reads it on his phone instead of scrolling the chat. Update it (Artifact `rea
 
 ## Open questions for Andrew
 
-- Keep writing every rule twice (C# core and TS sandbox), or freeze the sandbox?
 - The punch knocks a crate only 0.42 m: harder?
-- The verdicts above (wave crest), and the cast sounds (`cast-feel-sound.mp4`, not heard yet).
-- Unmerged branches to delete: `wip/w1-*`, `wip/w2-*` (their work landed), and about 17 old spikes.
 
 ## Telemetry
 
