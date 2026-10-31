@@ -77,6 +77,14 @@ export interface TerrainDef {
   bakesTo?: string;
   /** What water on it turns into, any depth: ice (arctic ground) or steam (lava). */
   waterTo?: "ice" | "steam";
+  /** The terrain cold crusts it into, for crustFor ticks (crust.into, crust.for: lava to a crust that grows back into lava). */
+  crustsTo?: string;
+  crustFor?: number;
+  /** The terrain heat thaws it into, giving thawWater units of meltwater (thaw.into, thaw.water: an ice wall). */
+  thawsTo?: string;
+  thawWater?: number;
+  /** Steps an updraft over it lifts what stands there (lift.by; liftAt in world.ts). */
+  liftSteps?: number;
   /** How its fire looks (flare, wood, oil); the view's only. */
   fireLook?: string;
 }
@@ -194,6 +202,10 @@ export interface Effect {
   bake?: boolean;
   /** The cover becomes its meltsTo and gives its meltWater, if it melts. */
   meltCover?: boolean;
+  /** The terrain becomes its crustsTo for its crustFor ticks, if it crusts. */
+  crust?: boolean;
+  /** The terrain becomes its thawsTo and gives its thawWater, if it thaws. */
+  thaw?: boolean;
   /** A hit on the cell's ice or terrain, as a blast's: it cracks, or if cracked shatters. */
   shatter?: boolean;
   /** A sand blast: strips a cover that scours, or turns the terrain to its scoursTo, or wears raised ground of it down a step. */
@@ -353,6 +365,7 @@ export interface RaiderDef {
   weak?: string[];
   resist?: string[];
 }
+import type { DragonParams } from "./dragon.ts";
 import type { GolfParams } from "./golf.ts";
 /** sim.json's defense (defense.ts; C#: DefenseParams in Defense.cs). */
 export interface DefenseParams {
@@ -438,6 +451,8 @@ export interface SimParams {
   breath?: { seconds: number; refillSeconds: number; drownEvery: number; drownDice: number; drownSides: number };
   /** How long a wizard at 0 health stays down, read by the Unity view only (C#: DownedParams in Downed.cs); absent uses the default. */
   downed?: { seconds: number };
+  /** The dragon's flight, the changed-cell budget and the shelter rule (dragon.ts; C#: DragonParams); absent uses the defaults. */
+  dragon?: Partial<DragonParams>;
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
   day: {
     lengthMinutes: number; startHour: number;
@@ -666,7 +681,7 @@ export const ELEMENTS = BASE_ELEMENTS;
 
 const COND_KEYS = new Set(["cover", "fire", "fireBelow", "water", "frozen", "melts", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb"]);
 const EFFECT_KEYS = new Set([
-  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve", "scour", "pushCover",
+  "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "crust", "thaw", "shatter", "dissolve", "scour", "pushCover",
   "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
 ]);
 const SHAPES = new Set(["point", "line", "square", "burst", "target", "cone"]);
@@ -932,7 +947,7 @@ export function validateRules(r: Rules): string[] {
     if (t.chainsWet !== undefined && typeof t.chainsWet !== "boolean") errors.push(`terrain ${id}: conduct.chainsWet must be true or false`);
     for (const key of ["soaksTo", "driesTo", "shattersTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
     if (t.hardness !== undefined && (!Number.isInteger(t.hardness) || t.hardness < 0)) errors.push(`terrain ${id}: hardness must be a whole number from 0 (0 never digs)`);
-    for (const key of ["soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench"] as const)
+    for (const key of ["soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench", "crustFor", "thawWater", "liftSteps"] as const)
       if (t[key] !== undefined && (!Number.isInteger(t[key]) || t[key]! < 1)) errors.push(`terrain ${id}: ${key} must be a whole number from 1`);
     if (t.dampens !== undefined && !(typeof t.dampens === "number" && t.dampens >= 0 && t.dampens <= 1)) errors.push(`terrain ${id}: dampens must be a number from 0 to 1`);
     if (t.waterTo !== undefined && t.waterTo !== "ice" && t.waterTo !== "steam") errors.push(`terrain ${id}: waterTo must be ice or steam`);
@@ -942,6 +957,7 @@ export function validateRules(r: Rules): string[] {
     if (t.growsTo && !terrainIds.has(t.growsTo)) errors.push(`terrain ${id}: growsTo ${t.growsTo} unknown`);
     if (t.cracks !== undefined && typeof t.cracks !== "boolean") errors.push(`terrain ${id}: cracks must be true or false`);
     if (t.bakesTo && !terrainIds.has(t.bakesTo)) errors.push(`terrain ${id}: bakesTo ${t.bakesTo} unknown`);
+    for (const key of ["crustsTo", "thawsTo"] as const) if (t[key] && !terrainIds.has(t[key])) errors.push(`terrain ${id}: ${key} ${t[key]} unknown`);
     errors.push(...dissolveErrors(`terrain ${id}`, t, el, terrainIds));
     if (t.dissolvedBy && !t.dissolvesTo) errors.push(`terrain ${id}: dissolve without leaves`);
     if (t.tags.includes("flammable") && !(t.fuel && t.flammability)) errors.push(`terrain ${id}: flammable without fuel/flammability`);
@@ -1029,6 +1045,7 @@ export function validateRules(r: Rules): string[] {
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
+  for (const t of r.sim.dragon?.wallTerrains ?? []) if (!(t in r.terrain)) errors.push(`sim dragon: unknown terrain ${t}`);
   const fogGas = r.sim.weather.fog?.gas;
   if (fogGas !== undefined && !(typeof fogGas === "string" && fogGas in r.gases)) errors.push(`sim weather.fog.gas: unknown gas ${fogGas}`);
   for (const k of ["regionChunks", "driftTicks"] as const) {

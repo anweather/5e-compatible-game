@@ -137,6 +137,27 @@ namespace Chem
             return true;
         }
 
+        /// <summary>A crust effect (react.ts crust): cold crusts the terrain into its crustsTo, which grows back after crustFor ticks.</summary>
+        bool Crust(Cell c)
+        {
+            var t = TerrainOf(c);
+            if (t.CrustsTo == null) return false;
+            c.T = t.CrustsTo;
+            c.Life = t.CrustFor;
+            return true;
+        }
+
+        /// <summary>A thaw effect (react.ts thaw): heat thaws the terrain (an ice wall) into its thawsTo, leaving its thawWater to run off.</summary>
+        bool Thaw(int x, int y, Cell c)
+        {
+            var t = TerrainOf(c);
+            if (t.ThawsTo == null) return false;
+            c.T = t.ThawsTo;
+            c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + t.ThawWater);
+            WallLost(x, y);
+            return true;
+        }
+
         bool CoverMelts(Cell c) => c.Cover != null && Rules.Covers.TryGetValue(c.Cover, out var cv) && cv.MeltWater > 0;
 
         string CoverName(Cell c) =>
@@ -386,6 +407,8 @@ namespace Chem
             if (eff.PushCover) return dir >= 0 && PushCover(x, y, c, dir);
             if (eff.Bake) return Bake(c);
             if (eff.MeltCover) return MeltCover(c);
+            if (eff.Crust) return Crust(c);
+            if (eff.Thaw) return Thaw(x, y, c);
             if (eff.Break)
             {
                 var to = TerrainOf(c).BreaksTo;

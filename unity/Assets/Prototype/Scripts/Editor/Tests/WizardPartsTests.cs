@@ -55,7 +55,8 @@ public class WizardPartsTests
         wizard.GetComponents<Component>().Where(c => c != null && !(c is Transform)).Select(c => c.GetType());
 
     // The yard as it is open in the Editor, or opened alongside for the test and closed again.
-    static void WithYard(System.Action<Scene> check)
+    /// <summary>Runs a check on the built yard, opening its scene for it if it isn't open.</summary>
+    public static void WithYard(System.Action<Scene> check)
     {
         var open = SceneManager.GetSceneByPath(Yard);
         if (open.IsValid() && open.isLoaded)

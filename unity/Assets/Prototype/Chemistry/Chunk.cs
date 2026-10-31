@@ -71,6 +71,8 @@ namespace Chem
         public int StoppedAt = World.NeverLive;
         /// <summary>The ticks it caught up when it last activated (0 if it had none to catch up).</summary>
         public int CaughtUp;
+        /// <summary>Cells that differed from the starting state when it was last audited (World.Dragon).</summary>
+        public int Changed;
 
         // Still water (World.StillWater): what the water pass reads of each cell (water, height,
         // frozen, terrain) as it was at the last pass, and the neighbours' active state then.

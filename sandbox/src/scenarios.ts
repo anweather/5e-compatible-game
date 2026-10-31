@@ -1,6 +1,7 @@
 // Hand-built rooms. One character per cell; see LEGEND.
 import { RULES } from "./rules.ts";
 import { spawn } from "./entities.ts";
+import { keepStart } from "./dragon.ts";
 import { type World, createWorld, idx } from "./world.ts";
 
 type CellSpec = { t: string; water?: number; frozen?: boolean; cover?: string; entity?: string };
@@ -155,6 +156,7 @@ export function loadScenario(s: Scenario, seed = 1): World {
       if (spec.entity) spawn(world, spec.entity, x, y);
     });
   });
+  keepStart(world);
   return world;
 }
 

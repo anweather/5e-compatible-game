@@ -32,8 +32,8 @@ namespace Chem
         // A tick in slices (StepSome): the same passes over the same cells in the same order as
         // Step, only spread over several calls, so a peer that slices its ticks one way computes
         // exactly the ticks of a peer that slices them another (or not at all). Fire burns, then
-        // springs, water, gas, the weather, raiders, defense and cast meters, then the timers, as in sim.ts.
-        enum TickStage { None, Burn, WaterCheck, Springs, Flow, Gas, Rest, Timers, End }
+        // springs, water, gas, the weather, raiders, defense and cast meters, then the timers, then the dragon, as in sim.ts.
+        enum TickStage { None, Burn, WaterCheck, Springs, Flow, Gas, Rest, Timers, Dragon, End }
 
         // Row segments or burning cells handled per slice: small enough to stop near a frame's budget.
         const int SliceSpans = 64, SliceBurns = 128, SliceChunks = 4;
@@ -123,6 +123,9 @@ namespace Chem
                     TickMachines(tickRows);
                     NextStage(TickStage.Timers);
                     return false;
+                case TickStage.Dragon:
+                    if (RunDragon()) NextStage(TickStage.End);
+                    return false;
                 case TickStage.End:
                     EndTick();
                     return true;
@@ -162,7 +165,7 @@ namespace Chem
                 TickStage.Springs => TickStage.Flow,
                 TickStage.Flow => TickStage.Gas,
                 TickStage.Gas => TickStage.Rest,
-                _ => TickStage.End,
+                _ => TickStage.Dragon,
             });
         }
 
@@ -185,7 +188,8 @@ namespace Chem
             from.Heat = 0;
         }
 
-        void EndTick()
+        // What the timers set going lands: covers floating on, lava running on (the dragon's chunks reset after).
+        void LandFloating()
         {
             foreach (var (cell, cover, slick) in floating)
             {
@@ -196,6 +200,10 @@ namespace Chem
             floating.Clear();
             foreach (var (from, to) in runs) RunInto(from, to);
             runs.Clear();
+        }
+
+        void EndTick()
+        {
             if (Wind.HasValue)
             {
                 var (d, t) = Wind.Value;

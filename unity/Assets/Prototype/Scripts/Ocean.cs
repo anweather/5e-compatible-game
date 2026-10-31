@@ -7,8 +7,9 @@ using UnityEngine.Rendering;
 // the beach and coarser far out, drawn with the Ocean shader. Each vertex
 // carries the water's depth there, sampled from the terrain when the mesh is
 // built (and a guess past the terrain's edge), so the shader can grow the
-// swell over the shoals, break it into foam and wash it up the sand. Built
-// when the scene loads, in the Editor too; only its settings are saved.
+// swell over the shoals, break it into foam and wash it up the sand. The swell
+// runs toward the nearest land, along the shore map (ShoreMap) the shader
+// samples. Built when the scene loads, in the Editor too; only its settings are saved.
 // Looks only: the sea's cells are the lake's kind of water (ValleyBuilder),
 // and the currents that push swimmers live in WaterCurrents. WaveOffset works
 // out the swell's rise and fall at a point the same way the shader does, so a
@@ -19,6 +20,8 @@ public class Ocean : MonoBehaviour
     public Material material;
     [Tooltip("The sea's surface height (the lake's, so the cells' water is one level).")]
     public float level = -0.6f;
+    [Tooltip("The way to the nearest land over the sea, and how far off it is.")]
+    public ShoreMap shoreMap;
     [Tooltip("A point on the coastline (x, z).")]
     public Vector2 shoreOrigin;
     [Tooltip("Out to sea, square to the coast (a direction on the ground plane).")]
@@ -71,7 +74,7 @@ public class Ocean : MonoBehaviour
             {
                 var xz = shoreOrigin + along * u + out_ * v;
                 positions[n] = new Vector3(xz.x, level, xz.y) - transform.position;
-                water[n] = new Vector2(Depth(xz, v), v);
+                water[n] = new Vector2(Depth(xz, v), 0f);
                 n++;
             }
         var triangles = new int[(us.Count - 1) * (vs.Count - 1) * 6];
@@ -113,31 +116,32 @@ public class Ocean : MonoBehaviour
     /// <summary>
     /// How far the swell lifts (or drops) the sea's surface above its level at a point, now: the
     /// shader's four Gerstner waves (Ocean.shader, Vert), on the same clock (the time since the
-    /// scene loaded), from the material's settings. Their sideways sway is left out, and so are
+    /// scene loaded), from the material's settings and the shore map. Their sideways sway is left out, and so are
     /// the swash and the breakers, which only rise over the last metre or two of the beach.
     /// </summary>
     public float WaveOffset(Vector2 xz)
     {
-        if (material == null) return 0f;
-        float outward = Vector2.Dot(xz - shoreOrigin, seaward.normalized);
-        float depth = Depth(xz, outward);
+        if (material == null || shoreMap == null) return 0f;
+        float depth = Depth(xz, Vector2.Dot(xz - shoreOrigin, seaward.normalized));
         Vector4 dir = material.GetVector(ShoreDirId);
-        var shore = new Vector2(dir.x, dir.y).normalized;
-        var side = Vector2.Perpendicular(shore);
+        float across = Vector2.Dot(Vector2.Perpendicular(new Vector2(dir.x, dir.y).normalized), xz);
+        var (_, distance, reach) = shoreMap.At(xz);
         float swell = material.GetFloat(SwellId), wavelength = material.GetFloat(WavelengthId), speed = material.GetFloat(SpeedId);
         float t = Time.timeSinceLevelLoad;
         float shoal = Mathf.Lerp(1f, 2.4f, Mathf.Clamp01((5.5f - depth) / 3.5f)) * Mathf.Clamp01(depth / 0.5f + 0.1f);
-        return Wave(xz, shore, wavelength, swell * shoal, speed, t)
-            + Wave(xz, (shore + side * 0.35f).normalized, wavelength * 0.61f, swell * 0.45f * shoal, speed * 0.8f, t)
-            + Wave(xz, (shore - side * 0.5f).normalized, wavelength * 0.37f, swell * 0.22f, speed * 0.6f, t)
-            + Wave(xz, (side + shore * 0.2f).normalized, wavelength * 2.3f, swell * 0.35f * Mathf.Clamp01(outward / 60f), speed * 1.3f, t);
+        float shoreward = -distance;
+        return reach * (Wave(shoreward, wavelength, swell * shoal, speed, t)
+            + Wave(shoreward * 0.944f + across * 0.33f, wavelength * 0.61f, swell * 0.45f * shoal, speed * 0.8f, t)
+            + Wave(shoreward * 0.894f - across * 0.447f, wavelength * 0.37f, swell * 0.22f, speed * 0.6f, t)
+            + Wave(across * 0.981f + shoreward * 0.196f, wavelength * 2.3f, swell * 0.35f * Mathf.Clamp01(distance / 60f), speed * 1.3f, t));
     }
 
-    // One Gerstner wave's rise at a point (the shader's Gerstner, height only).
-    static float Wave(Vector2 xz, Vector2 dir, float wavelength, float height, float speed, float t)
+    // One Gerstner wave's rise at a point, given how far along the wave's way the point is (the
+    // shader's Gerstner, height only).
+    static float Wave(float along, float wavelength, float height, float speed, float t)
     {
         float k = 2f * Mathf.PI / wavelength;
-        return height * 0.5f * Mathf.Sin(k * (Vector2.Dot(dir, xz) - speed * t));
+        return height * 0.5f * Mathf.Sin(k * (along - speed * t));
     }
 
     // The water's depth at a point: the sea level less the terrain there; past the terrain, a bed

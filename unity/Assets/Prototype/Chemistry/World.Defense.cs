@@ -114,7 +114,7 @@ namespace Chem
                     r.Wait--;
                     continue;
                 }
-                if (r.StatusOf("frozen") > 0 || r.StatusOf("snagged") > 0 || r.StatusOf(ThrownStatus) > 0) continue;
+                if (r.StatusOf("frozen") > 0 || r.StatusOf("snagged") > 0 || r.StatusOf(ThrownStatus) > 0 || r.StatusOf(DownedStatus) > 0) continue;
                 Advance(d, p, r);
                 if (d.Phase != DefensePhase.Running) return;
             }
@@ -320,6 +320,8 @@ namespace Chem
                 foreach (var s in HashedStatuses) sb.Append(',').Append(r.StatusOf(s).ToString(inv));
                 // Thrown (a Geyser's jet) joins only while it lasts, so older defenses hash as they did.
                 if (r.StatusOf(ThrownStatus) > 0) sb.Append(",t").Append(r.StatusOf(ThrownStatus).ToString(inv));
+                // Downed by the dragon's breath, the same.
+                if (r.StatusOf(DownedStatus) > 0) sb.Append(",d").Append(r.StatusOf(DownedStatus).ToString(inv));
                 sb.Append(';');
             }
             return sb.ToString();

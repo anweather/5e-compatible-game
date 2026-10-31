@@ -91,21 +91,27 @@ namespace Chem
             FinishTick(); // a rule switch lands between whole ticks (StepSome)
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             ForgetWaterSnapshots(); // terrain may mean something else now
-            var height = rules.Sim.Height;
             Weather = SkyNow();
             foreach (var c in Cells)
             {
                 c.ForgetDef();
-                c.Height = Math.Max(height.Min, Math.Min(height.Max, c.Height));
-                if (!rules.Terrain.ContainsKey(c.T)) c.T = "dirt";
-                if (c.Cover != null && !rules.Covers.ContainsKey(c.Cover)) c.Cover = null;
-                if (c.Gas != null && !rules.Gases.ContainsKey(c.Gas))
-                {
-                    c.Gas = null;
-                    c.GasAmt = 0;
-                }
+                Sanitize(c);
             }
             SanitizeRaiders();
+        }
+
+        // A cell made to fit the rules in force (sanitizeCell in the TS).
+        void Sanitize(Cell c)
+        {
+            var height = Rules.Sim.Height;
+            c.Height = Math.Max(height.Min, Math.Min(height.Max, c.Height));
+            if (!Rules.Terrain.ContainsKey(c.T)) c.T = "dirt";
+            if (c.Cover != null && !Rules.Covers.ContainsKey(c.Cover)) c.Cover = null;
+            if (c.Gas != null && !Rules.Gases.ContainsKey(c.Gas))
+            {
+                c.Gas = null;
+                c.GasAmt = 0;
+            }
         }
 
         // ---------- directions ----------
@@ -247,6 +253,12 @@ namespace Chem
         /// square walked; CoverDef.Speed and Damage say how much). A view's walkers read it.
         /// </summary>
         public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
+        /// <summary>
+        /// Steps the updraft at (x, y) lifts a prop or a wizard standing over it (materials.json lift.by; liftAt in the
+        /// TS), 0 for none or off the grid. The view does the lifting; the core only says where the air rises.
+        /// </summary>
+        public int LiftAt(int x, int y) => InBounds(x, y) ? TerrainOf(At(x, y)).Lift : 0;
+
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
         /// <summary>
         /// The share of its speed a walker keeps on a cell: the slower of its cover's and its ground's (snow 0.85, a

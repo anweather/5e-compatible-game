@@ -28,6 +28,9 @@
 //   scour   { leaves, wears }                                     scoursTo, scourWears (terrain: what a sand blast leaves, or wearing raised ground down); covers: scourable tag
 //   run     { every }                                             runsEvery (a hot liquid terrain, lava, runs to a lower cell that often, leaving its grow.into)
 //   quench  { into, log }                                         quenchesTo, quenchLog (water on it while hot sets it at once: lava to rock)
+//   crust   { into, for }                                         crusts tag, crustsTo, crustFor (cold: lava to a crust that grows back into it)
+//   thaw    { into, water }                                       thaws tag, thawsTo, thawWater (heat: an ice wall to the ground under it and its meltwater)
+//   lift    { by }                                                lifts tag, liftSteps (an updraft: steps it lifts what stands over it; World.LiftAt)
 //   rot     { breaks }                                            rotBreaks (covers: when it withers its roots break the terrain under it)
 //
 // Group is the other way, for the parity test (and the move to the grouped
@@ -61,6 +64,9 @@ namespace Chem
             ("scour", null, new[] { ("leaves", "scoursTo"), ("wears", "scourWears") }),
             ("run", null, new[] { ("every", "runsEvery") }),
             ("quench", null, new[] { ("into", "quenchesTo"), ("log", "quenchLog") }),
+            ("crust", "crusts", new[] { ("into", "crustsTo"), ("for", "crustFor") }),
+            ("thaw", "thaws", new[] { ("into", "thawsTo"), ("water", "thawWater") }),
+            ("lift", "lifts", new[] { ("by", "liftSteps") }),
         };
 
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] CoverVerbs =

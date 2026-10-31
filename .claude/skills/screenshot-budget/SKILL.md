@@ -5,6 +5,8 @@ description: Run visual review across several Claude sessions without burning to
 
 # Screenshot budget
 
+In this repo, start from the `pm-session` skill and `docs/STATE.md`; they hold this project's specifics.
+
 Images are the most expensive thing most supervising sessions read. This skill sets up a review pipeline where
 every image is looked at by at most one model, at the smallest size that can answer the question, and the human
 still gets a rich gallery for free.
@@ -18,9 +20,6 @@ still gets a rich gallery for free.
   free), and they are usually what forces a long session to be summarised.
 - The common waste: a worker views its shot, then the supervisor views the same shot at full size. That is double
   cost for one judgement.
-
-Typical result of adopting these rules: image tokens down ~90% for the supervisor and ~85–90% for workers;
-overall supervisor usage down a third to a half.
 
 ## The rules
 
@@ -88,7 +87,7 @@ Paste into the team's coordination doc (adjust paths):
 
 ## Supervisor habits
 
-- Before opening any image, ask: is this going on a page I publish? If not, relay the written check.
+- Before opening any image, ask: is this a final I must vouch for (a page I publish)? If not, send it on unopened and relay the written check.
 - When you do open one, open the final only, never the iteration shots.
 - Keep updates to the human short (3–5 lines plus a link); the page or the gallery holds the detail.
 - If a worker's written checks keep missing problems the human later finds, tighten that worker's checklist

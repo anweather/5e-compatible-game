@@ -29,7 +29,8 @@ releases page, or `gh release list`).
    checked out and the tree is clean (only `_Recovery*` untracked). The
    Editor is open on this project. If the PC is profiling or building, run
    it on the Mac: both platforms build there.
-2. Run it in the background (builds ~5 min, uploads ~3 GB):
+2. Run it in the background and wait for its exit notification (no sleep
+   loops or status polling; builds ~5 min, uploads ~3 GB):
    `tools/ship-update.sh X.Y.Z --test` (vpk is in `~/.dotnet/tools`).
 3. It ends with the release URL. Check the release lists, per channel:
    `releases.<channel>.json`, the full `.nupkg`, a `-delta.nupkg` (except the

@@ -49,17 +49,17 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **0.1.10:** the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`, minus the casting sounds
   already in) and proximity voice (Vivox: Andrew sets up a Unity Gaming Services project first).
 
-## Waiting to merge after 0.1.9
+## In flight
 
-| Branch | What | By |
-|---|---|---|
-| `gauntlet-rules` (99fc6ec) | The Gauntlet's rules: spell zones, checkpoints, timer, crust, thaw, lift; the course on the lake's south shore | u1 |
-| `dragon-rules` (1593164) | The Dragon's rules: seeded flight, chunk reset, shelter, Reset and budget triggers; the dive snuffs all fire (Andrew) | Mac |
-| `surf-nearest-land` | Surf toward the nearest land (#23): a baked map, push and waves | Mac, in progress |
+- Landed on dev after 0.1.9: the Gauntlet's rules (22cda15), the Dragon's rules (0967b44), surf toward
+  the nearest land (1671b55, #23; rebuild the yard after pulling).
+- DesktopUnity: #5 on `ux-pass-5`, then the yard rebuild and the Windows perf comparison (the PC's
+  Windows session is Disconnected, which may make perf unmeasurable: then Andrew logs in).
+- Mac: the Dragon's view (item 4 below).
 
 ## Next, in order
 
-1. After 0.1.9: merge the three branches above; Andrew judges the cast feel and its sounds
+1. Andrew judges the cast feel and its sounds
    (clip `cast-feel-sound.mp4`), the fire (#19) and the wave crest (#11).
 2. Fix #5 on Windows: the night pipeline states (`PsoDirect3D12`), about 30 min on the PC; then the
    Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
