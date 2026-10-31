@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-043: The dragon's look (dragon-view clip)
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any dragon tuning; the release notes for 0.1.10.
+- **Answer:** loves it ("hilarious"); the model is fine. Scale it up 50%, add a fire particle stream
+  from the mouth to the fire wave on the land, the flight can be a little funnier. No new clip
+  needed: ship it in the next release.
+- **Why:** Andrew watched the clip.
+- **Revisited:** 0.
+
 ### J-042: Keep writing every rule twice, or freeze the TS sandbox?
 
 - **Asked:** 2026-10-30, by the PM (open since then).
