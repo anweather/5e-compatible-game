@@ -287,6 +287,28 @@ that long, and doesn't march.
   the clock and keeps the **best time**. Downed inside the course on a run,
   a wizard gets up on its last checkpoint, not the yard (`CourseRespawn`).
 
+**Look** (of a material or spell)
+: Its `"look"` group in `materials.json` or `spells.json`: the family that
+  draws it and that family's parameters (colour, height, glow, roughness,
+  flow). The view's only: never in a tick, the cell hash or the rules
+  fingerprint. *Not* a world theme's look (`world/looks.json`, a biome a theme
+  may paint), nor a fire's `burn.look`.
+
+**Look family**
+: A way the view can draw a material, by name, from data alone: `block`,
+  `plant`, `debris`, `plate`... listed in `rules/looks.json`. A new material
+  names one, so it draws with no code and no asset. `drawn: false` means named
+  but not yet read from data, and a mod can't use it.
+
+**Form**
+: The variant a look family draws: `plant` has `bush`, `tree`, `sapling` and
+  `stump`.
+
+**Effect family**
+: The same for a cast's show (`blast`, `bolt`, `beam`, `motes`...): prefabs and
+  how the show scales with the spell's numbers. One show per family, in
+  `SpellVisuals.asset`, built from `rules/looks.json`.
+
 ## Things in the world
 
 **Thing**

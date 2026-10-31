@@ -35,10 +35,10 @@ public sealed partial class CellDressing
     // An iron (now and then bronze) plate lying on the ground: sized, shifted, turned and tilted a little, a
     // raised face on a thicker rim, and a rivet at each corner. A rusted one (metal left wet, materials.json
     // rust) is the same plate gone orange-brown, flaking and dull.
-    void DressPlate(Transform root, Vector3 surface, System.Random rng, int x, int y, bool rusted = false)
+    void DressPlate(Transform root, Vector3 surface, Color iron, System.Random rng, int x, int y, bool rusted = false)
     {
-        var color = rng.NextDouble() < 0.25 ? Bronze : Iron;
-        if (rusted) color = Rusted;
+        // A run of plates mixes in a quarter of bronze; a rusted one is only rust.
+        var color = rng.NextDouble() < 0.25 && !rusted ? Bronze : iron;
         var plate = new GameObject("Plate").transform;
         plate.SetParent(root, false);
         // Shifted off the cell's centre too, so a run of plates is a scatter, not a tiled path.
@@ -104,7 +104,7 @@ public sealed partial class CellDressing
         var rocks = grid.wallRocks;
         if (rocks == null || rocks.Length == 0 || rocks[0] == null)
         {
-            DressWallShapes(root, surface, Look(TerrainIds.Rock).color, x, y);
+            DressWallShapes(root, surface, Look(grid.World.Rules, TerrainIds.Rock).color, x, y);
             return;
         }
         var rng = new System.Random(x * 15485863 + y * 32452843);

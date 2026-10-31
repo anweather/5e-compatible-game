@@ -292,7 +292,7 @@ public partial class ChemGrid : MonoBehaviour
     // Editor the repo's rules/ folder, found by walking up from the project. A fixed
     // "../../rules" breaks for Multiplayer Play Mode's virtual players, whose project copies
     // live deeper (unity/Library/VP/<id>/).
-    internal static string FindRulesDir()
+    public static string FindRulesDir()
     {
         var packed = Path.Combine(Application.streamingAssetsPath, "rules");
         if (!Application.isEditor && File.Exists(Path.Combine(packed, "materials.json"))) return packed;
@@ -412,7 +412,7 @@ public partial class ChemGrid : MonoBehaviour
     public float SurfaceY(int x, int y)
     {
         var c = World.At(x, y);
-        return c == null ? 0f : GroundTop(x, y, c) + CellDressing.Look(c.T).height;
+        return c == null ? 0f : GroundTop(x, y, c) + CellDressing.Look(World.Rules, c.T).height;
     }
 
     /// <summary>

@@ -87,7 +87,26 @@ public partial class ChemGrid
     void Announce(RuleSet before)
     {
         EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
+        RedrawLooks(before.Effective);
         RulesChanged?.Invoke();
+    }
+
+    // What stands on the cells of a terrain whose look changed, drawn again from the rules now in
+    // force: every peer runs this at the same switch, with no scene load and no asset. Only the view moves.
+    void RedrawLooks(Rules before)
+    {
+        var after = CurrentRules.Effective;
+        var changed = new HashSet<string>(after.Terrain.Values
+            .Where(t => before.Terrain.TryGetValue(t.Id, out var was) && !LookDef.Same(was.Look, t.Look))
+            .Select(t => t.Id));
+        if (changed.Count == 0 || views == null) return;
+        for (int i = 0; i < views.Length; i++)
+        {
+            var v = views[i];
+            if (v.terrain == null || !changed.Contains(v.terrain)) continue;
+            var c = World.Cells[i];
+            if (c != null) Redress(v, c, i % World.W, i / World.W, false);
+        }
     }
 
     /// <summary>"Wildfire on", "Damp world off", "Wildfire reloaded", "Base rules reloaded", joined.</summary>

@@ -50,7 +50,7 @@ public sealed class CellVines
     float Top(int x, int y, Cell c, bool low)
     {
         float ground = grid.GroundTop(x, y, c);
-        if (!low) return ground + Mathf.Max(CellDressing.Look(c.T).height, ValleyChemistry.FireHeight(c.T));
+        if (!low) return ground + Mathf.Max(CellDressing.Look(grid.World.Rules, c.T).height, ValleyChemistry.FireHeight(c.T));
         float rim = ground;
         foreach (var (dx, dy) in Sides)
             if (grid.World.InBounds(x + dx, y + dy)) rim = Mathf.Max(rim, grid.GroundTop(x + dx, y + dy, grid.World.At(x + dx, y + dy)));

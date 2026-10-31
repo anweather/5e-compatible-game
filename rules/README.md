@@ -18,6 +18,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 | `groups.json` | The Unity game's spell radial: its elements by id (`name`, `order` around the ring from the top, `color` as `#rrggbb`). Each spell in `spells.json` names one with `"group"`; one with none goes under the last. UI only, but mods can regroup or add elements |
 | `combos.json` | Casting by elements (`docs/SPELL_COMBOS.md`): the four `elements`, the `window` in ticks for a second one, `chargeTicks` (the cast time each level of charge past the first adds to a held cast), `moveFactor` (walking speed while the cast meter drains, for the view), `chargeMoveFactor` (the same once a held cast is charging), `singles` by element and `pairs` by first then second element, each with `name`, `spell`, `shape`, `castTicks` and optional `held` (the spell it casts instead when held to full charge) and `todo` (the spell is a stand-in for one not made yet). A single's `castTicks` must be at least the window. `dpad` lists the spells with no element, in cycling order: `name`, `castTicks`, and `spell` (without one the slot shows but can't be cast). Mods deep-merge over it; lists replace whole |
 | `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage, the length of a day and the weather. `defense`: the defense field's waves (`lives`, `waves`, `first` raiders and `growth` per wave, `hpPerWave`, the `warmup`, `spawnEvery` and `betweenWaves` ticks, the raider `kinds` in turn) and how raiders find their way (`margin` squares round the path, path costs `wallCost` for a raised wall they batter down a step every `batterTicks`, `roughCost` and `roughTicks` for deep water from `deepWater` units or a climb of more than a step). `breath`: a swimmer's held breath in `seconds`, `refillSeconds` to fill it from empty with the head out, and drowning's hits once it's gone, `drownDice` d `drownSides` every `drownEvery` seconds (read by the Unity view only, `Breath.cs`). `dragon` (`World.Dragon.cs`, BACKLOG 26): the flight in whole ticks and cells: `warningTicks`, `turnTicks` between passes and `leavingTicks`; the breath's `speed` in cells a tick and `depth` in cells; `breathChunks` across a pass, `overlapChunks` of them swept again by the next, and at most `chunksPerTick` chunks reset a tick; `budget`, the changed cells (ground, height or cover differing from the starting state) past which it comes by itself, 0 for never; and the shelter rule: water from `shelterWater` units (not frozen), or a blocking cell of `wallTerrains` within `wallReach` cells toward where the dragon flies from. `strike` (`World.Strike.cs`, the SRD unarmed strike): `reach` in cells (any of the eight ways, in front of the aim), `knockBack` cells a hit pushes the target on, `cooldownTicks` before the same wizard strikes again, and the `proficiency` bonus on the attack roll |
+| `looks.json` | The look and effect families the view can draw (see "Looks"). Read by `ModValidator` and the yard builder; not part of the rules or their fingerprint |
 | `budgets.json` | What one mod may ask of the engine: new entries, new elements, spell sizes and dice, effect strengths, critter rates, chain depth, the bounds of each sim parameter a mod may tune, and the ticks and speed of a `simulate` run. Read from the base rules only, by `ModValidator` (C#) and the rules MCP (`docs/RULES_MCP.md`); the sandbox doesn't read it |
 | `mods/` | Example live mods (`docs/MODDING.md`), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
 
@@ -222,6 +223,38 @@ tapered dig. `depth` is a whole number from 1; `radius` a whole number
 from 0 (default 1); `strength` a whole number from 1 (default 1), against
 the ground's `hardness`. Dug squares lose their cover and turn to their `dugTo`,
 as with any digging, so the middle of a crater doesn't burn.
+
+## Looks (`looks.json`, `"look"`)
+
+How the view draws a thing is data too, and only the view reads it: no tick
+does, and `"look"` groups stay out of the rules fingerprint, so changing one
+can't move a world or the netcode checksum. `looks.json` lists the families the
+view can draw; a terrain or spell names one in its own group, next to what it
+does:
+
+```jsonc
+"moonstone": { "name": "Moonstone", "tags": ["blocking"],
+  "look": { "family": "block", "color": [0.62, 0.72, 1], "height": 1.6, "glow": 0.3, "roughness": 0.25 } }
+```
+
+- **`family`**: one from `looks.json` for that table (`terrain`, `covers`,
+  `gases`, `spells`). `"drawn": false` there means named but not read from data
+  yet, with `needs` saying what's missing.
+- **`form`**: the variant, when the family has `forms`.
+- **`color`**: three numbers 0 to 1. A spell's is the glow in the hand and any tint.
+- **`height`** (metres over the ground), **`glow`** (shining in its own colour),
+  **`roughness`** (0 glossy, 1 matt), **`flow`** (a liquid's speed; no drawn
+  family reads it yet). `params` in `looks.json` says which a family takes.
+- **`baked`**: the land draws it until it grows in this world (the valley's trees).
+
+In `looks.json`, an effect family (`spells`) also names its pack prefabs
+(`projectile`, `impact`, `afterImpact`: Prototype > Build Chemistry Yard builds
+`SpellVisuals.asset` from them, so a new *family* takes a yard build and a new
+*spell* takes nothing) and how it scales: `scaleBy` (`radius`, `size` or
+`length`) over `base`, the number at which the show is its authored size,
+charge included, between a quarter and four times. A mod replacing an entry
+without a `look` keeps the old one. `ModValidator` refuses a new terrain or
+spell with no look, and any unknown family or form.
 
 ## Units
 

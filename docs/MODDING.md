@@ -200,7 +200,10 @@ draft out of the first call to start one, then pass its id to the rest.
 so a replaced spell keeps everything else. `validate` and `simulate` also
 take a mod's name from `rules/mods` (`wildfire`) or the patch JSON itself.
 What one mod may ask for (new entries, spell sizes, spread rates, the
-ticks a run may take) is in `rules/budgets.json`.
+ticks a run may take) is in `rules/budgets.json`. A new terrain or spell needs a `"look"`
+naming a family from `rules/looks.json` so the game can draw it (`rules/README.md`, "Looks";
+`rules/mods/moonstone.json` is a whole example); changing a look alone needs no rebuild and moves
+no fingerprint.
 
 **An example conversation:**
 

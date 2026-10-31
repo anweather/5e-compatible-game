@@ -31,6 +31,14 @@ namespace Chem
         public float Flow;
         /// <summary>The land itself draws it until it grows in this world (the valley's trees).</summary>
         public bool Baked;
+
+        /// <summary>Whether two looks draw alike (either may be null).</summary>
+        public static bool Same(LookDef a, LookDef b) =>
+            ReferenceEquals(a, b) || (a != null && b != null && a.Family == b.Family && a.Form == b.Form
+                && Near(a.R, b.R) && Near(a.G, b.G) && Near(a.B, b.B) && Near(a.Height, b.Height) && Near(a.Glow, b.Glow)
+                && Near(a.Roughness, b.Roughness) && Near(a.Flow, b.Flow) && a.Baked == b.Baked);
+
+        static bool Near(float a, float b) => Math.Abs(a - b) < 1e-5f;
     }
 
     /// <summary>One family of rules/looks.json.</summary>

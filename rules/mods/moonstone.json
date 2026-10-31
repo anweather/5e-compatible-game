@@ -4,7 +4,7 @@
   "patch": {
     "terrain": {
       "moonstone": { "name": "Moonstone", "tags": ["blocking", "trellis"], "break": { "leaves": "rubble" },
-        "look": { "family": "block", "color": [0.62, 0.72, 1], "height": 1.6, "glow": 1.2, "roughness": 0.25 } }
+        "look": { "family": "block", "color": [0.62, 0.72, 1], "height": 1.6, "glow": 0.3, "roughness": 0.25 } }
     },
     "reactions": {
       "add": [

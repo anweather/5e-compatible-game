@@ -123,7 +123,7 @@ public partial class ChemGrid
         {
             if (!starsFalling.Add(star)) continue;
             if (showman == null) showman = FindAnyObjectByType<SpellCaster>();
-            var look = showman != null && showman.visuals != null ? showman.visuals.For(SpellIds.Meteor) : null;
+            var look = showman != null ? showman.LookOf(SpellIds.Meteor) : null;
             var at = CellCenter(star.X, star.Y);
             at.y = GroundTop(star.X, star.Y, World.At(star.X, star.Y));
             float seconds = (star.Lands - World.Tick) / (float)Mathf.Max(1, World.Rules.Sim.TicksPerSecond);

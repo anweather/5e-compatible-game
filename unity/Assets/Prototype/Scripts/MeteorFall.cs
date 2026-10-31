@@ -21,7 +21,7 @@ public class MeteorFall : MonoBehaviour
     static Material hot, trail, smoke;
 
     Vector3 from, to;
-    float t, seconds = Seconds, size = 1f;
+    float t, seconds = Seconds, size = 1f, blastScale = 1f;
     Action onArrive;
     UnityEngine.Object caster;
     bool hasCaster;
@@ -33,7 +33,7 @@ public class MeteorFall : MonoBehaviour
     /// Brings a meteor down on <paramref name="target"/>, coming in from beyond it as seen from
     /// <paramref name="viewer"/> (the caster), so it streaks across their view.
     /// </summary>
-    public static void Launch(Vector3 target, Vector3 viewer, SpellVisuals.Entry look, Action onArrive, UnityEngine.Object caster, float seconds = Seconds, float size = 1f)
+    public static void Launch(Vector3 target, Vector3 viewer, SpellVisuals.Entry look, Action onArrive, UnityEngine.Object caster, float seconds = Seconds, float size = 1f, float blastScale = 1f)
     {
         var ahead = target - viewer;
         ahead.y = 0f;
@@ -43,6 +43,7 @@ public class MeteorFall : MonoBehaviour
         var go = new GameObject("Meteor");
         var m = go.AddComponent<MeteorFall>();
         m.size = size;
+        m.blastScale = blastScale;
         // A small one comes down steeply, near enough to see.
         float near = size < 1f ? size : 1f;
         m.from = target + side * (Reach * size * near) + Vector3.up * (Height * size * Mathf.Max(near, 0.5f));
@@ -183,6 +184,7 @@ public class MeteorFall : MonoBehaviour
         if (prefab == null) return;
         var fx = SpellVisuals.Spawn(prefab, to, Quaternion.identity);
         fx.transform.localScale = Vector3.one * scale;
+        SpellVisuals.Scale(fx, blastScale);
         Destroy(fx, Mathf.Max(3f, look?.impactSeconds ?? 3f));
     }
 }

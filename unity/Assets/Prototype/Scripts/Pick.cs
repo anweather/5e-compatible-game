@@ -33,7 +33,8 @@ public class Pick : ItemUse
     IEnumerator Land(Vector2Int cell, Vector3 at)
     {
         yield return new WaitForSeconds(LandSeconds);
-        var ground = CellDressing.Look(Item.Grid.World.At(cell.x, cell.y).T).color;
+        var world = Item.Grid.World;
+        var ground = CellDressing.Look(world.Rules, world.At(cell.x, cell.y).T).color;
         BurstFx.Play(BurstFx.Kind.Chips, at, 1f, null, ground);
         GameSounds.Play(SoundIds.Earth, at);
         if (Item.Online) Item.Net.RequestDig(cell);
