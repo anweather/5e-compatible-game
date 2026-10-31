@@ -22,6 +22,12 @@ namespace Chem
         /// <summary>A player's cast state, or null if they've sent no command yet.</summary>
         public PlayerCast CastOf(string player) => casts.TryGetValue(player, out var c) ? c : null;
 
+        /// <summary>The combo a cast has loaded, or null (nothing loaded, or a d-pad spell).</summary>
+        public ComboDef ComboOf(PlayerCast c) => c?.First == null ? null : Rules.Combos.Combo(CombosDef.IdOf(c.First, c.Second));
+
+        /// <summary>The most a combo can be charged: <see cref="MaxCharge"/> if its spell is chargeable, else 1.</summary>
+        public int MaxChargeOf(ComboDef combo) => Chargeable(Rules.Spell(combo?.Spell)) ? MaxCharge : 1;
+
         /// <summary>What the view multiplies this player's walking speed by: the rules' factor while the meter drains, else 1.</summary>
         public double MoveFactorOf(string player) => CastOf(player)?.Casting == true ? Rules.Combos.MoveFactor : 1;
 
@@ -38,7 +44,7 @@ namespace Chem
         /// <summary>
         /// Applies a player's cast input, between ticks. False if it was refused: an element
         /// outside the window or past the second, a d-pad cast during a cast or of a slot with no
-        /// spell, a cancel with nothing to drop.
+        /// spell, a cancel with nothing to drop, a release with nothing held.
         /// </summary>
         public bool ApplyCombo(ComboCommand command)
         {
@@ -46,18 +52,20 @@ namespace Chem
             if (!casts.TryGetValue(command.Player, out var c)) casts[command.Player] = c = new PlayerCast { Player = command.Player };
             switch (command.Kind)
             {
-                case ComboCommandKind.Load: return LoadElement(c, command.Element);
+                case ComboCommandKind.Load: return LoadElement(c, command.Element, command.Hold);
                 case ComboCommandKind.Cancel: return CancelCast(c);
                 case ComboCommandKind.Cycle: return CycleDpad(c, command.Step);
                 case ComboCommandKind.CastSelected: return CastSelected(c);
+                case ComboCommandKind.Release: return ReleaseHold(c, command.Charge);
                 default: return false;
             }
         }
 
-        bool LoadElement(PlayerCast c, string element)
+        bool LoadElement(PlayerCast c, string element, bool hold)
         {
             var combos = Rules.Combos;
-            if (!combos.Elements.Contains(element)) return false;
+            if (!combos.Elements.Contains(element) || !c.TakesElement) return false;
+            c.Holding = hold;
             if (!c.Casting)
             {
                 c.First = element;
@@ -65,7 +73,6 @@ namespace Chem
                 StartMeter(c, combos.Combo(CombosDef.IdOf(element, null))?.CastTicks ?? 0);
                 return true;
             }
-            if (c.First == null || c.Second != null || c.Window == 0) return false;
             c.Second = element;
             c.Window = 0;
             StartMeter(c, combos.Combo(CombosDef.IdOf(c.First, element))?.CastTicks ?? 0);
@@ -76,6 +83,15 @@ namespace Chem
         {
             if (!c.Casting) return false;
             ClearCast(c);
+            return true;
+        }
+
+        // The charge is kept to what the spell takes, here as well as by the view, so a client can't send more.
+        bool ReleaseHold(PlayerCast c, int charge)
+        {
+            if (!c.Holding) return false;
+            c.Holding = false;
+            c.Charge = Math.Max(1, Math.Min(MaxChargeOf(ComboOf(c)), charge));
             return true;
         }
 
@@ -107,15 +123,19 @@ namespace Chem
             c.First = c.Second = null;
             c.Meter = c.Total = c.Window = 0;
             c.DpadCasting = -1;
+            c.Holding = false;
+            c.Charge = 1;
         }
 
-        // Drains every meter, in player order, and sets off those that reach zero.
+        // Drains every meter, in player order, and sets off those that reach zero. A held cast waits
+        // at the meter's last tick, so the tick after its Release sets it off.
         void TickCombos()
         {
             foreach (var c in casts.Values)
             {
                 if (!c.Casting) continue;
                 if (c.Window > 0) c.Window--;
+                if (c.Holding && c.Meter == 1) continue;
                 if (--c.Meter == 0) FireCast(c);
             }
         }
@@ -131,8 +151,13 @@ namespace Chem
             }
             else
             {
-                var def = combos.Combo(CombosDef.IdOf(c.First, c.Second));
-                if (def != null) combosFired.Add(new ComboFired(c.Player, def.Id, def.Name, def.Spell, def.Shape, c.Known.Add(def.Id)));
+                var def = ComboOf(c);
+                if (def != null)
+                {
+                    string spell = def.SpellAt(c.Charge, MaxChargeOf(def));
+                    string shape = spell == def.Spell ? def.Shape : Rules.Spell(spell)?.Shape;
+                    combosFired.Add(new ComboFired(c.Player, def.Id, def.Name, spell, shape, c.Known.Add(def.Id), c.Charge));
+                }
             }
             ClearCast(c);
         }
@@ -145,10 +170,13 @@ namespace Chem
 
         /// <summary>
         /// The players' cast state as text, by player: "ann:fire:air:5:9:0:1:-1:fire,fire+air", which
-        /// is player, elements ("-" for none), meter, total, window, slot, d-pad cast, then the grimoire.
+        /// is player, elements ("-" for none), meter, total, window, slot, d-pad cast, then the grimoire;
+        /// then, only while a cast is held or charged, ":hold:c1" or ":c3" (so other casts hash as they did).
         /// </summary>
         public string CastState() => string.Join("/", casts.Values.Select(c => string.Join(":",
-            c.Player, c.First ?? "-", c.Second ?? "-", Whole(c.Meter), Whole(c.Total), Whole(c.Window), Whole(c.Slot), Whole(c.DpadCasting), string.Join(",", c.Known))));
+            c.Player, c.First ?? "-", c.Second ?? "-", Whole(c.Meter), Whole(c.Total), Whole(c.Window), Whole(c.Slot), Whole(c.DpadCasting), string.Join(",", c.Known)) + ChargeState(c)));
+
+        static string ChargeState(PlayerCast c) => (c.Holding ? ":hold" : "") + (c.Holding || c.Charge > 1 ? ":c" + Whole(c.Charge) : "");
 
         static string Whole(int n) => n.ToString(CultureInfo.InvariantCulture);
     }

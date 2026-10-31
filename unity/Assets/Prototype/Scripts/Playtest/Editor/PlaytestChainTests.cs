@@ -34,12 +34,13 @@ public class PlaytestChainTests
 
     // Casts a combo the way SpellCaster aims one from the crosshair: a line from beside the
     // wizard towards the cell, a burst round the wizard if it's cast from them, else on the cell.
-    static void CastCombo(World w, string combo, (int x, int y) at)
+    static void CastCombo(World w, string combo, (int x, int y) at, int charge = 1)
     {
-        var spell = R.Spell(R.Combos.Combo(combo).Spell);
-        if (spell.Origin != "self") w.Cast(spell.Id, at.x, at.y, East);
-        else if (spell.Shape == "burst") w.Cast(spell.Id, Me.x, Me.y, East);
-        else w.Cast(spell.Id, Me.x + 1, Me.y, East);
+        var def = R.Combos.Combo(combo);
+        var spell = R.Spell(def.SpellAt(charge, w.MaxChargeOf(def)));
+        if (spell.Origin != "self") w.Cast(spell.Id, at.x, at.y, East, charge);
+        else if (spell.Shape == "burst") w.Cast(spell.Id, Me.x, Me.y, East, charge);
+        else w.Cast(spell.Id, Me.x + 1, Me.y, East, charge);
     }
 
     [Test]
@@ -67,7 +68,7 @@ public class PlaytestChainTests
         }
         Assert.That(aim, Is.Not.Null, $"{chain.Setup} left what {chain.Name} needs near the cell");
         int since = w.Tick;
-        CastCombo(w, chain.Trigger, aim.Value);
+        CastCombo(w, chain.Trigger, aim.Value, chain.TriggerCharge);
         bool done = chain.Done(w, aim.Value.x, aim.Value.y, since);
         for (int i = 0; i < Ticks && !done; i++)
         {

@@ -472,7 +472,7 @@ export interface ComboDef {
   shape: Shape;
   /** Ticks the cast meter takes to drain. */
   castTicks: number;
-  /** The spell it casts when held at the ground instead. */
+  /** The spell it casts when held to its full charge instead. */
   held?: string;
   /** What's still to make, when spell is a stand-in. */
   todo?: string;

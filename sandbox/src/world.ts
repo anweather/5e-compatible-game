@@ -57,6 +57,10 @@ export interface PlayerCast {
   /** The d-pad's selected slot, and the slot being cast, or -1. */
   slot: number;
   dpadCasting: number;
+  /** The last element's button is down: the meter stops at its last tick until a release. */
+  holding: boolean;
+  /** The charge the release gave; 1 until then. */
+  charge: number;
   /** The ids of the combos this player has cast, sorted: the grimoire. */
   known: string[];
 }
@@ -70,6 +74,8 @@ export interface ComboFired {
   shape: string | undefined;
   /** This was the player's first cast of the combo: it just joined the grimoire. */
   discovered: boolean;
+  /** The strength it goes off at. */
+  charge: number;
 }
 
 /** The defense field's waves (defense.ts; C#: DefenseState). */
@@ -449,13 +455,16 @@ export function serializeWorld(w: World): WorldSnapshot {
   return JSON.parse(JSON.stringify({ ...rest, log: w.log.slice(-40) })) as WorldSnapshot;
 }
 
+// No button is down on a loaded game, so a held cast goes off as a tap.
+const unheld = (casts: Record<string, PlayerCast>) => Object.fromEntries(Object.entries(casts).map(([p, c]) => [p, { ...c, holding: false, charge: c.charge ?? 1 }]));
+
 export function deserializeWorld(s: WorldSnapshot): World {
   const n = s.w * s.h;
   const copy = JSON.parse(JSON.stringify(s)) as WorldSnapshot;
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
   // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], golf: copy.golf ?? null, stars: copy.stars ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: unheld(copy.casts ?? {}), combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], golf: copy.golf ?? null, stars: copy.stars ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

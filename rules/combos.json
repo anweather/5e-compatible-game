@@ -5,7 +5,7 @@
   "singles": {
     "fire":  { "name": "Fire Bolt", "spell": "fire-bolt", "shape": "point", "castTicks": 6 },
     "water": { "name": "Create Water", "spell": "create-water", "shape": "square", "castTicks": 6 },
-    "earth": { "name": "Raise Earth", "spell": "mold-earth-heap", "shape": "square", "castTicks": 6 },
+    "earth": { "name": "Raise Earth", "spell": "mold-earth-heap", "shape": "square", "castTicks": 6, "held": "mold-earth" },
     "air":   { "name": "Gust of Wind", "spell": "gust-of-wind", "shape": "line", "castTicks": 6 }
   },
   "pairs": {
