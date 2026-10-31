@@ -242,6 +242,7 @@ namespace Chem
         void Force(SpellDef s, int x, int y, int dir)
         {
             if (s.ForcePush <= 0 && s.ForceThrow <= 0) return;
+            HitBall(s, x, y, dir);
             var r = RaiderAt(x, y);
             if (r == null || !r.Alive) return;
             var def = Rules.Entity(r.Kind);

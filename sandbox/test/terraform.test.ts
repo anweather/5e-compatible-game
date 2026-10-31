@@ -10,7 +10,8 @@ import { applyElement, ignite, shatter } from "../src/react.ts";
 import { spawn, walk } from "../src/entities.ts";
 import { dig, reshape } from "../src/terraform.ts";
 import { whirlState } from "../src/combos.ts";
-import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
+import { golfState, startGolf } from "../src/golf.ts";
+import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, fnv1a, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -1045,4 +1046,25 @@ test("carries and flashes are checked", () => {
   });
   for (const e of ["gas flour: burn.flash.fire must be a whole number from 1", "gas flour: burn.flash.push must be a whole number from 0",
     "spell gyre: travelEvery must be a whole number from 1", "spell gyre: carries x sheds unknown element nothing", "spell gyre: carries x has unknown condition \"hue\""]) assert.ok(errors.includes(e), e);
+});
+
+// Mirrors GolfTests.ATeeShotAPenaltyACarryOverThePondAndHoledInSix.
+test("spell golf: a tee shot, a ball lost in the pond, a carry over it and holed in 6, matching the C# golden", () => {
+  const w = createWorld(40, 12, 3);
+  for (const c of w.cells) c.t = "dirt";
+  for (let y = 3; y <= 7; y++) {
+    cellAt(w, 11, y)!.h = 1; // a rise to climb
+    cellAt(w, 12, y)!.h = 1;
+    for (const x of [17, 18]) Object.assign(cellAt(w, x, y)!, { t: "pit", h: -1, water: 3 }); // a pond across the way
+  }
+  startGolf(w, 4, 5, 30, 5);
+  const stroke = (id: string, x: number, y: number) => { castSpell(w, id, x, y, 1); run(w, 24); return `${w.golf!.x},${w.golf!.y}`; };
+  assert.equal(stroke("gust-of-wind", 2, 5), "14,5", "the tee shot rolls over the rise");
+  assert.equal(stroke("gust-of-wind", 12, 5), "4,5", "into the pond: back on the tee");
+  assert.equal(w.golf!.strokes, 3, "a stroke's penalty");
+  assert.equal(stroke("gust-of-wind", 2, 5), "14,5");
+  assert.equal(stroke("mold-earth-heap", 14, 5), "22,5", "Raise Earth throws it over the pond");
+  assert.equal(stroke("gust-of-wind", 20, 5), "30,5");
+  assert.ok(w.golf!.holed && w.log.some((l) => l.text === "Holed in 6!"));
+  assert.equal(`${golfState(w)} ${fnv1a(golfState(w))} ${cellHash(w)} ${w.rng}`, "|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"); // the same in the C# core
 });

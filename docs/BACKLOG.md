@@ -550,6 +550,17 @@ can.
   alternative to try later: a cup toss, a ball thrown into cups set out as a
   skill shot.
 - **Size:** S-M (rules in the core, a tee, flag and hole placed, the HUD line).
+- **Built (rules, 2026-10-30, branch `spell-golf`):** `World.Golf.cs` and
+  `sandbox/src/golf.ts` with a shared golden (a tee shot, a ball lost in a
+  pond, a Raise Earth carry over it, holed in 6). The ball is core state:
+  `GolfCommand` tees it up; it's saved and in `CastHash`, so in the online
+  checksum. Gust of Wind has `force.push` 2 (5 cells of roll a point), Raise
+  Earth `force.throw` 2 (3 cells of flight a point, then a cell of roll a
+  point); tuning is `sim.json golf`. It climbs slower, runs on downhill and
+  bounces off rock. The course is `world/golf.json`: tee (246, 240), hole
+  (306, 240), 90 m apart on the meadow north of the defense field.
+- **Open:** the views (the ball, the flag, the HUD stroke line) and a
+  `GolfCommand` intent through `NetChem` for online.
 
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 

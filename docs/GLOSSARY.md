@@ -181,6 +181,19 @@ touch them.
   nature, time), at most three spells each (`groups.json`, `GroupDef`).
   Players see them as elements; we say group.
 
+**Force**
+: What a spell does to what it hits, apart from its element (`spells.json`
+  `force`): **push** knocks it along, **throw** throws it off its feet (the
+  golf ball: up and along). Geyser, Wave, Rolling Boulder, Gust of Wind and
+  Raise Earth have it.
+
+**Spell golf**
+: One hole played with spells (`World.Golf.cs`, `golf.ts`, BACKLOG §24).
+  The **ball** (core state, not a thing) starts on the **tee**; a cast
+  whose force moves it is a **stroke**; it drops in on the **hole** cell.
+  Lost in water or out of the course's bounds, it goes back on the tee for
+  a stroke's penalty. The course is `world/golf.json`.
+
 ## Things in the world
 
 **Thing**

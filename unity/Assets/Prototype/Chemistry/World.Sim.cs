@@ -116,6 +116,7 @@ namespace Chem
                     TickWhirlwinds();
                     TickWaves();
                     TickBoulders();
+                    TickGolf();
                     TickMachines(tickRows);
                     NextStage(TickStage.Timers);
                     return false;

@@ -4,6 +4,7 @@ import { applyElement, applyEntityElement, displaceWater, ignite, matches, putCo
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
+import { hitBall } from "./golf.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
   type Boulder, type Dir, type Entity, type Star, type Wave, type Whirl, type World,
@@ -593,10 +594,12 @@ function strike(w: World, b: Boulder, s: SpellDef): void {
 function force(w: World, s: SpellDef, x: number, y: number, dir: Dir | undefined): void {
   const f = s.force;
   if (!f) return;
+  hitBall(w, s, x, y, dir);
   const e = entityAt(w, x, y);
   if (!e || defOf(e).player || !w.entities.includes(e)) return;
   const by = s.name.toLowerCase(), name = defOf(e).name;
-  if ((f.push ?? 0) > 0 && dir !== undefined && massOf(e) <= (s.maxMass ?? 1)) {
+  // A spell that already shoves (Gust of Wind's push) doesn't knock it back twice; the C# core has only this push.
+  if ((f.push ?? 0) > 0 && !s.push && dir !== undefined && massOf(e) <= (s.maxMass ?? 1)) {
     for (let k = 0; k < f.push!; k++) {
       const n = cellAt(w, e.x + DX[dir], e.y + DY[dir]);
       if (!n || isBlocking(n) || entityAt(w, e.x + DX[dir], e.y + DY[dir])) break;

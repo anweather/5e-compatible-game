@@ -94,8 +94,7 @@ namespace Chem
             Shatter(b.X, b.Y);
             if (s.Trail != null) AddGas(At(b.X, b.Y), s.Trail, 2);
             var r = RaiderAt(b.X, b.Y);
-            if (r == null || !r.Alive) return;
-            if (s.Damage.Length == 2) DamageRaider(r, Roll(s.Damage), s.Name.ToLowerInvariant(), s.Element);
+            if (r != null && r.Alive && s.Damage.Length == 2) DamageRaider(r, Roll(s.Damage), s.Name.ToLowerInvariant(), s.Element);
             Force(s, b.X, b.Y, b.Dir);
         }
 
