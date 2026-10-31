@@ -56,6 +56,7 @@ Each entry has:
 - **Also comes up when:** any tuning of casting animation, hit-stop or cast sounds.
 - **Answer:** really close. The charged cast is amazing: keep it. The uncharged cast is too
   quick for the slam together and release; the slam needs more oomph.
+  The sounds are not judged yet: Andrew watched without sound (still owed).
 - **Why:** Andrew watched the clip.
 - **Revisited:** 0.
 

@@ -76,7 +76,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - Keep writing every rule twice (C# core and TS sandbox), or freeze the sandbox?
 - The punch knocks a crate only 0.42 m: harder?
-- The verdicts above (fire, wave crest).
+- The verdicts above (fire, wave crest), and the cast sounds (`cast-feel-sound.mp4`, not heard yet).
 - Unmerged branches to delete: `wip/w1-*`, `wip/w2-*` (their work landed), and about 17 old spikes.
 
 ## Telemetry
