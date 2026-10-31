@@ -204,6 +204,31 @@ namespace Chem.Tests
 
         // ---------- fire ----------
 
+        [TestCase(1)]
+        [TestCase(2)]
+        public void AFireballBurstsOnTheCellItIsAimedAt(int charge)
+        {
+            // Playtest 0.1.8, run 811: a Fireball aimed at grass seemed to land elsewhere. In the core it
+            // bursts on the aimed cell: its crater is dug there (grass to dirt, so the middle itself
+            // doesn't burn) and the grass round it, out to the burst's radius, takes fire evenly.
+            var fireball = R.Spell("fireball");
+            var w = new World(R, 21, 21, 5, "grass");
+            w.Cast("fireball", 10, 10, 0, charge);
+            int radius = fireball.Radius + World.ChargedGrowth(fireball, charge);
+            Assert.That(w.At(10, 10).Height, Is.LessThan(0), "the crater is on the aimed cell");
+            Assert.That(w.At(10, 10).T, Is.EqualTo("dirt"));
+            int crater = fireball.Crater.Radius;
+            for (int y = 0; y < 21; y++)
+                for (int x = 0; x < 21; x++)
+                {
+                    var c = w.At(x, y);
+                    int d = System.Math.Max(System.Math.Abs(x - 10), System.Math.Abs(y - 10));
+                    if (d > crater && d <= radius) Assert.That(c.Fire, Is.GreaterThan(0), $"({x}, {y}) in the burst round the crater burns");
+                    if (d > radius && c.Fire > 0) Assert.That(c.Cover, Is.EqualTo("embers"), $"({x}, {y}) past the burst burns only as debris");
+                }
+            Assert.That(w.Log.Select(l => l.Text), Has.Member("Fire takes hold of the grass"));
+        }
+
         [Test]
         public void FireSpreadsOnGrassAndBurnsItToDirtAndAsh()
         {

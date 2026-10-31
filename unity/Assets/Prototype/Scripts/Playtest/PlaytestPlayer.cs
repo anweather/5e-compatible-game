@@ -197,23 +197,26 @@ public sealed class PlaytestPlayer
     }
 
     // Casts a spell (and then a second one on the same cells) a few metres ahead, and checks a
-    // chemistry spell changed something there.
+    // chemistry spell changed something where it reaches (Watched), waiting for that as long as a
+    // cast's result may take to show.
     IEnumerator CastAhead(string spell, string then)
     {
         if (caster == null) yield break;
         var ahead = wizard.transform.position + Flat(wizard.transform.forward).normalized * dice.Range(3f, 9f);
         var cell = grid.CellAt(ahead);
         int dir = Dir(wizard.transform.forward);
-        string before = HashIfActive(ahead);
+        var watched = Watched(spell, cell, dir);
+        if (then != null) watched.UnionWith(Watched(then, cell, dir));
+        string before = HashIfActive(watched);
         yield return CastOne(spell, cell, dir);
         if (then != null)
         {
             yield return Wait(1.5f);
             yield return CastOne(then, cell, dir);
         }
-        yield return Wait(4f);
+        yield return UntilChanged(watched, before, ResultSeconds);
         var def = grid.World.Rules.Spell(spell);
-        if (before != null && def != null && def.Element != null && HashIfActive(ahead) == before)
+        if (before != null && def != null && def.Element != null && HashIfActive(watched) == before)
             report(new Candidate("spell-nothing", spell, Category.Gameplay, Frame,
                 $"{spell} at cell {cell.x},{cell.y} changed nothing there", lowConfidence: true));
     }
@@ -256,14 +259,15 @@ public sealed class PlaytestPlayer
         if (caster == null) yield break;
         var at = Ahead();
         var cell = grid.CellAt(at);
-        string before = HashIfActive(at);
+        var def = grid.World.Rules.Spell(grid.World.Rules.Combos.Combo(combo)?.Spell);
+        var watched = Watched(def?.Id, cell, Dir(wizard.transform.forward));
+        string before = HashIfActive(watched);
         bool went = false;
         yield return Press(combo, at, ok => went = ok);
         if (!went) yield break;
         yield return Wait(ResultSeconds);
         shoot("elements-" + combo.Replace('+', '-'));
-        var def = grid.World.Rules.Spell(grid.World.Rules.Combos.Combo(combo)?.Spell);
-        if (before != null && def?.Element != null && HashIfActive(at) == before)
+        if (before != null && def?.Element != null && HashIfActive(watched) == before)
             report(new Candidate("elements-nothing", combo, Category.Gameplay, Frame,
                 $"{combo} ({def.Id}) at cell {cell.x},{cell.y} changed nothing there", lowConfidence: true));
     }
@@ -392,12 +396,41 @@ public sealed class PlaytestPlayer
         return new Vector3(c.x, grid.SurfaceY(x, y), c.z);
     }
 
-    // The chunk's hash where it's simulated (an inactive chunk is held as it is: no change to see).
-    string HashIfActive(Vector3 at)
+    // The chunks a cast aimed at a cell can change: every one under its shape at the highest charge
+    // and its scatter, and the caster's (a line from self starts there). A burst near a chunk's edge
+    // reaches into the next, so the aimed cell's chunk alone can miss what it did.
+    HashSet<Vector2Int> Watched(string spellId, Vector2Int cell, int dir)
     {
-        var chunk = grid.ChunkAt(at);
-        return grid.IsChunkActive(chunk.x, chunk.y) ? grid.World.ChunkHash(chunk.x, chunk.y) : null;
+        var chunks = new HashSet<Vector2Int> { grid.ChunkAt(CellPoint(cell.x, cell.y)), grid.ChunkAt(wizard.transform.position) };
+        var def = spellId != null ? grid.World.Rules.Spell(spellId) : null;
+        if (def == null) return chunks;
+        var cells = grid.World.SpellCells(def, cell.x, cell.y, dir, World.MaxCharge);
+        if (cells.Count == 0) return chunks;
+        int reach = def.Scatter?.Reach ?? 0;
+        int x0 = cells.Min(c => c.x) - reach, x1 = cells.Max(c => c.x) + reach;
+        int y0 = cells.Min(c => c.y) - reach, y1 = cells.Max(c => c.y) + reach;
+        for (int cy = Chunks.ChunkOf(y0); cy <= Chunks.ChunkOf(y1); cy++)
+            for (int cx = Chunks.ChunkOf(x0); cx <= Chunks.ChunkOf(x1); cx++) chunks.Add(new Vector2Int(cx, cy));
+        return chunks;
     }
+
+    // The watched chunks' hashes where they're simulated (an inactive chunk is held as it is: no change
+    // to see), in a fixed order; null when none is.
+    string HashIfActive(HashSet<Vector2Int> chunks)
+    {
+        var active = chunks.Where(c => grid.IsChunkActive(c.x, c.y)).OrderBy(c => c.y).ThenBy(c => c.x).ToList();
+        return active.Count == 0 ? null : string.Join(" ", active.Select(c => grid.World.ChunkHash(c.x, c.y)));
+    }
+
+    // Waits until the watched chunks change (the cast landed and did something) or the time is up,
+    // looking a few times a second (a chunk's hash reads all its cells).
+    IEnumerator UntilChanged(HashSet<Vector2Int> chunks, string before, float seconds)
+    {
+        float until = Time.time + seconds;
+        while (before != null && Time.time < until && HashIfActive(chunks) == before) yield return Wait(HashEvery);
+    }
+
+    const float HashEvery = 0.25f;
 
     // The nearest prop within a walk, by distance then name (the same on every run).
     PhysicsProp NearestProp() =>
