@@ -41,7 +41,7 @@ namespace Chem
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate", "radiusPerCharge" };
             static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n", "wave" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
-            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.fog.every", "weather.fog.regionChunks", "weather.fog.driftTicks", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "dragon.speed", "dragon.depth", "dragon.breathChunks", "dragon.chunksPerTick", "breath.seconds", "breath.drownEvery", "breath.drownSides", "strike.reach" };
+            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.fog.every", "weather.fog.regionChunks", "weather.fog.driftTicks", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "dragon.speed", "dragon.depth", "dragon.breathChunks", "dragon.chunksPerTick", "breath.seconds", "breath.drownEvery", "breath.drownSides", "strike.reach", "dragon.scale" };
 
             readonly JObject r, terrain, covers, gases;
             readonly HashSet<string> elements;
@@ -477,7 +477,7 @@ namespace Chem
             void SimEntry(string key, JToken value)
             {
                 if (key == "defense.kinds" || key == "weather.fog.gas" || key == "dragon.wallTerrains") return; // names, checked by DefenseRefs, FogRef and DragonRefs
-                if (key.StartsWith("dragon.", StringComparison.Ordinal) && !IsWholeNumber(value)) Errors.Add($"sim {key} must be a whole number");
+                if (key.StartsWith("dragon.", StringComparison.Ordinal) && key != "dragon.scale" && !IsWholeNumber(value)) Errors.Add($"sim {key} must be a whole number");
                 if (key == "status.shatter.when" || key == "status.shatter.notBy")
                 {
                     if (value.Type != JTokenType.String) Errors.Add($"sim {key} must be a name");

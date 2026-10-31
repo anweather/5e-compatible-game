@@ -454,7 +454,8 @@ that long, and doesn't march.
 **Dragon**
 : The world reset as an event (BACKLOG §26, `World.Dragon.cs`, `sandbox/src/dragon.ts`). Summoned by a
   `DragonCommand` (the Reset, the host alone online), or by itself past the changed-cell budget. Its path
-  comes from the seed and the flight's number, never from the world's random numbers.
+  comes from the seed and the flight's number, never from the world's random numbers. How big it's drawn is
+  `dragon.scale` (against a 70 m wingspan): the view's alone, and the breath reaches no further for it.
 
 **Flight**
 : One visit of the dragon, in three phases (`DragonPhase`): the **warning**, then the **passes**, then
@@ -468,6 +469,15 @@ that long, and doesn't march.
 : One long sweep of the dragon along a **strip** of chunks (`dragon.breathChunks` across, `dragon.overlapChunks`
   of them swept again by the next pass), there and back across the valley. Between passes it wheels
   round (`dragon.turnTicks`).
+
+**Stream** (of fire)
+: The fire falling from the dragon's mouth to its wall, drawn as **drops** (`DragonBreath`, Prototype/Flame):
+  GPU particles with no state, on only while the breath is out. What has left the mouth flies on when it stops.
+  It's the show; what the breath does is `World.BreathBox`.
+
+**Barrel roll**
+: A whole turn of the dragon about its length on the way round between passes, on about two turns in three, by
+  the flight's hash so every peer sees the same (`DragonFlight`). View only.
 
 **Dragon's breath**
 : The band of cells under the fire on a pass, `dragon.depth` cells long and a strip wide, moving

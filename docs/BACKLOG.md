@@ -645,6 +645,28 @@ Starting state: 20 ms to keep, a palette of 20 cells, 1.3 MB. A real flight is 4
 The budget, 100000 cells, is 30% of the valley's 331776; a bot session of 2840 ticks (8 minutes) reached 1221, so a normal
 session doesn't bring it. Dragon stage in a tick: 0.17 ms mean, 2.3 ms at worst, over a whole flight.
 
+**Tweaks after Andrew's look (2026-10-31, J-043, branch `dragon-tweaks`, for 0.1.10):**
+- **Half as big again, as data:** `sim.json` `dragon.scale`, 1.5, read by the view every frame (a mod or a room's
+  rule switch takes hold at once), parsed by the core and read by nothing there: a flight runs the same at any scale
+  (test), and the goldens stand. It moves the rules' fingerprint, as any key does; nothing pins that number, and peers
+  on one build agree. `sandbox/rules-frozen` doesn't have it and doesn't move. `budgets.json` lets a mod have 0.5 to 3.
+- **It fits:** 105 m wingspan, 105 m over the ground on a pass (it was 40 m, and its feet went through the land: the
+  clip hangs 85 m below the body at 1.5), 135 m behind the breath's lead, with the ground taken under its wings and
+  one span ahead. Tips cleared the land by 75 m at worst on a pass, 109 m on a turn. Shadow 181 m on a pass. The mouth
+  (the `Nose_end` bone) is about 74 m ahead of the body and 70 m short of the wall. The breath is unchanged: 288 m
+  across, 18 m deep (192 by 12 cells), and the stream lands on it, give or take the lead's slide between ticks.
+- **The stream:** 240 drops in Prototype/Flame's one draw (a sheet of 3): GPU particles with no state, worked out in
+  the vertex shader from the clock, the mouth, a bend and where each lands, added to what's behind, facing the camera.
+  The old fan of 28 flames is gone. On only while `BreathBox` is; what has left the mouth flies on. Clean on D3D and
+  Metal (`CompileVariant`); no new shader or draw, so no new PSO; no garbage in `Burn`.
+- **Cost, Mac player, 110 s, 2 runs each:** `dragon` 30.09 and 30.08 ms before, 30.08 and 30.28 after; GPU 31.1 and 30.9
+  before, 30.9 and 31.3 after; `dragon` over `dragonclear` +0.19 ms before, +0.20 after. No measurable cost over a
+  flight. `dragonlow`, the wall through the camera: 20.56 ms before, 20.45 after; worst frame 44 before, 59 after.
+  "Lean budget" has no frame number in the repo: it's a rule about tokens and GPU-first, so this is the extra cost.
+- **Funnier:** a barrel roll on about two turns in three, by the flight's hash, so every peer sees the same.
+- **Reset:** the `dragon` probe now taps and holds it on a virtual pad; the hold really reloads the scene. A client's R
+  logs that it asked, and the host's log says who and to press R; left as it is, host only.
+
 **Not there yet:**
 - Dawn: the core doesn't touch the clock. Birds scattering: the valley has no birds.
 - The model has no idle or landing clip: it rears on the mountain and roars with an attack clip, and it reads

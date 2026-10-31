@@ -1,6 +1,7 @@
 using System.IO;
 using System.Linq;
 using Chem;
+using Newtonsoft.Json.Linq;
 using NUnit.Framework;
 using UnityEditor.SceneManagement;
 using UnityEngine.SceneManagement;
@@ -94,6 +95,76 @@ public class DragonViewTests
         Assert.That(world.Dragon, Is.Null, "the flight ends");
         // A quarter of a tick at the pass's speed, or a little more on the wheel round; a jump would be a chunk or more.
         Assert.That(worst, Is.LessThan(p.Speed * 2f), "cells between quarter ticks");
+    }
+
+    // How big it's drawn, and what follows from that, comes from sim.json: a constant fails this.
+    [Test]
+    public void ItsSizeIsTheDatas()
+    {
+        var rules = Rules.Load(Path.GetFullPath("../rules"));
+        double inTheFile = (double)JObject.Parse(File.ReadAllText(Path.GetFullPath("../rules/sim.json")))["dragon"]["scale"];
+        Assert.That(rules.Sim.Dragon.Scale, Is.EqualTo(inTheFile));
+        Assert.That(DragonFlight.Wingspan(rules.Sim.Dragon), Is.EqualTo(DragonFlight.SpanAtOne * (float)inTheFile).Within(0.001f));
+
+        var modded = rules.WithMods(new[] { ModPatch.Parse("{ 'title': 'Wyrm', 'patch': { 'sim': { 'dragon': { 'scale': 2.5 } } } }".Replace('\'', '"')) }).Sim.Dragon;
+        Assert.That(DragonFlight.Wingspan(modded), Is.EqualTo(DragonFlight.SpanAtOne * 2.5f).Within(0.001f), "a mod sets it");
+        Assert.That(DragonFlight.Cruise(modded), Is.EqualTo(DragonFlight.CruiseAtOne * 2.5f).Within(0.001f), "the flight's height goes with it");
+    }
+
+    // On a pass it flies its scale's distance behind the core's breath, down the strip's middle.
+    [Test]
+    public void ABiggerDragonFliesFurtherBehindTheSameBreath()
+    {
+        var rules = Quick();
+        var p = rules.Sim.Dragon;
+        p.Speed = 6;
+        var world = new World(rules, 512, 512, 3u);
+        world.KeepStart();
+        world.ApplyDragon(new DragonCommand());
+        while (!world.BreathBox(out _, out _, out _, out _)) world.Step();
+        for (int i = 0; i < 40; i++) world.Step();
+        var flight = world.Dragon;
+        var pose = DragonFlight.At(world, 0f, Vector2.zero);
+        float along = flight.AlongX ? pose.Cell.x : pose.Cell.y;
+        Assert.That(Mathf.Abs(along - pose.Lead), Is.EqualTo(DragonFlight.Behind(p)).Within(0.01f));
+        p.Scale *= 2.0;
+        var bigger = DragonFlight.At(world, 0f, Vector2.zero);
+        along = flight.AlongX ? bigger.Cell.x : bigger.Cell.y;
+        Assert.That(Mathf.Abs(along - bigger.Lead), Is.EqualTo(DragonFlight.Behind(p)).Within(0.01f));
+        Assert.That(bigger.Lead, Is.EqualTo(pose.Lead), "the fire stays where the core has it");
+    }
+
+    // The funny bit: a whole roll or none, by the flight's hash, so every peer sees the same turns.
+    [Test]
+    public void ABarrelRollComesRoundToLevelAndIsTheSameOnEveryPeer()
+    {
+        var a = Rolls(3u);
+        Assert.That(a.Select(r => Mathf.Abs(r.last)), Is.All.EqualTo(360f).Within(0.01f).Or.EqualTo(0f).Within(0.01f), "a whole roll or none");
+        Assert.That(a.All(r => Mathf.Abs(r.first) < 0.01f), "each starts level");
+        Assert.That(Enumerable.Range(1, 12).Any(seed => Rolls((uint)seed).Any(r => r.last != 0f)), "some flights roll");
+        CollectionAssert.AreEqual(a, Rolls(3u));
+    }
+
+    static System.Collections.Generic.List<(float first, float last)> Rolls(uint seed)
+    {
+        var world = new World(Rules.Load(Path.GetFullPath("../rules")), 256, 256, seed);
+        world.KeepStart();
+        world.ApplyDragon(new DragonCommand());
+        var rolls = new System.Collections.Generic.List<(float first, float last)>();
+        bool turning = false;
+        for (int i = 0; i < 5000 && world.Dragon != null; i++)
+        {
+            bool now = world.Dragon.Phase == DragonPhase.Passes && world.Dragon.Until > 0;
+            if (now)
+            {
+                float roll = DragonFlight.At(world, 0f, Vector2.zero).Roll;
+                if (!turning) rolls.Add((roll, roll));
+                else rolls[^1] = (rolls[^1].first, roll);
+            }
+            turning = now;
+            world.Step();
+        }
+        return rolls;
     }
 
     [Test]
