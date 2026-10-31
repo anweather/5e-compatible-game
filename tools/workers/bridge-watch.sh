@@ -100,8 +100,12 @@ check_back() { # $1 = account
   rm -f "$state/$a.out"
   log "$a is back"
   mail "${other[$a]}" "$a is back" "The $a account's usage limit has reset."
-  mail "${role[$a]}" "your usage is back" "The $a account's usage limit has reset. Read your inbox and carry on with your queue."
-  wake "${role[$a]}"
+  # The role is told only if it has work waiting: a session closed on purpose (the Pro
+  # coordinator, out of the worker loop since 2026-10-30) isn't woken just to hear this.
+  if compgen -G "$root/${role[$a]}/*.md" >/dev/null; then
+    mail "${role[$a]}" "your usage is back" "The $a account's usage limit has reset. Read your inbox and carry on with your queue."
+    wake "${role[$a]}"
+  fi
 }
 
 wake() { # wake <role>, at most once every 30 min
