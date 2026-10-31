@@ -119,7 +119,8 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   only a pick, Shatter or Falling Star breaks it. Over water it makes
   stepping stones.
 - **Rolling Boulder (replaces Dust Storm), earth set moving:** a boulder
-  rolls downhill with the terrain, knocks creatures over, smashes brittle
+  rolls the way it's aimed, at any angle, and turns downhill with the
+  terrain, knocks creatures over, smashes brittle
   things (glass, ice, crates), stops in water as a dam, and leaves a trail
   of dust (light it: a dust explosion). A bowling mini game, and a ball for
   the ball court.

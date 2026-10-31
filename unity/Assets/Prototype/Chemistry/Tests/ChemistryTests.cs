@@ -1131,6 +1131,34 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ARollingBoulderRollsAlongASlantedAimAndThenDownhill()
+        {
+            // GitHub #21: aimed off the grid's four ways it rolls along the aim like the wave, and a slope to its side
+            // turns it, then it keeps to the new way. Saved mid-roll it goes on the same. Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 18, 14, 8, "dirt");
+            w.At(5, 4).T = "glass";
+            foreach (int y in new[] { 6, 7, 8, 9, 10 }) w.At(6, y).Height = -1;
+            w.Cast("rolling-boulder", 2, 2, World.DirOf(3, 2), 1, 3, 2);
+            Assert.That(w.Boulders[0].Dir, Is.EqualTo(1), "it pushes along the nearest grid way");
+            Run(w, 6);
+            Assert.That((w.Boulders[0].X, w.Boulders[0].Y), Is.EqualTo((5, 4)), "three cells along the aim, not along a grid way");
+            Assert.That(w.At(5, 4).Cracked, Is.GreaterThan(0), "and it strikes what's on its slant");
+            Run(w, 2);
+            var back = World.Load(w.Save(new Blanks()), R, new Blanks());
+            Run(back, 2);
+            Run(w, 2);
+            Assert.That((w.Boulders[0].X, w.Boulders[0].Y), Is.EqualTo((6, 6)), "the slope to its side turns it");
+            Assert.That((back.Boulders[0].X, back.Boulders[0].Y), Is.EqualTo((6, 6)));
+            Assert.That(w.Boulders[0].Dir, Is.EqualTo(2));
+            Run(w, 4);
+            Assert.That((w.Boulders[0].X, w.Boulders[0].Y), Is.EqualTo((6, 8)), "on down its new way");
+            Run(w, 20);
+            Assert.That(w.Boulders, Is.Empty);
+            Assert.That(w.At(3, 2).Gas, Is.Not.EqualTo("dust"), "no trail along the grid way it wasn't aimed");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c5a8709f 3377061646"), "the same in the sandbox");
+        }
+
+        [Test]
         public void PlantGrowthVinesClimbWallsBridgeGapsBurnAndRootsCrackStone()
         {
             // docs/SPELL_COMBOS.md: vines climb walls and cross pits and streams (walkable), burn as fuel, and when they

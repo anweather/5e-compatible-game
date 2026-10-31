@@ -94,7 +94,7 @@ namespace Chem
             if (GatesOpen) save["gatesOpen"] = true;
             if (machines.Count > 0) save["machines"] = new JArray(machines.OrderBy(m => m.Key).Select(m => new JArray(m.Key, m.Value.Level, m.Value.Hold, m.Value.Powered)));
             SaveGolf(save);
-            if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age)));
+            if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
             var made = new Cell();
             var saved = new JArray();
             foreach (var ch in SortedChunks(false))
@@ -181,6 +181,15 @@ namespace Chem
             return w;
         }
 
+        // A boulder from before aims (a save with seven numbers) rolls on the grid way it was going.
+        static Boulder LoadBoulder(JArray b)
+        {
+            var o = new Boulder { Spell = (string)b[0], Left = (int)b[4], Every = (int)b[5], Age = (int)b[6] };
+            o.SetOff((int)b[1], (int)b[2], (int)b[3], DirX((int)b[3]), DirY((int)b[3]));
+            if (b.Count > 11) (o.OX, o.OY, o.AX, o.AY, o.Step) = ((int)b[7], (int)b[8], (int)b[9], (int)b[10], (int)b[11]);
+            return o;
+        }
+
         void LoadCast(JToken a)
         {
             var c = new PlayerCast
@@ -207,7 +216,7 @@ namespace Chem
             foreach (var m in s["machines"] ?? new JArray())
                 machines[(int)m[0]] = new MachineState { Level = (int)m[1], Hold = (int)m[2], Powered = (bool)m[3] };
             foreach (var b in s["boulders"] ?? new JArray())
-                boulders.Add(new Boulder { Spell = (string)b[0], X = (int)b[1], Y = (int)b[2], Dir = (int)b[3], Left = (int)b[4], Every = (int)b[5], Age = (int)b[6] });
+                boulders.Add(LoadBoulder((JArray)b));
         }
 
         void LoadState(JObject s)

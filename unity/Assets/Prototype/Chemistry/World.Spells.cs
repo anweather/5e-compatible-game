@@ -220,7 +220,7 @@ namespace Chem
             else if (s.Effect == LightEffect) LightUp(s, x, y);
             else if (s.Delay > 0) AimStar(s, x, y, dir, ClampCharge(charge));
             else if (IsWave(s)) StartWave(s, x, y, dir, ClampCharge(charge), aimX, aimY);
-            else if (IsBoulder(s)) StartBoulder(s, x, y, dir, ClampCharge(charge));
+            else if (IsBoulder(s)) StartBoulder(s, x, y, dir, ClampCharge(charge), aimX, aimY);
             else Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
         }
 

@@ -7,7 +7,7 @@ import type { WeatherKind } from "./sky.ts";
 import { hitBall } from "./golf.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
-  type Boulder, type Dir, type Entity, type Star, type Wave, type Whirl, type World,
+  type Boulder, type Dir, type Entity, type Mover, type Star, type Wave, type Whirl, type World,
   DX, DY, addGas, burns, cellAt, elevation, critterAt, dirFrom, entityAt, idx, inBounds, isBlocking, lineOfSight, log, logOnce, newCell, playerOf, rand, roll, windDir,
 } from "./world.ts";
 
@@ -220,7 +220,7 @@ export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, 
   else if (s.effect === "light") lightUp(w, s, x, y);
   else if (s.delay) aimStar(w, s, x, y, dir, clampCharge(charge));
   else if (isWave(s)) startWave(w, s, x, y, dir, clampCharge(charge), aim);
-  else if (isBoulder(s)) startBoulder(w, s, x, y, dir, clampCharge(charge));
+  else if (isBoulder(s)) startBoulder(w, s, x, y, dir, clampCharge(charge), aim);
   else landSpell(w, s, x, y, dir, casterId, clampCharge(charge), aim);
 }
 
@@ -452,19 +452,42 @@ export const isWave = (s: SpellDef) => !!s.travelEvery && !s.inward && !s.rolls 
 
 /**
  * A wave's cast (World.StartWave): the front starts on the cast's cell, a line across the way it rolls, width cells
- * to each side, and washes over it; it rolls one cell every travelEvery ticks, to the line's length in all (tickWaves).
- * It rolls along the aim (snapAim), or dir without one.
+ * to each side, and washes over it; it rolls one cell every travelEvery ticks along the aim (setOff), to the line's
+ * length in all (tickWaves).
  */
 function startWave(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number, aim?: [number, number]): void {
-  let [ax, ay] = snapAim(aim?.[0] ?? 0, aim?.[1] ?? 0);
-  if (ax === 0 && ay === 0) [ax, ay] = [DX[dir], DY[dir]];
   const wv: Wave = {
-    spell: s.id, x, y, dir: dirOf(ax, ay), width: (s.radius ?? 1) + chargedGrowth(s, charge), left: chargedLength(s.length ?? 5, charge) - 1,
-    every: s.travelEvery!, age: 0, power: (s.power ?? 1) * charge, maxMass: s.maxMass ?? 1, ox: x, oy: y, ax, ay, step: 0,
+    spell: s.id, ...setOff(x, y, dir, aim), width: (s.radius ?? 1) + chargedGrowth(s, charge), left: chargedLength(s.length ?? 5, charge) - 1,
+    every: s.travelEvery!, age: 0, power: (s.power ?? 1) * charge, maxMass: s.maxMass ?? 1,
   };
   wash(w, wv, s);
   if (wv.left > 0) w.waves.push(wv);
   else breakWave(w, wv, s);
+}
+
+/** Sets a mover off from (x, y) along the aim (snapAim), or along dir without one (World.Mover.SetOff). */
+function setOff(x: number, y: number, dir: Dir, aim?: [number, number]): Mover {
+  let [ax, ay] = snapAim(aim?.[0] ?? 0, aim?.[1] ?? 0);
+  if (ax === 0 && ay === 0) [ax, ay] = [DX[dir], DY[dir]];
+  return { x, y, dir: dirOf(ax, ay), ox: x, oy: y, ax, ay, step: 0 };
+}
+
+/** The next cell along a mover's line: a cell along the aim's longer part, the shorter part's share rounded (World.Mover.Ahead). */
+function ahead(m: Mover): [number, number] {
+  const major = Math.max(Math.abs(m.ax), Math.abs(m.ay));
+  if (major === 0) return [m.x, m.y];
+  return [m.ox + roundDiv((m.step + 1) * m.ax, major), m.oy + roundDiv((m.step + 1) * m.ay, major)];
+}
+
+/** Rolls a mover on to the next cell along its line (World.Mover.Advance). */
+function advance(m: Mover): void {
+  [m.x, m.y] = ahead(m);
+  m.step++;
+}
+
+/** Turns a mover onto a grid way (a boulder down a slope) and rolls a cell along it, its new line (World.Mover.Turn). */
+function turn(m: Mover, dir: Dir): void {
+  Object.assign(m, setOff(m.x + DX[dir], m.y + DY[dir], dir, [DX[dir], DY[dir]]));
 }
 
 /** The grid way (0 north, 1 east, 2 south, 3 west) nearest a non-zero aim; ties go east or west (World.DirOf). */
@@ -474,34 +497,24 @@ function dirOf(ax: number, ay: number): Dir {
 }
 
 /**
- * Each wave, in the order cast, rolls a cell when its time comes: a cell along the aim's longer part, and the shorter
- * part's share rounded (like a slanted line, slantCells). Against a wall or its length's end it breaks and is gone
- * (World.TickWaves).
+ * Each wave, in the order cast, rolls a cell along its aim when its time comes (ahead). Against a wall or its length's
+ * end it breaks and is gone (World.TickWaves).
  */
 export function tickWaves(w: World): void {
   if (!w.waves.length) return;
   for (const wv of w.waves) {
     if (++wv.age % wv.every !== 0) continue;
     const s = spellById(wv.spell);
-    const [nx, ny] = waveAt(wv, wv.step + 1);
+    const [nx, ny] = ahead(wv);
     const n = cellAt(w, nx, ny);
     if (s && n && !isBlocking(n)) {
-      wv.x = nx;
-      wv.y = ny;
-      wv.step++;
+      advance(wv);
       wv.left--;
       wash(w, wv, s);
     } else wv.left = 0;
     if (wv.left <= 0) breakWave(w, wv, s);
   }
   w.waves = w.waves.filter((wv) => wv.left > 0);
-}
-
-/** Where a wave's front's middle is after k cells (World.WaveAt). */
-function waveAt(wv: Wave, k: number): [number, number] {
-  const major = Math.max(Math.abs(wv.ax), Math.abs(wv.ay));
-  if (major === 0) return [wv.x, wv.y];
-  return [wv.ox + roundDiv(k * wv.ax, major), wv.oy + roundDiv(k * wv.ay, major)];
 }
 
 /**
@@ -544,55 +557,64 @@ function breakWave(w: World, wv: Wave, s: SpellDef | undefined): void {
 export const isBoulder = (s: SpellDef) => !!s.travelEvery && !!s.rolls && s.shape === "line";
 
 /**
- * A boulder's cast (World.StartBoulder): it starts on the cast's square and strikes it, then rolls a cell every
- * travelEvery ticks, to the line's length in all (tickBoulders).
+ * A boulder's cast (World.StartBoulder): it starts on the cast's cell and strikes it, then rolls a cell every
+ * travelEvery ticks along the aim (setOff), to the line's length in all (tickBoulders).
  */
-function startBoulder(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number): void {
+function startBoulder(w: World, s: SpellDef, x: number, y: number, dir: Dir, charge: number, aim?: [number, number]): void {
   const c = cellAt(w, x, y);
   if (!c || isBlocking(c)) return;
-  const b: Boulder = { spell: s.id, x, y, dir, left: chargedLength(s.length ?? 5, charge) - 1, every: s.travelEvery!, age: 0 };
+  const b: Boulder = { spell: s.id, ...setOff(x, y, dir, aim), left: chargedLength(s.length ?? 5, charge) - 1, every: s.travelEvery!, age: 0 };
   strike(w, b, s);
   if (b.left > 0 && !inWater(c)) w.boulders.push(b);
   else rest(w, b, s);
 }
 
 /**
- * Each boulder, in the order cast, rolls a cell when its time comes, the way the ground falls (rollTo), and strikes
- * it; once it can't roll on, reaches water or its length's end, it comes to rest and is gone (World.TickBoulders).
+ * Each boulder, in the order cast, rolls a cell when its time comes, the way the ground falls (rollTo): on along its
+ * aim, or turned onto a grid way down a slope, and strikes it; once it can't roll on, reaches water or its length's end,
+ * it comes to rest and is gone (World.TickBoulders).
  */
 export function tickBoulders(w: World): void {
   if (!w.boulders.length) return;
   for (const b of w.boulders) {
     if (++b.age % b.every !== 0) continue;
     const s = spellById(b.spell);
-    const dir = s ? rollTo(w, b) : -1;
-    if (dir >= 0) {
-      b.dir = dir as Dir;
-      b.x += DX[b.dir];
-      b.y += DY[b.dir];
-      b.left--;
-      strike(w, b, s!);
-      if (inWater(cellAt(w, b.x, b.y)!)) b.left = 0;
-    } else b.left = 0;
+    if (!s || !rollOn(w, b, s)) b.left = 0;
     if (b.left <= 0) rest(w, b, s);
   }
   w.boulders = w.boulders.filter((b) => b.left > 0);
 }
 
+/** Rolls it a cell and strikes there; false if it couldn't, or reached water (World.RollOn). */
+function rollOn(w: World, b: Boulder, s: SpellDef): boolean {
+  const to = rollTo(w, b);
+  if (to === NO_ROLL) return false;
+  if (to === ROLL_AHEAD) advance(b);
+  else turn(b, to as Dir);
+  b.left--;
+  strike(w, b, s);
+  return !inWater(cellAt(w, b.x, b.y)!);
+}
+
 const inWater = (c: { water: number; frozen: boolean }) => c.water > 0 && !c.frozen;
 
+// rollTo's answers besides a grid way to turn onto.
+const ROLL_AHEAD = 4, NO_ROLL = -1;
+
 /**
- * Where a boulder rolls next: of the open cells ahead, to its left and to its right (in that order), the lowest that
- * isn't higher than where it is; -1 when every way is uphill or shut (World.RollTo).
+ * Where a boulder rolls next: of the open cells ahead along its aim, to its left and to its right (in that order), the
+ * lowest that isn't higher than where it is. ROLL_AHEAD for on along its aim, the grid way of a turn, or NO_ROLL when
+ * every way is uphill or shut (World.RollTo).
  */
 function rollTo(w: World, b: Boulder): number {
-  let best = -1, bestLevel = elevation(cellAt(w, b.x, b.y)!);
-  for (const dir of [b.dir, (b.dir + 3) % 4, (b.dir + 1) % 4] as Dir[]) {
-    const n = cellAt(w, b.x + DX[dir], b.y + DY[dir]);
+  let best = NO_ROLL, bestLevel = elevation(cellAt(w, b.x, b.y)!);
+  const [ax, ay] = ahead(b);
+  for (const to of [ROLL_AHEAD, (b.dir + 3) % 4, (b.dir + 1) % 4]) {
+    const n = to === ROLL_AHEAD ? cellAt(w, ax, ay) : cellAt(w, b.x + DX[to as Dir], b.y + DY[to as Dir]);
     if (!n || isBlocking(n)) continue;
     const level = elevation(n);
-    if (level < bestLevel || (level === bestLevel && best < 0)) {
-      best = dir;
+    if (level < bestLevel || (level === bestLevel && best === NO_ROLL)) {
+      best = to;
       bestLevel = level;
     }
   }
