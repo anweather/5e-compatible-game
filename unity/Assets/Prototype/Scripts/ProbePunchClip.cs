@@ -4,10 +4,11 @@ using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
 
 // The probe's punchclip scenario, for Andrew's verdict on the punch's strength (#18):
-// the wizard punches a crate on F through its own controls, on dirt, filmed from the
-// side so the distance shows, then turns and punches the air the other way. Needs
-// --shots <folder>: the frames and sound.wav (ClipFilm). Metrics say where the crate's
-// back face began in the frame, for the start line drawn on the clip.
+// the wizard punches a crate on the pad through its own controls (a virtual keyboard
+// is dropped while the Game view isn't focused), on dirt, filmed from the side so the
+// distance shows, then turns and punches the air the other way. Needs --shots <folder>:
+// the frames and sound.wav (ClipFilm). Metrics say where the crate's back face began in
+// the frame, for the start line drawn on the clip.
 public class PunchClipProbe : SpellLooksProbe
 {
     protected override IEnumerator Run()
@@ -21,7 +22,7 @@ public class PunchClipProbe : SpellLooksProbe
         bool controlsWereOn = controls != null && controls.enabled, casterWasOn = caster.enabled;
         if (controls != null) controls.enabled = true;
         caster.enabled = true;
-        var keys = InputSystem.AddDevice<Keyboard>("Punch keys");
+        var pad = InputSystem.AddDevice<Gamepad>("Punch pad");
         var o = Spot(20, 7);
         Patch(o, 20, 7, TerrainIds.Dirt);
         var stand = new Vector2Int(o.x + 5, o.y + 3);
@@ -46,31 +47,37 @@ public class PunchClipProbe : SpellLooksProbe
             var from = crate.transform.position;
             Check("sound_renders_offline", film.Roll(), "AudioRenderer.Start");
             yield return Wait(1f);
-            yield return Press(keys);
+            yield return Press(pad);
             yield return Wait(2.2f);
             float went = Vector3.Distance(from, crate.transform.position);
+            var flew = crate.transform.position - from;
+            flew.y = 0f;
+            float offLine = Vector3.Angle(flew, Vector3.right);
             // A miss: turned away, nothing in reach.
             puppet.Face(ahead + Vector3.left * 8f);
             yield return Wait(0.7f);
-            yield return Press(keys);
+            yield return Press(pad);
             yield return Wait(1.1f);
             yield return film.Stop();
             Metric("crate_m", went);
+            Metric("crate_off_line_deg", offLine);
             Metric("seconds", film.Seconds);
             Metric("sound_peak", film.Peak);
             Check("punch_moved_it", went > 0.1f, $"it went {went:0.00} m");
+            // The crate stands straight ahead of the wizard and the film's camera looks across it.
+            Check("punch_sends_it_straight_on", offLine < 15f, $"{offLine:0} degrees off the line from the wizard");
             Check("frames_saved", film.Saved > 50, $"{film.Saved} of {film.Frames} frames");
         }
-        InputSystem.RemoveDevice(keys);
+        InputSystem.RemoveDevice(pad);
         if (controls != null) controls.enabled = controlsWereOn;
         caster.enabled = casterWasOn;
     }
 
-    static IEnumerator Press(Keyboard keys)
+    static IEnumerator Press(Gamepad pad)
     {
-        InputSystem.QueueStateEvent(keys, new KeyboardState(Key.F));
+        InputSystem.QueueStateEvent(pad, new GamepadState(GamepadButton.East));
         yield return null;
         yield return null;
-        InputSystem.QueueStateEvent(keys, new KeyboardState());
+        InputSystem.QueueStateEvent(pad, new GamepadState());
     }
 }

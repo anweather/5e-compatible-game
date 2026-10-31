@@ -84,7 +84,7 @@ public partial class ItemHolder
         punchLandsAt = -1f;
         if (!MayPunchNow) return;
         var landing = InReachOfFist();
-        if (landing.Prop != null) landing.Prop.Shove(Forces.Thrown(landing.Way) * (beats.feel.punchShove * Forces.ImpulsePerPush));
+        if (landing.Prop != null) landing.Prop.Shove(Forces.Thrown(AwayFromMe(landing)) * (beats.feel.punchShove * Forces.ImpulsePerPush));
         else if (landing.Pane != null) ChemEffects.Strike(GetComponent<SpellCaster>().grid, landing.Pane.Value);
         if (landing.Hit)
         {
@@ -92,6 +92,14 @@ public partial class ItemHolder
             CastImpact.Punched(beats, landing.Way);
         }
         PunchLanded?.Invoke(landing);
+    }
+
+    // A thing flies on from the fist, away from the wizard: the aim can be 70 degrees off where it stands.
+    Vector3 AwayFromMe(PunchLanding landing)
+    {
+        var away = landing.Prop.transform.position - transform.position;
+        away.y = 0f;
+        return away.sqrMagnitude > 1e-4f ? away.normalized : landing.Way;
     }
 
     // What the fist would land on now.
