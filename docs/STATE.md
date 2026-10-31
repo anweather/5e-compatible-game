@@ -60,8 +60,10 @@ The one page a new PM session reads first. Keep it short: history goes in
   in a normal Editor (DesktopUnity, queued). Every machine rebuilds the yard after it lands. For Andrew,
   with media first: the model (reads friendly, not ancient), water never shelters (no cell reaches
   depth 8), a raised Wall of Stone is wiped by the chunk reset before the breath arrives.
-- u1: the rules MCP server, phase 1 (`docs/RULES_MCP.md`, D13; brief `briefs/rules-mcp.md`). Awake
-  again after the perf run.
+- Rules MCP phase 1 landed (dffbc19; u1, now asleep): `core/Rules.Mcp`, `ModValidator.cs`, budgets in
+  `rules/budgets.json`, "Using the rules MCP" in MODDING.md. Unity hasn't compiled ModValidator yet
+  (DesktopUnity checks on its next pull). Phase 2 (procedural looks) starts from
+  `docs/handoffs/procedural-looks-scan.md` (~70 id-keyed places); it needs Unity.
 
 ## Next, in order
 
