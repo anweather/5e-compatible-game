@@ -715,3 +715,15 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
     the report names the folder. At most 40 images.
   The probes' --shots gain 480 px review copies (first step of the cast-feel
   pass). Measure: the next host pass's cost per feature against 2026-10-30's.
+- 2026-10-31 00:15: DECIDED (Andrew):
+  1. Release 0.1.9 once the cast-feel and sound passes land, ready for the
+     morning. If it's green (the RC checks pass), the PM publishes without
+     asking: "You don't need my go-ahead since we're an alpha." Windows only
+     unless the Mac half is free (Andrew doesn't need a Mac build).
+  2. After the release: more mini games, exploratory, not deep: an obstacle
+     course somewhere in the valley (across the lake): a lava pit, gaps to
+     teleport across (Misty Step), platforming, ice walls to melt with
+     spells. And spell-restricted areas (only certain spells work there), for
+     a curated experience.
+  3. Surf goes toward the nearest land (the island when it's nearer than the
+     mainland), push and wave animation alike (#23).
