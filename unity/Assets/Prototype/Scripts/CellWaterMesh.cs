@@ -219,8 +219,23 @@ public sealed class CellWaterMesh
             tiles[tile] = t;
         }
         Draw(t.water, box, false);
-        Draw(t.ice, box, true);
-        t.ice.go.GetComponent<MeshCollider>().sharedMesh = t.ice.Empty ? null : t.ice.mesh;
+        // Most tiles have no ice and never did: outlining nothing is half the cost of a tile.
+        if (!t.ice.Empty || AnyIceNear(box))
+        {
+            Draw(t.ice, box, true);
+            t.ice.go.GetComponent<MeshCollider>().sharedMesh = t.ice.Empty ? null : t.ice.mesh;
+        }
+    }
+
+    // Whether ice could show in the box: the outline reads a ring round it, and a cell only scores
+    // for the ice beside some (Value), so two rings out. Without any, only banks score, and they
+    // don't reach the outline's iso value (BankValue; calm cells don't wobble).
+    bool AnyIceNear(RectInt box)
+    {
+        for (int y = box.yMin - 2; y <= box.yMax + 1; y++)
+            for (int x = box.xMin - 2; x <= box.xMax + 1; x++)
+                if (Holds(x, y, true)) return true;
+        return false;
     }
 
     // Whether any cell in the box, or the ring round it, holds water (a tile also draws the edge of
