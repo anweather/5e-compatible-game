@@ -104,6 +104,13 @@ export interface MachineState {
   powered: boolean;
 }
 
+/** A gate that opens only for one machine (linkGate in sim.ts; GateLink in the C#): both by their cell's index, and whether it has it open. */
+export interface GateLink {
+  gate: number;
+  machine: number;
+  open: boolean;
+}
+
 export type LogKind = "info" | "notable" | "power" | "hurt";
 export interface LogEntry {
   tick: number;
@@ -131,6 +138,9 @@ export interface World {
   entities: Entity[];
   critters: Critter[];
   machines: Record<number, MachineState>;
+  /** The gates linked to one machine, in the order they were linked (linkGate); the rest open for any machine no one linked. */
+  gateLinks: GateLink[];
+  /** Whether the machines no one linked have the gates no one linked open. */
   gatesOpen: boolean;
   openedBy: string | null;
   tick: number;
@@ -191,6 +201,7 @@ export function createWorld(w: number, h: number, seed = 1): World {
     entities: [],
     critters: [],
     machines: {},
+    gateLinks: [],
     gatesOpen: false,
     openedBy: null,
     tick: 0,
@@ -373,8 +384,8 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  // The defense, the casts, the whirlwinds, the stars, the waves, the boulders and the golf ball join only once there are any, so older worlds hash as they did.
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : []), ...(w.waves.length ? [w.waves] : []), ...(w.boulders.length ? [w.boulders] : []), ...(w.golf ? [w.golf] : [])]);
+  // The defense, the casts, the whirlwinds, the stars, the waves, the boulders, the golf ball and the gate links join only once there are any, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : []), ...(w.stars.length ? [w.stars] : []), ...(w.waves.length ? [w.waves] : []), ...(w.boulders.length ? [w.boulders] : []), ...(w.golf ? [w.golf] : []), ...(w.gateLinks.length ? [w.gateLinks] : [])]);
   return fnv1a(s);
 }
 
@@ -448,8 +459,8 @@ export function deserializeWorld(s: WorldSnapshot): World {
   const copy = JSON.parse(JSON.stringify(s)) as WorldSnapshot;
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
-  // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], golf: copy.golf ?? null, stars: copy.stars ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  // Snapshots from before the time spells have no clock lead, haste or held weather (nor gate links, before those).
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], waves: copy.waves ?? [], boulders: copy.boulders ?? [], golf: copy.golf ?? null, stars: copy.stars ?? [], gateLinks: copy.gateLinks ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

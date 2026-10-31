@@ -281,7 +281,7 @@ namespace Chem
             if (!Rules.Entity(r.Kind).Creature) return;
             var cv = CoverOf(c);
             if (cv != null && cv.Damage.Length == 2) DamageRaider(r, Roll(cv.Damage), cv.Name.ToLowerInvariant(), null);
-            double speed = Math.Min(cv != null ? cv.Speed : 1, TerrainOf(c).Speed);
+            double speed = WalkSpeed(c);
             if (speed > 0 && speed < 1 && r.Alive)
                 r.Status["snagged"] = Math.Max(r.StatusOf("snagged"), (int)Math.Floor(Rules.Sim.TicksPerSecond * (1 / speed - 1) + 0.5));
         }

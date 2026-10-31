@@ -60,8 +60,8 @@ public class SurfaceEffects : MonoBehaviour
     const float HeadAt = 0.9f, IceGap = 0.15f;
 
     CharacterController body;
-    Component controller;
-    FieldInfo moveSpeed, sprintSpeed, gravity, fall;
+    Component controller, inputs;
+    FieldInfo moveSpeed, sprintSpeed, gravity, fall, moveInput, sprintInput, analogInput;
     Animator animator;
     float baseMove, baseSprint, baseGravity, wizardMove, wizardSprint;
     Vector3 lastPosition;
@@ -160,6 +160,10 @@ public class SurfaceEffects : MonoBehaviour
         gravity = WizardRig.Field(controller, "Gravity", isPublic: true);
         fall = WizardRig.Field(controller, "_verticalVelocity", isPublic: false);
         if (gravity != null) baseGravity = (float)gravity.GetValue(controller);
+        inputs = GetComponent(WizardRig.InputsComponent);
+        moveInput = WizardRig.Field(inputs, "move", isPublic: true);
+        sprintInput = WizardRig.Field(inputs, "sprint", isPublic: true);
+        analogInput = WizardRig.Field(inputs, "analogMovement", isPublic: true);
         TryGetComponent(out animator);
     }
 
@@ -199,23 +203,50 @@ public class SurfaceEffects : MonoBehaviour
         lastPosition = transform.position;
     }
 
-    // Blend the controller's move this frame with the momentum carried from before.
+    // On slippery ground the wizard keeps the momentum it came with: it eases toward the way the player
+    // wants to go (Glide) at slipperyGrip, so it's slow to turn and to stop, and keeps its speed going on.
+    // The controller's own step this frame is taken back and the glide made as one move, so the
+    // controller's velocity, which sets its next frame's speed, is the glide's. (Correcting its step with
+    // a second move left it measuring only the correction, so it started again from a crawl each frame
+    // and ice slowed the wizard down: GitHub #12.)
     void Slide(bool slippery)
     {
         float dt = Mathf.Max(Time.deltaTime, 1e-4f);
-        var moved = transform.position - lastPosition;
-        moved.y = 0f;
-        var intended = moved / dt;
+        var step = transform.position - lastPosition;
+        var moved = new Vector3(step.x, 0f, step.z);
         if (!slippery)
         {
-            momentum = intended;
+            momentum = moved / dt;
             wasSlipping = false;
             return;
         }
         if (!wasSlipping && momentum.sqrMagnitude > 1f) EventLog.Add("You skid across the slick ground");
         wasSlipping = true;
-        momentum = Vector3.Lerp(momentum, intended, 1f - Mathf.Exp(-slipperyGrip * dt));
-        body.Move((momentum - intended) * dt);
+        momentum = Glide(momentum, Wanted(moved), slipperyGrip, dt);
+        transform.position = lastPosition;
+        Physics.SyncTransforms();
+        body.Move(momentum * dt + Vector3.up * step.y);
+    }
+
+    /// <summary>
+    /// The momentum on slippery ground after <paramref name="dt"/> seconds: eased toward the
+    /// <paramref name="wanted"/> velocity at <paramref name="grip"/> (the share of the difference left
+    /// falls by e each 1/grip seconds, whatever the frame rate), never faster than the faster of the two.
+    /// </summary>
+    public static Vector3 Glide(Vector3 momentum, Vector3 wanted, float grip, float dt) =>
+        Vector3.Lerp(momentum, wanted, 1f - Mathf.Exp(-Mathf.Max(grip, 0f) * Mathf.Max(dt, 0f)));
+
+    // The velocity the player asks for: the controller's way, at its walk or sprint speed (the move
+    // stick's tilt for a pad), or none with the stick and keys let go.
+    Vector3 Wanted(Vector3 moved)
+    {
+        if (moveSpeed == null || inputs == null || moveInput == null) return moved / Mathf.Max(Time.deltaTime, 1e-4f);
+        var stick = (Vector2)moveInput.GetValue(inputs);
+        if (stick == Vector2.zero || moved.sqrMagnitude < 1e-8f) return Vector3.zero;
+        bool sprint = sprintInput != null && (bool)sprintInput.GetValue(inputs);
+        float tilt = analogInput != null && (bool)analogInput.GetValue(inputs) ? Mathf.Clamp01(stick.magnitude) : 1f;
+        float speed = (float)(sprint ? sprintSpeed : moveSpeed).GetValue(controller);
+        return moved.normalized * (speed * tilt);
     }
 
     // Thorns underfoot (the cover, or null off them): they slow the wizard to the cover's speed and,
