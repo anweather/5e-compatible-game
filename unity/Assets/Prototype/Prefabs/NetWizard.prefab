@@ -354,6 +354,9 @@ MonoBehaviour:
   swimDepth: 1.3
   floatDepth: 1.45
   swimKick: 2.2
+  underwaterSpeed: 0.4
+  diveSpeed: 1.6
+  riseSpeed: 2
 --- !u!114 &2015966796114759086
 MonoBehaviour:
   m_ObjectHideFlags: 0

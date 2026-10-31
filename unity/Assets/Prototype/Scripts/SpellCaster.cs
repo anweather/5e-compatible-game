@@ -6,7 +6,7 @@ using UnityEngine;
 // Picks a spell from rules/spells.json and casts it on the grid (controls
 // in PlayerControls). Aiming matches the web sandbox: beams and Gust start
 // next to the wizard and point at the target, everything else lands on the
-// targeted cell. The cells it will touch are highlighted. Shapeshift aims at
+// targeted cell. A marker on the ground shows where (AimMarker). Shapeshift aims at
 // an animal instead; in an animal's shape, Cast only changes back.
 //
 // The spell to cast is picked with the spell radial (SpellRadialHud: hold Tab
@@ -29,8 +29,7 @@ public partial class SpellCaster : MonoBehaviour
     /// <summary>Its display name (its id if the rules don't know it).</summary>
     public string SelectedName => grid != null && grid.World != null ? grid.World.Rules.Spell(SelectedId)?.Name ?? SelectedId : SelectedId;
 
-    readonly List<GameObject> markers = new();
-    Material markerMat;
+    AimMarker marker;
     CastPose pose;
     ItemHolder hands;
     SpellRadialHud radial;
@@ -66,14 +65,9 @@ public partial class SpellCaster : MonoBehaviour
 
     void OnEnable() => EventLog.Track(this);
 
-    void Start()
-    {
-        markerMat = UrpMaterials.NewLit("Aim marker", new Color(1f, 0.85f, 0.3f), emission: new Color(1f, 0.8f, 0.2f) * 1.5f);
-    }
-
     void OnDestroy()
     {
-        Destroy(markerMat);
+        marker?.Destroy();
         orbs?.Destroy();
     }
 
@@ -93,18 +87,18 @@ public partial class SpellCaster : MonoBehaviour
         UpdateElements();
         if (WhileShifted()) return;
 
-        hasCrosshair = Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
+        hasCrosshair = FindCrosshair();
         // While the spell radial is open the player is choosing, not aiming: no markers, no cast.
         if (!hasCrosshair || (radial != null && radial.IsOpen))
         {
-            ShowMarkers(null);
+            marker?.Hide();
             chargeStart = -1f;
             return;
         }
         var target = CrosshairCell;
         var aim = Aim(SelectedId, target, out var error);
         var spell = grid.World.Rules.Spell(SelectedId);
-        ShowMarkers(aim.HasValue && spell != null ? grid.World.SpellCells(spell, aim.Value.x, aim.Value.y, aim.Value.dir, Charge, aim.Value.aimX, aim.Value.aimY) : null);
+        ShowAim(target, spell, aim);
 
         if (!CastNow(spell)) return;
         int charge = Charge;
@@ -139,7 +133,7 @@ public partial class SpellCaster : MonoBehaviour
     bool WhileShifted()
     {
         if (shape == null || !shape.Shifted) return false;
-        ShowMarkers(null);
+        marker?.Hide();
         chargeStart = -1f;
         if (controls.AnyCastPressed() && (radial == null || !radial.IsOpen)) shape.ChangeBackByChoice();
         return true;
@@ -158,6 +152,19 @@ public partial class SpellCaster : MonoBehaviour
         var text = new System.Text.StringBuilder();
         for (int i = 1; i <= World.MaxCharge; i++) text.Append(i <= charge ? "<color=#ffd24a>●</color> " : "<color=#ffffff55>●</color> ");
         GUI.Label(new Rect(HudScale.Width / 2f - 60f, HudScale.Height / 2f + 18f, 120f, 30f), text.ToString(), pips);
+    }
+
+    // What the crosshair is on, or where AimOverride puts it.
+    bool FindCrosshair()
+    {
+        if (AimOverride.HasValue)
+        {
+            crosshair = default;
+            crosshair.point = AimOverride.Value;
+            crosshair.normal = Vector3.up;
+            return true;
+        }
+        return controls != null && Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair);
     }
 
     Vector2Int CrosshairCell => grid.CellAt(crosshair.point - crosshair.normal * 0.05f);
@@ -446,28 +453,30 @@ public partial class SpellCaster : MonoBehaviour
 
     static (int, int) Step(int dir) => dir switch { 0 => (0, -1), 1 => (1, 0), 2 => (0, 1), _ => (-1, 0) };
 
-    void ShowMarkers(List<(int x, int y)> cells)
-    {
-        int n = cells?.Count ?? 0;
-        while (markers.Count < n) markers.Add(NewMarker());
-        for (int i = 0; i < markers.Count; i++)
-        {
-            bool on = i < n;
-            markers[i].SetActive(on);
-            if (!on) continue;
-            var (x, y) = cells[i];
-            var c = grid.CellCenter(x, y);
-            markers[i].transform.position = new Vector3(c.x, grid.SurfaceY(x, y) + 0.06f, c.z);
-            markers[i].transform.localScale = new Vector3(0.3f * grid.cellSize, 0.02f, 0.3f * grid.cellSize);
-        }
-    }
+    /// <summary>The marker on the ground (made with the first aim), for the probe.</summary>
+    public AimMarker Marker => marker;
 
-    GameObject NewMarker()
+    // The marker follows what will go off: the cast under way at its charge so far, else what Cast would
+    // cast. On the controller's element layout Cast isn't there, so with nothing under way there's no marker.
+    void ShowAim(Vector2Int target, SpellDef spell, (int x, int y, int dir, int aimX, int aimY)? aim)
     {
-        var m = Primitives.Visual(PrimitiveType.Cube, "Aim");
-        var r = m.GetComponent<Renderer>();
-        r.sharedMaterial = markerMat;
-        r.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
-        return m;
+        marker ??= new AimMarker(grid, grid.aimShader != null ? grid.aimShader : Shader.Find("Prototype/AimMarker"));
+        int charge = Charge;
+        var (held, heldCharge) = HeldCast();
+        if (held != null)
+        {
+            spell = grid.World.Rules.Spell(held);
+            charge = heldCharge;
+            aim = Aim(held, target, out _);
+        }
+        else if (controls.UsingGamepad && controls.ElementPad) aim = null;
+        if (spell == null || !aim.HasValue)
+        {
+            marker.Hide();
+            return;
+        }
+        var a = aim.Value;
+        var cast = new CastCommand(spell.Id, a.x, a.y, a.dir, charge, a.aimX, a.aimY);
+        marker.Show(spell, grid.World.SpellCells(spell, a.x, a.y, a.dir, charge, a.aimX, a.aimY), cast, GlowOf(spell.Id));
     }
 }

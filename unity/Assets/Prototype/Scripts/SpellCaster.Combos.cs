@@ -40,6 +40,19 @@ public partial class SpellCaster
         }
     }
 
+    // The spell a cast under way will go off as, and its charge so far; null with none under way.
+    (string spell, int charge) HeldCast()
+    {
+        var world = grid.World;
+        var cast = world.CastOf(CastPlayer);
+        if (cast == null || !cast.Casting) return (null, 1);
+        var dpad = world.Rules.Combos.Dpad;
+        if (cast.DpadCasting >= 0 && cast.DpadCasting < dpad.Count) return (dpad[cast.DpadCasting].Spell, 1);
+        var combo = world.ComboOf(cast);
+        int charge = Mathf.Max(1, Mathf.Max(HoldCharge, cast.Charge));
+        return (combo?.SpellAt(charge, world.MaxChargeOf(combo)), charge);
+    }
+
     void UpdateElements()
     {
         Listen();
@@ -92,8 +105,8 @@ public partial class SpellCaster
     public bool LetGo(int charge) => grid != null && grid.World != null && Send(ComboCommand.Release(CastPlayer, charge));
 
     /// <summary>
-    /// Where a combo aims as it goes off instead of the crosshair, while set: the playtest bot, which
-    /// has no mouse and points its casts at cells. Null for players.
+    /// Where the crosshair is instead, for the marker and the casts, while set: the playtest bot, which
+    /// has no mouse and points its casts at cells, and the probe. Null for players.
     /// </summary>
     public Vector3? AimOverride { get; set; }
 
@@ -139,13 +152,7 @@ public partial class SpellCaster
     /// <summary>Aims a spell from the crosshair now (or a few cells ahead, with nothing under it) and casts it.</summary>
     void CastAtCrosshair(string spellId, int charge)
     {
-        if (AimOverride.HasValue)
-        {
-            crosshair = default;
-            crosshair.point = AimOverride.Value;
-            crosshair.normal = Vector3.up;
-        }
-        else if (controls == null || !Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair))
+        if (!FindCrosshair())
         {
             crosshair = default;
             crosshair.point = transform.position + transform.forward * (AheadCells * grid.cellSize);
@@ -158,5 +165,9 @@ public partial class SpellCaster
 
     const int AheadCells = 4;
 
-    void OnDisable() => Unlisten();
+    void OnDisable()
+    {
+        Unlisten();
+        marker?.Hide();
+    }
 }

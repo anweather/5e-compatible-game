@@ -32,7 +32,7 @@ public partial class SpellLooksProbe
     }
 
     // A pond: a pit full of water.
-    void Pond(Vector2Int o, int w, int h, int water = 8)
+    protected void Pond(Vector2Int o, int w, int h, int water = 8)
     {
         Patch(o, w, h, TerrainIds.Pit);
         for (int y = 0; y < h; y++)
@@ -52,7 +52,7 @@ public partial class SpellLooksProbe
         body.angularVelocity = Vector3.zero;
     }
 
-    IEnumerator Frame(Vector2Int o, int w, int h, Vector3 from, float wizardBack = 6f)
+    protected IEnumerator Frame(Vector2Int o, int w, int h, Vector3 from, float wizardBack = 6f)
     {
         yield return Noon();
         var mid = Mid(o, w, h);

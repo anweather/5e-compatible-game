@@ -205,6 +205,15 @@ touch them.
   golf ball: up and along). Geyser, Wave, Rolling Boulder, Gust of Wind and
   Raise Earth have it.
 
+**Aim marker**
+: What shows on the ground where a cast will land (`AimMarker.cs`), one
+  mesh of ribbons laid over the ground and water. Its kind comes from the
+  spell's shape: a **lane** (an arrow along a line), a **wedge** (a cone), a
+  **ring** (a burst that strikes at once, or a spot; grows with the charge),
+  **rising** (an outline with a short fence: earth shaping, Geyser), an
+  **area** (dashes marching round a patch that settles and stays, like
+  Spike Growth) or a **lock** (brackets round one target).
+
 **Spell golf**
 : One hole played with spells (`World.Golf.cs`, `golf.ts`, BACKLOG §24).
   The **ball** (core state, not a thing) starts on the **tee**; a cast

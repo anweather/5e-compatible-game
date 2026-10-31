@@ -73,6 +73,9 @@ public static class ProbeScenarios
             "through the pond, a crate tossed softly leaves a pane whole and one thrown hard breaks it, no console errors."),
         new Entry("castlooks", typeof(CastLooksProbe), 200f,
             "The new casts' looks alone: spelllooks' second half, for working on them. Shots with --shots."),
+        new Entry("aimlooks", typeof(AimLooksProbe), 120f,
+            "The aim marker of each kind of cast, one picture each (--shots): lanes at an angle, a ring growing as Cast is held, the outlines of what rises, Spike Growth's area, " +
+            "all on flat ground, on water and on a slope, and the lock-on on a deer. Checks: each spell's kind, one mesh draws it, the ring grows with the charge, no console errors."),
         new Entry("spelllooks", typeof(SpellLooksProbe), 400f,
             "The combo table's new spells staged in the yard, one picture or more each (--shots): Forge on sand, mud and metal; Falling Star's mark, fall, impact and embers; Whirlwind " +
             "carrying sand, water, fire, smoke and snow; a dust cloud flashing in fire; Lava Pool; Rain Cloud; Sand Blast; Light at night; the pick's swing; cracked glass, ice and a frozen " +

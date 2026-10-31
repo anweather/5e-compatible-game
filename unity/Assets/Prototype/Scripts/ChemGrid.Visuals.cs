@@ -30,6 +30,8 @@ public partial class ChemGrid
     public Material slickMaterial;
     [Tooltip("What lava is drawn with (Prototype/CellLava); the builder sets it, which puts it in the build.")]
     public Shader lavaShader;
+    [Tooltip("Draws the aim marker (AimMarker). The builder sets it, so the shader is in the build.")]
+    public Shader aimShader;
     [Tooltip("Optional: rock models a raised wall is built of, one per square, sized to cover its face (CellDressing). Without them, rough shapes stand in.")]
     public GameObject[] wallRocks;
     [Tooltip("Optional: smaller stones set on a raised wall's top to break its line.")]

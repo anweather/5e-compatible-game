@@ -43,6 +43,7 @@ public static class ValleyBuilder
         EditorUtility.SetDirty(cellWater);
         grid.waterMaterial = cellWater;
         grid.lavaShader = Shader.Find("Prototype/CellLava");
+        grid.aimShader = Shader.Find("Prototype/AimMarker");
         grid.slickMaterial = SoftMaterial("Slick", Color.white, UrpMaterials.FilmSmoothness, null, 0f);
         // Raised walls are built of the demo pack's rocks: upright crags and slabs for their faces, flat stones on top.
         grid.wallRocks = LoadRocks("Rock_A_01", "Rock_A_02", "Rock_C_02");
