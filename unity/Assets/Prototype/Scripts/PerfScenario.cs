@@ -9,6 +9,7 @@ using System.Text;
 using Chem;
 using Unity.Profiling.LowLevel.Unsafe;
 using UnityEngine;
+using UnityEngine.Experimental.Rendering;
 using Debug = UnityEngine.Debug;
 
 // One timed scenario in a player build, for a performance pass
@@ -38,6 +39,9 @@ using Debug = UnityEngine.Debug;
 // -perf-flames-off, which draws a flamewall without its flames; and -perf-pso-diff
 // <file>, which lists what a -pso-trace file has that the shipped collection hasn't;
 // and -perf-water-check, which redraws the water tiles at the end and counts any that differ.
+// -perf-offscreen draws the camera into a 1080p texture of real play's colour and depth
+// formats: with no desktop session a camera bound for the window draws nothing, so frame
+// times mean nothing and no pipeline state is made.
 //
 // The bot scenario films the playtest bot (add -playtest -playtest-seed N
 // -playtest-seconds N): it has no stage, -perf-seconds does nothing, and the
@@ -56,6 +60,7 @@ public class PerfScenario : MonoBehaviour
     const double BytesPerMb = 1024.0 * 1024.0;
     const float EarlyMs = 100f;
     const int MostEarly = 40;
+    const int OffscreenWide = 1920, OffscreenHigh = 1080;
     static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow" };
 
     readonly List<float> frameMs = new();
@@ -89,11 +94,13 @@ public class PerfScenario : MonoBehaviour
         QualitySettings.vSyncCount = 0;
         Application.targetFrameRate = -1;
         Application.logMessageReceived += OnLog;
+        QuickExit.BeforeExit += Finish;
         PerfCounts.On = true;
         early = new PerfMarkers();
         earlyFrom = Time.realtimeSinceStartupAsDouble;
         scenario = Arg("-perf-scenario");
         ReadTimes();
+        DrawOffscreenIfAsked();
         if (Arg("-perf-pso-diff") != null)
         {
             PerfPsoCheck.Diff(Arg("-perf-pso-diff"));
@@ -129,6 +136,14 @@ public class PerfScenario : MonoBehaviour
         yield return Shot(scenario);
         if (scenario == Wildfire) yield return FlameShots();
         Application.Quit();
+    }
+
+    // URP takes the camera's formats from its target, so this matches URP's HDR colour and depth.
+    static void DrawOffscreenIfAsked()
+    {
+        if (!Has("-perf-offscreen")) return;
+        Camera.main.targetTexture = new RenderTexture(OffscreenWide, OffscreenHigh, GraphicsFormat.B10G11R11_UFloatPack32, GraphicsFormat.D32_SFloat_S8_UInt);
+        Debug.Log($"PERF OFFSCREEN {OffscreenWide}x{OffscreenHigh}");
     }
 
     void ReadTimes()
@@ -288,7 +303,7 @@ public class PerfScenario : MonoBehaviour
         else if (type != LogType.Log) errors++;
     }
 
-    // The bot quits when its run is done.
+    // The bot quits when its run is done (OnApplicationQuit never runs in a Windows player).
     void OnApplicationQuit() => Finish();
 
     void OnDestroy()

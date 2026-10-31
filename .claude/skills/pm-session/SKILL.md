@@ -42,6 +42,12 @@ restart after every release.
   VMs while a release candidate or perf run holds the PC. No idle compute; Pro before Max.
 - Issues: file, comment, label, close on ship, with a `Discovery-Cost:` line; a rediscovery is a
   comment, never a duplicate.
+- Keep Andrew's board current (STATE, "Andrew's board"): one small publish after each verdict,
+  landing or assignment.
+- Anything Andrew reviews goes on the board as images or clips, never as text alone: upload with
+  the Artifact tool (`asset: true`, `url` = the board) and reference the returned `/_blob/<id>`.
+  Shrink screenshots first (`ffmpeg -i in.png -vf scale=1280:-2 -q:v 4 out.jpg`); pair before and
+  after. A review item with no media isn't asked yet: get a worker to record it first.
 - Images: follow `screenshot-budget`. Status reports: `project-update`, one screen.
 
 ## Hand off (after each release, or when Andrew asks)
