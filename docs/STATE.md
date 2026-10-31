@@ -56,6 +56,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 - DesktopUnity: #5 on `ux-pass-5`, then the yard rebuild and the Windows perf comparison (the PC's
   Windows session is Disconnected, which may make perf unmeasurable: then Andrew logs in).
 - Mac: the Dragon's view (item 4 below).
+- u1: the rules MCP server, phase 1 (`docs/RULES_MCP.md`, D13; brief `briefs/rules-mcp.md`). Stop
+  u1 before DesktopUnity's perf comparison (it asks first).
 
 ## Next, in order
 
