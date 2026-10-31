@@ -641,3 +641,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   (Max) cloned from ubuntu-template (1-6 GB), in bridge-watch's Max list;
   first boot waits for the host Editor to close (8.8 GB free, 8 must stay).
   u2 needs Andrew's one-time sign-ins in the VM: Claude (Max) and GitHub.
+- 2026-10-30 22:05: DECIDED (Andrew): the Linux margin beside an open Editor
+  is 5 GB (was 8), and the idle Pro coordinator session is closed (workers
+  take briefs directly; the PM merges and files issues). bridge-watch no
+  longer wakes a role at a reset unless it has mail. Memory, for the record:
+  of 31 GB, the Editor and its compiler about 8.6, Claude sessions 2.7,
+  Andrew's apps (Firefox, Discord, Steam) about 3.8, Windows and drivers
+  about 5. u2 booted (172.26.221.64); it waits for Andrew's Claude (Max) and
+  GitHub sign-ins.
