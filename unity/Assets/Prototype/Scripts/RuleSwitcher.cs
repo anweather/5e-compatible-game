@@ -7,17 +7,18 @@ using UnityEngine;
 // Decides which rules a running yard switches to, and sends the switch the
 // right way (docs/LIVE_LAB.md):
 //
-// - Solo: the new rules are checked now and queued on the ChemGrid, which
-//   puts them in force before the next tick.
-// - Online host: checked now, then stamped into the next NetChem tick batch,
-//   so every machine switches at the same tick.
-// - Online client: asks the host, which checks the mod with its own copy of
-//   the file and stamps it, or says why not.
+// Every world is a room (World.Room.cs, docs/RULES_MCP.md), so a mod goes on or
+// off as a RoomCommand, which the room's change mode and the checks decide:
 //
-// The mods panel (ModsPanel) and the file watcher (RulesWatcher, in the
-// Editor and development builds) both come through here. A switch that
-// doesn't check out is refused: the error is logged and shown in the panel,
-// and the old rules stay.
+// - Solo: queued on the ChemGrid, decided before the next tick.
+// - Online: sent to the host with the mod's patch (NetChem.RequestRoom), and every
+//   machine decides it at the tick the host stamps.
+//
+// The mods panel (ModsPanel) and the file watcher (RulesWatcher, in the Editor
+// and development builds) both come through here. A change that doesn't check
+// out is refused: the sentence goes to the log and the panel, and the old rules
+// stay. A base rules file saved in solo doesn't go through the room's checks: it's
+// queued on the ChemGrid.
 [RequireComponent(typeof(ChemGrid))]
 public class RuleSwitcher : MonoBehaviour
 {
@@ -36,6 +37,12 @@ public class RuleSwitcher : MonoBehaviour
     bool Online => net != null && net.Online;
     bool IsClient => Online && !net.IsServer;
 
+    /// <summary>The room this world is played in.</summary>
+    public RoomState Room => grid.World.Room;
+
+    /// <summary>This peer's name in the room.</summary>
+    public string Me => Online ? net.LocalPeer : NetChem.PeerName(0);
+
     /// <summary>Whether this machine may change the rules from files: solo or the host.</summary>
     public bool OwnsRules => !IsClient;
 
@@ -46,33 +53,40 @@ public class RuleSwitcher : MonoBehaviour
         Catalog = new ModCatalog(Path.Combine(ChemGrid.FindRulesDir(), "mods"));
         if (!TryGetComponent<ModsPanel>(out _)) gameObject.AddComponent<ModsPanel>();
         if ((Application.isEditor || Debug.isDebugBuild) && !TryGetComponent<RulesWatcher>(out _)) gameObject.AddComponent<RulesWatcher>();
+        grid.RoomDecided += Decided;
     }
 
-    // What a new switch builds on: a switch already queued or stamped but not yet in force counts.
-    RuleSet Upcoming => Online ? net.HostUpcoming ?? grid.CurrentRules : grid.UpcomingRules;
+    void OnDestroy() => grid.RoomDecided -= Decided;
+
+    // This peer's own change: the panel says why it was refused, or stops saying.
+    void Decided(RoomCommand command, RoomVerdict verdict)
+    {
+        if (command.Peer == Me) LastError = verdict.Done ? null : verdict.Line;
+    }
+
+    // What a new switch builds on: a switch already queued but not yet in force counts.
+    RuleSet Upcoming => grid.UpcomingRules;
 
     /// <summary>
-    /// Switches a mod from rules/mods/ on or off. On a client it asks the host. Returns why it
-    /// was refused, or null (also null on a client, whose answer comes later through <see cref="Refused"/>).
+    /// Switches a mod from rules/mods/ on or off, or takes off one that came another way. Returns
+    /// why it was refused now, or null; the room's answer comes at the tick, in the log and LastError.
     /// </summary>
     public string Toggle(string id)
     {
-        if (IsClient)
-        {
-            net.RequestToggle(id);
-            EventLog.Add($"Asked the host to switch {Catalog.Find(id)?.Title ?? id}");
-            return null;
-        }
+        if (Room.Mods.Exists(m => m.Id == id)) return Ask(RoomCommand.Revert(Me, id));
         var file = Catalog.Find(id);
         if (file == null) return Refuse($"No mod \"{id}\" in rules/mods/ here");
         if (file.Error != null) return Refuse($"{file.Title}: {file.Error}");
-        var target = Upcoming;
-        bool on = !target.IsOn(id);
-        return Switch(() => target.WithMods(target.Toggled(file.AsActive())), $"{file.Title}: {(on ? "on" : "off")} at the next tick", file.Title);
+        return Ask(RoomCommand.Apply(Me, id, file.AsActive().Json, file.Title));
     }
 
-    /// <summary>The host refused this client's request.</summary>
-    public void Refused(string why) => Refuse(why);
+    /// <summary>Sends a room command on its way: decided before the next solo tick, or at the tick the host stamps.</summary>
+    public string Ask(RoomCommand command)
+    {
+        if (Online) net.RequestRoom(command);
+        else grid.QueueRoom(command);
+        return null;
+    }
 
     /// <summary>
     /// A rules file was saved (from RulesWatcher, on the main thread): reload it, check it, and
@@ -101,7 +115,7 @@ public class RuleSwitcher : MonoBehaviour
         string id = ModCatalog.IdOf(path);
         if (file == null)
         {
-            if (target.IsOn(id)) Switch(() => target.WithMods(target.Toggled(new ActiveMod(id, ""))), $"{shown} deleted: switched off", shown);
+            if (target.IsOn(id)) Ask(RoomCommand.Revert(Me, id));
             else EventLog.Add($"{shown} deleted");
             return;
         }
@@ -112,7 +126,8 @@ public class RuleSwitcher : MonoBehaviour
         }
         if (target.IsOn(id))
         {
-            Switch(() => target.WithMods(target.Replaced(file.AsActive())), $"Rules reloaded: {shown}", shown);
+            Ask(RoomCommand.Revert(Me, id));
+            Ask(RoomCommand.Apply(Me, id, file.AsActive().Json, file.Title));
             return;
         }
         // Off: check that it would fit, so a broken mod shows up as soon as it is saved.
@@ -131,9 +146,8 @@ public class RuleSwitcher : MonoBehaviour
         Switch(() => target.WithBase(grid.LoadBaseRules()), $"Rules reloaded: {shown}", shown);
     }
 
-    // Builds the new rules (which checks them) and, if they fit, sends them on their way.
-    // A null result means "only checking". Returns the refusal, or null.
-    string Switch(Func<RuleSet> build, string note, string what)
+    // Builds the new rules (which checks them) and, if they fit, queues them. A null result means "only checking".
+    void Switch(Func<RuleSet> build, string note, string what)
     {
         RuleSet next;
         try
@@ -142,14 +156,12 @@ public class RuleSwitcher : MonoBehaviour
         }
         catch (ModException e)
         {
-            return Refuse($"{what} refused, rules unchanged: {string.Join("; ", e.Errors)}");
+            Refuse($"{what} refused, rules unchanged: {string.Join("; ", e.Errors)}");
+            return;
         }
         LastError = null;
         EventLog.Add(note);
-        if (next == null) return null;
-        if (Online) net.StampRules(next);
-        else grid.QueueRules(next);
-        return null;
+        if (next != null) grid.QueueRules(next);
     }
 
     string Refuse(string why)

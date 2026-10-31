@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text;
 using Chem;
 using UnityEngine;
@@ -5,9 +6,10 @@ using UnityEngine.InputSystem;
 
 // The Mods page of the Esc menu (PauseMenu): every rules/mods/*.json with its
 // title and idea, a tick by the ones in force, the rules' fingerprint, and why
-// the last switch was refused. Switching goes through RuleSwitcher (solo: next
-// tick; online: the host stamps it for everyone). The main page gets a
-// "Mods" button that opens it.
+// the last switch was refused. Switching goes through the room (RuleSwitcher,
+// World.Room.cs: solo the next tick; online every peer at the tick the host
+// stamps, as the room's change mode allows). A mod on with no file here has a row
+// too, so anyone can take it off. The main page gets a "Mods" button that opens it.
 //
 //   Open            M (opens the menu on this page; M again closes it)
 //                   Esc / Start, then Mods
@@ -98,11 +100,13 @@ public class ModsPanel : MonoBehaviour
         var mods = switcher.Catalog.Mods;
         GUILayout.Label("<color=#ffffff99>Click, 1–9, or highlight and A to switch one on or off. M closes.</color>", small);
         GUILayout.Label($"Rules fingerprint <b>{switcher.Rules.Fingerprint}</b>   ·   {Summary()}", small);
-        float height = Mathf.Clamp(mods.Count * 58f + 8f, 60f, Mathf.Max(120f, HudScale.Height - 340f));
+        var others = OthersOn();
+        float height = Mathf.Clamp((mods.Count + others.Count) * 58f + 8f, 60f, Mathf.Max(120f, HudScale.Height - 340f));
         scroll = PauseMenu.ScrollView(scroll, height, () =>
         {
             for (int i = 0; i < mods.Count; i++) DrawRow(i, mods[i]);
-            if (mods.Count == 0) GUILayout.Label("No mods in rules/mods/ yet. Save one there (docs/MODDING.md) and it shows up here.", small);
+            foreach (var other in others) DrawOther(other);
+            if (mods.Count + others.Count == 0) GUILayout.Label("No mods in rules/mods/ yet. Save one there (docs/MODDING.md) and it shows up here.", small);
         });
         if (switcher.LastError != null) GUILayout.Label(switcher.LastError, error);
     }
@@ -117,17 +121,26 @@ public class ModsPanel : MonoBehaviour
         if (PauseMenu.Button(label, on ? rowOn : row, GUILayout.Width(Width - 56), GUILayout.Height(52))) Toggle(i);
     }
 
+    // A mod on that isn't a file here: another peer's, or one Claude made.
+    List<RoomMod> OthersOn() => switcher.Room.Mods.FindAll(m => switcher.Catalog.Find(m.Id) == null);
+
+    void DrawOther(RoomMod mod)
+    {
+        string label = $"<color=#7CFC7C>✔</color>  <b>{mod.Title}</b>\n<size=13><color=#ffffffbb>Added by {mod.By}</color></size>";
+        if (PauseMenu.Button(label, rowOn, GUILayout.Width(Width - 56), GUILayout.Height(52))) switcher.Toggle(mod.Id);
+    }
+
     string Summary()
     {
-        var rules = switcher.Rules;
-        if (rules.Mods.Count == 0) return "base rules";
-        var sb = new StringBuilder("on: ");
-        for (int i = 0; i < rules.Mods.Count; i++)
+        var room = switcher.Room;
+        var sb = new StringBuilder(RoomPolicy.Words(room.Mode)).Append(" room · ");
+        if (room.Mods.Count == 0) return sb.Append("base rules").ToString();
+        sb.Append("on: ");
+        for (int i = 0; i < room.Mods.Count; i++)
         {
             if (i > 0) sb.Append(", ");
-            sb.Append(switcher.Catalog.Find(rules.Mods[i].Id)?.Title ?? rules.Mods[i].Id);
+            sb.Append(room.Mods[i].Title);
         }
-        if (!switcher.OwnsRules) sb.Append("   (the host switches for everyone)");
         return sb.ToString();
     }
 

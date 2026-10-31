@@ -97,6 +97,12 @@ public static class ProbeScenarios
             "One whole flight of the Dragon, staged quicker than a real one (DragonView, World.Dragon). Checks: the world keeps a start, R summons it, the sky darkens and it's seen, " +
             "a wizard in the open is downed and one behind a built wall isn't, every chunk is freshened, and the Gauntlet's lava, a meadow cell, a felled tree, a moved crate and a broken one " +
             "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
+        new Entry("roomopen", typeof(RoomOpenProbe), 150f,
+            "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, a late joiner gets them. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
+        new Entry("roomhost", typeof(RoomHostProbe), 90f,
+            "A Host-only room: the client's change and revert refused with the sentence on both, the host's goes in. Checks as roomopen.", 2),
+        new Entry("roomlocked", typeof(RoomLockedProbe), 90f,
+            "A Locked room: every change refused on both, the mods it started with stay. Checks as roomopen.", 2),
         new Entry("downed", typeof(DownedProbe), 30f,
             "The punch on a virtual gamepad's Circle, and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
         new Entry("castfeel", typeof(CastFeelProbe), 200f,

@@ -159,8 +159,10 @@ public partial class ChemGrid : MonoBehaviour
     void BuildWorld()
     {
         var rules = StartRules();
+        var roomWas = World?.Room;
 
         World = StartWorld(rules, map, seed, out var start);
+        OpenRoom(roomWas);
         World.ChunkSwitched += OnChunkSwitched;
         World.ChunkFreshened += freshChunks.Add;
         ChunkPlanner = new ChunkPlanner();
