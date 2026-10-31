@@ -165,7 +165,13 @@ namespace Chem
         }
 
         // A player's cast in progress and grimoire. Only when there are any, so saves without read as they did.
-        static JArray SaveCast(PlayerCast c) => new JArray(c.Player, c.First, c.Second, c.Meter, c.Total, c.Window, c.Slot, c.DpadCasting, new JArray(c.Known), c.Charge);
+        // No button is down on a loaded game, so a held cast is saved as a tap, without its hold's ticks.
+        static JArray SaveCast(PlayerCast c)
+        {
+            int meter = c.Holding ? Math.Max(1, c.Meter - c.Extra) : c.Meter;
+            int total = c.Total - c.Meter + meter;
+            return new JArray(c.Player, c.First, c.Second, meter, total, c.Window, c.Slot, c.DpadCasting, new JArray(c.Known), c.Charge);
+        }
 
         // A rolling wave; one saved before waves rolled at an angle rolls on along its grid way from where it is.
         static Wave LoadWave(JArray wv)
@@ -201,7 +207,6 @@ namespace Chem
                 Window = (int)a[5],
                 Slot = (int)a[6],
                 DpadCasting = (int)a[7],
-                // Not Holding: no button is down on a loaded game, so a held cast goes off as a tap.
                 Charge = a.Count() > 9 ? (int)a[9] : 1,
             };
             foreach (var id in a[8]) c.Known.Add((string)id);

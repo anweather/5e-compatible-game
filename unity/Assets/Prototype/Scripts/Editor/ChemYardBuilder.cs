@@ -344,6 +344,8 @@ public static class ChemYardBuilder
         wizard.AddComponent<Sitter>(); // sits the local wizard on a Seat (E); the pose above is every machine's
         wizard.AddComponent<CurrentRider>(); // the river and the surf carry the local wizard (WaterCurrents)
         wizard.AddComponent<Vitals>();
+        wizard.AddComponent<WizardDown>(); // at 0 health: down, then back at the yard; the pose is every machine's
+        wizard.AddComponent<DownedPose>();
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
         wizard.AddComponent<DoubleJump>(); // a second jump in mid-air (the climbing tower, ValleyTower)

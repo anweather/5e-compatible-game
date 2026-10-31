@@ -57,8 +57,10 @@ export interface PlayerCast {
   /** The d-pad's selected slot, and the slot being cast, or -1. */
   slot: number;
   dpadCasting: number;
-  /** The last element's button is down: the meter stops at its last tick until a release. */
+  /** The last element's button is down: the meter runs on through the charge, then stops at its last tick until a release. */
   holding: boolean;
+  /** The ticks a full charge adds to the meter while held; 0 otherwise. */
+  extra: number;
   /** The charge the release gave; 1 until then. */
   charge: number;
   /** The ids of the combos this player has cast, sorted: the grimoire. */
@@ -469,8 +471,13 @@ export function serializeWorld(w: World): WorldSnapshot {
   return JSON.parse(JSON.stringify({ ...rest, log: w.log.slice(-40) })) as WorldSnapshot;
 }
 
-// No button is down on a loaded game, so a held cast goes off as a tap.
-const unheld = (casts: Record<string, PlayerCast>) => Object.fromEntries(Object.entries(casts).map(([p, c]) => [p, { ...c, holding: false, charge: c.charge ?? 1 }]));
+// No button is down on a loaded game, so a held cast goes off as a tap, without its hold's ticks.
+function unheld(casts: Record<string, PlayerCast>) {
+  return Object.fromEntries(Object.entries(casts).map(([p, c]) => {
+    const meter = c.holding ? Math.max(1, c.meter - (c.extra ?? 0)) : c.meter;
+    return [p, { ...c, meter, total: c.total - c.meter + meter, holding: false, extra: 0, charge: c.charge ?? 1 }];
+  }));
+}
 
 export function deserializeWorld(s: WorldSnapshot): World {
   const n = s.w * s.h;

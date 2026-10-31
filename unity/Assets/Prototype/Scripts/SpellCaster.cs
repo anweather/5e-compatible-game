@@ -37,14 +37,14 @@ public partial class SpellCaster : MonoBehaviour
     NetChem net;
     RaycastHit crosshair;
     bool hasCrosshair;
-    // Holding Cast charges a spell that can be (ElementHold.SecondsPerLevel a level, to World.MaxCharge); release casts it.
+    // Holding Cast charges a spell that can be (World.SecondsPerLevel a level, to World.MaxCharge); release casts it.
     // The element that eats things away (Acid Splash): its splash, hiss and eaten stain.
     const string AcidElement = "acid", HeatElement = "heat", SandElement = "sand", LightningElement = "lightning";
     float chargeStart = -1f;
     GUIStyle pips;
 
     /// <summary>The charge the held Cast has built so far (1 when not charging).</summary>
-    public int Charge => chargeStart < 0f ? 1 : ElementHold.ChargeOf(Time.time - chargeStart, World.MaxCharge);
+    public int Charge => chargeStart < 0f ? 1 : ElementHold.ChargeOf(Time.time - chargeStart, World.MaxCharge, grid.World.SecondsPerLevel);
     /// <summary>How long Cast has been held charging, or -1 when it isn't (CastPose holds the wind-up).</summary>
     public float ChargingSeconds => chargeStart < 0f ? -1f : Time.time - chargeStart;
     Vector3? blinkLanding;

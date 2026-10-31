@@ -6,8 +6,9 @@ using UnityEngine;
 // and magic are out of 100. Health drops when something hurts the wizard
 // (Hurt: thorns underfoot, SurfaceEffects); a dodge roll asks for a little
 // stamina (TrySpendStamina), which comes back over time; magic doesn't drain
-// yet. While `infinite` is on (the sandbox) health never drops below 1 and
-// comes back a few seconds after the last hurt, and stamina stays full.
+// yet. While `infinite` is on (the sandbox) health comes back a few seconds
+// after the last hurt and stamina stays full. At 0 health the wizard is downed
+// (Downed, WizardDown), and a few seconds later it's back at the yard, full.
 // Spells that catch a wizard hurt it too (TakeDamage, SpellForces), and an
 // animal shape takes that first (Shapeshift: when the animal drops to 0 the
 // wizard changes back, and what's left over carries on to the wizard).
@@ -34,6 +35,17 @@ public class Vitals : MonoBehaviour
     public Breath Breath { get; private set; }
 
     float lastHurt = float.NegativeInfinity;
+    Downed down = new(null);
+
+    /// <summary>Health ran out: the wizard is down (WizardDown).</summary>
+    public event System.Action Fell;
+    /// <summary>The wizard is up again, full: its time down is over, or an online reset ended it.</summary>
+    public event System.Action Rose;
+    /// <summary>Its time down is over: it comes back at the yard, just after <see cref="Rose"/>.</summary>
+    public event System.Action Respawned;
+
+    /// <summary>The wizard is down, and takes no more harm until it's back.</summary>
+    public bool IsDown => down.IsDown;
 
     /// <summary>Takes damage before the wizard does, and returns what's left over (Shapeshift's animal form).</summary>
     public System.Func<float, float> Absorb { get; set; }
@@ -44,6 +56,7 @@ public class Vitals : MonoBehaviour
         var wizard = grid != null && grid.World != null ? grid.World.Rules.Entity(EntityIds.Wizard) : null;
         if (wizard != null) HealthMax = Mathf.Max(1, wizard.Hp);
         Breath = new Breath(grid != null && grid.World != null ? grid.World.Rules.Sim.Breath : null, sides => Random.Range(1, sides + 1));
+        down = new Downed(grid != null && grid.World != null ? grid.World.Rules.Sim.Downed : null);
         Health = HealthMax;
     }
 
@@ -68,22 +81,30 @@ public class Vitals : MonoBehaviour
         Magic = MagicMax;
         Breath?.Refill();
         lastHurt = float.NegativeInfinity;
+        if (down.Clear()) Rose?.Invoke();
     }
 
     public void Heal(float amount) => Health = Mathf.Min(HealthMax, Health + Mathf.Max(0f, amount));
 
-    /// <summary>Takes <paramref name="amount"/> health away (in the sandbox, never the last point).</summary>
+    /// <summary>Takes <paramref name="amount"/> health away; at none left the wizard falls.</summary>
     public void Hurt(float amount)
     {
-        if (amount <= 0f) return;
-        Health = Mathf.Max(infinite ? 1f : 0f, Health - amount);
+        if (amount <= 0f || IsDown) return;
+        Health = Mathf.Max(0f, Health - amount);
         lastHurt = Time.time;
+        if (Health <= 0f && down.Fall()) Fell?.Invoke();
     }
 
     void Update()
     {
+        if (down.Step(Time.deltaTime))
+        {
+            Refill();
+            Respawned?.Invoke();
+            return;
+        }
         if (!infinite && Stamina < StaminaMax) Stamina = Mathf.Min(StaminaMax, Stamina + StaminaRegen * Time.deltaTime);
-        if (!infinite || Health >= HealthMax || Time.time - lastHurt < RecoverAfter) return;
+        if (IsDown || !infinite || Health >= HealthMax || Time.time - lastHurt < RecoverAfter) return;
         Health = Mathf.Min(HealthMax, Health + RecoverPerSecond * Time.deltaTime);
     }
 
@@ -93,7 +114,7 @@ public class Vitals : MonoBehaviour
     /// </summary>
     public void Breathe(bool headUnder, float seconds)
     {
-        if (Breath == null) return;
+        if (Breath == null || IsDown) return;
         bool was = Breath.Drowning;
         int damage = Breath.Step(seconds, headUnder);
         if (Breath.Drowning && !was) EventLog.Add("You run out of breath and start to drown");
@@ -102,10 +123,10 @@ public class Vitals : MonoBehaviour
         TakeDamage(damage);
     }
 
-    /// <summary>The wizard is hurt: an animal shape takes it first; the rest comes off health unless it's infinite.</summary>
+    /// <summary>The wizard is hurt: an animal shape takes it first; the rest comes off health.</summary>
     public void TakeDamage(float amount)
     {
-        if (amount <= 0f) return;
+        if (amount <= 0f || IsDown) return;
         if (Absorb != null) amount = Absorb(amount);
         Hurt(amount);
     }
