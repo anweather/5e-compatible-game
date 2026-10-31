@@ -136,6 +136,15 @@ public class NetWizard : NetworkBehaviour
         if (TryGetComponent<RollPose>(out var pose)) pose.Play(seconds);
     }
 
+    /// <summary>Owner only: tells the other machines this wizard fell or got up, so they lay it down too (DownedPose).</summary>
+    public void Downed(bool lying) => DownedRpc(lying);
+
+    [Rpc(SendTo.NotOwner)]
+    void DownedRpc(bool lying)
+    {
+        if (TryGetComponent<DownedPose>(out var pose)) pose.Lying = lying;
+    }
+
     /// <summary>Owner, a client: asks the host to reset the world (OnlineReset); the host's log says who asked.</summary>
     public void AskForReset() => AskForResetRpc();
 
@@ -153,6 +162,12 @@ public class NetWizard : NetworkBehaviour
         if (TryGetComponent<Shapeshift>(out var shape)) shape.ChangeBack("You're yourself again", force: true);
         if (TryGetComponent<ItemHolder>(out var hands)) hands.LetGoOnLeaving();
         if (TryGetComponent<Vitals>(out var vitals)) vitals.Refill();
+        JumpToStart();
+    }
+
+    /// <summary>Owner only: straight back to this player's place at the yard.</summary>
+    public void JumpToStart()
+    {
         // The character controller keeps its own idea of where it is: off for the jump.
         bool hasBody = TryGetComponent<CharacterController>(out var body) && body.enabled;
         if (hasBody) body.enabled = false;

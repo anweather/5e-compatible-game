@@ -197,7 +197,11 @@ touch them.
 : A wizard using a spell at a cell and direction (`CastCommand`).
 
 **Cast charge**
-: How long a cast was held, 1 to 3 (`CastCommand.Charge`, `ComboCommand.Charge`).
+: How long a cast was held, 1 to 3 (`CastCommand.Charge`, counted from the meter by `World.HeldCharge`).
+
+**Downed**
+: A wizard at 0 health: on the ground with no controls for `sim.json` `downed.seconds`, then back at the
+yard with full health (`Downed`, `WizardDown`). Not the world reset.
 
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,

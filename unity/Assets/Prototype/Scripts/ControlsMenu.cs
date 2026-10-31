@@ -31,7 +31,7 @@ public class ControlsMenu : MonoBehaviour
         ("Debug: the spell radial", "Hold Tab, then left click", "F2 swaps the controller to it"),
         ("In an animal's shape: change back", "Z, X, C, V or left click", "Any element button"),
         ("Pick up / drop", "E (near a thing)", "{West}"),
-        ("Punch (empty-handed)", "F", "{West}"),
+        ("Punch (empty-handed)", "F", "{East}"),
         ("Use what you hold", "F", "{North}"),
         ("Throw (hold: harder)", "G / right click", "{East}"),
         ("Reset the yard (solo)", "R", "{Select}"),

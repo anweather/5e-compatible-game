@@ -46,7 +46,7 @@ public class WizardPartsTests
     {
         var net = AssetDatabase.LoadAssetAtPath<GameObject>(NetWizardPath);
         Assert.IsNotNull(net, "build the yard first: Prototype > Build Chemistry Yard");
-        foreach (var part in new[] { typeof(PlayerControls), typeof(SpellCaster), typeof(CastPose), typeof(SurfaceEffects), typeof(Knockback), typeof(ItemHolder), typeof(SpellRadialHud), typeof(DodgeRoll), typeof(RollPose), typeof(OccluderFade), typeof(WizardOutfit) })
+        foreach (var part in new[] { typeof(PlayerControls), typeof(SpellCaster), typeof(CastPose), typeof(SurfaceEffects), typeof(Knockback), typeof(ItemHolder), typeof(SpellRadialHud), typeof(DodgeRoll), typeof(RollPose), typeof(WizardDown), typeof(DownedPose), typeof(OccluderFade), typeof(WizardOutfit) })
             Assert.IsNotNull(net.GetComponent(part), $"NetWizard has no {part.Name}");
     }
 

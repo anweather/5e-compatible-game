@@ -299,11 +299,7 @@ public sealed class PlaytestPlayer
             went(false);
             yield break;
         }
-        if (charge > 1)
-        {
-            yield return Wait((charge - 1) * ElementHold.SecondsPerLevel);
-            caster.LetGo(charge);
-        }
+        if (charge > 1) yield return HoldTo(charge, player);
         until = Time.time + MeterSeconds;
         while (world.CastOf(player)?.Casting == true && Time.time < until) yield return null;
         // The caster aims and casts in the tick the meter ran out; give it the frame.
@@ -312,6 +308,14 @@ public sealed class PlaytestPlayer
         bool ok = world.CastOf(player)?.Casting != true && world.KnowsCombo(player, combo);
         if (!ok) report(new Candidate("elements-didnt-cast", combo, Category.Gameplay, Frame, $"{combo} was loaded but never went off"));
         went(ok);
+    }
+
+    // Lets go once the meter has reached this charge (or it's taken too long).
+    IEnumerator HoldTo(int charge, string player)
+    {
+        float until = Time.time + MeterSeconds;
+        while (grid.World.HeldCharge(grid.World.CastOf(player)) < charge && Time.time < until) yield return null;
+        caster.LetGo();
     }
 
     // A chain: the setup cast by elements, then the trigger aimed at what it left, and the cells

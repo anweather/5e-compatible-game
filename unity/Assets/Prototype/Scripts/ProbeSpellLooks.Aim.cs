@@ -87,7 +87,7 @@ public class AimLooksProbe : SpellLooksProbe
         yield return Wait(0.2f);
         Check("marker_follows_the_element_cast", caster.Marker?.Kind == AimKind.Rising, $"{caster.Marker?.Kind} for Raise Earth, Fireball selected");
         yield return Picture("element-raise-earth");
-        caster.LetGo(1);
+        caster.LetGo();
         yield return Wait(1.6f);
     }
 
@@ -116,10 +116,11 @@ public class AimLooksProbe : SpellLooksProbe
         InputSystem.QueueStateEvent(pad, new GamepadState { rightTrigger = 1f });
         yield return Wait(0.2f);
         float tap = RingRadius();
-        yield return Wait(ElementHold.SecondsPerLevel + 0.25f);
+        float level = (float)World.SecondsPerLevel;
+        yield return Wait(level + 0.25f);
         float one = RingRadius();
         yield return Picture("fireball-held");
-        yield return Wait(ElementHold.SecondsPerLevel + 0.25f);
+        yield return Wait(level + 0.25f);
         float two = RingRadius();
         yield return Picture("fireball-held-full");
         Metric("ring_tap", tap);

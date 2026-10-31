@@ -12,7 +12,7 @@ export type ComboCommand =
   | { player: string; kind: "cancel" }
   | { player: string; kind: "cycle"; step: number }
   | { player: string; kind: "castSelected" }
-  | { player: string; kind: "release"; charge: number };
+  | { player: string; kind: "release" };
 
 /** The id of an element alone (second null) or of an ordered pair. */
 export const comboId = (first: string, second: string | null): string => (second === null ? first : `${first}+${second}`);
@@ -22,9 +22,6 @@ export function comboById(id: string): ComboDef | undefined {
   const [first, second] = id.split("+") as [string, string | undefined];
   return second === undefined ? RULES.combos.singles[first] : RULES.combos.pairs[first]?.[second];
 }
-
-/** The combo a cast has loaded, or undefined (nothing loaded, or a d-pad spell). */
-const comboOf = (c: PlayerCast): ComboDef | undefined => (c.first === null ? undefined : comboById(comboId(c.first, c.second)));
 
 /** Whether holding a cast makes this spell stronger: every spell does (C#: World.Chargeable). */
 export const chargeable = (s: SpellDef | undefined): boolean => s !== undefined;
@@ -38,6 +35,13 @@ export const spellAt = (combo: ComboDef, charge: number, maxCharge: number): str
 
 /** A load would be taken now: the first element, or the second inside the window. */
 const takesElement = (c: PlayerCast): boolean => c.meter === 0 || (c.first !== null && c.second === null && c.window > 0);
+
+/**
+ * The charge a held cast has reached: 1 for the meter's own length (a tap's), then a level for
+ * each chargeTicks more. The meter is the clock, so the charge only grows while it runs.
+ */
+export const heldCharge = (c: PlayerCast | undefined): number =>
+  (c?.holding ? 1 + Math.trunc(Math.max(0, c.extra + 1 - c.meter) / RULES.combos.chargeTicks) : 1);
 
 /** What a view multiplies this player's walking speed by: the rules' factor while the meter drains, else 1. */
 export const moveFactorOf = (w: World, player: string): number => ((w.casts[player]?.meter ?? 0) > 0 ? RULES.combos.moveFactor : 1);
@@ -57,13 +61,13 @@ export function selectedDpad(w: World, player: string): DpadSpellDef | undefined
  * of a slot with no spell, a cancel with nothing to drop, a release with nothing held.
  */
 export function applyCombo(w: World, command: ComboCommand): boolean {
-  const c = (w.casts[command.player] ??= { player: command.player, first: null, second: null, meter: 0, total: 0, window: 0, slot: 0, dpadCasting: -1, holding: false, charge: 1, known: [] });
+  const c = (w.casts[command.player] ??= { player: command.player, first: null, second: null, meter: 0, total: 0, window: 0, slot: 0, dpadCasting: -1, holding: false, extra: 0, charge: 1, known: [] });
   switch (command.kind) {
     case "load": return loadElement(c, command.element, command.hold ?? false);
     case "cancel": return cancelCast(c);
     case "cycle": return cycleDpad(c, command.step);
     case "castSelected": return castSelected(w, c);
-    case "release": return releaseHold(c, command.charge);
+    case "release": return releaseHold(c);
   }
 }
 
@@ -74,12 +78,12 @@ function loadElement(c: PlayerCast, element: string, hold: boolean): boolean {
   if (c.meter === 0) {
     c.first = element;
     c.window = combos.window;
-    startMeter(c, combos.singles[element]?.castTicks ?? 0);
+    startHeldMeter(c, combos.singles[element]);
     return true;
   }
   c.second = element;
   c.window = 0;
-  startMeter(c, combos.pairs[c.first!]?.[element]?.castTicks ?? 0);
+  startHeldMeter(c, combos.pairs[c.first!]?.[element]);
   return true;
 }
 
@@ -89,12 +93,21 @@ function cancelCast(c: PlayerCast): boolean {
   return true;
 }
 
-// The charge is kept to what the spell takes, here as well as by the view, so a client can't send more.
-function releaseHold(c: PlayerCast, charge: number): boolean {
+// The charge comes from the core's own meter, so every peer agrees and a client can't send more.
+function releaseHold(c: PlayerCast): boolean {
   if (!c.holding) return false;
-  c.holding = false;
-  c.charge = Math.max(1, Math.min(maxChargeOf(comboOf(c)), charge));
+  c.charge = heldCharge(c);
+  endHold(c);
   return true;
+}
+
+// The hold's extra ticks come off: a cast let go early still takes a tap's time, one past that goes off on the next tick.
+function endHold(c: PlayerCast) {
+  const passed = c.total - c.meter;
+  c.meter = Math.max(1, c.meter - c.extra);
+  c.total = passed + c.meter;
+  c.extra = 0;
+  c.holding = false;
 }
 
 function cycleDpad(c: PlayerCast, step: number): boolean {
@@ -115,11 +128,21 @@ function castSelected(w: World, c: PlayerCast): boolean {
 function startMeter(c: PlayerCast, ticks: number) {
   c.meter = ticks;
   c.total = ticks;
+  c.extra = 0;
+}
+
+// A held cast's meter has room for its full charge, each level adding chargeTicks.
+function startHeldMeter(c: PlayerCast, combo: ComboDef | undefined) {
+  startMeter(c, combo?.castTicks ?? 0);
+  if (!c.holding) return;
+  c.extra = (maxChargeOf(combo) - 1) * RULES.combos.chargeTicks;
+  c.meter += c.extra;
+  c.total += c.extra;
 }
 
 function clearCast(c: PlayerCast) {
   c.first = c.second = null;
-  c.meter = c.total = c.window = 0;
+  c.meter = c.total = c.window = c.extra = 0;
   c.dpadCasting = -1;
   c.holding = false;
   c.charge = 1;
@@ -128,8 +151,8 @@ function clearCast(c: PlayerCast) {
 const inOrder = (w: World): PlayerCast[] => Object.keys(w.casts).sort().map((p) => w.casts[p]!);
 
 /**
- * Drains every meter, in player order, and sets off those that reach zero. A
- * held cast waits at the meter's last tick, so the tick after its release sets it off.
+ * Drains every meter, in player order, and sets off those that reach zero. A cast held
+ * to its full charge waits at the meter's last tick, so the tick after its release sets it off.
  */
 export function tickCombos(w: World) {
   for (const c of inOrder(w)) {
