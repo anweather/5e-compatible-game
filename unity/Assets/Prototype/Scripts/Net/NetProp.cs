@@ -129,7 +129,10 @@ public class NetProp : NetworkBehaviour
         else transform.position = to;
     }
 
-    /// <summary>A wizard ran into it (Kicker): the host's physics takes the kick, wherever it came from.</summary>
+    /// <summary>The hardest kick the host takes (kg m/s): above the hardest punch (CastFeel.punchShove; a test holds them apart).</summary>
+    public const float MaxKick = 3f * Forces.ImpulsePerPush;
+
+    /// <summary>A wizard ran into it (Kicker) or punched it: the host's physics takes the kick, wherever it came from.</summary>
     public void Kick(Vector3 impulse)
     {
         if (IsServer) KickHere(impulse);
@@ -141,6 +144,6 @@ public class NetProp : NetworkBehaviour
 
     void KickHere(Vector3 impulse)
     {
-        if (TryGetComponent<Rigidbody>(out var rb) && !rb.isKinematic) rb.AddForce(Vector3.ClampMagnitude(impulse, Kicker.MaxKickKg * 20f), ForceMode.Impulse);
+        if (TryGetComponent<Rigidbody>(out var rb) && !rb.isKinematic) rb.AddForce(Vector3.ClampMagnitude(impulse, MaxKick), ForceMode.Impulse);
     }
 }

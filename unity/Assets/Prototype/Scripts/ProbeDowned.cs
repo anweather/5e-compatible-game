@@ -23,7 +23,7 @@ public class DownedProbe : ProbeScenario
         if (controls != null) controls.enabled = true;
         caster.enabled = true;
         vitals = wizard.GetComponent<Vitals>();
-        hands.Thrown += Counted;
+        hands.PunchStarted += Counted;
         pad = InputSystem.AddDevice<Gamepad>("Downed pad");
         try
         {
@@ -34,14 +34,14 @@ public class DownedProbe : ProbeScenario
         }
         finally
         {
-            hands.Thrown -= Counted;
+            hands.PunchStarted -= Counted;
             if (controls != null) controls.enabled = controlsWereOn;
             caster.enabled = casterWasOn;
             InputSystem.RemoveDevice(pad);
         }
     }
 
-    void Counted(float how) => punches++;
+    void Counted(ItemHolder.PunchLanding punch) => punches++;
 
     IEnumerator Punch()
     {

@@ -43,10 +43,12 @@ public class MovingTests
     [Test]
     public void CirclePunchesUnlessItHasACastToCancel()
     {
-        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: false, seated: false), Is.True);
-        Assert.That(ItemHolder.MayPunch(cancelling: true, animal: false, swimming: false, seated: false), Is.False);
-        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: true, swimming: false, seated: false), Is.False);
-        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: true, seated: false), Is.False);
-        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: false, seated: true), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: false, seated: false, rolling: false, downed: false), Is.True);
+        Assert.That(ItemHolder.MayPunch(cancelling: true, animal: false, swimming: false, seated: false, rolling: false, downed: false), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: true, swimming: false, seated: false, rolling: false, downed: false), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: true, seated: false, rolling: false, downed: false), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: false, seated: true, rolling: false, downed: false), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: false, seated: false, rolling: true, downed: false), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: false, seated: false, rolling: false, downed: true), Is.False);
     }
 }

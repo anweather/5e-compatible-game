@@ -348,6 +348,7 @@ public static class ChemYardBuilder
         // Poses laid over the animation with IK: swimming, throwing, sitting (casting is CastPose, above).
         wizard.AddComponent<SwimPose>();
         wizard.AddComponent<ThrowPose>();
+        wizard.AddComponent<PunchPose>();
         wizard.AddComponent<SitPose>();
         wizard.AddComponent<Sitter>(); // sits the local wizard on a Seat (E); the pose above is every machine's
         wizard.AddComponent<CurrentRider>(); // the river and the surf carry the local wizard (WaterCurrents)

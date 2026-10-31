@@ -23,6 +23,8 @@ public class CastFeel : ScriptableObject
         public Vector3 fingers = Vector3.down, palm = Vector3.forward;
         [Tooltip("How far the hips sink, knees bent and feet planted (m), and the spine's lean ahead (degrees).")]
         public float dip, lean;
+        [Tooltip("The shoulders' turn to the right (degrees): a punch's; a cast's have none.")]
+        public float twist;
         [Tooltip("How far the body is pushed back from the aim (m). Only drawn: the wizard itself stays put.")]
         public float recoil;
         [Range(0f, 1f), Tooltip("0: each element in its hand. 1: gathered between the hands.")]
@@ -167,6 +169,45 @@ public class CastFeel : ScriptableObject
     public float chargeShake = 0.016f, chargeShakeHertz = 9f;
     [Tooltip("After this long in the charge (s) the shake eases over a second to this share, so a held cast stays comfortable.")]
     public float chargeShakeTires = 3f, chargeShakeHeld = 0.4f;
+
+    [Header("The punch (PunchPose, ItemHolder.Punch.cs, CastImpact): the fist lands at the end of punchDraw and punchOut")]
+    [Tooltip("How hard it hits a prop or item, in pushes (Forces.ImpulsePerPush): 1 sends a crate off at 2.5 m/s. Online the host takes it, up to NetProp.MaxKick.")]
+    public float punchShove = 2.5f;
+    [Tooltip("The fist drawn back and the shoulders turned away.")]
+    public BeatPose punchDraw = new()
+    {
+        rightHand = new Vector3(0.24f, 1.16f, -0.1f), leftHand = new Vector3(-0.2f, 1.3f, 0.26f), leftWeight = 0.8f, seconds = 0.09f,
+        fingers = Vector3.forward, palm = Vector3.left, dip = 0.04f, lean = -3f, twist = 24f,
+    };
+    [Tooltip("The fist out and the shoulders through. rightHand is for a miss: a hit goes to what it hits. A negative recoil is the body going forward.")]
+    public BeatPose punchOut = new()
+    {
+        rightHand = new Vector3(0.1f, 1.32f, 0.72f), leftHand = new Vector3(-0.22f, 1.22f, 0.16f), leftWeight = 0.8f, seconds = 0.07f, curve = Snap(),
+        fingers = Vector3.forward, palm = Vector3.down, dip = 0.05f, lean = 10f, recoil = -0.14f, twist = -34f,
+    };
+    [Tooltip("Back to neutral: the weights fall to nothing, handing the arms back to the animation.")]
+    public BeatPose punchBack = new()
+    {
+        rightHand = new Vector3(0.26f, 1f, 0.12f), leftHand = new Vector3(-0.26f, 1f, 0.1f), rightWeight = 0f, leftWeight = 0f, seconds = 0.22f, curve = Snap(),
+        fingers = Vector3.forward, palm = Vector3.left,
+    };
+    [Tooltip("How long the fist stays out (s), and from one punch to the next.")]
+    public float punchHold = 0.05f, punchCooldown = 0.4f;
+    [Tooltip("How long a hit stands still (s); only a hit. 3 frames at 60 fps.")]
+    public float punchStop = 0.05f;
+    [Tooltip("The camera's kick along the punch on a hit (m), and how long it takes to die away (s).")]
+    public float punchKick = 0.035f, punchKickSeconds = 0.12f;
+    public Thump punchRumble = new(0.6f, 0.4f, 0.1f);
+    [Tooltip("From the hand bone to the knuckles (m).")]
+    public float punchFist = 0.09f;
+    [Tooltip("The most the body goes after something beyond the arm (m).")]
+    public float punchLunge = 0.25f;
+    [Tooltip("The most the shoulders turn to something off to the side (degrees).")]
+    public float punchTurnMost = 45f;
+    [Tooltip("How far each finger joint curls (degrees).")]
+    public float punchClench = 70f;
+    [Tooltip("A target lower than this (m) bends the body to it, and at the ground by this much more lean (degrees) and dip (m).")]
+    public float punchLowFrom = 1f, punchLowLean = 22f, punchLowDip = 0.14f;
 
     [Header("Rumble (pulses, never a drone)")]
     public Thump gatherRumble = new(0f, 0.22f, 0.06f);

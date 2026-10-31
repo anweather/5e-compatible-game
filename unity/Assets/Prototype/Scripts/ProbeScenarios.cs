@@ -82,9 +82,9 @@ public static class ProbeScenarios
         new Entry("golf", typeof(GolfProbe), 150f,
             "Spell golf's hole played through the caster (GolfCourse, World.Golf): the tee, flag, hole and ball drawn, the HUD's stroke line, Gust of Wind " +
             "to the hole; then the meadow coil beside it: its cells laid, no tree on its pond, a bolt into the pond opens the gate. Shots with --shots."),
-        new Entry("feel", typeof(FeelProbe), 220f,
+        new Entry("feel", typeof(FeelProbe), 280f,
             "What a hand on the controls should feel, on a virtual pad and keyboard: running onto ice and Frost's glaze keeps the speed and slides, snow and a bank slow " +
-            "the wizard to the rules' share; F cracks then breaks a pane; F and Square knock a crate, F the ball; Plant Growth charged on burnt ground and Wall of " +
+            "the wizard to the rules' share; F cracks then breaks a pane; F and Square knock a crate, F the ball, by CastFeel's strength, the arm reaching it, a hit-stop, one landing (a miss too, and off still), the same ticks with and without the stop; Plant Growth charged on burnt ground and Wall of " +
             "Stone held to a ramp, on keys and pad; Frost over a swimmer; Left Ctrl held and pressed swimming to a bank never rolls. Shots with --shots."),
         new Entry("aimlooks", typeof(AimLooksProbe), 120f,
             "The aim marker of each kind of cast, one picture each (--shots): lanes at an angle, a ring growing as Cast is held, the outlines of what rises, Spike Growth's area, " +
@@ -101,7 +101,7 @@ public static class ProbeScenarios
         new Entry("castclip", typeof(CastClipProbe), 90f,
             "Films a single, a pair and a charged cast from the side, none of fire, as the game is now, with the mixed sound, into --shots: frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("punchclip", typeof(PunchClipProbe), 60f,
-            "Films the punch knocking a crate, from the side, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metric: how far the crate went."),
+            "Films the punch knocking a crate, from the side, then a miss, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metrics: how far the crate went, and where its start line goes."),
         new Entry("combo", typeof(ComboProbe), 70f,
             "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
             "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +

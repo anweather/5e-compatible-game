@@ -29,6 +29,7 @@ public partial class ItemHolder : MonoBehaviour
     CharacterController body;
     SpellRadialHud radial;
     Shapeshift shape;
+    CastBeats beats;
     float throwPressedAt = -1f;
     // A throw under way: when it leaves the hand (the arm part way through its whip), and how fast.
     float releaseAt = -1f, releaseSpeed;
@@ -59,6 +60,7 @@ public partial class ItemHolder : MonoBehaviour
         TryGetComponent(out body);
         TryGetComponent(out radial);
         TryGetComponent(out shape);
+        TryGetComponent(out beats);
         if (TryGetComponent<Animator>(out var animator) && animator.isHuman) hand = animator.GetBoneTransform(HumanBodyBones.RightHand);
     }
 
