@@ -699,3 +699,19 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   release with recoil, recover); view-only hit-stop, camera impulses and
   pad rumble, punchy by default with an Esc slider; the casting sounds built
   here. A before and after clip goes to Andrew.
+- 2026-10-31 00:05: ADOPTED (Andrew): the screenshot-budget skill
+  (.claude/skills/screenshot-budget). Rules for every session:
+  - Shots: true aspect, fixed conditions (noon, clear, same seed and
+    outfit), the same camera before and after, the wizard out of frame,
+    dark scenes lit, the feature framed at 3-8 m. At most 3 reviewed images
+    per report, 800 px on the long edge (sheets up to 1200 px). Crop for
+    detail. Numbers, not images, for changes you can't see.
+  - Who looks: each session checks its own shots at about 480 px. The PM
+    opens one 800 px final only for a finished visible feature going on a
+    page it vouches for (a release, a milestone); otherwise it relays the
+    session's written check ("the session reports ...").
+  - Gallery: a full-resolution set per feature under
+    unity/Builds/screens/<feature>/gallery/ for Andrew. No model opens it;
+    the report names the folder. At most 40 images.
+  The probes' --shots gain 480 px review copies (first step of the cast-feel
+  pass). Measure: the next host pass's cost per feature against 2026-10-30's.

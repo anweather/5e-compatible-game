@@ -10,6 +10,13 @@ and its Combos part, CastPose, the cast meter, charged casts from #7 and bd488d5
 fresh sub-agents per part, and merge after each part. The sound pass (docs/handoffs/sound-pass-brief.md)
 comes after this; this pass builds the casting sounds itself.
 
+## 0. First, screenshot review copies (Andrew adopted the screenshot-budget skill, 2026-10-31)
+Read .claude/skills/screenshot-budget/SKILL.md and the rules in COORDINATION.md (2026-10-31 00:05).
+The probes' `--shots` also write a copy at 480 px on the long edge (beside each full-size shot, for
+example `name.480.png`), and a full-resolution gallery goes under `unity/Builds/screens/<feature>/gallery/`.
+From here on, look at your own shots only at 480 px; send the PM written checks, plus at most one
+800 px final for a finished visible feature. Small change in the shared screenshot helper.
+
 ## 1. The staff goes
 - Remove the staff from the default wizard: the model, its glow and the hand that held it. Both
   hands are free for elements.
