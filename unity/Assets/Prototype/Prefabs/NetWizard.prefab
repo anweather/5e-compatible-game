@@ -120,6 +120,9 @@ PrefabInstance:
       addedObject: {fileID: 3541750731685027454}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
+      addedObject: {fileID: 9163129423396004689}
+    - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
+      insertIndex: -1
       addedObject: {fileID: 1346358280460853545}
     - targetCorrespondingSourceObject: {fileID: 4416926081852918481, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
       insertIndex: -1
@@ -339,6 +342,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 8bf54b2e81c3e4fb480d5557e0fb5fda, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::CastPose
+--- !u!114 &9163129423396004689
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 3189246001750556768}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 4f4144474582c064ba394f61b12df101, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::CastBeats
+  feel: {fileID: 11400000, guid: 49359ac486989984ca7dc42e002ed964, type: 2}
 --- !u!114 &1346358280460853545
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -606,6 +622,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::WizardOutfit
   material: {fileID: 2100000, guid: 1c2f7c809517e4946a98211dcf83ad02, type: 2}
   faceShader: {fileID: 4800000, guid: d352c809965ea08448db937a3a82493a, type: 3}
+  carriesStaff: 0
 --- !u!114 &1708091964083407250
 MonoBehaviour:
   m_ObjectHideFlags: 0

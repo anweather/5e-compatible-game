@@ -84,6 +84,8 @@ public class OnlineObservation
     public string phase;
     /// <summary>The host's wizard seen here in an animal's shape, then back in its own (Shapeshift, NetWizard's form).</summary>
     public bool sawForm, sawFormEnd;
+    /// <summary>The beats the other wizard's cast went through here (CastBeats), one line for each copy that moved.</summary>
+    public List<string> otherBeats = new();
     public int joinedTick;
     /// <summary>The virtual player's lag at the start tick: ticks it knew of but hadn't run yet (0 caught up).</summary>
     public int lagAtStart;
@@ -426,6 +428,14 @@ public class OnlineProbeClient : MonoBehaviour
         }
     }
 
+    // The other wizard's beats on this side.
+    static CastBeats OtherBeats()
+    {
+        var mine = NetworkManager.Singleton != null ? NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject() : null;
+        return FindObjectsByType<NetWizard>(FindObjectsSortMode.None).Where(w => mine == null || w.gameObject != mine.gameObject)
+            .Select(w => w.GetComponent<CastBeats>()).FirstOrDefault();
+    }
+
     // Ticks this side knows of but hasn't run yet (NetChem's knownUpTo - NetTick; 0 when caught up).
     static int Lag(NetChem net)
     {
@@ -438,6 +448,9 @@ public class OnlineProbeClient : MonoBehaviour
     IEnumerator AfterReset(string id, NetChem net)
     {
         var after = new OnlineObservation { id = id };
+        var other = OtherBeats();
+        void Heard(Beat beat) => after.otherBeats.Add(beat.ToString());
+        if (other != null) other.BeatChanged += Heard;
         void OnTick(int tick, string checksum)
         {
             if (checksum == null || net.LastResetTick <= 0 || tick <= net.LastResetTick) return;
@@ -455,6 +468,7 @@ public class OnlineProbeClient : MonoBehaviour
         }
         for (float waited = 0f; ask != null && waited < 20f && net.NetTick < ask.startTick; waited += Time.unscaledDeltaTime) yield return null;
         net.TickApplied -= OnTick;
+        if (other != null) other.BeatChanged -= Heard;
         if (ask == null) yield break;
         after.phase = ProbeLink.ResetReported;
         after.desync = net.DesyncSeen;
@@ -547,6 +561,7 @@ public class OnlineProbe : ProbeScenario
         yield return TryReset();
         yield return TryTag();
         yield return TryShape();
+        yield return TryBeats();
         yield return CompareAfterReset(id);
     }
 
@@ -582,6 +597,8 @@ public class OnlineProbe : ProbeScenario
         }
         Check("shape_seen_online", client.sawForm, "the host's wizard drawn as a deer on the virtual player");
         Check("shape_ended_online", client.sawFormEnd, "and drawn as itself again once a cast button ended it (issue #6)");
+        Check("beats_seen_online", client.otherBeats.SequenceEqual(hostBeats) && hostBeats.Contains(nameof(Beat.Release)) && hostBeats.Contains(nameof(Beat.Charge)),
+            $"host [{string.Join(" ", hostBeats)}], its wizard on the virtual player [{string.Join(" ", client.otherBeats)}]");
         int compared = 0, equal = 0;
         string firstDiff = null;
         for (int i = 0; i < client.hashTicks.Count; i++)
@@ -616,6 +633,37 @@ public class OnlineProbe : ProbeScenario
         yield return Wait(1f);
         Check("shape_ended_by_choice", shape.ChangeBackByChoice(), "ChangeBackByChoice");
         yield return Wait(1f);
+    }
+
+    readonly List<string> hostBeats = new();
+
+    // The host casts a pair and a charged single through the core; the virtual player must show the same beats.
+    IEnumerator TryBeats()
+    {
+        var beats = wizard.GetComponent<CastBeats>();
+        void Heard(Beat beat) => hostBeats.Add(beat.ToString());
+        beats.BeatChanged += Heard;
+        var aim = wizard.transform.position + wizard.transform.forward * 5f;
+        aim.y = grid.GroundAt(aim);
+        caster.AimOverride = aim;
+        caster.enabled = true;
+        caster.LoadElement(ElementIds.Water);
+        yield return Wait(0.4f);
+        caster.LoadElement(ElementIds.Earth);
+        yield return UntilNeutral(beats);
+        caster.LoadElement(ElementIds.Fire, held: true);
+        yield return Wait(1.6f);
+        caster.LetGo();
+        yield return UntilNeutral(beats);
+        caster.enabled = false;
+        caster.AimOverride = null;
+        beats.BeatChanged -= Heard;
+    }
+
+    static IEnumerator UntilNeutral(CastBeats beats)
+    {
+        for (float t = 0f; t < 0.3f; t += Time.deltaTime) yield return null;
+        for (float t = 0f; t < 6f && beats.Now != Beat.Neutral; t += Time.deltaTime) yield return null;
     }
 
     // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.

@@ -22,6 +22,7 @@ public static class ChemYardBuilder
     const string VolumePath = "Assets/Prototype/Settings/YardVolume.asset";
     const string NetWizardPath = "Assets/Prototype/Prefabs/NetWizard.prefab";
     const string SpellVisualsPath = "Assets/Prototype/Settings/SpellVisuals.asset";
+    const string CastFeelPath = "Assets/Prototype/Settings/CastFeel.asset";
     const string ThingPrefabsPath = "Assets/Prototype/Generated/ThingNetworkPrefabs.asset";
 
     // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
@@ -337,6 +338,7 @@ public static class ChemYardBuilder
         caster.visuals = visuals;
         caster.enabled = playerDriven;
         wizard.AddComponent<CastPose>();
+        wizard.AddComponent<CastBeats>().feel = AssetDatabase.LoadAssetAtPath<CastFeel>(CastFeelPath);
         var surface = wizard.AddComponent<SurfaceEffects>();
         surface.enabled = playerDriven;
         var knockback = wizard.AddComponent<Knockback>();

@@ -1,0 +1,274 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 1cc266be9ddc6b041b97359fae2e7819, type: 3}
+  m_Name: CastFeel
+  m_EditorClassIdentifier: Assembly-CSharp::CastFeel
+  first:
+    rightHand: {x: 0.42, y: 0.95, z: -0.2}
+    leftHand: {x: 0, y: 0, z: 0}
+    rightWeight: 1
+    leftWeight: 0
+    fingers: {x: 0.25, y: -1, z: 0}
+    palm: {x: 0, y: 0, z: 1}
+    dip: 0.02
+    lean: -2
+    recoil: 0
+    merge: 0
+    seconds: 0.26
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  second:
+    rightHand: {x: 0.46, y: 0.98, z: -0.14}
+    leftHand: {x: -0.46, y: 0.98, z: -0.14}
+    rightWeight: 1
+    leftWeight: 1
+    fingers: {x: 0.25, y: -1, z: 0}
+    palm: {x: 0, y: 0, z: 1}
+    dip: 0.06
+    lean: -3
+    recoil: 0
+    merge: 0
+    seconds: 0.22
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  slam:
+    rightHand: {x: 0.03, y: 1.2, z: 0.36}
+    leftHand: {x: -0.03, y: 1.2, z: 0.36}
+    rightWeight: 1
+    leftWeight: 1
+    fingers: {x: 0, y: 1, z: 0.4}
+    palm: {x: -1, y: 0, z: 0}
+    dip: 0.05
+    lean: 6
+    recoil: 0
+    merge: 1
+    seconds: 0.1
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 3.5
+        outSlope: 3.5
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  charge:
+    rightHand: {x: 0.03, y: 1.06, z: 0.36}
+    leftHand: {x: -0.03, y: 1.06, z: 0.36}
+    rightWeight: 1
+    leftWeight: 1
+    fingers: {x: 0, y: 1, z: 0.5}
+    palm: {x: -1, y: 0, z: 0}
+    dip: 0.16
+    lean: 14
+    recoil: 0
+    merge: 1
+    seconds: 0.25
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  release:
+    rightHand: {x: 0.05, y: 1.34, z: 0.4}
+    leftHand: {x: -0.05, y: 1.34, z: 0.4}
+    rightWeight: 1
+    leftWeight: 1
+    fingers: {x: 0, y: 1, z: 0.3}
+    palm: {x: 0, y: 0, z: 1}
+    dip: 0
+    lean: -7
+    recoil: 0.35
+    merge: 1
+    seconds: 0.09
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 3.5
+        outSlope: 3.5
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  recovery:
+    rightHand: {x: 0.28, y: 0.95, z: 0.1}
+    leftHand: {x: -0.28, y: 0.95, z: 0.1}
+    rightWeight: 0
+    leftWeight: 0
+    fingers: {x: 0, y: -1, z: 0}
+    palm: {x: 0, y: 0, z: 1}
+    dip: 0
+    lean: 0
+    recoil: 0
+    merge: 0
+    seconds: 0.24
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 3.5
+        outSlope: 3.5
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  fizzle:
+    rightHand: {x: 0.3, y: 0.8, z: 0.05}
+    leftHand: {x: -0.3, y: 0.8, z: 0.05}
+    rightWeight: 0
+    leftWeight: 0
+    fingers: {x: 0, y: -1, z: 0}
+    palm: {x: 0, y: 0, z: 1}
+    dip: 0
+    lean: 0
+    recoil: 0
+    merge: 0
+    seconds: 0.3
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  slamTicks: 1
+  thrustLead: 0.08
+  thrustHold: 0.07
+  announceWait: 1.2
+  growPerLevel: 0.6
+  pulse: 0.9
+  pulseSeconds: 0.2
+  tremble: 0.004

@@ -68,6 +68,9 @@ public class NetWizard : NetworkBehaviour
         if (grid != null) grid.WorldReset += BackToStart;
     }
 
+    /// <summary>This wizard's player in the core's casts, on every machine (CastBeats reads their cast).</summary>
+    public string CastPlayer => NetChem.PlayerName(OwnerClientId);
+
     /// <summary>This machine's own wizard while online; null solo.</summary>
     public static NetWizard Local { get; private set; }
 

@@ -31,6 +31,7 @@ public partial class SpellCaster : MonoBehaviour
 
     AimMarker marker;
     CastPose pose;
+    CastBeats beats;
     ItemHolder hands;
     SpellRadialHud radial;
     Shapeshift shape;
@@ -58,6 +59,7 @@ public partial class SpellCaster : MonoBehaviour
     void Awake()
     {
         TryGetComponent(out pose);
+        TryGetComponent(out beats);
         TryGetComponent(out hands);
         TryGetComponent(out radial);
         TryGetComponent(out shape);
@@ -68,7 +70,6 @@ public partial class SpellCaster : MonoBehaviour
     void OnDestroy()
     {
         marker?.Destroy();
-        orbs?.Destroy();
     }
 
     /// <summary>Selects a spell by id; false (and nothing changes) if the rules in force don't have it.</summary>
@@ -229,6 +230,7 @@ public partial class SpellCaster : MonoBehaviour
             Destroy(SpellVisuals.Spawn(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
         // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
         float release = CastGestures.Of(gesture).release;
+        if (beats != null) beats.Announce(spellId, landing, release);
         if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast.Charge, onArrive)));
         else Unleash(def, look, landing, cast.Charge, onArrive);
     }

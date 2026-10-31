@@ -8,12 +8,12 @@ using UnityEngine;
 // rising off the ground; SandBlast, a jet of sand along the cast; Chips,
 // bits of ground thrown up by a pick (Pick); Geyser, a tall roaring jet of water
 // out of a pond (turned to point up); Splash, a wave breaking; and Debris, burning
-// rock thrown out of a blast. Shards are ShardBurst's. Each kind
+// rock thrown out of a blast; Fizzle, a cast going out in a few falling sparks. Shards are ShardBurst's. Each kind
 // keeps at most a handful alive; past that the oldest is restarted where the
 // new one is wanted. Presentation only.
 public static class BurstFx
 {
-    public enum Kind { AcidSplash, Flash, Forge, SandBlast, Chips, Geyser, Splash, Debris }
+    public enum Kind { AcidSplash, Flash, Forge, SandBlast, Chips, Geyser, Splash, Debris, Fizzle }
 
     const int PerKind = 6;
 
@@ -65,6 +65,11 @@ public static class BurstFx
         {
             life = new(0.4f, 1f), speed = new(2.5f, 7f), size = new(0.35f, 1.1f), gravity = 1.2f, seconds = 0.12f, spread = 1.1f, hold = 0.4f, grow = 1.6f,
             hot = new Color(0.9f, 0.96f, 1f, 0.9f), cool = new Color(0.55f, 0.76f, 0.92f, 0.7f), bursts = new[] { (0f, (short)150), (0.08f, (short)70) },
+        },
+        [Kind.Fizzle] = new Recipe
+        {
+            life = new(0.2f, 0.5f), speed = new(0.4f, 1.6f), size = new(0.03f, 0.1f), gravity = 0.6f, seconds = 0.05f, spread = 0.12f, hold = 0.4f, additive = true,
+            hot = Color.white, cool = Color.gray, bursts = new[] { (0f, (short)22) },
         },
         [Kind.Debris] = new Recipe
         {
@@ -164,6 +169,9 @@ public static class BurstFx
         }
         Fade(ps, r.hold);
     }
+
+    /// <summary>The soft additive particle every glowing burst uses.</summary>
+    public static Material Glow => Soft(true);
 
     static Material Soft(bool additive)
     {

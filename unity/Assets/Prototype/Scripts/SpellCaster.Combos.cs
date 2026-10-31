@@ -15,9 +15,9 @@ using UnityEngine;
 // stays as a debug tool.
 public partial class SpellCaster
 {
-    const string SoloPlayer = "solo";
+    /// <summary>The solo wizard's name in the core's casts.</summary>
+    public const string SoloPlayer = "solo";
 
-    CastOrbs orbs;
     SurfaceEffects feet;
     ChemGrid heard;
     // The frame a press cancelled the cast: that press is spent, even for what reads it after.
@@ -26,6 +26,9 @@ public partial class SpellCaster
 
     /// <summary>This player's name in the core's casts: online their client's, solo a fixed one.</summary>
     public string CastPlayer => Net != null && Net.Online ? Net.LocalPlayer : SoloPlayer;
+
+    /// <summary>Online and still replaying the game so far: the casts in the core were made long ago (CastBeats).</summary>
+    public bool Replaying => Net != null && Net.Online && !Net.CaughtUp;
 
     /// <summary>The meter is draining (ItemHolder: the throw button cancels instead).</summary>
     public bool CastInProgress => cancelledOnFrame == Time.frameCount || (grid != null && grid.World != null && grid.World.CastOf(CastPlayer)?.Casting == true);
@@ -59,9 +62,7 @@ public partial class SpellCaster
         var world = grid.World;
         string player = CastPlayer;
         if (feet != null || TryGetComponent(out feet)) feet.CastFactor = (float)world.MoveFactorOf(player);
-        orbs ??= new CastOrbs(transform, pose);
         var cast = world.CastOf(player);
-        orbs.Show(cast?.First, cast?.Second);
         bool busy = (shape != null && shape.Shifted) || (radial != null && radial.IsOpen);
 
         Elements(player, cast, busy);
@@ -145,12 +146,11 @@ public partial class SpellCaster
         var world = grid.World;
         if (world.CombosFired.Count == 0) return;
         // Replaying the game so far as a late joiner, those casts were made long ago.
-        if (Net != null && Net.Online && !Net.CaughtUp) return;
+        if (Replaying) return;
         string player = CastPlayer;
         foreach (var fired in world.CombosFired)
         {
             if (fired.Player != player) continue;
-            orbs?.Slam();
             if (fired.Discovered) EventLog.Add($"New in your grimoire: {fired.Name}");
             CastAtCrosshair(fired.Spell, fired.Charge);
         }

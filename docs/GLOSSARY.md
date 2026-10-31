@@ -205,6 +205,11 @@ touch them.
 **Cast charge**
 : How long a cast was held, 1 to 3 (`CastCommand.Charge`, counted from the meter by `World.HeldCharge`).
 
+**Beat**
+: A stage of a cast by elements on the wizard's body: first element, second element, slam, charge,
+  release, recovery, or a fizzle when it's dropped (`Beat`, `CastBeats`; poses and timings in
+  `Settings/CastFeel.asset`). View only, worked out from the core's cast state on every peer.
+
 **Downed**
 : A wizard at 0 health: on the ground with no controls for `sim.json` `downed.seconds`, then back at the
 yard with full health (`Downed`, `WizardDown`). Not the world reset.

@@ -244,7 +244,8 @@ public class NetChem : NetworkBehaviour
     /// <summary>This player's name in the core's casts (World.CastOf).</summary>
     public string LocalPlayer => PlayerName(NetworkManager.LocalClientId);
 
-    static string PlayerName(ulong clientId) => $"p{clientId}";
+    /// <summary>A client's name in the core's casts.</summary>
+    public static string PlayerName(ulong clientId) => $"p{clientId}";
 
     /// <summary>Asks the host to run a player's combo input; it lands on every machine at the same tick.</summary>
     public void RequestCombo(ComboCommand command) => RequestComboRpc(ComboIntent.From(command, 0));

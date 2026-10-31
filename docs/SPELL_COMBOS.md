@@ -164,6 +164,22 @@ Shape from how the cast is released, the same for every combo: tap for a
 projectile, hold for a beam or stream (trigger depth for power), aim at the
 ground for an area or wall.
 
+## Beats (the view, 2026-10-31)
+What a cast by elements does to the wizard's body, for weight (#22). `CastBeats` runs on every copy of every
+wizard, from the core's cast state and the cast announcement, so other players see the same; `CastBeat.Next`
+is the pure rule. Poses and timings are all in `Settings/CastFeel.asset`, by LimbIK over the animation, no clips.
+1. **First:** the right hand swings down and back, palm open, motes drawn in.
+2. **Second:** the left does the same, arms wide. A single element skips it.
+3. **Slam:** the meter's last tick (a held cast's once it passes a tap's length): the hands snap together in 0.1 s and stay there.
+4. **Charge:** held on: hands pressed, knees bent, leaning in, the orbs growing with a pulse at each level,
+   walking at `chargeMoveFactor` (`World.MoveFactorOf`).
+5. **Release:** timed so the thrust arrives as the spell leaves the hands (the gesture's `release`, unchanged;
+   the gesture itself stands aside). The body recoils half a step: only drawn, the wizard doesn't move.
+6. **Recovery:** back to neutral fast; a new cast cuts it short.
+
+Cancel fizzles, and so does a cast the core fired that then couldn't go (no aim). Casts from the radial or the
+mouse keep their `CastGestures`. `CastBeats.BeatChanged` and `ChargeLevel` are the hooks for what reacts.
+
 ## Built (the view, 2026-10-30)
 - **Controller:** fire {LB}, water {RB}, earth {LT}, air {RT}; {East} cancels; the d-pad cycles,
   casts and opens the grimoire; dodge roll moved to the right stick's click; pad zoom is gone.
