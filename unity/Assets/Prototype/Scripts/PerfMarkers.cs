@@ -25,11 +25,14 @@ public sealed class PerfMarkers : IDisposable
         (ProfilerCategory.Internal, new[]
         {
             "PlayerLoop", "BehaviourUpdate", "LateBehaviourUpdate", "FixedBehaviourUpdate", "CoroutinesDelayedCalls",
-            "Physics.Processing", "Physics.Simulate", "Physics.SyncTransforms",
-            "Instantiate", "Loading.ReadObject", "Loading.AwakeFromLoad",
+            "FixedUpdate.PhysicsFixedUpdate", "Physics.Simulate", "Physics.SyncTransforms",
+            "Instantiate", "Loading.ReadObject", "Loading.AwakeFromLoad", "Mesh.UploadMeshData",
+            "Shader.CreateGPUProgram", "CreateGraphicsPipelineAsync", "Semaphore.WaitForSignal",
+            "Terrain.UpdateHeightmapTexture", "Terrain.RecomputeInvalidPatches",
             "Update.DirectorUpdate", "PostLateUpdate.UpdateAllRenderers", "PostLateUpdate.UpdateAllSkinnedMeshes", "PostLateUpdate.UpdateAudio",
             "ParticleSystem.Update", "Gfx.PresentFrame", "Gfx.WaitForPresentOnGfxThread", "Gfx.WaitForGfxCommandsFromMainThread",
-            "Camera.Render", "Render Thread", "Inl_RenderCameraStack", "Terrain.Heightmap.RenderPatches",
+            // Camera.Render stays 0 under URP: FinishFrameRendering holds the camera's work.
+            "PostLateUpdate.FinishFrameRendering", "Camera.Render", "Inl_RenderCameraStack", "CullScriptable",
             Collect,
         }),
         (ProfilerCategory.Scripts, new[]

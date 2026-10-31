@@ -26,6 +26,8 @@ using Debug = UnityEngine.Debug;
 // "PERF MARKERS" line with each one's mean and peak, and a "PERF SPIKE" line for
 // every frame over 50 ms (written after the run: logging is itself slow).
 // -perf-list-markers also writes every marker there is to perf-markers.txt.
+// The wildfire ends with two shots of one view, with and without FlameBank's
+// flames, so a script can count the pixels Prototype/Flame really drew.
 //
 // The bot scenario films the playtest bot (add -playtest -playtest-seed N
 // -playtest-seconds N): it has no stage, -perf-seconds does nothing, and the
@@ -97,12 +99,28 @@ public class PerfScenario : MonoBehaviour
 
         yield return new WaitForSecondsRealtime(seconds);
         Finish();
-        var file = Path.Combine(Application.persistentDataPath, $"perf-{scenario}.png");
+        yield return Shot(scenario);
+        var flames = scenario == Wildfire ? grid.GetComponentInChildren<FlameBank>() : null;
+        if (flames != null)
+        {
+            // The same view without Prototype/Flame: what differs between the two is what it drew.
+            Debug.Log($"PERF FLAMES cells={flames.CellsBurning}");
+            flames.enabled = false;
+            yield return null;
+            yield return null;
+            yield return Shot(Wildfire + "-noflames");
+        }
+        Application.Quit();
+    }
+
+    // A screenshot is written at the end of the frame it was asked for.
+    static IEnumerator Shot(string name)
+    {
+        var file = Path.Combine(Application.persistentDataPath, $"perf-{name}.png");
         ScreenCapture.CaptureScreenshot(file);
         Debug.Log($"PERF SHOT {file}");
         yield return null;
         yield return null;
-        Application.Quit();
     }
 
     void Update()
