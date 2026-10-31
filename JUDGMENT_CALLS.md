@@ -58,6 +58,7 @@ Each entry has:
 - **Answer:** B (deep hum, stacked fifths) as the base, with a little of C's accelerating pulse (less
   than C). The new slam animation is good. Iterate sounds as audio files only, no video, made outside
   Unity, in a series like the clips (earth single, water + air pair, charged fire).
+  Then picked B + pulse 30% (preset `cast-deep-hum-pulse` in the sound-design skill) to build in.
 - **Why:** Andrew listened to the clips.
 - **Revisited:** 0.
 
