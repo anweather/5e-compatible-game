@@ -5,6 +5,8 @@ description: Write the human a short, one-screen project update (wins, fails, bl
 
 # Project update
 
+In this repo, start from the `pm-session` skill and `docs/STATE.md`; they hold this project's specifics.
+
 The human shouldn't have to read every agent's report. Give them one screen,
 in the same order every time, so they can find what changed and what they
 must do in seconds.
@@ -36,14 +38,17 @@ NEEDS YOU
 - **NEEDS YOU** lists the decisions only. Then ask them with the
   AskUserQuestion tool (see the **judgment-call-log** skill), so the human
   can answer with a click instead of typing.
-- Send it when asked, after a milestone (a merge, a finished task), or when
-  something needs the human. Not after every agent message: between updates,
-  one or two sentences are enough.
+- Send it when asked, after a milestone, or when something needs the human.
+  Never after every agent message: between updates, one or two sentences.
+- Build it from what you already have (STATE.md, reports in context). Don't
+  re-read worker transcripts or re-derive status to fill it in, and never
+  paste logs or diffs. One screen is the cap.
 
 ## Measuring idle time
 
-Time you can't see, you can't fix. The bundled scripts measure the workers
-and the bottleneck on one machine:
+The bundled scripts measure the workers and the bottleneck on one machine.
+They are cheap shell, not Claude turns, and optional: set them up only when
+the user asks about idle time. Read `report.sh` output, never the raw CSV.
 
 - `scripts/sample.sh` appends one CSV row a minute. Each row records, for each
   local worker, whether its Claude transcript was written in the last 3
@@ -74,7 +79,9 @@ Set-up:
    until [ "$(scripts/report.sh --idle)" -ge 15 ]; do sleep 60; done; echo "No Unity for 15 min"
    ```
 
-   When it fires, find out why, then re-arm it. Usual causes: an agent's
+   This loop is shell only, so it costs no tokens. Never replace it with a
+   Claude turn that checks on a timer. When it fires, find out why, then
+   re-arm it. Usual causes: an agent's
    script waiting for an Editor that never opened; an agent idle with
    nothing queued; the slot handed back with nobody told. The fix is
    usually to give the slot to whoever has Unity work queued, or to move

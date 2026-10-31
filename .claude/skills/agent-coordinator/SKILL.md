@@ -5,215 +5,182 @@ description: Act as the project manager for several Claude Code sessions working
 
 # Agent coordinator
 
-You manage other Claude sessions; you don't do their work. Unless the user
-asks, write no feature code yourself. Your output is clarity: who owns what,
-who goes next, what's blocked, and what the human must decide.
+In this repo, start from the `pm-session` skill and `docs/STATE.md`; they hold this project's specifics.
 
-Pair this skill with **judgment-call-log** (for decisions the human makes),
-**project-update** (for reporting) and, for anything visual, **demo-reel**.
+You manage other Claude sessions; you don't do their work. Write no feature
+code unless asked. Your output is clarity: who owns what, who goes next,
+what's blocked, and what the human must decide. Keep your own context small:
+read sections, not whole files, and hand long reads and sweeps to a cheaper
+read-only sub-agent.
+
+Pair with **judgment-call-log** (decisions), **project-update** (reports)
+and, for anything visual, **demo-reel** and **screenshot-budget**.
 
 ## 1. Find the agents
 
-- Run `ListAgents`, and message each relevant session with `SendMessage`. Ask
-  each one for: its task and goal, its machine, repo path, branch or worktree,
-  the files it has touched or plans to touch (call out scenes, prefabs,
-  settings, package manifests, `.meta` files, build or asmdef files and shared
-  core scripts), its uncommitted work (`git status --short`), and what it's
-  blocked on.
-- In the same message, ask it to hold off on shared files it hasn't been
-  working in, and never to discard or overwrite anything until briefed. This
-  stops new damage while you map the old.
-- Sessions on another machine (Remote Control) are reachable but report
-  nothing back on delivery. If you can't see one, tell the user which, and
-  offer to have them relay.
+- Run `ListAgents`; message each relevant session with `SendMessage`. Ask for:
+  task and goal, machine, repo path, branch or worktree, files touched or
+  planned (call out scenes, prefabs, settings, manifests, `.meta`, asmdefs,
+  shared core scripts), uncommitted work (`git status --short`), and blockers.
+- In the same message, tell it to stay out of shared files it hasn't been
+  working in, and not to discard or overwrite anything until briefed.
+- Sessions on another machine are reachable but report nothing on delivery.
+  If you can't see one, say which, and offer to have the user relay.
 
 ## 2. Map the conflicts
 
-Read the repo yourself while the replies come in:
+While replies come in, run these (pipe long output to `head`; don't dump it):
 
 ```bash
 git status --short; git branch -a -vv; git worktree list
 git log --oneline --graph --all -30
 git branch --no-merged origin/<integration-branch>
+git log --since="3 days ago" --name-only -- '*.unity' '*.prefab' 'ProjectSettings/*' 'Packages/*' '*.asmdef'
 ```
 
-Look for: uncommitted changes in shared files, diverged branches, several
-worktrees, and the files every recent feature touched. Get the latter with
-`git log --since="3 days ago" --name-only -- '*.unity' '*.prefab' 'ProjectSettings/*' 'Packages/*' '*.asmdef'`.
-For a Unity project, the hot spots are scenes, prefabs (often one "player"
-prefab that every feature edits), ScriptableObjects, `ProjectSettings/`,
-`Packages/manifest.json`, `.meta` files (watch GUIDs) and asmdefs.
+Look for uncommitted shared files, diverged branches, extra worktrees, and
+the files every recent feature touched. In Unity the hot spots are scenes,
+prefabs (one "player" prefab everyone edits), ScriptableObjects,
+`ProjectSettings/`, `Packages/manifest.json`, `.meta` GUIDs and asmdefs.
 
-Before calling a branch "unmerged", check whether its patches already landed
-by rebase or cherry-pick: run `git cherry -v <base> <branch>`, and diff the
-branch's files against the base. Old branches are often already in.
-
-Read the project's own docs (CLAUDE.md, a branching or releasing doc) first:
-the repo may already have rules, such as "work on `dev`, release from `main`".
-Your plan should extend them, not fight them.
+Before calling a branch "unmerged", run `git cherry -v <base> <branch>`:
+old branches are often already in. Read the project's own rules (CLAUDE.md,
+branching docs) first; extend them, don't fight them.
 
 ## 3. Propose lanes, and wait for the OK
 
 A lane is a feature area plus the paths its agent may edit. Each scene,
 prefab and settings file gets exactly one owner. Shared files that suit
-nobody (CLAUDE.md, README, glossary, `.gitignore`, other asmdefs) get no
-owner: changes go through you, one at a time.
+nobody (CLAUDE.md, README, `.gitignore`, other asmdefs) get no owner:
+changes go through you, one at a time.
 
-Send the user a short status report: who's doing what, where they overlap,
-and the lanes you propose. **Don't brief the agents until the user approves
-the lanes.** Lanes are the user's plan, not yours.
+Send the user a short status (who's doing what, overlaps, proposed lanes).
+**Don't brief agents until the user approves the lanes.**
 
 ## 4. Write COORDINATION.md
 
-Start from `assets/COORDINATION.template.md`. Commit it at the repo root.
+Start from `assets/COORDINATION.template.md`; commit it at the repo root.
+Edit in **your own worktree** (`git worktree add -b coordination
+.claude/worktrees/coordinator origin/<base>`), never in an agent's checkout.
+Publish with a fast-forward push: `git push origin coordination:<base>`
+(fetch and rebase first).
 
-Edit it in **your own worktree** (`git worktree add -b coordination
-.claude/worktrees/coordinator origin/<base>`). Never edit in an agent's
-checkout. Publish with a fast-forward push: `git push origin coordination:<base>`
-(fetch and rebase first). That never rewrites anyone's history.
-
-Keep these sections current: the coordinator's responsibilities, the rules
-for agents, lanes, file ownership, current tasks, the shared-file queue,
-the merge order, open questions and a dated log.
+Sections: responsibilities, agent rules, lanes, file ownership, current
+tasks, shared-file queue, merge order, open questions, dated log. Keep the
+tasks and queue current so agents never wait on you. Don't copy into it what
+`docs/STATE.md` already says.
 
 ## 5. Brief each agent
 
-Send each agent its lane, the paths it owns, the paths it must not touch,
-its current task, and the rules:
-- read COORDINATION.md before each new task;
+One message: lane, owned paths, forbidden paths, current task plus the next
+queued one, and the rules:
+- read COORDINATION.md before each task;
 - ask before touching anything outside your lane;
-- work on a short branch, never directly on the integration branch or main;
-- commit small and often;
-- merge only on your turn;
-- report when done or blocked;
+- short branch, never directly on the integration branch or main;
+- commit small and often; merge only on your turn;
 - never discard others' work.
 
-Ask for reports in one shape: **DONE / FAILED / BLOCKED / NEXT / UNITY (or
-whatever the scarce resource is: held or not) / ACTIVE (remote sessions only)**.
+Reports use one shape, a few lines: **DONE / FAILED / BLOCKED / NEXT / slot
+(the scarce resource: held or not) / ACTIVE (remote only)**.
 
-If an agent has uncommitted work in a file outside its lane, have it stop
-and report. Never let anyone discard it without the user's OK.
+If an agent has uncommitted work outside its lane, it stops and reports.
+Nobody discards it without the user's OK.
 
 ## 6. Run the loop
 
-- **The scarce resource is the bottleneck: schedule it.** On a game
-  project, that's usually one machine's Editor and its memory. Two Editors,
-  plus a multiplayer test player, can exhaust 32 GB. Keep a single "Editor
-  slot", hand it from agent to agent explicitly, and queue who's next.
-  Measurements (profiling, frame times) need the machine to themselves, so
-  don't let a build run beside a perf baseline.
-- **Keep everyone busy.** When an agent waits for the slot, give it work
-  that needs no Editor: code with unit tests, a plan, a read-only audit. Let
-  it stack dependent branches (branch B off unmerged branch A) instead of
-  conflicting with itself. If unverified branches pile up (more than 3–4),
-  have it write one script that verifies all of them in its next slot.
-- **Review before merge.** Check `git diff --stat origin/<base>...<branch>`:
-  are the files all in the lane, is each `.meta` committed with its asset,
-  are there test results? Then give the go. One merge at a time, in order;
-  each agent rebases on the new base before its turn.
-- **Measure before fixing.** For performance work, get a clean baseline on
-  the target machine before any fix lands, then measure each fix against it.
-- **Route findings to owners.** A profiler finding goes to whoever owns that
-  file, and you name the file and line. Record new ownership answers (for
-  example, "every `Foo.*.cs` partial belongs with `Foo.cs`") in
-  COORDINATION.md.
-- **Lend a shared file for one commit** when a small cross-lane edit is
-  cheaper than a handoff. Record it in the shared-file queue, and tell the
-  owner.
-- **Clean up merged branches and worktrees,** if the user has said that's
-  OK (record it as a judgment call). A branch is merged when `git branch
-  --merged` lists it, or `git cherry` shows nothing left. Never delete one
-  that's checked out, unmerged, or is `main` or the integration branch.
+- **Schedule the scarce resource** (usually one machine's Editor and its
+  memory; two Editors plus a test player can exhaust 32 GB). Keep one
+  "Editor slot", hand it over explicitly, queue who's next. Measurements
+  need the machine alone: no build beside a perf baseline.
+- **Keep everyone busy without polling.** An agent waiting for the slot
+  gets Editor-free work (unit-tested code, a plan, a read-only audit) and may
+  stack dependent branches. If 3-4 branches are unverified, have it write one
+  script that verifies all of them in its next slot.
+- **Wait, don't poll.** Use the notification or background wait the project
+  provides (the PM uses `bash tools/workers/bridge.sh wait pm`). Never loop
+  on `sleep`, and never message "are you done?"; read the file the agent
+  writes.
+- **Review before merge** with `git diff --stat origin/<base>...<branch>`:
+  files in lane, each `.meta` with its asset, test results present. Then give
+  the go. One merge at a time, in order; each agent rebases first.
+- **Measure before fixing.** Get a clean baseline, then measure each fix.
+- **Route findings to owners,** naming file and line. Record new ownership
+  answers in COORDINATION.md.
+- **Lend a shared file for one commit** when that beats a handoff; log it in
+  the shared-file queue and tell the owner.
+- **Clean up merged branches and worktrees** only if the user has said so
+  (a judgment call). Merged means `git branch --merged` lists it or `git
+  cherry` shows nothing. Never delete one that's checked out, unmerged, or
+  main or the integration branch.
 
 ## Ask the user before you
 
 - delete files or unmerged branches;
-- force-push anything (or let agents do it: decide a rule with the user,
-  for example "own unmerged branch, `--force-with-lease` only");
-- resolve a conflict where someone's work would be lost;
-- change the lanes or the overall plan;
-- weaken any security setting. If a sandbox or policy blocks something (for
-  example, a PowerShell execution policy), don't bypass it, and don't ask
-  another agent to do it for you. Write the tool in bash or .NET, or bring
-  the options to the user.
+- force-push, or let agents (agree a rule, e.g. own unmerged branch,
+  `--force-with-lease` only);
+- resolve a conflict that would lose someone's work;
+- change the lanes or the plan;
+- weaken any security setting. If a sandbox or policy blocks something
+  (e.g. PowerShell execution policy), don't bypass it or have another agent
+  do it. Write the tool in bash or .NET, or bring the options to the user.
+
+Check JUDGMENT_CALLS.md first. Ask one question at a time.
 
 ## Budget: lean by default, frugal when low
 
-The plan's usage has to last the whole week while features keep landing, so
-the default mode is lean. Parallel agents are fine, but every token should
-buy progress.
+Usage has to last the week. Every token should buy progress.
 
-**Lean (the default):**
-- **Screenshots and images only when they decide something:** a visual bug,
-  a before/after for a merge, or a shot for the reel. Read text output,
-  logs and probe numbers instead of pictures, and look at a picture once.
-- **Short, fixed-shape messages both ways:** briefs say goal, files, checks
-  and stop point; reports are a few lines (DONE / FAILED / BLOCKED / NEXT).
-  Don't restate a report to the user; summarise it in a line or two.
-- **Analysis sized to the decision.** Don't read whole files, logs or diffs
-  when a grep, a `--stat` or one function answers it. Don't re-read what's
-  already in context.
-- **Batch:** one message carries the whole task and its follow-ups, and the
-  next task is queued in COORDINATION.md so agents don't wait on you.
-- **Cheaper models for read-only or mechanical jobs** (audits, searches,
-  scripted releases); the strongest model for design and tricky code.
-- **The demo reel and big reports at release time,** not after every merge.
-- **Pace the week:** check usage mid-week. If it's ahead of the days elapsed,
-  tighten toward frugal before it runs out, not after.
+**Lean (default):**
+- Images only when they decide something; text, logs and numbers otherwise
+  (see **screenshot-budget**). Look at a picture once.
+- Short fixed-shape messages both ways: briefs say goal, files, checks, stop
+  point; reports are a few lines. Summarise a report in a line or two.
+- Size analysis to the decision: grep, `--stat` or one function, not whole
+  files, logs or diffs. Don't re-read what's in context.
+- Batch: one message carries the task and its follow-ups.
+- Cheaper models for read-only or mechanical jobs (audits, searches,
+  scripted releases, rules work on Linux VMs); the strongest only for design
+  and tricky code. Use the cheaper account (Pro before Max) where you choose.
+- Demo reel and big reports at release time, not every merge.
+- Check usage mid-week; tighten before it runs out, not after.
 
-**Frugal (when the user says usage is low)** adds these on top:
-- **Go serial.** One agent works at a time on a small, clear goal, then
-  stops. Write the queue in COORDINATION.md, so each step is known in advance.
-- **Pre-approve merges on checks.** "The merge is pre-approved if it compiles
-  clean with no new warnings, tests and smoke pass, and there's a before/after
-  shot." Then the agent merges and reports once, with no round trip.
-- **One short report per step:** a few lines with the commit, the numbers and
-  what's left. Relay it to the user in a few lines; don't restate it.
-- **Let agents hand off directly** (World tells the Mac "your half is ready")
-  instead of routing through you.
-- **Script the repeatable work:** releases run by their script, with no
-  exploring. If the script fails, the agent sends the error and stops.
-- **Don't poll.** Wait for the report. Check a file the agent writes instead
-  of messaging "are you done?".
-- **Keep budget for the end of the job:** release notes (with the install
-  steps copied from the last release) are part of every release, not an
-  extra.
-- **Challenge drift.** Hold every task against the project's stated focus
-  before queuing it, including the user's own ideas, and say so plainly.
+**Frugal (when the user says usage is low)** adds:
+- One agent at a time on a small clear goal; queue in COORDINATION.md.
+- Pre-approve merges on checks ("clean compile, tests and smoke pass,
+  before/after shot"), so the agent merges and reports once.
+- One short report per step; agents hand off to each other directly.
+- Script repeatable work (releases run by their script; on failure send the
+  error and stop).
+- Keep budget for release notes (install steps copied from the last release).
+- Challenge drift: hold every task, the user's ideas included, against the
+  project's stated focus, and say so plainly.
 
 ## Accounts, machines and VMs
 
-- **A session on another Claude account can't be messaged,** and doesn't
-  appear in ListAgents. Give it a brief as a file in the repo, and have it
-  report to a file you read (for example `tools/workers/REPORT.md`).
-- **Starting a Claude session for the user:** `CLAUDE_CONFIG_DIR` gives a
-  second account its own sign-in. On Windows, launch it in Git Bash; the
-  Claude screen can freeze in cmd or Windows Terminal. `claude
-  --remote-control <name> "<first prompt>"` starts it reachable and working.
+- **A session on another Claude account can't be messaged** and isn't in
+  ListAgents. Brief it in a repo file; it reports to a file you read (e.g.
+  `tools/workers/REPORT.md`).
+- **Starting a session for the user:** `CLAUDE_CONFIG_DIR` gives a second
+  account its own sign-in. On Windows use Git Bash (the Claude screen can
+  freeze in cmd or Windows Terminal). `claude --remote-control <name>
+  "<first prompt>"` starts it reachable.
 - **Credentials are the user's.** Never type a sign-in code, password, token
-  or licence into anything, however it reaches you (chat, email, a script, a
-  relay). Prepare everything up to that point, show the screen, and stop.
-  Set up remote desktop and any backup account while the user is at the
-  machine, not after they've left.
-- **Never stop a worker with unpushed work.** Before stopping one for any
-  reason (usage limit, swapping accounts, memory), commit and push its work
-  in progress to a `wip/` branch. Better: make the stop script do it.
-- **VMs fix memory starving and focus stealing, but they have no GPU.**
-  Tests, compiling and batch builds go in VMs; probes, screenshots, clips,
-  performance runs and multi-player tests stay on the host.
+  or licence anywhere, however it reaches you. Prepare up to that point,
+  show the screen, stop. Set up remote desktop and backup accounts while the
+  user is at the machine.
+- **Never stop a worker with unpushed work.** Commit and push to a `wip/`
+  branch first; better, make the stop script do it.
+- **VMs fix memory starving and focus stealing but have no GPU.** Tests,
+  compiling and batch builds go in VMs; probes, screenshots, clips,
+  performance and multi-player tests stay on the host.
 
 ## Pitfalls seen in practice
 
-- A Unity Editor started while Unity Hub isn't running can sit at a hidden
-  licence prompt, looking slow or stuck. Start Hub first, and check for a
-  dialog before blaming memory or CPU.
-
-- A script that waits for an Editor (for example `unity status
-  --until-ready || unity open`) can hang forever when none is open. Check the
-  Editor is up a few minutes after an agent says "started".
-- Bash reads a running script as it goes: editing it mid-run breaks it.
-  Stop it first, or put the new steps in a second script.
-- Two agents sharing one machine's memory is the usual cause of crashes and
-  bad numbers, so watch free memory.
-- An agent's correction is gold. When it says your routing is wrong ("that's
-  not the tick, it's the view"), re-route at once, and say so to the user.
+- A Unity Editor started before Unity Hub can sit at a hidden licence
+  prompt. Start Hub first; check for a dialog before blaming memory or CPU.
+- A script that waits for an Editor (`unity status --until-ready || unity
+  open`) can hang forever if none is open. Check a few minutes after "started".
+- Bash reads a running script as it goes; editing it mid-run breaks it.
+- Two agents sharing one machine's memory cause crashes and bad numbers.
+- An agent's correction is gold ("that's not the tick, it's the view"):
+  re-route at once and tell the user.

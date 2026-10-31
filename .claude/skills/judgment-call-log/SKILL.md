@@ -5,6 +5,8 @@ description: Keep a running log of every judgment call you ask the human to make
 
 # Judgment-call log
 
+In this repo, start from the `pm-session` skill and `docs/STATE.md`; they hold this project's specifics.
+
 People hate answering the same question twice. Agents tend to re-ask things
 that were already decided, in slightly different words, by different
 sessions. A small log fixes that, and it also gives you precedent: an
@@ -38,8 +40,8 @@ download" is worth recording before the full decision.
 
 ## At every decision point
 
-1. **Search the log first** (grep for the topic, and read "Also comes up
-   when"). If an entry covers it, follow it, add 1 to *Revisited*, and
+1. **Search the log first** (grep the topic and "Also comes up when";
+   don't read the whole file). If an entry covers it, follow it, add 1 to *Revisited*, and
    don't ask. Tell the agent which entry applies.
 2. **Ask only when nothing covers it,** or something material has changed;
    if so, say what changed.
@@ -47,7 +49,7 @@ download" is worth recording before the full decision.
    a long message get skipped and pile up. Put each J-number in its
    question, give 2–4 options with your recommendation first and marked
    "(Recommended)", and say the trade-off of each option in its
-   description. Batch everything pending into one call (up to 4 questions).
+   description. Ask one question at a time unless several are truly independent (then one call, up to 4).
 4. **Record the answer straight away,** commit, and tell every agent it
    affects, citing the J-number.
 5. **Turn standing answers into rules.** If an answer is a rule ("merged

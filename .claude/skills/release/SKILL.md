@@ -6,7 +6,8 @@ description: Cut an alpha release of Spell Chemistry Valley and ship it to GitHu
 # Cut and ship an alpha
 
 `docs/RELEASING.md` is the source of truth for what a release contains and
-the exact commands; read it first. This skill is the order of work across
+the exact commands; read only the step you are on (grep its headings), not
+the whole file. This skill is the order of work across
 the two machines, and the stops where Andrew decides.
 
 **Publishing is public and players' clients see it** (the in-game update
@@ -61,8 +62,8 @@ The other machine: pull, then restart its Editor (a ProjectSettings change).
 
 On the Mac `tools/ship-update.sh X.Y.Z --mac-only`, on the PC
 `tools/ship-update.sh X.Y.Z --windows-only` (no `--test`), both at the release
-commit, run in the background; start the second once the first prints
-"Release alpha-X.Y.Z is ready". Each builds its player, packs it with Velopack
+commit, run in the background (wait for its exit notification; don't poll or sleep);
+start the second once the first prints "Release alpha-X.Y.Z is ready". Each builds its player, packs it with Velopack
 (installer, portable zip, full package, a delta from the last published
 release) and uploads only its own files to the one **draft** `alpha-X.Y.Z`.
 Without either flag the Mac builds both. Details: `docs/RELEASING.md` step 4,
