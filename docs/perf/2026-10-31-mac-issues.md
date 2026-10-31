@@ -11,13 +11,13 @@ Scenarios run with `-fps-probe -perf-scenario <name>`, in order of what to fix f
 **Discovery cost, the same line for each issue.** The template (commit-cost.mjs,
 playtest/sessions-0.1.8-brief.md) wants the session's tokens, time and ite, the
 issues found, and the share in ite. Only tokens are known: step 1 266,191, step 2
-380,264, step 3 about 300,000 (an estimate of my own, read off my token counter),
-so about 946,000 in all. The harness gives sub-agents a total with no split into
+380,264, step 3 272,970,
+so about 919,000 in all. The harness gives sub-agents a total with no split into
 input, cache and output, so **no ite figure can be worked out and none is given**,
 and no time was recorded for steps 1 and 2. To get ite, run `commit-cost.mjs
 --record` once the transcripts are on disk.
 
-`Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.`
+`Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.`
 
 ---
 
@@ -35,7 +35,7 @@ and no time was recorded for steps 1 and 2. To get ite, run `commit-cost.mjs
   merge and split as water moves. `DryAround` and `WetNeighbours` are iterators,
   so they're garbage too.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 2. perf: one water tile takes far longer than the frame's budget
 
@@ -51,7 +51,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
   (half a day), then a smaller tile, or draw a tile over several frames. Far tiles
   could wait longer than near ones.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 3. perf: the film is rebuilt whole for a few cells of mud
 
@@ -66,7 +66,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
 - **Suggested fix:** draw the film in tiles as water does (an hour or two; the tile
   machinery exists: `ContourSurface` with `tiled: true`).
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 4. perf: storm and fog run the world under speed, and the debt has no cap
 
@@ -84,7 +84,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
   Storm reached 59% from 44% with no change to it, so faster frames help but don't
   get there.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 5. perf: fog weather lays a unit on most open cells (a question for Andrew)
 
@@ -107,7 +107,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
   runs, so goldens may need looking at). Fog drawn as `FlameBank` draws fire, half a
   day or more, if big fogs need to be cheap.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 6. perf: snow still hitches about every 4 s
 
@@ -121,7 +121,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
 - **Suggested fix:** spread a snowfall's reshaping over frames (it's eased anyway),
   or a cheaper `BankAt` that looks only at the changed cells. Two hours.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 7. perf: #5 on the PC: PsoDirect3D12 has no night states (comment on #5, not a new issue)
 
@@ -137,7 +137,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
   warms 325 states in 15.7 s (11.6 s for 253): first launch only (likely), but no
   splash covers that.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 8. perf: the lit smoke is most of a close fire's GPU time
 
@@ -149,7 +149,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
 - **Suggested fix:** unlit or vertex-lit smoke, fewer or smaller particles close up.
   Changes the look, so it's Andrew's call. Half a day.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 9. perf: GPU time climbs late in a storm
 
@@ -162,7 +162,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
   time, and water verts rise. A film or water surface filling the view is likely.
 - **Suggested fix:** run a storm of 60 s with the camera's draw stats, then decide. An hour to find.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 10. perf: the forest is steadily twice the meadow's GPU time
 
@@ -174,7 +174,7 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
 - **Suggested fix:** take shadows, LOD fade and tree distance away one at a time as
   step 2 did for fire, an hour or two. Then decide.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
 
 ## 11. Water left with a stale runoff edge (a look, found by the perf check; `perf` or `bug`)
 
@@ -190,4 +190,4 @@ Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not record
 - **Suggested fix:** mark the tiles whose flow changed, or clear `flowOf` only near the
   change. An hour.
 
-Discovery cost: session about 946,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 86,000 tokens.
+Discovery cost: session about 919,000 tokens (steps 1-3; ite and time not recorded), 11 issues found, share about 84,000 tokens.
