@@ -68,9 +68,10 @@ and the meadow coil.** Snow slows walkers (`materials.json` cover speed:
 snow 0.85, a bank 0.7), builds up into banks slowly in the open too
 (`sim.json weather.snow.deepenChance`), and Frost now glazes it to slippery
 frost (`cold-covered` no longer shields snow); its melt still freezes into
-ice. Fog weather lays a thin veil of fog gas (`weather.fog`: a unit here
-and there on open cells), which a line of sight crossing 12 cells of hides
-(`hidesAfter`, `World.LineOfSight`), and thins away once the stretch ends.
+ice. Fog weather lays a thin veil of fog gas (`weather.fog`: since #28, in
+patches on low ground near water, about 8% of open cells at peak rather than
+83%), which a line of sight crossing 12 cells of hides (`hidesAfter`,
+`World.LineOfSight`), and thins away once the stretch ends.
 Both engines, with shared goldens (`WeatherTests` / `weather.test.ts`).
 `world/puzzles.json` (`WorldPuzzles`, laid by `ChemGrid.MapWorld`) puts a
 pond, a coil and a gate on a path at (326..338, 231..245), just east of
