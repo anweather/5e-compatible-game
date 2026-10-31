@@ -36,7 +36,7 @@ fi
 declare -A home=([pro]="$HOME/.claude-pro" [max]="$HOME/.claude")
 for kv in ${BRIDGE_WATCH_HOMES:-}; do home[${kv%%=*}]="${kv#*=}"; done
 declare -A role=([pro]=coordinator [max]=pm)
-declare -A vms=([pro]="w1 w2 u1" [max]="w3 w4")
+declare -A vms=([pro]="w1 w2 u1" [max]="w3 w4 u2")
 declare -A other=([pro]=pm [max]=coordinator)
 declare -A of_role=([coordinator]=pro [pm]=max)
 
