@@ -211,6 +211,9 @@ touch them.
   release, recovery, or a fizzle when it's dropped (`Beat`, `CastBeats`; poses and timings in
   `Settings/CastFeel.asset`). View only, worked out from the core's cast state on every peer.
 
+**Voice**
+: One sound playing, from the pool of sources in `SoundVoices`. A loop must be held each frame or it lets go.
+
 **Hit-stop**
 : A few frames in which the local wizard's Animator and beats and the camera stand still, on the slam and the
   release (`CastBeats.HitStop`, `CastImpact`). View only and on the caster's own screen: game time, ticks and

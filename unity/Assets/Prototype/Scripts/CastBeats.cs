@@ -52,6 +52,13 @@ public class CastBeats : MonoBehaviour
     /// <summary>Off, the beats still run and the elements still show but the body is left to CastPose (the probe's "before").</summary>
     public bool PoseOn { get; set; } = true;
 
+    /// <summary>The casting sounds (CastSounds), for the probe.</summary>
+    public CastSounds Sounds => sounds;
+    /// <summary>This spell is the cast in the hands, so its thrust will carry its sound; one from the radial has neither.</summary>
+    public bool InHands(string spell) => SoundsOn && (firedSpell == spell || Now is Beat.First or Beat.Second or Beat.Slam or Beat.Charge);
+    /// <summary>Off, a cast has only the old whoosh (the clip's "before").</summary>
+    public bool SoundsOn { get; set; } = true;
+
     /// <summary>In a hit-stop: this body and the camera stand still, the game runs on.</summary>
     public bool Stopped => stopLeft > 0f;
     /// <summary>How many hit-stops this wizard has had, for the probe.</summary>
@@ -87,6 +94,7 @@ public class CastBeats : MonoBehaviour
     SitPose sit;
     NetWizard net;
     CastOrbs orbs;
+    CastSounds sounds;
     ChemGrid heard;
     Animator animator;
     Blend from, body;
@@ -111,12 +119,14 @@ public class CastBeats : MonoBehaviour
         TryGetComponent(out sit);
         TryGetComponent(out net);
         orbs = new CastOrbs(transform, pose);
+        sounds = new CastSounds(this, caster);
     }
 
     void OnDisable()
     {
         Listen(null);
         EndStop();
+        sounds.Hush();
     }
 
     void OnDestroy() => orbs?.Destroy();
@@ -208,6 +218,7 @@ public class CastBeats : MonoBehaviour
         if (Driving) Lay();
         kick = Mathf.Max(0f, kick - time / Mathf.Max(0.01f, feel.pulseSeconds));
         Show();
+        sounds.Tick();
     }
 
     // Before the beat can move on: a thrust can follow the slam in the frame the hands meet.

@@ -11,7 +11,7 @@ using UnityEngine;
 // pulses at each level and slows the walk; the recoil moves only what's drawn.
 // With --shots, the wizard from the side at each beat, first with the pose off
 // (the "before": the old gestures, the same camera and moments). The impact is
-// in ProbeCastFeel.Impact.cs.
+// in ProbeCastFeel.Impact.cs, the sounds in ProbeCastFeel.Sound.cs.
 public partial class CastFeelProbe : ProbeScenario
 {
     const float HandTolerance = 0.06f, WaitLimit = 8f;
@@ -57,6 +57,7 @@ public partial class CastFeelProbe : ProbeScenario
             yield return MidTick();
             if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Pictures("after");
             yield return Impact();
+            yield return Sounds();
         }
         finally
         {

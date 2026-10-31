@@ -19,6 +19,7 @@ public static class SoundBankBuilder
     const string CC0 = "Assets/Prototype/Audio/CC0";
     const string Pack = PackPaths.FreeSounds;
     const int Rate = 44100;
+    const float UnderLevel = 0.2f;
 
     sealed class Recipe
     {
@@ -27,6 +28,24 @@ public static class SoundBankBuilder
         public bool Loop;
         public string[] Files = Array.Empty<string>();
         public Func<float[]>[] Procedural = Array.Empty<Func<float[]>>();
+        public bool Reverse;
+        public Func<float[]> Under;
+    }
+
+    // Recipes here, then the casting sounds' rows; a row's Make is only for when it has no recordings.
+    static Recipe[] All()
+    {
+        var all = new List<Recipe>(Recipes);
+        foreach (var row in CastSoundTable.Rows)
+        {
+            bool recorded = Array.Exists(row.Files, file => AssetDatabase.LoadAssetAtPath<AudioClip>(file) != null);
+            all.Add(new Recipe
+            {
+                Sound = row.Sound, TargetDb = row.TargetDb, MaxSeconds = row.MaxSeconds, Loop = row.Loop, Files = row.Files,
+                Procedural = recorded ? Array.Empty<Func<float[]>>() : row.Make, Reverse = row.Reverse, Under = row.Under,
+            });
+        }
+        return all.ToArray();
     }
 
     // Loudness targets, loudest first: the mix. Explosions and thunder dominate; impacts and
@@ -70,8 +89,9 @@ public static class SoundBankBuilder
     {
         if (AssetDatabase.IsValidFolder(OutFolder)) AssetDatabase.DeleteAsset(OutFolder);
         Directory.CreateDirectory(OutFolder);
+        var recipes = All();
         var written = new List<(string sound, string path)>();
-        foreach (var recipe in Recipes) written.AddRange(Master(recipe));
+        foreach (var recipe in recipes) written.AddRange(Master(recipe));
         AssetDatabase.Refresh();
 
         var bank = AssetDatabase.LoadAssetAtPath<SoundBank>(BankPath);
@@ -81,15 +101,22 @@ public static class SoundBankBuilder
             AssetDatabase.CreateAsset(bank, BankPath);
         }
         bank.entries = new List<SoundBank.Entry>();
-        foreach (var recipe in Recipes)
+        foreach (var recipe in recipes)
         {
             var clips = written.FindAll(w => w.sound == recipe.Sound).ConvertAll(w => Import(w.path));
             bank.entries.Add(new SoundBank.Entry { sound = recipe.Sound, clips = clips.ToArray() });
         }
         EditorUtility.SetDirty(bank);
         AssetDatabase.SaveAssets();
-        Debug.Log($"Sound bank: {written.Count} clips for {Recipes.Length} sounds.");
+        Debug.Log($"Sound bank: {written.Count} clips for {recipes.Length} sounds.");
         return bank;
+    }
+
+    /// <summary>A player build's check: a bank from before a row in the table is rebuilt, or that build would have stand-ins.</summary>
+    public static void BuildIfOld()
+    {
+        var bank = AssetDatabase.LoadAssetAtPath<SoundBank>(BankPath);
+        if (bank == null || Array.Exists(CastSoundTable.Rows, row => bank.Pick(row.Sound) == null)) Build();
     }
 
     // Masters each of a recipe's sources that exists and writes it as a mono WAV.
@@ -109,10 +136,28 @@ public static class SoundBankBuilder
         {
             var (raw, rate) = sources[i];
             var data = recipe.Loop ? raw : SoundMastering.Trim(raw, rate, recipe.MaxSeconds);
+            if (recipe.Under != null)
+            {
+                SoundMastering.Normalize(data, rate, recipe.TargetDb);
+                Layer(data, recipe.Under(), rate);
+            }
+            if (recipe.Reverse) Array.Reverse(data);
             SoundMastering.Normalize(data, rate, recipe.TargetDb, whole: recipe.Loop);
             string path = $"{OutFolder}/{recipe.Sound}-{i + 1}.wav";
             WriteWav(path, data, rate);
             yield return (recipe.Sound, path);
+        }
+    }
+
+    // Mixes a layer made at ProceduralCast.Rate under a recording at its own rate, already at its level.
+    static void Layer(float[] data, float[] under, int rate)
+    {
+        float step = ProceduralCast.Rate / (float)rate;
+        for (int i = 0; i < data.Length; i++)
+        {
+            int at = (int)(i * step);
+            if (at >= under.Length) break;
+            data[i] += under[at] * UnderLevel;
         }
     }
 

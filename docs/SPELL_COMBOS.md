@@ -199,6 +199,18 @@ Short, sharp hits, never a drone. None of it touches `Time`, the ticks or physic
   at 0 there's none of them, hit-stop included (it moves the view, so it counts as shake).
 - **Not yet:** casts from the radial or the mouse have no beats, so only their landing is felt.
 
+## Sound (the view, 2026-10-31)
+The casting sounds (#22): `CastSounds`, one for every copy of every wizard, played from `CastBeats`' hooks, so another player's cast sounds the same, from where they stand.
+Every clip, level, pitch, carry and which-goes-with-what is in one table, `CastSoundTable`; the sound pass can add rows. Voices come from a pool (`SoundVoices`): 24 sources, no garbage per sound.
+- **Gathering:** a sound per element as each hand takes it (fire, water and air drawn in backwards), and a plain one for a d-pad cast.
+- **Slam:** a wooden thump with a kick under it, at `Struck`, the frame the hands meet, ahead of the hit-stop that starts there.
+- **Charge:** a hum that fades in at the Charge beat and glides up a third, then a fifth, getting louder, with a struck tone at each level. Held every frame: a loop nobody holds lets go in 0.25 s, so nothing can leave it playing. It's quiet in a menu and in an animal's shape.
+- **Release:** by kind of cast (`CastKind`, from the spell's rules): bolt, burst, ground, flow, sky or quiet, as the thrust lands; lower and louder with charge. Casts from the radial or the mouse keep the old whoosh.
+- **Cancel:** the hum and gathering cut, and a fizzle.
+- **Fast casts:** a wizard has one voice per job, and a new sound in a job cuts the last off, so they don't pile up.
+- **Distance:** 3D at the wizard's chest, full to 5 m, nothing past 40 m, and past that no voice is taken. Levels go through the Effects setting each frame. There's no AudioMixer in the game yet; a group goes on the pool's sources in `SoundVoices.Build`.
+- **Every machine:** all from `Audio/CC0` and `ProceduralCast`, never the Asset Store pack. The bank is built with the yard and a player build refreshes it if a row is missing; with no bank at all each sound is made from its row's `Make` when first played.
+
 ## Built (the view, 2026-10-30)
 - **Controller:** fire {LB}, water {RB}, earth {LT}, air {RT}; {East} cancels; the d-pad cycles,
   casts and opens the grimoire; dodge roll moved to the right stick's click; pad zoom is gone.

@@ -86,6 +86,19 @@ public class OnlineObservation
     public bool sawForm, sawFormEnd;
     /// <summary>The beats the other wizard's cast went through here (CastBeats), one line for each copy that moved.</summary>
     public List<string> otherBeats = new();
+    /// <summary>The casting sounds of that wizard's copy here, each with how far from its chest it was (m) and from this side's listener.</summary>
+    public List<string> otherSounds = new();
+    public float otherSoundWorst, otherSoundFarthest;
+
+    /// <summary>Notes a casting sound if it's that wizard's (near it).</summary>
+    public void NoteSound(CastBeats other, string sound, Vector3 at)
+    {
+        if (other == null || Vector3.Distance(at, other.transform.position) > 3f) return;
+        otherSounds.Add(sound);
+        otherSoundWorst = Mathf.Max(otherSoundWorst, Vector3.Distance(at, other.transform.position + Vector3.up * 1.15f));
+        if (Camera.main != null) otherSoundFarthest = Mathf.Max(otherSoundFarthest, Vector3.Distance(at, Camera.main.transform.position));
+    }
+
     /// <summary>The hit-stops that wizard's copy had here: none, they're its owner's view.</summary>
     public int otherStops;
     public int joinedTick;
@@ -467,6 +480,8 @@ public class OnlineProbeClient : MonoBehaviour
         var other = OtherBeats();
         void Heard(Beat beat) => after.otherBeats.Add(beat.ToString());
         if (other != null) other.BeatChanged += Heard;
+        void Sounded(string sound, Vector3 at, float volume, float pitch) => after.NoteSound(other, sound, at);
+        SoundVoices.Started += Sounded;
         void OnTick(int tick, string checksum)
         {
             if (checksum == null || net.LastResetTick <= 0 || tick <= net.LastResetTick) return;
@@ -486,6 +501,7 @@ public class OnlineProbeClient : MonoBehaviour
         for (float waited = 0f; ask != null && waited < 20f && net.NetTick < ask.startTick; waited += Time.unscaledDeltaTime) yield return null;
         net.TickApplied -= OnTick;
         if (other != null) other.BeatChanged -= Heard;
+        SoundVoices.Started -= Sounded;
         if (ask == null) yield break;
         after.otherStops = other != null ? other.Stops : 0;
         after.phase = ProbeLink.ResetReported;
@@ -630,6 +646,7 @@ public class OnlineProbe : ProbeScenario
             $"its copy on the virtual player {client.otherStops}, the host's own {wizard.GetComponent<CastBeats>().Stops}");
         Check("beats_seen_online", client.otherBeats.SequenceEqual(hostBeats) && hostBeats.Contains(nameof(Beat.Release)) && hostBeats.Contains(nameof(Beat.Charge)),
             $"host [{string.Join(" ", hostBeats)}], its wizard on the virtual player [{string.Join(" ", client.otherBeats)}]");
+        CheckRemoteSounds(client);
         int compared = 0, equal = 0;
         string firstDiff = null;
         for (int i = 0; i < client.hashTicks.Count; i++)
@@ -664,6 +681,15 @@ public class OnlineProbe : ProbeScenario
         yield return Wait(1f);
         Check("shape_ended_by_choice", shape.ChangeBackByChoice(), "ChangeBackByChoice");
         yield return Wait(1f);
+    }
+
+    void CheckRemoteSounds(OnlineObservation client)
+    {
+        var sounds = client.otherSounds;
+        Metric("remote_sounds", sounds.Count);
+        Metric("remote_sound_listener_m", client.otherSoundFarthest);
+        Check("remote_cast_sounds_at_its_wizard", sounds.Contains(CastSoundTable.Slam) && sounds.Contains(CastSoundTable.ChargeLoop) && sounds.Exists(s => s.StartsWith("release-", System.StringComparison.Ordinal)) && client.otherSoundWorst < 0.5f,
+            $"[{string.Join(" ", sounds)}], at most {client.otherSoundWorst:0.00} m from its chest, {client.otherSoundFarthest:0.0} m from the ear");
     }
 
     readonly List<string> hostBeats = new();

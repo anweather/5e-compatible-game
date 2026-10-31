@@ -92,7 +92,8 @@ public static class CastImpact
     static bool Forceful(SpellDef def) =>
         def.Damage != null || def.Push > 0 || def.ForceThrow > 0 || def.ForcePush > 0 || def.Raise > 0 || def.Dig > 0 || def.Height != null;
 
-    static SpellDef SpellOf(CastBeats beats)
+    /// <summary>The spell last announced for this wizard, from the rules.</summary>
+    public static SpellDef SpellOf(CastBeats beats)
     {
         var world = beats.TryGetComponent<SpellCaster>(out var caster) && caster.grid != null ? caster.grid.World : null;
         return world != null && beats.Spell != null ? world.Rules.Spell(beats.Spell) : null;

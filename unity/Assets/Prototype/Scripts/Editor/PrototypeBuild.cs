@@ -141,6 +141,7 @@ public static class PrototypeBuild
             Debug.LogError(refused);
             return refused;
         }
+        SoundBankBuilder.BuildIfOld();
         PlayerSettings.productName = ProductName;
         PlayerSettings.companyName = "anweather";
         PlayerSettings.SetApplicationIdentifier(UnityEditor.Build.NamedBuildTarget.Standalone, "com.anweather.spellchemistryvalley");
