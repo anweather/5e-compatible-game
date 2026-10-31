@@ -102,6 +102,14 @@ namespace Chem
         public string BakesTo;
         /// <summary>What water on it turns into, any depth: "ice" (arctic ground) or "steam" (lava); null stays water.</summary>
         public string WaterTo;
+        /// <summary>The terrain cold crusts it into, for CrustFor ticks (crust.into, crust.for: lava to a crust that grows back into lava), or null.</summary>
+        public string CrustsTo;
+        public int CrustFor;
+        /// <summary>The terrain heat thaws it into, giving ThawWater units of meltwater (thaw.into, thaw.water: an ice wall), or null.</summary>
+        public string ThawsTo;
+        public int ThawWater;
+        /// <summary>Steps an updraft over it lifts what stands there (lift.by; World.LiftAt); 0 none.</summary>
+        public int Lift;
 
         // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
         HashSet<string> tagSet;
@@ -500,6 +508,10 @@ namespace Chem
         public bool Bake;
         /// <summary>meltCover: the cover becomes its meltsTo and gives its meltWater, if it melts.</summary>
         public bool MeltCover;
+        /// <summary>crust: the terrain becomes its crustsTo for its crustFor ticks, if it crusts.</summary>
+        public bool Crust;
+        /// <summary>thaw: the terrain becomes its thawsTo and gives its thawWater, if it thaws.</summary>
+        public bool Thaw;
         /// <summary>shatter: a hit on the cell's ice or terrain, as a blast's (World.Shatter): it cracks, or if cracked shatters.</summary>
         public bool Shatter;
         /// <summary>dissolve: "cover" or "terrain", eaten away into its dissolvesTo when the rule's element is its dissolvedBy.</summary>
@@ -764,6 +776,11 @@ namespace Chem
             DriesTo = Str(o["driesTo"]),
             Speed = Num(o["speed"]) ?? 1,
             WaterTo = Str(o["waterTo"]),
+            CrustsTo = Str(o["crustsTo"]),
+            CrustFor = Int(o["crustFor"]) ?? 1,
+            ThawsTo = Str(o["thawsTo"]),
+            ThawWater = Int(o["thawWater"]) ?? 0,
+            Lift = Int(o["liftSteps"]) ?? 0,
         };
 
         static CoverDef ParseCover(string id, JObject o) => new CoverDef
@@ -970,6 +987,8 @@ namespace Chem
             e.Heat = Truthy(o["heat"]);
             e.Bake = Truthy(o["bake"]);
             e.MeltCover = Truthy(o["meltCover"]);
+            e.Crust = Truthy(o["crust"]);
+            e.Thaw = Truthy(o["thaw"]);
             e.Shatter = Truthy(o["shatter"]);
             e.Dissolve = Str(o["dissolve"]);
             e.SetTerrain = Str(o["setTerrain"]);

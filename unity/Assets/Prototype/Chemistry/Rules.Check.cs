@@ -31,7 +31,7 @@ namespace Chem
             };
             static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
-                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "shatter", "dissolve", "scour", "pushCover",
+                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "crust", "thaw", "shatter", "dissolve", "scour", "pushCover",
                 "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
             };
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
@@ -232,7 +232,7 @@ namespace Chem
             // What water does on it: soak rates (whole ticks), how much being damp dampens its burning, and what it turns into.
             void WaterOn(string id, JToken t)
             {
-                foreach (var key in new[] { "soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench" })
+                foreach (var key in new[] { "soakEvery", "soakEveryWet", "rustEvery", "hotFor", "hotQuench", "crustFor", "thawWater", "liftSteps" })
                     if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"terrain {id}: {key} must be a whole number from 1");
                 if (t["dampens"] != null && !(IsNumber(t["dampens"]) && (double)t["dampens"] >= 0 && (double)t["dampens"] <= 1)) Errors.Add($"terrain {id}: dampens must be a number from 0 to 1");
                 if (t["waterTo"] != null && Text(t["waterTo"]) != "ice" && Text(t["waterTo"]) != "steam") Errors.Add($"terrain {id}: waterTo must be ice or steam");
@@ -250,7 +250,7 @@ namespace Chem
             {
                 StatusTicks(id, t);
                 if (t["chainsWet"] != null && t["chainsWet"].Type != JTokenType.Boolean) Errors.Add($"terrain {id}: conduct.chainsWet must be true or false");
-                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo", "bakesTo" }) KnownTerrain(id, t, key);
+                foreach (var key in new[] { "burnsTo", "breaksTo", "dugTo", "rustsTo", "soaksTo", "driesTo", "shattersTo", "bakesTo", "crustsTo", "thawsTo" }) KnownTerrain(id, t, key);
                 if (t["hardness"] != null && !(IsWholeNumber(t["hardness"]) && (double)t["hardness"] >= 0)) Errors.Add($"terrain {id}: hardness must be a whole number from 0 (0 never digs)");
                 WaterOn(id, t);
                 FireLookOf($"terrain {id}", t);

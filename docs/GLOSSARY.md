@@ -201,7 +201,7 @@ touch them.
 
 **Downed**
 : A wizard at 0 health: on the ground with no controls for `sim.json` `downed.seconds`, then back at the
-yard with full health (`Downed`, `WizardDown`). Not the world reset.
+yard with full health (`Downed`, `WizardDown`), or on its last checkpoint inside the Gauntlet. Not the world reset.
 
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,
@@ -229,6 +229,21 @@ yard with full health (`Downed`, `WizardDown`). Not the world reset.
   whose force moves it is a **stroke**; it drops in on the **hole** cell.
   Lost in water or out of the course's bounds, it goes back on the tee for
   a stroke's penalty. The course is `world/golf.json`.
+
+**Spell zone**
+: A block of cells that allows only some elements (a spell is allowed when a
+  combo of only those elements casts it) or some spells by id
+  (`SpellZone`, `World.Course.cs`, `course.ts`). A cast landing in it with
+  anything else **fizzles**: "The lava pit's charm smothers your Fireball".
+  World data, the same on every peer, and in the checksum.
+
+**The Gauntlet**
+: The obstacle course on the lake's south shore (`world/gauntlet.json`,
+  BACKLOG §25): a **gate**, **booths** in a row (each a spell zone with a
+  **checkpoint** cell) and a **bell**. The gate starts a player's **run**
+  (its clock), a booth further on is the checkpoint reached, the bell stops
+  the clock and keeps the **best time**. Downed inside the course on a run,
+  a wizard gets up on its last checkpoint, not the yard (`CourseRespawn`).
 
 ## Things in the world
 

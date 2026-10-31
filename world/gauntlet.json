@@ -1,0 +1,17 @@
+{
+  "about": "The Gauntlet (docs/BACKLOG.md 25; World.Course.cs, sandbox/src/course.ts): a carnival obstacle course on the lake's far (south) shore, 54 cells (81 m) of flat meadow from x 260 to 313 in the lanes y 430-436, run east to west, downhill. Blocks of cells are [x0, y0, x1, y1], corners inclusive (y grows south). Stepping into the gate starts a player's clock, each booth further on is the checkpoint reached (a wizard downed inside the course gets up on the last one's cell, or the gate's middle), and the bell stops the clock. Each booth is a spell zone: a cast landing in it that isn't a combo of only its elements, or one of its spells, fizzles. The booths' cells are laid by puzzles.json's \"The Gauntlet\". Clear of the yard, Hollowmere, the cabins, spell golf, the meadow coil and Sunward Key's island.",
+  "name": "The Gauntlet",
+  "area": [258, 428, 314, 438],
+  "gate": [310, 430, 312, 436],
+  "bell": [260, 430, 262, 436],
+  "booths": [
+    { "id": "lava-pit", "name": "lava pit", "area": [298, 428, 309, 438], "checkpoint": [308, 433], "allow": {"elements": ["water", "air"]},
+      "note": "Lava from x 300 to 306: Frost crusts it into rock you can walk on (lava crust, materials.json), which cracks back into lava 6 s later, so hop across while freezing ahead." },
+    { "id": "misty-gaps", "name": "Misty Step booth", "area": [284, 428, 297, 438], "checkpoint": [296, 433], "allow": {"spells": ["misty-step"]},
+      "note": "Two gaps of lava, x 290-294 and 285-287, with a ledge between: too wide to jump, so Misty Step across." },
+    { "id": "ice-wall", "name": "ice wall", "area": [274, 428, 283, 438], "checkpoint": [282, 433], "allow": {"elements": ["fire"]},
+      "note": "An ice wall across the lanes at x 279-280: fire thaws it, and its meltwater runs down into the ice chute (x 274-278) west of it, which freezes it into a slide." },
+    { "id": "geyser-launch", "name": "geyser launch", "area": [263, 428, 273, 438], "checkpoint": [273, 433], "allow": {"elements": ["water", "fire"]},
+      "note": "Pools in the floor (x 266-271): a Geyser under you throws you up to the rafters, and the updraft vents at x 264-265 carry you on up to the bell." }
+  ]
+}

@@ -22,6 +22,9 @@ const TERRAIN_VERBS: Verb[] = [
   { verb: "scour", tag: null, keys: [["leaves", "scoursTo"], ["wears", "scourWears"]] },
   { verb: "run", tag: null, keys: [["every", "runsEvery"]] },
   { verb: "quench", tag: null, keys: [["into", "quenchesTo"], ["log", "quenchLog"]] },
+  { verb: "crust", tag: "crusts", keys: [["into", "crustsTo"], ["for", "crustFor"]] },
+  { verb: "thaw", tag: "thaws", keys: [["into", "thawsTo"], ["water", "thawWater"]] },
+  { verb: "lift", tag: "lifts", keys: [["by", "liftSteps"]] },
 ];
 
 const COVER_VERBS: Verb[] = [

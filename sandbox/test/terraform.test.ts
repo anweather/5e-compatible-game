@@ -11,7 +11,9 @@ import { spawn, walk } from "../src/entities.ts";
 import { dig, reshape } from "../src/terraform.ts";
 import { whirlState } from "../src/combos.ts";
 import { golfState, startGolf } from "../src/golf.ts";
-import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, fnv1a, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, sanitizeWorld, serializeWorld } from "../src/world.ts";
+import { courseFromJson, courseRespawn, courseState, courseStep, setCourse, zoneState } from "../src/course.ts";
+import gauntlet from "../../world/gauntlet.json" with { type: "json" };
+import { type Cell, type World, addGas, cellAt, createWorld, deserializeWorld, fnv1a, hashWorld, isBlocking, isClimbable, isRaisedWall, isSlippery, liftAt, sanitizeWorld, serializeWorld } from "../src/world.ts";
 import highWalls from "../../rules/mods/high-walls.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
@@ -1171,4 +1173,96 @@ test("Gust of Wind knocks a raider back once, Raise Earth throws one off its fee
   assert.equal(cellAt(w, 10, 6)!.h, 1);
   run(w, 3);
   assert.equal(`${cellHash(w)} ${w.rng} ${hound.x},${hound.y} ${crab.status.thrown ?? 0}`, "65a33bbd 5 7,3 0"); // the same in the C# core
+});
+
+// Mirrors CourseTests.ColdCrustsLavaThatCracksBackFireThawsAnIceWallIntoASlideAndAVentLifts.
+test("the Gauntlet's verbs: cold crusts lava that cracks back, fire thaws an ice wall into a slide, a vent lifts, matching the C# golden", () => {
+  const w = createWorld(24, 8, 3);
+  for (let x = 3; x <= 7; x++) cellAt(w, x, 3)!.t = "lava";
+  for (let y = 2; y <= 4; y++) {
+    cellAt(w, 12, y)!.t = "ice-wall";
+    for (let x = 13; x <= 16; x++) cellAt(w, x, y)!.t = "chute";
+  }
+  cellAt(w, 20, 3)!.t = "updraft";
+  const row = (x0: number, x1: number) => Array.from({ length: x1 - x0 + 1 }, (_, i) => cellAt(w, x0 + i, 3)!.t);
+  castSpell(w, "frost", 2, 3, 1);
+  assert.deepEqual(row(3, 7), Array(5).fill("lava-crust"), "Frost crusts the lava");
+  assert.ok(!isBlocking(cellAt(w, 5, 3)!), "walkable");
+  run(w, 35);
+  assert.equal(cellAt(w, 5, 3)!.t, "lava-crust", "still crusted after 35 ticks");
+  run(w, 1);
+  assert.deepEqual(row(3, 7), Array(5).fill("lava"), "cracked back into lava (crust.for 36)");
+  assert.ok(w.log.some((l) => l.text === "The lava crusts over into rock you can walk on, for now"));
+  assert.ok(w.log.some((l) => l.text === "The crust cracks and the lava wells back up"));
+  castSpell(w, "fire-bolt", 12, 3, 1);
+  assert.equal(cellAt(w, 12, 3)!.t, "dirt", "thawed");
+  assert.equal(w.log.at(-1)!.text, "The ice wall melts and its meltwater rushes out");
+  run(w, 30);
+  assert.equal(cellAt(w, 12, 2)!.t, "ice-wall", "only the cell the bolt hit");
+  const c = cellAt(w, 13, 3)!;
+  assert.ok(c.frozen && c.water > 0 && isSlippery(c), "the meltwater froze in the chute: a slide");
+  assert.deepEqual([liftAt(w, 20, 3), liftAt(w, 19, 3), liftAt(w, -1, 3)], [6, 0, 0]);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "a11f39a 3"); // the same in the C# core
+});
+
+// Mirrors CourseTests.ZonesSmotherWhatTheyDontAllowAndTheClockRunsGateToBellWithCheckpoints (the same little course).
+test("spell zones smother what they don't allow, and the clock runs gate to bell with checkpoints, matching the C# golden", () => {
+  const w = createWorld(60, 12, 3);
+  for (let x = 42; x <= 46; x++) cellAt(w, x, 5)!.t = "lava";
+  setCourse(w, courseFromJson({
+    name: "The little gauntlet", area: [18, 0, 54, 11], gate: [50, 2, 52, 8], bell: [20, 2, 22, 8],
+    booths: [
+      { id: "lava-pit", name: "lava pit", area: [40, 0, 49, 11], checkpoint: [48, 5], allow: { elements: ["water", "air"] } },
+      { id: "misty", name: "Misty Step booth", area: [30, 0, 39, 11], checkpoint: [38, 5], allow: { spells: ["misty-step"] } },
+    ],
+  }));
+  const last = () => w.log.at(-1)!.text;
+  castSpell(w, "fireball", 44, 5, 1);
+  assert.equal(last(), "The lava pit's charm smothers your Fireball");
+  assert.equal(cellAt(w, 44, 5)!.fire, 0, "nothing landed");
+  castSpell(w, "frost", 47, 5, 3);
+  assert.equal(cellAt(w, 44, 5)!.t, "lava-crust", "water then air is allowed");
+  castSpell(w, "frost", 35, 5, 3);
+  assert.equal(last(), "The Misty Step booth's charm smothers your Frost");
+  castSpell(w, "misty-step", 35, 5, 3);
+  assert.ok(!last().includes("smothers"), "Misty Step is allowed by id");
+  castSpell(w, "fire-bolt", 25, 5, 3);
+  assert.ok(!last().includes("smothers"), "no zone between the booths and the bell");
+
+  assert.equal(courseRespawn(w, "ann", 45, 5), undefined, "not on a run yet");
+  courseStep(w, "ann", 51, 5);
+  assert.equal(last(), "ann is through the gate: the clock is running");
+  assert.deepEqual(courseRespawn(w, "ann", 51, 5), [51, 5], "downed before the first booth: the gate");
+  run(w, 40);
+  courseStep(w, "ann", 45, 5);
+  assert.equal(last(), "ann reaches the checkpoint at the lava pit");
+  assert.deepEqual(courseRespawn(w, "ann", 45, 5), [48, 5]);
+  courseStep(w, "bob", 45, 5);
+  assert.equal(courseRespawn(w, "bob", 45, 5), undefined, "bob never went through the gate");
+  run(w, 50);
+  courseStep(w, "ann", 35, 5);
+  courseStep(w, "ann", 45, 5);
+  assert.deepEqual(courseRespawn(w, "ann", 25, 5), [38, 5], "back is no checkpoint");
+  assert.equal(courseRespawn(w, "ann", 10, 5), undefined, "outside the course: the yard");
+  run(w, 30);
+  courseStep(w, "ann", 21, 5);
+  assert.equal(last(), "ann rings the bell in 20.0 s: a new best!");
+  assert.equal(courseRespawn(w, "ann", 45, 5), undefined, "the run is over");
+
+  courseStep(w, "ann", 50, 5);
+  run(w, 150);
+  courseStep(w, "ann", 20, 3);
+  assert.equal(last(), "ann rings the bell in 25.0 s (best 20.0 s)");
+  const text = courseState(w) + zoneState(w);
+  assert.equal(`${text} ${fnv1a(text)} ${cellHash(w)} ${w.rng}`, "|rann:-1:-1:120:150|rbob:-1:-1:0:0|zlava-pit:40:0:49:11:water,air:|zmisty:30:0:39:11::misty-step e965d3a4 c036fca2 3"); // the same in the C# core
+  const back = deserializeWorld(serializeWorld(w));
+  assert.equal(courseState(back), courseState(w), "the runs come through a save");
+  assert.notEqual(hashWorld(createWorld(60, 12, 3)), hashWorld(back), "the zones and runs are hashed");
+});
+
+test("the Gauntlet in world/gauntlet.json reads: four booths in order, each a zone", () => {
+  const course = courseFromJson(gauntlet as unknown as Record<string, unknown>);
+  assert.deepEqual(course.booths.map((b) => b.zone.id), ["lava-pit", "misty-gaps", "ice-wall", "geyser-launch"]);
+  assert.deepEqual(course.booths.map((b) => [...b.zone.elements, ...b.zone.spells]), [["water", "air"], ["misty-step"], ["fire"], ["water", "fire"]]);
+  assert.deepEqual([course.startX, course.startY], [311, 433], "the gate's middle");
 });

@@ -4,6 +4,7 @@ import { applyElement, applyEntityElement, displaceWater, ignite, matches, putCo
 import { awayDir, damage, defOf, destroy, isLevitating, massOf, push, spawn } from "./entities.ts";
 import { emitCritter } from "./sim.ts";
 import type { WeatherKind } from "./sky.ts";
+import { zoneAgainst } from "./course.ts";
 import { hitBall } from "./golf.ts";
 import { crater, terraform } from "./terraform.ts";
 import {
@@ -212,6 +213,8 @@ export const METEOR_SPELL = "meteor";
 export function castSpell(w: World, id: string, x: number, y: number, dir: Dir, casterId?: number, charge = 1, aim?: [number, number]): void {
   const s = spellById(id);
   if (!s || !inBounds(w, x, y)) return;
+  const zone = zoneAgainst(w, s, x, y);
+  if (zone) return log(w, `The ${zone.name}'s charm smothers your ${s.name}`, "notable");
   if (s.effect === "levitate") return levitate(w, s, x, y);
   if (s.effect === "carry") return; // two taps; see carry()
   log(w, `You cast ${s.name}`, "info");

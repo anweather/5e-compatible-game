@@ -247,6 +247,12 @@ namespace Chem
         /// square walked; CoverDef.Speed and Damage say how much). A view's walkers read it.
         /// </summary>
         public bool IsSpiky(Cell c) => CoverHasTag(c, "spiky");
+        /// <summary>
+        /// Steps the updraft at (x, y) lifts a prop or a wizard standing over it (materials.json lift.by; liftAt in the
+        /// TS), 0 for none or off the grid. The view does the lifting; the core only says where the air rises.
+        /// </summary>
+        public int LiftAt(int x, int y) => InBounds(x, y) ? TerrainOf(At(x, y)).Lift : 0;
+
         public bool IsSlippery(Cell c) => CoverHasTag(c, "slippery") || (c.Frozen && c.Water > 0);
         /// <summary>
         /// The share of its speed a walker keeps on a cell: the slower of its cover's and its ground's (snow 0.85, a

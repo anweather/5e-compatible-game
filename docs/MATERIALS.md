@@ -129,6 +129,18 @@ marked *new*.
   merging it; against a wall it stays (`pushGas`). It fans a fire of 2 or more
   hotter and on downwind (`fan`), blows out a small one, and keeps hot metal
   hot (`air-hot`, the `hot` condition). Built.
+- **Cold crusts lava, which cracks back:** cold on terrain with `crust`
+  (lava) turns it into its `crust.into` (lava crust, walkable) for
+  `crust.for` ticks (36, 6 s); the crust's `grow.into` then turns it back
+  into lava (`cold-crust`; built, for the Gauntlet's lava pit).
+- **Heat thaws an ice wall:** fire or heat on terrain with `thaw` (the ice
+  wall, blocking) turns it into its `thaw.into` with `thaw.water` units of
+  meltwater, which runs off downhill; on ground that freezes water (`freeze`:
+  arctic ground, the sunken ice chute) it sets into a slippery slide
+  (`fire-thaw`, `heat-thaw`; built).
+- **Updrafts lift:** terrain with `lift` (the updraft vent) lifts a prop or a
+  wizard standing over it `lift.by` steps (`World.LiftAt`; the view does the
+  lifting, the core says where the air rises). Built in the core.
 - **Lightning fuses sand:** a strike on terrain tagged `fuses` (sand) turns
   it into glass (`lightning-fuse` in reactions; built).
 - **Heat melts, cold freezes:** `melt` and `freeze` check the cell's water

@@ -121,6 +121,25 @@ function meltCover(c: Cell): boolean {
   return true;
 }
 
+/** A crust effect (World.Crust): cold crusts the terrain into its crustsTo, which grows back after crustFor ticks. */
+function crust(c: Cell): boolean {
+  const t = terrainDef(c);
+  if (!t.crustsTo) return false;
+  c.t = t.crustsTo;
+  c.life = t.crustFor ?? 1;
+  return true;
+}
+
+/** A thaw effect (World.Thaw): heat thaws the terrain (an ice wall) into its thawsTo, leaving its thawWater to run off. */
+function thaw(w: World, x: number, y: number, c: Cell): boolean {
+  const t = terrainDef(c);
+  if (!t.thawsTo) return false;
+  c.t = t.thawsTo;
+  c.water = Math.min(RULES.sim.water.maxLevel, c.water + (t.thawWater ?? 0));
+  wallLost(w, x, y);
+  return true;
+}
+
 const flashOf = (c: Cell) => (c.gas ? RULES.gases[c.gas]?.burn?.flash : undefined);
 
 /**
@@ -497,6 +516,8 @@ function runEffect(w: World, x: number, y: number, c: Cell, eff: Effect, ctx: Ct
   if (eff.pushCover) return ctx.dir !== undefined && pushCover(w, x, y, c, ctx.dir);
   if (eff.bake) return bake(c);
   if (eff.meltCover) return meltCover(c);
+  if (eff.crust) return crust(c);
+  if (eff.thaw) return thaw(w, x, y, c);
   if (eff.break) {
     const to = terrainDef(c).breaksTo;
     if (!to) return false;
