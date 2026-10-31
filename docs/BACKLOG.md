@@ -583,9 +583,9 @@ GitHub #2-#5) and the cost reading (`docs/telemetry/feature-costs-2026-10-30.md`
 | Batch | Issues | Where |
 |---|---|---|
 | A, rules | #11 the wave aims where you cast and leaves water; #15 no brick on water (the water boils, the mud under it doesn't bake); #13 a live turkey isn't "rotten" | Worker |
-| B, casting and moving | #7 hold the trigger to charge a cast stronger as the meter fills (Andrew's proposal); #6 a way to end Shapeshift; #12 ice keeps your momentum | Worker (input and rules), host (feel) |
-| C, interface (UX pass 4) | #8 the centre stamina bar out, a smaller top bar and log text, the element icon centred; #9 a cast bar that fills smoothly; #10 Back closes the grimoire; #2 the aim markers; the looks of snow, fog, the golf flag and strokes, the wave; the swim checks | Host (DesktopUnity) |
-| Andrew's call | #14 what low and zero health do | |
+| B, casting and moving | #7 hold the trigger to charge a cast stronger as the meter fills (Andrew's proposal); #6 a way to end Shapeshift; #12 ice keeps your momentum; #18 a punch on a face button | Worker (input and rules), host (feel) |
+| C, interface (UX pass 4) | #8 the centre stamina bar out, a smaller top bar and log text, the element icon centred; #9 a cast bar that fills smoothly; #10 Back closes the grimoire; #2 the aim markers; the looks of snow, fog, the golf flag and strokes, the wave; the swim checks; #16 the bloom flare on the head; #17 the hat clipping the head; #19 varied fire; #20 the camera zooming in at houses | Host (DesktopUnity) |
+| Andrew's call | #14 what low and zero health do; Sleet Storm strong enough for a slippery field, or glaze left to Frost | |
 
 Done since: #4 (499774e), the bot casts by elements (7088a97), spell golf (7f0d33b), swimming with breath (58bff2f).
 
