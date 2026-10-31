@@ -48,7 +48,12 @@ public partial class ChemGrid
     /// <summary>How many waves and boulders are drawn now, for the probe.</summary>
     public int MoversShown => waveShows.Count + boulderShows.Count;
 
-    Vector3 CellStep(int dir) => (CellCenter(World.DirX(dir), World.DirY(dir)) - CellCenter(0, 0)).normalized;
+    // The way a wave rolls, along its aim (which may be off the grid's four ways), and how far one of its
+    // steps goes against a cell (a step along a slant is longer).
+    Vector3 WaveStep(World.Wave wave) => (CellCenter(wave.AX, wave.AY) - CellCenter(0, 0)).normalized;
+
+    static float WaveStride(World.Wave wave) =>
+        Mathf.Sqrt(wave.AX * wave.AX + wave.AY * wave.AY) / Mathf.Max(1, Mathf.Max(Mathf.Abs(wave.AX), Mathf.Abs(wave.AY)));
 
     float MoverSpeed(int every) => cellSize * World.Rules.Sim.TicksPerSecond / Mathf.Max(1, every) * MoverCatchUp;
 
@@ -85,11 +90,11 @@ public partial class ChemGrid
             var shape = show.foam.shape;
             shape.scale = new Vector3((wave.Width * 2 + 1) * cellSize, 0.2f, 0.3f);
             show.root.transform.GetChild(0).localScale = new Vector3((wave.Width * 2 + 1) * cellSize, WaveTall, WaveDeep);
-            show.root.transform.rotation = Quaternion.LookRotation(CellStep(wave.Dir));
+            show.root.transform.rotation = Quaternion.LookRotation(WaveStep(wave));
             show.foam.Play(true);
         }
         var root = show.root.transform;
-        root.position = Vector3.MoveTowards(root.position, MoverGround(wave.X, wave.Y), MoverSpeed(wave.Every) * Time.deltaTime);
+        root.position = Vector3.MoveTowards(root.position, MoverGround(wave.X, wave.Y), MoverSpeed(wave.Every) * WaveStride(wave) * Time.deltaTime);
         if (show.x == wave.X && show.y == wave.Y) return;
         show.x = wave.X;
         show.y = wave.Y;
@@ -101,13 +106,11 @@ public partial class ChemGrid
         var spell = World.Rules.Spell(wave.Spell);
         if (spell == null) return;
         frontCells.Clear();
-        int px = World.DirY(wave.Dir), py = World.DirX(wave.Dir);
-        for (int o = -wave.Width; o <= wave.Width; o++)
-            if (World.InBounds(wave.X + px * o, wave.Y + py * o)) frontCells.Add((wave.X + px * o, wave.Y + py * o));
+        frontCells.AddRange(World.WaveFront(wave));
         bool hosting = !TryGetComponent<NetChem>(out var net) || !net.Online || net.IsServer;
         var wizard = WizardRig.FindLocal();
         bool Mine(IPushable p) => p is PhysicsProp prop ? hosting && Light(prop, wave.MaxMass) : p is Knockback k && k.gameObject == wizard;
-        Forces.Along(this, frontCells, CellStep(wave.Dir), spell.ForcePush * Forces.ImpulsePerPush * WaveShove, null, Mine);
+        Forces.Along(this, frontCells, WaveStep(wave), spell.ForcePush * Forces.ImpulsePerPush * WaveShove, null, Mine);
     }
 
     bool Light(PhysicsProp prop, int most) => World.Rules.Entities.TryGetValue(prop.kind, out var def) && def.Mass <= most;

@@ -12,10 +12,10 @@
 
     { "id": "heat-melt", "element": "heat", "if": { "melts": true }, "do": [{ "meltCover": true }], "log": "The {cover} melts" },
     { "id": "heat-ice", "element": "heat", "if": { "frozen": true }, "do": [{ "melt": true }], "log": "Ice melts back into water" },
-    { "id": "heat-bake", "element": "heat", "if": { "terrainTag": "bakes" }, "do": [{ "bake": true }], "log": "The heat turns the {terrain} hard", "notable": true },
     { "id": "heat-water-strong", "element": "heat", "if": { "water": true, "power": 3 }, "do": [{ "boil": 4 }], "log": "The water boils up in a roaring jet", "notable": true, "stop": true },
     { "id": "heat-water", "element": "heat", "if": { "water": true }, "do": [{ "boil": 2 }], "log": "Water boils into steam" },
-    { "id": "heat-hot", "element": "heat", "do": [{ "heat": true }], "log": "The {terrain} glows hot" },
+    { "id": "heat-bake", "element": "heat", "if": { "terrainTag": "bakes", "water": false }, "do": [{ "bake": true }], "log": "The heat turns the {terrain} hard", "notable": true },
+    { "id": "heat-hot", "element": "heat", "if": { "water": false }, "do": [{ "heat": true }], "log": "The {terrain} glows hot" },
 
     { "id": "cold-cloud", "element": "cold", "if": { "gas": "cloud" }, "do": [{ "clearGas": true }, { "gas": "snowcloud", "n": 4 }], "log": "The rain cloud chills into a snow cloud", "notable": true },
     { "id": "cold-fire", "element": "cold", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "Frost snuffs out the flames" },

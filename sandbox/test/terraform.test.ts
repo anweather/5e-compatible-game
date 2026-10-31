@@ -614,7 +614,7 @@ test("a wave rolls out, douses, knocks back and leaves mud, matching the C# gold
   const gob = spawn(w, "goblin", 4, 2)!;
   castSpell(w, "wave", 1, 3, 1);
   assert.equal(w.waves.length, 1);
-  assert.equal(cellAt(w, 1, 3)!.water, 0, "it rolls on rather than flooding");
+  assert.equal(cellAt(w, 1, 3)!.water, 1, "it leaves shallow water as it rolls on");
   run(w, 6);
   assert.equal(w.waves[0]!.x, 4);
   assert.deepEqual([gob.x, gob.y], [5, 2], "knocked back ahead of the wave");
@@ -626,7 +626,49 @@ test("a wave rolls out, douses, knocks back and leaves mud, matching the C# gold
   for (const y of [2, 3, 4]) assert.equal(cellAt(w, 8, y)!.t, "mud", "mud where it stopped");
   assert.equal(cellAt(w, 7, 3)!.t, "dirt");
   run(w, 4);
-  assert.equal(`${cellHash(w)} ${w.rng}`, "8c0f542d 752141770"); // the same in the C# core
+  assert.equal(`${cellHash(w)} ${w.rng}`, "33cc6d1f 752141770"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.AWaveRollsAlongASlantedAimAndLeavesWaterBehind (GitHub #11).
+test("a wave rolls along a slanted aim and leaves water behind, matching the C# golden", () => {
+  const w = createWorld(20, 16, 12);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 6, 5)!.t = "grass";
+  ignite(cellAt(w, 6, 5)!, 2);
+  castSpell(w, "wave", 2, 2, 1, undefined, 1, [3, 2]);
+  assert.equal(w.waves[0]!.dir, 1, "it pushes along the nearest grid way");
+  assert.equal(cellAt(w, 2, 2)!.water, 1, "shallow water where it passed");
+  run(w, 6);
+  assert.deepEqual([w.waves[0]!.x, w.waves[0]!.y], [5, 4]);
+  run(w, 10);
+  assert.equal(w.waves.length, 0);
+  assert.equal(cellAt(w, 6, 5)!.fire, 0, "the fire on its slant is out");
+  for (const y of [6, 7, 8]) assert.equal(cellAt(w, 9, y)!.t, "mud", "mud where it broke, off the straight line");
+  assert.equal(cellAt(w, 9, 2)!.t, "dirt", "it didn't go straight east");
+  run(w, 4);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "5331a509 2455825195"); // the same in the C# core
+});
+
+// Mirrors ChemistryTests.HeatOnStandingWaterBoilsItAndBakesNothingUnderIt (GitHub #15).
+test("heat on standing water boils it and bakes nothing under it, matching the C# golden", () => {
+  const w = createWorld(14, 5, 8);
+  for (const c of w.cells) c.t = "dirt";
+  for (let x = 1; x <= 5; x++)
+    for (let y = 1; y <= 3; y++) {
+      cellAt(w, x, y)!.t = "mud";
+      cellAt(w, x, y)!.water = 3;
+    }
+  cellAt(w, 10, 2)!.t = "sand";
+  cellAt(w, 10, 2)!.water = 2;
+  castSpell(w, "geyser", 3, 2, 0);
+  castSpell(w, "forge", 10, 2, 0);
+  assert.equal(cellAt(w, 3, 2)!.t, "mud", "no brick under the pool");
+  assert.equal(cellAt(w, 3, 2)!.water, 2, "the water boiled");
+  assert.equal(cellAt(w, 3, 2)!.gas, "steam");
+  assert.equal(cellAt(w, 10, 2)!.t, "sand", "no glass under the water");
+  assert.equal(cellAt(w, 10, 2)!.heat ?? 0, 0, "the water took the heat");
+  run(w, 12);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "cdece807 2305213897"); // the same in the C# core
 });
 
 // Mirrors ChemistryTests.FrostBridgesWaterFreezesTheWetAndGlazesTheGround.

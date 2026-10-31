@@ -51,7 +51,7 @@ of thumb, unchanged: the **first** element is what the spell is made of, the
   `rules/reactions.json` (`fire-mud`, `fire-ice` and the like)
   move into materials as they're touched.
   No element for one spell: Geyser is heat at power 3 on water (`heat-water-strong`),
-  Wave is water at power 0 (it douses and soaks but leaves no water), and both, with
+  Wave is water at power 1 (it douses, soaks and leaves shallow water behind), and both, with
   Rolling Boulder, share a spell `force` (`throw`: ticks off its feet, `push`: cells
   knocked back). Casts use fire, water, earth, air, heat, cold and lightning.
 - **Drawn with the effects library.** The pooled particles, cell tints and
@@ -95,9 +95,9 @@ Singles: Fire Bolt, Create Water, Raise Earth, Gust of Wind.
   there. Aimed at a pond or river, it boils that spot into a jet that throws
   players, props and creatures upward (reach a ledge, launch a goblin) and
   scalds swimmers. Fog's hiding job goes to Fog Cloud.
-- **Wave (replaces Flood), the moving one:** travels over the ground,
-  carries light props, puts out fires on the way, knocks creatures back,
-  leaves mud where it stops.
+- **Wave (replaces Flood), the moving one:** travels over the ground the way it's aimed, at any angle,
+  carries light props, puts out fires on the way, knocks creatures back, leaves shallow water behind
+  and leaves mud where it stops.
 - **Mud, the sticky setup:** creatures get stuck. Fire (Forge) bakes it to
   brick, a building material; frost freezes it hard; it dries to dirt over
   time.

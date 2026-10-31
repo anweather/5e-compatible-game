@@ -90,7 +90,7 @@ namespace Chem
             if (crackedThings.Count > 0) save["crackedThings"] = new JArray(crackedThings.Select(t => t.ToString(System.Globalization.CultureInfo.InvariantCulture)));
             if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
             if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
-            if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass)));
+            if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass, wv.OX, wv.OY, wv.AX, wv.AY, wv.Step)));
             if (GatesOpen) save["gatesOpen"] = true;
             if (machines.Count > 0) save["machines"] = new JArray(machines.OrderBy(m => m.Key).Select(m => new JArray(m.Key, m.Value.Level, m.Value.Hold, m.Value.Powered)));
             SaveGolf(save);
@@ -168,6 +168,19 @@ namespace Chem
         // A player's cast in progress and grimoire. Only when there are any, so saves without read as they did.
         static JArray SaveCast(PlayerCast c) => new JArray(c.Player, c.First, c.Second, c.Meter, c.Total, c.Window, c.Slot, c.DpadCasting, new JArray(c.Known));
 
+        // A rolling wave; one saved before waves rolled at an angle rolls on along its grid way from where it is.
+        static Wave LoadWave(JArray wv)
+        {
+            var w = new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] };
+            bool angled = wv.Count > 14;
+            w.OX = angled ? (int)wv[10] : w.X;
+            w.OY = angled ? (int)wv[11] : w.Y;
+            w.AX = angled ? (int)wv[12] : DirX(w.Dir);
+            w.AY = angled ? (int)wv[13] : DirY(w.Dir);
+            w.Step = angled ? (int)wv[14] : 0;
+            return w;
+        }
+
         void LoadCast(JToken a)
         {
             var c = new PlayerCast
@@ -210,7 +223,7 @@ namespace Chem
             foreach (var ww in s["whirls"] ?? new JArray())
                 whirls.Add(new Whirl { X = (int)ww[0], Y = (int)ww[1], Radius = (int)ww[2], Ticks = (int)ww[3], Age = (int)ww[4], Every = (int)ww[5], MaxMass = (int)ww[6], Spell = (string)ww[7], Dir = (int)ww[8], Travel = (int)ww[9], Carrying = (string)ww[10] });
             foreach (var wv in s["waves"] ?? new JArray())
-                waves.Add(new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] });
+                waves.Add(LoadWave((JArray)wv));
             LoadMachinesAndBoulders(s);
             LoadGolf(s);
             NextEntityId = (int)s["nextEntityId"];
