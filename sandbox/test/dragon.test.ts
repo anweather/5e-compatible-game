@@ -5,6 +5,7 @@ import assert from "node:assert/strict";
 import { RULES, validateRules } from "../src/rules.ts";
 import { step } from "../src/sim.ts";
 import { applyIntent, sanitizeIntent } from "../src/intents.ts";
+import { defenseText, startDefense } from "../src/defense.ts";
 import { spawn } from "../src/entities.ts";
 import { startGolf } from "../src/golf.ts";
 import { SCENARIOS, loadScenario } from "../src/scenarios.ts";
@@ -226,6 +227,22 @@ test("the breath knocks down creatures and wizards, for sim.json's downed time, 
   const { notice } = applyIntent(w, "", { k: "walk", d: 1 });
   assert.equal(wizard.x, 30);
   assert.ok(notice);
+});
+
+test("a downed raider doesn't march, and the checksum sees it", () => {
+  const w = createWorld(64, 64, 2);
+  startDefense(w, [5, 5], [50, 50]);
+  keepStart(w);
+  summonDragon(w);
+  while (w.dragon!.phase === 1) step(w);
+  const raider = spawn(w, "bone-hound", 30, 30)!; // it would be at the flag by now
+  for (let i = 0; i < 40 && !(raider.status.downed ?? 0); i++) step(w);
+  const ticks = Math.floor((RULES.sim.downed?.seconds ?? 3) * RULES.sim.ticksPerSecond);
+  assert.equal(raider.status.downed, ticks);
+  assert.ok(defenseText(w).includes(`,d${ticks};`));
+  const { x, y } = raider;
+  run(w, ticks - 1);
+  assert.deepEqual([raider.x, raider.y], [x, y]);
 });
 
 test("budget: the warning starts by itself once too many cells differ, counted by the audit alone", () => {

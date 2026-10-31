@@ -244,6 +244,7 @@ export function defenseText(w: World): string {
     for (const k of HASHED_STATUSES) s += `,${r.status[k] ?? 0}`;
     // Thrown (a Geyser's jet) joins only while it lasts, so older defenses hash as they did (World.DefenseText).
     if ((r.status.thrown ?? 0) > 0) s += `,t${r.status.thrown}`;
+    if ((r.status.downed ?? 0) > 0) s += `,d${r.status.downed}`;
     s += ";";
   }
   return s;

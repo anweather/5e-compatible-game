@@ -232,6 +232,24 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ADownedRaiderDoesntMarchAndTheChecksumSeesIt()
+        {
+            var w = new World(R, 64, 64, 2);
+            w.ApplyDefense(new DefenseCommand(DefenseKind.Start, 5, 5, 50, 50));
+            w.KeepStart();
+            w.ApplyDragon(new DragonCommand());
+            while (w.Dragon.Phase == DragonPhase.Warning) w.Step();
+            var raider = w.SpawnRaider("bone-hound", 30, 30, 50); // it would be at the flag by now
+            for (int i = 0; i < 40 && raider.StatusOf(World.DownedStatus) == 0; i++) w.Step();
+            int ticks = (int)Math.Floor(R.Sim.Downed.Seconds * R.Sim.TicksPerSecond);
+            Assert.That(raider.StatusOf(World.DownedStatus), Is.EqualTo(ticks));
+            Assert.That(w.DefenseText(), Does.Contain($",d{ticks};"));
+            int x = raider.X, y = raider.Y;
+            Run(w, ticks - 1);
+            Assert.That((raider.X, raider.Y), Is.EqualTo((x, y)), "it stays down");
+        }
+
+        [Test]
         public void TheBudgetStartsTheWarningOnceTheAuditCountsPastIt()
         {
             var w = new World(With("{ \"budget\": 40 }"), 128, 64, 2);
