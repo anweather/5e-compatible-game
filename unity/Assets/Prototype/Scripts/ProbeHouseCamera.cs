@@ -129,12 +129,7 @@ public class HouseCameraProbe : ProbeScenario
             var flat = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
             puppet.Move(new Vector2(Vector3.Dot(dir, cam.right), Vector3.Dot(dir, flat)).normalized);
             yield return null;
-            // Pressed against the wall: does the arm's own check start in it?
-            if (t > 2.7f && t - Time.deltaTime <= 2.7f)
-            {
-                lastCheck = ArmHit(follow, root, out var wall);
-                if (wall != null && wall.transform.IsChildOf(house.transform)) ownWall++;
-            }
+            if (t > 2.7f && t - Time.deltaTime <= 2.7f) CheckAtTheWall(house, follow, root);
             float arm = Vector3.Distance(cam.position, root.position);
             if (t < 1f || arm >= walkShortest) continue;
             walkShortest = arm;
@@ -145,6 +140,13 @@ public class HouseCameraProbe : ProbeScenario
         // Another house or a tree truly behind the wizard is the arm doing its job: not this one's fault.
         if (truly) blocked++;
         else if (walkShortest < shortest) (shortest, what) = (walkShortest, walkHit);
+    }
+
+    // Pressed against the wall: does the arm's own check start in it?
+    void CheckAtTheWall(VillageHouse house, CinemachineThirdPersonFollow follow, Transform root)
+    {
+        lastCheck = ArmHit(follow, root, out var wall);
+        if (wall != null && wall.transform.IsChildOf(house.transform)) ownWall++;
     }
 
     // Repeats the follow's check: the shoulder out from the root, the arm back from there.

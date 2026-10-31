@@ -322,6 +322,8 @@ public static class ValleyBuilder
     // A point's cell, before the grid has a world to ask (WireChemistry's CellOf).
     static System.Func<Vector2, Vector2Int> cellAt;
 
+    static bool RockKeepsOff(Vector2 w) => ValleyShape.KeepClear(w, 10f) || OnPlayedGround(w, 2);
+
     static void ScatterRocks()
     {
         var rocks = new List<GameObject>(LoadRocks("Rock_A_01", "Rock_B_01", "Rock_C_01", "Rock_Overgrown_A", "Rock_Overgrown_C"));
@@ -332,7 +334,7 @@ public static class ValleyBuilder
         for (int i = 0; i < 2000 && placed < 60; i++)
         {
             var w = new Vector2(Centre.x + (float)(rng.NextDouble() - 0.5) * 420f, Centre.y + (float)(rng.NextDouble() - 0.5) * 420f);
-            if (ValleyShape.KeepClear(w, 10f) || OnPlayedGround(w, 2)) continue;
+            if (RockKeepsOff(w)) continue;
             float h = ValleyShape.HeightAt(w);
             bool mountainFoot = h > 6f && h < 60f;
             bool shore = ValleyShape.DistanceToLake(w) < 12f;

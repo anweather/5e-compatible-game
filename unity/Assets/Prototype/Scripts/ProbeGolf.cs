@@ -75,7 +75,8 @@ public class GolfProbe : ProbeScenario
     IEnumerator Swing(GolfState g)
     {
         // Round by the hole's row first, then along it.
-        int dir = g.Y != g.HoleY ? (g.Y < g.HoleY ? South : North) : g.X < g.HoleX ? East : West;
+        int dir = g.X < g.HoleX ? East : West;
+        if (g.Y != g.HoleY) dir = g.Y < g.HoleY ? South : North;
         int strokes = g.Strokes;
         Behind(g, dir);
         yield return Wait(0.3f);

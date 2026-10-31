@@ -96,9 +96,8 @@ public class GolfCourse : MonoBehaviour
         var g = World?.Golf;
         if (g == null) return "";
         if (g.Holed) return $"Spell golf: in the hole in {g.Strokes}!";
-        return g.Strokes == 0
-            ? "Spell golf: hit the ball with Gust of Wind, or Raise Earth under it"
-            : $"Spell golf: {g.Strokes} {(g.Strokes == 1 ? "stroke" : "strokes")}";
+        if (g.Strokes == 0) return "Spell golf: hit the ball with Gust of Wind, or Raise Earth under it";
+        return g.Strokes == 1 ? "Spell golf: 1 stroke" : $"Spell golf: {g.Strokes} strokes";
     }
 
     bool Near()

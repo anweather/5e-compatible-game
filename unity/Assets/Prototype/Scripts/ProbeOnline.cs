@@ -613,9 +613,9 @@ public class OnlineProbe : ProbeScenario
         yield return null;
         var cell = grid.CellAt(at);
         Check("shape_taken_online", shape.Land(World.Rules.Spell(SpellIds.Shapeshift), cell.x, cell.y, 1), shape.FormName ?? "not shifted");
-        yield return new WaitForSecondsRealtime(1f);
+        yield return Wait(1f);
         Check("shape_ended_by_choice", shape.ChangeBackByChoice(), "ChangeBackByChoice");
-        yield return new WaitForSecondsRealtime(1f);
+        yield return Wait(1f);
     }
 
     // Tag: the host starts it as "it" and steps up to the virtual player's wizard, who is then it.
