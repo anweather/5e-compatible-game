@@ -38,12 +38,12 @@ using Debug = UnityEngine.Debug;
 [DefaultExecutionOrder(-32000)]
 public class PerfScenario : MonoBehaviour
 {
-    const string Bot = "bot", Wildfire = "wildfire";
+    const string Bot = "bot", Wildfire = "wildfire", Fog = "fog";
     const float WarmUpSeconds = 3f, SettleSeconds = 5f, DefaultSeconds = 30f, BurnSeconds = 20f;
     const float CountEverySeconds = 2f, SpikeMs = 50f;
     const int MostSpikes = 200, ShotQuietFrames = 3, WorstFrames = 5;
     const double BytesPerMb = 1024.0 * 1024.0;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", "fog", "village", Bot };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "snow", Fog, "village", Bot };
 
     readonly List<float> frameMs = new();
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
@@ -89,7 +89,8 @@ public class PerfScenario : MonoBehaviour
             stage.Scenario = scenario;
             while (!stage.Ready) yield return null;
         }
-        if (scenario != Wildfire) yield return new WaitForSecondsRealtime(SettleSeconds);
+        // A wildfire burns from the bolts, and fog's cost is in how it comes.
+        if (scenario != Wildfire && scenario != Fog) yield return new WaitForSecondsRealtime(SettleSeconds);
 
         markers = new PerfMarkers();
         tickAtStart = grid.World.Tick;
@@ -97,8 +98,8 @@ public class PerfScenario : MonoBehaviour
         measuring = true;
         if (scenario == Bot) yield break;
 
-        yield return new WaitForSecondsRealtime(seconds);
-        Finish();
+        // Update ends the run, so the frame that crosses the end is counted, however long it took.
+        while (measuring) yield return null;
         yield return Shot(scenario);
         var flames = scenario == Wildfire ? grid.GetComponentInChildren<FlameBank>() : null;
         if (flames != null)
@@ -143,6 +144,7 @@ public class PerfScenario : MonoBehaviour
             CountCells();
             countAt = now + CountEverySeconds;
         }
+        if (scenario != Bot && now - startedAt >= seconds) Finish();
     }
 
     void NoteSpike(float ms, double now)
