@@ -434,3 +434,45 @@ Needs other lanes, through the Project Manager: a `.gitignore` line for
 `playtest/runs/` (shared); a build method or flag in `PrototypeBuild.cs` if
 the Build lane wants one (Build); and a spare Editor or build slot for the
 phase 1 spikes.
+
+## Casting by elements, chains and shots (2026-10-30, after the 0.1.8 runs)
+
+- **Casts by elements.** A goal kind `Elements` casts as a player does: each
+  element of a combo pressed in order through `SpellCaster.LoadElement`, the
+  same `ComboCommand` the pad and the keys send, a frame apart (inside the
+  window), the meter left to run out, and the cast aimed at a cell 4 to 6.5
+  ahead (`SpellCaster.AimOverride`: the bot has no mouse; players never set
+  it). It covers the 4 singles and the 16 ordered pairs, weighted toward the
+  ones not cast lately (coverage keys `Elements:water+earth`). Each takes a
+  shot, and a combo that changes nothing in an active chunk is a
+  low-confidence `elements-nothing`; one that's refused or never goes off is
+  `element-refused` or `elements-didnt-cast`.
+- **Chains** (`Logic/PlaytestChains.cs`, coverage `Chain:<id>`): Forge on mud,
+  fire into a dust cloud (Rolling Boulder's trail), Lightning into a puddle,
+  Frost on water then walk across, Geyser under a prop, Wave over a fire. The
+  setup is cast by elements, the trigger aims at the nearest cell with what
+  the setup left, and the cells are read for the rules' result (brick, the
+  dust's flash in the log, charge in the water, ice, steam, the fire doused).
+  Every chain is played against the real rules under `dotnet test`
+  (`PlaytestChainTests`), including that no check passes without its
+  trigger. A failed check is a low-confidence `chain-nothing`; a setup that
+  left nothing is `chain-setup-nothing`; a prop the geyser didn't lift and
+  swimming on Frost's ice have their own candidates. Each chain takes a shot.
+- **Shots.** A shot whose camera is in the ground, looks straight down, or
+  faces open sky is taken instead from behind and above the wizard (traced as
+  `reframe`). At night a goal's routine shot is skipped; a candidate's or a
+  cast's shot gets flat ambient light for its one render. The bot's look
+  goal now only turns, and the camera is brought back to a little below
+  level after every goal: in the 0.1.8 runs a held tilt left it on the
+  ground or the sky for minutes.
+- **The runner on a PC with no audio output** (no default device, a VM):
+  `AppMute.Mute` answers `NoOutput` instead of throwing, the run counts as
+  muted, and the player is killed whatever stops the watch.
+- **Judge looks only from the bot's shots.** On a locked PC (no input
+  desktop) the player hardly renders outside the frames the bot renders for
+  its shots, so animation, the robe and anything else that needs frames in
+  between look wrong in a screen capture or a stale frame. 0.1.8's robe tail
+  was mostly this. Triage judges looks from `shots/` only.
+- **Known issues for triage.** `known-issues.json` also lists what triage
+  has wrongly filed as a bug (detector `visual`): the spell aim markers, the
+  cream squares on the cells a selected spell will hit (#2).

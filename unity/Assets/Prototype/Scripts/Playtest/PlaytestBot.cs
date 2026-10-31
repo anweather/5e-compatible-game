@@ -9,6 +9,7 @@ using Playtest;
 using StarterAssets;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using UnityEngine.Rendering;
 
 // The playtest bot (playtest/DESIGN.md). Start a player build with -playtest
 // and it plays on its own for a while, then writes what it found to its run
@@ -229,7 +230,7 @@ public class PlaytestBot : MonoBehaviour
         var lo = grid.CellCenter(0, grid.World.H - 1);
         var hi = grid.CellCenter(grid.World.W - 1, 0);
         wizardWatch = new WizardWatch(Mathf.Min(lo.x, hi.x) - 5f, Mathf.Min(lo.z, hi.z) - 5f, Mathf.Max(lo.x, hi.x) + 5f, Mathf.Max(lo.z, hi.z) + 5f);
-        player = new PlaytestPlayer(grid, wizard, dice, places, Trace, Add);
+        player = new PlaytestPlayer(grid, wizard, dice, places, Trace, Add, Shoot);
         run.Quiet = Environment.GetCommandLineArgs().Contains("-playtest-quiet");
         startedReal = Time.realtimeSinceStartup;
         running = true;
@@ -365,11 +366,28 @@ public class PlaytestBot : MonoBehaviour
         frameWatch.ShotTaken(frame);
         var cam = Camera.main;
         if (cam == null) return null;
+        // In the 0.1.8 runs a third of the shots showed only ground, sky or night. At night a goal's
+        // routine shot is skipped; a candidate's or a cast's is lit instead.
+        bool night = Night;
+        if (night && label == "goal")
+        {
+            Trace("no shot", "night");
+            return null;
+        }
+        string unusable = Unusable(cam);
+        if (unusable != null)
+        {
+            Trace("reframe", unusable);
+            cam = Reframed(cam);
+        }
+        var ambient = RenderSettings.ambientProbe;
+        if (night) RenderSettings.ambientProbe = ambient + NightFill();
         var rt = RenderTexture.GetTemporary(ShotWidth, ShotHeight, 24);
         var was = cam.targetTexture;
         cam.targetTexture = rt;
         cam.Render();
         cam.targetTexture = was;
+        RenderSettings.ambientProbe = ambient;
         var active = RenderTexture.active;
         RenderTexture.active = rt;
         var tex = new Texture2D(ShotWidth, ShotHeight, TextureFormat.RGB24, false);
@@ -388,6 +406,48 @@ public class PlaytestBot : MonoBehaviour
         }
         Destroy(tex);
         return file;
+    }
+
+    // Why the camera's view can't be judged, or null: inside the ground, straight down at it, or
+    // up at open sky (nothing in front of it for 500 m).
+    string Unusable(Camera cam)
+    {
+        var at = cam.transform.position;
+        var forward = cam.transform.forward;
+        if (at.y < grid.GroundAt(at) + 0.1f) return "the camera is in the ground";
+        if (forward.y < -0.9f) return "the camera looks straight down";
+        if (forward.y > 0.3f && !Physics.Raycast(at, forward, 500f)) return "the camera faces open sky";
+        return null;
+    }
+
+    Camera shotCamera;
+
+    // A camera behind and above the wizard, looking at them, with the main camera's settings: for
+    // a shot the main camera can't take.
+    Camera Reframed(Camera main)
+    {
+        if (shotCamera == null)
+        {
+            shotCamera = new GameObject("Playtest shot camera").AddComponent<Camera>();
+            shotCamera.transform.SetParent(transform);
+            shotCamera.enabled = false;
+        }
+        shotCamera.CopyFrom(main);
+        var w = wizard.transform;
+        var back = new Vector3(w.forward.x, 0f, w.forward.z).normalized;
+        var at = w.position - back * 6f + Vector3.up * 3f;
+        at.y = Mathf.Max(at.y, grid.GroundAt(at) + 2f);
+        shotCamera.transform.position = at;
+        shotCamera.transform.LookAt(w.position + Vector3.up * 1.2f);
+        return shotCamera;
+    }
+
+    // Flat grey ambient light added for a night shot, enough to see shapes and colours by.
+    static SphericalHarmonicsL2 NightFill()
+    {
+        var fill = new SphericalHarmonicsL2();
+        fill.AddAmbientLight(new Color(0.45f, 0.45f, 0.5f));
+        return fill;
     }
 
     // Where the run was last, for a candidate raised once the wizard is gone.

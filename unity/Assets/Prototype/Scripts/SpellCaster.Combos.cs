@@ -50,11 +50,24 @@ public partial class SpellCaster
         if (controls.Grimoire.WasPressedThisFrame()) GrimoireMenu.Show();
     }
 
-    void Send(ComboCommand command)
+    /// <summary>
+    /// Loads an element as its button does, through the same ComboCommand (the playtest bot presses
+    /// here: it drives no real device). False if the core refused it; online, true once it's sent.
+    /// </summary>
+    public bool LoadElement(string element) => grid != null && grid.World != null && Send(ComboCommand.Load(CastPlayer, element));
+
+    /// <summary>
+    /// Where a combo aims as it goes off instead of the crosshair, while set: the playtest bot, which
+    /// has no mouse and points its casts at cells. Null for players.
+    /// </summary>
+    public Vector3? AimOverride { get; set; }
+
+    bool Send(ComboCommand command)
     {
         var online = Net;
-        if (online != null && online.Online) online.RequestCombo(command);
-        else grid.World.ApplyCombo(command);
+        if (online == null || !online.Online) return grid.World.ApplyCombo(command);
+        online.RequestCombo(command);
+        return true;
     }
 
     // Hears the grid's ticks: a tick's casts that went off are only there until the next one.
@@ -91,7 +104,13 @@ public partial class SpellCaster
     /// <summary>Aims a spell from the crosshair now (or a few cells ahead, with nothing under it) and casts it.</summary>
     void CastAtCrosshair(string spellId)
     {
-        if (controls == null || !Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair))
+        if (AimOverride.HasValue)
+        {
+            crosshair = default;
+            crosshair.point = AimOverride.Value;
+            crosshair.normal = Vector3.up;
+        }
+        else if (controls == null || !Aiming.PastSelf(Aiming.Ray(controls), transform, out crosshair))
         {
             crosshair = default;
             crosshair.point = transform.position + transform.forward * (AheadCells * grid.cellSize);
