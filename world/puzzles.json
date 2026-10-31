@@ -1,5 +1,5 @@
 {
-  "about": "Puzzles laid into the valley's cells when the world is built (WorldPuzzles.cs): each is a block of rows from its top-left world cell at (y grows south), one character a cell; a space leaves the cell as the land has it, any other character is a legend entry (a terrain id from rules/materials.json and water units). Machines and gates work through rules/machines.json (World.Machines.cs): any machine powered opens every gate.",
+  "about": "Puzzles laid into the valley's cells when the world is built (WorldPuzzles.cs): each is a block of rows from its top-left world cell at (y grows south), one character a cell; a space leaves the cell as the land has it, any other character is a legend entry (a terrain id from rules/materials.json and water units). Machines and gates work through rules/machines.json (World.Machines.cs). A gate's \"opensBy\" names the legend character of the one machine that opens it (a puzzle's own coil); without one it opens for any machine no one linked.",
   "puzzles": [
     {
       "name": "The meadow coil",
@@ -8,7 +8,7 @@
       "legend": {
         "w": { "t": "pit", "water": 4 },
         "c": { "t": "coil" },
-        "g": { "t": "gate" },
+        "g": { "t": "gate", "opensBy": "c" },
         "#": { "t": "stone" },
         ".": { "t": "dirt" }
       },

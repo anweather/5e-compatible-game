@@ -88,7 +88,7 @@ public partial class SpellCaster : MonoBehaviour
 
     void Update()
     {
-        // In an animal's shape, Cast only changes back (WhileShifted).
+        // In an animal's shape, the cast buttons only change back (WhileShifted).
         if (controls == null || grid == null || grid.World == null) return;
         UpdateElements();
         if (WhileShifted()) return;
@@ -135,13 +135,13 @@ public partial class SpellCaster : MonoBehaviour
         return charges ? controls.Cast.WasReleasedThisFrame() : controls.Cast.WasPressedThisFrame();
     }
 
-    // In an animal's shape (Shapeshift) the only cast is changing back. True while shifted.
+    // In an animal's shape (Shapeshift) any cast button changes back: an element, the d-pad's cast or Cast. True while shifted.
     bool WhileShifted()
     {
         if (shape == null || !shape.Shifted) return false;
         ShowMarkers(null);
         chargeStart = -1f;
-        if (controls.Cast.WasPressedThisFrame() && (radial == null || !radial.IsOpen)) shape.ChangeBackByChoice();
+        if (controls.AnyCastPressed() && (radial == null || !radial.IsOpen)) shape.ChangeBackByChoice();
         return true;
     }
 

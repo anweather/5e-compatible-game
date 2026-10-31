@@ -91,8 +91,7 @@ namespace Chem
             if (stars.Count > 0) save["stars"] = new JArray(stars.Select(st => new JArray(st.Spell, st.X, st.Y, st.Dir, st.Charge, st.Radius, st.Lands)));
             if (whirls.Count > 0) save["whirls"] = new JArray(whirls.Select(ww => new JArray(ww.X, ww.Y, ww.Radius, ww.Ticks, ww.Age, ww.Every, ww.MaxMass, ww.Spell, ww.Dir, ww.Travel, ww.Carrying)));
             if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass, wv.OX, wv.OY, wv.AX, wv.AY, wv.Step)));
-            if (GatesOpen) save["gatesOpen"] = true;
-            if (machines.Count > 0) save["machines"] = new JArray(machines.OrderBy(m => m.Key).Select(m => new JArray(m.Key, m.Value.Level, m.Value.Hold, m.Value.Powered)));
+            SaveMachines(save);
             SaveGolf(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age)));
             var made = new Cell();
@@ -200,12 +199,23 @@ namespace Chem
             casts[c.Player] = c;
         }
 
-        // The machines, whether they have the gates open, and the boulders still rolling.
+        // The machines, whether they have the gates open, and the gates linked to one machine.
+        void SaveMachines(JObject save)
+        {
+            if (GatesOpen) save["gatesOpen"] = true;
+            if (machines.Count > 0) save["machines"] = new JArray(machines.OrderBy(m => m.Key).Select(m => new JArray(m.Key, m.Value.Level, m.Value.Hold, m.Value.Powered)));
+            if (gateLinks.Count > 0) save["gateLinks"] = new JArray(gateLinks.Select(l => new JArray(l.Gate, l.Machine, l.Open)));
+        }
+
+        // The machines, whether they have the gates open, the gates linked to one machine, and the boulders still rolling.
         void LoadMachinesAndBoulders(JObject s)
         {
             GatesOpen = s["gatesOpen"] != null && (bool)s["gatesOpen"];
             foreach (var m in s["machines"] ?? new JArray())
                 machines[(int)m[0]] = new MachineState { Level = (int)m[1], Hold = (int)m[2], Powered = (bool)m[3] };
+            foreach (var l in s["gateLinks"] ?? new JArray())
+                gateLinks.Add(new GateLink { Gate = (int)l[0], Machine = (int)l[1], Open = (bool)l[2] });
+            RelinkSets();
             foreach (var b in s["boulders"] ?? new JArray())
                 boulders.Add(new Boulder { Spell = (string)b[0], X = (int)b[1], Y = (int)b[2], Dir = (int)b[3], Left = (int)b[4], Every = (int)b[5], Age = (int)b[6] });
         }

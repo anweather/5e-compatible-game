@@ -11,7 +11,7 @@ using UnityEngine;
 // letting go are asked of the host (NetItem), which grants them; Grant and
 // Forget are how the answer arrives, on every machine.
 [DefaultExecutionOrder(120)] // after CastPose and Knockback have moved the arm and body
-public class ItemHolder : MonoBehaviour
+public partial class ItemHolder : MonoBehaviour
 {
     public PlayerControls controls;
     [Tooltip("The follow camera, for the spyglass.")]
@@ -65,9 +65,11 @@ public class ItemHolder : MonoBehaviour
     void Update()
     {
         if (releaseAt >= 0f && Time.time >= releaseAt) LetFly();
+        if (punchLandsAt >= 0f && Time.time >= punchLandsAt) PunchLands();
         if (controls == null) return;
         InReach = Held == null ? Nearest() : null;
         controls.ItemInReach = Held != null || InReach != null;
+        if (Held == null && controls.PunchPressed()) TryPunch();
 
         if (controls.Interact.WasPressedThisFrame())
         {

@@ -14,7 +14,7 @@ using UnityEngine;
 // reports the hit because a building's colliders are parts with no Rigidbody,
 // which never pass a collision up to this component. The first hit only cracks
 // the glass (Cell.Cracked, a web drawn on the pane: CrackWeb.hlsl); the next
-// shatters it. ValleyChemistry binds it to the cells for each new world. Only
+// shatters it. A wizard's punch hits the same way (ItemHolder.Punch.cs). ValleyChemistry binds it to the cells for each new world. Only
 // the show: the cells are the truth.
 [ExecuteAlways]
 public class WindowPanes : MonoBehaviour
@@ -215,11 +215,17 @@ public class WindowPanes : MonoBehaviour
         float impulse = Vector3.ProjectOnPlane(hit.impulse, Vector3.up).magnitude;
         HardestHit = Mathf.Max(HardestHit, impulse);
         if (impulse < HeavyImpulse || hit.contactCount == 0 || grid == null || grid.World == null) return;
+        int best = NearestPane(grid, hit.GetContact(0).point, Reach);
+        if (best >= 0) ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, best % grid.World.W, best / grid.World.W, "", ThingId.None));
+    }
+
+    /// <summary>The index of the pane cell nearest <paramref name="point"/>, within <paramref name="metres"/>, or -1.</summary>
+    public static int NearestPane(ChemGrid grid, Vector3 point, float metres)
+    {
         var world = grid.World;
-        var point = hit.GetContact(0).point;
         var at = grid.CellAt(point);
-        int reach = Mathf.CeilToInt(Reach / grid.cellSize), best = -1;
-        float nearest = Reach * Reach;
+        int reach = Mathf.CeilToInt(metres / grid.cellSize), best = -1;
+        float nearest = metres * metres;
         for (int y = at.y - reach; y <= at.y + reach; y++)
             for (int x = at.x - reach; x <= at.x + reach; x++)
             {
@@ -230,7 +236,7 @@ public class WindowPanes : MonoBehaviour
                 nearest = d;
                 best = world.Idx(x, y);
             }
-        if (best >= 0) ChemEffects.Request(grid, new EffectCommand(EffectKind.Shatter, best % world.W, best / world.W, "", ThingId.None));
+        return best;
     }
 
     static void DestroyNow(Object o)
