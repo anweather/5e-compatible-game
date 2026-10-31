@@ -237,13 +237,15 @@ namespace Chem
         /// <summary>
         /// A spell's force on the raider at (x, y) (force in the TS; spells.json force): pushed ForcePush cells along dir
         /// where that's open, if it's MaxMass or lighter (a wave knocks it back), and thrown off its feet for ForceThrow
-        /// ticks (a geyser's jet, a boulder), so it can't walk.
+        /// ticks (a geyser's jet, a boulder), so it can't walk. A cast forces each raider once (<paramref name="once"/>
+        /// holds those it has), so one pushed along a gust's line isn't pushed again on the cells it lands on.
         /// </summary>
-        void Force(SpellDef s, int x, int y, int dir)
+        void Force(SpellDef s, int x, int y, int dir, HashSet<int> once = null)
         {
             if (s.ForcePush <= 0 && s.ForceThrow <= 0) return;
+            HitBall(s, x, y, dir);
             var r = RaiderAt(x, y);
-            if (r == null || !r.Alive) return;
+            if (r == null || !r.Alive || (once != null && !once.Add(r.Id))) return;
             var def = Rules.Entity(r.Kind);
             string by = s.Name.ToLowerInvariant();
             if (s.ForcePush > 0 && dir >= 0 && def.Mass <= s.MaxMass)

@@ -93,6 +93,7 @@ namespace Chem
             if (waves.Count > 0) save["waves"] = new JArray(waves.Select(wv => new JArray(wv.Spell, wv.X, wv.Y, wv.Dir, wv.Width, wv.Left, wv.Every, wv.Age, wv.Power, wv.MaxMass)));
             if (GatesOpen) save["gatesOpen"] = true;
             if (machines.Count > 0) save["machines"] = new JArray(machines.OrderBy(m => m.Key).Select(m => new JArray(m.Key, m.Value.Level, m.Value.Hold, m.Value.Powered)));
+            SaveGolf(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age)));
             var made = new Cell();
             var saved = new JArray();
@@ -211,6 +212,7 @@ namespace Chem
             foreach (var wv in s["waves"] ?? new JArray())
                 waves.Add(new Wave { Spell = (string)wv[0], X = (int)wv[1], Y = (int)wv[2], Dir = (int)wv[3], Width = (int)wv[4], Left = (int)wv[5], Every = (int)wv[6], Age = (int)wv[7], Power = (int)wv[8], MaxMass = (int)wv[9] });
             LoadMachinesAndBoulders(s);
+            LoadGolf(s);
             NextEntityId = (int)s["nextEntityId"];
             if (s["defense"] is JObject d)
             {

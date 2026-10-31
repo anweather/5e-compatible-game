@@ -444,6 +444,8 @@ namespace Chem
         public string ShatterWhen, ShatterNotBy;
         /// <summary>The defense field's waves (sim.json defense).</summary>
         public DefenseParams Defense = new DefenseParams();
+        /// <summary>Spell golf's ball (sim.json golf, World.Golf.cs).</summary>
+        public GolfParams Golf = new GolfParams();
     }
 
     /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
@@ -1024,6 +1026,7 @@ namespace Chem
             s.ZapDamage = Int(o["zapDamage"]) ?? s.ZapDamage;
             if (o["status"] is JObject st) ParseStatus(s, st);
             s.Defense = ParseDefense(o["defense"]);
+            s.Golf = GolfParams.Parse(o["golf"]);
             if (o["day"] is JObject day)
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;

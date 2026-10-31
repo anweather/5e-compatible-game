@@ -6,6 +6,7 @@ import { RULES } from "./rules.ts";
 import { applyElement, dampFuel, displaceWater, flashGas, ignite, putCover, wallLost } from "./react.ts";
 import { massOf, push, tickEntities } from "./entities.ts";
 import { tickDefense } from "./defense.ts";
+import { tickGolf } from "./golf.ts";
 import {
   type Cell, type World,
   DX, DY, NO_LAND, addGas, burns, cellAt, coverBurns, elevation, entityAt, flammability, hasTag, idx, isBlocking, isRaisedWall,
@@ -33,6 +34,7 @@ export function step(w: World): void {
   tickWhirlwinds(w);
   tickWaves(w);
   tickBoulders(w);
+  tickGolf(w);
   tickMachines(w);
   const soaking = RULES.sim.water.soakPass > 0 && w.tick % RULES.sim.water.soakPass === 0; // 0: no soaking
   const floating: [Cell, string, number][] = []; // what floating covers reached, laid after the pass (World.floating)

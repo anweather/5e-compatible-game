@@ -485,12 +485,18 @@ namespace Chem
             if (s.Crater != null) Blast(cells);
             Crater(x, y, s.Crater);
             BlastRaiders(s, cells, x, y);
-            if (s.Element == null) return;
+            var forced = new HashSet<int>();
+            if (s.Element == null)
+            {
+                // A spell with force and no element (Raise Earth) still throws what it lands under: the golf ball.
+                foreach (var (cx, cy) in cells) Force(s, cx, cy, dir, forced);
+                return;
+            }
             waveFrom = (x, y);
             foreach (var (cx, cy) in cells)
             {
                 Apply(cx, cy, s.Element, s.Power * charge, s.Inward ? InwardDir(cx - x, cy - y) : dir, true);
-                Force(s, cx, cy, dir);
+                Force(s, cx, cy, dir, forced);
                 LandOnRaider(s, cx, cy);
             }
             waveFrom = null;

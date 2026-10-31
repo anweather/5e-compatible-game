@@ -351,6 +351,7 @@ export interface RaiderDef {
   weak?: string[];
   resist?: string[];
 }
+import type { GolfParams } from "./golf.ts";
 /** sim.json's defense (defense.ts; C#: DefenseParams in Defense.cs). */
 export interface DefenseParams {
   lives: number; waves: number; first: number; growth: number; hpPerWave: number;
@@ -429,6 +430,8 @@ export interface SimParams {
   zapDamage: number;
   conductLimit: number;
   defense: DefenseParams;
+  /** Spell golf's ball (golf.ts; C#: GolfParams); absent uses the defaults. */
+  golf?: GolfParams;
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
   day: {
     lengthMinutes: number; startHour: number;
