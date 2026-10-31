@@ -1,18 +1,21 @@
-# Brief: performance pass (host, on the PC with the GPU)
+# Brief: performance pass (overnight on the MacBook; a short Windows comparison on the PC after)
 
 Andrew, 2026-10-30: run a profiling pass now, and afterwards write a project
 skill (`perf-pass`) from how it actually went. So **keep notes as you go**:
 the exact commands, flags, scenario names, where results land, what worked and
 what didn't. The skill is written from those notes.
 
-Start once UX pass 4 is done and merged, with no worker VMs running (the PM
-makes sure). Pull `dev`. Read COORDINATION.md (lean), docs/FAST_LOOP.md (the
+**Where (Andrew, 2026-10-30):** the MacBook, overnight, after Andrew's five calls. It's the weaker
+hardware, so it shows the spikes first and gives a minimum-spec baseline. Build a macOS player
+locally for profiling only (no Mac release). Check that the new fire's StructuredBuffer works on
+Metal (UX pass 4 part 2 wasn't seen on a Mac). Afterwards, the PC repeats step 1 on its
+Windows player for comparison: players get Windows. Pull `dev`. Read COORDINATION.md (lean), docs/FAST_LOOP.md (the
 probes, and the `-fps-probe` player flag in `FpsProbe.cs`) and docs/BACKLOG.md
 item 19 (the last pass's numbers, 2026-10-26). Run it in short fresh
 sub-agents per step, not one long session.
 
 ## 1. Measure, in a player build (not the Editor)
-Use the release-style player from UX pass 4's part 3, or build one from dev.
+Build a macOS player from dev (UX pass 4 merged), with development build and profiler connection on.
 With `-fps-probe`, measure each scenario for a fixed time, and record the
 mean, p50, p95 and p99 frame times, the worst 5 frames, and memory:
 - the meadow (the `perf` camera);

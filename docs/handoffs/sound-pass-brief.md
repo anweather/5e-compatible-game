@@ -1,4 +1,4 @@
-# Brief: the sound pass, for 0.1.9 (the MacBook: Unity, a GPU, speakers)
+# Brief: the sound pass, for 0.1.9 (on the PC, after UX pass 4; the MacBook profiles overnight)
 
 Andrew, 2026-10-30: sound ships in 0.1.9; proximity voice (Vivox) waits for 0.1.10.
 Pull `dev`. Read COORDINATION.md (lean), docs/BACKLOG.md item 8 and docs/SPELL_COMBOS.md.

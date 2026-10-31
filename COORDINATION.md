@@ -678,3 +678,7 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
 - 2026-10-30 23:15: DECIDED (Andrew): the sound pass moves into 0.1.9; voice
   (Vivox) stays in 0.1.10. The MacBook takes the sound pass after Andrew's
   five calls, in parallel with the perf pass on the PC.
+- 2026-10-30 23:20: DECIDED (Andrew): the MacBook profiles overnight (weaker
+  hardware, a minimum-spec baseline; a macOS player for profiling only),
+  after the five calls. The PC takes the sound pass after UX pass 4 part 3,
+  and repeats the perf measurements on Windows tomorrow for comparison.
