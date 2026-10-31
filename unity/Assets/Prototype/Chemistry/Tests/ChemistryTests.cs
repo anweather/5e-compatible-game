@@ -8,7 +8,7 @@ namespace Chem.Tests
 {
     /// <summary>
     /// Cell-chemistry port tests. Many mirror sandbox/test/sim.test.ts; the
-    /// golden tests compare against numbers produced by running the TS sandbox.
+    /// goldens were first produced by the TS sandbox (frozen 2026-10-31).
     /// </summary>
     public class ChemistryTests
     {
@@ -117,7 +117,7 @@ namespace Chem.Tests
             Assert.That(w.RngState, Is.EqualTo(1199730144u));
         }
 
-        // ---------- golden parity with the TS sandbox ----------
+        // ---------- goldens (first taken from the TS sandbox, frozen 2026-10-31) ----------
 
         static void Set(World w, int x, int y, string t) => w.At(x, y).T = t;
 
@@ -527,7 +527,7 @@ namespace Chem.Tests
             var cool = R.WithMods(new[] { ModPatch.Parse("{ \"terrain\": { \"thatch\": { \"name\": \"Thatch roof\", \"tags\": [\"roof\", \"flammable\"], \"flammability\": 0.6, \"fuel\": 18, \"heat\": 1, \"burnsTo\": \"rubble\" } } }") });
             int hot = Lit(R), plain = Lit(cool);
             Assert.That(hot, Is.GreaterThan(plain), $"hot thatch lit the logs {hot} times in 40, at heat 1 {plain}");
-            Assert.That($"{hot} {plain}", Is.EqualTo("32 23"), "the same in the sandbox");
+            Assert.That($"{hot} {plain}", Is.EqualTo("32 23"), "the golden");
 
             // The first of those runs where the logs caught: when the thatch was out, the logs lit, and they burnt out.
             var (thatchOut, logsLit, logsOut) = (-1, -1, -1);
@@ -563,7 +563,7 @@ namespace Chem.Tests
             Assert.That(R.Terrain["thatch"].Dampens, Is.EqualTo(0.5));
             int dry = ThatchCaught(0, 0), damp = ThatchCaught(int.MaxValue, 0);
             Assert.That(damp, Is.LessThan(dry), $"damp thatch caught {damp} times in 40, dry {dry}");
-            Assert.That($"{dry} {damp}", Is.EqualTo("21 10"), "the same in the sandbox");
+            Assert.That($"{dry} {damp}", Is.EqualTo("21 10"), "the golden");
             Assert.That(ThatchCaught(5, 10), Is.EqualTo(ThatchCaught(0, 10)), "once it has dried, it catches as dry thatch does");
         }
 
@@ -589,7 +589,7 @@ namespace Chem.Tests
             // docs/MATERIALS.md "Soaked burns poorly": caught damp, its fuel is scaled by 1 - soak.dampens too.
             int dry = ThatchBurnTicks(0), damp = ThatchBurnTicks(int.MaxValue);
             Assert.That(damp, Is.LessThan(dry), $"damp thatch burnt {damp} ticks, dry {dry}");
-            Assert.That($"{dry} {damp}", Is.EqualTo("18 9"), "the same in the sandbox");
+            Assert.That($"{dry} {damp}", Is.EqualTo("18 9"), "the golden");
         }
 
         // Metal 8 x 4, its left half under 2 water, run for ticks; and how many cells rusted through and log lines it gave.
@@ -614,7 +614,7 @@ namespace Chem.Tests
             Assert.That(lines, Is.InRange(1, rusted - 1), "a line a pass, not a line a cell");
             Assert.That(R.Terrain["metal"].Hardness == 0 && R.Terrain["rusted-metal"].Hardness > 0, "weaker: rusted metal digs, metal never does");
             Assert.That(R.Terrain["rusted-metal"].Has("conductive"), Is.False, "and it doesn't conduct");
-            Assert.That($"{rusted} {lines} {w.CellHash()}", Is.EqualTo("20 1 1dc2aae5"), "the same in the sandbox");
+            Assert.That($"{rusted} {lines} {w.CellHash()}", Is.EqualTo("20 1 1dc2aae5"), "the golden");
 
             var dry = new World(R, 8, 4, 1, "metal");
             Run(dry, 2400);
@@ -661,7 +661,7 @@ namespace Chem.Tests
             Assert.That(w.Cells.Count(c => c.Cover != null), Is.EqualTo(0), "with the oil used up, and no ash on the water");
             int water = w.Cells.Sum(c => c.Water);
             Assert.That(water, Is.InRange(1, 149), "the heat boiled some off (sim.fire.boilChance), but the water itself never burned");
-            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("19 19 147 e3e69588 2221874590"), "the same in the sandbox");
+            Assert.That($"{slick} {most} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("19 19 147 e3e69588 2221874590"), "the golden");
         }
 
         [Test]
@@ -687,7 +687,7 @@ namespace Chem.Tests
             Assert.That(g.Has("brittle") && !g.Burns && !g.Has("conductive"), "brittle; doesn't burn or conduct");
             Assert.That(new[] { "glow-ball-amber", "glow-ball-azure", "glow-ball-rose" }.All(id => R.Items[id].Material == "glass"));
             Run(w, 40);
-            Assert.That($"{glass} {w.CellHash()} {w.RngState}", Is.EqualTo("1 e8b4e694 1"), "the same in the sandbox");
+            Assert.That($"{glass} {w.CellHash()} {w.RngState}", Is.EqualTo("1 e8b4e694 1"), "the golden");
         }
 
         [Test]
@@ -713,7 +713,7 @@ namespace Chem.Tests
             Assert.That(steam, Is.GreaterThan(0), "the water hisses into steam");
             Assert.That(w.Log.Any(l => l.Text == "Water hisses into steam on the hot metal"));
             Assert.That(w.At(4, 2).Heat, Is.LessThan(98), "and cools it faster than time alone");
-            Assert.That($"{r.Hp} {steam} {w.At(4, 2).Heat} {w.CellHash()} {w.RngState}", Is.EqualTo("84 3 0 4f80a218 1639742223"), "the same in the sandbox");
+            Assert.That($"{r.Hp} {steam} {w.At(4, 2).Heat} {w.CellHash()} {w.RngState}", Is.EqualTo("84 3 0 4f80a218 1639742223"), "the golden");
         }
 
         [Test]
@@ -735,7 +735,7 @@ namespace Chem.Tests
             Run(w, 150);
             int steam = w.Cells.Sum(c => c.Gas == "steam" ? c.GasAmt : 0), water = w.Cells.Sum(c => c.Water);
             Assert.That(water, Is.GreaterThan(0), "it cooled back into water");
-            Assert.That($"{goblin.Hp} {hound.Hp} {steam} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("89 99 0 112 dc213318 2670964354"), "the same in the sandbox");
+            Assert.That($"{goblin.Hp} {hound.Hp} {steam} {water} {w.CellHash()} {w.RngState}", Is.EqualTo("89 99 0 112 dc213318 2670964354"), "the golden");
         }
 
         // A 9 x 5 metal field full of steam, (4, 2) left hot or not and the cells round it raised, run 60
@@ -772,7 +772,7 @@ namespace Chem.Tests
             Assert.That(far, Is.GreaterThan(0), "drifted away from it, it does");
             var (_, coldNear, _) = SteamByHeat(false);
             Assert.That(coldNear, Is.GreaterThan(0), "and with no heat, there too");
-            Assert.That($"{near} {far} {coldNear} {hot.CellHash()} {hot.RngState}", Is.EqualTo("0 77 2 62127840 3544326918"), "the same in the sandbox");
+            Assert.That($"{near} {far} {coldNear} {hot.CellHash()} {hot.RngState}", Is.EqualTo("0 77 2 62127840 3544326918"), "the golden");
         }
 
         [Test]
@@ -797,7 +797,7 @@ namespace Chem.Tests
             Run(w, 300);
             Assert.That(w.Cells.Count(c => c.T == "lava-pool"), Is.EqualTo(0), "the lava pool cools");
             Assert.That(w.Log.Any(l => l.Text == "The lava pool cools into rock"));
-            Assert.That($"{pool} {goblin.Hp} {hound.Hp} {w.CellHash()} {w.RngState}", Is.EqualTo("9 90 -1 d6bc3323 2450008921"), "the same in the sandbox");
+            Assert.That($"{pool} {goblin.Hp} {hound.Hp} {w.CellHash()} {w.RngState}", Is.EqualTo("9 90 -1 d6bc3323 2450008921"), "the golden");
         }
 
         [Test]
@@ -826,7 +826,7 @@ namespace Chem.Tests
             int rained = 0;
             for (int x = 14; x <= 18; x++) rained += w.At(x, 2).Water;
             Assert.That(rained, Is.GreaterThan(0), "the cloud rains on the cells under it");
-            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 9 ef434c7d 269346629"), "the same in the sandbox");
+            Assert.That($"{sand} {glass} {rained} {w.CellHash()} {w.RngState}", Is.EqualTo("8 8 9 ef434c7d 269346629"), "the golden");
         }
 
         [Test]
@@ -845,7 +845,7 @@ namespace Chem.Tests
             Assert.That(w.At(3, 2).Lit, Is.EqualTo(10800), "half way");
             Run(w, 10800);
             Assert.That(w.At(3, 2).Lit, Is.EqualTo(0), "and it fades");
-            Assert.That($"{half} {w.CellHash()} {w.RngState}", Is.EqualTo("53f7abc0 1e6d522 2668737540"), "the same in the sandbox");
+            Assert.That($"{half} {w.CellHash()} {w.RngState}", Is.EqualTo("53f7abc0 1e6d522 2668737540"), "the golden");
         }
 
         [Test]
@@ -870,7 +870,7 @@ namespace Chem.Tests
             Assert.That(w.At(6, 2).Fire, Is.GreaterThan(0), "and on downwind");
             Assert.That(w.At(10, 2).Heat, Is.EqualTo(120), "and kept the metal hot");
             Run(w, 20);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("94877252 97577195"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("94877252 97577195"), "the golden");
         }
 
         [Test]
@@ -894,7 +894,7 @@ namespace Chem.Tests
             }
             int dry = Caught(false), soaked = Caught(true);
             Assert.That(soaked, Is.LessThan(dry), $"wet it caught {soaked} times in 40, dry {dry}");
-            Assert.That($"{dry} {soaked}", Is.EqualTo("25 10"), "the same in the sandbox");
+            Assert.That($"{dry} {soaked}", Is.EqualTo("25 10"), "the golden");
         }
 
         [Test]
@@ -913,7 +913,7 @@ namespace Chem.Tests
         {
             // A whirlwind on a field with smoke off to one side, a goblin and a bone hound on its edge and grass
             // along its top ring; fire lit on the ring runs round it, the smoke and the creatures come in toward
-            // the middle, and after its ten seconds it's gone. Mirrors sandbox/test/terraform.test.ts.
+            // the middle, and after its ten seconds it's gone. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 15, 9, 4, "dirt");
             for (int x = 5; x <= 9; x++) w.At(x, 2).T = "grass";
             var gob = w.SpawnRaider("goblin", 5, 4, 10);
@@ -931,14 +931,14 @@ namespace Chem.Tests
             string mid = $"{w.CellHash()} {w.RngState} {gob.X},{gob.Y} {hound.X},{hound.Y}";
             Run(w, 30);
             Assert.That(w.Whirls, Is.Empty, "gone after its duration");
-            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("62e2a56e 3068262754 7,0 7,1 | ab58829b 901838356"), "the same in the sandbox");
+            Assert.That($"{mid} | {w.CellHash()} {w.RngState}", Is.EqualTo("62e2a56e 3068262754 7,0 7,1 | ab58829b 901838356"), "the golden");
         }
 
         [Test]
         public void ForgeHeatsAndTheMaterialDecides()
         {
             // docs/SPELL_COMBOS.md: sand to glass, mud to brick, metal hot, ice and snow melted, wet things dry,
-            // through the materials' bake and melt verbs. It lights nothing. Mirrors sandbox/test/terraform.test.ts.
+            // through the materials' bake and melt verbs. It lights nothing. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 24, 5, 4, "dirt");
             w.At(2, 2).T = "sand";
             w.At(6, 2).T = "mud";
@@ -963,14 +963,14 @@ namespace Chem.Tests
             Assert.That(gob.StatusOf("wet"), Is.EqualTo(0));
             Assert.That(R.Terrain["brick"].Hardness, Is.EqualTo(3));
             Run(w, 12);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1124f40e 3023719660"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("1124f40e 3023719660"), "the golden");
         }
 
         [Test]
         public void AGeyserBoilsThePondIntoAJetAndFizzlesOnDryGround()
         {
             // docs/SPELL_COMBOS.md: it acts on water already there. The pond boils into scalding steam and throws
-            // what swims there up; on dry ground it fizzles and says so. Mirrors sandbox/test/terraform.test.ts.
+            // what swims there up; on dry ground it fizzles and says so. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 12, 7, 5, "dirt");
             for (int y = 2; y <= 4; y++)
                 for (int x = 6; x <= 8; x++) w.At(x, y).Water = 3;
@@ -987,14 +987,14 @@ namespace Chem.Tests
             Assert.That(gob.StatusOf(World.ThrownStatus), Is.GreaterThan(0));
             Run(w, 12);
             Assert.That(gob.Hp, Is.LessThan(10), "the steam scalds it");
-            Assert.That($"{w.CellHash()} {w.RngState} {gob.Hp}", Is.EqualTo("4209bc06 3136449455 5"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState} {gob.Hp}", Is.EqualTo("4209bc06 3136449455 5"), "the golden");
         }
 
         [Test]
         public void AWaveRollsOutDousesKnocksBackAndLeavesMud()
         {
             // docs/SPELL_COMBOS.md: it travels over the ground the way it's cast, puts fires out, soaks and knocks
-            // creatures back, and leaves mud where it stops. Mirrors sandbox/test/terraform.test.ts.
+            // creatures back, and leaves mud where it stops. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 7, 6, "dirt");
             w.At(6, 3).T = "grass";
             w.Ignite(w.At(6, 3), 2);
@@ -1014,14 +1014,14 @@ namespace Chem.Tests
             foreach (int y in new[] { 2, 3, 4 }) Assert.That(w.At(8, y).T, Is.EqualTo("mud"), "mud where it stopped");
             Assert.That(w.At(7, 3).T, Is.EqualTo("dirt"));
             Run(w, 4);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("33cc6d1f 752141770"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("33cc6d1f 752141770"), "the golden");
         }
 
         [Test]
         public void AWaveRollsAlongASlantedAimAndLeavesWaterBehind()
         {
             // GitHub #11: aimed off the grid's four ways it rolls along the aim, a cell along the aim's longer part a
-            // step (like a slanted line), and its front sweeps the band with no gaps. Mirrors sandbox/test/terraform.test.ts.
+            // step (like a slanted line), and its front sweeps the band with no gaps. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 20, 16, 12, "dirt");
             w.At(6, 5).T = "grass";
             w.Ignite(w.At(6, 5), 2);
@@ -1036,7 +1036,7 @@ namespace Chem.Tests
             foreach (int y in new[] { 6, 7, 8 }) Assert.That(w.At(9, y).T, Is.EqualTo("mud"), "mud where it broke, off the straight line");
             Assert.That(w.At(9, 2).T, Is.EqualTo("dirt"), "it didn't go straight east");
             Run(w, 4);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("5331a509 2455825195"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("5331a509 2455825195"), "the golden");
         }
 
         [Test]
@@ -1044,7 +1044,7 @@ namespace Chem.Tests
         {
             // GitHub #15: water on a cell takes the heat first. A Geyser on a pool over mud, or Forge on water over sand,
             // boils the water and leaves the ground as it was; Forge on wet mud with the last of its water boiled off
-            // still bakes brick (ForgeHeatsAndTheMaterialDecides). Mirrors sandbox/test/terraform.test.ts.
+            // still bakes brick (ForgeHeatsAndTheMaterialDecides). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 5, 8, "dirt");
             for (int x = 1; x <= 5; x++)
                 for (int y = 1; y <= 3; y++)
@@ -1062,11 +1062,11 @@ namespace Chem.Tests
             Assert.That(w.At(10, 2).T, Is.EqualTo("sand"), "no glass under the water");
             Assert.That(w.At(10, 2).Heat, Is.EqualTo(0), "the water took the heat");
             Run(w, 12);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("cdece807 2305213897"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("cdece807 2305213897"), "the golden");
         }
 
 
-        // Shared with sandbox/test/terraform.test.ts.
+        // First taken from sandbox/test/terraform.test.ts (frozen 2026-10-31).
         static World SleetField()
         {
             var w = new World(R, 20, 20, 7);
@@ -1102,7 +1102,7 @@ namespace Chem.Tests
         {
             // docs/SPELL_COMBOS.md: water freezes into walkable ice, a wet creature freezes solid and the hits after
             // crack then shatter it, and dry ground frosts over, slippery. Ray of Frost is too weak to frost the
-            // ground. Mirrors sandbox/test/terraform.test.ts.
+            // ground. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 7, 7, "dirt");
             for (int y = 0; y <= 6; y++)
                 for (int x = 6; x <= 8; x++) w.At(x, y).Water = 3;
@@ -1124,7 +1124,7 @@ namespace Chem.Tests
             w.Cast("fire-bolt", 2, 3, 0);
             Assert.That(w.At(2, 3).Cover, Is.Null, "fire melts the frost");
             Run(w, 12);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4f8ffa48 1199730150"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4f8ffa48 1199730150"), "the golden");
         }
 
         [Test]
@@ -1132,7 +1132,7 @@ namespace Chem.Tests
         {
             // docs/SPELL_COMBOS.md: it rolls on over flat ground and turns down a slope, cracks what is brittle (the
             // first knock), knocks creatures over, leaves dust a spark sets off, and stops in water as a dam.
-            // Mirrors sandbox/test/terraform.test.ts.
+            // Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 10, 8, "dirt");
             w.At(5, 4).T = "glass";
             w.At(6, 4).Water = 2;
@@ -1158,14 +1158,14 @@ namespace Chem.Tests
             Assert.That(w.At(5, 4).Cracked, Is.GreaterThan(0), "the glass cracks");
             Assert.That(w.At(6, 4).Cracked, Is.GreaterThan(0), "and the ice");
             Assert.That(w.At(8, 6).T, Is.EqualTo("dirt"), "it rolled down the slope and dammed the stream");
-            Assert.That($"{w.CellHash()} {w.RngState} {gob.X},{gob.Y} {gob.Hp}", Is.EqualTo("9179f2b8 729412872 7,4 5"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState} {gob.X},{gob.Y} {gob.Hp}", Is.EqualTo("9179f2b8 729412872 7,4 5"), "the golden");
         }
 
         [Test]
         public void ARollingBoulderRollsAlongASlantedAimAndThenDownhill()
         {
             // GitHub #21: aimed off the grid's four ways it rolls along the aim like the wave, and a slope to its side
-            // turns it, then it keeps to the new way. Saved mid-roll it goes on the same. Mirrors sandbox/test/terraform.test.ts.
+            // turns it, then it keeps to the new way. Saved mid-roll it goes on the same. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 18, 14, 8, "dirt");
             w.At(5, 4).T = "glass";
             foreach (int y in new[] { 6, 7, 8, 9, 10 }) w.At(6, y).Height = -1;
@@ -1186,7 +1186,7 @@ namespace Chem.Tests
             Run(w, 20);
             Assert.That(w.Boulders, Is.Empty);
             Assert.That(w.At(3, 2).Gas, Is.Not.EqualTo("dust"), "no trail along the grid way it wasn't aimed");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c5a8709f 3377061646"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c5a8709f 3377061646"), "the golden");
         }
 
         [Test]
@@ -1211,14 +1211,14 @@ namespace Chem.Tests
             Assert.That(w.At(3, 3).T, Is.EqualTo("rubble"), "roots crack the stone wall");
             Assert.That(w.At(9, 3).T, Is.EqualTo("rock"));
             Assert.That(w.At(5, 3).Cover, Is.Null, "the vines rot away");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f70d280c 1696107128"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("f70d280c 1696107128"), "the golden");
         }
 
         [Test]
         public void WallOfStoneMakesStepsOverWaterRampsWhenHeldAndOnlyHardBlowsBreakIt()
         {
             // docs/SPELL_COMBOS.md: a wall, stepping stones where it crosses water, a ramp held at the ground; rock is
-            // hard, so a Fireball doesn't dig it and a Falling Star does. Mirrors sandbox/test/terraform.test.ts.
+            // hard, so a Fireball doesn't dig it and a Falling Star does. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 8, 10, "dirt");
             for (int y = 0; y <= 7; y++)
                 for (int x = 6; x <= 7; x++) w.At(x, y).Water = 3;
@@ -1237,28 +1237,28 @@ namespace Chem.Tests
             Run(w, 6);
             Assert.That(w.At(3, 3).Height, Is.LessThan(3), "a falling star breaks it");
             Run(w, 6);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4432219c 1218213550"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("4432219c 1218213550"), "the golden");
         }
 
         [Test]
         public void ADustFlashShovesARaiderTheSameAsTheSandbox()
         {
             // The flash shoves what stands in it away from where it caught: a raider too, force less its mass plus 1 cells,
-            // in both engines (it was the sandbox's alone). Mirrors sandbox/test/terraform.test.ts.
+            // in both engines (it was the sandbox's alone). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 10, 5, 11, "dirt");
             for (int x = 3; x <= 5; x++) w.AddGas(w.At(x, 2), "dust", 3);
             var hound = w.SpawnRaider("bone-hound", 5, 2, 6);
             w.Apply(3, 2, "fire");
             Assert.That((hound.X, hound.Y), Is.EqualTo((7, 2)), "shoved two cells away from the spark");
             Run(w, 6);
-            Assert.That($"{w.CellHash()} {w.RngState} {hound.X},{hound.Y} {hound.Hp}", Is.EqualTo("31a36a85 3279484455 7,2 6"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState} {hound.X},{hound.Y} {hound.Hp}", Is.EqualTo("31a36a85 3279484455 7,2 6"), "the golden");
         }
 
         [Test]
         public void LightningJumpsToAPuddleAndItsChargeOpensTheGate()
         {
             // docs/SPELL_COMBOS.md: the bolt jumps to the nearest water or metal in range instead of flying straight, runs
-            // through it, and a coil it reaches powers the gate (machines.json). Mirrors sandbox/test/terraform.test.ts.
+            // through it, and a coil it reaches powers the gate (machines.json). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 7, 12, "dirt");
             for (int x = 4; x <= 6; x++) w.At(x, 5).Water = 2;
             w.At(7, 5).T = "coil";
@@ -1277,14 +1277,14 @@ namespace Chem.Tests
             dry.At(10, 3).T = "sand";
             dry.Cast("lightning-bolt", 2, 3, 1);
             Assert.That(dry.At(10, 3).T, Is.EqualTo("glass"), "with nothing to jump to it flies straight");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c4741e7f 12"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c4741e7f 12"), "the golden");
         }
 
         [Test]
         public void RainCloudsGreenAshLightningMakesAStormAndColdMakesSnow()
         {
             // docs/SPELL_COMBOS.md: rain waters plants (burnt ground greens), lightning into a cloud makes a storm cloud
-            // that keeps striking, cold turns one to snow. Mirrors sandbox/test/terraform.test.ts.
+            // that keeps striking, cold turns one to snow. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 7, 13, "dirt");
             for (int y = 1; y <= 5; y++)
                 for (int x = 1; x <= 5; x++) w.At(x, y).Cover = "ash";
@@ -1297,7 +1297,7 @@ namespace Chem.Tests
             Run(w, 120);
             Assert.That(w.Cells.Count(c => c.T == "sprouts" || c.T == "grass"), Is.GreaterThan(0), "the rain greens the ash");
             Assert.That(w.Cells.Count(c => c.Cover == "snow"), Is.GreaterThan(0), "the snow cloud snows");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("788f5f20 1615770602"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("788f5f20 1615770602"), "the golden");
         }
 
         [Test]
@@ -1327,14 +1327,14 @@ namespace Chem.Tests
             Assert.That(w.At(3, 5).Cover, Is.Null);
             Assert.That(w.At(9, 5).Cover, Is.EqualTo("oil"), "driven across the pond");
             Run(w, 6);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7716f25c 14"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7716f25c 14"), "the golden");
         }
 
         [Test]
         public void LavaRunsDownhillLeavingACrustAndSetsAtOnceInWater()
         {
             // docs/SPELL_COMBOS.md: Lava Pool runs downhill like water, crusts over so it can be walked on, and turns to
-            // rock at once in water (materials.json run and quench). Mirrors sandbox/test/terraform.test.ts.
+            // rock at once in water (materials.json run and quench). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 12, 7, 15, "dirt");
             w.At(5, 3).Height = -1;
             w.At(6, 3).Height = -2;
@@ -1350,14 +1350,14 @@ namespace Chem.Tests
             Assert.That(w.At(7, 3).T, Is.EqualTo("rock"), "and sets at once in the water");
             Assert.That(w.Log.Any(l => l.Text == "The lava hisses and sets into rock"));
             Run(w, 6);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("811d9fa2 2967354774"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("811d9fa2 2967354774"), "the golden");
         }
 
         [Test]
         public void ScaldingSteamRustsMetalFaster()
         {
             // docs/SPELL_COMBOS.md: Scalding Steam rusts metal faster: each tick steam hangs over metal it adds 4 to its rust,
-            // on top of being wet (materials.json gases.steam.rusts). Mirrors sandbox/test/terraform.test.ts.
+            // on top of being wet (materials.json gases.steam.rusts). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 8, 5, 16, "dirt");
             w.At(2, 2).T = "metal";
             w.At(2, 2).Water = 1;
@@ -1367,14 +1367,14 @@ namespace Chem.Tests
             Run(w, 8);
             Assert.That(w.At(5, 2).Rust, Is.GreaterThan(2 * w.At(2, 2).Rust), "faster under steam");
             Assert.That(w.At(2, 2).Rust, Is.GreaterThan(0));
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("3bf05b30 2775531184"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("3bf05b30 2775531184"), "the golden");
         }
 
         [Test]
         public void CreateWaterWatersBurntGround()
         {
             // docs/SPELL_COMBOS.md: Create Water waters plants: on ash over soil, green shoots come up (reactions.json
-            // water-ash, the same grow as Plant Growth on ash). Mirrors sandbox/test/terraform.test.ts.
+            // water-ash, the same grow as Plant Growth on ash). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 8, 6, 17, "dirt");
             for (int y = 1; y <= 4; y++)
                 for (int x = 1; x <= 4; x++) w.At(x, y).Cover = "ash";
@@ -1384,7 +1384,7 @@ namespace Chem.Tests
             Run(w, 80);
             Assert.That(w.At(2, 2).T, Is.EqualTo("sprouts").Or.EqualTo("grass"), "green shoots in the ash");
             Assert.That(w.At(4, 4).Cover, Is.EqualTo("ash"), "only where the water landed");
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("49ebceb 3599190446"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("49ebceb 3599190446"), "the golden");
         }
 
         [Test]
@@ -1403,7 +1403,7 @@ namespace Chem.Tests
         public void AFallingStarMarksItsTargetThenStrikes()
         {
             // docs/SPELL_COMBOS.md: a mark for a second (6 ticks), then a crater with a little lava in it, burning
-            // rock round it, snow and ice melted and water flashed to steam. Mirrors sandbox/test/terraform.test.ts.
+            // rock round it, snow and ice melted and water flashed to steam. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 15, 9, 6, "dirt");
             w.At(8, 4).Cover = "snow";
             w.At(7, 3).Water = 2;
@@ -1430,7 +1430,7 @@ namespace Chem.Tests
             Assert.That(w.At(6, 4).Gas, Is.EqualTo("steam"));
             Assert.That(w.Cells.Count(c => c.Cover == "embers" && c.Fire > 0), Is.GreaterThan(0));
             Run(w, 12);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c91f14e2 657895373"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("c91f14e2 657895373"), "the golden");
         }
 
         [Test]
@@ -1439,7 +1439,7 @@ namespace Chem.Tests
             // docs/SPELL_COMBOS.md: Flood fills two pits (and in the sandbox shoves a crate along; pushing
             // things is the view's here); Mud churns a patch of grass to
             // mud; Molten Boulder blasts a crater with lava in it; Dust Storm raises a cloud of dust that hides
-            // what's behind it. Mirrors sandbox/test/terraform.test.ts.
+            // what's behind it. Ported from sandbox/test/terraform.test.ts.
             foreach (var (combo, spell) in new[] { ("water+earth", "mud") })
                 Assert.That(R.Combos.Combo(combo).Spell, Is.EqualTo(spell), combo);
             var w = new World(R, 20, 12, 9, "dirt");
@@ -1455,7 +1455,7 @@ namespace Chem.Tests
             Assert.That(w.At(14, 3).T, Is.EqualTo("lava"));
             Assert.That(w.At(14, 9).Gas, Is.EqualTo("dust"));
             Run(w, 12);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7a38bb69 939719861"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7a38bb69 939719861"), "the golden");
         }
 
         [Test]
@@ -1463,7 +1463,7 @@ namespace Chem.Tests
         {
             // docs/MATERIALS.md "Creatures as flesh": a goblin (flesh), a bone hound (bone) and an ash crab
             // (chitin) in fire, then water, then cold. Flesh burns, soaks and freezes; bone doesn't burn;
-            // chitin doesn't freeze (it stays wet). Mirrors sandbox/test/terraform.test.ts.
+            // chitin doesn't freeze (it stays wet). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 16, 7, 5, "dirt");
             var them = new[] { w.SpawnRaider("goblin", 3, 3, 10), w.SpawnRaider("bone-hound", 7, 3, 6), w.SpawnRaider("ash-crab", 11, 3, 9) };
             var states = new List<string>();
@@ -1473,7 +1473,7 @@ namespace Chem.Tests
                 states.Add(string.Join(" ", them.Select(r => $"{r.StatusOf("burning")},{r.StatusOf("wet")},{r.StatusOf("frozen")}")));
             }
             Assert.That(states, Is.EqualTo(new[] { "9,0,0 0,0,0 9,0,0", "0,60,0 0,60,0 0,60,0", "0,0,30 0,0,30 0,60,0" }));
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7cbe626d 5"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("7cbe626d 5"), "the golden");
             var ex = Assert.Throws<ModException>(() => RuleSet.Plain(R).WithMods(new[] { new ActiveMod("bad", "{ \"reactions\": { \"addEntity\": [ { \"id\": \"e-odd\", \"element\": \"fire\", \"if\": { \"verb\": \"melt\" }, \"do\": [{ \"statusOf\": \"glow\" }] } ] } }") }));
             Assert.That(ex.Errors, Is.EquivalentTo(new[] { "rule e-odd: statusOf must be burn, freeze or soak", "rule e-odd: verb must be burn, freeze or soak" }));
         }
@@ -1483,7 +1483,7 @@ namespace Chem.Tests
         {
             // docs/MATERIALS.md soak.leaves, soak.dries: shallow water over dirt, grass and rock; the dirt turns
             // to mud as it soaks in (grass and rock don't), fire on the mud is smothered (fire-mud) even where
-            // oil lies, and once it's dry the mud is dirt again. Mirrors sandbox/test/terraform.test.ts (which
+            // oil lies, and once it's dry the mud is dirt again. Ported from sandbox/test/terraform.test.ts (which
             // also walks a goblin into it: Thorns snags it for 1/speed - 1 of a second).
             Assert.That(R.Terrain["mud"].Speed, Is.EqualTo(0.5));
             var w = new World(R, 10, 5, 1, "dirt");
@@ -1498,14 +1498,14 @@ namespace Chem.Tests
             string wet = w.CellHash();
             Run(w, 800);
             Assert.That(new[] { 3, 4, 5 }.Select(x => w.At(x, 2).T), Is.EqualTo(new[] { "dirt", "dirt", "dirt" }), "dried back to dirt");
-            Assert.That($"{wet} {w.CellHash()} {w.RngState}", Is.EqualTo("f44639dc 668f5350 1"), "the same in the sandbox");
+            Assert.That($"{wet} {w.CellHash()} {w.RngState}", Is.EqualTo("f44639dc 668f5350 1"), "the golden");
         }
 
         [Test]
         public void AcidSplashEatsBramblesThornsAndOilAndBurnsAGoblin()
         {
             // docs/MATERIALS.md dissolve: a row of brambles, thorns, grease and oil round a goblin; Acid Splash
-            // on the goblin eats them all (dissolve.by acid) and hurts it. Mirrors sandbox/test/terraform.test.ts.
+            // on the goblin eats them all (dissolve.by acid) and hurts it. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 12, 9, 3, "dirt");
             for (int x = 5; x <= 7; x++) w.At(x, 3).T = "brush";
             w.At(5, 4).Cover = "grease";
@@ -1517,7 +1517,7 @@ namespace Chem.Tests
             for (int x = 5; x <= 7; x++) Assert.That(w.At(x, 3).T, Is.EqualTo("dirt"), $"brambles at {x} eaten");
             Assert.That(new[] { w.At(5, 4).Cover, w.At(7, 4).Cover, w.At(6, 5).Cover, w.At(4, 4).Cover }, Is.EqualTo(new[] { null, null, null, "oil" }));
             Assert.That(w.Log.Any(l => l.Text == "The acid eats the brambles away"));
-            Assert.That($"{w.CellHash()} {w.RngState} {gob.Hp}", Is.EqualTo("d9c38f7d 1831565816 5"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState} {gob.Hp}", Is.EqualTo("d9c38f7d 1831565816 5"), "the golden");
             var ex = Assert.Throws<ModException>(() => RuleSet.Plain(R).WithMods(new[] { new ActiveMod("bad", "{ \"covers\": { \"slime\": { \"name\": \"Slime\", \"tags\": [], \"dissolve\": { \"by\": \"vinegar\", \"leaves\": \"goo\" } } } }") }));
             Assert.That(ex.Errors, Is.EqualTo(new[] { "cover slime: dissolves by unknown element vinegar", "cover slime: dissolvesTo goo unknown" }));
         }
@@ -1559,7 +1559,7 @@ namespace Chem.Tests
         {
             // docs/MATERIALS.md shatter.cracks: glass ground, a window pane and ice take two hits. The first
             // cracks them (a warning if a creature stands on the ice), a second in the same tick is the same hit,
-            // the next shatters them, and a crack goes with its ice. Mirrors sandbox/test/terraform.test.ts.
+            // the next shatters them, and a crack goes with its ice. Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 14, 7, 3, "dirt");
             w.At(2, 3).T = "glass";
             w.At(5, 3).T = "pane";
@@ -1591,7 +1591,7 @@ namespace Chem.Tests
             Run(w, 1);
             Assert.That(w.At(12, 3).Cracked, Is.EqualTo(0), "a crack goes with its ice");
             Run(w, 12);
-            Assert.That($"{cracked} {w.CellHash()} {w.RngState}", Is.EqualTo("17d9616c 4fcd46bc 1831565816"), "the same in the sandbox");
+            Assert.That($"{cracked} {w.CellHash()} {w.RngState}", Is.EqualTo("17d9616c 4fcd46bc 1831565816"), "the golden");
         }
 
         [Test]
@@ -1628,7 +1628,7 @@ namespace Chem.Tests
             Assert.That(w.Log.Any(l => l.Text == "The window pane shatters"));
             Assert.That(w.IsBlocking(w.At(5, 3)), Is.False, "an open gap");
             Assert.That(R.Terrain["pane"].Has("blocking") && !R.Terrain["pane"].Burns && !R.Terrain["pane"].Conducts);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("e425b302 3234871980"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("e425b302 3234871980"), "the golden");
         }
 
         // Over 40 seeds, a goblin (wet or not) hit by Ray of Frost, then Shocking Grasp: how many are gone,
@@ -1686,7 +1686,7 @@ namespace Chem.Tests
             Assert.That(10 - swimmer.Hp, Is.EqualTo(zap * 2), "the swimmer is wet, so twice");
             Assert.That(10 - wetBank.Hp, Is.EqualTo(zap * 2), "wet beside the water: shocked too");
             Assert.That(dryBank.Hp, Is.EqualTo(10), "dry on the bank: not");
-            Assert.That($"{w.CellHash()} {w.RngState} {swimmer.Hp} {wetBank.Hp} {dryBank.Hp}", Is.EqualTo("d2510429 3 4 4 10"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState} {swimmer.Hp} {wetBank.Hp} {dryBank.Hp}", Is.EqualTo("d2510429 3 4 4 10"), "the golden");
             Assert.That(ShockWater(FleshChainsWet("false")).wetBank.Hp, Is.EqualTo(10), "without chainsWet the bank is safe");
             var ex = Assert.Throws<ModException>(() => RuleSet.Plain(R).WithMods(new[] { new ActiveMod("bad", "{ \"terrain\": { \"flesh\": { \"name\": \"Flesh\", \"tags\": [], \"conduct\": { \"chainsWet\": 2 } } } }") }));
             Assert.That(ex.Errors, Is.EqualTo(new[] { "terrain flesh: conduct.chainsWet must be true or false" }));
@@ -1698,7 +1698,7 @@ namespace Chem.Tests
             // docs/MATERIALS.md "Frozen things shatter": a wet goblin freezes solid under Ray of Frost, and
             // of the sparks that follow (any hurt but cold) the first cracks it and the second shatters it; a dry
             // one only takes the damage.
-            Assert.That($"{FrostThenSpark(true)} | {FrostThenSpark(false)}", Is.EqualTo("40 744566284 | 33 2136120018"), "the same in the sandbox");
+            Assert.That($"{FrostThenSpark(true)} | {FrostThenSpark(false)}", Is.EqualTo("40 744566284 | 33 2136120018"), "the golden");
             var w = new World(R, 20, 9, 1, "dirt");
             var r = w.SpawnRaider("goblin", 8, 4, 10);
             r.Status["wet"] = 60;

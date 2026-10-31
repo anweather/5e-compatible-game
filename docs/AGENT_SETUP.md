@@ -34,7 +34,7 @@ Andrew reaches any session from his phone with Remote Control.
 | **Gameplay, World** | Max | PC, with the host Unity Editor | Anything that needs a picture or the GPU: views, effects, probes, screenshots, clips, performance runs. |
 | **Build** | Max | Mac | macOS release builds and performance settings. |
 | **Pro coordinator** | Pro | PC, Git Bash | Runs the Pro workers: schedules tasks, reviews, merges with `land.sh`. |
-| **Workers `w1`–`w4`** | Pro (w1, w2), Max (w3, w4) | Hyper-V VMs | Headless work, one task per boot: core and sandbox code with tests, in both engines, on one branch. |
+| **Workers `w1`–`w4`** | Pro (w1, w2), Max (w3, w4) | Hyper-V VMs | Headless work, one task per boot: core code with tests (the sandbox is frozen), on one branch. |
 
 ## How the two accounts talk
 

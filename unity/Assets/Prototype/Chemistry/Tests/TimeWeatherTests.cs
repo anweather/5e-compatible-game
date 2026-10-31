@@ -6,7 +6,7 @@ namespace Chem.Tests
     /// <summary>
     /// The Time &amp; Weather spells (World.Time.cs, rules/spells.json): Hasten Time runs the day clock
     /// faster, Control Weather holds a weather, Fog Cloud lays fog that hides what's behind it.
-    /// Mirrors sandbox/test/time.test.ts; the golden hash comes from running the same world there.
+    /// Ported from sandbox/test/time.test.ts; the golden hash comes from running the same world there.
     /// </summary>
     public class TimeWeatherTests
     {

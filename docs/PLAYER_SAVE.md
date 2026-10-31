@@ -91,9 +91,8 @@ writes it to their own player save (from the `ComboFired` with
 a grimoire was earned. That is fine for friends' worlds. If a world wants
 it, a host setting could ignore brought progress and start everyone fresh.
 
-The new command is core state, so it goes in both engines: the C# command
-and `World` apply, and the sandbox's combos (`sandbox/src/combos.ts`), with
-a shared golden.
+The new command is core state: the C# command and `World` apply, with a
+golden (the sandbox is frozen, J-042).
 
 ## When it's written, and crash safety
 

@@ -36,7 +36,7 @@ const options = {
 if (watch) {
   const ctx = await esbuild.context(options);
   await ctx.watch();
-  console.log("watching src/ and ../rules/ ...");
+  console.log("watching src/ and rules-frozen/ ...");
 } else {
   await esbuild.build(options);
 }

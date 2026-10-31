@@ -9,7 +9,7 @@ import { applyElement } from "../src/react.ts";
 import { castSpell } from "../src/actions.ts";
 import { dayOf, kindOf, minuteOfDay, minutesAt, weatherAt } from "../src/sky.ts";
 import { type World, cellAt, createWorld, hashWorld, isSlippery, lineOfSight } from "../src/world.ts";
-import stormSeason from "../../rules/mods/storm-season.json" with { type: "json" };
+import stormSeason from "../rules-frozen/mods/storm-season.json" with { type: "json" };
 
 const run = (w: World, ticks: number) => { for (let i = 0; i < ticks; i++) step(w); };
 

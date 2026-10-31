@@ -16,7 +16,7 @@ namespace Chem.Tests
         static string WorldDir() => Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "world");
 
         // A little course, run east to west: the gate, a lava pit (water and air), a Misty Step booth, the bell.
-        // The same text is in sandbox/test/course.test.ts.
+        // The same text was in sandbox/test/course.test.ts (frozen 2026-10-31).
         const string Little = @"{
             ""name"": ""The little gauntlet"", ""area"": [18, 0, 54, 11], ""gate"": [50, 2, 52, 8], ""bell"": [20, 2, 22, 8],
             ""booths"": [
@@ -35,7 +35,7 @@ namespace Chem.Tests
         [Test]
         public void ColdCrustsLavaThatCracksBackFireThawsAnIceWallIntoASlideAndAVentLifts()
         {
-            // Mirrors sandbox/test/course.test.ts.
+            // Ported from sandbox/test/course.test.ts.
             var w = new World(R, 24, 8, 3, "dirt");
             for (int x = 3; x <= 7; x++) w.At(x, 3).T = "lava";
             for (int y = 2; y <= 4; y++)
@@ -63,13 +63,13 @@ namespace Chem.Tests
             Assert.That(w.LiftAt(20, 3), Is.EqualTo(6));
             Assert.That(w.LiftAt(19, 3), Is.EqualTo(0));
             Assert.That(w.LiftAt(-1, 3), Is.EqualTo(0));
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("a11f39a 3"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("a11f39a 3"), "the golden");
         }
 
         [Test]
         public void ZonesSmotherWhatTheyDontAllowAndTheClockRunsGateToBellWithCheckpoints()
         {
-            // Mirrors sandbox/test/course.test.ts.
+            // Ported from sandbox/test/course.test.ts.
             var w = LittleCourse();
             w.Cast("fireball", 44, 5, 1);
             Assert.That(Last(w), Is.EqualTo("The lava pit's charm smothers your Fireball"));
@@ -107,7 +107,7 @@ namespace Chem.Tests
             Run(w, 150);
             w.ApplyCourse(new CourseCommand("ann", 20, 3));
             Assert.That(Last(w), Is.EqualTo("ann rings the bell in 25.0 s (best 20.0 s)"));
-            Assert.That($"{w.CourseText()}{w.ZoneText()} {w.CourseHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|rann:-1:-1:120:150|rbob:-1:-1:0:0|zlava-pit:40:0:49:11:water,air:|zmisty:30:0:39:11::misty-step e965d3a4 c036fca2 3"), "the same in the sandbox");
+            Assert.That($"{w.CourseText()}{w.ZoneText()} {w.CourseHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|rann:-1:-1:120:150|rbob:-1:-1:0:0|zlava-pit:40:0:49:11:water,air:|zmisty:30:0:39:11::misty-step e965d3a4 c036fca2 3"), "the golden");
         }
 
         [Test]

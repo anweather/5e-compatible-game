@@ -75,7 +75,7 @@ namespace Chem.Tests
         public void TwoLinkedPuzzlesDontOpenEachOther()
         {
             // A coil linked to its gate (World.LinkGate) opens that gate alone, and no gate no one linked; a coil no one
-            // linked opens only the gates no one linked. Mirrors sandbox/test/machines.test.ts, with its golden.
+            // linked opens only the gates no one linked. Ported from sandbox/test/machines.test.ts, with its golden.
             var w = new World(R, 20, 9, 12, "dirt");
             w.At(4, 1).T = "coil";
             w.At(9, 1).T = "gate";
@@ -110,7 +110,7 @@ namespace Chem.Tests
             Assert.That(w.At(9, 1).T, Is.EqualTo("gate"), "A's shuts once its coil's hold runs out");
             Assert.That(w.At(16, 7).T, Is.EqualTo("gate"));
             Assert.That(w.Log.Any(l => l.Text == "The lightning coil falls quiet and its gate slams shut"));
-            Assert.That($"{w.CellHash()} {w.RngState} {back.CellHash()}", Is.EqualTo("390cf655 12 82311aad"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState} {back.CellHash()}", Is.EqualTo("390cf655 12 82311aad"), "the golden");
         }
 
         [Test]

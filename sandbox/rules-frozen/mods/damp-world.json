@@ -1,0 +1,7 @@
+{
+  "title": "Damp world",
+  "idea": "Everything is soaked: fire struggles to spread, smokes a lot, and dies out within a few squares. (fadeCells is read by the Unity game; the web sandbox has no fading and ignores it.)",
+  "patch": {
+    "sim": { "fire": { "spreadChance": 0.15, "heatChance": 0.01, "smokeChance": 0.5, "fadeCells": 6 } }
+  }
+}

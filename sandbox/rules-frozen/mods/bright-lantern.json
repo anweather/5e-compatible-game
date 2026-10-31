@@ -1,0 +1,11 @@
+{
+  "title": "Bright lantern",
+  "idea": "The bullseye lantern throws its beam twice as far and smashes into a wider pool of burning oil. (Items are read by the Unity game; the web sandbox carries and checks them.)",
+  "patch": {
+    "items": {
+      "bullseye-lantern": { "name": "Bullseye lantern", "mass": 0.9, "use": "light",
+        "light": { "bright": 120, "dim": 120, "color": "#ffe3b8", "cone": 53.13 },
+        "breaks": { "speed": 8, "spill": { "cover": "oil", "radius": 1, "fire": 3 } } }
+    }
+  }
+}

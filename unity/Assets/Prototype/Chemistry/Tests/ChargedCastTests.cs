@@ -1,5 +1,5 @@
 // Holding the last element to charge a cast by elements (docs/SPELL_COMBOS.md).
-// The goldens are shared with sandbox/test/charged.test.ts.
+// The goldens were first taken from sandbox/test/charged.test.ts (frozen 2026-10-31).
 using System.Linq;
 using NUnit.Framework;
 
@@ -315,7 +315,7 @@ namespace Chem.Tests
             Assert.That(Saplings(World.MaxCharge), Is.GreaterThan(5));
         }
 
-        // The goldens: the same steps as sandbox/test/charged.test.ts give the same text and hashes.
+        // The goldens (first taken from sandbox/test/charged.test.ts, frozen 2026-10-31).
 
         [Test]
         public void GoldenChargedPlantGrowth()

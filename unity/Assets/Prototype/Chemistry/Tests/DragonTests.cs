@@ -7,8 +7,8 @@ using NUnit.Framework;
 namespace Chem.Tests
 {
     /// <summary>
-    /// The Dragon's rules (World.Dragon.cs, docs/BACKLOG.md 26). The golden is shared with
-    /// sandbox/test/dragon.test.ts; the save, the inactive chunks and the timing are C# only.
+    /// The Dragon's rules (World.Dragon.cs, docs/BACKLOG.md 26). The golden was first taken from
+    /// sandbox/test/dragon.test.ts (frozen 2026-10-31); the save, the inactive chunks and the timing are C# only.
     /// </summary>
     public class DragonTests
     {
@@ -539,7 +539,7 @@ namespace Chem.Tests
         [Test]
         public void AFlightPutsTheCourseBackAndKeepsItsZonesAndTimes()
         {
-            // Mirrors sandbox/test/dragon.test.ts.
+            // Ported from sandbox/test/dragon.test.ts.
             var w = new World(R, 60, 12, 3, "dirt");
             for (int x = 42; x <= 46; x++) w.At(x, 5).T = "lava";
             w.SetCourse(CourseLayout.FromJson(@"{

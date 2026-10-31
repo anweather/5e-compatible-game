@@ -7,7 +7,7 @@ namespace Chem.Tests
 {
     /// <summary>
     /// The clock and the weather (Sky.cs) and what the weather does to cells (World.Weather.cs).
-    /// Mirrors sandbox/test/weather.test.ts; the golden numbers come from running the same worlds there.
+    /// Ported from sandbox/test/weather.test.ts; the golden numbers come from running the same worlds there.
     /// </summary>
     public class WeatherTests
     {

@@ -181,7 +181,7 @@ test("every example patch in docs/MODDING.md passes the engine's checks", async 
 test("every example mod in rules/mods passes the engine's checks", async () => {
   const { readFile, readdir } = await import("node:fs/promises");
   const { composeRules, validateRules } = await import("../src/rules.ts");
-  const dir = new URL("../../rules/mods/", import.meta.url);
+  const dir = new URL("../rules-frozen/mods/", import.meta.url);
   const files = (await readdir(dir)).filter((f) => f.endsWith(".json"));
   assert.ok(files.length >= 3, "found the examples");
   for (const f of files) {
