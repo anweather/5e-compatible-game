@@ -40,6 +40,8 @@ test("the held variant is only at full charge", () => {
   assert.equal(spellAt(wall, 2, 3), "wall-of-stone");
   assert.equal(spellAt(wall, 3, 3), "stone-ramp");
   assert.equal(spellAt(wall, 1, 1), "wall-of-stone", "a spell that can't charge has no held form");
+  assert.equal(spellAt(comboById("water+air")!, 2, 3), "frost");
+  assert.equal(spellAt(comboById("water+air")!, 3, 3), "sleet-storm");
   assert.equal(spellAt(comboById("fire+fire")!, 3, 3), "fireball", "and most combos have none");
 });
 
@@ -233,6 +235,25 @@ test("golden: held Stone Ramp", () => {
   castSpell(w, f.spell, 4, 6, 1, undefined, f.charge);
   run(w, 2);
   assert.equal(`${castHash(w)} ${cellHash(w)} ${w.rng}`, "cdeed8e1 9aa186c6 7");
+});
+
+// Frost held to full charge glazes the field Sleet Storm does (terraform.test.ts's sleetField ground).
+test("golden: Frost held is Sleet Storm", () => {
+  const w = createWorld(20, 20, 7);
+  for (let y = 3; y <= 6; y++) cellAt(w, 5, y)!.t = "grass";
+  cellAt(w, 7, 8)!.water = 8;
+  cellAt(w, 9, 9)!.fire = 3;
+  cellAt(w, 9, 9)!.fuel = 4;
+  const f = charged(w, "water+air", 3);
+  assert.deepEqual([f.spell, f.name], ["sleet-storm", "Frost"]);
+  castSpell(w, f.spell, 8, 8, 1, undefined, f.charge);
+  const glazed = w.cells.filter((c) => c.cover === "frost").length;
+  assert.ok(glazed > 200, `${glazed} cells glazed, wider than a tap's`);
+  assert.equal(cellAt(w, 7, 8)!.frozen, true);
+  assert.equal(cellAt(w, 9, 9)!.fire, 0);
+  assert.equal(charged(createWorld(20, 20, 7), "water+air", MAX_CHARGE - 1).spell, "frost", "a part charge stays Frost");
+  run(w, 4);
+  assert.equal(`${castHash(w)} ${cellHash(w)} ${w.rng}`, "bdd3d4c6 20520162 1511859835");
 });
 
 test("golden: Raise Earth held", () => {
