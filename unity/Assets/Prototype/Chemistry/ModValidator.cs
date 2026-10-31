@@ -1,19 +1,21 @@
 // Checks a mod before anyone switches it on (docs/RULES_MCP.md, ADR 0013): the
 // patch's shape (ModPatch.Parse), its references and numbers (Rules.WithMods),
-// then what those don't cover: the design rules, determinism and the budgets
-// in rules/budgets.json. The rules MCP server (core/Rules.Mcp) calls it; the
+// then what those don't cover: the design rules, determinism, the budgets in
+// rules/budgets.json and the looks (every new thing names a family of
+// rules/looks.json the view draws). The rules MCP server (core/Rules.Mcp) calls it; the
 // game can too. Every problem is one plain sentence in the glossary's words.
 // C# only: the sandbox has no counterpart yet.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
+using System.IO;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
 {
     /// <summary>Which of validate's checks a problem comes from.</summary>
-    public enum ModCheck { Shape, References, Design, Determinism, Budget }
+    public enum ModCheck { Shape, References, Design, Determinism, Budget, Looks }
 
     /// <summary>One problem with a mod: the check that found it and one sentence saying what to fix.</summary>
     public readonly struct ModProblem
@@ -37,7 +39,18 @@ namespace Chem
 
         internal JObject Json { get; }
 
+        /// <summary>The look and effect families a mod's new things may name (rules/looks.json); null skips that check.</summary>
+        public LookFamilies Looks { get; private set; }
+
         public static ModBudgets Parse(string json) => new ModBudgets(JObject.Parse(json));
+
+        /// <summary>rules/budgets.json with the family list of rules/looks.json: all a peer checks a mod against.</summary>
+        public static ModBudgets Load(string rulesDir)
+        {
+            var budgets = Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
+            budgets.Looks = LookFamilies.Load(rulesDir);
+            return budgets;
+        }
 
         /// <summary>A number under a dotted path such as "spells.maxRadius", or the fallback.</summary>
         public double Number(string path, double fallback) =>
@@ -88,6 +101,7 @@ namespace Chem
             v.Design(composed);
             v.Determinism();
             v.Budgets(composed);
+            if (budgets.Looks != null) v.Looks(budgets.Looks);
             return problems;
         }
 
@@ -147,6 +161,37 @@ namespace Chem
                     if (string.IsNullOrEmpty(id)) Add(ModCheck.Shape, $"Every {what} needs an id, and one has none.");
                     else if (!seen.Add(id)) Add(ModCheck.Shape, $"The {what} {id} is in the patch twice; give each one its own id.");
                 }
+            }
+
+            // ---------- the looks: every new thing names a family the view draws ----------
+
+            public void Looks(LookFamilies looks)
+            {
+                var tables = new[] { ("terrain", "Terrain", true), ("covers", "Cover", false), ("gases", "Gas", false) };
+                foreach (var (table, what, required) in tables)
+                    if (patch[table] is JObject entries)
+                        foreach (var p in entries.Properties().Where(p => p.Value is JObject))
+                            LookOf(looks, table, $"{what} {p.Name}", (JObject)p.Value, required && baseDoc[table]?[p.Name] == null);
+                foreach (var s in PatchSpells) LookOf(looks, "spells", $"Spell {Text(s["id"]) ?? "?"}", s, !InBase("spells", Text(s["id"])));
+            }
+
+            // Covers and gases have no family drawn yet, so a new one needn't name one; if it does, the name must be right.
+            void LookOf(LookFamilies looks, string table, string who, JObject entry, bool required)
+            {
+                if (!(entry["look"] is JObject look))
+                {
+                    if (required) Add(ModCheck.Looks, $"{who} has no look, so the view can't draw it; give it a \"look\" naming a family ({looks.DrawnNames(table)}).");
+                    return;
+                }
+                string name = Text(look["family"]);
+                if (name == null) return; // Rules.Check says so
+                var family = looks.Find(table, name);
+                if (family == null)
+                    Add(ModCheck.Looks, $"{who} names the look family \"{name}\", which the view doesn't know; the families for it are {looks.DrawnNames(table)} (rules/looks.json).");
+                else if (!family.Drawn)
+                    Add(ModCheck.Looks, $"{who} names the look family \"{name}\", which the view can't draw from data yet (it needs {family.Needs}).");
+                else if (family.Forms.Count > 0 && !family.Forms.Contains(Text(look["form"])))
+                    Add(ModCheck.Looks, $"{who}'s look family \"{name}\" takes a form, one of {string.Join(", ", family.Forms)}.");
             }
 
             // ---------- the design rules ----------
@@ -239,7 +284,8 @@ namespace Chem
             {
                 if (t is JObject o)
                 {
-                    foreach (var p in o.Properties())
+                    // A look's numbers are the view's, not integer state.
+                    foreach (var p in o.Properties().Where(p => p.Name != "look"))
                     {
                         string sub = path.Length == 0 ? p.Name : path + "." + p.Name;
                         visit(p.Name, sub, p.Value);

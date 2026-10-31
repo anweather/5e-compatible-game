@@ -163,6 +163,11 @@ public static class ProbeScenarios
             "the clouds over 70% of the sky in it, " +
             "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, snow at noon (over 2000 flakes in the air, over half " +
             "the puddles laid in the yard frozen), fog closes the haze in, no console errors."),
+        new Entry("looksmod", typeof(LooksModProbe), 120f,
+            "The view draws from the rules in force (docs/RULES_MCP.md, \"Looks\"): a Fireball, the Big fireball mod switched on mid-game, " +
+            "a Fireball beside it, the Moonstone mod and its new material, then a look-only switch. --shots films it (ClipFilm). Checks: blast, fire " +
+            "area and crater bigger in the cells and as drawn, the moonstone drawn by its family with its look's height, colour and glow, a look-only " +
+            "switch redraws and keeps the fingerprint, no scene reload, no console errors. Metrics: each number with the mod off and on."),
         new Entry("blast", typeof(BlastProbe), 40f,
             "Fireball cast from the bar on the meadow east of the yard. Checks: its crater is in the cells (two steps down in the " +
             "middle, one round it), the terrain is drawn at least 0.6 m lower there, the blast's edge burns (burning, or burnt to dirt), no console errors."),

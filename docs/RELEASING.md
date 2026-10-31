@@ -76,6 +76,41 @@ files players will get, tested before anyone can see it.
 8. **Publish** on the go-ahead: `gh release edit alpha-X.Y.Z --draft=false`.
    Installed copies pick it up at their next start.
 
+## The Windows player with no Editor window
+
+The Mac (or the PC) builds the Windows player in batch mode, with no Editor open
+on the project. It needs Windows Build Support (Mono) and the Asset Store packs,
+a clean tree, and makes the same `Builds/Update/win/` as `UpdateBuild.Players`:
+
+```sh
+U=/Applications/Unity/Hub/Editor/6000.3.27f1/Unity.app/Contents/MacOS/Unity
+$U -batchmode -nographics -quit -projectPath unity -buildTarget Win64 \
+   -executeMethod PrototypeBuild.BuildWindowsFromCommandLine -rebuild-yard \
+   -logFile build.log
+```
+
+- `-rebuild-yard` builds the yard first; a missing yard is built anyway. Drop it
+  to build the yard that's there. `-build-version X.Y.Z` stamps that version
+  (Player Settings' otherwise).
+- The method exits by itself: 0 only for a good build with the PSO collection
+  and shaders in the player (checked against its build report), otherwise 1. The
+  log ends `HEADLESS BUILD: OK` or `FAILED`, with a `PLAYER CONTENTS:` line above.
+  With `-quit` or without, the exit code was right. Plain `-batchmode -quit` has
+  exited 132 after a good quit, so trust this method's code, not a bare quit's.
+- About 8 minutes with the shader cache warm, 47 from a cold one (M2 Pro). `-nographics`
+  costs nothing: every shader came out the same size as a run with a graphics
+  device, and the player the same apart from stamps and ids. The log's
+  `SpeedTreeURP_Branch.shadergraph` exception and the ray-tracing shader warnings
+  are expected (`unity/CLAUDE.md`).
+- **Not proven by a build:** nothing here has run it. Check a Mac-built player on
+  Windows: it logs `PSO WARMUP: N of N states`, and the Esc menu shows the commit.
+- Then `vpk "[win]" pack` packs it on the Mac too (`tools/ship-update.sh X.Y.Z
+  --windows-only --skip-build`, which also uploads to the draft): full package,
+  delta, `Setup.exe` and portable zip, unsigned like every release so far.
+  `--signParams` needs Windows; 1.2's `--signTemplate` needs a cross-platform signer.
+- Mac-built `TextMeshPro/Mobile/Distance Field` is 14 KB against the PC's 196 KB:
+  the pack's `enable_d3d11_debug_symbols` pragma, same 12 variants.
+
 ## Pipeline warm-up (the first-sight hitches)
 
 A player makes each graphics pipeline state the first time something is drawn

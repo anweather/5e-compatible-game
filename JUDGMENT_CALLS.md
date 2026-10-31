@@ -57,6 +57,8 @@ Each entry has:
 - **Answer:** too weak: about 2-2.5x stronger, so it's noticeable. It needs a real punch animation
   (IK). Punching other players: yes, as the SRD unarmed strike (1 + Strength modifier bludgeoning,
   plus knock-back), resolved in the core.
+  Strength setting: punchShove 2.5 (a crate flies about 4.6 m), picked from the punch-ik clip; the
+  crate's direction looked off and is to be checked in the live build.
 - **Why:** Andrew watched the clip.
 - **Revisited:** 0.
 

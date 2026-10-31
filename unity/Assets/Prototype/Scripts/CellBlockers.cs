@@ -42,7 +42,7 @@ public sealed class CellBlockers
     {
         var world = grid.World;
         if (world.IsRaisedWall(c)) return WallReach;
-        return world.IsBlocking(c) ? CellDressing.Look(c.T).height : 0f;
+        return world.IsBlocking(c) ? CellDressing.Look(world.Rules, c.T).height : 0f;
     }
 
     /// <summary>Puts a cell's blocker on its ground at <paramref name="ground"/>, or removes it if the cell doesn't block.</summary>

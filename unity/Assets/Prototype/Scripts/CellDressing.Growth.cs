@@ -1,3 +1,4 @@
+using Chem;
 using UnityEngine;
 
 // What Plant Growth stands on a cell: a sapling, and the tree it grows into.
@@ -12,8 +13,8 @@ public sealed partial class CellDressing
     const float SaplingScale = 0.25f, SpringSeconds = 1.2f, FillOutSeconds = 3f;
 
     // A tree that grew from a sapling here; the terrain's own trees aren't dressed.
-    bool IsGrownTree(string terrain, int x, int y) =>
-        terrain == TerrainIds.Tree && grid.valley != null && grid.valley.Grown(x, y);
+    bool IsGrownTree(LookDef look, int x, int y) =>
+        look is { Baked: true } && grid.valley != null && grid.valley.Grown(x, y);
 
     // A sapling (small) or a grown tree, at its trunk's spot when the valley drew a tree in this cell.
     void DressTree(Transform root, Vector3 surface, System.Random rng, int x, int y, bool sapling)
