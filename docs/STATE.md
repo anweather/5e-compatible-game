@@ -65,6 +65,12 @@ The one page a new PM session reads first. Keep it short: history goes in
   stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
   which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
   is wiped before the breath arrives.
+- **Paused (Andrew, to free the PC):** DesktopUnity is idle with the Editor closed. Its work is on
+  `wip/punch-strike` (a202fd1: the IK punch at punchShove 2.5, the strike wiring, NetProp MaxKick 300), not
+  mergeable yet. Resume on the host-ux worktree: switch to it, reopen the Editor, run compile/warnings (17
+  baseline), smoke, feel, castfeel, combo, online (from 7 GB free), downed, sit, shapeshift, punchclip,
+  format, jscpd; merge dev; push to dev. Then FAST_LOOP rows, the cast sound build-in, the 0.1.10 candidate.
+  Open for Andrew: punchShove 2.5 throws a crate 4.6 m (13x); about 1.6 gives 2.7x.
 - Unarmed strike, core half, landed (d5af610; u1, now asleep): a punch does 1 damage at Str 10, needs 8+ to hit.
   DesktopUnity wires it into the IK punch (Stand, Strike, Leave, TakeStrikeHits).
   into the IK punch after.
