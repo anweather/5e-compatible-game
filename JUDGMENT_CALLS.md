@@ -46,8 +46,8 @@ Each entry has:
 - **Asked:** 2026-10-31, by the PM (board).
 - **Also comes up when:** any melee, knock-back or PvP question.
 - **Answer:** too weak: about 2-2.5x stronger, so it's noticeable. It needs a real punch animation
-  (IK). Punching other players for damage "could be interesting" (open: today it only shoves props
-  and cracks panes, and only the puncher's machine shows the arm).
+  (IK). Punching other players: yes, as the SRD unarmed strike (1 + Strength modifier bludgeoning,
+  plus knock-back), resolved in the core.
 - **Why:** Andrew watched the clip.
 - **Revisited:** 0.
 
