@@ -26,7 +26,7 @@
     "rain": { "douseChance": 0.05, "dampen": 0.6, "fillEvery": 12, "fillChance": 0.015, "dryEvery": 30, "dryChance": 0.1 },
     "storm": { "strikeEvery": 18, "strikeChance": 0.5 },
     "snow": { "freezeEvery": 24, "freezeChance": 0.05, "thawChance": 0.05, "coverChance": 0.08, "bankChance": 0.05, "deepenChance": 0.004 },
-    "fog": { "every": 6, "chance": 0.3, "gas": "fog" },
+    "fog": { "every": 6, "chance": 0.3, "gas": "fog", "regionChunks": 2, "patches": 4, "radiusMin": 10, "radiusMax": 15, "tries": 8, "low": 0.02, "wet": 2, "wetReach": 8, "driftTicks": 90 },
     "meteors": { "showerChance": 0.15, "every": 18, "chance": 0.6, "fallTicks": 11 }
   }
 }

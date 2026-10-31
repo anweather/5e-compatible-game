@@ -173,10 +173,11 @@ touch them.
   by a script of its own.
 
 **Veil (thin fog)**
-: Fog weather lays a unit of fog gas here and there on open cells. That's
-  too thin to hide anything on its own, but a line of sight through a
-  gas's `hidesAfter` cells of it is hidden (`World.LineOfSight`). It thins
-  away when the stretch ends.
+: Fog weather lays fog gas here and there, in patches on low ground near
+  water (`weather.fog`, `World.Veil`), a unit a cell. That's too thin to
+  hide anything on its own, but a line of sight through a gas's `hidesAfter`
+  cells of it is hidden (`World.LineOfSight`). The patches drift a little
+  on the stretch's breeze and thin away when the stretch ends.
 
 **Flame**
 : One of the few flames on a burning cell (`FlameBank`, `Prototype/Flame`): a

@@ -149,7 +149,7 @@ function onCourse(w: World, g: Golf, x: number, y: number): boolean {
 }
 
 /** The ground's level at (x, y) in water units: the cell's elevation and the land's hills under it (World.GroundUnits). */
-function ground(w: World, x: number, y: number): number {
+export function ground(w: World, x: number, y: number): number {
   const land = w.land?.[idx(w, x, y)];
   return elevation(cellAt(w, x, y)!) + (land !== undefined && land !== NO_LAND ? land : 0);
 }

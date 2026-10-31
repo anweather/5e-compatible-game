@@ -784,3 +784,7 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   gaps (Mac hook, merge lines double-count the host, Pro transcripts).
   Outputs in docs/telemetry/*-2026-10-31.*; issue-costs.mjs fixed (a cost in
   free text plus a line counted as two finds).
+- 2026-10-31 07:55: fog-patches merged for 0.1.9 (8ed9ffc, MacBook): fog at
+  peak 83% -> 8.3% of open cells, fog tick 16 -> 7.7 ms (clear 6.6); goldens
+  moved in both engines. The patches aren't drawn yet (filed for after the
+  release). The Mac now does dragon-rules (merges after 0.1.9).
