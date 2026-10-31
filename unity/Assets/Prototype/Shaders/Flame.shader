@@ -6,6 +6,9 @@ Shader "Prototype/Flame"
     // fire sheet, by the fire's level) on its own clock. Each time round it starts a little elsewhere,
     // at a little another size and perhaps mirrored, as a new particle would, so nothing keeps time or
     // stays stamped in place. A sheet below zero marks embers: a spark climbing and fading, then again.
+    // A sheet of 3 marks a drop of the dragon's stream (DragonBreath): a GPU particle with no state,
+    // flying each time round from _StreamMouth past _StreamBend to where it lands (its `at`), drawn out
+    // along its way and facing the camera from any side, the large sheet's fire added to what's behind.
     Properties
     {
         [NoScaleOffset] _SheetTiny ("Tiny flames (11 x 11)", 2D) = "black" {}
@@ -41,6 +44,8 @@ Shader "Prototype/Flame"
 
             StructuredBuffer<Flame> _Flames;
             float _FlameTime;
+            float4 _StreamMouth; // where the stream leaves the mouth, and the dragon's scale
+            float3 _StreamBend;
             TEXTURE2D(_SheetTiny);
             TEXTURE2D(_SheetMedium);
             TEXTURE2D(_SheetLarge);
@@ -65,6 +70,9 @@ Shader "Prototype/Flame"
             // Frames across a sheet, and how many times it plays in one go round.
             float Tiles(float sheet) { return sheet < 0.5 ? 11.0 : sheet < 1.5 ? 10.0 : 8.0; }
             float Plays(float sheet) { return sheet < 1.5 ? 1.0 : 2.5; }
+            // A drop's width at the mouth, at scale 1.
+            static const float DropAtMouth = 3.0;
+            static const float DropSheet = 2.5;
 
             Varyings Vert(uint vertexID : SV_VertexID, uint instanceID : SV_InstanceID)
             {
@@ -84,7 +92,30 @@ Shader "Prototype/Flame"
                 float3 at = f.at;
                 float wide = f.wide, tall = f.tall;
                 float frame = 0.0, mirror = 1.0;
-                if (f.sheet < 0.0)
+                float4 tint = f.tint;
+                if (f.sheet > DropSheet)
+                {
+                    float left = _FlameTime - life / f.speed;
+                    fade = left >= f.born && (f.gone <= 0.0 || left < f.gone) ? saturate(life * 10.0) * saturate((1.0 - life) * 4.0) : 0.0;
+                    float3 from = lerp(_StreamMouth.xyz, _StreamBend, life), to = lerp(_StreamBend, f.at, life);
+                    float3 along = normalize(to - from);
+                    at = lerp(from, to, life);
+                    float3 stray = float3(Hash(round, f.seed), Hash(round + 7.0, f.seed), Hash(round + 13.0, f.seed)) - 0.5;
+                    at += (stray - along * dot(stray, along)) * f.wander * life;
+                    float3 eye = normalize(_WorldSpaceCameraPos - at);
+                    side = cross(along, eye);
+                    float across = length(side);
+                    side = across > 0.05 ? side / across : UNITY_MATRIX_V[0].xyz;
+                    up = cross(side, eye);
+                    wide = lerp(DropAtMouth * _StreamMouth.w, f.wide, life);
+                    tall = wide * lerp(1.0, 2.4, across);
+                    corner.y -= 0.5;
+                    mirror = Hash(round + 19.0, f.seed) < 0.5 ? -1.0 : 1.0;
+                    frame = floor(frac(life * Plays(2.0) + f.seed) * 64.0);
+                    // White hot at the mouth, through gold, to the red of the wall.
+                    tint.rgb = life < 0.4 ? lerp(float3(1.2, 0.8, 0.4), float3(1.0, 0.42, 0.08), life / 0.4) : lerp(float3(1.0, 0.42, 0.08), float3(0.7, 0.15, 0.02), (life - 0.4) / 0.6);
+                }
+                else if (f.sheet < 0.0)
                 {
                     // Embers: a spark on its way up, wandering, drawn out along its climb.
                     float rise = frac(clock);
@@ -114,7 +145,7 @@ Shader "Prototype/Flame"
                 Varyings o;
                 o.positionCS = TransformWorldToHClip(world);
                 o.uv = float2(corner.x * mirror * 0.5 + 0.5, Corners[vertexID].y);
-                o.tint = f.tint;
+                o.tint = tint;
                 o.sheet = f.sheet;
                 o.frame = frame;
                 o.fade = fade;
@@ -143,6 +174,8 @@ Shader "Prototype/Flame"
                 float alpha = c.a * input.tint.a * input.fade * smoothstep(0.0, 0.16, input.uv.y);
                 // As the pack's materials: half again as bright as the sheet, which is what blooms.
                 half3 color = c.rgb * input.tint.rgb * 1.5;
+                // A drop adds to what's behind it, so fog only dims it.
+                if (input.sheet > DropSheet) return half4(MixFogColor(color * alpha, half3(0.0, 0.0, 0.0), input.fogFactor), 0.0);
                 return half4(MixFog(color * alpha, input.fogFactor), alpha);
             }
             ENDHLSL

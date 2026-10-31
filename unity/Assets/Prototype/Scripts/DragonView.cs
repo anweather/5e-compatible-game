@@ -10,6 +10,7 @@ using UnityEngine;
 //
 // The model is Quaternius's (ThirdParty/Quaternius, CC0), with only flying, attacks, a
 // hit and a death to play: it's red by our materials, and it roars with an attack.
+// How big it's drawn is sim.json's dragon.scale, looked at every frame so a mod takes hold at once.
 public class DragonView : MonoBehaviour
 {
     public ChemGrid grid;
@@ -18,14 +19,13 @@ public class DragonView : MonoBehaviour
     [Tooltip("Draws its shadow (Prototype/DragonShadow); the builder sets it, which puts it in the build.")]
     public Shader shadowShader;
 
-    // Wing tip to wing tip, in metres: an ancient wyrm, to carry a wall of fire across a valley.
-    const float Wingspan = 70f;
     // How quickly the shown dragon follows its pose (s), and turns toward its way.
     const float Follow = 0.1f, GroundFollow = 0.7f, Turn = 2.5f, MostBank = 35f;
     // The model's flying clip hovers upright: this much nose down lays it out level for a long pass.
     const float Level = 40f;
-    // Where its mouth is, in its own metres: ahead of the body, a little below.
+    // Where its mouth is, at scale 1, if the model has no nose bone: ahead of the body, a little below.
     const float MouthAhead = 26f, MouthBelow = 2f;
+    const string Nose = "Nose_end";
     const string Flying = "DragonArmature|Dragon_Flying", Attack = "DragonArmature|Dragon_Attack";
     static readonly (string name, Color color, float smooth)[] Paints =
     {
@@ -37,7 +37,9 @@ public class DragonView : MonoBehaviour
     };
     static readonly Unity.Profiling.ProfilerMarker UpdateMarker = new("DragonView.LateUpdate");
 
-    Transform body;
+    Transform body, nose;
+    Renderer[] skins;
+    float unitScale = 1f, shownScale;
     Animation clips;
     DragonBreath breath;
     DragonShadow shadow;
@@ -67,6 +69,26 @@ public class DragonView : MonoBehaviour
 
     /// <summary>The breath drawn now, or null.</summary>
     public DragonBreath Breath => breath;
+
+    /// <summary>How big it's drawn against the model at scale 1, for the probe.</summary>
+    public float DrawnScale => body != null ? body.localScale.x / unitScale : 0f;
+
+    /// <summary>The metres across its shadow is laid, for the probe.</summary>
+    public float ShadowSize { get; private set; }
+
+    /// <summary>Its mouth now.</summary>
+    public Vector3 Mouth => nose != null ? nose.position : shownAt + way * (MouthAhead * shownScale) + Vector3.down * (MouthBelow * shownScale);
+
+    /// <summary>The box round all of it, for the probe.</summary>
+    public Bounds Extent
+    {
+        get
+        {
+            var all = skins[0].bounds;
+            foreach (var r in skins) all.Encapsulate(r.bounds);
+            return all;
+        }
+    }
 
     void Start()
     {
@@ -103,7 +125,9 @@ public class DragonView : MonoBehaviour
         }
         var bounds = new Bounds(body.position, Vector3.zero);
         foreach (var r in go.GetComponentsInChildren<Renderer>()) bounds.Encapsulate(r.bounds);
-        body.localScale = Vector3.one * (Wingspan / Mathf.Max(0.01f, Mathf.Max(bounds.size.x, bounds.size.z)));
+        unitScale = DragonFlight.SpanAtOne / Mathf.Max(0.01f, Mathf.Max(bounds.size.x, bounds.size.z));
+        skins = go.GetComponentsInChildren<Renderer>();
+        nose = System.Array.Find(go.GetComponentsInChildren<Transform>(), t => t.name == Nose);
         clips = go.GetComponentInChildren<Animation>();
         if (clips != null)
         {
@@ -139,9 +163,18 @@ public class DragonView : MonoBehaviour
             Vanish();
             return;
         }
+        var p = world.Rules.Sim.Dragon;
+        Resize((float)p.Scale);
         Fly(pose);
         Breathe(world, pose);
-        LayShadow(pose);
+        LayShadow(p, pose);
+    }
+
+    void Resize(float scale)
+    {
+        if (Mathf.Approximately(scale, shownScale)) return;
+        shownScale = scale;
+        body.localScale = Vector3.one * (unitScale * scale);
     }
 
     // How far into this tick we are: the time since the world's tick last moved, over the time a tick takes.
@@ -189,7 +222,7 @@ public class DragonView : MonoBehaviour
     void Fly(DragonFlight.Pose pose)
     {
         var at = Scene(pose.Cell);
-        float ground = Ground(at);
+        float ground = GroundUnderAll(at, pose);
         if (!wasSeen)
         {
             groundUnder = ground;
@@ -210,8 +243,19 @@ public class DragonView : MonoBehaviour
         bank = Mathf.Lerp(bank, Mathf.Clamp(-flat * 4f, -MostBank, MostBank), 1f - Mathf.Exp(-Time.deltaTime * Turn));
         // Stood on the mountain it rears up as its clip hovers, rather than lying on the air.
         rear = Mathf.Lerp(rear, pose.Perched ? Level : 0f, 1f - Mathf.Exp(-Time.deltaTime * Turn));
-        body.SetPositionAndRotation(shownAt, Quaternion.LookRotation(way, Vector3.up) * Quaternion.Euler(-rear, 0f, bank));
+        body.SetPositionAndRotation(shownAt, Quaternion.LookRotation(way, Vector3.up) * Quaternion.Euler(-rear, 0f, bank + pose.Roll));
         Perched = pose.Perched;
+    }
+
+    // The highest ground under its wings and just ahead, so a tip doesn't catch a hill the body passes by. Coming in to land
+    // it narrows to the ground under its feet.
+    float GroundUnderAll(Vector3 at, DragonFlight.Pose pose)
+    {
+        float span = DragonFlight.SpanAtOne * shownScale;
+        var ahead = Vector3.ProjectOnPlane(way, Vector3.up).normalized * (span * Mathf.Clamp01(pose.Lift / (DragonFlight.CruiseAtOne * shownScale)));
+        var tip = Vector3.Cross(Vector3.up, ahead) * 0.5f;
+        float ground = Mathf.Max(Ground(at), Mathf.Max(Ground(at + tip), Ground(at - tip)));
+        return Mathf.Max(ground, Mathf.Max(Ground(at + ahead), Mathf.Max(Ground(at + ahead + tip), Ground(at + ahead - tip))));
     }
 
     float Ground(Vector3 at)
@@ -233,11 +277,11 @@ public class DragonView : MonoBehaviour
             ? (new Vector2(pose.Lead, y0), new Vector2(pose.Lead, y1))
             : (new Vector2(x0, pose.Lead), new Vector2(x1, pose.Lead));
         var flatWay = Vector3.ProjectOnPlane(way, Vector3.up).normalized;
-        breath.Burn(Scene(a), Scene(b), -flatWay, shownAt + way * MouthAhead + Vector3.down * MouthBelow);
+        breath.Burn(Scene(a), Scene(b), -flatWay, Mouth, shownScale);
     }
 
     // Under it while it's low; high up, thrown long and wide, and softer, by the sun's slant.
-    void LayShadow(DragonFlight.Pose pose)
+    void LayShadow(DragonParams p, DragonFlight.Pose pose)
     {
         if (shadow == null) return;
         if (pose.Lift >= DragonFlight.Clouds * 0.8f)
@@ -246,7 +290,8 @@ public class DragonView : MonoBehaviour
             return;
         }
         float high = Mathf.InverseLerp(0f, DragonFlight.High, pose.Lift);
-        shadow.Lay(new Vector3(shownAt.x, 0f, shownAt.z), way, Wingspan * Mathf.Lerp(1.2f, 2.6f, high), Mathf.Lerp(0.7f, 0.5f, high));
+        ShadowSize = DragonFlight.Wingspan(p) * Mathf.Lerp(1.2f, 2.6f, high);
+        shadow.Lay(new Vector3(shownAt.x, 0f, shownAt.z), way, ShadowSize, Mathf.Lerp(0.7f, 0.5f, high));
     }
 
     // The horn as the warning starts, its roar as it dives and from the mountain. Heard the same everywhere: at the listener.
