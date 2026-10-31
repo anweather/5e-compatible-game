@@ -58,6 +58,7 @@ can fail to connect for a few seconds during the reload; the script retries.
 - `pass` is true only when every check passed. Every scenario adds
   `no_console_errors`: any `Debug.LogError`, exception or assert during the
   scenario fails the run (the first 20 are listed with their first stack line).
+  Unity's own QuickSearch errors, with no frame of ours, are left out and counted in `IgnoredCount`.
 - `frames` are measured from the end of a 1 s settle to the end of the
   scenario. **They are Editor Play mode frame times**, with the Editor's own
   drawing in them: compare runs with each other, not with a player build (for
