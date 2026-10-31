@@ -51,8 +51,12 @@ stop_vm() {
   log "stopping $1 (stop.cmd pushes its work first)"
   cmd //c "$(cygpath -w "$here/stop.cmd")" "$1" 2>&1 | tr -d '\r' | grep -E "pushed|nothing|shut down|Not stopping" | while read -r l; do log "  $1: $l"; done
 }
-reset_epoch() { # "8:20am" or "Nov 3, 8pm": the next such time, else 5 h from now
-  local t; t="$(date -d "$1" +%s 2>/dev/null)" || { echo $(( $(date +%s) + 18000 )); return; }
+reset_epoch() { # "8:20am (America/Phoenix)", "6:30am (UTC)" or "Nov 3, 8pm": the next such time, else 5 h from now
+  # The zone in brackets matters: a VM reports in UTC, the host in local time (2026-10-30: "6:30am (UTC)"
+  # was read as local and kept Pro marked out for 7 h after it was back).
+  local time="${1%%(*}" tz t; tz="$(sed -n 's/.*(\([^)]*\)).*/\1/p' <<<"$1")"; time="${time% }"
+  if [[ -n "$tz" ]]; then t="$(date -d "TZ=\"$tz\" $time" +%s 2>/dev/null)"; else t="$(date -d "$time" +%s 2>/dev/null)"; fi
+  [[ -n "$t" ]] || { echo $(( $(date +%s) + 18000 )); return; }
   (( t > $(date +%s) - 3600 )) || t=$(( t + 86400 ))
   echo "$t"
 }
@@ -82,7 +86,7 @@ check_usage() { # $1 = account
   ts="${line%%$'\t'*}"; msg="${line#*$'\t'}"
   (( ts > last )) || return 0
   echo "$ts" > "$state/$a.seen"
-  when="$(sed -n 's/.*resets \([^(]*\).*/\1/p' <<<"$msg" | sed 's/ *$//')"
+  when="$(sed -n 's/.*resets \([^(]*([^)]*)\).*/\1/p; t; s/.*resets \([^(]*\).*/\1/p' <<<"$msg" | head -1 | sed 's/ *$//')" # keeps "(zone)"
   until="$(reset_epoch "${when:-}")"
   echo "$until" > "$state/$a.out"
   log "$a is out: \"$msg\" (back after $(date -d "@$until" '+%H:%M'))"
@@ -191,7 +195,7 @@ check_outbox() { # a worker's report (runner.mjs) goes to the PM's mailbox; a us
       if grep -q '^Limit:' <<<"$report"; then
         subject="$subject (usage limit)"
         if [[ -z "$(out_until "$a")" ]]; then
-          when="$(grep -o 'resets [^(.]*' <<<"$report" | head -1 | sed 's/resets //; s/ *$//')"
+          when="$(grep -o 'resets [^"]*([^)]*)' <<<"$report" | head -1 | sed 's/resets //')"
           until="$(reset_epoch "${when:-}")"; echo "$until" > "$state/$a.out"
           log "$a is out (seen in $vm's report), back after $(date -d "@$until" '+%H:%M')"
         fi
