@@ -92,7 +92,7 @@ public class DodgeRoll : MonoBehaviour
 
     bool CanRoll()
     {
-        if (surface != null && surface.Swimming) return false;
+        if (surface != null && (surface.Swimming || surface.JustClimbedOut)) return false;
         bool onGround = grounded != null ? (bool)grounded.GetValue(controller) : body.isGrounded;
         if (!onGround) return false;
         var held = hands != null ? hands.Held : null;

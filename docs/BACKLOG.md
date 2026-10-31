@@ -75,10 +75,10 @@ Both engines, with shared goldens (`WeatherTests` / `weather.test.ts`).
 `world/puzzles.json` (`WorldPuzzles`, laid by `ChemGrid.MapWorld`) puts a
 pond, a coil and a gate on a path at (326..338, 231..245), just east of
 spell golf's hole; a bolt into the pond opens the gate (`PuzzleTests`).
-Still open, host: the looks of falling snow and of the veil (`FogBank` would
-draw it on every cell), the wizard slowed by snow (`SurfaceEffects` reads
-only thorns and terrain speed), the puzzle's cells in the 3D valley (rebuild
-it), and the cost of a gas on every active cell.
+UX pass 4: the veil is the sky's distance fog, not billboards (`FogBank.IsVeil`;
+on every cell they cost 570 ms a frame), the `fogcost` probe measures what's
+left, the `feel` probe measures snow's slowing, and the puzzle stands in the
+rebuilt valley.
 
 - **Influenced by:** Create Water and fire at scale (a big fire makes
   smoke and an updraft), Gust of Wind, lightning spells, Control Weather
@@ -582,8 +582,42 @@ can.
   point); tuning is `sim.json golf`. It climbs slower, runs on downhill and
   bounces off rock. The course is `world/golf.json`: tee (246, 240), hole
   (306, 240), 90 m apart on the meadow north of the defense field.
-- **Open:** the views (the ball, the flag, the HUD stroke line) and a
-  `GolfCommand` intent through `NetChem` for online.
+- **Built (views, UX pass 4):** `GolfCourse` draws the tee, the flag, the hole,
+  the ball and the HUD stroke line; `ChemGrid.MapWorld` tees the ball up on
+  every machine alike, so no command travels. `ValleyBuilder` keeps trees and
+  rocks off the fairway and the puzzles (they had stood on both). The `golf`
+  probe plays it.
+- **Open:** playing again after holing out (needs a `GolfCommand` intent
+  through `NetChem`; a world reset does it today).
+
+## 25. The Gauntlet: a carnival obstacle course across the lake, and spell-restricted zones (Andrew, 2026-10-31)
+
+Exploratory, after 0.1.9: a side-scrolling carnival funhouse with three or four depth lanes and height, booths that are spell puzzles (lava crusted by Frost, Misty Step gaps, an ice wall to melt, geyser launches, a boulder alley, updrafts, a dark tunnel, a barrel roll, a hall of mirrors, a strongman bell), each allowing only certain spells, with weird camera tricks. A small playable slice first, to find out whether there is juice in it. Brief: docs/handoffs/obstacle-course-brief.md.
+
+## 26. The Dragon: an ancient red wyrm that resets the world (Andrew, 2026-10-31)
+
+The world reset becomes an event. Today Reset reloads the scene; instead an ancient red dragon
+sweeps the valley clean.
+- **Trigger (Andrew: both):** Reset in the Esc menu summons it on demand (the host online), and
+  it comes on its own when the world has changed too much: a budget of changed cells, which also
+  protects performance (the accumulated changes are what slow a long session). Either way it
+  gives a warning first.
+- **The event:** about 30 s of warning (the sky darkens, a horn from the mountains, birds
+  scatter, a shadow crosses the valley); then the dragon dives out of the clouds and flies long
+  passes over the valley, breathing a wall of fire. **The world resets chunk by chunk where the
+  breath passes**: burnt ground, raised earth, ice, rubble and mud go back to the valley's
+  starting state, and fresh ground regrows behind it. Then it lands on the mountain, roars, and
+  leaves. Dawn, a fresh valley.
+- **Danger (Andrew: knocks down only):** caught in the breath, you're downed (the downed system)
+  and back at the yard, keeping your progress (player saves, item 21). Hiding behind stone or
+  under water avoids it, a little game in itself.
+- **How:** the flight path is seeded and deterministic, so every player's world resets the same
+  cells on the same ticks (lockstep; builds on the online reset, net-reset). The per-chunk reset
+  is rules in both engines with shared goldens; the dragon, the breath and the sky are the view
+  (GPU-first: the effects library for the breath). Model: a free CC0 dragon with flight
+  animations (for example Quaternius's monster packs), credited.
+- **Later:** a fight, driving it off with spells; other dragons (white frost, blue lightning).
+- **Size:** M-L. After the Gauntlet's slice, unless Andrew moves it up.
 
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
@@ -602,7 +636,6 @@ GitHub #2-#5) and the cost reading (`docs/telemetry/feature-costs-2026-10-30.md`
 | A, rules | #11 the wave and #21 the boulder go where you aim; the wave leaves water; #15 no brick on water (the water boils, the mud under it doesn't bake); | Worker |
 | B, casting and moving | FIRST (Andrew): #7 hold the trigger to charge a cast stronger as the meter fills (Andrew's proposal); #6 a way to end Shapeshift; #12 ice keeps your momentum; #18 a punch on a face button | Worker (input and rules), host (feel) |
 | C, interface (UX pass 4) | #8 the centre stamina bar out, a smaller top bar and log text, the element icon centred; #9 a cast bar that fills smoothly; #10 Back closes the grimoire; #2 the targeting UI (a marker per kind of cast: a direction, a top-down burst, a rising column, a lock-on); the looks of snow, fog, the golf flag and strokes, the wave; the swim checks; #16 the bloom flare on the head; #17 the hat clipping the head; #19 varied fire; #20 the camera zooming in at houses | Host (DesktopUnity) |
-| Andrew's call | #14 what low and zero health do; Sleet Storm strong enough for a slippery field, or glaze left to Frost | |
 
 Done since: #4 (499774e), the bot casts by elements (7088a97), spell golf (7f0d33b), swimming with breath (58bff2f).
 

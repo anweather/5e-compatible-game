@@ -682,3 +682,79 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   hardware, a minimum-spec baseline; a macOS player for profiling only),
   after the five calls. The PC takes the sound pass after UX pass 4 part 3,
   and repeats the perf measurements on Windows tomorrow for comparison.
+- 2026-10-30 23:35: Andrew's five calls merged (bd488d5, MacBook): core 549,
+  sandbox 223, EditMode 609. Caveats for Andrew: (1) Sleet Storm is on no
+  combination, so its new slippery field is only reachable from the F2 radial
+  (make it Frost's held form?); (2) no element combination digs now (Lower
+  Earth is radial-only; a cast at your own feet never dug). The yard must be
+  rebuilt before the downed fall shows. The Mac started the overnight perf
+  pass.
+- 2026-10-30 23:40: DECIDED (Andrew): Sleet Storm becomes Frost's held form
+  (Water then Air, held to full charge); digging stays with the pick (and the
+  radial's Lower Earth), with no digging element combination.
+- 2026-10-30 23:55: DECIDED (Andrew): a cast-feel pass right after UX pass 4
+  on the PC, before the rest of the sound pass (docs/handoffs/cast-feel-brief.md).
+  The staff comes off the default wizard (code kept for a later "focus"
+  item); IK hands through six beats (gather, gather, slam, hold to charge,
+  release with recoil, recover); view-only hit-stop, camera impulses and
+  pad rumble, punchy by default with an Esc slider; the casting sounds built
+  here. A before and after clip goes to Andrew.
+- 2026-10-31 00:05: ADOPTED (Andrew): the screenshot-budget skill
+  (.claude/skills/screenshot-budget). Rules for every session:
+  - Shots: true aspect, fixed conditions (noon, clear, same seed and
+    outfit), the same camera before and after, the wizard out of frame,
+    dark scenes lit, the feature framed at 3-8 m. At most 3 reviewed images
+    per report, 800 px on the long edge (sheets up to 1200 px). Crop for
+    detail. Numbers, not images, for changes you can't see.
+  - Who looks: each session checks its own shots at about 480 px. The PM
+    opens one 800 px final only for a finished visible feature going on a
+    page it vouches for (a release, a milestone); otherwise it relays the
+    session's written check ("the session reports ...").
+  - Gallery: a full-resolution set per feature under
+    unity/Builds/screens/<feature>/gallery/ for Andrew. No model opens it;
+    the report names the folder. At most 40 images.
+  The probes' --shots gain 480 px review copies (first step of the cast-feel
+  pass). Measure: the next host pass's cost per feature against 2026-10-30's.
+- 2026-10-31 00:15: DECIDED (Andrew):
+  1. Release 0.1.9 once the cast-feel and sound passes land, ready for the
+     morning. If it's green (the RC checks pass), the PM publishes without
+     asking: "You don't need my go-ahead since we're an alpha." Windows only
+     unless the Mac half is free (Andrew doesn't need a Mac build).
+  2. After the release: more mini games, exploratory, not deep: an obstacle
+     course somewhere in the valley (across the lake): a lava pit, gaps to
+     teleport across (Misty Step), platforming, ice walls to melt with
+     spells. And spell-restricted areas (only certain spells work there), for
+     a curated experience.
+  3. Surf goes toward the nearest land (the island when it's nearer than the
+     mainland), push and wave animation alike (#23).
+- 2026-10-31 00:30: DECIDED (Andrew): the Dragon (BACKLOG 26) as the world
+  reset: summoned by Reset and coming on its own past a changed-cell budget,
+  an ancient red wyrm whose fire breath resets the valley chunk by chunk,
+  knocking down (not killing) whoever it catches. After the Gauntlet slice.
+- 2026-10-31 00:30: No idle compute (Andrew). Running: DesktopUnity (UX pass
+  4 part 3), the MacBook (overnight perf pass in a background sub-agent, on
+  perf-mac), u1 (the Gauntlet's rules, gauntlet-rules). u2 (the Dragon's
+  rules, docs/handoffs/briefs/dragon-rules.md) waits for memory (6.0 GB free
+  with the Editor, 5 must stay). Neither merges until 0.1.9 is cut. Fixed:
+  the watcher read a VM's "resets 6:30am (UTC)" as local time and kept Pro
+  marked out 7 h after it was back (reset times now parsed by Node, zones
+  included).
+- 2026-10-31 00:50: gauntlet-rules done (99fc6ec, u1; not merged until 0.1.9
+  is cut): spell zones (by the cell a spell lands on), checkpoints
+  (CourseCommand, World.CourseRespawn; the host must call it from Vitals.cs
+  and send the commands), timer and best times, new verbs crust, thaw and
+  lift, the course on the lake's south shore (world/gauntlet.json). Core
+  555, sandbox 227. Free memory fell to 0.7 GB (Unity 13.7 GB building Part
+  3's player, plus u1 at 3.5 GB): u1 stopped, and the watcher now stops the
+  newest worker VM below 1.5 GB free. u2 (Dragon rules) waits.
+- 2026-10-31 01:05: UX pass 4 done (5ba3bce; DesktopUnity). Part 3: fire back
+  to per-type flipbooks with varied position, size and timing (wildfire p95
+  23.8 ms; close views heavy, for the perf pass); fog 588 -> 22.9 ms (clear
+  14.6); the wave carries props at its speed; golf views built (holed in 7);
+  Left Ctrl fixed; Sleet as Frost held. Player build kept in
+  unity/Builds/Windows (c5fa3c9): markers and fire draw; bot seed 821, 14
+  goals, 0 exceptions. Notes posted on #6, #7, #11, #12, #18, #19, #20, #21.
+  Andrew's eye: the wave crest and the fire; the crate punch (0.42 m). Gaps:
+  golf replays need a GolfCommand intent; golf online only has equal
+  checksums; without the Particle Pack there are no flames (builder warns).
+  Cast-feel starts now with the Editor kept open (u2 still waits).

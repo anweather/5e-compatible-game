@@ -7,8 +7,8 @@ using UnityEngine;
 // easing after its front; a boulder is a rock that turns as it goes, and stands
 // where it comes to rest (the core's cell there is an earth pillar: CellDressing
 // draws that one as the boulder). Both are reused, not made per cell. As a wave's
-// front rolls a cell it shoves what's light there on ahead of it, so props ride it
-// (the host's, D4) and it knocks the local wizard back.
+// front rolls a cell it brings what's light there up to its own speed, so props
+// ride it to where it breaks (the host's, D4), and it knocks the local wizard back.
 public partial class ChemGrid
 {
     const float WaveTall = 1.15f, WaveDeep = 1.4f, BoulderSize = 1.5f;
@@ -16,7 +16,7 @@ public partial class ChemGrid
     const float MoverCatchUp = 1.25f;
     // What a wave's push is, in impulses, against the push of a cast (Forces.ImpulsePerPush).
     const float WaveShove = 1.5f;
-    const float WaveFoamRate = 120f;
+    const float WaveFoamRate = 90f;
 
     sealed class WaveShow
     {
@@ -39,6 +39,7 @@ public partial class ChemGrid
     readonly List<World.Boulder> bouldersGone = new();
     readonly HashSet<int> boulderRests = new();
     readonly List<(int x, int y)> frontCells = new();
+    GolfCourse golf;
     Mesh crestMesh;
     Material crestMaterial;
 
@@ -66,6 +67,7 @@ public partial class ChemGrid
 
     void RenderMovers()
     {
+        if (golf == null && World.Golf != null) golf = GolfCourse.On(this);
         RenderWaves();
         RenderBoulders();
     }
@@ -109,8 +111,10 @@ public partial class ChemGrid
         frontCells.AddRange(World.WaveFront(wave));
         bool hosting = !TryGetComponent<NetChem>(out var net) || !net.Online || net.IsServer;
         var wizard = WizardRig.FindLocal();
-        bool Mine(IPushable p) => p is PhysicsProp prop ? hosting && Light(prop, wave.MaxMass) : p is Knockback k && k.gameObject == wizard;
-        Forces.Along(this, frontCells, WaveStep(wave), spell.ForcePush * Forces.ImpulsePerPush * WaveShove, null, Mine);
+        var way = WaveStep(wave);
+        foreach (var rider in Forces.OnCells(this, frontCells, null, p => p is PhysicsProp prop && hosting && Light(prop, wave.MaxMass)))
+            ((PhysicsProp)rider).Ride(way * (MoverSpeed(wave.Every) * WaveStride(wave)));
+        Forces.Along(this, frontCells, way, spell.ForcePush * Forces.ImpulsePerPush * WaveShove, null, p => p is Knockback k && k.gameObject == wizard);
     }
 
     bool Light(PhysicsProp prop, int most) => World.Rules.Entities.TryGetValue(prop.kind, out var def) && def.Mass <= most;
@@ -156,7 +160,7 @@ public partial class ChemGrid
         main.simulationSpace = ParticleSystemSimulationSpace.World;
         main.startLifetime = new ParticleSystem.MinMaxCurve(0.35f, 0.8f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(0.5f, 2.2f);
-        main.startSize = new ParticleSystem.MinMaxCurve(0.3f, 0.85f);
+        main.startSize = new ParticleSystem.MinMaxCurve(0.12f, 0.42f);
         main.startColor = new ParticleSystem.MinMaxGradient(Color.white, new Color(0.8f, 0.9f, 1f, 0.8f));
         main.gravityModifier = 0.6f;
         var emission = ps.emission;
@@ -238,6 +242,10 @@ public partial class ChemGrid
     void DestroyMovers()
     {
         if (crestMesh != null) Destroy(crestMesh);
-        if (crestMaterial != null) Destroy(crestMaterial);
+        if (crestMaterial != null)
+        {
+            Destroy(crestMaterial.GetTexture("_BaseMap"));
+            Destroy(crestMaterial);
+        }
     }
 }

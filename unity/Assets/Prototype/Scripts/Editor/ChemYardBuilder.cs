@@ -1,4 +1,5 @@
 using System.IO;
+using System.Linq;
 using UnityEditor;
 using Unity.Cinemachine;
 using Unity.Netcode;
@@ -21,6 +22,7 @@ public static class ChemYardBuilder
     const string VolumePath = "Assets/Prototype/Settings/YardVolume.asset";
     const string NetWizardPath = "Assets/Prototype/Prefabs/NetWizard.prefab";
     const string SpellVisualsPath = "Assets/Prototype/Settings/SpellVisuals.asset";
+    const string CastFeelPath = "Assets/Prototype/Settings/CastFeel.asset";
     const string ThingPrefabsPath = "Assets/Prototype/Generated/ThingNetworkPrefabs.asset";
 
     // Same legend as the web sandbox: , grass  " brush  T tree  . dirt  o oil
@@ -150,13 +152,15 @@ public static class ChemYardBuilder
     static void AssignEffects(ChemGrid grid)
     {
         grid.flameShader = Shader.Find("Prototype/Flame");
+        grid.flameSheets = new[] { "TinyFlame", "MediumFlame01", "LargeFlame01" }
+            .Select(n => AssetDatabase.LoadAssetAtPath<Texture2D>(PackPaths.Effects + "/Fire & Explosion Effects/Textures/" + n + ".tif")).ToArray();
         grid.smokeFx = Load(SmokeFx + "/SmokeEffect.prefab");
         grid.steamFx = Load(SmokeFx + "/RisingSteam.prefab");
         grid.sparksFx = Load(MiscFx + "/SparksEffect.prefab");
         // The dust thrown up by earth shaping uses the Particle Pack's dust material.
         var dust = Load(FireFx + "/DustExplosion.prefab");
         grid.dustMaterial = dust != null ? dust.GetComponent<ParticleSystemRenderer>().sharedMaterial : null;
-        if (grid.smokeFx == null) Debug.LogWarning("Particle Pack missing: smoke will be cubes. Run Prototype > Restore Asset Packs.");
+        if (grid.smokeFx == null) Debug.LogWarning("Particle Pack missing: no flames, and smoke will be cubes. Run Prototype > Restore Asset Packs.");
     }
 
     // Late-afternoon sun, and a post-processing volume: bloom so fire glows,
@@ -334,6 +338,7 @@ public static class ChemYardBuilder
         caster.visuals = visuals;
         caster.enabled = playerDriven;
         wizard.AddComponent<CastPose>();
+        wizard.AddComponent<CastBeats>().feel = AssetDatabase.LoadAssetAtPath<CastFeel>(CastFeelPath);
         var surface = wizard.AddComponent<SurfaceEffects>();
         surface.enabled = playerDriven;
         var knockback = wizard.AddComponent<Knockback>();
@@ -345,6 +350,8 @@ public static class ChemYardBuilder
         wizard.AddComponent<Sitter>(); // sits the local wizard on a Seat (E); the pose above is every machine's
         wizard.AddComponent<CurrentRider>(); // the river and the surf carry the local wizard (WaterCurrents)
         wizard.AddComponent<Vitals>();
+        wizard.AddComponent<WizardDown>(); // at 0 health: down, then back at the yard; the pose is every machine's
+        wizard.AddComponent<DownedPose>();
         wizard.AddComponent<Kicker>();
         wizard.AddComponent<SprintToggle>();
         wizard.AddComponent<DoubleJump>(); // a second jump in mid-air (the climbing tower, ValleyTower)
@@ -356,7 +363,7 @@ public static class ChemYardBuilder
         fade.ditherLit = Shader.Find("Prototype/DitherLit");
         fade.silhouette = Shader.Find("Prototype/WizardSilhouette");
         wizard.AddComponent<Shapeshift>(); // an animal's shape: on every copy, so each machine draws the animal
-        // The wizard's look: hat, robe, beard and staff on the rig's bones, from a seed (synced by NetWizard).
+        // The wizard's look: hat, robe and beard on the rig's bones, from a seed (synced by NetWizard).
         var outfit = wizard.AddComponent<WizardOutfit>();
         outfit.material = ValleyBuilder.VillageMaterial();
         outfit.faceShader = Shader.Find("Prototype/WizardFace");

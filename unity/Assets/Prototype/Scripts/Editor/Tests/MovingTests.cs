@@ -34,11 +34,19 @@ public class MovingTests
     }
 
     [Test]
-    public void ThePadsPunchGivesWayToAnItemOrASeat()
+    public void ThePunchIsOnCircleAndSquareOnlyPicksUp()
     {
-        Assert.That(PlayerControls.PunchGivesWay(onPad: true, itemInReach: true, seatInReach: false), Is.True);
-        Assert.That(PlayerControls.PunchGivesWay(onPad: true, itemInReach: false, seatInReach: true), Is.True);
-        Assert.That(PlayerControls.PunchGivesWay(onPad: true, itemInReach: false, seatInReach: false), Is.False);
-        Assert.That(PlayerControls.PunchGivesWay(onPad: false, itemInReach: true, seatInReach: true), Is.False, "F is the punch's alone");
+        Assert.That(PlayerControls.PadPunch, Is.EqualTo("<Gamepad>/buttonEast"));
+        Assert.That(PlayerControls.PadInteract, Is.EqualTo("<Gamepad>/buttonWest"));
+    }
+
+    [Test]
+    public void CirclePunchesUnlessItHasACastToCancel()
+    {
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: false, seated: false), Is.True);
+        Assert.That(ItemHolder.MayPunch(cancelling: true, animal: false, swimming: false, seated: false), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: true, swimming: false, seated: false), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: true, seated: false), Is.False);
+        Assert.That(ItemHolder.MayPunch(cancelling: false, animal: false, swimming: false, seated: true), Is.False);
     }
 }

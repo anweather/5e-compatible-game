@@ -275,6 +275,18 @@ public class PhysicsProp : MonoBehaviour, IPushable
     }
 
     /// <summary>
+    /// Carried along by something rolling under it (a wave, on the host, as Push): it gets only the speed it
+    /// lacks along the way, so a prop that's already riding isn't thrown on ever faster.
+    /// </summary>
+    public void Ride(Vector3 velocity)
+    {
+        if (State == null || Puppet || asleep) return;
+        var way = velocity.normalized;
+        float lacks = velocity.magnitude - Vector3.Dot(body.linearVelocity, way);
+        if (lacks > 0f) body.AddForce(Forces.Thrown(way) * lacks, ForceMode.VelocityChange);
+    }
+
+    /// <summary>
     /// Pushed by one wizard (a punch): only that wizard's machine knows, so online it goes to the host's
     /// physics as a kick does (NetProp), at the same speed as Push.
     /// </summary>

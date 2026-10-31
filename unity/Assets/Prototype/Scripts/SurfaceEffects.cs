@@ -71,7 +71,8 @@ public class SurfaceEffects : MonoBehaviour
     bool wasSlipping, wasWading, swimming;
     float kickedUntil;
     bool kick;
-    const float ClimbReach = 1f, ClimbSpeed = 2.6f;
+    const float ClimbReach = 1f, ClimbSpeed = 2.6f, ClimbOutSeconds = 0.6f;
+    float leftWaterAt = float.NegativeInfinity;
     float slowUntil, slowFactor = 1f, appliedSpeed = 1f;
     Vitals vitals;
     PlayerControls controls;
@@ -109,6 +110,9 @@ public class SurfaceEffects : MonoBehaviour
 
     /// <summary>True while the wizard's head is under water (or under ice).</summary>
     public bool HeadUnder { get; private set; }
+
+    /// <summary>Just out of the water: the dive's button doesn't turn into a dodge roll on the bank.</summary>
+    public bool JustClimbedOut => Time.time < leftWaterAt + ClimbOutSeconds;
 
     /// <summary>True while the water over the swimming wizard is frozen: it can't come up.</summary>
     public bool UnderIce { get; private set; }
@@ -438,6 +442,7 @@ public class SurfaceEffects : MonoBehaviour
     {
         if (swimming == on || gravity == null) return;
         swimming = on;
+        if (!on) leftWaterAt = Time.time;
         kick = false;
         gravity.SetValue(controller, on ? 0f : baseGravity);
         if (on) fall.SetValue(controller, 0f);

@@ -47,8 +47,12 @@ namespace Chem
         public IReadOnlyList<string> Elements { get; internal set; } = Array.Empty<string>();
         /// <summary>Ticks after the first element in which a second is taken.</summary>
         public int Window { get; internal set; }
+        /// <summary>Ticks each level of charge past the first adds to a cast.</summary>
+        public int ChargeTicks { get; internal set; } = 1;
         /// <summary>What the view multiplies walking speed by while the cast meter drains.</summary>
         public double MoveFactor { get; internal set; } = 1;
+        /// <summary>The same once a held cast is charging (PlayerCast.Charging): the wizard is braced.</summary>
+        public double ChargeMoveFactor { get; internal set; } = 1;
         /// <summary>The d-pad's list, in cycling order.</summary>
         public IReadOnlyList<DpadSpellDef> Dpad { get; internal set; } = Array.Empty<DpadSpellDef>();
         /// <summary>Every combo: the singles, then the pairs, in the order of <see cref="Elements"/>.</summary>
@@ -73,20 +77,19 @@ namespace Chem
         Cycle,
         /// <summary>Starts casting the d-pad's selected spell.</summary>
         CastSelected,
-        /// <summary>Lets go of a held element: the cast goes off at <see cref="ComboCommand.Charge"/> once its meter is out.</summary>
+        /// <summary>Lets go of a held element: the cast goes off at the charge its meter has reached.</summary>
         Release,
     }
 
     /// <summary>A player's cast input: what goes into the core for the button, stamped like a cast.</summary>
     public readonly struct ComboCommand
     {
-        public ComboCommand(string player, ComboCommandKind kind, string element = null, int step = 0, int charge = 1, bool hold = false)
+        public ComboCommand(string player, ComboCommandKind kind, string element = null, int step = 0, bool hold = false)
         {
             Player = player;
             Kind = kind;
             Element = element;
             Step = step;
-            Charge = charge;
             Hold = hold;
         }
 
@@ -94,8 +97,6 @@ namespace Chem
         public ComboCommandKind Kind { get; }
         public string Element { get; }
         public int Step { get; }
-        /// <summary>How long the element was held, for a <see cref="ComboCommandKind.Release"/>: 1 (a tap) up to the spell's max.</summary>
-        public int Charge { get; }
         /// <summary>For a <see cref="ComboCommandKind.Load"/>: the button is down, so the cast waits for a Release before it goes off.</summary>
         public bool Hold { get; }
 
@@ -103,7 +104,7 @@ namespace Chem
         public static ComboCommand Cancel(string player) => new ComboCommand(player, ComboCommandKind.Cancel);
         public static ComboCommand Cycle(string player, int step) => new ComboCommand(player, ComboCommandKind.Cycle, null, step);
         public static ComboCommand CastSelected(string player) => new ComboCommand(player, ComboCommandKind.CastSelected);
-        public static ComboCommand Release(string player, int charge) => new ComboCommand(player, ComboCommandKind.Release, charge: charge);
+        public static ComboCommand Release(string player) => new ComboCommand(player, ComboCommandKind.Release);
     }
 
     /// <summary>
@@ -151,14 +152,18 @@ namespace Chem
         public int Slot;
         /// <summary>The d-pad slot being cast, or -1.</summary>
         public int DpadCasting = -1;
-        /// <summary>The last element's button is down: the meter stops at its last tick until a Release.</summary>
+        /// <summary>The last element's button is down: the meter runs on through the charge, then stops at its last tick until a Release.</summary>
         public bool Holding;
+        /// <summary>The ticks a full charge adds to <see cref="Meter"/> while held; 0 otherwise.</summary>
+        public int Extra;
         /// <summary>The charge the Release gave; 1 until then.</summary>
         public int Charge = 1;
         /// <summary>The ids of the combos this player has cast: the grimoire.</summary>
         public SortedSet<string> Known { get; } = new SortedSet<string>(StringComparer.Ordinal);
 
         public bool Casting => Meter > 0;
+        /// <summary>Held past a tap's length: the meter is counting charge now (World.HeldCharge), or waiting at its last tick.</summary>
+        public bool Charging => Holding && Casting && Meter <= Extra + 1;
         /// <summary>A Load would be taken now: the first element, or the second inside the window.</summary>
         public bool TakesElement => !Casting || (First != null && Second == null && Window > 0);
     }
@@ -174,7 +179,9 @@ namespace Chem
             {
                 Elements = Strings(t["elements"]),
                 Window = Int(t["window"]) ?? 0,
+                ChargeTicks = Math.Max(1, Int(t["chargeTicks"]) ?? 1),
                 MoveFactor = Num(t["moveFactor"]) ?? 1,
+                ChargeMoveFactor = Num(t["chargeMoveFactor"]) ?? 1,
                 Dpad = (t["dpad"] as JArray ?? new JArray()).OfType<JObject>().Select(d => new DpadSpellDef
                 {
                     Name = Str(d["name"]),
@@ -215,7 +222,9 @@ namespace Chem
                 var names = Strings(c["elements"]);
                 foreach (var e in names.Where(e => !known.Contains(e))) Errors.Add($"combos: unknown element {e}");
                 if (!WholeFromOne(c["window"])) Errors.Add("combos: window must be a whole number from 1");
+                if (!WholeFromOne(c["chargeTicks"])) Errors.Add("combos: chargeTicks must be a whole number from 1");
                 if (!(IsNumber(c["moveFactor"]) && (double)c["moveFactor"] > 0 && (double)c["moveFactor"] <= 1)) Errors.Add("combos: moveFactor must be above 0 and at most 1");
+                if (!(IsNumber(c["chargeMoveFactor"]) && (double)c["chargeMoveFactor"] > 0 && (double)c["chargeMoveFactor"] <= 1)) Errors.Add("combos: chargeMoveFactor must be above 0 and at most 1");
                 ComboSingles(c, names);
                 foreach (var first in names)
                     foreach (var second in names)

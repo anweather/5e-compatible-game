@@ -436,6 +436,8 @@ export interface SimParams {
   golf?: GolfParams;
   /** A swimmer's breath and drowning, read by the Unity view only (C#: BreathParams in Breath.cs); absent uses the defaults. */
   breath?: { seconds: number; refillSeconds: number; drownEvery: number; drownDice: number; drownSides: number };
+  /** How long a wizard at 0 health stays down, read by the Unity view only (C#: DownedParams in Downed.cs); absent uses the default. */
+  downed?: { seconds: number };
   /** How long a day lasts in real minutes, and the hour the world starts at (sky.ts). */
   day: {
     lengthMinutes: number; startHour: number;
@@ -492,7 +494,9 @@ export interface CombosDef {
   /** Ticks after the first element in which a second is taken. */
   window: number;
   /** What a view multiplies walking speed by while the cast meter drains. */
+  chargeTicks: number;
   moveFactor: number;
+  chargeMoveFactor: number;
   singles: Record<string, ComboDef>;
   pairs: Record<string, Record<string, ComboDef>>;
   /** The d-pad's list, in cycling order. */
@@ -796,7 +800,9 @@ function comboErrors(r: Rules): string[] {
   const elements = Array.isArray(c.elements) ? c.elements : [];
   for (const e of elements.filter((e) => !r.elements.includes(e))) errors.push(`combos: unknown element ${e}`);
   if (!wholeFromOne(c.window)) errors.push("combos: window must be a whole number from 1");
+  if (!wholeFromOne(c.chargeTicks)) errors.push("combos: chargeTicks must be a whole number from 1");
   if (!(isNumber(c.moveFactor) && c.moveFactor > 0 && c.moveFactor <= 1)) errors.push("combos: moveFactor must be above 0 and at most 1");
+  if (!(isNumber(c.chargeMoveFactor) && c.chargeMoveFactor > 0 && c.chargeMoveFactor <= 1)) errors.push("combos: chargeMoveFactor must be above 0 and at most 1");
   for (const e of elements) {
     const single = c.singles?.[e];
     errors.push(...comboEntryErrors(r, e, single));

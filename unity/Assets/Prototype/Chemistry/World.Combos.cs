@@ -28,8 +28,22 @@ namespace Chem
         /// <summary>The most a combo can be charged: <see cref="MaxCharge"/> if its spell is chargeable, else 1.</summary>
         public int MaxChargeOf(ComboDef combo) => Chargeable(Rules.Spell(combo?.Spell)) ? MaxCharge : 1;
 
+        /// <summary>
+        /// The charge a held cast has reached: 1 for the meter's own length (a tap's), then a level for
+        /// each chargeTicks more. The meter is the clock, so the charge only grows while it runs.
+        /// </summary>
+        public int HeldCharge(PlayerCast c) => c?.Holding == true ? 1 + Math.Max(0, c.Extra + 1 - c.Meter) / Rules.Combos.ChargeTicks : 1;
+
+        /// <summary>Seconds of holding for each level of charge.</summary>
+        public double SecondsPerLevel => Rules.Combos.ChargeTicks / (double)Rules.Sim.TicksPerSecond;
+
         /// <summary>What the view multiplies this player's walking speed by: the rules' factor while the meter drains, else 1.</summary>
-        public double MoveFactorOf(string player) => CastOf(player)?.Casting == true ? Rules.Combos.MoveFactor : 1;
+        public double MoveFactorOf(string player)
+        {
+            var c = CastOf(player);
+            if (c?.Casting != true) return 1;
+            return c.Charging ? Rules.Combos.ChargeMoveFactor : Rules.Combos.MoveFactor;
+        }
 
         /// <summary>Whether the combo is in this player's grimoire.</summary>
         public bool KnowsCombo(string player, string combo) => CastOf(player)?.Known.Contains(combo) == true;
@@ -56,7 +70,7 @@ namespace Chem
                 case ComboCommandKind.Cancel: return CancelCast(c);
                 case ComboCommandKind.Cycle: return CycleDpad(c, command.Step);
                 case ComboCommandKind.CastSelected: return CastSelected(c);
-                case ComboCommandKind.Release: return ReleaseHold(c, command.Charge);
+                case ComboCommandKind.Release: return ReleaseHold(c);
                 default: return false;
             }
         }
@@ -70,12 +84,12 @@ namespace Chem
             {
                 c.First = element;
                 c.Window = combos.Window;
-                StartMeter(c, combos.Combo(CombosDef.IdOf(element, null))?.CastTicks ?? 0);
+                StartHeldMeter(c, combos.Combo(CombosDef.IdOf(element, null)));
                 return true;
             }
             c.Second = element;
             c.Window = 0;
-            StartMeter(c, combos.Combo(CombosDef.IdOf(c.First, element))?.CastTicks ?? 0);
+            StartHeldMeter(c, combos.Combo(CombosDef.IdOf(c.First, element)));
             return true;
         }
 
@@ -86,13 +100,24 @@ namespace Chem
             return true;
         }
 
-        // The charge is kept to what the spell takes, here as well as by the view, so a client can't send more.
-        bool ReleaseHold(PlayerCast c, int charge)
+        // The charge comes from the core's own meter, so every peer agrees and a client can't send more.
+        bool ReleaseHold(PlayerCast c)
         {
             if (!c.Holding) return false;
-            c.Holding = false;
-            c.Charge = Math.Max(1, Math.Min(MaxChargeOf(ComboOf(c)), charge));
+            c.Charge = HeldCharge(c);
+            EndHold(c);
             return true;
+        }
+
+        // The hold's extra ticks come off: a cast let go early still takes a tap's time, one
+        // past that goes off on the next tick.
+        static void EndHold(PlayerCast c)
+        {
+            int passed = c.Total - c.Meter;
+            c.Meter = Math.Max(1, c.Meter - c.Extra);
+            c.Total = passed + c.Meter;
+            c.Extra = 0;
+            c.Holding = false;
         }
 
         bool CycleDpad(PlayerCast c, int step)
@@ -116,19 +141,30 @@ namespace Chem
         {
             c.Meter = ticks;
             c.Total = ticks;
+            c.Extra = 0;
+        }
+
+        // A held cast's meter has room for its full charge, each level adding chargeTicks.
+        void StartHeldMeter(PlayerCast c, ComboDef combo)
+        {
+            StartMeter(c, combo?.CastTicks ?? 0);
+            if (!c.Holding) return;
+            c.Extra = (MaxChargeOf(combo) - 1) * Rules.Combos.ChargeTicks;
+            c.Meter += c.Extra;
+            c.Total += c.Extra;
         }
 
         static void ClearCast(PlayerCast c)
         {
             c.First = c.Second = null;
-            c.Meter = c.Total = c.Window = 0;
+            c.Meter = c.Total = c.Window = c.Extra = 0;
             c.DpadCasting = -1;
             c.Holding = false;
             c.Charge = 1;
         }
 
-        // Drains every meter, in player order, and sets off those that reach zero. A held cast waits
-        // at the meter's last tick, so the tick after its Release sets it off.
+        // Drains every meter, in player order, and sets off those that reach zero. A cast held to its
+        // full charge waits at the meter's last tick, so the tick after its Release sets it off.
         void TickCombos()
         {
             foreach (var c in casts.Values)

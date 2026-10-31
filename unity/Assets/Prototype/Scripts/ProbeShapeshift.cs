@@ -3,6 +3,8 @@ using System.Linq;
 using Chem;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.InputSystem.LowLevel;
 
 // The probe's shapeshift scenario (docs/FAST_LOOP.md): out in the meadow, a
 // deer is put in front of the wizard (held still), aimed at through a ray
@@ -162,13 +164,41 @@ public class ShapeshiftProbe : ProbeScenario
     // Cast changes back: its own model and speeds.
     IEnumerator ChangeBack()
     {
-        shape.ChangeBackByChoice();
+        yield return EndOnThe<Keyboard>("Shift keys", d => InputSystem.QueueStateEvent(d, new KeyboardState(Key.Z)), d => InputSystem.QueueStateEvent(d, new KeyboardState()));
+        Check("key_ends_shape", !shape.Shifted, $"{shape.FormName ?? "the wizard"} after Z");
+        if (shape.Shifted) shape.ChangeBackByChoice();
+        yield return null;
+        yield return ShiftIntoTheDeer();
+        Check("shifted_again", shape.Shifted, shape.FormName ?? "not shifted");
+        yield return EndOnThe<Gamepad>("Shift pad", d => InputSystem.QueueStateEvent(d, new GamepadState().WithButton(GamepadButton.RightShoulder)), d => InputSystem.QueueStateEvent(d, new GamepadState()));
+        Check("pad_ends_shape", !shape.Shifted, $"{shape.FormName ?? "the wizard"} after RB");
+        if (shape.Shifted) shape.ChangeBackByChoice();
         yield return null;
         var (move, sprint) = Speeds();
         bool shown = wizard.GetComponentsInChildren<Renderer>().All(r => !r.forceRenderingOff);
         bool speeds = Mathf.Approximately(move, wizardMove) && Mathf.Approximately(sprint, wizardSprint);
         Check("changed_back", !shape.Shifted && !shape.ModelHidden && shown && speeds,
             $"shifted {shape.Shifted}, model shown {shown}, move {move:0.0} sprint {sprint:0.0}, capsule {wizard.GetComponent<CharacterController>().height:0.00} m");
+    }
+
+    // A cast button pressed through the wizard's own controls, on a virtual device.
+    IEnumerator EndOnThe<T>(string name, System.Action<T> press, System.Action<T> release) where T : InputDevice
+    {
+        var controls = caster.controls;
+        bool wasOn = controls.enabled, casterWasOn = caster.enabled;
+        controls.enabled = true;
+        caster.enabled = true;
+        var device = InputSystem.AddDevice<T>(name);
+        yield return null;
+        press(device);
+        yield return null;
+        yield return null;
+        release(device);
+        yield return null;
+        yield return null;
+        InputSystem.RemoveDevice(device);
+        controls.enabled = wasOn;
+        caster.enabled = casterWasOn;
     }
 
     // Shifted again, a heavy blow knocks it back into itself.

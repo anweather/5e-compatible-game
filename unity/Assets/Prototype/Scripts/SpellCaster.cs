@@ -31,20 +31,21 @@ public partial class SpellCaster : MonoBehaviour
 
     AimMarker marker;
     CastPose pose;
+    CastBeats beats;
     ItemHolder hands;
     SpellRadialHud radial;
     Shapeshift shape;
     NetChem net;
     RaycastHit crosshair;
     bool hasCrosshair;
-    // Holding Cast charges a spell that can be (ElementHold.SecondsPerLevel a level, to World.MaxCharge); release casts it.
+    // Holding Cast charges a spell that can be (World.SecondsPerLevel a level, to World.MaxCharge); release casts it.
     // The element that eats things away (Acid Splash): its splash, hiss and eaten stain.
     const string AcidElement = "acid", HeatElement = "heat", SandElement = "sand", LightningElement = "lightning";
     float chargeStart = -1f;
     GUIStyle pips;
 
     /// <summary>The charge the held Cast has built so far (1 when not charging).</summary>
-    public int Charge => chargeStart < 0f ? 1 : ElementHold.ChargeOf(Time.time - chargeStart, World.MaxCharge);
+    public int Charge => chargeStart < 0f ? 1 : ElementHold.ChargeOf(Time.time - chargeStart, World.MaxCharge, grid.World.SecondsPerLevel);
     /// <summary>How long Cast has been held charging, or -1 when it isn't (CastPose holds the wind-up).</summary>
     public float ChargingSeconds => chargeStart < 0f ? -1f : Time.time - chargeStart;
     Vector3? blinkLanding;
@@ -58,6 +59,7 @@ public partial class SpellCaster : MonoBehaviour
     void Awake()
     {
         TryGetComponent(out pose);
+        TryGetComponent(out beats);
         TryGetComponent(out hands);
         TryGetComponent(out radial);
         TryGetComponent(out shape);
@@ -68,7 +70,6 @@ public partial class SpellCaster : MonoBehaviour
     void OnDestroy()
     {
         marker?.Destroy();
-        orbs?.Destroy();
     }
 
     /// <summary>Selects a spell by id; false (and nothing changes) if the rules in force don't have it.</summary>
@@ -229,6 +230,7 @@ public partial class SpellCaster : MonoBehaviour
             Destroy(SpellVisuals.Spawn(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
         // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
         float release = CastGestures.Of(gesture).release;
+        if (beats != null) beats.Announce(spellId, landing, release);
         if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast.Charge, onArrive)));
         else Unleash(def, look, landing, cast.Charge, onArrive);
     }

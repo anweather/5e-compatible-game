@@ -8,15 +8,16 @@ using UnityEngine;
 // it is aims it from the crosshair and sends the usual CastCommand, since where
 // a spell lands is only known as it goes off. While the meter drains the wizard
 // walks at the rules' factor and Cancel drops the cast before anything else
-// that button does. Holding the last element charges the cast (ElementHold): the
-// core waits for the release, and the release carries the charge, so every peer
-// sees the same strength; a tap is charge 1. The radial (SpellRadialHud) stays as
-// a debug tool.
+// that button does. Holding the last element charges the cast: the meter runs on
+// through the charge (rules/combos.json chargeTicks, a level at a time) and the
+// core counts it, so every peer sees the same strength, and letting go (ElementHold
+// knows the button) sets it off; a tap is charge 1. The radial (SpellRadialHud)
+// stays as a debug tool.
 public partial class SpellCaster
 {
-    const string SoloPlayer = "solo";
+    /// <summary>The solo wizard's name in the core's casts.</summary>
+    public const string SoloPlayer = "solo";
 
-    CastOrbs orbs;
     SurfaceEffects feet;
     ChemGrid heard;
     // The frame a press cancelled the cast: that press is spent, even for what reads it after.
@@ -26,6 +27,9 @@ public partial class SpellCaster
     /// <summary>This player's name in the core's casts: online their client's, solo a fixed one.</summary>
     public string CastPlayer => Net != null && Net.Online ? Net.LocalPlayer : SoloPlayer;
 
+    /// <summary>Online and still replaying the game so far: the casts in the core were made long ago (CastBeats).</summary>
+    public bool Replaying => Net != null && Net.Online && !Net.CaughtUp;
+
     /// <summary>The meter is draining (ItemHolder: the throw button cancels instead).</summary>
     public bool CastInProgress => cancelledOnFrame == Time.frameCount || (grid != null && grid.World != null && grid.World.CastOf(CastPlayer)?.Casting == true);
 
@@ -34,9 +38,8 @@ public partial class SpellCaster
     {
         get
         {
-            if (!hold.Holding) return 0;
-            var world = grid.World;
-            return hold.ChargeAt(Time.time, world.MaxChargeOf(world.ComboOf(world.CastOf(CastPlayer))));
+            var cast = grid.World.CastOf(CastPlayer);
+            return cast?.Holding == true ? grid.World.HeldCharge(cast) : 0;
         }
     }
 
@@ -59,9 +62,7 @@ public partial class SpellCaster
         var world = grid.World;
         string player = CastPlayer;
         if (feet != null || TryGetComponent(out feet)) feet.CastFactor = (float)world.MoveFactorOf(player);
-        orbs ??= new CastOrbs(transform, pose);
         var cast = world.CastOf(player);
-        orbs.Show(cast?.First, cast?.Second);
         bool busy = (shape != null && shape.Shifted) || (radial != null && radial.IsOpen);
 
         Elements(player, cast, busy);
@@ -84,12 +85,12 @@ public partial class SpellCaster
         var elements = grid.World.Rules.Combos.Elements;
         for (int i = 0; !busy && i < elements.Count && i < controls.Elements.Length; i++)
             if (controls.Elements[i].WasPressedThisFrame() && cast?.TakesElement != false && Send(ComboCommand.Load(player, elements[i], true)))
-                hold.Press(i, Time.time);
+                hold.Press(i);
         // Read from the button, not its release this frame: whatever turns the controls off lets go too,
         // or the cast would wait for ever. Below the press, so a tap inside one frame lets go at once.
         if (hold.Holding && !controls.Elements[hold.Button].IsPressed())
         {
-            Send(ComboCommand.Release(player, hold.ChargeAt(Time.time, World.MaxCharge)));
+            Send(ComboCommand.Release(player));
             hold.Drop();
         }
     }
@@ -101,8 +102,15 @@ public partial class SpellCaster
     /// </summary>
     public bool LoadElement(string element, bool held = false) => grid != null && grid.World != null && Send(ComboCommand.Load(CastPlayer, element, held));
 
-    /// <summary>Lets go of an element loaded held, at this charge.</summary>
-    public bool LetGo(int charge) => grid != null && grid.World != null && Send(ComboCommand.Release(CastPlayer, charge));
+    /// <summary>Lets go of an element loaded held, at the charge its meter has reached.</summary>
+    public bool LetGo() => grid != null && grid.World != null && Send(ComboCommand.Release(CastPlayer));
+
+    /// <summary>Drops a cast under way, as Cancel does (WizardDown: a wizard that falls loses it).</summary>
+    public void DropCast()
+    {
+        hold.Drop();
+        if (grid != null && grid.World != null && grid.World.CastOf(CastPlayer)?.Casting == true) Send(ComboCommand.Cancel(CastPlayer));
+    }
 
     /// <summary>
     /// Where the crosshair is instead, for the marker and the casts, while set: the playtest bot, which
@@ -138,12 +146,11 @@ public partial class SpellCaster
         var world = grid.World;
         if (world.CombosFired.Count == 0) return;
         // Replaying the game so far as a late joiner, those casts were made long ago.
-        if (Net != null && Net.Online && !Net.CaughtUp) return;
+        if (Replaying) return;
         string player = CastPlayer;
         foreach (var fired in world.CombosFired)
         {
             if (fired.Player != player) continue;
-            orbs?.Slam();
             if (fired.Discovered) EventLog.Add($"New in your grimoire: {fired.Name}");
             CastAtCrosshair(fired.Spell, fired.Charge);
         }

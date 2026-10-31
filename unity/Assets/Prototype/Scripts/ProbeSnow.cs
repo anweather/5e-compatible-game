@@ -33,7 +33,7 @@ public class SnowProbe : ProbeScenario
         var valley = FindAnyObjectByType<ValleyChemistry>();
         var ground = valley != null ? valley.Ground : null;
         float waited = 0f;
-        for (; ground != null && (ground.Repainting > 0 || ground.Shaping) && waited < 150f; waited += 1f) yield return Wait(1f);
+        for (; ground != null && (ground.Repainting > 0 || ground.Shaping) && waited < 60f; waited += 1f) yield return Wait(1f);
         Metric("paint_settle_s", waited);
 
         // A bank stands over the ground beside it (the terrain eases toward its new height).

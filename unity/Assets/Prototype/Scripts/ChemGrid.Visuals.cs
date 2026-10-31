@@ -19,6 +19,8 @@ public partial class ChemGrid
     [Header("Effects (optional; cubes stand in when missing)")]
     [Tooltip("What flames are drawn with (Prototype/Flame); the builder sets it, which puts it in the build.")]
     public Shader flameShader;
+    [Tooltip("The flame flipbooks, tiny, medium and large (the Particle Pack's); the builder sets them.")]
+    public Texture2D[] flameSheets;
     public GameObject smokeFx;
     public GameObject steamFx;
     public GameObject sparksFx;
@@ -292,8 +294,10 @@ public partial class ChemGrid
             k = k * 31 + (c.Frozen ? 1 : 0);
             k = k * 31 + (c.Cover?.GetHashCode() ?? 0);
             k = k * 31 + c.Fire;
-            k = k * 31 + (c.Gas?.GetHashCode() ?? 0);
-            k = k * 31 + c.GasAmt;
+            // Weather's veil of fog draws nothing, so its coming and going over every cell redraws nothing.
+            bool gas = c.Gas != null && !FogBank.IsVeil(c.Gas, c.GasAmt);
+            k = k * 31 + (gas ? c.Gas.GetHashCode() : 0);
+            k = k * 31 + (gas ? c.GasAmt : 0);
             k = k * 31 + (c.Charge > 0 ? 1 : 0);
             k = k * 31 + HeatLevel(c);
             k = k * 31 + RustLevel(c);

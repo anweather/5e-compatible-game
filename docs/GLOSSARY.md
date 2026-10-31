@@ -147,6 +147,11 @@ touch them.
   earth, lightning, thunder, grease, oil, fog, growth. *Not* the spell
   radial's top ring (that's a **group**).
 
+**Focus** *(planned)*
+: An item a wizard carries to cast through, such as a staff. Not built: the
+  default wizard's hands are free, and `WizardOutfit.carriesStaff` keeps the old
+  staff's code, unused, for it.
+
 **Reaction**
 : A rule that runs when an element arrives at a cell, in order, until
   one says `stop` (`World.React`, `reactions.json`).
@@ -173,10 +178,11 @@ touch them.
   gas's `hidesAfter` cells of it is hidden (`World.LineOfSight`). It thins
   away when the stretch ends.
 
-**Tongue**
-: One lick of flame on a burning cell (`FlameBank`, `Prototype/Flame`): a cell
-  holds a few, scattered past its edges, each with its own size, speed and
-  shape, drawn on the GPU. View only: what burns is the core's.
+**Flame**
+: One of the few flames on a burning cell (`FlameBank`, `Prototype/Flame`): a
+  quad playing the Particle Pack's flame flipbooks, by the fire's level, in the
+  look of what burns (`FireLook`), scattered about the cell at its own size,
+  speed and time, drawn on the GPU. View only: what burns is the core's.
 
 **Live cell / settled chunk**
 : A cell is **live** while something in it is still changing on its own:
@@ -197,7 +203,16 @@ touch them.
 : A wizard using a spell at a cell and direction (`CastCommand`).
 
 **Cast charge**
-: How long a cast was held, 1 to 3 (`CastCommand.Charge`, `ComboCommand.Charge`).
+: How long a cast was held, 1 to 3 (`CastCommand.Charge`, counted from the meter by `World.HeldCharge`).
+
+**Beat**
+: A stage of a cast by elements on the wizard's body: first element, second element, slam, charge,
+  release, recovery, or a fizzle when it's dropped (`Beat`, `CastBeats`; poses and timings in
+  `Settings/CastFeel.asset`). View only, worked out from the core's cast state on every peer.
+
+**Downed**
+: A wizard at 0 health: on the ground with no controls for `sim.json` `downed.seconds`, then back at the
+yard with full health (`Downed`, `WizardDown`). Not the world reset.
 
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,

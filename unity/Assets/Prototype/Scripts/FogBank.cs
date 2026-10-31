@@ -47,6 +47,9 @@ public class FogBank : MonoBehaviour
     static readonly Style StormStyle = new(new Color(0.13f, 0.14f, 0.2f, 1f), CloudHeight, 0.3f, 3.5f, 0.92f, rains: true);
     static readonly Style SnowCloudStyle = new(new Color(0.9f, 0.93f, 0.98f, 1f), CloudHeight, 0.25f, 3.2f, 0.8f, snows: true);
 
+    /// <summary>Whether it's the thin veil fog weather lays, too thin to draw on its own cell (a single unit).</summary>
+    public static bool IsVeil(string gas, int amount) => gas == GasIds.Fog && amount == 1;
+
     /// <summary>Whether a gas is drawn here rather than as a particle effect.</summary>
     public static bool Draws(string gas) => gas == GasIds.Fog || gas == GasIds.Dust || gas == GasIds.Cloud || gas == GasIds.Storm || gas == GasIds.SnowCloud;
 

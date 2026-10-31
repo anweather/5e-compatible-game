@@ -55,7 +55,8 @@ public partial class Shapeshift
             float scale = (b.Size.x + b.Size.y) * 0.5f;
             float r = Mathf.Clamp(Mathf.Min(h * 0.5f, b.BodyLength * scale * 0.4f), MinRadius, MaxRadius);
             float feet = center.y - height * 0.5f;
-            body.stepOffset = Mathf.Min(stepOffset, h + 2f * r - 0.05f);
+            // Physics takes "height" here as the capsule's whole height: past it, the controller won't enable again.
+            body.stepOffset = Mathf.Min(stepOffset, h - 0.05f);
             body.height = h;
             body.radius = r;
             body.center = new Vector3(center.x, feet + h * 0.5f, center.z);
