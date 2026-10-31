@@ -623,3 +623,10 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   5. The punch goes on Circle (pad), when not casting (B still cancels a
      cast); F on keys. Square keeps picking up and sitting (#18).
   6. Voice: the sound pass first; Vivox voice waits for Andrew's setup.
+- 2026-10-30 21:25: UX pass 4 part 1 merged (aeb98ad; DesktopUnity): #2
+  targeting markers by spell shape (new probe aimlooks), #8 HUD (stamina
+  a thin line under Health and Magic; the Health and Magic block read as the
+  "top bar"), #9 the cast bar fills smoothly with charge steps, #10 Back
+  closes the grimoire. Notes posted on the issues. Not yet played by hand or
+  in a player build (part 3). FAST_LOOP: aimlooks row, combo's stamina line.
+  Part 2 (head flare, hat, fire, camera at houses) running.
