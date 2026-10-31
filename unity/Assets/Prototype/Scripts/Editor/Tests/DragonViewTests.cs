@@ -61,6 +61,14 @@ public class DragonViewTests
         Assert.That(world.Golf, Is.Not.Null, "the ball is on its tee");
     }
 
+    // A stage the perf counts didn't know threw on every frame of a perf run, and no tick ran.
+    [Test]
+    public void ThePerfCountsNameEveryStageOfATick()
+    {
+        var stages = typeof(World).GetNestedType("TickStage", System.Reflection.BindingFlags.NonPublic);
+        Assert.That(PerfCounts.StageCount, Is.EqualTo(System.Enum.GetValues(stages).Length));
+    }
+
     [Test]
     public void TheDragonIsDrawnInOnePieceAtAnyFrameRate()
     {

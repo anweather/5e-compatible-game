@@ -243,12 +243,12 @@ public class DragonProbe : ProbeScenario
         if (!World.BreathBox(out int x0, out int y0, out int x1, out int y1)) return null;
         bool alongX = d.AlongX, back = World.PassLine(d, d.Pass).back;
         var (from, to, first, last) = alongX ? (x0, x1, y0, y1) : (y0, y1, x0, x1);
-        int dir = back ? -1 : 1, length = alongX ? World.W : World.H;
-        for (int along = (back ? from : to) + dir * ahead; along > 0 && along < length - 1; along += dir)
+        int dir = back ? -1 : 1, start = (back ? from : to) + dir * ahead, length = alongX ? World.W : World.H;
+        for (int i = 0; i < length; i++)
             for (int across = first; across < last; across += 3)
             {
-                var (x, y) = alongX ? (along, across) : (across, along);
-                if (good(x, y)) return (x, y);
+                var (x, y) = alongX ? (start + dir * i, across) : (across, start + dir * i);
+                if (World.InBounds(x, y) && good(x, y)) return (x, y);
             }
         return null;
     }

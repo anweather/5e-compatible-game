@@ -13,12 +13,15 @@ using System.Diagnostics;
 public static class PerfCounts
 {
     /// <summary>World.TickStage by number (World.TickStageNumber).</summary>
-    static readonly string[] Stages = { "none", "burn", "watercheck", "springs", "flow", "gas", "rest", "timers", "end" };
+    static readonly string[] Stages = { "none", "burn", "watercheck", "springs", "flow", "gas", "rest", "timers", "dragon", "end" };
 
     static readonly Dictionary<string, long> frame = new();
     static readonly Stopwatch sliceWatch = new();
     static readonly string[] stageKeys = MakeKeys();
     static int sliceStage;
+
+    /// <summary>The tick's stages named here, one for each of World's (TickStage).</summary>
+    public static int StageCount => Stages.Length;
 
     /// <summary>Whether anything is counted. PerfScenario sets it.</summary>
     public static bool On { get; set; }
