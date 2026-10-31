@@ -14,25 +14,29 @@ The generator lives in this skill too, so it works on any machine with Python 3 
 
 - `synth.py`: renders a preset to WAV and prints the vocabulary's measures.
   `python synth.py presets/<name>.json --out <dir>` (run `python synth.py --help` for the rest).
-- `presets/*.json`: parameters keyed by vocabulary words with amounts, e.g.
-  `{"hum": 0.8, "fifths": 1, "pulse": {"amount": 0.3, "accelerating": true}}`. A picked variant
+- `presets/*.json`: parameters keyed by vocabulary words. A preset needs `root_hz`, `swell`,
+  `"cut off"`, `whoosh` and `thump` (a short example alone stops with an error listing them), so copy
+  `presets/b-deep-hum.json`, change words, and set a new `name`. Real keys: `root_hz`, `hum`, `fifths`,
+  `choir`, `rumble`, `sub`, `grit`, `pulse` {amount, accelerating}, `rising`, `escalate`, `layer`,
+  `swell`, `"cut off"`, `whoosh`, `thump`, `colour`, plus `name`, `says`, `seed`. A picked variant
   is saved here under a name in the vocabulary's words.
 
 ## The loop
 
 1. **Translate.** Map Andrew's description onto vocabulary words, each with an amount
-   (`hum 0.8, pulse 0.2 accelerating, snap 0`). Words he uses that aren't in the vocabulary yet:
+   (`hum 1, pulse 0.2 accelerating, thump 0.2`). Words he uses that aren't in the vocabulary yet:
    guess a meaning, say the guess in one line, and add it to the vocabulary as **proposed**.
 2. **Render variants, audio only.** No video. Copy a preset, change the words in question, and
    render it with `synth.py` as the standard series below. Make 2-4
    variants that differ along the one or two words in question (for example pulse at 15%, 30%,
    45%), and name each by what changes ("B + pulse 30%"), not A/B/C alone.
-3. **Measure.** For each variant, report the vocabulary's numbers (low energy under 200 Hz, attack,
-   cut-off, loudness against the current game sound). Equal loudness across variants, so the choice
+3. **Measure.** For each variant, report the numbers `synth.py` prints (low energy under 200 and
+   80 Hz, attacks, cut-off, loudness against the current game sound). Equal loudness across variants, so the choice
    isn't "the loud one".
-4. **Put them on the board** (`docs/STATE.md`, "Andrew's board"): upload as assets
-   (`asset: true`), play with `<audio controls>`. If the board refuses an audio type, wrap it with
-   `ffmpeg -f lavfi -i color=c=black:s=320x180 -i in.wav -shortest -c:v libx264 -tune stillimage -c:a aac out.mp4`.
+4. **Put them on the board** (`docs/STATE.md`, "Andrew's board"): the board doesn't accept .wav.
+   Wrap each into an MP4 with a still picture, writing to a short path (Windows' ffmpeg fails on very
+   long ones): `ffmpeg -f lavfi -i color=c=black:s=320x180 -i in.wav -shortest -c:v libx264 -tune stillimage -c:a aac C:/tmp/out.mp4`.
+   Upload as assets (`asset: true`) and play with `<audio controls>`.
    One line per variant: its words and amounts. Don't listen and judge on Andrew's behalf.
 5. **Record the verdict.** In `JUDGMENT_CALLS.md` (as for any call), and in the vocabulary: a
    word Andrew confirmed becomes **agreed**, with the variant that showed it as its example; a
