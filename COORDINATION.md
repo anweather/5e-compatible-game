@@ -669,3 +669,9 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   flare, housecam, flames in FAST_LOOP. Known: castlooks wave_carries fails
   on base code too (part 3 takes it); a sun glint on the ground over 12x in
   150-200 of 960 views (open); not seen on Mac (Flame uses StructuredBuffer).
+- 2026-10-30 23:10: DECIDED (Andrew): proximity voice (Vivox, D8) targets
+  release 0.1.10, with the sound pass. 0.1.9 ships what's on dev now
+  (today's rules, UX pass 4, the five calls, perf fixes). Before voice work
+  starts, Andrew sets up a Unity Gaming Services project with Vivox and
+  links it to the Unity project (the PM gives him the steps; agents don't
+  enter account keys).
