@@ -16,7 +16,7 @@ public class CastBeatTests
     public void Clear() => Object.DestroyImmediate(feel);
 
     static CastFacts Gathering(bool second = false, bool holding = false) => new(true, second, true, holding, false, false);
-    static CastFacts Met(bool holding = false) => new(true, true, false, holding, false, false);
+    static CastFacts Met(bool holding = false, bool striking = false) => new(true, true, false, holding, false, false, striking);
     static CastFacts Fired(bool thrust = false) => new(false, false, false, false, true, thrust);
     static readonly CastFacts Nothing = new(false, false, false, false, false, false);
 
@@ -36,14 +36,70 @@ public class CastBeatTests
     {
         Assert.That(Next(Beat.Neutral, Long, Gathering()), Is.EqualTo(Beat.First));
         Assert.That(Next(Beat.First, Long, Gathering()), Is.EqualTo(Beat.First));
-        Assert.That(Next(Beat.First, Long, Met()), Is.EqualTo(Beat.Slam));
+        Assert.That(Next(Beat.First, Long, Met()), Is.EqualTo(Beat.WindUp));
     }
 
     [Test]
     public void ThePairGoesThroughBothHands()
     {
         Assert.That(Next(Beat.First, 0.1f, Gathering(second: true)), Is.EqualTo(Beat.Second));
-        Assert.That(Next(Beat.Second, Long, Met()), Is.EqualTo(Beat.Slam));
+        Assert.That(Next(Beat.Second, Long, Met()), Is.EqualTo(Beat.WindUp));
+    }
+
+    [Test]
+    public void ATapWindsUpThenSlams()
+    {
+        Assert.That(Next(Beat.WindUp, feel.windUp.seconds / 2f, Met()), Is.EqualTo(Beat.WindUp));
+        Assert.That(Next(Beat.WindUp, Long, Met()), Is.EqualTo(Beat.Slam));
+    }
+
+    [Test]
+    public void ATapOutOfMeterGoesWithoutTheWindUp()
+    {
+        Assert.That(Next(Beat.Recovery, 0f, Met(striking: true)), Is.EqualTo(Beat.Slam));
+        Assert.That(Next(Beat.WindUp, 0f, Met(striking: true)), Is.EqualTo(Beat.Slam));
+    }
+
+    [Test]
+    public void AHoldNeverWindsUp()
+    {
+        Assert.That(Next(Beat.First, Long, Met(holding: true)), Is.EqualTo(Beat.Slam));
+        Assert.That(Next(Beat.Second, Long, Met(holding: true)), Is.EqualTo(Beat.Slam));
+        Assert.That(Next(Beat.Second, Long, Fired()), Is.EqualTo(Beat.Slam));
+    }
+
+    [Test]
+    public void ALateSecondElementTakesTheWindUpBack() =>
+        Assert.That(Next(Beat.WindUp, 0.05f, Gathering(second: true)), Is.EqualTo(Beat.Second));
+
+    [Test]
+    public void TheThrustIsTheTapsOnlyForATap()
+    {
+        float hold = feel.release.seconds + feel.thrustHold, tapHold = feel.tapRelease.seconds + feel.tapThrustHold;
+        Assert.That(tapHold, Is.GreaterThan(hold));
+        float between = (hold + tapHold) / 2f;
+        Assert.That(Next(Beat.Release, between, Nothing), Is.EqualTo(Beat.Recovery), "charged");
+        Assert.That(CastBeat.Next(Beat.Release, between, Nothing, feel, tap: true), Is.EqualTo(Beat.Release), "a tap");
+    }
+
+    // The charged cast Andrew called amazing (J-040): its numbers as they were, in the asset that ships.
+    [Test]
+    public void TheChargedTuningIsPinned()
+    {
+        var shipped = UnityEditor.AssetDatabase.LoadAssetAtPath<CastFeel>("Assets/Prototype/Settings/CastFeel.asset");
+        foreach (var (name, now, was) in new[]
+        {
+            ("slam", shipped.slam.seconds, 0.1f), ("slam dip", shipped.slam.dip, 0.05f), ("slam lean", shipped.slam.lean, 6f),
+            ("charge", shipped.charge.seconds, 0.25f), ("release", shipped.release.seconds, 0.09f), ("recoil", shipped.release.recoil, 0.35f),
+            ("recovery", shipped.recovery.seconds, 0.24f), ("lead", shipped.thrustLead, 0.08f), ("hold", shipped.thrustHold, 0.07f),
+            ("slam stop", shipped.slamStop, 0.034f), ("release stop", shipped.releaseStop, 0.05f),
+            ("slam kick", shipped.slamKick, 0.05f), ("kick seconds", shipped.slamKickSeconds, 0.14f),
+        })
+            Assert.That(now, Is.EqualTo(was), name);
+        Assert.That(shipped.slamTicks, Is.EqualTo(1));
+        Assert.That(shipped.slamRumble.low, Is.EqualTo(0.55f));
+        Assert.That(shipped.slamRumble.high, Is.EqualTo(0.35f));
+        Assert.That(shipped.slamRumble.seconds, Is.EqualTo(0.1f));
     }
 
     [Test]
@@ -100,15 +156,19 @@ public class CastBeatTests
     public void FactsFollowTheCoresCast()
     {
         var cast = new Chem.PlayerCast { First = "fire", Meter = 5, Total = 6 };
-        Assert.That(CastFacts.Of(cast, 1, false, false).gathering, Is.True);
+        Assert.That(CastFacts.Of(cast, 1, 3, false, false).gathering, Is.True);
+        cast.Meter = 3;
+        Assert.That(CastFacts.Of(cast, 1, 3, false, false).gathering, Is.False, "a tap's wind-up");
+        Assert.That(CastFacts.Of(cast, 1, 3, false, false).striking, Is.False);
         cast.Meter = 1;
-        Assert.That(CastFacts.Of(cast, 1, false, false).gathering, Is.False, "a tap's last tick");
+        Assert.That(CastFacts.Of(cast, 1, 3, false, false).striking, Is.True, "a tap's last tick");
         cast.Holding = true;
         cast.Extra = 6;
         cast.Meter = 8;
-        Assert.That(CastFacts.Of(cast, 1, false, false).gathering, Is.True, "held, still a tap's length to go");
+        Assert.That(CastFacts.Of(cast, 1, 3, false, false).gathering, Is.True, "held, still a tap's length to go");
         cast.Meter = 7;
-        Assert.That(CastFacts.Of(cast, 1, false, false).gathering, Is.False, "held past a tap's length");
-        Assert.That(CastFacts.Of(null, 1, false, false).casting, Is.False);
+        Assert.That(CastFacts.Of(cast, 1, 3, false, false).gathering, Is.False, "held past a tap's length");
+        Assert.That(CastFacts.Of(cast, 1, 3, false, false).striking, Is.False, "a hold never strikes early");
+        Assert.That(CastFacts.Of(null, 1, 3, false, false).casting, Is.False);
     }
 }

@@ -8,7 +8,9 @@ using UnityEngine;
 // elements through the wizard's own LoadElement and LetGo, single, pair,
 // charged and cancelled. Each must go through its beats in order with the hands
 // at their targets once a beat has settled; the slam takes about 0.1 s; a charge
-// pulses at each level and slows the walk; the recoil moves only what's drawn.
+// pulses at each level and slows the walk; the recoil moves only what's drawn; a
+// charged cast's beats last the frames they did before the uncharged rework, an
+// uncharged cast's as tuned; casts on each other's heels all go on time.
 // With --shots, the wizard from the side at each beat, first with the pose off
 // (the "before": the old gestures, the same camera and moments). The impact is
 // in ProbeCastFeel.Impact.cs, the sounds in ProbeCastFeel.Sound.cs.
@@ -19,6 +21,7 @@ public partial class CastFeelProbe : ProbeScenario
     CastBeats beats;
     readonly List<Beat> seen = new();
     readonly Dictionary<Beat, float> worstHand = new();
+    readonly List<(Beat beat, int frame)> beatFrames = new();
     int pulses;
     float slamSeconds;
 
@@ -50,9 +53,10 @@ public partial class CastFeelProbe : ProbeScenario
                 yield return Wait(1f);
             }
 
-            yield return Cast("single", new[] { ElementIds.Fire }, false, new[] { Beat.First, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
-            yield return Cast("pair", new[] { ElementIds.Water, ElementIds.Earth }, false, new[] { Beat.First, Beat.Second, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
+            yield return Cast("single", new[] { ElementIds.Fire }, false, new[] { Beat.First, Beat.WindUp, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
+            yield return Cast("pair", new[] { ElementIds.Water, ElementIds.Earth }, false, new[] { Beat.First, Beat.Second, Beat.WindUp, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
             yield return Charged();
+            yield return Timings();
             yield return Cancelled();
             yield return MidTick();
             if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Pictures("after");
@@ -83,7 +87,7 @@ public partial class CastFeelProbe : ProbeScenario
             }
         }
         StartCoroutine(Slices());
-        yield return Cast("mid_tick", new[] { ElementIds.Fire }, false, new[] { Beat.First, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
+        yield return Cast("mid_tick", new[] { ElementIds.Fire }, false, new[] { Beat.First, Beat.WindUp, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
         slicing = false;
         yield return null;
     }
@@ -91,6 +95,7 @@ public partial class CastFeelProbe : ProbeScenario
     void Heard(Beat beat)
     {
         seen.Add(beat);
+        beatFrames.Add((beat, Time.frameCount));
         if (beat == Beat.Slam) StartCoroutine(TimeSlam());
     }
 
@@ -103,6 +108,100 @@ public partial class CastFeelProbe : ProbeScenario
         var pose = wizard.GetComponent<CastPose>();
         while (Time.time - at < 0.5f && Vector3.Distance(pose.HandPosition, pose.LeftHandPosition) > 0.14f) yield return null;
         slamSeconds = Time.time - at;
+    }
+
+    // The same cast on the same clock each run, 60 fps fixed and begun on a tick, gives the same frames:
+    // what a beat lasts, to the frame, with its hit-stops. Those in the charged cast were dev's before
+    // the uncharged rework, and must never change. First and Charge end on a tick, so they can trade or take a
+    // frame between them, a tick being 10 frames from a clock that adds up floats.
+    const int ChargedBeat = 6, ChargedRelease = 13, ChargedRecovery = 15, ChargedFirstAndHold = 120;
+    const int TapWindUp = 12, TapRelease = 21, TapRecovery = 15, TapFirstAndSlam = 70;
+
+    readonly Dictionary<Beat, int> lasted = new();
+
+    IEnumerator Timings()
+    {
+        float shakeWas = GameFeel.Shake;
+        GameFeel.Shake = 1f;
+        Time.captureDeltaTime = 1f / 60f;
+        yield return Wait(1f);
+        yield return Timed(true);
+        string charged = string.Join(", ", lasted.Select(kv => $"{kv.Key} {kv.Value}"));
+        Check("charged_beats_unchanged", lasted[Beat.Slam] == ChargedBeat && lasted[Beat.Release] == ChargedRelease && lasted[Beat.Recovery] == ChargedRecovery
+            && Mathf.Abs(lasted[Beat.First] + lasted[Beat.Charge] - ChargedFirstAndHold) <= 1, charged);
+        yield return Timed(false);
+        string tap = string.Join(", ", lasted.Select(kv => $"{kv.Key} {kv.Value}"));
+        Check("tap_beats_as_tuned", lasted[Beat.WindUp] == TapWindUp && lasted[Beat.Release] == TapRelease && lasted[Beat.Recovery] == TapRecovery
+            && Mathf.Abs(lasted[Beat.First] + lasted[Beat.Slam] - TapFirstAndSlam) <= 1, tap);
+        yield return Repeats();
+        Time.captureDeltaTime = 0f;
+        GameFeel.Shake = shakeWas;
+    }
+
+    // Casts on each other's heels: each new one goes as soon as the core takes it. No cast waits for
+    // the beats, each goes off when the core says, and each still shows its slam before its thrust.
+    IEnumerator Repeats()
+    {
+        const int Casts = 5;
+        beatFrames.Clear();
+        struckSlams = repeatFired = 0;
+        repeatTick = -1;
+        repeatGap = 0;
+        beats.Struck += CountSlam;
+        grid.TickDone += CountFired;
+        string me = caster.CastPlayer;
+        for (int i = 0; i < Casts; i++)
+        {
+            while (World.CastOf(me)?.Casting == true || World.TickInProgress) yield return null;
+            caster.LoadElement(i % 2 == 0 ? ElementIds.Earth : ElementIds.Air);
+            for (float waited = 0f; World.CastOf(me)?.Casting != true && waited < 0.5f; waited += Time.deltaTime) yield return null;
+        }
+        while (World.CastOf(me)?.Casting == true) yield return null;
+        yield return AtBeat(Beat.Neutral, 0.3f);
+        grid.TickDone -= CountFired;
+        beats.Struck -= CountSlam;
+        int slams = beatFrames.Count(b => b.beat == Beat.Slam), releases = beatFrames.Count(b => b.beat == Beat.Release);
+        Metric("repeat_casts_fired", repeatFired);
+        Metric("repeat_gap_ticks", repeatGap);
+        Check("repeat_casts_all_go_on_time", repeatFired == Casts && repeatGap <= 7, $"{repeatFired} of {Casts} fired, at most {repeatGap} ticks apart");
+        Check("repeat_casts_each_show_slam_and_thrust", slams == Casts && struckSlams == Casts && releases == Casts, $"{slams} slams, {struckSlams} struck, {releases} thrusts: {string.Join(" ", beatFrames.Select(b => b.beat))}");
+        yield return Wait(0.5f);
+    }
+
+    int struckSlams, repeatFired, repeatTick, repeatGap;
+
+    void CountSlam(Beat beat) => struckSlams += beat == Beat.Slam ? 1 : 0;
+
+    void CountFired()
+    {
+        if (World.CombosFired.All(f => f.Player != caster.CastPlayer)) return;
+        if (repeatTick >= 0) repeatGap = Mathf.Max(repeatGap, World.Tick - repeatTick);
+        repeatTick = World.Tick;
+        repeatFired++;
+    }
+
+    // A cast begun on a tick, let go 40 frames into the charge beat if it's held, and what each of its beats lasted in frames.
+    IEnumerator Timed(bool held)
+    {
+        bool loaded = false;
+        void OnTick()
+        {
+            if (!loaded) loaded = caster.LoadElement(ElementIds.Earth, held);
+        }
+        beatFrames.Clear();
+        grid.TickDone += OnTick;
+        while (!loaded) yield return null;
+        grid.TickDone -= OnTick;
+        while (beats.Now == Beat.Neutral) yield return null;
+        if (held)
+        {
+            while (beats.Now != Beat.Charge) yield return null;
+            for (int i = 0; i < 40; i++) yield return null;
+            caster.LetGo();
+        }
+        yield return AtBeat(Beat.Neutral, 0.3f);
+        lasted.Clear();
+        for (int i = 0; i + 1 < beatFrames.Count; i++) lasted[beatFrames[i].beat] = beatFrames[i + 1].frame - beatFrames[i].frame;
     }
 
     // Beginning a cast and following it until the beats are back at neutral.
@@ -151,10 +250,10 @@ public partial class CastFeelProbe : ProbeScenario
     void Measure()
     {
         var beat = beats.Now;
-        if (beat is Beat.Neutral or Beat.Recovery or Beat.Fizzle || beats.InBeat < beats.feel.Of(beat).seconds + 0.01f) return;
+        if (beat is Beat.Neutral or Beat.Recovery or Beat.Fizzle || beats.InBeat < beats.Pose.seconds + 0.01f) return;
         var pose = wizard.GetComponent<CastPose>();
         var (right, left) = beats.HandTargets;
-        var feel = beats.feel.Of(beat);
+        var feel = beats.Pose;
         float error = feel.rightWeight > 0.99f ? Vector3.Distance(right, pose.HandPosition) : 0f;
         if (feel.leftWeight > 0.99f) error = Mathf.Max(error, Vector3.Distance(left, pose.LeftHandPosition));
         worstHand[beat] = Mathf.Max(error, worstHand.GetValueOrDefault(beat));

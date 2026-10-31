@@ -214,7 +214,7 @@ touch them.
 : How long a cast was held, 1 to 3 (`CastCommand.Charge`, counted from the meter by `World.HeldCharge`).
 
 **Beat**
-: A stage of a cast by elements on the wizard's body: first element, second element, slam, charge,
+: A stage of a cast by elements on the wizard's body: first element, second element, wind-up (an uncharged cast only), slam, charge,
   release, recovery, or a fizzle when it's dropped (`Beat`, `CastBeats`; poses and timings in
   `Settings/CastFeel.asset`). View only, worked out from the core's cast state on every peer.
 

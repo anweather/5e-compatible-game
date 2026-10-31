@@ -88,6 +88,35 @@ public class CastFeel : ScriptableObject
         rightHand = new Vector3(0.3f, 0.8f, 0.05f), leftHand = new Vector3(-0.3f, 0.8f, 0.05f), rightWeight = 0f, leftWeight = 0f, seconds = 0.3f,
     };
 
+    [Header("The uncharged cast: read by a tap only, so these can't touch a charged cast")]
+    [Tooltip("The anticipation: the arms high and wide, the body rearing back. It starts windUpTicks from the end of the meter.")]
+    public BeatPose windUp = new()
+    {
+        rightHand = new Vector3(0.5f, 1.38f, -0.1f), leftHand = new Vector3(-0.5f, 1.38f, -0.1f), seconds = 0.2f,
+        fingers = new Vector3(0.3f, 1f, -0.2f), palm = Vector3.left, lean = -7f,
+    };
+    [Tooltip("A tap's slam: down from the wind-up, heavier and further than a hold's, no ease-in.")]
+    public BeatPose tapSlam = new()
+    {
+        rightHand = new Vector3(0.03f, 1.14f, 0.4f), leftHand = new Vector3(-0.03f, 1.14f, 0.4f), seconds = 0.13f, curve = Snap(),
+        fingers = new Vector3(0f, 1f, 0.4f), palm = Vector3.left, dip = 0.13f, lean = 12f, merge = 1f,
+    };
+    [Tooltip("A tap's thrust.")]
+    public BeatPose tapRelease = new()
+    {
+        rightHand = new Vector3(0.05f, 1.34f, 0.41f), leftHand = new Vector3(-0.05f, 1.34f, 0.41f), seconds = 0.15f, curve = Snap(),
+        fingers = new Vector3(0f, 1f, 0.3f), palm = Vector3.forward, lean = -10f, recoil = 0.45f, merge = 1f,
+    };
+    [Min(1), Tooltip("A tap's wind-up starts with this many ticks of the meter left (a tick is 1/6 s). With slamTicks or fewer left it's skipped, for a cast on the heels of the last.")]
+    public int windUpTicks = 3;
+    [Tooltip("Like thrustLead and thrustHold, for a tap.")]
+    public float tapThrustLead = 0.15f, tapThrustHold = 0.11f;
+    [Tooltip("Like slamStop and releaseStop, for a tap: 5 frames and 4 at 60 fps.")]
+    public float tapSlamStop = 0.084f, tapReleaseStop = 0.067f;
+    [Tooltip("Like slamKick and slamKickSeconds, for a tap.")]
+    public float tapSlamKick = 0.09f, tapSlamKickSeconds = 0.2f;
+    public Thump tapSlamRumble = new(0.8f, 0.45f, 0.14f);
+
     [Header("Timing")]
     [Min(1), Tooltip("A tap's slam starts with this many ticks of the meter left (a tick is 1/6 s), so the hands meet as the cast goes off.")]
     public int slamTicks = 1;
@@ -156,10 +185,25 @@ public class CastFeel : ScriptableObject
     {
         Beat.First => first,
         Beat.Second => second,
+        Beat.WindUp => windUp,
         Beat.Slam => slam,
         Beat.Charge => charge,
         Beat.Release => release,
         Beat.Fizzle => fizzle,
         _ => recovery,
     };
+
+    /// <summary>The pose a beat moves to in a tap's cast or any other.</summary>
+    public BeatPose Of(Beat beat, bool tap) => !tap ? Of(beat) : beat switch
+    {
+        Beat.Slam => tapSlam,
+        Beat.Release => tapRelease,
+        _ => Of(beat),
+    };
+
+    /// <summary>How long a thrust starts ahead of the spell leaving the hands (s).</summary>
+    public float LeadOf(bool tap) => tap ? tapThrustLead : thrustLead;
+
+    /// <summary>How long a thrust is held at its end (s).</summary>
+    public float HoldOf(bool tap) => tap ? tapThrustHold : thrustHold;
 }

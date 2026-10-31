@@ -45,7 +45,7 @@ public partial class CastFeelProbe
             yield return Wait(1f);
             yield return Heard("single", new[] { ElementIds.Fire },
                 new[] { CastSoundTable.GatherFire, CastSoundTable.Slam, CastSoundTable.ReleaseBolt });
-            Check("thump_at_contact", thumpFrame == struckFrame && thumpFrame > 0 && !stoppedAtThump && Mathf.Abs(thumpInBeat - beats.feel.slam.seconds) < 0.06f,
+            Check("thump_at_contact", thumpFrame == struckFrame && thumpFrame > 0 && !stoppedAtThump && Mathf.Abs(thumpInBeat - beats.feel.tapSlam.seconds) < 0.06f,
                 $"frame {thumpFrame}, hands met {struckFrame}, in a stop {stoppedAtThump}, {thumpInBeat:0.000} s into the slam");
             yield return Heard("pair", new[] { ElementIds.Water, ElementIds.Fire },
                 new[] { CastSoundTable.GatherWater, CastSoundTable.GatherFire, CastSoundTable.Slam, CastSoundTable.ReleaseBurst });

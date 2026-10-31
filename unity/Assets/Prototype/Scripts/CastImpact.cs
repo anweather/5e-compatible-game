@@ -45,14 +45,16 @@ public static class CastImpact
         if (amount <= 0f) return;
         if (beat == Beat.Slam)
         {
-            PadRumble.Play(feel.slamRumble, 1f);
-            beats.HitStop(feel.slamStop * amount, () => Shake(SlamKick, feel.slamKickSeconds, Vector3.down * (feel.slamKick * amount)));
+            bool tap = beats.Tap;
+            float kick = tap ? feel.tapSlamKick : feel.slamKick, seconds = tap ? feel.tapSlamKickSeconds : feel.slamKickSeconds;
+            PadRumble.Play(tap ? feel.tapSlamRumble : feel.slamRumble, 1f);
+            beats.HitStop((tap ? feel.tapSlamStop : feel.slamStop) * amount, () => Shake(SlamKick, seconds, Vector3.down * (kick * amount)));
             return;
         }
         float size = SizeOf(SpellOf(beats), beats.Charge, feel);
         var along = Vector3.ProjectOnPlane(beats.AimPoint - beats.transform.position, Vector3.up).normalized;
         PadRumble.Play(feel.releaseRumble, Mathf.Lerp(feel.smallRumble, 1f, size));
-        beats.HitStop(feel.releaseStop * amount, () =>
+        beats.HitStop((beats.Tap ? feel.tapReleaseStop : feel.releaseStop) * amount, () =>
         {
             float strength = Mathf.Lerp(feel.releaseKickSmall, feel.releaseKickBig, size) * amount;
             Shake(ReleaseKick, feel.releaseKickSeconds, (FromWorld(along) + Vector3.up * feel.releaseLift).normalized * strength);
