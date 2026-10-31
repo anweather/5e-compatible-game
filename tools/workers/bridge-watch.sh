@@ -213,9 +213,23 @@ check_outbox() { # a worker's report (runner.mjs) goes to the PM's mailbox; a us
   done
 }
 
+check_memory() { # free memory under the floor: stop the newest worker VM (stop.cmd pushes its work first)
+  # start.cmd checks memory only at a VM's start; VMs grow after it (Linux to 6 GB, Windows to 8) and so does
+  # a host Editor building a player (13.7 GB on 2026-10-31, with 0.7 GB left).
+  local floor="${BRIDGE_WATCH_MIN_FREE_GB:-1.5}" free vm
+  free="$(powershell -NoProfile -Command "[math]::Round((Get-CimInstance Win32_OperatingSystem).FreePhysicalMemory/1MB,2)" 2>/dev/null | tr -d '\r')"
+  [[ -n "$free" ]] && awk -v f="$free" -v m="$floor" 'BEGIN { exit !(f < m) }' || return 0
+  vm="$(powershell -NoProfile -Command "Get-VM | Where-Object { \$_.State -eq 'Running' -and \$_.Name -match '^[wu]\d' } | Sort-Object Uptime | Select-Object -First 1 -ExpandProperty Name" 2>/dev/null | tr -d '\r')"
+  [[ -n "$vm" ]] || { log "only $free GB free, and no worker VM to stop"; return 0; }
+  log "only $free GB free (floor $floor): stopping $vm, the newest worker"
+  stop_vm "$vm"
+  mail pm "$vm stopped: memory low" "Only $free GB was free (floor $floor GB), so the watcher stopped $vm, the most recently started worker. stop.cmd pushed its work in progress as wip/$vm-<branch>. Restart it when there's room (start.cmd $vm), with a brief to resume."
+}
+
 log "started (pid $$${dry:+, dry run})"
 n=0
 while :; do
+  check_memory
   for a in pro max; do check_usage "$a"; check_back "$a"; done
   for r in coordinator pm; do check_delivery "$r"; done
   # The guests answer slowly (PowerShell Direct takes seconds): every other pass, once a minute.
