@@ -477,7 +477,7 @@ public class PlaytestBot : MonoBehaviour
         foreach (var c in run.Candidates) run.Counts[c.Signature] = found.CountOf(c.Signature);
         run.Metrics["frame_ms_p50"] = frameWatch.Percentile(0.5);
         run.Metrics["frame_ms_p95"] = frameWatch.Percentile(0.95);
-        run.Metrics["frame_ms_worst"] = frameWatch.Times.Count == 0 ? 0f : frameWatch.Times.Max();
+        run.Metrics["frame_ms_worst"] = frameWatch.Worst;
         if (PerfCounts.On) LogWorstFrames();
         run.Metrics["audio_peak"] = tap != null ? tap.Peak : -1f;
         run.Metrics["focus_handed_back"] = handedBack;

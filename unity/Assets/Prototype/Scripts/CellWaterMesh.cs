@@ -108,8 +108,10 @@ public sealed class CellWaterMesh
     bool stale;
     // Milliseconds a frame may spend drawing tiles; the rest wait for the next frames, nearest first.
     // In a playtest run a count of tiles instead (ChemGrid.ExactFrames): ice tiles carry colliders.
+    // A tile takes 14 to 25 ms on the Mac, so the real budget draws one or so a frame; at 24 the bot
+    // saw spikes of a batch no player ever gets.
     const double DrawBudgetMs = 3.0;
-    const int ExactDrawTiles = 24;
+    const int ExactDrawTiles = 2;
     readonly ChemGrid.FrameBudget drawBudget = new(DrawBudgetMs, ExactDrawTiles);
     readonly List<int> drawOrder = new();
 

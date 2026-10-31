@@ -352,6 +352,19 @@ public class PlaytestLogicTests
     }
 
     [Test]
+    public void TheWorstFrameLeavesOutLoadingAndTheBotsScreenshots()
+    {
+        var watch = new FrameWatch();
+        Assert.That(watch.Frame(0, 930f, "yard"), Is.Empty);
+        Assert.That(watch.Frame(1, 700f, "yard"), Is.Empty);
+        Assert.That(watch.Frame(FrameWatch.LoadingFrames + 1, 40f, "yard"), Is.Empty);
+        watch.ShotTaken(100);
+        Assert.That(watch.Frame(101, 260f, "yard"), Is.Empty);
+        Assert.That(watch.Frame(200, 55f, "yard"), Is.Empty);
+        Assert.That(watch.Worst, Is.EqualTo(55f));
+    }
+
+    [Test]
     public void ASpikeJustAfterTheBotsOwnScreenshotIsntTheGames()
     {
         var watch = new FrameWatch();
