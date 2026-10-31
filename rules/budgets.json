@@ -1,0 +1,26 @@
+{
+  "about": "What one mod may ask of the engine (ModValidator.cs, docs/RULES_MCP.md). Read from the base rules only: a mod can't raise its own budget. Each cap sits at or just past the biggest value the base rules or an example in mods/ already use.",
+  "mod": { "maxNewEntries": 12, "maxNewElements": 1 },
+  "spells": { "maxLevel": 9, "diceSides": [4, 6, 8, 10, 12], "maxDice": 20, "maxPower": 6, "maxRadius": 6, "maxLength": 24, "maxSize": 5, "maxPush": 6, "maxRaise": 4, "maxDig": 4 },
+  "effects": { "ignite": 3, "boil": 4, "n": 6, "spreadCover": 3, "conduct": 3, "wave": 4, "addWater": 2 },
+  "materials": { "maxFloatReach": 8 },
+  "critters": { "minEvery": 4 },
+  "chainDepth": 3,
+  "sim": {
+    "ticksPerSecond": [6, 6],
+    "fire.spreadChance": [0, 0.9],
+    "fire.heatChance": [0, 0.2],
+    "fire.downwindBonus": [0, 0.6],
+    "fire.smokeChance": [0, 0.6],
+    "fire.fadeCells": [1, 120],
+    "gas.maxAmount": [1, 8],
+    "gas.decayChance": [0.02, 1],
+    "water.maxLevel": [16, 48],
+    "height.max": [4, 12],
+    "height.min": [-8, 0],
+    "push.slideCells": [0, 8],
+    "conductLimit": [0, 120],
+    "streaming.reach": [1, 3]
+  },
+  "simulate": { "defaultTicks": 300, "maxTicks": 1200, "minTicksPerSecond": 300, "maxSlowdown": 2 }
+}

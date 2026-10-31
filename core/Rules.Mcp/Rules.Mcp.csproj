@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- The rules MCP server, phase 1 (docs/RULES_MCP.md, ADR 0013): a local stdio
+       server that reads, drafts, validates, simulates and saves mods. Links the
+       Chemistry sources like Game.Core, through a reference to it. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>Rules.Mcp</AssemblyName>
+    <RootNamespace>Chem.Mcp</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <!-- S107: a tool's parameters are its schema, so add_spell and add_reaction take many. -->
+    <NoWarn>$(NoWarn);S107</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- The official C# MCP SDK, pinned. -->
+    <PackageReference Include="ModelContextProtocol" Version="2.3.0" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.13" />
+  </ItemGroup>
+</Project>
