@@ -130,6 +130,8 @@ export interface GasDef {
   decay?: number;
   /** From how many units a square of it hides what's behind (lineOfSight); unset never does. */
   blocksSightAt?: number;
+  /** A line of sight through this many squares of it, however thin, is hidden too (fog weather's veil; lineOfSight); unset, thin never hides. */
+  hidesAfter?: number;
   /** burn.flash: it goes up all at once when fire meets it (dust): the fire each cell goes up with, the shove, the line it logs (flashGas). */
   burn?: { flash?: FlashDef };
   /** Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); unset never. */
@@ -453,8 +455,10 @@ export interface SimParams {
     rain: { douseChance: number; dampen: number; fillEvery: number; fillChance: number; dryEvery: number; dryChance: number };
     storm: { strikeEvery: number; strikeChance: number };
     /** Every freezeEvery ticks of snow, a shallow square's chance its water freezes; dry spells thaw it at thawChance. */
-    /** Also on that beat: open ground's chance of a snow cover, and a sheltered snowy square's chance to drift into a bank. */
-    snow: { freezeEvery: number; freezeChance: number; thawChance: number; coverChance: number; bankChance: number };
+    /** Also on that beat: open ground's chance of a snow cover, a sheltered snowy square's chance to drift into a bank, and an unsheltered one's to build up into one. */
+    snow: { freezeEvery: number; freezeChance: number; thawChance: number; coverChance: number; bankChance: number; deepenChance: number };
+    /** Every `every` ticks of fog, an open square's chance (at full strength) of a unit of the gas, where it has no gas yet. */
+    fog: { every: number; chance: number; gas: string };
     /** A clear stretch's chance of a meteor shower; in one, every `every` ticks the chance a meteor appears, landing fallTicks later. */
     meteors: { showerChance: number; every: number; chance: number; fallTicks: number };
   };
@@ -932,6 +936,7 @@ export function validateRules(r: Rules): string[] {
     if (g.condenseEvery !== undefined && (!Number.isInteger(g.condenseEvery) || g.condenseEvery < 1)) errors.push(`gas ${id}: condenseEvery must be a whole number from 1`);
     if (g.condenseAway !== undefined && (!Number.isInteger(g.condenseAway) || g.condenseAway < 0)) errors.push(`gas ${id}: condenseAway must be a whole number from 0`);
     if (g.rainEvery !== undefined && (!Number.isInteger(g.rainEvery) || g.rainEvery < 1)) errors.push(`gas ${id}: rainEvery must be a whole number from 1`);
+    if (g.hidesAfter !== undefined && (!Number.isInteger(g.hidesAfter) || g.hidesAfter < 1)) errors.push(`gas ${id}: hidesAfter must be a whole number from 1`);
     const flash = g.burn?.flash;
     if (flash && !(Number.isInteger(flash.fire) && flash.fire >= 1)) errors.push(`gas ${id}: burn.flash.fire must be a whole number from 1`);
     if (flash?.push !== undefined && !(Number.isInteger(flash.push) && flash.push >= 0)) errors.push(`gas ${id}: burn.flash.push must be a whole number from 0`);
@@ -1010,6 +1015,8 @@ export function validateRules(r: Rules): string[] {
     if (e.explodes && !isCrater(e.explodes.crater)) errors.push(`entity ${id}: crater needs a whole depth from 1, radius from 0 and strength from 1`);
   }
   for (const k of r.sim.defense?.kinds ?? []) if (!r.entities[k]?.raider) errors.push(`sim defense: kind ${k} is not a raider`);
+  const fogGas = r.sim.weather.fog?.gas;
+  if (fogGas !== undefined && !(typeof fogGas === "string" && fogGas in r.gases)) errors.push(`sim weather.fog.gas: unknown gas ${fogGas}`);
   for (const k of ["when", "notBy"] as const)
     if (r.sim.status.shatter?.[k] != null && typeof r.sim.status.shatter[k] !== "string") errors.push(`sim status.shatter.${k} must be a name`);
   for (const [id, it] of Object.entries(r.items)) errors.push(...itemErrors(r, id, it));

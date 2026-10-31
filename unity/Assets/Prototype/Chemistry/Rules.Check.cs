@@ -40,7 +40,7 @@ namespace Chem
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate", "radiusPerCharge" };
             static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n", "wave" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
-            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "breath.seconds", "breath.drownEvery", "breath.drownSides" };
+            static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.fog.every", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "breath.seconds", "breath.drownEvery", "breath.drownSides" };
 
             readonly JObject r, terrain, covers, gases;
             readonly HashSet<string> elements;
@@ -77,6 +77,14 @@ namespace Chem
                 }
                 foreach (var p in ((JObject)r["entities"]).Properties()) EntityRefs(p);
                 DefenseRefs();
+                FogRef();
+            }
+
+            // Fog weather lays a gas the rules know (sim weather.fog.gas).
+            void FogRef()
+            {
+                var gas = r["sim"]?["weather"]?["fog"]?["gas"];
+                if (gas != null && !(gas.Type == JTokenType.String && gases[(string)gas] is JObject)) Errors.Add($"sim weather.fog.gas: unknown gas {Show(gas)}");
             }
 
             // A raider's pace and the elements it's weak to or resists (Defense.cs).
@@ -391,16 +399,7 @@ namespace Chem
                     Dissolves($"cover {p.Name}", p.Value, covers);
                     Melts(p.Name, p.Value);
                 }
-                foreach (var p in gases.Properties())
-                {
-                    Number(p.Value["scald"], $"gas {p.Name}: scald", 0);
-                    Number(p.Value["decay"], $"gas {p.Name}: decay", 0);
-                    Number(p.Value["blocksSightAt"], $"gas {p.Name}: blocksSightAt", 0);
-                    if (p.Value["condenseEvery"] != null && !(IsWholeNumber(p.Value["condenseEvery"]) && (double)p.Value["condenseEvery"] >= 1)) Errors.Add($"gas {p.Name}: condenseEvery must be a whole number from 1");
-                    if (p.Value["condenseAway"] != null && !(IsWholeNumber(p.Value["condenseAway"]) && (double)p.Value["condenseAway"] >= 0)) Errors.Add($"gas {p.Name}: condenseAway must be a whole number from 0");
-                    if (p.Value["rainEvery"] != null && !(IsWholeNumber(p.Value["rainEvery"]) && (double)p.Value["rainEvery"] >= 1)) Errors.Add($"gas {p.Name}: rainEvery must be a whole number from 1");
-                    GasFlash(p);
-                }
+                foreach (var p in gases.Properties()) GasNumbers(p);
                 foreach (var s in r["spells"])
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);
                 foreach (var rule in r["cellRules"].OfType<JObject>()) RuleNumbers(rule);
@@ -428,6 +427,19 @@ namespace Chem
                     foreach (var key in EffectNumbers) Number(e[key], $"rule {id}: {key}");
             }
 
+            // One gas's numbers and its flash (materials.json gases).
+            void GasNumbers(JProperty p)
+            {
+                Number(p.Value["scald"], $"gas {p.Name}: scald", 0);
+                Number(p.Value["decay"], $"gas {p.Name}: decay", 0);
+                Number(p.Value["blocksSightAt"], $"gas {p.Name}: blocksSightAt", 0);
+                if (p.Value["hidesAfter"] != null && !(IsWholeNumber(p.Value["hidesAfter"]) && (double)p.Value["hidesAfter"] >= 1)) Errors.Add($"gas {p.Name}: hidesAfter must be a whole number from 1");
+                if (p.Value["condenseEvery"] != null && !(IsWholeNumber(p.Value["condenseEvery"]) && (double)p.Value["condenseEvery"] >= 1)) Errors.Add($"gas {p.Name}: condenseEvery must be a whole number from 1");
+                if (p.Value["condenseAway"] != null && !(IsWholeNumber(p.Value["condenseAway"]) && (double)p.Value["condenseAway"] >= 0)) Errors.Add($"gas {p.Name}: condenseAway must be a whole number from 0");
+                if (p.Value["rainEvery"] != null && !(IsWholeNumber(p.Value["rainEvery"]) && (double)p.Value["rainEvery"] >= 1)) Errors.Add($"gas {p.Name}: rainEvery must be a whole number from 1");
+                GasFlash(p);
+            }
+
             void Sim(JObject o, string path)
             {
                 foreach (var p in o.Properties()) SimEntry(path + p.Name, p.Value);
@@ -436,7 +448,7 @@ namespace Chem
             // One sim.json entry: a section to go into, hours, names, or a number.
             void SimEntry(string key, JToken value)
             {
-                if (key == "defense.kinds") return; // names, checked by DefenseRefs
+                if (key == "defense.kinds" || key == "weather.fog.gas") return; // names, checked by DefenseRefs and FogRef
                 if (key == "status.shatter.when" || key == "status.shatter.notBy")
                 {
                     if (value.Type != JTokenType.String) Errors.Add($"sim {key} must be a name");

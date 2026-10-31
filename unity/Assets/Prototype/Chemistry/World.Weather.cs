@@ -1,7 +1,9 @@
 // What the weather does to cells, once a tick after gas: rain fills squares
 // and dry spells dry shallow ones, snow freezes shallow water, covers open
-// ground and drifts into banks against walls and trees (and dry spells thaw
-// the ice and melt the snow), storms strike lightning, and in a meteor
+// ground and drifts into banks against walls and trees, building up slowly in
+// the open too (and dry spells thaw the ice and melt the snow), fog lays a
+// thin veil of fog gas over open ground that thins away once the stretch
+// ends (World.LineOfSight), storms strike lightning, and in a meteor
 // shower meteors appear and land a little later as the Meteor spell. Rain's hold on fire
 // (dousing, less spread) is in Burn and SpreadChance, the prevailing wind in
 // WindDir. Port of tickWeather in sandbox/src/sim.ts; the weather itself
@@ -99,11 +101,11 @@ namespace Chem
             }
             else if (now.Snow > 0)
             {
-                if (Tick % p.FreezeEvery == 0)
-                {
-                    Freeze(rows, p.FreezeChance * now.Snow / 100 * (IsNight ? Rules.Sim.Day.NightFreeze : 1), true);
-                    Settle(rows, p.CoverChance * now.Snow / 100, p.BankChance * now.Snow / 100);
-                }
+                if (Tick % p.FreezeEvery == 0) Snow(rows, now.Snow);
+            }
+            else if (now.Fog > 0)
+            {
+                if (Tick % p.FogEvery == 0) Veil(rows, p.FogGas, p.FogChance * now.Fog / 100);
             }
             else if (Tick % p.DryEvery == 0)
             {
@@ -112,6 +114,14 @@ namespace Chem
                 Freeze(rows, p.ThawChance, false);
                 Melt(rows, p.ThawChance);
             }
+        }
+
+        /// <summary>Snow at this strength (0..100): shallow water freezes, and snow settles, banks and builds up.</summary>
+        void Snow(RowSpan[] rows, int snow)
+        {
+            var p = Rules.Sim.Weather;
+            Freeze(rows, p.FreezeChance * snow / 100 * (IsNight ? Rules.Sim.Day.NightFreeze : 1), true);
+            Settle(rows, p.CoverChance * snow / 100, p.BankChance * snow / 100, p.DeepenChance * snow / 100);
         }
 
         void Meteor()
@@ -184,15 +194,15 @@ namespace Chem
         }
 
         /// <summary>Snow settles on open, dry, unburnt ground, and drifts into banks where it's sheltered.</summary>
-        void Settle(RowSpan[] rows, double cover, double bank)
+        void Settle(RowSpan[] rows, double cover, double bank, double deepen)
         {
             int upwind = WindDir >= 0 ? (WindDir + 2) % 4 : -1;
             foreach (var s in rows)
-                for (int i = s.Start; i < s.End; i++) SettleOn(s.Chunk, i, upwind, cover, bank);
+                for (int i = s.Start; i < s.End; i++) SettleOn(s.Chunk, i, upwind, cover, bank, deepen);
         }
 
-        // Snow on one square: a cover on open ground, a bank where it's sheltered.
-        void SettleOn(Chunk ch, int i, int upwind, double cover, double bank)
+        // Snow on one square: a cover on open ground, a bank where it's sheltered, and slowly in the open.
+        void SettleOn(Chunk ch, int i, int upwind, double cover, double bank, double deepen)
         {
             var c = ch.Cells[i];
             if (c.Water > 0 || c.Fire > 0 || IsBlocking(c)) return;
@@ -200,7 +210,22 @@ namespace Chem
             {
                 if (Rand() < cover) c.Cover = SnowCover;
             }
-            else if (c.Cover == SnowCover && Sheltered(ch, i, upwind) && Rand() < bank) c.Cover = BankCover;
+            else if (c.Cover == SnowCover && Rand() < (Sheltered(ch, i, upwind) ? bank : deepen)) c.Cover = BankCover;
+        }
+
+        /// <summary>Fog weather: a unit of its gas on open squares with no gas yet, here and there.</summary>
+        void Veil(RowSpan[] rows, string gas, double chance)
+        {
+            foreach (var s in rows)
+            {
+                var cells = s.Chunk.Cells;
+                for (int i = s.Start; i < s.End; i++)
+                {
+                    var c = cells[i];
+                    if (c.Gas != null || IsBlocking(c)) continue;
+                    if (Rand() < chance) AddGas(c, gas, 1);
+                }
+            }
         }
 
         /// <summary>Whether something blocking stands next to a square: on its upwind side in a wind, any side without.</summary>

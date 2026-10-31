@@ -21,7 +21,7 @@
     { "id": "cold-fire", "element": "cold", "if": { "fire": true }, "do": [{ "extinguish": true }], "log": "Frost snuffs out the flames" },
     { "id": "cold-steam", "element": "cold", "if": { "gas": "steam" }, "do": [{ "condense": true }], "log": "Steam condenses back into water" },
     { "id": "cold-water", "element": "cold", "if": { "water": true }, "do": [{ "freeze": true }], "log": "The water freezes solid", "stop": true },
-    { "id": "cold-covered", "element": "cold", "if": { "cover": ["oil", "grease", "thorns", "snow", "snowbank", "embers", "frost"] }, "do": [], "stop": true },
+    { "id": "cold-covered", "element": "cold", "if": { "cover": ["oil", "grease", "thorns", "embers", "frost"] }, "do": [], "stop": true },
     { "id": "cold-frost", "element": "cold", "if": { "notTerrainTag": "blocking", "water": false, "frozen": false, "power": 4 }, "do": [{ "setCover": "frost" }], "log": "Frost glazes the ground, slippery underfoot", "stop": true },
 
 

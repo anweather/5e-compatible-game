@@ -155,6 +155,8 @@ namespace Chem
         public double? Decay;
         /// <summary>From how many units a square of it hides what's behind (World.LineOfSight), or 0 if it never does.</summary>
         public int BlocksSightAt;
+        /// <summary>A line of sight through this many squares of it, however thin, is hidden too (fog weather's veil; World.LineOfSight), or 0 if thin never hides.</summary>
+        public int HidesAfter;
         /// <summary>Every this many of its units that decay in a cell leave a unit of water there (steam condenses, World.Drift); 0 never.</summary>
         public int CondenseEvery;
         /// <summary>It condenses only this many cells or more from heat: none within it burning or hot (Cell.Heat), so steam doesn't rain straight back onto a fire (World.NearHeat).</summary>
@@ -411,6 +413,15 @@ namespace Chem
         /// square's chance to drift into a bank where something blocking shelters it (upwind of it, in a wind).
         /// </summary>
         public double CoverChance = 0.08, BankChance = 0.05;
+        /// <summary>On the same beat, at full strength: a snowy square's chance to build up into a bank in the open, unsheltered (snow builds slowly).</summary>
+        public double DeepenChance = 0.004;
+        /// <summary>
+        /// Every FogEvery ticks of fog weather, an open square's chance (at full strength) of a unit of FogGas
+        /// (materials.json gases), where it has no gas yet; it thins away by the gas's own decay once the stretch ends.
+        /// </summary>
+        public int FogEvery = 6;
+        public double FogChance = 0.3;
+        public string FogGas = "fog";
     }
 
     public sealed class SimParams
@@ -645,6 +656,7 @@ namespace Chem
                     Scald = Int(p.Value["scald"]) ?? 0,
                     Decay = Num(p.Value["decay"]),
                     BlocksSightAt = Int(p.Value["blocksSightAt"]) ?? 0,
+                    HidesAfter = Int(p.Value["hidesAfter"]) ?? 0,
                     CondenseEvery = Int(p.Value["condenseEvery"]) ?? 0,
                     CondenseAway = Int(p.Value["condenseAway"]) ?? 0,
                     RainEvery = Int(p.Value["rainEvery"]) ?? 0,
@@ -1085,6 +1097,13 @@ namespace Chem
                 w.ThawChance = Num(snow["thawChance"]) ?? w.ThawChance;
                 w.CoverChance = Num(snow["coverChance"]) ?? w.CoverChance;
                 w.BankChance = Num(snow["bankChance"]) ?? w.BankChance;
+                w.DeepenChance = Num(snow["deepenChance"]) ?? w.DeepenChance;
+            }
+            if (o["fog"] is JObject fog)
+            {
+                w.FogEvery = Int(fog["every"]) ?? w.FogEvery;
+                w.FogChance = Num(fog["chance"]) ?? w.FogChance;
+                w.FogGas = Str(fog["gas"]) ?? w.FogGas;
             }
             if (o["meteors"] is JObject meteors)
             {
