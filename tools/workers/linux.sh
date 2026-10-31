@@ -6,13 +6,16 @@
 #   linux.sh pull <worker> <ip>   worker -> slot, whichever side is newer
 #   linux.sh hook <worker> <ip>   install the commit cost hook (commit-cost.mjs) and the attention hook
 #   linux.sh attention <worker> <ip>   print the attention hook's last report (~/.worker/attention.json)
+#   linux.sh runner <worker> <ip>      copy in and start the mailbox runner (runner.mjs)
+#   linux.sh brief <worker> <ip> <f>   put a brief into the worker's inbox
+#   linux.sh outbox <worker> <ip>      print finished reports ("=== <file>" each) and remove them
 #   linux.sh wip  <worker> <ip>   push uncommitted or unpushed work as wip/<worker>-<branch>
 # Slots are the Windows workers' (<Root>\signins\<worker>, this account only): claude
 # (its refresh token rotates, so one sign-in lives in one worker) and github (gh's
 # hosts.yml, which doesn't rotate, and .gitconfig). Nothing here prints a token.
 set -euo pipefail
 cmd="${1:-}"; w="${2:-}"; ip="${3:-}"
-[[ -n "$cmd" && -n "$w" && -n "$ip" ]] || { sed -n 2,12p "$0"; exit 2; }
+[[ -n "$cmd" && -n "$w" && -n "$ip" ]] || { sed -n 2,15p "$0"; exit 2; }
 here="$(cd "$(dirname "$0")" && pwd)"
 bank="${WORKERS_ROOT:-/c/HyperV/Workers}/signins/$w"
 user="${WORKER_USER:-anweather}"
@@ -104,5 +107,12 @@ ssh_ true || { echo "Can't reach $w over SSH ($user@$ip, the host's key)."; exit
 case "$cmd" in
   push) push ;; pull) pull ;; hook) hook ;; wip) wip ;;
   attention) ssh_ 'cat ~/.worker/attention.json 2>/dev/null || true' ;;
-  *) sed -n 2,12p "$0"; exit 2 ;;
+  # The mailbox runner (runner.mjs): copied in and started, detached from this SSH session.
+  runner) ssh_ 'mkdir -p ~/.worker && cat > ~/.worker/runner.mjs' < "$here/runner.mjs"
+          ssh_ 'setsid nohup node ~/.worker/runner.mjs >/dev/null 2>&1 < /dev/null & echo "The mailbox runner is running."' ;;
+  brief)  f="${4:?linux.sh brief <worker> <ip> <file>}"
+          ssh_ "mkdir -p ~/.worker/inbox && cat > ~/.worker/inbox/$(basename "$f")" < "$f" ;;
+  # Finished reports, each as "=== <file>" then its text, then removed from the worker.
+  outbox) ssh_ 'cd ~/.worker/outbox 2>/dev/null || exit 0; for f in *.md; do [ -f "$f" ] || continue; echo "=== $f"; cat "$f"; rm -f "$f"; done' ;;
+  *) sed -n 2,15p "$0"; exit 2 ;;
 esac

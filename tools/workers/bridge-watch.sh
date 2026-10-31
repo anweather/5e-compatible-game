@@ -166,13 +166,44 @@ Only Andrew can answer it: in the Claude app, open $vm under Remote Control and 
   done
 }
 
+guest_outbox() { # the worker's finished reports ("=== <file>" then its text each), removed from the guest
+  local vm="$1" ip
+  if [[ "$vm" == u* ]]; then
+    ip="$(powershell -NoProfile -Command "(Get-VMNetworkAdapter -VMName $vm).IPAddresses | Where-Object { \$_ -match '^\d+\.' } | Select-Object -First 1" 2>/dev/null | tr -d '\r')"
+    [[ -n "$ip" ]] && bash "$here/linux.sh" outbox "$vm" "$ip" 2>/dev/null
+  else
+    powershell -NoProfile -Command "\$c = New-Object PSCredential('User', (ConvertTo-SecureString 'password' -AsPlainText -Force)); Invoke-Command -VMName $vm -Credential \$c -ErrorAction SilentlyContinue -ScriptBlock { Get-ChildItem \"\$env:USERPROFILE\\.worker\\outbox\\*.md\" -ErrorAction SilentlyContinue | ForEach-Object { '=== ' + \$_.Name; Get-Content -Raw \$_.FullName; Remove-Item \$_.FullName } }" 2>/dev/null | tr -d '\r'
+  fi
+}
+
+check_outbox() { # a worker's report (runner.mjs) goes to the PM's mailbox; a usage limit in it marks the account out
+  local vm a raw report subject when until
+  for vm in $(running_vms ${vms[pro]} ${vms[max]}); do
+    raw="$(guest_outbox "$vm")"; [[ -n "$raw" ]] || continue
+    a=pro; [[ " ${vms[max]} " == *" $vm "* ]] && a=max
+    while IFS= read -r -d $'\x1e' report; do
+      [[ -n "${report//[$'\n ']/}" ]] || continue
+      subject="$(sed -n 's/^# //p' <<<"$report" | head -1)"
+      if grep -q '^Limit:' <<<"$report"; then
+        subject="$subject (usage limit)"
+        if [[ -z "$(out_until "$a")" ]]; then
+          when="$(grep -o 'resets [^(.]*' <<<"$report" | head -1 | sed 's/resets //; s/ *$//')"
+          until="$(reset_epoch "${when:-}")"; echo "$until" > "$state/$a.out"
+          log "$a is out (seen in $vm's report), back after $(date -d "@$until" '+%H:%M')"
+        fi
+      fi
+      mail pm "${subject:-$vm reports}" "$report"
+    done < <(awk 'BEGIN{n=0} /^=== /{if(n)printf "\x1e"; n=1; next} {print} END{if(n)printf "\x1e"}' <<<"$raw")
+  done
+}
+
 log "started (pid $$${dry:+, dry run})"
 n=0
 while :; do
   for a in pro max; do check_usage "$a"; check_back "$a"; done
   for r in coordinator pm; do check_delivery "$r"; done
   # The guests answer slowly (PowerShell Direct takes seconds): every other pass, once a minute.
-  (( n++ % 2 == 0 )) && check_attention
+  (( n++ % 2 == 0 )) && { check_attention; check_outbox; }
   touch "$state/alive"
   [[ -n "${BRIDGE_WATCH_ONCE:-}" ]] && exit 0
   sleep 30
