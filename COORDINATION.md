@@ -574,3 +574,13 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   for the sub-agent, and the coordinator's own file unwritten since 15:56),
   so the cost is the harness's count. Issue links now point at commits, not
   branches (merged branches are deleted).
+- 2026-10-30 17:40: Hotfix on dev (499774e, DesktopUnity): the robe snaps
+  back when seen again (#4; seed 801's route clean in a player build), and
+  webs no longer speckle. #2 was NOT a crack bug: the cream squares are the
+  spell aim markers (SpellCaster.ShowMarkers, since 2026-10-24); crack webs
+  draw in a player build on glass, ice, panes and a frozen raider. The
+  playtest triage misread them, and the bot on a locked PC renders almost
+  only at its shots (the robe tail was mostly that). Closing #2, and the
+  comments on #2 and #4 (refused to DesktopUnity as an external write), are
+  Andrew's. Now: w1 bot-elements, w2 spell-golf (Pro). start.cmd no longer
+  takes Unity Hub's helper for an Editor.
