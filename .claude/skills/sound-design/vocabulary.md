@@ -1,7 +1,7 @@
 # Sound vocabulary
 
 The words Andrew and Claude use for sounds. Each has a plain meaning, what to measure, and how the
-generator (`tools/sound/`) makes it. Status: **agreed** (Andrew confirmed it by a pick), **proposed**
+generator (`synth.py`, beside this file) makes it. Status: **agreed** (Andrew confirmed it by a pick), **proposed**
 (our guess, not yet confirmed). Amounts run 0 to 1 unless a unit is given.
 
 ## Body: what the sound is made of
