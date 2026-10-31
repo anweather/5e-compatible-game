@@ -758,3 +758,13 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   golf replays need a GolfCommand intent; golf online only has equal
   checksums; without the Particle Pack there are no flames (builder warns).
   Cast-feel starts now with the Editor kept open (u2 still waits).
+- 2026-10-31 01:40: The Mac perf pass merged (b8b9ca8; 7 fixes; core 651,
+  EditMode 720): storm 67.6 -> 50 ms mean, snow worst 942 -> 207, bot worst
+  412 -> 136, #5's night hitch proven on Metal (night pipeline states not
+  warmed; the PC's D3D12 trace still to do, about 30 min). Issues #24-#33
+  filed (perf), plus a comment on #5. Still bad: storm at 20 fps, the world
+  at 59% speed, uncapped tick debt (#24-#27). Andrew: fog weather in patches
+  (#28). The Mac now takes fog-patches (for 0.1.9), then dragon-rules (after).
+  Cast feel step 3: DesktopUnity reran on Andrew's word ("Yes, rerun now");
+  beats_seen_online is a real bug, being fixed before merging. The virtual
+  player costs about 4 GB during online probes, so no VM starts beside them.
