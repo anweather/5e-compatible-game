@@ -63,7 +63,8 @@ The one page a new PM session reads first. Keep it short: history goes in
   Wall of Stone is wiped by the chunk reset before the breath arrives.
   `dragon-clip` (f07aa3e, the clip probe and the QuickSearch console filter) is stacked on it: land
   dragon-view first. The Mac does the dragon tweaks, then rules MCP phase 2, procedural looks (`procedural-looks`).
-- u1: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). DesktopUnity wires it
+- u1: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). Asleep (Saved) while
+  DesktopUnity runs dragon-view's online probe (needs ~9 GB free); wake it with `start.cmd u1` after. DesktopUnity wires it
   into the IK punch after.
 - Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
   batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
