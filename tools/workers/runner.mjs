@@ -100,7 +100,8 @@ async function take(file) {
   const { code, out, err, ended } = await run(args);
   let r = {}; try { r = JSON.parse(out.trim().split('\n').pop()); } catch { }
   const t = transcript(args.sid);
-  if (ended && t) { const m = lastAssistant(t); r = { result: m?.content.filter(c => c.type === 'text').map(c => c.text).join('\n'), usage: usageOf(t), session_id: args.sid, num_turns: '?' }; }
+  if (ended && t) { const m = lastAssistant(t); r = { result: m?.content.filter(c => c.type === 'text').map(c => c.text).join('\n'), session_id: args.sid, num_turns: '?' }; }
+  if (t) r.usage = usageOf(t); // the JSON result's usage is the last turn's only: sum the whole run
   const said = r.result ?? (out || err || '(no output)');
   const limit = /hit your (\w+ )?limit/i.test(said + err) ? '\nLimit: this account hit its usage limit; the brief stopped there.' : '';
   const u = r.usage ?? {};
