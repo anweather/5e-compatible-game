@@ -280,37 +280,40 @@ export interface Star {
 }
 
 /** A boulder still rolling (Rolling Boulder; World.Boulder): the cell it's on, the way it rolls, the cells it may still roll, how often it rolls one and its age. */
-export interface Boulder {
+export interface Boulder extends Mover {
   spell: string;
-  x: number;
-  y: number;
-  dir: Dir;
   left: number;
   every: number;
   age: number;
 }
 
 /**
- * A wave still rolling (Wave; World.Wave): its front's middle, the way it rolls, how far the front reaches to each side,
- * the cells it may still roll, how often it rolls one, its age, the power its element lands with and the heaviest thing it knocks back.
+ * Something rolling along an aim (World.Mover): the cell it's on, the grid way nearest its aim (what its force pushes
+ * along), and the line it follows: from (ox, oy) along the whole-number aim (ax, ay), step cells so far.
  */
-export interface Wave {
-  spell: string;
+export interface Mover {
   x: number;
   y: number;
   dir: Dir;
+  ox: number;
+  oy: number;
+  ax: number;
+  ay: number;
+  step: number;
+}
+
+/**
+ * A wave still rolling (Wave; World.Wave): its front's middle, the way it rolls, how far the front reaches to each side,
+ * the cells it may still roll, how often it rolls one, its age, the power its element lands with and the heaviest thing it knocks back.
+ */
+export interface Wave extends Mover {
+  spell: string;
   width: number;
   left: number;
   every: number;
   age: number;
   power: number;
   maxMass: number;
-  /** Where it was cast, the aim it rolls along (a whole-number vector) and the cells it has rolled (World.Wave OX, OY, AX, AY, Step). */
-  ox: number;
-  oy: number;
-  ax: number;
-  ay: number;
-  step: number;
 }
 
 /** A whirlwind still whirling (spells.json pullEvery: Whirlwind; World.Whirl). */

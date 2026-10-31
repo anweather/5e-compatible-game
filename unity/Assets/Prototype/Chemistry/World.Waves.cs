@@ -9,14 +9,13 @@ namespace Chem
         /// <summary>
         /// A wave still rolling (Wave): its front's middle, the grid way nearest its aim (what its element and force
         /// push along), how far the front reaches to each side, the cells it may still roll, how often it rolls one,
-        /// its age in ticks, the power its element lands with and the heaviest creature it knocks back. It rolls from
-        /// its cast's cell (OX, OY) along the aim (AX, AY), a whole-number vector; Step is how many cells it has rolled.
+        /// its age in ticks, the power its element lands with and the heaviest creature it knocks back. It rolls along
+        /// its cast's aim (Mover).
         /// </summary>
-        public sealed class Wave
+        public sealed class Wave : Mover
         {
             public string Spell;
-            public int X, Y, Dir, Width, Left, Every, Age, Power, MaxMass;
-            public int OX, OY, AX, AY, Step;
+            public int Width, Left, Every, Age, Power, MaxMass;
         }
 
         readonly List<Wave> waves = new List<Wave>();
@@ -28,38 +27,29 @@ namespace Chem
 
         /// <summary>
         /// A wave's cast (startWave in the TS): the front starts on the cast's cell, a line across the way it rolls,
-        /// Width cells to each side, and washes over it; it rolls one cell every TravelEvery ticks, to the line's
-        /// length in all (TickWaves). It rolls along the aim (SnapAim), or <paramref name="dir"/> without one.
+        /// Width cells to each side, and washes over it; it rolls one cell every TravelEvery ticks along the aim
+        /// (Mover), to the line's length in all (TickWaves).
         /// </summary>
         void StartWave(SpellDef s, int x, int y, int dir, int charge, int aimX, int aimY)
         {
-            (aimX, aimY) = SnapAim(aimX, aimY);
-            if (aimX == 0 && aimY == 0) (aimX, aimY) = (DirX(dir), DirY(dir));
             var wv = new Wave
             {
                 Spell = s.Id,
-                X = x,
-                Y = y,
-                Dir = DirOf(aimX, aimY, dir),
                 Width = s.Radius + ChargedGrowth(s, charge),
                 Left = ChargedLength(s.Length, charge) - 1,
                 Every = s.TravelEvery,
                 Power = s.Power * charge,
                 MaxMass = s.MaxMass,
-                OX = x,
-                OY = y,
-                AX = aimX,
-                AY = aimY,
             };
+            wv.SetOff(x, y, dir, aimX, aimY);
             Wash(wv, s);
             if (wv.Left > 0) waves.Add(wv);
             else Break(wv, s);
         }
 
         /// <summary>
-        /// Each wave, in the order cast, rolls a cell when its time comes: a cell along the aim's longer part, and
-        /// the shorter part's share rounded (like a slanted line, SlantCells). Against a wall, an inactive chunk or
-        /// its length's end it breaks (Break) and is gone.
+        /// Each wave, in the order cast, rolls a cell along its aim when its time comes (Mover.Ahead). Against a wall,
+        /// an inactive chunk or its length's end it breaks (Break) and is gone.
         /// </summary>
         void TickWaves()
         {
@@ -68,12 +58,10 @@ namespace Chem
             {
                 if (++wv.Age % wv.Every != 0) continue;
                 var s = Rules.Spell(wv.Spell);
-                var (nx, ny) = WaveAt(wv, wv.Step + 1);
+                var (nx, ny) = wv.Ahead();
                 if (s != null && IsActiveAt(nx, ny) && !IsBlocking(At(nx, ny)))
                 {
-                    wv.X = nx;
-                    wv.Y = ny;
-                    wv.Step++;
+                    wv.Advance();
                     wv.Left--;
                     Wash(wv, s);
                 }
@@ -81,14 +69,6 @@ namespace Chem
                 if (wv.Left <= 0) Break(wv, s);
             }
             waves.RemoveAll(wv => wv.Left <= 0);
-        }
-
-        // Where a wave's front's middle is after k cells.
-        static (int x, int y) WaveAt(Wave wv, int k)
-        {
-            int major = System.Math.Max(System.Math.Abs(wv.AX), System.Math.Abs(wv.AY));
-            if (major == 0) return (wv.X, wv.Y);
-            return (wv.OX + RoundDiv(k * wv.AX, major), wv.OY + RoundDiv(k * wv.AY, major));
         }
 
         /// <summary>

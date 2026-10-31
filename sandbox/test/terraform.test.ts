@@ -724,6 +724,28 @@ test("a rolling boulder rolls downhill, smashes, knocks over and dams the stream
   assert.equal(`${cellHash(w)} ${w.rng} ${gob.x},${gob.y} ${gob.hp}`, "9179f2b8 729412872 7,4 5"); // the same in the C# core
 });
 
+// Mirrors ChemistryTests.ARollingBoulderRollsAlongASlantedAimAndThenDownhill (GitHub #21).
+test("a rolling boulder rolls along a slanted aim and then downhill, matching the C# golden", () => {
+  const w = createWorld(18, 14, 8);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 5, 4)!.t = "glass";
+  for (const y of [6, 7, 8, 9, 10]) cellAt(w, 6, y)!.h = -1;
+  castSpell(w, "rolling-boulder", 2, 2, 1, undefined, 1, [3, 2]);
+  assert.equal(w.boulders[0]!.dir, 1, "it pushes along the nearest grid way");
+  run(w, 6);
+  assert.deepEqual([w.boulders[0]!.x, w.boulders[0]!.y], [5, 4], "three cells along the aim, not along a grid way");
+  assert.ok((cellAt(w, 5, 4)!.cracked ?? 0) > 0, "and it strikes what's on its slant");
+  run(w, 4);
+  assert.deepEqual([w.boulders[0]!.x, w.boulders[0]!.y], [6, 6], "the slope to its side turns it");
+  assert.equal(w.boulders[0]!.dir, 2);
+  run(w, 4);
+  assert.deepEqual([w.boulders[0]!.x, w.boulders[0]!.y], [6, 8], "on down its new way");
+  run(w, 20);
+  assert.equal(w.boulders.length, 0);
+  assert.notEqual(cellAt(w, 3, 2)!.gas, "dust", "no trail along the grid way it wasn't aimed");
+  assert.equal(`${cellHash(w)} ${w.rng}`, "c5a8709f 3377061646"); // the same in the C# core
+});
+
 // Mirrors ChemistryTests.PlantGrowthVinesClimbWallsBridgeGapsBurnAndRootsCrackStone.
 test("Plant Growth's vines climb walls, bridge gaps, burn, and their roots crack stone, matching the C# golden", () => {
   const w = createWorld(12, 7, 9);
