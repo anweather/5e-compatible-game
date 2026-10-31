@@ -655,3 +655,17 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   u2 Max) for core and sandbox work beside an open Editor (5 GB margin). For
   the next Linux clone: the template lacks /var/lib/worker (sudo mkdir it)
   and its Guest Service Interface was off (start.cmd's name copy failed).
+- 2026-10-30 22:20: The MacBook is back (Andrew): compute only, no Mac
+  builds. Its session `unity-game-macbook` (Max, Remote Control) has Unity
+  with a GPU, so it takes Unity work the VMs can't (EditMode, probes) besides
+  rules work. First task: Andrew's five calls (branch andrew-calls), which
+  had been waiting for memory on the PC. Replies come by SendMessage; that
+  route doesn't confirm reading, so check its branch if it goes quiet.
+- 2026-10-30 22:30: UX pass 4 part 2 merged (46848eb; DesktopUnity): #16 the
+  head flare (hidden bones at size zero gave NaN normals at the neck), #17
+  the hat and cowl fit, #19 fire redrawn as scattered GPU flame tongues
+  (Andrew to judge the look; close views about 70 ms p95 in the Editor),
+  #20 the camera check was wider than the wizard. Notes posted. New probes
+  flare, housecam, flames in FAST_LOOP. Known: castlooks wave_carries fails
+  on base code too (part 3 takes it); a sun glint on the ground over 12x in
+  150-200 of 960 views (open); not seen on Mac (Flame uses StructuredBuffer).

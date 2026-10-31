@@ -1,15 +1,13 @@
 using Chem;
 using UnityEngine;
 
-// A cell's fire, gas and charge, drawn with the Particle Pack's effects when
-// they are assigned and with simple cubes when they aren't. Particle effects
-// are retired (they stop emitting and fade) rather than popped out. Fire
-// and smoke effects are pooled (made once, reused as they come and go), fires keep their
-// effect as the fire grows or dies down (only its size changes), and thin out
-// when much burns: a field of flames overlaps, and hundreds of particle
-// systems cost more than they add (FireDensity). New effects are made with
-// Prewarm off and at most a few a frame (the rest wait a frame or two), so a
-// burst of smoke never stalls a frame making and prewarming dozens at once.
+// A cell's fire, gas and charge. Flames are FlameBank's, on the GPU; gas and
+// charge are drawn with the Particle Pack's effects when they are assigned and
+// with simple cubes when they aren't. Particle effects are retired (they stop
+// emitting and fade) rather than popped out. Smoke effects are pooled (made
+// once, reused as they come and go). New effects are made with Prewarm off and
+// at most a few a frame (the rest wait a frame or two), so a burst of smoke
+// never stalls a frame making and prewarming dozens at once.
 // Lightning's sparks come from the same pool: a Shocking Grasp into water charges
 // up to sim.conductLimit cells at once, and making a sparks effect for each in
 // one frame stalled it (playtest F-0001: 199 ms on 0.1.5, 663 ms on dev).
@@ -17,12 +15,12 @@ public partial class ChemGrid
 {
     // --- fire ----------------------------------------------------------------------
 
-    // Burning cells (in the simulated chunks) past which only some cells draw flames.
-    const int ThinFiresAt = 200, SparseFiresAt = 500;
-    // How long a retired fire or smoke effect fades before it is reused.
+    // Burning cells (in the simulated chunks) past which gas draws on fewer cells.
+    const int ThinFiresAt = 200;
+    // How long a retired smoke effect fades before it is reused.
     const float FxFadeSeconds = 1.5f;
-    // Fire and smoke effects alive at once (fading ones too): past this a cell's fire or smoke
-    // goes undrawn until it changes, rather than making ever more particle systems.
+    // Smoke effects alive at once (fading ones too): past this a cell's smoke goes undrawn until
+    // it changes, rather than making ever more particle systems.
     const int MaxLiveFx = 320;
     int liveFx;
 
@@ -32,20 +30,21 @@ public partial class ChemGrid
 
     void RenderFire(View v, Cell c, int x, int y, Vector3 center, float ground, float scale = 1f)
     {
-        var prefab = FirePrefab(c.Fire);
-        bool shown = c.Fire > 0 && prefab != null && FlameDrawnAt(x, y);
-        if (!shown)
-        {
-            if (v.fireLevel != 0) { RetireFx(v.fire); v.fire = null; v.fireLevel = 0; }
-            if (c.Fire > 0 && prefab == null) FallbackFire(v, c, center, ground);
-            return;
-        }
-        var (offset, turn, size) = FlameSpot(x, y);
-        // A fire that grows or dies down keeps its effect; it only changes size.
-        if (v.fire == null) v.fire = TakeFx(prefab, new Vector3(center.x + offset.x, ground, center.z + offset.y), Quaternion.Euler(0f, turn, 0f), MaxLiveFx, out _);
-        if (v.fire == null) return; // over the effects budget: drawn when it next changes
-        FireLook.Flames(v.fire, FireLookOf(c), Vector3.one * (cellSize / 1.5f * scale * size * FlameScale(c.Fire)));
+        if (c.Fire == v.fireLevel && c.Fire == 0) return;
+        if (Flames != null) Flames.Set(World.Idx(x, y), x, y, new Vector3(center.x, ground, center.z), c.Fire, scale, FireLookOf(c));
         v.fireLevel = c.Fire;
+    }
+
+    FlameBank flameBank;
+
+    /// <summary>The cells' flames as drawn (made with the first fire); null without its shader.</summary>
+    public FlameBank Flames
+    {
+        get
+        {
+            if (flameBank == null) flameBank = FlameBank.On(this);
+            return flameBank;
+        }
     }
 
     // Smoke over a fire takes its look: darker over wood, black over oil.
@@ -62,22 +61,12 @@ public partial class ChemGrid
         return World.TerrainOf(c).FireLook;
     }
 
-    static float FlameScale(int fire) => fire switch { >= 3 => 1.25f, 2 => 1f, _ => 0.8f };
-
     // Gas drifts over many cells at once: its effects go on every other cell, and one in four when much burns.
+    // (Fire drawn per cell no longer thins: FlameBank costs what its pixels cost.)
     bool GasDrawnAt(int x, int y)
     {
         int burning = fireLights != null ? fireLights.BurningCount : 0;
         return burning < ThinFiresAt ? ((x + y) & 1) == 0 : (x & 1) == 0 && (y & 1) == 0;
-    }
-
-    // With much burning, flames on every other cell, then one in four (the same cells each time).
-    bool FlameDrawnAt(int x, int y)
-    {
-        int burning = fireLights != null ? fireLights.BurningCount : 0;
-        if (burning < ThinFiresAt) return true;
-        if (burning < SparseFiresAt) return ((x + y) & 1) == 0;
-        return (x & 1) == 0 && (y & 1) == 0;
     }
 
     // New effects made in one frame, past which the rest wait for the next frames (the cells ask
@@ -191,6 +180,8 @@ public partial class ChemGrid
     {
         if (fogBank != null) Destroy(fogBank.gameObject);
         fogBank = null;
+        if (flameBank != null) Destroy(flameBank.gameObject);
+        flameBank = null;
         fxStaging = null;
         liveFx = 0;
         freeFx.Clear();
@@ -198,33 +189,6 @@ public partial class ChemGrid
         fadingFx.Clear();
         sparking.Clear();
         sparksWaiting.Clear();
-    }
-
-    // Where in its cell a fire burns, how it is turned and sized, from the cell alone (so a
-    // relit cell burns in the same spot): flames scattered off the cell centres, so a burning
-    // field doesn't read as rows.
-    (Vector2 offset, float turn, float size) FlameSpot(int x, int y)
-    {
-        float Hash(int seed) => ValueNoise.Hash(x, y, seed);
-        var offset = new Vector2(Hash(1) - 0.5f, Hash(2) - 0.5f) * (cellSize * 0.7f);
-        return (offset, Hash(3) * 360f, 0.75f + 0.5f * Hash(4));
-    }
-
-    GameObject FirePrefab(int fire) => fire switch
-    {
-        >= 3 => fireLarge,
-        2 => fireMedium,
-        _ => fireSmall,
-    };
-
-    void FallbackFire(View v, Cell c, Vector3 center, float ground)
-    {
-        var flame = Ensure(ref v.fire, "Fire", center);
-        if (flame.GetComponent<Flicker>() == null) flame.AddComponent<Flicker>();
-        float s = 0.25f + 0.12f * c.Fire;
-        flame.transform.localScale = new Vector3(s, s * 1.3f, s);
-        flame.transform.position = new Vector3(center.x, ground + s * 0.65f, center.z);
-        flame.GetComponent<Renderer>().sharedMaterial = materials.Lit("Fire", new Color(1f, 0.38f, 0.05f), 0.2f, new Color(1f, 0.3f, 0.02f) * 1.2f);
     }
 
     // --- gas -----------------------------------------------------------------------
