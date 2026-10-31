@@ -51,8 +51,20 @@ stop_vm() {
   log "stopping $1 (stop.cmd pushes its work first)"
   cmd //c "$(cygpath -w "$here/stop.cmd")" "$1" 2>&1 | tr -d '\r' | grep -E "pushed|nothing|shut down|Not stopping" | while read -r l; do log "  $1: $l"; done
 }
-reset_epoch() { # "8:20am" or "Nov 3, 8pm": the next such time, else 5 h from now
-  local t; t="$(date -d "$1" +%s 2>/dev/null)" || { echo $(( $(date +%s) + 18000 )); return; }
+reset_epoch() { # "8:20am (America/Phoenix)", "6:30am (UTC)" or "Nov 3, 8pm": the next such time, else 5 h from now
+  # The zone in brackets matters: a VM reports in UTC, the host in local time (2026-10-30: "6:30am (UTC)"
+  # was read as local and kept Pro marked out for 7 h after it was back).
+  # Node, not date: Git Bash's date has no zone database and reads any named zone as UTC.
+  local t; t="$(node -e '
+    const s = process.argv[1], m = s.match(/(\d{1,2})(?::(\d\d))?\s*(am|pm)/i); if (!m) process.exit(1);
+    const tz = (s.match(/\(([^)]+)\)/) ?? [])[1] ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+    const h = (+m[1] % 12) + (/pm/i.test(m[3]) ? 12 : 0), min = +(m[2] ?? 0), now = Date.now();
+    // The zone offset now, from how the zone writes this instant.
+    const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: tz, hourCycle: "h23", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit" }).formatToParts(now).map(x => [x.type, x.value]));
+    const off = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second) - Math.floor(now / 1000) * 1000;
+    let t = Date.UTC(+p.year, +p.month - 1, +p.day, h, min) - off;
+    if (t < now - 3600e3) t += 86400e3;
+    console.log(Math.floor(t / 1000));' "$1" 2>/dev/null)" || { echo $(( $(date +%s) + 18000 )); return; }
   (( t > $(date +%s) - 3600 )) || t=$(( t + 86400 ))
   echo "$t"
 }
@@ -82,7 +94,7 @@ check_usage() { # $1 = account
   ts="${line%%$'\t'*}"; msg="${line#*$'\t'}"
   (( ts > last )) || return 0
   echo "$ts" > "$state/$a.seen"
-  when="$(sed -n 's/.*resets \([^(]*\).*/\1/p' <<<"$msg" | sed 's/ *$//')"
+  when="$(sed -n 's/.*resets \([^(]*([^)]*)\).*/\1/p; t; s/.*resets \([^(]*\).*/\1/p' <<<"$msg" | head -1 | sed 's/ *$//')" # keeps "(zone)"
   until="$(reset_epoch "${when:-}")"
   echo "$until" > "$state/$a.out"
   log "$a is out: \"$msg\" (back after $(date -d "@$until" '+%H:%M'))"
@@ -191,7 +203,7 @@ check_outbox() { # a worker's report (runner.mjs) goes to the PM's mailbox; a us
       if grep -q '^Limit:' <<<"$report"; then
         subject="$subject (usage limit)"
         if [[ -z "$(out_until "$a")" ]]; then
-          when="$(grep -o 'resets [^(.]*' <<<"$report" | head -1 | sed 's/resets //; s/ *$//')"
+          when="$(grep -o 'resets [^"]*([^)]*)' <<<"$report" | head -1 | sed 's/resets //')"
           until="$(reset_epoch "${when:-}")"; echo "$until" > "$state/$a.out"
           log "$a is out (seen in $vm's report), back after $(date -d "@$until" '+%H:%M')"
         fi
