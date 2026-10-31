@@ -649,3 +649,9 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   Andrew's apps (Firefox, Discord, Steam) about 3.8, Windows and drivers
   about 5. u2 booted (172.26.221.64); it waits for Andrew's Claude (Max) and
   GitHub sign-ins.
+- 2026-10-30 22:15: u2 (Linux, Max) is ready: Andrew signed in (Claude Max,
+  GitHub anweather), the sign-ins are in its slot, and a test brief came back
+  through the direct mailbox. Both accounts now have a Linux worker (u1 Pro,
+  u2 Max) for core and sandbox work beside an open Editor (5 GB margin). For
+  the next Linux clone: the template lacks /var/lib/worker (sudo mkdir it)
+  and its Guest Service Interface was off (start.cmd's name copy failed).
