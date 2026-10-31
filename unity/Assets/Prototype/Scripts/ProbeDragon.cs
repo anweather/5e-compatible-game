@@ -103,6 +103,7 @@ public class DragonProbe : ProbeScenario
 
         bool open = false, sheltered = false, looked = false;
         StartCoroutine(WatchTheFlight());
+        StartCoroutine(WatchThePerch());
         var lookFrames = new List<float>();
         int staged = -1;
         Vector3 lookEye = default, lookAt = default;
@@ -175,6 +176,19 @@ public class DragonProbe : ProbeScenario
             if (flying && view.Seen && Time.unscaledDeltaTime < 0.1f) fastest = Mathf.Max(fastest, (view.ShownAt - was).magnitude / Mathf.Max(Time.deltaTime, 0.001f));
             was = view.ShownAt;
         }
+    }
+
+    IEnumerator WatchThePerch()
+    {
+        while (World.Dragon != null && !view.Perched) yield return null;
+        Check("lands_to_roar", view.Perched, "it stands on the mountain as it leaves");
+        yield return Wait(0.8f);
+        if (World.Dragon == null) yield break;
+        var ground = grid.GroundAt(view.ShownAt);
+        Metric("perch_above_ground_m", view.ShownAt.y - ground);
+        Cut(view.ShownAt - view.Way * -90f + Vector3.Cross(Vector3.up, view.Way).normalized * 60f + Vector3.up * 16f, view.ShownAt + Vector3.up * 14f);
+        yield return null;
+        Shot("perch");
     }
 
     // A close look at it, for the eye: from the side, a little above.

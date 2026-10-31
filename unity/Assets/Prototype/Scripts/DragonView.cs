@@ -43,7 +43,7 @@ public class DragonView : MonoBehaviour
     DragonShadow shadow;
     Vector3 shownAt, velocity;
     Vector3 way = Vector3.forward;
-    float groundUnder, groundSpeed, bank;
+    float groundUnder, groundSpeed, bank, rear;
     int lastTick = -1;
     float tickAt, secondsPerTick = 1f / 6f;
     bool wasSeen;
@@ -58,6 +58,9 @@ public class DragonView : MonoBehaviour
 
     /// <summary>Where it's drawn, for the probe.</summary>
     public Vector3 ShownAt => shownAt;
+
+    /// <summary>It's stood on the mountain, for the probe.</summary>
+    public bool Perched { get; private set; }
 
     /// <summary>The way it's facing, for the probe.</summary>
     public Vector3 Way => way;
@@ -205,7 +208,10 @@ public class DragonView : MonoBehaviour
         if (moved.sqrMagnitude > 0.01f && !pose.Perched) way = Vector3.Slerp(way, moved.normalized, 1f - Mathf.Exp(-Time.deltaTime * Turn));
         float flat = Vector3.SignedAngle(Vector3.ProjectOnPlane(way, Vector3.up), Vector3.ProjectOnPlane(moved, Vector3.up), Vector3.up);
         bank = Mathf.Lerp(bank, Mathf.Clamp(-flat * 4f, -MostBank, MostBank), 1f - Mathf.Exp(-Time.deltaTime * Turn));
-        body.SetPositionAndRotation(shownAt, Quaternion.LookRotation(way, Vector3.up) * Quaternion.Euler(0f, 0f, bank));
+        // Stood on the mountain it rears up as its clip hovers, rather than lying on the air.
+        rear = Mathf.Lerp(rear, pose.Perched ? Level : 0f, 1f - Mathf.Exp(-Time.deltaTime * Turn));
+        body.SetPositionAndRotation(shownAt, Quaternion.LookRotation(way, Vector3.up) * Quaternion.Euler(-rear, 0f, bank));
+        Perched = pose.Perched;
     }
 
     float Ground(Vector3 at)

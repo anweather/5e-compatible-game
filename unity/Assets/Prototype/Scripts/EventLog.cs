@@ -74,7 +74,7 @@ public class EventLog : MonoBehaviour
         if (reset)
         {
             resetHeld = 0f;
-            ResetYard();
+            if (!ResetYard()) Add("Keep holding Reset to rebuild the valley at once");
         }
         if (!held)
         {

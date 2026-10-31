@@ -326,6 +326,8 @@ public class PerfScenario : MonoBehaviour
         var inv = CultureInfo.InvariantCulture;
         var stats = FrameStats.Of(frameMs);
         var line = new StringBuilder($"PERF RESULT scenario={scenario} build={BuildInfo.Label.Replace(' ', '_')} res={Screen.width}x{Screen.height} frames={stats.Count} seconds={elapsed.ToString("0.0", inv)}");
+        var chem = FindAnyObjectByType<ChemGrid>()?.World;
+        if (chem != null) line.Append($" changed={chem.ChangedCount} flights={chem.DragonFlights} palette={chem.StartShapes} keep_start_ms={ChemGrid.KeepStartMs.ToString("0.0", inv)}");
         void Add(string key, double value, string format = "0.0") => line.Append($" {key}={value.ToString(format, inv)}");
         void AddSplit(string key, List<float> ms)
         {
