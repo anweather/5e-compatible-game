@@ -6,7 +6,7 @@ namespace Chem.Tests
     /// <summary>
     /// What night does in the rules (World.Night.cs, World.Weather.cs): the daylight by the
     /// hour, the light fires shed, snow freezing faster and ice keeping at night, and the
-    /// checks. The light golden is shared with sandbox/test/night.test.ts.
+    /// checks. The light golden came from sandbox/test/night.test.ts (frozen 2026-10-31).
     /// </summary>
     public class NightTests
     {

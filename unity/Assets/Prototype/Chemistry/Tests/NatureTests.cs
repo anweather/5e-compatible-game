@@ -6,7 +6,7 @@ namespace Chem.Tests
     /// <summary>
     /// Nature: Plant Growth regrows burnt ground (green shoots, then grass, out from the middle;
     /// saplings from old stumps that grow into trees) and Spike Growth lays thorns that burn and
-    /// wither. Mirrors sandbox/test/nature.test.ts; the golden numbers come from running the same
+    /// wither. Ported from sandbox/test/nature.test.ts; the golden numbers come from running the same
     /// casts there. The core has no creatures, so what thorns do to a walker is the sandbox's
     /// test and the view's (SurfaceEffects); here only the numbers it reads.
     /// </summary>
@@ -125,7 +125,7 @@ namespace Chem.Tests
             Assert.That(saplings, Is.GreaterThan(2));
             Assert.That(Count(w, "tree"), Is.EqualTo(saplings), "every sapling is a tree by now");
             Assert.That(Count(w, "sapling"), Is.EqualTo(0));
-            // Golden, shared with sandbox/test/nature.test.ts.
+            // Golden, first taken from sandbox/test/nature.test.ts (frozen 2026-10-31).
             Assert.That(early, Is.EqualTo("e22869f7 1489130935"), "40 ticks on: grass, saplings still growing");
             Assert.That($"{w.CellHash()} {w.RngState} {saplings}", Is.EqualTo("527e32aa 1489130935 24"));
         }

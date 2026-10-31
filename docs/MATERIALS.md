@@ -159,10 +159,10 @@ taking damage, not about a material.
 
 ## Migration, in small test-guarded steps
 
-Each step merges on its own with the usual checks (core and sandbox suites,
-both checkers with the same messages, smoke and a probe). The rule for
+Each step merges on its own with the usual checks (the core suite, smoke and a
+probe; the sandbox is frozen, J-042). The rule for
 every step: **the same rules give the same world**. Goldens move only in a
-step that says so, and then in both engines together.
+step that says so.
 
 1. **Read the groups as aliases (no behaviour change).** The loaders turn
    today's keys into the groups (`flammable` tag + `flammability` + `fuel`
@@ -185,7 +185,7 @@ step that says so, and then in both engines together.
    material (a brittle item), add the material first, in its own commit.
 5. **Creatures as flesh, bone or chitin.** Move the creature branch of
    `entityRules` into those materials' `status` keys. The defense golden
-   is the guard: unchanged, or moved in both engines with the reason in
+   is the guard: unchanged, or moved with the reason in
    the commit. *Built:* `burn`, `freeze` and `soak` take a `status`
    (flesh 9 / 30 / 60, bone no burn, chitin no freeze); the creature rules
    (`e-fire-creature`, `e-water-creature`, `e-cold-wet`) read it through

@@ -71,7 +71,8 @@ and `CA…`/`IDE…` at `learn.microsoft.com/dotnet/fundamentals/code-analysis/`
 3. **Duplicates.** `jscpd` (4.0.5) looks for copy-pasted blocks (50 tokens
    and 5 lines or more) in `unity/Assets/Prototype` and `sandbox/src`. It
    fails if more than 2% of the code is duplicated. The settings are in
-   `.jscpd.json`.
+   `.jscpd.json`. C# and TypeScript are counted apart, so the sandbox was
+   never checked against the core; it is frozen now and only adds 0% to the total.
 
 The sandbox's own tests stay in `sandbox.yml`.
 
@@ -110,7 +111,7 @@ is in `docs/ARCHITECTURE.md`.
 |---|---|---|
 | Chemistry/World.React.cs | 3 | S3776 ×3 (complexity 18, 28, 69) |
 | Chemistry/World.Terraform.cs | 1 | S3776 (23) |
-| Chemistry/World.Spells.cs | 2 | S3776 ×2 (ShapeCells, SlantCells: they mirror the sandbox, to be split with the TS) |
+| Chemistry/World.Spells.cs | 2 | S3776 ×2 (ShapeCells, SlantCells: ported from the sandbox, to be split) |
 | *Starter Assets ReadmeEditor.cs (pack)* | 2 | S1066, S1199 |
 
 Totals: **Scripts/ 0**, **Chemistry/ 6** (all cognitive complexity; the
@@ -132,8 +133,8 @@ for Unity messages (see `Default.globalconfig`). Naming rules (`IDE1006`) find
 nothing in our code. jscpd finds one 5-line clone (the rules-folder lookup in
 `ChemGrid` and the tests), 0.08% of the C#.
 
-The Chemistry methods are ported line by line from the TS sandbox. Splitting
-them (together with the TS) is the next refactor; then remove `S3776` from
+The Chemistry methods are ported line by line from the TS sandbox. With the sandbox
+frozen (J-042), splitting them is the next refactor, C# only; then remove `S3776` from
 `WarningsNotAsErrors` in `core/Directory.Build.props`.
 
 ## Windows PC check (2026-10-25)

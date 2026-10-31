@@ -142,7 +142,8 @@ touch them.
 
 **Rules**
 : What exists and how it reacts: `rules/*.json`, loaded into `Chem.Rules`.
-  The single source of truth for both engines.
+  The single source of truth for the C# core (the frozen sandbox has its
+  own copy, `sandbox/rules-frozen/`).
 
 **Terrain / cover / gas**
 : The three kinds of material a cell has: what it is (grass, stone, log

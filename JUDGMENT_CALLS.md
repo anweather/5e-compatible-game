@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-042: Keep writing every rule twice, or freeze the TS sandbox?
+
+- **Asked:** 2026-10-30, by the PM (open since then).
+- **Also comes up when:** any brief that changes chemistry; CI's sandbox workflow; the rules MCP.
+- **Answer:** freeze the TypeScript sandbox. The C# core is the only engine; no porting.
+- **Why:** writing every rule twice doubled the cost of rules work, and the rules MCP runs the core.
+- **Revisited:** 0.
+
 ### J-041: Who may change a live room's rules?
 
 - **Asked:** 2026-10-31, by the PM (rules MCP design).
@@ -56,7 +64,9 @@ Each entry has:
 - **Also comes up when:** any tuning of casting animation, hit-stop or cast sounds.
 - **Answer:** really close. The charged cast is amazing: keep it. The uncharged cast is too
   quick for the slam together and release; the slam needs more oomph.
-  The sounds are not judged yet: Andrew watched without sound (still owed).
+  Sounds (heard later): too snappy; lower and rumbly. First element low, a little different per
+  element; the second layers over it; combine rises in pitch, escalating per charge step; release a
+  short whoosh that cuts the charging sounds off.
 - **Why:** Andrew watched the clip.
 - **Revisited:** 0.
 

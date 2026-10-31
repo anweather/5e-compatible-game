@@ -43,7 +43,7 @@ namespace Chem.Tests
         public void ATeeShotAPenaltyACarryOverThePondAndHoledInSix()
         {
             // Gust of Wind pushes the ball (its force push), Raise Earth under it throws it (its force throw); water
-            // puts it back on the tee a stroke down. Mirrors sandbox/test/terraform.test.ts.
+            // puts it back on the tee a stroke down. Ported from sandbox/test/terraform.test.ts.
             var w = Strip();
             Assert.That(Stroke(w, "gust-of-wind", 2, 5), Is.EqualTo((14, 5)), "the tee shot rolls over the rise");
             Assert.That(Stroke(w, "gust-of-wind", 12, 5), Is.EqualTo((4, 5)), "into the pond: back on the tee");
@@ -52,7 +52,7 @@ namespace Chem.Tests
             Assert.That(Stroke(w, "mold-earth-heap", 14, 5), Is.EqualTo((22, 5)), "Raise Earth throws it over the pond");
             Assert.That(Stroke(w, "gust-of-wind", 20, 5), Is.EqualTo((30, 5)));
             Assert.That(w.Golf.Holed && w.Log.Any(l => l.Text == "Holed in 6!"));
-            Assert.That($"{w.GolfText()} {w.GolfHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"), "the same in the sandbox");
+            Assert.That($"{w.GolfText()} {w.GolfHash()} {w.CellHash()} {w.RngState}", Is.EqualTo("|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"), "the golden");
         }
 
         [Test]
@@ -114,7 +114,7 @@ namespace Chem.Tests
         [Test]
         public void GustKnocksARaiderBackOnceAndRaiseEarthThrowsOneOffItsFeet()
         {
-            // The force the ball takes acts on raiders the same way (spells.json force). Mirrors sandbox/test/terraform.test.ts.
+            // The force the ball takes acts on raiders the same way (spells.json force). Ported from sandbox/test/terraform.test.ts.
             var w = new World(R, 20, 8, 5, "dirt");
             var hound = w.SpawnRaider("bone-hound", 5, 3, 6);
             var crab = w.SpawnRaider("ash-crab", 10, 6, 9);
@@ -124,7 +124,7 @@ namespace Chem.Tests
             Assert.That((crab.X, crab.Y, crab.StatusOf(World.ThrownStatus)), Is.EqualTo((10, 6, 2)), "force.throw 2");
             Assert.That(w.At(10, 6).Height, Is.EqualTo(1));
             Run(w, 3);
-            Assert.That($"{w.CellHash()} {w.RngState} {hound.X},{hound.Y} {crab.StatusOf(World.ThrownStatus)}", Is.EqualTo("65a33bbd 5 7,3 0"), "the same in the sandbox");
+            Assert.That($"{w.CellHash()} {w.RngState} {hound.X},{hound.Y} {crab.StatusOf(World.ThrownStatus)}", Is.EqualTo("65a33bbd 5 7,3 0"), "the golden");
         }
 
         sealed class Blank : IChunkSource

@@ -1,11 +1,14 @@
 name: sandbox
 
+# The sandbox is frozen (J-042): it runs its own copy of the rules in
+# sandbox/rules-frozen/, so changes to rules/ no longer trigger it.
+
 on:
   push:
     branches: [main, dev]
-    paths: ["rules/**", "sandbox/**", ".github/workflows/sandbox.yml"]
+    paths: ["sandbox/**", ".github/workflows/sandbox.yml"]
   pull_request:
-    paths: ["rules/**", "sandbox/**", ".github/workflows/sandbox.yml"]
+    paths: ["sandbox/**", ".github/workflows/sandbox.yml"]
 
 jobs:
   test:

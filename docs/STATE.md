@@ -53,17 +53,27 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - Landed on dev after 0.1.9: the Gauntlet's rules (22cda15), the Dragon's rules (0967b44), surf toward
   the nearest land (1671b55, #23; rebuild the yard after pulling).
-- DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Now the Windows
-  perf comparison: a release build from dev head with `-perf-offscreen` (0.1.9 lacks the flag).
-- Mac: the Dragon's view (item 4 below).
-- u1: the rules MCP server, phase 1 (`docs/RULES_MCP.md`, D13; brief `briefs/rules-mcp.md`). Asleep
-  (Saved) during the perf comparison; wake it with `start.cmd u1` when DesktopUnity says perf is done.
+- DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
+  comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
+  cast-sound prototypes for Andrew to pick from before anything is built in.
+- Mac: the Dragon's view is pushed (`dragon-view`, efb186a), not merged: it waits on `probe.sh online`
+  in a normal Editor (DesktopUnity, queued). Every machine rebuilds the yard after it lands. For Andrew,
+  with media first: the model (reads friendly, not ancient), water never shelters (no cell reaches
+  depth 8), a raised Wall of Stone is wiped by the chunk reset before the breath arrives.
+  `dragon-clip` (f07aa3e, the clip probe and the QuickSearch console filter) is stacked on it: land
+  dragon-view first. The Mac is now on rules MCP phase 2, procedural looks (`procedural-looks`).
+- Sandbox frozen (210b047; J-042): it reads `sandbox/rules-frozen/`; nothing is ported to it.
+- Rules MCP phase 1 landed (dffbc19; u1, now asleep): `core/Rules.Mcp`, `ModValidator.cs`, budgets in
+  `rules/budgets.json`, "Using the rules MCP" in MODDING.md. Unity hasn't compiled ModValidator yet
+  (DesktopUnity checks on its next pull). Phase 2 (procedural looks) starts from
+  `docs/handoffs/procedural-looks-scan.md` (~70 id-keyed places); it needs Unity.
 
 ## Next, in order
 
-1. Andrew judges the wave crest (#11). Cast feel judged (J-040, #22): DesktopUnity
-   tunes the uncharged slam (slower, more oomph) after perf, with a new clip.
-2. The Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
+1. Wave crest judged good for now (#11 closed). Cast feel judged (J-040, #22): DesktopUnity
+   tunes the uncharged slam (slower, more oomph)
+   and redoes the cast sounds (lower, layered per element, rising per charge step) after perf, with a new clip.
+2. Done: the Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
    run (1e8d899 split PerfScenario.Start and PerfStage.Walk). Then the `perf-pass` skill from
    `docs/perf/notes-2026-10-31-mac.md`.
 3. The Gauntlet's view: side camera, booths, carnival dressing (`docs/handoffs/obstacle-course-brief.md`).
@@ -80,9 +90,7 @@ He reads it on his phone instead of scrolling the chat. Update it (Artifact `rea
 
 ## Open questions for Andrew
 
-- Keep writing every rule twice (C# core and TS sandbox), or freeze the sandbox?
 - The punch knocks a crate only 0.42 m: harder?
-- The verdicts above (wave crest), and the cast sounds (`cast-feel-sound.mp4`, not heard yet).
 - Unmerged branches to delete: `wip/w1-*`, `wip/w2-*` (their work landed), and about 17 old spikes.
 
 ## Telemetry

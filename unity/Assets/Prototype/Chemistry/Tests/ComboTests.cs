@@ -1,5 +1,5 @@
-// Element combos (docs/SPELL_COMBOS.md). The goldens are shared with
-// sandbox/test/combos.test.ts.
+// Element combos (docs/SPELL_COMBOS.md). The goldens were first taken from
+// sandbox/test/combos.test.ts (frozen 2026-10-31).
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -196,7 +196,7 @@ namespace Chem.Tests
         public void ADpadSlotWithNoSpellIsRefused()
         {
             // The base d-pad has no spell-less slot since Light got its spell, so a test-only d-pad gives it
-            // one. Mirrors sandbox/test/combos.test.ts.
+            // one. Ported from sandbox/test/combos.test.ts.
             var r = Base.WithMods(new[] { ModPatch.Parse("{ 'combos': { 'dpad': [ { 'name': 'Hasten Time', 'spell': 'hasten-time', 'castTicks': 12 }, { 'name': 'Mystery', 'castTicks': 6 } ] } }") });
             var w = new World(r, 8, 8, 1);
             Cycle(w, "ann", 1);
@@ -356,7 +356,7 @@ namespace Chem.Tests
             Assert.That(w.CastOf("bob").Meter, Is.EqualTo(0));
         }
 
-        // The goldens: the same steps as sandbox/test/combos.test.ts give the same text and hashes.
+        // The goldens (first taken from sandbox/test/combos.test.ts, frozen 2026-10-31).
 
         [Test]
         public void GoldenComboCast()

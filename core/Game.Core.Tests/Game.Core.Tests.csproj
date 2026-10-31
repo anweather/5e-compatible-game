@@ -12,11 +12,14 @@
     <Compile Include="../../unity/Assets/Prototype/Scripts/Playtest/Editor/*Tests.cs" Link="Playtest/Tests/%(Filename)%(Extension)" />
     <!-- The playtest runner's tests (core/Playtest.Runner): the parts that don't launch anything. -->
     <Compile Include="Runner/*.cs" />
+    <!-- The rules MCP server (core/Rules.Mcp): validate, simulate, drafts and save. -->
+    <Compile Include="RulesMcp/*.cs" />
   </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="../Game.Core/Game.Core.csproj" />
     <ProjectReference Include="../Playtest.Runner/Playtest.Runner.csproj" />
+    <ProjectReference Include="../Rules.Mcp/Rules.Mcp.csproj" />
   </ItemGroup>
 
   <ItemGroup>

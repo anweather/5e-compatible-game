@@ -1,0 +1,38 @@
+{
+  "ticksPerSecond": 6,
+  "fire": { "spreadChance": 0.5, "heatChance": 0.04, "boilChance": 0.35, "slickBoilChance": 0.02, "downwindBonus": 0.35, "smokeChance": 0.25 },
+  "water": { "maxLevel": 32, "unitsPerStep": 4, "thin": 2, "soakPass": 8, "dampTicks": 600 },
+  "height": { "min": -6, "max": 8, "blockAt": 3 },
+  "gas": { "decayChance": 0.07, "maxAmount": 6 },
+  "status": { "burnDamageEvery": 3, "scaldEvery": 6, "shatter": { "when": "frozen", "notBy": "cold" } },
+  "push": { "slideCells": 3, "collisionDamage": 2 },
+  "fallDamage": 4,
+  "zapDamage": 3,
+  "conductLimit": 80,
+  "defense": {
+    "lives": 10, "waves": 5, "first": 3, "growth": 2, "hpPerWave": 2,
+    "warmup": 24, "spawnEvery": 9, "betweenWaves": 60,
+    "margin": 10, "wallCost": 30, "roughCost": 4, "roughTicks": 6, "batterTicks": 18, "deepWater": 8,
+    "kinds": ["bone-hound", "ash-crab", "giant-spider"]
+  },
+  "breath": { "seconds": 30, "refillSeconds": 3, "drownEvery": 3, "drownDice": 1, "drownSides": 6 },
+  "downed": { "seconds": 3 },
+  "dragon": {
+    "warningTicks": 180, "turnTicks": 24, "leavingTicks": 120,
+    "speed": 6, "depth": 12, "breathChunks": 3, "overlapChunks": 1, "chunksPerTick": 1,
+    "budget": 100000,
+    "shelterWater": 8, "wallReach": 2, "wallTerrains": ["stone", "rock"]
+  },
+  "golf": { "every": 1, "pushRoll": 5, "throwCarry": 3, "margin": 16 },
+  "day": { "lengthMinutes": 24, "startHour": 9, "dawn": [5, 7], "dusk": [18, 20], "nightFreeze": 2, "fireLight": { "bright": 20, "dim": 20 } },
+  "streaming": { "reach": 2, "keep": 3, "settleTicks": 12, "lingerChunks": 16, "lingerTicks": 1800, "catchUpTicks": 720 },
+  "weather": {
+    "periodMinutes": 4, "rampMinutes": 0.5, "calmPeriods": 2,
+    "weights": { "clear": 4, "cloudy": 2, "windy": 1.5, "fog": 1, "rain": 2, "storm": 1, "snow": 1 },
+    "rain": { "douseChance": 0.05, "dampen": 0.6, "fillEvery": 12, "fillChance": 0.015, "dryEvery": 30, "dryChance": 0.1 },
+    "storm": { "strikeEvery": 18, "strikeChance": 0.5 },
+    "snow": { "freezeEvery": 24, "freezeChance": 0.05, "thawChance": 0.05, "coverChance": 0.08, "bankChance": 0.05, "deepenChance": 0.004 },
+    "fog": { "every": 6, "chance": 0.3, "gas": "fog", "regionChunks": 2, "patches": 4, "radiusMin": 10, "radiusMax": 15, "tries": 8, "low": 0.02, "wet": 2, "wetReach": 8, "driftTicks": 90 },
+    "meteors": { "showerChance": 0.15, "every": 18, "chance": 0.6, "fallTicks": 11 }
+  }
+}
