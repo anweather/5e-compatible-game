@@ -61,7 +61,9 @@ The one page a new PM session reads first. Keep it short: history goes in
   comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
   cast-sound prototypes for Andrew to pick from before anything is built in.
 - Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. dragon-clip landed
-  (5ac59c8). The Mac: `dragon-tweaks` (+50% scale, breath
+  (5ac59c8). `dragon-tweaks` is pushed (74c4ffb: scale 1.5 as data, a
+  240-drop breath stream, a seeded barrel roll; core 746, EditMode 826, dragon probe 45/45); it waits for
+  DesktopUnity's online run, incl. the new unrun `dragon_seen_on_the_client`. Was: the Mac: `dragon-tweaks` (+50% scale, breath
   stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
   which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
   is wiped before the breath arrives.
