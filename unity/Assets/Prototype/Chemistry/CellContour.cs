@@ -90,7 +90,7 @@ namespace Chem
             ReadCells(x0, y0, x1, y1, value, wobble);
             Sample();
             edgePoints.Clear();
-            Array.Clear(latticePoint, 0, latticePoint.Length);
+            Array.Clear(latticePoint, 0, lw * lh);
             // The lattice runs from the centre of cell x0 - 1 to that of cell x1 + 1; a tile starts one cell in.
             int edge = Tiled ? spec.Lattice : 0;
             for (int j = edge; j < lh - 1; j++)
@@ -104,6 +104,13 @@ namespace Chem
             }
         }
 
+        // Working arrays are kept between builds and only ever grow: a water tile redraws at the
+        // same size every time, and the film's box is big enough that each new array was megabytes.
+        static void Fit<T>(ref T[] array, int size)
+        {
+            if (array == null || array.Length < size) array = new T[size];
+        }
+
         // The cells' values, one ring wider than the box (the centres the lattice spans).
         void ReadCells(int x0, int y0, int x1, int y1, Func<int, int, float> value, Func<int, int, float> wobble)
         {
@@ -111,8 +118,8 @@ namespace Chem
             cy0 = y0 - 1;
             cw = x1 - x0 + 3;
             ch = y1 - y0 + 3;
-            cellValues = new float[cw * ch];
-            cellWobbles = new float[cw * ch];
+            Fit(ref cellValues, cw * ch);
+            Fit(ref cellWobbles, cw * ch);
             for (int b = 0; b < ch; b++)
             {
                 for (int a = 0; a < cw; a++)
@@ -131,8 +138,8 @@ namespace Chem
             lh = (ch - 1) * n + 1;
             lx0 = cx0 + 0.5f;
             ly0 = cy0 + 0.5f;
-            field = new float[lw * lh];
-            latticePoint = new int[lw * lh];
+            Fit(ref field, lw * lh);
+            Fit(ref latticePoint, lw * lh);
             for (int j = 0; j < lh; j++)
             {
                 for (int i = 0; i < lw; i++)
