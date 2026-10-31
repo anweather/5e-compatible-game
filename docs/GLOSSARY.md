@@ -173,10 +173,11 @@ touch them.
   by a script of its own.
 
 **Veil (thin fog)**
-: Fog weather lays a unit of fog gas here and there on open cells. That's
-  too thin to hide anything on its own, but a line of sight through a
-  gas's `hidesAfter` cells of it is hidden (`World.LineOfSight`). It thins
-  away when the stretch ends.
+: Fog weather lays fog gas here and there, in patches on low ground near
+  water (`weather.fog`, `World.Veil`), a unit a cell. That's too thin to
+  hide anything on its own, but a line of sight through a gas's `hidesAfter`
+  cells of it is hidden (`World.LineOfSight`). The patches drift a little
+  on the stretch's breeze and thin away when the stretch ends.
 
 **Flame**
 : One of the few flames on a burning cell (`FlameBank`, `Prototype/Flame`): a
@@ -209,6 +210,14 @@ touch them.
 : A stage of a cast by elements on the wizard's body: first element, second element, slam, charge,
   release, recovery, or a fizzle when it's dropped (`Beat`, `CastBeats`; poses and timings in
   `Settings/CastFeel.asset`). View only, worked out from the core's cast state on every peer.
+
+**Voice**
+: One sound playing, from the pool of sources in `SoundVoices`. A loop must be held each frame or it lets go.
+
+**Hit-stop**
+: A few frames in which the local wizard's Animator and beats and the camera stand still, on the slam and the
+  release (`CastBeats.HitStop`, `CastImpact`). View only and on the caster's own screen: game time, ticks and
+  physics run on, and other peers never see it. *Avoid:* "freeze" (a word of the chemistry), "hitch".
 
 **Downed**
 : A wizard at 0 health, or caught by the dragon's breath: on the ground with no controls for `sim.json`

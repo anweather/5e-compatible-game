@@ -10,8 +10,9 @@ using UnityEngine;
 // at their targets once a beat has settled; the slam takes about 0.1 s; a charge
 // pulses at each level and slows the walk; the recoil moves only what's drawn.
 // With --shots, the wizard from the side at each beat, first with the pose off
-// (the "before": the old gestures, the same camera and moments).
-public class CastFeelProbe : ProbeScenario
+// (the "before": the old gestures, the same camera and moments). The impact is
+// in ProbeCastFeel.Impact.cs, the sounds in ProbeCastFeel.Sound.cs.
+public partial class CastFeelProbe : ProbeScenario
 {
     const float HandTolerance = 0.06f, WaitLimit = 8f;
 
@@ -53,7 +54,10 @@ public class CastFeelProbe : ProbeScenario
             yield return Cast("pair", new[] { ElementIds.Water, ElementIds.Earth }, false, new[] { Beat.First, Beat.Second, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
             yield return Charged();
             yield return Cancelled();
+            yield return MidTick();
             if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Pictures("after");
+            yield return Impact();
+            yield return Sounds();
         }
         finally
         {
@@ -63,6 +67,25 @@ public class CastFeelProbe : ProbeScenario
             beats.BeatChanged -= Heard;
             beats.ChargeLevel -= Pulsed;
         }
+    }
+
+    // A peer catching up on ticks in slices can be mid-tick at the end of every frame: the beats
+    // must still play, all of them. (World.StepSome here leaves a tick begun for the grid to finish.)
+    IEnumerator MidTick()
+    {
+        bool slicing = true;
+        IEnumerator Slices()
+        {
+            while (slicing)
+            {
+                if (!World.TickInProgress) World.StepSome(() => true);
+                yield return null;
+            }
+        }
+        StartCoroutine(Slices());
+        yield return Cast("mid_tick", new[] { ElementIds.Fire }, false, new[] { Beat.First, Beat.Slam, Beat.Release, Beat.Recovery, Beat.Neutral });
+        slicing = false;
+        yield return null;
     }
 
     void Heard(Beat beat)

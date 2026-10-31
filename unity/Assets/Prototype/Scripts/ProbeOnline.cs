@@ -25,7 +25,7 @@ public static class ProbeLink
 {
     public const string Hosting = "hosting", Go = "go", Joined = "joined", Reported = "reported";
     /// <summary>After the reset: the host asks for the checksums since it (up to startTick), the virtual player sends them.</summary>
-    public const string ResetCheck = "reset-check", ResetReported = "reset-reported";
+    public const string ResetSettled = "reset-settled", ResetCheck = "reset-check", ResetReported = "reset-reported";
 
     /// <summary>True in a Multiplayer Play Mode virtual player (its project is a copy under Library/VP/).</summary>
     public static bool InVirtualPlayer => Application.isEditor && VirtualRoot() != null;
@@ -86,6 +86,21 @@ public class OnlineObservation
     public bool sawForm, sawFormEnd;
     /// <summary>The beats the other wizard's cast went through here (CastBeats), one line for each copy that moved.</summary>
     public List<string> otherBeats = new();
+    /// <summary>The casting sounds of that wizard's copy here, each with how far from its chest it was (m) and from this side's listener.</summary>
+    public List<string> otherSounds = new();
+    public float otherSoundWorst, otherSoundFarthest;
+
+    /// <summary>Notes a casting sound if it's that wizard's (near it).</summary>
+    public void NoteSound(CastBeats other, string sound, Vector3 at)
+    {
+        if (other == null || Vector3.Distance(at, other.transform.position) > 3f) return;
+        otherSounds.Add(sound);
+        otherSoundWorst = Mathf.Max(otherSoundWorst, Vector3.Distance(at, other.transform.position + Vector3.up * 1.15f));
+        if (Camera.main != null) otherSoundFarthest = Mathf.Max(otherSoundFarthest, Vector3.Distance(at, Camera.main.transform.position));
+    }
+
+    /// <summary>The hit-stops that wizard's copy had here: none, they're its owner's view.</summary>
+    public int otherStops;
     public int joinedTick;
     /// <summary>The virtual player's lag at the start tick: ticks it knew of but hadn't run yet (0 caught up).</summary>
     public int lagAtStart;
@@ -443,6 +458,20 @@ public class OnlineProbeClient : MonoBehaviour
         return known != null ? System.Math.Max(0, (int)known.GetValue(net) - net.NetTick) : -1;
     }
 
+    // Tells the host once the reset's stall is over here and this side has caught up (OnlineProbe.ClientSettled).
+    static IEnumerator TellSettled(string id, NetChem net)
+    {
+        for (float waited = 0f; waited < 90f; waited += Time.unscaledDeltaTime)
+        {
+            if (net.LastResetTick > 0 && Lag(net) <= 1)
+            {
+                ProbeLink.Write(ProbeLink.ClientFile, new OnlineObservation { id = id, phase = ProbeLink.ResetSettled });
+                yield break;
+            }
+            yield return null;
+        }
+    }
+
     // The host then resets the world (OnlineProbe.TryReset): the checksums from after the reset,
     // sent when the host asks, up to the tick it names.
     IEnumerator AfterReset(string id, NetChem net)
@@ -451,6 +480,8 @@ public class OnlineProbeClient : MonoBehaviour
         var other = OtherBeats();
         void Heard(Beat beat) => after.otherBeats.Add(beat.ToString());
         if (other != null) other.BeatChanged += Heard;
+        void Sounded(string sound, Vector3 at, float volume, float pitch) => after.NoteSound(other, sound, at);
+        SoundVoices.Started += Sounded;
         void OnTick(int tick, string checksum)
         {
             if (checksum == null || net.LastResetTick <= 0 || tick <= net.LastResetTick) return;
@@ -459,6 +490,7 @@ public class OnlineProbeClient : MonoBehaviour
         }
         net.TickApplied += OnTick;
         ProbeHostMessage ask = null;
+        StartCoroutine(TellSettled(id, net));
         for (float waited = 0f; waited < 90f && ask == null; waited += Time.unscaledDeltaTime)
         {
             ask = ProbeLink.Read<ProbeHostMessage>(ProbeLink.HostFile);
@@ -469,7 +501,9 @@ public class OnlineProbeClient : MonoBehaviour
         for (float waited = 0f; ask != null && waited < 20f && net.NetTick < ask.startTick; waited += Time.unscaledDeltaTime) yield return null;
         net.TickApplied -= OnTick;
         if (other != null) other.BeatChanged -= Heard;
+        SoundVoices.Started -= Sounded;
         if (ask == null) yield break;
+        after.otherStops = other != null ? other.Stops : 0;
         after.phase = ProbeLink.ResetReported;
         after.desync = net.DesyncSeen;
         after.errorCount = errorCount;
@@ -559,10 +593,21 @@ public class OnlineProbe : ProbeScenario
         if (report == null) yield break;
         Compare(recorder.Seen, report);
         yield return TryReset();
+        yield return ClientSettled(id);
         yield return TryTag();
         yield return TryShape();
         yield return TryBeats();
         yield return CompareAfterReset(id);
+    }
+
+    // A reset stalls a peer's frame for a couple of seconds and leaves it ticks behind. A deer that
+    // came and went inside that stall is never drawn there, so what follows waits for it. (A peer
+    // catching up keeps its beats too: castfeel's mid_tick cast.)
+    IEnumerator ClientSettled(string id)
+    {
+        float waited = 0f;
+        for (; waited < ReportSeconds && ReadClient(id, ProbeLink.ResetSettled) == null; waited += Time.unscaledDeltaTime) yield return null;
+        Metric("reset_client_settled_s", waited);
     }
 
     int ballsBefore;
@@ -597,8 +642,11 @@ public class OnlineProbe : ProbeScenario
         }
         Check("shape_seen_online", client.sawForm, "the host's wizard drawn as a deer on the virtual player");
         Check("shape_ended_online", client.sawFormEnd, "and drawn as itself again once a cast button ended it (issue #6)");
+        Check("remote_wizard_has_no_hit_stop", client.otherStops == 0 && wizard.GetComponent<CastBeats>().Stops > 0,
+            $"its copy on the virtual player {client.otherStops}, the host's own {wizard.GetComponent<CastBeats>().Stops}");
         Check("beats_seen_online", client.otherBeats.SequenceEqual(hostBeats) && hostBeats.Contains(nameof(Beat.Release)) && hostBeats.Contains(nameof(Beat.Charge)),
             $"host [{string.Join(" ", hostBeats)}], its wizard on the virtual player [{string.Join(" ", client.otherBeats)}]");
+        CheckRemoteSounds(client);
         int compared = 0, equal = 0;
         string firstDiff = null;
         for (int i = 0; i < client.hashTicks.Count; i++)
@@ -635,6 +683,15 @@ public class OnlineProbe : ProbeScenario
         yield return Wait(1f);
     }
 
+    void CheckRemoteSounds(OnlineObservation client)
+    {
+        var sounds = client.otherSounds;
+        Metric("remote_sounds", sounds.Count);
+        Metric("remote_sound_listener_m", client.otherSoundFarthest);
+        Check("remote_cast_sounds_at_its_wizard", sounds.Contains(CastSoundTable.Slam) && sounds.Contains(CastSoundTable.ChargeLoop) && sounds.Exists(s => s.StartsWith("release-", System.StringComparison.Ordinal)) && client.otherSoundWorst < 0.5f,
+            $"[{string.Join(" ", sounds)}], at most {client.otherSoundWorst:0.00} m from its chest, {client.otherSoundFarthest:0.0} m from the ear");
+    }
+
     readonly List<string> hostBeats = new();
 
     // The host casts a pair and a charged single through the core; the virtual player must show the same beats.
@@ -651,6 +708,9 @@ public class OnlineProbe : ProbeScenario
         yield return Wait(0.4f);
         caster.LoadElement(ElementIds.Earth);
         yield return UntilNeutral(beats);
+        // A new cast cuts Recovery short by design, so one on the heels of Neutral could land before
+        // that beat on the other side; this compares the beats, not that race.
+        yield return Wait(0.3f);
         caster.LoadElement(ElementIds.Fire, held: true);
         yield return Wait(1.6f);
         caster.LetGo();

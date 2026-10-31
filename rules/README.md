@@ -312,7 +312,20 @@ comes). What it does to squares, at full strength:
   (`meteors.chance`), and `meteors.fallTicks` later it lands as the
   `meteor` spell (its crater, its fire) with "A meteor strikes". One that
   lands where no one is near (a paused chunk) leaves no mark.
-- **cloudy** and **fog** change only how the world looks.
+- **fog**: every `fog.every` ticks fog lays a unit of `fog.gas` (`fog.chance`
+  a cell at full strength, thinning towards a patch's rim) in patches, here
+  and there. Each block of `fog.regionChunks` by `fog.regionChunks` chunks
+  has `fog.patches` of them a stretch, of radius `fog.radiusMin` to
+  `fog.radiusMax`, each on the best of `fog.tries` dry, open cells picked by
+  the seed: a score of `fog.wet` for each water `fog.wetReach` cells off
+  (north, east, south, west) less `fog.low` a water unit of ground. A patch
+  moves a cell down the stretch's own breeze every `fog.driftTicks` ticks
+  (only the patch: the weather's wind stays none, so fire ignores it, and a
+  gust still blows the gas itself). Patches are worked out afresh from the
+  seed, the stretch and the cells, so they need no saving. The gas decays
+  as usual, so the fog thins once the stretch ends, and a line of sight
+  through `hidesAfter` cells of it is hidden.
+- **cloudy** changes only how the world looks.
 
 ## The parts that are code, not data
 

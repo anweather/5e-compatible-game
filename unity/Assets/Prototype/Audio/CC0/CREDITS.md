@@ -10,10 +10,15 @@ packs) is restored with Prototype > Restore Asset Packs and never committed.
 
 | Folder | Author | Source | Used for |
 |---|---|---|---|
-| `rubberduck/` | rubberduck | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) (`bang_*`, `cannon_*`); [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) (`explosion`, `splash_*`, `plop_*`, `wooden_*`) | explosions, Thunderwave, Create Water, breaking crates |
-| `kenney/` | Kenney (www.kenney.nl) | [Impact Sounds 1.0](https://kenney.nl/assets/impact-sounds) (`impactWood_heavy_*`) | breaking crates |
+| `rubberduck/` | rubberduck | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) (`bang_*`, `cannon_*`); [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) (`explosion`, `splash_*`, `plop_*`, `wooden_*`) | explosions, Thunderwave, Create Water, breaking crates; water gathering (backwards), a burst's release |
+| `kenney/` | Kenney (www.kenney.nl) | [Impact Sounds 1.0](https://kenney.nl/assets/impact-sounds) (`impactWood_heavy_*`) | breaking crates, the slam's thump |
 | `bart/` | bart | [Ice spells](https://opengameart.org/content/ice-spells) (`ice`, `coldsnap`; made from a public-domain pdsounds.org recording) | Ray of Frost |
-| `jaggedstone/` | JaggedStone | [Magic spell sfx](https://opengameart.org/content/magic-spell-sfx) (`magical_*`) | Levitate, Misty Step, Mage Hand |
+| `jaggedstone/` | JaggedStone | [Magic spell sfx](https://opengameart.org/content/magic-spell-sfx) (`magical_*`) | Levitate, Misty Step, Mage Hand; a d-pad cast gathering, the release of quiet and sky casts |
+
+The rest of the casting sounds (fire, earth and air gathering, the weight under the
+slam, the charge's hum and level tone, a cancel's fizzle, the bolt, ground and flow
+releases) are made in code for this game: `ProceduralCast.cs`, `ProceduralFire.cs`.
+Which sound comes from where is `CastSoundTable.cs`.
 
 Downloaded 2026-10-25. Files are as published, unchanged; loudness is evened
 out in the game (`SoundBank`), not by editing the files.

@@ -1,3 +1,4 @@
+using System;
 using System.IO;
 using System.Linq;
 using NUnit.Framework;
@@ -125,7 +126,7 @@ namespace Chem.Tests
         {
             var w = Field(With(Quick), 8);
             Run(w, 1200);
-            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("b588321f 1446209129"));
+            Assert.That($"{w.CellHash()} {w.RngState}", Is.EqualTo("41514104 3951220311"));
         }
         [Test]
         public void GoldenMeteorShowerMatchesTs()
@@ -179,6 +180,99 @@ namespace Chem.Tests
             Assert.That($"{w.CellHash()} {w.RngState} {still} {left}", Is.EqualTo("6ce8640a 1063028723 0 0"));
         }
 
+        /// <summary>Fog and only fog for an hour, with these keys in weather.fog.</summary>
+        static Rules Foggy(string fog = "") => With("'periodMinutes': 60, 'rampMinutes': 0.02, 'calmPeriods': 0, 'fog': { 'gas': 'fog'" + fog + " }, " +
+            "'weights': { 'clear': 0, 'cloudy': 0, 'windy': 0, 'fog': 1, 'rain': 0, 'storm': 0, 'snow': 0 }, 'meteors': { 'showerChance': 0 }");
+
+        /// <summary>Open grass with a pond in its north-west block.</summary>
+        static World Moor(Rules rules, uint seed)
+        {
+            var w = new World(rules, 256, 256, seed, "grass");
+            for (int y = 40; y < 60; y++)
+                for (int x = 40; x < 60; x++)
+                {
+                    w.Paint(x, y, "pit");
+                    w.AddWater(x, y, 4);
+                }
+            return w;
+        }
+
+        static int FogCells(World w) => w.Cells.Count(c => c.Gas == "fog");
+
+        [Test]
+        public void GoldenFogLiesInPatchesNotABlanketMatchesTs()
+        {
+            // The same as "fog lies in patches..." in weather.test.ts.
+            var w = Moor(Foggy(), 7);
+            Run(w, 400);
+            int fog = FogCells(w);
+            Assert.That(fog * 100 / (256 * 256), Is.InRange(2, 9), $"{fog} cells: here and there");
+            Assert.That(w.Cells.All(c => c.Gas != "fog" || c.GasAmt < 2), "thin");
+            Assert.That(Enumerable.Range(0, 256).Any(y => w.FogBetween(0, y, 255, y)), "a line through a patch is hidden");
+            Assert.That(Enumerable.Range(0, 256).Any(y => !w.FogBetween(0, y, 255, y)), "a line past them is clear");
+            Assert.That($"{w.CellHash()} {w.RngState} {fog}", Is.EqualTo("9d766b76 2392649509 4549"));
+        }
+
+        [Test]
+        public void FogPatchesFavourLowGroundAndWater()
+        {
+            // Fog beside a river down the world, against the same seed with no river.
+            int Near(World w) => w.Cells.Select((c, i) => c.Gas == "fog" && Math.Abs(i % 256 - 65) < 20 ? 1 : 0).Sum();
+            var wet = new World(Foggy(", 'tries': 64"), 256, 256, 3, "grass");
+            for (int y = 0; y < 256; y++)
+                for (int x = 60; x < 70; x++)
+                {
+                    wet.Paint(x, y, "pit");
+                    wet.AddWater(x, y, 4);
+                }
+            Run(wet, 240);
+            var dry = new World(Foggy(", 'tries': 64"), 256, 256, 3, "grass");
+            Run(dry, 240);
+            Assert.That(Near(wet), Is.GreaterThan(Near(dry) * 2), "the river draws the patches");
+
+            var land = new int[256 * 256];
+            for (int y = 0; y < 256; y++)
+                for (int x = 0; x < 256; x++) land[y * 256 + x] = (x + y) * 4;
+            var hill = new World(Foggy(", 'patches': 1, 'tries': 64"), 256, 256, 3, "grass");
+            hill.SetLand(land);
+            Run(hill, 240);
+            double Mean(World w) => w.Cells.Select((c, i) => c.Gas == "fog" ? i % 256 + i / 256 : -1).Where(v => v >= 0).Average();
+            Assert.That(Mean(hill), Is.LessThan(Mean(dry)), "fog sits lower on a slope");
+        }
+
+        [Test]
+        public void FogPatchesDriftALittleWithTheStretchesBreeze()
+        {
+            var w = new World(Foggy(", 'patches': 1, 'radiusMin': 6, 'radiusMax': 6, 'driftTicks': 20"), 128, 128, 2, "grass");
+            (double x, double y) Middle()
+            {
+                var at = Enumerable.Range(0, 128 * 128).Where(i => w.At(i % 128, i / 128).Gas == "fog").ToList();
+                return (at.Average(i => i % 128), at.Average(i => i / 128));
+            }
+            Run(w, 200);
+            var before = Middle();
+            Run(w, 200);
+            var after = Middle();
+            double moved = Math.Abs(after.x - before.x) + Math.Abs(after.y - before.y);
+            Assert.That(moved, Is.InRange(5.0, 15.0), $"10 cells' drift, {before} to {after}");
+        }
+
+        [Test]
+        public void FogPatchesKeepOffInactiveChunks()
+        {
+            var w = Moor(Foggy(), 7);
+            w.SetActive(1, 1, false);
+            Run(w, 200);
+            Assert.That(Enumerable.Range(0, 64 * 64).All(i => w.At(64 + i % 64, 64 + i / 64).Gas == null), "an inactive chunk is held as it is");
+        }
+
+        [Test]
+        public void FogPatchBlocksMustBeAtLeastOneChunk()
+        {
+            var e = Assert.Throws<ModException>(() => With("'fog': { 'regionChunks': 0 }"));
+            Assert.That(e.Errors, Is.EqualTo(new[] { "sim weather.fog.regionChunks must be at least 1" }));
+        }
+
         [Test]
         public void GoldenFogVeilsTheFieldAndLiftsMatchesTs()
         {
@@ -193,13 +287,13 @@ namespace Chem.Tests
             Assert.That(veiled, Is.GreaterThan(80), "fog lies over the field");
             Assert.That(w.Cells.All(c => c.Gas != "fog" || c.GasAmt < 2), "thin: no square of it is thick on its own");
             Assert.That(w.FogBetween(1, 6, 22, 6), "but the far side is hidden");
-            Assert.That($"{w.CellHash()} {w.RngState} {veiled}", Is.EqualTo("a3c55344 2647838055 182"));
+            Assert.That($"{w.CellHash()} {w.RngState} {veiled}", Is.EqualTo("4237fa52 2846909919 203"));
 
             w.ApplyRules(clear);
             Run(w, 400);
             Assert.That(FogUnits(), Is.LessThan(veiled / 10), "the fog lifts");
             Assert.That(w.FogBetween(1, 6, 22, 6), Is.False, "and the far side shows again");
-            Assert.That($"{w.CellHash()} {w.RngState} {FogUnits()}", Is.EqualTo("5b95a195 192858203 0"));
+            Assert.That($"{w.CellHash()} {w.RngState} {FogUnits()}", Is.EqualTo("b0b71789 815874840 0"));
         }
 
         [Test]

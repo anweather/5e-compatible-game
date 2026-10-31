@@ -50,7 +50,4 @@ The ninth alpha of Spell Chemistry Valley, a 5E-compatible spell-chemistry sandb
 ### Performance
 - Storms, snow and the forest at night are smoother, with fewer long hitches, and fog weather no longer stalls the game.
 
-### Known issues
-- In online games, the other player may miss the opening hand moves of your first cast. The spell itself is the same for everyone.
-
 Bugs and the log: Esc → Open log folder, and send `Player.log`.

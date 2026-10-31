@@ -272,3 +272,46 @@ MonoBehaviour:
   pulse: 0.9
   pulseSeconds: 0.2
   tremble: 0.004
+  slamStop: 0.034
+  releaseStop: 0.05
+  thawSeconds: 0.05
+  slamKick: 0.05
+  slamKickSeconds: 0.14
+  releaseKickSmall: 0.09
+  releaseKickBig: 0.24
+  releaseKickSeconds: 0.2
+  releaseLift: 0.6
+  landKickSmall: 0.05
+  landKickBig: 0.3
+  landKickSeconds: 0.3
+  reachSmall: 14
+  reachBig: 60
+  fullSizeLevel: 7
+  levelsPerCharge: 2
+  chargeTighten: 3
+  chargeEase: 0.3
+  chargeShake: 0.016
+  chargeShakeHertz: 9
+  chargeShakeTires: 3
+  chargeShakeHeld: 0.4
+  gatherRumble:
+    low: 0
+    high: 0.22
+    seconds: 0.06
+  slamRumble:
+    low: 0.55
+    high: 0.35
+    seconds: 0.1
+  levelRumble:
+    low: 0.3
+    high: 0.5
+    seconds: 0.09
+  releaseRumble:
+    low: 0.85
+    high: 0.6
+    seconds: 0.16
+  landRumble:
+    low: 1
+    high: 0.6
+    seconds: 0.24
+  smallRumble: 0.45

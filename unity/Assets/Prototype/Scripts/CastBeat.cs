@@ -56,6 +56,9 @@ public readonly struct CastFacts
         bool gathering = cast.Holding ? !cast.Charging : cast.Meter > slamTicks;
         return new CastFacts(true, cast.Second != null, gathering, cast.Holding, fired, thrust);
     }
+
+    /// <summary>The same cast with the firing as it stands now.</summary>
+    public CastFacts With(bool fired, bool thrust) => new(casting, second, gathering, holding, fired, thrust);
 }
 
 public static class CastBeat

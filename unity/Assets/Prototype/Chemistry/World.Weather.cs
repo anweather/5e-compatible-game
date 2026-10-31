@@ -1,15 +1,16 @@
 // What the weather does to cells, once a tick after gas: rain fills squares
 // and dry spells dry shallow ones, snow freezes shallow water, covers open
 // ground and drifts into banks against walls and trees, building up slowly in
-// the open too (and dry spells thaw the ice and melt the snow), fog lays a
-// thin veil of fog gas over open ground that thins away once the stretch
-// ends (World.LineOfSight), storms strike lightning, and in a meteor
+// the open too (and dry spells thaw the ice and melt the snow), fog lays
+// patches of thin fog gas on low ground near water that drift a little and
+// thin away once the stretch ends (World.LineOfSight), storms strike lightning, and in a meteor
 // shower meteors appear and land a little later as the Meteor spell. Rain's hold on fire
 // (dousing, less spread) is in Burn and SpreadChance, the prevailing wind in
 // WindDir. Port of tickWeather in sandbox/src/sim.ts; the weather itself
 // comes from Sky.cs. Nothing happens during the calm stretches the world
 // starts with. At night (World.Night.cs) snow freezes water day.nightFreeze
 // times as fast, and dry weather leaves the ice and snow till morning.
+using System;
 using System.Collections.Generic;
 
 namespace Chem
@@ -83,14 +84,14 @@ namespace Chem
             LandMeteors();
             LandStars();
             if (!WeatherActs) return;
-            WeatherOnCells(rows);
+            WeatherOnCells(rows, tickChunks);
             var p = Rules.Sim.Weather;
             if (now.Kind == WeatherKind.Storm && Tick % p.StrikeEvery == 0 && Rand() < p.StrikeChance * now.Strength / 100) Strike();
             if (now.Meteors > 0 && Tick % p.MeteorEvery == 0 && Rand() < p.MeteorChance * now.Meteors / 100) Meteor();
         }
 
         /// <summary>What the weather does to each cell (rain fills, snow freezes and settles, dry weather dries and thaws), without strikes or meteors.</summary>
-        void WeatherOnCells(RowSpan[] rows)
+        void WeatherOnCells(RowSpan[] rows, Chunk[] chunks)
         {
             if (!WeatherActs) return;
             var now = Weather;
@@ -105,7 +106,7 @@ namespace Chem
             }
             else if (now.Fog > 0)
             {
-                if (Tick % p.FogEvery == 0) Veil(rows, p.FogGas, p.FogChance * now.Fog / 100);
+                if (Tick % p.FogEvery == 0) Veil(chunks, p.FogGas, p.FogChance * now.Fog / 100);
             }
             else if (Tick % p.DryEvery == 0)
             {
@@ -213,19 +214,81 @@ namespace Chem
             else if (c.Cover == SnowCover && Rand() < (Sheltered(ch, i, upwind) ? bank : deepen)) c.Cover = BankCover;
         }
 
-        /// <summary>Fog weather: a unit of its gas on open squares with no gas yet, here and there.</summary>
-        void Veil(RowSpan[] rows, string gas, double chance)
+        /// <summary>
+        /// Fog weather: patches of its gas, here and there. Where they stand is worked out afresh from the
+        /// seed, the stretch and the cells, with no state of its own, so every peer and a loaded save agree,
+        /// and only the patches' cells are visited. Each block of chunks with an active chunk in it has its
+        /// patches, in row-major order; cells of inactive chunks are left alone.
+        /// </summary>
+        void Veil(Chunk[] chunks, string gas, double chance)
         {
-            foreach (var s in rows)
+            var p = Rules.Sim.Weather;
+            var blocks = new SortedSet<(int y, int x)>();
+            foreach (var ch in chunks) blocks.Add((ch.Y / p.FogRegionChunks, ch.X / p.FogRegionChunks));
+            int stretch = WeatherSet?.from ?? Weather.Period;
+            int start = WeatherSet?.from ?? Weather.Period * Sky.Ticks(Rules.Sim, p.PeriodMinutes);
+            int breeze = (int)(Sky.Hash(Seed, stretch, 6) >> 30), drift = (Tick - start) / p.FogDriftTicks;
+            foreach (var (ry, rx) in blocks)
             {
-                var cells = s.Chunk.Cells;
-                for (int i = s.Start; i < s.End; i++)
+                uint block = Sky.Hash(Sky.Hash(Seed, stretch, 5), rx, (uint)ry);
+                for (int n = 0; n < p.FogPatches; n++)
                 {
-                    var c = cells[i];
-                    if (c.Gas != null || IsBlocking(c)) continue;
-                    if (Rand() < chance) AddGas(c, gas, 1);
+                    if (!PatchCentre(block, rx, ry, n, out int x, out int y)) continue;
+                    int radius = p.FogRadiusMin + (int)(Sky.Hash(block, n, 9) % (uint)(Math.Max(0, p.FogRadiusMax - p.FogRadiusMin) + 1));
+                    LayPatch(x + DirX(breeze) * drift, y + DirY(breeze) * drift, radius, gas, chance);
                 }
             }
+        }
+
+        /// <summary>The best of a block's FogTries cells for its patch n, by the hash of the block; false if none is dry and open.</summary>
+        bool PatchCentre(uint block, int rx, int ry, int n, out int x, out int y)
+        {
+            var p = Rules.Sim.Weather;
+            int size = p.FogRegionChunks * Chunks.Size, x0 = rx * size, y0 = ry * size;
+            int w = Math.Min(W, x0 + size) - x0, h = Math.Min(H, y0 + size) - y0;
+            x = y = 0;
+            double best = double.NegativeInfinity;
+            for (int t = 0; t < p.FogTries; t++)
+            {
+                uint at = Sky.Hash(block, n * p.FogTries + t, 7);
+                int cx = x0 + (int)((at & 0xffff) % (uint)w), cy = y0 + (int)((at >> 16) % (uint)h);
+                double score = PatchScore(cx, cy);
+                if (score <= best) continue;
+                best = score;
+                x = cx;
+                y = cy;
+            }
+            return !double.IsNegativeInfinity(best);
+        }
+
+        /// <summary>How much fog likes a cell: low ground with water near; never on water or anything blocking.</summary>
+        double PatchScore(int x, int y)
+        {
+            var p = Rules.Sim.Weather;
+            var c = At(x, y);
+            if (c == null || c.Water > 0 || IsBlocking(c)) return double.NegativeInfinity;
+            int wet = 0;
+            for (int d = 0; d < 4; d++)
+            {
+                var n = At(x + DirX(d) * p.FogWetReach, y + DirY(d) * p.FogWetReach);
+                if (n != null && n.Water > 0) wet++;
+            }
+            return p.FogWet * wet - p.FogLow * GroundUnits(x, y);
+        }
+
+        /// <summary>A unit of gas on the open, gasless cells of a disc: full chance over its middle, thinning at the rim.</summary>
+        void LayPatch(int x, int y, int radius, string gas, double chance)
+        {
+            int r2 = radius * radius;
+            for (int dy = -radius; dy <= radius; dy++)
+                for (int dx = -radius; dx <= radius; dx++)
+                {
+                    int d2 = dx * dx + dy * dy;
+                    if (d2 >= r2) continue;
+                    var c = LocateActive(x + dx, y + dy, out _, out _);
+                    if (c == null || c.Gas != null || IsBlocking(c)) continue;
+                    if (Rand() < chance * Math.Min(1.0, 2.0 * (r2 - d2) / r2)) AddGas(c, gas, 1);
+                }
         }
 
         /// <summary>Whether something blocking stands next to a square: on its upwind side in a wind, any side without.</summary>

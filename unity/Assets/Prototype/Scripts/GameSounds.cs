@@ -33,6 +33,8 @@ public static class SoundIds
 // to ProceduralSounds.
 public static class GameSounds
 {
+    static readonly System.Collections.Generic.Dictionary<string, AudioClip> made = new();
+
     /// <summary>The sound of a spell leaving the hand (Gust of Wind is all whoosh already).</summary>
     public static string CastOf(SpellDef spell) =>
         spell != null && spell.Element == "air" ? null : SoundIds.Cast;
@@ -64,7 +66,24 @@ public static class GameSounds
         return clip != null ? clip : Fallback(sound);
     }
 
-    static AudioClip Fallback(string sound) => sound switch
+    // Made once: the casting sounds are played often, and with no bank each would be a new clip.
+    static AudioClip Fallback(string sound)
+    {
+        if (made.TryGetValue(sound, out var clip) && clip != null) return clip;
+        return made[sound] = CastSoundTable.Of(sound) is { } row ? Stand(row) : Named(sound);
+    }
+
+    static AudioClip Stand(CastSoundTable.Row row)
+    {
+        var samples = row.Loop ? row.Make[0]() : SoundMastering.Trim(row.Make[0](), ProceduralCast.Rate, row.MaxSeconds);
+        if (row.Reverse) System.Array.Reverse(samples);
+        var clip = AudioClip.Create(row.Sound, samples.Length, 1, ProceduralCast.Rate, false);
+        SoundMastering.Normalize(samples, ProceduralCast.Rate, row.TargetDb, whole: row.Loop);
+        clip.SetData(samples, 0);
+        return clip;
+    }
+
+    static AudioClip Named(string sound) => sound switch
     {
         SoundIds.Cast => ProceduralSounds.Cast,
         SoundIds.Fire => ProceduralSounds.FireBurst,

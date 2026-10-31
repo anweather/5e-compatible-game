@@ -178,7 +178,38 @@ is the pure rule. Poses and timings are all in `Settings/CastFeel.asset`, by Lim
 6. **Recovery:** back to neutral fast; a new cast cuts it short.
 
 Cancel fizzles, and so does a cast the core fired that then couldn't go (no aim). Casts from the radial or the
-mouse keep their `CastGestures`. `CastBeats.BeatChanged` and `ChargeLevel` are the hooks for what reacts.
+mouse keep their `CastGestures`. `CastBeats.BeatChanged`, `Struck` and `ChargeLevel` are the hooks for what reacts.
+
+## Impact (the view, 2026-10-31)
+What a cast does to the player, for weight (#22): `CastImpact`, `CastCamera`, `PadRumble`, numbers in `Settings/CastFeel.asset`.
+Short, sharp hits, never a drone. None of it touches `Time`, the ticks or physics, and it's all this machine's alone.
+- **When:** at the hands' contact (`CastBeats.Struck`), not the beat's start: the slam `slam.seconds` in, the release `release.seconds` in.
+- **Hit-stop:** the local wizard's Animator and beat clock and the camera stand still for 2 frames on the slam and 3 on the release
+  (0.034 s and 0.05 s; the camera eases back over 0.05 s so a walking wizard doesn't jump it). A remote copy never stops, so its beats can't
+  drift, and on the owner's screen a beat is at most that far behind; the next beat starts clean. A run with and one without give the same hash at the same tick (the `castfeel` probe).
+- **Camera:** a Cinemachine impulse after each stop, in the camera's axes: the slam's down, the release's along the cast (with some lift, since along the view alone
+  it barely shows), a landing's by size and distance. The listener takes the strongest, so casts don't pile up. Charging tightens the lens by up to 3 degrees and adds a fine
+  shake, up to 1.6 cm, with the square of the charge; it tires to 40% past 3 s in the beat.
+- **Size:** the spell's level plus 2 for each charge past the first, over 7 (`CastImpact.SizeOf`).
+- **Landings:** `SpellCaster`'s landing runs on every peer for every caster, so anyone's big spell is felt nearby. Felt within 14 m (size 0) to 60 m (size 1), by the square of the
+  nearness. Spells with no force in them (fog, light) aren't felt. Meteors and falling stars go the same way.
+- **Rumble:** gathering ticks, a slam thump, a tick at each charge level, a release kick, landings. Pulses that die away by themselves, the strongest winning; only on the pad in use.
+  The motors stop on a cancel, the Esc menu, focus loss, pause, quit, disable and before a domain reload.
+- **Shake and rumble:** the Esc menu's page of that name (`GameFeel`, PlayerPrefs `feel.shake`), 100% by default. It scales hit-stop, impulses, tightening, charge shake and rumble;
+  at 0 there's none of them, hit-stop included (it moves the view, so it counts as shake).
+- **Not yet:** casts from the radial or the mouse have no beats, so only their landing is felt.
+
+## Sound (the view, 2026-10-31)
+The casting sounds (#22): `CastSounds`, one for every copy of every wizard, played from `CastBeats`' hooks, so another player's cast sounds the same, from where they stand.
+Every clip, level, pitch, carry and which-goes-with-what is in one table, `CastSoundTable`; the sound pass can add rows. Voices come from a pool (`SoundVoices`): 24 sources, no garbage per sound.
+- **Gathering:** a sound per element as each hand takes it (fire, water and air drawn in backwards), and a plain one for a d-pad cast.
+- **Slam:** a wooden thump with a kick under it, at `Struck`, the frame the hands meet, ahead of the hit-stop that starts there.
+- **Charge:** a hum that fades in at the Charge beat and glides up a third, then a fifth, getting louder, with a struck tone at each level. Held every frame: a loop nobody holds lets go in 0.25 s, so nothing can leave it playing. It's quiet in a menu and in an animal's shape.
+- **Release:** by kind of cast (`CastKind`, from the spell's rules): bolt, burst, ground, flow, sky or quiet, as the thrust lands; lower and louder with charge. Casts from the radial or the mouse keep the old whoosh.
+- **Cancel:** the hum and gathering cut, and a fizzle.
+- **Fast casts:** a wizard has one voice per job, and a new sound in a job cuts the last off, so they don't pile up.
+- **Distance:** 3D at the wizard's chest, full to 5 m, nothing past 40 m, and past that no voice is taken. Levels go through the Effects setting each frame. There's no AudioMixer in the game yet; a group goes on the pool's sources in `SoundVoices.Build`.
+- **Every machine:** all from `Audio/CC0` and `ProceduralCast`, never the Asset Store pack. The bank is built with the yard and a player build refreshes it if a row is missing; with no bank at all each sound is made from its row's `Make` when first played.
 
 ## Built (the view, 2026-10-30)
 - **Controller:** fire {LB}, water {RB}, earth {LT}, air {RT}; {East} cancels; the d-pad cycles,

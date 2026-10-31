@@ -23,6 +23,15 @@ public class CastBeatTests
     Beat Next(Beat now, float seconds, CastFacts facts) => CastBeat.Next(now, seconds, facts, feel);
 
     [Test]
+    public void ASpellsSizeIsItsLevelAndItsCharge()
+    {
+        Assert.That(CastImpact.SizeOf(new Chem.SpellDef { Level = 0 }, 1, feel), Is.EqualTo(0f));
+        Assert.That(CastImpact.SizeOf(new Chem.SpellDef { Level = 3 }, 3, feel), Is.EqualTo(1f));
+        Assert.That(CastImpact.SizeOf(new Chem.SpellDef { Level = 3 }, 1, feel), Is.LessThan(CastImpact.SizeOf(new Chem.SpellDef { Level = 3 }, 2, feel)));
+        Assert.That(CastImpact.SizeOf(new Chem.SpellDef { Level = 8 }, 1, feel), Is.EqualTo(1f), "never past full size");
+    }
+
+    [Test]
     public void ASingleElementSkipsTheSecondBeat()
     {
         Assert.That(Next(Beat.Neutral, Long, Gathering()), Is.EqualTo(Beat.First));

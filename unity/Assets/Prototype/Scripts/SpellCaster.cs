@@ -222,7 +222,8 @@ public partial class SpellCaster : MonoBehaviour
         var def = grid != null && grid.World != null ? grid.World.Rules.Spell(spellId) : null;
         var gesture = CastGestures.For(def, look);
         if (pose != null) pose.Play(gesture, landing, look?.glow ?? Color.white);
-        GameSounds.Play(GameSounds.CastOf(def), Hand);
+        // A cast by elements sounds as the hands thrust (CastSounds); this is for the rest.
+        if (beats == null || !beats.InHands(spellId)) GameSounds.Play(GameSounds.CastOf(def), Hand);
         // Acid: what it can eat is noted now, before it lands, so the cells it eats get the eaten stain.
         if (def?.Element == AcidElement && grid != null) grid.WatchAcid(cast);
         // A blink shows its mist where the caster leaves as well as where they land.
@@ -288,6 +289,7 @@ public partial class SpellCaster : MonoBehaviour
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)));
             ElementBurst(def, landing, charge);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
+            CastImpact.Landed(def, landing, charge);
             onArrive?.Invoke();
         }
 
@@ -332,6 +334,9 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     SpellVisuals.Entry LookOf(string spellId) => visuals != null ? visuals.For(spellId) : null;
+
+    /// <summary>The spell comes down from above (a meteor, a storm) rather than from the hands.</summary>
+    public bool FallsFromSky(string spellId) => LookOf(spellId) is { fromSky: true } or { storm: true };
 
     // A beam ends this far over where a line's show lands, about knee high, so it runs out low over the ground.
     const float BeamLift = 0.4f;

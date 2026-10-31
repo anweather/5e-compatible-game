@@ -58,7 +58,7 @@ namespace Chem
                     TickFire(span);
                     TickWater(span);
                     TickGas(span);
-                    WeatherOnCells(span);
+                    WeatherOnCells(span, new[] { ch });
                     TickTimers(span);
                     Array.Clear(ch.Marks, 0, ch.Marks.Length);
                 }
