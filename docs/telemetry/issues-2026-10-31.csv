@@ -1,0 +1,33 @@
+number,title,state,finds,ite,tokens,minutes,fix_ite,fix_commits,days
+33,"Water left with a stale runoff edge",OPEN,1,0,84000,0,0,2,0.0
+32,"the forest is steadily twice the meadow's GPU time",OPEN,1,0,84000,0,0,2,0.0
+31,"GPU time climbs late in a storm",OPEN,1,0,84000,0,0,4,0.0
+30,"the lit smoke is most of a close fire's GPU time",OPEN,1,0,84000,0,0,2,0.0
+29,"snow still hitches about every 4 s",OPEN,1,0,84000,0,0,0,0.0
+28,"fog weather lays a unit on most open cells",OPEN,1,0,84000,0,0,1,0.0
+27,"storm and fog run the world under speed, and the debt has no cap",OPEN,1,0,84000,0,0,0,0.0
+26,"the film is rebuilt whole for a few cells of mud",OPEN,1,0,84000,0,0,0,0.0
+25,"one water tile takes far longer than the frame's budget",OPEN,1,0,84000,0,0,0,0.0
+24,"Water.Recompute walks every wet cell for any change",OPEN,1,0,84000,0,0,0,0.0
+23,"Surf should push toward the nearest land (the island too), and its waves should run that way",OPEN,1,0,0,0,0,1,0.3
+22,"Casting feels floaty: give it weight (no staff, IK hands, slam, hit-stop, recoil)",OPEN,1,0,0,0,0,0,0.3
+21,"Rolling Boulder only rolls in the four compass directions",OPEN,1,0,0,0,443677,4,0.5
+20,"The camera zooms right in when you walk up to a house or a window",OPEN,1,0,0,0,2036270,3,0.5
+19,"Fire looks the same every time: centred in each square, stamped out",OPEN,1,0,0,0,2036270,2,0.5
+18,"A punch on a face button, to break windows and knock things",OPEN,1,0,0,0,673694,5,0.5
+17,"The wizard's head clips into the hat",OPEN,1,0,0,0,1741497,1,0.5
+16,"A bloom flare on the wizard's head or neck when the camera looks down at about 45°",OPEN,1,0,0,0,1741497,2,0.5
+15,"Casting water then fire on a pool of water put a brick texture on the water",OPEN,1,0,0,0,2093948,5,0.5
+14,"Health: at 1 HP nothing happens, then it regenerates",OPEN,1,0,0,0,0,6,0.5
+13,"The log calls a running turkey a ""rotten turkey""",CLOSED,1,0,0,0,1030193,4,0.0
+12,"Running on ice loses speed: it should keep your momentum",OPEN,1,0,0,0,673694,6,0.5
+11,"Wave only travels in the four compass directions, and leaves no water behind",OPEN,1,0,0,0,2388721,7,0.5
+10,"Grimoire: Back takes you to the pause menu instead of closing it",OPEN,1,0,0,0,0,12,0.5
+9,"Cast bar: make it fill up smoothly instead of a chunky countdown",OPEN,1,0,0,0,0,3,0.5
+8,"HUD: the stamina bar in the middle of the screen, the top bar and the log text are too big or in the way",OPEN,1,0,0,0,0,8,0.5
+7,"Strong (held) casts are gone with element casting: Plant Growth does nothing, Wall of Stone's ramp can't be reached",OPEN,1,0,0,0,1760898,7,0.5
+6,"Shapeshift: there's no way to change back before the timer runs out",OPEN,1,0,0,0,673694,9,0.5
+5,"Walking hitches: a 185 ms frame in the forest at night",OPEN,2,0,134000,0,11015765,9,0.6
+4,"The wizard's robe stretches into a long flat tail, and leaves the legs bare",OPEN,1,0,50000,0,4485772,4,0.6
+3,"A flat pale band covers the view at the waterfall's pool",OPEN,1,0,50000,0,11015765,8,0.6
+2,"Targeting UI: aim markers shaped by the spell (a direction, a top-down burst, a rising column), not cream squares",OPEN,1,0,50000,0,20121964,11,0.6

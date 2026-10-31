@@ -774,3 +774,13 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   45 more minutes, then it merges with that check as a known gap (view-only;
   checksums match). Fog patches go in if they land first. The PM writes the
   notes and publishes if the RC is green (Andrew's standing go).
+- 2026-10-31 07:40: Cost report 2 (agent-cost-report skill), shared as a doc:
+  https://claude.ai/artifact/2ij1kzbFVa8hBcZ7JxTAiS. Building 36.1M ite over 27
+  features; the PM session 26.5M (42% of measured spend) now that the Pro
+  relay is gone; host passes 69% of building; u1 about 10x cheaper for rules;
+  33 finds at 34k each, rediscovery 6%. Recommendations: restart the PM
+  session after each release with a handoff; keep host passes as fresh
+  sub-agents; rules work to Linux workers; fix #5 first; close the telemetry
+  gaps (Mac hook, merge lines double-count the host, Pro transcripts).
+  Outputs in docs/telemetry/*-2026-10-31.*; issue-costs.mjs fixed (a cost in
+  free text plus a line counted as two finds).
