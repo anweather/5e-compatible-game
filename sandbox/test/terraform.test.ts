@@ -277,7 +277,7 @@ test("a dig weaker than the ground leaves it: Shape Earth digs dirt, a Meteor di
   const w = hardRoom();
   castSpell(w, "mold-earth", 4, 3, 1);
   assert.equal(cellAt(w, 4, 3)!.h, 0, "Lower Earth can't dig rock");
-  assert.ok(w.log.some((l) => l.text === "The raised rock is too hard to dig"));
+  assert.ok(w.log.some((l) => l.text === "The raised rock is too hard for Lower Earth"), "the refusal names the spell");
   castSpell(w, "earthen-trench", 3, 9, 1);
   assert.equal(cellAt(w, 5, 9)!.h, -2, "Earthen Trench digs dirt");
   castSpell(w, "fireball", 10, 3, 0);
@@ -294,11 +294,33 @@ test("hardness and strength are checked", () => {
   const r = composeRules([]);
   const errors = validateRules({
     ...r,
-    terrain: { ...r.terrain, granite: { name: "Granite", tags: ["ground"], hardness: 0 } },
+    terrain: { ...r.terrain, granite: { name: "Granite", tags: ["ground"], hardness: -1 } },
     spells: [...r.spells, { ...r.spells.find((s) => s.id === "mold-earth")!, id: "chisel", strength: 1.5 }],
   });
-  assert.ok(errors.includes("terrain granite: hardness must be a whole number from 1"));
+  assert.ok(errors.includes("terrain granite: hardness must be a whole number from 0 (0 never digs)"));
   assert.ok(errors.includes("spell chisel: strength must be a whole number from 1"));
+});
+
+// Mirrors TerraformTests.StoneShapeDigsRockButNothingDigsMetalOrBedrock (BACKLOG 4).
+test("Stone Shape digs rock, but nothing digs metal or bedrock", () => {
+  const w = createWorld(12, 5, 1);
+  for (const c of w.cells) c.t = "dirt";
+  cellAt(w, 2, 2)!.t = "sand";
+  cellAt(w, 4, 2)!.t = "mud";
+  cellAt(w, 6, 2)!.t = "rock";
+  cellAt(w, 8, 2)!.t = "metal";
+  cellAt(w, 10, 2)!.t = "bedrock";
+  for (const x of [2, 4, 6, 8]) castSpell(w, "mold-earth", x, 2, 1);
+  assert.deepEqual([2, 4, 6, 8].map((x) => cellAt(w, x, 2)!.h), [-1, -1, 0, 0], "sand and mud dig; rock and metal don't");
+  assert.ok(w.log.some((l) => l.text === "The raised rock is too hard for Lower Earth"));
+  for (const x of [6, 8, 10]) castSpell(w, "stone-shape", x, 2, 1);
+  assert.equal(cellAt(w, 6, 2)!.h, -1, "Stone Shape digs rock");
+  assert.equal(cellAt(w, 6, 2)!.t, "rubble");
+  assert.equal(cellAt(w, 8, 2)!.h, 0, "but not metal");
+  assert.ok(w.log.some((l) => l.text === "The metal plate can't be dug"));
+  assert.equal(cellAt(w, 10, 2)!.t, "bedrock", "nor bedrock");
+  run(w, 20);
+  assert.equal(`${cellHash(w)} ${w.rng}`, "f57b067a 1"); // the same in the C# core
 });
 
 test("Burning Hands is a cone from the caster, longer when charged, and matches the C# golden", () => {

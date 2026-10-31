@@ -32,7 +32,7 @@ namespace Chem
         public string UprootsTo, UprootLog;
         /// <summary>What digging leaves (grass is dug down to dirt), or null to keep the terrain.</summary>
         public string DugTo;
-        /// <summary>How hard it is to dig (materials.json "hardness", 1 when absent): a dig needs at least this strength.</summary>
+        /// <summary>How hard it is to dig (materials.json dig.hardness, 1 when absent): a dig needs at least this strength; 0 never digs (metal, bedrock).</summary>
         public int Hardness = 1;
         /// <summary>
         /// What it grows into once its Cell.Life runs out (green shoots into grass, a sapling into a
