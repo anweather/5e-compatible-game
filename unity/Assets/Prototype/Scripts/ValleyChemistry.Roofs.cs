@@ -46,7 +46,7 @@ public partial class ValleyChemistry
         public readonly List<(Renderer part, Material material, bool on)> renderers = new();
         public readonly List<(Collider part, bool on)> colliders = new();
         public readonly List<(Light part, bool on)> lights = new();
-        public readonly List<(MeshFilter part, Color[] colors)> colors = new();
+        public readonly List<(MeshFilter part, List<Color> colors)> colors = new();
     }
 
     readonly Dictionary<int, BuildingLook> kept = new();
@@ -60,7 +60,13 @@ public partial class ValleyChemistry
         foreach (var c in cabins[k].GetComponentsInChildren<Collider>()) look.colliders.Add((c, c.enabled));
         foreach (var l in cabins[k].GetComponentsInChildren<Light>()) look.lights.Add((l, l.enabled));
         foreach (var f in cabins[k].GetComponentsInChildren<MeshFilter>())
-            if (f.sharedMesh != null) look.colors.Add((f, f.sharedMesh.colors));
+        {
+            var mesh = f.sharedMesh;
+            if (mesh == null) continue;
+            var colors = new List<Color>();
+            mesh.GetColors(colors);
+            look.colors.Add((f, colors));
+        }
         kept[k] = look;
     }
 
@@ -93,7 +99,7 @@ public partial class ValleyChemistry
         foreach (var (part, on) in look.colliders) part.enabled = on;
         foreach (var (part, on) in look.lights) part.enabled = on;
         foreach (var (part, colors) in look.colors)
-            if (colors.Length > 0) part.mesh.colors = colors;
+            if (colors.Count > 0) part.mesh.SetColors(colors);
         cabinBurnt[k] = 0;
         cabinWrecked[k] = 0;
         cabinCharred[k] = false;

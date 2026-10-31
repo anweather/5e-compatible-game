@@ -237,7 +237,11 @@ public partial class ValleyChemistry : MonoBehaviour
         // First look at a felled or burnt tree (a world replayed for a late joiner): the baked tree goes.
         if (from == null && (to == TerrainIds.Deadfall || to == TerrainIds.Stump)) BurnTrees(x, y);
         if (from == null) return;
-        if (from != to) TerrainChanged(x, y, from, to);
+        if (from != to)
+        {
+            TerrainChanged(x, y, from, to);
+            PutBack(x, y, from, to);
+        }
         if (reshaped) ground.Reshape(x, y);
         ground.Repaint(x, y);
     }
@@ -250,8 +254,6 @@ public partial class ValleyChemistry : MonoBehaviour
             BurnTrees(x, y);
             grown.Remove(key);
         }
-        // Straight back to a tree, not grown from a sapling: the dragon's breath put the cell back as it was.
-        if (to == TerrainIds.Tree && from != TerrainIds.Sapling) StandTrees(x, y);
         if ((from == TerrainIds.Grass || from == TerrainIds.Brush) && to == TerrainIds.Dirt) scorched.Add(key);
         // Plant Growth: green ground again, and a sapling grown into a tree is drawn by its dressing (Grown).
         if (to == TerrainIds.Sprouts || to == TerrainIds.Grass || to == TerrainIds.Sapling || to == TerrainIds.Sand) scorched.Remove(key);
@@ -260,7 +262,6 @@ public partial class ValleyChemistry : MonoBehaviour
         // but it leaves ash; one that caved in under earth shaping doesn't.
         var now = grid.World.At(x, y);
         if (from == TerrainIds.Pane && panesByCell.TryGetValue(key, out var pane)) pane.Shatter(key);
-        if (to == TerrainIds.Pane && panesByCell.TryGetValue(key, out var mended)) mended.Mend(key);
         if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
@@ -297,6 +298,14 @@ public partial class ValleyChemistry : MonoBehaviour
             trees[at][n] = t;
             treesChanged.Add(at);
         }
+    }
+
+    // Straight back to a tree (not grown from a sapling) or a pane: the dragon's breath put the cell as it was.
+    void PutBack(int x, int y, string from, string to)
+    {
+        int key = grid.World.Idx(x, y);
+        if (to == TerrainIds.Tree && from != TerrainIds.Sapling) StandTrees(x, y);
+        if (to == TerrainIds.Pane && panesByCell.TryGetValue(key, out var mended)) mended.Mend(key);
     }
 
     // The baked trees of a cell, and its palms, as they were.

@@ -34,9 +34,6 @@ public class DragonBreath : MonoBehaviour
     /// <summary>Whether the wall is out now, for the probe.</summary>
     public bool Burning => burning;
 
-    /// <summary>The flames in the wall and the fan, for the probe.</summary>
-    public int Flames => Count;
-
     /// <summary>A breath on a new child of <paramref name="view"/>, or null with no flames to draw with.</summary>
     public static DragonBreath On(Transform view, ChemGrid grid)
     {

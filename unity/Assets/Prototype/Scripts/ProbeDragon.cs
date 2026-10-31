@@ -26,8 +26,11 @@ public class DragonProbe : ProbeScenario
     Vitals vitals;
     ThingSpawner spawner;
     readonly List<ChunkFresh> freshened = new();
+    readonly List<float> lookFrames = new();
+    Vector3 lookEye, lookAt;
     int realSpeed;
     float fastest;
+    bool open, sheltered;
 
     protected override IEnumerator Run()
     {
@@ -83,59 +86,22 @@ public class DragonProbe : ProbeScenario
         EventLog.ResetYard();
         Check("r_summons_it", World.Dragon?.Phase == DragonPhase.Warning, $"phase {World.Dragon?.Phase}, flights {World.DragonFlights}");
         float started = Time.time;
-        bool seenInWarning = false;
-        bool shot = false;
-        while (World.Dragon?.Phase == DragonPhase.Warning && Time.time - started < MostSeconds)
-        {
-            seenInWarning |= view.Seen;
-            if (!shot && sky.Menace > 0.6f)
-            {
-                shot = true;
-                Shot("warning");
-            }
-            yield return null;
-        }
-        Check("seen_in_the_warning", seenInWarning, "the high crossing or the dive");
+        yield return ThroughTheWarning(started);
         Check("sky_darkens", sky.Menace > 0.3f && sky.sun.intensity < sunBefore * 0.9f, $"menace {sky.Menace:0.00}, sun {sunBefore:0.00} to {sky.sun.intensity:0.00}");
         Metric("sun_before", sunBefore);
         Metric("sun_in_the_warning", sky.sun.intensity);
         Metric("ambient_before", ambientBefore);
 
-        bool open = false, sheltered = false, looked = false;
         StartCoroutine(WatchTheFlight());
         StartCoroutine(WatchThePerch());
-        var lookFrames = new List<float>();
         int staged = -1;
-        Vector3 lookEye = default, lookAt = default;
         while (World.Dragon != null && Time.time - started < MostSeconds)
         {
             var d = World.Dragon;
-            if (d.Phase == DragonPhase.Passes && d.Until == 0 && d.Travelled > 0)
+            if (d.Phase == DragonPhase.Passes && d.Until == 0 && d.Travelled > 0 && d.Pass != staged)
             {
-                if (d.Pass != staged)
-                {
-                    staged = d.Pass;
-                    if (!open) yield return InTheOpen(result => open = result);
-                    else if (!sheltered) yield return Sheltered(result => sheltered = result);
-                    else if (!looked && d.Pass > 1)
-                    {
-                        looked = true;
-                        var p = World.Rules.Sim.Dragon;
-                        int quick = p.Speed;
-                        p.Speed = realSpeed;
-                        (lookEye, lookAt) = LookAtTheBreath();
-                        yield return LookFor(lookEye, lookAt, lookFrames);
-                        var chase = view.ShownAt - view.Way * 150f + Vector3.Cross(Vector3.up, view.Way).normalized * 60f + Vector3.up * 55f;
-                        Cut(chase, view.ShownAt + view.Way * 90f + Vector3.down * 25f);
-                        yield return null;
-                        Shot("final");
-                        yield return null;
-                        yield return null;
-                        ShootTheDragon();
-                        yield return null;
-                        p.Speed = quick;
-                    }
-                }
+                staged = d.Pass;
+                yield return StagePass();
             }
             yield return null;
         }
@@ -144,7 +110,7 @@ public class DragonProbe : ProbeScenario
         float pace = QuickSpeed * World.Rules.Sim.TicksPerSecond * grid.cellSize;
         Check("flies_smoothly", fastest < pace * 4f, $"at most {fastest:0} m/s on a pass of {pace:0} m/s: no jumps between ticks");
         Check("flight_ended", World.Dragon == null, $"{Time.time - started:0} s");
-        Check("breath_was_drawn", view.Breath != null && looked, $"looked {looked}");
+        Check("breath_was_drawn", view.Breath != null && lookFrames.Count > 0, $"{lookFrames.Count} frames looked at");
         Check("open_wizard_downed", open, "");
         Check("sheltered_wizard_not", sheltered, "");
         Check("every_chunk_freshened", freshened.Select(f => (f.CX, f.CY)).Distinct().Count() == World.ChunkCoords.Count(),
@@ -153,7 +119,7 @@ public class DragonProbe : ProbeScenario
         Check("logs_the_flight", ConsoleSaid("dives out of the clouds", mark) || LogSince(0).Any(l => l.Contains("dives out of the clouds")), "core's log");
         if (lookFrames.Count == 0) yield break;
         // The same view, clear, once the sky has come back.
-        while (sky.Menace > 0.02f && Time.time - started < MostSeconds) yield return null;
+        while (sky.Menace > 0.02f && Time.time - started < MostSeconds + LookSeconds) yield return null;
         var clear = new List<float>();
         yield return LookFor(lookEye, lookAt, clear);
         Metric("look_breath_mean_ms", lookFrames.Average());
@@ -161,6 +127,49 @@ public class DragonProbe : ProbeScenario
         Metric("look_clear_mean_ms", clear.Average());
         Metric("look_clear_worst_ms", clear.Max());
         Metric("look_cost_ms", lookFrames.Average() - clear.Average());
+    }
+
+    IEnumerator ThroughTheWarning(float started)
+    {
+        bool seen = false, shot = false;
+        while (World.Dragon?.Phase == DragonPhase.Warning && Time.time - started < MostSeconds)
+        {
+            seen |= view.Seen;
+            if (!shot && sky.Menace > 0.6f)
+            {
+                shot = true;
+                Shot("warning");
+            }
+            yield return null;
+        }
+        Check("seen_in_the_warning", seen, "the high crossing or the dive");
+    }
+
+    // A pass each: first a wizard in the open, then one behind a wall, then a look at the breath.
+    IEnumerator StagePass()
+    {
+        if (!open) yield return InTheOpen(result => open = result);
+        else if (!sheltered) yield return Sheltered(result => sheltered = result);
+        else if (lookFrames.Count == 0 && World.Dragon.Pass > 1) yield return LookAndShoot();
+    }
+
+    // At the real speed for the moment: the frames of one view of the breath, then shots of it.
+    IEnumerator LookAndShoot()
+    {
+        var p = World.Rules.Sim.Dragon;
+        int quick = p.Speed;
+        p.Speed = realSpeed;
+        (lookEye, lookAt) = LookAtTheBreath();
+        yield return LookFor(lookEye, lookAt, lookFrames);
+        var chase = view.ShownAt - view.Way * 150f + Vector3.Cross(Vector3.up, view.Way).normalized * 60f + Vector3.up * 55f;
+        Cut(chase, view.ShownAt + view.Way * 90f + Vector3.down * 25f);
+        yield return null;
+        Shot("final");
+        yield return null;
+        yield return null;
+        ShootTheDragon();
+        yield return null;
+        p.Speed = quick;
     }
 
     // The fastest the shown dragon moves on a pass, frame to frame: a jump at each tick would show here.
@@ -232,13 +241,13 @@ public class DragonProbe : ProbeScenario
     {
         var d = World.Dragon;
         if (!World.BreathBox(out int x0, out int y0, out int x1, out int y1)) return null;
-        var (_, back) = World.PassLine(d, d.Pass);
-        int lead = d.AlongX ? (back ? x0 : x1) : (back ? y0 : y1), dir = back ? -1 : 1;
-        int length = d.AlongX ? World.W : World.H;
-        for (int along = lead + dir * ahead; along > 0 && along < length - 1; along += dir)
-            for (int across = d.AlongX ? y0 : x0; across < (d.AlongX ? y1 : x1); across += 3)
+        bool alongX = d.AlongX, back = World.PassLine(d, d.Pass).back;
+        var (from, to, first, last) = alongX ? (x0, x1, y0, y1) : (y0, y1, x0, x1);
+        int dir = back ? -1 : 1, length = alongX ? World.W : World.H;
+        for (int along = (back ? from : to) + dir * ahead; along > 0 && along < length - 1; along += dir)
+            for (int across = first; across < last; across += 3)
             {
-                int x = d.AlongX ? along : across, y = d.AlongX ? across : along;
+                var (x, y) = alongX ? (along, across) : (across, along);
                 if (good(x, y)) return (x, y);
             }
         return null;
@@ -269,8 +278,8 @@ public class DragonProbe : ProbeScenario
         var d = World.Dragon;
         if (d == null || !World.BreathBox(out int x0, out int y0, out int x1, out int y1)) return true;
         bool back = World.PassLine(d, d.Pass).back;
-        int at = d.AlongX ? x : y, tail = d.AlongX ? (back ? x1 : x0) : (back ? y1 : y0);
-        return back ? tail < at : tail > at;
+        int at = d.AlongX ? x : y, from = d.AlongX ? x0 : y0, to = d.AlongX ? x1 : y1;
+        return back ? to < at : from > at;
     }
 
     IEnumerator InTheOpen(System.Action<bool> done)
@@ -340,7 +349,7 @@ public class DragonProbe : ProbeScenario
                 broken = things[1].id;
                 things[1].prop.Hurt(9999);
             }
-            yield return new WaitForSeconds(1f);
+            yield return Wait(1f);
             probe.Check("tree_felled_first", !probe.grid.valley.TreeStands(tree.x, tree.y), $"at {tree}");
             probe.Check("thing_broke_first", probe.spawner.Find(broken) == null, $"{broken}");
         }

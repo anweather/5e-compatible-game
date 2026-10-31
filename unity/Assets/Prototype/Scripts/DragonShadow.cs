@@ -59,7 +59,7 @@ public class DragonShadow : MonoBehaviour
     {
         forward.y = 0f;
         forward = forward.sqrMagnitude > 0.001f ? forward.normalized : Vector3.forward;
-        var right = new Vector3(forward.z, 0f, -forward.x);
+        var right = Vector3.Cross(Vector3.up, forward);
         for (int y = 0; y < Side; y++)
             for (int x = 0; x < Side; x++)
             {
