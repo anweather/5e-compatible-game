@@ -7,6 +7,22 @@ for the issues themselves and their state. Newest playtest first.
 States: **open**, **done** (with the commit), **later** (moved to
 `BACKLOG.md`, which says why).
 
+## 2026-10-30: Andrew, alpha 0.1.8 plus dev (casting by elements, the redesigned spells)
+
+Every issue is on GitHub (label `human-playtest`), open:
+- #6 Shapeshift can't be ended before its timer (the old key no longer works); the cast bar makes aiming it tricky.
+- #7 Strong (held) casts are gone with element casting: Plant Growth does nothing, no Wall of Stone ramp. Andrew: hold the trigger to charge it as the meter fills.
+- #8 HUD: the centre stamina bar (take it out or move it), the top bar too big, the log text too large, the element icon off-centre.
+- #9 Cast bar: fill up smoothly, not a chunky countdown.
+- #10 Grimoire: Back goes to the pause menu; it should close it.
+- #11 Wave: only the four compass directions; no water left behind; its look isn't quite right.
+- #12 Ice: running onto it loses speed; it should keep your momentum.
+- #13 The log calls a live turkey "rotten turkey".
+- #14 Health: at 1 HP nothing happens, then it regenerates (what should low and zero health do?).
+- #15 Water then fire on a pool put a brick texture on the water.
+
+What works (don't "fix" these): Lightning ("pretty good looking"), Fireball, Frost's ice beam, the water tornado, mud and lava, the bricks ("look OK", could improve), mud fed more water turning back to water, health showing at all.
+
 ## 2026-10-25: two players online on alpha 0.1.1
 
 Andrew and a friend, Relay, a long session. "It worked great." Storm
