@@ -626,12 +626,33 @@ knock-down and shelter, the changed-cell budget, the save and the checksum; `Net
 host only. Decisions: the dive snuffs every fire (a wildfire otherwise walked back over reset chunks and
 left a third of a grass valley burnt); changed cells count ground, height and cover, not water, ice, snow or
 mud that dries (rain and snow alone passed any useful budget); the count is an audit of one active chunk a
-tick, not a write barrier. Not wired into the game yet, so nothing changes until the view half does.
-**Open, the view half:** call `World.KeepStart()` after `MapWorld` in `ChemGrid.BuildWorld`, which turns all
-of it on; the Reset (`OnlineReset.Ask`, `EventLog.ResetYard`) calls `NetChem.SummonDragon` or stamps a
-`DragonCommand` solo; `ChunkFreshened` redraws a chunk and brings its props back (`ThingSpawner`); each owner
-asks `World.CaughtByBreath` for its wizard and downs it (`Vitals`, `WizardDown`); the dragon, the breath and the
-sky read `World.Dragon` and `World.BreathBox`.
+tick, not a write barrier.
+
+**View half built (2026-10-31, branch `dragon-view`):** `ChemGrid.StartWorld` keeps the starting state on every
+peer, after everything laid at the start (the Gauntlet's cells come through `puzzles.json` in `MapWorld`; a
+test fails if that order slips). R (View on a pad) summons the dragon: solo, or the host for everyone, and a
+client asks the host. **Holding it 3 s rebuilds the valley at once**, as R did before (`EventLog.RebuildYard`:
+the scene reload solo, `NetChem.StampReset` online): the way out if the world has gone wrong. Fireline, with no
+valley, still reloads on R. `ChemGrid.ChunkFreshened` redraws a reset chunk, active or not, and things go home,
+broken ones back, except what a wizard carries; trees, palms, panes and buildings come back (`ValleyChemistry`).
+Each owner asks the core for its own wizard (`WizardDown`, `Vitals.KnockDown`; `CourseRespawn` is wired for
+when the Gauntlet's view calls `SetCourse`). The show: `DragonView`, `DragonFlight` (a pose worked out from the
+core's flight alone, so nothing to sync), `DragonBreath` (Prototype/Flame's quads, one draw), `DragonShadow`, a dark
+sky (`SkyLight.Menace`), a procedural horn and roar. Model: Quaternius's Animated Monsters dragon, CC0
+(`ThirdParty/Quaternius`). Measured on the Mac player (`dragon` against `dragonclear`, 110 s, one view): 29.90 ms
+against 29.62, GPU 30.6 against 30.3, worst frame 56 ms; the wall through the camera (`dragonlow`): worst 44 ms.
+Starting state: 20 ms to keep, a palette of 20 cells, 1.3 MB. A real flight is 4 passes, about 2 minutes all told.
+
+**Not there yet:**
+- Dawn: the core doesn't touch the clock. Birds scattering: the valley has no birds.
+- The model has no idle or landing clip: it rears on the mountain and roars with an attack clip, and it reads
+  more friendly than ancient. The horn and roar are made in code, for the sound pass to replace.
+- Raiders the breath downs aren't drawn lying down (they stop marching, in the core).
+- **Shelter, in the rules:** water never shelters as built: no cell of the valley starts as deep as
+  `dragon.shelterWater` (8; the lake and river are 4). And a chunk resets as the breath's lead *enters* it, up to 64
+  cells ahead of the wall, so a Wall of Stone raised to hide behind is wiped before the breath arrives, unless it's in
+  the chunk before. Only built walls shelter reliably today. Both want a decision before changing the core.
+- The dive snuffs every fire: it was to be put to Andrew, and no answer is recorded, so it stands.
 
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
