@@ -1,0 +1,25 @@
+{
+  "name": "b-pulse-15",
+  "says": "B + pulse 15%: the deep hum with 15% of option C's accelerating pulse",
+  "seed": 66,
+  "series": "cast",
+  "root_hz": {"earth": 55, "water": 65.4, "fire": 73.4, "air": 82.4},
+  "hum": 1,
+  "fifths": 1,
+  "choir": {"amount": 1, "cents": 10.3553, "voices": 1},
+  "rumble": {"amount": 0.12, "hz": 140},
+  "pulse": {"amount": 0.15, "accelerating": true},
+  "rising": {"semitones": 3, "glide_ms": 150},
+  "escalate": {"semitones": [4, 7], "gain": 1.2},
+  "layer": 1,
+  "swell": {"ms": 120},
+  "cut off": {"ms": 15},
+  "whoosh": {"amount": 0.32, "peak_hz": 2400, "rest_hz": 420, "tail_ms": 140},
+  "thump": {"amount": 0.4, "from_hz": 95, "to_hz": 50, "decay_ms": 200},
+  "colour": {
+    "earth": {"rumble": 2.2},
+    "water": {"wobble": 3.0},
+    "fire": {"fifth": 1.6},
+    "air": {"choir": 1.8}
+  }
+}
