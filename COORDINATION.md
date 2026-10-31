@@ -796,3 +796,11 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   so fog and light shake on landing). DesktopUnity runs the candidate; the PM
   writes the notes and publishes if green. Not merging before the release:
   gauntlet-rules (99fc6ec), and dragon-rules on the Mac.
+- 2026-10-31 08:45: DECIDED (Andrew): the Dragon's dive puts out every fire
+  (keep it). dragon-rules done on its branch (1593164, Mac), held until after
+  0.1.9. 0.1.9's first cut was stopped by Claude Code's low-memory guard
+  (the Editor at about 17 GB with its import workers after a day open; gates
+  started twice in one Editor by mistake). Andrew: "Yes, restart and cut":
+  a fresh Editor, serial gates, then the build and publish if green. VMs off
+  until it's out. A session printed the Unity Hub access token in its own
+  tool output; Andrew chose to leave it ("No it's fine").
