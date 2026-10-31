@@ -635,3 +635,9 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   Profiler; issues labelled perf), then a project skill `perf-pass` written
   from how it actually ran. Order on the PC: UX pass 4 parts 2-3, Andrew's
   five calls (worker), the perf pass, then the sound pass.
+- 2026-10-30 21:55: Linux workers. u1 (Pro) works through the direct
+  mailbox with no trust click (headless runs skip it): its test brief came
+  back as a usage-limit report and retries itself after Pro's reset. u2
+  (Max) cloned from ubuntu-template (1-6 GB), in bridge-watch's Max list;
+  first boot waits for the host Editor to close (8.8 GB free, 8 must stay).
+  u2 needs Andrew's one-time sign-ins in the VM: Claude (Max) and GitHub.
