@@ -102,6 +102,16 @@ async function take(file) {
   const t = transcript(args.sid);
   if (ended && t) { const m = lastAssistant(t); r = { result: m?.content.filter(c => c.type === 'text').map(c => c.text).join('\n'), session_id: args.sid, num_turns: '?' }; }
   if (t) r.usage = usageOf(t); // the JSON result's usage is the last turn's only: sum the whole run
+  // A background task finishing after the answer wakes the session for a short last word ("the
+  // report stands"): keep the real report, the longest of the last three answers, and the last word.
+  if (t) {
+    const answers = fs.readFileSync(t, 'utf8').split('\n').map(l => { try { return JSON.parse(l); } catch { return null; } })
+      .filter(o => o?.type === 'assistant' && o.message?.stop_reason === 'end_turn')
+      .map(o => o.message.content.filter(c => c.type === 'text').map(c => c.text).join('\n').trim()).filter(Boolean);
+    const best = answers.slice(-3).reduce((a, b) => (b.length > a.length ? b : a), '');
+    const lastWord = answers.at(-1) ?? '';
+    if (best && best !== lastWord) r.result = `${best}\n\n(Last word: ${lastWord})`;
+  }
   const said = r.result ?? (out || err || '(no output)');
   const limit = /hit your (\w+ )?limit/i.test(said + err) ? '\nLimit: this account hit its usage limit; the brief stopped there.' : '';
   const u = r.usage ?? {};
