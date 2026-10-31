@@ -16,10 +16,10 @@ public static class CoastBuilder
     static Vector2 Seaward => ValleyCoast.Seaward;
     static Vector2 Along => Vector2.Perpendicular(Seaward);
 
-    public static void Build(Material vertexLit)
+    public static void Build(Material vertexLit, ShoreMap shoreMap)
     {
         var root = new GameObject("Coast").transform;
-        BuildSea(root);
+        BuildSea(root, shoreMap);
         var rng = new System.Random(77);
         var plants = new GameObject("Plants").transform;
         plants.SetParent(root, false);
@@ -47,16 +47,19 @@ public static class CoastBuilder
 
     // --- the sea ----------------------------------------------------------------------
 
-    static void BuildSea(Transform root)
+    static void BuildSea(Transform root, ShoreMap shoreMap)
     {
         var material = EditorAssets.LoadOrCreate($"{Generated}/Ocean.mat", () => new Material(Shader.Find("Prototype/Ocean")));
         material.SetVector("_ShoreDir", new Vector4(-Seaward.x, -Seaward.y, 0f, 0f));
+        material.SetTexture("_ShoreMap", shoreMap.texture);
+        material.SetVector("_ShoreMapRect", shoreMap.Rect);
         material.SetFloat("_Swell", 0.6f);
         EditorUtility.SetDirty(material);
         var sea = new GameObject("Sea");
         sea.transform.SetParent(root, false);
         var ocean = sea.AddComponent<Ocean>();
         ocean.material = material;
+        ocean.shoreMap = shoreMap;
         ocean.level = ValleyCoast.SeaLevel;
         ocean.shoreOrigin = ValleyCoast.ShoreOrigin;
         ocean.seaward = Seaward;
