@@ -41,6 +41,46 @@ Each entry has:
 
 ## Decided
 
+### J-046: When does 0.1.10 go out?
+
+- **Asked:** 2026-10-31, by the PM.
+- **Also comes up when:** every release: ship what's on dev, or wait for what's close.
+- **Answer:** after the in-flight items: the dragon tweaks, the IK punch with the unarmed strike, the
+  cast sounds. Voice moves to 0.1.11.
+- **Why:** they're close and make the release Andrew described.
+- **Revisited:** 0.
+
+### J-045: The punch (punch-crate.mp4, #18)
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any melee, knock-back or PvP question.
+- **Answer:** too weak: about 2-2.5x stronger, so it's noticeable. It needs a real punch animation
+  (IK). Punching other players: yes, as the SRD unarmed strike (1 + Strength modifier bludgeoning,
+  plus knock-back), resolved in the core.
+- **Why:** Andrew watched the clip.
+- **Revisited:** 0.
+
+### J-044: Cast sounds A/B/C, and the new slam
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any cast-sound or casting-feel tuning.
+- **Answer:** B (deep hum, stacked fifths) as the base, with a little of C's accelerating pulse (less
+  than C). The new slam animation is good. Iterate sounds as audio files only, no video, made outside
+  Unity, in a series like the clips (earth single, water + air pair, charged fire).
+  Then picked B + pulse 30% (preset `cast-deep-hum-pulse` in the sound-design skill) to build in.
+- **Why:** Andrew listened to the clips.
+- **Revisited:** 0.
+
+### J-043: The dragon's look (dragon-view clip)
+
+- **Asked:** 2026-10-31, by the PM (board).
+- **Also comes up when:** any dragon tuning; the release notes for 0.1.10.
+- **Answer:** loves it ("hilarious"); the model is fine. Scale it up 50%, add a fire particle stream
+  from the mouth to the fire wave on the land, the flight can be a little funnier. No new clip
+  needed: ship it in the next release.
+- **Why:** Andrew watched the clip.
+- **Revisited:** 0.
+
 ### J-042: Keep writing every rule twice, or freeze the TS sandbox?
 
 - **Asked:** 2026-10-30, by the PM (open since then).

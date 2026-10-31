@@ -264,6 +264,125 @@ MonoBehaviour:
       m_PreInfinity: 2
       m_PostInfinity: 2
       m_RotationOrder: 4
+  windUp:
+    rightHand: {x: 0.5, y: 1.38, z: -0.1}
+    leftHand: {x: -0.5, y: 1.38, z: -0.1}
+    rightWeight: 1
+    leftWeight: 1
+    fingers: {x: 0.3, y: 1, z: -0.2}
+    palm: {x: -1, y: 0, z: 0}
+    dip: 0
+    lean: -7
+    recoil: 0
+    merge: 0
+    seconds: 0.2
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  tapSlam:
+    rightHand: {x: 0.03, y: 1.14, z: 0.4}
+    leftHand: {x: -0.03, y: 1.14, z: 0.4}
+    rightWeight: 1
+    leftWeight: 1
+    fingers: {x: 0, y: 1, z: 0.4}
+    palm: {x: -1, y: 0, z: 0}
+    dip: 0.13
+    lean: 12
+    recoil: 0
+    merge: 1
+    seconds: 0.13
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 3.5
+        outSlope: 3.5
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  tapRelease:
+    rightHand: {x: 0.05, y: 1.34, z: 0.41}
+    leftHand: {x: -0.05, y: 1.34, z: 0.41}
+    rightWeight: 1
+    leftWeight: 1
+    fingers: {x: 0, y: 1, z: 0.3}
+    palm: {x: 0, y: 0, z: 1}
+    dip: 0
+    lean: -10
+    recoil: 0.45
+    merge: 1
+    seconds: 0.15
+    curve:
+      serializedVersion: 2
+      m_Curve:
+      - serializedVersion: 3
+        time: 0
+        value: 0
+        inSlope: 3.5
+        outSlope: 3.5
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      - serializedVersion: 3
+        time: 1
+        value: 1
+        inSlope: 0
+        outSlope: 0
+        tangentMode: 0
+        weightedMode: 0
+        inWeight: 0
+        outWeight: 0
+      m_PreInfinity: 2
+      m_PostInfinity: 2
+      m_RotationOrder: 4
+  windUpTicks: 3
+  tapThrustLead: 0.15
+  tapThrustHold: 0.11
+  tapSlamStop: 0.084
+  tapReleaseStop: 0.067
+  tapSlamKick: 0.09
+  tapSlamKickSeconds: 0.2
+  tapSlamRumble:
+    low: 0.8
+    high: 0.45
+    seconds: 0.14
   slamTicks: 1
   thrustLead: 0.08
   thrustHold: 0.07

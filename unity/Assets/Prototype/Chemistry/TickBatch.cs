@@ -2,7 +2,7 @@
 // casts stamped for that tick, and the effects physics props had on cells
 // (Effects.cs: a barrel's blast, a lantern's spill), which the host saw and
 // stamped like casts, defense commands (the defense field's start,
-// Defense.cs), players' combo input (Combos.cs) and the dragon's summons (World.Dragon.cs). Solo play runs one per tick; online the host
+// Defense.cs), players' combo input (Combos.cs), the dragon's summons (World.Dragon.cs), room commands (World.Room.cs) and unarmed strikes (World.Strike.cs). Solo play runs one per tick; online the host
 // stamps them and every machine runs the same batches in the same order
 // (NetChem), and a late joiner rebuilds them from the host's history
 // (Timeline) and replays from tick 0. Running a batch is the same code in all
@@ -78,8 +78,15 @@ namespace Chem
         public List<ComboCommand> Combos { get; } = new List<ComboCommand>();
         /// <summary>The dragon's summons (World.Dragon.cs), applied after the combos.</summary>
         public List<DragonCommand> Dragon { get; } = new List<DragonCommand>();
-        /// <summary>Where players stand on the course (World.Course.cs), applied last, in order.</summary>
+        /// <summary>Where players stand on the course (World.Course.cs), applied after the dragon, in order.</summary>
         public List<CourseCommand> Course { get; } = new List<CourseCommand>();
+        /// <summary>Wizards standing, striking and leaving (World.Strike.cs), applied after the course, in order.</summary>
+        public List<StrikeCommand> Strikes { get; } = new List<StrikeCommand>();
+        /// <summary>
+        /// Mods switched on or reverted in the room (World.Room.cs), applied right after a rule switch and
+        /// before the casts, in order. Each peer decides each one itself; the rules returned follow.
+        /// </summary>
+        public List<RoomCommand> Room { get; } = new List<RoomCommand>();
         /// <summary>
         /// The world is rebuilt before this tick (the online reset, J-014): the view rebuilds it from
         /// its seed (NetChem, ChemGrid.ResetWorld), then the batch runs on the fresh world. The
@@ -125,12 +132,15 @@ namespace Chem
                     errors = e.Errors;
                 }
             }
+            foreach (var r in Room) world.ApplyRoom(r);
+            if (Room.Count > 0) rules = world.RoomRules;
             foreach (var c in Casts) world.Cast(c.Spell, c.X, c.Y, c.Dir, c.Charge, c.AimX, c.AimY);
             foreach (var e in Effects) world.ApplyEffect(e);
             foreach (var d in Defense) world.ApplyDefense(d);
             foreach (var c in Combos) world.ApplyCombo(c);
             foreach (var d in Dragon) world.ApplyDragon(d);
             foreach (var c in Course) world.ApplyCourse(c);
+            foreach (var s in Strikes) world.ApplyStrike(s);
             return rules;
         }
 
@@ -173,6 +183,20 @@ namespace Chem
         {
             foreach (int tick in ticks)
                 if (batches.TryGetValue(tick, out var b)) b.Dragon.Add(new DragonCommand());
+        }
+
+        /// <summary>Adds a recorded history of room commands (mods switched on or reverted) to a <see cref="Timeline"/>'s batches.</summary>
+        public static void AddRoom(Dictionary<int, TickBatch> batches, IEnumerable<(int tick, RoomCommand command)> commands)
+        {
+            foreach (var (tick, command) in commands)
+                if (batches.TryGetValue(tick, out var b)) b.Room.Add(command);
+        }
+
+        /// <summary>Adds a recorded history of wizards' stands and strikes to a <see cref="Timeline"/>'s batches.</summary>
+        public static void AddStrikes(Dictionary<int, TickBatch> batches, IEnumerable<(int tick, StrikeCommand command)> commands)
+        {
+            foreach (var (tick, command) in commands)
+                if (batches.TryGetValue(tick, out var b)) b.Strikes.Add(command);
         }
 
         /// <summary>Adds a recorded history of players' steps on the course to a <see cref="Timeline"/>'s batches.</summary>

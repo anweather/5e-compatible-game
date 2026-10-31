@@ -28,7 +28,7 @@ using UnityEngine.InputSystem;
 //   Prev spell   Q
 //   Element      1-8 (opens that element's spells)  d-pad left / right (steps)
 //   Zoom camera  mouse wheel   d-pad up / down
-//   Reset        R             View / Share button
+//   Reset        R             View / Share button (calls the dragon; held 3 s, rebuilds at once)
 //   Esc menu     Esc / M       Start / Options      (MenuControls, the menu's own;
 //                                                    M opens it on the Mods page)
 //   Pick up/drop E             X / Square

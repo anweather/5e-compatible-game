@@ -42,12 +42,16 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Releases
 
+- **0.1.10 (Andrew: after the in-flight items):** cut once the dragon tweaks (Mac), the IK punch with the
+  unarmed strike and the cast sounds B + pulse 30% (DesktopUnity) are on dev. Then the release candidate on
+  the PC (no VMs), publish if green. Voice moves to 0.1.11 (needs Andrew's Unity Gaming Services setup).
+
 - **0.1.9** published 2026-10-31 (Windows only, pre-release); main merged back, freeze lifted.
   DesktopUnity runs a fresh Editor, serial gates, the Windows build into the draft, install from the
   draft, then the update from 0.1.8. Notes: `docs/handoffs/release-0.1.9-notes.md`. Publish if green;
   then merge main back into dev and lift the freeze.
-- **0.1.10:** the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`, minus the casting sounds
-  already in) and proximity voice (Vivox: Andrew sets up a Unity Gaming Services project first).
+- **0.1.11:** proximity voice (Vivox: Andrew sets up a Unity Gaming Services project first), the rest of the
+  sound pass (`docs/handoffs/sound-pass-brief.md`).
 
 ## In flight
 
@@ -56,12 +60,27 @@ The one page a new PM session reads first. Keep it short: history goes in
 - DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
   comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
   cast-sound prototypes for Andrew to pick from before anything is built in.
-- Mac: the Dragon's view is pushed (`dragon-view`, efb186a), not merged: it waits on `probe.sh online`
-  in a normal Editor (DesktopUnity, queued). Every machine rebuilds the yard after it lands. For Andrew,
-  with media first: the model (reads friendly, not ancient), water never shelters (no cell reaches
-  depth 8), a raised Wall of Stone is wiped by the chunk reset before the breath arrives.
-  `dragon-clip` (f07aa3e, the clip probe and the QuickSearch console filter) is stacked on it: land
-  dragon-view first. The Mac is now on rules MCP phase 2, procedural looks (`procedural-looks`).
+- Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. dragon-clip landed
+  (5ac59c8). The Mac: `dragon-tweaks` (+50% scale, breath
+  stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
+  which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
+  is wiped before the breath arrives.
+- **Paused (Andrew, to free the PC):** DesktopUnity is idle with the Editor closed. Its work is on
+  `wip/punch-strike` (a202fd1: the IK punch at punchShove 2.5, the strike wiring, NetProp MaxKick 300), not
+  mergeable yet. Resume on the host-ux worktree: switch to it, reopen the Editor, run compile/warnings (17
+  baseline), smoke, feel, castfeel, combo, online (from 7 GB free), downed, sit, shapeshift, punchclip,
+  format, jscpd; merge dev; push to dev. Then FAST_LOOP rows, the cast sound build-in, the 0.1.10 candidate.
+  Open for Andrew: punchShove 2.5 throws a crate 4.6 m (13x); about 1.6 gives 2.7x.
+- Unarmed strike, core half, landed (d5af610; u1, now asleep): a punch does 1 damage at Str 10, needs 8+ to hit.
+  DesktopUnity wires it into the IK punch (Stand, Strike, Leave, TakeStrikeHits).
+  into the IK punch after.
+- Sound: the generator is in the sound-design skill (1847785, stdlib only). Andrew picked B + pulse 30%
+  (preset `cast-deep-hum-pulse`); DesktopUnity builds it in after the punch. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
+- Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
+  batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
+  intent in `Net/`, the game serving the MCP on localhost, the HUD line, the M panel through the room.
+- DesktopUnity: slam rework landed (ec80f19); clips on the board (slam, punch, sounds A/B/C); now the
+  dragon-view online probe and the ModValidator compile check.
 - Sandbox frozen (210b047; J-042): it reads `sandbox/rules-frozen/`; nothing is ported to it.
 - Rules MCP phase 1 landed (dffbc19; u1, now asleep): `core/Rules.Mcp`, `ModValidator.cs`, budgets in
   `rules/budgets.json`, "Using the rules MCP" in MODDING.md. Unity hasn't compiled ModValidator yet
@@ -91,7 +110,6 @@ He reads it on his phone instead of scrolling the chat. Update it (Artifact `rea
 ## Open questions for Andrew
 
 - The punch knocks a crate only 0.42 m: harder?
-- Unmerged branches to delete: `wip/w1-*`, `wip/w2-*` (their work landed), and about 17 old spikes.
 
 ## Telemetry
 

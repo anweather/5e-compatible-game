@@ -177,6 +177,14 @@ public class WindowPanes : MonoBehaviour
         Repaint();
     }
 
+    /// <summary>A shattered pane cell is glass again (the dragon's breath put it back).</summary>
+    public void Mend(int cell)
+    {
+        for (int i = 0; i < cellOf.Length; i++)
+            if (cellOf[i] == cell) open[i] = false;
+        Repaint();
+    }
+
     /// <summary>A pane cell's crack came or went: its panes show it.</summary>
     public void Cracked(int cell, bool on)
     {

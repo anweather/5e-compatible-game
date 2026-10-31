@@ -353,22 +353,28 @@ public partial class CastFeelProbe
     // Two hashes alike, in the time the clock says, mean the game never knew.
     IEnumerator SameTicks()
     {
-        (int tick, string hash, float seconds) settled = default, with = default, without = default;
-        GameFeel.Shake = 0f;
-        yield return TickRun(r => settled = r); // what the world before this one left behind is gone by the next
-        yield return TickRun(r => without = r);
-        int stops = beats.Stops;
-        GameFeel.Shake = 1f;
-        yield return TickRun(r => with = r);
-        int stopped = beats.Stops - stops;
-        Metric("tick_run_seconds_with_stops", with.seconds);
-        Metric("tick_run_seconds_without", without.seconds);
-        Check("tick_run_had_hit_stops", stopped > 0, $"{stopped} stops");
-        Check("hit_stop_leaves_the_tick_alone", with.tick == without.tick && with.hash == without.hash, $"first {settled.hash}, tick {with.tick} {with.hash} / tick {without.tick} {without.hash}");
-        Check("hit_stop_leaves_the_tick_rate_alone", Mathf.Abs(with.seconds - without.seconds) < 0.25f, $"{with.seconds:0.00} s, {without.seconds:0.00} s");
+        yield return SameTicks(true, "");
+        yield return SameTicks(false, "_tap");
     }
 
-    IEnumerator TickRun(System.Action<(int, string, float)> done)
+    IEnumerator SameTicks(bool held, string name)
+    {
+        (int tick, string hash, float seconds) settled = default, with = default, without = default;
+        GameFeel.Shake = 0f;
+        yield return TickRun(held, r => settled = r); // what the world before this one left behind is gone by the next
+        yield return TickRun(held, r => without = r);
+        int stops = beats.Stops;
+        GameFeel.Shake = 1f;
+        yield return TickRun(held, r => with = r);
+        int stopped = beats.Stops - stops;
+        Metric($"tick_run{name}_seconds_with_stops", with.seconds);
+        Metric($"tick_run{name}_seconds_without", without.seconds);
+        Check($"tick_run{name}_had_hit_stops", stopped > 0, $"{stopped} stops");
+        Check($"hit_stop_leaves_the_tick_alone{name}", with.tick == without.tick && with.hash == without.hash, $"first {settled.hash}, tick {with.tick} {with.hash} / tick {without.tick} {without.hash}");
+        Check($"hit_stop_leaves_the_tick_rate_alone{name}", Mathf.Abs(with.seconds - without.seconds) < 0.25f, $"{with.seconds:0.00} s, {without.seconds:0.00} s");
+    }
+
+    IEnumerator TickRun(bool held, System.Action<(int, string, float)> done)
     {
         const int Lead = 3, Ticks = 12;
         grid.ResetWorld();
@@ -382,7 +388,7 @@ public partial class CastFeelProbe
             if (loaded || World.Tick < start) return;
             loaded = true;
             start = World.Tick;
-            caster.LoadElement(ElementIds.Earth, held: true);
+            caster.LoadElement(ElementIds.Earth, held);
         }
         grid.TickDone += OnTick;
         while (!loaded) yield return null;

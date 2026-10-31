@@ -19,6 +19,9 @@ using UnityEngine;
 // hit-stop (HitStop) stands this body's clock and Animator still for a few frames:
 // the game's clock isn't touched, and another player's copy never stops, so a
 // beat can run a frame or three behind on its owner's screen but never adds up.
+// A hold keeps the same tuning it always had; a tap, known from the core's cast (not
+// held as its meter runs out), has a wind-up and its own slam and thrust (CastFeel), all
+// before the core fires or by the gesture's release, so game time isn't touched.
 [DefaultExecutionOrder(205)]
 [RequireComponent(typeof(Animator), typeof(CastPose))]
 public class CastBeats : MonoBehaviour
@@ -47,6 +50,10 @@ public class CastBeats : MonoBehaviour
     public string Spell { get; private set; }
     /// <summary>The elements of the cast in hand, in order; null for none.</summary>
     public (string first, string second) Elements => (first, second);
+    /// <summary>This cast is uncharged, so far as anyone can know: its slam and thrust are the tap's. A hold, a slam on the way to a charge and anything after one never are.</summary>
+    public bool Tap => tap;
+    /// <summary>The pose of the beat now.</summary>
+    public CastFeel.BeatPose Pose => feel.Of(Now, tap);
     /// <summary>A beat is posing the body; CastPose stands aside.</summary>
     public bool Driving => Now != Beat.Neutral && PoseOn;
     /// <summary>Off, the beats still run and the elements still show but the body is left to CastPose (the probe's "before").</summary>
@@ -55,7 +62,7 @@ public class CastBeats : MonoBehaviour
     /// <summary>The casting sounds (CastSounds), for the probe.</summary>
     public CastSounds Sounds => sounds;
     /// <summary>This spell is the cast in the hands, so its thrust will carry its sound; one from the radial has neither.</summary>
-    public bool InHands(string spell) => SoundsOn && (firedSpell == spell || Now is Beat.First or Beat.Second or Beat.Slam or Beat.Charge);
+    public bool InHands(string spell) => SoundsOn && (firedSpell == spell || Now is Beat.First or Beat.Second or Beat.WindUp or Beat.Slam or Beat.Charge);
     /// <summary>Off, a cast has only the old whoosh (the clip's "before").</summary>
     public bool SoundsOn { get; set; } = true;
 
@@ -106,7 +113,7 @@ public class CastBeats : MonoBehaviour
     // go on from this, as a peer catching up can be mid-tick at the end of every frame.
     CastFacts whole;
     float firedAt, announcedAt, thrustAt, kick;
-    bool struck, standing;
+    bool struck, standing, tap;
     float stopLeft, speedWas = 1f;
     Action afterStop;
 
@@ -139,7 +146,7 @@ public class CastBeats : MonoBehaviour
     {
         announcedSpell = spell;
         announcedAt = Time.time;
-        thrustAt = Time.time + Mathf.Max(0f, leavesIn - feel.thrustLead);
+        thrustAt = Time.time + Mathf.Max(0f, leavesIn - feel.LeadOf(tap));
         AimPoint = at;
         Spell = spell;
     }
@@ -212,7 +219,7 @@ public class CastBeats : MonoBehaviour
         InBeat += time;
         Strike();
         Step(grid.World);
-        var p = feel.Of(Now);
+        var p = Pose;
         float t = p.seconds > 0f ? Mathf.Clamp01(InBeat / p.seconds) : 1f;
         body = Blend.Lerp(from, Blend.Of(p), p.curve.Evaluate(t));
         if (Driving) Lay();
@@ -224,7 +231,7 @@ public class CastBeats : MonoBehaviour
     // Before the beat can move on: a thrust can follow the slam in the frame the hands meet.
     void Strike()
     {
-        if (struck || Now is not (Beat.Slam or Beat.Release) || InBeat < feel.Of(Now).seconds) return;
+        if (struck || Now is not (Beat.Slam or Beat.Release) || InBeat < Pose.seconds) return;
         struck = true;
         Struck?.Invoke(Now);
         if (IsLocal) CastImpact.Struck(this, Now);
@@ -237,7 +244,7 @@ public class CastBeats : MonoBehaviour
         if (announcedSpell != null && announcedSpell != firedSpell && Time.time - announcedAt > feel.announceWait) announcedSpell = null;
         if (firedSpell != null && announcedSpell != firedSpell && Time.time - firedAt > feel.announceWait) firedSpell = null;
         bool thrust = firedSpell != null && announcedSpell == firedSpell && Time.time >= thrustAt;
-        var next = CastBeat.Next(Now, InBeat, whole.With(firedSpell != null, thrust), feel);
+        var next = CastBeat.Next(Now, InBeat, whole.With(firedSpell != null, thrust), feel, tap);
         if (next != Now) Enter(next);
     }
 
@@ -245,7 +252,7 @@ public class CastBeats : MonoBehaviour
     void Read(World world)
     {
         var cast = caster.Replaying ? null : world.CastOf(Player);
-        whole = CastFacts.Of(cast, feel.slamTicks, false, false);
+        whole = CastFacts.Of(cast, feel.slamTicks, feel.windUpTicks, false, false);
         if (cast?.Casting != true) return;
         first = cast.First;
         second = cast.Second;
@@ -270,7 +277,14 @@ public class CastBeats : MonoBehaviour
         from = body;
         switch (beat)
         {
+            case Beat.First or Beat.Second or Beat.Charge or Beat.Neutral:
+                tap = false;
+                break;
+            case Beat.WindUp:
+                tap = true;
+                break;
             case Beat.Slam:
+                tap |= !whole.holding && Charge <= 1;
                 kick = 1f;
                 break;
             case Beat.Release:

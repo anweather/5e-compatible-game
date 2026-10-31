@@ -321,6 +321,10 @@ namespace Chem
     {
         public string Id, Name;
         public int Hp, Mass;
+        /// <summary>A score or AC an entity row leaves out: 10, an average Strength, and an unarmoured AC.</summary>
+        public const int DefaultScore = 10;
+        /// <summary>Its Strength score (entities.json "str") and Armor Class ("ac"), for the unarmed strike (World.Strike.cs).</summary>
+        public int Str = DefaultScore, Ac = DefaultScore;
         /// <summary>Flammable and Creature mirror those components (Components.cs), for the code that reads them.</summary>
         public bool Flammable, Creature, Player;
         /// <summary>What it's made of: a terrain id in materials.json (a crate is wood), or null.</summary>
@@ -483,6 +487,8 @@ namespace Chem
         public DownedParams Downed = new DownedParams();
         /// <summary>The dragon's flight, the changed-cell budget and the shelter rule (sim.json dragon, World.Dragon.cs).</summary>
         public DragonParams Dragon = new DragonParams();
+        /// <summary>The unarmed strike's reach, knock-back, cooldown and proficiency (sim.json strike, World.Strike.cs).</summary>
+        public StrikeParams Strike = new StrikeParams();
     }
 
     /// <summary>The "if" of a cell rule. Null members mean "not checked".</summary>
@@ -849,6 +855,8 @@ namespace Chem
                 Name = Str(o["name"]) ?? id,
                 Hp = Int(o["hp"]) ?? 1,
                 Mass = Int(o["mass"]) ?? 1,
+                Str = Int(o["str"]) ?? EntityDef.DefaultScore,
+                Ac = Int(o["ac"]) ?? EntityDef.DefaultScore,
                 Components = components,
                 Flammable = components.Has(Component(Rules.Flammable)),
                 Creature = components.Has(Component(Rules.Creature)),
@@ -1099,6 +1107,7 @@ namespace Chem
             s.Breath = BreathParams.Parse(o["breath"]);
             s.Downed = DownedParams.Parse(o["downed"]);
             s.Dragon = DragonParams.Parse(o["dragon"]);
+            s.Strike = StrikeParams.Parse(o["strike"]);
             if (o["day"] is JObject day)
             {
                 s.Day.LengthMinutes = Num(day["lengthMinutes"]) ?? s.Day.LengthMinutes;
