@@ -4,8 +4,9 @@ using UnityEngine;
 
 // Dresses the robot as a wizard (docs/WORLD_LIFE.md, "Wizards"): a black fuzzy
 // face with two red slits for eyes (Prototype/WizardFace), a pointed hat or a
-// cowl, a robe that flares to the shins, sleeves and sometimes a staff in the
-// left hand, all from a WizardLook. Under the clothes the robot is gone but for
+// cowl, a robe that flares to the shins and sleeves, all from a WizardLook; both
+// hands are free for the elements. A staff is still here, unused, until it comes
+// back as an item (a focus: carriesStaff). Under the clothes the robot is gone but for
 // its hands, shins and feet (HideCovered), so nothing clips through. The
 // parts are flat-shaded MeshKit meshes drawn with VillageLit (colours in their
 // vertices; the occluder dither cuts them like the village), each hung on one
@@ -14,7 +15,7 @@ using UnityEngine;
 // wizard. The local player's seed is kept in PlayerPrefs ("New look" in the
 // Esc menu draws another); online the owner sends it and every peer dresses
 // that wizard the same (NetWizard).
-// After the poses (SitPose and the rest) and the robe's cloth: the staff and hat are set by pose last.
+// After the poses (SitPose and the rest) and the robe's cloth: the hat (and a staff, if any) is set by pose last.
 [DefaultExecutionOrder(310)]
 [RequireComponent(typeof(Animator))]
 public class WizardOutfit : MonoBehaviour
@@ -35,6 +36,8 @@ public class WizardOutfit : MonoBehaviour
     public Material material;
     [Tooltip("What the face is drawn with (Prototype/WizardFace); the builder sets it, which puts it in the build.")]
     public Shader faceShader;
+    [Tooltip("Unused: the staff is off the wizard (the cast-feel pass). Kept so it can come back as an item, a focus.")]
+    public bool carriesStaff;
 
     /// <summary>The look worn now (null until dressed).</summary>
     public WizardLook Look { get; private set; }
@@ -101,7 +104,7 @@ public class WizardOutfit : MonoBehaviour
 
     IEnumerator Start()
     {
-        // A frame in, the rig stands in its idle pose: the staff is set upright in the hand from it.
+        // A frame in, the rig stands in its idle pose: the sleeves are measured from it, and a staff set upright in the hand.
         yield return null;
         if (pending == int.MinValue && Look == null && GetComponent<NetWizard>() == null) pending = SavedSeed;
         if (pending != int.MinValue) Dress(pending);
@@ -158,12 +161,12 @@ public class WizardOutfit : MonoBehaviour
             SkinnedSleeve(HumanBodyBones.LeftUpperArm, HumanBodyBones.LeftLowerArm, HumanBodyBones.LeftHand);
             SkinnedSleeve(HumanBodyBones.RightUpperArm, HumanBodyBones.RightLowerArm, HumanBodyBones.RightHand);
         }
-        Staff(kit, Bone(HumanBodyBones.LeftHand));
+        if (carriesStaff) Staff(kit, Bone(HumanBodyBones.LeftHand));
     }
 
     Transform Bone(HumanBodyBones b) => animator.isHuman ? animator.GetBoneTransform(b) : null;
 
-    // --- the staff and hat by pose (Andrew: no staff through the body, no crushed hat) --------------
+    // --- the hat, and a staff if carried, by pose (Andrew: no staff through the body, no crushed hat) --
 
     Transform staff, hat;
     // The staff's length and its grip, in the hand's space as built.
@@ -504,7 +507,8 @@ public class WizardOutfit : MonoBehaviour
         Hang(kit, l, "bell " + lower);
     }
 
-    // Upright in the left hand in the idle pose: a gnarled branch, a crystal-topped rod or an orb-topped rod.
+    // Unused while carriesStaff is off. Upright in the left hand in the idle pose: a gnarled branch, a
+    // crystal-topped rod or an orb-topped rod.
     void Staff(MeshKit kit, Transform hand)
     {
         if (hand == null || Look.Staff == WizardLook.StaffKind.None) return;

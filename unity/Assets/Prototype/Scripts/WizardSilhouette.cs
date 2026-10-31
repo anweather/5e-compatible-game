@@ -4,7 +4,7 @@ using UnityEngine.Rendering;
 
 // The local wizard seen through what can't be dithered away (the terrain's
 // trees, a hill, a pack's rock), for OccluderFade: a copy of each of its
-// meshes, the body and the whole outfit (hat, robe, cloth, beard, staff:
+// meshes, the body and the whole outfit (hat, robe, cloth, beard:
 // Andrew saw only the robot through the trees), drawn with the
 // WizardSilhouette shader (a dithered see-through figure, only where
 // something stands in front of it), switched on only while something

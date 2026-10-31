@@ -147,6 +147,11 @@ touch them.
   earth, lightning, thunder, grease, oil, fog, growth. *Not* the spell
   radial's top ring (that's a **group**).
 
+**Focus** *(planned)*
+: An item a wizard carries to cast through, such as a staff. Not built: the
+  default wizard's hands are free, and `WizardOutfit.carriesStaff` keeps the old
+  staff's code, unused, for it.
+
 **Reaction**
 : A rule that runs when an element arrives at a cell, in order, until
   one says `stop` (`World.React`, `reactions.json`).

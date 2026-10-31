@@ -7,7 +7,9 @@ using UnityEngine;
 // bodice, sleeves), hidden under the clothes but for its hands and feet, the
 // headwear sits on the head and moves with it, the same seed always gives the
 // same look, "New look" draws a different one and the headwear swaps alone;
-// portraits of a few looks from the front. The player's own saved look is put back after.
+// no wizard carries a staff, whatever its seed drew, and the staff's code still
+// hangs one if asked; portraits of a few looks from the front. The player's own
+// saved look is put back after.
 public class LookProbe : ProbeScenario
 {
     // The outfit's parts hanging on the wizard, and its hat.
@@ -24,26 +26,70 @@ public class LookProbe : ProbeScenario
         return parts;
     }
 
-    // A glowing staff through a walk's steps, at dusk's light and close to: it mustn't pulse with them.
-    IEnumerator StaffWalks(WizardOutfit outfit)
+    // Anything of the outfit hanging on either hand (the sleeves hang on the arms).
+    static int OnHands(Animator animator)
+    {
+        int parts = 0;
+        foreach (var bone in new[] { HumanBodyBones.LeftHand, HumanBodyBones.RightHand })
+            parts += animator.GetBoneTransform(bone).GetComponentsInChildren<Renderer>().Count(r => r.name.StartsWith("Outfit ", System.StringComparison.Ordinal));
+        return parts;
+    }
+
+    // One wizard of each staff a seed can draw, at a clear noon with the same cameras: standing, walking,
+    // then with an element in each hand: none of them carries it. For the gallery (--shots); hands-*.png.
+    IEnumerator HandsFree(WizardOutfit outfit)
     {
         int seed = outfit.Look.Seed;
-        for (int s = 1; s < 500 && outfit.Look.Staff != WizardLook.StaffKind.Crystal; s++) outfit.Wear(s);
-        Check("crystal_staff", outfit.Look.Staff == WizardLook.StaffKind.Crystal, $"seed {outfit.Look.Seed}");
-        yield return Wait(0.3f);
+        yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': " +
+            "{ 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }");
+        yield return Wait(1f);
         var w = wizard.transform;
-        var goal = w.position + w.forward * 30f;
-        var walk = StartCoroutine(puppet.WalkTo(goal));
-        for (int i = 0; i < 6; i++)
+        var animator = wizard.GetComponent<Animator>();
+        int onHands = 0;
+        foreach (WizardLook.StaffKind kind in System.Enum.GetValues(typeof(WizardLook.StaffKind)))
         {
-            yield return Wait(0.19f);
-            Cut(w.position + w.right * -1.4f + w.forward * 1.2f + Vector3.up * 1.9f, w.position + Vector3.up * 1.6f);
+            int s = 1;
+            while (WizardLook.From(s).Staff != kind) s++;
+            outfit.Wear(s);
+            yield return Wait(0.5f);
+            onHands += OnHands(animator);
+            foreach (var (name, from) in new[] { ("front", w.forward), ("quarter", (w.forward - w.right).normalized), ("side", -w.right) })
+            {
+                Cut(w.position + from * 2.4f + Vector3.up * 1.4f, w.position + Vector3.up * 1.05f);
+                yield return Wait(0.2f);
+                Shot($"hands-{kind}-{name}");
+                yield return null;
+            }
+            caster.enabled = true;
+            caster.LoadElement(ElementIds.Fire, true);
+            caster.LoadElement(ElementIds.Water, true);
+            yield return Wait(0.3f);
+            Cut(w.position + (w.forward - w.right * 0.4f).normalized * 2.2f + Vector3.up * 1.4f, w.position + Vector3.up * 1.05f);
+            yield return Wait(0.2f);
+            Shot($"hands-{kind}-elements");
             yield return null;
-            Shot($"staff-{i}");
+            caster.DropCast();
+            yield return Wait(0.3f);
+            caster.enabled = false;
+            var walk = StartCoroutine(puppet.WalkTo(w.position + w.forward * 30f));
+            yield return Wait(0.8f);
+            Cut(w.position + (w.forward - w.right).normalized * 2.6f + Vector3.up * 1.5f, w.position + Vector3.up * 1.05f);
             yield return null;
+            Shot($"hands-{kind}-walk");
+            yield return null;
+            StopCoroutine(walk);
+            puppet.Move(Vector2.zero);
+            yield return Wait(0.5f);
         }
-        StopCoroutine(walk);
-        puppet.Move(Vector2.zero);
+        Metric("parts_on_hands", onHands);
+        Check("hands_free", onHands == 0, $"{onHands} outfit parts on the hands over one wizard of each staff kind");
+        // The staff's code, unused until a focus brings it back: it still hangs one, in the left hand.
+        outfit.carriesStaff = true;
+        int crystal = 1;
+        while (WizardLook.From(crystal).Staff != WizardLook.StaffKind.Crystal) crystal++;
+        outfit.Wear(crystal);
+        Check("staff_kept_for_a_focus", OnHands(animator) == 1, $"{OnHands(animator)} parts on the hands with carriesStaff on");
+        outfit.carriesStaff = false;
         outfit.Wear(seed);
         yield return Wait(0.3f);
     }
@@ -135,7 +181,7 @@ public class LookProbe : ProbeScenario
         Check("seeds_differ", a.Robe != c.Robe || !Mathf.Approximately(a.HatHeight, c.HatHeight) || a.Staff != c.Staff, "seeds 12345 and 54321");
 
         yield return HeadwearFits(outfit, head);
-        yield return StaffWalks(outfit);
+        yield return HandsFree(outfit);
         // Portraits: the camera in front of the wizard, a few looks.
         var w = wizard.transform;
         Cut(w.position + w.forward * 2.6f + Vector3.up * 1.5f, w.position + Vector3.up * 1.15f);

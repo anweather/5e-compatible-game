@@ -17,7 +17,7 @@ using UnityEngine;
 // The animal shape a wizard has (Shapeshift: its species and coat, packed)
 // is a variable its owner writes; every other machine draws that animal in
 // place of the wizard, a late joiner too. Its look (WizardOutfit: a seed for
-// the hat, robe, beard and staff) is another owner-written variable, so
+// the hat, robe and beard) is another owner-written variable, so
 // every peer dresses each wizard the same.
 [RequireComponent(typeof(SpellCaster), typeof(SurfaceEffects), typeof(PlayerControls))]
 public class NetWizard : NetworkBehaviour
