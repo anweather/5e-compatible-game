@@ -682,3 +682,10 @@ The work order comes from "Priority" in `docs/BACKLOG.md` (J-012).
   hardware, a minimum-spec baseline; a macOS player for profiling only),
   after the five calls. The PC takes the sound pass after UX pass 4 part 3,
   and repeats the perf measurements on Windows tomorrow for comparison.
+- 2026-10-30 23:35: Andrew's five calls merged (bd488d5, MacBook): core 549,
+  sandbox 223, EditMode 609. Caveats for Andrew: (1) Sleet Storm is on no
+  combination, so its new slippery field is only reachable from the F2 radial
+  (make it Frost's held form?); (2) no element combination digs now (Lower
+  Earth is radial-only; a cast at your own feet never dug). The yard must be
+  rebuilt before the downed fall shows. The Mac started the overnight perf
+  pass.
