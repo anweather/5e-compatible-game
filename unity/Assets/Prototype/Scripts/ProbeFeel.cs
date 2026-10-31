@@ -8,9 +8,10 @@ using UnityEngine.InputSystem.LowLevel;
 // The probe's feel scenario: what a hand on the controls should feel, measured
 // through the wizard's own controls on a virtual pad and a virtual keyboard
 // (UX pass 4). Running onto ice and Frost's glaze keeps its speed and slides; snow
-// and a bank slow it; the punch on F and Square on a pane, a crate and a ball;
-// charged casts on keys and pad (Plant Growth on burnt ground, Wall of Stone held to
-// a ramp); Frost over a swimmer, and Left Ctrl held climbing out of the water.
+// and a bank slow it; the punch on F and Circle on a pane, a crate and a ball, and
+// Square not punching; charged casts on keys and pad (their timing, Plant Growth on
+// burnt ground, Wall of Stone held to a ramp, Frost held to Sleet Storm's slippery
+// field); Frost over a swimmer, and Left Ctrl held climbing out of the water.
 public class FeelProbe : SpellLooksProbe
 {
     const int LaneLong = 30, LaneWide = 7, RunUp = 12;
@@ -130,7 +131,8 @@ public class FeelProbe : SpellLooksProbe
         var crate = NearestCrate(ahead);
         Check("crate_near", crate != null, "a crate");
         if (crate != null) yield return PunchThing(crate, ahead, "crate_f", () => Tap(Key.F));
-        if (crate != null) yield return PunchThing(crate, ahead, "crate_square", () => Button(GamepadButton.West));
+        if (crate != null) yield return PunchThing(crate, ahead, "crate_circle", () => Button(GamepadButton.East));
+        if (crate != null) yield return SquareLeavesIt(crate, ahead);
         var ball = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.kind == "ball" && p.State != null);
         Check("ball_found", ball != null, "the court's ball");
         if (ball == null) yield break;
@@ -139,18 +141,19 @@ public class FeelProbe : SpellLooksProbe
         var by = at + Vector3.left * 1f;
         Teleport(new Vector3(by.x, grid.GroundAt(by) + 0.05f, by.z));
         puppet.Face(at);
-        Cut(at + V(-3f, 3f, -5f), at);
+        // The fist goes where the camera aims, within the wizard's front arc: straight at the ball.
+        Cut(at + V(-6f, 3f, 0f), at);
         yield return Wait(0.5f);
         var from = ball.transform.position;
-        yield return Tap(Key.F);
+        yield return Button(GamepadButton.East);
         float went = 0f;
         for (float t = 0f; t < 0.8f; t += Time.deltaTime)
         {
             went = Mathf.Max(went, Vector3.Distance(from, ball.transform.position));
             yield return null;
         }
-        Metric("ball_f_m", went);
-        Check("ball_f_knocked", went > 0.2f, $"it went {went:0.0} m in 0.8 s");
+        Metric("ball_circle_m", went);
+        Check("ball_circle_knocked", went > 0.2f, $"it went {went:0.0} m in 0.8 s");
         Shot("ball");
         yield return null;
         yield return null;
@@ -169,6 +172,19 @@ public class FeelProbe : SpellLooksProbe
         Shot(name);
         yield return null;
         yield return null;
+    }
+
+    // Square only picks up and sits: no item or seat in reach, it does nothing to a crate.
+    IEnumerator SquareLeavesIt(PhysicsProp crate, Vector3 at)
+    {
+        Drop(crate, new Vector3(at.x, grid.GroundAt(at) + 0.6f, at.z));
+        yield return Wait(0.8f);
+        var from = crate.transform.position;
+        yield return Button(GamepadButton.West);
+        yield return Wait(0.8f);
+        float went = Vector3.Distance(from, crate.transform.position);
+        Metric("crate_square_m", went);
+        Check("square_doesnt_punch", went < 0.1f, $"it went {went:0.00} m");
     }
 
     IEnumerator PunchPane()
@@ -223,6 +239,71 @@ public class FeelProbe : SpellLooksProbe
         yield return Ramp("keys", Key.C, default);
         yield return PlantGrowth("pad", Key.None, Key.None, new GamepadState { leftTrigger = 1f }, new GamepadState().WithButton(GamepadButton.RightShoulder));
         yield return Ramp("pad", Key.None, new GamepadState { leftTrigger = 1f });
+        yield return Timing();
+        yield return Sleet();
+    }
+
+    // A level every World.SecondsPerLevel past the meter, and the whole held cast, first press to landing.
+    IEnumerator Timing()
+    {
+        var o = Spot(13, 9);
+        Patch(o, 13, 9, TerrainIds.Dirt);
+        yield return Aimed(o, 13, 9);
+        float start = Time.time;
+        yield return Tap(Key.C);
+        yield return Wait(0.1f);
+        InputSystem.QueueStateEvent(keys, new KeyboardState(Key.C));
+        float second = 0f, third = 0f;
+        for (float t = 0f; t < 5f && third == 0f; t += Time.deltaTime)
+        {
+            if (second == 0f && caster.HoldCharge >= 2) second = Time.time;
+            if (caster.HoldCharge >= 3) third = Time.time;
+            yield return null;
+        }
+        float full = Time.time - start;
+        Shot("bar-full-charge");
+        yield return null;
+        Check("held_marker_shown", caster.Marker != null, $"{caster.Marker?.Kind}");
+        InputSystem.QueueStateEvent(keys, new KeyboardState());
+        for (float t = 0f; t < 4f && World.CastOf(me).Casting; t += Time.deltaTime) yield return null;
+        float landed = Time.time - start;
+        Metric("seconds_a_level", third - second);
+        Metric("full_charge_s", full);
+        Metric("held_cast_landed_s", landed);
+        Check("a_level_takes_half_a_second", Mathf.Abs(third - second - (float)World.SecondsPerLevel) < 0.12f, $"{third - second:0.00} s, the rules say {World.SecondsPerLevel:0.00}");
+        Check("full_charge_in_two_to_three_seconds", full >= 1.8f && full <= 3.2f, $"{full:0.0} s to full charge, landed at {landed:0.0} s");
+        yield return Wait(1f);
+    }
+
+    // Water then air held to full is Sleet Storm: a field that slides the wizard.
+    IEnumerator Sleet()
+    {
+        var o = Spot(13, 13);
+        Patch(o, 13, 13, TerrainIds.Dirt);
+        for (int y = 0; y < 13; y++)
+            for (int x = 0; x < 13; x++) World.At(o.x + x, o.y + y).Water = 1;
+        yield return Aimed(o, 13, 13);
+        yield return Pair(Key.X, Key.V, default, default, 3);
+        yield return Wait(2.5f);
+        var cells = Enumerable.Range(0, 169).Select(i => World.At(o.x + i % 13, o.y + i / 13)).ToList();
+        int slick = cells.Count(World.IsSlippery);
+        Metric("sleet_slippery_cells", slick);
+        Check("sleet_field_slippery", slick >= 30, $"{slick} of 169 cells slippery");
+        var mid = grid.CellCenter(o.x + 6, o.y + 6);
+        Teleport(new Vector3(mid.x - 4f, grid.GroundAt(mid) + 0.1f, mid.z));
+        Cut(mid + V(-9f, 3f, 0f), mid);
+        yield return Wait(0.3f);
+        puppet.Move(Vector2.up);
+        yield return Wait(0.8f);
+        puppet.Move(Vector2.zero);
+        var let = wizard.transform.position;
+        yield return Wait(StopSeconds);
+        float slid = Vector3.Distance(let, wizard.transform.position);
+        Metric("sleet_stop_m", slid);
+        Check("sleet_slides_the_wizard", slid > 1f, $"it slid {slid:0.0} m");
+        Shot("sleet");
+        yield return null;
+        yield return null;
     }
 
     // Stands west of a patch with the crosshair on its middle.
@@ -281,7 +362,8 @@ public class FeelProbe : SpellLooksProbe
         yield return Wait(0.1f);
         if (onKeys) InputSystem.QueueStateEvent(keys, new KeyboardState(last));
         else InputSystem.QueueStateEvent(pad, lastPad);
-        yield return Wait(ElementHold.SecondsPerLevel * (charge - 1) + 0.3f);
+        for (float t = 0f; t < 5f && caster.HoldCharge < charge; t += Time.deltaTime) yield return null;
+        yield return Wait(0.1f);
         Metric(onKeys ? "held_charge_keys" : "held_charge_pad", caster.HoldCharge);
         if (onKeys) InputSystem.QueueStateEvent(keys, new KeyboardState());
         else InputSystem.QueueStateEvent(pad, new GamepadState());

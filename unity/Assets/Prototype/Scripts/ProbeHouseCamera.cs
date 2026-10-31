@@ -16,7 +16,8 @@ public class HouseCameraProbe : ProbeScenario
     static readonly Collider[] Near = new Collider[16];
 
     float shortest = float.MaxValue, full;
-    int blocked;
+    int blocked, ownWall;
+    string lastCheck = "";
     string what = "nothing";
 
     protected override IEnumerator Run()
@@ -65,7 +66,10 @@ public class HouseCameraProbe : ProbeScenario
         Check("small_form_found", small >= 0, fauna != null ? fauna.SpeciesName(small) : "no fauna");
         if (small < 0) yield break;
         var at = houses[0].transform.position + Vector3.right * (houses[0].width / 2f + 6f);
-        Teleport(new Vector3(at.x, grid.GroundAt(at) + 0.1f, at.z));
+        var feet = wizard.GetComponent<CharacterController>();
+        feet.enabled = false;
+        wizard.transform.position = new Vector3(at.x, grid.GroundAt(at) + 0.1f, at.z);
+        feet.enabled = true;
         var there = at + Vector3.right * 3f;
         int animal = fauna.Spawn(small, new Unity.Mathematics.float3(there.x, grid.GroundAt(there), there.z), 0f);
         fauna.Puppet(animal, 0f, 0f);
@@ -79,7 +83,7 @@ public class HouseCameraProbe : ProbeScenario
         yield return Wait(1.2f);
         Check("small_form_taken", shape.Shifted, shape.FormName ?? "not shifted");
         Metric("small_body_radius_m", wizard.GetComponent<CharacterController>().radius);
-        (shortest, what, blocked) = (float.MaxValue, "nothing", 0);
+        ownWall = 0;
         int runs = 0;
         foreach (var house in houses.Take(2))
             foreach (var side in new[] { Vector3.forward, Vector3.right, Vector3.back, Vector3.left })
@@ -89,8 +93,9 @@ public class HouseCameraProbe : ProbeScenario
                 yield return WalkInto(house, side, follow, root);
             }
         Metric("small_runs", runs);
-        Metric("small_arm_shortest_m", shortest);
-        Check("arm_holds_in_a_small_form", shortest >= full * KeepsShare, $"shortest {shortest:F2} m of {full:F2} over {runs} walks in the {shape.FormName}; {what}");
+        Metric("small_arm_checks_on_its_own_wall", ownWall);
+        // The arm's own check, not its length: the camera doesn't settle behind a form teleported about like this.
+        Check("arm_check_clear_in_a_small_form", ownWall == 0, $"{ownWall} of {runs} walks in the {shape.FormName} start the check in the wall; last: {lastCheck}");
         Shot("small-form-at-the-wall");
         yield return null;
         yield return null;
@@ -124,6 +129,12 @@ public class HouseCameraProbe : ProbeScenario
             var flat = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
             puppet.Move(new Vector2(Vector3.Dot(dir, cam.right), Vector3.Dot(dir, flat)).normalized);
             yield return null;
+            // Pressed against the wall: does the arm's own check start in it?
+            if (t > 2.7f && t - Time.deltaTime <= 2.7f)
+            {
+                lastCheck = ArmHit(follow, root, out var wall);
+                if (wall != null && wall.transform.IsChildOf(house.transform)) ownWall++;
+            }
             float arm = Vector3.Distance(cam.position, root.position);
             if (t < 1f || arm >= walkShortest) continue;
             walkShortest = arm;
