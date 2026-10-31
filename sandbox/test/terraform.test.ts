@@ -1068,3 +1068,17 @@ test("spell golf: a tee shot, a ball lost in the pond, a carry over it and holed
   assert.ok(w.golf!.holed && w.log.some((l) => l.text === "Holed in 6!"));
   assert.equal(`${golfState(w)} ${fnv1a(golfState(w))} ${cellHash(w)} ${w.rng}`, "|g30:5:6:1:1:0:0:8 afbde760 4fbe03ad 3"); // the same in the C# core
 });
+
+// Mirrors GolfTests.GustKnocksARaiderBackOnceAndRaiseEarthThrowsOneOffItsFeet.
+test("Gust of Wind knocks a raider back once, Raise Earth throws one off its feet, matching the C# golden", () => {
+  const w = createWorld(20, 8, 5);
+  for (const c of w.cells) c.t = "dirt";
+  const hound = spawn(w, "bone-hound", 5, 3)!, crab = spawn(w, "ash-crab", 10, 6)!;
+  castSpell(w, "gust-of-wind", 2, 3, 1);
+  assert.deepEqual([hound.x, hound.y], [7, 3], "force.push 2, once: not again on the cells it's knocked onto");
+  castSpell(w, "mold-earth-heap", 10, 6, 0);
+  assert.deepEqual([crab.x, crab.y, crab.status.thrown], [10, 6, 2], "force.throw 2");
+  assert.equal(cellAt(w, 10, 6)!.h, 1);
+  run(w, 3);
+  assert.equal(`${cellHash(w)} ${w.rng} ${hound.x},${hound.y} ${crab.status.thrown ?? 0}`, "65a33bbd 5 7,3 0"); // the same in the C# core
+});

@@ -111,6 +111,22 @@ namespace Chem.Tests
                     Assert.That(Math.Max(Math.Abs(x - v.X), Math.Abs(y - v.Y)), Is.GreaterThan(40), v.Name);
         }
 
+        [Test]
+        public void GustKnocksARaiderBackOnceAndRaiseEarthThrowsOneOffItsFeet()
+        {
+            // The force the ball takes acts on raiders the same way (spells.json force). Mirrors sandbox/test/terraform.test.ts.
+            var w = new World(R, 20, 8, 5, "dirt");
+            var hound = w.SpawnRaider("bone-hound", 5, 3, 6);
+            var crab = w.SpawnRaider("ash-crab", 10, 6, 9);
+            w.Cast("gust-of-wind", 2, 3, 1);
+            Assert.That((hound.X, hound.Y), Is.EqualTo((7, 3)), "force.push 2, once: not again on the cells it's knocked onto");
+            w.Cast("mold-earth-heap", 10, 6, 0);
+            Assert.That((crab.X, crab.Y, crab.StatusOf(World.ThrownStatus)), Is.EqualTo((10, 6, 2)), "force.throw 2");
+            Assert.That(w.At(10, 6).Height, Is.EqualTo(1));
+            Run(w, 3);
+            Assert.That($"{w.CellHash()} {w.RngState} {hound.X},{hound.Y} {crab.StatusOf(World.ThrownStatus)}", Is.EqualTo("65a33bbd 5 7,3 0"), "the same in the sandbox");
+        }
+
         sealed class Blank : IChunkSource
         {
             public string Version => "blank";

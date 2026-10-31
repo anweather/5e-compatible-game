@@ -591,15 +591,20 @@ function strike(w: World, b: Boulder, s: SpellDef): void {
  * along dir where that's open, if it's maxMass or lighter (a wave knocks it back), and thrown off its feet for
  * force.throw ticks (a geyser's jet, a boulder).
  */
-function force(w: World, s: SpellDef, x: number, y: number, dir: Dir | undefined): void {
+function force(w: World, s: SpellDef, x: number, y: number, dir: Dir | undefined, once?: Set<number>): void {
   const f = s.force;
   if (!f) return;
   hitBall(w, s, x, y, dir);
   const e = entityAt(w, x, y);
   if (!e || defOf(e).player || !w.entities.includes(e)) return;
+  if (once) {
+    if (once.has(e.id)) return;
+    once.add(e.id);
+  }
   const by = s.name.toLowerCase(), name = defOf(e).name;
-  // A spell that already shoves (Gust of Wind's push) doesn't knock it back twice; the C# core has only this push.
-  if ((f.push ?? 0) > 0 && !s.push && dir !== undefined && massOf(e) <= (s.maxMass ?? 1)) {
+  // One push each: a spell's force.push knocks back raiders (the C# core's only push), its push shoves everything
+  // else (push() leaves raiders standing), so a thing Gust of Wind shoved isn't knocked back again.
+  if ((f.push ?? 0) > 0 && (!s.push || defOf(e).raider) && dir !== undefined && massOf(e) <= (s.maxMass ?? 1)) {
     for (let k = 0; k < f.push!; k++) {
       const n = cellAt(w, e.x + DX[dir], e.y + DY[dir]);
       if (!n || isBlocking(n) || entityAt(w, e.x + DX[dir], e.y + DY[dir])) break;
@@ -660,6 +665,7 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
   crater(w, x, y, s.crater);
 
   // Shove first (furthest first, so a line of goblins doesn't jam), then react.
+  const forced = new Set<number>(); // each thing forced once a cast (World.Land)
   if (s.push) {
     const hit = cells
       .map(([cx, cy]) => entityAt(w, cx, cy))
@@ -675,7 +681,7 @@ export function landSpell(w: World, s: SpellDef, x: number, y: number, dir: Dir,
   for (const [cx, cy] of cells) {
     if (casterId !== undefined && s.shape === "burst" && cx === x && cy === y) continue;
     if (s.element) applyElement(w, cx, cy, s.element, s.inward ? { ...ctx, dir: inwardDir(cx - x, cy - y) } : ctx);
-    force(w, s, cx, cy, dir);
+    force(w, s, cx, cy, dir, forced);
     if (!s.push && s.damage) {
       const e = entityAt(w, cx, cy);
       if (e && e.id === casterId) continue;
