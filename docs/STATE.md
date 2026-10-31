@@ -66,6 +66,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 - u1: the unarmed strike in the core (J-045, #18; brief `briefs/unarmed-strike.md`). Asleep (Saved) while
   DesktopUnity runs dragon-view's online probe (needs ~9 GB free); wake it with `start.cmd u1` after. DesktopUnity wires it
   into the IK punch after.
+- Sound: the generator is in the sound-design skill (1847785, stdlib only). B + pulse 15/30/45% are on the board
+  for Andrew's pick. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
 - Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
   batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
   intent in `Net/`, the game serving the MCP on localhost, the HUD line, the M panel through the room.
