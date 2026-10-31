@@ -585,6 +585,10 @@ can.
 - **Open:** the views (the ball, the flag, the HUD stroke line) and a
   `GolfCommand` intent through `NetChem` for online.
 
+## 25. The Gauntlet: a carnival obstacle course across the lake, and spell-restricted zones (Andrew, 2026-10-31)
+
+Exploratory, after 0.1.9: a side-scrolling carnival funhouse with three or four depth lanes and height, booths that are spell puzzles (lava crusted by Frost, Misty Step gaps, an ice wall to melt, geyser launches, a boulder alley, updrafts, a dark tunnel, a barrel roll, a hall of mirrors, a strongman bell), each allowing only certain spells, with weird camera tricks. A small playable slice first, to find out whether there is juice in it. Brief: docs/handoffs/obstacle-course-brief.md.
+
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,
