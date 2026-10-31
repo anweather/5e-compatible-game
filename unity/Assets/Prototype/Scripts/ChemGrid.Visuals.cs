@@ -17,9 +17,8 @@ using UnityEngine.Rendering;
 public partial class ChemGrid
 {
     [Header("Effects (optional; cubes stand in when missing)")]
-    public GameObject fireSmall;
-    public GameObject fireMedium;
-    public GameObject fireLarge;
+    [Tooltip("What flames are drawn with (Prototype/Flame); the builder sets it, which puts it in the build.")]
+    public Shader flameShader;
     public GameObject smokeFx;
     public GameObject steamFx;
     public GameObject sparksFx;
@@ -40,7 +39,7 @@ public partial class ChemGrid
     // What is currently shown for one cell, so a cell is only redrawn when it changes.
     sealed class View
     {
-        public GameObject dressing, cover, fire, gas, spark, thorns, vines;
+        public GameObject dressing, cover, gas, spark, thorns, vines;
         public string terrain, coverId;
         public int height, elevation;
         public int key = int.MinValue;

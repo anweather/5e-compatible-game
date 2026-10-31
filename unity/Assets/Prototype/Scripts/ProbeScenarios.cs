@@ -168,10 +168,21 @@ public static class ProbeScenarios
             "The wizard drops into the deepest part of the lake. Checks: deep water found, the swim pose on (SwimPose), it floats with its feet about a metre " +
             "under the surface (not on the bed) and stays there, swims over 1 m in 2 s when pushed, leaning into the stroke over 30 degrees with the head out and the hands moving, jump kicks it up over 1.5 m " +
             "and it floats again after; held, the dive takes the head under over 0.8 m down, breath runs down, and let go it comes back up with its breath full again; no console errors."),
-        new Entry("look", typeof(LookProbe), 30f,
+        new Entry("flare", typeof(FlareProbe), 180f,
+            "The wizard from all round, 30 to 60 degrees down, near and far, in each headwear, standing and walking: every view drawn raw into a " +
+            "float target and its pixels read. `--shots` saves it walking through the post effects. Checks: no NaN or infinite pixel, no wizard's " +
+            "renderer far over the eyes' brightness, no console errors. If any, a `culprit` check names the renderer that clears the worst view."),
+        new Entry("housecam", typeof(HouseCameraProbe), 120f,
+            "The wizard walks into four of Hollowmere's houses from each side with the follow camera behind it. Checks: the camera's arm holds at " +
+            "75% of its length or more (the detail names what the arm's check hit at the shortest), no console errors."),
+        new Entry("flames", typeof(FlamesProbe), 40f,
+            "A field of grass alight at noon (FlameBank, Prototype/Flame). `--shots` saves it close and from above. Checks: flames in the camera's " +
+            "picture, every burning cell drawn, tongues off the cell's middle, sizes, speeds and seeds that vary, no two cells alike, no particle " +
+            "system a flame, no console errors."),
+        new Entry("look", typeof(LookProbe), 45f,
             "The wizard's outfit (WizardOutfit, WizardLook): dressed from the saved seed, then three new looks, portraits from the front and the side. " +
             "Checks: the outfit part and its material, dressed in the saved look, six parts or more on the bones with the hat on the head, the same " +
-            "seed giving the same look and two seeds two looks, New look changing it, no console errors. The player's own look is put back."),
+            "seed giving the same look and two seeds two looks, New look changing it, the head inside the hat or cowl over 200 seeds, no console errors. The player's own look is put back."),
         new Entry("firelooks", typeof(FireLooksProbe), 150f,
             "Fire by material: a row of thatch, a row of log wall and a strip of oil in the yard set alight, a picture of them burning, then a crate " +
             "stood in fire. Numbers: how long a thatch cell and a log wall cell burn, when the crate catches and is gone. Checks: thatch burns 2 to 6 s, " +

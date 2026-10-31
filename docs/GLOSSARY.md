@@ -173,6 +173,11 @@ touch them.
   gas's `hidesAfter` cells of it is hidden (`World.LineOfSight`). It thins
   away when the stretch ends.
 
+**Tongue**
+: One lick of flame on a burning cell (`FlameBank`, `Prototype/Flame`): a cell
+  holds a few, scattered past its edges, each with its own size, speed and
+  shape, drawn on the GPU. View only: what burns is the core's.
+
 **Live cell / settled chunk**
 : A cell is **live** while something in it is still changing on its own:
   fire burning, water flowing, gas drifting, charge decaying, something

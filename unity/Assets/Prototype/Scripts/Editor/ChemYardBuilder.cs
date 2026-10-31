@@ -91,11 +91,14 @@ public static class ChemYardBuilder
         follow.GetComponent<CinemachineCamera>().Target.TrackingTarget = cameraRoot;
         follow.AddComponent<CameraZoom>().controls = controls;
         // Out of the ground and the wizard (CameraClearance), and a wider check for what it backs into
-        // than the pack's 0.15 m, so the lens's corners don't see through a slope.
+        // than the pack's 0.15 m, so the lens's corners don't see through a slope; but narrower than
+        // the wizard (0.28 m): the check starts at its middle, and wider than it, a wall the wizard
+        // stands against is inside the check from the start, which pulled the camera right in
+        // (issue #20: at houses, whose box walls the wizard walks flush against).
         follow.AddComponent<CameraClearance>();
         var third = follow.GetComponent<CinemachineThirdPersonFollow>();
         var avoid = third.AvoidObstacles;
-        avoid.CameraRadius = 0.3f;
+        avoid.CameraRadius = 0.25f;
         // Eased back out after an obstacle rather than snapped (Andrew: the camera still snaps).
         avoid.DampingFromCollision = 0.4f;
         third.AvoidObstacles = avoid;
@@ -146,16 +149,14 @@ public static class ChemYardBuilder
     // Particle Pack effects; any that are missing leave the grid's cube stand-ins.
     static void AssignEffects(ChemGrid grid)
     {
-        grid.fireSmall = Load(FireFx + "/TinyFlames.prefab");
-        grid.fireMedium = Load(FireFx + "/MediumFlames.prefab");
-        grid.fireLarge = Load(FireFx + "/LargeFlames.prefab");
+        grid.flameShader = Shader.Find("Prototype/Flame");
         grid.smokeFx = Load(SmokeFx + "/SmokeEffect.prefab");
         grid.steamFx = Load(SmokeFx + "/RisingSteam.prefab");
         grid.sparksFx = Load(MiscFx + "/SparksEffect.prefab");
         // The dust thrown up by earth shaping uses the Particle Pack's dust material.
         var dust = Load(FireFx + "/DustExplosion.prefab");
         grid.dustMaterial = dust != null ? dust.GetComponent<ParticleSystemRenderer>().sharedMaterial : null;
-        if (grid.fireSmall == null) Debug.LogWarning("Particle Pack missing: fire and smoke will be cubes. Run Prototype > Restore Asset Packs.");
+        if (grid.smokeFx == null) Debug.LogWarning("Particle Pack missing: smoke will be cubes. Run Prototype > Restore Asset Packs.");
     }
 
     // Late-afternoon sun, and a post-processing volume: bloom so fire glows,

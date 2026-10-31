@@ -48,6 +48,64 @@ public class LookProbe : ProbeScenario
         yield return Wait(0.3f);
     }
 
+    // The cowl's opening, about its own upright: how far back of the head bone that stands, and the
+    // half angle (radians) that takes in its steps of quads.
+    const float HoodAxisBack = 0.06f, HoodOpening = 1.02f;
+
+    // Rays in from outside the head, over all of it above the brim: the headwear must be met before
+    // the head is. For a cowl, the opening in front of the face is left out.
+    static int HeadThrough(MeshFilter hat, Transform head, bool cowl)
+    {
+        var shell = hat.gameObject.AddComponent<MeshCollider>();
+        shell.sharedMesh = hat.sharedMesh;
+        Physics.SyncTransforms();
+        int through = 0;
+        for (int i = 0; i < 2000; i++)
+        {
+            // A spiral of even points over the ball, in the head's own space.
+            float y = 1f - 2f * (i + 0.5f) / 2000f, round = Mathf.Sqrt(1f - y * y), turn = i * 2.39996f;
+            var dir = new Vector3(Mathf.Cos(turn) * round, y, Mathf.Sin(turn) * round);
+            var skin = WizardOutfit.FaceAt + Vector3.Scale(dir, WizardOutfit.FaceSize / 2f);
+            if (skin.y < (cowl ? 0.12f : WizardOutfit.HatCrown + 0.015f) || (cowl && Mathf.Abs(Mathf.Atan2(skin.x, skin.z + HoodAxisBack)) < HoodOpening)) continue;
+            var at = head.TransformPoint(skin);
+            var outward = head.TransformDirection(Vector3.Scale(dir, new Vector3(1f / WizardOutfit.FaceSize.x, 1f / WizardOutfit.FaceSize.y, 1f / WizardOutfit.FaceSize.z))).normalized;
+            if (!shell.Raycast(new Ray(at + outward, -outward), out _, 1f)) through++;
+        }
+        Destroy(shell);
+        return through;
+    }
+
+    // The ball of a head stays inside the hat and the cowl, for many seeds, and a picture of each.
+    IEnumerator HeadwearFits(WizardOutfit outfit, Transform head)
+    {
+        int seed = outfit.Look.Seed, worst = 0, worstSeed = 0;
+        var fit = new System.Collections.Generic.Dictionary<WizardLook.HeadwearKind, int>();
+        for (int i = 2; i <= 200; i++)
+        {
+            // What's worn is in the seed's top bits: each drawn wizard in the one and in the other.
+            int s = i % 2 == 0 ? i / 2 : WizardLook.NextHeadwear(i / 2);
+            outfit.Wear(s);
+            OutfitParts(out var hat);
+            bool cowl = outfit.Look.Headwear == WizardLook.HeadwearKind.Cowl;
+            int through = HeadThrough(hat.GetComponent<MeshFilter>(), head, cowl);
+            if (through > worst) (worst, worstSeed) = (through, s);
+            if (!fit.TryAdd(outfit.Look.Headwear, s)) continue;
+            var w = wizard.transform;
+            foreach (var (name, side) in new[] { ("front", 0f), ("side", 90f) })
+            {
+                var from = Quaternion.AngleAxis(side, Vector3.up) * w.forward;
+                Cut(w.position + from * 1.3f + Vector3.up * 1.75f, w.position + Vector3.up * 1.6f);
+                yield return Wait(0.2f);
+                Shot($"head-{outfit.Look.Headwear}-{name}");
+                yield return null;
+            }
+        }
+        Metric("head_through_worst", worst);
+        Check("head_inside_headwear", worst == 0, $"worst {worst} points of the head out through its headwear, seed {worstSeed}, over 200 seeds, {string.Join(", ", fit.Keys)}");
+        outfit.Wear(seed);
+        yield return Wait(0.2f);
+    }
+
     protected override IEnumerator Run()
     {
         var outfit = wizard.GetComponent<WizardOutfit>();
@@ -76,6 +134,7 @@ public class LookProbe : ProbeScenario
         Check("same_seed_same_look", a.Robe == b.Robe && Mathf.Approximately(a.HatHeight, b.HatHeight) && a.Staff == b.Staff, "seed 12345 twice");
         Check("seeds_differ", a.Robe != c.Robe || !Mathf.Approximately(a.HatHeight, c.HatHeight) || a.Staff != c.Staff, "seeds 12345 and 54321");
 
+        yield return HeadwearFits(outfit, head);
         yield return StaffWalks(outfit);
         // Portraits: the camera in front of the wizard, a few looks.
         var w = wizard.transform;
