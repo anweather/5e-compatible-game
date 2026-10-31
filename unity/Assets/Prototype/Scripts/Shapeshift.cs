@@ -231,7 +231,7 @@ public partial class Shapeshift : MonoBehaviour
     // Green mist where the wizard stands, the spell's own look (SpellVisuals).
     void Puff()
     {
-        var look = TryGetComponent<SpellCaster>(out var caster) && caster.visuals != null ? caster.visuals.For(SpellIds.Shapeshift) : null;
+        var look = TryGetComponent<SpellCaster>(out var caster) ? caster.LookOf(SpellIds.Shapeshift) : null;
         look?.PlayImpact(transform.position + Vector3.up * 0.5f, Quaternion.identity);
     }
 

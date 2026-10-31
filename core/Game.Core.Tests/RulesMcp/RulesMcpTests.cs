@@ -48,6 +48,11 @@ namespace Chem.Tests
         [TestCase("{ 'reactions': { 'add': [ { 'id': 'oil-flood', 'element': 'oil', 'do': [{ 'spreadCover': 9 }] } ] } }", ModCheck.Budget, "Rule oil-flood's spreadCover is 9; the most a mod's rule may give is 3")]
         [TestCase("{ 'critters': [ { 'id': 'ember-newt', 'name': 'Ember newt', 'mode': 'emit', 'element': 'fire', 'every': 1 } ] }", ModCheck.Budget, "Critter ember-newt acts every 1 ticks")]
         [TestCase("{ 'terrain': { 'grass': { 'name': 'Grass', 'tags': ['ground'], 'grow': { 'into': 'sprouts' } } } }", ModCheck.Budget, "terrain sprouts → terrain grass → terrain sprouts change into each other on their own forever")]
+        [TestCase("{ 'terrain': { 'moon': { 'name': 'Moon', 'tags': ['ground'], 'look': { 'family': 'shimmer' } } } }", ModCheck.Looks, "Terrain moon names the look family \"shimmer\", which the view doesn't know; the families for it are block, debris, deck, ground, machine, plant, plate, wall (rules/looks.json).")]
+        [TestCase("{ 'spells': [ { 'id': 'moon-ray', 'group': 'arcane', 'name': 'Moon Ray', 'level': 1, 'shape': 'point', 'element': 'cold', 'look': { 'family': 'laser' } } ] }", ModCheck.Looks, "Spell moon-ray names the look family \"laser\", which the view doesn't know")]
+        [TestCase("{ 'terrain': { 'moon': { 'name': 'Moon', 'tags': ['ground'] } } }", ModCheck.Looks, "Terrain moon has no look, so the view can't draw it; give it a \"look\" naming a family")]
+        [TestCase("{ 'terrain': { 'moon': { 'name': 'Moon', 'tags': ['ground'], 'look': { 'family': 'plant', 'form': 'cactus' } } } }", ModCheck.Looks, "Terrain moon's look family \"plant\" takes a form, one of bush, tree, sapling, stump.")]
+        [TestCase("{ 'gases': { 'spores': { 'name': 'Spores', 'look': { 'family': 'bank' } } } }", ModCheck.Looks, "Gas spores names the look family \"bank\", which the view can't draw from data yet")]
         public void EachCheckRefusesItsBadPatchInOneSentence(string patch, ModCheck check, string sentence)
         {
             var problems = Check(patch);
@@ -61,6 +66,13 @@ namespace Chem.Tests
             var covers = string.Join(", ", Enumerable.Range(1, 13).Select(i => $"'tar{i}': {{ 'name': 'Tar {i}' }}"));
             var problems = Check("{ 'covers': { " + covers + " } }");
             Assert.That(problems.Select(p => p.Message), Has.Some.EqualTo("The mod adds 13 new entries; a mod may add at most 12, so keep it to one idea."));
+        }
+
+        [Test]
+        public void ALooksFractionsAreNotIntegerState()
+        {
+            var problems = Check("{ 'terrain': { 'moon': { 'name': 'Moon', 'tags': ['ground'], 'look': { 'family': 'block', 'height': 1.25 } } } }");
+            Assert.That(problems, Is.Empty, Workbench.Report(problems));
         }
 
         // ---------- simulate ----------

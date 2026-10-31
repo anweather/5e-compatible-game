@@ -211,7 +211,7 @@ public partial class ChemGrid
         RenderHeat(v, c, redressed);
         RenderRust(v, c, redressed);
         float groundTop = GroundTop(x, y, c);
-        float ground = CellDressing.IsDressed(c.T) ? groundTop : groundTop + CellDressing.Look(c.T).height;
+        float ground = CellDressing.IsDressed(World.Rules, c.T) ? groundTop : groundTop + CellDressing.Look(World.Rules, c.T).height;
         var center = CellCenter(x, y);
         bool lake = valley != null && valley.IsLake(c, x, y);
 
@@ -254,10 +254,10 @@ public partial class ChemGrid
         if (from == null) return;
         var at = CellCenter(x, y);
         at.y = GroundTop(x, y, c);
-        if (from == TerrainIds.RustedMetal && c.T == TerrainIds.Metal) BurstFx.Play(BurstFx.Kind.Chips, at, 1f, null, CellDressing.Look(TerrainIds.RustedMetal).color);
+        if (from == TerrainIds.RustedMetal && c.T == TerrainIds.Metal) BurstFx.Play(BurstFx.Kind.Chips, at, 1f, null, CellDressing.Look(World.Rules, TerrainIds.RustedMetal).color);
         if (c.T != TerrainIds.Rubble || !World.Rules.Terrain.TryGetValue(from, out var was) || !was.Has("blocking")) return;
         Dust(at + Vector3.up * 0.4f);
-        BurstFx.Play(BurstFx.Kind.Chips, at + Vector3.up * 0.3f, 1.4f, null, CellDressing.Look(TerrainIds.Rubble).color);
+        BurstFx.Play(BurstFx.Kind.Chips, at + Vector3.up * 0.3f, 1.4f, null, CellDressing.Look(World.Rules, TerrainIds.Rubble).color);
     }
 
     // The cell's dressing and blocker, built again where its ground stands now. A rock wall growing

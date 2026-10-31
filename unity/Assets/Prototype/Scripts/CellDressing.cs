@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using Chem;
 using UnityEngine;
 
@@ -9,34 +8,21 @@ using UnityEngine;
 // log wall in CellDressing.Machines.cs; Plant Growth's saplings and the trees they grow into in CellDressing.Growth.cs. Otherwise trees are the terrain's own trees
 // (ValleyChemistry burns them); grass is the terrain's detail grass. Each
 // cell's dressing is seeded from its position, so a rebuilt one looks the same.
+// What's drawn comes from the terrain's look in the rules in force (a family,
+// its form and parameters: rules/looks.json), never from its id, so a mod's new
+// material draws with no code and no asset.
 //
 // A dressing is an unscaled root at the cell's ground with its parts under it,
 // so ChemGrid can raise or sink the whole thing with the ground (earth shaping,
 // ChemGrid.Shaping.cs) by moving the root.
 public sealed partial class CellDressing
 {
-    static readonly Dictionary<string, (Color color, float height)> TerrainLook = new()
-    {
-        ["bedrock"] = (new Color(0.24f, 0.23f, 0.25f), 1.5f), ["stone"] = (new Color(0.50f, 0.50f, 0.52f), 1.2f),
-        ["pillar"] = (new Color(0.55f, 0.45f, 0.35f), 1.2f), ["rubble"] = (new Color(0.45f, 0.43f, 0.40f), 0.05f),
-        ["dirt"] = (new Color(0.50f, 0.38f, 0.25f), 0f), ["grass"] = (new Color(0.33f, 0.55f, 0.22f), 0f),
-        ["brush"] = (new Color(0.20f, 0.36f, 0.14f), 0.6f), ["tree"] = (new Color(0.16f, 0.38f, 0.15f), 2.2f),
-        ["stump"] = (new Color(0.13f, 0.10f, 0.08f), 0.15f), ["wood"] = (new Color(0.58f, 0.40f, 0.22f), 0f),
-        ["deadfall"] = (new Color(0.32f, 0.23f, 0.15f), 0.4f),
-        ["sprouts"] = (new Color(0.42f, 0.55f, 0.28f), 0f), ["sapling"] = (new Color(0.22f, 0.45f, 0.18f), 0.8f),
-        ["pit"] = (new Color(0.30f, 0.24f, 0.18f), 0f), ["metal"] = (new Color(0.30f, 0.29f, 0.28f), 0.06f),
-        ["rock"] = (new Color(0.47f, 0.45f, 0.42f), 0f), ["brick"] = (new Color(0.55f, 0.27f, 0.19f), 0f),
-        ["rusted-metal"] = (new Color(0.42f, 0.22f, 0.12f), 0.06f), ["mud"] = (new Color(0.24f, 0.17f, 0.10f), 0f),
-        ["sand"] = (new Color(0.86f, 0.77f, 0.56f), 0f), ["glass"] = (new Color(0.73f, 0.87f, 0.89f), 0f),
-        ["pane"] = (new Color(0.66f, 0.82f, 0.88f), 0f), ["gate"] = (new Color(0.3f, 0.29f, 0.28f), 0f),
-        ["gate_open"] = (new Color(0.3f, 0.29f, 0.28f), 0f), ["coil"] = (new Color(0.45f, 0.32f, 0.18f), 0f),
-        ["logwall"] = (new Color(0.4f, 0.27f, 0.16f), 0f), ["worn-logwall"] = (new Color(0.52f, 0.42f, 0.3f), 0f),
-    };
-
-    // Terrains drawn as ground with something standing on it; effects sit on their ground, not on top.
-    static readonly HashSet<string> Dressed = new() { TerrainIds.Tree, TerrainIds.Sapling, TerrainIds.Brush, TerrainIds.Stump, TerrainIds.Rubble, TerrainIds.Deadfall };
-    // Terrains that stand up as a solid block of their own height.
-    static readonly HashSet<string> Blocks = new() { "bedrock", "stone", "pillar" };
+    // The look families this file draws (rules/looks.json), with their forms.
+    const string Block = "block", Plant = "plant", Debris = "debris", Deck = "deck", PlateFamily = "plate", Machine = "machine", Wall = "wall", Ground = "ground";
+    const string Bush = "bush", Sapling = "sapling", Stump = "stump", Rubble = "rubble";
+    const string RustedForm = "rusted", Coil = "coil", GateShut = "gate", GateOpen = "gate-open", Built = "built";
+    // The smoothness of a block whose look doesn't say.
+    const float BlockSmoothness = 0.1f;
 
     readonly ChemGrid grid;
     readonly MaterialCache materials;
@@ -48,12 +34,24 @@ public sealed partial class CellDressing
         this.materials = materials;
     }
 
-    /// <summary>A terrain's base colour and how high it stands; magenta for an unknown terrain.</summary>
-    public static (Color color, float height) Look(string terrain) =>
-        TerrainLook.TryGetValue(terrain, out var l) ? l : (Color.magenta, 0f);
+    /// <summary>A terrain's look in the rules in force (materials.json "look"), or null.</summary>
+    public static LookDef Of(Rules rules, string terrain) =>
+        rules.Terrain.TryGetValue(terrain, out var t) ? t.Look : null;
 
-    /// <summary>True for terrains drawn as ground with something standing on it (tree, brush...).</summary>
-    public static bool IsDressed(string terrain) => Dressed.Contains(terrain);
+    /// <summary>A terrain's base colour and how high it stands, from the rules in force; magenta for a terrain with no look.</summary>
+    public static (Color color, float height) Look(Rules rules, string terrain)
+    {
+        var look = Of(rules, terrain);
+        return look != null ? (ColorOf(look), look.Height) : (Color.magenta, 0f);
+    }
+
+    static Color ColorOf(LookDef look) => new(look.R, look.G, look.B);
+
+    /// <summary>True for terrains drawn as ground with something standing on it (the plant and debris families).</summary>
+    public static bool IsDressed(Rules rules, string terrain) => Of(rules, terrain) is { Family: Plant or Debris };
+
+    /// <summary>Whether Dress draws a terrain family: the check that rules/looks.json and this file agree.</summary>
+    public static bool Draws(string family) => family is Ground or Block or Plant or Debris or Deck or PlateFamily or Machine or Wall;
 
     float CellSize => grid.cellSize;
 
@@ -61,7 +59,8 @@ public sealed partial class CellDressing
     public GameObject Build(Cell c, int x, int y, float ground)
     {
         bool wall = grid.World.IsRaisedWall(c);
-        bool parts = HasParts(c.T) || IsGrownTree(c.T, x, y);
+        var look = Of(grid.World.Rules, c.T);
+        bool parts = HasParts(look) || IsGrownTree(look, x, y);
         bool stone = !wall && SteppingStone(c, x, y);
         if (!wall && !parts && !stone) return null;
         var center = grid.CellCenter(x, y);
@@ -69,63 +68,91 @@ public sealed partial class CellDressing
         var root = new GameObject($"{c.T} {x},{y}");
         root.transform.SetParent(grid.transform, false);
         root.transform.position = surface;
-        if (parts) Dress(root.transform, c.T, Look(c.T), surface, x, y);
+        if (parts) Dress(root.transform, c.T, look, surface, x, y);
         if (wall) DressWall(root.transform, surface, c.Height, x, y);
         if (stone) DressSteppingStone(root.transform, surface, x, y);
         return root;
     }
 
-    static bool HasParts(string terrain) =>
-        terrain == TerrainIds.Brush || terrain == TerrainIds.Sapling || terrain == TerrainIds.Stump || terrain == TerrainIds.Rubble || terrain == TerrainIds.Deadfall ||
-        terrain == TerrainIds.Wood || terrain == TerrainIds.Metal || terrain == TerrainIds.RustedMetal || Blocks.Contains(terrain) ||
-        terrain == TerrainIds.Coil || terrain == TerrainIds.Gate || terrain == TerrainIds.GateOpen || terrain == TerrainIds.WornLogWall;
+    // Everything but flat ground, a wall its house draws and a tree the land drew.
+    static bool HasParts(LookDef look) =>
+        look != null && look.Family != Ground && !look.Baked && !(look.Family == Wall && look.Form == Built);
 
-    void Dress(Transform root, string terrain, (Color color, float height) look, Vector3 surface, int x, int y)
+    void Dress(Transform root, string terrain, LookDef look, Vector3 surface, int x, int y)
     {
         var rng = new System.Random(x * 7919 + y * 104729 + terrain.GetHashCode());
-        switch (terrain)
+        var color = ColorOf(look);
+        switch (look.Family)
         {
-            case TerrainIds.Brush:
-                DressBrush(root, surface, rng, look.color, x, y);
+            case Plant:
+                DressPlant(root, look, color, surface, rng, x, y);
                 break;
-            case TerrainIds.Stump:
-                Part(root, PrimitiveType.Cylinder, surface + Vector3.up * 0.15f, new Vector3(0.45f, 0.15f, 0.45f), "Charred", look.color, 0.05f);
+            case Debris when look.Form == Rubble:
+                DressRubble(root, surface, rng, color);
                 break;
-            case TerrainIds.Sapling:
-            case TerrainIds.Tree:
-                DressTree(root, surface, rng, x, y, terrain == TerrainIds.Sapling);
+            case Debris:
+                DressDeadfall(root, surface, rng, color, x, y);
                 break;
-            case TerrainIds.Rubble:
-                DressRubble(root, surface, rng, look.color);
+            case Deck:
+                DressPlanks(root, surface, color, rng, x, y);
                 break;
-            case TerrainIds.Deadfall:
-                DressDeadfall(root, surface, rng, look.color, x, y);
+            case PlateFamily:
+                DressPlate(root, surface, color, rng, x, y, look.Form == RustedForm);
                 break;
-            case TerrainIds.Wood:
-                DressPlanks(root, surface, look.color, rng, x, y);
+            case Machine when look.Form == Coil:
+                DressCoil(root, surface, color, x, y);
                 break;
-            case TerrainIds.Metal:
-            case TerrainIds.RustedMetal:
-                DressPlate(root, surface, rng, x, y, terrain == TerrainIds.RustedMetal);
+            case Machine:
+                DressGate(root, surface, color, x, y, look.Form == GateOpen);
                 break;
-            case TerrainIds.Coil:
-                DressCoil(root, surface, x, y);
+            case Wall:
+                DressWornLogs(root, surface, color, rng, x, y);
                 break;
-            case TerrainIds.Gate:
-            case TerrainIds.GateOpen:
-                DressGate(root, surface, x, y, terrain == TerrainIds.GateOpen);
-                break;
-            case TerrainIds.WornLogWall:
-                DressWornLogs(root, surface, rng, x, y);
-                break;
-            case TerrainIds.Pillar when grid.BoulderRestsAt(x, y):
+            case Block when grid.BoulderRestsAt(x, y):
                 DressBoulder(root, surface, rng);
                 break;
             default:
-                var block = Part(root, PrimitiveType.Cube, surface + Vector3.up * (look.height / 2f - 0.1f), new Vector3(CellSize, look.height + 0.2f, CellSize), "Stone", look.color);
-                Paint(block.GetComponent<Renderer>(), "Stone", look.color, 0.1f, x, y);
+                DressBlock(root, look, color, surface, x, y);
                 break;
         }
+    }
+
+    void DressPlant(Transform root, LookDef look, Color color, Vector3 surface, System.Random rng, int x, int y)
+    {
+        switch (look.Form)
+        {
+            case Bush:
+                DressBrush(root, surface, rng, color, x, y);
+                break;
+            case Stump:
+                Part(root, PrimitiveType.Cylinder, surface + Vector3.up * 0.15f, new Vector3(0.45f, 0.15f, 0.45f), Tinted("Charred", color, StumpColor), color, 0.05f);
+                break;
+            default:
+                DressTree(root, surface, rng, x, y, look.Form == Sapling);
+                break;
+        }
+    }
+
+    // A block of the look's height, colour, roughness and glow.
+    void DressBlock(Transform root, LookDef look, Color color, Vector3 surface, int x, int y)
+    {
+        float tall = look.Height;
+        var block = Part(root, PrimitiveType.Cube, surface + Vector3.up * (tall / 2f - 0.1f), new Vector3(CellSize, tall + 0.2f, CellSize), "Stone", color);
+        var r = block.GetComponent<Renderer>();
+        bool plain = look.Roughness < 0f && look.Glow <= 0f;
+        if (plain)
+        {
+            Paint(r, "Stone", color, BlockSmoothness, x, y);
+            return;
+        }
+        float smoothness = look.Roughness < 0f ? BlockSmoothness : 1f - look.Roughness;
+        string name = $"Stone {smoothness:0.00}{(look.Glow > 0f ? " glow" : "")}";
+        r.sharedMaterial = materials.Lit(name, Color.white, smoothness, look.Glow > 0f ? Color.black : null);
+        Shade(r, color, x, y);
+        if (look.Glow <= 0f) return;
+        r.GetPropertyBlock(tint);
+        tint.SetColor(EmissionColorId, color * look.Glow);
+        r.SetPropertyBlock(tint);
     }
 
     void DressBrush(Transform root, Vector3 surface, System.Random rng, Color color, int x, int y)
@@ -175,8 +202,18 @@ public sealed partial class CellDressing
     void Paint(Renderer r, string mat, Color color, float smoothness, int x, int y)
     {
         r.sharedMaterial = materials.Lit(mat, Color.white, smoothness);
+        Shade(r, color, x, y);
+    }
+
+    void Shade(Renderer r, Color color, int x, int y)
+    {
         float n = Mathf.PerlinNoise(x * 0.37f + 0.11f, y * 0.37f + 0.53f);
         float jitter = 0.86f + 0.24f * n + 0.04f * (((x * 73856093) ^ (y * 19349663)) & 7) / 7f;
         UrpMaterials.SetColor(r, tint, color * jitter);
     }
+
+    // A shared material's name for a part in a look's colour: its own name in the family's usual
+    // colour, else one for that colour (the cache keeps the first colour a name is asked for).
+    static string Tinted(string name, Color color, Color usual) =>
+        color == usual ? name : $"{name} {ColorUtility.ToHtmlStringRGB(color)}";
 }

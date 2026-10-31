@@ -29,7 +29,7 @@ namespace Chem.Mcp
             RulesDir = rulesDir;
             ModsDir = modsDir ?? Path.Combine(rulesDir, "mods");
             Base = Rules.Load(rulesDir);
-            Budgets = ModBudgets.Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
+            Budgets = ModBudgets.Load(rulesDir);
             BaseDoc = JObject.Parse(Base.ToJson());
             Raw = new Dictionary<string, JToken>(StringComparer.Ordinal);
             foreach (var path in Directory.GetFiles(rulesDir, "*.json").OrderBy(p => p, StringComparer.Ordinal))

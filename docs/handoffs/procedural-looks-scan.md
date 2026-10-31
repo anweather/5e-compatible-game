@@ -1,5 +1,39 @@
 # Procedural looks: scan for id-keyed visuals (phase 2 input)
 
+## Where this stands (2026-10-31, after phase 2)
+
+**Converted:** `CellDressing`'s table and dressing switch (`CellDressing.cs:17-39`, `:79-121`,
+`CellDressing.Machines.cs:105`, `:124`, `CellDressing.Growth.cs:16`) read the terrain's `look`;
+`ChemYardBuilder`'s per-spell table, `SpellVisuals.cs:56`, and the three lookups that borrowed a
+spell's show (`WeatherFx`, `ChemGrid.Whirls`, `Shapeshift`) go through effect families. The tables
+below are the original scan, with line numbers from before that work.
+
+**Still keyed to an id, and what each needs:**
+
+| Place | Id(s) | Needs |
+|---|---|---|
+| `CellPaint` (layer mix per terrain) | every ground terrain | a `paint` parameter on the `ground` family (a layer mix), read instead of the id; until then a mod's new flat ground isn't painted in its colour |
+| `CellDressing.Machines.cs` `SteppingStone` | rock | a `stepping` flag on the look |
+| `ValleyChemistry.FireHeight`, `ChemGrid.Visuals` `RenderCell` | tree, logwall, deadfall | a `flameHeight` and flame scale on the look, or in `burn` |
+| `ChemGrid.Visuals` `TerrainTurned` | rusted-metal to metal | a `chips` parameter on the look |
+| `ChemGrid.Visuals` `LavaHeat`, `CellLavaMesh`, `CellSlickMesh` crust | lava, lava-pool, rock, embers | a `molten` family reading glow and flow |
+| `CellSlickMesh` glaze | mud, glass, brick | a `glaze` parameter (colour, gloss) on the `ground` family |
+| `CellSlickMesh` film | oil, grease, frost | the `slick` family: the covers' looks read for colour and gloss |
+| `CellCrackMesh` | brick | a `cracks` parameter on the look |
+| `CellWaterMesh`, `WaterCurrents` | river | a `water` family with `flow`; the current itself needs a rule, not a look |
+| `CellBlockers` trunk | tree | a `trunk` flag on the `plant` family (a collider's size, not only a look) |
+| `ValleyChemistry.Roofs` | shingle | a default roof in the valley's data |
+| `Burnable`, `PrototypeSceneBuilder` | grass | a prop's label read from the rules |
+| `ChemGrid.Visuals` ash, thorns and vines, `SurfaceEffects` | ash, thorns, vines | the `scorch` and `growth` families |
+| `ChemGrid.Effects`, `FogBank` | steam, smoke, fog, dust, cloud, storm, snowcloud | the `vapour` and `bank` families: one tinted effect and a style read from the gas's look |
+| `SpellCaster.ElementBurst`, `CastImpact`, `BurstFx` | acid, heat, sand, lightning | effect families for these bursts, and `BurstFx`'s size from the spell's numbers rather than the charge alone |
+| `SpellRadialHud`, `HudDraw` | acid-splash, fire, water, earth, air | an `icon` on the element or spell |
+| `ChemGrid.Whirls` | fire, water, sand, smoke, snow | a whirl tint on what it carries |
+| `GameSounds`, `CastSoundTable` | elements | a `sound` family on the element or spell |
+| `SwimStyle`, `SwimPose`, `SpellForces` | water, steam, elements | physics, not looks: `force` rules if a mod is to change them |
+| `CellDressing.Built.cs` plate | a fixed bronze quarter | a second colour on the `plate` family |
+| Hard parts of a form | coil (iron foot, copper wire), tree and sapling (the valley's models), rubble with the terrain pack | take no colour: `rules/looks.json` `params` and `notes` say which do |
+
 Read-only scan for `docs/RULES_MCP.md` phase 2, 2026-10-31 (u1, Linux worker,
 no Unity: grep only, nothing changed). It lists places in
 `unity/Assets/Prototype/Scripts/` where a look or effect is keyed to a
@@ -17,6 +51,8 @@ tests), the probes (`Probe*.cs`), perf scenes, the playtest bot and tests.
 Already data-driven, for comparison: the fire's look (`burn.look` in
 `materials.json`, read by `FireLook.FlamesOf`: flare, wood, oil) is the
 pattern to copy.
+
+## The original scan
 
 ## Terrain
 

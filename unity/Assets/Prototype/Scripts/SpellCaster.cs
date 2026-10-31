@@ -228,7 +228,7 @@ public partial class SpellCaster : MonoBehaviour
         if (def?.Element == AcidElement && grid != null) grid.WatchAcid(cast);
         // A blink shows its mist where the caster leaves as well as where they land.
         if (def?.Effect == SpellShapes.TeleportEffect && look?.impact != null)
-            Destroy(SpellVisuals.Spawn(look.impact, transform.position, Quaternion.identity), look.impactSeconds);
+            look.PlayImpact(transform.position, Quaternion.identity);
         // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
         float release = CastGestures.Of(gesture).release;
         if (beats != null) beats.Announce(spellId, landing, release);
@@ -286,7 +286,7 @@ public partial class SpellCaster : MonoBehaviour
     {
         void Land()
         {
-            look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)));
+            look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)), look.ScaleFor(def, charge));
             ElementBurst(def, landing, charge);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             CastImpact.Landed(def, landing, charge);
@@ -300,7 +300,7 @@ public partial class SpellCaster : MonoBehaviour
             {
                 GameSounds.Play(GameSounds.LandingOf(def), landing);
                 onArrive?.Invoke();
-            }, this);
+            }, this, blastScale: look.ScaleFor(def, charge));
         else Travel(look, def, charge, landing, Land);
     }
 
@@ -333,7 +333,8 @@ public partial class SpellCaster : MonoBehaviour
         }
     }
 
-    SpellVisuals.Entry LookOf(string spellId) => visuals != null ? visuals.For(spellId) : null;
+    /// <summary>A spell's show from the rules in force (SpellVisuals.For), or null.</summary>
+    public SpellVisuals.Entry LookOf(string spellId) => visuals != null ? visuals.For(grid != null ? grid.World?.Rules : null, spellId) : null;
 
     /// <summary>The spell comes down from above (a meteor, a storm) rather than from the hands.</summary>
     public bool FallsFromSky(string spellId) => LookOf(spellId) is { fromSky: true } or { storm: true };

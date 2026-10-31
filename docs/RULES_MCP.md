@@ -53,7 +53,8 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 4. Determinism: integer state only, no new randomness outside the world's seeded RNG.
 5. Budgets: caps on spread rates, chain-reaction depth, new entries per mod, so a mod can't
    flood every cell or stall the tick.
-6. Looks: every new thing names a look family the view already draws procedurally.
+6. Looks: every new terrain and spell names a look family the view already draws, and no entry
+   names an unknown one (`rules/looks.json`). `ModBudgets.Load` carries the list, so rooms check it too.
 
 **Simulate**: `simulate(draft, scenario, ticks)` runs the core headless with the patch on:
 a named scenario (fire on grass, a flood, a storm) or a small described setup. It returns a
@@ -73,10 +74,29 @@ The view must draw any rule from its data:
   flow), never from a hard-coded id;
 - effects (fire, steam, frost, lightning...) are families too, scaled by power and area.
 
-Phase 2 audits the view for anything keyed to a specific id (a `switch` on `"fireball"`, a
-prefab per material) and lists what must become a family. That work needs Unity and goes to the
-host or the Mac; the MCP's `validate` then checks against the family list, so a mod can never
-ask for a look the game can't draw.
+**Where it lives.** The family list is `rules/looks.json`; each material's and spell's own look
+is a `"look"` group on its entry in `materials.json` or `spells.json`. Not `world/looks.json`:
+that's what a theme paints, a different idea. On the entry, because a mod's whole new thing then
+travels as one patch entry, through the same patch format and rule switch. Looks stay out of
+`Rules.Fingerprint`, so the fingerprint didn't move when they were added and a look-only mod
+can't reach the netcode checksum; `Rules.ApplyPatch` keeps the old look when a replacing entry
+doesn't give one, so a mod about numbers doesn't lose its drawing.
+
+**How it redraws.** The view reads looks from `World.Rules` when it draws, so what it draws next
+is from the rules in force on every peer. A switch also redraws what already stands if its
+terrain's look changed (`ChemGrid.RedrawLooks`, from `Announce`, which solo and online share).
+Sizes come from the numbers: cells, flames and craters always did, and a cast's impact scales
+through `EffectScale.Of` (family `scaleBy` and `base`, with the charge).
+
+**Done so far (phase 2):** `CellDressing`'s terrain table and dressing switch, and
+`ChemYardBuilder`'s look per spell. `validate` checks the family list (`ModCheck.Looks`). What's
+still keyed to an id, with what each needs: `docs/handoffs/procedural-looks-scan.md`. Check it with
+`tools/probe.sh looksmod`.
+
+**Limits today.** A `ground`-family material isn't painted in its own colour (`CellPaint` picks
+layers by id), so a mod's new flat ground looks like the land under it; its colour reaches only
+chips. A new cover or gas has no family drawn yet, so it needn't name one, and draws as an unknown
+one always did.
 
 ## Change modes (chosen when a room is made)
 
@@ -108,8 +128,9 @@ switches on), so lockstep holds and we run no servers for it.
 
 1. **Local rules MCP** (Linux worker): read, draft, validate, simulate, save; tests in
    `core/`; every example in `rules/mods/` passes through it unchanged.
-2. **Procedural looks audit** (host or Mac): find id-keyed visuals, define the look and effect
-   families, and confirm that switching a mod on mid-game rescales the view without a rebuild.
+2. **Procedural looks** (Mac): id-keyed visuals found, look and effect families defined, the two
+   biggest tables converted, a mod switched on mid-game rescales the view without a rebuild
+   (`looksmod`). The rest is listed in `docs/handoffs/procedural-looks-scan.md`.
 3. **In the game and live rooms**: the MCP served by the game on localhost, `apply` and
    `revert`, the three change modes chosen at room creation, every peer validating incoming
    changes, the log line per change, a mod gallery.
