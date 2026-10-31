@@ -57,11 +57,12 @@ The one page a new PM session reads first. Keep it short: history goes in
   comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
   cast-sound prototypes for Andrew to pick from before anything is built in.
 - Mac: the Dragon's view is pushed (`dragon-view`, efb186a), not merged: it waits on `probe.sh online`
-  in a normal Editor (DesktopUnity, queued). Every machine rebuilds the yard after it lands. For Andrew,
-  with media first: the model (reads friendly, not ancient), water never shelters (no cell reaches
-  depth 8), a raised Wall of Stone is wiped by the chunk reset before the breath arrives.
+  in a normal Editor (DesktopUnity, queued). Every machine rebuilds the yard after it lands.  Andrew loves it
+  (J-043): +50% scale and a breath particle stream first (Mac), then it ships in 0.1.10 without
+  another review. Still to ask, with media: water never shelters (no cell reaches depth 8); a raised
+  Wall of Stone is wiped by the chunk reset before the breath arrives.
   `dragon-clip` (f07aa3e, the clip probe and the QuickSearch console filter) is stacked on it: land
-  dragon-view first. The Mac is now on rules MCP phase 2, procedural looks (`procedural-looks`).
+  dragon-view first. The Mac does the dragon tweaks, then rules MCP phase 2, procedural looks (`procedural-looks`).
 - Sandbox frozen (210b047; J-042): it reads `sandbox/rules-frozen/`; nothing is ported to it.
 - Rules MCP phase 1 landed (dffbc19; u1, now asleep): `core/Rules.Mcp`, `ModValidator.cs`, budgets in
   `rules/budgets.json`, "Using the rules MCP" in MODDING.md. Unity hasn't compiled ModValidator yet
@@ -91,7 +92,6 @@ He reads it on his phone instead of scrolling the chat. Update it (Artifact `rea
 ## Open questions for Andrew
 
 - The punch knocks a crate only 0.42 m: harder?
-- Unmerged branches to delete: `wip/w1-*`, `wip/w2-*` (their work landed), and about 17 old spikes.
 
 ## Telemetry
 
