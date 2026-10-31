@@ -7,6 +7,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using Playtest;
 using StarterAssets;
+using Unity.Profiling;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
@@ -33,6 +34,9 @@ using UnityEngine.Rendering;
 // Windows mixer instead).
 public class PlaytestBot : MonoBehaviour
 {
+    // PerfScenario reads these, to tell the bot's own cost from the game's.
+    static readonly ProfilerMarker WatchMarker = new("PlaytestBot.LateUpdate"), ShotMarker = new("PlaytestBot.Shot");
+
     const int Fps = 30, ShotWidth = 960, ShotHeight = 540, PropEvery = 15, SoundEvery = 30, HeartbeatEvery = 30;
 
     // Settings, from the command line.
@@ -262,6 +266,7 @@ public class PlaytestBot : MonoBehaviour
     void LateUpdate()
     {
         if (!running) return;
+        using var marked = WatchMarker.Auto();
         // The scene went away under the run (seed 103 on a development build: a reload, every frame
         // after it a NullReferenceException here): stop cleanly with what was found so far.
         if (wizard == null || grid == null)
@@ -363,6 +368,7 @@ public class PlaytestBot : MonoBehaviour
     // shots/<frame>-<label>.jpg and checked for magenta, black and white. Returns its path in the run.
     string Shoot(string label)
     {
+        using var marked = ShotMarker.Auto();
         frameWatch.ShotTaken(frame);
         var cam = Camera.main;
         if (cam == null) return null;
