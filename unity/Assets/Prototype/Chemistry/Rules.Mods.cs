@@ -44,7 +44,8 @@ namespace Chem
         /// A stable hash of these rules: FNV-1a over a canonical form (object keys sorted, numbers
         /// by value, so key order and 3 vs 3.0 don't matter, list order does). Every machine that
         /// applied the same mods in the same order gets the same value, so it can go into the
-        /// netcode checksum next to World.CellHash. Edits made to <see cref="Sim"/> in code are not in it.
+        /// netcode checksum next to World.CellHash. Edits made to <see cref="Sim"/> in code are not in it,
+        /// nor are "look" groups: they are the view's only, so a look can't reach the checksum.
         /// </summary>
         public string Fingerprint => fingerprint ??= Fnv1a.Hash(Canonical(doc));
 
@@ -61,7 +62,7 @@ namespace Chem
             foreach (var table in ModPatch.Tables)
             {
                 if (!(p[table] is JObject entries)) continue;
-                foreach (var entry in entries.Properties()) r[table][entry.Name] = entry.Value.DeepClone();
+                foreach (var entry in entries.Properties()) r[table][entry.Name] = KeepingLook(r[table][entry.Name], entry.Value.DeepClone());
             }
             if (p["reactions"] is JObject rx)
             {
@@ -89,12 +90,19 @@ namespace Chem
                 int i = IndexOf(list, "id", item["id"]);
                 if (i >= 0)
                 {
-                    list[i] = item.DeepClone();
+                    list[i] = KeepingLook(list[i], item.DeepClone());
                     continue;
                 }
                 int at = byElement ? IndexOf(list, "element", item["element"]) : -1;
                 list.Insert(at >= 0 ? at : list.Count, item.DeepClone());
             }
+        }
+
+        /// <summary>A replacement entry that says nothing of its look keeps the old one: a mod about numbers doesn't lose the drawing.</summary>
+        static JToken KeepingLook(JToken old, JToken entry)
+        {
+            if (old?["look"] != null && entry is JObject e && e["look"] == null) e["look"] = old["look"].DeepClone();
+            return entry;
         }
 
         static int IndexOf(JArray list, string key, JToken value)
@@ -133,7 +141,7 @@ namespace Chem
             {
                 case JTokenType.Object:
                     sb.Append('{');
-                    foreach (var p in ((JObject)t).Properties().OrderBy(p => p.Name, StringComparer.Ordinal))
+                    foreach (var p in ((JObject)t).Properties().Where(p => !IsLookGroup(p)).OrderBy(p => p.Name, StringComparer.Ordinal))
                     {
                         WriteString(sb, p.Name);
                         WriteCanonical(sb, p.Value);
@@ -160,6 +168,8 @@ namespace Chem
                     break;
             }
         }
+
+        static bool IsLookGroup(JProperty p) => p.Name == "look" && p.Value is JObject;
 
         static void WriteString(StringBuilder sb, string s) =>
             sb.Append('s').Append(s.Length.ToString(CultureInfo.InvariantCulture)).Append(':').Append(s);

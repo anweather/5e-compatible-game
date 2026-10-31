@@ -25,6 +25,8 @@ namespace Chem
         public double Heat = 1;
         /// <summary>How its fire looks (materials.json "fireLook": flare, wood or oil; null the plain fire). The view's only.</summary>
         public string FireLook;
+        /// <summary>How the view draws it: its look family and parameters (materials.json "look"), or null. The view's only.</summary>
+        public LookDef Look;
         /// <summary>Null when the table leaves it out (code falls back to 5, like the TS).</summary>
         public int? Fuel;
         public string BurnsTo, BreaksTo, BurnLog;
@@ -212,6 +214,8 @@ namespace Chem
     public sealed class SpellDef
     {
         public string Id, Name, Shape, Origin, Element, Blurb;
+        /// <summary>How the view shows a cast: its effect family and colour (spells.json "look"), or null. The view's only.</summary>
+        public LookDef Look;
         /// <summary>The spell radial's element it sits under (groups.json), or null.</summary>
         public string Group;
         /// <summary>False keeps a spell off the Unity game's spell radial (it stays in the rules for mods, tests and the sandbox).</summary>
@@ -751,6 +755,7 @@ namespace Chem
             Flammability = Num(o["flammability"]) ?? 0,
             Heat = Num(o["heat"]) ?? 1,
             FireLook = Str(o["fireLook"]),
+            Look = ParseLook(o["look"]),
             Fuel = Int(o["fuel"]),
             BurnsTo = Str(o["burnsTo"]),
             BreaksTo = Str(o["breaksTo"]),
@@ -858,6 +863,7 @@ namespace Chem
         {
             Id = Str(o["id"]),
             Name = Str(o["name"]) ?? Str(o["id"]),
+            Look = ParseLook(o["look"]),
             Shape = Str(o["shape"]) ?? "point",
             Origin = Str(o["origin"]),
             Element = Str(o["element"]),
@@ -907,6 +913,24 @@ namespace Chem
             LightDim = Int((o["light"] as JObject)?["dim"]) ?? 0,
             Crater = ParseCrater(o["crater"]),
         };
+
+        static LookDef ParseLook(JToken t)
+        {
+            if (!(t is JObject o)) return null;
+            var look = new LookDef { Family = Str(o["family"]), Form = Str(o["form"]) };
+            if (o["color"] is JArray c && c.Count == 3)
+            {
+                look.R = (float)c[0];
+                look.G = (float)c[1];
+                look.B = (float)c[2];
+            }
+            look.Height = (float)(Num(o["height"]) ?? 0);
+            look.Glow = (float)(Num(o["glow"]) ?? 0);
+            look.Roughness = (float)(Num(o["roughness"]) ?? -1);
+            look.Flow = (float)(Num(o["flow"]) ?? 0);
+            look.Baked = Truthy(o["baked"]);
+            return look;
+        }
 
         static CraterDef ParseCrater(JToken t) =>
             t is JObject c ? new CraterDef { Radius = Int(c["radius"]) ?? 1, Depth = Int(c["depth"]) ?? 1, Strength = Int(c["strength"]) ?? 1, Leaves = Str(c["leaves"]) } : null;

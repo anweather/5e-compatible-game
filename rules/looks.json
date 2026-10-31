@@ -1,0 +1,47 @@
+{
+  "about": "The look families (materials) and effect families (casts, fire) the view can draw. A material or spell names one in its own \"look\" group; rules/README.md 'Looks' has the words. View only: nothing here reaches the core's state, the cell hash or the rules fingerprint. A family with \"drawn\": false is named but the view doesn't draw it from data yet; \"needs\" says what's missing, and a mod can't use it until then.",
+  "terrain": {
+    "ground": { "about": "Flat ground, painted by the land; nothing stands on the cell.", "params": ["color", "height"] },
+    "block": { "about": "A solid block of its own height: stone, a pillar.", "params": ["color", "height", "glow", "roughness"] },
+    "plant": { "about": "Something growing on the cell, on its own ground.", "forms": ["bush", "tree", "sapling", "stump"], "params": ["color", "height", "baked"] },
+    "debris": { "about": "What's left lying on the cell.", "forms": ["rubble", "deadfall"], "params": ["color", "height"] },
+    "deck": { "about": "A plank deck on two beams.", "params": ["color"] },
+    "plate": { "about": "A riveted metal plate, shifted off the grid.", "forms": ["iron", "rusted"], "params": ["color", "height"] },
+    "machine": { "about": "A working piece of machinery.", "forms": ["coil", "gate", "gate-open"], "params": ["color"] },
+    "wall": { "about": "A log wall, built by its house or worn thin on its posts.", "forms": ["built", "worn"], "params": ["color"] }
+  },
+  "covers": {
+    "slick": { "drawn": false, "needs": "CellSlickMesh's id checks and colours (oil, grease, frost) read from the cover's look" },
+    "scorch": { "drawn": false, "needs": "CellPaint's and ChemGrid.RenderCover's ash check read from the cover's look" },
+    "ember": { "drawn": false, "needs": "CellLavaMesh's embers check read from the cover's look" },
+    "growth": { "drawn": false, "needs": "ChemGrid's thorns and vines checks to pick CellThorns or CellVines from the cover's look" }
+  },
+  "gases": {
+    "vapour": { "drawn": false, "needs": "ChemGrid.Effects' prefab per gas to become one particle effect tinted from the gas's look" },
+    "bank": { "drawn": false, "needs": "FogBank's style per gas read from the gas's look (colour, height, thickness)" }
+  },
+  "spells": {
+    "hand": { "about": "Only the glow in the caster's hand; the ground or the core draws the rest.", "params": ["color"] },
+    "bolt": { "about": "A shot from the hand and a small burst where it lands.", "projectile": "Fire/FireBall", "impact": "Fire/TinyExplosion", "params": ["color"] },
+    "cone": { "about": "Flame from the hand along a cone.", "impact": "Fire/FlameThrower", "params": ["color"] },
+    "blast": { "about": "A thrown bead and an explosion scaled to the burst's radius.", "projectile": "Fire/FireBall", "impact": "Fire/BigExplosion", "scaleBy": "radius", "base": 2, "params": ["color"] },
+    "meteor": { "about": "A burning rock from the sky, an explosion and dust scaled to the burst's radius.", "projectile": "Fire/FireBall", "impact": "Fire/BigExplosion", "afterImpact": "Fire/DustExplosion", "seconds": 5, "fromSky": true, "scaleBy": "radius", "base": 4, "params": ["color"] },
+    "beam": { "about": "A beam from the hand along the line.", "beam": true, "params": ["color"] },
+    "storm": { "about": "Weather pouring from a low cloud over the burst's cells.", "storm": true, "params": ["color"] },
+    "splash": { "about": "A splash of water scaled to the square.", "impact": "Water/BigSplash", "scaleBy": "size", "base": 2, "params": ["color"] },
+    "spray": { "about": "A spray of goo.", "impact": "Goop/GoopSpray", "params": ["color"] },
+    "sparks": { "about": "Electric sparks where it lands.", "impact": "Misc/ElectricalSparks", "params": ["color"] },
+    "swirl": { "about": "A swirl of air and sand.", "impact": "Misc/SandSwirlsEffect", "params": ["color"] },
+    "shockwave": { "about": "A ring of dust thrown out, scaled to the burst's radius.", "impact": "Fire/DustExplosion", "scaleBy": "radius", "base": 1, "params": ["color"] },
+    "motes": { "about": "Slow lights drifting where it lands.", "impact": "Misc/ParticlesLight", "params": ["color"] },
+    "mist": { "about": "A puff of silver mist.", "impact": "Misc/Respawn", "params": ["color"] },
+    "veil": { "about": "The mist, tinted with the look's colour.", "impact": "Misc/Respawn", "tinted": true, "params": ["color"] },
+    "bloom": { "about": "Motes drifting up from growing things.", "impact": "Misc/FireFlies", "params": ["color"] }
+  },
+  "fire": {
+    "plain": { "about": "The plain flames of a burning cell." },
+    "flare": { "about": "A tall, quick flare (thatch, dry stuff)." },
+    "wood": { "about": "Slow, heavy flames on wood." },
+    "oil": { "about": "Low, wide flames on a film of oil." }
+  }
+}

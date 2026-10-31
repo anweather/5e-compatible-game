@@ -1,0 +1,19 @@
+{
+  "title": "Moonstone",
+  "idea": "A new material drawn by a look family: Moon Frost, or any cold cast as strong, turns bare ground into shining blocks of moonstone. No code, no asset.",
+  "patch": {
+    "terrain": {
+      "moonstone": { "name": "Moonstone", "tags": ["blocking", "trellis"], "break": { "leaves": "rubble" },
+        "look": { "family": "block", "color": [0.62, 0.72, 1], "height": 1.6, "glow": 1.2, "roughness": 0.25 } }
+    },
+    "reactions": {
+      "add": [
+        { "id": "cold-moonstone", "element": "cold", "if": { "notTerrainTag": "blocking", "water": false, "frozen": false, "power": 6 }, "do": [{ "setTerrain": "moonstone" }], "log": "The ground sets into shining moonstone", "notable": true, "stop": true }
+      ]
+    },
+    "spells": [
+      { "id": "moon-frost", "group": "water", "name": "Moon Frost", "look": { "family": "motes", "color": [0.62, 0.72, 1] }, "level": 2, "shape": "burst", "radius": 2, "element": "cold", "power": 6,
+        "blurb": "Level 2. A hush of pale light: the ground where it lands sets into blocks of moonstone that shine in the dark." }
+    ]
+  }
+}
