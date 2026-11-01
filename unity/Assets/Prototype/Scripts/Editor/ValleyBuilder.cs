@@ -1064,7 +1064,7 @@ public static class ValleyBuilder
     // The cabins' materials, made once per build.
     sealed class CabinLook
     {
-        public Material log, roof, stone, door, window;
+        public Material log, gable, roof, stone, door, window;
     }
 
     // Every cabin of ValleyShape.Cabins, the first named "Cabin" and the rest numbered.
@@ -1073,6 +1073,7 @@ public static class ValleyBuilder
         var look = new CabinLook
         {
             log = LogMaterial(),
+            gable = CabinMaterial("Gable", new Color(0.25f, 0.17f, 0.11f), 0.1f),
             roof = CabinMaterial("Roof", new Color(0.24f, 0.2f, 0.18f), 0.1f),
             stone = CabinMaterial("Stone", new Color(0.45f, 0.44f, 0.42f), 0.1f),
             door = CabinMaterial("Door", new Color(0.2f, 0.13f, 0.08f), 0.2f),
@@ -1284,6 +1285,22 @@ public static class ValleyBuilder
             slab.transform.localRotation = Quaternion.LookRotation(downhill);
             slab.name = "Roof";
         }
+
+        // A wall behind the gable logs, so the steps of their ends don't open on the empty cabin and the
+        // roof's underside (issue #47): at each end two boards under the two slopes, meeting in the middle.
+        // Their lower ends run down behind the wall logs. Boards, as a cube can't be a triangle.
+        float underRoof = wallTop + rise + 0.1f - 0.06f / Mathf.Cos(pitch * Mathf.Deg2Rad);
+        float boardLength = (l / 2f + r) / Mathf.Cos(pitch * Mathf.Deg2Rad), boardDrop = l / 2f * Mathf.Sin(pitch * Mathf.Deg2Rad) + 0.05f;
+        for (int end = -1; end <= 1; end += 2)
+            for (int side = -1; side <= 1; side += 2)
+            {
+                var downhill = new Vector3(0f, -Mathf.Sin(pitch * Mathf.Deg2Rad), side * Mathf.Cos(pitch * Mathf.Deg2Rad));
+                var turn = Quaternion.LookRotation(downhill);
+                var middle = new Vector3(end * w / 2f, underRoof, 0f) + downhill * (boardLength / 2f) + turn * Vector3.down * (boardDrop / 2f);
+                var board = Part(root, PrimitiveType.Cube, middle, new Vector3(0.1f, boardDrop, boardLength), look.gable);
+                board.transform.localRotation = turn;
+                board.name = "Gable wall";
+            }
 
         Part(root, PrimitiveType.Cube, new Vector3(0.8f, 1.0f, -l / 2f - 0.17f), new Vector3(1f, 2f, 0.08f), dark);           // door
         Part(root, PrimitiveType.Cube, new Vector3(-1.6f, 1.6f, -l / 2f - 0.17f), new Vector3(0.9f, 0.7f, 0.05f), glow);      // window

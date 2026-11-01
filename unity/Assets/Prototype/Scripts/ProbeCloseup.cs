@@ -131,6 +131,7 @@ public class CloseupProbe : ProbeScenario
         Vector3 P(float x, float y, float z) => t.TransformPoint(x, y, z);
         Teleport(P(0f, 0f, -6f));
         yield return Wait(0.2f);
+        GableClosed(t);
         yield return Look("cabin-wall", P(1.5f, 1.4f, -3.4f), P(1.5f, 1.4f, -2.25f));
         yield return Look("cabin-corner", P(4.6f, 1.5f, -3.6f), P(3f, 1.4f, -2.25f));
         yield return Look("cabin-along", P(3.7f, 1.3f, -3.3f), P(-3f, 1.4f, -2.25f));
@@ -138,6 +139,35 @@ public class CloseupProbe : ProbeScenario
         yield return Look("cabin-gable", P(5.2f, 3f, 0.4f), P(3f, 3.6f, 0f));
         yield return Look("cabin-gable-ground", P(6.6f, 1.7f, 0.6f), P(3f, 3.7f, 0f));
         yield return Look("cabin-end", P(4.6f, 1.2f, 0.2f), P(3f, 1.4f, 0f));
+    }
+
+    // A cabin's width, depth and rise under its ridge, as ValleyBuilder builds it.
+    const float CabinWidth = 6f, CabinLength = 4.5f, CabinWallTop = 2.88f, CabinRise = 1.51f;
+
+    // Lines across the gable end, on a grid under the roof: each must meet something of the cabin's, or it
+    // looks straight in. The parts are boxes and cylinders, so their mesh bounds do.
+    void GableClosed(Transform cabin)
+    {
+        var parts = cabin.GetComponentsInChildren<MeshFilter>().Where(f => f.sharedMesh != null && !f.name.StartsWith("Roof", System.StringComparison.Ordinal)).ToList();
+        int lines = 0, open = 0;
+        for (float y = CabinWallTop + 0.2f; y < CabinWallTop + CabinRise - 0.1f; y += 0.1f)
+        {
+            float half = (CabinLength / 2f) * (1f - (y - CabinWallTop) / CabinRise) - 0.1f;
+            for (float z = -half; z <= half; z += 0.1f)
+            {
+                lines++;
+                bool met = false;
+                for (float x = CabinWidth / 2f - 0.2f; x <= CabinWidth / 2f + 0.2f && !met; x += 0.02f)
+                {
+                    var at = cabin.TransformPoint(x, y, z);
+                    met = parts.Any(f => f.sharedMesh.bounds.Contains(f.transform.InverseTransformPoint(at)));
+                }
+                if (!met) open++;
+            }
+        }
+        Metric("cabin_gable_lines", lines);
+        Metric("cabin_gable_open", open);
+        Check("cabin_gable_closed", lines > 100 && open == 0, $"{open} of {lines} lines across the gable look straight in");
     }
 
     IEnumerator LogHouse()
