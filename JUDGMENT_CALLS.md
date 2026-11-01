@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-055: Is the golden squirrel a feature to build?
+
+- **Asked:** 2026-11-01, Andrew, correcting the PM's brief.
+- **Also comes up when:** any example Andrew gives of what the MCP could do; world tools; spawn tables.
+- **Answer:** no. It's an example of what someone could do through the MCP: "Don't actually hard code it. Let's see if
+  we can make it happen via the existing systems." No squirrel in code or base rules. Prove it by doing it
+  through the MCP, as a mod, and build only the smallest general gap that blocks it.
+- **Why:** the goal is the tools, not the content.
+- **Revisited:** 0.
+
 ### J-054: Which sound is the annoying chime, and what replaces it?
 
 - **Asked:** 2026-10-31 by Andrew ("the little chime thing is super annoying"); answered 2026-11-01.

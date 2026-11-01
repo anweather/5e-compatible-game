@@ -9,6 +9,8 @@ Andrew, 2026-11-01:
 - "We need 'critter spawners' at some point too." (Critter is a retired word: propose the glossary word.)
 - "I wanna think about how we embed a terminal or chat into the game so you can tune from the chat. Users own Claude, but the MCP is setup automatically"
 
+Andrew, correcting this brief, 2026-11-01: "Golden squirrel was an example of something you could do via MCP. Don't actually hard code it. Let's see if we can make it happen via the existing systems" (J-055). So the examples here (the squirrel, the house by the lake) are tests of the tools, never features: no named content in code or base rules. Start from what the rules MCP, mods, looks, `things.json` and the fauna already do, say how far each example gets through them today, step by step, and propose only the smallest general gap that stops it.
+
 Write `docs/design/world-tools.md`, under 200 lines, three parts, each ending in a recommendation and open questions for Andrew:
 
 1. **Editing what's in the world.** What a house, a prop and a creature are today, and where each one's size, colour and pattern come from; which are shared state and which view only. MCP tools to find one by words ("the house by the lake"), change it, undo it, keep it in a mod. How it reaches every peer through commands (lockstep, stable ids: append, never insert) and what a late join and a save see. What needs new view work.
