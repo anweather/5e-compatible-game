@@ -40,7 +40,7 @@ public class MenuProbe : ProbeScenario
             int mods = switcher.Catalog.Mods.Count;
             Metric("mods", mods);
             Check("mods_page_opens", menu.CurrentPage == ModsPanel.PageId && ModsPanel.Open, $"page '{menu.CurrentPage}'");
-            Check("mods_page_lists_mods", mods > 0 && menu.ItemCount == mods + 1, $"{mods} mods, {menu.ItemCount} items (mods and Back)");
+            Check("mods_page_lists_mods", mods > 0 && menu.ItemCount == mods + 2, $"{mods} mods, {menu.ItemCount} items (mods, Play with Claude, Back)");
 
             // A on the first mod switches it on; A again switches it back off.
             string first = switcher.Catalog.Mods[0].Id;
@@ -111,7 +111,7 @@ public class MenuProbe : ProbeScenario
             yield return Frames(3);
 
             // Credits, then back.
-            yield return FocusOn(menu, "Credits");
+            yield return FocusOn(menu, "About and credits");
             menu.Submit();
             yield return Frames(3);
             Check("credits_page_opens", menu.CurrentPage == GameInfoMenu.CreditsPage, $"page '{menu.CurrentPage}'");

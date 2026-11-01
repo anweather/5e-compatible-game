@@ -14,7 +14,7 @@ using UnityEngine;
 // doesn't stall a frame. A web page can't reach it: a request must name this address as
 // its Host, carry JSON, and come from no other Origin (a browser always says one).
 // There's nothing to share or sign in to, and nothing crosses the network here: a change goes
-// out as a room command like any other. It's on by default; the Mods page turns it off, which
+// out as a room command like any other. It's on by default; the Play with Claude page turns it off, which
 // closes the port, and each player's choice is kept (PlayerPrefs, J-047).
 public class RulesMcpServer : MonoBehaviour
 {
@@ -48,7 +48,10 @@ public class RulesMcpServer : MonoBehaviour
     }
 
     /// <summary>The line a player runs once, to add the game to Claude Code; null if it isn't serving.</summary>
-    public static string ConnectLine => Url == null ? null : $"claude mcp add --transport http spell-valley {Url}";
+    public static string ConnectLine => Url == null ? null : AddLine;
+
+    /// <summary>That line, off or on: the address it will have.</summary>
+    public static string AddLine => $"claude mcp add --transport http spell-valley {Url ?? $"http://127.0.0.1:{FirstPort}/mcp"}";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartWithTheGame()
@@ -62,7 +65,11 @@ public class RulesMcpServer : MonoBehaviour
     /// <summary>Runs on the main thread at the next frame.</summary>
     public void Post(Action act) => onMainThread.Enqueue(act);
 
-    void Awake() => Instance = this;
+    void Awake()
+    {
+        Instance = this;
+        gameObject.AddComponent<ClaudeMenu>();
+    }
 
     void Start()
     {

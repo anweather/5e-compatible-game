@@ -136,6 +136,7 @@ public static class PrototypeBuild
         var stamp = ReadStamp();
         File.WriteAllText(Path.Combine(folder, "CREDITS.txt"), Credits.PlainText($"alpha {version} ({stamp.commit})"));
         File.WriteAllText(Path.Combine(folder, "README.txt"), Readme(version, stamp.commit));
+        CopyLicences(folder);
         Zip(folder, name, zip);
 
         var after = DirtyFiles();
@@ -155,6 +156,13 @@ public static class PrototypeBuild
             .Where(l => l.Length > 3 && !(l.StartsWith("??", StringComparison.Ordinal) && l.Contains("_Recovery")))
             .Select(l => l.Substring(3))
             .ToArray();
+    }
+
+    /// <summary>The repo's LICENSE.md and NOTICE.md, beside the exe, so they ship with the game.</summary>
+    public static void CopyLicences(string folder)
+    {
+        string repo = Path.GetFullPath(Path.Combine(Application.dataPath, "..", ".."));
+        foreach (var file in new[] { "LICENSE.md", "NOTICE.md" }) File.Copy(Path.Combine(repo, file), Path.Combine(folder, file), true);
     }
 
     static string Readme(string version, string commit)
