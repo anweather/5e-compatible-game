@@ -62,7 +62,8 @@ public class SpellVisuals : ScriptableObject
         {
             var e = (Entry)MemberwiseClone();
             e.glow = color;
-            e.Tint = own != null ? LookTint.Between(new Color(own[0], own[1], own[2]), color, own.Length > 3 ? own[3] : 0f) : default;
+            float paleWash = own?.Length > 3 ? own[3] : 0f;
+            e.Tint = own != null ? LookTint.Between(new Color(own[0], own[1], own[2]), color, paleWash) : default;
             e.particleShader = shader;
             return e;
         }
