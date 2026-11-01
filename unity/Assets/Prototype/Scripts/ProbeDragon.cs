@@ -210,7 +210,7 @@ public class DragonProbe : ProbeScenario
         ShootTheDragon();
         yield return null;
         TheFit(p);
-        NoGarbage();
+        yield return NoGarbage();
         yield return ScaleFollowsTheData(p);
         yield return StreamSeen("stream", true);
         yield return StreamSeen("below", false);
@@ -246,14 +246,14 @@ public class DragonProbe : ProbeScenario
     }
 
     // A frame's worth of placing the breath, over again: the stream's work is in the shader, and this makes no garbage.
-    void NoGarbage()
+    IEnumerator NoGarbage()
     {
         var flat = Vector3.ProjectOnPlane(view.Way, Vector3.up).normalized;
         var (a, b) = (view.Breath.StreamAt(1f) + Vector3.Cross(Vector3.up, flat) * 100f, view.Breath.StreamAt(1f) - Vector3.Cross(Vector3.up, flat) * 100f);
-        view.Breath.Burn(a, b, -flat, view.Mouth, view.DrawnScale);
-        int clean = RoundsWithoutGarbage(() => view.Breath.Burn(a, b, -flat, view.Mouth, view.DrawnScale), Placings);
-        Metric("burn_clean_rounds", clean);
-        Check("burn_makes_no_garbage", clean > GarbageRounds / 2, $"{clean} of {GarbageRounds} rounds of {Placings} placings left the heap as it was");
+        float made = -1f;
+        yield return GarbagePerCall(() => view.Breath.Burn(a, b, -flat, view.Mouth, view.DrawnScale), Placings, m => made = m);
+        Metric("burn_bytes_a_placing", made);
+        Check("burn_makes_no_garbage", made >= 0f && made < MostGarbage, $"{made:0.00} bytes a placing, over {Placings} a frame");
     }
 
     static float ShadowFor(DragonParams p) =>
