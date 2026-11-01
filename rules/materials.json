@@ -50,23 +50,23 @@
     "chitin":    { "name": "Chitin", "tags": [], "burn": { "status": 9 }, "soak": { "status": 60 }, "conduct": { "chainsWet": true }, "look": { "family": "ground", "color": [0.2, 0.16, 0.14] } }
   },
   "covers": {
-    "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" }, "dissolve": { "by": "acid" }, "float": { "every": 16, "reach": 4 } },
-    "grease":   { "name": "Grease", "tags": ["slippery"], "burn": { "catch": 0.6, "fuel": 7, "intensity": 2, "look": "oil" }, "dissolve": { "by": "acid" } },
-    "ash":      { "name": "Ash", "tags": [], "scour": {} },
-    "snow":     { "name": "Snow", "tags": ["snow"], "speed": 0.85, "melt": { "water": 1 }, "scour": {} },
-    "snowbank": { "name": "Snow bank", "tags": ["snow"], "speed": 0.7, "melt": { "into": "snow", "water": 1 }, "scour": {} },
-    "frost":    { "name": "Frost", "tags": ["slippery"], "lasts": 240, "witherLog": "The frost thaws away", "melt": { "water": 1 }, "scour": {} },
-    "vines":    { "name": "Vines", "tags": ["climbable"], "lasts": 900, "witherLog": "The vines die back and rot away", "burn": { "catch": 0.5, "fuel": 12, "intensity": 2 }, "rot": { "breaks": true }, "scour": {} },
-    "embers":   { "name": "Burning rock", "tags": [], "burn": { "catch": 0.9, "fuel": 30, "intensity": 2 } },
-    "thorns":   { "name": "Thorns", "tags": ["spiky"], "lasts": 360, "witherLog": "The thorns wither away", "damage": [1, 4], "speed": 0.5, "burn": { "catch": 0.5, "fuel": 6, "intensity": 2 }, "dissolve": { "by": "acid" } }
+    "oil":      { "name": "Oil", "tags": ["slippery"], "burn": { "catch": 0.95, "fuel": 10, "intensity": 3, "look": "oil" }, "dissolve": { "by": "acid" }, "float": { "every": 16, "reach": 4 }, "look": { "color": [0.03, 0.028, 0.03] } },
+    "grease":   { "name": "Grease", "tags": ["slippery"], "burn": { "catch": 0.6, "fuel": 7, "intensity": 2, "look": "oil" }, "dissolve": { "by": "acid" }, "look": { "color": [0.62, 0.52, 0.2] } },
+    "ash":      { "name": "Ash", "tags": [], "scour": {}, "look": { "color": [0.35, 0.34, 0.33] } },
+    "snow":     { "name": "Snow", "tags": ["snow"], "speed": 0.85, "melt": { "water": 1 }, "scour": {}, "look": { "color": [0.95, 0.97, 1] } },
+    "snowbank": { "name": "Snow bank", "tags": ["snow"], "speed": 0.7, "melt": { "into": "snow", "water": 1 }, "scour": {}, "look": { "color": [0.95, 0.97, 1] } },
+    "frost":    { "name": "Frost", "tags": ["slippery"], "lasts": 240, "witherLog": "The frost thaws away", "melt": { "water": 1 }, "scour": {}, "look": { "color": [0.8, 0.9, 0.97] } },
+    "vines":    { "name": "Vines", "tags": ["climbable"], "lasts": 900, "witherLog": "The vines die back and rot away", "burn": { "catch": 0.5, "fuel": 12, "intensity": 2 }, "rot": { "breaks": true }, "scour": {}, "look": { "color": [0.2, 0.4, 0.14] } },
+    "embers":   { "name": "Burning rock", "tags": [], "burn": { "catch": 0.9, "fuel": 30, "intensity": 2 }, "look": { "color": [1, 0.1, 0.013] } },
+    "thorns":   { "name": "Thorns", "tags": ["spiky"], "lasts": 360, "witherLog": "The thorns wither away", "damage": [1, 4], "speed": 0.5, "burn": { "catch": 0.5, "fuel": 6, "intensity": 2 }, "dissolve": { "by": "acid" }, "look": { "color": [0.3, 0.33, 0.16] } }
   },
   "gases": {
-    "steam": { "name": "Steam", "scald": 1, "condenseEvery": 2, "condenseAway": 1, "rusts": 4 },
-    "smoke": { "name": "Smoke" },
-    "fog":   { "name": "Fog", "decay": 0.015, "blocksSightAt": 2, "hidesAfter": 12 },
-    "cloud": { "name": "Rain cloud", "decay": 0.03, "rainEvery": 30, "sheds": { "element": "growth", "every": 30, "chance": 0.25 } },
-    "storm": { "name": "Storm cloud", "decay": 0.03, "rainEvery": 20, "blocksSightAt": 3, "sheds": { "element": "lightning", "every": 10, "chance": 0.2 } },
-    "snowcloud": { "name": "Snow cloud", "decay": 0.03, "sheds": { "element": "snow", "every": 15 } },
-    "dust":  { "name": "Dust", "decay": 0.04, "blocksSightAt": 2, "burn": { "flash": { "fire": 3, "push": 2, "log": "The dust goes up in a flash" } } }
+    "steam": { "name": "Steam", "scald": 1, "condenseEvery": 2, "condenseAway": 1, "rusts": 4, "look": { "color": [0.95, 0.97, 1] } },
+    "smoke": { "name": "Smoke", "look": { "color": [0.3, 0.3, 0.32] } },
+    "fog":   { "name": "Fog", "decay": 0.015, "blocksSightAt": 2, "hidesAfter": 12, "look": { "color": [0.86, 0.88, 0.9] } },
+    "cloud": { "name": "Rain cloud", "decay": 0.03, "rainEvery": 30, "sheds": { "element": "growth", "every": 30, "chance": 0.25 }, "look": { "color": [0.46, 0.48, 0.54] } },
+    "storm": { "name": "Storm cloud", "decay": 0.03, "rainEvery": 20, "blocksSightAt": 3, "sheds": { "element": "lightning", "every": 10, "chance": 0.2 }, "look": { "color": [0.13, 0.14, 0.2] } },
+    "snowcloud": { "name": "Snow cloud", "decay": 0.03, "sheds": { "element": "snow", "every": 15 }, "look": { "color": [0.9, 0.93, 0.98] } },
+    "dust":  { "name": "Dust", "decay": 0.04, "blocksSightAt": 2, "burn": { "flash": { "fire": 3, "push": 2, "log": "The dust goes up in a flash" } }, "look": { "color": [0.72, 0.58, 0.38] } }
   }
 }

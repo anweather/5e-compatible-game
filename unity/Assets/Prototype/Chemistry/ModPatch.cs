@@ -67,7 +67,8 @@ namespace Chem
                 if (Present(p, key) && !ok) errors.Add($"\"{key}\" must be {what}");
             }
 
-            Expect("elements", ListOf(p["elements"], JTokenType.String), "a list of names");
+            Expect("elements", ListOf(p["elements"], JTokenType.String) || (p["elements"] is JObject es && es.PropertyValues().All(v => v is JObject)),
+                "a list of names, or an object of entries by id such as {\"fire\": {\"look\": {\"color\": [0.3, 0.5, 1]}}}");
             foreach (var table in Tables.Where(t => t != "components"))
                 Expect(table, p[table] is JObject t && t.PropertyValues().All(v => v is JObject), "an object of entries by id");
             Expect("components", p["components"] is JObject cs && cs.PropertyValues().All(v => v.Type == JTokenType.String), "an object of descriptions by name");
@@ -87,6 +88,17 @@ namespace Chem
             if (Present(rx, "addEntity") && !ListOf(rx["addEntity"], JTokenType.Object)) errors.Add("\"reactions.addEntity\" must be a list of rules");
             if (Present(rx, "remove") && !ListOf(rx["remove"], JTokenType.String)) errors.Add("\"reactions.remove\" must be a list of rule ids");
         }
+
+        /// <summary>
+        /// The elements a patch names: a list of names (new ones join the rules), or entries by id, an
+        /// element's look ({"fire": {"look": ...}}), which adds the element too if it's new.
+        /// </summary>
+        internal static IEnumerable<string> ElementNames(JToken elements) => elements switch
+        {
+            JArray list => list.Where(x => x.Type == JTokenType.String).Select(x => (string)x),
+            JObject entries => entries.Properties().Select(x => x.Name),
+            _ => Enumerable.Empty<string>(),
+        };
 
         static bool Present(JObject o, string key) => o[key] != null && o[key].Type != JTokenType.Null;
         static bool ListOf(JToken t, JTokenType type) => t is JArray a && a.All(x => x.Type == type);

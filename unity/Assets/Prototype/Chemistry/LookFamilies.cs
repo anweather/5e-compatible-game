@@ -44,7 +44,7 @@ namespace Chem
     /// <summary>One family of rules/looks.json.</summary>
     public sealed class LookFamily
     {
-        public string Name, About, Needs;
+        public string Name, About, Needs, Notes;
         /// <summary>Which table it draws: terrain, covers, gases, spells or fire.</summary>
         public string Table;
         public bool Drawn = true;
@@ -90,9 +90,18 @@ namespace Chem
         /// <summary>The tables of rules/looks.json that a mod's entries name a family from.</summary>
         public static readonly string[] Tables = { "terrain", "covers", "gases", "spells" };
 
+        /// <summary>The look keys that aren't parameters: which family draws it, and its variant.</summary>
+        public static readonly string[] Naming = { "family", "form" };
+
         readonly Dictionary<string, Dictionary<string, LookFamily>> tables = new Dictionary<string, Dictionary<string, LookFamily>>(StringComparer.Ordinal);
 
         LookFamilies() { }
+
+        /// <summary>
+        /// looks.json "bare": a look with no family, only a colour. The tables whose entries may give
+        /// one (covers, gases, elements; an element never names a family) and the parameters it takes.
+        /// </summary>
+        public LookFamily Bare { get; private set; } = new LookFamily { Name = "bare" };
 
         public static LookFamilies Load(string rulesDir) => Parse(File.ReadAllText(Path.Combine(rulesDir, "looks.json")));
 
@@ -100,7 +109,12 @@ namespace Chem
         {
             var doc = JObject.Parse(json);
             var looks = new LookFamilies();
-            foreach (var table in doc.Properties().Where(p => p.Value is JObject))
+            if (doc["bare"] is JObject bare)
+            {
+                looks.Bare = ParseFamily("bare", "bare", bare);
+                looks.BareTables = bare["tables"]?.Select(x => (string)x).ToList() ?? new List<string>();
+            }
+            foreach (var table in doc.Properties().Where(p => p.Value is JObject && p.Name != "bare"))
             {
                 var families = new Dictionary<string, LookFamily>(StringComparer.Ordinal);
                 foreach (var f in ((JObject)table.Value).Properties()) families[f.Name] = ParseFamily(table.Name, f.Name, (JObject)f.Value);
@@ -115,6 +129,7 @@ namespace Chem
             Table = table,
             About = (string)o["about"],
             Needs = (string)o["needs"],
+            Notes = (string)o["notes"],
             Drawn = o["drawn"]?.Type != JTokenType.Boolean || (bool)o["drawn"],
             Forms = o["forms"]?.Select(x => (string)x).ToList() ?? new List<string>(),
             Params = o["params"]?.Select(x => (string)x).ToList() ?? new List<string>(),
@@ -129,6 +144,22 @@ namespace Chem
             ScaleBy = (string)o["scaleBy"],
             Base = (float?)o["base"] ?? 1f,
         };
+
+        /// <summary>The tables whose entries may have a bare look (looks.json "bare".tables).</summary>
+        public IReadOnlyList<string> BareTables { get; private set; } = Array.Empty<string>();
+
+        /// <summary>The tables of looks.json with families, in file order.</summary>
+        public IEnumerable<string> TableNames => tables.Keys;
+
+        /// <summary>
+        /// The parameters a look takes: its family's, or the bare look's when it names none and its
+        /// table may have one; null when a family is named that this table doesn't have.
+        /// </summary>
+        public IReadOnlyList<string> ParamsOf(string table, string family)
+        {
+            if (family == null) return BareTables.Contains(table) ? Bare.Params : Array.Empty<string>();
+            return Find(table, family)?.Params;
+        }
 
         /// <summary>A table's families, in name order.</summary>
         public IEnumerable<LookFamily> In(string table) =>

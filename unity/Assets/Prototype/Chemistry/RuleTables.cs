@@ -152,6 +152,8 @@ namespace Chem
         public int? BurnIntensity;
         /// <summary>How its fire looks (materials.json "fireLook"); the view's only.</summary>
         public string FireLook;
+        /// <summary>How the view draws it (materials.json "look": a colour, and a family once one is drawn), or null. The view's only.</summary>
+        public LookDef Look;
         /// <summary>Heat turns it into this cover (materials.json melt.into; null, none) and this much water (melt.water; 0 doesn't melt).</summary>
         public string MeltsTo;
         public int MeltWater;
@@ -198,6 +200,8 @@ namespace Chem
         public string Sheds;
         public int ShedEvery;
         public double ShedChance = 1;
+        /// <summary>How the view draws it (materials.json "look": a colour, and a family once one is drawn), or null. The view's only.</summary>
+        public LookDef Look;
     }
 
     /// <summary>A machine (machines.json): what powers it, how much pressure it builds and holds (steam), the mass that presses it (a plate), and how long a hit holds it (flow, charge, wind).</summary>
@@ -591,6 +595,13 @@ namespace Chem
         readonly List<CellRule> cellRules = new List<CellRule>();
         readonly Dictionary<string, List<CellRule>> byElement = new Dictionary<string, List<CellRule>>();
         readonly Dictionary<string, MachineDef> machines = new Dictionary<string, MachineDef>();
+        readonly Dictionary<string, LookDef> elementLooks = new Dictionary<string, LookDef>();
+
+        /// <summary>
+        /// The rule document's table of element entries (elements.json, and a mod's "elements" given by
+        /// id): each holds only a "look", so the whole table stays out of the fingerprint.
+        /// </summary>
+        internal const string ElementLooksKey = "elementLooks";
         static readonly IReadOnlyList<CellRule> NoRules = Array.Empty<CellRule>();
 
         public IReadOnlyDictionary<string, TerrainDef> Terrain => terrain;
@@ -614,6 +625,12 @@ namespace Chem
         Rules(JObject doc) { this.doc = doc; }
 
         public SpellDef Spell(string id) => spells.FirstOrDefault(s => s.Id == id);
+
+        /// <summary>
+        /// An element's look (elements.json "look": the colour of what it makes in the world, whichever
+        /// spell or reaction made it), or null when it has none. The view's only.
+        /// </summary>
+        public LookDef ElementLook(string element) => element != null && elementLooks.TryGetValue(element, out var look) ? look : null;
 
         /// <summary>The entity with this id, or null.</summary>
         public EntityDef Entity(string id) => id != null && entities.TryGetValue(id, out var e) ? e : null;
@@ -673,6 +690,7 @@ namespace Chem
                 ["groups"] = get("groups.json", false) as JObject ?? new JObject(),
                 ["components"] = get("components.json", false) as JObject ?? new JObject(),
                 ["combos"] = get("combos.json", false) as JObject ?? new JObject(),
+                [ElementLooksKey] = get("elements.json", false) as JObject ?? new JObject(),
             };
         }
 
@@ -716,7 +734,10 @@ namespace Chem
                     Sheds = Str(p.Value["sheds"]?["element"]),
                     ShedEvery = Int(p.Value["sheds"]?["every"]) ?? 0,
                     ShedChance = Num(p.Value["sheds"]?["chance"]) ?? 1,
+                    Look = ParseLook(p.Value["look"]),
                 };
+            foreach (var p in (doc[ElementLooksKey] as JObject ?? new JObject()).Properties())
+                if (ParseLook((p.Value as JObject)?["look"]) is LookDef look) r.elementLooks[p.Name] = look;
             ParseMachines(r, doc["machines"] as JObject ?? new JObject());
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
@@ -841,6 +862,7 @@ namespace Chem
             FloatEvery = Int(o["floatEvery"]) ?? 0,
             FloatReach = Int(o["floatReach"]) ?? 0,
             RotBreaks = Truthy(o["rotBreaks"]),
+            Look = ParseLook(o["look"]),
         };
 
         static int[] Dice(JToken t) => t is JArray d && d.Count >= 2 ? new[] { (int)d[0], (int)d[1] } : Array.Empty<int>();
