@@ -192,7 +192,7 @@ namespace Chem.Mcp
             if (table == "spells" && Str(entry["element"]) is string element)
                 notes.Add($"This colours {Str(entry["name"]) ?? id}'s own show; what its {element} leaves on cells is the {element} element's look (set_look on {element}, table element: it changes every {element}).");
             if (table == "elements")
-                notes.Add($"Every {id} in the world takes it, whichever spell or reaction made it; a spell's own show keeps the spell's look.");
+                notes.Add($"Every {id} in the world takes it, whichever spell or reaction made it, and the show of a spell of its own that chose no colour; one that did keeps its look.");
             return notes.Count == 0 ? "" : " " + string.Join(" ", notes);
         }
 

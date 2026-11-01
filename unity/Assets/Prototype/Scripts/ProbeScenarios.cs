@@ -195,11 +195,12 @@ public static class ProbeScenarios
         new Entry("lookfamilies", typeof(LookFamiliesProbe), 420f,
             "Every effect family, and what the hand family draws, in a colour no spell ships with, set through the rules MCP over HTTP (set_spell look.color, apply, " +
             "revert) with nothing rebuilt; with --shots a film (ClipFilm) with a beat for each. Checks: each cast's show drawn in the look, each revert, no console errors."),
-        new Entry("lookfx", typeof(SpellLookFxProbe), 120f,
+        new Entry("lookfx", typeof(SpellLookFxProbe), 180f,
             "Whether a spell's effects take its look: a Fireball cast by elements as it ships, its colour changed mid-game through the rules MCP over HTTP (set_spell look.color, apply) and a Fireball " +
             "beside it, every stage read and, with --shots, filmed (ClipFilm); then the mod reverted with the blue fire still burning. Checks: orbs, " +
             "bead, burst, debris, flames, embers and fire light blue with the mod and as authored without, a fire spreading keeps the look, the switch " +
-            "redraws what burns, no scene reload, the fingerprint unchanged, no console errors."),
+            "redraws what burns, no scene reload, the fingerprint unchanged; then only the fire element's colour set (set_look) and a Fireball that follows it at every stage, and one that chose " +
+            "green and keeps it among that fire; no console errors."),
         new Entry("blast", typeof(BlastProbe), 40f,
             "Fireball cast from the bar on the meadow east of the yard. Checks: its crater is in the cells (two steps down in the " +
             "middle, one round it), the terrain is drawn at least 0.6 m lower there, the blast's edge burns (burning, or burnt to dirt), no console errors."),

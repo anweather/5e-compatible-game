@@ -3,8 +3,8 @@ using UnityEngine;
 // The loaded elements in the wizard's hands (docs/SPELL_COMBOS.md): a small
 // glowing orb in each, built from two simple spheres, motes drawn in to a
 // hand while it gathers, and a fizzle when a cast is dropped. Each is in its
-// element's colour, turned to the look of the spell they make once it's known
-// (LookTint). Only the show: CastBeats says what's loaded and how it looks, on
+// element's colour in the rules in force, turned to the look of the spell they
+// make once it's known (LookTint, SpellCaster.OrbTint). Only the show: CastBeats says what's loaded and how it looks, on
 // every copy of a wizard.
 public sealed class CastOrbs
 {
@@ -18,7 +18,7 @@ public sealed class CastOrbs
     readonly string[] showing = new string[2];
     readonly ParticleSystem[] motes = new ParticleSystem[2];
     readonly string[] drawing = new string[2];
-    readonly float[] showingTurn = new float[2], drawingTurn = new float[2];
+    readonly Color[] showingColor = new Color[2], drawingColor = new Color[2];
 
     public CastOrbs(Transform owner, CastPose pose)
     {
@@ -77,26 +77,26 @@ public sealed class CastOrbs
     /// <summary>The colour the orb in a hand (0 right, 1 left) is drawn in, for the probe.</summary>
     public Color OrbColor(int i) => materials[i].GetColor("_BaseColor");
 
-    /// <summary>Each frame: which element, if any, is being drawn in to each hand, in <paramref name="tint"/>.</summary>
-    public void Motes(string right, string left, LookTint tint = default)
+    /// <summary>Each frame: which element, if any, is being drawn in to each hand, each in its tint.</summary>
+    public void Motes(string right, string left, LookTint rightTint = default, LookTint leftTint = default)
     {
         if (pose == null) return;
-        Draw(0, right, pose.RightPalm, tint);
-        Draw(1, left, pose.LeftPalm, tint);
+        Draw(0, right, pose.RightPalm, rightTint);
+        Draw(1, left, pose.LeftPalm, leftTint);
     }
 
     void Draw(int i, string element, Vector3 at, LookTint tint)
     {
         motes[i].transform.position = at;
-        if (element == drawing[i] && Mathf.Approximately(tint.Turn, drawingTurn[i])) return;
+        var color = tint.Of(HudDraw.ElementColor(element));
+        if (element == drawing[i] && color == drawingColor[i]) return;
         drawing[i] = element;
-        drawingTurn[i] = tint.Turn;
+        drawingColor[i] = color;
         if (element == null)
         {
             motes[i].Stop(true, ParticleSystemStopBehavior.StopEmitting);
             return;
         }
-        var color = tint.Of(HudDraw.ElementColor(element));
         var main = motes[i].main;
         main.startColor = new ParticleSystem.MinMaxGradient(color, Color.Lerp(color, Color.white, 0.5f));
         motes[i].Play(true);
@@ -104,23 +104,23 @@ public sealed class CastOrbs
 
     /// <summary>
     /// Each frame, after the hands are placed: what's loaded (null for an empty hand) at
-    /// <paramref name="size"/> times the usual, <paramref name="merge"/> of the way between the hands, in <paramref name="tint"/>.
+    /// <paramref name="size"/> times the usual, <paramref name="merge"/> of the way between the hands, each in its tint.
     /// </summary>
-    public void Show(string first, string second, float size, float merge, LookTint tint = default)
+    public void Show(string first, string second, float size, float merge, LookTint firstTint = default, LookTint secondTint = default)
     {
         if (pose == null) return;
         var (right, left) = (pose.RightPalm, pose.LeftPalm);
         var middle = (right + left) / 2f;
-        Hold(0, first, Vector3.Lerp(right, middle, merge), size, tint);
-        Hold(1, second, Vector3.Lerp(left, middle, merge), size, tint);
+        Hold(0, first, Vector3.Lerp(right, middle, merge), size, firstTint);
+        Hold(1, second, Vector3.Lerp(left, middle, merge), size, secondTint);
     }
 
     /// <summary>The dropped elements go out at the hands.</summary>
-    public void Fizzle(string first, string second)
+    public void Fizzle(string first, string second, LookTint firstTint = default, LookTint secondTint = default)
     {
         if (pose == null) return;
-        if (first != null) BurstFx.Play(BurstFx.Kind.Fizzle, pose.RightPalm, 1f, null, HudDraw.ElementColor(first));
-        if (second != null) BurstFx.Play(BurstFx.Kind.Fizzle, pose.LeftPalm, 1f, null, HudDraw.ElementColor(second));
+        if (first != null) BurstFx.Play(BurstFx.Kind.Fizzle, pose.RightPalm, 1f, null, firstTint.Of(HudDraw.ElementColor(first)));
+        if (second != null) BurstFx.Play(BurstFx.Kind.Fizzle, pose.LeftPalm, 1f, null, secondTint.Of(HudDraw.ElementColor(second)));
     }
 
     void Hold(int i, string element, Vector3 at, float size, LookTint tint)
@@ -131,11 +131,11 @@ public sealed class CastOrbs
             showing[i] = null;
             return;
         }
-        if (element != showing[i] || !Mathf.Approximately(tint.Turn, showingTurn[i]))
+        var color = tint.Of(HudDraw.ElementColor(element));
+        if (element != showing[i] || color != showingColor[i])
         {
             showing[i] = element;
-            showingTurn[i] = tint.Turn;
-            var color = tint.Of(HudDraw.ElementColor(element));
+            showingColor[i] = color;
             UrpMaterials.Configure(materials[i], color, null, color * Glow);
         }
         orbs[i].transform.position = at;

@@ -13,7 +13,8 @@ using UnityEngine;
 // chemistry stays in rules/*.json; this is only the show. A show is spawned without
 // colliders (Spawn): some pack effects carry a solid one (the Respawn mist's
 // sphere), which would stand in a Misty Step's way. A look of another hue than
-// its family's own turns the whole show (LookTint), at no cost to the rest.
+// its family's own turns the whole show (LookTint), at no cost to the rest. A
+// spell that chose no colour follows its element's (ColourOf, J-052).
 [CreateAssetMenu(menuName = "Prototype/Spell Visuals")]
 public class SpellVisuals : ScriptableObject
 {
@@ -46,6 +47,10 @@ public class SpellVisuals : ScriptableObject
         public float scaleBase = 1f;
         /// <summary>How far this show is turned from its family's own colour to its spell's look.</summary>
         public LookTint Tint { get; private set; }
+        /// <summary>The spell chose a colour of its own and its show is drawn in it, whatever its element's is.</summary>
+        public bool ChoseColour { get; private set; }
+        /// <summary>The fire it leaves burns in that colour too (ChemGrid.LookFire), not in the element's.</summary>
+        public bool KeepsFire { get; private set; }
 
         [NonSerialized] Shader particleShader;
 
@@ -58,12 +63,14 @@ public class SpellVisuals : ScriptableObject
             !string.IsNullOrEmpty(look?.scaleBy) ? look.ScaleFor(spell, charge) : 1f + 0.5f * (World.ClampCharge(charge) - 1);
 
         /// <summary>This family's show in a spell's colour.</summary>
-        public Entry Colored(Color color, Shader shader = null, float[] own = null)
+        public Entry Colored(Color color, Shader shader = null, float[] own = null, bool chose = false)
         {
             var e = (Entry)MemberwiseClone();
             e.glow = color;
             float paleWash = own?.Length > 3 ? own[3] : 0f;
             e.Tint = own != null ? LookTint.Between(new Color(own[0], own[1], own[2]), color, paleWash) : default;
+            e.ChoseColour = chose && own != null;
+            e.KeepsFire = e.ChoseColour && paleWash <= 0f;
             e.particleShader = shader;
             return e;
         }
@@ -99,27 +106,50 @@ public class SpellVisuals : ScriptableObject
     public static GameObject LastImpact { get; set; }
 
     [NonSerialized] readonly Dictionary<string, Entry> shows = new();
-    [NonSerialized] Rules showsFor;
+    [NonSerialized] Rules showsFor, showsFrom;
     [NonSerialized] LookFamilies looks;
 
     /// <summary>
     /// A spell's show from the rules in force: its family's, in its colour; null with no rules or
     /// no look. Kept for a rule set (the view asks every frame), so a switch gives a new one.
+    /// <paramref name="from"/> is the rules before any mod, which say what's moved (ColourOf); none, nothing has.
     /// </summary>
-    public Entry For(Rules rules, string spellId)
+    public Entry For(Rules rules, string spellId, Rules from = null)
     {
         if (rules == null) return null;
-        if (!ReferenceEquals(rules, showsFor))
+        from ??= rules;
+        if (!ReferenceEquals(rules, showsFor) || !ReferenceEquals(from, showsFrom))
         {
             shows.Clear();
             showsFor = rules;
+            showsFrom = from;
         }
         if (shows.TryGetValue(spellId, out var show)) return show;
-        var look = rules.Spell(spellId)?.Look;
+        var spell = rules.Spell(spellId);
+        var look = spell?.Look;
         var family = look != null ? families.Find(f => f.family == look.Family) : null;
+        if (family == null) return shows[spellId] = null;
         // Read from the file, not this asset, so a family's own colour needs no yard build.
         looks ??= LookFamilies.Load(ChemGrid.FindRulesDir());
-        return shows[spellId] = family?.Colored(new Color(look.R, look.G, look.B), lookParticle, looks.Find("spells", look.Family)?.Own);
+        var color = ColourOf(spell, rules, from, out bool chose);
+        return shows[spellId] = family.Colored(color, lookParticle, looks.Find("spells", look.Family)?.Own, chose);
+    }
+
+    // The colour a spell's show is drawn in (J-052). Every spell ships with a colour, so as the world's colours
+    // do (ChemGrid.WorldLook.cs) this goes by what's moved from the base rules: a spell chose a colour if a mod
+    // gave it one, and a pale one asks for none. One that didn't takes its element's, the one its "element" names,
+    // whichever orbs made it, once that has moved (at once for a new spell, which has no colour to fall back on).
+    // A spell with no element keeps what it has, so the rules as they ship change nothing.
+    static Color ColourOf(SpellDef spell, Rules now, Rules from, out bool chose)
+    {
+        var shipped = from.Spell(spell.Id)?.Look;
+        var own = new Color(spell.Look.R, spell.Look.G, spell.Look.B);
+        Color.RGBToHSV(own, out _, out float saturation, out _);
+        chose = saturation >= LookTint.Pale && !LookDef.SameColor(shipped, spell.Look);
+        if (chose) return own;
+        var element = now.ElementLook(spell.Element);
+        bool follows = element != null && (shipped == null || !LookDef.SameColor(from.ElementLook(spell.Element), element));
+        return follows ? new Color(element.R, element.G, element.B) : own;
     }
 
     /// <summary>
