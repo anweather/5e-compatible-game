@@ -13,7 +13,8 @@ using UnityEngine;
 // walking to the water to drink, lying down to rest, sleeping at night (or by
 // day, for night animals), playing chase with its own kind, and hunting what
 // it hunts (wolves and foxes); prey runs from a hunter, and everything bolts
-// from a wizard who comes too close, and from fire. A wizard in an animal's
+// from a wizard who comes too close, and from fire, milling about if it's
+// cornered. A wizard in an animal's
 // shape (Shapeshift) is one of the animals to them: its own kind and the
 // rest let it be, and what that animal hunts runs from it. They keep to dry,
 // clear, unburnt cells.
@@ -100,6 +101,9 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     /// <summary>An animal's id, the same for as long as it's out (Footprints follows each one by it).</summary>
     public int Id(int index) => creatures[index].id;
 
+    /// <summary>Where an animal is in the list now, by its id, or -1 once it's gone (others leaving shift the list).</summary>
+    public int IndexOf(int id) => creatures.FindIndex(c => c.id == id);
+
     /// <summary>Takes an animal under outside control: it keeps this heading and speed and ignores everything (the probe).</summary>
     public void Puppet(int index, float yaw, float speed)
     {
@@ -107,6 +111,14 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         c.state.Mode = CreatureMode.Puppet;
         c.state.Yaw = yaw;
         c.state.Speed = speed;
+    }
+
+    /// <summary>Gives an animal a home and a leash: it goes no further from there, even running (the probe).</summary>
+    public void Leash(int index, float2 home, float leash)
+    {
+        var c = creatures[index];
+        c.state.Home = home;
+        c.state.Leash = leash;
     }
 
     /// <summary>An animal's species, as its index in the list.</summary>

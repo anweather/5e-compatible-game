@@ -282,6 +282,7 @@ public class ComboProbe : ProbeScenario
         yield return Wait(World.CastOf(me).Total / (float)World.Rules.Sim.TicksPerSecond + 0.3f);
         Check("held_steps_lit", caster.HoldCharge == World.MaxChargeOf(World.ComboOf(World.CastOf(me))), $"charge {caster.HoldCharge}");
         Check("marker_on_the_held_spell", caster.Marker != null && caster.Marker.Kind == AimKind.Rising, $"{caster.Marker?.Kind}");
+        Check("bar_full_while_held", EventLog.CastBarShare > 0.99f, $"the bar at {EventLog.CastBarShare:0.00}");
         Shot("held");
         yield return null;
         yield return null;
