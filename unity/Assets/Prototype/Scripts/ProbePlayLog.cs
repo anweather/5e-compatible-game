@@ -23,7 +23,7 @@ public class PlayLogProbe : ProbeScenario
 
         log.Begin(folder);
         string path = log.FilePath;
-        yield return Wait(2.4f);
+        yield return Wait(6.2f);
 
         long before = System.GC.GetTotalMemory(false);
         for (int i = 0; i < FramesCounted; i++) log.Frame(16.7f);

@@ -269,7 +269,7 @@ public class PlayLog : MonoBehaviour
     string Summary()
     {
         var sorted = everySecond.OrderBy(f => f).ToList();
-        if (sorted.Count == 0) return $"no full second; {file.Path}";
+        if (sorted.Count == 0) return $"under {LoadingSeconds:0} s; {file.Path}";
         float low = sorted[Mathf.Min(sorted.Count - 1, sorted.Count / 100)];
         return $"average {Num(sorted.Average())} fps, 1% low {Num(low)}, worst second {Num(sorted[0])}, over {sorted.Count} s after loading; {hitches} hitches, {marks} marks; {file.Path}";
     }
