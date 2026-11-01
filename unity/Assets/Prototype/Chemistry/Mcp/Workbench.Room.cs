@@ -3,6 +3,8 @@
 // out as a room command in a tick batch and every peer decides it (World.Room.cs).
 // With no desk they run against a world in memory with a room open on it: the command
 // goes straight in and the world steps one tick, which is what a solo game does.
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 using Newtonsoft.Json.Linq;
 
@@ -76,10 +78,38 @@ namespace Chem.Mcp
         {
             var key = Required(draftOrMod, "draft, mod or patch");
             var json = PatchJson(key);
-            var id = key.StartsWith('{') ? IdOf(json) : key;
-            // A draft has no title of its own, and players shouldn't read its id.
-            if (string.IsNullOrWhiteSpace(title) && drafts.ContainsKey(key)) title = "a new mod";
-            return Decide(RoomCommand.Apply(PeerOf(peer), id, json, title));
+            if (!drafts.TryGetValue(key, out var draft))
+                return Decide(RoomCommand.Apply(PeerOf(peer), key.StartsWith('{') ? IdOf(json) : key, json, title));
+            if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A draft needs a title, the name players read in the log; apply it again with one.");
+            var slug = Slug(title);
+            string said = Decide(RoomCommand.Apply(PeerOf(peer), slug.Length > 0 ? slug : draft.Id, json, title.Trim()));
+            return said.Contains(" refused:", System.StringComparison.Ordinal) ? said : said + "\n" + Changes(draft);
+        }
+
+        /// <summary>What a draft does, in a sentence: each entry it holds against the base rules.</summary>
+        public string Changes(Draft draft) => "It changes " + string.Join("; ", draft.Changed.Select(c => ChangeOf(draft, c))) + ".";
+
+        string ChangeOf(Draft draft, string changed)
+        {
+            int space = changed.IndexOf(' ');
+            string table = changed.Substring(0, space), id = changed.Substring(space + 1);
+            if (table == "sim") return $"{id} from {Compact(Raw["sim"].SelectToken(id))} to {Compact(draft.Patch["sim"]?.SelectToken(id))}";
+            if (table == "reactions") return $"a rule, {id}";
+            bool spell = table == "spells";
+            var was = spell ? Raw["spells"].FirstOrDefault(s => Str(s["id"]) == id) : Raw["materials"][table]?[id];
+            var now = spell ? draft.Patch["spells"]?.FirstOrDefault(s => Str(s["id"]) == id) : draft.Patch[table]?[id];
+            if (!(now is JObject entry)) return changed;
+            string name = Str(entry["name"]) ?? id;
+            if (was == null) return $"a new {Single(table)}, {name}";
+            return $"{name}: {string.Join(", ", Differences("", was, entry))}";
+        }
+
+        // Field by field, down through groups: "burn.fuel from 8 to 4".
+        static IEnumerable<string> Differences(string path, JToken was, JToken now)
+        {
+            if (now is JObject group && was is JObject before)
+                return group.Properties().SelectMany(p => Differences(path.Length == 0 ? p.Name : path + "." + p.Name, before[p.Name], p.Value));
+            return JToken.DeepEquals(was, now) ? Enumerable.Empty<string>() : new[] { $"{path} from {Compact(was)} to {Compact(now)}" };
         }
 
         /// <summary>Reverts a mod on in the room (by its id, as room lists it), as <paramref name="peer"/> (the host when left out).</summary>

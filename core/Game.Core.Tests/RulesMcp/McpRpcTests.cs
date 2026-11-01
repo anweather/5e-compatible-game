@@ -41,6 +41,22 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ItTellsAClientToWriteTheChangeItself()
+        {
+            var result = Ask(Rpc(Bench()), "initialize")["result"];
+            Assert.That((string)result["instructions"], Does.Contain("build a new draft"));
+        }
+
+        [Test]
+        public void ASpellDraftSaysFieldByField()
+        {
+            var bench = Bench();
+            var draft = bench.SetSpell(null, "fireball", "radius", "4");
+            Assert.That(bench.Changes(draft), Does.Contain("Fireball: radius from 2 to 4"));
+            Assert.That(bench.Changes(bench.SetMaterial(null, "grass", "burn.fuel", "4")), Does.Contain("Grass: burn.fuel from 8 to 4"));
+        }
+
+        [Test]
         public void ANotificationHasNoAnswer()
         {
             Assert.That(Rpc(Bench()).Handle("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}"), Is.Null);
@@ -98,7 +114,7 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void ADraftWithNoTitleGoesInWithoutItsId()
+        public void ADraftNeedsATitleAndItsAnswerSaysWhatChanged()
         {
             var bench = Bench();
             var desk = new Desk();
@@ -106,10 +122,14 @@ namespace Chem.Tests
             var rpc = Rpc(bench);
             var text = (string)Call(rpc, "tune", new JObject { ["param"] = "fire.spreadChance", ["value"] = "0.2" })["content"][0]["text"];
             string draft = text.Split(' ', '\n', '.', ':', ',').First(w => w.Length > 1 && w[0] == 'd' && char.IsDigit(w[1]));
-            Call(rpc, "apply", new JObject { ["mod"] = draft });
-            Assert.That(desk.Asked[0].Title, Is.EqualTo("a new mod"));
-            Call(rpc, "apply", new JObject { ["mod"] = draft, ["title"] = "Faster fire" });
-            Assert.That(desk.Asked[1].Title, Is.EqualTo("Faster fire"));
+            var refused = Call(rpc, "apply", new JObject { ["mod"] = draft });
+            Assert.That((bool)refused["isError"], Is.True);
+            Assert.That(desk.Asked, Is.Empty);
+            var said = (string)Call(rpc, "apply", new JObject { ["mod"] = draft, ["title"] = "Faster fire" })["content"][0]["text"];
+            Assert.That(desk.Asked[0].Title, Is.EqualTo("Faster fire"));
+            Assert.That(desk.Asked[0].Mod, Is.EqualTo("faster-fire"));
+            Assert.That(said, Does.Contain("It changes fire.spreadChance from"));
+            Assert.That(said, Does.Contain("to 0.2"));
         }
 
         [Test]

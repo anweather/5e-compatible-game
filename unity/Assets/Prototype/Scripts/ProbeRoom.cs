@@ -197,6 +197,8 @@ public abstract class RoomProbe : ProbeScenario
     static string Beside(string name) => Path.Combine(Path.GetDirectoryName(ProbeLink.HostFile), name);
     public static string AskFile => Beside("room-ask.json");
     public static string SeenFile => Beside("room-seen.json");
+    /// <summary>Written when a game is ready for a Claude outside (roomasks).</summary>
+    public static string ReadyFile => Beside("room-ready.json");
 
     protected abstract ChangeMode Mode { get; }
     protected virtual bool StartsWithAMod => true;
@@ -494,7 +496,127 @@ public class RoomClaudeProbe : ProbeScenario
         if (mod == null) yield break;
         yield return Wait(1f);
         Check("line_in_the_log", World.Log.Any(l => l.Text.Contains("switched on")), World.Log.LastOrDefault()?.Text);
+        Check("wrote_a_reaction", mod.Json.Contains("reactions"), mod.Json.Length > 400 ? mod.Json.Substring(0, 400) : mod.Json);
         Metric("fireball_radius", World.Rules.Spell(SpellIds.Fireball).Radius);
+    }
+}
+
+/// <summary>
+/// Three asks no saved mod covers, each written by a real Claude outside as a new mod (seconds=N for all three): a
+/// bigger fireball, grass burning twice as fast, and a new reaction of fire on water. After each, this casts on a stage
+/// of its own and measures what changed against the base rules.
+/// </summary>
+public class RoomAsksProbe : SpellLooksProbe
+{
+    const int GrassSize = 13, PondSize = 9;
+    const float BurnSeconds = 8f;
+
+    protected override IEnumerator Run()
+    {
+        var switcher = grid.GetComponent<RuleSwitcher>();
+        Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
+        var burn = new float[2];
+        yield return Grass(burn);
+        float grassBefore = burn[0], cellBefore = burn[1];
+        Metric("grass_burnt_base", grassBefore);
+        Metric("grass_cell_seconds_base", cellBefore);
+        var gas = new int[1];
+        yield return Pond(gas);
+        int gasBefore = gas[0];
+        Metric("gas_base", gasBefore);
+        Debug.Log("ROOM ASKS: ready");
+        ProbeLink.Write(RoomProbe.ReadyFile, new RoomProbeSeen { id = "ready" });
+
+        float limit = Time.unscaledTime + Mathf.Max(60f, Seconds);
+        yield return NewMod(1, limit, switcher);
+        Check("fireball_bigger", World.Rules.Spell(SpellIds.Fireball).Radius > 2, $"radius {World.Rules.Spell(SpellIds.Fireball).Radius}");
+        var dirt = Spot(14, 14);
+        Patch(dirt, 14, 14, TerrainIds.Dirt);
+        Stage(dirt, 14);
+        yield return Wait(0.3f);
+        caster.Cast(SpellIds.Fireball, dirt.x + 7, dirt.y + 7, 0);
+        yield return Wait(1.6f);
+        Shot("ask-1-fireball");
+        Metric("fire_cells_ask_1", BurningCells());
+        PutOutFires();
+
+        yield return NewMod(2, limit, switcher);
+        yield return Grass(burn);
+        Metric("grass_burnt_ask_2", burn[0]);
+        Metric("grass_cell_seconds_ask_2", burn[1]);
+        Check("grass_burns_faster", burn[0] >= grassBefore * 1.4f, $"{grassBefore} cells burnt out in {BurnSeconds:0} s, then {burn[0]}; a cell took {cellBefore:0.0} s, then {burn[1]:0.0} s");
+
+        yield return NewMod(3, limit, switcher);
+        Check("about_the_steam", World.Room.Mods.Count >= 3 && World.Room.Mods[2].Json.Contains("steam"), World.Room.Mods.Count >= 3 ? World.Room.Mods[2].Json : "none");
+        yield return Pond(gas);
+        Metric("gas_ask_3", gas[0]);
+        Check("fire_on_water_does_more", gas[0] > gasBefore, $"{gasBefore} units of steam on the stage, then {gas[0]}");
+    }
+
+    IEnumerator NewMod(int count, float limit, RuleSwitcher switcher)
+    {
+        while (World.Room.Mods.Count < count && Time.unscaledTime < limit) yield return null;
+        var mod = World.Room.Mods.ElementAtOrDefault(count - 1);
+        Check($"ask_{count}_went_in", mod != null, mod != null ? $"{mod.Title} ({mod.Id})" : "no new mod came on");
+        if (mod == null) yield break;
+        Check($"ask_{count}_is_a_new_mod", switcher.Catalog.Find(mod.Id) == null, mod.Id);
+        yield return Wait(0.6f);
+    }
+
+    void Stage(Vector2Int o, int size)
+    {
+        var mid = grid.CellCenter(o.x + size / 2, o.y + size / 2);
+        mid.y = grid.GroundAt(mid);
+        wizard.transform.position = grid.CellCenter(o.x + size / 2, o.y - 5) + Vector3.up * (mid.y + 0.1f);
+        Cut(mid + new Vector3(0f, 16f, -22f), mid);
+    }
+
+    // Fire set at the middle of fresh grass: how many of its cells have burnt out in the time, and how long the first took.
+    IEnumerator Grass(float[] burnt)
+    {
+        var o = Spot(GrassSize, GrassSize);
+        Patch(o, GrassSize, GrassSize, TerrainIds.Grass);
+        Stage(o, GrassSize);
+        yield return Wait(0.3f);
+        int mid = GrassSize / 2;
+        var first = World.At(o.x + mid, o.y + mid);
+        World.Ignite(first, 3);
+        burnt[1] = BurnSeconds;
+        for (float t = 0f; t < BurnSeconds; t += Time.deltaTime)
+        {
+            if (first.T != TerrainIds.Grass) burnt[1] = Mathf.Min(burnt[1], t);
+            yield return null;
+        }
+        burnt[0] = 0;
+        for (int y = 0; y < GrassSize; y++)
+            for (int x = 0; x < GrassSize; x++)
+                if (World.At(o.x + x, o.y + y).T != TerrainIds.Grass) burnt[0]++;
+        Shot($"grass-{World.Room.Mods.Count}");
+        PutOutFires();
+    }
+
+    // A Fireball on a shallow pond: how much steam is on it soon after.
+    IEnumerator Pond(int[] gas)
+    {
+        var o = Spot(PondSize, PondSize);
+        Patch(o, PondSize, PondSize, TerrainIds.Dirt);
+        for (int y = 0; y < PondSize; y++)
+            for (int x = 0; x < PondSize; x++)
+                World.At(o.x + x, o.y + y).Water = 4;
+        Stage(o, PondSize);
+        yield return Wait(0.3f);
+        caster.Cast(SpellIds.Fireball, o.x + PondSize / 2, o.y + PondSize / 2, 0);
+        yield return Wait(1.8f);
+        gas[0] = 0;
+        for (int y = -3; y < PondSize + 3; y++)
+            for (int x = -3; x < PondSize + 3; x++)
+            {
+                var c = World.At(o.x + x, o.y + y);
+                if (c.Gas == GasIds.Steam) gas[0] += c.GasAmt;
+            }
+        Shot($"pond-{World.Room.Mods.Count}");
+        yield return Wait(0.5f);
+        PutOutFires();
     }
 }
 

@@ -193,7 +193,8 @@ front of you, for everyone in the room. Nothing needs installing. Run this once
 claude mcp add --transport http spell-valley http://127.0.0.1:47777/mcp
 ```
 
-Then ask Claude for a bigger fireball. What goes in is up to the room's change
+Then ask Claude for a bigger fireball. It writes the change itself as a new draft, checks it and
+switches it on with a title, and tells you what it changed; it takes a saved mod only if you name one. What goes in is up to the room's change
 mode, picked in Esc > Play together before hosting: Open, Host only or Locked.
 
 **The tools:**

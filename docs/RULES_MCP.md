@@ -164,7 +164,12 @@ switches on), so lockstep holds and we run no servers for it.
      a request with another Host or Origin, so a web page can't reach it. There's no sign-in: anything
      running as this user on this machine can use it. The Mods page shows the line to add it to Claude, and a switch that closes the port (on by default,
      kept per player, J-047).
-     Probes: `roomopen`, `roomhost`, `roomlocked`, `roommcp`, `roomclaude`, `roomclip`.
+     Asked for something, Claude writes it: the server's instructions and `apply`'s description say to
+     build a draft, `simulate` it where a scenario fits, and apply it with a title; a saved mod only if
+     the player names one. `apply` answers with what the draft changed, field by field, and a draft
+     with no title is refused. Without `simulate`, "grass burns twice as fast" went in as half the
+     fuel, and a fire then died before it spread (`roomasks`).
+     Probes: `roomopen`, `roomhost`, `roomlocked`, `roommcp`, `roomclaude`, `roomasks`, `roomclip`.
 4. **Assets**: not now. Procedural families come first, and may make most of it unnecessary.
 
 ## Open questions

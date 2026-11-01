@@ -22,6 +22,14 @@ namespace Chem.Mcp
 
     public sealed class RulesTools
     {
+        /// <summary>What a client is told when it connects: how to use the tools. Both hosts send it.</summary>
+        public const string Instructions =
+            "These tools change the rules of Spell Chemistry Valley, a game about how spells and materials react. When the player asks for a change, write it yourself: " +
+            "read what's there (list, describe, explain), build a new draft with set_spell, set_material, set_reaction, tune, add_reaction, add_material or add_spell, " +
+            "check it with validate, and where a scenario fits, run simulate and compare the numbers with what the player meant, since a change can do the opposite of what it seems to " +
+            "(less fuel makes a fire spread less). Then apply the draft with a short title the players will read. Numbers are enough: a spell's and a material's looks follow them by themselves. " +
+            "Don't look for a saved mod that's close: use one from rules/mods only when the player names it. After apply, tell the player what changed, from its answer.";
+
         const string DraftHelp = "The draft to add to; leave it out to start a new one. Returns the draft id and the patch so far.";
         const string ValueHelp = "The new value as JSON (0.5, true, \"ash\", [8, 6], {\"catch\": 0.4}); null removes the field.";
 
@@ -53,7 +61,7 @@ namespace Chem.Mcp
 
         // ---------- read ----------
 
-        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines.")]
+        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines. Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
         [RulesTool("describe", ReadOnly = true), Description("The full entry as written in rules/, plus everything in the rules that refers to it. For sim, the id is a dotted path such as fire.spreadChance.")]
@@ -153,10 +161,10 @@ namespace Chem.Mcp
         [RulesTool("room"), Description("The room's change mode (open, host-only or locked) and the mods on in it, in order, with who added each and the tick. With a mode, first makes a new room in that mode, as a room is made (not in a running game, whose mode was chosen when it opened).")]
         public string Room([Description("Optional: open, host-only or locked, to make a new room.")] string mode = null) => Do(() => bench.Room(mode));
 
-        [RulesTool("apply"), Description("Switches a mod on in the room, at the next tick. The room's change mode decides whose changes go in, and the mod is checked first (validate); a refusal comes back as one sentence, and the world log says who changed what.")]
-        public string Apply([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string mod,
+        [RulesTool("apply"), Description("Switches a draft you built on in the room, at the next tick, and says what it changed. Build a draft for what the player asks; pass a saved mod's name only when the player names that mod. The room's change mode decides whose changes go in, and the mod is checked first (validate); a refusal comes back as one sentence, and the world log says who changed what.")]
+        public string Apply([Description("A draft id, or a mod name from rules/mods if the player named it, or the patch JSON.")] string mod,
             [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null,
-            [Description("The name players see in the log, such as Bigger fireballs. Give one for a draft, which has no title of its own.")] string title = null) => Do(() => bench.Apply(mod, peer, title));
+            [Description("The name players read in the log, such as Bigger fireballs. A draft needs one.")] string title = null) => Do(() => bench.Apply(mod, peer, title));
 
         [RulesTool("revert"), Description("Takes a mod off in the room, at the next tick; the other mods stay on, in order. The room's change mode decides who may.")]
         public string Revert([Description("The mod's id, as room lists it.")] string mod,

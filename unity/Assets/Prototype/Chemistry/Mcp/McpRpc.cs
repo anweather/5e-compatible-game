@@ -65,6 +65,7 @@ namespace Chem.Mcp
             ["protocolVersion"] = (string)given["protocolVersion"] ?? LatestProtocol,
             ["capabilities"] = new JObject { ["tools"] = new JObject() },
             ["serverInfo"] = new JObject { ["name"] = name, ["version"] = version },
+            ["instructions"] = RulesTools.Instructions,
         };
 
         static JObject Describe(KeyValuePair<string, MethodInfo> tool)

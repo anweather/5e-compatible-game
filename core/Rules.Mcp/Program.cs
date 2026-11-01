@@ -23,7 +23,7 @@ namespace Chem.Mcp
             var builder = Host.CreateApplicationBuilder(Array.Empty<string>());
             builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
             var tools = new RulesTools(new Workbench(rulesDir), message => new McpException(message));
-            builder.Services.AddMcpServer().WithStdioServerTransport().WithTools(Tools(tools));
+            builder.Services.AddMcpServer(o => o.ServerInstructions = RulesTools.Instructions).WithStdioServerTransport().WithTools(Tools(tools));
             builder.Build().Run();
         }
 

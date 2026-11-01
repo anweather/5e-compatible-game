@@ -19,12 +19,12 @@ namespace Chem.Tests
 
             StringAssert.StartsWith("Ana switched on Big fireball (Open room).", b.Apply("big-fireball", "Ana"));
             var draft = b.Tune(null, "push.slideCells", "5");
-            b.Apply(draft.Id);
+            StringAssert.Contains("It changes push.slideCells from", b.Apply(draft.Id, title: "Longer slides"));
             var room = b.Room();
-            StringAssert.Contains("2 mods on, in order:\n1. Big fireball (big-fireball), added by Ana at tick 0\n2. a new mod (" + draft.Id + "), added by host at tick 1", room);
+            StringAssert.Contains("2 mods on, in order:\n1. Big fireball (big-fireball), added by Ana at tick 0\n2. Longer slides (longer-slides), added by host at tick 1", room);
 
             StringAssert.StartsWith("Bo switched off Big fireball (Open room).", b.Revert("big-fireball", "Bo"));
-            Assert.That(b.RoomNow.Mods.Select(m => m.Id), Is.EqualTo(new[] { draft.Id }));
+            Assert.That(b.RoomNow.Mods.Select(m => m.Id), Is.EqualTo(new[] { "longer-slides" }));
         }
 
         [Test]
