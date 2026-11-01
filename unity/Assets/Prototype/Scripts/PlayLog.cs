@@ -23,6 +23,7 @@ public class PlayLog : MonoBehaviour
     const string OnKey = "playLog.on";
     const string Header = "kind,seconds,clock,fps,worst_ms,over_33,over_50,cpu_main_ms,cpu_render_ms,gpu_ms,weather,chunks,players,mods,what";
     const float HitchMs = 100f, SlowMs = 33f, VerySlowMs = 50f;
+    const float LoadingSeconds = 5f; // the summary leaves these out: the first frame alone can take seconds
     const int EventsASecond = 3, ShotMip = 2;
     const int SectionOrder = 495; // after Controls, before Mods
     static readonly CultureInfo Plain = CultureInfo.InvariantCulture;
@@ -166,7 +167,7 @@ public class PlayLog : MonoBehaviour
     {
         nextSecond = Time.unscaledTimeAsDouble + 1.0;
         float fps = elapsedMs > 0f ? frames * 1000f / elapsedMs : 0f;
-        everySecond.Add(fps);
+        if (Time.unscaledTime - startedAt >= LoadingSeconds) everySecond.Add(fps);
         file.Add(Line("second", fps, over33, over50, Happening()));
         ClearSecond();
     }
@@ -265,6 +266,6 @@ public class PlayLog : MonoBehaviour
         var sorted = everySecond.OrderBy(f => f).ToList();
         if (sorted.Count == 0) return $"no full second; {file.Path}";
         float low = sorted[Mathf.Min(sorted.Count - 1, sorted.Count / 100)];
-        return $"average {Num(sorted.Average())} fps, 1% low {Num(low)}, worst second {Num(sorted[0])}, over {sorted.Count} s; {hitches} hitches, {marks} marks; {file.Path}";
+        return $"average {Num(sorted.Average())} fps, 1% low {Num(low)}, worst second {Num(sorted[0])}, over {sorted.Count} s after loading; {hitches} hitches, {marks} marks; {file.Path}";
     }
 }

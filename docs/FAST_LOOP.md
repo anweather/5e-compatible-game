@@ -207,7 +207,7 @@ Every player build keeps a frame-rate log while it's played, on by default (Esc 
 - macOS: `~/Library/Logs/anweather/Spell Chemistry Valley/`
 
 Read the last line first: `kind` is `summary`, and `what` has the session's average, 1% low and worst second,
-the hitches and marks, and the path. Other lines by `kind`: `second` (one a second: `fps`, `worst_ms`, frames
+the hitches and marks, and the path; it leaves out the first 5 seconds, which are loading. Other lines by `kind`: `second` (one a second: `fps`, `worst_ms`, frames
 `over_33` and `over_50` ms, `cpu_main_ms`, `cpu_render_ms`, `gpu_ms`, `weather`, `chunks`, `players`, `mods`, and
 `what` the world logged that second), `hitch` (a frame over 100 ms, in `worst_ms`; with its top markers in a
 development build) and `mark` (F8, "that felt bad", beside its `<log>-mark-N.jpg`). `-no-play-log` starts a
