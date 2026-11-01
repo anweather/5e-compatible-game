@@ -85,6 +85,16 @@ to whatever burns there. A look-scoped `where` wins over the element's colour, n
 spell chose. It goes through the room as a mod, like any look: view only, out of the fingerprint,
 revertable. If the player named by `around` leaves, that look lapses.
 
+**By player: "make the fire I create blue", "each player a different colour".** Andrew added "or any
+effect". A third field, **`by`**: `{ "by": "me" }`, a player's slot, or `{ "by": "each", "mix": [...] }`,
+one colour per slot in join order. Most of it exists: `ChemGrid.LookFire` already notes which spell
+lit which cell, and a new fire catches that note from its neighbour. The note gains who cast it, so a
+player's fire keeps their colour as it spreads. The same note extends from fire to whatever else a
+cast leaves (gases, covers), and a cast's own effects read the look directly. Order, strongest first:
+`by`, a spell's own colour, `where`, the element's colour. It's a view note: peers agree near
+enough, and two can differ at the edge of a fire (J-052). So it's a look, not a fact: "whose fire
+burnt this" can't score or reward anyone without new core state, and that's not proposed.
+
 **Cost:** a moving scope must touch only the cells at its edge each frame, within a budget. It can't
 use the world-wide rule switch `look-switch` is timing. The test is "make the fire near me
 green" asked of Claude, then walking through a burning forest at the lag fix's numbers.
