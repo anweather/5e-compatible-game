@@ -10,6 +10,7 @@
 #   tools/ship-update.sh 0.1.3 --skip-build # pack and upload what Builds/Update already holds
 #   tools/ship-update.sh 0.1.3 --windows-only # no macOS (the PC's half of a release)
 #   tools/ship-update.sh 0.1.3 --mac-only     # no Windows (the Mac's half of a release)
+#   tools/ship-update.sh 0.1.3 --linux-only   # the Linux zip for the same release (J-051)
 #
 # A release can be built in two halves on two machines from the same commit
 # (J-025): each uploads only its own platform's files into the one draft. The
@@ -21,6 +22,11 @@
 # loop never reaches players or a real install on the same machine. Needs: the Unity
 # Editor open on this project (clean tree, the commit to ship checked out),
 # vpk (dotnet tool install -g vpk) and gh signed in.
+#
+# --linux-only is the other way round: it builds in batch mode, so no Editor may
+# be open on this project, and needs neither vpk nor a Velopack channel. Linux
+# players download each release: SpellChemistryValley-linux-x64.zip goes into the
+# same draft and there are no in-place updates. It takes about 50 minutes.
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")/.." && pwd)"
@@ -31,28 +37,32 @@ VPK="${VPK:-$(command -v vpk || echo "$HOME/.dotnet/tools/vpk")}"
 { [ -x "$HOME/.dotnet/dotnet" ] || [ -x "$HOME/.dotnet/dotnet.exe" ]; } && export DOTNET_ROOT="${DOTNET_ROOT:-$HOME/.dotnet}"
 export UNITY_NO_BANNER=1 UNITY_NO_PAGER=1 UNITY_NON_INTERACTIVE=1
 export UNITY_PROJECT_PATH="${UNITY_PROJECT_PATH:-$here/unity}"
+# The Editor itself, for batch mode (--linux-only): the wrapper above talks to an open one.
+UNITY_BIN="${UNITY_BIN:-/Applications/Unity/Hub/Editor/$(sed -n 's/^m_EditorVersion: //p' "$UNITY_PROJECT_PATH/ProjectSettings/ProjectVersion.txt")/Unity.app/Contents/MacOS/Unity}"
 REPO=https://github.com/anweather/5e-compatible-game
 APP_ID=SpellChemistryValley
 TITLE="Spell Chemistry Valley"
 
 version="${1:-}"
 if ! [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-  echo "usage: tools/ship-update.sh X.Y.Z [--test] [--skip-build] [--windows-only | --mac-only]" >&2
+  echo "usage: tools/ship-update.sh X.Y.Z [--test] [--skip-build] [--windows-only | --mac-only | --linux-only]" >&2
   exit 2
 fi
 shift
-test=0; build=1; mac=1; win=1
+test=0; build=1; mac=1; win=1; linux=0
 for arg in "$@"; do
   case "$arg" in
     --test) test=1 ;;
     --skip-build) build=0 ;;
     --windows-only) mac=0 ;;
     --mac-only) win=0 ;;
+    --linux-only) mac=0; win=0; linux=1 ;;
     *) echo "unknown option: $arg" >&2; exit 2 ;;
   esac
 done
-if [ $mac = 0 ] && [ $win = 0 ]; then echo "--windows-only and --mac-only together leave nothing to ship" >&2; exit 2; fi
-case "$mac$win" in 11) platforms="macOS and Windows" ;; 10) platforms=macOS ;; *) platforms=Windows ;; esac
+if [ $mac = 0 ] && [ $win = 0 ] && [ $linux = 0 ]; then echo "--windows-only and --mac-only together leave nothing to ship" >&2; exit 2; fi
+if [ $test = 1 ] && [ $linux = 1 ]; then echo "--linux-only has no test channel" >&2; exit 2; fi
+case "$mac$win" in 11) platforms="macOS and Windows" ;; 10) platforms=macOS ;; 01) platforms=Windows ;; *) platforms=Linux ;; esac
 
 if [ $test = 1 ]; then
   # Its own app id too: test installs get their own install folder and update cache,
@@ -105,7 +115,7 @@ check_draft() {
 step "Checking the release $tag"
 check_draft
 
-if [ $build = 1 ]; then
+if [ $build = 1 ] && [ $linux = 0 ]; then
   step "Building $version for $platforms at ${commit:0:7}"
   # Pick up the checked-out code before building (a build on stale code rewrites assets).
   "$UNITY" command eval 'UnityEditor.AssetDatabase.Refresh(); return "refreshed";' --result-only >/dev/null
@@ -114,6 +124,34 @@ if [ $build = 1 ]; then
   result=$("$UNITY" command eval "return UpdateBuild.Players(\"$version\", $([ $mac = 1 ] && echo true || echo false), $([ $win = 1 ] && echo true || echo false));" --result-only --timeout 3600)
   echo "$result" | grep -o '"result": *"[^"]*"' || echo "$result"
   echo "$result" | grep -q 'Update build: OK' || { echo "build failed" >&2; exit 1; }
+fi
+
+linux_dir="$UNITY_PROJECT_PATH/Builds/Linux"
+linux_zip="$out/SpellChemistryValley-linux-x64.zip"
+if [ $build = 1 ] && [ $linux = 1 ]; then
+  step "Building $version for Linux at ${commit:0:7} (batch mode, about 50 minutes)"
+  mkdir -p "$out"
+  rm -rf "$linux_dir"
+  log="$out/linux-build.log"
+  "$UNITY_BIN" -batchmode -nographics -quit -projectPath "$UNITY_PROJECT_PATH" -buildTarget Linux64 \
+    -executeMethod LinuxBuild.FromCommandLine -rebuild-yard -build-version "$version" \
+    -expect-commit "${commit:0:7}" -logFile "$log" \
+    || { echo "Unity stopped with an error (is an Editor open on this project?): $log" >&2; exit 1; }
+  grep -q 'HEADLESS BUILD: OK' "$log" || { echo "build failed: $log" >&2; exit 1; }
+fi
+
+if [ $linux = 1 ]; then
+  step "Zipping $version for Linux"
+  # The host turns away a player whose stamp differs, so a stale folder (--skip-build) mustn't ship.
+  stamp="$linux_dir/SpellChemistryValley_Data/StreamingAssets/build.json"
+  [ -f "$stamp" ] || { echo "no Linux build at $linux_dir" >&2; exit 1; }
+  grep -q "\"version\": *\"$version\"" "$stamp" && grep -q "\"commit\": *\"${commit:0:7}\"" "$stamp" \
+    || { echo "the Linux build isn't $version at ${commit:0:7}: $(cat "$stamp")" >&2; exit 1; }
+  chmod +x "$linux_dir/SpellChemistryValley.x86_64"
+  cp "$here/LICENSE.md" "$here/NOTICE.md" "$linux_dir/"
+  sed "s/{VERSION}/$version/g" "$here/tools/README-LINUX.txt" > "$linux_dir/README-LINUX.txt"
+  rm -f "$linux_zip"
+  (cd "$linux_dir" && zip -qrX "$linux_zip" . -x '*_DoNotShip/*' '*.DS_Store')
 fi
 
 pack() { # channel, extra vpk args...
@@ -135,7 +173,8 @@ pack() { # channel, extra vpk args...
 step "Uploading to $tag"
 check_draft
 channels=(); [ $mac = 0 ] || channels+=("osx$suffix"); [ $win = 0 ] || channels+=("win$suffix")
-for channel in "${channels[@]}"; do
+# (The odd expansion: bash 3.2 on macOS calls an empty array unbound under set -u.)
+for channel in ${channels[@]+"${channels[@]}"}; do
   dir="$out/releases-$channel"
   # The feed plus what this pack made (assets.<channel>.json lists it: the full and
   # delta packages, the installer, the portable zip). Package names differ by
@@ -146,6 +185,11 @@ for channel in "${channels[@]}"; do
   echo "$channel: ${files[*]##*/}"
   gh release upload "$tag" -R "$REPO" --clobber "${files[@]}"
 done
+
+if [ $linux = 1 ]; then
+  echo "linux: ${linux_zip##*/}"
+  gh release upload "$tag" -R "$REPO" --clobber "$linux_zip"
+fi
 
 step "Done"
 echo "$REPO/releases/tag/$tag"
