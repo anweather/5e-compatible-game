@@ -140,6 +140,12 @@ namespace Chem
             return null;
         }
 
+        /// <summary>Whether what draws this entry can only turn its art's hue (flames, smoke, steam; a spell's show).</summary>
+        public bool OnlyTurns(string table, string id, LookFamily family) => turnsOnly.Contains(id) || (table == "spells" && family?.Own != null);
+
+        /// <summary>Whether a colour is too pale or grey to turn a hue to.</summary>
+        public static bool IsPale(LookColour c) => Saturation(new[] { c.R, c.G, c.B }) < PaleSaturation;
+
         static float Apart(float a, float b)
         {
             float d = Math.Abs(a - b);

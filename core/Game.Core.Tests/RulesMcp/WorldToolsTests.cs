@@ -90,7 +90,7 @@ namespace Chem.Tests
             var seen = new HashSet<string>();
             foreach (var (x, y) in village.Cells()) seen.Add(fire.At(x, y, null).ToString());
             Assert.That(seen.Count, Is.EqualTo(3), "three colours over the village");
-            StringAssert.Contains($"Scoped, within 20 cells of the place {village.Id}: [1, 0.251, 0.125] 25%, [0.125, 0.314, 1] 25%, [0.188, 0.816, 0.251] 50%.", b.Describe("elements", "fire", d.Id));
+            StringAssert.Contains($"Scoped, within 20 cells of the place {village.Id}: [1, 0.251, 0.125] 25%, [0.125, 0.314, 1] 25%, [0.188, 0.816, 0.251] 50%, a patchwork.", b.Describe("elements", "fire", d.Id));
         }
 
         [Test]
@@ -131,7 +131,7 @@ namespace Chem.Tests
             StringAssert.StartsWith("There is no place called atlantis; the places are ", missing);
             StringAssert.Contains("lake", missing);
             StringAssert.Contains("can't hold in one place", Refusal(b, "fireball", "color", "[0, 1, 0]", "{\"place\": \"lake\"}"));
-            StringAssert.Contains("only color or mix", Refusal(b, "stone", "height", "2", "{\"place\": \"lake\"}"));
+            StringAssert.Contains("only color, mix or blend", Refusal(b, "stone", "height", "2", "{\"place\": \"lake\"}"));
             StringAssert.Contains("within is at most 64 cells", Refusal(b, "fire", "color", "[0, 1, 0]", "{\"place\": \"lake\", \"within\": 500}"));
             StringAssert.Contains("names one of place, at or around", Refusal(b, "fire", "color", "[0, 1, 0]", "{\"within\": 5}"));
             StringAssert.Contains("has no one to follow", Refusal(Bench(standIn: false), "fire", "color", "[0, 1, 0]", "{\"around\": \"me\", \"within\": 5}"));
@@ -203,11 +203,48 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AMixCanBlendLikePaint()
+        {
+            var b = Bench();
+            var d = Look(b, "fire", "mix", "[\"#0000ff\", \"#ffff00\"]");
+            b.SetLook(d.Id, "fire", "blend", "true", null, out var said);
+            Assert.That((bool)d.Patch["elements"]["fire"]["look"]["blend"], Is.True);
+            Assert.That(Workbench.Report(b.Validate(d.Id)), Does.StartWith("No problems"));
+            var fire = LookScopes.Compile(With(b, d), b.Places).Of("elements", "fire").At(3, 4, null);
+            Assert.That(fire.G, Is.GreaterThan(fire.R).And.GreaterThan(fire.B), "blue and yellow blend green");
+            StringAssert.Contains("blended like paint into [0, 1, 0]", b.Describe("elements", "fire", d.Id));
+            StringAssert.Contains("give the look a mix first", Assert.Throws<RulesToolException>(() => Look(b, "smoke", "blend", "true", table: "gas")).Message);
+            var s = Look(b, "fire", "mix", "[[0, 0, 1], [1, 1, 0]]", "{\"place\": \"lake\"}");
+            Look(b, "fire", "blend", "true", "{\"place\": \"lake\"}", s.Id);
+            Assert.That((bool)s.Patch["elements"]["fire"]["look"]["scoped"][0]["blend"], Is.True, "a scoped mix blends too");
+            StringAssert.Contains("can't blend", Assert.Throws<RulesToolException>(() => b.SetLook(null, "fire", "blend", "true", null, out _, (null, "each"))).Message);
+            said = Workbench.Report(b.Validate("{\"elements\": {\"fire\": {\"look\": {\"color\": [1, 0, 0], \"blend\": true}}}}"));
+            StringAssert.Contains("look.blend needs a mix", said);
+        }
+
+        [Test]
+        public void SetLookSaysWhenAMixOnFlamesIsPale()
+        {
+            var b = Bench();
+            b.SetLook(null, "fire", "mix", "[[1, 0.9, 0.85], [0.85, 0.9, 1]]", null, out var said);
+            StringAssert.Contains("In the mix, [1, 0.9, 0.85] and [0.85, 0.9, 1] are pale: fire can only turn its hue", said);
+            var d = b.SetLook(null, "fire", "mix", "[[1, 0.55, 0.45], [0.45, 0.6, 1]]", null, out said);
+            StringAssert.DoesNotContain("pale", said, "each colour shows as a patchwork");
+            b.SetLook(d.Id, "fire", "blend", "true", null, out said);
+            StringAssert.Contains("The mix blends to", said);
+            StringAssert.Contains("which is pale: fire can only turn its hue, so it shows as the nearest hue", said);
+            b.SetLook(null, "stone", "mix", "[[0.5, 0.5, 0.5], [0.6, 0.6, 0.6]]", null, out said);
+            StringAssert.DoesNotContain("pale", said, "stone is painted, not turned");
+        }
+
+        [Test]
         public void TheInstructionsMakeScopedAndMixedAsksClear()
         {
             StringAssert.Contains("\\\"Make the fire near me green\\\" is set_look fire color green with where {\\\"around\\\": \\\"me\\\", \\\"within\\\": 10}".Replace("\\", ""), RulesTools.Instructions);
             StringAssert.Contains("Fire round the village in three colours", RulesTools.Instructions);
             StringAssert.Contains("places (or here)", RulesTools.Instructions);
+            StringAssert.Contains("Colours mix like paint: blue and yellow give green", RulesTools.Instructions);
+            StringAssert.Contains("set_look fire blend true", RulesTools.Instructions);
             StringAssert.Contains("each player gets their own fire colour\\\" is set_look fire mix [one colour per player, as many as may play] with by \\\"each\\\"".Replace("\\", ""), RulesTools.Instructions);
             StringAssert.Contains("make the fire I create blue\\\" is set_look fire color blue with by \\\"me\\\"".Replace("\\", ""), RulesTools.Instructions);
         }

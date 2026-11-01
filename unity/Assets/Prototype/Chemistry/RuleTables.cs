@@ -979,10 +979,10 @@ namespace Chem
             look.Roughness = (float)(Num(o["roughness"]) ?? -1);
             look.Flow = (float)(Num(o["flow"]) ?? 0);
             look.Baked = Truthy(o["baked"]);
-            look.Mix = LookMix.Parse(o["mix"]);
+            look.Mix = LookMix.Parse(o["mix"], ScopedLook.IsTrue(o["blend"]));
             look.Scoped = ScopedLook.ParseAll(o["scoped"]);
             if (o["mix"] != null || o["scoped"] != null)
-                look.Extra = new JObject { ["mix"] = o["mix"]?.DeepClone(), ["scoped"] = o["scoped"]?.DeepClone() }.ToString(Newtonsoft.Json.Formatting.None);
+                look.Extra = new JObject { ["mix"] = o["mix"]?.DeepClone(), ["blend"] = o["blend"]?.DeepClone(), ["scoped"] = o["scoped"]?.DeepClone() }.ToString(Newtonsoft.Json.Formatting.None);
             return look;
         }
 

@@ -309,7 +309,8 @@ that long, and doesn't march.
 **Scoped look**
 : A colour or a mix that holds only round a place, a cell or a player
   (`"scoped"`: `where` and `color` or `mix`), on an element, cover, gas or
-  terrain. The latest covering a cell wins, its edge blends over three cells,
+  terrain. Where several cover a cell they mix like paint (**colour
+  mixing**, `Colors.Mix`: blue and yellow give green), its edge blends over three cells,
   and elsewhere the plain look holds. Worked out when drawn
   (`CellLook.At`), not stored on the cell, so a fire leaving the scope changes
   back. A spell's own colour still wins (J-052). *Not* a theme's look.

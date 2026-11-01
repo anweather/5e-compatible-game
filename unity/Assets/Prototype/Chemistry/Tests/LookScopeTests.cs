@@ -35,8 +35,8 @@ namespace Chem.Tests
         static void Same(LookColour got, LookColour want, string why = null) =>
             Assert.That(got.Near(want), Is.True, $"{why}: got {got}, want {want}");
 
-        static LookColour Lerp(LookColour a, LookColour b, float t) =>
-            new LookColour(a.R + (b.R - a.R) * t, a.G + (b.G - a.G) * t, a.B + (b.B - a.B) * t);
+        // A scope's edge mixes into the plain look like paint (Colors), t of the way to the scope's colour.
+        static LookColour Lerp(LookColour a, LookColour b, float t) => Colors.Mix(a, b, t);
 
         [Test]
         public void AScopeHoldsInsideAndBlendsOverItsEdge()
@@ -67,18 +67,104 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void WhereScopesOverlapTheLatestWins()
+        public void WhereScopesOverlapTheyMixLikePaint()
         {
-            var fire = Fire(FireLook("[{ 'where': { 'at': [50, 50], 'within': 6 }, 'color': [0.2, 0.9, 0.3] }, { 'where': { 'at': [56, 50], 'within': 6 }, 'color': [0.25, 0.45, 1] }]"));
-            Same(fire.At(53, 50, Nobody), Blue, "in both: the later");
-            Same(fire.At(46, 50, Nobody), Green, "in the first only");
+            var yellow = new LookColour(1f, 0.9f, 0.1f);
+            var fire = Fire(FireLook("[{ 'where': { 'at': [50, 50], 'within': 6 }, 'color': [0.25, 0.45, 1] }, { 'where': { 'at': [56, 50], 'within': 6 }, 'color': [1, 0.9, 0.1] }]"));
+            var middle = fire.At(53, 50, Nobody);
+            Same(middle, Colors.Mix(Blue, yellow), "halfway between, as deep in each: blue and yellow mixed evenly");
+            Assert.That(middle.G, Is.GreaterThan(middle.R).And.GreaterThan(middle.B), "and that's green");
+            var nearBlue = fire.At(51, 50, Nobody);
+            Assert.That(nearBlue.B, Is.GreaterThan(middle.B), "deeper in the blue one: bluer");
+            Same(fire.At(44, 50, Nobody), Blue, "in the first only");
 
-            // Two mods, each one scoped look: both stay on, and the one switched on later wins.
-            var green = FireLook("[{ 'where': { 'at': [50, 50], 'within': 6 }, 'color': [0.2, 0.9, 0.3] }]");
-            var blue = FireLook("[{ 'where': { 'at': [56, 50], 'within': 6 }, 'color': [0.25, 0.45, 1] }]");
-            Same(Fire(green, blue).At(53, 50, Nobody), Blue);
-            Same(Fire(green, blue).At(46, 50, Nobody), Green, "the earlier mod's look is kept");
-            Same(Fire(blue, green).At(53, 50, Nobody), Green, "the other order");
+            // Two mods, each one scoped look: both stay on, and the order they went on in doesn't matter.
+            var blue = FireLook("[{ 'where': { 'at': [50, 50], 'within': 6 }, 'color': [0.25, 0.45, 1] }]");
+            var gold = FireLook("[{ 'where': { 'at': [56, 50], 'within': 6 }, 'color': [1, 0.9, 0.1] }]");
+            Same(Fire(blue, gold).At(53, 50, Nobody), middle);
+            Same(Fire(gold, blue).At(53, 50, Nobody), middle, "the other order");
+            Same(Fire(gold, blue).At(52, 50, Nobody), Fire(blue, gold).At(52, 50, Nobody));
+        }
+
+        // ---------- colour theory ----------
+
+        static float Hue(LookColour c)
+        {
+            float top = Math.Max(c.R, Math.Max(c.G, c.B)), spread = top - Math.Min(c.R, Math.Min(c.G, c.B));
+            float h = 4 + (c.R - c.G) / spread;
+            if (c.R >= c.G && c.R >= c.B) h = (c.G - c.B) / spread;
+            else if (c.G >= c.B) h = 2 + (c.B - c.R) / spread;
+            return (h * 60 + 360) % 360;
+        }
+
+        static readonly LookColour PureRed = new LookColour(1, 0, 0), PureBlue = new LookColour(0, 0, 1), PureYellow = new LookColour(1, 1, 0);
+
+        [Test]
+        public void ColoursMixLikePaint()
+        {
+            Assert.That(Hue(Colors.Mix(PureBlue, PureYellow)), Is.InRange(90f, 150f), "blue and yellow: green");
+            Assert.That(Hue(Colors.Mix(Blue, new LookColour(1f, 0.9f, 0.1f))), Is.InRange(90f, 150f), "a game blue and a gold: green too");
+            Assert.That(Hue(Colors.Mix(PureRed, PureBlue)), Is.InRange(260f, 310f), "red and blue: purple");
+            Assert.That(Hue(Colors.Mix(PureRed, PureYellow)), Is.InRange(20f, 45f), "red and yellow: orange");
+            var rgbAverage = new LookColour(0.5f, 0.5f, 0.5f);
+            Assert.That(Colors.Mix(PureBlue, PureYellow).Near(rgbAverage), Is.False, "not the grey an RGB average gives");
+            foreach (var c in new[] { Red, Green, Blue, LookColour.Of(Base.ElementLook("fire")), new LookColour(0.5f, 0.5f, 0.5f), new LookColour(0.3f, 0.1f, 0.7f), new LookColour(0, 0, 0) })
+            {
+                Assert.That(Colors.Mix(c, c).Near(c), Is.True, $"{c} with itself is {c}, got {Colors.Mix(c, c)}");
+                Assert.That(Colors.Mix(c, PureBlue, 0).Near(c), Is.True, "none of the other: unchanged");
+            }
+        }
+
+        [Test]
+        public void AMixDoesntCareWhichCameFirstAndHonoursItsWeights()
+        {
+            Assert.That(Colors.Mix(PureBlue, PureYellow).Near(Colors.Mix(PureYellow, PureBlue)), Is.True);
+            ColourMixer one = default, two = default;
+            one.Add(Red, 2);
+            one.Add(Blue, 1);
+            one.Add(Green, 3);
+            two.Add(Green, 3);
+            two.Add(Red, 2);
+            two.Add(Blue, 1);
+            Assert.That(one.Result(Red).Near(two.Result(Red)), Is.True, "three colours in either order");
+            var bluer = Colors.Mix(PureBlue, PureYellow, 0.25f);
+            var yellower = Colors.Mix(PureBlue, PureYellow, 0.75f);
+            Assert.That(bluer.B, Is.GreaterThan(Colors.Mix(PureBlue, PureYellow).B), "more blue, bluer");
+            Assert.That(yellower.R, Is.GreaterThan(Colors.Mix(PureBlue, PureYellow).R), "more yellow, yellower");
+            ColourMixer twice = default;
+            twice.Add(PureBlue, 2);
+            twice.Add(PureYellow, 6);
+            Assert.That(twice.Result(Red).Near(yellower), Is.True, "weights 2 and 6 are a quarter of the way");
+            Assert.That(default(ColourMixer).Result(Red).Near(Red), Is.True, "nothing added: the fallback");
+            Assert.That(Colors.Mix(new LookColour(0.2f, 0.4f, 0.9f), new LookColour(0.9f, 0.6f, 0.1f), 0.3f).ToString(),
+                Is.EqualTo(Colors.Mix(new LookColour(0.2f, 0.4f, 0.9f), new LookColour(0.9f, 0.6f, 0.1f), 0.3f).ToString()), "the same on every run");
+        }
+
+        [Test]
+        public void ABlendIsOneColourAndAFireCaughtFromTwoTakesTheirMix()
+        {
+            var fire = Fire(FireLook(null, "[[0, 0, 1], [1, 1, 0]]"));
+            var blend = Fire(Mod("{ 'elements': { 'fire': { 'look': { 'color': [0.95, 0.42, 0.12], 'mix': [[0, 0, 1], [1, 1, 0]], 'blend': true } } } }"));
+            var green = Colors.Mix(PureBlue, PureYellow);
+            for (int x = 0; x < 20; x++) Same(blend.At(x, 3, Nobody), green, "every cell the one blended colour");
+            var seen = new HashSet<string>();
+            for (int x = 0; x < 20; x++) seen.Add(fire.At(x, 3, Nobody).ToString());
+            Assert.That(seen.Count, Is.EqualTo(2), "without blend, a patchwork of the two");
+            ColourMixer neighbours = default;
+            neighbours.Add(PureBlue);
+            neighbours.Add(PureYellow);
+            Same(fire.Caught(neighbours), green, "a blue player's fire meets a yellow one's: a green front");
+            Same(fire.Caught(default), LookColour.Of(Base.ElementLook("fire")), "caught from nothing coloured: the plain look");
+        }
+
+        [Test]
+        public void TwoLooksByTheSamePlayerMixAndOneNamingThemBeatsEach()
+        {
+            var mine = Fire(FireLook("[{ 'by': 'each', 'mix': [[1, 0.1, 0.1], [0.25, 0.45, 1], [0.2, 0.9, 0.3]] }, { 'by': 1, 'color': [0.2, 0.9, 0.3] }]"));
+            var both = Fire(FireLook("[{ 'by': 1, 'color': [0, 0, 1] }]"), FireLook("[{ 'by': 1, 'color': [1, 1, 0] }]"));
+            var players = new List<PlayerSpot> { new PlayerSpot("host", 0, 0, 0), new PlayerSpot("guest", 5, 5, 1) };
+            Same(mine.At(7, 7, players, null, 1), Green, "a look naming the slot is stronger than each");
+            Same(both.At(7, 7, players, null, 1), Colors.Mix(PureBlue, PureYellow), "two of the same strength mix");
         }
 
         [Test]
@@ -145,7 +231,7 @@ namespace Chem.Tests
             var two = Fire(mod);
             uint a = Digest(one), b = Digest(two);
             Assert.That(a, Is.EqualTo(b), "two compiles, the same colours");
-            Assert.That(a, Is.EqualTo(0x7285A64Eu), "golden: the hash a cell picks by must not move, or peers on different versions see different patchworks");
+            Assert.That(a, Is.EqualTo(0x70396988u), "golden: the hash a cell picks by must not move, or peers on different versions see different patchworks");
         }
 
         // FNV-1a over the colours of a block of cells, each channel in 1/1000ths.
@@ -228,7 +314,7 @@ namespace Chem.Tests
 
             // One player's own colour, latest wins over each; it lapses when they leave, and each takes over again only while they're in.
             var mine = Fire(FireLook("[{ 'by': 'each', 'mix': [[1, 0.1, 0.1], [0.25, 0.45, 1], [0.2, 0.9, 0.3]] }, { 'by': 1, 'color': [0.2, 0.9, 0.3] }]"));
-            Same(mine.At(7, 7, ThreePlayers, null, 1), Green, "slot 1's own look is the latest");
+            Same(mine.At(7, 7, ThreePlayers, null, 1), Green, "a look naming slot 1 is stronger than each");
             Same(mine.At(7, 7, left, null, 1), Plain, "gone: lapsed");
         }
 

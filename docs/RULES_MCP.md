@@ -121,17 +121,20 @@ cover, gas or terrain takes a colour, its look may also give:
 - `mix`: several colours with weights, `[{"color": [1, 0.25, 0.13], "weight": 2}, ...]`, in place
   of the one colour. Each cell picks one by a hash of where it is, with no draw from the world's
   RNG, so every peer sees the same patchwork. `set_look fire mix ["#ff4020", "#2050ff", "#30d040"]`
-  takes plain colours too (weighing the same); setting `color` afterwards drops the mix.
+  takes plain colours too (weighing the same); setting `color` afterwards drops the mix. With
+  `"blend": true` (`set_look fire blend true`) the mix is one colour instead, its colours mixed
+  like paint by their weights (below): blue and yellow blend green.
 - `scoped`: a list of `{"where": ..., "color" or "mix"}`, earliest first. `where` is
   `{"place": id, "within": cells}` (a place from `places()`; within 0 or left out is the place's
   own cells), `{"at": [x, y], "within": cells}` or `{"around": player, "within": cells}`.
-  `set_look` with `where` adds one, or changes the one with that same where (it becomes the
-  latest), and a null value takes it back; `"around": "me"` is written as the asking player's name
+  `set_look` with `where` adds one, or changes the one with that same where, and a null value
+  takes it back; `"around": "me"` is written as the asking player's name
   (the core keys players by name), and that look lapses while they're not in the game. A place
   that doesn't exist is refused with the list of places, by `set_look` and by `validate`.
 
-The latest scoped look covering a cell wins, its edge blends into what's under it over three
-cells (`LookScopes.EdgeCells`), and elsewhere the plain look (or its mix) holds. A colour a spell
+Where scoped looks overlap they mix like paint, each counting by how far into it the cell is (in
+cells from its outer edge); a scope's edge mixes into what's under it over three cells
+(`LookScopes.EdgeCells`), and elsewhere the plain look (or its mix) holds. A colour a spell
 chose for its own fire still wins (J-052). Scopes are worked out when the view draws, not stored
 on the fire, so a fire leaving the scope changes back: that is what makes "the fire near me" follow
 the player. Across mods the scoped looks add up: a mod giving an entry's look keeps the scoped
@@ -156,13 +159,33 @@ caster's colour as it spreads, the view's note J-052 carries) and on spells (the
 not on terrains, which nobody casts. `set_look` takes `by`: `"me"` (written as the asking player's
 slot, from `here()`), a slot, or `"each"` (with a mix). A look by a slot lapses once that player
 leaves, and the others keep theirs: slots don't close up. Strongest first, a cell's colour is:
-`by` (the latest that names its caster), a spell's own colour, `where`, the plain look; so
+`by` (one naming the caster's slot, then `each`), a spell's own colour, `where`, the plain look;
+looks of the same strength mix (two mods both colouring slot 1's fire give their mix); so
 `CellLook.At` also takes `caster`, the slot whose cast made what's on the cell, and `players`
 carries each player's slot (`PlayerSpot.Slot`). It's a look, not a fact: two peers can differ at
 a fire's edge, and nothing scores who burnt what. Asked of Claude, "make the fire I create blue"
 is `set_look fire color [0.25, 0.45, 1]` with `by "me"`, and "each player gets their own fire
 colour" is `set_look fire mix [one colour per player]` with `by "each"` (on `fireball`, table
 spell, for the spell's own show).
+
+**Colour theory: mixing** (`Colors.cs`). Colours mix the way paint does, because that's what a
+player expects: blue and yellow give green, red and blue purple, red and yellow orange, and a
+colour mixed with itself is unchanged (averaging RGB would give grey, adding light white). The
+model is the painter's wheel: each colour's whiteness set aside, its hue taken from RGB to red,
+yellow and blue and averaged there by weight, converted back, at the weighted average of the
+colours' brightness. One pure function does it, `Colors.Mix(a, b, t)`, with `ColourMixer` (a
+struct: `Add(colour, weight)` then `Result(fallback)`) for more than two; neither allocates, and
+the order colours are added in doesn't matter. Everything that mixes uses it: overlapping scopes,
+a scope's edge, a `mix` with `blend`, looks by player of the same strength, and a new fire caught
+from neighbours of different colours: the view adds the neighbours' colours to a `ColourMixer`
+and asks `CellLook.Caught(mixer)`, so where a blue player's fire meets a yellow player's, a green
+front burns between them. A stronger look still wins outright (`by`, then a spell's own colour,
+then `where`); mixing is for looks of the same strength. Flames, embers, steam and smoke only turn
+their art's hue (`looks.json` `turnsOnly`), so a mix that lands pale or grey there shows as its
+nearest hue, or not at all; `set_look` says so when a mix (or its blend) is pale, and Claude tells
+the player. Asked of Claude, "blend blue and yellow fire" is `set_look fire mix [blue, yellow]`
+then `set_look fire blend true`.
+
 
 **How it redraws.** The view reads looks from `World.Rules` when it draws, so what it draws next
 is from the rules in force on every peer. A switch also redraws what already stands if its

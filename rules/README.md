@@ -264,7 +264,7 @@ model).
 Wherever an element, cover, gas or terrain takes a `color`, its look may also
 give a **`mix`** (several colours with weights, each cell picking one by a hash
 of where it is) and **`scoped`** looks (a colour or mix holding only round a
-place from `world/places.json`, a cell or a player, the latest winning, or
+place from `world/places.json`, a cell or a player, overlapping ones mixing like paint, or
 `by` a player: only what that player casts, on spells too):
 `docs/RULES_MCP.md` "Mixed and scoped looks". `budgets.json` `looks` caps them.
 

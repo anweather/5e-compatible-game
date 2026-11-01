@@ -2,8 +2,8 @@
 // docs/RULES_MCP.md "Looks"). A look of an element, cover, gas or terrain may give
 // a "mix" (several colours with weights in place of its one colour, each cell
 // picking by a hash of where it is) and "scoped" looks (a colour or a mix that
-// holds only around a place, a cell or a player, the latest that covers a cell
-// winning, its edge blending over EdgeCells), and looks "by" player (a colour or
+// holds only around a place, a cell or a player, overlapping ones mixing like
+// paint (Colors), its edge blending over EdgeCells), and looks "by" player (a colour or
 // mix for what one player's casts make, or one colour per player in join order),
 // which win over everything else. The view's only: looks stay out of
 // Rules.Fingerprint and the cell hash, and nothing here draws from the world's RNG,
@@ -65,7 +65,10 @@ namespace Chem
         }
     }
 
-    /// <summary>A look's "mix": several colours with weights, one picked per cell.</summary>
+    /// <summary>
+    /// A look's "mix": several colours with weights, either a patchwork (each cell picks one) or, with
+    /// "blend", one colour mixed from them like paint (Colors).
+    /// </summary>
     public sealed class LookMix
     {
         /// <summary>Weights are kept as whole thousandths, so a pick is integer maths.</summary>
@@ -73,22 +76,34 @@ namespace Chem
 
         readonly int[] upTo;
 
-        LookMix(LookColour[] colours, int[] weights)
+        LookMix(LookColour[] colours, int[] weights, bool blend)
         {
             Colours = colours;
+            Blend = blend;
             upTo = new int[weights.Length];
-            for (int i = 0, sum = 0; i < weights.Length; i++) upTo[i] = sum += weights[i];
+            var mixer = new ColourMixer();
+            for (int i = 0, sum = 0; i < weights.Length; i++)
+            {
+                upTo[i] = sum += weights[i];
+                mixer.Add(colours[i], weights[i]);
+            }
+            Blended = mixer.Result(colours[0]);
         }
 
         public IReadOnlyList<LookColour> Colours { get; }
+        /// <summary>Blend the colours into one rather than pick one a cell.</summary>
+        public bool Blend { get; }
+        /// <summary>The colours mixed like paint by their weights: what a blend draws everywhere.</summary>
+        public LookColour Blended { get; }
         public int Total => upTo[upTo.Length - 1];
 
         /// <summary>The share of cells that pick colour <paramref name="i"/>, 0 to 1.</summary>
         public double Share(int i) => (double)(upTo[i] - (i == 0 ? 0 : upTo[i - 1])) / Total;
 
-        /// <summary>The colour a cell with this hash picks.</summary>
+        /// <summary>The colour a cell with this hash picks; a blend's one colour.</summary>
         public LookColour Pick(uint hash)
         {
+            if (Blend) return Blended;
             int v = (int)(hash % (uint)Total);
             for (int i = 0; i < upTo.Length; i++)
                 if (v < upTo[i]) return Colours[i];
@@ -99,7 +114,7 @@ namespace Chem
         /// A mix as a look gives it: [{"color": [r, g, b], "weight": 2}, ...], or plain colours
         /// [[r, g, b], ...] weighing the same. Null when it isn't one (LookScopes.ShapeProblems says why).
         /// </summary>
-        public static LookMix Parse(JToken t)
+        public static LookMix Parse(JToken t, bool blend = false)
         {
             if (!(t is JArray items) || items.Count == 0) return null;
             var colours = new LookColour[items.Count];
@@ -114,7 +129,7 @@ namespace Chem
                 colours[i] = colour.Value;
                 weights[i] = Math.Max(1, (int)Math.Round(weight * Scale));
             }
-            return new LookMix(colours, weights);
+            return new LookMix(colours, weights, blend);
         }
     }
 
@@ -175,13 +190,15 @@ namespace Chem
             {
                 var where = LookWhere.Parse(o["where"]);
                 var colour = LookColour.Parse(o["color"]);
-                var mix = LookMix.Parse(o["mix"]);
+                var mix = LookMix.Parse(o["mix"], IsTrue(o["blend"]));
                 int? by = BySlot(o["by"]);
                 if ((where == null) == (by == null) || (colour == null && mix == null) || (by == Each && mix == null)) continue;
                 all.Add(new ScopedLook { Where = where, By = by ?? 0, Colour = colour ?? mix.Colours[0], Mix = mix });
             }
             return all;
         }
+
+        internal static bool IsTrue(JToken t) => t != null && t.Type == JTokenType.Boolean && (bool)t;
 
         /// <summary>A "by" as a slot: a whole number from 0, or Each for "each"; null if it's neither.</summary>
         public static int? BySlot(JToken t)
@@ -308,6 +325,7 @@ namespace Chem
         public static IEnumerable<string> ShapeProblems(JObject look)
         {
             if (look["mix"] != null && LookMix.Parse(look["mix"]) == null) yield return MixShape("look.mix");
+            foreach (var m in BlendProblems(look, "look")) yield return m;
             if (look["scoped"] == null) yield break;
             if (!(look["scoped"] is JArray scoped))
             {
@@ -322,8 +340,10 @@ namespace Chem
                     yield return $"{at} must be an object with where or by, and a color or mix";
                     continue;
                 }
-                foreach (var key in s.Properties().Select(p => p.Name).Where(k => k != "where" && k != "by" && k != "color" && k != "mix"))
-                    yield return $"{at}.{key} unknown (a scoped look gives where or by, and a color or a mix)";
+                foreach (var key in s.Properties().Select(p => p.Name).Where(k => k != "where" && k != "by" && k != "color" && k != "mix" && k != "blend"))
+                    yield return $"{at}.{key} unknown (a scoped look gives where or by, and a color or a mix, which may blend)";
+                foreach (var m in BlendProblems(s, at)) yield return m;
+                if (ScopedLook.BySlot(s["by"]) == ScopedLook.Each && ScopedLook.IsTrue(s["blend"])) yield return $"{at}: by each gives each player one colour of its mix, so it can't blend";
                 if ((s["where"] == null) == (s["by"] == null)) yield return $"{at} gives one of where (a place, a cell or round a player) or by (a player's slot, or each)";
                 if (s["by"] != null && ScopedLook.BySlot(s["by"]) == null) yield return $"{at}.by must be a player's slot (a whole number from 0) or \"each\"";
                 if (ScopedLook.BySlot(s["by"]) == ScopedLook.Each && s["mix"] == null) yield return $"{at}: by each needs a mix, one colour per player";
@@ -335,6 +355,13 @@ namespace Chem
                 if (s["where"] != null)
                     foreach (var m in WhereProblems(s["where"])) yield return $"{at}.where {m}";
             }
+        }
+
+        static IEnumerable<string> BlendProblems(JObject look, string what)
+        {
+            if (look["blend"] == null) yield break;
+            if (look["blend"].Type != JTokenType.Boolean) yield return $"{what}.blend must be true (mix the colours into one, like paint) or false (a patchwork)";
+            else if (look["mix"] == null) yield return $"{what}.blend needs a mix to blend";
         }
 
         static string MixShape(string what) => $"{what} must be a list of colours with weights, such as [{{\"color\": [1, 0.3, 0.1], \"weight\": 2}}, {{\"color\": [0.2, 0.4, 1], \"weight\": 1}}]";
@@ -433,12 +460,12 @@ namespace Chem
                 this.salt = salt;
             }
 
-            // The colour for what this slot cast, or null if this look isn't for that slot.
-            public LookColour? For(int caster, int x, int y)
+            // Adds this look's colour for what the caster cast: one naming their slot to the named looks,
+            // "each" to the looks for everyone (weaker); none if it's for another slot.
+            public void AddTo(int caster, int x, int y, ref ColourMixer named, ref ColourMixer everyone)
             {
-                if (slot == ScopedLook.Each) return mix.Colours[caster % mix.Colours.Count];
-                if (slot != caster) return null;
-                return mix == null ? colour : mix.Pick(LookScopes.CellHash(x, y, salt));
+                if (slot == ScopedLook.Each) everyone.Add(mix.Colours[caster % mix.Colours.Count]);
+                else if (slot == caster) named.Add(mix == null ? colour : mix.Pick(LookScopes.CellHash(x, y, salt)));
             }
         }
 
@@ -460,7 +487,9 @@ namespace Chem
             }
 
             // 1 inside the scope, falling to 0 over EdgeCells past it; 0 for a player not in the game.
-            public float Weight(int x, int y, IReadOnlyList<PlayerSpot> players)
+            // <paramref name="depth"/> is how far in from its outer edge the cell is, in cells: how much
+            // it counts where scopes overlap.
+            public float Weight(int x, int y, IReadOnlyList<PlayerSpot> players, out float depth)
             {
                 double d;
                 if (field != null) d = field.At(x, y);
@@ -476,8 +505,9 @@ namespace Chem
                                 break;
                             }
                 }
+                depth = (float)Math.Max(0, where.Within + LookScopes.EdgeCells - d);
                 if (d <= where.Within) return 1;
-                return (float)Math.Max(0, Math.Min(1, (where.Within + LookScopes.EdgeCells - d) / LookScopes.EdgeCells));
+                return Math.Min(1, depth / LookScopes.EdgeCells);
             }
 
             public LookColour ColourAt(int x, int y) => mix == null ? colour : mix.Pick(LookScopes.CellHash(x, y, salt));
@@ -510,36 +540,54 @@ namespace Chem
         public int Scopes => scopes.Length;
 
         /// <summary>
-        /// The colour at cell (x, y), strongest first: the latest look by the player whose cast made
-        /// what's there (<paramref name="caster"/>, a slot; it lapses once that slot isn't in
-        /// <paramref name="players"/>), else a spell's own colour if the thing there has one (J-052), else
-        /// the latest scoped look covering the cell, blended at its edge into the earlier ones and the
-        /// plain look under them; a mix picks by a hash of the cell. <paramref name="players"/> is who is
-        /// in the game and where each stands. Allocates nothing.
+        /// The colour at cell (x, y), strongest first: the looks by the player whose cast made what's there
+        /// (<paramref name="caster"/>, a slot; one naming the slot over "each", and they lapse once that
+        /// slot isn't in <paramref name="players"/>), else a spell's own colour if the thing there has one
+        /// (J-052), else the scoped looks covering the cell, over the plain look. Looks of the same strength
+        /// mix like paint (Colors): overlapping scopes by how far into each the cell is, and a scope's edge
+        /// into the plain look under it. A patchwork mix picks by a hash of the cell; a blend is one colour.
+        /// <paramref name="players"/> is who is in the game and where each stands. Allocates nothing.
         /// </summary>
         public LookColour At(int x, int y, IReadOnlyList<PlayerSpot> players, LookColour? own = null, int? caster = null)
         {
             if (caster is int slot && slot >= 0 && by.Length > 0 && InGame(players, slot))
-                for (int i = by.Length - 1; i >= 0; i--)
-                    if (by[i].For(slot, x, y) is LookColour mine) return mine;
-            if (own.HasValue) return own.Value;
-            float r = 0, g = 0, b = 0, left = 1;
-            for (int i = scopes.Length - 1; i >= 0; i--)
             {
-                float w = scopes[i].Weight(x, y, players);
-                if (w <= 0) continue;
-                var c = scopes[i].ColourAt(x, y);
-                if (left >= 1 && w >= 1) return c;
-                r += left * w * c.R;
-                g += left * w * c.G;
-                b += left * w * c.B;
-                left *= 1 - w;
-                if (left <= 0) return new LookColour(r, g, b);
+                ColourMixer named = default, everyone = default;
+                for (int i = 0; i < by.Length; i++) by[i].AddTo(slot, x, y, ref named, ref everyone);
+                if (named.Weight > 0) return named.Result(colour);
+                if (everyone.Weight > 0) return everyone.Result(colour);
             }
+            if (own.HasValue) return own.Value;
             var plain = mix == null ? colour : mix.Pick(LookScopes.CellHash(x, y, salt));
-            if (left >= 1) return plain;
-            return new LookColour(r + left * plain.R, g + left * plain.G, b + left * plain.B);
+            float top = 0, depths = 0;
+            int present = 0, only = -1;
+            for (int i = 0; i < scopes.Length; i++)
+            {
+                float w = scopes[i].Weight(x, y, players, out float depth);
+                if (w <= 0) continue;
+                top = Math.Max(top, w);
+                depths += depth;
+                present++;
+                only = i;
+            }
+            if (present == 0) return plain;
+            if (present == 1 && top >= 1) return scopes[only].ColourAt(x, y);
+            var mixer = new ColourMixer();
+            mixer.Add(plain, 1 - top);
+            for (int i = 0; i < scopes.Length; i++)
+            {
+                float w = scopes[i].Weight(x, y, players, out float depth);
+                if (w > 0) mixer.Add(scopes[i].ColourAt(x, y), depths > 0 ? top * depth / depths : top / present);
+            }
+            return mixer.Result(plain);
         }
+
+        /// <summary>
+        /// The colour a new fire (or anything that spreads) takes when it catches from neighbours of these
+        /// colours: their mix, like paint (a blue fire meeting a yellow one burns green between them). Add
+        /// each neighbour's colour to a <see cref="ColourMixer"/> and call this; with none, the plain look.
+        /// </summary>
+        public LookColour Caught(ColourMixer neighbours) => neighbours.Result(colour);
 
         static bool InGame(IReadOnlyList<PlayerSpot> players, int slot)
         {

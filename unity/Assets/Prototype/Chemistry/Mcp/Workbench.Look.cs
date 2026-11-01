@@ -39,8 +39,8 @@ namespace Chem.Mcp
             var takes = Takes(table, family, out var familyOf);
             bool colours = takes.Contains("color") && LookScopes.Tables.Contains(table);
             bool byPlayer = takes.Contains("color") && LookScopes.ByTables.Contains(table);
-            if (colours) takes.Add("mix");
-            if (!takes.Contains(param) && !(byPlayer && param == "mix" && !string.IsNullOrWhiteSpace(by)))
+            if (colours) takes.AddRange(new[] { "mix", "blend" });
+            if (!takes.Contains(param) && !(byPlayer && (param == "mix" || param == "blend") && !string.IsNullOrWhiteSpace(by)))
                 throw new RulesToolException($"The {Single(table)} {id}'s look ({Described(table, family)}) takes {List(takes)}; {param} isn't one of them.");
             if (!string.IsNullOrWhiteSpace(where) && !string.IsNullOrWhiteSpace(by))
                 throw new RulesToolException("Give a look either a where or a by, not both: by (whose cast made it) wins over where anyway.");
@@ -49,15 +49,10 @@ namespace Chem.Mcp
             var v = LookValue(param, Value(value), familyOf);
             var entry = Entry(draft, table, id);
             if (!(entry["look"] is JObject own)) entry["look"] = own = (JObject)look.DeepClone();
-            if (scope != null) SetScoped(own, scope, param, v);
-            else if (v.Type == JTokenType.Null) own.Remove(param);
-            else
-            {
-                own[param] = v;
-                if (param == "color") own.Remove("mix");
-            }
+            var target = scope != null ? SetScoped(own, scope, param, v) : SetPlain(own, param, v);
             draft.Changed.Add($"{table} {id}");
             string wont = param == "color" && v.Type != JTokenType.Null ? WontShow(table, id, familyOf, own, v) : null;
+            if (target?["mix"] != null && (param == "mix" || param == "blend")) wont = PaleMix(table, id, familyOf, target);
             said = $"The {Single(table)} {id}'s look ({Described(table, family)}) takes {List(takes)}{(colours ? ", and a where for color or mix" : "")}{(byPlayer ? ", and a by (a player) for color or mix" : "")}." +
                 (scope == null ? "" : " " + ScopedNote(scope, v)) + LookNote(table, id, entry, familyOf) + (wont == null ? "" : " " + wont + " Tell the player.") + "\n";
             return draft;
@@ -71,7 +66,7 @@ namespace Chem.Mcp
                 throw new RulesToolException(table == "spells"
                     ? $"A spell's look colours only its own show, wherever it's cast, so it can't hold in one place; scope the look of what it makes (its element, table element) instead."
                     : $"The {Single(table)} {id}'s look takes no colour, so it can't be coloured in one place.");
-            if (param != "color" && param != "mix") throw new RulesToolException("A look with a where changes only color or mix.");
+            if (param != "color" && param != "mix" && param != "blend") throw new RulesToolException("A look with a where changes only color, mix or blend.");
             JToken t;
             try
             {
@@ -125,36 +120,81 @@ namespace Chem.Mcp
                 throw new RulesToolException(table == "terrain"
                     ? $"A terrain isn't cast by anyone, so its look can't be given by player; give the look of what the cast makes (its element, cover or gas)."
                     : $"The {Single(table)} {id}'s look takes no colour, so it can't be given by player.");
-            if (param != "color" && param != "mix") throw new RulesToolException("A look by player changes only color or mix.");
+            if (param != "color" && param != "mix" && param != "blend") throw new RulesToolException("A look by player changes only color, mix or blend.");
             string b = by.Trim().Trim('"');
             JToken slot;
             if (b == "me") slot = MySlot();
             else if (b == "each") slot = "each";
             else if (int.TryParse(b, NumberStyles.None, CultureInfo.InvariantCulture, out int n)) slot = n;
             else throw new RulesToolException("by is \"me\" (the player asking), a player's slot (0 the host, then each in join order), or \"each\" (one colour of a mix per player).");
+            if (Str(slot) == "each" && param == "blend")
+                throw new RulesToolException("by each gives each player one colour of its mix, so it can't blend them into one.");
             if (Str(slot) == "each" && param != "mix")
                 throw new RulesToolException("by each gives a mix: one colour per player, in join order, such as [\"#ff4020\", \"#2050ff\", \"#30d040\", \"#f0d020\"].");
             return new JObject { ["by"] = slot };
         }
 
-        // The scoped look with this where (or by) takes the value (moving to the end: the latest wins); null takes it back.
-        static void SetScoped(JObject look, JObject scope, string param, JToken v)
+        // The plain look takes the value: a colour drops a mix, and blend needs one. Returns the look.
+        static JObject SetPlain(JObject look, string param, JToken v)
+        {
+            if (param == "blend" && look["mix"] == null) throw new RulesToolException("blend mixes a mix's colours into one; give the look a mix first.");
+            if (v.Type == JTokenType.Null) look.Remove(param);
+            else look[param] = v;
+            if (param == "color" && v.Type != JTokenType.Null)
+            {
+                look.Remove("mix");
+                look.Remove("blend");
+            }
+            if (param == "mix" && v.Type == JTokenType.Null) look.Remove("blend");
+            return look;
+        }
+
+        // The scoped look with this where (or by) takes the value (moving to the end); null takes it back,
+        // and blend changes only how its mix mixes. Returns the scoped look, or null once it's gone.
+        static JObject SetScoped(JObject look, JObject scope, string param, JToken v)
         {
             string key = scope["by"] != null ? "by" : "where";
             var keyed = key == "by" ? scope["by"] : scope;
             var list = look["scoped"] as JArray ?? new JArray();
             var entry = list.OfType<JObject>().FirstOrDefault(s => JToken.DeepEquals(s[key], keyed));
+            if (param == "blend" && entry?["mix"] == null)
+                throw new RulesToolException("blend mixes a mix's colours into one; give this look a mix first (set_look mix with the same where or by).");
             entry?.Remove();
-            if (v.Type != JTokenType.Null)
+            if (param == "blend")
+            {
+                if (v.Type == JTokenType.Null) entry.Remove("blend");
+                else entry["blend"] = v;
+                list.Add(entry);
+            }
+            else if (v.Type != JTokenType.Null)
             {
                 entry ??= new JObject { [key] = keyed.DeepClone() };
                 entry.Remove("color");
                 entry.Remove("mix");
+                if (param == "color") entry.Remove("blend");
                 entry[param] = v;
                 list.Add(entry);
             }
+            else entry = null;
             if (list.Count == 0) look.Remove("scoped");
             else look["scoped"] = list;
+            return entry;
+        }
+
+        // When a mix lands on something that only turns its hue (flames, smoke, a spell's show) and what it
+        // gives is pale or grey: it shows as its nearest hue, or not at all. Null when it shows as asked.
+        string PaleMix(string table, string id, LookFamily family, JObject look)
+        {
+            var mix = LookMix.Parse(look["mix"], ScopedLook.IsTrue(look["blend"]));
+            if (mix == null || !Budgets.Looks.OnlyTurns(table, id, family)) return null;
+            if (mix.Blend)
+                return LookFamilies.IsPale(mix.Blended)
+                    ? $"The mix blends to {mix.Blended}, which is pale: {id} can only turn its hue, so it shows as the nearest hue, or not at all if it's grey."
+                    : null;
+            var pale = mix.Colours.Where(LookFamilies.IsPale).Select(c => c.ToString()).ToList();
+            if (pale.Count == 0) return null;
+            string which = pale.Count == 1 ? "is pale: {0} can only turn its hue, so that colour shows" : "are pale: {0} can only turn its hue, so those show";
+            return $"In the mix, {string.Join(" and ", pale)} {string.Format(CultureInfo.InvariantCulture, which, id)} as the nearest hue, or not at all if grey.";
         }
 
         static string ScopedNote(JObject where, JToken v)
@@ -169,7 +209,7 @@ namespace Chem.Mcp
             var w = LookWhere.Parse(where);
             if (v.Type == JTokenType.Null) return $"The look {w} is taken back.";
             string lapse = w.Around != null ? " It follows the player as they move, and lapses while they're not in the game." : "";
-            return $"The look {w} holds there only: the latest scoped look covering a cell wins, its edge blends over {LookScopes.EdgeCells} cells, " +
+            return $"The look {w} holds there only: where scoped looks overlap they mix like paint (blue and yellow give green), by how far into each a cell is, its edge blends over {LookScopes.EdgeCells} cells, " +
                 $"and elsewhere the plain look holds. A colour a spell chose for its own fire still wins.{lapse}";
         }
 
@@ -291,6 +331,8 @@ namespace Chem.Mcp
                     return Str(v) is string form && family.Forms.Contains(form) ? v : throw new RulesToolException($"The look family \"{family.Name}\" takes a form, one of {string.Join(", ", family.Forms)}.");
                 case "baked":
                     return v.Type == JTokenType.Boolean ? v : throw new RulesToolException("baked is true or false.");
+                case "blend":
+                    return v.Type == JTokenType.Boolean ? v : throw new RulesToolException("blend is true (mix the colours into one, like paint: blue and yellow give green) or false (a patchwork, each cell one of them).");
                 case "roughness":
                     return IsNumber(v) && (double)v >= 0 && (double)v <= 1 ? v : throw new RulesToolException("roughness is a number from 0 (glossy) to 1 (matt).");
                 default:
@@ -362,7 +404,7 @@ namespace Chem.Mcp
             string about = familyOf?.About ?? (table == "elements" ? $"the colour of what {id} makes in the world, whichever spell or reaction made it" : null);
             bool colours = takes.Contains("color") && LookScopes.Tables.Contains(table);
             return $"\nLook: {Described(table, family)}{(about == null ? "" : $", {about.TrimEnd('.')}")}. set_look changes {List(takes)}." +
-                (colours ? " It also takes mix (several colours with weights, each cell picking one) in place of color, and a where (a place, a cell, or around me, within so many cells) to colour only there." : "") +
+                (colours ? " It also takes mix (several colours with weights, each cell picking one; with blend true, one colour mixed from them like paint) in place of color, and a where (a place, a cell, or around me, within so many cells) to colour only there." : "") +
                 (takes.Contains("color") && LookScopes.ByTables.Contains(table) ? " With by (me, a player's slot, or each with a mix), a color or mix colours only what that player casts, and wins over a spell's own colour and any where." : "") +
                 (familyOf?.Notes != null ? " " + familyOf.Notes : "") + MixAndScopes(entry?["look"] as JObject);
         }
@@ -372,14 +414,15 @@ namespace Chem.Mcp
         {
             if (look == null) return "";
             var lines = new List<string>();
-            if (LookMix.Parse(look["mix"]) is LookMix mix) lines.Add($"Mix: {MixWords(mix)}.");
+            if (LookMix.Parse(look["mix"], ScopedLook.IsTrue(look["blend"])) is LookMix mix) lines.Add($"Mix: {MixWords(mix)}.");
             foreach (var s in ScopedLook.ParseAll(look["scoped"]))
                 lines.Add($"{(s.Where != null ? "Scoped, " : "By player, ")}{s}: {(s.Mix != null ? MixWords(s.Mix) : s.Colour.ToString())}.");
             return lines.Count == 0 ? "" : "\n" + string.Join("\n", lines);
         }
 
         static string MixWords(LookMix mix) =>
-            string.Join(", ", mix.Colours.Select((c, i) => $"{c} {Math.Round(mix.Share(i) * 100)}%"));
+            string.Join(", ", mix.Colours.Select((c, i) => $"{c} {Math.Round(mix.Share(i) * 100)}%")) +
+            (mix.Blend ? $", blended like paint into {mix.Blended}" : ", a patchwork");
 
         /// <summary>list looks: the families by table with the parameters each takes, the bare look, and what takes no colour.</summary>
         List<string> LookLines()
@@ -397,7 +440,8 @@ namespace Chem.Mcp
                 }
             lines.Add($"Takes no colour: {string.Join(", ", noColour)}. A fire's flames are the fire element's colour; a family not drawn yet waits on the view (its \"needs\"), and a cover or gas may give a bare colour meanwhile.");
             lines.Add($"Mixed and scoped ({string.Join(", ", LookScopes.Tables)}): wherever one takes a colour, set_look takes mix (several colours with weights, each cell picking one by where it is) and a where " +
-                $"(a place from places, a cell, or around me, within so many cells) so the colour holds only there; the latest scoped look covering a cell wins, and its edge blends over {LookScopes.EdgeCells} cells.");
+                $"(a place from places, a cell, or around me, within so many cells) so the colour holds only there; overlapping scoped looks mix like paint, and an edge blends over {LookScopes.EdgeCells} cells. " +
+                "A mix with blend true is one colour mixed from its colours like paint (blue and yellow give green); without, a patchwork.");
             lines.Add($"By player ({string.Join(", ", LookScopes.ByTables)}): set_look with by (me, a player's slot, or each with a mix: one colour per player in join order) colours only what that player casts. Strongest first: by, a spell's own colour, where, the plain look.");
             return lines;
         }

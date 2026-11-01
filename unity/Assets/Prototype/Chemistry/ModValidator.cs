@@ -217,7 +217,7 @@ namespace Chem
                 bool byPlayer = takes.Contains("color") && LookScopes.ByTables.Contains(table);
                 foreach (var key in look.Properties().Select(p => p.Name).Where(k => !LookFamilies.Naming.Contains(k) && !takes.Contains(k)))
                 {
-                    if ((colours && (key == "mix" || key == "scoped")) || (byPlayer && key == "scoped")) continue;
+                    if ((colours && (key == "mix" || key == "blend" || key == "scoped")) || (byPlayer && key == "scoped")) continue;
                     string why = (key == "mix" || key == "scoped") && takes.Contains("color") ? $" ({key} is for an element's, cover's, gas's or terrain's look; a spell's colours only its own show)" : "";
                     Add(ModCheck.Looks, $"{who}'s look gives {key}, which {what} doesn't take; it takes {(takes.Count == 0 ? "nothing" : string.Join(", ", takes))} (rules/looks.json){why}.");
                 }

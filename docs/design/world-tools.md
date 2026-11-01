@@ -3,7 +3,7 @@
 Status: design, 2026-11-01 (Andrew's asks of the same day, and J-055). Builds on D13 and
 `docs/RULES_MCP.md`: the same MCP, mods, room and checks. Built so far, in the core and the MCP
 only: G1's `places()` and `here()` with `world/places.json`, and G2b's `where`, `mix` and `by`
-(`LookScopes.cs`); the view doesn't draw scoped looks yet, and `find` isn't built.
+(`LookScopes.cs`) with colour mixing (`Colors.cs`); the view doesn't draw scoped looks yet, and `find` isn't built.
 
 > "Make the house by the lake bigger. Or brick colored / patterned." "Maybe a rare golden squirrel
 > might spawn in and you need to find it." "Embed a terminal or chat into the game so you can tune

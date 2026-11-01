@@ -108,7 +108,7 @@ namespace Chem
         /// <summary>
         /// A replacement entry that says nothing of its look keeps the old one: a mod about numbers doesn't
         /// lose the drawing. One that gives a look keeps the old look's scoped looks too, ahead of its own
-        /// (one it gives again moves to the end): several scoped looks can be on at once, the latest winning.
+        /// (one it gives again moves to the end): several scoped looks can be on at once, mixing where they overlap.
         /// </summary>
         static JToken KeepingLook(JToken old, JToken entry)
         {
