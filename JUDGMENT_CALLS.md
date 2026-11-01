@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-059: Must a player walk inside the houses Claude builds?
+
+- **Asked:** 2026-11-01, by the PM, on building parts (`docs/handoffs/briefs/primitives-walls.md`).
+- **Also comes up when:** rooms, interiors, a wall on a cell's edge, "add a room".
+- **Answer:** Andrew: "Outside first is the way." Houses look right from outside and burn and shatter properly; "add a
+  wing" works, and "add a room" shows as new walls. The data describes real wall segments, so walls on cell edges can
+  come later with no format change. The PM reads this as house building going next, with creature data alongside.
+- **Why:** it reaches MCP house building soonest, and the edge-wall change touches fire, gas, water, pathing and physics.
+- **Revisited:** 0.
+
 ### J-058: Do creatures stay Punchy's Editor assets, and how do they move?
 
 - **Asked:** 2026-11-01, Andrew: "we're gonna kind of diverge ... I'll use the same style of ... what punch is doing but I
