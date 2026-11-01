@@ -1,143 +1,113 @@
 # World tools: tuning the living world from Claude and from the game
 
-Status: design, 2026-11-01 (Andrew's asks of the same day). Builds on D13 and `docs/RULES_MCP.md`:
-the same MCP, the same room, the same checks. Nothing here is built.
+Status: design, 2026-11-01 (Andrew's asks of the same day, and J-055). Builds on D13 and
+`docs/RULES_MCP.md`: the same MCP, mods, room and checks. Nothing here is built.
 
 > "Make the house by the lake bigger. Or brick colored / patterned." "Maybe a rare golden squirrel
 > might spawn in and you need to find it." "Embed a terminal or chat into the game so you can tune
 > from the chat. Users own Claude, but the MCP is setup automatically."
 
-## 1. Editing what's in the world
+**The examples are tests of the tools, not features** (J-055: "Don't actually hard code it.
+Let's see if we can make it happen via the existing systems"). No squirrel and no lake house in
+code or base rules. Each example is walked through what exists today, step by step, to where it
+stops; what's proposed is only the smallest general gap that stops it. When the gaps are built, the
+test is a player asking their Claude and the MCP doing it as a mod.
 
-**What each is today**, and where size, colour and pattern come from:
+**What exists today.** The MCP's tools (`list`, `describe`, the `add_`/`set_` drafts, `set_look`,
+`tune`, `validate`, `simulate`, `apply`, `revert`, `save`); `apply` also takes patch JSON. A mod
+patches the rule tables, `entities` and `items` included (`ModPatch.Tables`), never `world/`.
+Looks are data on materials, spells and elements. `world/things.json` places props and items by
+chunk; the host spawns each from a prefab of its kind, baked in the Editor (`PropBuilder`,
+`ItemBuilder`), and a kind with no prefab doesn't spawn. The fauna (`ValleyFauna`) is Punchy's
+species with densities from a table in `ChemYardBuilder`, each animal per peer; a species has
+coats (colours with weights) and variants (`GlimmerSquirrel` is a variant of `Squirrel`, which
+already lives in the valley at 1.5 a hectare).
 
-| What | Made from | Shared state (lockstep, checksum) | View only |
-|---|---|---|---|
-| A **cabin** (the house by the lake is the second, on the lake's west shore) | C# constants: `ValleyShape.Cabins` (Editor), built by `ValleyBuilder.BuildCabins` into the scene | Its wall cells (`logwall`, `stone`), baked into the valley | Size, shape and colours, hard-coded in the builder (`CabinMaterial("Roof", ...)`). Not data at all |
-| A **village building** | `world/villages.json` spec + seed, laid by `VillagePlan` (core) | Footprint, storeys, wall and roof material (cells that burn) | `BuildingMesher`: walls' pattern (timber frame, stone blocks, log), colours from small palettes by the building's seed |
-| A **prop** (crate, barrel, boulder) | Kind in `rules/entities.json` (hp, mass, material); where in `world/things.json` | Kind and spot (the things fingerprint); what it does to cells, as `EffectCommand`s | Size and colour: the prefab `PropBuilder` bakes in the Editor. Position: host PhysX, synced as transforms (D4, D7) |
-| A **creature** | Punchy species in `ValleyFauna`, densities in the scene | Nothing (raiders and goblins are core entities, a different thing) | Everything |
+## 1. Editing what's in the world: "make the house by the lake bigger, brick coloured"
 
-So today a player can't name the house by the lake, and "bigger" or "brick" reaches nothing but
-code. Three gaps: buildings have no ids or data of their own, props' size and colour are baked into
-prefabs, and nothing knows what "by the lake" means.
+| Step | Today | Stops because |
+|---|---|---|
+| 1. Find "the house by the lake" | No. The MCP sees only rules. The house is the second cabin, whose site is a C# constant (`ValleyShape.Cabins`, Editor) | The MCP can't read the world, and nothing names the lake |
+| 2. Brick colour on every log wall | Half. `set_look logwall color` validates and switches on in the room | Cabins' meshes take colours from `ValleyBuilder` constants, village buildings' from `BuildingMesher`'s palettes; neither reads the wall's look |
+| 3. Brick colour on that house only | No | A mod can't name one building: buildings have no ids, and mods can't reach `world/` |
+| 4. Brick pattern | No (a `brick` terrain exists, drawn as ground) | The mesher's patterns are fixed per wall kind (timber, stone, log) |
+| 5. Bigger | No | The footprint is wall cells baked with the valley, and the mesh is built at that size in the Editor |
 
-**Find by words.** Claude does the language; the game gives it places and candidates:
-- `places()`: the named landmarks with their cells (the lake, the river, the falls, Hollowmere,
-  Sunward Key, the yard, the court, the Gauntlet...), from a new `world/places.json`.
-- `find(kind?, near?, within?)`: buildings, things and quarries (part 2), each with its id, a
-  one-line description and its distance: `cabin#2  log cabin, 6 m from the lake's west shore`.
-- `here()`: what the asking player stands by and looks at, so "make *this* bigger" works.
-- `describe(id)` gives every field `set` may change, which are shared and which are looks.
+**The smallest general gaps, in order:**
+- **G1. Read the world.** Read-only tools over what the game already holds: `places()` (named
+  landmarks with their cells, from a new `world/places.json`: the lake, the river, Hollowmere...),
+  `find(kind?, near?, within?)` (things and buildings, with id, one line and distance) and
+  `here()` (what the player stands by and looks at, for "make *this* bigger"). Buildings get ids
+  (`cabin#2`; `Hollowmere#4`, the village and its place in its plan), which means the cabins'
+  sites move from `ValleyShape` into world data beside the villages: data, not new content.
+- **G2. Buildings draw from their materials' looks.** `BuildingMesher` (and the cabins built by it
+  at runtime) colours walls and roofs from the look of their wall and roof terrains, with a
+  `pattern` parameter on a new `wall` look family (logs, blocks, plaster, bricks). Then step 2
+  works for every log wall, and "brick-patterned" is `set_look logwall pattern bricks`. It's the
+  procedural-looks rule (RULES_MCP.md) applied to buildings, and redraws through `RedrawLooks`.
+- **G3. A mod may carry world edits.** A `world` section in the mod format: set one field of a
+  building or thing by id (`walls`, `look`). It goes through the room like any mod: validated by
+  every peer, switched on at a tick, reverted, saved, replayed for a late joiner, kept in the world
+  save's room. Look fields stay out of the fingerprint, as looks do. Step 3 works.
+- **Bigger** (step 5) needs shape edits: a footprint field the core lays at the switch tick
+  (clearing the old wall cells, laying the new, as the dragon's breath freshens a chunk), counted
+  in the cell hash, with a golden. Not smallest; proposed only once G1 to G3 prove out.
 
-**Ids.** Things keep `ThingId` (`4,5#2`). Buildings get one: `cabin#2`, `Hollowmere#4` (the
-village and the building's place in its plan). Cabins move from `ValleyShape` into world data
-(`world/buildings.json`, a list, so append, never insert), and a village building's id holds only
-while its village's spec and seed do: an edit overrides one building **after** the plan is laid,
-never by re-laying the village.
-
-**Change it.** A **world edit** is one change to world data, carried in a mod's new `world`
-section, beside its rules patch: `set(id, field, value)`, `add(thing)` (appended to its chunk's
-list), `remove(id)` (a tombstone: the slot stays, so later ids don't move). Draft, `validate`,
-`simulate`, `apply`, `revert` and `save` work on it as on rules (RULES_MCP.md). Fields fall in two:
-- **Shape** (a building's footprint, storeys, wall material; a thing's kind or cell): shared.
-  Applied at the switch tick by the core, which lays the new footprint's cells and clears the old
-  (fresh, like the dragon's breath). In the things fingerprint and the cell hash.
-- **Look** (colour, pattern, a prop's drawn size): view only, like a material's look; out of the
-  fingerprint and the hash, so a look-only edit can't desync anyone.
-"Brick" is both kinds: a `brick` terrain in `rules/materials.json` (it doesn't burn, earth breaks
-it) is a rules entry, and a `pattern: brick` wall in a new look family is a look. "Brick coloured"
-alone is a look.
-
-**How it reaches every peer.** A mod with world edits goes in as today's `RoomCommand` (the
-room's change mode decides who may), stamped by the host into a tick batch; every peer checks it
-with `ModValidator` (the world checks: ids exist, footprints clear of other buildings, water and
-the yard, budgets on cells changed) and applies it at that tick. Props are host objects: the host
-respawns a reshaped thing with its same id, and every peer redraws. Undo is `revert`, which
-recomposes the other mods; a revert re-lays the building as it was, fresh (what burned since is
-lost: open question 3). **Late join** replays the room commands with the batches, as now. A
-**world save** keeps the room's active mods (it already does), and the cells they changed are just
-cells that differ from the source; the effective things go in the save beside `crackedThings`.
-**Keep it in a mod:** `save` writes the mod with its world section to `rules/mods/`, and for our
-own agents a `promote` writes the edits into `world/*.json` (appending) for the next build.
-
-**New view work.** Buildings: `BuildingMesher` takes overrides (colour, wall pattern, roof) and
-`VillageHouse` redraws on a switch; the cabins rebuilt at runtime from data by the same mesher
-instead of the Editor. Props: a `look` on entities (family, colour, scale) read by `ThingSpawner`,
-the prefab scaled and tinted at spawn, its collider with it. A redraw hook on every room switch,
-like `ChemGrid.RedrawLooks`.
-
-**Recommendation:** one path for everything: world edits in the mod format, through the room. First
-slice: places and `find`/`here`, building ids with the cabins moved to data, and look-only edits
-(colour, pattern) on buildings, which can't break lockstep. Shape edits next, with goldens.
+**Recommendation:** G1 and G2 first (no lockstep risk: read-only and looks), then G3 for
+one-building edits. Test: "make the house by the lake brick-coloured", asked of Claude, ends as a
+mod in the room with no code naming a house.
 
 **Questions for Andrew**
-1. Should every world edit be revertable by anyone (Open room), or is a building's shape the
-   host's even in an Open room?
-2. Is brick a new material (fireproof, rules) or only a look on stone or log walls?
-3. When a burnt house is reshaped or reverted, does it come back whole, or keep its damage?
+1. Is "every log wall turns brick" (G2 alone) a fair first answer, or must one house change alone?
+2. Should the cabins become ordinary village buildings (one mesher, one data file)?
+3. In an Open room, may anyone's Claude change a building, or only the host's?
 
-## 2. Spawning
+## 2. Spawning: "a rare golden squirrel might spawn in and you need to find it"
 
-**Words.** "Critter spawner" becomes a **spawner**: an entry in a **spawn table** that says what
-appears, where, when, how rare and how many. What it makes is either **ambient life** (view only,
-as now) or a **quarry**: a creature that's the same on every peer, that players seek and
-**claim**. The golden squirrel is a quarry; the deer around it are ambient life.
+| Step | Today | Stops because |
+|---|---|---|
+| 1. A golden squirrel kind | Yes. `apply` takes a patch adding an `items` row (`golden-squirrel`: flesh, mass 0.3, no use); `validate` passes it | No `add_item` draft tool: Claude writes the row by hand |
+| 2. It looks like a golden squirrel | No | A thing is drawn by a prefab baked per kind; a new kind has none and doesn't spawn. Things have no `look` |
+| 3. It appears somewhere | No | Only `things.json` places things, and a mod can't add to it |
+| 4. The same one for every peer | Yes, once placed: things are host objects with stable ids, late joiners get them | |
+| 5. Rare: maybe there, maybe not | No | A placed thing is always there |
+| 6. Found: you pick it up | Yes, once placed: picking up an item is host-granted, and everyone sees who holds it | No log line names the finder |
+| 7. It scampers | No | Things are still; the fauna moves, but per peer |
 
-**Where the line falls.** A creature is a quarry if anything shared depends on it: it can be
-claimed, scored, hurt by a spell, or it changes cells. Otherwise it is ambient life and stays per
-peer (D9 allows view-only crowds, D12 keeps life in the view). One species can be both: squirrels
-are ambient, the golden one is a quarry.
+**The view-only route works further.** A coat on `Squirrel` with gold and a little glow and a
+weight of 0.01 is a rare golden squirrel in the fauna, right now, if the species were data: it
+stops because the fauna table and Punchy's coats are Editor data, not rules. But each peer would see
+its own, at its own time: a sighting, never a shared hunt.
 
-**In data.** Species (hp, speed, components such as `creature` and `quarry`, and a `look`: Punchy
-species, colour, size) are entries in `rules/entities.json`, so a mod can add one. Spawn tables are
-world data, `world/life.json` (the file WORLD_LIFE.md already plans), each spawner with a stable id
-and a list to append to:
+**The smallest general gaps:**
+- **G4. Things drawn from data.** A `look` on entities and items rows, with a `creature` family
+  (a fauna species, a coat colour, a scale) beside today's shapes. `ThingSpawner` dresses a
+  generic registered prop or item prefab from the look when a kind has no baked one, so any mod's
+  new kind spawns and syncs. `set_look` takes `entities` and `items`; `add_item` and `add_entity`
+  join the drafts. Steps 1 and 2 work.
+- **G5. Mods may add things.** In G3's `world` section, `add` appends a thing to its chunk's list
+  (never inserts, so ids stay put). The effective things (base plus mods) feed the fingerprint and
+  the spawner; a revert despawns what the mod added. Step 3 works: Claude picks the spot, so "it
+  spawns in" is Claude choosing where and when. Step 6 gets a log line on first pick-up of a thing a
+  mod added ("Ana found the golden squirrel", the name from the row).
+- **G6. A seeded chance on a placed thing** (`chance`, decided once from the world's seed and the
+  thing's id by `WorldHash`, no draw from the world's RNG, so every peer agrees). Step 5 works:
+  Claude scatters five candidates at 0.2 each. Only if the test shows it's wanted.
+- **The fauna as data** (the "critter spawners" Andrew asked for, say **spawners**): the
+  `ChemYardBuilder` table and species' coats as a rules table a mod patches, view only and out of
+  the fingerprint like looks. It's the view-only route above, and ambient life's knobs.
+- **Not proposed:** a squirrel that moves the same on every peer (step 7). The host could move a
+  creature-look thing as it moves props (D4 allows it: a synced transform, nothing on cells), but
+  that's a behaviour to build, and the test doesn't need it.
 
-```json
-{ "id": "golden-squirrel", "makes": "golden-squirrel", "quarry": true,
-  "where": { "theme": "home-valley", "chunks": [[3,4],[4,4]], "on": ["grass", "tree"], "nearWater": false },
-  "when": { "clock": "dawn", "weather": ["clear"] },
-  "chance": 0.02, "every": 360, "group": [1, 1], "alive": 1, "cooldown": 7200, "once": false }
-```
-
-`where` narrows by theme zone, chunk list, then cell (terrain tags, near water, away from
-wizards); `when` by clock window, weather and season; `chance` per roll, `every` ticks between
-rolls; `group` how many at once; `alive` the cap; `cooldown` after a claim; `once` for a one-off in
-a world. Ambient spawners take a density instead, and each peer rolls them itself, as `ValleyFauna`
-does today.
-
-**What the core holds (quarries only).** A `World.Life.cs` system with a fixed place in the tick,
-after the movers: for each spawner with active chunks in `where`, every `every` ticks it rolls with
-a draw from the world's seed, the spawner and the roll's number (`WorldHash`, as the dragon's path
-is drawn), so adding a spawner never shifts another system's draws or the goldens. Only active
-chunks roll, and chunk switches are commands, so every peer rolls the same; a catch-up doesn't
-roll. A quarry is plain data (D9): its id (the spawner and the roll), its kind as an interned
-integer, its cell, its next move tick, its state, who claimed it. It moves cell to cell on its own
-draws, flees wizards by their stands, keeps to cells its components allow; the view tweens it and
-draws it with the species' Punchy body. Quarries are in the checksum and the world save; in an
-inactive chunk one is held as it is.
-
-**Found and claimed.** A wizard within reach presses use: a `ClaimIntent` to the host, stamped as a
-`ClaimCommand`; at that tick every peer checks the claimer's stand is within `claimReach` cells, and
-the first claim in tick order wins. Log: "Ana found the golden squirrel". What a claim gives (a
-grimoire entry, an item, a score) goes to the player save later (PLAYER_SAVE.md). A spell may also
-catch one through the rules (a Web), since it's a core entity.
-
-**MCP tools.** `list spawners`, `describe`, `add_spawner`, `set_spawner` (world edits, through
-the room as in part 1), `simulate` with a spawner over N ticks ("how often does it appear at
-dawn?"), and `spawn(kind, near)` for a one-off now (a world edit applied once, logged by name).
-`find` lists live quarries only for the room's host, so a player's own Claude can't simply point
-at the squirrel (question 5).
-
-**Recommendation:** quarries in the core, with seeded rolls per spawner; ambient life untouched,
-its densities moved into `world/life.json` per peer. First slice: the golden squirrel, one
-spawner, claim by use, a probe with two peers comparing hashes.
+**Recommendation:** G4 and G5. Test: "put a rare golden squirrel somewhere in the woods for us to
+find", asked of Claude, ends as one mod (an item with a creature look, added at a spot it chose)
+that every peer sees and one player picks up. Then the fauna as data for ambient spawners.
 
 **Questions for Andrew**
-4. What does finding the golden squirrel give: a log line, an item, a grimoire mark, a score?
-5. May a player's Claude tell them where a quarry is, or is that cheating (host's Claude only)?
-6. Does a quarry stay in the world for its finder alone, or does a claim take it for everyone?
+4. Is a golden squirrel that sits still (and can be picked up) enough for the test, or must it run?
+5. Should Claude tell a player where the thing it hid is, or keep it secret from that player?
+6. Fauna as data: per room (a mod, everyone's table) or per player's own view?
 
 ## 3. Chat in the game
 
@@ -164,17 +134,16 @@ keys, not claude.ai login. So a chat panel on the SDK can't use a player's Pro p
 | Terms | Allowed if the binary is unmodified, the player's own install and sign-in; confirm with Anthropic that launching it counts as fine | Clean: we touch no Anthropic sign-in | Allowed only with the player's API key |
 | A release ships | A pty + VT renderer panel, `claude` found on PATH or an install link, a generated MCP config passed with `--mcp-config` | The button (runs `claude mcp add`, writes Desktop's config or the extension), the bridge, the token | The SDK and its runtime, key entry and safe storage |
 
-**Security, whichever.** The MCP stays on 127.0.0.1 and refuses other Hosts and Origins (built).
-World edits make it more powerful, so add a **connect token**: the game makes one per profile and
-writes it into the config it registers (`--header`), and a stray local client without it is
-refused. The first change from a newly connected client asks the player in the game ("Claude wants
-to change the house by the lake: allow?"), and every change shows a toast with Undo. The Esc
+**Security, whichever.** The MCP stays on 127.0.0.1 and refuses other Hosts and Origins (built). G3
+and G5's world edits make it more powerful, so add a **connect token**: the game makes one per
+profile and writes it into the config it registers (`--header`), and a stray local client without it
+is refused. The first change from a newly connected client asks the player in the game ("Claude
+wants to change the house by the lake: allow?"), and every change shows a toast with Undo. The Esc
 menu's switch still closes the port.
 
 **Multiplayer.** Each player's Claude talks only to their own game; its changes go out as intents
 and the room's change mode decides (Open, Host only, Locked), as for rules. Nobody's Claude reaches
-another peer. A Host-only room is how a host "tunes" alone; spawning a quarry by hand is the host's
-in any room (it decides a hunt).
+another peer. A Host-only room is how a host "tunes" alone, hiding things for the others included.
 
 **Recommendation:** ship B first, now: it's small, it works with every Claude a player has, and it
 touches no Anthropic credentials. Then build A as the in-game chat: the player's own, unmodified
@@ -191,6 +160,7 @@ ever; never as a way round a subscription.
 
 ## Proposed ADRs (titles only)
 
-- World data changes through the room as world edits in mods
-- Quarries are core entities from seeded spawners; ambient life stays in the view
+- The examples are tests of the tools: no named content in code or base rules (J-055)
+- Mods may carry world edits: things appended, buildings and things changed by id
+- Things, buildings and fauna are drawn from data, never from per-kind baked prefabs
 - Chat in the game uses the player's own Claude; the game never handles a Claude sign-in

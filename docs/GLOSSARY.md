@@ -387,16 +387,10 @@ that long, and doesn't march.
 : A named landmark with its cells (the lake, the falls, Hollowmere), in
   `world/places.json`, so "the house by the lake" can be found.
 
-**Spawn table / spawner** *(proposed)*
-: A **spawn table** (`world/life.json`) lists **spawners**: what appears,
-  where (theme, chunk, cell), when, how rare and how many. What a spawner
-  makes is ambient life or a quarry.
-
-**Quarry** *(proposed)*
-: A creature that's the same on every peer, in the core, which players seek
-  and **claim** (the golden squirrel): a `ClaimCommand` at a tick, the first
-  in tick order wins. *Not* ambient life or a creature (view only), nor a
-  raider.
+**Spawner** *(proposed)*
+: An entry in the fauna's table: which species appears, where, how thick
+  and in which coats. Ambient life, so view only: each peer rolls its own
+  animals (`docs/design/world-tools.md`, part 2).
 
 ## Chunk streaming
 
@@ -469,9 +463,8 @@ that long, and doesn't march.
 
 **World edit** *(proposed, `docs/design/world-tools.md`)*
 : One change to world data in a mod's `world` section: set a field of a
-  thing or building by id, add a thing (appended) or remove one (a
-  tombstone, so ids don't move). Shape fields are shared; look fields are
-  the view's.
+  building or thing by id, or add a thing (appended to its chunk's list, so
+  ids don't move). Look fields are the view's, out of the fingerprint.
 
 **Connect token** *(proposed)*
 : A secret the game writes into the MCP config it registers with a
