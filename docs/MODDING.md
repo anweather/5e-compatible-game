@@ -188,7 +188,7 @@ claude mcp add rules -- dotnet core/Rules.Mcp/bin/Release/net8.0/Rules.Mcp.dll -
 **Or add the game itself.** A running copy serves the same tools on your own
 machine, against the world you're playing in, so `apply` changes the game in
 front of you, for everyone in the room. Nothing needs installing. Run this once
-(Esc > Play with Claude shows it with the address to use, and the switch that closes the port):
+(Or press F9: a terminal opens with all of this set up, and you type `claude`. Esc > Play with Claude shows it with the address to use, and the switch that closes the port):
 
 ```sh
 claude mcp add --scope user --transport http spell-valley http://127.0.0.1:47777/mcp

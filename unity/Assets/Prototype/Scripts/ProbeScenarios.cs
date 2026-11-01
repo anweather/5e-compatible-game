@@ -184,6 +184,8 @@ public static class ProbeScenarios
             "the clouds over 70% of the sky in it, " +
             "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, snow at noon (over 2000 flakes in the air, over half " +
             "the puddles laid in the yard frozen), fog closes the haze in, no console errors."),
+        new Entry("terminal", typeof(TerminalProbe), 30f,
+            "The Claude terminal's folder (ClaudeTerminal, J-056): Claude off then on again gives an address; .mcp.json is valid and names it, with no secret in it; CLAUDE.md and the first screen say Win+H; a client at that address lists the tools. The window itself is left to a real player."),
         new Entry("scopelooks", typeof(ScopeLooksProbe), 200f,
             "Scoped and mixed looks on the world, each through the real tools and a room mod (docs/design/world-tools.md): the fire round the village blue and past it plain; the fire near me green, following the wizard through a burning strip and changing back behind them; " +
             "a blue fire meeting a yellow one burning green between them; three colours as a patchwork; gases, covers, ground and water in a scope; here() names the real player. With --shots, a film of each in a folder of its own."),

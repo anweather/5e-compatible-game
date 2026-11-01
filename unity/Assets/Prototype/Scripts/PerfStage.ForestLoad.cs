@@ -19,8 +19,8 @@ public partial class PerfStage
     const float RingStartMetres = 24f, RingGrowthPerSecond = 0.15f, RingStepDegrees = 25f;
     const float CastGapSeconds = 3f, StopEverySeconds = 20f, StopSeconds = 0.8f;
     const float LookGain = 0.02f, MovedMetres = 0.01f, GaveUpSeconds = 1f, AimAheadMetres = 7f;
-    const int TapFrames = 2, SwitchFrames = 30;
-    const float SwitchHoldSeconds = 3f, ThroughDegrees = 120f, ThroughMetres = 12f;
+    const int TapFrames = 2, SwitchFrames = 30, ChaseCells = 60, ChaseFrom = 3;
+    const float SwitchHoldSeconds = 3f;
     static readonly float[] SwitchAtSeconds = { 22f, 36f, 270f, 290f, 310f };
     const float RainAtSeconds = 120f, RainHoldsSeconds = 235f, MostCastMetres = 18f;
     const int WeatherSteps = 4;
@@ -191,10 +191,8 @@ public partial class PerfStage
         while (enabled && wizard != null)
         {
             degrees += RingStepDegrees;
-            // -perf-walk-through crosses the fire back and forth instead of walking round it.
-            bool through = Asked("-perf-walk-through");
-            if (through) degrees += ThroughDegrees;
-            var target = RingPoint(degrees, through ? ThroughMetres : RingStartMetres + (Time.realtimeSinceStartup - wentAt) * RingGrowthPerSecond);
+            // -perf-walk-through goes from fire to fire instead of walking round them.
+            var target = Asked("-perf-walk-through") ? NearestFire(degrees) : RingPoint(degrees, RingStartMetres + (Time.realtimeSinceStartup - wentAt) * RingGrowthPerSecond);
             float best = float.MaxValue, stuckSince = Time.realtimeSinceStartup;
             while (enabled && wizard != null)
             {
@@ -218,6 +216,26 @@ public partial class PerfStage
             }
             PerfCounts.Add("walk.legs");
         }
+    }
+
+    // The burning cell nearest the wizard and a few cells on, or the ring if nothing burns in reach.
+    Vector3 NearestFire(float degrees)
+    {
+        var me = grid.CellAt(wizard.transform.position);
+        var best = new Vector2Int(-1, -1);
+        int nearest = int.MaxValue;
+        for (int y = me.y - ChaseCells; y <= me.y + ChaseCells; y++)
+            for (int x = me.x - ChaseCells; x <= me.x + ChaseCells; x++)
+            {
+                int d = (x - me.x) * (x - me.x) + (y - me.y) * (y - me.y);
+                if (d <= ChaseFrom * ChaseFrom || d >= nearest || World.At(x, y) is not { Fire: > 0 }) continue;
+                nearest = d;
+                best = new Vector2Int(x, y);
+            }
+        if (best.x < 0) return RingPoint(degrees, RingStartMetres);
+        var at = grid.CellCenter(best.x, best.y);
+        at.y = grid.GroundAt(at);
+        return at;
     }
 
     static Vector2 StickTowards(Vector3 to)
