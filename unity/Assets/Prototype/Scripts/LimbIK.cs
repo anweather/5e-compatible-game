@@ -3,7 +3,7 @@ using UnityEngine;
 // Two-bone inverse kinematics for a humanoid limb (shoulder, elbow, hand or
 // hip, knee, foot), solved on the bones' transforms after the Animator has
 // posed them, so a pose can be laid over any animation without editing the
-// animation controller (SwimPose, CastPose, ThrowPose). The elbow or knee
+// animation controller (SwimPose, CastPose, ThrowPose, PunchPose). The elbow or knee
 // bends in the plane of the hint, a point it should point toward. Weight 0
 // leaves the animation as it was; 1 puts the end exactly on the target, or as
 // near as the limb reaches.

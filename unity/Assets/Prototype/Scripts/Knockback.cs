@@ -26,6 +26,8 @@ public class Knockback : MonoBehaviour, IPushable
 
     CharacterController body;
     NetWizard net;
+    Vector3 shuntTo;
+    float shuntLeft;
 
     /// <summary>Every wizard in the scene, local or not (Forces finds other players' wizards by distance).</summary>
     public static IReadOnlyList<Knockback> All => all;
@@ -41,6 +43,16 @@ public class Knockback : MonoBehaviour, IPushable
 
     void OnEnable() => all.Add(this);
     void OnDisable() => all.Remove(this);
+
+    /// <summary>
+    /// Moves it along the ground to a point over this many seconds (a strike's knock-back), through the
+    /// controller, so what stands in the way stops it. The owner's machine only.
+    /// </summary>
+    public void Shunt(Vector3 to, float seconds)
+    {
+        shuntTo = to;
+        shuntLeft = Mathf.Max(seconds, 0.01f);
+    }
 
     /// <summary>Adds an impulse (newton-seconds). Only the sideways part moves the wizard; the controller owns jumping and falling.</summary>
     public void Push(Vector3 impulse)
@@ -63,8 +75,19 @@ public class Knockback : MonoBehaviour, IPushable
         }
     }
 
+    void Shunting()
+    {
+        var left = shuntTo - transform.position;
+        left.y = 0f;
+        shuntLeft -= Time.deltaTime;
+        if (!body.enabled) return;
+        body.Move(left * Mathf.Min(1f, Time.deltaTime / (shuntLeft + Time.deltaTime)));
+        body.Move(Vector3.zero); // as in Update: no run from this move
+    }
+
     void Update()
     {
+        if (shuntLeft > 0f) Shunting();
         if (Velocity.sqrMagnitude < StopSpeed * StopSpeed)
         {
             Velocity = Vector3.zero;

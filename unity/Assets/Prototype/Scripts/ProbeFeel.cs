@@ -9,17 +9,25 @@ using UnityEngine.InputSystem.LowLevel;
 // through the wizard's own controls on a virtual pad and a virtual keyboard
 // (UX pass 4). Running onto ice and Frost's glaze keeps its speed and slides; snow
 // and a bank slow it; the punch on F and Circle on a pane, a crate and a ball, and
-// Square not punching; charged casts on keys and pad (their timing, Plant Growth on
+// Square not punching, its strength, arm, hit-stop and landing, a miss, off still, and
+// the same ticks with and without its hit-stop; charged casts on keys and pad (their timing, Plant Growth on
 // burnt ground, Wall of Stone held to a ramp, Frost held to Sleet Storm's slippery
 // field); Frost over a swimmer, and Left Ctrl held climbing out of the water.
 public class FeelProbe : SpellLooksProbe
 {
     const int LaneLong = 30, LaneWide = 7, RunUp = 12;
     const float StopSeconds = 2.5f;
+    // How far a crate went before the punch was made 2.5 times as strong (0.35 to 0.42 m), and how near the hand must come (m): the fist's length and a bit.
+    const float CrateWentBefore = 0.42f, FistTolerance = 0.25f;
     Gamepad pad;
     Keyboard keys;
     PlayerControls controls;
     string me;
+    ItemHolder fists;
+    PunchPose arm;
+    CastBeats beats;
+    int landings;
+    ItemHolder.PunchLanding landed;
 
     protected override IEnumerator Run()
     {
@@ -30,21 +38,36 @@ public class FeelProbe : SpellLooksProbe
         pad = InputSystem.AddDevice<Gamepad>("Feel pad");
         keys = InputSystem.AddDevice<Keyboard>("Feel keys");
         me = caster.CastPlayer;
+        fists = wizard.GetComponent<ItemHolder>();
+        arm = wizard.GetComponent<PunchPose>();
+        beats = wizard.GetComponent<CastBeats>();
+        float shakeWas = GameFeel.Shake;
+        fists.PunchLanded += Landed;
         try
         {
+            GameFeel.Shake = 1f;
             yield return Footing();
             yield return Punches();
             yield return Charged();
             yield return Swimmer();
+            yield return PunchTicks();
         }
         finally
         {
+            GameFeel.Shake = shakeWas;
+            fists.PunchLanded -= Landed;
             puppet.Move(Vector2.zero);
             if (controls != null) controls.enabled = controlsWereOn;
             caster.enabled = casterWasOn;
             InputSystem.RemoveDevice(pad);
             InputSystem.RemoveDevice(keys);
         }
+    }
+
+    void Landed(ItemHolder.PunchLanding landing)
+    {
+        landings++;
+        landed = landing;
     }
 
     // --- footing ---
@@ -133,6 +156,8 @@ public class FeelProbe : SpellLooksProbe
         if (crate != null) yield return PunchThing(crate, ahead, "crate_f", () => Tap(Key.F));
         if (crate != null) yield return PunchThing(crate, ahead, "crate_circle", () => Button(GamepadButton.East));
         if (crate != null) yield return SquareLeavesIt(crate, ahead);
+        if (crate != null) yield return OffIsStill(crate, ahead);
+        yield return Miss();
         var ball = FindObjectsByType<PhysicsProp>(FindObjectsSortMode.None).FirstOrDefault(p => p.kind == "ball" && p.State != null);
         Check("ball_found", ball != null, "the court's ball");
         if (ball == null) yield break;
@@ -146,6 +171,8 @@ public class FeelProbe : SpellLooksProbe
         yield return Wait(0.5f);
         var from = ball.transform.position;
         yield return Button(GamepadButton.East);
+        yield return Wait(0.2f);
+        Metric("ball_fist_m", arm.NearestFist);
         float went = 0f;
         for (float t = 0f; t < 0.8f; t += Time.deltaTime)
         {
@@ -164,11 +191,32 @@ public class FeelProbe : SpellLooksProbe
         Drop(thing, new Vector3(at.x, grid.GroundAt(at) + 0.6f, at.z));
         yield return Wait(0.8f);
         var from = thing.transform.position;
+        int landingsWere = landings, stops = beats.Stops, kicks = CastImpact.Kicks;
+        float scale = Time.timeScale, step = Time.fixedDeltaTime;
+        var body = thing.GetComponent<Rigidbody>();
+        float fastest = 0f;
         yield return press();
-        yield return Wait(1.2f);
+        for (float t = 0f; t < 0.35f; t += Time.deltaTime)
+        {
+            fastest = Mathf.Max(fastest, body.linearVelocity.magnitude);
+            yield return null;
+        }
+        // A push sends a crate off at 2.5 m/s (Forces); the frame or two before the speed is read, it slows a little.
+        float asked = beats.feel.punchShove * Forces.ImpulsePerPush / body.mass;
+        Metric(name + "_speed_ms", fastest);
+        Check(name + "_strength_from_the_tuning", Mathf.Abs(fastest - asked) < asked * 0.2f, $"{fastest:0.0} m/s, the tuning's {beats.feel.punchShove} pushes make {asked:0.0}");
+        Metric(name + "_fist_m", arm.NearestFist);
+        Check(name + "_arm_reaches", arm.NearestFist < FistTolerance, $"the hand came {arm.NearestFist:0.00} m from {arm.Goal}");
+        Check(name + "_lands_once", landings == landingsWere + 1, $"{landings - landingsWere} landings");
+        Check(name + "_sends_the_strike", World.Stands[me].NextStrike > World.Tick - 2, $"may strike again at tick {World.Stands[me].NextStrike}, now {World.Tick}");
+        Check(name + "_landing_says_who", landed.Prop == thing && landed.Puncher == fists && landed.Hit, $"{landed.Prop}, by {landed.Puncher}");
+        Check(name + "_hit_stop", beats.Stops == stops + 1 && !beats.Stopped, $"{beats.Stops - stops} stops");
+        Check(name + "_kick", CastImpact.Kicks == kicks + 1 && CastImpact.LastKick <= 0.06f, $"{CastImpact.Kicks - kicks} kicks, {CastImpact.LastKick:0.000} m");
+        Check(name + "_leaves_time_alone", Mathf.Approximately(Time.timeScale, scale) && Mathf.Approximately(Time.fixedDeltaTime, step), $"time scale {Time.timeScale}");
+        yield return Wait(1.6f);
         float went = Vector3.Distance(from, thing.transform.position);
         Metric(name + "_m", went);
-        Check(name + "_knocked", went > 0.4f, $"it went {went:0.0} m");
+        Check(name + "_at_least_twice_as_far", went >= CrateWentBefore * 2f, $"it went {went:0.00} m, {CrateWentBefore} before");
         Shot(name);
         yield return null;
         yield return null;
@@ -185,6 +233,74 @@ public class FeelProbe : SpellLooksProbe
         float went = Vector3.Distance(from, crate.transform.position);
         Metric("crate_square_m", went);
         Check("square_doesnt_punch", went < 0.1f, $"it went {went:0.00} m");
+    }
+
+    // The Shake and rumble slider at off: the same punch, the same knock, no stop and no kick.
+    IEnumerator OffIsStill(PhysicsProp crate, Vector3 at)
+    {
+        Drop(crate, new Vector3(at.x, grid.GroundAt(at) + 0.6f, at.z));
+        yield return Wait(0.8f);
+        var from = crate.transform.position;
+        int landingsWere = landings, stops = beats.Stops, kicks = CastImpact.Kicks;
+        GameFeel.Shake = 0f;
+        yield return Tap(Key.F);
+        yield return Wait(0.8f);
+        GameFeel.Shake = 1f;
+        float went = Vector3.Distance(from, crate.transform.position);
+        Check("off_punch_still_lands", landings == landingsWere + 1 && went >= CrateWentBefore, $"{landings - landingsWere} landings, it went {went:0.00} m");
+        Check("off_punch_is_still", beats.Stops == stops && CastImpact.Kicks == kicks, $"{beats.Stops - stops} stops, {CastImpact.Kicks - kicks} kicks");
+    }
+
+    // Nothing in reach: the arm still goes out, straight ahead, and it lands once, on nothing, with no stop.
+    IEnumerator Miss()
+    {
+        var west = wizard.transform.position + Vector3.left * 3f;
+        puppet.Face(west);
+        Cut(wizard.transform.position + V(3f, 2.5f, -1f), west);
+        yield return Wait(0.8f);
+        int landingsWere = landings, stops = beats.Stops;
+        yield return Tap(Key.F);
+        yield return Wait(0.35f);
+        Metric("miss_fist_m", arm.NearestFist);
+        Check("miss_lands_once_on_nothing", landings == landingsWere + 1 && !landed.Reached, $"{landings - landingsWere} landings, reached {landed.Reached}");
+        Check("miss_arm_reaches", arm.NearestFist < FistTolerance, $"the hand came {arm.NearestFist:0.00} m from where it aimed");
+        Check("miss_no_hit_stop", beats.Stops == stops, $"{beats.Stops - stops} stops");
+        yield return Wait(0.5f);
+        Check("arm_handed_back", !arm.Playing, "the pose is over");
+    }
+
+    // The same world run on with and without the hit-stop of a punch on a crate: the same ticks, the same cells, in the same time.
+    IEnumerator PunchTicks()
+    {
+        (int tick, string hash, float seconds) settled = default, with = default, without = default;
+        GameFeel.Shake = 0f;
+        yield return PunchTickRun(r => settled = r);
+        yield return PunchTickRun(r => without = r);
+        int stops = beats.Stops;
+        GameFeel.Shake = 1f;
+        yield return PunchTickRun(r => with = r);
+        int stopped = beats.Stops - stops;
+        Check("punch_tick_run_had_a_stop", stopped == 1, $"{stopped} stops");
+        Check("punch_hit_stop_leaves_the_tick_alone", with.tick == without.tick && with.hash == without.hash, $"first {settled.hash}, tick {with.tick} {with.hash} / tick {without.tick} {without.hash}");
+        Check("punch_hit_stop_leaves_the_tick_rate_alone", Mathf.Abs(with.seconds - without.seconds) < 0.25f, $"{with.seconds:0.00} s, {without.seconds:0.00} s");
+    }
+
+    IEnumerator PunchTickRun(System.Action<(int, string, float)> done)
+    {
+        const int PunchAt = 12, TakeAt = 20;
+        grid.ResetWorld();
+        yield return null;
+        yield return null;
+        var ahead = wizard.transform.position + Vector3.right;
+        puppet.Face(ahead + Vector3.right * 5f);
+        Cut(ahead + V(-4f, 3f, -5f), ahead);
+        var crate = NearestCrate(ahead);
+        Drop(crate, new Vector3(ahead.x, grid.GroundAt(ahead) + 0.6f, ahead.z));
+        while (World.Tick < PunchAt || World.TickInProgress) yield return null;
+        float from = Time.time;
+        yield return Tap(Key.F);
+        while (World.Tick < TakeAt || World.TickInProgress) yield return null;
+        done((World.Tick, World.CellHash(), Time.time - from));
     }
 
     IEnumerator PunchPane()
@@ -266,12 +382,12 @@ public class FeelProbe : SpellLooksProbe
         Check("held_marker_shown", caster.Marker != null, $"{caster.Marker?.Kind}");
         InputSystem.QueueStateEvent(keys, new KeyboardState());
         for (float t = 0f; t < 4f && World.CastOf(me).Casting; t += Time.deltaTime) yield return null;
-        float landed = Time.time - start;
+        float landedAt = Time.time - start;
         Metric("seconds_a_level", third - second);
         Metric("full_charge_s", full);
-        Metric("held_cast_landed_s", landed);
+        Metric("held_cast_landed_s", landedAt);
         Check("a_level_takes_half_a_second", Mathf.Abs(third - second - (float)World.SecondsPerLevel) < 0.12f, $"{third - second:0.00} s, the rules say {World.SecondsPerLevel:0.00}");
-        Check("full_charge_in_two_to_three_seconds", full >= 1.8f && full <= 3.2f, $"{full:0.0} s to full charge, landed at {landed:0.0} s");
+        Check("full_charge_in_two_to_three_seconds", full >= 1.8f && full <= 3.2f, $"{full:0.0} s to full charge, landed at {landedAt:0.0} s");
         yield return Wait(1f);
     }
 

@@ -3,7 +3,7 @@ using Unity.Cinemachine;
 using UnityEngine;
 
 // What a cast does to the player, not to the world (docs/SPELL_COMBOS.md, "Impact"):
-// hit-stop, Cinemachine impulses and rumble when the hands strike, and shake and
+// hit-stop, Cinemachine impulses and rumble when the hands strike or a fist lands, and shake and
 // rumble where a spell lands, by its size and how far away it is. All view, all on
 // this machine: CastBeats calls in for this machine's own wizard only (a remote
 // wizard's beats never stop), and a landing is felt by whoever is near, whoever cast
@@ -59,6 +59,17 @@ public static class CastImpact
             float strength = Mathf.Lerp(feel.releaseKickSmall, feel.releaseKickBig, size) * amount;
             Shake(ReleaseKick, feel.releaseKickSeconds, (FromWorld(along) + Vector3.up * feel.releaseLift).normalized * strength);
         });
+    }
+
+    /// <summary>This machine's wizard's fist has landed on something, going this way: a small stop, kick and thump.</summary>
+    public static void Punched(CastBeats beats, Vector3 way)
+    {
+        var feel = beats.feel;
+        float amount = GameFeel.Shake;
+        if (amount <= 0f) return;
+        PadRumble.Play(feel.punchRumble, 1f);
+        beats.HitStop(feel.punchStop * amount, () =>
+            Shake(ReleaseKick, feel.punchKickSeconds, (FromWorld(way) + Vector3.up * feel.releaseLift).normalized * (feel.punchKick * amount)));
     }
 
     /// <summary>A spell has landed, anyone's: those with no force in them (fog, light) aren't felt.</summary>
