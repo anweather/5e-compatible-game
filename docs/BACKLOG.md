@@ -767,6 +767,8 @@ it runs) are merged into this list every few days.
 | 22 | World tools, mods in the world (G3 to G5): one building by id, things drawn from data, mods add things. Tests: a brick house and a hidden squirrel, by asking Claude, no named content (J-055) | Gameplay | to size |
 | 23 | Spawners: the animal tables and coats as rules data, per room | Gameplay | to size |
 | 25 | Scoped and mixed looks (`docs/design/world-tools.md`, G2b): a colour by place or around a player, several colours at once, or per player. Comes with G1's `places` and `here` | Gameplay | to size |
+| 26 | Who did what: the core records who caused a cell's fire and other effects, so a kill, a burnt house or a score can name a player. Today it's only a view note. Integer ids in hot state, in the cell hash, with goldens; needs an ADR (D9) | Gameplay | to size |
+| 27 | Colour mixing (`docs/design/world-tools.md`): `Colors.Mix`, paint-like, for overlapping looks and fires that meet | Gameplay | to size |
 | 24 | A terminal panel in the game with the MCP configured; the player brings their own Claude (J-056). Needs the connect token | Gameplay | to size |
 
 **Polish:** 15 (scoreboard), 16 (tower) and 17 (tower defense) are built.

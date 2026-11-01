@@ -73,7 +73,7 @@ elements, covers, gases and terrains alike (fire is only the example):
 
 - **`where`**: a scope. `{ "place": "hollowmere", "within": 20 }` (a G1 place), `{ "at": [x, y],
   "within": 12 }` (cells) or `{ "around": "me", "within": 10 }` (the asking player, from `here()`).
-  Several scoped looks can be on at once: the latest that covers a cell wins, and the plain look
+  Several scoped looks can be on at once: where they overlap they mix (below), and the plain look
   is what's left. A scope's edge blends over a few cells.
 - **`mix`**: several colours with weights in place of `color`. Each cell picks by a hash of its
   place, with no draw from the world's RNG, so every peer sees the same patchwork.
@@ -94,6 +94,16 @@ cast leaves (gases, covers), and a cast's own effects read the look directly. Or
 `by`, a spell's own colour, `where`, the element's colour. It's a view note: peers agree near
 enough, and two can differ at the edge of a fire (J-052). So it's a look, not a fact: "whose fire
 burnt this" can't score or reward anyone without new core state, and that's not proposed.
+
+**Colour theory: mixing.** Andrew: "Mixing and blending of colors should work." Colours mix the way
+paint does, because that's what a player expects: blue and yellow make green, red and blue
+purple. Plain averaging of RGB gives grey and adding light gives white, so one pure function, `Colors.Mix`, works
+in a pigment-like model, and everything uses it: overlapping scopes (weighted by how far in a cell
+is), a `mix` asked to blend rather than patchwork, and a new fire caught from two neighbours of
+different colours, which takes the mix of both. So where a blue player's fire meets a yellow
+player's, a green front burns between them. `by`, spell and `where` keep their order when one
+is simply stronger; mixing is for looks of the same strength. Flames only turn hue today, so a mix
+that lands pale or grey shows as its nearest hue, and `set_look`'s reply says so.
 
 **Cost:** a moving scope must touch only the cells at its edge each frame, within a budget. It can't
 use the world-wide rule switch `look-switch` is timing. The test is "make the fire near me
