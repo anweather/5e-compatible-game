@@ -68,7 +68,11 @@ public class PlayLog : MonoBehaviour
         go.AddComponent<PlayLog>();
     }
 
-    void Awake() => Instance = this;
+    void Awake()
+    {
+        Instance = this;
+        QuickExit.BeforeExit += End; // a Windows player has no OnApplicationQuit
+    }
 
     void OnEnable() => PauseMenu.AddSection(DrawEntry, SectionOrder);
 
@@ -127,6 +131,7 @@ public class PlayLog : MonoBehaviour
 
     void OnDestroy()
     {
+        QuickExit.BeforeExit -= End;
         End();
         if (Instance == this) Instance = null;
     }
