@@ -40,7 +40,7 @@ public class PerfStage : ShowcaseScript
 
     protected override IEnumerator Play()
     {
-        yield return Sky(Scenario is "storm" or "snow" or "fog" ? Scenario : "clear");
+        yield return Sky(Scenario is "storm" or "rain" or "snow" or "fog" ? Scenario : "clear");
         if (Scenario == "wildfire") yield return Wildfire();
         else if (Scenario == "village") Hollowmere();
         else if (Scenario == "forest") LogMap();
