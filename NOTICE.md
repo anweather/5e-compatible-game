@@ -16,3 +16,7 @@ Coast.
 - Sounds: CC0, listed in `unity/Assets/Prototype/Audio/CC0/CREDITS.md`.
 - Unity Asset Store packs are not in this repository (their licence doesn't allow redistributing
   them); they're restored from the owner's Unity account.
+
+## Licence
+
+The game is under the PolyForm Noncommercial License 1.0.0 (`LICENSE.md`); the mods in `rules/mods/` under CC-BY 4.0 (`rules/mods/LICENSE.md`).
