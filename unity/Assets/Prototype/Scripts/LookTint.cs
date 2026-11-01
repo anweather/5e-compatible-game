@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Chem;
 using UnityEngine;
 
 // A look tint (docs/GLOSSARY.md): how far an effect is turned round the colour
@@ -14,9 +15,9 @@ using UnityEngine;
 public readonly struct LookTint
 {
     /// <summary>A colour this pale says nothing about its hue (saturation, 0 to 1).</summary>
-    public const float Pale = 0.22f;
-    // Hues this close count as the same (a share of the wheel): Fire Bolt and Meteor differ by a little from their family's orange.
-    const float SameHue = 12f / 360f;
+    public const float Pale = LookFamilies.PaleSaturation;
+    // Hues this close count as the same: Fire Bolt and Meteor differ by a little from their family's orange.
+    const float SameHue = LookFamilies.SameHue;
     const float NoTurn = 1e-4f;
     const string UnlitParticles = "Universal Render Pipeline/Particles/Unlit";
 
