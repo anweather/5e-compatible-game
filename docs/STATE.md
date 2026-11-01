@@ -9,7 +9,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 |---|---|---|
 | **PM** (this role; the `coordination` worktree, pushes to dev) | Max | Plans, briefs, merges (`tools/workers/land.sh`), GitHub issues, releases, reports. Writes no game code unless asked |
 | **DesktopUnity** (the PC, interactive) | Max | The only Windows GPU: host passes (looks, feel, sound), player builds, release candidates. Long passes run as fresh sub-agents per part |
-| **unity-game-macbook** (Remote Control) | Max | Compute with Unity and a GPU (EditMode, probes, profiling). No Mac builds (Andrew). Its route doesn't confirm reading; check its branch if quiet |
+| **unity-game-macbook** (Remote Control) | Max | Compute with Unity and a GPU (EditMode, probes, profiling); the headless Windows build as a fallback. Its route doesn't confirm reading; check its branch if quiet |
 | **Windows VMs** w1, w2 (Pro), w3, w4 (Max) | | Rules plus Unity batch compile. 4 GB start, grow to 8 |
 | **Linux VMs** u1 (Pro), u2 (Max) | | Core and sandbox only, about 10x cheaper for rules work. 1 GB start |
 
@@ -42,72 +42,38 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## Releases
 
-- **0.1.10 (Andrew: after the in-flight items):** cut once the dragon tweaks (Mac), the IK punch with the
-  unarmed strike and the cast sounds B + pulse 30% (DesktopUnity) are on dev. Then the release candidate on
-  the PC (no VMs), publish if green. Voice moves to 0.1.11 (needs Andrew's Unity Gaming Services setup).
-
-- **0.1.9** published 2026-10-31 (Windows only, pre-release); main merged back, freeze lifted.
-  DesktopUnity runs a fresh Editor, serial gates, the Windows build into the draft, install from the
-  draft, then the update from 0.1.8. Notes: `docs/handoffs/release-0.1.9-notes.md`. Publish if green;
-  then merge main back into dev and lift the freeze.
-- **0.1.11:** proximity voice (Vivox: Andrew sets up a Unity Gaming Services project first), the rest of the
-  sound pass (`docs/handoffs/sound-pass-brief.md`).
+- **0.1.10** published 2026-10-31 (Windows only, pre-release): the dragon, the IK punch and 5E unarmed strike,
+  the cast sounds (B + pulse 30%), the lost-cast fix (#39), the play log (F8 marks), the Gauntlet's rules, surf
+  toward land, the night stutter fix. Notes: `docs/handoffs/release-0.1.10-notes.md`. Install from the draft
+  and update from 0.1.9 green on the PC; main merged back (dev = main = 155ac1c).
+- **0.1.11:** live rule changes in the game (Claude writes and applies mods), proximity voice (Vivox: Andrew
+  sets up Unity Gaming Services first), the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
+- Builds: Windows builds on the PC (Andrew, 2026-10-31); the Mac's headless build
+  (`PrototypeBuild.BuildWindowsFromCommandLine`, RELEASING.md) is the fallback. The GitHub Actions runner is
+  shelved (`docs/CI_BUILDS.md`). The Mac app stays on 0.1.7; the Mac reports what shipping it again takes.
 
 ## In flight
 
-- Landed on dev after 0.1.9: the Gauntlet's rules (22cda15), the Dragon's rules (0967b44), surf toward
-  the nearest land (1671b55, #23; rebuild the yard after pulling).
-- DesktopUnity: #5 fixed on Windows (3cf7624; open until seen on a live desktop). Windows perf
-  comparison done (`docs/perf/2026-10-31-win.md`). Now: the uncharged slam, a punch clip (#18), and 2-3
-  cast-sound prototypes for Andrew to pick from before anything is built in.
-- Dragon's view landed (9edc7b6; online 31/31 twice on the PC). Rebuild the yard after pulling. dragon-clip landed
-  (5ac59c8). `dragon-tweaks` is pushed (74c4ffb: scale 1.5 as data, a
-  240-drop breath stream, a seeded barrel roll; core 746, EditMode 826, dragon probe 45/45); it waits for
-  DesktopUnity's online run, incl. the new unrun `dragon_seen_on_the_client`. Was: the Mac: `dragon-tweaks` (+50% scale, breath
-  stream; J-043; ships in 0.1.10 without another review), then procedural looks. Client R asks the host,
-  which decides (BACKLOG 26). Still to ask Andrew, with media: water never shelters; a raised Wall of Stone
-  is wiped before the breath arrives.
-- **Headless builds (Andrew, 2026-10-31): the Mac builds the Windows player in batch mode** (Mono, so it can
-  cross-build); branch `headless-build`. The Mac also takes `wip/punch-strike`'s non-online checks and the
-  cast sound build-in. The PC keeps only online probes and the Windows install-from-draft check.
-- **Paused (Andrew, to free the PC):** DesktopUnity is idle with the Editor closed. Its work is on
-  `wip/punch-strike` (a202fd1: the IK punch at punchShove 2.5, the strike wiring, NetProp MaxKick 300), not
-  mergeable yet. Resume on the host-ux worktree: switch to it, reopen the Editor, run compile/warnings (17
-  baseline), smoke, feel, castfeel, combo, online (from 7 GB free), downed, sit, shapeshift, punchclip,
-  format, jscpd; merge dev; push to dev. Then FAST_LOOP rows, the cast sound build-in, the 0.1.10 candidate.
-  punchShove stays 2.5 (Andrew, J-045).
-- Unarmed strike, core half, landed (d5af610; u1, now asleep): a punch does 1 damage at Str 10, needs 8+ to hit.
-  DesktopUnity wires it into the IK punch (Stand, Strike, Leave, TakeStrikeHits).
-  into the IK punch after.
-- Sound: the generator is in the sound-design skill (1847785, stdlib only). Andrew picked B + pulse 30%
-  (preset `cast-deep-hum-pulse`); DesktopUnity builds it in after the punch. Loudness against today's game sounds is unchecked (about +3.8 dB): check before building in.
-- Procedural looks (rules MCP phase 2) landed (0d8ad26; Mac): families in `rules/looks.json`, a `look` group on
-  materials and spells, redrawn on a rule switch. Online unproven (PC). Left: CellPaint first, BurstFx, sounds,
-  icons (`docs/handoffs/procedural-looks-scan.md`).
-- Live rule changes, core half, landed (2bcba1d; u1): rooms with change modes, apply and revert in the tick
-  batch, every peer validates, MCP apply/revert/room. Unity half left: the mode in the room menu, a room
-  intent in `Net/`, the game serving the MCP on localhost, the HUD line, the M panel through the room.
-- DesktopUnity: slam rework landed (ec80f19); clips on the board (slam, punch, sounds A/B/C); now the
-  dragon-view online probe and the ModValidator compile check.
-- Sandbox frozen (210b047; J-042): it reads `sandbox/rules-frozen/`; nothing is ported to it.
-- Rules MCP phase 1 landed (dffbc19; u1, now asleep): `core/Rules.Mcp`, `ModValidator.cs`, budgets in
-  `rules/budgets.json`, "Using the rules MCP" in MODDING.md. Unity hasn't compiled ModValidator yet
-  (DesktopUnity checks on its next pull). Phase 2 (procedural looks) starts from
-  `docs/handoffs/procedural-looks-scan.md` (~70 id-keyed places); it needs Unity.
+- **DesktopUnity:** `live-rules-unity` (5ae803a; brief `docs/handoffs/briefs/live-rules-unity.md`): the room
+  menu, RoomIntent, the M panel through the room, the game serving the rules MCP on 127.0.0.1:47777 with an off
+  switch (J-047), Claude writing its own mods (J-048). Player-build check green. Now: merge dev, the play
+  log's mods column from the room's titles, rerun room probes and online; then the PM lands it.
+  Andrew's test build: `unity\Builds\live-rules-test\SpellChemistryValley.exe`, plus
+  `claude mcp add --transport http spell-valley http://127.0.0.1:47777/mcp`.
+- **unity-game-macbook:** `flaky-probes`: #42 (dragon), then #41 (sleet); #43 castfeel leftovers after
+  (`hit_stop_is_short`, the varying check count). Then a few lines on shipping the Mac app again.
 
 ## Next, in order
 
-1. Wave crest judged good for now (#11 closed). Cast feel judged (J-040, #22): DesktopUnity
-   tunes the uncharged slam (slower, more oomph)
-   and redoes the cast sounds (lower, layered per element, rising per charge step) after perf, with a new clip.
-2. Done: the Windows perf comparison (`docs/handoffs/perf-pass-brief.md` step 1). Check the perf scenarios still
-   run (1e8d899 split PerfScenario.Start and PerfStage.Walk). Then the `perf-pass` skill from
-   `docs/perf/notes-2026-10-31-mac.md`.
-3. The Gauntlet's view: side camera, booths, carnival dressing (`docs/handoffs/obstacle-course-brief.md`).
-4. The Dragon's view: model (CC0), flight, breath, sky, knock-down, props on ChunkFreshened.
-5. Draw the fog patches (#34). Perf issues #24-#33 (storm at 20 fps, uncapped tick debt first).
-6. 0.1.10: the sound pass and voice.
-- Backlog and priority: `docs/BACKLOG.md` ("Priority (groomed 2026-10-30 with Andrew)", items 24-26).
+1. Land `live-rules-unity`; a fireball scenario for the MCP's simulate (it starts with a Fire Bolt).
+2. Perf: Andrew sees a lasting frame-rate drop in snow and rain (#29, backlog); storm and fog first
+   (#27 uncapped tick debt, #31). The play log now gives Andrew's own numbers.
+3. #40 (a yard's first pass leaves 37 materials white), procedural-looks leftovers (CellPaint first,
+   `docs/handoffs/procedural-looks-scan.md`), the Gauntlet's view (`docs/handoffs/obstacle-course-brief.md`),
+   fog patches (#34).
+4. Dragon shelter questions for Andrew, with media first: water never shelters; a raised Wall of Stone is
+   wiped before the breath arrives.
+- Backlog and priority: `docs/BACKLOG.md` ("Priority (groomed 2026-10-30 with Andrew)").
 
 ## Andrew's board
 
@@ -117,7 +83,8 @@ He reads it on his phone instead of scrolling the chat. Update it (Artifact `rea
 
 ## Open questions for Andrew
 
-- The punch knocks a crate only 0.42 m: harder?
+- The cast sounds in the game (clip on the board): never listened to; shipped in 0.1.10 as picked.
+- The live-rules clip ("Claude writes the rule"): his verdict, and his own test of the MCP.
 
 ## Telemetry
 
