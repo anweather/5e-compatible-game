@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-053: Land the lag fix with hosted p99 at 33.2 ms against a 33 ms gate?
+
+- **Asked:** 2026-11-01, by DesktopUnity (one 30 s stretch of long hosted rain read 33.2 ms; the rest 31-33).
+- **Also comes up when:** any perf gate missed by less than the run-to-run noise.
+- **Answer:** PM's call, land it. Andrew's "make a call" standing rule applies.
+- **Why:** 0.2 ms over in one stretch is noise next to the change (898 to 32 ms p99, 1720 frames over 50 ms
+  to 0, sim 37% to 100%). Holding it would keep the 9 fps collapse in the game for a rounding error.
+- **Revisited:** 0.
+
 ### J-052: Do a recoloured spell's ground flames take its colour?
 
 - **Asked:** 2026-11-01, by the Mac (spell effects follow `look.color`; its `LookFire` also turns the flames blue).
