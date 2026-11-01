@@ -1,0 +1,13 @@
+{
+  "name": "arcane-whoosh-ring-low-dull",
+  "says": "every other landing: a soft whoosh with a low, short ring under 3 kHz, not a chime",
+  "seed": 1,
+  "sound": "arcane",
+  "whoosh": {"amount": 0.6, "peak_hz": 1800, "rest_hz": 300, "rise_ms": 150, "tail_ms": 600},
+  "ring": {"amount": 0.12, "hz": 330, "ratios": [1, 1.5], "decay_ms": 300, "at_ms": 120},
+  "hiss": {"amount": 0.04, "hz": 3000},
+  "dull": {"hz": 3000},
+  "swell": {"ms": 60},
+  "tail": {"ms": 380},
+  "cut off": {"ms": 200}
+}

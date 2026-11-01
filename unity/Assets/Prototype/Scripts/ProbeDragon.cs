@@ -28,7 +28,8 @@ public class DragonProbe : ProbeScenario
     const int LavaX = 303, LavaY = 433;
     // Points read along the stream's line; a bigger sum of red and green over a little box than with no stream counts as lit.
     const int StreamPoints = 17, StreamBox = 4, StreamBrighter = 40;
-    // The part of those points that must be lit, in a frame with the stream drawn.
+    // The part of those in the picture that must be lit, in a frame with the stream drawn. From the ground the last
+    // few fall below the frame, how many by where the dragon has got to, so it's of those there are.
     const float StreamLitPart = 0.75f;
     // Frames a watcher lets the view lag the core's tick by; seconds the last drops may fly on.
     const int LagFrames = 2;
@@ -209,7 +210,7 @@ public class DragonProbe : ProbeScenario
         ShootTheDragon();
         yield return null;
         TheFit(p);
-        NoGarbage();
+        yield return NoGarbage();
         yield return ScaleFollowsTheData(p);
         yield return StreamSeen("stream", true);
         yield return StreamSeen("below", false);
@@ -245,17 +246,14 @@ public class DragonProbe : ProbeScenario
     }
 
     // A frame's worth of placing the breath, over again: the stream's work is in the shader, and this makes no garbage.
-    void NoGarbage()
+    IEnumerator NoGarbage()
     {
         var flat = Vector3.ProjectOnPlane(view.Way, Vector3.up).normalized;
         var (a, b) = (view.Breath.StreamAt(1f) + Vector3.Cross(Vector3.up, flat) * 100f, view.Breath.StreamAt(1f) - Vector3.Cross(Vector3.up, flat) * 100f);
-        view.Breath.Burn(a, b, -flat, view.Mouth, view.DrawnScale);
-        // GC.GetAllocatedBytesForCurrentThread says 0 here whatever is made; the heap's size moves in 4 KB blocks, so enough placings to show.
-        long before = System.GC.GetTotalMemory(false);
-        for (int i = 0; i < Placings; i++) view.Breath.Burn(a, b, -flat, view.Mouth, view.DrawnScale);
-        long made = System.GC.GetTotalMemory(false) - before;
-        Metric("burn_bytes", made);
-        Check("burn_makes_no_garbage", made == 0, $"{made} bytes over {Placings} placings");
+        float made = -1f;
+        yield return GarbagePerCall(() => view.Breath.Burn(a, b, -flat, view.Mouth, view.DrawnScale), Placings, m => made = m);
+        Metric("burn_bytes_a_placing", made);
+        Check("burn_makes_no_garbage", made >= 0f && made < MostGarbage, $"{made:0.00} bytes a placing, over {Placings} a frame");
     }
 
     static float ShadowFor(DragonParams p) =>
@@ -298,6 +296,7 @@ public class DragonProbe : ProbeScenario
         yield return null;
         yield return frameEnd;
         var with = StreamPicture(breath);
+        int inPicture = StreamInPicture(breath);
         breath.StreamHidden = true;
         yield return null;
         yield return null;
@@ -306,7 +305,19 @@ public class DragonProbe : ProbeScenario
         breath.StreamHidden = false;
         int lit = with.Zip(without, (a, b) => a > b + StreamBrighter * (2 * StreamBox + 1) * (2 * StreamBox + 1) ? 1 : 0).Sum();
         Metric($"stream_lit_points_{label}", lit);
-        Check($"stream_seen_{label}", lit >= StreamPoints * StreamLitPart, $"{lit} of {StreamPoints} points between the mouth and the wall lit by it");
+        Metric($"stream_in_picture_{label}", inPicture);
+        Check($"stream_seen_{label}", inPicture > StreamPoints / 2 && lit >= inPicture * StreamLitPart, $"{lit} of the {inPicture} points of {StreamPoints} in the picture, between the mouth and the wall, lit by it");
+    }
+
+    // How many of the points on the stream's line have their little box in the picture.
+    static int StreamInPicture(DragonBreath breath)
+    {
+        var eye = Camera.main;
+        return Enumerable.Range(0, StreamPoints).Count(i =>
+        {
+            var at = eye.WorldToScreenPoint(breath.StreamAt((i + 0.5f) / StreamPoints));
+            return at.z > 0f && at.x >= StreamBox && at.y >= StreamBox && at.x < Screen.width - StreamBox && at.y < Screen.height - StreamBox;
+        });
     }
 
     // The sum of red and green over a little box at each point of the stream's line.

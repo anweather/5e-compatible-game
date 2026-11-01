@@ -1,0 +1,13 @@
+{
+  "name": "grease-thump-drops-falling",
+  "says": "Grease: a wet, low squelch: a soft thump, thick low bubbles, sliding down",
+  "seed": 1,
+  "sound": "grease",
+  "thump": {"amount": 0.5, "from_hz": 250, "to_hz": 90, "decay_ms": 110},
+  "rumble": {"amount": 0.45, "hz": 500},
+  "drops": {"amount": 0.35, "per_s": 30, "hz": [150, 400], "ms": 45},
+  "rising": {"semitones": -5, "glide_ms": 300},
+  "swell": {"ms": 10},
+  "tail": {"ms": 180},
+  "cut off": {"ms": 40}
+}

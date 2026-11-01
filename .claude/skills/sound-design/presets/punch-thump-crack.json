@@ -1,0 +1,9 @@
+{
+  "name": "punch-thump-crack",
+  "says": "a punch landing: a short low thump with a little slap",
+  "seed": 1,
+  "sound": "punch",
+  "thump": {"amount": 0.8, "from_hz": 150, "to_hz": 60, "decay_ms": 70},
+  "crack": {"amount": 0.5, "hz": 1200, "ms": 15},
+  "cut off": {"ms": 40}
+}

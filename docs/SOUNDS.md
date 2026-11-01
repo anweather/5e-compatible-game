@@ -201,10 +201,18 @@ the sound it replaces; the splash ones are 1 dB under, held by the peak:
 | `shatter-no-tinkle` | the crack and scatter only, no glassy partials | -24.1 | -3.0 |
 | `shatter-lower-12-shorter-tail-0.1s` | the tinkles an octave lower (1.8, 2.4, 3.1 kHz) and dying in 0.1 s, not 0.3 | -24.1 | -2.9 |
 
-None of these is a `synth.py` preset: `synth.py` renders only the cast series (hum, thump,
-whoosh), and these sounds aren't made of its words. A preset needs a new series first (for
-example "landing": a short sound at one moment, with `swell`, `cut off` and a tone or noise
-body).
+None of these is a `synth.py` preset (they were made from the clips). `synth.py` now has a series
+for every family and a first-take preset for every sound (below).
+
+## First takes, made procedurally
+
+Every sound above except the cast series' own (hums, slam, whooshes: `cast-deep-hum-pulse`) has a
+first-take sound preset in `.claude/skills/sound-design/presets/`, matched to its length and
+loudness here, plus the missing ones: wizard (`punch`, `pick`, `pick-up`, `hit`, `footsteps`), UI
+(`confirm`, `refusal`) and mini games (`golf-strike`, `hole`) at proposed levels. They're starting
+points for Andrew to refine, not picks. Rendered (not in git) to `tools/sound-audition/new/<family>/`
+with `synth.py $(grep -l '"sound"' presets/*.json) --out tools/sound-audition/new`; families and
+series are in `synth.py --help`. The removed 0.1.10 sounds and the stand-ins have none.
 
 ## Couldn't be rendered
 

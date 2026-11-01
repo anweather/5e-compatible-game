@@ -1,0 +1,9 @@
+{
+  "name": "pick-up-whoosh-thump-soft",
+  "says": "an item picked up: a small swish and a soft tap",
+  "seed": 1,
+  "sound": "pick-up",
+  "whoosh": {"amount": 0.4, "peak_hz": 1500, "rest_hz": 300, "rise_ms": 80, "tail_ms": 120},
+  "thump": {"amount": 0.15, "from_hz": 200, "to_hz": 140, "decay_ms": 40, "at_ms": 80},
+  "cut off": {"ms": 30}
+}

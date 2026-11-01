@@ -67,6 +67,7 @@ public partial class CastFeelProbe : ProbeScenario
         {
             caster.AimOverride = null;
             caster.enabled = casterWasOn;
+            ChemGrid.ExactFrames = false;
             beats.PoseOn = true;
             beats.BeatChanged -= Heard;
             beats.ChargeLevel -= Pulsed;
@@ -123,7 +124,9 @@ public partial class CastFeelProbe : ProbeScenario
     {
         float shakeWas = GameFeel.Shake;
         GameFeel.Shake = 1f;
-        Time.captureDeltaTime = 1f / 60f;
+        FixClock(true);
+        // Ticks in work units too: by real milliseconds a tick can come a frame or ten late (Charge 79, not 70), and the beats with it.
+        ChemGrid.ExactFrames = true;
         yield return Wait(1f);
         yield return Timed(true);
         string charged = string.Join(", ", lasted.Select(kv => $"{kv.Key} {kv.Value}"));
@@ -133,8 +136,9 @@ public partial class CastFeelProbe : ProbeScenario
         string tap = string.Join(", ", lasted.Select(kv => $"{kv.Key} {kv.Value}"));
         Check("tap_beats_as_tuned", lasted[Beat.WindUp] == TapWindUp && lasted[Beat.Release] == TapRelease && lasted[Beat.Recovery] == TapRecovery
             && Mathf.Abs(lasted[Beat.First] + lasted[Beat.Slam] - TapFirstAndSlam) <= 1, tap);
+        ChemGrid.ExactFrames = false; // the repeats want real slices: a tick finished from outside lost a cast once (#39)
         yield return Repeats();
-        Time.captureDeltaTime = 0f;
+        FixClock(false);
         GameFeel.Shake = shakeWas;
     }
 
@@ -242,10 +246,17 @@ public partial class CastFeelProbe : ProbeScenario
     void Report(string name, Beat[] expected)
     {
         Check($"{name}_beats_in_order", seen.SequenceEqual(expected), string.Join(" ", seen));
-        foreach (var (beat, error) in worstHand.Select(kv => (kv.Key, kv.Value)))
+        // Every beat with hand targets has its check: a short one can end before a frame lands in its settled time, so has none to read.
+        foreach (var beat in expected.Where(b => b is not (Beat.Neutral or Beat.Recovery or Beat.Fizzle)))
         {
-            Metric($"{name}_{beat.ToString().ToLowerInvariant()}_hand_cm", error * 100f);
-            Check($"{name}_{beat.ToString().ToLowerInvariant()}_hands_at_targets", error < HandTolerance, $"worst {error * 100f:0.0} cm");
+            string label = $"{name}_{beat.ToString().ToLowerInvariant()}";
+            if (!worstHand.TryGetValue(beat, out float error))
+            {
+                Check($"{label}_hands_at_targets", true, "over before it settled");
+                continue;
+            }
+            Metric($"{label}_hand_cm", error * 100f);
+            Check($"{label}_hands_at_targets", error < HandTolerance, $"worst {error * 100f:0.0} cm");
         }
     }
 

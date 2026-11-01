@@ -1,0 +1,11 @@
+{
+  "name": "gust-whoosh-long",
+  "says": "air landing: one long whoosh past, a little low wind under it",
+  "seed": 1,
+  "sound": "gust",
+  "whoosh": {"amount": 0.9, "peak_hz": 1800, "rest_hz": 250, "rise_ms": 400, "tail_ms": 550},
+  "rumble": {"amount": 0.2, "hz": 250},
+  "swell": {"ms": 150},
+  "tail": {"ms": 500, "hold_ms": 300},
+  "cut off": {"ms": 60}
+}

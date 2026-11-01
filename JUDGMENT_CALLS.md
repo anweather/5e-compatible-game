@@ -41,6 +41,17 @@ Each entry has:
 
 ## Decided
 
+### J-051: Is Linux its own build or part of the release?
+
+- **Asked:** 2026-11-01, by Andrew: "We should treat Linux and win the same release version".
+- **Also comes up when:** cutting any release, adding a platform, a friend on another OS.
+- **Answer:** every `alpha-X.Y.Z` ships Windows and Linux from the same commit, and the Linux zip goes on
+  that release. The Mac builds Linux, since the PC has no Linux Build Support. No Linux in-place updates
+  yet: Linux players download each release. macOS stays shelved (J-049).
+- **Why:** the host refuses a join unless version and commit match exactly, so a release with no Linux
+  build locks Linux players out.
+- **Revisited:** 0.
+
 ### J-050: The repository's licence
 
 - **Asked:** 2026-10-31, by Andrew (the repo is public and had none).

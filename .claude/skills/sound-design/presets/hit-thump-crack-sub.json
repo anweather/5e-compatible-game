@@ -1,0 +1,11 @@
+{
+  "name": "hit-thump-crack-sub",
+  "says": "the wizard taking a hit: a heavy thump with weight under it",
+  "seed": 1,
+  "sound": "hit",
+  "thump": {"amount": 1, "from_hz": 120, "to_hz": 45, "decay_ms": 150},
+  "crack": {"amount": 0.4, "hz": 900, "ms": 30},
+  "sub": {"amount": 0.3, "hz": 45},
+  "tail": {"ms": 180},
+  "cut off": {"ms": 60}
+}

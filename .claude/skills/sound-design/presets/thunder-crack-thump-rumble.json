@@ -1,0 +1,14 @@
+{
+  "name": "thunder-crack-thump-rumble",
+  "says": "Thunderwave: a boom, a crack and a short rumbling roll",
+  "seed": 1,
+  "sound": "thunder",
+  "crack": {"amount": 0.9, "hz": 1200, "ms": 80},
+  "thump": {"amount": 0.9, "from_hz": 90, "to_hz": 35, "decay_ms": 400},
+  "rumble": {"amount": 0.7, "hz": 220},
+  "sub": {"amount": 0.3, "hz": 38},
+  "gusting": {"amount": 0.4, "hz": 4},
+  "swell": {"ms": 2},
+  "tail": {"ms": 450},
+  "cut off": {"ms": 150}
+}

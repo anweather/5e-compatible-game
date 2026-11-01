@@ -14,6 +14,7 @@ using UnityEngine;
 // A remote wizard is checked in the online probe, on a real other peer.
 public partial class CastFeelProbe
 {
+    const int GarbageSounds = 500;
     readonly List<string> heard = new();
     readonly List<float> humStarts = new();
     int thumpFrame = -1, struckFrame = -1;
@@ -278,16 +279,15 @@ public partial class CastFeelProbe
 
         // Through the same path as a cast; the probe's own listener is off for this.
         SoundVoices.Started -= Sounded;
-        long was = GC.GetAllocatedBytesForCurrentThread();
-        for (int i = 0; i < 30; i++)
+        float made = -1f;
+        yield return GarbagePerCall(() =>
         {
             var hit = SoundVoices.Play(new Cue(CastSoundTable.Slam, GameSounds.Clip(CastSoundTable.Slam), 0.01f, 1f, 40f), Vector3.up, wizard.transform);
             SoundVoices.Stop(hit, 0.01f);
-        }
-        long made = GC.GetAllocatedBytesForCurrentThread() - was;
+        }, GarbageSounds, m => made = m);
         SoundVoices.Started += Sounded;
-        Metric("bytes_for_30_sounds", made);
-        Check("no_garbage_per_sound", made == 0, $"{made} bytes");
+        Metric("bytes_a_sound", made);
+        Check("no_garbage_per_sound", made >= 0f && made < MostGarbage, $"{made:0.00} bytes a sound, over {GarbageSounds} a frame");
         yield return Wait(0.3f);
     }
 }

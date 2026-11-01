@@ -1,0 +1,9 @@
+{
+  "name": "hole-ring-thump",
+  "says": "the ball dropping in the hole: three rattles in the cup, then it settles",
+  "seed": 1,
+  "sound": "hole",
+  "ring": [{"amount": 0.4, "hz": 650, "ratios": [1, 2.4], "decay_ms": 60}, {"amount": 0.25, "hz": 650, "ratios": [1, 2.4], "decay_ms": 50, "at_ms": 110}, {"amount": 0.15, "hz": 650, "ratios": [1, 2.4], "decay_ms": 40, "at_ms": 190}],
+  "thump": {"amount": 0.3, "from_hz": 180, "to_hz": 110, "decay_ms": 80, "at_ms": 260},
+  "cut off": {"ms": 60}
+}
