@@ -15,7 +15,7 @@ using UnityEngine.Rendering;
 // totals. Once a second one line goes to a CSV beside the player log, by PlayLogFile on a thread of
 // its own: frame rate, the worst frame, frames over 33 and 50 ms, CPU and GPU times, what the world
 // was doing. A frame over 100 ms adds its own line (in a development build, with its top markers).
-// F8 ("that felt bad") adds a marked line and a small screenshot. Quitting adds a summary line. The
+// F8 ("that felt bad") adds a marked line and a small screenshot, as the playtest bot's finds do. Quitting adds a summary line. The
 // Esc menu turns it off; the choice is kept. The Editor doesn't log, except for the probe.
 // -no-play-log starts a player without it, to measure what it costs.
 public class PlayLog : MonoBehaviour
@@ -191,13 +191,13 @@ public class PlayLog : MonoBehaviour
         file.Add(Line("hitch", 1000f / ms, 1, 1, what, ms));
     }
 
-    /// <summary>"That felt bad": a marked line, and a small picture of the moment.</summary>
-    public void Mark()
+    /// <summary>"That felt bad": a marked line, and a small picture of the moment. The playtest bot marks what it finds.</summary>
+    public void Mark(string why = "felt bad")
     {
         if (file == null) return;
         marks++;
         string shot = $"{file.Stem}-mark-{marks}.jpg";
-        file.Add(Line("mark", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, ("felt bad " + shot + " " + Happening(false)).Trim()));
+        file.Add(Line("mark", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, $"{why} {shot} {Happening(false)}".Trim()));
         StartCoroutine(Shoot(Path.Combine(file.Folder, shot)));
         EventLog.Add("Noted");
     }

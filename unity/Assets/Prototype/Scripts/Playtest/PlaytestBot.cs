@@ -361,7 +361,9 @@ public class PlaytestBot : MonoBehaviour
     void Add(Candidate c)
     {
         c.Goal = goal;
-        if (found.Add(c) && !c.Detector.StartsWith("image-", StringComparison.Ordinal)) c.Screenshot = Shoot(c.Detector);
+        if (!found.Add(c)) return;
+        if (PlayLog.Instance != null) PlayLog.Instance.Mark(c.Detector);
+        if (!c.Detector.StartsWith("image-", StringComparison.Ordinal)) c.Screenshot = Shoot(c.Detector);
     }
 
     // A screenshot from the main camera into a RenderTexture (it doesn't need the window), saved as
