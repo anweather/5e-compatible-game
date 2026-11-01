@@ -9,18 +9,24 @@ using System.Text;
 
 namespace Chem.Mcp
 {
-    /// <summary>Where the player asking stands: their name (as the core keys players), their cell, and the cell they look at.</summary>
+    /// <summary>
+    /// Where the player asking stands: their name (as the core keys players), their slot (0, 1, 2... in
+    /// join order), their cell, and the cell they look at.
+    /// </summary>
     public readonly struct HereSpot
     {
-        public HereSpot(string player, int x, int y, (int x, int y)? looking = null)
+        public HereSpot(string player, int x, int y, (int x, int y)? looking = null, int slot = 0)
         {
             Player = player;
             X = x;
             Y = y;
             Looking = looking;
+            Slot = slot;
         }
 
         public string Player { get; }
+        /// <summary>Their slot, 0 the host: what a look "by" a player names.</summary>
+        public int Slot { get; }
         public int X { get; }
         public int Y { get; }
         /// <summary>The cell under the player's aim, or null when they aim at nothing.</summary>
@@ -84,7 +90,7 @@ namespace Chem.Mcp
             var spot = Here?.Asking();
             if (spot == null) return "No player is in the game, so there's no here; a look round a player needs one.";
             var me = spot.Value;
-            var sb = new StringBuilder(string.Format(CultureInfo.InvariantCulture, "You are {0}, at cell [{1}, {2}]", me.Player, me.X, me.Y));
+            var sb = new StringBuilder(string.Format(CultureInfo.InvariantCulture, "You are {0} (slot {1}), at cell [{2}, {3}]", me.Player, me.Slot, me.X, me.Y));
             if (Here.StandIn) sb.Append(" (a stand-in: no game is attached, so this is where a headless run puts the host)");
             sb.Append('.');
             var inside = Places.All.Where(p => p.Contains(me.X, me.Y)).ToList();
@@ -115,6 +121,10 @@ namespace Chem.Mcp
             string[] ways = { "east", "north-east", "north", "north-west", "west", "south-west", "south", "south-east" };
             return ways[(int)Math.Round((angle + 360) % 360 / 45) % 8];
         }
+
+        /// <summary>The slot "by": "me" means: the one asking's, or the reason there's none.</summary>
+        int MySlot() =>
+            Here?.Asking()?.Slot ?? throw new RulesToolException("No player is in the game, so \"by\": \"me\" has no one to colour for; give a slot or \"each\".");
 
         static string Article(string word) => !string.IsNullOrEmpty(word) && "aeiou".Contains(word[0]) ? "an" : "a";
 

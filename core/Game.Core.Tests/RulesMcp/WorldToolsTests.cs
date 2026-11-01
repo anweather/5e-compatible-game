@@ -18,7 +18,10 @@ namespace Chem.Tests
         }
 
         static Draft Look(Workbench b, string id, string param, string value, string where = null, string draft = null, string table = null) =>
-            b.SetLook(draft, id, param, value, table, out _, where);
+            b.SetLook(draft, id, param, value, table, out _, (where, null));
+
+        static Draft By(Workbench b, string id, string param, string value, string by, string draft = null, string table = null) =>
+            b.SetLook(draft, id, param, value, table, out _, (null, by));
 
         static string Refusal(Workbench b, string id, string param, string value, string where, string table = null) =>
             Assert.Throws<RulesToolException>(() => Look(b, id, param, value, where, table: table)).Message;
@@ -46,7 +49,7 @@ namespace Chem.Tests
             var b = Bench(new HereSpot("host", village.x, village.y, (village.x + 1, village.y)));
             var name = b.Places.All.First(p => p.Kind == "village").Name;
             string said = new RulesTools(b).Here();
-            StringAssert.StartsWith($"You are host, at cell [{village.x}, {village.y}] (a stand-in", said);
+            StringAssert.StartsWith($"You are host (slot 0), at cell [{village.x}, {village.y}] (a stand-in", said);
             StringAssert.Contains($"In {name} (", said);
             StringAssert.Contains("Near, within 120 cells:", said);
             StringAssert.Contains("the lake (lake, a lake):", said);
@@ -150,11 +153,63 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TheFireICreateTurnsBlue()
+        {
+            var b = Bench(new HereSpot("guest", 10, 10, slot: 2));
+            var d = By(b, "fire", "color", "[0.25, 0.45, 1]", "me");
+            Assert.That(d.Patch["elements"]["fire"]["look"]["scoped"][0].ToString(Newtonsoft.Json.Formatting.None), Is.EqualTo("{\"by\":2,\"color\":[0.25,0.45,1.0]}"), "me is the asking player's slot");
+            Assert.That(Workbench.Report(b.Validate(d.Id)), Does.StartWith("No problems"));
+            var rules = With(b, d);
+            Assert.That(rules.Fingerprint, Is.EqualTo(b.Base.Fingerprint));
+            var players = new List<PlayerSpot> { new PlayerSpot("host", 0, 0, 0), new PlayerSpot("guest", 10, 10, 2) };
+            var fire = LookScopes.Compile(rules, b.Places).Of("elements", "fire");
+            Assert.That(fire.At(300, 300, players, null, 2).B, Is.EqualTo(1f), "the guest's fire, anywhere");
+            Assert.That(fire.At(300, 300, players, null, 0).B, Is.EqualTo(b.Base.ElementLook("fire").B), "the host's as it was");
+            StringAssert.Contains("By player, by the player in slot 2: [0.25, 0.45, 1].", b.Describe("elements", "fire", d.Id));
+            var spell = By(b, "fireball", "color", "\"#4073ff\"", "me");
+            Assert.That(Workbench.Report(b.Validate(spell.Id)), Does.StartWith("No problems"), "a spell's own show by player");
+        }
+
+        [Test]
+        public void EachPlayerGetsTheirOwnFireColour()
+        {
+            var b = Bench();
+            var d = By(b, "fire", "mix", "[\"#ff4020\", \"#2050ff\", \"#30d040\", \"#f0d020\"]", "each");
+            Assert.That(Workbench.Report(b.Validate(d.Id)), Does.StartWith("No problems"));
+            var fire = LookScopes.Compile(With(b, d), b.Places).Of("elements", "fire");
+            var players = Enumerable.Range(0, 4).Select(i => new PlayerSpot("p" + i, i, i, i)).ToList();
+            var colours = Enumerable.Range(0, 4).Select(i => fire.At(50, 50, players, null, i).ToString()).ToList();
+            Assert.That(colours.Distinct().Count(), Is.EqualTo(4), "four players, four colours");
+            StringAssert.Contains("By player, by each player, one colour per slot in join order:", b.Describe("elements", "fire", d.Id));
+            var smoke = By(b, "smoke", "color", "[0.2, 0.2, 0.6]", "1", table: "gas");
+            Assert.That(Workbench.Report(b.Validate(smoke.Id)), Does.StartWith("No problems"), "a gas by slot");
+        }
+
+        [Test]
+        public void ALookByPlayerThatCantHoldIsRefused()
+        {
+            var b = Bench();
+            StringAssert.Contains("A terrain isn't cast by anyone", Assert.Throws<RulesToolException>(() => By(b, "stone", "color", "[1, 0, 0]", "me")).Message);
+            StringAssert.Contains("by each gives a mix", Assert.Throws<RulesToolException>(() => By(b, "fire", "color", "[1, 0, 0]", "each")).Message);
+            StringAssert.Contains("by is \"me\"", Assert.Throws<RulesToolException>(() => By(b, "fire", "color", "[1, 0, 0]", "everyone")).Message);
+            StringAssert.Contains("either a where or a by", Assert.Throws<RulesToolException>(() => b.SetLook(null, "fire", "color", "[1, 0, 0]", null, out _, ("{\"place\": \"lake\"}", "me"))).Message);
+            StringAssert.Contains("has no one to colour for", Assert.Throws<RulesToolException>(() => By(Bench(standIn: false), "fire", "color", "[1, 0, 0]", "me")).Message);
+            string said = Workbench.Report(b.Validate("{\"terrain\": {\"stone\": {\"look\": {\"family\": \"block\", \"color\": [1, 0, 0], \"scoped\": [{\"by\": 0, \"color\": [0, 1, 0]}]}}}}"));
+            StringAssert.Contains("is given by player, which only what a cast makes", said);
+            var fireball = JObject.Parse(b.Describe("spells", "fireball").Split('\n', 2)[1].Split("\nReferred to by")[0].Split("\nNothing in the rules")[0]);
+            fireball["look"]["scoped"] = JArray.Parse("[{\"where\": {\"place\": \"lake\"}, \"color\": [0, 1, 0]}]");
+            said = Workbench.Report(b.Validate(new JObject { ["spells"] = new JArray(fireball) }.ToString()));
+            StringAssert.Contains("is scoped to a place, but a spell's look colours its own show", said);
+        }
+
+        [Test]
         public void TheInstructionsMakeScopedAndMixedAsksClear()
         {
             StringAssert.Contains("\\\"Make the fire near me green\\\" is set_look fire color green with where {\\\"around\\\": \\\"me\\\", \\\"within\\\": 10}".Replace("\\", ""), RulesTools.Instructions);
             StringAssert.Contains("Fire round the village in three colours", RulesTools.Instructions);
             StringAssert.Contains("places (or here)", RulesTools.Instructions);
+            StringAssert.Contains("each player gets their own fire colour\\\" is set_look fire mix [one colour per player, as many as may play] with by \\\"each\\\"".Replace("\\", ""), RulesTools.Instructions);
+            StringAssert.Contains("make the fire I create blue\\\" is set_look fire color blue with by \\\"me\\\"".Replace("\\", ""), RulesTools.Instructions);
         }
     }
 }

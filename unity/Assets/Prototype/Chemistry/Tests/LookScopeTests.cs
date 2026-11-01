@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using NUnit.Framework;
 
 namespace Chem.Tests
@@ -166,13 +167,13 @@ namespace Chem.Tests
         [Test]
         public void AtAllocatesNothing()
         {
-            var fire = Fire(FireLook("[{ 'where': { 'place': 'box', 'within': 3 }, 'mix': [[0, 1, 0], [0, 1, 1]] }, { 'where': { 'around': 'host', 'within': 5 }, 'color': [0.2, 0.9, 0.3] }]", "[[1, 0, 0], [0, 0, 1]]"));
-            var players = new List<PlayerSpot> { new PlayerSpot("host", 30, 30) };
+            var fire = Fire(FireLook("[{ 'where': { 'place': 'box', 'within': 3 }, 'mix': [[0, 1, 0], [0, 1, 1]] }, { 'where': { 'around': 'host', 'within': 5 }, 'color': [0.2, 0.9, 0.3] }, { 'by': 'each', 'mix': [[1, 0, 0], [0, 0, 1]] }, { 'by': 1, 'color': [0, 1, 0] }]", "[[1, 0, 0], [0, 0, 1]]"));
+            var players = new List<PlayerSpot> { new PlayerSpot("host", 30, 30, 0), new PlayerSpot("guest", 3, 3, 1) };
             float Sweep()
             {
                 float sum = 0;
                 for (int y = 0; y < 64; y++)
-                    for (int x = 0; x < 64; x++) sum += fire.At(x, y, players, y == 0 ? Red : (LookColour?)null).G;
+                    for (int x = 0; x < 64; x++) sum += fire.At(x, y, players, y == 0 ? Red : (LookColour?)null, x % 3 == 0 ? (int?)null : x % 3 - 1).G;
                 return sum;
             }
             for (int warm = 0; warm < 3; warm++) Sweep();
@@ -191,10 +192,63 @@ namespace Chem.Tests
             Assert.That(sum, Is.GreaterThan(0));
         }
 
+        // ---------- by player ----------
+
+        static readonly List<PlayerSpot> ThreePlayers = new List<PlayerSpot>
+        {
+            new PlayerSpot("host", 0, 0, 0), new PlayerSpot("guest", 5, 5, 1), new PlayerSpot("third", 9, 9, 2),
+        };
+
+        [Test]
+        public void ByWinsThenASpellsOwnColourThenWhereThenTheElement()
+        {
+            var fire = Fire(FireLook("[{ 'by': 1, 'color': [0.25, 0.45, 1] }, { 'where': { 'at': [50, 50], 'within': 6 }, 'color': [0.2, 0.9, 0.3] }]"));
+            Assert.That(fire.ByPlayers, Is.True);
+            Same(fire.At(50, 50, ThreePlayers, Red, 1), Blue, "by: the guest's fire is blue, over a spell's own red and the where");
+            Same(fire.At(0, 0, ThreePlayers, null, 1), Blue, "and anywhere");
+            Same(fire.At(50, 50, ThreePlayers, Red, 0), Red, "the host has no by: a spell's own colour");
+            Same(fire.At(50, 50, ThreePlayers, null, 0), Green, "no spell colour: the where");
+            Same(fire.At(50, 50, ThreePlayers), Green, "no caster known: the where");
+            Same(fire.At(0, 0, ThreePlayers, null, 0), Plain, "none of them: the element's colour");
+        }
+
+        [Test]
+        public void EachPlayerGetsTheirOwnColourAndASlotThatLeavesLapses()
+        {
+            var fire = Fire(FireLook("[{ 'by': 'each', 'mix': [[1, 0.1, 0.1], [0.25, 0.45, 1], [0.2, 0.9, 0.3]] }]"));
+            Same(fire.At(7, 7, ThreePlayers, null, 0), Red, "slot 0, the first colour");
+            Same(fire.At(7, 7, ThreePlayers, null, 1), Blue, "slot 1, the second");
+            Same(fire.At(7, 7, ThreePlayers, Red, 2), Green, "slot 2, the third, over a spell's own colour");
+            var left = new List<PlayerSpot> { ThreePlayers[0], ThreePlayers[2] };
+            Same(fire.At(7, 7, left, null, 1), Plain, "the guest left: their fire lapses to the element's colour");
+            Same(fire.At(7, 7, left, null, 2), Green, "and the others keep theirs: slots don't close up");
+            var fourth = new List<PlayerSpot>(ThreePlayers) { new PlayerSpot("fourth", 1, 1, 3) };
+            Same(fire.At(7, 7, fourth, null, 3), Red, "more players than colours: round again");
+            Same(fire.At(7, 7, null, null, 1), Plain, "nobody known in the game: no by");
+
+            // One player's own colour, latest wins over each; it lapses when they leave, and each takes over again only while they're in.
+            var mine = Fire(FireLook("[{ 'by': 'each', 'mix': [[1, 0.1, 0.1], [0.25, 0.45, 1], [0.2, 0.9, 0.3]] }, { 'by': 1, 'color': [0.2, 0.9, 0.3] }]"));
+            Same(mine.At(7, 7, ThreePlayers, null, 1), Green, "slot 1's own look is the latest");
+            Same(mine.At(7, 7, left, null, 1), Plain, "gone: lapsed");
+        }
+
+        [Test]
+        public void ASpellsOwnShowTakesALookByPlayer()
+        {
+            var doc = Newtonsoft.Json.Linq.JObject.Parse(Base.ToJson());
+            var fireball = (Newtonsoft.Json.Linq.JObject)((Newtonsoft.Json.Linq.JArray)doc["spells"]).First(t => (string)t["id"] == "fireball").DeepClone();
+            fireball["look"]["scoped"] = Newtonsoft.Json.Linq.JArray.Parse("[{ \"by\": 0, \"color\": [0.25, 0.45, 1] }]");
+            var rules = Base.WithMods(new[] { ModPatch.Parse(new Newtonsoft.Json.Linq.JObject { ["spells"] = new Newtonsoft.Json.Linq.JArray(fireball) }.ToString()) });
+            var show = LookScopes.Compile(rules, Places).Of("spells", "fireball");
+            Same(show.At(0, 0, ThreePlayers, null, 0), Blue, "the host's Fireball is blue");
+            Same(show.At(0, 0, ThreePlayers, null, 1), LookColour.Of(Base.Spell("fireball").Look), "everyone else's as it was");
+            Assert.That(rules.Fingerprint, Is.EqualTo(Base.Fingerprint));
+        }
+
         [Test]
         public void LooksStayOutOfTheFingerprint()
         {
-            var mod = FireLook("[{ 'where': { 'around': 'host', 'within': 5 }, 'color': [0.2, 0.9, 0.3] }]", "[[1, 0, 0], [0, 0, 1]]");
+            var mod = FireLook("[{ 'where': { 'around': 'host', 'within': 5 }, 'color': [0.2, 0.9, 0.3] }, { 'by': 'each', 'mix': [[1, 0, 0], [0, 0, 1]] }]", "[[1, 0, 0], [0, 0, 1]]");
             Assert.That(Base.WithMods(new[] { mod }).Fingerprint, Is.EqualTo(Base.Fingerprint));
             var cover = Mod("{ 'covers': { 'oil': { 'name': 'Oil', 'tags': [], 'look': { 'color': [0.1, 0.1, 0.1], 'scoped': [{ 'where': { 'place': 'box' }, 'color': [1, 1, 0] }] } } } }");
             var oil = LookScopes.Compile(Base.WithMods(new[] { cover }), Places).Of("covers", "oil");
@@ -211,6 +265,9 @@ namespace Chem.Tests
             StringAssert.Contains("look.scoped[0].where names one of place, at or around", Errors("{ 'scoped': [{ 'where': { 'place': 'box', 'at': [1, 2] }, 'color': [1, 0, 0] }] }"));
             StringAssert.Contains("needs within (cells) round a cell or a player", Errors("{ 'scoped': [{ 'where': { 'around': 'host' }, 'color': [1, 0, 0] }] }"));
             StringAssert.Contains("look.scoped[0].where must be an object", Errors("{ 'scoped': [{ 'where': 'box', 'color': [1, 0, 0] }] }"));
+            StringAssert.Contains("look.scoped[0].by must be a player's slot", Errors("{ 'scoped': [{ 'by': 'me', 'color': [1, 0, 0] }] }"));
+            StringAssert.Contains("by each needs a mix", Errors("{ 'scoped': [{ 'by': 'each', 'color': [1, 0, 0] }] }"));
+            StringAssert.Contains("gives one of where", Errors("{ 'scoped': [{ 'by': 0, 'where': { 'place': 'box' }, 'color': [1, 0, 0] }] }"));
         }
     }
 }

@@ -50,9 +50,10 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `add_material`, `set_material(id, field, value)`
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
-- `set_look(id, param, value, table?, where?)`: one parameter of the look of a spell, terrain,
-  cover, gas or element, a `mix` of colours, and with `where` a colour or mix that holds only
-  round a place, a cell or the player asking (see "Looks")
+- `set_look(id, param, value, table?, where?, by?)`: one parameter of the look of a spell, terrain,
+  cover, gas or element, a `mix` of colours, with `where` a colour or mix that holds only
+  round a place, a cell or the player asking, and with `by` one that colours only what a
+  player casts (see "Looks")
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare
 - `remove(table, id)`, only for things the draft itself added
 
@@ -146,6 +147,22 @@ Asked of Claude, "make the fire near me green" is `set_look fire color [0.2, 0.9
 `where {"around": "me", "within": 10}`, and "fire round the village in three colours" is `places`
 (or `here`) for the village's id, then `set_look fire mix [three colours]` with
 `where {"place": "<id>", "within": 20}`. The view doesn't call `At` yet (the PC's part).
+
+**Looks by player.** A scoped look may give `by` in place of `where`: `{"by": 2, "color": ...}`
+colours only what the player in slot 2 casts, and `{"by": "each", "mix": [...]}` gives each
+player one colour of the mix, by slot (0 the host, then each in join order; the mix's colours go
+round again past its end). On elements, covers and gases (what a cast makes: a fire keeps its
+caster's colour as it spreads, the view's note J-052 carries) and on spells (the cast's own show);
+not on terrains, which nobody casts. `set_look` takes `by`: `"me"` (written as the asking player's
+slot, from `here()`), a slot, or `"each"` (with a mix). A look by a slot lapses once that player
+leaves, and the others keep theirs: slots don't close up. Strongest first, a cell's colour is:
+`by` (the latest that names its caster), a spell's own colour, `where`, the plain look; so
+`CellLook.At` also takes `caster`, the slot whose cast made what's on the cell, and `players`
+carries each player's slot (`PlayerSpot.Slot`). It's a look, not a fact: two peers can differ at
+a fire's edge, and nothing scores who burnt what. Asked of Claude, "make the fire I create blue"
+is `set_look fire color [0.25, 0.45, 1]` with `by "me"`, and "each player gets their own fire
+colour" is `set_look fire mix [one colour per player]` with `by "each"` (on `fireball`, table
+spell, for the spell's own show).
 
 **How it redraws.** The view reads looks from `World.Rules` when it draws, so what it draws next
 is from the rules in force on every peer. A switch also redraws what already stands if its

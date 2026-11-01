@@ -214,9 +214,10 @@ namespace Chem
             void Params(JObject look, string who, string what, IReadOnlyList<string> takes, string table)
             {
                 bool colours = takes.Contains("color") && LookScopes.Tables.Contains(table);
+                bool byPlayer = takes.Contains("color") && LookScopes.ByTables.Contains(table);
                 foreach (var key in look.Properties().Select(p => p.Name).Where(k => !LookFamilies.Naming.Contains(k) && !takes.Contains(k)))
                 {
-                    if (colours && (key == "mix" || key == "scoped")) continue;
+                    if ((colours && (key == "mix" || key == "scoped")) || (byPlayer && key == "scoped")) continue;
                     string why = (key == "mix" || key == "scoped") && takes.Contains("color") ? $" ({key} is for an element's, cover's, gas's or terrain's look; a spell's colours only its own show)" : "";
                     Add(ModCheck.Looks, $"{who}'s look gives {key}, which {what} doesn't take; it takes {(takes.Count == 0 ? "nothing" : string.Join(", ", takes))} (rules/looks.json){why}.");
                 }
@@ -227,10 +228,14 @@ namespace Chem
             {
                 double maxMix = budgets.Number("looks.maxMix", 8), maxScoped = budgets.Number("looks.maxScoped", 8), maxWithin = budgets.Number("looks.maxWithin", 64);
                 if (look["mix"] is JArray mix && mix.Count > maxMix) Add(ModCheck.Budget, $"{who}'s look mixes {mix.Count} colours; a mix has at most {Num(maxMix)}.");
-                if (!(look["scoped"] is JArray scoped) || !LookScopes.Tables.Contains(table)) return;
+                if (!(look["scoped"] is JArray scoped)) return;
                 if (scoped.Count > maxScoped) Add(ModCheck.Budget, $"{who}'s look has {scoped.Count} scoped looks; a look has at most {Num(maxScoped)}.");
                 foreach (var s in scoped.OfType<JObject>())
                 {
+                    if (s["by"] != null && !LookScopes.ByTables.Contains(table))
+                        Add(ModCheck.Looks, $"{who}'s look is given by player, which only what a cast makes (an element, cover or gas) or a spell's own show can be.");
+                    if (s["where"] != null && !LookScopes.Tables.Contains(table))
+                        Add(ModCheck.Looks, $"{who}'s look is scoped to a place, but a spell's look colours its own show wherever it's cast; scope its element's look, or give the spell's look by player.");
                     if (s["mix"] is JArray m && m.Count > maxMix) Add(ModCheck.Budget, $"{who}'s scoped look mixes {m.Count} colours; a mix has at most {Num(maxMix)}.");
                     var where = s["where"] as JObject;
                     if (where?["within"] is JValue within && IsNumber(within) && (double)within > maxWithin)

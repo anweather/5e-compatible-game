@@ -3,7 +3,9 @@
 // a "mix" (several colours with weights in place of its one colour, each cell
 // picking by a hash of where it is) and "scoped" looks (a colour or a mix that
 // holds only around a place, a cell or a player, the latest that covers a cell
-// winning, its edge blending over EdgeCells). The view's only: looks stay out of
+// winning, its edge blending over EdgeCells), and looks "by" player (a colour or
+// mix for what one player's casts make, or one colour per player in join order),
+// which win over everything else. The view's only: looks stay out of
 // Rules.Fingerprint and the cell hash, and nothing here draws from the world's RNG,
 // so every peer sees the same patchwork from the same rules.
 //
@@ -44,15 +46,20 @@ namespace Chem
         internal static bool IsNumber(JToken t) => t != null && (t.Type == JTokenType.Integer || t.Type == JTokenType.Float);
     }
 
-    /// <summary>Where a player stands, by the name the core keys players by: what an "around" look follows.</summary>
+    /// <summary>
+    /// A player in the game: the name the core keys players by (what an "around" look follows), their
+    /// slot (0, 1, 2... in join order, kept while they stay: what a "by" look names) and where they stand.
+    /// </summary>
     public readonly struct PlayerSpot
     {
         public readonly string Player;
+        public readonly int Slot;
         public readonly int X, Y;
 
-        public PlayerSpot(string player, int x, int y)
+        public PlayerSpot(string player, int x, int y, int slot = -1)
         {
             Player = player;
+            Slot = slot;
             X = x;
             Y = y;
         }
@@ -148,7 +155,13 @@ namespace Chem
     /// <summary>One of a look's "scoped" looks: a colour or a mix that holds only where it says.</summary>
     public sealed class ScopedLook
     {
+        /// <summary>A "by" look's slot when it gives "each": one colour per player, by slot.</summary>
+        public const int Each = -1;
+
+        /// <summary>Where it holds; null for a look by player.</summary>
         public LookWhere Where;
+        /// <summary>For a look by player (Where null): the slot whose casts it colours, or Each.</summary>
+        public int By;
         public LookColour Colour;
         /// <summary>Null when it gives one colour.</summary>
         public LookMix Mix;
@@ -163,9 +176,26 @@ namespace Chem
                 var where = LookWhere.Parse(o["where"]);
                 var colour = LookColour.Parse(o["color"]);
                 var mix = LookMix.Parse(o["mix"]);
-                if (where != null && (colour != null || mix != null)) all.Add(new ScopedLook { Where = where, Colour = colour ?? mix.Colours[0], Mix = mix });
+                int? by = BySlot(o["by"]);
+                if ((where == null) == (by == null) || (colour == null && mix == null) || (by == Each && mix == null)) continue;
+                all.Add(new ScopedLook { Where = where, By = by ?? 0, Colour = colour ?? mix.Colours[0], Mix = mix });
             }
             return all;
+        }
+
+        /// <summary>A "by" as a slot: a whole number from 0, or Each for "each"; null if it's neither.</summary>
+        public static int? BySlot(JToken t)
+        {
+            if (t == null) return null;
+            if (t.Type == JTokenType.String && (string)t == "each") return Each;
+            return t.Type == JTokenType.Integer && (long)t >= 0 && (long)t < int.MaxValue ? (int)(long)t : (int?)null;
+        }
+
+        /// <summary>What it is in words, for describe.</summary>
+        public override string ToString()
+        {
+            if (Where != null) return Where.ToString();
+            return By == Each ? "by each player, one colour per slot in join order" : string.Format(CultureInfo.InvariantCulture, "by the player in slot {0}", By);
         }
     }
 
@@ -178,8 +208,11 @@ namespace Chem
         /// <summary>A scope's edge blends from its look into what's under it over this many cells.</summary>
         public const int EdgeCells = 3;
 
-        /// <summary>The tables a look may be scoped or mixed in, by the names set_look takes.</summary>
+        /// <summary>The tables a look may be scoped by place or mixed in, by the names set_look takes.</summary>
         public static readonly string[] Tables = { "elements", "covers", "gases", "terrain" };
+
+        /// <summary>The tables a look may be given by player in: what a cast makes, and the cast's own show.</summary>
+        public static readonly string[] ByTables = { "elements", "covers", "gases", "spells" };
 
         readonly Dictionary<string, CellLook> looks = new Dictionary<string, CellLook>(StringComparer.Ordinal);
         readonly Dictionary<string, PlaceField> fields = new Dictionary<string, PlaceField>(StringComparer.Ordinal);
@@ -195,6 +228,7 @@ namespace Chem
             foreach (var p in rules.Covers.OrderBy(p => p.Key, StringComparer.Ordinal)) s.Add("covers", p.Key, p.Value.Look);
             foreach (var p in rules.Gases.OrderBy(p => p.Key, StringComparer.Ordinal)) s.Add("gases", p.Key, p.Value.Look);
             foreach (var p in rules.Terrain.OrderBy(p => p.Key, StringComparer.Ordinal)) s.Add("terrain", p.Key, p.Value.Look);
+            foreach (var spell in rules.Spells) s.Add("spells", spell.Id, spell.Look);
             return s;
         }
 
@@ -203,7 +237,7 @@ namespace Chem
         /// draws white. Look it up once a frame, not per cell.
         /// </summary>
         public CellLook Of(string table, string id) =>
-            looks.TryGetValue(Key(table, id), out var look) ? look : new CellLook(LookColour.Of(null), null, Array.Empty<CellLook.Scope>(), Salt(table, id));
+            looks.TryGetValue(Key(table, id), out var look) ? look : new CellLook(LookColour.Of(null), null, Array.Empty<CellLook.Scope>(), Array.Empty<CellLook.ByPlayer>(), Salt(table, id));
 
         /// <summary>Whether any look is mixed or scoped: if not, the view can draw as it always did.</summary>
         public bool Any => looks.Values.Any(l => !l.Plain);
@@ -215,14 +249,21 @@ namespace Chem
             if (look == null) return;
             uint salt = Salt(table, id);
             var scopes = new List<CellLook.Scope>();
+            var by = new List<CellLook.ByPlayer>();
             for (int i = 0; i < look.Scoped.Count; i++)
             {
                 var s = look.Scoped[i];
+                if (s.Where == null)
+                {
+                    if (ByTables.Contains(table)) by.Add(new CellLook.ByPlayer(s, Mixed(salt, i + 1)));
+                    continue;
+                }
+                if (table == "spells") continue;
                 var field = s.Where.Place != null ? Field(s.Where.Place, s.Where.Within) : null;
                 if (s.Where.Place != null && field == null) continue;
                 scopes.Add(new CellLook.Scope(s, field, Mixed(salt, i + 1)));
             }
-            looks[Key(table, id)] = new CellLook(LookColour.Of(look), look.Mix, scopes.ToArray(), salt);
+            looks[Key(table, id)] = new CellLook(LookColour.Of(look), table == "spells" ? null : look.Mix, scopes.ToArray(), by.ToArray(), salt);
         }
 
         PlaceField Field(string placeId, int within)
@@ -270,7 +311,7 @@ namespace Chem
             if (look["scoped"] == null) yield break;
             if (!(look["scoped"] is JArray scoped))
             {
-                yield return "look.scoped must be a list of {\"where\": ..., \"color\" or \"mix\"}";
+                yield return "look.scoped must be a list of {\"where\" or \"by\": ..., \"color\" or \"mix\"}";
                 yield break;
             }
             for (int i = 0; i < scoped.Count; i++)
@@ -278,17 +319,21 @@ namespace Chem
                 string at = $"look.scoped[{i}]";
                 if (!(scoped[i] is JObject s))
                 {
-                    yield return $"{at} must be an object with where and a color or mix";
+                    yield return $"{at} must be an object with where or by, and a color or mix";
                     continue;
                 }
-                foreach (var key in s.Properties().Select(p => p.Name).Where(k => k != "where" && k != "color" && k != "mix"))
-                    yield return $"{at}.{key} unknown (a scoped look gives where and a color or a mix)";
+                foreach (var key in s.Properties().Select(p => p.Name).Where(k => k != "where" && k != "by" && k != "color" && k != "mix"))
+                    yield return $"{at}.{key} unknown (a scoped look gives where or by, and a color or a mix)";
+                if ((s["where"] == null) == (s["by"] == null)) yield return $"{at} gives one of where (a place, a cell or round a player) or by (a player's slot, or each)";
+                if (s["by"] != null && ScopedLook.BySlot(s["by"]) == null) yield return $"{at}.by must be a player's slot (a whole number from 0) or \"each\"";
+                if (ScopedLook.BySlot(s["by"]) == ScopedLook.Each && s["mix"] == null) yield return $"{at}: by each needs a mix, one colour per player";
                 if (s["color"] == null && s["mix"] == null) yield return $"{at} needs a color or a mix";
                 if (s["color"] != null && s["mix"] != null) yield return $"{at} gives both a color and a mix; give one";
                 if (s["color"] != null && !(s["color"] is JArray c && c.Count == 3 && c.All(x => LookColour.IsNumber(x) && (double)x >= 0 && (double)x <= 1)))
                     yield return $"{at}.color must be three numbers from 0 to 1";
                 if (s["mix"] != null && LookMix.Parse(s["mix"]) == null) yield return MixShape($"{at}.mix");
-                foreach (var m in WhereProblems(s["where"])) yield return $"{at}.where {m}";
+                if (s["where"] != null)
+                    foreach (var m in WhereProblems(s["where"])) yield return $"{at}.where {m}";
             }
         }
 
@@ -369,9 +414,34 @@ namespace Chem
         }
     }
 
-    /// <summary>One element's, cover's, gas's or terrain's look, compiled: At gives a cell's colour.</summary>
+    /// <summary>One element's, cover's, gas's, terrain's or spell's look, compiled: At gives a cell's colour.</summary>
     public sealed class CellLook
     {
+        // A look by player: the slot whose casts it colours, or every slot, one colour each.
+        internal sealed class ByPlayer
+        {
+            readonly int slot;
+            readonly LookColour colour;
+            readonly LookMix mix;
+            readonly uint salt;
+
+            public ByPlayer(ScopedLook look, uint salt)
+            {
+                slot = look.By;
+                colour = look.Colour;
+                mix = look.Mix;
+                this.salt = salt;
+            }
+
+            // The colour for what this slot cast, or null if this look isn't for that slot.
+            public LookColour? For(int caster, int x, int y)
+            {
+                if (slot == ScopedLook.Each) return mix.Colours[caster % mix.Colours.Count];
+                if (slot != caster) return null;
+                return mix == null ? colour : mix.Pick(LookScopes.CellHash(x, y, salt));
+            }
+        }
+
         internal sealed class Scope
         {
             readonly LookWhere where;
@@ -418,30 +488,40 @@ namespace Chem
         readonly LookColour colour;
         readonly LookMix mix;
         readonly Scope[] scopes;
+        readonly ByPlayer[] by;
         readonly uint salt;
 
-        internal CellLook(LookColour colour, LookMix mix, Scope[] scopes, uint salt)
+        internal CellLook(LookColour colour, LookMix mix, Scope[] scopes, ByPlayer[] by, uint salt)
         {
             this.colour = colour;
             this.mix = mix;
             this.scopes = scopes;
+            this.by = by;
             this.salt = salt;
         }
 
-        /// <summary>One colour everywhere, no mix and no scopes: the view needn't call At per cell.</summary>
-        public bool Plain => mix == null && scopes.Length == 0;
+        /// <summary>One colour everywhere, no mix, no scopes and none by player: the view needn't call At per cell.</summary>
+        public bool Plain => mix == null && scopes.Length == 0 && by.Length == 0;
+
+        /// <summary>Looks by player: the view needs to know who cast what this draws.</summary>
+        public bool ByPlayers => by.Length > 0;
 
         /// <summary>Scoped looks that hold somewhere (one naming a place the world lacks is left out).</summary>
         public int Scopes => scopes.Length;
 
         /// <summary>
-        /// The colour at cell (x, y): a spell's own colour if the thing there has one (it wins, J-052),
-        /// else the latest scoped look covering the cell, blended at its edge into the earlier ones and
-        /// the plain look under them; a mix picks by a hash of the cell. <paramref name="players"/> is
-        /// where each player stands, for "around" looks. Allocates nothing.
+        /// The colour at cell (x, y), strongest first: the latest look by the player whose cast made
+        /// what's there (<paramref name="caster"/>, a slot; it lapses once that slot isn't in
+        /// <paramref name="players"/>), else a spell's own colour if the thing there has one (J-052), else
+        /// the latest scoped look covering the cell, blended at its edge into the earlier ones and the
+        /// plain look under them; a mix picks by a hash of the cell. <paramref name="players"/> is who is
+        /// in the game and where each stands. Allocates nothing.
         /// </summary>
-        public LookColour At(int x, int y, IReadOnlyList<PlayerSpot> players, LookColour? own = null)
+        public LookColour At(int x, int y, IReadOnlyList<PlayerSpot> players, LookColour? own = null, int? caster = null)
         {
+            if (caster is int slot && slot >= 0 && by.Length > 0 && InGame(players, slot))
+                for (int i = by.Length - 1; i >= 0; i--)
+                    if (by[i].For(slot, x, y) is LookColour mine) return mine;
             if (own.HasValue) return own.Value;
             float r = 0, g = 0, b = 0, left = 1;
             for (int i = scopes.Length - 1; i >= 0; i--)
@@ -459,6 +539,14 @@ namespace Chem
             var plain = mix == null ? colour : mix.Pick(LookScopes.CellHash(x, y, salt));
             if (left >= 1) return plain;
             return new LookColour(r + left * plain.R, g + left * plain.G, b + left * plain.B);
+        }
+
+        static bool InGame(IReadOnlyList<PlayerSpot> players, int slot)
+        {
+            if (players == null) return false;
+            for (int i = 0; i < players.Count; i++)
+                if (players[i].Slot == slot) return true;
+            return false;
         }
     }
 }

@@ -314,6 +314,13 @@ that long, and doesn't march.
   (`CellLook.At`), not stored on the cell, so a fire leaving the scope changes
   back. A spell's own colour still wins (J-052). *Not* a theme's look.
 
+**Look by player**
+: A scoped look with `by` in place of `where`: a colour or mix for what one
+  player's casts make (`"by": 2`, a slot), or one colour per player (`"by":
+  "each"` with a mix). Strongest of all: it wins over a spell's own colour, a
+  `where` and the plain look. A **slot** is a player's number in join order (0
+  the host), kept while they stay.
+
 **Look family**
 : A way the view can draw a material, by name, from data alone: `block`,
   `plant`, `debris`, `plate`... listed in `rules/looks.json`. A new material
