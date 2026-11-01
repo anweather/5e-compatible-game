@@ -21,7 +21,7 @@ namespace Chem.Tests
             var draft = b.Tune(null, "push.slideCells", "5");
             b.Apply(draft.Id);
             var room = b.Room();
-            StringAssert.Contains("2 mods on, in order:\n1. Big fireball (big-fireball), added by Ana at tick 0\n2. " + draft.Id + " (" + draft.Id + "), added by host at tick 1", room);
+            StringAssert.Contains("2 mods on, in order:\n1. Big fireball (big-fireball), added by Ana at tick 0\n2. a new mod (" + draft.Id + "), added by host at tick 1", room);
 
             StringAssert.StartsWith("Bo switched off Big fireball (Open room).", b.Revert("big-fireball", "Bo"));
             Assert.That(b.RoomNow.Mods.Select(m => m.Id), Is.EqualTo(new[] { draft.Id }));
