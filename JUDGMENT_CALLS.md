@@ -41,6 +41,19 @@ Each entry has:
 
 ## Decided
 
+### J-058: Do creatures stay Punchy's Editor assets, and how do they move?
+
+- **Asked:** 2026-11-01, Andrew: "we're gonna kind of diverge ... I'll use the same style of ... what punch is doing but I
+  want this all in all powered by data and not powered by the editor". On animation, as dictated, "let's try to use
+  cinematic if we can make it make a dynamic ... define simple rules that like how legs move and how arms move and
+  like a gate like a six legged gate" (the PM reads "cinematic" as kinematic, and "gate" as gait).
+- **Also comes up when:** any Punchy port, a new species, limbs, houses, animation.
+- **Answer:** creatures and buildings are data, not Editor assets. We keep Punchy's style and diverge from its code;
+  J-035's port now lands in data, and J-022's attribution stands. Motion comes from simple rules (a gait: which legs step
+  together, with kinematics placing each foot) so any body plan walks, not from hand-posed cycles per limb.
+- **Why:** a new animal or a house through the MCP is then just a row. Follows J-055 and J-057.
+- **Revisited:** 0.
+
 ### J-057: How does new stuff like paint get into the game?
 
 - **Asked:** 2026-11-01, Andrew, on paint: "I don't wanna hard code the world. I wanna find some primitives that can be
