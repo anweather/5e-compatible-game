@@ -13,7 +13,13 @@ or **proposed** (our guess). Values below are option B's (`presets/b-deep-hum.js
 | **choir** | a second, slightly detuned voice on the same notes, which beats slowly | none | `choir` {amount 1, cents 10.4, voices 1}: one voice, +10.4 cents; no vibrato. `voices` above 1 is not used in any preset | proposed (B was described as a low choir) |
 | **rumble** | low, noisy, no clear pitch: rocks or thunder far off | low energy under 200 Hz | white noise through two low-passes, `rumble` {amount 0.12, hz 140} | proposed (option A) |
 | **sub** | energy below about 60 Hz, felt more than heard | none (only under 80 Hz is printed) | sine, `sub` {amount, hz 45}; off in B | proposed |
-| **grit** | crackle on top of a sound | none | random noise pops, `grit` amount; off in B | proposed |
+| **grit** | crackle on top of a sound | none | random noise pops, `grit` amount; off in B. In a sound preset {amount, per_s}: clicks of 1-4 ms at per_s a second | proposed |
+| **hiss** | bright, steady noise with no low end: sizzle, rain, steam | over 4 kHz share | noise minus two low-passes at `hz` (3000), `hiss` {amount, hz} | proposed (every family) |
+| **crack** | a sharp burst of noise, over in tens of ms: a snap, a split, a strike | attack, down 20 dB | noise band-passed around `hz` dying in `ms`, `crack` {amount, hz 3000, ms 30} | proposed (every family) |
+| **ring** | struck pitches that ring on and die: a bell, glass, a wooden knock. A **chime** is a bright, long ring (Andrew finds it annoying) | flatness (near 0), down 20 dB | partials at `hz` x `ratios`, higher ones dying sooner, `ring` {amount, hz, ratios, levels, decay_ms} | proposed (every family) |
+| **drops** | droplets or bubbles: tiny pitched blips, scattered | none | sine chirps rising half again, `drops` {amount, per_s, hz [low, high], ms} | proposed (every family) |
+| **buzz** (brassy) | a tone rich in harmonics: a horn low, an electric buzz bright | none | low-passed sawtooth, `buzz` {amount, hz, bright 0-1, vibrato_hz, vibrato_cents} | proposed (every family) |
+| **growl** | a rough, throaty voice: noise chopped at a ragged rate | none | noise chopped at `rough_hz`, band-passed at `hz`, `growl` {amount, hz 400, rough_hz 40} | proposed (every family) |
 
 ## Motion: how it changes over time
 
@@ -21,9 +27,10 @@ or **proposed** (our guess). Values below are option B's (`presets/b-deep-hum.js
 |---|---|---|---|---|
 | **pulse** (throb) | the loudness beats in a regular rhythm | rate and depth, printed per charge step for the charged cast only | loudness modulation; `pulse.amount` is a share of option C's depth (0.55), so 0.3 = depth 0.165. Rate 7 Hz | agreed at 0.3 for cast sounds: Andrew picked "B + pulse 30%" (2026-10-31; preset `cast-deep-hum-pulse`) |
 | **accelerating** | the pulse speeds up as the cast builds | rates printed with pulse (7.5, 11.5, 15.0 Hz measured) | `accelerating: true` adds 4 Hz per charge step: 7, 11, 15 Hz. Only the charged series has steps; singles and the pair stay at 7 Hz | agreed with pulse (option C) |
-| **rising** | the pitch goes up | none | `rising` {semitones 3, glide_ms 150}: one shift when the elements combine | agreed: "combine goes up in pitch a little" |
+| **rising** (falling) | the pitch goes up; falling is rising by minus semitones | none | `rising` {semitones 3, glide_ms 150}: one shift when the elements combine. In a sound preset it starts at `at_ms` | agreed: "combine goes up in pitch a little"; falling proposed |
 | **escalate** | each charge step is a notch bigger: louder, higher | none | `escalate` {semitones [4, 7], gain 1.2}: step n sits that many semitones above `rising`, gain 1.2 to the power n | agreed (J-040) |
 | **layer** | a second sound joins over the first rather than replacing it | none | `layer` 1: level of the second element, mixed in | agreed: "the second spell overlays on that" |
+| **gusting** | loudness and brightness wander slowly and unevenly: wind, a fire breathing, thunder rolling | none | three slow sines at unrelated rates, `gusting` {amount, hz 0.3}; whole cycles in a loop | proposed (every family) |
 | **swell** | fades in slowly | drone attack (ms), printed; reads higher than `swell` (235-260 ms for 120) | `swell` {ms 120}, linear fade-in | proposed |
 
 ## Edges: how it starts and stops
@@ -31,12 +38,19 @@ or **proposed** (our guess). Values below are option B's (`presets/b-deep-hum.js
 | Word | Means | Measure | Recipe | Status |
 |---|---|---|---|---|
 | **snappy** | starts and stops very fast, clicky, light | feel word, no parameter yet; closest: thump attack and decay, drone attack | short `swell`, short `thump.decay_ms`, small `thump.amount` | agreed as a fault: "too snappy" (J-040) |
+| **tail** | how a sound dies away after its hit: long tail rings on, short tail stops soon | down 20 dB (ms), printed for every sound | exponential fade of the held layers, `tail` {ms, hold_ms} | proposed (every family) |
 | **cut off** | stops dead at a moment instead of fading | ms to silence after the event, printed (14 ms) | `cut off` {ms 15}, cosine fade at the release | agreed: charging cuts at release |
 | **whoosh** | a short rush of air, noise sweeping past | duration, printed: 246, 253 and 409 ms (charged: let-go to hands landing) | low-passed noise whose cut-off sweeps 420 to 2400 Hz and back; `whoosh` {amount 0.32, peak_hz, rest_hz, tail_ms 140} | agreed: "release is a short whoosh" |
 | **thump** | a short, heavy, low hit | attack and decay, printed (0 ms, 195 ms) | pitched-down sine, `thump` {amount 0.4, from_hz 95, to_hz 50, decay_ms 200}; no noise burst | proposed |
 | **oomph** | weight on an impact: more thump, more sub, a hold | feel word, no parameter yet; closest: thump decay, low energy | raise `thump.amount` and `decay_ms`, lower `to_hz`, add `sub`; no hold | agreed for the slam (J-040), a feel word too |
 
-## Colour: per element
+## Colour
+
+| Word | Means | Measure | Recipe | Status |
+|---|---|---|---|---|
+| **dull** (bright: its opposite) | the highs taken off: muffled, soft, far | over 4 kHz share | low-passes the whole sound at `hz`, `dull` {hz} | proposed (every family) |
+
+### Per element
 
 Each element shifts the same base so you can hear which is loaded. `colour` in the preset:
 
@@ -49,9 +63,16 @@ Each element shifts the same base so you can hear which is loaded. `colour` in t
 
 ## Measuring a variant
 
+Every family but the cast series (`families.py`) prints, per sound: length and LUFS against today's (SOUNDS.md;
+"proposed" for a sound the game hasn't got), peak, attack, down 20 dB (the tail), share under 200 Hz and over
+4 kHz, and spectral flatness (0 tone, 1 noise; a dull noise reads low too, so read it with over 4 kHz).
+Each sound is brought to today's LUFS and soft-limited as the bank does, so variants compare at equal loudness.
+
+The cast series:
+
 `synth.py` prints: loudness (dBFS, and dB against the game's cast sounds) and peak; low energy under
 200 Hz and under 80 Hz (B with 30% pulse: 72% and 16%); per cast, drone attack, thump attack and
 decay, cut-off and whoosh in ms; pulse Hz and depth per charge step on the charged cast, when
 there is a pulse; a warning if loudness is held by the peak.
 
-Not printed yet, would like: tonal share, energy under 60 Hz, high-frequency share, detune spread.
+Not printed yet, would like: energy under 60 Hz, detune spread; tonal share and high share for the cast series.

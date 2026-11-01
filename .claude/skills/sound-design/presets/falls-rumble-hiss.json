@@ -1,0 +1,10 @@
+{
+  "name": "falls-rumble-hiss",
+  "says": "the waterfall: a deep, steady roar of water",
+  "seed": 1,
+  "sound": "falls-roar",
+  "rumble": {"amount": 0.8, "hz": 350},
+  "hiss": {"amount": 0.25, "hz": 1200},
+  "sub": {"amount": 0.05, "hz": 40},
+  "gusting": {"amount": 0.15, "hz": 0.2}
+}

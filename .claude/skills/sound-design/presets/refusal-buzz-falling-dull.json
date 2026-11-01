@@ -1,0 +1,12 @@
+{
+  "name": "refusal-buzz-falling-dull",
+  "says": "a refusal: a dull low buzz, two notes falling (\"uh-uh\")",
+  "seed": 1,
+  "sound": "refusal",
+  "buzz": {"amount": 0.5, "hz": 180, "bright": 0.2},
+  "rising": {"semitones": -3, "glide_ms": 15, "at_ms": 110},
+  "dull": {"hz": 1500},
+  "swell": {"ms": 8},
+  "tail": {"ms": 120, "hold_ms": 150},
+  "cut off": {"ms": 40}
+}

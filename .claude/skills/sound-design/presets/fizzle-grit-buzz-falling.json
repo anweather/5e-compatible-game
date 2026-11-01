@@ -1,0 +1,13 @@
+{
+  "name": "fizzle-grit-buzz-falling",
+  "says": "a cast cancelled: crackle over a dull buzz that falls an octave and dies",
+  "seed": 1,
+  "sound": "fizzle",
+  "grit": {"amount": 0.7, "per_s": 140},
+  "buzz": {"amount": 0.35, "hz": 220, "bright": 0.3},
+  "hiss": {"amount": 0.08, "hz": 2500},
+  "rising": {"semitones": -12, "glide_ms": 400},
+  "swell": {"ms": 5},
+  "tail": {"ms": 140},
+  "cut off": {"ms": 30}
+}

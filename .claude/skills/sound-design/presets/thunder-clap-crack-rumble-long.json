@@ -1,0 +1,13 @@
+{
+  "name": "thunder-clap-crack-rumble-long",
+  "says": "thunder after a strike: a crack, then a long low roll",
+  "seed": 1,
+  "sound": "thunder-clap",
+  "crack": {"amount": 1, "hz": 1500, "ms": 120},
+  "thump": {"amount": 0.5, "from_hz": 70, "to_hz": 30, "decay_ms": 800},
+  "rumble": {"amount": 0.9, "hz": 180},
+  "gusting": {"amount": 0.6, "hz": 1.5},
+  "swell": {"ms": 3},
+  "tail": {"ms": 2200},
+  "cut off": {"ms": 500}
+}

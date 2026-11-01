@@ -1,0 +1,12 @@
+{
+  "name": "frost-crack-hiss-grit",
+  "says": "cold landing: an icy crack, a bright hiss and ice crackling, no chime",
+  "seed": 1,
+  "sound": "frost",
+  "crack": {"amount": 0.6, "hz": 5000, "ms": 40},
+  "hiss": {"amount": 0.35, "hz": 4500},
+  "grit": {"amount": 0.35, "per_s": 220},
+  "swell": {"ms": 5},
+  "tail": {"ms": 380},
+  "cut off": {"ms": 150}
+}

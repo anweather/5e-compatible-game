@@ -1,0 +1,10 @@
+{
+  "name": "rain-hiss-drops",
+  "says": "rain: a fine hiss with drops",
+  "seed": 1,
+  "sound": "rain-loop",
+  "hiss": {"amount": 0.5, "hz": 2500},
+  "drops": {"amount": 0.2, "per_s": 70, "hz": [1500, 4500], "ms": 5},
+  "rumble": {"amount": 0.1, "hz": 500},
+  "gusting": {"amount": 0.15, "hz": 0.2}
+}

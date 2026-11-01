@@ -1,0 +1,14 @@
+{
+  "name": "blink-whoosh-hum-rising",
+  "says": "Misty Step: breath over a 220 + 330 Hz pad that rises a fifth",
+  "seed": 1,
+  "sound": "blink",
+  "whoosh": {"amount": 0.5, "peak_hz": 2500, "rest_hz": 600, "rise_ms": 300, "tail_ms": 500},
+  "hum": 0.5,
+  "root_hz": 220,
+  "fifths": 0.8,
+  "rising": {"semitones": 7, "glide_ms": 600},
+  "swell": {"ms": 200},
+  "tail": {"ms": 300, "hold_ms": 400},
+  "cut off": {"ms": 100}
+}

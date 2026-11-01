@@ -1,0 +1,10 @@
+{
+  "name": "fire-loop-rumble-hiss-grit",
+  "says": "a fire burning: a low roar, a little hiss and crackle, breathing slowly",
+  "seed": 1,
+  "sound": "fire-loop",
+  "rumble": {"amount": 0.5, "hz": 250},
+  "hiss": {"amount": 0.05, "hz": 3000},
+  "grit": {"amount": 0.5, "per_s": 25},
+  "gusting": {"amount": 0.4, "hz": 0.4}
+}

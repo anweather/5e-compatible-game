@@ -1,0 +1,12 @@
+{
+  "name": "horn-buzz-two-notes",
+  "says": "a war horn far off: two low brass notes, the second a fourth up",
+  "seed": 1,
+  "sound": "horn",
+  "buzz": {"amount": 0.8, "hz": 87, "bright": 0.35, "vibrato_hz": 4.5, "vibrato_cents": 12},
+  "sub": {"amount": 0.1, "hz": 43.5},
+  "rising": {"semitones": 5, "glide_ms": 80, "at_ms": 1900},
+  "swell": {"ms": 250},
+  "tail": {"ms": 900, "hold_ms": 3300},
+  "cut off": {"ms": 300}
+}

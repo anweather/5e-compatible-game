@@ -1,0 +1,13 @@
+{
+  "name": "roar-growl-buzz-falling",
+  "says": "the dragon's roar: a throaty growl over a buzz, sliding down a fifth",
+  "seed": 1,
+  "sound": "roar",
+  "growl": {"amount": 0.8, "hz": 500, "rough_hz": 45},
+  "buzz": {"amount": 0.4, "hz": 90, "bright": 0.6},
+  "rumble": {"amount": 0.3, "hz": 200},
+  "rising": {"semitones": -7, "glide_ms": 2500},
+  "swell": {"ms": 300},
+  "tail": {"ms": 700, "hold_ms": 1800},
+  "cut off": {"ms": 300}
+}

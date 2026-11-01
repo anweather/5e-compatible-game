@@ -1,0 +1,14 @@
+{
+  "name": "confirm-hum-rising-dull",
+  "says": "a soft confirm: a short, round low tone stepping up a fourth, no ring",
+  "seed": 1,
+  "sound": "confirm",
+  "hum": 0.6,
+  "root_hz": 392,
+  "fifths": 0.3,
+  "rising": {"semitones": 5, "glide_ms": 15, "at_ms": 60},
+  "dull": {"hz": 2000},
+  "swell": {"ms": 8},
+  "tail": {"ms": 60, "hold_ms": 40},
+  "cut off": {"ms": 30}
+}
