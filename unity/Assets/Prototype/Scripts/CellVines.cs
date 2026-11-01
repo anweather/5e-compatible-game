@@ -17,6 +17,9 @@ public sealed class CellVines
     readonly MaterialCache materials;
     readonly List<Mesh> drapes = new(), mats = new();
 
+    /// <summary>The rules switched: what stands takes the cover's colour now.</summary>
+    public void Recolour() => materials.Lit("Vines", Vine, 0.2f).color = grid.CoverColor(CoverIds.Vines, Vine);
+
     public CellVines(ChemGrid grid, MaterialCache materials)
     {
         this.grid = grid;
@@ -32,7 +35,7 @@ public sealed class CellVines
         var go = new GameObject($"Vines {x},{y}");
         go.transform.SetParent(grid.transform, false);
         go.AddComponent<MeshFilter>().sharedMesh = (low ? mats : drapes)[pick];
-        go.AddComponent<MeshRenderer>().sharedMaterial = materials.Lit("Vines", Vine, 0.2f);
+        go.AddComponent<MeshRenderer>().sharedMaterial = materials.Lit("Vines", grid.CoverColor(CoverIds.Vines, Vine), 0.2f);
         float size = grid.cellSize / 1.5f, top = Top(x, y, c, low);
         float turn = pick * 90f;
         go.transform.SetPositionAndRotation(new Vector3(center.x, top, center.z), Quaternion.Euler(0f, turn, 0f));

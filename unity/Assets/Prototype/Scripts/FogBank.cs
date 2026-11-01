@@ -29,6 +29,9 @@ public class FogBank : MonoBehaviour
         public readonly float Lift, Rise, Size, Opacity;
         public readonly bool Rains, Snows;
 
+        /// <summary>The same in another colour.</summary>
+        public Style In(Color tint) => new(new Color(tint.r, tint.g, tint.b, Tint.a), Lift, Rise, Size, Opacity, Rains, Snows);
+
         public Style(Color tint, float lift, float rise, float size, float opacity, bool rains = false, bool snows = false)
         {
             Tint = tint;
@@ -53,7 +56,24 @@ public class FogBank : MonoBehaviour
     /// <summary>Whether a gas is drawn here rather than as a particle effect.</summary>
     public static bool Draws(string gas) => gas == GasIds.Fog || gas == GasIds.Dust || gas == GasIds.Cloud || gas == GasIds.Storm || gas == GasIds.SnowCloud;
 
-    static Style StyleOf(string gas) => gas switch
+    // The gas's style in the colour the rules in force give it (ChemGrid.WorldLook.cs).
+    Style StyleOf(string gas)
+    {
+        var style = ArtOf(gas);
+        return style.In(grid.GasColor(gas, style.Tint));
+    }
+
+    /// <summary>The colour a square of gas is drawn in, for a probe; null with none there.</summary>
+    public Color? ColorAt(int index) => squares.TryGetValue(index, out var s) ? s.style.Tint : null;
+
+    /// <summary>The rules switched: every square takes its gas's colour now.</summary>
+    public void Recolour()
+    {
+        foreach (var s in squares.Values)
+            if (s.gas != null) s.style = StyleOf(s.gas);
+    }
+
+    static Style ArtOf(string gas) => gas switch
     {
         GasIds.Dust => DustStyle,
         GasIds.Cloud => CloudStyle,
@@ -70,6 +90,7 @@ public class FogBank : MonoBehaviour
         public Vector3 home;
         public float target, shown, seed;
         public Style style;
+        public string gas;
         public readonly List<Renderer> puffs = new();
     }
 
@@ -80,6 +101,7 @@ public class FogBank : MonoBehaviour
     Material material;
     Texture2D texture;
     float cellSize = 1.5f;
+    ChemGrid grid;
     ParticleSystem rain, snow;
     float rainOwed;
 
@@ -90,6 +112,7 @@ public class FogBank : MonoBehaviour
         go.transform.SetParent(grid.transform, false);
         var bank = go.AddComponent<FogBank>();
         bank.cellSize = grid.cellSize;
+        bank.grid = grid;
         return bank;
     }
 
@@ -114,7 +137,9 @@ public class FogBank : MonoBehaviour
         }
         s.home = new Vector3(center.x, ground, center.z);
         s.target = target;
-        if (target > 0f) s.style = StyleOf(gas);
+        if (target <= 0f) return;
+        s.gas = gas;
+        s.style = StyleOf(gas);
     }
 
     /// <summary>The gas over a square is gone at once: burnt in a flash, not fading.</summary>

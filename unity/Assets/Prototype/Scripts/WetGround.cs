@@ -22,6 +22,7 @@ public sealed class WetGround
     const float Step = 0.02f;
 
     readonly Dictionary<TerrainLayer, (TerrainLayer wet, Vector4 tint, float smoothness, Vector4 maskMin, Vector4 maskMax, float gloss)> layers = new();
+    readonly Dictionary<TerrainLayer, Color> tints = new();
     float shown, written = -1f;
 
     /// <summary>0 dry to 1 soaked, as drawn now.</summary>
@@ -52,6 +53,14 @@ public sealed class WetGround
         }
     }
 
+    /// <summary>The rules switched: each layer's tint on top of its own, by the layer's name, drawn at the next Advance.</summary>
+    public void Tint(System.Func<string, Color> tintOf)
+    {
+        tints.Clear();
+        foreach (var (wet, _, _, _, _, _) in layers.Values) tints[wet] = tintOf(wet.name);
+        written = -1f;
+    }
+
     /// <summary>
     /// Once a frame: the ground soaks toward how hard it's raining (<paramref name="rain"/>, 0..100)
     /// and dries slowly once it stops.
@@ -61,12 +70,13 @@ public sealed class WetGround
         float target = Mathf.Clamp01(rain / Soaking);
         float rate = target > shown ? 1f / SoakSeconds : 1f / DrySeconds;
         shown = Mathf.MoveTowards(shown, target, rate * dt);
-        if (Mathf.Abs(shown - written) < Step && !(shown == 0f && written > 0f)) return;
+        if (written >= 0f && Mathf.Abs(shown - written) < Step && !(shown == 0f && written > 0f)) return;
         written = shown;
         foreach (var (wet, tint, smoothness, maskMin, maskMax, gloss) in layers.Values)
         {
             float dark = Mathf.Lerp(1f, DarkWet, shown);
-            wet.diffuseRemapMax = new Vector4(tint.x * dark, tint.y * dark, tint.z * dark, tint.w);
+            var own = tints.TryGetValue(wet, out var looks) ? looks : Color.white;
+            wet.diffuseRemapMax = new Vector4(tint.x * dark * own.r, tint.y * dark * own.g, tint.z * dark * own.b, tint.w);
             wet.smoothness = Mathf.Lerp(smoothness, Mathf.Max(smoothness, gloss), shown);
             // With a mask map (the packs' layers have them) TerrainLit takes smoothness from its alpha,
             // remapped between these: raise both toward its gloss.

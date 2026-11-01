@@ -16,6 +16,9 @@ public sealed class CellThorns
     readonly MaterialCache materials;
     readonly List<Mesh> meshes = new();
 
+    /// <summary>The rules switched: what stands takes the cover's colour now.</summary>
+    public void Recolour() => materials.Lit("Thorns", Thorn, 0.15f).color = grid.CoverColor(CoverIds.Thorns, Thorn);
+
     public CellThorns(ChemGrid grid, MaterialCache materials)
     {
         this.grid = grid;
@@ -30,7 +33,7 @@ public sealed class CellThorns
         var go = new GameObject($"Thorns {x},{y}");
         go.transform.SetParent(grid.transform, false);
         go.AddComponent<MeshFilter>().sharedMesh = meshes[pick];
-        go.AddComponent<MeshRenderer>().sharedMaterial = materials.Lit("Thorns", Thorn, 0.15f);
+        go.AddComponent<MeshRenderer>().sharedMaterial = materials.Lit("Thorns", grid.CoverColor(CoverIds.Thorns, Thorn), 0.15f);
         float size = grid.cellSize / 1.5f;
         go.transform.SetPositionAndRotation(new Vector3(center.x, ground, center.z), Quaternion.Euler(0f, (x * 37 + y * 101) % 360, 0f));
         go.transform.localScale = Vector3.one * size;

@@ -51,6 +51,7 @@ public partial class ChemGrid
         if (World.Room != null) return;
         World.OpenRoom(mode, host, CurrentRules.Base, Budgets, mods);
         CurrentRules = World.RoomRules;
+        RecolourWorld();
     }
 
     /// <summary>Solo: a room command, decided before the next tick.</summary>
@@ -83,6 +84,7 @@ public partial class ChemGrid
             World.OpenRoom(mode, host, CurrentRules.Base, Budgets);
         }
         CurrentRules = World.RoomRules;
+        RecolourWorld();
     }
 
     /// <summary>Puts <paramref name="next"/> (already checked) in force before the next solo tick.</summary>
@@ -152,6 +154,7 @@ public partial class ChemGrid
         if (!ReferenceEquals(CurrentRules, World.RoomRules)) EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
         RedrawLooks(before.Effective);
         RedrawLookFire();
+        RecolourWorld();
         RulesChanged?.Invoke();
     }
 

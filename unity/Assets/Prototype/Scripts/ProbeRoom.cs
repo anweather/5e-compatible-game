@@ -37,6 +37,8 @@ public class RoomProbeSeen
     public List<string> lines = new();
     public string roomText, rules;
     public int fireballRadius;
+    /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
+    public float fireTurn;
     public List<int> hashTicks = new();
     public List<string> hashes = new();
     public bool desync;
@@ -67,6 +69,7 @@ public sealed class RoomProbeRecord : IDisposable
         seen.roomText = grid.World.RoomText();
         seen.rules = grid.World.Rules.Fingerprint;
         seen.fireballRadius = grid.World.Rules.Spell(SpellIds.Fireball).Radius;
+        seen.fireTurn = grid.FireElementTint.Turn;
         seen.desync = net.DesyncSeen;
         return seen;
     }
@@ -308,7 +311,23 @@ public abstract class RoomProbe : ProbeScenario
 /// <summary>Open: the client's change goes in for both, anyone reverts it, and a reset and a late join keep what's on.</summary>
 public class RoomOpenProbe : RoomProbe
 {
+    const string BlueFire = "blue-fire";
+
     protected override ChangeMode Mode => ChangeMode.Open;
+
+    // "Make all fire blue": a colour on the fire element, as set_look writes it, the same on both, with the rules' fingerprint unmoved.
+    IEnumerator AllFireBlue()
+    {
+        string rules = World.Rules.Fingerprint;
+        const string Patch = "{ \"title\": \"Blue fire\", \"patch\": { \"elements\": { \"fire\": { \"look\": { \"color\": [0.25, 0.45, 1] } } } } }";
+        Switcher.Ask(RoomCommand.Apply(Switcher.Me, BlueFire, Patch, "Blue fire"));
+        yield return Agree("blue_fire", "Player 1 switched on Blue fire (Open room)");
+        if (Theirs == null) yield break;
+        Check("blue_fire_on_both", grid.FireElementTint.Any && Mathf.Approximately(Theirs.fireTurn, grid.FireElementTint.Turn), $"turned {grid.FireElementTint.Turn:0.00} here, {Theirs.fireTurn:0.00} there");
+        Check("blue_fire_leaves_the_fingerprint", World.Rules.Fingerprint == rules, $"{rules} to {World.Rules.Fingerprint}");
+        Switcher.Ask(RoomCommand.Revert(Switcher.Me, BlueFire));
+        yield return Agree("blue_fire_off", "Player 1 switched off Blue fire (Open room)");
+    }
 
     protected override IEnumerator Steps()
     {
@@ -322,6 +341,8 @@ public class RoomOpenProbe : RoomProbe
         yield return HostToggle(BigFireball);
         yield return Agree("host_reverts", "Player 1 switched off Big fireball (Open room)");
         Check("back_on_both", World.Rules.Spell(SpellIds.Fireball).Radius == radius && Theirs.fireballRadius == radius, $"radius {radius}, there {Theirs.fireballRadius}");
+
+        yield return AllFireBlue();
 
         yield return Ask("hostile");
         yield return Agree("bad_patch", "Switch on refused: junk doesn't pass the checks");

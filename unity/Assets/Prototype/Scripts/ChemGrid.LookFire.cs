@@ -6,9 +6,12 @@ using UnityEngine;
 // The core's cells only know they burn, so this is the view's own note of which
 // spell lit which cell. It reads the spell's look from the rules in force each
 // time, so a look that changes redraws what's already burning (RedrawLookFire).
-// A fire spreading from such a cell takes its look along. Every machine notes
-// the same casts, near enough; nothing here reaches the cells. A plain look
-// notes nothing and all of this costs nothing.
+// A fire spreading from such a cell takes its look along: a new fire beside one
+// in a look catches that look, and a fire already burning keeps the one it has
+// (J-052). Every machine notes the same casts, near enough; nothing here reaches
+// the cells. A plain look notes nothing and all of this costs nothing. A spell
+// that didn't choose a colour notes nothing either, and its fire burns in the
+// fire element's colour (ChemGrid.WorldLook.cs), as all fire does.
 public partial class ChemGrid
 {
     // How long a noted cell waits to catch: online a cast's fire comes at its tick, and the note before or after it.
@@ -38,8 +41,15 @@ public partial class ChemGrid
         if (views != null) views[index].key = int.MinValue; // a fire already there redraws in it
     }
 
-    /// <summary>The look the fire on a cell burns in: none unless a spell in a look of its own lit it.</summary>
-    public LookTint FireTint(int x, int y) =>
+    /// <summary>The look the fire on a cell burns in: its spell's if it chose a colour, else the fire element's.</summary>
+    public LookTint FireTint(int x, int y)
+    {
+        var spell = SpellFireTint(x, y);
+        return spell.Any ? spell : fireLook;
+    }
+
+    // The look of the spell that lit a cell, if one in a look of its own did.
+    LookTint SpellFireTint(int x, int y) =>
         litBy.Count > 0 && Showman != null && litBy.TryGetValue(World.Idx(x, y), out var spell) ? Showman.TintOf(spell) : default;
 
     /// <summary>How far the embers on a cell are turned round the wheel, 0 to 1, for the probe.</summary>

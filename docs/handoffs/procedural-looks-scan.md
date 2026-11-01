@@ -18,14 +18,14 @@ below are the original scan, with line numbers from before that work.
 | `ChemGrid.Visuals` `TerrainTurned` | rusted-metal to metal | a `chips` parameter on the look |
 | `ChemGrid.Visuals` `LavaHeat`, `CellLavaMesh`, `CellSlickMesh` crust | lava, lava-pool, rock, embers | a `molten` family reading glow and flow |
 | `CellSlickMesh` glaze | mud, glass, brick | a `glaze` parameter (colour, gloss) on the `ground` family |
-| `CellSlickMesh` film | oil, grease, frost | the `slick` family: the covers' looks read for colour and gloss |
+| `CellSlickMesh` film | oil, grease, frost | the `slick` family for gloss and which cover is a film; colour is read from the look |
 | `CellCrackMesh` | brick | a `cracks` parameter on the look |
 | `CellWaterMesh`, `WaterCurrents` | river | a `water` family with `flow`; the current itself needs a rule, not a look |
 | `CellBlockers` trunk | tree | a `trunk` flag on the `plant` family (a collider's size, not only a look) |
 | `ValleyChemistry.Roofs` | shingle | a default roof in the valley's data |
 | `Burnable`, `PrototypeSceneBuilder` | grass | a prop's label read from the rules |
 | `ChemGrid.Visuals` ash, thorns and vines, `SurfaceEffects` | ash, thorns, vines | the `scorch` and `growth` families |
-| `ChemGrid.Effects`, `FogBank` | steam, smoke, fog, dust, cloud, storm, snowcloud | the `vapour` and `bank` families: one tinted effect and a style read from the gas's look |
+| `ChemGrid.Effects`, `FogBank` | steam, smoke, fog, dust, cloud, storm, snowcloud | the `vapour` and `bank` families: one effect and a style; colour is read from the look |
 | `SpellCaster.ElementBurst`, `CastImpact`, `BurstFx` | acid, heat, sand, lightning | effect families for these bursts: they're still chosen by element. Their colour comes from the look (`LookTint`), and their size from the spell's numbers where the family scales. `CastImpact` draws nothing (shake, rumble, hit-stop), so it has no look to take |
 | Effect families with no `own` in `rules/looks.json` | motes, mist, bloom | their own colour measured and looked at, then a line of data each: until then their pack effects keep their colours, as a look's colour reaches only the hand and the aim marker. Every other family takes its look (`lookfamilies` probe) |
 | Parts of the `hand` family that take no look | the boulder; `ChemGrid.Charge`'s and a storm's arcs | the boulder is rock and rests as a pillar cell; those arcs are the world's, not a spell's |

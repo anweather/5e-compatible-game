@@ -56,6 +56,8 @@ public sealed class CellSlickMesh
     readonly ChemGrid.FrameBudget drawBudget = new(DrawBudgetMs, ExactDrawTiles);
     // What a tile's Build asks, made once.
     readonly System.Func<int, int, float> filmAt, wobbleAt;
+    // The covers' colours in the rules in force.
+    Color oil = OilColor, grease = GreaseColor, frost = FrostColor;
     readonly System.Func<float, float, float> heightAt;
     readonly System.Func<float, float, float, Color> shadeAt;
     // ColorAt's channels, made once (Shade asks for each at every point of the film).
@@ -159,6 +161,19 @@ public sealed class CellSlickMesh
     }
 
     /// <summary>Redraws the tiles near any change since the last time, nearest the camera first, as far as the frame's budget goes.</summary>
+    /// <summary>The film colour a cell is drawn in, for a probe.</summary>
+    public Color? FilmColorAt(int x, int y) => ColorAt(x, y);
+
+    /// <summary>The rules switched: the covers' films take the colours in force.</summary>
+    public void Recolour()
+    {
+        oil = grid.CoverColor(CoverIds.Oil, OilColor);
+        grease = grid.CoverColor(CoverIds.Grease, GreaseColor);
+        frost = grid.CoverColor(CoverIds.Frost, FrostColor);
+        foreach (var (key, film) in slicks)
+            if (film == CoverIds.Oil || film == CoverIds.Grease || film == CoverIds.Frost) MarkAround(key % grid.World.W, key / grid.World.W);
+    }
+
     public void Rebuild(bool busy = false)
     {
         if (dirtyTiles.Count == 0 || busy) return;
@@ -307,14 +322,14 @@ public sealed class CellSlickMesh
         if (!slicks.TryGetValue(grid.World.Idx(x, y), out var film)) return EatenColor;
         return film switch
         {
-            CoverIds.Grease => GreaseColor,
+            CoverIds.Grease => grease,
             TerrainIds.Mud => MudColor,
             TerrainIds.Glass => GlassColor,
             TerrainIds.Brick => BrickColor,
             StarFilm => StarColor,
-            CoverIds.Frost => FrostColor,
+            CoverIds.Frost => frost,
             CrustFilm => CrustColor,
-            _ => OilColor,
+            _ => oil,
         };
     }
 

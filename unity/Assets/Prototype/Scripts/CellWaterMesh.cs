@@ -40,7 +40,9 @@ public sealed class CellWaterMesh
     public const int TileCells = 16;
 
     readonly ChemGrid grid;
+    static readonly int ColorId = Shader.PropertyToID("_Color");
     readonly Material waterMaterial, iceMaterial;
+    readonly Color ownColor;
     readonly HashSet<int> wet = new();
     // By cell, for the levels' work over every wet cell: whether it's wet, and its drawn top (NaN for none).
     readonly bool[] wetCell;
@@ -65,6 +67,7 @@ public sealed class CellWaterMesh
         this.grid = grid;
         // One instance of the water material for every tile, so the ripples drift together as the lake's do.
         this.waterMaterial = new Material(waterMaterial) { name = waterMaterial.name };
+        ownColor = this.waterMaterial.HasProperty(ColorId) ? this.waterMaterial.GetColor(ColorId) : Color.white;
         this.iceMaterial = iceMaterial;
         tilesX = (grid.World.W + TileCells - 1) / TileCells;
         int cells = grid.World.W * grid.World.H;
@@ -95,6 +98,12 @@ public sealed class CellWaterMesh
         root = new GameObject("Water and ice");
         root.transform.SetParent(grid.transform, false);
     }
+
+    /// <summary>The water's colour as drawn.</summary>
+    public Color Color => waterMaterial.GetColor(ColorId);
+
+    /// <summary>The rules switched: the water's colour, tinted from its art (ChemGrid.WorldLook.cs).</summary>
+    public void Recolour(Color tint) => this.waterMaterial.SetColor(ColorId, ownColor * new Color(tint.r, tint.g, tint.b, 1f));
 
     /// <summary>A cell's water changed (or its ground did): the tiles round it are redrawn at the next Rebuild.</summary>
     public void Changed(int x, int y, bool isWet)

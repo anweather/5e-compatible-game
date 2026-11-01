@@ -34,6 +34,21 @@ public class Ocean : MonoBehaviour
     /// <summary>The sea in the scene, if there is one.</summary>
     public static Ocean Instance { get; private set; }
 
+    /// <summary>The rules switched: the sea's colours, tinted from its art (ChemGrid.WorldLook.cs).</summary>
+    public void Recolour(Color tint)
+    {
+        foreach (var r in GetComponentsInChildren<MeshRenderer>())
+        {
+            var block = new MaterialPropertyBlock();
+            r.GetPropertyBlock(block);
+            block.SetColor(DeepId, r.sharedMaterial.GetColor(DeepId) * tint);
+            block.SetColor(ShallowId, r.sharedMaterial.GetColor(ShallowId) * tint);
+            r.SetPropertyBlock(block);
+        }
+    }
+
+    static readonly int DeepId = Shader.PropertyToID("_Deep"), ShallowId = Shader.PropertyToID("_Shallow");
+
     static readonly int ShoreDirId = Shader.PropertyToID("_ShoreDir"), SwellId = Shader.PropertyToID("_Swell"),
         WavelengthId = Shader.PropertyToID("_Wavelength"), SpeedId = Shader.PropertyToID("_Speed");
 

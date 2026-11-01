@@ -32,6 +32,62 @@ public partial class ValleyChemistry : MonoBehaviour
     ValleyGround ground;
     WetGround wet;
 
+    // What each of the land's layers is made of, for its colour in the rules (a cover's or a terrain's).
+    static string LayerMaterial(string layer)
+    {
+        if (layer.StartsWith(CellPaint.Moss, System.StringComparison.Ordinal)) return TerrainIds.Brush;
+        if (layer.StartsWith("Grass", System.StringComparison.Ordinal)) return TerrainIds.Grass;
+        if (layer.StartsWith(CellPaint.Rock, System.StringComparison.Ordinal)) return TerrainIds.Rock;
+        if (layer.StartsWith(CellPaint.Sand, System.StringComparison.Ordinal)) return TerrainIds.Sand;
+        if (layer.StartsWith(CellPaint.Soil, System.StringComparison.Ordinal)) return TerrainIds.Mud;
+        return layer.StartsWith(CellPaint.Earth, System.StringComparison.Ordinal) ? TerrainIds.Dirt : null;
+    }
+
+    static LookDef LayerLook(Rules rules, string layer)
+    {
+        if (layer.StartsWith(CellPaint.Charred, System.StringComparison.Ordinal)) return rules.Covers.TryGetValue(CoverIds.Ash, out var ash) ? ash.Look : null;
+        if (layer.StartsWith(CellPaint.Snow, System.StringComparison.Ordinal)) return rules.Covers.TryGetValue(CoverIds.Snow, out var snow) ? snow.Look : null;
+        string terrain = LayerMaterial(layer);
+        return terrain != null && rules.Terrain.TryGetValue(terrain, out var t) ? t.Look : null;
+    }
+
+    /// <summary>The rules switched: the land's layers take the colours of what they're made of, tinted from their art.</summary>
+    public void RecolourGround(Rules was, Rules now)
+    {
+        wet?.Tint(layer => ChemGrid.TintBetween(LayerLook(was, layer), LayerLook(now, layer)));
+        var tint = ChemGrid.TintBetween(LayerLook(was, CellPaint.Grass), LayerLook(now, CellPaint.Grass));
+        if (ground == null || (tint == Color.white && grassTint == Color.white)) return;
+        grassTint = tint;
+        foreach (var data in DataOf(ground))
+        {
+            var kinds = data.detailPrototypes;
+            if (!grassColors.TryGetValue(data, out var own)) grassColors[data] = own = System.Array.ConvertAll(kinds, k => (k.healthyColor, k.dryColor));
+            for (int i = 0; i < kinds.Length; i++)
+            {
+                kinds[i].healthyColor = own[i].healthyColor * tint;
+                kinds[i].dryColor = own[i].dryColor * tint;
+            }
+            data.detailPrototypes = kinds;
+        }
+    }
+
+    Color grassTint = Color.white;
+    readonly System.Collections.Generic.Dictionary<TerrainData, (Color healthyColor, Color dryColor)[]> grassColors = new();
+
+    /// <summary>The rules switched: the lake's colour, tinted from its art.</summary>
+    public void RecolourWater(Color tint)
+    {
+        var lake = GameObject.Find("Lake");
+        if (lake == null || !lake.TryGetComponent<Renderer>(out var r)) return;
+        var own = r.sharedMaterial.color;
+        var block = new MaterialPropertyBlock();
+        r.GetPropertyBlock(block);
+        block.SetColor(BaseColorId, own * new Color(tint.r, tint.g, tint.b, 1f));
+        r.SetPropertyBlock(block);
+    }
+
+    static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
+
     static IEnumerable<TerrainData> DataOf(ValleyGround g)
     {
         foreach (var (_, data) in g.Chunks()) yield return data;
@@ -87,6 +143,7 @@ public partial class ValleyChemistry : MonoBehaviour
         // Rain wets the ground (WetGround): its own copies of the new terrain copies' layers.
         wet?.Destroy();
         wet = new WetGround(DataOf(ground));
+        if (grid.CurrentRules != null) RecolourGround(grid.CurrentRules.Base, grid.CurrentRules.Effective);
         scorched.Clear();
         grown.Clear();
         IndexTrees();
