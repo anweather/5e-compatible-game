@@ -65,7 +65,7 @@ public static class CastSoundTable
 
     // The mix: a hum stays under the landing (Explosion is -12, a splash -18 in SoundBankBuilder) and two
     // together with the slam don't clip. The numbers are measured: docs/SPELL_COMBOS.md, "Sound".
-    const float HumDb = -20f, SlamDb = -21.4f, WhooshDb = -29f;
+    const float HumDb = -20f, SlamDb = -21.4f, WhooshDb = -27f;
 
     // Each loop as an element's hum at a stage of a cast: 0 is gathering, then the charge levels.
     static readonly string[,] Hums = Named();
