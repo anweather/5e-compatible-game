@@ -1,0 +1,3 @@
+Correction from Andrew to your design brief: "Golden squirrel was an example of something you could do via MCP. Don't actually hard code it. Let's see if we can make it happen via the existing systems" (J-055).
+
+The examples (the squirrel, the house by the lake) are tests of the tools, never features: no named content in code or base rules. In `docs/design/world-tools.md`, start from what the rules MCP, mods, looks, `things.json` and the fauna already do. Walk each example through them step by step, say how far it gets today, and propose only the smallest general gap that stops it. Rework anything you've written that assumes otherwise, then push and report as the brief says.
