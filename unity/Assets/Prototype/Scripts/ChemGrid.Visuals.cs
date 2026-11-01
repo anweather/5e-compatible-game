@@ -43,6 +43,8 @@ public partial class ChemGrid
     {
         public GameObject dressing, cover, gas, spark, thorns, vines;
         public string terrain, coverId;
+        // The effect the gas is drawn with: the prefab, or its copy in a look.
+        public GameObject gasPrefab;
         public int height, elevation;
         public int key = int.MinValue;
         public int fireLevel;
@@ -394,7 +396,7 @@ public partial class ChemGrid
     // charred paint (CellPaint), or a grey sheet without a valley.
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
-        bool cooled = lava.Changed(x, y, c, LavaHeat(c), c.Cover == CoverIds.Embers ? FireTint(x, y) : default);
+        bool cooled = lava.Changed(x, y, c, LavaHeat(c), MoltenTint(c, x, y));
         slicks.Crust(x, y, c, cooled);
         slicks.Changed(x, y, c);
         cracks.Changed(x, y, c, ground);
@@ -411,7 +413,7 @@ public partial class ChemGrid
         var film = Ensure(ref v.cover, "Cover", center);
         film.transform.position = new Vector3(center.x, ground + 0.02f, center.z);
         film.transform.localScale = new Vector3(0.96f * cellSize, 0.03f, 0.96f * cellSize);
-        film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-ash", new Color(0.35f, 0.34f, 0.33f), 0.05f);
+        film.GetComponent<Renderer>().sharedMaterial = materials.Lit("Cover-ash", CoverColor(CoverIds.Ash, new Color(0.35f, 0.34f, 0.33f)), 0.05f);
     }
 
     // Spike Growth's thorns: a clump of spikes on the cell (CellThorns) while the cover is there.

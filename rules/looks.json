@@ -12,14 +12,14 @@
     "wall": { "about": "A log wall, built by its house or worn thin on its posts.", "forms": ["built", "worn"], "params": ["color"] }
   },
   "covers": {
-    "slick": { "drawn": false, "needs": "CellSlickMesh's id checks and colours (oil, grease, frost) read from the cover's look" },
-    "scorch": { "drawn": false, "needs": "CellPaint's and ChemGrid.RenderCover's ash check read from the cover's look" },
+    "slick": { "drawn": false, "needs": "CellSlickMesh's id checks read from the cover's look; its colours already are" },
+    "scorch": { "drawn": false, "needs": "CellPaint's and ChemGrid.RenderCover's ash check read from the cover's look; its colour already is" },
     "ember": { "drawn": false, "needs": "CellLavaMesh's embers check read from the cover's look" },
-    "growth": { "drawn": false, "needs": "ChemGrid's thorns and vines checks to pick CellThorns or CellVines from the cover's look" }
+    "growth": { "drawn": false, "needs": "ChemGrid's thorns and vines checks to pick CellThorns or CellVines from the cover's look; their colours already are" }
   },
   "gases": {
-    "vapour": { "drawn": false, "needs": "ChemGrid.Effects' prefab per gas to become one particle effect tinted from the gas's look" },
-    "bank": { "drawn": false, "needs": "FogBank's style per gas read from the gas's look (colour, height, thickness)" }
+    "vapour": { "drawn": false, "needs": "ChemGrid.Effects' prefab per gas to become one particle effect; its tint already comes from the gas's look" },
+    "bank": { "drawn": false, "needs": "FogBank's style per gas read from the gas's look (height, thickness); its colour already is" }
   },
   "spells": {
     "hand": { "about": "Only the glow in the caster's hand; the ground or the core draws the rest.", "params": ["color"] },

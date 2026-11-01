@@ -127,6 +127,26 @@ chips. A new cover or gas has no family drawn yet, so it needn't name one, and d
 one always did. Element, cover and gas colours are in the rules, but the view reads them only
 where it has been switched over to them (the spell effects and the world's colours, under way).
 
+
+**The world's colours (`ChemGrid.WorldLook.cs`).** The view reads colours from the rules in force at
+each rule switch, on every peer, and they stay outside `Rules.Fingerprint`. The fire element's
+colour turns all flames, embers and fire lights; `lava`'s turns lava; a gas's colour its fog bank or
+its steam and smoke; a cover's its film (oil, grease, frost), its thorns or vines, and `ash` and
+`snow` the land's charred and snow layers; a ground terrain's the land's layer of it, and grass's
+the grass tufts too; `water`'s the wet cells, the lake and the sea. What's drawn from art is turned
+or tinted by how far the look has moved from the base rules' colour, so the numbers in
+`elements.json` matter only as a starting point, and the rules as they ship change nothing.
+
+A spell that chose a colour keeps it: its fire burns in its look among fire of the element's, a new
+fire catching beside it takes that look, and a fire already burning keeps the one it has (J-052).
+That edge is the view's own note, so two peers can differ there.
+
+What doesn't take a colour yet: flames and steam and smoke only turn, so a pale or grey colour
+(white fire, black smoke) changes nothing; the valley's trees and houses; the `air`, `earth`,
+`cold`, `lightning`, `thunder`, `acid`, `heat`, `sand`, `mud`, `dust` and `rain` elements, which
+draw nothing of their own beyond a spell's effects (those read the spell's look); ice; snow as
+it falls.
+
 ## Change modes (chosen when a room is made)
 
 Andrew, 2026-10-31: the point is fun, not policing. A room picks one when it's created:

@@ -100,6 +100,7 @@ public partial class ChemGrid
         newFxThisFrame++;
         liveFx++;
         var made = MakeFx(prefab, at, turn);
+        made.SetActive(true); // a gas's copy in a look stands inactive
         fxPrefab[made] = prefab;
         fresh = true;
         return made;
@@ -184,6 +185,7 @@ public partial class ChemGrid
         if (flameBank != null) Destroy(flameBank.gameObject);
         flameBank = null;
         fxStaging = null;
+        ReadWorldLooks();
         columns.Clear();
         liveFx = 0;
         freeFx.Clear();
@@ -210,7 +212,7 @@ public partial class ChemGrid
         if (prefab != null && !showFx) kind = null;
         // A cell whose effect waited (the frame's new effects were used up, or the budget was full) asks again.
         bool waiting = kind != null && prefab != null && v.gas == null;
-        if (kind != v.gasKind || (kind != null && prefab == null) || waiting) SwapGasEffect(v, kind, prefab, center, ground);
+        if (kind != v.gasKind || prefab != v.gasPrefab || (kind != null && prefab == null) || waiting) SwapGasEffect(v, kind, prefab, center, ground);
         if (kind == null) { Hide(v.gas); return; }
         if (prefab != null)
         {
@@ -234,8 +236,8 @@ public partial class ChemGrid
 
     GameObject GasPrefab(string kind) => kind switch
     {
-        GasIds.Steam => steamFx,
-        GasIds.Smoke => smokeFx,
+        GasIds.Steam => InLook(ref steamInLook, steamFx, steamLook),
+        GasIds.Smoke => InLook(ref smokeInLook, smokeFx, smokeLook),
         _ => null,
     };
 
@@ -243,6 +245,7 @@ public partial class ChemGrid
     {
         if (v.gasKind != null && v.gas != null && v.gas.GetComponent<ParticleSystem>() != null) { RetireFx(v.gas); v.gas = null; }
         v.gasKind = kind;
+        v.gasPrefab = prefab;
         if (kind == null || prefab == null) return;
         Hide(v.gas);
         // Smoke may use only part of the budget, so it never crowds out the flames.
@@ -263,8 +266,8 @@ public partial class ChemGrid
         puff.transform.localScale = Vector3.one * s;
         puff.transform.position = new Vector3(center.x, ground + 1.2f, center.z);
         puff.GetComponent<Renderer>().sharedMaterial = kind == GasIds.Steam
-            ? materials.Lit("Steam", new Color(0.95f, 0.97f, 1f), 0.3f)
-            : materials.Lit("Smoke", new Color(0.3f, 0.3f, 0.32f), 0.1f);
+            ? materials.Lit("Steam", GasColor(GasIds.Steam, new Color(0.95f, 0.97f, 1f)), 0.3f)
+            : materials.Lit("Smoke", GasColor(GasIds.Smoke, new Color(0.3f, 0.3f, 0.32f)), 0.1f);
     }
 
     // --- charge --------------------------------------------------------------------

@@ -72,6 +72,7 @@ public static class ElementIds
     public const string Water = "water";
     public const string Earth = "earth";
     public const string Air = "air";
+    public const string Lava = "lava";
 }
 
 /// <summary>Entity ids, as in rules/entities.json.</summary>

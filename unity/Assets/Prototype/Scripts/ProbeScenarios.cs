@@ -184,6 +184,9 @@ public static class ProbeScenarios
             "the clouds over 70% of the sky in it, " +
             "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, snow at noon (over 2000 flakes in the air, over half " +
             "the puddles laid in the yard frozen), fog closes the haze in, no console errors."),
+        new Entry("worldlooks", typeof(WorldLooksProbe), 150f,
+            "The world's colours come from the rules in force (docs/RULES_MCP.md, \"Looks\"): the colours as they ship are today's to the number; the fire element's colour reaches what's burning and a burning lake, " +
+            "one Fireball that chose its own colour keeps it (J-052); gases, covers, the ground and the water each take theirs; the mods off puts it all back. With --shots, a film of each in a folder of its own."),
         new Entry("looksmod", typeof(LooksModProbe), 120f,
             "The view draws from the rules in force (docs/RULES_MCP.md, \"Looks\"): a Fireball, the Big fireball mod switched on mid-game, " +
             "a Fireball beside it, the Moonstone mod and its new material, then a look-only switch. --shots films it (ClipFilm). Checks: blast, fire " +
