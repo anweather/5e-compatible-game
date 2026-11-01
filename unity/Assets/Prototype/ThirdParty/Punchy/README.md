@@ -4,6 +4,12 @@ Code adapted from **Punchy** by Zachary Franklin
 (<https://github.com/Skeleman/Punchy>), used with his permission and
 credited in the game's Credits (`Scripts/Credits.cs`).
 
+Vendored from upstream commit **b183507**; upstream's later work is ported by
+hand, a change at a time, and listed against the file below (from `7ee4511`:
+cornered and leashed animals mill about). Creatures are going to data rather
+than Editor assets (J-058), so ours diverges from Punchy's code and keeps its
+style.
+
 Each file here keeps a header naming what it came from and how it was
 changed. Our own code that drives these files lives in `Scripts/` as
 usual (`AmbientCritters.cs` for the critters, `CloudSky.cs` for the sky,
@@ -22,7 +28,7 @@ usual (`AmbientCritters.cs` for the critters, `CloudSky.cs` for the sky,
 | `Fauna/` (species and `Limbs/`) | `Assets/Game/Fauna/` | Unchanged |
 | `CreatureBody.cs` | `Assets/Game/Scripts/Fauna/CreatureData.cs` | Entities blob made a plain class with arrays; `SegmentInstance.Pad` used (crack web, shadow only) |
 | `CreatureAnimator.cs` | `Assets/Game/Scripts/Fauna/CreatureAnimator.cs` | Arrays and reused scratch for Burst lists; ground through `ICreatureGround` |
-| `CreatureBrain.cs` | `Assets/Game/Scripts/Fauna/CreatureBrainSystem.cs` | One creature at a time; the nearest threat (a wizard or fire) for the player |
+| `CreatureBrain.cs` | `Assets/Game/Scripts/Fauna/CreatureBrainSystem.cs` | One creature at a time; the nearest threat (a wizard or fire) for the player. From `7ee4511`: a leash holds even when fleeing, and an animal at its end mills about. Ours: the same for any corner (`Veer` keeps to a side until it has turned; `Mill`, `Clear`), and milling takes steps and looks at the danger, where Punchy's only slows to a fifth of a run |
 | `CreatureCapsule.cs` | `FaunaDirector.BuildCapsule` | Moved to its own file; wound outside out; `readable` keeps the mesh for tests |
 
 The creature files turn our style analyzers off (`#pragma warning disable`),

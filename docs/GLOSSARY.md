@@ -397,6 +397,12 @@ that long, and doesn't march.
 : Animals and folk drawn in the view (`ValleyFauna`, Punchy's creatures).
   View-only, never in the rules.
 
+**Mill about**
+: What a frightened animal does when it's **cornered**, with nowhere left to run
+  (a wall, water or an edge on every side, or the end of its leash): a few steps
+  at a time, an eye on the danger, until a way out opens or the danger goes
+  (`CreatureBrain.Mill`). *Not* standing frozen or shaking on the spot.
+
 **Ambient life**
 : View-only life that makes the world feel lived in: gulls, fish, crabs,
   fireflies, villagers (`AmbientLife`, `AmbientCritters`, D12).
