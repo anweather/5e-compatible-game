@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Chem;
+using Unity.Profiling;
 using UnityEngine;
 
 // A scripted check for the fast loop (docs/FAST_LOOP.md): `unity command probe
@@ -14,6 +15,8 @@ public abstract class ProbeScenario : ShowcaseScript
 {
     const float SettleSeconds = 1f;
     const int MaxErrorsKept = 20;
+    /// <summary>Bytes a call that counts as none: half the smallest object there is. Stray allocations in a frame came to 0.6 at most.</summary>
+    protected const float MostGarbage = 8f;
     // The long edge of a shot's review copy (.claude/skills/screenshot-budget).
     const int ReviewEdge = 480;
 
@@ -37,6 +40,7 @@ public abstract class ProbeScenario : ShowcaseScript
     protected override void OnDestroy()
     {
         Application.logMessageReceived -= OnLog;
+        FixClock(false);
         base.OnDestroy();
     }
 
@@ -137,6 +141,35 @@ public abstract class ProbeScenario : ShowcaseScript
         RenderTexture.active = active;
         System.IO.File.WriteAllBytes(file, copy.EncodeToPNG());
         Destroy(copy);
+    }
+
+    /// <summary>Runs game time at 60 frames a second however long a frame really takes, so a beat or a stop counts the same frames every run; off, the real clock.</summary>
+    protected static void FixClock(bool on) => Time.captureDeltaTime = on ? 1f / 60f : 0f;
+
+    /// <summary>
+    /// The managed bytes a call makes, by the profiler's count of a frame's allocations: the least of some frames with the
+    /// calls, less the least of some without, over the calls. Negative if the count isn't working. GC.GetAllocatedBytesForCurrentThread
+    /// reads 0 in Unity, and the heap's size moves in blocks: Unity's threads move it at any moment, and 7 KB made in a round doesn't.
+    /// </summary>
+    protected static IEnumerator GarbagePerCall(System.Action call, int times, System.Action<float> measured)
+    {
+        const int Frames = 8, Calibration = 16 * 1024;
+        using var allocated = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
+        yield return null;
+        yield return null;
+        var made = new byte[Calibration];
+        yield return null;
+        bool counting = allocated.LastValue >= made.Length;
+        long without = long.MaxValue, with = long.MaxValue;
+        for (int frame = 0; frame < Frames; frame++)
+        {
+            yield return null;
+            without = System.Math.Min(without, allocated.LastValue);
+            for (int i = 0; i < times; i++) call();
+            yield return null;
+            with = System.Math.Min(with, allocated.LastValue);
+        }
+        measured(counting ? (float)System.Math.Max(0L, with - without) / times : -1f);
     }
 
     /// <summary>The controller's debug layout, for a scenario that drives the radial's buttons.</summary>
