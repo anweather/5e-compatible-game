@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-047: Can the game's rules MCP be switched off?
+
+- **Asked:** 2026-10-31, by DesktopUnity (live-rules-unity step 3). Andrew said "just make a call".
+- **Also comes up when:** anything that opens a port or takes input from outside the game.
+- **Answer:** an on/off switch on the mods page, on by default. It serves 127.0.0.1 only; web pages
+  are refused (Host and Origin checks); any program running as the player can still use it while on.
+- **Why (recommendation):** the design is "every player's Claude talks to their own game", so on by
+  default; a player who doesn't use Claude can close the port in one click. Small to build.
+- **Revisited:** 0.
+
 ### J-046: When does 0.1.10 go out?
 
 - **Asked:** 2026-10-31, by the PM.
@@ -59,6 +69,8 @@ Each entry has:
   plus knock-back), resolved in the core.
   Strength setting: punchShove 2.5 (a crate flies about 4.6 m), picked from the punch-ik clip; the
   crate's direction looked off and is to be checked in the live build.
+  Confirmed 2026-10-31 after the direction fix (the shove followed the camera; now straight, 3.2 m
+  side-on): keep 2.5, "more than a little nudge" is enough; tweak later.
 - **Why:** Andrew watched the clip.
 - **Revisited:** 0.
 
