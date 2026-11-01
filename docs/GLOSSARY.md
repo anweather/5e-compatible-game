@@ -376,6 +376,21 @@ that long, and doesn't march.
 *Retired:* **critter**. It meant four things (the sandbox's emitters, the
   collectible world-changers of `TRAVERSAL.md`, raiders, and ambient
   life). Say which one.
+  A "critter spawner" is a **spawner**.
+
+**Building** *(proposed, `docs/design/world-tools.md`)*
+: A cabin or a village building: wall cells in the core, a mesh in the view.
+  Its **building id** is `cabin#2` or the village and its place in the plan
+  (`Hollowmere#4`).
+
+**Place** *(proposed)*
+: A named landmark with its cells (the lake, the falls, Hollowmere), in
+  `world/places.json`, so "the house by the lake" can be found.
+
+**Spawner** *(proposed)*
+: An entry in the fauna's table: which species appears, where, how thick
+  and in which coats. Ambient life, so view only: each peer rolls its own
+  animals (`docs/design/world-tools.md`, part 2).
 
 ## Chunk streaming
 
@@ -445,6 +460,15 @@ that long, and doesn't march.
   **Open** (anyone's change goes in), **Host only** (only the host's) or
   **Locked** (none: the rules stay as the room started). Written "Open
   room", "Host-only room", "Locked room" in the log.
+
+**World edit** *(proposed, `docs/design/world-tools.md`)*
+: One change to world data in a mod's `world` section: set a field of a
+  building or thing by id, or add a thing (appended to its chunk's list, so
+  ids don't move). Look fields are the view's, out of the fingerprint.
+
+**Connect token** *(proposed)*
+: A secret the game writes into the MCP config it registers with a
+  player's Claude; a local client without it is refused.
 
 **Mod / active mod / switch on, revert**
 : A **mod** is a JSON patch over `rules/` (`docs/MODDING.md`). A room's
