@@ -1,6 +1,7 @@
 // The simulate tool: the draft's run against the same run without it.
 using System;
 using System.Globalization;
+using System.IO;
 
 namespace Chem.Mcp
 {
@@ -34,8 +35,9 @@ namespace Chem.Mcp
             if (n < 1 || n > max) throw new RulesToolException($"Simulate runs 1 to {max} ticks, not {n}.");
             var rules = RulesWith(PatchJson(draftOrMod));
             // Without it first, so warming up the runtime doesn't count against the mod.
-            var without = Simulator.Run(Base, scenario, n);
-            return (Simulator.Run(rules, scenario, n), without);
+            string repoRoot = Path.GetDirectoryName(Path.GetFullPath(RulesDir));
+            var without = Simulator.Run(Base, scenario, n, repoRoot);
+            return (Simulator.Run(rules, scenario, n, repoRoot), without);
         }
     }
 }

@@ -68,6 +68,15 @@ namespace Chem
             }
         }
 
+        /// <summary>Begins a tick and runs none of it, for a performance pass to time beginning apart: StepSome carries on from here.</summary>
+        public void BeginStep()
+        {
+            if (stage == TickStage.None) BeginTick();
+        }
+
+        /// <summary>The cells that were burning as the last tick began.</summary>
+        public int BurningCells => burning.Count;
+
         /// <summary>Finishes the tick in progress at once, if there is one.</summary>
         public void FinishTick()
         {

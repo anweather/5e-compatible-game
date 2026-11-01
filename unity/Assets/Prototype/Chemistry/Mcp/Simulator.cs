@@ -30,11 +30,12 @@ namespace Chem.Mcp
         public const int Side = 64;
         const uint Seed = 20261031;
 
-        /// <summary>The named scenarios, each on one chunk (64 × 64 cells) walled with bedrock.</summary>
+        /// <summary>The named scenarios: one chunk (64 × 64 cells) walled with bedrock, but for forest-fire, the whole valley.</summary>
         public static readonly IReadOnlyDictionary<string, string> Scenarios = new SortedDictionary<string, string>(StringComparer.Ordinal)
         {
             ["fire-on-grass"] = "A meadow with trees, brambles, an oil slick and a pond; a Fire Bolt lands in the middle.",
             ["fireball"] = "Tufts of grass on bare dirt, too far apart for fire to spread; a Fireball bursts in the middle, so its radius, crater and scatter show in the cells burnt.",
+            [ForestFire.Name] = "A Fireball into the valley's forest: the real map, land and scene tuning, a wizard standing by and the chunks following it.",
             ["flood"] = "A pond overflows: a block of deep water on grass and dirt runs out over the field, past a trench, an oil slick and a small fire.",
             ["storm"] = "A thunderstorm is held over a meadow with trees, a pond and a metal post: rain fills the hollows and lightning strikes.",
         };
@@ -117,9 +118,11 @@ namespace Chem.Mcp
                 }
         }
 
-        public static SimRun Run(Rules rules, string scenario, int ticks)
+        /// <summary>Runs a scenario; repoRoot is the folder holding world/ and core/, for the one that reads them.</summary>
+        public static SimRun Run(Rules rules, string scenario, int ticks, string repoRoot = null)
         {
-            var w = Build(rules, scenario);
+            var fire = scenario == ForestFire.Name ? new ForestFire(rules, repoRoot) : null;
+            var w = fire?.World ?? Build(rules, scenario);
             var run = new SimRun { Ticks = ticks };
             var start = w.Cells.Select(Snapshot).ToArray();
             Census(w, run.Before);
@@ -128,6 +131,7 @@ namespace Chem.Mcp
             var burnt = new bool[w.Cells.Length];
             for (int i = 0; i < ticks; i++)
             {
+                fire?.PlanChunks();
                 var t0 = clock.Elapsed.TotalSeconds;
                 w.Step();
                 stepping += clock.Elapsed.TotalSeconds - t0;
@@ -186,7 +190,7 @@ namespace Chem.Mcp
             string speed = run.TicksPerSecond >= minTicksPerSecond ? "within" : "OVER";
             return $"{run.CellsChanged} cells changed, {run.CellsBurnt} burnt. By material: {(changes.Count == 0 ? "no change" : string.Join(", ", changes))}.\n" +
                 $"Peak cells at once: {string.Join(", ", peaks)}.\n" +
-                $"{run.TicksPerSecond:0} ticks per second on one chunk ({speed} the budget of {minTicksPerSecond:0}). Cell hash {run.Hash}.";
+                $"{run.TicksPerSecond:0} ticks per second ({speed} the budget of {minTicksPerSecond:0}). Cell hash {run.Hash}.";
         }
     }
 }

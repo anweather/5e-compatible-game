@@ -17,6 +17,16 @@ namespace Chem.Mcp
     {
         public static void Main(string[] args)
         {
+            if (Array.IndexOf(args, "--forest-bench") >= 0)
+            {
+                ForestBench.Run(args);
+                return;
+            }
+            if (Array.IndexOf(args, "--checksum-bench") >= 0)
+            {
+                ChecksumBench.Run(args);
+                return;
+            }
             int at = Array.IndexOf(args, "--rules");
             string rulesDir = at >= 0 && at + 1 < args.Length ? Path.GetFullPath(args[at + 1]) : Workbench.FindRulesDir(Directory.GetCurrentDirectory());
 
