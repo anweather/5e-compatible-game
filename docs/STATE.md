@@ -59,7 +59,7 @@ The one page a new PM session reads first. Keep it short: history goes in
   switch (J-047), Claude writing its own mods (J-048). Player-build check green. Now: merge dev, the play
   log's mods column from the room's titles, rerun room probes and online; then the PM lands it.
   Andrew's test build: `unity\Builds\live-rules-test\SpellChemistryValley.exe`, plus
-  `claude mcp add --transport http spell-valley http://127.0.0.1:47777/mcp`.
+  `claude mcp add --scope user --transport http spell-valley http://127.0.0.1:47777/mcp`.
 - **unity-game-macbook:** `flaky-probes`: #42 (dragon), then #41 (sleet); #43 castfeel leftovers after
   (`hit_stop_is_short`, the varying check count).
 
