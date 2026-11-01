@@ -763,6 +763,10 @@ it runs) are merged into this list every few days.
 | 18 | Punchy animal port, 2: per-animal variety (traits, hairstyles and hair colour; StyleGroup) on our arrays | Gameplay | 2 d |
 | 19 | Punchy animal port, 3: water life (fish, ducks, eels, dolphins; Habitat Swims/Floats/Leaps; water depth through ICreatureGround) | Gameplay | 2–3 d |
 | 20 | Generated areas from Punchy's biomes: B, baked from seed and theme (about 2–4 d), or A, runtime generation in the core (about 10–15 d, streaming part 3). Build's plan is in J-034 | World with Gameplay | M or L |
+| 21 | World tools, reading and looks (`docs/design/world-tools.md`, G1, G2): `find`, `places`, `here`, building ids, cabins as village buildings, buildings drawn from their materials' looks | Gameplay | to size |
+| 22 | World tools, mods in the world (G3 to G5): one building by id, things drawn from data, mods add things. Tests: a brick house and a hidden squirrel, by asking Claude, no named content (J-055) | Gameplay | to size |
+| 23 | Spawners: the animal tables and coats as rules data, per room | Gameplay | to size |
+| 24 | A terminal panel in the game with the MCP configured; the player brings their own Claude (J-056). Needs the connect token | Gameplay | to size |
 
 **Polish:** 15 (scoreboard), 16 (tower) and 17 (tower defense) are built.
 Their "still open" lines are small polish items, to pick up between bigger

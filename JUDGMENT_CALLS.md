@@ -41,6 +41,20 @@ Each entry has:
 
 ## Decided
 
+### J-056: How does chat in the game work, and the world tools design's other questions?
+
+- **Asked:** 2026-11-01, by u1's design (`docs/design/world-tools.md`), through the PM.
+- **Also comes up when:** any Claude feature in the game, a release that ships one, MCP setup.
+- **Answer:** Andrew: "people need to bring their own Claude. Game doesn't log in for them. It's just like an IDE
+  terminal where you can just talk to Claude with an MCP configured." So: a plain terminal panel in the game, with
+  the MCP already configured; the player runs their own Claude there. The game never signs in, stores a credential
+  or pays for Claude (question 9). The PM read his "Ok yea" as accepting its proposed answers too: every log wall
+  first; cabins become village buildings; Open means anyone's Claude; a still squirrel will do; Claude keeps a
+  hider's secret; animals as data per room; the panel for everyone, the room's mode deciding what goes through.
+- **Why:** a terminal the player drives keeps the game out of Claude's sign-in, which Anthropic's terms bar it from.
+  Having the game start Claude Code itself is "running Claude Code in your products" and has conditions, so it doesn't.
+- **Revisited:** 0.
+
 ### J-055: Is the golden squirrel a feature to build?
 
 - **Asked:** 2026-11-01, Andrew, correcting the PM's brief.

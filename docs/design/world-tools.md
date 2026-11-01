@@ -145,18 +145,18 @@ menu's switch still closes the port.
 and the room's change mode decides (Open, Host only, Locked), as for rules. Nobody's Claude reaches
 another peer. A Host-only room is how a host "tunes" alone, hiding things for the others included.
 
-**Recommendation:** ship B first, now: it's small, it works with every Claude a player has, and it
-touches no Anthropic credentials. Then build A as the in-game chat: the player's own, unmodified
-Claude Code in a panel, started with only our tools, after asking Anthropic in writing that this
-fits "running Claude Code in your products". Offer C only as a bring-your-own-API-key option, if
-ever; never as a way round a subscription.
+**Decided (Andrew, J-056):** bring your own Claude. "It's just like an IDE terminal where you can
+just talk to Claude with an MCP configured." A plain terminal panel in the game (a pty and a VT
+renderer, option A's panel) opening in a folder whose config already has this game's MCP and connect
+token. The player runs their own Claude there and signs in by Anthropic's flow. The game doesn't start
+Claude, ships no Claude, stores no credential and pays for nothing. B's config writer is the same
+piece, so "Connect" for a Claude outside the game comes with it. C is dropped. A button that starts
+`claude` for the player would be running Claude Code in the product, with the terms' conditions: not
+in this design.
 
 **Questions for Andrew**
-7. Shall we write to Anthropic (sales contact on the legal page) before building A, or ship B and
-   wait to see how much players ask for an in-game panel?
-8. Is the in-game panel for everyone in a room, or only the host's?
-9. Does the game ever pay for Claude itself (a key of ours for a demo)? That's our API bill, and
-   with A it's ruled out: the terms forbid paying for Claude Code usage on players' behalf.
+Questions 1 to 6, 8 and 9 are answered in J-056. Still open: whether to ask Anthropic (sales contact on
+the legal page) before the panel ships; with a plain terminal the player drives, that's a courtesy, not a gate.
 
 ## Proposed ADRs (titles only)
 
