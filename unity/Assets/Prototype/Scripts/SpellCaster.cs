@@ -232,8 +232,8 @@ public partial class SpellCaster : MonoBehaviour
         // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
         float release = CastGestures.Of(gesture).release;
         if (beats != null) beats.Announce(spellId, landing, release);
-        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast.Charge, onArrive)));
-        else Unleash(def, look, landing, cast.Charge, onArrive);
+        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast, onArrive)));
+        else Unleash(def, look, landing, cast, onArrive);
     }
 
     static IEnumerator AtRelease(float seconds, System.Action then)
@@ -243,33 +243,34 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     // The elements with a burst of their own where they land (BurstFx); sand blasts from the hand.
-    void ElementBurst(SpellDef def, Vector3 landing, int charge)
+    void ElementBurst(SpellDef def, SpellVisuals.Entry look, Vector3 landing, int charge)
     {
-        float size = 1f + 0.5f * (World.ClampCharge(charge) - 1);
+        float size = SpellVisuals.Entry.BurstSize(look, def, charge);
+        Color? color = look?.glow;
         switch (def?.Element)
         {
             case AcidElement:
-                BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, size);
+                BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, size, look: color);
                 break;
             case HeatElement when def.Needs != null:
-                Jet(landing, size);
+                Jet(landing, size, color);
                 break;
             case HeatElement:
-                BurstFx.Play(BurstFx.Kind.Forge, landing + Vector3.up * 0.1f, size);
+                BurstFx.Play(BurstFx.Kind.Forge, landing + Vector3.up * 0.1f, size, look: color);
                 break;
             case SandElement:
-                BurstFx.Play(BurstFx.Kind.SandBlast, Hand, size, Quaternion.LookRotation(landing - Hand));
+                BurstFx.Play(BurstFx.Kind.SandBlast, Hand, size, Quaternion.LookRotation(landing - Hand), look: color);
                 break;
         }
-        if (def?.Scatter != null) BurstFx.Play(BurstFx.Kind.Debris, landing, size);
+        if (def?.Scatter != null) BurstFx.Play(BurstFx.Kind.Debris, landing, size, look: color);
     }
 
     // A Geyser's jet out of the water; on dry ground, only a little puff.
-    void Jet(Vector3 landing, float size)
+    void Jet(Vector3 landing, float size, Color? look)
     {
         var cell = grid.CellAt(landing);
         var c = grid.World.At(cell.x, cell.y);
-        if (c != null && c.Water > 0 && !c.Frozen) BurstFx.Play(BurstFx.Kind.Geyser, landing, size, Quaternion.Euler(-90f, 0f, 0f));
+        if (c != null && c.Water > 0 && !c.Frozen) BurstFx.Play(BurstFx.Kind.Geyser, landing, size, Quaternion.Euler(-90f, 0f, 0f), look: look);
         else BurstFx.Play(BurstFx.Kind.Chips, landing, 0.6f);
     }
 
@@ -282,12 +283,14 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     // The projectile, meteor or storm, or the effect at once; onArrive when it lands.
-    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, int charge, System.Action onArrive)
+    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, CastCommand cast, System.Action onArrive)
     {
+        int charge = cast.Charge;
         void Land()
         {
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)), look.ScaleFor(def, charge));
-            ElementBurst(def, landing, charge);
+            ElementBurst(def, look, landing, charge);
+            grid.LightInLook(this, def, look, cast);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             CastImpact.Landed(def, landing, charge);
             onArrive?.Invoke();
@@ -298,6 +301,7 @@ public partial class SpellCaster : MonoBehaviour
         else if (look.fromSky)
             MeteorFall.Launch(landing, transform.position, look, () =>
             {
+                grid.LightInLook(this, def, look, cast);
                 GameSounds.Play(GameSounds.LandingOf(def), landing);
                 onArrive?.Invoke();
             }, this, blastScale: look.ScaleFor(def, charge));
@@ -309,7 +313,7 @@ public partial class SpellCaster : MonoBehaviour
     {
         if (look.storm) Storm(def, charge, landing, land);
         else if (look.beam) FrostBeam.Launch(Hand, landing + Vector3.up * BeamLift, look.glow, land, this);
-        else if (look.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, land, this);
+        else if (look.projectile != null) SpellProjectile.Launch(look, Hand, landing, land, this, look.ScaleFor(def, 1));
         else land();
     }
 
@@ -348,6 +352,9 @@ public partial class SpellCaster : MonoBehaviour
 
     /// <summary>The colour of the glow in the caster's hand for a spell.</summary>
     public Color GlowOf(string spellId) => LookOf(spellId)?.glow ?? Color.white;
+
+    /// <summary>How far a spell's show is turned from its family's own colour (none without a show).</summary>
+    public LookTint TintOf(string spellId) => spellId != null && LookOf(spellId) is { } look ? look.Tint : default;
 
     Vector3 Hand => pose != null ? pose.HandPosition : transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
 

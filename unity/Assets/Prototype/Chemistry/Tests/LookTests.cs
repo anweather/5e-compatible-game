@@ -125,6 +125,23 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void BlueFireballsChangeOnlyTheLook()
+        {
+            var modded = Base.WithMods(new[] { Example("blue-fireballs") });
+            Assert.That(modded.Spell("fireball").Look.B, Is.GreaterThan(modded.Spell("fireball").Look.R));
+            Assert.That(Base.Spell("fireball").Look.R, Is.GreaterThan(Base.Spell("fireball").Look.B), "the game's own Fireball stays orange");
+            Assert.That(modded.Fingerprint, Is.EqualTo(Base.Fingerprint), "so a game can switch it on at any moment");
+        }
+
+        [Test]
+        public void TheFireFamiliesNameTheColourTheirEffectsAreDrawnIn()
+        {
+            foreach (var name in new[] { "bolt", "cone", "blast", "meteor" })
+                Assert.That(Families.Find("spells", name).Own, Has.Length.EqualTo(3), name);
+            Assert.That(Families.Find("spells", "hand").Own, Is.Null, "a family with nothing of its own to turn");
+        }
+
+        [Test]
         public void EverySpellThatScalesDrawsAtItsOldSizeOnTheBaseRules()
         {
             foreach (var s in Base.Spells.Where(s => Families.Find("spells", s.Look.Family).ScaleBy != null))

@@ -241,7 +241,8 @@ does:
   `gases`, `spells`). `"drawn": false` there means named but not read from data
   yet, with `needs` saying what's missing.
 - **`form`**: the variant, when the family has `forms`.
-- **`color`**: three numbers 0 to 1. A spell's is the glow in the hand and any tint.
+- **`color`**: three numbers 0 to 1. A spell's is the glow in the hand, the aim
+  marker and any tint, and its effects turn to it (below). White asks for no colour.
 - **`height`** (metres over the ground), **`glow`** (shining in its own colour),
   **`roughness`** (0 glossy, 1 matt), **`flow`** (a liquid's speed; no drawn
   family reads it yet). `params` in `looks.json` says which a family takes.
@@ -252,7 +253,12 @@ In `looks.json`, an effect family (`spells`) also names its pack prefabs
 `SpellVisuals.asset` from them, so a new *family* takes a yard build and a new
 *spell* takes nothing) and how it scales: `scaleBy` (`radius`, `size` or
 `length`) over `base`, the number at which the show is its authored size,
-charge included, between a quarter and four times. A mod replacing an entry
+charge included, between a quarter and four times. An effect family with
+`own`, the colour its prefabs are drawn in, takes its spell's colour: a look of
+another hue turns the show round the colour wheel to it (`LookTint`), from the
+hand to the last ember, and a look of the same hue leaves it exactly as
+authored. It needs no asset and no rebuild, so `mods/blue-fireballs.json` is one
+changed `color`. A family with no `own` keeps its pack colours. A mod replacing an entry
 without a `look` keeps the old one. `ModValidator` refuses a new terrain or
 spell with no look, and any unknown family or form.
 

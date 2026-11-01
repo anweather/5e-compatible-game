@@ -6,9 +6,12 @@ using UnityEngine;
 // Hundreds of cells can burn at once and every real-time light costs a lot,
 // so the lights are made once and moved, never created per fire. Each light
 // also carries the crackle of the fire it sits on, so the sound of a fire
-// comes from the same few places as its light.
+// comes from the same few places as its light. A light over a spell's fire
+// takes that spell's look (ChemGrid.FireTint).
 public sealed class FireLightPool
 {
+    static readonly Color FireColor = new(1f, 0.55f, 0.22f);
+
     readonly ChemGrid grid;
     readonly List<Light> lights = new();
     readonly List<AudioSource> crackles = new();
@@ -22,7 +25,7 @@ public sealed class FireLightPool
             var l = new GameObject("Fire light").AddComponent<Light>();
             l.transform.SetParent(grid.transform, false);
             l.type = LightType.Point;
-            l.color = new Color(1f, 0.55f, 0.22f);
+            l.color = FireColor;
             l.range = 7f;
             l.shadows = LightShadows.None;
             l.enabled = false;
@@ -46,6 +49,7 @@ public sealed class FireLightPool
             var l = lights[used];
             l.transform.position = grid.CellCenter(b.x, b.y) + Vector3.up * (grid.SurfaceY(b.x, b.y) + 1f);
             l.intensity = 1.5f + b.fire;
+            l.color = grid.FireTint(b.x, b.y).Of(FireColor);
             l.enabled = true;
             SetCrackle(used, 0.55f + 0.15f * b.fire);
             used++;

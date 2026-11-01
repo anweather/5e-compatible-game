@@ -124,7 +124,7 @@ public partial class ChemGrid
     {
         var show = waveShows[wave];
         waveShows.Remove(wave);
-        BurstFx.Play(BurstFx.Kind.Splash, MoverGround(wave.X, wave.Y), 0.7f + wave.Width * 0.5f);
+        BurstFx.Play(BurstFx.Kind.Splash, MoverGround(wave.X, wave.Y), 0.7f + wave.Width * 0.5f, look: SpellLookColor(wave.Spell));
         GameSounds.Play(SoundIds.Splash, show.root.transform.position);
         show.foam.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         show.x = int.MinValue;

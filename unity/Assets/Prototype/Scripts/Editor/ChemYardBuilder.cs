@@ -430,6 +430,7 @@ public static class ChemYardBuilder
         }
         var looks = Chem.LookFamilies.Load(ChemGrid.FindRulesDir());
         visuals.families = looks.In("spells").Select(Show).ToList();
+        visuals.lookParticle = Shader.Find("Prototype/LookParticle");
         EditorUtility.SetDirty(visuals);
         AssetDatabase.SaveAssets();
         return visuals;
@@ -448,6 +449,7 @@ public static class ChemYardBuilder
         tinted = f.Tinted,
         scaleBy = f.ScaleBy,
         scaleBase = f.Base,
+        own = f.Own != null ? new Color(f.Own[0], f.Own[1], f.Own[2]) : Color.white,
     };
 
     // "Fire/BigExplosion" as a prefab of the Particle Pack's folder for fire effects; null for none.

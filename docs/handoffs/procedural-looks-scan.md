@@ -26,9 +26,10 @@ below are the original scan, with line numbers from before that work.
 | `Burnable`, `PrototypeSceneBuilder` | grass | a prop's label read from the rules |
 | `ChemGrid.Visuals` ash, thorns and vines, `SurfaceEffects` | ash, thorns, vines | the `scorch` and `growth` families |
 | `ChemGrid.Effects`, `FogBank` | steam, smoke, fog, dust, cloud, storm, snowcloud | the `vapour` and `bank` families: one tinted effect and a style read from the gas's look |
-| `SpellCaster.ElementBurst`, `CastImpact`, `BurstFx` | acid, heat, sand, lightning | effect families for these bursts, and `BurstFx`'s size from the spell's numbers rather than the charge alone |
+| `SpellCaster.ElementBurst`, `CastImpact`, `BurstFx` | acid, heat, sand, lightning | effect families for these bursts. Their colour now comes from the look (`LookTint`), and their size from the spell's numbers where the family scales |
+| Effect families with no `own` in `rules/looks.json` | splash, spray, sparks, swirl, shockwave, motes, mist, bloom, storm | their own colour measured and looked at, then a line of data each (`storm` needs `SleetStorm` to read the look first): until then their pack effects keep their colours, as a look's colour reaches only the hand and the aim marker |
 | `SpellRadialHud`, `HudDraw` | acid-splash, fire, water, earth, air | an `icon` on the element or spell |
-| `ChemGrid.Whirls` | fire, water, sand, smoke, snow | a whirl tint on what it carries |
+| `ChemGrid.Whirls` | fire, water, sand, smoke, snow | a whirl tint on what it carries; the spell's look now turns the tint |
 | `GameSounds`, `CastSoundTable` | elements | a `sound` family on the element or spell |
 | `SwimStyle`, `SwimPose`, `SpellForces` | water, steam, elements | physics, not looks: `force` rules if a mod is to change them |
 | `CellDressing.Built.cs` plate | a fixed bronze quarter | a second colour on the `plate` family |

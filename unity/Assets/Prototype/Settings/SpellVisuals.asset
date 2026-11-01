@@ -26,6 +26,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: blast
     projectile: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
     impact: {fileID: 1121192042590650, guid: e1b08032bec16ba4eb1ae23cbd572664, type: 3}
@@ -39,6 +40,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: radius
     scaleBase: 2
+    own: {r: 1, g: 0.42, b: 0.1, a: 1}
   - family: bloom
     projectile: {fileID: 0}
     impact: {fileID: 1775406099119076, guid: 379785de5e39005469c875710d3cc5a7, type: 3}
@@ -52,6 +54,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: bolt
     projectile: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
     impact: {fileID: 1337198075554910, guid: 25c7aa9ad705fe143a4d71c1c8deb7d4, type: 3}
@@ -65,6 +68,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 0.42, b: 0.1, a: 1}
   - family: cone
     projectile: {fileID: 0}
     impact: {fileID: 1634767862067424, guid: 007c57e2df8e9b144b99f471b84f3d56, type: 3}
@@ -78,6 +82,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 0.42, b: 0.1, a: 1}
   - family: hand
     projectile: {fileID: 0}
     impact: {fileID: 0}
@@ -91,6 +96,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: meteor
     projectile: {fileID: 1947871717301538, guid: a990e3ac1318b834488c784d851f42a9, type: 3}
     impact: {fileID: 1121192042590650, guid: e1b08032bec16ba4eb1ae23cbd572664, type: 3}
@@ -104,6 +110,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: radius
     scaleBase: 4
+    own: {r: 1, g: 0.42, b: 0.1, a: 1}
   - family: mist
     projectile: {fileID: 0}
     impact: {fileID: 3281665843732006339, guid: bd2fe1eb2e3ba454088c57397144535f, type: 3}
@@ -117,6 +124,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: motes
     projectile: {fileID: 0}
     impact: {fileID: 1000011210275196, guid: 61a6b3a108030e54ba372fe7097916d0, type: 3}
@@ -130,6 +138,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: shockwave
     projectile: {fileID: 0}
     impact: {fileID: 1025285306637258, guid: d8f0099df63275647a8bcf646df1ca00, type: 3}
@@ -143,6 +152,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: radius
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: sparks
     projectile: {fileID: 0}
     impact: {fileID: 1000011396044746, guid: 96b2ec0239d11fa4b9792311efceb8ed, type: 3}
@@ -156,6 +166,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: splash
     projectile: {fileID: 0}
     impact: {fileID: 1722726733478836, guid: c1c88308ebb5d2541a282905b854ee4c, type: 3}
@@ -169,6 +180,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: size
     scaleBase: 3
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: spray
     projectile: {fileID: 0}
     impact: {fileID: 1240250018707908, guid: 5656e7ea1f1a75d4c895547ec2b824b3, type: 3}
@@ -182,6 +194,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: storm
     projectile: {fileID: 0}
     impact: {fileID: 0}
@@ -195,6 +208,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: swirl
     projectile: {fileID: 0}
     impact: {fileID: 1000010715882420, guid: 14d81e2c407975245973a11cdfbeb902, type: 3}
@@ -208,6 +222,7 @@ MonoBehaviour:
     tinted: 0
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
   - family: veil
     projectile: {fileID: 0}
     impact: {fileID: 3281665843732006339, guid: bd2fe1eb2e3ba454088c57397144535f, type: 3}
@@ -221,3 +236,5 @@ MonoBehaviour:
     tinted: 1
     scaleBy: 
     scaleBase: 1
+    own: {r: 1, g: 1, b: 1, a: 1}
+  lookParticle: {fileID: 4800000, guid: 295f6e1f922a74643a7ad53322c04b66, type: 3}

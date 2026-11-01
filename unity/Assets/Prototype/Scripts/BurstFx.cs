@@ -10,7 +10,8 @@ using UnityEngine;
 // out of a pond (turned to point up); Splash, a wave breaking; and Debris, burning
 // rock thrown out of a blast; Fizzle, a cast going out in a few falling sparks. Shards are ShardBurst's. Each kind
 // keeps at most a handful alive; past that the oldest is restarted where the
-// new one is wanted. Presentation only.
+// new one is wanted. A burst of a spell takes its look: the recipe's colours
+// turned to the look's hue (LookTint). Presentation only.
 public static class BurstFx
 {
     public enum Kind { AcidSplash, Flash, Forge, SandBlast, Chips, Geyser, Splash, Debris, Fizzle }
@@ -26,6 +27,16 @@ public static class BurstFx
         public float gravity, seconds, spread, hold, grow = 1f, angle = 12f;
         public (float at, short count)[] bursts;
         public bool cone, additive;
+
+        // The colour a look is measured from: its hot end, or its cool end if that's nearly white.
+        public Color Own
+        {
+            get
+            {
+                Color.RGBToHSV(hot, out _, out float s, out _);
+                return s < LookTint.Pale ? cool : hot;
+            }
+        }
     }
 
     static readonly Dictionary<Kind, Recipe> Recipes = new()
@@ -83,17 +94,22 @@ public static class BurstFx
     static Material softMaterial, glowMaterial;
     static Transform root;
 
-    /// <summary>Plays a burst at a point, <paramref name="size"/> times its usual spread, turned to <paramref name="turn"/> if given, in <paramref name="tint"/> if given.</summary>
-    public static void Play(Kind kind, Vector3 at, float size = 1f, Quaternion? turn = null, Color? tint = null)
+    /// <summary>
+    /// Plays a burst at a point, <paramref name="size"/> times its usual spread, turned to <paramref name="turn"/> if
+    /// given, in <paramref name="tint"/> if given, else in its own colours turned to a spell's <paramref name="look"/> if given.
+    /// </summary>
+    public static void Play(Kind kind, Vector3 at, float size = 1f, Quaternion? turn = null, Color? tint = null, Color? look = null)
     {
         var ps = Take(kind);
         ps.transform.SetPositionAndRotation(at, turn ?? Quaternion.identity);
         ps.transform.localScale = Vector3.one * size;
-        if (tint != null)
-        {
-            var main = ps.main;
-            main.startColor = new ParticleSystem.MinMaxGradient(tint.Value, tint.Value * 0.7f);
-        }
+        // Set each time: the pool hands back whatever colour the last burst of this kind left.
+        var recipe = Recipes[kind];
+        var shift = look != null ? LookTint.Between(recipe.Own, look.Value) : default;
+        var main = ps.main;
+        main.startColor = tint != null
+            ? new ParticleSystem.MinMaxGradient(tint.Value, tint.Value * 0.7f)
+            : new ParticleSystem.MinMaxGradient(shift.Of(recipe.hot), shift.Of(recipe.cool));
         ps.Clear(true);
         ps.Play(true);
     }

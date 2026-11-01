@@ -184,6 +184,11 @@ public static class ProbeScenarios
             "a Fireball beside it, the Moonstone mod and its new material, then a look-only switch. --shots films it (ClipFilm). Checks: blast, fire " +
             "area and crater bigger in the cells and as drawn, the moonstone drawn by its family with its look's height, colour and glow, a look-only " +
             "switch redraws and keeps the fingerprint, no scene reload, no console errors. Metrics: each number with the mod off and on."),
+        new Entry("lookfx", typeof(SpellLookFxProbe), 120f,
+            "Whether a spell's effects take its look: a Fireball cast by elements as it ships, the Blue fireballs mod switched on mid-game and a Fireball " +
+            "beside it, every stage read and, with --shots, filmed (ClipFilm); then the mod switched off with the blue fire still burning. Checks: orbs, " +
+            "bead, burst, debris, flames, embers and fire light blue with the mod and as authored without, a fire spreading keeps the look, the switch " +
+            "redraws what burns, no scene reload, the fingerprint unchanged, no console errors."),
         new Entry("blast", typeof(BlastProbe), 40f,
             "Fireball cast from the bar on the meadow east of the yard. Checks: its crater is in the cells (two steps down in the " +
             "middle, one round it), the terrain is drawn at least 0.6 m lower there, the blast's edge burns (burning, or burnt to dirt), no console errors."),

@@ -311,7 +311,17 @@ that long, and doesn't march.
 **Effect family**
 : The same for a cast's show (`blast`, `bolt`, `beam`, `motes`...): prefabs and
   how the show scales with the spell's numbers. One show per family, in
-  `SpellVisuals.asset`, built from `rules/looks.json`.
+  `SpellVisuals.asset`, built from `rules/looks.json`. A family's **own colour**
+  (`own` there) is the colour its effects are drawn in.
+
+**Look tint**
+: How far a spell's effects are turned round the colour wheel, from their own
+  colour to the colour of the spell's look (`LookTint`): the orange blast of a
+  blue Fireball turned to blue, its white heart still white and its smoke still
+  grey. A look of nearly the same hue, or a pale one, turns nothing, and the
+  effect is drawn exactly as authored. Only the view has it: nothing in the
+  cells knows what colour a fire is. *Not* a **theme look**, nor the plain
+  tints of `BurstFx` and `FireLook`, which colour by what burns.
 
 ## Things in the world
 

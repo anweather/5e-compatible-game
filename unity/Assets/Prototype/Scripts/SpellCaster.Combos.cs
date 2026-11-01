@@ -57,6 +57,16 @@ public partial class SpellCaster
         return (combo?.SpellAt(charge, world.MaxChargeOf(combo)), charge);
     }
 
+    /// <summary>The spell a cast under way will go off as, at the charge it has so far; null if the elements make none yet.</summary>
+    public string SpellOf(PlayerCast cast)
+    {
+        var world = grid.World;
+        var dpad = world.Rules.Combos.Dpad;
+        if (cast.DpadCasting >= 0 && cast.DpadCasting < dpad.Count) return dpad[cast.DpadCasting].Spell;
+        var combo = world.ComboOf(cast);
+        return combo?.SpellAt(Mathf.Max(1, cast.Charge), world.MaxChargeOf(combo));
+    }
+
     void UpdateElements()
     {
         Listen();

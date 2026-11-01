@@ -12,7 +12,8 @@ using UnityEngine;
 // has a show, and a mod's bigger one a bigger show, with no rebuild. The
 // chemistry stays in rules/*.json; this is only the show. A show is spawned without
 // colliders (Spawn): some pack effects carry a solid one (the Respawn mist's
-// sphere), which would stand in a Misty Step's way.
+// sphere), which would stand in a Misty Step's way. A look of another hue than
+// its family's own turns the whole show (LookTint), at no cost to the rest.
 [CreateAssetMenu(menuName = "Prototype/Spell Visuals")]
 public class SpellVisuals : ScriptableObject
 {
@@ -43,18 +44,34 @@ public class SpellVisuals : ScriptableObject
         [Tooltip("The spell number the impact scales with (radius, size or length; empty for none), and that number at scale 1.")]
         public string scaleBy;
         public float scaleBase = 1f;
+        [Tooltip("The colour this family's effects are drawn in (rules/looks.json \"own\"); white if they can't be turned from it yet.")]
+        public Color own = Color.white;
+
+        /// <summary>How far this show is turned from its family's own colour to its spell's look.</summary>
+        public LookTint Tint { get; private set; }
+
+        [NonSerialized] Shader particleShader;
 
         /// <summary>How big this show is for a spell as the rules stand and for how long it was held.</summary>
         public float ScaleFor(SpellDef spell, int charge) =>
             EffectScale.Of(string.IsNullOrEmpty(scaleBy) ? null : scaleBy, scaleBase, spell, charge);
 
+        /// <summary>How big a spell's burst (BurstFx) is: as this show where it scales with the spell's numbers, else by the charge alone.</summary>
+        public static float BurstSize(Entry look, SpellDef spell, int charge) =>
+            !string.IsNullOrEmpty(look?.scaleBy) ? look.ScaleFor(spell, charge) : 1f + 0.5f * (World.ClampCharge(charge) - 1);
+
         /// <summary>This family's show in a spell's colour.</summary>
-        public Entry Colored(Color color)
+        public Entry Colored(Color color, Shader shader = null)
         {
             var e = (Entry)MemberwiseClone();
             e.glow = color;
+            e.Tint = LookTint.Between(own, color);
+            e.particleShader = shader;
             return e;
         }
+
+        /// <summary>Turns a copy of one of this show's effects to the spell's look; as authored if the look is its own colour.</summary>
+        public void Dress(GameObject show) => Tint.Dress(show, particleShader);
 
         /// <summary>Plays the impact at a point for impactSeconds (tinted if asked), if there is one, at <paramref name="scale"/>.</summary>
         public void PlayImpact(Vector3 at, Quaternion rotation, float scale = 1f)
@@ -62,6 +79,7 @@ public class SpellVisuals : ScriptableObject
             if (impact == null) return;
             var fx = Spawn(impact, at, rotation);
             Scale(fx, scale);
+            Dress(fx);
             LastImpact = fx;
             if (tinted)
                 foreach (var particles in fx.GetComponentsInChildren<ParticleSystem>())
@@ -75,6 +93,9 @@ public class SpellVisuals : ScriptableObject
 
     /// <summary>One show per effect family.</summary>
     public List<Entry> families = new();
+
+    [Tooltip("Draws a pack effect in a look of another hue (Prototype/LookParticle), kept here so a player build has it.")]
+    public Shader lookParticle;
 
     /// <summary>The last impact played, for the probe.</summary>
     public static GameObject LastImpact { get; set; }
@@ -97,7 +118,7 @@ public class SpellVisuals : ScriptableObject
         if (shows.TryGetValue(spellId, out var show)) return show;
         var look = rules.Spell(spellId)?.Look;
         var family = look != null ? families.Find(f => f.family == look.Family) : null;
-        return shows[spellId] = family?.Colored(new Color(look.R, look.G, look.B));
+        return shows[spellId] = family?.Colored(new Color(look.R, look.G, look.B), lookParticle);
     }
 
     /// <summary>
