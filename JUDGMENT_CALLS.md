@@ -91,6 +91,9 @@ Each entry has:
 - **Also comes up when:** element colours land, any look a spell leaves in the world, online play.
 - **Answer:** PM's call, yes for now. Keep `LookFire`. When an element's colour lands it replaces this
   where the spell didn't choose a colour, and that work settles how a plain fire beside a blue one behaves.
+  **Settled 2026-11-01 (DesktopUnity, `skin-world-view`):** a spell that chose a colour keeps it among fire of the
+  element's. A new fire beside it catches that look; a fire already burning keeps its colour. A spell that chose
+  nothing burns in the element's colour. `LookFire` stays for spells with their own colour.
 - **Why:** orange flames under a blue fireball is the complaint Andrew started from. It's view-only, so it
   can't reach lockstep; two peers may differ at the edges of a fire.
 - **Revisited:** 0.
