@@ -14,6 +14,8 @@ public abstract class ProbeScenario : ShowcaseScript
 {
     const float SettleSeconds = 1f;
     const int MaxErrorsKept = 20;
+    /// <summary>Rounds of RoundsWithoutGarbage.</summary>
+    protected const int GarbageRounds = 12;
     // The long edge of a shot's review copy (.claude/skills/screenshot-budget).
     const int ReviewEdge = 480;
 
@@ -137,6 +139,24 @@ public abstract class ProbeScenario : ShowcaseScript
         RenderTexture.active = active;
         System.IO.File.WriteAllBytes(file, copy.EncodeToPNG());
         Destroy(copy);
+    }
+
+    /// <summary>
+    /// How many of GarbageRounds rounds of <paramref name="times"/> calls left the managed heap as it was. Its size moves in
+    /// 4 KB blocks, and Unity's own threads can move it by a block or three at any moment (2 in 12 rounds on the Mac, whatever
+    /// runs): that hits a few rounds, garbage from the calls every one. GC.GetAllocatedBytesForCurrentThread reads 0 in Unity.
+    /// </summary>
+    protected static int RoundsWithoutGarbage(System.Action call, int times)
+    {
+        int clean = 0;
+        for (int round = 0; round < GarbageRounds; round++)
+        {
+            int collections = System.GC.CollectionCount(0);
+            long before = System.GC.GetTotalMemory(false);
+            for (int i = 0; i < times; i++) call();
+            if (System.GC.GetTotalMemory(false) == before && System.GC.CollectionCount(0) == collections) clean++;
+        }
+        return clean;
     }
 
     /// <summary>The controller's debug layout, for a scenario that drives the radial's buttons.</summary>
