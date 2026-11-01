@@ -22,7 +22,7 @@ public sealed class PerfMarkers : IDisposable
     const string Collect = "GC.Collect";
     const double NsPerMs = 1e6;
     /// <summary>A marker under this in a frame stays out of its breakdown.</summary>
-    const double BreakdownFloorMs = 0.5, WideFloorMs = 2.0;
+    const double BreakdownFloorMs = 0.5, WideFloorMs = 2.0, WindowFloorMs = 0.1;
 
     static readonly (ProfilerCategory category, string[] names)[] Timed =
     {
@@ -60,14 +60,14 @@ public sealed class PerfMarkers : IDisposable
 
     readonly List<string> names = new();
     readonly List<ProfilerRecorder> recorders = new();
-    readonly double[] sum, peak, last;
+    readonly double[] sum, peak, last, window;
     readonly int shotAt;
     readonly double floorMs;
     ProfilerRecorder allocated = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "GC Allocated In Frame");
     ProfilerRecorder systemUsed = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "System Used Memory");
     ProfilerRecorder gfxUsed = ProfilerRecorder.StartNew(ProfilerCategory.Memory, "Gfx Used Memory");
     long allocatedSum, allocatedPeak;
-    int frames, collections;
+    int frames, windowFrames, collections;
 
     public PerfMarkers(bool wide = false)
     {
@@ -82,6 +82,7 @@ public sealed class PerfMarkers : IDisposable
         sum = new double[names.Count];
         peak = new double[names.Count];
         last = new double[names.Count];
+        window = new double[names.Count];
         shotAt = names.IndexOf(BotShot);
     }
 
@@ -121,6 +122,7 @@ public sealed class PerfMarkers : IDisposable
     public void Sample()
     {
         frames++;
+        windowFrames++;
         long garbage = AllocatedLastFrame;
         allocatedSum += garbage;
         allocatedPeak = Math.Max(allocatedPeak, garbage);
@@ -129,6 +131,7 @@ public sealed class PerfMarkers : IDisposable
             double ms = recorders[i].Valid ? recorders[i].LastValue / NsPerMs : 0;
             last[i] = ms;
             sum[i] += ms;
+            window[i] += ms;
             peak[i] = Math.Max(peak[i], ms);
             if (ms > 0 && names[i] == Collect) collections++;
         }
@@ -141,6 +144,20 @@ public sealed class PerfMarkers : IDisposable
         for (int i = 0; i < names.Count; i++)
             if (last[i] >= floorMs) line.Append(' ').Append(names[i]).Append('=').Append(last[i].ToString("0.0", CultureInfo.InvariantCulture));
         line.Append(" gc_alloc_kb=").Append((AllocatedLastFrame / 1024).ToString(CultureInfo.InvariantCulture));
+        return line.ToString();
+    }
+
+    /// <summary>Each marker's mean since the last call, as m.name=ms pairs, leaving out the smallest.</summary>
+    public string WindowSummary()
+    {
+        var line = new StringBuilder();
+        for (int i = 0; i < names.Count; i++)
+        {
+            double mean = window[i] / Math.Max(1, windowFrames);
+            if (mean >= WindowFloorMs) line.Append(" m.").Append(names[i]).Append('=').Append(mean.ToString("0.00", CultureInfo.InvariantCulture));
+            window[i] = 0;
+        }
+        windowFrames = 0;
         return line.ToString();
     }
 

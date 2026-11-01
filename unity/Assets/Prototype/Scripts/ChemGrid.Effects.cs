@@ -184,6 +184,7 @@ public partial class ChemGrid
         if (flameBank != null) Destroy(flameBank.gameObject);
         flameBank = null;
         fxStaging = null;
+        columns.Clear();
         liveFx = 0;
         freeFx.Clear();
         fxPrefab.Clear();

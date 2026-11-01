@@ -13,15 +13,15 @@ using UnityEngine.Rendering;
 // The frame-rate log (docs/FAST_LOOP.md, "The play log"): in every player build, on by default, so
 // a player can play as usual and read the frame rate afterwards. Each frame only adds to running
 // totals. Once a second one line goes to a CSV beside the player log, by PlayLogFile on a thread of
-// its own: frame rate, the worst frame, frames over 33 and 50 ms, CPU and GPU times, what the world
-// was doing. A frame over 100 ms adds its own line (in a development build, with its top markers).
+// its own: frame rate, the worst frame and the 95th percentile, frames over 33 and 50 ms, CPU and GPU
+// times, the world's speed and what it owes, what the world was doing. A frame over 100 ms adds its own line (in a development build, with its top markers).
 // F8 ("that felt bad") adds a marked line and a small screenshot, as the playtest bot's finds do. Quitting adds a summary line. The
 // Esc menu turns it off; the choice is kept. The Editor doesn't log, except for the probe.
 // -no-play-log starts a player without it, to measure what it costs.
 public class PlayLog : MonoBehaviour
 {
     const string OnKey = "playLog.on";
-    const string Header = "kind,seconds,clock,fps,worst_ms,over_33,over_50,cpu_main_ms,cpu_render_ms,gpu_ms,weather,chunks,players,mods,what";
+    const string Header = "kind,seconds,clock,fps,worst_ms,p95_ms,over_33,over_50,cpu_main_ms,cpu_render_ms,gpu_ms,sim_pct,tick_debt_s,weather,chunks,players,mods,what";
     const float HitchMs = 100f, SlowMs = 33f, VerySlowMs = 50f;
     const float LoadingSeconds = 5f; // the summary leaves these out: the first frame alone can take seconds
     const int EventsASecond = 3, ShotMip = 2;
@@ -36,7 +36,8 @@ public class PlayLog : MonoBehaviour
     int frames, over33, over50, timed, hitches, marks;
     float elapsedMs, worstMs, mainMs, renderMs, gpuMs;
     double nextSecond;
-    readonly List<float> everySecond = new();
+    int ticksAtSecond;
+    readonly List<float> everySecond = new(), frameMs = new();
 
     PlayLogFile file;
     ChemGrid grid;
@@ -149,6 +150,7 @@ public class PlayLog : MonoBehaviour
     public void Frame(float ms)
     {
         frames++;
+        frameMs.Add(ms);
         elapsedMs += ms;
         if (ms > worstMs) worstMs = ms;
         if (ms > SlowMs) over33++;
@@ -179,6 +181,8 @@ public class PlayLog : MonoBehaviour
     void ClearSecond()
     {
         frames = over33 = over50 = timed = 0;
+        frameMs.Clear();
+        ticksAtSecond = WorldNow()?.Tick ?? 0;
         elapsedMs = worstMs = mainMs = renderMs = gpuMs = 0f;
     }
 
@@ -223,11 +227,28 @@ public class PlayLog : MonoBehaviour
         var world = WorldNow();
         var sb = new StringBuilder(160);
         sb.Append(kind).Append(',').Append(Num(Time.unscaledTime - startedAt)).Append(',').Append(DateTime.Now.ToString("HH:mm:ss", Plain)).Append(',');
-        sb.Append(Num(fps)).Append(',').Append(Num(worst >= 0f ? worst : worstMs)).Append(',').Append(slow).Append(',').Append(verySlow).Append(',');
+        sb.Append(Num(fps)).Append(',').Append(Num(worst >= 0f ? worst : worstMs)).Append(',').Append(worst >= 0f ? "" : Num(P95())).Append(',').Append(slow).Append(',').Append(verySlow).Append(',');
         sb.Append(Average(mainMs)).Append(',').Append(Average(renderMs)).Append(',').Append(Average(gpuMs)).Append(',');
+        sb.Append(SimSpeed(world)).Append(',').Append(grid != null ? grid.OwedSeconds.ToString("0.00", Plain) : "").Append(',');
         sb.Append(world != null ? world.Weather.Kind.ToString() : "").Append(',').Append(world != null ? world.ActiveChunks.Count : 0).Append(',');
         sb.Append(Mathf.Max(1, Knockback.All.Count)).Append(',').Append(Quoted(Mods())).Append(',').Append(Quoted(what));
         return sb.ToString();
+    }
+
+    // The frame 95% of this second's beat. Sorting the list a second doesn't make garbage.
+    float P95()
+    {
+        if (frameMs.Count == 0) return 0f;
+        frameMs.Sort();
+        return frameMs[(frameMs.Count - 1) * 95 / 100];
+    }
+
+    // The world's speed this second: the ticks it ran against the ticks due.
+    string SimSpeed(World world)
+    {
+        float seconds = elapsedMs / 1000f;
+        if (world == null || seconds <= 0f) return "";
+        return Mathf.RoundToInt((world.Tick - ticksAtSecond) * 100f / (seconds * world.Rules.Sim.TicksPerSecond)).ToString(Plain);
     }
 
     string Average(float sum) => timed > 0 && sum > 0f ? Num(sum / timed) : "";

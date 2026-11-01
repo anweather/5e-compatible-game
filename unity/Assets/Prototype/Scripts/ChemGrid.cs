@@ -88,7 +88,9 @@ public partial class ChemGrid : MonoBehaviour
     readonly System.Diagnostics.Stopwatch timer = new();
 
     /// <summary>Milliseconds the last frame spent stepping the world, drawing its cells, and placing the fire lights (the probe's wildfire scenario reads them).</summary>
-    public double StepMs { get; private set; }
+    /// <summary>The time the solo world owes in seconds: past a tick's worth, it's behind.</summary>
+    public float OwedSeconds => tickTimer;
+    public double StepMs { get; set; }
     public double RenderMs { get; private set; }
 
     static readonly Unity.Profiling.ProfilerMarker StepMarker = new("ChemGrid.Step"), RenderMarker = new("ChemGrid.Render"),
@@ -274,7 +276,7 @@ public partial class ChemGrid : MonoBehaviour
             return;
         }
 
-        tickTimer += Time.deltaTime;
+        tickTimer = Mathf.Min(tickTimer + Time.deltaTime, MostOwedSeconds);
         timer.Restart();
         stepBudget.Start();
         bool stepped;
@@ -315,6 +317,8 @@ public partial class ChemGrid : MonoBehaviour
     // than one frame stalling for the whole tick. Meanwhile the view may show a tick half done for
     // a frame or two (fire spread this tick, say, but water not yet moved).
     const double StepBudgetMs = 6.0;
+    /// <summary>The most time the world may owe: a slower world just runs slow, and doesn't race to catch up after.</summary>
+    public const float MostOwedSeconds = 1f;
     // In a playtest run, slices instead (ExactFrames): a quiet valley tick is a hundred or so.
     const int ExactStepSlices = 256;
     readonly FrameBudget stepBudget = new(StepBudgetMs, ExactStepSlices);
