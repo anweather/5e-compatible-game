@@ -156,7 +156,7 @@ namespace Chem.Mcp
         [RulesTool("apply"), Description("Switches a mod on in the room, at the next tick. The room's change mode decides whose changes go in, and the mod is checked first (validate); a refusal comes back as one sentence, and the world log says who changed what.")]
         public string Apply([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string mod,
             [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null,
-            [Description("The name players see in the log; the patch's own title when left out.")] string title = null) => Do(() => bench.Apply(mod, peer, title));
+            [Description("The name players see in the log, such as Bigger fireballs. Give one for a draft, which has no title of its own.")] string title = null) => Do(() => bench.Apply(mod, peer, title));
 
         [RulesTool("revert"), Description("Takes a mod off in the room, at the next tick; the other mods stay on, in order. The room's change mode decides who may.")]
         public string Revert([Description("The mod's id, as room lists it.")] string mod,

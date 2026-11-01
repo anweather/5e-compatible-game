@@ -23,7 +23,7 @@ public class RoomProbeAsk
 {
     public string id;
     public int step;
-    /// <summary>"join", "report", "toggle" with a mod's id, "hostile", or "rejoin".</summary>
+    /// <summary>"join", "report", "toggle" with a mod's id, "hostile", "rejoin", "film" (mod: the stand's cell and the target's) or "cut".</summary>
     public string ask, mod;
 }
 
@@ -107,6 +107,7 @@ public class RoomProbeClient : MonoBehaviour
     int errorCount, lastStep;
     string lastId;
     RoomProbeRecord record;
+    RoomFilm film;
 
     void OnEnable() => Application.logMessageReceived += OnLog;
     void OnDisable() => Application.logMessageReceived -= OnLog;
@@ -155,6 +156,16 @@ public class RoomProbeClient : MonoBehaviour
                 net.RequestRoom(RoomCommand.Apply("Player 1", "junk", "{ not json"));
                 for (float t = 0f; t < 3f && record.Lines == before; t += Time.unscaledDeltaTime) yield return null;
                 break;
+            case "film":
+                var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
+                var cells = ask.mod.Split(',').Select(int.Parse).ToArray();
+                film = gameObject.AddComponent<RoomFilm>();
+                film.Begin(grid, wizard, new Vector2Int(cells[0], cells[1]), new Vector2Int(cells[2], cells[3]), "client");
+                break;
+            case "cut":
+                film.End();
+                Destroy(film);
+                break;
             case "rejoin":
                 record.Dispose();
                 record = null;
@@ -188,6 +199,7 @@ public abstract class RoomProbe : ProbeScenario
     public static string SeenFile => Beside("room-seen.json");
 
     protected abstract ChangeMode Mode { get; }
+    protected virtual bool StartsWithAMod => true;
 
     string id;
     int step;
@@ -212,15 +224,15 @@ public abstract class RoomProbe : ProbeScenario
         NetSession.RoomMode = Mode;
         Switcher = grid.GetComponent<RuleSwitcher>();
         // On in solo, before the room is hosted: it stays on as a starting mod, whatever the mode.
-        Switcher.Toggle(Wildfire);
+        if (StartsWithAMod) Switcher.Toggle(Wildfire);
         yield return Wait(0.5f);
-        bool onSolo = World.Room.Mods.Any(m => m.Id == Wildfire);
+        bool onSolo = !StartsWithAMod || World.Room.Mods.Any(m => m.Id == Wildfire);
         Check("solo_opens_an_open_room", World.Room.Mode == ChangeMode.Open && onSolo, $"{RoomPolicy.Words(World.Room.Mode)}, {World.Room.Mods.Count} mods on");
         FindAnyObjectByType<NetSession>().Host();
         yield return null;
         Net = grid.GetComponent<NetChem>();
         Record = new RoomProbeRecord(grid, Net);
-        Check("hosted_in_the_chosen_mode", World.Room.Mode == Mode && World.Room.Mods.Any(m => m.Id == Wildfire),
+        Check("hosted_in_the_chosen_mode", World.Room.Mode == Mode && World.Room.Mods.Count == (StartsWithAMod ? 1 : 0),
             $"{RoomPolicy.Words(World.Room.Mode)} room, {World.Room.Mods.Count} mods on");
 
         yield return Ask("join");
@@ -425,6 +437,40 @@ public class RoomMcpProbe : ProbeScenario
         Check("revert_answers_the_line", off.Result.body.Contains("Player 1 switched off Big fireball (Open room)"), off.Result.body);
         yield return Wait(0.5f);
         Check("fireball_back", World.Rules.Spell(SpellIds.Fireball).Radius == radius, $"radius {World.Rules.Spell(SpellIds.Fireball).Radius}");
+        yield return OffClosesThePort();
+        yield return Stills();
+    }
+
+    // The Mods page's switch (J-047): off refuses a connection, and on serves again; the choice is kept.
+    IEnumerator OffClosesThePort()
+    {
+        var server = RulesMcpServer.Instance;
+        string url = RulesMcpServer.Url;
+        server.Serving = false;
+        Check("off_says_so", RulesMcpServer.ConnectLine == null && !server.Serving, "no line to show");
+        var refused = Http.PostAsync(url, new StringContent("{}", Encoding.UTF8, "application/json"));
+        yield return Until(refused);
+        Check("off_refuses_the_port", refused.IsFaulted, refused.IsFaulted ? refused.Exception.GetBaseException().Message : $"status {refused.Status}");
+        server.Serving = true;
+        yield return null;
+        var again = Post(Tool("room", "{}"));
+        yield return Until(again);
+        Check("on_serves_again", again.Status == TaskStatus.RanToCompletion && again.Result.status == 200, again.Status.ToString());
+    }
+
+    // With --shots: the menu's change mode, and the Mods page with the switch and the line.
+    IEnumerator Stills()
+    {
+        EventLog.HudVisible = true;
+        PauseMenu.Instance.SetOpen(true);
+        yield return Wait(0.3f);
+        Shot("room-menu");
+        yield return Wait(0.3f);
+        ModsPanel.SetOpen(true);
+        yield return Wait(0.3f);
+        Shot("mods-page");
+        yield return Wait(0.3f);
+        PauseMenu.Instance.SetOpen(false);
     }
 
     static IEnumerator Until(Task task)
@@ -449,5 +495,131 @@ public class RoomClaudeProbe : ProbeScenario
         yield return Wait(1f);
         Check("line_in_the_log", World.Log.Any(l => l.Text.Contains("switched on")), World.Log.LastOrDefault()?.Text);
         Metric("fireball_radius", World.Rules.Spell(SpellIds.Fireball).Radius);
+    }
+}
+
+/// <summary>
+/// Films this peer, with each frame named by the clock both peers share, for the room clip's two halves side by
+/// side: the screen with the HUD on the host, the camera on a virtual player, whose hidden Game view is a sliver.
+/// Faces the wizard and its camera at the target meanwhile.
+/// </summary>
+public class RoomFilm : MonoBehaviour
+{
+    const float FrameSeconds = 1f / 12f;
+
+    string folder;
+    bool rolling;
+    WizardPuppet puppet;
+    Vector3 target;
+    RenderTexture lens;
+
+    /// <summary>The folder both peers film under, beside the probe's files.</summary>
+    static string Root => Path.Combine(Path.GetDirectoryName(ProbeLink.HostFile), "room-clip");
+
+    /// <summary>The milliseconds on the shared clock, as frames are named.</summary>
+    public static long Now => DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+    public void Begin(ChemGrid grid, GameObject wizard, Vector2Int stand, Vector2Int at, string side)
+    {
+        folder = Path.Combine(Root, side);
+        Directory.CreateDirectory(folder);
+        var body = wizard.GetComponent<CharacterController>();
+        body.enabled = false;
+        wizard.transform.position = grid.CellCenter(stand.x, stand.y) + Vector3.up * (grid.SurfaceY(stand.x, stand.y) + 0.05f);
+        body.enabled = true;
+        target = grid.CellCenter(at.x, at.y);
+        puppet = new WizardPuppet(wizard);
+        puppet.Face(target);
+        EventLog.HudVisible = true;
+        if (ProbeLink.InVirtualPlayer)
+        {
+            lens = new RenderTexture(1280, 720, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+            Camera.main.targetTexture = lens;
+        }
+        rolling = true;
+        StartCoroutine(Roll());
+    }
+
+    public void End()
+    {
+        rolling = false;
+        if (lens != null) Camera.main.targetTexture = null;
+    }
+
+    void Update()
+    {
+        if (rolling) puppet.AimCamera(target, 18f, 6f);
+    }
+
+    IEnumerator Roll()
+    {
+        var end = new WaitForEndOfFrame();
+        float next = 0f;
+        while (rolling)
+        {
+            yield return end;
+            if (Time.unscaledTime < next) continue;
+            next = Time.unscaledTime + FrameSeconds;
+            var picture = lens != null ? Read(lens) : ScreenCapture.CaptureScreenshotAsTexture();
+            File.WriteAllBytes(Path.Combine(folder, $"{Now}.jpg"), picture.EncodeToJPG(85));
+            Destroy(picture);
+        }
+    }
+
+    static Texture2D Read(RenderTexture from)
+    {
+        var picture = new Texture2D(from.width, from.height, TextureFormat.RGB24, false);
+        RenderTexture.active = from;
+        picture.ReadPixels(new Rect(0, 0, from.width, from.height), 0, 0);
+        RenderTexture.active = null;
+        picture.Apply();
+        return picture;
+    }
+}
+
+/// <summary>
+/// The clip for Andrew's board: both peers film their own screens while the host's wizard casts a Fireball, a real
+/// Claude outside asks for a bigger one through the MCP, and the next Fireball is cast. Needs that Claude run while it holds.
+/// </summary>
+public class RoomClipProbe : RoomProbe
+{
+    static readonly Vector2Int HostStand = new(12, 14), ClientStand = new(15, 14), Middle = new(13, 7), First = new(9, 8), Second = new(17, 8);
+
+    protected override ChangeMode Mode => ChangeMode.Open;
+    protected override bool StartsWithAMod => false;
+
+    protected override IEnumerator Steps()
+    {
+        var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
+        wizard.GetComponent<SpellCaster>().enabled = false;
+        var film = gameObject.AddComponent<RoomFilm>();
+        var middle = grid.YardCell(Middle.x, Middle.y);
+        film.Begin(grid, wizard, grid.YardCell(HostStand.x, HostStand.y), middle, "host");
+        var stand = grid.YardCell(ClientStand.x, ClientStand.y);
+        yield return Ask("film", $"{stand.x},{stand.y},{middle.x},{middle.y}");
+        if (Theirs == null) yield break;
+        yield return Wait(2f);
+
+        Metric("first_ms", RoomFilm.Now);
+        Fireball(wizard, First);
+        yield return Wait(7f);
+        Metric("asking_ms", RoomFilm.Now);
+        int radius = World.Rules.Spell(SpellIds.Fireball).Radius;
+        for (float t = 0f; t < Mathf.Max(30f, Seconds) && World.Room.Mods.Count == 0; t += Time.unscaledDeltaTime) yield return null;
+        Metric("line_ms", RoomFilm.Now);
+        Check("claude_changed_the_game", World.Rules.Spell(SpellIds.Fireball).Radius > radius, $"radius {radius} to {World.Rules.Spell(SpellIds.Fireball).Radius}");
+        yield return Wait(3f);
+        Metric("second_ms", RoomFilm.Now);
+        Fireball(wizard, Second);
+        yield return Wait(7f);
+        Metric("end_ms", RoomFilm.Now);
+        film.End();
+        yield return Ask("cut");
+    }
+
+    void Fireball(GameObject wizard, Vector2Int at)
+    {
+        var cell = grid.YardCell(at.x, at.y);
+        wizard.GetComponent<SpellCaster>().Cast(SpellIds.Fireball, cell.x, cell.y, 0);
     }
 }

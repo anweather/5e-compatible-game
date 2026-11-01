@@ -77,6 +77,8 @@ namespace Chem.Mcp
             var key = Required(draftOrMod, "draft, mod or patch");
             var json = PatchJson(key);
             var id = key.StartsWith('{') ? IdOf(json) : key;
+            // A draft has no title of its own, and players shouldn't read its id.
+            if (string.IsNullOrWhiteSpace(title) && drafts.ContainsKey(key)) title = "a new mod";
             return Decide(RoomCommand.Apply(PeerOf(peer), id, json, title));
         }
 

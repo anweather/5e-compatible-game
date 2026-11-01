@@ -98,6 +98,21 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ADraftWithNoTitleGoesInWithoutItsId()
+        {
+            var bench = Bench();
+            var desk = new Desk();
+            bench.Desk = desk;
+            var rpc = Rpc(bench);
+            var text = (string)Call(rpc, "tune", new JObject { ["param"] = "fire.spreadChance", ["value"] = "0.2" })["content"][0]["text"];
+            string draft = text.Split(' ', '\n', '.', ':', ',').First(w => w.Length > 1 && w[0] == 'd' && char.IsDigit(w[1]));
+            Call(rpc, "apply", new JObject { ["mod"] = draft });
+            Assert.That(desk.Asked[0].Title, Is.EqualTo("a new mod"));
+            Call(rpc, "apply", new JObject { ["mod"] = draft, ["title"] = "Faster fire" });
+            Assert.That(desk.Asked[1].Title, Is.EqualTo("Faster fire"));
+        }
+
+        [Test]
         public void TheRoomToolsGoToTheGamesDesk()
         {
             var bench = Bench();

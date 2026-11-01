@@ -112,12 +112,15 @@ public class ModsPanel : MonoBehaviour
         DrawClaudeLine();
     }
 
-    // How a player adds this game to their Claude (docs/MODDING.md): run it once.
+    // The switch that lets Claude in (J-047), and how a player adds this game to their Claude (docs/MODDING.md): run it once.
     void DrawClaudeLine()
     {
+        var server = RulesMcpServer.Instance;
+        if (server == null) return;
+        if (PauseMenu.Button($"Claude can change this game: {(server.Serving ? "On" : "Off")}", PauseMenu.ButtonStyle)) server.Serving = !server.Serving;
         string line = RulesMcpServer.ConnectLine;
         if (line == null) return;
-        GUILayout.Label("<color=#ffffff99>Let Claude change the rules with you: run this once in a terminal, then ask it.</color>", small);
+        GUILayout.Label("<color=#ffffff99>Run this once in a terminal, then ask Claude.</color>", small);
         GUILayout.BeginHorizontal();
         GUILayout.Label($"<size=13>{line}</size>", small);
         if (PauseMenu.Button("Copy", null, GUILayout.Width(70), GUILayout.Height(32))) GUIUtility.systemCopyBuffer = line;

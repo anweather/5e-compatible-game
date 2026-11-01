@@ -14,20 +14,38 @@ using UnityEngine;
 // doesn't stall a frame. A web page can't reach it: a request must name this address as
 // its Host, carry JSON, and come from no other Origin (a browser always says one).
 // There's nothing to share or sign in to, and nothing crosses the network here: a change goes
-// out as a room command like any other.
+// out as a room command like any other. It's on by default; the Mods page turns it off, which
+// closes the port, and each player's choice is kept (PlayerPrefs, J-047).
 public class RulesMcpServer : MonoBehaviour
 {
     /// <summary>The first port tried; a second copy of the game on this machine takes the next.</summary>
     public const int FirstPort = 47777;
     const int Ports = 8;
     const int MaxBody = 1024 * 1024;
+    const string OnKey = "rulesMcp.on";
 
     readonly ConcurrentQueue<Action> onMainThread = new();
     HttpListener listener;
-    Thread thread;
+    McpRpc rpc;
 
-    /// <summary>The address Claude connects to; null if no port was free.</summary>
+    /// <summary>The server, or null where the game doesn't serve (a virtual player).</summary>
+    public static RulesMcpServer Instance { get; private set; }
+
+    /// <summary>The address Claude connects to; null while off or if no port was free.</summary>
     public static string Url { get; private set; }
+
+    /// <summary>Whether this player lets Claude in. Off closes the port; kept between sessions.</summary>
+    public bool Serving
+    {
+        get => PlayerPrefs.GetInt(OnKey, 1) == 1;
+        set
+        {
+            PlayerPrefs.SetInt(OnKey, value ? 1 : 0);
+            PlayerPrefs.Save();
+            Close();
+            if (value) Open();
+        }
+    }
 
     /// <summary>The line a player runs once, to add the game to Claude Code; null if it isn't serving.</summary>
     public static string ConnectLine => Url == null ? null : $"claude mcp add --transport http spell-valley {Url}";
@@ -44,7 +62,14 @@ public class RulesMcpServer : MonoBehaviour
     /// <summary>Runs on the main thread at the next frame.</summary>
     public void Post(Action act) => onMainThread.Enqueue(act);
 
+    void Awake() => Instance = this;
+
     void Start()
+    {
+        if (Serving) Open();
+    }
+
+    void Open()
     {
         for (int port = FirstPort; port < FirstPort + Ports && listener == null; port++) TryListen(port);
         if (listener == null)
@@ -52,9 +77,17 @@ public class RulesMcpServer : MonoBehaviour
             Debug.LogWarning($"Rules MCP: no free port from {FirstPort}, so Claude can't reach this game");
             return;
         }
-        var rpc = new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = new GameRoomDesk(this) }), "spell-chemistry-valley", Application.version);
-        thread = new Thread(() => Serve(listener, rpc)) { IsBackground = true, Name = "Rules MCP" };
-        thread.Start();
+        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = new GameRoomDesk(this) }), "spell-chemistry-valley", Application.version);
+        var serving = listener;
+        var tools = rpc;
+        new Thread(() => Serve(serving, tools)) { IsBackground = true, Name = "Rules MCP" }.Start();
+    }
+
+    void Close()
+    {
+        Url = null;
+        if (listener != null) listener.Close();
+        listener = null;
     }
 
     void TryListen(int port)
@@ -80,8 +113,8 @@ public class RulesMcpServer : MonoBehaviour
 
     void OnDestroy()
     {
-        Url = null;
-        if (listener != null) listener.Close();
+        Close();
+        if (Instance == this) Instance = null;
     }
 
     static void Serve(HttpListener listener, McpRpc rpc)

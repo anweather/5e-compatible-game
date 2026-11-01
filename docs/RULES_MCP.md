@@ -162,8 +162,9 @@ switches on), so lockstep holds and we run no servers for it.
      `apply` and `revert` cross to the main thread (`GameRoomDesk`), go in as this player's commands,
      whoever the tool names, and wait for the room's sentence. It starts with the game and turns away
      a request with another Host or Origin, so a web page can't reach it. There's no sign-in: anything
-     running as this user on this machine can use it. The Mods page shows the line to add it to Claude.
-     Probes: `roomopen`, `roomhost`, `roomlocked`, `roommcp`, `roomclaude`.
+     running as this user on this machine can use it. The Mods page shows the line to add it to Claude, and a switch that closes the port (on by default,
+     kept per player, J-047).
+     Probes: `roomopen`, `roomhost`, `roomlocked`, `roommcp`, `roomclaude`, `roomclip`.
 4. **Assets**: not now. Procedural families come first, and may make most of it unnecessary.
 
 ## Open questions
