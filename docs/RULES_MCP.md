@@ -33,17 +33,26 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `list(table)`: ids and one-line summaries for materials, elements, reactions, spells, groups,
   sim parameters; `list looks` gives the look families, the parameters each takes, and what
   takes no colour.
-- `describe(table, id)`: the full entry, plus what refers to it, and for a spell, material or
-  element its look and what `set_look` may change.
+- `describe(table, id, draft?)`: the full entry, plus what refers to it, and for a spell, material or
+  element its look (its mix and scoped looks too) and what `set_look` may change; with a draft,
+  the entry as the draft has it.
 - `explain(a, b)`: what happens when a meets b, and which rule decides it.
 - `room()` (phase 3): the room's change mode and the mods on in it, with who added each.
+- `places()`: the world's named places (`world/places.json`): each one's id, name, kind and
+  cells. Villages, courses, puzzles and the water bodies are generated from the world files;
+  the river and the falls are written by hand. Read-only; mods can't change them.
+- `here(within?)`: where the player asking stands (name and cell), the place they're in, the
+  places near them with distance and direction, and what they look at. The game says who is
+  asking through an `IHere` (`Workbench.Here`); a headless run has a stand-in, the host at the
+  middle of the valley's grid, or at `--here x,y` given to `core/Rules.Mcp`.
 
 **Draft** (each returns a draft id and the patch so far; drafts compose)
 - `add_material`, `set_material(id, field, value)`
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
-- `set_look(id, param, value, table?)`: one parameter of the look of a spell, terrain, cover,
-  gas or element (see "Looks")
+- `set_look(id, param, value, table?, where?)`: one parameter of the look of a spell, terrain,
+  cover, gas or element, a `mix` of colours, and with `where` a colour or mix that holds only
+  round a place, a cell or the player asking (see "Looks")
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare
 - `remove(table, id)`, only for things the draft itself added
 
@@ -105,6 +114,38 @@ instructions say so. `validate` checks every look's parameters against its famil
 look-only draft leaves the fingerprint and the cell hash alone. What takes no colour (`list
 looks`): the `fire` families (a fire's flames are the fire element's colour), the families not
 drawn yet, and a `plant` tree or sapling (the valley's own model).
+
+**Mixed and scoped looks** (`LookScopes.cs`; `docs/design/world-tools.md`). Wherever an element,
+cover, gas or terrain takes a colour, its look may also give:
+- `mix`: several colours with weights, `[{"color": [1, 0.25, 0.13], "weight": 2}, ...]`, in place
+  of the one colour. Each cell picks one by a hash of where it is, with no draw from the world's
+  RNG, so every peer sees the same patchwork. `set_look fire mix ["#ff4020", "#2050ff", "#30d040"]`
+  takes plain colours too (weighing the same); setting `color` afterwards drops the mix.
+- `scoped`: a list of `{"where": ..., "color" or "mix"}`, earliest first. `where` is
+  `{"place": id, "within": cells}` (a place from `places()`; within 0 or left out is the place's
+  own cells), `{"at": [x, y], "within": cells}` or `{"around": player, "within": cells}`.
+  `set_look` with `where` adds one, or changes the one with that same where (it becomes the
+  latest), and a null value takes it back; `"around": "me"` is written as the asking player's name
+  (the core keys players by name), and that look lapses while they're not in the game. A place
+  that doesn't exist is refused with the list of places, by `set_look` and by `validate`.
+
+The latest scoped look covering a cell wins, its edge blends into what's under it over three
+cells (`LookScopes.EdgeCells`), and elsewhere the plain look (or its mix) holds. A colour a spell
+chose for its own fire still wins (J-052). Scopes are worked out when the view draws, not stored
+on the fire, so a fire leaving the scope changes back: that is what makes "the fire near me" follow
+the player. Across mods the scoped looks add up: a mod giving an entry's look keeps the scoped
+looks of the mods before it, ahead of its own. `rules/budgets.json` `looks` caps a mix's colours
+(8), a look's scoped looks (8) and a scope's reach (64 cells). All of it is inside `"look"`, so
+it stays out of `Rules.Fingerprint` and the cell hash.
+
+The view's side: `LookScopes.Compile(rules, places)` at each rule switch (a place's distances are
+worked out then), `Of(table, id)` once a frame, and `CellLook.At(x, y, players, own)` per cell,
+which allocates nothing; `players` is where each player stands (`PlayerSpot`, by name) and `own`
+is a spell's own colour where the cell's fire has one. `Plain` says a look needs no per-cell call.
+Asked of Claude, "make the fire near me green" is `set_look fire color [0.2, 0.9, 0.3]` with
+`where {"around": "me", "within": 10}`, and "fire round the village in three colours" is `places`
+(or `here`) for the village's id, then `set_look fire mix [three colours]` with
+`where {"place": "<id>", "within": 20}`. The view doesn't call `At` yet (the PC's part).
 
 **How it redraws.** The view reads looks from `World.Rules` when it draws, so what it draws next
 is from the rules in force on every peer. A switch also redraws what already stands if its

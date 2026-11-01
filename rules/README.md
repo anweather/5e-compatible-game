@@ -261,6 +261,12 @@ flames are the fire element's colour), the families not drawn yet, and the
 parts a family's `notes` name (a `plant` tree or sapling is the valley's own
 model).
 
+Wherever an element, cover, gas or terrain takes a `color`, its look may also
+give a **`mix`** (several colours with weights, each cell picking one by a hash
+of where it is) and **`scoped`** looks (a colour or mix holding only round a
+place from `world/places.json`, a cell or a player, the latest winning):
+`docs/RULES_MCP.md` "Mixed and scoped looks". `budgets.json` `looks` caps them.
+
 **An element's look** is in `elements.json`, by id: the colour of what that
 element makes in the world, whichever spell or reaction made it (fire's
 flames, water, cold's frost). It names no family and holds only `color`:

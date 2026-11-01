@@ -301,6 +301,19 @@ that long, and doesn't march.
   fingerprint. *Not* a world theme's look (`world/looks.json`, a biome a theme
   may paint), nor a fire's `burn.look`.
 
+**Mix** (of a look)
+: Several colours with weights in place of a look's one colour (`"mix"`), each
+  cell picking one by a hash of where it is (`LookScopes.CellHash`), never the
+  world's RNG: fire in three colours, the same patchwork on every peer.
+
+**Scoped look**
+: A colour or a mix that holds only round a place, a cell or a player
+  (`"scoped"`: `where` and `color` or `mix`), on an element, cover, gas or
+  terrain. The latest covering a cell wins, its edge blends over three cells,
+  and elsewhere the plain look holds. Worked out when drawn
+  (`CellLook.At`), not stored on the cell, so a fire leaving the scope changes
+  back. A spell's own colour still wins (J-052). *Not* a theme's look.
+
 **Look family**
 : A way the view can draw a material, by name, from data alone: `block`,
   `plant`, `debris`, `plate`... listed in `rules/looks.json`. A new material
@@ -383,9 +396,13 @@ that long, and doesn't march.
   Its **building id** is `cabin#2` or the village and its place in the plan
   (`Hollowmere#4`).
 
-**Place** *(proposed)*
+**Place**
 : A named landmark with its cells (the lake, the falls, Hollowmere), in
-  `world/places.json`, so "the house by the lake" can be found.
+  `world/places.json` (`WorldPlaces`), so "the house by the lake" can be
+  found. Most are **generated** from the world files (villages, courses,
+  puzzles, `land.json`'s water); the rest are written by hand. Read-only: mods
+  can't change them. The MCP's `places()` lists them and `here()` says which
+  one the asking player is in and what's near.
 
 **Spawner** *(proposed)*
 : An entry in the fauna's table: which species appears, where, how thick

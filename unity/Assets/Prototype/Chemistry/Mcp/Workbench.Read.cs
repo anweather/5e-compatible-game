@@ -108,12 +108,12 @@ namespace Chem.Mcp
         // ---------- describe ----------
 
         /// <summary>The full entry as written in rules/, plus every place the rules refer to it.</summary>
-        public string Describe(string table, string id)
+        public string Describe(string table, string id, string draft = null)
         {
             table = Table(table);
             id = Required(id, "id");
             if (table == "materials") table = MaterialKinds.FirstOrDefault(k => Raw["materials"][k]?[id] != null) ?? "terrain";
-            var entry = Find(table, id);
+            var entry = string.IsNullOrWhiteSpace(draft) ? Find(table, id) : DraftEntry(DraftOf(draft.Trim()), table, id);
             if (entry == null || entry.Type == JTokenType.Null) throw new RulesToolException($"There is no {Single(table)} called {id}; list {table} to see the ids.");
             var refs = new List<string>();
             foreach (var file in Raw.Keys.Where(f => f != "budgets"))
@@ -122,6 +122,10 @@ namespace Chem.Mcp
                 (refs.Count == 0 ? "Nothing in the rules refers to it." : $"Referred to by ({refs.Count}):\n" + string.Join("\n", refs.Distinct().Take(60))) +
                 LookLine(table, id, entry);
         }
+
+        // An entry as a draft has it (its looks included), else as the base has it.
+        JToken DraftEntry(Draft draft, string table, string id) =>
+            (LookTables.Contains(table) ? Current(draft, table, id) : null) ?? Find(table, id);
 
         JToken Find(string table, string id)
         {

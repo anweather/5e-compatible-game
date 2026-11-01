@@ -632,6 +632,9 @@ namespace Chem
         /// </summary>
         public LookDef ElementLook(string element) => element != null && elementLooks.TryGetValue(element, out var look) ? look : null;
 
+        /// <summary>Every element's look by element id (LookScopes compiles them). The view's only.</summary>
+        public IReadOnlyDictionary<string, LookDef> ElementLooks => elementLooks;
+
         /// <summary>The entity with this id, or null.</summary>
         public EntityDef Entity(string id) => id != null && entities.TryGetValue(id, out var e) ? e : null;
 
@@ -976,6 +979,10 @@ namespace Chem
             look.Roughness = (float)(Num(o["roughness"]) ?? -1);
             look.Flow = (float)(Num(o["flow"]) ?? 0);
             look.Baked = Truthy(o["baked"]);
+            look.Mix = LookMix.Parse(o["mix"]);
+            look.Scoped = ScopedLook.ParseAll(o["scoped"]);
+            if (o["mix"] != null || o["scoped"] != null)
+                look.Extra = new JObject { ["mix"] = o["mix"]?.DeepClone(), ["scoped"] = o["scoped"]?.DeepClone() }.ToString(Newtonsoft.Json.Formatting.None);
             return look;
         }
 

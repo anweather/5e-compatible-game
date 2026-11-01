@@ -31,12 +31,18 @@ namespace Chem
         public float Flow;
         /// <summary>The land itself draws it until it grows in this world (the valley's trees).</summary>
         public bool Baked;
+        /// <summary>Several colours with weights in place of the one, a pick per cell (look "mix"); null for one colour.</summary>
+        public LookMix Mix;
+        /// <summary>Looks that hold only round a place, a cell or a player (look "scoped"), earliest first (LookScopes).</summary>
+        public IReadOnlyList<ScopedLook> Scoped = Array.Empty<ScopedLook>();
+        /// <summary>The mix and scoped looks as written, so Same can tell two apart.</summary>
+        public string Extra;
 
         /// <summary>Whether two looks draw alike (either may be null).</summary>
         public static bool Same(LookDef a, LookDef b) =>
             ReferenceEquals(a, b) || (a != null && b != null && a.Family == b.Family && a.Form == b.Form
                 && Near(a.R, b.R) && Near(a.G, b.G) && Near(a.B, b.B) && Near(a.Height, b.Height) && Near(a.Glow, b.Glow)
-                && Near(a.Roughness, b.Roughness) && Near(a.Flow, b.Flow) && a.Baked == b.Baked);
+                && Near(a.Roughness, b.Roughness) && Near(a.Flow, b.Flow) && a.Baked == b.Baked && a.Extra == b.Extra);
 
         static bool Near(float a, float b) => Math.Abs(a - b) < 1e-5f;
     }

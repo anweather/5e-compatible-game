@@ -42,6 +42,9 @@ namespace Chem
         /// <summary>The look and effect families a mod's new things may name (rules/looks.json); null skips that check.</summary>
         public LookFamilies Looks { get; private set; }
 
+        /// <summary>The world's places a scoped look may name (world/places.json beside rules/); empty when there's none.</summary>
+        public WorldPlaces Places { get; private set; } = WorldPlaces.Empty;
+
         public static ModBudgets Parse(string json) => new ModBudgets(JObject.Parse(json));
 
         /// <summary>rules/budgets.json with the family list of rules/looks.json: all a peer checks a mod against.</summary>
@@ -49,6 +52,7 @@ namespace Chem
         {
             var budgets = Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
             budgets.Looks = LookFamilies.Load(rulesDir);
+            budgets.Places = WorldPlaces.Load(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(rulesDir).TrimEnd('/', '\\')) ?? "", "world"));
             return budgets;
         }
 
@@ -188,9 +192,10 @@ namespace Chem
                     return;
                 }
                 string name = Text(look["family"]);
+                Scoped(table, who, look);
                 if (name == null)
                 {
-                    if (looks.BareTables.Contains(table)) Params(look, who, "a look with no family", looks.Bare.Params);
+                    if (looks.BareTables.Contains(table)) Params(look, who, "a look with no family", looks.Bare.Params, table);
                     return; // else Rules.Check says so
                 }
                 if (table == "elements") return; // Rules.Check: an element names no family
@@ -201,14 +206,38 @@ namespace Chem
                     Add(ModCheck.Looks, $"{who} names the look family \"{name}\", which the view can't draw from data yet (it needs {family.Needs}).");
                 else if (family.Forms.Count > 0 && !family.Forms.Contains(Text(look["form"])))
                     Add(ModCheck.Looks, $"{who}'s look family \"{name}\" takes a form, one of {string.Join(", ", family.Forms)}.");
-                else Params(look, who, $"the look family \"{name}\"", family.Params);
+                else Params(look, who, $"the look family \"{name}\"", family.Params, table);
             }
 
-            // Every parameter a look gives is one its family takes, or the view would silently ignore it.
-            void Params(JObject look, string who, string what, IReadOnlyList<string> takes)
+            // Every parameter a look gives is one its family takes, or the view would silently ignore it. A
+            // mix and scoped looks go wherever a colour does, on an element, cover, gas or terrain.
+            void Params(JObject look, string who, string what, IReadOnlyList<string> takes, string table)
             {
+                bool colours = takes.Contains("color") && LookScopes.Tables.Contains(table);
                 foreach (var key in look.Properties().Select(p => p.Name).Where(k => !LookFamilies.Naming.Contains(k) && !takes.Contains(k)))
-                    Add(ModCheck.Looks, $"{who}'s look gives {key}, which {what} doesn't take; it takes {(takes.Count == 0 ? "nothing" : string.Join(", ", takes))} (rules/looks.json).");
+                {
+                    if (colours && (key == "mix" || key == "scoped")) continue;
+                    string why = (key == "mix" || key == "scoped") && takes.Contains("color") ? $" ({key} is for an element's, cover's, gas's or terrain's look; a spell's colours only its own show)" : "";
+                    Add(ModCheck.Looks, $"{who}'s look gives {key}, which {what} doesn't take; it takes {(takes.Count == 0 ? "nothing" : string.Join(", ", takes))} (rules/looks.json){why}.");
+                }
+            }
+
+            // A scoped look's place is one the world has, and its reach and count, and a mix's colours, are within the budgets.
+            void Scoped(string table, string who, JObject look)
+            {
+                double maxMix = budgets.Number("looks.maxMix", 8), maxScoped = budgets.Number("looks.maxScoped", 8), maxWithin = budgets.Number("looks.maxWithin", 64);
+                if (look["mix"] is JArray mix && mix.Count > maxMix) Add(ModCheck.Budget, $"{who}'s look mixes {mix.Count} colours; a mix has at most {Num(maxMix)}.");
+                if (!(look["scoped"] is JArray scoped) || !LookScopes.Tables.Contains(table)) return;
+                if (scoped.Count > maxScoped) Add(ModCheck.Budget, $"{who}'s look has {scoped.Count} scoped looks; a look has at most {Num(maxScoped)}.");
+                foreach (var s in scoped.OfType<JObject>())
+                {
+                    if (s["mix"] is JArray m && m.Count > maxMix) Add(ModCheck.Budget, $"{who}'s scoped look mixes {m.Count} colours; a mix has at most {Num(maxMix)}.");
+                    var where = s["where"] as JObject;
+                    if (where?["within"] is JValue within && IsNumber(within) && (double)within > maxWithin)
+                        Add(ModCheck.Budget, $"{who}'s scoped look reaches {within} cells; a scope reaches at most {Num(maxWithin)} cells.");
+                    if (Text(where?["place"]) is string place && budgets.Places.Find(place) == null)
+                        Add(ModCheck.References, $"{who}'s scoped look names the place \"{place}\", which the world doesn't have; the places are {budgets.Places.Ids} (world/places.json).");
+                }
             }
 
             // ---------- the design rules ----------

@@ -268,6 +268,7 @@ namespace Chem
                     if (look[key] != null && !(IsNumber(look[key]) && (double)look[key] >= 0)) Errors.Add($"{what}: look.{key} must be a number from 0");
                 if (look["roughness"] != null && !(IsNumber(look["roughness"]) && (double)look["roughness"] >= 0 && (double)look["roughness"] <= 1))
                     Errors.Add($"{what}: look.roughness must be a number from 0 to 1");
+                foreach (var m in LookScopes.ShapeProblems(look)) Errors.Add($"{what}: {m}");
             }
 
             // The element entries (elements.json, a mod's "elements" by id): known elements, each with only
