@@ -57,8 +57,8 @@ def options(preset, word):
     return v if isinstance(v, dict) else {}
 
 
-def add_drone(mix, p, element, start, cut, combine_at, steps, gain_scale, r):
-    col = p.get('colour', {}).get(element, {})
+def drone_partials(p, col):
+    """The hum's notes as (ratio to the root, amount): the root, its choir and the fifths."""
     fifths = amount(p, 'fifths')
     choir = options(p, 'choir')
     voices = choir.get('voices', 1)
@@ -68,7 +68,12 @@ def add_drone(mix, p, element, start, cut, combine_at, steps, gain_scale, r):
     partials = [(1, 0.42)] + [(d, choir_amp) for d in detune] + [
         (1.5, 0.22 * fifths * col.get('fifth', 1)), (2, 0.14 * fifths), (3, 0.05 * fifths)]
     hum = amount(p, 'hum')
-    partials = [(ratio, amp * hum) for ratio, amp in partials]
+    return [(ratio, amp * hum) for ratio, amp in partials]
+
+
+def add_drone(mix, p, element, start, cut, combine_at, steps, gain_scale, r):
+    col = p.get('colour', {}).get(element, {})
+    partials = drone_partials(p, col)
     sub_amp, sub_hz = amount(p, 'sub'), options(p, 'sub').get('hz', 45)
     if sub_amp: partials.append((None, sub_amp))
     phases = [r.random() * TAU for _ in partials]

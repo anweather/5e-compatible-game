@@ -24,23 +24,6 @@ public static class ProceduralCast
         return data;
     }
 
-    /// <summary>Stones drawn together, for earth gathering: a dark rumble with a scatter of small knocks, rising.</summary>
-    public static float[] Gravel(int seed, float seconds = 0.5f)
-    {
-        var r = new System.Random(seed);
-        var data = new float[(int)(seconds * Rate)];
-        float dark = 0f, knock = 0f;
-        for (int i = 0; i < data.Length; i++)
-        {
-            float t = i / (float)data.Length;
-            dark += 0.02f * (Noise(r) - dark);
-            if (r.NextDouble() < 0.0016) knock = 0.5f + 0.5f * (float)r.NextDouble();
-            knock *= 0.992f;
-            data[i] = t * t * (dark * 5f + knock * Noise(r));
-        }
-        return data;
-    }
-
     /// <summary>A bolt leaving the hand: a whip of bright noise and a crack at the front of it.</summary>
     public static float[] Snap(int seed, float seconds = 0.4f)
     {
@@ -116,19 +99,6 @@ public static class ProceduralCast
             looped[i] = data[i] * w + data[looped.Length + i] * (1f - w);
         }
         return looped;
-    }
-
-    /// <summary>A charge level reached: a struck, glassy tone. The level's pitch comes from CastSoundTable.</summary>
-    public static float[] Ping(float seconds = 0.6f)
-    {
-        var data = new float[(int)(seconds * Rate)];
-        for (int i = 0; i < data.Length; i++)
-        {
-            float t = i / (float)Rate;
-            data[i] = Mathf.Exp(-t / 0.16f) * (Tone(t, 440f) * 0.6f + Tone(t, 880.6f) * 0.3f)
-                + Mathf.Exp(-t / 0.05f) * (Tone(t, 1321f) * 0.25f + Tone(t, 2212f) * 0.15f);
-        }
-        return data;
     }
 
     /// <summary>A cast dropped: a falling sputter that dies out.</summary>

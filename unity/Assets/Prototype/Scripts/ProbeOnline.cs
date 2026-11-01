@@ -746,7 +746,7 @@ public class OnlineProbe : ProbeScenario
         var sounds = client.otherSounds;
         Metric("remote_sounds", sounds.Count);
         Metric("remote_sound_listener_m", client.otherSoundFarthest);
-        Check("remote_cast_sounds_at_its_wizard", sounds.Contains(CastSoundTable.Slam) && sounds.Contains(CastSoundTable.ChargeLoop) && sounds.Exists(s => s.StartsWith("release-", System.StringComparison.Ordinal)) && client.otherSoundWorst < 0.5f,
+        Check("remote_cast_sounds_at_its_wizard", sounds.Contains(CastSoundTable.Slam) && sounds.Exists(s => s.StartsWith("charge-", System.StringComparison.Ordinal)) && sounds.Exists(s => s.StartsWith("release-", System.StringComparison.Ordinal)) && client.otherSoundWorst < 0.5f,
             $"[{string.Join(" ", sounds)}], at most {client.otherSoundWorst:0.00} m from its chest, {client.otherSoundFarthest:0.0} m from the ear");
     }
 
