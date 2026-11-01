@@ -6,11 +6,13 @@ using UnityEngine;
 
 // The probe's closeup scenario (issue #47): a deer, a valley cabin and a village
 // log house at a clear noon, each from the same cameras, close enough to see
-// how they are made. `--shots` saves them.
+// how they are made (`--shots`), and a deer across the game's own follow camera.
+// Checks what you shouldn't see: the limb ends buried in a deer with the lens in
+// it, into a cabin through its gable, and a mesh's far inside.
 public class CloseupProbe : ProbeScenario
 {
     // How far up the follow camera looks (degrees), and how far ahead of the lens the deer stands (m).
-    const float LookUp = -17f, DeerOffLens = 0.05f;
+    const float LookUp = -17f, DeerOffLens = 0.25f;
 
     protected override IEnumerator Run()
     {
@@ -91,9 +93,23 @@ public class CloseupProbe : ProbeScenario
             yield return null;
         }
         Metric("lens_moved_m", Vector3.Distance(lens, cam.position));
+        Check("deer_at_lens_shadow_only", fauna.AtLens >= 1, $"{fauna.AtLens} animals at the lens");
         Shot("follow-deer");
         yield return null;
         yield return null;
+        fauna.Puppet(deer, yaw, 4f);
+        yield return Wait(2f);
+        Check("deer_drawn_again_past_the_lens", fauna.AtLens == 0, $"{fauna.AtLens} animals at the lens once it's walked on");
+    }
+
+    // The share of the picture in a deer's tan, as drawn.
+    static IEnumerator DeerInPicture(System.Action<float> got)
+    {
+        yield return new WaitForEndOfFrame();
+        var shown = ScreenCapture.CaptureScreenshotAsTexture();
+        var pixels = shown.GetPixels32();
+        Destroy(shown);
+        got(pixels.Count(p => p.r > 120 && p.r > p.g + 25 && p.g > p.b + 25) / (float)pixels.Length);
     }
 
     IEnumerator Deer()
@@ -117,6 +133,11 @@ public class CloseupProbe : ProbeScenario
         Metric("near_clip_m", Camera.main.nearClipPlane);
         Metric("field_of_view", Camera.main.fieldOfView);
         yield return Look("deer-nearcut", body + V(0.3f, 0.05f, 0.1f), body + V(0f, -0.1f, 0.1f));
+        float tan = 1f;
+        yield return DeerInPicture(share => tan = share);
+        Metric("deer_in_picture_at_lens", tan);
+        Check("no_limb_ends_at_lens", tan < 0.005f, $"{tan:P1} of the picture is the deer's coat, with the near plane in its side");
+        yield return Look("deer-shadow", body + V(0.1f, 0.05f, 0f), p + V(0.5f, 0f, -0.5f));
         yield return Look("deer-incide", body + V(0.1f, 0.05f, -0.2f), body + V(-0.1f, -0.1f, 0.6f));
         yield return Look("deer-inside-back", body + V(0.1f, 0.05f, 0.2f), body + V(-0.1f, -0.2f, -0.6f));
         yield return Look("deer-incut-tail", body + V(0.2f, 0.05f, -0.75f), body + V(0f, 0f, 0.2f));

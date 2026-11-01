@@ -17,13 +17,13 @@ usual (`AmbientCritters.cs` for the critters, `CloudSky.cs` for the sky,
 | `Sky.hlsl` | `Assets/Game/Shaders/Sky.hlsl` | Stars: a second, fainter and denser layer, both scaled by `_PunchyStarBright` (set by `CloudSky` from the rules' light level, `Nightfall`) |
 | `Sky.shader` | `Assets/Game/Shaders/Sky.shader` | Header only (the skybox; `CloudSky.cs` drives it) |
 | `CloudNoise.cs` | `Assets/Game/Scripts/Weather/CloudNoise.cs` | A parameter name and loop indents, for our analyzers |
-| `Creature.shader` | `Assets/Game/Shaders/Creature.shader` | Punchy's atmosphere swapped for URP's fog |
+| `Creature.shader` | `Assets/Game/Shaders/Creature.shader` | Punchy's atmosphere swapped for URP's fog; a crack web on a segment; a segment's pad under 0 draws it for its shadow alone (`CreatureDrawer.HideAtLens`: the lens inside a creature, issue #47) |
 | `CreatureSpecies.cs`, `LimbType.cs` | `Assets/Game/Scripts/Fauna/` | Header only (same script GUIDs, so the assets load) |
 | `Fauna/` (species and `Limbs/`) | `Assets/Game/Fauna/` | Unchanged |
-| `CreatureBody.cs` | `Assets/Game/Scripts/Fauna/CreatureData.cs` | Entities blob made a plain class with arrays |
+| `CreatureBody.cs` | `Assets/Game/Scripts/Fauna/CreatureData.cs` | Entities blob made a plain class with arrays; `SegmentInstance.Pad` used (crack web, shadow only) |
 | `CreatureAnimator.cs` | `Assets/Game/Scripts/Fauna/CreatureAnimator.cs` | Arrays and reused scratch for Burst lists; ground through `ICreatureGround` |
 | `CreatureBrain.cs` | `Assets/Game/Scripts/Fauna/CreatureBrainSystem.cs` | One creature at a time; the nearest threat (a wizard or fire) for the player |
-| `CreatureCapsule.cs` | `FaunaDirector.BuildCapsule` | Moved to its own file |
+| `CreatureCapsule.cs` | `FaunaDirector.BuildCapsule` | Moved to its own file; wound outside out; `readable` keeps the mesh for tests |
 
 The creature files turn our style analyzers off (`#pragma warning disable`),
 so they can stay close to Punchy's code.

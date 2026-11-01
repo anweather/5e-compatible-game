@@ -1,5 +1,6 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
-// used with permission. FaunaDirector.BuildCapsule from Punchy, on its own.
+// used with permission. FaunaDirector.BuildCapsule from Punchy, on its own; it can
+// stay readable, for the tests.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024
 using System.Collections.Generic;
@@ -14,7 +15,7 @@ namespace Punchy.Fauna
         /// cap offset along the axis and the radius factor, in units of the local radius. The creature shader turns
         /// it into any length and taper.
         /// </summary>
-        public static Mesh Build(int sides, int lengthRows, int capRows)
+        public static Mesh Build(int sides, int lengthRows, int capRows, bool readable = false)
         {
             var rows = new List<Vector3>();   // t, capZ, capR
             for (int k = 0; k < capRows; k++)
@@ -53,7 +54,7 @@ namespace Punchy.Fauna
             mesh.SetUVs(0, uvs);
             mesh.SetTriangles(indices, 0);
             mesh.bounds = new Bounds(Vector3.zero, Vector3.one * 1000f);
-            mesh.UploadMeshData(true);
+            mesh.UploadMeshData(!readable);
             return mesh;
         }
     }

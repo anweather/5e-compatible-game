@@ -297,7 +297,9 @@ public static class ProbeScenarios
             "species or more, 10 animals or more are out, 20 s later two kinds of activity or more under way (grazing, resting, drinking, " +
             "sleeping, play, hunting), the deer bolts (over 15 m from the wizard after 3 s), no console errors."),
         new Entry("closeup", typeof(CloseupProbe), 60f,
-            "A deer, a valley cabin and a village log house at a clear noon, close up (issue #47): `--shots` saves each from the same cameras."),
+            "Models close up at a clear noon (issue #47): a deer across the follow camera, then a deer, a valley cabin and a village log house, each from the same " +
+            "cameras (`--shots`). Checks: a deer at the lens is drawn for its shadow alone, and again once past it, no limb ends in the picture, the cabin's gable closed, " +
+            "no mesh in the scene inside out, no console errors."),
         new Entry("blink", typeof(BlinkProbe), 45f,
             "Misty Step aimed as a player aims it (the camera's ray through the crosshair) at open ground all round the wizard, " +
             "3 m out to just inside its range, then a few blinks for real, then six casts through the caster two frames apart (out " +
