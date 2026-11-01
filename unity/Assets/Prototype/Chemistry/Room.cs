@@ -101,6 +101,9 @@ namespace Chem
             }
         }
 
+        /// <summary>The log's line for a refused command: "Revert refused: only the host can change this room".</summary>
+        public static string RefusedLine(RoomChange change, string why) => $"{(change == RoomChange.Revert ? "Revert" : "Switch on")} refused: {why}";
+
         /// <summary>
         /// Whether the mode lets this peer change the room: null if so, else the reason. The host
         /// asks it before scheduling a change, and every peer asks it again at the tick, so a

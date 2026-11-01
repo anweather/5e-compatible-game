@@ -1,5 +1,6 @@
 using System;
 using System.Threading.Tasks;
+using Chem;
 using Unity.Netcode;
 using Unity.Netcode.Transports.UTP;
 using Unity.Services.Authentication;
@@ -47,6 +48,9 @@ public class NetSession : MonoBehaviour
     /// <summary>The Join by code page's id in the Esc menu.</summary>
     public const string CodePage = "join-code";
 
+    /// <summary>The change mode of the room this copy hosts next (docs/RULES_MCP.md); static so it outlives the scene reload back to solo.</summary>
+    public static ChangeMode RoomMode { get; set; }
+
     // Why the last join failed; static so it outlives the scene reload back to solo.
     static string joinFailure;
     static float joinFailureUntil;
@@ -57,6 +61,7 @@ public class NetSession : MonoBehaviour
     {
         joinFailure = null;
         joinFailureUntil = 0f;
+        RoomMode = ChangeMode.Open;
     }
 
     // The scene's NetworkManager (Netcode's singleton), looked up once it exists.
@@ -290,6 +295,8 @@ public class NetSession : MonoBehaviour
     void OfflineControls()
     {
         GUI.enabled = !busy;
+        if (PauseMenu.Button($"Rule changes when you host: {RoomPolicy.Words(RoomMode)}", PauseMenu.ButtonStyle)) RoomMode = (ChangeMode)(((int)RoomMode + 1) % 3);
+        GUILayout.Label($"<color=#ffffff99>{ModeHint(RoomMode)}</color>", label);
         if (PauseMenu.Button("Host online", PauseMenu.ButtonStyle)) _ = HostOnline();
         GUILayout.BeginHorizontal();
         joinCode = GUILayout.TextField(joinCode, 12, field, GUILayout.Width(170));
@@ -305,6 +312,13 @@ public class NetSession : MonoBehaviour
         GUILayout.EndHorizontal();
         GUI.enabled = true;
     }
+
+    static string ModeHint(ChangeMode mode) => mode switch
+    {
+        ChangeMode.HostOnly => "Only you can change the rules once it's open.",
+        ChangeMode.Locked => "No one can change the rules once it's open.",
+        _ => "Anyone can change the rules for everyone, and anyone can undo it.",
+    };
 
     void OnlineControls()
     {

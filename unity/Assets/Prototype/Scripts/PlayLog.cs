@@ -40,7 +40,6 @@ public class PlayLog : MonoBehaviour
 
     PlayLogFile file;
     ChemGrid grid;
-    RuleSwitcher rules;
     LogEntry seen;
     PerfMarkers markers;
     float startedAt;
@@ -239,18 +238,15 @@ public class PlayLog : MonoBehaviour
 
     World WorldNow()
     {
-        if (grid == null)
-        {
-            grid = FindAnyObjectByType<ChemGrid>();
-            rules = grid != null ? grid.GetComponent<RuleSwitcher>() : null;
-        }
+        if (grid == null) grid = FindAnyObjectByType<ChemGrid>();
         return grid != null ? grid.World : null;
     }
 
-    string Mods()
+    /// <summary>The mods on, by the titles the room gives them, a mod Claude wrote too.</summary>
+    public string Mods()
     {
-        if (rules == null) return "";
-        return string.Join("; ", rules.Rules.Mods.Select(m => rules.Catalog.Find(m.Id)?.Title ?? m.Id));
+        var world = WorldNow();
+        return world?.Room == null ? "" : string.Join("; ", world.Room.Mods.Select(m => m.Title));
     }
 
     // What the world has logged since the last line, the newest few, and the dragon's phase.
