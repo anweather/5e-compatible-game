@@ -17,6 +17,8 @@ public class FeelProbe : SpellLooksProbe
 {
     const int LaneLong = 30, LaneWide = 7, RunUp = 12;
     const float StopSeconds = 2.5f;
+    // A dropped crate has stopped by this speed (m/s), within this long (s): it can still be rocking 0.8 s on.
+    const float Settled = 0.02f, SettleLimit = 3f;
     // How far a crate went before the punch was made 2.5 times as strong (0.35 to 0.42 m), and how near the hand must come (m): the fist's length and a bit.
     const float CrateWentBefore = 0.42f, FistTolerance = 0.25f;
     Gamepad pad;
@@ -227,6 +229,8 @@ public class FeelProbe : SpellLooksProbe
     {
         Drop(crate, new Vector3(at.x, grid.GroundAt(at) + 0.6f, at.z));
         yield return Wait(0.8f);
+        var body = crate.GetComponent<Rigidbody>();
+        for (float t = 0f; t < SettleLimit && body.linearVelocity.sqrMagnitude > Settled * Settled; t += Time.deltaTime) yield return null;
         var from = crate.transform.position;
         yield return Button(GamepadButton.West);
         yield return Wait(0.8f);
@@ -273,6 +277,7 @@ public class FeelProbe : SpellLooksProbe
     IEnumerator PunchTicks()
     {
         (int tick, string hash, float seconds) settled = default, with = default, without = default;
+        FixClock(true);
         GameFeel.Shake = 0f;
         yield return PunchTickRun(r => settled = r);
         yield return PunchTickRun(r => without = r);
@@ -280,6 +285,7 @@ public class FeelProbe : SpellLooksProbe
         GameFeel.Shake = 1f;
         yield return PunchTickRun(r => with = r);
         int stopped = beats.Stops - stops;
+        FixClock(false);
         Check("punch_tick_run_had_a_stop", stopped == 1, $"{stopped} stops");
         Check("punch_hit_stop_leaves_the_tick_alone", with.tick == without.tick && with.hash == without.hash, $"first {settled.hash}, tick {with.tick} {with.hash} / tick {without.tick} {without.hash}");
         Check("punch_hit_stop_leaves_the_tick_rate_alone", Mathf.Abs(with.seconds - without.seconds) < 0.25f, $"{with.seconds:0.00} s, {without.seconds:0.00} s");
@@ -406,7 +412,9 @@ public class FeelProbe : SpellLooksProbe
         Metric("sleet_slippery_cells", slick);
         Check("sleet_field_slippery", slick >= 30, $"{slick} of 169 cells slippery");
         var mid = grid.CellCenter(o.x + 6, o.y + 6);
-        Teleport(new Vector3(mid.x - 4f, grid.GroundAt(mid) + 0.1f, mid.z));
+        // On the ground: put a little above it, the wizard isn't grounded for a frame, so not slipping,
+        // and SurfaceEffects takes the jump here for that frame's momentum (100 m/s, off the field and onto dirt).
+        Teleport(new Vector3(mid.x - 4f, grid.GroundAt(mid), mid.z));
         Cut(mid + V(-9f, 3f, 0f), mid);
         yield return Wait(0.3f);
         puppet.Move(Vector2.up);

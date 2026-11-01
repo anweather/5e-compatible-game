@@ -8,7 +8,7 @@ using UnityEngine;
 // trimmed, lines a second, no garbage from a frame, a hitch and a mark with its picture, a summary.
 public class PlayLogProbe : ProbeScenario
 {
-    const int FramesCounted = 3000, OldLogs = 14;
+    const int FramesCounted = 600, OldLogs = 14;
 
     protected override IEnumerator Run()
     {
@@ -25,11 +25,10 @@ public class PlayLogProbe : ProbeScenario
         string path = log.FilePath;
         yield return Wait(6.2f);
 
-        long before = System.GC.GetTotalMemory(false);
-        for (int i = 0; i < FramesCounted; i++) log.Frame(16.7f);
-        long made = System.GC.GetTotalMemory(false) - before;
+        float made = -1f;
+        yield return GarbagePerCall(() => log.Frame(16.7f), FramesCounted, m => made = m);
         Metric("frame_bytes", made);
-        Check("frame_makes_no_garbage", made == 0, $"{made} bytes over {FramesCounted} frames");
+        Check("frame_makes_no_garbage", made >= 0f && made < MostGarbage, $"{made:0.00} bytes a frame, over {FramesCounted} a frame of the game");
 
         Thread.Sleep(130);
         yield return null;

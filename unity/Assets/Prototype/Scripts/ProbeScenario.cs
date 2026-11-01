@@ -40,6 +40,7 @@ public abstract class ProbeScenario : ShowcaseScript
     protected override void OnDestroy()
     {
         Application.logMessageReceived -= OnLog;
+        FixClock(false);
         base.OnDestroy();
     }
 
@@ -141,6 +142,9 @@ public abstract class ProbeScenario : ShowcaseScript
         System.IO.File.WriteAllBytes(file, copy.EncodeToPNG());
         Destroy(copy);
     }
+
+    /// <summary>Runs game time at 60 frames a second however long a frame really takes, so a beat or a stop counts the same frames every run; off, the real clock.</summary>
+    protected static void FixClock(bool on) => Time.captureDeltaTime = on ? 1f / 60f : 0f;
 
     /// <summary>
     /// The managed bytes a call makes, by the profiler's count of a frame's allocations: the least of some frames with the
