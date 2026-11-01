@@ -431,6 +431,16 @@ public class RoomMcpProbe : ProbeScenario
         Check("apply_answers_the_line", on.Result.body.Contains("Player 1 switched on Big fireball (Open room)"), on.Result.body);
         yield return Wait(0.5f);
         Check("fireball_bigger_in_the_game", World.Rules.Spell(SpellIds.Fireball).Radius > radius, $"radius {radius} to {World.Rules.Spell(SpellIds.Fireball).Radius}");
+        var written = Post(Tool("set_spell", "{\"id\":\"fire-bolt\",\"field\":\"power\",\"value\":\"2\"}"));
+        yield return Until(written);
+        string draft = written.Result.body.Substring(written.Result.body.IndexOf("Draft ", StringComparison.Ordinal) + 6).Split(':')[0];
+        var titled = Post(Tool("apply", $"{{\"mod\":\"{draft}\",\"title\":\"Probe's bolt\"}}"));
+        yield return Until(titled);
+        yield return Wait(0.5f);
+        Check("play_log_names_claudes_mod", PlayLog.Instance.Mods().Contains("Probe's bolt"), PlayLog.Instance.Mods());
+        var taken = Post(Tool("revert", "{\"mod\":\"probe-s-bolt\"}"));
+        yield return Until(taken);
+        yield return Wait(0.5f);
         var bad = Post(Tool("apply", "{\"mod\":\"no-such-mod\"}"));
         yield return Until(bad);
         Check("unknown_mod_is_a_sentence", bad.Result.body.Contains("\"isError\":true"), bad.Result.body);
