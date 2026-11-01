@@ -148,7 +148,7 @@ namespace Chem
             return c.Def;
         }
         public bool HasTag(Cell c, string tag) => TerrainOf(c).Has(tag);
-        public bool IsBlocking(Cell c) => HasTag(c, "blocking") || IsRaisedWall(c);
+        public bool IsBlocking(Cell c) => TerrainOf(c).Blocking || IsRaisedWall(c);
 
         /// <summary>
         /// Whether (x1, y1) can be seen from (x0, y0): no blocking square between them on a

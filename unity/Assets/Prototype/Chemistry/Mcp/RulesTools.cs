@@ -147,8 +147,8 @@ namespace Chem.Mcp
         public string Validate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft) =>
             Do(() => Workbench.Report(bench.Validate(draft)));
 
-        [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, flood, storm) with the draft on and without it, and says what changed: cells by material, peak counts, ticks per second against the budget, the cell hash.")]
-        public string Simulate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft, [Description("fire-on-grass, flood or storm.")] string scenario,
+        [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, fireball, flood, storm) with the draft on and without it, and says what changed: cells by material, cells burnt, peak counts, ticks per second against the budget, the cell hash.")]
+        public string Simulate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft, [Description("fire-on-grass (a Fire Bolt in a meadow), fireball (a Fireball in a meadow, for spell size), flood or storm.")] string scenario,
             [Description("Ticks to run (6 a second); 300 when left out.")] int? ticks = null) => Do(() => bench.Simulate(draft, scenario, ticks));
 
         [RulesTool("save"), Description("Writes the draft as a mod in rules/mods ({\"title\", \"idea\", \"patch\"}), once it validates.")]
