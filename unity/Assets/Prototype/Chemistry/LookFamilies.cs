@@ -31,10 +31,16 @@ namespace Chem
         public float Flow;
         /// <summary>The land itself draws it until it grows in this world (the valley's trees).</summary>
         public bool Baked;
+        /// <summary>Several colours with weights in place of the one, a pick per cell (look "mix"); null for one colour.</summary>
+        public LookMix Mix;
+        /// <summary>Looks that hold only round a place, a cell or a player (look "scoped"), earliest first (LookScopes).</summary>
+        public IReadOnlyList<ScopedLook> Scoped = Array.Empty<ScopedLook>();
+        /// <summary>The mix and scoped looks as written, so Same can tell two apart.</summary>
+        public string Extra;
 
-        /// <summary>Whether two looks have one colour (either may be null).</summary>
+        /// <summary>Whether two looks have one colour, and the same mix and scoped looks (either may be null).</summary>
         public static bool SameColor(LookDef a, LookDef b) =>
-            ReferenceEquals(a, b) || (a != null && b != null && Near(a.R, b.R) && Near(a.G, b.G) && Near(a.B, b.B));
+            ReferenceEquals(a, b) || (a != null && b != null && Near(a.R, b.R) && Near(a.G, b.G) && Near(a.B, b.B) && a.Extra == b.Extra);
 
         /// <summary>Whether two looks draw alike (either may be null).</summary>
         public static bool Same(LookDef a, LookDef b) =>
@@ -133,6 +139,12 @@ namespace Chem
                 return $"This won't show: it's too close to the hue {id} already has.";
             return null;
         }
+
+        /// <summary>Whether what draws this entry can only turn its art's hue (flames, smoke, steam; a spell's show).</summary>
+        public bool OnlyTurns(string table, string id, LookFamily family) => turnsOnly.Contains(id) || (table == "spells" && family?.Own != null);
+
+        /// <summary>Whether a colour is too pale or grey to turn a hue to.</summary>
+        public static bool IsPale(LookColour c) => Saturation(new[] { c.R, c.G, c.B }) < PaleSaturation;
 
         static float Apart(float a, float b)
         {

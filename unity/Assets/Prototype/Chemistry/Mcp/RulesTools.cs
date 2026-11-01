@@ -31,6 +31,13 @@ namespace Chem.Mcp
             "but a colour is a look: change it with set_look, picking the numbers for what the player says (blue is about [0.25, 0.45, 1]). " +
             "A whole-element change (\"blue fire everywhere\") goes on the element, one spell's (\"a blue fireball\") on the spell, and a material's on the material; " +
             "a spell's look colours its own show, and what it leaves on cells is its element's. describe shows an entry's look and what it takes; list looks the families. " +
+            "A colour can hold in one place only: set_look with where, on the element, cover, gas or terrain. \"Make the fire near me green\" is set_look fire color green with where {\"around\": \"me\", \"within\": 10}: it follows the player as they move. " +
+            "\"Fire round the village in three colours\" is: places (or here) to find the village's id, then set_look fire mix [three colours] with where {\"place\": \"<id>\", \"within\": 20}. " +
+            "A mix gives several colours, each cell picking one; without where it holds everywhere. A colour a spell chose for its own fire still wins over a scoped look. " +
+            "Colours mix like paint: blue and yellow give green, red and blue purple, red and yellow orange. Where scoped looks overlap they mix, and a fire caught from two colours burns their mix. " +
+            "\"Blend blue and yellow fire\" is set_look fire mix [blue, yellow] then set_look fire blend true (one green); without blend it's a patchwork. If set_look says a mix is pale, tell the player it shows as its nearest hue. " +
+            "A colour can also go with who cast it, with by: \"make the fire I create blue\" is set_look fire color blue with by \"me\"; \"each player gets their own fire colour\" is set_look fire mix [one colour per player, as many as may play] with by \"each\" " +
+            "(the fire element for what burns; a spell, table spell, for its own show). by wins over everything: a spell's own colour, then where, then the element's colour. " +
             "If set_look says a colour won't show, tell the player so and offer one that will. Don't look for a saved mod that's close: use one from rules/mods only when the player names it. After apply, tell the player what changed, from its answer.";
 
         const string DraftHelp = "The draft to add to; leave it out to start a new one. Returns the draft id and the patch so far.";
@@ -67,12 +74,19 @@ namespace Chem.Mcp
         [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, or looks (the look families, the parameters each takes, and what takes no colour). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
-        [RulesTool("describe", ReadOnly = true), Description("The full entry as written in rules/, plus everything in the rules that refers to it, and for a spell, material or element its look and what set_look may change. For sim, the id is a dotted path such as fire.spreadChance.")]
-        public string Describe([Description("The table.")] string table, [Description("The entry's id.")] string id) => Do(() => bench.Describe(table, id));
+        [RulesTool("describe", ReadOnly = true), Description("The full entry as written in rules/, plus everything in the rules that refers to it, and for a spell, material or element its look (its mix and scoped looks too) and what set_look may change. With a draft, the entry as the draft has it. For sim, the id is a dotted path such as fire.spreadChance.")]
+        public string Describe([Description("The table.")] string table, [Description("The entry's id.")] string id,
+            [Description("Optional: the entry as this draft has it, its look's mix and scoped looks included.")] string draft = null) => Do(() => bench.Describe(table, id, draft));
 
         [RulesTool("explain", ReadOnly = true), Description("What happens when an element reaches a cell of a material (a terrain, cover, gas, water or ice): the reaction rules that can hold, top to bottom, and which one decides.")]
         public string Explain([Description("The element, such as fire or cold.")] string element, [Description("The material, such as grass, oil, steam, water or ice.")] string material,
             [Description("Optional: explain under this draft's rules.")] string draft = null) => Do(() => bench.Explain(element, material, draft));
+
+        [RulesTool("places", ReadOnly = true), Description("The world's named places (villages, the lake, the river, the sea, courses, puzzles): each one's id, name, kind and cells. A look's where names one by id. Read-only: mods can't change places.")]
+        public string Places() => Do(() => bench.ListPlaces());
+
+        [RulesTool("here", ReadOnly = true), Description("Where the player asking stands: their name and cell, the place they're in, the named places near them with distance and direction, and what they look at. For \"near me\" or \"this village\".")]
+        public string Here([Description("How far to look for places, in cells; 120 when left out.")] int? within = null) => Do(() => bench.DescribeHere(within ?? 120));
 
         // ---------- draft ----------
 
@@ -136,13 +150,15 @@ namespace Chem.Mcp
         public string SetSpell([Description("The spell's id.")] string id, [Description("The field.")] string field, [Description(ValueHelp + " Damage may be written 8d6.")] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.SetSpell(draft, id, field, value).Show());
 
-        [RulesTool("set_look"), Description("Changes one parameter of the look of a spell, terrain, cover, gas or element in a draft, by id: color (three numbers 0 to 1, or \"#rrggbb\"), and any other parameter its look family lists (height, glow, roughness, form...). Says what that family takes, and refuses anything else with the list. An element's look is the colour of everything that element makes in the world (blue fire everywhere); a spell's colours only its own show (a blue fireball).")]
-        public string SetLook([Description("The spell's, material's or element's id.")] string id, [Description("The parameter, such as color or height.")] string param,
-            [Description("The new value as JSON, such as [0.25, 0.45, 1] or \"#4073ff\" for a colour, or 1.4; null puts back the family's own.")] string value,
+        [RulesTool("set_look"), Description("Changes one parameter of the look of a spell, terrain, cover, gas or element in a draft, by id: color (three numbers 0 to 1, or \"#rrggbb\"), mix (several colours, with weights if wanted, each cell picking one: fire in three colours), blend (true: the mix's colours mixed into one like paint, blue and yellow giving green; false: the patchwork), and any other parameter its look family lists (height, glow, roughness, form...). Says what that family takes, and refuses anything else with the list. An element's look is the colour of everything that element makes in the world (blue fire everywhere); a spell's colours only its own show (a blue fireball). With where, an element's, cover's, gas's or terrain's color or mix holds only there: round a place (places lists them), a cell, or around the player asking, which follows them as they move. With by, an element's, cover's, gas's or spell's color or mix colours only what one player casts (by me: the fire I create), or each player's in their own colour (by each, with a mix); by wins over a spell's own colour and over where.")]
+        public string SetLook([Description("The spell's, material's or element's id.")] string id, [Description("The parameter: color, mix, or another its family takes, such as height.")] string param,
+            [Description("The new value as JSON: [0.25, 0.45, 1] or \"#4073ff\" for a colour; [\"#ff4020\", \"#2050ff\", \"#30d040\"] or [{\"color\": \"#ff4020\", \"weight\": 2}, ...] for a mix; 1.4 for a number. null puts back the family's own, or with where or by takes that look back.")] string value,
             [Description("spell, terrain, cover, gas or element: needed when the id names more than one (fire is an element; frost a spell and a cover).")] string table = null,
-            [Description(DraftHelp)] string draft = null) => Do(() =>
+            [Description(DraftHelp)] string draft = null,
+            [Description("Optional: where the color or mix holds, as JSON: {\"place\": \"<id from places>\", \"within\": 20} round a place, {\"at\": [x, y], \"within\": 12} round a cell, or {\"around\": \"me\", \"within\": 10} round the player asking (here() says where they are). Elsewhere the plain look holds; where scoped looks overlap they mix like paint.")] string where = null,
+            [Description("Optional: whose casts the color or mix colours: \"me\" (the player asking), a player's slot (0 the host, then each in join order; here() says yours), or \"each\" with a mix, one colour per player in join order. What they cast keeps it as it spreads.")] string by = null) => Do(() =>
             {
-                var d = bench.SetLook(draft, id, param, value, table, out var said);
+                var d = bench.SetLook(draft, id, param, value, table, out var said, (where, by));
                 return said + d.Show();
             });
 

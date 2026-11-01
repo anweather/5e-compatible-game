@@ -1,7 +1,10 @@
 // The rules MCP server (docs/RULES_MCP.md): stdio, local. Logs go to stderr,
 // since stdout carries the protocol.
-//   dotnet run --project core/Rules.Mcp [-- --rules <folder>]
+//   dotnet run --project core/Rules.Mcp [-- --rules <folder>] [--here x,y]
+// --here puts the stand-in player (the host) on a cell for here() and "around me";
+// with no game attached it's the middle of the valley's grid.
 using System;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -22,7 +25,12 @@ namespace Chem.Mcp
 
             var builder = Host.CreateApplicationBuilder(Array.Empty<string>());
             builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
-            var tools = new RulesTools(new Workbench(rulesDir), message => new McpException(message));
+            var bench = new Workbench(rulesDir);
+            int here = Array.IndexOf(args, "--here");
+            if (here >= 0 && here + 1 < args.Length && args[here + 1].Split(',') is { Length: 2 } xy
+                && int.TryParse(xy[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) && int.TryParse(xy[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
+                bench.Here = new StandInHere(new HereSpot(Workbench.HostName, x, y));
+            var tools = new RulesTools(bench, message => new McpException(message));
             builder.Services.AddMcpServer(o => o.ServerInstructions = RulesTools.Instructions).WithStdioServerTransport().WithTools(Tools(tools));
             builder.Build().Run();
         }

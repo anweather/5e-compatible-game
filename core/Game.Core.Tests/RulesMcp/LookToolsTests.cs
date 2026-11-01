@@ -113,8 +113,8 @@ namespace Chem.Tests
         public void AParameterTheFamilyDoesntTakeIsRefusedWithTheList()
         {
             Assert.That(Refusal("fireball", "height", "3"), Is.EqualTo("The spell fireball's look (family blast) takes color; height isn't one of them."));
-            Assert.That(Refusal("fire", "glow", "1", "element"), Is.EqualTo("The element fire's look (an element's: only a colour) takes color; glow isn't one of them."));
-            StringAssert.Contains("takes color, height, glow, roughness; flow isn't one of them", Refusal("stone", "flow", "1"));
+            Assert.That(Refusal("fire", "glow", "1", "element"), Is.EqualTo("The element fire's look (an element's: only a colour) takes color, mix, blend; glow isn't one of them."));
+            StringAssert.Contains("takes color, height, glow, roughness, mix, blend; flow isn't one of them", Refusal("stone", "flow", "1"));
             StringAssert.Contains("color is three numbers from 0 to 1", Refusal("fireball", "color", "\"blue\""));
         }
 

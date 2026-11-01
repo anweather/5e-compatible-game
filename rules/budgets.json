@@ -6,6 +6,7 @@
   "materials": { "maxFloatReach": 8 },
   "critters": { "minEvery": 4 },
   "chainDepth": 3,
+  "looks": { "maxMix": 8, "maxScoped": 8, "maxWithin": 64 },
   "sim": {
     "ticksPerSecond": [6, 6],
     "fire.spreadChance": [0, 0.9],
