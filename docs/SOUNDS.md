@@ -87,10 +87,10 @@ are which comes from `rules/spells.json` and the combos in `rules/combos.json`.
 | `gust` | air landing: Gust of Wind (the air single), Whirlwind | `SpellCaster.Unleash` | C#: `ProceduralSounds.Gust`, -19 dB | 1.00 s | per cast | -19.1 | -8.2 |
 | `thunder` | Thunderwave landing | `SpellCaster.Unleash` | pack `Cannon impact 9.wav`; clips `rubberduck/cannon_01, 02, 04.ogg`, -13 dB | 0.92-1.80 s | per cast | -17.4 (-19.6..-16.1) | 0.0 |
 | `earth` | the ground moved: Raise Earth (the earth single), Wall of Stone, Stone Ramp, Earthen Trench, Move Earth, Stone Shape. Also the wizard's punch landing, the pick, a wizard hit (below) | `SpellCaster.Unleash`; see "Wizard and movement" | pack `Magic Spell - Turn to stone.wav`, `Earthquake 3 - Big.wav`, -16 dB. No CC0 clip: without the pack it's C# `ProceduralSounds.Rumble` (rendered) | 1.20 s (Rumble) | per cast, per punch, per dig, per hit | -18.0 | -1.9 |
-| `arcane` | every other spell's landing: 9 of the 16 pairs (Scalding Steam, Lava Pool, Geyser, Mud, Forge, Plant Growth, Rolling Boulder, Rain Cloud, Sand Blast), all four d-pad casts (Hasten Time, Shapeshift, Light, Control Weather), and Levitate, Mage Hand, Fog Cloud, Dust Storm, Spike Growth | `SpellCaster.Unleash` | clips `jaggedstone/magical_1_0, 2, 3, 4, 5, 7_0.ogg`, -20 dB, cut to 1.6 s | 1.38-1.60 s | per cast: the commonest landing | -21.6 (-22.7..-19.9) | -5.4 |
+| `arcane` | every other spell's landing: 9 of the 16 pairs (Scalding Steam, Lava Pool, Geyser, Mud, Forge, Plant Growth, Rolling Boulder, Rain Cloud, Sand Blast), all four d-pad casts (Hasten Time, Shapeshift, Light, Control Weather), and Levitate, Mage Hand, Fog Cloud, Dust Storm, Spike Growth | `SpellCaster.Unleash` | preset `arcane-whoosh`: `arcane-whoosh/arcane-whoosh-1..3.ogg`, -21.5 dB. The soft rush of air and no tone (J-054); it was six chiming JaggedStone clips | 0.58 s | per cast: the commonest landing | -21.6 | -4.5 |
 | `blink` | Misty Step | `SpellCaster.Unleash` | pack `Magic Spell_Short Reverse_1.wav`, -19 dB. Without the pack, C# `ProceduralSounds.Shimmer` (rendered): breath over a 220 + 330 Hz pad | 1.00 s (Shimmer) | per cast (radial only) | -14.0 | -1.9 |
 | `hiss` | Acid Splash eating in: a sizzle and pops | `SpellCaster.Unleash` | C#: `ProceduralSounds.Hiss` (no bank row) | 1.20 s | per cast (radial only) | -15.6 | -1.9 |
-| `shatter` | a frozen raider struck: a crack, then glassy tinkles (3.5, 4.7, 6.2 kHz) | `DefenseField.Shatter`; `ProbeLooks` | C#: `ProceduralSounds.Shatter` (no bank row) | 0.80 s | per frozen raider struck | -24.1 | -1.9 |
+| `shatter` | a frozen raider struck: a crack and a scatter of clicks, no tone | `DefenseField.Shatter`; `ProbeLooks` | C#: `ProceduralSounds.Shatter` (no bank row) | 0.80 s | per frozen raider struck | -24.1 | -3.0 |
 
 ## World and weather
 
@@ -101,7 +101,7 @@ are which comes from `rules/spells.json` and the combos in `rules/combos.json`.
 | `wind-loop` | wind gusting up and down (2D, 0.15 when there's wind); Sleet Storm's wind | `WeatherFx.Start`/`LateUpdate`; `SleetStorm` | C#: `ProceduralSounds.WindLoop` (no bank row) | 5.80 s loop | looping while there's wind | -18.7 | -1.9 |
 | `falls-roar` | the waterfall's roar: the rain loop at pitch 0.55, 3D over 10 to 150 m | `WaterfallFx.Start` | C#: `ProceduralSounds.RainLoop`, pitch 0.55 | 6.91 s loop | looping near the falls | -14.0 | -1.9 |
 | `thunder-clap` | thunder after a sky strike, at the speed of sound: a crack close by, a low roll far off; a new one each strike (0.7 loud near, 0.2 at 700 m) | `WeatherFx.Thunder` | C#: Punchy's `ThunderSynth.Generate` (third party); rendered at 300 m and 2.5 km | 5-16 s (7.9 and 12.8 rendered) | per lightning strike in a storm | -20.1 (-20.7..-19.4) | -0.4 |
-| `break` | a crate or prop breaking; a window pane shattering | `PhysicsProp.ShowBreak`; `WindowPanes.Shatter` | clips `kenney/impactWood_heavy_000..004.ogg`, `rubberduck/wooden_01..03.ogg`, -17 dB | 0.31-0.39 s | per prop or pane broken | -19.0 (-20.9..-16.4) | 0.0 |
+| `break` | a crate or prop breaking; a window pane shattering | `PhysicsProp.ShowBreak`; `WindowPanes.Shatter` | clips `kenney/impactWood_heavy_000..004.ogg`, `rubberduck/wooden_01.ogg`, -17 dB | 0.31-0.39 s | per prop or pane broken | -19.0 (-20.9..-16.4) | 0.0 |
 
 Also heard here, with clips above: a storm cloud's strike is `zap`, a barrel blowing up is
 `explosion`.
@@ -159,10 +159,19 @@ Only heard on a machine whose yard was built without a bank (each is made from i
 where noted above (`earth`, `blink` without the pack). Rendered in `stand-ins/`: `cast-standin`
 (`ProceduralSounds.Cast`), `slam-standin` (`ProceduralCast.Sub`), the six release kinds' own
 sounds (`ProceduralCast.Snap`, `Heave`, `Rush`), `hum-standin` (`ProceduralCast.ChargeLoop`),
-and `ProceduralSounds`' fire, frost (inharmonic chimes at 2.3, 3.2, 4.4 kHz), splash (with
+and `ProceduralSounds`' fire, frost (a burst of plain noise), splash (with
 bubbles), zap, thunder, explosion, break and fire loop.
 
 ## The chime
+
+**Done (J-054): "No more chimes. Whoosh is ok."** `arcane` is now the `arcane-whoosh` preset, `shatter`
+lost its glassy partials, and `frost-standin` is plain noise. A sweep of every bank clip for a peak
+over 500 Hz that holds steady found two more, `rubberduck/wooden_02` and `_03`: a wood block ringing
+at 1.3 kHz for 130 to 170 ms, against under 45 ms for everything else but `zap`'s buzz. They're out of
+`break`. Left in, as not chimes: `splash` and `blink`, and `zap` (70 to 186 ms at 750 Hz, an electric
+buzz). The three first-take presets with a short high ring, `golf-strike-crack-ring-short`,
+`hole-ring-thump` and `pick-crack-ring-rumble`, aren't in the game; they need another word before they
+are. What follows is the search as it was, before this.
 
 Andrew: "the little chime thing is super annoying" (2026-10-31). Every short tonal sound, the
 commonest first. Tonal means a sound with pitches you could hum back, measured as spectral
@@ -201,7 +210,7 @@ the sound it replaces; the splash ones are 1 dB under, held by the peak:
 | `shatter-no-tinkle` | the crack and scatter only, no glassy partials | -24.1 | -3.0 |
 | `shatter-lower-12-shorter-tail-0.1s` | the tinkles an octave lower (1.8, 2.4, 3.1 kHz) and dying in 0.1 s, not 0.3 | -24.1 | -2.9 |
 
-None of these is a `synth.py` preset (they were made from the clips). `synth.py` now has a series
+Two of these became presets: `arcane-no-tone-whoosh-0.6s` is `arcane-whoosh`, and `shatter-no-tinkle` is `shatter-crack-grit`. The rest were made from the clips. `synth.py` now has a series
 for every family and a first-take preset for every sound (below).
 
 ## First takes, made procedurally

@@ -109,10 +109,14 @@ public static class GameSounds
     };
 
     /// <summary>Plays the sound once at a point in the world, with a little pitch variety.</summary>
+    /// <summary>A one-shot sound played here, for a probe to hear.</summary>
+    public static event System.Action<string, Vector3> Played;
+
     public static void Play(string sound, Vector3 at, float volume = 1f, float pitchJitter = 0.06f)
     {
         var clip = Clip(sound);
         if (clip == null) return;
+        Played?.Invoke(sound, at);
         var go = new GameObject("Sound " + sound);
         go.transform.position = at;
         var source = go.AddComponent<AudioSource>();

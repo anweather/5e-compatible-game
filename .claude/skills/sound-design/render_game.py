@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Renders a picked cast preset into the clips the game plays (Audio/CC0/<preset>/, CastSoundTable).
+"""Renders a picked preset into the clips the game plays (Audio/CC0/<preset>/, CastSoundTable, SoundBankBuilder).
+A sound preset gives three takes, seeded, for the bank to pick among. A cast preset gives what follows.
 
 synth.py renders a whole take on one timeline; the game needs the same sound in parts it can hold for as
 long as a cast lasts, so this renders, from the same words: a seamless loop per element for each stage of a
@@ -8,6 +9,7 @@ balance and SoundMastering brings it to its level when the bank is built. Python
 ffmpeg for the .ogg: `python render_game.py presets/cast-deep-hum-pulse.json --out <folder>`."""
 import argparse, json, math, os, random, subprocess, tempfile
 
+import families
 import synth
 
 RATE = synth.RATE
@@ -75,6 +77,14 @@ def write_ogg(path, samples, quality):
         subprocess.run(['ffmpeg', '-y', '-loglevel', 'error', '-i', wav, '-c:a', 'libvorbis', '-q:a', str(quality), path], check=True)
 
 
+def render_sound_preset(p, out, quality):
+    """The sound's takes at their pitch of 1: the bank gives each its own pitch as it plays."""
+    takes, _ = families.render({**p, 'unpitched': True})
+    print(families.measure(p, takes))
+    for i, samples in enumerate(takes):
+        write_ogg(os.path.join(out, f'{p["name"]}-{i + 1}.ogg'), samples, quality)
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('preset')
@@ -85,6 +95,9 @@ def main():
         p = json.load(f)
     r = random.Random(p.get('seed', 1))
     os.makedirs(args.out, exist_ok=True)
+    if 'sound' in p:
+        render_sound_preset(p, args.out, args.quality)
+        return
     clips = {}
     for element in list(p['root_hz']) + ['plain']:
         clips[f'gather-{element}'] = drone_loop(p, element, 0, r)

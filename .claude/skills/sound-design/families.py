@@ -22,7 +22,7 @@ FAMILIES = {
         'gust': (1.00, -19.1, -8.2, 'air landing: Gust of Wind, Whirlwind'),
         'thunder': (1.40, -17.4, 0.0, 'Thunderwave landing'),
         'earth': (1.20, -18.0, -1.9, 'the ground moved: Raise Earth, Wall of Stone, ...'),
-        'arcane': (1.50, -21.6, -5.4, 'every other spell\'s landing (the chime today)'),
+        'arcane': (0.60, -21.6, -2.2, 'every other spell\'s landing: a soft whoosh'),
         'blink': (1.00, -14.0, -1.9, 'Misty Step'),
         'hiss': (1.20, -15.6, -1.9, 'Acid Splash eating in: a sizzle and pops'),
         'shatter': (0.80, -24.1, -1.9, 'a frozen raider struck'),
@@ -98,7 +98,7 @@ def render(p):
     loop = len(SOUNDS[p['sound']]) > 5
     series = SERIES[SERIES_OF[family]]
     specs = series['takes'][:1] if loop else series['takes']
-    raw = [take(p, length, loop, p.get('seed', 1) * 1000 + s, pitch, far) for s, pitch, far in specs]
+    raw = [take(p, length, loop, p.get('seed', 1) * 1000 + s, 1.0 if p.get('unpitched') else pitch, far) for s, pitch, far in specs]
     ref = raw[0][:int(length * RATE)]
     gain = 10 ** ((target - lufs(ref)) / 20)
     for _ in range(2):  # the limiter takes a little off a loud sound; give it back
