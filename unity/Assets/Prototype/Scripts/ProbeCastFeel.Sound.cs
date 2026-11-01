@@ -14,7 +14,7 @@ using UnityEngine;
 // A remote wizard is checked in the online probe, on a real other peer.
 public partial class CastFeelProbe
 {
-    const int GarbageSounds = 200;
+    const int GarbageSounds = 500;
     readonly List<string> heard = new();
     readonly List<float> humStarts = new();
     int thumpFrame = -1, struckFrame = -1;

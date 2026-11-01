@@ -281,12 +281,12 @@ public class FeelProbe : SpellLooksProbe
         GameFeel.Shake = 0f;
         yield return PunchTickRun(r => settled = r);
         yield return PunchTickRun(r => without = r);
-        int stops = beats.Stops;
+        int stops = beats.Stops, landingsWere = landings;
         GameFeel.Shake = 1f;
         yield return PunchTickRun(r => with = r);
         int stopped = beats.Stops - stops;
         FixClock(false);
-        Check("punch_tick_run_had_a_stop", stopped == 1, $"{stopped} stops");
+        Check("punch_tick_run_had_a_stop", stopped == 1, $"{stopped} stops, last landing {landed.Prop}, hit {landed.Hit}, reached {landed.Reached}, {landings - landingsWere} landings, wizard {wizard.transform.position}, fist {arm.NearestFist:0.00}");
         Check("punch_hit_stop_leaves_the_tick_alone", with.tick == without.tick && with.hash == without.hash, $"first {settled.hash}, tick {with.tick} {with.hash} / tick {without.tick} {without.hash}");
         Check("punch_hit_stop_leaves_the_tick_rate_alone", Mathf.Abs(with.seconds - without.seconds) < 0.25f, $"{with.seconds:0.00} s, {without.seconds:0.00} s");
     }
