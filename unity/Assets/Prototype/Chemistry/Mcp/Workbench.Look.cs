@@ -40,8 +40,17 @@ namespace Chem.Mcp
             if (v.Type == JTokenType.Null) own.Remove(param);
             else own[param] = v;
             draft.Changed.Add($"{table} {id}");
-            said = $"The {Single(table)} {id}'s look ({Described(table, family)}) takes {List(takes)}.{LookNote(table, id, entry, familyOf)}\n";
+            string wont = param == "color" && v.Type != JTokenType.Null ? WontShow(table, id, familyOf, own, v) : null;
+            said = $"The {Single(table)} {id}'s look ({Described(table, family)}) takes {List(takes)}.{LookNote(table, id, entry, familyOf)}{(wont == null ? "" : " " + wont + " Tell the player.")}\n";
             return draft;
+        }
+
+        // Why a colour won't show, or null: what it's drawn from now is the family's own art, else the base rules' colour.
+        string WontShow(string table, string id, LookFamily family, JObject look, JToken colour)
+        {
+            float[] now = colour.Select(c => (float)c).ToArray();
+            float[] was = family?.Own ?? (table == "elements" ? BaseElement(id)?["look"] : Raw["materials"][table]?[id]?["look"])?["color"]?.Select(c => (float)c).ToArray();
+            return LookFamilies.WontShow(Budgets.Looks, table, id, family, look["baked"]?.Value<bool>() == true, was, now);
         }
 
         // Which table an id's look is in: the one named, else the only one holding it.

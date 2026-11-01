@@ -50,7 +50,7 @@ public static class BuildingMesher
         public WindowPanes.Pane[] panes;
     }
 
-    const float Plinth = 0.35f, Storey = 2.7f, Inset = 0.15f, Jetty = 0.3f;
+    const float Plinth = 0.35f, Storey = 2.7f, Inset = 0.15f, Jetty = 0.3f, LogRadius = 0.17f;
 
     static Color Rgb(float r, float g, float b) => new(r, g, b, 0f);
 
@@ -272,22 +272,24 @@ public static class BuildingMesher
     static Vector3 Abs(Vector3 v) => new(Mathf.Abs(v.x), Mathf.Abs(v.y), Mathf.Abs(v.z));
 
     // Log walls: courses of logs front and back along x, the sides along z half a log higher, the
-    // ends running past the corners as on a real log cabin.
+    // ends running past the corners as on a real log cabin. The logs' outer faces are the wall's
+    // face, so what's set on a wall (doors, windows, boxes) stands clear of them, as on any other.
     static void Logs(Build b, float y0, float ez)
     {
-        const float r = 0.17f;
+        const float r = LogRadius;
+        float wx = b.ex - r, wz = ez - r;
         int courses = Mathf.FloorToInt(Storey / (r * 2f));
         for (int i = 0; i < courses; i++)
         {
             float y = y0 + r + i * r * 2f;
             var c = b.Jitter(Log, 0.08f);
-            b.kit.Cylinder(new Vector3(-b.ex - 0.3f, y, -ez), new Vector3(b.ex + 0.3f, y, -ez), r, 7, c);
-            b.kit.Cylinder(new Vector3(-b.ex - 0.3f, y, ez), new Vector3(b.ex + 0.3f, y, ez), r, 7, c);
-            b.kit.Cylinder(new Vector3(-b.ex, y + r, -ez - 0.3f), new Vector3(-b.ex, y + r, ez + 0.3f), r, 7, c);
-            b.kit.Cylinder(new Vector3(b.ex, y + r, -ez - 0.3f), new Vector3(b.ex, y + r, ez + 0.3f), r, 7, c);
+            b.kit.Cylinder(new Vector3(-wx - 0.3f, y, -wz), new Vector3(wx + 0.3f, y, -wz), r, 7, c);
+            b.kit.Cylinder(new Vector3(-wx - 0.3f, y, wz), new Vector3(wx + 0.3f, y, wz), r, 7, c);
+            b.kit.Cylinder(new Vector3(-wx, y + r, -wz - 0.3f), new Vector3(-wx, y + r, wz + 0.3f), r, 7, c);
+            b.kit.Cylinder(new Vector3(wx, y + r, -wz - 0.3f), new Vector3(wx, y + r, wz + 0.3f), r, 7, c);
         }
         // A wall behind the logs, so no gaps show between them.
-        b.kit.Box(new Vector3(0f, y0 + Storey / 2f, 0f), new Vector3(b.ex * 2f - 0.1f, Storey, ez * 2f - 0.1f), Log * 0.6f);
+        b.kit.Box(new Vector3(0f, y0 + Storey / 2f, 0f), new Vector3(wx * 2f - 0.1f, Storey, wz * 2f - 0.1f), Log * 0.6f);
     }
 
     // The gable ends under a gabled roof: wall-coloured triangles, with a king post on timber.
@@ -383,7 +385,8 @@ public static class BuildingMesher
     // A stone chimney up the inside of one gable end, through the roof, with a cap.
     static Vector3 Chimney(Build b)
     {
-        float x = (b.Chance(0.5f) ? 1f : -1f) * (b.ex - 0.45f), z = b.ez * 0.35f;
+        // Behind the logs on a log wall, not out through the gaps between them.
+        float x = (b.Chance(0.5f) ? 1f : -1f) * (b.ex - 0.45f - (b.s.walls == WallKind.Log ? LogRadius : 0f)), z = b.ez * 0.35f;
         float ridgeY = b.top + b.rise;
         float height = ridgeY + 0.9f;
         var c = b.Jitter(b.stone, 0.06f);

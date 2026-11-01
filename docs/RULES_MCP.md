@@ -147,11 +147,12 @@ for no colour. A spell follows the one element its `element` names, whichever or
 Steam follows `steam`, not fire or water); a spell with no `element` keeps its own. The two orbs each
 start in their own element's colour and take the spell's look once the spell is known.
 
-What doesn't take a colour yet: flames and steam and smoke only turn, so a pale or grey colour
-(white fire, black smoke) changes nothing; the valley's trees and houses; the `air`, `earth`,
-`cold`, `lightning`, `thunder`, `acid`, `heat`, `sand`, `mud`, `dust` and `rain` elements, which
-draw nothing of their own beyond a spell's effects (those read the spell's look); ice; snow as
-it falls.
+What doesn't take a colour yet is in one place, `rules/looks.json` "bare" (`shows`, `turnsOnly`) and
+`LookFamilies.WontShow`, with the land's layers in `CellPaint.LayerLooks`: an element, cover or gas
+nothing is drawn from; what can only turn its art, so a pale or grey colour or one of the same hue
+does nothing (white fire, black smoke, a white Fireball); a flat ground with no layer of its own; the
+land's own trees. `set_look` still takes the colour and says so in its reply, so Claude can tell the
+player. Ice, falling snow and the houses aren't looks at all.
 
 ## Change modes (chosen when a room is made)
 

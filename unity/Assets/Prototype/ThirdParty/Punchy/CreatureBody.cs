@@ -1,6 +1,7 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
 // used with permission. From Punchy's CreatureData.cs: the Entities blob is a
-// plain class with arrays, so it runs without Entities; the maths is his.
+// plain class with arrays, so it runs without Entities; the maths is his. A
+// segment's Pad is ours: a crack web over 0, shadow only under 0.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024
 using System;
