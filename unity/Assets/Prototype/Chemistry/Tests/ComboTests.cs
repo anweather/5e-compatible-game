@@ -44,6 +44,90 @@ namespace Chem.Tests
 
         static World Small() => new World(Base, 8, 8, 1);
 
+        // A fire cast on its last tick, then that tick begun and left in slices, as a busy frame leaves it.
+        static World AtASlicedFiringTick(FiredCastsHeard listener)
+        {
+            var w = Small();
+            listener.StartFrom(w);
+            Load(w, "ann", "fire");
+            Run(w, w.CastOf("ann").Meter - 1);
+            Assert.That(w.StepSome(() => true), Is.False, "the tick is left part done");
+            Assert.That(w.TickInProgress);
+            return w;
+        }
+
+        [Test]
+        public void ACastInATickAnEffectFinishesIsStillHeardAfterTheNextTickBegins()
+        {
+            var heard = new FiredCastsHeard();
+            var w = AtASlicedFiringTick(heard);
+            w.ApplyEffect(new EffectCommand(EffectKind.Burn, 2, 2, ""));
+            Assert.That(w.TickInProgress, Is.False, "the effect finished the tick, and no view was told");
+            w.Step();
+            Assert.That(w.CombosFired, Is.Empty, "gone from the tick's list");
+            Assert.That(heard.Take(w).Single().Spell, Is.EqualTo("fire-bolt"));
+        }
+
+        [Test]
+        public void EveryListenerHearsAFiredCastOnceAndNoneBeforeItsTickIsWhole()
+        {
+            var one = new FiredCastsHeard();
+            var two = new FiredCastsHeard();
+            var w = AtASlicedFiringTick(one);
+            two.StartFrom(w);
+            Assert.That(one.Take(w), Is.Empty, "a tick in slices isn't read");
+            w.FinishTick();
+            Assert.That(one.Take(w).Single().Combo, Is.EqualTo("fire"));
+            Assert.That(one.Take(w), Is.Empty, "once");
+            Assert.That(two.Take(w).Single().Combo, Is.EqualTo("fire"), "whoever else is listening");
+            Run(w, 3);
+            Assert.That(one.Take(w), Is.Empty);
+            Assert.That(two.Take(w), Is.Empty);
+        }
+
+        [Test]
+        public void AListenerHearsOnlyWhatGoesOffAfterItStartsAndOnANewWorldStartsAfresh()
+        {
+            var w = Small();
+            Load(w, "ann", "fire");
+            UntilFired(w);
+            var late = new FiredCastsHeard();
+            late.StartFrom(w);
+            w.Step();
+            Assert.That(late.Take(w), Is.Empty);
+
+            var fresh = Small();
+            Load(fresh, "ann", "fire");
+            UntilFired(fresh);
+            Assert.That(late.Take(fresh), Is.Empty, "a new world's past isn't news");
+            Load(fresh, "ann", "water");
+            UntilFired(fresh);
+            Assert.That(late.Take(fresh).Single().Combo, Is.EqualTo("water"));
+        }
+
+        [Test]
+        public void ListeningLeavesTheWorldAsItWasHoweverItsTicksEnd()
+        {
+            static string Play(bool sliced, bool listening)
+            {
+                var heard = new FiredCastsHeard();
+                var w = Small();
+                heard.StartFrom(w);
+                for (int t = 0; t < 40; t++)
+                {
+                    if (t % 9 == 0) Load(w, "ann", Elements[t / 9 % Elements.Length]);
+                    if (sliced) w.StepSome(() => true);
+                    else w.Step();
+                    w.ApplyEffect(new EffectCommand(EffectKind.Burn, 2, 2, ""));
+                    if (listening) heard.Take(w);
+                }
+                return $"{w.Tick} {w.CellHash()} {w.CastHash()} {w.RngState}";
+            }
+            string plain = Play(false, false);
+            Assert.That(Play(false, true), Is.EqualTo(plain));
+            Assert.That(Play(true, true), Is.EqualTo(plain), "a tick in slices is the same tick");
+        }
+
         [Test]
         public void TheTableHasFourSinglesAndSixteenOrderedPairsOnRealSpells()
         {

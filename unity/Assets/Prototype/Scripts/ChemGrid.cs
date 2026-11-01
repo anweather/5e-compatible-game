@@ -39,7 +39,7 @@ public partial class ChemGrid : MonoBehaviour
     /// <summary>When true, something else (NetChem in multiplayer) steps the world; the grid only draws it.</summary>
     public bool ExternalTicks { get; set; }
 
-    /// <summary>A whole tick has run, solo or online (a tick's World.CombosFired last until the next).</summary>
+    /// <summary>A whole tick has run, solo or online; not one finished from outside (World.FinishTick), so casts are read through FiredCastsHeard.</summary>
     public event System.Action TickDone;
 
     /// <summary>Raises TickDone; NetChem calls it for the ticks it runs.</summary>
