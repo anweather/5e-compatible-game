@@ -95,6 +95,11 @@ namespace Chem
 
     public sealed class LookFamilies
     {
+        /// <summary>A colour this pale says nothing about its hue (saturation, 0 to 1), so what can only be turned can't take it.</summary>
+        public const float PaleSaturation = 0.22f;
+        /// <summary>Hues this close count as the same (a share of the wheel): nothing is turned.</summary>
+        public const float SameHue = 12f / 360f;
+
         /// <summary>The tables of rules/looks.json that a mod's entries name a family from.</summary>
         public static readonly string[] Tables = { "terrain", "covers", "gases", "spells" };
 
@@ -103,7 +108,55 @@ namespace Chem
 
         readonly Dictionary<string, Dictionary<string, LookFamily>> tables = new Dictionary<string, Dictionary<string, LookFamily>>(StringComparer.Ordinal);
 
+        // looks.json "bare": what the view draws from a bare look's colour, by table, and which of those only turn their art.
+        readonly Dictionary<string, HashSet<string>> shows = new Dictionary<string, HashSet<string>>(StringComparer.Ordinal);
+        HashSet<string> turnsOnly = new HashSet<string>(StringComparer.Ordinal);
+
         LookFamilies() { }
+
+        /// <summary>The ids a table's colours are drawn for, for a check that they're all real.</summary>
+        public IReadOnlyDictionary<string, HashSet<string>> Shows => shows;
+
+        /// <summary>
+        /// Why this colour won't show on this entry, in a sentence, or null if it will: nothing draws it,
+        /// or what draws it can only turn its art (<paramref name="was"/>: the colour it's drawn in now,
+        /// or null). The view's rules (ChemGrid.WorldLook.cs, LookTint), in one place.
+        /// </summary>
+        public static string WontShow(LookFamilies looks, string table, string id, LookFamily family, bool baked, float[] was, float[] now)
+        {
+            if (looks.shows.TryGetValue(table, out var drawn) && !drawn.Contains(id))
+                return $"This won't show: nothing in the world is drawn from {id}'s colour yet.";
+            if (baked) return $"This won't show where the land draws {id} itself, only where it grows in this world.";
+            if (table == "terrain" && family?.Name == "ground" && !CellPaint.LayerLooks.Any(l => l.table == table && l.id == id))
+                return $"This won't show: the land has no layer of {id} to colour.";
+            if (!looks.turnsOnly.Contains(id) && !(table == "spells" && family?.Own != null)) return null;
+            if (Saturation(now) < PaleSaturation) return $"This won't show: {id} can only change hue, so a pale or grey colour leaves it as it is.";
+            if (was != null && Saturation(was) >= PaleSaturation && Apart(Hue(was), Hue(now)) <= SameHue)
+                return $"This won't show: it's too close to the hue {id} already has.";
+            return null;
+        }
+
+        static float Apart(float a, float b)
+        {
+            float d = Math.Abs(a - b);
+            return Math.Min(d, 1f - d);
+        }
+
+        static float Saturation(float[] c)
+        {
+            float top = Math.Max(c[0], Math.Max(c[1], c[2]));
+            return top <= 0f ? 0f : (top - Math.Min(c[0], Math.Min(c[1], c[2]))) / top;
+        }
+
+        static float Hue(float[] c)
+        {
+            float top = Math.Max(c[0], Math.Max(c[1], c[2])), spread = top - Math.Min(c[0], Math.Min(c[1], c[2]));
+            if (spread <= 0f) return 0f;
+            float sixth = 4f + (c[0] - c[1]) / spread;
+            if (c[0] >= c[1] && c[0] >= c[2]) sixth = (c[1] - c[2]) / spread;
+            else if (c[1] >= c[2]) sixth = 2f + (c[2] - c[0]) / spread;
+            return (sixth / 6f + 1f) % 1f;
+        }
 
         /// <summary>
         /// looks.json "bare": a look with no family, only a colour. The tables whose entries may give
@@ -121,6 +174,9 @@ namespace Chem
             {
                 looks.Bare = ParseFamily("bare", "bare", bare);
                 looks.BareTables = bare["tables"]?.Select(x => (string)x).ToList() ?? new List<string>();
+                foreach (var table in (bare["shows"] as JObject ?? new JObject()).Properties())
+                    looks.shows[table.Name] = new HashSet<string>(table.Value.Select(x => (string)x), StringComparer.Ordinal);
+                looks.turnsOnly = new HashSet<string>(bare["turnsOnly"]?.Select(x => (string)x) ?? Array.Empty<string>(), StringComparer.Ordinal);
             }
             foreach (var table in doc.Properties().Where(p => p.Value is JObject && p.Name != "bare"))
             {

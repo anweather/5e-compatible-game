@@ -41,6 +41,17 @@ Each entry has:
 
 ## Decided
 
+### J-057: How does new stuff like paint get into the game?
+
+- **Asked:** 2026-11-01, Andrew, on paint: "I don't wanna hard code the world. I wanna find some primitives that can be
+  modified to creat convincing effects. Maybe creating new temporary materials from the primitves of the game?"
+- **Also comes up when:** any new material, liquid, cover or effect; rules changes; what the MCP offers.
+- **Answer:** the world is built from a small set of general primitives. A new thing is a new combination of them,
+  as data, not new code, and may be temporary. Extends J-055: a new primitive is added only when a whole family of
+  effects needs it, never for one effect. Reshape existing special cases as primitives where that's cheap.
+- **Why:** convincing effects from a few rules is the game's chemistry idea, and it's what makes the MCP powerful.
+- **Revisited:** 0.
+
 ### J-056: How does chat in the game work, and the world tools design's other questions?
 
 - **Asked:** 2026-11-01, by u1's design (`docs/design/world-tools.md`), through the PM.

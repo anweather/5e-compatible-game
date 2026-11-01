@@ -4,6 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
+using Chem;
 
 // The forestload scenario: a player's fire, as Andrew plays it. With the Wildfire mod on, a Fireball
 // goes into the valley's thickest forest, and while it spreads the wizard walks a widening ring round
@@ -18,7 +19,9 @@ public partial class PerfStage
     const float RingStartMetres = 24f, RingGrowthPerSecond = 0.15f, RingStepDegrees = 25f;
     const float CastGapSeconds = 3f, StopEverySeconds = 20f, StopSeconds = 0.8f;
     const float LookGain = 0.02f, MovedMetres = 0.01f, GaveUpSeconds = 1f, AimAheadMetres = 7f;
-    const int TapFrames = 2;
+    const int TapFrames = 2, SwitchFrames = 30;
+    const float SwitchHoldSeconds = 3f;
+    static readonly float[] SwitchAtSeconds = { 22f, 36f, 270f, 290f, 310f };
     const float RainAtSeconds = 120f, RainHoldsSeconds = 235f, MostCastMetres = 18f;
     const int WeatherSteps = 4;
     static readonly string[] BigSpells = { SpellIds.Fireball, SpellIds.Meteor };
@@ -81,6 +84,7 @@ public partial class PerfStage
         while (!Go) yield return null;
         wentAt = Time.realtimeSinceStartup;
         inputs.sprint = true;
+        if (Asked("-perf-look-switch")) StartCoroutine(LookSwitches());
         StartCoroutine(WalkTheRing());
         StartCoroutine(StopNowAndThen());
         yield return CastAt(SpellIds.Fireball, fire);
@@ -112,6 +116,47 @@ public partial class PerfStage
         var at = Vector3.MoveTowards(wizard.transform.position, fire, MostCastMetres);
         at.y = grid.GroundAt(at);
         return at;
+    }
+
+    // What a look's rule switch costs: all fire blue and the grass recoloured, each on and off through
+    // the room as set_look's draft is, at the burn's height and well into the rain.
+    IEnumerator LookSwitches()
+    {
+        var switcher = grid.GetComponent<RuleSwitcher>();
+        string fire = "{ \"title\": \"Blue fire\", \"patch\": { \"elements\": { \"fire\": { \"look\": { \"color\": [0.25, 0.45, 1] } } } } }";
+        var grass = (Newtonsoft.Json.Linq.JObject)Newtonsoft.Json.Linq.JObject.Parse(World.Rules.ToJson())["terrain"]?[TerrainIds.Grass]?.DeepClone();
+        if (grass == null) grass = (Newtonsoft.Json.Linq.JObject)Newtonsoft.Json.Linq.JObject.Parse(World.Rules.ToJson())["materials"]["terrain"][TerrainIds.Grass].DeepClone();
+        grass["look"]["color"] = new Newtonsoft.Json.Linq.JArray(0.25, 0.45, 1);
+        string green = "{ \"title\": \"Blue grass\", \"patch\": { \"terrain\": { \"grass\": " + grass + " } } }";
+        foreach (float at in SwitchAtSeconds)
+        {
+            while (Time.realtimeSinceStartup - wentAt < at) yield return null;
+            yield return TimeSwitch(switcher, "fire", fire);
+            yield return TimeSwitch(switcher, "grass", green);
+        }
+    }
+
+    IEnumerator TimeSwitch(RuleSwitcher switcher, string name, string mod)
+    {
+        string id = "look-switch-" + name;
+        switcher.Ask(RoomCommand.Apply(switcher.Me, id, mod, id));
+        yield return WorstFrames(name + "_on");
+        yield return new WaitForSecondsRealtime(SwitchHoldSeconds);
+        switcher.Ask(RoomCommand.Revert(switcher.Me, id));
+        yield return WorstFrames(name + "_off");
+        yield return new WaitForSecondsRealtime(SwitchHoldSeconds);
+    }
+
+    IEnumerator WorstFrames(string name)
+    {
+        float worst = 0f, before = 0f;
+        for (int i = 0; i < SwitchFrames; i++)
+        {
+            yield return null;
+            worst = Mathf.Max(worst, Time.unscaledDeltaTime * 1000f);
+            before += Time.unscaledDeltaTime * 1000f;
+        }
+        Debug.Log($"PERF LOOK SWITCH {name} t={(Time.realtimeSinceStartup - wentAt).ToString("0", System.Globalization.CultureInfo.InvariantCulture)} worst_ms={worst.ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)} mean_ms={(before / SwitchFrames).ToString("0.0", System.Globalization.CultureInfo.InvariantCulture)}");
     }
 
     // The pad's state, once a frame, as the steering asked for it.

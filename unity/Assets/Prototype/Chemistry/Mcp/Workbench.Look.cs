@@ -50,8 +50,9 @@ namespace Chem.Mcp
                 if (param == "color") own.Remove("mix");
             }
             draft.Changed.Add($"{table} {id}");
+            string wont = param == "color" && v.Type != JTokenType.Null ? WontShow(table, id, familyOf, own, v) : null;
             said = $"The {Single(table)} {id}'s look ({Described(table, family)}) takes {List(takes)}{(colours ? ", and a where for color or mix" : "")}." +
-                (scope == null ? "" : " " + ScopedNote(scope, v)) + LookNote(table, id, entry, familyOf) + "\n";
+                (scope == null ? "" : " " + ScopedNote(scope, v)) + LookNote(table, id, entry, familyOf) + (wont == null ? "" : " " + wont + " Tell the player.") + "\n";
             return draft;
         }
 
@@ -135,6 +136,14 @@ namespace Chem.Mcp
             string lapse = w.Around != null ? " It follows the player as they move, and lapses while they're not in the game." : "";
             return $"The look {w} holds there only: the latest scoped look covering a cell wins, its edge blends over {LookScopes.EdgeCells} cells, " +
                 $"and elsewhere the plain look holds. A colour a spell chose for its own fire still wins.{lapse}";
+        }
+
+        // Why a colour won't show, or null: what it's drawn from now is the family's own art, else the base rules' colour.
+        string WontShow(string table, string id, LookFamily family, JObject look, JToken colour)
+        {
+            float[] now = colour.Select(c => (float)c).ToArray();
+            float[] was = family?.Own ?? (table == "elements" ? BaseElement(id)?["look"] : Raw["materials"][table]?[id]?["look"])?["color"]?.Select(c => (float)c).ToArray();
+            return LookFamilies.WontShow(Budgets.Looks, table, id, family, look["baked"]?.Value<bool>() == true, was, now);
         }
 
         // Which table an id's look is in: the one named, else the only one holding it.

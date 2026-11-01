@@ -20,6 +20,50 @@ namespace Chem.Tests
 
         static Rules With(Draft d) => Bench.Base.WithMods(new[] { ModPatch.Parse(d.Patch.ToString()) });
 
+        static string Said(string id, string colour, string table = null)
+        {
+            Bench.SetLook(null, id, "color", colour, table, out string said);
+            return said;
+        }
+
+        [TestCase("air", "[0.8, 0.2, 0.2]", "elements", "nothing in the world is drawn")]
+        [TestCase("lightning", "[0.8, 0.2, 0.2]", "elements", "nothing in the world is drawn")]
+        [TestCase("snowbank", "[0.8, 0.2, 0.2]", "covers", "nothing in the world is drawn")]
+        [TestCase("fire", "[0.95, 0.95, 0.95]", "elements", "only change hue")]
+        [TestCase("smoke", "[0.05, 0.05, 0.05]", "gases", "only change hue")]
+        [TestCase("fireball", "[1, 1, 1]", null, "only change hue")]
+        [TestCase("fire", "[1, 0.45, 0.1]", "elements", "too close to the hue")]
+        [TestCase("tree", "[0.2, 0.2, 0.9]", null, "land draws tree itself")]
+        [TestCase("sprouts", "[0.2, 0.2, 0.9]", null, "no layer of sprouts")]
+        public void AColourThatWontShowIsTakenAndSaidSo(string id, string colour, string table, string why)
+        {
+            string said = Said(id, colour, table);
+            Assert.That(said, Does.Contain("This won't show").And.Contain(why).And.Contain("Tell the player"));
+        }
+
+        [TestCase("fire", "[0.25, 0.45, 1]", "elements")]
+        [TestCase("water", "[1, 0.45, 0.75]", "elements")]
+        [TestCase("steam", "[0.2, 0.4, 1]", "gases")]
+        [TestCase("fog", "[0.1, 0.1, 0.1]", "gases")]
+        [TestCase("oil", "[0.9, 0.9, 0.9]", "covers")]
+        [TestCase("fireball", "[0.2, 0.4, 1]", null)]
+        [TestCase("grass", "[0.25, 0.45, 1]", null)]
+        [TestCase("stone", "[0.9, 0.9, 0.9]", null)]
+        public void AColourThatShowsSaysNothingOfTheSort(string id, string colour, string table) =>
+            Assert.That(Said(id, colour, table), Does.Not.Contain("won't show"));
+
+        [Test]
+        public void WhatShowsNamesRealThings()
+        {
+            var looks = Bench.Base;
+            var shows = LookFamilies.Load(ChemistryTests.RulesDir()).Shows;
+            foreach (var e in shows["elements"]) Assert.That(looks.ElementLook(e), Is.Not.Null, e);
+            foreach (var c in shows["covers"]) Assert.That(looks.Covers.ContainsKey(c), c);
+            foreach (var g in shows["gases"]) Assert.That(looks.Gases.ContainsKey(g), g);
+            foreach (var (layer, table, id) in CellPaint.LayerLooks)
+                Assert.That(table == "covers" ? looks.Covers.ContainsKey(id) : looks.Terrain.ContainsKey(id), layer);
+        }
+
         [Test]
         public void SetLookOnASpellKeepsTheRestOfIt()
         {

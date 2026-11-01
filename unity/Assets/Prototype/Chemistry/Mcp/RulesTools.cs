@@ -34,7 +34,7 @@ namespace Chem.Mcp
             "A colour can hold in one place only: set_look with where, on the element, cover, gas or terrain. \"Make the fire near me green\" is set_look fire color green with where {\"around\": \"me\", \"within\": 10}: it follows the player as they move. " +
             "\"Fire round the village in three colours\" is: places (or here) to find the village's id, then set_look fire mix [three colours] with where {\"place\": \"<id>\", \"within\": 20}. " +
             "A mix gives several colours, each cell picking one; without where it holds everywhere. A colour a spell chose for its own fire still wins over a scoped look. " +
-            "Don't look for a saved mod that's close: use one from rules/mods only when the player names it. After apply, tell the player what changed, from its answer.";
+            "If set_look says a colour won't show, tell the player so and offer one that will. Don't look for a saved mod that's close: use one from rules/mods only when the player names it. After apply, tell the player what changed, from its answer.";
 
         const string DraftHelp = "The draft to add to; leave it out to start a new one. Returns the draft id and the patch so far.";
         const string ValueHelp = "The new value as JSON (0.5, true, \"ash\", [8, 6], {\"catch\": 0.4}); null removes the field.";
