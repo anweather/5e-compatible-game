@@ -105,6 +105,7 @@ public class CastBeats : MonoBehaviour
     CastOrbs orbs;
     CastSounds sounds;
     ChemGrid heard;
+    readonly FiredCastsHeard firedCasts = new();
     Animator animator;
     Blend from, body;
     string first, second;
@@ -193,21 +194,30 @@ public class CastBeats : MonoBehaviour
         if (heard == grid) return;
         if (heard != null) heard.TickDone -= OnTick;
         heard = grid;
-        if (heard != null) heard.TickDone += OnTick;
+        if (heard == null) return;
+        if (heard.World != null) firedCasts.StartFrom(heard.World);
+        heard.TickDone += OnTick;
     }
 
-    // A tick's fired casts are only there until the next one.
     void OnTick()
     {
+        if (heard.World.TickInProgress) return;
+        HearFired(heard.World);
+        Read(heard.World);
+    }
+
+    // Each cast once, on a tick or in the frame after one finished from outside (World.FinishTick),
+    // which tells no one: a cast that left the core unheard would read as dropped, a fizzle.
+    void HearFired(World world)
+    {
         string player = Player;
-        foreach (var fired in heard.World.CombosFired)
+        foreach (var fired in firedCasts.Take(world))
         {
             if (fired.Player != player) continue;
             firedSpell = fired.Spell;
             firedAt = Time.time;
             Charge = fired.Charge;
         }
-        if (!heard.World.TickInProgress) Read(heard.World);
     }
 
     string Player => net != null && net.IsSpawned ? net.CastPlayer : SpellCaster.SoloPlayer;
@@ -242,7 +252,11 @@ public class CastBeats : MonoBehaviour
     // Works out the beat from the cast.
     void Step(World world)
     {
-        if (!world.TickInProgress) Read(world);
+        if (!world.TickInProgress)
+        {
+            HearFired(world);
+            Read(world);
+        }
         if (announcedSpell != null && announcedSpell != firedSpell && Time.time - announcedAt > feel.announceWait) announcedSpell = null;
         if (firedSpell != null && announcedSpell != firedSpell && Time.time - firedAt > feel.announceWait) firedSpell = null;
         bool thrust = firedSpell != null && announcedSpell == firedSpell && Time.time >= thrustAt;
