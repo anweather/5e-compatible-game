@@ -62,6 +62,33 @@ mod in the room with no code naming a house.
 2. Should the cabins become ordinary village buildings (one mesher, one data file)?
 3. In an Open room, may anyone's Claude change a building, or only the host's?
 
+### Scoped and mixed looks: "make the fire near me green"
+
+Andrew, 2026-11-01: "make the fire in the area around the village blue. Or ... make the fire near me,
+Green and as you move around that changes. Could also say maybe not an entire uniform color for all
+the fire, but have different colors for the fire."
+
+Today a look is one value for the whole world. **G2b** adds two general fields to any look, on
+elements, covers, gases and terrains alike (fire is only the example):
+
+- **`where`**: a scope. `{ "place": "hollowmere", "within": 20 }` (a G1 place), `{ "at": [x, y],
+  "within": 12 }` (cells) or `{ "around": "me", "within": 10 }` (the asking player, from `here()`).
+  Several scoped looks can be on at once: the latest that covers a cell wins, and the plain look
+  is what's left. A scope's edge blends over a few cells.
+- **`mix`**: several colours with weights in place of `color`. Each cell picks by a hash of its
+  place, with no draw from the world's RNG, so every peer sees the same patchwork.
+
+Scopes are worked out at draw time from where a cell is, not stored on the fire: a fire leaving
+the circle changes back, and that's what makes "as you move around" work. This is a third case
+beside J-052's: J-052 says what a fire remembers from a spell, `where` says what a place does
+to whatever burns there. A look-scoped `where` wins over the element's colour, not over a colour a
+spell chose. It goes through the room as a mod, like any look: view only, out of the fingerprint,
+revertable. If the player named by `around` leaves, that look lapses.
+
+**Cost:** a moving scope must touch only the cells at its edge each frame, within a budget. It can't
+use the world-wide rule switch `look-switch` is timing. The test is "make the fire near me
+green" asked of Claude, then walking through a burning forest at the lag fix's numbers.
+
 ## 2. Spawning: "a rare golden squirrel might spawn in and you need to find it"
 
 | Step | Today | Stops because |
