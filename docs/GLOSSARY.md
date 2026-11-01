@@ -541,6 +541,15 @@ that long, and doesn't march.
 : Generated content (D12): a recipe in data, a seed, and a builder that
   makes it from shapes (villages, buildings, props, creatures).
 
+## Input
+
+**Pad log**
+: The `Input device ...` lines in Player.log (`PadLog`): one for each input
+  device at start, on each change, and when the pad in use moves. Each says
+  whether the device is a `Gamepad` or a `Joystick` and what `Gamepad.current`
+  is, because the game reads only those: a controller that arrives as a
+  `Joystick` reaches no `<Gamepad>` binding.
+
 ## Ambiguities settled
 
 | Word | Means | Not |

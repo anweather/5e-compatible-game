@@ -48,6 +48,7 @@ public static class PadGlyphs
             {
                 seenDevice = pad.deviceId;
                 seen = FamilyOf(pad);
+                PadLog.InUse(pad, seen);
             }
             return seen;
         }
@@ -74,7 +75,7 @@ public static class PadGlyphs
         if (Has(about, "DualSense")) return PadFamily.PlayStation5;
         if (Has(about, "DualShock") || Has(about, "Sony")) return PadFamily.PlayStation4;
         if (Has(about, "Switch") || Has(about, "Nintendo") || Has(about, "Pro Controller") || Has(about, "Joy-Con")) return PadFamily.Switch;
-        if (xinput || Has(about, "Xbox") || Has(about, "XInput")) return PadFamily.Xbox;
+        if (xinput || Has(about, "Xbox") || Has(about, "X-Box") || Has(about, "XInput")) return PadFamily.Xbox;
         return PadFamily.Generic;
     }
 
