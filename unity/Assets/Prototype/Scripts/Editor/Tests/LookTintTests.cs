@@ -48,23 +48,24 @@ public class LookTintTests
     }
 
     [Test]
-    public void EveryShippedFireSpellIsDrawnAsAuthored()
+    public void EveryShippedSpellIsDrawnAsAuthored()
     {
         var rules = Rules.Load(ChemGrid.FindRulesDir());
-        foreach (string spell in new[] { "fire-bolt", "burning-hands", "fireball", "meteor" })
-            Assert.That(Visuals.For(rules, spell).Tint.Any, Is.False, spell);
+        foreach (var spell in rules.Spells)
+            Assert.That(Visuals.For(rules, spell.Id)?.Tint.Any ?? false, Is.False, spell.Id);
+        Assert.That(Visuals.lookParticle, Is.Not.Null, "run Prototype > Build Chemistry Yard");
     }
 
     [Test]
-    public void AnEffectFamilysOwnColourComesFromTheLooksFile()
+    public void PaleArtIsWashedInTheLookWhereItsFamilySays()
     {
-        foreach (var f in LookFamilies.Load(ChemGrid.FindRulesDir()).In("spells"))
-        {
-            var show = Visuals.families.First(e => e.family == f.Name);
-            var own = f.Own != null ? new Color(f.Own[0], f.Own[1], f.Own[2]) : Color.white;
-            Assert.That(show.own, Is.EqualTo(own), $"{f.Name}: run Prototype > Build Chemistry Yard");
-        }
-        Assert.That(Visuals.lookParticle, Is.Not.Null, "run Prototype > Build Chemistry Yard");
+        var pink = new Color(1f, 0.1f, 0.6f);
+        var washed = LookTint.Between(new Color(0.3f, 0.6f, 1f), pink, 1f).Of(Color.white);
+        Assert.That(washed.r, Is.GreaterThan(washed.g * 3f), $"{washed}");
+        var grey = LookTint.Between(FireOrange, pink).Of(new Color(0.4f, 0.4f, 0.4f));
+        Assert.That(grey.r, Is.EqualTo(grey.g).Within(1e-3f), "with no wash grey stays grey");
+        Assert.That(LookTint.Between(Color.white, pink, 1f).Any, Is.True, "pale art takes a wash though it has no hue");
+        Assert.That(LookTint.Between(Color.white, pink).Any, Is.False);
     }
 
     [Test]

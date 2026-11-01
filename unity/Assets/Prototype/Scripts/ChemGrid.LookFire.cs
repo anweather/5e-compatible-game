@@ -22,7 +22,7 @@ public partial class ChemGrid
     /// </summary>
     public void LightInLook(SpellCaster caster, SpellDef spell, SpellVisuals.Entry look, CastCommand cast)
     {
-        if (spell == null || look == null || !look.Tint.Any) return;
+        if (spell == null || look == null || !look.Tint.Any || look.Tint.Washes) return;
         showman = caster;
         int reach = spell.Scatter?.Reach ?? 0;
         foreach (var (x, y) in World.SpellCells(spell, cast.X, cast.Y, cast.Dir, cast.Charge, cast.AimX, cast.AimY))

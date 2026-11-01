@@ -275,10 +275,10 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     // A bolt from the hand to where it strikes, and the charge runs on from there (ChemGrid.Charge).
-    void Bolt(Vector3 landing)
+    void Bolt(Vector3 landing, Color? look)
     {
-        ArcFx.Play(Hand, landing, 0.16f, 0f, 0.45f);
-        ArcFx.Play(Hand, landing, 0.07f, 0.04f, 0.4f);
+        ArcFx.Play(Hand, landing, 0.16f, 0f, 0.45f, look);
+        ArcFx.Play(Hand, landing, 0.07f, 0.04f, 0.4f, look);
         grid.ChargeStartsAt(landing);
     }
 
@@ -296,7 +296,7 @@ public partial class SpellCaster : MonoBehaviour
             onArrive?.Invoke();
         }
 
-        if (def?.Element == LightningElement && def.Shape == SpellShapes.Line) Bolt(landing);
+        if (def?.Element == LightningElement && def.Shape == SpellShapes.Line) Bolt(landing, look?.glow);
         if (look == null) Land();
         else if (look.fromSky)
             MeteorFall.Launch(landing, transform.position, look, () =>
@@ -311,20 +311,20 @@ public partial class SpellCaster : MonoBehaviour
     // How a show that doesn't fall from the sky gets where it lands: a storm, a beam, a projectile, or at once.
     void Travel(SpellVisuals.Entry look, SpellDef def, int charge, Vector3 landing, System.Action land)
     {
-        if (look.storm) Storm(def, charge, landing, land);
-        else if (look.beam) FrostBeam.Launch(Hand, landing + Vector3.up * BeamLift, look.glow, land, this);
+        if (look.storm) Storm(look, def, charge, landing, land);
+        else if (look.beam) FrostBeam.Launch(Hand, landing + Vector3.up * BeamLift, look.glow, land, this, look.Tint);
         else if (look.projectile != null) SpellProjectile.Launch(look, Hand, landing, land, this, look.ScaleFor(def, 1));
         else land();
     }
 
     // A storm over the spell's squares (a burst's radius each way of the target), for the spell's
     // duration if it has one, else a few seconds; it lands when the first of it reaches the ground.
-    void Storm(SpellDef def, int charge, Vector3 landing, System.Action land)
+    void Storm(SpellVisuals.Entry look, SpellDef def, int charge, Vector3 landing, System.Action land)
     {
         int radius = def != null ? def.Radius + World.ChargedGrowth(def, charge) : 0;
         float halfWidth = (radius + 0.5f) * grid.cellSize;
         float seconds = def != null && def.Duration > 0 ? def.Duration / (float)grid.World.Rules.Sim.TicksPerSecond : SleetStorm.Seconds;
-        SleetStorm.Launch(landing, halfWidth, seconds, transform.position, land, this);
+        SleetStorm.Launch(landing, halfWidth, seconds, transform.position, land, this, look.Tint);
     }
 
     // Found lazily: a networked wizard gets its grid assigned after Awake.

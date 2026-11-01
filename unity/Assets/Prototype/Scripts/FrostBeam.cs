@@ -31,6 +31,7 @@ public class FrostBeam : MonoBehaviour
     ParticleSystem motes;
     Light glow;
     Color tint;
+    LookTint look;
     float t, seed;
     bool landed, hasCaster;
     Action onArrive;
@@ -40,7 +41,7 @@ public class FrostBeam : MonoBehaviour
     /// Shoots a beam of frost from <paramref name="from"/> to <paramref name="to"/>, tinted
     /// <paramref name="tint"/>; <paramref name="onArrive"/> runs once, when it gets there.
     /// </summary>
-    public static FrostBeam Launch(Vector3 from, Vector3 to, Color tint, Action onArrive, UnityEngine.Object caster)
+    public static FrostBeam Launch(Vector3 from, Vector3 to, Color tint, Action onArrive, UnityEngine.Object caster, LookTint look = default)
     {
         var go = new GameObject("Frost beam");
         go.transform.position = from;
@@ -48,6 +49,7 @@ public class FrostBeam : MonoBehaviour
         beam.From = from;
         beam.To = to;
         beam.tint = tint;
+        beam.look = look;
         beam.onArrive = onArrive;
         beam.caster = caster;
         beam.hasCaster = caster != null;
@@ -60,7 +62,7 @@ public class FrostBeam : MonoBehaviour
     void Build()
     {
         if (beamMaterial == null) beamMaterial = UrpMaterials.NewUnlitParticles("Frost beam", new Color(1.4f, 1.7f, 2f), additive: true);
-        core = Line("Beam core", Color.white, new Color(0.85f, 0.95f, 1f, 0.9f));
+        core = Line("Beam core", look.Of(Color.white), look.Of(new Color(0.85f, 0.95f, 1f, 0.9f)));
         halo = Line("Beam halo", new Color(tint.r, tint.g, tint.b, 0.45f), new Color(tint.r, tint.g, tint.b, 0.25f));
         halo.widthCurve = new AnimationCurve(new Keyframe(0f, 0.45f), new Keyframe(0.2f, 1f), new Keyframe(1f, 0.7f));
 
@@ -100,7 +102,7 @@ public class FrostBeam : MonoBehaviour
         main.startLifetime = new ParticleSystem.MinMaxCurve(0.5f, 1f);
         main.startSpeed = new ParticleSystem.MinMaxCurve(0.15f, 0.6f);
         main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.11f);
-        main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.8f, 0.92f, 1f, 0.9f), Color.white);
+        main.startColor = new ParticleSystem.MinMaxGradient(look.Of(new Color(0.8f, 0.92f, 1f, 0.9f)), look.Of(Color.white));
         main.gravityModifier = 0.05f;
         main.maxParticles = 400;
         main.playOnAwake = false;

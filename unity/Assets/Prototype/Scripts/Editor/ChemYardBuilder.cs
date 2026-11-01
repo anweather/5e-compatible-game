@@ -449,7 +449,6 @@ public static class ChemYardBuilder
         tinted = f.Tinted,
         scaleBy = f.ScaleBy,
         scaleBase = f.Base,
-        own = f.Own != null ? new Color(f.Own[0], f.Own[1], f.Own[2]) : Color.white,
     };
 
     // "Fire/BigExplosion" as a prefab of the Particle Pack's folder for fire effects; null for none.

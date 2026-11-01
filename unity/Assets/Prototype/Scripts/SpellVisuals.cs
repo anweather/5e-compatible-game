@@ -44,9 +44,6 @@ public class SpellVisuals : ScriptableObject
         [Tooltip("The spell number the impact scales with (radius, size or length; empty for none), and that number at scale 1.")]
         public string scaleBy;
         public float scaleBase = 1f;
-        [Tooltip("The colour this family's effects are drawn in (rules/looks.json \"own\"); white if they can't be turned from it yet.")]
-        public Color own = Color.white;
-
         /// <summary>How far this show is turned from its family's own colour to its spell's look.</summary>
         public LookTint Tint { get; private set; }
 
@@ -61,11 +58,11 @@ public class SpellVisuals : ScriptableObject
             !string.IsNullOrEmpty(look?.scaleBy) ? look.ScaleFor(spell, charge) : 1f + 0.5f * (World.ClampCharge(charge) - 1);
 
         /// <summary>This family's show in a spell's colour.</summary>
-        public Entry Colored(Color color, Shader shader = null)
+        public Entry Colored(Color color, Shader shader = null, float[] own = null)
         {
             var e = (Entry)MemberwiseClone();
             e.glow = color;
-            e.Tint = LookTint.Between(own, color);
+            e.Tint = own != null ? LookTint.Between(new Color(own[0], own[1], own[2]), color, own.Length > 3 ? own[3] : 0f) : default;
             e.particleShader = shader;
             return e;
         }
@@ -102,6 +99,7 @@ public class SpellVisuals : ScriptableObject
 
     [NonSerialized] readonly Dictionary<string, Entry> shows = new();
     [NonSerialized] Rules showsFor;
+    [NonSerialized] LookFamilies looks;
 
     /// <summary>
     /// A spell's show from the rules in force: its family's, in its colour; null with no rules or
@@ -118,7 +116,9 @@ public class SpellVisuals : ScriptableObject
         if (shows.TryGetValue(spellId, out var show)) return show;
         var look = rules.Spell(spellId)?.Look;
         var family = look != null ? families.Find(f => f.family == look.Family) : null;
-        return shows[spellId] = family?.Colored(new Color(look.R, look.G, look.B), lookParticle);
+        // Read from the file, not this asset, so a family's own colour needs no yard build.
+        looks ??= LookFamilies.Load(ChemGrid.FindRulesDir());
+        return shows[spellId] = family?.Colored(new Color(look.R, look.G, look.B), lookParticle, looks.Find("spells", look.Family)?.Own);
     }
 
     /// <summary>

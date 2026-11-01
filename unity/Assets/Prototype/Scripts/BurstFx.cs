@@ -105,7 +105,7 @@ public static class BurstFx
         ps.transform.localScale = Vector3.one * size;
         // Set each time: the pool hands back whatever colour the last burst of this kind left.
         var recipe = Recipes[kind];
-        var shift = look != null ? LookTint.Between(recipe.Own, look.Value) : default;
+        var shift = look != null ? LookTint.Between(recipe.Own, look.Value, 1f) : default;
         var main = ps.main;
         main.startColor = tint != null
             ? new ParticleSystem.MinMaxGradient(tint.Value, tint.Value * 0.7f)

@@ -5,30 +5,33 @@ using UnityEngine;
 using UnityEngine.SceneManagement;
 
 // The probe's lookfx scenario: every stage of a Fireball takes the spell's look.
-// One Fireball cast by elements as it ships, the Blue fireballs mod switched on
-// mid-game, one beside it, then a third with the mod switched off while its fire
-// burns, and a last one after. (As a rule switch of the probe's own, not the mods
-// panel's door: that would drop the noon and the fire settings the casts are
-// compared under; looksmod goes through the door.) Each stage is read
+// One Fireball cast by elements as it ships, its look changed mid-game through the
+// rules MCP over real HTTP (set_spell look.color, apply: only that, no rebuild), one
+// beside it, then a third with the mod reverted while its fire burns, and a last
+// one after. Each stage is read
 // from what's actually drawn: the orbs' colour, the materials on the bead and
 // the blast, the debris's particles, each flame, the embers and the fire lights.
 // With --shots it is a film (ClipFilm), with a beat for each stage.
 public class SpellLookFxProbe : LooksModProbe
 {
-    const string Mod = "blue-fireballs";
+    const string Title = "Blue fireball", Mod = "blue-fireball", Blue = "[0.2, 0.45, 1]";
     const string LookShader = "Prototype/LookParticle";
     const float Linger = 1f;
 
     int scenes;
     float side = -1f;
 
+    /// <summary>Which side of the casts the camera stands, as Frame chose.</summary>
+    protected float Side => side;
+
+    string calmSim;
+
     void Counted(Scene s, LoadSceneMode m) => scenes++;
 
     protected override IEnumerator Run()
     {
-        var catalog = grid.GetComponent<RuleSwitcher>().Catalog.Find(Mod);
-        Check("mod_in_the_catalog", catalog != null && catalog.Error == null, catalog?.Error ?? Mod);
-        if (catalog == null) yield break;
+        Check("mcp_serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
+        if (RulesMcpServer.Url == null) yield break;
         if (!FindMeadow(out var a))
         {
             Check("meadow_found", false, "no open grass for three casts near the yard");
@@ -43,7 +46,7 @@ public class SpellLookFxProbe : LooksModProbe
         caster.enabled = true;
         caster.Select(SpellIds.Fireball);
 
-        yield return Switch(At(12f) + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }, 'fire': { 'spreadChance': 0 }");
+        yield return Calm();
         Frame(a);
         yield return Wait(0.6f);
         if (Filming)
@@ -55,11 +58,11 @@ public class SpellLookFxProbe : LooksModProbe
         Beat("plain_at_s");
         yield return Fireball(a, "plain", false);
 
-        string fingerprint = grid.CurrentRules.Fingerprint;
-        grid.QueueRules(grid.CurrentRules.WithMods(grid.CurrentRules.Mods.Append(catalog.AsActive())));
-        yield return Wait(0.6f);
+        string fingerprint = grid.CurrentRules.Effective.Fingerprint;
+        yield return ThroughMcp("{\"id\":\"fireball\",\"field\":\"look.color\",\"value\":\"" + Blue + "\"}", Title);
+        yield return Calm();
         Check("mod_in_force", caster.TintOf(SpellIds.Fireball).Any, $"turned {caster.TintOf(SpellIds.Fireball).Turn:0.00}");
-        Check("look_keeps_the_fingerprint", grid.CurrentRules.Fingerprint == fingerprint, grid.CurrentRules.Fingerprint);
+        Check("look_keeps_the_fingerprint", grid.CurrentRules.Effective.Fingerprint == fingerprint, grid.CurrentRules.Effective.Fingerprint);
 
         Frame(b);
         yield return Wait(0.4f);
@@ -71,17 +74,19 @@ public class SpellLookFxProbe : LooksModProbe
         yield return Wait(0.4f);
         Beat("switch_at_s");
         yield return Burning(c);
-        grid.QueueRules(grid.CurrentRules.WithMods(grid.CurrentRules.Mods.Where(m => m.Id != Mod)));
+        var revert = RoomMcpProbe.Post(RoomMcpProbe.Tool("revert", "{\"mod\":\"" + Mod + "\"}"));
+        yield return RoomMcpProbe.Until(revert);
+        Check("mcp_reverted", revert.Result.body.Contains("switched off"), revert.Result.body);
         yield return Wait(0.8f);
         var turned = FlamesAround(c).Count(f => f != 0f);
         Metric("flames_still_turned_after_switch", turned);
         Check("switch_redraws_what_burns", FlamesAround(c).Any() && turned == 0, $"{FlamesAround(c).Count()} flames, {turned} still turned");
         Check("flames_not_rebuilt_by_a_scene", scenes == 0 && SceneManager.GetActiveScene().handle == handle && grid == view, $"{scenes} scenes loaded, same scene and grid");
 
+        yield return Calm();
         yield return Wait(1.6f);
         Beat("plain_again_at_s");
         yield return Fireball(c, "plain_again", false);
-        yield return GreenMeteor(a);
 
         SceneManager.sceneLoaded -= Counted;
         caster.AimOverride = null;
@@ -89,8 +94,34 @@ public class SpellLookFxProbe : LooksModProbe
         if (Filming) yield return EndFilm();
     }
 
+    // Noon, clear, no fire spreading, as a mod of the probe's own: on top of what's on, as the room's change drops it.
+    protected IEnumerator Calm()
+    {
+        // Once: the hour in it is worked out from the clock, and the same mod keeps the same fingerprint.
+        calmSim ??= At(12f);
+        var calm = new ActiveMod("probe-calm", "{ 'patch': { 'sim': { " + calmSim + ", 'weather': { 'calmPeriods': 0, 'rampMinutes': 0.02, 'weights': { 'clear': 1, 'cloudy': 0, 'windy': 0, 'fog': 0, 'rain': 0, 'storm': 0, 'snow': 0 } }, 'fire': { 'spreadChance': 0 } } } }");
+        grid.QueueRules(grid.CurrentRules.WithMods(grid.CurrentRules.Mods.Where(m => m.Id != calm.Id).Append(calm)));
+        yield return Wait(0.5f);
+    }
+
+    // One set_spell in a new draft and an apply with a title, as a player's Claude would: over HTTP, the game's only door.
+    protected IEnumerator ThroughMcp(string setSpell, string title)
+    {
+        var written = RoomMcpProbe.Post(RoomMcpProbe.Tool("set_spell", setSpell));
+        yield return RoomMcpProbe.Until(written);
+        string body = written.Result.body;
+        int at = body.IndexOf("Draft ", System.StringComparison.Ordinal);
+        Check($"mcp_draft_{title.Replace(' ', '_')}", at >= 0, body);
+        if (at < 0) yield break;
+        string draft = body.Substring(at + 6).Split(':')[0];
+        var applied = RoomMcpProbe.Post(RoomMcpProbe.Tool("apply", $"{{\"mod\":\"{draft}\",\"title\":\"{title}\"}}"));
+        yield return RoomMcpProbe.Until(applied);
+        Check($"mcp_applied_{title.Replace(' ', '_')}", applied.Result.body.Contains("switched on"), applied.Result.body);
+        yield return Wait(0.6f);
+    }
+
     // The wizard to the west of a spot, looking at it, the camera side on to take in both.
-    void Frame(Vector2Int at)
+    protected void Frame(Vector2Int at)
     {
         var point = grid.CellCenter(at.x, at.y);
         point.y = grid.GroundAt(point);
@@ -202,7 +233,7 @@ public class SpellLookFxProbe : LooksModProbe
         Check($"{name}_{stage}_{(blue ? "in_the_look" : "as_authored")}", blueNow == blue, detail);
 
     // How many of a show's materials are drawn turned.
-    static int Shader(GameObject show) =>
+    protected static int Shader(GameObject show) =>
         show.GetComponentsInChildren<ParticleSystemRenderer>(true).SelectMany(r => r.sharedMaterials).Count(m => m != null && m.shader.name == LookShader);
 
     static Color Debris()
@@ -254,34 +285,6 @@ public class SpellLookFxProbe : LooksModProbe
     {
         yield return Wait(0.3f);
         Check("spread_keeps_the_look", grid.FireTint(x, y).Any, $"cell ({x}, {y})");
-    }
-
-    // A meteor in a look of its own: the rock's light and trail, then its blast.
-    IEnumerator GreenMeteor(Vector2Int at)
-    {
-        var green = new ActiveMod("green-meteor", "{ 'patch': { 'spells': [ { 'id': 'meteor', 'group': 'fire', 'name': 'Meteor', 'look': { 'family': 'meteor', 'color': [0.2, 1, 0.4] }, 'level': 7, 'shape': 'burst', 'radius': 4, 'element': 'fire' } ] } }".Replace('\'', '"'));
-        grid.QueueRules(grid.CurrentRules.WithMods(grid.CurrentRules.Mods.Append(green)));
-        yield return Wait(0.6f);
-        Frame(at);
-        Beat("meteor_at_s");
-        SpellVisuals.LastImpact = null;
-        caster.Cast(SpellIds.Meteor, at.x, at.y, 0);
-        MeteorFall meteor = null;
-        for (float t = 0f; meteor == null && t < 3f; t += Time.deltaTime)
-        {
-            meteor = FindAnyObjectByType<MeteorFall>();
-            yield return null;
-        }
-        Check("meteor_fell", meteor != null);
-        if (meteor == null) yield break;
-        var light = meteor.GetComponentInChildren<Light>().color;
-        Check("meteor_light_in_the_look", light.g > light.r, $"{light}");
-        var trail = meteor.GetComponentInChildren<TrailRenderer>().colorGradient.Evaluate(0.35f);
-        Check("meteor_trail_in_the_look", trail.g > trail.r, $"{trail}");
-        for (float t = 0f; meteor != null && Shader(meteor.gameObject) == 0 && t < 1f; t += Time.deltaTime) yield return null;
-        Check("meteor_flames_in_the_look", meteor != null && Shader(meteor.gameObject) > 0, "its flames' materials");
-        yield return Wait(MeteorFall.Seconds + 1f);
-        Beat("meteor_landed_at_s");
     }
 
     // A Fireball in the mod's look, left burning.

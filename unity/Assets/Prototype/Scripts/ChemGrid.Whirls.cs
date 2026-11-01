@@ -57,7 +57,7 @@ public partial class ChemGrid
         ps.transform.localScale = new Vector3(ww.Radius, 1f, ww.Radius) * cellSize;
         var main = ps.main;
         var tint = ColumnTint(ww.Carrying);
-        tint = LookTint.Between(tint, SpellLookColor(ww.Spell) ?? Color.white).Of(tint);
+        tint = LookTint.Between(tint, SpellLookColor(ww.Spell) ?? Color.white, 1f).Of(tint);
         main.startColor = new ParticleSystem.MinMaxGradient(tint, Color.Lerp(tint, Color.white, 0.3f));
         if (starting) ps.Play(true);
     }
