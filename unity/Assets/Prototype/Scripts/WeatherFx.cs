@@ -30,9 +30,8 @@ public class WeatherFx : MonoBehaviour
     int seenTick = -1;
     readonly System.Collections.Generic.HashSet<(int x, int y, int tick)> meteorsShown = new(), strikesShown = new();
     Chem.World seenWorld;
-    SpellVisuals.Entry meteorLook;
 
-    // The Meteor spell's look (its flames, blast and dust), from a wizard's spell visuals; a bare one without.
+    // The Meteor spell's look in the rules in force (its flames, blast and dust), from a wizard's spell visuals; a bare one without.
     static SpellVisuals.Entry MeteorLook()
     {
         var caster = FindAnyObjectByType<SpellCaster>();
@@ -88,9 +87,8 @@ public class WeatherFx : MonoBehaviour
         foreach (var (x, y, lands, tick) in world.MeteorsSince(since - 1))
         {
             if (!meteorsShown.Add((x, y, tick))) continue;
-            meteorLook ??= MeteorLook();
             float seconds = (lands - world.Tick) / (float)world.Rules.Sim.TicksPerSecond;
-            MeteorFall.Launch(Ground(grid.CellCenter(x, y)), cam.transform.position, meteorLook, null, null, seconds);
+            MeteorFall.Launch(Ground(grid.CellCenter(x, y)), cam.transform.position, MeteorLook(), null, null, seconds);
         }
         meteorsShown.RemoveWhere(m => m.tick < since - 1);
         strikesShown.RemoveWhere(m => m.tick < since - 1);

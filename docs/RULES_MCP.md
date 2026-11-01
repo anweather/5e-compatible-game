@@ -99,9 +99,9 @@ a draft: `color` (three numbers 0 to 1, or `"#rrggbb"`; the player says "blue", 
 numbers), and any other parameter its family lists (`height`, `glow`, `form`...). It answers with
 what that family takes and refuses anything else with the list; `table` is needed where an id
 names two things (`frost` is a spell and a cover, `steam` a gas and an element). A whole-element
-change ("blue fire everywhere") goes on the element; one spell's ("a blue fireball") goes on the
-spell, and colours only its own show: the fire it leaves is the fire element's. The server's
-instructions say so. `validate` checks every look's parameters against its family, and a
+change ("blue fire everywhere") goes on the element, and reaches the casts of its spells that chose
+no colour; one spell's ("a blue fireball") goes on the spell, and colours only that spell's show and
+the fire it lights (J-052). The server's instructions say so. `validate` checks every look's parameters against its family, and a
 look-only draft leaves the fingerprint and the cell hash alone. What takes no colour (`list
 looks`): the `fire` families (a fire's flames are the fire element's colour), the families not
 drawn yet, and a `plant` tree or sapling (the valley's own model).
@@ -113,7 +113,7 @@ Sizes come from the numbers: cells, flames and craters always did, and a cast's 
 through `EffectScale.Of` (family `scaleBy` and `base`, with the charge).
 
 **A look's colour only uses its hue.** A spell's effects turn round the colour wheel to the hue
-of its `look.color` (`LookTint`), so how dark that colour is makes no difference, and a pale one
+of its look's colour (`LookTint`), so how dark that colour is makes no difference, and a pale one
 (saturation under 0.22) leaves the effects as authored. Details are in `rules/README.md`.
 
 **Done so far (phase 2):** `CellDressing`'s terrain table and dressing switch, and
@@ -125,7 +125,7 @@ still keyed to an id, with what each needs: `docs/handoffs/procedural-looks-scan
 layers by id), so a mod's new flat ground looks like the land under it; its colour reaches only
 chips. A new cover or gas has no family drawn yet, so it needn't name one, and draws as an unknown
 one always did. Element, cover and gas colours are in the rules, but the view reads them only
-where it has been switched over to them (the spell effects and the world's colours, under way).
+where it has been switched over to them (the world's colours and a cast's show, below).
 
 
 **The world's colours (`ChemGrid.WorldLook.cs`).** The view reads colours from the rules in force at
@@ -139,7 +139,13 @@ or tinted by how far the look has moved from the base rules' colour, so the numb
 
 A spell that chose a colour keeps it: its fire burns in its look among fire of the element's, a new
 fire catching beside it takes that look, and a fire already burning keeps the one it has (J-052).
-That edge is the view's own note, so two peers can differ there.
+That edge is the view's own note, so two peers can differ there. A spell that chose nothing follows
+its element in every cast effect too, from the orbs in the hands to the burst's lights
+(`SpellVisuals.For`). Every spell ships with a colour, so "chose" goes by what's moved from the base
+rules, as above: a spell chose if a mod moved its `look.color` to one that isn't pale, and white asks
+for no colour. A spell follows the one element its `element` names, whichever orbs made it (Scalding
+Steam follows `steam`, not fire or water); a spell with no `element` keeps its own. The two orbs each
+start in their own element's colour and take the spell's look once the spell is known.
 
 What doesn't take a colour yet: flames and steam and smoke only turn, so a pale or grey colour
 (white fire, black smoke) changes nothing; the valley's trees and houses; the `air`, `earth`,

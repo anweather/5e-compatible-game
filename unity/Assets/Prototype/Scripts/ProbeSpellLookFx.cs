@@ -11,10 +11,14 @@ using UnityEngine.SceneManagement;
 // one after. Each stage is read
 // from what's actually drawn: the orbs' colour, the materials on the bead and
 // the blast, the debris's particles, each flame, the embers and the fire lights.
+// Then only the fire element's colour changed, and a Fireball that chose no colour
+// follows it at every stage, the orbs before the spell is known too (J-052); and one
+// that did choose keeps its own among that fire.
 // With --shots it is a film (ClipFilm), with a beat for each stage.
 public class SpellLookFxProbe : LooksModProbe
 {
-    const string Title = "Blue fireball", Mod = "blue-fireball", Blue = "[0.2, 0.45, 1]";
+    const string Title = "Blue fireball", Mod = "blue-fireball", Blue = "[0.2, 0.45, 1]", Green = "[0.15, 1, 0.35]";
+    const string FireTitle = "Blue fire", FireMod = "blue-fire", OwnTitle = "Green fireball", OwnMod = "green-fireball";
     const string LookShader = "Prototype/LookParticle";
     const float Linger = 1f;
 
@@ -25,6 +29,9 @@ public class SpellLookFxProbe : LooksModProbe
     protected float Side => side;
 
     string calmSim;
+    // What a stage in the look looks like: blue, but for the Fireball that chose green among blue fire.
+    System.Func<Color, bool> inLook = IsBlue;
+    Color firstOrb;
 
     void Counted(Scene s, LoadSceneMode m) => scenes++;
 
@@ -88,11 +95,58 @@ public class SpellLookFxProbe : LooksModProbe
         Beat("plain_again_at_s");
         yield return Fireball(c, "plain_again", false);
 
+        yield return FollowsTheElement(a, b);
+
         SceneManager.sceneLoaded -= Counted;
         caster.AimOverride = null;
         caster.enabled = casterWasOn;
         if (Filming) yield return EndFilm();
     }
+
+    // Only the element's colour moves: a spell that chose none follows it, one that chose keeps its own (J-052).
+    IEnumerator FollowsTheElement(Vector2Int at, Vector2Int other)
+    {
+        string fingerprint = grid.CurrentRules.Effective.Fingerprint;
+        yield return ThroughMcp("{\"id\":\"fire\",\"param\":\"color\",\"value\":\"" + Blue + "\",\"table\":\"element\"}", FireTitle, "set_look");
+        yield return Calm();
+        Check("element_in_force", grid.FireElementTint.Any, $"turned {grid.FireElementTint.Turn:0.00}");
+        Check("element_keeps_the_fingerprint", grid.CurrentRules.Effective.Fingerprint == fingerprint, grid.CurrentRules.Effective.Fingerprint);
+        Check("element_not_in_the_spell", LookDef.SameColor(grid.CurrentRules.Base.Spell(SpellIds.Fireball).Look, World.Rules.Spell(SpellIds.Fireball).Look), "only the element's colour changed");
+
+        Frame(at);
+        yield return Wait(0.4f);
+        Beat("element_at_s");
+        yield return Fireball(at, "element", true, true);
+        var burning = Around(at).Where(c => World.At(c.x, c.y).Fire > 0).ToList();
+        Check("element_fire_is_the_elements", burning.Count > 0 && burning.All(c => grid.FireTint(c.x, c.y).Turn == grid.FireElementTint.Turn), $"{burning.Count} cells burning");
+
+        yield return ThroughMcp("{\"id\":\"fireball\",\"field\":\"look.color\",\"value\":\"" + Green + "\"}", OwnTitle);
+        yield return Calm();
+        Frame(other);
+        yield return Wait(0.4f);
+        Beat("chosen_at_s");
+        inLook = IsGreen;
+        yield return Fireball(other, "chosen", true, true);
+        inLook = IsBlue;
+        burning = Around(other).Where(c => World.At(c.x, c.y).Fire > 0).ToList();
+        Check("chosen_fire_keeps_its_own", burning.Any(c => grid.FireTint(c.x, c.y).Turn != grid.FireElementTint.Turn), $"{burning.Count} cells burning");
+
+        yield return Off(OwnMod);
+        yield return Off(FireMod);
+        yield return Wait(0.6f);
+        Check("element_back", !grid.FireElementTint.Any && !caster.TintOf(SpellIds.Fireball).Any, "both mods off");
+    }
+
+    IEnumerator Off(string mod)
+    {
+        var revert = RoomMcpProbe.Post(RoomMcpProbe.Tool("revert", "{\"mod\":\"" + mod + "\"}"));
+        yield return RoomMcpProbe.Until(revert);
+        Check($"mcp_reverted_{mod.Replace('-', '_')}", revert.Result.body.Contains("switched off"), revert.Result.body);
+    }
+
+    static bool IsBlue(Color c) => c.b > c.r;
+
+    static bool IsGreen(Color c) => c.g > c.r && c.g > c.b;
 
     // Noon, clear, no fire spreading, as a mod of the probe's own: on top of what's on, as the room's change drops it.
     protected IEnumerator Calm()
@@ -104,10 +158,10 @@ public class SpellLookFxProbe : LooksModProbe
         yield return Wait(0.5f);
     }
 
-    // One set_spell in a new draft and an apply with a title, as a player's Claude would: over HTTP, the game's only door.
-    protected IEnumerator ThroughMcp(string setSpell, string title)
+    // One change (set_spell, or the tool named) in a new draft and an apply with a title, as a player's Claude would: over HTTP, the game's only door.
+    protected IEnumerator ThroughMcp(string change, string title, string tool = "set_spell")
     {
-        var written = RoomMcpProbe.Post(RoomMcpProbe.Tool("set_spell", setSpell));
+        var written = RoomMcpProbe.Post(RoomMcpProbe.Tool(tool, change));
         yield return RoomMcpProbe.Until(written);
         string body = written.Result.body;
         int at = body.IndexOf("Draft ", System.StringComparison.Ordinal);
@@ -165,18 +219,20 @@ public class SpellLookFxProbe : LooksModProbe
         caster.AimOverride = point;
         caster.LoadElement(ElementIds.Fire);
         yield return Wait(0.2f);
+        firstOrb = wizard.GetComponent<CastBeats>().OrbColor(0);
         caster.LoadElement(ElementIds.Fire);
         yield return Wait(0.35f);
     }
 
-    // A Fireball cast and blue in the cast's every stage, or not.
-    IEnumerator Fireball(Vector2Int at, string name, bool blue)
+    // A Fireball cast and in the look at the cast's every stage, or not; the first orb, before there's a spell, is its element's.
+    IEnumerator Fireball(Vector2Int at, string name, bool blue, bool elementMoved = false)
     {
         var beats = wizard.GetComponent<CastBeats>();
         SpellVisuals.LastImpact = null;
         yield return Loaded(at);
         var orb = beats.OrbColor(0);
-        Stage(name, "orbs", orb.b > orb.r, blue, $"{orb}");
+        Check($"{name}_first_orb_{(elementMoved ? "in_the_element" : "as_authored")}", IsBlue(firstOrb) == elementMoved, $"{firstOrb}");
+        Stage(name, "orbs", inLook(orb), blue, $"{orb}");
         Metric($"orb_blue_{name}", orb.b);
         Beat($"{name}_orbs_at_s");
         Shoot($"{name}-orbs");
@@ -203,11 +259,11 @@ public class SpellLookFxProbe : LooksModProbe
             var glow = blast.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(p => p.lights.enabled);
             var shine = glow != null ? glow.main.startColor.color : default;
             Check($"{name}_burst_has_lights", glow != null);
-            Stage(name, "burst_lights", shine.b > shine.r, blue, $"{shine}");
+            Stage(name, "burst_lights", inLook(shine), blue, $"{shine}");
         }
         yield return null;
         var debris = Debris();
-        Stage(name, "debris", debris.b > debris.r, blue, $"{debris}");
+        Stage(name, "debris", inLook(debris), blue, $"{debris}");
 
         var embers = new System.Collections.Generic.List<float>();
         for (float t = 0f; t < Linger; t += Time.deltaTime)
@@ -223,7 +279,7 @@ public class SpellLookFxProbe : LooksModProbe
         Stage(name, "all_flames", flames.All(t => t != 0f), blue, $"{flames.Count(t => t != 0f)} of {flames.Count} flames turned");
         var lit = FireLights(at).ToList();
         Check($"{name}_fire_lit", lit.Count > 0, $"{lit.Count} lights");
-        Stage(name, "fire_light", lit.Any(l => l.b > l.r), blue, string.Join(" ", lit));
+        Stage(name, "fire_light", lit.Any(inLook), blue, string.Join(" ", lit));
         Metric($"embers_{name}", embers.Count);
         Check($"{name}_embers_seen", embers.Count > 0, $"{embers.Count} cells");
         Stage(name, "embers", embers.Any(t => t != 0f), blue, $"{embers.Count} cells");

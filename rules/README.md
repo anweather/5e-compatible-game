@@ -272,9 +272,18 @@ flames, water, cold's frost). It names no family and holds only `color`:
 The view reads it as `Rules.ElementLook("fire")` (a `LookDef`, or null). A mod
 gives one in `"elements"` as entries by id instead of a list of names, which
 also adds an element that's new: `"elements": { "fire": { "look": { "color":
-[0.25, 0.45, 1] } } }` is blue fire everywhere. One spell's colour goes on the
-spell (`"look": { "family": "blast", "color": [...] }`): it colours that
-spell's own show, and what the spell leaves on cells keeps its element's.
+[0.25, 0.45, 1] } } }` is blue fire everywhere, the casts of its spells too. One
+spell's colour goes on the spell (`"look": { "family": "blast", "color": [...]
+}`): that spell has **chosen its colour**, its show keeps it whatever its
+element's is, and the fire it lights does too (J-052). What it leaves on cells
+but fire is its element's.
+
+Every spell ships with a `color`, so a spell has chosen one only if a mod moved
+it from the base rules' to a colour that isn't pale. One that hasn't is drawn in
+the colour of the one element its `"element"` names, whichever orbs made it,
+once a mod moves that colour; until then it's drawn in its own, so the rules as
+they ship change nothing. A new spell with no `color` takes its element's at
+once. A spell with no `element` keeps its own.
 
 In `looks.json`, an effect family (`spells`) also names its pack prefabs
 (`projectile`, `impact`, `afterImpact`: Prototype > Build Chemistry Yard builds

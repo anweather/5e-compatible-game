@@ -8,7 +8,8 @@ using UnityEngine;
 // draws, in a colour no spell ships with, set through the rules MCP over real HTTP as a
 // player's Claude would (set_spell look.color, apply, revert), with nothing rebuilt. Each
 // cast reads what's drawn from the show itself; with --shots it is a film (ClipFilm) with a
-// beat for each, so each can be looked at.
+// beat for each, so each can be looked at. Last, spells of other elements than fire that chose
+// no colour, with only their element's colour set (set_look): they follow it (J-052).
 public class LookFamiliesProbe : SpellLookFxProbe
 {
     const string Pink = "[1, 0.1, 0.6]", Green = "[0.15, 1, 0.35]";
@@ -41,8 +42,8 @@ public class LookFamiliesProbe : SpellLookFxProbe
         yield return AsShipped(SpellIds.GustOfWind, spots[2], Aim.Beside);
         var pink = Burst(PinkColour);
         int spot = 0;
-        IEnumerator Next(string family, string spell, Aim aim, Func<bool> seen, bool green = false) =>
-            Family(family, spell, spots[spot++ % spots.Length], aim, green, seen);
+        IEnumerator Next(string family, string spell, Aim aim, Func<bool> seen, bool green = false, string element = null) =>
+            Family(family, spell, spots[spot++ % spots.Length], aim, green, seen, element);
 
         yield return Next("splash", SpellIds.CreateWater, Aim.Target, Impact);
         yield return Next("spray", SpellIds.Grease, Aim.Target, Impact);
@@ -61,17 +62,25 @@ public class LookFamiliesProbe : SpellLookFxProbe
         yield return Next("cone", "burning-hands", Aim.Beside, Impact, true);
         yield return Next("blast", SpellIds.Fireball, Aim.Target, () => SpellVisuals.LastImpact != null && Shader(SpellVisuals.LastImpact) > 0, true);
         yield return Next("meteor", SpellIds.Meteor, Aim.Target, () => FindAnyObjectByType<MeteorFall>() is { } m && m.GetComponentInChildren<Light>() is { } glow && Hue(glow.color, GreenColour), true);
+        yield return Next("element_beam", SpellIds.RayOfFrost, Aim.Beside, () => Line(FindAnyObjectByType<FrostBeam>(), PinkColour), element: "cold");
+        yield return Next("element_splash", SpellIds.CreateWater, Aim.Target, Impact, element: "water");
+        yield return Next("element_acid", "acid-splash", Aim.Target, () => pink("AcidSplash"), element: "acid");
+        yield return Next("element_lightning", "lightning-bolt", Aim.Beside, () => GameObject.Find("Arcs") is { } arcs && arcs.GetComponentsInChildren<LineRenderer>().Any(l => Hue(l.endColor, PinkColour)), element: "lightning");
 
         if (Filming) yield return EndFilm();
     }
 
-    IEnumerator Family(string family, string spell, Vector2Int at, Aim aim, bool green, Func<bool> seen)
+    // The colour set on the spell, or on its element if one is named.
+    IEnumerator Family(string family, string spell, Vector2Int at, Aim aim, bool green, Func<bool> seen, string element = null)
     {
         var def = World.Rules.Spell(spell);
         Check($"{family}_spell_known", def != null, spell);
         if (def == null) yield break;
         string title = "Look " + family.Replace('_', ' ');
-        yield return ThroughMcp($"{{\"id\":\"{spell}\",\"field\":\"look.color\",\"value\":\"{(green ? Green : Pink)}\"}}", title);
+        string colour = green ? Green : Pink;
+        yield return element != null
+            ? ThroughMcp($"{{\"id\":\"{element}\",\"param\":\"color\",\"value\":\"{colour}\",\"table\":\"element\"}}", title, "set_look")
+            : ThroughMcp($"{{\"id\":\"{spell}\",\"field\":\"look.color\",\"value\":\"{colour}\"}}", title);
         yield return Calm();
         Frame(at);
         Near(def, at, aim);
