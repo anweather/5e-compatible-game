@@ -109,6 +109,19 @@ public class ModsPanel : MonoBehaviour
             if (mods.Count + others.Count == 0) GUILayout.Label("No mods in rules/mods/ yet. Save one there (docs/MODDING.md) and it shows up here.", small);
         });
         if (switcher.LastError != null) GUILayout.Label(switcher.LastError, error);
+        DrawClaudeLine();
+    }
+
+    // How a player adds this game to their Claude (docs/MODDING.md): run it once.
+    void DrawClaudeLine()
+    {
+        string line = RulesMcpServer.ConnectLine;
+        if (line == null) return;
+        GUILayout.Label("<color=#ffffff99>Let Claude change the rules with you: run this once in a terminal, then ask it.</color>", small);
+        GUILayout.BeginHorizontal();
+        GUILayout.Label($"<size=13>{line}</size>", small);
+        if (PauseMenu.Button("Copy", null, GUILayout.Width(70), GUILayout.Height(32))) GUIUtility.systemCopyBuffer = line;
+        GUILayout.EndHorizontal();
     }
 
     void DrawRow(int i, ModFile mod)

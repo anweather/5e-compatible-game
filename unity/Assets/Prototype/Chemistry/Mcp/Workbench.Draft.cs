@@ -8,6 +8,8 @@ using System.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 
+#pragma warning disable S107 // a tool's parameters are its schema (RulesTools)
+
 namespace Chem.Mcp
 {
     public sealed partial class Workbench

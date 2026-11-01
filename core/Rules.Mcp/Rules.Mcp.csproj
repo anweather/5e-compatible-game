@@ -8,8 +8,6 @@
     <AssemblyName>Rules.Mcp</AssemblyName>
     <RootNamespace>Chem.Mcp</RootNamespace>
     <IsPackable>false</IsPackable>
-    <!-- S107: a tool's parameters are its schema, so add_spell and add_reaction take many. -->
-    <NoWarn>$(NoWarn);S107</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
