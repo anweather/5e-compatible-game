@@ -54,8 +54,10 @@ public partial class CastFeelProbe
         {
             GameFeel.Shake = 1f;
             yield return Wait(1.2f);
+            FixClock(true);
             yield return Stops();
             yield return Scaling();
+            FixClock(false);
             yield return Charging();
             yield return Off();
             GameFeel.Shake = 1f;
@@ -360,6 +362,8 @@ public partial class CastFeelProbe
     IEnumerator SameTicks(bool held, string name)
     {
         (int tick, string hash, float seconds) settled = default, with = default, without = default;
+        FixClock(true);
+        ChemGrid.ExactFrames = true; // the same ticks on the same frames, so what lands, lands at the same tick
         GameFeel.Shake = 0f;
         yield return TickRun(held, r => settled = r); // what the world before this one left behind is gone by the next
         yield return TickRun(held, r => without = r);
@@ -367,6 +371,8 @@ public partial class CastFeelProbe
         GameFeel.Shake = 1f;
         yield return TickRun(held, r => with = r);
         int stopped = beats.Stops - stops;
+        ChemGrid.ExactFrames = false;
+        FixClock(false);
         Metric($"tick_run{name}_seconds_with_stops", with.seconds);
         Metric($"tick_run{name}_seconds_without", without.seconds);
         Check($"tick_run{name}_had_hit_stops", stopped > 0, $"{stopped} stops");
