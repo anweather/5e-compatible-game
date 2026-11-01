@@ -342,7 +342,7 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     /// <summary>A spell's show from the rules in force (SpellVisuals.For), or null.</summary>
-    public SpellVisuals.Entry LookOf(string spellId) => visuals != null ? visuals.For(grid != null ? grid.World?.Rules : null, spellId) : null;
+    public SpellVisuals.Entry LookOf(string spellId) => visuals != null && grid != null ? visuals.For(grid.World?.Rules, spellId, grid.CurrentRules?.Base) : null;
 
     /// <summary>The spell comes down from above (a meteor, a storm) rather than from the hands.</summary>
     public bool FallsFromSky(string spellId) => LookOf(spellId) is { fromSky: true } or { storm: true };
@@ -359,6 +359,14 @@ public partial class SpellCaster : MonoBehaviour
 
     /// <summary>How far a spell's show is turned from its family's own colour (none without a show).</summary>
     public LookTint TintOf(string spellId) => spellId != null && LookOf(spellId) is { } look ? look.Tint : default;
+
+    /// <summary>What an element's orb in the hands is turned by: its spell's look once that's known and has one, else the element's colour.</summary>
+    public LookTint OrbTint(string element, string spellId)
+    {
+        var look = spellId != null ? LookOf(spellId) : null;
+        if (look != null && (look.ChoseColour || look.Tint.Any)) return look.Tint;
+        return grid != null ? grid.ElementTint(element, HudDraw.ElementColor(element)) : default;
+    }
 
     Vector3 Hand => pose != null ? pose.HandPosition : transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
 

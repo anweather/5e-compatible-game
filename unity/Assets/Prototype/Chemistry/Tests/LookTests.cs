@@ -257,6 +257,18 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void SameColorLooksOnlyAtTheColour()
+        {
+            var fire = Base.ElementLook("fire");
+            var taller = new LookDef { Family = "blast", R = fire.R, G = fire.G, B = fire.B, Height = 2f };
+            Assert.That(LookDef.SameColor(fire, taller), Is.True);
+            Assert.That(LookDef.Same(fire, taller), Is.False);
+            Assert.That(LookDef.SameColor(fire, Base.ElementLook("water")), Is.False);
+            Assert.That(LookDef.SameColor(fire, null), Is.False);
+            Assert.That(LookDef.SameColor(null, null), Is.True);
+        }
+
+        [Test]
         public void AReplacingEntryKeepsItsLook()
         {
             var rules = Base.WithMods(new[] { Mod("{ 'elements': { 'fire': {} }, 'gases': { 'steam': { 'name': 'Steam', 'scald': 2 } }, 'covers': { 'oil': { 'name': 'Oil', 'tags': ['slippery'] } } }") });

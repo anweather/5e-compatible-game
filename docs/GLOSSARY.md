@@ -346,6 +346,13 @@ that long, and doesn't march.
   cells knows what colour a fire is. *Not* a **theme look**, nor the plain
   tints of `BurstFx` and `FireLook`, which colour by what burns.
 
+**Chosen colour**
+: A spell's own colour, given by a mod: its `look.color` moved from the base
+  rules' to one that isn't pale. Its effects, and the fire it lights, keep it
+  whatever its element's colour is (J-052). A spell with no chosen colour
+  follows its element, the one its `element` names, once a mod moves that
+  (`SpellVisuals.Entry.ChoseColour`).
+
 ## Things in the world
 
 **Thing**

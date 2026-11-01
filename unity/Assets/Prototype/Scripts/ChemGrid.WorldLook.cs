@@ -21,6 +21,14 @@ public partial class ChemGrid
     /// <summary>The fire's colour in the rules in force, turned from its art.</summary>
     public LookTint FireElementTint => fireLook;
 
+    /// <summary>What takes art drawn in <paramref name="art"/> to an element's colour in force; none if that hasn't moved.</summary>
+    public LookTint ElementTint(string element, Color art)
+    {
+        var was = (CurrentRules?.Base ?? World.Rules).ElementLook(element);
+        var now = DrawnRules.ElementLook(element);
+        return was == null || now == null || LookDef.Same(was, now) ? default : LookTint.Between(art, ColorOf(now), 1f);
+    }
+
     /// <summary>A cover's colour in the rules in force, or <paramref name="fallback"/> with no look.</summary>
     public Color CoverColor(string cover, Color fallback)
     {
@@ -100,8 +108,7 @@ public partial class ChemGrid
     LookTint MoltenTint(Cell c, int x, int y)
     {
         if (c.Cover != CoverIds.Embers) return lavaLook;
-        var spell = SpellFireTint(x, y);
-        if (spell.Any) return spell;
+        if (SpellFire(x, y, out var spell)) return spell;
         return emberLook.Any ? emberLook : fireLook;
     }
 

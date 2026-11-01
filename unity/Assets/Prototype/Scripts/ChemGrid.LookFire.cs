@@ -25,7 +25,7 @@ public partial class ChemGrid
     /// </summary>
     public void LightInLook(SpellCaster caster, SpellDef spell, SpellVisuals.Entry look, CastCommand cast)
     {
-        if (spell == null || look == null || !look.Tint.Any || look.Tint.Washes) return;
+        if (spell == null || look == null || !look.KeepsFire) return;
         showman = caster;
         int reach = spell.Scatter?.Reach ?? 0;
         foreach (var (x, y) in World.SpellCells(spell, cast.X, cast.Y, cast.Dir, cast.Charge, cast.AimX, cast.AimY))
@@ -44,13 +44,18 @@ public partial class ChemGrid
     /// <summary>The look the fire on a cell burns in: its spell's if it chose a colour, else the fire element's.</summary>
     public LookTint FireTint(int x, int y)
     {
-        var spell = SpellFireTint(x, y);
-        return spell.Any ? spell : fireLook;
+        return SpellFire(x, y, out var tint) ? tint : fireLook;
     }
 
-    // The look of the spell that lit a cell, if one in a look of its own did.
-    LookTint SpellFireTint(int x, int y) =>
-        litBy.Count > 0 && Showman != null && litBy.TryGetValue(World.Idx(x, y), out var spell) ? Showman.TintOf(spell) : default;
+    // Whether a spell that chose a colour lit a cell, and how far that turns its fire: maybe not at all, for a colour near the art's.
+    bool SpellFire(int x, int y, out LookTint tint)
+    {
+        tint = default;
+        if (litBy.Count == 0 || Showman == null || !litBy.TryGetValue(World.Idx(x, y), out var spell)) return false;
+        if (Showman.LookOf(spell) is not { KeepsFire: true } look) return false;
+        tint = look.Tint;
+        return true;
+    }
 
     /// <summary>How far the embers on a cell are turned round the wheel, 0 to 1, for the probe.</summary>
     public float EmberTurnOn(int x, int y) => lava.TurnOn(x, y);

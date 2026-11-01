@@ -109,7 +109,7 @@ public class CastBeats : MonoBehaviour
     Animator animator;
     Blend from, body;
     string first, second;
-    LookTint tint;
+    LookTint firstTint, secondTint;
     // The core fired this spell, and the announcement of one: they arrive in either order.
     string firedSpell, announcedSpell;
     // The cast as the last whole tick left it. A tick in slices (World.StepSome) can clear a cast
@@ -276,7 +276,9 @@ public class CastBeats : MonoBehaviour
         if (cast?.Casting != true) return;
         first = cast.First;
         second = cast.Second;
-        tint = caster.TintOf(caster.SpellOf(cast));
+        string spell = caster.SpellOf(cast);
+        firstTint = caster.OrbTint(first, spell);
+        secondTint = caster.OrbTint(second, spell);
         if (firedSpell == null) Level(world.HeldCharge(cast));
     }
 
@@ -312,7 +314,7 @@ public class CastBeats : MonoBehaviour
                 firedSpell = announcedSpell = null;
                 break;
             case Beat.Fizzle:
-                orbs.Fizzle(first, second);
+                orbs.Fizzle(first, second, firstTint, secondTint);
                 firedSpell = null;
                 break;
         }
@@ -349,8 +351,8 @@ public class CastBeats : MonoBehaviour
     void Show()
     {
         bool gathering = Now is Beat.First or Beat.Second;
-        orbs.Motes(gathering ? first : null, gathering ? second : null, tint);
+        orbs.Motes(gathering ? first : null, gathering ? second : null, firstTint, secondTint);
         float energy = 1f + feel.growPerLevel * (Charge - 1) + feel.pulse * kick * kick;
-        orbs.Show(first, second, energy, body.merge, tint);
+        orbs.Show(first, second, energy, body.merge, firstTint, secondTint);
     }
 }

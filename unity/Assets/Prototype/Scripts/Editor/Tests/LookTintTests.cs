@@ -79,6 +79,114 @@ public class LookTintTests
         Assert.That(blue.Fingerprint, Is.EqualTo(plain.Fingerprint), "only its look changed");
     }
 
+    static Rules Mod(Rules rules, string patch) =>
+        rules.WithMods(new[] { ModPatch.Parse("{ \"title\": \"t\", \"idea\": \"i\", \"patch\": " + patch + " }") });
+
+    static Rules ElementIn(Rules rules, string element, string colour) =>
+        Mod(rules, $"{{ \"elements\": {{ \"{element}\": {{ \"look\": {{ \"color\": {colour} }} }} }} }}");
+
+    static void IsColour(Color drawn, float r, float g, float b, string spell)
+    {
+        Assert.That(drawn.r, Is.EqualTo(r).Within(1e-4f), spell);
+        Assert.That(drawn.g, Is.EqualTo(g).Within(1e-4f), spell);
+        Assert.That(drawn.b, Is.EqualTo(b).Within(1e-4f), spell);
+    }
+
+    [Test]
+    public void ASpellThatChoseNoColourFollowsItsElement()
+    {
+        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var blue = ElementIn(plain, "fire", "[0.2, 0.45, 1]");
+        var fireball = Visuals.For(blue, "fireball", plain);
+        Assert.That(fireball.Tint.Any, Is.True, "its whole show turns");
+        Assert.That(fireball.ChoseColour, Is.False);
+        Assert.That(fireball.KeepsFire, Is.False, "its fire is the element's, with no note of its own");
+        IsColour(fireball.glow, 0.2f, 0.45f, 1f, "fireball");
+        Assert.That(Visuals.For(blue, "fire-bolt", plain).Tint.Any, Is.True, "every spell of the element");
+        Assert.That(Visuals.For(blue, "ray-of-frost", plain).Tint.Any, Is.False, "not another element's");
+        IsColour(Visuals.For(blue, "misty-step", plain).glow, 0.85f, 0.88f, 0.95f, "a spell with no element keeps its own");
+    }
+
+    [Test]
+    public void EverySpellOfAnElementFollowsIt()
+    {
+        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        foreach (var spell in plain.Spells.Where(s => plain.ElementLook(s.Element) != null))
+        {
+            var pink = ElementIn(plain, spell.Element, "[1, 0.1, 0.6]");
+            IsColour(Visuals.For(pink, spell.Id, plain).glow, 1f, 0.1f, 0.6f, spell.Id);
+        }
+    }
+
+    [Test]
+    public void ASpellThatChoseAColourKeepsItAmongItsElements()
+    {
+        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var both = ElementIn(BlueFireballs(plain), "fire", "[0.2, 0.9, 0.3]");
+        var fireball = Visuals.For(both, "fireball", plain);
+        Assert.That(fireball.ChoseColour, Is.True);
+        Assert.That(fireball.KeepsFire, Is.True);
+        IsColour(fireball.glow, 0.2f, 0.45f, 1f, "fireball");
+        Assert.That(fireball.Tint.Turn, Is.EqualTo(Visuals.For(BlueFireballs(plain), "fireball", plain).Tint.Turn), "the element changes nothing of it");
+    }
+
+    [Test]
+    public void AColourOfTheArtsHueIsStillAChoice()
+    {
+        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var orange = Mod(ElementIn(plain, "fire", "[0.2, 0.45, 1]"), "{ \"spells\": [ " + Moved(plain, "fireball", "[1, 0.5, 0.05]") + " ] }");
+        var fireball = Visuals.For(orange, "fireball", plain);
+        Assert.That(fireball.ChoseColour, Is.True);
+        Assert.That(fireball.KeepsFire, Is.True, "orange among blue fire");
+        Assert.That(fireball.Tint.Any, Is.False, "as authored");
+    }
+
+    [Test]
+    public void APaleColourAsksForNoneSoTheElementTakesOver()
+    {
+        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var pale = Mod(plain, "{ \"spells\": [ " + Moved(plain, "fireball", "[1, 1, 1]") + " ] }");
+        Assert.That(Visuals.For(pale, "fireball", plain).ChoseColour, Is.False);
+        IsColour(Visuals.For(pale, "fireball", plain).glow, 1f, 1f, 1f, "the element hasn't moved: as a look's colour always was");
+        IsColour(Visuals.For(ElementIn(pale, "fire", "[0.2, 0.45, 1]"), "fireball", plain).glow, 0.2f, 0.45f, 1f, "fireball");
+    }
+
+    [Test]
+    public void ANewSpellWithNoColourTakesItsElementsAsItStands()
+    {
+        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        var entry = Newtonsoft.Json.Linq.JObject.Parse(Moved(plain, "fireball", "[1, 1, 1]"));
+        entry["id"] = "cold-ball";
+        entry["element"] = "cold";
+        ((Newtonsoft.Json.Linq.JObject)entry["look"]).Remove("color");
+        var look = Visuals.For(Mod(plain, "{ \"spells\": [ " + entry + " ] }"), "cold-ball", plain);
+        var cold = plain.ElementLook("cold");
+        IsColour(look.glow, cold.R, cold.G, cold.B, "cold-ball");
+        Assert.That(look.ChoseColour, Is.False);
+    }
+
+    [Test]
+    public void TheRulesAsTheyShipChangeNoShow()
+    {
+        var plain = Rules.Load(ChemGrid.FindRulesDir());
+        foreach (var spell in plain.Spells.Where(s => s.Look != null))
+        {
+            var look = Visuals.For(plain, spell.Id, plain);
+            if (look == null) continue;
+            IsColour(look.glow, spell.Look.R, spell.Look.G, spell.Look.B, spell.Id);
+            Assert.That(look.Tint.Any, Is.False, spell.Id);
+            Assert.That(look.ChoseColour, Is.False, spell.Id);
+        }
+    }
+
+    // A spell's whole entry with its colour moved, as set_spell writes it.
+    static string Moved(Rules rules, string spell, string colour)
+    {
+        var entry = Newtonsoft.Json.Linq.JObject.Parse(rules.ToJson())["spells"].First(s => (string)s["id"] == spell).DeepClone();
+        entry["look"]["color"] = Newtonsoft.Json.Linq.JArray.Parse(colour);
+        return entry.ToString();
+    }
+
     [Test]
     public void DressingTurnsAPackEffectAndLeavesItsSmoke()
     {
