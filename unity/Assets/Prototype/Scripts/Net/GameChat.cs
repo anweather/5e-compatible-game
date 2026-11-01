@@ -11,7 +11,7 @@ using UnityEngine.InputSystem;
 public class GameChat : MonoBehaviour
 {
     const int MostLines = 7, Width = 640, FontSize = 17;
-    const float LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f;
+    const float LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f, ShadeAlpha = 0.6f, ShadeEdge = 8f;
     const string Box = "game-chat-box";
     const string SignInLine = "You aren't signed in to Claude. A terminal is opening so you can: follow it, then ask again.";
 
@@ -23,7 +23,8 @@ public class GameChat : MonoBehaviour
     PlayerInput pausedInput;
     CursorLockMode cursorWas;
     bool cursorVisibleWas;
-    GUIStyle lineStyle;
+    GUIStyle lineStyle, boxStyle;
+    Texture2D shade;
 
     /// <summary>The chat, or null where the game doesn't serve Claude.</summary>
     public static GameChat Instance { get; private set; }
@@ -161,6 +162,7 @@ public class GameChat : MonoBehaviour
         if (lines.Count == 0 && !Open) return;
         HudScale.Apply();
         lineStyle ??= new GUIStyle(GUI.skin.label) { fontSize = FontSize, richText = true, wordWrap = true };
+        boxStyle ??= new GUIStyle(GUI.skin.textField) { fontSize = FontSize, alignment = TextAnchor.MiddleLeft };
         float x = (HudScale.Width - Width) / 2f, y = HudScale.Height - BottomGap - BoxHeight;
         if (Open) DrawBox(x, y);
         DrawLines(x, y);
@@ -184,7 +186,7 @@ public class GameChat : MonoBehaviour
             return;
         }
         GUI.SetNextControlName(Box);
-        typed = GUI.TextField(new Rect(x, y, Width, BoxHeight), typed);
+        typed = GUI.TextField(new Rect(x, y, Width, BoxHeight), typed, boxStyle);
         if (!focusBox) return;
         GUI.FocusControl(Box);
         focusBox = false;
@@ -201,12 +203,13 @@ public class GameChat : MonoBehaviour
             if (fade <= 0f) continue;
             float high = lineStyle.CalcHeight(new GUIContent(lines[i].text), Width);
             y -= high;
+            // A dark band behind each line, so it reads over snow and fire alike.
+            GUI.color = new Color(0f, 0f, 0f, ShadeAlpha * fade);
+            shade ??= Texture2D.whiteTexture;
+            GUI.DrawTexture(new Rect(x - ShadeEdge, y, Width + 2f * ShadeEdge, high), shade);
             GUI.color = new Color(colour.r, colour.g, colour.b, colour.a * fade);
-            GUI.Label(new Rect(x + 1f, y + 1f, Width, high), $"<color=#000000cc>{Strip(lines[i].text)}</color>", lineStyle);
             GUI.Label(new Rect(x, y, Width, high), lines[i].text, lineStyle);
         }
         GUI.color = colour;
     }
-
-    static string Strip(string text) => System.Text.RegularExpressions.Regex.Replace(text, "<.*?>", "");
 }
