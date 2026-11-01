@@ -204,7 +204,7 @@ mode, picked in Esc > Play together before hosting: Open, Host only or Locked.
 | Read | `list(table)`, `describe(table, id)`, `explain(element, material)` |
 | Draft | `add_material`, `set_material`, `add_reaction`, `set_reaction`, `add_spell`, `set_spell`, `tune`, `remove` |
 | Check | `validate(draft)`: shape, references, the design rules, determinism, budgets |
-| Run | `simulate(draft, scenario, ticks)`: `fire-on-grass`, `flood` or `storm`, with and without the draft |
+| Run | `simulate(draft, scenario, ticks)`: `fire-on-grass`, `fireball`, `flood` or `storm`, with and without the draft |
 | Save | `save(draft, title, idea)`: writes `rules/mods/<name>.json` once it validates |
 
 A draft is a patch held in memory under an id (`d1`, `d2`...): leave the

@@ -724,7 +724,7 @@ namespace Chem
         {
             if (nc.Frozen && nc.Water > 0) return 0;
             var nt = TerrainOf(nc);
-            if ((nt.Has("blocking") && !nt.Has("vessel")) || nc.Height >= Rules.Sim.Height.BlockAt) return 0;
+            if ((nt.Blocking && !nt.Vessel) || nc.Height >= Rules.Sim.Height.BlockAt) return 0;
             if (nc.Water >= Rules.Sim.WaterMaxLevel) return 0;
             int nElevation = (nt.Elevation + nc.Height) * Rules.Sim.WaterUnitsPerStep;
             int drop = level - (nElevation + nc.Water);

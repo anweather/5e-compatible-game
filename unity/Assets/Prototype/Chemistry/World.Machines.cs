@@ -78,12 +78,21 @@ namespace Chem
         {
             if (Rules.Machines.Count == 0) return;
             string poweredBy = null;
+            // Most cells are the terrain the cell before was: look an id up only when it changes.
+            string lastT = null;
+            MachineDef def = null;
             foreach (var s in rows)
             {
                 var cells = s.Chunk.Cells;
                 for (int i = s.Start; i < s.End; i++)
                 {
-                    if (!Rules.Machines.TryGetValue(cells[i].T, out var def)) continue;
+                    var t = cells[i].T;
+                    if (!ReferenceEquals(t, lastT))
+                    {
+                        lastT = t;
+                        def = Rules.Machines.TryGetValue(t, out var d) ? d : null;
+                    }
+                    if (def == null) continue;
                     int x = CellX(s.Chunk, i), y = CellY(s.Chunk, i);
                     if (!machines.TryGetValue(Idx(x, y), out var m)) machines[Idx(x, y)] = m = new MachineState();
                     RunMachine(def, m, s.Chunk.Marks[i], cells[i], x, y);

@@ -66,7 +66,7 @@ namespace Chem.Mcp
 
         static string MaterialLine(string kind, JProperty p)
         {
-            var tags = (p.Value["tags"] as JArray)?.Select(t => (string)t).ToList() ?? new List<string>();
+            var tags = Tags(p.Value);
             var verbs = ((JObject)p.Value).Properties().Where(x => x.Value is JObject).Select(x => x.Name).ToList();
             return $"{p.Name} ({Single(kind)}): {Str(p.Value["name"])}" +
                 (tags.Count > 0 ? $" [{string.Join(", ", tags)}]" : "") +
@@ -75,7 +75,7 @@ namespace Chem.Mcp
 
         static string RuleLine(JToken r) =>
             $"{Str(r["id"])} ({Str(r["element"])}): if {(r["if"] is JObject c && c.Count > 0 ? Compact(c) : "always")} do {Compact(r["do"])}" +
-            (r["stop"]?.Type == JTokenType.Boolean && (bool)r["stop"] ? ", stop" : "") +
+            (Stops(r) ? ", stop" : "") +
             (Str(r["log"]) is string log ? $". \"{log}\"" : "");
 
         static string SpellLine(JToken s)
@@ -170,38 +170,46 @@ namespace Chem.Mcp
             element = Required(element, "element");
             material = Required(material, "material");
             var doc = string.IsNullOrEmpty(draft) ? BaseDoc : JObject.Parse(RulesWith(PatchJson(draft)).ToJson());
-            if (!doc["elements"].Any(e => (string)e == element))
+            if (!IsElement(doc, element))
             {
                 // Either way round: explain(grass, fire) means fire on grass.
                 var (swappedElement, swappedMaterial) = (material, element);
-                if (doc["elements"].Any(e => (string)e == swappedElement)) return Explain(swappedElement, swappedMaterial, draft);
+                if (IsElement(doc, swappedElement)) return Explain(swappedElement, swappedMaterial, draft);
                 throw new RulesToolException($"{element} isn't an element; the elements are {string.Join(", ", doc["elements"].Select(e => (string)e))}.");
             }
             var kind = material == "water" || material == "ice" ? "water" : MaterialKinds.FirstOrDefault(k => doc[k]?[material] != null);
             if (kind == null) throw new RulesToolException($"{material} isn't a terrain, cover or gas (or water or ice); list materials to see them.");
 
+            var (lines, decided) = RulesFor(doc, element, kind, material);
+            var head = $"{element} on {material} ({(kind == "water" ? "water" : Single(kind))}):";
+            if (lines.Count == 0) return head + $"\nNo cell rule for {element} applies, so nothing happens to the {material}.";
+            var tail = decided != null ? $"\n{decided} decides it: it runs and stops the rules after it." : "\nNo rule here stops the list, so each one that holds runs, in this order.";
+            return head + "\n" + string.Join("\n", lines) + tail + OwnVerbs(kind, material);
+        }
+
+        static bool IsElement(JObject doc, string id) => doc["elements"].Any(e => (string)e == id);
+
+        /// <summary>The element's cell rules that can hold on the material, top to bottom, and the one that decides (if one does).</summary>
+        static (List<string> lines, string decided) RulesFor(JObject doc, string element, string kind, string material)
+        {
             var lines = new List<string>();
-            string decided = null;
             foreach (var rule in doc["cellRules"].Where(r => Str(r["element"]) == element))
             {
                 var (holds, needs) = Match(doc, rule["if"] as JObject, kind, material);
                 if (!holds) continue;
-                string line = $"- {Str(rule["id"])}: {Compact(rule["do"])}" + (needs.Count > 0 ? $" when {string.Join(" and ", needs)}" : "") +
-                    (Str(rule["log"]) is string log ? $" (\"{log}\")" : "");
-                lines.Add(line);
-                bool stops = rule["stop"]?.Type == JTokenType.Boolean && (bool)rule["stop"];
-                if (stops && needs.Count == 0)
-                {
-                    decided = Str(rule["id"]);
-                    break;
-                }
+                lines.Add($"- {Str(rule["id"])}: {Compact(rule["do"])}" + (needs.Count > 0 ? $" when {string.Join(" and ", needs)}" : "") +
+                    (Str(rule["log"]) is string log ? $" (\"{log}\")" : ""));
+                if (Stops(rule) && needs.Count == 0) return (lines, Str(rule["id"]));
             }
-            var head = $"{element} on {material} ({(kind == "water" ? "water" : Single(kind))}):";
-            if (lines.Count == 0) return head + $"\nNo cell rule for {element} applies, so nothing happens to the {material}.";
-            var tail = decided != null ? $"\n{decided} decides it: it runs and stops the rules after it." : "\nNo rule here stops the list, so each one that holds runs, in this order.";
+            return (lines, null);
+        }
+
+        static bool Stops(JToken rule) => rule["stop"]?.Type == JTokenType.Boolean && (bool)rule["stop"];
+
+        string OwnVerbs(string kind, string material)
+        {
             var verbs = kind == "water" ? null : (Raw["materials"][kind]?[material] as JObject)?.Properties().Where(p => p.Value is JObject).Select(p => $"{p.Name} {Compact(p.Value)}").ToList();
-            var own = verbs != null && verbs.Count > 0 ? $"\nThe {material}'s own verbs: {string.Join("; ", verbs)}." : "";
-            return head + "\n" + string.Join("\n", lines) + tail + own;
+            return verbs != null && verbs.Count > 0 ? $"\nThe {material}'s own verbs: {string.Join("; ", verbs)}." : "";
         }
 
         /// <summary>Whether a rule's conditions can hold on a cell of this material, and the conditions that depend on the moment.</summary>
@@ -209,45 +217,49 @@ namespace Chem.Mcp
         {
             var needs = new List<string>();
             if (cond == null) return (true, needs);
-            var tags = kind == "terrain" ? ((doc["terrain"][material]["tags"] as JArray)?.Select(t => (string)t).ToList() ?? new List<string>()) : null;
+            var tags = kind == "terrain" ? Tags(doc["terrain"][material]) : null;
             foreach (var p in cond.Properties())
-            {
-                switch (p.Name)
-                {
-                    case "cover":
-                        var covers = p.Value is JArray a ? a.Select(x => (string)x).ToList() : new List<string> { Str(p.Value) };
-                        if (kind != "covers" || !covers.Contains(material)) return (false, needs);
-                        break;
-                    case "terrainTag":
-                        if (kind == "terrain") { if (!tags.Contains(Str(p.Value))) return (false, needs); }
-                        else needs.Add($"the terrain is tagged {Str(p.Value)}");
-                        break;
-                    case "notTerrainTag":
-                        if (kind == "terrain") { if (tags.Contains(Str(p.Value))) return (false, needs); }
-                        else needs.Add($"the terrain isn't tagged {Str(p.Value)}");
-                        break;
-                    case "gas":
-                        if (kind != "gases" || (Str(p.Value) != "any" && Str(p.Value) != material)) return (false, needs);
-                        break;
-                    case "water":
-                        if (Truthy(p.Value) != (material == "water")) return (false, needs);
-                        break;
-                    case "frozen":
-                        if (Truthy(p.Value) != (material == "ice")) return (false, needs);
-                        break;
-                    case "melts":
-                        if (kind != "covers" || doc["covers"][material]["meltWater"] == null) return (false, needs);
-                        break;
-                    case "chance":
-                        needs.Add($"a {Num((double)p.Value)} chance comes up");
-                        break;
-                    default:
-                        needs.Add($"{p.Name} is {Compact(p.Value)}");
-                        break;
-                }
-            }
+                if (!Holds(doc, p, kind, material, tags, needs)) return (false, needs);
             return (true, needs);
         }
+
+        /// <summary>Whether one condition can hold on the material; one that depends on the moment goes in needs.</summary>
+        static bool Holds(JObject doc, JProperty p, string kind, string material, List<string> tags, List<string> needs)
+        {
+            switch (p.Name)
+            {
+                case "cover":
+                    var covers = p.Value is JArray a ? a.Select(x => (string)x).ToList() : new List<string> { Str(p.Value) };
+                    return kind == "covers" && covers.Contains(material);
+                case "terrainTag":
+                    return TagHolds(kind, tags, Str(p.Value), true, needs);
+                case "notTerrainTag":
+                    return TagHolds(kind, tags, Str(p.Value), false, needs);
+                case "gas":
+                    return kind == "gases" && (Str(p.Value) == "any" || Str(p.Value) == material);
+                case "water":
+                    return Truthy(p.Value) == (material == "water");
+                case "frozen":
+                    return Truthy(p.Value) == (material == "ice");
+                case "melts":
+                    return kind == "covers" && doc["covers"][material]["meltWater"] != null;
+                case "chance":
+                    needs.Add($"a {Num((double)p.Value)} chance comes up");
+                    return true;
+                default:
+                    needs.Add($"{p.Name} is {Compact(p.Value)}");
+                    return true;
+            }
+        }
+
+        static bool TagHolds(string kind, List<string> tags, string tag, bool tagged, List<string> needs)
+        {
+            if (kind == "terrain") return tags.Contains(tag) == tagged;
+            needs.Add(tagged ? $"the terrain is tagged {tag}" : $"the terrain isn't tagged {tag}");
+            return true;
+        }
+
+        static List<string> Tags(JToken entry) => (entry["tags"] as JArray)?.Select(t => (string)t).ToList() ?? new List<string>();
 
         // ---------- helpers ----------
 

@@ -113,9 +113,26 @@ namespace Chem
         /// <summary>Steps an updraft over it lifts what stands there (lift.by; World.LiftAt); 0 none.</summary>
         public int Lift;
 
-        // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1).
+        // Tags don't change once the rules are loaded; a set makes the sim's many tag checks O(1),
+        // and the two the water and gas passes ask of every cell are read from it once.
         HashSet<string> tagSet;
-        public bool Has(string tag) => (tagSet ??= new HashSet<string>(Tags)).Contains(tag);
+        bool blocking, vessel;
+        HashSet<string> TagSet
+        {
+            get
+            {
+                if (tagSet != null) return tagSet;
+                var set = new HashSet<string>(Tags);
+                blocking = set.Contains("blocking");
+                vessel = set.Contains("vessel");
+                return tagSet = set;
+            }
+        }
+        public bool Has(string tag) => TagSet.Contains(tag);
+        /// <summary>Tagged blocking: a wall (Has("blocking"), without the lookup).</summary>
+        public bool Blocking => TagSet != null && blocking;
+        /// <summary>Tagged vessel: a wall that holds water (Has("vessel"), without the lookup).</summary>
+        public bool Vessel => TagSet != null && vessel;
 
         /// <summary>
         /// Its verbs (docs/MATERIALS.md): it burns, breaks, conducts. What code asks instead of the
