@@ -126,8 +126,6 @@ public static class ProbeScenarios
             "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire."),
         new Entry("chimeclip", typeof(ChimeClipProbe), 60f,
             "Films the casts that used to chime (Scalding Steam, Mud, Rain Cloud, a d-pad cast) with the HUD and the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Checks: each cast started, frames and sound were written."),
-        new Entry("millclip", typeof(MillClipProbe), 90f,
-            "Films, for Andrew's board, into --shots: three deer backed into a corner of the valley by the wizard, then two leashed deer in the meadow with the wizard just outside the leash. Same corner and cameras each run. Checks: the corner found, the film saved with its sound. Metrics: each deer's moving share, metres walked and reversals a second."),
         new Entry("uxclip", typeof(UxClipProbe), 120f,
             "Films what plain shots can't show, with the HUD, into a folder each under --shots (frames for ffmpeg): grimoire/ (d-pad down, Back, then the menu's button and Back), " +
             "castbar/ (three casts pressed late between ticks) and house/ (a walk into a house's wall, the follow camera behind). Checks: each runs; a metric for the camera arm's shortest."),
@@ -186,6 +184,9 @@ public static class ProbeScenarios
             "the clouds over 70% of the sky in it, " +
             "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, snow at noon (over 2000 flakes in the air, over half " +
             "the puddles laid in the yard frozen), fog closes the haze in, no console errors."),
+        new Entry("scopelooks", typeof(ScopeLooksProbe), 200f,
+            "Scoped and mixed looks on the world, each through the real tools and a room mod (docs/design/world-tools.md): the fire round the village blue and past it plain; the fire near me green, following the wizard through a burning strip and changing back behind them; " +
+            "a blue fire meeting a yellow one burning green between them; three colours as a patchwork; gases, covers, ground and water in a scope; here() names the real player. With --shots, a film of each in a folder of its own."),
         new Entry("worldlooks", typeof(WorldLooksProbe), 150f,
             "The world's colours come from the rules in force (docs/RULES_MCP.md, \"Looks\"): the colours as they ship are today's to the number; the fire element's colour reaches what's burning and a burning lake, " +
             "one Fireball that chose its own colour keeps it (J-052); gases, covers, the ground and the water each take theirs; the mods off puts it all back. With --shots, a film of each in a folder of its own."),
@@ -297,12 +298,11 @@ public static class ProbeScenarios
             "Props sleep with their chunk (PhysicsProp, ChemGrid.ChunkSwitched): a crate levitated in the yard, then the wizard goes beyond the keep distance and back (the crate hangs in the air while asleep and falls once awake; the camera stays on it). Checks: the yard's " +
             "props awake while it's active, asleep and kinematic once it deactivates and none asleep in an active chunk, held still for 2 s, awake " +
             "again when it activates, and a shoved one moves, no console errors."),
-        new Entry("fauna", typeof(FaunaProbe), 130f,
+        new Entry("fauna", typeof(FaunaProbe), 90f,
             "The valley's animals (ValleyFauna, from Punchy's creatures): 10 s for them to come out round the camera, then a deer put 8 m north " +
             "from the wizard, then a deer, a rabbit, a turkey and a fox walking through the meadow. Checks: ValleyFauna is built with 10 " +
             "species or more, 10 animals or more are out, 20 s later two kinds of activity or more under way (grazing, resting, drinking, " +
-            "sleeping, play, hunting), the deer bolts (over 15 m from the wizard after 3 s), a deer backed into a corner of the valley mills about " +
-            "(on the move at least 25% of the time, no more than 2 reversals a second), a deer on a 7 m leash stays in reach of home running from the wizard and mills about there, no console errors."),
+            "sleeping, play, hunting), the deer bolts (over 15 m from the wizard after 3 s), no console errors."),
         new Entry("closeup", typeof(CloseupProbe), 60f,
             "Models close up at a clear noon (issue #47): a deer across the follow camera, then a deer, a valley cabin and a village log house, each from the same " +
             "cameras (`--shots`). Checks: a deer at the lens is drawn for its shadow alone, and again once past it, no limb ends in the picture, the cabin's gable closed, " +

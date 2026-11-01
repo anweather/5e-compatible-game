@@ -20,7 +20,7 @@ public partial class PerfStage
     const float CastGapSeconds = 3f, StopEverySeconds = 20f, StopSeconds = 0.8f;
     const float LookGain = 0.02f, MovedMetres = 0.01f, GaveUpSeconds = 1f, AimAheadMetres = 7f;
     const int TapFrames = 2, SwitchFrames = 30;
-    const float SwitchHoldSeconds = 3f;
+    const float SwitchHoldSeconds = 3f, ThroughDegrees = 120f, ThroughMetres = 12f;
     static readonly float[] SwitchAtSeconds = { 22f, 36f, 270f, 290f, 310f };
     const float RainAtSeconds = 120f, RainHoldsSeconds = 235f, MostCastMetres = 18f;
     const int WeatherSteps = 4;
@@ -85,6 +85,7 @@ public partial class PerfStage
         wentAt = Time.realtimeSinceStartup;
         inputs.sprint = true;
         if (Asked("-perf-look-switch")) StartCoroutine(LookSwitches());
+        if (Asked("-perf-scope-near")) NearMeGreen();
         StartCoroutine(WalkTheRing());
         StartCoroutine(StopNowAndThen());
         yield return CastAt(SpellIds.Fireball, fire);
@@ -116,6 +117,16 @@ public partial class PerfStage
         var at = Vector3.MoveTowards(wizard.transform.position, fire, MostCastMetres);
         at.y = grid.GroundAt(at);
         return at;
+    }
+
+    // "The fire near me green", on from the start, so the whole walk is with a moving scope.
+    void NearMeGreen()
+    {
+        var switcher = grid.GetComponent<RuleSwitcher>();
+        var bench = new Chem.Mcp.Workbench(ChemGrid.FindRulesDir()) { Here = new Chem.Mcp.StandInHere(new Chem.Mcp.HereSpot(switcher.Me, 0, 0)) };
+        var draft = bench.SetLook(null, ElementIds.Fire, "color", "[0.2, 0.9, 0.3]", "elements", out _, ("{\"around\": \"me\", \"within\": 10}", null));
+        string mod = new Newtonsoft.Json.Linq.JObject { ["title"] = "Near me green", ["patch"] = draft.Patch }.ToString();
+        Debug.Log("PERF SCOPE " + switcher.Ask(RoomCommand.Apply(switcher.Me, "near-me-green", mod, "Near me green")));
     }
 
     // What a look's rule switch costs: all fire blue and the grass recoloured, each on and off through
@@ -180,7 +191,10 @@ public partial class PerfStage
         while (enabled && wizard != null)
         {
             degrees += RingStepDegrees;
-            var target = RingPoint(degrees, RingStartMetres + (Time.realtimeSinceStartup - wentAt) * RingGrowthPerSecond);
+            // -perf-walk-through crosses the fire back and forth instead of walking round it.
+            bool through = Asked("-perf-walk-through");
+            if (through) degrees += ThroughDegrees;
+            var target = RingPoint(degrees, through ? ThroughMetres : RingStartMetres + (Time.realtimeSinceStartup - wentAt) * RingGrowthPerSecond);
             float best = float.MaxValue, stuckSince = Time.realtimeSinceStartup;
             while (enabled && wizard != null)
             {

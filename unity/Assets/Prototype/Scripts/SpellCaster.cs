@@ -72,6 +72,9 @@ public partial class SpellCaster : MonoBehaviour
         marker?.Destroy();
     }
 
+    /// <summary>The cell under the aim, or null when it's on nothing: here() says what the player looks at.</summary>
+    public Vector2Int? LookingAt => hasCrosshair && grid != null ? CrosshairCell : null;
+
     /// <summary>How many casts have started here, for timing them (PerfStage).</summary>
     public int CastsStarted { get; private set; }
 

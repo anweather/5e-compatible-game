@@ -39,6 +39,8 @@ public class RoomProbeSeen
     public int fireballRadius;
     /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
     public float fireTurn;
+    /// <summary>How far the fire on the cells the probe watches is turned, on this side.</summary>
+    public List<float> turns = new();
     public List<int> hashTicks = new();
     public List<string> hashes = new();
     public bool desync;
@@ -52,6 +54,9 @@ public sealed class RoomProbeRecord : IDisposable
     readonly ChemGrid grid;
     readonly NetChem net;
     readonly RoomProbeSeen seen = new();
+
+    /// <summary>The cells whose fire's colour each side reports.</summary>
+    public List<Vector2Int> WatchedCells { get; } = new();
 
     public RoomProbeRecord(ChemGrid grid, NetChem net)
     {
@@ -70,6 +75,7 @@ public sealed class RoomProbeRecord : IDisposable
         seen.rules = grid.World.Rules.Fingerprint;
         seen.fireballRadius = grid.World.Rules.Spell(SpellIds.Fireball).Radius;
         seen.fireTurn = grid.FireElementTint.Turn;
+        seen.turns = WatchedCells.Select(c => grid.FireTint(c.x, c.y).Turn).ToList();
         seen.desync = net.DesyncSeen;
         return seen;
     }
@@ -164,6 +170,15 @@ public class RoomProbeClient : MonoBehaviour
                 var cells = ask.mod.Split(',').Select(int.Parse).ToArray();
                 film = gameObject.AddComponent<RoomFilm>();
                 film.Begin(grid, wizard, new Vector2Int(cells[0], cells[1]), new Vector2Int(cells[2], cells[3]), "client");
+                break;
+            case "bolt":
+                // Casts a Fire Bolt at the second cell, and both are watched from here on.
+                var bolt = ask.mod.Split(',').Select(int.Parse).ToArray();
+                record.WatchedCells.Clear();
+                record.WatchedCells.Add(new Vector2Int(bolt[0], bolt[1]));
+                record.WatchedCells.Add(new Vector2Int(bolt[2], bolt[3]));
+                NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().GetComponent<SpellCaster>().Cast(SpellIds.FireBolt, bolt[2], bolt[3], 0);
+                yield return new WaitForSecondsRealtime(RoomOpenProbe.BoltLands);
                 break;
             case "cut":
                 film.End();
@@ -269,6 +284,9 @@ public abstract class RoomProbe : ProbeScenario
         Check($"answered_{step}_{ask}", Theirs != null, $"no answer in {ReplySeconds:0} s");
     }
 
+    /// <summary>What this side has seen by now.</summary>
+    protected RoomProbeSeen Mine => Record.Seen(id, step);
+
     /// <summary>Waits for this side to take the next decision in the room (or a few seconds).</summary>
     protected IEnumerator HostToggle(string mod)
     {
@@ -311,9 +329,65 @@ public abstract class RoomProbe : ProbeScenario
 /// <summary>Open: the client's change goes in for both, anyone reverts it, and a reset and a late join keep what's on.</summary>
 public class RoomOpenProbe : RoomProbe
 {
-    const string BlueFire = "blue-fire";
+    const string BlueFire = "blue-fire", EachPlayer = "each-player";
+    /// <summary>How long a Fire Bolt takes to land and light its cell, and a little more.</summary>
+    public const float BoltLands = 2.5f;
+    const float FilmSeconds = 5f;
 
     protected override ChangeMode Mode => ChangeMode.Open;
+
+    // Two grass cells near the wizards, apart, in active chunks.
+    List<Vector2Int> TwoGrassCells()
+    {
+        var cells = new List<Vector2Int>();
+        var from = grid.CellAt(NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position);
+        for (int y = from.y - 30; y < from.y + 30 && cells.Count < 2; y += 3)
+            for (int x = from.x - 30; x < from.x + 30 && cells.Count < 2; x++)
+            {
+                var c = World.At(x, y);
+                bool apart = cells.Count == 0 || (cells[0] - new Vector2Int(x, y)).sqrMagnitude > 400;
+                if (c != null && c.T == TerrainIds.Grass && c.Fire == 0 && apart) cells.Add(new Vector2Int(x, y));
+            }
+        return cells;
+    }
+
+    // "Each player a different fire colour": a look by player, through the same tool, and a Fire Bolt from each.
+    IEnumerator EachTheirOwn()
+    {
+        var cells = TwoGrassCells();
+        Check("two_grass_cells", cells.Count == 2, string.Join(" ", cells));
+        if (cells.Count < 2) yield break;
+        var bench = new Chem.Mcp.Workbench(ChemGrid.FindRulesDir());
+        var draft = bench.SetLook(null, "fire", "mix", "[\"#2050ff\", \"#30d040\"]", "elements", out _, (null, "each"));
+        string mod = new Newtonsoft.Json.Linq.JObject { ["title"] = "Each their own", ["patch"] = draft.Patch }.ToString();
+        Switcher.Ask(RoomCommand.Apply(Switcher.Me, EachPlayer, mod, "Each their own"));
+        yield return Agree("each_player", "Player 1 switched on Each their own (Open room)");
+        if (Theirs == null) yield break;
+        Record.WatchedCells.Clear();
+        Record.WatchedCells.AddRange(cells);
+        // With --shots, a film of the two fires from above them.
+        ClipFilm film = null;
+        if (!string.IsNullOrEmpty(ScreenshotDir))
+        {
+            var mid = (grid.CellCenter(cells[0].x, cells[0].y) + grid.CellCenter(cells[1].x, cells[1].y)) / 2f;
+            mid.y = grid.GroundAt(mid);
+            Cut(mid + V(0f, 22f, -30f), mid);
+            film = new ClipFilm(this, System.IO.Path.Combine(ScreenshotDir, "each"));
+            film.Roll();
+        }
+        NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().GetComponent<SpellCaster>().Cast(SpellIds.FireBolt, cells[0].x, cells[0].y, 0);
+        yield return Wait(BoltLands);
+        yield return Ask("bolt", $"{cells[0].x},{cells[0].y},{cells[1].x},{cells[1].y}");
+        yield return Wait(film != null ? FilmSeconds : 1f);
+        if (film != null) yield return film.Stop();
+        yield return Ask("report");
+        if (Theirs == null) yield break;
+        var mine = Mine;
+        Check("each_player_own_colour_here", mine.turns.Count == 2 && !Mathf.Approximately(mine.turns[0], mine.turns[1]), string.Join(" ", mine.turns));
+        Check("each_player_same_on_both", Theirs.turns.Count == 2 && Mathf.Approximately(Theirs.turns[0], mine.turns[0]) && Mathf.Approximately(Theirs.turns[1], mine.turns[1]), $"here {string.Join(" ", mine.turns)}, there {string.Join(" ", Theirs.turns)}");
+        Switcher.Ask(RoomCommand.Revert(Switcher.Me, EachPlayer));
+        yield return Agree("each_player_off", "Player 1 switched off Each their own (Open room)");
+    }
 
     // "Make all fire blue": a colour on the fire element, as set_look writes it, the same on both, with the rules' fingerprint unmoved.
     IEnumerator AllFireBlue()
@@ -343,6 +417,7 @@ public class RoomOpenProbe : RoomProbe
         Check("back_on_both", World.Rules.Spell(SpellIds.Fireball).Radius == radius && Theirs.fireballRadius == radius, $"radius {radius}, there {Theirs.fireballRadius}");
 
         yield return AllFireBlue();
+        yield return EachTheirOwn();
 
         yield return Ask("hostile");
         yield return Agree("bad_patch", "Switch on refused: junk doesn't pass the checks");

@@ -234,6 +234,7 @@ namespace Chem
         readonly Dictionary<string, CellLook> looks = new Dictionary<string, CellLook>(StringComparer.Ordinal);
         readonly Dictionary<string, PlaceField> fields = new Dictionary<string, PlaceField>(StringComparer.Ordinal);
         readonly WorldPlaces places;
+        readonly List<(string player, int within)> followers = new List<(string player, int within)>();
 
         LookScopes(WorldPlaces places) { this.places = places ?? WorldPlaces.Empty; }
 
@@ -255,6 +256,9 @@ namespace Chem
         /// </summary>
         public CellLook Of(string table, string id) =>
             looks.TryGetValue(Key(table, id), out var look) ? look : new CellLook(LookColour.Of(null), null, Array.Empty<CellLook.Scope>(), Array.Empty<CellLook.ByPlayer>(), Salt(table, id));
+
+        /// <summary>The players a scoped look follows and how far round them it holds: what moves as they do.</summary>
+        public IReadOnlyList<(string player, int within)> Followers => followers;
 
         /// <summary>Whether any look is mixed or scoped: if not, the view can draw as it always did.</summary>
         public bool Any => looks.Values.Any(l => !l.Plain);
@@ -279,6 +283,7 @@ namespace Chem
                 var field = s.Where.Place != null ? Field(s.Where.Place, s.Where.Within) : null;
                 if (s.Where.Place != null && field == null) continue;
                 scopes.Add(new CellLook.Scope(s, field, Mixed(salt, i + 1)));
+                if (s.Where.Around != null && !followers.Contains((s.Where.Around, s.Where.Within))) followers.Add((s.Where.Around, s.Where.Within));
             }
             looks[Key(table, id)] = new CellLook(LookColour.Of(look), table == "spells" ? null : look.Mix, scopes.ToArray(), by.ToArray(), salt);
         }
@@ -529,6 +534,9 @@ namespace Chem
             this.by = by;
             this.salt = salt;
         }
+
+        /// <summary>Its colour with no scope or player in it: what a scope's edge fades into.</summary>
+        public LookColour Colour => colour;
 
         /// <summary>One colour everywhere, no mix, no scopes and none by player: the view needn't call At per cell.</summary>
         public bool Plain => mix == null && scopes.Length == 0 && by.Length == 0;

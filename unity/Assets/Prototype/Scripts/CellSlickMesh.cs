@@ -39,6 +39,10 @@ public sealed class CellSlickMesh
 
     readonly ChemGrid grid;
     readonly Dictionary<int, string> slicks = new();
+    // Cells under a scoped look's film, and its colour on each.
+    readonly Dictionary<int, Color> scoped = new();
+    const string ScopeFilm = "scoped";
+    const float SameFilm = 0.03f;
     // Rock cells that were lava (a look only: the core's cell is plain rock).
     readonly HashSet<int> crusts = new();
     // Cells acid ate, and until when their stain shows.
@@ -115,12 +119,32 @@ public sealed class CellSlickMesh
     public void Changed(int x, int y, Cell c)
     {
         int key = grid.World.Idx(x, y);
-        var film = FilmOf(c) ?? (crusts.Contains(key) ? CrustFilm : null);
+        var film = FilmOf(c) ?? (crusts.Contains(key) ? CrustFilm : null) ?? (scoped.ContainsKey(key) ? ScopeFilm : null);
         bool had = slicks.TryGetValue(key, out var was);
         if (film != null) slicks[key] = film;
         else slicks.Remove(key);
         if (PerfCounts.On && (had ? was != film : film != null)) PerfCounts.Add("slick.changed." + (film ?? "none_was_" + was));
         if (had ? was != film : film != null) MarkAround(x, y);
+    }
+
+    /// <summary>
+    /// A scoped look's colour over what can't be drawn cell by cell (the land, the lake), as a film on the
+    /// cell, or null for none (ChemGrid.GroundFilmAt). A cell with a film of its own keeps that. Before Changed.
+    /// </summary>
+    public void Scoped(int x, int y, Color? over)
+    {
+        int key = grid.World.Idx(x, y);
+        bool had = scoped.TryGetValue(key, out var was);
+        if (over.HasValue)
+        {
+            scoped[key] = over.Value;
+            if (!had || (was - over.Value).maxColorComponent > SameFilm || (over.Value - was).maxColorComponent > SameFilm) MarkAround(x, y);
+        }
+        else if (had)
+        {
+            scoped.Remove(key);
+            MarkAround(x, y);
+        }
     }
 
     /// <summary>Ground moved at a cell: the film near it follows at the next Rebuild.</summary>
@@ -273,7 +297,9 @@ public sealed class CellSlickMesh
     {
         float ground = grid.GroundAt(ContourSurface.FlatOn(grid, gx, gy));
         float level = ContourSurface.BlendAround(gx, gy, topAt, ground);
-        return Mathf.Max(ground, level) + Lift;
+        float top = Mathf.Max(ground, level);
+        if (scoped.Count > 0) top = Mathf.Max(top, grid.DrawnSurfaceAt(gx, gy, top));
+        return top + Lift;
     }
 
     // Whether the ground beside a cell (its 8 neighbours) is a step up or down from it.
@@ -322,14 +348,15 @@ public sealed class CellSlickMesh
         if (!slicks.TryGetValue(grid.World.Idx(x, y), out var film)) return EatenColor;
         return film switch
         {
-            CoverIds.Grease => grease,
+            CoverIds.Grease => grid.LooksScoped ? grid.CoverColorAt(film, grid.World.Idx(x, y), GreaseColor) : grease,
             TerrainIds.Mud => MudColor,
             TerrainIds.Glass => GlassColor,
             TerrainIds.Brick => BrickColor,
             StarFilm => StarColor,
-            CoverIds.Frost => frost,
+            CoverIds.Frost => grid.LooksScoped ? grid.CoverColorAt(film, grid.World.Idx(x, y), FrostColor) : frost,
+            ScopeFilm => scoped.TryGetValue(grid.World.Idx(x, y), out var over) ? over : Color.clear,
             CrustFilm => CrustColor,
-            _ => oil,
+            _ => grid.LooksScoped ? grid.CoverColorAt(CoverIds.Oil, grid.World.Idx(x, y), OilColor) : oil,
         };
     }
 

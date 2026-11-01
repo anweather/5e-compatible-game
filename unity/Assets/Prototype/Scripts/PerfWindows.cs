@@ -81,6 +81,7 @@ public sealed class PerfWindows
         Split(line, "view", render);
         line.Append($" sim_pct={Num(due > 0 ? done * 100.0 / due : 100.0)} ticks={done} owed_s={Num(grid.OwedSeconds)}");
         line.Append($" weather={world.Weather.Kind} chunks={world.ActiveChunks.Count} burning={burning} flames={grid.Flames.CellsBurning}");
+        line.Append($" near_fire={BurningNearWizard()}");
         line.Append($" lights={LightsOn()} particles={ParticlesAlive()} gen0={GC.CollectionCount(0) - collectionsAtOpen}");
         foreach (var pair in counted.OrderBy(c => c.Key, StringComparer.Ordinal)) line.Append($" {pair.Key}={pair.Value.ToString(Plain)}");
         line.Append(markers);
@@ -94,6 +95,21 @@ public sealed class PerfWindows
         var stats = FrameStats.Of(ms);
         line.Append($" {name}_mean={Num(stats.MeanMs)} {name}_p50={Num(stats.P50Ms)} {name}_p95={Num(stats.P95Ms)} {name}_p99={Num(stats.P99Ms)} {name}_worst={Num(ms.Max())}");
     }
+
+    // Cells burning within 10 of the wizard: whether a walk really goes through the fire.
+    int BurningNearWizard()
+    {
+        var wizard = WizardRig.FindLocal();
+        if (wizard == null) return 0;
+        var at = grid.CellAt(wizard.transform.position);
+        int count = 0;
+        for (int y = at.y - NearCells; y <= at.y + NearCells; y++)
+            for (int x = at.x - NearCells; x <= at.x + NearCells; x++)
+                if (grid.World.At(x, y)?.Fire > 0) count++;
+        return count;
+    }
+
+    const int NearCells = 10;
 
     static int LightsOn() => UnityEngine.Object.FindObjectsByType<Light>(FindObjectsSortMode.None).Count(l => l.type != LightType.Directional);
 

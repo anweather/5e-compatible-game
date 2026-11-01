@@ -382,13 +382,12 @@ namespace Punchy.Fauna
         public int Partner;
         /// <summary>What it's paying attention to: the threat it flees, the water it drinks from.</summary>
         public float2 Focus;
-        /// <summary>A step within the mode: Play's chasing and running, Drink's going and lapping, Flee's running, veering and milling about.</summary>
         public byte Stage;
         /// <summary>Seconds in the current mode and stage.</summary>
         public float ModeTime, StageTime;
         /// <summary>Seconds alive, for breathing and chewing.</summary>
         public float Clock;
-        /// <summary>Where it lives (a den); with Leash &gt; 0 it goes no further than that from it, even fleeing.</summary>
+        /// <summary>Where it lives (a den); with Leash &gt; 0 it wanders no further than that from it.</summary>
         public float2 Home;
         public float Leash;
 
