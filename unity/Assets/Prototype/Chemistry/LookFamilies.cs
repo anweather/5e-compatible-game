@@ -58,6 +58,8 @@ namespace Chem
         /// <summary>Spells: the number the show scales with (radius, size or length; null never), and that number at scale 1.</summary>
         public string ScaleBy;
         public float Base = 1f;
+        /// <summary>Spells: the colour the family's effects are drawn in, 0 to 1 (three numbers), or null if it can't be turned from it yet.</summary>
+        public float[] Own;
     }
 
     public static class EffectScale
@@ -143,6 +145,7 @@ namespace Chem
             Tinted = (bool?)o["tinted"] ?? false,
             ScaleBy = (string)o["scaleBy"],
             Base = (float?)o["base"] ?? 1f,
+            Own = o["own"]?.Select(x => (float)x).ToArray(),
         };
 
         /// <summary>The tables whose entries may have a bare look (looks.json "bare".tables).</summary>

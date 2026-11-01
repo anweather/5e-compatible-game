@@ -72,6 +72,9 @@ public partial class SpellCaster : MonoBehaviour
         marker?.Destroy();
     }
 
+    /// <summary>How many casts have started here, for timing them (PerfStage).</summary>
+    public int CastsStarted { get; private set; }
+
     /// <summary>Selects a spell by id; false (and nothing changes) if the rules in force don't have it.</summary>
     public bool Select(string spellId)
     {
@@ -181,6 +184,7 @@ public partial class SpellCaster : MonoBehaviour
     /// <summary>A cast, perhaps aimed off the grid's four ways (CastCommand.AimX, AimY).</summary>
     public void Cast(CastCommand cast)
     {
+        CastsStarted++;
         if (shape != null && shape.Shifted)
         {
             EventLog.Add($"You can't cast spells in the {shape.FormName}'s shape. Cast to change back first.");
@@ -232,8 +236,8 @@ public partial class SpellCaster : MonoBehaviour
         // The spell leaves the hands at the gesture's release (the throw, the pull down); FlightSeconds counts it in.
         float release = CastGestures.Of(gesture).release;
         if (beats != null) beats.Announce(spellId, landing, release);
-        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast.Charge, onArrive)));
-        else Unleash(def, look, landing, cast.Charge, onArrive);
+        if (release > 0f) StartCoroutine(AtRelease(release, () => Unleash(def, look, landing, cast, onArrive)));
+        else Unleash(def, look, landing, cast, onArrive);
     }
 
     static IEnumerator AtRelease(float seconds, System.Action then)
@@ -243,61 +247,65 @@ public partial class SpellCaster : MonoBehaviour
     }
 
     // The elements with a burst of their own where they land (BurstFx); sand blasts from the hand.
-    void ElementBurst(SpellDef def, Vector3 landing, int charge)
+    void ElementBurst(SpellDef def, SpellVisuals.Entry look, Vector3 landing, int charge)
     {
-        float size = 1f + 0.5f * (World.ClampCharge(charge) - 1);
+        float size = SpellVisuals.Entry.BurstSize(look, def, charge);
+        Color? color = look?.glow;
         switch (def?.Element)
         {
             case AcidElement:
-                BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, size);
+                BurstFx.Play(BurstFx.Kind.AcidSplash, landing + Vector3.up * 0.2f, size, look: color);
                 break;
             case HeatElement when def.Needs != null:
-                Jet(landing, size);
+                Jet(landing, size, color);
                 break;
             case HeatElement:
-                BurstFx.Play(BurstFx.Kind.Forge, landing + Vector3.up * 0.1f, size);
+                BurstFx.Play(BurstFx.Kind.Forge, landing + Vector3.up * 0.1f, size, look: color);
                 break;
             case SandElement:
-                BurstFx.Play(BurstFx.Kind.SandBlast, Hand, size, Quaternion.LookRotation(landing - Hand));
+                BurstFx.Play(BurstFx.Kind.SandBlast, Hand, size, Quaternion.LookRotation(landing - Hand), look: color);
                 break;
         }
-        if (def?.Scatter != null) BurstFx.Play(BurstFx.Kind.Debris, landing, size);
+        if (def?.Scatter != null) BurstFx.Play(BurstFx.Kind.Debris, landing, size, look: color);
     }
 
     // A Geyser's jet out of the water; on dry ground, only a little puff.
-    void Jet(Vector3 landing, float size)
+    void Jet(Vector3 landing, float size, Color? look)
     {
         var cell = grid.CellAt(landing);
         var c = grid.World.At(cell.x, cell.y);
-        if (c != null && c.Water > 0 && !c.Frozen) BurstFx.Play(BurstFx.Kind.Geyser, landing, size, Quaternion.Euler(-90f, 0f, 0f));
+        if (c != null && c.Water > 0 && !c.Frozen) BurstFx.Play(BurstFx.Kind.Geyser, landing, size, Quaternion.Euler(-90f, 0f, 0f), look: look);
         else BurstFx.Play(BurstFx.Kind.Chips, landing, 0.6f);
     }
 
     // A bolt from the hand to where it strikes, and the charge runs on from there (ChemGrid.Charge).
-    void Bolt(Vector3 landing)
+    void Bolt(Vector3 landing, Color? look)
     {
-        ArcFx.Play(Hand, landing, 0.16f, 0f, 0.45f);
-        ArcFx.Play(Hand, landing, 0.07f, 0.04f, 0.4f);
+        ArcFx.Play(Hand, landing, 0.16f, 0f, 0.45f, look);
+        ArcFx.Play(Hand, landing, 0.07f, 0.04f, 0.4f, look);
         grid.ChargeStartsAt(landing);
     }
 
     // The projectile, meteor or storm, or the effect at once; onArrive when it lands.
-    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, int charge, System.Action onArrive)
+    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, CastCommand cast, System.Action onArrive)
     {
+        int charge = cast.Charge;
         void Land()
         {
             look?.PlayImpact(landing, Quaternion.LookRotation(Flat(landing - Hand)), look.ScaleFor(def, charge));
-            ElementBurst(def, landing, charge);
+            ElementBurst(def, look, landing, charge);
+            grid.LightInLook(this, def, look, cast);
             GameSounds.Play(GameSounds.LandingOf(def), landing);
             CastImpact.Landed(def, landing, charge);
             onArrive?.Invoke();
         }
 
-        if (def?.Element == LightningElement && def.Shape == SpellShapes.Line) Bolt(landing);
+        if (def?.Element == LightningElement && def.Shape == SpellShapes.Line) Bolt(landing, look?.glow);
         if (look == null) Land();
         else if (look.fromSky)
             MeteorFall.Launch(landing, transform.position, look, () =>
             {
+                grid.LightInLook(this, def, look, cast);
                 GameSounds.Play(GameSounds.LandingOf(def), landing);
                 onArrive?.Invoke();
             }, this, blastScale: look.ScaleFor(def, charge));
@@ -307,20 +315,20 @@ public partial class SpellCaster : MonoBehaviour
     // How a show that doesn't fall from the sky gets where it lands: a storm, a beam, a projectile, or at once.
     void Travel(SpellVisuals.Entry look, SpellDef def, int charge, Vector3 landing, System.Action land)
     {
-        if (look.storm) Storm(def, charge, landing, land);
-        else if (look.beam) FrostBeam.Launch(Hand, landing + Vector3.up * BeamLift, look.glow, land, this);
-        else if (look.projectile != null) SpellProjectile.Launch(look.projectile, Hand, landing, land, this);
+        if (look.storm) Storm(look, def, charge, landing, land);
+        else if (look.beam) FrostBeam.Launch(Hand, landing + Vector3.up * BeamLift, look.glow, land, this, look.Tint);
+        else if (look.projectile != null) SpellProjectile.Launch(look, Hand, landing, land, this, look.ScaleFor(def, 1));
         else land();
     }
 
     // A storm over the spell's squares (a burst's radius each way of the target), for the spell's
     // duration if it has one, else a few seconds; it lands when the first of it reaches the ground.
-    void Storm(SpellDef def, int charge, Vector3 landing, System.Action land)
+    void Storm(SpellVisuals.Entry look, SpellDef def, int charge, Vector3 landing, System.Action land)
     {
         int radius = def != null ? def.Radius + World.ChargedGrowth(def, charge) : 0;
         float halfWidth = (radius + 0.5f) * grid.cellSize;
         float seconds = def != null && def.Duration > 0 ? def.Duration / (float)grid.World.Rules.Sim.TicksPerSecond : SleetStorm.Seconds;
-        SleetStorm.Launch(landing, halfWidth, seconds, transform.position, land, this);
+        SleetStorm.Launch(landing, halfWidth, seconds, transform.position, land, this, look.Tint);
     }
 
     // Found lazily: a networked wizard gets its grid assigned after Awake.
@@ -348,6 +356,9 @@ public partial class SpellCaster : MonoBehaviour
 
     /// <summary>The colour of the glow in the caster's hand for a spell.</summary>
     public Color GlowOf(string spellId) => LookOf(spellId)?.glow ?? Color.white;
+
+    /// <summary>How far a spell's show is turned from its family's own colour (none without a show).</summary>
+    public LookTint TintOf(string spellId) => spellId != null && LookOf(spellId) is { } look ? look.Tint : default;
 
     Vector3 Hand => pose != null ? pose.HandPosition : transform.position + Vector3.up * 1.3f + transform.forward * 0.4f;
 

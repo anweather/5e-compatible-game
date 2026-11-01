@@ -6,18 +6,19 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 
-// A Linux x86_64 player (Mono, Vulkan only) of a tag that shipped without one, to play
-// online with that tag's published players. No Editor window, on the Mac or the PC:
+// A Linux x86_64 player (Mono, Vulkan only), in the same release as Windows (J-051). No Editor
+// window: tools/ship-update.sh X.Y.Z --linux-only, or by hand
 // -batchmode -nographics -quit -buildTarget Linux64 -executeMethod LinuxBuild.FromCommandLine
-// -rebuild-yard -expect-commit abc1234 -expect-net-config 123, into Builds/Linux/.
+// -rebuild-yard -build-version X.Y.Z -expect-commit abc1234 -expect-net-config 123,
+// into Builds/Linux/.
 //
 // The host turns away a player whose stamp differs (BuildVersion.Mismatch), and a stamp is
-// the commit checked out. So check out the tag itself and add this file to it, untracked,
-// which WriteStamp doesn't count as a change: built from a commit holding this file, the
-// player couldn't join the tag's players. -expect-commit refuses that, and -expect-net-config
-// refuses a different Netcode hash before the long shader compile.
+// the commit checked out. -expect-commit refuses another commit, and -expect-net-config a
+// different Netcode hash before the long shader compile. A tag older than 3fe8f5f has no copy
+// of this file: check that tag out and add this file to it, untracked, which WriteStamp doesn't
+// count as a change, as a commit holding it couldn't join the tag's players.
 //
-// Vulkan is set only for this build and put back afterwards, like UpdateBuild's version.
+// Vulkan and the version are set only for this build and put back afterwards, like UpdateBuild's.
 public static class LinuxBuild
 {
     const BuildTarget Target = BuildTarget.StandaloneLinux64;
@@ -60,9 +61,11 @@ public static class LinuxBuild
 
         bool wasDefault = PlayerSettings.GetUseDefaultGraphicsAPIs(Target);
         var was = PlayerSettings.GetGraphicsAPIs(Target);
+        string wasVersion = PlayerSettings.bundleVersion;
         PackRulesIntoBuild.VersionOnlyInMemory = true;
         try
         {
+            PlayerSettings.bundleVersion = Argument("-build-version") ?? wasVersion;
             PlayerSettings.SetUseDefaultGraphicsAPIs(Target, false);
             PlayerSettings.SetGraphicsAPIs(Target, new[] { GraphicsDeviceType.Vulkan });
             string path = $"{Folder}/{Exe}";
@@ -74,6 +77,7 @@ public static class LinuxBuild
         finally
         {
             PackRulesIntoBuild.VersionOnlyInMemory = false;
+            PlayerSettings.bundleVersion = wasVersion;
             PlayerSettings.SetGraphicsAPIs(Target, was);
             PlayerSettings.SetUseDefaultGraphicsAPIs(Target, wasDefault);
             AssetDatabase.SaveAssets();

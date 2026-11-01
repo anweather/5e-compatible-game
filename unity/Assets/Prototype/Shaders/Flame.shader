@@ -9,6 +9,7 @@ Shader "Prototype/Flame"
     // A sheet of 3 marks a drop of the dragon's stream (DragonBreath): a GPU particle with no state,
     // flying each time round from _StreamMouth past _StreamBend to where it lands (its `at`), drawn out
     // along its way and facing the camera from any side, the large sheet's fire added to what's behind.
+    // A flame's `turn` turns its colour round the wheel: a spell's fire in that spell's look (LookTint).
     Properties
     {
         [NoScaleOffset] _SheetTiny ("Tiny flames (11 x 11)", 2D) = "black" {}
@@ -32,6 +33,7 @@ Shader "Prototype/Flame"
             #pragma fragment Frag
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
+            #include "HueTurn.hlsl"
 
             struct Flame
             {
@@ -39,7 +41,7 @@ Shader "Prototype/Flame"
                 float seed;
                 float wide, tall, speed, born;
                 float4 tint;
-                float gone, sheet, wander, pad;
+                float gone, sheet, wander, turn;
             };
 
             StructuredBuffer<Flame> _Flames;
@@ -60,6 +62,7 @@ Shader "Prototype/Flame"
                 nointerpolation float frame : TEXCOORD3;
                 float fade : TEXCOORD4;
                 half fogFactor : TEXCOORD5;
+                nointerpolation float turn : TEXCOORD6;
             };
 
             float Hash(float a, float b)
@@ -150,6 +153,7 @@ Shader "Prototype/Flame"
                 o.frame = frame;
                 o.fade = fade;
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
+                o.turn = f.turn;
                 return o;
             }
 
@@ -160,7 +164,7 @@ Shader "Prototype/Flame"
                     float2 p = input.uv * 2.0 - 1.0;
                     float spark = saturate(1.0 - length(float2(p.x, input.uv.y * 2.0 - 1.0)));
                     float glow = spark * spark * input.fade;
-                    return half4(half3(1.0, 0.42, 0.08) * glow * 3.0, glow);
+                    return half4(HueTurn(half3(1.0, 0.42, 0.08), input.turn) * glow * 3.0, glow);
                 }
                 float tiles = Tiles(input.sheet);
                 float row = floor(input.frame / tiles), column = input.frame - row * tiles;
@@ -173,7 +177,7 @@ Shader "Prototype/Flame"
                 // The frames run off their bottom edge; the pack's soft particles hid that where they met the ground.
                 float alpha = c.a * input.tint.a * input.fade * smoothstep(0.0, 0.16, input.uv.y);
                 // As the pack's materials: half again as bright as the sheet, which is what blooms.
-                half3 color = c.rgb * input.tint.rgb * 1.5;
+                half3 color = HueTurn(c.rgb * input.tint.rgb, input.turn) * 1.5;
                 // A drop adds to what's behind it, so fog only dims it.
                 if (input.sheet > DropSheet) return half4(MixFogColor(color * alpha, half3(0.0, 0.0, 0.0), input.fogFactor), 0.0);
                 return half4(MixFog(color * alpha, input.fogFactor), alpha);

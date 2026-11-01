@@ -6,8 +6,9 @@ using UnityEngine;
 // (ContourSurface), drawn by Prototype/CellLava as glowing cracks in a dark
 // crust. Its vertex red is how hot the cell is, so a pool's cracks close as it
 // cools towards rock; its alpha fades the edge. Fireball's and a star's burning
-// debris (the embers cover) is drawn in it too, duller. Rebuilt only when a cell
-// changes (a pool's heat is drawn in steps: ChemGrid.HeatLevel). Only the show.
+// debris (the embers cover) is drawn in it too, duller, and in the look of the
+// spell that threw it (vertex green: LookTint). Rebuilt only when a cell changes
+// (a pool's heat is drawn in steps: ChemGrid.HeatLevel). Only the show.
 public sealed class CellLavaMesh
 {
     const float Lift = 0.03f, FadeWidth = 0.3f;
@@ -17,7 +18,8 @@ public sealed class CellLavaMesh
     readonly ContourSurface surface;
     readonly Material material;
     readonly Dictionary<int, float> heat = new();
-    readonly System.Func<int, int, float?> heatAt;
+    readonly Dictionary<int, float> turns = new();
+    readonly System.Func<int, int, float?> heatAt, turnAt;
     bool dirty;
 
     public CellLavaMesh(ChemGrid grid, Shader shader)
@@ -27,6 +29,7 @@ public sealed class CellLavaMesh
         material = new Material(shader);
         surface = new ContourSurface(grid, "Lava", material, Outline, 4f);
         heatAt = (x, y) => grid.World.InBounds(x, y) && heat.TryGetValue(grid.World.Idx(x, y), out float h) ? h : null;
+        turnAt = (x, y) => grid.World.InBounds(x, y) && turns.TryGetValue(grid.World.Idx(x, y), out float t) ? t : null;
     }
 
     /// <summary>How many cells of lava are drawn, for the probe.</summary>
@@ -34,14 +37,21 @@ public sealed class CellLavaMesh
 
     public static bool IsLava(Cell c) => c.T == TerrainIds.Lava || c.T == TerrainIds.LavaPool;
 
-    /// <summary>A cell was redrawn: <paramref name="hot"/> is how hot it looks, 0 to 1. True if it was lava and isn't now, so the crust it left can show.</summary>
-    public bool Changed(int x, int y, Cell c, float hot)
+    /// <summary>How far the glow on a cell is turned round the wheel, 0 to 1, for the probe.</summary>
+    public float TurnOn(int x, int y) => turns.TryGetValue(grid.World.Idx(x, y), out float t) ? t : 0f;
+
+    /// <summary>A cell was redrawn: <paramref name="hot"/> is how hot it looks, 0 to 1, in <paramref name="tint"/>. True if it was lava and isn't now, so the crust it left can show.</summary>
+    public bool Changed(int x, int y, Cell c, float hot, LookTint tint = default)
     {
         int key = grid.World.Idx(x, y);
         bool now = IsLava(c) || c.Cover == CoverIds.Embers, had = heat.TryGetValue(key, out float was);
         if (now) heat[key] = hot;
         else heat.Remove(key);
-        dirty |= had != now || (now && !Mathf.Approximately(was, hot));
+        float turn = now ? Mathf.Repeat(tint.Turn / (2f * Mathf.PI), 1f) : 0f;
+        bool turned = turns.TryGetValue(key, out float wasTurn) ? !Mathf.Approximately(wasTurn, turn) : turn > 0f;
+        if (turn > 0f) turns[key] = turn;
+        else turns.Remove(key);
+        dirty |= had != now || turned || (now && !Mathf.Approximately(was, hot));
         return had && !now;
     }
 
@@ -61,7 +71,8 @@ public sealed class CellLavaMesh
     Color Shade(float gx, float gy, float value)
     {
         float hot = ContourSurface.BlendAround(gx, gy, heatAt, 0f);
-        return new Color(hot, 0f, 0f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(Outline.Iso, Outline.Iso + FadeWidth, value)));
+        float turn = turns.Count > 0 ? ContourSurface.BlendAround(gx, gy, turnAt, 0f) : 0f;
+        return new Color(hot, turn, 0f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(Outline.Iso, Outline.Iso + FadeWidth, value)));
     }
 
     RectInt Box()

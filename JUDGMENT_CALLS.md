@@ -41,6 +41,36 @@ Each entry has:
 
 ## Decided
 
+### J-054: Which sound is the annoying chime, and what replaces it?
+
+- **Asked:** 2026-10-31 by Andrew ("the little chime thing is super annoying"); answered 2026-11-01.
+- **Also comes up when:** any new sound, a Sending or UI cue, the rest of the sound pass.
+- **Answer:** Andrew: it's `arcane`; "No more chimes. Whoosh is ok." So `arcane` becomes the no-tone whoosh, and
+  no sound in the game may be a chime. PM's reading: `shatter` loses its tinkle (`shatter-no-tinkle`) and the
+  frost stand-in goes too. `splash`'s plop and `blink`'s soft pad aren't chimes and stay. The planned
+  Sending chime in `docs/MULTIPLAYER.md` needs another sound when it's built.
+- **Why:** it plays on most casts and its 1.5 s ring outlasts them.
+- **Revisited:** 0.
+
+### J-053: Land the lag fix with hosted p99 at 33.2 ms against a 33 ms gate?
+
+- **Asked:** 2026-11-01, by DesktopUnity (one 30 s stretch of long hosted rain read 33.2 ms; the rest 31-33).
+- **Also comes up when:** any perf gate missed by less than the run-to-run noise.
+- **Answer:** PM's call, land it. Andrew's "make a call" standing rule applies.
+- **Why:** 0.2 ms over in one stretch is noise next to the change (898 to 32 ms p99, 1720 frames over 50 ms
+  to 0, sim 37% to 100%). Holding it would keep the 9 fps collapse in the game for a rounding error.
+- **Revisited:** 0.
+
+### J-052: Do a recoloured spell's ground flames take its colour?
+
+- **Asked:** 2026-11-01, by the Mac (spell effects follow `look.color`; its `LookFire` also turns the flames blue).
+- **Also comes up when:** element colours land, any look a spell leaves in the world, online play.
+- **Answer:** PM's call, yes for now. Keep `LookFire`. When an element's colour lands it replaces this
+  where the spell didn't choose a colour, and that work settles how a plain fire beside a blue one behaves.
+- **Why:** orange flames under a blue fireball is the complaint Andrew started from. It's view-only, so it
+  can't reach lockstep; two peers may differ at the edges of a fire.
+- **Revisited:** 0.
+
 ### J-051: Is Linux its own build or part of the release?
 
 - **Asked:** 2026-11-01, by Andrew: "We should treat Linux and win the same release version".

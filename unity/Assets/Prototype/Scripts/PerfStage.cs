@@ -16,8 +16,9 @@ using UnityEngine;
 // every loaded material on URP's Particles/Lit shader (PerfPsoCheck). dragon films
 // a real flight from one spot over the valley (give -perf-seconds for the length you
 // want), dragonclear the same spot without it, and dragonlow one from a wizard's height
-// in the valley's middle, for the wall going through the camera.
-public class PerfStage : ShowcaseScript
+// in the valley's middle, for the wall going through the camera. forestload is a player's
+// fire with the player still playing (PerfStage.ForestLoad.cs).
+public partial class PerfStage : ShowcaseScript
 {
     // Hollowmere's place and square in cells (world/villages.json).
     const int HollowmereX = 222, HollowmereY = 300, SquareX = 5, SquareY = 6;
@@ -40,13 +41,14 @@ public class PerfStage : ShowcaseScript
 
     protected override IEnumerator Play()
     {
-        yield return Sky(Scenario is "storm" or "snow" or "fog" ? Scenario : "clear");
+        yield return Sky(Scenario is "storm" or "rain" or "snow" or "fog" ? Scenario : "clear");
         if (Scenario == "wildfire") yield return Wildfire();
         else if (Scenario == "village") Hollowmere();
         else if (Scenario == "forest") LogMap();
         else if (Scenario is "dragon" or "dragonclear" or "dragonlow") DragonShot();
         else Cut(V(40f, 10f, 1f), V(28f, 0f, 15f));
         if (Scenario == "forest") StartCoroutine(Walk());
+        if (Scenario == "forestload") ForestLoadStage();
         if (Scenario == "aim") StartCoroutine(Aim());
         if (Scenario == "flamewall") StartCoroutine(FlameWall());
         if (Scenario == "pso") yield return new PerfPsoCheck(this).Run();
@@ -210,8 +212,17 @@ public class PerfStage : ShowcaseScript
         if (Asked("-perf-lights-off"))
             foreach (var light in FindObjectsByType<Light>(FindObjectsSortMode.None))
                 if (light.type != LightType.Directional) light.enabled = false;
+        if (Asked("-perf-water-hidden")) Hide("Water and ice");
+        if (Asked("-perf-slicks-hidden")) Hide("Slicks");
         if (Asked("-perf-smoke-off"))
             foreach (var look in FindObjectsByType<ParticleSystemRenderer>(FindObjectsSortMode.None)) look.enabled = false;
+    }
+
+    // Takes a surface's meshes out of the picture, to see what they cost the GPU.
+    static void Hide(string surface)
+    {
+        var root = GameObject.Find(surface);
+        if (root != null) root.SetActive(false);
     }
 
     /// <summary>Takes the camera to a fixed shot; for PerfPsoCheck.</summary>

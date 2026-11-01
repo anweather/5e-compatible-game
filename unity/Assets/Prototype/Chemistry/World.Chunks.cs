@@ -251,18 +251,83 @@ namespace Chem
         /// </summary>
         public string CellHash()
         {
+            var sum = Fnv1aSum.Start();
+            foreach (var c in Cells) AddCell(ref sum, c);
+            return CloseHash(sum);
+        }
+
+        /// <summary>What CellHash hashes, as text: for a test that the running hash agrees with it.</summary>
+        public string CellText()
+        {
             var sb = new StringBuilder();
             foreach (var c in Cells) AppendCell(sb, c);
             foreach (ulong thing in crackedThings) sb.Append('!').Append(thing.ToString(System.Globalization.CultureInfo.InvariantCulture));
-            return Fnv1a.Hash(sb.ToString());
+            return sb.ToString();
+        }
+
+        /// <summary>Adds one of <paramref name="slices"/> slices of the cells to a running hash (RollingHash): row-major, by the world's size alone.</summary>
+        public void HashSlice(ref Fnv1aSum sum, int slice, int slices)
+        {
+            int from = (int)((long)Cells.Length * slice / slices), to = (int)((long)Cells.Length * (slice + 1) / slices);
+            for (int i = from; i < to; i++) AddCell(ref sum, Cells[i]);
+        }
+
+        /// <summary>What a hash of the cells ends with: the things cracked so far.</summary>
+        public string CloseHash(Fnv1aSum sum)
+        {
+            foreach (ulong thing in crackedThings)
+            {
+                sum.Add('!');
+                sum.AddDigits(thing);
+            }
+            return sum.ToString();
         }
 
         /// <summary>The same fingerprint over one chunk's cells (those inside the world), row by row.</summary>
         public string ChunkHash(int cx, int cy)
         {
-            var sb = new StringBuilder();
-            foreach (var c in ChunkOrThrow(cx, cy).Cells) if (c != null) AppendCell(sb, c);
-            return Fnv1a.Hash(sb.ToString());
+            var sum = Fnv1aSum.Start();
+            foreach (var c in ChunkOrThrow(cx, cy).Cells) if (c != null) AddCell(ref sum, c);
+            return sum.ToString();
+        }
+
+        // What AppendCell writes, into a running hash.
+        static void AddCell(ref Fnv1aSum sum, Cell c)
+        {
+            sum.Add(c.T);
+            sum.Add(',');
+            sum.Add(c.Water);
+            sum.Add(',');
+            sum.Add(c.Frozen ? '1' : '0');
+            sum.Add(',');
+            sum.Add(c.Cover);
+            sum.Add(',');
+            sum.Add(c.Fire);
+            sum.Add(',');
+            sum.Add(c.Fuel);
+            sum.Add(',');
+            sum.Add(c.Gas);
+            sum.Add(',');
+            sum.Add(c.GasAmt);
+            sum.Add(',');
+            sum.Add(c.Charge);
+            AddIfSet(ref sum, 'h', c.Height);
+            AddIfSet(ref sum, 'l', c.Life);
+            AddIfSet(ref sum, 'r', c.Rust);
+            AddIfSet(ref sum, 't', c.Heat);
+            AddIfSet(ref sum, 'b', c.Lit);
+            AddIfSet(ref sum, 'k', c.Slick);
+            AddIfSet(ref sum, 's', c.Star);
+            AddIfSet(ref sum, 'c', c.Cracked);
+            sum.Add(';');
+        }
+
+        static void AddIfSet(ref Fnv1aSum sum, char tag, int value)
+        {
+            if (value == 0) return;
+            sum.Add(',');
+            sum.Add(tag);
+            sum.Add(value);
         }
 
         static void AppendCell(StringBuilder sb, Cell c)

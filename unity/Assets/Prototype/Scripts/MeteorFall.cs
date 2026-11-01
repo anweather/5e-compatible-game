@@ -12,6 +12,7 @@ using UnityEngine;
 // flight (the solo wizard when the game goes online) it fizzles, like a
 // SpellProjectile. Falling Star is a small one (size under 1), lands in a second
 // and starts from the core's World.Stars (ChemGrid.RenderStars), so it has no onArrive.
+// All of it takes its look (LookTint): the flames, the trail, the rock's heat and the light.
 public class MeteorFall : MonoBehaviour
 {
     /// <summary>How long a meteor takes to fall (the spell lands this long after the cast).</summary>
@@ -75,6 +76,7 @@ public class MeteorFall : MonoBehaviour
         body.transform.SetParent(transform, false);
         body.transform.localScale = RockSize * size * (stones != null && stones.Length > 0 ? 1.4f : 1f) * Vector3.one;
         foreach (var r in body.GetComponentsInChildren<Renderer>()) r.sharedMaterial = hot;
+        if (Tint.Any) Heat(body);
         rock = body.transform;
 
         if (look?.projectile != null)
@@ -82,10 +84,11 @@ public class MeteorFall : MonoBehaviour
             var flames = Instantiate(look.projectile, transform);
             SpellVisuals.NoColliders(flames);
             flames.transform.localScale = Vector3.one * (3f * size);
+            look.Dress(flames);
         }
         Trail("Fire trail", trail, 0.9f, 2.4f * size, 0f, new Gradient
         {
-            colorKeys = new[] { new GradientColorKey(new Color(1f, 0.95f, 0.8f), 0f), new GradientColorKey(new Color(1f, 0.5f, 0.12f), 0.35f), new GradientColorKey(new Color(0.6f, 0.12f, 0.04f), 1f) },
+            colorKeys = new[] { new GradientColorKey(Tint.Of(new Color(1f, 0.95f, 0.8f)), 0f), new GradientColorKey(Tint.Of(new Color(1f, 0.5f, 0.12f)), 0.35f), new GradientColorKey(Tint.Of(new Color(0.6f, 0.12f, 0.04f)), 1f) },
             alphaKeys = new[] { new GradientAlphaKey(1f, 0f), new GradientAlphaKey(0.8f, 0.4f), new GradientAlphaKey(0f, 1f) },
         });
         Trail("Smoke trail", smoke, 3f, 1.5f * size, 5f * size, new Gradient
@@ -97,9 +100,19 @@ public class MeteorFall : MonoBehaviour
         glow = new GameObject("Meteor light").AddComponent<Light>();
         glow.transform.SetParent(transform, false);
         glow.type = LightType.Point;
-        glow.color = new Color(1f, 0.55f, 0.2f);
+        glow.color = Tint.Of(new Color(1f, 0.55f, 0.2f));
         glow.range = 60f * size;
         glow.intensity = 4f;
+    }
+
+    LookTint Tint => look != null ? look.Tint : default;
+
+    // The rock's own heat in the look's colour: the material is shared with every other meteor.
+    void Heat(GameObject body)
+    {
+        var heat = new MaterialPropertyBlock();
+        heat.SetColor("_EmissionColor", Tint.Of(new Color(1f, 0.45f, 0.12f)) * 2.5f);
+        foreach (var r in body.GetComponentsInChildren<Renderer>()) r.SetPropertyBlock(heat);
     }
 
     // A particle material from an effect prefab (the one named, or its first), or null.
@@ -155,7 +168,7 @@ public class MeteorFall : MonoBehaviour
         }
         else
         {
-            BurstFx.Play(BurstFx.Kind.Flash, to + Vector3.up * 0.2f, 4f * size);
+            BurstFx.Play(BurstFx.Kind.Flash, to + Vector3.up * 0.2f, 4f * size, look: look?.glow);
             BurstFx.Play(BurstFx.Kind.Chips, to, 12f * size, null, new Color(0.32f, 0.26f, 0.2f));
         }
         CastImpact.Felt(to, Mathf.Clamp01(size)); // shake and rumble, hardest near the blast
@@ -167,7 +180,7 @@ public class MeteorFall : MonoBehaviour
         glow.transform.SetParent(null, true);
         glow.transform.position = to + Vector3.up * (6f * size);
         glow.range = 90f * size;
-        glow.color = new Color(1f, 0.7f, 0.4f);
+        glow.color = Tint.Of(new Color(1f, 0.7f, 0.4f));
         for (float s = 0f; s < 1.6f; s += Time.deltaTime)
         {
             float f = 1f - s / 1.6f;
@@ -185,6 +198,7 @@ public class MeteorFall : MonoBehaviour
         var fx = SpellVisuals.Spawn(prefab, to, Quaternion.identity);
         fx.transform.localScale = Vector3.one * scale;
         SpellVisuals.Scale(fx, blastScale);
+        look?.Dress(fx);
         Destroy(fx, Mathf.Max(3f, look?.impactSeconds ?? 3f));
     }
 }

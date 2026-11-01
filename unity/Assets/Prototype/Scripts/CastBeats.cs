@@ -109,6 +109,7 @@ public class CastBeats : MonoBehaviour
     Animator animator;
     Blend from, body;
     string first, second;
+    LookTint tint;
     // The core fired this spell, and the announcement of one: they arrive in either order.
     string firedSpell, announcedSpell;
     // The cast as the last whole tick left it. A tick in slices (World.StepSome) can clear a cast
@@ -140,6 +141,9 @@ public class CastBeats : MonoBehaviour
     }
 
     void OnDestroy() => orbs?.Destroy();
+
+    /// <summary>The colour of the orb in a hand (0 right, 1 left), for the probe.</summary>
+    public Color OrbColor(int hand) => orbs.OrbColor(hand);
 
     /// <summary>
     /// A cast was announced for this wizard: its spell, where it's going, and how long until it
@@ -272,6 +276,7 @@ public class CastBeats : MonoBehaviour
         if (cast?.Casting != true) return;
         first = cast.First;
         second = cast.Second;
+        tint = caster.TintOf(caster.SpellOf(cast));
         if (firedSpell == null) Level(world.HeldCharge(cast));
     }
 
@@ -344,8 +349,8 @@ public class CastBeats : MonoBehaviour
     void Show()
     {
         bool gathering = Now is Beat.First or Beat.Second;
-        orbs.Motes(gathering ? first : null, gathering ? second : null);
+        orbs.Motes(gathering ? first : null, gathering ? second : null, tint);
         float energy = 1f + feel.growPerLevel * (Charge - 1) + feel.pulse * kick * kick;
-        orbs.Show(first, second, energy, body.merge);
+        orbs.Show(first, second, energy, body.merge, tint);
     }
 }

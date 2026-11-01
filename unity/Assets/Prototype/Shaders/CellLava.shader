@@ -3,7 +3,8 @@ Shader "Prototype/CellLava"
     // Lava on the ground (CellLavaMesh): plates of dark crust with glowing cracks between them, the
     // cracks crawling slowly. No textures: the plates are a Voronoi pattern in world space. Vertex red
     // is how hot it is (1 molten, wide bright cracks; 0 cooled, closed and dark); vertex alpha fades
-    // the edge. The glow runs past 1, so it blooms.
+    // the edge; vertex green turns the glow round the wheel, 1 a whole turn (a spell's embers in its
+    // look: LookTint). The glow runs past 1, so it blooms.
     Properties { }
     SubShader
     {
@@ -22,6 +23,7 @@ Shader "Prototype/CellLava"
             #pragma multi_compile_fog
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+            #include "HueTurn.hlsl"
 
             struct Attributes
             {
@@ -92,6 +94,7 @@ Shader "Prototype/CellLava"
                 half3 n = normalize(input.normalWS);
                 half3 crust = half3(0.05, 0.04, 0.036) * (saturate(dot(n, light.direction)) * light.color + SampleSH(n));
                 half3 glow = lerp(half3(1.6, 0.16, 0.02), half3(6.0, 2.2, 0.35), crack * crack) * (0.25 + 0.75 * hot);
+                glow = HueTurn(glow, input.color.g * TWO_PI);
                 half3 color = lerp(crust, glow, saturate(crack * (0.35 + 0.65 * hot)));
                 return half4(MixFog(color, input.fogFactor), input.color.a);
             }

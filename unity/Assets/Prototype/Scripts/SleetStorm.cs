@@ -11,7 +11,8 @@ using UnityEngine;
 // Punchy's precipitation shader, the weather's own rain and snow materials
 // (WeatherFx), so it's lit like the sky around it. Presentation only. If a
 // caster is given and is destroyed before it lands (the solo wizard when the
-// game goes online) it doesn't land, like a SpellProjectile.
+// game goes online) it doesn't land, like a SpellProjectile. Cloud, sleet,
+// pellets and spray all take the spell's look (LookTint).
 public class SleetStorm : MonoBehaviour
 {
     /// <summary>How long the storm rages when the spell has no duration of its own.</summary>
@@ -40,6 +41,7 @@ public class SleetStorm : MonoBehaviour
     UnityEngine.Object caster;
     bool hasCaster;
     Vector3 drift;
+    LookTint look;
     ParticleSystem spray;
     AudioSource hiss, wind;
 
@@ -48,12 +50,13 @@ public class SleetStorm : MonoBehaviour
     /// <paramref name="center"/> for <paramref name="seconds"/>, slanting across the view from
     /// <paramref name="viewer"/> unless the wind blows. <paramref name="onArrive"/> runs once, LandSeconds in.
     /// </summary>
-    public static SleetStorm Launch(Vector3 center, float halfWidth, float seconds, Vector3 viewer, Action onArrive, UnityEngine.Object caster)
+    public static SleetStorm Launch(Vector3 center, float halfWidth, float seconds, Vector3 viewer, Action onArrive, UnityEngine.Object caster, LookTint look = default)
     {
         var go = new GameObject("Sleet Storm");
         go.transform.position = center;
         var s = go.AddComponent<SleetStorm>();
         s.Center = center;
+        s.look = look;
         s.HalfWidth = halfWidth;
         s.seconds = Mathf.Max(LandSeconds + FadeOut, seconds);
         s.onArrive = onArrive;
@@ -88,14 +91,14 @@ public class SleetStorm : MonoBehaviour
         var main = Cloud.main;
         main.startSize = new ParticleSystem.MinMaxCurve(6f, 10f);
         main.startRotation = new ParticleSystem.MinMaxCurve(0f, Mathf.PI * 2f);
-        main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.22f, 0.24f, 0.28f, 0.95f), new Color(0.34f, 0.36f, 0.4f, 0.85f));
+        main.startColor = new ParticleSystem.MinMaxGradient(look.Of(new Color(0.22f, 0.24f, 0.28f, 0.95f)), look.Of(new Color(0.34f, 0.36f, 0.4f, 0.85f)));
         FadeOverLife(Cloud, 0.25f);
         Churn(Cloud, 0.8f, 0.15f);
 
         Sleet = Falling("Sleet", rain, SleetSpeed, width);
         main = Sleet.main;
         main.startSize = 0.03f;
-        main.startColor = new Color(0.8f, 0.85f, 0.92f, 0.5f);
+        main.startColor = look.Of(new Color(0.8f, 0.85f, 0.92f, 0.5f));
         var streaks = Sleet.GetComponent<ParticleSystemRenderer>();
         streaks.renderMode = ParticleSystemRenderMode.Stretch;
         streaks.velocityScale = 0.05f;
@@ -105,7 +108,7 @@ public class SleetStorm : MonoBehaviour
         Pellets = Falling("Ice pellets", snow, PelletSpeed, width);
         main = Pellets.main;
         main.startSize = new ParticleSystem.MinMaxCurve(0.04f, 0.09f);
-        main.startColor = new ParticleSystem.MinMaxGradient(new Color(0.85f, 0.88f, 0.94f, 0.9f), new Color(1f, 1f, 1f, 0.95f));
+        main.startColor = new ParticleSystem.MinMaxGradient(look.Of(new Color(0.85f, 0.88f, 0.94f, 0.9f)), look.Of(new Color(1f, 1f, 1f, 0.95f)));
         Churn(Pellets, 0.5f, 0.6f);
 
         // Spray whirling low over the ground: what makes it a blizzard rather than rain.
@@ -114,7 +117,7 @@ public class SleetStorm : MonoBehaviour
         Box(spray, new Vector3(width, 0.6f, width));
         main = spray.main;
         main.startSize = new ParticleSystem.MinMaxCurve(2.5f, 4.5f);
-        main.startColor = new Color(0.85f, 0.88f, 0.92f, 0.3f);
+        main.startColor = look.Of(new Color(0.85f, 0.88f, 0.92f, 0.3f));
         FadeOverLife(spray, 0.3f);
         Churn(spray, 1.5f, 0.3f);
         Velocity(spray, drift);

@@ -31,7 +31,8 @@ public partial class ChemGrid
     void RenderFire(View v, Cell c, int x, int y, Vector3 center, float ground, float scale = 1f)
     {
         if (c.Fire == v.fireLevel && c.Fire == 0) return;
-        if (Flames != null) Flames.Set(World.Idx(x, y), x, y, new Vector3(center.x, ground, center.z), c.Fire, scale, FireLookOf(c));
+        CatchLookFire(c, x, y, v.fireLevel == 0);
+        if (Flames != null) Flames.Set(World.Idx(x, y), new Vector2Int(x, y), new Vector3(center.x, ground, center.z), c.Fire, scale, FireLookOf(c), FireTint(x, y).Turn);
         v.fireLevel = c.Fire;
     }
 
@@ -183,6 +184,7 @@ public partial class ChemGrid
         if (flameBank != null) Destroy(flameBank.gameObject);
         flameBank = null;
         fxStaging = null;
+        columns.Clear();
         liveFx = 0;
         freeFx.Clear();
         fxPrefab.Clear();

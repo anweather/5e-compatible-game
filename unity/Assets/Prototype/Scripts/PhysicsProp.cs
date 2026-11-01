@@ -436,6 +436,12 @@ public class PhysicsProp : MonoBehaviour, IPushable
         // Not parented: it follows the top of the prop (FixedUpdate) but doesn't tumble with it.
         flames = flamesFx != null ? Instantiate(flamesFx) : FallbackFlames();
         flames.transform.position = TopCentre();
+        // Lit by a spell in a look of its own, it burns in that look too (ChemGrid.FireTint).
+        if (grid != null && grid.World != null)
+        {
+            var cell = grid.CellAt(transform.position);
+            grid.FireTint(cell.x, cell.y).Dress(flames, null);
+        }
     }
 
     Vector3 TopCentre()

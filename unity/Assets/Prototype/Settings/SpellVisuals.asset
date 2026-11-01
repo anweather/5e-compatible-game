@@ -221,3 +221,4 @@ MonoBehaviour:
     tinted: 1
     scaleBy: 
     scaleBase: 1
+  lookParticle: {fileID: 4800000, guid: 295f6e1f922a74643a7ad53322c04b66, type: 3}

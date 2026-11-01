@@ -107,7 +107,10 @@ public sealed class ContourSurface
     }
 
     /// <summary>A point in grid units (cell (x, y) spans x..x+1, y..y+1) on the world's ground plane (y 0).</summary>
-    public Vector3 Flat(float gx, float gy)
+    public Vector3 Flat(float gx, float gy) => FlatOn(grid, gx, gy);
+
+    /// <summary>The same, for a caller with no surface to hand.</summary>
+    public static Vector3 FlatOn(ChemGrid grid, float gx, float gy)
     {
         var origin = grid.CellCenter(0, 0);
         return new Vector3(origin.x + (gx - 0.5f) * grid.cellSize, 0f, origin.z - (gy - 0.5f) * grid.cellSize);

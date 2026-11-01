@@ -112,6 +112,10 @@ terrain's look changed (`ChemGrid.RedrawLooks`, from `Announce`, which solo and 
 Sizes come from the numbers: cells, flames and craters always did, and a cast's impact scales
 through `EffectScale.Of` (family `scaleBy` and `base`, with the charge).
 
+**A look's colour only uses its hue.** A spell's effects turn round the colour wheel to the hue
+of its `look.color` (`LookTint`), so how dark that colour is makes no difference, and a pale one
+(saturation under 0.22) leaves the effects as authored. Details are in `rules/README.md`.
+
 **Done so far (phase 2):** `CellDressing`'s terrain table and dressing switch, and
 `ChemYardBuilder`'s look per spell. `validate` checks the family list (`ModCheck.Looks`). What's
 still keyed to an id, with what each needs: `docs/handoffs/procedural-looks-scan.md`. Check it with

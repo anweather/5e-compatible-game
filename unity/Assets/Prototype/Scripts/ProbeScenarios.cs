@@ -124,7 +124,10 @@ public static class ProbeScenarios
             "Films the punch knocking a crate, from the side, then a miss, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metrics: how far the crate went, and where its start line goes."),
         new Entry("dragonclip", typeof(DragonClipProbe), 200f,
             "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire."),
-        new Entry("combo", typeof(ComboProbe), 70f,
+        new Entry("uxclip", typeof(UxClipProbe), 120f,
+            "Films what plain shots can't show, with the HUD, into a folder each under --shots (frames for ffmpeg): grimoire/ (d-pad down, Back, then the menu's button and Back), " +
+            "castbar/ (three casts pressed late between ticks) and house/ (a walk into a house's wall, the follow camera behind). Checks: each runs; a metric for the camera arm's shortest."),
+        new Entry("combo", typeof(ComboProbe), 85f,
             "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
             "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +
             "grimoire. Shots of each and of the whole HUD (--shots). Checks: each of those, no console errors."),
@@ -184,6 +187,14 @@ public static class ProbeScenarios
             "a Fireball beside it, the Moonstone mod and its new material, then a look-only switch. --shots films it (ClipFilm). Checks: blast, fire " +
             "area and crater bigger in the cells and as drawn, the moonstone drawn by its family with its look's height, colour and glow, a look-only " +
             "switch redraws and keeps the fingerprint, no scene reload, no console errors. Metrics: each number with the mod off and on."),
+        new Entry("lookfamilies", typeof(LookFamiliesProbe), 420f,
+            "Every effect family, and what the hand family draws, in a colour no spell ships with, set through the rules MCP over HTTP (set_spell look.color, apply, " +
+            "revert) with nothing rebuilt; with --shots a film (ClipFilm) with a beat for each. Checks: each cast's show drawn in the look, each revert, no console errors."),
+        new Entry("lookfx", typeof(SpellLookFxProbe), 120f,
+            "Whether a spell's effects take its look: a Fireball cast by elements as it ships, its colour changed mid-game through the rules MCP over HTTP (set_spell look.color, apply) and a Fireball " +
+            "beside it, every stage read and, with --shots, filmed (ClipFilm); then the mod reverted with the blue fire still burning. Checks: orbs, " +
+            "bead, burst, debris, flames, embers and fire light blue with the mod and as authored without, a fire spreading keeps the look, the switch " +
+            "redraws what burns, no scene reload, the fingerprint unchanged, no console errors."),
         new Entry("blast", typeof(BlastProbe), 40f,
             "Fireball cast from the bar on the meadow east of the yard. Checks: its crater is in the cells (two steps down in the " +
             "middle, one round it), the terrain is drawn at least 0.6 m lower there, the blast's edge burns (burning, or burnt to dirt), no console errors."),
