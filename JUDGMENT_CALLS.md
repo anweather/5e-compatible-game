@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-048: Does the game's MCP make mods, or only switch them?
+
+- **Asked:** 2026-10-31, by Andrew, after the live-rules clip.
+- **Also comes up when:** any MCP tool or prompt design; the mod gallery.
+- **Answer:** it makes them. Asked for "a bigger fireball", Claude writes the change itself (a new draft
+  with its own title) and applies that, not a saved mod from rules/mods. Saved mods only when the
+  player names one.
+- **Why:** Andrew: the point is that Claude knows how to change the rules, not that it picks from a list.
+- **Revisited:** 0.
+
 ### J-047: Can the game's rules MCP be switched off?
 
 - **Asked:** 2026-10-31, by DesktopUnity (live-rules-unity step 3). Andrew said "just make a call".
