@@ -23,8 +23,8 @@ public sealed class CastHud
     public float Share { get; private set; }
 
     GUIStyle label, small, hint;
-    int tickSeen, passedSeen, meterSeen;
-    float tickAt, startedAt;
+    int tickSeen, passedSeen;
+    float tickAt, barAt;
     bool barRunning;
     readonly float[] stepsLit = new float[World.MaxCharge];
 
@@ -74,31 +74,29 @@ public sealed class CastHud
         (tickSeen, tickAt) = (world.Tick, Time.time);
     }
 
-    // How far through the cast it is, 0 to 1: the time since it started against the time left, which is
-    // the ticks still to run less what's gone of this one. So the bar starts empty and rises evenly
-    // wherever between two ticks the cast began, and a held cast, waiting on its last tick, is full.
+    // How far through the cast it is, 0 to 1. Each frame the bar closes its share of what's left to fill
+    // against the time left, the ticks still to run less what's gone of this one. So the bar starts empty,
+    // rises evenly wherever between two ticks the cast began, and a held cast, waiting on its last tick, is
+    // full. A tick landing late or early, or a tap ending and the hold's ticks coming off, changes the pace
+    // and never leaps the bar: every press starts as a hold, and those can land on one frame.
     float Progress(World world, PlayerCast cast)
     {
         int passed = cast.Total - cast.Meter, perSecond = world.Rules.Sim.TicksPerSecond;
-        bool letGo = false;
         if (!barRunning || passed < passedSeen)
         {
             barRunning = true;
-            startedAt = Time.time;
             Share = 0f;
+            barAt = Time.time;
         }
         // The meter's own drain times the ticks in a cast: a tick can run over a few frames (ChemGrid's
         // budget), so World.Tick can turn a frame or two away from it.
         else if (passed > passedSeen) tickAt = Time.time;
-        else letGo = cast.Meter < meterSeen;
-        (passedSeen, meterSeen) = (passed, cast.Meter);
+        passedSeen = passed;
         float tick = Mathf.Clamp01((Time.time - tickAt) * perSecond);
         float left = Mathf.Max(0f, cast.Meter - tick) / perSecond;
-        // Every press starts as a hold: let go, the hold's ticks come off the time left, and the bar
-        // carries on from where it is rather than leap to where a tap would be.
-        if (letGo && Share < 1f) startedAt = Time.time - Share / (1f - Share) * left;
-        float gone = Time.time - startedAt;
-        return gone + left > 0f ? Mathf.Clamp01(gone / (gone + left)) : 1f;
+        float frame = Time.time - barAt;
+        barAt = Time.time;
+        return frame + left > 0f ? Share + (1f - Share) * frame / (frame + left) : Share;
     }
 
     // The levels under the meter, from the second (a tap never shows them), and the held spell's name over the orbs.
