@@ -21,7 +21,7 @@ namespace Chem.Tests
         const int Size = 576, ActiveChunks = 65, SettleTicks = 600, MeasuredTicks = 600;
         const uint Seed = 1337;
 
-        static Rules Weather(string only)
+        internal static Rules Weather(string only)
         {
             var kinds = new[] { "clear", "cloudy", "windy", "fog", "rain", "storm", "snow" };
             string weights = string.Join(", ", kinds.Select(k => $"'{k}': {(k == only ? 1 : 0)}"));
@@ -30,7 +30,7 @@ namespace Chem.Tests
         }
 
         /// <summary>The bench's map: water where land.json has none (a lake, the river, the sea), grass on its hills elsewhere.</summary>
-        static World Valley(Rules rules)
+        internal static World Valley(Rules rules)
         {
             string path = Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir()), "world", "land.json");
             var land = LandFile.Read(File.ReadAllText(path), Size, Size);
