@@ -32,23 +32,16 @@ public partial class ValleyChemistry : MonoBehaviour
     ValleyGround ground;
     WetGround wet;
 
-    // What each of the land's layers is made of, for its colour in the rules (a cover's or a terrain's).
-    static string LayerMaterial(string layer)
-    {
-        if (layer.StartsWith(CellPaint.Moss, System.StringComparison.Ordinal)) return TerrainIds.Brush;
-        if (layer.StartsWith("Grass", System.StringComparison.Ordinal)) return TerrainIds.Grass;
-        if (layer.StartsWith(CellPaint.Rock, System.StringComparison.Ordinal)) return TerrainIds.Rock;
-        if (layer.StartsWith(CellPaint.Sand, System.StringComparison.Ordinal)) return TerrainIds.Sand;
-        if (layer.StartsWith(CellPaint.Soil, System.StringComparison.Ordinal)) return TerrainIds.Mud;
-        return layer.StartsWith(CellPaint.Earth, System.StringComparison.Ordinal) ? TerrainIds.Dirt : null;
-    }
-
+    // A layer's colour in the rules, from what it's made of.
     static LookDef LayerLook(Rules rules, string layer)
     {
-        if (layer.StartsWith(CellPaint.Charred, System.StringComparison.Ordinal)) return rules.Covers.TryGetValue(CoverIds.Ash, out var ash) ? ash.Look : null;
-        if (layer.StartsWith(CellPaint.Snow, System.StringComparison.Ordinal)) return rules.Covers.TryGetValue(CoverIds.Snow, out var snow) ? snow.Look : null;
-        string terrain = LayerMaterial(layer);
-        return terrain != null && rules.Terrain.TryGetValue(terrain, out var t) ? t.Look : null;
+        foreach (var (name, table, id) in CellPaint.LayerLooks)
+        {
+            if (!layer.StartsWith(name, System.StringComparison.Ordinal)) continue;
+            if (table == "covers") return rules.Covers.TryGetValue(id, out var cover) ? cover.Look : null;
+            return rules.Terrain.TryGetValue(id, out var terrain) ? terrain.Look : null;
+        }
+        return null;
     }
 
     /// <summary>The rules switched: the land's layers take the colours of what they're made of, tinted from their art.</summary>
@@ -58,19 +51,26 @@ public partial class ValleyChemistry : MonoBehaviour
         var tint = ChemGrid.TintBetween(LayerLook(was, CellPaint.Grass), LayerLook(now, CellPaint.Grass));
         if (ground == null || (tint == Color.white && grassTint == Color.white)) return;
         grassTint = tint;
-        foreach (var data in DataOf(ground))
-        {
-            var kinds = data.detailPrototypes;
-            if (!grassColors.TryGetValue(data, out var own)) grassColors[data] = own = System.Array.ConvertAll(kinds, k => (k.healthyColor, k.dryColor));
-            for (int i = 0; i < kinds.Length; i++)
-            {
-                kinds[i].healthyColor = own[i].healthyColor * tint;
-                kinds[i].dryColor = own[i].dryColor * tint;
-            }
-            data.detailPrototypes = kinds;
-        }
+        grassToTint.Clear();
+        foreach (var data in DataOf(ground)) grassToTint.Enqueue(data);
     }
 
+    // A chunk's grass a frame: every chunk's at once was a frame of 300 ms, and tufts a moment late are only tufts.
+    void TintSomeGrass()
+    {
+        if (grassToTint.Count == 0) return;
+        var data = grassToTint.Dequeue();
+        var kinds = data.detailPrototypes;
+        if (!grassColors.TryGetValue(data, out var own)) grassColors[data] = own = System.Array.ConvertAll(kinds, k => (k.healthyColor, k.dryColor));
+        for (int i = 0; i < kinds.Length; i++)
+        {
+            kinds[i].healthyColor = own[i].healthyColor * grassTint;
+            kinds[i].dryColor = own[i].dryColor * grassTint;
+        }
+        data.detailPrototypes = kinds;
+    }
+
+    readonly System.Collections.Generic.Queue<TerrainData> grassToTint = new();
     Color grassTint = Color.white;
     readonly System.Collections.Generic.Dictionary<TerrainData, (Color healthyColor, Color dryColor)[]> grassColors = new();
 
@@ -503,6 +503,7 @@ public partial class ValleyChemistry : MonoBehaviour
         ground.Flush(IsScorched);
         WatchRoofs(Time.deltaTime);
         if (wet != null && grid.World != null) wet.Advance(grid.World.Weather.Rain, Time.deltaTime);
+        TintSomeGrass();
         GroundMs = timer.Elapsed.TotalMilliseconds;
     }
 

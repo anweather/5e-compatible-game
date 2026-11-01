@@ -56,6 +56,16 @@ namespace Chem
         public const string Snow = "Snow";
 
         /// <summary>The layers painted, in the order of the weights.</summary>
+        /// <summary>
+        /// What the land's layers are made of, for their colours in the rules (ChemGrid.WorldLook.cs): a layer by
+        /// the start of its name, first match; the terrain or cover whose colour tints it. Any other ground has no layer.
+        /// </summary>
+        public static readonly IReadOnlyList<(string layer, string table, string id)> LayerLooks = new[]
+        {
+            (Moss, "terrain", "brush"), ("Grass", "terrain", "grass"), (Rock, "terrain", "rock"), (Sand, "terrain", "sand"),
+            (Soil, "terrain", "mud"), (Earth, "terrain", "dirt"), (Charred, "covers", "ash"), (Snow, "covers", "snow"),
+        };
+
         public static readonly IReadOnlyList<string> Layers = new[] { Grass, Moss, Rock, Sand, Soil, Charred, Earth, Snow };
 
         // Weights in Layers order: grass, moss, rock, sand, soil, charred, earth, snow.
