@@ -72,6 +72,7 @@ public class RulesMcpServer : MonoBehaviour
         Instance = this;
         gameObject.AddComponent<ClaudeMenu>();
         gameObject.AddComponent<ClaudeTerminal>();
+        gameObject.AddComponent<GameChat>();
     }
 
     void Start()

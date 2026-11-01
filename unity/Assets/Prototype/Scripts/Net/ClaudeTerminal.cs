@@ -4,12 +4,13 @@ using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using Chem.Mcp;
 using Newtonsoft.Json.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Debug = UnityEngine.Debug;
 
-// A real terminal beside the game, for the player's own Claude (J-056): F9, or the Play with
+// A real terminal beside the game, for the player's own Claude (J-056; the chat box, GameChat, works in the same folder): F9, or the Play with
 // Claude page, opens one in a folder of the game's where a .mcp.json points at this game's
 // rules MCP, so typing claude there is all it takes. The game never starts claude and holds no
 // credentials: the player signs in to their own. The game stays drawing and running behind it
@@ -18,7 +19,10 @@ using Debug = UnityEngine.Debug;
 public class ClaudeTerminal : MonoBehaviour
 {
     const float StartWait = 12f;
-    const string FolderName = "claude-terminal", ServerName = "spell-valley", WelcomeFile = "welcome.txt";
+    const string FolderName = "claude-terminal", ServerName = ClaudeRun.ServerName, WelcomeFile = "welcome.txt", StartFile = "open.cmd", SignInFile = "sign-in.cmd";
+
+    /// <summary>The chat's line when there's no claude on this machine.</summary>
+    public const string NotInstalled = "Claude Code isn't installed. Get it from claude.com/claude-code, then ask again.";
 
     /// <summary>The line that says speech to text is there, on the terminal's first screen and in its CLAUDE.md.</summary>
     public const string TalkLine = "Press Win+H to talk instead of type.";
@@ -32,6 +36,18 @@ public class ClaudeTerminal : MonoBehaviour
         "Use the tools. Ask `here` where the player is and `list` or `describe` what's in the rules, make a draft (`set_look`, " +
         "`set_spell`, `set_material`, `add_reaction`, `tune`), `validate` it, then `apply` it with a short title the players will read. " +
         "The tools' own instructions say more. If the tools don't connect, the game has closed or Claude is off on its Play with Claude page.\n\n" +
+        "Keep your answer to a line or two: the player is in the middle of a game.\n\n" +
+        "## Notes\n\n" +
+        "Each message starts a new process that remembers nothing, so read `notes.md` here first. When you've finished, add a line or two " +
+        "there saying what you changed and what's on now. The game keeps only its newest lines.\n\n" +
+        "## What's outside the rules\n\n" +
+        "These are in the game's code, not its rules, so no tool changes them yet. Say so in a line, offer what you can do instead, and " +
+        "don't look for source: there is none here.\n\n" +
+        "- How hot metal glows, the player's size, the size of animals\n" +
+        "- Slippery ground (only covers can be slippery), the cover weather leaves\n" +
+        "- Houses and other buildings; filling an area bigger than a spell of radius 6\n" +
+        "- White or grey fire, steam and smoke: these only change hue (`set_look` says so)\n" +
+        "- Telling the time or the weather directly: moving `day.startHour` is a workaround, so say that it is\n\n" +
         "What to try: \"make all fire blue\", \"make the fire near me green\", \"each player a different fire colour\", " +
         "\"make grass burn twice as fast\", \"when lightning hits water, leave fog\".\n\n" + TalkLine + "\n";
 
@@ -63,7 +79,7 @@ public class ClaudeTerminal : MonoBehaviour
         if (RulesMcpServer.Url == null) return "No free port for Claude to reach the game.";
         WriteFolder(Folder, RulesMcpServer.Url);
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-        string opened = Launch(Folder);
+        string opened = Launch(Folder, StartFile);
         Debug.Log($"Claude terminal: {opened} in {Folder}");
         return $"Opened {opened}. Type claude there.";
 #else
@@ -83,20 +99,37 @@ public class ClaudeTerminal : MonoBehaviour
         File.WriteAllText(Path.Combine(folder, ".mcp.json"), config.ToString());
         File.WriteAllText(Path.Combine(folder, "CLAUDE.md"), Guide);
         File.WriteAllText(Path.Combine(folder, WelcomeFile), Welcome);
+        File.WriteAllText(Path.Combine(folder, StartFile), PathLine() + "@type " + WelcomeFile + "\r\n");
+        File.WriteAllText(Path.Combine(folder, SignInFile), PathLine() + "@claude auth login\r\n");
+    }
+
+    // claude's own folder for this one window, as its installer may have put it where a game started from the desktop can't see.
+    static string PathLine()
+    {
+        string claude = ClaudeChat.FindClaude();
+        return claude == null ? "" : $"@set \"PATH={Path.GetDirectoryName(claude)};%PATH%\"\r\n";
+    }
+
+    /// <summary>Opens a terminal on Anthropic's own sign-in: the game never sees it. The player's chat says why.</summary>
+    public static void OpenSignIn()
+    {
+#if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
+        if (ClaudeChat.StandIn == null) Launch(Folder, SignInFile);
+#endif
     }
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
     // Windows Terminal if it's there, else a plain command prompt.
-    static string Launch(string folder)
+    static string Launch(string folder, string script)
     {
         try
         {
-            Process.Start(new ProcessStartInfo("wt.exe", $"-d \"{folder}\" cmd /k type {WelcomeFile}") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("wt.exe", $"-d \"{folder}\" cmd /k {script}") { UseShellExecute = true });
             return "Windows Terminal";
         }
         catch (Win32Exception)
         {
-            Process.Start(new ProcessStartInfo("cmd.exe", $"/k type {WelcomeFile}") { WorkingDirectory = folder, UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("cmd.exe", $"/k {script}") { WorkingDirectory = folder, UseShellExecute = true });
             return "a command prompt";
         }
     }
