@@ -1,9 +1,8 @@
-using System.Text.RegularExpressions;
+using System.Collections.Generic;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Layouts;
-using UnityEngine.TestTools;
 
 // PadLog: the line a player's log gets for each device. Test devices stand in
 // for a pad and a joystick with a Linux description; they aren't Linux pads,
@@ -83,24 +82,33 @@ public class PadLogTests
         }
     }
 
+    // Counted from the log itself: once a play session has run, PadLog's device hook stays on
+    // in the Editor, so adding a pad here may or may not log its own line.
     [Test]
     public void ThePadInUseMovingIsLoggedOnce()
     {
+        var inUse = new List<string>();
+        Application.LogCallback note = (line, _, _) =>
+        {
+            if (line.StartsWith("Input device InUse")) inUse.Add(line);
+        };
         var first = (Gamepad)InputSystem.AddDevice("Gamepad", "Log test first");
         var second = (Gamepad)InputSystem.AddDevice("Gamepad", "Log test second");
+        Application.logMessageReceived += note;
         try
         {
             first.MakeCurrent();
-            LogAssert.Expect(LogType.Log, new Regex($"^Input device InUse: id={first.deviceId} "));
             _ = PadGlyphs.Current;
             second.MakeCurrent();
-            LogAssert.Expect(LogType.Log, new Regex($"^Input device InUse: id={second.deviceId} kind=Gamepad .* Gamepad.current={second.deviceId} .* glyphs=Generic$"));
             _ = PadGlyphs.Current;
             _ = PadGlyphs.Current;
-            LogAssert.NoUnexpectedReceived();
+            Assert.That(inUse.Count, Is.EqualTo(2), string.Join("\n", inUse));
+            StringAssert.IsMatch($"^Input device InUse: id={first.deviceId} ", inUse[0]);
+            StringAssert.IsMatch($"^Input device InUse: id={second.deviceId} kind=Gamepad .* Gamepad.current={second.deviceId} .* glyphs=Generic$", inUse[1]);
         }
         finally
         {
+            Application.logMessageReceived -= note;
             InputSystem.RemoveDevice(first);
             InputSystem.RemoveDevice(second);
         }
