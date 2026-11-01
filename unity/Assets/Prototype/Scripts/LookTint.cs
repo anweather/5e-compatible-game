@@ -86,6 +86,13 @@ public readonly struct LookTint
         if (shader == null) shader = Shader.Find("Prototype/LookParticle");
         foreach (var r in show.GetComponentsInChildren<ParticleSystemRenderer>(true))
         {
+            // Real lights take their colour from the particles, so those particles turn themselves.
+            var system = r.GetComponent<ParticleSystem>();
+            if (system != null && system.lights.enabled)
+            {
+                Recolor(system);
+                continue;
+            }
             var materials = r.sharedMaterials;
             bool turnedInShader = false;
             for (int i = 0; i < materials.Length; i++)
@@ -94,7 +101,7 @@ public readonly struct LookTint
                 turnedInShader |= materials[i] != null && materials[i].shader == shader;
             }
             r.sharedMaterials = materials;
-            if (!turnedInShader) Recolor(r.GetComponent<ParticleSystem>());
+            if (!turnedInShader) Recolor(system);
             if (r.trailMaterial != null) r.trailMaterial = Turned(r.trailMaterial, shader);
         }
         foreach (var light in show.GetComponentsInChildren<Light>(true)) light.color = Of(light.color);

@@ -198,6 +198,13 @@ public class SpellLookFxProbe : LooksModProbe
         Check($"{name}_burst_played", blast != null);
         Beat($"{name}_burst_at_s");
         if (blast != null) Stage(name, "burst", Shader(blast) > 0, blue, $"{Shader(blast)} of its materials in the look");
+        if (blast != null)
+        {
+            var glow = blast.GetComponentsInChildren<ParticleSystem>(true).FirstOrDefault(p => p.lights.enabled);
+            var shine = glow != null ? glow.main.startColor.color : default;
+            Check($"{name}_burst_has_lights", glow != null);
+            Stage(name, "burst_lights", shine.b > shine.r, blue, $"{shine}");
+        }
         yield return null;
         var debris = Debris();
         Stage(name, "debris", debris.b > debris.r, blue, $"{debris}");
