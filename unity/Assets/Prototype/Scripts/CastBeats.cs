@@ -56,6 +56,8 @@ public class CastBeats : MonoBehaviour
     public CastFeel.BeatPose Pose => feel.Of(Now, tap);
     /// <summary>A beat is posing the body; CastPose stands aside.</summary>
     public bool Driving => Now != Beat.Neutral && PoseOn;
+    /// <summary>The hands are in a cast, not yet handing the arms back to the animation: a punch waits.</summary>
+    public bool HandsBusy => Driving && Now is not (Beat.Recovery or Beat.Fizzle);
     /// <summary>Off, the beats still run and the elements still show but the body is left to CastPose (the probe's "before").</summary>
     public bool PoseOn { get; set; } = true;
 
@@ -74,16 +76,16 @@ public class CastBeats : MonoBehaviour
     /// <summary>Where the hands were last put, for the probe.</summary>
     public (Vector3 right, Vector3 left) HandTargets { get; private set; }
 
-    // What a pose is made of; what's on the body at any moment is a blend of two.
-    struct Blend
+    /// <summary>What a pose is made of; what's on the body at any moment is a blend of two.</summary>
+    public struct Blend
     {
         public Vector3 right, left, fingers, palm;
-        public float rightWeight, leftWeight, dip, lean, recoil, merge;
+        public float rightWeight, leftWeight, dip, lean, twist, recoil, merge;
 
         public static Blend Of(CastFeel.BeatPose p) => new()
         {
             right = p.rightHand, left = p.leftHand, fingers = p.fingers, palm = p.palm, rightWeight = p.rightWeight, leftWeight = p.leftWeight,
-            dip = p.dip, lean = p.lean, recoil = p.recoil, merge = p.merge,
+            dip = p.dip, lean = p.lean, twist = p.twist, recoil = p.recoil, merge = p.merge,
         };
 
         public static Blend Lerp(in Blend a, in Blend b, float t) => new()
@@ -91,7 +93,7 @@ public class CastBeats : MonoBehaviour
             right = Vector3.LerpUnclamped(a.right, b.right, t), left = Vector3.LerpUnclamped(a.left, b.left, t),
             fingers = Vector3.LerpUnclamped(a.fingers, b.fingers, t), palm = Vector3.LerpUnclamped(a.palm, b.palm, t),
             rightWeight = Mathf.Clamp01(Mathf.LerpUnclamped(a.rightWeight, b.rightWeight, t)), leftWeight = Mathf.Clamp01(Mathf.LerpUnclamped(a.leftWeight, b.leftWeight, t)),
-            dip = Mathf.LerpUnclamped(a.dip, b.dip, t), lean = Mathf.LerpUnclamped(a.lean, b.lean, t),
+            dip = Mathf.LerpUnclamped(a.dip, b.dip, t), lean = Mathf.LerpUnclamped(a.lean, b.lean, t), twist = Mathf.LerpUnclamped(a.twist, b.twist, t),
             recoil = Mathf.LerpUnclamped(a.recoil, b.recoil, t), merge = Mathf.Clamp01(Mathf.LerpUnclamped(a.merge, b.merge, t)),
         };
     }

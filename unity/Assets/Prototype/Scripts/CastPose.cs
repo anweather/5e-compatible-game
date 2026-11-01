@@ -82,6 +82,10 @@ public class CastPose : MonoBehaviour
     public Vector3 RightPalm => rightPalm != null ? rightPalm.position : HandPosition;
     public Vector3 LeftPalm => leftPalm != null ? leftPalm.position : LeftHandPosition;
 
+    /// <summary>The right shoulder, and how far that arm reaches from it to the hand.</summary>
+    public Vector3 RightShoulder => rightArm.Valid ? rightArm.root.position : transform.position + Vector3.up * (GestureShoulders * scale);
+    public float ArmLength => rightArm.Valid ? Vector3.Distance(rightArm.root.position, rightArm.mid.position) + Vector3.Distance(rightArm.mid.position, rightArm.end.position) : 0f;
+
     /// <summary>The rig's size against the one the poses are written for.</summary>
     public float Scale => scale;
 
@@ -222,12 +226,12 @@ public class CastPose : MonoBehaviour
 
     // --- for CastBeats ------------------------------------------------------------------
 
-    /// <summary>Sinks the hips with the feet planted, leans the spine, then moves all of the body by <paramref name="shift"/>.</summary>
-    public void LayBody(float dip, float lean, Vector3 forward, Vector3 shift)
+    /// <summary>Sinks the hips with the feet planted, leans and turns the spine, then moves all of the body by <paramref name="shift"/>.</summary>
+    public void LayBody(float dip, float lean, Vector3 forward, Vector3 shift, float twist = 0f)
     {
         if (!rightArm.Valid) return;
         Dip(dip, forward);
-        Bend(lean, 0f, Vector3.Cross(Vector3.up, forward));
+        Bend(lean, twist, Vector3.Cross(Vector3.up, forward));
         if (hips != null) hips.position += shift;
     }
 
@@ -275,16 +279,36 @@ public class CastPose : MonoBehaviour
         return shoulder + aim * (at - shoulder) + shake;
     }
 
-    // Turns the hand so the fingers and palm point the given ways, measured from the rig's own finger bones.
-    void Turn(Transform hand, bool isRight, Vector3 fingers, Vector3 palm, float weight)
+    /// <summary>Curls a hand's fingers toward its palm, each joint by this many degrees, the thumb less: a fist.</summary>
+    public void Clench(bool isRight, float degrees)
     {
+        var arm = isRight ? rightArm : leftArm;
+        if (degrees <= 0f || !arm.Valid || !PalmOf(arm.end, isRight, out var along, out var facing)) return;
+        var axis = Vector3.Cross(along, facing).normalized;
+        var fingers = isRight ? rightFingers : leftFingers;
+        const int ThumbBones = 3;
+        const float ThumbShare = 0.4f;
+        for (int i = 0; i < fingers.Length; i++)
+            fingers[i].bone.rotation = Quaternion.AngleAxis(i < ThumbBones ? degrees * ThumbShare : degrees, axis) * fingers[i].bone.rotation;
+    }
+
+    // The way a hand's fingers go and its palm faces, from the rig's own finger bones.
+    bool PalmOf(Transform hand, bool isRight, out Vector3 along, out Vector3 facing)
+    {
+        along = facing = Vector3.zero;
         var middle = isRight ? rightPalm : leftPalm;
         var index = animator.GetBoneTransform(isRight ? HumanBodyBones.RightIndexProximal : HumanBodyBones.LeftIndexProximal);
         var little = animator.GetBoneTransform(isRight ? HumanBodyBones.RightLittleProximal : HumanBodyBones.LeftLittleProximal);
-        if (middle == null || index == null || little == null) return;
-        var along = middle.position - hand.position;
-        var facing = Vector3.Cross(along, index.position - little.position) * (isRight ? 1f : -1f);
-        if (along.sqrMagnitude < 1e-6f || facing.sqrMagnitude < 1e-8f || fingers.sqrMagnitude < 1e-6f || palm.sqrMagnitude < 1e-6f) return;
+        if (middle == null || index == null || little == null) return false;
+        along = middle.position - hand.position;
+        facing = Vector3.Cross(along, index.position - little.position) * (isRight ? 1f : -1f);
+        return along.sqrMagnitude >= 1e-6f && facing.sqrMagnitude >= 1e-8f;
+    }
+
+    // Turns the hand so the fingers and palm point the given ways.
+    void Turn(Transform hand, bool isRight, Vector3 fingers, Vector3 palm, float weight)
+    {
+        if (!PalmOf(hand, isRight, out var along, out var facing) || fingers.sqrMagnitude < 1e-6f || palm.sqrMagnitude < 1e-6f) return;
         var turn = Quaternion.LookRotation(fingers, palm) * Quaternion.Inverse(Quaternion.LookRotation(along, facing));
         hand.rotation = Quaternion.Slerp(hand.rotation, turn * hand.rotation, weight);
     }

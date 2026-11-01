@@ -46,8 +46,8 @@ public static class ProbeScenarios
         new Entry("perf", typeof(PerfProbe), 330f,
             "Holds a fixed camera over the valley for seconds=N (default 10) and reports the frame times " +
             "(Editor Play mode, not a player build). Checks: no console errors."),
-        new Entry("online", typeof(OnlineProbe), 240f,
-            "This Editor hosts and a Multiplayer Play Mode virtual player (Player 2, started if it isn't running) joins on " +
+        new Entry("online", typeof(OnlineProbe), 280f,
+            "This Editor hosts and a Multiplayer Play Mode virtual player (Player 2, started if it isn't running) joins on 127.0.0.1; among the rest, the host strikes its wizard till a hit and a miss are rolled, the damage on the right wizard, moved a cell, checksums equal. It joins on " +
             "127.0.0.1. Each casts Fire Bolt, Earthen Trench and Wall of Stone through the network; the virtual player's " +
             "Thunderwave throws a crate and the host's wizard, and the host's wizard falls 10 m. Checks: it joined, every 30-tick checksum (cells and rules) equal on both, the same world " +
             "at the sample tick, no desync seen, the client's terrain drawn as low as the host's under the trenches, the same " +
@@ -82,9 +82,9 @@ public static class ProbeScenarios
         new Entry("golf", typeof(GolfProbe), 150f,
             "Spell golf's hole played through the caster (GolfCourse, World.Golf): the tee, flag, hole and ball drawn, the HUD's stroke line, Gust of Wind " +
             "to the hole; then the meadow coil beside it: its cells laid, no tree on its pond, a bolt into the pond opens the gate. Shots with --shots."),
-        new Entry("feel", typeof(FeelProbe), 220f,
+        new Entry("feel", typeof(FeelProbe), 280f,
             "What a hand on the controls should feel, on a virtual pad and keyboard: running onto ice and Frost's glaze keeps the speed and slides, snow and a bank slow " +
-            "the wizard to the rules' share; F cracks then breaks a pane; F and Square knock a crate, F the ball; Plant Growth charged on burnt ground and Wall of " +
+            "the wizard to the rules' share; F cracks then breaks a pane; F and Square knock a crate, F the ball, by CastFeel's strength, the arm reaching it, a hit-stop, one landing (a miss too, and off still), the same ticks with and without the stop; Plant Growth charged on burnt ground and Wall of " +
             "Stone held to a ramp, on keys and pad; Frost over a swimmer; Left Ctrl held and pressed swimming to a bank never rolls. Shots with --shots."),
         new Entry("aimlooks", typeof(AimLooksProbe), 120f,
             "The aim marker of each kind of cast, one picture each (--shots): lanes at an angle, a ring growing as Cast is held, the outlines of what rises, Spike Growth's area, " +
@@ -104,14 +104,14 @@ public static class ProbeScenarios
         new Entry("roomlocked", typeof(RoomLockedProbe), 90f,
             "A Locked room: every change refused on both, the mods it started with stay. Checks as roomopen.", 2),
         new Entry("downed", typeof(DownedProbe), 30f,
-            "The punch on a virtual gamepad's Circle, and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
+            "The punch on a virtual gamepad's Circle, being struck (open ground, a wall, water), and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
         new Entry("castfeel", typeof(CastFeelProbe), 200f,
             "The beats of a cast by elements (CastBeats): a single, a pair, one charged and one cancelled, and their sounds (CastSounds). Checks: each beat and sound in order, the thump at contact, the hum rising by level and gone after a cancel, pause, fall, Shapeshift, reset or quit, the hands at their targets once settled, " +
             "the slam about 0.1 s, a charged cast's beats to the frame as they were, an uncharged cast's wind-up and timing, casts on each other's heels all going on time, a pulse at each charge level, the slower walk, the recoil only drawn, hit-stop leaving the tick and hash alone, shake and rumble by size and distance on a virtual pad, off still, the motors stopping, no console errors. With --shots, the wizard from the side at each beat, before and after."),
         new Entry("castclip", typeof(CastClipProbe), 90f,
             "Films a single, a pair and a charged cast from the side, none of fire, as the game is now, with the mixed sound, into --shots: frames, sound.wav and timeline.txt, for ffmpeg."),
         new Entry("punchclip", typeof(PunchClipProbe), 60f,
-            "Films the punch knocking a crate, from the side, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metric: how far the crate went."),
+            "Films the punch knocking a crate, from the side, then a miss, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metrics: how far the crate went, and where its start line goes."),
         new Entry("dragonclip", typeof(DragonClipProbe), 200f,
             "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire."),
         new Entry("combo", typeof(ComboProbe), 70f,
