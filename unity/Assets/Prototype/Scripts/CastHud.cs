@@ -3,7 +3,7 @@ using UnityEngine;
 
 // The cast on the HUD (EventLog draws it, docs/SPELL_COMBOS.md): about two thirds
 // of the way down the screen, the loaded element orbs and the cast bar filling
-// smoothly under them (the core's meter counts ticks; the bar runs on between them),
+// smoothly under them (the core's meter counts ticks; the bar runs by the time left),
 // with a step lit for each level a held cast has charged and the held spell's name
 // once it's reached; and, bottom left and sized like the
 // portrait's block, the d-pad cross: the selected spell on top, arrows either
@@ -23,8 +23,9 @@ public sealed class CastHud
     public float Share { get; private set; }
 
     GUIStyle label, small, hint;
-    int meterSeen, totalSeen;
-    float meterAt;
+    int tickSeen, passedSeen, meterSeen;
+    float tickAt, startedAt;
+    bool barRunning;
     readonly float[] stepsLit = new float[World.MaxCharge];
 
     /// <summary>Draws both parts for <paramref name="caster"/>.</summary>
@@ -36,6 +37,7 @@ public sealed class CastHud
         var world = caster.grid.World;
         var cast = world.CastOf(caster.CastPlayer);
         if (cast != null && cast.Casting) Loaded(world, cast, caster);
+        else NoteTick(world);
         Cross(world, caster);
     }
 
@@ -64,17 +66,39 @@ public sealed class CastHud
         GUI.Label(new Rect(cx - 150f, meter.yMax + StepHeight + 6f, 300f, 22f), pad ? PadGlyphs.Text("{East} cancel") : "B cancel", hint);
     }
 
-    // How far through the cast it is, 0 to 1: the ticks gone by, and the time since the last one.
-    // The core drains its meter a few times a second, and a held cast waits on the last tick, so full.
+    // Between casts, when the last tick was: a cast can start at any moment between two.
+    void NoteTick(World world)
+    {
+        barRunning = false;
+        if (world.Tick == tickSeen) return;
+        (tickSeen, tickAt) = (world.Tick, Time.time);
+    }
+
+    // How far through the cast it is, 0 to 1: the time since it started against the time left, which is
+    // the ticks still to run less what's gone of this one. So the bar starts empty and rises evenly
+    // wherever between two ticks the cast began, and a held cast, waiting on its last tick, is full.
     float Progress(World world, PlayerCast cast)
     {
-        if (cast.Meter != meterSeen || cast.Total != totalSeen)
+        int passed = cast.Total - cast.Meter, perSecond = world.Rules.Sim.TicksPerSecond;
+        bool letGo = false;
+        if (!barRunning || passed < passedSeen)
         {
-            (meterSeen, totalSeen) = (cast.Meter, cast.Total);
-            meterAt = Time.time;
+            barRunning = true;
+            startedAt = Time.time;
+            Share = 0f;
         }
-        float tick = Mathf.Clamp01((Time.time - meterAt) * world.Rules.Sim.TicksPerSecond);
-        return Mathf.Clamp01((cast.Total - cast.Meter + tick) / Mathf.Max(1, cast.Total));
+        // The meter's own drain times the ticks in a cast: a tick can run over a few frames (ChemGrid's
+        // budget), so World.Tick can turn a frame or two away from it.
+        else if (passed > passedSeen) tickAt = Time.time;
+        else letGo = cast.Meter < meterSeen;
+        (passedSeen, meterSeen) = (passed, cast.Meter);
+        float tick = Mathf.Clamp01((Time.time - tickAt) * perSecond);
+        float left = Mathf.Max(0f, cast.Meter - tick) / perSecond;
+        // Every press starts as a hold: let go, the hold's ticks come off the time left, and the bar
+        // carries on from where it is rather than leap to where a tap would be.
+        if (letGo && Share < 1f) startedAt = Time.time - Share / (1f - Share) * left;
+        float gone = Time.time - startedAt;
+        return gone + left > 0f ? Mathf.Clamp01(gone / (gone + left)) : 1f;
     }
 
     // The levels under the meter, from the second (a tap never shows them), and the held spell's name over the orbs.

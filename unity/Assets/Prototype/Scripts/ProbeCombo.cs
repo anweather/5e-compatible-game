@@ -13,6 +13,11 @@ using UnityEngine.InputSystem.LowLevel;
 // With the HUD on, it takes a picture of the whole of it (--shots).
 public class ComboProbe : ProbeScenario
 {
+    // Most of the bar a frame may gain past the time it took (one tick of the 6-tick cast is 0.17).
+    const float MostBarJump = 0.07f;
+    // The casts of BarRunsEven: how far between two ticks each is pressed, in ticks (the later, the sooner the first one), and held, in seconds.
+    static readonly (float late, float held)[] PressesBetweenTicks = { (0.55f, 0f), (0.7f, 0f), (0.85f, 0f), (0.7f, 0.2f) };
+
     Gamepad pad;
     PlayerControls controls;
     string me;
@@ -40,6 +45,7 @@ public class ComboProbe : ProbeScenario
             yield return Grimoire();
             yield return Hands();
             yield return BarFills();
+            yield return BarRunsEven();
             yield return HeldSteps();
             yield return WholeHud();
         }
@@ -230,6 +236,41 @@ public class ComboProbe : ProbeScenario
         Metric("bar_steps", steps);
         Check("bar_fills_smoothly", steps > ticks * 2 && onlyUp && lowest < 0.4f && highest > 0.85f, $"{steps} steps over {ticks} ticks, {lowest:0.00} to {highest:0.00}, only up {onlyUp}");
         yield return Wait(1f);
+    }
+
+    // Pressed at any moment between two ticks and tapped short or long, the bar runs at the pace of the time
+    // left and doesn't leap when the core's first tick comes, however soon that is, or when the tap ends and
+    // the hold's ticks come off (#9). What it gains in a frame, past that frame's share of the cast.
+    IEnumerator BarRunsEven()
+    {
+        var end = new WaitForEndOfFrame();
+        int perSecond = World.Rules.Sim.TicksPerSecond;
+        float worst = 0f;
+        foreach (var (late, held) in PressesBetweenTicks)
+        {
+            int tick = World.Tick;
+            while (World.Tick == tick) yield return null;
+            yield return Wait(late / perSecond);
+            InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.RightShoulder));
+            while (!World.CastOf(me).Casting) yield return null;
+            float last = 0f, lastAt = Time.time, letGoAt = Time.time + held;
+            bool down = true;
+            while (World.CastOf(me).Casting)
+            {
+                if (down && Time.time >= letGoAt)
+                {
+                    down = false;
+                    InputSystem.QueueStateEvent(pad, new GamepadState());
+                }
+                yield return end;
+                float share = EventLog.CastBarShare, seconds = World.CastOf(me).Total / (float)perSecond;
+                worst = Mathf.Max(worst, share - last - (Time.time - lastAt) / seconds);
+                (last, lastAt) = (share, Time.time);
+            }
+            yield return Wait(1f);
+        }
+        Metric("bar_worst_jump", worst);
+        Check("bar_runs_even", worst < MostBarJump, $"gained {worst:0.00} of the bar past the time gone, in one frame");
     }
 
     // Earth held: the steps light under the bar, and the held spell's name shows at the top step (#7, #9).
