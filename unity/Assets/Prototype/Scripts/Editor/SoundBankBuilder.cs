@@ -79,7 +79,7 @@ public static class SoundBankBuilder
         new() { Sound = SoundIds.Grease, TargetDb = -20f, MaxSeconds = 0.6f,
             Procedural = new Func<float[]>[] { () => Samples(ProceduralSounds.Squelch) } },
         new() { Sound = SoundIds.Cast, TargetDb = -22f, MaxSeconds = 1.0f,
-            Files = new[] { Pack + "/Magic Spell_Simple Swoosh_6.wav" } },
+            Files = CastSoundTable.Whoosh },
         new() { Sound = SoundIds.FireLoop, TargetDb = -26f, MaxSeconds = 30f, Loop = true,
             Procedural = new Func<float[]>[] { () => ProceduralFire.Loop(1) } },
     };

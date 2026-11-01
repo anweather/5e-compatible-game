@@ -4,7 +4,7 @@ using UnityEngine;
 // Casting by elements (docs/SPELL_COMBOS.md): the wizard's side of World.Combos.
 // Each button sends a ComboCommand (applied at once solo, stamped by the host
 // online, like a cast); the meter drains in the core, on every peer; when it
-// reaches zero the core reports it (World.CombosFired) and the player whose cast
+// reaches zero the core reports it (FiredCastsHeard) and the player whose cast
 // it is aims it from the crosshair and sends the usual CastCommand, since where
 // a spell lands is only known as it goes off. While the meter drains the wizard
 // walks at the rules' factor and Cancel drops the cast before anything else
@@ -20,6 +20,7 @@ public partial class SpellCaster
 
     SurfaceEffects feet;
     ChemGrid heard;
+    readonly FiredCastsHeard firedCasts = new();
     // The frame a press cancelled the cast: that press is spent, even for what reads it after.
     int cancelledOnFrame = -1;
     readonly ElementHold hold = new();
@@ -59,6 +60,7 @@ public partial class SpellCaster
     void UpdateElements()
     {
         Listen();
+        OnTick(); // a tick finished from outside (World.FinishTick) tells no one
         var world = grid.World;
         string player = CastPlayer;
         if (feet != null || TryGetComponent(out feet)) feet.CastFactor = (float)world.MoveFactorOf(player);
@@ -126,12 +128,13 @@ public partial class SpellCaster
         return true;
     }
 
-    // Hears the grid's ticks: a tick's casts that went off are only there until the next one.
+    // Hears the grid's ticks, and every frame in UpdateElements: FiredCastsHeard gives each cast once.
     void Listen()
     {
         if (heard == grid) return;
         Unlisten();
         heard = grid;
+        firedCasts.StartFrom(grid.World);
         heard.TickDone += OnTick;
     }
 
@@ -143,12 +146,11 @@ public partial class SpellCaster
 
     void OnTick()
     {
-        var world = grid.World;
-        if (world.CombosFired.Count == 0) return;
+        var fireds = firedCasts.Take(grid.World);
         // Replaying the game so far as a late joiner, those casts were made long ago.
-        if (Replaying) return;
+        if (fireds.Count == 0 || Replaying) return;
         string player = CastPlayer;
-        foreach (var fired in world.CombosFired)
+        foreach (var fired in fireds)
         {
             if (fired.Player != player) continue;
             if (fired.Discovered) EventLog.Add($"New in your grimoire: {fired.Name}");

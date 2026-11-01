@@ -19,6 +19,23 @@ namespace Chem
         /// <summary>The casts that went off in the last tick.</summary>
         public IReadOnlyList<ComboFired> CombosFired => combosFired;
 
+        // The casts of the last HistoryTicks ticks, stamped with their tick, for a view that hears them
+        // late: a tick in slices can be finished from outside (FinishTick) with no one told, and the next
+        // tick empties CombosFired (GitHub #39). Not world state: never hashed or saved.
+        readonly List<(ComboFired fired, int tick)> firedHistory = new List<(ComboFired fired, int tick)>();
+
+        /// <summary>Adds the casts that went off after <paramref name="tick"/> (within the last 600 ticks) to a list, oldest first.</summary>
+        internal void CopyCombosFiredSince(int tick, List<ComboFired> into)
+        {
+            foreach (var f in firedHistory) if (f.tick > tick) into.Add(f.fired);
+        }
+
+        void NoteFired(ComboFired fired)
+        {
+            combosFired.Add(fired);
+            firedHistory.Add((fired, Tick));
+        }
+
         /// <summary>A player's cast state, or null if they've sent no command yet.</summary>
         public PlayerCast CastOf(string player) => casts.TryGetValue(player, out var c) ? c : null;
 
@@ -183,7 +200,7 @@ namespace Chem
             if (c.DpadCasting >= 0)
             {
                 var d = c.DpadCasting < combos.Dpad.Count ? combos.Dpad[c.DpadCasting] : null;
-                if (d?.Spell != null) combosFired.Add(new ComboFired(c.Player, null, d.Name, d.Spell, Rules.Spell(d.Spell)?.Shape, false));
+                if (d?.Spell != null) NoteFired(new ComboFired(c.Player, null, d.Name, d.Spell, Rules.Spell(d.Spell)?.Shape, false));
             }
             else
             {
@@ -192,7 +209,7 @@ namespace Chem
                 {
                     string spell = def.SpellAt(c.Charge, MaxChargeOf(def));
                     string shape = spell == def.Spell ? def.Shape : Rules.Spell(spell)?.Shape;
-                    combosFired.Add(new ComboFired(c.Player, def.Id, def.Name, spell, shape, c.Known.Add(def.Id), c.Charge));
+                    NoteFired(new ComboFired(c.Player, def.Id, def.Name, spell, shape, c.Known.Add(def.Id), c.Charge));
                 }
             }
             ClearCast(c);

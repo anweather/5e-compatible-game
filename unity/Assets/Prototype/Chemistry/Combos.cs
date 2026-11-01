@@ -136,6 +136,35 @@ namespace Chem
         public int Charge { get; }
     }
 
+    /// <summary>
+    /// One listener's place in a world's fired casts: each cast once, however many listeners there
+    /// are and whichever way its tick ended. Only whole ticks are read, so a listener can ask every frame.
+    /// </summary>
+    public sealed class FiredCastsHeard
+    {
+        readonly List<ComboFired> taken = new List<ComboFired>();
+        World world;
+        int heard;
+
+        /// <summary>Starts listening from now: casts already gone off aren't heard.</summary>
+        public void StartFrom(World from)
+        {
+            world = from;
+            heard = from.TickInProgress ? from.Tick - 1 : from.Tick;
+        }
+
+        /// <summary>The casts gone off since the last call, oldest first; the list is reused by the next call. A new or reloaded world starts afresh.</summary>
+        public IReadOnlyList<ComboFired> Take(World from)
+        {
+            taken.Clear();
+            if (from != world || from.Tick < heard) StartFrom(from);
+            if (from.TickInProgress || from.Tick == heard) return taken;
+            from.CopyCombosFiredSince(heard, taken);
+            heard = from.Tick;
+            return taken;
+        }
+    }
+
     /// <summary>One player's cast state and grimoire. Integers and ids only.</summary>
     public sealed class PlayerCast
     {

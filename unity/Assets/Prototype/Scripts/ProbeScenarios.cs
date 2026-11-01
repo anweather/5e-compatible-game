@@ -111,6 +111,8 @@ public static class ProbeScenarios
             "Films both screens, into the host's Temp/Probe/online/room-clip: a Fireball, then a real Claude outside adds Big fireball through the MCP within seconds=N, then the next Fireball. Metrics: when each happened, for ffmpeg.", 2),
         new Entry("roomasks", typeof(RoomAsksProbe), 480f,
             "Three asks no saved mod covers, written by a real Claude outside as new mods within seconds=N: a bigger fireball, grass burning twice as fast, a new reaction of fire on water. Each is measured on a stage against the base rules. --shots for each."),
+        new Entry("playlog", typeof(PlayLogProbe), 40f,
+            "The frame-rate log (PlayLog) writing to a folder of its own: lines a second on another thread, no garbage from a frame, a hitch, a mark with its picture, the last ten logs kept, the summary line."),
         new Entry("downed", typeof(DownedProbe), 30f,
             "The punch on a virtual gamepad's Circle, being struck (open ground, a wall, water), and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
         new Entry("castfeel", typeof(CastFeelProbe), 200f,

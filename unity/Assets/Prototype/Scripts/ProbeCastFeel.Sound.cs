@@ -15,7 +15,7 @@ using UnityEngine;
 public partial class CastFeelProbe
 {
     readonly List<string> heard = new();
-    readonly List<float> levelPitches = new();
+    readonly List<float> humStarts = new();
     int thumpFrame = -1, struckFrame = -1;
     bool stoppedAtThump;
     float thumpInBeat;
@@ -23,7 +23,7 @@ public partial class CastFeelProbe
     void Sounded(string sound, Vector3 at, float volume, float pitch)
     {
         heard.Add(sound);
-        if (sound == CastSoundTable.ChargeLevel) levelPitches.Add(pitch);
+        if (sound.StartsWith("charge-", StringComparison.Ordinal)) humStarts.Add(pitch);
         if (sound != CastSoundTable.Slam) return;
         thumpFrame = Time.frameCount;
         stoppedAtThump = beats.Stopped;
@@ -44,11 +44,11 @@ public partial class CastFeelProbe
             GameVolume.Load();
             yield return Wait(1f);
             yield return Heard("single", new[] { ElementIds.Fire },
-                new[] { CastSoundTable.GatherFire, CastSoundTable.Slam, CastSoundTable.ReleaseBolt });
+                new[] { CastSoundTable.GatherFire, CastSoundTable.Slam, CastSoundTable.HumOf(ElementIds.Fire, 1), CastSoundTable.ReleaseBolt });
             Check("thump_at_contact", thumpFrame == struckFrame && thumpFrame > 0 && !stoppedAtThump && Mathf.Abs(thumpInBeat - beats.feel.tapSlam.seconds) < 0.06f,
                 $"frame {thumpFrame}, hands met {struckFrame}, in a stop {stoppedAtThump}, {thumpInBeat:0.000} s into the slam");
             yield return Heard("pair", new[] { ElementIds.Water, ElementIds.Fire },
-                new[] { CastSoundTable.GatherWater, CastSoundTable.GatherFire, CastSoundTable.Slam, CastSoundTable.ReleaseBurst });
+                new[] { CastSoundTable.GatherWater, CastSoundTable.GatherFire, CastSoundTable.Slam, CastSoundTable.HumOf(ElementIds.Water, 1), CastSoundTable.HumOf(ElementIds.Fire, 1), CastSoundTable.ReleaseBurst });
             yield return ChargedSound();
             yield return CancelledSound();
             yield return NothingLeft();
@@ -96,17 +96,18 @@ public partial class CastFeelProbe
     IEnumerator ChargedSound()
     {
         heard.Clear();
-        levelPitches.Clear();
-        var pitches = new List<float>();
-        yield return ClimbToTheTop(pitches);
+        humStarts.Clear();
+        var volumes = new List<float>();
+        yield return ClimbToTheTop(volumes);
+        volumes.Add(SoundVoices.Now(beats.Sounds.Hum).volume);
         float top = SoundVoices.Now(beats.Sounds.Hum).pitch;
         int loops = SoundVoices.Sounding.loops;
         Check("charge_hum_plays", loops == 1 && SoundVoices.Playing(beats.Sounds.Hum), $"{loops} loops");
         Metric("hum_pitch_top", top);
-        Check("hum_rises_by_level", Mathf.Abs(top - CastSoundTable.HumPitchAt(World.MaxCharge)) < 0.01f && pitches.Count == World.MaxCharge - 1 && pitches[0] < top,
-            $"[{Listed(pitches)}] then {top:0.00}");
-        Check("level_tone_rises", levelPitches.Count == World.MaxCharge - 1 && levelPitches.Zip(levelPitches.Skip(1), (a, b) => a < b).All(up => up),
-            Listed(levelPitches));
+        var levels = Enumerable.Range(1, World.MaxCharge).Select(level => CastSoundTable.HumOf(ElementIds.Earth, level));
+        Check("hum_rises_by_level", heard.Where(s => s.StartsWith("charge-", StringComparison.Ordinal)).SequenceEqual(levels) && humStarts.All(p => p < 1f) && Mathf.Abs(top - 1f) < 0.01f,
+            $"[{string.Join(" ", heard)}] from [{Listed(humStarts)}], settled at {top:0.00}");
+        Check("hum_louder_by_level", volumes.Count == World.MaxCharge && volumes.Zip(volumes.Skip(1), (a, b) => a < b).All(up => up), Listed(volumes));
         caster.LetGo();
         float letGo = Time.time;
         for (float t = 0f; beats.Now != Beat.Release && t < WaitLimit; t += Time.deltaTime) yield return null;
@@ -118,12 +119,12 @@ public partial class CastFeelProbe
         CheckChargedOrder();
     }
 
-    // Holds an element to the top level and a little past it, noting the hum's pitch as each level starts.
-    IEnumerator ClimbToTheTop(List<float> pitches)
+    // Holds an element to the top level and a little past it, noting the hum's volume just before each step up.
+    IEnumerator ClimbToTheTop(List<float> volumes)
     {
         caster.LoadElement(ElementIds.Earth, held: true);
         int lastLevel = 0;
-        float atLevelStart = 0f;
+        float atLevelStart = 0f, volume = 0f;
         for (float t = 0f; t < WaitLimit; t += Time.deltaTime)
         {
             var cast = World.CastOf(caster.CastPlayer);
@@ -132,9 +133,10 @@ public partial class CastFeelProbe
             {
                 lastLevel = level;
                 atLevelStart = t;
-                if (level > 1) pitches.Add(SoundVoices.Now(beats.Sounds.Hum).pitch);
+                if (level > 1) volumes.Add(volume);
             }
             if (level == World.MaxCharge && t - atLevelStart > 0.45f) yield break;
+            volume = SoundVoices.Now(beats.Sounds.Hum).volume;
             yield return null;
         }
     }
@@ -142,15 +144,16 @@ public partial class CastFeelProbe
     void CheckChargedOrder()
     {
         var order = heard.Where(s => !s.StartsWith("gather", StringComparison.Ordinal) || s == CastSoundTable.GatherEarth).ToList();
-        int slam = order.IndexOf(CastSoundTable.Slam), hum = order.IndexOf(CastSoundTable.ChargeLoop), ping = order.IndexOf(CastSoundTable.ChargeLevel),
+        int slam = order.IndexOf(CastSoundTable.Slam), hum = order.IndexOf(CastSoundTable.HumOf(ElementIds.Earth, 1)), top = order.IndexOf(CastSoundTable.HumOf(ElementIds.Earth, World.MaxCharge)),
             release = order.FindIndex(s => s.StartsWith("release-", StringComparison.Ordinal));
-        Check("charged_sounds_in_order", order[0] == CastSoundTable.GatherEarth && slam > 0 && hum > slam && ping > slam && release > hum && release > ping && heard.Count(s => s == CastSoundTable.Slam) == 1,
+        Check("charged_sounds_in_order", order[0] == CastSoundTable.GatherEarth && slam > 0 && hum > slam && top > hum && release > top && heard.Count(s => s == CastSoundTable.Slam) == 1 && heard.Count(s => s.StartsWith("charge-", StringComparison.Ordinal)) == World.MaxCharge,
             string.Join(" ", heard));
     }
 
     IEnumerator CancelledSound()
     {
         yield return HoldToCharge(ElementIds.Fire, 2);
+        yield return Wait(0.2f); // the last level's loop fades as this one takes over
         Check("cancel_starts_humming", SoundVoices.Sounding.loops == 1, $"{SoundVoices.Sounding.loops} loops");
         heard.Clear();
         caster.DropCast();
@@ -172,7 +175,8 @@ public partial class CastFeelProbe
         Check("pause_quiets_the_hum", SoundVoices.Sounding.loops == 0, $"{SoundVoices.Sounding.loops} loops");
         PauseMenu.Instance.SetOpen(false);
         yield return Wait(0.2f);
-        Check("hum_back_after_a_pause", SoundVoices.Sounding.loops == 1 || beats.Now != Beat.Charge, $"{SoundVoices.Sounding.loops} loops, beat {beats.Now}");
+        // Two for a moment when a charge step lands here: the old loop fading as the new one takes over.
+        Check("hum_back_after_a_pause", SoundVoices.Sounding.loops is 1 or 2 || beats.Now != Beat.Charge, $"{SoundVoices.Sounding.loops} loops, beat {beats.Now}");
         yield return UntilGone();
 
         // CastBeats off, and a loop with nobody holding it.
@@ -182,7 +186,7 @@ public partial class CastFeelProbe
         Check("disabled_wizard_stops_the_hum", SoundVoices.Sounding.loops == 0, $"{SoundVoices.Sounding.loops} loops");
         beats.enabled = true;
         yield return UntilGone();
-        var loose = SoundVoices.Loop(new Cue("probe", GameSounds.Clip(CastSoundTable.ChargeLoop), 0.2f, 1f, 40f), Vector3.zero, wizard.transform, 0f);
+        var loose = SoundVoices.Loop(new Cue("probe", GameSounds.Clip(CastSoundTable.HumOf(ElementIds.Fire, 1)), 0.2f, 1f, 40f), Vector3.zero, wizard.transform, 0f);
         Check("a_loop_starts", SoundVoices.Playing(loose));
         yield return Wait(0.6f);
         Check("a_loop_not_held_lets_go", SoundVoices.Sounding.loops == 0, $"{SoundVoices.Sounding.loops} loops");
@@ -254,7 +258,7 @@ public partial class CastFeelProbe
     {
         yield return Wait(0.6f);
         float setting = GameVolume.Effects;
-        var clip = GameSounds.Clip(CastSoundTable.ChargeLoop);
+        var clip = GameSounds.Clip(CastSoundTable.HumOf(ElementIds.Fire, 1));
         var voice = SoundVoices.Loop(new Cue("probe", clip, 0.5f, 1f, CastSoundTable.MediumReach), Vector3.up, wizard.transform, 0f);
         yield return null;
         SoundVoices.Hold(voice, 0.5f, 1f, 0.1f);

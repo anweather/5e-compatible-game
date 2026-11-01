@@ -148,6 +148,7 @@ public partial class CastFeelProbe : ProbeScenario
         repeatTick = -1;
         repeatGap = 0;
         beats.Struck += CountSlam;
+        firedCasts.StartFrom(World);
         grid.TickDone += CountFired;
         string me = caster.CastPlayer;
         for (int i = 0; i < Casts; i++)
@@ -169,12 +170,13 @@ public partial class CastFeelProbe : ProbeScenario
     }
 
     int struckSlams, repeatFired, repeatTick, repeatGap;
+    readonly FiredCastsHeard firedCasts = new();
 
     void CountSlam(Beat beat) => struckSlams += beat == Beat.Slam ? 1 : 0;
 
     void CountFired()
     {
-        if (World.CombosFired.All(f => f.Player != caster.CastPlayer)) return;
+        if (firedCasts.Take(World).All(f => f.Player != caster.CastPlayer)) return;
         if (repeatTick >= 0) repeatGap = Mathf.Max(repeatGap, World.Tick - repeatTick);
         repeatTick = World.Tick;
         repeatFired++;
