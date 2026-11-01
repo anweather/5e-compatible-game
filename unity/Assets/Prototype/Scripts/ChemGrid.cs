@@ -88,7 +88,9 @@ public partial class ChemGrid : MonoBehaviour
     readonly System.Diagnostics.Stopwatch timer = new();
 
     /// <summary>Milliseconds the last frame spent stepping the world, drawing its cells, and placing the fire lights (the probe's wildfire scenario reads them).</summary>
-    public double StepMs { get; private set; }
+    /// <summary>The time the solo world owes in seconds: past a tick's worth, it's behind.</summary>
+    public float OwedSeconds => tickTimer;
+    public double StepMs { get; set; }
     public double RenderMs { get; private set; }
 
     static readonly Unity.Profiling.ProfilerMarker StepMarker = new("ChemGrid.Step"), RenderMarker = new("ChemGrid.Render"),

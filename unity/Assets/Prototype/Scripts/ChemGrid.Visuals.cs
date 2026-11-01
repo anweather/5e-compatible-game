@@ -123,10 +123,18 @@ public partial class ChemGrid
     }
 
     // Each frame: the simulated chunks' cells (a sleeping chunk doesn't change; ChunkStreaming).
+    // The active chunks are looked over a third a frame: cells change a few times a second at most,
+    // and walking 150 000 of them every frame was 4 ms with nothing to show for it.
+    const int RenderTurns = 3;
+    int renderTurn;
+
     void Render()
     {
+        renderTurn = (renderTurn + 1) % RenderTurns;
+        int turn = 0;
         foreach (var (cx, cy) in World.ActiveChunks)
         {
+            if (turn++ % RenderTurns != renderTurn) continue;
             int x0 = cx << Chunks.Shift, y0 = cy << Chunks.Shift;
             int x1 = Mathf.Min(World.W, x0 + Chunks.Size), y1 = Mathf.Min(World.H, y0 + Chunks.Size);
             for (int y = y0; y < y1; y++)
@@ -161,6 +169,7 @@ public partial class ChemGrid
         freshChunks.RemoveRange(0, fresh);
     }
 
+    const double BusyStepMs = 3.0;
     readonly System.Diagnostics.Stopwatch finishTimer = new();
 
     /// <summary>Of RenderMs, the milliseconds the last frame spent on the water, slicks and easing ground.</summary>
@@ -176,8 +185,10 @@ public partial class ChemGrid
     {
         using var marked = FinishMarker.Auto();
         finishTimer.Restart();
-        using (WaterMeshMarker.Auto()) waterSurface.Rebuild();
-        using (SlickMeshMarker.Auto()) slicks.Rebuild();
+        // A frame a tick has already spent draws no tiles: the two together made the slowest frames.
+        bool busy = !ExactFrames && StepMs >= BusyStepMs;
+        using (WaterMeshMarker.Auto()) waterSurface.Rebuild(busy);
+        using (SlickMeshMarker.Auto()) slicks.Rebuild(busy);
         cracks.Rebuild();
         lava.Rebuild();
         spellLights.Place();

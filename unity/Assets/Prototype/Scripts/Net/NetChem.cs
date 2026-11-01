@@ -17,10 +17,10 @@ using UnityEngine;
 // - A rule change (a mod on or off; RuleSwitcher, the room's change mode) travels
 //   the same way (NetChem.Room.cs): anyone asks with the patch, the host stamps it
 //   for the next tick, and every machine decides it there itself (World.Room.cs).
-// - Every batch carries the host's checksum of an earlier tick, the cells'
-//   hash, the rules' fingerprint, the world's things' (the props' stable
-//   ids) and the sky's (the time spells' clock and weather); a client that
-//   disagrees logs a desync. The time spells are casts like any other, so a
+// - A batch every 5 s carries the host's checksum of the window just ended: the
+//   cells' hash, a slice a tick (RollingHash), the rules' fingerprint, the world's
+//   things' (the props' stable ids) and the sky's (the time spells' clock and
+//   weather); a client that disagrees logs a desync. The time spells are casts like any other, so a
 //   late joiner's replay rebuilds the clock and the held weather too.
 // - What physics props do to cells (a barrel's blast, a lantern's spill;
 //   ChemEffects) is seen by the host, whose physics is the only one that
@@ -56,7 +56,7 @@ using UnityEngine;
 [RequireComponent(typeof(ChemGrid))]
 public partial class NetChem : NetworkBehaviour
 {
-    const int HashEvery = 30;
+    const int HashEvery = RollingHash.Every, HashesKept = 4;
     // A late joiner replays the whole history; spread it so no frame spends more than this.
     const double CatchUpBudgetMs = 8.0;
 
@@ -104,7 +104,12 @@ public partial class NetChem : NetworkBehaviour
     StrikeIntent[] pastStrikes = System.Array.Empty<StrikeIntent>();
     // Joining: the ticks of the dragon's summons in the history, the same way.
     int[] pastDragon = System.Array.Empty<int>();
-    readonly Dictionary<int, string> hostHashes = new();
+    // Windows of the desync check (RollingHash) still waiting for the other side's: either can come first.
+    readonly Dictionary<int, string> hostHashes = new(), ownHashes = new();
+    RollingHash rolling = new();
+    // On the host: the last finished window, until a batch takes it.
+    int windowTick;
+    string windowHash = "";
     int knownUpTo;
     bool synced;
     bool desyncReported;
@@ -199,6 +204,9 @@ public partial class NetChem : NetworkBehaviour
         foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
         planner = new ChunkPlanner();
         hostHashes.Clear();
+        ownHashes.Clear();
+        rolling = new RollingHash();
+        windowHash = "";
         knownUpTo = 0;
         desyncReported = false;
         tickBase = 0;
@@ -309,8 +317,10 @@ public partial class NetChem : NetworkBehaviour
     void Update()
     {
         if (!IsSpawned) return;
+        long from = System.Diagnostics.Stopwatch.GetTimestamp();
         if (IsServer) RunHostClock();
         Advance();
+        grid.StepMs = (System.Diagnostics.Stopwatch.GetTimestamp() - from) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
         if (IsServer) ServeJoiners();
     }
 
@@ -349,11 +359,9 @@ public partial class NetChem : NetworkBehaviour
             StampDragon();
             StampRoom();
 
-            // The host's own world lags its clock by at most a tick, so a recent hash is always available.
-            // Never the hash of a tick still part done (World.StepSome): that one is skipped, and peers check the next.
-            int hashTick = NetTick;
-            string hash = hashTick % HashEvery == 0 && !grid.World.TickInProgress ? Checksum(grid) : "";
-            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, hashTick, new FixedString128Bytes(hash));
+            // The window the host's world finished last goes out once, with the next batch.
+            ApplyBatchRpc(hostTick, due.ToArray(), effects, rules, chunks, windowTick, new FixedString128Bytes(windowHash));
+            windowHash = "";
         }
     }
 
@@ -526,8 +534,11 @@ public partial class NetChem : NetworkBehaviour
     /// Weather's weather, World.SkyHash; a sky that differs reports like the cells), the defense's, the
     /// players' casts and grimoires (World.CastHash) and, last, the dragon's (World.DragonHash).
     /// </summary>
-    static string Checksum(ChemGrid grid) =>
-        grid.World.CellHash() + "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash();
+    static string Checksum(ChemGrid grid) => grid.World.CellHash() + Others(grid);
+
+    // All but the cells: what follows them in a checksum, in a window's too.
+    static string Others(ChemGrid grid) =>
+        "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash();
 
     // --- everyone --------------------------------------------------------------
 
@@ -551,7 +562,11 @@ public partial class NetChem : NetworkBehaviour
         if (dragonFor.Remove(tick)) batches[tick].Dragon.Add(new DragonCommand());
         if (roomFor.Remove(tick, out var room)) batches[tick].Room.AddRange(room.Select(r => r.ToCommand()));
         if (casts.Length > 0) liveCasts[tick] = casts;
-        if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
+        if (hash.Length > 0)
+        {
+            hostHashes[hashTick] = hash.ToString();
+            CheckHash(hashTick);
+        }
         if (synced) ExtendKnown();
     }
 
@@ -647,8 +662,37 @@ public partial class NetChem : NetworkBehaviour
     {
         if (liveCasts.Remove(tick, out var casts)) Shove(casts);
         grid.NoteTickDone();
-        CheckHash(tick);
+        HashTick(tick);
         TickApplied?.Invoke(tick, tick % HashEvery == 0 ? Checksum(grid) : null);
+    }
+
+    // This tick's slice of the cells; a finished window goes to the peers, or is checked against the host's.
+    void HashTick(int tick)
+    {
+        long from = System.Diagnostics.Stopwatch.GetTimestamp();
+        string cells = rolling.Add(grid.World, tick);
+        if (cells != null) FinishWindow(tick, cells + Others(grid));
+        PerfCounts.Peak("net.hash_us", (System.Diagnostics.Stopwatch.GetTimestamp() - from) * 1000000 / System.Diagnostics.Stopwatch.Frequency);
+    }
+
+    void FinishWindow(int tick, string hash)
+    {
+        if (IsServer)
+        {
+            windowTick = tick;
+            windowHash = hash;
+            return;
+        }
+        ownHashes[tick] = hash;
+        DropOldHashes(ownHashes, tick);
+        DropOldHashes(hostHashes, tick);
+        CheckHash(tick);
+    }
+
+    // A window the other side never had (it joined midway) would otherwise wait for ever.
+    static void DropOldHashes(Dictionary<int, string> hashes, int tick)
+    {
+        hashes.Keys.Where(t => t < tick - HashEvery * HashesKept).ToList().ForEach(t => hashes.Remove(t));
     }
 
     // The physical side of the casts just applied: the host moves the props (its physics is the
@@ -666,9 +710,9 @@ public partial class NetChem : NetworkBehaviour
 
     void CheckHash(int tick)
     {
-        if (IsServer || desyncReported || !hostHashes.TryGetValue(tick, out var expected)) return;
+        if (IsServer || desyncReported || !hostHashes.TryGetValue(tick, out var expected) || !ownHashes.TryGetValue(tick, out var here)) return;
         hostHashes.Remove(tick);
-        string here = Checksum(grid);
+        ownHashes.Remove(tick);
         if (expected == here) return;
         desyncReported = true;
         var (hostCells, hostRules, hostThings) = Split(expected);

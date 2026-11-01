@@ -14,7 +14,7 @@ using Debug = UnityEngine.Debug;
 
 // One timed scenario in a player build, for a performance pass
 // (docs/perf/, the MacOSProfiling build in PrototypeBuild). Start the game with
-//   -fps-probe -perf-scenario <meadow|wildfire|storm|rain|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
+//   -fps-probe -perf-scenario <meadow|wildfire|forestload|storm|rain|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
 // and FpsProbe hands over to this instead of its showcase: PerfStage sets the
 // scene, it settles, every frame is measured for N seconds (30 by default, 20
 // for the wildfire), one "PERF RESULT" line of key=value pairs goes to the
@@ -58,10 +58,12 @@ public class PerfScenario : MonoBehaviour
     const float CountEverySeconds = 2f, SpikeMs = 50f;
     const int MostSpikes = 200, ShotQuietFrames = 3, WorstFrames = 5;
     const double BytesPerMb = 1024.0 * 1024.0;
-    const float EarlyMs = 100f;
+    const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload" };
+
+    static readonly string[] WindowCounts = { "tick", "walk", "net", "cast" };
 
     readonly List<float> frameMs = new();
     readonly List<float> mainMs = new(), renderMs = new(), gpuMs = new();
@@ -72,6 +74,7 @@ public class PerfScenario : MonoBehaviour
     ChemGrid grid;
     GameObject wizard;
     PerfMarkers markers;
+    PerfWindows windows;
     bool measuring;
     double lastFrame, overheadMs, startedAt, countAt;
     int tickAtStart, frameNumber, quietFrames, errors, warnings;
@@ -115,6 +118,7 @@ public class PerfScenario : MonoBehaviour
         yield return new WaitForSecondsRealtime(WarmUpSeconds);
         if (Has("-perf-exact")) ChemGrid.ExactFrames = true;
         if (Has("-perf-time-budget")) ChemGrid.ExactFrames = false;
+        yield return WaitToHost();
         grid = FindAnyObjectByType<ChemGrid>();
         wizard = WizardRig.FindLocal();
         if (scenario != Bot) yield return SetTheStage();
@@ -128,6 +132,7 @@ public class PerfScenario : MonoBehaviour
         markers = new PerfMarkers(Has("-perf-wide"));
         tickAtStart = grid.World.Tick;
         startedAt = countAt = lastFrame = Time.realtimeSinceStartupAsDouble;
+        windows = new PerfWindows(grid, startedAt);
         measuring = true;
         if (scenario == Bot) yield break;
 
@@ -135,7 +140,23 @@ public class PerfScenario : MonoBehaviour
         while (measuring) yield return null;
         yield return Shot(scenario);
         if (scenario == Wildfire) yield return FlameShots();
+        yield return new WaitForSecondsRealtime(ShotSavedSeconds); // quitting drops a shot still being written
         Application.Quit();
+    }
+
+    // With -host-online, until the session is up and its wizard stands in the world.
+    IEnumerator WaitToHost()
+    {
+        if (!Has("-host-online")) yield break;
+        double gaveUpAt = Time.realtimeSinceStartupAsDouble + HostWaitSeconds;
+        var net = FindAnyObjectByType<NetChem>();
+        while ((net == null || !net.Online) && Time.realtimeSinceStartupAsDouble < gaveUpAt)
+        {
+            net = FindAnyObjectByType<NetChem>();
+            yield return null;
+        }
+        yield return new WaitForSecondsRealtime(WarmUpSeconds);
+        Debug.Log($"PERF HOSTED online={net != null && net.Online}");
     }
 
     // URP takes the camera's formats from its target, so this matches URP's HDR colour and depth.
@@ -247,13 +268,21 @@ public class PerfScenario : MonoBehaviour
         quietFrames = markers.BotShotLastFrame ? ShotQuietFrames : Math.Max(0, quietFrames - 1);
         if (quietFrames > 0) shotMs.Add(ms);
         else frameMs.Add(ms);
+        int hadMain = mainMs.Count, hadGpu = gpuMs.Count;
         FpsProbe.ReadTiming(mainMs, renderMs, gpuMs);
+        windows.Frame(ms, mainMs.Count > hadMain ? mainMs[^1] : -1f, gpuMs.Count > hadGpu ? gpuMs[^1] : -1f);
         if (ms > spikeMs) NoteSpike(ms, now);
         ReadCounts();
         if (now >= countAt)
         {
             CountCells();
             countAt = now + CountEverySeconds;
+        }
+        if (windows.Due(now))
+        {
+            long from = Stopwatch.GetTimestamp();
+            windows.Close(now, burningNow, markers.WindowSummary());
+            overheadMs += (Stopwatch.GetTimestamp() - from) * 1000.0 / Stopwatch.Frequency;
         }
         if (scenario != Bot && now - startedAt >= seconds) Finish();
     }
@@ -265,6 +294,7 @@ public class PerfScenario : MonoBehaviour
         {
             counts.TryGetValue(pair.Key, out var had);
             counts[pair.Key] = (had.sum + pair.Value, Math.Max(had.peak, pair.Value), had.frames + 1);
+            if (WindowCounts.Any(k => pair.Key.StartsWith(k, StringComparison.Ordinal))) windows.Count(pair.Key, pair.Value);
         }
         PerfCounts.NextFrame();
     }
@@ -293,7 +323,7 @@ public class PerfScenario : MonoBehaviour
         }
         burningPeak = Math.Max(burningPeak, burningNow);
         fogPeak = Math.Max(fogPeak, fogNow);
-        overheadMs = (Stopwatch.GetTimestamp() - from) * 1000.0 / Stopwatch.Frequency;
+        overheadMs += (Stopwatch.GetTimestamp() - from) * 1000.0 / Stopwatch.Frequency;
     }
 
     void OnLog(string message, string stack, LogType type)
@@ -328,12 +358,32 @@ public class PerfScenario : MonoBehaviour
         var inv = CultureInfo.InvariantCulture;
         Debug.Log($"PERF COUNTS scenario={scenario} frames={frameNumber}" + string.Concat(counts.OrderBy(c => c.Key, StringComparer.Ordinal).Select(c => $" {c.Key}={c.Value.sum.ToString(inv)}/{c.Value.peak.ToString(inv)}/{c.Value.frames.ToString(inv)}")));
         foreach (var (_, line) in spikes.OrderByDescending(s => s.ms).Take(MostSpikes)) Debug.Log(line);
+        foreach (string line in windows.Lines) Debug.Log(line);
+        if (stage != null && scenario == "forestload") LogLatency(inv);
         if (grid != null && Environment.GetCommandLineArgs().Contains("-perf-water-check"))
         {
             var (tiles, different) = grid.CheckWaterTiles();
             Debug.Log($"PERF WATER CHECK tiles={tiles} different={different}");
         }
         if (Environment.GetCommandLineArgs().Contains("-perf-list-markers")) ListMarkers();
+    }
+
+    // The times a player feels: each as seconds into the run, then ms.
+    void LogLatency(CultureInfo inv)
+    {
+        static string Listed(IEnumerable<(float at, float ms)> times) => string.Join(",", times.Select(t => $"{t.at.ToString("0", CultureInfo.InvariantCulture)}:{t.ms.ToString("0.0", CultureInfo.InvariantCulture)}"));
+        void Log(string name, List<(float at, float ms)> times)
+        {
+            if (times.Count == 0)
+            {
+                Debug.Log($"PERF LATENCY {name} none");
+                return;
+            }
+            var stats = FrameStats.Of(times.Select(t => t.ms).ToList());
+            Debug.Log($"PERF LATENCY {name} n={stats.Count} p50={stats.P50Ms.ToString("0.0", inv)} p95={stats.P95Ms.ToString("0.0", inv)} worst={times.Max(t => t.ms).ToString("0.0", inv)} each={Listed(times)}");
+        }
+        Log("cast", stage.CastLatency);
+        Log("move", stage.MoveLatency);
     }
 
     string ResultLine(double elapsed)

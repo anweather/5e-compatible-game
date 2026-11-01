@@ -44,7 +44,7 @@ public sealed class CellSlickMesh
     // Cells acid ate, and until when their stain shows.
     readonly Dictionary<int, float> eaten = new();
     readonly List<int> expired = new();
-    const int TileCells = 32;
+    const int TileCells = 16;
     const double DrawBudgetMs = 2.0;
     const int ExactDrawTiles = 2;
     readonly Material material;
@@ -59,7 +59,14 @@ public sealed class CellSlickMesh
     readonly System.Func<float, float, float> heightAt;
     readonly System.Func<float, float, float, Color> shadeAt;
     // ColorAt's channels, made once (Shade asks for each at every point of the film).
-    readonly System.Func<int, int, float?> redAt, greenAt, blueAt, alphaAt;
+    readonly System.Func<int, int, float?> redAt, greenAt, blueAt, alphaAt, topAt, gradeAt;
+    // The tile being drawn, a ring wider all round: each cell's film colour and how steep it is
+    // (asked of once, by the first point that wants it), as a point asks four cells of everything.
+    const int TileRing = 2, TileSide = TileCells + 2 * TileRing;
+    readonly Color?[] tileColors = new Color?[TileSide * TileSide];
+    readonly float[] tileGrades = new float[TileSide * TileSide];
+    readonly bool[] tileAsked = new bool[TileSide * TileSide];
+    int tileX, tileY;
 
     public CellSlickMesh(ChemGrid grid, Material material)
     {
@@ -72,10 +79,12 @@ public sealed class CellSlickMesh
         wobbleAt = (x, y) => BesideStep(x, y) ? 0f : 1f;
         heightAt = Height;
         shadeAt = Shade;
-        redAt = (x, y) => ColorAt(x, y)?.r;
-        greenAt = (x, y) => ColorAt(x, y)?.g;
-        blueAt = (x, y) => ColorAt(x, y)?.b;
-        alphaAt = (x, y) => ColorAt(x, y)?.a;
+        topAt = (x, y) => Has(x, y) ? grid.GroundTop(x, y, grid.World.At(x, y)) : null;
+        redAt = (x, y) => TileColor(x, y)?.r;
+        greenAt = (x, y) => TileColor(x, y)?.g;
+        blueAt = (x, y) => TileColor(x, y)?.b;
+        alphaAt = (x, y) => TileColor(x, y)?.a;
+        gradeAt = (x, y) => TileGrade(x, y);
     }
 
     /// <summary>True for a cover drawn as a film (oil, grease).</summary>
@@ -150,9 +159,9 @@ public sealed class CellSlickMesh
     }
 
     /// <summary>Redraws the tiles near any change since the last time, nearest the camera first, as far as the frame's budget goes.</summary>
-    public void Rebuild()
+    public void Rebuild(bool busy = false)
     {
-        if (dirtyTiles.Count == 0) return;
+        if (dirtyTiles.Count == 0 || busy) return;
         PerfCounts.Add("slick.rebuilds");
         PerfCounts.Peak("slick.film_cells", slicks.Count + eaten.Count);
         drawBudget.Start();
@@ -195,7 +204,42 @@ public sealed class CellSlickMesh
             surface.go.transform.SetParent(root.transform, true);
             tiles[tile] = surface;
         }
+        ReadTile(box);
         surface.Build(box, filmAt, heightAt, shadeAt, wobbleAt);
+    }
+
+    void ReadTile(RectInt box)
+    {
+        tileX = box.xMin - TileRing;
+        tileY = box.yMin - TileRing;
+        System.Array.Clear(tileAsked, 0, tileAsked.Length);
+        for (int y = 0; y < TileSide; y++)
+            for (int x = 0; x < TileSide; x++) tileColors[y * TileSide + x] = ColorAt(tileX + x, tileY + y);
+    }
+
+    // Where in the tile's arrays a cell is, or -1 past them.
+    int TileIndex(int x, int y)
+    {
+        int ix = x - tileX, iy = y - tileY;
+        return ix < 0 || iy < 0 || ix >= TileSide || iy >= TileSide ? -1 : iy * TileSide + ix;
+    }
+
+    Color? TileColor(int x, int y)
+    {
+        int at = TileIndex(x, y);
+        return at >= 0 ? tileColors[at] : ColorAt(x, y);
+    }
+
+    float TileGrade(int x, int y)
+    {
+        int at = TileIndex(x, y);
+        if (at < 0) return Grade(x + 0.5f, y + 0.5f);
+        if (!tileAsked[at])
+        {
+            tileAsked[at] = true;
+            tileGrades[at] = Grade(x + 0.5f, y + 0.5f);
+        }
+        return tileGrades[at];
     }
 
     // Whether any cell in the box, or the ring round it, wears a film (a tile also draws the edge of one lying just past it).
@@ -213,7 +257,7 @@ public sealed class CellSlickMesh
     float Height(float gx, float gy)
     {
         float ground = grid.GroundAt(ContourSurface.FlatOn(grid, gx, gy));
-        float level = ContourSurface.BlendAround(gx, gy, (x, y) => Has(x, y) ? grid.GroundTop(x, y, grid.World.At(x, y)) : null, ground);
+        float level = ContourSurface.BlendAround(gx, gy, topAt, ground);
         return Mathf.Max(ground, level) + Lift;
     }
 
@@ -241,11 +285,12 @@ public sealed class CellSlickMesh
             ContourSurface.BlendAround(gx, gy, blueAt, 0f),
             ContourSurface.BlendAround(gx, gy, alphaAt, 0f));
         c.a *= Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(Outline.Iso, Outline.Iso + FadeWidth, value));
-        c.a *= 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(FlatGrade, SteepGrade, Grade(gx, gy)));
+        c.a *= 1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(FlatGrade, SteepGrade, ContourSurface.BlendAround(gx, gy, gradeAt, 0f)));
         return c;
     }
 
     // How steep the ground is at a point (grid units): the larger rise over run across a quarter cell.
+    // A cell's middle speaks for it, and a point blends the four round it: Shade asked this of every point.
     float Grade(float gx, float gy)
     {
         const float d = 0.125f;

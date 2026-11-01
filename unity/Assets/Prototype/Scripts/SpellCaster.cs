@@ -72,6 +72,9 @@ public partial class SpellCaster : MonoBehaviour
         marker?.Destroy();
     }
 
+    /// <summary>How many casts have started here, for timing them (PerfStage).</summary>
+    public int CastsStarted { get; private set; }
+
     /// <summary>Selects a spell by id; false (and nothing changes) if the rules in force don't have it.</summary>
     public bool Select(string spellId)
     {
@@ -181,6 +184,7 @@ public partial class SpellCaster : MonoBehaviour
     /// <summary>A cast, perhaps aimed off the grid's four ways (CastCommand.AimX, AimY).</summary>
     public void Cast(CastCommand cast)
     {
+        CastsStarted++;
         if (shape != null && shape.Shifted)
         {
             EventLog.Add($"You can't cast spells in the {shape.FormName}'s shape. Cast to change back first.");

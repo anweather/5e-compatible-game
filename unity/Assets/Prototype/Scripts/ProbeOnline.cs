@@ -114,6 +114,8 @@ public class OnlineObservation
     public List<int> hashTicks = new();
     public List<string> hashes = new();
     public bool desync;
+    /// <summary>A cell put wrong by hand here was reported as a desync within two windows (RollingHash).</summary>
+    public bool wrongCellCaught;
     public int errorCount;
     public List<string> errors = new();
     /// <summary>The pushed crate, before the shove and once it has settled (OnlineSchedule.PropTick).</summary>
@@ -527,10 +529,23 @@ public class OnlineProbeClient : MonoBehaviour
         after.damageTaken = struck.DamageTaken;
         after.phase = ProbeLink.ResetReported;
         after.desync = net.DesyncSeen;
+        yield return PutACellWrong(net, after);
         after.errorCount = errorCount;
         after.errors = new List<string>(errors);
         ProbeLink.Write(ProbeLink.ClientFile, after);
     }
+
+    // The desync check's own test, last, as it leaves this peer wrong: one cell far from anything,
+    // on this peer alone, is reported within two windows.
+    static IEnumerator PutACellWrong(NetChem net, OnlineObservation after)
+    {
+        net.GetComponent<ChemGrid>().World.At(0, 0).Fuel += 7;
+        float most = RollingHash.Every * 2f / net.GetComponent<ChemGrid>().World.Rules.Sim.TicksPerSecond + WrongCellGrace;
+        for (float waited = 0f; waited < most && !net.DesyncSeen; waited += Time.unscaledDeltaTime) yield return null;
+        after.wrongCellCaught = net.DesyncSeen;
+    }
+
+    const float WrongCellGrace = 2f;
 }
 
 /// <summary>
@@ -683,6 +698,7 @@ public class OnlineProbe : ProbeScenario
             yield break;
         }
         CheckSeenOnline(client);
+        Check("a_wrong_cell_is_caught", client.wrongCellCaught, "one cell put wrong on the virtual player alone is reported as a desync within two windows");
         int compared = 0, equal = 0;
         string firstDiff = null;
         for (int i = 0; i < client.hashTicks.Count; i++)
