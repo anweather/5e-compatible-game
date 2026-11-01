@@ -69,6 +69,10 @@ release) and uploads only its own files to the one **draft** `alpha-X.Y.Z`.
 Without either flag the Mac builds both. Details: `docs/RELEASING.md` step 4,
 "Updates in place", and the `ship-update` skill.
 
+Linux is the same release (J-051): the Mac builds it from the same commit and uploads
+`SpellChemistryValley-linux-x64.zip` to the draft. A release with no Linux build locks
+Linux players out. Steps: `docs/RELEASING.md` step 4.
+
 Then the notes: `git log --no-merges --pretty='- %s' alpha-<previous>..HEAD`,
 rewritten as a short player-facing list (what's new, what's fixed, known
 issues, controls changes; plain words, no commit-speak), plus how to
