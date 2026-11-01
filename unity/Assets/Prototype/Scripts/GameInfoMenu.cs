@@ -4,8 +4,8 @@ using UnityEngine;
 // The bottom of the Esc menu (PauseMenu): the version this copy is ("alpha
 // 0.1.0 (abc1234)", BuildInfo), a line and a download button when a newer
 // alpha is out (UpdateCheck), an "Open log folder" button for bug reports, and
-// a Credits button that opens the attribution (Credits) as a page of the
-// menu. Starts itself.
+// an About and credits button that opens the attribution and licences (Credits)
+// as a page of the menu. Starts itself.
 public class GameInfoMenu : MonoBehaviour
 {
     /// <summary>The Credits page's id in the Esc menu.</summary>
@@ -27,7 +27,7 @@ public class GameInfoMenu : MonoBehaviour
 
     void OnEnable()
     {
-        creditsPage ??= new PauseMenu.Page { Title = "Credits", Width = 560, Draw = DrawCredits };
+        creditsPage ??= new PauseMenu.Page { Title = "About and credits", Width = 560, Draw = DrawCredits };
         PauseMenu.AddSection(Draw, PauseMenu.LastOrder);
         PauseMenu.AddPage(CreditsPage, creditsPage);
     }
@@ -57,7 +57,7 @@ public class GameInfoMenu : MonoBehaviour
             GUILayout.Space(6);
         }
         GUILayout.BeginHorizontal();
-        if (PauseMenu.Button("Credits", null, GUILayout.Height(32))) PauseMenu.Instance.ShowPage(CreditsPage);
+        if (PauseMenu.Button("About and credits", null, GUILayout.Height(32))) PauseMenu.Instance.ShowPage(CreditsPage);
         if (PauseMenu.Button("Open log folder", null, GUILayout.Height(32))) OpenLogFolder();
         GUILayout.EndHorizontal();
         GUILayout.Label($"<color=#ffffff88>{BuildInfo.Label}</color>", small);
@@ -74,7 +74,7 @@ public class GameInfoMenu : MonoBehaviour
     static string CreditsText()
     {
         var assets = string.Join("\n", System.Array.ConvertAll(Credits.Assets, a => "· " + a));
-        return $"{Credits.Game}\n\n<b>Rules</b>\n{Credits.Srd}\n\n<b>Assets</b>\n{assets}\n\n<b>Models</b>\n{Credits.Models}\n\n<b>Engine</b>\n{Credits.Engine}\n\n<b>Libraries</b>\n{Credits.Libraries}\n\n<b>With thanks</b>\n{Credits.Contributions}";
+        return $"{Credits.Game}\n\n<b>Rules</b>\n{Credits.Srd}\n\n<b>Licences</b>\n{Credits.Licences}\n\n<b>Assets</b>\n{assets}\n\n<b>Models and sounds</b>\n{Credits.Models}\n{Credits.Sounds}\n\n<b>Engine</b>\n{Credits.Engine}\n\n<b>Libraries</b>\n{Credits.Libraries}\n\n<b>With thanks</b>\n{Credits.Contributions}";
     }
 
     /// <summary>Opens the folder with Player.log (the Editor's own log in the Editor), to attach to a bug report.</summary>

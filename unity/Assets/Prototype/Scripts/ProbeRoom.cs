@@ -470,7 +470,7 @@ public class RoomMcpProbe : ProbeScenario
         Check("on_serves_again", again.Status == TaskStatus.RanToCompletion && again.Result.status == 200, again.Status.ToString());
     }
 
-    // With --shots: the menu's change mode, and the Mods page with the switch and the line.
+    // With --shots: the menu's change mode, the Mods page, and the Play with Claude page with the switch and the line.
     IEnumerator Stills()
     {
         EventLog.HudVisible = true;
@@ -481,6 +481,11 @@ public class RoomMcpProbe : ProbeScenario
         ModsPanel.SetOpen(true);
         yield return Wait(0.3f);
         Shot("mods-page");
+        yield return Wait(0.3f);
+        PauseMenu.Instance.ShowPage(ClaudeMenu.PageId);
+        yield return Wait(0.3f);
+        Check("claude_page_opens", PauseMenu.Instance.CurrentPage == ClaudeMenu.PageId, PauseMenu.Instance.CurrentPage);
+        Shot("claude-page");
         yield return Wait(0.3f);
         PauseMenu.Instance.SetOpen(false);
     }
