@@ -71,6 +71,7 @@ public partial class Shapeshift : ICreatureGround
         if (b == null) return;
         Follow(b, Mathf.Max(Time.deltaTime, 1e-4f));
         animator.Evaluate(b, state, Coat, this, instances, 0);
+        CreatureDrawer.HideAtLens(instances, 0, b.Segments.Length, Camera.main);
         drawer.Draw(instances, b.Segments.Length, transform.position);
         DrawnFrames++;
     }

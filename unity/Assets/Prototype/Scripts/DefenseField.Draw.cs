@@ -135,6 +135,7 @@ public partial class DefenseField : ICreatureGround
         if (drawer == null || bodies == null) return;
         int used = 0;
         Vector3 centre = Vector3.zero;
+        var cam = Camera.main;
         foreach (var s in shown.Values)
         {
             var b = Body(s.kind);
@@ -143,6 +144,7 @@ public partial class DefenseField : ICreatureGround
             if (instances.Length < need) System.Array.Resize(ref instances, Mathf.NextPowerOfTwo(need));
             animator.Evaluate(b, s.state, 0, this, instances, used);
             Frost(s, used, need);
+            CreatureDrawer.HideAtLens(instances, used, b.Segments.Length, cam);
             used = need;
             centre = s.at;
             DrawnRaiders++;

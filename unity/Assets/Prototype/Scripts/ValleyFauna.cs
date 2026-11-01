@@ -88,6 +88,9 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     /// <summary>How many animals are out, for the probe.</summary>
     public int Count => creatures.Count;
 
+    /// <summary>The animals drawn for their shadows alone this frame, the lens being at them (CreatureDrawer).</summary>
+    public int AtLens { get; private set; }
+
     /// <summary>The species built from the list, by index (for the probe).</summary>
     public int SpeciesIndex(string name) => species.FindIndex(e => e.species != null && e.species.name == name);
 
@@ -480,10 +483,12 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         if (total == 0) return;
         if (instances.Length < total) instances = new SegmentInstance[Mathf.NextPowerOfTwo(total)];
         int offset = 0;
+        AtLens = 0;
         foreach (var c in creatures)
         {
             var b = bodies[c.species];
             animator.Evaluate(b, c.state, c.coat, this, instances, offset);
+            if (CreatureDrawer.HideAtLens(instances, offset, b.Segments.Length, cam)) AtLens++;
             offset += b.Segments.Length;
         }
         drawer.Draw(instances, total, cam.transform.position);

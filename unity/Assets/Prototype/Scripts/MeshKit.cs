@@ -139,20 +139,21 @@ public sealed class MeshKit
         for (int s = 0; s < sides; s++)
         {
             int i = first + s * 2;
+            // Clockwise from outside, as Tri and Quad wind: wound the other way a log showed its far inside (issue #47).
             triangles.Add(i);
+            triangles.Add(i + 3);
             triangles.Add(i + 1);
-            triangles.Add(i + 3);
             triangles.Add(i);
-            triangles.Add(i + 3);
             triangles.Add(i + 2);
+            triangles.Add(i + 3);
         }
         if (!caps) return;
         for (int s = 0; s < sides; s++)
         {
             float t0 = s * Mathf.PI * 2f / sides, t1 = (s + 1) * Mathf.PI * 2f / sides;
             Vector3 r0 = (u * Mathf.Cos(t0) + v * Mathf.Sin(t0)) * radius, r1 = (u * Mathf.Cos(t1) + v * Mathf.Sin(t1)) * radius;
-            Tri(b, b + r1, b + r0, color);
-            Tri(a, a + r0, a + r1, color);
+            Tri(b, b + r0, b + r1, color);
+            Tri(a, a + r1, a + r0, color);
         }
     }
 

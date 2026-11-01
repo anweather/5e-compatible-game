@@ -1,5 +1,6 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
-// used with permission. Punchy's atmosphere swapped for URP's fog.
+// used with permission. Punchy's atmosphere swapped for URP's fog; a segment's pad
+// under 0 draws it for its shadow alone (CreatureDrawer.HideAtLens, a lens in the creature).
 Shader "Punchy/Creature"
 {
     // Animals (CreatureRenderSystem): every body segment is an instance of one unit capsule mesh, stretched to the
@@ -21,7 +22,7 @@ Shader "Punchy/Creature"
             float radiusStart;
             float radiusEnd;
             float flatten;
-            float pad;         // over 0: a crack web on it (a frozen raider, cracked)
+            float pad;         // over 0: a crack web on it (a frozen raider, cracked); under 0: shadow only
             float4 color;
         };
 
@@ -55,6 +56,9 @@ Shader "Punchy/Creature"
             normalWS = Rotate(s.rotation, normalize(n));
             color = s.color;
         }
+
+        // The clip position of a vertex of a shadow-only segment: all at one point, so nothing is drawn.
+        static const float4 NotDrawn = float4(0, 0, 0, 1);
 
         void SegmentVertex(CreatureAttributes input, out float3 positionWS, out float3 normalWS, out float4 color)
         {
@@ -106,7 +110,7 @@ Shader "Punchy/Creature"
                 float3 n;
                 float4 c;
                 SegmentVertex(input, o.positionWS, n, c, o.crack);
-                o.positionCS = TransformWorldToHClip(o.positionWS);
+                o.positionCS = o.crack < 0 ? NotDrawn : TransformWorldToHClip(o.positionWS);
                 o.normalWS = n;
                 o.color = c;
                 o.fogFactor = ComputeFogFactor(o.positionCS.z);
@@ -182,8 +186,9 @@ Shader "Punchy/Creature"
             {
                 float3 p, n;
                 float4 c;
-                SegmentVertex(input, p, n, c);
-                return TransformWorldToHClip(p);
+                float crack;
+                SegmentVertex(input, p, n, c, crack);
+                return crack < 0 ? NotDrawn : TransformWorldToHClip(p);
             }
 
             half Frag(float4 positionCS : SV_POSITION) : SV_Target { return positionCS.z; }
