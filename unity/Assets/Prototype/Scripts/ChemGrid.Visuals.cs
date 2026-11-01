@@ -239,7 +239,7 @@ public partial class ChemGrid
         if (reshaped || banked)
         {
             waterSurface.GroundChanged(x, y);
-            slicks.GroundChanged();
+            slicks.GroundChanged(x, y);
             lava.GroundChanged();
         }
         v.terrain = c.T;

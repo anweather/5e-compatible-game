@@ -13,6 +13,8 @@ using UnityEngine;
 // a while (Eaten, Expire); a slick there wins over it. A falling star's target
 // mark (Cell.Star) is a hot glow in the same film, over everything else. Frost
 // is a pale glaze in it, and the rock lava leaves (Crust) a dark, cindery crust.
+// In tiles, as the water is (CellWaterMesh): a change redraws the tiles round it, nearest the
+// camera first, within a few milliseconds a frame, so a storm's mud never stalls one.
 public sealed class CellSlickMesh
 {
     // How far the film floats over the terrain, how far in from its edge it turns opaque (in
@@ -42,15 +44,34 @@ public sealed class CellSlickMesh
     // Cells acid ate, and until when their stain shows.
     readonly Dictionary<int, float> eaten = new();
     readonly List<int> expired = new();
-    readonly ContourSurface surface;
-    bool dirty;
+    const int TileCells = 32;
+    const double DrawBudgetMs = 2.0;
+    const int ExactDrawTiles = 2;
+    readonly Material material;
+    readonly int tilesX;
+    readonly GameObject root;
+    readonly Dictionary<int, ContourSurface> tiles = new();
+    readonly HashSet<int> dirtyTiles = new();
+    readonly List<int> drawOrder = new();
+    readonly ChemGrid.FrameBudget drawBudget = new(DrawBudgetMs, ExactDrawTiles);
+    // What a tile's Build asks, made once.
+    readonly System.Func<int, int, float> filmAt, wobbleAt;
+    readonly System.Func<float, float, float> heightAt;
+    readonly System.Func<float, float, float, Color> shadeAt;
     // ColorAt's channels, made once (Shade asks for each at every point of the film).
     readonly System.Func<int, int, float?> redAt, greenAt, blueAt, alphaAt;
 
     public CellSlickMesh(ChemGrid grid, Material material)
     {
         this.grid = grid;
-        surface = new ContourSurface(grid, "Slicks", material, Outline, 4f);
+        this.material = material;
+        tilesX = (grid.World.W + TileCells - 1) / TileCells;
+        root = new GameObject("Slicks");
+        root.transform.SetParent(grid.transform, false);
+        filmAt = (x, y) => Has(x, y) ? 1f : 0f;
+        wobbleAt = (x, y) => BesideStep(x, y) ? 0f : 1f;
+        heightAt = Height;
+        shadeAt = Shade;
         redAt = (x, y) => ColorAt(x, y)?.r;
         greenAt = (x, y) => ColorAt(x, y)?.g;
         blueAt = (x, y) => ColorAt(x, y)?.b;
@@ -88,21 +109,30 @@ public sealed class CellSlickMesh
         if (film != null) slicks[key] = film;
         else slicks.Remove(key);
         if (PerfCounts.On && (had ? was != film : film != null)) PerfCounts.Add("slick.changed." + (film ?? "none_was_" + was));
-        dirty |= had ? was != film : film != null;
+        if (had ? was != film : film != null) MarkAround(x, y);
     }
 
-    /// <summary>Ground moved somewhere: the film follows it at the next Rebuild.</summary>
-    public void GroundChanged()
+    /// <summary>Ground moved at a cell: the film near it follows at the next Rebuild.</summary>
+    public void GroundChanged(int x, int y)
     {
         PerfCounts.Add("slick.ground_changed");
-        dirty |= slicks.Count > 0 || eaten.Count > 0;
+        if (slicks.Count > 0 || eaten.Count > 0) MarkAround(x, y);
+    }
+
+    // A cell's change reaches two cells round it (the outline reads one ring out, the wobble another).
+    void MarkAround(int x, int y)
+    {
+        int tx0 = Mathf.Max(0, (x - 2) / TileCells), tx1 = Mathf.Min(tilesX - 1, (x + 2) / TileCells);
+        int ty0 = Mathf.Max(0, (y - 2) / TileCells), ty1 = (y + 2) / TileCells;
+        for (int ty = ty0; ty <= ty1; ty++)
+            for (int tx = tx0; tx <= tx1; tx++) dirtyTiles.Add(ty * tilesX + tx);
     }
 
     /// <summary>Acid ate something at a cell: it wears the eaten stain until <paramref name="until"/> (Time.time).</summary>
     public void Eaten(int x, int y, float until)
     {
         eaten[grid.World.Idx(x, y)] = until;
-        dirty = true;
+        MarkAround(x, y);
     }
 
     /// <summary>Stains past their time go, at the next Rebuild.</summary>
@@ -112,19 +142,69 @@ public sealed class CellSlickMesh
         expired.Clear();
         foreach (var kv in eaten)
             if (kv.Value <= now) expired.Add(kv.Key);
-        foreach (int key in expired) eaten.Remove(key);
-        dirty |= expired.Count > 0;
+        foreach (int key in expired)
+        {
+            eaten.Remove(key);
+            MarkAround(key % grid.World.W, key / grid.World.W);
+        }
     }
 
-    /// <summary>Rebuilds the film if any cell's slick changed since the last time.</summary>
+    /// <summary>Redraws the tiles near any change since the last time, nearest the camera first, as far as the frame's budget goes.</summary>
     public void Rebuild()
     {
-        if (!dirty) return;
-        dirty = false;
+        if (dirtyTiles.Count == 0) return;
         PerfCounts.Add("slick.rebuilds");
         PerfCounts.Peak("slick.film_cells", slicks.Count + eaten.Count);
-        surface.Build(Box(), (x, y) => Has(x, y) ? 1f : 0f,
-            Height, Shade, (x, y) => BesideStep(x, y) ? 0f : 1f);
+        drawBudget.Start();
+        drawOrder.Clear();
+        drawOrder.AddRange(dirtyTiles);
+        var cam = Camera.main;
+        if (cam != null && drawOrder.Count > 1)
+        {
+            var eye = cam.transform.position;
+            drawOrder.Sort((a, b) => TileDistance(a, eye).CompareTo(TileDistance(b, eye)));
+        }
+        foreach (int tile in drawOrder)
+        {
+            if (drawBudget.Over()) break;
+            DrawTile(tile);
+            dirtyTiles.Remove(tile);
+        }
+    }
+
+    // Squared distance on the ground from a point to a tile's middle.
+    float TileDistance(int tile, Vector3 eye)
+    {
+        int cx = (tile % tilesX) * TileCells + TileCells / 2, cy = (tile / tilesX) * TileCells + TileCells / 2;
+        var mid = grid.CellCenter(Mathf.Min(cx, grid.World.W - 1), Mathf.Min(cy, grid.World.H - 1));
+        float dx = mid.x - eye.x, dz = mid.z - eye.z;
+        return dx * dx + dz * dz;
+    }
+
+    // A tile's film: made the first time it has any, emptied when it has none.
+    void DrawTile(int tile)
+    {
+        var world = grid.World;
+        int x0 = tile % tilesX * TileCells, y0 = tile / tilesX * TileCells;
+        var box = new RectInt(x0, y0, Mathf.Min(TileCells, world.W - x0), Mathf.Min(TileCells, world.H - y0));
+        if (box.width <= 0 || box.height <= 0) return;
+        if (!tiles.TryGetValue(tile, out var surface))
+        {
+            if (!AnyNear(box)) return;
+            surface = new ContourSurface(grid, "Slicks", material, Outline, 4f, tiled: true);
+            surface.go.transform.SetParent(root.transform, true);
+            tiles[tile] = surface;
+        }
+        surface.Build(box, filmAt, heightAt, shadeAt, wobbleAt);
+    }
+
+    // Whether any cell in the box, or the ring round it, wears a film (a tile also draws the edge of one lying just past it).
+    bool AnyNear(RectInt box)
+    {
+        for (int y = box.yMin - 1; y <= box.yMax; y++)
+            for (int x = box.xMin - 1; x <= box.xMax; x++)
+                if (Has(x, y)) return true;
+        return false;
     }
 
     // On the ground, but never dipping below the slick cells' own level: past a pit's lip the
@@ -132,7 +212,7 @@ public sealed class CellSlickMesh
     // light along the bend.
     float Height(float gx, float gy)
     {
-        float ground = grid.GroundAt(surface.Flat(gx, gy));
+        float ground = grid.GroundAt(ContourSurface.FlatOn(grid, gx, gy));
         float level = ContourSurface.BlendAround(gx, gy, (x, y) => Has(x, y) ? grid.GroundTop(x, y, grid.World.At(x, y)) : null, ground);
         return Mathf.Max(ground, level) + Lift;
     }
@@ -152,25 +232,6 @@ public sealed class CellSlickMesh
 
     bool Has(int x, int y) => grid.World.InBounds(x, y) && (slicks.ContainsKey(grid.World.Idx(x, y)) || eaten.ContainsKey(grid.World.Idx(x, y)));
 
-    RectInt Box()
-    {
-        int w = grid.World.W, x0 = int.MaxValue, y0 = int.MaxValue, x1 = int.MinValue, y1 = int.MinValue;
-        foreach (int key in Keys())
-        {
-            x0 = Mathf.Min(x0, key % w);
-            y0 = Mathf.Min(y0, key / w);
-            x1 = Mathf.Max(x1, key % w);
-            y1 = Mathf.Max(y1, key / w);
-        }
-        return x1 < x0 ? new RectInt(0, 0, 0, 0) : new RectInt(x0, y0, x1 - x0 + 1, y1 - y0 + 1);
-    }
-
-    IEnumerable<int> Keys()
-    {
-        foreach (int key in slicks.Keys) yield return key;
-        foreach (int key in eaten.Keys) yield return key;
-    }
-
     // The films' colours (blended where they meet), fading out toward the edge and on steep ground.
     Color Shade(float gx, float gy, float value)
     {
@@ -189,8 +250,8 @@ public sealed class CellSlickMesh
     {
         const float d = 0.125f;
         float run = 2f * d * grid.cellSize;
-        float ex = grid.GroundAt(surface.Flat(gx + d, gy)) - grid.GroundAt(surface.Flat(gx - d, gy));
-        float ey = grid.GroundAt(surface.Flat(gx, gy + d)) - grid.GroundAt(surface.Flat(gx, gy - d));
+        float ex = grid.GroundAt(ContourSurface.FlatOn(grid, gx + d, gy)) - grid.GroundAt(ContourSurface.FlatOn(grid, gx - d, gy));
+        float ey = grid.GroundAt(ContourSurface.FlatOn(grid, gx, gy + d)) - grid.GroundAt(ContourSurface.FlatOn(grid, gx, gy - d));
         return Mathf.Max(Mathf.Abs(ex), Mathf.Abs(ey)) / run;
     }
 
@@ -212,5 +273,9 @@ public sealed class CellSlickMesh
         };
     }
 
-    public void Destroy() => surface.Destroy();
+    public void Destroy()
+    {
+        foreach (var surface in tiles.Values) surface.Destroy();
+        Object.Destroy(root);
+    }
 }

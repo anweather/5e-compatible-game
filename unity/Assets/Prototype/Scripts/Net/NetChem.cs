@@ -319,7 +319,7 @@ public partial class NetChem : NetworkBehaviour
     void RunHostClock()
     {
         float tickLength = 1f / Mathf.Max(1, grid.World.Rules.Sim.TicksPerSecond);
-        clock += Time.deltaTime;
+        clock = Mathf.Min(clock + Time.deltaTime, ChemGrid.MostOwedSeconds); // peers keep the host's pace, whatever it is
         int guard = 4;
         while (clock >= tickLength && guard-- > 0)
         {

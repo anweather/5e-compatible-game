@@ -274,7 +274,7 @@ public partial class ChemGrid : MonoBehaviour
             return;
         }
 
-        tickTimer += Time.deltaTime;
+        tickTimer = Mathf.Min(tickTimer + Time.deltaTime, MostOwedSeconds);
         timer.Restart();
         stepBudget.Start();
         bool stepped;
@@ -315,6 +315,8 @@ public partial class ChemGrid : MonoBehaviour
     // than one frame stalling for the whole tick. Meanwhile the view may show a tick half done for
     // a frame or two (fire spread this tick, say, but water not yet moved).
     const double StepBudgetMs = 6.0;
+    /// <summary>The most time the world may owe: a slower world just runs slow, and doesn't race to catch up after.</summary>
+    public const float MostOwedSeconds = 1f;
     // In a playtest run, slices instead (ExactFrames): a quiet valley tick is a hundred or so.
     const int ExactStepSlices = 256;
     readonly FrameBudget stepBudget = new(StepBudgetMs, ExactStepSlices);
