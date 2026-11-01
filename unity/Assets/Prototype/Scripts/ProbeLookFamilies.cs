@@ -106,7 +106,13 @@ public class LookFamiliesProbe : SpellLookFxProbe
     void Near(SpellDef def, Vector2Int at, Aim aim)
     {
         var me = grid.CellAt(wizard.transform.position);
-        int along = def.Length > 8 && def.Id != SpellIds.GustOfWind || def.Id == "wave" ? 4 : def.Length;
+        // Where a line's show is to be seen: its end, or near the hand for one that runs from there.
+        int along = def.Id switch
+        {
+            SpellIds.GustOfWind => def.Length,
+            "sand-blast" => 2,
+            _ => def.Length > 5 ? 4 : def.Length,
+        };
         var point = aim switch
         {
             Aim.Beside => grid.CellCenter(me.x + along, me.y),
