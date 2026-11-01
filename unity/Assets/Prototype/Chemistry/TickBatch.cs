@@ -120,7 +120,8 @@ namespace Chem
             world.FinishTick(); // a batch's commands land between whole ticks
             errors = Array.Empty<string>();
             ChunkStreaming.Apply(world, Chunks);
-            if (Mods != null)
+            // In a room only its commands change the rules (World.Room.cs); a reset's re-stamped list changes nothing.
+            if (Mods != null && world.Room == null)
             {
                 try
                 {

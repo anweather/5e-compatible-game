@@ -184,6 +184,19 @@ dotnet build core/Rules.Mcp -c Release
 claude mcp add rules -- dotnet core/Rules.Mcp/bin/Release/net8.0/Rules.Mcp.dll --rules "$PWD/rules"
 ```
 
+**Or add the game itself.** A running copy serves the same tools on your own
+machine, against the world you're playing in, so `apply` changes the game in
+front of you, for everyone in the room. Nothing needs installing. Run this once
+(Esc > Play with Claude shows it with the address to use, and the switch that closes the port):
+
+```sh
+claude mcp add --scope user --transport http spell-valley http://127.0.0.1:47777/mcp
+```
+
+Then ask Claude for a bigger fireball. It writes the change itself as a new draft, checks it and
+switches it on with a title, and tells you what it changed; it takes a saved mod only if you name one. What goes in is up to the room's change
+mode, picked in Esc > Play together before hosting: Open, Host only or Locked.
+
 **The tools:**
 
 | Kind | Tools |
@@ -191,7 +204,7 @@ claude mcp add rules -- dotnet core/Rules.Mcp/bin/Release/net8.0/Rules.Mcp.dll -
 | Read | `list(table)`, `describe(table, id)`, `explain(element, material)` |
 | Draft | `add_material`, `set_material`, `add_reaction`, `set_reaction`, `add_spell`, `set_spell`, `tune`, `remove` |
 | Check | `validate(draft)`: shape, references, the design rules, determinism, budgets |
-| Run | `simulate(draft, scenario, ticks)`: `fire-on-grass`, `flood` or `storm`, with and without the draft |
+| Run | `simulate(draft, scenario, ticks)`: `fire-on-grass`, `fireball`, `flood` or `storm`, with and without the draft |
 | Save | `save(draft, title, idea)`: writes `rules/mods/<name>.json` once it validates |
 
 A draft is a patch held in memory under an id (`d1`, `d2`...): leave the

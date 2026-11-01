@@ -28,6 +28,55 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState} {Last(w)}";
 
+        // ---------- a rebuilt world ----------
+
+        [Test]
+        public void ARebuiltWorldKeepsTheModsOnAndEqualsTheOneThatHadThem()
+        {
+            var was = Room(ChangeMode.HostOnly);
+            was.ApplyRoom(RoomCommand.Apply("Ana", "big-fireball", Mod("big-fireball")));
+            var a = new World(R, 64, 64, 7, "grass");
+            var b = new World(R, 64, 64, 7, "grass");
+            a.OpenRoom(was.Room.Mode, was.Room.Host, R, Budgets, was.Room.Mods);
+            b.OpenRoom(was.Room.Mode, was.Room.Host, R, Budgets, was.Room.Mods);
+            Assert.That(a.Rules.Fingerprint, Is.EqualTo(was.Rules.Fingerprint));
+            Assert.That(a.RoomHash(), Is.EqualTo(was.RoomHash()));
+            Assert.That(b.CastHash(), Is.EqualTo(a.CastHash()));
+        }
+
+        [Test]
+        public void ARoomTakesNoRuleSwitchFromABatch()
+        {
+            var w = Room(ChangeMode.Open);
+            var rules = w.RoomRules;
+            var batch = new TickBatch(1, mods: new[] { new ActiveMod("big-fireball", Mod("big-fireball")) });
+            Assert.That(batch.Prepare(w, rules, out var errors), Is.SameAs(rules));
+            Assert.That(errors, Is.Empty);
+            Assert.That(w.Rules.Fingerprint, Is.EqualTo(R.Fingerprint));
+        }
+
+        [Test]
+        public void TheModsOnComposeOverReloadedBaseRules()
+        {
+            var w = Room(ChangeMode.Open);
+            w.ApplyRoom(RoomCommand.Apply("Ana", "big-fireball", Mod("big-fireball")));
+            string before = w.Rules.Fingerprint;
+            w.RebaseRoom(R);
+            Assert.That(w.Rules.Fingerprint, Is.EqualTo(before));
+            Assert.That(w.Room.Mods, Has.Count.EqualTo(1));
+        }
+
+        [Test]
+        public void EveryDecisionIsAnnounced()
+        {
+            var w = Room(ChangeMode.Locked);
+            var heard = new List<RoomVerdict>();
+            w.RoomDecided += (command, verdict) => heard.Add(verdict);
+            w.ApplyRoom(RoomCommand.Apply("Ana", "big-fireball", Mod("big-fireball")));
+            Assert.That(heard, Has.Count.EqualTo(1));
+            Assert.That(heard[0].Line, Is.EqualTo(RoomPolicy.RefusedLine(RoomChange.Apply, heard[0].Reason)));
+        }
+
         // ---------- every peer validates ----------
 
         [Test]

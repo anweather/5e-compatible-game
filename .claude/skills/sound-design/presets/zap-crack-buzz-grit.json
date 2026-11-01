@@ -1,0 +1,14 @@
+{
+  "name": "zap-crack-buzz-grit",
+  "says": "lightning: a sharp crack, an electric buzz chopped at 23 Hz, sparks",
+  "seed": 1,
+  "sound": "zap",
+  "crack": {"amount": 1, "hz": 4000, "ms": 25},
+  "buzz": {"amount": 0.45, "hz": 120, "bright": 0.85},
+  "grit": {"amount": 0.6, "per_s": 300},
+  "hiss": {"amount": 0.15, "hz": 5000},
+  "pulse": {"amount": 1, "hz": 23, "depth": 0.7},
+  "swell": {"ms": 1},
+  "tail": {"ms": 230},
+  "cut off": {"ms": 50}
+}

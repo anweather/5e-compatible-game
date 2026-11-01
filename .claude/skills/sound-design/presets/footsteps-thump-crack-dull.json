@@ -1,0 +1,12 @@
+{
+  "name": "footsteps-thump-crack-dull",
+  "says": "one step on grass: a soft thud and a scuff, dull",
+  "seed": 1,
+  "sound": "footsteps",
+  "thump": {"amount": 0.4, "from_hz": 110, "to_hz": 70, "decay_ms": 40},
+  "crack": {"amount": 0.35, "hz": 900, "ms": 20},
+  "hiss": {"amount": 0.05, "hz": 2000},
+  "dull": {"hz": 2500},
+  "tail": {"ms": 60},
+  "cut off": {"ms": 40}
+}

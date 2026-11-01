@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Renders a sound preset to WAV and prints the vocabulary's measures. Python 3 standard library only.
+"""Renders sound presets to WAV and prints the vocabulary's measures. Python 3 standard library only.
 
 Each render is seeded, so it comes out the same every run. See SKILL.md for the loop, vocabulary.md for
-the words. Loudness is set here, not in presets, so that every variant is compared at the same level."""
-import argparse, json, math, os, random, time, wave
-from array import array
+the words. Loudness is set here, not in presets, so that every variant is compared at the same level.
+The cast series lives in this file; every other family's series is in families.py, its layers in layers.py."""
+import argparse, json, math, os, random, time
 
-RATE = 48000
-TAU = 2 * math.pi
+import families
+from dsp import RATE, TAU, amount, attack_ms, band_share, db, decay_ms, options, rms, write_wav
+from layers import HELD, STRUCK, add_thump, add_whoosh, drone_partials
+
 HUM_GAIN = 0.3        # a hum of 1 is the picked option B's level
 TARGET_DB = -25.0     # every variant's whole series, dBFS RMS
 PEAK = 0.6            # never above this (leaves room for the world's sound)
@@ -31,10 +33,15 @@ SERIES = {
 REQUIRED = {'root_hz', 'swell', 'cut off', 'whoosh', 'thump'}
 WORDS = {'name', 'says', 'seed', 'series', 'root_hz', 'hum', 'fifths', 'choir', 'rumble', 'sub', 'grit', 'pulse',
          'rising', 'escalate', 'layer', 'swell', 'cut off', 'whoosh', 'thump', 'colour'}
+# Every other family's preset names its game sound (`sound`, a SOUNDS.md id) and builds it from layers.
+SOUND_WORDS = {'name', 'says', 'seed', 'sound', 'length', 'root_hz', 'fifths', 'choir', 'pulse', 'rising',
+               'swell', 'tail', 'cut off', 'gusting', 'dull'} | set(HELD) | set(STRUCK)
 EPILOG = 'series:\n' + '\n'.join(f'  {k}: {v["says"]}\n    files: ' + ', '.join(c['file'] for c in v['casts']) + ', joined'
-                                 for k, v in SERIES.items()) + '''
+                                 for k, v in SERIES.items()) + '\n' + families.describe() + '''
+  (a family's sounds render to <out>/<family>/<id>.wav, every take 0.6 s apart unless the series says,
+   and _joined-<family>.wav: every sound of the family rendered at once, 1.2 s apart)
 
-preset words (vocabulary.md), amounts 0-1 unless a unit is given; a number or {"amount": n, ...}:
+cast preset words (vocabulary.md), amounts 0-1 unless a unit is given; a number or {"amount": n, ...}:
   root_hz   {element: Hz}          hum 1 is option B's level; fifths scales the 1.5x, 2x and 3x partials
   choir     {amount, cents, voices}    detuned copies of the root
   rumble    {amount, hz}           low-passed noise       sub {amount, hz}   sine under the hum
@@ -44,31 +51,22 @@ preset words (vocabulary.md), amounts 0-1 unless a unit is given; a number or {"
   escalate  {semitones: [per step], gain}    on top of rising, each charge step louder by gain
   layer     level of the second element over the first
   swell {ms}, "cut off" {ms}, whoosh {amount, peak_hz, rest_hz, tail_ms}, thump {amount, from_hz, to_hz, decay_ms}
-  colour    {element: {rumble, choir, fifth (multipliers), wobble (Hz), grit (amount)}}'''
+  colour    {element: {rumble, choir, fifth (multipliers), wobble (Hz), grit (amount)}}
 
-
-def amount(preset, word, default=0.0):
-    v = preset.get(word, default)
-    return v.get('amount', default) if isinstance(v, dict) else v
-
-
-def options(preset, word):
-    v = preset.get(word)
-    return v if isinstance(v, dict) else {}
-
-
-def drone_partials(p, col):
-    """The hum's notes as (ratio to the root, amount): the root, its choir and the fifths."""
-    fifths = amount(p, 'fifths')
-    choir = options(p, 'choir')
-    voices = choir.get('voices', 1)
-    detune = [2 ** (s * choir.get('cents', 0) * (v // 2 + 1) / max(1, (voices + 1) // 2) / 1200)
-              for v, s in zip(range(voices), [1, -1] * voices)]
-    choir_amp = 0.32 * amount(p, 'choir') * col.get('choir', 1) / math.sqrt(voices)
-    partials = [(1, 0.42)] + [(d, choir_amp) for d in detune] + [
-        (1.5, 0.22 * fifths * col.get('fifth', 1)), (2, 0.14 * fifths), (3, 0.05 * fifths)]
-    hum = amount(p, 'hum')
-    return [(ratio, amp * hum) for ratio, amp in partials]
+sound preset words (every other family): "sound" (its SOUNDS.md id) and any layers; length defaults to today's.
+A layer is a number (its amount), {amount, ...} or a list of those; every layer takes at_ms (when it starts).
+  struck, each with its own shape:
+  thump     {amount, from_hz, to_hz, decay_ms}     crack {amount, hz, ms}   a burst of noise around hz
+  ring      {amount, hz, ratios, levels?, decay_ms}  struck partials, higher ones dying sooner
+  whoosh    {amount, peak_hz, rest_hz, rise_ms, tail_ms}
+  held, under swell and tail:
+  hum (root_hz Hz, fifths, choir as above)   sub {amount, hz}   rumble {amount, hz}   hiss {amount, hz}
+  buzz      {amount, hz, bright, vibrato_hz, vibrato_cents}   a sawtooth: brass, or electric
+  growl     {amount, hz, rough_hz}   noise chopped roughly, band-passed at hz: a throat
+  grit      {amount, per_s}   crackle          drops {amount, per_s, hz: [low, high], ms}   droplets
+  whole sound:
+  swell {ms}  tail {ms, hold_ms}  "cut off" {ms}  rising {semitones (minus falls), glide_ms, at_ms}
+  pulse {amount, hz, depth}  gusting {amount, hz}  slow wandering level and brightness   dull {hz}  low-pass'''
 
 
 def add_drone(mix, p, element, start, cut, combine_at, steps, gain_scale, r):
@@ -126,30 +124,6 @@ def add_drone(mix, p, element, start, cut, combine_at, steps, gain_scale, r):
         mix[i] += s * env * gain * HUM_GAIN * gain_scale
 
 
-def add_thump(mix, p, at):
-    th = p['thump']
-    length, fade_out, phase = 0.5, 0.03, 0.0  # the fade stops the end clicking
-    for i in range(int(at * RATE), min(len(mix), int((at + length) * RATE))):
-        t = i / RATE - at
-        phase += TAU * (th['to_hz'] + (th['from_hz'] - th['to_hz']) * math.exp(-t / 0.035)) / RATE
-        mix[i] += math.sin(phase) * math.exp(-t / (th['decay_ms'] / 1000)) * amount(p, 'thump') * min(1.0, (length - t) / fade_out)
-
-
-def add_whoosh(mix, p, start, home, r):
-    """Swells from the cut to the hands landing (home), and dies in the tail."""
-    w = p['whoosh']
-    tail = w['tail_ms'] / 1000
-    lp = lp2 = 0.0
-    rise = max(0.02, home - start)
-    for i in range(int(start * RATE), min(len(mix), int((home + tail) * RATE))):
-        t = i / RATE
-        x = (t - start) / rise
-        env = x * x if t < home else (1 - (t - home) / tail) ** 2
-        k = 1 - math.exp(-TAU * (w['peak_hz'] * env + w['rest_hz'] * (1 - env)) / RATE)
-        lp += k * (r.uniform(-1, 1) - lp)
-        lp2 += k * (lp - lp2)
-        mix[i] += lp2 * 3.2 * amount(p, 'whoosh') * env
-
 
 def render(preset, series):
     """Returns the series' stems, scaled to the shared loudness, and the gain that took."""
@@ -169,63 +143,11 @@ def render(preset, series):
                 whooshes=[x * g for x in whooshes]), g
 
 
-def write_wav(path, samples):
-    out = array('h', (round(x * 32767) for x in samples))
-    with wave.open(path, 'wb') as w:
-        w.setnchannels(1)
-        w.setsampwidth(2)
-        w.setframerate(RATE)
-        w.writeframes(out.tobytes())
 
 
-def rms(x):
-    return math.sqrt(sum(v * v for v in x) / len(x))
 
 
-def db(x):
-    return 20 * math.log10(max(x, 1e-12))
 
-
-def lowpass3(x, hz):
-    """Three cascaded 2-pole Butterworth low-passes: the band filter the first measures used (ffmpeg's lowpass)."""
-    w = TAU * hz / RATE
-    alpha = math.sin(w) / (2 * 0.707)
-    a0 = 1 + alpha
-    b0 = (1 - math.cos(w)) / 2 / a0
-    b1, a1, a2 = 2 * b0, -2 * math.cos(w) / a0, (1 - alpha) / a0
-    for _ in range(3):
-        out, x1, x2, y1, y2 = [], 0.0, 0.0, 0.0, 0.0
-        for v in x:
-            y = b0 * v + b1 * x1 + b0 * x2 - a1 * y1 - a2 * y2
-            out.append(y)
-            x1, x2, y1, y2 = v, x1, y, y1
-        x = out
-    return x
-
-
-def band_share(x, hz):
-    """Energy share under hz, as a fraction of the whole."""
-    return (rms(lowpass3(x, hz)) / rms(x)) ** 2
-
-
-def envelope(x, a, b, hold=0.025):
-    """A peak-held envelope from sample a to b, so a low tone's cycles don't read as motion."""
-    n = max(1, int(hold * RATE))
-    return [max(map(abs, x[i:i + n])) for i in range(a, b, n // 5 or 1)], (n // 5 or 1) / RATE
-
-
-def attack_ms(x, at, until):
-    env, dt = envelope(x, int(at * RATE), int(until * RATE))
-    top = max(env)
-    return 1000 * dt * next(i for i, v in enumerate(env) if v >= 0.9 * top)
-
-
-def decay_ms(x, at, until):
-    """From the peak to 1/e of it."""
-    env, dt = envelope(x, int(at * RATE), int(until * RATE))
-    top = max(env)
-    peak = env.index(top)
-    return 1000 * dt * (next((i for i in range(peak, len(env)) if env[i] < top / math.e), len(env)) - peak)
 
 
 def cut_ms(drones, at):
@@ -298,36 +220,83 @@ def clips(series):
     return [(c['file'], c['start'] - 0.2, max(c['home'] + 0.14, c['slam'] + 0.5) + 0.25) for c in series['casts']]
 
 
-def main():
-    ap = argparse.ArgumentParser(description='Render a sound preset to WAV and print its measures.', epilog=EPILOG,
-                                 formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument('preset', help='presets/<name>.json')
-    ap.add_argument('--out', required=True, help='folder for the WAVs (made if missing)')
-    args = ap.parse_args()
-    with open(args.preset, encoding='utf8') as f:
-        preset = json.load(f)
-    unknown = set(preset) - WORDS
+def check(ap, preset, path):
+    if 'sound' in preset:
+        unknown, missing = set(preset) - SOUND_WORDS, set()
+        if preset['sound'] not in families.SOUNDS:
+            ap.error(f'{path}: no game sound {preset["sound"]!r}; one of {sorted(families.SOUNDS)}')
+        if 'hum' in preset and not isinstance(preset.get('root_hz'), (int, float)):
+            ap.error(f'{path}: a hum needs root_hz in Hz')
+    else:
+        unknown, missing = set(preset) - WORDS, REQUIRED - set(preset)
     if unknown:
-        ap.error(f'not in the vocabulary here: {sorted(unknown)}')
-    missing = REQUIRED - set(preset)
+        ap.error(f'{path}: not in the vocabulary here: {sorted(unknown)}')
     if missing:
-        ap.error(f'a preset needs: {sorted(missing)}; copy one from presets/')
+        ap.error(f'{path}: a preset needs: {sorted(missing)}; copy one from presets/')
+
+
+def render_cast(preset, name, out):
     series = SERIES[preset.get('series', 'cast')]
     began = time.perf_counter()
     stems, gain = render(preset, series)
-    os.makedirs(args.out, exist_ok=True)
+    os.makedirs(out, exist_ok=True)
     mix = stems['mix']
-    for name, a, b in clips(series):
+    for file, a, b in clips(series):
         seg = mix[int(a * RATE):int(b * RATE)]
-        write_wav(os.path.join(args.out, name + '.wav'), seg)
-        print(f'{name}.wav {len(seg) / RATE:.2f} s')
-    write_wav(os.path.join(args.out, 'joined.wav'), mix)
+        write_wav(os.path.join(out, file + '.wav'), seg)
+        print(f'{file}.wav {len(seg) / RATE:.2f} s')
+    write_wav(os.path.join(out, 'joined.wav'), mix)
     print(f'joined.wav {len(mix) / RATE:.2f} s')
     rendered = time.perf_counter() - began
-    print(preset.get('name', args.preset), f'| gain {gain:.3f}', '' if abs(db(rms(mix)) - TARGET_DB) < 0.01 else '| HELD BY PEAK, NOT AT TARGET LOUDNESS')
+    print(preset.get('name', name), f'| gain {gain:.3f}', '' if abs(db(rms(mix)) - TARGET_DB) < 0.01 else '| HELD BY PEAK, NOT AT TARGET LOUDNESS')
     for line in measure(stems, series, preset):
         print(' ', line)
     print(f'  render {rendered:.1f} s, with measures {time.perf_counter() - began:.1f} s')
+
+
+def render_sounds(presets, out):
+    """Every sound preset into <out>/<family>/<sound>.wav, then a joined file per family, in SOUNDS.md's order."""
+    joined = {}
+    for path, p in sorted(presets, key=lambda pp: families.order(pp[1]['sound'])):
+        family = families.SOUNDS[p['sound']][0]
+        began = time.perf_counter()
+        takes, whole = families.render(p)
+        os.makedirs(os.path.join(out, family), exist_ok=True)
+        write_wav(os.path.join(out, family, p['sound'] + '.wav'), whole)
+        joined.setdefault(family, []).append(whole)
+        print(f'{family}/{p["sound"]}.wav  {p.get("name", path)}  ({len(takes)} takes, {time.perf_counter() - began:.1f} s)')
+        print('  ' + families.measure(p, takes))
+    for family, parts in joined.items():
+        whole = []
+        for x in parts:
+            whole += x + [0.0] * int(families.JOIN_GAP * RATE)
+        whole = whole[:-int(families.JOIN_GAP * RATE)]
+        write_wav(os.path.join(out, family, f'_joined-{family}.wav'), whole)
+        print(f'{family}/_joined-{family}.wav  ' + families.loudness_line(f'{len(parts)} sound' + 's' * (len(parts) > 1), whole))
+
+
+def main():
+    ap = argparse.ArgumentParser(description='Render sound presets to WAV and print their measures.', epilog=EPILOG,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument('presets', nargs='+', help='presets/<name>.json: one cast preset, or any number of sound presets')
+    ap.add_argument('--out', required=True, help='folder for the WAVs (made if missing)')
+    args = ap.parse_args()
+    loaded = []
+    for path in args.presets:
+        with open(path, encoding='utf8') as f:
+            loaded.append((path, json.load(f)))
+        check(ap, loaded[-1][1], path)
+    sounds = [(path, p) for path, p in loaded if 'sound' in p]
+    casts = [(path, p) for path, p in loaded if 'sound' not in p]
+    if len(casts) > 1 or (casts and sounds):
+        ap.error('a cast preset renders alone (its files would overwrite each other)')
+    ids = [p['sound'] for _, p in sounds]
+    if len(set(ids)) < len(ids):
+        ap.error('two presets of the same sound: render variants into different --out folders')
+    if casts:
+        render_cast(casts[0][1], casts[0][0], args.out)
+    else:
+        render_sounds(sounds, args.out)
 
 
 if __name__ == '__main__':

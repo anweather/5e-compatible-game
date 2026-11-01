@@ -14,9 +14,9 @@ using UnityEngine;
 // - The host owns the clock: each sim tick it stamps the casts due and
 //   broadcasts the batch (empty batches too, so clients know a tick is
 //   complete). Everyone, the host included, applies a batch and steps.
-// - A rule switch (mods on or off; RuleSwitcher) travels the same way: the
-//   host checks it and stamps it into the next batch with the full mod list
-//   and each mod's JSON, and every machine switches at that tick.
+// - A rule change (a mod on or off; RuleSwitcher, the room's change mode) travels
+//   the same way (NetChem.Room.cs): anyone asks with the patch, the host stamps it
+//   for the next tick, and every machine decides it there itself (World.Room.cs).
 // - Every batch carries the host's checksum of an earlier tick, the cells'
 //   hash, the rules' fingerprint, the world's things' (the props' stable
 //   ids) and the sky's (the time spells' clock and weather); a client that
@@ -54,7 +54,7 @@ using UnityEngine;
 //   sends a leaving player's Leave. A late joiner gets them with the history; a stand that a later
 //   one replaces before any strike is dropped from it, so walking doesn't make it grow.
 [RequireComponent(typeof(ChemGrid))]
-public class NetChem : NetworkBehaviour
+public partial class NetChem : NetworkBehaviour
 {
     const int HashEvery = 30;
     // A late joiner replays the whole history; spread it so no frame spends more than this.
@@ -85,7 +85,6 @@ public class NetChem : NetworkBehaviour
     readonly HashSet<(int cx, int cy)> plannedAwake = new();
     // Plans the switches, lingering chunks still live; host only, since only the switches are shared.
     ChunkPlanner planner = new();
-    RuleSet stampNext;
     // Chunks are planned every few ticks: players move a chunk in seconds, not ticks.
     const int PlanEvery = 3;
 
@@ -165,15 +164,14 @@ public class NetChem : NetworkBehaviour
 
     void Awake() => grid = GetComponent<ChemGrid>();
 
-    /// <summary>Host only: the rules the host has most recently stamped (or will stamp next), or null if none since spawn.</summary>
-    public RuleSet HostUpcoming { get; private set; }
-
     public override void OnNetworkSpawn()
     {
-        // The host keeps the mods it had on solo: they go out at tick 1, so they are in the history too.
-        var soloMods = grid.CurrentRules != null ? grid.CurrentRules.Mods : null;
+        // The host keeps the mods it had on solo, as the room's starting mods; a client hears the room from the host.
+        if (IsServer) grid.PlanRoom(NetSession.RoomMode);
+        else grid.AwaitRoom();
         grid.ExternalTicks = true;
         grid.ResetWorld();
+        ClearRoom();
         batches.Clear();
         liveCasts.Clear();
         history.Clear();
@@ -200,8 +198,6 @@ public class NetChem : NetworkBehaviour
         plannedAwake.Clear();
         foreach (var c in grid.World.ActiveChunks) plannedAwake.Add(c);
         planner = new ChunkPlanner();
-        stampNext = null;
-        HostUpcoming = null;
         hostHashes.Clear();
         knownUpTo = 0;
         desyncReported = false;
@@ -216,7 +212,7 @@ public class NetChem : NetworkBehaviour
             clock = 0f;
             synced = true;
             NetworkManager.OnClientDisconnectCallback += PlayerLeft;
-            if (soloMods != null && soloMods.Count > 0) TryStamp(soloMods);
+            NoteRoomStart();
         }
         else
         {
@@ -288,14 +284,6 @@ public class NetChem : NetworkBehaviour
     /// <summary>Asks the host to run this wizard's stand or strike; it lands on every machine at the same tick.</summary>
     public void RequestStrikeCommand(StrikeCommand command) => RequestStrikeCommandRpc(StrikeIntent.From(command, 0));
 
-    /// <summary>Host only: stamps a checked rule switch into the next tick's batch, for every machine.</summary>
-    public void StampRules(RuleSet next)
-    {
-        if (!IsServer) return;
-        stampNext = next;
-        HostUpcoming = next;
-    }
-
     /// <summary>Host only: the dragon is summoned on the next tick, on every machine (a Reset, once the view has it). A client's call does nothing.</summary>
     public void SummonDragon()
     {
@@ -318,20 +306,12 @@ public class NetChem : NetworkBehaviour
     [Rpc(SendTo.ClientsAndHost)]
     void ResetComingRpc(int tick) => ResetComing?.Invoke(tick);
 
-    /// <summary>Client: asks the host to switch a mod on or off (the host checks it with its own copy of the file).</summary>
-    public void RequestToggle(string modId) => RequestToggleRpc(new FixedString128Bytes(modId));
-
-    void TryStamp(IReadOnlyList<ActiveMod> mods)
-    {
-        try { StampRules(grid.CurrentRules.WithMods(mods)); }
-        catch (ModException e) { EventLog.Add($"Mods left off online: {e.Errors[0]}"); }
-    }
-
     void Update()
     {
         if (!IsSpawned) return;
         if (IsServer) RunHostClock();
         Advance();
+        if (IsServer) ServeJoiners();
     }
 
     // --- host ----------------------------------------------------------------
@@ -359,7 +339,7 @@ public class NetChem : NetworkBehaviour
             for (int i = 0; i < effects.Length; i++) effects[i].Tick = hostTick;
             effectHistory.AddRange(effects);
             bool reset = hostTick == resetAt;
-            var rules = reset ? StampResetRules() : TakeRuleSwitch();
+            var rules = reset ? StampResetRules() : RuleChangeMsg.None;
 
             var chunks = PlanChunks();
             chunkHistory.AddRange(chunks);
@@ -367,6 +347,7 @@ public class NetChem : NetworkBehaviour
             StampCombos();
             StampStrikes();
             StampDragon();
+            StampRoom();
 
             // The host's own world lags its clock by at most a tick, so a recent hash is always available.
             // Never the hash of a tick still part done (World.StepSome): that one is skipped, and peers check the next.
@@ -376,25 +357,13 @@ public class NetChem : NetworkBehaviour
         }
     }
 
-    // A rule switch waiting to go out, stamped into this tick's batch (or none).
-    RuleChangeMsg TakeRuleSwitch()
-    {
-        if (stampNext == null) return RuleChangeMsg.None;
-        var rules = RuleChangeMsg.From(new RuleChange(hostTick, stampNext.Mods));
-        ruleHistory.Add(rules);
-        stampNext = null;
-        return rules;
-    }
-
     // The reset's batch (J-014): the mods in force (or about to be) re-stamped, since a rebuilt world
     // starts on the base rules; the history from here on only, headed by them, so a late joiner never
     // replays what came before; and the chunk plan starting again from a world all awake.
     RuleChangeMsg StampResetRules()
     {
-        var mods = (stampNext ?? HostUpcoming ?? grid.CurrentRules)?.Mods ?? System.Array.Empty<ActiveMod>();
-        var rules = RuleChangeMsg.From(new RuleChange(hostTick, mods));
+        var rules = RuleChangeMsg.From(new RuleChange(hostTick, grid.CurrentRules.Mods));
         rules.Reset = true;
-        stampNext = null;
         history.RemoveAll(c => c.Tick < hostTick);
         effectHistory.RemoveAll(e => e.Tick < hostTick);
         chunkHistory.RemoveAll(c => c.Tick < hostTick);
@@ -402,6 +371,7 @@ public class NetChem : NetworkBehaviour
         comboHistory.RemoveAll(c => c.Tick < hostTick);
         strikeHistory.RemoveAll(s => s.Tick < hostTick);
         dragonHistory.RemoveAll(t => t < hostTick);
+        roomHistory.RemoveAll(r => r.Tick < hostTick);
         ruleHistory.Clear();
         ruleHistory.Add(rules);
         historyFrom = hostTick;
@@ -537,31 +507,17 @@ public class NetChem : NetworkBehaviour
     }
 
     [Rpc(SendTo.Server)]
-    void RequestHistoryRpc(RpcParams rpc = default)
+    void RequestHistoryRpc(RpcParams rpc = default) => joiners.Add(rpc.Receive.SenderClientId);
+
+    void SendHistory(ulong client)
     {
-        var joiner = RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp);
+        var joiner = RpcTarget.Single(client, RpcTargetUse.Temp);
+        SendRoomHistoryRpc((byte)grid.World.Room.Mode, grid.World.Room.Host, roomStart, roomHistory.ToArray(), joiner);
         SendComboHistoryRpc(comboHistory.ToArray(), joiner);
         SendStrikeHistoryRpc(strikeHistory.ToArray(), joiner);
         SendDragonHistoryRpc(dragonHistory.ToArray(), joiner);
         SendHistoryRpc(hostTick, history.ToArray(), ruleHistory.ToArray(), effectHistory.ToArray(), chunkHistory.ToArray(), defenseHistory.ToArray(),
             joiner);
-    }
-
-    [Rpc(SendTo.Server)]
-    void RequestToggleRpc(FixedString128Bytes modId, RpcParams rpc = default)
-    {
-        if (!TryGetComponent<RuleSwitcher>(out var switcher)) return;
-        string error = switcher.Toggle(modId.ToString());
-        if (error != null) RuleRefusedRpc(new FixedString512Bytes(Clip(error, 120)), RpcTarget.Single(rpc.Receive.SenderClientId, RpcTargetUse.Temp));
-    }
-
-    // FixedString512Bytes holds up to 509 UTF-8 bytes; a few non-ASCII characters are at most 4 bytes each.
-    static string Clip(string s, int chars) => s.Length <= chars ? s : s.Substring(0, chars - 1) + "…";
-
-    [Rpc(SendTo.SpecifiedInParams)]
-    void RuleRefusedRpc(FixedString512Bytes why, RpcParams rpc = default)
-    {
-        if (TryGetComponent<RuleSwitcher>(out var switcher)) switcher.Refused(why.ToString());
     }
 
     /// <summary>
@@ -593,6 +549,7 @@ public class NetChem : NetworkBehaviour
         if (combosFor.Remove(tick, out var combos)) batches[tick].Combos.AddRange(combos.Select(c => c.ToCommand()));
         if (strikesFor.Remove(tick, out var strikes)) batches[tick].Strikes.AddRange(strikes.Select(s => s.ToCommand()));
         if (dragonFor.Remove(tick)) batches[tick].Dragon.Add(new DragonCommand());
+        if (roomFor.Remove(tick, out var room)) batches[tick].Room.AddRange(room.Select(r => r.ToCommand()));
         if (casts.Length > 0) liveCasts[tick] = casts;
         if (hash.Length > 0) hostHashes[hashTick] = hash.ToString();
         if (synced) ExtendKnown();
@@ -619,6 +576,7 @@ public class NetChem : NetworkBehaviour
         TickBatch.AddCombos(timeline, pastCombos.Select(c => (c.Tick, c.ToCommand())));
         TickBatch.AddStrikes(timeline, pastStrikes.Select(s => (s.Tick, s.ToCommand())));
         TickBatch.AddDragon(timeline, pastDragon);
+        TickBatch.AddRoom(timeline, pastRoom.Select(r => (r.Tick, r.ToCommand())));
         for (int t = from; t <= upToTick; t++)
             if (!batches.ContainsKey(t)) batches[t] = timeline[t];
         tickBase = from - 1;
@@ -679,6 +637,7 @@ public class NetChem : NetworkBehaviour
         {
             ResetIsReplay = false;
         }
+        if (IsServer) NoteRoomStart();
         tickBase = tick - 1;
         EventLog.Add("The world resets");
     }

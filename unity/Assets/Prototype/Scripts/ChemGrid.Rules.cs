@@ -17,6 +17,11 @@ using UnityEngine;
 public partial class ChemGrid
 {
     RuleSet queuedRules;
+    readonly List<RoomCommand> queuedRoom = new();
+    ModBudgets budgets;
+    // What the next world's room is: the host's chosen mode, or none yet for a client until the host says.
+    ChangeMode? plannedMode;
+    bool roomAwaited;
 
     /// <summary>The rules in force: base, the switched-on mods, and what they compose to.</summary>
     public RuleSet CurrentRules { get; private set; }
@@ -29,6 +34,56 @@ public partial class ChemGrid
 
     /// <summary>rules/*.json with this scene's tuning on top. Throws if a file can't be read or the tuning doesn't fit.</summary>
     public Rules LoadBaseRules() => RuleSet.BaseOf(Rules.Load(FindRulesDir()), SceneTuning());
+
+    /// <summary>A room command was decided on this machine (or, early, refused by the host).</summary>
+    public event Action<RoomCommand, RoomVerdict> RoomDecided;
+
+    /// <summary>The next world built opens its room in this mode: the host's choice (the mods on stay).</summary>
+    public void PlanRoom(ChangeMode mode) => plannedMode = mode;
+
+    /// <summary>The next world built opens no room: a client's, until the host says which (JoinRoom).</summary>
+    public void AwaitRoom() => roomAwaited = true;
+
+    /// <summary>A client: the host's room, as it stood when the history starts, opened on the world not yet stepped.</summary>
+    public void JoinRoom(ChangeMode mode, string host, IReadOnlyList<RoomMod> mods)
+    {
+        roomAwaited = false;
+        if (World.Room != null) return;
+        World.OpenRoom(mode, host, CurrentRules.Base, Budgets, mods);
+        CurrentRules = World.RoomRules;
+    }
+
+    /// <summary>Solo: a room command, decided before the next tick.</summary>
+    public void QueueRoom(RoomCommand command) => queuedRoom.Add(command);
+
+    /// <summary>The host refused a command before stamping it: everyone hears, as they would at the tick.</summary>
+    public void NoteRefused(RoomCommand command, RoomVerdict verdict)
+    {
+        EventLog.Add(verdict.Line);
+        RoomDecided?.Invoke(command, verdict);
+    }
+
+    ModBudgets Budgets => budgets ??= ModBudgets.Load(FindRulesDir());
+
+    // Every world is a room, solo too (docs/RULES_MCP.md): a rebuilt one keeps the room it replaces.
+    void OpenRoom(RoomState was)
+    {
+        World.RoomDecided += (command, verdict) => RoomDecided?.Invoke(command, verdict);
+        if (roomAwaited) return;
+        var mode = plannedMode ?? was?.Mode ?? ChangeMode.Open;
+        plannedMode = null;
+        string host = was?.Host ?? NetChem.PeerName(0);
+        try
+        {
+            World.OpenRoom(mode, host, CurrentRules.Base, Budgets, was?.Mods);
+        }
+        catch (ModException e)
+        {
+            Debug.LogWarning("The mods on don't fit a new world: " + string.Join("; ", e.Errors));
+            World.OpenRoom(mode, host, CurrentRules.Base, Budgets);
+        }
+        CurrentRules = World.RoomRules;
+    }
 
     /// <summary>Puts <paramref name="next"/> (already checked) in force before the next solo tick.</summary>
     public void QueueRules(RuleSet next) => queuedRules = next ?? throw new ArgumentNullException(nameof(next));
@@ -53,12 +108,19 @@ public partial class ChemGrid
     // Solo: the queued switch takes effect at this tick boundary.
     void ApplyQueuedRules()
     {
-        if (queuedRules == null) return;
         var before = CurrentRules;
-        CurrentRules = queuedRules;
-        queuedRules = null;
-        World.ApplyRules(CurrentRules.Effective);
-        Announce(before);
+        foreach (var command in queuedRoom) World.ApplyRoom(command);
+        if (queuedRoom.Count > 0) CurrentRules = World.RoomRules;
+        queuedRoom.Clear();
+        if (queuedRules != null)
+        {
+            bool newBase = World.Room != null && queuedRules.Base.Fingerprint != World.RoomRules.Base.Fingerprint;
+            if (newBase) World.RebaseRoom(queuedRules.Base);
+            else World.ApplyRules(queuedRules.Effective);
+            CurrentRules = newBase ? World.RoomRules : queuedRules;
+            queuedRules = null;
+        }
+        if (!ReferenceEquals(before, CurrentRules)) Announce(before);
     }
 
     /// <summary>Online: runs one of the host's tick batches (a rule switch if it has one, its casts, a step).</summary>
@@ -86,7 +148,8 @@ public partial class ChemGrid
 
     void Announce(RuleSet before)
     {
-        EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
+        // A room's change has its own line in the world log.
+        if (!ReferenceEquals(CurrentRules, World.RoomRules)) EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
         RedrawLooks(before.Effective);
         RulesChanged?.Invoke();
     }

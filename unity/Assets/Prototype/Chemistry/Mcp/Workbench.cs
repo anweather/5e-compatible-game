@@ -134,6 +134,7 @@ namespace Chem.Mcp
             var mod = new JObject { ["title"] = title.Trim(), ["idea"] = idea.Trim(), ["patch"] = draft.Patch.DeepClone() };
             Directory.CreateDirectory(ModsDir);
             File.WriteAllText(path, mod.ToString(Formatting.Indented).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
+            Desk?.Saved(path);
             return path;
         }
 

@@ -1,0 +1,12 @@
+{
+  "name": "hiss-grit-drops",
+  "says": "Acid Splash eating in: a sizzle and small pops",
+  "seed": 1,
+  "sound": "hiss",
+  "hiss": {"amount": 0.6, "hz": 3500},
+  "grit": {"amount": 0.5, "per_s": 150},
+  "drops": {"amount": 0.15, "per_s": 30, "hz": [1500, 3000], "ms": 6},
+  "swell": {"ms": 20},
+  "tail": {"ms": 550},
+  "cut off": {"ms": 100}
+}

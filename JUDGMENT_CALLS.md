@@ -41,6 +41,24 @@ Each entry has:
 
 ## Decided
 
+### J-050: The repository's licence
+
+- **Asked:** 2026-10-31, by Andrew (the repo is public and had none).
+- **Also comes up when:** contributors, forks, selling the game, sharing mods, adding third-party assets.
+- **Answer:** PolyForm Noncommercial 1.0.0 for the game (`LICENSE.md`); CC-BY 4.0 for the mods in
+  `rules/mods/`. The SRD 5.2.1 attribution is in `NOTICE.md`.
+- **Why (recommendation):** anyone can read, learn, mod and share, nobody can sell it or a fork; Andrew
+  keeps every option to sell it later; players can share and remix mods freely. Not legal advice.
+- **Revisited:** 0.
+
+### J-049: Ship the Mac app again?
+
+- **Asked:** 2026-10-31, by the PM (the Mac said it's about an hour plus one human test).
+- **Also comes up when:** every release; any Mac build or notarization question.
+- **Answer:** no. Windows only; the Mac app is shelved until Andrew brings it back up. Don't ask again.
+- **Why:** Andrew's call.
+- **Revisited:** 0.
+
 ### J-048: Does the game's MCP make mods, or only switch them?
 
 - **Asked:** 2026-10-31, by Andrew, after the live-rules clip.

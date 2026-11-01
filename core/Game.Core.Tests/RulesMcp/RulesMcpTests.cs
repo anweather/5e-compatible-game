@@ -89,6 +89,18 @@ namespace Chem.Tests
             Assert.That(a.Peaks["fire"].count, Is.GreaterThan(0));
         }
 
+        [Test]
+        public void TheBigFireballModBurnsMoreInTheFireballScenario()
+        {
+            var (big, plain) = Bench.SimulateRuns("big-fireball", "fireball", 60);
+            Assert.That(big.Hash, Is.Not.EqualTo(plain.Hash), "radius 2 to 4 changes the outcome");
+            Assert.That(plain.CellsBurnt, Is.GreaterThan(0), "a Fireball sets the grass alight");
+            Assert.That(big.CellsBurnt, Is.GreaterThan(plain.CellsBurnt));
+            Assert.That(big.Peaks["fire"].count, Is.GreaterThan(plain.Peaks["fire"].count));
+            StringAssert.Contains("burnt", Bench.Simulate("big-fireball", "fireball", 6));
+        }
+
+        [TestCase("fireball")]
         [TestCase("flood")]
         [TestCase("storm")]
         public void EveryScenarioRunsAndSaysWhatHappened(string scenario)

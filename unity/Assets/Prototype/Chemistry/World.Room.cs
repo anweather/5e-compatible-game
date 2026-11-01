@@ -25,19 +25,35 @@ namespace Chem
         /// <summary>The room's base rules and its active mods composed over them (what Rules is); null without a room.</summary>
         public RuleSet RoomRules { get; private set; }
 
+        /// <summary>A room command was decided, on this peer, as the log says. For the view: it never touches the world.</summary>
+        public event Action<RoomCommand, RoomVerdict> RoomDecided;
+
         /// <summary>
         /// Makes this world a room, as it is made: the change mode, the host's name, the base rules
-        /// every mod composes over and the budgets the checks use (rules/budgets.json). Puts the
-        /// base rules in force if they aren't already.
+        /// every mod composes over, the budgets the checks use (rules/budgets.json) and the mods it
+        /// starts with, if any (a rebuilt world keeps the ones on). Puts all that in force if it
+        /// isn't already. A set of mods that doesn't compose throws ModException.
         /// </summary>
-        public void OpenRoom(ChangeMode mode, string host, Rules baseRules, ModBudgets budgets)
+        public void OpenRoom(ChangeMode mode, string host, Rules baseRules, ModBudgets budgets, IReadOnlyList<RoomMod> mods = null)
         {
             if (Room != null) throw new InvalidOperationException("This world already has a room; its change mode is set when it is made.");
             if (baseRules == null) throw new ArgumentNullException(nameof(baseRules));
-            roomBudgets = budgets ?? throw new ArgumentNullException(nameof(budgets));
+            if (budgets == null) throw new ArgumentNullException(nameof(budgets));
+            var next = mods == null || mods.Count == 0 ? RuleSet.Plain(baseRules) : RuleSet.Compose(baseRules, mods.Select(m => new ActiveMod(m.Id, m.Json)));
+            roomBudgets = budgets;
             Room = new RoomState { Mode = mode, Host = host ?? "" };
-            RoomRules = RuleSet.Plain(baseRules);
-            if (Rules.Fingerprint != baseRules.Fingerprint) ApplyRules(baseRules);
+            if (mods != null) Room.Mods.AddRange(mods);
+            RoomRules = next;
+            if (Rules.Fingerprint != next.Fingerprint) ApplyRules(next.Effective);
+        }
+
+        /// <summary>
+        /// The base rules were reloaded (solo, rules/*.json saved in the Editor): the room's mods
+        /// compose over the new base. A set that no longer composes throws ModException.
+        /// </summary>
+        public void RebaseRoom(Rules baseRules)
+        {
+            PutInForce(RuleSet.Compose(baseRules, Room.Mods.Select(m => new ActiveMod(m.Id, m.Json))));
         }
 
         /// <summary>
@@ -50,6 +66,7 @@ namespace Chem
             FinishTick(); // a rule switch lands between whole ticks
             var verdict = c.Change == RoomChange.Revert ? Revert(c) : SwitchOn(c);
             AddLog(verdict.Line, verdict.Done ? LogKind.Notable : LogKind.Info);
+            RoomDecided?.Invoke(c, verdict);
             return verdict;
         }
 
@@ -62,7 +79,7 @@ namespace Chem
                 ?? (Room.Mods.Any(m => m.Id == c.Mod) ? $"{title} is already on; revert it first" : null)
                 ?? Checks(title, c.Json)
                 ?? Compose(Room.Mods.Select(m => new ActiveMod(m.Id, m.Json)).Append(new ActiveMod(c.Mod, c.Json)), $"{title} doesn't fit the mods on", out next);
-            if (why != null) return Refused("Switch on", why);
+            if (why != null) return Refused(c, why);
             Room.Mods.Add(new RoomMod { Id = c.Mod, Title = title, By = c.Peer, Tick = Tick, Json = c.Json });
             PutInForce(next);
             return new RoomVerdict(true, null, $"{c.Peer} switched on {title} ({RoomPolicy.Words(Room.Mode)} room)");
@@ -77,13 +94,13 @@ namespace Chem
             string why = RoomPolicy.Refusal(Room.Mode, Room.Host, c.Peer)
                 ?? (at < 0 ? $"{named} isn't on in this room" : null)
                 ?? Compose(Room.Mods.Where((m, i) => i != at).Select(m => new ActiveMod(m.Id, m.Json)), $"without {title} the other mods don't fit", out next);
-            if (why != null) return Refused("Revert", why);
+            if (why != null) return Refused(c, why);
             Room.Mods.RemoveAt(at);
             PutInForce(next);
             return new RoomVerdict(true, null, $"{c.Peer} switched off {title} ({RoomPolicy.Words(Room.Mode)} room)");
         }
 
-        static RoomVerdict Refused(string what, string why) => new RoomVerdict(false, why, $"{what} refused: {why}");
+        static RoomVerdict Refused(RoomCommand c, string why) => new RoomVerdict(false, why, RoomPolicy.RefusedLine(c.Change, why));
 
         void PutInForce(RuleSet next)
         {

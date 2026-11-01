@@ -12,14 +12,24 @@ Andrew describes a sound in those words; we render it; he picks; the words get s
 The generator lives in this skill too, so it works on any machine with Python 3 and nothing else
 (standard library only: no pip installs, no Unity, no GPU):
 
-- `synth.py`: renders a preset to WAV and prints the vocabulary's measures.
-  `python synth.py presets/<name>.json --out <dir>` (run `python synth.py --help` for the rest).
-- `presets/*.json`: parameters keyed by vocabulary words. A preset needs `root_hz`, `swell`,
-  `"cut off"`, `whoosh` and `thump` (a short example alone stops with an error listing them), so copy
-  `presets/b-deep-hum.json`, change words, and set a new `name`. Real keys: `root_hz`, `hum`, `fifths`,
-  `choir`, `rumble`, `sub`, `grit`, `pulse` {amount, accelerating}, `rising`, `escalate`, `layer`,
-  `swell`, `"cut off"`, `whoosh`, `thump`, `colour`, plus `name`, `says`, `seed`. A picked variant
-  is saved here under a name in the vocabulary's words.
+- `synth.py`: renders presets to WAV and prints the vocabulary's measures.
+  `python synth.py presets/<name>.json --out <dir>` (run `python synth.py --help` for every series and word).
+  Beside it: `layers.py` (one layer per word), `families.py` (every game sound's family, series and today's
+  length and loudness from `docs/SOUNDS.md`), `dsp.py` (WAV, filters, LUFS, flatness).
+- `presets/*.json`: parameters keyed by vocabulary words. Two kinds:
+  - **cast presets** (the cast series): need `root_hz`, `swell`, `"cut off"`, `whoosh` and `thump` (a short
+    example alone stops with an error listing them), so copy `presets/b-deep-hum.json`. Keys: `root_hz`,
+    `hum`, `fifths`, `choir`, `rumble`, `sub`, `grit`, `pulse` {amount, accelerating}, `rising`, `escalate`,
+    `layer`, `swell`, `"cut off"`, `whoosh`, `thump`, `colour`, plus `name`, `says`, `seed`.
+  - **sound presets** (every other sound): `sound` names its id in `docs/SOUNDS.md` and the rest are layers
+    (`thump`, `crack`, `ring`, `whoosh`; `hum`, `sub`, `rumble`, `hiss`, `buzz`, `growl`, `grit`, `drops`) and
+    whole-sound words (`swell`, `tail`, `"cut off"`, `rising`, `pulse`, `gusting`, `dull`). Length defaults
+    to today's; loudness is always today's. There's one first-take preset per game sound, named in the
+    vocabulary's words (`fire-whoosh-rumble-grit`); copy it to make a variant.
+  A picked variant is saved here under a name in the vocabulary's words.
+- Render every sound preset at once: `python synth.py $(grep -l '"sound"' presets/*.json) --out
+  tools/sound-audition/new` writes `<family>/<id>.wav` and `<family>/_joined-<family>.wav` (git-ignored)
+  and prints each sound's loudness and peak. Variants of one sound go to separate `--out` folders.
 
 ## The loop
 
@@ -27,7 +37,7 @@ The generator lives in this skill too, so it works on any machine with Python 3 
    (`hum 1, pulse 0.2 accelerating, thump 0.2`). Words he uses that aren't in the vocabulary yet:
    guess a meaning, say the guess in one line, and add it to the vocabulary as **proposed**.
 2. **Render variants, audio only.** No video. Copy a preset, change the words in question, and
-   render it with `synth.py` as the standard series below. Make 2-4
+   render it with `synth.py` in its family's standard series below. Make 2-4
    variants that differ along the one or two words in question (for example pulse at 15%, 30%,
    45%), and name each by what changes ("B + pulse 30%"), not A/B/C alone.
 3. **Measure.** For each variant, report the numbers `synth.py` prints (low energy under 200 and
@@ -50,10 +60,13 @@ The generator lives in this skill too, so it works on any machine with Python 3 
 
 ## The standard series
 
-Every cast-sound variant renders the same moments, as separate files and one joined file, so
-variants compare like for like: an earth single, a water + air pair, a charged fire (each charge
-step audible), the release. Other families (creatures, weather, impacts) define their own series
-in `synth.py`'s help the first time they're made.
+Every variant of a family renders the same moments, as one file per sound (and a joined file), so variants
+compare like for like. The cast series: an earth single, a water + air pair, a charged fire (each charge step
+audible), the release, as separate files and one joined file. The others (`synth.py --help` lists them and
+their sounds): **landing** for casting and spells (three takes with the bank's pitch jitter), **world** (a loop
+twice end to end so the seam is heard; a one-shot near, again and far), **creature** (near, then far),
+**wizard** (four takes at a walking pace), **feedback** for UI (twice fast, then alone: it must bear repeating),
+**golf** for mini games. A new family gets its series in `families.py` the first time it's made.
 
 ## Who can do it
 

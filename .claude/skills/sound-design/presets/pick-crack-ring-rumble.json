@@ -1,0 +1,12 @@
+{
+  "name": "pick-crack-ring-rumble",
+  "says": "the pick biting the ground: a metal clink, dirt breaking",
+  "seed": 1,
+  "sound": "pick",
+  "crack": {"amount": 0.7, "hz": 2500, "ms": 20},
+  "ring": {"amount": 0.15, "hz": 900, "ratios": [1, 2.76], "decay_ms": 60},
+  "rumble": {"amount": 0.35, "hz": 300},
+  "grit": {"amount": 0.3, "per_s": 150},
+  "tail": {"ms": 150},
+  "cut off": {"ms": 40}
+}

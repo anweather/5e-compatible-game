@@ -50,22 +50,22 @@ The one page a new PM session reads first. Keep it short: history goes in
   sets up Unity Gaming Services first), the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
 - Builds: Windows builds on the PC (Andrew, 2026-10-31); the Mac's headless build
   (`PrototypeBuild.BuildWindowsFromCommandLine`, RELEASING.md) is the fallback. The GitHub Actions runner is
-  shelved (`docs/CI_BUILDS.md`). The Mac app stays on 0.1.7; the Mac reports what shipping it again takes.
+  shelved (`docs/CI_BUILDS.md`). The Mac app is shelved at 0.1.7 until Andrew brings it up (J-049): releases are Windows only.
 
 ## In flight
 
-- **DesktopUnity:** `live-rules-unity` (5ae803a; brief `docs/handoffs/briefs/live-rules-unity.md`): the room
+- **Landed:** `live-rules-unity` on dev at 3d4975f ( brief `docs/handoffs/briefs/live-rules-unity.md`): the room
   menu, RoomIntent, the M panel through the room, the game serving the rules MCP on 127.0.0.1:47777 with an off
   switch (J-047), Claude writing its own mods (J-048). Player-build check green. Now: merge dev, the play
   log's mods column from the room's titles, rerun room probes and online; then the PM lands it.
   Andrew's test build: `unity\Builds\live-rules-test\SpellChemistryValley.exe`, plus
-  `claude mcp add --transport http spell-valley http://127.0.0.1:47777/mcp`.
+  `claude mcp add --scope user --transport http spell-valley http://127.0.0.1:47777/mcp`.
 - **unity-game-macbook:** `flaky-probes`: #42 (dragon), then #41 (sleet); #43 castfeel leftovers after
-  (`hit_stop_is_short`, the varying check count). Then a few lines on shipping the Mac app again.
+  (`hit_stop_is_short`, the varying check count).
 
 ## Next, in order
 
-1. Land `live-rules-unity`; a fireball scenario for the MCP's simulate (it starts with a Fire Bolt).
+1. A fireball scenario for the MCP's simulate (it starts with a Fire Bolt).
 2. Perf: Andrew sees a lasting frame-rate drop in snow and rain (#29, backlog); storm and fog first
    (#27 uncapped tick debt, #31). The play log now gives Andrew's own numbers.
 3. #40 (a yard's first pass leaves 37 materials white), procedural-looks leftovers (CellPaint first,

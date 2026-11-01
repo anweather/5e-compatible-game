@@ -64,6 +64,7 @@ public static class UpdateBuild
         if (!line.Contains(": OK")) return line;
         foreach (var debug in Directory.GetDirectories(folder, "*_DoNotShip")) Directory.Delete(debug, true);
         File.WriteAllText($"{folder}/CREDITS.txt", Credits.PlainText($"alpha {version}"));
+        PrototypeBuild.CopyLicences(folder);
         return line;
     }
 
