@@ -376,6 +376,27 @@ that long, and doesn't march.
 *Retired:* **critter**. It meant four things (the sandbox's emitters, the
   collectible world-changers of `TRAVERSAL.md`, raiders, and ambient
   life). Say which one.
+  A "critter spawner" is a **spawner**.
+
+**Building** *(proposed, `docs/design/world-tools.md`)*
+: A cabin or a village building: wall cells in the core, a mesh in the view.
+  Its **building id** is `cabin#2` or the village and its place in the plan
+  (`Hollowmere#4`).
+
+**Place** *(proposed)*
+: A named landmark with its cells (the lake, the falls, Hollowmere), in
+  `world/places.json`, so "the house by the lake" can be found.
+
+**Spawn table / spawner** *(proposed)*
+: A **spawn table** (`world/life.json`) lists **spawners**: what appears,
+  where (theme, chunk, cell), when, how rare and how many. What a spawner
+  makes is ambient life or a quarry.
+
+**Quarry** *(proposed)*
+: A creature that's the same on every peer, in the core, which players seek
+  and **claim** (the golden squirrel): a `ClaimCommand` at a tick, the first
+  in tick order wins. *Not* ambient life or a creature (view only), nor a
+  raider.
 
 ## Chunk streaming
 
@@ -445,6 +466,16 @@ that long, and doesn't march.
   **Open** (anyone's change goes in), **Host only** (only the host's) or
   **Locked** (none: the rules stay as the room started). Written "Open
   room", "Host-only room", "Locked room" in the log.
+
+**World edit** *(proposed, `docs/design/world-tools.md`)*
+: One change to world data in a mod's `world` section: set a field of a
+  thing or building by id, add a thing (appended) or remove one (a
+  tombstone, so ids don't move). Shape fields are shared; look fields are
+  the view's.
+
+**Connect token** *(proposed)*
+: A secret the game writes into the MCP config it registers with a
+  player's Claude; a local client without it is refused.
 
 **Mod / active mod / switch on, revert**
 : A **mod** is a JSON patch over `rules/` (`docs/MODDING.md`). A room's
