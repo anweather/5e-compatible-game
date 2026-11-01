@@ -70,7 +70,7 @@ public static class CastSoundTable
     // Each loop as an element's hum at a stage of a cast: 0 is gathering, then the charge levels.
     static readonly string[,] Hums = Named();
 
-    public static readonly Row[] Rows = Built();
+    public static Row[] Rows { get; } = Built();
 
     static string[,] Named()
     {

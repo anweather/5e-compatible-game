@@ -43,7 +43,10 @@ The generator lives in this skill too, so it works on any machine with Python 3 
    word he rejected or corrected gets fixed. Save the picked variant's preset in
    `presets/` under a name in the vocabulary's words.
 6. **Build it in** only after a pick, as data (the game's sound tables), never by hand-tuning in
-   Unity; the host does that part.
+   Unity. `render_game.py <preset> --out unity/Assets/Prototype/Audio/CC0/<preset>` renders the
+   parts the game holds and plays (it needs ffmpeg for the .ogg): a seamless 3 s loop per element
+   and stage, the thump, the whooshes. `CastSoundTable` lists them; the bank sets their level, and
+   `docs/SPELL_COMBOS.md`, "Sound", has the figures it was matched by.
 
 ## The standard series
 
