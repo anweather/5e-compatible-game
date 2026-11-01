@@ -397,6 +397,7 @@ public partial class ChemGrid
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
         bool cooled = lava.Changed(x, y, c, LavaHeat(c), MoltenTint(c, x, y));
+        if (groundScoped) slicks.Scoped(x, y, GroundFilmAt(c, x, y));
         slicks.Crust(x, y, c, cooled);
         slicks.Changed(x, y, c);
         cracks.Changed(x, y, c, ground);
@@ -427,6 +428,7 @@ public partial class ChemGrid
         }
         if (v.thorns == null) v.thorns = thornClumps.Build(x, y, center, ground);
         else CellThorns.Place(v.thorns, center, ground);
+        TintClump(v.thorns, CoverIds.Thorns, x, y);
     }
 
     // Burning debris glows at this heat in the lava's mesh, duller than a pool.
@@ -448,6 +450,7 @@ public partial class ChemGrid
             return;
         }
         if (v.vines == null) v.vines = vineClumps.Build(x, y, c, center);
+        TintClump(v.vines, CoverIds.Vines, x, y);
     }
 
     // --- stand-in cubes ------------------------------------------------------------

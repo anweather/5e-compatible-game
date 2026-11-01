@@ -3,11 +3,7 @@
 // a time instead of an Entities job, the other animals through a Herd
 // snapshot (ids instead of entities), the ground through ICreatureGround, and
 // "the player" generalised to the nearest threat (a wizard, or fire, which
-// always scares). The behaviour is his, but for cornered animals: from his
-// 7ee4511, a leash holds even a fleeing animal and at the end of it the animal
-// slows to mill about; ours, that goes for any corner, not just a leash's end
-// (Veer no longer picks a new side every frame, and Mill takes a few steps at a
-// time, not back towards the danger, until a way out opens or the danger's gone).
+// always scares). The behaviour is his.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024, S3358, S107, S1172, S1854, S3241
 using System.Collections.Generic;
@@ -81,9 +77,6 @@ namespace Punchy.Fauna
     /// Two-animal activities agree through the Herd: a chaser targets its Partner, the partner notices and runs; when
     /// the chaser catches up the roles swap.
     ///
-    /// With nowhere left to run (no way past what's in front, or the end of a leash, which holds even when fleeing),
-    /// a frightened animal mills about: a few steps at a time, an eye on the danger, until a way out opens or it passes.
-    ///
     /// Movement: creatures keep to dry land they can climb, turn at a limited rate and speed up and slow down
     /// smoothly, and their gait phase advances by the distance they cover, so the stride (measured from the key
     /// poses) matches the ground speed.
@@ -92,22 +85,6 @@ namespace Punchy.Fauna
     {
         /// <summary>Fire scares an animal from at least this far, however bold it is.</summary>
         const float FireFear = 10f;
-
-        // Flee's stages: running, off to one side of what's in the way, or cornered.
-        const byte Running = 0, Veering = 1, Milling = 2;
-        /// <summary>A veering animal hitting something else this long after its veer's turn is cornered, seconds.</summary>
-        const float VeerRetry = 1.5f;
-        /// <summary>How far ahead a side must be clear to veer down it, and a way out to run for it, metres at scale 1.</summary>
-        const float VeerLook = 3f, WayOut = 12f;
-        /// <summary>A step of milling about: metres at scale 1, and seconds before the next.</summary>
-        const float StepMin = 1.5f, StepMax = 4f, BeatMin = 1.2f, BeatMax = 2.8f;
-        /// <summary>Tries at finding a step; a step's direction may be no nearer the danger than this (a cosine).</summary>
-        const int StepTries = 6;
-        const float NotBack = -0.5f;
-        /// <summary>A body's look ahead at a walk, metres at scale 1 (past this, Step stops it short).</summary>
-        const float LookAhead = 1.2f;
-        /// <summary>Steepest climb it takes.</summary>
-        const float SteepestSlope = 0.8f;
 
         // This step's inputs.
         Herd herd;
@@ -197,28 +174,10 @@ namespace Punchy.Fauna
                     break;
 
                 case CreatureMode.Flee:
-                    if (s.Stage == Milling)
-                    {
-                        // Cornered: Punchy's fifth of a run (no slower than a walk), stopping between steps.
-                        var there = math.distance(s.Position.xz, s.Target) < 0.8f;
-                        targetSpeed = there ? 0f : math.max(walk, run * 0.2f);
-                        moving = !there;
-                        var toDanger = s.Focus - s.Position.xz;
-                        desiredLook = math.clamp(WrapAngle(math.atan2(toDanger.x, toDanger.y) - s.Yaw), -1.2f, 1.2f);
-                        s.Timer -= dt;
-                        if (s.Timer <= 0f)
-                            Mill(ref s, ref rng);
-                    }
-                    else
-                    {
-                        targetSpeed = run;
-                        moving = true;
-                    }
-                    if (threatened && s.Stage != Milling && math.distance(s.Position.xz, s.Target) < 2f)
-                    {
-                        s.Stage = Running;
+                    targetSpeed = run;
+                    moving = true;
+                    if (threatened && math.distance(s.Position.xz, s.Target) < 2f)
                         s.Target = s.Position.xz + math.normalizesafe(s.Position.xz - s.Focus, new float2(1f, 0f)) * 30f;
-                    }
                     else if (!threatened && (s.ModeTime > 3f || math.distance(s.Position.xz, s.Target) < 2f))
                         Pause(ref s, b, ref rng);
                     break;
@@ -292,20 +251,6 @@ namespace Punchy.Fauna
                     break;
             }
 
-            // Animals with a home never head out of range of it (penned animals stay in their pen, even fleeing).
-            if (s.Leash > 0f && moving)
-            {
-                var fromHome = s.Target - s.Home;
-                var far = math.length(fromHome);
-                if (far > s.Leash)
-                    s.Target = s.Home + fromHome / far * s.Leash;
-                if (math.distance(s.Position.xz, s.Target) < 0.8f && s.Mode == CreatureMode.Flee && s.Stage != Milling)
-                {
-                    Cornered(ref s);   // mill about rather than run on the spot
-                    targetSpeed = 0f;
-                }
-            }
-
             // Getting up comes before going anywhere.
             targetSpeed *= math.saturate(1f - s.Lie * 1.5f);
 
@@ -325,13 +270,11 @@ namespace Punchy.Fauna
 
             // Stay out of water and off cliffs: stop (or, running, veer) when the way ahead is bad.
             var forward = new float2(math.sin(s.Yaw), math.cos(s.Yaw));
-            var ahead = s.Position.xz + forward * math.max(LookAhead, s.Speed * 0.5f) * s.Scale;
-            if (s.Speed > 0.05f && !terrain.Walkable(ahead) || SlopeAhead(s.Position.xz, ahead) > SteepestSlope)
+            var ahead = s.Position.xz + forward * math.max(1.2f, s.Speed * 0.5f) * s.Scale;
+            if (s.Speed > 0.05f && !terrain.Walkable(ahead) || SlopeAhead(s.Position.xz, ahead) > 0.8f)
             {
                 s.Speed *= 0.5f;
-                if (s.Mode == CreatureMode.Flee)
-                    Veer(ref s, b, forward, ref rng);
-                else if (s.Mode == CreatureMode.Play && s.Stage == 1)
+                if (s.Mode == CreatureMode.Flee || s.Mode == CreatureMode.Play && s.Stage == 1)
                     s.Target = s.Position.xz + new float2(-forward.y, forward.x) * (rng.NextBool() ? 20f : -20f);
                 else if (s.Mode == CreatureMode.Wander || s.Mode == CreatureMode.Drink && s.Stage == 0)
                     Pause(ref s, b, ref rng);
@@ -442,84 +385,6 @@ namespace Punchy.Fauna
         {
             SetMode(ref s, CreatureMode.Idle);
             s.Timer = rng.NextFloat(b.IdleTime.x, math.max(b.IdleTime.x, b.IdleTime.y));
-        }
-
-        // ------------------------------------------------------------------------------- nowhere left to run
-
-        /// <summary>
-        /// Running at something it can't cross: off down a side that's clear, and on that side until it has turned
-        /// (picking anew each frame shook it on the spot). Neither side clear, or stopped again straight after a
-        /// veer, and it's cornered.
-        /// </summary>
-        void Veer(ref CreatureState s, CreatureBody b, float2 forward, ref Random rng)
-        {
-            if (s.Stage == Milling)
-                return;
-            var turning = 1.6f / math.max(b.TurnRate, 0.1f);
-            if (s.Stage == Veering && s.StageTime < turning)
-                return;
-            var at = s.Position.xz;
-            var side = new float2(-forward.y, forward.x) * (rng.NextBool() ? 1f : -1f);
-            var again = s.Stage == Veering && s.StageTime < turning + VeerRetry;
-            if (!again && (Clear(s, at, at + side * VeerLook * s.Scale) || Clear(s, at, at + (side = -side) * VeerLook * s.Scale)))
-            {
-                s.Stage = Veering;
-                s.StageTime = 0f;
-                s.Target = at + side * 20f;
-            }
-            else
-                Cornered(ref s);
-        }
-
-        static void Cornered(ref CreatureState s)
-        {
-            s.Stage = Milling;
-            s.StageTime = 0f;
-            s.Timer = 0f;   // Its first step comes next frame.
-            s.Target = s.Position.xz;
-        }
-
-        /// <summary>
-        /// The next step of milling about: if there's a clear way out, away from the danger, it runs for it; if not,
-        /// a few steps anywhere that's clear and not back towards the danger. Hemmed in, it turns on the spot.
-        /// </summary>
-        void Mill(ref CreatureState s, ref Random rng)
-        {
-            var at = s.Position.xz;
-            var away = math.normalizesafe(at - s.Focus, new float2(1f, 0f));
-            if (Clear(s, at, at + away * WayOut * s.Scale))
-            {
-                s.Stage = Running;
-                s.StageTime = 0f;
-                s.Target = at + away * 30f;
-                return;
-            }
-            s.Timer = rng.NextFloat(BeatMin, BeatMax);
-            var dir = away;
-            for (int k = 0; k < StepTries; k++)
-            {
-                dir = rng.NextFloat2Direction();
-                var to = at + dir * rng.NextFloat(StepMin, StepMax) * s.Scale;
-                if (math.dot(dir, away) >= NotBack && Clear(s, at, to))
-                {
-                    s.Target = to;
-                    return;
-                }
-            }
-            s.Target = at + dir * StepMax * s.Scale;
-        }
-
-        /// <summary>Whether it can walk straight there: inside its leash, on ground it may step on, with room at the end.</summary>
-        bool Clear(in CreatureState s, float2 from, float2 to)
-        {
-            if (s.Leash > 0f && math.distance(to, s.Home) > s.Leash)
-                return false;
-            var length = math.distance(from, to);
-            var dir = (to - from) / math.max(length, 0.01f);
-            for (var d = 1f; d < length; d += 1.5f)
-                if (!terrain.Walkable(from + dir * d))
-                    return false;
-            return terrain.Walkable(to) && terrain.Walkable(to + dir * LookAhead * s.Scale) && SlopeAhead(from, to) <= SteepestSlope;
         }
 
         // ------------------------------------------------------------------------------- two-animal activities

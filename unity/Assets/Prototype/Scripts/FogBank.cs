@@ -57,10 +57,10 @@ public class FogBank : MonoBehaviour
     public static bool Draws(string gas) => gas == GasIds.Fog || gas == GasIds.Dust || gas == GasIds.Cloud || gas == GasIds.Storm || gas == GasIds.SnowCloud;
 
     // The gas's style in the colour the rules in force give it (ChemGrid.WorldLook.cs).
-    Style StyleOf(string gas)
+    Style StyleOf(string gas, int index)
     {
         var style = ArtOf(gas);
-        return style.In(grid.GasColor(gas, style.Tint));
+        return style.In(grid.GasColorAt(gas, index, style.Tint));
     }
 
     /// <summary>The colour a square of gas is drawn in, for a probe; null with none there.</summary>
@@ -69,8 +69,8 @@ public class FogBank : MonoBehaviour
     /// <summary>The rules switched: every square takes its gas's colour now.</summary>
     public void Recolour()
     {
-        foreach (var s in squares.Values)
-            if (s.gas != null) s.style = StyleOf(s.gas);
+        foreach (var (index, s) in squares)
+            if (s.gas != null) s.style = StyleOf(s.gas, index);
     }
 
     static Style ArtOf(string gas) => gas switch
@@ -139,7 +139,7 @@ public class FogBank : MonoBehaviour
         s.target = target;
         if (target <= 0f) return;
         s.gas = gas;
-        s.style = StyleOf(gas);
+        s.style = StyleOf(gas, index);
     }
 
     /// <summary>The gas over a square is gone at once: burnt in a flash, not fading.</summary>

@@ -11,6 +11,16 @@ namespace Chem.Tests
     /// </summary>
     public class LookScopeTests
     {
+        [Test]
+        public void ALookRoundAPlayerSaysWhoItFollowsAndHowFar()
+        {
+            var patch = ModPatch.Parse("{ \"elements\": { \"fire\": { \"look\": { \"color\": [0.95, 0.42, 0.12], \"scoped\": [ { \"where\": { \"around\": \"Player 2\", \"within\": 9 }, \"color\": [0.2, 0.9, 0.3] } ] } } } }");
+            var scopes = LookScopes.Compile(ChemistryTests.R.WithMods(new[] { patch }), WorldPlaces.Empty);
+            Assert.That(scopes.Followers, Is.EqualTo(new[] { ("Player 2", 9) }));
+            Assert.That(scopes.Of("elements", "fire").Colour.Near(new LookColour(0.95f, 0.42f, 0.12f)), Is.True, "what a scope's edge fades into");
+            Assert.That(LookScopes.Compile(ChemistryTests.R, WorldPlaces.Empty).Followers, Is.Empty);
+        }
+
         static Rules Base => ChemistryTests.R;
 
         static readonly LookColour Green = new LookColour(0.2f, 0.9f, 0.3f), Blue = new LookColour(0.25f, 0.45f, 1f), Red = new LookColour(1f, 0.1f, 0.1f);

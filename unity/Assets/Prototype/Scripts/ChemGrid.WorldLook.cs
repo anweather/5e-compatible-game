@@ -53,7 +53,9 @@ public partial class ChemGrid
     public static Color TintBetween(LookDef was, LookDef now)
     {
         if (was == null || now == null || LookDef.Same(was, now)) return Color.white;
-        return new Color(Ratio(was.R, now.R), Ratio(was.G, now.G), Ratio(was.B, now.B));
+        // What's drawn as one tint can't be a patchwork: a mix shows as its colours mixed.
+        var drawn = now.Mix != null ? now.Mix.Blended : LookColour.Of(now);
+        return new Color(Ratio(was.R, drawn.R), Ratio(was.G, drawn.G), Ratio(was.B, drawn.B));
     }
 
     static float Ratio(float was, float now) => Mathf.Clamp(now / Mathf.Max(LeastBase, was), 0f, MostTint);
@@ -64,6 +66,15 @@ public partial class ChemGrid
 
     /// <summary>The film colour a cell is drawn in, for a probe.</summary>
     public Color? SlickColorAt(int x, int y) => slicks.FilmColorAt(x, y);
+
+    /// <summary>The top of the water or the lake at a point in grid units, or <paramref name="fallback"/>.</summary>
+    public float DrawnSurfaceAt(float gx, float gy, float fallback)
+    {
+        int x = Mathf.FloorToInt(gx), y = Mathf.FloorToInt(gy);
+        var c = World.At(x, y);
+        float lake = c != null ? LakeLevelAt(x, y, c) : fallback;
+        return Mathf.Max(DrawnWaterTopAt(gx, gy, fallback), lake);
+    }
 
     /// <summary>The colour the wet cells' water is drawn in, for a probe.</summary>
     public Color CellWaterColor => waterSurface.Color;
@@ -90,6 +101,7 @@ public partial class ChemGrid
         smokeLook = TurnBetween(GasLook(was, GasIds.Smoke), GasLook(now, GasIds.Smoke), 1f);
         if (steamInLook != null) Destroy(steamInLook);
         if (smokeInLook != null) Destroy(smokeInLook);
+        CompileLooks();
     }
 
     // The look a gas's effect is drawn in: the same prefab, or a copy dressed once for the colour in force.
@@ -107,6 +119,17 @@ public partial class ChemGrid
     /// <summary>What's on a cell of embers or lava burns in: its spell's look, else the cover's or the element's.</summary>
     LookTint MoltenTint(Cell c, int x, int y)
     {
+        if (anyScoped)
+        {
+            var at = c.Cover == CoverIds.Embers ? emberLooks : lavaLooks;
+            if (!at.Plain || (c.Cover == CoverIds.Embers && !fireLooks.Plain))
+            {
+                var own = NoteOn(World.Idx(x, y), out var caster);
+                var look = at.Plain ? fireLooks : at;
+                var art = at.Plain ? fireArt : LookColour.Of(c.Cover == CoverIds.Embers ? CoverLook(CurrentRules.Base, CoverIds.Embers) : CurrentRules.Base.ElementLook(ElementIds.Lava));
+                return LookTint.Between(ToColor(art), ToColor(look.At(x, y, spots, own, caster)));
+            }
+        }
         if (c.Cover != CoverIds.Embers) return lavaLook;
         if (SpellFire(x, y, out var spell)) return spell;
         return emberLook.Any ? emberLook : fireLook;
@@ -117,8 +140,7 @@ public partial class ChemGrid
     {
         ReadWorldLooks();
         if (views == null) return;
-        foreach (var v in views)
-            if (v != null && (v.fireLevel > 0 || v.gasKind != null || v.coverId != null)) v.key = int.MinValue;
+        MarkAllDrawn();
         fogBank?.Recolour();
         slicks.Recolour();
         thornClumps.Recolour();
@@ -126,6 +148,7 @@ public partial class ChemGrid
         var was = CurrentRules.Base;
         var now = CurrentRules.Effective;
         var water = TintBetween(was.ElementLook(ElementIds.Water), now.ElementLook(ElementIds.Water));
+        spotWas.Clear();
         waterSurface.Recolour(water);
         if (Ocean.Instance != null) Ocean.Instance.Recolour(water);
         if (valley != null)

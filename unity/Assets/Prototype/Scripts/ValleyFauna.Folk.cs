@@ -9,8 +9,8 @@ using UnityEngine;
 // while at each and sits on the benches; the beach bar's barkeep keeps to the
 // bar. At night and in heavy rain or snow they walk to the nearest door and go
 // in, and come out of the doors again when it's over. A fire near them hands
-// them back to the creature brain, which runs from it as far as their leash to
-// the village lets them; they take up their day again once it has passed. Driven as Punchy's puppets (they keep the heading
+// them back to the creature brain, which runs from it; they take up their day
+// again once it has passed. Driven as Punchy's puppets (they keep the heading
 // and pace they're given), steered round walls by the cells, which they only
 // read. Presentation only, like the rest of the fauna.
 public partial class ValleyFauna

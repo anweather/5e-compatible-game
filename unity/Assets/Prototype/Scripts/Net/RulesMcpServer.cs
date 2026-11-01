@@ -31,6 +31,8 @@ public class RulesMcpServer : MonoBehaviour
     /// <summary>The server, or null where the game doesn't serve (a virtual player).</summary>
     public static RulesMcpServer Instance { get; private set; }
 
+    readonly GameHere here = new();
+
     /// <summary>The address Claude connects to; null while off or if no port was free.</summary>
     public static string Url { get; private set; }
 
@@ -84,7 +86,7 @@ public class RulesMcpServer : MonoBehaviour
             Debug.LogWarning($"Rules MCP: no free port from {FirstPort}, so Claude can't reach this game");
             return;
         }
-        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = new GameRoomDesk(this) }), "spell-chemistry-valley", Application.version);
+        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = new GameRoomDesk(this), Here = here }), "spell-chemistry-valley", Application.version);
         var serving = listener;
         var tools = rpc;
         new Thread(() => Serve(serving, tools)) { IsBackground = true, Name = "Rules MCP" }.Start();
@@ -116,6 +118,7 @@ public class RulesMcpServer : MonoBehaviour
     void Update()
     {
         while (onMainThread.TryDequeue(out var act)) act();
+        here.Follow();
     }
 
     void OnDestroy()
