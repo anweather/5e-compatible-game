@@ -50,7 +50,7 @@ The one page a new PM session reads first. Keep it short: history goes in
   sets up Unity Gaming Services first), the rest of the sound pass (`docs/handoffs/sound-pass-brief.md`).
 - Builds: Windows builds on the PC (Andrew, 2026-10-31); the Mac's headless build
   (`PrototypeBuild.BuildWindowsFromCommandLine`, RELEASING.md) is the fallback. The GitHub Actions runner is
-  shelved (`docs/CI_BUILDS.md`). The Mac app stays on 0.1.7; the Mac reports what shipping it again takes.
+  shelved (`docs/CI_BUILDS.md`). The Mac app is shelved at 0.1.7 until Andrew brings it up (J-049): releases are Windows only.
 
 ## In flight
 
@@ -61,7 +61,7 @@ The one page a new PM session reads first. Keep it short: history goes in
   Andrew's test build: `unity\Builds\live-rules-test\SpellChemistryValley.exe`, plus
   `claude mcp add --transport http spell-valley http://127.0.0.1:47777/mcp`.
 - **unity-game-macbook:** `flaky-probes`: #42 (dragon), then #41 (sleet); #43 castfeel leftovers after
-  (`hit_stop_is_short`, the varying check count). Then a few lines on shipping the Mac app again.
+  (`hit_stop_is_short`, the varying check count).
 
 ## Next, in order
 

@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-049: Ship the Mac app again?
+
+- **Asked:** 2026-10-31, by the PM (the Mac said it's about an hour plus one human test).
+- **Also comes up when:** every release; any Mac build or notarization question.
+- **Answer:** no. Windows only; the Mac app is shelved until Andrew brings it back up. Don't ask again.
+- **Why:** Andrew's call.
+- **Revisited:** 0.
+
 ### J-048: Does the game's MCP make mods, or only switch them?
 
 - **Asked:** 2026-10-31, by Andrew, after the live-rules clip.
