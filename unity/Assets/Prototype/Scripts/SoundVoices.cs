@@ -98,10 +98,10 @@ public class SoundVoices : MonoBehaviour
     }
 
     /// <summary>Plays the clip once at a point, or at <paramref name="at"/> from <paramref name="follow"/> and with it. Beyond its reach of the listener it isn't played.</summary>
-    public static Voice Play(in Cue cue, Vector3 at, Transform follow = null) => Start(cue, at, follow, false, 0f);
+    public static Voice Play(in Cue cue, Vector3 at, Transform follow = null) => Start(cue, at, follow, false, 0f, 0f);
 
-    /// <summary>Starts the clip looping, fading in, on <paramref name="follow"/>. Hold it every frame, or it stops.</summary>
-    public static Voice Loop(in Cue cue, Vector3 offset, Transform follow, float fadeIn) => Start(cue, offset, follow, true, fadeIn);
+    /// <summary>Starts the clip looping from <paramref name="startAt"/> (s), fading in, on <paramref name="follow"/>. Hold it every frame, or it stops.</summary>
+    public static Voice Loop(in Cue cue, Vector3 offset, Transform follow, float fadeIn, float startAt = 0f) => Start(cue, offset, follow, true, fadeIn, startAt);
 
     /// <summary>Keeps a loop going, gliding to this volume and pitch. False if it's gone.</summary>
     public static bool Hold(Voice voice, float volume, float pitch, float glideSeconds)
@@ -145,7 +145,7 @@ public class SoundVoices : MonoBehaviour
     static bool Live(Voice voice) =>
         instance != null && voice.Serial != 0 && instance.voices[voice.Slot].serial == voice.Serial && instance.voices[voice.Slot].busy;
 
-    static Voice Start(in Cue cue, Vector3 at, Transform follow, bool loop, float fadeIn)
+    static Voice Start(in Cue cue, Vector3 at, Transform follow, bool loop, float fadeIn, float startAt)
     {
         if (cue.Clip == null) return default;
         var place = follow != null ? follow.position + at : at;
@@ -170,6 +170,7 @@ public class SoundVoices : MonoBehaviour
         var source = v.source;
         source.transform.position = place;
         source.clip = cue.Clip;
+        source.time = startAt;
         source.loop = loop;
         source.pitch = cue.Pitch;
         source.maxDistance = cue.Reach;

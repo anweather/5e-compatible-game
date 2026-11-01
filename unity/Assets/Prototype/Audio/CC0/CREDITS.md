@@ -15,10 +15,12 @@ packs) is restored with Prototype > Restore Asset Packs and never committed.
 | `bart/` | bart | [Ice spells](https://opengameart.org/content/ice-spells) (`ice`, `coldsnap`; made from a public-domain pdsounds.org recording) | Ray of Frost |
 | `jaggedstone/` | JaggedStone | [Magic spell sfx](https://opengameart.org/content/magic-spell-sfx) (`magical_*`) | Levitate, Misty Step, Mage Hand; a d-pad cast gathering, the release of quiet and sky casts |
 
-The rest of the casting sounds (fire, earth and air gathering, the weight under the
-slam, the charge's hum and level tone, a cancel's fizzle, the bolt, ground and flow
-releases) are made in code for this game: `ProceduralCast.cs`, `ProceduralFire.cs`.
-Which sound comes from where is `CastSoundTable.cs`.
+`cast-deep-hum-pulse/` is ours: the hums, slam and whoosh of a cast, rendered for this game
+from the preset of that name by the sound-design skill (`.claude/skills/sound-design/`,
+`render_game.py`), with no outside source.
+
+Stand-ins for a machine with no bank, and a cancel's fizzle, are made in code for this game:
+`ProceduralCast.cs`, `ProceduralFire.cs`. Which sound comes from where is `CastSoundTable.cs`.
 
 Downloaded 2026-10-25. Files are as published, unchanged; loudness is evened
 out in the game (`SoundBank`), not by editing the files.
