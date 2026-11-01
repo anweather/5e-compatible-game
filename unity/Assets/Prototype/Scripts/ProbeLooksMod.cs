@@ -12,12 +12,12 @@ using UnityEngine.SceneManagement;
 // and a look-only change that redraws what already stands. With --shots it is a film (ClipFilm).
 public class LooksModProbe : ClipProbe
 {
-    const int Half = 6, Apart = 16, Back = 14;
+    protected const int Half = 6, Apart = 16, Back = 14;
     const float Landed = 3.5f;
 
     readonly ParticleSystem.Particle[] particles = new ParticleSystem.Particle[4096];
     int scenesLoaded;
-    bool Filming => !string.IsNullOrEmpty(ScreenshotDir);
+    protected bool Filming => !string.IsNullOrEmpty(ScreenshotDir);
 
     void CountLoad(Scene s, LoadSceneMode m) => scenesLoaded++;
 
@@ -71,6 +71,7 @@ public class LooksModProbe : ClipProbe
         yield return Wait(1f);
 
         Check("blast_bigger", on.BlastMetres >= off.BlastMetres * 1.6f, $"{off.BlastMetres:0.0} m to {on.BlastMetres:0.0} m");
+        Check("bead_bigger", on.BeadScale >= off.BeadScale * 1.6f, $"{off.BeadScale:0.0} to {on.BeadScale:0.0}");
         Check("fire_area_bigger", on.FireCells >= off.FireCells * 2 && on.FireRadius > off.FireRadius, $"{off.FireCells} cells out to {off.FireRadius} to {on.FireCells} out to {on.FireRadius}");
         Check("crater_bigger", on.CraterCells > off.CraterCells && on.CraterRadius > off.CraterRadius, $"radius {off.CraterRadius} to {on.CraterRadius}, depth {off.CraterDepth} to {on.CraterDepth}, {off.CraterCells} to {on.CraterCells} cells");
         Check("crater_drawn_bigger", on.DrawnDrop > off.DrawnDrop, $"the terrain drew {off.DrawnDrop:0.00} m down, then {on.DrawnDrop:0.00} m");
@@ -85,7 +86,7 @@ public class LooksModProbe : ClipProbe
     }
 
     // Where in the film a beat falls, for its captions.
-    void Beat(string name)
+    protected void Beat(string name)
     {
         if (Filming) Metric(name, FilmedSeconds);
     }
@@ -93,7 +94,7 @@ public class LooksModProbe : ClipProbe
     // What one Fireball did, in the cells and as drawn.
     sealed class Measure
     {
-        public float BlastMetres, DrawnDrop;
+        public float BlastMetres, DrawnDrop, BeadScale;
         public int FireCells, FireRadius, FlamesDrawn, CraterCells, CraterRadius, CraterDepth;
     }
 
@@ -120,6 +121,8 @@ public class LooksModProbe : ClipProbe
         for (float t = 0f; t < Landed; t += Time.deltaTime)
         {
             if (SpellVisuals.LastImpact != null) m.BlastMetres = Mathf.Max(m.BlastMetres, Reach(SpellVisuals.LastImpact, point));
+            var bead = FindAnyObjectByType<SpellProjectile>();
+            if (bead != null) m.BeadScale = Mathf.Max(m.BeadScale, bead.transform.localScale.x);
             if (t > 1.2f) Burning(at, m);
             yield return null;
         }
@@ -220,7 +223,7 @@ public class LooksModProbe : ClipProbe
     }
 
     // Open flat grass for the three casts, as near the yard as there is.
-    bool FindMeadow(out Vector2Int found)
+    protected bool FindMeadow(out Vector2Int found)
     {
         foreach (var o in Candidates())
             if (Open(o) && Open(new Vector2Int(o.x + Apart, o.y)) && Open(new Vector2Int(o.x + Apart / 2, o.y + Back)) && Open(new Vector2Int(o.x + Apart / 2, o.y - 7)))

@@ -49,13 +49,14 @@ files players will get, tested before anyone can see it.
    **Linux ships in the same release** (Andrew, J-051): the host refuses a
    join unless version and commit match exactly, so a release with no Linux
    build locks Linux players out. The Mac builds it from the same commit,
-   about 50 minutes, batch mode, no Editor open
-   (`-buildTarget Linux64 -executeMethod LinuxBuild.FromCommandLine
-   -rebuild-yard`, `LinuxBuild.cs`), because the PC has no Linux Build Support.
-   Zip it as `SpellChemistryValley-linux-x64.zip` with `README-LINUX.txt`,
-   `CREDITS.txt`, `LICENSE.md` and `NOTICE.md`, and upload it to the draft
-   with `gh release upload`. `ship-update.sh` doesn't do this yet, and there
-   are no Linux in-place updates: Linux players download each release.
+   because the PC has no Linux Build Support:
+   `tools/ship-update.sh X.Y.Z --linux-only`, about 50 minutes, batch mode, so
+   with no Editor open on the project (`LinuxBuild.cs`). It refuses a stamp of
+   another version or commit, zips
+   `SpellChemistryValley-linux-x64.zip` with `README-LINUX.txt`
+   (`tools/README-LINUX.txt`), `CREDITS.txt`, `LICENSE.md` and `NOTICE.md`, and
+   uploads it to the draft. There are no Linux in-place updates: Linux players
+   download each release.
 
    Each builds its player, packs it with Velopack (a delta from the last
    release on its channel) and uploads only its own files (`releases.osx.json`

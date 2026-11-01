@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-052: Do a recoloured spell's ground flames take its colour?
+
+- **Asked:** 2026-11-01, by the Mac (spell effects follow `look.color`; its `LookFire` also turns the flames blue).
+- **Also comes up when:** element colours land, any look a spell leaves in the world, online play.
+- **Answer:** PM's call, yes for now. Keep `LookFire`. When an element's colour lands it replaces this
+  where the spell didn't choose a colour, and that work settles how a plain fire beside a blue one behaves.
+- **Why:** orange flames under a blue fireball is the complaint Andrew started from. It's view-only, so it
+  can't reach lockstep; two peers may differ at the edges of a fire.
+- **Revisited:** 0.
+
 ### J-051: Is Linux its own build or part of the release?
 
 - **Asked:** 2026-11-01, by Andrew: "We should treat Linux and win the same release version".

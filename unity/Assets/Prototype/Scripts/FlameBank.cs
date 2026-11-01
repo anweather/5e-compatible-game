@@ -7,7 +7,8 @@ using UnityEngine;
 // stamped out). A burning cell holds a few flames: each is one instanced quad
 // playing the Particle Pack's flame flipbooks, the sheet by the fire's level as
 // the pack's tiny, medium and large fires were, and the look by what burns
-// (FireLook). Each stands off the cell's middle at its own size, speed and time,
+// (FireLook), and a spell's fire in that spell's look (LookTint). Each stands off
+// the cell's middle at its own size, speed and time,
 // and Prototype/Flame moves and resizes it a little every time round. All of it is
 // one draw, and this writes to the flames' buffer only when a cell's fire changes.
 // Where a flame stands comes from the cell alone (ValueNoise), so a relit cell
@@ -41,13 +42,13 @@ public class FlameBank : MonoBehaviour
         public float seed;
         public float wide, tall, speed, born;
         public Vector4 tint;
-        public float gone, sheet, wander, pad;
+        public float gone, sheet, wander, turn;
     }
 
     sealed class Burn
     {
         public int block, level;
-        public float scale, ground;
+        public float scale, ground, turn;
         public string look;
     }
 
@@ -109,8 +110,8 @@ public class FlameBank : MonoBehaviour
         }
     }
 
-    /// <summary>The fire on cell (x, y) of index <paramref name="index"/>, standing at <paramref name="foot"/>: its level (0 puts it out), size and look (FireLook).</summary>
-    public void Set(int index, int x, int y, Vector3 foot, int level, float scale, string look)
+    /// <summary>The fire on a cell of index <paramref name="index"/>, standing at <paramref name="foot"/>: its level (0 puts it out), size, look (FireLook) and how far its colour is turned (LookTint.Turn).</summary>
+    public void Set(int index, Vector2Int cell, Vector3 foot, int level, float scale, string look, float turn = 0f)
     {
         if (level <= 0)
         {
@@ -123,12 +124,12 @@ public class FlameBank : MonoBehaviour
             burn = new Burn { block = freeBlocks.Count > 0 ? freeBlocks.Pop() : blocksUsed++ };
             burning[index] = burn;
         }
-        else if (burn.level == level && burn.look == look && Mathf.Approximately(burn.scale, scale) && Mathf.Approximately(burn.ground, foot.y))
+        else if (burn.level == level && burn.look == look && Mathf.Approximately(burn.turn, turn) && Mathf.Approximately(burn.scale, scale) && Mathf.Approximately(burn.ground, foot.y))
         {
             return;
         }
-        (burn.level, burn.scale, burn.ground, burn.look) = (level, scale, foot.y, look);
-        Write(burn, x, y, foot);
+        (burn.level, burn.scale, burn.ground, burn.look, burn.turn) = (level, scale, foot.y, look, turn);
+        Write(burn, cell.x, cell.y, foot);
     }
 
     void PutOut(int index)
@@ -168,6 +169,7 @@ public class FlameBank : MonoBehaviour
             f.gone = 0f;
             f.sheet = sheet;
             f.wander = cellSize * 0.35f;
+            f.turn = burn.turn;
             if (was <= 0f) f.born = Time.time;
         }
         for (int i = MostFlames; i < FlamesPerCell; i++)
@@ -181,6 +183,7 @@ public class FlameBank : MonoBehaviour
             ember.tint = colour;
             ember.gone = 0f;
             ember.sheet = NoSheet;
+            ember.turn = burn.turn;
         }
         buffer.SetData(flames, start, start, FlamesPerCell);
     }

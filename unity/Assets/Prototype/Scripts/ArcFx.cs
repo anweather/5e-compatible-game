@@ -6,6 +6,7 @@ using UnityEngine;
 // through water and metal (ChemGrid.Charge), a storm cloud striking. An arc can
 // wait a moment before it shows, so a charge runs out from where it struck. Its
 // line is drawn anew a few times as it plays, so it crackles, and it fades.
+// A spell's own arc takes its look; the charge's arcs are the world's.
 // Presentation only: what the charge reaches is the core's.
 public class ArcFx : MonoBehaviour
 {
@@ -30,8 +31,8 @@ public class ArcFx : MonoBehaviour
     /// <summary>How many arcs are playing now, for the probe.</summary>
     public static int Playing { get; private set; }
 
-    /// <summary>An arc from <paramref name="from"/> to <paramref name="to"/>, after <paramref name="delay"/> seconds, for <paramref name="seconds"/>.</summary>
-    public static void Play(Vector3 from, Vector3 to, float width = 0.07f, float delay = 0f, float seconds = 0.35f)
+    /// <summary>An arc from <paramref name="from"/> to <paramref name="to"/>, after <paramref name="delay"/> seconds, for <paramref name="seconds"/>, in a spell's <paramref name="look"/> if given.</summary>
+    public static void Play(Vector3 from, Vector3 to, float width = 0.07f, float delay = 0f, float seconds = 0.35f, Color? look = null)
     {
         if (instance == null) instance = new GameObject("Arcs").AddComponent<ArcFx>();
         var arc = instance.Take();
@@ -41,6 +42,9 @@ public class ArcFx : MonoBehaviour
         arc.starts = Time.time + delay;
         arc.ends = arc.starts + seconds;
         arc.redraw = 0f;
+        var tint = look != null ? LookTint.Between(Cool, look.Value, 1f) : default;
+        arc.line.startColor = tint.Of(Hot);
+        arc.line.endColor = tint.Of(Cool);
     }
 
     // A free line, or the one played longest ago.

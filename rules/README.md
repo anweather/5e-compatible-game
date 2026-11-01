@@ -241,7 +241,9 @@ does:
   `gases`, `spells`). `"drawn": false` there means named but not read from data
   yet, with `needs` saying what's missing.
 - **`form`**: the variant, when the family has `forms`.
-- **`color`**: three numbers 0 to 1. A spell's is the glow in the hand and any tint.
+- **`color`**: three numbers 0 to 1. A spell's is the glow in the hand, the aim
+  marker and any tint, and its effects turn to it (below). A pale colour
+  (saturation under 0.22, white among them) asks for no colour.
 - **`height`** (metres over the ground), **`glow`** (shining in its own colour),
   **`roughness`** (0 glossy, 1 matt), **`flow`** (a liquid's speed; no drawn
   family reads it yet). `params` in `looks.json` says which a family takes.
@@ -252,7 +254,18 @@ In `looks.json`, an effect family (`spells`) also names its pack prefabs
 `SpellVisuals.asset` from them, so a new *family* takes a yard build and a new
 *spell* takes nothing) and how it scales: `scaleBy` (`radius`, `size` or
 `length`) over `base`, the number at which the show is its authored size,
-charge included, between a quarter and four times. A mod replacing an entry
+charge included, between a quarter and four times. An effect family with
+`own` takes its spell's colour: `own` is the colour its effects are drawn in,
+as three numbers, and a look of another hue turns the show round the colour
+wheel to it (`LookTint`), from the hand to the last ember. A look within 12
+degrees of that hue, or a pale one, leaves the show exactly as authored. An
+optional fourth number, 0 to 1 (0 if left out), says how far the family's pale
+parts are washed in the look, as pale art has no hue to turn: 1 for a splash, a
+spark or a dust cloud, none for the fire families, whose grey smoke stays grey.
+`own` is read from `looks.json` as the game runs, so it needs no yard build, and
+a colour needs no asset at all: `mods/blue-fireballs.json` is one changed
+`color`, and the rules MCP's `set_spell` with field `look.color` does the same.
+A family with no `own` keeps its pack colours. A mod replacing an entry
 without a `look` keeps the old one. `ModValidator` refuses a new terrain or
 spell with no look, and any unknown family or form.
 
