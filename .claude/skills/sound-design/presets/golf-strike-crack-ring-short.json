@@ -1,0 +1,10 @@
+{
+  "name": "golf-strike-crack-ring-short",
+  "says": "the golf ball struck: a clean click and a short tock",
+  "seed": 1,
+  "sound": "golf-strike",
+  "crack": {"amount": 0.8, "hz": 3000, "ms": 8},
+  "ring": {"amount": 0.4, "hz": 1400, "ratios": [1, 2.1], "decay_ms": 40},
+  "thump": {"amount": 0.2, "from_hz": 300, "to_hz": 200, "decay_ms": 20},
+  "cut off": {"ms": 40}
+}

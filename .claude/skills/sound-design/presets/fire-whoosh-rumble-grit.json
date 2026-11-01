@@ -1,0 +1,13 @@
+{
+  "name": "fire-whoosh-rumble-grit",
+  "says": "fire catching: a whoosh that flares and settles into a low roar with crackle",
+  "seed": 1,
+  "sound": "fire",
+  "whoosh": {"amount": 0.6, "peak_hz": 3000, "rest_hz": 300, "rise_ms": 120, "tail_ms": 900},
+  "rumble": {"amount": 0.35, "hz": 220},
+  "hiss": {"amount": 0.06, "hz": 3000},
+  "grit": {"amount": 0.5, "per_s": 60},
+  "swell": {"ms": 60},
+  "tail": {"ms": 450},
+  "cut off": {"ms": 100}
+}

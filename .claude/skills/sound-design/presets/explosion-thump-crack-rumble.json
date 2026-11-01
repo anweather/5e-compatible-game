@@ -1,0 +1,14 @@
+{
+  "name": "explosion-thump-crack-rumble",
+  "says": "a fire burst: a deep thump and a crack, a rumbling tail with debris",
+  "seed": 1,
+  "sound": "explosion",
+  "thump": {"amount": 1, "from_hz": 120, "to_hz": 40, "decay_ms": 250},
+  "crack": {"amount": 0.9, "hz": 1500, "ms": 60},
+  "rumble": {"amount": 0.7, "hz": 300},
+  "sub": {"amount": 0.3, "hz": 40},
+  "grit": {"amount": 0.3, "per_s": 80},
+  "swell": {"ms": 2},
+  "tail": {"ms": 280},
+  "cut off": {"ms": 100}
+}

@@ -1,0 +1,9 @@
+{
+  "name": "wind-rumble-gusting",
+  "says": "wind gusting up and down, brighter as it rises",
+  "seed": 1,
+  "sound": "wind-loop",
+  "rumble": {"amount": 0.6, "hz": 500},
+  "hiss": {"amount": 0.06, "hz": 2000},
+  "gusting": {"amount": 0.8, "hz": 0.15}
+}

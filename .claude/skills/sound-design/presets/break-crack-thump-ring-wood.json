@@ -1,0 +1,12 @@
+{
+  "name": "break-crack-thump-ring-wood",
+  "says": "a crate breaking: a crack, a hollow wooden knock, splinters",
+  "seed": 1,
+  "sound": "break",
+  "crack": {"amount": 1, "hz": 1800, "ms": 25},
+  "thump": {"amount": 0.6, "from_hz": 220, "to_hz": 120, "decay_ms": 60},
+  "ring": {"amount": 0.25, "hz": 420, "ratios": [1, 2.3, 3.9], "decay_ms": 50},
+  "grit": {"amount": 0.4, "per_s": 300},
+  "tail": {"ms": 110},
+  "cut off": {"ms": 40}
+}

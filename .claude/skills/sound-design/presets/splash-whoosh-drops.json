@@ -1,0 +1,12 @@
+{
+  "name": "splash-whoosh-drops",
+  "says": "water landing: a wet rush with droplets kept under 1.8 kHz (no plop)",
+  "seed": 1,
+  "sound": "splash",
+  "whoosh": {"amount": 0.7, "peak_hz": 2500, "rest_hz": 400, "rise_ms": 30, "tail_ms": 350},
+  "rumble": {"amount": 0.25, "hz": 400},
+  "drops": {"amount": 0.2, "per_s": 45, "hz": [600, 1800], "ms": 20},
+  "swell": {"ms": 5},
+  "tail": {"ms": 220},
+  "cut off": {"ms": 60}
+}

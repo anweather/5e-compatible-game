@@ -1,0 +1,13 @@
+{
+  "name": "earth-rumble-thump-grit",
+  "says": "the ground moving: a rumble swelling in under a low thump, pebbles",
+  "seed": 1,
+  "sound": "earth",
+  "thump": {"amount": 0.6, "from_hz": 80, "to_hz": 40, "decay_ms": 300, "at_ms": 60},
+  "rumble": {"amount": 0.9, "hz": 160},
+  "crack": {"amount": 0.25, "hz": 700, "ms": 60, "at_ms": 60},
+  "grit": {"amount": 0.25, "per_s": 50},
+  "swell": {"ms": 60},
+  "tail": {"ms": 450, "hold_ms": 150},
+  "cut off": {"ms": 150}
+}
