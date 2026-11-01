@@ -124,7 +124,10 @@ public static class ProbeScenarios
             "Films the punch knocking a crate, from the side, then a miss, with the mixed sound, into --shots: frames and sound.wav, for ffmpeg. Metrics: how far the crate went, and where its start line goes."),
         new Entry("dragonclip", typeof(DragonClipProbe), 200f,
             "Films the Dragon for review, into --shots: frames and sound.wav, for ffmpeg. The summons, the sky going dark and the crossing and dive on a short warning, a cut to a middle pass at the real speed, its wall of fire."),
-        new Entry("combo", typeof(ComboProbe), 70f,
+        new Entry("uxclip", typeof(UxClipProbe), 120f,
+            "Films what plain shots can't show, with the HUD, into a folder each under --shots (frames for ffmpeg): grimoire/ (d-pad down, Back, then the menu's button and Back), " +
+            "castbar/ (three casts pressed late between ticks) and house/ (a walk into a house's wall, the follow camera behind). Checks: each runs; a metric for the camera arm's shortest."),
+        new Entry("combo", typeof(ComboProbe), 85f,
             "Casting by elements on a virtual gamepad, with the HUD on: water then earth loaded in the window, the meter draining, the cast landing at the crosshair and joining the " +
             "grimoire; walking at the rules' factor under the meter; B cancels with an item in hand and doesn't throw it; d-pad right cycles, up casts the selected spell, down opens the " +
             "grimoire. Shots of each and of the whole HUD (--shots). Checks: each of those, no console errors."),

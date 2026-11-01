@@ -11,12 +11,15 @@ using UnityEngine.Rendering;
 // sound.wav, into a folder, for ffmpeg. It runs on a fixed clock (Time.captureDeltaTime),
 // the frames from a RenderTexture and the sound from Unity's own mixer through
 // AudioRenderer, so it stays in step and needs no desktop session and no sound device.
+// Filmed with the HUD (the menus and the HUD are IMGUI, drawn over the camera), the frames
+// are the screen as it was shown instead.
 public sealed class ClipFilm
 {
     const int Width = 1280, Height = 720, Fps = 30;
 
     readonly MonoBehaviour owner;
     readonly string folder;
+    readonly bool withHud;
     readonly List<Task> writing = new();
     readonly List<float> sound = new();
     RenderTexture target;
@@ -33,10 +36,11 @@ public sealed class ClipFilm
     public float Seconds => Frames / (float)Fps;
     public float SoundSeconds => sound.Count / (2f * AudioSettings.outputSampleRate);
 
-    public ClipFilm(MonoBehaviour owner, string folder)
+    public ClipFilm(MonoBehaviour owner, string folder, bool withHud = false)
     {
         this.owner = owner;
         this.folder = folder;
+        this.withHud = withHud;
         Directory.CreateDirectory(folder);
     }
 
@@ -44,8 +48,10 @@ public sealed class ClipFilm
     public bool Roll()
     {
         lens = Camera.main;
-        target = new RenderTexture(Width, Height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
-        lens.targetTexture = target;
+        target = withHud
+            ? new RenderTexture(Screen.width, Screen.height, 0, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB)
+            : new RenderTexture(Width, Height, 24, RenderTextureFormat.ARGB32, RenderTextureReadWrite.sRGB);
+        if (!withHud) lens.targetTexture = target;
         Time.captureDeltaTime = 1f / Fps;
         bool heard = AudioRenderer.Start();
         filming = true;
@@ -61,7 +67,7 @@ public sealed class ClipFilm
         yield return null;
         AudioRenderer.Stop();
         Time.captureDeltaTime = 0f;
-        lens.targetTexture = null;
+        if (!withHud) lens.targetTexture = null;
         AsyncGPUReadback.WaitAllRequests();
         target.Release();
         Peak = Save(Path.Combine(folder, "sound.wav"));
@@ -75,23 +81,49 @@ public sealed class ClipFilm
         while (filming)
         {
             yield return end;
-            int samples = AudioRenderer.GetSampleCountForCaptureFrame();
-            if (samples > 0)
+            TakeSound();
+            if (Keeping) TakeFrame();
+        }
+    }
+
+    void TakeSound()
+    {
+        int samples = AudioRenderer.GetSampleCountForCaptureFrame();
+        if (samples <= 0) return;
+        var block = new NativeArray<float>(samples * 2, Allocator.Temp);
+        if (AudioRenderer.Render(block) && Keeping)
+            foreach (var s in block) sound.Add(s);
+        block.Dispose();
+    }
+
+    void TakeFrame()
+    {
+        if (withHud) ScreenCapture.CaptureScreenshotIntoRenderTexture(target);
+        string path = Path.Combine(folder, $"frame_{Frames++:00000}.jpg");
+        int width = target.width, height = target.height;
+        bool upsideDown = withHud && SystemInfo.graphicsUVStartsAtTop;
+        AsyncGPUReadback.Request(target, 0, TextureFormat.RGBA32, request =>
+        {
+            if (request.hasError) return;
+            var pixels = request.GetData<byte>().ToArray();
+            Saved++;
+            writing.Add(Task.Run(() =>
             {
-                var block = new NativeArray<float>(samples * 2, Allocator.Temp);
-                if (AudioRenderer.Render(block) && Keeping)
-                    foreach (var s in block) sound.Add(s);
-                block.Dispose();
-            }
-            if (!Keeping) continue;
-            string path = Path.Combine(folder, $"frame_{Frames++:00000}.jpg");
-            AsyncGPUReadback.Request(target, 0, TextureFormat.RGBA32, request =>
-            {
-                if (request.hasError) return;
-                var pixels = request.GetData<byte>().ToArray();
-                Saved++;
-                writing.Add(Task.Run(() => File.WriteAllBytes(path, ImageConversion.EncodeArrayToJPG(pixels, GraphicsFormat.R8G8B8A8_SRGB, Width, Height, 0, 88)), owner.destroyCancellationToken));
-            });
+                if (upsideDown) Flip(pixels, width * 4);
+                File.WriteAllBytes(path, ImageConversion.EncodeArrayToJPG(pixels, GraphicsFormat.R8G8B8A8_SRGB, (uint)width, (uint)height, 0, 88));
+            }, owner.destroyCancellationToken));
+        });
+    }
+
+    // The screen comes back upside down where textures start at the top.
+    static void Flip(byte[] pixels, int rowBytes)
+    {
+        var row = new byte[rowBytes];
+        for (int top = 0, bottom = pixels.Length - rowBytes; top < bottom; top += rowBytes, bottom -= rowBytes)
+        {
+            System.Buffer.BlockCopy(pixels, top, row, 0, rowBytes);
+            System.Buffer.BlockCopy(pixels, bottom, pixels, top, rowBytes);
+            System.Buffer.BlockCopy(row, 0, pixels, bottom, rowBytes);
         }
     }
 
