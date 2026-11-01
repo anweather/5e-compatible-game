@@ -25,9 +25,12 @@ namespace Chem.Mcp
         /// <summary>What a client is told when it connects: how to use the tools. Both hosts send it.</summary>
         public const string Instructions =
             "These tools change the rules of Spell Chemistry Valley, a game about how spells and materials react. When the player asks for a change, write it yourself: " +
-            "read what's there (list, describe, explain), build a new draft with set_spell, set_material, set_reaction, tune, add_reaction, add_material or add_spell, " +
+            "read what's there (list, describe, explain), build a new draft with set_spell, set_material, set_reaction, set_look, tune, add_reaction, add_material or add_spell, " +
             "check it with validate, and where a scenario fits, run simulate and compare the numbers with what the player meant, since a change can do the opposite of what it seems to " +
-            "(less fuel makes a fire spread less). Then apply the draft with a short title the players will read. Numbers are enough: a spell's and a material's looks follow them by themselves. " +
+            "(less fuel makes a fire spread less). Then apply the draft with a short title the players will read. Sizes follow the numbers by themselves (a bigger radius draws a bigger blast), " +
+            "but a colour is a look: change it with set_look, picking the numbers for what the player says (blue is about [0.25, 0.45, 1]). " +
+            "A whole-element change (\"blue fire everywhere\") goes on the element, one spell's (\"a blue fireball\") on the spell, and a material's on the material; " +
+            "a spell's look colours its own show, and what it leaves on cells is its element's. describe shows an entry's look and what it takes; list looks the families. " +
             "Don't look for a saved mod that's close: use one from rules/mods only when the player names it. After apply, tell the player what changed, from its answer.";
 
         const string DraftHelp = "The draft to add to; leave it out to start a new one. Returns the draft id and the patch so far.";
@@ -61,10 +64,10 @@ namespace Chem.Mcp
 
         // ---------- read ----------
 
-        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines. Read these to build a draft for what the player asks.")]
+        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, or looks (the look families, the parameters each takes, and what takes no colour). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
-        [RulesTool("describe", ReadOnly = true), Description("The full entry as written in rules/, plus everything in the rules that refers to it. For sim, the id is a dotted path such as fire.spreadChance.")]
+        [RulesTool("describe", ReadOnly = true), Description("The full entry as written in rules/, plus everything in the rules that refers to it, and for a spell, material or element its look and what set_look may change. For sim, the id is a dotted path such as fire.spreadChance.")]
         public string Describe([Description("The table.")] string table, [Description("The entry's id.")] string id) => Do(() => bench.Describe(table, id));
 
         [RulesTool("explain", ReadOnly = true), Description("What happens when an element reaches a cell of a material (a terrain, cover, gas, water or ice): the reaction rules that can hold, top to bottom, and which one decides.")]
@@ -133,11 +136,21 @@ namespace Chem.Mcp
         public string SetSpell([Description("The spell's id.")] string id, [Description("The field.")] string field, [Description(ValueHelp + " Damage may be written 8d6.")] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.SetSpell(draft, id, field, value).Show());
 
+        [RulesTool("set_look"), Description("Changes one parameter of the look of a spell, terrain, cover, gas or element in a draft, by id: color (three numbers 0 to 1, or \"#rrggbb\"), and any other parameter its look family lists (height, glow, roughness, form...). Says what that family takes, and refuses anything else with the list. An element's look is the colour of everything that element makes in the world (blue fire everywhere); a spell's colours only its own show (a blue fireball).")]
+        public string SetLook([Description("The spell's, material's or element's id.")] string id, [Description("The parameter, such as color or height.")] string param,
+            [Description("The new value as JSON, such as [0.25, 0.45, 1] or \"#4073ff\" for a colour, or 1.4; null puts back the family's own.")] string value,
+            [Description("spell, terrain, cover, gas or element: needed when the id names more than one (fire is an element; frost a spell and a cover).")] string table = null,
+            [Description(DraftHelp)] string draft = null) => Do(() =>
+            {
+                var d = bench.SetLook(draft, id, param, value, table, out var said);
+                return said + d.Show();
+            });
+
         [RulesTool("tune"), Description("Sets a sim parameter by dotted path (fire.spreadChance, push.slideCells...) within the bounds rules/budgets.json declares.")]
         public string Tune([Description("The parameter's path; list sim to see them.")] string param, [Description("The value, usually a number.")] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Tune(draft, param, value).Show());
 
-        [RulesTool("remove"), Description("Takes back something the draft added or changed (a material, reaction, spell, element or sim parameter). It can't remove base rules.")]
+        [RulesTool("remove"), Description("Takes back something the draft added or changed (a material, reaction, spell, element, its look, or a sim parameter). It can't remove base rules.")]
         public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, reactions, spells, elements or sim.")] string table,
             [Description("The id, or the sim parameter's path.")] string id) => Do(() => bench.Remove(draft, table, id).Show());
 

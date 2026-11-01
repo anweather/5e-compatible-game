@@ -173,9 +173,13 @@ namespace Chem
                         foreach (var p in entries.Properties().Where(p => p.Value is JObject))
                             LookOf(looks, table, $"{what} {p.Name}", (JObject)p.Value, required && baseDoc[table]?[p.Name] == null);
                 foreach (var s in PatchSpells) LookOf(looks, "spells", $"Spell {Text(s["id"]) ?? "?"}", s, !InBase("spells", Text(s["id"])));
+                if (patch["elements"] is JObject elements)
+                    foreach (var p in elements.Properties().Where(p => p.Value is JObject))
+                        LookOf(looks, "elements", $"Element {p.Name}", (JObject)p.Value, false);
             }
 
-            // Covers and gases have no family drawn yet, so a new one needn't name one; if it does, the name must be right.
+            // Covers and gases have no family drawn yet, so a new one needn't name one, and may give
+            // only a colour (a bare look; an element's is always bare); if it names one, the name must be right.
             void LookOf(LookFamilies looks, string table, string who, JObject entry, bool required)
             {
                 if (!(entry["look"] is JObject look))
@@ -184,7 +188,12 @@ namespace Chem
                     return;
                 }
                 string name = Text(look["family"]);
-                if (name == null) return; // Rules.Check says so
+                if (name == null)
+                {
+                    if (looks.BareTables.Contains(table)) Params(look, who, "a look with no family", looks.Bare.Params);
+                    return; // else Rules.Check says so
+                }
+                if (table == "elements") return; // Rules.Check: an element names no family
                 var family = looks.Find(table, name);
                 if (family == null)
                     Add(ModCheck.Looks, $"{who} names the look family \"{name}\", which the view doesn't know; the families for it are {looks.DrawnNames(table)} (rules/looks.json).");
@@ -192,6 +201,14 @@ namespace Chem
                     Add(ModCheck.Looks, $"{who} names the look family \"{name}\", which the view can't draw from data yet (it needs {family.Needs}).");
                 else if (family.Forms.Count > 0 && !family.Forms.Contains(Text(look["form"])))
                     Add(ModCheck.Looks, $"{who}'s look family \"{name}\" takes a form, one of {string.Join(", ", family.Forms)}.");
+                else Params(look, who, $"the look family \"{name}\"", family.Params);
+            }
+
+            // Every parameter a look gives is one its family takes, or the view would silently ignore it.
+            void Params(JObject look, string who, string what, IReadOnlyList<string> takes)
+            {
+                foreach (var key in look.Properties().Select(p => p.Name).Where(k => !LookFamilies.Naming.Contains(k) && !takes.Contains(k)))
+                    Add(ModCheck.Looks, $"{who}'s look gives {key}, which {what} doesn't take; it takes {(takes.Count == 0 ? "nothing" : string.Join(", ", takes))} (rules/looks.json).");
             }
 
             // ---------- the design rules ----------
@@ -230,7 +247,7 @@ namespace Chem
             void NewElements(JObject composed)
             {
                 var baseElements = new HashSet<string>((baseDoc["elements"] as JArray)?.Select(x => (string)x) ?? Enumerable.Empty<string>());
-                var added = ((patch["elements"] as JArray) ?? new JArray()).Select(Text).Where(e => e != null && !baseElements.Contains(e)).Distinct().ToList();
+                var added = ModPatch.ElementNames(patch["elements"]).Where(e => !baseElements.Contains(e)).Distinct().ToList();
                 double maxNew = budgets.Number("mod.maxNewElements", 1);
                 if (added.Count > maxNew)
                     Add(ModCheck.Budget, $"The mod adds {added.Count} new elements; a mod may add at most {Num(maxNew)}.");
@@ -332,7 +349,7 @@ namespace Chem
 
             void NewEntries()
             {
-                int count = ((patch["elements"] as JArray) ?? new JArray()).Count(e => !(baseDoc["elements"] as JArray ?? new JArray()).Any(x => Text(x) == Text(e)));
+                int count = ModPatch.ElementNames(patch["elements"]).Count(e => !(baseDoc["elements"] as JArray ?? new JArray()).Any(x => Text(x) == e));
                 foreach (var table in ModPatch.Tables)
                     if (patch[table] is JObject entries) count += entries.Properties().Count(p => baseDoc[table]?[p.Name] == null);
                 count += PatchSpells.Count(s => !InBase("spells", Text(s["id"])));

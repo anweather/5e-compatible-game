@@ -95,9 +95,12 @@ namespace Chem.Mcp
             string table = changed.Substring(0, space), id = changed.Substring(space + 1);
             if (table == "sim") return $"{id} from {Compact(Raw["sim"].SelectToken(id))} to {Compact(draft.Patch["sim"]?.SelectToken(id))}";
             if (table == "reactions") return $"a rule, {id}";
-            bool spell = table == "spells";
-            var was = spell ? Raw["spells"].FirstOrDefault(s => Str(s["id"]) == id) : Raw["materials"][table]?[id];
-            var now = spell ? draft.Patch["spells"]?.FirstOrDefault(s => Str(s["id"]) == id) : draft.Patch[table]?[id];
+            var (was, now) = table switch
+            {
+                "spells" => (Raw["spells"].FirstOrDefault(s => Str(s["id"]) == id), draft.Patch["spells"]?.FirstOrDefault(s => Str(s["id"]) == id)),
+                "elements" => (BaseDoc["elements"].Any(e => Str(e) == id) ? BaseElement(id) ?? new JObject() : null, (draft.Patch["elements"] as JObject)?[id]),
+                _ => (Raw["materials"][table]?[id], draft.Patch[table]?[id]),
+            };
             if (!(now is JObject entry)) return changed;
             string name = Str(entry["name"]) ?? id;
             if (was == null) return $"a new {Single(table)}, {name}";

@@ -19,6 +19,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 | `combos.json` | Casting by elements (`docs/SPELL_COMBOS.md`): the four `elements`, the `window` in ticks for a second one, `chargeTicks` (the cast time each level of charge past the first adds to a held cast), `moveFactor` (walking speed while the cast meter drains, for the view), `chargeMoveFactor` (the same once a held cast is charging), `singles` by element and `pairs` by first then second element, each with `name`, `spell`, `shape`, `castTicks` and optional `held` (the spell it casts instead when held to full charge) and `todo` (the spell is a stand-in for one not made yet). A single's `castTicks` must be at least the window. `dpad` lists the spells with no element, in cycling order: `name`, `castTicks`, and `spell` (without one the slot shows but can't be cast). Mods deep-merge over it; lists replace whole |
 | `sim.json` | The numbers behind the parts written in code: fire spread, water flow units, height range, gas decay, push and slide, damage, the length of a day and the weather. `defense`: the defense field's waves (`lives`, `waves`, `first` raiders and `growth` per wave, `hpPerWave`, the `warmup`, `spawnEvery` and `betweenWaves` ticks, the raider `kinds` in turn) and how raiders find their way (`margin` squares round the path, path costs `wallCost` for a raised wall they batter down a step every `batterTicks`, `roughCost` and `roughTicks` for deep water from `deepWater` units or a climb of more than a step). `breath`: a swimmer's held breath in `seconds`, `refillSeconds` to fill it from empty with the head out, and drowning's hits once it's gone, `drownDice` d `drownSides` every `drownEvery` seconds (read by the Unity view only, `Breath.cs`). `dragon` (`World.Dragon.cs`, BACKLOG 26): the flight in whole ticks and cells: `warningTicks`, `turnTicks` between passes and `leavingTicks`; the breath's `speed` in cells a tick and `depth` in cells; `breathChunks` across a pass, `overlapChunks` of them swept again by the next, and at most `chunksPerTick` chunks reset a tick; `budget`, the changed cells (ground, height or cover differing from the starting state) past which it comes by itself, 0 for never; and the shelter rule: water from `shelterWater` units (not frozen), or a blocking cell of `wallTerrains` within `wallReach` cells toward where the dragon flies from; and `scale`, how big it's drawn against a 70 m wingspan (read by the Unity view only, the one number here that needn't be whole; its flight height and distance behind the fire follow it, its reach doesn't). `strike` (`World.Strike.cs`, the SRD unarmed strike): `reach` in cells (any of the eight ways, in front of the aim), `knockBack` cells a hit pushes the target on, `cooldownTicks` before the same wizard strikes again, and the `proficiency` bonus on the attack roll |
 | `looks.json` | The look and effect families the view can draw (see "Looks"). Read by `ModValidator` and the yard builder; not part of the rules or their fingerprint |
+| `elements.json` | Each element's look by id, `{ "fire": { "look": { "color": [0.95, 0.42, 0.12] } } }`: the colour of what that element makes in the world (see "Looks"). An entry holds only its look, so the file stays out of the fingerprint |
 | `budgets.json` | What one mod may ask of the engine: new entries, new elements, spell sizes and dice, effect strengths, critter rates, chain depth, the bounds of each sim parameter a mod may tune, and the ticks and speed of a `simulate` run. Read from the base rules only, by `ModValidator` (C#) and the rules MCP (`docs/RULES_MCP.md`); the sandbox doesn't read it |
 | `mods/` | Example live mods (`docs/MODDING.md`), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
 
@@ -28,6 +29,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 `thunder`, `fog` (Fog Cloud: lays the `fog` gas), `growth` (Plant Growth) and
 `thorns` (Spike Growth). A spell, a critter, spreading fire or a conducting charge
 *applies an element to a square*. That is the only way anything reacts.
+Each has a colour in `elements.json` (see "Looks").
 
 ## How `reactions.json` is read
 
@@ -239,7 +241,10 @@ does:
 
 - **`family`**: one from `looks.json` for that table (`terrain`, `covers`,
   `gases`, `spells`). `"drawn": false` there means named but not read from data
-  yet, with `needs` saying what's missing.
+  yet, with `needs` saying what's missing. A cover or gas may leave it out and
+  give only a colour (a **bare** look, `looks.json` `bare`), which is what each
+  has today: no family of theirs is drawn yet, and the colour is still data
+  the view can read instead of the id.
 - **`form`**: the variant, when the family has `forms`.
 - **`color`**: three numbers 0 to 1. A spell's is the glow in the hand, the aim
   marker and any tint, and its effects turn to it (below). A pale colour
@@ -248,6 +253,28 @@ does:
   **`roughness`** (0 glossy, 1 matt), **`flow`** (a liquid's speed; no drawn
   family reads it yet). `params` in `looks.json` says which a family takes.
 - **`baked`**: the land draws it until it grows in this world (the valley's trees).
+
+A look may give only what its family takes (`params`), or a bare look's
+`color`; `validate` refuses anything else and says what it takes. A family
+whose `params` has no `color` takes no colour: the `fire` families (a fire's
+flames are the fire element's colour), the families not drawn yet, and the
+parts a family's `notes` name (a `plant` tree or sapling is the valley's own
+model).
+
+**An element's look** is in `elements.json`, by id: the colour of what that
+element makes in the world, whichever spell or reaction made it (fire's
+flames, water, cold's frost). It names no family and holds only `color`:
+
+```jsonc
+"fire": { "look": { "color": [0.95, 0.42, 0.12] } }
+```
+
+The view reads it as `Rules.ElementLook("fire")` (a `LookDef`, or null). A mod
+gives one in `"elements"` as entries by id instead of a list of names, which
+also adds an element that's new: `"elements": { "fire": { "look": { "color":
+[0.25, 0.45, 1] } } }` is blue fire everywhere. One spell's colour goes on the
+spell (`"look": { "family": "blast", "color": [...] }`): it colours that
+spell's own show, and what the spell leaves on cells keeps its element's.
 
 In `looks.json`, an effect family (`spells`) also names its pack prefabs
 (`projectile`, `impact`, `afterImpact`: Prototype > Build Chemistry Yard builds
@@ -264,10 +291,10 @@ parts are washed in the look, as pale art has no hue to turn: 1 for a splash, a
 spark or a dust cloud, none for the fire families, whose grey smoke stays grey.
 `own` is read from `looks.json` as the game runs, so it needs no yard build, and
 a colour needs no asset at all: `mods/blue-fireballs.json` is one changed
-`color`, and the rules MCP's `set_spell` with field `look.color` does the same.
-A family with no `own` keeps its pack colours. A mod replacing an entry
-without a `look` keeps the old one. `ModValidator` refuses a new terrain or
-spell with no look, and any unknown family or form.
+`color`, and the rules MCP's `set_look` does the same. A family with no `own`
+keeps its pack colours. A mod replacing an entry (a terrain, cover, gas, spell
+or element) without a `look` keeps the old one. `ModValidator` refuses a new
+terrain or spell with no look, and any unknown family or form.
 
 ## Units
 

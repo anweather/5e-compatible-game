@@ -291,10 +291,13 @@ that long, and doesn't march.
   the clock and keeps the **best time**. Downed inside the course on a run,
   a wizard gets up on its last checkpoint, not the yard (`CourseRespawn`).
 
-**Look** (of a material or spell)
-: Its `"look"` group in `materials.json` or `spells.json`: the family that
-  draws it and that family's parameters (colour, height, glow, roughness,
-  flow). The view's only: never in a tick, the cell hash or the rules
+**Look** (of a material, spell or element)
+: Its `"look"` group in `materials.json`, `spells.json` or `elements.json`:
+  the family that draws it and that family's parameters (colour, height, glow,
+  roughness, flow). An element's, and a cover's or gas's until a family of
+  theirs is drawn, is **bare**: no family, only a colour. An element's is the
+  colour of what it makes in the world, whichever spell or reaction made it.
+  The view's only: never in a tick, the cell hash or the rules
   fingerprint. *Not* a world theme's look (`world/looks.json`, a biome a theme
   may paint), nor a fire's `burn.look`.
 

@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks" };
 
         // ---------- list ----------
 
@@ -34,7 +34,9 @@ namespace Chem.Mcp
                     {
                         int rules = BaseDoc["cellRules"].Count(r => Str(r["element"]) == e);
                         var spells = BaseDoc["spells"].Where(s => Str(s["element"]) == e).Select(s => Str(s["id"])).ToList();
-                        lines.Add($"{e}: {rules} reaction rule{(rules == 1 ? "" : "s")}; spells: {(spells.Count == 0 ? "none" : string.Join(", ", spells))}");
+                        var colour = BaseElement(e)?["look"]?["color"];
+                        lines.Add($"{e}: {rules} reaction rule{(rules == 1 ? "" : "s")}; spells: {(spells.Count == 0 ? "none" : string.Join(", ", spells))}" +
+                            (colour == null ? "" : $"; colour {Compact(colour)}"));
                     }
                     break;
                 case "reactions":
@@ -43,6 +45,9 @@ namespace Chem.Mcp
                     break;
                 case "spells":
                     lines.AddRange(((JArray)Raw["spells"]).Select(SpellLine));
+                    break;
+                case "looks":
+                    lines.AddRange(LookLines());
                     break;
                 case "critters":
                     lines.AddRange(((JArray)Raw["critters"]).Select(c => $"{Str(c["id"])}: {Str(c["name"])}, {Str(c["mode"])}s {Str(c["element"])}. {Str(c["blurb"])}"));
@@ -114,7 +119,8 @@ namespace Chem.Mcp
             foreach (var file in Raw.Keys.Where(f => f != "budgets"))
                 References(Raw[file], file, id, entry, refs);
             return $"{Single(table)} {id}:\n{entry.ToString(Formatting.Indented)}\n" +
-                (refs.Count == 0 ? "Nothing in the rules refers to it." : $"Referred to by ({refs.Count}):\n" + string.Join("\n", refs.Distinct().Take(60)));
+                (refs.Count == 0 ? "Nothing in the rules refers to it." : $"Referred to by ({refs.Count}):\n" + string.Join("\n", refs.Distinct().Take(60))) +
+                LookLine(table, id, entry);
         }
 
         JToken Find(string table, string id)
@@ -131,7 +137,7 @@ namespace Chem.Mcp
                 case "critters":
                     return ((JArray)Raw[table]).FirstOrDefault(s => Str(s["id"]) == id);
                 case "elements":
-                    return BaseDoc["elements"].Any(e => (string)e == id) ? new JValue(id) : JValue.CreateNull();
+                    return BaseDoc["elements"].Any(e => (string)e == id) ? BaseElement(id) ?? new JObject() : JValue.CreateNull();
                 case "sim":
                     return Raw["sim"].SelectToken(id);
                 default:
@@ -268,6 +274,7 @@ namespace Chem.Mcp
             var t = Required(table, "table").ToLowerInvariant();
             if (t == "material") t = "materials";
             if (t == "reaction" || t == "rules") t = "reactions";
+            if (t == "look" || t == "families") t = "looks";
             if (t == "spell" || t == "cover" || t == "gas" || t == "element" || t == "group" || t == "critter" || t == "entity" || t == "item" || t == "machine")
                 t = Plural(t);
             if (!Tables.Contains(t)) throw new RulesToolException($"{table} isn't a table; the tables are {string.Join(", ", Tables)}.");

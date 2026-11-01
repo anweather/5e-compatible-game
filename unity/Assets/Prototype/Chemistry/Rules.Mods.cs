@@ -45,7 +45,8 @@ namespace Chem
         /// by value, so key order and 3 vs 3.0 don't matter, list order does). Every machine that
         /// applied the same mods in the same order gets the same value, so it can go into the
         /// netcode checksum next to World.CellHash. Edits made to <see cref="Sim"/> in code are not in it,
-        /// nor are "look" groups: they are the view's only, so a look can't reach the checksum.
+        /// nor are "look" groups (nor the element entries, which hold only a look): they are the view's
+        /// only, so a look can't reach the checksum.
         /// </summary>
         public string Fingerprint => fingerprint ??= Fnv1a.Hash(Canonical(doc));
 
@@ -57,12 +58,18 @@ namespace Chem
         static void ApplyPatch(JObject r, JObject p)
         {
             var elements = (JArray)r["elements"];
-            foreach (var e in Strings(p["elements"]).Where(e => !elements.Any(x => (string)x == e))) elements.Add(e);
+            foreach (var e in ModPatch.ElementNames(p["elements"]).Where(e => !elements.Any(x => (string)x == e))) elements.Add(e);
+            // Elements given by id ({"fire": {"look": ...}}) replace their entry, keeping its look if they give none.
+            if (p["elements"] is JObject entries)
+            {
+                if (!(r[ElementLooksKey] is JObject table)) r[ElementLooksKey] = table = new JObject();
+                foreach (var entry in entries.Properties()) table[entry.Name] = KeepingLook(table[entry.Name], entry.Value.DeepClone());
+            }
             // Object.assign: a named entry replaces the old one whole.
             foreach (var table in ModPatch.Tables)
             {
-                if (!(p[table] is JObject entries)) continue;
-                foreach (var entry in entries.Properties()) r[table][entry.Name] = KeepingLook(r[table][entry.Name], entry.Value.DeepClone());
+                if (!(p[table] is JObject named)) continue;
+                foreach (var entry in named.Properties()) r[table][entry.Name] = KeepingLook(r[table][entry.Name], entry.Value.DeepClone());
             }
             if (p["reactions"] is JObject rx)
             {
@@ -169,7 +176,8 @@ namespace Chem
             }
         }
 
-        static bool IsLookGroup(JProperty p) => p.Name == "look" && p.Value is JObject;
+        // Rules.Check keeps the element entries to a look each, so leaving their table out hides nothing else.
+        static bool IsLookGroup(JProperty p) => (p.Name == "look" || p.Name == ElementLooksKey) && p.Value is JObject;
 
         static void WriteString(StringBuilder sb, string s) =>
             sb.Append('s').Append(s.Length.ToString(CultureInfo.InvariantCulture)).Append(':').Append(s);

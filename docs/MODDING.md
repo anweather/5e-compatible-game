@@ -22,7 +22,8 @@ Every field is optional.
 
 ```jsonc
 {
-  "elements": ["acid"],                       // new element names
+  "elements": ["acid"],                       // new element names; or entries by id, an element's look:
+                                              //   { "fire": { "look": { "color": [0.25, 0.45, 1] } } }
   "terrain":  { "mud": { "name": "Mud", "tags": ["ground"] } },   // add or replace by id
   "covers":   { "tar": { "name": "Tar", "tags": ["flammable"], "flammability": 0.5, "fuel": 20 } },
   "gases":    { "spores": { "name": "Spores" } },

@@ -214,7 +214,8 @@ namespace Chem.Mcp
                     RemovePath((JObject)draft.Patch["sim"], id);
                     break;
                 case "elements":
-                    foreach (var e in ((JArray)draft.Patch["elements"]).Where(e => Str(e) == id).ToList()) e.Remove();
+                    if (draft.Patch["elements"] is JObject named) named.Remove(id);
+                    else foreach (var e in ((JArray)draft.Patch["elements"]).Where(e => Str(e) == id).ToList()) e.Remove();
                     break;
                 default:
                     ((JObject)draft.Patch[table]).Remove(id);
@@ -231,8 +232,15 @@ namespace Chem.Mcp
         void NewElement(Draft draft, string element)
         {
             if (BaseDoc["elements"].Any(e => Str(e) == element)) return;
-            if (!(draft.Patch["elements"] is JArray list)) draft.Patch["elements"] = list = new JArray();
-            if (!list.Any(e => Str(e) == element)) list.Add(element);
+            if (draft.Patch["elements"] is JObject named)
+            {
+                if (named[element] == null) named[element] = new JObject();
+            }
+            else
+            {
+                if (!(draft.Patch["elements"] is JArray list)) draft.Patch["elements"] = list = new JArray();
+                if (!list.Any(e => Str(e) == element)) list.Add(element);
+            }
             draft.Changed.Add($"elements {element}");
         }
 

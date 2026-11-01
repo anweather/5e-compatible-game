@@ -176,14 +176,16 @@ namespace Chem.Tests
             }
             var relooked = Base.WithMods(new[] { ModPatch.Parse(new JObject { ["terrain"] = terrain }.ToString()) });
             Assert.That(relooked.Fingerprint, Is.EqualTo(Base.Fingerprint));
-            var a = new World(Base, 32, 32, 7, "grass");
-            var b = new World(relooked, 32, 32, 7, "grass");
-            foreach (var w in new[] { a, b })
-            {
-                w.Cast("fireball", 16, 16, 0);
-                for (int i = 0; i < 120; i++) w.Step();
-            }
-            Assert.That(b.CellHash(), Is.EqualTo(a.CellHash()));
+            Assert.That(HashAfterAFireball(relooked), Is.EqualTo(HashAfterAFireball(Base)));
+        }
+
+        // The cell hash of a meadow 120 ticks after a Fireball, under these rules.
+        static string HashAfterAFireball(Rules rules)
+        {
+            var w = new World(rules, 32, 32, 7, "grass");
+            w.Cast("fireball", 16, 16, 0);
+            for (int i = 0; i < 120; i++) w.Step();
+            return w.CellHash();
         }
 
         [Test]
@@ -207,6 +209,80 @@ namespace Chem.Tests
             w.Cast("moon-frost", 8, 8, 0);
             for (int i = 0; i < 4; i++) w.Step();
             Assert.That(w.At(8, 8).T, Is.EqualTo("moonstone"));
+        }
+
+        // ---------- elements, covers and gases: a colour with no family ----------
+
+        // Blue fire everywhere, a blue fireball, and steam and oil recoloured: looks only, the rest of each entry as it was.
+        static ModPatch LookOnly()
+        {
+            var doc = JObject.Parse(Base.ToJson());
+            var fireball = (JObject)doc["spells"].First(x => (string)x["id"] == "fireball").DeepClone();
+            fireball["look"]["color"] = new JArray(0.2, 0.4, 1);
+            var steam = (JObject)doc["gases"]["steam"].DeepClone();
+            steam["look"] = new JObject { ["color"] = new JArray(1, 0.5, 0.8) };
+            var oil = (JObject)doc["covers"]["oil"].DeepClone();
+            oil["look"] = new JObject { ["color"] = new JArray(0.5, 0, 0.6) };
+            return ModPatch.Parse(new JObject
+            {
+                ["elements"] = new JObject { ["fire"] = new JObject { ["look"] = new JObject { ["color"] = new JArray(0.25, 0.45, 1) } } },
+                ["spells"] = new JArray(fireball),
+                ["gases"] = new JObject { ["steam"] = steam },
+                ["covers"] = new JObject { ["oil"] = oil },
+            }.ToString());
+        }
+
+        [Test]
+        public void EveryElementCoverAndGasHasItsColour()
+        {
+            foreach (var e in JObject.Parse(Base.ToJson())["elements"].Select(x => (string)x))
+                Assert.That(Base.ElementLook(e), Is.Not.Null, e);
+            Assert.That(Base.Covers.Values.Where(c => c.Look == null).Select(c => c.Id), Is.Empty);
+            Assert.That(Base.Gases.Values.Where(g => g.Look == null).Select(g => g.Id), Is.Empty);
+            var fire = Base.ElementLook("fire");
+            Assert.That((fire.Family, fire.R, fire.G, fire.B), Is.EqualTo(((string)null, 0.95f, 0.42f, 0.12f)), "HudDraw.ElementColor's fire");
+            Assert.That(Base.ElementLook("shadow"), Is.Null);
+        }
+
+        [Test]
+        public void ALookOnlyDraftLeavesTheFingerprintAndTheCellHashAlone()
+        {
+            var rules = Base.WithMods(new[] { LookOnly() });
+            Assert.That(rules.Fingerprint, Is.EqualTo(Base.Fingerprint));
+            Assert.That(rules.ElementLook("fire").B, Is.EqualTo(1f));
+            Assert.That(rules.Spell("fireball").Look.B, Is.EqualTo(1f));
+            Assert.That(rules.Gases["steam"].Look.R, Is.EqualTo(1f));
+            Assert.That(rules.Covers["oil"].Look.B, Is.EqualTo(0.6f));
+            Assert.That(HashAfterAFireball(rules), Is.EqualTo(HashAfterAFireball(Base)));
+        }
+
+        [Test]
+        public void AReplacingEntryKeepsItsLook()
+        {
+            var rules = Base.WithMods(new[] { Mod("{ 'elements': { 'fire': {} }, 'gases': { 'steam': { 'name': 'Steam', 'scald': 2 } }, 'covers': { 'oil': { 'name': 'Oil', 'tags': ['slippery'] } } }") });
+            Assert.That(LookDef.Same(rules.ElementLook("fire"), Base.ElementLook("fire")), Is.True);
+            Assert.That(LookDef.Same(rules.Gases["steam"].Look, Base.Gases["steam"].Look), Is.True);
+            Assert.That(LookDef.Same(rules.Covers["oil"].Look, Base.Covers["oil"].Look), Is.True);
+            var blue = Base.WithMods(new[] { LookOnly(), Mod("{ 'elements': { 'fire': {} } }") });
+            Assert.That(blue.ElementLook("fire").B, Is.EqualTo(1f), "an earlier mod's look is kept too");
+        }
+
+        [Test]
+        public void ANewElementMayBringItsLook()
+        {
+            var rules = Base.WithMods(new[] { Mod("{ 'elements': { 'shadow': { 'look': { 'color': [0.1, 0, 0.2] } } } }") });
+            Assert.That(JObject.Parse(rules.ToJson())["elements"].Select(x => (string)x), Does.Contain("shadow"));
+            Assert.That(rules.ElementLook("shadow").B, Is.EqualTo(0.2f));
+        }
+
+        [TestCase("{ 'elements': { 'fire': { 'look': { 'family': 'blast', 'color': [1, 0, 0] } } } }", "element fire: an element's look names no family; it is the colour of what the element makes, whatever draws it")]
+        [TestCase("{ 'elements': { 'fire': { 'power': 3 } } }", "element fire: power unknown (an element's entry holds only its look)")]
+        [TestCase("{ 'elements': { 'fire': { 'look': { 'color': [1, 0] } } } }", "element fire: look.color must be three numbers from 0 to 1")]
+        [TestCase("{ 'gases': { 'steam': { 'name': 'Steam', 'look': 'blue' } } }", "gas steam: look must be an object")]
+        public void ABadElementOrGasLookIsRefused(string patch, string error)
+        {
+            var errors = Assert.Throws<ModException>(() => Base.WithMods(new[] { Mod(patch) })).Errors;
+            Assert.That(errors, Has.Some.EqualTo(error));
         }
 
         [Test]

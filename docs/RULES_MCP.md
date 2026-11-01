@@ -31,8 +31,10 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 
 **Read**
 - `list(table)`: ids and one-line summaries for materials, elements, reactions, spells, groups,
-  sim parameters.
-- `describe(table, id)`: the full entry, plus what refers to it.
+  sim parameters; `list looks` gives the look families, the parameters each takes, and what
+  takes no colour.
+- `describe(table, id)`: the full entry, plus what refers to it, and for a spell, material or
+  element its look and what `set_look` may change.
 - `explain(a, b)`: what happens when a meets b, and which rule decides it.
 - `room()` (phase 3): the room's change mode and the mods on in it, with who added each.
 
@@ -40,6 +42,8 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `add_material`, `set_material(id, field, value)`
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
+- `set_look(id, param, value, table?)`: one parameter of the look of a spell, terrain, cover,
+  gas or element (see "Looks")
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare
 - `remove(table, id)`, only for things the draft itself added
 
@@ -72,15 +76,35 @@ The view must draw any rule from its data:
 - sizes, radii, heights and counts scale meshes, particles and decals from the numbers;
 - a material's look comes from a **look family** plus parameters (color, glow, roughness,
   flow), never from a hard-coded id;
+- an element's look is the colour of what it makes in the world, whichever spell or reaction
+  made it: fire's flames, water, cold's frost;
 - effects (fire, steam, frost, lightning...) are families too, scaled by power and area.
 
 **Where it lives.** The family list is `rules/looks.json`; each material's and spell's own look
-is a `"look"` group on its entry in `materials.json` or `spells.json`. Not `world/looks.json`:
+is a `"look"` group on its entry in `materials.json` or `spells.json`, and each element's on its
+entry in `rules/elements.json` (`{ "fire": { "look": { "color": [0.95, 0.42, 0.12] } } }`, read
+as `Rules.ElementLook`). An element's look is **bare**: no family, only `color`; a cover's or
+gas's is bare too until a family of theirs is drawn, and each carries its colour as drawn today,
+so the view can read data rather than ids. A mod gives an element's look in `"elements"` as
+entries by id rather than a list of names. Not `world/looks.json`:
 that's what a theme paints, a different idea. On the entry, because a mod's whole new thing then
 travels as one patch entry, through the same patch format and rule switch. Looks stay out of
 `Rules.Fingerprint`, so the fingerprint didn't move when they were added and a look-only mod
 can't reach the netcode checksum; `Rules.ApplyPatch` keeps the old look when a replacing entry
 doesn't give one, so a mod about numbers doesn't lose its drawing.
+
+**Changing a look through the MCP.** Sizes follow the numbers by themselves; a colour is a look.
+`set_look(id, param, value)` changes one parameter of a spell's, material's or element's look in
+a draft: `color` (three numbers 0 to 1, or `"#rrggbb"`; the player says "blue", Claude picks the
+numbers), and any other parameter its family lists (`height`, `glow`, `form`...). It answers with
+what that family takes and refuses anything else with the list; `table` is needed where an id
+names two things (`frost` is a spell and a cover, `steam` a gas and an element). A whole-element
+change ("blue fire everywhere") goes on the element; one spell's ("a blue fireball") goes on the
+spell, and colours only its own show: the fire it leaves is the fire element's. The server's
+instructions say so. `validate` checks every look's parameters against its family, and a
+look-only draft leaves the fingerprint and the cell hash alone. What takes no colour (`list
+looks`): the `fire` families (a fire's flames are the fire element's colour), the families not
+drawn yet, and a `plant` tree or sapling (the valley's own model).
 
 **How it redraws.** The view reads looks from `World.Rules` when it draws, so what it draws next
 is from the rules in force on every peer. A switch also redraws what already stands if its
@@ -100,7 +124,8 @@ still keyed to an id, with what each needs: `docs/handoffs/procedural-looks-scan
 **Limits today.** A `ground`-family material isn't painted in its own colour (`CellPaint` picks
 layers by id), so a mod's new flat ground looks like the land under it; its colour reaches only
 chips. A new cover or gas has no family drawn yet, so it needn't name one, and draws as an unknown
-one always did.
+one always did. Element, cover and gas colours are in the rules, but the view reads them only
+where it has been switched over to them (the spell effects and the world's colours, under way).
 
 ## Change modes (chosen when a room is made)
 

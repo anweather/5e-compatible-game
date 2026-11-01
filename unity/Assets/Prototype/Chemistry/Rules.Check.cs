@@ -251,21 +251,45 @@ namespace Chem
                 if (t["fireLook"] != null && !FireLooks.Contains(Text(t["fireLook"]))) Errors.Add($"{what}: fireLook must be flare, wood or oil");
             }
 
-            // A "look" group's shape; which families exist is ModValidator's check (rules/looks.json).
-            void LookOf(string what, JToken t)
+            // A "look" group's shape; which families exist, and what each takes, is ModValidator's check
+            // (rules/looks.json). A cover or gas may give only a colour (no family of theirs is drawn yet).
+            void LookOf(string what, JToken t, bool needsFamily = true)
             {
                 if (t["look"] == null) return;
-                if (!(t["look"] is JObject look) || Text(look["family"]) == null)
+                if (!(t["look"] is JObject look) || (needsFamily && Text(look["family"]) == null))
                 {
-                    Errors.Add($"{what}: look must be an object naming its family");
+                    Errors.Add(needsFamily ? $"{what}: look must be an object naming its family" : $"{what}: look must be an object");
                     return;
                 }
+                if (look["family"] != null && Text(look["family"]) == null) Errors.Add($"{what}: look.family must be a name");
                 if (look["color"] != null && !(look["color"] is JArray c && c.Count == 3 && c.All(x => IsNumber(x) && (double)x >= 0 && (double)x <= 1)))
                     Errors.Add($"{what}: look.color must be three numbers from 0 to 1");
                 foreach (var key in new[] { "height", "glow", "flow" })
                     if (look[key] != null && !(IsNumber(look[key]) && (double)look[key] >= 0)) Errors.Add($"{what}: look.{key} must be a number from 0");
                 if (look["roughness"] != null && !(IsNumber(look["roughness"]) && (double)look["roughness"] >= 0 && (double)look["roughness"] <= 1))
                     Errors.Add($"{what}: look.roughness must be a number from 0 to 1");
+            }
+
+            // The element entries (elements.json, a mod's "elements" by id): known elements, each with only
+            // a look, and that look only a colour. Only looks, so the fingerprint can leave the table out.
+            void ElementLooks()
+            {
+                if (!(r[ElementLooksKey] is JObject table)) return;
+                foreach (var p in table.Properties())
+                {
+                    string what = $"element {p.Name}";
+                    if (!elements.Contains(p.Name)) Errors.Add($"{what}: unknown element (a look needs the element in the rules)");
+                    if (!(p.Value is JObject entry))
+                    {
+                        Errors.Add($"{what}: must be an object such as {{\"look\": {{\"color\": [1, 0.4, 0.1]}}}}");
+                        continue;
+                    }
+                    foreach (var key in entry.Properties().Select(x => x.Name).Where(k => k != "look"))
+                        Errors.Add($"{what}: {key} unknown (an element's entry holds only its look)");
+                    LookOf(what, entry, false);
+                    if (entry["look"] is JObject look && look["family"] != null)
+                        Errors.Add($"{what}: an element's look names no family; it is the colour of what the element makes, whatever draws it");
+                }
             }
 
             void TerrainRefs(string id, JToken t)
@@ -412,7 +436,7 @@ namespace Chem
                 {
                     Tags(p.Value["tags"], $"cover {p.Name}");
                     FireLookOf($"cover {p.Name}", p.Value);
-                    LookOf($"cover {p.Name}", p.Value);
+                    LookOf($"cover {p.Name}", p.Value, false);
                     Number(p.Value["flammability"], $"cover {p.Name}: flammability", 0);
                     Number(p.Value["fuel"], $"cover {p.Name}: fuel", 0);
                     Number(p.Value["burnIntensity"], $"cover {p.Name}: burnIntensity", 0);
@@ -426,8 +450,9 @@ namespace Chem
                 foreach (var p in gases.Properties())
                 {
                     GasNumbers(p);
-                    LookOf($"gas {p.Name}", p.Value);
+                    LookOf($"gas {p.Name}", p.Value, false);
                 }
+                ElementLooks();
                 foreach (var s in r["spells"])
                     foreach (var key in SpellNumbers) Number(s[key], $"spell {Show(s["id"])}: {key}", 0);
                 foreach (var rule in r["cellRules"].OfType<JObject>()) RuleNumbers(rule);
