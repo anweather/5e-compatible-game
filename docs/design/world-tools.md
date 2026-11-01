@@ -156,6 +156,25 @@ that every peer sees and one player picks up. Then the fauna as data for ambient
 5. Should Claude tell a player where the thing it hid is, or keep it secret from that player?
 6. Fauna as data: per room (a mod, everyone's table) or per player's own view?
 
+### Another test of the tools: paint
+
+Andrew, 2026-11-01: "could we change the flow rate or viscosity of water and add a color to 'paint'
+the world?" Like the squirrel, this is a test, not a feature (J-055): no paint in code or base rules.
+
+| Step | Today | Stops because |
+|---|---|---|
+| 1. Water runs faster or slower | Part. `sim.json`'s water numbers are rules; only the ones with declared bounds can be `tune`d | One global setting: all water changes, and it changes shared state, so it goes through the room with the fingerprint and cell hash |
+| 2. A second liquid, thicker than water | No | A cell holds one integer `Water`; there's no kind of liquid |
+| 3. A coloured stuff that spreads | Yes, as a cover: `oil` is a data row with `float` (a reach) and a `look`, so a mod can add `paint-red` | Slick covers can't be drawn from data yet: a new one needs that view work (`needs` in `looks.json`) |
+| 4. Something lays it | Yes: a spell row can lay a cover | No `add_spell` gap; check the draft covers a new cover |
+| 5. It stays and stains | Maybe: a cover stays until something clears it | Water, rain and fire rules for it are reactions to write; not tried |
+| 6. Two paints mix | Yes in principle: a reaction turns `paint-red` beside `paint-blue` into `paint-purple`, one row a pair | Many rows; per-cell colour would be neater but is new hot state |
+
+**Smallest gaps:** draw slick covers from data (needed anyway, see `needs`), then try it. A per-liquid
+viscosity and a free colour per cell are real core changes (`Cell` is hot state, D9), so they're
+proposed only if the cover route falls short. Test: "add red and blue paint I can pour", asked of
+Claude, ends as one mod.
+
 ## 3. Chat in the game
 
 The player's own Claude, with this game's MCP (`127.0.0.1:47777/mcp`) already connected.
