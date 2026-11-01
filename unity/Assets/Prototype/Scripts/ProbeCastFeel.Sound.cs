@@ -175,7 +175,8 @@ public partial class CastFeelProbe
         Check("pause_quiets_the_hum", SoundVoices.Sounding.loops == 0, $"{SoundVoices.Sounding.loops} loops");
         PauseMenu.Instance.SetOpen(false);
         yield return Wait(0.2f);
-        Check("hum_back_after_a_pause", SoundVoices.Sounding.loops == 1 || beats.Now != Beat.Charge, $"{SoundVoices.Sounding.loops} loops, beat {beats.Now}");
+        // Two for a moment when a charge step lands here: the old loop fading as the new one takes over.
+        Check("hum_back_after_a_pause", SoundVoices.Sounding.loops is 1 or 2 || beats.Now != Beat.Charge, $"{SoundVoices.Sounding.loops} loops, beat {beats.Now}");
         yield return UntilGone();
 
         // CastBeats off, and a loop with nobody holding it.
