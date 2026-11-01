@@ -41,6 +41,17 @@ Each entry has:
 
 ## Decided
 
+### J-054: Which sound is the annoying chime, and what replaces it?
+
+- **Asked:** 2026-10-31 by Andrew ("the little chime thing is super annoying"); answered 2026-11-01.
+- **Also comes up when:** any new sound, a Sending or UI cue, the rest of the sound pass.
+- **Answer:** Andrew: it's `arcane`; "No more chimes. Whoosh is ok." So `arcane` becomes the no-tone whoosh, and
+  no sound in the game may be a chime. PM's reading: `shatter` loses its tinkle (`shatter-no-tinkle`) and the
+  frost stand-in goes too. `splash`'s plop and `blink`'s soft pad aren't chimes and stay. The planned
+  Sending chime in `docs/MULTIPLAYER.md` needs another sound when it's built.
+- **Why:** it plays on most casts and its 1.5 s ring outlasts them.
+- **Revisited:** 0.
+
 ### J-053: Land the lag fix with hosted p99 at 33.2 ms against a 33 ms gate?
 
 - **Asked:** 2026-11-01, by DesktopUnity (one 30 s stretch of long hosted rain read 33.2 ms; the rest 31-33).

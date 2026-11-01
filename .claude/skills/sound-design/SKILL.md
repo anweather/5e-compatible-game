@@ -5,6 +5,8 @@ description: Design, describe and generate game sounds for Spell Chemistry Valle
 
 # Sound design
 
+**No chimes (Andrew, J-054):** no bells, pings, tinkles or sparkles in any game sound. A whoosh is fine.
+
 Describing a sound is hard, so we keep one shared vocabulary: `vocabulary.md` beside this file.
 Every word in it has a plain meaning, a number you can measure, and a recipe for the generator.
 Andrew describes a sound in those words; we render it; he picks; the words get sharper.
