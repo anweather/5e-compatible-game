@@ -3,6 +3,9 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
+using System.Text;
+using System.Threading.Tasks;
 using Chem;
 using Unity.Netcode;
 using UnityEngine;
@@ -366,5 +369,85 @@ public class RoomLockedProbe : RoomProbe
         yield return HostToggle(BigFireball);
         yield return Agree("host_refused", Refused);
         Check("started_with_wildfire_only", World.Room.Mods.Count == 1, $"{World.Room.Mods.Count} mods on");
+    }
+}
+
+/// <summary>
+/// Solo, the rules MCP as a client meets it (RulesMcpServer): over real HTTP, the handshake, the room, a mod on
+/// and off with the room's sentence back, and a web page's request turned away.
+/// </summary>
+public class RoomMcpProbe : ProbeScenario
+{
+    static readonly HttpClient Http = new();
+
+    static async Task<(int status, string body)> Post(string json, string origin = null)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Post, RulesMcpServer.Url) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
+        if (origin != null) request.Headers.Add("Origin", origin);
+        using var response = await Http.SendAsync(request);
+        return ((int)response.StatusCode, await response.Content.ReadAsStringAsync());
+    }
+
+    static string Tool(string name, string arguments) =>
+        $"{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{{\"name\":\"{name}\",\"arguments\":{arguments}}}}}";
+
+    protected override IEnumerator Run()
+    {
+        Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
+        if (RulesMcpServer.Url == null) yield break;
+        var hello = Post("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{\"protocolVersion\":\"2025-06-18\"}}");
+        yield return Until(hello);
+        Check("initialize", hello.Result.status == 200 && hello.Result.body.Contains("spell-chemistry-valley"), hello.Result.body);
+        var list = Post("{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}");
+        yield return Until(list);
+        Check("tools_listed", list.Result.body.Contains("\"apply\"") && list.Result.body.Contains("\"add_spell\""), $"{list.Result.body.Length} characters");
+        var silent = Post("{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\"}");
+        yield return Until(silent);
+        Check("notification_gets_202", silent.Result.status == 202, $"{silent.Result.status}");
+        var page = Post(Tool("room", "{}"), "https://example.com");
+        yield return Until(page);
+        Check("web_page_turned_away", page.Result.status == 403, $"{page.Result.status}");
+
+        int radius = World.Rules.Spell(SpellIds.Fireball).Radius;
+        var room = Post(Tool("room", "{}"));
+        yield return Until(room);
+        Check("room_is_this_game", room.Result.body.Contains("Open room") && room.Result.body.Contains("You play as Player 1"), room.Result.body);
+        var on = Post(Tool("apply", "{\"mod\":\"big-fireball\"}"));
+        yield return Until(on);
+        Check("apply_answers_the_line", on.Result.body.Contains("Player 1 switched on Big fireball (Open room)"), on.Result.body);
+        yield return Wait(0.5f);
+        Check("fireball_bigger_in_the_game", World.Rules.Spell(SpellIds.Fireball).Radius > radius, $"radius {radius} to {World.Rules.Spell(SpellIds.Fireball).Radius}");
+        var bad = Post(Tool("apply", "{\"mod\":\"no-such-mod\"}"));
+        yield return Until(bad);
+        Check("unknown_mod_is_a_sentence", bad.Result.body.Contains("\"isError\":true"), bad.Result.body);
+        var off = Post(Tool("revert", "{\"mod\":\"big-fireball\"}"));
+        yield return Until(off);
+        Check("revert_answers_the_line", off.Result.body.Contains("Player 1 switched off Big fireball (Open room)"), off.Result.body);
+        yield return Wait(0.5f);
+        Check("fireball_back", World.Rules.Spell(SpellIds.Fireball).Radius == radius, $"radius {World.Rules.Spell(SpellIds.Fireball).Radius}");
+    }
+
+    static IEnumerator Until(Task task)
+    {
+        for (float t = 0f; t < 12f && !task.IsCompleted; t += Time.unscaledDeltaTime) yield return null;
+    }
+}
+
+/// <summary>
+/// Holds a game open for seconds=N while someone outside changes it through the MCP (a real Claude). Passes on
+/// the first mod switched on, with what the game said.
+/// </summary>
+public class RoomClaudeProbe : ProbeScenario
+{
+    protected override IEnumerator Run()
+    {
+        Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
+        for (float t = 0f; t < Mathf.Max(30f, Seconds) && World.Room.Mods.Count == 0; t += Time.unscaledDeltaTime) yield return null;
+        var mod = World.Room.Mods.FirstOrDefault();
+        Check("claude_changed_the_game", mod != null, mod != null ? $"{mod.Title} ({mod.Id}), by {mod.By}" : "no mod came on");
+        if (mod == null) yield break;
+        yield return Wait(1f);
+        Check("line_in_the_log", World.Log.Any(l => l.Text.Contains("switched on")), World.Log.LastOrDefault()?.Text);
+        Metric("fireball_radius", World.Rules.Spell(SpellIds.Fireball).Radius);
     }
 }

@@ -184,6 +184,18 @@ dotnet build core/Rules.Mcp -c Release
 claude mcp add rules -- dotnet core/Rules.Mcp/bin/Release/net8.0/Rules.Mcp.dll --rules "$PWD/rules"
 ```
 
+**Or add the game itself.** A running copy serves the same tools on your own
+machine, against the world you're playing in, so `apply` changes the game in
+front of you, for everyone in the room. Nothing needs installing. Run this once
+(the Mods page, M, shows it with the address to use):
+
+```sh
+claude mcp add --transport http spell-valley http://127.0.0.1:47777/mcp
+```
+
+Then ask Claude for a bigger fireball. What goes in is up to the room's change
+mode, picked in Esc > Play together before hosting: Open, Host only or Locked.
+
 **The tools:**
 
 | Kind | Tools |

@@ -147,12 +147,23 @@ switches on), so lockstep holds and we run no servers for it.
      room"). The MCP has `apply`, `revert` and `room` against a world in memory. Tests:
      `RoomTests.cs` (two peers side by side, a hostile patch and a good one, hashes compared),
      `RoomToolsTests.cs`.
-   - **Still to do, Unity half:** the change-mode choice in the room-creation menu (calls
-     `OpenRoom`); `RoomIntent` in `Net/` (client to host; the host may refuse early with
-     `RoomPolicy.Refusal`, then stamps the command into a batch and the late joiner's history);
-     `RoomHash` is already inside `CastHash`, so the checksum needs no change; the game serving these
-     tools on localhost against its own world instead of the one in memory; the HUD line from the
-     world log; and the mods panel (M) going through the room when one is open, not `RuleSwitcher`.
+   - **Built, Unity half (2026-10-31, `live-rules-unity`):** every world is a room, solo too (an Open
+     one); the host picks the mode in Esc > Play together before hosting (`NetSession.RoomMode`). A
+     rebuilt world keeps the room and the mods on (`OpenRoom` takes them), and a host's solo mods
+     become its room's starting mods, so they stay even in a Locked room. `RoomIntent`
+     (`NetChem.Room.cs`): anyone asks with the patch, the host names the sender, may refuse at once
+     (`RoomPolicy.Refusal`, a sentence every peer hears) and stamps the command for the next tick. A
+     late joiner gets the room as its history starts, then the commands since. `RuleSwitcher`, and so
+     the mods panel, goes through the room; in a room a batch's plain mod list changes nothing. Peers
+     are "Player 1", "Player 2" until the game has names.
+   - **The game serves the MCP:** the tools moved into `Chemistry/Mcp/` so Unity compiles them; both
+     hosts read them from the `RulesTool` attributes. `RulesMcpServer` is HTTP on `127.0.0.1:47777/mcp`
+     (the next port up for a second copy), one JSON answer per POST (`McpRpc`), on its own thread;
+     `apply` and `revert` cross to the main thread (`GameRoomDesk`), go in as this player's commands,
+     whoever the tool names, and wait for the room's sentence. It starts with the game and turns away
+     a request with another Host or Origin, so a web page can't reach it. There's no sign-in: anything
+     running as this user on this machine can use it. The Mods page shows the line to add it to Claude.
+     Probes: `roomopen`, `roomhost`, `roomlocked`, `roommcp`, `roomclaude`.
 4. **Assets**: not now. Procedural families come first, and may make most of it unnecessary.
 
 ## Open questions
