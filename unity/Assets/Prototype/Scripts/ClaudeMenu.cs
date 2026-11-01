@@ -14,6 +14,7 @@ public class ClaudeMenu : MonoBehaviour
     const string NeedIt = "<b>1.</b> You need Claude Code, installed once: claude.com/claude-code";
     const string RunIt = "<b>2.</b> Run this once in a terminal:";
     const string AskIt = "<b>3.</b> Start a new Claude session, which picks up the game then. Keep the game running, and ask:";
+    const string Connecting = "<color=#ffffffbb>Start the game first; if Claude says it can't connect, check the switch is On, then type /mcp in Claude to reconnect.</color>";
     const string Asks = "<color=#ffffffbb>\"make fireballs bigger\"\n\"make grass burn twice as fast\"\n\"when lightning hits water, leave fog\"</color>";
     const string WhatHappens = "<b>What happens:</b> Claude writes a mod, the game checks it, and a line on screen says who changed what. " +
         "To undo it, Esc, then Mods. Who can change a room depends on its mode: Open, Host only or Locked.";
@@ -56,6 +57,7 @@ public class ClaudeMenu : MonoBehaviour
             GUILayout.EndHorizontal();
             GUILayout.Label(AskIt, text);
             GUILayout.Label(Asks, text);
+            GUILayout.Label(Connecting, text);
             GUILayout.Label(WhatHappens, text);
             if (PauseMenu.Button($"Claude can change this game: {(server.Serving ? "On" : "Off")}", PauseMenu.ButtonStyle)) server.Serving = !server.Serving;
             GUILayout.Label(TheSwitch, text);

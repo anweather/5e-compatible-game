@@ -51,7 +51,7 @@ public class RulesMcpServer : MonoBehaviour
     public static string ConnectLine => Url == null ? null : AddLine;
 
     /// <summary>That line, off or on: the address it will have.</summary>
-    public static string AddLine => $"claude mcp add --transport http spell-valley {Url ?? $"http://127.0.0.1:{FirstPort}/mcp"}";
+    public static string AddLine => $"claude mcp add --scope user --transport http spell-valley {Url ?? $"http://127.0.0.1:{FirstPort}/mcp"}";
 
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartWithTheGame()

@@ -190,7 +190,7 @@ front of you, for everyone in the room. Nothing needs installing. Run this once
 (Esc > Play with Claude shows it with the address to use, and the switch that closes the port):
 
 ```sh
-claude mcp add --transport http spell-valley http://127.0.0.1:47777/mcp
+claude mcp add --scope user --transport http spell-valley http://127.0.0.1:47777/mcp
 ```
 
 Then ask Claude for a bigger fireball. It writes the change itself as a new draft, checks it and
