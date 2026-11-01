@@ -21,10 +21,8 @@ public static class ProceduralSounds
     public static AudioClip FireBurst => Make("fire", 0.7f, (t, r) =>
         Decay(t, 0.25f) * (Noise(r) * Lowpass(ref fireLp, 0.35f, Noise(r)) * 0.6f + Tone(t, 70f) * 0.5f));
 
-    /// <summary>Frost: high inharmonic chimes and a little crackle.</summary>
-    public static AudioClip Frost => Make("frost", 0.9f, (t, r) =>
-        Decay(t, 0.35f) * (Tone(t, 2310f) * 0.25f + Tone(t, 3170f) * 0.2f + Tone(t, 4420f) * 0.12f)
-        + Decay(t, 0.08f) * Noise(r) * 0.25f);
+    /// <summary>Frost, with no bank: a burst of plain noise.</summary>
+    public static AudioClip Frost => Make("frost", 0.5f, (t, r) => Decay(t, 0.12f) * Noise(r) * 0.4f);
 
     /// <summary>A splash: falling filtered noise and a few bubbles.</summary>
     public static AudioClip Splash => Make("splash", 0.9f, (t, r) =>
@@ -66,11 +64,10 @@ public static class ProceduralSounds
     public static AudioClip Break => Make("break", 0.35f, (t, r) =>
         Decay(t, 0.03f) * Noise(r) * 0.8f + Decay(t, 0.12f) * Tone(t, 110f) * 0.5f);
 
-    /// <summary>Something frozen shattering: a bright crack, then a scatter of glassy tinkles.</summary>
+    /// <summary>Something frozen shattering: a bright crack, then a scatter of clicks.</summary>
     public static AudioClip Shatter => Make("shatter", 0.8f, (t, r) =>
         Decay(t, 0.02f) * Noise(r) * 0.9f
-        + Decay(t, 0.25f) * (r.NextDouble() < 0.004 ? 1f : 0f) * 0.8f
-        + Decay(t, 0.3f) * (Tone(t, 3520f) * 0.12f + Tone(t, 4730f) * 0.09f + Tone(t, 6150f) * 0.06f));
+        + Decay(t, 0.25f) * (r.NextDouble() < 0.004 ? 1f : 0f) * 0.8f);
 
     /// <summary>Acid eating in: a sizzling hiss that dies away, with a few small pops.</summary>
     public static AudioClip Hiss => Make("hiss", 1.2f, (t, r) =>

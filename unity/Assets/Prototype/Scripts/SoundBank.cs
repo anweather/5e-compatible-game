@@ -21,6 +21,8 @@ public class SoundBank : ScriptableObject
     }
 
     public List<Entry> entries = new();
+    /// <summary>Which table of recipes built this (SoundBankBuilder): an older bank is rebuilt.</summary>
+    public int recipes;
     Dictionary<string, Entry> byName;
 
     static SoundBank loaded;

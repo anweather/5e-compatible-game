@@ -65,7 +65,7 @@ public static class SoundBankBuilder
         new() { Sound = SoundIds.Earth, TargetDb = -16f, MaxSeconds = 2.2f,
             Files = new[] { Pack + "/Magic Spell - Turn to stone.wav", Pack + "/Earthquake 3 - Big.wav" } },
         new() { Sound = SoundIds.Break, TargetDb = -17f, MaxSeconds = 0.6f,
-            Files = new[] { CC0 + "/kenney/impactWood_heavy_000.ogg", CC0 + "/kenney/impactWood_heavy_001.ogg", CC0 + "/kenney/impactWood_heavy_002.ogg", CC0 + "/kenney/impactWood_heavy_003.ogg", CC0 + "/kenney/impactWood_heavy_004.ogg", CC0 + "/rubberduck/wooden_01.ogg", CC0 + "/rubberduck/wooden_02.ogg", CC0 + "/rubberduck/wooden_03.ogg" } },
+            Files = new[] { CC0 + "/kenney/impactWood_heavy_000.ogg", CC0 + "/kenney/impactWood_heavy_001.ogg", CC0 + "/kenney/impactWood_heavy_002.ogg", CC0 + "/kenney/impactWood_heavy_003.ogg", CC0 + "/kenney/impactWood_heavy_004.ogg", CC0 + "/rubberduck/wooden_01.ogg" } },
         new() { Sound = SoundIds.Frost, TargetDb = -18f, MaxSeconds = 1.5f,
             Files = new[] { CC0 + "/bart/ice.wav", CC0 + "/bart/coldsnap.wav" } },
         new() { Sound = SoundIds.Splash, TargetDb = -18f, MaxSeconds = 1.0f,
@@ -74,8 +74,8 @@ public static class SoundBankBuilder
             Procedural = new Func<float[]>[] { () => Samples(ProceduralSounds.Gust) } },
         new() { Sound = SoundIds.Blink, TargetDb = -19f, MaxSeconds = 1.6f,
             Files = new[] { Pack + "/Magic Spell_Short Reverse_1.wav" } },
-        new() { Sound = SoundIds.Arcane, TargetDb = -20f, MaxSeconds = 1.6f,
-            Files = new[] { CC0 + "/jaggedstone/magical_1_0.ogg", CC0 + "/jaggedstone/magical_2.ogg", CC0 + "/jaggedstone/magical_3.ogg", CC0 + "/jaggedstone/magical_4.ogg", CC0 + "/jaggedstone/magical_5.ogg", CC0 + "/jaggedstone/magical_7_0.ogg" } },
+        new() { Sound = SoundIds.Arcane, TargetDb = -21.5f, MaxSeconds = 0.7f,
+            Files = new[] { CC0 + "/arcane-whoosh/arcane-whoosh-1.ogg", CC0 + "/arcane-whoosh/arcane-whoosh-2.ogg", CC0 + "/arcane-whoosh/arcane-whoosh-3.ogg" } },
         new() { Sound = SoundIds.Grease, TargetDb = -20f, MaxSeconds = 0.6f,
             Procedural = new Func<float[]>[] { () => Samples(ProceduralSounds.Squelch) } },
         new() { Sound = SoundIds.Cast, TargetDb = -22f, MaxSeconds = 1.0f,
@@ -83,6 +83,9 @@ public static class SoundBankBuilder
         new() { Sound = SoundIds.FireLoop, TargetDb = -26f, MaxSeconds = 30f, Loop = true,
             Procedural = new Func<float[]>[] { () => ProceduralFire.Loop(1) } },
     };
+
+    // Raise this when a recipe's clips change: a bank out of git is otherwise kept, old sounds and all.
+    const int RecipesVersion = 1;
 
     [MenuItem("Prototype/Build Sound Bank")]
     public static SoundBank Build()
@@ -100,6 +103,7 @@ public static class SoundBankBuilder
             bank = ScriptableObject.CreateInstance<SoundBank>();
             AssetDatabase.CreateAsset(bank, BankPath);
         }
+        bank.recipes = RecipesVersion;
         bank.entries = new List<SoundBank.Entry>();
         foreach (var recipe in recipes)
         {
@@ -116,7 +120,7 @@ public static class SoundBankBuilder
     public static void BuildIfOld()
     {
         var bank = AssetDatabase.LoadAssetAtPath<SoundBank>(BankPath);
-        if (bank == null || Array.Exists(CastSoundTable.Rows, row => bank.Pick(row.Sound) == null)) Build();
+        if (bank == null || bank.recipes != RecipesVersion || Array.Exists(CastSoundTable.Rows, row => bank.Pick(row.Sound) == null)) Build();
     }
 
     // Masters each of a recipe's sources that exists and writes it as a mono WAV.

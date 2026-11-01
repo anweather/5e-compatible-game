@@ -1,0 +1,8 @@
+{
+  "name": "arcane-whoosh",
+  "says": "every other landing: a soft rush of air and nothing else, no tone at all",
+  "seed": 1,
+  "sound": "arcane",
+  "length": 0.6,
+  "whoosh": {"amount": 0.6, "peak_hz": 1800, "rest_hz": 300, "rise_ms": 150, "tail_ms": 450}
+}

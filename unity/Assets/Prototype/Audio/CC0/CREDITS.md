@@ -13,11 +13,10 @@ packs) is restored with Prototype > Restore Asset Packs and never committed.
 | `rubberduck/` | rubberduck | [25 CC0 bang / firework SFX](https://opengameart.org/content/25-cc0-bang-firework-sfx) (`bang_*`, `cannon_*`); [100 CC0 SFX](https://opengameart.org/content/100-cc0-sfx) (`explosion`, `splash_*`, `plop_*`, `wooden_*`) | explosions, Thunderwave, Create Water, breaking crates; water gathering (backwards), a burst's release |
 | `kenney/` | Kenney (www.kenney.nl) | [Impact Sounds 1.0](https://kenney.nl/assets/impact-sounds) (`impactWood_heavy_*`) | breaking crates, the slam's thump |
 | `bart/` | bart | [Ice spells](https://opengameart.org/content/ice-spells) (`ice`, `coldsnap`; made from a public-domain pdsounds.org recording) | Ray of Frost |
-| `jaggedstone/` | JaggedStone | [Magic spell sfx](https://opengameart.org/content/magic-spell-sfx) (`magical_*`) | Levitate, Misty Step, Mage Hand; a d-pad cast gathering, the release of quiet and sky casts |
 
-`cast-deep-hum-pulse/` is ours: the hums, slam and whoosh of a cast, rendered for this game
-from the preset of that name by the sound-design skill (`.claude/skills/sound-design/`,
-`render_game.py`), with no outside source.
+`cast-deep-hum-pulse/` and `arcane-whoosh/` are ours: a cast's hums, slam and whoosh, and the
+landing whoosh, rendered for this game from the presets of those names by the sound-design skill
+(`.claude/skills/sound-design/`, `render_game.py`), with no outside source.
 
 Stand-ins for a machine with no bank, and a cancel's fizzle, are made in code for this game:
 `ProceduralCast.cs`, `ProceduralFire.cs`. Which sound comes from where is `CastSoundTable.cs`.

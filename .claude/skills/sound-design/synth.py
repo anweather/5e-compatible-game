@@ -34,7 +34,7 @@ REQUIRED = {'root_hz', 'swell', 'cut off', 'whoosh', 'thump'}
 WORDS = {'name', 'says', 'seed', 'series', 'root_hz', 'hum', 'fifths', 'choir', 'rumble', 'sub', 'grit', 'pulse',
          'rising', 'escalate', 'layer', 'swell', 'cut off', 'whoosh', 'thump', 'colour'}
 # Every other family's preset names its game sound (`sound`, a SOUNDS.md id) and builds it from layers.
-SOUND_WORDS = {'name', 'says', 'seed', 'sound', 'length', 'root_hz', 'fifths', 'choir', 'pulse', 'rising',
+SOUND_WORDS = {'name', 'says', 'seed', 'sound', 'length', 'unpitched', 'root_hz', 'fifths', 'choir', 'pulse', 'rising',
                'swell', 'tail', 'cut off', 'gusting', 'dull'} | set(HELD) | set(STRUCK)
 EPILOG = 'series:\n' + '\n'.join(f'  {k}: {v["says"]}\n    files: ' + ', '.join(c['file'] for c in v['casts']) + ', joined'
                                  for k, v in SERIES.items()) + '\n' + families.describe() + '''
