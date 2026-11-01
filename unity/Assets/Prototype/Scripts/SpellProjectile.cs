@@ -19,9 +19,11 @@ public class SpellProjectile : MonoBehaviour
     Action onArrive;
     UnityEngine.Object caster;
 
-    public static void Launch(GameObject prefab, Vector3 from, Vector3 to, Action onArrive, UnityEngine.Object caster)
+    public static void Launch(SpellVisuals.Entry look, Vector3 from, Vector3 to, Action onArrive, UnityEngine.Object caster, float scale = 1f)
     {
-        var go = SpellVisuals.Spawn(prefab, from, Quaternion.LookRotation(to - from));
+        var go = SpellVisuals.Spawn(look.projectile, from, Quaternion.LookRotation(to - from));
+        SpellVisuals.Scale(go, scale);
+        look.Dress(go);
         var p = go.AddComponent<SpellProjectile>();
         p.from = from;
         p.to = to;

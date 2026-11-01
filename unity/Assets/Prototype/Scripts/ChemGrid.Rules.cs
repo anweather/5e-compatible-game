@@ -151,6 +151,7 @@ public partial class ChemGrid
         // A room's change has its own line in the world log.
         if (!ReferenceEquals(CurrentRules, World.RoomRules)) EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
         RedrawLooks(before.Effective);
+        RedrawLookFire();
         RulesChanged?.Invoke();
     }
 

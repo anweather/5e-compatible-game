@@ -394,7 +394,7 @@ public class RoomMcpProbe : ProbeScenario
 {
     static readonly HttpClient Http = new();
 
-    static async Task<(int status, string body)> Post(string json, string origin = null)
+    public static async Task<(int status, string body)> Post(string json, string origin = null)
     {
         using var request = new HttpRequestMessage(HttpMethod.Post, RulesMcpServer.Url) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
         if (origin != null) request.Headers.Add("Origin", origin);
@@ -402,7 +402,7 @@ public class RoomMcpProbe : ProbeScenario
         return ((int)response.StatusCode, await response.Content.ReadAsStringAsync());
     }
 
-    static string Tool(string name, string arguments) =>
+    public static string Tool(string name, string arguments) =>
         $"{{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/call\",\"params\":{{\"name\":\"{name}\",\"arguments\":{arguments}}}}}";
 
     protected override IEnumerator Run()
@@ -490,7 +490,7 @@ public class RoomMcpProbe : ProbeScenario
         PauseMenu.Instance.SetOpen(false);
     }
 
-    static IEnumerator Until(Task task)
+    public static IEnumerator Until(Task task)
     {
         for (float t = 0f; t < 12f && !task.IsCompleted; t += Time.unscaledDeltaTime) yield return null;
     }

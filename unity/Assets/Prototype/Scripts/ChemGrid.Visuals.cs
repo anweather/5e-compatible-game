@@ -183,6 +183,7 @@ public partial class ChemGrid
         spellLights.Place();
         cellFx.Advance(Time.deltaTime);
         WatchAcidCells();
+        ForgetLookFire();
         RenderWhirls();
         RenderStars();
         RenderFlashes();
@@ -382,7 +383,7 @@ public partial class ChemGrid
     // charred paint (CellPaint), or a grey sheet without a valley.
     void RenderCover(View v, Cell c, int x, int y, Vector3 center, float ground)
     {
-        bool cooled = lava.Changed(x, y, c, LavaHeat(c));
+        bool cooled = lava.Changed(x, y, c, LavaHeat(c), c.Cover == CoverIds.Embers ? FireTint(x, y) : default);
         slicks.Crust(x, y, c, cooled);
         slicks.Changed(x, y, c);
         cracks.Changed(x, y, c, ground);

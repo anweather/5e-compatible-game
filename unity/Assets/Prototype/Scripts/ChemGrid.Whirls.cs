@@ -6,7 +6,8 @@ using UnityEngine;
 // (World.Whirls, World.Stars, World.FlashesSince). A whirlwind is one reused
 // particle funnel that eases after its cell, tinted by what it carries; a star
 // is a small MeteorFall that lands when the core does; a flash is a pooled burst
-// (BurstFx) over the cloud that went up, and a shove from the middle of it.
+// (BurstFx) over the cloud that went up, and a shove from the middle of it. What
+// a spell makes here takes its look (LookTint), through whichever wizard shows casts.
 // GPU-first: a handful of particle systems however long the game runs.
 public partial class ChemGrid
 {
@@ -56,6 +57,7 @@ public partial class ChemGrid
         ps.transform.localScale = new Vector3(ww.Radius, 1f, ww.Radius) * cellSize;
         var main = ps.main;
         var tint = ColumnTint(ww.Carrying);
+        tint = LookTint.Between(tint, SpellLookColor(ww.Spell) ?? Color.white, 1f).Of(tint);
         main.startColor = new ParticleSystem.MinMaxGradient(tint, Color.Lerp(tint, Color.white, 0.3f));
         if (starting) ps.Play(true);
     }
@@ -116,14 +118,26 @@ public partial class ChemGrid
         return columnMaterial;
     }
 
+    // A wizard to ask how a spell looks.
+    SpellCaster Showman
+    {
+        get
+        {
+            if (showman == null) showman = FindAnyObjectByType<SpellCaster>();
+            return showman;
+        }
+    }
+
+    // The colour of a spell's look, or null with no show for it.
+    Color? SpellLookColor(string spell) => Showman != null ? Showman.LookOf(spell)?.glow : null;
+
     // A star the core has aimed starts falling, to land the moment the core does.
     void RenderStars()
     {
         foreach (var star in World.Stars)
         {
             if (!starsFalling.Add(star)) continue;
-            if (showman == null) showman = FindAnyObjectByType<SpellCaster>();
-            var look = showman != null ? showman.LookOf(SpellIds.Meteor) : null;
+            var look = Showman != null ? Showman.LookOf(SpellIds.Meteor) : null;
             var at = CellCenter(star.X, star.Y);
             at.y = GroundTop(star.X, star.Y, World.At(star.X, star.Y));
             float seconds = (star.Lands - World.Tick) / (float)Mathf.Max(1, World.Rules.Sim.TicksPerSecond);

@@ -430,6 +430,7 @@ public static class ChemYardBuilder
         }
         var looks = Chem.LookFamilies.Load(ChemGrid.FindRulesDir());
         visuals.families = looks.In("spells").Select(Show).ToList();
+        visuals.lookParticle = Shader.Find("Prototype/LookParticle");
         EditorUtility.SetDirty(visuals);
         AssetDatabase.SaveAssets();
         return visuals;

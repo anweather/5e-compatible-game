@@ -4,7 +4,8 @@ using UnityEngine;
 // breaking wave swept along its width and tapering at both ends, a metre wide,
 // high and deep, sized by its transform. Its colour is a small texture along that
 // side view: see-through green-blue water rising out of nothing behind it, paling
-// to foam over the lip and fading out at both ends. Both faces.
+// to foam over the lip and fading out at both ends. Both faces. A wave in a look
+// of its own has its own copy of the texture (LookTint).
 public static class WaveCrest
 {
     // The side view, from the flat water behind it, up over the top and curling down its front.
@@ -58,22 +59,25 @@ public static class WaveCrest
         return mesh;
     }
 
-    public static Material Material()
+    /// <summary>The colour its water is taken as, against a spell's look.</summary>
+    public static readonly Color Own = new(0.3f, 0.6f, 1f);
+
+    public static Material Material(LookTint look = default)
     {
         var material = UrpMaterials.NewLit("Wave crest", Color.white, 0.9f);
         UrpMaterials.MakeTransparent(material);
         material.SetFloat("_Cull", 0f);
-        material.SetTexture("_BaseMap", Colouring());
+        material.SetTexture("_BaseMap", Colouring(look));
         return material;
     }
 
-    static Texture2D Colouring()
+    static Texture2D Colouring(LookTint look)
     {
         var skin = new Texture2D(Skin, Skin, TextureFormat.RGBA32, false) { name = "Wave crest", wrapMode = TextureWrapMode.Clamp };
         for (int y = 0; y < Skin; y++)
             for (int x = 0; x < Skin; x++)
             {
-                var colour = At(y / (Skin - 1f));
+                var colour = look.Of(At(y / (Skin - 1f)));
                 colour.a *= Mathf.SmoothStep(0f, 1f, (1f - Mathf.Abs(x / (Skin - 1f) * 2f - 1f)) * 5f);
                 skin.SetPixel(x, y, colour);
             }

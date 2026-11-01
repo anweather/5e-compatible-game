@@ -9,6 +9,8 @@ using UnityEngine;
 // draws that one as the boulder). Both are reused, not made per cell. As a wave's
 // front rolls a cell it brings what's light there up to its own speed, so props
 // ride it to where it breaks (the host's, D4), and it knocks the local wizard back.
+// A wave takes its spell's look: its crest, foam and break. The boulder doesn't: it
+// is rock, and the pillar it comes to rest as is the cell's.
 public partial class ChemGrid
 {
     const float WaveTall = 1.15f, WaveDeep = 1.4f, BoulderSize = 1.5f;
@@ -42,6 +44,7 @@ public partial class ChemGrid
     GolfCourse golf;
     Mesh crestMesh;
     Material crestMaterial;
+    readonly Dictionary<LookTint, Material> crestLooks = new();
 
     /// <summary>Whether a boulder came to rest on this cell (its pillar is drawn as the boulder).</summary>
     public bool BoulderRestsAt(int x, int y) => boulderRests.Contains(World.Idx(x, y));
@@ -93,6 +96,7 @@ public partial class ChemGrid
             shape.scale = new Vector3((wave.Width * 2 + 1) * cellSize, 0.2f, 0.3f);
             show.root.transform.GetChild(0).localScale = new Vector3((wave.Width * 2 + 1) * cellSize, WaveTall, WaveDeep);
             show.root.transform.rotation = Quaternion.LookRotation(WaveStep(wave));
+            WaveLook(show, wave);
             show.foam.Play(true);
         }
         var root = show.root.transform;
@@ -101,6 +105,16 @@ public partial class ChemGrid
         show.x = wave.X;
         show.y = wave.Y;
         ShoveOnFront(wave);
+    }
+
+    // A spare show may have been another look's.
+    void WaveLook(WaveShow show, World.Wave wave)
+    {
+        var look = LookTint.Between(WaveCrest.Own, SpellLookColor(wave.Spell) ?? Color.white, 1f);
+        if (look.Any && !crestLooks.ContainsKey(look)) crestLooks[look] = WaveCrest.Material(look);
+        show.root.transform.GetChild(0).GetComponent<MeshRenderer>().sharedMaterial = look.Any ? crestLooks[look] : crestMaterial;
+        var main = show.foam.main;
+        main.startColor = new ParticleSystem.MinMaxGradient(look.Of(Color.white), look.Of(new Color(0.8f, 0.9f, 1f, 0.8f)));
     }
 
     void ShoveOnFront(World.Wave wave)
@@ -124,7 +138,7 @@ public partial class ChemGrid
     {
         var show = waveShows[wave];
         waveShows.Remove(wave);
-        BurstFx.Play(BurstFx.Kind.Splash, MoverGround(wave.X, wave.Y), 0.7f + wave.Width * 0.5f);
+        BurstFx.Play(BurstFx.Kind.Splash, MoverGround(wave.X, wave.Y), 0.7f + wave.Width * 0.5f, look: SpellLookColor(wave.Spell));
         GameSounds.Play(SoundIds.Splash, show.root.transform.position);
         show.foam.Stop(true, ParticleSystemStopBehavior.StopEmitting);
         show.x = int.MinValue;
@@ -241,6 +255,11 @@ public partial class ChemGrid
 
     void DestroyMovers()
     {
+        foreach (var crest in crestLooks.Values)
+        {
+            Destroy(crest.GetTexture("_BaseMap"));
+            Destroy(crest);
+        }
         if (crestMesh != null) Destroy(crestMesh);
         if (crestMaterial != null)
         {
