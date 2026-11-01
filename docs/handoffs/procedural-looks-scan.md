@@ -26,8 +26,9 @@ below are the original scan, with line numbers from before that work.
 | `Burnable`, `PrototypeSceneBuilder` | grass | a prop's label read from the rules |
 | `ChemGrid.Visuals` ash, thorns and vines, `SurfaceEffects` | ash, thorns, vines | the `scorch` and `growth` families |
 | `ChemGrid.Effects`, `FogBank` | steam, smoke, fog, dust, cloud, storm, snowcloud | the `vapour` and `bank` families: one tinted effect and a style read from the gas's look |
-| `SpellCaster.ElementBurst`, `CastImpact`, `BurstFx` | acid, heat, sand, lightning | effect families for these bursts. Their colour now comes from the look (`LookTint`), and their size from the spell's numbers where the family scales |
-| Effect families with no `own` in `rules/looks.json` | splash, spray, sparks, swirl, shockwave, motes, mist, bloom, storm | their own colour measured and looked at, then a line of data each (`storm` needs `SleetStorm` to read the look first): until then their pack effects keep their colours, as a look's colour reaches only the hand and the aim marker |
+| `SpellCaster.ElementBurst`, `CastImpact`, `BurstFx` | acid, heat, sand, lightning | effect families for these bursts: they're still chosen by element. Their colour comes from the look (`LookTint`), and their size from the spell's numbers where the family scales. `CastImpact` draws nothing (shake, rumble, hit-stop), so it has no look to take |
+| Effect families with no `own` in `rules/looks.json` | motes, mist, bloom | their own colour measured and looked at, then a line of data each: until then their pack effects keep their colours, as a look's colour reaches only the hand and the aim marker. Every other family takes its look (`lookfamilies` probe) |
+| Parts of the `hand` family that take no look | the boulder; `ChemGrid.Charge`'s and a storm's arcs | the boulder is rock and rests as a pillar cell; those arcs are the world's, not a spell's |
 | `SpellRadialHud`, `HudDraw` | acid-splash, fire, water, earth, air | an `icon` on the element or spell |
 | `ChemGrid.Whirls` | fire, water, sand, smoke, snow | a whirl tint on what it carries; the spell's look now turns the tint |
 | `GameSounds`, `CastSoundTable` | elements | a `sound` family on the element or spell |
