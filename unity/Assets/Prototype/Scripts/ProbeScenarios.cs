@@ -97,6 +97,8 @@ public static class ProbeScenarios
             "One whole flight of the Dragon, staged quicker than a real one (DragonView, World.Dragon). Checks: the world keeps a start, R summons it, the sky darkens and it's seen, " +
             "a wizard in the open is downed and one behind a built wall isn't, every chunk is freshened, and the Gauntlet's lava, a meadow cell, a felled tree, a moved crate and a broken one " +
             "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
+        new Entry("playlog", typeof(PlayLogProbe), 40f,
+            "The frame-rate log (PlayLog) writing to a folder of its own: lines a second on another thread, no garbage from a frame, a hitch, a mark with its picture, the last ten logs kept, the summary line."),
         new Entry("downed", typeof(DownedProbe), 30f,
             "The punch on a virtual gamepad's Circle, being struck (open ground, a wall, water), and a wizard at 0 health: down, what it carries dropped, then back at the yard, full."),
         new Entry("castfeel", typeof(CastFeelProbe), 200f,

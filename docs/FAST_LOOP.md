@@ -100,6 +100,7 @@ and `SpellCaster.Cast` (the spell must be in the rules).
 | `river` | The river from the falls into the lake and the bridge over it: the river measured across at world z 170, 95 and 30; the wizard dropped into its deepest middle; then walked over the bridge from its west landing to its east; then digging from the river's edge east of the yard with Lower Earth, charged. `--shots` saves the swim, the wizard on the bridge and the dug square | `river_wide` (5 squares across or more at each place), `river_deep` (over 1.8 m of water over the bed in the middle), `swims_in_river`, `bridge_built`, `bridge_over_river` (the deck's middle over river water, over 1.2 m above it), `bridge_dry` (`SurfaceEffects.Swimming` stays false on the way), `bridge_walked_over` (up on the deck, not under it), `bridge_crossed` (within 1.5 m of the east landing), `river_found` (near world (120, 30)), `river_full`, `dug_square_fills_from_river`, `river_stays_full` |
 | `blast` | Fireball cast from the bar on the meadow east of the yard | `crater_middle` (two steps down), `crater_ring` (one), `crater_drawn` (the terrain 0.6 m lower or more), `edge_burns` (burning, or burnt to dirt) |
 | `looksmod` | The view draws from the rules in force (`docs/RULES_MCP.md`, "Looks"): a Fireball on open grass with no fire spread, the Big fireball mod switched on mid-game through `RuleSwitcher`, a Fireball beside it, the Moonstone mod with Moon Frost, then a look-only switch. `--shots` films it (ClipFilm): frames and `sound.wav`. Metrics: each number `_off` and `_on` | `blast_bigger` (particles' reach, 1.6 times or more), `fire_area_bigger`, `crater_bigger`, `crater_drawn_bigger`, `fire_drawn_bigger`, `moonstone_in_cells`, `moonstone_drawn_by_family`, `moonstone_as_tall_as_its_look`, `moonstone_takes_its_colour`, `moonstone_glows`, `moonstone_blocks`, `look_only_redraws_on_switch`, `look_only_keeps_the_fingerprint`, `no_scene_reload` |
+| `playlog` | The frame-rate log (`PlayLog`) in a folder of its own: lines a second on another thread, a hitch, a mark with its picture | `frame_makes_no_garbage`, `a_line_a_second`, `hitch_line`, `mark_line`, `mark_picture`, `summary_last`, `keeps_the_last_ten` (2026-10-31) |
 | `slant` | Earthen Trench aimed about 20 degrees south of east, through the wizard's own controls on a virtual gamepad | `trench_dug`, `trench_slants` (more columns than rows, two rows or more), `squares_share_sides` |
 | `topple` | Move Earth on the valley tree nearest the yard, then Fire Bolt on it; then Move Earth on the cabin west of the yard | `tree_toppled`, `fallen_tree_drawn`, `no_blocker_left`, `fallen_tree_burns`, `cabin_walls_cave_in`, `cabin_falls` |
 | `meteor` | Meteor cast from the bar on the meadow east of the yard; shots as it falls, lands and after | `meteor_falls` (over 50 m up), `meteor_glows`, `not_landed_yet`, `crater` (three steps down), `ring_of_fire` (8+ squares past the crater burning or burnt) |
@@ -196,3 +197,18 @@ what it checks, and its `max_seconds`. Recompile; `probe list` shows it.
 **Player look (2026-10-31):** a player build takes `-player-look` to stage the look checks (markers, fire) in the built game.
 
 **Shots (2026-10-31, screenshot-budget):** `--shots` writes a `name.480.png` review copy beside each shot (not listed in `screenshots`); look at those, not the full size. Encoding happens on the main thread, so don't take timings from `--shots` runs.
+
+## The play log
+
+Every player build keeps a frame-rate log while it's played, on by default (Esc > Frame-rate log). The last
+10 sessions stay, beside the player log, as `play-log-<date>-<time>.csv`:
+
+- Windows: `%USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\`
+- macOS: `~/Library/Logs/anweather/Spell Chemistry Valley/`
+
+Read the last line first: `kind` is `summary`, and `what` has the session's average, 1% low and worst second,
+the hitches and marks, and the path; it leaves out the first 5 seconds, which are loading. Other lines by `kind`: `second` (one a second: `fps`, `worst_ms`, frames
+`over_33` and `over_50` ms, `cpu_main_ms`, `cpu_render_ms`, `gpu_ms`, `weather`, `chunks`, `players`, `mods`, and
+`what` the world logged that second), `hitch` (a frame over 100 ms, in `worst_ms`; with its top markers in a
+development build) and `mark` (F8, "that felt bad", beside its `<log>-mark-N.jpg`). `-no-play-log` starts a
+player without it. The player log also gets the summary, as `PLAY LOG:`.
