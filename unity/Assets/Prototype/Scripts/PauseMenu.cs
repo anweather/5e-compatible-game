@@ -65,6 +65,8 @@ public class PauseMenu : MonoBehaviour
         public Func<bool> Submit;
         /// <summary>B on the controller; return true if handled (the page stays open).</summary>
         public Func<bool> Back;
+        /// <summary>Played on the keyboard, highlight and all, so Back names no controller button.</summary>
+        public bool ForKeys;
     }
 
     /// <summary>
@@ -191,6 +193,9 @@ public class PauseMenu : MonoBehaviour
         if (page?.Move != null && page.Move(delta)) return;
         nav.Move(delta);
     }
+
+    /// <summary>Puts the highlight on an item of the current page, counted from 0.</summary>
+    public void FocusAt(int item) => nav.FocusAt(item);
 
     /// <summary>The controller's A: activates the highlighted item, as a click would.</summary>
     public void Submit()
@@ -411,7 +416,7 @@ public class PauseMenu : MonoBehaviour
         GUILayout.Space(8);
         page.Draw();
         GUILayout.Space(12);
-        string back = Highlight ? $"Back   <color=#ffffff88>{PadGlyphs.Label(PadButton.East)}</color>" : "Back";
+        string back = Highlight && !page.ForKeys ? $"Back   <color=#ffffff88>{PadGlyphs.Label(PadButton.East)}</color>" : "Back";
         if (Button(back, button) && (page.Back == null || !page.Back())) nav.Back();
     }
 

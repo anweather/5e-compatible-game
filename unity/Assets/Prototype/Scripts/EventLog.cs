@@ -187,7 +187,7 @@ public class EventLog : MonoBehaviour
         var group = caster.TryGetComponent<SpellRadialHud>(out var radial) ? radial.CurrentGroup : null;
         string colour = group?.Color ?? "#ffd24a";
         string element = group != null ? $"<color={colour}>{group.Name}</color>  " : "";
-        string keys = pad ? PadGlyphs.Text("hold {LB}: spells, tap: swap  ·  {RB} next  ·  D-pad ◀ ▶ element") : "hold Tab: spells, tap: swap  ·  Q E next  ·  Z X C V elements";
+        string keys = pad ? PadGlyphs.Text("hold {LB}: spells, tap: swap  ·  {RB} next  ·  D-pad ◀ ▶ element") : "Tab: spells  ·  Q E next  ·  Z X C V elements";
         return $"<color={colour}>●</color> {element}<color=#ffd24a><b>{caster.SelectedName}</b></color>   <color=#ffffff88>{keys}</color>";
     }
 }

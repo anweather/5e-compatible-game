@@ -276,6 +276,10 @@ that long, and doesn't march.
   nature, time), at most three spells each (`groups.json`, `GroupDef`).
   Players see them as elements; we say group.
 
+**Spell list**
+: What Tab opens on the keyboard, in place of the radial: every spell by
+  element, then all spells, then the ones not on the wheel (`SpellList`).
+
 **Force**
 : What a spell does to what it hits, apart from its element (`spells.json`
   `force`): **push** knocks it along, **throw** throws it off its feet (the

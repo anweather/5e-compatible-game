@@ -5,6 +5,12 @@ a grab-bag and every new spell makes it longer. It becomes a two-ring radial:
 element first, then that element's spells. Decided with Andrew, 2026-10-25;
 ships in alpha 0.1.1.
 
+Since 2026-11-01 the wheel is the controller's. On the keyboard Tab opens the
+**spell list** instead (`SpellListMenu`, `SpellList`): a page of the Esc menu
+with every spell by element, then all spells, then the ones not on the wheel.
+Click a spell, or use the arrows and Enter; Tab or Esc closes it. Number keys
+still open the wheel on an element. Andrew: "the wheel is super super clunky".
+
 ## How it plays
 
 - **Hold Tab** (gamepad: hold **LB**) to open it. The game keeps running
