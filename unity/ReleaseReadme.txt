@@ -52,8 +52,7 @@ All releases: https://github.com/anweather/5e-compatible-game/releases
 REPORTING A BUG
 Say what you did and what happened, and attach Player.log from
   %USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\Player.log
-(Esc -> "Open log folder" opens that folder). The log is replaced each time
-the game starts, so copy it before playing again.
+The log is replaced each time the game starts, so copy it before playing again.
 
 CREDITS
 See CREDITS.txt (also in the Esc menu under Credits).
