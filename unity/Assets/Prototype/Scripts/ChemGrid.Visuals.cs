@@ -286,13 +286,18 @@ public partial class ChemGrid
         if (reshaped) StartShaping(v, x, y, shown);
     }
 
-    /// <summary>A cell of a row house's wall stands this tall (0: no longer one), and its blocker says so at once.</summary>
+    /// <summary>A cell of a row house's wall stands this tall (0: no longer one): its blocker says so at once, and what the cell drew on its own goes or comes back.</summary>
     public void BuiltWall(int x, int y, float tall)
     {
-        blockers.BuiltWall(World.Idx(x, y), tall);
+        int index = World.Idx(x, y);
+        blockers.BuiltWall(index, tall);
         var c = World.At(x, y);
-        blockers.Place(x, y, c, GroundTop(x, y, c));
+        if (views != null && views[index] != null) Redress(views[index], c, x, y, false);
+        else blockers.Place(x, y, c, GroundTop(x, y, c));
     }
+
+    /// <summary>Whether a row house draws this cell: its own dressing would stand inside the wall.</summary>
+    public bool IsBuiltWall(int x, int y, Cell c) => blockers.IsBuiltWall(World.Idx(x, y), c);
 
     // Hot metal (Cell.Heat, counting down from its terrain's hot.for) glows in this many steps, so a
     // cooling plate is redrawn a few times, not every tick.

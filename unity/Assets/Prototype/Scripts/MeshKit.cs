@@ -23,6 +23,9 @@ public sealed class MeshKit
     public float OcclusionHeight = 1.2f;
     public float Occlusion = 0.35f;
 
+    /// <summary>False for a builder whose colours come from rules and art with alpha 1: nothing it draws glows.</summary>
+    public bool Glows = true;
+
     public int VertexCount => positions.Count;
     public int IndexCount => triangles.Count;
 
@@ -42,8 +45,9 @@ public sealed class MeshKit
         positions.Add(at);
         normals.Add(Frame.MultiplyVector(n).normalized);
         // Colours are picked in sRGB, as in a colour picker; the shader works in linear.
-        var lit = new Color(c.r * shade, c.g * shade, c.b * shade, c.a);
-        colors.Add(QualitySettings.activeColorSpace == ColorSpace.Linear ? new Color(lit.linear.r, lit.linear.g, lit.linear.b, c.a) : lit);
+        float glow = Glows ? c.a : 0f;
+        var lit = new Color(c.r * shade, c.g * shade, c.b * shade, glow);
+        colors.Add(QualitySettings.activeColorSpace == ColorSpace.Linear ? new Color(lit.linear.r, lit.linear.g, lit.linear.b, glow) : lit);
         return positions.Count - 1;
     }
 

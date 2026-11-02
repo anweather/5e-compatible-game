@@ -54,6 +54,9 @@ public sealed class CellBlockers
         else built.Remove(key);
     }
 
+    /// <summary>Whether a cell is a standing wall of a row house, which draws it.</summary>
+    public bool IsBuiltWall(int key, Cell c) => built.ContainsKey(key) && grid.World.IsBlocking(c);
+
     /// <summary>Puts a cell's blocker on its ground at <paramref name="ground"/>, or removes it if the cell doesn't block.</summary>
     public void Place(int x, int y, Cell c, float ground)
     {
