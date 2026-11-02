@@ -169,7 +169,7 @@ namespace Chem.Tests
         {
             StringAssert.DoesNotContain("Numbers are enough", RulesTools.Instructions);
             StringAssert.Contains("set_look", RulesTools.Instructions);
-            StringAssert.Contains("blue fire everywhere", RulesTools.Instructions);
+            StringAssert.Contains("blue fire everywhere", ((System.ComponentModel.DescriptionAttribute)Attribute.GetCustomAttribute(typeof(RulesTools).GetMethod(nameof(RulesTools.SetLook)), typeof(System.ComponentModel.DescriptionAttribute))).Description);
         }
     }
 }

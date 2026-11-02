@@ -17,7 +17,7 @@ public class GameChat : MonoBehaviour
     const string Box = "game-chat-box", ToolsKey = "chat.show-tools";
     /// <summary>Where a message came from, for the record.</summary>
     public const string FromKeys = "typed", FromVoice = "voice";
-    const float BarHeight = 5f;
+    const float BarHeight = 5f, SayAfter = 12f;
     static readonly Color BarColour = new(1f, 0.75f, 0.35f);
     const string ListeningMark = "<color=#ff8a80>●</color> ";
     const string SignInLine = "You aren't signed in to Claude. A terminal is opening so you can: follow it, then ask again.";
@@ -27,6 +27,7 @@ public class GameChat : MonoBehaviour
     readonly Queue<(string message, string source)> waiting = new();
     string typed = "";
     bool focusBox, turnedAway;
+    volatile bool saveAsked;
     PlayerControls pausedControls;
     PlayerInput pausedInput;
     CursorLockMode cursorWas;
@@ -95,7 +96,20 @@ public class GameChat : MonoBehaviour
         var args = System.Environment.GetCommandLineArgs();
         int asked = System.Array.IndexOf(args, "-claude-stand-in");
         if (asked >= 0 && asked + 1 < args.Length) ClaudeChat.StandIn = args[asked + 1];
+        // -chat-say sends these messages, split on |, once the game is up, to test a player with nobody at its keys.
+        int say = System.Array.IndexOf(args, "-chat-say");
+        if (say >= 0 && say + 1 < args.Length) StartCoroutine(Says(args[say + 1].Split('|')));
         QuickExit.BeforeExit += claude.Cancel; // some players have no OnApplicationQuit
+    }
+
+    System.Collections.IEnumerator Says(string[] messages)
+    {
+        yield return new WaitForSecondsRealtime(SayAfter);
+        foreach (string message in messages)
+        {
+            Send(message);
+            yield return new WaitUntil(() => !Busy);
+        }
     }
 
     void OnEnable() => PauseMenu.AddSection(DrawDeveloper, PauseMenu.LastOrder, PauseMenu.Submenu.Developer);
@@ -203,7 +217,18 @@ public class GameChat : MonoBehaviour
             return;
         }
         var telemetry = ChatTelemetry.Instance;
+        saveAsked = ClaudeRun.AsksToSave(message);
         claude.Send(message, ClaudeTerminal.Folder, RulesMcpServer.Url, telemetry.Begin(message, source), () => telemetry.Now);
+    }
+
+    /// <summary>
+    /// The sentence refusing a save, on the server's thread: only while a chat message is running, and it didn't ask.
+    /// A terminal's saves stay the player's, who answers Claude's own prompt there. Nothing else in the chat stops one (J-064).
+    /// </summary>
+    public static string SaveRefusal()
+    {
+        var chat = Instance;
+        return chat != null && chat.claude.Busy && !chat.saveAsked ? ClaudeRun.SaveNotAsked : null;
     }
 
     /// <summary>Fills the box, as typing does; voice comes this way too.</summary>

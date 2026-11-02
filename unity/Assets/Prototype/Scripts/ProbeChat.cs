@@ -69,6 +69,7 @@ public class ChatProbe : ProbeScenario
         yield return null;
         yield return null;
         Check("the_bar_shows_while_it_works", chat.Progress != null, chat.Progress?.what);
+        Check("a_save_nobody_asked_for_is_refused", GameChat.SaveRefusal() == ClaudeRun.SaveNotAsked);
         var switcher = grid.GetComponent<RuleSwitcher>();
         switcher.Toggle(RecordedMod);
         yield return Until(chat, () => ChatTelemetry.Instance.Current == null);
@@ -88,6 +89,11 @@ public class ChatProbe : ProbeScenario
         switcher.Toggle(RecordedMod);
         yield return Wait(1f);
         Check("a_revert_adds_a_later_line", File.ReadAllLines(file).Any(l => l.Contains("\"of\"") && l.Contains("\"reverted\":true")), File.ReadAllText(file));
+        Check("a_terminal_may_save_while_the_chat_is_idle", GameChat.SaveRefusal() == null);
+        chat.Send("save that as a mod");
+        yield return null;
+        Check("a_save_the_message_asked_for_goes_through", chat.Busy && GameChat.SaveRefusal() == null);
+        yield return Until(chat, () => ChatTelemetry.Instance.Current == null);
         ChatTelemetry.Folder = null;
     }
 

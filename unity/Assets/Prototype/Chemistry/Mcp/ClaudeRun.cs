@@ -126,6 +126,15 @@ namespace Chem.Mcp
             return lines.Length <= most ? notes : string.Join("\n", lines.Skip(lines.Length - most)) + "\n";
         }
 
+        /// <summary>What the chat's save says when the player's message didn't ask for one.</summary>
+        public const string SaveNotAsked = "Saving is the player's call, and their message didn't ask: the change is on without it. If they want it kept, tell them to say save.";
+
+        /// <summary>Whether a message from the chat asks for a save: nobody is there to answer a prompt, so the word has to be theirs.</summary>
+        public static bool AsksToSave(string message) =>
+            (message ?? "").ToLowerInvariant().Split(' ', ',', '.', '!', '?', ':', ';', '"', '\'', '\n').Any(SaveWords.Contains);
+
+        static readonly string[] SaveWords = { "save", "saved", "saves", "saving" };
+
         /// <summary>The arguments as one command line, each quoted where it has to be.</summary>
         public static string CommandLine(IEnumerable<string> arguments) =>
             string.Join(" ", arguments.Select(a => a.IndexOfAny(new[] { ' ', '(', ')' }) >= 0 ? $"\"{a}\"" : a));

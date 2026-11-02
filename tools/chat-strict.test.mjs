@@ -93,4 +93,33 @@ test("a weather answer says what the tool said, and rain has to be set and show"
   assert.match(says({ weatherIs: "rain" }, { world: on(), toolCalls: rain })[0], /sky/);
 });
 
+test("all of an element reads every colour from the world's own record", () => {
+  const ids = rules.spells.filter(s => s.element === "lightning").map(s => s.id);
+  const world = (spells, element = GREEN) => ({ ...on(), elementColours: { lightning: element }, spellColours: Object.fromEntries(spells.map(id => [id, GREEN])) });
+  const must = { spellsOf: { element: "lightning", hue: "green" } };
+  assert.deepEqual(says(must, { world: world(ids) }), []);
+  assert.match(says(must, { world: world(ids.slice(1)) })[0], /1 of 2 lightning spells/);
+  assert.match(says(must, { world: world(ids, BLUE) })[0], /lightning element/);
+  assert.equal(isHue([0.9, 0.15, 0.1], "red"), true);
+});
+
+test("what burns is judged on the field the prompt meant", () => {
+  const burning = (id, b) => ({ ...on(), burn: { [id]: b } });
+  const trees = { burns: { id: "tree", catch: 2, fuelMayFall: true } }, oil = { burns: { id: "oil", fuel: 0.5 } };
+  assert.deepEqual(says(trees, { world: burning("tree", { catch: 0.24, fuel: 40 }) }), []);
+  assert.deepEqual(says(trees, { world: burning("tree", { catch: 0.24, fuel: 20 }) }), []);
+  assert.match(says(trees, { world: burning("tree", { catch: 0.12, fuel: 20 }) })[0], /catches 1.00/);
+  assert.deepEqual(says(oil, { world: burning("oil", { catch: 0.95, fuel: 5 }) }), []);
+  assert.match(says(oil, { world: burning("oil", { catch: 1, fuel: 5 }) })[0], /catch went/);
+  assert.match(says(oil, { world: burning("oil", { catch: 0.95, fuel: 10 }) })[0], /fuel is 1.00/);
+});
+
+test("a save has to be asked for, and an asked one has to happen", () => {
+  const saved = [{ name: "save", error: false }], refused = [{ name: "save", error: true }];
+  assert.deepEqual(says({ unsaved: true }, { world: on(), toolCalls: refused }), []);
+  assert.match(says({ unsaved: true }, { world: on(), toolCalls: saved })[0], /nobody asked/);
+  assert.deepEqual(says({ saved: true }, { world: on(), toolCalls: saved }), []);
+  assert.match(says({ saved: true }, { world: on(), toolCalls: refused })[0], /never saved/);
+});
+
 test("a reverted mod's id is its title's slug", () => assert.equal(slug("Blue fire everywhere"), "blue-fire-everywhere"));

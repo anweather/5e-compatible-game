@@ -39,6 +39,10 @@ public abstract class ProbeScenario : ShowcaseScript
     public string OnlyKind { get; set; }
     /// <summary>chatprompts only: earlier runs' folders, comma-separated, to cast their spells from their records, spending nothing. Set before Start.</summary>
     public string Replay { get; set; }
+    /// <summary>chatprompts only: more arguments for claude, split on semicolons, for this run alone (a short system prompt, an effort). Set before Start.</summary>
+    public string Also { get; set; }
+    /// <summary>chatprompts only: the prompts file in docs/telemetry to send in place of the fixed set. Set before Start.</summary>
+    public string SetFile { get; set; }
 
     readonly List<float> frameMs = new();
     readonly List<string> consoleLines = new();

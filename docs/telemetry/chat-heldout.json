@@ -1,0 +1,54 @@
+{
+  "about": "Held-out prompts for chat-context-2026-11-02.md: the same kinds as chat-prompts.json, written after the fixes and never seen while writing them, to catch text that only serves the fixed set. Run with chatprompts --set chat-heldout.json and read with chat-strict --set. Keys as in chat-prompts.json.",
+  "prompts": [
+    {
+      "kind": "lightning",
+      "text": "make all lightning green",
+      "outcome": "applied",
+      "tools": ["set_look"],
+      "must": { "spellsOf": { "element": "lightning", "hue": "green" } },
+      "why": "All of an element, not fire."
+    },
+    {
+      "kind": "cold",
+      "text": "make every cold spell red",
+      "outcome": "applied",
+      "tools": ["set_look"],
+      "must": { "spellsOf": { "element": "cold", "hue": "red" } },
+      "why": "The same, asked by way of the spells."
+    },
+    {
+      "kind": "trees",
+      "text": "make trees burn twice as fast",
+      "outcome": "applied",
+      "tools": ["set_material", "tune", "set_terrain", "add_reaction", "set_reaction"],
+      "must": { "burns": { "id": "tree", "catch": 2, "fuelMayFall": true } },
+      "why": "The rule prompt on a material not in the fixed set."
+    },
+    {
+      "kind": "oil",
+      "text": "make oil burn half as long",
+      "outcome": "applied",
+      "tools": ["set_material", "tune", "set_terrain", "add_reaction", "set_reaction"],
+      "must": { "burns": { "id": "oil", "fuel": 0.5 } },
+      "why": "A rule whose right field is fuel, not catch: a fix that only pushes models to catch fails this."
+    },
+    {
+      "kind": "bigger",
+      "text": "make the fireball bigger",
+      "outcome": "applied",
+      "tools": ["set_spell"],
+      "must": { "unsaved": true },
+      "why": "Sets up the save, and must not save by itself."
+    },
+    {
+      "kind": "save",
+      "text": "save that as a mod",
+      "keep": true,
+      "outcome": "answered",
+      "tools": ["save"],
+      "must": { "saved": true },
+      "why": "A new process that knows no draft: the player's own way to save still has to work."
+    }
+  ]
+}

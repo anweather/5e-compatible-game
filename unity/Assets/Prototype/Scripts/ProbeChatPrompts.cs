@@ -18,7 +18,7 @@ using UnityEngine;
 // nobody is signed in it stops; it never signs in. Beside each record it keeps the raw stream, so the
 // record can be checked against something it didn't make, and a watch of what the frames show, so
 // the stamp can be too. With --shots it applies the recorded patches again and films them, for nothing.
-// --model and --context change how claude starts, for this run only: with neither, it starts as a player's does.
+// --model, --context and --also change how claude starts, for this run only: with none, it starts as a player's does.
 // --replay casts the spells earlier runs recorded, also for nothing: a cast is the one thing a record can't say.
 // Records and streams stay in the --out folder (docs/telemetry/chat-base-2026-11-02.md reads them).
 public class ChatPromptsProbe : RowHousesProbe
@@ -125,6 +125,7 @@ public class ChatPromptsProbe : RowHousesProbe
         var more = new List<string>();
         if (!string.IsNullOrEmpty(Model)) more.AddRange(new[] { "--model", Model });
         if (Context == BareContext) more.AddRange(BareArguments);
+        if (!string.IsNullOrEmpty(Also)) more.AddRange(Also.Split(';', StringSplitOptions.RemoveEmptyEntries));
         return more;
     }
 
@@ -135,11 +136,12 @@ public class ChatPromptsProbe : RowHousesProbe
         bool model = asked.Contains("--model"), bare = asked.Contains(BareArguments[0]) && asked.Contains(BareArguments[2]);
         Check("claude_gets_a_model_only_if_asked", model == !string.IsNullOrEmpty(Model) && (!model || asked.Contains(Model)), asked);
         Check("claude_gets_bare_only_if_asked", bare == (Context == BareContext), asked);
+        Check("claude_gets_the_system_prompt_only_if_asked", asked.Contains("--system-prompt") == (Also ?? "").Contains("--system-prompt"), asked);
     }
 
-    static List<JObject> Set()
+    List<JObject> Set()
     {
-        string file = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "docs", "telemetry", PromptsFile));
+        string file = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "docs", "telemetry", string.IsNullOrEmpty(SetFile) ? PromptsFile : SetFile));
         return ((JArray)JObject.Parse(File.ReadAllText(file))["prompts"]).Cast<JObject>().ToList();
     }
 
@@ -282,9 +284,22 @@ public class ChatPromptsProbe : RowHousesProbe
             ["embers"] = rules["covers"]?["embers"]?["look"]?["color"],
             ["grass"] = new JObject { ["catch"] = rules["terrain"]?["grass"]?["flammability"], ["fuel"] = rules["terrain"]?["grass"]?["fuel"] },
             ["spells"] = spells,
+            ["elementColours"] = new JObject(((JObject)rules["elementLooks"]).Properties().Select(p => new JProperty(p.Name, p.Value["look"]?["color"]))),
+            ["spellColours"] = new JObject(((JArray)rules["spells"]).OfType<JObject>().Select(s => new JProperty((string)s["id"], s["look"]?["color"]))),
+            ["burn"] = Burning(rules),
             ["weather"] = grid.World.Weather.Kind.ToString(),
             ["rows"] = new JArray(grid.World.Rules.ModBuildings.Select(r => r.Id)),
         };
+    }
+
+    // Each material's catch and fuel, as the engine has them, with what burns only.
+    static JObject Burning(JObject rules)
+    {
+        var burn = new JObject();
+        foreach (var table in new[] { "terrain", "covers" })
+            foreach (var material in ((JObject)rules[table]).Properties().Where(p => p.Value["fuel"] != null))
+                burn[material.Name] = new JObject { ["catch"] = material.Value["flammability"], ["fuel"] = material.Value["fuel"] };
+        return burn;
     }
 
     int StrengthNow() => grid.World.Weather.Kind == WeatherKind.Clear ? 0 : grid.World.Weather.Strength;

@@ -278,18 +278,16 @@ namespace Chem.Tests
             foreach (var (word, cap) in new[] { ("radius", "maxRadius"), ("length", "maxLength"), ("size", "maxSize"), ("power", "maxPower"), ("push", "maxPush"), ("raise", "maxRaise"), ("dig", "maxDig") })
             {
                 string said = $"{word} {budgets.Number("spells." + cap, -1)}";
-                StringAssert.Contains(said, RulesTools.Instructions);
                 StringAssert.Contains(said, Description("add_spell"));
                 StringAssert.Contains(said, Description("set_spell"));
             }
-            StringAssert.Contains($"{budgets.Number("spells.maxDice", -1)} dice", RulesTools.Instructions);
-            StringAssert.Contains($"at most {budgets.Number("mod.maxNewEntries", -1)} new entries", RulesTools.Instructions);
+            StringAssert.Contains($"{budgets.Number("spells.maxDice", -1)} dice", Description("add_spell"));
+            StringAssert.Contains($"at most {budgets.Number("mod.maxNewEntries", -1)} new entries", Description("add_spell"));
         }
 
         [Test]
         public void TheHueOnlyRuleIsSaidUpFront()
         {
-            StringAssert.Contains("only turn their art's hue", RulesTools.Instructions);
             StringAssert.Contains("only turn their art's hue", Description("set_look"));
             StringAssert.Contains("only turns its art's hue", Description("add_spell"));
         }
