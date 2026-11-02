@@ -78,6 +78,10 @@ namespace Chem
             Expect("critters", ListOf(p["critters"], JTokenType.Object), "a list of critters");
             Expect("sim", p["sim"] is JObject, "an object");
             Expect("combos", p["combos"] is JObject, "an object");
+            Expect(BuildingTables.Key, p[BuildingTables.Key] is JObject b && BuildingTables.Tables.Where(t => b[t] != null).All(t => b[t] is JObject rows && rows.PropertyValues().All(v => v is JObject)),
+                "an object of tables (openings, floors, roofs, details, styles), each of rows by id");
+            Expect("world", p["world"] is JObject w && w.Properties().All(x => x.Name == "buildings") && w["buildings"] is JObject bs && bs.PropertyValues().All(v => v is JObject),
+                "{\"buildings\": {\"<id>\": {a whole building row}}}: an id the world has edits that building, a new one adds one");
             return errors;
         }
 

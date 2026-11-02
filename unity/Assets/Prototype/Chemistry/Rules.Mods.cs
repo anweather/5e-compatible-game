@@ -48,7 +48,7 @@ namespace Chem
         /// nor are "look" groups (nor the element entries, which hold only a look): they are the view's
         /// only, so a look can't reach the checksum.
         /// </summary>
-        public string Fingerprint => fingerprint ??= Fnv1a.Hash(Canonical(doc));
+        public string Fingerprint => fingerprint ??= Fnv1a.Hash(CanonicalRules());
 
         /// <summary>The effective rules as JSON, in the shape of the sandbox's Rules object (for tools and tests).</summary>
         public string ToJson() => doc.ToString(Formatting.Indented);
@@ -83,6 +83,7 @@ namespace Chem
             Upsert((JArray)r["critters"], p["critters"], false);
             if (p["sim"] is JObject sim) MergeDeep((JObject)r["sim"], sim);
             if (p["combos"] is JObject combos) MergeDeep((JObject)r["combos"], combos);
+            ApplyBuildings(r, p);
         }
 
         /// <summary>
@@ -146,11 +147,20 @@ namespace Chem
 
         // ---------- fingerprint ----------
 
-        static string Canonical(JToken t)
+        // The document, with buildings cut to what decides cells: their heights, finishes and roofs are the view's.
+        string CanonicalRules()
         {
+            var shared = new JObject(doc.Properties().Select(p => new JProperty(p.Name, SharedPart(p))));
             var sb = new StringBuilder();
-            WriteCanonical(sb, t);
+            WriteCanonical(sb, shared);
             return sb.ToString();
+        }
+
+        static JToken SharedPart(JProperty p)
+        {
+            if (p.Name == BuildingTables.Key && p.Value is JObject tables) return BuildingRow.SharedTables(tables);
+            if (p.Name != WorldRowsKey || !(p.Value is JObject rows)) return p.Value;
+            return new JObject(rows.Properties().Select(r => new JProperty(r.Name, BuildingRow.Shared((JObject)r.Value))));
         }
 
         // Length-prefixed strings and numbers as IEEE bits: unambiguous, and the same on Mono and .NET.

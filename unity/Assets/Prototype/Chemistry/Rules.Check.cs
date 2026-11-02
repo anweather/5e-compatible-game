@@ -21,6 +21,7 @@ namespace Chem
             check.Groups();
             check.Combos();
             check.Numbers();
+            check.Buildings();
             return check.Errors;
         }
 

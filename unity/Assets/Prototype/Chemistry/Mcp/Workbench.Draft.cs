@@ -213,6 +213,16 @@ namespace Chem.Mcp
                 case "sim":
                     RemovePath((JObject)draft.Patch["sim"], id);
                     break;
+                case BuildingsTable:
+                    ((JObject)draft.Patch["world"]["buildings"]).Remove(id);
+                    break;
+                case "openings":
+                case "floors":
+                case "roofs":
+                case "details":
+                case "styles":
+                    ((JObject)draft.Patch[BuildingTables.Key][table]).Remove(id);
+                    break;
                 case "elements":
                     if (draft.Patch["elements"] is JObject named) named.Remove(id);
                     else foreach (var e in ((JArray)draft.Patch["elements"]).Where(e => Str(e) == id).ToList()) e.Remove();

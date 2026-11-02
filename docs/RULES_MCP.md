@@ -46,6 +46,14 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   asking through an `IHere` (`Workbench.Here`); a headless run has a stand-in, the host at the
   middle of the valley's grid, or at `--here x,y` given to `core/Rules.Mcp`.
 
+- `find(kind?, near?, within?, side?, edge?)`: what stands in the world, nearest first: buildings (with the id
+  a mod edits one by: `cabin#2`, `Hollowmere#4`) and things. `near` is a place, a building, `"me"` or `[x, y]`.
+- `find_site(width, depth, near?, side?, edge?, within?)`: cells a building of that size can stand on: dry open
+  ground, clear of things and buildings, out of the villages and courses. `near "sea"`, `edge "shore"` is the
+  beach; `near "lake"`, `side "north"` the lake's north shore.
+- With no game attached these read a stand-in of the valley (`StandInValley`: the land, water and buildings from
+  `world/`, no trees and no yard), and say so.
+
 **Draft** (each returns a draft id and the patch so far; drafts compose)
 - `add_material`, `set_material(id, field, value)`
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
@@ -56,6 +64,9 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   player casts (see "Looks")
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare
 - `remove(table, id)`, only for things the draft itself added
+- `add_building(at, width, depth, style?, front?, id?, fill?)`, or a whole `row`; `add_wing(building, width?, depth?, side?)`;
+  `set_building(id, field, value)`; `add_building_part(table, id, row)` for a style, opening, floor, roof shape or detail
+  (see "Buildings")
 
 **Check**: `validate(draft)` returns every problem, one sentence each:
 1. Shape: the schema of each table.
@@ -243,6 +254,52 @@ nothing is drawn from; what can only turn its art, so a pale or grey colour or o
 does nothing (white fire, black smoke, a white Fireball); a flat ground with no layer of its own; the
 land's own trees. `set_look` still takes the colour and says so in its reply, so Claude can tell the
 player. Ice, falling snow and the houses aren't looks at all.
+
+## Buildings: rows a mod can edit or add
+
+`docs/design/builders.md` section 4, option (a), outside only. A building is a row: join points in half cells
+from its `at`, wall segments between them with openings, and a `fill`, hollow unless it says solid.
+`rules/buildings.json` holds the parts tables (`openings`, `floors`, `roofs`, `details`, `styles`), which a mod's
+`buildings` section adds rows to. Its `world` section carries buildings, each row whole:
+
+```json
+{ "world": { "buildings": { "cabin#2": { "...": "the whole row, with its new walls" },
+                            "beach-house#1": { "at": [501, 480], "style": "plain", "joins": {}, "walls": {} } } } }
+```
+
+An id the world has edits that building; a new id adds one. `BuildingRaster.Cells` (`Buildings.cs`) turns a row into
+cells, a pure integer function; `Wing.cs` adds a wing; `World.Buildings.cs` lays them.
+
+Through the room, as any mod (`World.Room.cs`): every peer validates it, then `World.SiteProblem` refuses cells a
+building newly takes that are off the world, on another building or a thing, wet, or not open ground. At the switch
+tick `ApplyRules` lays what changed in the rows, fresh, in the cell hash. A revert composes the rest and lays
+the difference, putting back what stood under; a late joiner's `OpenRoom` and a save's room go the same way, and
+the save keeps what stood under. The dragon's starting state follows, so it puts a house back and doesn't count it
+as damage. Raiders on a new cell are pushed to the nearest free one, in id order, and logged. Players aren't core
+state, so the view pushes them (below). `budgets.json` `buildings` has the limits: 24 × 24 cells, 64 joins,
+walls and openings, 32 parts, 3 storeys, 4 buildings a mod.
+
+Only what decides cells is in the fingerprint (`BuildingRow.Shared`): at, joins, walls, openings, fill, floor kind, wall
+material. Heights, finishes, roofs, details and everything under `look` are the view's, so a repaint moves no hash.
+
+The buildings the world was made with are rows too (`World.BaseBuildings`): `world/buildings.json` has the cabins,
+their baked cells in `built`, and a village's come from its recipe laid again over the world's starting cells, since a
+plot that stands is all wall and a refused one isn't (`WorldBuildings.LaidPlan`). Village rows are `fill: solid`
+with `drawn-door`s, so their cells are what `VillagePlan.Cells` lays, and goldens hold. Mods can't add things to the
+world yet (G5's other half).
+
+**What the view must read** (the PC's part; nothing here draws yet):
+- `World.BuildingsNow`, then each `BuildingRow.Json`: `joins`, `walls` (with `material`, `storey`, `openings`), `wall`
+  (`material`, `height`, `thickness`, `finish`), `floor`, `roofs`, `parts`, `storeys`, `seed`, `front`, `kind`, `built`,
+  `site`; `World.Rules.Buildings.Row(table, id)["look"]` for an opening's width, height and sill, a floor's height.
+- `World.BuildingsChanged` at each switch: `Ids` to redraw (`World.BuildingRowOf(id)`, null once gone), and
+  `Covers(x, y)` with `World.NearestFree(x, y)` to move a local player off a new wall, with the view's own log line.
+  Cells already redraw through `ChunkFreshened`, as the dragon's do.
+- Set `Workbench.WorldDesk` to an `IWorldDesk` (`GameRoomDesk`, as `apply` crosses to the main thread), or `find`,
+  `find_site` and `validate` in the game read the stand-in and leave the site to the tick.
+- `ValleyShape.Cabins` reading `world/buildings.json` `site`, and an Editor test that
+  `WorldBuildings.LaidPlan` over the baked map equals `ValleyShape.Villages`' digests, and that each `built` matches the bake.
+- The `door` terrain, whose family is `wall`, and a mod's wall terrains drawn from their look.
 
 ## Change modes (chosen when a room is made)
 

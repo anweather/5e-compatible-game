@@ -43,6 +43,7 @@
     "ice-wall":  { "name": "Ice wall", "tags": ["blocking"], "thaw": { "into": "dirt", "water": 12 }, "look": { "family": "ground", "color": [0.7, 0.85, 0.95] } },
     "chute":     { "name": "Ice chute", "tags": ["low"], "elevation": -1, "dig": { "hardness": 2 }, "freeze": {}, "look": { "family": "ground", "color": [0.5, 0.5, 0.52] } },
     "updraft":   { "name": "Updraft vent", "tags": ["ground"], "dig": { "hardness": 0 }, "lift": { "by": 6 }, "look": { "family": "ground", "color": [0.85, 0.88, 0.92] } },
+    "door":      { "name": "Door", "tags": ["blocking"], "burn": { "catch": 0.2, "fuel": 30, "leaves": "rubble", "look": "wood" }, "break": { "leaves": "rubble" }, "look": { "family": "wall", "form": "built", "color": [0.36, 0.25, 0.16] } },
     "pane":      { "name": "Window pane", "tags": ["blocking", "seeThrough"], "shatter": { "leaves": "rubble", "cracks": true }, "look": { "family": "ground", "color": [0.66, 0.82, 0.88] } },
     "timber":    { "name": "Timber", "tags": [], "burn": { "catch": 0.15, "fuel": 140, "look": "wood" }, "break": {}, "soak": { "dampens": 0.5 }, "look": { "family": "ground", "color": [0.58, 0.4, 0.22] } },
     "flesh":     { "name": "Flesh", "tags": [], "burn": { "status": 9 }, "scald": {}, "freeze": { "status": 30 }, "soak": { "status": 60 }, "conduct": { "chainsWet": true }, "look": { "family": "ground", "color": [0.6, 0.32, 0.3] } },

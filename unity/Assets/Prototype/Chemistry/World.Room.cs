@@ -44,7 +44,7 @@ namespace Chem
             Room = new RoomState { Mode = mode, Host = host ?? "" };
             if (mods != null) Room.Mods.AddRange(mods);
             RoomRules = next;
-            if (Rules.Fingerprint != next.Fingerprint) ApplyRules(next.Effective);
+            if (Rules.Fingerprint != next.Fingerprint || next.Effective.ModBuildings.Count > 0) ApplyRules(next.Effective);
         }
 
         /// <summary>
@@ -78,7 +78,8 @@ namespace Chem
                 ?? (c.Mod.Length == 0 ? "the mod has no id" : null)
                 ?? (Room.Mods.Any(m => m.Id == c.Mod) ? $"{title} is already on; revert it first" : null)
                 ?? Checks(title, c.Json)
-                ?? Compose(Room.Mods.Select(m => new ActiveMod(m.Id, m.Json)).Append(new ActiveMod(c.Mod, c.Json)), $"{title} doesn't fit the mods on", out next);
+                ?? Compose(Room.Mods.Select(m => new ActiveMod(m.Id, m.Json)).Append(new ActiveMod(c.Mod, c.Json)), $"{title} doesn't fit the mods on", out next)
+                ?? SiteProblem(next.Effective, title);
             if (why != null) return Refused(c, why);
             Room.Mods.Add(new RoomMod { Id = c.Mod, Title = title, By = c.Peer, Tick = Tick, Json = c.Json });
             PutInForce(next);
@@ -93,7 +94,8 @@ namespace Chem
             RuleSet next = null;
             string why = RoomPolicy.Refusal(Room.Mode, Room.Host, c.Peer)
                 ?? (at < 0 ? $"{named} isn't on in this room" : null)
-                ?? Compose(Room.Mods.Where((m, i) => i != at).Select(m => new ActiveMod(m.Id, m.Json)), $"without {title} the other mods don't fit", out next);
+                ?? Compose(Room.Mods.Where((m, i) => i != at).Select(m => new ActiveMod(m.Id, m.Json)), $"without {title} the other mods don't fit", out next)
+                ?? OverlapProblem(next.Effective, $"without {title}");
             if (why != null) return Refused(c, why);
             Room.Mods.RemoveAt(at);
             PutInForce(next);
@@ -188,6 +190,7 @@ namespace Chem
                 ["base"] = RoomRules.Base.Fingerprint,
                 ["mods"] = new JArray(Room.Mods.Select(m => new JArray(m.Id, m.Title, m.By, m.Tick, m.Json))),
             };
+            SaveBuildings((JObject)save["room"]);
         }
 
         /// <summary>A saved room's rules: the base with its mods composed again, in order.</summary>
@@ -212,6 +215,7 @@ namespace Chem
             Room = new RoomState { Mode = (ChangeMode)(int)room["mode"], Host = (string)room["host"] ?? "" };
             foreach (var m in room["mods"] ?? new JArray())
                 Room.Mods.Add(new RoomMod { Id = (string)m[0], Title = (string)m[1], By = (string)m[2], Tick = (int)m[3], Json = (string)m[4] });
+            LoadBuildings(room);
         }
     }
 }
