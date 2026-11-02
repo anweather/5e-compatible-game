@@ -21,7 +21,7 @@ using UnityEngine;
 public class WizardOutfit : MonoBehaviour
 {
     const string SeedKey = "wizard.look";
-    const int SectionOrder = 480; // the Esc menu: before Controls
+    const int SectionOrder = 480; // the Game sub menu: before Mods
     const int Sides = 12;
     // The collar up the neck, in the shade under the face.
     const float NeckShade = 0.3f;
@@ -90,7 +90,7 @@ public class WizardOutfit : MonoBehaviour
         }
     }
 
-    void OnEnable() => PauseMenu.AddSection(DrawSection, SectionOrder);
+    void OnEnable() => PauseMenu.AddSection(DrawSection, SectionOrder, PauseMenu.Submenu.Game);
 
     void OnDisable() => PauseMenu.RemoveSection(DrawSection);
 

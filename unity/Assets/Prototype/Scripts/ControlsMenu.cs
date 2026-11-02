@@ -62,7 +62,7 @@ public class ControlsMenu : MonoBehaviour
     void OnEnable()
     {
         page ??= new PauseMenu.Page { Title = "Controls", Width = 640, Draw = DrawPage };
-        PauseMenu.AddSection(DrawEntry, SectionOrder);
+        PauseMenu.AddSection(DrawEntry, SectionOrder, PauseMenu.Submenu.Settings);
         PauseMenu.AddPage(ControlsPage, page);
     }
 

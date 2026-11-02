@@ -41,6 +41,16 @@ Each entry has:
 
 ## Decided
 
+### J-063: Stucco fire, the Esc menu's leftovers, and which VMs stay
+
+- **Asked:** 2026-11-02, by the PM.
+- **Also comes up when:** building materials, menu pages, VM upkeep.
+- **Answer:** Andrew: "Stucco burns, but slower than wood." Esc menu: Same network Host / Join, Frame-rate log and Open log folder move to a
+  Developer page; the Headwear button goes for now and can come back on a player page. Remove w2 and w4; keep u2 and w3 for the Max account.
+  The deer in #47: "Last one I saw looked good", so it stays.
+- **Why:** Andrew's calls.
+- **Revisited:** 0.
+
 ### J-062: The primitives and builders designs' questions
 
 - **Asked:** 2026-11-01, by u1's designs (`docs/design/primitives.md`, `builders.md`).

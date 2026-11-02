@@ -1,0 +1,3 @@
+Follow-up from the PM. Andrew, 2026-11-02: "Stucco burns, but slower than wood." (J-063)
+
+There's no stucco terrain in `rules/` yet: only the test fixture has one. Add a general `stucco-wall` terrain row through the rules MCP route (D13), with a `burn` that catches and spreads clearly slower than the log wall's, and a roof-safe default look (the finish stays in the building row). Pin the difference with a test: the same fire on log and stucco, stucco takes clearly longer to go. New golden only if it needs one. Fingerprint moves, as a new row does. Note it in `docs/RULES_MCP.md`. Same report as the brief.
