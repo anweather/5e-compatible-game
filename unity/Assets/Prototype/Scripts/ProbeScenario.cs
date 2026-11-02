@@ -43,6 +43,8 @@ public abstract class ProbeScenario : ShowcaseScript
     public string Also { get; set; }
     /// <summary>chatprompts only: the prompts file in docs/telemetry to send in place of the fixed set. Set before Start.</summary>
     public string SetFile { get; set; }
+    /// <summary>chatprompts only: "off" leaves notes.md out of the message; empty, as the game does. Set before Start.</summary>
+    public string Notes { get; set; }
 
     /// <summary>chatprompts only: api answers with the game's own loop in place of Claude Code.</summary>
     public string Harness { get; set; }

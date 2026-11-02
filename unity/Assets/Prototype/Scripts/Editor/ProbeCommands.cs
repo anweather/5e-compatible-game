@@ -63,6 +63,7 @@ public static class ProbeCommands
         public string Replay { get; set; }
         public string Also { get; set; }
         public string Set { get; set; }
+        public string Notes { get; set; }
         public string Harness { get; set; }
         public string Budget { get; set; }
         public string Ttl { get; set; }
@@ -102,6 +103,7 @@ public static class ProbeCommands
         [CliArg("replay", "chatprompts only: earlier runs' folders, comma-separated: casts each recorded spell, spending nothing")] string replay = "",
         [CliArg("also", "chatprompts only: more arguments for claude, split on semicolons, for this run alone")] string also = "",
         [CliArg("set", "chatprompts only: the prompts file in docs/telemetry in place of the fixed set")] string set = "",
+        [CliArg("notes", "chatprompts only: off leaves notes.md out of the message, for this run alone; empty as the game does")] string notes = "",
         [CliArg("harness", "chatprompts only: api uses the game's own loop in place of Claude Code; with --real-claude it spends real money")] string harness = "",
         [CliArg("budget", "chatprompts only, with harness api: the file holding the running total; no prompt starts past its limit")] string budget = "",
         [CliArg("ttl", "chatprompts only, with harness api: how long the prefix stays cached, 1h or 5m")] string ttl = "")
@@ -130,6 +132,7 @@ public static class ProbeCommands
             Replay = replay,
             Also = also,
             Set = set,
+            Notes = notes,
             Harness = harness,
             Budget = FullPath(budget),
             Ttl = ttl,
@@ -299,6 +302,7 @@ public static class ProbeCommands
         scenario.Replay = active.Replay;
         scenario.Also = active.Also;
         scenario.SetFile = active.Set;
+        scenario.Notes = active.Notes;
         scenario.Harness = active.Harness;
         scenario.BudgetFile = active.Budget;
         scenario.PrefixTtl = active.Ttl;
