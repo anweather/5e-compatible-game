@@ -1,4 +1,4 @@
-# State (2026-10-31)
+# State (2026-11-02)
 
 The one page a new PM session reads first. Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
@@ -10,7 +10,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 | **PM** (this role; the `coordination` worktree, pushes to dev) | Max | Plans, briefs, merges (`tools/workers/land.sh`), GitHub issues, releases, reports. Writes no game code unless asked |
 | **DesktopUnity** (the PC, interactive) | Max | The only Windows GPU: host passes (looks, feel, sound), player builds, release candidates. Long passes run as fresh sub-agents per part |
 | **unity-game-macbook** (Remote Control) | Max | Compute with Unity and a GPU (EditMode, probes, profiling); the headless Windows build as a fallback. Its route doesn't confirm reading; check its branch if quiet |
-| **Windows VMs** w1, w2 (Pro), w3, w4 (Max) | | Rules plus Unity batch compile. 4 GB start, grow to 8 |
+| **Windows VMs** w1 (Pro), w3 (Max); w2 and w4 are rescued and off, for Andrew to remove | | Rules plus Unity batch compile. Idle since Oct 30 |
 | **Linux VMs** u1 (Pro), u2 (Max) | | Core and sandbox only, about 10x cheaper for rules work. 1 GB start |
 
 - **Workers take briefs straight from the mailbox:** `start.cmd <vm> <brief.md>` boots and briefs;
@@ -38,7 +38,9 @@ The one page a new PM session reads first. Keep it short: history goes in
 - Screenshot budget (`.claude/skills/screenshot-budget`): sessions check their own shots at 480 px;
   the PM opens an 800 px final only for something it vouches for, or sends it to Andrew unopened.
 - Ask Andrew one question at a time. Never type a sign-in, password or token for him.
-- Caves are deferred permanently. Restart the PM session after every release, with a handoff.
+- Caves are deferred permanently. Restart the PM after each big batch, with a handoff; clear DesktopUnity and the Mac the same way.
+- The world is built from primitives as data (J-055, J-057, J-058): examples are tests of the tools, never features.
+- Don't use the PC while Andrew's on it unless he says it's free. Never run a VM beside a perf run.
 
 ## Releases
 
@@ -54,26 +56,18 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Landed:** `live-rules-unity` on dev at 3d4975f ( brief `docs/handoffs/briefs/live-rules-unity.md`): the room
-  menu, RoomIntent, the M panel through the room, the game serving the rules MCP on 127.0.0.1:47777 with an off
-  switch (J-047), Claude writing its own mods (J-048). Player-build check green. Now: merge dev, the play
-  log's mods column from the room's titles, rerun room probes and online; then the PM lands it.
-  Andrew's test build: `unity\Builds\live-rules-test\SpellChemistryValley.exe`, plus
-  `claude mcp add --scope user --transport http spell-valley http://127.0.0.1:47777/mcp`.
-- **unity-game-macbook:** `flaky-probes`: #42 (dragon), then #41 (sleet); #43 castfeel leftovers after
-  (`hit_stop_is_short`, the varying check count).
+- **u1** (Pro): `mods-add-things`, field-level patches and the squirrel test (`docs/handoffs/briefs/mods-add-things.md`). Resumed at 06:01 UTC on Nov 2.
+- **DesktopUnity, u2 and the Mac:** stopped. Mac's handoff: `docs/handoffs/mac-2026-11-01.md`; PC's: `docs/handoffs/desktopunity-2026-11-01.md`.
+- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest/` from 1c97274. Don't let anyone clean that folder. It lacks only stucco.
 
 ## Next, in order
 
-1. A fireball scenario for the MCP's simulate (it starts with a Fire Bolt).
-2. Perf: Andrew sees a lasting frame-rate drop in snow and rain (#29, backlog); storm and fog first
-   (#27 uncapped tick debt, #31). The play log now gives Andrew's own numbers.
-3. #40 (a yard's first pass leaves 37 materials white), procedural-looks leftovers (CellPaint first,
-   `docs/handoffs/procedural-looks-scan.md`), the Gauntlet's view (`docs/handoffs/obstacle-course-brief.md`),
-   fog patches (#34).
-4. Dragon shelter questions for Andrew, with media first: water never shelters; a raised Wall of Stone is
-   wiped before the breath arrives.
-- Backlog and priority: `docs/BACKLOG.md` ("Priority (groomed 2026-10-30 with Andrew)").
+1. Unity side of u1's squirrel work (DesktopUnity), then the squirrel test in a real player.
+2. `creature-data` on the Mac after Andrew clears it (`docs/handoffs/briefs/creature-data.md`), then Punchy's people, variety and water as rows.
+3. Temporary materials and products as data (`docs/design/primitives.md`).
+4. Gaits by rule (`docs/design/builders.md`).
+5. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), confirm the terms on running Claude Code (J-060), version bump.
+- Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
 
 ## Andrew's board
 
@@ -83,13 +77,14 @@ He reads it on his phone instead of scrolling the chat. Update it (Artifact `rea
 
 ## Open questions for Andrew
 
-- The cast sounds in the game (clip on the board): never listened to; shipped in 0.1.10 as picked.
-- The live-rules clip ("Claude writes the rule"): his verdict, and his own test of the MCP.
+- The real test of the PlayTest player: real Claude answering in chat, words by voice, a house built by asking, and how the radial, spell list and Esc menu feel at 4K.
+- Cost: use a cheaper model for mechanical PM work? (`docs/handoffs/pm-2026-11-02.md`)
+- Cast sounds and the new whoosh: never listened to.
 
 ## Telemetry
 
-- Every worker commit carries cost lines; `docs/telemetry/` holds the reports (latest 2026-10-31:
-  building 36.1M ite, the PM session 26.5M, host passes 69% of building cost).
+- Every worker commit carries cost lines; `docs/telemetry/` holds the reports (latest 2026-11-02:
+  coordination 55% of spend, cache reads 66% of feature cost).
 - Skills: `agent-cost-telemetry`, `agent-cost-report` (in `~/.claude/skills`), `screenshot-budget`.
 - Known gaps: the Mac has no commit hook; merge lines double-count the host's work; Pro transcripts
   aren't on disk.
