@@ -68,11 +68,12 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## Next, in order
 
 1. The lists above, then a new test player from dev for Andrew: #57 in a real window, voice words, the first real prompt, the creatures.
-2. Code base cleanup (Andrew, 2026-11-02), once the Mac's and DesktopUnity's work has landed and before new features: review the structure for deep modules that really hide complexity. A read-only review first, a ranked list for Andrew, then branches. The 33 S3776 warnings are one input.
-3. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
-4. Gaits by rule (`docs/design/builders.md`).
-5. Design things on water (#60); size patches for Claude (#61).
-6. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), version bump. J-060 comes back before anything commercial.
+2. Small jobs from J-065: cut Same network Host / Join, Frame-rate log and Open log folder from the Esc menu; #53, release builds drop spoken words and keep timing.
+3. Code base cleanup (Andrew, 2026-11-02), once the Mac's and DesktopUnity's work has landed and before new features: review the structure for deep modules that really hide complexity. A read-only review first, a ranked list for Andrew, then branches. The 33 S3776 warnings are one input.
+4. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
+5. Gaits by rule (`docs/design/builders.md`).
+6. Design things on water (#60); size patches for Claude (#61).
+7. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), version bump. J-060 comes back before anything commercial.
 - Left out of the port, for later: flight and biomes for spawn rows, `glides`, a shore rule for reeds, mod budgets on rows, water animals as shapeshift targets. Dev's main thread may have risen about 1 ms on the Mac (unexplained; not fauna).
 - Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`, `chat-telemetry.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
 
@@ -85,7 +86,7 @@ He reads it on his phone instead of scrolling the chat. Update it with `tools/wo
 ## Open questions for Andrew
 
 - The real test of the PlayTest player: real Claude answering in chat, words by voice, a house built by asking, and how the radial, spell list and Esc menu feel at 4K.
-- Cast sounds and the new whoosh: never listened to.
+- The sound pass and the cast sounds: he listens on the board when he has time (J-065).
 
 ## Telemetry
 
