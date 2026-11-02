@@ -63,6 +63,14 @@ and at every rule switch, builds a `CreatureBody` per species (plain arrays; seg
 capsule, no meshes) and swaps it into that species' living animals, keeping their places and seeds. A
 live change costs one build per changed species (tens of microseconds) and the next frame's instances.
 
+**Landed as (`creature-data`, 2026-11-02).** There are 58 species, not 59 (the count took in the `Limbs`
+folder), and 80 limbs. Until gaits go by rule (§3) rows keep what the art still needs: a part's seven key
+`poses`, and a slot's `phase` and `mirrorPhase`. `habitats` and `gaits` come with the work that reads them.
+The export writes colours as `[r, g, b]`, as hex would round them; the reader takes hex too. Only what
+spawns counts as a hunter when a species asks if it's hunted, as the old table had it. The assets stay in the
+repo, read by nothing but the export and its proof, until `punchy-people` and the rest have used the same
+export; the old builder (`AssetBody`) goes with them.
+
 ## 3. Gaits by rule
 
 Today each limb blends three walk and three run keys by a hand-set phase, then IK puts the foot on the

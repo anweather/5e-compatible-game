@@ -626,6 +626,10 @@ namespace Chem
 
         public SpellDef Spell(string id) => spells.FirstOrDefault(s => s.Id == id);
 
+        /// <summary>rules/fauna.json and rules/parts.json with the mods' rows. The view's only.</summary>
+        public FaunaTables Fauna => fauna ??= new FaunaTables(doc);
+        FaunaTables fauna;
+
         /// <summary>
         /// An element's look (elements.json "look": the colour of what it makes in the world, whichever
         /// spell or reaction made it), or null when it has none. The view's only.
@@ -695,6 +699,8 @@ namespace Chem
                 ["combos"] = get("combos.json", false) as JObject ?? new JObject(),
                 [BuildingTables.Key] = get("buildings.json", false) as JObject ?? new JObject(),
                 [ElementLooksKey] = get("elements.json", false) as JObject ?? new JObject(),
+                [FaunaTables.SpeciesKey] = get("fauna.json", false) as JObject ?? new JObject(),
+                [FaunaTables.PartsKey] = get("parts.json", false) as JObject ?? new JObject(),
             };
         }
 

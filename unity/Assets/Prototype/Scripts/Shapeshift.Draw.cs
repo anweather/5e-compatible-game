@@ -70,6 +70,8 @@ public partial class Shapeshift : ICreatureGround
         var b = Fauna != null ? Fauna.Body(Species) : null;
         if (b == null) return;
         Follow(b, Mathf.Max(Time.deltaTime, 1e-4f));
+        // A rule switch may have swapped in a body with more segments.
+        if (instances.Length < b.Segments.Length) instances = new SegmentInstance[Mathf.NextPowerOfTwo(b.Segments.Length)];
         animator.Evaluate(b, state, Coat, this, instances, 0);
         CreatureDrawer.HideAtLens(instances, 0, b.Segments.Length, Camera.main);
         drawer.Draw(instances, b.Segments.Length, transform.position);

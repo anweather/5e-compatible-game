@@ -1,0 +1,748 @@
+{
+  "deer": {
+    "name": "Deer", "size": [0.9, 1.1],
+    "body": { "length": 1.15, "radius": 0.2, "taper": 0.95, "flatten": 1.15 },
+    "coat": { "base": [0.55, 0.37, 0.22], "accent": [0.92, 0.87, 0.8] },
+    "parts": {
+      "hind": { "part": "hoof-hindleg", "at": [0.55, -0.35, -0.75], "dir": [90, 0, 0], "mirror": true },
+      "fore": { "part": "hoof-foreleg", "at": [0.55, -0.45, 0.72], "dir": [90, 0, 0], "mirror": true, "phase": 0.25 },
+      "neck": { "part": "deer-neck", "at": [0, 0.5, 0.85], "dir": [-45, 0, 0], "scale": 0.85 },
+      "head": { "part": "deer-head", "on": "neck", "dir": [55, 0, 0] },
+      "ears": { "part": "deer-ear", "on": "head", "at": [0.045, 0.05, -0.2], "dir": [-70, 40, 0], "mirror": true },
+      "eyes": { "part": "eye", "on": "head", "at": [0.05, 0.025, -0.13], "mirror": true },
+      "tail": { "part": "stub-tail", "at": [0, 0.55, -1], "dir": [-40, 180, 0] }
+    },
+    "move": { "walk": 1.3, "run": 9, "turn": 110, "bob": [0.015, 0.06], "bobs": [2, 1], "rock": 6 },
+    "behave": { "wander": 30, "idle": [3, 10], "flee": 18, "group": [2, 5], "active": "day", "graze": 0.6, "thirst": 0.4, "play": 0.15, "laze": 0.3, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 0.7 }
+  },
+  "rabbit": {
+    "name": "Rabbit", "size": [0.9, 1.1],
+    "body": { "length": 0.2, "radius": 0.07, "taper": 1.3, "flatten": 1.15 },
+    "coat": { "base": [0.5, 0.42, 0.33], "accent": [0.95, 0.94, 0.92] },
+    "parts": {
+      "hind": { "part": "hop-hindleg", "at": [0.6, -0.5, -0.5], "dir": [90, 0, 0], "mirror": true, "mirrorPhase": 0 },
+      "fore": { "part": "paw-foreleg", "at": [0.5, -0.5, 0.6], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "mirrorPhase": 0.05, "scale": 0.5 },
+      "head": { "part": "rabbit-head", "at": [0, 0.6, 0.9], "dir": [10, 0, 0] },
+      "ears": { "part": "long-ear", "on": "head", "at": [0.02, 0.04, -0.07], "dir": [-75, 10, 0], "mirror": true },
+      "eyes": { "part": "eye", "on": "head", "at": [0.035, 0.02, -0.045], "mirror": true },
+      "tail": { "part": "puff-tail", "at": [0, 0.45, -1] }
+    },
+    "move": { "walk": 0.8, "run": 6, "turn": 220, "bob": [0.025, 0.08], "bobs": [1, 1], "rock": 15 },
+    "behave": { "wander": 12, "idle": [1, 5], "flee": 8, "group": [1, 3], "active": "always", "graze": 0.6, "thirst": 0.2, "play": 0.3, "laze": 0.2, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 1.8 }
+  },
+  "squirrel": {
+    "name": "Squirrel", "size": [0.9, 1.1],
+    "body": { "length": 0.18, "radius": 0.05, "taper": 1.15, "flatten": 1.1 },
+    "coats": [{ "name": "Red", "base": [0.6, 0.33, 0.17], "accent": [0.92, 0.86, 0.78], "weight": 2 }, { "name": "Grey", "base": [0.45, 0.43, 0.41], "accent": [0.9, 0.89, 0.86] }],
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.6, -0.4, -0.5], "dir": [90, 0, 0], "mirror": true, "mirrorPhase": 0, "scale": 0.55 },
+      "fore": { "part": "paw-foreleg", "at": [0.5, -0.5, 0.6], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "mirrorPhase": 0.05, "scale": 0.42 },
+      "head": { "part": "rabbit-head", "at": [0, 0.5, 0.95], "dir": [5, 0, 0], "scale": 0.75 },
+      "ears": { "part": "small-ear", "on": "head", "at": [0.018, 0.03, -0.05], "dir": [-85, 10, 0], "mirror": true, "scale": 0.6 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.026, 0.015, -0.035], "mirror": true, "scale": 0.75 },
+      "tail": { "part": "curl-tail", "at": [0, 0.4, -1], "dir": [0, 180, 0] }
+    },
+    "move": { "walk": 0.6, "run": 5, "turn": 260, "bob": [0.02, 0.05], "bobs": [1, 1], "rock": 12 },
+    "behave": { "wander": 10, "idle": [1, 4], "flee": 6, "group": [1, 1], "active": "day", "graze": 0.4, "thirst": 0.2, "play": 0.5, "laze": 0.2, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 1.5 }
+  },
+  "red-fox": {
+    "name": "Red fox", "size": [0.9, 1.1],
+    "body": { "length": 0.42, "radius": 0.085, "taper": 0.9, "flatten": 1.05 },
+    "coat": { "base": [0.75, 0.33, 0.1], "accent": [0.96, 0.93, 0.88] },
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.5, -0.3, -0.7], "dir": [90, 0, 0], "mirror": true, "phase": 0.5 },
+      "fore": { "part": "paw-foreleg", "at": [0.55, -0.4, 0.7], "dir": [90, 0, 0], "mirror": true },
+      "neck": { "part": "short-neck", "at": [0, 0.4, 0.95], "dir": [-35, 0, 0] },
+      "head": { "part": "fox-head", "on": "neck", "dir": [45, 0, 0] },
+      "ears": { "part": "pointy-ear", "on": "head", "at": [0.03, 0.035, -0.12], "dir": [-80, 20, 0], "mirror": true },
+      "eyes": { "part": "eye", "on": "head", "at": [0.032, 0.02, -0.07], "mirror": true },
+      "tail": { "part": "bushy-tail", "at": [0, 0.3, -1], "dir": [-15, 180, 0] }
+    },
+    "move": { "walk": 1.2, "run": 7, "turn": 160, "bob": [0.008, 0.03], "bobs": [2, 2] },
+    "behave": { "wander": 35, "idle": [1.5, 6], "flee": 12, "group": [1, 1], "active": "always", "graze": 0.1, "thirst": 0.3, "play": 0.45, "laze": 0.35, "hunts": ["rabbit", "squirrel", "quail", "turkey"], "hunger": 0.4, "chase": 10 },
+    "spawn": { "density": 0.3 }
+  },
+  "turkey": {
+    "name": "Turkey", "size": [0.9, 1.1],
+    "body": { "length": 0.42, "radius": 0.14, "taper": 0.9, "flatten": 1.05 },
+    "coat": { "base": [0.28, 0.21, 0.15], "accent": [0.62, 0.47, 0.32] },
+    "parts": {
+      "legs": { "part": "bird-leg", "at": [0.5, -0.6, 0], "dir": [90, 0, 0], "mirror": true, "scale": 1.7, "thickness": 1.3 },
+      "neck": { "part": "bird-neck", "at": [0, 0.5, 0.9], "dir": [-60, 0, 0], "scale": 1.6 },
+      "head": { "part": "bird-head", "on": "neck", "dir": [60, 0, 0], "scale": 1.3 },
+      "horn": { "part": "beak", "on": "head", "dir": [15, 0, 0], "scale": 0.6 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.03, 0.015, -0.03], "mirror": true, "scale": 0.7 },
+      "tail": { "part": "turkey-fan", "at": [0, 0.6, -0.85], "dir": [-65, 180, 0] }
+    },
+    "move": { "walk": 0.9, "run": 6, "turn": 150, "bob": [0.015, 0.035], "bobs": [2, 2] },
+    "behave": { "wander": 20, "idle": [2, 6], "flee": 15, "group": [2, 5], "active": "day", "graze": 0.5, "thirst": 0.3, "play": 0.1, "laze": 0.25, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 0.6 }
+  },
+  "quail": {
+    "name": "Quail", "size": [0.9, 1.1],
+    "body": { "length": 0.13, "radius": 0.055, "taper": 0.85, "flatten": 1 },
+    "coat": { "base": [0.5, 0.38, 0.26], "accent": [0.85, 0.78, 0.65] },
+    "parts": {
+      "legs": { "part": "bird-leg", "at": [0.5, -0.6, 0], "dir": [90, 0, 0], "mirror": true, "scale": 0.5 },
+      "neck": { "part": "bird-neck", "at": [0, 0.5, 0.85], "dir": [-50, 0, 0], "scale": 0.45 },
+      "head": { "part": "bird-head", "on": "neck", "dir": [50, 0, 0], "scale": 0.9 },
+      "horn": { "part": "beak", "on": "head", "dir": [15, 0, 0], "scale": 0.35 },
+      "ear": { "part": "plume", "on": "head", "at": [0, 0.025, -0.02], "dir": [-110, 0, 0] },
+      "eyes": { "part": "eye", "on": "head", "at": [0.022, 0.01, -0.018], "mirror": true, "scale": 0.5 },
+      "tail": { "part": "bird-tail", "at": [0, 0.3, -1], "dir": [5, 180, 0], "scale": 0.3 }
+    },
+    "move": { "walk": 0.6, "run": 4, "turn": 220, "bob": [0.008, 0.02], "bobs": [2, 2] },
+    "behave": { "wander": 12, "idle": [1, 4], "flee": 8, "group": [3, 6], "active": "day", "graze": 0.6, "thirst": 0.2, "play": 0.15, "laze": 0.2, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 0.8 }
+  },
+  "marmot": {
+    "name": "Marmot", "size": [0.9, 1.1],
+    "body": { "length": 0.38, "radius": 0.11, "taper": 1.25, "flatten": 1.05 },
+    "coat": { "base": [0.5, 0.4, 0.3], "accent": [0.72, 0.64, 0.52] },
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.55, -0.4, -0.6], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "scale": 0.65, "thickness": 1.6 },
+      "fore": { "part": "paw-foreleg", "at": [0.55, -0.5, 0.65], "dir": [90, 0, 0], "mirror": true, "scale": 0.6, "thickness": 1.6 },
+      "head": { "part": "rabbit-head", "at": [0, 0.4, 0.95], "dir": [10, 0, 0], "scale": 1.05 },
+      "ears": { "part": "round-ear", "on": "head", "at": [0.035, 0.045, -0.07], "dir": [-90, 0, 0], "mirror": true, "scale": 0.55 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.04, 0.02, -0.045], "mirror": true },
+      "tail": { "part": "bushy-tail", "at": [0, 0.3, -1], "dir": [15, 180, 0], "scale": 0.55 }
+    },
+    "move": { "walk": 0.7, "run": 4, "turn": 180, "bob": [0.01, 0.03], "bobs": [2, 2] },
+    "behave": { "wander": 10, "idle": [3, 10], "flee": 10, "group": [1, 3], "active": "day", "graze": 0.5, "thirst": 0.2, "play": 0.3, "laze": 0.5, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 0.4 }
+  },
+  "skunk": {
+    "name": "Skunk", "size": [0.9, 1.1],
+    "body": { "length": 0.32, "radius": 0.09, "taper": 1.3, "flatten": 1.05 },
+    "coat": { "base": [0.08, 0.08, 0.08], "accent": [0.95, 0.95, 0.95] },
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.55, -0.4, -0.6], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "scale": 0.65 },
+      "fore": { "part": "paw-foreleg", "at": [0.55, -0.5, 0.65], "dir": [90, 0, 0], "mirror": true, "scale": 0.6 },
+      "head": { "part": "fox-head", "at": [0, 0.3, 0.95], "dir": [10, 0, 0], "scale": 0.8 },
+      "ears": { "part": "round-ear", "on": "head", "at": [0.03, 0.04, -0.11], "dir": [-90, 0, 0], "mirror": true, "scale": 0.5 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.03, 0.02, -0.07], "mirror": true },
+      "back-stripe": { "part": "back-stripe", "at": [0, 1, 0.75], "dir": [0, 180, 0], "scale": 1.2 },
+      "tail": { "part": "bushy-tail", "at": [0, 0.5, -1], "dir": [-70, 180, 0], "scale": 0.9 }
+    },
+    "move": { "walk": 0.6, "run": 2.5, "turn": 150, "bob": [0.01, 0.03], "bobs": [2, 2] },
+    "behave": { "wander": 15, "idle": [2, 7], "flee": 4, "group": [1, 1], "active": "night", "graze": 0.5, "thirst": 0.2, "play": 0.1, "laze": 0.3, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 0.2 }
+  },
+  "garter-snake": {
+    "name": "Garter snake", "size": [0.9, 1.1],
+    "body": { "length": 0.076500006, "radius": 0.0238, "taper": 1, "flatten": 0.75 },
+    "coat": { "base": [0.18, 0.25, 0.16], "accent": [0.55, 0.55, 0.3] },
+    "parts": {
+      "head": { "part": "snake-head", "at": [0, 0, 1], "scale": 0.85 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.016, 0.008, -0.025], "mirror": true, "scale": 0.425 },
+      "tail": { "part": "snake-body", "at": [0, 0, -1], "dir": [0, 180, 0], "scale": 0.85 }
+    },
+    "move": { "walk": 0.5, "run": 1.6, "turn": 120, "bob": [0, 0], "bobs": [2, 2], "stride": [0.34, 0.467500031] },
+    "behave": { "wander": 10, "idle": [3, 12], "flee": 3, "group": [1, 1], "active": "day", "graze": 0, "thirst": 0.1, "play": 0, "laze": 0.5, "hunts": ["frog"], "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 0.3 }
+  },
+  "black-bear": {
+    "name": "Black bear", "size": [0.9, 1.1],
+    "body": { "length": 1.2, "radius": 0.3, "taper": 1.05, "flatten": 1 },
+    "coats": [{ "name": "Black", "base": [0.12, 0.1, 0.09], "accent": [0.5, 0.4, 0.3], "weight": 3 }, { "name": "Cinnamon", "base": [0.5, 0.3, 0.15], "accent": [0.72, 0.56, 0.4] }, { "name": "Brown", "base": [0.33, 0.23, 0.15], "accent": [0.6, 0.48, 0.36] }],
+    "parts": {
+      "hind": { "part": "bear-hindleg", "at": [0.55, -0.35, -0.7], "dir": [90, 0, 0], "mirror": true },
+      "fore": { "part": "bear-foreleg", "at": [0.55, -0.45, 0.72], "dir": [90, 0, 0], "mirror": true, "phase": 0.25 },
+      "neck": { "part": "short-neck", "at": [0, 0.3, 0.95], "dir": [-15, 0, 0], "scale": 2.2, "thickness": 2.2 },
+      "head": { "part": "bear-head", "on": "neck", "dir": [30, 0, 0] },
+      "ears": { "part": "round-ear", "on": "head", "at": [0.09, 0.1, -0.24], "dir": [-90, 0, 0], "mirror": true, "scale": 1.3 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.07, 0.05, -0.15], "mirror": true, "scale": 1.2 },
+      "tail": { "part": "stub-tail", "at": [0, 0.4, -1], "dir": [30, 180, 0], "scale": 0.6 }
+    },
+    "move": { "walk": 1, "run": 7, "turn": 80, "bob": [0.02, 0.06], "bobs": [2, 1], "rock": 5 },
+    "behave": { "wander": 40, "idle": [4, 14], "flee": 12, "group": [1, 1], "active": "day", "graze": 0.4, "thirst": 0.4, "play": 0.2, "laze": 0.55, "hunts": ["marmot"], "hunger": 0.1, "chase": 10 },
+    "spawn": { "density": 0.08 }
+  },
+  "wolf": {
+    "name": "Wolf", "size": [0.9, 1.1],
+    "body": { "length": 0.85, "radius": 0.15, "taper": 0.9, "flatten": 1.1 },
+    "coats": [{ "name": "Grey", "base": [0.5, 0.48, 0.45], "accent": [0.84, 0.82, 0.78], "weight": 3 }, { "name": "Black", "base": [0.13, 0.12, 0.12], "accent": [0.32, 0.3, 0.29] }, { "name": "White", "base": [0.88, 0.88, 0.86], "accent": [0.97, 0.97, 0.95] }],
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.5, -0.3, -0.7], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "scale": 2.5, "thickness": 1.15 },
+      "fore": { "part": "paw-foreleg", "at": [0.55, -0.4, 0.7], "dir": [90, 0, 0], "mirror": true, "scale": 2.5, "thickness": 1.15 },
+      "neck": { "part": "short-neck", "at": [0, 0.4, 0.95], "dir": [-30, 0, 0], "scale": 1.9 },
+      "head": { "part": "fox-head", "on": "neck", "dir": [40, 0, 0], "scale": 1.6 },
+      "ears": { "part": "pointy-ear", "on": "head", "at": [0.05, 0.055, -0.2], "dir": [-80, 20, 0], "mirror": true, "scale": 1.3 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.05, 0.03, -0.12], "mirror": true, "scale": 1.2 },
+      "tail": { "part": "bushy-tail", "at": [0, 0.3, -1], "dir": [30, 180, 0], "scale": 1.6 }
+    },
+    "move": { "walk": 1.4, "run": 10, "turn": 140, "bob": [0.01, 0.04], "bobs": [2, 2] },
+    "behave": { "wander": 45, "idle": [2, 8], "flee": 25, "group": [2, 4], "active": "always", "graze": 0, "thirst": 0.4, "play": 0.5, "laze": 0.4, "hunts": ["deer", "caribou", "rabbit", "bighorn-sheep", "turkey"], "hunger": 0.4, "chase": 10 },
+    "spawn": { "density": 0.1 }
+  },
+  "frog": {
+    "name": "Frog", "size": [0.9, 1.1],
+    "body": { "length": 0.07, "radius": 0.035, "taper": 1.1, "flatten": 0.7 },
+    "coats": [{ "name": "Green", "base": [0.3, 0.45, 0.2], "accent": [0.75, 0.72, 0.45], "weight": 2 }, { "name": "Brown", "base": [0.42, 0.36, 0.24], "accent": [0.7, 0.64, 0.48] }],
+    "parts": {
+      "hind": { "part": "hop-hindleg", "at": [0.8, -0.3, -0.6], "dir": [90, 25, 0], "mirror": true, "mirrorPhase": 0, "scale": 0.7, "thickness": 0.8 },
+      "fore": { "part": "paw-foreleg", "at": [0.6, -0.6, 0.6], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "mirrorPhase": 0.05, "scale": 0.28 },
+      "head": { "part": "frog-head", "at": [0, 0.2, 1], "dir": [-5, 0, 0] },
+      "eyes": { "part": "eye", "on": "head", "at": [0.016, 0.022, -0.025], "mirror": true, "scale": 0.8 }
+    },
+    "move": { "walk": 0.4, "run": 2.5, "turn": 200, "bob": [0.02, 0.05], "bobs": [1, 1], "rock": 20 },
+    "behave": { "wander": 5, "idle": [3, 12], "flee": 4, "group": [1, 3], "active": "always", "graze": 0.2, "thirst": 0, "play": 0, "laze": 0.4, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 4, "nearWater": true }
+  },
+  "heron": {
+    "name": "Heron", "size": [0.9, 1.1],
+    "body": { "length": 0.32, "radius": 0.08, "taper": 0.7, "flatten": 1 },
+    "coat": { "base": [0.55, 0.6, 0.66], "accent": [0.88, 0.9, 0.92] },
+    "parts": {
+      "legs": { "part": "bird-leg", "at": [0.4, -0.6, 0], "dir": [90, 0, 0], "mirror": true, "scale": 3.2, "thickness": 0.55 },
+      "neck": { "part": "heron-neck", "at": [0, 0.5, 0.9], "dir": [-30, 0, 0] },
+      "head": { "part": "bird-head", "on": "neck", "dir": [60, 0, 0], "scale": 1.2 },
+      "horn": { "part": "beak", "on": "head", "dir": [5, 0, 0], "scale": 2.2 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.026, 0.012, -0.02], "mirror": true, "scale": 0.6 },
+      "tail": { "part": "bird-tail", "at": [0, 0.3, -1], "dir": [10, 180, 0], "scale": 0.6 }
+    },
+    "move": { "walk": 0.5, "run": 3, "turn": 120, "bob": [0.01, 0.02], "bobs": [2, 2] },
+    "behave": { "wander": 10, "idle": [4, 15], "flee": 12, "group": [1, 1], "active": "day", "graze": 0.3, "thirst": 0, "play": 0, "laze": 0.3, "hunts": ["frog"], "hunger": 0.5, "chase": 10 },
+    "spawn": { "density": 0.4, "nearWater": true }
+  },
+  "arctic-fox": {
+    "name": "Arctic fox", "variantOf": "red-fox", "scale": 0.95,
+    "coat": { "base": [0.9, 0.9, 0.88], "accent": [1, 1, 1] },
+    "behave": { "active": "always", "graze": 0.1, "thirst": 0.2, "play": 0.45, "laze": 0.35, "hunts": ["snowshoe-hare", "ptarmigan"], "hunger": 0.4, "chase": 10 }
+  },
+  "ash-crab": {
+    "name": "Ash crab", "size": [0.9, 1.1],
+    "body": { "length": 0.13, "radius": 0.05, "taper": 1, "flatten": 0.45 },
+    "coats": [{ "name": "Ash", "base": [0.32, 0.31, 0.3], "accent": [0.55, 0.5, 0.48], "weight": 2 }, { "name": "Ember", "base": [0.16, 0.14, 0.14], "accent": [1, 0.45, 0.12], "glow": 0.8 }],
+    "parts": {
+      "fore": { "part": "crab-leg", "at": [0.45, -0.2, 0.9], "mirror": true },
+      "fore-2": { "part": "crab-leg", "at": [0.85, -0.2, 0.75], "dir": [0, 25, 0], "mirror": true, "phase": 0.5 },
+      "hind": { "part": "crab-leg", "at": [0.45, -0.2, -0.9], "dir": [0, 180, 0], "mirror": true, "phase": 0.5 },
+      "hind-2": { "part": "crab-leg", "at": [0.85, -0.2, -0.75], "dir": [0, 155, 0], "mirror": true },
+      "arm": { "part": "crab-claw", "at": [1, 0, 0.45], "dir": [0, 90, 0] },
+      "arm-2": { "part": "crab-claw", "at": [1, 0, -0.45], "dir": [0, 90, 0] },
+      "eye": { "part": "eye", "at": [1, 0.9, 0.25], "scale": 0.6 },
+      "eye-2": { "part": "eye", "at": [1, 0.9, -0.25], "scale": 0.6 }
+    },
+    "move": { "walk": 0.5, "run": 3, "turn": 220, "bob": [0, 0], "bobs": [2, 2] },
+    "behave": { "wander": 6, "idle": [1, 6], "flee": 3, "group": [3, 6], "active": "always", "graze": 0.5, "thirst": 0.05, "play": 0.1, "laze": 0.3, "hunger": 0.3, "chase": 10 }
+  },
+  "bighorn-sheep": {
+    "name": "Bighorn sheep", "size": [0.9, 1.1],
+    "body": { "length": 0.85, "radius": 0.21, "taper": 0.95, "flatten": 1.15 },
+    "coat": { "base": [0.55, 0.42, 0.3], "accent": [0.92, 0.88, 0.8] },
+    "parts": {
+      "hind": { "part": "hoof-hindleg", "at": [0.55, -0.4, -0.72], "dir": [90, 0, 0], "mirror": true, "scale": 0.62, "thickness": 1.2 },
+      "fore": { "part": "hoof-foreleg", "at": [0.55, -0.5, 0.7], "dir": [90, 0, 0], "mirror": true, "phase": 0.25, "scale": 0.62, "thickness": 1.2 },
+      "neck": { "part": "deer-neck", "at": [0, 0.45, 0.9], "dir": [-30, 0, 0], "scale": 0.6, "thickness": 1.2 },
+      "head": { "part": "deer-head", "on": "neck", "dir": [50, 0, 0], "scale": 0.8 },
+      "horns": { "part": "curl-horn", "on": "head", "at": [0.04, 0.06, -0.18], "dir": [-50, 70, 0], "mirror": true },
+      "ears": { "part": "deer-ear", "on": "head", "at": [0.05, 0.02, -0.15], "dir": [-10, 80, 0], "mirror": true, "scale": 0.6 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.045, 0.02, -0.11], "mirror": true },
+      "tail": { "part": "stub-tail", "at": [0, 0.5, -1], "dir": [10, 180, 0], "scale": 0.7 }
+    },
+    "move": { "walk": 1.1, "run": 7, "turn": 100, "bob": [0.015, 0.05], "bobs": [2, 1], "rock": 5 },
+    "behave": { "wander": 20, "idle": [4, 12], "flee": 14, "group": [2, 5], "active": "day", "graze": 0.6, "thirst": 0.3, "play": 0.15, "laze": 0.3, "hunger": 0.3, "chase": 10 }
+  },
+  "bison": {
+    "name": "Bison", "size": [0.9, 1.1],
+    "body": { "length": 1.5, "radius": 0.36, "taper": 0.72, "flatten": 1.15 },
+    "coat": { "base": [0.3, 0.2, 0.13], "accent": [0.2, 0.13, 0.09] },
+    "parts": {
+      "hind": { "part": "hoof-hindleg", "at": [0.55, -0.4, -0.75], "dir": [90, 0, 0], "mirror": true, "scale": 0.75, "thickness": 2.2 },
+      "fore": { "part": "hoof-foreleg", "at": [0.55, -0.55, 0.65], "dir": [90, 0, 0], "mirror": true, "phase": 0.25, "scale": 0.75, "thickness": 2.2 },
+      "hump": { "part": "hump", "at": [0, 0.75, 0.45], "dir": [-80, 0, 0], "scale": 1.4 },
+      "head": { "part": "bison-head", "at": [0, 0.15, 1], "dir": [60, 0, 0] },
+      "beard": { "part": "beard", "on": "head", "at": [0, -0.1, -0.18], "dir": [100, 0, 0] },
+      "horns": { "part": "curved-horn", "on": "head", "at": [0.11, 0.09, -0.24], "dir": [-15, 85, 0], "mirror": true, "scale": 1.1 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.11, 0.04, -0.12], "mirror": true, "scale": 1.3 },
+      "tail": { "part": "stub-tail", "at": [0, 0.5, -1], "dir": [40, 180, 0], "scale": 0.9 }
+    },
+    "move": { "walk": 1, "run": 8, "turn": 70, "bob": [0.015, 0.06], "bobs": [2, 1], "rock": 4 },
+    "behave": { "wander": 25, "idle": [5, 15], "flee": 14, "group": [3, 8], "active": "day", "graze": 0.7, "thirst": 0.4, "play": 0.05, "laze": 0.45, "hunger": 0.3, "chase": 10 }
+  },
+  "bone-hound": {
+    "name": "Bone hound", "size": [0.9, 1.1],
+    "body": { "length": 0.75, "radius": 0.045, "taper": 0.9, "flatten": 1 },
+    "coat": { "base": [0.86, 0.83, 0.74], "accent": [0.7, 0.66, 0.58] },
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.5, -0.3, -0.8], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "scale": 2.4, "thickness": 0.45 },
+      "fore": { "part": "paw-foreleg", "at": [0.55, -0.4, 0.75], "dir": [90, 0, 0], "mirror": true, "scale": 2.4, "thickness": 0.45 },
+      "rib": { "part": "rib", "at": [0.6, 0.2, 0.5], "dir": [-75, 90, 0], "mirror": true, "scale": 1.1 },
+      "rib-2": { "part": "rib", "at": [0.6, 0.2, 0.15], "dir": [-75, 90, 0], "mirror": true, "scale": 1.2 },
+      "rib-3": { "part": "rib", "at": [0.6, 0.2, -0.2], "dir": [-75, 90, 0], "mirror": true, "scale": 1.1 },
+      "neck": { "part": "short-neck", "at": [0, 0.3, 1], "dir": [-30, 0, 0], "scale": 1.8, "thickness": 0.35 },
+      "head": { "part": "fox-head", "on": "neck", "dir": [40, 0, 0], "scale": 1.5 },
+      "eyes": { "part": "glow-eye", "on": "head", "at": [0.05, 0.03, -0.13], "mirror": true },
+      "tail": { "part": "bone-tail", "at": [0, 0.3, -1], "dir": [-10, 180, 0] }
+    },
+    "move": { "walk": 1.2, "run": 8, "turn": 130, "bob": [0.01, 0.035], "bobs": [2, 2] },
+    "behave": { "wander": 35, "idle": [2, 8], "flee": 0, "group": [2, 4], "active": "night", "graze": 0, "thirst": 0, "play": 0.3, "laze": 0.3, "hunts": ["bone-stag", "ash-crab", "cinder-lizard"], "hunger": 0.45, "chase": 10 }
+  },
+  "bone-stag": {
+    "name": "Bone stag", "size": [0.9, 1.1],
+    "body": { "length": 1.1, "radius": 0.06, "taper": 0.9, "flatten": 1 },
+    "coat": { "base": [0.86, 0.83, 0.74], "accent": [0.7, 0.66, 0.58] },
+    "parts": {
+      "hind": { "part": "hoof-hindleg", "at": [0.5, -0.3, -0.8], "dir": [90, 0, 0], "mirror": true, "thickness": 0.45 },
+      "fore": { "part": "hoof-foreleg", "at": [0.5, -0.4, 0.75], "dir": [90, 0, 0], "mirror": true, "phase": 0.25, "thickness": 0.45 },
+      "rib": { "part": "rib", "at": [0.6, 0.2, 0.55], "dir": [-75, 90, 0], "mirror": true, "scale": 1.7 },
+      "rib-2": { "part": "rib", "at": [0.6, 0.2, 0.25], "dir": [-75, 90, 0], "mirror": true, "scale": 1.9 },
+      "rib-3": { "part": "rib", "at": [0.6, 0.2, -0.05], "dir": [-75, 90, 0], "mirror": true, "scale": 1.8 },
+      "rib-4": { "part": "rib", "at": [0.6, 0.2, -0.35], "dir": [-75, 90, 0], "mirror": true, "scale": 1.4 },
+      "neck": { "part": "deer-neck", "at": [0, 0.3, 1], "dir": [-45, 0, 0], "scale": 0.9, "thickness": 0.35 },
+      "head": { "part": "deer-head", "on": "neck", "dir": [55, 0, 0] },
+      "horns": { "part": "antler-beam", "on": "head", "at": [0.04, 0.06, -0.22], "dir": [-70, 25, 0], "mirror": true, "scale": 0.9 },
+      "antler-tine": { "part": "antler-tine", "on": "horns", "at": [0, 0, -0.15], "dir": [-35, 0, 0] },
+      "antler-tine-2": { "part": "antler-tine", "on": "horns", "at": [0, 0, -0.38], "dir": [-70, -15, 0], "scale": 0.8 },
+      "eyes": { "part": "glow-eye", "on": "head", "at": [0.045, 0.03, -0.13], "mirror": true },
+      "tail": { "part": "bone-tail", "at": [0, 0.3, -1], "dir": [-30, 180, 0], "scale": 0.5 }
+    },
+    "move": { "walk": 1.1, "run": 7, "turn": 100, "bob": [0.015, 0.05], "bobs": [2, 1], "rock": 5 },
+    "behave": { "wander": 30, "idle": [4, 12], "flee": 0, "group": [1, 3], "active": "night", "graze": 0.4, "thirst": 0, "play": 0.05, "laze": 0.2, "hunger": 0.3, "chase": 10 }
+  },
+  "camel": {
+    "name": "Camel", "size": [0.9, 1.1],
+    "body": { "length": 1.3, "radius": 0.3, "taper": 0.9, "flatten": 1.1 },
+    "coat": { "base": [0.76, 0.6, 0.42], "accent": [0.88, 0.78, 0.62] },
+    "parts": {
+      "hind": { "part": "hoof-hindleg", "at": [0.5, -0.4, -0.72], "dir": [90, 0, 0], "mirror": true, "scale": 1.45, "thickness": 1.3 },
+      "fore": { "part": "hoof-foreleg", "at": [0.5, -0.5, 0.72], "dir": [90, 0, 0], "mirror": true, "scale": 1.45, "thickness": 1.3 },
+      "hump": { "part": "hump", "at": [0, 0.8, -0.05], "dir": [-90, 0, 0], "scale": 1.5 },
+      "neck": { "part": "camel-neck", "at": [0, 0.3, 0.95], "dir": [-10, 0, 0] },
+      "head": { "part": "deer-head", "on": "neck", "dir": [55, 0, 0], "scale": 1.25 },
+      "ears": { "part": "small-ear", "on": "head", "at": [0.05, 0.06, -0.27], "dir": [-60, 60, 0], "mirror": true },
+      "eyes": { "part": "eye", "on": "head", "at": [0.06, 0.03, -0.18], "mirror": true },
+      "tail": { "part": "stub-tail", "at": [0, 0.4, -1], "dir": [50, 180, 0], "scale": 1.2 }
+    },
+    "move": { "walk": 1.2, "run": 6, "turn": 70, "bob": [0.02, 0.05], "bobs": [2, 2] },
+    "behave": { "wander": 30, "idle": [4, 14], "flee": 10, "group": [1, 3], "active": "day", "graze": 0.5, "thirst": 0.1, "play": 0.05, "laze": 0.5, "hunger": 0.3, "chase": 10 }
+  },
+  "caribou": {
+    "name": "Caribou", "size": [0.9, 1.1],
+    "body": { "length": 1.35, "radius": 0.24, "taper": 0.95, "flatten": 1.15 },
+    "coats": [{ "name": "Brown", "base": [0.45, 0.36, 0.27], "accent": [0.9, 0.87, 0.8], "weight": 2 }, { "name": "Pale", "base": [0.62, 0.56, 0.48], "accent": [0.93, 0.91, 0.86] }],
+    "parts": {
+      "hind": { "part": "hoof-hindleg", "at": [0.55, -0.35, -0.75], "dir": [90, 0, 0], "mirror": true, "scale": 1.05, "thickness": 1.3 },
+      "fore": { "part": "hoof-foreleg", "at": [0.55, -0.45, 0.72], "dir": [90, 0, 0], "mirror": true, "phase": 0.25, "scale": 1.05, "thickness": 1.3 },
+      "neck": { "part": "deer-neck", "at": [0, 0.5, 0.85], "dir": [-35, 0, 0], "scale": 0.9, "thickness": 1.3 },
+      "head": { "part": "deer-head", "on": "neck", "dir": [50, 0, 0], "scale": 1.1 },
+      "horns": { "part": "antler-beam", "on": "head", "at": [0.05, 0.07, -0.27], "dir": [-70, 25, 0], "mirror": true },
+      "antler-tine": { "part": "antler-tine", "on": "horns", "at": [0, 0, -0.18], "dir": [-35, 0, 0] },
+      "antler-tine-2": { "part": "antler-tine", "on": "horns", "at": [0, 0, -0.42], "dir": [-70, -15, 0], "scale": 0.8 },
+      "ears": { "part": "deer-ear", "on": "head", "at": [0.05, 0.05, -0.25], "dir": [-40, 60, 0], "mirror": true, "scale": 0.8 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.055, 0.025, -0.15], "mirror": true },
+      "tail": { "part": "stub-tail", "at": [0, 0.5, -1], "dir": [-30, 180, 0] }
+    },
+    "move": { "walk": 1.3, "run": 9, "turn": 90, "bob": [0.015, 0.06], "bobs": [2, 1], "rock": 5 },
+    "behave": { "wander": 35, "idle": [4, 12], "flee": 20, "group": [3, 8], "active": "day", "graze": 0.6, "thirst": 0.4, "play": 0.1, "laze": 0.3, "hunger": 0.3, "chase": 10 }
+  },
+  "cinder-lizard": {
+    "name": "Cinder lizard", "variantOf": "lizard", "scale": 1.1,
+    "coat": { "base": [0.1, 0.09, 0.09], "accent": [1, 0.42, 0.1], "glow": 0.8 },
+    "behave": { "active": "day", "graze": 0.2, "thirst": 0, "play": 0, "laze": 0.5, "hunger": 0.3, "chase": 10 }
+  },
+  "coyote": {
+    "name": "Coyote", "variantOf": "wolf", "scale": 0.72,
+    "coat": { "base": [0.6, 0.5, 0.38], "accent": [0.88, 0.82, 0.72] },
+    "behave": { "active": "always", "graze": 0, "thirst": 0.3, "play": 0.4, "laze": 0.35, "hunts": ["jackrabbit", "rabbit", "quail", "prairie-dog"], "hunger": 0.4, "chase": 10 }
+  },
+  "crystal-hare": {
+    "name": "Crystal hare", "variantOf": "rabbit", "scale": 1.1,
+    "coat": { "base": [0.72, 0.8, 0.9], "accent": [0.55, 0.9, 1], "glow": 0.7 },
+    "behave": { "active": "always", "graze": 0.5, "thirst": 0.2, "play": 0.35, "laze": 0.2, "hunger": 0.3, "chase": 10 }
+  },
+  "desert-tortoise": {
+    "name": "Desert tortoise", "size": [0.9, 1.1],
+    "body": { "length": 0.32, "radius": 0.15, "taper": 0.95, "flatten": 0.62 },
+    "coat": { "base": [0.45, 0.37, 0.27], "accent": [0.52, 0.48, 0.4] },
+    "parts": {
+      "fore": { "part": "sprawl-leg", "at": [0.75, -0.6, 0.6], "dir": [35, 90, 0], "mirror": true, "scale": 1.2, "thickness": 3 },
+      "hind": { "part": "sprawl-leg", "at": [0.75, -0.6, -0.6], "dir": [35, 90, 0], "mirror": true, "phase": 0.5, "scale": 1.2, "thickness": 3 },
+      "neck": { "part": "short-neck", "at": [0, -0.2, 1], "dir": [-15, 0, 0], "scale": 0.7, "thickness": 0.55 },
+      "head": { "part": "lizard-head", "on": "neck", "dir": [20, 0, 0], "scale": 1.1, "thickness": 1.2 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.028, 0.012, -0.05], "mirror": true, "scale": 0.6 },
+      "tail": { "part": "stub-tail", "at": [0, -0.3, -1], "dir": [30, 180, 0], "scale": 0.3 }
+    },
+    "move": { "walk": 0.15, "run": 0.3, "turn": 40, "bob": [0.004, 0.006], "bobs": [2, 2] },
+    "behave": { "wander": 6, "idle": [6, 25], "flee": 0, "group": [1, 1], "active": "day", "graze": 0.6, "thirst": 0.05, "play": 0, "laze": 0.6, "hunger": 0.3, "chase": 10 }
+  },
+  "dormouse": {
+    "name": "Dormouse", "variantOf": "squirrel", "scale": 0.6,
+    "coat": { "base": [0.8, 0.6, 0.3], "accent": [1, 0.92, 0.7], "glow": 0.2 },
+    "behave": { "active": "night", "graze": 0.4, "thirst": 0.2, "play": 0.4, "laze": 0.3, "hunger": 0.3, "chase": 10 }
+  },
+  "dwarf": {
+    "name": "Dwarf", "size": [0.95, 1.05],
+    "body": { "length": 0.348, "radius": 0.174, "taper": 1, "flatten": 0.9 },
+    "coats": [{ "name": "Leather", "base": [0.4, 0.27, 0.16], "accent": [0.85, 0.6, 0.48] }, { "name": "Iron grey", "base": [0.35, 0.36, 0.38], "accent": [0.78, 0.55, 0.44] }, { "name": "Forge red", "base": [0.5, 0.18, 0.12], "accent": [0.82, 0.58, 0.45] }],
+    "parts": {
+      "legs": { "part": "human-leg", "at": [0.7, -0.4, 0], "dir": [90, 0, 0], "mirror": true, "scale": 0.6, "thickness": 1.5 },
+      "human-torso": { "part": "human-torso", "at": [0, 0.6, 0], "dir": [-90, 0, 0], "scale": 0.88, "thickness": 1.45 },
+      "head": { "part": "human-head", "on": "human-torso", "at": [0, 0, 0.02], "scale": 1.08 },
+      "human-hair": { "part": "human-hair", "on": "head", "at": [0, 0.008640001, -0.030240003], "scale": 1.08 },
+      "eyes": { "part": "human-eye", "on": "head", "at": [0.04104, -0.1026, -0.108], "dir": [90, 0, 0], "mirror": true, "scale": 1.08 },
+      "arms": { "part": "human-arm", "on": "human-torso", "at": [0.2755, 0.01, -0.0792], "dir": [180, 0, 0], "mirror": true, "phase": 0.5, "scale": 0.82, "thickness": 1.45 },
+      "dwarf-beard": { "part": "dwarf-beard", "on": "head", "at": [0, -0.0972000062, -0.1296], "dir": [0, 180, 0], "scale": 1.08 }
+    },
+    "move": { "walk": 1.1, "run": 4.5, "turn": 240, "bob": [0.035, 0.08], "bobs": [2, 2], "upright": true },
+    "behave": { "wander": 12, "idle": [3, 10], "flee": 0, "group": [1, 1], "active": "day", "graze": 0, "thirst": 0, "play": 0.03, "laze": 0.2, "hunger": 0, "chase": 10 }
+  },
+  "elf": {
+    "name": "Elf", "size": [0.97, 1.04],
+    "body": { "length": 0.192, "radius": 0.096, "taper": 1, "flatten": 0.9 },
+    "coats": [{ "name": "Moss", "base": [0.3, 0.42, 0.3], "accent": [0.93, 0.82, 0.72] }, { "name": "Silver", "base": [0.62, 0.66, 0.7], "accent": [0.95, 0.86, 0.78] }, { "name": "Dusk", "base": [0.3, 0.28, 0.45], "accent": [0.82, 0.7, 0.62] }],
+    "parts": {
+      "legs": { "part": "human-leg", "at": [0.7, -0.4, 0], "dir": [90, 0, 0], "mirror": true, "scale": 1.16, "thickness": 0.78 },
+      "human-torso": { "part": "human-torso", "at": [0, 0.6, 0], "dir": [-90, 0, 0], "scale": 1.08, "thickness": 0.8 },
+      "head": { "part": "human-head", "on": "human-torso", "at": [0, 0, 0.02], "scale": 0.95 },
+      "human-hair": { "part": "human-hair", "on": "head", "at": [0, 0.0076, -0.0266000014], "scale": 0.95 },
+      "eyes": { "part": "human-eye", "on": "head", "at": [0.0361, -0.09025, -0.095], "dir": [90, 0, 0], "mirror": true, "scale": 0.95 },
+      "arms": { "part": "human-arm", "on": "human-torso", "at": [0.152, 0.01, -0.0972000062], "dir": [180, 0, 0], "mirror": true, "phase": 0.5, "scale": 1.12, "thickness": 0.78 },
+      "ears": { "part": "elf-ear", "on": "head", "at": [0.095, 0, -0.095], "dir": [-20, 75, 0], "mirror": true, "scale": 0.95 }
+    },
+    "move": { "walk": 1.6, "run": 6.5, "turn": 240, "bob": [0.012, 0.04], "bobs": [2, 2], "upright": true },
+    "behave": { "wander": 12, "idle": [3, 10], "flee": 0, "group": [1, 1], "active": "day", "graze": 0, "thirst": 0, "play": 0.03, "laze": 0.15, "hunger": 0, "chase": 10 }
+  },
+  "fennec-fox": {
+    "name": "Fennec fox", "size": [0.65, 0.75],
+    "body": { "length": 0.42, "radius": 0.085, "taper": 0.9, "flatten": 1.05 },
+    "coat": { "base": [0.85, 0.72, 0.52], "accent": [0.98, 0.94, 0.86] },
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.5, -0.3, -0.7], "dir": [90, 0, 0], "mirror": true, "phase": 0.5 },
+      "fore": { "part": "paw-foreleg", "at": [0.55, -0.4, 0.7], "dir": [90, 0, 0], "mirror": true },
+      "neck": { "part": "short-neck", "at": [0, 0.4, 0.95], "dir": [-35, 0, 0] },
+      "head": { "part": "fox-head", "on": "neck", "dir": [45, 0, 0] },
+      "ears": { "part": "big-ear", "on": "head", "at": [0.03, 0.035, -0.12], "dir": [-80, 20, 0], "mirror": true },
+      "eyes": { "part": "eye", "on": "head", "at": [0.032, 0.02, -0.07], "mirror": true },
+      "tail": { "part": "bushy-tail", "at": [0, 0.3, -1], "dir": [-15, 180, 0] }
+    },
+    "move": { "walk": 1.2, "run": 7, "turn": 160, "bob": [0.008, 0.03], "bobs": [2, 2] },
+    "behave": { "wander": 35, "idle": [1.5, 6], "flee": 9, "group": [1, 1], "active": "night", "graze": 0.1, "thirst": 0.05, "play": 0.45, "laze": 0.35, "hunts": ["jackrabbit", "horned-lizard", "scorpion"], "hunger": 0.4, "chase": 10 }
+  },
+  "gambels-quail": {
+    "name": "Gambels quail", "variantOf": "quail", "scale": 1,
+    "coat": { "base": [0.5, 0.5, 0.52], "accent": [0.75, 0.55, 0.4] },
+    "behave": { "active": "day", "graze": 0.6, "thirst": 0.1, "play": 0.15, "laze": 0.2, "hunger": 0.3, "chase": 10 }
+  },
+  "giant-spider": {
+    "name": "Giant spider", "size": [0.9, 1.1],
+    "body": { "length": 0.207999989, "radius": 0.117, "taper": 0.9, "flatten": 0.7 },
+    "coats": [{ "name": "Toxic", "base": [0.17, 0.1, 0.2], "accent": [0.4, 0.95, 0.25], "glow": 0.6, "weight": 2 }, { "name": "Ochre", "base": [0.22, 0.16, 0.1], "accent": [0.95, 0.55, 0.15], "glow": 0.4 }],
+    "parts": {
+      "fore": { "part": "spider-leg", "at": [0.8, 0, 0.7], "dir": [0, 55, 0], "mirror": true, "scale": 2.6 },
+      "fore-2": { "part": "spider-leg", "at": [0.9, 0, 0.25], "dir": [0, 80, 0], "mirror": true, "phase": 0.5, "scale": 2.6 },
+      "legs": { "part": "spider-leg", "at": [0.9, 0, -0.2], "dir": [0, 100, 0], "mirror": true, "scale": 2.6 },
+      "hind": { "part": "spider-leg", "at": [0.8, 0, -0.6], "dir": [0, 125, 0], "mirror": true, "phase": 0.5, "scale": 2.6 },
+      "abdomen": { "part": "abdomen", "at": [0, 0.3, -1], "dir": [-10, 180, 0], "scale": 2.6 },
+      "eyes": { "part": "spider-eye", "at": [0.25, 0.5, 0.95], "mirror": true, "scale": 2.6 },
+      "eyes-2": { "part": "spider-eye", "at": [0.5, 0.35, 0.85], "mirror": true, "scale": 2.08 },
+      "arms": { "part": "pincer", "at": [0.3, -0.3, 1], "dir": [30, 10, 0], "mirror": true, "scale": 1.3 }
+    },
+    "move": { "walk": 0.9, "run": 4, "turn": 160, "bob": [0, 0], "bobs": [2, 2] },
+    "behave": { "wander": 12, "idle": [3, 12], "flee": 0, "group": [1, 1], "active": "night", "graze": 0, "thirst": 0.05, "play": 0, "laze": 0.5, "hunts": ["toxic-frog"], "hunger": 0.4, "chase": 10 }
+  },
+  "gila-monster": {
+    "name": "Gila monster", "size": [0.9, 1.1],
+    "body": { "length": 0.26, "radius": 0.065, "taper": 0.95, "flatten": 0.65 },
+    "coat": { "base": [0.12, 0.1, 0.09], "accent": [0.85, 0.45, 0.35] },
+    "parts": {
+      "fore": { "part": "sprawl-leg", "at": [0.9, -0.3, 0.6], "dir": [0, 90, 0], "mirror": true, "thickness": 1.8 },
+      "hind": { "part": "sprawl-leg", "at": [0.9, -0.3, -0.6], "dir": [0, 90, 0], "mirror": true, "phase": 0.5, "thickness": 1.8 },
+      "head": { "part": "lizard-head", "at": [0, 0.1, 1], "scale": 1.3, "thickness": 1.2 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.032, 0.015, -0.05], "mirror": true, "scale": 0.7 },
+      "tail": { "part": "lizard-tail", "at": [0, 0, -1], "dir": [5, 180, 0], "scale": 0.6, "thickness": 1.7 }
+    },
+    "move": { "walk": 0.3, "run": 0.9, "turn": 90, "bob": [0.004, 0.008], "bobs": [2, 2] },
+    "behave": { "wander": 10, "idle": [4, 15], "flee": 0, "group": [1, 1], "active": "day", "graze": 0.1, "thirst": 0.05, "play": 0, "laze": 0.6, "hunts": ["quail"], "hunger": 0.15, "chase": 10 }
+  },
+  "glimmer-squirrel": {
+    "name": "Glimmer squirrel", "variantOf": "squirrel", "scale": 1,
+    "coats": [{ "name": "Silver", "base": [0.7, 0.72, 0.78], "accent": [0.85, 0.95, 1], "glow": 0.3 }, { "name": "Lilac", "base": [0.6, 0.52, 0.72], "accent": [0.95, 0.85, 1], "glow": 0.3 }],
+    "behave": { "active": "day", "graze": 0.4, "thirst": 0.2, "play": 0.5, "laze": 0.2, "hunger": 0.3, "chase": 10 }
+  },
+  "goblin": {
+    "name": "Goblin", "size": [0.85, 1.02],
+    "body": { "length": 0.204, "radius": 0.102, "taper": 1, "flatten": 0.9 },
+    "coats": [{ "name": "Rags, green", "base": [0.4, 0.32, 0.22], "accent": [0.45, 0.6, 0.28] }, { "name": "Rags, olive", "base": [0.3, 0.28, 0.24], "accent": [0.55, 0.55, 0.25] }, { "name": "Patchwork, grey-green", "base": [0.5, 0.25, 0.2], "accent": [0.4, 0.5, 0.35] }],
+    "parts": {
+      "legs": { "part": "goblin-leg", "at": [0.7, -0.4, 0], "dir": [90, 0, 0], "mirror": true, "scale": 0.55, "thickness": 0.9 },
+      "goblin-torso": { "part": "goblin-torso", "at": [0, 0.6, 0], "dir": [-90, 0, 0], "scale": 0.7, "thickness": 0.85 },
+      "head": { "part": "human-head", "on": "goblin-torso", "at": [0, 0, 0.02], "dir": [-45, 0, 0], "scale": 1.15 },
+      "human-hair": { "part": "human-hair", "on": "head", "at": [0, 0.0092, -0.0322], "scale": 1.15 },
+      "eyes": { "part": "human-eye", "on": "head", "at": [0.0437, -0.109249994, -0.115], "dir": [90, 0, 0], "mirror": true, "scale": 1.15 },
+      "arms": { "part": "human-arm", "on": "goblin-torso", "at": [0.1615, 0.01, -0.063], "dir": [180, 0, 0], "mirror": true, "phase": 0.5, "scale": 0.95, "thickness": 0.85 },
+      "ears": { "part": "goblin-ear", "on": "head", "at": [0.115, 0, -0.09199999], "dir": [-10, 80, 0], "mirror": true, "scale": 1.15 }
+    },
+    "move": { "walk": 1.3, "run": 5, "turn": 320, "bob": [0.04, 0.09], "bobs": [2, 2], "upright": true },
+    "behave": { "wander": 12, "idle": [3, 10], "flee": 0, "group": [1, 1], "active": "day", "graze": 0, "thirst": 0, "play": 0.6, "laze": 0.1, "hunger": 0, "chase": 10 }
+  },
+  "grizzly-bear": {
+    "name": "Grizzly bear", "variantOf": "black-bear", "scale": 1.2,
+    "coats": [{ "name": "Brown", "base": [0.38, 0.27, 0.17], "accent": [0.62, 0.5, 0.38], "weight": 2 }, { "name": "Blond", "base": [0.56, 0.44, 0.3], "accent": [0.76, 0.66, 0.52] }],
+    "behave": { "active": "day", "graze": 0.3, "thirst": 0.4, "play": 0.2, "laze": 0.6, "hunts": ["marmot", "deer"], "hunger": 0.15, "chase": 10 }
+  },
+  "horned-lizard": {
+    "name": "Horned lizard", "size": [0.9, 1.1],
+    "body": { "length": 0.11, "radius": 0.05, "taper": 0.9, "flatten": 0.4 },
+    "coat": { "base": [0.75, 0.63, 0.46], "accent": [0.55, 0.42, 0.3] },
+    "parts": {
+      "fore": { "part": "sprawl-leg", "at": [0.9, -0.3, 0.6], "dir": [0, 90, 0], "mirror": true, "scale": 0.7, "thickness": 1.1 },
+      "hind": { "part": "sprawl-leg", "at": [0.9, -0.3, -0.6], "dir": [0, 90, 0], "mirror": true, "phase": 0.5, "scale": 0.7, "thickness": 1.1 },
+      "head": { "part": "lizard-head", "at": [0, 0.1, 1], "scale": 0.9 },
+      "spike": { "part": "spike", "on": "head", "at": [0.015, 0.01, -0.05], "dir": [-150, 30, 0], "mirror": true },
+      "spike-2": { "part": "spike", "on": "head", "at": [0.025, 0.005, -0.04], "dir": [-170, 60, 0], "mirror": true, "scale": 0.8 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.022, 0.01, -0.035], "mirror": true, "scale": 0.6 },
+      "tail": { "part": "lizard-tail", "at": [0, 0, -1], "dir": [5, 180, 0], "scale": 0.35 }
+    },
+    "move": { "walk": 0.3, "run": 2.5, "turn": 200, "bob": [0.003, 0.008], "bobs": [2, 2] },
+    "behave": { "wander": 6, "idle": [3, 12], "flee": 2, "group": [1, 1], "active": "day", "graze": 0.3, "thirst": 0, "play": 0, "laze": 0.5, "hunger": 0.3, "chase": 10 }
+  },
+  "human": {
+    "name": "Human", "size": [0.92, 1.06],
+    "body": { "length": 0.24, "radius": 0.12, "taper": 1, "flatten": 0.9 },
+    "coats": [{ "name": "Blue tunic, fair", "base": [0.3, 0.36, 0.48], "accent": [0.88, 0.7, 0.56] }, { "name": "Green tunic, tan", "base": [0.3, 0.4, 0.26], "accent": [0.7, 0.5, 0.36] }, { "name": "Red tunic, brown", "base": [0.55, 0.22, 0.18], "accent": [0.45, 0.3, 0.2] }, { "name": "Ochre tunic, dark", "base": [0.62, 0.48, 0.22], "accent": [0.3, 0.2, 0.14] }],
+    "parts": {
+      "legs": { "part": "human-leg", "at": [0.7, -0.4, 0], "dir": [90, 0, 0], "mirror": true },
+      "human-torso": { "part": "human-torso", "at": [0, 0.6, 0], "dir": [-90, 0, 0] },
+      "head": { "part": "human-head", "on": "human-torso", "at": [0, 0, 0.02] },
+      "human-hair": { "part": "human-hair", "on": "head", "at": [0, 0.008, -0.028] },
+      "eyes": { "part": "human-eye", "on": "head", "at": [0.038, -0.095, -0.1], "dir": [90, 0, 0], "mirror": true },
+      "arms": { "part": "human-arm", "on": "human-torso", "at": [0.19, 0.01, -0.09], "dir": [180, 0, 0], "mirror": true, "phase": 0.5 }
+    },
+    "move": { "walk": 1.5, "run": 6, "turn": 240, "bob": [0.025, 0.07], "bobs": [2, 2], "upright": true },
+    "behave": { "wander": 12, "idle": [3, 8], "flee": 0, "group": [1, 1], "active": "day", "graze": 0, "thirst": 0, "play": 0.06, "laze": 0.15, "hunger": 0, "chase": 10 }
+  },
+  "jackrabbit": {
+    "name": "Jackrabbit", "size": [1.1, 1.3],
+    "body": { "length": 0.2, "radius": 0.07, "taper": 1.3, "flatten": 1.15 },
+    "coat": { "base": [0.62, 0.53, 0.42], "accent": [0.92, 0.88, 0.8] },
+    "parts": {
+      "hind": { "part": "hop-hindleg", "at": [0.6, -0.5, -0.5], "dir": [90, 0, 0], "mirror": true, "mirrorPhase": 0, "scale": 1.3 },
+      "fore": { "part": "paw-foreleg", "at": [0.5, -0.5, 0.6], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "mirrorPhase": 0.05, "scale": 0.5 },
+      "head": { "part": "rabbit-head", "at": [0, 0.6, 0.9], "dir": [10, 0, 0] },
+      "ears": { "part": "big-ear", "on": "head", "at": [0.02, 0.04, -0.07], "dir": [-75, 10, 0], "mirror": true },
+      "eyes": { "part": "eye", "on": "head", "at": [0.035, 0.02, -0.045], "mirror": true },
+      "tail": { "part": "puff-tail", "at": [0, 0.45, -1] }
+    },
+    "move": { "walk": 0.8, "run": 9, "turn": 220, "bob": [0.025, 0.08], "bobs": [1, 1], "rock": 15 },
+    "behave": { "wander": 12, "idle": [1, 5], "flee": 12, "group": [1, 1], "active": "always", "graze": 0.5, "thirst": 0.1, "play": 0.3, "laze": 0.2, "hunger": 0.3, "chase": 10 }
+  },
+  "lizard": {
+    "name": "Lizard", "size": [0.9, 1.1],
+    "body": { "length": 0.28, "radius": 0.055, "taper": 0.9, "flatten": 0.55 },
+    "coat": { "base": [0.6, 0.5, 0.35], "accent": [0.35, 0.3, 0.22] },
+    "parts": {
+      "fore": { "part": "sprawl-leg", "at": [0.9, -0.3, 0.6], "dir": [0, 90, 0], "mirror": true },
+      "hind": { "part": "sprawl-leg", "at": [0.9, -0.3, -0.6], "dir": [0, 90, 0], "mirror": true, "phase": 0.5 },
+      "head": { "part": "lizard-head", "at": [0, 0.1, 1] },
+      "eyes": { "part": "eye", "on": "head", "at": [0.025, 0.012, -0.04], "mirror": true, "scale": 0.7 },
+      "tail": { "part": "lizard-tail", "at": [0, 0, -1], "dir": [5, 180, 0] }
+    },
+    "move": { "walk": 0.6, "run": 4, "turn": 250, "bob": [0.004, 0.01], "bobs": [2, 2] },
+    "behave": { "wander": 8, "idle": [2, 9], "flee": 3, "group": [1, 1], "active": "day", "graze": 0.2, "thirst": 0.05, "play": 0, "laze": 0.5, "hunger": 0.3, "chase": 10 }
+  },
+  "marsh-dog": {
+    "name": "Marsh dog", "size": [0.9, 1.1],
+    "body": { "length": 0.7, "radius": 0.13, "taper": 0.9, "flatten": 1.1 },
+    "coats": [{ "name": "Moss", "base": [0.3, 0.42, 0.22], "accent": [0.62, 0.7, 0.46], "weight": 2 }, { "name": "Fern", "base": [0.2, 0.32, 0.2], "accent": [0.5, 0.6, 0.4] }, { "name": "Lichen", "base": [0.45, 0.52, 0.36], "accent": [0.75, 0.8, 0.62] }],
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.5, -0.3, -0.7], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "scale": 2.1, "thickness": 1.15 },
+      "fore": { "part": "paw-foreleg", "at": [0.55, -0.4, 0.7], "dir": [90, 0, 0], "mirror": true, "scale": 2.1, "thickness": 1.15 },
+      "neck": { "part": "short-neck", "at": [0, 0.4, 0.95], "dir": [-30, 0, 0], "scale": 1.7 },
+      "head": { "part": "fox-head", "on": "neck", "dir": [35, 0, 0], "scale": 1.35, "thickness": 1.3 },
+      "ears": { "part": "droop-ear", "on": "head", "at": [0.05, 0.04, -0.17], "dir": [50, 75, 0], "mirror": true },
+      "eyes": { "part": "eye", "on": "head", "at": [0.045, 0.025, -0.1], "mirror": true, "scale": 1.1 },
+      "tail": { "part": "bushy-tail", "at": [0, 0.3, -1], "dir": [-30, 180, 0], "scale": 1.2, "thickness": 0.7 }
+    },
+    "move": { "walk": 1.3, "run": 8, "turn": 160, "bob": [0.01, 0.04], "bobs": [2, 2] },
+    "behave": { "wander": 30, "idle": [1.5, 6], "flee": 0, "group": [2, 5], "active": "always", "graze": 0.1, "thirst": 0.3, "play": 0.6, "laze": 0.4, "hunts": ["marsh-turtle", "frog", "heron"], "hunger": 0.35, "chase": 10 }
+  },
+  "marsh-turtle": {
+    "name": "Marsh turtle", "variantOf": "desert-tortoise", "scale": 0.8,
+    "coat": { "base": [0.25, 0.3, 0.18], "accent": [0.4, 0.42, 0.28] },
+    "behave": { "active": "day", "graze": 0.5, "thirst": 0.3, "play": 0, "laze": 0.6, "hunger": 0.3, "chase": 10 }
+  },
+  "mire-spider": {
+    "name": "Mire spider", "variantOf": "giant-spider", "scale": 0.35,
+    "coat": { "base": [0.12, 0.1, 0.1], "accent": [0.6, 0.9, 0.3], "glow": 0.5 },
+    "behave": { "active": "night", "graze": 0, "thirst": 0.05, "play": 0, "laze": 0.5, "hunts": ["toxic-frog"], "hunger": 0.4, "chase": 10 }
+  },
+  "monkey": {
+    "name": "Monkey", "size": [0.9, 1.1],
+    "body": { "length": 0.38, "radius": 0.1, "taper": 0.9, "flatten": 1.1 },
+    "coats": [{ "name": "Golden", "base": [0.72, 0.5, 0.22], "accent": [0.95, 0.85, 0.62], "weight": 2 }, { "name": "Silver", "base": [0.6, 0.6, 0.66], "accent": [0.92, 0.92, 0.96] }],
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.55, -0.3, -0.7], "dir": [90, 0, 0], "mirror": true, "phase": 0.5, "scale": 1.5, "thickness": 1.1 },
+      "fore": { "part": "paw-foreleg", "at": [0.6, -0.2, 0.75], "dir": [90, 0, 0], "mirror": true, "scale": 2.5, "thickness": 1.1 },
+      "neck": { "part": "short-neck", "at": [0, 0.5, 0.95], "dir": [-40, 0, 0] },
+      "head": { "part": "cat-head", "on": "neck", "dir": [35, 0, 0], "scale": 0.85 },
+      "ears": { "part": "round-ear", "on": "head", "at": [0.07, 0.02, -0.08], "dir": [-10, 90, 0], "mirror": true, "scale": 0.7 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.035, 0.025, -0.035], "mirror": true },
+      "tail": { "part": "cat-tail", "at": [0, 0.3, -1], "dir": [-30, 180, 0], "scale": 1.1, "thickness": 0.8 }
+    },
+    "move": { "walk": 1, "run": 6, "turn": 200, "bob": [0.015, 0.05], "bobs": [2, 1], "rock": 10 },
+    "behave": { "wander": 20, "idle": [1.5, 6], "flee": 10, "group": [2, 5], "active": "day", "graze": 0.3, "thirst": 0.3, "play": 0.6, "laze": 0.3, "hunger": 0.3, "chase": 10 }
+  },
+  "mountain-goat": {
+    "name": "Mountain goat", "size": [0.9, 1.1],
+    "body": { "length": 0.8, "radius": 0.21, "taper": 0.95, "flatten": 1.15 },
+    "coat": { "base": [0.9, 0.88, 0.82], "accent": [0.98, 0.97, 0.94] },
+    "parts": {
+      "hind": { "part": "hoof-hindleg", "at": [0.55, -0.4, -0.72], "dir": [90, 0, 0], "mirror": true, "scale": 0.58 },
+      "fore": { "part": "hoof-foreleg", "at": [0.55, -0.5, 0.7], "dir": [90, 0, 0], "mirror": true, "phase": 0.25, "scale": 0.58 },
+      "neck": { "part": "deer-neck", "at": [0, 0.45, 0.9], "dir": [-25, 0, 0], "scale": 0.55 },
+      "head": { "part": "deer-head", "on": "neck", "dir": [50, 0, 0], "scale": 0.8 },
+      "ears": { "part": "deer-ear", "on": "head", "at": [0.04, 0.03, -0.17], "dir": [-20, 70, 0], "mirror": true, "scale": 0.7 },
+      "horns": { "part": "curved-horn", "on": "head", "at": [0.025, 0.05, -0.15], "dir": [-75, 10, 0], "mirror": true },
+      "beard": { "part": "beard", "on": "head", "at": [0, -0.04, -0.06], "dir": [80, 0, 0], "scale": 0.5 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.045, 0.02, -0.11], "mirror": true },
+      "tail": { "part": "stub-tail", "at": [0, 0.5, -1], "dir": [-30, 180, 0], "scale": 0.8 }
+    },
+    "move": { "walk": 1.1, "run": 6.5, "turn": 100, "bob": [0.015, 0.05], "bobs": [2, 1], "rock": 5 },
+    "behave": { "wander": 20, "idle": [4, 12], "flee": 12, "group": [2, 4], "active": "day", "graze": 0.5, "thirst": 0.3, "play": 0.2, "laze": 0.3, "hunger": 0.3, "chase": 10 }
+  },
+  "mountain-lion": {
+    "name": "Mountain lion", "size": [0.9, 1.1],
+    "body": { "length": 0.85, "radius": 0.15, "taper": 0.95, "flatten": 1.1 },
+    "coat": { "base": [0.66, 0.52, 0.36], "accent": [0.9, 0.84, 0.75] },
+    "parts": {
+      "hind": { "part": "paw-hindleg", "at": [0.5, -0.3, -0.7], "dir": [90, 0, 0], "mirror": true, "scale": 2.2, "thickness": 1.35 },
+      "fore": { "part": "paw-foreleg", "at": [0.55, -0.4, 0.7], "dir": [90, 0, 0], "mirror": true, "phase": 0.25, "scale": 2.2, "thickness": 1.45 },
+      "neck": { "part": "short-neck", "at": [0, 0.4, 0.95], "dir": [-20, 0, 0], "scale": 1.6, "thickness": 1.2 },
+      "head": { "part": "cat-head", "on": "neck", "dir": [30, 0, 0] },
+      "ears": { "part": "small-ear", "on": "head", "at": [0.05, 0.06, -0.09], "dir": [-85, 15, 0], "mirror": true },
+      "eyes": { "part": "eye", "on": "head", "at": [0.05, 0.03, -0.04], "mirror": true, "scale": 1.1 },
+      "tail": { "part": "cat-tail", "at": [0, 0.3, -1], "dir": [15, 180, 0] }
+    },
+    "move": { "walk": 1.1, "run": 10, "turn": 120, "bob": [0.008, 0.04], "bobs": [2, 1], "rock": 6 },
+    "behave": { "wander": 50, "idle": [3, 12], "flee": 16, "group": [1, 1], "active": "night", "graze": 0, "thirst": 0.3, "play": 0.1, "laze": 0.6, "hunts": ["deer", "bighorn-sheep", "mountain-goat", "marmot"], "hunger": 0.4, "chase": 10 }
+  },
+  "ogre": {
+    "name": "Ogre", "size": [0.95, 1.1],
+    "body": { "length": 0.503999949, "radius": 0.251999974, "taper": 1, "flatten": 0.9 },
+    "coats": [{ "name": "Hide, grey-green", "base": [0.38, 0.28, 0.2], "accent": [0.48, 0.55, 0.42] }, { "name": "Hide, ochre", "base": [0.32, 0.24, 0.18], "accent": [0.62, 0.55, 0.38] }],
+    "parts": {
+      "legs": { "part": "human-leg", "at": [0.7, -0.4, 0], "dir": [90, 0, 0], "mirror": true, "scale": 1.3, "thickness": 2 },
+      "ogre-torso": { "part": "ogre-torso", "at": [0, 0.6, 0], "dir": [-90, 0, 0], "scale": 1.4, "thickness": 2.1 },
+      "head": { "part": "human-head", "on": "ogre-torso", "at": [0, 0, 0.120000005], "dir": [-10, 0, 0], "scale": 0.95 },
+      "human-hair": { "part": "human-hair", "on": "head", "at": [0, 0.0076, -0.0266000014], "scale": 0.95 },
+      "eyes": { "part": "human-eye", "on": "head", "at": [0.0361, -0.09025, -0.095], "dir": [90, 0, 0], "mirror": true, "scale": 0.95 },
+      "arms": { "part": "human-arm", "on": "ogre-torso", "at": [0.399, 0.01, -0.126], "dir": [180, 0, 0], "mirror": true, "phase": 0.5, "scale": 1.45, "thickness": 1.9 },
+      "ogre-tusk": { "part": "ogre-tusk", "on": "head", "at": [0.0475, -0.095, -0.1615], "dir": [-100, 0, 0], "mirror": true, "scale": 0.95 }
+    },
+    "move": { "walk": 1.1, "run": 4, "turn": 110, "bob": [0.07, 0.13], "bobs": [2, 2], "rock": 4, "upright": true },
+    "behave": { "wander": 12, "idle": [3, 10], "flee": 0, "group": [1, 1], "active": "day", "graze": 0, "thirst": 0, "play": 0.03, "laze": 0.5, "hunger": 0, "chase": 10 }
+  },
+  "polar-bear": {
+    "name": "Polar bear", "variantOf": "black-bear", "scale": 1.3,
+    "coat": { "base": [0.92, 0.9, 0.84], "accent": [0.95, 0.93, 0.88] },
+    "behave": { "active": "day", "graze": 0, "thirst": 0.1, "play": 0.2, "laze": 0.6, "hunts": ["caribou", "snowshoe-hare"], "hunger": 0.2, "chase": 10 }
+  },
+  "prairie-dog": {
+    "name": "Prairie dog", "variantOf": "marmot", "scale": 0.6,
+    "coat": { "base": [0.7, 0.56, 0.4], "accent": [0.88, 0.8, 0.68] },
+    "behave": { "active": "day", "graze": 0.5, "thirst": 0.1, "play": 0.45, "laze": 0.3, "hunger": 0.3, "chase": 10 }
+  },
+  "pronghorn": {
+    "name": "Pronghorn", "size": [0.9, 1.1],
+    "body": { "length": 0.95, "radius": 0.17, "taper": 0.95, "flatten": 1.15 },
+    "coat": { "base": [0.72, 0.48, 0.26], "accent": [0.96, 0.93, 0.87] },
+    "parts": {
+      "hind": { "part": "hoof-hindleg", "at": [0.55, -0.35, -0.75], "dir": [90, 0, 0], "mirror": true, "scale": 0.85 },
+      "fore": { "part": "hoof-foreleg", "at": [0.55, -0.45, 0.72], "dir": [90, 0, 0], "mirror": true, "phase": 0.25, "scale": 0.85 },
+      "neck": { "part": "deer-neck", "at": [0, 0.5, 0.85], "dir": [-45, 0, 0], "scale": 0.72 },
+      "head": { "part": "deer-head", "on": "neck", "dir": [55, 0, 0], "scale": 0.8 },
+      "horns": { "part": "curved-horn", "on": "head", "at": [0.03, 0.06, -0.17], "dir": [-85, 5, 0], "mirror": true, "scale": 0.9 },
+      "ears": { "part": "deer-ear", "on": "head", "at": [0.045, 0.04, -0.17], "dir": [-60, 50, 0], "mirror": true, "scale": 0.8 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.045, 0.02, -0.11], "mirror": true },
+      "tail": { "part": "stub-tail", "at": [0, 0.55, -1], "dir": [-40, 180, 0], "scale": 0.7 }
+    },
+    "move": { "walk": 1.4, "run": 13, "turn": 120, "bob": [0.015, 0.06], "bobs": [2, 1], "rock": 6 },
+    "behave": { "wander": 35, "idle": [3, 9], "flee": 22, "group": [2, 6], "active": "day", "graze": 0.6, "thirst": 0.3, "play": 0.2, "laze": 0.25, "hunger": 0.3, "chase": 10 }
+  },
+  "ptarmigan": {
+    "name": "Ptarmigan", "variantOf": "quail", "scale": 1.5,
+    "coat": { "base": [0.95, 0.95, 0.93], "accent": [0.82, 0.82, 0.8] },
+    "behave": { "active": "day", "graze": 0.6, "thirst": 0.1, "play": 0.1, "laze": 0.25, "hunger": 0.3, "chase": 10 }
+  },
+  "rattlesnake": {
+    "name": "Rattlesnake", "size": [0.9, 1.1],
+    "body": { "length": 0.10800001, "radius": 0.0336000025, "taper": 1, "flatten": 0.75 },
+    "coat": { "base": [0.6, 0.5, 0.35], "accent": [0.32, 0.25, 0.17] },
+    "parts": {
+      "head": { "part": "snake-head", "at": [0, 0, 1], "scale": 1.2 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.016, 0.008, -0.025], "mirror": true, "scale": 0.6 },
+      "tail": { "part": "snake-body", "at": [0, 0, -1], "dir": [0, 180, 0], "scale": 1.2 },
+      "rattle": { "part": "rattle", "on": "tail", "dir": [-10, 0, 0], "scale": 1.2 }
+    },
+    "move": { "walk": 0.35, "run": 1.2, "turn": 90, "bob": [0, 0], "bobs": [2, 2], "stride": [0.480000019, 0.66] },
+    "behave": { "wander": 8, "idle": [5, 20], "flee": 2, "group": [1, 1], "active": "always", "graze": 0, "thirst": 0, "play": 0, "laze": 0.6, "hunts": ["prairie-dog", "quail", "gambels-quail"], "hunger": 0.2, "chase": 10 }
+  },
+  "roadrunner": {
+    "name": "Roadrunner", "size": [0.9, 1.1],
+    "body": { "length": 0.22, "radius": 0.06, "taper": 0.8, "flatten": 1 },
+    "coat": { "base": [0.45, 0.38, 0.3], "accent": [0.85, 0.8, 0.7] },
+    "parts": {
+      "legs": { "part": "bird-leg", "at": [0.5, -0.6, 0], "dir": [90, 0, 0], "mirror": true },
+      "neck": { "part": "bird-neck", "at": [0, 0.4, 0.9], "dir": [-60, 0, 0] },
+      "head": { "part": "bird-head", "on": "neck", "dir": [60, 0, 0] },
+      "horn": { "part": "beak", "on": "head", "dir": [5, 0, 0] },
+      "ear": { "part": "crest", "on": "head", "at": [0, 0.02, -0.03], "dir": [-130, 0, 0] },
+      "eyes": { "part": "eye", "on": "head", "at": [0.025, 0.012, -0.02], "mirror": true, "scale": 0.6 },
+      "tail": { "part": "bird-tail", "at": [0, 0.3, -1], "dir": [-20, 180, 0] }
+    },
+    "move": { "walk": 1, "run": 8, "turn": 200, "bob": [0.012, 0.03], "bobs": [2, 2] },
+    "behave": { "wander": 25, "idle": [1, 4], "flee": 10, "group": [1, 1], "active": "day", "graze": 0.3, "thirst": 0.1, "play": 0.1, "laze": 0.2, "hunts": ["horned-lizard", "lizard", "scorpion", "rattlesnake"], "hunger": 0.5, "chase": 10 }
+  },
+  "scorpion": {
+    "name": "Scorpion", "size": [0.9, 1.1],
+    "body": { "length": 0.075, "radius": 0.025, "taper": 0.9, "flatten": 0.5 },
+    "coat": { "base": [0.55, 0.42, 0.25], "accent": [0.3, 0.22, 0.12] },
+    "parts": {
+      "fore": { "part": "sprawl-leg", "at": [0.9, -0.3, 0.55], "dir": [0, 80, 0], "mirror": true, "scale": 0.5, "thickness": 0.55 },
+      "legs": { "part": "sprawl-leg", "at": [0.9, -0.3, 0.15], "dir": [0, 95, 0], "mirror": true, "phase": 0.5, "scale": 0.55, "thickness": 0.55 },
+      "hind": { "part": "sprawl-leg", "at": [0.9, -0.3, -0.25], "dir": [0, 110, 0], "mirror": true, "scale": 0.55, "thickness": 0.55 },
+      "hind-2": { "part": "sprawl-leg", "at": [0.9, -0.3, -0.6], "dir": [0, 125, 0], "mirror": true, "phase": 0.5, "scale": 0.5, "thickness": 0.55 },
+      "arms": { "part": "pincer", "at": [0.5, 0, 1], "dir": [0, 25, 0], "mirror": true },
+      "tail": { "part": "scorpion-tail", "at": [0, 0.3, -1], "dir": [-25, 180, 0] }
+    },
+    "move": { "walk": 0.3, "run": 1.2, "turn": 200, "bob": [0, 0], "bobs": [2, 2] },
+    "behave": { "wander": 4, "idle": [3, 15], "flee": 1.5, "group": [1, 1], "active": "night", "graze": 0.2, "thirst": 0, "play": 0, "laze": 0.4, "hunger": 0.3, "chase": 10 }
+  },
+  "sidewinder": {
+    "name": "Sidewinder", "variantOf": "rattlesnake", "scale": 0.7,
+    "coat": { "base": [0.82, 0.74, 0.58], "accent": [0.62, 0.52, 0.4] },
+    "behave": { "active": "night", "graze": 0, "thirst": 0, "play": 0, "laze": 0.6, "hunts": ["jackrabbit", "horned-lizard"], "hunger": 0.2, "chase": 10 }
+  },
+  "snow-monkey": {
+    "name": "Snow monkey", "variantOf": "monkey", "scale": 1.1,
+    "coat": { "base": [0.72, 0.69, 0.64], "accent": [0.86, 0.5, 0.48] },
+    "behave": { "active": "day", "graze": 0.3, "thirst": 0.2, "play": 0.5, "laze": 0.6, "hunger": 0.3, "chase": 10 }
+  },
+  "snowshoe-hare": {
+    "name": "Snowshoe hare", "variantOf": "rabbit", "scale": 1.2,
+    "coat": { "base": [0.94, 0.94, 0.92], "accent": [1, 1, 1] },
+    "behave": { "active": "always", "graze": 0.6, "thirst": 0.2, "play": 0.3, "laze": 0.2, "hunger": 0.3, "chase": 10 }
+  },
+  "swamp-serpent": {
+    "name": "Swamp serpent", "size": [0.9, 1.1],
+    "body": { "length": 0.234, "radius": 0.0728, "taper": 1, "flatten": 0.75 },
+    "coats": [{ "name": "Mire", "base": [0.2, 0.12, 0.24], "accent": [0.45, 0.95, 0.3], "glow": 0.45, "weight": 2 }, { "name": "Bog", "base": [0.16, 0.22, 0.12], "accent": [0.75, 0.35, 0.9], "glow": 0.45 }],
+    "parts": {
+      "head": { "part": "snake-head", "at": [0, 0, 1], "scale": 2.86 },
+      "eyes": { "part": "spider-eye", "on": "head", "at": [0.04, 0.022, -0.06], "mirror": true, "scale": 2.2 },
+      "tail": { "part": "snake-body", "at": [0, 0, -1], "dir": [0, 180, 0], "scale": 2.6, "thickness": 1.15 }
+    },
+    "move": { "walk": 0.7, "run": 2.5, "turn": 70, "bob": [0, 0], "bobs": [2, 2], "stride": [1.04, 1.43] },
+    "behave": { "wander": 15, "idle": [4, 15], "flee": 0, "group": [1, 1], "active": "always", "graze": 0, "thirst": 0.1, "play": 0, "laze": 0.5, "hunts": ["toxic-frog", "marsh-turtle"], "hunger": 0.3, "chase": 10 }
+  },
+  "toxic-frog": {
+    "name": "Toxic frog", "variantOf": "frog", "scale": 1.1,
+    "coats": [{ "name": "Azure", "base": [0.12, 0.3, 0.65], "accent": [0.95, 0.85, 0.2], "glow": 0.6 }, { "name": "Venom", "base": [0.75, 0.15, 0.12], "accent": [0.2, 0.2, 0.25] }, { "name": "Lime", "base": [0.45, 0.85, 0.2], "accent": [0.2, 0.1, 0.3] }],
+    "behave": { "active": "always", "graze": 0.2, "thirst": 0, "play": 0, "laze": 0.4, "hunger": 0.3, "chase": 10 }
+  }
+}

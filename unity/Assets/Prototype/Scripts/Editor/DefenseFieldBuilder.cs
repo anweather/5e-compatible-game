@@ -70,18 +70,10 @@ public static class DefenseFieldBuilder
         field.startPlate = StartPlate(root, looks);
         field.plateRadius = PlateRadius;
         field.kinds = new[] { RaiderIds.BoneHound, RaiderIds.AshCrab, RaiderIds.GiantSpider };
-        field.species = new[] { Species("BoneHound"), Species("AshCrab"), Species("GiantSpider") };
         field.sizes = new[] { 1.2f, 1.6f, 1.4f };
         var shader = Shader.Find("Punchy/Creature");
         field.creatureMaterial = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Creature.mat", () => new Material(shader) { name = "Creature" });
         return field;
-    }
-
-    static Punchy.Fauna.CreatureSpecies Species(string name)
-    {
-        var species = AssetDatabase.LoadAssetAtPath<Punchy.Fauna.CreatureSpecies>("Assets/Prototype/ThirdParty/Punchy/Fauna/" + name + ".asset");
-        if (species == null) Debug.LogWarning("Defense field: no species " + name);
-        return species;
     }
 
     static Vector3 At(Vector2 p)

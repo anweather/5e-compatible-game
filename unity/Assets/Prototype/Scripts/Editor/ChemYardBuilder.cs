@@ -234,30 +234,15 @@ public static class ChemYardBuilder
             () => new Material(Shader.Find("Punchy/Butterflies")) { name = "Butterflies" });
     }
 
-    // The valley's animals (ValleyFauna, from Punchy's creatures in ThirdParty/Punchy/Fauna): species and how many
-    // per hectare, out in the wilds (fewer round the start: ValleyFauna.homeDensity). Frogs and herons only by water.
-    static readonly (string name, float density, bool nearWater)[] Fauna =
-    {
-        ("Deer", 0.7f, false), ("Rabbit", 1.8f, false), ("Squirrel", 1.5f, false), ("RedFox", 0.3f, false),
-        ("Turkey", 0.6f, false), ("Quail", 0.8f, false), ("Marmot", 0.4f, false), ("Skunk", 0.2f, false),
-        ("GarterSnake", 0.3f, false), ("BlackBear", 0.08f, false), ("Wolf", 0.1f, false),
-        ("Frog", 4f, true), ("Heron", 0.4f, true),
-    };
-
     static void SetUpFauna()
     {
         // Footprints in the snow, the wizards' and the animals'.
         new GameObject("Footprints").AddComponent<Footprints>().material = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Footprint.mat",
             () => UrpMaterials.NewUnlitParticles("Footprint", Color.white, additive: false));
+        // The species themselves are rows (rules/fauna.json), read at run time.
         var fauna = new GameObject("Fauna").AddComponent<ValleyFauna>();
         var shader = Shader.Find("Punchy/Creature");
         fauna.material = EditorAssets.LoadOrCreate(PropBuilder.Generated + "/Creature.mat", () => new Material(shader) { name = "Creature" });
-        foreach (var (name, density, nearWater) in Fauna)
-        {
-            var species = AssetDatabase.LoadAssetAtPath<Punchy.Fauna.CreatureSpecies>("Assets/Prototype/ThirdParty/Punchy/Fauna/" + name + ".asset");
-            if (species == null) Debug.LogWarning("Fauna: no species " + name);
-            else fauna.species.Add(new ValleyFauna.Entry { species = species, density = density, nearWater = nearWater });
-        }
     }
 
     static Material Precipitation(string name, float shape)
