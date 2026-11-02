@@ -16,7 +16,7 @@ public static class ProbeThingsMod
 
     public static string Json(Vector2Int item, Vector2Int prop) => $@"{{ ""title"": ""{Title}"", ""patch"": {{
         ""items"": {{ ""{Find}"": {{ ""name"": ""Probe find"", ""material"": ""flesh"", ""mass"": 0.5,
-            ""look"": {{ ""family"": ""creature"", ""species"": ""squirrel"", ""color"": [1, 0.78, 0.15], ""glow"": 0.4, ""scale"": 2 }} }} }},
+            ""look"": {{ ""family"": ""creature"", ""species"": ""squirrel"", ""color"": [1, 0.78, 0.15], ""glow"": 0.1, ""scale"": 2 }} }} }},
         ""entities"": {{ ""{Stump}"": {{ ""name"": ""Probe stump"", ""material"": ""flesh"", ""hp"": 20, ""mass"": 40,
             ""look"": {{ ""family"": ""creature"", ""species"": ""deer"", ""color"": [0.2, 0.4, 1] }} }} }},
         ""world"": {{ ""add"": [
