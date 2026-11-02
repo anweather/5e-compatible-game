@@ -3,15 +3,18 @@ using System.IO;
 using System.Linq;
 using UnityEngine;
 
-// The probe's voice scenario (J-061): a hold to talk from press to send, with a stand-in recogniser
-// and a stand-in for claude. No microphone, no Windows speech and no real Claude run here, so
-// what it proves is the seam and the box; real dictation needs a real voice.
+// The probe's voice scenario (J-061): a hold to talk from press to send, with a stand-in recogniser,
+// then again from recorded samples, and a stand-in for claude. No microphone, no Windows speech and
+// no real Claude run here, so what it proves is the seam, the box and the queue; real dictation
+// needs a real voice.
 public class VoiceProbe : ProbeScenario
 {
     const string First = "make all fire", Guess = "bl", Second = "blue please";
-    const float MostWait = 8f, FilmStep = 1f;
+    const string SampleGreen = "fire-near-me-green", SampleDay = "day-time", SampleNoisy = "undo-noisy";
+    const float MostWait = 8f, MostQueueWait = 20f, FilmStep = 1f;
+    const int SlowClaudeSeconds = 6;
 
-    string adapterWas, logged;
+    string adapterWas, logged, folder;
 
     protected override IEnumerator Run()
     {
@@ -19,18 +22,17 @@ public class VoiceProbe : ProbeScenario
         var voice = GameVoice.Instance;
         Check("voice_here", chat != null && voice != null);
         if (voice == null) yield break;
-        string folder = Path.Combine(Application.temporaryCachePath, "voice-probe");
+        folder = Path.Combine(Application.temporaryCachePath, "voice-probe");
         Directory.CreateDirectory(folder);
         logged = Path.Combine(folder, "asked.txt");
-        string script = Path.Combine(folder, "claude.cmd");
-        File.WriteAllText(script, $"@echo off\r\nmore > \"{logged}\"\r\necho {{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"ok\"}}\r\n");
+        File.Delete(logged);
         adapterWas = SpeechChoice.Adapter;
         var controls = caster.controls;
         bool controlsWere = controls != null && controls.enabled;
         if (controls != null) controls.enabled = true;
         try
         {
-            ClaudeChat.StandIn = script;
+            ClaudeChat.StandIn = StandInClaude("claude", 0);
             SpeechChoice.Adapter = SpeechChoice.StandIn;
             voice.Drop();
             PlayerPrefs.DeleteKey("speech.told");
@@ -38,6 +40,11 @@ public class VoiceProbe : ProbeScenario
             yield return Again(chat, voice);
             yield return Cannot(chat, voice, controls);
             yield return Closed(chat, voice);
+            SpeechChoice.Adapter = SpeechChoice.Recorded;
+            voice.Drop();
+            yield return Sample(chat, voice);
+            yield return Early(chat, voice);
+            yield return Queue(chat, voice);
             Check("the_controls_page_says_whats_bound", ControlsMenu.Rows.Any(r => r.what.Contains("Talk to Claude") && r.keys.Contains('H') && r.pad.Contains("both sticks")));
         }
         finally
@@ -49,9 +56,27 @@ public class VoiceProbe : ProbeScenario
         }
     }
 
-    static IEnumerator Until(System.Func<bool> done)
+    // A script standing in for claude: it notes what came on stdin, waits, then answers.
+    string StandInClaude(string name, int seconds)
     {
-        for (float t = 0f; t < MostWait && !done(); t += Time.unscaledDeltaTime) yield return null;
+        string script = Path.Combine(folder, name + ".cmd");
+        string wait = seconds > 0 ? $"ping -n {seconds + 1} 127.0.0.1 > nul\r\n" : "";
+        File.WriteAllText(script, $"@echo off\r\nmore >> \"{logged}\"\r\n{wait}echo {{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"ok\"}}\r\n");
+        return script;
+    }
+
+    string Asked() => File.Exists(logged) ? File.ReadAllText(logged) : "";
+
+    static IEnumerator Until(System.Func<bool> done, float most = MostWait)
+    {
+        for (float t = 0f; t < most && !done(); t += Time.unscaledDeltaTime) yield return null;
+    }
+
+    static RecordedSpeech Play(GameVoice voice, string sample)
+    {
+        RecordedSpeech.Next = sample;
+        voice.Press();
+        return voice.Speech as RecordedSpeech;
     }
 
     IEnumerator Hold(GameChat chat, GameVoice voice, PlayerControls controls)
@@ -96,8 +121,7 @@ public class VoiceProbe : ProbeScenario
         var said = chat.Lines.ToList();
         Check("your_words_show", said.Contains("You: " + message), string.Join(" | ", said));
         yield return Until(() => !chat.Busy);
-        string asked = File.Exists(logged) ? File.ReadAllText(logged) : "";
-        Check("the_words_reach_claude", asked.Contains(message), asked);
+        Check("the_words_reach_claude", Asked().Contains(message), Asked());
         Check("sent_once", chat.Lines.Count(l => l == "You: " + message) == 1, string.Join(" | ", chat.Lines));
         if (film != null)
         {
@@ -147,5 +171,75 @@ public class VoiceProbe : ProbeScenario
         yield return Until(() => !voice.Talking);
         Check("closing_the_box_drops_the_words", !chat.Busy && !chat.Lines.Any(l => l.Contains(Words)), string.Join(" | ", chat.Lines));
         Check("box_stays_closed", !chat.Open);
+    }
+
+    // A whole hold from a sample: the words come one by one on its timing, then it goes.
+    IEnumerator Sample(GameChat chat, GameVoice voice)
+    {
+        var speech = Play(voice, SampleGreen);
+        Check("the_sample_plays", speech != null && speech.State == SpeechState.Listening, speech?.Why);
+        if (speech == null || speech.State != SpeechState.Listening)
+        {
+            voice.Release();
+            yield return Until(() => !voice.Talking);
+            yield break;
+        }
+        yield return WaitReal(speech.LastWordAt / 2f);
+        string halfway = chat.Typed;
+        Check("words_come_as_spoken", halfway.Length > 0 && speech.Text.StartsWith(halfway, System.StringComparison.Ordinal) && halfway != speech.Text, halfway);
+        yield return WaitReal(speech.Seconds + 0.3f - speech.LastWordAt / 2f);
+        Check("the_whole_ask_is_in_the_box", chat.Typed == speech.Text, chat.Typed);
+        voice.Release();
+        yield return Until(() => !voice.Talking);
+        Check("the_sample_is_sent", chat.Lines.Contains("You: " + speech.Text), string.Join(" | ", chat.Lines));
+        yield return Until(() => !chat.Busy);
+        Check("the_sample_reaches_claude", Asked().Contains(speech.Text), Asked());
+    }
+
+    // Letting go mid-sentence sends what was heard, and only that.
+    IEnumerator Early(GameChat chat, GameVoice voice)
+    {
+        var speech = Play(voice, SampleDay);
+        if (speech == null) yield break;
+        yield return WaitReal(speech.LastWordAt / 2f);
+        string heard = chat.Typed;
+        voice.Release();
+        yield return Until(() => !voice.Talking);
+        Check("letting_go_early_sends_whats_heard", heard.Length > 0 && heard != speech.Text && chat.Lines.Any(l => l.StartsWith("You: ", System.StringComparison.Ordinal) && speech.Text.StartsWith(l.Substring(5), System.StringComparison.Ordinal) && l.Length > 5), heard + " | " + string.Join(" | ", chat.Lines));
+        yield return Until(() => !chat.Busy);
+    }
+
+    // With Claude busy, spoken and typed words wait in order, on one line, up to the cap.
+    IEnumerator Queue(GameChat chat, GameVoice voice)
+    {
+        const string Typing = "first typed", Second = "second typed", Third = "third typed", TooMany = "one too many";
+        File.Delete(logged);
+        ClaudeChat.StandIn = StandInClaude("slow-claude", SlowClaudeSeconds);
+        chat.Send(Typing);
+        ClaudeChat.StandIn = StandInClaude("claude", 0);
+        var speech = Play(voice, SampleNoisy);
+        if (speech == null) yield break;
+        yield return WaitReal(speech.Seconds + 0.3f);
+        voice.Release();
+        yield return Until(() => !voice.Talking);
+        int linesWere = chat.Lines.Count();
+        Check("spoken_words_wait_their_turn", chat.Queued != null && chat.Queued.Contains(speech.Text) && !chat.Lines.Contains("You: " + speech.Text), chat.Queued);
+        chat.Send(Second);
+        chat.Send(Third);
+        chat.Send(TooMany);
+        Check("typed_words_join_the_line_up_to_the_cap", chat.Queued != null && chat.Queued.Contains("(3)"), chat.Queued);
+        Check("too_many_says_so_on_the_one_line", chat.Queued != null && chat.Queued.Contains("too many"), chat.Queued);
+        Check("no_pile_up_of_lines", chat.Lines.Count() == linesWere, string.Join(" | ", chat.Lines));
+        yield return Until(() => !chat.Busy, MostQueueWait);
+        string asked = Asked();
+        int[] order = { asked.IndexOf(Typing, System.StringComparison.Ordinal), asked.IndexOf(speech.Text, System.StringComparison.Ordinal), asked.IndexOf(Second, System.StringComparison.Ordinal), asked.IndexOf(Third, System.StringComparison.Ordinal) };
+        Check("they_go_in_order", order[0] >= 0 && order[0] < order[1] && order[1] < order[2] && order[2] < order[3], asked);
+        Check("one_too_many_isnt_sent", !asked.Contains(TooMany), asked);
+        Check("the_line_empties", chat.Queued == null, chat.Queued);
+    }
+
+    static IEnumerator WaitReal(float seconds)
+    {
+        for (float t = 0f; t < seconds; t += Time.unscaledDeltaTime) yield return null;
     }
 }

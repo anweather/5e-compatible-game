@@ -40,6 +40,18 @@ public class VoiceSeamTests
     }
 
     [Test]
+    public void AMissingSampleSaysWhyAndEndsTheHold()
+    {
+        RecordedSpeech.Next = "none";
+        using var speech = new RecordedSpeech("no-such-folder");
+        speech.Start();
+        Assert.AreEqual(SpeechState.Unavailable, speech.State);
+        StringAssert.Contains("make.ps1", speech.Why);
+        Assert.IsTrue(speech.Take(out var line));
+        Assert.AreEqual(SpeechHeard.Done, line.heard);
+    }
+
+    [Test]
     public void AHoldAlwaysEndsWithDone()
     {
         using var speech = new StandInSpeech { FailWith = "no" };

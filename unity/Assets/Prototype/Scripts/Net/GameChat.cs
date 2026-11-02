@@ -5,12 +5,13 @@ using UnityEngine.InputSystem;
 
 // The chat box in the game (J-060): Enter opens it, or holding to talk does (GameVoice, J-061, the
 // only way in from a pad); what's typed or said goes to the player's own Claude Code, one process a message (ClaudeChat), and what comes back
-// fades up over the game while they carry on playing. The wizard's controls are off only while the
+// fades up over the game while they carry on playing. Messages sent while Claude is answering wait
+// in a short line, shown as one status line. The wizard's controls are off only while the
 // box is open. It talks only to this game's rules MCP, and a room's change mode decides what
 // goes through, as ever. RulesMcpServer adds it, so a copy that doesn't serve has none.
 public class GameChat : MonoBehaviour
 {
-    const int MostLines = 7, Width = 640, FontSize = 17;
+    const int MostLines = 7, MostWaiting = 3, Width = 640, FontSize = 17;
     const float LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f, ShadeAlpha = 0.6f, ShadeEdge = 8f;
     const string Box = "game-chat-box";
     const string ListeningMark = "<color=#ff8a80>●</color> ", ListeningLine = "<color=#ffffff88>Listening...</color>";
@@ -18,8 +19,9 @@ public class GameChat : MonoBehaviour
 
     readonly ClaudeChat claude = new();
     readonly List<(string text, float at)> lines = new();
+    readonly Queue<string> waiting = new();
     string typed = "";
-    bool focusBox;
+    bool focusBox, turnedAway;
     PlayerControls pausedControls;
     PlayerInput pausedInput;
     CursorLockMode cursorWas;
@@ -51,12 +53,20 @@ public class GameChat : MonoBehaviour
         }
     }
 
-    /// <summary>Whether Claude is still answering.</summary>
-    public bool Busy => claude.Busy;
+    /// <summary>Whether Claude is still answering, or messages wait for it.</summary>
+    public bool Busy => claude.Busy || waiting.Count > 0;
+
+    /// <summary>The one line about messages waiting for Claude, or null with none.</summary>
+    public string Queued => waiting.Count == 0 ? null
+        : $"{(turnedAway ? "That's too many, so the last wasn't sent. " : "")}Waiting ({waiting.Count}): {waiting.Peek()}";
 
     void Awake()
     {
         Instance = this;
+        // -claude-stand-in runs this program instead of claude, to test a player without anyone's Claude.
+        var args = System.Environment.GetCommandLineArgs();
+        int asked = System.Array.IndexOf(args, "-claude-stand-in");
+        if (asked >= 0 && asked + 1 < args.Length) ClaudeChat.StandIn = args[asked + 1];
         QuickExit.BeforeExit += claude.Cancel; // some players have no OnApplicationQuit
     }
 
@@ -64,15 +74,42 @@ public class GameChat : MonoBehaviour
     {
         QuickExit.BeforeExit -= claude.Cancel;
         claude.Cancel();
+        PauseMenu.KeysTaken = false;
         if (Instance == this) Instance = null;
     }
 
     void Update()
     {
+        if (!Open) PauseMenu.KeysTaken = false; // a frame late, so the key that closed the box can't open the menu
         while (claude.Take(out var heard)) Show(heard.said, heard.text);
-        if (Open && PauseMenu.Instance != null && PauseMenu.Instance.Open) SetOpen(false);
-        if (Open || Blocked()) return;
-        if (Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame) SetOpen(true);
+        if (!claude.Busy && waiting.Count > 0)
+        {
+            turnedAway = false;
+            SendNow(waiting.Dequeue());
+        }
+        if (Open && Blocked()) SetOpen(false);
+        if (Open)
+        {
+            BoxKeys();
+            return;
+        }
+        if (!Blocked() && Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame) SetOpen(true);
+    }
+
+    // Here and not in OnGUI, which can see a key a frame before the Input System does and so reopen the box.
+    void BoxKeys()
+    {
+        var keys = Keyboard.current;
+        if (keys == null) return;
+        if (keys.escapeKey.wasPressedThisFrame)
+        {
+            SetOpen(false);
+            return;
+        }
+        if (Talking || !(keys.enterKey.wasPressedThisFrame || keys.numpadEnterKey.wasPressedThisFrame)) return;
+        string message = typed;
+        SetOpen(false);
+        Send(message);
     }
 
     static bool Blocked() => PauseMenu.Instance != null && PauseMenu.Instance.Open;
@@ -89,6 +126,8 @@ public class GameChat : MonoBehaviour
                 break;
             case ClaudeSaid.Failed when ClaudeRun.NeedsSignIn(text):
                 Say(SignInLine);
+                waiting.Clear(); // they'd only fail the same way
+                turnedAway = false;
                 ClaudeTerminal.OpenSignIn();
                 break;
             case ClaudeSaid.Failed:
@@ -104,15 +143,17 @@ public class GameChat : MonoBehaviour
         if (lines.Count > MostLines) lines.RemoveAt(0);
     }
 
-    /// <summary>Sends a message to Claude, as Enter does in the box.</summary>
+    /// <summary>Sends a message to Claude, as Enter does in the box; it waits its turn if Claude is answering.</summary>
     public void Send(string message)
     {
         if (string.IsNullOrWhiteSpace(message)) return;
-        if (claude.Busy)
-        {
-            Say("Claude is still on the last one.");
-            return;
-        }
+        if (Busy && waiting.Count >= MostWaiting) turnedAway = true;
+        else if (Busy) waiting.Enqueue(message);
+        else SendNow(message);
+    }
+
+    void SendNow(string message)
+    {
         Say("You: " + message);
         var server = RulesMcpServer.Instance;
         if (!server.Serving || RulesMcpServer.Url == null) server.Serving = true;
@@ -136,6 +177,7 @@ public class GameChat : MonoBehaviour
         var caster = EventLog.TrackedCaster;
         if (open)
         {
+            PauseMenu.KeysTaken = true;
             focusBox = true;
             typed = "";
             if (caster != null && caster.controls != null && caster.controls.enabled)
@@ -163,7 +205,7 @@ public class GameChat : MonoBehaviour
 
     void OnGUI()
     {
-        if (lines.Count == 0 && !Open) return;
+        if (lines.Count == 0 && !Open && waiting.Count == 0) return;
         HudScale.Apply();
         lineStyle ??= new GUIStyle(GUI.skin.label) { fontSize = FontSize, richText = true, wordWrap = true };
         boxStyle ??= new GUIStyle(GUI.skin.textField) { fontSize = FontSize, alignment = TextAnchor.MiddleLeft };
@@ -175,18 +217,9 @@ public class GameChat : MonoBehaviour
     void DrawBox(float x, float y)
     {
         var e = Event.current;
-        if (e.type == EventType.KeyDown && e.keyCode is KeyCode.Return or KeyCode.KeypadEnter)
+        if (e.type == EventType.KeyDown && e.keyCode is KeyCode.Return or KeyCode.KeypadEnter or KeyCode.Escape)
         {
-            e.Use();
-            string message = typed;
-            SetOpen(false);
-            Send(message);
-            return;
-        }
-        if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
-        {
-            e.Use();
-            SetOpen(false);
+            e.Use(); // BoxKeys acts on them
             return;
         }
         if (Talking)
@@ -206,20 +239,26 @@ public class GameChat : MonoBehaviour
     void DrawLines(float x, float y)
     {
         var colour = GUI.color;
+        if (waiting.Count > 0) y = DrawLine($"<color=#ffffff88>{Queued}</color>", x, y, 1f, colour);
         for (int i = lines.Count - 1; i >= 0; i--)
         {
             float age = Time.unscaledTime - lines[i].at;
             float fade = Open ? 1f : Mathf.Clamp01((LineSeconds - age) / FadeSeconds);
-            if (fade <= 0f) continue;
-            float high = lineStyle.CalcHeight(new GUIContent(lines[i].text), Width);
-            y -= high;
-            // A dark band behind each line, so it reads over snow and fire alike.
-            GUI.color = new Color(0f, 0f, 0f, ShadeAlpha * fade);
-            shade ??= Texture2D.whiteTexture;
-            GUI.DrawTexture(new Rect(x - ShadeEdge, y, Width + 2f * ShadeEdge, high), shade);
-            GUI.color = new Color(colour.r, colour.g, colour.b, colour.a * fade);
-            GUI.Label(new Rect(x, y, Width, high), lines[i].text, lineStyle);
+            if (fade > 0f) y = DrawLine(lines[i].text, x, y, fade, colour);
         }
         GUI.color = colour;
+    }
+
+    float DrawLine(string text, float x, float y, float fade, Color colour)
+    {
+        float high = lineStyle.CalcHeight(new GUIContent(text), Width);
+        y -= high;
+        // A dark band behind each line, so it reads over snow and fire alike.
+        GUI.color = new Color(0f, 0f, 0f, ShadeAlpha * fade);
+        shade ??= Texture2D.whiteTexture;
+        GUI.DrawTexture(new Rect(x - ShadeEdge, y, Width + 2f * ShadeEdge, high), shade);
+        GUI.color = new Color(colour.r, colour.g, colour.b, colour.a * fade);
+        GUI.Label(new Rect(x, y, Width, high), text, lineStyle);
+        return y;
     }
 }

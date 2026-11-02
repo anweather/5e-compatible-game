@@ -14,9 +14,11 @@ using UnityEngine;
 // - Stop: transcribe what was recorded, then Final and Done, however long it takes (GameVoice
 //   holds the box meanwhile). Partial is optional: nothing breaks if there are none, the box just
 //   shows Listening until the words come. Notice stays null, as nothing leaves the machine.
+// - Its test set: tools/voice-samples/make.ps1 renders the WAVs (16 kHz mono, as above) it will
+//   transcribe, some quiet or noisy, each with a transcript of the expected words beside it.
 public static class SpeechChoice
 {
-    public const string Windows = "windows", StandIn = "stand-in";
+    public const string Windows = "windows", StandIn = "stand-in", Recorded = "recorded";
     const string Key = "speech.adapter";
 
     /// <summary>The setting: which adapter to use, by name.</summary>
@@ -40,6 +42,8 @@ public static class SpeechChoice
         {
             case StandIn:
                 return new StandInSpeech();
+            case Recorded:
+                return new RecordedSpeech(RecordedSpeech.SamplesFolder);
 #if UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !UNITY_EDITOR)
             case Windows:
                 return new WindowsDictation();
