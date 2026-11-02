@@ -70,6 +70,10 @@ namespace Chem
         public IReadOnlyList<SlotDef> Slots = Array.Empty<SlotDef>();
         public double Walk = 1.4, Run = 6, Turn = 140, Rock;
         public double[] Bob = { 0.02, 0.06 }, Bobs = { 2, 2 }, Stride = { 0.6, 0.9 };
+        /// <summary>Where it lives: walks (the default), swims under the water or floats on it; leaps says a swimmer leaps.</summary>
+        public IReadOnlyList<string> Habitats = Array.Empty<string>();
+        /// <summary>A swimmer's depth below the surface in metres, and leaps a minute.</summary>
+        public double Depth = 0.6, Leaps;
         public bool Upright;
         public double Wander = 25, Flee = 12;
         public double[] Idle = { 2, 8 }, Group = { 1, 1 };
@@ -120,6 +124,7 @@ namespace Chem
 
         internal static readonly string[] Roles = { "leg", "arm", "tail", "neck", "head", "ear", "horn", "eye", "feature" };
         internal static readonly string[] Actives = { "day", "night", "always" };
+        internal static readonly string[] Habitats = { "walks", "swims", "floats", "leaps" };
 
         readonly JObject species, parts;
         readonly Dictionary<string, SpeciesDef> readSpecies = new Dictionary<string, SpeciesDef>(StringComparer.Ordinal);
@@ -237,6 +242,9 @@ namespace Chem
             s.Bobs = Nums(move["bobs"], s.Bobs);
             s.Stride = Nums(move["stride"], s.Stride);
             s.Upright = (bool?)move["upright"] ?? false;
+            if (move["habitats"] is JArray habitats) s.Habitats = habitats.Select(h => (string)h).ToList();
+            s.Depth = Num(move["depth"], s.Depth);
+            s.Leaps = Num(move["leaps"], s.Leaps);
         }
 
         static void ReadBehave(SpeciesDef s, JObject behave)

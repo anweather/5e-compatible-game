@@ -184,6 +184,7 @@ public partial class Shapeshift : MonoBehaviour
         int best = -1;
         for (int i = 0; i < f.Count; i++)
         {
+            if (f.Body(f.SpeciesOf(i)).Habitat != Punchy.Fauna.Habitat.Land) continue;
             var p = f.State(i).Position;
             float d = (p.x - c.x) * (p.x - c.x) + (p.z - c.z) * (p.z - c.z);
             if (d >= bestSq) continue;

@@ -54,14 +54,21 @@ namespace Punchy.Fauna
             // Body on the ground: height from the legs, pitch from the ground ahead and behind.
             var forward = new float3(math.sin(s.Yaw), 0f, math.cos(s.Yaw));
             var halfLength = b.BodyLength * 0.5f * scale;
-            var ground = terrain.Height(s.Position.xz);
-            var front = terrain.Height(s.Position.xz + forward.xz * halfLength);
-            var back = terrain.Height(s.Position.xz - forward.xz * halfLength);
-            var gradient = (front - back) / (2f * halfLength);   // rise per metre forward
+            // Swimmers and floaters are carried at their own height (the body's centre at Position).
+            var aquatic = b.Habitat != Habitat.Land;
+            var ground = aquatic ? s.Position.y - b.StandHeight * scale : terrain.Height(s.Position.xz);
+            var gradient = 0f;   // rise per metre forward
             // Four-legged bodies tilt with the slope; upright ones stay level (their legs take up the slope).
-            if (b.Upright)
-                gradient = 0f;
+            if (!b.Upright && !aquatic)
+            {
+                var front = terrain.Height(s.Position.xz + forward.xz * halfLength);
+                var back = terrain.Height(s.Position.xz - forward.xz * halfLength);
+                gradient = (front - back) / (2f * halfLength);
+            }
             var pitch = math.clamp(-math.atan(gradient), -0.45f, 0.45f);
+            // A leaping fish noses up out of the water and dives back in nose first.
+            if (s.Air > 0f)
+                pitch -= math.cos(math.PI * s.Air) * 0.9f;
 
             var id = s.Individual;
             var worn = traits.Worn;
@@ -137,7 +144,7 @@ namespace Punchy.Fauna
                     if (fold > 0f)
                         a.x += Fold(j, part.SegmentCount) * fold;
                     rot = math.mul(rot, quaternion.EulerZXY(a));
-                    if (part.FollowGround)
+                    if (part.FollowGround && !aquatic)
                         rot = LieOnGround(terrain, pos, rot, b.Segments[seg].Length * scale, b.Segments[seg].RadiusEnd * b.Segments[seg].Flatten * scale);
                     if (seg < MaxSegments)
                     {
@@ -147,7 +154,7 @@ namespace Punchy.Fauna
                     pos += math.mul(rot, new float3(0f, 0f, b.Segments[seg].Length * scale));
                 }
 
-                if (part.Role == LimbRole.Leg && part.Parent < 0 && part.SegmentCount >= 2 && part.FirstSegment + part.SegmentCount <= MaxSegments)
+                if (!aquatic && part.Role == LimbRole.Leg && part.Parent < 0 && part.SegmentCount >= 2 && part.FirstSegment + part.SegmentCount <= MaxSegments)
                 {
                     // Where the ground would be under this foot if it were the flat, sloped plane the body is
                     // standing on, versus where it really is: bend the leg by the difference.

@@ -10,7 +10,7 @@
   at a rule switch, only for the rows that changed (`CreatureBodies`), so animals keep their places and seeds.
 - **Why:** a mod or the MCP can then add or change a creature with no code, asset or scene rebuild, and
   fauna is view only already (each peer rolls its own), so nothing about it can reach the checksum.
-  `CreatureRowTests` proved every number equal before the assets stopped being read.
+  The tests proved every number equal, body by body, before the assets were deleted.
 - **Reopen if:** a creature's numbers must be shared between peers (they would then need the fingerprint), or
   composing rules with the tables in them gets slow enough to hitch a switch (14 ms in the Editor, 6 of it
   without them, at this size): the tables could then sit outside the document mods clone.

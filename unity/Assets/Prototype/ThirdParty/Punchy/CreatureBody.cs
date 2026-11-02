@@ -2,11 +2,12 @@
 // used with permission. From Punchy's CreatureData.cs: the Entities blob is a
 // plain class with arrays, so it runs without Entities; the maths is his. A
 // segment's Pad is ours: a crack web over 0, shadow only under 0. Individuals,
-// hair and style options from upstream f3141f6. Built from rows (rules/fauna.json, rules/parts.json; Chem.FaunaTables), not from assets.
+// hair and style options from upstream f3141f6, habitats from c52d9ff. Built from rows (rules/fauna.json, rules/parts.json; Chem.FaunaTables), not from assets.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Chem;
 using Unity.Mathematics;
@@ -65,6 +66,9 @@ namespace Punchy.Fauna
         public float4[] HairColors = Array.Empty<float4>();
         /// <summary>How one individual differs from the next (Chem.VaryDef).</summary>
         public float Shade, Warm, Girth;
+        /// <summary>Where it lives, how deep it swims and how many leaps it makes a minute.</summary>
+        public Habitat Habitat;
+        public float SwimDepth, Leaps;
         public bool MixCoats;
 
         /// <summary>
@@ -282,6 +286,10 @@ namespace Punchy.Fauna
             for (int i = 0; i < hair.Count; i++)
                 root.HairColors[i] = (Vector4)Rgb(hair[i]).linear;
 
+            root.Habitat = species.Habitats.Contains("swims") ? Habitat.Swims : species.Habitats.Contains("floats") ? Habitat.Floats : Habitat.Land;
+            root.SwimDepth = (float)species.Depth;
+            root.Leaps = (float)species.Leaps;
+
             var vary = variant.Vary ?? species.Vary;
             if (vary != null)
             {
@@ -490,6 +498,43 @@ namespace Punchy.Fauna
         public float Weight;
     }
 
+    public enum LimbRole : byte
+    {
+        /// <summary>Touches the ground: its foot is placed on the terrain by IK, and its stride sets the gait speed.</summary>
+        Leg,
+        Arm,
+        /// <summary>Swings out as the creature turns (spring lag).</summary>
+        Tail,
+        Neck,
+        /// <summary>Turns towards whatever the creature is looking at.</summary>
+        Head,
+        /// <summary>Flicks with a little spring lag.</summary>
+        Ear,
+        Horn,
+        Eye,
+        /// <summary>A static body feature: hump, mane, stripe, antler tine, shell ridge…</summary>
+        Feature
+    }
+
+    public enum Habitat : byte
+    {
+        Land,
+        /// <summary>Swims under the surface; keeps to water deep enough to swim in.</summary>
+        Swims,
+        /// <summary>Floats on the surface (waterfowl).</summary>
+        Floats
+    }
+
+    public enum ActiveTime : byte
+    {
+        /// <summary>Sleeps at night.</summary>
+        Day,
+        /// <summary>Sleeps by day.</summary>
+        Night,
+        /// <summary>Awake at all hours, taking naps.</summary>
+        Always
+    }
+
     public enum CreatureMode : byte
     {
         Idle,
@@ -561,6 +606,8 @@ namespace Punchy.Fauna
         public float Leash;
         /// <summary>Fixed for life: picks this individual's traits (posture, gait, hair). Set at spawn.</summary>
         public uint Individual;
+        /// <summary>A leap out of the water: progress 0..1 (0 = not leaping), and how high it goes.</summary>
+        public float Air, AirHeight;
         /// <summary>A worker's job while at its post (None when it's not); the view's folk set it.</summary>
         public CreatureTask Task;
 
@@ -586,11 +633,13 @@ namespace Punchy.Fauna
         public float4 Color;
     }
 
-    /// <summary>The land creatures walk on: its height, whether they may step somewhere (dry, clear, not burning), and where water is (to drink).</summary>
+    /// <summary>The land creatures walk on: its height, whether they may step somewhere (dry, clear, not burning), and where water is (to drink, or to live in).</summary>
     public interface ICreatureGround
     {
         float Height(float2 xz);
         bool Walkable(float2 xz);
         bool Water(float2 xz);
+        /// <summary>How deep the water is here in metres; below 0 where there's none to swim in.</summary>
+        float WaterDepth(float2 xz) => -1f;
     }
 }

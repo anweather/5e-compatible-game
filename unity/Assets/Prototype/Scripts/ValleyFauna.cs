@@ -147,6 +147,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         for (int i = 0; i < creatures.Count; i++)
         {
             var b = bodies[creatures[i].species];
+            if (b.Habitat != Habitat.Land) continue; // a wizard's shape walks
             var s = creatures[i].state;
             var middle = new Vector3(s.Position.x, s.Position.y + b.StandHeight * s.Scale, s.Position.z);
             float along = Vector3.Dot(middle - ray.origin, ray.direction);
@@ -272,6 +273,18 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         return true;
     }
 
+    /// <summary>How deep the water is, or under 0 where it's dry or frozen.</summary>
+    public float WaterDepth(float2 xz)
+    {
+        var at = new Vector3(xz.x, 0f, xz.y);
+        var cell = grid.CellAt(at);
+        var c = world.At(cell.x, cell.y);
+        return c == null || c.Water <= 0 || c.Frozen ? -1f : grid.WaterSurfaceY(cell.x, cell.y) - grid.GroundAt(at);
+    }
+
+    // Whether an animal of this body can be here.
+    bool Fits(CreatureBody b, float2 xz) => b.Habitat == Habitat.Land ? Walkable(xz) : CreatureBrain.Suits(b.Habitat, WaterDepth(xz));
+
     bool NearWater(float2 xz)
     {
         var cell = grid.CellAt(new Vector3(xz.x, 0f, xz.y));
@@ -364,7 +377,6 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         float angle = rng.NextFloat(math.PI * 2f);
         float distance = math.sqrt(rng.NextFloat(minSpawnDistance * minSpawnDistance, radius * radius));
         var at = centre + new float2(math.cos(angle), math.sin(angle)) * distance;
-        if (!Walkable(at)) return;
         float hectares = math.PI * radius * radius / 10000f * Wildness(at);
         bool wet = NearWater(at);
         int best = -1;
@@ -372,7 +384,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         for (int i = 0; i < bodies.Count; i++)
         {
             var b = bodies[i];
-            if (b == null || b.NearWater && !wet) continue;
+            if (b == null || b.NearWater && !wet || !Fits(b, at)) continue;
             float shortfall = b.Density * hectares - counts[i];
             if (shortfall > bestShortfall)
             {
@@ -387,7 +399,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         for (int i = 0; i < n; i++)
         {
             var p = at + rng.NextFloat2Direction() * rng.NextFloat(0f, 2f + n * 1.5f);
-            if (Walkable(p)) Spawn(best, new float3(p.x, Height(p), p.y));
+            if (Fits(bodies[best], p)) Spawn(best, new float3(p.x, Height(p), p.y));
         }
         counts[best] += n;
     }

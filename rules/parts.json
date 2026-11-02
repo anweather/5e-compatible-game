@@ -451,11 +451,51 @@
       "runPush": [[18, 0, 0], [20, 0, 0]]
     }
   },
+  "dolphin-head": {
+    "role": "head",
+    "segments": [
+      { "length": 0.22, "radii": [0.17, 0.11] },
+      { "length": 0.18, "radii": [0.06, 0.04], "flatten": 0.8, "accent": 1 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0], [8, 0, 0]],
+      "walkReach": [[0, 0, 0], [8, 0, 0]],
+      "walkPush": [[0, 0, 0], [8, 0, 0]],
+      "runReach": [[0, 0, 0], [8, 0, 0]],
+      "runPush": [[0, 0, 0], [8, 0, 0]]
+    }
+  },
+  "dorsal-fin": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.07, "radii": [0.004, 0.002], "flatten": 3, "accent": 1 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[0, 0, 0]],
+      "walkPush": [[0, 0, 0]],
+      "runReach": [[0, 0, 0]],
+      "runPush": [[0, 0, 0]]
+    }
+  },
   "droop-ear": {
     "role": "ear",
     "spring": 0.6,
     "segments": [
       { "length": 0.09, "radii": [0.035, 0.025], "flatten": 0.3 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[0, 0, 0]],
+      "walkPush": [[0, 0, 0]],
+      "runReach": [[0, 0, 0]],
+      "runPush": [[0, 0, 0]]
+    }
+  },
+  "duck-bill": {
+    "role": "horn",
+    "segments": [
+      { "length": 0.05, "radii": [0.018, 0.014], "flatten": 0.35, "colour": [0.85, 0.55, 0.15] }
     ],
     "poses": {
       "idle": [[0, 0, 0]],
@@ -477,6 +517,30 @@
       "walkPush": [[-15, 0, 0], [10, 0, 0]],
       "runReach": [[-15, 0, 0], [10, 0, 0]],
       "runPush": [[-15, 0, 0], [10, 0, 0]]
+    }
+  },
+  "eel-body": {
+    "role": "tail",
+    "spring": 0.4,
+    "ripple": 0.09,
+    "segments": [
+      { "length": 0.08, "radii": [0.035, 0.03255], "flatten": 1.2 },
+      { "length": 0.08, "radii": [0.03255, 0.030100001], "flatten": 1.2, "accent": 1, "glow": 1 },
+      { "length": 0.08, "radii": [0.030100001, 0.02765], "flatten": 1.2 },
+      { "length": 0.08, "radii": [0.02765, 0.0252], "flatten": 1.2 },
+      { "length": 0.08, "radii": [0.0252, 0.02275], "flatten": 1.2, "accent": 1, "glow": 1 },
+      { "length": 0.08, "radii": [0.02275, 0.0203], "flatten": 1.2 },
+      { "length": 0.08, "radii": [0.0203, 0.01785], "flatten": 1.2 },
+      { "length": 0.08, "radii": [0.01785, 0.0154], "flatten": 1.2, "accent": 1, "glow": 1 },
+      { "length": 0.08, "radii": [0.0154, 0.01295], "flatten": 1.2 },
+      { "length": 0.08, "radii": [0.01295, 0.0105], "flatten": 1.2 }
+    ],
+    "poses": {
+      "idle": [[0, 7, 0], [0, 7, 0], [0, 7, 0], [0, -7, 0], [0, -7, 0], [0, -7, 0], [0, 7, 0], [0, 7, 0], [0, 7, 0], [0, -7, 0]],
+      "walkReach": [[0, 12, 0], [0, 12, 0], [0, 12, 0], [0, 12, 0], [0, 12, 0], [0, 12, 0], [0, 12, 0], [0, 12, 0], [0, 12, 0], [0, 12, 0]],
+      "walkPush": [[0, -12, 0], [0, -12, 0], [0, -12, 0], [0, -12, 0], [0, -12, 0], [0, -12, 0], [0, -12, 0], [0, -12, 0], [0, -12, 0], [0, -12, 0]],
+      "runReach": [[0, 17, 0], [0, 17, 0], [0, 17, 0], [0, 17, 0], [0, 17, 0], [0, 17, 0], [0, 17, 0], [0, 17, 0], [0, 17, 0], [0, 17, 0]],
+      "runPush": [[0, -17, 0], [0, -17, 0], [0, -17, 0], [0, -17, 0], [0, -17, 0], [0, -17, 0], [0, -17, 0], [0, -17, 0], [0, -17, 0], [0, -17, 0]]
     }
   },
   "elf-ear": {
@@ -504,6 +568,53 @@
       "walkPush": [[0, 0, 0]],
       "runReach": [[0, 0, 0]],
       "runPush": [[0, 0, 0]]
+    }
+  },
+  "fish-head": {
+    "role": "head",
+    "segments": [
+      { "length": 0.06, "radii": [0.045, 0.018], "flatten": 1.3 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[0, 0, 0]],
+      "walkPush": [[0, 0, 0]],
+      "runReach": [[0, 0, 0]],
+      "runPush": [[0, 0, 0]]
+    }
+  },
+  "fish-tail": {
+    "role": "tail",
+    "spring": 0.5,
+    "ripple": 0.12,
+    "segments": [
+      { "length": 0.08, "radii": [0.036, 0.02], "flatten": 1.4 },
+      { "length": 0.05, "radii": [0.02, 0.008], "flatten": 1.6 },
+      { "length": 0.07, "radii": [0.005, 0.015], "flatten": 3, "accent": 1 }
+    ],
+    "poses": {
+      "idle": [[0, 4, 0], [0, 4, 0], [0, 4, 0]],
+      "walkReach": [[0, 14, 0], [0, 14, 0], [0, 14, 0]],
+      "walkPush": [[0, -14, 0], [0, -14, 0], [0, -14, 0]],
+      "runReach": [[0, 24, 0], [0, 24, 0], [0, 24, 0]],
+      "runPush": [[0, -24, 0], [0, -24, 0], [0, -24, 0]]
+    }
+  },
+  "fluke": {
+    "role": "tail",
+    "spring": 0.3,
+    "ripple": 0.12,
+    "segments": [
+      { "length": 0.35, "radii": [0.16, 0.09], "flatten": 1.1 },
+      { "length": 0.3, "radii": [0.09, 0.04] },
+      { "length": 0.18, "radii": [0.03, 0.22], "flatten": 0.1 }
+    ],
+    "poses": {
+      "idle": [[4, 0, 0], [4, 0, 0], [4, 0, 0]],
+      "walkReach": [[12, 0, 0], [12, 0, 0], [12, 0, 0]],
+      "walkPush": [[-12, 0, 0], [-12, 0, 0], [-12, 0, 0]],
+      "runReach": [[18, 0, 0], [20, 0, 0], [20, 0, 0]],
+      "runPush": [[-18, 0, 0], [-20, 0, 0], [-20, 0, 0]]
     }
   },
   "fox-head": {
@@ -934,6 +1045,20 @@
       "runLift": [[-10, 0, 0], [40, 0, 0], [-55, 0, 0], [30, 0, 0]]
     }
   },
+  "pectoral-fin": {
+    "role": "ear",
+    "spring": 0.4,
+    "segments": [
+      { "length": 0.05, "radii": [0.012, 0.004], "flatten": 0.15, "accent": 1 }
+    ],
+    "poses": {
+      "idle": [[0, 0, 0]],
+      "walkReach": [[0, -15, 0]],
+      "walkPush": [[0, 15, 0]],
+      "runReach": [[0, -15, 0]],
+      "runPush": [[0, 15, 0]]
+    }
+  },
   "pincer": {
     "role": "arm",
     "segments": [
@@ -1218,5 +1343,19 @@
       "runReach": [[-5, 0, 0]],
       "runPush": [[5, 0, 0]]
     }
+  },
+  "lily-flower": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.07, "radii": [0.05, 0.02], "colour": [0.95, 0.84, 0.9] }
+    ]
+  },
+  "reed-stalk": {
+    "role": "feature",
+    "segments": [
+      { "length": 0.6, "radii": [0.014, 0.012] },
+      { "length": 0.6, "radii": [0.012, 0.01] },
+      { "length": 0.2, "radii": [0.028, 0.022], "accent": 1 }
+    ]
   }
 }
