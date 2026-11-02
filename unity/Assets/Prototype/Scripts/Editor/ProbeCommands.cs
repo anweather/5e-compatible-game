@@ -15,7 +15,7 @@ using UnityEngine;
 //   unity command probe list
 //   unity command probe run --name smoke [--shots <folder>] [--seconds 10]
 //   unity command probe run --name online [--keep-players true]
-//   unity command probe run --name chatprompts [--real-claude true --out <folder>] [--prompts N] [--only <kind>] [--model <id>] [--context bare] [--also <args>] [--set <file>] [--replay <folders>] [--shots <folder>]
+//   unity command probe run --name chatprompts [--real-claude true --out <folder>] [--prompts N] [--only <kind>] [--model <id>] [--context bare] [--also <args>] [--set <file>] [--harness api --budget <file> --ttl 1h|5m] [--replay <folders>] [--shots <folder>]
 //   unity command probe result --wait true --timeout 300
 //
 // Entering Play mode reloads the scripting domain (this project keeps domain
@@ -63,6 +63,9 @@ public static class ProbeCommands
         public string Replay { get; set; }
         public string Also { get; set; }
         public string Set { get; set; }
+        public string Harness { get; set; }
+        public string Budget { get; set; }
+        public string Ttl { get; set; }
         public DateTime RequestedUtc { get; set; }
         /// <summary>The virtual player this run started, to stop after it (null: none, or keep it).</summary>
         public string StopAfter { get; set; }
@@ -98,7 +101,10 @@ public static class ProbeCommands
         [CliArg("only", "chatprompts only: send just the prompt of this kind (question, weather, ...)")] string only = "",
         [CliArg("replay", "chatprompts only: earlier runs' folders, comma-separated: casts each recorded spell, spending nothing")] string replay = "",
         [CliArg("also", "chatprompts only: more arguments for claude, split on semicolons, for this run alone")] string also = "",
-        [CliArg("set", "chatprompts only: the prompts file in docs/telemetry in place of the fixed set")] string set = "")
+        [CliArg("set", "chatprompts only: the prompts file in docs/telemetry in place of the fixed set")] string set = "",
+        [CliArg("harness", "chatprompts only: api uses the game's own loop in place of Claude Code; with --real-claude it spends real money")] string harness = "",
+        [CliArg("budget", "chatprompts only, with harness api: the file holding the running total; no prompt starts past its limit")] string budget = "",
+        [CliArg("ttl", "chatprompts only, with harness api: how long the prefix stays cached, 1h or 5m")] string ttl = "")
 #pragma warning restore S107
     {
         var entry = ProbeScenarios.Find(name);
@@ -124,6 +130,9 @@ public static class ProbeCommands
             Replay = replay,
             Also = also,
             Set = set,
+            Harness = harness,
+            Budget = FullPath(budget),
+            Ttl = ttl,
             RequestedUtc = DateTime.UtcNow,
         };
         bool waitForPlayer = false;
@@ -290,6 +299,9 @@ public static class ProbeCommands
         scenario.Replay = active.Replay;
         scenario.Also = active.Also;
         scenario.SetFile = active.Set;
+        scenario.Harness = active.Harness;
+        scenario.BudgetFile = active.Budget;
+        scenario.PrefixTtl = active.Ttl;
         go.SetActive(true);
         if (active.Shots != null) DemoRecorder.HideGizmos();
         startedAt = EditorApplication.timeSinceStartup;

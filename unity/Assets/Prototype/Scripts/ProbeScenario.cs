@@ -44,6 +44,15 @@ public abstract class ProbeScenario : ShowcaseScript
     /// <summary>chatprompts only: the prompts file in docs/telemetry to send in place of the fixed set. Set before Start.</summary>
     public string SetFile { get; set; }
 
+    /// <summary>chatprompts only: api answers with the game's own loop in place of Claude Code.</summary>
+    public string Harness { get; set; }
+
+    /// <summary>chatprompts only: the file holding the API's running total; real money won't start without one.</summary>
+    public string BudgetFile { get; set; }
+
+    /// <summary>chatprompts only: how long the API loop's prefix stays cached, 1h or 5m.</summary>
+    public string PrefixTtl { get; set; }
+
     readonly List<float> frameMs = new();
     readonly List<string> consoleLines = new();
     bool measuring;

@@ -13,6 +13,10 @@ public class ChatProbe : ProbeScenario
     const string Recording = "make the fireball bigger", RecordedMod = "big-fireball";
     const float MostWrite = 3f, MostWait = 12f, FilmTyping = 1.5f, FilmReading = 3f;
 
+    /// <summary>The name claude bills the API by, which the game never sets.</summary>
+    const string ClaudeOwnKey = "ANTHROPIC_API_KEY";
+    const string HeldMark = "HELD-";
+
     string folder, logged;
 
     protected override IEnumerator Run()
@@ -107,6 +111,7 @@ public class ChatProbe : ProbeScenario
         string script = Path.Combine(folder, name + ".cmd");
         var body = new System.Text.StringBuilder("@echo off\r\n");
         body.Append($"echo %* > \"{logged}\"\r\n");
+        foreach (string key in new[] { ClaudeRun.GameKey, ClaudeOwnKey }) body.Append($"if defined {key} echo {HeldMark}{key} >> \"{logged}\"\r\n"); // that it's there, never what it is
         body.Append($"more >> \"{logged}\"\r\n");
         if (seconds > 0f) body.Append($"ping -n {Mathf.CeilToInt(seconds) + 1} 127.0.0.1 > nul\r\n");
         foreach (string line in lines) body.Append("echo ").Append(line.Replace("^", "^^").Replace("&", "^&").Replace("<", "^<").Replace(">", "^>")).Append("\r\n");
@@ -156,6 +161,7 @@ public class ChatProbe : ProbeScenario
         Check("the_message_came_on_stdin", asked.Contains(Message), asked);
         Check("headless_with_only_the_games_tools", asked.Contains("-p") && asked.Contains("dontAsk") && asked.Contains("--strict-mcp-config") && asked.Contains("mcp__spell-valley") && !asked.Contains("Bash"), asked);
         Check("the_chat_asks_for_its_model", asked.Contains("--model " + ClaudeRun.ChatModel), asked);
+        Check("claude_is_handed_no_key", !asked.Contains(HeldMark), asked.Contains(HeldMark) ? asked.Substring(asked.IndexOf(HeldMark, System.StringComparison.Ordinal)) : "none");
         Check("no_terminal_window_needed", File.Exists(Path.Combine(ClaudeTerminal.Folder, ".mcp.json")));
     }
 

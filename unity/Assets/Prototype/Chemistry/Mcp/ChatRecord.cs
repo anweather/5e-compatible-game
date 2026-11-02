@@ -73,7 +73,7 @@ namespace Chem.Mcp
         readonly Dictionary<string, (string model, JToken usage)> replies = new Dictionary<string, (string, JToken)>();
 
         long? started, ready, firstWord, firstTool, firstApply, applied, inWorld, done, apiMs, claudeMs;
-        string model, claude, reply, lastWords, failure, endedBy;
+        string model, claude, reply, lastWords, failure, endedBy, harness, costBasis;
         int? turns;
         double? cost;
         JToken usage, modelUsage;
@@ -140,6 +140,9 @@ namespace Chem.Mcp
                     case "result":
                         Result(o, clock);
                         break;
+                    case "first_word":
+                        firstWord ??= clock; // the API loop's stream, before a reply's block has ended
+                        break;
                 }
         }
 
@@ -189,6 +192,7 @@ namespace Chem.Mcp
             ready ??= clock;
             model ??= (string)o["model"];
             claude ??= (string)o["claude_code_version"];
+            harness ??= (string)o["harness"];
         }
 
         void Assistant(JObject o, long clock)
@@ -264,6 +268,7 @@ namespace Chem.Mcp
             reply = (string)o["result"];
             if (failed) failure = reply ?? "Claude stopped.";
             endedBy = (string)o["terminal_reason"];
+            costBasis = (string)o["cost_basis"];
             claudeMs = (long?)o["duration_ms"];
             apiMs = (long?)o["duration_api_ms"];
             turns = (int?)o["num_turns"];
@@ -356,6 +361,7 @@ namespace Chem.Mcp
                 }
             }
             all["cost"] = cost;
+            all["costBasis"] = costBasis ?? "list";
             all["perModel"] = perModel;
             all["turns"] = turns ?? replies.Count;
             all["cutOff"] = !sawResult;
@@ -410,6 +416,7 @@ namespace Chem.Mcp
                     ["room"] = new JObject { ["mode"] = who.RoomMode, ["players"] = who.Players, ["modsOn"] = new JArray(who.ModsOn.ToArray<object>()) },
                     ["model"] = model,
                     ["claude"] = claude,
+                    ["harness"] = harness ?? "claude-code",
                     ["prompt"] = prompt,
                     ["source"] = source,
                     ["reply"] = reply ?? lastWords,
