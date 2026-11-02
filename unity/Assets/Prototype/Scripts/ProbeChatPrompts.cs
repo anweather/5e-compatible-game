@@ -171,6 +171,8 @@ public class ChatPromptsProbe : RowHousesProbe
         Check("the_loop_keeps_a_record", (string)first?["harness"] == ApiHarness && (string)first["tokens"]?["costBasis"] == ApiLoop.RealMoney, first?.ToString());
         var used = (first?["tools"] as JArray ?? new JArray()).Select(t => (string)t["name"] + "=" + (bool?)t["ok"]).ToList();
         Check("the_loop_turned_a_shell_away", used.Contains("Bash=False") && used.Contains("whats_on=True"), string.Join(", ", used));
+        var save = (first?["tools"] as JArray ?? new JArray()).FirstOrDefault(t => (string)t["name"] == "save");
+        Check("the_server_turned_an_unasked_save_away", save != null && (bool?)save["ok"] == false && ((string)save["reason"] ?? "").StartsWith("Saving is the player's call", StringComparison.Ordinal), save?.ToString());
     }
 
     // Everything that must hold before a real prompt goes. One that doesn't spends nothing.

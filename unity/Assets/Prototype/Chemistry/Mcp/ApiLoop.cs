@@ -128,9 +128,13 @@ namespace Chem.Mcp
                 messages.Add(FirstMessage(message));
                 Loop(stop);
             }
-            catch (OperationCanceledException)
+            catch (OperationCanceledException) when (stop.IsCancellationRequested)
             {
                 // Cancel and the timeout: the caller says which, and no result line follows.
+            }
+            catch (OperationCanceledException)
+            {
+                Finish("The request was dropped before it answered.", "wire");
             }
             catch (ChatWireException e)
             {
@@ -431,7 +435,7 @@ namespace Chem.Mcp
                         break;
                     case "message_delta":
                         StopReason = (string)e["delta"]?["stop_reason"] ?? StopReason;
-                        RefusalCategory = (string)e["delta"]?["stop_details"]?["category"];
+                        RefusalCategory = (string)(e["delta"]?["stop_details"] as JObject)?["category"];
                         Merge(e["usage"] as JObject);
                         break;
                     case "message_stop":

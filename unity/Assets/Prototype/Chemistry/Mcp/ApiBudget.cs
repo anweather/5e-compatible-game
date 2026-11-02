@@ -39,8 +39,9 @@ namespace Chem.Mcp
         {
             long input = (long?)usage?["input_tokens"] ?? 0, write = (long?)usage?["cache_creation_input_tokens"] ?? 0;
             long read = (long?)usage?["cache_read_input_tokens"] ?? 0, output = (long?)usage?["output_tokens"] ?? 0;
-            long write5m = (long?)usage?["cache_creation"]?["ephemeral_5m_input_tokens"] ?? 0;
-            long write1h = (long?)usage?["cache_creation"]?["ephemeral_1h_input_tokens"] ?? 0;
+            var written = usage?["cache_creation"] as JObject;
+            long write5m = (long?)written?["ephemeral_5m_input_tokens"] ?? 0;
+            long write1h = (long?)written?["ephemeral_1h_input_tokens"] ?? 0;
             long unsaid = Math.Max(0, write - write5m - write1h);
             double factor = LongPrompt > 0 && input + write + read > LongPrompt ? LongFactor : 1;
             return factor * (input * Input + write5m * Write5m + (write1h + unsaid) * Write1h + read * Read + output * Output) / 1_000_000;

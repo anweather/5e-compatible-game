@@ -693,6 +693,17 @@ that long, and doesn't march.
   so a record has a real "in the world". A stand-in answers unless it's given
   `--real-claude true`, which spends real prompts (J-064).
 
+**Harness**
+: What answers a chat message, behind `IChatHarness`: Claude Code by way of
+  `ClaudeChat` in play, and the **API loop** for evaluation. Backlog 27's picker
+  would choose between them.
+
+**API loop**
+: The game's own tool loop over the Claude Messages API (`ApiLoop`): it connects
+  to the game's MCP server as a client and offers its tools and `Instructions`
+  unchanged. It runs only tools named in `ApiLoop.Allowed`, plus `add_note`, which
+  adds one line to `notes.md`. Only `chatprompts --harness api` reaches it.
+
 **Reply**
 : One answer from the model, one `message.id` in the stream, however many tool
   calls it holds. Not a **turn**, which is what `num_turns` counts: tool calls + 1.

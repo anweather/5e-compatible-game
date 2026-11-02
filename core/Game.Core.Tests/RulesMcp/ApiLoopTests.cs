@@ -282,6 +282,15 @@ namespace Chem.Tests
             StringAssert.Contains("cyber", (string)Result(Run(wire).lines)["result"]);
         }
 
+        [Test]
+        public void TheApisNullsAreNoFault()
+        {
+            var wire = new Wire();
+            wire.Reply(Events(Start(), Words(0, "Fine."), "{\"type\":\"ping\"}", Stop("end_turn", ",\"stop_details\":null,\"stop_sequence\":null")));
+            Assert.That((string)Result(Run(wire).lines)["result"], Is.EqualTo("Fine."));
+            Assert.That(ApiPrice.Of(Model).Cost(JObject.Parse("{\"output_tokens\":1000,\"cache_creation\":null}")), Is.EqualTo(0.0005).Within(1e-9));
+        }
+
         [TestCase(429)]
         [TestCase(529)]
         [TestCase(500)]

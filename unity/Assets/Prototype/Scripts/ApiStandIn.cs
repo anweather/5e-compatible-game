@@ -5,7 +5,7 @@ using Chem.Mcp;
 using Newtonsoft.Json.Linq;
 
 // The API loop's stand-in for the chatprompts probe, which spends nothing: the real server over the real
-// HTTP, and canned replies for the API. Its first reply also asks for a shell, which must be turned away.
+// HTTP, and canned replies for the API. Its first reply also asks for a shell and a save nobody asked for: both must be turned away.
 public sealed class ApiStandIn : IChatWire
 {
     const string MessageStop = "{\"type\":\"message_stop\"}";
@@ -28,6 +28,8 @@ public sealed class ApiStandIn : IChatWire
         Start("m1"),
         Block(0, "whats_on", "t1"),
         Block(1, "Bash", "t2"),
+        Block(2, "save", "t3"),
+        "{\"type\":\"content_block_delta\",\"index\":2,\"delta\":{\"type\":\"input_json_delta\",\"partial_json\":\"{\\\"draft\\\":\\\"d1\\\",\\\"title\\\":\\\"t\\\",\\\"idea\\\":\\\"i\\\"}\"}}",
         End("tool_use"),
         MessageStop,
     };

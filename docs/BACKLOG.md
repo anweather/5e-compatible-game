@@ -700,6 +700,7 @@ support for Codex, Kiro and others, and advanced options to tune all of it.
 - **Open:** J-060 covers only Claude Code, so each other harness needs its own terms
   check before shipping.
 - **Size:** M per harness after the first, L for the first.
+- **Evaluated (2026-11-02):** the API mode is built behind `IChatHarness`, probe only, with no picker: `docs/telemetry/chat-api-2026-11-02.md`.
 
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 

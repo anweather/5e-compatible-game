@@ -78,6 +78,7 @@ public sealed class ApiChat : IChatHarness
         catch (Exception e) when (e is IOException or InvalidOperationException or UnauthorizedAccessException)
         {
             failure = e.Message;
+            UnityEngine.Debug.LogWarning("API chat: " + e.GetType().Name + ": " + failure);
         }
         ChatOutcome? how = null;
         if (stop.IsCancellationRequested) how = timedOut ? ChatOutcome.TimedOut : ChatOutcome.Stopped;

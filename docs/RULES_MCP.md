@@ -463,6 +463,10 @@ switches on), so lockstep holds and we run no servers for it.
      a request with another Host or Origin, so a web page can't reach it. There's no sign-in: anything
      running as this user on this machine can use it. The Esc menu's Play with Claude page (`ClaudeMenu`) shows the line to add it to Claude and how it works, and a switch that closes the port (on by default,
      kept per player, J-047).
+     **What answers is a seam:** `IChatHarness` (`Chem.Mcp`) is Claude Code behind `ClaudeChat`, or for evaluation the game's own loop behind `ApiChat`
+     (`ApiLoop` in the core, `ApiWire` in the view for HTTP and the key). The loop is a client of this same server over the same HTTP, so a room's rules, `save`'s
+     refusal and the tools' text are the server's for both. Without Claude Code there's no `dontAsk` or allow-list, so the loop decides what runs: only `ApiLoop.Allowed`, by name,
+     plus `add_note`, and a new server tool stays out until it's named there. Only `chatprompts --harness api` starts it; `docs/telemetry/chat-api-2026-11-02.md` has the numbers.
      The chat starts claude with its own short system prompt (`ClaudeRun.ChatPrompt`): role, notes and staying in the tools,
      and no game knowledge. It asks for Haiku (`ClaudeRun.ChatModel`, J-066); the Developer menu can leave the model to the account. Asked for something, Claude writes it: the server's instructions and `apply`'s description say to
      build a draft, `simulate` it if `validate` says to, and apply it with a title; a saved mod only if
