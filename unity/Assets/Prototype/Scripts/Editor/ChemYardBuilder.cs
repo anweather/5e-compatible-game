@@ -269,7 +269,7 @@ public static class ChemYardBuilder
 
     // Multiplayer: the grid's lockstep chemistry (NetChem), a NetworkManager on
     // UDP port NetSession.Port with the wizard and the things as network
-// prefabs, and the Host / Join panel.
+// prefabs, and the Play together panel.
     static void SetUpNetwork(ChemGrid grid, GameObject netWizard, System.Collections.Generic.List<ThingSpawner.KindPrefab> things)
     {
         grid.gameObject.AddComponent<NetworkObject>();
