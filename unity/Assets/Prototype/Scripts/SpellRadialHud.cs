@@ -45,6 +45,9 @@ public class SpellRadialHud : MonoBehaviour
     /// <summary>True while open, and on the frame it closed: the frame's buttons were its own (B cancels it, and also throws).</summary>
     public bool BusyThisFrame => IsOpen || closedFrame == Time.frameCount;
 
+    /// <summary>The furthest a wedge's turn has moved the wheel's centre, in screen pixels: 0 unless the wedges have come apart. For the probe.</summary>
+    public float WheelDrift { get; set; }
+
     /// <summary>The element the selected spell is in, for the HUD chip, or null.</summary>
     public RadialGroup CurrentGroup
     {
@@ -241,7 +244,8 @@ public class SpellRadialHud : MonoBehaviour
         var colour = ParseColor(groups[i].Color);
         colour.a = WedgeAlpha(lit, spellsOut);
         var matrix = GUI.matrix;
-        GUIUtility.RotateAroundPivot((float)angle, centre);
+        GUI.matrix = HudScale.TurnedAbout(matrix, (float)angle, centre);
+        WheelDrift = Mathf.Max(WheelDrift, Vector2.Distance(GUI.matrix.MultiplyPoint3x4(centre), matrix.MultiplyPoint3x4(centre)));
         GUI.color = colour;
         GUI.DrawTexture(new Rect(centre.x - r, centre.y - r, r * 2f, r * 2f), Wedge(groups.Count));
         GUI.matrix = matrix;
