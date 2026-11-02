@@ -466,12 +466,22 @@ namespace Chem.Mcp
         }
     }
 
-    /// <summary>The chat-log files: one JSON line per prompt, beside the play logs, the newest files kept.</summary>
+    /// <summary>The chat-log files: one JSON line per prompt, in a folder of their own, the newest files kept.</summary>
     public static class ChatLog
     {
         public const int MostFiles = 30;
 
         const string Prefix = "chat-log-", Suffix = ".jsonl";
+
+        /// <summary>The player's data folder's subfolder for the records. Players are told to send Player.log, by name, and the records hold their prompts.</summary>
+        public const string RecordsFolder = "chat-records";
+
+        /// <summary>
+        /// Where the records and the MCP log go. A log the process was given (-logFile, or the Editor's own) means a test, and they stay beside it,
+        /// as an Editor shares its data folder with the player's game; logFolder is null otherwise.
+        /// </summary>
+        public static string Home(string dataFolder, string logFolder) =>
+            string.IsNullOrEmpty(logFolder) ? Path.Combine(dataFolder, RecordsFolder) : logFolder;
 
         // One write at a time: a record and a later line go off on threads of their own, and the second to open the file would fail.
         static readonly object Writing = new object();

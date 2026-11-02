@@ -698,6 +698,11 @@ that long, and doesn't march.
   `ClaudeChat` in play, and the **API loop** for evaluation. Backlog 27's picker
   would choose between them.
 
+**Chat records**
+: `chat-log-<date>.jsonl`, one line per prompt, with the prompt in it, in
+  `chat-records/` under the player's data folder, so a bug report's `Player.log`
+  doesn't send them. A test's stay beside its own log.
+
 **Notes**
 : `notes.md`, in the chat's folder: what carries over between messages, as each
   is a new process. A model writes them. The game puts them ahead of the player's

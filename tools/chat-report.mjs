@@ -3,11 +3,12 @@
 // counts, prompt to world, where the time went, tokens and cost, by kind, the slowest and dearest
 // ten, and what players asked for that Claude refused, which feeds the backlog.
 //   node tools/chat-report.mjs <folder> [--json]
-// <folder> holds chat-log-<date>.jsonl files. A record with no "in the world" time (chatbench, or a
+// <folder> holds chat-log-<date>.jsonl files, or is a player's data folder: the records are in its
+// chat-records subfolder, and any it holds itself are from before they moved. A record with no "in the world" time (chatbench, or a
 // game that didn't reach it) counts its `applied` mark instead, and the report says how many did.
 // A line with `of` is a later word on the record with that id (ChatLog.Afterwards).
 // A record with `retry` ran again on the account's model after its own was refused (#64).
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
 
@@ -19,8 +20,10 @@ export function read(folder) {
   const records = new Map();
   const later = [];
   let bad = 0;
-  for (const file of readdirSync(folder).filter(f => /^chat-log-.*\.jsonl$/.test(f)).sort())
-    for (const line of readFileSync(join(folder, file), "utf8").split("\n").filter(Boolean)) {
+  const moved = join(folder, "chat-records");
+  const files = dir => readdirSync(dir).filter(f => /^chat-log-.*\.jsonl$/.test(f)).sort().map(f => join(dir, f));
+  for (const file of [...files(folder), ...(existsSync(moved) ? files(moved) : [])])
+    for (const line of readFileSync(file, "utf8").split("\n").filter(Boolean)) {
       try {
         const o = JSON.parse(line);
         if (o.of) later.push(o);

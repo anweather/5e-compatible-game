@@ -33,6 +33,7 @@ public class ChatProbe : ProbeScenario
         Directory.CreateDirectory(folder);
         logged = Path.Combine(folder, "asked.txt");
         ClaudeTerminal.TestFolder = Path.Combine(folder, "claude-terminal"); // an Editor shares its data folder with the player's game
+        Check("a_test_keeps_its_records_beside_its_log", ChatTelemetry.Home == PlayLog.Folder() && !ChatTelemetry.Home.EndsWith(ChatLog.RecordsFolder, System.StringComparison.Ordinal), ChatTelemetry.Home);
         otherRecords = Path.Combine(folder, "other-records");
         if (Directory.Exists(otherRecords)) Directory.Delete(otherRecords, true);
         ChatTelemetry.Folder = otherRecords;
