@@ -177,15 +177,18 @@ public class MenuProbe : ProbeScenario
     }
 
     // Every entry the old long page had is still one level down, and each sub menu fits the screen.
+    // The entries cut for J-065 aren't on any of them.
     IEnumerator EveryEntryHasAHome(PauseMenu menu)
     {
+        string[] cut = { "Host", "Join", "Frame-rate log: On", "Frame-rate log: Off", "Open log folder" };
+        var everyLabel = new HashSet<string>();
         var homes = new (PauseMenu.Submenu submenu, string[] entries)[]
         {
             (PauseMenu.Submenu.Game, new[] { "Grimoire", "New look", "Mods", "About and credits" }),
             (PauseMenu.Submenu.Multiplayer, new[] { "Rule changes when you host", "Host online", "Join code", "Enter a code" }),
             (PauseMenu.Submenu.Settings, new[] { "Controls", "Sound", "Shake and rumble" }),
             (PauseMenu.Submenu.Claude, new[] { "Play with Claude", "Open a Claude terminal" }),
-            (PauseMenu.Submenu.Developer, new[] { "Host", "Join", "Frame-rate log", "Open log folder" }),
+            (PauseMenu.Submenu.Developer, new[] { "Claude's tools in the chat", "Claude's model in the chat" }),
         };
         foreach (var (submenu, entries) in homes)
         {
@@ -199,11 +202,13 @@ public class MenuProbe : ProbeScenario
             }
             foreach (var entry in entries)
                 Check($"{submenu}_has_{entry.Replace(' ', '_')}", seen.Any(l => l.StartsWith(entry, System.StringComparison.Ordinal)), string.Join(", ", seen));
+            everyLabel.UnionWith(seen);
             Shot(submenu.ToString().ToLowerInvariant());
             yield return Wait(0.2f);
             menu.Back();
             yield return Frames(3);
         }
+        Check("cut_entries_gone", !everyLabel.Overlaps(cut), string.Join(", ", everyLabel.Intersect(cut)));
     }
 
     // From the main page, into a sub menu, the highlight on the entry that starts with this.

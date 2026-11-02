@@ -57,6 +57,7 @@ Each entry has:
   loses Same network Host / Join, Frame-rate log and Open log folder; Headwear stays. (4) A camera cutting through a deer is left
   as it is (#47). (5) The sound pass waits for him to listen on the board; nothing goes in before that. (6) The eight fully merged
   branches go; `wip/u2-mods-add-things`, `pause-menu`, `wip/w2-playtest-rules-a`, `wip/w2-whirlwind-pull` and `forest-tick-cost` stay.
+- **Update:** cutting Frame-rate log removed the play log's off switch, so Andrew put one back: a "Play log" on/off in Settings, honouring old opt-outs.
 - **Why:** PM's recommendations, except the menu, his picks.
 - **Also comes up when:** a friend needs to send a log: with no menu entry, tell them the folder.
 - **Revisited:** 0.

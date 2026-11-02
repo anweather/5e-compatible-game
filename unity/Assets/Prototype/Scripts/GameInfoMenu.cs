@@ -1,11 +1,9 @@
-using System.IO;
 using UnityEngine;
 
 // The bottom of the Esc menu's main page (PauseMenu): the version this copy is
 // ("alpha 0.1.0 (abc1234)", BuildInfo), and a line and a download button when a
 // newer alpha is out (UpdateCheck). In its Game sub menu, an About and credits
-// button that opens the attribution and licences (Credits) as a page; in Developer,
-// an "Open log folder" button for bug reports. Starts itself.
+// button that opens the attribution and licences (Credits) as a page. Starts itself.
 public class GameInfoMenu : MonoBehaviour
 {
     /// <summary>The Credits page's id in the Esc menu.</summary>
@@ -30,7 +28,6 @@ public class GameInfoMenu : MonoBehaviour
         creditsPage ??= new PauseMenu.Page { Title = "About and credits", Width = 560, Draw = DrawCredits };
         PauseMenu.AddSection(Draw, PauseMenu.LastOrder, PauseMenu.Submenu.Main);
         PauseMenu.AddSection(DrawAbout, PauseMenu.LastOrder, PauseMenu.Submenu.Game);
-        PauseMenu.AddSection(DrawLogs, PauseMenu.LastOrder, PauseMenu.Submenu.Developer);
         PauseMenu.AddPage(CreditsPage, creditsPage);
     }
 
@@ -38,7 +35,6 @@ public class GameInfoMenu : MonoBehaviour
     {
         PauseMenu.RemoveSection(Draw);
         PauseMenu.RemoveSection(DrawAbout);
-        PauseMenu.RemoveSection(DrawLogs);
         PauseMenu.RemovePage(CreditsPage);
     }
     void OnDestroy() { if (instance == this) instance = null; }
@@ -68,11 +64,6 @@ public class GameInfoMenu : MonoBehaviour
         if (PauseMenu.Button("About and credits", PauseMenu.ButtonStyle)) PauseMenu.Instance.ShowPage(CreditsPage);
     }
 
-    void DrawLogs()
-    {
-        if (PauseMenu.Button("Open log folder", PauseMenu.ButtonStyle)) OpenLogFolder();
-    }
-
     // The Credits page: the attribution, scrolled with the mouse wheel or the right stick.
     void DrawCredits()
     {
@@ -85,14 +76,6 @@ public class GameInfoMenu : MonoBehaviour
     {
         var assets = string.Join("\n", System.Array.ConvertAll(Credits.Assets, a => "· " + a));
         return $"{Credits.Game}\n\n<b>Rules</b>\n{Credits.Srd}\n\n<b>Licences</b>\n{Credits.Licences}\n\n<b>Assets</b>\n{assets}\n\n<b>Models and sounds</b>\n{Credits.Models}\n{Credits.Sounds}\n\n<b>Engine</b>\n{Credits.Engine}\n\n<b>Libraries</b>\n{Credits.Libraries}\n\n<b>With thanks</b>\n{Credits.Contributions}";
-    }
-
-    /// <summary>Opens the folder with Player.log (the Editor's own log in the Editor), to attach to a bug report.</summary>
-    public static void OpenLogFolder()
-    {
-        string log = Application.consoleLogPath;
-        string folder = string.IsNullOrEmpty(log) ? Application.persistentDataPath : Path.GetDirectoryName(log);
-        Application.OpenURL(new System.Uri(folder).AbsoluteUri); // file:///..., spaces escaped
     }
 
     void MakeStyles()
