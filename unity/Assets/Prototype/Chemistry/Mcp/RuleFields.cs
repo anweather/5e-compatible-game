@@ -120,6 +120,17 @@ namespace Chem.Mcp
             foreach (var p in entry.Properties()) CheckMaterial(kind, p.Name, p.Value);
         }
 
+        static readonly string[] ItemFields = { "name", "material", "components", "use", "message", "srd", "mass", "light", "zoom", "reach", "strength", "breaks", "look" };
+        static readonly string[] EntityFields = { "name", "material", "components", "hp", "mass", "str", "ac", "explodes", "raider", "look" };
+
+        /// <summary>A new entity's or item's fields: throws saying which the engine wouldn't read, or returns.</summary>
+        public static void CheckThing(string table, JObject entry)
+        {
+            var known = table == "items" ? ItemFields : EntityFields;
+            var unknown = entry.Properties().FirstOrDefault(p => !known.Contains(p.Name));
+            if (unknown != null) throw new RulesToolException($"A{(table == "items" ? "n item" : "n entity")} has no field {unknown.Name}; its fields are {string.Join(", ", known)}.");
+        }
+
         /// <summary>A spell's field set to this value: throws saying what's wrong with the field, or returns.</summary>
         public static void CheckSpell(string path, JToken value)
         {

@@ -131,6 +131,15 @@ public class Carryable : MonoBehaviour
         body.angularVelocity = Random.insideUnitSphere * 2f;
     }
 
+    /// <summary>Taken out of the world while in a hand (the mod that added it went): the hand is free, with nothing to let go of.</summary>
+    public void Lost()
+    {
+        if (Holder == null) return;
+        Holder.Forget(this);
+        Holder = null;
+        foreach (var use in Uses) use.Released();
+    }
+
     /// <summary>Host: lets go at <paramref name="from"/> (where the holder's own screen had the hand), moving at <paramref name="velocity"/>.</summary>
     public void ReleaseAt(Vector3 from, Vector3 velocity)
     {

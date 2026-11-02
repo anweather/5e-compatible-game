@@ -102,7 +102,7 @@ namespace Chem.Tests
         }
 
         [TestCase("fauna", "deer", "{ 'name': 'Deer', 'parts': { 'neck': { 'part': 'no-such-part' } } }", "species deer: part neck names unknown part no-such-part")]
-        [TestCase("fauna", "deer", "{ 'parts': { 'head': { 'part': 'deer-head', 'on': 'neck' } } }", "species deer: part head hangs from neck, which isn't a part before it")]
+        [TestCase("fauna", "deer", "{ 'parts': { 'neck': null } }", "species deer: part head hangs from neck, which isn't a part before it")]
         [TestCase("fauna", "deer", "{ 'variantOf': 'unicorn' }", "species deer: variantOf names unknown species unicorn")]
         [TestCase("fauna", "deer", "{ 'variantOf': 'deer' }", "species deer: variantOf goes round")]
         [TestCase("fauna", "deer", "{ 'behave': { 'hunts': ['unicorn'] } }", "species deer hunts unknown species unicorn")]

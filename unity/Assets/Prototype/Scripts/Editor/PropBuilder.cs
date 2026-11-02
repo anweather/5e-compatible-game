@@ -35,7 +35,22 @@ public static class PropBuilder
             prop.explosionFx = blast;
             built.Add(Save(go, kind));
         }
+        var dressed = Dressed(ThingSpawner.DressedProp);
+        dressed.flamesFx = flames;
+        dressed.explosionFx = blast;
+        built.Add(Save(dressed.gameObject, ThingSpawner.DressedProp));
         return built;
+    }
+
+    /// <summary>
+    /// The generic prefab for a mod's new kind: a unit box that draws nothing, scaled to the
+    /// body ThingBodies dresses it in. It keeps a Renderer, for what PhysicsProp reads of its size.
+    /// </summary>
+    public static PhysicsProp Dressed(string kind)
+    {
+        var box = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        box.GetComponent<Renderer>().enabled = false;
+        return Make(box, kind);
     }
 
     /// <summary>Makes <paramref name="go"/> a physics prop of <paramref name="kind"/> (rules/entities.json or rules/items.json), networked.</summary>

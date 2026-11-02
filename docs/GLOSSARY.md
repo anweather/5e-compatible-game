@@ -322,8 +322,10 @@ that long, and doesn't march.
   the clock and keeps the **best time**. Downed inside the course on a run,
   a wizard gets up on its last checkpoint, not the yard (`CourseRespawn`).
 
-**Look** (of a material, spell or element)
-: Its `"look"` group in `materials.json`, `spells.json` or `elements.json`:
+**Look** (of a material, spell, element or thing)
+: Its `"look"` group in `materials.json`, `spells.json` or `elements.json`, or on
+  a mod's new `entities` or `items` row (family `creature`: `species`, colour, glow
+  and scale, for a kind with no baked prefab):
   the family that draws it and that family's parameters (colour, height, glow,
   roughness, flow). An element's, and a cover's or gas's until a family of
   theirs is drawn, is **bare**: no family, only a colour. An element's is the
@@ -391,6 +393,11 @@ that long, and doesn't march.
 : Anything listed in `world/things.json`: a prop or an item, with a
   stable **thing id** (`ThingId`: its chunk and its place in that chunk's
   list, `4,5#2`). Append to a chunk's list, never insert.
+
+**Dressed thing**
+: A thing of a kind a mod added, which has no prefab of its own: a generic
+  prefab (`dressed-prop`, `dressed-item`) wearing the body of a fauna species
+  from its look (`ThingBodies`).
 
 **Prop**
 : A thing you push and break but don't carry: a crate, barrel, boulder,

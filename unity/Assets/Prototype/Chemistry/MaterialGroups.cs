@@ -108,6 +108,20 @@ namespace Chem
             return null;
         }
 
+        /// <summary>
+        /// A patch may name a flat key ("flammability") over a material written in groups; the group's value
+        /// goes, or Ungroup would put it back over the patch's.
+        /// </summary>
+        internal static void FlatOverGroup(JObject under, JToken patch, bool cover)
+        {
+            if (under == null || !(patch is JObject fields)) return;
+            foreach (var f in fields.Properties())
+            {
+                var grouped = GroupedName(cover, f.Name)?.Split('.');
+                if (grouped != null && under[grouped[0]] is JObject group) group.Remove(grouped[1]);
+            }
+        }
+
         /// <summary>Turns the grouped spelling of every terrain and cover in a rule document into the flat keys, in place; the problems found (unknown keys in a group).</summary>
         public static List<string> Ungroup(JObject doc)
         {

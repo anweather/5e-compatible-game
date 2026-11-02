@@ -26,6 +26,8 @@ public static class ProbeLink
     public const string Hosting = "hosting", Go = "go", Joined = "joined", Reported = "reported";
     /// <summary>After the reset: the host asks for the checksums since it (up to startTick), the virtual player sends them.</summary>
     public const string ResetSettled = "reset-settled", ResetCheck = "reset-check", ResetReported = "reset-reported";
+    /// <summary>The host names a tick it has run; the virtual player answers once it has run it too (OnlineProbe.ClientInStep).</summary>
+    public const string InStepAsk = "in-step-ask", InStep = "in-step";
 
     /// <summary>True in a Multiplayer Play Mode virtual player (its project is a copy under Library/VP/).</summary>
     public static bool InVirtualPlayer => Application.isEditor && VirtualRoot() != null;
@@ -510,9 +512,15 @@ public class OnlineProbeClient : MonoBehaviour
         net.TickApplied += OnTick;
         ProbeHostMessage ask = null;
         StartCoroutine(TellSettled(id, net));
+        int inStep = 0;
         for (float waited = 0f; waited < 90f && ask == null; waited += Time.unscaledDeltaTime)
         {
             ask = ProbeLink.Read<ProbeHostMessage>(ProbeLink.HostFile);
+            if (ask != null && ask.id == id && ask.phase == ProbeLink.InStepAsk && ask.startTick > inStep && net.NetTick >= ask.startTick)
+            {
+                inStep = ask.startTick;
+                ProbeLink.Write(ProbeLink.ClientFile, new OnlineObservation { id = id, phase = ProbeLink.InStep, sampledTick = inStep });
+            }
             if (ask == null || ask.id != id || ask.phase != ProbeLink.ResetCheck) ask = null;
             WatchForms(after);
             WatchDragon(after);
@@ -636,6 +644,7 @@ public class OnlineProbe : ProbeScenario
         Summon();
         yield return TryTag();
         yield return TryShape();
+        yield return ClientInStep(id);
         yield return TryBeats();
         yield return TryStrikes();
         yield return CompareAfterReset(id);
@@ -666,6 +675,29 @@ public class OnlineProbe : ProbeScenario
         for (; waited < ReportSeconds && ReadClient(id, ProbeLink.ResetSettled) == null; waited += Time.unscaledDeltaTime) yield return null;
         Metric("reset_client_settled_s", waited);
     }
+
+    // ClientSettled only says the client has run the ticks it has heard of, and after a reset those come
+    // late: it can be a second or more behind the host and still say so. Catching up, it runs the ticks
+    // between two casts closer together than the beats between them take, so a cast on the other side
+    // cuts the last one's Recovery short by design. So the beats wait until the client runs a tick the
+    // host has just run about as it happens, measured from here, as both are on one machine.
+    IEnumerator ClientInStep(string id)
+    {
+        var net = grid.GetComponent<NetChem>();
+        float waited = 0f, behind = float.MaxValue;
+        while (behind > InStepSeconds && waited < ReportSeconds)
+        {
+            int tick = net.NetTick;
+            float asked = Time.unscaledTime;
+            ProbeLink.Write(ProbeLink.HostFile, new ProbeHostMessage { id = id, phase = ProbeLink.InStepAsk, startTick = tick });
+            for (behind = 0f; behind < ReportSeconds && ReadClient(id, ProbeLink.InStep)?.sampledTick != tick; behind = Time.unscaledTime - asked) yield return null;
+            waited += behind;
+        }
+        Metric("client_in_step_after_s", waited);
+        Check("client_in_step_for_the_beats", behind <= InStepSeconds, $"{behind:0.00} s behind after {waited:0.0} s");
+    }
+
+    const float InStepSeconds = 0.25f;
 
     int ballsBefore;
     ThingId ballId = ThingId.None;

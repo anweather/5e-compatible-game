@@ -52,6 +52,7 @@ public partial class ChemGrid
         World.OpenRoom(mode, host, CurrentRules.Base, Budgets, mods);
         CurrentRules = World.RoomRules;
         RecolourWorld();
+        RulesChanged?.Invoke();
     }
 
     /// <summary>Solo: a room command, decided before the next tick.</summary>

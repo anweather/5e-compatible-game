@@ -64,8 +64,10 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `add_material`, `set_material(id, field, value)`
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
+- `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
+  a new kind of thing with the look that draws it; `add_thing(kind, at, chance?, rot?)` puts one in the world (see "Things")
 - `set_look(id, param, value, table?, where?, by?)`: one parameter of the look of a spell, terrain,
-  cover, gas or element, a `mix` of colours, with `where` a colour or mix that holds only
+  cover, gas, element, entity or item, a `mix` of colours, with `where` a colour or mix that holds only
   round a place, a cell or the player asking, and with `by` one that colours only what a
   player casts (see "Looks")
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare
@@ -76,9 +78,9 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 
 **The rules in force.** Every read, draft, `validate`, `simulate` and `apply`'s diff goes by the base
 rules with every mod on in the room over it, in order (`Workbench.Live.cs`), not by the base, because
-mods stack and what's showing is what Claude must build on. A set_ copies the entry in force into
-the draft. A patch holds whole entries, so a mod built on another keeps what it copied when that one is
-reverted; `revert` says so.
+mods stack and what's showing is what Claude must build on. A set_ writes one field into
+the draft. A mod holds only the fields it names, so mods stack and a revert undoes only its own; where a
+later mod sets the same value, `revert` says that one stands.
 
 **Refusing at once.** `set_material`, `set_spell`, `set_reaction` and the add_ tools refuse an unknown
 field, condition or effect when it's set (`RuleFields.cs`), since the engine would ignore a misnamed one;
@@ -317,8 +319,7 @@ material. Heights, finishes, roofs, details and everything under `look` are the 
 The buildings the world was made with are rows too (`World.BaseBuildings`): `world/buildings.json` has the cabins,
 their baked cells in `built`, and a village's come from its recipe laid again over the world's starting cells, since a
 plot that stands is all wall and a refused one isn't (`WorldBuildings.LaidPlan`). Village rows are `fill: solid`
-with `drawn-door`s, so their cells are what `VillagePlan.Cells` lays, and goldens hold. Mods can't add things to the
-world yet (G5's other half).
+with `drawn-door`s, so their cells are what `VillagePlan.Cells` lays, and goldens hold.
 
 **What the view reads.** `RowHouses` draws what the rules in force add or edit (`Rules.ModBuildings`), each through
 `RowMesher`; what the world was made with stays as the valley drew it, so villages and cabins look the same until
@@ -345,6 +346,51 @@ is `catch` 0.05 and `fuel` 210, against the log wall's 0.15 and 140. In 40 runs 
 long again, and the wall takes 556 ticks to go to 277, about twice as long; and 6 of the 40 fires die in the stucco
 where every log wall burns through. Its colour is the plain render; a house's finish stays in its row, so a
 `set_material` on `burn.catch` and `burn.fuel` retunes every stucco house at once. A mod can still replace the row.
+
+## Things: kinds and rows a mod adds
+
+`docs/design/world-tools.md` G4 to G6. Named content never goes in the code or base rules (J-055): the golden squirrel
+is a test fixture.
+
+- **A look on a thing.** An `entities` or `items` row may give a `look` of family `creature` (`rules/looks.json` `things`):
+  `species` (a row of `rules/fauna.json`, or one a mod adds; `list looks` names them), `color`, `glow`, `scale` (up to `budgets.json` `things.maxScale`). It's for a kind with no
+  baked prefab; a kind the rules ship with keeps its model. `validate` refuses an added thing of a new kind with no look.
+- **Adding one.** A mod's `world` section takes `"add": [{"kind", "cell": [x, y], "rot"?, "chance"?}]`, at most
+  `things.maxPerMod` (16) rows. Each row is appended to its chunk's list, so the file's ids never move. A mod's thing has an
+  index above any a file reaches, a hash of its kind, cell and turn (`WorldThings.With`), so reverting one mod doesn't
+  renumber what another added. `World.ThingsNow` is the world's things under the rules in force, and the rows are in
+  `Rules.Fingerprint`. Every peer refuses, at the switch, a row on a cell that's off the world, wet, on a building, or not
+  open ground (`World.SiteProblem`). A revert is only composing again, so what the mod added goes.
+- **`chance`.** Above 0 and at most 1: `ThingChance.Holds` decides once from the world's seed and the thing's id by
+  `WorldHash`, with no draw from the world's generator, so every peer agrees and the cell hash doesn't move. A rare find is
+  several rows at a low chance. `things.json` may give `chance` too.
+- **The first find.** `RoomCommand.Found(peer, id)` rides in the tick batch like any room command, but no change mode has a
+  say, as it changes no rule. The first for a thing a mod added logs "Ana found the golden squirrel", from the row's `name`,
+  on every peer, and goes in `Room.Found` (the checksum and the save). Anything else is ignored in silence.
+
+**In the view.**
+1. `ThingSpawner` and `NetChem`'s checksum read `grid.World.ThingsNow`. `grid.Things` stays the file alone, for what only the file holds: the links of sending stones, which a client needs before its room has opened and `ThingsNow` holds anything.
+2. A kind with no prefab spawns as one of two generic ones, `dressed-prop` for an `entities` row and `dressed-item` for an `items` row, each a registered network prefab: a unit box that draws nothing. `ThingBodies` dresses it from `Look`: the body of `Species`, in `Color` in place of its coat (white, the default, keeps the coat), with `Glow`, at `Scale`. The box takes the body's size, so it rests, gets pushed and sits in a hand like any thing, and the body, posed once, goes where the box goes. Each peer dresses its own copy, the box's size included.
+3. Online a client knows a generic prefab's kind by its id, from `ThingsNow`, so nothing about it is on the wire. A copy that arrives before this peer's rules have it waits, its `PhysicsProp` and `Carryable` disabled so they read no rules, and is taken up at the next `RulesChanged`; `ChemGrid.JoinRoom` raises that too, for a late joiner.
+4. At each rule switch `ThingsNow.ChangesFrom` gives what to spawn and what to despawn, solo or by the host, in an inactive chunk too (the thing sleeps there). A despawned thing a player holds is theirs to lose: it leaves the hand on every peer (`Carryable.Lost`).
+5. The first find: `NetItem`'s grant, host only, stamps `RoomCommand.Found(name, id)` into the next tick with `NetChem.StampFound`, past `RoomIntent` and its `RoomPolicy.Refusal`, so a Locked room can still find it. Solo, `ItemHolder` queues the same command.
+
+Probes: `modthing` (solo) and `roomthing` (two peers and a late joiner).
+
+**The test, by a real client.** From a folder of its own, against a copy of `rules/` and `world/` so `save` can't touch the repo,
+with no stdin (`claude -p` waits 3 s for it and exits 1):
+
+```sh
+claude -p "Put a rare golden squirrel somewhere in the woods for us to find. Save it as a mod file called golden-squirrel." \
+  --output-format stream-json --verbose --no-session-persistence --mcp-config .mcp.json --strict-mcp-config \
+  --permission-mode dontAsk --tools Read --allowedTools mcp__spell-valley </dev/null
+```
+
+`.mcp.json` starts `Rules.Mcp.dll --rules <the copy>/rules`. It ended as one mod all three times it was run, with its spots from `find_site`.
+What one run wrote is `core/Game.Core.Tests/RulesMcp/golden-squirrel.mod.json`, and `HiddenThingTests` holds it through two runs,
+two peers and a save. **Limit:** the woods aren't a place and a stand-in valley has no trees, so a headless client can't tell
+woods from a meadow, and `find_site` may give a cell a real tree stands on; the game's `find_site` reads the real valley,
+and a room refuses a row on a blocked cell at the switch.
 
 ## Change modes (chosen when a room is made)
 

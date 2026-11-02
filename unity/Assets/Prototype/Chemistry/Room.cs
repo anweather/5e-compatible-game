@@ -13,8 +13,8 @@ namespace Chem
     /// <summary>How a room takes live rule changes: anyone's, the host's only, or none.</summary>
     public enum ChangeMode { Open, HostOnly, Locked }
 
-    /// <summary>What a room command asks: switch a mod on, revert (take off) one that is on, or move the clock or the weather (World.RoomSky.cs).</summary>
-    public enum RoomChange { Apply, Revert, SetTime, SetWeather }
+    /// <summary>What a room command asks: switch a mod on, revert (take off) one that is on, move the clock or the weather (World.RoomSky.cs), or note that someone picked up a thing a mod added (World.Things.cs).</summary>
+    public enum RoomChange { Apply, Revert, SetTime, SetWeather, Found }
 
     /// <summary>
     /// Asks the room to switch a mod on or revert one, naming the peer who asked. Stamped like a
@@ -41,6 +41,10 @@ namespace Chem
         /// <summary>Holds a weather for so many minutes of play; null gives the weather back to its own way.</summary>
         public static RoomCommand SetWeather(string peer, WeatherKind? kind, int minutes = 0) =>
             new RoomCommand(RoomChange.SetWeather, peer, WeatherMod, kind.HasValue ? Sky.WeatherName(kind.Value) + ":" + minutes.ToString(CultureInfo.InvariantCulture) : NaturalWeather);
+
+        /// <summary>This peer picked up this thing. The host sends it with the grant; the change mode has no say, as it changes nothing.</summary>
+        public static RoomCommand Found(string peer, ThingId thing) =>
+            new RoomCommand(RoomChange.Found, peer, thing.Value.ToString(CultureInfo.InvariantCulture));
 
         /// <summary>The same command, asked by this peer: a host names who really asked.</summary>
         public RoomCommand As(string peer) => new RoomCommand(Change, peer, Mod, Json, Title);
@@ -75,6 +79,8 @@ namespace Chem
         public string Host = "";
         /// <summary>The mods on, in the order they compose over the base rules.</summary>
         public List<RoomMod> Mods { get; } = new List<RoomMod>();
+        /// <summary>The things a mod added that someone has picked up, by ThingId: the first pick-up is logged, once.</summary>
+        public SortedSet<ulong> Found { get; } = new SortedSet<ulong>();
     }
 
     /// <summary>What a room command came to: done or refused, and the log line saying so.</summary>

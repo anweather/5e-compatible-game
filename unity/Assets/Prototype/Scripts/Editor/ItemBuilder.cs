@@ -31,6 +31,11 @@ public static class ItemBuilder
             go.AddComponent<NetItem>();
             built.Add(PropBuilder.Save(go, id));
         }
+        var dressed = PropBuilder.Dressed(ThingSpawner.DressedItem);
+        dressed.flamesFx = EditorAssets.LoadPrefab(PackPaths.FireFx + "/TinyFlames.prefab");
+        dressed.gameObject.AddComponent<Carryable>();
+        dressed.gameObject.AddComponent<NetItem>();
+        built.Add(PropBuilder.Save(dressed.gameObject, ThingSpawner.DressedItem));
         return built;
     }
 

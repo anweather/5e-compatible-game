@@ -79,7 +79,7 @@ namespace Chem.Tests
         public void StackedModsApplyInOrder()
         {
             var r = With(
-                "{ 'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground'] }, 'grass': { 'name': 'Wet grass', 'tags': ['ground'] } }, 'sim': { 'fire': { 'spreadChance': 0.1 }, 'push': 5 } }",
+                "{ 'terrain': { 'mud': { 'name': 'Mud', 'tags': ['ground'] }, 'grass': { 'name': 'Wet grass', 'burn': null } }, 'sim': { 'fire': { 'spreadChance': 0.1 }, 'push': 5 } }",
                 @"{ 'spells': [{ 'id': 'meteor-swarm', 'name': 'Meteor Swarm', 'level': 3, 'shape': 'burst', 'radius': 4, 'element': 'fire', 'blurb': 'b' },
                                { 'id': 'fire-bolt', 'name': 'Fire Bolt', 'level': 0, 'shape': 'point', 'element': 'fire', 'power': 3, 'blurb': 'x' }],
                     'sim': { 'fire': { 'heatChance': 0.2 }, 'push': { 'slideCells': 9 } },
@@ -92,7 +92,7 @@ namespace Chem.Tests
             Assert.That(r.Sim.Fire.BoilChance, Is.EqualTo(0.35), "sim is deep-merged");
             var json = JObject.Parse(r.ToJson());
             Assert.That(json["sim"]["push"].ToString(Newtonsoft.Json.Formatting.None), Is.EqualTo("{\"slideCells\":9}"), "a number replaced by an object");
-            Assert.That(r.Terrain["grass"].Has("flammable"), Is.False, "a named entry is replaced whole");
+            Assert.That(r.Terrain["grass"].Has("flammable"), Is.False, "a null takes a whole verb out of the entry");
             Assert.That(r.Terrain["grass"].Fuel, Is.Null);
             Assert.That((string)json["entityRules"][0]["id"], Is.EqualTo("acid-entity"));
             Assert.That(Ids(r.CellRulesFor("fire")), Is.EqualTo(new[] { "fire-fog", "fire-mud", "fire-thorns", "fire-melt", "fire-thaw", "fire-ice", "fire-water", "fire-flammable", "fire-heat" }));
@@ -346,10 +346,11 @@ namespace Chem.Tests
         {
             var barrel = Base.Entity("barrel");
             Assert.That(barrel, Is.Not.Null, "entities.json is read through the rule document");
-            var heavy = With("{ 'entities': { 'barrel': { 'name': 'Iron barrel', 'hp': 9, 'mass': 7, 'flammable': false } } }");
+            var heavy = With("{ 'entities': { 'barrel': { 'name': 'Iron barrel', 'hp': 9, 'mass': 7, 'flammable': false, 'explodes': null } } }");
             Assert.That(heavy.Entity("barrel").Mass, Is.EqualTo(7));
             Assert.That(heavy.Entity("barrel").Hp, Is.EqualTo(9));
-            Assert.That(heavy.Entity("barrel").Explodes, Is.Null, "a named entry replaces the old one whole, like Object.assign");
+            Assert.That(heavy.Entity("barrel").Explodes, Is.Null, "null takes a field out; the rest of the entry stays");
+            Assert.That(heavy.Entity("barrel").Material, Is.EqualTo(barrel.Material), "only what the patch names changes");
             Assert.That(Base.Entity("barrel").Mass, Is.EqualTo(barrel.Mass), "the base rules are untouched");
             Assert.That(heavy.Fingerprint, Is.Not.EqualTo(Base.Fingerprint));
             Assert.That(With("{ 'entities': { 'keg': { 'name': 'Keg', 'hp': 1, 'mass': 1 } } }").Entity("keg"), Is.Not.Null);
@@ -373,7 +374,7 @@ namespace Chem.Tests
         {
             var w = new World(Base, 3, 3, 1, "grass");
             Assert.That(w.Flammability(w.At(1, 1)), Is.GreaterThan(0), "grass looked up (and cached) under the base rules");
-            w.ApplyRules(With("{ 'terrain': { 'grass': { 'name': 'Wet grass', 'tags': ['ground'] } } }"));
+            w.ApplyRules(With("{ 'terrain': { 'grass': { 'name': 'Wet grass', 'burn': null } } }"));
             Assert.That(w.Flammability(w.At(1, 1)), Is.EqualTo(0));
             w.Apply(1, 1, "fire");
             Assert.That(w.At(1, 1).Fire, Is.EqualTo(0), "wet grass doesn't catch");
