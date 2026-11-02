@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -23,7 +24,7 @@ public class RoomProbeAsk
 {
     public string id;
     public int step;
-    /// <summary>"join", "report", "toggle" with a mod's id, "hostile", "rejoin", "film" (mod: the stand's cell and the target's) or "cut".</summary>
+    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "hostile", "rejoin", "film" (mod: the stand's cell and the target's) or "cut".</summary>
     public string ask, mod;
 }
 
@@ -34,6 +35,8 @@ public class RoomProbeSeen
     public string id;
     public int step;
     public int netTick;
+    /// <summary>How long this side waited to reach the net tick it was asked to report at.</summary>
+    public float reachSeconds;
     public List<string> lines = new();
     public string roomText, rules;
     public int fireballRadius;
@@ -128,6 +131,7 @@ public class RoomProbeClient : MonoBehaviour
     string lastId;
     RoomProbeRecord record;
     RoomFilm film;
+    float reachSeconds;
 
     void OnEnable() => Application.logMessageReceived += OnLog;
     void OnDisable() => Application.logMessageReceived -= OnLog;
@@ -150,6 +154,7 @@ public class RoomProbeClient : MonoBehaviour
             lastStep = ask.step;
             yield return Do(ask);
             var seen = record != null ? record.Seen(ask.id, ask.step) : new RoomProbeSeen { id = ask.id, step = ask.step };
+            seen.reachSeconds = reachSeconds;
             seen.errorCount = errorCount;
             seen.errors = errors;
             ProbeLink.Write(RoomProbe.SeenFile, seen);
@@ -164,6 +169,13 @@ public class RoomProbeClient : MonoBehaviour
         {
             case "join":
                 yield return Join();
+                break;
+            case "report":
+                // The host has run this tick; this peer runs it when it gets there. Past the bound it reports where it is.
+                reachSeconds = 0f;
+                if (string.IsNullOrEmpty(ask.mod)) break;
+                int tick = int.Parse(ask.mod, CultureInfo.InvariantCulture);
+                for (; reachSeconds < RoomProbe.ReachSeconds && net.NetTick < tick; reachSeconds += Time.unscaledDeltaTime) yield return null;
                 break;
             case "toggle":
                 int lines = record.Lines;
@@ -241,6 +253,8 @@ public class RoomProbeClient : MonoBehaviour
 public abstract class RoomProbe : ProbeScenario
 {
     const float ReplySeconds = 40f;
+    /// <summary>How long the virtual player may take to reach a tick the host has run: well inside ReplySeconds.</summary>
+    public const float ReachSeconds = 10f;
     protected const string Wildfire = "wildfire", BigFireball = "big-fireball";
 
     static string Beside(string name) => Path.Combine(Path.GetDirectoryName(ProbeLink.HostFile), name);
@@ -326,18 +340,28 @@ public abstract class RoomProbe : ProbeScenario
         for (float t = 0f; t < 3f && Record.Lines == lines; t += Time.unscaledDeltaTime) yield return null;
     }
 
-    /// <summary>A step's end: both sides saw the same last line, starting so, and hold the same room and rules.</summary>
+    /// <summary>
+    /// A step's end: both sides saw the same last line, starting so, and hold the same room and rules. A room command
+    /// lands at a tick, and a virtual player can be ticks behind, so the two are compared once it has run the tick
+    /// this side is on; one that never gets there fails _client_reached_tick as well.
+    /// </summary>
     protected IEnumerator Agree(string name, string line)
     {
         yield return Wait(0.6f);
         var mine = Record.Seen(id, step);
-        yield return Ask("report");
+        int tick = mine.netTick;
+        yield return Ask("report", tick.ToString(CultureInfo.InvariantCulture));
         if (Theirs == null) yield break;
+        slowestReach = Mathf.Max(slowestReach, Theirs.reachSeconds);
+        Metric("client_reach_slowest_s", slowestReach);
+        Check(name + "_client_reached_tick", Theirs.netTick >= tick, $"the client at net tick {Theirs.netTick} after {Theirs.reachSeconds:0.00} s, here {tick}");
         Check(name + "_line_here", (mine.lines.LastOrDefault() ?? "").StartsWith(line, StringComparison.Ordinal), mine.lines.LastOrDefault());
         Check(name + "_line_there", Theirs.lines.LastOrDefault() == mine.lines.LastOrDefault(), Theirs.lines.LastOrDefault());
         Check(name + "_same_room", Theirs.roomText == World.RoomText(), $"{Theirs.roomText}, here {World.RoomText()}");
         Check(name + "_same_rules", Theirs.rules == World.Rules.Fingerprint, $"{Theirs.rules}, here {World.Rules.Fingerprint}");
     }
+
+    float slowestReach;
 
     /// <summary>The net tick the end of a run compares checksums from.</summary>
     protected int HashesFrom { get; set; }
