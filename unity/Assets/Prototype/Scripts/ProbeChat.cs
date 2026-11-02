@@ -159,7 +159,7 @@ public class ChatProbe : ProbeScenario
             ClaudeChat.StandIn = Refuser("both", Failure(Refusal), Failure(Refusal));
             chat.Send(Rain);
             yield return Sent(chat);
-            Check("it_retries_once_only", Runs() == 2, Runs().ToString());
+            Check("it_retries_once_only", Runs() == 2, $"{Runs()} runs");
             Check("the_accounts_own_refusal_points_nowhere", chat.Lines.Last().Contains("selected model") && !chat.Lines.Last().Contains(ClaudeRun.ModelPointer), chat.Lines.Last());
         }
         finally
@@ -206,7 +206,7 @@ public class ChatProbe : ProbeScenario
         chat.Send(Rain);
         yield return Sent(chat);
         string last = chat.Lines.Last();
-        Check("no_retry_" + what, Runs() == 1, Runs().ToString());
+        Check("no_retry_" + what, Runs() == 1, $"{Runs()} runs");
         Check("the_red_line_says_why_" + what, last.Contains(words) && last.Contains(ClaudeRun.ModelPointer) == pointed, last);
     }
 
