@@ -85,6 +85,29 @@ namespace Chem
         // What water on it turns into: freeze {} for "ice", boil {} for "steam".
         static readonly (string verb, string water)[] WaterVerbs = { ("freeze", "ice"), ("boil", "steam") };
 
+        /// <summary>The keys a verb's group holds on a terrain or cover; check it's one of Verbs first.</summary>
+        internal static IReadOnlyList<string> KeysOf(bool cover, string verb)
+        {
+            var keys = (cover ? CoverVerbs : TerrainVerbs).Where(v => v.verb == verb).SelectMany(v => v.keys.Select(k => k.group)).ToList();
+            if (cover) return keys;
+            if (StatusVerbs.Any(v => v.verb == verb)) keys.Add("status");
+            if (verb == "conduct") keys.Add("chainsWet");
+            return keys;
+        }
+
+        /// <summary>The verbs of a terrain or cover.</summary>
+        internal static IEnumerable<string> Verbs(bool cover) =>
+            (cover ? CoverVerbs : TerrainVerbs).Select(v => v.verb).Concat(cover ? Enumerable.Empty<string>() : WaterVerbs.Select(v => v.verb));
+
+        /// <summary>A flat key as its verb group writes it ("flammability" as "burn.catch"); null if it isn't one.</summary>
+        internal static string GroupedName(bool cover, string flat)
+        {
+            foreach (var (verb, _, keys) in cover ? CoverVerbs : TerrainVerbs)
+                foreach (var (group, f) in keys)
+                    if (f == flat) return verb + "." + group;
+            return null;
+        }
+
         /// <summary>Turns the grouped spelling of every terrain and cover in a rule document into the flat keys, in place; the problems found (unknown keys in a group).</summary>
         public static List<string> Ungroup(JObject doc)
         {

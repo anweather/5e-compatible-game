@@ -213,11 +213,12 @@ namespace Chem.Mcp
                 $"and elsewhere the plain look holds. A colour a spell chose for its own fire still wins.{lapse}";
         }
 
-        // Why a colour won't show, or null: what it's drawn from now is the family's own art, else the base rules' colour.
+        // Why a colour won't show, or null: what it's drawn from now is the family's own art, else the base rules' colour
+        // (the view turns its art by how far the look has moved from the base, not from what mods on have it at).
         string WontShow(string table, string id, LookFamily family, JObject look, JToken colour)
         {
             float[] now = colour.Select(c => (float)c).ToArray();
-            float[] was = family?.Own ?? (table == "elements" ? BaseElement(id)?["look"] : Raw["materials"][table]?[id]?["look"])?["color"]?.Select(c => (float)c).ToArray();
+            float[] was = family?.Own ?? (table == "elements" ? baseRaw["elements"]?[id]?["look"] : baseRaw["materials"][table]?[id]?["look"])?["color"]?.Select(c => (float)c).ToArray();
             return LookFamilies.WontShow(Budgets.Looks, table, id, family, look["baked"]?.Value<bool>() == true, was, now);
         }
 
@@ -240,7 +241,7 @@ namespace Chem.Mcp
             return holding[0];
         }
 
-        // The entry as the draft has it, else as the base has it, else null.
+        // The entry as the draft has it, else as the rules in force have it, else null.
         JToken Current(Draft draft, string table, string id)
         {
             switch (table)
@@ -249,16 +250,16 @@ namespace Chem.Mcp
                     return (draft.Patch["spells"] as JArray)?.FirstOrDefault(s => Str(s["id"]) == id) ?? ((JArray)Raw["spells"]).FirstOrDefault(s => Str(s["id"]) == id);
                 case "elements":
                     if (draft.Patch["elements"] is JObject named && named[id] is JObject entry) return entry;
-                    bool known = BaseDoc["elements"].Any(e => Str(e) == id) || ModPatch.ElementNames(draft.Patch["elements"]).Contains(id);
-                    return known ? BaseElement(id) ?? new JObject() : null;
+                    bool known = Doc["elements"].Any(e => Str(e) == id) || ModPatch.ElementNames(draft.Patch["elements"]).Contains(id);
+                    return known ? ElementEntry(id) ?? new JObject() : null;
                 default:
                     return draft.Patch[table]?[id] ?? Raw["materials"][table]?[id];
             }
         }
 
-        JToken BaseElement(string id) => Raw.TryGetValue("elements", out var table) ? table[id] : null;
+        JToken ElementEntry(string id) => Raw.TryGetValue("elements", out var table) ? table[id] : null;
 
-        // The entry in the draft, copied from the base the first time.
+        // The entry in the draft, copied from the rules in force the first time.
         JObject Entry(Draft draft, string table, string id)
         {
             switch (table)
@@ -272,7 +273,7 @@ namespace Chem.Mcp
                     return spell;
                 case "elements":
                     var named = Elements(draft);
-                    if (!(named[id] is JObject entry)) named[id] = entry = (JObject)(BaseElement(id)?.DeepClone() ?? new JObject());
+                    if (!(named[id] is JObject entry)) named[id] = entry = (JObject)(ElementEntry(id)?.DeepClone() ?? new JObject());
                     return entry;
                 default:
                     var section = Section(draft, table);

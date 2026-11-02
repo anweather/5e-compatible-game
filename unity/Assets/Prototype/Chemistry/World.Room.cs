@@ -5,7 +5,8 @@
 // rules in force here, then the active mods composed again over the base rules
 // in order. The same inputs give the same verdict everywhere, so a patch that
 // fails the checks is refused on every peer, with the same sentence in the log.
-// The room is in the save and in the checksum (CastHash).
+// The room is in the save and in the checksum (CastHash). A command can also move
+// the clock or the weather (World.RoomSky.cs), under the same change mode.
 using System;
 using System.Collections.Generic;
 using System.Globalization;
@@ -64,7 +65,13 @@ namespace Chem
         {
             if (Room == null) throw new InvalidOperationException("This world has no room to change; OpenRoom makes one.");
             FinishTick(); // a rule switch lands between whole ticks
-            var verdict = c.Change == RoomChange.Revert ? Revert(c) : SwitchOn(c);
+            var verdict = c.Change switch
+            {
+                RoomChange.Revert => Revert(c),
+                RoomChange.SetTime => SetTime(c),
+                RoomChange.SetWeather => SetWeather(c),
+                _ => SwitchOn(c),
+            };
             AddLog(verdict.Line, verdict.Done ? LogKind.Notable : LogKind.Info);
             RoomDecided?.Invoke(c, verdict);
             return verdict;

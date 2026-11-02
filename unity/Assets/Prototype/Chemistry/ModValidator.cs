@@ -109,6 +109,17 @@ namespace Chem
             return problems;
         }
 
+        /// <summary>A spell's numbers past the budget's caps, one sentence each: what validate says, and set_spell at once.</summary>
+        internal static IEnumerable<string> SpellCaps(ModBudgets budgets, string id, JObject s)
+        {
+            foreach (var (key, cap) in new[] { ("power", "maxPower"), ("radius", "maxRadius"), ("length", "maxLength"), ("size", "maxSize"), ("push", "maxPush"), ("raise", "maxRaise"), ("dig", "maxDig") })
+            {
+                double max = budgets.Number("spells." + cap, double.MaxValue);
+                if (s[key] != null && (s[key].Type == JTokenType.Integer || s[key].Type == JTokenType.Float) && (double)s[key] > max)
+                    yield return $"Spell {id} has a {key} of {s[key]}; a mod's spell may have at most {max.ToString("0.###", CultureInfo.InvariantCulture)}, so one cast can't cover a chunk or stall the tick.";
+            }
+        }
+
         /// <summary>The engine's terse messages ("spell x: unknown element y") as a sentence.</summary>
         static string Sentence(string m)
         {
@@ -395,12 +406,7 @@ namespace Chem
 
             void SpellBudget(string id, JObject s)
             {
-                foreach (var (key, cap) in new[] { ("power", "maxPower"), ("radius", "maxRadius"), ("length", "maxLength"), ("size", "maxSize"), ("push", "maxPush"), ("raise", "maxRaise"), ("dig", "maxDig") })
-                {
-                    double max = budgets.Number("spells." + cap, double.MaxValue);
-                    if (IsNumber(s[key]) && (double)s[key] > max)
-                        Add(ModCheck.Budget, $"Spell {id} has a {key} of {s[key]}; a mod's spell may have at most {Num(max)}, so one cast can't cover a chunk or stall the tick.");
-                }
+                foreach (var message in SpellCaps(budgets, id, s)) Add(ModCheck.Budget, message);
             }
 
             void RuleBudget(string id, JObject rule)

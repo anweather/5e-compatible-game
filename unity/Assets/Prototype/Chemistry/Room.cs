@@ -6,14 +6,15 @@
 // checksum, so every peer in lockstep agrees.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 
 namespace Chem
 {
     /// <summary>How a room takes live rule changes: anyone's, the host's only, or none.</summary>
     public enum ChangeMode { Open, HostOnly, Locked }
 
-    /// <summary>What a room command asks: switch a mod on, or revert (take off) one that is on.</summary>
-    public enum RoomChange { Apply, Revert }
+    /// <summary>What a room command asks: switch a mod on, revert (take off) one that is on, or move the clock or the weather (World.RoomSky.cs).</summary>
+    public enum RoomChange { Apply, Revert, SetTime, SetWeather }
 
     /// <summary>
     /// Asks the room to switch a mod on or revert one, naming the peer who asked. Stamped like a
@@ -33,12 +34,26 @@ namespace Chem
         public static RoomCommand Apply(string peer, string mod, string json, string title = null) => new RoomCommand(RoomChange.Apply, peer, mod, json, title);
         public static RoomCommand Revert(string peer, string mod) => new RoomCommand(RoomChange.Revert, peer, mod);
 
+        /// <summary>Moves the clock on to this minute of the day (0 to 1439).</summary>
+        public static RoomCommand SetTime(string peer, int minuteOfDay) =>
+            new RoomCommand(RoomChange.SetTime, peer, TimeMod, minuteOfDay.ToString(CultureInfo.InvariantCulture));
+
+        /// <summary>Holds a weather for so many minutes of play; null gives the weather back to its own way.</summary>
+        public static RoomCommand SetWeather(string peer, WeatherKind? kind, int minutes = 0) =>
+            new RoomCommand(RoomChange.SetWeather, peer, WeatherMod, kind.HasValue ? Sky.WeatherName(kind.Value) + ":" + minutes.ToString(CultureInfo.InvariantCulture) : NaturalWeather);
+
+        /// <summary>The same command, asked by this peer: a host names who really asked.</summary>
+        public RoomCommand As(string peer) => new RoomCommand(Change, peer, Mod, Json, Title);
+
+        const string TimeMod = "time", WeatherMod = "weather";
+        internal const string NaturalWeather = "natural";
+
         public RoomChange Change { get; }
         /// <summary>The peer who asked, by the name players see.</summary>
         public string Peer { get; }
         /// <summary>The mod's id (its file name in rules/mods/ without .json, or a draft's id).</summary>
         public string Mod { get; }
-        /// <summary>The patch to switch on (bare or {"title", "patch"}); empty for a revert.</summary>
+        /// <summary>The patch to switch on (bare or {"title", "patch"}); empty for a revert; for the clock or the weather, what to set (World.RoomSky.cs).</summary>
         public string Json { get; }
         /// <summary>The title players see; null takes the patch's own, else the id.</summary>
         public string Title { get; }
@@ -81,6 +96,9 @@ namespace Chem
 
     public static class RoomPolicy
     {
+        /// <summary>The longest a command may hold a weather, in minutes of play.</summary>
+        public const int MaxHoldMinutes = 60;
+
         /// <summary>The mode as the log writes it before "room": Open, Host-only, Locked.</summary>
         public static string Words(ChangeMode mode) => mode switch
         {
@@ -102,7 +120,17 @@ namespace Chem
         }
 
         /// <summary>The log's line for a refused command: "Revert refused: only the host can change this room".</summary>
-        public static string RefusedLine(RoomChange change, string why) => $"{(change == RoomChange.Revert ? "Revert" : "Switch on")} refused: {why}";
+        public static string RefusedLine(RoomChange change, string why)
+        {
+            string what = change switch
+            {
+                RoomChange.Revert => "Revert",
+                RoomChange.SetTime => "Set time",
+                RoomChange.SetWeather => "Set weather",
+                _ => "Switch on",
+            };
+            return $"{what} refused: {why}";
+        }
 
         /// <summary>
         /// Whether the mode lets this peer change the room: null if so, else the reason. The host

@@ -33,11 +33,17 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `list(table)`: ids and one-line summaries for materials, elements, reactions, spells, groups,
   sim parameters; `list looks` gives the look families, the parameters each takes, and what
   takes no colour.
-- `describe(table, id, draft?)`: the full entry, plus what refers to it, and for a spell, material or
-  element its look (its mix and scoped looks too) and what `set_look` may change; with a draft,
-  the entry as the draft has it.
+- `describe(table, id, draft?)`: the full entry in force, which mods on changed which of its values,
+  what refers to it, for a spell, material or element its look (its mix and scoped looks too) and what
+  `set_look` may change, and for a spell how a player reaches it; with a draft, the entry as the draft has it.
 - `explain(a, b)`: what happens when a meets b, and which rule decides it.
 - `room()` (phase 3): the room's change mode and the mods on in it, with who added each.
+- `whats_on()`: what's on now in plain words: the room, each mod and what it changes from what
+  was under it, the clock and the weather.
+- `outside_rules()`: what no tool can change yet because it isn't in the rules, with the nearest
+  thing for each (`Workbench.Outside.cs`, the one place that says so; when one becomes data, take
+  its line out).
+- `time()`, `weather()`: the clock and the weather.
 - `places()`: the world's named places (`world/places.json`): each one's id, name, kind and
   cells. Villages, courses, puzzles and the water bodies are generated from the world files;
   the river and the falls are written by hand. Read-only; mods can't change them.
@@ -56,6 +62,36 @@ on for everyone in a room at the same tick. The MCP server produces those same p
   player casts (see "Looks")
 - `tune(param, value)`: a sim parameter, within the bounds the rules declare
 - `remove(table, id)`, only for things the draft itself added
+
+**The rules in force.** Every read, draft, `validate`, `simulate` and `apply`'s diff goes by the base
+rules with every mod on in the room over it, in order (`Workbench.Live.cs`), not by the base, because
+mods stack and what's showing is what Claude must build on. A set_ copies the entry in force into
+the draft. A patch holds whole entries, so a mod built on another keeps what it copied when that one is
+reverted; `revert` says so.
+
+**Refusing at once.** `set_material`, `set_spell`, `set_reaction` and the add_ tools refuse an unknown
+field, condition or effect when it's set (`RuleFields.cs`), since the engine would ignore a misnamed one;
+`set_spell` and `add_spell` also refuse a number past the budget's caps and a group the radial doesn't
+have. A dangling reference is still left to `validate`, because a draft may name what it adds next. The
+caps and the hue-only rule are also in the tool descriptions and the instructions (a test holds them to
+`rules/budgets.json`). `add_spell` says whether a player can reach the spell and how (the radial, a combo).
+
+**The clock and the weather** aren't rules, so they aren't mods. `set_time(time)` moves the clock
+forward to the next time the day reaches it, and `set_weather(weather, minutes?)` holds a weather
+(up to `RoomPolicy.MaxHoldMinutes`), `natural` letting it go. Each is a `RoomCommand`
+(`RoomChange.SetTime`, `SetWeather`; `World.RoomSky.cs`), so it rides in the tick batch and a late joiner's
+history, the change mode decides it on every peer at the same tick, and what it sets is what Hasten Time and
+Control Weather set: `ClockAhead` and `WeatherSet`, already in the save and `SkyHash`.
+
+**What the game must fill in.** Until it does, in a running game these tools read the base rules and say
+so, and `time`, `weather`, `set_time` and `set_weather` refuse with a sentence; the stdio server has them all:
+- `GameRoomDesk` implements `ILiveDesk`: `Now()` returns `WorldNow.Of(grid.World)` from the main thread, null
+  when there's no world. `Workbench.Refresh` calls it at the start of every tool call.
+- `GameRoomDesk.Decide` sends `command.As(switcher.Me)`: today it rebuilds the command as an Apply or a Revert,
+  which would turn a clock command into a mod.
+- `RoomIntent` (`NetChem.Room.cs`) carries `RoomChange` in place of its `bool Revert`, and `ToCommand` is
+  `new RoomCommand(Change, Peer, Mod, Json, Title)`. Do this with the desk: the tools send clock commands only
+  to an `ILiveDesk`.
 
 **Check**: `validate(draft)` returns every problem, one sentence each:
 1. Shape: the schema of each table.
