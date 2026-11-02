@@ -435,7 +435,7 @@ places and seeds.
   `hair`), `vary` (how one animal differs from the next: `shade` lighter or darker, `warm` warmer or cooler,
   `girth` stockier or slimmer, each a share, and `mix` to pick a coat's base and accent apart, a tunic and a
   skin; drawn from the animal's individual; a variant without one takes its species'), `parts`, `move` (`walk`, `run`, `turn`, `bob`, `bobs`,
-  `rock`, `upright`, `stride` for what has no legs), `behave` (`wander`, `idle`, `flee`, `group`, `active`:
+  `rock`, `upright`, `stride` for what has no legs, `habitats`: walks, swims, floats, leaps, with `depth` below the surface and `leaps` a minute), `behave` (`wander`, `idle`, `flee`, `group`, `active`:
   day, night or always; `graze`, `thirst`, `play`, `laze`, `hunts`, `hunger`, `chase`) and `spawn`
   (`density` per hectare, `nearWater`; or `among` and `share`: it comes out of a village of those folk, as
   that share of them). No `spawn`: the wilds never bring it out (a village's folk, a form).
@@ -449,6 +449,8 @@ places and seeds.
 - **`parts.json`**, shapes by id: `role` (leg, arm, tail, neck, head, ear, horn, eye, feature), `segments`
   (`length`, `radii` `[start, end]`, `flatten`, `accent` 0 to 1, `colour` of its own, `glow`, `hair`), `spring`,
   `ripple`, `follows` (`ground`), and seven key `poses`, joint angles per segment, until gaits go by rule.
+- **Water life** spawns only where the water carries it (0.7 m to swim, 0.3 m to float). A thing that stays
+  put, a lily pad or a reed, is a floating row with next to no `walk` and no fear.
 - **Colours** are `"#rrggbb"`, or `[r, g, b]` from 0 to 1 (sRGB) where hex would round the number.
 
 ## The parts that are code, not data

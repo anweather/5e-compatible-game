@@ -323,6 +323,96 @@
     "behave": { "wander": 12, "idle": [3, 10], "flee": 0, "group": [1, 1], "active": "day", "graze": 0, "thirst": 0, "play": 0.03, "laze": 0.2, "hunger": 0, "chase": 10 },
     "spawn": { "among": "human", "share": 0.12 }
   },
+  "trout": {
+    "name": "Trout", "size": [0.9, 1.1],
+    "body": { "length": 0.32, "radius": 0.045, "taper": 0.75, "flatten": 1.45 },
+    "coats": [{ "name": "Rainbow", "base": [0.42, 0.45, 0.36], "accent": [0.85, 0.55, 0.55] }, { "name": "Brown", "base": [0.5, 0.42, 0.28], "accent": [0.75, 0.35, 0.2] }],
+    "vary": { "shade": 0.14, "warm": 0.06, "girth": 0.08 },
+    "parts": {
+      "head": { "part": "fish-head", "at": [0, 0, 0.9] },
+      "eyes": { "part": "eye", "on": "head", "at": [0.03, 0.012, -0.025], "mirror": true, "scale": 0.55 },
+      "tail": { "part": "fish-tail", "at": [0, 0, -0.95], "dir": [0, 180, 0] },
+      "dorsal-fin": { "part": "dorsal-fin", "at": [0, 0.95, 0.1], "dir": [-40, 180, 0] },
+      "ears": { "part": "pectoral-fin", "at": [0.8, -0.4, 0.55], "dir": [30, 120, 0], "mirror": true }
+    },
+    "move": { "walk": 0.5, "run": 3.5, "turn": 200, "bob": [0.004, 0.01], "bobs": [2, 2], "habitats": ["swims", "leaps"], "depth": 0.5, "leaps": 1.2, "stride": [0.25, 0.6] },
+    "behave": { "wander": 12, "idle": [1, 5], "flee": 5, "group": [2, 5], "active": "always", "graze": 0, "thirst": 0, "play": 0.2, "laze": 0.1, "hunger": 0, "chase": 10 },
+    "spawn": { "density": 3 }
+  },
+  "carp": {
+    "name": "Carp", "variantOf": "trout", "scale": 1.7,
+    "coats": [{ "name": "Bronze", "base": [0.55, 0.45, 0.25], "accent": [0.8, 0.65, 0.35] }, { "name": "Mirror", "base": [0.45, 0.42, 0.32], "accent": [0.7, 0.6, 0.4] }],
+    "behave": { "active": "day", "graze": 0, "thirst": 0.3, "play": 0, "laze": 0.25, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 2 }
+  },
+  "koi": {
+    "name": "Koi", "variantOf": "trout", "scale": 1.6,
+    "coats": [{ "name": "Kohaku", "base": [0.95, 0.93, 0.88], "accent": [0.95, 0.35, 0.15], "glow": 0.8, "weight": 2 }, { "name": "Ogon", "base": [0.95, 0.7, 0.2], "accent": [1, 0.9, 0.5], "glow": 0.9 }, { "name": "Asagi", "base": [0.45, 0.6, 0.85], "accent": [0.6, 0.95, 0.95], "glow": 0.9 }],
+    "behave": { "active": "day", "graze": 0, "thirst": 0.3, "play": 0, "laze": 0.25, "hunger": 0.3, "chase": 10 },
+    "spawn": { "density": 0.8 }
+  },
+  "glow-eel": {
+    "name": "Glow eel", "size": [0.9, 1.1],
+    "body": { "length": 0.18, "radius": 0.04, "taper": 0.9, "flatten": 1.1 },
+    "coat": { "base": [0.12, 0.14, 0.1], "accent": [0.55, 1, 0.25], "glow": 0.9 },
+    "vary": { "shade": 0.14, "warm": 0.06, "girth": 0.08 },
+    "parts": {
+      "head": { "part": "fish-head", "at": [0, 0, 0.9], "scale": 0.9, "thickness": 0.85 },
+      "eyes": { "part": "eye", "on": "head", "at": [0.026, 0.012, -0.02], "mirror": true, "scale": 0.5 },
+      "tail": { "part": "eel-body", "at": [0, 0, -0.95], "dir": [0, 180, 0] }
+    },
+    "move": { "walk": 0.35, "run": 2.2, "turn": 120, "bob": [0.003, 0.008], "bobs": [2, 2], "habitats": ["swims"], "depth": 0.4, "stride": [0.4, 0.8] },
+    "behave": { "wander": 10, "idle": [2, 8], "flee": 3, "group": [1, 3], "active": "always", "graze": 0, "thirst": 0, "play": 0, "laze": 0.3, "hunger": 0, "chase": 10 },
+    "spawn": { "density": 0.4 }
+  },
+  "duck": {
+    "name": "Duck", "size": [0.9, 1.1],
+    "body": { "length": 0.3, "radius": 0.1, "taper": 0.9, "flatten": 0.85 },
+    "coats": [{ "name": "Mallard", "base": [0.55, 0.52, 0.48], "accent": [0.12, 0.4, 0.2], "weight": 2 }, { "name": "Hen", "base": [0.5, 0.4, 0.28], "accent": [0.42, 0.33, 0.22], "weight": 2 }, { "name": "White", "base": [0.94, 0.93, 0.9], "accent": [0.9, 0.9, 0.88] }],
+    "vary": { "shade": 0.14, "warm": 0.06, "girth": 0.08 },
+    "parts": {
+      "neck": { "part": "bird-neck", "at": [0, 0.5, 0.85], "dir": [-70, 0, 0], "scale": 0.5, "thickness": 2.2 },
+      "head": { "part": "bird-head", "on": "neck", "dir": [70, 0, 0], "scale": 1.25, "thickness": 1.35 },
+      "horn": { "part": "duck-bill", "on": "head", "at": [0, -0.005, 0], "dir": [8, 0, 0] },
+      "eyes": { "part": "eye", "on": "head", "at": [0.026, 0.012, -0.025], "mirror": true, "scale": 0.5 },
+      "tail": { "part": "bird-tail", "at": [0, 0.55, -0.9], "dir": [-20, 180, 0], "scale": 0.3, "thickness": 1.6 }
+    },
+    "move": { "walk": 0.4, "run": 2, "turn": 150, "bob": [0.006, 0.015], "bobs": [2, 2], "habitats": ["floats"], "stride": [0.25, 0.5] },
+    "behave": { "wander": 15, "idle": [2, 8], "flee": 9, "group": [2, 5], "active": "day", "graze": 0, "thirst": 0, "play": 0.15, "laze": 0.3, "hunger": 0, "chase": 10 },
+    "spawn": { "density": 2 }
+  },
+  "silver-fish": {
+    "name": "Silver fish", "size": [0.5, 0.6],
+    "body": { "length": 0.32, "radius": 0.045, "taper": 0.75, "flatten": 1.45 },
+    "coat": { "base": [0.62, 0.68, 0.72], "accent": [0.3, 0.45, 0.6] },
+    "vary": { "shade": 0.14, "warm": 0.06, "girth": 0.08 },
+    "parts": {
+      "head": { "part": "fish-head", "at": [0, 0, 0.9] },
+      "eyes": { "part": "eye", "on": "head", "at": [0.03, 0.012, -0.025], "mirror": true, "scale": 0.55 },
+      "tail": { "part": "fish-tail", "at": [0, 0, -0.95], "dir": [0, 180, 0] },
+      "dorsal-fin": { "part": "dorsal-fin", "at": [0, 0.95, 0.1], "dir": [-40, 180, 0] },
+      "ears": { "part": "pectoral-fin", "at": [0.8, -0.4, 0.55], "dir": [30, 120, 0], "mirror": true }
+    },
+    "move": { "walk": 0.5, "run": 4.5, "turn": 200, "bob": [0.004, 0.01], "bobs": [2, 2], "habitats": ["swims", "leaps"], "depth": 0.7, "leaps": 0.5, "stride": [0.25, 0.6] },
+    "behave": { "wander": 20, "idle": [1, 5], "flee": 7, "group": [6, 12], "active": "always", "graze": 0, "thirst": 0, "play": 0.2, "laze": 0.1, "hunger": 0, "chase": 10 },
+    "spawn": { "density": 4 }
+  },
+  "dolphin": {
+    "name": "Dolphin", "size": [0.9, 1.1],
+    "body": { "length": 1.6, "radius": 0.24, "taper": 0.8, "flatten": 1.05 },
+    "coat": { "base": [0.42, 0.47, 0.52], "accent": [0.82, 0.84, 0.86] },
+    "vary": { "shade": 0.14, "warm": 0.06, "girth": 0.08 },
+    "parts": {
+      "head": { "part": "dolphin-head", "at": [0, 0, 0.9] },
+      "eyes": { "part": "eye", "on": "head", "at": [0.12, 0.03, -0.22], "mirror": true, "scale": 1.4 },
+      "tail": { "part": "fluke", "at": [0, 0, -0.95], "dir": [0, 180, 0] },
+      "dorsal-fin": { "part": "dorsal-fin", "at": [0, 0.95, 0], "dir": [-45, 180, 0], "scale": 4.5, "thickness": 3 },
+      "ears": { "part": "pectoral-fin", "at": [0.8, -0.5, 0.45], "dir": [40, 130, 0], "mirror": true, "scale": 4.5, "thickness": 3 }
+    },
+    "move": { "walk": 2, "run": 8, "turn": 90, "bob": [0.02, 0.05], "bobs": [2, 2], "habitats": ["swims", "leaps"], "depth": 1.2, "leaps": 4, "stride": [1.2, 2.6] },
+    "behave": { "wander": 40, "idle": [0.5, 2], "flee": 4, "group": [2, 4], "active": "always", "graze": 0, "thirst": 0, "play": 0.8, "laze": 0.05, "hunger": 0, "chase": 10 },
+    "spawn": { "density": 0.2 }
+  },
   "arctic-fox": {
     "name": "Arctic fox", "variantOf": "red-fox", "scale": 0.95,
     "coat": { "base": [0.9, 0.9, 0.88], "accent": [1, 1, 1] },
@@ -830,5 +920,31 @@
     "name": "Toxic frog", "variantOf": "frog", "scale": 1.1,
     "coats": [{ "name": "Azure", "base": [0.12, 0.3, 0.65], "accent": [0.95, 0.85, 0.2], "glow": 0.6 }, { "name": "Venom", "base": [0.75, 0.15, 0.12], "accent": [0.2, 0.2, 0.25] }, { "name": "Lime", "base": [0.45, 0.85, 0.2], "accent": [0.2, 0.1, 0.3] }],
     "behave": { "active": "always", "graze": 0.2, "thirst": 0, "play": 0, "laze": 0.4, "hunger": 0.3, "chase": 10 }
+  },
+  "lily-pad": {
+    "name": "Lily pad", "size": [0.8, 1.4],
+    "vary": { "shade": 0.14, "warm": 0.06, "girth": 0.1 },
+    "body": { "length": 0.5, "radius": 0.25, "taper": 1, "flatten": 0.06 },
+    "coat": { "base": [0.2, 0.42, 0.2], "accent": [0.3, 0.5, 0.26] },
+    "parts": {
+      "flower": { "part": "lily-flower", "at": [0.2, 1, 0.1], "dir": [-90, 0, 0] }
+    },
+    "move": { "walk": 0.01, "run": 0.02, "turn": 5, "bob": [0, 0], "bobs": [1, 1], "habitats": ["floats"], "stride": [0.6, 0.9] },
+    "behave": { "wander": 1, "idle": [30, 90], "flee": 0, "group": [3, 6], "active": "always", "graze": 0, "thirst": 0, "play": 0, "laze": 0, "hunger": 0, "chase": 1 },
+    "spawn": { "density": 1.5 }
+  },
+  "reed": {
+    "name": "Reed", "size": [0.8, 1.3],
+    "vary": { "shade": 0.14, "warm": 0.08, "girth": 0.1 },
+    "body": { "length": 0.1, "radius": 0.03, "taper": 1, "flatten": 1 },
+    "coat": { "base": [0.36, 0.45, 0.22], "accent": [0.3, 0.2, 0.12] },
+    "parts": {
+      "stalk": { "part": "reed-stalk", "dir": [-90, 0, 0] },
+      "stalk-2": { "part": "reed-stalk", "at": [3, 0, 1], "dir": [-84, 20, 0], "scale": 0.8 },
+      "stalk-3": { "part": "reed-stalk", "at": [-2, 0, -2], "dir": [-82, -30, 0], "scale": 0.9 }
+    },
+    "move": { "walk": 0.01, "run": 0.02, "turn": 5, "bob": [0, 0], "bobs": [1, 1], "habitats": ["floats"], "stride": [0.6, 0.9] },
+    "behave": { "wander": 1, "idle": [30, 90], "flee": 0, "group": [3, 5], "active": "always", "graze": 0, "thirst": 0, "play": 0, "laze": 0, "hunger": 0, "chase": 1 },
+    "spawn": { "density": 1.2 }
   }
 }

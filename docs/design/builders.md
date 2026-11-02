@@ -67,9 +67,8 @@ live change costs one build per changed species (tens of microseconds) and the n
 folder), and 80 limbs. Until gaits go by rule (§3) rows keep what the art still needs: a part's seven key
 `poses`, and a slot's `phase` and `mirrorPhase`. `habitats` and `gaits` come with the work that reads them.
 The export writes colours as `[r, g, b]`, as hex would round them; the reader takes hex too. Only what
-spawns counts as a hunter when a species asks if it's hunted, as the old table had it. The assets stay in the
-repo, read by nothing but the export and its proof, until `punchy-people` and the rest have used the same
-export; the old builder (`AssetBody`) goes with them.
+spawns counts as a hunter when a species asks if it's hunted, as the old table had it. The assets, the export and the old
+builder went once `punchy-water` had been through the export: rows are the source now, edited by hand, by mod or by the MCP.
 
 ## 3. Gaits by rule
 

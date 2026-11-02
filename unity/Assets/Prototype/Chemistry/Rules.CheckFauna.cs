@@ -15,7 +15,7 @@ namespace Chem
             static readonly string[] BodyKeys = { "length", "radius", "taper", "flatten" };
             static readonly string[] CoatKeys = { "name", "base", "accent", "glow", "weight" };
             static readonly string[] SlotKeys = { "part", "on", "at", "dir", "mirror", "phase", "mirrorPhase", "scale", "thickness", "style" };
-            static readonly string[] MoveKeys = { "walk", "run", "turn", "rock", "bob", "bobs", "stride", "upright" };
+            static readonly string[] MoveKeys = { "walk", "run", "turn", "rock", "bob", "bobs", "stride", "upright", "habitats", "depth", "leaps" };
             static readonly string[] BehaveKeys = { "wander", "flee", "idle", "group", "active", "graze", "thirst", "play", "laze", "hunger", "chase", "hunts" };
             static readonly string[] SpawnKeys = { "density", "nearWater", "among", "share" };
             static readonly string[] PartKeys = { "role", "segments", "spring", "ripple", "follows", "poses" };
@@ -41,6 +41,8 @@ namespace Chem
                 OnlyKeys(who, row, SpeciesKeys);
                 OnlyKeys($"{who}: body", row["body"], BodyKeys);
                 OnlyKeys($"{who}: move", row["move"], MoveKeys);
+                foreach (var h in row["move"]?["habitats"] as JArray ?? new JArray())
+                    if (!FaunaTables.Habitats.Contains(Show(h))) Errors.Add($"{who}: habitats are {string.Join(", ", FaunaTables.Habitats)}, not {Show(h)}");
                 Number(row["scale"], $"{who}: scale", 0);
                 Pair(who, "size", row["size"]);
                 Colours(who, row);

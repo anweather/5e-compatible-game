@@ -8,7 +8,8 @@ using UnityEngine;
 public class SpawnersProbe : ProbeScenario
 {
     const float StaySeconds = 40f;
-    static readonly string[] Birds = { "turkey", "quail", "heron", "ptarmigan", "roadrunner" };
+    static readonly string[] Birds = { "turkey", "quail", "heron", "ptarmigan", "roadrunner", "duck" };
+    static readonly string[] Water = { "trout", "carp" };
 
     protected override IEnumerator Run()
     {
@@ -36,6 +37,7 @@ public class SpawnersProbe : ProbeScenario
             }
         }
         foreach (var (id, ones) in seen.OrderBy(s => s.Key, System.StringComparer.Ordinal)) Metric("seen_" + id, ones.Count);
+        foreach (string fish in Water) Check("water_" + fish, seen.ContainsKey(fish), $"{(seen.TryGetValue(fish, out var ones) ? ones.Count : 0)} came out");
         foreach (string bird in Birds) Check("bird_" + bird, seen.ContainsKey(bird), $"{(seen.TryGetValue(bird, out var ones) ? ones.Count : 0)} came out");
     }
 }
