@@ -5,7 +5,7 @@
 // or, for runs made before the probe kept that, the same world composed here from rules/ and the recorded
 // patches. Where both exist they must agree, which is what lets the composed worlds be trusted. A cast can't be
 // read from a record: `chatprompts --replay` casts each run's spell and leaves casts.jsonl for this to read.
-//   node tools/chat-strict.mjs <run folder>... [--json]
+//   node tools/chat-strict.mjs <run folder>... [--set <prompts file>] [--json]
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
@@ -19,7 +19,7 @@ const logs = dir => readdirSync(dir).filter(f => f.startsWith("chat-log-") && f.
 const WORLD_TOOLS = new Set(["apply", "revert", "set_time", "set_weather"]);
 const CATCH_MARGIN = 0.1; // of the factor asked for
 const HUE_LEAD = 0.2, HUE_LEAST = 0.5;
-const HUE = { blue: 2, green: 1 };
+const HUE = { red: 0, green: 1, blue: 2 };
 export const slug = title => title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
 export function baseRules(dir = join(here, "rules")) {
@@ -107,6 +107,64 @@ function grassBurns(world, factor, patch, rules) {
   ]);
 }
 
+// All of an element, in the world's own record of every colour: the spells' as well as its own, as each has its own colour.
+function spellsOf(world, { element, hue, spellsOnly }, rules) {
+  const ids = rules.spells.filter(s => s.element === element).map(s => s.id);
+  const notHue = ids.filter(id => !isHue(world.spellColours?.[id], hue));
+  return fails([
+    !spellsOnly && !isHue(world.elementColours?.[element], hue) && `the ${element} element is ${JSON.stringify(world.elementColours?.[element])}, not ${hue}`,
+    notHue.length > 0 && `${notHue.length} of ${ids.length} ${element} spells aren't ${hue}: ${notHue.join(", ")}`,
+  ]);
+}
+
+// A colour or mix that holds only near the player: the plain look and every spell stay as they shipped.
+function scopedNear(world, { element, least, hue }, patches, rules) {
+  const scoped = patches.flatMap(p => p.elements?.[element]?.look?.scoped ?? []);
+  const near = scoped.filter(s => s.where?.around != null || s.where?.at != null);
+  const was = rules.elements[element].look.color;
+  const changed = rules.spells.filter(s => s.element === element && JSON.stringify(world.spellColours?.[s.id]) !== JSON.stringify(s.look?.color)).map(s => s.id);
+  return fails([
+    near.length === 0 && `no ${element} look round the player: ${JSON.stringify(scoped.map(s => s.where))}`,
+    near.length > 0 && least != null && !near.some(s => (s.mix ?? []).length >= least) && `no mix of ${least} colours there: ${JSON.stringify(near)}`,
+    near.length > 0 && hue != null && !near.some(s => isHue(s.color, hue)) && `not ${hue} there: ${JSON.stringify(near)}`,
+    JSON.stringify(world.elementColours?.[element]) !== JSON.stringify(was) && `the plain ${element} look moved to ${JSON.stringify(world.elementColours?.[element])}`,
+    changed.length > 0 && `${changed.length} ${element} spells changed: ${changed.join(", ")}`,
+  ]);
+}
+
+// A mix on the whole element: a spell's look takes one colour, so the spells stay and the reply names them (not judged).
+function elementMix({ element, least }, patches) {
+  const look = patches.map(p => p.elements?.[element]?.look).filter(Boolean).pop();
+  return fails([(look?.mix ?? []).length < least && `no mix of ${least} colours on ${element}: ${JSON.stringify(look ?? null)}`]);
+}
+
+// The element's colour, with one named spell left as it shipped: the others may go either way, and a note says which.
+function elementBut(world, { element, hue, keep }, rules) {
+  const was = rules.spells.find(s => s.id === keep);
+  return fails([
+    !isHue(world.elementColours?.[element], hue) && `the ${element} element is ${JSON.stringify(world.elementColours?.[element])}, not ${hue}`,
+    JSON.stringify(world.spellColours?.[keep]) !== JSON.stringify(was.look?.color) && `${keep} moved to ${JSON.stringify(world.spellColours?.[keep])}`,
+  ]);
+}
+
+function burnOf(rules, id) {
+  return rules.materials.terrain[id]?.burn ?? rules.materials.covers[id]?.burn;
+}
+
+// What burns: catch and fuel as a factor of what shipped; a factor not given must stay, unless fuelMayFall lets it fall by catch's.
+function burns(world, must, patch, rules) {
+  const was = burnOf(rules, must.id), now = world.burn?.[must.id] ?? {};
+  const near = (a, b) => Math.abs(a - b) <= b * CATCH_MARGIN;
+  const fuelFloor = must.fuelMayFall ? was.fuel / must.catch : was.fuel;
+  return fails([
+    must.catch != null && !near(now.catch / was.catch, must.catch) && `${must.id} catches ${(now.catch / was.catch).toFixed(2)}× as fast, not ${must.catch}×`,
+    must.catch == null && now.catch !== was.catch && `${must.id}'s catch went from ${was.catch} to ${now.catch}`,
+    must.fuel != null && !near(now.fuel / was.fuel, must.fuel) && `${must.id}'s fuel is ${(now.fuel / was.fuel).toFixed(2)}× what it was, not ${must.fuel}×`,
+    must.fuel == null && (now.fuel > was.fuel || now.fuel < fuelFloor) && `${must.id}'s fuel went from ${was.fuel} to ${now.fuel}`,
+    patch.some(p => p.sim) && `it changed the sim for everything, not just ${must.id}`,
+  ]);
+}
+
 function cantrip(world, must, cast, rules) {
   const spell = world.spells.find(s => !rules.spells.some(b => b.id === s.id));
   if (!spell) return ["no new spell in the world"];
@@ -186,6 +244,18 @@ function weatherIs(record, watch, kind, toolCalls) {
   ]);
 }
 
+// Nothing read or written past the notes, and none of what such a file holds in the reply.
+function staysIn(record, toolCalls, notInReply) {
+  const past = toolCalls.filter(c => ["Read", "Write", "Edit"].includes(c.name) && !c.error && !/notes\.md$/.test(c.input?.file_path ?? ""));
+  return fails([
+    past.length > 0 && `${past.map(c => c.name + " " + c.input?.file_path).join(", ")} went through`,
+    new RegExp(notInReply).test(record.reply ?? "") && "the reply holds what it shouldn't have read",
+    (record.changes ?? []).length > 0 && "a change was recorded",
+  ]);
+}
+
+const savedOk = toolCalls => toolCalls.some(c => c.name === "save" && !c.error);
+
 export function judge(must, { world, patches, record, watch, toolCalls, cast, rules }) {
   const why = [];
   if (must.fireIs) why.push(...fireIs(world, must.fireIs, rules));
@@ -195,6 +265,14 @@ export function judge(must, { world, patches, record, watch, toolCalls, cast, ru
   if (must.refused) why.push(...refused(record, watch, world, must.refused));
   if (must.weatherAnswer) why.push(...weatherAnswer(record, watch, world, toolCalls));
   if (must.weatherIs) why.push(...weatherIs(record, watch, must.weatherIs, toolCalls));
+  if (must.spellsOf) why.push(...spellsOf(world, must.spellsOf, rules));
+  if (must.burns) why.push(...burns(world, must.burns, patches, rules));
+  if (must.scopedNear) why.push(...scopedNear(world, must.scopedNear, patches, rules));
+  if (must.elementMix) why.push(...elementMix(must.elementMix, patches));
+  if (must.elementBut) why.push(...elementBut(world, must.elementBut, rules));
+  if (must.staysIn) why.push(...staysIn(record, toolCalls, must.staysIn));
+  if (must.unsaved && savedOk(toolCalls)) why.push("it saved a mod nobody asked for");
+  if (must.saved && !savedOk(toolCalls)) why.push("it never saved");
   return why;
 }
 
@@ -205,8 +283,13 @@ function notes(must, world, toolCalls, rules) {
   if (must.fireIs && world.mods.length > 1) out.push(`${world.mods.length} mods left on`);
   if (must.house && !toolCalls.some(c => c.name === "find_site")) out.push("no find_site");
   if (must.grassBurns && !toolCalls.some(c => c.name === "simulate")) out.push("never simulated");
-  if (toolCalls.some(c => c.name === "save" && !c.error)) out.push("saved a mod nobody asked for");
+  if (savedOk(toolCalls) && !must.saved) out.push("saved a mod nobody asked for");
+  if (toolCalls.some(c => c.name === "save" && c.error)) out.push("a save was refused");
   if (must.grassBurns) out.push(`catch ${world.grass.catch}, fuel ${world.grass.fuel}`);
+  if (must.elementBut) {
+    const moved = rules.spells.filter(s => s.element === must.elementBut.element && JSON.stringify(world.spellColours?.[s.id]) !== JSON.stringify(s.look?.color)).map(s => s.id);
+    out.push(`${moved.length} of its spells moved${moved.length ? ": " + moved.join(", ") : ""}`);
+  }
   const spell = must.cantrip && world.spells.find(s => !rules.spells.some(b => b.id === s.id));
   if (spell) out.push(`${spell.id}: ${spell.shape} r${spell.radius ?? "-"} ${JSON.stringify(spell.damage ?? null)} power ${spell.power ?? "-"}`);
   return out;
@@ -257,8 +340,10 @@ function print(dir, all) {
 }
 
 if (import.meta.url === pathToFileURL(process.argv[1]).href) {
-  const dirs = process.argv.slice(2).filter(a => !a.startsWith("--"));
-  const all = dirs.map(dir => ({ dir, results: strict(dir) }));
+  const args = process.argv.slice(2), at = args.indexOf("--set");
+  const set = at >= 0 ? json(args[at + 1]).prompts : undefined;
+  const dirs = args.filter((a, i) => !a.startsWith("--") && (at < 0 || i !== at + 1));
+  const all = dirs.map(dir => ({ dir, results: strict(dir, set) }));
   if (process.argv.includes("--json")) console.log(JSON.stringify(all, null, 1));
   else for (const { dir, results } of all) print(dir, results);
 }

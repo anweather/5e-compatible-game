@@ -120,7 +120,7 @@ namespace Chem.Bench
 
         static ProcessStartInfo StartOf(string claude, string model, string folder)
         {
-            string arguments = ClaudeRun.CommandLine(ClaudeRun.Arguments().Concat(model == null ? Array.Empty<string>() : new[] { "--model", model }));
+            string arguments = ClaudeRun.CommandLine(ClaudeRun.Arguments(model ?? ClaudeRun.ChatModel));
             bool script = claude.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
             var start = new ProcessStartInfo(script ? "cmd.exe" : claude, script ? $"/c \"\"{claude}\" {arguments}\"" : arguments)
             {

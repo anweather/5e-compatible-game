@@ -1,0 +1,60 @@
+{
+  "about": "The rest of the merged-tree prompts: the follow-up again, as what the short prompt's landing turns on, then a scoped look and a mix, each alone. See chat-merged.json.",
+  "prompts": [
+    {
+      "kind": "colour",
+      "text": "make all fire blue",
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "fireIs": "blue"
+      },
+      "why": "The fixed set's prompt, here as the follow-up's set-up."
+    },
+    {
+      "kind": "follow-up",
+      "text": "actually, make it green instead",
+      "keep": true,
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "fireIs": "green"
+      },
+      "why": "The fixed set's prompt, unrun on the short prompt's final wording: read notes.md only if this message may depend on it."
+    },
+    {
+      "kind": "scoped",
+      "text": "make the fire near me green",
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "scopedNear": {
+          "element": "fire",
+          "hue": "green"
+        }
+      },
+      "why": "set_look's description's own example, word for word: a where alone."
+    },
+    {
+      "kind": "mixed",
+      "text": "make all fire a mix of red and gold",
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "elementMix": {
+          "element": "fire",
+          "least": 2
+        }
+      },
+      "why": "A mix alone: the spells keep their own colour, as a spell's look takes one."
+    }
+  ]
+}

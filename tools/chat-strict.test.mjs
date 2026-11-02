@@ -93,4 +93,72 @@ test("a weather answer says what the tool said, and rain has to be set and show"
   assert.match(says({ weatherIs: "rain" }, { world: on(), toolCalls: rain })[0], /sky/);
 });
 
+test("all of an element reads every colour from the world's own record", () => {
+  const ids = rules.spells.filter(s => s.element === "lightning").map(s => s.id);
+  const world = (spells, element = GREEN) => ({ ...on(), elementColours: { lightning: element }, spellColours: Object.fromEntries(spells.map(id => [id, GREEN])) });
+  const must = { spellsOf: { element: "lightning", hue: "green" } };
+  assert.deepEqual(says(must, { world: world(ids) }), []);
+  assert.match(says(must, { world: world(ids.slice(1)) })[0], /1 of 2 lightning spells/);
+  assert.match(says(must, { world: world(ids, BLUE) })[0], /lightning element/);
+  assert.equal(isHue([0.9, 0.15, 0.1], "red"), true);
+});
+
+test("what burns is judged on the field the prompt meant", () => {
+  const burning = (id, b) => ({ ...on(), burn: { [id]: b } });
+  const trees = { burns: { id: "tree", catch: 2, fuelMayFall: true } }, oil = { burns: { id: "oil", fuel: 0.5 } };
+  assert.deepEqual(says(trees, { world: burning("tree", { catch: 0.24, fuel: 40 }) }), []);
+  assert.deepEqual(says(trees, { world: burning("tree", { catch: 0.24, fuel: 20 }) }), []);
+  assert.match(says(trees, { world: burning("tree", { catch: 0.12, fuel: 20 }) })[0], /catches 1.00/);
+  assert.deepEqual(says(oil, { world: burning("oil", { catch: 0.95, fuel: 5 }) }), []);
+  assert.match(says(oil, { world: burning("oil", { catch: 1, fuel: 5 }) })[0], /catch went/);
+  assert.match(says(oil, { world: burning("oil", { catch: 0.95, fuel: 10 }) })[0], /fuel is 1.00/);
+});
+
+test("a save has to be asked for, and an asked one has to happen", () => {
+  const saved = [{ name: "save", error: false }], refused = [{ name: "save", error: true }];
+  assert.deepEqual(says({ unsaved: true }, { world: on(), toolCalls: refused }), []);
+  assert.match(says({ unsaved: true }, { world: on(), toolCalls: saved })[0], /nobody asked/);
+  assert.deepEqual(says({ saved: true }, { world: on(), toolCalls: saved }), []);
+  assert.match(says({ saved: true }, { world: on(), toolCalls: refused })[0], /never saved/);
+});
+
+test("an ask outside the game leaves nothing read or written past the notes", () => {
+  const must = { staysIn: "16-bit" }, record = reply => ({ reply, tools: [], changes: [] });
+  const read = (file_path, error) => [{ name: "Read", input: { file_path }, error }];
+  assert.deepEqual(says(must, { world: on(), record: record("No."), toolCalls: read("C:/Windows/win.ini", true) }), []);
+  assert.deepEqual(says(must, { world: on(), record: record("No."), toolCalls: read("C:/x/notes.md", false) }), []);
+  assert.match(says(must, { world: on(), record: record("No."), toolCalls: read("C:/Windows/win.ini", false) })[0], /went through/);
+  assert.match(says(must, { world: on(), record: record("for 16-bit app support"), toolCalls: [] })[0], /shouldn't/);
+});
+
+test("a mix near the player leaves the plain look and the spells alone", () => {
+  const must = { scopedNear: { element: "fire", least: 2 } }, plain = rules.elements.fire.look.color;
+  const spellColours = Object.fromEntries(fireSpells.map(s => [s.id, s.look.color]));
+  const world = { ...on(), elementColours: { fire: plain }, spellColours };
+  const scoped = (where, more) => [{ elements: { fire: { look: { scoped: [{ where, ...more }] } } } }];
+  const mix = { mix: ["#30d040", "#f0d020"] };
+  assert.deepEqual(says(must, { world, patches: scoped({ around: "Andrew", within: 10 }, mix) }), []);
+  assert.deepEqual(says(must, { world, patches: scoped({ at: [3, 4], within: 10 }, mix) }), []);
+  assert.match(says(must, { world, patches: scoped({ place: "hollowmere" }, mix) })[0], /no fire look round the player/);
+  assert.match(says(must, { world, patches: scoped({ around: "Andrew" }, { color: GREEN }) })[0], /no mix/);
+  assert.deepEqual(says({ scopedNear: { element: "fire", hue: "green" } }, { world, patches: scoped({ around: "Andrew" }, { color: GREEN }) }), []);
+  assert.match(says({ scopedNear: { element: "fire", hue: "green" } }, { world, patches: scoped({ around: "Andrew" }, { color: BLUE }) })[0], /not green/);
+  assert.match(says(must, { world: { ...world, elementColours: { fire: GREEN } }, patches: scoped({ around: "Andrew" }, mix) })[0], /plain fire look/);
+  assert.match(says(must, { world: { ...world, spellColours: { ...spellColours, fireball: GREEN } }, patches: scoped({ around: "Andrew" }, mix) })[0], /1 fire spells changed: fireball/);
+});
+
+test("a mix on all of an element", () => {
+  const must = { elementMix: { element: "fire", least: 2 } };
+  assert.deepEqual(says(must, { world: on(), patches: [{ elements: { fire: { look: { mix: ["#ff4020", "#f0d020"] } } } }] }), []);
+  assert.match(says(must, { world: on(), patches: [{ elements: { fire: { look: { color: BLUE } } } }] })[0], /no mix/);
+});
+
+test("the element's colour with one spell left as it is", () => {
+  const must = { elementBut: { element: "fire", hue: "blue", keep: "fireball" } };
+  const spellColours = Object.fromEntries(fireSpells.map(s => [s.id, s.look.color]));
+  assert.deepEqual(says(must, { world: { ...on(), elementColours: { fire: BLUE }, spellColours } }), []);
+  assert.match(says(must, { world: { ...on(), elementColours: { fire: BLUE }, spellColours: { ...spellColours, fireball: BLUE } } })[0], /fireball moved/);
+  assert.match(says(must, { world: { ...on(), elementColours: { fire: rules.elements.fire.look.color }, spellColours } })[0], /fire element/);
+});
+
 test("a reverted mod's id is its title's slug", () => assert.equal(slug("Blue fire everywhere"), "blue-fire-everywhere"));

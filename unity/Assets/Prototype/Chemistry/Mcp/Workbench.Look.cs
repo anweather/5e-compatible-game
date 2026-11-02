@@ -17,6 +17,10 @@ namespace Chem.Mcp
         /// <summary>The tables whose entries have a look, by the name set_look takes.</summary>
         static readonly string[] LookTables = { "spells", "terrain", "covers", "gases", "elements", "entities", "items" };
 
+        /// <summary>SetLook for a where or a by alone.</summary>
+        public Draft SetLook(string draftId, string id, string param, string value, string table, out string said, (string where, string by) only) =>
+            SetLook(draftId, id, param, value, table, out said, (only.where, only.by, null));
+
         /// <summary>
         /// One parameter of the look of a spell, terrain, cover, gas, element, entity or item, by id; null removes
         /// it. Only the parameters its family takes (a bare look's: color), "form" where the family has
@@ -24,11 +28,13 @@ namespace Chem.Mcp
         /// <c>only.where</c>, a color or mix holds only there (a scoped look; null takes it back).
         /// With <c>only.by</c> ("me", a player's slot, or "each"), a color or mix colours only what
         /// that player's casts make (each: one colour of the mix per player).
-        /// <paramref name="said"/> is what it takes, and anything to know.
+        /// <paramref name="said"/> is what it takes, and anything to know. An element's plain color goes on to every spell of
+        /// that element with a colour of its own, unless <c>only.spells</c> is false: each spell keeps its own otherwise,
+        /// so the element alone leaves every cast the old colour (docs/telemetry/chat-model-2026-11-02.md).
         /// </summary>
-        public Draft SetLook(string draftId, string id, string param, string value, string table, out string said, (string where, string by) only = default)
+        public Draft SetLook(string draftId, string id, string param, string value, string table, out string said, (string where, string by, bool? spells) only = default)
         {
-            var (where, by) = only;
+            var (where, by, spells) = only;
             id = Required(id, "id");
             param = Required(param, "parameter").ToLowerInvariant();
             if (param == "colour") param = "color";
@@ -58,9 +64,37 @@ namespace Chem.Mcp
             target = scope == null ? now : target;
             string wont = param == "color" && v.Type != JTokenType.Null ? WontShow(table, id, familyOf, now, v) : null;
             if (target?["mix"] != null && (param == "mix" || param == "blend")) wont = PaleMix(table, id, familyOf, target);
+            string ofSpells = null;
+            if (table == "elements" && scope == null && v.Type != JTokenType.Null && (param == "color" || param == "mix"))
+                ofSpells = SpellsOfElement(draft, id, param == "color" ? v : null, spells);
             said = $"The {Single(table)} {id}'s look ({Described(table, family)}) takes {List(takes)}{(colours ? ", and a where for color or mix" : "")}{(byPlayer ? ", and a by (a player) for color or mix" : "")}." +
-                (scope == null ? "" : " " + ScopedNote(scope, v)) + LookNote(table, id, whole, familyOf) + (wont == null ? "" : " " + wont + " Tell the player.") + "\n";
+                (scope == null ? "" : " " + ScopedNote(scope, v)) + LookNote(table, id, whole, familyOf, ofSpells != null) + (ofSpells ?? "") + (wont == null ? "" : " " + wont + " Tell the player.") + "\n";
             return draft;
+        }
+
+        // The spells of an element that chose their own colour, in force or in the draft: colour takes them along, and without
+        // it they're named, so nobody says every cast changed when none did. Null when there are none.
+        string SpellsOfElement(Draft draft, string element, JToken colour, bool? spells)
+        {
+            var ids = ((JArray)Raw["spells"]).Concat(draft.Patch["spells"] as JArray ?? new JArray())
+                .Where(s => Str(s["element"]) == element && s["look"]?["color"] != null).Select(s => Str(s["id"])).Distinct().ToList();
+            if (ids.Count == 0) return null;
+            string Names(IEnumerable<string> list) => string.Join(", ", list.Select(s => Str(Current(draft, "spells", s)["name"]) ?? s));
+            if (colour == null) return $" These spells of {element} keep their own colour, as a spell's look takes one colour, not a mix: {Names(ids)}.";
+            if (spells == false) return $" These spells of {element} keep their own colour: {Names(ids)}.";
+            var wont = new List<string>();
+            foreach (string spell in ids)
+            {
+                var entry = Entry(draft, "spells", spell);
+                if (!(entry["look"] is JObject own)) entry["look"] = own = new JObject();
+                SetPlain(own, (JObject)Current(draft, "spells", spell)["look"], "color", colour.DeepClone());
+                draft.Changed.Add($"spells {spell}");
+                var look = (JObject)Current(draft, "spells", spell)["look"];
+                string family = Str(look["family"]);
+                if (WontShow("spells", spell, family == null ? null : Budgets.Looks.Find("spells", family), look, colour) != null) wont.Add(spell);
+            }
+            return $" Each of {element}'s {ids.Count} spells had its own colour, so this set them too: {Names(ids)}." +
+                (wont.Count == 0 ? "" : $" It won't show on {Names(wont)}.");
         }
 
         // A where as the look keeps it: a known place by id, a cell, or a player by name ("me" is the one
@@ -397,14 +431,14 @@ namespace Chem.Mcp
         static double Channel(double x, double scale) => Math.Round(x / scale, 3);
 
         // What else the caller should know: where else the colour shows, or where it doesn't.
-        static string LookNote(string table, string id, JObject entry, LookFamily family)
+        static string LookNote(string table, string id, JObject entry, LookFamily family, bool spellsSaid)
         {
             var notes = new List<string>();
             if (family?.Notes != null) notes.Add(family.Notes);
             if (table == "spells" && Str(entry["element"]) is string element)
                 notes.Add($"This colours {Str(entry["name"]) ?? id}'s own show; what its {element} leaves on cells is the {element} element's look (set_look on {element}, table element: it changes every {element}).");
             if (table == "elements")
-                notes.Add($"Every {id} in the world takes it, whichever spell or reaction made it, and the show of a spell of its own that chose no colour; one that did keeps its look.");
+                notes.Add($"Every {id} in the world takes it, whichever spell or reaction made it" + (spellsSaid ? "." : ", and the show of a spell of its own that chose no colour; one that did keeps its look."));
             return notes.Count == 0 ? "" : " " + string.Join(" ", notes);
         }
 

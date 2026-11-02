@@ -51,16 +51,37 @@ namespace Chem.Mcp
             "\"make grass burn twice as fast\", \"when lightning hits water, leave fog\".\n\n" + TalkLine + "\n";
 
         /// <summary>
-        /// The arguments: one message read from stdin, the game's tools and the notes file allowed, and
-        /// anything else refused rather than asked about, as nobody is there to answer a prompt.
+        /// The chat's system prompt, in place of Claude Code's own: what a harness needs and no game knowledge, which stays in the
+        /// server for every harness. No double quotes: it goes on a command line. Measured in docs/telemetry/chat-context-2026-11-02.md.
         /// </summary>
-        public static IReadOnlyList<string> Arguments() => new[]
+        public const string ChatPrompt = "You are the chat inside a running game, Spell Chemistry Valley, answering one message from the player while they play. " +
+            "Use only the spell-valley tools and notes.md. You have no shell and no other files, and this chat is for the game alone: if a message is about anything else, " +
+            "say so in a line and offer what the tools can do. Each message starts a new process that remembers nothing. notes.md holds what came before: read it only if this " +
+            "message may depend on that, and after you change something add a line or two there saying what you changed and what's on now. Answer in a line or two, in plain words.";
+
+        /// <summary>
+        /// The model the chat asks for (J-066). Pinned, not the alias: this is the one the strict sets passed on, and a new Haiku
+        /// should get there by being measured, not by a player's claude updating. docs/telemetry/chat-context-2026-11-02.md says what a player without it sees.
+        /// </summary>
+        public const string ChatModel = "claude-haiku-5-5";
+
+        /// <summary>
+        /// The arguments: one message read from stdin, the game's tools and the notes file allowed, and
+        /// anything else refused rather than asked about, as nobody is there to answer a prompt. A null model leaves it to the account.
+        /// </summary>
+        public static IReadOnlyList<string> Arguments(string model = ChatModel)
         {
-            "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
-            "--mcp-config", ".mcp.json", "--strict-mcp-config",
-            "--permission-mode", "dontAsk", "--tools", "Read,Edit,Write",
-            "--allowedTools", "mcp__" + ServerName, $"Read(./{NotesFile})", $"Edit(./{NotesFile})", $"Write(./{NotesFile})",
-        };
+            var arguments = new List<string>
+            {
+                "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
+                "--system-prompt", ChatPrompt,
+                "--mcp-config", ".mcp.json", "--strict-mcp-config",
+                "--permission-mode", "dontAsk", "--tools", "Read,Edit,Write",
+                "--allowedTools", "mcp__" + ServerName, $"Read(./{NotesFile})", $"Edit(./{NotesFile})", $"Write(./{NotesFile})",
+            };
+            if (model != null) arguments.AddRange(new[] { "--model", model });
+            return arguments;
+        }
 
         /// <summary>One line of stream-json as what the chat shows: none for what it doesn't.</summary>
         public static IEnumerable<(ClaudeSaid said, string text)> Read(string line)
@@ -125,6 +146,15 @@ namespace Chem.Mcp
             var lines = notes.Replace("\r\n", "\n").TrimEnd('\n').Split('\n');
             return lines.Length <= most ? notes : string.Join("\n", lines.Skip(lines.Length - most)) + "\n";
         }
+
+        /// <summary>What the chat's save says when the player's message didn't ask for one.</summary>
+        public const string SaveNotAsked = "Saving is the player's call, and their message didn't ask: the change is on without it. If they want it kept, tell them to say save.";
+
+        /// <summary>Whether a message from the chat asks for a save: nobody is there to answer a prompt, so the word has to be theirs.</summary>
+        public static bool AsksToSave(string message) =>
+            (message ?? "").ToLowerInvariant().Split(' ', ',', '.', '!', '?', ':', ';', '"', '\'', '\n').Any(SaveWords.Contains);
+
+        static readonly string[] SaveWords = { "save", "saved", "saves", "saving" };
 
         /// <summary>The arguments as one command line, each quoted where it has to be.</summary>
         public static string CommandLine(IEnumerable<string> arguments) =>

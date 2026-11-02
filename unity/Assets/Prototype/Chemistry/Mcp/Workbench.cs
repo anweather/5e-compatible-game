@@ -118,24 +118,42 @@ namespace Chem.Mcp
         // ---------- save ----------
 
         /// <summary>
-        /// Writes the draft as rules/mods/{name}.json, {"title", "idea", "patch"}, once it validates.
-        /// Returns the path written.
+        /// Who may save: the sentence refusing one now, or null to let it. Nothing here means anyone may, as for a
+        /// person at a terminal, who answers Claude's own prompt. The game's chat has nobody to answer one, so it says.
+        /// Called off the game's main thread.
+        /// </summary>
+        public Func<string> SaveRefused { get; set; }
+
+        /// <summary>
+        /// Writes a draft, or a mod on in the room by its id, as rules/mods/{name}.json, {"title", "idea", "patch"}, once it
+        /// validates. A mod that's on already passed the room. Returns the path written.
         /// </summary>
         public string Save(string draftId, string title, string idea, string name = null, bool overwrite = false)
         {
-            var draft = DraftOf(Required(draftId, "draft"));
+            string refused = SaveRefused?.Invoke();
+            if (refused != null) throw new RulesToolException(refused);
+            string key = Required(draftId, "draft");
+            var onNow = drafts.ContainsKey(key) ? null : Now()?.Room.Mods.Find(m => m.Id == key);
+            var patch = onNow != null ? ModPatch.Parse(onNow.Json).Json : DraftOf(key).Patch;
             if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A mod needs a title.");
             if (string.IsNullOrWhiteSpace(idea)) throw new RulesToolException("A mod needs its idea in words: that is what people vote on.");
-            var problems = WithSite(draft.Patch.ToString(Formatting.None));
+            var problems = onNow != null ? Array.Empty<ModProblem>() : WithSite(patch.ToString(Formatting.None));
             if (problems.Count > 0) throw new RulesToolException("The draft doesn't validate yet. " + Report(problems));
             name = string.IsNullOrWhiteSpace(name) ? Slug(title) : name.Trim();
             if (name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains("..", StringComparison.Ordinal))
                 throw new RulesToolException($"\"{name}\" can't be a file name; use letters, digits and dashes.");
             var path = Path.Combine(ModsDir, name + ".json");
             if (File.Exists(path) && !overwrite) throw new RulesToolException($"rules/mods/{name}.json already exists; pick another name or save with overwrite.");
-            var mod = new JObject { ["title"] = title.Trim(), ["idea"] = idea.Trim(), ["patch"] = draft.Patch.DeepClone() };
-            Directory.CreateDirectory(ModsDir);
-            File.WriteAllText(path, mod.ToString(Formatting.Indented).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
+            var mod = new JObject { ["title"] = title.Trim(), ["idea"] = idea.Trim(), ["patch"] = patch.DeepClone() };
+            try
+            {
+                Directory.CreateDirectory(ModsDir);
+                File.WriteAllText(path, mod.ToString(Formatting.Indented).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                throw new RulesToolException($"The mod can't be written to {ModsDir}: {e.Message}");
+            }
             Desk?.Saved(path);
             return path;
         }
@@ -163,5 +181,10 @@ namespace Chem.Mcp
         public ISet<string> Changed { get; } = new SortedSet<string>(StringComparer.Ordinal);
 
         public string Show() => $"Draft {Id}:\n{Patch.ToString(Formatting.Indented)}";
+
+        /// <summary>Show, or for a draft holding many entries only their names: a whole patch is a lot to read back after every call.</summary>
+        public string Brief() => Changed.Count <= MostShown ? Show() : $"Draft {Id} holds {string.Join(", ", Changed)}.";
+
+        const int MostShown = 2;
     }
 }

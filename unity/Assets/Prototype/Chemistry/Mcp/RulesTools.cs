@@ -22,30 +22,16 @@ namespace Chem.Mcp
 
     public sealed class RulesTools
     {
-        /// <summary>What a client is told when it connects: how to use the tools. Both hosts send it.</summary>
+        /// <summary>
+        /// What a client is told when it connects: how to go about it. Both hosts send it. Claude Code carries this in the first
+        /// message, which every prompt writes again, and the tools' descriptions in the block that stays cached: so what a tool
+        /// needs goes in its description, and this stays short (docs/telemetry/chat-context-2026-11-02.md).
+        /// </summary>
         public const string Instructions =
-            "These tools change the rules of Spell Chemistry Valley, a game about how spells and materials react. When the player asks for a change, write it yourself: " +
-            "read what's on now (whats_on, then list, describe, explain: all of them read the rules in force, every mod on included, and describe says which mod changed what), build a new draft with set_spell, set_material, set_reaction, set_look, tune, add_reaction, add_material, add_spell, add_item, add_entity or add_thing (a draft holds only the fields it names, so mods stack and a revert undoes only its own), " +
-            "check it with validate, and where a scenario fits, run simulate and compare the numbers with what the player meant, since a change can do the opposite of what it seems to " +
-            "(less fuel makes a fire spread less). Then apply the draft with a short title the players will read. Sizes follow the numbers by themselves (a bigger radius draws a bigger blast), " +
-            "but a colour is a look: change it with set_look, picking the numbers for what the player says (blue is about [0.25, 0.45, 1]). " +
-            "A whole-element change (\"blue fire everywhere\") goes on the element, one spell's (\"a blue fireball\") on the spell, and a material's on the material; " +
-            "a spell's look colours its own show, and what it leaves on cells is its element's. describe shows an entry's look and what it takes; list looks the families. " +
-            "A colour can hold in one place only: set_look with where, on the element, cover, gas or terrain. \"Make the fire near me green\" is set_look fire color green with where {\"around\": \"me\", \"within\": 10}: it follows the player as they move. " +
-            "\"Fire round the village in three colours\" is: places (or here) to find the village's id, then set_look fire mix [three colours] with where {\"place\": \"<id>\", \"within\": 20}. " +
-            "A mix gives several colours, each cell picking one; without where it holds everywhere. A colour a spell chose for its own fire still wins over a scoped look. " +
-            "Colours mix like paint: blue and yellow give green, red and blue purple, red and yellow orange. Where scoped looks overlap they mix, and a fire caught from two colours burns their mix. " +
-            "\"Blend blue and yellow fire\" is set_look fire mix [blue, yellow] then set_look fire blend true (one green); without blend it's a patchwork. If set_look says a mix is pale, tell the player it shows as its nearest hue. " +
-            "A colour can also go with who cast it, with by: \"make the fire I create blue\" is set_look fire color blue with by \"me\"; \"each player gets their own fire colour\" is set_look fire mix [one colour per player, as many as may play] with by \"each\" " +
-            "(the fire element for what burns; a spell, table spell, for its own show). by wins over everything: a spell's own colour, then where, then the element's colour. " +
-            "Limits, before you promise anything: a spell's look, and fire, flames, embers, steam and smoke, only turn their art's hue, so white, black, grey, a pale colour or a darker shade of the same hue doesn't show on them (a white fireball stays as it was: offer the nearest hue). " +
-            "A mod's spell may have at most radius 6, length 24, size 5, power 6, push 6, raise 4 and dig 4, and level 0 to 9 with at most 20 dice of d4, d6, d8, d10 or d12; a mod adds at most 12 new entries. " +
-            "Some things aren't in the rules at all yet (heat glow, player size, fauna size, slippery terrain, weather's cover, area fill, a building's rooms): read outside_rules before trying or refusing, so you can say what's nearest. " +
-            "The clock and the weather aren't rules: read them with time and weather, and change them with set_time and set_weather, not by moving day.startHour. A new spell isn't much use unreachable: add_spell says how a player reaches it, so tell them. " +
-            "The world's buildings are rows too, and a mod may change them. \"Add a wing to the house by the lake\" is find with kind building and near lake, then add_wing with its id. \"Build a house on the beach\" is find_site with its size, near sea and edge shore, then add_building at a cell it gave. \"The lake's north shore\" is near lake with side north. " +
-            "A new thing for players to find is one draft: add_item for the new kind, with its look (family creature, a species from list looks, a coat colour and a scale), find_site (1 by 1) or places for a spot you pick, then add_thing there, and apply with a title. It sits still and can be picked up, and the log names whoever picks it up first. add_thing's chance makes it maybe there, maybe not, decided once from the world's seed, so several candidates at 0.2 each is a rare find. " +
-            "Give a new material or style in the same draft (add_material, add_building_part), and change anything else about a building with set_building or a whole row in add_building. Cells follow the walls; heights, finishes, roofs and details are only drawn. A site is checked again on every peer when it switches on, and validate says at once if it won't stand. " +
-            "If set_look says a colour won't show, tell the player so and offer one that will. Don't look for a saved mod that's close: use one from rules/mods only when the player names it. After apply, tell the player what changed, from its answer.";
+            "These tools change the rules of Spell Chemistry Valley, a game about how spells and materials react, in the game the player is watching. When the player asks for a change, write it yourself: " +
+            "read what's on now (whats_on, then list, describe, explain), build a new draft, check it with validate, run simulate if validate says to, then apply it with a short title the players will read. " +
+            "Each tool's description says what it needs: colours are always set_look. Before you try or refuse what may not be in the rules, read outside_rules, so you can say what's nearest. " +
+            "After apply, tell the player what changed, from its answer, and claim nothing it doesn't list. Don't save unless the player asks.";
 
         const string DraftHelp = "The draft to add to; leave it out to start a new one. Returns the draft id and the patch so far.";
         const string ValueHelp = "The new value as JSON (0.5, true, \"ash\", [8, 6], {\"catch\": 0.4}); null removes the field.";
@@ -85,13 +71,13 @@ namespace Chem.Mcp
         [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
-        [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing.")]
+        [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing. All the read tools read the rules in force, every mod on included.")]
         public string WhatsOn() => Do(() => bench.WhatsOn());
 
-        [RulesTool("outside_rules", ReadOnly = true), Description("What can't be changed through these tools yet because it isn't in the rules (heat glow, player size, fauna size, slippery terrain, weather's cover, area fill, buildings), and the nearest thing that can be done for each.")]
+        [RulesTool("outside_rules", ReadOnly = true), Description("What can't be changed through these tools yet because it isn't in the rules (heat glow, player size, fauna size, slippery terrain, weather's cover, area fill, a building's rooms), and the nearest thing that can be done for each. Read it before trying or refusing any of those.")]
         public string OutsideRules() => Do(Workbench.Outside);
 
-        [RulesTool("time", ReadOnly = true), Description("The clock: the time of day, the day, the light, and when dawn and dusk are.")]
+        [RulesTool("time", ReadOnly = true), Description("The clock: the time of day, the day, the light, and when dawn and dusk are. The clock and the weather aren't rules: read them here and with weather, and change them with set_time and set_weather, not by moving day.startHour.")]
         public string Time() => Do(() => bench.TimeNow());
 
         [RulesTool("weather", ReadOnly = true), Description("The weather: what it is and how strong, the wind, whether it's held and for how long, or what it turns to next.")]
@@ -118,7 +104,7 @@ namespace Chem.Mcp
             [Description("Only a place's side: north, east, south or west, such as the lake's north shore.")] string side = null,
             [Description("shore for only the edge of a place, such as the sea's beach.")] string edge = null) => Do(() => bench.Find(kind, near, within, side, edge));
 
-        [RulesTool("find_site", ReadOnly = true), Description("Finds where a building of this size can stand: open ground, dry, clear of things and buildings, out of the villages and courses. Gives cells to pass to add_building, nearest first. Read-only: a site is taken only when the mod switches on.")]
+        [RulesTool("find_site", ReadOnly = true), Description("Finds where a building of this size can stand: open ground, dry, clear of things and buildings, out of the villages and courses. Gives cells to pass to add_building, nearest first. \"Build a house on the beach\" is this with its size, near sea and edge shore, then add_building at a cell it gave. Read-only: a site is taken only when the mod switches on.")]
         public string FindSite([Description("Its width west to east, in whole cells (a cell is 1.5 m).")] int width, [Description("Its depth north to south, in whole cells.")] int depth,
             [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
             [Description("Only a place's side: north, east, south or west.")] string side = null,
@@ -127,7 +113,7 @@ namespace Chem.Mcp
 
         // ---------- draft ----------
 
-        [RulesTool("add_building"), Description("Adds a building to a draft: a box of walls with a door and windows, width by depth cells from the cell at, or a whole row in full for any other shape (joins, walls with openings, roofs; docs/design/builders.md). Hollow by default, so a broken door leaves a room to walk into. Says if the site won't stand.")]
+        [RulesTool("add_building"), Description("Adds a building to a draft: a box of walls with a door and windows, width by depth cells from the cell at, or a whole row in full for any other shape (joins, walls with openings, roofs; docs/design/builders.md). Hollow by default, so a broken door leaves a room to walk into. Says if the site won't stand. Give a new material or style in the same draft (add_material, add_building_part). Cells follow the walls; heights, finishes, roofs and details are only drawn. A site is checked again on every peer when it switches on.")]
         public string AddBuilding([Description("Its north-west cell as JSON, [x, y]; find_site gives these. Leave out with row.")] string at = null, [Description("Width west to east in whole cells, 3 or more.")] int? width = null, [Description("Depth north to south in whole cells, 3 or more.")] int? depth = null,
             [Description("A style's id (list styles, or one add_building_part put in the draft); plain when left out.")] string style = null,
             [Description("The side its door faces: north, east, south or west; south when left out.")] string front = null,
@@ -136,7 +122,7 @@ namespace Chem.Mcp
             [Description("Or the whole row as JSON, with its id and at.")] string row = null,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Sited(bench.AddBuilding(draft, at, width, depth, style, front, id, fill, row)));
 
-        [RulesTool("add_wing"), Description("Adds a wing to a building by id in a draft: new walls that meet its wall on one side, its openings there go, and its roof grows. The whole row goes in the draft, so it's one edit. Picks a side where the site stands when none is given.")]
+        [RulesTool("add_wing"), Description("Adds a wing to a building by id in a draft: new walls that meet its wall on one side, its openings there go, and its roof grows. The whole row goes in the draft, so it's one edit. Picks a side where the site stands when none is given. \"Add a wing to the house by the lake\" is find with kind building and near lake, then this with its id.")]
         public string AddWing([Description("The building's id; find gives these.")] string building, [Description("How wide along the side, in whole cells, 3 or more; 4 when left out.")] int? width = null, [Description("How far out, in whole cells, 3 or more; 4 when left out.")] int? depth = null,
             [Description("north, east, south or west; left out picks one the site allows.")] string side = null,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Sited(bench.AddWing(draft, building, width ?? 4, depth ?? 4, side)));
@@ -163,7 +149,7 @@ namespace Chem.Mcp
             [Description("More fields as a JSON object: str, ac, components, explodes.")] string extra = null,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.AddEntity(draft, id, name, hp, mass, material, look, extra).Show());
 
-        [RulesTool("add_thing"), Description("Puts a thing in the world in a draft: appended to its chunk's list, so no other thing's id moves. The spot is yours to pick: find_site with 1 by 1 gives open ground, places names the world's places. Says if the cell won't do, and a revert takes it away.")]
+        [RulesTool("add_thing"), Description("Puts a thing in the world in a draft: appended to its chunk's list, so no other thing's id moves. The spot is yours to pick: find_site with 1 by 1 gives open ground, places names the world's places. Says if the cell won't do, and a revert takes it away. A new thing for players to find is one draft: add_item for the new kind, with its look, a spot, then this, and apply with a title. It sits still and can be picked up, and the log names whoever picks it up first. Its chance makes it maybe there, maybe not, decided once from the world's seed, so several candidates at 0.2 each is a rare find.")]
         public string AddThing([Description("The kind: an entity or item, in the rules or added earlier in this draft (add_item, add_entity).")] string kind, [Description("The world cell as JSON, [x, y]; open dry ground with nothing on it.")] string at,
             [Description("Above 0 and at most 1: how likely it is to be in this world at all, decided once from the world's seed and this thing, the same on every peer. Always there when left out.")] double? chance = null,
             [Description("Its turn about the vertical, in degrees.")] double? rot = null,
@@ -175,7 +161,7 @@ namespace Chem.Mcp
             [Description("Verb groups as a JSON object, such as {\"burn\": {\"catch\": 0.4, \"fuel\": 10, \"leaves\": \"dirt\"}}.")] string verbs = null,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.AddMaterial(draft, kind, id, name, tags, verbs).Show());
 
-        [RulesTool("set_material"), Description("Changes one field of a terrain, cover or gas in a draft, by dotted path such as burn.catch, keeping the rest of it as it is in force now. An unknown field is refused at once with the fields it has. A colour goes through set_look.")]
+        [RulesTool("set_material"), Description("Changes one field of a terrain, cover or gas in a draft, by dotted path such as burn.catch, keeping the rest of it as it is in force now. For what burns: burn.catch is how readily it takes fire, so how fast fire spreads through it; burn.fuel is how long a cell burns, so less fuel starves a fire rather than speeding it. Burning faster is more catch, not less fuel. An unknown field is refused at once with the fields it has. A colour goes through set_look.")]
         public string SetMaterial([Description("The material's id.")] string id, [Description("The field, such as burn.catch or tags.")] string field, [Description(ValueHelp)] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.SetMaterial(draft, id, field, value).Show());
 
@@ -195,9 +181,9 @@ namespace Chem.Mcp
         public string SetReaction([Description("The rule's id.")] string id, [Description("The field, such as if.chance or do.")] string field, [Description(ValueHelp)] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.SetReaction(draft, id, field, value).Show());
 
-        [RulesTool("add_spell"), Description("Adds a spell, and says whether a player can reach it and how. It acts through an element (or an effect such as terraform) and sits in a group of the spell radial; SRD 5.2.1 levels and damage dice. A mod's spell may have at most radius 6, length 24, size 5, power 6, push 6, raise 4 and dig 4 (past that it's refused: see outside_rules for area fill), and at most 20 dice of d4 to d12. Its look only turns its art's hue, so white, black, grey or pale doesn't show. It needs a look in extra: {\"look\": {\"family\": \"blast\", \"color\": [1, 0.4, 0.1]}}, with a family from rules/looks.json.")]
+        [RulesTool("add_spell"), Description("Adds a spell, and says whether a player can reach it and how. It acts through an element (or an effect such as terraform) and sits in a group of the spell radial; SRD 5.2.1 levels and damage dice. A mod's spell may have at most radius 6, length 24, size 5, power 6, push 6, raise 4 and dig 4 (past that it's refused: see outside_rules for area fill), and at most 20 dice of d4 to d12. Its look only turns its art's hue, so white, black, grey or pale doesn't show. It needs a look in extra: {\"look\": {\"family\": \"blast\", \"color\": [1, 0.4, 0.1]}}, with a family from rules/looks.json. A thrown ball or blast is a burst with a radius (1 is 9 cells), not a point, which is one cell. Tell the player how they reach it. A mod adds at most 12 new entries.")]
         public string AddSpell([Description("A new id, such as ice-knife.")] string id, [Description("Its name.")] string name, [Description("The radial group: fire, water, storm, earth, arcane, nature or time.")] string group,
-            [Description("0 (a cantrip) to 9.")] int level, [Description("point, line, square, burst, target or cone.")] string shape,
+            [Description("0 (a cantrip) to 9.")] int level, [Description("point (one cell), line, square, burst (a ball, by radius), target or cone.")] string shape,
             [Description("The element it applies, such as cold.")] string element = null, [Description("Or an effect: terraform, levitate, carry, teleport, haste, weather, shapeshift, light.")] string effect = null,
             [Description("The element's power, 6 at most.")] int? power = null, [Description("A burst's radius in cells, 6 at most.")] int? radius = null, [Description("A line's or cone's length in cells, 24 at most.")] int? length = null,
             [Description("A square's size in cells, 5 at most.")] int? size = null, [Description("How hard it throws things back, 6 at most.")] int? push = null,
@@ -235,16 +221,21 @@ namespace Chem.Mcp
         public string SetSpell([Description("The spell's id.")] string id, [Description("The field.")] string field, [Description(ValueHelp + " Damage may be written 8d6.")] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.SetSpell(draft, id, field, value).Show());
 
-        [RulesTool("set_look"), Description("Changes one parameter of the look of a spell, terrain, cover, gas, element, entity or item in a draft, by id. On an entity or item, family creature takes species, color, glow and scale (list looks has the species), and draws a thing with no prefab. A spell's look, and fire, flames, embers, steam and smoke, only turn their art's hue: white, black, grey, a pale colour or a darker shade of the same hue doesn't show on them, and the reply says so. The parameters: color (three numbers 0 to 1, or \"#rrggbb\"), mix (several colours, with weights if wanted, each cell picking one: fire in three colours), blend (true: the mix's colours mixed into one like paint, blue and yellow giving green; false: the patchwork), and any other parameter its look family lists (height, glow, roughness, form...). Says what that family takes, and refuses anything else with the list. An element's look is the colour of everything that element makes in the world (blue fire everywhere); a spell's colours only its own show (a blue fireball). With where, an element's, cover's, gas's or terrain's color or mix holds only there: round a place (places lists them), a cell, or around the player asking, which follows them as they move. With by, an element's, cover's, gas's or spell's color or mix colours only what one player casts (by me: the fire I create), or each player's in their own colour (by each, with a mix); by wins over a spell's own colour and over where.")]
+        [RulesTool("set_look"), Description("Changes one parameter of the look of a spell, terrain, cover, gas, element, entity or item in a draft, by id: the only way to change a colour. On an entity or item, family creature takes species, color, glow and scale (list looks has the species), and draws a thing with no prefab. Pick the numbers for what the player says (blue is about [0.25, 0.45, 1]); sizes need no look, as they follow the numbers. " +
+            "An element's color is everything that element makes in the world and every spell of that element, each of which has its own colour: this one call sets them all, and the reply names them (spells false leaves the spells as they are). So \"blue fire everywhere\" or \"all fire spells blue\" goes on the element, \"a blue fireball\" on the spell, which colours only its own show (what it leaves on cells is its element's), and a material's on the material. " +
+            "A spell's look, and fire, flames, embers, steam and smoke, only turn their art's hue: white, black, grey, a pale colour or a darker shade of the same hue doesn't show on them, and the reply says so: tell the player and offer the nearest hue. " +
+            "The parameters: color (three numbers 0 to 1, or \"#rrggbb\"), mix (several colours, with weights if wanted, each cell picking one), blend (true: the mix's colours mixed into one like paint, blue and yellow giving green, red and blue purple, red and yellow orange; false: the patchwork), and any other parameter its look family lists (height, glow, roughness, form...; list looks has the families, describe what an entry takes). " +
+            "With where, an element's, cover's, gas's or terrain's color or mix holds only there. With by, an element's, cover's, gas's or spell's colours only what one player casts, or each player's in their own colour. by wins over a spell's own colour, that over where, that over the plain look.")]
         public string SetLook([Description("The spell's, material's or element's id.")] string id, [Description("The parameter: color, mix, or another its family takes, such as height.")] string param,
             [Description("The new value as JSON: [0.25, 0.45, 1] or \"#4073ff\" for a colour; [\"#ff4020\", \"#2050ff\", \"#30d040\"] or [{\"color\": \"#ff4020\", \"weight\": 2}, ...] for a mix; 1.4 for a number. null puts back the family's own, or with where or by takes that look back.")] string value,
             [Description("spell, terrain, cover, gas, element, entity or item: needed when the id names more than one (fire is an element; frost a spell and a cover).")] string table = null,
             [Description(DraftHelp)] string draft = null,
-            [Description("Optional: where the color or mix holds, as JSON: {\"place\": \"<id from places>\", \"within\": 20} round a place, {\"at\": [x, y], \"within\": 12} round a cell, or {\"around\": \"me\", \"within\": 10} round the player asking (here() says where they are). Elsewhere the plain look holds; where scoped looks overlap they mix like paint.")] string where = null,
-            [Description("Optional: whose casts the color or mix colours: \"me\" (the player asking), a player's slot (0 the host, then each in join order; here() says yours), or \"each\" with a mix, one colour per player in join order. What they cast keeps it as it spreads.")] string by = null) => Do(() =>
+            [Description("Optional: where the color or mix holds, as JSON: {\"place\": \"<id from places>\", \"within\": 20} round a place, {\"at\": [x, y], \"within\": 12} round a cell, or {\"around\": \"me\", \"within\": 10} round the player asking (here() says where they are). Elsewhere the plain look holds; where scoped looks overlap they mix like paint, and a fire caught from two colours burns their mix. \"The fire near me green\" is fire color green with {\"around\": \"me\", \"within\": 10}. \"Fire round the village in three colours\" is places (or here) for its id, then fire mix [three colours] with {\"place\": \"<id>\", \"within\": 20}.")] string where = null,
+            [Description("Optional: whose casts the color or mix colours: \"me\" (the player asking), a player's slot (0 the host, then each in join order; here() says yours), or \"each\" with a mix, one colour per player in join order. What they cast keeps it as it spreads. \"The fire I create blue\" is by \"me\"; \"each player gets their own fire colour\" is a mix of one colour per player, as many as may play, with by \"each\" (the fire element for what burns; a spell, table spell, for its own show).")] string by = null,
+            [Description("false leaves an element's spells with their own colours, for \"the flames blue but Fireball as it is\"; true or left out sets them with the element's color.")] bool? spells = null) => Do(() =>
             {
-                var d = bench.SetLook(draft, id, param, value, table, out var said, (where, by));
-                return said + d.Show();
+                var d = bench.SetLook(draft, id, param, value, table, out var said, (where, by, spells));
+                return said + d.Brief();
             });
 
         [RulesTool("tune"), Description("Sets a sim parameter by dotted path (fire.spreadChance, push.slideCells...) within the bounds rules/budgets.json declares.")]
@@ -257,16 +248,19 @@ namespace Chem.Mcp
 
         // ---------- check, run, save ----------
 
-        [RulesTool("validate", ReadOnly = true), Description("Checks a draft (or a mod in rules/mods, or patch JSON): shape, references, the design rules, determinism and the budgets. Every problem is one sentence.")]
-        public string Validate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft) =>
-            Do(() => Workbench.Report(bench.Validate(draft)));
+        [RulesTool("validate", ReadOnly = true), Description("Checks a draft (or a mod in rules/mods, or patch JSON): shape, references, the design rules, determinism and the budgets. Every problem is one sentence. Says if it changes how the world behaves, which wants a simulate before apply.")]
+        public string Validate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft) => Do(() =>
+            {
+                var problems = bench.Validate(draft);
+                return Workbench.Report(problems) + (problems.Count == 0 ? bench.SimulateNote(draft) : "");
+            });
 
-        [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, fireball, flood, storm) with the draft on and without it, and says what changed: cells by material, cells burnt, peak counts, ticks per second against the budget, the cell hash.")]
+        [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, fireball, flood, storm) with the draft on and without it, and says what changed: cells by material, cells burnt, peak counts, ticks per second against the budget, the cell hash. Use it to see a change goes the way the player meant: one can do the opposite of what it seems (less fuel makes a fire spread less). Its numbers show the direction, not a multiple, so don't tune a value to fit them.")]
         public string Simulate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft, [Description("fire-on-grass (a Fire Bolt in a meadow), fireball (a Fireball in a meadow, for spell size), flood or storm.")] string scenario,
             [Description("Ticks to run (6 a second); 300 when left out.")] int? ticks = null) => Do(() => bench.Simulate(draft, scenario, ticks));
 
-        [RulesTool("save"), Description("Writes the draft as a mod in rules/mods ({\"title\", \"idea\", \"patch\"}), once it validates.")]
-        public string Save([Description("The draft.")] string draft, [Description("A short title.")] string title, [Description("The idea in a sentence or two: what people vote on.")] string idea,
+        [RulesTool("save"), Description("Keeps a draft, or a mod that's on, as a mod file in rules/mods ({\"title\", \"idea\", \"patch\"}), which the Mods page then lists, once it validates. Only when the player asks to save it: apply is what changes the game, and it needs no save. From the chat, a save is refused unless the player's own message says save.")]
+        public string Save([Description("A draft's id, or the id of a mod on now, as room lists it.")] string draft, [Description("A short title.")] string title, [Description("The idea in a sentence or two: what people vote on.")] string idea,
             [Description("The file name without .json; from the title when left out.")] string name = null, [Description("Replace a mod with that name.")] bool overwrite = false) =>
             Do(() => $"Saved {bench.Save(draft, title, idea, name, overwrite)}.");
 
@@ -284,7 +278,7 @@ namespace Chem.Mcp
         [RulesTool("room"), Description("The room's change mode (open, host-only or locked) and the mods on in it, in order, with who added each and the tick. With a mode, first makes a new room in that mode, as a room is made (not in a running game, whose mode was chosen when it opened).")]
         public string Room([Description("Optional: open, host-only or locked, to make a new room.")] string mode = null) => Do(() => bench.Room(mode));
 
-        [RulesTool("apply"), Description("Switches a draft you built on in the room, at the next tick, and says what it changed from the rules in force. Build a draft for what the player asks; pass a saved mod's name only when the player names that mod. The room's change mode decides whose changes go in, and the mod is checked first (validate); a refusal comes back as one sentence, and the world log says who changed what.")]
+        [RulesTool("apply"), Description("Switches a draft you built on in the room, at the next tick, and says what it changed from the rules in force. Build a draft for what the player asks; don't look for a saved mod that's close, and pass one's name only when the player names it. If the player replaces an earlier change, revert that mod too. The room's change mode decides whose changes go in, and the mod is checked first (validate); a refusal comes back as one sentence, and the world log says who changed what.")]
         public string Apply([Description("A draft id, or a mod name from rules/mods if the player named it, or the patch JSON.")] string mod,
             [Description("The peer asking, by name; the host when left out. A running game always uses its own player.")] string peer = null,
             [Description("The name players read in the log, such as Bigger fireballs. A draft needs one.")] string title = null) => Do(() => bench.Apply(mod, peer, title));

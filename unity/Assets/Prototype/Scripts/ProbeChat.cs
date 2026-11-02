@@ -35,6 +35,7 @@ public class ChatProbe : ProbeScenario
             chat.SetOpen(false);
             Check("closed_gives_them_back", !chat.Open && (controls == null || controls.enabled));
             yield return Answers(chat);
+            yield return ModelChoice(chat);
             yield return Waits(chat);
             yield return SignIn(chat);
             yield return Plain(chat);
@@ -69,6 +70,7 @@ public class ChatProbe : ProbeScenario
         yield return null;
         yield return null;
         Check("the_bar_shows_while_it_works", chat.Progress != null, chat.Progress?.what);
+        Check("a_save_nobody_asked_for_is_refused", GameChat.SaveRefusal() == ClaudeRun.SaveNotAsked);
         var switcher = grid.GetComponent<RuleSwitcher>();
         switcher.Toggle(RecordedMod);
         yield return Until(chat, () => ChatTelemetry.Instance.Current == null);
@@ -88,6 +90,11 @@ public class ChatProbe : ProbeScenario
         switcher.Toggle(RecordedMod);
         yield return Wait(1f);
         Check("a_revert_adds_a_later_line", File.ReadAllLines(file).Any(l => l.Contains("\"of\"") && l.Contains("\"reverted\":true")), File.ReadAllText(file));
+        Check("a_terminal_may_save_while_the_chat_is_idle", GameChat.SaveRefusal() == null);
+        chat.Send("save that as a mod");
+        yield return null;
+        Check("a_save_the_message_asked_for_goes_through", chat.Busy && GameChat.SaveRefusal() == null);
+        yield return Until(chat, () => ChatTelemetry.Instance.Current == null);
         ChatTelemetry.Folder = null;
     }
 
@@ -148,7 +155,26 @@ public class ChatProbe : ProbeScenario
         string asked = File.Exists(logged) ? File.ReadAllText(logged) : "";
         Check("the_message_came_on_stdin", asked.Contains(Message), asked);
         Check("headless_with_only_the_games_tools", asked.Contains("-p") && asked.Contains("dontAsk") && asked.Contains("--strict-mcp-config") && asked.Contains("mcp__spell-valley") && !asked.Contains("Bash"), asked);
+        Check("the_chat_asks_for_its_model", asked.Contains("--model " + ClaudeRun.ChatModel), asked);
         Check("no_terminal_window_needed", File.Exists(Path.Combine(ClaudeTerminal.Folder, ".mcp.json")));
+    }
+
+    // The Developer menu's way back to the account's model, and what a model the account can't use looks like.
+    IEnumerator ModelChoice(GameChat chat)
+    {
+        bool had = PlayerPrefs.HasKey(GameChat.ModelKey), was = GameChat.AccountModel;
+        GameChat.AccountModel = true;
+        ClaudeChat.StandIn = StandIn("account", 0f,
+            "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"result\":\"There is an issue with the selected model. It may not exist or you may not have access to it.\"}");
+        chat.Send(Message);
+        yield return Until(chat, () => !chat.Busy);
+        GameChat.AccountModel = was;
+        if (!had) PlayerPrefs.DeleteKey(GameChat.ModelKey);
+        PlayerPrefs.Save();
+        string asked = File.Exists(logged) ? File.ReadAllText(logged) : "";
+        Check("the_setting_leaves_the_model_to_the_account", !asked.Contains("--model"), asked);
+        Check("the_setting_leaves_nothing_behind", PlayerPrefs.HasKey(GameChat.ModelKey) == had);
+        Check("a_model_it_cant_use_is_said_plainly", chat.Lines.Any(l => l.Contains("issue with the selected model")), string.Join(" | ", chat.Lines));
     }
 
     IEnumerator Waits(GameChat chat)

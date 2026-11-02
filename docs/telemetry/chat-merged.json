@@ -1,0 +1,122 @@
+{
+  "about": "What chat-context-2026-11-02.md left unrun on real models, on the merged tree, the short prompt as committed and Haiku as the chat's model (J-066). The follow-up goes first, with its set-up, the fixed set's pair unchanged so it reads against theirs. Then a colour near the player that is also a mix, then the rest of the fixed set that was left. chat-merged-more.json runs the pair again and takes a scoped look and a mix apart. Run with chatprompts --set chat-merged.json and read with chat-strict --set. Keys as in chat-prompts.json.",
+  "prompts": [
+    {
+      "kind": "colour",
+      "text": "make all fire blue",
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "fireIs": "blue"
+      },
+      "why": "The fixed set's prompt, here as the follow-up's set-up."
+    },
+    {
+      "kind": "follow-up",
+      "text": "actually, make it green instead",
+      "keep": true,
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "fireIs": "green"
+      },
+      "why": "The fixed set's prompt, unrun on the short prompt's final wording: read notes.md only if this message may depend on it."
+    },
+    {
+      "kind": "near",
+      "text": "make the fire near me a mix of green and gold",
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "scopedNear": {
+          "element": "fire",
+          "least": 2
+        }
+      },
+      "why": "A where and a mix, whose text moved from Instructions to set_look's description and which no real prompt has tried since."
+    },
+    {
+      "kind": "flames",
+      "text": "make the flames blue but keep Fireball as it is",
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "elementBut": {
+          "element": "fire",
+          "hue": "blue",
+          "keep": "fireball"
+        }
+      },
+      "why": "set_look's spells false, or anything else that leaves Fireball alone: its description's own example."
+    },
+    {
+      "kind": "spell",
+      "text": "add a cantrip that throws a small ball of frost",
+      "outcome": "applied",
+      "tools": [
+        "add_spell",
+        "set_spell"
+      ],
+      "must": {
+        "cantrip": {
+          "element": "cold",
+          "mostRadius": 2
+        }
+      },
+      "why": "The fixed set's prompt, unrun after the squirrel merge."
+    },
+    {
+      "kind": "house",
+      "text": "build a small house near hollowmere",
+      "outcome": "applied",
+      "tools": [
+        "add_building"
+      ],
+      "must": {
+        "house": {
+          "near": [
+            198,
+            287,
+            234,
+            324
+          ],
+          "within": 12,
+          "mostSide": 8
+        }
+      },
+      "why": "The fixed set's prompt, unrun after the squirrel merge."
+    },
+    {
+      "kind": "refused",
+      "text": "make the player twice as tall",
+      "outcome": "refused",
+      "tools": [
+        "outside_rules"
+      ],
+      "must": {
+        "refused": "Shapeshift"
+      },
+      "why": "The fixed set's prompt, unrun after the squirrel merge."
+    },
+    {
+      "kind": "weather",
+      "text": "make it rain",
+      "outcome": "applied",
+      "tools": [
+        "set_weather"
+      ],
+      "must": {
+        "weatherIs": "rain"
+      },
+      "why": "The fixed set's prompt, unrun after the squirrel merge."
+    }
+  ]
+}

@@ -91,7 +91,7 @@ public class RulesMcpServer : MonoBehaviour
             return;
         }
         var desk = new GameRoomDesk(this);
-        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = desk, WorldDesk = desk, Here = here, Applied = ChatTelemetry.Patched }), "spell-chemistry-valley", Application.version);
+        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = desk, WorldDesk = desk, Here = here, Applied = ChatTelemetry.Patched, SaveRefused = GameChat.SaveRefusal }), "spell-chemistry-valley", Application.version);
         rpc.Called = McpLog.Write;
         McpLog.Folder = ChatTelemetry.Folder ?? PlayLog.Folder();
         var serving = listener;

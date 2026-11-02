@@ -1,6 +1,8 @@
 // The simulate tool: the draft's run against the same run without it.
 using System;
 using System.Globalization;
+using System.Linq;
+using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
@@ -21,6 +23,24 @@ namespace Chem.Mcp
                 : $"It ticks at {(1 / slowdown).ToString("0.00", CultureInfo.InvariantCulture)} times the speed without it (the budget allows down to 1/{Num(maxSlowdown)}).";
             return $"Scenario {scenario}: {Simulator.Scenarios[scenario]} {with.Ticks} ticks ({with.Ticks / InForce.Sim.TicksPerSecond} s of game time).\n\n" +
                 $"With the mod:\n{Simulator.Describe(with, min)}\n\nWithout it:\n{Simulator.Describe(without, min)}\n\n{verdict} {cost}";
+        }
+
+        /// <summary>validate's last line for a patch that changes how the world behaves, and not only how it looks: a model that passes it reads the line.</summary>
+        public string SimulateNote(string draftOrMod) =>
+            ChangesBehaviour(ModPatch.Parse(PatchJson(draftOrMod)).Json)
+                ? "\nThat only says it's legal. This changes how the world behaves, so run simulate on it once (fire-on-grass for what burns, flood for water, storm for lightning) to see it goes the way the player meant, then apply. It shows the direction, not a multiple: \"twice as fast\" is the field doubled, so don't retune it to fit the numbers."
+                : "";
+
+        bool ChangesBehaviour(JObject patch) =>
+            patch["reactions"] != null || patch["sim"] != null
+            || MaterialKinds.Any(kind => (patch[kind] as JObject)?.Properties().Any(p => !SameButLook(EntryIn(Raw, kind, p.Name), p.Value)) == true);
+
+        // A patch names only the fields it changes, so what it leaves out stays. A look changes nothing the world does.
+        static bool SameButLook(JToken was, JToken now)
+        {
+            if (was == null) return false;
+            if (!(now is JObject fields)) return JToken.DeepEquals(was, now);
+            return fields.Properties().All(p => p.Name == "look" || SameButLook(was[p.Name], p.Value));
         }
 
         /// <summary>The two runs (with the patch, without it), for simulate and the tests.</summary>
