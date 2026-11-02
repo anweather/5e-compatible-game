@@ -41,6 +41,21 @@ Each entry has:
 
 ## Decided
 
+### J-064: Real Claude for automated chat runs; text apart from voice
+
+- **Asked:** 2026-11-02. Andrew told DesktopUnity directly; relayed to the PM, and in his commit 344a17c.
+- **Answer:** automated headless runs through the game on his own signed-in
+  Claude are allowed, for chat speed and token work. Signing in stays his alone.
+  Text and voice are separate features, with Microsoft's pre-canned voices for now,
+  so chat tuning doesn't wait on #58.
+- **Why:** it's the same account, and "I can't just sit at the computer all day".
+- **Limits (PM):** a fixed prompt set of at most 8 per run, each report says how
+  many prompts it spent, and no runs once the weekly limit passes 85%. A gate that
+  doesn't measure Claude keeps using the stand-in.
+- **Where it could come up:** any probe that wants real Claude; narrows the rule that
+  automated runs never use his session.
+- **Revisited:** 0.
+
 ### J-063: Stucco fire, the Esc menu's leftovers, and which VMs stay
 
 - **Asked:** 2026-11-02, by the PM.

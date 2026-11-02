@@ -57,9 +57,9 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **Mac:** `mods-add-things` Unity side on branch `mods-add-things-view` (dbf45a9 merged with dev, view's four items in `docs/RULES_MCP.md` "Things"). Don't land until it has compiled. The squirrel test in a player stays on the PC (#56).
-- **DesktopUnity:** stopped at 400k, handoff `docs/handoffs/desktopunity-2026-11-01.md`. Needs a clear, then the new test player and the squirrel test.
-- **#59 telemetry:** items 1 to 4 landed (b5e3465), stand-in only. Andrew's first real prompt is the test. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
-- **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
+- **DesktopUnity:** stopped at 400k, handoff `docs/handoffs/desktopunity-2026-11-01.md`. After a clear: a probe that sends a fixed prompt set through the real chat on real Claude, unattended (J-064), before and after each change. Then #59 item 5. The new test player and squirrel test follow.
+- **#59 telemetry:** items 1 to 4 landed (b5e3465), stand-in only until the real-prompt probe runs. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
+- **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Full EditMode on Windows: 1,067 of 1,067, twice. The port is untested in a player and online.
