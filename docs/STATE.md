@@ -57,7 +57,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
-- **Mac:** `room-agree-wait` (#65: gives `Agree` the `ClientInStep` wait; also shows whether `roomruin`'s failing checksum is the race), then stop.
+- **Mac:** `player-mods-folder` (#63, 8713b3e) failed a core test on landing, not landed. `room-agree-wait` (#65: gives `Agree` the `ClientInStep` wait; also shows whether `roomruin`'s failing checksum is the race), then stop.
 - **DesktopUnity:** the new test player from dev in a folder beside `PlayTest/`, with the squirrel test. Chat records are in `chat-records/` now (f84d0d1); #64 landed, no retry (J-066).
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
