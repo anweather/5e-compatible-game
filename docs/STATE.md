@@ -56,16 +56,18 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **DesktopUnity:** `chat-record` (faed11a, #59: wire the telemetry, progress bar, token list), then `mods-add-things` (dbf45a9: Unity side, squirrel test in a player). Brief: `docs/handoffs/briefs/playtest-fixes-2026-11-01.md`. Both branches are on origin, unmerged, and have never compiled in Unity. It expects to pass its 400k line during `chat-record` and will write a handoff there.
+- **Mac:** `mods-add-things` Unity side on branch `mods-add-things-view` (dbf45a9 merged with dev, view's four items in `docs/RULES_MCP.md` "Things"). Don't land until it has compiled. The squirrel test in a player stays on the PC (#56).
+- **DesktopUnity:** stopped at 400k, handoff `docs/handoffs/desktopunity-2026-11-01.md`. Needs a clear, then the new test player and the squirrel test.
+- **#59 telemetry:** items 1 to 4 landed (b5e3465), stand-in only. Andrew's first real prompt is the test. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
-- **u1, u2, Mac:** stopped. Pro is out until Nov 5 (weekly). The Mac needs a `/clear` before more work; its handoff is `docs/handoffs/mac-2026-11-02.md`.
+- **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Full EditMode on Windows: 1,067 of 1,067, twice. The port is untested in a player and online.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest/` from 1c97274 is now old. Don't let anyone clean that folder.
 
 ## Next, in order
 
-1. DesktopUnity's list above, then a new test player from dev for Andrew: judge #57 in a real window, voice, the creatures.
+1. The lists above, then a new test player from dev for Andrew: #57 in a real window, voice words, the first real prompt, the creatures.
 2. Temporary materials and products as data (`docs/design/primitives.md`), on u2 once `mods-add-things` has landed: both touch the mod code, so don't stack a third unlanded Chemistry branch.
 3. Gaits by rule (`docs/design/builders.md`).
 4. Design things on water (#60); size patches for Claude (#61).
