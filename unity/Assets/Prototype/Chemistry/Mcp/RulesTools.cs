@@ -235,7 +235,7 @@ namespace Chem.Mcp
                 return Workbench.Report(problems) + (problems.Count == 0 ? bench.SimulateNote(draft) : "");
             });
 
-        [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, fireball, flood, storm) with the draft on and without it, and says what changed: cells by material, cells burnt, peak counts, ticks per second against the budget, the cell hash. Compare the numbers with what the player meant before you apply: a change can do the opposite of what it seems (less fuel makes a fire spread less).")]
+        [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, fireball, flood, storm) with the draft on and without it, and says what changed: cells by material, cells burnt, peak counts, ticks per second against the budget, the cell hash. Use it to see a change goes the way the player meant: one can do the opposite of what it seems (less fuel makes a fire spread less). Its numbers show the direction, not a multiple, so don't tune a value to fit them.")]
         public string Simulate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft, [Description("fire-on-grass (a Fire Bolt in a meadow), fireball (a Fireball in a meadow, for spell size), flood or storm.")] string scenario,
             [Description("Ticks to run (6 a second); 300 when left out.")] int? ticks = null) => Do(() => bench.Simulate(draft, scenario, ticks));
 

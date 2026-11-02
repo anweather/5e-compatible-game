@@ -238,15 +238,12 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void TheInstructionsMakeScopedAndMixedAsksClear()
+        public void TheToolsMakeScopedAndMixedAsksClear()
         {
-            StringAssert.Contains("\\\"Make the fire near me green\\\" is set_look fire color green with where {\\\"around\\\": \\\"me\\\", \\\"within\\\": 10}".Replace("\\", ""), RulesTools.Instructions);
-            StringAssert.Contains("Fire round the village in three colours", RulesTools.Instructions);
-            StringAssert.Contains("places (or here)", RulesTools.Instructions);
-            StringAssert.Contains("Colours mix like paint: blue and yellow give green", RulesTools.Instructions);
-            StringAssert.Contains("set_look fire blend true", RulesTools.Instructions);
-            StringAssert.Contains("each player gets their own fire colour\\\" is set_look fire mix [one colour per player, as many as may play] with by \\\"each\\\"".Replace("\\", ""), RulesTools.Instructions);
-            StringAssert.Contains("make the fire I create blue\\\" is set_look fire color blue with by \\\"me\\\"".Replace("\\", ""), RulesTools.Instructions);
+            var listed = new McpRpc(new RulesTools(NewBench()), "test", "1").Handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
+            string tools = (string)Newtonsoft.Json.Linq.JObject.Parse(listed).ToString();
+            foreach (var said in new[] { "The fire near me green", "Fire round the village in three colours", "places (or here)", "blue and yellow giving green", "each player gets their own fire colour", "The fire I create blue" })
+                StringAssert.Contains(said, tools);
         }
     }
 }

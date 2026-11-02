@@ -14,7 +14,7 @@
       "text": "make every cold spell red",
       "outcome": "applied",
       "tools": ["set_look"],
-      "must": { "spellsOf": { "element": "cold", "hue": "red" } },
+      "must": { "spellsOf": { "element": "cold", "hue": "red", "spellsOnly": true } },
       "why": "The same, asked by way of the spells."
     },
     {

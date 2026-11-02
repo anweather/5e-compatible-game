@@ -28,7 +28,7 @@ namespace Chem.Mcp
         /// <summary>validate's last line for a patch that changes how the world behaves, and not only how it looks: a model that passes it reads the line.</summary>
         public string SimulateNote(string draftOrMod) =>
             ChangesBehaviour(ModPatch.Parse(PatchJson(draftOrMod)).Json)
-                ? "\nThat only says it's legal. This changes how the world behaves, so run simulate on it (fire-on-grass for what burns, flood for water, storm for lightning) and compare the numbers with what the player meant before you apply."
+                ? "\nThat only says it's legal. This changes how the world behaves, so run simulate on it once (fire-on-grass for what burns, flood for water, storm for lightning) to see it goes the way the player meant, then apply. It shows the direction, not a multiple: \"twice as fast\" is the field doubled, so don't retune it to fit the numbers."
                 : "";
 
         bool ChangesBehaviour(JObject patch) =>
