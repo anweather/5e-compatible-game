@@ -703,6 +703,16 @@ support for Codex, Kiro and others, and advanced options to tune all of it.
 - **Size:** M per harness after the first, L for the first.
 - **Evaluated (2026-11-02):** the API mode is built behind `IChatHarness`, probe only, with no picker: `docs/telemetry/chat-api-2026-11-02.md`.
 
+## 28. Game modes: saved sets of mods (Andrew, 2026-11-02; later)
+
+Pick several mods, including things like building placement, save them as a named game mode, and load the whole set later.
+
+- **Builds on:** room mods, row houses and mods that add things, saved mods in the player's folder (#63).
+- **Open:** a mode's own file format; whether it names mods or holds copies, so it survives a mod changing; load order when two
+  mods touch the same thing; what the world keeps from a mode that placed buildings; what a late joiner gets; how a host shares
+  a mode with a peer who lacks it (mods already reach a room as id plus JSON).
+- **Size:** M.
+
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,
