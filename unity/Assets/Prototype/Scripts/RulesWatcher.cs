@@ -4,8 +4,8 @@ using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
-// Watches rules/*.json and rules/mods/*.json while the game runs (in the
-// Editor and development builds; RuleSwitcher adds it) and hands each saved
+// Watches rules/*.json, rules/mods/*.json and the player's mods while the game runs
+// (in the Editor and development builds; RuleSwitcher adds it) and hands each saved
 // file to RuleSwitcher, which reloads and checks it and switches the rules at
 // the next tick. Solo or host only: a client's rules come from the host.
 //
@@ -33,6 +33,7 @@ public class RulesWatcher : MonoBehaviour
         RulesDir = ChemGrid.FindRulesDir();
         Watch(RulesDir);
         Watch(Path.Combine(RulesDir, "mods"));
+        Watch(RuleSwitcher.PlayerModsDir);
     }
 
     void Watch(string dir)

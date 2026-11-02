@@ -133,7 +133,8 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   place they are applied, live or replayed, and `Timeline` rebuilds the
   batches from a host's history (casts, rule switches, effects) for a late
   joiner.
-  `ModCatalog.cs` lists `rules/mods/*.json` with titles and ideas.
+  `ModCatalog.cs` lists the shipped mods and the player's own with titles and
+  ideas; `ModMove.cs` moves a player's mods out of an install (`docs/MODDING.md`).
 
 It began as a line-by-line port of the TypeScript sandbox (`sandbox/src/`),
 which is now frozen on its own copy of the rules (J-042). The "golden" tests

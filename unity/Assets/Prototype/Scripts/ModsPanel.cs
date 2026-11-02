@@ -4,7 +4,7 @@ using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The Mods page of the Esc menu (PauseMenu): every rules/mods/*.json with its
+// The Mods page of the Esc menu (PauseMenu): every mod on disk with its
 // title and idea, a tick by the ones in force, the rules' fingerprint, and why
 // the last switch was refused. Switching goes through the room (RuleSwitcher,
 // World.Room.cs: solo the next tick; online every peer at the tick the host
@@ -106,7 +106,7 @@ public class ModsPanel : MonoBehaviour
         {
             for (int i = 0; i < mods.Count; i++) DrawRow(i, mods[i]);
             foreach (var other in others) DrawOther(other);
-            if (mods.Count + others.Count == 0) GUILayout.Label("No mods in rules/mods/ yet. Save one there (docs/MODDING.md) and it shows up here.", small);
+            if (mods.Count + others.Count == 0) GUILayout.Label("No mods yet. Save one with Claude (docs/MODDING.md) and it shows up here.", small);
         });
         if (switcher.LastError != null) GUILayout.Label(switcher.LastError, error);
         if (RulesMcpServer.Instance != null && PauseMenu.Button("Play with Claude", PauseMenu.ButtonStyle)) PauseMenu.Instance.ShowPage(ClaudeMenu.PageId);

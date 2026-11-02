@@ -27,7 +27,8 @@ namespace Chem.Mcp
         public Workbench(string rulesDir, string modsDir = null)
         {
             RulesDir = rulesDir;
-            ModsDir = modsDir ?? Path.Combine(rulesDir, "mods");
+            ShippedModsDir = Path.Combine(rulesDir, "mods");
+            ModsDir = modsDir ?? ShippedModsDir;
             Base = Rules.Load(rulesDir);
             Budgets = ModBudgets.Load(rulesDir);
             baseRaw = new Dictionary<string, JToken>(StringComparer.Ordinal);
@@ -37,7 +38,9 @@ namespace Chem.Mcp
         }
 
         public string RulesDir { get; }
+        /// <summary>Where a save goes, read before the shipped mods: the player's folder in the game, rules/mods for the headless server.</summary>
         public string ModsDir { get; }
+        public string ShippedModsDir { get; }
         public Rules Base { get; }
         public ModBudgets Budgets { get; }
 
@@ -78,8 +81,8 @@ namespace Chem.Mcp
             var key = (draftOrMod ?? "").Trim();
             if (key.StartsWith('{')) return key;
             if (drafts.TryGetValue(key, out var d)) return d.Patch.ToString(Formatting.None);
-            var file = Path.Combine(ModsDir, key + ".json");
-            if (key.Length > 0 && key.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 && File.Exists(file)) return File.ReadAllText(file);
+            var file = key.Length > 0 && key.IndexOfAny(Path.GetInvalidFileNameChars()) < 0 ? ModCatalog.FileOf(key, ModsDir, ShippedModsDir) : null;
+            if (file != null) return File.ReadAllText(file);
             throw new RulesToolException($"{(key.Length == 0 ? "Nothing" : key)} is neither a draft, a mod in rules/mods nor a patch.");
         }
 
@@ -125,8 +128,9 @@ namespace Chem.Mcp
         public Func<string> SaveRefused { get; set; }
 
         /// <summary>
-        /// Writes a draft, or a mod on in the room by its id, as rules/mods/{name}.json, {"title", "idea", "patch"}, once it
-        /// validates. A mod that's on already passed the room. Returns the path written.
+        /// Writes a draft, or a mod on in the room by its id, as {name}.json in <see cref="ModsDir"/>, {"title", "idea", "patch"},
+        /// once it validates. A mod that's on already passed the room. A shipped mod's name needs overwrite too, which leaves the
+        /// shipped file alone: the player's copy stands in front of it. Returns the path written.
         /// </summary>
         public string Save(string draftId, string title, string idea, string name = null, bool overwrite = false)
         {
@@ -143,7 +147,7 @@ namespace Chem.Mcp
             if (name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains("..", StringComparison.Ordinal))
                 throw new RulesToolException($"\"{name}\" can't be a file name; use letters, digits and dashes.");
             var path = Path.Combine(ModsDir, name + ".json");
-            if (File.Exists(path) && !overwrite) throw new RulesToolException($"rules/mods/{name}.json already exists; pick another name or save with overwrite.");
+            if (ModCatalog.FileOf(name, ModsDir, ShippedModsDir) != null && !overwrite) throw new RulesToolException($"There's already a mod called {name}; pick another name or save with overwrite.");
             var mod = new JObject { ["title"] = title.Trim(), ["idea"] = idea.Trim(), ["patch"] = patch.DeepClone() };
             try
             {

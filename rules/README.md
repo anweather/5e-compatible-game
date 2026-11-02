@@ -22,7 +22,7 @@ prototype**. Nothing in this folder is specific to the sandbox.
 | `elements.json` | Each element's look by id, `{ "fire": { "look": { "color": [0.95, 0.42, 0.12] } } }`: the colour of what that element makes in the world (see "Looks"). An entry holds only its look, so the file stays out of the fingerprint |
 | `buildings.json` | What a building's parts can be: `openings` (`cells`, and what they `becomes`: a terrain, `wall` for one only drawn, `open` for a gap), `floors`, `roofs`, `details`, `styles` (defaults, and a `recipe`), and the `ground` a wall taken away leaves. Under `look` is the view's. The buildings themselves are `world/buildings.json`, the villages, and a mod's `world` section (`docs/RULES_MCP.md` "Buildings") |
 | `budgets.json` | What one mod may ask of the engine: new entries, new elements, spell sizes and dice, effect strengths, critter rates, chain depth, the bounds of each sim parameter a mod may tune, and the ticks and speed of a `simulate` run. Read from the base rules only, by `ModValidator` (C#) and the rules MCP (`docs/RULES_MCP.md`); the sandbox doesn't read it |
-| `mods/` | Example live mods (`docs/MODDING.md`), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
+| `mods/` | Shipped live mods (`docs/MODDING.md`; a player's own are in their data folder), not part of the base rules. Each is `{"title", "idea", "patch"}`, which the sandbox's Experiments panel and the C# `ModPatch.Parse` both accept |
 
 ## Elements
 
