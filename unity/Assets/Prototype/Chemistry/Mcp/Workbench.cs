@@ -98,13 +98,17 @@ namespace Chem.Mcp
 
         // ---------- validate ----------
 
-        public IReadOnlyList<ModProblem> Validate(string draftOrMod) => WithSite(PatchJson(draftOrMod));
+        public IReadOnlyList<ModProblem> Validate(string draftOrMod)
+        {
+            drafts.TryGetValue((draftOrMod ?? "").Trim(), out var draft);
+            return WithSite(PatchJson(draftOrMod), OwnMod(draft));
+        }
 
-        // The mod's checks, then whether its buildings can stand on the world as it is now.
-        IReadOnlyList<ModProblem> WithSite(string json)
+        // The mod's checks, then whether its buildings and things can stand on the world as it is now.
+        IReadOnlyList<ModProblem> WithSite(string json, string own = null)
         {
             var problems = ModValidator.Validate(InForce, Budgets, json);
-            string site = problems.Count == 0 ? SiteNote(json) : null;
+            string site = problems.Count == 0 ? SiteNote(json, own) : null;
             return site == null ? problems : problems.Append(new ModProblem(ModCheck.Site, site.TrimEnd('.') + ".")).ToList();
         }
 
@@ -134,10 +138,11 @@ namespace Chem.Mcp
             if (refused != null) throw new RulesToolException(refused);
             string key = Required(draftId, "draft");
             var onNow = drafts.ContainsKey(key) ? null : Now()?.Room.Mods.Find(m => m.Id == key);
-            var patch = onNow != null ? ModPatch.Parse(onNow.Json).Json : DraftOf(key).Patch;
+            var draft = onNow != null ? null : DraftOf(key);
+            var patch = onNow != null ? ModPatch.Parse(onNow.Json).Json : draft.Patch;
             if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A mod needs a title.");
             if (string.IsNullOrWhiteSpace(idea)) throw new RulesToolException("A mod needs its idea in words: that is what people vote on.");
-            var problems = onNow != null ? Array.Empty<ModProblem>() : WithSite(patch.ToString(Formatting.None));
+            var problems = onNow != null ? Array.Empty<ModProblem>() : WithSite(patch.ToString(Formatting.None), OwnMod(draft));
             if (problems.Count > 0) throw new RulesToolException("The draft doesn't validate yet. " + Report(problems));
             name = string.IsNullOrWhiteSpace(name) ? Slug(title) : name.Trim();
             if (name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains("..", StringComparison.Ordinal))
@@ -179,6 +184,17 @@ namespace Chem.Mcp
 
         /// <summary>The entries this draft added or changed, as "table id" (sim parameters as "sim path").</summary>
         public ISet<string> Changed { get; } = new SortedSet<string>(StringComparer.Ordinal);
+
+        /// <summary>The mod this draft last switched on as, and the patch it sent then. Workbench.OwnMod says if that's still on.</summary>
+        public string OnAs { get; private set; }
+
+        public string OnJson { get; private set; }
+
+        public void WentOn(string mod, string json)
+        {
+            OnAs = mod;
+            OnJson = json;
+        }
 
         public string Show() => $"Draft {Id}:\n{Patch.ToString(Formatting.Indented)}";
 

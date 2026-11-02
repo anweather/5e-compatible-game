@@ -216,6 +216,122 @@ namespace Chem.Tests
             Assert.That(loaded.CastHash(), Is.EqualTo(a.CastHash()));
         }
 
+        // ---------- a draft's own thing, once it's on ----------
+
+        // A golden squirrel on a clear cell, drafted and switched on. Returns the draft and the cell.
+        static (HouseToolsTests.Client client, string draft, string at) Applied(Workbench bench, string title = "A squirrel to find")
+        {
+            var client = new HouseToolsTests.Client(bench);
+            string at = ClearCell(client, 0);
+            string draft = Regex.Match(client.Call("add_item", new { id = "golden-squirrel", name = "Golden squirrel", mass = 0.3, material = "flesh", look = "{\"species\": \"squirrel\", \"color\": [1, 0.78, 0.2]}" }), @"Draft (d\d+)").Groups[1].Value;
+            client.Call("add_thing", new { kind = "golden-squirrel", at, draft });
+            string said = client.Call("apply", new { mod = draft, title });
+            Assert.That(said, Does.Contain("switched on"), said);
+            return (client, draft, at);
+        }
+
+        static string ClearCell(HouseToolsTests.Client client, int skip)
+        {
+            string sites = client.Call("find_site", new { width = 1, depth = 1, near = "hollowmere", within = 40 });
+            var spot = Regex.Matches(sites, @"\[(\d+), (\d+)\], on")[skip];
+            return $"[{spot.Groups[1].Value}, {spot.Groups[2].Value}]";
+        }
+
+        const string Kept = "One to find.";
+
+        [Test]
+        public void AnAppliedDraftSavesByItsId()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var (client, draft, _) = Applied(bench);
+
+            Assert.That(client.Call("validate", new { draft }), Does.StartWith("No problems"));
+            Assert.That(client.Call("save", new { draft, title = "A squirrel to find", idea = Kept }), Does.Contain("Saved"));
+            var patch = JObject.Parse(File.ReadAllText(Path.Combine(dir, "a-squirrel-to-find.json")))["patch"];
+            Assert.That(patch["world"]["add"].Count(), Is.EqualTo(1), "the draft's row, not the draft's and the mod's");
+            Assert.That(bench.LiveWorld.ThingsNow.All.Count(t => t.Kind == "golden-squirrel"), Is.EqualTo(1), "a save changes nothing in the world");
+        }
+
+        [Test]
+        public void AnAppliedDraftChangedSinceSavesToo()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var (client, draft, at) = Applied(bench);
+
+            client.Call("add_thing", new { kind = "golden-squirrel", at = ClearCell(client, 1), draft });
+            Assert.That(client.Call("validate", new { draft }), Does.StartWith("No problems"), "a new row on a clear cell");
+            Assert.That(client.Call("add_thing", new { kind = "ball", at, draft }), Does.Not.Contain("won't stand"), "its own thing is what stands there");
+            Assert.That(client.Call("save", new { draft, title = "Two to find", idea = Kept }), Does.Contain("Saved"));
+        }
+
+        [Test]
+        public void AnAppliedDraftStillRefusesAnotherModsThing()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var (client, draft, _) = Applied(bench);
+            string there = ClearCell(client, 1);
+            string other = Regex.Match(client.Call("add_thing", new { kind = "ball", at = there }), @"Draft (d\d+)").Groups[1].Value;
+            Assert.That(client.Call("apply", new { mod = other, title = "A ball" }), Does.Contain("switched on"));
+
+            client.Call("add_thing", new { kind = "golden-squirrel", at = there, draft });
+            string said = client.Refused("save", new { draft, title = "Over the ball", idea = Kept });
+            Assert.That(said, Does.Contain("a ball (").And.Contain("stands there"), said);
+            Assert.That(Directory.GetFiles(dir), Is.Empty);
+        }
+
+        [Test]
+        public void AnAppliedDraftStillRefusesABaseThing()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var (client, draft, _) = Applied(bench);
+            var based = bench.LiveWorld.ThingsNow.All.First(t => !t.FromMod);
+
+            client.Call("add_thing", new { kind = "golden-squirrel", at = $"[{based.CellX}, {based.CellY}]", draft });
+            string said = client.Refused("save", new { draft, title = "Over a base thing", idea = Kept });
+            Assert.That(said, Does.Contain($"a {based.Kind} (").And.Contain("stands there"), said);
+            Assert.That(Directory.GetFiles(dir), Is.Empty);
+        }
+
+        [Test]
+        public void ASecondDraftOnTheSameCellIsStillRefused()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var (client, _, at) = Applied(bench);
+
+            string other = Regex.Match(client.Call("add_thing", new { kind = "golden-squirrel", at }), @"Draft (d\d+)").Groups[1].Value;
+            string said = client.Refused("save", new { draft = other, title = "The same again", idea = Kept });
+            Assert.That(said, Does.Contain("golden-squirrel (").And.Contain("stands there"), said);
+        }
+
+        [Test]
+        public void AnotherModUnderTheSameIdIsNotTheDraftsOwn()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var (client, draft, at) = Applied(bench);
+            Assert.That(client.Call("revert", new { mod = "a-squirrel-to-find" }), Does.Contain("switched off"));
+            string other = Regex.Match(client.Call("add_item", new { id = "silver-squirrel", name = "Silver squirrel", mass = 0.3, material = "flesh", look = "{\"species\": \"squirrel\", \"color\": [0.8, 0.8, 0.8]}" }), @"Draft (d\d+)").Groups[1].Value;
+            client.Call("add_thing", new { kind = "silver-squirrel", at, draft = other });
+            Assert.That(client.Call("apply", new { mod = other, title = "A squirrel to find" }), Does.Contain("switched on"));
+
+            string said = client.Refused("save", new { draft, title = "Mine", idea = Kept });
+            Assert.That(said, Does.Contain("silver-squirrel (").And.Contain("stands there"), said);
+        }
+
+        [Test]
+        public void TheChatsRefusalStillComesFirstAndAModOnStillSavesByItsId()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var (client, draft, _) = Applied(bench);
+
+            bench.SaveRefused = () => ClaudeRun.SaveNotAsked;
+            Assert.That(client.Refused("save", new { draft, title = "Not asked", idea = Kept }), Does.Contain(ClaudeRun.SaveNotAsked));
+            Assert.That(client.Refused("save", new { draft = "a-squirrel-to-find", title = "Not asked", idea = Kept }), Does.Contain(ClaudeRun.SaveNotAsked));
+            Assert.That(Directory.GetFiles(dir), Is.Empty);
+
+            bench.SaveRefused = null;
+            Assert.That(client.Call("save", new { draft = "a-squirrel-to-find", title = "By its id", idea = Kept }), Does.Contain("Saved"));
+        }
+
         [Test]
         public void NoneOfItIsInTheCodeOrTheBaseRules()
         {

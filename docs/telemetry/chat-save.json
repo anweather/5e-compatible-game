@@ -1,0 +1,12 @@
+{
+  "about": "One prompt for `chatprompts --set chat-save.json`: a thing added and saved in one message, so that save with the draft's id comes after apply on the real chat. Same fields as chat-prompts.json.",
+  "prompts": [
+    {
+      "kind": "save",
+      "text": "put a golden squirrel near the village for us to find, switch it on, then save it",
+      "outcome": "applied",
+      "tools": ["save"],
+      "why": "Save comes after apply in one message: the draft's own thing stands in the world by then, and it must not count against the draft."
+    }
+  ]
+}
