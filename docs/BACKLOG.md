@@ -683,6 +683,7 @@ session doesn't bring it. Dragon stage in a tick: 0.17 ms mean, 2.3 ms at worst,
 "Not everyone will have Claude." A setting to pick the harness, with precanned
 support for Codex, Kiro and others, and advanced options to tune all of it.
 
+- **Two modes (Andrew, 2026-11-02):** an API key, where the game runs its own tool loop against our MCP server, or a harness, such as Claude Code or Codex. The API connector can't reach a server on the player's machine, so API mode needs that loop.
 - **Shape:** a picker of precanned profiles per harness (command, arguments,
   sign-in check, stream parser), plus an advanced section. Signing in stays with
   each player.
