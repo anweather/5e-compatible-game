@@ -64,10 +64,28 @@ public class RadialProbe : ProbeScenario
         Check("arc_opens_on_storm", hud.Radial.State == RadialState.Spells && hud.Radial.HighlightedSpell == SpellIds.Thunderwave,
             $"state {hud.Radial.State}, highlighted {hud.Radial.HighlightedSpell}");
         Shot("radial");
+        yield return WheelHoldsTogether(hud, toSlot);
         yield return Hold(GamepadButton.LeftShoulder, toSlot, 1f, 0.1f); // held while the screenshot is taken at the end of the frame
         yield return Release();
         Check("release_picks_thunderwave", !hud.IsOpen && caster.SelectedId == SpellIds.Thunderwave, $"open {hud.IsOpen}, selected {caster.SelectedId}");
         Check("look_back_on", LookOn() == lookBefore, $"cursorInputForLook back to {lookBefore}");
+    }
+
+    // Its wedges turn about the wheel's centre at any screen, not just the 1080p the Game view runs at (#51).
+    IEnumerator WheelHoldsTogether(SpellRadialHud hud, double toSlot)
+    {
+        HudScale.Forced = 2f;
+        hud.WheelDrift = 0f;
+        try
+        {
+            Shot("radial-big-screen");
+            yield return Hold(GamepadButton.LeftShoulder, toSlot, 1f, 0.2f);
+        }
+        finally
+        {
+            HudScale.Forced = 0f;
+        }
+        Check("wheel_holds_together_at_4k", hud.WheelDrift < 0.5f, $"the wedges' centre moved {hud.WheelDrift:F1} px");
     }
 
     // A tap swaps back to Fire Bolt; B cancels; the d-pad steps to the next element, RB to the next spell in it.
