@@ -41,6 +41,17 @@ Each entry has:
 
 ## Decided
 
+### J-062: The primitives and builders designs' questions
+
+- **Asked:** 2026-11-01, by u1's designs (`docs/design/primitives.md`, `builders.md`).
+- **Also comes up when:** creature data, houses, liquids, temporary materials.
+- **Answer:** Andrew: "Go", to all the recommendations. The Mac does the creature data move, before `punchy-people`. Fauna mods apply
+  per room, view only. A house edit over a player pushes them out, logged. New houses are hollow, so a burnt one leaves a ruin;
+  villages stay solid. Products as data and temporary materials come before liquids. Base lava stays until a mod's liquid lava has
+  been played. A temporary material lasts while its mod is on, and a revert always clears it. Two paints mixing average all their numbers.
+- **Why:** u1's reasons, in the designs.
+- **Revisited:** 0.
+
 ### J-061: Which speech to text for talking to Claude in the game?
 
 - **Asked:** 2026-11-01, by DesktopUnity through the PM: Windows dictation, or whisper.cpp on the device.
