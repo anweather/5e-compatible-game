@@ -56,7 +56,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Mac:** `mods-add-things-view` (c71dd5a): `online` green, the failure was a race in the probe, on dev too (issue #62 is what's left). Sent back: core test `HiddenThingTests.NoneOfItIsInTheCodeOrTheBaseRules` fails on `ProbeThings.cs`. Land with `--compiled` when that passes. A yard rebuild is needed on every machine then.
+- **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
 - **DesktopUnity:** #59 change 3: split the opening tokens, the "all fire" fix in the server (`Instructions` and tools), a short prompt, no `save` unasked. Measured on Opus and Haiku, 96 prompts plus debugging. Base and models landed (b59601c, `docs/telemetry/chat-model-2026-11-02.md`): Opus 24 of 24 strict, Haiku 18, Sonnet 16; the default stays. The default model is Andrew's call. The test player and squirrel test follow.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
@@ -69,7 +69,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 1. The lists above, then a new test player from dev for Andrew: #57 in a real window, voice words, the first real prompt, the creatures.
 2. Code base cleanup (Andrew, 2026-11-02), once the Mac's and DesktopUnity's work has landed and before new features: review the structure for deep modules that really hide complexity. A read-only review first, a ranked list for Andrew, then branches. The 33 S3776 warnings are one input.
-3. Temporary materials and products as data (`docs/design/primitives.md`), on u2 once `mods-add-things` has landed: both touch the mod code, so don't stack a third unlanded Chemistry branch.
+3. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
 4. Gaits by rule (`docs/design/builders.md`).
 5. Design things on water (#60); size patches for Claude (#61).
 6. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), confirm the terms on running Claude Code (J-060), version bump.
