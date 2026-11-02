@@ -25,6 +25,16 @@ namespace Chem.Tests
             return w;
         }
 
+        // A client's world has no room until the host's arrives, and a thing of the host's may get here first.
+        [Test]
+        public void ThingsReadBeforeTheRoomOpensDoNotStick()
+        {
+            var w = new World(R, 64, 64, 7, "dirt");
+            Assert.That(w.ThingsNow.Count, Is.Zero);
+            w.OpenRoom(ChangeMode.Open, "Ana", R, Budgets);
+            Assert.That(w.ThingsNow.Count, Is.EqualTo(Budgets.Things.Count).And.GreaterThan(0));
+        }
+
         [Test]
         public void ALookOnAThingReadsAndStaysOutOfTheFingerprint()
         {

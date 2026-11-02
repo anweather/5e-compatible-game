@@ -65,6 +65,9 @@ public class PhysicsProp : MonoBehaviour, IPushable
     /// <summary>Its stable id from world/things.json (ThingSpawner), or None for a prop made some other way.</summary>
     public ThingId Thing => net != null ? net.Id : ThingId.None;
 
+    /// <summary>A mod added it: its first pick-up is logged (RoomCommand.Found).</summary>
+    public bool FromMod => grid.World.ThingsNow.Find(Thing)?.FromMod == true;
+
     /// <summary>Its chunk is inactive, so it's held where it is until the chunk activates.</summary>
     public bool Asleep => asleep;
 

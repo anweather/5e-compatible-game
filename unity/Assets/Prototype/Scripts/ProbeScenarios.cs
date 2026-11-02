@@ -105,6 +105,10 @@ public static class ProbeScenarios
             "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, a late joiner gets them. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
+        new Entry("modthing", typeof(ModThingProbe), 90f,
+            "A mod's new kinds of thing, solo (docs/RULES_MCP.md \"Things\"): an item and a prop spawn on their cells dressed as animals, resting on the ground; the first pick-up logs a find and the second doesn't; a revert takes the item out of the hand and the world, and the same mod brings them back. With --shots, a picture standing and one in hand."),
+        new Entry("roomthing", typeof(RoomThingProbe), 150f,
+            "A mod's new kinds of thing through an Open room: the client adopts them dressed, finds one (the line on both), a late joiner gets them dressed and knows the find, and a revert takes one out of the client's hand. Checks as roomopen.", 2),
         new Entry("roomhost", typeof(RoomHostProbe), 90f,
             "A Host-only room: the client's change and revert refused with the sentence on both, the host's goes in. Checks as roomopen.", 2),
         new Entry("roomlocked", typeof(RoomLockedProbe), 90f,
@@ -496,12 +500,12 @@ public class SmokeProbe : ProbeScenario
         var live = spawner != null ? spawner.Live.ToList() : new List<(Chem.ThingId id, PhysicsProp prop)>();
         int placed = live.Count(t =>
         {
-            var data = grid.Things.Find(t.id);
+            var data = World.ThingsNow.Find(t.id);
             return data != null && data.Kind == t.prop.kind && grid.CellAt(t.prop.transform.position) == new Vector2Int(data.CellX, data.CellY);
         });
         Metric("things_spawned", live.Count);
-        Check("things_spawned", live.Count == grid.Things.Count && placed == live.Count,
-            $"{live.Count}/{grid.Things.Count} things spawned from world/things.json, {placed} on their own cell with their kind");
+        Check("things_spawned", live.Count == World.ThingsNow.Count && placed == live.Count,
+            $"{live.Count}/{World.ThingsNow.Count} things spawned from world/things.json, {placed} on their own cell with their kind");
     }
 }
 

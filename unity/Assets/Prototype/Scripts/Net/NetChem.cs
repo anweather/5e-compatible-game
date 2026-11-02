@@ -530,7 +530,7 @@ public partial class NetChem : NetworkBehaviour
 
     /// <summary>
     /// The checksum every machine compares: the cells' hash, the rules' fingerprint, the world's
-    /// things' (world/things.json: the props' stable ids), the sky's (Hasten Time's clock and Control
+    /// things' (World.ThingsNow: the props' stable ids), the sky's (Hasten Time's clock and Control
     /// Weather's weather, World.SkyHash; a sky that differs reports like the cells), the defense's, the
     /// players' casts and grimoires (World.CastHash) and, last, the dragon's (World.DragonHash).
     /// </summary>
@@ -538,7 +538,7 @@ public partial class NetChem : NetworkBehaviour
 
     // All but the cells: what follows them in a checksum, in a window's too.
     static string Others(ChemGrid grid) =>
-        "/" + grid.World.Rules.Fingerprint + "/" + grid.Things.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash();
+        "/" + grid.World.Rules.Fingerprint + "/" + grid.World.ThingsNow.Fingerprint + "/" + grid.World.SkyHash() + "/" + grid.World.DefenseHash() + "/" + grid.World.CastHash() + "/" + grid.World.DragonHash();
 
     // --- everyone --------------------------------------------------------------
 

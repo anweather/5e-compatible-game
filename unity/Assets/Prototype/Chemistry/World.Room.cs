@@ -42,6 +42,7 @@ namespace Chem
             if (budgets == null) throw new ArgumentNullException(nameof(budgets));
             var next = mods == null || mods.Count == 0 ? RuleSet.Plain(baseRules) : RuleSet.Compose(baseRules, mods.Select(m => new ActiveMod(m.Id, m.Json)));
             roomBudgets = budgets;
+            thingsFor = null;
             Room = new RoomState { Mode = mode, Host = host ?? "" };
             if (mods != null) Room.Mods.AddRange(mods);
             RoomRules = next;

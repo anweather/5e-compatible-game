@@ -39,6 +39,9 @@ public class RoomProbeSeen
     public int fireballRadius;
     /// <summary>How far each row house has fallen, on this side (RowHouses.Ruins).</summary>
     public string ruins;
+    /// <summary>The things mods added, on this side (id:kind, sorted), how many wear a body, and the kind in this side's hand.</summary>
+    public string things, held;
+    public int dressed;
     /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
     public float fireTurn;
     /// <summary>How far the fire on the cells the probe watches is turned, on this side.</summary>
@@ -78,6 +81,11 @@ public sealed class RoomProbeRecord : IDisposable
         seen.fireballRadius = grid.World.Rules.Spell(SpellIds.Fireball).Radius;
         seen.fireTurn = grid.FireElementTint.Turn;
         seen.ruins = grid.TryGetComponent<RowHouses>(out var houses) ? houses.Ruins : "";
+        var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
+        seen.things = string.Join(" ", spawner.Live.Where(t => t.prop.FromMod).Select(t => $"{t.id}:{t.prop.kind}").OrderBy(t => t, StringComparer.Ordinal));
+        seen.dressed = spawner.GetComponent<ThingBodies>().Count;
+        var hand = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+        seen.held = hand != null && hand.TryGetComponent<ItemHolder>(out var hands) && hands.Held != null ? hands.Held.Prop.kind : "";
         seen.turns = WatchedCells.Select(c => grid.FireTint(c.x, c.y).Turn).ToList();
         seen.desync = net.DesyncSeen;
         return seen;
@@ -183,6 +191,9 @@ public class RoomProbeClient : MonoBehaviour
                 NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().GetComponent<SpellCaster>().Cast(SpellIds.FireBolt, bolt[2], bolt[3], 0);
                 yield return new WaitForSecondsRealtime(RoomOpenProbe.BoltLands);
                 break;
+            case "grab":
+                yield return Grab(grid, ask.mod);
+                break;
             case "cut":
                 film.End();
                 Destroy(film);
@@ -196,6 +207,23 @@ public class RoomProbeClient : MonoBehaviour
                 yield return Join();
                 break;
         }
+    }
+
+    // Stands by the first thing of a kind and asks the host for it.
+    static IEnumerator Grab(ChemGrid grid, string kind)
+    {
+        var item = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>().Live.Where(t => t.prop.kind == kind).Select(t => t.prop.GetComponent<Carryable>()).FirstOrDefault();
+        if (item == null) yield break;
+        var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
+        var walker = wizard.GetComponent<CharacterController>();
+        walker.enabled = false;
+        wizard.transform.position = item.transform.position + Vector3.right * 1.5f;
+        walker.enabled = true;
+        yield return new WaitForSecondsRealtime(0.5f);
+        var hands = wizard.GetComponent<ItemHolder>();
+        hands.PickUp(item);
+        for (float t = 0f; t < 3f && hands.Held == null; t += Time.unscaledDeltaTime) yield return null;
+        yield return new WaitForSecondsRealtime(1f);
     }
 
     IEnumerator Join()

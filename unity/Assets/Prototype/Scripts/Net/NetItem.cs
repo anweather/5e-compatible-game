@@ -17,6 +17,7 @@ using UnityEngine;
 //   beam and a glowing ball look the same to everyone.
 // - The Dancing Lights mote: the holder sends where it is, a few times a
 //   second, and everyone else eases it there.
+// - The first find of a mod's thing: the host stamps it into the next tick as it grants.
 // - Sending stones: the message goes to the machine of whoever holds the
 //   other stone, and only that player sees it.
 // - A pick: the holder asks the host to swing at a cell near them; the host
@@ -66,6 +67,7 @@ public class NetItem : NetworkBehaviour
     {
         holder.OnValueChanged -= HolderChanged;
         lit.OnValueChanged -= LitChanged;
+        item.Lost();
     }
 
     void HolderChanged(ulong was, ulong now) => Follow(now);
@@ -117,6 +119,7 @@ public class NetItem : NetworkBehaviour
         if ((wizard.transform.position - transform.position).sqrMagnitude > allowed * allowed) return;
         holder.Value = wizard.NetworkObjectId;
         Follow(holder.Value);
+        if (item.Prop.FromMod) item.Grid.GetComponent<NetChem>().StampFound(NetChem.PeerName(rpc.Receive.SenderClientId), item.Prop.Thing);
     }
 
     /// <summary>Asks the host to let go of this item at <paramref name="from"/>, moving at <paramref name="velocity"/>.</summary>

@@ -368,17 +368,14 @@ is a test fixture.
   say, as it changes no rule. The first for a thing a mod added logs "Ana found the golden squirrel", from the row's `name`,
   on every peer, and goes in `Room.Found` (the checksum and the save). Anything else is ignored in silence.
 
-**What the view must read (the PC's part).**
-1. `ThingSpawner`, `ChemGrid` and `NetChem`'s checksum read `grid.World.ThingsNow` where they read `grid.Things` today (`InChunk`,
-   `ChunkCoords`, `Find`, `LinkedTo`, `Fingerprint`), since `grid.Things` is the file alone and ignores both mods and `chance`.
-2. A kind with no prefab in `ThingSpawner.prefabs`: spawn one generic registered prefab, a prop for an `entities` row and an
-   item for an `items` row, and dress it from `Rules.Item(kind).Look` or `Rules.Entity(kind).Look`: `Family == "creature"`, the
-   body of `Species` (`Rules.Fauna.BodyOf`, as `CreatureBodies` builds it), in `Color` in place of its coat, with `Glow`, at `Scale`. It stands still. The kind and the
-   look must reach every peer, late joiners too, since a generic prefab doesn't say what it is.
-3. At each rule switch, `World.ThingsNow.ChangesFrom(before)` gives what to spawn and which ids to despawn. A despawned thing
-   a player holds is theirs to lose: drop it from the hand.
-4. `NetItem`'s grant, host only: on granting a thing with `ThingSpawn.FromMod`, stamp `RoomCommand.Found(name, id)` into the next
-   tick directly, not through `RoomIntent`, whose `RoomPolicy.Refusal` would refuse it in a Locked room. The log line follows.
+**In the view.**
+1. `ThingSpawner` and `NetChem`'s checksum read `grid.World.ThingsNow`. `grid.Things` stays the file alone, for what only the file holds: the links of sending stones, which a client needs before its room has opened and `ThingsNow` holds anything.
+2. A kind with no prefab spawns as one of two generic ones, `dressed-prop` for an `entities` row and `dressed-item` for an `items` row, each a registered network prefab: a unit box that draws nothing. `ThingBodies` dresses it from `Look`: the body of `Species`, in `Color` in place of its coat (white, the default, keeps the coat), with `Glow`, at `Scale`. The box takes the body's size, so it rests, gets pushed and sits in a hand like any thing, and the body, posed once, goes where the box goes. Each peer dresses its own copy, the box's size included.
+3. Online a client knows a generic prefab's kind by its id, from `ThingsNow`, so nothing about it is on the wire. A copy that arrives before this peer's rules have it waits, its `PhysicsProp` and `Carryable` disabled so they read no rules, and is taken up at the next `RulesChanged`; `ChemGrid.JoinRoom` raises that too, for a late joiner.
+4. At each rule switch `ThingsNow.ChangesFrom` gives what to spawn and what to despawn, solo or by the host, in an inactive chunk too (the thing sleeps there). A despawned thing a player holds is theirs to lose: it leaves the hand on every peer (`Carryable.Lost`).
+5. The first find: `NetItem`'s grant, host only, stamps `RoomCommand.Found(name, id)` into the next tick with `NetChem.StampFound`, past `RoomIntent` and its `RoomPolicy.Refusal`, so a Locked room can still find it. Solo, `ItemHolder` queues the same command.
+
+Probes: `modthing` (solo) and `roomthing` (two peers and a late joiner).
 
 **The test, by a real client.** From a folder of its own, against a copy of `rules/` and `world/` so `save` can't touch the repo,
 with no stdin (`claude -p` waits 3 s for it and exits 1):

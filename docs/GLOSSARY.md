@@ -394,6 +394,11 @@ that long, and doesn't march.
   stable **thing id** (`ThingId`: its chunk and its place in that chunk's
   list, `4,5#2`). Append to a chunk's list, never insert.
 
+**Dressed thing**
+: A thing of a kind a mod added, which has no prefab of its own: a generic
+  prefab (`dressed-prop`, `dressed-item`) wearing the body of a fauna species
+  from its look (`ThingBodies`).
+
 **Prop**
 : A thing you push and break but don't carry: a crate, barrel, boulder,
   the court's ball (`PhysicsProp`, `PropState`, `NetProp`).
