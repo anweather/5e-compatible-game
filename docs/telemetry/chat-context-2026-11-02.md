@@ -44,7 +44,7 @@ Why not the allow-list: it would have been Claude's alone, where backlog 27 want
 
 **It held on a real model.** On the final set Haiku tried `save` after "make all lightning green", was refused, and told the player nothing wrong. Telling a model not to wasn't enough, which is why the refusal is in the server.
 
-Limits: the word is the whole test. "Save the village" passes it, though a model must still choose to; "keep this" and "put it in my mods" are refused with a line telling the player to say save. English only.
+Limits (#63): the word is the whole test. "Save the village" passes it, though a model must still choose to; "keep this" and "put it in my mods" are refused with a line telling the player to say save. English only.
 
 **Where a player's file lands.** Proved in a player built to `unity/Builds/ChatContext/`, with `-claude-stand-in` calling the game's real MCP and a new `-chat-say`:
 
@@ -56,7 +56,7 @@ Limits: the word is the whole test. "Save the village" passes it, though a model
 
 The file goes to `SpellChemistryValley_Data/StreamingAssets/rules/mods/<name>.json`, **inside the install**. So:
 
-- **A Velopack update probably removes a player's saved mods**, as it replaces that folder. Read from how it installs, not tested. It wants a folder of the player's own, which is a change to `ModCatalog` and not made here.
+- **A Velopack update probably removes a player's saved mods** (#63), as it replaces that folder. Read from how it installs, not tested. It wants a folder of the player's own, which is a change to `ModCatalog` and not made here.
 - On a Mac that's inside the `.app`, so a save alters a signed bundle. Not tested.
 - If the folder can't be written, `save` now says so in a sentence. Before, the exception wasn't one the tool expected. Not tested on a real read-only folder.
 
@@ -198,15 +198,51 @@ Through `--also`, on top of step 3, then the wording in the final column. It say
 
 ## Default model and the short prompt
 
-1. **Stay on the account default, as before, but the case has changed.** It's Andrew's call. Haiku now passes everything Opus does, except that its reply is a little plainer, one cantrip in four is a point, and it tried one unasked save. Opus is no slower now. On time there's nothing to choose: 6.1 s and 11.9 s against 7.3 s and 13.0 s. So the choice is cost and limits against care: 1/35 of the list price and little of the five-hour window. If limits matter to players, Haiku is now fit to be the default, which it wasn't this morning. Sonnet wasn't retested.
+1. **Stay on the account default, as before, but the case has changed.** It's Andrew's call, and he made it: Haiku, J-066, below. Haiku now passes everything Opus does, except that its reply is a little plainer, one cantrip in four is a point, and it tried one unasked save. Opus is no slower now. On time there's nothing to choose: 6.1 s and 11.9 s against 7.3 s and 13.0 s. So the choice is cost and limits against care: 1/35 of the list price and little of the five-hour window. If limits matter to players, Haiku is now fit to be the default, which it wasn't this morning. Sonnet wasn't retested.
 2. **Ship the short prompt.** It's the last commit on `chat-context`, on its own, so it can be left out. It passes strict and the held-out on both models with what a player would notice unchanged, and it stops the chat trying files. Before merging, know that it costs one thing untested (the follow-up on the final wording) and buys tokens and scope rather than time.
 3. **The next time saver is the notes.** Most prompts spend a reply reading them. Putting them in the first message would save that reply. Not tried.
 
+## J-066: Haiku is the chat's default
+
+Andrew's call, after the numbers above. `ClaudeRun.ChatModel` is `claude-haiku-5-5`, and `Arguments` passes it as `--model`.
+
+- **Pinned, not the `haiku` alias.** A new Haiku should reach players by being measured, as these sets measure this one, not by their claude updating. The price: when this id retires, a released game's chat stops until it's updated, and the Developer setting below is the way out.
+- **Developer menu: "Claude's model in the chat: Haiku / Account default."** It cost one key and one button, beside "Claude's tools in the chat" and saved the same way (`chat.account-model` in PlayerPrefs). The `chat` probe flips it, sees no `--model` go out, and takes the key away if it wasn't there before. No value was left: the run used this Editor's own prefs, not a player's.
+- **An account without Haiku.** From the code, with a stand-in: claude's failure line ends the prompt, the chat shows it in red, the record says failed, and the sign-in page doesn't open. There's no fallback to the account's model and nothing tells the player about the setting. The words are a guess, as no such account was tried: `NeedsSignIn` only opens a terminal if they say log in.
+- `chatprompts --model` now replaces the chat's model rather than adding a second flag. With no `--model` it sends the chat's own, and `claude_gets_the_chats_model_unless_asked` holds that to one flag.
+
+**The merged tree, real prompts, 2026-11-02.** The short prompt as committed at 3618dd5 plus J-066 at 0d04cf1, after the squirrel merge. 16 prompts as agreed: 12 Haiku, as that's what players get, and 4 Opus. **16 of 16 strict, no retries.** `chat-merged.json` and `chat-merged-more.json`; Haiku with no probe model, as a player's goes, and the records say `claude-haiku-5-5` on all 12. Opus 4 is the first four of the same set. Weekly 66% throughout. Five-hour 46% to 47%. $0.41 at list, of which Haiku's 12 is $0.025: a plan player pays none of it.
+
+| Prompt | Model | To the world | Done | Tool calls | Cost | Strict |
+|---|---|---:|---:|---:|---:|---:|
+| make all fire blue | Haiku | 6.6, 9.9 | 13.2, 14.8 | 6, 7 | $0.0050, $0.0027 | 2/2 |
+| | Opus | 6.6 | 9.7 | 7 | $0.1789 | 1/1 |
+| **actually, make it green instead** | Haiku | 7.0, 6.9 | 10.1, 8.7 | 7, 6 | $0.0027, $0.0021 | **2/2** |
+| | Opus | 6.1 | 10.0 | 7 | $0.0690 | **1/1** |
+| make the fire near me a mix of green and gold | Haiku | 3.8 | 4.5 | 3 | $0.0013 | 1/1 |
+| | Opus | 6.3 | 9.4 | 7 | $0.0654 | 1/1 |
+| make the flames blue but keep Fireball as it is | Haiku | 7.6 | 11.3 | 4 | $0.0016 | 1/1 |
+| | Opus | 6.8 | 10.0 | 8 | $0.0757 | 1/1 |
+| make the fire near me green | Haiku | 3.9 | 8.0 | 5 | $0.0020 | 1/1 |
+| make all fire a mix of red and gold | Haiku | 4.3 | 6.3 | 3 | $0.0016 | 1/1 |
+| add a cantrip that throws a small ball of frost | Haiku | 11.1 | 12.9 | 7 | $0.0028 | 1/1 |
+| build a small house near hollowmere | Haiku | 6.5 | 7.9 | 3 | $0.0015 | 1/1 |
+| make the player twice as tall | Haiku | - | 4.3 | 1 | $0.0009 | 1/1 |
+| make it rain | Haiku | 3.2 | 4.7 | 1 | $0.0008 | 1/1 |
+
+- **The follow-up holds on the final wording, 3 of 3.** Each read `notes.md` or the room, found the blue mod, turned it off and put green on the element and all 7 spells, with only green left on. This was the short prompt's one untested cost, and it didn't cost.
+- **Scoped and mixed hold.** All 3 "near me" prompts held within 10 cells of the player, following them, and the mix stayed a mix. "All fire red and gold" told the player the spells with their own colour keep it, which is true and is the line `set_look` gives it.
+- **`spells: false` holds, though "keep Fireball" was read more widely than asked.** Both models left all 7 spells alone, when only Fireball was named. Strict asks for Fireball; both told the player what stayed.
+- **Haiku's cantrip is a point again,** with no radius, as before: 1 of 1 here. It passes and casts on the lake.
+- **Most prompts that start with no notes still try `Read` on them and fail,** on both models: 9 of the 16 have a failed `Read`. It's the missing file, and it costs a reply. This is read from the records; the error text wasn't checked prompt by prompt. Some prompts wrote no notes at all (rain, the house, the mix on Haiku), so a follow-up to those has only the room to go on.
+- Two sets of 8 and 4 are no median: "to the world" here reads against the table above by prompt, not as a whole. The cold first prompt of a Haiku run took 6.6 s and 9.9 s.
+- **Strict prints `COMPOSED DIFFERS` on these runs.** Its composed world predates drafts that hold only the fields they name: a spell patched with its colour alone has no `element`, so the composed list drops it. That second opinion is out of date on looks. Every prompt here is judged on the world the probe saw, and `chat-strict` wasn't changed for it.
+
 ## Not tested
 
-- The follow-up, spell, house, refusal and rain on the final wording: only the rule and question were rerun, plus the held-out.
-- Any real prompt on the shipped arguments as such: the last run passed the same text through `--also`, and a stand-in checks the shipped command line.
-- `spells: false`, scoped colours, mixes and a false positive of the save word, on a real model.
+- Any Haiku or Opus run of the rule or question prompts on J-066's final state: they're the two the final 16 of the wording pass covered, and held-out wasn't rerun.
+- An account without Haiku, or any account but Andrew's.
+- A false positive of the save word, on a real model (#63).
 - Effort: step 5 didn't fit the budget.
 - Velopack over a saved mod, a Mac, a read-only install.
 - Sonnet, any other account, two peers, a cold cache past an hour.
