@@ -2,7 +2,6 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using Chem;
-using Punchy.Fauna;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.Rendering;
@@ -1111,7 +1110,7 @@ public static class ValleyBuilder
             village.seed = plan.Spec.Seed;
             // Its folk, from Punchy's: people in a valley village, elves on an island out at sea.
             bool island = ValleyCoast.OnIsland(well);
-            village.residents = AssetDatabase.LoadAssetAtPath<CreatureSpecies>($"Assets/Prototype/ThirdParty/Punchy/Fauna/{(island ? "Elf" : "Human")}.asset");
+            village.residents = island ? "elf" : "human";
             village.residentCount = island ? 4 : 7;
             village.wander = Mathf.Max(ValleyShape.AreaOf(plan.Bounds).size.x, ValleyShape.AreaOf(plan.Bounds).size.y) * 0.45f;
             village.enabled = false;

@@ -158,7 +158,7 @@ public class MillClipProbe : ClipProbe
         puppet.Face(Ground(corner.At));
         MillPlaces.Film(grid, corner, out var eye, out var look);
         Cut(eye, look);
-        int deer = fauna.SpeciesIndex("Deer");
+        int deer = fauna.SpeciesIndex("deer");
         var herd = new[] { Spawn(fauna, deer, corner.At, corner.Open), Spawn(fauna, deer, corner.At + corner.Open.yx * 1.5f, corner.Open), Spawn(fauna, deer, corner.At - corner.Open.yx * 1.5f, corner.Open) };
         yield return Wait(FirstSeconds);
         yield return Watch(fauna, herd, "corner");
@@ -171,7 +171,7 @@ public class MillClipProbe : ClipProbe
         var at = new Vector3(home.x, grid.GroundAt(new Vector3(home.x, 0f, home.y)), home.y);
         Teleport(at + new Vector3(-LeashMetres * 1.5f, 0.1f, 0f));
         Cut(at + new Vector3(0f, 7f, -16f), at);
-        int deer = fauna.SpeciesIndex("Deer");
+        int deer = fauna.SpeciesIndex("deer");
         var herd = new[] { Spawn(fauna, deer, home, new float2(1f, 0f)), Spawn(fauna, deer, home + new float2(1.5f, 2f), new float2(1f, 0f)) };
         foreach (int id in herd) fauna.Leash(fauna.IndexOf(id), home, LeashMetres);
         yield return Wait(FirstSeconds);

@@ -1,4 +1,3 @@
-using Punchy.Fauna;
 using UnityEngine;
 
 // A village in the scene (D12, docs/WORLD_LIFE.md): the root of its
@@ -19,8 +18,8 @@ public class Village : MonoBehaviour
     [Tooltip("Where the well stands, on the square (local).")]
     public Vector3 wellAt;
     public int seed;
-    [Tooltip("Who lives here (one of Punchy's folk), how many are out and about, and how far they wander from the square (m). ValleyFauna brings them out when someone comes near.")]
-    public CreatureSpecies residents;
+    [Tooltip("Who lives here (a species in rules/fauna.json), how many are out and about, and how far they wander from the square (m). ValleyFauna brings them out when someone comes near.")]
+    public string residents = "human";
     public int residentCount = 6;
     public float wander = 22f;
 

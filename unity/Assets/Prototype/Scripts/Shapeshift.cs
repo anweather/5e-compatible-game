@@ -238,14 +238,7 @@ public partial class Shapeshift : MonoBehaviour
     string NameOf(int species)
     {
         var name = Fauna != null ? Fauna.SpeciesName(species) : null;
-        if (string.IsNullOrEmpty(name)) return "animal";
-        var text = new System.Text.StringBuilder();
-        foreach (char ch in name)
-        {
-            if (char.IsUpper(ch) && text.Length > 0) text.Append(' ');
-            text.Append(char.ToLowerInvariant(ch));
-        }
-        return text.ToString();
+        return string.IsNullOrEmpty(name) ? "animal" : name.ToLowerInvariant();
     }
 
     static string Article(string noun) => (noun[0] is 'a' or 'e' or 'i' or 'o' or 'u' ? "an " : "a ") + noun;

@@ -12,7 +12,8 @@ using UnityEngine.SceneManagement;
 // checks again when a pack restore finishes, and when a refresh finds the
 // scene deleted (a pull that removes it doesn't always reload scripts).
 // It also rebuilds a yard whose network ids aren't the stable ones
-// (StableNetworkIds: one built before them), or other machines can't join it.
+// (StableNetworkIds: one built before them), or other machines can't join it,
+// and one built before the species were rows, whose villages name no folk.
 [InitializeOnLoad]
 public static class YardAutoBuild
 {
@@ -47,8 +48,10 @@ public static class YardAutoBuild
         if (File.Exists(ScenePath))
         {
             var unstable = ChemYardBuilder.UnstableNetworkIds();
-            if (unstable.Count == 0) return;
-            why = $"The yard's network ids aren't the same as other machines' ({string.Join(", ", unstable)})";
+            bool assetFolk = File.ReadAllText(ScenePath).Contains("residents: {fileID", System.StringComparison.Ordinal);
+            if (unstable.Count == 0 && !assetFolk) return;
+            why = assetFolk ? "The yard's villages name their folk by asset, from before rules/fauna.json"
+                : $"The yard's network ids aren't the same as other machines' ({string.Join(", ", unstable)})";
         }
         if (AssetPackRestore.Busy) return; // Finished calls back when it's done
         if (!AssetPackRestore.AllPresent)

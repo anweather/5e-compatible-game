@@ -13,9 +13,9 @@ using UnityEngine;
 // beaten. Only the show: the core decides everything.
 public partial class DefenseField : ICreatureGround
 {
-    [Tooltip("The raider kinds (rules/entities.json ids) and the Punchy creature drawn for each, in the same order.")]
+    [Tooltip("The raider kinds (rules/entities.json ids) and the species drawn for each (rules/fauna.json ids), in the same order.")]
     public string[] kinds = { RaiderIds.BoneHound, RaiderIds.AshCrab, RaiderIds.GiantSpider };
-    public CreatureSpecies[] species = System.Array.Empty<CreatureSpecies>();
+    public string[] species = { "bone-hound", "ash-crab", "giant-spider" };
     [Tooltip("How big each kind is drawn, times its species' size.")]
     public float[] sizes = { 1.2f, 1.6f, 1.4f };
     [Tooltip("The creature material (Punchy/Creature), the valley animals' own.")]
@@ -36,7 +36,7 @@ public partial class DefenseField : ICreatureGround
     readonly Dictionary<int, Shown> shown = new();
     readonly List<int> gone = new();
     readonly CreatureAnimator animator = new();
-    CreatureBody[] bodies;
+    readonly CreatureBodies bodies = new();
     CreatureDrawer drawer;
     SegmentInstance[] instances = new SegmentInstance[256];
     static Material puffMaterial;
@@ -47,12 +47,21 @@ public partial class DefenseField : ICreatureGround
 
     void Start()
     {
-        bodies = new CreatureBody[species.Length];
-        for (int i = 0; i < species.Length; i++) bodies[i] = species[i] != null ? CreatureBody.Build(species[i]) : null;
         if (creatureMaterial != null) drawer = new CreatureDrawer(creatureMaterial);
+        if (grid != null) grid.RulesChanged += ReadRows;
+        ReadRows();
     }
 
-    void OnDestroy() => drawer?.Dispose();
+    void ReadRows()
+    {
+        if (grid != null && grid.CurrentRules != null) bodies.Refresh(grid.CurrentRules.Effective);
+    }
+
+    void OnDestroy()
+    {
+        if (grid != null) grid.RulesChanged -= ReadRows;
+        drawer?.Dispose();
+    }
 
     // Follows the core's raiders: new ones appear, moved ones start sliding, gone ones puff.
     void UpdateRaiders()
@@ -175,7 +184,11 @@ public partial class DefenseField : ICreatureGround
         }
     }
 
-    CreatureBody Body(int kind) => bodies != null && kind >= 0 && kind < bodies.Length ? bodies[kind] : null;
+    CreatureBody Body(int kind)
+    {
+        if (bodies.Count == 0) ReadRows();
+        return kind >= 0 && kind < species.Length ? bodies[bodies.IndexOf(species[kind])] : null;
+    }
 
     static CreatureState NewState(Vector3 at) => new CreatureState
     {

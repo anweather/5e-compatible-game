@@ -292,6 +292,7 @@ Who may use whom. Breaking one of these is a design bug even if it compiles.
 | You want to add... | Do this |
 |---|---|
 | A **material or terrain** | Add it to `rules/materials.json` (and reactions to `rules/reactions.json`). To draw it, give it layer weights in `CellPaint` (or it reads as bare earth), its colour and height in `CellDressing.TerrainLook` (and parts in `CellDressing` if something stands on it), and a map character to `ChemGrid.Legend` if maps should use it |
+| A **species or body part** | A row in `rules/fauna.json` or `rules/parts.json` (`rules/README.md`, "Creatures"): no code, no asset, no scene rebuild; give it a `spawn` to bring it out in the wilds. A new row needs no id in `RuleIds.cs` |
 | A **spell** | Add it to `rules/spells.json`. Add its id to `SpellIds` in `RuleIds.cs`, a `look` naming its effect family and colour in its spells.json entry (`rules/README.md`, "Looks"), and a `group` in its spells.json entry: the spell radial's element it sits under (`rules/groups.json`; every spell in the rules is in the radial). A spell that moves its caster runs only on the caster's machine, from `SpellForces` (see `MistyStep.cs`) |
 | A **new kind of cell effect** (e.g. a new gas) | Data first; then a `Render...` method in `ChemGrid.Effects.cs` with a prefab and a cube fallback, called from `ChemGrid.RenderCell`, and its state added to `ChemGrid.Key` |
 | A **chemistry behaviour** that data can't express | Change `Chemistry/`, with a C# golden test (the TS sandbox is frozen: don't port it) |
