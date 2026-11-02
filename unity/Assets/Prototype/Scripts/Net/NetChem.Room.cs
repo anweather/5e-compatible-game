@@ -35,6 +35,12 @@ public partial class NetChem
     /// <summary>Asks the host for a room change; the peer it names is overwritten with whoever sends it.</summary>
     public void RequestRoom(RoomCommand command) => RequestRoomRpc(RoomIntent.From(command, 0));
 
+    /// <summary>
+    /// Host: someone was granted a thing a mod added. Stamped straight in, past RequestRoomRpc: finding
+    /// something changes no rule, so a Locked room's RoomPolicy has no say.
+    /// </summary>
+    public void StampFound(string peer, ThingId thing) => pendingRoom.Add(RoomIntent.From(RoomCommand.Found(peer, thing), 0));
+
     void ClearRoom()
     {
         pendingRoom.Clear();

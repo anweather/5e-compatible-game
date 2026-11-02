@@ -41,6 +41,17 @@ Each entry has:
 
 ## Decided
 
+### J-065: Six open calls, cleared with Andrew
+
+- **Asked:** 2026-11-02, by the PM, one at a time.
+- **Answer:** (1) The terms: see J-060's update. (2) Release builds keep voice timing and drop the words (#53). (3) The Esc menu
+  loses Same network Host / Join, Frame-rate log and Open log folder; Headwear stays. (4) A camera cutting through a deer is left
+  as it is (#47). (5) The sound pass waits for him to listen on the board; nothing goes in before that. (6) The eight fully merged
+  branches go; `wip/u2-mods-add-things`, `pause-menu`, `wip/w2-playtest-rules-a`, `wip/w2-whirlwind-pull` and `forest-tick-cost` stay.
+- **Why:** PM's recommendations, except the menu, his picks.
+- **Also comes up when:** a friend needs to send a log: with no menu entry, tell them the folder.
+- **Revisited:** 0.
+
 ### J-064: Real Claude for automated chat runs; text apart from voice
 
 - **Asked:** 2026-11-02. Andrew told DesktopUnity directly; relayed to the PM, and in his commit 344a17c.
@@ -97,7 +108,8 @@ Each entry has:
 - **Why:** it should feel like playing a game, not building one.
 - **Before it ships to players:** Anthropic's legal page sets conditions on running Claude Code in a product (Commercial Terms, an
   unmodified binary, each user's own credentials). The PM reads this as allowed. Confirming that is a step before release, not before building.
-- **Revisited:** 0.
+- **Update, 2026-11-02:** Andrew: "Not a commercial product yet. Let's keep going." So it no longer holds an alpha or a shipped agent config; it comes back before anything commercial. He also asked to evaluate the Claude API, with $100 a month of usage.
+- **Revisited:** 1.
 
 ### J-059: Must a player walk inside the houses Claude builds?
 

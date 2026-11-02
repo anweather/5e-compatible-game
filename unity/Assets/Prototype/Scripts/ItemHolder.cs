@@ -1,3 +1,4 @@
+using Chem;
 using Unity.Cinemachine;
 using UnityEngine;
 
@@ -161,7 +162,7 @@ public partial class ItemHolder : MonoBehaviour
             item.Net.RequestPickUp();
             return;
         }
-        Grant(item);
+        GrantSolo(item);
     }
 
     /// <summary>
@@ -176,7 +177,14 @@ public partial class ItemHolder : MonoBehaviour
             item.Net.RequestPickUp(reach);
             return;
         }
+        GrantSolo(item);
+    }
+
+    // Online the host does this as it grants (NetItem).
+    void GrantSolo(Carryable item)
+    {
         Grant(item);
+        if (item.Prop.FromMod) item.Grid.QueueRoom(RoomCommand.Found(NetChem.PeerName(0), item.Prop.Thing));
     }
 
     /// <summary>Mage Hand: lets go of what this hand holds at <paramref name="spot"/>, at rest.</summary>

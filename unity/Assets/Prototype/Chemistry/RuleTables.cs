@@ -358,6 +358,8 @@ namespace Chem
         public ExplosionDef Explodes;
         /// <summary>Null unless it raids the defense field (Defense.cs).</summary>
         public RaiderDef Raider;
+        /// <summary>What dresses it when it has no baked prefab (family creature; Rules.Things.cs); null for one that has.</summary>
+        public LookDef Look;
     }
 
     public sealed class FireParams
@@ -621,6 +623,8 @@ namespace Chem
         /// Mods patch this, never the typed tables, so merging works exactly like composeRules.
         /// </summary>
         readonly JObject doc;
+        // The document before its materials were ungrouped: what mods compose over. Null reads doc.
+        JObject written;
 
         Rules(JObject doc) { this.doc = doc; }
 
@@ -669,10 +673,13 @@ namespace Chem
             }
 
             var doc = Doc(Get);
+            var asWritten = (JObject)doc.DeepClone();
             // A material spelled as verb groups reads as the flat keys (MaterialGroups).
             var grouping = MaterialGroups.Ungroup(doc);
             if (grouping.Count > 0) throw new ArgumentException("Rules: " + string.Join("; ", grouping));
-            return FromDoc(doc);
+            var rules = FromDoc(doc);
+            rules.written = asWritten;
+            return rules;
         }
 
         // The rule document from the files (get: a file's JSON, or null for an optional one that's missing).
@@ -750,6 +757,7 @@ namespace Chem
                 if (ParseLook((p.Value as JObject)?["look"]) is LookDef look) r.elementLooks[p.Name] = look;
             ParseMachines(r, doc["machines"] as JObject ?? new JObject());
             r.ParseBuildings(doc);
+            r.ParseThings(doc);
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
             {
@@ -914,6 +922,7 @@ namespace Chem
                 Material = Str(o["material"]),
                 Explodes = boom,
                 Raider = ParseRaider(o["raider"]),
+                Look = ParseLook(o["look"]),
             };
         }
 
@@ -987,6 +996,8 @@ namespace Chem
             look.Roughness = (float)(Num(o["roughness"]) ?? -1);
             look.Flow = (float)(Num(o["flow"]) ?? 0);
             look.Baked = Truthy(o["baked"]);
+            look.Species = Str(o["species"]);
+            look.Scale = (float)(Num(o["scale"]) ?? 1);
             look.Mix = LookMix.Parse(o["mix"], ScopedLook.IsTrue(o["blend"]));
             look.Scoped = ScopedLook.ParseAll(o["scoped"]);
             if (o["mix"] != null || o["scoped"] != null)

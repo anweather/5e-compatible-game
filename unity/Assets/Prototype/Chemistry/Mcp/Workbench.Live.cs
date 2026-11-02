@@ -124,6 +124,7 @@ namespace Chem.Mcp
             foreach (var file in new[] { "spells", "critters", "entities", "items", "machines", "sim", "groups", "components", "combos", BuildingTables.Key })
                 raw[file] = written[file].DeepClone();
             if (written[Rules.WorldRowsKey] != null) raw[Rules.WorldRowsKey] = written[Rules.WorldRowsKey].DeepClone();
+            if (written[Rules.WorldThingsKey] != null) raw[Rules.WorldThingsKey] = written[Rules.WorldThingsKey].DeepClone();
             return raw;
         }
 
@@ -164,6 +165,7 @@ namespace Chem.Mcp
             foreach (var change in Differences("", under["sim"], over["sim"])) yield return change;
             foreach (var id in EntryIds(over, Rules.WorldRowsKey))
                 if (!JToken.DeepEquals(EntryIn(under, Rules.WorldRowsKey, id), EntryIn(over, Rules.WorldRowsKey, id))) yield return $"the building {id}";
+            foreach (var t in ThingsIn(over).Skip(ThingsIn(under).Count())) yield return $"a {Str(t["kind"])} at {Compact(t["cell"])}";
         }
 
         static IEnumerable<string> EntryIds(Dictionary<string, JToken> raw, string table)
@@ -214,30 +216,44 @@ namespace Chem.Mcp
 
         const string NoWorld = "There's no world running: the game is between scenes. Try again in a moment.";
 
-        // Mods on after this one that hold an entry of it. A patch holds whole entries, so those keep what they copied when it goes.
+        // Mods on after this one that name a field it does: their values stand once it's gone.
         string StillHeld(string mod)
         {
             var mods = Now()?.Room.Mods;
             int at = mods == null ? -1 : mods.FindIndex(m => m.Id == mod);
             if (at < 0) return "";
-            var mine = EntriesOf(mods[at].Json);
-            var later = mods.Skip(at + 1).Where(m => EntriesOf(m.Json).Overlaps(mine)).Select(m => m.Title).ToList();
-            return later.Count == 0 ? "" : $"\n{string.Join(" and ", later)} was built while it was on and holds its own copy of the same entries, so what it copied stays until that's reverted too.";
+            var mine = FieldsOf(mods[at].Json);
+            var later = mods.Skip(at + 1).Where(m => FieldsOf(m.Json).Overlaps(mine)).Select(m => m.Title).ToList();
+            return later.Count == 0 ? "" : $"\n{string.Join(" and ", later)} sets some of the same values, so what it set stands.";
         }
 
-        // The entries a patch replaces whole, as "table id".
-        static HashSet<string> EntriesOf(string json)
+        // Every value a patch sets, as "table id field.path"; a row a mod replaces whole counts as one.
+        static HashSet<string> FieldsOf(string json)
         {
             var patch = ModPatch.Parse(json).Json;
-            var entries = new HashSet<string>(StringComparer.Ordinal);
+            var fields = new HashSet<string>(StringComparer.Ordinal);
             foreach (var table in ModPatch.Tables.Append("elements"))
                 if (patch[table] is JObject named)
-                    foreach (var p in named.Properties()) entries.Add(table + " " + p.Name);
+                    foreach (var p in named.Properties()) Leaves(table + " " + p.Name, p.Value, fields);
             foreach (var table in new[] { "spells", "critters" })
                 if (patch[table] is JArray list)
-                    foreach (var s in list) entries.Add(table + " " + Str(s["id"]));
-            foreach (var p in (patch["world"]?["buildings"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>()) entries.Add("building " + p.Name);
-            return entries;
+                    foreach (var s in list) Leaves(table + " " + Str(s["id"]), s, fields);
+            foreach (var list in new[] { "add", "addEntity" })
+                if (patch["reactions"]?[list] is JArray rules)
+                    foreach (var r in rules) Leaves("reactions " + Str(r["id"]), r, fields);
+            foreach (var p in (patch["world"]?["buildings"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>()) fields.Add("building " + p.Name);
+            return fields;
+        }
+
+        static void Leaves(string path, JToken t, HashSet<string> into)
+        {
+            if (!(t is JObject o))
+            {
+                into.Add(path);
+                return;
+            }
+            // A scoped look adds to what's under it, so nothing holds it.
+            foreach (var p in o.Properties().Where(p => p.Name != "id" && p.Name != "scoped")) Leaves(path + "." + p.Name, p.Value, into);
         }
     }
 }

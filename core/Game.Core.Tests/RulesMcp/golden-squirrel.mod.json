@@ -1,0 +1,36 @@
+{
+  "title": "The golden squirrel",
+  "idea": "One rare golden squirrel hides in the north-west back country, out past the far cabin, for players to find and carry home.",
+  "patch": {
+    "items": {
+      "golden-squirrel": {
+        "name": "Golden squirrel",
+        "material": "flesh",
+        "look": {
+          "family": "creature",
+          "species": "squirrel",
+          "color": [
+            1.0,
+            0.78,
+            0.15
+          ],
+          "glow": 0.4,
+          "scale": 1
+        },
+        "mass": 0.5
+      }
+    },
+    "world": {
+      "add": [
+        {
+          "kind": "golden-squirrel",
+          "cell": [
+            203,
+            224
+          ],
+          "rot": 135.0
+        }
+      ]
+    }
+  }
+}

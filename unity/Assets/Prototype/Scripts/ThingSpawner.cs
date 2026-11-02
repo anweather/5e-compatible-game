@@ -25,6 +25,12 @@ using UnityEngine;
 // - The dragon's breath (ChemGrid.ChunkFreshened): the things of the chunk it
 //   reset go home, solo or by the host, and those that broke come back. Only what
 //   a wizard is carrying stays with it.
+// - Mods add things and take them away (World.ThingsNow, docs/RULES_MCP.md "Things"):
+//   at each switch of rules this spawns what's new and despawns what went, solo or
+//   by the host, even out of a hand. A new kind has no prefab of its own: it spawns
+//   as one of the two generic ones, dressed by ThingBodies from its look. Online
+//   those say nothing of what they are, so a client finds the kind by the thing's
+//   id, and one that arrives before this peer's rules have it waits for them.
 public class ThingSpawner : MonoBehaviour
 {
     /// <summary>The prefab for one kind (an id in rules/entities.json or rules/items.json).</summary>
@@ -34,6 +40,9 @@ public class ThingSpawner : MonoBehaviour
         public string kind;
         public GameObject prefab;
     }
+
+    /// <summary>The generic prefabs a mod's new kind spawns as: its "kind" in <see cref="prefabs"/>, and on the prefab until it's dressed.</summary>
+    public const string DressedProp = "dressed-prop", DressedItem = "dressed-item";
 
     public ChemGrid grid;
     [Tooltip("One prefab per kind; each is also a registered network prefab (ChemYardBuilder).")]
@@ -45,10 +54,16 @@ public class ThingSpawner : MonoBehaviour
     readonly HashSet<ThingId> gone = new();
     readonly HashSet<(int, int)> loaded = new();
     readonly HashSet<string> missingKinds = new();
+    // A client: dressed things that arrived before this peer's rules had them.
+    readonly List<NetProp> waiting = new();
+    // The things as they stood at the last switch, to tell what changed.
+    WorldThings shown;
+    ThingBodies bodies;
     NetworkManager network;
 
     bool Client => network != null && network.IsListening && !network.IsServer;
     bool Hosting => network != null && network.IsListening && network.IsServer;
+    WorldThings Things => grid.World.ThingsNow;
 
     /// <summary>The things in the world now (not broken), by stable id.</summary>
     public IEnumerable<(ThingId id, PhysicsProp prop)> Live
@@ -65,6 +80,8 @@ public class ThingSpawner : MonoBehaviour
 
     public bool IsLoaded(int cx, int cy) => loaded.Contains((cx, cy));
 
+    void Awake() => bodies = gameObject.AddComponent<ThingBodies>();
+
     void Start()
     {
         network = NetworkManager.Singleton;
@@ -77,6 +94,7 @@ public class ThingSpawner : MonoBehaviour
         chem = grid.GetComponent<NetChem>();
         grid.WorldReset += Respawn;
         grid.ChunkFreshened += BringBack;
+        grid.RulesChanged += ThingsChanged;
     }
 
     NetChem chem;
@@ -84,22 +102,23 @@ public class ThingSpawner : MonoBehaviour
     void SpawnActive()
     {
         var world = grid.World;
-        foreach (var (cx, cy) in grid.Things.ChunkCoords)
+        shown = Things;
+        foreach (var (cx, cy) in shown.ChunkCoords)
             if (world.HasChunk(cx, cy) && world.IsActive(cx, cy)) SpawnChunk(cx, cy);
     }
 
     // The host, at an online reset: every thing away (for everyone) and back from the data, broken
-    // ones included. A client's things go and come with the host's despawns and spawns.
+    // ones included. A client's things go and come with the host's despawns and spawns. Any other
+    // reset is a new world, which may hold other things by its seed's chances.
     void Respawn()
     {
-        if (!Hosting || !OnlineReset.Happened(chem)) return;
-        foreach (var (cx, cy) in new List<(int, int)>(loaded)) UnloadChunk(cx, cy);
-        foreach (var (_, prop) in Live)
+        if (!Hosting || !OnlineReset.Happened(chem))
         {
-            var obj = prop.GetComponent<NetworkObject>();
-            if (obj != null && obj.IsSpawned) obj.Despawn(true);
-            else Destroy(prop.gameObject);
+            ThingsChanged();
+            return;
         }
+        foreach (var (cx, cy) in new List<(int, int)>(loaded)) UnloadChunk(cx, cy);
+        foreach (var (_, prop) in Live) Remove(prop);
         live.Clear();
         gone.Clear();
         loaded.Clear();
@@ -112,6 +131,7 @@ public class ThingSpawner : MonoBehaviour
         {
             grid.WorldReset -= Respawn;
             grid.ChunkFreshened -= BringBack;
+            grid.RulesChanged -= ThingsChanged;
         }
         if (network == null) return;
         network.OnServerStarted -= SpawnOnline;
@@ -133,7 +153,7 @@ public class ThingSpawner : MonoBehaviour
         using var marked = SpawnMarker.Auto();
         NoteGone();
         if (Client) return;
-        foreach (var thing in grid.Things.InChunk(cx, cy))
+        foreach (var thing in Things.InChunk(cx, cy))
         {
             if (gone.Contains(thing.Id) || Find(thing.Id) != null) continue;
             Spawn(thing);
@@ -156,7 +176,7 @@ public class ThingSpawner : MonoBehaviour
         if (Client) return;
         using var marked = BringBackMarker.Auto();
         NoteGone();
-        foreach (var thing in grid.Things.InChunk(fresh.CX, fresh.CY))
+        foreach (var thing in Things.InChunk(fresh.CX, fresh.CY))
         {
             gone.Remove(thing.Id);
             if (!IsLoaded(fresh.CX, fresh.CY)) continue;
@@ -181,15 +201,20 @@ public class ThingSpawner : MonoBehaviour
         if (!loaded.Remove((cx, cy))) return;
         using var marked = UnloadMarker.Auto();
         NoteGone();
-        foreach (var thing in grid.Things.InChunk(cx, cy))
+        foreach (var thing in Things.InChunk(cx, cy))
         {
             var prop = Find(thing.Id);
             live.Remove(thing.Id);
-            if (prop == null || Client) continue;
-            var net = prop.GetComponent<NetworkObject>();
-            if (net != null && net.IsSpawned) net.Despawn(true);
-            else Destroy(prop.gameObject);
+            if (prop != null && !Client) Remove(prop);
         }
+    }
+
+    // Out of the world: the host despawns it for everyone.
+    static void Remove(PhysicsProp prop)
+    {
+        var net = prop.GetComponent<NetworkObject>();
+        if (net != null && net.IsSpawned) net.Despawn(true);
+        else Destroy(prop.gameObject);
     }
 
     // A thing destroyed without being unloaded broke (or blew up): it stays gone.
@@ -205,6 +230,44 @@ public class ThingSpawner : MonoBehaviour
         }
     }
 
+    // --- a switch of rules ---------------------------------------------------------------
+
+    // The rules changed, or the world did: what a mod added comes in, what it took with it goes, and
+    // the dressed things read their looks again. On a client the host's spawns and despawns do the rest.
+    void ThingsChanged()
+    {
+        bodies.ReadRules(grid.World.Rules);
+        var (added, removed) = Things.ChangesFrom(shown);
+        shown = Things;
+        if (Client)
+        {
+            AdoptWaiting();
+            return;
+        }
+        NoteGone();
+        foreach (var id in removed) TakeAway(id);
+        foreach (var thing in added) Bring(thing);
+    }
+
+    // A mod's thing stands in any chunk of the world, active or not: it sleeps there until the chunk activates.
+    void Bring(ThingSpawn thing)
+    {
+        if (!grid.World.HasChunk(thing.ChunkX, thing.ChunkY)) return;
+        if (!IsLoaded(thing.ChunkX, thing.ChunkY)) SpawnChunk(thing.ChunkX, thing.ChunkY);
+        else if (Find(thing.Id) == null) Spawn(thing);
+    }
+
+    // A despawned thing a player holds is theirs to lose.
+    void TakeAway(ThingId id)
+    {
+        var prop = Find(id);
+        live.Remove(id);
+        gone.Remove(id);
+        if (prop == null) return;
+        if (prop.TryGetComponent<Carryable>(out var item)) item.Lost();
+        Remove(prop);
+    }
+
     // --- one thing ---------------------------------------------------------------------
 
     PhysicsProp Place(ThingSpawn thing)
@@ -218,6 +281,7 @@ public class ThingSpawner : MonoBehaviour
         go.name = NameOf(thing.Kind, thing.Id);
         var prop = go.GetComponent<PhysicsProp>();
         prop.grid = grid;
+        if (IsDressed(prop)) Dress(prop, thing.Kind);
         if (go.TryGetComponent<NetProp>(out var net)) net.AssignId(thing.Id);
         var rest = at + Vector3.up * RestHeight(go, thing.Kind, cell, at);
         go.transform.position = rest;
@@ -230,10 +294,27 @@ public class ThingSpawner : MonoBehaviour
 
     static string NameOf(string kind, ThingId id) => $"{kind} {id}";
 
-    GameObject PrefabFor(string kind)
+    static bool IsDressed(PhysicsProp prop) => prop.kind == DressedProp || prop.kind == DressedItem;
+
+    void Dress(PhysicsProp prop, string kind)
+    {
+        prop.kind = kind;
+        bodies.Dress(prop);
+    }
+
+    GameObject Baked(string kind)
     {
         foreach (var p in prefabs)
             if (p.kind == kind && p.prefab != null) return p.prefab;
+        return null;
+    }
+
+    GameObject PrefabFor(string kind)
+    {
+        var baked = Baked(kind);
+        if (baked != null) return baked;
+        var rules = grid.World.Rules;
+        if (ThingBodies.LookOf(rules, kind) != null && Baked(rules.Item(kind) != null ? DressedItem : DressedProp) is { } dressed) return dressed;
         if (missingKinds.Add(kind)) Debug.LogWarning($"ThingSpawner: no prefab for '{kind}' (rebuild the yard: Prototype > Build Chemistry Yard)");
         return null;
     }
@@ -258,7 +339,8 @@ public class ThingSpawner : MonoBehaviour
         return Mathf.Max(onGround, afloat);
     }
 
-    // Sending stones: each knows the other (the data's "link"), once both are in the world.
+    // Sending stones: each knows the other (the data's "link"), once both are in the world. Links are
+    // the file's, which a client has before it has a room.
     void Link(ThingId id)
     {
         var thing = grid.Things.Find(id);
@@ -300,10 +382,44 @@ public class ThingSpawner : MonoBehaviour
     {
         var prop = net.GetComponent<PhysicsProp>();
         prop.grid = grid;
+        if (net.Id.IsNone) return;
+        if (!IsDressed(prop) || KindKnown(net)) Take(net);
+        else Wait(net);
+    }
+
+    void Take(NetProp net)
+    {
+        var prop = net.GetComponent<PhysicsProp>();
         var id = net.Id;
-        if (id.IsNone) return;
+        if (IsDressed(prop)) Dress(prop, Things.Find(id).Kind);
         net.name = NameOf(prop.kind, id);
         live[id] = prop;
         Link(id);
+    }
+
+    bool KindKnown(NetProp net) => Things.Find(net.Id) != null;
+
+    // The host's rules got here ahead of this peer's. It doesn't Start, and so reads no rules, until enabled.
+    void Wait(NetProp net)
+    {
+        Enable(net, false);
+        waiting.Add(net);
+    }
+
+    void AdoptWaiting()
+    {
+        waiting.RemoveAll(net => net == null);
+        foreach (var net in waiting.FindAll(KindKnown))
+        {
+            waiting.Remove(net);
+            Take(net);
+            Enable(net, true);
+        }
+    }
+
+    static void Enable(NetProp net, bool on)
+    {
+        net.GetComponent<PhysicsProp>().enabled = on;
+        if (net.TryGetComponent<Carryable>(out var item)) item.enabled = on;
     }
 }

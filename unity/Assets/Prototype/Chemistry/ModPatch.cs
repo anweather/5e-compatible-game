@@ -12,7 +12,7 @@ namespace Chem
 {
     public sealed class ModPatch
     {
-        /// <summary>The id tables a mod adds to or replaces entries in, whole entries at a time.</summary>
+        /// <summary>The id tables a mod adds entries to or patches entries in, field by field (Rules.MergedEntry).</summary>
         internal static readonly string[] Tables = { "terrain", "covers", "gases", "entities", "items", "machines", "groups", "components", FaunaTables.SpeciesKey, FaunaTables.PartsKey };
 
         ModPatch(string title, JObject patch)
@@ -80,8 +80,10 @@ namespace Chem
             Expect("combos", p["combos"] is JObject, "an object");
             Expect(BuildingTables.Key, p[BuildingTables.Key] is JObject b && BuildingTables.Tables.Where(t => b[t] != null).All(t => b[t] is JObject rows && rows.PropertyValues().All(v => v is JObject)),
                 "an object of tables (openings, floors, roofs, details, styles), each of rows by id");
-            Expect("world", p["world"] is JObject w && w.Properties().All(x => x.Name == "buildings") && w["buildings"] is JObject bs && bs.PropertyValues().All(v => v is JObject),
-                "{\"buildings\": {\"<id>\": {a whole building row}}}: an id the world has edits that building, a new one adds one");
+            Expect("world", p["world"] is JObject w && w.Properties().All(x => x.Name == "buildings" || x.Name == "add")
+                    && (w["buildings"] == null || (w["buildings"] is JObject bs && bs.PropertyValues().All(v => v is JObject)))
+                    && (w["add"] == null || ListOf(w["add"], JTokenType.Object)),
+                "{\"buildings\": {\"<id>\": {a whole building row}}, \"add\": [{a thing: kind, cell}]}: an id the world has edits that building, a new one adds one, and add puts things in the world");
             return errors;
         }
 

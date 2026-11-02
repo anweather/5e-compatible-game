@@ -35,13 +35,12 @@ namespace Chem.Mcp
             patch["reactions"] != null || patch["sim"] != null
             || MaterialKinds.Any(kind => (patch[kind] as JObject)?.Properties().Any(p => !SameButLook(EntryIn(Raw, kind, p.Name), p.Value)) == true);
 
+        // A patch names only the fields it changes, so what it leaves out stays. A look changes nothing the world does.
         static bool SameButLook(JToken was, JToken now)
         {
             if (was == null) return false;
-            var (a, b) = ((JObject)was.DeepClone(), (JObject)now.DeepClone());
-            a.Remove("look");
-            b.Remove("look");
-            return JToken.DeepEquals(a, b);
+            if (!(now is JObject fields)) return JToken.DeepEquals(was, now);
+            return fields.Properties().All(p => p.Name == "look" || SameButLook(was[p.Name], p.Value));
         }
 
         /// <summary>The two runs (with the patch, without it), for simulate and the tests.</summary>

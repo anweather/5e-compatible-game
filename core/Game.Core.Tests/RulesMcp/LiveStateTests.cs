@@ -24,7 +24,7 @@ namespace Chem.Tests
             Bigger(b);
             var d = b.SetSpell(null, "fireball", "push", "3");
             var spell = (JObject)d.Patch["spells"][0];
-            Assert.That((int)spell["radius"], Is.EqualTo(4), "keeps the mod's radius");
+            Assert.That(spell["radius"], Is.Null, "the draft holds only what it names");
             Assert.That(b.Changes(d), Is.EqualTo("It changes Fireball: push from 2 to 3."));
             b.Apply(d.Id, "Bo", "Harder fireball");
             Assert.That(b.InForce.Spell("fireball").Radius, Is.EqualTo(4));
@@ -46,7 +46,9 @@ namespace Chem.Tests
             var b = NewBench();
             b.Apply(b.SetLook(null, "grass", "color", "[0.1, 0.1, 0.1]", null, out _).Id, "Ana", "Black grass");
             var d = b.SetMaterial(null, "grass", "burn.fuel", "4");
-            Assert.That(d.Patch["terrain"]["grass"]["look"]["color"][0].Value<double>(), Is.EqualTo(0.1).Within(0.001));
+            Assert.That(d.Patch["terrain"]["grass"]["look"], Is.Null, "the draft holds only what it names");
+            b.Apply(d.Id, "Bo", "Thin grass");
+            Assert.That(b.InForce.Terrain["grass"].Look.R, Is.EqualTo(0.1f).Within(0.001f), "and the look the mod gave stays");
         }
 
         [Test]
@@ -68,14 +70,20 @@ namespace Chem.Tests
         {
             var b = NewBench();
             Bigger(b);
-            Assert.That(b.Revert("bigger-fireball"), Does.Not.Contain("holds its own copy"));
+            Assert.That(b.Revert("bigger-fireball"), Does.Not.Contain("sets some of the same"));
             Assert.That(b.InForce.Spell("fireball").Radius, Is.EqualTo(2));
             StringAssert.Contains("\"radius\": 2", b.Describe("spells", "fireball"));
 
             Bigger(b);
             b.Apply(b.SetSpell(null, "fireball", "push", "3").Id, "Bo", "Harder fireball");
-            StringAssert.Contains("Harder fireball was built while it was on and holds its own copy", b.Revert("bigger-fireball"));
-            Assert.That(b.InForce.Spell("fireball").Radius, Is.EqualTo(4), "the later mod's whole entry still stands, as in the room");
+            Assert.That(b.Revert("bigger-fireball"), Does.Not.Contain("sets some of the same"), "built while it was on, but it names another field");
+            Assert.That(b.InForce.Spell("fireball").Radius, Is.EqualTo(2), "a revert undoes its own");
+            Assert.That(b.InForce.Spell("fireball").Push, Is.EqualTo(3), "and only its own");
+
+            Bigger(b);
+            b.Apply(b.SetSpell(null, "fireball", "radius", "5").Id, "Bo", "Bigger still");
+            StringAssert.Contains("Bigger still sets some of the same values", b.Revert("bigger-fireball"));
+            Assert.That(b.InForce.Spell("fireball").Radius, Is.EqualTo(5));
         }
 
         [Test]

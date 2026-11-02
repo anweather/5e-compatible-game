@@ -31,6 +31,10 @@ namespace Chem
         public float Flow;
         /// <summary>The land itself draws it until it grows in this world (the valley's trees).</summary>
         public bool Baked;
+        /// <summary>Family creature: the row of rules/fauna.json whose model dresses a thing.</summary>
+        public string Species;
+        /// <summary>Family creature: how big against that species' own size.</summary>
+        public float Scale = 1;
         /// <summary>Several colours with weights in place of the one, a pick per cell (look "mix"); null for one colour.</summary>
         public LookMix Mix;
         /// <summary>Looks that hold only round a place, a cell or a player (look "scoped"), earliest first (LookScopes).</summary>
@@ -46,7 +50,7 @@ namespace Chem
         public static bool Same(LookDef a, LookDef b) =>
             ReferenceEquals(a, b) || (SameColor(a, b) && a.Family == b.Family && a.Form == b.Form
                 && Near(a.Height, b.Height) && Near(a.Glow, b.Glow)
-                && Near(a.Roughness, b.Roughness) && Near(a.Flow, b.Flow) && a.Baked == b.Baked);
+                && Near(a.Roughness, b.Roughness) && Near(a.Flow, b.Flow) && a.Baked == b.Baked && a.Species == b.Species && Near(a.Scale, b.Scale));
 
         static bool Near(float a, float b) => Math.Abs(a - b) < 1e-5f;
     }
@@ -238,11 +242,16 @@ namespace Chem
 
         /// <summary>A table's families, in name order.</summary>
         public IEnumerable<LookFamily> In(string table) =>
-            tables.TryGetValue(table, out var families) ? families.Values.OrderBy(f => f.Name, StringComparer.Ordinal) : Enumerable.Empty<LookFamily>();
+            tables.TryGetValue(OfThings(table), out var families) ? families.Values.OrderBy(f => f.Name, StringComparer.Ordinal) : Enumerable.Empty<LookFamily>();
 
         /// <summary>A family of a table, or null.</summary>
         public LookFamily Find(string table, string name) =>
-            name != null && tables.TryGetValue(table, out var families) && families.TryGetValue(name, out var f) ? f : null;
+            name != null && tables.TryGetValue(OfThings(table), out var families) && families.TryGetValue(name, out var f) ? f : null;
+
+        /// <summary>Where the entities and items tables take their families: looks.json "things".</summary>
+        public const string ThingsTable = "things";
+
+        static string OfThings(string table) => table == "entities" || table == "items" ? ThingsTable : table;
 
         /// <summary>The names of the families the view draws for a table, comma-separated, for a sentence.</summary>
         public string DrawnNames(string table)

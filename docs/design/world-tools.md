@@ -4,7 +4,7 @@ Status: design, 2026-11-01 (Andrew's asks of the same day, and J-055). Builds on
 `docs/RULES_MCP.md`: the same MCP, mods, room and checks. Built so far, in the core and the MCP
 only: G1's `places()` and `here()` with `world/places.json`, and G2b's `where`, `mix` and `by`
 (`LookScopes.cs`) with colour mixing (`Colors.cs`); the view doesn't draw scoped looks yet. `find`, G3 for buildings and
-G5's buildings are built in the core and the MCP (`docs/RULES_MCP.md` "Buildings"); G5's things aren't.
+G4 to G6 in the core and the MCP too (`docs/RULES_MCP.md` "Buildings" and "Things"), with what the view must read; the view hasn't yet.
 
 > "Make the house by the lake bigger. Or brick colored / patterned." "Maybe a rare golden squirrel
 > might spawn in and you need to find it." "Embed a terminal or chat into the game so you can tune
@@ -18,7 +18,7 @@ test is a player asking their Claude and the MCP doing it as a mod.
 
 **What exists today.** The MCP's tools (`list`, `describe`, the `add_`/`set_` drafts, `set_look`,
 `tune`, `validate`, `simulate`, `apply`, `revert`, `save`); `apply` also takes patch JSON. A mod
-patches the rule tables, `entities` and `items` included (`ModPatch.Tables`), never `world/`.
+patches the rule tables, `entities` and `items` included (`ModPatch.Tables`), never `world/`. (The table in this section is from before G3 to G6.)
 Looks are data on materials, spells and elements. `world/things.json` places props and items by
 chunk; the host spawns each from a prefab of its kind, baked in the Editor (`PropBuilder`,
 `ItemBuilder`), and a kind with no prefab doesn't spawn. The fauna (`ValleyFauna`) is Punchy's

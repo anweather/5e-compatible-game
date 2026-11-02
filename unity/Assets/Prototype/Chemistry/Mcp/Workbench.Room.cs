@@ -123,20 +123,21 @@ namespace Chem.Mcp
             if (table == "sim") return $"{id} from {Compact(Raw["sim"].SelectToken(id))} to {Compact(draft.Patch["sim"]?.SelectToken(id))}";
             if (table == BuildingsTable) return BuildingChange(id);
             if (BuildingTables.Tables.Contains(table)) return $"a {Single(table)} row, {id}";
+            if (table == ThingsTable) return ThingChange(draft, id);
             if (table == "reactions")
             {
                 var rule = (draft.Patch["reactions"]?["add"] as JArray ?? new JArray()).Concat(draft.Patch["reactions"]?["addEntity"] as JArray ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id);
                 var before = EntryIn(Raw, table, id);
-                return before == null || rule == null ? $"a rule, {id}" : $"the rule {id}: {string.Join(", ", Differences("", before, rule))}";
+                return before == null || rule == null ? $"a rule, {id}" : $"the rule {id}: {string.Join(", ", Differences("", before, Rules.MergedEntry(before, rule)))}";
             }
             var (was, now) = table switch
             {
                 "spells" => (Raw["spells"].FirstOrDefault(s => Str(s["id"]) == id), draft.Patch["spells"]?.FirstOrDefault(s => Str(s["id"]) == id)),
                 "elements" => (Doc["elements"].Any(e => Str(e) == id) ? ElementEntry(id) ?? new JObject() : null, (draft.Patch["elements"] as JObject)?[id]),
-                _ => (Raw["materials"][table]?[id], draft.Patch[table]?[id]),
+                _ => (EntryIn(Raw, table, id), draft.Patch[table]?[id]),
             };
             if (!(now is JObject entry)) return changed;
-            return EntryChange(table, id, was, entry);
+            return EntryChange(table, id, was, Rules.MergedEntry(was, entry));
         }
 
         // Field by field, down through groups: "burn.fuel from 8 to 4".

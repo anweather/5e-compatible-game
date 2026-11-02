@@ -52,7 +52,7 @@ namespace Chem.Mcp
                         var cells = w.BuildingCellsOf(row);
                         if (cells.Count > 0) found.Add((Nearest(cells.Select(c => (c.X, c.Y)), from), row.Id, BuildingLine(row, cells)));
                     }
-                foreach (var t in Budgets.Things.All.Where(t => Wanted(kind, "thing") || kind == t.Kind))
+                foreach (var t in w.ThingsNow.All.Where(t => Wanted(kind, "thing") || kind == t.Kind))
                     found.Add((Nearest(new[] { (t.CellX, t.CellY) }, from), t.Id.ToString(), FormattableString.Invariant($"a {t.Kind}, a thing at [{t.CellX}, {t.CellY}]")));
                 return found.Where(f => f.d <= reach).OrderBy(f => f.d).ThenBy(f => f.id, StringComparer.Ordinal).ToList();
             });

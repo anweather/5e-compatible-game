@@ -103,9 +103,9 @@ namespace Chem.Tests
             var b = NewBench();
             var d = b.SetLook(null, "fire", "color", Blue, "element", out _);
             StringAssert.Contains("spells fireball", d.Brief());
-            StringAssert.DoesNotContain("family", d.Brief());
+            StringAssert.DoesNotContain("\"color\"", d.Brief());
             var one = b.SetLook(null, "grass", "color", "[0.1, 0.1, 0.1]", null, out _);
-            StringAssert.Contains("family", one.Brief());
+            StringAssert.Contains("\"color\"", one.Brief());
         }
 
         // ---------- simulate before apply ----------
