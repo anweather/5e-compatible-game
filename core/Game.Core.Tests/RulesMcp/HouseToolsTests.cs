@@ -26,7 +26,7 @@ namespace Chem.Tests
         public void RemoveFolder() => Directory.Delete(dir, true);
 
         // A headless client: JSON-RPC to the tools, as a player's Claude talks to the game.
-        sealed class Client
+        internal sealed class Client
         {
             readonly McpRpc rpc;
             int next = 1;

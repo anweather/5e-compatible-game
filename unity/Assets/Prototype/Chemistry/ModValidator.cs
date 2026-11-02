@@ -114,7 +114,7 @@ namespace Chem
             v.Design(composed);
             v.Determinism();
             v.Budgets(composed);
-            if (budgets.Looks != null) v.Looks(budgets.Looks);
+            if (budgets.Looks != null) v.Looks(budgets.Looks, composed);
             return problems;
         }
 
@@ -189,17 +189,37 @@ namespace Chem
 
             // ---------- the looks: every new thing names a family the view draws ----------
 
-            public void Looks(LookFamilies looks)
+            JObject fauna; // the species in force with the mod on; null if it didn't compose
+
+            // A patch's entry names only what it changes, so its look is checked as it composes.
+            public void Looks(LookFamilies looks, JObject composed)
             {
-                var tables = new[] { ("terrain", "Terrain", true), ("covers", "Cover", false), ("gases", "Gas", false) };
+                fauna = composed?[FaunaTables.SpeciesKey] as JObject;
+                var tables = new[] { ("terrain", "Terrain", true), ("covers", "Cover", false), ("gases", "Gas", false), ("entities", "Entity", false), ("items", "Item", false) };
                 foreach (var (table, what, required) in tables)
                     if (patch[table] is JObject entries)
                         foreach (var p in entries.Properties().Where(p => p.Value is JObject))
-                            LookOf(looks, table, $"{what} {p.Name}", (JObject)p.Value, required && baseDoc[table]?[p.Name] == null);
-                foreach (var s in PatchSpells) LookOf(looks, "spells", $"Spell {Text(s["id"]) ?? "?"}", s, !InBase("spells", Text(s["id"])));
+                            LookOf(looks, table, $"{what} {p.Name}", composed?[table]?[p.Name] as JObject ?? (JObject)p.Value, required && baseDoc[table]?[p.Name] == null);
+                foreach (var s in PatchSpells) LookOf(looks, "spells", $"Spell {Text(s["id"]) ?? "?"}", SpellIn(composed, s), !InBase("spells", Text(s["id"])));
                 if (patch["elements"] is JObject elements)
                     foreach (var p in elements.Properties().Where(p => p.Value is JObject))
-                        LookOf(looks, "elements", $"Element {p.Name}", (JObject)p.Value, false);
+                        LookOf(looks, "elements", $"Element {p.Name}", composed?[Rules.ElementLooksKey]?[p.Name] as JObject ?? (JObject)p.Value, false);
+                ThingsHaveLooks(composed);
+            }
+
+            static JObject SpellIn(JObject composed, JObject s) =>
+                (composed?["spells"] as JArray)?.OfType<JObject>().FirstOrDefault(c => Text(c["id"]) == Text(s["id"])) ?? s;
+
+            // A kind the rules came with has its baked prefab; a new one has only its look.
+            void ThingsHaveLooks(JObject composed)
+            {
+                foreach (var row in (patch["world"]?["add"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
+                {
+                    string kind = Text(row["kind"]);
+                    if (kind == null || baseDoc["entities"]?[kind] != null || baseDoc["items"]?[kind] != null) continue;
+                    var entry = composed?["items"]?[kind] ?? composed?["entities"]?[kind];
+                    if (entry != null && !(entry["look"] is JObject)) Add(ModCheck.Looks, $"Thing {kind} is a new kind with no look, so the view can't draw it; give it a \"look\" with family creature.");
+                }
             }
 
             // Covers and gases have no family drawn yet, so a new one needn't name one, and may give
@@ -226,7 +246,15 @@ namespace Chem
                     Add(ModCheck.Looks, $"{who} names the look family \"{name}\", which the view can't draw from data yet (it needs {family.Needs}).");
                 else if (family.Forms.Count > 0 && !family.Forms.Contains(Text(look["form"])))
                     Add(ModCheck.Looks, $"{who}'s look family \"{name}\" takes a form, one of {string.Join(", ", family.Forms)}.");
-                else Params(look, who, $"the look family \"{name}\"", family.Params, table);
+                else if (family.Params.Contains("species") && !(Text(look["species"]) is string species && (fauna?[species] ?? baseDoc[FaunaTables.SpeciesKey]?[species]) != null))
+                    Add(ModCheck.Looks, $"{who}'s look family \"{name}\" takes a species, a row of rules/fauna.json or one the mod adds.");
+                else
+                {
+                    Params(look, who, $"the look family \"{name}\"", family.Params, table);
+                    double maxScale = budgets.Number("things.maxScale", 4);
+                    if (look["scale"] != null && !(IsNumber(look["scale"]) && (double)look["scale"] > 0 && (double)look["scale"] <= maxScale))
+                        Add(ModCheck.Budget, $"{who}'s look has a scale of {look["scale"]}; a thing's scale is above 0 and at most {Num(maxScale)}.");
+                }
             }
 
             // Every parameter a look gives is one its family takes, or the view would silently ignore it. A
@@ -274,7 +302,9 @@ namespace Chem
                     var id = Text(s["id"]) ?? "?";
                     if (!InBase("spells", id) && s["group"] == null)
                         Add(ModCheck.Design, $"Spell {id} needs a group (its element on the spell radial, from groups.json).");
-                    if (s["element"] == null && s["effect"] == null)
+                    // What it names on top of a spell the rules have keeps that spell's element or effect.
+                    var whole = SpellIn(composed, s);
+                    if (whole["element"] == null && whole["effect"] == null && (composed != null || !InBase("spells", id)))
                         Add(ModCheck.Design, $"Spell {id} has neither an element nor an effect, so it does nothing to cells; spells act through elements and the material verbs.");
                     FiveE(id, s);
                 }
@@ -400,6 +430,9 @@ namespace Chem
                 foreach (var c in PatchCritters.Where(c => IsNumber(c["every"]) && (double)c["every"] < minEvery))
                     Add(ModCheck.Budget, $"Critter {Text(c["id"])} acts every {c["every"]} ticks; a mod's critter acts at most every {Num(minEvery)} ticks.");
                 SimBudget();
+                double maxThings = budgets.Number("things.maxPerMod", 16);
+                if (patch["world"]?["add"] is JArray things && things.Count > maxThings)
+                    Add(ModCheck.Budget, $"The mod adds {things.Count} things to the world; a mod may add at most {Num(maxThings)}.");
                 if (composed == null) return;
                 BuildingBudget(composed);
                 MaterialBudget(composed);

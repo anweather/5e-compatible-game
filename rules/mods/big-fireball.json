@@ -3,8 +3,7 @@
   "idea": "A third-level Fireball with a huge blast: everything within four squares of where it lands catches fire.",
   "patch": {
     "spells": [
-      { "id": "fireball", "group": "fire", "name": "Fireball", "level": 3, "shape": "burst", "radius": 4, "element": "fire", "power": 2, "damage": [8, 6], "push": 3, "crater": { "radius": 2, "depth": 3 },
-        "blurb": "A bead of flame that blooms into a huge explosion where it lands, throwing things wide and blowing a deep crater. Sets the whole area alight." }
+      {"id": "fireball", "radius": 4, "push": 3, "crater": {"radius": 2, "depth": 3, "strength": null}, "blurb": "A bead of flame that blooms into a huge explosion where it lands, throwing things wide and blowing a deep crater. Sets the whole area alight.", "scatter": null}
     ]
   }
 }

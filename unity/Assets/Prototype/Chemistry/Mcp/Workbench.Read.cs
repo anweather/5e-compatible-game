@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", BuildingsTable, "openings", "floors", "roofs", "details", "styles" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", BuildingsTable, ThingsTable, "openings", "floors", "roofs", "details", "styles" };
 
         // ---------- list ----------
 
@@ -51,6 +51,9 @@ namespace Chem.Mcp
                     break;
                 case BuildingsTable:
                     lines.AddRange(BuildingLines());
+                    break;
+                case ThingsTable:
+                    lines.AddRange(ModThingLines());
                     break;
                 case "openings":
                 case "floors":
@@ -141,7 +144,7 @@ namespace Chem.Mcp
         {
             if (LookTables.Contains(table)) return Current(draft, table, id) ?? Find(table, id);
             if (table == "reactions")
-                return (draft.Patch["reactions"]?["add"] as JArray ?? new JArray()).Concat(draft.Patch["reactions"]?["addEntity"] as JArray ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id) ?? Find(table, id);
+                return Over(EntryIn(Raw, table, id), (draft.Patch["reactions"]?["add"] as JArray ?? new JArray()).Concat(draft.Patch["reactions"]?["addEntity"] as JArray ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id)) ?? Find(table, id);
             if (table == "sim") return draft.Patch["sim"]?.SelectToken(id) ?? Find(table, id);
             return Find(table, id);
         }

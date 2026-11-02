@@ -3,8 +3,7 @@
   "idea": "Fireball burns blue from the hand to the last ember. Only its look changes, so it does the same to the world and a game can switch it on or off at any moment.",
   "patch": {
     "spells": [
-      { "id": "fireball", "group": "fire", "name": "Fireball", "look": { "family": "blast", "color": [0.2, 0.45, 1] }, "level": 3, "shape": "burst", "radius": 2, "element": "fire", "power": 2, "damage": [8, 6], "push": 2, "crater": { "radius": 1, "depth": 2, "strength": 2 }, "scatter": { "cover": "embers", "count": 4, "reach": 3 },
-        "blurb": "Level 3. A bead of flame that bursts where it lands, 25 ft across, setting it all alight. It goes off with a bang: things near it are thrown back, it blows a small crater in the ground and scatters burning debris a few cells out, and it sets off oil, dust and gas. Our blast is smaller than the SRD's 20 ft radius; the Big fireball mod gives you that. Hold the cast for a wider blast that throws things harder." }
+      {"id": "fireball", "look": {"color": [0.2, 0.45, 1]}}
     ]
   }
 }

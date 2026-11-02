@@ -264,6 +264,8 @@ namespace Chem
         /// </summary>
         public string SiteProblem(Rules next, string title = null)
         {
+            string things = ThingSiteProblem(next, title);
+            if (things != null) return things;
             if (Rules.ModBuildings.Count == 0 && next.ModBuildings.Count == 0) return null;
             NoteBaseBuildings();
             var ids = ChangedRows(Rules, next);
@@ -289,7 +291,7 @@ namespace Chem
         {
             if (!InBounds(x, y)) return "it's off the world";
             if (others != null && others.TryGetValue((x, y), out var building)) return $"{building} stands there";
-            var thing = roomBudgets?.Things.At(x, y);
+            var thing = ThingsNow.At(x, y);
             if (thing != null) return $"a {thing.Kind} ({thing.Id}) stands there";
             var c = At(x, y);
             if (c.Water > 0 || c.Frozen) return "there's water there";
