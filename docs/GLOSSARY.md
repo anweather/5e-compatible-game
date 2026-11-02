@@ -708,9 +708,10 @@ that long, and doesn't march.
   is a new process. A model writes them. The game puts them ahead of the player's
   message, quoted line by line, as a record and not instructions.
 
-**Model fallback**
-: When the account refuses the chat's model and no tool ran: the message runs once
-  more on the account's default, a line says so, and the session remembers (#64).
+**Model unavailable**
+: When the model the chat asked for isn't on the account, or doesn't exist: the
+  message fails with no second run, a red line names the model and says where to
+  change it, and the record's `why` says so (#64). There's no fallback to another model.
 
 **API loop**
 : The game's own tool loop over the Claude Messages API (`ApiLoop`): it connects

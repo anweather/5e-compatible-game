@@ -17,9 +17,6 @@ namespace Chem.Mcp
         Tool,
         Done,
         Failed,
-
-        /// <summary>The game's own short line to the player, in the middle of a message; claude never says this.</summary>
-        Notice,
     }
 
     public static class ClaudeRun
@@ -69,7 +66,7 @@ namespace Chem.Mcp
 
         /// <summary>
         /// The model the chat asks for (J-066). Pinned, not the alias: this is the one the strict sets passed on, and a new Haiku
-        /// should get there by being measured, not by a player's claude updating. An account that can't use it gets one retry on its own default (#64).
+        /// should get there by being measured, not by a player's claude updating. An account that can't use it fails loud, with no second run (#64).
         /// </summary>
         public const string ChatModel = "claude-haiku-5-5";
 
@@ -131,8 +128,9 @@ namespace Chem.Mcp
             return t.Contains("/login") || t.Contains("not logged in") || t.Contains("invalid api key") || t.Contains("please log in");
         }
 
-        /// <summary>What the chat says when it moves to the account's own model (#64).</summary>
-        public const string ModelFallback = "This account can't use the chat's usual model, so it's on your account's default now.";
+        /// <summary>What the chat says of a model it asked for and can't have (#64), in place of claude's words: it spends nothing on another model.</summary>
+        public static string ModelUnavailable(string model) =>
+            $"Claude can't answer: the model {model} isn't available on this account, or doesn't exist. Change it in the Developer menu: Claude's model in the chat.";
 
         /// <summary>The way out of a model the account can't use, added to a failure that may be that: the Developer menu's switch (J-066).</summary>
         public const string ModelPointer = "If this keeps happening, try Esc, Developer, Claude's model in the chat: Account default.";
@@ -167,16 +165,12 @@ namespace Chem.Mcp
             return (t.Contains("model") || text.Contains(model, StringComparison.OrdinalIgnoreCase)) && ModelTrouble.Any(t.Contains);
         }
 
-        /// <summary>
-        /// Whether to run a message again with no --model: a model was asked for, this failure is about it, and no tool ran in the first try,
-        /// so a player's change can't go in twice. Only a first try can be this: the second asks for no model.
-        /// </summary>
-        public static bool RetriesOnTheAccount(string model, string failure, ChatProgress soFar) =>
-            soFar.Tools == 0 && !soFar.Applying && !soFar.Applied && ModelRefused(failure, model);
-
-        /// <summary>What the player reads of a failure: claude's words, and the way out if a model was asked for and it might be that.</summary>
-        public static string Pointed(string failure, string model) =>
-            model == null || NotTheModel(failure) ? failure : failure + " " + ModelPointer;
+        /// <summary>What the player reads of a failure: the game's own line if the model asked for was refused; else claude's words, and the way out if it might be that.</summary>
+        public static string Pointed(string failure, string model)
+        {
+            if (model == null || NotTheModel(failure)) return failure;
+            return ModelRefused(failure, model) ? ModelUnavailable(model) : failure + " " + ModelPointer;
+        }
 
         /// <summary>
         /// The player's claude: on the PATH, else in ~/.local/bin, where its installer puts it and where

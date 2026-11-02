@@ -77,7 +77,7 @@ namespace Chem.Mcp
         int? turns;
         double? cost;
         JToken usage, modelUsage;
-        JObject gameCost, retry;
+        JObject gameCost;
         ChatOutcome? ended;
         bool sawResult, failed;
 
@@ -171,23 +171,13 @@ namespace Chem.Mcp
                 };
         }
 
-        /// <summary>
-        /// The model was refused and the message is going again on the account's own: what came of the first try is dropped, as it has no tokens and
-        /// the second is what the player got. Times stay from the send, so they carry the first try's seconds. A record with no retry has no such field.
-        /// </summary>
-        public void Retried(long clock, string fromModel, string why)
+        /// <summary>The model asked for was refused (#64): the record names it, whatever the stream called the model. The reply keeps claude's words.</summary>
+        public void ModelUnavailable(string asked)
         {
             lock (gate)
             {
-                retry = new JObject { ["from"] = fromModel, ["why"] = ReasonOf(why), ["at"] = FromSend(clock) };
-                model = reply = lastWords = failure = endedBy = null;
-                ready = firstWord = done = apiMs = claudeMs = null;
-                turns = null;
-                cost = null;
-                usage = modelUsage = null;
-                replies.Clear();
-                ended = null;
-                sawResult = failed = false;
+                model = asked;
+                failure = "model unavailable: " + asked;
             }
         }
 
@@ -460,7 +450,6 @@ namespace Chem.Mcp
                     ["gameCost"] = gameCost,
                 };
                 if (harness != null) record["harness"] = harness;
-                if (retry != null) record["retry"] = retry;
                 return record;
             }
         }
