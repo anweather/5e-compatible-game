@@ -11,17 +11,27 @@ using UnityEngine;
 // since its row is cells and no walls, and only what the mod added is drawn beside it. It follows
 // the rules in force, so a switch, a revert, a late join and a save all come the same way, and it
 // moves this peer's player off a new wall (players aren't core state). RuleSwitcher adds it.
-// Walls that burn or break in play stay drawn: only the cells change.
+// A house follows its cells in play (RowRuin): one house is looked at a frame and redrawn if it must
+// be, so a burning street spreads over frames, and a house's chimney smokes while it stands.
 [RequireComponent(typeof(ChemGrid))]
 public class RowHouses : MonoBehaviour
 {
-    const float FindHouseMetres = 10f;
+    const int FarthestNudge = 40;
+    const float FindHouseMetres = 10f, DefaultWall = 2.7f, FootingMore = 0.5f;
 
     sealed class Drawn
     {
         public string json;
         public GameObject root;
         public Transform hidden;
+        public RowRuin ruin;
+        public BuildingRow row;
+        public MeshCollider roofCollider;
+        public WindowPanes panes;
+        public bool roofBurns, told;
+        public System.Func<Vector2Int, RowRuin.CellNow> cells;
+        public ParticleSystem[] smoke;
+        public List<Vector2Int> walls;
     }
 
     readonly Dictionary<string, Drawn> drawn = new();
@@ -29,6 +39,19 @@ public class RowHouses : MonoBehaviour
     World hooked;
     Rules seen;
     Material material, glass;
+    readonly List<Drawn> order = new();
+    int nextLook;
+    readonly System.Diagnostics.Stopwatch timer = new();
+
+    /// <summary>How long the longest redraw of a house has taken (ms), and how many redraws so far.</summary>
+    public double WorstRedrawMs { get; private set; }
+    public int Redraws { get; private set; }
+
+    /// <summary>Each house and its stretches down, for the probe: two peers should say the same.</summary>
+    public string Ruins => string.Join(" ", order.Select(d => $"{d.row.Id}:{d.ruin.Down}/{d.ruin.Stretches}"));
+
+    /// <summary>A house's ruin, for the probe; null if it isn't drawn.</summary>
+    public RowRuin Ruin(string id) => drawn.TryGetValue(id, out var d) ? d.ruin : null;
 
     /// <summary>How many buildings are drawn from their rows now.</summary>
     public int Count => drawn.Count;
@@ -46,6 +69,7 @@ public class RowHouses : MonoBehaviour
         Hook(null);
         foreach (var d in drawn.Values) Remove(d);
         drawn.Clear();
+        order.Clear();
     }
 
     void Update()
@@ -53,9 +77,46 @@ public class RowHouses : MonoBehaviour
         var world = grid.World;
         if (world == null) return;
         if (world != hooked) Hook(world);
-        if (world.Rules == seen) return;
-        seen = world.Rules;
-        Sync(world);
+        if (world.Rules != seen)
+        {
+            seen = world.Rules;
+            Sync(world);
+        }
+        LookAtOne();
+    }
+
+    // One house a frame: its cells read, and redrawn only if they show something new.
+    void LookAtOne()
+    {
+        if (order.Count == 0) return;
+        nextLook = (nextLook + 1) % order.Count;
+        var d = order[nextLook];
+        if (d.ruin.Stretches == 0) return;
+        timer.Restart();
+        if (!d.ruin.Look(d.cells, d.roofBurns)) return;
+        Redraws++;
+        WorstRedrawMs = System.Math.Max(WorstRedrawMs, timer.Elapsed.TotalMilliseconds);
+        if (d.roofCollider != null) d.roofCollider.enabled = !d.ruin.RoofHurt;
+        foreach (var puff in d.smoke) puff.gameObject.SetActive(!d.ruin.RoofHurt);
+        if (d.told || d.ruin.Down * 2 < d.ruin.Stretches) return;
+        d.told = true;
+        EventLog.Add($"The {d.row.Id} falls");
+    }
+
+    RowRuin.CellNow CellOf(BuildingRow row, Vector2Int at)
+    {
+        var world = hooked;
+        int x = row.X + at.x, y = row.Y + at.y;
+        if (!world.InBounds(x, y)) return default;
+        var c = world.At(x, y);
+        return new RowRuin.CellNow { blocking = world.IsBlocking(c), burning = c.Fire > 0, ashen = c.Cover == CoverIds.Ash };
+    }
+
+    // The dragon's breath put a chunk back: its walls forget the fire.
+    void PutBack(ChunkFresh fresh)
+    {
+        foreach (var d in order)
+            d.ruin.Forget(at => Chunks.ChunkOf(d.row.X + at.x) == fresh.CX && Chunks.ChunkOf(d.row.Y + at.y) == fresh.CY);
     }
 
     void Hook(World world)
@@ -64,6 +125,8 @@ public class RowHouses : MonoBehaviour
         hooked = world;
         seen = null;
         if (hooked != null) hooked.BuildingsChanged += Moved;
+        grid.ChunkFreshened -= PutBack;
+        if (hooked != null) grid.ChunkFreshened += PutBack;
     }
 
     void Sync(World world)
@@ -72,6 +135,7 @@ public class RowHouses : MonoBehaviour
         foreach (string id in drawn.Keys.Where(id => rows.All(r => r.Id != id)).ToList())
         {
             Remove(drawn[id]);
+            order.Remove(drawn[id]);
             drawn.Remove(id);
             Debug.Log($"Row houses: took down {id}, {drawn.Count} now");
         }
@@ -82,8 +146,11 @@ public class RowHouses : MonoBehaviour
             {
                 if (old.json == json) continue;
                 Remove(old);
+                order.Remove(old);
             }
-            drawn[row.Id] = Draw(world, row, json);
+            var made = Draw(world, row, json);
+            drawn[row.Id] = made;
+            order.Add(made);
             Debug.Log($"Row houses: drew {row.Id}, {drawn.Count} now");
         }
     }
@@ -100,12 +167,61 @@ public class RowHouses : MonoBehaviour
             OpeningLook = kind => world.Rules.Buildings.Row("openings", kind)?["look"],
             TerrainColor = terrain => terrain == null ? Color.clear : CellDressing.Look(world.Rules, terrain).color,
             Tiled = terrain => terrain != null && CellDressing.Of(world.Rules, terrain)?.Form == "tile",
+            Footing = Footing(world, row, root.transform.position.y),
         };
         var made = RowMesher.Make(row.Json, tables);
         Part(root, "Body", made.body, false);
-        Part(root, "Roof", made.roof, true);
-        root.AddComponent<WindowPanes>().Show(made.panes, glass);
-        return new Drawn { json = json, root = root, hidden = HideBase(world, row, corner) };
+        var roof = Part(root, "Roof", made.roof, true);
+        var panes = root.AddComponent<WindowPanes>();
+        panes.hollow = true;
+        panes.Show(made.panes, glass);
+        var valley = FindAnyObjectByType<ValleyChemistry>();
+        if (valley != null) valley.BindPanes(panes);
+        var laid = world.BuildingCellsOf(row);
+        var cells = new HashSet<Vector2Int>(laid.Where(c => c.Part != BuildingPart.Fill).Select(c => new Vector2Int(c.X - row.X, c.Y - row.Y)));
+        // What the scene's own box covers (a cabin's cells) keeps it; the rest needs a blocker to meet.
+        var walls = laid.Where(c => c.Part != BuildingPart.Built).Select(c => new Vector2Int(c.X, c.Y)).ToList();
+        float tall = (float?)row.Json["wall"]?["height"] ?? DefaultWall;
+        foreach (var c in walls) grid.BuiltWall(c.x, c.y, tall);
+        return new Drawn
+        {
+            json = json,
+            root = root,
+            hidden = HideBase(world, row, corner),
+            row = row,
+            ruin = new RowRuin(made, cells.Contains),
+            roofCollider = roof,
+            panes = panes,
+            roofBurns = RoofBurns(world, row),
+            cells = at => CellOf(row, at),
+            smoke = Smoke(root, made.chimneys),
+            walls = walls,
+        };
+    }
+
+    // A chimney smokes as a village's does: the same puff, copied from one, at each chimney's top.
+    static ParticleSystem[] Smoke(GameObject root, Vector3[] chimneys)
+    {
+        var from = FindObjectsByType<VillageHouse>(FindObjectsInactive.Include, FindObjectsSortMode.None).Select(h => h.GetComponentInChildren<ParticleSystem>(true)).FirstOrDefault(p => p != null);
+        if (from == null) return System.Array.Empty<ParticleSystem>();
+        return chimneys.Select(top =>
+        {
+            var puff = Instantiate(from, root.transform);
+            puff.gameObject.SetActive(true);
+            puff.transform.localPosition = top;
+            return puff;
+        }).ToArray();
+    }
+
+    static bool RoofBurns(World world, BuildingRow row) =>
+        (row.Json["roofs"] as JObject)?.Properties().Any(r => world.Rules.Terrain.TryGetValue((string)r.Value["cover"] ?? "", out var cover) && cover.Burns) ?? false;
+
+    // How far down the lowest ground under the walls lies from the house's floor, and a little more.
+    float Footing(World world, BuildingRow row, float floor)
+    {
+        float lowest = floor;
+        foreach (var c in world.BuildingCellsOf(row)) lowest = Mathf.Min(lowest, grid.GroundAt(grid.CellCenter(c.X, c.Y)));
+        return floor - lowest + FootingMore;
     }
 
     static Vector3 Middle(Vector3 corner, BuildingRow row)
@@ -115,13 +231,16 @@ public class RowHouses : MonoBehaviour
         return corner + new Vector3(x, 0f, -z);
     }
 
-    void Part(GameObject root, string name, Mesh mesh, bool solid)
+    MeshCollider Part(GameObject root, string name, Mesh mesh, bool solid)
     {
         var go = new GameObject(name);
         go.transform.SetParent(root.transform, false);
         go.AddComponent<MeshFilter>().sharedMesh = mesh;
         go.AddComponent<MeshRenderer>().sharedMaterial = material;
-        if (solid && mesh.vertexCount > 0) go.AddComponent<MeshCollider>().sharedMesh = mesh;
+        if (!solid || mesh.vertexCount == 0) return null;
+        var collider = go.AddComponent<MeshCollider>();
+        collider.sharedMesh = mesh;
+        return collider;
     }
 
     // An edited building with no baked cells replaces the scene's; a new one, or a cabin's, stands beside.
@@ -148,9 +267,12 @@ public class RowHouses : MonoBehaviour
         return house;
     }
 
-    static void Remove(Drawn d)
+    void Remove(Drawn d)
     {
+        foreach (var c in d.walls) grid.BuiltWall(c.x, c.y, 0f);
         if (d.hidden != null) d.hidden.gameObject.SetActive(true);
+        var valley = FindAnyObjectByType<ValleyChemistry>();
+        if (valley != null && d.panes != null) valley.UnbindPanes(d.panes);
         if (d.root == null) return;
         foreach (var filter in d.root.GetComponentsInChildren<MeshFilter>()) Destroy(filter.sharedMesh);
         Destroy(d.root);
@@ -165,6 +287,18 @@ public class RowHouses : MonoBehaviour
         glass = house != null ? house.glass : null;
     }
 
+    // The nearest cell to stand on past what was laid: inside a hollow house would shut a player in.
+    Vector2Int? Outside(BuildingsChange change, Vector2Int at)
+    {
+        for (int ring = 1; ring <= FarthestNudge; ring++)
+            for (int dy = -ring; dy <= ring; dy++)
+                for (int dx = -ring; dx <= ring; dx++)
+                    if (Mathf.Max(Mathf.Abs(dx), Mathf.Abs(dy)) == ring && Open(change, at.x + dx, at.y + dy)) return new Vector2Int(at.x + dx, at.y + dy);
+        return null;
+    }
+
+    bool Open(BuildingsChange change, int x, int y) => hooked.InBounds(x, y) && !change.Covers(x, y) && !hooked.IsBlocking(hooked.At(x, y));
+
     // Raised after the cells are laid: this peer's own player moves off a new wall.
     void Moved(BuildingsChange change)
     {
@@ -172,7 +306,7 @@ public class RowHouses : MonoBehaviour
         if (caster == null) return;
         var wizard = caster.transform;
         var at = grid.CellAt(wizard.position);
-        if (!change.Covers(at.x, at.y) || !(hooked.NearestFree(at.x, at.y) is { } free)) return;
+        if (!change.Covers(at.x, at.y) || !(Outside(change, at) is { } free)) return;
         var to = grid.CellCenter(free.x, free.y);
         to.y = grid.GroundAt(to);
         bool hasBody = wizard.TryGetComponent<CharacterController>(out var body);

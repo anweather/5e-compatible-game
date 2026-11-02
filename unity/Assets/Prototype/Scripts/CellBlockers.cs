@@ -5,8 +5,8 @@ using UnityEngine;
 // Invisible boxes that keep walkers and props out of blocking cells: a tree
 // (around its trunk, where the valley's tree stands, not the whole square),
 // brambles, a stone block, and a raised wall (Wall of Stone), up to its top as
-// drawn. The ground itself is the chunk terrain; these only stand where a cell
-// blocks.
+// drawn, and a row house's wall, door or pane, which no scene model's box covers.
+// The ground itself is the chunk terrain; these only stand where a cell blocks.
 // Boxes are pooled: a cell that stops blocking (a tree burnt to a stump)
 // hands its box back for the next one.
 public sealed class CellBlockers
@@ -21,6 +21,8 @@ public sealed class CellBlockers
     readonly Transform parent;
     readonly Dictionary<int, BoxCollider> used = new();
     readonly Stack<BoxCollider> spare = new();
+    // Row houses' cells (world indices) and how tall their walls stand: their looks give no height.
+    readonly Dictionary<int, float> built = new();
 
     const string ParentName = "Blockers";
 
@@ -45,11 +47,18 @@ public sealed class CellBlockers
         return world.IsBlocking(c) ? CellDressing.Look(world.Rules, c.T).height : 0f;
     }
 
+    /// <summary>A cell of a row house's wall now stands this tall; 0 when it's none any more.</summary>
+    public void BuiltWall(int key, float tall)
+    {
+        if (tall > 0f) built[key] = tall;
+        else built.Remove(key);
+    }
+
     /// <summary>Puts a cell's blocker on its ground at <paramref name="ground"/>, or removes it if the cell doesn't block.</summary>
     public void Place(int x, int y, Cell c, float ground)
     {
         int key = grid.World.Idx(x, y);
-        float reach = Reach(c);
+        float reach = built.TryGetValue(key, out float tall) && grid.World.IsBlocking(c) ? tall : Reach(c);
         if (reach <= 0f)
         {
             Release(key);

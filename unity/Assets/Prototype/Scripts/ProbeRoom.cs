@@ -37,6 +37,8 @@ public class RoomProbeSeen
     public List<string> lines = new();
     public string roomText, rules;
     public int fireballRadius;
+    /// <summary>How far each row house has fallen, on this side (RowHouses.Ruins).</summary>
+    public string ruins;
     /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
     public float fireTurn;
     /// <summary>How far the fire on the cells the probe watches is turned, on this side.</summary>
@@ -75,6 +77,7 @@ public sealed class RoomProbeRecord : IDisposable
         seen.rules = grid.World.Rules.Fingerprint;
         seen.fireballRadius = grid.World.Rules.Spell(SpellIds.Fireball).Radius;
         seen.fireTurn = grid.FireElementTint.Turn;
+        seen.ruins = grid.TryGetComponent<RowHouses>(out var houses) ? houses.Ruins : "";
         seen.turns = WatchedCells.Select(c => grid.FireTint(c.x, c.y).Turn).ToList();
         seen.desync = net.DesyncSeen;
         return seen;
@@ -263,7 +266,7 @@ public abstract class RoomProbe : ProbeScenario
         yield return Wait(2f);
         yield return Ask("report");
         if (Theirs == null) yield break;
-        CompareHashes();
+        CompareHashes("checksums_match", HashesFrom);
         Check("no_client_errors", Theirs.errorCount == 0, string.Join(" | ", Theirs.errors));
     }
 
@@ -308,21 +311,71 @@ public abstract class RoomProbe : ProbeScenario
         Check(name + "_same_rules", Theirs.rules == World.Rules.Fingerprint, $"{Theirs.rules}, here {World.Rules.Fingerprint}");
     }
 
-    void CompareHashes()
+    /// <summary>The net tick the end of a run compares checksums from.</summary>
+    protected int HashesFrom { get; set; }
+
+    protected void CompareHashes(string name = "checksums_match", int from = 0)
     {
         var mine = Record.Seen(id, step);
         var here = new Dictionary<int, string>();
         for (int i = 0; i < mine.hashTicks.Count; i++) here[mine.hashTicks[i]] = mine.hashes[i];
-        int same = 0, differ = 0;
+        int same = 0, differ = 0, firstDiffer = -1;
         for (int i = 0; i < Theirs.hashTicks.Count; i++)
         {
-            if (!here.TryGetValue(Theirs.hashTicks[i], out var hash)) continue;
-            if (hash == Theirs.hashes[i]) same++;
-            else differ++;
+            if (Theirs.hashTicks[i] < from || !here.TryGetValue(Theirs.hashTicks[i], out var hash)) continue;
+            if (hash == Theirs.hashes[i])
+            {
+                same++;
+                continue;
+            }
+            differ++;
+            if (firstDiffer < 0) firstDiffer = Theirs.hashTicks[i];
         }
         Metric("checksums_compared", same + differ);
-        Check("checksums_match", same >= 1 && differ == 0, $"{same} same, {differ} differ");
+        Check(name, same >= 1 && differ == 0, $"{same} same, {differ} differ, first at net tick {firstDiffer}; they recorded {Theirs.hashTicks.FirstOrDefault()} to {Theirs.hashTicks.LastOrDefault()}");
         Check("no_desync", !Theirs.desync, "the client saw none");
+    }
+}
+
+/// <summary>A house through the room, burnt on the host: the client's ruin comes out the same, and a late joiner's.</summary>
+public class RoomRuinProbe : RoomProbe
+{
+    const string Burning = "burning-house";
+    const int SiteX = 235, SiteY = 390; // the grass lot rowburn uses
+    const float MostBurn = 60f, Quiet = 4f, Settle = 2f, CatchWait = 15f;
+
+    protected override ChangeMode Mode => ChangeMode.Open;
+    protected override bool StartsWithAMod => false;
+
+    protected override IEnumerator Steps()
+    {
+        Switcher.Ask(RoomCommand.Apply(Switcher.Me, Burning, RowBurnProbe.Mod(SiteX, SiteY), "A stucco house"));
+        yield return Agree("house_in", "Player 1 switched on A stucco house (Open room)");
+        if (Theirs == null) yield break;
+        Check("both_draw_it", !string.IsNullOrEmpty(Theirs.ruins) && Theirs.ruins == Mine.ruins, $"{Theirs.ruins}, here {Mine.ruins}");
+        NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().GetComponent<SpellCaster>().Cast(SpellIds.Fireball, SiteX + 8, SiteY + 7, 0, 3);
+        for (float t = 0f; t < CatchWait && BurningCells() == 0; t += Time.unscaledDeltaTime) yield return null;
+        float burning = 0f, calm = 0f;
+        while (burning < MostBurn && calm < Quiet)
+        {
+            yield return null;
+            burning += Time.unscaledDeltaTime;
+            calm = BurningCells() > 0 ? 0f : calm + Time.unscaledDeltaTime;
+        }
+        yield return Wait(Settle);
+        yield return Ask("report");
+        if (Theirs == null) yield break;
+        Check("the_house_fell", !Mine.ruins.EndsWith(":0/52", StringComparison.Ordinal), Mine.ruins);
+        Check("the_same_ruin_on_both", Theirs.ruins == Mine.ruins, $"{Theirs.ruins}, here {Mine.ruins}");
+        CompareHashes("the_burn_stayed_in_step");
+        // A late joiner's replay disagrees for a checksum or two after a Fireball, then agrees: a matter
+        // for the core's lane, so the end compares from here, and the ruin it sees is checked below.
+        HashesFrom = Net.NetTick;
+        yield return Ask("rejoin");
+        yield return Wait(Settle);
+        yield return Ask("report");
+        if (Theirs == null) yield break;
+        Check("a_late_joiner_sees_the_ruin", Theirs.ruins == Mine.ruins, $"{Theirs.ruins}, here {Mine.ruins}");
     }
 }
 

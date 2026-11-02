@@ -16,7 +16,7 @@ using UnityEngine;
 // The house is a test fixture (J-055), as in BuildingTests: nothing named goes in code or base rules.
 public class RowHousesProbe : ProbeScenario
 {
-    const string House = "lakeside#1", Title = "A stucco house";
+    protected const string House = "lakeside#1", Title = "A stucco house";
     const string Stucco = "{ \"name\": \"Stucco wall\", \"tags\": [\"blocking\", \"trellis\"], \"break\": { \"leaves\": \"rubble\" }, \"look\": { \"family\": \"wall\", \"form\": \"built\", \"color\": [0.84, 0.71, 0.54] } }";
     const string Tile = "{ \"name\": \"Clay tile\", \"tags\": [\"roof\"], \"look\": { \"family\": \"ground\", \"form\": \"tile\", \"color\": [0.66, 0.3, 0.2] } }";
     const string Style = "{ \"fill\": \"hollow\", \"floor\": { \"kind\": \"slab\", \"height\": 0.15 }, \"wall\": { \"material\": \"stucco-wall\", \"height\": 2.9, \"thickness\": 0.3, \"finish\": { \"pattern\": \"smooth\", \"color\": \"#d6b48a\" } }, \"roof\": { \"shape\": \"hip\", \"pitch\": [4, 12], \"overhang\": 0.45, \"cover\": \"clay-tile\" } }";
@@ -26,8 +26,8 @@ public class RowHousesProbe : ProbeScenario
 
     static readonly HttpClient Http = new();
 
-    RowHouses houses;
-    string answer;
+    protected RowHouses houses;
+    protected string answer;
 
     protected override IEnumerator Run()
     {
@@ -51,8 +51,11 @@ public class RowHousesProbe : ProbeScenario
         Check("its_walls_are_cells", world.At(x + 4, y).T == "stucco-wall", world.At(x + 4, y).T);
         Check("a_door_is_a_door_cell", world.BuildingCellsOf(world.BuildingRowOf(House)).Any(c => c.Terrain == "door"));
         var at = grid.CellAt(caster.transform.position);
+        var laid = world.BuildingCellsOf(world.BuildingRowOf(House));
         Check("a_player_on_a_new_wall_is_moved", !world.At(at.x, at.y).T.Contains("stucco"), $"{at.x},{at.y}");
+        Check("and_out_of_the_house_not_into_it", !laid.Any(c => c.X == at.x && c.Y == at.y), $"{at.x},{at.y}, {world.At(at.x, at.y).T}");
         yield return Look("house", x + 7, y + 4);
+        yield return Look("garage", x + 2, y + 6, CloseBack, FromNorth);
 
         int wallsWere = Walls();
         yield return Tool("add_wing", new JObject { ["building"] = House, ["width"] = 4, ["depth"] = 4 });
@@ -81,7 +84,7 @@ public class RowHousesProbe : ProbeScenario
         yield return Dozen12();
     }
 
-    static string ModJson(int x, int y)
+    protected static string ModJson(int x, int y, string stucco = Stucco)
     {
         string row = "{ \"at\": [" + x + ", " + y + "], \"style\": \"southwest\", \"seed\": 41, \"storeys\": 1, \"fill\": \"hollow\"," +
             " \"floor\": { \"kind\": \"slab\", \"height\": 0.15 }," +
@@ -101,12 +104,12 @@ public class RowHousesProbe : ProbeScenario
             " \"g-west\": { \"from\": \"i\", \"to\": \"j\" }, \"g-back\": { \"from\": \"j\", \"to\": \"k\" } }," +
             " \"roofs\": { \"main\": { \"over\": [\"a\", \"b\", \"c\", \"i\", \"j\", \"k\"], \"shape\": \"hip\", \"pitch\": [4, 12], \"overhang\": 0.45, \"cover\": \"clay-tile\" } }," +
             " \"parts\": [{ \"kind\": \"chimney\", \"on\": \"east\", \"at\": 8 }] }";
-        return "{ \"terrain\": { \"stucco-wall\": " + Stucco + ", \"clay-tile\": " + Tile + " }, \"buildings\": { \"styles\": { \"southwest\": " + Style + " } }," +
+        return "{ \"terrain\": { \"stucco-wall\": " + stucco + ", \"clay-tile\": " + Tile + " }, \"buildings\": { \"styles\": { \"southwest\": " + Style + " } }," +
             " \"world\": { \"buildings\": { \"" + House + "\": " + row + " } } }";
     }
 
     // Calls a tool over HTTP on a thread of its own: the desk needs this main thread free to answer.
-    IEnumerator Tool(string name, JObject arguments)
+    protected IEnumerator Tool(string name, JObject arguments)
     {
         var body = new JObject
         {
@@ -139,7 +142,7 @@ public class RowHousesProbe : ProbeScenario
         yield return Tool("apply", new JObject { ["mod"] = Draft(), ["title"] = title });
     }
 
-    static IEnumerator Until(System.Func<bool> done)
+    protected static IEnumerator Until(System.Func<bool> done)
     {
         for (float t = 0f; t < MostWait && !done(); t += Time.unscaledDeltaTime) yield return null;
     }
@@ -167,7 +170,7 @@ public class RowHousesProbe : ProbeScenario
         return b;
     }).size;
 
-    void Stand(int x, int y)
+    protected void Stand(int x, int y)
     {
         var to = grid.CellCenter(x, y);
         to.y = grid.GroundAt(to) + 0.1f;
@@ -210,7 +213,7 @@ public class RowHousesProbe : ProbeScenario
         Destroy(target);
     }
 
-    IEnumerator RevertAll()
+    protected IEnumerator RevertAll()
     {
         yield return Tool("whats_on", new JObject());
         foreach (var id in Regex.Matches(answer ?? "", @"^\d+\. .*\(([^)\n]+)\), added by", RegexOptions.Multiline).Cast<Match>().Select(m => m.Groups[1].Value).Reverse().ToList())
@@ -235,6 +238,7 @@ public class RowHousesProbe : ProbeScenario
         yield return Until(() => houses.Root(row.Id) != null);
         var hidden = houses.Hidden(row.Id);
         Check("an_edited_village_house_replaces_the_scene_one", hidden != null && !hidden.gameObject.activeSelf, answer);
+        Check("its_old_smoke_goes_and_its_chimney_smokes", hidden != null && !hidden.GetComponentsInChildren<ParticleSystem>(true).Any(p => p.gameObject.activeInHierarchy) && houses.Root(row.Id).GetComponentInChildren<ParticleSystem>() != null, answer);
         yield return Look("village-edited", row.X + 3, row.Y + 3, CloseBack);
         yield return RevertAll();
         yield return Until(() => houses.Count == 0);
@@ -263,7 +267,7 @@ public class RowHousesProbe : ProbeScenario
         yield return Until(() => houses.Count == 0);
     }
 
-    IEnumerator Sample(string name)
+    protected IEnumerator Sample(string name)
     {
         float t = 0f;
         for (int i = 0; i < FrameSample; i++)

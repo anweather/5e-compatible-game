@@ -452,6 +452,9 @@ that long, and doesn't march.
   and in which coats. Ambient life, so view only: each peer rolls its own
   animals (`docs/design/world-tools.md`, part 2).
 
+**Stretch**
+: The length of a wall segment on one cell, the part that falls when that cell goes (`RowMesher`, `RowRuin`).
+
 **Row house**
 : A building drawn from its row (`RowHouses`, `RowMesher`), because a mod added
   or edited it. What the world was made with is drawn by the valley instead.

@@ -99,6 +99,8 @@ public static class ProbeScenarios
             "are back after it; no console errors. Metrics: keep_start_ms, palette, start_state_kb, flight_seconds, look_breath and look_clear frame times in one view."),
         new Entry("roomopen", typeof(RoomOpenProbe), 150f,
             "Live rule changes in an Open room, this Editor hosting and the virtual player joined: the mod on solo stays on; the client's Big fireball on at one tick for both, the host reverts it, a bad patch refused alike, a reset keeps the mods, a late joiner gets them. Checks: the same line, room and rules on both after each step, every 30-tick checksum equal.", 2),
+        new Entry("roomruin", typeof(RoomRuinProbe), 300f,
+            "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("roomhost", typeof(RoomHostProbe), 90f,
             "A Host-only room: the client's change and revert refused with the sentence on both, the host's goes in. Checks as roomopen.", 2),
         new Entry("roomlocked", typeof(RoomLockedProbe), 90f,
@@ -192,6 +194,8 @@ public static class ProbeScenarios
         new Entry("voice", typeof(VoiceProbe), 70f,
             "Talking to Claude (J-061), with a stand-in recogniser and a stand-in for claude: a hold opens the box, takes the controls and tells the player once where their voice goes; the words fill the box as they come; letting go waits for the recogniser, then sends once; " +
             "a recogniser that can't says why in a line and sends nothing; closing the box drops the words; the keys show on the Controls page's table; a hold played from a sample in tools/voice-samples/out on its real timing, word by word, letting go early, and with Claude busy, the words queued, in order, capped, on one status line. Needs make.ps1 run first. With --shots, a film of a hold. Real dictation is left to a real voice."),
+        new Entry("rowburn", typeof(RowBurnProbe), 240f,
+            "A stucco house through the MCP, close up from a wizard's height, then a fireball: its walls follow their cells to a ruin (RowRuin), with the frame numbers while it burns."),
         new Entry("rowhouses", typeof(RowHousesProbe), 180f,
             "Buildings drawn from their rows (RowHouses, builders.md section 4), through the real MCP over HTTP: find_site on the lake's north shore, a stucco house applied, a player on a new wall moved, the door a door cell, a wing, a shack in worn timber with a shed roof, all reverted with the ground back; " +
             "a cabin's wing beside its own model, an edited village house replacing the scene's and coming back; a dozen houses with frame time before and after. With --shots, a film holding on each."),

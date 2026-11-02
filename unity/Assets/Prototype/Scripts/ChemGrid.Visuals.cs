@@ -286,6 +286,14 @@ public partial class ChemGrid
         if (reshaped) StartShaping(v, x, y, shown);
     }
 
+    /// <summary>A cell of a row house's wall stands this tall (0: no longer one), and its blocker says so at once.</summary>
+    public void BuiltWall(int x, int y, float tall)
+    {
+        blockers.BuiltWall(World.Idx(x, y), tall);
+        var c = World.At(x, y);
+        blockers.Place(x, y, c, GroundTop(x, y, c));
+    }
+
     // Hot metal (Cell.Heat, counting down from its terrain's hot.for) glows in this many steps, so a
     // cooling plate is redrawn a few times, not every tick.
     const int HeatSteps = 6;
