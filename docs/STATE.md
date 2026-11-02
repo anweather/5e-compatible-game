@@ -1,4 +1,4 @@
-# State (2026-11-02, later)
+# State (2026-11-02, evening)
 
 The one page a new PM session reads first. Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
@@ -56,14 +56,13 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild.
-- **Mac:** `room-agree-wait` (#65; also shows whether `roomruin`'s failing checksum, #67, is the race), then stop.
-- **DesktopUnity:** `save-draft-id`, then a test of the map as data (Andrew): a second map that isn't the valley, to see how bad it is. #63 and the glow hint landed; the Mac should rerun `SetReadOnly`'s stricter tests.
+- **Mac:** `room-agree-wait` (#65; also whether `roomruin`'s failing checksum, #67, is the race).
+- **DesktopUnity:** `second-map`: how much of the world really is data.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
-- **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Full EditMode on Windows: 1,067 of 1,067, twice. The port is untested in a player and online.
+- **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Merged dev passed full EditMode on the Mac and Windows.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-1ad55fb/SpellChemistryValley.exe`, for Andrew. Squirrel test passed in a copy, two built peers over Relay. Never run in a real window. The old `PlayTest/` stays until he has moved over.
 
 ## Next, in order
