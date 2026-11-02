@@ -15,8 +15,8 @@ public static class CreatureSheet
 {
     public static readonly string[] Dozen =
     {
-        "Deer", "BlackBear", "ArcticFox", "Wolf", "Rabbit", "Turkey",
-        "Heron", "GarterSnake", "GiantSpider", "Human", "Ogre", "ToxicFrog",
+        "deer", "black-bear", "arctic-fox", "wolf", "rabbit", "turkey",
+        "heron", "garter-snake", "giant-spider", "human", "ogre", "toxic-frog",
     };
 
     const int Columns = 4, Width = 960, Height = 720;
@@ -85,10 +85,9 @@ public static class CreatureSheet
                 Mode = CreatureMode.Wander,
                 Seed = 1u,
             };
-            animator.Evaluate(b, state, 0, ground, instances, offset);
-            offset += b.Segments.Length;
+            offset += animator.Evaluate(b, state, 0, ground, instances, offset);
         }
-        drawer.Draw(instances, total, cam.transform.position);
+        drawer.Draw(instances, offset, cam.transform.position);
         cam.Render();
 
         RenderTexture.active = rt;

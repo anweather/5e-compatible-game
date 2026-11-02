@@ -59,7 +59,7 @@ public class HouseCameraProbe : ProbeScenario
         for (int i = 0; fauna != null && fauna.SpeciesName(i) != null; i++)
         {
             var body = fauna.Body(i);
-            if (body == null) continue;
+            if (body == null || body.Habitat != Punchy.Fauna.Habitat.Land) continue;
             float size = body.StandHeight * (body.Size.x + body.Size.y);
             if (size < least) (least, small) = (size, i);
         }

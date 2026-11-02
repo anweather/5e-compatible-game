@@ -200,6 +200,8 @@ public static class ProbeScenarios
         new Entry("voice", typeof(VoiceProbe), 70f,
             "Talking to Claude (J-061), with a stand-in recogniser and a stand-in for claude: a hold opens the box, takes the controls and tells the player once where their voice goes; the words fill the box as they come; letting go waits for the recogniser, then sends once; " +
             "a recogniser that can't says why in a line and sends nothing; closing the box drops the words; the keys show on the Controls page's table; a hold played from a sample in tools/voice-samples/out on its real timing, word by word, letting go early, and with Claude busy, the words queued, in order, capped, on one status line. Needs make.ps1 run first. With --shots, a film of a hold. Real dictation is left to a real voice."),
+        new Entry("rowlight", typeof(RowLightProbe), 240f,
+            "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
         new Entry("rowburn", typeof(RowBurnProbe), 240f,
             "A stucco house through the MCP, close up from a wizard's height, then a fireball: its walls follow their cells to a ruin (RowRuin), with the frame numbers while it burns."),
         new Entry("rowhouses", typeof(RowHousesProbe), 180f,
@@ -330,6 +332,15 @@ public static class ProbeScenarios
         new Entry("faunarows", typeof(FaunaRowsProbe), 40f,
             "A creature row changed in a running game (rules/fauna.json, CreatureBodies): a deer and a fox put by the wizard, a mod turns the deer red and doubles its walk, then goes off. " +
             "Checks: only the deer's body is built again, the new numbers are in force, the deer keeps its place and seed, the fingerprint doesn't move, switching off brings it back, no console errors."),
+        new Entry("crowd", typeof(CrowdProbe), 60f,
+            "What a full valley costs a frame: 120 animals and folk of a fixed mix round the wizard, 6 s to settle, 20 s measured. Metrics: the main thread's p50 and p95, and ValleyFauna's Update, Think and Draw markers, for the before and after of a change to the creatures."),
+        new Entry("people", typeof(PeopleProbe), 90f,
+            "The valley's peoples (rules/fauna.json, from Punchy's f3141f6), films into --shots <folder>: Hollowmere's folk come out, workers take up their posts, and a line of humans, a child, a dwarf, an elf, a goblin and an ogre walks past the camera. " +
+            "Checks: at least two workers at their posts, every people is in the rows and shows at its own size, no console errors."),
+        new Entry("spawners", typeof(SpawnersProbe), 160f,
+            "Which spawners really turn up: the wilds opened up (a big cap, a fast spawn rate) for 40 s at each of three places, the start, the lake and far out. Metric: how many of each species came out; a check that every bird with a spawn row did, no console errors."),
+        new Entry("waterlife", typeof(WaterLifeProbe), 60f,
+            "The valley's water from its rows, filmed into --shots <folder>: water deep enough to swim in near the wizard, with ducks, trout, koi, lily pads and reeds put there. Checks: the water is found, every row exists, no console errors."),
         new Entry("closeup", typeof(CloseupProbe), 60f,
             "Models close up at a clear noon (issue #47): a deer across the follow camera, then a deer, a valley cabin and a village log house, each from the same " +
             "cameras (`--shots`). Checks: a deer at the lens is drawn for its shadow alone, and again once past it, no limb ends in the picture, the cabin's gable closed, " +

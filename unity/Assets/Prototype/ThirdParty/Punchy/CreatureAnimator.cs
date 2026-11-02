@@ -1,7 +1,8 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
 // used with permission. From Punchy's CreatureAnimator.cs: arrays and a
 // reusable scratch in place of Burst's native lists, the ground through
-// ICreatureGround (no caves here); the maths is his.
+// ICreatureGround (no caves here); the maths is his. Individuals, style
+// options, hair and task poses from upstream f3141f6 (at a post: the folk set Task).
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024, S3358, S107
 using Unity.Mathematics;
@@ -18,7 +19,10 @@ namespace Punchy.Fauna
     ///  4. posture (from the activity): lying down lowers the body to the ground and folds legs that hang beneath
     ///     it; head-down bends the neck and head to the ground, chewing; a play bow drops the chest; curling up to
     ///     sleep wraps the tail round and lays the ears back; resting animals breathe;
-    ///  5. feet: legs are bent with two-bone IK so their feet meet the actual ground rather than a flat plane;
+    ///  5. the individual: each animal has fixed traits (from CreatureState.Individual) for posture, arm swing,
+    ///     bounce, torso twist and head tilt, shows one option per style group (hairstyles, beards) and has its own
+    ///     hair colour; a worker at its post poses its arms for its task (hammering, tending…);
+    ///  6. feet: legs are bent with two-bone IK so their feet meet the actual ground rather than a flat plane;
     ///     chains marked Follow Ground (snake bodies, dragging tails) lie along the terrain segment by segment.
     /// </summary>
     public sealed class CreatureAnimator
@@ -30,9 +34,18 @@ namespace Punchy.Fauna
         readonly quaternion[] segRot = new quaternion[MaxSegments];
         readonly float3[] endPos = new float3[MaxSegments];
         readonly quaternion[] endRot = new quaternion[MaxSegments];
+        // Parts this individual doesn't show (unchosen style options, and anything hanging from them): neither posed nor drawn.
+        readonly bool[] partHidden = new bool[MaxSegments];
+        readonly bool[] segHidden = new bool[MaxSegments];
 
-        public void Evaluate(CreatureBody b, in CreatureState s, int coat, ICreatureGround terrain,
-                             SegmentInstance[] output, int offset)
+        /// <summary>Writes the segments this individual shows from <paramref name="offset"/> on, the body first, and returns how many.</summary>
+        public int Evaluate(CreatureBody b, in CreatureState s, int coat, ICreatureGround terrain,
+                            SegmentInstance[] output, int offset) =>
+            Evaluate(b, in s, b.TraitsOf(coat, s.Individual), terrain, output, offset);
+
+        /// <summary>The same, for a caller that keeps each animal's traits (a crowd).</summary>
+        public int Evaluate(CreatureBody b, in CreatureState s, in CreatureTraits traits, ICreatureGround terrain,
+                            SegmentInstance[] output, int offset)
         {
             var scale = s.Scale;
             var move = math.smoothstep(0.03f, math.max(0.3f * b.WalkSpeed, 0.05f), s.Speed);
@@ -41,17 +54,28 @@ namespace Punchy.Fauna
             // Body on the ground: height from the legs, pitch from the ground ahead and behind.
             var forward = new float3(math.sin(s.Yaw), 0f, math.cos(s.Yaw));
             var halfLength = b.BodyLength * 0.5f * scale;
-            var ground = terrain.Height(s.Position.xz);
-            var front = terrain.Height(s.Position.xz + forward.xz * halfLength);
-            var back = terrain.Height(s.Position.xz - forward.xz * halfLength);
-            var gradient = (front - back) / (2f * halfLength);   // rise per metre forward
+            // Swimmers and floaters are carried at their own height (the body's centre at Position).
+            var aquatic = b.Habitat != Habitat.Land;
+            var ground = aquatic ? s.Position.y - b.StandHeight * scale : terrain.Height(s.Position.xz);
+            var gradient = 0f;   // rise per metre forward
             // Four-legged bodies tilt with the slope; upright ones stay level (their legs take up the slope).
-            if (b.Upright)
-                gradient = 0f;
+            if (!b.Upright && !aquatic)
+            {
+                var front = terrain.Height(s.Position.xz + forward.xz * halfLength);
+                var back = terrain.Height(s.Position.xz - forward.xz * halfLength);
+                gradient = (front - back) / (2f * halfLength);
+            }
             var pitch = math.clamp(-math.atan(gradient), -0.45f, 0.45f);
+            // A leaping fish noses up out of the water and dives back in nose first.
+            if (s.Air > 0f)
+                pitch -= math.cos(math.PI * s.Air) * 0.9f;
+
+            var id = s.Individual;
+            var worn = traits.Worn;
+            var girth = traits.Girth;
 
             var bobs = math.lerp(b.BobsPerCycle.x, b.BobsPerCycle.y, run);
-            var bob = math.lerp(b.Bob.x, b.Bob.y, run) * move * scale * (0.5f - 0.5f * math.cos(2f * math.PI * bobs * s.Phase));
+            var bob = math.lerp(b.Bob.x, b.Bob.y, run) * traits.Bounce * move * scale * (0.5f - 0.5f * math.cos(2f * math.PI * bobs * s.Phase));
             pitch += b.RunRock * run * move * math.sin(2f * math.PI * s.Phase);
 
             // Posture: lying lowers the body onto its belly; a bow or a lowered head tips the chest down.
@@ -68,16 +92,32 @@ namespace Punchy.Fauna
 
             // Body.
             var body = b.Segments[0];
-            output[offset] = Instance(rootPos + math.mul(rootRot, new float3(0f, 0f, -halfLength + body.RadiusStart * scale)), rootRot, body, scale, b.SegmentColor(0, coat));
+            output[offset] = Instance(rootPos + math.mul(rootRot, new float3(0f, 0f, -halfLength + body.RadiusStart * scale)), rootRot, body, scale, girth, b.SegmentColor(0, in worn));
 
+            int styleGroup = 0, styleShown = 0;
             for (int i = 0; i < b.Parts.Length && i < MaxSegments; i++)
             {
                 var part = b.Parts[i];
+                // A group's options stand together in the list, so one hash does for the group.
+                if (part.StyleGroup != styleGroup)
+                {
+                    styleGroup = part.StyleGroup;
+                    styleShown = styleGroup > 0 ? CreatureBody.Style(id, styleGroup, part.StyleCount) : 0;
+                }
+                var hidden = part.Parent >= 0 && partHidden[part.Parent] || part.StyleGroup > 0 && styleShown != part.StyleIndex;
+                partHidden[i] = hidden;
+                for (int j = 0; j < part.SegmentCount; j++)
+                    if (part.FirstSegment + j < MaxSegments)
+                        segHidden[part.FirstSegment + j] = hidden;
+                if (hidden)
+                    continue;
                 var parentPos = part.Parent < 0 ? rootPos : endPos[part.Parent];
                 var parentRot = part.Parent < 0 ? rootRot : endRot[part.Parent];
                 var pos = parentPos + math.mul(parentRot, part.Socket * scale);
                 var rot = math.mul(parentRot, part.Rest);
                 var phase = math.frac(s.Phase + part.Phase);
+                var torso = b.Upright && part.Parent < 0 && part.Role != LimbRole.Leg;
+                var amplitude = part.Role == LimbRole.Arm ? traits.ArmSwing : torso ? traits.Twist : 1f;
 
                 // Legs hanging beneath the body fold up when it lies down (front legs half-fold for a play bow);
                 // splayed legs (lizards, spiders) keep their feet planted and bend at the knees instead.
@@ -90,11 +130,21 @@ namespace Punchy.Fauna
                 {
                     var seg = part.FirstSegment + j;
                     var a = b.Angles(seg, math.frac(phase - j * part.JointPhaseStep), move, run);
+                    if (amplitude != 1f)
+                    {
+                        var idle = b.Poses[seg * CreatureBody.PoseCount + CreatureBody.Idle];
+                        a = idle + (a - idle) * amplitude;
+                    }
+                    if (torso && j == 0)
+                        a.x += traits.Lean;
+                    if (part.Role == LimbRole.Head && j == 0)
+                        a += traits.HeadTilt;
                     a += Secondary(part, in s, j, run, b.Upright);
+                    a += TaskPose(part, in s, j);
                     if (fold > 0f)
                         a.x += Fold(j, part.SegmentCount) * fold;
                     rot = math.mul(rot, quaternion.EulerZXY(a));
-                    if (part.FollowGround)
+                    if (part.FollowGround && !aquatic)
                         rot = LieOnGround(terrain, pos, rot, b.Segments[seg].Length * scale, b.Segments[seg].RadiusEnd * b.Segments[seg].Flatten * scale);
                     if (seg < MaxSegments)
                     {
@@ -104,7 +154,7 @@ namespace Punchy.Fauna
                     pos += math.mul(rot, new float3(0f, 0f, b.Segments[seg].Length * scale));
                 }
 
-                if (part.Role == LimbRole.Leg && part.Parent < 0 && part.SegmentCount >= 2 && part.FirstSegment + part.SegmentCount <= MaxSegments)
+                if (!aquatic && part.Role == LimbRole.Leg && part.Parent < 0 && part.SegmentCount >= 2 && part.FirstSegment + part.SegmentCount <= MaxSegments)
                 {
                     // Where the ground would be under this foot if it were the flat, sloped plane the body is
                     // standing on, versus where it really is: bend the leg by the difference.
@@ -123,8 +173,57 @@ namespace Punchy.Fauna
                 endRot[i] = rot;
             }
 
+            var written = 1;
             for (int seg = 1; seg < b.Segments.Length && seg < MaxSegments; seg++)
-                output[offset + seg] = Instance(segPos[seg], segRot[seg], b.Segments[seg], scale, b.SegmentColor(seg, coat));
+            {
+                if (segHidden[seg])
+                    continue;
+                var segment = b.Segments[seg];
+                var colour = b.SegmentColor(seg, in worn);
+                if (segment.Hair != 0 && traits.Hair.x >= 0f)
+                    colour = traits.Hair;
+                output[offset + written++] = Instance(segPos[seg], segRot[seg], segment, scale, girth, colour);
+            }
+            return written;
+        }
+
+        /// <summary>
+        /// A worker's arms at its post. Arms hang down from the shoulder: negative pitch raises them forwards,
+        /// positive swings them back; mirrored arms keep the same pitch.
+        /// </summary>
+        static float3 TaskPose(CreaturePart part, in CreatureState s, int joint)
+        {
+            if (part.Role != LimbRole.Arm || s.Task == CreatureTask.None || joint > 1)
+                return float3.zero;
+            var right = part.Side > 0f;
+            var t = s.Clock + (s.Individual % 100) * 0.13f;
+            switch (s.Task)
+            {
+                case CreatureTask.Hammer:
+                case CreatureTask.Chop:
+                {
+                    // Raise slowly, strike fast; a hammer is one-handed (the other hand holds the work), an axe two.
+                    var swinging = right || s.Task == CreatureTask.Chop;
+                    if (!swinging)
+                        return new float3(-0.7f, 0f, 0f);
+                    var p = math.frac(t * (s.Task == CreatureTask.Chop ? 0.55f : 0.85f));
+                    var lift = p < 0.7f ? math.smoothstep(0f, 0.7f, p) : 1f - math.smoothstep(0.7f, 0.8f, p);
+                    return new float3(joint == 0 ? -(0.45f + 1.8f * lift) : -(0.35f + 0.9f * lift), 0f, 0f);
+                }
+                case CreatureTask.Gesture:
+                {
+                    // Hands resting on the counter; every so often one rises to beckon or point.
+                    var p = math.frac(t * 0.21f + (right ? 0f : 0.5f));
+                    var raise = math.smoothstep(0f, 0.06f, p) * (1f - math.smoothstep(0.14f, 0.24f, p));
+                    return new float3(joint == 0 ? -0.45f - 1.2f * raise : -0.9f + 0.4f * raise, 0f, 0f);
+                }
+                case CreatureTask.Tend:
+                    return new float3(joint == 0 ? -0.65f + 0.22f * math.sin(t * 1.5f + (right ? 0f : 1.4f)) : -0.55f, 0f, 0f);
+                case CreatureTask.Watch:
+                    return new float3(joint == 0 ? 0.35f : -0.75f, 0f, 0f);   // hands clasped behind the back
+                default:
+                    return float3.zero;
+            }
         }
 
         /// <summary>
@@ -237,13 +336,13 @@ namespace Punchy.Fauna
             return math.normalize(new quaternion(c.x, c.y, c.z, w));
         }
 
-        static SegmentInstance Instance(float3 position, quaternion rotation, CreatureSegment seg, float scale, float4 color) => new SegmentInstance
+        static SegmentInstance Instance(float3 position, quaternion rotation, CreatureSegment seg, float scale, float girth, float4 color) => new SegmentInstance
         {
             Position = position,
             Rotation = rotation,
             Length = seg.Length * scale,
-            RadiusStart = seg.RadiusStart * scale,
-            RadiusEnd = seg.RadiusEnd * scale,
+            RadiusStart = seg.RadiusStart * scale * girth,
+            RadiusEnd = seg.RadiusEnd * scale * girth,
             Flatten = seg.Flatten,
             Color = color
         };

@@ -6,8 +6,9 @@ using UnityEngine;
 
 // The villages' folk going about their day (docs/WORLD_LIFE.md, "Villagers"):
 // each walks between its village's doors, the well and the benches, stops a
-// while at each and sits on the benches; the beach bar's barkeep keeps to the
-// bar. At night and in heavy rain or snow they walk to the nearest door and go
+// while at each and sits on the benches; the first few are workers at their
+// posts (the barkeep at the bar, one tending the well, a lookout at the inn's
+// door) and keep to them. At night and in heavy rain or snow they walk to the nearest door and go
 // in, and come out of the doors again when it's over. A fire near them hands
 // them back to the creature brain, which runs from it as far as their leash to
 // the village lets them; they take up their day again once it has passed. Driven as Punchy's puppets (they keep the heading
@@ -25,6 +26,9 @@ public partial class ValleyFauna
         public bool hasBar;
         public float2 bar;
         public float barYaw;
+        public bool hasInn;
+        public float2 inn;
+        public float innYaw;
         public bool indoors;
     }
 
@@ -54,6 +58,12 @@ public partial class ValleyFauna
                 p.bar = new float2(door.x, door.z);
                 p.barYaw = math.atan2(outward.x, outward.z);
             }
+            if (house.kind == BuildingKind.Inn && !p.hasInn)
+            {
+                p.hasInn = true;
+                p.inn = new float2(door.x, door.z);
+                p.innYaw = math.atan2(outward.x, outward.z);
+            }
         }
         float reach = v.wander + 12f;
         foreach (var seat in Seat.All)
@@ -67,6 +77,19 @@ public partial class ValleyFauna
             p.benches.Add((new float2(foot.x, foot.z), math.atan2(f.x, f.z), seat.lounge));
         }
         return p;
+    }
+
+    // The nth to come out of a village's doors: the first few have posts, as far as it has them.
+    static (CreatureTask job, float2 post, float yaw) PostOf(int n, FolkPlaces p)
+    {
+        if (n == 0 && p.hasBar) return (CreatureTask.Gesture, p.bar, p.barYaw);
+        if (n == 1)
+        {
+            var well = p.well - new float2(1.4f, 0.6f);
+            return (CreatureTask.Tend, p.well, math.atan2(well.x - p.well.x, well.y - p.well.y));
+        }
+        if (n == 2 && p.hasInn) return (CreatureTask.Watch, p.inn, p.innYaw);
+        return (CreatureTask.None, default, 0f);
     }
 
     /// <summary>Night, or rain or snow heavy enough to send the folk indoors.</summary>
@@ -105,6 +128,7 @@ public partial class ValleyFauna
             {
                 s.Mode = CreatureMode.Idle;
                 s.Lie = 0f;
+                s.Task = CreatureTask.None;
                 c.task = FolkTask.Pause;
                 c.wait = 0f;
             }
@@ -119,6 +143,7 @@ public partial class ValleyFauna
             c.task = FolkTask.GoIn;
             c.goal = Nearest(p.doors, s.Position.xz);
             s.Lie = 0f;
+            s.Task = CreatureTask.None;
         }
         var b = bodies[c.species];
         switch (c.task)
@@ -133,23 +158,24 @@ public partial class ValleyFauna
             case FolkTask.Pause:
                 s.Speed = 0f;
                 c.wait -= dt;
-                if (c.wait <= 0f && !(c.barkeep && p.hasBar)) Next(c, ref s, p);
+                if (c.wait <= 0f && s.Task == CreatureTask.None) Next(c, ref s, p);
                 break;
         }
         c.state = s;
         return true;
     }
 
-    // At its goal: the barkeep turns to the bar; a bench is sat on (a lounger lain on); anywhere
-    // else it stands a while.
+    // At its goal: a worker takes up its post, facing its work; a bench is sat on (a lounger lain
+    // on); anywhere else it stands a while.
     void Arrive(Creature c, ref CreatureState s, FolkPlaces p)
     {
         s.Speed = 0f;
         c.task = FolkTask.Pause;
         c.wait = rng.NextFloat(4f, 12f);
-        if (c.barkeep && p.hasBar)
+        if (c.job != CreatureTask.None)
         {
-            s.Yaw = p.barYaw;
+            s.Yaw = c.postYaw;
+            s.Task = c.job;
             return;
         }
         foreach (var (at, yaw, lounge) in p.benches)
@@ -167,14 +193,14 @@ public partial class ValleyFauna
         }
     }
 
-    // Where next: the barkeep back to the bar; the others a door, the well or a bench, at random.
+    // Where next: a worker to its post; the others a door, the well or a bench, at random.
     void Next(Creature c, ref CreatureState s, FolkPlaces p)
     {
         s.Lie = 0f;
         c.task = FolkTask.Walk;
-        if (c.barkeep && p.hasBar)
+        if (c.job != CreatureTask.None)
         {
-            c.goal = p.bar;
+            c.goal = c.post;
             return;
         }
         float roll = rng.NextFloat();
@@ -242,7 +268,7 @@ public partial class ValleyFauna
         }
         s.YawRate = Wrap(yaw - s.Yaw) / math.max(dt, 1e-4f);
         s.Yaw = Wrap(yaw);
-        s.Speed = b.WalkSpeed * s.Scale;
+        s.Speed = b.WalkSpeed * s.Scale * (1f + CreatureBody.Trait(s.Individual, 5) * 0.08f);
         return false;
     }
 
@@ -275,6 +301,21 @@ public partial class ValleyFauna
             if (c.task == FolkTask.Sit) sitting++;
         }
         return at;
+    }
+
+    /// <summary>For the probe: how many of a village's folk are at their posts, and each one's species and job.</summary>
+    public List<string> FolkKinds(Village village, out int working)
+    {
+        var kinds = new List<string>();
+        working = 0;
+        int v = folk.FindIndex(f => f.village == village);
+        foreach (var c in creatures)
+        {
+            if (v < 0 || c.village != v) continue;
+            if (c.state.Task != CreatureTask.None) working++;
+            kinds.Add(c.job == CreatureTask.None ? bodies[c.species].Id : $"{bodies[c.species].Id} ({c.job})");
+        }
+        return kinds;
     }
 
     /// <summary>For the probe: one of a village's folk sitting now, where and facing which way.</summary>

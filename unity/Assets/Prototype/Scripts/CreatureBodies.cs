@@ -24,6 +24,22 @@ public sealed class CreatureBodies
     /// <summary>A species' index by its id, or -1.</summary>
     public int IndexOf(string id) => id != null && indices.TryGetValue(id, out int i) ? i : -1;
 
+    /// <summary>
+    /// Who comes out of a door of a village of the species at <paramref name="kind"/>: them, or one of the
+    /// species whose row says it comes out among them, by the share it gives. <paramref name="roll"/> is from 0 to 1.
+    /// </summary>
+    public int FolkAt(int kind, float roll)
+    {
+        for (int i = 0; i < bodies.Count; i++)
+        {
+            var b = bodies[i];
+            if (b == null || b.Among != bodies[kind].Id) continue;
+            roll -= b.Share;
+            if (roll < 0f) return i;
+        }
+        return kind;
+    }
+
     /// <summary>Brings the bodies up to these rules.</summary>
     public void Refresh(Rules rules)
     {

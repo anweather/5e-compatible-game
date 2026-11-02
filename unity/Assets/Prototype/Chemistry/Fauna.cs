@@ -21,6 +21,19 @@ namespace Chem
         public double Weight = 1;
     }
 
+    /// <summary>How much one animal of a species differs from the next, each drawn from its Individual.</summary>
+    public sealed class VaryDef
+    {
+        /// <summary>Lighter or darker, as a share of the colour.</summary>
+        public double Shade;
+        /// <summary>Warmer or cooler: red up and blue down, or the other way, as a share.</summary>
+        public double Warm;
+        /// <summary>Slimmer or stockier, as a share of every radius.</summary>
+        public double Girth;
+        /// <summary>Picks base and accent from the coats apart (a tunic and a skin), not in pairs.</summary>
+        public bool Mix;
+    }
+
     /// <summary>A part on a species: which shape, hung from what, where and how.</summary>
     public sealed class SlotDef
     {
@@ -35,6 +48,8 @@ namespace Chem
         public double Phase;
         public double MirrorPhase = 0.5;
         public double Scale = 1, Thickness = 1;
+        /// <summary>Style group: each animal shows one slot of a group (hairstyles, beards); 0 is always shown.</summary>
+        public int Style;
     }
 
     /// <summary>A species' row, as written: a variant leaves out what it takes from <see cref="VariantOf"/>.</summary>
@@ -48,9 +63,17 @@ namespace Chem
         /// <summary>The coat when <see cref="Coats"/> is empty.</summary>
         public CoatDef Coat = new CoatDef { Base = new[] { 0.55, 0.4, 0.25 }, Accent = new[] { 0.9, 0.85, 0.75 } };
         public IReadOnlyList<CoatDef> Coats = Array.Empty<CoatDef>();
+        /// <summary>Hair colours each animal picks from; empty takes the species it's a variant of, or the segments' own.</summary>
+        public IReadOnlyList<double[]> Hair = Array.Empty<double[]>();
+        /// <summary>How animals differ from each other; null takes the species it's a variant of, or none.</summary>
+        public VaryDef Vary;
         public IReadOnlyList<SlotDef> Slots = Array.Empty<SlotDef>();
         public double Walk = 1.4, Run = 6, Turn = 140, Rock;
         public double[] Bob = { 0.02, 0.06 }, Bobs = { 2, 2 }, Stride = { 0.6, 0.9 };
+        /// <summary>Where it lives: walks (the default), swims under the water or floats on it; leaps says a swimmer leaps.</summary>
+        public IReadOnlyList<string> Habitats = Array.Empty<string>();
+        /// <summary>A swimmer's depth below the surface in metres, and leaps a minute.</summary>
+        public double Depth = 0.6, Leaps;
         public bool Upright;
         public double Wander = 25, Flee = 12;
         public double[] Idle = { 2, 8 }, Group = { 1, 1 };
@@ -60,6 +83,9 @@ namespace Chem
         /// <summary>Animals per hectare in the wilds; 0 with no "spawn": a village's folk, or a form only a mod uses.</summary>
         public double Density;
         public bool NearWater, Spawns;
+        /// <summary>The folk it comes out among, and what share of their number it is: a village of those has some of these.</summary>
+        public string Among;
+        public double Share;
     }
 
     /// <summary>One segment of a part: a tapered capsule.</summary>
@@ -71,6 +97,8 @@ namespace Chem
         /// <summary>A colour of its own, whatever the coat (hooves, eyes); null for the coat's.</summary>
         public double[] Colour;
         public double Glow;
+        /// <summary>Takes the animal's hair colour.</summary>
+        public bool Hair;
     }
 
     /// <summary>A part's row: its shape and, until gaits go by rule, its key poses.</summary>
@@ -96,6 +124,7 @@ namespace Chem
 
         internal static readonly string[] Roles = { "leg", "arm", "tail", "neck", "head", "ear", "horn", "eye", "feature" };
         internal static readonly string[] Actives = { "day", "night", "always" };
+        internal static readonly string[] Habitats = { "walks", "swims", "floats", "leaps" };
 
         readonly JObject species, parts;
         readonly Dictionary<string, SpeciesDef> readSpecies = new Dictionary<string, SpeciesDef>(StringComparer.Ordinal);
@@ -185,6 +214,9 @@ namespace Chem
             }
             if (row["coat"] is JObject coat) s.Coat = ReadCoat(coat, s.Coat);
             if (row["coats"] is JArray coats) s.Coats = coats.OfType<JObject>().Select(c => ReadCoat(c, s.Coat)).ToList();
+            if (row["hair"] is JArray hair) s.Hair = hair.Select(c => Colour(c, Array.Empty<double>())).ToList();
+            if (row["vary"] is JObject vary)
+                s.Vary = new VaryDef { Shade = Num(vary["shade"], 0), Warm = Num(vary["warm"], 0), Girth = Num(vary["girth"], 0), Mix = (bool?)vary["mix"] ?? false };
             if (row["parts"] is JObject slots) s.Slots = slots.Properties().Select(ReadSlot).ToList();
             ReadMove(s, row["move"] as JObject);
             ReadBehave(s, row["behave"] as JObject);
@@ -193,6 +225,8 @@ namespace Chem
                 s.Spawns = true;
                 s.Density = Num(spawn["density"], 0);
                 s.NearWater = (bool?)spawn["nearWater"] ?? false;
+                s.Among = (string)spawn["among"];
+                s.Share = Num(spawn["share"], 0);
             }
             return s;
         }
@@ -208,6 +242,9 @@ namespace Chem
             s.Bobs = Nums(move["bobs"], s.Bobs);
             s.Stride = Nums(move["stride"], s.Stride);
             s.Upright = (bool?)move["upright"] ?? false;
+            if (move["habitats"] is JArray habitats) s.Habitats = habitats.Select(h => (string)h).ToList();
+            s.Depth = Num(move["depth"], s.Depth);
+            s.Leaps = Num(move["leaps"], s.Leaps);
         }
 
         static void ReadBehave(SpeciesDef s, JObject behave)
@@ -251,6 +288,7 @@ namespace Chem
             s.MirrorPhase = Num(p.Value["mirrorPhase"], s.MirrorPhase);
             s.Scale = Num(p.Value["scale"], s.Scale);
             s.Thickness = Num(p.Value["thickness"], s.Thickness);
+            s.Style = (int)Num(p.Value["style"], 0);
             return s;
         }
 
@@ -279,6 +317,7 @@ namespace Chem
             s.Accent = Num(row["accent"], s.Accent);
             s.Colour = Colour(row["colour"], s.Colour);
             s.Glow = Num(row["glow"], s.Glow);
+            s.Hair = (bool?)row["hair"] ?? false;
             return s;
         }
 

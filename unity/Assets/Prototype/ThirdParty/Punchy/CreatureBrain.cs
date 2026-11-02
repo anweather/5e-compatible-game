@@ -112,6 +112,7 @@ namespace Punchy.Fauna
         // This step's inputs.
         Herd herd;
         ICreatureGround terrain;
+        Habitat habitat;
         float dt, night;
 
         /// <param name="self">The animal's id in the herd.</param>
@@ -123,6 +124,7 @@ namespace Punchy.Fauna
         {
             herd = others;
             terrain = ground;
+            habitat = b.Habitat;
             dt = deltaTime;
             night = nightAmount;
             var rng = new Random(s.Seed | 1u);
@@ -171,7 +173,10 @@ namespace Punchy.Fauna
             var desiredLook = 0f;
             var moving = false;
             float lie = 0f, headDown = 0f, bow = 0f, curl = 0f;
-            var walk = b.WalkSpeed * s.Scale;
+            // Each individual walks a little faster or slower than the next. Upstream's run takes it too; here
+            // that overshoots a corner (CreatureMillTests), which is tuned to the species' top speed.
+            var pace = 1f + CreatureBody.Trait(s.Individual, 5) * 0.08f;
+            var walk = b.WalkSpeed * s.Scale * pace;
             var run = b.RunSpeed * s.Scale;
 
             // Keep an eye on a nearby wizard (busy feeding or drinking, only a close one).
@@ -326,7 +331,7 @@ namespace Punchy.Fauna
             // Stay out of water and off cliffs: stop (or, running, veer) when the way ahead is bad.
             var forward = new float2(math.sin(s.Yaw), math.cos(s.Yaw));
             var ahead = s.Position.xz + forward * math.max(LookAhead, s.Speed * 0.5f) * s.Scale;
-            if (s.Speed > 0.05f && !terrain.Walkable(ahead) || SlopeAhead(s.Position.xz, ahead) > SteepestSlope)
+            if (s.Speed > 0.05f && !CanGo(ahead) || habitat == Habitat.Land && SlopeAhead(s.Position.xz, ahead) > SteepestSlope)
             {
                 s.Speed *= 0.5f;
                 if (s.Mode == CreatureMode.Flee)
@@ -335,6 +340,12 @@ namespace Punchy.Fauna
                     s.Target = s.Position.xz + new float2(-forward.y, forward.x) * (rng.NextBool() ? 20f : -20f);
                 else if (s.Mode == CreatureMode.Wander || s.Mode == CreatureMode.Drink && s.Stage == 0)
                     Pause(ref s, b, ref rng);
+            }
+            // Swimmers now and then leap out of the water while they're moving.
+            if (habitat == Habitat.Swims && b.Leaps > 0f && s.Air <= 0f && s.Speed > walk * 0.5f && rng.NextFloat() < b.Leaps * dt / 60f)
+            {
+                s.Air = 0.001f;
+                s.AirHeight = (b.BodyLength * 1.2f + 0.4f) * s.Scale * rng.NextFloat(0.6f, 1.2f);
             }
             Advance(ref s, b, dt);
             s.Look += (desiredLook - s.Look) * math.min(1f, dt * 3f);
@@ -416,7 +427,7 @@ namespace Punchy.Fauna
                 // Animals with a home stay near it.
                 if (s.Leash > 0f && math.distance(candidate, s.Home) > s.Leash)
                     candidate = s.Home + rng.NextFloat2Direction() * s.Leash * rng.NextFloat(0.1f, 0.8f);
-                if (terrain.Walkable(candidate))
+                if (CanGo(candidate))
                 {
                     SetMode(ref s, CreatureMode.Wander);
                     s.Target = candidate;
@@ -517,9 +528,9 @@ namespace Punchy.Fauna
             var length = math.distance(from, to);
             var dir = (to - from) / math.max(length, 0.01f);
             for (var d = 1f; d < length; d += 1.5f)
-                if (!terrain.Walkable(from + dir * d))
+                if (!CanGo(from + dir * d))
                     return false;
-            return terrain.Walkable(to) && terrain.Walkable(to + dir * LookAhead * s.Scale) && SlopeAhead(from, to) <= SteepestSlope;
+            return CanGo(to) && CanGo(to + dir * LookAhead * s.Scale) && SlopeAhead(from, to) <= SteepestSlope;
         }
 
         // ------------------------------------------------------------------------------- two-animal activities
@@ -770,12 +781,43 @@ namespace Punchy.Fauna
         {
             var forward = new float2(math.sin(s.Yaw), math.cos(s.Yaw));
             s.Position.xz += forward * s.Speed * deltaTime;
-            s.Position.y = terrain.Height(s.Position.xz);
+            if (b.Habitat == Habitat.Land)
+                s.Position.y = terrain.Height(s.Position.xz);
+            else
+                s.Position.y = InWater(ref s, b, deltaTime);
             var run = math.smoothstep(b.WalkSpeed * 1.1f, math.max(b.WalkSpeed * 1.2f, b.RunSpeed * 0.7f), s.Speed / s.Scale);
             var stride = math.lerp(b.WalkStride, b.RunStride, run) * s.Scale;
             s.Phase = math.frac(s.Phase + s.Speed * deltaTime / stride);
             s.Sway += (-s.YawRate * 0.35f - s.Sway) * math.min(1f, deltaTime * 4f);
         }
+
+        // Floating on the surface, or swimming a little under it (shallower in shallow water); a leap arcs up
+        // out of the water and back.
+        float InWater(ref CreatureState s, CreatureBody b, float deltaTime)
+        {
+            var bed = terrain.Height(s.Position.xz);
+            var surface = bed + math.max(terrain.WaterDepth(s.Position.xz), 0f);
+            var y = b.Habitat == Habitat.Floats ? surface + b.StandHeight * 0.35f * s.Scale
+                  : surface - math.clamp((surface - bed) * 0.45f, 0.25f, b.SwimDepth);
+            if (s.Air <= 0f)
+                return y;
+            s.Air += deltaTime / (0.6f + s.AirHeight * 0.35f);
+            if (s.Air >= 1f)
+            {
+                s.Air = 0f;
+                return y;
+            }
+            var arc = math.sin(math.PI * s.Air);
+            return math.max(y, surface + arc * s.AirHeight - (surface - y) * (1f - arc));
+        }
+
+        // Whether an animal of this habitat can go here: land it may step on, or water deep enough to swim or float in.
+        bool CanGo(float2 xz) => habitat == Habitat.Land ? terrain.Walkable(xz) : Suits(habitat, terrain.WaterDepth(xz));
+
+        /// <summary>Whether water this deep (below 0: none) will carry an animal of a water habitat.</summary>
+        public static bool Suits(Habitat habitat, float depth) => depth >= (habitat == Habitat.Swims ? SwimsIn : FloatsIn);
+
+        const float SwimsIn = 0.7f, FloatsIn = 0.3f;
 
         float SlopeAhead(float2 from, float2 to)
         {
