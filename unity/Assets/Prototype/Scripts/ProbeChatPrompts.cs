@@ -19,6 +19,7 @@ using UnityEngine;
 // record can be checked against something it didn't make, and a watch of what the frames show, so
 // the stamp can be too. With --shots it applies the recorded patches again and films them, for nothing.
 // --model, --context and --also change how claude starts, for this run only: with none, it starts as a player's does.
+// --notes off sends the message without notes.md, for this run only: the file's still there.
 // --replay casts the spells earlier runs recorded, also for nothing: a cast is the one thing a record can't say.
 // Records and streams stay in the --out folder (docs/telemetry/chat-base-2026-11-02.md reads them).
 public class ChatPromptsProbe : RowHousesProbe
@@ -32,7 +33,7 @@ public class ChatPromptsProbe : RowHousesProbe
     const float CastLands = 3f;
     // J-064: no runs past this share of the weekly limit. Each real stream says the share in its rate_limit_event.
     const double MostWeekly = 0.85, MostFiveHour = 0.60;
-    const string PromptsFile = "chat-prompts.json", BareContext = "bare", CastsFile = "casts.jsonl", AskedFile = "asked.txt", ApiHarness = "api", LongCache = "1h";
+    const string PromptsFile = "chat-prompts.json", BareContext = "bare", NotesOff = "off", StandInNote = "- The stand-in's note.", CastsFile = "casts.jsonl", AskedFile = "asked.txt", ApiHarness = "api", LongCache = "1h";
     // No user settings (their skills and plugins) and no slash commands. Neither reads or moves the login.
     static readonly string[] BareArguments = { "--setting-sources", "project,local", "--disable-slash-commands" };
     static readonly string[] ClaudesOwn = { "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID" };
@@ -68,7 +69,9 @@ public class ChatPromptsProbe : RowHousesProbe
         Check("the_context_is_known", knownContext, Context);
         bool knownHarness = string.IsNullOrEmpty(Harness) || Harness == ApiHarness;
         Check("the_harness_is_known", knownHarness, Harness);
-        if (!knownContext || !knownHarness) yield break;
+        bool knownNotes = string.IsNullOrEmpty(Notes) || Notes == NotesOff;
+        Check("the_notes_switch_is_known", knownNotes, Notes);
+        if (!knownContext || !knownHarness || !knownNotes) yield break;
         outDir = OutDir ?? Path.Combine(Application.temporaryCachePath, "chat-prompts");
         chatFolder = Path.Combine(outDir, "claude-terminal");
         modsDir = Path.Combine(ChemGrid.FindRulesDir(), "mods");
@@ -81,6 +84,7 @@ public class ChatPromptsProbe : RowHousesProbe
         ClaudeChat.StandIn = RealClaude ? null : StandIn();
         ClaudeChat.Model = string.IsNullOrEmpty(Model) ? null : Model;
         ClaudeChat.Extra = Arguments();
+        ClaudeChat.NotesOff = Notes == NotesOff;
         var harnessWas = GameChat.Instance.Harness;
         if (Api) GameChat.Instance.Harness = ApiHarnessNow();
         try
@@ -94,6 +98,7 @@ public class ChatPromptsProbe : RowHousesProbe
             ClaudeChat.StandIn = null;
             ClaudeChat.Model = null;
             ClaudeChat.Extra = null;
+            ClaudeChat.NotesOff = false;
             ClaudeTerminal.TestFolder = null;
             ChatTelemetry.Folder = null;
         }
@@ -156,6 +161,7 @@ public class ChatPromptsProbe : RowHousesProbe
         Check("claude_gets_the_chats_model_unless_asked", asked.Split("--model").Length == 2 && asked.Contains("--model " + model), asked);
         Check("claude_gets_bare_only_if_asked", bare == (Context == BareContext), asked);
         Check("claude_gets_the_chats_own_prompt", asked.Contains(ClaudeRun.ChatPrompt), asked);
+        Check("the_notes_go_unless_off", asked.Contains(StandInNote) != ClaudeChat.NotesOff, asked);
     }
 
     List<JObject> Set()
@@ -235,6 +241,7 @@ public class ChatPromptsProbe : RowHousesProbe
         };
         var watch = new Watch { rules = grid.CurrentRules, rows = houses.Count, strength = StrengthNow() };
         long sent = telemetry.Now;
+        if (!RealClaude && !Api) PlantNote();
         spent++;
         Metric("prompts_spent", RealClaude ? spent : 0);
         chat.Send(text);
@@ -267,6 +274,13 @@ public class ChatPromptsProbe : RowHousesProbe
         Keep(n, name, sent, prompt, record, watch);
         if (record == null) Check($"{name}_has_a_record", false, id);
         done(record);
+    }
+
+    // A stand-in writes no notes: this one is what shows whether they go with the message.
+    void PlantNote()
+    {
+        Directory.CreateDirectory(chatFolder);
+        File.WriteAllText(Path.Combine(chatFolder, ClaudeRun.NotesFile), StandInNote + "\n");
     }
 
     void Look(Watch watch, ChatRecorder recorder, long ms)
@@ -382,6 +396,7 @@ public class ChatPromptsProbe : RowHousesProbe
             ["fiveHour"] = FiveHour(),
             ["askedModel"] = string.IsNullOrEmpty(Model) ? null : Model,
             ["context"] = string.IsNullOrEmpty(Context) ? null : Context,
+            ["notes"] = string.IsNullOrEmpty(Notes) ? null : Notes,
             ["after"] = WorldNow(),
             ["watch"] = JObject.FromObject(new
             {

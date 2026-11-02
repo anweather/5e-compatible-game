@@ -42,6 +42,9 @@ public sealed class ClaudeChat : IChatHarness
     /// <summary>A model for the real-prompt probe's comparisons, in place of the chat's own. Null in play.</summary>
     public static string Model { get; set; }
 
+    /// <summary>For the real-prompt probe's comparison: the notes stay in their file, and the message goes without them. False in play.</summary>
+    public static bool NotesOff { get; set; }
+
     /// <summary>Whether a message is still being answered.</summary>
     public bool Busy => running != null;
 
@@ -82,7 +85,7 @@ public sealed class ClaudeChat : IChatHarness
         }
         recorder.Started(clock());
         running = process;
-        var input = Encoding.UTF8.GetBytes(ClaudeRun.Message(ClaudeRun.Notes(folder), message));
+        var input = Encoding.UTF8.GetBytes(ClaudeRun.Message(NotesOff ? "" : ClaudeRun.Notes(folder), message));
         new Thread(() => Follow(process, claude, folder, model, input, recorder, clock)) { IsBackground = true, Name = "Claude chat" }.Start();
         return true;
     }

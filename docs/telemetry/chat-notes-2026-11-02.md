@@ -32,7 +32,7 @@ Each cell is one run. Replies are `message.id`s, not `num_turns`.
 - **The opening `Read` is gone.** 0 of the 3 failed `Read`s here come before the first change to the world. In the merged run 4 of 9 did.
 - **The other `Read` stayed.** All 3 prompts here that wrote notes from nothing tried `Read` first, one of them on wording that says outright to `Write`. Why is **inferred**: claude's `Write` asks for a `Read` of a file that exists, and the habit outweighs a line in the prompt. So the "9 of 16" overstated what this could save, and so did the API doc's "about one reply a prompt".
 - **The world came sooner on a fresh start:** 4.7 s twice, against 6.6 s and 9.9 s. It's too few runs to call, and the fast ones also skipped `describe` or `whats_on`, which isn't the notes' doing.
-- **The follow-up got slower, and I can't say why.** To the world 12.3 s and 13.2 s, against 7.0 s and 6.9 s. Part of it is the first reply: its first tool at 4.5 s and 7.3 s, against 2.1 s and 2.6 s. Its tools hardly grew, and the stream gives no reason. It may be load, or Haiku thinking over the notes; two runs a side can't tell, and the budget went before they could. This is the one result here that argues against landing.
+- **The follow-up got slower, and I can't say why.** To the world 12.3 s and 13.2 s, against 7.0 s and 6.9 s. Part of it is the first reply: its first tool at 4.5 s and 7.3 s, against 2.1 s and 2.6 s. Its tools hardly grew, and the stream gives no reason. It may be load, or Haiku thinking over the notes; two runs a side can't tell, and the budget went before they could. This is the one result here that argues against landing. "Why the follow-up slowed", below, takes it further.
 - **The follow-up still works.** Both found what "it" was and left only green on. On the first wording it needed nothing but the message and `whats_on`. On the final wording it opened with `Read`, and then took the long way, with a refused `revert` before the one that went through.
 - **Writing to notes that exist still costs a `Read`.** See below.
 
@@ -54,6 +54,50 @@ The final wording's first prompt read 13,883, and the next 14,133. Why the first
 - **The API loop's block is as it was,** `Notes from earlier messages:` and the lines, unquoted, as the brief said to leave that path. The same reasoning applies to it, and it's for whoever takes that path further.
 - **The record's prompt is the player's words.** Notes join the message only in `ClaudeChat`, after the record has begun. A check holds it.
 - **First wording:** "if the file is already there, Read it just before you Edit it." It sent Haiku to look for the file: `Read` failed on the blue and the rain, and on the rain a stray `Edit` failed too, 4 replies in place of 2. **Final wording:** "with no notes ahead of the message there's no file yet, so Write it; with notes, Read it and then Edit it." It's what's committed, on 2 prompts: blue still tried `Read`, and green read first. Both wordings pass. The final hasn't run on rain or the question.
+
+### Why the follow-up slowed
+
+**Still not proven. It leans to the notes, not to load, and the steady part is about 2 s on the first reply.** With notes in the message that reply took 2.2 s longer than the run with them out, 41 s later, and that was the whole gap to the world. The rest of the 12 s to 13 s was slower replies throughout one run and the long way in the other. No fix went in: nothing here says what a change of wording would change.
+
+**Setup.** `chat-notes-slow` off ab2f9c3 plus the switch, hidden batchmode Editor, one player, Haiku, claude 2.1.316. `chatprompts --real-claude true --set chat-notes.json --prompts 2`, then the same with `--notes off`, which sends the message without notes while `notes.md` stays in its file. That's a probe's switch, and play is as it was. The stand-in shows it: `the_notes_go_unless_off` passes on both, and the block is in one log and not the other.
+
+**Spent.** 4 real prompts of 4, two pairs, no retries. Weekly 69% before and after; five-hour 16%, shared with other sessions. $0.010 at list.
+
+| Green, in seconds from the send | Notes in the message | Replies | To the world | First tool | Done |
+|---|---|---:|---:|---:|---:|
+| Before, 1 and 2 | No, read from the file | 7, 4 | 7.0, 6.9 | 2.1, 2.6 | 10.1, 8.7 |
+| After, first wording | Yes | 7 | 12.3 | 4.5 | 18.4 |
+| After, final wording | Yes | 6 | 13.2 | 7.3 | 15.8 |
+| This run, as the code stands | Yes | 6 | **9.5** | **4.2** | 13.5 |
+| This run, notes off | No | 7 | **7.2** | **1.9** | 12.7 |
+
+Blue, the pair's first prompt, has no notes either way, and it took 4.5 s and 6.2 s to the world with first tools at 2.3 s and 2.4 s. Strict 4 of 4.
+
+**The first reply, from claude's `init` line.** "Wait" is how long until the stream's first `thinking_tokens` line, the first sign of the reply. These are the runs of this pair, in order:
+
+| Run | Prompt | Notes in the message | Wait, ms | Whole reply, ms | Thinking, estimated tokens |
+|---|---|---:|---:|---:|---:|
+| Before 1 | Blue, then green | No, no | 1,449, 765 | 2,030, 1,630 | 282, 314 |
+| Before 2 | Blue, then green | No, no | 4,087, 1,119 | 4,644, 1,758 | 286, 282 |
+| First wording | Blue | No | 860 | 860 | 0 |
+| | **Green** | **Yes** | **2,890** | 4,045 | 345 |
+| | Question, rain | No, no | 813, 1,686 | 813, 2,337 | 0, 276 |
+| Final wording | Blue | No | 1,537 | 2,028 | 252 |
+| | **Green** | **Yes** | **4,436** | 6,369 | 473 |
+| This run | Blue | No | 1,254 | 1,467 | 221 |
+| | **Green** | **Yes** | **2,319** | 3,667 | 366 |
+| Notes off | Blue, then green | No, no | 1,143, 1,031 | 1,852, 1,426 | 302, 259 |
+
+- **Which replies it was.** To the world took 2.26 s longer with notes, and the first tool 2.25 s. Both runs took 4 replies to get there, and from the first tool on each took 5.3 s. So on this pair it's all in the first reply.
+- **Every green with notes waited longer than its own run's blue,** 1.1 s to 2.9 s longer. Every green without them waited less than its blue. 3 of 3 each way. All 3 with notes wait 2.3 s or more. Across all 19 first replies kept with no notes, the rest of the two before runs' prompts included, the middle is 1.25 s and 2 reach 2.3 s, at 2.6 s and 4.1 s: a long wait does happen with no notes. I looked for this after seeing the streams, so it's a pattern that fits, not a test passed.
+- **Two runs can't separate load from the notes.** It's one pair, 41 s apart, and the speed of replies moves more than that within a minute: the first wording's rain, with no notes, took about 2 s a reply just after a question at under 1 s. So one quick run with notes off could be luck. It takes more pairs to settle, alternating.
+- **Load fits the rest.** In the first wording's green every reply was slow, about 1.6 s to 2.9 s, where this run's, with notes too, were mostly 1.3 s to 1.4 s. That run's rain, with no notes, was slow as well. The final wording's extra time is its long way: a refused `revert`, 2 tools more, and a second `revert`. Neither run here took it.
+- **It isn't more thinking, as far as the stream shows.** Thinking is estimated at 345 to 473 tokens with notes, 221 to 314 without, about 100 more, and the wait comes before any of it is reported. Each first reply's thinking text is empty in the stream. Whole prompts' output doesn't lean either way: 1,399 tokens with notes and 1,974 with them off, which had a failed `Edit` in it. Whether Haiku is thinking during the wait or sits in a queue, the stream can't say.
+- **What the first reply did.** Thinking, then `whats_on`, with no words, on both. With notes off it also took `Read` in that same reply, and the file was there.
+- **Green finds the mod from the room alone.** `whats_on` named Blue fire, and it switched it off. It's not a case for taking notes out: it still went to `Read`, in about 20 ms, and then an `Edit` failed on a string it copied with the line number, which cost a reply.
+- **Cache read is the same,** 14,133 on both. The notes add 160 tokens to what's written: 1,863 against 1,703.
+
+**Not tried.** Why a block of about 160 tokens would hold a first reply for 1 s to 3 s. A shorter block, or the block after the message. Alternating pairs, which is what would settle load.
 
 ## An account without Haiku (#64)
 
@@ -96,7 +140,7 @@ It comes twice: on an `assistant` line with `"model":"<synthetic>"`, `"error":"m
 
 ## What's next
 
-1. **Find out why the follow-up slowed,** before or soon after landing: two more runs of the pair, one with notes off, would tell load from the notes.
+1. **Settle why the follow-up slowed.** Done as far as one more pair goes: see "Why the follow-up slowed". Four or so alternating pairs with `--notes off` would tell load from the notes; then try the block's length or place.
 2. **To remove the `Read` for good, give the chat an `add_note` tool.** The API loop has one, and it has no equivalent of this reply. On Claude Code it would be an MCP tool, so it'd sit in the cached block, and `Read`, `Edit` and `Write` could go from the list. Not tried: it's a change to the tool list and wants its own before and after.
 3. A cheap one to try: "with notes, Read it just before you Edit it", since "Read it and then Edit it" had green open on `Read` (one run).
 
@@ -106,4 +150,4 @@ It comes twice: on an `assistant` line with `"model":"<synthetic>"`, `"error":"m
 - `ClaudeSaid.Notice`, the game's own line in the middle of a message.
 - `ClaudeChat` keeps a failure back until the process has gone, as it may yet be retried, and `Ended` now comes before the red line.
 - The `chat` probe's records go to its own folder now, not the play logs' folder, where its first few used to land.
-- The `chat` row in `docs/FAST_LOOP.md` doesn't mention notes in the message or the retry: that doc is another lane's, so it's left for the PM.
+- The `chat` row in `docs/FAST_LOOP.md` now has notes in the message and the retry, and `chatprompts` has `--notes off`.
