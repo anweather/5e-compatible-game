@@ -10,20 +10,24 @@ using Chem.Mcp;
 using Debug = UnityEngine.Debug;
 
 // The in-game chat's messages to the player's own Claude Code (J-060): one headless process for
-// each, in the folder the F9 terminal uses, with nothing kept between them but notes.md. Its
-// output is read on a thread of its own, so a slow answer never holds a frame, and comes back
-// through Take on the main thread. The game holds no credential: whoever is signed in to
-// claude on this machine is who answers, and if nobody is, the player signs in themselves.
+// each, in the folder the F9 terminal uses, with nothing kept between them but notes.md, whose
+// text goes ahead of the message. Its output is read on a thread of its own, so a slow answer
+// never holds a frame, and comes back through Take on the main thread. The game holds no credential:
+// whoever is signed in to claude on this machine is who answers, and if nobody is, the player signs
+// in themselves. An account that can't use the chat's model gets one retry on its own default (#64).
 public sealed class ClaudeChat : IChatHarness
 {
     /// <summary>How long one message may run before it's stopped.</summary>
     const int MostSeconds = 240;
     const int StopWaitMs = 2000;
+    const string WouldntStart = "Claude wouldn't start. The player log says why.";
 
     /// <summary>What the chat shows next: words, a tool in use, the end, or a failure with its reason.</summary>
     readonly ConcurrentQueue<(ClaudeSaid said, string text)> heard = new();
     Process running;
     string lastError = "";
+    // The model this account refused: this session asks for no model after that, so no message has to fail first.
+    string refusedModel;
     volatile bool timedOut, stopped;
 
     /// <summary>A program to run instead of claude, for the probe's stand-in; empty, for no claude at all.</summary>
@@ -67,7 +71,26 @@ public sealed class ClaudeChat : IChatHarness
         }
         ClaudeTerminal.WriteFolder(folder, url);
         TrimNotes(folder);
-        var process = new Process { StartInfo = StartOf(claude, folder), EnableRaisingEvents = true };
+        string model = Model ?? (GameChat.AccountModel ? null : ClaudeRun.ChatModel);
+        if (model == refusedModel) model = null;
+        var process = Started(claude, folder, model);
+        if (process == null)
+        {
+            recorder.Ended(clock(), ChatOutcome.Failed);
+            heard.Enqueue((ClaudeSaid.Failed, WouldntStart));
+            return false;
+        }
+        recorder.Started(clock());
+        running = process;
+        var input = Encoding.UTF8.GetBytes(ClaudeRun.Message(ClaudeRun.Notes(folder), message));
+        new Thread(() => Follow(process, claude, folder, model, input, recorder, clock)) { IsBackground = true, Name = "Claude chat" }.Start();
+        return true;
+    }
+
+    // One process, reading its errors; null if it wouldn't start.
+    Process Started(string claude, string folder, string model)
+    {
+        var process = new Process { StartInfo = StartOf(claude, folder, model), EnableRaisingEvents = true };
         try
         {
             process.Start();
@@ -75,21 +98,15 @@ public sealed class ClaudeChat : IChatHarness
         catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             Debug.LogWarning("Claude chat: " + e.Message);
-            recorder.Ended(clock(), ChatOutcome.Failed);
-            heard.Enqueue((ClaudeSaid.Failed, "Claude wouldn't start. The player log says why."));
-            return false;
+            return null;
         }
-        recorder.Started(clock());
-        running = process;
-        var input = Encoding.UTF8.GetBytes(message);
-        new Thread(() => Follow(process, input, recorder, clock)) { IsBackground = true, Name = "Claude chat" }.Start();
         new Thread(() => lastError = process.StandardError.ReadToEnd()) { IsBackground = true, Name = "Claude chat errors" }.Start();
-        return true;
+        return process;
     }
 
-    static ProcessStartInfo StartOf(string claude, string folder)
+    static ProcessStartInfo StartOf(string claude, string folder, string model)
     {
-        string arguments = ClaudeRun.CommandLine(ClaudeRun.Arguments(Model ?? (GameChat.AccountModel ? null : ClaudeRun.ChatModel)).Concat(Extra ?? Array.Empty<string>()));
+        string arguments = ClaudeRun.CommandLine(ClaudeRun.Arguments(model).Concat(Extra ?? Array.Empty<string>()));
         bool script = claude.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
         var start = new ProcessStartInfo(script ? "cmd.exe" : claude, script ? $"/c \"\"{claude}\" {arguments}\"" : arguments)
         {
@@ -111,15 +128,44 @@ public sealed class ClaudeChat : IChatHarness
         if (File.Exists(notes)) File.WriteAllText(notes, ClaudeRun.Trimmed(File.ReadAllText(notes)));
     }
 
-    // On its own thread: the message in, each line out, and a watchdog so one that never ends can't hold the chat.
-    void Follow(Process process, byte[] input, ChatRecorder recorder, Func<long> clock)
+    // On its own thread: the message's whole life, with one more go if the account refused the model.
+    void Follow(Process process, string claude, string folder, string model, byte[] input, ChatRecorder recorder, Func<long> clock)
+    {
+        string failure = Attempt(process, input, recorder, clock);
+        if (failure != null && !timedOut && !stopped && ClaudeRun.RetriesOnTheAccount(model, failure, recorder.Progress()))
+        {
+            refusedModel = model;
+            heard.Enqueue((ClaudeSaid.Notice, ClaudeRun.ModelFallback));
+            recorder.Retried(clock(), model, failure);
+            model = null;
+            lastError = "";
+            var second = Started(claude, folder, model);
+            if (second == null) failure = WouldntStart;
+            else
+            {
+                running = second;
+                if (stopped) Stop(second); // a Cancel that came between the two
+                failure = Attempt(second, input, recorder, clock);
+            }
+        }
+        ChatOutcome? how = null;
+        if (stopped) how = ChatOutcome.Stopped;
+        if (timedOut) how = ChatOutcome.TimedOut;
+        recorder.Ended(clock(), how);
+        if (failure != null) heard.Enqueue((ClaudeSaid.Failed, ClaudeRun.Pointed(failure, how == null ? model : null)));
+    }
+
+    // One process: the message in, each line out, and a watchdog so one that never ends can't hold the chat. A failure comes back
+    // rather than going to the player, as it may yet be retried; null if the process said it was done.
+    string Attempt(Process process, byte[] input, ChatRecorder recorder, Func<long> clock)
     {
         using var watchdog = new Timer(_ =>
         {
             timedOut = true;
             Stop(process);
         }, null, MostSeconds * 1000, Timeout.Infinite);
-        bool ended = false;
+        bool done = false;
+        string failure = null;
         try
         {
             process.StandardInput.BaseStream.Write(input, 0, input.Length);
@@ -132,8 +178,13 @@ public sealed class ClaudeChat : IChatHarness
                 recorder.Line(line, at);
                 foreach (var said in ClaudeRun.Read(line))
                 {
+                    if (said.said == ClaudeSaid.Failed)
+                    {
+                        failure = said.text;
+                        continue;
+                    }
                     heard.Enqueue(said);
-                    ended |= said.Item1 is ClaudeSaid.Done or ClaudeSaid.Failed;
+                    done |= said.said == ClaudeSaid.Done;
                 }
             }
             process.WaitForExit(StopWaitMs);
@@ -142,11 +193,8 @@ public sealed class ClaudeChat : IChatHarness
         {
             lastError = e.Message;
         }
-        ChatOutcome? how = null;
-        if (stopped) how = ChatOutcome.Stopped;
-        if (timedOut) how = ChatOutcome.TimedOut;
-        recorder.Ended(clock(), how);
-        if (!ended) heard.Enqueue((ClaudeSaid.Failed, string.IsNullOrWhiteSpace(lastError) ? "Claude stopped before it answered." : lastError.Trim()));
+        if (done) return null;
+        return failure ?? (string.IsNullOrWhiteSpace(lastError) ? "Claude stopped before it answered." : lastError.Trim());
     }
 
     static void Stop(Process process)

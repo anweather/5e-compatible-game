@@ -1,6 +1,9 @@
 // node --test tools/chat-report.test.mjs. The log is real: chatbench's five records, then the
 // recorder's output for each stream fixture (ChatRecordTests keeps those lines true).
 import assert from "node:assert/strict";
+import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { test } from "node:test";
 import { fileURLToPath } from "node:url";
 import { kindOf, read, report, text } from "./chat-report.mjs";
@@ -46,6 +49,27 @@ test("the dearest come first and what was refused is listed", () => {
   assert.equal(r.dearest[0].prompt, "add a cantrip that throws a small ball of frost");
   assert.ok(r.dearest.length <= 10);
   assert.ok(r.refused.some(x => x.prompt === "make the player twice as tall" && /Player size/.test(x.why)));
+});
+
+test("a player's data folder is read through chat-records, with what's left from before", () => {
+  const data = mkdtempSync(join(tmpdir(), "chat-report-"));
+  try {
+    cpSync(folder, join(data, "chat-records"), { recursive: true });
+    assert.equal(read(data).records.length, 9, "the new place alone");
+    cpSync(join(folder, "chat-log-2026-11-02.jsonl"), join(data, "chat-log-2026-10-01.jsonl"));
+    assert.equal(read(data).records.length, 9, "the same records, read once");
+  } finally {
+    rmSync(data, { recursive: true });
+  }
+});
+
+test("a retry is counted, and says what ran", () => {
+  const records = [{ ...log.records[0], model: "the-default", retry: { from: "claude-haiku-5-5", why: "no", at: 900 } }];
+  const once = report({ records, bad: 0 });
+  assert.deepEqual(once.retried, [{ prompt: records[0].prompt, from: "claude-haiku-5-5", ran: "the-default" }]);
+  assert.ok(text(once).includes("Retried on the account's model:** 1, from claude-haiku-5-5."));
+  assert.deepEqual(r.retried, []);
+  assert.ok(!text(r).includes("Retried"));
 });
 
 test("the text says it all", () => {

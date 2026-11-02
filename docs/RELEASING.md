@@ -179,7 +179,9 @@ new states (a stale collection only brings those hitches back):
   nothing. Code: `UpdateCheck`, `BuildVersion.NewestRelease`.
 - **Bug reports.** Players send
   `%USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\Player.log`;
-  its first lines name the version and commit.
+  its first lines name the version and commit. It's one file by name on purpose:
+  the chat's records hold players' prompts, so they're in `chat-records/` and
+  aren't sent (`docs/design/chat-telemetry.md`). Don't ask for the whole folder.
 
 ## Updates in place (Velopack)
 

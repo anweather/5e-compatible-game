@@ -468,7 +468,8 @@ switches on), so lockstep holds and we run no servers for it.
      refusal and the tools' text are the server's for both. Without Claude Code there's no `dontAsk` or allow-list, so the loop decides what runs: only `ApiLoop.Allowed`, by name,
      plus `add_note`, and a new server tool stays out until it's named there. Only `chatprompts --harness api` starts it; `docs/telemetry/chat-api-2026-11-02.md` has the numbers.
      The chat starts claude with its own short system prompt (`ClaudeRun.ChatPrompt`): role, notes and staying in the tools,
-     and no game knowledge. It asks for Haiku (`ClaudeRun.ChatModel`, J-066); the Developer menu can leave the model to the account. Asked for something, Claude writes it: the server's instructions and `apply`'s description say to
+     and no game knowledge. The game puts `notes.md` in the message, quoted line by line as a record and not instructions (`ClaudeRun.Message`), after the cached prefix; the record keeps the player's words alone. `Read`, `Edit` and `Write` of that file stay allowed, as claude's `Edit` needs a `Read`, and a terminal still opens it through the guide.
+     It asks for Haiku (`ClaudeRun.ChatModel`, J-066); the Developer menu can leave the model to the account. If the account refuses the model and no tool ran, the message runs once more with no `--model`, a line tells the player, and the session stops asking for it (#64, `docs/telemetry/chat-notes-2026-11-02.md`). Asked for something, Claude writes it: the server's instructions and `apply`'s description say to
      build a draft, `simulate` it if `validate` says to, and apply it with a title; a saved mod only if
      the player names one. **What a tool needs goes in its description, not the instructions:** Claude Code
      writes the instructions again with every prompt, and keeps the descriptions in the cached block. `apply` answers with what the draft changed, field by field, and a draft
