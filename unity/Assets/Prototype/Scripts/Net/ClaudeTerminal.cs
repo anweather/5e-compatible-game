@@ -25,26 +25,12 @@ public class ClaudeTerminal : MonoBehaviour
     public const string NotInstalled = "Claude Code isn't installed. Get it from claude.com/claude-code, then ask again.";
 
     /// <summary>The line that says speech to text is there, on the terminal's first screen and in its CLAUDE.md.</summary>
-    public const string TalkLine = "Press Win+H to talk instead of type.";
+    public const string TalkLine = ClaudeRun.TalkLine;
 
     const string Welcome = "Spell Chemistry Valley\r\n\r\nType claude and press Enter to start, then ask it to change the game:\r\n" +
         "  make all fire blue\r\n  when lightning hits water, leave fog\r\n  make the fire near me green\r\n\r\n" + TalkLine + "\r\n\r\n";
 
-    const string Guide = "# Spell Chemistry Valley\n\n" +
-        "You're in a terminal beside a running game: a 3D RPG on the open 5E rules, built on physics-based interactions between " +
-        "spells. Its rules are data, and the `spell-valley` tools here change them in the game the player is watching, with no restart.\n\n" +
-        "Use the tools. Ask `here` where the player is and `list` or `describe` what's in the rules, make a draft (`set_look`, " +
-        "`set_spell`, `set_material`, `add_reaction`, `tune`), `validate` it, then `apply` it with a short title the players will read. " +
-        "The tools' own instructions say more. If the tools don't connect, the game has closed or Claude is off on its Play with Claude page.\n\n" +
-        "Keep your answer to a line or two: the player is in the middle of a game.\n\n" +
-        "## Notes\n\n" +
-        "Each message starts a new process that remembers nothing, so read `notes.md` here first. When you've finished, add a line or two " +
-        "there saying what you changed and what's on now. The game keeps only its newest lines.\n\n" +
-        "## What's outside the rules\n\n" +
-        "Some things are in the game's code, not its rules, so no tool changes them yet. `outside_rules` lists them, each with the nearest " +
-        "thing a tool can do. Before you say no, check it; then say so in a line, offer that instead, and don't look for source: there is none here.\n\n" +
-        "What to try: \"make all fire blue\", \"make the fire near me green\", \"each player a different fire colour\", " +
-        "\"make grass burn twice as fast\", \"when lightning hits water, leave fog\".\n\n" + TalkLine + "\n";
+    const string Guide = ClaudeRun.Guide;
 
     /// <summary>The folder a terminal opens in.</summary>
     public static string Folder => Path.Combine(Application.persistentDataPath, FolderName);

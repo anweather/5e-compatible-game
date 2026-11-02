@@ -20,6 +20,7 @@
     <ProjectReference Include="../Game.Core/Game.Core.csproj" />
     <ProjectReference Include="../Playtest.Runner/Playtest.Runner.csproj" />
     <ProjectReference Include="../Rules.Mcp/Rules.Mcp.csproj" />
+    <ProjectReference Include="../Chat.Bench/Chat.Bench.csproj" />
   </ItemGroup>
 
   <ItemGroup>

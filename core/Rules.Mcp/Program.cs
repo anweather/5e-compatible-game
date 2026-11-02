@@ -1,8 +1,9 @@
 // The rules MCP server (docs/RULES_MCP.md): stdio, local. Logs go to stderr,
 // since stdout carries the protocol.
-//   dotnet run --project core/Rules.Mcp [-- --rules <folder>] [--here x,y]
+//   dotnet run --project core/Rules.Mcp [-- --rules <folder>] [--here x,y] [--applied <file>]
 // --here puts the stand-in player (the host) on a cell for here() and "around me";
-// with no game attached it's the middle of the valley's grid.
+// with no game attached it's the middle of the valley's grid. --applied appends each patch that
+// goes to the room to a file, for chatbench's record, which the stream can't give.
 using System;
 using System.Globalization;
 using System.IO;
@@ -13,6 +14,7 @@ using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using ModelContextProtocol;
 using ModelContextProtocol.Server;
+using Newtonsoft.Json.Linq;
 
 namespace Chem.Mcp
 {
@@ -30,6 +32,9 @@ namespace Chem.Mcp
             if (here >= 0 && here + 1 < args.Length && args[here + 1].Split(',') is { Length: 2 } xy
                 && int.TryParse(xy[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) && int.TryParse(xy[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
                 bench.Here = new StandInHere(new HereSpot(Workbench.HostName, x, y));
+            int applied = Array.IndexOf(args, "--applied");
+            if (applied >= 0 && applied + 1 < args.Length)
+                bench.Applied = (key, patch) => File.AppendAllText(args[applied + 1], new JObject { ["mod"] = key, ["patch"] = patch }.ToString(Newtonsoft.Json.Formatting.None) + "\n");
             var tools = new RulesTools(bench, message => new McpException(message));
             builder.Services.AddMcpServer(o => o.ServerInstructions = RulesTools.Instructions).WithStdioServerTransport().WithTools(Tools(tools));
             builder.Build().Run();

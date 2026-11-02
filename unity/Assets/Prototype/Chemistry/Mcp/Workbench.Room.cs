@@ -84,17 +84,27 @@ namespace Chem.Mcp
             return sb.ToString();
         }
 
+        /// <summary>
+        /// Told of each patch going to the room, by the key apply was given (chat telemetry: apply's input is only a
+        /// draft's id, so this is the record's one source for the patch). On whichever thread the tool runs.
+        /// </summary>
+        public System.Action<string, string> Applied { get; set; }
+
         /// <summary>Switches a draft, a mod in rules/mods or patch JSON on in the room, as <paramref name="peer"/> (the host when left out).</summary>
         public string Apply(string draftOrMod, string peer = null, string title = null)
         {
             var key = Required(draftOrMod, "draft, mod or patch");
             var json = PatchJson(key);
             if (!drafts.TryGetValue(key, out var draft))
+            {
+                Applied?.Invoke(key, json);
                 return Decide(RoomCommand.Apply(PeerOf(peer), key.StartsWith('{') ? IdOf(json) : key, json, title));
+            }
             if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A draft needs a title, the name players read in the log; apply it again with one.");
             var slug = Slug(title);
             // Read before it goes in: after, the draft's own values are what's in force.
             string changes = Changes(draft) + NewSpellsReach(draft);
+            Applied?.Invoke(key, json);
             string said = Decide(RoomCommand.Apply(PeerOf(peer), slug.Length > 0 ? slug : draft.Id, json, title.Trim()));
             return Refused(said) ? said : said + "\n" + changes;
         }
