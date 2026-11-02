@@ -15,7 +15,7 @@ using UnityEngine;
 //   unity command probe list
 //   unity command probe run --name smoke [--shots <folder>] [--seconds 10]
 //   unity command probe run --name online [--keep-players true]
-//   unity command probe run --name chatprompts [--real-claude true --out <folder>] [--prompts N] [--shots <folder>]
+//   unity command probe run --name chatprompts [--real-claude true --out <folder>] [--prompts N] [--only <kind>] [--model <id>] [--context bare] [--replay <folders>] [--shots <folder>]
 //   unity command probe result --wait true --timeout 300
 //
 // Entering Play mode reloads the scripting domain (this project keeps domain
@@ -57,6 +57,10 @@ public static class ProbeCommands
         public bool RealClaude { get; set; }
         public int Prompts { get; set; }
         public string Out { get; set; }
+        public string Model { get; set; }
+        public string Context { get; set; }
+        public string Only { get; set; }
+        public string Replay { get; set; }
         public DateTime RequestedUtc { get; set; }
         /// <summary>The virtual player this run started, to stop after it (null: none, or keep it).</summary>
         public string StopAfter { get; set; }
@@ -78,6 +82,7 @@ public static class ProbeCommands
 
     [CliGroupCommand(Group, "Enter Play mode and run a probe scenario in the open scene (the Chemistry Yard). " +
         "Returns at once; read the JSON result with `probe result --wait true`.")]
+#pragma warning disable S107 // Too many parameters: the CLI makes one argument of each
     public static object Run(
         [CliArg("name", "Scenario name, from `probe list`", Required = true)] string name,
         [CliArg("shots", "Folder to save screenshots in (absolute, e.g. a scratchpad); empty for none")] string shots = "",
@@ -85,7 +90,12 @@ public static class ProbeCommands
         [CliArg("keep-players", "online only: leave a virtual player this run started running afterwards (faster reruns)")] bool keepPlayers = false,
         [CliArg("real-claude", "chatprompts only: spend real prompts on the signed-in Claude; off, a stand-in answers")] bool realClaude = false,
         [CliArg("prompts", "chatprompts only: how many of the set to send; 0 for all of it")] int prompts = 0,
-        [CliArg("out", "chatprompts only: the folder for this run's records and raw streams (absolute, e.g. a scratchpad)")] string outFolder = "")
+        [CliArg("out", "chatprompts only: the folder for this run's records and raw streams (absolute, e.g. a scratchpad)")] string outFolder = "",
+        [CliArg("model", "chatprompts only: the model to ask claude for; empty leaves it to the account, as the game does")] string model = "",
+        [CliArg("context", "chatprompts only: bare starts claude without the player's own skills, plugins and commands; empty as the game does")] string context = "",
+        [CliArg("only", "chatprompts only: send just the prompt of this kind (question, weather, ...)")] string only = "",
+        [CliArg("replay", "chatprompts only: earlier runs' folders, comma-separated: casts each recorded spell, spending nothing")] string replay = "")
+#pragma warning restore S107
     {
         var entry = ProbeScenarios.Find(name);
         if (entry == null)
@@ -104,6 +114,10 @@ public static class ProbeCommands
             RealClaude = realClaude,
             Prompts = prompts,
             Out = FullPath(outFolder),
+            Model = model,
+            Context = context,
+            Only = only,
+            Replay = replay,
             RequestedUtc = DateTime.UtcNow,
         };
         bool waitForPlayer = false;
@@ -264,6 +278,10 @@ public static class ProbeCommands
         scenario.RealClaude = active.RealClaude;
         scenario.Prompts = active.Prompts;
         scenario.OutDir = active.Out;
+        scenario.Model = active.Model;
+        scenario.Context = active.Context;
+        scenario.OnlyKind = active.Only;
+        scenario.Replay = active.Replay;
         go.SetActive(true);
         if (active.Shots != null) DemoRecorder.HideGizmos();
         startedAt = EditorApplication.timeSinceStartup;

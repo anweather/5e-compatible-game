@@ -197,8 +197,9 @@ public static class ProbeScenarios
             "a failure shows, a sign-in failure says to sign in, and with no claude the install line shows. With --shots, a film of the box."),
         new Entry("chatprompts", typeof(ChatPromptsProbe), 2400f,
             "A fixed set of prompts (docs/telemetry/chat-prompts.json) through the real chat, each on a fresh world, keeping the raw stream and watching what the frames show beside the stamp. " +
-            "With a stand-in unless --real-claude true --out <folder> is given, which spends real prompts on the signed-in Claude (J-064: at most 8 a run, and it stops at a sign-in failure). " +
-            "With --shots, replays the recorded patches and films them, spending nothing."),
+            "With a stand-in unless --real-claude true --out <folder> is given, which spends real prompts on the signed-in Claude (J-064: at most 8 a run, and it stops at a sign-in failure or a limit). " +
+            "--model and --context bare change how claude starts, for that run only; --only <kind> sends one prompt. Each prompt's world is kept beside its record for tools/chat-strict.mjs. " +
+            "With --shots, replays the recorded patches and films them, spending nothing. --replay <folders> casts each run's recorded spell on the lake, spending nothing."),
         new Entry("dictation", typeof(DictationProbe), 240f,
             "The real Windows recogniser on the real microphone, three holds with the level meter and three without: no press may stop the game, and every hold must end."),
         new Entry("voice", typeof(VoiceProbe), 70f,

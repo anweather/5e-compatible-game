@@ -92,26 +92,4 @@ public class FrostProbe : ProbeScenario
         int flying = FindObjectsByType<SpellProjectile>(FindObjectsSortMode.None).Length;
         Check("no_ice_sphere_or_projectile", !lance && flying == 0, $"IceLance {(lance ? "shown" : "none")}, {flying} projectile(s)");
     }
-
-    // The dry, open square outside the yard nearest its middle with lake water two squares south.
-    bool FindShore(out Vector2Int shore)
-    {
-        var yard = grid.yardCells;
-        var middle = new Vector2Int(yard.x + yard.width / 2, yard.y + yard.height / 2);
-        shore = default;
-        float best = float.MaxValue;
-        for (int y = 0; y < World.H - 3; y++)
-            for (int x = 0; x < World.W; x++)
-            {
-                var c = World.At(x, y);
-                if (yard.Contains(new Vector2Int(x, y)) || c.Water > 0 || World.IsBlocking(c) || World.At(x, y + 2).Water == 0) continue;
-                float d = (new Vector2Int(x, y) - middle).sqrMagnitude;
-                if (y > middle.y && d < best)
-                {
-                    best = d;
-                    shore = new Vector2Int(x, y);
-                }
-            }
-        return best < float.MaxValue;
-    }
 }

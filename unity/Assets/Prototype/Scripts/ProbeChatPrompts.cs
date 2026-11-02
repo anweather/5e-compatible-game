@@ -18,6 +18,8 @@ using UnityEngine;
 // nobody is signed in it stops; it never signs in. Beside each record it keeps the raw stream, so the
 // record can be checked against something it didn't make, and a watch of what the frames show, so
 // the stamp can be too. With --shots it applies the recorded patches again and films them, for nothing.
+// --model and --context change how claude starts, for this run only: with neither, it starts as a player's does.
+// --replay casts the spells earlier runs recorded, also for nothing: a cast is the one thing a record can't say.
 // Records and streams stay in the --out folder (docs/telemetry/chat-base-2026-11-02.md reads them).
 public class ChatPromptsProbe : RowHousesProbe
 {
@@ -26,10 +28,13 @@ public class ChatPromptsProbe : RowHousesProbe
 
     // Past ClaudeChat's own watchdog, which ends a run at 240 s.
     const float MostSeconds = 260f, MostReset = 10f, MostWrite = 5f, SettleSeconds = 1f, WatchOn = 3f, SlowMs = 50f, ReplayBurn = 3f, FireAtY = 12f;
-    const int FireAtX = 2, FireDir = 3, HouseLook = 4;
+    const int FireAtX = 2, FireDir = 3, HouseLook = 4, CastDir = 2, WaterSearch = 24, WaterStep = 3;
+    const float CastLands = 3f;
     // J-064: no runs past this share of the weekly limit. Each real stream says the share in its rate_limit_event.
-    const double MostWeekly = 0.85;
-    const string PromptsFile = "chat-prompts.json";
+    const double MostWeekly = 0.85, MostFiveHour = 0.60;
+    const string PromptsFile = "chat-prompts.json", BareContext = "bare", CastsFile = "casts.jsonl", AskedFile = "asked.txt";
+    // No user settings (their skills and plugins) and no slash commands. Neither reads or moves the login.
+    static readonly string[] BareArguments = { "--setting-sources", "project,local", "--disable-slash-commands" };
     static readonly string[] ClaudesOwn = { "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID" };
     static readonly HashSet<string> WorldTools = new() { "apply", "revert", "set_time", "set_weather" };
 
@@ -51,43 +56,85 @@ public class ChatPromptsProbe : RowHousesProbe
     protected override IEnumerator Run()
     {
         houses = grid.GetComponent<RowHouses>();
-        var prompts = Set();
+        if (!string.IsNullOrEmpty(Replay))
+        {
+            yield return CastThem();
+            yield break;
+        }
+        var prompts = Chosen();
         int count = Mathf.Min(MostPrompts, Prompts > 0 ? Prompts : prompts.Count, prompts.Count);
-        Check("the_set_fits_the_cap", prompts.Count is > 0 and <= MostPrompts, $"{prompts.Count} prompts");
+        bool knownContext = string.IsNullOrEmpty(Context) || Context == BareContext;
+        Check("the_context_is_known", knownContext, Context);
+        if (!knownContext) yield break;
         outDir = OutDir ?? Path.Combine(Application.temporaryCachePath, "chat-prompts");
         chatFolder = Path.Combine(outDir, "claude-terminal");
         modsDir = Path.Combine(ChemGrid.FindRulesDir(), "mods");
-        modsWere = Directory.GetFiles(modsDir).OrderBy(f => f, StringComparer.Ordinal).ToArray();
+        modsWere = ModsNow();
         if (RealClaude && !SafeToSpend()) yield break;
         Directory.CreateDirectory(Path.Combine(outDir, "raw"));
         ClaudeTerminal.TestFolder = chatFolder;
         ChatTelemetry.Folder = outDir;
         McpLog.Folder = outDir;
         ClaudeChat.StandIn = RealClaude ? null : StandIn();
+        ClaudeChat.Extra = Arguments();
         try
         {
-            var records = new List<(JObject prompt, JObject record)>();
-            for (int i = 0; i < count; i++)
-            {
-                var prompt = prompts[i];
-                if (i == 0 || (bool?)prompt["keep"] != true) yield return Fresh();
-                JObject record = null;
-                yield return Send(i + 1, prompt, r => record = r);
-                if (record == null || !Carries(i + 1, prompt, record)) break;
-                records.Add((prompt, record));
-            }
-            yield return Fresh();
-            Metric("prompts_spent", RealClaude ? spent : 0);
-            Check("every_prompt_went", records.Count == count, $"{records.Count} of {count}");
-            if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Replays(records);
+            yield return SendAll(prompts, count);
         }
         finally
         {
             ClaudeChat.Tap = null;
             ClaudeChat.StandIn = null;
+            ClaudeChat.Extra = null;
             ClaudeTerminal.TestFolder = null;
             ChatTelemetry.Folder = null;
         }
+    }
+
+    // The set, or the one kind asked for.
+    List<JObject> Chosen()
+    {
+        var prompts = Set();
+        if (!string.IsNullOrEmpty(OnlyKind)) prompts = prompts.Where(p => (string)p["kind"] == OnlyKind).ToList();
+        Check("the_set_fits_the_cap", prompts.Count is > 0 and <= MostPrompts, $"{prompts.Count} prompts");
+        return prompts;
+    }
+
+    IEnumerator SendAll(List<JObject> prompts, int count)
+    {
+        var records = new List<(JObject prompt, JObject record)>();
+        for (int i = 0; i < count; i++)
+        {
+            var prompt = prompts[i];
+            if (i == 0 || (bool?)prompt["keep"] != true) yield return Fresh();
+            JObject record = null;
+            yield return Send(i + 1, prompt, r => record = r);
+            if (record == null || !Carries(i + 1, prompt, record)) break;
+            records.Add((prompt, record));
+        }
+        yield return Fresh();
+        Metric("prompts_spent", RealClaude ? spent : 0);
+        Check("every_prompt_went", records.Count == count, $"{records.Count} of {count}");
+        if (!RealClaude) CheckAsked();
+        if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Replays(records);
+    }
+
+    // What this run adds to claude's arguments: nothing unless asked.
+    List<string> Arguments()
+    {
+        var more = new List<string>();
+        if (!string.IsNullOrEmpty(Model)) more.AddRange(new[] { "--model", Model });
+        if (Context == BareContext) more.AddRange(BareArguments);
+        return more;
+    }
+
+    // The stand-in wrote down how it was started: the same as a player's, plus only what this run asked for.
+    void CheckAsked()
+    {
+        string file = Path.Combine(outDir, AskedFile), asked = File.Exists(file) ? File.ReadAllText(file) : "";
+        bool model = asked.Contains("--model"), bare = asked.Contains(BareArguments[0]) && asked.Contains(BareArguments[2]);
+        Check("claude_gets_a_model_only_if_asked", model == !string.IsNullOrEmpty(Model) && (!model || asked.Contains(Model)), asked);
+        Check("claude_gets_bare_only_if_asked", bare == (Context == BareContext), asked);
     }
 
     static List<JObject> Set()
@@ -116,7 +163,7 @@ public class ChatPromptsProbe : RowHousesProbe
     string StandIn()
     {
         Directory.CreateDirectory(outDir);
-        return ChatProbe.Script(outDir, Path.Combine(outDir, "asked.txt"), "stand-in", 1f,
+        return ChatProbe.Script(outDir, Path.Combine(outDir, AskedFile), "stand-in", 1f,
             "{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"stand-in\",\"claude_code_version\":\"0\"}",
             "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"model\":\"stand-in\",\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"mcp__spell-valley__whats_on\",\"input\":{}}]}}",
             "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"Done.\",\"total_cost_usd\":0.05,\"num_turns\":2,\"duration_ms\":100,\"duration_api_ms\":90,\"usage\":{\"input_tokens\":10,\"cache_creation_input_tokens\":20,\"cache_read_input_tokens\":3000,\"output_tokens\":40}}");
@@ -206,11 +253,38 @@ public class ChatPromptsProbe : RowHousesProbe
         if (frame > SlowMs) watch.lastSlowMs = ms;
     }
 
-    // The share of the weekly limit used, as the last stream had it; null if it hasn't said.
-    double? Weekly()
+    // The share of a limit used, as the last stream had it; null if it hasn't said.
+    double? Window(string name)
     {
         string line = rateLine;
-        return line == null ? null : (double?)JObject.Parse(line)["rate_limit_info"]?["unifiedWindows"]?["seven_day"]?["utilization"];
+        return line == null ? null : (double?)JObject.Parse(line)["rate_limit_info"]?["unifiedWindows"]?[name]?["utilization"];
+    }
+
+    double? Weekly() => Window("seven_day");
+
+    double? FiveHour() => Window("five_hour");
+
+    // What's true in the world once a prompt has ended, from the rules in force: chat-strict scores this
+    // over the record's patches. A spell is kept if it's fire or not in the base rules.
+    JObject WorldNow()
+    {
+        var rules = JObject.Parse(grid.World.Rules.ToJson());
+        var plain = grid.CurrentRules.Base;
+        var spells = new JArray();
+        foreach (var spell in ((JArray)rules["spells"]).OfType<JObject>())
+            if ((string)spell["element"] == ElementIds.Fire || plain.Spell((string)spell["id"]) == null)
+                spells.Add(new JObject { ["id"] = spell["id"], ["group"] = spell["group"], ["element"] = spell["element"], ["level"] = spell["level"], ["shape"] = spell["shape"], ["origin"] = spell["origin"], ["radius"] = spell["radius"], ["radial"] = spell["radial"], ["damage"] = spell["damage"], ["look"] = spell["look"] });
+        var switcher = grid.GetComponent<RuleSwitcher>();
+        return new JObject
+        {
+            ["mods"] = new JArray(switcher.Room.Mods.Select(m => m.Id)),
+            ["fire"] = rules["elementLooks"]?["fire"]?["look"]?["color"],
+            ["embers"] = rules["covers"]?["embers"]?["look"]?["color"],
+            ["grass"] = new JObject { ["catch"] = rules["terrain"]?["grass"]?["flammability"], ["fuel"] = rules["terrain"]?["grass"]?["fuel"] },
+            ["spells"] = spells,
+            ["weather"] = grid.World.Weather.Kind.ToString(),
+            ["rows"] = new JArray(grid.World.Rules.ModBuildings.Select(r => r.Id)),
+        };
     }
 
     int StrengthNow() => grid.World.Weather.Kind == WeatherKind.Clear ? 0 : grid.World.Weather.Strength;
@@ -255,6 +329,10 @@ public class ChatPromptsProbe : RowHousesProbe
             ["url"] = RulesMcpServer.Url,
             ["notesBytes"] = File.Exists(notes) ? new FileInfo(notes).Length : 0,
             ["weekly"] = Weekly(),
+            ["fiveHour"] = FiveHour(),
+            ["askedModel"] = string.IsNullOrEmpty(Model) ? null : Model,
+            ["context"] = string.IsNullOrEmpty(Context) ? null : Context,
+            ["after"] = WorldNow(),
             ["watch"] = JObject.FromObject(new
             {
                 inWorld = (long?)record?["at"]?["inWorld"],
@@ -281,19 +359,39 @@ public class ChatPromptsProbe : RowHousesProbe
         Metric(name + "_done_ms", (double?)record["at"]?["done"] ?? -1);
         bool signedOut = ClaudeRun.NeedsSignIn(why) || ClaudeRun.NeedsSignIn((string)record["reply"]);
         Check($"{name}_is_signed_in", !signedOut, signedOut ? why : null);
-        bool same = Directory.GetFiles(modsDir).OrderBy(f => f, StringComparer.Ordinal).SequenceEqual(modsWere);
+        TakeSaved(name);
+        bool same = ModsNow().SequenceEqual(modsWere);
         Check($"{name}_left_rules_mods_alone", same);
         if (!RealClaude) return true;
         var weekly = Weekly();
-        bool under = weekly == null || weekly <= MostWeekly;
+        var fiveHour = FiveHour();
+        bool under = (weekly == null || weekly <= MostWeekly) && (fiveHour == null || fiveHour <= MostFiveHour);
         Metric("weekly_used", weekly ?? -1);
-        Check($"{name}_under_the_weekly_limit", under, weekly?.ToString(CultureInfo.InvariantCulture));
+        Metric("five_hour_used", fiveHour ?? -1);
+        Check($"{name}_under_the_limits", under, $"weekly {weekly?.ToString(CultureInfo.InvariantCulture)}, five-hour {fiveHour?.ToString(CultureInfo.InvariantCulture)}");
+        bool theModel = string.IsNullOrEmpty(Model) || (string)record["model"] == Model;
+        Check($"{name}_ran_the_model_asked", theModel, (string)record["model"]);
         var used = ((JArray)record["tools"]).Where(t => (bool?)t["ok"] == true).Select(t => (string)t["name"]).ToList();
         var wanted = (prompt["tools"] as JArray)?.Select(t => (string)t).ToList() ?? new List<string>();
         Check($"{name}_outcome", outcome == (string)prompt["outcome"], $"{outcome}: {why}");
         Check($"{name}_tools", wanted.Count == 0 || wanted.Any(used.Contains), string.Join(", ", used));
         if ((bool?)prompt["noWorldTools"] == true) Check($"{name}_changed_nothing", !used.Any(WorldTools.Contains), string.Join(", ", used));
-        return same && under && !signedOut && outcome is not ("failed" or "timedout" or "stopped");
+        return same && under && theModel && !signedOut && outcome is not ("failed" or "timedout" or "stopped");
+    }
+
+    // Each mod file and when it was written: a model can save over one as well as add one.
+    string[] ModsNow() => Directory.GetFiles(modsDir).OrderBy(f => f, StringComparer.Ordinal).Select(f => $"{f}|{File.GetLastWriteTimeUtc(f).Ticks}").ToArray();
+
+    // A mod a model saved unasked is a finding, not a fault: it goes beside the record and out of the rules.
+    // Anything else that moved in rules/mods stays there for Carries to stop on.
+    void TakeSaved(string name)
+    {
+        var known = modsWere.Select(m => m.Substring(0, m.LastIndexOf('|'))).ToHashSet();
+        foreach (string file in Directory.GetFiles(modsDir).Where(f => !known.Contains(f)))
+        {
+            File.Move(file, Path.Combine(outDir, "raw", $"{name}-saved-{Path.GetFileName(file)}"));
+            Metric("mods_saved_unasked", Result.Metrics.GetValueOrDefault("mods_saved_unasked") + 1);
+        }
     }
 
     const string StandInMod = "big-fireball";
@@ -326,6 +424,78 @@ public class ChatPromptsProbe : RowHousesProbe
             }
             yield return Fresh();
         }
+    }
+
+    // Each run's recorded spell, cast as a player would, on open water where it should show. Spends nothing.
+    IEnumerator CastThem()
+    {
+        chatFolder = Path.Combine(Application.temporaryCachePath, "chat-prompts", "claude-terminal");
+        var switcher = grid.GetComponent<RuleSwitcher>();
+        bool found = FindShore(out var shore);
+        Check("lake_shore_found", found);
+        if (!found) yield break;
+        var yard = grid.yardCells;
+        Place(shore.x - yard.x, shore.y - yard.y);
+        foreach (string folder in Replay.Split(','))
+        {
+            var change = RecordedSpell(folder, out string id);
+            Check($"record_has_a_spell_{Path.GetFileName(folder)}", change != null, folder);
+            if (change == null) continue;
+            const string mod = "replay-cast";
+            switcher.Ask(RoomCommand.Apply(switcher.Me, mod, change["patch"].ToString(Formatting.None), (string)change["title"]));
+            for (float t = 0f; t < MostReset && !switcher.Room.Mods.Exists(m => m.Id == mod); t += Time.unscaledDeltaTime) yield return null;
+            yield return Wait(SettleSeconds);
+            var outcome = new JObject { ["record"] = change["record"], ["spell"] = id, ["goesOn"] = switcher.Room.Mods.Exists(m => m.Id == mod) };
+            yield return CastOne(id, shore, outcome);
+            File.AppendAllText(Path.Combine(folder, CastsFile), outcome.ToString(Formatting.None) + "\n");
+            yield return Fresh();
+        }
+    }
+
+    IEnumerator CastOne(string id, Vector2Int shore, JObject outcome)
+    {
+        var spell = World.Rules.Spell(id);
+        outcome["selected"] = caster.Select(id);
+        outcome["onTheWheel"] = spell != null && spell.Radial;
+        outcome["inTheList"] = SpellList.From(World.Rules).Any(t => t.Name != SpellList.AllName && t.Name != SpellList.OffWheelName && t.SpellIds.Contains(id));
+        if (spell == null || !OpenWater(spell, shore, out var at)) yield break;
+        var cells = World.SpellCells(spell, at.x, at.y, CastDir);
+        int mark = ConsoleMark;
+        puppet.Face(grid.CellCenter(at.x, at.y));
+        caster.Cast(caster.SelectedId, at.x, at.y, CastDir);
+        yield return Wait(CastLands);
+        outcome["cells"] = cells.Count;
+        outcome["logged"] = ConsoleSince(mark).Any(l => l.Contains("You cast", StringComparison.Ordinal));
+        outcome["frozen"] = cells.Count(c => World.At(c.x, c.y).Frozen);
+    }
+
+    // Wet cells a cast can show on, none frozen yet: an earlier cast may have left ice nearby.
+    bool OpenWater(SpellDef spell, Vector2Int shore, out Vector2Int at)
+    {
+        for (int y = shore.y + 2; y < shore.y + WaterSearch; y += WaterStep)
+            for (int x = shore.x - WaterSearch; x < shore.x + WaterSearch; x += WaterStep)
+            {
+                var cells = World.SpellCells(spell, x, y, CastDir);
+                if (cells.Count == 0 || !cells.All(c => World.At(c.x, c.y).Water > 0 && !World.At(c.x, c.y).Frozen)) continue;
+                at = new Vector2Int(x, y);
+                return true;
+            }
+        at = default;
+        return false;
+    }
+
+    // The spell prompt's last patch in a run's folder, and the spell it adds.
+    static JObject RecordedSpell(string folder, out string id)
+    {
+        id = null;
+        var line = File.ReadAllLines(Path.Combine(folder, "prompts.jsonl")).Select(JObject.Parse).FirstOrDefault(p => ((string)p["name"]).EndsWith("-spell", StringComparison.Ordinal));
+        string recordId = (string)line?["record"];
+        var record = Directory.GetFiles(folder, "chat-log-*.jsonl").SelectMany(File.ReadAllLines).Select(JObject.Parse).FirstOrDefault(r => (string)r["id"] == recordId);
+        var change = (record?["changes"] as JArray)?.OfType<JObject>().LastOrDefault(c => c["patch"]?["spells"] is JArray);
+        if (change == null) return null;
+        id = (string)change["patch"]["spells"].Last["id"];
+        change["record"] = recordId;
+        return change;
     }
 
     IEnumerator Burn(string kind)

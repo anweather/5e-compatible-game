@@ -31,6 +31,14 @@ public abstract class ProbeScenario : ShowcaseScript
     public int Prompts { get; set; }
     /// <summary>chatprompts only: the folder for this run's records and raw streams. Set before Start.</summary>
     public string OutDir { get; set; }
+    /// <summary>chatprompts only: the model to ask claude for; empty leaves it to the account, as the game does. Set before Start.</summary>
+    public string Model { get; set; }
+    /// <summary>chatprompts only: "bare" starts claude without the player's own skills, plugins and commands; empty, as the game does. Set before Start.</summary>
+    public string Context { get; set; }
+    /// <summary>chatprompts only: send just the prompt of this kind. Set before Start.</summary>
+    public string OnlyKind { get; set; }
+    /// <summary>chatprompts only: earlier runs' folders, comma-separated, to cast their spells from their records, spending nothing. Set before Start.</summary>
+    public string Replay { get; set; }
 
     readonly List<float> frameMs = new();
     readonly List<string> consoleLines = new();
@@ -213,6 +221,28 @@ public abstract class ProbeScenario : ShowcaseScript
         var walk = puppet.WalkTo(Yard(x, y));
         for (float t = 0f; t < seconds && walk.MoveNext(); t += Time.deltaTime) yield return walk.Current;
         puppet.Move(Vector2.zero);
+    }
+
+    /// <summary>The dry, open cell outside the yard nearest its middle with lake water two cells south.</summary>
+    protected bool FindShore(out Vector2Int shore)
+    {
+        var yard = grid.yardCells;
+        var middle = new Vector2Int(yard.x + yard.width / 2, yard.y + yard.height / 2);
+        shore = default;
+        float best = float.MaxValue;
+        for (int y = 0; y < World.H - 3; y++)
+            for (int x = 0; x < World.W; x++)
+            {
+                var c = World.At(x, y);
+                if (yard.Contains(new Vector2Int(x, y)) || c.Water > 0 || World.IsBlocking(c) || World.At(x, y + 2).Water == 0) continue;
+                float d = (new Vector2Int(x, y) - middle).sqrMagnitude;
+                if (y > middle.y && d < best)
+                {
+                    best = d;
+                    shore = new Vector2Int(x, y);
+                }
+            }
+        return best < float.MaxValue;
     }
 
     /// <summary>The cells a spell would touch, from yard coordinates, in world cells.</summary>
