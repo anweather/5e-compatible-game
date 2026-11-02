@@ -21,8 +21,22 @@ public class CreatureIndividualTests
     {
         var state = new CreatureState { Scale = 1f, Mode = CreatureMode.Puppet, Seed = 1u, Individual = individual, Task = task, Clock = clock };
         var output = new SegmentInstance[b.Segments.Length];
-        new CreatureAnimator().Evaluate(b, state, 0, new Flat(), output, 0);
-        return output;
+        int shown = new CreatureAnimator().Evaluate(b, state, 0, new Flat(), output, 0);
+        return output.Take(shown).ToArray();
+    }
+
+    // The segments an individual shows: its parts but for unchosen options and what hangs from them.
+    static int Showing(CreatureBody b, uint individual)
+    {
+        var hidden = new bool[b.Parts.Length];
+        int shown = 1;
+        for (int i = 0; i < b.Parts.Length; i++)
+        {
+            var p = b.Parts[i];
+            hidden[i] = p.Parent >= 0 && hidden[p.Parent] || p.StyleGroup > 0 && CreatureBody.Style(individual, p.StyleGroup, p.StyleCount) != p.StyleIndex;
+            if (!hidden[i]) shown += p.SegmentCount;
+        }
+        return shown;
     }
 
     [TestCase("human")]
@@ -30,19 +44,16 @@ public class CreatureIndividualTests
     [TestCase("elf")]
     [TestCase("goblin")]
     [TestCase("ogre")]
-    public void EachIndividualShowsOneOptionOfEachStyleGroup(string species)
+    public void EachIndividualDrawsOneOptionOfEachStyleGroupAndNoneOfTheRest(string species)
     {
         var b = CreatureBody.Build(Base().Fauna, species);
-        var groups = b.Parts.Where(p => p.StyleGroup > 0).Select(p => p.StyleGroup).Distinct().ToList();
-        Assert.That(groups, Is.Not.Empty, species);
+        Assert.That(b.Parts.Any(p => p.StyleGroup > 0), Is.True, species);
         for (uint individual = 1; individual < 40; individual++)
         {
             var pose = Pose(b, individual);
-            foreach (int group in groups)
-            {
-                var shown = b.Parts.Where(p => p.StyleGroup == group && p.SegmentCount > 0 && pose[p.FirstSegment].RadiusStart > 0f).Select(p => p.StyleIndex).Distinct().ToList();
-                Assert.That(shown, Has.Count.EqualTo(1), $"{species} {individual} group {group}");
-            }
+            Assert.That(pose, Has.Length.EqualTo(Showing(b, individual)), $"{species} {individual}");
+            Assert.That(pose.Length, Is.LessThan(b.Segments.Length), $"{species} {individual}");
+            Assert.That(pose.All(s => s.RadiusStart > 0f), Is.True, $"{species} {individual}: nothing of zero size in the buffer");
         }
     }
 
@@ -64,13 +75,45 @@ public class CreatureIndividualTests
     }
 
     [Test]
+    public void AnimalsOfASpeciesDifferInColourAndBuild()
+    {
+        var b = CreatureBody.Build(Base().Fauna, "deer");
+        var colours = Enumerable.Range(1, 50).Select(i => b.CoatOf(0, (uint)i).Base.x).Distinct().Count();
+        Assert.That(colours, Is.GreaterThan(45));
+        var girths = Enumerable.Range(1, 50).Select(i => b.GirthOf((uint)i)).ToList();
+        Assert.That(girths.Min(), Is.GreaterThan(1f - b.Girth - 1e-4f));
+        Assert.That(girths.Max(), Is.LessThan(1f + b.Girth + 1e-4f));
+        Assert.That(girths.Max() - girths.Min(), Is.GreaterThan(b.Girth));
+        Assert.That(b.CoatOf(0, 7u).Base, Is.EqualTo(b.CoatOf(0, 7u).Base), "the same animal, the same every frame");
+    }
+
+    [Test]
+    public void IndividualZeroIsTheRowItself()
+    {
+        var b = CreatureBody.Build(Base().Fauna, "deer");
+        Assert.That(b.CoatOf(0, 0u).Base, Is.EqualTo(b.Coats[0].Base));
+        Assert.That(b.GirthOf(0u), Is.EqualTo(1f));
+    }
+
+    [Test]
+    public void FolkPickTheirSkinApartFromTheirClothes()
+    {
+        var b = CreatureBody.Build(Base().Fauna, "human");
+        var plain = b.Coats.Select(c => c.Base.x).ToList();
+        var skins = Enumerable.Range(1, 200).Select(i => (uint)i).Where(i => b.PickCoat(CreatureBody.Unit(i, 0)) == 0)
+            .Select(i => CreatureBody.Style(i, 9967, b.Coats.Length)).Distinct().Count();
+        Assert.That(skins, Is.EqualTo(b.Coats.Length), "a blue tunic comes with any skin");
+        Assert.That(plain, Is.Not.Empty);
+    }
+
+    [Test]
     public void AWorkerAtItsPostHoldsItsArmsUp()
     {
         var b = CreatureBody.Build(Base().Fauna, "human");
-        var arm = b.Parts.First(p => p.Role == LimbRole.Arm);
-        var idle = Pose(b, 3u)[arm.FirstSegment].Rotation;
-        var tending = Pose(b, 3u, CreatureTask.Tend)[arm.FirstSegment].Rotation;
-        Assert.That(math.abs(math.dot(idle.value, tending.value)), Is.LessThan(0.99f));
+        var idle = Pose(b, 3u);
+        var tending = Pose(b, 3u, CreatureTask.Tend);
+        Assert.That(tending, Has.Length.EqualTo(idle.Length));
+        Assert.That(Enumerable.Range(0, idle.Length).Min(i => math.abs(math.dot(idle[i].Rotation.value, tending[i].Rotation.value))), Is.LessThan(0.99f));
     }
 
     [Test]

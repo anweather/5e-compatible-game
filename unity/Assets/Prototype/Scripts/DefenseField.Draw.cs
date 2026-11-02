@@ -151,10 +151,10 @@ public partial class DefenseField : ICreatureGround
             if (b == null) continue;
             int need = used + b.Segments.Length;
             if (instances.Length < need) System.Array.Resize(ref instances, Mathf.NextPowerOfTwo(need));
-            animator.Evaluate(b, s.state, 0, this, instances, used);
-            Frost(s, used, need);
-            CreatureDrawer.HideAtLens(instances, used, b.Segments.Length, cam);
-            used = need;
+            int end = used + animator.Evaluate(b, s.state, 0, this, instances, used);
+            Frost(s, used, end);
+            CreatureDrawer.HideAtLens(instances, used, end - used, cam);
+            used = end;
             centre = s.at;
             DrawnRaiders++;
         }

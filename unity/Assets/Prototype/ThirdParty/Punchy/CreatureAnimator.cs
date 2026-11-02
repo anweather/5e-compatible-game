@@ -34,12 +34,18 @@ namespace Punchy.Fauna
         readonly quaternion[] segRot = new quaternion[MaxSegments];
         readonly float3[] endPos = new float3[MaxSegments];
         readonly quaternion[] endRot = new quaternion[MaxSegments];
-        // Parts hidden for this individual (unchosen style options, and anything hanging from them).
+        // Parts this individual doesn't show (unchosen style options, and anything hanging from them): neither posed nor drawn.
         readonly bool[] partHidden = new bool[MaxSegments];
         readonly bool[] segHidden = new bool[MaxSegments];
 
-        public void Evaluate(CreatureBody b, in CreatureState s, int coat, ICreatureGround terrain,
-                             SegmentInstance[] output, int offset)
+        /// <summary>Writes the segments this individual shows from <paramref name="offset"/> on, the body first, and returns how many.</summary>
+        public int Evaluate(CreatureBody b, in CreatureState s, int coat, ICreatureGround terrain,
+                            SegmentInstance[] output, int offset) =>
+            Evaluate(b, in s, b.TraitsOf(coat, s.Individual), terrain, output, offset);
+
+        /// <summary>The same, for a caller that keeps each animal's traits (a crowd).</summary>
+        public int Evaluate(CreatureBody b, in CreatureState s, in CreatureTraits traits, ICreatureGround terrain,
+                            SegmentInstance[] output, int offset)
         {
             var scale = s.Scale;
             var move = math.smoothstep(0.03f, math.max(0.3f * b.WalkSpeed, 0.05f), s.Speed);
@@ -57,16 +63,12 @@ namespace Punchy.Fauna
                 gradient = 0f;
             var pitch = math.clamp(-math.atan(gradient), -0.45f, 0.45f);
 
-            // This individual's way of moving: posture, arm swing, bounce, twist and head carriage.
             var id = s.Individual;
-            var lean = CreatureBody.Trait(id, 1) * 0.13f;
-            var armSwing = 1f + CreatureBody.Trait(id, 2) * 0.45f;
-            var bounce = 1f + CreatureBody.Trait(id, 3) * 0.5f;
-            var twist = 1f + CreatureBody.Trait(id, 4) * 0.6f;
-            var headTilt = new float3(CreatureBody.Trait(id, 6) * 0.1f, 0f, CreatureBody.Trait(id, 7) * 0.07f);
+            var worn = traits.Worn;
+            var girth = traits.Girth;
 
             var bobs = math.lerp(b.BobsPerCycle.x, b.BobsPerCycle.y, run);
-            var bob = math.lerp(b.Bob.x, b.Bob.y, run) * bounce * move * scale * (0.5f - 0.5f * math.cos(2f * math.PI * bobs * s.Phase));
+            var bob = math.lerp(b.Bob.x, b.Bob.y, run) * traits.Bounce * move * scale * (0.5f - 0.5f * math.cos(2f * math.PI * bobs * s.Phase));
             pitch += b.RunRock * run * move * math.sin(2f * math.PI * s.Phase);
 
             // Posture: lying lowers the body onto its belly; a bow or a lowered head tips the chest down.
@@ -83,21 +85,32 @@ namespace Punchy.Fauna
 
             // Body.
             var body = b.Segments[0];
-            output[offset] = Instance(rootPos + math.mul(rootRot, new float3(0f, 0f, -halfLength + body.RadiusStart * scale)), rootRot, body, scale, b.SegmentColor(0, coat));
+            output[offset] = Instance(rootPos + math.mul(rootRot, new float3(0f, 0f, -halfLength + body.RadiusStart * scale)), rootRot, body, scale, girth, b.SegmentColor(0, in worn));
 
+            int styleGroup = 0, styleShown = 0;
             for (int i = 0; i < b.Parts.Length && i < MaxSegments; i++)
             {
                 var part = b.Parts[i];
+                // A group's options stand together in the list, so one hash does for the group.
+                if (part.StyleGroup != styleGroup)
+                {
+                    styleGroup = part.StyleGroup;
+                    styleShown = styleGroup > 0 ? CreatureBody.Style(id, styleGroup, part.StyleCount) : 0;
+                }
+                var hidden = part.Parent >= 0 && partHidden[part.Parent] || part.StyleGroup > 0 && styleShown != part.StyleIndex;
+                partHidden[i] = hidden;
+                for (int j = 0; j < part.SegmentCount; j++)
+                    if (part.FirstSegment + j < MaxSegments)
+                        segHidden[part.FirstSegment + j] = hidden;
+                if (hidden)
+                    continue;
                 var parentPos = part.Parent < 0 ? rootPos : endPos[part.Parent];
                 var parentRot = part.Parent < 0 ? rootRot : endRot[part.Parent];
                 var pos = parentPos + math.mul(parentRot, part.Socket * scale);
                 var rot = math.mul(parentRot, part.Rest);
                 var phase = math.frac(s.Phase + part.Phase);
-                var hidden = part.Parent >= 0 && partHidden[part.Parent] ||
-                             part.StyleGroup > 0 && CreatureBody.Style(id, part.StyleGroup, part.StyleCount) != part.StyleIndex;
-                partHidden[i] = hidden;
                 var torso = b.Upright && part.Parent < 0 && part.Role != LimbRole.Leg;
-                var amplitude = part.Role == LimbRole.Arm ? armSwing : torso ? twist : 1f;
+                var amplitude = part.Role == LimbRole.Arm ? traits.ArmSwing : torso ? traits.Twist : 1f;
 
                 // Legs hanging beneath the body fold up when it lies down (front legs half-fold for a play bow);
                 // splayed legs (lizards, spiders) keep their feet planted and bend at the knees instead.
@@ -116,9 +129,9 @@ namespace Punchy.Fauna
                         a = idle + (a - idle) * amplitude;
                     }
                     if (torso && j == 0)
-                        a.x += lean;
+                        a.x += traits.Lean;
                     if (part.Role == LimbRole.Head && j == 0)
-                        a += headTilt;
+                        a += traits.HeadTilt;
                     a += Secondary(part, in s, j, run, b.Upright);
                     a += TaskPose(part, in s, j);
                     if (fold > 0f)
@@ -130,7 +143,6 @@ namespace Punchy.Fauna
                     {
                         segPos[seg] = pos;
                         segRot[seg] = rot;
-                        segHidden[seg] = hidden;
                     }
                     pos += math.mul(rot, new float3(0f, 0f, b.Segments[seg].Length * scale));
                 }
@@ -154,19 +166,18 @@ namespace Punchy.Fauna
                 endRot[i] = rot;
             }
 
+            var written = 1;
             for (int seg = 1; seg < b.Segments.Length && seg < MaxSegments; seg++)
             {
-                var segment = b.Segments[seg];
                 if (segHidden[seg])
-                {
-                    output[offset + seg] = default;   // zero size: not drawn
                     continue;
-                }
-                var colour = b.SegmentColor(seg, coat);
-                if (segment.Hair != 0)
-                    colour = b.HairColor(id, colour);
-                output[offset + seg] = Instance(segPos[seg], segRot[seg], segment, scale, colour);
+                var segment = b.Segments[seg];
+                var colour = b.SegmentColor(seg, in worn);
+                if (segment.Hair != 0 && traits.Hair.x >= 0f)
+                    colour = traits.Hair;
+                output[offset + written++] = Instance(segPos[seg], segRot[seg], segment, scale, girth, colour);
             }
+            return written;
         }
 
         /// <summary>
@@ -318,13 +329,13 @@ namespace Punchy.Fauna
             return math.normalize(new quaternion(c.x, c.y, c.z, w));
         }
 
-        static SegmentInstance Instance(float3 position, quaternion rotation, CreatureSegment seg, float scale, float4 color) => new SegmentInstance
+        static SegmentInstance Instance(float3 position, quaternion rotation, CreatureSegment seg, float scale, float girth, float4 color) => new SegmentInstance
         {
             Position = position,
             Rotation = rotation,
             Length = seg.Length * scale,
-            RadiusStart = seg.RadiusStart * scale,
-            RadiusEnd = seg.RadiusEnd * scale,
+            RadiusStart = seg.RadiusStart * scale * girth,
+            RadiusEnd = seg.RadiusEnd * scale * girth,
             Flatten = seg.Flatten,
             Color = color
         };
