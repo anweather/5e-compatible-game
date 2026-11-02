@@ -49,7 +49,6 @@ public class PlayerControls : MonoBehaviour
     public InputAction RadialHold { get; private set; }
     public InputAction RadialCancel { get; private set; }
     public InputAction NextSpell { get; private set; }
-    public InputAction PrevSpell { get; private set; }
     public InputAction PickElement { get; private set; }
     public InputAction NextElement { get; private set; }
     public InputAction PrevElement { get; private set; }
@@ -103,9 +102,8 @@ public class PlayerControls : MonoBehaviour
         RadialHold = Button("Spell radial", "<Keyboard>/tab", "<Gamepad>/leftShoulder");
         RadialCancel = Button("Cancel spell radial", "<Gamepad>/buttonEast");
         NextSpell = Button("Next spell", "<Keyboard>/e", "<Gamepad>/rightShoulder");
-        PrevSpell = Button("Previous spell", "<Keyboard>/q");
         PickElement = Button("Pick element", "<Keyboard>/1", "<Keyboard>/2", "<Keyboard>/3", "<Keyboard>/4", "<Keyboard>/5", "<Keyboard>/6", "<Keyboard>/7", "<Keyboard>/8");
-        NextElement = Button("Next element", "<Gamepad>/dpad/right");
+        NextElement = Button("Next element", "<Gamepad>/dpad/right", "<Keyboard>/q");
         PrevElement = Button("Previous element", "<Gamepad>/dpad/left");
         Reset = Button("Reset", "<Keyboard>/r", "<Gamepad>/select");
         Interact = Button("Pick up or drop", "<Keyboard>/e", PadInteract);
@@ -135,7 +133,7 @@ public class PlayerControls : MonoBehaviour
 
         all = new[]
         {
-            Cast, RadialHold, RadialCancel, NextSpell, PrevSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Punch, Throw, Roll,
+            Cast, RadialHold, RadialCancel, NextSpell, PickElement, NextElement, PrevElement, Zoom, Reset, Interact, Use, Punch, Throw, Roll,
             Elements[0], Elements[1], Elements[2], Elements[3], CancelCast, DpadNext, DpadPrevious, DpadCast, Grimoire, swapLayout,
         };
         foreach (var a in all) a.performed += Track;

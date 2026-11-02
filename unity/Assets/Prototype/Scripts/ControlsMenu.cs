@@ -29,6 +29,8 @@ public class ControlsMenu : MonoBehaviour
         ("Other spells: choose, cast", "[ ]   T", "D-pad ◀ ▶   ▲"),
         ("Grimoire", "J", "D-pad ▼"),
         ("Spell list, then left click to cast", "Tab", "—"),
+        ("Change element", "Q", "—"),
+        ("Change spell in the element", "E", "—"),
         ("Debug: the spell radial", "—", "F2 swaps the controller to it"),
         ("In an animal's shape: change back", "Z, X, C, V or left click", "Any element button"),
         ("Pick up / drop", "E (near a thing)", "{West}"),

@@ -68,7 +68,7 @@ public static class ProbeScenarios
             "in it, no console errors."),
         new Entry("spelllist", typeof(SpellListProbe), 60f,
             "The spell list, on a virtual keyboard: Tab opens it on the spell's element and not the wheel, the arrows move the " +
-            "highlight and the tabs, Enter picks and closes, Tab and Esc close, every spell off the wheel can be picked and cast, " +
+            "highlight and the tabs, Enter picks and closes, Tab and Esc close, every spell off the wheel can be picked and cast, Q changes element and E spell, " +
             "and LB on a virtual gamepad still opens the wheel. Shots at 1080p and at a 4K scale."),
         new Entry("looks", typeof(LooksProbe), 120f,
             "The material effects staged in the yard at noon, one picture each (--shots): rust, sand and glass, a glow ball breaking, ice shards, mud, hot metal, " +

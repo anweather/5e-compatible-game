@@ -21,7 +21,7 @@ still open the wheel on an element. Andrew: "the wheel is super super clunky".
   spells as an arc around that wedge: name, level, a one-line effect.
 - **Release** selects the highlighted spell. Releasing in the centre cancels.
   A quick **tap** of Tab (no movement) swaps back to the previous spell.
-- Click still casts. Q / E (LB / RB) cycle within the current element.
+- Click still casts. Q changes element and E changes spell within it (RB steps spells too).
   Number keys 1–5 jump to an element and open its arc.
 - The HUD's long bar becomes one chip: element colour, spell name, key hints.
 

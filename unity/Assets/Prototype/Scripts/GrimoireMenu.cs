@@ -89,10 +89,11 @@ public class GrimoireMenu : MonoBehaviour
         var found = all.Where(c => world.KnowsCombo(caster.CastPlayer, c.Id)).ToList();
         GUILayout.Label($"<b>{found.Count} of {all.Count} found</b>", head);
         if (found.Count == 0) GUILayout.Label("Nothing yet. Load an element, then perhaps a second, and see what it casts.", row);
-        scroll = PauseMenu.ScrollView(scroll, Mathf.Clamp(HudScale.Height - 300f, 200f, 520f), () =>
+        scroll = PauseMenu.ScrollView(scroll, Mathf.Clamp(HudScale.Height - 340f, 200f, 520f), () =>
         {
             foreach (var combo in found) Row(combo);
         });
+        GUILayout.Label("<color=#ffffff99>Q changes element, E changes spell in it.</color>", row);
     }
 
     void Row(ComboDef combo)

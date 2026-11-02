@@ -8,7 +8,7 @@ using UnityEngine.InputSystem;
 // its spells as an arc, release to pick. A quick tap swaps back to the
 // previous spell; B cancels (with the mouse, releasing in the centre does).
 // Tab on the keyboard opens the spell list instead (SpellListMenu).
-// Without opening it: Q / E and RB step through the current element, the
+// Without opening it: E and RB step through the current element, Q and the
 // d-pad's left / right step elements, a number key opens that element's arc.
 //
 // The choosing is SpellRadial, engine-free and tested in the core; this feeds
@@ -111,7 +111,7 @@ public class SpellRadialHud : MonoBehaviour
 
     // --- input -------------------------------------------------------------------------
 
-    // Closed: the hold button or a number key opens it; the bumpers, Q / E and the d-pad step.
+    // Closed: the hold button or a number key opens it; Q changes element, E changes spell, as RB and the d-pad do.
     void Idle()
     {
         double now = Time.unscaledTimeAsDouble;
@@ -134,7 +134,6 @@ public class SpellRadialHud : MonoBehaviour
             return;
         }
         if (controls.NextSpellPressed()) Select(radial.StepInElement(1));
-        if (controls.PrevSpell.WasPressedThisFrame()) Select(radial.StepInElement(-1));
         if (controls.NextElement.WasPressedThisFrame()) Select(radial.StepElement(1));
         if (controls.PrevElement.WasPressedThisFrame()) Select(radial.StepElement(-1));
     }

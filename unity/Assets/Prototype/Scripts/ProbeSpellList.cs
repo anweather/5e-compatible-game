@@ -77,6 +77,8 @@ public class SpellListProbe : ProbeScenario
 
             yield return EveryOffWheelSpellCasts(offWheel);
 
+            yield return QAndE(hud);
+
             // The wheel is still the pad's. It's behind the debug layout, as before.
             controls.ElementPad = false;
             InputSystem.QueueStateEvent(pad, new GamepadState().WithButton(GamepadButton.LeftShoulder));
@@ -100,6 +102,23 @@ public class SpellListProbe : ProbeScenario
             EventLog.HudVisible = hudWasOn;
             caster.Select(SpellIds.FireBolt);
         }
+    }
+
+    // Q moves to the next element; E stays in it, on its next spell. The hint says so.
+    IEnumerator QAndE(SpellRadialHud hud)
+    {
+        var layout = hud.Radial.Layout;
+        caster.Select(SpellIds.FireBolt);
+        yield return Frames(2);
+        int fire = layout.GroupOfSpell(caster.SelectedId);
+        yield return Press(Key.Q);
+        int next = layout.GroupOfSpell(caster.SelectedId);
+        Check("q_changes_element", next == (fire + 1) % layout.Count, $"element {fire} -> {next} ({caster.SelectedId})");
+        string first = caster.SelectedId;
+        yield return Press(Key.E);
+        bool sameElement = layout.GroupOfSpell(caster.SelectedId) == next;
+        Check("e_changes_spell_in_the_element", sameElement && (caster.SelectedId != first || layout.Groups[next].SpellIds.Count == 1), $"{first} -> {caster.SelectedId}");
+        Check("hud_says_q_and_e", EventLog.KeyHints.Contains("Q element") && EventLog.KeyHints.Contains("E spell"), EventLog.KeyHints);
     }
 
     // The list offers these, so each must be something a player can pick and cast without an error.
