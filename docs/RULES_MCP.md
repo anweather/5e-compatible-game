@@ -142,6 +142,15 @@ looks of the mods before it, ahead of its own. `rules/budgets.json` `looks` caps
 (8), a look's scoped looks (8) and a scope's reach (64 cells). All of it is inside `"look"`, so
 it stays out of `Rules.Fingerprint` and the cell hash.
 
+How the view draws them (`ChemGrid.LookScopes.cs`). A cell's colour is worked out when it's drawn, and
+with no such look on none of this runs. Flames, embers, fog, steam and smoke, oil, grease, frost,
+thorns and vines take it cell by cell. The land and the lake are one surface each, so a `where` on
+a terrain, on water, or on `ash` or `snow` shows as a film over the cell, and a `mix` on those shows
+as its colours mixed, not a patchwork. Steam and smoke round their colour to a few steps, so a scope's
+edge is a few copies of the effect and not one a cell. A moving `around` marks only the cells at
+its edge that a look reaches, at most 160 a frame, and never the rule switch. Grass tufts and the sea
+take no scope. A player's name in `around` is the room's ("Player 1"), their slot the same less one.
+
 The view's side: `LookScopes.Compile(rules, places)` at each rule switch (a place's distances are
 worked out then), `Of(table, id)` once a frame, and `CellLook.At(x, y, players, own)` per cell,
 which allocates nothing; `players` is where each player stands (`PlayerSpot`, by name) and `own`

@@ -208,7 +208,7 @@ public partial class ChemGrid
         if (fog || v.fogged) Fog.Set(y * World.W + x, center, ground, fog ? c.GasAmt : 0, World.Rules.Sim.Gas.MaxAmount, c.Gas);
         v.fogged = fog;
         string kind = c.Gas != null && c.GasAmt > 0 && !fog && !veil ? c.Gas : null;
-        var prefab = GasPrefab(kind);
+        var prefab = GasShowAt(kind, kind == GasIds.Steam ? steamFx : smokeFx, GasPrefab(kind), x, y);
         if (prefab != null && !showFx) kind = null;
         // A cell whose effect waited (the frame's new effects were used up, or the budget was full) asks again.
         bool waiting = kind != null && prefab != null && v.gas == null;

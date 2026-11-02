@@ -397,6 +397,12 @@ that long, and doesn't march.
 : Animals and folk drawn in the view (`ValleyFauna`, Punchy's creatures).
   View-only, never in the rules.
 
+**Mill about**
+: What a frightened animal does when it's **cornered**, with nowhere left to run
+  (a wall, water or an edge on every side, or the end of its leash): a few steps
+  at a time, an eye on the danger, until a way out opens or the danger goes
+  (`CreatureBrain.Mill`). *Not* standing frozen or shaking on the spot.
+
 **Ambient life**
 : View-only life that makes the world feel lived in: gulls, fish, crabs,
   fireflies, villagers (`AmbientLife`, `AmbientCritters`, D12).
@@ -608,6 +614,14 @@ that long, and doesn't march.
   whether the device is a `Gamepad` or a `Joystick` and what `Gamepad.current`
   is, because the game reads only those: a controller that arrives as a
   `Joystick` reaches no `<Gamepad>` binding.
+
+**Hold to talk**
+: Holding H, or both sticks in on a pad: the chat box opens and fills with
+  the player's words, and letting go sends them to Claude (`GameVoice`).
+
+**Recogniser**
+: What turns speech into text. The game knows only the port, `ISpeech`;
+  each recogniser is an adapter behind it, picked in `SpeechChoice` (J-061).
 
 ## Ambiguities settled
 

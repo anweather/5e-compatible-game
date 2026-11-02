@@ -759,9 +759,9 @@ it runs) are merged into this list every few days.
 
 | # | Item | Lane | Size |
 |---|---|---|---|
-| 17 | Punchy animal port, 1: cornered and leashed animals mill about (upstream 7ee4511). First record the vendored base, b183507, in the Punchy README | Gameplay | 0.5 d |
-| 18 | Punchy animal port, 2: per-animal variety (traits, hairstyles and hair colour; StyleGroup) on our arrays | Gameplay | 2 d |
-| 19 | Punchy animal port, 3: water life (fish, ducks, eels, dolphins; Habitat Swims/Floats/Leaps; water depth through ICreatureGround) | Gameplay | 2–3 d |
+| 17 | **Done (2026-11-01):** Punchy animal port, 1: cornered and leashed animals mill about (upstream 7ee4511). The vendored base, b183507, is in the Punchy README | Gameplay | 0.5 d |
+| 18 | Punchy animal port, 2 (as data, J-058): per-animal variety (traits, hairstyles and hair colour; StyleGroup) on our arrays | Gameplay | 2 d |
+| 19 | Punchy animal port, 3 (as data, J-058): water life (fish, ducks, eels, dolphins; Habitat Swims/Floats/Leaps; water depth through ICreatureGround) | Gameplay | 2–3 d |
 | 20 | Generated areas from Punchy's biomes: B, baked from seed and theme (about 2–4 d), or A, runtime generation in the core (about 10–15 d, streaming part 3). Build's plan is in J-034 | World with Gameplay | M or L |
 | 21 | World tools, reading and looks (`docs/design/world-tools.md`, G1, G2): `find`, `places`, `here`, building ids, cabins as village buildings, buildings drawn from their materials' looks | Gameplay | to size |
 | 22 | World tools, mods in the world (G3 to G5): one building by id, things drawn from data, mods add things. Tests: a brick house and a hidden squirrel, by asking Claude, no named content (J-055) | Gameplay | to size |
@@ -770,6 +770,7 @@ it runs) are merged into this list every few days.
 | 26 | Who did what: the core records who caused a cell's fire and other effects, so a kill, a burnt house or a score can name a player. Today it's only a view note. Integer ids in hot state, in the cell hash, with goldens; needs an ADR (D9) | Gameplay | to size |
 | 27 | Colour mixing (`docs/design/world-tools.md`): `Colors.Mix`, paint-like, for overlapping looks and fires that meet | Gameplay | to size |
 | 28 | Paint as a test of the tools (`docs/design/world-tools.md`): slick covers drawn from data, then "add red and blue paint I can pour" asked of Claude, as one mod | Gameplay | to size |
+| 29 | Speech to text for talking to Claude in the game: a push-to-talk key, on the device where possible, working on Steam Deck with no keyboard. Windows' own Win+H covers the terminal for now | Gameplay | to size |
 | 24 | A terminal panel in the game with the MCP configured; the player brings their own Claude (J-056). Needs the connect token | Gameplay | to size |
 
 **Polish:** 15 (scoreboard), 16 (tower) and 17 (tower defense) are built.

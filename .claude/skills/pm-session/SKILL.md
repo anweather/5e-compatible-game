@@ -36,6 +36,7 @@ restart after every release.
 
 ## While running
 
+- Before landing, read `git diff origin/dev...origin/<branch> --stat`: only the branch's own files, nothing deleted that it didn't own. Gates pass on a tree that silently reverted other work (50fd301).
 - Land a worker's branch: `tools/workers/land.sh merge <branch> < message`, run the core and sandbox
   checks (CLAUDE.md "Commands"), then `land.sh push <branch>` (deletes the merged branch).
 - Brief VMs with `tools/workers/start.cmd` / `brief.cmd` and briefs in `docs/handoffs/briefs/`. No

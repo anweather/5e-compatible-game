@@ -1,16 +1,18 @@
 using UnityEngine;
 
 // The Esc menu's Play with Claude page: how to connect Claude to this game, what it does
-// then, and the switch that lets it in (RulesMcpServer, J-047). RulesMcpServer adds it, so a
-// copy that doesn't serve (a virtual player) has no page.
+// then, and the switch that lets it in (RulesMcpServer, J-047). Beside it, an entry that opens a
+// terminal already set up (ClaudeTerminal, J-056). RulesMcpServer adds it, so a copy that
+// doesn't serve (a virtual player) has neither.
 public class ClaudeMenu : MonoBehaviour
 {
     /// <summary>The page's id in the Esc menu.</summary>
     public const string PageId = "claude";
-    const int SectionOrder = 492; // after Controls, before the frame-rate log and Mods
+    const int SectionOrder = 492, TerminalOrder = 493; // after Controls, before the frame-rate log and Mods
     const int Width = 640;
     const float MostHeight = 620f;
 
+    const string Quicker = "<color=#ffffffbb>Quicker: press Enter and type to Claude right here. Or F9 opens a terminal with all of this done: type claude there. " + ClaudeTerminal.TalkLine + "</color>";
     const string NeedIt = "<b>1.</b> You need Claude Code, installed once: claude.com/claude-code";
     const string RunIt = "<b>2.</b> Run this once in a terminal:";
     const string AskIt = "<b>3.</b> Start a new Claude session, which picks up the game then. Keep the game running, and ask:";
@@ -28,18 +30,28 @@ public class ClaudeMenu : MonoBehaviour
     {
         page ??= new PauseMenu.Page { Title = "Play with Claude", Width = Width, Draw = DrawPage };
         PauseMenu.AddSection(DrawEntry, SectionOrder);
+        PauseMenu.AddSection(DrawTerminal, TerminalOrder);
         PauseMenu.AddPage(PageId, page);
     }
 
     void OnDisable()
     {
         PauseMenu.RemoveSection(DrawEntry);
+        PauseMenu.RemoveSection(DrawTerminal);
         PauseMenu.RemovePage(PageId);
     }
 
     void DrawEntry()
     {
         if (PauseMenu.Button("Play with Claude", PauseMenu.ButtonStyle)) PauseMenu.Instance.ShowPage(PageId);
+    }
+
+    // Closes the menu too: the game keeps running behind the terminal, so the player can watch it change.
+    void DrawTerminal()
+    {
+        if (!PauseMenu.Button("Open a Claude terminal (F9)", PauseMenu.ButtonStyle)) return;
+        EventLog.Add(ClaudeTerminal.Open());
+        PauseMenu.Instance.SetOpen(false);
     }
 
     void DrawPage()
@@ -49,6 +61,7 @@ public class ClaudeMenu : MonoBehaviour
         string add = RulesMcpServer.AddLine;
         scroll = PauseMenu.ScrollView(scroll, Mathf.Min(MostHeight, HudScale.Height - 200f), () =>
         {
+            GUILayout.Label(Quicker, text);
             GUILayout.Label(NeedIt, text);
             GUILayout.Label(RunIt, text);
             GUILayout.BeginHorizontal();

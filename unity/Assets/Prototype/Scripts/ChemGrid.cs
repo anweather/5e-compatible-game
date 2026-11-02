@@ -267,6 +267,7 @@ public partial class ChemGrid : MonoBehaviour
     void Update()
     {
         using (DetailChunksMarker.Auto()) UpdateDetailChunks();
+        FollowLooks();
         if (ExternalTicks)
         {
             Render();

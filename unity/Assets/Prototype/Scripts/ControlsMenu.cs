@@ -13,7 +13,7 @@ public class ControlsMenu : MonoBehaviour
     const float ShowSeconds = 12f, FadeSeconds = 1.5f;
 
     /// <summary>What, on the keyboard and mouse, and on a controller ({South} and so on: PadGlyphs tokens).</summary>
-    static readonly (string what, string keys, string pad)[] Rows =
+    public static readonly (string what, string keys, string pad)[] Rows =
     {
         ("Move", "WASD", "Left stick"),
         ("Look", "Mouse", "Right stick"),
@@ -37,6 +37,8 @@ public class ControlsMenu : MonoBehaviour
         ("Reset the yard (solo)", "R", "{Select}"),
         ("Menu", "Esc", "{Start}"),
         ("Mods", "M", "Menu → Mods"),
+        ("Type to Claude", "Enter", "—"),
+        ("Talk to Claude (let go to send)", "Hold H", "Hold both sticks in"),
     };
 
     static ControlsMenu instance;
