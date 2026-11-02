@@ -174,14 +174,15 @@ namespace Chem.Tests
             Assert.That(ClaudeRun.ModelRefused(text, ClaudeRun.ChatModel), Is.EqualTo(refused));
 
         [Test]
-        public void ItRetriesOnlyWhenNothingRan()
+        public void ARefusedModelIsToldInTheGamesWords()
         {
-            var nothing = new ChatProgress { Started = true, Ready = true };
-            Assert.That(ClaudeRun.RetriesOnTheAccount(ClaudeRun.ChatModel, RealRefusal, nothing), Is.True);
-            Assert.That(ClaudeRun.RetriesOnTheAccount(null, RealRefusal, nothing), Is.False, "no model was asked for: the account's own refused it");
-            Assert.That(ClaudeRun.RetriesOnTheAccount(ClaudeRun.ChatModel, RealRefusal, new ChatProgress { Tools = 1 }), Is.False, "a change can't go in twice");
-            Assert.That(ClaudeRun.RetriesOnTheAccount(ClaudeRun.ChatModel, RealRefusal, new ChatProgress { Applied = true }), Is.False);
-            Assert.That(ClaudeRun.RetriesOnTheAccount(ClaudeRun.ChatModel, "Rate limit reached for model", nothing), Is.False);
+            const string model = "claude-haiku-0-0-not-a-model";
+            string said = ClaudeRun.Pointed(RealRefusal.Replace(ClaudeRun.ChatModel, model), model);
+            Assert.That(said, Is.EqualTo(ClaudeRun.ModelUnavailable(model)));
+            Assert.That(said, Does.Contain(model).And.Contain("isn't available on this account").And.Contain("doesn't exist"));
+            Assert.That(said, Does.Contain("Developer menu").And.Contain("Claude's model in the chat"));
+            Assert.That(said, Does.Not.Contain("selected model"), "not claude's words as well");
+            Assert.That(ClaudeRun.NeedsSignIn(said), Is.False, "the sign-in page stays shut");
         }
 
         [Test]

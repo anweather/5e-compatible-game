@@ -20,7 +20,7 @@ public class ChatProbe : ProbeScenario
 
     /// <summary>What claude 2.1.316 really says of a model it can't use: a line of no model's, then the result.</summary>
     const string Refusal = "There's an issue with the selected model (claude-haiku-5-5). It may not exist or you may not have access to it. Run --model to pick a different model.";
-    const string RanModel = "the-accounts-default", Rained = "It rains.", Rain = "make it rain", RunsFile = "runs.txt", OnlyBlock = "End of notes. The player's message:";
+    const string Rain = "make it rain", RunsFile = "runs.txt", OnlyBlock = "End of notes. The player's message:";
 
     string folder, logged, otherRecords;
 
@@ -51,7 +51,7 @@ public class ChatProbe : ProbeScenario
             yield return ModelChoice(chat);
             yield return Waits(chat);
             yield return NotesGoAhead(chat);
-            yield return Fallback(chat);
+            yield return ModelGone(chat);
             yield return SignIn(chat);
             yield return Plain(chat);
             yield return Nothing(chat);
@@ -142,73 +142,48 @@ public class ChatProbe : ProbeScenario
 
     IEnumerator Sent(GameChat chat) => Until(chat, () => !chat.Busy && ChatTelemetry.Instance.Current == null);
 
-    // An account that can't use the chat's model (#64): each case on a new harness, as one remembers what it was refused.
-    IEnumerator Fallback(GameChat chat)
+    // A model the account can't use (#64): one process, the game's line once, the record failed, and the rest stay as they were.
+    IEnumerator ModelGone(GameChat chat)
     {
-        var harnessWas = chat.Harness;
-        try
-        {
-            yield return Retries(chat);
-            yield return NoRetry(chat, "ran-first", Refusal, new[]
-            {
-                "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"mcp__spell-valley__whats_on\",\"input\":{}}]}}",
-                "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t1\",\"content\":\"ok\"}]}}",
-            }, "after_a_tool", true);
-            yield return NoRetry(chat, "rate", "Rate limit reached for model claude-haiku-5-5", new string[0], "for_a_rate_limit", false);
-            yield return NoRetry(chat, "odd", "Something nobody has seen before", new string[0], "for_what_it_cant_place", true);
-            chat.Harness = new ClaudeChat();
-            ClaudeChat.StandIn = Refuser("both", Failure(Refusal), Failure(Refusal));
-            chat.Send(Rain);
-            yield return Sent(chat);
-            Check("it_retries_once_only", Runs() == 2, $"{Runs()} runs");
-            Check("the_accounts_own_refusal_points_nowhere", chat.Lines.Last().Contains("selected model") && !chat.Lines.Last().Contains(ClaudeRun.ModelPointer), chat.Lines.Last());
-        }
-        finally
-        {
-            chat.Harness = harnessWas;
-        }
-    }
-
-    IEnumerator Retries(GameChat chat)
-    {
-        chat.Harness = new ClaudeChat();
-        ClaudeChat.StandIn = Refuser("refuses", Failure(Refusal), new[]
-        {
-            "{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"" + RanModel + "\",\"claude_code_version\":\"0\"}",
-            "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"model\":\"" + RanModel + "\",\"content\":[{\"type\":\"text\",\"text\":\"" + Rained + "\"}]}}",
-            "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"" + Rained + "\",\"total_cost_usd\":0.05,\"num_turns\":1,\"duration_ms\":100,\"duration_api_ms\":90}",
-        });
+        string told = ClaudeRun.ModelUnavailable(ClaudeRun.ChatModel);
+        ClaudeChat.StandIn = Counted("refuses", Failure(Refusal));
         chat.Send(Rain);
-        Check("a_retry_stays_one_message", chat.Busy);
+        Check("a_refused_model_stays_one_message", chat.Busy);
         yield return Sent(chat);
         var said = chat.Lines.ToList();
         string all = string.Join(" | ", said);
-        Check("it_ran_again_with_no_model", Runs() == 2 && !File.ReadAllText(logged).Contains("--model") && File.ReadAllText(logged).Contains(Rain), File.ReadAllText(logged));
-        Check("the_player_is_told_in_a_line", said.Count(l => l == ClaudeRun.ModelFallback) == 1, all);
-        Check("the_refusal_doesnt_show", !all.Contains("selected model"), all);
-        Check("the_second_try_answers", said.Count(l => l == "Claude: " + Rained) == 1 && !all.Contains(ClaudeRun.ModelPointer), all);
+        Check("a_refused_model_runs_once", Runs() == 1, $"{Runs()} runs");
+        Check("the_model_was_asked_for", File.ReadAllText(logged).Contains("--model " + ClaudeRun.ChatModel), File.ReadAllText(logged));
+        Check("the_player_is_told_once", said.Count(l => l.Contains(told)) == 1, all);
+        Check("in_the_red_of_a_failure", said.Last().StartsWith("<color=#ff8a80>", System.StringComparison.Ordinal), said.Last());
+        Check("claudes_own_words_dont_show", !all.Contains("selected model"), all);
+        Check("it_isnt_a_sign_in_failure", !all.Contains("aren't signed in"), all);
         JObject record = null;
         for (float t = 0f; t < MostWrite && record == null; t += Time.unscaledDeltaTime)
         {
             record = LastRecord();
             yield return null;
         }
-        Check("the_record_has_the_model_that_ran_and_the_retry", (string)record?["model"] == RanModel && (string)record?["retry"]?["from"] == ClaudeRun.ChatModel && (string)record?["outcome"] == "answered", record?.ToString());
-        chat.Send("and again");
-        yield return Sent(chat);
-        said = chat.Lines.ToList();
-        Check("it_remembers_for_the_session", Runs() == 3 && !File.ReadAllText(logged).Contains("--model") && said.Count(l => l == ClaudeRun.ModelFallback) == 1, string.Join(" | ", said));
+        Check("the_record_says_failed_and_why", (string)record?["outcome"] == "failed" && (string)record?["why"] == "model unavailable: " + ClaudeRun.ChatModel, record?.ToString());
+        Check("the_record_has_the_model_asked_for", (string)record?["model"] == ClaudeRun.ChatModel, (string)record?["model"]);
+        yield return OneRun(chat, "ran-first", Refusal, new[]
+        {
+            "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"mcp__spell-valley__whats_on\",\"input\":{}}]}}",
+            "{\"type\":\"user\",\"message\":{\"content\":[{\"type\":\"tool_result\",\"tool_use_id\":\"t1\",\"content\":\"ok\"}]}}",
+        }, "after_a_tool", told);
+        const string rate = "Rate limit reached for model claude-haiku-5-5", odd = "Something nobody has seen before";
+        yield return OneRun(chat, "rate", rate, new string[0], "for_a_rate_limit", rate);
+        yield return OneRun(chat, "odd", odd, new string[0], "for_what_it_cant_place", odd + " " + ClaudeRun.ModelPointer);
     }
 
-    IEnumerator NoRetry(GameChat chat, string name, string words, string[] first, string what, bool pointed)
+    IEnumerator OneRun(GameChat chat, string name, string words, string[] first, string what, string shown)
     {
-        chat.Harness = new ClaudeChat();
-        ClaudeChat.StandIn = Refuser(name, first.Concat(new[] { Failure(words)[1] }).ToArray(), Failure("the second try should not have run"));
+        ClaudeChat.StandIn = Counted(name, first.Concat(Failure(words)).ToArray());
         chat.Send(Rain);
         yield return Sent(chat);
         string last = chat.Lines.Last();
-        Check("no_retry_" + what, Runs() == 1, $"{Runs()} runs");
-        Check("the_red_line_says_why_" + what, last.Contains(words) && last.Contains(ClaudeRun.ModelPointer) == pointed, last);
+        Check("one_run_" + what, Runs() == 1, $"{Runs()} runs");
+        Check("the_red_line_" + what, last.Contains(shown + "</color>"), last);
     }
 
     // The two lines of a real failure.
@@ -218,18 +193,13 @@ public class ChatProbe : ProbeScenario
         "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"result\":\"" + words + "\",\"terminal_reason\":\"api_error\",\"api_error_status\":404,\"total_cost_usd\":0,\"num_turns\":1}",
     };
 
-    // A stand-in that says one thing when asked for a model and another when not, and counts how often it ran.
-    string Refuser(string name, string[] refused, string[] account)
+    // A stand-in that also counts how often it ran.
+    string Counted(string name, string[] lines)
     {
-        string runs = Path.Combine(folder, RunsFile), script = Path.Combine(folder, name + ".cmd");
+        string runs = Path.Combine(folder, RunsFile);
         if (File.Exists(runs)) File.Delete(runs);
-        var body = new System.Text.StringBuilder("@echo off\r\n");
-        body.Append($"echo run >> \"{runs}\"\r\necho %* > \"{logged}\"\r\nmore >> \"{logged}\"\r\n");
-        body.Append("echo %* | findstr /c:\"--model\" > nul\r\nif errorlevel 1 goto account\r\n");
-        foreach (string line in refused) body.Append(Echo(line));
-        body.Append("exit /b 0\r\n:account\r\n");
-        foreach (string line in account) body.Append(Echo(line));
-        File.WriteAllText(script, body.ToString());
+        string script = StandIn(name, 0f, lines);
+        File.WriteAllText(script, $"@echo run >> \"{runs}\"\r\n" + File.ReadAllText(script));
         return script;
     }
 
@@ -335,7 +305,7 @@ public class ChatProbe : ProbeScenario
         string asked = File.Exists(logged) ? File.ReadAllText(logged) : "";
         Check("the_setting_leaves_the_model_to_the_account", !asked.Contains("--model"), asked);
         Check("the_setting_leaves_nothing_behind", PlayerPrefs.HasKey(GameChat.ModelKey) == had);
-        Check("a_model_it_cant_use_is_said_plainly", chat.Lines.Any(l => l.Contains("issue with the selected model")), string.Join(" | ", chat.Lines));
+        Check("a_model_it_cant_use_is_said_plainly", chat.Lines.Last().Contains("issue with the selected model") && !chat.Lines.Last().Contains(ClaudeRun.ModelPointer), chat.Lines.Last());
     }
 
     IEnumerator Waits(GameChat chat)
