@@ -138,11 +138,14 @@ public class PauseMenu : MonoBehaviour
         go.AddComponent<MenuActivator>();
     }
 
+    /// <summary>A text box outside the menu has the keys, so Esc and M are letters to it, not the menu's.</summary>
+    public static bool KeysTaken { get; set; }
+
     void Awake() => controls = new MenuControls();
 
     void Update()
     {
-        if (controls.Menu.WasPressedThisFrame())
+        if (controls.Menu.WasPressedThisFrame() && !KeysTaken)
         {
             bool pad = MenuControls.PressedOnPad(controls.Menu);
             SetOpen(!Open);

@@ -63,6 +63,10 @@ public class GameChat : MonoBehaviour
     void Awake()
     {
         Instance = this;
+        // -claude-stand-in runs this program instead of claude, to test a player without anyone's Claude.
+        var args = System.Environment.GetCommandLineArgs();
+        int asked = System.Array.IndexOf(args, "-claude-stand-in");
+        if (asked >= 0 && asked + 1 < args.Length) ClaudeChat.StandIn = args[asked + 1];
         QuickExit.BeforeExit += claude.Cancel; // some players have no OnApplicationQuit
     }
 
@@ -70,20 +74,42 @@ public class GameChat : MonoBehaviour
     {
         QuickExit.BeforeExit -= claude.Cancel;
         claude.Cancel();
+        PauseMenu.KeysTaken = false;
         if (Instance == this) Instance = null;
     }
 
     void Update()
     {
+        if (!Open) PauseMenu.KeysTaken = false; // a frame late, so the key that closed the box can't open the menu
         while (claude.Take(out var heard)) Show(heard.said, heard.text);
         if (!claude.Busy && waiting.Count > 0)
         {
             turnedAway = false;
             SendNow(waiting.Dequeue());
         }
-        if (Open && PauseMenu.Instance != null && PauseMenu.Instance.Open) SetOpen(false);
-        if (Open || Blocked()) return;
-        if (Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame) SetOpen(true);
+        if (Open && Blocked()) SetOpen(false);
+        if (Open)
+        {
+            BoxKeys();
+            return;
+        }
+        if (!Blocked() && Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame) SetOpen(true);
+    }
+
+    // Here and not in OnGUI, which can see a key a frame before the Input System does and so reopen the box.
+    void BoxKeys()
+    {
+        var keys = Keyboard.current;
+        if (keys == null) return;
+        if (keys.escapeKey.wasPressedThisFrame)
+        {
+            SetOpen(false);
+            return;
+        }
+        if (Talking || !(keys.enterKey.wasPressedThisFrame || keys.numpadEnterKey.wasPressedThisFrame)) return;
+        string message = typed;
+        SetOpen(false);
+        Send(message);
     }
 
     static bool Blocked() => PauseMenu.Instance != null && PauseMenu.Instance.Open;
@@ -151,6 +177,7 @@ public class GameChat : MonoBehaviour
         var caster = EventLog.TrackedCaster;
         if (open)
         {
+            PauseMenu.KeysTaken = true;
             focusBox = true;
             typed = "";
             if (caster != null && caster.controls != null && caster.controls.enabled)
@@ -190,18 +217,9 @@ public class GameChat : MonoBehaviour
     void DrawBox(float x, float y)
     {
         var e = Event.current;
-        if (e.type == EventType.KeyDown && e.keyCode is KeyCode.Return or KeyCode.KeypadEnter)
+        if (e.type == EventType.KeyDown && e.keyCode is KeyCode.Return or KeyCode.KeypadEnter or KeyCode.Escape)
         {
-            e.Use();
-            string message = typed;
-            SetOpen(false);
-            Send(message);
-            return;
-        }
-        if (e.type == EventType.KeyDown && e.keyCode == KeyCode.Escape)
-        {
-            e.Use();
-            SetOpen(false);
+            e.Use(); // BoxKeys acts on them
             return;
         }
         if (Talking)

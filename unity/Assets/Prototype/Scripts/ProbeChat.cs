@@ -29,6 +29,7 @@ public class ChatProbe : ProbeScenario
         {
             chat.SetOpen(true);
             Check("open_takes_the_controls", chat.Open && (controls == null || !controls.enabled));
+            Check("open_keeps_m_and_esc_from_the_menu", PauseMenu.KeysTaken);
             chat.SetOpen(false);
             Check("closed_gives_them_back", !chat.Open && (controls == null || controls.enabled));
             yield return Answers(chat);

@@ -55,7 +55,7 @@ public class ModsPanel : MonoBehaviour
     {
         var keys = Keyboard.current;
         var controls = PauseMenu.Controls;
-        bool typing = PauseMenu.Instance != null && PauseMenu.Instance.Open && GUIUtility.keyboardControl != 0; // the join code field has the keys
+        bool typing = PauseMenu.KeysTaken || (PauseMenu.Instance != null && PauseMenu.Instance.Open && GUIUtility.keyboardControl != 0); // the join code field has the keys
         if (controls != null && controls.Mods.WasPressedThisFrame() && !typing) SetOpen(!Open);
         if (Open && keys != null && !typing && switcher.Catalog.Mods.Count > 0) NumberKeys(keys);
     }

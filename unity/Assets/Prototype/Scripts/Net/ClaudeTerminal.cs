@@ -119,17 +119,18 @@ public class ClaudeTerminal : MonoBehaviour
     }
 
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-    // Windows Terminal if it's there, else a plain command prompt.
+    // Windows Terminal if it's there, else a plain command prompt. The .\ is for a game started with
+    // NoDefaultCurrentDirectoryInExePath set, as from Claude Code: cmd then won't look in its own folder.
     static string Launch(string folder, string script)
     {
         try
         {
-            Process.Start(new ProcessStartInfo("wt.exe", $"-d \"{folder}\" cmd /k {script}") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("wt.exe", $"-d \"{folder}\" cmd /k .\\{script}") { UseShellExecute = true });
             return "Windows Terminal";
         }
         catch (Win32Exception)
         {
-            Process.Start(new ProcessStartInfo("cmd.exe", $"/k {script}") { WorkingDirectory = folder, UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("cmd.exe", $"/k .\\{script}") { WorkingDirectory = folder, UseShellExecute = true });
             return "a command prompt";
         }
     }
