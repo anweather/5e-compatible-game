@@ -94,6 +94,10 @@ The full schema is in `rules/README.md`.
 up as an experiment anyway, with the idea filled in and a best-effort
 patch, and ask for the verb as a code change.
 
+**Creatures** are rows too, under `"fauna"` and `"parts"`, each replacing the row of its id whole
+(`rules/README.md`, "Creatures"). They change only what's drawn and how the valley's animals behave, so they
+leave the fingerprint alone and a row with a key the view doesn't read is refused.
+
 ## Worked examples
 
 **Steam is scalding: fire can't take hold where steam hangs.**

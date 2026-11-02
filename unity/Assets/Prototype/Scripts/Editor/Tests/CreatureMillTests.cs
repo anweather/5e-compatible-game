@@ -1,7 +1,7 @@
+using Chem;
 using NUnit.Framework;
 using Punchy.Fauna;
 using Unity.Mathematics;
-using UnityEditor;
 
 // Animals with nowhere left to run (CreatureBrain's Flee): cornered against what they can't walk
 // on, or at the end of a leash, they mill about; they don't stand frozen, jitter on the spot, or
@@ -21,10 +21,9 @@ public class CreatureMillTests
         public bool Water(float2 xz) => false;
     }
 
-    static CreatureBody Body(string species) =>
-        CreatureBody.Build(AssetDatabase.LoadAssetAtPath<CreatureSpecies>($"Assets/Prototype/ThirdParty/Punchy/Fauna/{species}.asset"));
+    static CreatureBody Body(string species) => CreatureBody.Build(Rules.Load(ChemGrid.FindRulesDir()).Fauna, species);
 
-    static CreatureBody Deer() => Body("Deer");
+    static CreatureBody Deer() => Body("deer");
 
     static CreatureState At(float x, float z, uint seed) => new CreatureState
     {
@@ -56,12 +55,12 @@ public class CreatureMillTests
     // A pen 8 m wide and 10 deep with no way out, the danger at its south end.
     static bool Pen(float2 p) => math.abs(p.x) < 4f && math.abs(p.y) < 5f;
 
-    [TestCase("Deer", 1u)]
-    [TestCase("Deer", 7u)]
-    [TestCase("Deer", 1234u)]
-    [TestCase("Turkey", 7u)]
-    [TestCase("BlackBear", 7u)]
-    [TestCase("Human", 7u)]
+    [TestCase("deer", 1u)]
+    [TestCase("deer", 7u)]
+    [TestCase("deer", 1234u)]
+    [TestCase("turkey", 7u)]
+    [TestCase("black-bear", 7u)]
+    [TestCase("human", 7u)]
     public void CorneredItMillsAbout(string species, uint seed)
     {
         var body = Body(species);

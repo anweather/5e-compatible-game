@@ -85,7 +85,7 @@ public class CloseupProbe : ProbeScenario
         var ahead = Vector3.ProjectOnPlane(cam.forward, Vector3.up).normalized;
         var at = lens + ahead * DeerOffLens;
         float yaw = math.atan2(cam.right.x, cam.right.z);
-        int deer = fauna.Spawn(fauna.SpeciesIndex("Deer"), new float3(at.x, grid.GroundAt(at), at.z), yaw);
+        int deer = fauna.Spawn(fauna.SpeciesIndex("deer"), new float3(at.x, grid.GroundAt(at), at.z), yaw);
         fauna.Puppet(deer, yaw, 0f);
         for (float t = 0f; t < 0.5f; t += Time.deltaTime)
         {
@@ -119,7 +119,7 @@ public class CloseupProbe : ProbeScenario
         if (fauna == null) yield break;
         var p = V(27f, 0f, 26f);
         p.y = grid.GroundAt(p);
-        int deer = fauna.Spawn(fauna.SpeciesIndex("Deer"), new float3(p.x, p.y, p.z), 0f);
+        int deer = fauna.Spawn(fauna.SpeciesIndex("deer"), new float3(p.x, p.y, p.z), 0f);
         fauna.Puppet(deer, 0f, 0f);
         yield return Wait(0.5f);
         var body = p + Vector3.up * 0.85f;

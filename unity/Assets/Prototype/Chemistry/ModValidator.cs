@@ -349,8 +349,8 @@ namespace Chem
             public void Determinism()
             {
                 var wholeKeys = WholeKeys(baseDoc);
-                // A building's numbers are the view's or checked whole by Rules.Check, and its seed is its own.
-                var checkedHere = new JObject(patch.Properties().Where(p => p.Name != "world" && p.Name != BuildingTables.Key).Select(p => new JProperty(p.Name, p.Value)));
+                // A building's numbers are the view's or checked whole by Rules.Check, and its seed is its own; a creature's are the view's.
+                var checkedHere = new JObject(patch.Properties().Where(p => p.Name != "world" && p.Name != BuildingTables.Key && !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value)));
                 Walk(checkedHere, "", (key, path, value) =>
                 {
                     if (RandomKeys.Contains(key.ToLowerInvariant()))
@@ -370,7 +370,9 @@ namespace Chem
                 var whole = new HashSet<string>();
                 // A group's order only sorts the spell radial (MODDING.md slots Frost in at 2.5).
                 var fraction = new HashSet<string> { "order" };
-                Walk(doc, "", (key, path, value) =>
+                // The creature tables' numbers are the view's: their radius says nothing of a spell's.
+                var shared = new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value)));
+                Walk(shared, "", (key, path, value) =>
                 {
                     if (!IsNumber(value)) return;
                     (IsWhole(value) ? whole : fraction).Add(key);

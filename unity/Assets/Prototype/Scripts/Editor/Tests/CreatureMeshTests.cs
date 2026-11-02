@@ -1,8 +1,8 @@
 using System.Linq;
+using Chem;
 using NUnit.Framework;
 using Punchy.Fauna;
 using Unity.Mathematics;
-using UnityEditor;
 using UnityEngine;
 
 // What the creatures are made of (issue #47): one closed capsule, right way out however
@@ -52,17 +52,15 @@ public class CreatureMeshTests
     [Test]
     public void NoSpeciesTurnsACapsuleInsideOut()
     {
-        foreach (var guid in AssetDatabase.FindAssets("t:CreatureSpecies", new[] { "Assets/Prototype/ThirdParty/Punchy/Fauna" }))
-        {
-            var species = AssetDatabase.LoadAssetAtPath<CreatureSpecies>(AssetDatabase.GUIDToAssetPath(guid));
-            foreach (var s in CreatureBody.Build(species).Segments)
+        var tables = Rules.Load(ChemGrid.FindRulesDir()).Fauna;
+        foreach (var species in tables.SpeciesIds)
+            foreach (var s in CreatureBody.Build(tables, species).Segments)
             {
-                Assert.That(s.Length, Is.GreaterThanOrEqualTo(0f), species.name);
-                Assert.That(s.RadiusStart, Is.GreaterThanOrEqualTo(0f), species.name);
-                Assert.That(s.RadiusEnd, Is.GreaterThanOrEqualTo(0f), species.name);
-                Assert.That(s.Flatten, Is.GreaterThan(0f), species.name);
+                Assert.That(s.Length, Is.GreaterThanOrEqualTo(0f), species);
+                Assert.That(s.RadiusStart, Is.GreaterThanOrEqualTo(0f), species);
+                Assert.That(s.RadiusEnd, Is.GreaterThanOrEqualTo(0f), species);
+                Assert.That(s.Flatten, Is.GreaterThan(0f), species);
             }
-        }
     }
 
     static SegmentInstance[] OneBody() => new[]

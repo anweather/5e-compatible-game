@@ -20,6 +20,7 @@ it. Other docs refer to them by number ("D4"); the numbers don't change.
 | D11 | [World layout from themes, in the core](adr/0011-world-layout-from-themes-in-the-core.md) | Accepted (2026-10-27) |
 | D12 | [Generated content from seeded recipes](adr/0012-generated-content-from-seeded-recipes.md) | Proposed (2026-10-26) |
 | D13 | [Rule changes go through a checked MCP server](adr/0013-rule-changes-through-an-mcp-server.md) | Accepted (2026-10-31) |
+| D14 | [Creatures are data](adr/0014-creatures-are-data.md) | Proposed (2026-11-02) |
 
 How to add one: see [`adr/README.md`](adr/README.md).
 

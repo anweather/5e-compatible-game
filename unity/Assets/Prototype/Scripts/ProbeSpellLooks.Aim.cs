@@ -178,7 +178,7 @@ public class AimLooksProbe : SpellLooksProbe
     {
         caster.AimOverride = null;
         var fauna = FindAnyObjectByType<ValleyFauna>();
-        int deer = fauna != null ? fauna.SpeciesIndex("Deer") : -1;
+        int deer = fauna != null ? fauna.SpeciesIndex("deer") : -1;
         Check("deer_found", deer >= 0, $"species {deer}");
         if (deer < 0) yield break;
         var home = V(27f, 0f, 26f);

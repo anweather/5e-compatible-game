@@ -22,18 +22,7 @@ using UnityEngine;
 // and nothing they do reaches the chemistry.
 public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 {
-    [System.Serializable]
-    public class Entry
-    {
-        public CreatureSpecies species;
-        /// <summary>Animals per hectare (10 000 m²).</summary>
-        public float density = 0.5f;
-        /// <summary>Only near water (frogs, herons).</summary>
-        public bool nearWater;
-    }
-
     public Material material;
-    public List<Entry> species = new();
     /// <summary>Animals are kept within this distance of the camera.</summary>
     public float radius = 90f;
     /// <summary>New animals appear at least this far away.</summary>
@@ -65,10 +54,11 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         public bool barkeep;
     }
 
-    static readonly ProfilerMarker UpdateMarker = new("ValleyFauna.Update");
+    static readonly ProfilerMarker UpdateMarker = new("ValleyFauna.Update"), ReadRowsMarker = new("ValleyFauna.ReadRows");
 
     readonly List<Creature> creatures = new();
-    readonly List<CreatureBody> bodies = new();
+    // Every species in the rules in force (rules/fauna.json), and how many animals each has round the camera.
+    readonly CreatureBodies bodies = new();
     readonly List<Vector2> fires = new();
     // The wizards, and the species each has the shape of (-1: itself).
     readonly List<(Vector2 at, int form)> wizards = new();
@@ -92,8 +82,15 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     /// <summary>The animals drawn for their shadows alone this frame, the lens being at them (CreatureDrawer).</summary>
     public int AtLens { get; private set; }
 
-    /// <summary>The species built from the list, by index (for the probe).</summary>
-    public int SpeciesIndex(string name) => species.FindIndex(e => e.species != null && e.species.name == name);
+    /// <summary>How many species there are, for the probe.</summary>
+    public int SpeciesCount => bodies.Count;
+
+    /// <summary>What the last reading of the rows built, and how long it took, for the probe.</summary>
+    public int Rebuilt => bodies.Rebuilt;
+    public double ReadRowsMs { get; private set; }
+
+    /// <summary>A species' index in the list by its id in rules/fauna.json, or -1.</summary>
+    public int SpeciesIndex(string id) => bodies.IndexOf(id);
 
     /// <summary>An animal's state (position, speed, what it's doing), for the probe.</summary>
     public CreatureState State(int index) => creatures[index].state;
@@ -127,13 +124,11 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     /// <summary>An animal's colouring (one of its species' coats).</summary>
     public int Coat(int index) => creatures[index].coat;
 
-    /// <summary>A species' body (by index in the list), or null; built in Start.</summary>
-    public CreatureBody Body(int speciesIndex) =>
-        speciesIndex >= 0 && speciesIndex < bodies.Count ? bodies[speciesIndex] : null;
+    /// <summary>A species' body (by index in the list), or null; built once the rules are in.</summary>
+    public CreatureBody Body(int speciesIndex) => bodies[speciesIndex];
 
-    /// <summary>A species' name as its asset has it ("RedFox"), or null.</summary>
-    public string SpeciesName(int speciesIndex) =>
-        speciesIndex >= 0 && speciesIndex < species.Count && species[speciesIndex].species != null ? species[speciesIndex].species.name : null;
+    /// <summary>A species' name in words ("Red fox"), or null.</summary>
+    public string SpeciesName(int speciesIndex) => bodies[speciesIndex]?.Name;
 
     /// <summary>
     /// The animal <paramref name="ray"/> points at, the nearest along it within
@@ -163,39 +158,35 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     {
         grid = FindAnyObjectByType<ChemGrid>();
         sky = FindAnyObjectByType<SkyLight>();
-        FindVillages();
-        BuildBodies();
-        counts = new int[species.Count];
         drawer = new CreatureDrawer(material);
+        if (grid != null) grid.RulesChanged += ReadRows;
+        ReadRows();
     }
 
-    // Each species' body, with what it hunts and whether anything hunts it (a listed species' variants count).
-    void BuildBodies()
+    // The rules in force: at the start and at every switch, only the species whose rows changed are
+    // built again and swapped in, so the animals keep their places and seeds. A species gone takes its animals with it.
+    void ReadRows()
     {
-        var hunted = new bool[species.Count];
-        var prey = new List<int>[species.Count];
-        for (int i = 0; i < species.Count; i++)
-        {
-            prey[i] = new List<int>();
-            var hunter = species[i].species;
-            if (hunter == null) continue;
-            for (int j = 0; j < species.Count; j++)
-            {
-                var quarry = species[j].species;
-                if (quarry == null || j == i || !hunter.Hunts.Exists(h => h != null && h.Body == quarry.Body)) continue;
-                prey[i].Add(j);
-                hunted[j] = true;
-            }
-        }
-        for (int i = 0; i < species.Count; i++)
-            bodies.Add(species[i].species != null ? CreatureBody.Build(species[i].species, prey[i], hunted[i]) : null);
+        if (grid == null || grid.CurrentRules == null) return;
+        bool first = bodies.Count == 0;
+        long began = System.Diagnostics.Stopwatch.GetTimestamp();
+        using (ReadRowsMarker.Auto()) bodies.Refresh(grid.CurrentRules.Effective);
+        ReadRowsMs = (System.Diagnostics.Stopwatch.GetTimestamp() - began) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
+        counts = new int[bodies.Count];
+        creatures.RemoveAll(c => bodies[c.species] == null);
+        if (first) FindVillages();
     }
 
-    void OnDestroy() => drawer?.Dispose();
+    void OnDestroy()
+    {
+        if (grid != null) grid.RulesChanged -= ReadRows;
+        drawer?.Dispose();
+    }
 
     void Update()
     {
         world = grid != null ? grid.World : null;
+        if (bodies.Count == 0) ReadRows();
         var cam = Camera.main;
         if (world == null || cam == null || material == null || bodies.Count == 0) return;
         using var _ = UpdateMarker.Auto();
@@ -372,10 +363,11 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         bool wet = NearWater(at);
         int best = -1;
         float bestShortfall = 0f;
-        for (int i = 0; i < species.Count; i++)
+        for (int i = 0; i < bodies.Count; i++)
         {
-            if (bodies[i] == null || species[i].nearWater && !wet) continue;
-            float shortfall = species[i].density * hectares - counts[i];
+            var b = bodies[i];
+            if (b == null || b.NearWater && !wet) continue;
+            float shortfall = b.Density * hectares - counts[i];
             if (shortfall > bestShortfall)
             {
                 bestShortfall = shortfall;
@@ -384,7 +376,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         }
         // Rare species (less than one expected nearby) turn up only some of the time.
         if (best < 0 || bestShortfall < 1f && rng.NextFloat() > bestShortfall) return;
-        var group = species[best].species.Body.GroupSize;
+        var group = bodies[best].Group;
         int n = rng.NextInt(math.max(1, group.x), math.max(group.x, group.y) + 1);
         for (int i = 0; i < n; i++)
         {
@@ -396,21 +388,16 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     // --- the villages' folk --------------------------------------------------------------
 
-    // Each village's residents (Village.residents): their species in the list (density 0, so the
-    // wilds never spawn them), where their square is, how far they wander.
+    // Each village's residents (Village.residents): their species in the list (no "spawn" in their
+    // row, so the wilds never spawn them), where their square is, how far they wander.
     readonly List<(Village village, int species, float2 home)> folk = new();
 
     void FindVillages()
     {
         foreach (var v in FindObjectsByType<Village>(FindObjectsSortMode.None))
         {
-            if (v.residents == null || v.residentCount <= 0) continue;
-            int i = species.FindIndex(e => e.species == v.residents);
-            if (i < 0)
-            {
-                species.Add(new Entry { species = v.residents, density = 0f });
-                i = species.Count - 1;
-            }
+            int i = bodies.IndexOf(v.residents);
+            if (i < 0 || v.residentCount <= 0) continue;
             var p = v.transform.position + v.wellAt;
             folk.Add((v, i, new float2(p.x, p.z)));
             places.Add(PlacesOf(v));
@@ -425,7 +412,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         for (int v = 0; v < folk.Count; v++)
         {
             var (village, kind, square) = folk[v];
-            if (village == null || goIn || places[v].indoors || math.distance(square, centre) > radius) continue;
+            if (village == null || bodies[kind] == null || goIn || places[v].indoors || math.distance(square, centre) > radius) continue;
             if (!FolkAbout(kind, square)) ComeOut(v);
         }
     }

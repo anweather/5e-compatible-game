@@ -27,7 +27,7 @@ public class ShapeshiftProbe : ProbeScenario
         fauna = FindAnyObjectByType<ValleyFauna>();
         shape = wizard.GetComponent<Shapeshift>();
         spell = World.Rules.Spell(SpellIds.Shapeshift);
-        deer = fauna != null ? fauna.SpeciesIndex("Deer") : -1;
+        deer = fauna != null ? fauna.SpeciesIndex("deer") : -1;
         bool ready = fauna != null && shape != null && spell != null && deer >= 0;
         Check("ready", ready, $"fauna {fauna != null}, Shapeshift part {shape != null}, spell {spell != null}, deer {deer}");
         if (!ready) yield break;
