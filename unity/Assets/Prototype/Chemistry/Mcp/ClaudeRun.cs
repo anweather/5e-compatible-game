@@ -60,17 +60,28 @@ namespace Chem.Mcp
             "message may depend on that, and after you change something add a line or two there saying what you changed and what's on now. Answer in a line or two, in plain words.";
 
         /// <summary>
-        /// The arguments: one message read from stdin, the game's tools and the notes file allowed, and
-        /// anything else refused rather than asked about, as nobody is there to answer a prompt.
+        /// The model the chat asks for (J-066). Pinned, not the alias: this is the one the strict sets passed on, and a new Haiku
+        /// should get there by being measured, not by a player's claude updating. docs/telemetry/chat-context-2026-11-02.md says what a player without it sees.
         /// </summary>
-        public static IReadOnlyList<string> Arguments() => new[]
+        public const string ChatModel = "claude-haiku-5-5";
+
+        /// <summary>
+        /// The arguments: one message read from stdin, the game's tools and the notes file allowed, and
+        /// anything else refused rather than asked about, as nobody is there to answer a prompt. A null model leaves it to the account.
+        /// </summary>
+        public static IReadOnlyList<string> Arguments(string model = ChatModel)
         {
-            "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
-            "--system-prompt", ChatPrompt,
-            "--mcp-config", ".mcp.json", "--strict-mcp-config",
-            "--permission-mode", "dontAsk", "--tools", "Read,Edit,Write",
-            "--allowedTools", "mcp__" + ServerName, $"Read(./{NotesFile})", $"Edit(./{NotesFile})", $"Write(./{NotesFile})",
-        };
+            var arguments = new List<string>
+            {
+                "-p", "--output-format", "stream-json", "--verbose", "--no-session-persistence",
+                "--system-prompt", ChatPrompt,
+                "--mcp-config", ".mcp.json", "--strict-mcp-config",
+                "--permission-mode", "dontAsk", "--tools", "Read,Edit,Write",
+                "--allowedTools", "mcp__" + ServerName, $"Read(./{NotesFile})", $"Edit(./{NotesFile})", $"Write(./{NotesFile})",
+            };
+            if (model != null) arguments.AddRange(new[] { "--model", model });
+            return arguments;
+        }
 
         /// <summary>One line of stream-json as what the chat shows: none for what it doesn't.</summary>
         public static IEnumerable<(ClaudeSaid said, string text)> Read(string line)

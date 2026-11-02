@@ -131,4 +131,34 @@ test("an ask outside the game leaves nothing read or written past the notes", ()
   assert.match(says(must, { world: on(), record: record("for 16-bit app support"), toolCalls: [] })[0], /shouldn't/);
 });
 
+test("a mix near the player leaves the plain look and the spells alone", () => {
+  const must = { scopedNear: { element: "fire", least: 2 } }, plain = rules.elements.fire.look.color;
+  const spellColours = Object.fromEntries(fireSpells.map(s => [s.id, s.look.color]));
+  const world = { ...on(), elementColours: { fire: plain }, spellColours };
+  const scoped = (where, more) => [{ elements: { fire: { look: { scoped: [{ where, ...more }] } } } }];
+  const mix = { mix: ["#30d040", "#f0d020"] };
+  assert.deepEqual(says(must, { world, patches: scoped({ around: "Andrew", within: 10 }, mix) }), []);
+  assert.deepEqual(says(must, { world, patches: scoped({ at: [3, 4], within: 10 }, mix) }), []);
+  assert.match(says(must, { world, patches: scoped({ place: "hollowmere" }, mix) })[0], /no fire look round the player/);
+  assert.match(says(must, { world, patches: scoped({ around: "Andrew" }, { color: GREEN }) })[0], /no mix/);
+  assert.deepEqual(says({ scopedNear: { element: "fire", hue: "green" } }, { world, patches: scoped({ around: "Andrew" }, { color: GREEN }) }), []);
+  assert.match(says({ scopedNear: { element: "fire", hue: "green" } }, { world, patches: scoped({ around: "Andrew" }, { color: BLUE }) })[0], /not green/);
+  assert.match(says(must, { world: { ...world, elementColours: { fire: GREEN } }, patches: scoped({ around: "Andrew" }, mix) })[0], /plain fire look/);
+  assert.match(says(must, { world: { ...world, spellColours: { ...spellColours, fireball: GREEN } }, patches: scoped({ around: "Andrew" }, mix) })[0], /1 fire spells changed: fireball/);
+});
+
+test("a mix on all of an element", () => {
+  const must = { elementMix: { element: "fire", least: 2 } };
+  assert.deepEqual(says(must, { world: on(), patches: [{ elements: { fire: { look: { mix: ["#ff4020", "#f0d020"] } } } }] }), []);
+  assert.match(says(must, { world: on(), patches: [{ elements: { fire: { look: { color: BLUE } } } }] })[0], /no mix/);
+});
+
+test("the element's colour with one spell left as it is", () => {
+  const must = { elementBut: { element: "fire", hue: "blue", keep: "fireball" } };
+  const spellColours = Object.fromEntries(fireSpells.map(s => [s.id, s.look.color]));
+  assert.deepEqual(says(must, { world: { ...on(), elementColours: { fire: BLUE }, spellColours } }), []);
+  assert.match(says(must, { world: { ...on(), elementColours: { fire: BLUE }, spellColours: { ...spellColours, fireball: BLUE } } })[0], /fireball moved/);
+  assert.match(says(must, { world: { ...on(), elementColours: { fire: rules.elements.fire.look.color }, spellColours } })[0], /fire element/);
+});
+
 test("a reverted mod's id is its title's slug", () => assert.equal(slug("Blue fire everywhere"), "blue-fire-everywhere"));

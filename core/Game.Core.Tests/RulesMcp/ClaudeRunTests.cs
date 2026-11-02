@@ -31,6 +31,15 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void TheChatAsksForItsOwnModelUnlessLeftToTheAccount()
+        {
+            var args = ClaudeRun.Arguments().ToList();
+            Assert.That(args[args.IndexOf("--model") + 1], Is.EqualTo("claude-haiku-5-5"), "J-066: the model the strict sets passed on");
+            Assert.That(ClaudeRun.Arguments("claude-opus-5-5").Count(a => a == "--model"), Is.EqualTo(1));
+            Assert.That(ClaudeRun.Arguments(null), Does.Not.Contain("--model"));
+        }
+
+        [Test]
         public void ACommandLineQuotesWhatNeedsIt() =>
             Assert.That(ClaudeRun.CommandLine(new[] { "-p", "Read(./notes.md)" }), Is.EqualTo("-p \"Read(./notes.md)\""));
 
@@ -46,6 +55,7 @@ namespace Chem.Tests
 
         [TestCase("{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"result\":\"Not logged in · Please run /login\"}", true)]
         [TestCase("{\"type\":\"result\",\"subtype\":\"error_during_execution\",\"is_error\":true,\"result\":\"It stopped\"}", false)]
+        [TestCase("{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":true,\"result\":\"There is an issue with the selected model. It may not exist or you may not have access to it.\"}", false)]
         public void AFailureSaysWhyAndWhetherItsTheSignIn(string line, bool signIn)
         {
             var (said, text) = ClaudeRun.Read(line).Single();

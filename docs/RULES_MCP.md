@@ -464,7 +464,7 @@ switches on), so lockstep holds and we run no servers for it.
      running as this user on this machine can use it. The Esc menu's Play with Claude page (`ClaudeMenu`) shows the line to add it to Claude and how it works, and a switch that closes the port (on by default,
      kept per player, J-047).
      The chat starts claude with its own short system prompt (`ClaudeRun.ChatPrompt`): role, notes and staying in the tools,
-     and no game knowledge. Asked for something, Claude writes it: the server's instructions and `apply`'s description say to
+     and no game knowledge. It asks for Haiku (`ClaudeRun.ChatModel`, J-066); the Developer menu can leave the model to the account. Asked for something, Claude writes it: the server's instructions and `apply`'s description say to
      build a draft, `simulate` it if `validate` says to, and apply it with a title; a saved mod only if
      the player names one. **What a tool needs goes in its description, not the instructions:** Claude Code
      writes the instructions again with every prompt, and keeps the descriptions in the cached block. `apply` answers with what the draft changed, field by field, and a draft

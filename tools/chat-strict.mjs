@@ -117,6 +117,36 @@ function spellsOf(world, { element, hue, spellsOnly }, rules) {
   ]);
 }
 
+// A colour or mix that holds only near the player: the plain look and every spell stay as they shipped.
+function scopedNear(world, { element, least, hue }, patches, rules) {
+  const scoped = patches.flatMap(p => p.elements?.[element]?.look?.scoped ?? []);
+  const near = scoped.filter(s => s.where?.around != null || s.where?.at != null);
+  const was = rules.elements[element].look.color;
+  const changed = rules.spells.filter(s => s.element === element && JSON.stringify(world.spellColours?.[s.id]) !== JSON.stringify(s.look?.color)).map(s => s.id);
+  return fails([
+    near.length === 0 && `no ${element} look round the player: ${JSON.stringify(scoped.map(s => s.where))}`,
+    near.length > 0 && least != null && !near.some(s => (s.mix ?? []).length >= least) && `no mix of ${least} colours there: ${JSON.stringify(near)}`,
+    near.length > 0 && hue != null && !near.some(s => isHue(s.color, hue)) && `not ${hue} there: ${JSON.stringify(near)}`,
+    JSON.stringify(world.elementColours?.[element]) !== JSON.stringify(was) && `the plain ${element} look moved to ${JSON.stringify(world.elementColours?.[element])}`,
+    changed.length > 0 && `${changed.length} ${element} spells changed: ${changed.join(", ")}`,
+  ]);
+}
+
+// A mix on the whole element: a spell's look takes one colour, so the spells stay and the reply names them (not judged).
+function elementMix({ element, least }, patches) {
+  const look = patches.map(p => p.elements?.[element]?.look).filter(Boolean).pop();
+  return fails([(look?.mix ?? []).length < least && `no mix of ${least} colours on ${element}: ${JSON.stringify(look ?? null)}`]);
+}
+
+// The element's colour, with one named spell left as it shipped: the others may go either way, and a note says which.
+function elementBut(world, { element, hue, keep }, rules) {
+  const was = rules.spells.find(s => s.id === keep);
+  return fails([
+    !isHue(world.elementColours?.[element], hue) && `the ${element} element is ${JSON.stringify(world.elementColours?.[element])}, not ${hue}`,
+    JSON.stringify(world.spellColours?.[keep]) !== JSON.stringify(was.look?.color) && `${keep} moved to ${JSON.stringify(world.spellColours?.[keep])}`,
+  ]);
+}
+
 function burnOf(rules, id) {
   return rules.materials.terrain[id]?.burn ?? rules.materials.covers[id]?.burn;
 }
@@ -237,6 +267,9 @@ export function judge(must, { world, patches, record, watch, toolCalls, cast, ru
   if (must.weatherIs) why.push(...weatherIs(record, watch, must.weatherIs, toolCalls));
   if (must.spellsOf) why.push(...spellsOf(world, must.spellsOf, rules));
   if (must.burns) why.push(...burns(world, must.burns, patches, rules));
+  if (must.scopedNear) why.push(...scopedNear(world, must.scopedNear, patches, rules));
+  if (must.elementMix) why.push(...elementMix(must.elementMix, patches));
+  if (must.elementBut) why.push(...elementBut(world, must.elementBut, rules));
   if (must.staysIn) why.push(...staysIn(record, toolCalls, must.staysIn));
   if (must.unsaved && savedOk(toolCalls)) why.push("it saved a mod nobody asked for");
   if (must.saved && !savedOk(toolCalls)) why.push("it never saved");
@@ -253,6 +286,10 @@ function notes(must, world, toolCalls, rules) {
   if (savedOk(toolCalls) && !must.saved) out.push("saved a mod nobody asked for");
   if (toolCalls.some(c => c.name === "save" && c.error)) out.push("a save was refused");
   if (must.grassBurns) out.push(`catch ${world.grass.catch}, fuel ${world.grass.fuel}`);
+  if (must.elementBut) {
+    const moved = rules.spells.filter(s => s.element === must.elementBut.element && JSON.stringify(world.spellColours?.[s.id]) !== JSON.stringify(s.look?.color)).map(s => s.id);
+    out.push(`${moved.length} of its spells moved${moved.length ? ": " + moved.join(", ") : ""}`);
+  }
   const spell = must.cantrip && world.spells.find(s => !rules.spells.some(b => b.id === s.id));
   if (spell) out.push(`${spell.id}: ${spell.shape} r${spell.radius ?? "-"} ${JSON.stringify(spell.damage ?? null)} power ${spell.power ?? "-"}`);
   return out;

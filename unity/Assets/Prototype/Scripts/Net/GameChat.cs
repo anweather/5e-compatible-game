@@ -15,6 +15,8 @@ public class GameChat : MonoBehaviour
     const int SourceFontSize = 13;
     const float LevelHeight = 3f, SourceHeight = 20f, LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f, ShadeAlpha = 0.6f, ShadeEdge = 8f;
     const string Box = "game-chat-box", ToolsKey = "chat.show-tools";
+    /// <summary>Where the Developer menu keeps AccountModel.</summary>
+    public const string ModelKey = "chat.account-model";
     /// <summary>Where a message came from, for the record.</summary>
     public const string FromKeys = "typed", FromVoice = "voice";
     const float BarHeight = 5f, SayAfter = 12f;
@@ -86,6 +88,17 @@ public class GameChat : MonoBehaviour
         }
     }
 
+    /// <summary>Whether the chat leaves the model to the player's account: the Developer menu's way back from Haiku (J-066).</summary>
+    public static bool AccountModel
+    {
+        get => PlayerPrefs.GetInt(ModelKey, 0) == 1;
+        set
+        {
+            PlayerPrefs.SetInt(ModelKey, value ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
+
     /// <summary>What the progress bar says now, 0 to 1, for the probe; null with no prompt going.</summary>
     public (float done, string what)? Progress { get; private set; }
 
@@ -119,6 +132,7 @@ public class GameChat : MonoBehaviour
     void DrawDeveloper()
     {
         if (PauseMenu.Button($"Claude's tools in the chat: {(ShowTools ? "On" : "Off")}", PauseMenu.ButtonStyle)) ShowTools = !ShowTools;
+        if (PauseMenu.Button($"Claude's model in the chat: {(AccountModel ? "Account default" : "Haiku")}", PauseMenu.ButtonStyle)) AccountModel = !AccountModel;
     }
 
     void OnDestroy()

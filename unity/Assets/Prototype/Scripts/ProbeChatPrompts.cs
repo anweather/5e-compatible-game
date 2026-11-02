@@ -76,6 +76,7 @@ public class ChatPromptsProbe : RowHousesProbe
         ChatTelemetry.Folder = outDir;
         McpLog.Folder = outDir;
         ClaudeChat.StandIn = RealClaude ? null : StandIn();
+        ClaudeChat.Model = string.IsNullOrEmpty(Model) ? null : Model;
         ClaudeChat.Extra = Arguments();
         try
         {
@@ -85,6 +86,7 @@ public class ChatPromptsProbe : RowHousesProbe
         {
             ClaudeChat.Tap = null;
             ClaudeChat.StandIn = null;
+            ClaudeChat.Model = null;
             ClaudeChat.Extra = null;
             ClaudeTerminal.TestFolder = null;
             ChatTelemetry.Folder = null;
@@ -123,7 +125,6 @@ public class ChatPromptsProbe : RowHousesProbe
     List<string> Arguments()
     {
         var more = new List<string>();
-        if (!string.IsNullOrEmpty(Model)) more.AddRange(new[] { "--model", Model });
         if (Context == BareContext) more.AddRange(BareArguments);
         if (!string.IsNullOrEmpty(Also)) more.AddRange(Also.Split(';', StringSplitOptions.RemoveEmptyEntries));
         return more;
@@ -133,8 +134,9 @@ public class ChatPromptsProbe : RowHousesProbe
     void CheckAsked()
     {
         string file = Path.Combine(outDir, AskedFile), asked = File.Exists(file) ? File.ReadAllText(file) : "";
-        bool model = asked.Contains("--model"), bare = asked.Contains(BareArguments[0]) && asked.Contains(BareArguments[2]);
-        Check("claude_gets_a_model_only_if_asked", model == !string.IsNullOrEmpty(Model) && (!model || asked.Contains(Model)), asked);
+        bool bare = asked.Contains(BareArguments[0]) && asked.Contains(BareArguments[2]);
+        string model = string.IsNullOrEmpty(Model) ? ClaudeRun.ChatModel : Model;
+        Check("claude_gets_the_chats_model_unless_asked", asked.Split("--model").Length == 2 && asked.Contains("--model " + model), asked);
         Check("claude_gets_bare_only_if_asked", bare == (Context == BareContext), asked);
         Check("claude_gets_the_chats_own_prompt", asked.Contains(ClaudeRun.ChatPrompt), asked);
     }
