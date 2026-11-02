@@ -16,7 +16,7 @@ From seven single prompts with one thing removed each, on the question prompt, O
 
 | Part | Tokens | Share | Where it sits | How we know |
 |---|---:|---:|---|---|
-| The game's 32 tool definitions | 9,790 | 59% | Cached prefix | **Measured:** `--disallowedTools mcp__spell-valley`, 16,536 to 6,758, less 0 for `Instructions`, which stay; with the short prompt 14,186 to 4,396 |
+| The game's 32 tool definitions | 9,790 | 59% | Cached prefix | **Measured:** `--disallowedTools mcp__spell-valley`, 16,536 to 6,758, and with the short prompt 14,186 to 4,396. `Instructions` stay when the tools go |
 | Read, Edit and Write definitions | about 1,640 | 10% | Cached prefix | **Measured** as what's left with the game's tools and Claude Code's prompt gone, minus the message |
 | Claude Code's own system prompt | 2,360 | 14% | 612 cached prefix; 1,746 per folder | **Measured:** `--system-prompt`, 16,536 to 14,186 and 6,758 to 4,396; the split from where cache reads stop |
 | `Instructions` | 1,381 | 8% | **First message: written every prompt** | **Measured:** blanked, 16,536 to 15,155, and 14,186 to 12,793 |
@@ -30,7 +30,7 @@ The 32 tools by size, from characters at the measured 2.65 a token. Turning off 
 
 Every prompt still writes those 1,610: the message can't be cached past the prompt's own words.
 
-**What a harness we control could drop.** Of the 16,536, Claude Code adds about 4,900: its prompt 2,360, its three tools 1,640 and its wrapping about 900. The short prompt takes off 2,260 of that today. Another 2,540 can only go with Claude Code itself, and the three tools could be one notes tool or none. What's left, about 11,600, is the game's: tool definitions, `Instructions`, guide and the prompt. That's the part a harness can't avoid, though it could choose how it's cached. A note for backlog 27: every harness that speaks MCP gets the definitions, which is why the knowledge went there.
+**What a harness we control could drop.** Of the 16,536, Claude Code adds about 4,900: its prompt 2,360, its three tools 1,640 and its wrapping about 900. The short prompt takes off 2,260 of that today. Another 2,640 can only go with Claude Code itself, and the three tools could be one notes tool or none. What's left, about 11,600, is the game's: tool definitions, `Instructions`, guide and the prompt. That's the part a harness can't avoid, though it could choose how it's cached. A note for backlog 27: every harness that speaks MCP gets the definitions, which is why the knowledge went there.
 
 ## Step 2: unasked saves
 
