@@ -8,21 +8,16 @@ combination of primitives, as data. Design only. Builds on `world-tools.md` (G1 
 
 ## 1. What the primitives are today
 
-**Terrain** (`rules/materials.json` "terrain", `TerrainDef`): `tags` (`blocking`, `ground`, `low`,
-`soil`, `turf`, `trellis`, `roof`, `vessel`, `machine`, `seeThrough`, `fuses`, `muddy`...; reactions
-match on them), `elevation` (height steps), `speed` (walking), `spring` (a water source level),
-`burn` (catch, fuel, heat, leaves, fire look, status), `dig` (hardness, leaves), `break`, `uproot`,
-`soak` (dry and wet ticks, leaves, dries, dampens fire), `scour` (wears, leaves), `grow` (into, after
-ticks), `bake`, `crust` (into, for), `thaw` (into, water), `freeze`, `boil`, `hot` (for, quench),
-`run` (spreads onto lower cells every N ticks), `quench` (into, when water meets it), `rust`
-(every, leaves), `shatter` (leaves, cracks), `dissolve` (by, leaves), `conduct` (chains wet),
-`lift` (an updraft), and creatures' `burn`/`freeze`/`soak` statuses. **Covers**: `tags`
-(`slippery`, `climbable`, `spiky`, `snow`), `burn` (intensity), `melt` (into, water), `lasts` and a
-wither line, `float` (every, reach: drifts on water), `dissolve`, `rot`, `scour`, `damage`, `speed`.
-**Gases**: `decay`, `scald`, `blocksSightAt`, `hidesAfter`, `condenseEvery`/`Away`, `rainEvery`,
-`rusts`, `sheds` (an element every N ticks), `burn.flash`. **All three**: a `look` (a family and
-parameters: colour, height, glow, form), out of the fingerprint. **Reactions** (`reactions.json`):
-element × conditions (tags, cover, gas, water, fire, frozen, hot, power, chance) → ordered effects.
+**Terrain** (`materials.json`, `TerrainDef`): `tags` (`blocking`, `ground`, `low`, `soil`, `turf`, `trellis`,
+`roof`, `vessel`, `machine`, `seeThrough`, `fuses`, `muddy`...; reactions match on them), `elevation`, `speed`,
+`spring`, `burn` (catch, fuel, heat, leaves, fire look, status), `dig`, `break`, `uproot`, `soak`, `scour`,
+`grow`, `bake`, `crust`, `thaw`, `freeze`, `boil`, `hot`, `run` (spreads onto lower cells), `quench`, `rust`,
+`shatter`, `dissolve`, `conduct`, `lift`, and creatures' statuses. **Covers**: `tags` (`slippery`, `climbable`,
+`spiky`, `snow`), `burn`, `melt`, `lasts`, `float` (drifts on water), `dissolve`, `rot`, `scour`, `damage`,
+`speed`. **Gases**: `decay`, `scald`, `blocksSightAt`, `hidesAfter`, `condenseEvery`/`Away`, `rainEvery`,
+`rusts`, `sheds` (an element every N ticks), `burn.flash`. **All three**: a `look` (family and parameters),
+out of the fingerprint. **Reactions**: element × conditions (tags, cover, gas, water, fire, hot, power,
+chance) → ordered effects.
 
 **Hard coded by name or special case** (the honest list):
 - **Water, above all.** A cell holds one `int Water` and a `bool Frozen`: the only liquid. Flow,
@@ -83,41 +78,30 @@ frozen (J-042), so nothing to mirror.
 
 ## 4. Temporary materials
 
-A material made at run time from primitives through the MCP, as a new row in a mod's patch
-(`add_material` in a draft, or `apply` with patch JSON), switched on in the room at a tick like any
-mod (D13): validated by every peer, kept in the save's room, replayed for a late joiner.
-- **An id every peer agrees on.** Cells hold string ids today, so a mod's row is `<mod>/<name>` and
-  can't collide with base ids. Once interning lands, integers are given at each switch from the
-  effective rules in a fixed order (base tables in file order, then each live mod's new rows in
-  switch order). Every peer switches the same mods at the same tick, so they agree. Integers never
-  reach a save, which keeps strings.
-- **How it lapses.** A row must give `lapses: { into, after? }`, `into` a base id. After `after`
-  ticks, or when the mod is reverted, the material retires: the room keeps a retired list (id →
-  into), active chunks are rewritten at that tick, and an inactive chunk on becoming active (the
-  catch-up path), so no cell is ever left holding an id with no row. **A late join** gets the
-  snapshot and the retired list with the room. **A save** stores the live mods, the retired list and
-  the cells' strings: loading it back restores both.
-- **Limits** in `rules/budgets.json` (base rules only, so a mod can't raise them): at most 8 new
-  materials a mod and 32 live in a room; derived mixes at most 16; every row only primitives the
-  checker knows; `simulate`'s slowdown gate as today. A stray mod can't fill the table or stall the
-  tick.
-- **Mix.** Rows in one `mix` group (say `paint`) that meet make `a+b` (ids sorted), interned when it
-  first appears. Ticks run in a fixed order, so every peer derives the same id at the same moment. It
-  takes the mean of the two rows' numbers (rounded down), the tags they share, and the mean of their
-  looks' colours, and lapses with its parents. Past the cap, the cell keeps what it had. Red and blue
-  make purple with no row per pair.
+A material made at run time from primitives: a new row in a mod's patch (`add_material`, or `apply`),
+switched on in the room at a tick (D13), validated by every peer, kept in the save, replayed for a late joiner.
+- **An id every peer agrees on.** Cells hold strings today, so a mod's row is `<mod>/<name>`, never a base
+  id. Once interning lands, integers are given at each switch in a fixed order (base tables in file order,
+  then each live mod's rows in switch order), so peers agree; saves keep strings.
+- **How it lapses.** A row must give `lapses: { into, after? }`, `into` a base id. After `after` ticks or on
+  revert it retires: the room keeps a retired list (id → into), active chunks are rewritten at that tick and
+  inactive ones on becoming active, so no cell holds an id with no row. A late join gets the snapshot and the
+  list; a save stores the live mods, the list and the cells' strings.
+- **Limits** in `budgets.json` (base rules only): 8 new materials a mod, 32 live in a room, 16 derived mixes,
+  only primitives the checker knows, and `simulate`'s slowdown gate. A stray mod can't fill the table or stall the tick.
+- **Mix.** Rows in one `mix` group that meet make `a+b` (ids sorted), interned when it first appears; ticks run
+  in a fixed order, so every peer derives it at the same moment. It takes the mean of the two rows' numbers
+  (rounded down), their shared tags and the mean colour, and lapses with its parents; past the cap, the cell
+  keeps what it had. Red and blue make purple with no row per pair.
 
 ## 5. Creatures today
 
-A species is a Punchy `CreatureSpecies` Editor asset (59 in `ThirdParty/Punchy/Fauna/`): body, palette and
-coats, size, `VariantOf`, `Parts` (limb slots by index, socket, direction, mirror, hand-set phase), gait and
-behaviour numbers. A `LimbType` (76 in `Limbs/`) is a role, tapered segments and seven hand key poses.
-`ChemYardBuilder`'s table (13 species, a density each) is baked into the scene; `ValleyFauna` builds each
-body at run time and draws segments as instanced capsules (up to 120 animals). A mod reaches none of it.
-Six-legged bears already work in the Editor (one more slot; gait and foot IK take any number of legs).
-Centaurs work as a shape but come out in deer coat: one palette per creature, and a human wears `Base` as
-clothes and `Accent` as skin (gap C2, a palette per slot). J-058: creatures and buildings are data, in
-Punchy's style with our code, moved by rule. The Mac's port (`punchy-life.md`) lands in §6's format.
+A species is a Punchy `CreatureSpecies` Editor asset (59): body, palette, coats, size, `VariantOf`, limb
+slots (by index, socket, direction, mirror, hand-set phase), gait and behaviour numbers; a `LimbType` (76) is
+a role, tapered segments and seven hand key poses. `ChemYardBuilder`'s table (13 species) is baked into the
+scene; `ValleyFauna` builds bodies at run time, drawn as instanced capsules (up to 120). A mod reaches none of
+it. Six-legged bears already work in the Editor; centaurs work as a shape but wear deer coat (one palette per
+creature: gap C2, a palette per slot). J-058: data, Punchy's style, our code, moved by rule.
 
 ## 6. A data format for creatures
 
@@ -196,14 +180,12 @@ ground. Instead, a few rules in **`rules/gaits.json`**, view only; the keys beco
   fins held spread until the arc ends.
 
 **Walk-throughs.** A **horse** is a mod's row (none is in the base rules): a deer's parts scaled up, thicker
-legs, a mane feature. It walks, trots and gallops from the Froude thresholds with no clip. The **six-legged
-bear** is the bear's row with a `mid` pair, and it gets the tripod from its pair count. The **centaur** is
-four hoofed legs on the horse's gait, with a torso slot held to world up (an upright part on a quadruped
-springs back against the bob), and arms countering the front pair. **Horses in the water** is the horse row
-with `"habitats": ["walks", "swims"]`: it paddles where the water is deep and walks out, free. The **seahorse**
-is a new row: an upright body, a curled tail (`curl-tail`), a snout, a fluttering dorsal fin (role `fin`),
-`swims` only. The **flying fish** is a fish row from `punchy-water` with two pectoral fins (role `wing`) and
-`["swims", "leaps", "glides"]`: it leaps from speed, glides fins out, and splashes back.
+legs, a mane; it walks, trots and gallops from the Froude thresholds. The **six-legged bear** adds a `mid`
+pair and gets the tripod from its pair count. The **centaur** is four hoofed legs on the horse's gait, a
+torso slot held to world up against the bob, arms countering the front pair. **Horses in the water** add
+`"swims"` to `habitats`: they paddle in deep water and walk out. The **seahorse** is a new row: upright body,
+`curl-tail`, a snout, a fluttering dorsal `fin`, `swims` only. The **flying fish** (a `punchy-water` fish row
+with two pectoral `wing`s, `["swims", "leaps", "glides"]`) leaps from speed, glides, and splashes back.
 
 **Cost.** A target, an arc and a two-bone solve per leg, about 1 µs in managed code: 10 µs for a creature
 of ten parts, 1.2 ms for a crowd of 120 at worst (about today's blend and IK), near 0.4 ms with animals
@@ -212,75 +194,133 @@ past 40 m at half rate and no IK. Gate: `life-variety`'s crowd numbers, main p50
 bending the wrong way (the `bend` ranges); a six-legged bear's middle legs clipping at long strides (the
 spacing cap); a centaur's torso bobbing; small fast animals like clockwork (per-animal jitter on `lag`).
 
-## 8. A house as data
+## 8. A house as data: wall segments between join points
 
-**Today.** A village's plan (`Village.cs`, core, D12) gives each building a kind, a footprint of wall
-cells, storeys, `WallKind`, `RoofKind`, `RoofCover` and door and window cells; `BuildingMesher` draws one
-rectangle with fixed palettes; the cabins are a C# constant built in the Editor. **As data**, a building is a row:
+**Today** a village building (`Village.cs`, D12) is a rectangle of cells that are all wall, with one
+`WallKind`, `RoofKind` and `RoofCover`, drawn by `BuildingMesher` from fixed palettes. J-059: outside
+first. A building becomes parts, in `world` rows a mod adds (G5) or edits by id (G3):
+- **Join points** sit on the half-cell lattice (0.75 m; a cell is 1.5 m), as integers in half cells from
+  the row's `at` cell. What a join is follows from what meets there: one wall is an **end** (capped), two
+  in line a splice, two at an angle a **corner**, three a **T**, four a **cross**.
+- **Who trims whom**, one rule for every shape: at a join, a pair of walls in line runs through; then the
+  thicker, then the taller, then the earlier id. Equal walls at a corner mitre; otherwise the first runs
+  to the other's outer face and the rest stop at its face. No code per shape.
+- **A wall segment** runs between two joins, along an axis or at 45° (bays, cut corners), in a `storey`,
+  with a `height` (m), a `material` (a terrain id, so it burns, breaks or shatters as that terrain does),
+  a `finish` (a `wall` look: pattern and colour, G2) and `openings` (`kind`, `at` in half cells from
+  `from`). A row's `wall` gives the defaults.
+- **Standard lengths** are whole and half cells. **Openings** (`rules/buildings.json`) are rows: a view
+  width and height, sill and head, and what their cells become. `door` 1 cell (0.9 m, a `door` terrain
+  that burns or breaks to a gap), `double-door` 2 (1.8 m), `window` 1 (`pane`), `wide-window` 2,
+  `garage` 2 (2.7 m), `double-garage` 3 (4.9 m), `arch` (any width, no cell: open). An opening covers the
+  cells whose centres lie within its span, half a cell clear of a join.
+- **Floor**: `slab` or `plinth` and its height (view). **Roofs**: each over an outline of joins (not
+  necessarily the walls', so a roof can cover a porch), `shape` `gable` (with `gables`: the walls that end
+  in one), `hip` (the outline's straight skeleton, so any outline works), `shed` (rising from a `low` wall)
+  or `flat` (with a `parapet` height), `pitch` as rise over run (`[4, 12]`), `overhang` (m) and `cover` (a
+  roof terrain with its burn rules and look). Two roofs that meet are cut where they cross.
+- **Details** are parts on a wall or a join, from the mesher's families (like look families): `viga`,
+  `canale`, `chimney`, `porch`, `beam`, `shutters`, `planter`. A row picks them and their numbers; a new
+  family is mesher code, proposed only when several styles want it. A **style** is a row of defaults
+  (material, finish, heights, roof, details) plus a recipe that lays walls from the seed when a row has none.
+
+**Two layers, one format.** The core rasterises parts to cells; the view draws the true geometry.
+(a) **Outside only** (recommended). A wall on a cell-edge line takes the cells on its right from `from`
+to `to` (outer walls run clockwise); one through cell centres takes those. The outside is flood-filled
+from the row's border through open openings; what's left is `fill`: `solid` (the wall's terrain, today's block: villages keep it, so cells and goldens
+hold) or `hollow` (a floor terrain behind closed doors: a burnt-out house leaves a ruin to walk into). The
+view draws a 0.3 m wall at the cells' outer edge, so a wizard meets it where it's drawn. `Cell`, fire, gas,
+water, pathing and the tick are unchanged. (b) **Walls a cell thick, with rooms:** inner walls rasterise
+too, doors are gaps; no core change, but 15 × 12 m is 10 × 8 cells, 8 × 6 inside, and each wall a 1.5 m
+band behind a 0.3 m drawing. (c) **Walls on cell edges**, a core primitive: north and west edge fields a cell
+(a material id and its state, about 4 bytes, 0.6 MB over 150 000 cells); every neighbour step in flow, gas,
+fire, conduct, push, raider pathing and line of sight checks the edge it crosses (5 to 10% on those passes);
+hashed and saved only when set, so goldens and saves hold; the view's colliders already follow the geometry.
+Only the rasteriser changes between them, never the format.
+
+**The test: a single-family stucco house of the American Southwest** with an attached two-car garage,
+15 × 12 m plus 6 × 6 m, a low-pitch tile roof and a recessed arched entry. A `southwest` style, the
+`stucco-wall` (blocking, breaks to rubble, doesn't burn) and `clay-tile` terrains come in the same mod as
+rows. Joins are in half cells, x east and y south, the front facing south:
 
 ```json
-{ "id": "cabin#2", "at": [412, 188], "facing": "south", "style": "cottage", "seed": 77, "storeys": 2,
-  "rooms": { "main": { "size": [6, 5] }, "wing": { "size": [4, 4], "on": "main", "side": "east", "at": 1 } },
-  "walls": "logwall", "roof": { "shape": "gable", "cover": "shingle", "pitch": 40 },
-  "doors": [{ "room": "main", "side": "south", "at": 2 }], "windows": { "every": 2 } }
+{ "id": "lakeside#1", "at": [300, 150], "style": "southwest", "seed": 41, "storeys": 1, "fill": "hollow",
+  "floor": { "kind": "slab", "height": 0.15 },
+  "wall": { "material": "stucco-wall", "height": 2.9, "thickness": 0.3, "finish": { "pattern": "smooth", "color": "#d6b48a" } },
+  "joins": { "a": [8, 0], "b": [28, 0], "c": [28, 16], "d": [18, 16], "e": [18, 14], "f": [14, 14],
+             "g": [14, 16], "h": [8, 16], "i": [0, 16], "j": [0, 8], "k": [8, 8] },
+  "walls": {
+    "back":    { "from": "a", "to": "b", "openings": [{ "kind": "wide-window", "at": 4 }, { "kind": "window", "at": 14 }] },
+    "east":    { "from": "b", "to": "c", "openings": [{ "kind": "window", "at": 5 }, { "kind": "window", "at": 11 }] },
+    "front-e": { "from": "c", "to": "d", "openings": [{ "kind": "wide-window", "at": 3 }] },
+    "recess-e": { "from": "d", "to": "e" }, "recess-w": { "from": "f", "to": "g" },
+    "entry":   { "from": "e", "to": "f", "openings": [{ "kind": "door", "at": 1, "finish": { "color": "#3a6f9a" } }] },
+    "arch":    { "from": "g", "to": "d", "openings": [{ "kind": "arch", "at": 0, "width": 3, "shape": "round" }] },
+    "front-w": { "from": "g", "to": "h", "openings": [{ "kind": "window", "at": 2 }] },
+    "party":   { "from": "h", "to": "k", "openings": [{ "kind": "door", "at": 3 }] },
+    "west":    { "from": "k", "to": "a", "openings": [{ "kind": "window", "at": 3 }] },
+    "garage":  { "from": "h", "to": "i", "openings": [{ "kind": "double-garage", "at": 1 }] },
+    "g-west":  { "from": "i", "to": "j" }, "g-back": { "from": "j", "to": "k" } },
+  "roofs": { "main": { "over": ["a", "b", "c", "i", "j", "k"], "shape": "hip", "pitch": [4, 12],
+                       "overhang": 0.45, "cover": "clay-tile" } },
+  "parts": [{ "kind": "chimney", "on": "east", "at": 8 }] }
 ```
 
-Rooms are rectangles of cells fastened to a side of another; their union's outline is wall cells, a door
-cell joins two rooms, and each room has its own roof, so a wing's ridge meets the main one. A **style**
-(`rules/buildings.json`, beside **B1**: wall kinds, roof covers and shapes as rows replacing the enums) gives
-defaults and a recipe laid from the seed in integer maths: `shack` (one 3×4 room, worn logs, few windows),
-`cottage`, `mansion` (3 to 5 rooms, two wings, 2 to 3 storeys, stone, two chimneys). **The edits:** "add a
-room" or "a wing" adds a `rooms` entry on a side; "add a floor" is `storeys` + 1; "add a door" appends to
-`doors`; "more windows" lowers `every`; "make it a mansion" or "a shack" sets `style` and clears `rooms`
-for the recipe to lay again. "Build a house on the North Shore" or "on the beach" is a new row at a place.
+The **flat-parapet variant** changes only the roof and details: `"shape": "flat", "parapet": 0.6`, and
+`parts` gains `{ "kind": "viga", "on": "front-e", "every": 0.6 }` and `{ "kind": "canale", "on": "back", "at": 6 }`.
 
-**Places.** `places()` and `here()` exist, with `lake` and `sea` from `land.json`, but nothing names a
-shore. Rather than naming each, a place reference takes a `side` (north, east... of its centre) and
-`edge: "shore"` (dry ground within N cells), so "the lake's north shore" and "the beach" (`sea`'s shore)
-need no names; a hand-written `north-shore` in `places.json` does too, if Andrew wants it on the map. A
-read-only `find_site(size, near)` gives buildable cells (ground, flat to a height step, no things, off
-lanes and courses); the mod carries those **cells**, not the name.
+| What Claude would supply | Maps |
+|---|---|
+| 15 × 12 m house, 6 × 6 m garage, attached on one side | Exact: 10 × 8 and 4 × 4 cells |
+| One storey, 2.7 to 3 m walls, slab on grade; low hip roof 4:12, 0.45 m eaves | Exact, view (cells have no height) |
+| Stucco over block, earth colour, smooth; walls 0.3 m (0.45 adobe) | Material exact as a terrain; look exact; the core's band is a cell |
+| Red barrel tile | Cover terrain and colour exact; the barrel pattern needs a `tile` roof pattern |
+| Recessed entry 3 m wide, 1.2 to 1.8 m deep, round arch | Width exact; depth rounded to 1 cell; arch shape view |
+| Front door 0.9 m, blue; garage door 4.9 × 2.1 m; windows and sills | View exact; cells 1, 3 and one pane each (two in one cell merge) |
+| Facing the street; parapet, vigas, canales | Rounded to four directions; parts exact, view |
+| Three bedrooms, two baths, kitchen, living room | Lost under (a); (b) or (c) later |
+| Floor area, lot, setbacks, driveway, xeriscape | Lost (the site is `find_site`'s cells); a garden wall is a wall segment |
 
-**Shared state.** Walls, windows and door gaps are cells; storeys, roof shape and cover, style and colours
-are view only (the roof isn't a cell), so they stay out of the fingerprint like looks. A change to
-rooms, doors, windows, walls or a new row is a G3 world edit (one building by id), and a new house is G5's
-`add`. It goes through the room like any mod, every peer validating it, and it's in the fingerprint as
-G5's effective things are. **At the switch tick** the core works out the building's old and new cells (a
-pure integer function, pinned by a digest as `VillageTests` pins plans), lays each changed cell fresh
-(the dragon's freshening clears fire, cover, gas and water there) and returns removed walls to ground.
-**Anything standing there:** the checker refuses a site over a thing, another building, water or a
-non-ground cell (every peer knows them); a player or raider on a cell turning to wall is pushed to the
-nearest free cell, in entity-id order, and ambient life steers round. A chunk not held gets the edit
-when it's built, as it gets its village's plan. A **revert** lays the base building again the same way.
-The cell hash covers the result; one golden pins "a shack becomes a mansion".
-**Limits** in `budgets.json`: a building fits 24 × 24 cells, at most 8 rooms and 3 storeys, at most 4
-buildings a mod. The mesher's work is drawing several rooms with roofs that meet.
+**The edits.** "Add a wing": new joins and three walls on a side, a T where they meet an old wall (its
+openings there go), the roof's `over` grown; cells change. "Add a floor": `storeys` 2 and `storey: 1` walls
+(the outer walls below, by default), roof raised; no cells change. "Make it a shack": the same outline in
+timber with a `worn` finish, a `shed` roof at `[2, 12]`, fewer openings and no parts, or `style: shack`
+with `walls` dropped so the recipe lays a 3 × 4 cell box from the seed; cells change either way.
+
+**Through the room.** Joins, walls, openings and `fill` are shared: a G3 edit or G5 add, validated by
+every peer, in the fingerprint as G5's things are. At the switch tick the core rasterises old and new (a
+pure integer function with a digest, as `VillageTests` pins plans), lays changed cells fresh (as the dragon
+freshens: no fire, cover, gas or water) and returns removed walls to ground. The rest is view only. The
+checker refuses a site over a thing, a building, water or non-ground; a player or raider on a cell turning
+to wall is pushed to the nearest free cell in entity-id order. A chunk not held gets the edit when built; a
+revert lays the base again; a golden pins "a wing added". **Limits** (`budgets.json`): 24 × 24 cells, 64
+joins, walls and openings, 32 parts, 3 storeys, 4 buildings a mod.
+
+**Places.** `places()` has `lake` and `sea` but no shores: a place reference takes a `side` and `edge:
+"shore"`, so "the lake's north shore" and "the beach" need no names (or hand-write `north-shore` in
+`places.json`). A read-only `find_site(size, near)` gives buildable cells; the mod carries the cells.
 
 ## 9. Through the MCP, and what stays safe
 
-A species, part, gait, style or building is a row: `describe` it, change it, put it back whole (`add_species`
-and `add_building` drafts beside `set_look`). **View only, out of the fingerprint:** `fauna.json`,
-`parts.json`, `gaits.json`, styles, storeys, roofs and colours; each peer redraws at the switch. **Shared,
-in the fingerprint and cell hash:** what's on cells: a building's walls, windows, doors and site, and a wall
-kind's terrain (log to brick changes what burns). A raider is one cell, its `hp`, `mass` and speed in
-`entities.json`; its look names a species (G4's `creature` family), so six legs on a bone hound is a look
-kept within its cell. A raider filling more cells is a core change, not proposed. The core never reads the
-view tables, and the checker refuses a view row naming a core field.
+A species, part, gait, style or building is a row: `describe` it, change it, put it back whole (`add_species`,
+`add_building`). **View only, out of the fingerprint:** `fauna.json`, `parts.json`, `gaits.json`, and a
+building's heights, finishes, roofs and details. **Shared:** what rasterises to cells (§8). A raider is one
+cell, its numbers in `entities.json`; its look names a species (G4), so six legs on a bone hound is a look
+kept within its cell. The core never reads the view tables; the checker refuses a view row naming a core field.
 
 ## 10. Order of work, and the tests
 
-1. **The data move** (M): the export, the view building from rows, the assets and `ChemYardBuilder`'s
-   table gone. Best the Mac's port's first branch (it owns `CreatureSpecies.cs`, `CreatureBody.cs` and
-   `ValleyFauna`), so its new species land as rows. With it, buildings as rows: B1, ids (G1), cabins (J-056).
-2. **Gaits by rule** (M), with the crowd numbers before and after.
-3. **Houses through the room** (M): G3 edits and G5 adds for buildings, `find_site`, shores.
-4. **P3** (S) and drawing slick covers: paint, a slick of ice.
-5. **Temporary materials** (S to M); **P2** and **P4** (S each): glowing moss.
+1. **The data move** (M each, J-059: houses next, creatures alongside). Houses: building rows (§8), the
+   rasteriser for (a), the mesher drawing segments, joins and roofs from rows, `Village.cs` and the cabins
+   writing rows (`fill: solid`, so goldens hold), building ids (G1). Creatures: the export, the view building
+   from rows, best the Mac's port's first branch (it owns `CreatureSpecies.cs`, `CreatureBody.cs`, `ValleyFauna`).
+2. **Houses through the room** (M): G3 edits and G5 adds, `find_site`, shores. 3. **Gaits by rule** (M).
+4. **P3** (S) and drawing slick covers. 5. **Temporary materials** (S to M); **P2**, **P4** (S each).
 6. **C2** and **P5** (S each); **P1, liquids** (M to L, with interning).
 
-**The tests**, each asked of Claude, each ending as one mod with no code naming its content: six-legged
-bears; centaurs; seahorses (horses that swim, and the animal); flying fish; "add a wing to this house";
-"make it a shack"; "build a house on the north shore of the lake"; red and blue paint that runs.
+**The tests**, each asked of Claude, each ending as one mod with no code naming its content: the Southwest
+stucco house (§8) on the lake's north shore, then "add a wing", "make it a shack"; six-legged bears;
+centaurs; seahorses both ways; flying fish; red and blue paint that runs.
 
 ## Questions for Andrew
 
@@ -288,7 +328,7 @@ bears; centaurs; seahorses (horses that swim, and the animal); flying fish; "add
 2. Liquids (P1, 1.2 MB, 0.25 ms a tick) now, or tar and honey as slow covers first? *Recommend: covers first.*
 3. Fauna mods per room or per player? *Recommend: per room, view only (J-056).*
 4. A house edit over a player: push them out or refuse it? *Recommend: push them out, logged.*
-5. Centaurs that behave like people, or only look like them? *Recommend: looks only for now.*
+5. New houses hollow (a burnt one leaves a ruin to walk into) or solid like today? *Recommend: hollow.*
 
 ## Proposed ADRs (titles only)
 
@@ -296,4 +336,4 @@ bears; centaurs; seahorses (horses that swim, and the animal); flying fish; "add
 - Temporary materials: mod-made rows with a lapse, ids given at the switch
 - Creatures are data: species and parts as rules rows, built by the view at run time
 - Gaits by rule, not by pose
-- Buildings are rows of rooms, laid on cells through the room
+- Buildings are wall segments between join points, rasterised to cells through the room
