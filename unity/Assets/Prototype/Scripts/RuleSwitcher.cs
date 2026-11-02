@@ -25,8 +25,14 @@ public class RuleSwitcher : MonoBehaviour
     ChemGrid grid;
     NetChem net;
 
-    /// <summary>rules/mods/*.json.</summary>
+    /// <summary>The shipped mods and the player's own.</summary>
     public ModCatalog Catalog { get; private set; }
+
+    /// <summary>
+    /// Where a player's saved mods live, beside notes.md: an update replaces the install, not this. Solo, host and Editor
+    /// alike, so a save in the Editor leaves the repo's rules/mods, which is the shipped mods, alone.
+    /// </summary>
+    public static string PlayerModsDir => Path.Combine(ClaudeTerminal.Folder, "mods");
 
     /// <summary>Why the last switch was refused, or null after one that worked.</summary>
     public string LastError { get; private set; }
@@ -46,11 +52,19 @@ public class RuleSwitcher : MonoBehaviour
     /// <summary>Whether this machine may change the rules from files: solo or the host.</summary>
     public bool OwnsRules => !IsClient;
 
+    // Before anything reads the mods. Only a build has an install; the Editor's rules/mods is the repo's.
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.BeforeSceneLoad)]
+    static void MoveModsOutOfTheInstall()
+    {
+        if (Application.isEditor) return;
+        foreach (string line in ModMove.FromInstall(Path.Combine(ChemGrid.FindRulesDir(), "mods"), PlayerModsDir)) Debug.Log("Mods: " + line);
+    }
+
     void Awake()
     {
         grid = GetComponent<ChemGrid>();
         TryGetComponent(out net);
-        Catalog = new ModCatalog(Path.Combine(ChemGrid.FindRulesDir(), "mods"));
+        Catalog = new ModCatalog(Path.Combine(ChemGrid.FindRulesDir(), "mods"), PlayerModsDir);
         if (!TryGetComponent<ModsPanel>(out _)) gameObject.AddComponent<ModsPanel>();
         if (!TryGetComponent<RowHouses>(out _)) gameObject.AddComponent<RowHouses>();
         if ((Application.isEditor || Debug.isDebugBuild) && !TryGetComponent<RulesWatcher>(out _)) gameObject.AddComponent<RulesWatcher>();
@@ -69,14 +83,14 @@ public class RuleSwitcher : MonoBehaviour
     RuleSet Upcoming => grid.UpcomingRules;
 
     /// <summary>
-    /// Switches a mod from rules/mods/ on or off, or takes off one that came another way. Returns
+    /// Switches a mod from the catalog on or off, or takes off one that came another way. Returns
     /// why it was refused now, or null; the room's answer comes at the tick, in the log and LastError.
     /// </summary>
     public string Toggle(string id)
     {
         if (Room.Mods.Exists(m => m.Id == id)) return Ask(RoomCommand.Revert(Me, id));
         var file = Catalog.Find(id);
-        if (file == null) return Refuse($"No mod \"{id}\" in rules/mods/ here");
+        if (file == null) return Refuse($"No mod \"{id}\" here");
         if (file.Error != null) return Refuse($"{file.Title}: {file.Error}");
         return Ask(RoomCommand.Apply(Me, id, file.AsActive().Json, file.Title));
     }

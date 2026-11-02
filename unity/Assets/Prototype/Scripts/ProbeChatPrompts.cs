@@ -48,7 +48,8 @@ public class ChatPromptsProbe : RowHousesProbe
         public float worstAfter;
     }
 
-    string outDir, chatFolder, modsDir;
+    string outDir, chatFolder;
+    string[] modsDirs;
     ApiBudget budget;
     string[] modsWere;
     int spent;
@@ -74,7 +75,7 @@ public class ChatPromptsProbe : RowHousesProbe
         if (!knownContext || !knownHarness || !knownNotes) yield break;
         outDir = OutDir ?? Path.Combine(Application.temporaryCachePath, "chat-prompts");
         chatFolder = Path.Combine(outDir, "claude-terminal");
-        modsDir = Path.Combine(ChemGrid.FindRulesDir(), "mods");
+        modsDirs = new[] { Path.Combine(ChemGrid.FindRulesDir(), "mods"), Directory.CreateDirectory(Path.Combine(chatFolder, "mods")).FullName }; // a save goes to the second
         modsWere = ModsNow();
         if (RealClaude && !SafeToSpend()) yield break;
         Directory.CreateDirectory(Path.Combine(outDir, "raw"));
@@ -451,14 +452,14 @@ public class ChatPromptsProbe : RowHousesProbe
     }
 
     // Each mod file and when it was written: a model can save over one as well as add one.
-    string[] ModsNow() => Directory.GetFiles(modsDir).OrderBy(f => f, StringComparer.Ordinal).Select(f => $"{f}|{File.GetLastWriteTimeUtc(f).Ticks}").ToArray();
+    string[] ModsNow() => modsDirs.SelectMany(d => Directory.GetFiles(d)).OrderBy(f => f, StringComparer.Ordinal).Select(f => $"{f}|{File.GetLastWriteTimeUtc(f).Ticks}").ToArray();
 
-    // A mod a model saved unasked is a finding, not a fault: it goes beside the record and out of the rules.
-    // Anything else that moved in rules/mods stays there for Carries to stop on.
+    // A mod a model saved unasked is a finding, not a fault: it goes beside the record and out of the mods.
+    // Anything else that moved in the mods folders stays there for Carries to stop on.
     void TakeSaved(string name)
     {
         var known = modsWere.Select(m => m.Substring(0, m.LastIndexOf('|'))).ToHashSet();
-        foreach (string file in Directory.GetFiles(modsDir).Where(f => !known.Contains(f)))
+        foreach (string file in modsDirs.SelectMany(d => Directory.GetFiles(d)).Where(f => !known.Contains(f)))
         {
             File.Move(file, Path.Combine(outDir, "raw", $"{name}-saved-{Path.GetFileName(file)}"));
             Metric("mods_saved_unasked", Result.Metrics.GetValueOrDefault("mods_saved_unasked") + 1);

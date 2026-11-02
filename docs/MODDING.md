@@ -175,11 +175,37 @@ Frost moves to it.
 ```
 
 More complete examples, saved as `{"title", "idea", "patch"}`, are in
-`rules/mods/`. The Unity game reads the same mods (`ModPatch.Parse` in the
+`rules/mods/` ("Where mods live", below). The Unity game reads the same mods (`ModPatch.Parse` in the
 C# core) and also understands `sim.fire.fadeCells`: fire dies out after
 about that many squares (the sandbox ignores it). It is stricter about
 types, too: a sim number that isn't a number, or is negative, is refused
 (except `sim.height.min`, which must be 0 or below).
+
+## Where mods live
+
+- **Shipped mods** are `rules/mods/*.json`: tracked in the repo, copied into a build's
+  `StreamingAssets/rules/mods`, and replaced with the rest of the install by an update.
+- **A player's mods** are in their data folder beside `notes.md`:
+  `<persistentDataPath>/claude-terminal/mods/` (`RuleSwitcher.PlayerModsDir`). The game's `save` writes
+  there, in the Editor too, so a save never dirties the repo; to ship one, move it to `rules/mods/`.
+  An Editor shares that folder with the player's game on the same machine, so it lists those mods.
+- **The same id in both:** the player's copy wins, in the Mods page and for the tools, and deleting it
+  brings the shipped one back. Otherwise a shipped mod added later would hide something a player made.
+- **Peers don't need either folder.** A mod goes into the room as its id and JSON text, so the
+  fingerprint, the checksums, a save and a late joiner's replay all go by the text.
+
+**Mods left in an install** (`ModMove`). Before #63 a save landed in the install's `rules/mods`. Each
+launch of a build, before anything reads the mods, moves what's there to the player's folder. The
+build lists the shipped ids in `rules/mods/shipped-mods.txt`, and any other `*.json` there is a
+player's; with no list nothing moves. It copies, then deletes the install's file. A read-only install
+keeps its copy, a file already in the data folder is never overwritten (a different one stays and the
+install's stays too), and `moved-from-install.txt` in the data folder means each id is dealt with
+once. If the data folder can't be written, the mod stays in the install, still listed, for next time.
+
+This only reaches an install that survived, such as a zip unpacked over the old folder. **A Velopack
+update replaces the whole install before the new version first runs**, so a mod saved in a release
+before this change is gone by the time this code could move it. So is a save that overwrote a shipped
+mod in the install, as the new file has already replaced it.
 
 ## Using the rules MCP
 
@@ -216,13 +242,13 @@ mode, picked in Esc > Play together before hosting: Open, Host only or Locked.
 | Draft | `add_material`, `set_material`, `add_reaction`, `set_reaction`, `add_spell`, `set_spell`, `tune`, `remove` |
 | Check | `validate(draft)`: shape, references, the design rules, determinism, budgets |
 | Run | `simulate(draft, scenario, ticks)`: `fire-on-grass`, `fireball`, `flood` or `storm`, with and without the draft |
-| Save | `save(draft, title, idea)`: writes `rules/mods/<name>.json` once it validates |
+| Save | `save(draft, title, idea)`: writes `<name>.json` to `rules/mods`, or the player's folder when the game serves it ("Where mods live"), once it validates |
 
 A draft is a patch held in memory under an id (`d1`, `d2`...): leave the
 draft out of the first call to start one, then pass its id to the rest.
 `set_` tools write only the field they set into the draft, so the mod patches
 just that. `validate` and `simulate` also
-take a mod's name from `rules/mods` (`wildfire`) or the patch JSON itself.
+take a mod's name (`wildfire`) or the patch JSON itself.
 What one mod may ask for (new entries, spell sizes, spread rates, the
 ticks a run may take) is in `rules/budgets.json`. A new terrain or spell needs a `"look"`
 naming a family from `rules/looks.json` so the game can draw it (`rules/README.md`, "Looks";

@@ -26,6 +26,8 @@ CONTROLS (keyboard and mouse; a gamepad works too)
   R               call the dragon, which sweeps the valley clean (hold 3 s to rebuild it at once)
   Esc             menu
   M               the menu's Mods page (switch rules on and off)
+                  (mods you save are in your data folder, not this one, so
+                  an update keeps them: claude-terminal/mods)
 With a controller, hold LB (L1) for the spell radial and aim with the right
 stick; RT (R2) casts. Start opens the menu: d-pad or left stick up / down to
 move, A (Cross) to choose, B (Circle) to go back or close.

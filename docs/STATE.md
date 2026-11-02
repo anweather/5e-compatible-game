@@ -56,9 +56,9 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
+- **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild.
 - **Mac:** `room-agree-wait` (#65; also shows whether `roomruin`'s failing checksum, #67, is the race), then stop.
-- **DesktopUnity:** `player-mods-folder` (#63) read-only fix on Windows, then `save-draft-id`, `glow-hint`.
+- **DesktopUnity:** `save-draft-id`, the last small job. #63 and the glow hint landed; the Mac should rerun `SetReadOnly`'s stricter tests.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).

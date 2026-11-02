@@ -14,6 +14,9 @@ namespace Chem.Tests
     /// </summary>
     public class HiddenThingTests
     {
+        // Family creature's note (rules/looks.json), which is all a model hears of what a glow means.
+        const string GlowHint = "glow 0.1 is a soft glow";
+
         string dir;
 
         [SetUp]
@@ -31,7 +34,9 @@ namespace Chem.Tests
         {
             var client = new HouseToolsTests.Client(bench);
             Assert.That(client.Call("places", new { }), Does.Contain("hollowmere"));
-            Assert.That(client.Call("list", new { table = "looks" }), Does.Contain("species deer, rabbit, squirrel"), "or a client has to guess, and be refused");
+            string looks = client.Call("list", new { table = "looks" });
+            Assert.That(looks, Does.Contain("species deer, rabbit, squirrel"), "or a client has to guess, and be refused");
+            Assert.That(looks, Does.Contain(GlowHint), "read before a client picks a glow");
             Assert.That(client.Call("describe", new { table = "items", id = "ball" }), Does.Contain("baked model"));
             string sites = client.Call("find_site", new { width = 1, depth = 1, near = "hollowmere", within = 40 });
             var spot = Regex.Match(sites, @"\[(\d+), (\d+)\], on");
@@ -45,7 +50,7 @@ namespace Chem.Tests
                 look = "{\"family\": \"creature\", \"species\": \"squirrel\", \"color\": [1, 0.78, 0.2], \"scale\": 1}",
             });
             string draft = Regex.Match(made, @"Draft (d\d+)").Groups[1].Value;
-            client.Call("set_look", new { id = "golden-squirrel", param = "glow", value = "0.4", table = "item", draft });
+            Assert.That(client.Call("set_look", new { id = "golden-squirrel", param = "glow", value = "0.1", table = "item", draft }), Does.Contain(GlowHint), "the reply says what the number means");
             string put = client.Call("add_thing", new { kind = "golden-squirrel", at = $"[{spot.Groups[1].Value}, {spot.Groups[2].Value}]", draft });
             Assert.That(put, Does.Not.Contain("won't stand"));
             Assert.That(client.Call("validate", new { draft }), Does.StartWith("No problems"));
@@ -71,7 +76,7 @@ namespace Chem.Tests
             var patch = (JObject)JObject.Parse(kept)["patch"];
             Assert.That(patch.Properties().Select(p => p.Name), Is.EquivalentTo(new[] { "items", "world" }));
             Assert.That((string)patch["items"]["golden-squirrel"]["look"]["family"], Is.EqualTo("creature"));
-            Assert.That((double)patch["items"]["golden-squirrel"]["look"]["glow"], Is.EqualTo(0.4));
+            Assert.That((double)patch["items"]["golden-squirrel"]["look"]["glow"], Is.EqualTo(0.1));
             Assert.That(((JArray)patch["world"]["add"]).Single()["kind"].ToString(), Is.EqualTo("golden-squirrel"));
 
             // Switched on, it stands in the world; the tools see it; it leaves the cells alone.
@@ -172,7 +177,7 @@ namespace Chem.Tests
             Assert.That(late.Room.Found, Is.EqualTo(a.Room.Found));
         }
 
-        // What a real Claude wrote, with only the game's tools, in a headless run (docs/RULES_MCP.md "Things"): kept as it came.
+        // What a real Claude wrote, with only the game's tools, in a headless run (docs/RULES_MCP.md "Things"): kept as it came, but for its glow.
         static string WrittenByAClient() =>
             File.ReadAllText(Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "core", "Game.Core.Tests", "RulesMcp", "golden-squirrel.mod.json"));
 

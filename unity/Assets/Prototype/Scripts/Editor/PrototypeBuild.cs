@@ -227,8 +227,8 @@ public static class PrototypeBuild
 }
 
 // Copies rules/*.json, rules/mods/*.json and world/*.json (the props and items,
-// world/things.json) into StreamingAssets before any player build,
-// and writes StreamingAssets/build.json: the version, the commit (with
+// world/things.json) into StreamingAssets before any player build, lists the
+// shipped mods beside them (ModMove), and writes StreamingAssets/build.json: the version, the commit (with
 // "-dirty" when the tree has changes) and the build date, for BuildInfo.
 class PackRulesIntoBuild : IPreprocessBuildWithReport
 {
@@ -238,6 +238,7 @@ class PackRulesIntoBuild : IPreprocessBuildWithReport
     {
         Pack("rules");
         Pack(Path.Combine("rules", "mods")); // the M panel's mods (RuleSwitcher)
+        Chem.ModMove.WriteShippedList(Path.Combine(Application.dataPath, "StreamingAssets", "rules", "mods"));
         Pack("world");
         WriteStamp();
         AssetDatabase.Refresh();

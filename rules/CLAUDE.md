@@ -14,8 +14,8 @@ documents every file and the full condition and effect vocabulary of
 - After any change run `dotnet test core`. Tests read these files
   directly, and the examples in
   `docs/MODDING.md` must still pass the checks.
-- `mods/` holds example live mods (`{"title", "idea", "patch"}`), not base
-  rules.
+- `mods/` holds the shipped mods (`{"title", "idea", "patch"}`), not base
+  rules. A player's own live in their data folder (`docs/MODDING.md`).
 - Adding a material, spell or item also needs Unity-side work (ids in
   `RuleIds.cs`, looks and builders); see "Where new things go" in
   `docs/ARCHITECTURE.md`.
