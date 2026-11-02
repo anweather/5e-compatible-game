@@ -771,6 +771,7 @@ it runs) are merged into this list every few days.
 | 27 | Colour mixing (`docs/design/world-tools.md`): `Colors.Mix`, paint-like, for overlapping looks and fires that meet | Gameplay | to size |
 | 28 | Paint as a test of the tools (`docs/design/world-tools.md`): slick covers drawn from data, then "add red and blue paint I can pour" asked of Claude, as one mod | Gameplay | to size |
 | 29 | Speech to text for talking to Claude in the game: a push-to-talk key, on the device where possible, working on Steam Deck with no keyboard. Windows' own Win+H covers the terminal for now | Gameplay | to size |
+| 30 | A player page: new look, headwear and the like, in one place (J-063) | Gameplay | to size |
 | 24 | A terminal panel in the game with the MCP configured; the player brings their own Claude (J-056). Needs the connect token | Gameplay | to size |
 
 **Polish:** 15 (scoreboard), 16 (tower) and 17 (tower defense) are built.
