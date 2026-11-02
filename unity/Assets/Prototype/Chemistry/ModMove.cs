@@ -62,7 +62,9 @@ namespace Chem
                 {
                     // Never a half-written mod under its real name.
                     string part = to + ".part";
+                    MakeWritable(part);
                     File.Copy(file, part, true);
+                    MakeWritable(part);
                     File.Move(part, to);
                 }
                 File.AppendAllText(ledger, id + "\n");
@@ -73,6 +75,13 @@ namespace Chem
             {
                 return $"{id} couldn't be moved, and stays in the install for next time: {e.Message}";
             }
+        }
+
+        // A copy keeps its source's read-only state, and the player's file is theirs to overwrite and
+        // delete. Before the copy too, as a crash can leave a read-only .part that a copy can't replace.
+        static void MakeWritable(string file)
+        {
+            if (File.Exists(file)) File.SetAttributes(file, FileAttributes.Normal);
         }
 
         static bool Deleted(string file)

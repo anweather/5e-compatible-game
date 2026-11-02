@@ -31,6 +31,8 @@ namespace Chem.Tests
         public void RemoveFolders()
         {
             SetReadOnly(install, false);
+            // Every file, as a failed test can leave one read-only anywhere and Temp shouldn't keep it. The tests check the data folder's files themselves.
+            foreach (var file in Directory.GetFiles(root, "*", SearchOption.AllDirectories)) File.SetAttributes(file, FileAttributes.Normal);
             Directory.Delete(root, true);
         }
 
@@ -64,13 +66,11 @@ namespace Chem.Tests
             ModMove.WriteShippedList(install);
         }
 
+        // The files on every platform, as a copy carries their state with it. Only the folder stops a delete on macOS and Linux.
         static void SetReadOnly(string dir, bool on)
         {
-            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-            {
-                foreach (var file in Directory.GetFiles(dir)) File.SetAttributes(file, on ? FileAttributes.ReadOnly : FileAttributes.Normal);
-                return;
-            }
+            foreach (var file in Directory.GetFiles(dir)) File.SetAttributes(file, on ? FileAttributes.ReadOnly : FileAttributes.Normal);
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows)) return;
             using var chmod = Process.Start(new ProcessStartInfo("chmod", (on ? "555 \"" : "755 \"") + dir + "\"") { UseShellExecute = false });
             chmod.WaitForExit();
         }
@@ -259,6 +259,35 @@ namespace Chem.Tests
             File.Delete(InPlayers("mine"));
             Assert.That(ModMove.FromInstall(install, player), Is.Empty);
             Assert.That(File.Exists(InPlayers("mine")), Is.False, "a mod the player deleted doesn't come back");
+        }
+
+        [Test]
+        public void AModCopiedFromAReadOnlyInstallCanBeOverwrittenAndDeleted()
+        {
+            BuildListed("wild");
+            Shipped("mine");
+            SetReadOnly(install, true);
+            ModMove.FromInstall(install, player);
+            Assert.That(File.GetAttributes(InPlayers("mine")) & FileAttributes.ReadOnly, Is.Not.EqualTo(FileAttributes.ReadOnly), "the install's read-only stays in the install");
+
+            File.WriteAllText(InPlayers("mine"), OtherMod);
+            Assert.That(File.ReadAllText(InPlayers("mine")), Is.EqualTo(OtherMod));
+            File.Delete(InPlayers("mine"));
+            Assert.That(File.Exists(InPlayers("mine")), Is.False);
+        }
+
+        [Test]
+        public void AReadOnlyPartFileLeftByACrashDoesntBlockTheMove()
+        {
+            BuildListed("wild");
+            Shipped("mine");
+            string part = InPlayers("mine") + ".part";
+            Directory.CreateDirectory(player);
+            File.WriteAllText(part, "half a mod");
+            File.SetAttributes(part, FileAttributes.ReadOnly);
+            ModMove.FromInstall(install, player);
+            Assert.That(File.ReadAllText(InPlayers("mine")), Is.EqualTo(Mod));
+            Assert.That(File.Exists(part), Is.False);
         }
 
         [Test]
