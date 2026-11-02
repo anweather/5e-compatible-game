@@ -57,7 +57,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
-- **DesktopUnity:** #59 change 3: split the opening tokens, the "all fire" fix in the server (`Instructions` and tools), a short prompt, no `save` unasked. Measured on Opus and Haiku, 96 prompts plus debugging. Base and models landed (b59601c, `docs/telemetry/chat-model-2026-11-02.md`): Opus 24 of 24 strict, Haiku 18, Sonnet 16; the default stays. The default model is Andrew's call. The test player and squirrel test follow.
+- **DesktopUnity:** `chat-context` (3618dd5, change 3, `docs/telemetry/chat-context-2026-11-02.md`): Opus 6.1 s median, down from 14.3, cost down 40%, Haiku passes the strict check. Waiting on 16 real prompts on the merged tree and the Haiku default (J-066), then land with `--compiled`. Then `chat-api`, stacked on it, code-stopped at $9. #63: saved mods may vanish on update. The test player and squirrel test follow.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
