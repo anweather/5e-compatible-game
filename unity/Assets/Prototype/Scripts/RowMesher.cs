@@ -101,8 +101,9 @@ public static class RowMesher
     public static Result Make(JObject row, Tables tables)
     {
         var joins = Joins(row);
-        var body = new MeshKit();
-        var roof = new MeshKit();
+        // A colour's alpha is glow to VillageLit: with theirs at 1, whole houses shone all night and pulsed.
+        var body = new MeshKit { Glows = false };
+        var roof = new MeshKit { Glows = false };
         var panes = new List<WindowPanes.Pane>();
         float floor = (float?)row["floor"]?["height"] ?? 0f;
         float wallTop = 0f;
@@ -229,7 +230,6 @@ public static class RowMesher
         var color = fallback;
         if ((string)finish?["color"] is { } hex && ColorUtility.TryParseHtmlString(hex, out var given)) color = given;
         if ((string)finish?["pattern"] == "worn") color *= WornShade;
-        color.a = 1f;
         return color;
     }
 
@@ -277,7 +277,7 @@ public static class RowMesher
     {
         if (w.Bottom > w.Height / 2f || sill <= 0f) return;
         float middle = (s.From + s.To) / 2f;
-        var broken = new Color(w.Color.r * WornShade, w.Color.g * WornShade, w.Color.b * WornShade, 1f);
+        var broken = new Color(w.Color.r * WornShade, w.Color.g * WornShade, w.Color.b * WornShade);
         Piece(kit, w, s.From, middle, 0f, Mathf.Min(sill, Rough(s.Place.x * 3 + s.Place.y * 7)), broken);
         Piece(kit, w, middle, s.To, 0f, Mathf.Min(sill, Rough(s.Place.x * 5 + s.Place.y * 11 + 1)), broken);
     }
@@ -452,7 +452,6 @@ public static class RowMesher
         }
         var cover = tables.TerrainColor((string)r["cover"]);
         cover = cover.a <= 0f ? DefaultCover : cover;
-        cover.a = 1f;
         return heights.Draw(roof, body, cover, tables.Tiled((string)r["cover"]), walls[0].Color, walls.SelectMany(w => w.Stretches).ToList());
     }
 
@@ -583,7 +582,6 @@ public static class RowMesher
                 {
                     if (!Whole(i, j)) continue;
                     var shade = tiled && i % 2 == 0 ? color * TileShade : color;
-                    shade.a = 1f;
                     var holder = Nearest(holders, Grid.Point(i, j) + new Vector2(Step, Step) / 2f);
                     int east = i, north = j;
                     holder.Roof.Add(Record(roof, () => highest = Mathf.Max(highest, DrawSquare(roof, east, north, shade))));

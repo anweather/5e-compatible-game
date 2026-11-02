@@ -90,6 +90,13 @@ public class RowMesherTests
     }
 
     [Test]
+    public void NothingARowDrawsGlows()
+    {
+        var made = RowMesher.Make(Box("\"shape\": \"hip\", \"pitch\": [4, 12]", ", \"openings\": [{ \"kind\": \"door\", \"at\": 2 }]"), Plain);
+        Assert.AreEqual(0f, made.body.colors.Concat(made.roof.colors).Max(c => c.a), "alpha is glow to VillageLit");
+    }
+
+    [Test]
     public void AWallIsCutOntoTheCellsItStandsOn()
     {
         var made = RowMesher.Make(Box("\"shape\": \"flat\""), Plain);

@@ -41,6 +41,7 @@ public class RowHouses : MonoBehaviour
     Material material, glass;
     readonly List<Drawn> order = new();
     int nextLook;
+    bool closing;
     readonly System.Diagnostics.Stopwatch timer = new();
 
     /// <summary>How long the longest redraw of a house has taken (ms), and how many redraws so far.</summary>
@@ -67,6 +68,8 @@ public class RowHouses : MonoBehaviour
     void OnDestroy()
     {
         Hook(null);
+        // The grid goes with this: it's no time to dress the cells again (a rejoin hit that).
+        closing = true;
         foreach (var d in drawn.Values) Remove(d);
         drawn.Clear();
         order.Clear();
@@ -269,7 +272,8 @@ public class RowHouses : MonoBehaviour
 
     void Remove(Drawn d)
     {
-        foreach (var c in d.walls) grid.BuiltWall(c.x, c.y, 0f);
+        if (!closing)
+            foreach (var c in d.walls) grid.BuiltWall(c.x, c.y, 0f);
         if (d.hidden != null) d.hidden.gameObject.SetActive(true);
         var valley = FindAnyObjectByType<ValleyChemistry>();
         if (valley != null && d.panes != null) valley.UnbindPanes(d.panes);

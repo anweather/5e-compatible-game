@@ -198,6 +198,8 @@ public static class ProbeScenarios
         new Entry("voice", typeof(VoiceProbe), 70f,
             "Talking to Claude (J-061), with a stand-in recogniser and a stand-in for claude: a hold opens the box, takes the controls and tells the player once where their voice goes; the words fill the box as they come; letting go waits for the recogniser, then sends once; " +
             "a recogniser that can't says why in a line and sends nothing; closing the box drops the words; the keys show on the Controls page's table; a hold played from a sample in tools/voice-samples/out on its real timing, word by word, letting go early, and with Claude busy, the words queued, in order, capped, on one status line. Needs make.ps1 run first. With --shots, a film of a hold. Real dictation is left to a real voice."),
+        new Entry("rowlight", typeof(RowLightProbe), 240f,
+            "A stucco house and a stone one through the MCP beside a village house, by day, at dusk and at night: no wall of theirs glows, and with --shots each is filmed close."),
         new Entry("rowburn", typeof(RowBurnProbe), 240f,
             "A stucco house through the MCP, close up from a wizard's height, then a fireball: its walls follow their cells to a ruin (RowRuin), with the frame numbers while it burns."),
         new Entry("rowhouses", typeof(RowHousesProbe), 180f,

@@ -182,7 +182,7 @@ public class RowHousesProbe : ProbeScenario
 
     // Frames of a building at 720p, the camera swung round it, for a clip: they're what proves it shows.
     // The probe flies the camera itself and renders off screen, so this needs no window.
-    IEnumerator Look(string label, int x, int y, float back = ViewBack, float from = 0f)
+    protected IEnumerator Look(string label, int x, int y, float back = ViewBack, float from = 0f)
     {
         if (string.IsNullOrEmpty(ScreenshotDir)) yield break;
         string folder = Path.Combine(ScreenshotDir, label);
