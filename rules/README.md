@@ -432,7 +432,9 @@ places and seeds.
 - **`fauna.json`**, species by id, in the order they're offered to the land: `name`, `size` `[low, high]`,
   `body` (`length`, `radius`, `taper`, `flatten`), `coat` (`base`, `accent`, `glow`) or `coats` (each with
   `name` and `weight`, one picked per animal), `hair` (colours, one picked per animal, for segments marked
-  `hair`), `parts`, `move` (`walk`, `run`, `turn`, `bob`, `bobs`,
+  `hair`), `vary` (how one animal differs from the next: `shade` lighter or darker, `warm` warmer or cooler,
+  `girth` stockier or slimmer, each a share, and `mix` to pick a coat's base and accent apart, a tunic and a
+  skin; drawn from the animal's individual; a variant without one takes its species'), `parts`, `move` (`walk`, `run`, `turn`, `bob`, `bobs`,
   `rock`, `upright`, `stride` for what has no legs), `behave` (`wander`, `idle`, `flee`, `group`, `active`:
   day, night or always; `graze`, `thirst`, `play`, `laze`, `hunts`, `hunger`, `chase`) and `spawn`
   (`density` per hectare, `nearWater`; or `among` and `share`: it comes out of a village of those folk, as

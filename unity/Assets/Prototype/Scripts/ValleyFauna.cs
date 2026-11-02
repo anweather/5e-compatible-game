@@ -45,6 +45,8 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         public int species;
         public int coat;
         public CreatureState state;
+        // What sets it apart, worked out once (and again if its row changes).
+        public CreatureTraits traits;
         // One of a village's folk (ValleyFauna.Folk): its village (index in folk; -1 for an animal), what
         // it's doing, where it's going and how long it stays; the barkeep keeps to the bar.
         public int village = -1;
@@ -177,6 +179,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         ReadRowsMs = (System.Diagnostics.Stopwatch.GetTimestamp() - began) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
         counts = new int[bodies.Count];
         creatures.RemoveAll(c => bodies[c.species] == null);
+        foreach (var c in creatures) c.traits = bodies[c.species].TraitsOf(c.coat, c.state.Individual);
         if (first) FindVillages();
     }
 
@@ -439,7 +442,10 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
                 : square + rng.NextFloat2Direction() * rng.NextFloat(2f, village.wander * 0.6f);
             if (!Walkable(p)) continue;
             var (job, post, yaw) = PostOf(n, places[v]);
-            int at = Spawn(job != CreatureTask.None ? kind : bodies.FolkAt(kind, rng.NextFloat()), new float3(p.x, Height(p), p.y));
+            // The same folk on every peer, each time they come out: the village's seed and their place in it.
+            uint individual = math.hash(new int2(village.seed, n)) | 1u;
+            int who = job != CreatureTask.None ? kind : bodies.FolkAt(kind, CreatureBody.Unit(individual, 15));
+            int at = Spawn(who, new float3(p.x, Height(p), p.y), float.NaN, individual);
             var c = creatures[at];
             var s = c.state;
             s.Home = square;
@@ -455,27 +461,33 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         }
     }
 
-    /// <summary>Puts one animal of a species (by index in the list) at a point. Also for the probe.</summary>
-    public int Spawn(int speciesIndex, float3 position, float yaw = float.NaN)
+    /// <summary>
+    /// Puts one animal of a species (by index in the list) at a point. Also for the probe. Its individual picks
+    /// its size, coat and the rest; 0 gives it a new one, and folk bring their own, so every peer has the same folk.
+    /// </summary>
+    public int Spawn(int speciesIndex, float3 position, float yaw = float.NaN, uint individual = 0u)
     {
         var b = bodies[speciesIndex];
-        creatures.Add(new Creature
+        if (individual == 0u) individual = rng.NextUInt() | 1u;
+        var added = new Creature
         {
             id = ++nextId,
             species = speciesIndex,
-            coat = b.PickCoat(rng.NextFloat()),
+            coat = b.PickCoat(CreatureBody.Unit(individual, 0)),
             state = new CreatureState
             {
                 Position = position,
                 Yaw = float.IsNaN(yaw) ? rng.NextFloat(-math.PI, math.PI) : yaw,
                 Phase = rng.NextFloat(),
-                Scale = rng.NextFloat(b.Size.x, math.max(b.Size.x, b.Size.y)),
+                Scale = math.lerp(b.Size.x, math.max(b.Size.x, b.Size.y), CreatureBody.Unit(individual, 14)),
                 Mode = CreatureMode.Idle,
                 Timer = rng.NextFloat(0.5f, 4f),
                 Seed = rng.NextUInt() | 1u,
-                Individual = rng.NextUInt() | 1u,
+                Individual = individual,
             },
-        });
+        };
+        added.traits = b.TraitsOf(added.coat, individual);
+        creatures.Add(added);
         return creatures.Count - 1;
     }
 
@@ -493,10 +505,10 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         foreach (var c in creatures)
         {
             var b = bodies[c.species];
-            animator.Evaluate(b, c.state, c.coat, this, instances, offset);
-            if (CreatureDrawer.HideAtLens(instances, offset, b.Segments.Length, cam)) AtLens++;
-            offset += b.Segments.Length;
+            int shown = animator.Evaluate(b, c.state, in c.traits, this, instances, offset);
+            if (CreatureDrawer.HideAtLens(instances, offset, shown, cam)) AtLens++;
+            offset += shown;
         }
-        drawer.Draw(instances, total, cam.transform.position);
+        drawer.Draw(instances, offset, cam.transform.position);
     }
 }

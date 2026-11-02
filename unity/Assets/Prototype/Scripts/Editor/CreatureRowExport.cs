@@ -32,6 +32,10 @@ public static class CreatureRowExport
         ("HumanChild", 0f, false, "human", 0.3f), ("Dwarf", 0f, false, "human", 0.12f),
     };
 
+    // How one differs from the next (life-variety): a touch for animals, more for folk, whose tunics and skins are picked apart.
+    static readonly JObject AnimalVary = new() { ["shade"] = 0.14, ["warm"] = 0.06, ["girth"] = 0.08 };
+    static readonly JObject FolkVary = new() { ["shade"] = 0.1, ["warm"] = 0.05, ["girth"] = 0.14, ["mix"] = true };
+
     [MenuItem("Prototype/Export Creature Rows")]
     public static void Export()
     {
@@ -83,6 +87,7 @@ public static class CreatureRowExport
             if (s.Coats.Count == 0) lines.Add("\"coat\": " + Inline(Coat(null, s.Base, s.Accent, s.AccentGlow, 1f)));
             else lines.Add("\"coats\": " + Inline(new JArray(s.Coats.Select(c => Coat(c.Name, c.Base, c.Accent, c.AccentGlow, c.Weight)))));
             if (s.HairColors.Count > 0) lines.Add("\"hair\": " + Inline(new JArray(s.HairColors.Select(Rgb))));
+            if (s.VariantOf == null) lines.Add("\"vary\": " + Inline(s.Upright ? FolkVary : AnimalVary));
             if (s.VariantOf == null)
             {
                 lines.Add(Slots(s));

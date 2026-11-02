@@ -63,6 +63,9 @@ namespace Punchy.Fauna
         public CreatureCoatData[] Coats;
         /// <summary>Hair colours individuals choose between (may be empty).</summary>
         public float4[] HairColors = Array.Empty<float4>();
+        /// <summary>How one individual differs from the next (Chem.VaryDef).</summary>
+        public float Shade, Warm, Girth;
+        public bool MixCoats;
 
         /// <summary>
         /// A fixed random number in -1..1 for one trait of one individual (posture, arm swing, hair…): the same for
@@ -79,12 +82,53 @@ namespace Punchy.Fauna
         public float4 HairColor(uint individual, float4 fallback) =>
             HairColors.Length == 0 ? fallback : new float4(HairColors[Style(individual, 9973, HairColors.Length)].xyz, 0f);
 
-        /// <summary>A segment's colour in one of the coats.</summary>
-        public float4 SegmentColor(int segment, int coat)
+        /// <summary>A trait as a number in 0..1.</summary>
+        public static float Unit(uint individual, int trait) => Trait(individual, trait) * 0.5f + 0.5f;
+
+        /// <summary>
+        /// One of the coats as this individual wears it: lighter or darker, warmer or cooler, its accent (a skin)
+        /// picked apart from its base (a tunic) if the species mixes them. Individual 0 is the coat itself.
+        /// </summary>
+        public CreatureCoatData CoatOf(int coat, uint individual)
+        {
+            var c = Coats[math.clamp(coat, 0, Coats.Length - 1)];
+            if (individual == 0u)
+                return c;
+            if (MixCoats)
+                c.Accent = Coats[Style(individual, 9967, Coats.Length)].Accent;
+            c.Base = Tinted(c.Base, individual, 8);
+            c.Accent = Tinted(c.Accent, individual, 11);
+            return c;
+        }
+
+        float4 Tinted(float4 colour, uint individual, int trait)
+        {
+            var shade = 1f + Trait(individual, trait) * Shade;
+            var warm = Trait(individual, trait + 1) * Warm;
+            return new float4(colour.xyz * new float3(shade * (1f + warm), shade, shade * (1f - warm)), colour.w);
+        }
+
+        /// <summary>All that sets this individual apart, worked out once so posing it needn't hash it every frame.</summary>
+        public CreatureTraits TraitsOf(int coat, uint individual) => new CreatureTraits
+        {
+            Lean = Trait(individual, 1) * 0.13f,
+            ArmSwing = 1f + Trait(individual, 2) * 0.45f,
+            Bounce = 1f + Trait(individual, 3) * 0.5f,
+            Twist = 1f + Trait(individual, 4) * 0.6f,
+            HeadTilt = new float3(Trait(individual, 6) * 0.1f, 0f, Trait(individual, 7) * 0.07f),
+            Girth = GirthOf(individual),
+            Worn = CoatOf(coat, individual),
+            Hair = HairColors.Length == 0 ? new float4(-1f) : new float4(HairColors[Style(individual, 9973, HairColors.Length)].xyz, 0f),
+        };
+
+        /// <summary>How much stockier or slimmer than the row this individual is (1 for individual 0).</summary>
+        public float GirthOf(uint individual) => individual == 0u ? 1f : 1f + Trait(individual, 13) * Girth;
+
+        /// <summary>A segment's colour in a coat.</summary>
+        public float4 SegmentColor(int segment, in CreatureCoatData c)
         {
             // Alpha carries how much the segment glows.
             var seg = Segments[segment];
-            var c = Coats[math.clamp(coat, 0, Coats.Length - 1)];
             var glow = seg.Glow + (seg.Fixed != 0 ? 0f : c.AccentGlow * seg.Accent);
             var rgb = seg.Fixed != 0 ? seg.FixedColor.xyz : math.lerp(c.Base.xyz, c.Accent.xyz, seg.Accent);
             return new float4(rgb, math.saturate(glow));
@@ -237,6 +281,15 @@ namespace Punchy.Fauna
             root.HairColors = new float4[hair.Count];
             for (int i = 0; i < hair.Count; i++)
                 root.HairColors[i] = (Vector4)Rgb(hair[i]).linear;
+
+            var vary = variant.Vary ?? species.Vary;
+            if (vary != null)
+            {
+                root.Shade = (float)vary.Shade;
+                root.Warm = (float)vary.Warm;
+                root.Girth = (float)vary.Girth;
+                root.MixCoats = vary.Mix;
+            }
 
             root.Segments[0] = new CreatureSegment
             {
@@ -418,6 +471,16 @@ namespace Punchy.Fauna
         public float Glow;
         /// <summary>Non-zero: coloured by the individual's hair colour.</summary>
         public int Hair;
+    }
+
+    /// <summary>What one individual's way of moving and looking come to (CreatureBody.TraitsOf).</summary>
+    public struct CreatureTraits
+    {
+        public float Lean, ArmSwing, Bounce, Twist, Girth;
+        public float3 HeadTilt;
+        public CreatureCoatData Worn;
+        /// <summary>Its hair colour; x under 0 keeps the segments' own.</summary>
+        public float4 Hair;
     }
 
     public struct CreatureCoatData

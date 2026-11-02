@@ -21,6 +21,19 @@ namespace Chem
         public double Weight = 1;
     }
 
+    /// <summary>How much one animal of a species differs from the next, each drawn from its Individual.</summary>
+    public sealed class VaryDef
+    {
+        /// <summary>Lighter or darker, as a share of the colour.</summary>
+        public double Shade;
+        /// <summary>Warmer or cooler: red up and blue down, or the other way, as a share.</summary>
+        public double Warm;
+        /// <summary>Slimmer or stockier, as a share of every radius.</summary>
+        public double Girth;
+        /// <summary>Picks base and accent from the coats apart (a tunic and a skin), not in pairs.</summary>
+        public bool Mix;
+    }
+
     /// <summary>A part on a species: which shape, hung from what, where and how.</summary>
     public sealed class SlotDef
     {
@@ -52,6 +65,8 @@ namespace Chem
         public IReadOnlyList<CoatDef> Coats = Array.Empty<CoatDef>();
         /// <summary>Hair colours each animal picks from; empty takes the species it's a variant of, or the segments' own.</summary>
         public IReadOnlyList<double[]> Hair = Array.Empty<double[]>();
+        /// <summary>How animals differ from each other; null takes the species it's a variant of, or none.</summary>
+        public VaryDef Vary;
         public IReadOnlyList<SlotDef> Slots = Array.Empty<SlotDef>();
         public double Walk = 1.4, Run = 6, Turn = 140, Rock;
         public double[] Bob = { 0.02, 0.06 }, Bobs = { 2, 2 }, Stride = { 0.6, 0.9 };
@@ -195,6 +210,8 @@ namespace Chem
             if (row["coat"] is JObject coat) s.Coat = ReadCoat(coat, s.Coat);
             if (row["coats"] is JArray coats) s.Coats = coats.OfType<JObject>().Select(c => ReadCoat(c, s.Coat)).ToList();
             if (row["hair"] is JArray hair) s.Hair = hair.Select(c => Colour(c, Array.Empty<double>())).ToList();
+            if (row["vary"] is JObject vary)
+                s.Vary = new VaryDef { Shade = Num(vary["shade"], 0), Warm = Num(vary["warm"], 0), Girth = Num(vary["girth"], 0), Mix = (bool?)vary["mix"] ?? false };
             if (row["parts"] is JObject slots) s.Slots = slots.Properties().Select(ReadSlot).ToList();
             ReadMove(s, row["move"] as JObject);
             ReadBehave(s, row["behave"] as JObject);
