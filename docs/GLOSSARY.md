@@ -615,6 +615,14 @@ that long, and doesn't march.
   is, because the game reads only those: a controller that arrives as a
   `Joystick` reaches no `<Gamepad>` binding.
 
+**Hold to talk**
+: Holding H, or both sticks in on a pad: the chat box opens and fills with
+  the player's words, and letting go sends them to Claude (`GameVoice`).
+
+**Recogniser**
+: What turns speech into text. The game knows only the port, `ISpeech`;
+  each recogniser is an adapter behind it, picked in `SpeechChoice` (J-061).
+
 ## Ambiguities settled
 
 | Word | Means | Not |
