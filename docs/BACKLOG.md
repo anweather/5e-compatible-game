@@ -715,7 +715,6 @@ A game mode is a snapshot: copies of a set of mods, in order, as a package that 
 - **The map as data:** a mode can carry its land too. The land is largely data already: a theme in `world/themes/` solved from a
   seed (D11), with `world/land.json`, places, villages and things beside it. Not checked: what a mod can change of that today, and
   what's still baked.
-- **Word:** "sandbox" means the frozen TS prototype here, so free play needs its own word in `docs/GLOSSARY.md`.
 - **Open:** what the world keeps when leaving a mode that placed buildings; what a late joiner gets; how "edit a copy" looks in the
   Mods page.
 - **Size:** M, more if the land has to move into mods.

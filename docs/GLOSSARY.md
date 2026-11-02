@@ -589,6 +589,11 @@ that long, and doesn't march.
   **golden** is a hash a test pins. `WorldHash` is unrelated (the world
   generator's coordinate hashing).
 
+**Game mode / free play**
+: A **game mode** is a snapshot: copies of a set of mods in their order, and maybe a map, packaged and shared the way a mod is. In a
+  mode you edit only that mode's copies. **Free play** is where you load any mods and snapshot the setup into a mode. Not built
+  (backlog 28). Never "sandbox", which is the frozen TS prototype.
+
 ## The Dragon
 
 **Dragon**
