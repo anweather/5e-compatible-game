@@ -444,16 +444,22 @@ namespace Chem.Mcp
 
         const string Prefix = "chat-log-", Suffix = ".jsonl";
 
+        // One write at a time: a record and a later line go off on threads of their own, and the second to open the file would fail.
+        static readonly object Writing = new object();
+
         public static void Append(string folder, DateTime day, JObject line) => Append(folder, day, line, Prefix);
 
         /// <summary>The same, in another log's files (the MCP server's).</summary>
         public static void Append(string folder, DateTime day, JObject line, string prefix)
         {
-            Directory.CreateDirectory(folder);
             string file = prefix + day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + Suffix;
-            File.AppendAllText(Path.Combine(folder, file), line.ToString(Formatting.None) + "\n");
-            foreach (string old in Directory.GetFiles(folder, prefix + "*" + Suffix).OrderByDescending(f => f, StringComparer.Ordinal).Skip(MostFiles))
-                File.Delete(old);
+            lock (Writing)
+            {
+                Directory.CreateDirectory(folder);
+                File.AppendAllText(Path.Combine(folder, file), line.ToString(Formatting.None) + "\n");
+                foreach (string old in Directory.GetFiles(folder, prefix + "*" + Suffix).OrderByDescending(f => f, StringComparer.Ordinal).Skip(MostFiles))
+                    File.Delete(old);
+            }
         }
 
         /// <summary>

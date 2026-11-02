@@ -23,6 +23,7 @@ public class ChatProbe : ProbeScenario
         folder = Path.Combine(Application.temporaryCachePath, "chat-probe");
         Directory.CreateDirectory(folder);
         logged = Path.Combine(folder, "asked.txt");
+        ClaudeTerminal.TestFolder = Path.Combine(folder, "claude-terminal"); // an Editor shares its data folder with the player's game
         var controls = caster.controls;
         bool controlsWere = controls != null && controls.enabled;
         if (controls != null) controls.enabled = true;
@@ -44,6 +45,7 @@ public class ChatProbe : ProbeScenario
         finally
         {
             ClaudeChat.StandIn = null;
+            ClaudeTerminal.TestFolder = null;
             if (controls != null) controls.enabled = controlsWere;
         }
     }
@@ -90,7 +92,10 @@ public class ChatProbe : ProbeScenario
     }
 
     // A script standing in for claude: it notes its arguments and stdin, waits a little, then prints these lines.
-    string StandIn(string name, float seconds, params string[] lines)
+    string StandIn(string name, float seconds, params string[] lines) => Script(folder, logged, name, seconds, lines);
+
+    /// <summary>Writes a stand-in for claude into this folder, and says where it is.</summary>
+    public static string Script(string folder, string logged, string name, float seconds, params string[] lines)
     {
         string script = Path.Combine(folder, name + ".cmd");
         var body = new System.Text.StringBuilder("@echo off\r\n");

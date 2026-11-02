@@ -1,0 +1,63 @@
+{
+  "about": "The fixed prompts of the chatprompts probe (J-064, docs/telemetry/chat-base-2026-11-02.md). Chatbench's five and three that show something new. Don't change a prompt between a before and an after: add a new set instead. `keep` leaves the world and notes.md as the last prompt left them; every other prompt starts on a fresh world with no notes. `outcome` is what a right answer records, `tools` the game tools of which one must have worked, `noWorldTools` that none may change the world.",
+  "prompts": [
+    {
+      "kind": "colour",
+      "text": "make all fire blue",
+      "outcome": "applied",
+      "tools": ["set_look"],
+      "why": "A look change, the commonest ask."
+    },
+    {
+      "kind": "follow-up",
+      "text": "actually, make it green instead",
+      "keep": true,
+      "outcome": "applied",
+      "tools": ["set_look"],
+      "why": "New: must find what 'it' is from notes.md and the room alone, as each message is a new process. The one prompt that starts with notes."
+    },
+    {
+      "kind": "rule",
+      "text": "make grass burn twice as fast",
+      "outcome": "applied",
+      "tools": ["set_material", "tune", "set_terrain", "add_reaction", "set_reaction"],
+      "why": "A numeric rule."
+    },
+    {
+      "kind": "spell",
+      "text": "add a cantrip that throws a small ball of frost",
+      "outcome": "applied",
+      "tools": ["add_spell", "set_spell"],
+      "why": "A new spell: the most drafting."
+    },
+    {
+      "kind": "house",
+      "text": "build a small house near hollowmere",
+      "outcome": "applied",
+      "tools": ["add_building"],
+      "why": "A building: reads the world, and draws in the view."
+    },
+    {
+      "kind": "refused",
+      "text": "make the player twice as tall",
+      "outcome": "refused",
+      "tools": ["outside_rules"],
+      "why": "Must be refused: player size is outside the rules."
+    },
+    {
+      "kind": "question",
+      "text": "what's the weather doing right now?",
+      "outcome": "answered",
+      "tools": ["weather", "whats_on"],
+      "noWorldTools": true,
+      "why": "New: a question with nothing to change. How little can a prompt cost?"
+    },
+    {
+      "kind": "weather",
+      "text": "make it rain",
+      "outcome": "applied",
+      "tools": ["set_weather"],
+      "why": "New: no draft and no mod, and rain ramps in, so 'in the world' can be seen beside what really shows."
+    }
+  ]
+}

@@ -25,6 +25,12 @@ public abstract class ProbeScenario : ShowcaseScript
     public string ScreenshotDir { get; set; }
     /// <summary>How long a timed scenario (perf) runs. Set before Start.</summary>
     public float Seconds { get; set; } = 10f;
+    /// <summary>chatprompts only: spend real prompts on the signed-in Claude. Off, a stand-in answers. Set before Start.</summary>
+    public bool RealClaude { get; set; }
+    /// <summary>chatprompts only: how many of the set to send; 0 for all of it, and never over its cap. Set before Start.</summary>
+    public int Prompts { get; set; }
+    /// <summary>chatprompts only: the folder for this run's records and raw streams. Set before Start.</summary>
+    public string OutDir { get; set; }
 
     readonly List<float> frameMs = new();
     readonly List<string> consoleLines = new();

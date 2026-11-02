@@ -68,6 +68,13 @@ The play log's `what` column marks send, apply and in the world, so a hitch can 
   `dotnet run --project core/Chat.Bench -c Release -- --model sonnet --runs 3 --out <folder>`. It uses the chat's arguments, stdin and folder
   against `Rules.Mcp` over stdio on a copy of `rules/` and `world/`, so it has no view and its nearest mark to "in the world" is `applied`.
 
+- **`chatprompts`:** the same idea through the running game, so it has "in the world": `tools/probe.sh chatprompts`, on a stand-in unless told
+  `--real-claude true --out <folder>`. Its set is `docs/telemetry/chat-prompts.json`, its first numbers `docs/telemetry/chat-base-2026-11-02.md`.
+- `tools/chat-check.mjs <run folder>` checks a chatprompts run's records against its raw stream and `mcp-log`, with none of the recorder's code.
+
+Proved on real Claude, 2026-11-02 (claude 2.1.316, Opus 5.5), with what's still wrong in that report: tokens, cost, tool ms, outcomes and the model are right.
+Each stream also says how much of the five-hour and weekly limits is used, in its `rate_limit_event`. The cost is list price, which a plan player doesn't pay.
+
 ## In the game
 
 - A progress bar while Claude works, with tool detail behind the Developer menu.
