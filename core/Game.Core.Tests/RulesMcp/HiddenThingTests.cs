@@ -31,7 +31,8 @@ namespace Chem.Tests
         {
             var client = new HouseToolsTests.Client(bench);
             Assert.That(client.Call("places", new { }), Does.Contain("hollowmere"));
-            Assert.That(client.Call("list", new { table = "looks" }), Does.Contain("species"));
+            Assert.That(client.Call("list", new { table = "looks" }), Does.Contain("species Deer, Rabbit, Squirrel"), "or a client has to guess, and be refused");
+            Assert.That(client.Call("describe", new { table = "items", id = "ball" }), Does.Contain("baked model"));
             string sites = client.Call("find_site", new { width = 1, depth = 1, near = "hollowmere", within = 40 });
             var spot = Regex.Match(sites, @"\[(\d+), (\d+)\], on");
             Assert.That(spot.Success, sites);
@@ -169,6 +170,50 @@ namespace Chem.Tests
             for (int t = 1; t <= 30; t++) rules = batches[t].RunOn(late, rules, out _);
             Assert.That(late.ThingsNow.Fingerprint, Is.EqualTo(a.ThingsNow.Fingerprint));
             Assert.That(late.Room.Found, Is.EqualTo(a.Room.Found));
+        }
+
+        // What a real Claude wrote, with only the game's tools, in a headless run (docs/RULES_MCP.md "Things"): kept as it came.
+        static string WrittenByAClient() =>
+            File.ReadAllText(Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "core", "Game.Core.Tests", "RulesMcp", "golden-squirrel.mod.json"));
+
+        [Test]
+        public void TheModAHeadlessClientWroteHoldsThroughRunsPeersAndASave()
+        {
+            string json = WrittenByAClient();
+            var patch = (JObject)JObject.Parse(json)["patch"];
+            Assert.That(patch.Properties().Select(p => p.Name), Is.EquivalentTo(new[] { "items", "world" }), "one mod: a kind and where it stands");
+            Assert.That((string)patch["items"]["golden-squirrel"]["look"]["family"], Is.EqualTo("creature"));
+            Assert.That(((JArray)patch["world"]["add"]).All(t => (string)t["kind"] == "golden-squirrel"));
+
+            (World world, Workbench bench) Run()
+            {
+                var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+                var world = bench.LiveWorld;
+                var rules = world.RoomRules;
+                for (int t = 1; t <= 12; t++)
+                {
+                    var batch = new TickBatch(t);
+                    if (t == 3) batch.Room.Add(RoomCommand.Apply("Ana", "golden-squirrel", json));
+                    if (t == 9) batch.Room.Add(RoomCommand.Found("Bo", world.ThingsNow.All.First(x => x.Kind == "golden-squirrel").Id));
+                    rules = batch.RunOn(world, rules, out _);
+                }
+                return (world, bench);
+            }
+
+            var (a, bench) = Run();
+            var (b, _) = Run();
+            Assert.That(a.Room.Mods.Select(m => m.Id), Is.EqualTo(new[] { "golden-squirrel" }), "every peer took it");
+            Assert.That(b.ThingsNow.Fingerprint, Is.EqualTo(a.ThingsNow.Fingerprint));
+            Assert.That(b.ThingsNow.All.Where(t => t.FromMod).Select(t => t.Id), Is.EqualTo(a.ThingsNow.All.Where(t => t.FromMod).Select(t => t.Id)));
+            Assert.That(b.Rules.Fingerprint, Is.EqualTo(a.Rules.Fingerprint));
+            Assert.That(b.CastHash(), Is.EqualTo(a.CastHash()));
+            Assert.That(b.CellHash(), Is.EqualTo(a.CellHash()));
+            Assert.That(a.Log.Count(l => l.Text == "Bo found the golden squirrel"), Is.EqualTo(1));
+
+            var loaded = World.Load(a.Save(bench.LiveSource), bench.Base, bench.LiveSource, bench.Budgets);
+            Assert.That(loaded.ThingsNow.Fingerprint, Is.EqualTo(a.ThingsNow.Fingerprint));
+            Assert.That(loaded.Room.Found, Is.EqualTo(a.Room.Found));
+            Assert.That(loaded.CastHash(), Is.EqualTo(a.CastHash()));
         }
 
         [Test]

@@ -326,6 +326,7 @@ namespace Chem.Mcp
         static string Described(string table, string family)
         {
             if (family != null) return $"family {family}";
+            if (IsThingTable(table)) return "its baked model: a look only dresses a kind with no model, so give a new kind one with add_item or add_entity";
             return table == "elements" ? "an element's: only a colour" : $"no family, only a colour (no {Single(table)} family is drawn yet)";
         }
 
@@ -453,6 +454,7 @@ namespace Chem.Mcp
                 {
                     if (!f.Params.Contains("color")) noColour.Add($"{table} {f.Name}");
                     var forms = f.Forms.Count > 0 ? $"; forms {string.Join(", ", f.Forms)}" : "";
+                    if (f.Species.Count > 0) forms += $"; species {string.Join(", ", f.Species)}";
                     var what = f.Drawn ? $"takes {List(f.Params)}{forms}" : $"not drawn from data yet (needs {f.Needs})";
                     lines.Add($"{table} {f.Name}: {what}.{(f.About == null ? "" : " " + f.About)}{(f.Notes == null ? "" : " " + f.Notes)}");
                 }

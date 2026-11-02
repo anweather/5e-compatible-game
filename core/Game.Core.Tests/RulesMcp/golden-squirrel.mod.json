@@ -1,0 +1,73 @@
+{
+  "title": "Golden squirrel",
+  "idea": "A rare, softly glowing golden squirrel hides in the backwoods: five spots out past the far cabins, each with a 40% chance of holding one in any given world, so most worlds have one or a few and players have to go looking.",
+  "patch": {
+    "items": {
+      "golden-squirrel": {
+        "name": "Golden squirrel",
+        "material": "flesh",
+        "look": {
+          "family": "creature",
+          "species": "Squirrel",
+          "color": [
+            1.0,
+            0.8,
+            0.2
+          ],
+          "glow": 0.4,
+          "scale": 1
+        },
+        "mass": 0.5
+      }
+    },
+    "world": {
+      "add": [
+        {
+          "kind": "golden-squirrel",
+          "cell": [
+            200,
+            222
+          ],
+          "rot": 40.0,
+          "chance": 0.4
+        },
+        {
+          "kind": "golden-squirrel",
+          "cell": [
+            230,
+            224
+          ],
+          "rot": 200.0,
+          "chance": 0.4
+        },
+        {
+          "kind": "golden-squirrel",
+          "cell": [
+            202,
+            252
+          ],
+          "rot": 110.0,
+          "chance": 0.4
+        },
+        {
+          "kind": "golden-squirrel",
+          "cell": [
+            398,
+            274
+          ],
+          "rot": 300.0,
+          "chance": 0.4
+        },
+        {
+          "kind": "golden-squirrel",
+          "cell": [
+            400,
+            302
+          ],
+          "rot": 75.0,
+          "chance": 0.4
+        }
+      ]
+    }
+  }
+}

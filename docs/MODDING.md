@@ -24,7 +24,7 @@ Every field is optional.
 {
   "elements": ["acid"],                       // new element names; or entries by id, an element's look:
                                               //   { "fire": { "look": { "color": [0.25, 0.45, 1] } } }
-  "terrain":  { "mud": { "name": "Mud", "tags": ["ground"] } },   // add or replace by id
+  "terrain":  { "mud": { "name": "Mud", "tags": ["ground"] } },   // add by id, or patch: only the fields named change
   "covers":   { "tar": { "name": "Tar", "tags": ["flammable"], "flammability": 0.5, "fuel": 20 } },
   "gases":    { "spores": { "name": "Spores" } },
   "components": { "furred": "Has fur, which burns long." },   // new component names (rules/components.json)
@@ -36,11 +36,12 @@ Every field is optional.
     "addEntity": [ /* entity rules */ ],
     "remove":    [ "fire-water" ]             // rule ids to delete
   },
-  "spells":   [ /* SpellDef, add or replace by id */ ],
+  "spells":   [ /* SpellDef, add by id, or patch: only the fields named change */ ],
   "buildings": { "styles": { "adobe": { "wall": { "material": "stone" } } } },   // rows of rules/buildings.json
-  "world":    { "buildings": { "cabin#2": { /* a whole building row, by id: edits it; a new id adds one */ } } },   // docs/RULES_MCP.md "Buildings"
+  "world":    { "buildings": { "cabin#2": { /* a whole building row, by id: edits it; a new id adds one */ } },   // docs/RULES_MCP.md "Buildings"
+                "add": [ { "kind": "ogre", "cell": [120, 80], "rot": 90, "chance": 0.2 } ] },   // things in the world: docs/RULES_MCP.md "Things"
   "groups":   { "shadow": { "name": "Shadow", "order": 6, "color": "#5a4a7a" } },   // spell radial elements (Unity)
-  "critters": [ /* CritterDef, add or replace by id */ ],
+  "critters": [ /* CritterDef, add by id, or patch: only the fields named change */ ],
   "sim":      { "push": { "slideCells": 6 } } // deep-merged over sim.json
 }
 ```
@@ -132,11 +133,14 @@ down is `sim.height.min`).
 ] }
 ```
 
-A replaced spell is replaced whole, so keep its `group` (which element of
-the Unity game's spell radial it sits under, from `rules/groups.json`) and
-its `"radial": false` if it had one (Earthen Trench and Move Earth do: they
-stay in the rules but off the radial, whose Earth is Raise Earth, Lower
-Earth and Wall of Stone). A spell with no group goes under the last element.
+A mod changes only the fields it names on an entry that's already there
+(`Rules.MergedEntry`): groups such as `crater` or a material's verbs merge key
+by key, `null` takes a field out, and a list or number replaces. So mods stack,
+and a revert undoes only its own. A new spell needs its `group` (which element
+of the Unity game's spell radial it sits under, from `rules/groups.json`); with
+none it goes under the last element. `"radial": false` keeps one off the radial
+(Earthen Trench and Move Earth: its Earth is Raise Earth, Lower Earth and Wall
+of Stone).
 
 **Charged casts.** Holding the cast charges a spell (1, a tap, to 3): its
 power times the charge, a terraform's raise or dig times the charge (a
@@ -212,8 +216,8 @@ mode, picked in Esc > Play together before hosting: Open, Host only or Locked.
 
 A draft is a patch held in memory under an id (`d1`, `d2`...): leave the
 draft out of the first call to start one, then pass its id to the rest.
-`set_` tools copy the whole base entry into the draft and change one field,
-so a replaced spell keeps everything else. `validate` and `simulate` also
+`set_` tools write only the field they set into the draft, so the mod patches
+just that. `validate` and `simulate` also
 take a mod's name from `rules/mods` (`wildfire`) or the patch JSON itself.
 What one mod may ask for (new entries, spell sizes, spread rates, the
 ticks a run may take) is in `rules/budgets.json`. A new terrain or spell needs a `"look"`
