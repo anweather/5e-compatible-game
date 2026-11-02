@@ -154,7 +154,7 @@ namespace Chem.Tests
             wire.Reply(Events(Start("m2"), Words(0, "Done."), Stop("end_turn")));
             Run(wire);
             var first = (JArray)JObject.Parse(wire.Bodies[0])["messages"][0]["content"];
-            StringAssert.Contains("Blue fire is on.", (string)first[0]["text"]);
+            Assert.That((string)first[0]["text"], Is.EqualTo("Notes from earlier messages:\n- Blue fire is on."), "the loop's request stays as it was");
             Assert.That((string)first[1]["text"], Is.EqualTo("make it rain"));
             Assert.That(File.ReadAllText(notes), Is.EqualTo("- Blue fire is on.\n- Green now.\n"), "one line, on the end");
             Assert.That(File.Exists(elsewhere), Is.False, "the tool has no path to take");

@@ -704,6 +704,20 @@ that long, and doesn't march.
   `ClaudeChat` in play, and the **API loop** for evaluation. Backlog 27's picker
   would choose between them.
 
+**Chat records**
+: `chat-log-<date>.jsonl`, one line per prompt, with the prompt in it, in
+  `chat-records/` under the player's data folder, so a bug report's `Player.log`
+  doesn't send them. A test's stay beside its own log.
+
+**Notes**
+: `notes.md`, in the chat's folder: what carries over between messages, as each
+  is a new process. A model writes them. The game puts them ahead of the player's
+  message, quoted line by line, as a record and not instructions.
+
+**Model fallback**
+: When the account refuses the chat's model and no tool ran: the message runs once
+  more on the account's default, a line says so, and the session remembers (#64).
+
 **API loop**
 : The game's own tool loop over the Claude Messages API (`ApiLoop`): it connects
   to the game's MCP server as a client and offers its tools and `Instructions`

@@ -8,7 +8,15 @@ Local only: records stay in the player's data folder and nothing is uploaded. Sh
 
 ## The record
 
-One JSON line per prompt in `chat-log-<date>.jsonl`, beside the play logs, kept for the last 30 files.
+One JSON line per prompt in `chat-log-<date>.jsonl`, kept for the last 30 files.
+
+**Where the records live.** In `chat-records/` under the player's data folder (`ChatLog.Home`): on Windows `%USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\chat-records\`, on a Mac `~/Library/Application Support/anweather/Spell Chemistry Valley/chat-records/`. `mcp-log-<date>.jsonl` goes there too. A test stays out of it: with `-logFile`, or in any Editor, both go beside that log, as an Editor shares its data folder with the player's game, and `chatprompts --out` sets a folder of its own.
+
+**Why they moved.** Records hold what a player asked, and a bug report sends `Player.log`. Players are told that one file by name (`unity/ReleaseReadme.txt`, `tools/README-LINUX.txt`, `docs/RELEASING.md`), and a test holds those readmes to it. Nothing in the game gathers logs. On Windows `chat-records/` is still under the folder `Player.log` is in, so someone who zips the whole folder sends it, and that's no different for `claude-terminal/notes.md`, which sits beside it and paraphrases asks too. Anyone writing a new send-your-logs line or button must name files, not the folder.
+
+**What can still say what was asked.** Claude's mod titles can paraphrase an ask, and they stay in `Player.log`: a room's verdict is an event-log line, and `EventLog.Add` writes each of those to the log. Mod ids stay in the play log's `what` column too. That stays: only the records moved.
+
+Records from earlier versions stay where they were, beside `Player.log`. Nothing moves or deletes them, and the 30-file trim doesn't reach them.
 A run the game didn't start (Claude Code in the terminal) has only the game-side half.
 
 | Group | Fields |
@@ -20,6 +28,7 @@ A run the game didn't start (Claude Code in the terminal) has only the game-side
 | Tokens | input, cache write, cache read, output, cost, per model, turns |
 | Tools | each call: name, ms, ok or refused, reason |
 | Outcome | applied, refused, failed, timed out, stopped; for a refusal, what it couldn't do |
+| Retry | only if there was one (#64): the model refused, why, and when. `model` is then the one that really ran, and the times stay from the send |
 | What changed | the whole mod patch of each `apply`, so any result can be rebuilt (the castle couldn't be), and its title |
 | Afterwards | reverted or still on at the end of the session, and after how long; whether the next prompt fixes this one |
 | Game cost | worst frame and hitches from send to in the world, ms to compose rules, ms drawing it |
@@ -47,9 +56,10 @@ What the stream really says, from claude 2.1.312 (fixtures in `core/Game.Core.Te
 says typed or voice. A room decision of this peer's starts the stamp: **in the world** is the second frame after it with no land recolouring queued, so a
 row house has drawn. The record goes to `ChatLog.Append` off the main thread once the process has ended and the world has it, or 5 s after. `Workbench.Applied`
 gives each patch. `afterwards` lines come on a revert, at the session's end for what stayed on, and when a later prompt's patch touches the same entries, the
-plain rule for `fixedBy`. `McpRpc.Called` and `McpLog` write `mcp-log-<date>.jsonl`, for terminal sessions too. `PlayLog.Note` adds a `note` line for send,
+plain rule for `fixedBy`. `McpRpc.Called` and `McpLog` write `mcp-log-<date>.jsonl` beside the records, for terminal sessions too. `PlayLog.Note` adds a `note` line for send,
 apply and in the world, which doesn't count as a mark. `ChatBar` turns `ChatRecorder.Progress` into the bar; the Developer menu's "Claude's tools in the chat"
 brings the tool lines back; the Claude menu lists the last prompts. `ClaudeTerminal.Guide` comes from `ClaudeRun.Guide`, so the bench reads what the game writes.
+The record's prompt is the player's words: `ClaudeChat` adds the notes to what claude is sent, after the record has begun. A retry stays one record: `ChatRecorder.Retried` drops the first try. `ClaudeRun.Read` leaves out an API failure's `assistant` line, and the `result` says the same.
 
 ## The game's side
 
@@ -59,7 +69,7 @@ The play log's `what` column marks send, apply and in the world, so a hitch can 
 
 ## Reading it
 
-- `tools/chat-report.mjs <folder>`: prompts, outcome counts, median and p90 prompt to world, each split's share,
+- `tools/chat-report.mjs <folder>`, the records' folder or a player's data folder, where it reads `chat-records/` and any older files left at the top: prompts, outcome counts, median and p90 prompt to world, each split's share,
   tokens and cost per prompt, by kind (look, rule, building, weather, refused), slowest and dearest ten, and
   what players asked for that Claude refused. That last list feeds the backlog.
 - **`chatbench`:** a fixed set of prompts on a fresh world through the real chat path: a colour, a rule, a spell,

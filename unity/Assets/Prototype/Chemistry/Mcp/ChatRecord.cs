@@ -77,7 +77,7 @@ namespace Chem.Mcp
         int? turns;
         double? cost;
         JToken usage, modelUsage;
-        JObject gameCost;
+        JObject gameCost, retry;
         ChatOutcome? ended;
         bool sawResult, failed;
 
@@ -169,6 +169,26 @@ namespace Chem.Mcp
                     ["composeMs"] = composeMs,
                     ["drawMs"] = drawMs,
                 };
+        }
+
+        /// <summary>
+        /// The model was refused and the message is going again on the account's own: what came of the first try is dropped, as it has no tokens and
+        /// the second is what the player got. Times stay from the send, so they carry the first try's seconds. A record with no retry has no such field.
+        /// </summary>
+        public void Retried(long clock, string fromModel, string why)
+        {
+            lock (gate)
+            {
+                retry = new JObject { ["from"] = fromModel, ["why"] = ReasonOf(why), ["at"] = FromSend(clock) };
+                model = reply = lastWords = failure = endedBy = null;
+                ready = firstWord = done = apiMs = claudeMs = null;
+                turns = null;
+                cost = null;
+                usage = modelUsage = null;
+                replies.Clear();
+                ended = null;
+                sawResult = failed = false;
+            }
         }
 
         /// <summary>The process has gone. With how, it was stopped or timed out; a result that came first still stands for how it ended.</summary>
@@ -440,17 +460,28 @@ namespace Chem.Mcp
                     ["gameCost"] = gameCost,
                 };
                 if (harness != null) record["harness"] = harness;
+                if (retry != null) record["retry"] = retry;
                 return record;
             }
         }
     }
 
-    /// <summary>The chat-log files: one JSON line per prompt, beside the play logs, the newest files kept.</summary>
+    /// <summary>The chat-log files: one JSON line per prompt, in a folder of their own, the newest files kept.</summary>
     public static class ChatLog
     {
         public const int MostFiles = 30;
 
         const string Prefix = "chat-log-", Suffix = ".jsonl";
+
+        /// <summary>The player's data folder's subfolder for the records. Players are told to send Player.log, by name, and the records hold their prompts.</summary>
+        public const string RecordsFolder = "chat-records";
+
+        /// <summary>
+        /// Where the records and the MCP log go. A log the process was given (-logFile, or the Editor's own) means a test, and they stay beside it,
+        /// as an Editor shares its data folder with the player's game; logFolder is null otherwise.
+        /// </summary>
+        public static string Home(string dataFolder, string logFolder) =>
+            string.IsNullOrEmpty(logFolder) ? Path.Combine(dataFolder, RecordsFolder) : logFolder;
 
         // One write at a time: a record and a later line go off on threads of their own, and the second to open the file would fail.
         static readonly object Writing = new object();

@@ -1,0 +1,56 @@
+{
+  "about": "notes.md in the first message on Claude Code's path (chat-notes-2026-11-02.md). The fixed set's blue-then-green pair, then its question and its rain on a fresh start, on the chat's own model. Keys as in chat-prompts.json. Run with chatprompts --set chat-notes.json and read with chat-strict --set.",
+  "prompts": [
+    {
+      "kind": "colour",
+      "text": "make all fire blue",
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "fireIs": "blue"
+      },
+      "why": "A fresh start with no notes: no failed Read, and the prompt that writes the notes."
+    },
+    {
+      "kind": "follow-up",
+      "text": "actually, make it green instead",
+      "keep": true,
+      "outcome": "applied",
+      "tools": [
+        "set_look"
+      ],
+      "must": {
+        "fireIs": "green"
+      },
+      "why": "Has to find what 'it' is with the notes in the message. Also shows what adding to notes that exist costs."
+    },
+    {
+      "kind": "question",
+      "text": "what's the weather doing right now?",
+      "outcome": "answered",
+      "tools": [
+        "weather",
+        "whats_on"
+      ],
+      "noWorldTools": true,
+      "must": {
+        "weatherAnswer": true
+      },
+      "why": "How little a prompt can cost, now with nothing to read."
+    },
+    {
+      "kind": "weather",
+      "text": "make it rain",
+      "outcome": "applied",
+      "tools": [
+        "set_weather"
+      ],
+      "must": {
+        "weatherIs": "rain"
+      },
+      "why": "One that applies, from a fresh start."
+    }
+  ]
+}

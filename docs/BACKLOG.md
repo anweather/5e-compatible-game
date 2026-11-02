@@ -684,6 +684,7 @@ session doesn't bring it. Dragon stage in a tick: 0.17 ms mean, 2.3 ms at worst,
 support for Codex, Kiro and others, and advanced options to tune all of it.
 
 - **Two modes (Andrew, 2026-11-02):** an API key, where the game runs its own tool loop against our MCP server, or a harness, such as Claude Code or Codex. The API connector can't reach a server on the player's machine, so API mode needs that loop.
+- **Model list (Andrew, 2026-11-02):** in API mode the player gives their key in Settings and the game lists the models that key can use (`GET /v1/models`, tried with curl: free, returns the account's models), so a bad choice can't be made and a failed run is rare. Check the key there, not at the first prompt. Whether a harness can list its models isn't checked yet; if not, a precanned list, tested with one small call.
 - **Shape:** a picker of precanned profiles per harness (command, arguments,
   sign-in check, stream parser), plus an advanced section. Signing in stays with
   each player.

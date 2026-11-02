@@ -57,8 +57,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
-- **Mac:** in order: `play-log-switch` (Settings, J-065), #65 `roomhost` failing on dev (which commit started it; a client may not apply the host's mod), #63 saved mods to the player folder. Stays out of `ClaudeRun`, `ClaudeChat` and the tool loop.
-- **DesktopUnity:** `chat-notes-fallback`: `notes.md` in the first message on the Claude Code path, #64 (a friendly message or retry for an account without Haiku). Then the new test player with the squirrel test. `chat-api` landed (0d6d79d, `docs/telemetry/chat-api-2026-11-02.md`): off for players, Haiku 4.8 s; key storage, picker and a terms check before it ships. `SPELL_VALLEY_API_KEY` is Andrew's user variable on the PC.
+- **Mac:** #63 saved mods to the player folder, then `room-agree-wait` (#65: a probe race, fix gives `Agree` the `ClientInStep` wait), then stop.
+- **DesktopUnity:** 4 prompts to explain the slower follow-up, then the new test player from dev in a folder beside `PlayTest/`, with the squirrel test. Chat records are in `chat-records/` now (f84d0d1); #64: Andrew wants no retry; `chat-fail-loud` removes it before the test player (J-066).
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
@@ -73,7 +73,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 3. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
 4. Gaits by rule (`docs/design/builders.md`).
 5. Design things on water (#60); size patches for Claude (#61).
-6. 0.1.11, when Andrew says: he put it on hold. Before it ships: the no-Haiku fallback issue, #63 (saved mods on update), version bump. J-060 comes back before anything commercial.
+6. 0.1.11, when Andrew says: he put it on hold. Before it ships: #63 (saved mods on update), version bump. J-060 comes back before anything commercial.
 - Left out of the port, for later: flight and biomes for spawn rows, `glides`, a shore rule for reeds, mod budgets on rows, water animals as shapeshift targets. Dev's main thread may have risen about 1 ms on the Mac (unexplained; not fauna).
 - Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`, `chat-telemetry.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
 

@@ -93,7 +93,7 @@ public class RulesMcpServer : MonoBehaviour
         var desk = new GameRoomDesk(this);
         rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir(), RuleSwitcher.PlayerModsDir) { Desk = desk, WorldDesk = desk, Here = here, Applied = ChatTelemetry.Patched, SaveRefused = GameChat.SaveRefusal }), "spell-chemistry-valley", Application.version);
         rpc.Called = McpLog.Write;
-        McpLog.Folder = ChatTelemetry.Folder ?? PlayLog.Folder();
+        McpLog.Folder = ChatTelemetry.Home;
         var serving = listener;
         var tools = rpc;
         new Thread(() => Serve(serving, tools)) { IsBackground = true, Name = "Rules MCP" }.Start();

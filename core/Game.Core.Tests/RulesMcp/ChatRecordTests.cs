@@ -32,6 +32,52 @@ namespace Chem.Tests
 
         static JObject Record(string name) => Fed(Lines(name)).Record();
 
+        [Test]
+        public void APlayersRecordsGoOutsideWhatTheyAreToldToSend()
+        {
+            // On Windows the data folder is the one Player.log is in; on a Mac they're apart.
+            string data = Path.Combine("c", "LocalLow", "Spell Chemistry Valley");
+            string home = ChatLog.Home(data, null);
+            Assert.That(home, Is.EqualTo(Path.Combine(data, ChatLog.RecordsFolder)));
+            Assert.That(Path.GetDirectoryName(home), Is.EqualTo(data), "under the data folder, so it stays the player's");
+            Assert.That(home, Is.Not.EqualTo(data), "not the folder Player.log is in");
+            string root = Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\'));
+            foreach (string readme in new[] { Path.Combine(root, "unity", "ReleaseReadme.txt"), Path.Combine(root, "tools", "README-LINUX.txt") })
+            {
+                var told = File.ReadAllLines(readme).Where(l => l.Contains("Spell Chemistry Valley" + "\\", StringComparison.Ordinal) || l.Contains("Spell Chemistry Valley/", StringComparison.Ordinal)).ToList();
+                Assert.That(told, Is.Not.Empty, readme);
+                Assert.That(told, Has.All.EndsWith("Player.log"), "players are told one file by name: telling them a folder would send their prompts");
+            }
+        }
+
+        [Test]
+        public void ATestsRecordsStayBesideItsLog() =>
+            Assert.That(ChatLog.Home("data", "scratch"), Is.EqualTo("scratch"), "an Editor shares its data folder with the player's game");
+
+        [Test]
+        public void ARetryShowsTheModelThatRanAndThatItRetried()
+        {
+            var recorder = Fed(Lines("badmodel"));
+            recorder.Retried(3000, "claude-haiku-5-5", "There's an issue with the selected model.\nIt may not exist.");
+            var blue = Lines("blue");
+            for (int i = 0; i < blue.Length; i++) recorder.Line(blue[i], 4000 + (Step * i));
+            recorder.Ended(9000);
+            var r = recorder.Record();
+            var alone = Record("blue");
+            Assert.That((string)r["model"], Is.EqualTo((string)alone["model"]), "the model that really ran, not the one asked for");
+            Assert.That((string)r["outcome"], Is.EqualTo("applied"));
+            Assert.That((string)r["why"], Is.Null, "the first try's failure isn't this prompt's");
+            Assert.That((string)r["retry"]["from"], Is.EqualTo("claude-haiku-5-5"));
+            Assert.That((string)r["retry"]["why"], Is.EqualTo("There's an issue with the selected model."));
+            Assert.That((long)r["retry"]["at"], Is.EqualTo(2000));
+            Assert.That((long)r["at"]["claudeReady"], Is.EqualTo(3000), "times stay from the send");
+            Assert.That(r["tokens"].ToString(), Is.EqualTo(alone["tokens"].ToString()), "the tokens are the second try's");
+        }
+
+        [Test]
+        public void ARecordWithNoRetryHasNoSuchField() =>
+            Assert.That(Record("blue").ContainsKey("retry"), Is.False);
+
         static int LineOf(string[] lines, string has) => Array.FindIndex(lines, l => l.Contains(has, StringComparison.Ordinal));
 
         [Test]

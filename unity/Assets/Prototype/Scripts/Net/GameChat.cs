@@ -205,6 +205,9 @@ public class GameChat : MonoBehaviour
             case ClaudeSaid.Failed:
                 Say("<color=#ff8a80>" + text + "</color>");
                 break;
+            case ClaudeSaid.Notice:
+                Say(text);
+                break;
         }
     }
 

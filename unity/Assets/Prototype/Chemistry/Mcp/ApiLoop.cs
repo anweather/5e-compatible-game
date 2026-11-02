@@ -179,8 +179,7 @@ namespace Chem.Mcp
         JObject FirstMessage(string message)
         {
             var content = new JArray();
-            string file = Path.Combine(folder, ClaudeRun.NotesFile);
-            string notes = File.Exists(file) ? ClaudeRun.Trimmed(File.ReadAllText(file)).Trim() : "";
+            string notes = ClaudeRun.Notes(folder);
             if (notes.Length > 0) content.Add(new JObject { ["type"] = "text", ["text"] = "Notes from earlier messages:\n" + notes });
             content.Add(new JObject { ["type"] = "text", ["text"] = message });
             return new JObject { ["role"] = "user", ["content"] = content };

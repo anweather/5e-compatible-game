@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Chem;
@@ -12,7 +13,8 @@ using UnityEngine;
 // ChatRecorder. It keeps the clock, stamps "in the world" once this peer has the change drawn, counts
 // what the frames paid, writes the record off the main thread, and adds a later line when a mod is
 // reverted or a next prompt fixes it. Local only: nothing here leaves the machine. The list in the
-// Claude menu reads these records and counts nothing for itself. RulesMcpServer adds it.
+// Claude menu reads these records and counts nothing for itself. They hold the player's prompts, so they
+// go in a folder of their own, not beside Player.log, which players send with a bug report. RulesMcpServer adds it.
 [RequireComponent(typeof(GameChat))]
 public class ChatTelemetry : MonoBehaviour
 {
@@ -49,8 +51,19 @@ public class ChatTelemetry : MonoBehaviour
     /// <summary>The telemetry, or null where the game doesn't serve Claude.</summary>
     public static ChatTelemetry Instance { get; private set; }
 
-    /// <summary>Where the records go; the play logs' folder unless the probe says otherwise.</summary>
+    /// <summary>Where the records go in place of Home, for the probe.</summary>
     public static string Folder { get; set; }
+
+    /// <summary>Where the records and the MCP log go now: ChatLog.Home unless the probe says otherwise. On the main thread.</summary>
+    public static string Home => Folder ?? ChatLog.Home(Application.persistentDataPath, GivenLogFolder());
+
+    // The folder of a log this process was told to use: a test's. Null for a player started as players start it.
+    static string GivenLogFolder()
+    {
+        string log = Application.consoleLogPath;
+        bool given = Application.isEditor || Environment.GetCommandLineArgs().Any(a => a.Equals("-logFile", StringComparison.OrdinalIgnoreCase));
+        return given && !string.IsNullOrEmpty(log) ? Path.GetDirectoryName(log) : null;
+    }
 
     /// <summary>The prompt being answered, for the progress bar; null with none.</summary>
     public ChatRecorder Current => current;
@@ -234,7 +247,7 @@ public class ChatTelemetry : MonoBehaviour
 
     static void Write(JObject line)
     {
-        string folder = Folder ?? PlayLog.Folder();
+        string folder = Home;
         var day = DateTime.UtcNow;
         Task.Run(() => ChatLog.Append(folder, day, line));
     }
@@ -242,7 +255,7 @@ public class ChatTelemetry : MonoBehaviour
     // At the end of a session: what stayed on says so.
     void StillOn()
     {
-        string folder = Folder ?? PlayLog.Folder();
+        string folder = Home;
         foreach (var (_, was) in onFrom) ChatLog.Append(folder, DateTime.UtcNow, ChatLog.Afterwards(was.record, null));
         onFrom.Clear();
     }
