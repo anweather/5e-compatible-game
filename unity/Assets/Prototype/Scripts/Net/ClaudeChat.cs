@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using Chem.Mcp;
@@ -29,6 +31,9 @@ public sealed class ClaudeChat
 
     /// <summary>Told each raw line and its clock, on the reading thread: the real-prompt probe keeps the stream, to check the record against. Null in play.</summary>
     public static Action<string, long> Tap { get; set; }
+
+    /// <summary>More arguments for claude, for the real-prompt probe's comparisons (a model, less context). Null in play.</summary>
+    public static IReadOnlyList<string> Extra { get; set; }
 
     /// <summary>Whether a message is still being answered.</summary>
     public bool Busy => running != null;
@@ -81,7 +86,7 @@ public sealed class ClaudeChat
 
     static ProcessStartInfo StartOf(string claude, string folder)
     {
-        string arguments = ClaudeRun.CommandLine(ClaudeRun.Arguments());
+        string arguments = ClaudeRun.CommandLine(ClaudeRun.Arguments().Concat(Extra ?? Array.Empty<string>()));
         bool script = claude.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
         return new ProcessStartInfo(script ? "cmd.exe" : claude, script ? $"/c \"\"{claude}\" {arguments}\"" : arguments)
         {

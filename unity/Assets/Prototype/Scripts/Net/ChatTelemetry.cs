@@ -254,7 +254,7 @@ public class ChatTelemetry : MonoBehaviour
 
     void DrawList()
     {
-        GUILayout.Label(finished.Count == 0 ? "Prompts: none yet" : "Prompts, newest first:");
+        GUILayout.Label(finished.Count == 0 ? "Prompts: none yet" : "Prompts, newest first (dollars are a rough list price, not money spent):");
         foreach (var e in Latest) GUILayout.Label(Line(e));
     }
 
@@ -262,7 +262,7 @@ public class ChatTelemetry : MonoBehaviour
     public static string Line(Entry e)
     {
         string prompt = e.Prompt == null || e.Prompt.Length <= MostPromptChars ? e.Prompt : e.Prompt.Substring(0, MostPromptChars) + "...";
-        string cost = e.Cost is { } dollars ? $", ${dollars:0.00}" : "";
+        string cost = e.Cost is { } dollars ? $", about ${dollars:0.00} list" : "";
         string world = e.WorldMs is { } ms ? $", {ms * SecondsPerMs:0.0} s" : "";
         return $"{prompt}: {e.Outcome}, {e.Tokens / Thousand:0.#}k tokens{cost}{world}";
     }
