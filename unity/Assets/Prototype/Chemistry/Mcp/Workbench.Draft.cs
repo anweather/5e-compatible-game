@@ -1,7 +1,7 @@
 // The draft tools: add_material, set_material, add_reaction, set_reaction,
 // add_spell, set_spell, tune, remove. Each composes onto a draft (a mod patch in
-// memory) and returns it. Entries are replaced whole when a mod switches on, so
-// a set_ copies the entry in force into the draft first and changes one field.
+// memory) and returns it. A mod patches only the fields it names (Rules.MergedEntry), so
+// a set_ writes just that field, with null for one taken out, and mods stack.
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -49,8 +49,8 @@ namespace Chem.Mcp
                 ?? throw new RulesToolException($"There is no terrain, cover or gas called {id}; use add_material for a new one.");
             RuleFields.CheckMaterial(kind, Required(field, "field"), Value(value));
             var section = Section(draft, kind);
-            if (!(section[id] is JObject entry)) section[id] = entry = (JObject)Raw["materials"][kind][id].DeepClone();
-            SetPath(entry, field, value);
+            if (!(section[id] is JObject entry)) section[id] = entry = new JObject();
+            SetField(entry, field, value);
             draft.Changed.Add($"{kind} {id}");
             return draft;
         }
@@ -108,15 +108,14 @@ namespace Chem.Mcp
                     rule = (JObject)adds[at];
                     break;
                 }
-                var found = RawList("reactions", entity ? "entity" : "cell").FirstOrDefault(r => Str(r["id"]) == id);
-                if (found == null) continue;
-                rule = (JObject)found.DeepClone();
+                if (!RawList("reactions", entity ? "entity" : "cell").Any(r => Str(r["id"]) == id)) continue;
+                rule = new JObject { ["id"] = id };
                 adds.Add(rule);
                 break;
             }
             if (rule == null) throw new RulesToolException($"There is no reaction rule called {id}; use add_reaction for a new one.");
             if (field == "id") throw new RulesToolException("A rule's id can't change; add a new rule instead.");
-            SetPath(rule, field, value);
+            SetField(rule, field, value);
             draft.Changed.Add($"reactions {id}");
             return draft;
         }
@@ -165,10 +164,11 @@ namespace Chem.Mcp
             RuleFields.CheckSpell(field, Value(value));
             var draft = DraftOf(draftId);
             var held = (draft.Patch["spells"] as JArray)?.FirstOrDefault(s => Str(s["id"]) == id);
-            var spell = (JObject)(held ?? ((JArray)Raw["spells"]).FirstOrDefault(s => Str(s["id"]) == id))?.DeepClone()
-                ?? throw new RulesToolException($"There is no spell called {id}; use add_spell for a new one.");
+            if (held == null && !((JArray)Raw["spells"]).Any(s => Str(s["id"]) == id))
+                throw new RulesToolException($"There is no spell called {id}; use add_spell for a new one.");
+            var spell = (JObject)held?.DeepClone() ?? new JObject { ["id"] = id };
             if (field == "damage" && Str(Value(value)) is string dice) value = Dice(dice).ToString(Formatting.None);
-            SetPath(spell, field, value);
+            SetField(spell, field, value);
             RefuseBadPlace(id, spell);
             Upsert(Spells(draft), spell);
             draft.Changed.Add($"spells {id}");
@@ -187,7 +187,7 @@ namespace Chem.Mcp
         /// <summary>How a player reaches a spell: on the radial, by a combo, or not yet and what to do about it. For add_spell and describe.</summary>
         public string ReachOf(Draft draft, string id)
         {
-            var spell = (draft?.Patch["spells"] as JArray)?.FirstOrDefault(s => Str(s["id"]) == id) ?? ((JArray)Raw["spells"]).FirstOrDefault(s => Str(s["id"]) == id);
+            var spell = draft == null ? EntryIn(Raw, "spells", id) : Current(draft, "spells", id);
             string name = Str(spell?["name"]) ?? id;
             Rules rules;
             try
@@ -262,6 +262,9 @@ namespace Chem.Mcp
                     break;
                 case BuildingsTable:
                     ((JObject)draft.Patch["world"]["buildings"]).Remove(id);
+                    break;
+                case ThingsTable:
+                    ((JArray)draft.Patch["world"]["add"]).Where(t => CellKey(t["cell"]) == id).ToList().ForEach(t => t.Remove());
                     break;
                 case "openings":
                 case "floors":
@@ -340,6 +343,18 @@ namespace Chem.Mcp
             {
                 return new JValue(text);
             }
+        }
+
+        // One field of a patch's entry, by dotted path. Null stays, as what takes the field out of the entry under it.
+        static void SetField(JObject o, string path, string value)
+        {
+            var keys = path.Split('.');
+            for (int i = 0; i < keys.Length - 1; i++)
+            {
+                if (!(o[keys[i]] is JObject sub)) o[keys[i]] = sub = new JObject();
+                o = sub;
+            }
+            o[keys[keys.Length - 1]] = Value(value);
         }
 
         static void SetPath(JObject o, string path, string value)

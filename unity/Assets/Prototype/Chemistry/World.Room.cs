@@ -65,6 +65,7 @@ namespace Chem
         {
             if (Room == null) throw new InvalidOperationException("This world has no room to change; OpenRoom makes one.");
             FinishTick(); // a rule switch lands between whole ticks
+            if (c.Change == RoomChange.Found) return Found(c);
             var verdict = c.Change switch
             {
                 RoomChange.Revert => Revert(c),
@@ -106,6 +107,7 @@ namespace Chem
             if (why != null) return Refused(c, why);
             Room.Mods.RemoveAt(at);
             PutInForce(next);
+            Room.Found.RemoveWhere(t => ThingsNow.Find(new ThingId(t)) == null);
             return new RoomVerdict(true, null, $"{c.Peer} switched off {title} ({RoomPolicy.Words(Room.Mode)} room)");
         }
 
@@ -182,6 +184,7 @@ namespace Chem
             sb.Append(((int)Room.Mode).ToString(inv)).Append(' ').Append(Room.Host);
             foreach (var m in Room.Mods)
                 sb.Append('|').Append(m.Id).Append(':').Append(m.By).Append(':').Append(m.Tick.ToString(inv)).Append(':').Append(Fnv1a.Hash(m.Json));
+            foreach (ulong t in Room.Found) sb.Append("|found:").Append(t.ToString(inv));
             return sb.ToString();
         }
 
@@ -197,6 +200,7 @@ namespace Chem
                 ["base"] = RoomRules.Base.Fingerprint,
                 ["mods"] = new JArray(Room.Mods.Select(m => new JArray(m.Id, m.Title, m.By, m.Tick, m.Json))),
             };
+            if (Room.Found.Count > 0) save["room"]["found"] = new JArray(Room.Found.Select(t => t.ToString(CultureInfo.InvariantCulture)));
             SaveBuildings((JObject)save["room"]);
         }
 
@@ -222,6 +226,7 @@ namespace Chem
             Room = new RoomState { Mode = (ChangeMode)(int)room["mode"], Host = (string)room["host"] ?? "" };
             foreach (var m in room["mods"] ?? new JArray())
                 Room.Mods.Add(new RoomMod { Id = (string)m[0], Title = (string)m[1], By = (string)m[2], Tick = (int)m[3], Json = (string)m[4] });
+            foreach (var t in room["found"] ?? new JArray()) Room.Found.Add(ulong.Parse((string)t, CultureInfo.InvariantCulture));
             LoadBuildings(room);
         }
     }

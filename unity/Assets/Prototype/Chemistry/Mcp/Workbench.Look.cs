@@ -15,10 +15,10 @@ namespace Chem.Mcp
     public sealed partial class Workbench
     {
         /// <summary>The tables whose entries have a look, by the name set_look takes.</summary>
-        static readonly string[] LookTables = { "spells", "terrain", "covers", "gases", "elements" };
+        static readonly string[] LookTables = { "spells", "terrain", "covers", "gases", "elements", "entities", "items" };
 
         /// <summary>
-        /// One parameter of the look of a spell, terrain, cover, gas or element, by id; null removes
+        /// One parameter of the look of a spell, terrain, cover, gas, element, entity or item, by id; null removes
         /// it. Only the parameters its family takes (a bare look's: color), "form" where the family has
         /// forms, and "mix" wherever an element, cover, gas or terrain takes a colour. With
         /// <c>only.where</c>, a color or mix holds only there (a scoped look; null takes it back).
@@ -35,7 +35,8 @@ namespace Chem.Mcp
             var draft = DraftOf(draftId);
             table = LookTableOf(draft, id, table);
             var look = LookIn(table, id, Current(draft, table, id));
-            string family = Str(look["family"]);
+            // A thing with no look yet is a creature: the family that has no prefab to read.
+            string family = Str(look["family"]) ?? (IsThingTable(table) ? CreatureFamily : null);
             var takes = Takes(table, family, out var familyOf);
             bool colours = takes.Contains("color") && LookScopes.Tables.Contains(table);
             bool byPlayer = takes.Contains("color") && LookScopes.ByTables.Contains(table);
@@ -48,13 +49,17 @@ namespace Chem.Mcp
             if (!string.IsNullOrWhiteSpace(by)) scope = ByOf(table, id, param, by, byPlayer);
             var v = LookValue(param, Value(value), familyOf);
             var entry = Entry(draft, table, id);
-            if (!(entry["look"] is JObject own)) entry["look"] = own = (JObject)look.DeepClone();
-            var target = scope != null ? SetScoped(own, scope, param, v) : SetPlain(own, param, v);
+            if (!(entry["look"] is JObject own)) entry["look"] = own = new JObject();
+            if (Str(look["family"]) == null && IsThingTable(table)) own["family"] = family;
+            var target = scope != null ? SetScoped(own, look, scope, param, v) : SetPlain(own, look, param, v);
             draft.Changed.Add($"{table} {id}");
-            string wont = param == "color" && v.Type != JTokenType.Null ? WontShow(table, id, familyOf, own, v) : null;
+            var whole = (JObject)Current(draft, table, id);
+            var now = (JObject)whole["look"];
+            target = scope == null ? now : target;
+            string wont = param == "color" && v.Type != JTokenType.Null ? WontShow(table, id, familyOf, now, v) : null;
             if (target?["mix"] != null && (param == "mix" || param == "blend")) wont = PaleMix(table, id, familyOf, target);
             said = $"The {Single(table)} {id}'s look ({Described(table, family)}) takes {List(takes)}{(colours ? ", and a where for color or mix" : "")}{(byPlayer ? ", and a by (a player) for color or mix" : "")}." +
-                (scope == null ? "" : " " + ScopedNote(scope, v)) + LookNote(table, id, entry, familyOf) + (wont == null ? "" : " " + wont + " Tell the player.") + "\n";
+                (scope == null ? "" : " " + ScopedNote(scope, v)) + LookNote(table, id, whole, familyOf) + (wont == null ? "" : " " + wont + " Tell the player.") + "\n";
             return draft;
         }
 
@@ -134,32 +139,37 @@ namespace Chem.Mcp
             return new JObject { ["by"] = slot };
         }
 
-        // The plain look takes the value: a colour drops a mix, and blend needs one. Returns the look.
-        static JObject SetPlain(JObject look, string param, JToken v)
+        // The plain look takes the value: a colour drops a mix (the patch's here, what's under it when it
+        // composes), and blend needs one. Null stays, as what takes it out of the look under it. Returns the patch's look.
+        static JObject SetPlain(JObject look, JObject under, string param, JToken v)
         {
-            if (param == "blend" && look["mix"] == null) throw new RulesToolException("blend mixes a mix's colours into one; give the look a mix first.");
-            if (v.Type == JTokenType.Null) look.Remove(param);
-            else look[param] = v;
+            if (param == "blend" && !HasValue(look["mix"]) && (!HasValue(under["mix"]) || look["mix"] != null))
+                throw new RulesToolException("blend mixes a mix's colours into one; give the look a mix first.");
+            look[param] = v;
             if (param == "color" && v.Type != JTokenType.Null)
             {
                 look.Remove("mix");
                 look.Remove("blend");
             }
-            if (param == "mix" && v.Type == JTokenType.Null) look.Remove("blend");
+            if (param == "mix" && v.Type == JTokenType.Null) look["blend"] = JValue.CreateNull();
             return look;
         }
 
+        static bool HasValue(JToken t) => t != null && t.Type != JTokenType.Null;
+
         // The scoped look with this where (or by) takes the value (moving to the end); null takes it back,
         // and blend changes only how its mix mixes. Returns the scoped look, or null once it's gone.
-        static JObject SetScoped(JObject look, JObject scope, string param, JToken v)
+        static JObject SetScoped(JObject look, JObject under, JObject scope, string param, JToken v)
         {
             string key = scope["by"] != null ? "by" : "where";
             var keyed = key == "by" ? scope["by"] : scope;
             var list = look["scoped"] as JArray ?? new JArray();
             var entry = list.OfType<JObject>().FirstOrDefault(s => JToken.DeepEquals(s[key], keyed));
+            entry?.Remove();
+            // One from a mod under this draft: blending it here is this draft's own copy of it.
+            if (param == "blend") entry ??= (under["scoped"] as JArray)?.OfType<JObject>().FirstOrDefault(s => JToken.DeepEquals(s[key], keyed))?.DeepClone() as JObject;
             if (param == "blend" && entry?["mix"] == null)
                 throw new RulesToolException("blend mixes a mix's colours into one; give this look a mix first (set_look mix with the same where or by).");
-            entry?.Remove();
             if (param == "blend")
             {
                 if (v.Type == JTokenType.Null) entry.Remove("blend");
@@ -230,37 +240,39 @@ namespace Chem.Mcp
             {
                 var t = Table(table);
                 if (t == "materials") holding = holding.Where(MaterialKinds.Contains).ToList();
-                else if (!LookTables.Contains(t)) throw new RulesToolException($"A {Single(t)} has no look; set_look takes a spell, terrain, cover, gas or element.");
+                else if (!LookTables.Contains(t)) throw new RulesToolException($"A {Single(t)} has no look; set_look takes a spell, terrain, cover, gas, element, entity or item.");
                 else holding = holding.Where(h => h == t).ToList();
                 if (holding.Count == 0) throw new RulesToolException($"There is no {Single(t == "materials" ? "terrain" : t)} called {id}; list {t} to see the ids.");
             }
-            if (holding.Count == 0) throw new RulesToolException($"Nothing called {id} has a look; set_look takes a spell, terrain, cover, gas or element by id.");
+            if (holding.Count == 0) throw new RulesToolException($"Nothing called {id} has a look; set_look takes a spell, terrain, cover, gas, element, entity or item by id.");
             if (holding.Count > 1)
                 throw new RulesToolException($"{id} is both {string.Join(" and ", holding.Select(h => ("aeiou".Contains(Single(h)[0]) ? "an " : "a ") + Single(h)))}; say which with table. " +
                     "An element's look colours what it makes anywhere, whichever spell or reaction made it; a spell's or material's colours only its own.");
             return holding[0];
         }
 
-        // The entry as the draft has it, else as the rules in force have it, else null.
+        // The entry as it would be with the draft on (the draft holds only the fields it names), else null.
         JToken Current(Draft draft, string table, string id)
         {
             switch (table)
             {
                 case "spells":
-                    return (draft.Patch["spells"] as JArray)?.FirstOrDefault(s => Str(s["id"]) == id) ?? ((JArray)Raw["spells"]).FirstOrDefault(s => Str(s["id"]) == id);
+                    return Over(EntryIn(Raw, table, id), (draft.Patch["spells"] as JArray)?.FirstOrDefault(s => Str(s["id"]) == id));
                 case "elements":
-                    if (draft.Patch["elements"] is JObject named && named[id] is JObject entry) return entry;
                     bool known = Doc["elements"].Any(e => Str(e) == id) || ModPatch.ElementNames(draft.Patch["elements"]).Contains(id);
-                    return known ? ElementEntry(id) ?? new JObject() : null;
+                    var held = (draft.Patch["elements"] as JObject)?[id] as JObject;
+                    return known || held != null ? Over(ElementEntry(id) ?? new JObject(), held) : null;
                 default:
-                    return draft.Patch[table]?[id] ?? Raw["materials"][table]?[id];
+                    return Over(EntryIn(Raw, table, id), draft.Patch[table]?[id]);
             }
         }
 
+        static JToken Over(JToken under, JToken patch) => patch == null ? under : Rules.MergedEntry(under, patch);
+
         JToken ElementEntry(string id) => Raw.TryGetValue("elements", out var table) ? table[id] : null;
 
-        // The entry in the draft, copied from the rules in force the first time.
-        JObject Entry(Draft draft, string table, string id)
+        // The entry in the draft: only the fields it names, made empty the first time.
+        static JObject Entry(Draft draft, string table, string id)
         {
             switch (table)
             {
@@ -268,16 +280,16 @@ namespace Chem.Mcp
                     var spells = Spells(draft);
                     int at = IndexOfId(spells, id);
                     if (at >= 0) return (JObject)spells[at];
-                    var spell = (JObject)Current(draft, table, id).DeepClone();
+                    var spell = new JObject { ["id"] = id };
                     spells.Add(spell);
                     return spell;
                 case "elements":
                     var named = Elements(draft);
-                    if (!(named[id] is JObject entry)) named[id] = entry = (JObject)(ElementEntry(id)?.DeepClone() ?? new JObject());
+                    if (!(named[id] is JObject entry)) named[id] = entry = new JObject();
                     return entry;
                 default:
                     var section = Section(draft, table);
-                    if (!(section[id] is JObject material)) section[id] = material = (JObject)Raw["materials"][table][id].DeepClone();
+                    if (!(section[id] is JObject material)) section[id] = material = new JObject();
                     return material;
             }
         }
@@ -296,6 +308,7 @@ namespace Chem.Mcp
         {
             if (entry?["look"] is JObject look) return look;
             if (table != "terrain" && table != "spells") return new JObject();
+
             string tool = table == "spells" ? "set_spell" : "set_material";
             throw new RulesToolException($"The {Single(table)} {id} has no look to change; give it one with {tool} (field look, naming a family from rules/looks.json).");
         }
@@ -328,6 +341,10 @@ namespace Chem.Mcp
                     return Colour(v) ?? throw new RulesToolException("color is three numbers from 0 to 1, red, green and blue, such as [0.25, 0.45, 1] for a blue (or \"#4073ff\").");
                 case "mix":
                     return MixValue(v);
+                case "species":
+                    return Str(v) is string species && family.Species.Contains(species) ? v : throw new RulesToolException($"species is one of the fauna's: {string.Join(", ", family.Species)}.");
+                case "scale":
+                    return IsNumber(v) && (double)v > 0 ? v : throw new RulesToolException("scale is a number above 0: how big against the species' own size.");
                 case "form":
                     return Str(v) is string form && family.Forms.Contains(form) ? v : throw new RulesToolException($"The look family \"{family.Name}\" takes a form, one of {string.Join(", ", family.Forms)}.");
                 case "baked":

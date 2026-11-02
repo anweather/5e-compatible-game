@@ -77,6 +77,8 @@ namespace Chem
         public int Strength;
         /// <summary>Null when it doesn't break.</summary>
         public ItemBreakDef Breaks;
+        /// <summary>What dresses it when it has no baked prefab (family creature; Rules.Things.cs); null for one that has.</summary>
+        public LookDef Look;
 
         /// <summary>True if landing at <paramref name="impactSpeed"/> m/s breaks it.</summary>
         public bool BreaksAt(double impactSpeed) => Breaks != null && impactSpeed >= Breaks.Speed;
@@ -132,6 +134,7 @@ namespace Chem
                 Reach = Num(o["reach"]) ?? 0,
                 Strength = Int(o["strength"]) ?? 0,
                 Breaks = breaks,
+                Look = ParseLook(o["look"]),
             };
         }
     }

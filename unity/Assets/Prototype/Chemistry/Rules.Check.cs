@@ -22,6 +22,7 @@ namespace Chem
             check.Combos();
             check.Numbers();
             check.Buildings();
+            check.Things();
             return check.Errors;
         }
 

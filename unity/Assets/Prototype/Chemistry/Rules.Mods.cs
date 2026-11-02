@@ -24,14 +24,18 @@ namespace Chem
         /// </summary>
         public Rules WithMods(IEnumerable<ModPatch> mods)
         {
-            var r = (JObject)doc.DeepClone();
+            // Over the rules as written, so a field in a material's verb group lands in that group.
+            var r = (JObject)(written ?? doc).DeepClone();
             foreach (var mod in mods) ApplyPatch(r, mod.Json);
+            var asWritten = (JObject)r.DeepClone();
             var errors = MaterialGroups.Ungroup(r);
             errors.AddRange(Check(r));
             if (errors.Count > 0) throw new ModException(errors);
             try
             {
-                return FromDoc(r);
+                var rules = FromDoc(r);
+                rules.written = asWritten;
+                return rules;
             }
             catch (Exception e) when (e is FormatException || e is InvalidCastException || e is ArgumentException || e is OverflowException)
             {
@@ -59,17 +63,21 @@ namespace Chem
         {
             var elements = (JArray)r["elements"];
             foreach (var e in ModPatch.ElementNames(p["elements"]).Where(e => !elements.Any(x => (string)x == e))) elements.Add(e);
-            // Elements given by id ({"fire": {"look": ...}}) replace their entry, keeping its look if they give none.
+            // Elements given by id ({"fire": {"look": ...}}) patch their entry.
             if (p["elements"] is JObject entries)
             {
                 if (!(r[ElementLooksKey] is JObject table)) r[ElementLooksKey] = table = new JObject();
-                foreach (var entry in entries.Properties()) table[entry.Name] = KeepingLook(table[entry.Name], entry.Value.DeepClone());
+                foreach (var entry in entries.Properties()) table[entry.Name] = MergedEntry(table[entry.Name], entry.Value);
             }
-            // Object.assign: a named entry replaces the old one whole.
+            // A named entry changes only the fields it names (MergedEntry).
             foreach (var table in ModPatch.Tables)
             {
                 if (!(p[table] is JObject named)) continue;
-                foreach (var entry in named.Properties()) r[table][entry.Name] = KeepingLook(r[table][entry.Name], entry.Value.DeepClone());
+                foreach (var entry in named.Properties())
+                {
+                    if (table == "terrain" || table == "covers") MaterialGroups.FlatOverGroup((JObject)r[table][entry.Name], entry.Value, table == "covers");
+                    r[table][entry.Name] = MergedEntry(r[table][entry.Name], entry.Value);
+                }
             }
             if (p["reactions"] is JObject rx)
             {
@@ -84,10 +92,74 @@ namespace Chem
             if (p["sim"] is JObject sim) MergeDeep((JObject)r["sim"], sim);
             if (p["combos"] is JObject combos) MergeDeep((JObject)r["combos"], combos);
             ApplyBuildings(r, p);
+            ApplyThings(r, p);
         }
 
         /// <summary>
-        /// upsertRules / upsertById: an entry whose id is already listed replaces it in place. A new
+        /// A patch's entry over the one under it: only the fields it names change. Groups merge key by
+        /// key, null takes a field out, and anything else (a number, a list) replaces. So mods stack,
+        /// and a revert, which is only composing again, undoes just its own. A new entry is the patch
+        /// without its nulls.
+        /// </summary>
+        internal static JToken MergedEntry(JToken under, JToken patch)
+        {
+            if (!(patch is JObject fields)) return patch.DeepClone();
+            var merged = under is JObject old ? (JObject)old.DeepClone() : new JObject();
+            MergeFields(merged, fields);
+            return merged;
+        }
+
+        static void MergeFields(JObject into, JObject from)
+        {
+            foreach (var f in from.Properties())
+            {
+                if (f.Name == "look" && f.Value is JObject look) MergeLook(into, look);
+                else if (f.Value.Type == JTokenType.Null) into.Remove(f.Name);
+                else if (f.Value is JObject group)
+                {
+                    bool had = into[f.Name] is JObject;
+                    var fresh = had ? (JObject)into[f.Name] : new JObject();
+                    MergeFields(fresh, group);
+                    // A group that only takes fields out of nothing isn't a group: a verb's would switch the verb on.
+                    if (!had && (fresh.Count > 0 || group.Count == 0)) into[f.Name] = fresh;
+                }
+                else into[f.Name] = f.Value.DeepClone();
+            }
+        }
+
+        /// <summary>
+        /// A look is patched field by field too, but for three things. Naming another family starts its
+        /// parameters afresh; a colour replaces a mix; and scoped looks add up, the earlier mods' ahead
+        /// of its own (one it gives again moves to the end): several can be on at once, mixing where they overlap.
+        /// </summary>
+        static void MergeLook(JObject entry, JObject patch)
+        {
+            var old = entry["look"] as JObject;
+            var before = old?["scoped"] as JArray;
+            var look = new JObject();
+            bool sameFamily = patch["family"] == null || Text(patch["family"]) == Text(old?["family"]);
+            if (old != null && sameFamily) look = (JObject)old.DeepClone();
+            if (patch["color"] != null && patch["color"].Type != JTokenType.Null && patch["mix"] == null)
+            {
+                look.Remove("mix");
+                look.Remove("blend");
+            }
+            foreach (var f in patch.Properties().Where(f => f.Name != "scoped"))
+            {
+                if (f.Value.Type == JTokenType.Null) look.Remove(f.Name);
+                else if (f.Value is JObject group && look[f.Name] is JObject cur) MergeFields(cur, group);
+                else look[f.Name] = f.Value.DeepClone();
+            }
+            var mine = patch["scoped"] as JArray ?? new JArray();
+            var kept = new JArray((before ?? new JArray()).Where(b => !mine.Any(m => JToken.DeepEquals(m, b))).Select(b => b.DeepClone()));
+            foreach (var m in mine) kept.Add(m.DeepClone());
+            if (kept.Count > 0) look["scoped"] = kept;
+            else look.Remove("scoped");
+            entry["look"] = look;
+        }
+
+        /// <summary>
+        /// upsertRules / upsertById: an entry whose id is already listed patches it in place. A new
         /// reaction rule goes to the top of its element's rules, so it wins; anything else goes last.
         /// </summary>
         static void Upsert(JArray list, JToken add, bool byElement)
@@ -98,18 +170,17 @@ namespace Chem
                 int i = IndexOf(list, "id", item["id"]);
                 if (i >= 0)
                 {
-                    list[i] = KeepingLook(list[i], item.DeepClone());
+                    list[i] = MergedEntry(list[i], item);
                     continue;
                 }
                 int at = byElement ? IndexOf(list, "element", item["element"]) : -1;
-                list.Insert(at >= 0 ? at : list.Count, item.DeepClone());
+                list.Insert(at >= 0 ? at : list.Count, MergedEntry(null, item));
             }
         }
 
         /// <summary>
-        /// A replacement entry that says nothing of its look keeps the old one: a mod about numbers doesn't
-        /// lose the drawing. One that gives a look keeps the old look's scoped looks too, ahead of its own
-        /// (one it gives again moves to the end): several scoped looks can be on at once, mixing where they overlap.
+        /// A building part's row, which a mod replaces whole: one that says nothing of its look keeps the old
+        /// one. One that gives a look keeps the old look's scoped looks too, ahead of its own.
         /// </summary>
         static JToken KeepingLook(JToken old, JToken entry)
         {
