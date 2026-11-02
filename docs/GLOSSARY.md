@@ -576,6 +576,12 @@ that long, and doesn't march.
   (`ModValidator`) before switching it on; one that fails is **refused**
   everywhere, with a sentence. *Avoid:* "install", "enable".
 
+**Shipped mod / player's mod**
+: A **shipped mod** is in `rules/mods/`, and comes with the build. A **player's
+  mod** is one they saved, in their data folder beside `notes.md`
+  (`claude-terminal/mods`). The player's wins an id both have. Either reaches a
+  room the same way, as its id and JSON (`docs/MODDING.md`, "Where mods live").
+
 **Checksum / hash / fingerprint / golden**
 : The **checksum** is what peers compare every 30 ticks (cells, rules,
   things, defense). A **cell hash** (`CellHash`, `ChunkHash`) is FNV-1a

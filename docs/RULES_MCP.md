@@ -122,8 +122,10 @@ cell hash) plus the same run without the patch for comparison.
 
 **Save and apply**
 - `save(draft, title, idea)`: writes a draft, or a mod on by the id `room` gives, in the `rules/mods/` format (title, idea, patch).
-  In a build that's the install's `StreamingAssets/rules/mods`, so an update probably removes it
-  (`docs/telemetry/chat-context-2026-11-02.md`). From the game's chat it's refused unless the player's own message says save
+  In the game, Editor included, it goes to the player's data folder beside `notes.md` (`claude-terminal/mods`), where an update can't
+  reach it; a name a shipped mod has needs `overwrite`, and that copy stands in front of the shipped one (#63, "Where mods live" in
+  `docs/MODDING.md`). The headless server (`core/Rules.Mcp`) still writes to the repo's `rules/mods`, as that's how a mod gets shipped.
+  From the game's chat it's refused unless the player's own message says save
   (`Workbench.SaveRefused`): a model tried it unasked on real prompts. A terminal has a person to answer Claude's prompt.
 - `apply(mod)` (phase 3): sends the mod into the game this MCP is attached to. In a room it goes
   as a rule-switch intent and follows the room's change mode (below). `revert(mod)`.

@@ -121,8 +121,8 @@ The running Unity yard switches rules the same way, solo and online.
 
 **Controls.** The mods are the **Mods** page of the Esc menu: **M**
 (keyboard) opens the menu straight on it; with a gamepad, **Start / Options**
-opens the menu and **Mods** is one of its buttons. It lists every
-`rules/mods/*.json` with its title and idea, ticks the ones in force, and
+opens the menu and **Mods** is one of its buttons. It lists the
+shipped mods and the player's own (`docs/MODDING.md`, "Where mods live") with their titles and ideas, ticks the ones in force, and
 shows the rules' fingerprint and, in red, why the last switch was refused.
 Switch a mod with **1–9**, a mouse click, or **d-pad up/down then A /
 Cross**; **B / Circle** goes back. While the menu is open the wizard's own
@@ -143,7 +143,8 @@ controls (spells, items, reset), movement and look are paused.
   different rules from the host's (host …, here …)".
 
 **Editing files while it runs** (Editor and development builds, solo or
-host). `RulesWatcher` watches `rules/*.json` and `rules/mods/*.json`. On
+host). `RulesWatcher` watches `rules/*.json`, `rules/mods/*.json` and the player's mods
+folder, if it's there when the world starts. On
 save (debounced 300 ms, handled on the main thread) the file is reloaded
 and checked:
 - a mod that is on is replaced in place ("Rules reloaded: mods/x.json")
