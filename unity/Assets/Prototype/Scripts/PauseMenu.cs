@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The Esc menu: Resume, the sub menus (Game, Multiplayer, Settings, Claude), and
+// The Esc menu: Resume, the sub menus (Game, Multiplayer, Settings, Claude, Developer), and
 // Quit. Other code adds its sections to a sub menu (NetSession adds Play together
 // to Multiplayer, ModsPanel the Mods entry to Game), or to the main page if the
 // player must see it at once (GameInfoMenu's update notice and version). Sections
@@ -56,10 +56,10 @@ public class PauseMenu : MonoBehaviour
     bool focusDrawn;
 
     /// <summary>Where a section sits: on the main page (Main), or on one of the sub menus the main page lists.</summary>
-    public enum Submenu { Main, Game, Multiplayer, Settings, Claude }
+    public enum Submenu { Main, Game, Multiplayer, Settings, Claude, Developer }
 
     /// <summary>The sub menus, in the order the main page lists them.</summary>
-    static readonly Submenu[] Submenus = { Submenu.Game, Submenu.Multiplayer, Submenu.Settings, Submenu.Claude };
+    static readonly Submenu[] Submenus = { Submenu.Game, Submenu.Multiplayer, Submenu.Settings, Submenu.Claude, Submenu.Developer };
 
     /// <summary>A sub-page of the menu: its title, width and contents, and optionally its own controller handling.</summary>
     public sealed class Page

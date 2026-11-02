@@ -32,7 +32,7 @@ public class MenuProbe : ProbeScenario
             Check("wizard_paused", !controlsWereOn || !controls.enabled, $"controls were on {controlsWereOn}");
             yield return null;
             Metric("main_items", menu.ItemCount);
-            Check("main_page_is_short", menu.ItemCount == 6, $"{menu.ItemCount} items, first '{menu.FocusedLabel}'");
+            Check("main_page_is_short", menu.ItemCount == 7, $"{menu.ItemCount} items, first '{menu.FocusedLabel}'");
             Shot("main");
             yield return Wait(0.2f);
             yield return EveryEntryHasAHome(menu);
@@ -181,10 +181,11 @@ public class MenuProbe : ProbeScenario
     {
         var homes = new (PauseMenu.Submenu submenu, string[] entries)[]
         {
-            (PauseMenu.Submenu.Game, new[] { "Grimoire", "New look", "Headwear", "Mods", "About and credits", "Open log folder" }),
-            (PauseMenu.Submenu.Multiplayer, new[] { "Rule changes when you host", "Host online", "Join code", "Enter a code", "Host", "Join" }),
-            (PauseMenu.Submenu.Settings, new[] { "Controls", "Sound", "Shake and rumble", "Frame-rate log" }),
+            (PauseMenu.Submenu.Game, new[] { "Grimoire", "New look", "Mods", "About and credits" }),
+            (PauseMenu.Submenu.Multiplayer, new[] { "Rule changes when you host", "Host online", "Join code", "Enter a code" }),
+            (PauseMenu.Submenu.Settings, new[] { "Controls", "Sound", "Shake and rumble" }),
             (PauseMenu.Submenu.Claude, new[] { "Play with Claude", "Open a Claude terminal" }),
+            (PauseMenu.Submenu.Developer, new[] { "Host", "Join", "Frame-rate log", "Open log folder" }),
         };
         foreach (var (submenu, entries) in homes)
         {

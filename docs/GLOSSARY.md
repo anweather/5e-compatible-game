@@ -273,7 +273,7 @@ that long, and doesn't march.
 
 **Sub menu**
 : A page of the Esc menu that the main page lists: Game, Multiplayer,
-  Settings or Claude. A part of the game adds its entries to one, so the main
+  Settings, Claude or Developer. A part of the game adds its entries to one, so the main
   page stays short. Not a **group**, which is the radial's.
 
 **Group**
