@@ -6,8 +6,8 @@ using Unity.Cinemachine;
 using UnityEngine;
 
 // A mod's new kinds of thing in play (docs/RULES_MCP.md "Things"): each stands in the
-// world dressed as an animal, is carried and found, and goes with its mod. The golden
-// things here are the probes' own: named content never goes in the code or rules (J-055).
+// world dressed as an animal, is carried and found, and goes with its mod. The things
+// here are plain test kinds: named content never goes in the code or rules (J-055).
 
 /// <summary>The mod the things probes switch on: a carried kind and a pushed one, at two cells.</summary>
 public static class ProbeThingsMod
@@ -15,9 +15,9 @@ public static class ProbeThingsMod
     public const string Id = "probe-things", Title = "Probe things", Find = "probe-find", Stump = "probe-stump";
 
     public static string Json(Vector2Int item, Vector2Int prop) => $@"{{ ""title"": ""{Title}"", ""patch"": {{
-        ""items"": {{ ""{Find}"": {{ ""name"": ""Golden squirrel"", ""material"": ""flesh"", ""mass"": 0.5,
+        ""items"": {{ ""{Find}"": {{ ""name"": ""Probe find"", ""material"": ""flesh"", ""mass"": 0.5,
             ""look"": {{ ""family"": ""creature"", ""species"": ""squirrel"", ""color"": [1, 0.78, 0.15], ""glow"": 0.4, ""scale"": 2 }} }} }},
-        ""entities"": {{ ""{Stump}"": {{ ""name"": ""Blue deer"", ""material"": ""flesh"", ""hp"": 20, ""mass"": 40,
+        ""entities"": {{ ""{Stump}"": {{ ""name"": ""Probe stump"", ""material"": ""flesh"", ""hp"": 20, ""mass"": 40,
             ""look"": {{ ""family"": ""creature"", ""species"": ""deer"", ""color"": [0.2, 0.4, 1] }} }} }},
         ""world"": {{ ""add"": [
             {{ ""kind"": ""{Find}"", ""cell"": [{item.x}, {item.y}], ""rot"": 135 }},
@@ -74,10 +74,10 @@ public class ModThingProbe : ProbeScenario
         Rests("item", item);
         Rests("prop", prop);
         var size = item.transform.localScale;
-        Metric("squirrel_x", size.x);
-        Metric("squirrel_y", size.y);
-        Metric("squirrel_z", size.z);
-        Metric("deer_y", prop.transform.localScale.y);
+        Metric("find_x", size.x);
+        Metric("find_y", size.y);
+        Metric("find_z", size.z);
+        Metric("stump_y", prop.transform.localScale.y);
         Check("a_deer_stands_taller_than_a_squirrel", prop.transform.localScale.y > size.y, $"{prop.transform.localScale.y:0.00} m against {size.y:0.00} m");
         Check("the_box_draws_nothing", !item.GetComponent<Renderer>().enabled);
         yield return Snap("standing", item.transform.position);
@@ -90,7 +90,7 @@ public class ModThingProbe : ProbeScenario
         hands.PickUp(carried);
         yield return Wait(Settle);
         Check("in_the_hand", hands.Held == carried);
-        Check("the_find_logged", LogSince(tick).Contains("Player 1 found the golden squirrel"), string.Join(" | ", LogSince(tick)));
+        Check("the_find_logged", LogSince(tick).Contains("Player 1 found the probe find"), string.Join(" | ", LogSince(tick)));
         Check("the_find_in_the_room", World.Room.Found.Count == 1, World.RoomText());
         yield return Snap("in-hand", hands.HandPosition);
         hands.Drop();
@@ -98,7 +98,7 @@ public class ModThingProbe : ProbeScenario
         tick = World.Tick;
         hands.PickUp(carried);
         yield return Wait(Settle);
-        Check("found_only_once", !LogSince(tick).Any(l => l.Contains("found the golden squirrel")) && World.Room.Found.Count == 1);
+        Check("found_only_once", !LogSince(tick).Any(l => l.Contains("found the probe find")) && World.Room.Found.Count == 1);
 
         // Reverting takes it out of the hand and out of the world.
         switcher.Ask(RoomCommand.Revert(switcher.Me, ProbeThingsMod.Id));
@@ -183,7 +183,7 @@ public class RoomThingProbe : RoomProbe
 
         yield return Ask("grab", ProbeThingsMod.Find);
         yield return InStep();
-        yield return Agree("found", "Player 2 found the golden squirrel");
+        yield return Agree("found", "Player 2 found the probe find");
         if (Theirs == null) yield break;
         Check("in_the_clients_hand", Theirs.held == ProbeThingsMod.Find, Theirs.held);
 
