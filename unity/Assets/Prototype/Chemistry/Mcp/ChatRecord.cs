@@ -361,7 +361,7 @@ namespace Chem.Mcp
                 }
             }
             all["cost"] = cost;
-            all["costBasis"] = costBasis ?? "list";
+            if (costBasis != null) all["costBasis"] = costBasis; // the API loop's, which are spent: Claude Code's records stay as they were
             all["perModel"] = perModel;
             all["turns"] = turns ?? replies.Count;
             all["cutOff"] = !sawResult;
@@ -409,14 +409,13 @@ namespace Chem.Mcp
             lock (gate)
             {
                 var outcome = Outcome();
-                return new JObject
+                var record = new JObject
                 {
                     ["id"] = who.Id,
                     ["game"] = new JObject { ["version"] = who.GameVersion, ["commit"] = who.Commit },
                     ["room"] = new JObject { ["mode"] = who.RoomMode, ["players"] = who.Players, ["modsOn"] = new JArray(who.ModsOn.ToArray<object>()) },
                     ["model"] = model,
                     ["claude"] = claude,
-                    ["harness"] = harness ?? "claude-code",
                     ["prompt"] = prompt,
                     ["source"] = source,
                     ["reply"] = reply ?? lastWords,
@@ -440,6 +439,8 @@ namespace Chem.Mcp
                     ["changes"] = Changes(),
                     ["gameCost"] = gameCost,
                 };
+                if (harness != null) record["harness"] = harness;
+                return record;
             }
         }
     }
