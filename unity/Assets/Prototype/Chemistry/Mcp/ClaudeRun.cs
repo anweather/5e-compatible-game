@@ -29,7 +29,26 @@ namespace Chem.Mcp
         /// <summary>The MCP server's name in .mcp.json, and so in its tools' names.</summary>
         public const string ServerName = "spell-valley";
 
-        const string ToolPrefix = "mcp__" + ServerName + "__";
+        internal const string ToolPrefix = "mcp__" + ServerName + "__";
+
+        public const string TalkLine = "Press Win+H to talk instead of type.";
+
+        /// <summary>The folder's CLAUDE.md, here so chatbench gives Claude what the game gives it.</summary>
+        public const string Guide = "# Spell Chemistry Valley\n\n" +
+            "You're in a terminal beside a running game: a 3D RPG on the open 5E rules, built on physics-based interactions between " +
+            "spells. Its rules are data, and the `spell-valley` tools here change them in the game the player is watching, with no restart.\n\n" +
+            "Use the tools. Ask `here` where the player is and `list` or `describe` what's in the rules, make a draft (`set_look`, " +
+            "`set_spell`, `set_material`, `add_reaction`, `tune`), `validate` it, then `apply` it with a short title the players will read. " +
+            "The tools' own instructions say more. If the tools don't connect, the game has closed or Claude is off on its Play with Claude page.\n\n" +
+            "Keep your answer to a line or two: the player is in the middle of a game.\n\n" +
+            "## Notes\n\n" +
+            "Each message starts a new process that remembers nothing, so read `notes.md` here first. When you've finished, add a line or two " +
+            "there saying what you changed and what's on now. The game keeps only its newest lines.\n\n" +
+            "## What's outside the rules\n\n" +
+            "Some things are in the game's code, not its rules, so no tool changes them yet. `outside_rules` lists them, each with the nearest " +
+            "thing a tool can do. Before you say no, check it; then say so in a line, offer that instead, and don't look for source: there is none here.\n\n" +
+            "What to try: \"make all fire blue\", \"make the fire near me green\", \"each player a different fire colour\", " +
+            "\"make grass burn twice as fast\", \"when lightning hits water, leave fog\".\n\n" + TalkLine + "\n";
 
         /// <summary>
         /// The arguments: one message read from stdin, the game's tools and the notes file allowed, and
@@ -72,7 +91,7 @@ namespace Chem.Mcp
             }
         }
 
-        static string ToolName(string name) => name != null && name.StartsWith(ToolPrefix, StringComparison.Ordinal) ? name.Substring(ToolPrefix.Length) : name;
+        internal static string ToolName(string name) => name != null && name.StartsWith(ToolPrefix, StringComparison.Ordinal) ? name.Substring(ToolPrefix.Length) : name;
 
         /// <summary>Whether what came back means the player hasn't signed in to Claude.</summary>
         public static bool NeedsSignIn(string text)
