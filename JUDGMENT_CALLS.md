@@ -97,7 +97,8 @@ Each entry has:
 - **Why:** it should feel like playing a game, not building one.
 - **Before it ships to players:** Anthropic's legal page sets conditions on running Claude Code in a product (Commercial Terms, an
   unmodified binary, each user's own credentials). The PM reads this as allowed. Confirming that is a step before release, not before building.
-- **Revisited:** 0.
+- **Update, 2026-11-02:** Andrew: "Not a commercial product yet. Let's keep going." So it no longer holds an alpha or a shipped agent config; it comes back before anything commercial. He also asked to evaluate the Claude API, with $100 a month of usage.
+- **Revisited:** 1.
 
 ### J-059: Must a player walk inside the houses Claude builds?
 
