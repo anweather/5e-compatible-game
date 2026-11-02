@@ -39,7 +39,7 @@ namespace Chem.Tests
         {
             var fauna = Base().Fauna;
             var spawners = fauna.SpeciesIds.Where(id => fauna.Species(id).Spawns).ToList();
-            Assert.That(spawners, Is.EqualTo(new[] { "deer", "rabbit", "squirrel", "red-fox", "turkey", "quail", "marmot", "skunk", "garter-snake", "black-bear", "wolf", "frog", "heron" }));
+            Assert.That(spawners, Is.EqualTo(new[] { "deer", "rabbit", "squirrel", "red-fox", "turkey", "quail", "marmot", "skunk", "garter-snake", "black-bear", "wolf", "frog", "heron", "ptarmigan", "roadrunner", "goblin", "ogre", "human-child", "dwarf" }));
             Assert.That(fauna.SpeciesIds.Take(spawners.Count), Is.EqualTo(spawners));
             Assert.That(fauna.Species("frog").NearWater, Is.True);
             Assert.That(fauna.Species("deer").NearWater, Is.False);

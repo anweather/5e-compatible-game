@@ -11,15 +11,15 @@ namespace Chem
     {
         sealed partial class Checker
         {
-            static readonly string[] SpeciesKeys = { "name", "variantOf", "scale", "size", "body", "coat", "coats", "parts", "move", "behave", "spawn" };
+            static readonly string[] SpeciesKeys = { "name", "variantOf", "scale", "size", "body", "coat", "coats", "hair", "parts", "move", "behave", "spawn" };
             static readonly string[] BodyKeys = { "length", "radius", "taper", "flatten" };
             static readonly string[] CoatKeys = { "name", "base", "accent", "glow", "weight" };
-            static readonly string[] SlotKeys = { "part", "on", "at", "dir", "mirror", "phase", "mirrorPhase", "scale", "thickness" };
+            static readonly string[] SlotKeys = { "part", "on", "at", "dir", "mirror", "phase", "mirrorPhase", "scale", "thickness", "style" };
             static readonly string[] MoveKeys = { "walk", "run", "turn", "rock", "bob", "bobs", "stride", "upright" };
             static readonly string[] BehaveKeys = { "wander", "flee", "idle", "group", "active", "graze", "thirst", "play", "laze", "hunger", "chase", "hunts" };
-            static readonly string[] SpawnKeys = { "density", "nearWater" };
+            static readonly string[] SpawnKeys = { "density", "nearWater", "among", "share" };
             static readonly string[] PartKeys = { "role", "segments", "spring", "ripple", "follows", "poses" };
-            static readonly string[] SegmentKeys = { "length", "radii", "flatten", "accent", "colour", "glow" };
+            static readonly string[] SegmentKeys = { "length", "radii", "flatten", "accent", "colour", "glow", "hair" };
 
             public void Fauna()
             {
@@ -47,6 +47,10 @@ namespace Chem
                 Pair(who, "size", row["size"]);
                 if (row["coat"] != null) Coat(who, row["coat"]);
                 foreach (var c in row["coats"] as JArray ?? new JArray()) Coat(who, c);
+                foreach (var c in row["hair"] as JArray ?? new JArray())
+                    if (!IsColour(c)) Errors.Add($"{who}: a hair colour must be \"#rrggbb\" or [r, g, b]");
+                if (row["spawn"]?["among"] != null && species[Show(row["spawn"]["among"])] == null) Errors.Add($"{who} comes out among unknown species {Show(row["spawn"]["among"])}");
+                Number(row["spawn"]?["share"], $"{who}: spawn share", 0);
                 string active = Show(row["behave"]?["active"]);
                 if (row["behave"]?["active"] != null && !FaunaTables.Actives.Contains(active)) Errors.Add($"{who}: active must be one of {string.Join(", ", FaunaTables.Actives)}");
                 foreach (var h in row["behave"]?["hunts"] as JArray ?? new JArray())
@@ -95,6 +99,7 @@ namespace Chem
                         if (slot.Value[key] != null && !(slot.Value[key] is JArray a && a.Count == 3 && a.All(IsNumber))) Errors.Add($"{where}: {key} must be [x, y, z]");
                     Number(slot.Value["scale"], $"{where}: scale", 0);
                     Number(slot.Value["thickness"], $"{where}: thickness", 0);
+                    if (slot.Value["style"] != null && !IsWholeAtLeast(slot.Value["style"], 0)) Errors.Add($"{where}: style must be a whole number, 0 or more");
                     earlier.Add(slot.Name);
                 }
             }

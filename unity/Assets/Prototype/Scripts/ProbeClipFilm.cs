@@ -174,13 +174,13 @@ public abstract class ClipProbe : ProbeScenario
         Metric("sound_rate", AudioSettings.outputSampleRate);
     }
 
-    protected IEnumerator EndFilm()
+    protected IEnumerator EndFilm(bool sounds = true)
     {
         yield return film.Stop();
         Metric("seconds", film.Seconds);
         Metric("sound_peak", film.Peak);
         Metric("sound_seconds", film.SoundSeconds);
         Check("frames_saved", film.Saved > 100, $"{film.Saved} of {film.Frames} frames");
-        Check("sound_heard", film.Peak > 0.01f, $"peak {film.Peak:0.000}");
+        if (sounds) Check("sound_heard", film.Peak > 0.01f, $"peak {film.Peak:0.000}");
     }
 }

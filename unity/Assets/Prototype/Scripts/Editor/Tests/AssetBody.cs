@@ -1,5 +1,5 @@
 // The builder CreatureBody had while species were Editor assets, word for word, kept only so
-// CreatureRowTests can prove a body from its row equals the body from its asset. Goes with the assets.
+// (with upstream f3141f6's hair and styles) CreatureRowTests can prove a body from its row equals the body from its asset. Goes with the assets.
 #pragma warning disable S3776, S3973, S2234, UNT0024
 using System;
 using System.Collections.Generic;
@@ -14,6 +14,7 @@ static class AssetBody
         public LimbSlot Slot;
         public bool Mirrored;
         public int Parent;
+        public int SlotIndex;
     }
 
     /// <summary>
@@ -40,11 +41,11 @@ static class AssetBody
             {
                 var parentMirrored = parent >= 0 && parts[parent].Mirrored;
                 mine.Add(parts.Count);
-                parts.Add(new Expanded { Slot = slot, Mirrored = parentMirrored, Parent = parent });
+                parts.Add(new Expanded { Slot = slot, Mirrored = parentMirrored, Parent = parent, SlotIndex = i });
                 if (slot.Mirror)
                 {
                     mine.Add(parts.Count);
-                    parts.Add(new Expanded { Slot = slot, Mirrored = !parentMirrored, Parent = parent, });
+                    parts.Add(new Expanded { Slot = slot, Mirrored = !parentMirrored, Parent = parent, SlotIndex = i });
                 }
             }
         }
@@ -100,6 +101,11 @@ static class AssetBody
                 Weight = math.max(coats[i].Weight, 0.0001f)
             };
 
+        var hair = variant.HairColors.Count > 0 ? variant.HairColors : species.HairColors;
+        root.HairColors = new float4[hair.Count];
+        for (int i = 0; i < hair.Count; i++)
+            root.HairColors[i] = (Vector4)hair[i].linear;
+
         root.Segments[0] = new CreatureSegment
         {
             Length = math.max(0f, species.BodyLength - root.RearRadius - root.FrontRadius),
@@ -136,7 +142,10 @@ static class AssetBody
                 Spring = limb.Spring,
                 JointPhaseStep = limb.JointPhaseStep,
                 FollowGround = limb.FollowGround,
-                Side = side
+                Side = side,
+                StyleGroup = slot.StyleGroup,
+                StyleIndex = StyleIndex(species, e.SlotIndex),
+                StyleCount = StyleIndex(species, species.Parts.Count, slot.StyleGroup)
             };
 
             var poses = new[] { limb.Idle, limb.WalkReach, limb.WalkPush, limb.WalkLift, limb.RunReach, limb.RunPush, limb.RunLift };
@@ -152,7 +161,8 @@ static class AssetBody
                     Accent = seg.Accent,
                     Fixed = seg.UseFixedColor ? 1 : 0,
                     FixedColor = (Vector4)seg.FixedColor.linear,
-                    Glow = seg.Glow
+                    Glow = seg.Glow,
+                    Hair = seg.Hair ? 1 : 0
                 };
                 for (int k = 0; k < CreatureBody.PoseCount; k++)
                 {
@@ -165,6 +175,18 @@ static class AssetBody
 
         CreatureBody.MeasureGait(root, species.LeglessStride);
         return root;
+    }
+
+    // How many slots before slotIndex share its style group (its option number).
+    static int StyleIndex(CreatureSpecies species, int slotIndex, int group = -1)
+    {
+        if (group < 0)
+            group = species.Parts[slotIndex].StyleGroup;
+        var n = 0;
+        for (int i = 0; i < slotIndex; i++)
+            if (species.Parts[i].Limb != null && species.Parts[i].StyleGroup == group && group > 0)
+                n++;
+        return n;
     }
 
     static quaternion Rotation(float3 degrees, float side) => CreatureBody.Rotation(degrees, side);
