@@ -58,7 +58,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
 - **Mac:** #63 saved mods to the player folder, then `room-agree-wait` (#65: a probe race, fix gives `Agree` the `ClientInStep` wait), then stop.
-- **DesktopUnity:** 4 prompts to explain the slower follow-up, then the new test player from dev in a folder beside `PlayTest/`, with the squirrel test. Chat records are in `chat-records/` now (f84d0d1); #64 landed.
+- **DesktopUnity:** 4 prompts to explain the slower follow-up, then the new test player from dev in a folder beside `PlayTest/`, with the squirrel test. Chat records are in `chat-records/` now (f84d0d1); #64: Andrew wants no retry; `chat-fail-loud` removes it before the test player (J-066).
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
