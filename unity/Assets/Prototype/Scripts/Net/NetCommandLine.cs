@@ -8,6 +8,7 @@ using UnityEngine;
 //
 //   SpellChemistryValley -host-online          host through Relay; the join code goes to the log
 //   SpellChemistryValley -join-code K7QX2M     join that code
+//   -room-mode Locked (or HostOnly, Open)      the change mode of a room this copy hosts
 //
 // Either way it also writes a "NET STATUS" line to the player log every 10
 // seconds: role, players, the chemistry tick, and whether this machine has
@@ -43,6 +44,7 @@ public class NetCommandLine : MonoBehaviour
         string code = ValueAfter(args, "-join-code");
         if (!host && code == null) return;
         started = true;
+        if (Enum.TryParse(ValueAfter(args, "-room-mode"), out Chem.ChangeMode mode)) NetSession.RoomMode = mode;
         var go = new GameObject("Net command line");
         DontDestroyOnLoad(go);
         go.AddComponent<NetCommandLine>().Begin(host, code);

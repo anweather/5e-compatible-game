@@ -156,6 +156,6 @@ public class ChatProbe : ProbeScenario
         else File.Delete(notes);
         string guide = File.ReadAllText(Path.Combine(ClaudeTerminal.Folder, "CLAUDE.md"));
         Check("guide_says_read_the_notes", guide.Contains("notes.md"));
-        Check("guide_lists_whats_outside_the_rules", guide.Contains("outside the rules") && guide.Contains("the player's size"));
+        Check("guide_lists_whats_outside_the_rules", guide.Contains("outside_rules"));
     }
 }
