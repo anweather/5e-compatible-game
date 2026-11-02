@@ -122,8 +122,10 @@ cell hash) plus the same run without the patch for comparison.
 
 **Save and apply**
 - `save(draft, title, idea)`: writes a draft, or a mod on by the id `room` gives, in the `rules/mods/` format (title, idea, patch).
-  In a build that's the install's `StreamingAssets/rules/mods`, so an update probably removes it
-  (`docs/telemetry/chat-context-2026-11-02.md`). From the game's chat it's refused unless the player's own message says save
+  In the game, Editor included, it goes to the player's data folder beside `notes.md` (`claude-terminal/mods`), where an update can't
+  reach it; a name a shipped mod has needs `overwrite`, and that copy stands in front of the shipped one (#63, "Where mods live" in
+  `docs/MODDING.md`). The headless server (`core/Rules.Mcp`) still writes to the repo's `rules/mods`, as that's how a mod gets shipped.
+  From the game's chat it's refused unless the player's own message says save
   (`Workbench.SaveRefused`): a model tried it unasked on real prompts. A terminal has a person to answer Claude's prompt.
 - `apply(mod)` (phase 3): sends the mod into the game this MCP is attached to. In a room it goes
   as a rule-switch intent and follows the room's change mode (below). `revert(mod)`.
@@ -366,6 +368,10 @@ is a test fixture.
   renumber what another added. `World.ThingsNow` is the world's things under the rules in force, and the rows are in
   `Rules.Fingerprint`. Every peer refuses, at the switch, a row on a cell that's off the world, wet, on a building, or not
   open ground (`World.SiteProblem`). A revert is only composing again, so what the mod added goes.
+- **A draft that's on.** Once a draft has gone on with `apply`, `validate`, `save` and the draft's own site notes read it in
+  place of the mod it went on as, not over it (`World.SiteProblemOf`'s `replacing`), so its own things don't stand against
+  it. That lasts while the mod is on as the draft sent it. Anything else on the cell still refuses: a base thing, another
+  mod's, or a second draft's.
 - **`chance`.** Above 0 and at most 1: `ThingChance.Holds` decides once from the world's seed and the thing's id by
   `WorldHash`, with no draw from the world's generator, so every peer agrees and the cell hash doesn't move. A rare find is
   several rows at a low chance. `things.json` may give `chance` too.

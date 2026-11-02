@@ -1,6 +1,9 @@
-// The mods on disk: every rules/mods/*.json with its title and idea, for the
-// in-game mods panel and the file watcher. Reading a file only parses it; a
-// mod that doesn't fit the rules is found when it is switched on (RuleSet).
+// The mods on disk with their titles and ideas, for the in-game mods panel and
+// the file watcher: the shipped ones in the install's rules/mods and the player's
+// own in their data folder, where the player's copy wins an id both have. Reading
+// a file only parses it; a mod that doesn't fit the rules is found when it is
+// switched on (RuleSet). Where a file lives ends here: a mod goes into the room as
+// its id and JSON, so no peer needs this folder and no hash can see it.
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -54,13 +57,17 @@ namespace Chem
     {
         readonly List<ModFile> mods = new List<ModFile>();
 
-        public ModCatalog(string modsDir)
+        public ModCatalog(string modsDir, string playerDir = null)
         {
             Dir = modsDir;
+            PlayerDir = playerDir;
             Reload();
         }
 
+        /// <summary>The shipped mods: rules/mods.</summary>
         public string Dir { get; }
+        /// <summary>The player's own mods, or null where there are none (a headless run).</summary>
+        public string PlayerDir { get; }
         /// <summary>The mods, sorted by id.</summary>
         public IReadOnlyList<ModFile> Mods => mods;
 
@@ -68,25 +75,33 @@ namespace Chem
 
         public static string IdOf(string path) => Path.GetFileNameWithoutExtension(path);
 
-        /// <summary>Reads every *.json in the folder again (none if it doesn't exist).</summary>
+        /// <summary>The file a mod's id means: the first folder holding it, or null. Pass the player's folder first; a null folder is skipped.</summary>
+        public static string FileOf(string id, params string[] dirs) =>
+            dirs.Where(d => d != null).Select(d => Path.Combine(d, id + ".json")).FirstOrDefault(File.Exists);
+
+        /// <summary>Reads every *.json in both folders again (none from one that doesn't exist).</summary>
         public void Reload()
         {
             mods.Clear();
-            if (Dir == null || !Directory.Exists(Dir)) return;
-            foreach (var path in Directory.GetFiles(Dir, "*.json").OrderBy(p => p, StringComparer.Ordinal))
-                mods.Add(Read(path));
+            var files = new SortedDictionary<string, string>(StringComparer.Ordinal);
+            foreach (var dir in new[] { Dir, PlayerDir }.Where(d => d != null && Directory.Exists(d)))
+                foreach (var path in Directory.GetFiles(dir, "*.json"))
+                    files[IdOf(path)] = path;
+            mods.AddRange(files.Values.Select(Read));
         }
 
         /// <summary>
-        /// Reads one file again after it changed: the new entry, or null if it was deleted (it is then
-        /// dropped from the list). IO errors (a file still being written) propagate to the caller.
+        /// Reads a mod again after one of its files changed: the entry that id now means, which is the shipped
+        /// one when the player's copy was deleted, or null if neither is left (it is then dropped from the list).
+        /// IO errors (a file still being written) propagate to the caller.
         /// </summary>
         public ModFile Refresh(string path)
         {
             string id = IdOf(path);
             mods.RemoveAll(m => m.Id == id);
-            if (!File.Exists(path)) return null;
-            var mod = Read(path);
+            string file = FileOf(id, PlayerDir, Dir);
+            if (file == null) return null;
+            var mod = Read(file);
             mods.Add(mod);
             mods.Sort((a, b) => string.CompareOrdinal(a.Id, b.Id));
             return mod;

@@ -651,7 +651,43 @@ public class RoomMcpProbe : ProbeScenario
         yield return Wait(0.5f);
         Check("fireball_back", World.Rules.Spell(SpellIds.Fireball).Radius == radius, $"radius {World.Rules.Spell(SpellIds.Fireball).Radius}");
         yield return OffClosesThePort();
+        yield return SavesToThePlayersFolder();
         yield return Stills();
+    }
+
+    // #63: the server's save lands in the player's folder, not rules/mods, and apply finds it there by name. In a folder of
+    // its own, as an Editor shares its data folder with the player's game.
+    IEnumerator SavesToThePlayersFolder()
+    {
+        const string name = "probe-player-mod";
+        Check("the_mods_page_reads_the_players_folder", grid.GetComponent<RuleSwitcher>().Catalog.PlayerDir == RuleSwitcher.PlayerModsDir, RuleSwitcher.PlayerModsDir);
+        string folder = Path.Combine(Application.temporaryCachePath, "player-mods-probe");
+        string file = Path.Combine(folder, "mods", name + ".json"), shipped = Path.Combine(ChemGrid.FindRulesDir(), "mods", name + ".json");
+        ClaudeTerminal.TestFolder = folder;
+        try
+        {
+            RulesMcpServer.Instance.FreshTools();
+            yield return null;
+            var draft = Post(Tool("tune", "{\"param\":\"fire.spreadChance\",\"value\":\"0.4\"}"));
+            yield return Until(draft);
+            string id = draft.Result.body.Substring(draft.Result.body.IndexOf("Draft ", StringComparison.Ordinal) + 6).Split(':')[0];
+            var saved = Post(Tool("save", $"{{\"draft\":\"{id}\",\"title\":\"Probe mod\",\"idea\":\"Fire spreads a little.\",\"name\":\"{name}\"}}"));
+            yield return Until(saved);
+            Check("a_save_lands_in_the_players_folder", File.Exists(file), saved.Result.body);
+            Check("a_save_leaves_rules_mods_alone", !File.Exists(shipped), shipped);
+            var byName = Post(Tool("apply", $"{{\"mod\":\"{name}\"}}"));
+            yield return Until(byName);
+            Check("apply_finds_it_by_name", byName.Result.body.Contains("switched on"), byName.Result.body);
+            var back = Post(Tool("revert", $"{{\"mod\":\"{name}\"}}"));
+            yield return Until(back);
+        }
+        finally
+        {
+            ClaudeTerminal.TestFolder = null;
+            RulesMcpServer.Instance.FreshTools();
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+        }
+        yield return null;
     }
 
     // The Mods page's switch (J-047): off refuses a connection, and on serves again; the choice is kept.

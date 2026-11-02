@@ -56,15 +56,15 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
-- **Mac:** #63 saved mods to the player folder, then `room-agree-wait` (#65: a probe race, fix gives `Agree` the `ClientInStep` wait), then stop.
-- **DesktopUnity:** the new test player from dev in a folder beside `PlayTest/`, with the squirrel test. Chat records are in `chat-records/` now (f84d0d1); #64 landed, no retry (J-066).
+- **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild.
+- **Mac:** `room-agree-wait` (#65; also shows whether `roomruin`'s failing checksum, #67, is the race), then stop.
+- **DesktopUnity:** `save-draft-id`, then a test of the map as data (Andrew): a second map that isn't the valley, to see how bad it is. #63 and the glow hint landed; the Mac should rerun `SetReadOnly`'s stricter tests.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Full EditMode on Windows: 1,067 of 1,067, twice. The port is untested in a player and online.
-- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest/` from 1c97274 is now old. Don't let anyone clean that folder.
+- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-1ad55fb/SpellChemistryValley.exe`, for Andrew. Squirrel test passed in a copy, two built peers over Relay. Never run in a real window. The old `PlayTest/` stays until he has moved over.
 
 ## Next, in order
 
@@ -73,7 +73,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 3. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
 4. Gaits by rule (`docs/design/builders.md`).
 5. Design things on water (#60); size patches for Claude (#61).
-6. 0.1.11, when Andrew says: he put it on hold. Before it ships: #63 (saved mods on update), version bump. J-060 comes back before anything commercial.
+6. 0.1.11, when Andrew says: he put it on hold. Before it ships: the notes tell anyone with saved mods to copy them out first (#63), version bump. J-060 comes back before anything commercial.
 - Left out of the port, for later: flight and biomes for spawn rows, `glides`, a shore rule for reeds, mod budgets on rows, water animals as shapeshift targets. Dev's main thread may have risen about 1 ms on the Mac (unexplained; not fauna).
 - Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`, `chat-telemetry.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
 

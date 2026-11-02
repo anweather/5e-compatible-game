@@ -193,6 +193,10 @@ code change is ~150 KB, against ~500 MB for the whole game), shows
 menu's "Update and restart" (with `-no-auto-update`). Zip copies and the
 Editor keep the old "Open download page" path.
 
+An update replaces the whole install (`current/` on Windows, the bundle on a Mac),
+so nothing of a player's may live there: their mods are in the data folder
+(`docs/MODDING.md`, "Where mods live").
+
 **Shipping one:** `tools/ship-update.sh X.Y.Z` (or the `ship-update` skill).
 On the Mac or the PC, with the Editor open on the commit to ship and a clean
 tree, it:

@@ -576,12 +576,23 @@ that long, and doesn't march.
   (`ModValidator`) before switching it on; one that fails is **refused**
   everywhere, with a sentence. *Avoid:* "install", "enable".
 
+**Shipped mod / player's mod**
+: A **shipped mod** is in `rules/mods/`, and comes with the build. A **player's
+  mod** is one they saved, in their data folder beside `notes.md`
+  (`claude-terminal/mods`). The player's wins an id both have. Either reaches a
+  room the same way, as its id and JSON (`docs/MODDING.md`, "Where mods live").
+
 **Checksum / hash / fingerprint / golden**
 : The **checksum** is what peers compare every 30 ticks (cells, rules,
   things, defense). A **cell hash** (`CellHash`, `ChunkHash`) is FNV-1a
   over cells; a **fingerprint** hashes the rules or the things; a
   **golden** is a hash a test pins. `WorldHash` is unrelated (the world
   generator's coordinate hashing).
+
+**Game mode / free play**
+: A **game mode** is a snapshot: copies of a set of mods in their order, and maybe a map, packaged and shared the way a mod is. In a
+  mode you edit only that mode's copies. **Free play** is where you load any mods and snapshot the setup into a mode. Not built
+  (backlog 28). Never "sandbox", which is the frozen TS prototype.
 
 ## The Dragon
 

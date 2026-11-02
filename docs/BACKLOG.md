@@ -703,6 +703,22 @@ support for Codex, Kiro and others, and advanced options to tune all of it.
 - **Size:** M per harness after the first, L for the first.
 - **Evaluated (2026-11-02):** the API mode is built behind `IChatHarness`, probe only, with no picker: `docs/telemetry/chat-api-2026-11-02.md`.
 
+## 28. Game modes: saved sets of mods (Andrew, 2026-11-02; later)
+
+A game mode is a snapshot: copies of a set of mods, in order, as a package that shares the way a mod does.
+
+- **Andrew's model:** in free play, load any mods and snapshot the configuration to create a mode. Inside a mode, the mods you can
+  edit are only that mode's own copies, so it's always clear you're not editing the global one. A mode copies its mods.
+- **Order:** the sequence is fixed and repeatable. Two mods touching the same thing merge; where they set the same value, the last
+  one wins. Mods already do this: the active mods compose over the base in order, groups merge key by key (`Rules.MergedEntry`).
+  A mode has to store that order.
+- **The map as data:** a mode can carry its land too. The land is largely data already: a theme in `world/themes/` solved from a
+  seed (D11), with `world/land.json`, places, villages and things beside it. Not checked: what a mod can change of that today, and
+  what's still baked.
+- **Open:** what the world keeps when leaving a mode that placed buildings; what a late joiner gets; how "edit a copy" looks in the
+  Mods page.
+- **Size:** M, more if the land has to move into mods.
+
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,

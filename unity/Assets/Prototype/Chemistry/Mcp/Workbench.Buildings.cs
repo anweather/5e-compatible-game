@@ -256,14 +256,17 @@ namespace Chem.Mcp
 
         // ---------- the drafts ----------
 
-        /// <summary>Why a patch's buildings couldn't stand on the world now; null if they can, or no world can say.</summary>
-        string SiteNote(string json)
+        /// <summary>
+        /// Why a patch's buildings and things couldn't stand on the world now; null if they can, or no world can say.
+        /// <paramref name="own"/> is the mod on that this patch is an earlier state of (OwnMod).
+        /// </summary>
+        string SiteNote(string json, string own = null)
         {
             if (WorldBlind) return null;
             if (!(ModPatch.Parse(json).Json["world"] is JObject)) return null;
             try
             {
-                return OnWorld(w => w.SiteProblemOf(json, "The draft"));
+                return OnWorld(w => w.SiteProblemOf(json, "The draft", own));
             }
             catch (ModException e)
             {
@@ -274,7 +277,7 @@ namespace Chem.Mcp
         /// <summary>A draft with its buildings as a mod, and a sentence if they wouldn't stand.</summary>
         public string Sited(Draft draft)
         {
-            string note = SiteNote(draft.Patch.ToString(Formatting.None));
+            string note = SiteNote(draft.Patch.ToString(Formatting.None), OwnMod(draft));
             return (note == null ? "" : $"This won't stand yet: {note}.\n") + draft.Show();
         }
 
@@ -386,7 +389,7 @@ namespace Chem.Mcp
                 Wing.Add(trial, s, width, depth, BuildingTablesIn(draft));
                 var patch = (JObject)draft.Patch.DeepClone();
                 patch["world"]["buildings"][building] = trial;
-                string why = SiteNote(patch.ToString(Formatting.None));
+                string why = SiteNote(patch.ToString(Formatting.None), OwnMod(draft));
                 if (why == null)
                 {
                     DraftRows(draft)[building] = trial;
