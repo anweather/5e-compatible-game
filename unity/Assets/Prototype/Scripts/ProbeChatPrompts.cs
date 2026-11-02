@@ -136,7 +136,7 @@ public class ChatPromptsProbe : RowHousesProbe
         bool model = asked.Contains("--model"), bare = asked.Contains(BareArguments[0]) && asked.Contains(BareArguments[2]);
         Check("claude_gets_a_model_only_if_asked", model == !string.IsNullOrEmpty(Model) && (!model || asked.Contains(Model)), asked);
         Check("claude_gets_bare_only_if_asked", bare == (Context == BareContext), asked);
-        Check("claude_gets_the_system_prompt_only_if_asked", asked.Contains("--system-prompt") == (Also ?? "").Contains("--system-prompt"), asked);
+        Check("claude_gets_the_chats_own_prompt", asked.Contains(ClaudeRun.ChatPrompt), asked);
     }
 
     List<JObject> Set()
