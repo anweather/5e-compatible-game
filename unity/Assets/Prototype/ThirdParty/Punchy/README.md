@@ -6,7 +6,8 @@ credited in the game's Credits (`Scripts/Credits.cs`).
 
 Vendored from upstream commit **b183507**; upstream's later work is ported by
 hand, a change at a time, and listed against the file below (from `7ee4511`:
-cornered and leashed animals mill about). Creatures are going to data rather
+cornered and leashed animals mill about; from `f3141f6`: individuals, hairstyles
+and workers at their posts). Creatures are going to data rather
 than Editor assets (J-058), so ours diverges from Punchy's code and keeps its
 style.
 
@@ -25,10 +26,10 @@ usual (`AmbientCritters.cs` for the critters, `CloudSky.cs` for the sky,
 | `CloudNoise.cs` | `Assets/Game/Scripts/Weather/CloudNoise.cs` | A parameter name and loop indents, for our analyzers |
 | `Creature.shader` | `Assets/Game/Shaders/Creature.shader` | Punchy's atmosphere swapped for URP's fog; a crack web on a segment; a segment's pad under 0 draws it for its shadow alone (`CreatureDrawer.HideAtLens`: the lens inside a creature, issue #47) |
 | `CreatureSpecies.cs`, `LimbType.cs` | `Assets/Game/Scripts/Fauna/` | Header only (same script GUIDs, so the assets load). Read only by the export and its proof now; the enums `CreatureBody` uses live here |
-| `Fauna/` (species and `Limbs/`) | `Assets/Game/Fauna/` | Unchanged, and no longer read by the game: **Prototype > Export Creature Rows** wrote them out as `rules/fauna.json` and `rules/parts.json`, and `CreatureRowTests` proves the bodies equal. They stay until the rest of the port has gone through the same export |
-| `CreatureBody.cs` | `Assets/Game/Scripts/Fauna/CreatureData.cs` | Entities blob made a plain class with arrays; `SegmentInstance.Pad` used (crack web, shadow only); built from rows (`Chem.FaunaTables`), and the row's id, group and spawn kept on the body |
-| `CreatureAnimator.cs` | `Assets/Game/Scripts/Fauna/CreatureAnimator.cs` | Arrays and reused scratch for Burst lists; ground through `ICreatureGround` |
-| `CreatureBrain.cs` | `Assets/Game/Scripts/Fauna/CreatureBrainSystem.cs` | One creature at a time; the nearest threat (a wizard or fire) for the player. From `7ee4511`: a leash holds even when fleeing, and an animal at its end mills about. Ours: the same for any corner (`Veer` keeps to a side until it has turned; `Mill`, `Clear`), and milling takes steps and looks at the danger, where Punchy's only slows to a fifth of a run |
+| `Fauna/` (species and `Limbs/`) | `Assets/Game/Fauna/` | At `f3141f6` for the peoples, `HumanChild` and the `Hair*` and `Beard*` limbs, otherwise as at base; and no longer read by the game: **Prototype > Export Creature Rows** wrote them out as `rules/fauna.json` and `rules/parts.json`, and `CreatureRowTests` proves the bodies equal. They stay until the rest of the port has gone through the same export |
+| `CreatureBody.cs` | `Assets/Game/Scripts/Fauna/CreatureData.cs` | Entities blob made a plain class with arrays; `SegmentInstance.Pad` used (crack web, shadow only); built from rows (`Chem.FaunaTables`), and the row's id, group and spawn kept on the body. From `f3141f6`: `Trait`, `Style`, hair colours, style options on parts |
+| `CreatureAnimator.cs` | `Assets/Game/Scripts/Fauna/CreatureAnimator.cs` | Arrays and reused scratch for Burst lists; ground through `ICreatureGround`. From `f3141f6`: traits, hidden style options, hair, `TaskPose` (read from `Task`, which our folk set at their posts, as there's no `CreatureMode.Work`) |
+| `CreatureBrain.cs` | `Assets/Game/Scripts/Fauna/CreatureBrainSystem.cs` | One creature at a time; the nearest threat (a wizard or fire) for the player. From `7ee4511`: a leash holds even when fleeing, and an animal at its end mills about. Ours: the same for any corner (`Veer` keeps to a side until it has turned; `Mill`, `Clear`), and milling takes steps and looks at the danger, where Punchy's only slows to a fifth of a run. From `f3141f6`: pace, on the walk only (on the run it overshoots a corner). Not `CreatureMode.Work`: our workers are `ValleyFauna.Folk`'s puppets |
 | `CreatureCapsule.cs` | `FaunaDirector.BuildCapsule` | Moved to its own file; wound outside out; `readable` keeps the mesh for tests |
 
 The creature files turn our style analyzers off (`#pragma warning disable`),

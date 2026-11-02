@@ -51,7 +51,10 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         public FolkTask task;
         public float2 goal;
         public float wait;
-        public bool barkeep;
+        // A worker (the barkeep, whoever tends the well, the inn's lookout): its job, its post and which way it faces there.
+        public CreatureTask job;
+        public float2 post;
+        public float postYaw;
     }
 
     static readonly ProfilerMarker UpdateMarker = new("ValleyFauna.Update"), ReadRowsMarker = new("ValleyFauna.ReadRows");
@@ -413,14 +416,14 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         {
             var (village, kind, square) = folk[v];
             if (village == null || bodies[kind] == null || goIn || places[v].indoors || math.distance(square, centre) > radius) continue;
-            if (!FolkAbout(kind, square)) ComeOut(v);
+            if (!FolkAbout(v)) ComeOut(v);
         }
     }
 
-    bool FolkAbout(int kind, float2 square)
+    bool FolkAbout(int v)
     {
         foreach (var c in creatures)
-            if (c.species == kind && c.state.Leash > 0f && math.distance(c.state.Home, square) < 1f) return true;
+            if (c.village == v) return true;
         return false;
     }
 
@@ -435,7 +438,8 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
                 ? doors[rng.NextInt(doors.Count)] + rng.NextFloat2Direction() * 0.5f
                 : square + rng.NextFloat2Direction() * rng.NextFloat(2f, village.wander * 0.6f);
             if (!Walkable(p)) continue;
-            int at = Spawn(kind, new float3(p.x, Height(p), p.y));
+            var (job, post, yaw) = PostOf(n, places[v]);
+            int at = Spawn(job != CreatureTask.None ? kind : bodies.FolkAt(kind, rng.NextFloat()), new float3(p.x, Height(p), p.y));
             var c = creatures[at];
             var s = c.state;
             s.Home = square;
@@ -445,7 +449,9 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
             c.village = v;
             c.task = FolkTask.Pause;
             c.wait = rng.NextFloat(0f, 3f);
-            c.barkeep = n == 0 && places[v].hasBar;
+            c.job = job;
+            c.post = post;
+            c.postYaw = yaw;
         }
     }
 
@@ -467,6 +473,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
                 Mode = CreatureMode.Idle,
                 Timer = rng.NextFloat(0.5f, 4f),
                 Seed = rng.NextUInt() | 1u,
+                Individual = rng.NextUInt() | 1u,
             },
         });
         return creatures.Count - 1;

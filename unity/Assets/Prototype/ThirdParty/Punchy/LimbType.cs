@@ -1,5 +1,5 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
-// used with permission. Unchanged but for this header.
+// used with permission. Unchanged but for this header and upstream f3141f6's Hair.
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -68,6 +68,8 @@ namespace Punchy.Fauna
         public Color FixedColor = new Color(0.1f, 0.08f, 0.07f);
         [Tooltip("Glows by itself (eye sockets, embers, toxic markings).")]
         [Range(0f, 1f)] public float Glow;
+        [Tooltip("Coloured by the individual's hair colour (the species' HairColors).")]
+        public bool Hair;
     }
 
     [Serializable]

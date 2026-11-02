@@ -171,7 +171,10 @@ namespace Punchy.Fauna
             var desiredLook = 0f;
             var moving = false;
             float lie = 0f, headDown = 0f, bow = 0f, curl = 0f;
-            var walk = b.WalkSpeed * s.Scale;
+            // Each individual walks a little faster or slower than the next. Upstream's run takes it too; here
+            // that overshoots a corner (CreatureMillTests), which is tuned to the species' top speed.
+            var pace = 1f + CreatureBody.Trait(s.Individual, 5) * 0.08f;
+            var walk = b.WalkSpeed * s.Scale * pace;
             var run = b.RunSpeed * s.Scale;
 
             // Keep an eye on a nearby wizard (busy feeding or drinking, only a close one).

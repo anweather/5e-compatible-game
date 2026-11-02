@@ -456,6 +456,10 @@ that long, and doesn't march.
   can't change them. The MCP's `places()` lists them and `here()` says which
   one the asking player is in and what's near.
 
+**Individual**
+: One animal's fixed number, set when it comes out: it picks that animal's lean, arm swing, bounce, pace,
+  hairstyle and hair colour (`CreatureState.Individual`). Local to each peer, like the animal.
+
 **Slot**
 : A part on a species: a row in its `parts`, by a name of the species' own, saying which
   shape from `rules/parts.json` goes where, and what it hangs from (`Fauna.cs`).
