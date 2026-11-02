@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-066: Which model does the in-game chat use?
+
+- **Asked:** 2026-11-02, by the PM, after #59 change 3 (`docs/telemetry/chat-context-2026-11-02.md`).
+- **Answer:** Andrew: Haiku by default.
+- **Why:** with the context fix it passes the strict check at about 1/35 of Opus's list price and no slower. Plainer replies, and
+  one cantrip in four comes out a point spell.
+- **Also comes up when:** the harness and API picker (backlog 27), anything measuring chat quality.
+- **Revisited:** 0.
+
 ### J-065: Six open calls, cleared with Andrew
 
 - **Asked:** 2026-11-02, by the PM, one at a time.
