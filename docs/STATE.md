@@ -57,14 +57,14 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
-- **Mac:** `player-mods-folder` (#63, 8713b3e) failed a core test on landing, not landed. `room-agree-wait` (#65: gives `Agree` the `ClientInStep` wait; also shows whether `roomruin`'s failing checksum is the race), then stop.
-- **DesktopUnity:** the new test player from dev in a folder beside `PlayTest/`, with the squirrel test. Chat records are in `chat-records/` now (f84d0d1); #64 landed, no retry (J-066).
+- **Mac:** `room-agree-wait` (#65; also shows whether `roomruin`'s failing checksum, #67, is the race), then stop.
+- **DesktopUnity:** `player-mods-folder` (#63) read-only fix on Windows, then `save-draft-id`, `glow-hint`.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Full EditMode on Windows: 1,067 of 1,067, twice. The port is untested in a player and online.
-- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest/` from 1c97274 is now old. Don't let anyone clean that folder.
+- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-1ad55fb/SpellChemistryValley.exe`, for Andrew. Squirrel test passed in a copy, two built peers over Relay. Never run in a real window. The old `PlayTest/` stays until he has moved over.
 
 ## Next, in order
 
