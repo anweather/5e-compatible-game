@@ -155,7 +155,7 @@ public class ChatProbe : ProbeScenario
         Check("a_refused_model_runs_once", Runs() == 1, $"{Runs()} runs");
         Check("the_model_was_asked_for", File.ReadAllText(logged).Contains("--model " + ClaudeRun.ChatModel), File.ReadAllText(logged));
         Check("the_player_is_told_once", said.Count(l => l.Contains(told)) == 1, all);
-        Check("in_the_red_of_a_failure", said.Last().StartsWith("<color=#ff8a80>", System.StringComparison.Ordinal), said.Last());
+        Check("in_the_red_of_a_failure", said[^1].StartsWith("<color=#ff8a80>", System.StringComparison.Ordinal), said[^1]);
         Check("claudes_own_words_dont_show", !all.Contains("selected model"), all);
         Check("it_isnt_a_sign_in_failure", !all.Contains("aren't signed in"), all);
         JObject record = null;
