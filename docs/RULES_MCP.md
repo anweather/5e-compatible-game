@@ -368,6 +368,10 @@ is a test fixture.
   renumber what another added. `World.ThingsNow` is the world's things under the rules in force, and the rows are in
   `Rules.Fingerprint`. Every peer refuses, at the switch, a row on a cell that's off the world, wet, on a building, or not
   open ground (`World.SiteProblem`). A revert is only composing again, so what the mod added goes.
+- **A draft that's on.** Once a draft has gone on with `apply`, `validate`, `save` and the draft's own site notes read it in
+  place of the mod it went on as, not over it (`World.SiteProblemOf`'s `replacing`), so its own things don't stand against
+  it. That lasts while the mod is on as the draft sent it. Anything else on the cell still refuses: a base thing, another
+  mod's, or a second draft's.
 - **`chance`.** Above 0 and at most 1: `ThingChance.Holds` decides once from the world's seed and the thing's id by
   `WorldHash`, with no draw from the world's generator, so every peer agrees and the cell hash doesn't move. A rare find is
   several rows at a low chance. `things.json` may give `chance` too.

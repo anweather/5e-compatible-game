@@ -27,7 +27,7 @@ namespace Chem
         }
 
         // Each row these rules add that aren't in force yet stands on open, dry ground with nothing else on it.
-        string ThingSiteProblem(Rules next, string title)
+        string ThingSiteProblem(Rules next, string title, ISet<(string, int, int)> leaving)
         {
             if (next.ModThings.Count == 0) return null;
             var had = new Dictionary<(string, int, int), int>();
@@ -50,10 +50,20 @@ namespace Chem
                     NoteBaseBuildings();
                     buildings = OtherBuildings(next, null);
                 }
-                string why = placed.Add((t.X, t.Y)) ? CellProblem(t.X, t.Y, buildings) : "the same mod puts another thing there";
+                string why = placed.Add((t.X, t.Y)) ? CellProblem(t.X, t.Y, buildings, leaving) : "the same mod puts another thing there";
                 if (why != null) return string.Format(CultureInfo.InvariantCulture, "{0} can't put a {1} at cell ({2}, {3}): {4}", title ?? "that mod", t.Kind, t.X, t.Y, why);
             }
             return null;
+        }
+
+        // The rows in force these rules don't have: their things are gone once they're on, so they stop nothing. A room's
+        // switch only adds rows, so this is empty there, on every peer; it's for a patch standing in for a mod (SiteProblemOf).
+        HashSet<(string, int, int)> LeavingThings(Rules next)
+        {
+            var leaving = new HashSet<(string, int, int)>();
+            foreach (var t in Rules.ModThings) leaving.Add((t.Kind, t.X, t.Y));
+            foreach (var t in next.ModThings) leaving.Remove((t.Kind, t.X, t.Y));
+            return leaving;
         }
 
         // Someone picked up a thing. The first pick-up of one a mod added goes in the room and the log, on every
