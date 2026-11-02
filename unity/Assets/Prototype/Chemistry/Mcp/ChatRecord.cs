@@ -39,6 +39,13 @@ namespace Chem.Mcp
         public IReadOnlyList<string> ModsOn = Array.Empty<string>();
     }
 
+    /// <summary>How far a run has got, for a progress bar: tools, since a run's first words often come last.</summary>
+    public struct ChatProgress
+    {
+        public bool Started, Ready, Applying, Applied, InWorld, Done;
+        public int Tools, ToolsDone;
+    }
+
     public sealed class ChatRecorder
     {
         const int MostReasonChars = 300;
@@ -81,6 +88,23 @@ namespace Chem.Mcp
             this.source = source;
             this.sent = sent;
             this.who = who ?? new ChatWho();
+        }
+
+        /// <summary>How far it has got now.</summary>
+        public ChatProgress Progress()
+        {
+            lock (gate)
+                return new ChatProgress
+                {
+                    Started = started != null,
+                    Ready = ready != null,
+                    Applying = firstApply != null,
+                    Applied = applied != null,
+                    InWorld = inWorld != null,
+                    Done = done != null,
+                    Tools = calls.Count,
+                    ToolsDone = calls.Count(c => c.To != null),
+                };
         }
 
         /// <summary>The process has started.</summary>
@@ -420,12 +444,15 @@ namespace Chem.Mcp
 
         const string Prefix = "chat-log-", Suffix = ".jsonl";
 
-        public static void Append(string folder, DateTime day, JObject line)
+        public static void Append(string folder, DateTime day, JObject line) => Append(folder, day, line, Prefix);
+
+        /// <summary>The same, in another log's files (the MCP server's).</summary>
+        public static void Append(string folder, DateTime day, JObject line, string prefix)
         {
             Directory.CreateDirectory(folder);
-            string file = Prefix + day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + Suffix;
+            string file = prefix + day.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture) + Suffix;
             File.AppendAllText(Path.Combine(folder, file), line.ToString(Formatting.None) + "\n");
-            foreach (string old in Directory.GetFiles(folder, Prefix + "*" + Suffix).OrderByDescending(f => f, StringComparer.Ordinal).Skip(MostFiles))
+            foreach (string old in Directory.GetFiles(folder, prefix + "*" + Suffix).OrderByDescending(f => f, StringComparer.Ordinal).Skip(MostFiles))
                 File.Delete(old);
         }
 

@@ -85,7 +85,7 @@ public class PlayLog : MonoBehaviour
     }
 
     // Beside the player log, so one folder holds everything about a session.
-    static string Folder()
+    public static string Folder()
     {
         string log = Application.consoleLogPath;
         return string.IsNullOrEmpty(log) ? Application.persistentDataPath : Path.GetDirectoryName(log);
@@ -192,6 +192,13 @@ public class PlayLog : MonoBehaviour
         string what = Happening(false);
         if (markers != null) what = (what + " " + markers.Breakdown()).Trim();
         file.Add(Line("hitch", 1000f / ms, 1, 1, what, ms));
+    }
+
+    /// <summary>A line of what's going on, to tie a hitch to it: not a mark, which says something felt bad.</summary>
+    public void Note(string what)
+    {
+        if (file == null) return;
+        file.Add(Line("note", frames * 1000f / Mathf.Max(1f, elapsedMs), over33, over50, what));
     }
 
     /// <summary>"That felt bad": a marked line, and a small picture of the moment. The playtest bot marks what it finds.</summary>

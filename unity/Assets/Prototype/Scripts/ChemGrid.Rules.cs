@@ -111,6 +111,7 @@ public partial class ChemGrid
     void ApplyQueuedRules()
     {
         var before = CurrentRules;
+        composing.Restart();
         foreach (var command in queuedRoom) World.ApplyRoom(command);
         if (queuedRoom.Count > 0) CurrentRules = World.RoomRules;
         queuedRoom.Clear();
@@ -122,7 +123,7 @@ public partial class ChemGrid
             CurrentRules = newBase ? World.RoomRules : queuedRules;
             queuedRules = null;
         }
-        if (!ReferenceEquals(before, CurrentRules)) Announce(before);
+        ComposeDone(before);
     }
 
     /// <summary>Online: runs one of the host's tick batches (a rule switch if it has one, its casts, a step).</summary>
@@ -139,17 +140,32 @@ public partial class ChemGrid
     public void PrepareBatch(TickBatch batch)
     {
         var before = CurrentRules;
+        composing.Restart();
         CurrentRules = batch.Prepare(World, CurrentRules, out var errors);
         if (errors.Count > 0)
         {
             EventLog.Add($"<color=#ff8a80>The host's rules don't fit this machine's: {errors[0]}</color>");
             Debug.LogWarning("Rule switch at tick " + batch.Tick + " refused here: " + string.Join("; ", errors));
         }
-        if (!ReferenceEquals(before, CurrentRules)) Announce(before);
+        ComposeDone(before);
+    }
+
+    readonly System.Diagnostics.Stopwatch composing = new();
+
+    /// <summary>How long the last switch took to compose (ms), and when its drawing began (realtime).</summary>
+    public double ComposeMs { get; private set; }
+    public float AnnouncedAt { get; private set; }
+
+    void ComposeDone(RuleSet before)
+    {
+        if (ReferenceEquals(before, CurrentRules)) return;
+        ComposeMs = composing.Elapsed.TotalMilliseconds;
+        Announce(before);
     }
 
     void Announce(RuleSet before)
     {
+        AnnouncedAt = Time.realtimeSinceStartup;
         // A room's change has its own line in the world log.
         if (!ReferenceEquals(CurrentRules, World.RoomRules)) EventLog.Add($"{Describe(before, CurrentRules)} from tick {World.Tick + 1} · rules {CurrentRules.Fingerprint}");
         RedrawLooks(before.Effective);

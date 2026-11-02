@@ -74,6 +74,7 @@ public class RulesMcpServer : MonoBehaviour
         gameObject.AddComponent<ClaudeTerminal>();
         gameObject.AddComponent<GameChat>();
         gameObject.AddComponent<GameVoice>();
+        gameObject.AddComponent<ChatTelemetry>();
     }
 
     void Start()
@@ -90,7 +91,9 @@ public class RulesMcpServer : MonoBehaviour
             return;
         }
         var desk = new GameRoomDesk(this);
-        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = desk, WorldDesk = desk, Here = here }), "spell-chemistry-valley", Application.version);
+        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = desk, WorldDesk = desk, Here = here, Applied = ChatTelemetry.Patched }), "spell-chemistry-valley", Application.version);
+        rpc.Called = McpLog.Write;
+        McpLog.Folder = ChatTelemetry.Folder ?? PlayLog.Folder();
         var serving = listener;
         var tools = rpc;
         new Thread(() => Serve(serving, tools)) { IsBackground = true, Name = "Rules MCP" }.Start();

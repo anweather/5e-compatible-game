@@ -10,7 +10,8 @@ using UnityEngine;
 public class ChatProbe : ProbeScenario
 {
     const string Message = "make all fire blue";
-    const float MostWait = 12f, FilmTyping = 1.5f, FilmReading = 3f;
+    const string Recording = "make the fireball bigger", RecordedMod = "big-fireball";
+    const float MostWrite = 3f, MostWait = 12f, FilmTyping = 1.5f, FilmReading = 3f;
 
     string folder, logged;
 
@@ -45,6 +46,40 @@ public class ChatProbe : ProbeScenario
             ClaudeChat.StandIn = null;
             if (controls != null) controls.enabled = controlsWere;
         }
+    }
+
+    // A prompt that changes something, as the real path has it: the bar, the stamp, the record and its later line.
+    IEnumerator Recorded(GameChat chat)
+    {
+        string records = Path.Combine(folder, "records");
+        ChatTelemetry.Folder = records;
+        ClaudeChat.StandIn = StandIn("recorded", 3f,
+            "{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"stand-in\",\"claude_code_version\":\"0\"}",
+            "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"model\":\"stand-in\",\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"mcp__spell-valley__whats_on\",\"input\":{}}]}}",
+            "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"Done.\",\"total_cost_usd\":0.05,\"num_turns\":2,\"duration_ms\":100,\"duration_api_ms\":90,\"usage\":{\"input_tokens\":10,\"cache_creation_input_tokens\":20,\"cache_read_input_tokens\":3000,\"output_tokens\":40}}");
+        chat.Send(Recording);
+        yield return null;
+        yield return null;
+        Check("the_bar_shows_while_it_works", chat.Progress != null, chat.Progress?.what);
+        var switcher = grid.GetComponent<RuleSwitcher>();
+        switcher.Toggle(RecordedMod);
+        yield return Until(chat, () => ChatTelemetry.Instance.Current == null);
+        yield return null;
+        Check("the_bar_goes_with_the_prompt", chat.Progress == null);
+        for (float t = 0f; t < MostWrite && !Directory.Exists(records); t += Time.unscaledDeltaTime) yield return null;
+        var file = Directory.Exists(records) ? Directory.GetFiles(records, "chat-log-*.jsonl").FirstOrDefault() : null;
+        Check("a_record_is_written", file != null, records);
+        if (file == null) yield break;
+        var record = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllLines(file)[0]);
+        Check("it_has_the_prompt_and_source", (string)record["prompt"] == Recording && (string)record["source"] == GameChat.FromKeys, record.ToString());
+        Check("it_has_tokens_and_cost", (long?)record["tokens"]?["cacheRead"] == 3000 && record["tokens"]?["cost"] != null, record["tokens"]?.ToString());
+        Check("it_is_stamped_in_the_world", record["at"]?["inWorld"]?.Type == Newtonsoft.Json.Linq.JTokenType.Integer, record["at"]?.ToString());
+        Check("it_has_the_game_cost", (double?)record["gameCost"]?["worstFrameMs"] > 0, record["gameCost"]?.ToString());
+        Check("the_list_shows_it", ChatTelemetry.Instance.Latest.Any(e => e.Prompt == Recording && ChatTelemetry.Line(e).Contains("k tokens")), ChatTelemetry.Instance.Latest.Select(ChatTelemetry.Line).FirstOrDefault());
+        switcher.Toggle(RecordedMod);
+        yield return Wait(1f);
+        Check("a_revert_adds_a_later_line", File.ReadAllLines(file).Any(l => l.Contains("\"of\"") && l.Contains("\"reverted\":true")), File.ReadAllText(file));
+        ChatTelemetry.Folder = null;
     }
 
     // A script standing in for claude: it notes its arguments and stdin, waits a little, then prints these lines.
@@ -82,9 +117,12 @@ public class ChatProbe : ProbeScenario
             yield return Wait(FilmTyping);
             chat.SetOpen(false);
         }
+        bool toolsWere = GameChat.ShowTools;
+        GameChat.ShowTools = true;
         chat.Send(Message);
         Check("busy_while_it_answers", chat.Busy);
         yield return Until(chat, () => !chat.Busy);
+        GameChat.ShowTools = toolsWere;
         if (film != null)
         {
             yield return Wait(FilmReading);
@@ -93,7 +131,7 @@ public class ChatProbe : ProbeScenario
         var said = chat.Lines.ToList();
         Check("your_words_show", said.Contains("You: " + Message), string.Join(" | ", said));
         Check("claude_words_show", said.Contains("Claude: All fire is blue now."), string.Join(" | ", said));
-        Check("the_tool_shows", said.Any(l => l.Contains("set_look")), string.Join(" | ", said));
+        Check("the_tool_shows_behind_the_developer_switch", said.Any(l => l.Contains("set_look")), string.Join(" | ", said));
         Check("one_answer_not_two", said.Count(l => l.Contains("All fire is blue now.")) == 1, string.Join(" | ", said));
         string asked = File.Exists(logged) ? File.ReadAllText(logged) : "";
         Check("the_message_came_on_stdin", asked.Contains(Message), asked);
@@ -110,6 +148,7 @@ public class ChatProbe : ProbeScenario
         yield return Until(chat, () => !chat.Busy);
         Check("then_it_goes", chat.Lines.Contains("You: second") && chat.Queued == null, string.Join(" | ", chat.Lines));
         Check("the_chat_is_free_again", !chat.Busy);
+        yield return Recorded(chat);
     }
 
     IEnumerator SignIn(GameChat chat)
