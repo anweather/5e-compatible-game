@@ -210,7 +210,7 @@ Through `--also`, on top of step 3, then the wording in the final column. It say
 - Effort: step 5 didn't fit the budget.
 - Velopack over a saved mod, a Mac, a read-only install.
 - Sonnet, any other account, two peers, a cold cache past an hour.
-- Anything after the squirrel merge, on a real model: the gates ran on the merged tree, the prompts before it.
+- **Anything after the squirrel merge, on a real model.** Every prompt ran before it, and the merge changed what these tools do underneath: a draft now holds only the fields it names, so `set_look` on an element writes each spell's colour alone where it used to copy the whole spell. The code was adapted and the tests and stand-ins pass on the merged tree, but the numbers above are from the whole-spell drafts. Answers should get shorter, not longer. `add_thing`'s text moved from `Instructions` into its description in the merge, also unmeasured.
 - Whether a colour shows in the frames: read from the rules, as before.
 
 ## What else changed
