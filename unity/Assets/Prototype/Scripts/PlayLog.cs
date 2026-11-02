@@ -10,20 +10,22 @@ using UnityEngine.Experimental.Rendering;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
-// The frame-rate log (docs/FAST_LOOP.md, "The play log"): in every player build, so
+// The frame-rate log (docs/FAST_LOOP.md, "The play log"): in every player build, on by default, so
 // a player can play as usual and read the frame rate afterwards. Each frame only adds to running
 // totals. Once a second one line goes to a CSV beside the player log, by PlayLogFile on a thread of
 // its own: frame rate, the worst frame and the 95th percentile, frames over 33 and 50 ms, CPU and GPU
 // times, the world's speed and what it owes, what the world was doing. A frame over 100 ms adds its own line (in a development build, with its top markers).
-// F8 ("that felt bad") adds a marked line and a small screenshot, as the playtest bot's finds do. Quitting adds a summary line.
-// The Editor doesn't log, except for the probe.
+// F8 ("that felt bad") adds a marked line and a small screenshot, as the playtest bot's finds do. Quitting adds a summary line. The
+// Esc menu's Settings turns it off; the choice is kept. The Editor doesn't log, except for the probe.
 // -no-play-log starts a player without it, to measure what it costs.
 public class PlayLog : MonoBehaviour
 {
+    public const string OnKey = "playLog.on";
     const string Header = "kind,seconds,clock,fps,worst_ms,p95_ms,over_33,over_50,cpu_main_ms,cpu_render_ms,gpu_ms,sim_pct,tick_debt_s,weather,chunks,players,mods,what";
     const float HitchMs = 100f, SlowMs = 33f, VerySlowMs = 50f;
     const float LoadingSeconds = 5f; // the summary leaves these out: the first frame alone can take seconds
     const int EventsASecond = 3, ShotMip = 2;
+    const int SectionOrder = 505; // the Settings sub menu: after Shake and rumble
     static readonly CultureInfo Plain = CultureInfo.InvariantCulture;
     static readonly FrameTiming[] Timing = new FrameTiming[1];
 
@@ -46,6 +48,20 @@ public class PlayLog : MonoBehaviour
     /// <summary>The file being written; null while it's off.</summary>
     public string FilePath => file?.Path;
 
+    /// <summary>The player's choice, kept between sessions.</summary>
+    public static bool Wanted
+    {
+        get => PlayerPrefs.GetInt(OnKey, 1) == 1;
+        set
+        {
+            PlayerPrefs.SetInt(OnKey, value ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
+
+    /// <summary>Whether a game opens with the log writing.</summary>
+    public static bool StartsWriting(bool inEditor, bool wanted, string[] args) => !inEditor && wanted && !args.Contains("-no-play-log");
+
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void StartWithTheGame()
     {
@@ -61,10 +77,13 @@ public class PlayLog : MonoBehaviour
         QuickExit.BeforeExit += End; // a Windows player has no OnApplicationQuit
     }
 
+    void OnEnable() => PauseMenu.AddSection(DrawEntry, SectionOrder, PauseMenu.Submenu.Settings);
+
+    void OnDisable() => PauseMenu.RemoveSection(DrawEntry);
+
     void Start()
     {
-        if (Application.isEditor || Environment.GetCommandLineArgs().Contains("-no-play-log")) return;
-        Begin(Folder());
+        if (StartsWriting(Application.isEditor, Wanted, Environment.GetCommandLineArgs())) Begin(Folder());
     }
 
     // Beside the player log, so one folder holds everything about a session.
@@ -72,6 +91,14 @@ public class PlayLog : MonoBehaviour
     {
         string log = Application.consoleLogPath;
         return string.IsNullOrEmpty(log) ? Application.persistentDataPath : Path.GetDirectoryName(log);
+    }
+
+    void DrawEntry()
+    {
+        if (!PauseMenu.Button($"Play log: {(Wanted ? "On" : "Off")}", PauseMenu.ButtonStyle)) return;
+        Wanted = !Wanted;
+        if (Wanted) Begin(Folder());
+        else End();
     }
 
     /// <summary>Starts a new file in this folder, keeping the last few (also for the probe).</summary>
