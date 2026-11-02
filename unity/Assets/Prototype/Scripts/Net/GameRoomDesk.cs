@@ -21,8 +21,10 @@ public class GameRoomDesk : ILiveDesk, IWorldDesk
     string OnMainThread(Func<Action<string>, string> act)
     {
         var answer = new TaskCompletionSource<string>();
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         server.Post(() =>
         {
+            McpLog.WaitedMs = clock.ElapsedMilliseconds;
             string now = act(text => answer.TrySetResult(text));
             if (now != null) answer.TrySetResult(now);
         });

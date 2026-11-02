@@ -14,13 +14,17 @@ public class GameChat : MonoBehaviour
     const int MostLines = 7, MostWaiting = 3, Width = 640, FontSize = 17;
     const int SourceFontSize = 13;
     const float LevelHeight = 3f, SourceHeight = 20f, LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f, ShadeAlpha = 0.6f, ShadeEdge = 8f;
-    const string Box = "game-chat-box";
+    const string Box = "game-chat-box", ToolsKey = "chat.show-tools";
+    /// <summary>Where a message came from, for the record.</summary>
+    public const string FromKeys = "typed", FromVoice = "voice";
+    const float BarHeight = 5f;
+    static readonly Color BarColour = new(1f, 0.75f, 0.35f);
     const string ListeningMark = "<color=#ff8a80>●</color> ";
     const string SignInLine = "You aren't signed in to Claude. A terminal is opening so you can: follow it, then ask again.";
 
     readonly ClaudeChat claude = new();
     readonly List<(string text, float at)> lines = new();
-    readonly Queue<string> waiting = new();
+    readonly Queue<(string message, string source)> waiting = new();
     string typed = "";
     bool focusBox, turnedAway;
     PlayerControls pausedControls;
@@ -68,7 +72,21 @@ public class GameChat : MonoBehaviour
 
     /// <summary>The one line about messages waiting for Claude, or null with none.</summary>
     public string Queued => waiting.Count == 0 ? null
-        : $"{(turnedAway ? "That's too many, so the last wasn't sent. " : "")}Waiting ({waiting.Count}): {waiting.Peek()}";
+        : $"{(turnedAway ? "That's too many, so the last wasn't sent. " : "")}Waiting ({waiting.Count}): {waiting.Peek().message}";
+
+    /// <summary>Whether each tool Claude uses shows in the chat: debugging, in the Developer menu. Otherwise a bar shows how far it's got.</summary>
+    public static bool ShowTools
+    {
+        get => PlayerPrefs.GetInt(ToolsKey, 0) == 1;
+        set
+        {
+            PlayerPrefs.SetInt(ToolsKey, value ? 1 : 0);
+            PlayerPrefs.Save();
+        }
+    }
+
+    /// <summary>What the progress bar says now, 0 to 1, for the probe; null with no prompt going.</summary>
+    public (float done, string what)? Progress { get; private set; }
 
     void Awake()
     {
@@ -78,6 +96,15 @@ public class GameChat : MonoBehaviour
         int asked = System.Array.IndexOf(args, "-claude-stand-in");
         if (asked >= 0 && asked + 1 < args.Length) ClaudeChat.StandIn = args[asked + 1];
         QuickExit.BeforeExit += claude.Cancel; // some players have no OnApplicationQuit
+    }
+
+    void OnEnable() => PauseMenu.AddSection(DrawDeveloper, PauseMenu.LastOrder, PauseMenu.Submenu.Developer);
+
+    void OnDisable() => PauseMenu.RemoveSection(DrawDeveloper);
+
+    void DrawDeveloper()
+    {
+        if (PauseMenu.Button($"Claude's tools in the chat: {(ShowTools ? "On" : "Off")}", PauseMenu.ButtonStyle)) ShowTools = !ShowTools;
     }
 
     void OnDestroy()
@@ -92,10 +119,12 @@ public class GameChat : MonoBehaviour
     {
         if (!Open) PauseMenu.KeysTaken = false; // a frame late, so the key that closed the box can't open the menu
         while (claude.Take(out var heard)) Show(heard.said, heard.text);
+        Progress = ChatBar.Of(ChatTelemetry.Instance != null ? ChatTelemetry.Instance.Current : null);
         if (!claude.Busy && waiting.Count > 0)
         {
             turnedAway = false;
-            SendNow(waiting.Dequeue());
+            var next = waiting.Dequeue();
+            SendNow(next.message, next.source);
         }
         if (Open && Blocked()) SetOpen(false);
         if (Open)
@@ -126,13 +155,14 @@ public class GameChat : MonoBehaviour
 
     void Show(ClaudeSaid said, string text)
     {
+        if (said is ClaudeSaid.Done or ClaudeSaid.Failed && ChatTelemetry.Instance != null) ChatTelemetry.Instance.ProcessEnded();
         switch (said)
         {
             case ClaudeSaid.Words:
                 Say("Claude: " + text);
                 break;
             case ClaudeSaid.Tool:
-                Say($"<color=#ffffff88>{text}...</color>");
+                if (ShowTools) Say($"<color=#ffffff88>{text}...</color>");
                 break;
             case ClaudeSaid.Failed when ClaudeRun.NeedsSignIn(text):
                 Say(SignInLine);
@@ -154,15 +184,15 @@ public class GameChat : MonoBehaviour
     }
 
     /// <summary>Sends a message to Claude, as Enter does in the box; it waits its turn if Claude is answering.</summary>
-    public void Send(string message)
+    public void Send(string message, string source = FromKeys)
     {
         if (string.IsNullOrWhiteSpace(message)) return;
         if (Busy && waiting.Count >= MostWaiting) turnedAway = true;
-        else if (Busy) waiting.Enqueue(message);
-        else SendNow(message);
+        else if (Busy) waiting.Enqueue((message, source));
+        else SendNow(message, source);
     }
 
-    void SendNow(string message)
+    void SendNow(string message, string source)
     {
         Say("You: " + message);
         var server = RulesMcpServer.Instance;
@@ -172,7 +202,8 @@ public class GameChat : MonoBehaviour
             Say("No free port for Claude to reach the game.");
             return;
         }
-        claude.Send(message, ClaudeTerminal.Folder, RulesMcpServer.Url);
+        var telemetry = ChatTelemetry.Instance;
+        claude.Send(message, ClaudeTerminal.Folder, RulesMcpServer.Url, telemetry.Begin(message, source), () => telemetry.Now);
     }
 
     /// <summary>Fills the box, as typing does; voice comes this way too.</summary>
@@ -215,7 +246,7 @@ public class GameChat : MonoBehaviour
 
     void OnGUI()
     {
-        if (lines.Count == 0 && !Open && waiting.Count == 0) return;
+        if (lines.Count == 0 && !Open && waiting.Count == 0 && Progress == null) return;
         HudScale.Apply();
         lineStyle ??= new GUIStyle(GUI.skin.label) { fontSize = FontSize, richText = true, wordWrap = true };
         boxStyle ??= new GUIStyle(GUI.skin.textField) { fontSize = FontSize, alignment = TextAnchor.MiddleLeft };
@@ -252,6 +283,7 @@ public class GameChat : MonoBehaviour
     void DrawLines(float x, float y)
     {
         var colour = GUI.color;
+        if (Progress is { } bar) y = DrawBar(bar.done, bar.what, x, y, colour);
         if (waiting.Count > 0) y = DrawLine($"<color=#ffffff88>{Queued}</color>", x, y, 1f, colour);
         for (int i = lines.Count - 1; i >= 0; i--)
         {
@@ -260,6 +292,18 @@ public class GameChat : MonoBehaviour
             if (fade > 0f) y = DrawLine(lines[i].text, x, y, fade, colour);
         }
         GUI.color = colour;
+    }
+
+    // How far Claude has got: what it's on, and a bar under it.
+    float DrawBar(float done, string what, float x, float y, Color colour)
+    {
+        y -= BarHeight;
+        GUI.color = new Color(0f, 0f, 0f, ShadeAlpha);
+        GUI.DrawTexture(new Rect(x, y, Width, BarHeight), Texture2D.whiteTexture);
+        GUI.color = BarColour;
+        GUI.DrawTexture(new Rect(x, y, Width * done, BarHeight), Texture2D.whiteTexture);
+        GUI.color = colour;
+        return DrawLine($"<color=#ffffffcc>{what}</color>", x, y, 1f, colour);
     }
 
     float DrawLine(string text, float x, float y, float fade, Color colour)

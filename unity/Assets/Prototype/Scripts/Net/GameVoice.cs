@@ -159,7 +159,7 @@ public class GameVoice : MonoBehaviour
         chat.SetOpen(false);
         if (speech.State == SpeechState.Unavailable) chat.Say(speech.Why);
         else if (message.Length == 0) chat.Say(NothingLine());
-        chat.Send(message);
+        chat.Send(message, GameChat.FromVoice);
     }
 
     string NothingLine()

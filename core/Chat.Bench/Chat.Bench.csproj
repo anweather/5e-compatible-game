@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- chatbench (docs/design/chat-telemetry.md): the chat's fixed prompts through a real claude and
+       the rules MCP server. It spends real tokens, so it's run by hand. -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <AssemblyName>chatbench</AssemblyName>
+    <RootNamespace>Chem.Bench</RootNamespace>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Include="*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Game.Core/Game.Core.csproj" />
+    <!-- For Rules.Mcp.dll beside chatbench.dll: each run starts it. -->
+    <ProjectReference Include="../Rules.Mcp/Rules.Mcp.csproj" />
+  </ItemGroup>
+</Project>

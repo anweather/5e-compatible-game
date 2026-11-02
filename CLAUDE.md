@@ -93,6 +93,7 @@ dotnet test core
 dotnet test core --filter "FullyQualifiedName~EveryExampleModPassesTheChecks"   # one test
 dotnet format core --verify-no-changes        # drop --verify-no-changes to fix
 npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src   # duplicate-code gate (2%)
+node --test tools/chat-report.test.mjs        # the chat report, on real records
 
 # Sandbox (CI's "sandbox" workflow)
 cd sandbox && npm ci && npm run typecheck && npm test && npm run build

@@ -27,6 +27,30 @@ A run the game didn't start (Claude Code in the terminal) has only the game-side
 **In the world** means every peer's rules switched and the view finished drawing, on this peer. It's the number
 the player feels. The headline is prompt to world.
 
+Built so far (core): `ChatRecorder` and `ChatLog` in `Chemistry/Mcp/ChatRecord.cs`. One more outcome than the table: **answered**, a question with
+nothing to change, so it doesn't land in the refused list. An outcome is refused when it changed nothing and either a game tool refused or
+Claude read `outside_rules`. `applied` is added to the times: when the room's answer came back. `why` holds a refusal's or failure's reason.
+
+What the stream really says, from claude 2.1.312 (fixtures in `core/Game.Core.Tests/RulesMcp/chat-fixtures/`):
+
+- **Tokens and cost:** `result` has `usage`, `total_cost_usd`, `num_turns`, `duration_ms`, `duration_api_ms` and `modelUsage` (per model,
+  `costUSD`). Assistant lines mustn't be added up: one reply comes on several lines with the same `message.id` and `usage`, taken before its
+  output is counted. They're used only for a run cut off before its `result`, marked `cutOff`, and its output is a floor.
+- **Failure:** an API failure says `subtype: "success"` with `is_error: true`; `terminal_reason` says why.
+- **Refusals:** a tool refused is a `tool_result` with `is_error`. A room's refusal isn't: it's plain text with " refused:" in it.
+- **The patch is never in the stream:** `apply`'s input is `d1`. `Workbench.Applied` gives it, and the record joins them by that key.
+- **Time:** the record's clock is when a line arrived. Lines carry no time that's safe across peers, so nothing else is read.
+
+## The view's half
+
+`ChatTelemetry` (`Scripts/Net/`) keeps the clock and the current `ChatRecorder`. `ClaudeChat` feeds it each line and how the process ended; `GameChat.Send`
+says typed or voice. A room decision of this peer's starts the stamp: **in the world** is the second frame after it with no land recolouring queued, so a
+row house has drawn. The record goes to `ChatLog.Append` off the main thread once the process has ended and the world has it, or 5 s after. `Workbench.Applied`
+gives each patch. `afterwards` lines come on a revert, at the session's end for what stayed on, and when a later prompt's patch touches the same entries, the
+plain rule for `fixedBy`. `McpRpc.Called` and `McpLog` write `mcp-log-<date>.jsonl`, for terminal sessions too. `PlayLog.Note` adds a `note` line for send,
+apply and in the world, which doesn't count as a mark. `ChatBar` turns `ChatRecorder.Progress` into the bar; the Developer menu's "Claude's tools in the chat"
+brings the tool lines back; the Claude menu lists the last prompts. `ClaudeTerminal.Guide` comes from `ClaudeRun.Guide`, so the bench reads what the game writes.
+
 ## The game's side
 
 `RulesMcpServer` logs each tool call: name, ms waiting for the main thread, ms running, result size, ok or
@@ -40,7 +64,9 @@ The play log's `what` column marks send, apply and in the world, so a hitch can 
   what players asked for that Claude refused. That last list feeds the backlog.
 - **`chatbench`:** a fixed set of prompts on a fresh world through the real chat path: a colour, a rule, a spell,
   a house, one that must be refused. Run it before and after anything meant to speed the chat up, three times each,
-  because a single run varies. Results in `docs/telemetry/`. It spends real tokens, so run it by hand.
+  because a single run varies. Results in `docs/telemetry/`. It spends real tokens, so run it by hand:
+  `dotnet run --project core/Chat.Bench -c Release -- --model sonnet --runs 3 --out <folder>`. It uses the chat's arguments, stdin and folder
+  against `Rules.Mcp` over stdio on a copy of `rules/` and `world/`, so it has no view and its nearest mark to "in the world" is `applied`.
 
 ## In the game
 

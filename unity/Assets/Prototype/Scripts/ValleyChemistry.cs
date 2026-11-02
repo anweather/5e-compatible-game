@@ -74,6 +74,9 @@ public partial class ValleyChemistry : MonoBehaviour
     Color grassTint = Color.white;
     readonly System.Collections.Generic.Dictionary<TerrainData, (Color healthyColor, Color dryColor)[]> grassColors = new();
 
+    /// <summary>Whether a rule switch's new colours are still going onto the land.</summary>
+    public bool Recolouring => grassToTint.Count > 0;
+
     /// <summary>The rules switched: the lake's colour, tinted from its art.</summary>
     public void RecolourWater(Color tint)
     {

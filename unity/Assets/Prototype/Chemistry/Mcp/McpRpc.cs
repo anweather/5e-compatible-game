@@ -99,15 +99,29 @@ namespace Chem.Mcp
             return new JObject { ["type"] = "string" };
         }
 
+        /// <summary>After each tool call: its name, ms running, the answer's size in chars, and whether it went through.</summary>
+        public Action<string, long, int, bool> Called { get; set; }
+
         string Call(JToken id, JObject given)
         {
-            string tool = (string)given["name"];
+            var clock = System.Diagnostics.Stopwatch.StartNew();
+            string answer = Run(id, given, out string tool, out bool ok);
+            if (tool != null) Called?.Invoke(tool, clock.ElapsedMilliseconds, answer.Length, ok);
+            return answer;
+        }
+
+        string Run(JToken id, JObject given, out string tool, out bool ok)
+        {
+            ok = false;
+            tool = (string)given["name"];
             if (tool == null || !methods.TryGetValue(tool, out var method)) return Failure(id, BadParams, $"There's no tool {tool}.");
             var arguments = given["arguments"] as JObject ?? new JObject();
             try
             {
                 var values = method.GetParameters().Select(p => ValueOf(p, arguments)).ToArray();
-                return Result(id, ToolResult((string)method.Invoke(tools, values), false));
+                string said = (string)method.Invoke(tools, values);
+                ok = !said.Contains(" refused:");
+                return Result(id, ToolResult(said, false));
             }
             catch (TargetInvocationException e) when (e.InnerException is RulesToolException)
             {

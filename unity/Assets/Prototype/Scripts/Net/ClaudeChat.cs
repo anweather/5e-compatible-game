@@ -22,6 +22,7 @@ public sealed class ClaudeChat
     readonly ConcurrentQueue<(ClaudeSaid said, string text)> heard = new();
     Process running;
     string lastError = "";
+    volatile bool timedOut, stopped;
 
     /// <summary>A program to run instead of claude, for the probe's stand-in; empty, for no claude at all.</summary>
     public static string StandIn { get; set; }
@@ -42,12 +43,14 @@ public sealed class ClaudeChat
     }
 
     /// <summary>Starts one process for this message, in a folder ready for it. False, with the reason heard, if it can't.</summary>
-    public bool Send(string message, string folder, string url)
+    public bool Send(string message, string folder, string url, ChatRecorder recorder, Func<long> clock)
     {
         if (Busy) return false;
+        timedOut = stopped = false;
         string claude = FindClaude();
         if (claude == null)
         {
+            recorder.Ended(clock(), ChatOutcome.Failed);
             heard.Enqueue((ClaudeSaid.Failed, ClaudeTerminal.NotInstalled));
             return false;
         }
@@ -61,12 +64,14 @@ public sealed class ClaudeChat
         catch (Exception e) when (e is System.ComponentModel.Win32Exception or InvalidOperationException)
         {
             Debug.LogWarning("Claude chat: " + e.Message);
+            recorder.Ended(clock(), ChatOutcome.Failed);
             heard.Enqueue((ClaudeSaid.Failed, "Claude wouldn't start. The player log says why."));
             return false;
         }
+        recorder.Started(clock());
         running = process;
         var input = Encoding.UTF8.GetBytes(message);
-        new Thread(() => Follow(process, input)) { IsBackground = true, Name = "Claude chat" }.Start();
+        new Thread(() => Follow(process, input, recorder, clock)) { IsBackground = true, Name = "Claude chat" }.Start();
         new Thread(() => lastError = process.StandardError.ReadToEnd()) { IsBackground = true, Name = "Claude chat errors" }.Start();
         return true;
     }
@@ -94,9 +99,13 @@ public sealed class ClaudeChat
     }
 
     // On its own thread: the message in, each line out, and a watchdog so one that never ends can't hold the chat.
-    void Follow(Process process, byte[] input)
+    void Follow(Process process, byte[] input, ChatRecorder recorder, Func<long> clock)
     {
-        using var watchdog = new Timer(_ => Stop(process), null, MostSeconds * 1000, Timeout.Infinite);
+        using var watchdog = new Timer(_ =>
+        {
+            timedOut = true;
+            Stop(process);
+        }, null, MostSeconds * 1000, Timeout.Infinite);
         bool ended = false;
         try
         {
@@ -104,17 +113,24 @@ public sealed class ClaudeChat
             process.StandardInput.Close();
             string line;
             while ((line = process.StandardOutput.ReadLine()) != null)
+            {
+                recorder.Line(line, clock());
                 foreach (var said in ClaudeRun.Read(line))
                 {
                     heard.Enqueue(said);
                     ended |= said.Item1 is ClaudeSaid.Done or ClaudeSaid.Failed;
                 }
+            }
             process.WaitForExit(StopWaitMs);
         }
         catch (Exception e) when (e is IOException or InvalidOperationException or ObjectDisposedException)
         {
             lastError = e.Message;
         }
+        ChatOutcome? how = null;
+        if (stopped) how = ChatOutcome.Stopped;
+        if (timedOut) how = ChatOutcome.TimedOut;
+        recorder.Ended(clock(), how);
         if (!ended) heard.Enqueue((ClaudeSaid.Failed, string.IsNullOrWhiteSpace(lastError) ? "Claude stopped before it answered." : lastError.Trim()));
     }
 
@@ -133,6 +149,8 @@ public sealed class ClaudeChat
     /// <summary>Stops a message in progress: the player asked, or the game is closing.</summary>
     public void Cancel()
     {
-        if (running != null) Stop(running);
+        if (running == null) return;
+        stopped = true;
+        Stop(running);
     }
 }

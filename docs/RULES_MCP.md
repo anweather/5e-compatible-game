@@ -50,7 +50,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `here(within?)`: where the player asking stands (name and cell), the place they're in, the
   places near them with distance and direction, and what they look at. The game says who is
   asking through an `IHere` (`Workbench.Here`); a headless run has a stand-in, the host at the
-  middle of the valley's grid, or at `--here x,y` given to `core/Rules.Mcp`.
+  middle of the valley's grid, or at `--here x,y` given to `core/Rules.Mcp`. `--applied <file>` appends each patch going to the room (chatbench's record).
 
 - `find(kind?, near?, within?, side?, edge?)`: what stands in the world, nearest first: buildings (with the id
   a mod edits one by: `cabin#2`, `Hollowmere#4`) and things. `near` is a place, a building, `"me"` or `[x, y]`.
