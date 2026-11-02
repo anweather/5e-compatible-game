@@ -235,6 +235,24 @@ namespace Chem.Tests
             }
         }
 
+        // A prompt that fixes an earlier one writes that line and its own record at once: the first real follow-up lost its record that way.
+        [Test]
+        public void LinesWrittenAtOnceAllLand()
+        {
+            string folder = Path.Combine(Path.GetTempPath(), "chat-log-" + Guid.NewGuid().ToString("N"));
+            const int many = 200;
+            try
+            {
+                var day = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+                System.Threading.Tasks.Parallel.For(0, many, _ => ChatLog.Append(folder, day, Record("blue")));
+                Assert.That(File.ReadAllLines(Path.Combine(folder, "chat-log-2026-01-01.jsonl")), Has.Length.EqualTo(many));
+            }
+            finally
+            {
+                if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            }
+        }
+
         // chat-report's test reads this log: the bench's five records, then one record of each stream fixture and a
         // later line. Set CHAT_FIXTURES_WRITE to write the fixture part again after changing the record.
         [Test]

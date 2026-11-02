@@ -19,3 +19,6 @@ playtest/runs/
 tools/sound-audition/
 tools/voice-samples/out/
 __pycache__/
+
+# The PM working copy of the board
+/.pm/

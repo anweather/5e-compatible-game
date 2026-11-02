@@ -99,6 +99,14 @@ public class RulesMcpServer : MonoBehaviour
         new Thread(() => Serve(serving, tools)) { IsBackground = true, Name = "Rules MCP" }.Start();
     }
 
+    /// <summary>For the real-prompt probe: new tools with no drafts left from the last prompt, on the same port if it's free.</summary>
+    public void FreshTools()
+    {
+        Close();
+        rpc = null;
+        Open();
+    }
+
     void Close()
     {
         Url = null;

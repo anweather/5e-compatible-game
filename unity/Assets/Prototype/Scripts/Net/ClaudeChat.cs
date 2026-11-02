@@ -27,6 +27,9 @@ public sealed class ClaudeChat
     /// <summary>A program to run instead of claude, for the probe's stand-in; empty, for no claude at all.</summary>
     public static string StandIn { get; set; }
 
+    /// <summary>Told each raw line and its clock, on the reading thread: the real-prompt probe keeps the stream, to check the record against. Null in play.</summary>
+    public static Action<string, long> Tap { get; set; }
+
     /// <summary>Whether a message is still being answered.</summary>
     public bool Busy => running != null;
 
@@ -114,7 +117,9 @@ public sealed class ClaudeChat
             string line;
             while ((line = process.StandardOutput.ReadLine()) != null)
             {
-                recorder.Line(line, clock());
+                long at = clock();
+                Tap?.Invoke(line, at);
+                recorder.Line(line, at);
                 foreach (var said in ClaudeRun.Read(line))
                 {
                     heard.Enqueue(said);

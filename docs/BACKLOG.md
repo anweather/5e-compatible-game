@@ -678,6 +678,28 @@ session doesn't bring it. Dragon stage in a tick: 0.17 ms mean, 2.3 ms at worst,
   the chunk before. Only built walls shelter reliably today. Both want a decision before changing the core.
 - The dive snuffs every fire: it was to be put to Andrew, and no answer is recorded, so it stands.
 
+## 27. Pick your LLM harness in the game (Andrew, 2026-11-02; later)
+
+"Not everyone will have Claude." A setting to pick the harness, with precanned
+support for Codex, Kiro and others, and advanced options to tune all of it.
+
+- **Shape:** a picker of precanned profiles per harness (command, arguments,
+  sign-in check, stream parser), plus an advanced section. Signing in stays with
+  each player.
+- **Hard requirement:** a harness gets precanned support only if it can be limited
+  to the game's tools with nobody there to answer a prompt, as `dontAsk` and the
+  allow-list do for Claude. Codex's and Kiro's abilities here aren't checked yet.
+- **Builds on:** `McpLog`, the MCP tools and most of the prompt set and strict check
+  (`docs/telemetry/`) should carry over. `ClaudeRun` and `ChatRecorder`'s stream
+  reading are Claude-specific: one adapter per harness. Some may not report tokens
+  or cost.
+- **For now:** game knowledge goes in the MCP server's `Instructions` and tool
+  answers, which every harness gets; a shipped agent config stays a thin
+  per-harness layer.
+- **Open:** J-060 covers only Claude Code, so each other harness needs its own terms
+  check before shipping.
+- **Size:** M per harness after the first, L for the first.
+
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,

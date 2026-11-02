@@ -56,36 +56,40 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **DesktopUnity:** `chat-record` (faed11a, #59: wire the telemetry, progress bar, token list), then `mods-add-things` (dbf45a9: Unity side, squirrel test in a player). Brief: `docs/handoffs/briefs/playtest-fixes-2026-11-01.md`. Both branches are on origin, unmerged, and have never compiled in Unity. It expects to pass its 400k line during `chat-record` and will write a handoff there.
-- **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
-- **u1, u2, Mac:** stopped. Pro is out until Nov 5 (weekly). The Mac needs a `/clear` before more work; its handoff is `docs/handoffs/mac-2026-11-02.md`.
+- **Mac:** `mods-add-things-view` (ee76fc4), done but held: `online` fails with mods-add-things merged, 7 of 7, passes on dev. Finding the cause; one run looked like a real desync (Charge -> Fizzle). Land with `--compiled` only once `online` is green. A yard rebuild is needed on every machine then.
+- **DesktopUnity:** `chat-models`: #59 item 5. Base landed (60097e4, `docs/telemetry/chat-base-2026-11-02.md`): 14.3 s median to the world on Opus. Now a stricter pass check, Sonnet and Haiku (48 prompts at most), a bare install. Changes to what players get come to the PM first. The test player and squirrel test follow.
+- **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
+- **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
+- **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Full EditMode on Windows: 1,067 of 1,067, twice. The port is untested in a player and online.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest/` from 1c97274 is now old. Don't let anyone clean that folder.
 
 ## Next, in order
 
-1. DesktopUnity's list above, then a new test player from dev for Andrew: judge #57 in a real window, voice, the creatures.
-2. Temporary materials and products as data (`docs/design/primitives.md`), on u2 once `mods-add-things` has landed: both touch the mod code, so don't stack a third unlanded Chemistry branch.
-3. Gaits by rule (`docs/design/builders.md`).
-4. Design things on water (#60); size patches for Claude (#61).
-5. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), confirm the terms on running Claude Code (J-060), version bump.
+1. The lists above, then a new test player from dev for Andrew: #57 in a real window, voice words, the first real prompt, the creatures.
+2. Code base cleanup (Andrew, 2026-11-02), once the Mac's and DesktopUnity's work has landed and before new features: review the structure for deep modules that really hide complexity. A read-only review first, a ranked list for Andrew, then branches. The 33 S3776 warnings are one input.
+3. Temporary materials and products as data (`docs/design/primitives.md`), on u2 once `mods-add-things` has landed: both touch the mod code, so don't stack a third unlanded Chemistry branch.
+4. Gaits by rule (`docs/design/builders.md`).
+5. Design things on water (#60); size patches for Claude (#61).
+6. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), confirm the terms on running Claude Code (J-060), version bump.
 - Left out of the port, for later: flight and biomes for spawn rows, `glides`, a shore rule for reeds, mod budgets on rows, water animals as shapeshift targets. Dev's main thread may have risen about 1 ms on the Mac (unexplained; not fauna).
 - Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`, `chat-telemetry.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
 
 ## Andrew's board
 
 https://claude.ai/artifact/KhW6DyMwmA1ncXCxLxbBgY: what needs his verdict, what landed, who's on what.
-He reads it on his phone instead of scrolling the chat. Update it (Artifact `read`, then publish with
-`url`) whenever a verdict, a landing or an assignment changes.
+He reads it on his phone instead of scrolling the chat. Update it with `tools/workers/board.mjs`, then publish
+`.pm/board.html` with `url`, whenever a verdict, a landing or an assignment changes.
 
 ## Open questions for Andrew
 
 - The real test of the PlayTest player: real Claude answering in chat, words by voice, a house built by asking, and how the radial, spell list and Esc menu feel at 4K.
-- Cost: script landing and the board before trying a cheaper main PM? Up to 69% of one session's context re-reads were mechanical (asked 2026-11-02).
 - Cast sounds and the new whoosh: never listened to.
 
 ## Telemetry
+
+- PM cost: up to 69% of one session's context re-reads were mechanical (2026-11-02). Landing and the board are scripted (`land.sh auto`, `board.mjs`); measure the next batch before trying a cheaper main PM.
 
 - Every worker commit carries cost lines; `docs/telemetry/` holds the reports (latest 2026-11-02:
   coordination 55% of spend, cache reads 66% of feature cost).

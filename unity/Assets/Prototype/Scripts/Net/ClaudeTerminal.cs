@@ -33,7 +33,13 @@ public class ClaudeTerminal : MonoBehaviour
     const string Guide = ClaudeRun.Guide;
 
     /// <summary>The folder a terminal opens in.</summary>
-    public static string Folder => Path.Combine(Application.persistentDataPath, FolderName);
+    public static string Folder => TestFolder ?? Path.Combine(Application.persistentDataPath, FolderName);
+
+    /// <summary>
+    /// The real-prompt probe's folder in place of the player's own, as an Editor shares its data folder with their
+    /// game and their notes.md is there. While it's set, a sign-in failure opens no terminal: nobody is at the keys.
+    /// </summary>
+    public static string TestFolder { get; set; }
 
     // -open-terminal opens one by itself once the game is up, to test a player with nobody at its keys.
     IEnumerator Start()
@@ -95,7 +101,7 @@ public class ClaudeTerminal : MonoBehaviour
     public static void OpenSignIn()
     {
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-        if (ClaudeChat.StandIn == null) Launch(Folder, SignInFile);
+        if (ClaudeChat.StandIn == null && TestFolder == null) Launch(Folder, SignInFile);
 #endif
     }
 

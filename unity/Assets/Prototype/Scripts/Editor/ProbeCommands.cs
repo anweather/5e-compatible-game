@@ -15,6 +15,7 @@ using UnityEngine;
 //   unity command probe list
 //   unity command probe run --name smoke [--shots <folder>] [--seconds 10]
 //   unity command probe run --name online [--keep-players true]
+//   unity command probe run --name chatprompts [--real-claude true --out <folder>] [--prompts N] [--shots <folder>]
 //   unity command probe result --wait true --timeout 300
 //
 // Entering Play mode reloads the scripting domain (this project keeps domain
@@ -53,6 +54,9 @@ public static class ProbeCommands
         public string Name { get; set; }
         public string Shots { get; set; }
         public float Seconds { get; set; }
+        public bool RealClaude { get; set; }
+        public int Prompts { get; set; }
+        public string Out { get; set; }
         public DateTime RequestedUtc { get; set; }
         /// <summary>The virtual player this run started, to stop after it (null: none, or keep it).</summary>
         public string StopAfter { get; set; }
@@ -78,7 +82,10 @@ public static class ProbeCommands
         [CliArg("name", "Scenario name, from `probe list`", Required = true)] string name,
         [CliArg("shots", "Folder to save screenshots in (absolute, e.g. a scratchpad); empty for none")] string shots = "",
         [CliArg("seconds", "perf only: how long to hold the camera, in seconds")] float seconds = 10f,
-        [CliArg("keep-players", "online only: leave a virtual player this run started running afterwards (faster reruns)")] bool keepPlayers = false)
+        [CliArg("keep-players", "online only: leave a virtual player this run started running afterwards (faster reruns)")] bool keepPlayers = false,
+        [CliArg("real-claude", "chatprompts only: spend real prompts on the signed-in Claude; off, a stand-in answers")] bool realClaude = false,
+        [CliArg("prompts", "chatprompts only: how many of the set to send; 0 for all of it")] int prompts = 0,
+        [CliArg("out", "chatprompts only: the folder for this run's records and raw streams (absolute, e.g. a scratchpad)")] string outFolder = "")
     {
         var entry = ProbeScenarios.Find(name);
         if (entry == null)
@@ -92,8 +99,11 @@ public static class ProbeCommands
         {
             Id = Guid.NewGuid().ToString("N").Substring(0, 8),
             Name = entry.Name,
-            Shots = string.IsNullOrWhiteSpace(shots) ? null : Path.GetFullPath(shots),
+            Shots = FullPath(shots),
             Seconds = Mathf.Clamp(seconds, 1f, 300f),
+            RealClaude = realClaude,
+            Prompts = prompts,
+            Out = FullPath(outFolder),
             RequestedUtc = DateTime.UtcNow,
         };
         bool waitForPlayer = false;
@@ -117,6 +127,8 @@ public static class ProbeCommands
             next = "unity command probe result --wait true --timeout 300",
         };
     }
+
+    static string FullPath(string folder) => string.IsNullOrWhiteSpace(folder) ? null : Path.GetFullPath(folder);
 
     // Enters Play mode without focusing the Game view (the user's Play Focused is put back once the
     // run is over), and hands the keyboard back to the window they were in each time the Editor
@@ -249,6 +261,9 @@ public static class ProbeCommands
         scenario.Result.Scenario = entry.Name;
         scenario.ScreenshotDir = active.Shots;
         scenario.Seconds = active.Seconds;
+        scenario.RealClaude = active.RealClaude;
+        scenario.Prompts = active.Prompts;
+        scenario.OutDir = active.Out;
         go.SetActive(true);
         if (active.Shots != null) DemoRecorder.HideGizmos();
         startedAt = EditorApplication.timeSinceStartup;
