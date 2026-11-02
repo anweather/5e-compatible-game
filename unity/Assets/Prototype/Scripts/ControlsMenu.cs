@@ -36,7 +36,7 @@ public class ControlsMenu : MonoBehaviour
         ("Throw (hold: harder)", "G / right click", "{East}"),
         ("Reset the yard (solo)", "R", "{Select}"),
         ("Menu", "Esc", "{Start}"),
-        ("Mods", "M", "Menu → Mods"),
+        ("Mods", "M", "Menu → Game → Mods"),
         ("Type to Claude", "Enter", "—"),
         ("Talk to Claude (let go to send)", "Hold H", "Hold both sticks in"),
     };
