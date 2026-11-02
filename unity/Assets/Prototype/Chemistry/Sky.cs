@@ -3,6 +3,7 @@
 // replays from tick 0) has the same sky at the same tick. Port of
 // sandbox/src/sky.ts. What the weather does to cells is World.Weather.cs.
 using System;
+using System.Globalization;
 
 namespace Chem
 {
@@ -57,6 +58,21 @@ namespace Chem
         /// <summary>Minutes() for a tick with a fraction, for a view that moves the sun between ticks.</summary>
         public static double MinutesSmooth(SimParams p, double tick) =>
             Math.Floor(p.Day.StartHour * 60) + tick * MinutesPerDay / Ticks(p, p.Day.LengthMinutes);
+
+        /// <summary>A minute of the day as a clock reads it: "09:05".</summary>
+        public static string ClockWords(int minuteOfDay) =>
+            (minuteOfDay / 60).ToString("00", CultureInfo.InvariantCulture) + ":" + (minuteOfDay % 60).ToString("00", CultureInfo.InvariantCulture);
+
+        /// <summary>A weather as players and tools name it: "rain".</summary>
+        public static string WeatherName(WeatherKind kind) => kind.ToString().ToLowerInvariant();
+
+        /// <summary>The weather with this name, any case; null if none.</summary>
+        public static WeatherKind? ParseWeather(string name)
+        {
+            for (int k = 0; k < Kinds; k++)
+                if (string.Equals(WeatherName((WeatherKind)k), (name ?? "").Trim(), StringComparison.OrdinalIgnoreCase)) return (WeatherKind)k;
+            return null;
+        }
 
         public static int Day(long minutes) => (int)(minutes / MinutesPerDay) + 1;
         public static int MinuteOfDay(long minutes) => (int)(minutes % MinutesPerDay);

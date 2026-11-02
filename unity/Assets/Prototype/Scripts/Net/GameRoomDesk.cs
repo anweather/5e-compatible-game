@@ -1,14 +1,15 @@
 using System;
-using System.Threading;
+using System.Threading.Tasks;
 using Chem;
 using Chem.Mcp;
 using UnityEngine;
 
 // What the rules MCP's room tools do in a running game: they cross to the main thread,
 // go in as this player's room commands (RuleSwitcher, as the mods panel does), and wait
-// for the room's verdict, so Claude hears what the players see. Called off the main
-// thread (RulesMcpServer). Whoever the tool says is asking, it's this player.
-public class GameRoomDesk : IRoomDesk
+// for the room's verdict, so Claude hears what the players see. Now reads the running
+// world the same way, so the tools answer with the rules, clock and weather in force.
+// Called off the main thread (RulesMcpServer). Whoever the tool says is asking, it's this player.
+public class GameRoomDesk : ILiveDesk
 {
     const int VerdictMs = 8000;
 
@@ -19,22 +20,28 @@ public class GameRoomDesk : IRoomDesk
     // Runs on the main thread and waits for its answer; a game that has stopped says so.
     string OnMainThread(Func<Action<string>, string> act)
     {
-        string answer = null;
-        using var done = new ManualResetEventSlim();
+        var answer = new TaskCompletionSource<string>();
         server.Post(() =>
         {
-            void Finish(string text)
-            {
-                answer = text;
-                done.Set();
-            }
-            string now = act(Finish);
-            if (now != null) Finish(now);
+            string now = act(text => answer.TrySetResult(text));
+            if (now != null) answer.TrySetResult(now);
         });
-        return done.Wait(VerdictMs) ? answer : "The game didn't answer in time; ask for the room to see whether it went in.";
+        return answer.Task.Wait(VerdictMs) ? answer.Task.Result : "The game didn't answer in time; ask for the room to see whether it went in.";
     }
 
     static RuleSwitcher Switcher => UnityEngine.Object.FindAnyObjectByType<RuleSwitcher>();
+
+    public WorldNow Now()
+    {
+        WorldNow now = null;
+        OnMainThread(_ =>
+        {
+            var switcher = Switcher;
+            if (switcher != null) now = WorldNow.Of(switcher.GetComponent<ChemGrid>().World);
+            return "";
+        });
+        return now;
+    }
 
     public string Room(string mode)
     {
@@ -53,9 +60,7 @@ public class GameRoomDesk : IRoomDesk
         var switcher = Switcher;
         if (switcher == null) return NoGame;
         var grid = switcher.GetComponent<ChemGrid>();
-        var mine = command.Change == RoomChange.Revert
-            ? RoomCommand.Revert(switcher.Me, command.Mod)
-            : RoomCommand.Apply(switcher.Me, command.Mod, command.Json, command.Title);
+        var mine = command.As(switcher.Me);
         void Heard(RoomCommand decided, RoomVerdict verdict)
         {
             if (decided.Peer != mine.Peer || decided.Mod != mine.Mod || decided.Change != mine.Change) return;

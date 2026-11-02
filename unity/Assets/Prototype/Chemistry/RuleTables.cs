@@ -672,7 +672,7 @@ namespace Chem
         }
 
         // The rule document from the files (get: a file's JSON, or null for an optional one that's missing).
-        static JObject Doc(Func<string, bool, JToken> get)
+        internal static JObject Doc(Func<string, bool, JToken> get)
         {
             var materials = (JObject)get("materials.json", true);
             var reactions = (JObject)get("reactions.json", true);

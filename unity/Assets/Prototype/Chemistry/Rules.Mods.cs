@@ -55,7 +55,7 @@ namespace Chem
 
         // ---------- merging: composeRules, one patch at a time, in the TS order ----------
 
-        static void ApplyPatch(JObject r, JObject p)
+        internal static void ApplyPatch(JObject r, JObject p)
         {
             var elements = (JArray)r["elements"];
             foreach (var e in ModPatch.ElementNames(p["elements"]).Where(e => !elements.Any(x => (string)x == e))) elements.Add(e);
