@@ -155,6 +155,25 @@ test("the d-pad cycles both ways and casts through the meter", () => {
   assert.deepEqual(w.casts.ann!.known, []);
 });
 
+// The base d-pad has no spell-less slot since Light got its spell, so a test-only d-pad gives it one
+// (ComboTests.ADpadSlotWithNoSpellIsRefused).
+test("a d-pad slot with no spell is refused", () => {
+  const before = composeRules([]);
+  installRules(composeRules([{ combos: { dpad: [{ name: "Hasten Time", spell: "hasten-time", castTicks: 12 }, { name: "Mystery", castTicks: 6 }] } } as ModPatch]));
+  try {
+    assert.deepEqual(validateRules(RULES), []);
+    const w = createWorld(8, 8);
+    cycle(w, "ann", 1);
+    assert.equal(selectedDpad(w, "ann")!.name, "Mystery");
+    assert.equal(castSelected(w, "ann"), false, "Mystery has no spell");
+    assert.equal(w.casts.ann!.meter, 0);
+    cycle(w, "ann", -1);
+    assert.ok(castSelected(w, "ann"), "Hasten Time casts");
+  } finally {
+    installRules(before);
+  }
+});
+
 test("cast state survives a snapshot and joins the world hash", () => {
   const w = createWorld(8, 8);
   const plain = hashWorld(w);

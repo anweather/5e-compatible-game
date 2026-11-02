@@ -52,6 +52,19 @@ namespace Chem
         public (int dir, int ticks)? Wind { get; set; }
 
         /// <summary>
+        /// A whirlwind still whirling (spells.json pullEvery: Whirlwind): its middle, its radius in cells, the
+        /// ticks it lasts and has run, how often it pulls and the heaviest creature it drags.
+        /// </summary>
+        public sealed class Whirl
+        {
+            public int X, Y, Radius, Ticks, Age, Every, MaxMass;
+        }
+
+        readonly List<Whirl> whirls = new List<Whirl>();
+        /// <summary>The whirlwinds still whirling, in the order they were cast.</summary>
+        public IReadOnlyList<Whirl> Whirls => whirls;
+
+        /// <summary>
         /// Switches the rules on a running world (a live mod on or off; see Rules.WithMods),
         /// keeping its cells. Call it between ticks, at the same tick on every peer. Like the
         /// sandbox's applyMods and sanitizeWorld: anything the new rules no longer define is

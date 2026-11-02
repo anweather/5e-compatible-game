@@ -144,6 +144,8 @@ export interface World {
   newMeteors: [number, number, number][];
   nextId: number;
   wind: { dir: Dir; ticks: number } | null;
+  /** The whirlwinds still whirling, in the order cast (World.Whirls): middle, radius, ticks it lasts and has run, how often it pulls, the heaviest creature it drags. */
+  whirls: Whirl[];
   /** Hasten Time: how many times as fast the day clock runs, and the ticks it has left (C#: World.Haste). */
   haste: { rate: number; ticks: number } | null;
   /** Ticks of day the clock has run ahead of tick (Hasten Time); the clock reads tick + clockAhead. */
@@ -191,6 +193,7 @@ export function createWorld(w: number, h: number, seed = 1): World {
     combosFired: [],
     nextId: 1,
     wind: null,
+    whirls: [],
     haste: null,
     clockAhead: 0,
     weatherSet: null,
@@ -231,6 +234,17 @@ export const coverHasTag = (c: Cell, tag: string) => c.cover !== null && (RULES.
 export const isSlippery = (c: Cell) => coverHasTag(c, "slippery") || (c.frozen && c.water > 0);
 export const isConductive = (c: Cell) => (c.water > 0 && !c.frozen) || conducts(terrainDef(c));
 /** The wind fire and gas follow: Gust of Wind's while it blows, else the weather's; -1 for none. */
+/** A whirlwind still whirling (spells.json pullEvery: Whirlwind; World.Whirl). */
+export interface Whirl {
+  x: number;
+  y: number;
+  radius: number;
+  ticks: number;
+  age: number;
+  every: number;
+  maxMass: number;
+}
+
 export const windDir = (w: World): number => (w.wind ? w.wind.dir : w.weather.windDir);
 
 export function flammability(c: Cell): number {
@@ -298,8 +312,8 @@ export function* neighbours(w: World, x: number, y: number): Generator<[number, 
 
 /** Stable fingerprint of the simulated state, for determinism tests. */
 export function hashWorld(w: World): string {
-  // The defense and the casts join only once there are any, so older worlds hash as they did.
-  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : [])]);
+  // The defense, the casts and the whirlwinds join only once there are any, so older worlds hash as they did.
+  const s = JSON.stringify([w.cells, w.entities, w.critters, w.rng, w.gatesOpen, w.mods, w.ctl, w.tick, w.clockAhead, w.haste, w.weatherSet, ...(w.defense ? [w.defense] : []), ...(Object.keys(w.casts).length ? [w.casts] : []), ...(w.whirls.length ? [w.whirls] : [])]);
   return fnv1a(s);
 }
 
@@ -366,7 +380,7 @@ export function deserializeWorld(s: WorldSnapshot): World {
   // Snapshots from before the weather have no seed: worlds were all made with 1.
   const seed = copy.seed ?? 1;
   // Snapshots from before the time spells have no clock lead, haste or held weather.
-  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
+  return { ...copy, seed, haste: copy.haste ?? null, clockAhead: copy.clockAhead ?? 0, weatherSet: copy.weatherSet ?? null, defense: copy.defense ?? null, weather: copy.weather ?? weatherAt(RULES.sim, seed, copy.tick), strikes: copy.strikes ?? [], falling: copy.falling ?? [], newMeteors: copy.newMeteors ?? [], casts: copy.casts ?? {}, combosFired: copy.combosFired ?? [], whirls: copy.whirls ?? [], marks: { flow: new Uint8Array(n), steam: new Uint8Array(n), wind: new Uint8Array(n) }, logged: new Set() };
 }
 
 /**

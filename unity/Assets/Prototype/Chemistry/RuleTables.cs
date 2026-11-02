@@ -182,6 +182,12 @@ namespace Chem
         public bool Taper;
         /// <summary>A burst whose element arrives at each cell heading in toward its middle (Whirlwind): air shoves gas and fans fire inward.</summary>
         public bool Inward;
+        /// <summary>
+        /// An inward burst that keeps whirling for Duration ticks (Whirlwind): every PullEvery ticks it draws gas
+        /// and creatures of MaxMass or less a cell in toward its middle and runs fire round its rings
+        /// (World.TickWhirlwinds); 0 lands once and is gone.
+        /// </summary>
+        public int PullEvery;
         /// <summary>The light the Light effect sheds, in feet (spells.json light { bright, dim }), for the view to draw; 0 none.</summary>
         public int LightBright, LightDim;
         /// <summary>The ground the spell blows out where it lands (Fireball), or null.</summary>
@@ -703,6 +709,7 @@ namespace Chem
             Terrain = Str(o["terrain"]),
             Taper = Truthy(o["taper"]),
             Inward = Truthy(o["inward"]),
+            PullEvery = Int(o["pullEvery"]) ?? 0,
             LightBright = Int((o["light"] as JObject)?["bright"]) ?? 0,
             LightDim = Int((o["light"] as JObject)?["dim"]) ?? 0,
             Crater = ParseCrater(o["crater"]),

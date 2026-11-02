@@ -275,7 +275,7 @@ function conduct(w: World, x: number, y: number, charge: number): boolean {
  * Moves a cell's gas one cell along dir (pushGas: a gust carries smoke, fog and steam). A different gas there is
  * shoved on ahead first, so gases neither merge nor vanish; against a wall it stays. True if it moved (World.ShoveGas).
  */
-function shoveGas(w: World, x: number, y: number, dir: Dir): boolean {
+export function shoveGas(w: World, x: number, y: number, dir: Dir): boolean {
   const c = cellAt(w, x, y)!;
   const nx = x + DX[dir], ny = y + DY[dir];
   const n = cellAt(w, nx, ny);
