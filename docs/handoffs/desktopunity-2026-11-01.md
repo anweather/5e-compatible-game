@@ -9,11 +9,11 @@
 - Before every push: `git fetch`, then `git diff origin/dev...HEAD --stat` must list only your files. Never squash with `git reset --soft origin/dev`: 50fd301 reverted landed work that way. Use `git merge-base`.
 - After a switch or merge, refresh and wait for the compile before any probe; never merge during a probe.
 - Green doesn't mean it shows: look at the frames. A check once passed with steam invisible, and a walk "through" fire was on its edge.
-- Report what wasn't tested. Never kill Unity: `unity close`, or the window. Never print process command lines (Hub token). Never sign in or use Andrew's Claude session; `claude --help` is fine.
+- Report what wasn't tested. Never kill Unity: `unity close`, or the window. Never print process command lines (Hub token). Never sign in or change the login. Andrew allows automated headless runs on his own signed-in Claude (2026-11-02), for chat speed and token work: keep each run bounded and say how many prompts it spends.
 - If Andrew's session is active (`query user`), open no windows on his screen and tell the PM before anything heavy. If he asks for the PC, stop at once. `query user` idle time is unreliable.
 - A memory reaper can kill background runs: don't restart without the PM's go. `TaskStop` can leave children running: check `ps` and kill by pid. Close only what you've proven is yours, by process id, never by title or name: Windows Terminal shares one process across windows, so close your own with a typed `exit`, and test players share their exe name with Andrew's copies.
 - Andrew's game may hold MCP port 47777. A test client talks only to ports found with `Get-NetTCPConnection -OwningProcess <your pid>`.
-- A test player that sends chat must use `-claude-stand-in <script>`, or it runs his real Claude. F9 only opens a terminal: never type `claude` there.
+- A gate that doesn't measure Claude uses `-claude-stand-in <script>`; a run that measures Claude uses the real one on purpose. F9 only opens a terminal: never type `claude` there.
 - Saving in a test player writes to the game's real settings. A told-once flag there hides a notice from Andrew: remove what your run set (`HKCU\Software\anweather\Spell Chemistry Valley`, by its own value name).
 - u1 (VM) and a perf run can't share the PC: the PM sleeps it.
 
@@ -26,6 +26,8 @@
 **Clips:** `ClipFilm` frames plus `sound.wav`, then ffmpeg, into `unity/Builds/demo-videos/` in the main checkout; MP4 720p, under 5 MB, with a poster. The hidden Editor's Game view is portrait (about 482 × 797) and Cinemachine overrides the camera: `RowHousesProbe.Look` shows the way round, the brain off and the camera rendered to a 1280 × 720 texture.
 
 **State, 2026-11-02:** landed on dev: #57 lighting (09e4e10), #58 freeze (d5de6de). `chat-telemetry` is pushed at 2d612a8, not merged: chat-record plus the view's whole list. The `host-ux` worktree is on it, and no Editor is left running. Don't touch `unity/Builds/PlayTest/` unless the PM says: it's 1c97274, what Andrew plays. A hidden Editor skips `YardAutoBuild`: run Build Chemistry Yard by hand after a builder or creature change. Run virtual-player probes in the foreground, one at a time: the reaper kills a background parent while its script lives on. A chat log and mcp log go beside the Editor's `-logFile`, here the scratchpad.
+
+**Andrew, 2026-11-02:** tuning Claude's use has to be automated, with nobody at the PC, and text and voice can be separate features. So: a scripted set of real prompts through the game, read with `tools/chat-report.mjs`.
 
 **Next, from the PM:** `mods-add-things` (dbf45a9 on origin, never compiled in Unity): merge it into a PC branch, compile, do the view's four items in `docs/RULES_MCP.md` "Things", land both together, then the squirrel test in a real player.
 
