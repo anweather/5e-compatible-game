@@ -1,4 +1,4 @@
-# State (2026-11-02)
+# State (2026-11-02, later)
 
 The one page a new PM session reads first. Keep it short: history goes in
 `docs/coordination-log/<yyyy-mm>.md`, the rules for agents in `COORDINATION.md`.
@@ -56,18 +56,20 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **u1** (Pro): `mods-add-things`, field-level patches and the squirrel test (`docs/handoffs/briefs/mods-add-things.md`). Resumed at 06:01 UTC on Nov 2.
-- **DesktopUnity, u2 and the Mac:** stopped. Mac's handoff: `docs/handoffs/mac-2026-11-01.md`; PC's: `docs/handoffs/desktopunity-2026-11-01.md`.
-- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest/` from 1c97274. Don't let anyone clean that folder. It lacks only stucco.
+- **DesktopUnity:** #58 voice, then `chat-record` (faed11a, #59: wire the telemetry, progress bar, token list), then `mods-add-things` (dbf45a9: Unity side, squirrel test in a player). Brief: `docs/handoffs/briefs/playtest-fixes-2026-11-01.md`. Both branches are on origin, unmerged, and have never compiled in Unity. Run full EditMode once on merging dev (see below).
+- **u1, u2, Mac:** stopped. Pro is out until Nov 5 (weekly). The Mac needs a `/clear` before more work; its handoff is `docs/handoffs/mac-2026-11-02.md`.
+- **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. The port is untested in a player, on Windows and online; the Mac's last full EditMode had 1 failure, fixed but not rerun in full.
+- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest/` from 1c97274 is now old. Don't let anyone clean that folder.
 
 ## Next, in order
 
-1. Unity side of u1's squirrel work (DesktopUnity), then the squirrel test in a real player.
-2. `creature-data` on the Mac after Andrew clears it (`docs/handoffs/briefs/creature-data.md`), then Punchy's people, variety and water as rows.
-3. Temporary materials and products as data (`docs/design/primitives.md`).
-4. Gaits by rule (`docs/design/builders.md`).
+1. DesktopUnity's list above, then a new test player from dev for Andrew: judge #57 in a real window, voice, the creatures.
+2. Temporary materials and products as data (`docs/design/primitives.md`), on u2 once `mods-add-things` has landed: both touch the mod code, so don't stack a third unlanded Chemistry branch.
+3. Gaits by rule (`docs/design/builders.md`).
+4. Design things on water (#60); size patches for Claude (#61).
 5. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), confirm the terms on running Claude Code (J-060), version bump.
-- Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
+- Left out of the port, for later: flight and biomes for spawn rows, `glides`, a shore rule for reeds, mod budgets on rows, water animals as shapeshift targets. Dev's main thread may have risen about 1 ms on the Mac (unexplained; not fauna).
+- Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`, `chat-telemetry.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
 
 ## Andrew's board
 
