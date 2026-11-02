@@ -330,6 +330,11 @@ public static class ProbeScenarios
         new Entry("faunarows", typeof(FaunaRowsProbe), 40f,
             "A creature row changed in a running game (rules/fauna.json, CreatureBodies): a deer and a fox put by the wizard, a mod turns the deer red and doubles its walk, then goes off. " +
             "Checks: only the deer's body is built again, the new numbers are in force, the deer keeps its place and seed, the fingerprint doesn't move, switching off brings it back, no console errors."),
+        new Entry("crowd", typeof(CrowdProbe), 60f,
+            "What a full valley costs a frame: 120 animals and folk of a fixed mix round the wizard, 6 s to settle, 20 s measured. Metrics: the main thread's p50 and p95, and ValleyFauna's Update, Think and Draw markers, for the before and after of a change to the creatures."),
+        new Entry("people", typeof(PeopleProbe), 90f,
+            "The valley's peoples (rules/fauna.json, from Punchy's f3141f6), films into --shots <folder>: Hollowmere's folk come out, workers take up their posts, and a line of humans, a child, a dwarf, an elf, a goblin and an ogre walks past the camera. " +
+            "Checks: at least two workers at their posts, every people is in the rows and shows at its own size, no console errors."),
         new Entry("closeup", typeof(CloseupProbe), 60f,
             "Models close up at a clear noon (issue #47): a deer across the follow camera, then a deer, a valley cabin and a village log house, each from the same " +
             "cameras (`--shots`). Checks: a deer at the lens is drawn for its shadow alone, and again once past it, no limb ends in the picture, the cabin's gable closed, " +

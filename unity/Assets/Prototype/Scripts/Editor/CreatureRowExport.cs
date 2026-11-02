@@ -18,14 +18,18 @@ public static class CreatureRowExport
 {
     const string Folder = "Assets/Prototype/ThirdParty/Punchy/Fauna";
 
-    // The table ChemYardBuilder held: species and how many per hectare, out in the wilds (fewer
-    // round the start: ValleyFauna.homeDensity). Frogs and herons only by water. In this order.
-    static readonly (string name, float density, bool nearWater)[] Spawners =
+    // The table ChemYardBuilder held, and who joined it since: species and how many per hectare, out in
+    // the wilds (fewer round the start: ValleyFauna.homeDensity). Frogs and herons only by water. Those
+    // with among come out with that village folk instead, as that share of them. In this order.
+    static readonly (string name, float density, bool nearWater, string among, float share)[] Spawners =
     {
-        ("Deer", 0.7f, false), ("Rabbit", 1.8f, false), ("Squirrel", 1.5f, false), ("RedFox", 0.3f, false),
-        ("Turkey", 0.6f, false), ("Quail", 0.8f, false), ("Marmot", 0.4f, false), ("Skunk", 0.2f, false),
-        ("GarterSnake", 0.3f, false), ("BlackBear", 0.08f, false), ("Wolf", 0.1f, false),
-        ("Frog", 4f, true), ("Heron", 0.4f, true),
+        ("Deer", 0.7f, false, null, 0f), ("Rabbit", 1.8f, false, null, 0f), ("Squirrel", 1.5f, false, null, 0f), ("RedFox", 0.3f, false, null, 0f),
+        ("Turkey", 0.6f, false, null, 0f), ("Quail", 0.8f, false, null, 0f), ("Marmot", 0.4f, false, null, 0f), ("Skunk", 0.2f, false, null, 0f),
+        ("GarterSnake", 0.3f, false, null, 0f), ("BlackBear", 0.08f, false, null, 0f), ("Wolf", 0.1f, false, null, 0f),
+        ("Frog", 4f, true, null, 0f), ("Heron", 0.4f, true, null, 0f),
+        ("Ptarmigan", 0.3f, false, null, 0f), ("Roadrunner", 0.2f, false, null, 0f),
+        ("Goblin", 0.06f, false, null, 0f), ("Ogre", 0.03f, false, null, 0f),
+        ("HumanChild", 0f, false, "human", 0.3f), ("Dwarf", 0f, false, "human", 0.12f),
     };
 
     [MenuItem("Prototype/Export Creature Rows")]
@@ -78,6 +82,7 @@ public static class CreatureRowExport
             if (s.VariantOf == null) lines.Add("\"body\": " + Inline(new JObject { ["length"] = F(s.BodyLength), ["radius"] = F(s.BodyRadius), ["taper"] = F(s.BodyTaper), ["flatten"] = F(s.BodyFlatten) }));
             if (s.Coats.Count == 0) lines.Add("\"coat\": " + Inline(Coat(null, s.Base, s.Accent, s.AccentGlow, 1f)));
             else lines.Add("\"coats\": " + Inline(new JArray(s.Coats.Select(c => Coat(c.Name, c.Base, c.Accent, c.AccentGlow, c.Weight)))));
+            if (s.HairColors.Count > 0) lines.Add("\"hair\": " + Inline(new JArray(s.HairColors.Select(Rgb))));
             if (s.VariantOf == null)
             {
                 lines.Add(Slots(s));
@@ -87,8 +92,14 @@ public static class CreatureRowExport
             int spawner = System.Array.FindIndex(Spawners, x => x.name == s.name);
             if (spawner >= 0)
             {
-                var spawn = new JObject { ["density"] = F(Spawners[spawner].density) };
+                var spawn = new JObject();
+                if (Spawners[spawner].density > 0f) spawn["density"] = F(Spawners[spawner].density);
                 if (Spawners[spawner].nearWater) spawn["nearWater"] = true;
+                if (Spawners[spawner].among != null)
+                {
+                    spawn["among"] = Spawners[spawner].among;
+                    spawn["share"] = F(Spawners[spawner].share);
+                }
                 lines.Add("\"spawn\": " + Inline(spawn));
             }
             rows.Add($"  \"{id}\": {{\n    {string.Join(",\n    ", lines)}\n  }}");
@@ -128,6 +139,7 @@ public static class CreatureRowExport
             if (slot.MirrorPhase != 0.5f) row["mirrorPhase"] = F(slot.MirrorPhase);
             if (slot.Scale != 1f) row["scale"] = F(slot.Scale);
             if (slot.Thickness != 1f) row["thickness"] = F(slot.Thickness);
+            if (slot.StyleGroup != 0) row["style"] = slot.StyleGroup;
             lines.Add($"      \"{names[i]}\": {Inline(row)}");
         }
         return "\"parts\": {\n" + string.Join(",\n", lines) + "\n    }";
@@ -213,6 +225,7 @@ public static class CreatureRowExport
         if (s.Accent != 0f) row["accent"] = F(s.Accent);
         if (s.UseFixedColor) row["colour"] = Rgb(s.FixedColor);
         if (s.Glow != 0f) row["glow"] = F(s.Glow);
+        if (s.Hair) row["hair"] = true;
         return row;
     }
 

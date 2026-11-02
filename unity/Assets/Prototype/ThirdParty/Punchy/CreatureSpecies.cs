@@ -1,5 +1,5 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
-// used with permission. Unchanged but for this header.
+// used with permission. Unchanged but for this header and upstream f3141f6's HairColors and StyleGroup.
 using System;
 using System.Collections.Generic;
 using UnityEngine;
@@ -36,6 +36,9 @@ namespace Punchy.Fauna
         public List<CreatureCoat> Coats = new List<CreatureCoat>();
         [Tooltip("Random size of individuals.")]
         public Vector2 Size = new Vector2(0.9f, 1.1f);
+        [Tooltip("Colours an individual's hair and beard (segments marked Hair) are picked from. Empty = the " +
+                 "species this is a variant of, or the segments' own colour.")]
+        public List<Color> HairColors = new List<Color>();
 
         [Header("Parts")]
         public List<LimbSlot> Parts = new List<LimbSlot>();
@@ -140,6 +143,9 @@ namespace Punchy.Fauna
         [Min(0.01f)] public float Scale = 1f;
         [Tooltip("Multiplies the part's radii on top of Scale: the same leg slender on a deer, stocky on a bison.")]
         [Min(0.05f)] public float Thickness = 1f;
+        [Tooltip("Style option group (hairstyles, beards): each individual shows just one of the slots in a group, " +
+                 "picked at random (list a slot twice to make it more common). 0 = always shown.")]
+        [Min(0)] public int StyleGroup;
     }
 
     /// <summary>A species living in a biome, and how many.</summary>

@@ -204,6 +204,8 @@ public class CreatureRowTests
             x.FixedColor.w = y.FixedColor.w;
             Assert.That(y, Is.EqualTo(x), $"{id} segment {i}");
         }
+        Assert.That(b.HairColors.Length, Is.EqualTo(a.HairColors.Length), id);
+        for (int i = 0; i < a.HairColors.Length; i++) Assert.That(b.HairColors[i].xyz, Is.EqualTo(a.HairColors[i].xyz), id);
         Assert.That(b.Coats.Length, Is.EqualTo(a.Coats.Length), id);
         for (int i = 0; i < a.Coats.Length; i++)
         {

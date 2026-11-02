@@ -431,18 +431,21 @@ places and seeds.
 
 - **`fauna.json`**, species by id, in the order they're offered to the land: `name`, `size` `[low, high]`,
   `body` (`length`, `radius`, `taper`, `flatten`), `coat` (`base`, `accent`, `glow`) or `coats` (each with
-  `name` and `weight`, one picked per animal), `parts`, `move` (`walk`, `run`, `turn`, `bob`, `bobs`,
+  `name` and `weight`, one picked per animal), `hair` (colours, one picked per animal, for segments marked
+  `hair`), `parts`, `move` (`walk`, `run`, `turn`, `bob`, `bobs`,
   `rock`, `upright`, `stride` for what has no legs), `behave` (`wander`, `idle`, `flee`, `group`, `active`:
   day, night or always; `graze`, `thirst`, `play`, `laze`, `hunts`, `hunger`, `chase`) and `spawn`
-  (`density` per hectare, `nearWater`). No `spawn`: the wilds never bring it out (a village's folk, a form).
+  (`density` per hectare, `nearWater`; or `among` and `share`: it comes out of a village of those folk, as
+  that share of them). No `spawn`: the wilds never bring it out (a village's folk, a form).
 - **Slots** are `parts` by a name of the species' own: `part` (a row of `parts.json`), `on` (an earlier
   slot it hangs from the end of; none is the body), `at`, `dir`, `mirror`, `phase`, `mirrorPhase`, `scale`,
-  `thickness`. Order matters: a slot comes after what it hangs from.
+  `thickness`, `style`. Order matters: a slot comes after what it hangs from. Slots of the same `style` are
+  options (hairstyles, beards): each animal shows one, so listing a part twice makes it commoner.
 - **A variant** is `{ "variantOf": "red-fox", "scale": 0.95, "coat": {...}, "behave": {...} }`: it takes
   body, parts, gait and how it moves about from that species, and gives only its colours, its size
   relative to it and its activities (`active` on). `hunts` naming a species also means its variants.
 - **`parts.json`**, shapes by id: `role` (leg, arm, tail, neck, head, ear, horn, eye, feature), `segments`
-  (`length`, `radii` `[start, end]`, `flatten`, `accent` 0 to 1, `colour` of its own, `glow`), `spring`,
+  (`length`, `radii` `[start, end]`, `flatten`, `accent` 0 to 1, `colour` of its own, `glow`, `hair`), `spring`,
   `ripple`, `follows` (`ground`), and seven key `poses`, joint angles per segment, until gaits go by rule.
 - **Colours** are `"#rrggbb"`, or `[r, g, b]` from 0 to 1 (sRGB) where hex would round the number.
 

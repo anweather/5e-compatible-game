@@ -1,8 +1,8 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
 // used with permission. From Punchy's CreatureData.cs: the Entities blob is a
 // plain class with arrays, so it runs without Entities; the maths is his. A
-// segment's Pad is ours: a crack web over 0, shadow only under 0. Built from
-// rows (rules/fauna.json, rules/parts.json; Chem.FaunaTables), not from assets.
+// segment's Pad is ours: a crack web over 0, shadow only under 0. Individuals,
+// hair and style options from upstream f3141f6. Built from rows (rules/fauna.json, rules/parts.json; Chem.FaunaTables), not from assets.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024
 using System;
@@ -44,6 +44,9 @@ namespace Punchy.Fauna
         public bool NearWater;
         /// <summary>Whether its row has a "spawn": only what spawns can hunt.</summary>
         public bool Spawns;
+        /// <summary>The folk it comes out among (a species' id, or null), and what share of them it is.</summary>
+        public string Among;
+        public float Share;
         public ActiveTime Active;
         public float Grazing, Thirst, Playfulness, Laziness, Hunger, ChaseTime;
         /// <summary>The species its row says it hunts, by id (any variant of one counts).</summary>
@@ -58,6 +61,23 @@ namespace Punchy.Fauna
         public float3[] Poses;   // Segments.Length × PoseCount, radians
         /// <summary>Colourings individuals choose between (at least one).</summary>
         public CreatureCoatData[] Coats;
+        /// <summary>Hair colours individuals choose between (may be empty).</summary>
+        public float4[] HairColors = Array.Empty<float4>();
+
+        /// <summary>
+        /// A fixed random number in -1..1 for one trait of one individual (posture, arm swing, hair…): the same for
+        /// as long as the animal lives.
+        /// </summary>
+        public static float Trait(uint individual, int trait) =>
+            math.hash(new uint2(individual, (uint)trait * 2654435761u + 17u)) / (float)uint.MaxValue * 2f - 1f;
+
+        /// <summary>Which option of a style group an individual shows.</summary>
+        public static int Style(uint individual, int group, int count) =>
+            (int)(math.hash(new uint2(individual, (uint)group * 40503u + 101u)) % (uint)math.max(count, 1));
+
+        /// <summary>An individual's hair colour (rgb), or the segment's own if the species has none.</summary>
+        public float4 HairColor(uint individual, float4 fallback) =>
+            HairColors.Length == 0 ? fallback : new float4(HairColors[Style(individual, 9973, HairColors.Length)].xyz, 0f);
 
         /// <summary>A segment's colour in one of the coats.</summary>
         public float4 SegmentColor(int segment, int coat)
@@ -180,6 +200,8 @@ namespace Punchy.Fauna
                 Density = (float)variant.Density,
                 NearWater = variant.NearWater,
                 Spawns = variant.Spawns,
+                Among = variant.Among,
+                Share = (float)variant.Share,
             };
             var sizeScale = variant != species ? (float)variant.VariantScale : 1f;
             root.Size = new float2((float)species.Size[0], (float)species.Size[1]) * sizeScale;
@@ -210,6 +232,11 @@ namespace Punchy.Fauna
                     AccentGlow = (float)coats[i].Glow,
                     Weight = math.max((float)coats[i].Weight, 0.0001f)
                 };
+
+            var hair = variant.Hair.Count > 0 ? variant.Hair : species.Hair;
+            root.HairColors = new float4[hair.Count];
+            for (int i = 0; i < hair.Count; i++)
+                root.HairColors[i] = (Vector4)Rgb(hair[i]).linear;
 
             root.Segments[0] = new CreatureSegment
             {
@@ -247,7 +274,10 @@ namespace Punchy.Fauna
                     Spring = (float)limb.Spring,
                     JointPhaseStep = (float)limb.Ripple,
                     FollowGround = limb.FollowsGround,
-                    Side = side
+                    Side = side,
+                    StyleGroup = slot.Style,
+                    StyleIndex = StyleIndex(species, slot),
+                    StyleCount = StyleCount(species, slot.Style)
                 };
 
                 float scale = (float)slot.Scale, thickness = (float)slot.Thickness;
@@ -263,7 +293,8 @@ namespace Punchy.Fauna
                         Accent = (float)seg.Accent,
                         Fixed = seg.Colour != null ? 1 : 0,
                         FixedColor = seg.Colour != null ? (Vector4)Rgb(seg.Colour).linear : default,
-                        Glow = (float)seg.Glow
+                        Glow = (float)seg.Glow,
+                        Hair = seg.Hair ? 1 : 0
                     };
                     for (int k = 0; k < PoseCount; k++)
                     {
@@ -278,6 +309,33 @@ namespace Punchy.Fauna
 
             MeasureGait(root, new Vector2((float)species.Stride[0], (float)species.Stride[1]));
             return root;
+        }
+
+        /// <summary>How many slots before this one share its style group (its option number).</summary>
+        static int StyleIndex(SpeciesDef species, SlotDef slot)
+        {
+            if (slot.Style <= 0)
+                return 0;
+            var n = 0;
+            foreach (var other in species.Slots)
+            {
+                if (other == slot)
+                    break;
+                if (other.Style == slot.Style)
+                    n++;
+            }
+            return n;
+        }
+
+        static int StyleCount(SpeciesDef species, int group)
+        {
+            if (group <= 0)
+                return 0;
+            var n = 0;
+            foreach (var other in species.Slots)
+                if (other.Style == group)
+                    n++;
+            return n;
         }
 
         /// <summary>Rest orientation from degrees; the mirror image flips yaw and roll.</summary>
@@ -345,6 +403,8 @@ namespace Punchy.Fauna
         public float JointPhaseStep;
         /// <summary>Segments bend to lie on the ground.</summary>
         public bool FollowGround;
+        /// <summary>Style option group (0 = always shown), this part's option in it, and how many options it has.</summary>
+        public int StyleGroup, StyleIndex, StyleCount;
     }
 
     public struct CreatureSegment
@@ -356,6 +416,8 @@ namespace Punchy.Fauna
         public int Fixed;
         public float4 FixedColor;   // linear
         public float Glow;
+        /// <summary>Non-zero: coloured by the individual's hair colour.</summary>
+        public int Hair;
     }
 
     public struct CreatureCoatData
@@ -384,6 +446,22 @@ namespace Punchy.Fauna
         Play,
         /// <summary>Chasing prey (Partner): stalking low, then sprinting.</summary>
         Hunt
+    }
+
+    /// <summary>What a worker does at its post (posed by CreatureAnimator).</summary>
+    public enum CreatureTask : byte
+    {
+        None,
+        /// <summary>Swings a hammer at an anvil (right arm), holding the work with the left.</summary>
+        Hammer,
+        /// <summary>Swings an axe down with both arms (chopping wood).</summary>
+        Chop,
+        /// <summary>Leans on a counter, now and then raising a hand (a vendor).</summary>
+        Gesture,
+        /// <summary>Both hands working in front, slowly (drawing water, stirring).</summary>
+        Tend,
+        /// <summary>Stands keeping watch, hands behind the back (a gatekeeper).</summary>
+        Watch
     }
 
     /// <summary>A creature's position, heading, gait and what it's up to.</summary>
@@ -418,6 +496,10 @@ namespace Punchy.Fauna
         /// <summary>Where it lives (a den); with Leash &gt; 0 it goes no further than that from it, even fleeing.</summary>
         public float2 Home;
         public float Leash;
+        /// <summary>Fixed for life: picks this individual's traits (posture, gait, hair). Set at spawn.</summary>
+        public uint Individual;
+        /// <summary>A worker's job while at its post (None when it's not); the view's folk set it.</summary>
+        public CreatureTask Task;
 
         // Posture, 0..1, eased towards what the current activity wants (read by CreatureAnimator).
         /// <summary>Lying down: body on the ground, legs folded.</summary>
