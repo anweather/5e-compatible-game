@@ -25,21 +25,25 @@
 
 **Clips:** `ClipFilm` frames plus `sound.wav`, then ffmpeg, into `unity/Builds/demo-videos/` in the main checkout; MP4 720p, under 5 MB, with a poster. The hidden Editor's Game view is portrait (about 482 × 797) and Cinemachine overrides the camera: `RowHousesProbe.Look` shows the way round, the brain off and the camera rendered to a 1280 × 720 texture.
 
-**State, 2026-11-01 evening:** all landed on dev at 34b7025: game-chat, game-voice, voice-queue, live-desk, voice-trace, houses-view. Nothing of this session's is unmerged. This worktree is detached at 34b7025: branch off dev before work. Test player with everything in it: `unity/Builds/PlayTest/` in this worktree.
+**State, 2026-11-01 late evening:** all landed on dev at 59e03b2, houses-burn and the radial fix included. Nothing of this session's is unmerged. This worktree is detached at 59e03b2: branch off dev before work. `unity/Builds/PlayTest/` in this worktree is 59e03b2, launched once hidden with a clean log. No Editor is left running.
 
 **Voice:** dictation starts and stops cleanly, reaching Running in under 0.6 s. Andrew's "no text" was the wrong microphone: Windows' default was a silent Arctis headset (-91 dB) while the Scarlett hears fine. The chat now shows "Listening on" and says where to change it, and `VOICE +ms` trace lines are in the log, with the player's words in them: decide that before a release. No partial or final has yet been seen from `WindowsDictation` by this session; the "Listening on" line and the last wording haven't been seen in a real player; nor has the level bar on a live mic. The pad chord has never been pressed. `-voice-no-meter` drops the meter if words go missing with it on. Whisper's notes and test set: `SpeechChoice.cs`, `tools/voice-samples/make.ps1`.
 
-**Houses:** `RowHouses` draws only what a mod adds or edits, through `RowMesher`; base villages and cabins stay as the scene draws them. Tested through the MCP on two hidden peers and by `rowhouses`; docs in `docs/RULES_MCP.md`.
-- Walls that burn or break stay drawn: the cells change, the mesh doesn't (the PM is filing this).
-- A brown patch of ground detail shows on the first site's garage roof, cause not found.
-- An edited village house keeps its old chimney smoke, and `ValleyChemistry` still holds the hidden scene object.
+**Houses:** `RowHouses` draws only what a mod adds or edits, through `RowMesher`; base villages and cabins stay as the scene draws them. `RowRuin` follows the cells: stretches fall to stumps, the roof goes with what held it. Probes: `rowhouses`, `rowburn` (`--shots` films; without it the frame numbers are clean), `roomruin` (two peers and a late joiner). Docs in `docs/RULES_MCP.md`, "A house in play".
+- Plain `stucco-wall` only breaks: the fixture adds `burn`. The PM holds that decision. A fireball on plain stucco is untried.
+- Flames barely show in the frames: unknown whether that's the off-screen render. Mod walls burn at ground height (`FireHeight` knows only log walls).
+- `#55`: a late joiner's replay differs for a checksum or two after any Fireball, no house needed.
+- Stumps have no collider (up to 0.7 m), and a wall's blocker fills its 1.5 m cell, so from inside it stops you short of what's drawn.
+- A pane cell doesn't burn, so its frame stands in a ruin. An edited solid village house leaves invisible fill once its walls go, and `ValleyChemistry` still holds the hidden scene object.
+- The roof vanishes with no fall, and part of it hangs until half the walls are down. Arches look stepped up close.
+- `find_site` passes lots with a steep bank by the wall (1.7 m at [262, 352]).
 - A wing on a cabin is a plain closed box square to the grid, beside a cabin at an angle.
 - Stacked catalogue mods that each restate a whole spell or row: the later wins whole (big-fireball then blue-fireballs leaves radius 2).
-- Simplified from builders.md: walls overlap at joins rather than mitre, eaves are always one 0.375 m grid step, a 45° wall steps on the roof, two roofs just intersect, `worn` is only darker.
-- Never checked: anything in a real window or from a wizard's height, walking in or against a new wall, a late joiner seeing a house, viga, canale, porch, beam, shutters and planter on film, `Build Chemistry Yard` rerun.
+- Simplified from builders.md: walls overlap at joins rather than mitre, a 45° wall steps on the roof, two roofs just intersect, `worn` is only darker.
+- Never checked: anything in a real window, the parapet, beam, shutters and planter on film, film from the second peer, a street of burning houses, `Build Chemistry Yard` rerun.
 - The game has no save of its own (`World.Save` is reached only from tests), so nobody sees the refused-saves change.
 
 **Next:**
 1. Andrew's first real chat message proves what no one has: the allow-list, `dontAsk`, `Read(./notes.md)`, Claude writing notes, and the wording of the not-signed-in failure (`ClaudeRun.NeedsSignIn` is a guess). Ask the PM how it went, and fix what it shows.
-2. Whatever the PM has next, likely walls that stay drawn. A window pass over the houses first, when Andrew's off the PC.
+2. Whatever the PM has next. A window pass over the houses first, when Andrew's off the PC: flames on walls above all.
 3. Open: #30 and #32 (the GPU climb in rain fell with the main-thread fixes, cause not found); `-perf-water-check` shows 9 to 11 river tiles alpha-only; grass switch 80 to 110 ms, probably the land's layers (not measured apart).
