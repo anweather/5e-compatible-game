@@ -13,16 +13,25 @@ public sealed class StandInSpeech : ISpeech
     /// <summary>Set by the probe: Stop waits for Finish.</summary>
     public bool Slow { get; set; }
 
+    /// <summary>Set by the probe: Start stays Starting until Ready.</summary>
+    public bool SlowStart { get; set; }
+
     public SpeechState State { get; private set; }
     public string Why { get; private set; }
+    public string Source => "the stand-in";
+    public string ChangeSource => "the stand-in's settings";
+    public float Level { get; set; }
     public string Notice { get; set; } = "The stand-in sends what you say nowhere.";
 
     public void Start()
     {
         Why = FailWith;
-        State = FailWith == null ? SpeechState.Listening : SpeechState.Unavailable;
+        State = FailWith != null ? SpeechState.Unavailable : SlowStart ? SpeechState.Starting : SpeechState.Listening;
         if (FailWith != null) heard.Enqueue((SpeechHeard.Done, ""));
     }
+
+    /// <summary>Done starting.</summary>
+    public void Ready() => State = SpeechState.Listening;
 
     public void Stop()
     {

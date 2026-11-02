@@ -51,6 +51,15 @@ public class VoiceSeamTests
         Assert.AreEqual(SpeechHeard.Done, line.heard);
     }
 
+#if UNITY_EDITOR_WIN
+    [TestCase("Microphone (Scarlett 2i2 USB)", "Scarlett 2i2 USB")]
+    [TestCase("Headset Microphone (2- Arctis Nova 3X Wireless)", "Arctis Nova 3X Wireless")]
+    [TestCase("Line In", "Line In")]
+    [TestCase(null, null)]
+    public void AMicrophoneGoesByItsDevice(string name, string expected) =>
+        Assert.AreEqual(expected, WindowsCaptureDevice.Short(name));
+#endif
+
     [Test]
     public void AHoldAlwaysEndsWithDone()
     {

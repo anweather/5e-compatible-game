@@ -1,7 +1,7 @@
 using System;
 
 /// <summary>What a recogniser is doing.</summary>
-public enum SpeechState { Idle, Listening, Unavailable }
+public enum SpeechState { Idle, Starting, Listening, Unavailable }
 
 /// <summary>What comes out of a recogniser: a guess at the words so far, a phrase it's sure of, or the end of a hold.</summary>
 public enum SpeechHeard { Partial, Final, Done }
@@ -19,6 +19,15 @@ public interface ISpeech : IDisposable
 
     /// <summary>Why it's unavailable, in a line the player can act on; null otherwise.</summary>
     string Why { get; }
+
+    /// <summary>What it's listening through, by name, for the player to check; null if it can't say.</summary>
+    string Source { get; }
+
+    /// <summary>Where the player changes what it listens through, for when nothing was heard; null if nowhere.</summary>
+    string ChangeSource { get; }
+
+    /// <summary>How loud the sound coming in is now, 0 to 1; 0 if it can't say.</summary>
+    float Level { get; }
 
     /// <summary>What the player is told once before first using it, such as where their voice goes; null for nothing.</summary>
     string Notice { get; }

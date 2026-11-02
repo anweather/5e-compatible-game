@@ -12,9 +12,10 @@ using UnityEngine.InputSystem;
 public class GameChat : MonoBehaviour
 {
     const int MostLines = 7, MostWaiting = 3, Width = 640, FontSize = 17;
-    const float LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f, ShadeAlpha = 0.6f, ShadeEdge = 8f;
+    const int SourceFontSize = 13;
+    const float LevelHeight = 3f, SourceHeight = 20f, LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f, ShadeAlpha = 0.6f, ShadeEdge = 8f;
     const string Box = "game-chat-box";
-    const string ListeningMark = "<color=#ff8a80>●</color> ", ListeningLine = "<color=#ffffff88>Listening...</color>";
+    const string ListeningMark = "<color=#ff8a80>●</color> ";
     const string SignInLine = "You aren't signed in to Claude. A terminal is opening so you can: follow it, then ask again.";
 
     readonly ClaudeChat claude = new();
@@ -26,7 +27,7 @@ public class GameChat : MonoBehaviour
     PlayerInput pausedInput;
     CursorLockMode cursorWas;
     bool cursorVisibleWas;
-    GUIStyle lineStyle, boxStyle, talkStyle;
+    GUIStyle lineStyle, boxStyle, talkStyle, sourceStyle;
     Texture2D shade;
 
     /// <summary>The chat, or null where the game doesn't serve Claude.</summary>
@@ -37,6 +38,15 @@ public class GameChat : MonoBehaviour
 
     /// <summary>Whether the box is being filled by voice: it shows the words and takes no keys.</summary>
     public bool Talking { get; set; }
+
+    /// <summary>What the box says until words come, while Talking.</summary>
+    public string TalkHint { get; set; } = "";
+
+    /// <summary>What's listening, by name, shown under the box while Talking; null shows nothing.</summary>
+    public string TalkSource { get; set; }
+
+    /// <summary>How loud the voice coming in is, 0 to 1, shown under the box while Talking.</summary>
+    public float Level { get; set; }
 
     /// <summary>Whether the box could open now.</summary>
     public bool CanOpen => !Open && !Blocked();
@@ -225,7 +235,10 @@ public class GameChat : MonoBehaviour
         if (Talking)
         {
             talkStyle ??= new GUIStyle(boxStyle) { richText = true };
-            GUI.Label(new Rect(x, y, Width, BoxHeight), ListeningMark + (typed.Length > 0 ? typed : ListeningLine), talkStyle);
+            GUI.Label(new Rect(x, y, Width, BoxHeight), ListeningMark + (typed.Length > 0 ? typed : $"<color=#ffffff88>{TalkHint}</color>"), talkStyle);
+            if (Level > 0f) GUI.DrawTexture(new Rect(x, y + BoxHeight, Width * Level, LevelHeight), Texture2D.whiteTexture);
+            sourceStyle ??= new GUIStyle(lineStyle) { fontSize = SourceFontSize };
+            if (TalkSource != null) GUI.Label(new Rect(x, y + BoxHeight + LevelHeight, Width, SourceHeight), "Listening on: " + TalkSource, sourceStyle);
             return;
         }
         GUI.SetNextControlName(Box);
