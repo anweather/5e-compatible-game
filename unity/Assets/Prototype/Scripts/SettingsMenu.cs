@@ -30,7 +30,7 @@ public class SettingsMenu : MonoBehaviour
     void OnEnable()
     {
         soundPage ??= new PauseMenu.Page { Title = "Sound", Width = 520, Draw = DrawSound };
-        PauseMenu.AddSection(DrawEntry, SectionOrder);
+        PauseMenu.AddSection(DrawEntry, SectionOrder, PauseMenu.Submenu.Settings);
         PauseMenu.AddPage(SoundPage, soundPage);
         feelPage ??= new PauseMenu.Page { Title = "Shake and rumble", Width = 520, Draw = DrawFeel };
         PauseMenu.AddPage(FeelPage, feelPage);

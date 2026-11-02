@@ -56,7 +56,7 @@ public static class ProbeScenarios
             "the wizard at its start, the clock from 0, and every 30-tick checksum after the reset equal on both (3 or more); and tag passing from the host to the virtual player on touch.",
             players: 2),
         new Entry("menu", typeof(MenuProbe), 60f,
-            "The Esc menu with a controller: Start on a virtual gamepad opens it, the highlight moves down to Mods, A opens the " +
+            "The Esc menu with a controller: Start on a virtual gamepad opens it, each sub menu holds its entries, Game then Mods, A opens the " +
             "Mods page and switches the first mod on and off, B goes back, then Credits and Join by code (letters picked, B back). " +
             "Checks: each step landed on the right page, 6 mods listed, the mod switched, the Sound page's − and + step the effects volume, B and Start close the menu and the " +
             "wizard's controls come back, no console errors."),

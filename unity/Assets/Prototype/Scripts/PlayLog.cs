@@ -25,7 +25,7 @@ public class PlayLog : MonoBehaviour
     const float HitchMs = 100f, SlowMs = 33f, VerySlowMs = 50f;
     const float LoadingSeconds = 5f; // the summary leaves these out: the first frame alone can take seconds
     const int EventsASecond = 3, ShotMip = 2;
-    const int SectionOrder = 495; // after Controls, before Mods
+    const int SectionOrder = 505; // the Settings sub menu: last
     static readonly CultureInfo Plain = CultureInfo.InvariantCulture;
     static readonly FrameTiming[] Timing = new FrameTiming[1];
 
@@ -74,7 +74,7 @@ public class PlayLog : MonoBehaviour
         QuickExit.BeforeExit += End; // a Windows player has no OnApplicationQuit
     }
 
-    void OnEnable() => PauseMenu.AddSection(DrawEntry, SectionOrder);
+    void OnEnable() => PauseMenu.AddSection(DrawEntry, SectionOrder, PauseMenu.Submenu.Settings);
 
     void OnDisable() => PauseMenu.RemoveSection(DrawEntry);
 

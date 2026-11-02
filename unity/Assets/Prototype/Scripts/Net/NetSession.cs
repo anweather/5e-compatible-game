@@ -228,7 +228,7 @@ public class NetSession : MonoBehaviour
             Submit = SubmitPicked,
             Back = () => picker.Back(),
         };
-        PauseMenu.AddSection(MenuSection);
+        PauseMenu.AddSection(MenuSection, 0, PauseMenu.Submenu.Multiplayer);
         PauseMenu.AddPage(CodePage, codePage);
     }
 
