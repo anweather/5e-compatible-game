@@ -16,7 +16,7 @@ one top-level folder with:
 - `README.txt`: running it, SmartScreen, controls, playing together, where
   `Player.log` is, the alpha caveat (template: `unity/ReleaseReadme.txt`);
 - `CREDITS.txt`: the SRD 5.2.1 CC-BY-4.0 attribution, the Unity packs, "Made
-  with Unity", the CC0 dragon (text: `Scripts/Credits.cs`, also shown in Esc → Credits).
+  with Unity", the CC0 dragon (text: `Scripts/Credits.cs`, also shown in Esc → Game → About and credits).
 
 The build carries `StreamingAssets/build.json` (version, commit, date). The
 game logs "Spell Chemistry Valley alpha X.Y.Z (abc1234), built ..." at
@@ -179,7 +179,7 @@ new states (a stale collection only brings those hitches back):
   nothing. Code: `UpdateCheck`, `BuildVersion.NewestRelease`.
 - **Bug reports.** Players send
   `%USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\Player.log`
-  (Esc → Open log folder); its first lines name the version and commit.
+  (Esc → Game → Open log folder); its first lines name the version and commit.
 
 ## Updates in place (Velopack)
 

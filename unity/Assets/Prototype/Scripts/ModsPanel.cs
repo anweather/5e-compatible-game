@@ -23,7 +23,7 @@ public class ModsPanel : MonoBehaviour
     /// <summary>The page's id in the Esc menu.</summary>
     public const string PageId = "mods";
     const int Width = 600;
-    const int SectionOrder = 500; // after Play together, before the version and credits
+    const int SectionOrder = 500; // the Game sub menu: after New look, before About and credits
 
     RuleSwitcher switcher;
     GUIStyle row, rowOn, small, error;
@@ -42,7 +42,7 @@ public class ModsPanel : MonoBehaviour
     void OnEnable()
     {
         PauseMenu.AddPage(PageId, page);
-        PauseMenu.AddSection(DrawEntry, SectionOrder);
+        PauseMenu.AddSection(DrawEntry, SectionOrder, PauseMenu.Submenu.Game);
     }
 
     void OnDisable()
@@ -86,7 +86,7 @@ public class ModsPanel : MonoBehaviour
 
     // --- drawing -----------------------------------------------------------------
 
-    // On the main page: the button that opens this page, with what's on.
+    // In the Game sub menu: the button that opens this page, with what's on.
     void DrawEntry()
     {
         MakeStyles();

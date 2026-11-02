@@ -3,10 +3,12 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The Esc menu: Resume, any sections other code adds (NetSession adds Play
-// together, ModsPanel the Mods entry, GameInfoMenu the version, credits and
-// log folder), and Quit. Sections can also add sub-pages (Mods, Credits, Join
-// by code) that open over the main page and go back to it. It starts itself in
+// The Esc menu: Resume, the sub menus (Game, Multiplayer, Settings, Claude), and
+// Quit. Other code adds its sections to a sub menu (NetSession adds Play together
+// to Multiplayer, ModsPanel the Mods entry to Game), or to the main page if the
+// player must see it at once (GameInfoMenu's update notice and version). Sections
+// can also add sub-pages (Mods, Credits, Join by code) that open over the page
+// they're opened from and go back to it. It starts itself in
 // every scene, like FpsProbe, so no scene or builder has to add it. While it
 // is open the wizard's own controls, movement and look are off and the cursor
 // is free; the game itself keeps running (online, the others are still
@@ -30,7 +32,7 @@ public class PauseMenu : MonoBehaviour
     const int MainWidth = 360;
 
     static PauseMenu instance;
-    static readonly List<(Action draw, int order)> sections = new();
+    static readonly List<(Action draw, int order, Submenu submenu)> sections = new();
     static readonly Dictionary<string, Page> pages = new();
 
     // Starts over each Play mode, even with the domain reload off (Enter Play Mode Options): the
@@ -53,6 +55,12 @@ public class PauseMenu : MonoBehaviour
     Rect focusRect;     // where the highlighted button was drawn, for scroll views
     bool focusDrawn;
 
+    /// <summary>Where a section sits: on the main page (Main), or on one of the sub menus the main page lists.</summary>
+    public enum Submenu { Main, Game, Multiplayer, Settings, Claude }
+
+    /// <summary>The sub menus, in the order the main page lists them.</summary>
+    static readonly Submenu[] Submenus = { Submenu.Game, Submenu.Multiplayer, Submenu.Settings, Submenu.Claude };
+
     /// <summary>A sub-page of the menu: its title, width and contents, and optionally its own controller handling.</summary>
     public sealed class Page
     {
@@ -68,17 +76,17 @@ public class PauseMenu : MonoBehaviour
     }
 
     /// <summary>
-    /// Adds a section drawn between Resume and Quit (IMGUI layout calls, inside the menu's
-    /// width), so other parts of the game can put their controls in the menu without the
-    /// menu knowing about them. Remove it again when its owner goes away. Buttons drawn with
+    /// Adds a section to a sub menu, or to the main page above Quit (IMGUI layout calls, inside
+    /// the menu's width), so other parts of the game can put their controls in the menu without
+    /// the menu knowing about them. Remove it again when its owner goes away. Buttons drawn with
     /// <see cref="Button"/> can be reached with a controller.
     /// </summary>
     /// <param name="order">Lower draws higher up; equal orders keep the order they were added in.</param>
-    public static void AddSection(Action draw, int order = 0)
+    public static void AddSection(Action draw, int order, Submenu submenu)
     {
         if (sections.Exists(s => s.draw == draw)) return;
         int at = sections.FindIndex(s => s.order > order);
-        sections.Insert(at < 0 ? sections.Count : at, (draw, order));
+        sections.Insert(at < 0 ? sections.Count : at, (draw, order, submenu));
     }
 
     public static void RemoveSection(Action draw) => sections.RemoveAll(s => s.draw == draw);
@@ -92,7 +100,10 @@ public class PauseMenu : MonoBehaviour
         if (instance != null) instance.nav.Remove(id);
     }
 
-    /// <summary>The order for sections that belong at the bottom, just above Quit (the version and credits).</summary>
+    /// <summary>A sub menu's page id, for ShowPage.</summary>
+    public static string PageOf(Submenu submenu) => $"menu-{submenu}";
+
+    /// <summary>The order for sections that belong at the bottom of their page (the version and credits).</summary>
     public const int LastOrder = 1000;
 
     /// <summary>The menu's button style, for sections that want matching buttons.</summary>
@@ -141,7 +152,12 @@ public class PauseMenu : MonoBehaviour
     /// <summary>A text box outside the menu has the keys, so Esc and M are letters to it, not the menu's.</summary>
     public static bool KeysTaken { get; set; }
 
-    void Awake() => controls = new MenuControls();
+    void Awake()
+    {
+        controls = new MenuControls();
+        foreach (var submenu in Submenus)
+            AddPage(PageOf(submenu), new Page { Title = submenu.ToString(), Draw = () => DrawSections(submenu) });
+    }
 
     void Update()
     {
@@ -172,13 +188,13 @@ public class PauseMenu : MonoBehaviour
         else ResumeWizard();
     }
 
-    /// <summary>Opens the menu on a sub-page (B goes back to the main page). Nothing happens for an unknown page.</summary>
+    /// <summary>Opens the menu on a sub-page (B goes back to the sub menu it's opened from, else the main page). Nothing happens for an unknown page.</summary>
     public void ShowPage(string id)
     {
         if (!pages.ContainsKey(id)) return;
         if (Open && nav.Page == id) return;
         SetOpen(true);
-        CloseSubPages(); // from the main page, so B goes back to the button that opened it
+        if (!OnSubmenu) CloseSubPages(); // so B goes back to the button that opened it
         nav.Push(id);
     }
 
@@ -218,6 +234,8 @@ public class PauseMenu : MonoBehaviour
         bool more = true;
         while (more) more = nav.Back();
     }
+
+    bool OnSubmenu => Array.Exists(Submenus, s => PageOf(s) == nav.Page);
 
     Page CurrentPageInfo() => nav.AtTop ? null : pages.GetValueOrDefault(nav.Page);
 
@@ -395,14 +413,23 @@ public class PauseMenu : MonoBehaviour
         GUILayout.Space(8);
         string key = Highlight ? PadGlyphs.Label(PadButton.Start) : "Esc";
         if (Button($"Resume   <color=#ffffff88>{key}</color>", button)) SetOpen(false);
-        foreach (var section in sections.ToArray())
-        {
-            GUILayout.Space(12);
-            section.draw();
-        }
+        GUILayout.Space(12);
+        foreach (var submenu in Submenus)
+            if (sections.Exists(s => s.submenu == submenu) && Button(submenu.ToString(), button)) ShowPage(PageOf(submenu));
+        DrawSections(Submenu.Main);
         GUILayout.Space(12);
         if (Button("Quit", button)) Quit();
         if (Highlight) GUILayout.Label(PadGlyphs.Text("<color=#ffffff99>{South} choose  ·  {East} close</color>"), hint);
+    }
+
+    static void DrawSections(Submenu submenu)
+    {
+        foreach (var section in sections.ToArray())
+        {
+            if (section.submenu != submenu) continue;
+            GUILayout.Space(12);
+            section.draw();
+        }
     }
 
     void DrawPage(Page page)

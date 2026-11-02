@@ -1,4 +1,6 @@
 using System.Collections;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.LowLevel;
@@ -8,10 +10,11 @@ using UnityEngine.InputSystem.LowLevel;
 // Input System adds for the run, so the binding itself is exercised); moving
 // the highlight, A and B go through the menu's own methods (Navigate, Submit,
 // Back), the ones its Update calls for the d-pad, A and B. Screenshots: the
-// main page with the highlight, the Mods page, Credits, and Join by code.
+// main page with the highlight, each sub menu, the Mods page, Credits, and Join by code.
 public class MenuProbe : ProbeScenario
 {
     Gamepad pad;
+    int opened;
 
     protected override IEnumerator Run()
     {
@@ -29,12 +32,13 @@ public class MenuProbe : ProbeScenario
             Check("wizard_paused", !controlsWereOn || !controls.enabled, $"controls were on {controlsWereOn}");
             yield return null;
             Metric("main_items", menu.ItemCount);
-            Check("main_page_items", menu.ItemCount >= 9, $"{menu.ItemCount} items, first '{menu.FocusedLabel}'");
-
-            // Down to Mods (passing every main-page button), A opens the Mods page.
-            yield return FocusOn(menu, "Mods");
+            Check("main_page_is_short", menu.ItemCount == 6, $"{menu.ItemCount} items, first '{menu.FocusedLabel}'");
             Shot("main");
             yield return Wait(0.2f);
+            yield return EveryEntryHasAHome(menu);
+
+            // Game, then down to Mods; A opens the Mods page.
+            yield return Enter(menu, PauseMenu.Submenu.Game, "Mods");
             menu.Submit();
             yield return Frames(3);
             int mods = switcher.Catalog.Mods.Count;
@@ -57,11 +61,14 @@ public class MenuProbe : ProbeScenario
             // B goes back to the main page, the highlight on Mods again.
             menu.Back();
             yield return Frames(3);
-            Check("b_backs_out_of_mods", menu.Open && menu.CurrentPage == MenuNavigator.MainPage && menu.FocusedLabel != null && menu.FocusedLabel.StartsWith("Mods", System.StringComparison.Ordinal),
+            Check("b_backs_out_of_mods", menu.Open && menu.CurrentPage == PauseMenu.PageOf(PauseMenu.Submenu.Game) && menu.FocusedLabel != null && menu.FocusedLabel.StartsWith("Mods", System.StringComparison.Ordinal),
                 $"page '{menu.CurrentPage}', highlight on '{menu.FocusedLabel}'");
+            menu.Back();
+            yield return Frames(3);
+            Check("b_backs_to_the_main_page", menu.CurrentPage == MenuNavigator.MainPage && menu.FocusedLabel == "Game", $"page '{menu.CurrentPage}', highlight on '{menu.FocusedLabel}'");
 
             // Controls: the table of every control, then back.
-            yield return FocusOn(menu, "Controls");
+            yield return Enter(menu, PauseMenu.Submenu.Settings, "Controls");
             menu.Submit();
             yield return Frames(3);
             Check("controls_page_opens", menu.CurrentPage == ControlsMenu.ControlsPage, $"page '{menu.CurrentPage}'");
@@ -109,9 +116,11 @@ public class MenuProbe : ProbeScenario
                 $"shake {shake:0.00} -> {softer:0.00} -> {GameFeel.Shake:0.00}");
             menu.Back();
             yield return Frames(3);
+            menu.Back();
+            yield return Frames(3);
 
             // Credits, then back.
-            yield return FocusOn(menu, "About and credits");
+            yield return Enter(menu, PauseMenu.Submenu.Game, "About and credits");
             menu.Submit();
             yield return Frames(3);
             Check("credits_page_opens", menu.CurrentPage == GameInfoMenu.CreditsPage, $"page '{menu.CurrentPage}'");
@@ -119,9 +128,11 @@ public class MenuProbe : ProbeScenario
             yield return Wait(0.2f);
             menu.Back();
             yield return Frames(3);
+            menu.Back();
+            yield return Frames(3);
 
             // Join by code: up changes the letter, A moves on, B goes back a letter then leaves.
-            yield return FocusOn(menu, "Enter a code");
+            yield return Enter(menu, PauseMenu.Submenu.Multiplayer, "Enter a code");
             menu.Submit();
             yield return Frames(3);
             Check("code_page_opens", menu.CurrentPage == NetSession.CodePage, $"page '{menu.CurrentPage}'");
@@ -136,7 +147,15 @@ public class MenuProbe : ProbeScenario
             Check("code_page_b_goes_back_a_letter", menu.CurrentPage == NetSession.CodePage);
             menu.Back();
             yield return Frames(3);
-            Check("code_page_b_leaves", menu.CurrentPage == MenuNavigator.MainPage, $"page '{menu.CurrentPage}'");
+            Check("code_page_b_leaves", menu.CurrentPage == PauseMenu.PageOf(PauseMenu.Submenu.Multiplayer), $"page '{menu.CurrentPage}'");
+            menu.Back();
+            yield return Frames(3);
+
+            // Claude's two entries, reached by pad.
+            yield return Enter(menu, PauseMenu.Submenu.Claude, "Open a Claude terminal");
+            Check("claude_submenu_has_the_terminal", menu.FocusedLabel != null && menu.FocusedLabel.StartsWith("Open a Claude terminal", System.StringComparison.Ordinal), $"highlight on '{menu.FocusedLabel}'");
+            menu.Back();
+            yield return Frames(3);
 
             // B on the main page closes the menu and gives the wizard back its controls.
             menu.Back();
@@ -155,6 +174,45 @@ public class MenuProbe : ProbeScenario
             if (menu.Open) menu.SetOpen(false);
             InputSystem.RemoveDevice(pad);
         }
+    }
+
+    // Every entry the old long page had is still one level down, and each sub menu fits the screen.
+    IEnumerator EveryEntryHasAHome(PauseMenu menu)
+    {
+        var homes = new (PauseMenu.Submenu submenu, string[] entries)[]
+        {
+            (PauseMenu.Submenu.Game, new[] { "Grimoire", "New look", "Headwear", "Mods", "About and credits", "Open log folder" }),
+            (PauseMenu.Submenu.Multiplayer, new[] { "Rule changes when you host", "Host online", "Join code", "Enter a code", "Host", "Join" }),
+            (PauseMenu.Submenu.Settings, new[] { "Controls", "Sound", "Shake and rumble", "Frame-rate log" }),
+            (PauseMenu.Submenu.Claude, new[] { "Play with Claude", "Open a Claude terminal" }),
+        };
+        foreach (var (submenu, entries) in homes)
+        {
+            yield return Enter(menu, submenu, entries[0]);
+            var seen = new HashSet<string>();
+            for (int i = 0; i < menu.ItemCount; i++)
+            {
+                yield return Frames(2);
+                seen.Add(menu.FocusedLabel ?? "");
+                menu.Navigate(1);
+            }
+            foreach (var entry in entries)
+                Check($"{submenu}_has_{entry.Replace(' ', '_')}", seen.Any(l => l.StartsWith(entry, System.StringComparison.Ordinal)), string.Join(", ", seen));
+            Shot(submenu.ToString().ToLowerInvariant());
+            yield return Wait(0.2f);
+            menu.Back();
+            yield return Frames(3);
+        }
+    }
+
+    // From the main page, into a sub menu, the highlight on the entry that starts with this.
+    IEnumerator Enter(PauseMenu menu, PauseMenu.Submenu submenu, string entry)
+    {
+        yield return FocusOn(menu, submenu.ToString());
+        menu.Submit();
+        yield return Frames(3);
+        Check($"{submenu}_opens_by_pad_{opened++}", menu.CurrentPage == PauseMenu.PageOf(submenu), $"page '{menu.CurrentPage}'");
+        yield return FocusOn(menu, entry);
     }
 
     // Presses and releases Start on the virtual gamepad, a frame each.

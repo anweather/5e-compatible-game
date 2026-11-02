@@ -10,7 +10,7 @@ using UnityEngine;
 public class GrimoireMenu : MonoBehaviour
 {
     const string PageId = "grimoire";
-    // Where its button sits in the menu, after Controls.
+    // Where its button sits in the Game sub menu: first.
     const int SectionOrder = 45;
     const float ElementsWidth = 190f, RowHeight = 34f;
 
@@ -43,7 +43,7 @@ public class GrimoireMenu : MonoBehaviour
     void OnEnable()
     {
         page ??= new PauseMenu.Page { Title = "Grimoire", Width = 520, Draw = DrawPage, Back = BackToPlay };
-        PauseMenu.AddSection(DrawEntry, SectionOrder);
+        PauseMenu.AddSection(DrawEntry, SectionOrder, PauseMenu.Submenu.Game);
         PauseMenu.AddPage(PageId, page);
     }
 

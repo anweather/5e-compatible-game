@@ -23,7 +23,7 @@ public class NetTag : NetworkBehaviour
     public override void OnNetworkSpawn()
     {
         it.OnValueChanged += Changed;
-        PauseMenu.AddSection(DrawMenu, SectionOrder);
+        PauseMenu.AddSection(DrawMenu, SectionOrder, PauseMenu.Submenu.Multiplayer);
         Show(it.Value);
     }
 

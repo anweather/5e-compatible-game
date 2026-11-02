@@ -271,6 +271,11 @@ that long, and doesn't march.
 : Where the core knows a wizard is and its health as its peer last said (`WizardStand`, a `StrikeCommand.Stand`),
   so strikes resolve on the core's cells. Health stays the wizard's own (`Vitals`); the stand only mirrors it.
 
+**Sub menu**
+: A page of the Esc menu that the main page lists: Game, Multiplayer,
+  Settings or Claude. A part of the game adds its entries to one, so the main
+  page stays short. Not a **group**, which is the radial's.
+
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,
   nature, time), at most three spells each (`groups.json`, `GroupDef`).
