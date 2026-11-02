@@ -9,7 +9,7 @@ using UnityEngine;
 // for the room's verdict, so Claude hears what the players see. Now reads the running
 // world the same way, so the tools answer with the rules, clock and weather in force.
 // Called off the main thread (RulesMcpServer). Whoever the tool says is asking, it's this player.
-public class GameRoomDesk : ILiveDesk
+public class GameRoomDesk : ILiveDesk, IWorldDesk
 {
     const int VerdictMs = 8000;
 
@@ -41,6 +41,29 @@ public class GameRoomDesk : ILiveDesk
             return "";
         });
         return now;
+    }
+
+    public T Read<T>(Func<World, T> read)
+    {
+        T value = default;
+        Exception failed = null;
+        string said = OnMainThread(_ =>
+        {
+            var switcher = Switcher;
+            if (switcher == null) return NoGame;
+            try
+            {
+                value = read(switcher.GetComponent<ChemGrid>().World);
+            }
+            catch (RulesToolException e)
+            {
+                failed = e;
+            }
+            return "";
+        });
+        if (failed != null) throw failed;
+        if (said.Length > 0) throw new RulesToolException(said);
+        return value;
     }
 
     public string Room(string mode)

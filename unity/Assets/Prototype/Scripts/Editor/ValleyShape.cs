@@ -1,4 +1,6 @@
+using System.Linq;
 using Chem;
+using Newtonsoft.Json.Linq;
 using UnityEngine;
 
 // The valley's shape as functions of a point on the ground plane (x, z in
@@ -44,6 +46,14 @@ public static class ValleyShape
     // valley's height where they stand.
     static float[] padLevels;
 
+    // The cabins stand where world/buildings.json's rows say, each one's site in metres.
+    static CabinSite[] ReadCabins() => WorldBuildings.Load(ChemGrid.FindWorldDir()).FileRows
+        .Where(row => row["site"] != null)
+        .Select(row => new CabinSite(Site(row["site"]["metres"]), Site(row["site"]["door"])))
+        .ToArray();
+
+    static Vector2 Site(JToken pair) => new((float)pair[0], (float)pair[1]);
+
     /// <summary>Lays the valley out around a yard of <paramref name="width"/> × <paramref name="height"/> cells.</summary>
     public static void Plan(int width, int height, float cellSize)
     {
@@ -51,13 +61,7 @@ public static class ValleyShape
         yard = Rect.MinMaxRect(-half, -half, (width - 1) * cellSize + half, (height - 1) * cellSize + half);
         Centre = yard.center;
         LakeCentre = Centre + new Vector2(25f, -95f);
-        Cabins = new[]
-        {
-            new CabinSite(new Vector2(yard.xMin - 16f, Centre.y + 4f), Vector2.right),
-            new CabinSite(new Vector2(-30f, -40f), new Vector2(1f, -1f)),
-            new CabinSite(new Vector2(155f, 62f), Vector2.left),
-            new CabinSite(new Vector2(-95f, 140f), new Vector2(0.6f, -0.8f)),
-        };
+        Cabins = ReadCabins();
         PlanBridge();
         ValleyCoast.PlanPath(new Vector2(yard.xMax + 3f, yard.yMax - 4f), bridgeLine[0], bridgeLine[1]);
         var cabinSpots = new Vector2[Cabins.Length];

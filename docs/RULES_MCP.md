@@ -320,18 +320,14 @@ plot that stands is all wall and a refused one isn't (`WorldBuildings.LaidPlan`)
 with `drawn-door`s, so their cells are what `VillagePlan.Cells` lays, and goldens hold. Mods can't add things to the
 world yet (G5's other half).
 
-**What the view must read** (the PC's part; nothing here draws yet):
-- `World.BuildingsNow`, then each `BuildingRow.Json`: `joins`, `walls` (with `material`, `storey`, `openings`), `wall`
-  (`material`, `height`, `thickness`, `finish`), `floor`, `roofs`, `parts`, `storeys`, `seed`, `front`, `kind`, `built`,
-  `site`; `World.Rules.Buildings.Row(table, id)["look"]` for an opening's width, height and sill, a floor's height.
-- `World.BuildingsChanged` at each switch: `Ids` to redraw (`World.BuildingRowOf(id)`, null once gone), and
-  `Covers(x, y)` with `World.NearestFree(x, y)` to move a local player off a new wall, with the view's own log line.
-  Cells already redraw through `ChunkFreshened`, as the dragon's do.
-- Set `Workbench.WorldDesk` to an `IWorldDesk` (`GameRoomDesk`, as `apply` crosses to the main thread), or `find`,
-  `find_site` and `validate` in the game read the stand-in and leave the site to the tick.
-- `ValleyShape.Cabins` reading `world/buildings.json` `site`, and an Editor test that
-  `WorldBuildings.LaidPlan` over the baked map equals `ValleyShape.Villages`' digests, and that each `built` matches the bake.
-- The `door` terrain, whose family is `wall`, and a mod's wall terrains drawn from their look.
+**What the view reads.** `RowHouses` draws what the rules in force add or edit (`Rules.ModBuildings`), each through
+`RowMesher`; what the world was made with stays as the valley drew it, so villages and cabins look the same until
+a mod touches them. An edited building hides the scene's and shows it again on a revert. An edited cabin keeps its
+own, since its row is cells with no walls: a wing stands beside it as a closed box. `World.BuildingsChanged` moves
+this peer's player off a new wall. `GameRoomDesk` is the `IWorldDesk`, so `find`, `find_site` and `validate` read
+the real valley. `ValleyShape.Cabins` reads `site`; `RowMesherTests` holds the cabins to where they stood and the
+villages' base rows to `ValleyShape.Villages`' digests. Walls that burn or break in play stay drawn: only the cells
+change. The game has no save of its own yet, so `World.Save` is reached only from tests.
 
 ## Change modes (chosen when a room is made)
 

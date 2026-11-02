@@ -192,6 +192,9 @@ public static class ProbeScenarios
         new Entry("voice", typeof(VoiceProbe), 70f,
             "Talking to Claude (J-061), with a stand-in recogniser and a stand-in for claude: a hold opens the box, takes the controls and tells the player once where their voice goes; the words fill the box as they come; letting go waits for the recogniser, then sends once; " +
             "a recogniser that can't says why in a line and sends nothing; closing the box drops the words; the keys show on the Controls page's table; a hold played from a sample in tools/voice-samples/out on its real timing, word by word, letting go early, and with Claude busy, the words queued, in order, capped, on one status line. Needs make.ps1 run first. With --shots, a film of a hold. Real dictation is left to a real voice."),
+        new Entry("rowhouses", typeof(RowHousesProbe), 180f,
+            "Buildings drawn from their rows (RowHouses, builders.md section 4), through the real MCP over HTTP: find_site on the lake's north shore, a stucco house applied, a player on a new wall moved, the door a door cell, a wing, a shack in worn timber with a shed roof, all reverted with the ground back; " +
+            "a cabin's wing beside its own model, an edited village house replacing the scene's and coming back; a dozen houses with frame time before and after. With --shots, a film holding on each."),
         new Entry("terminal", typeof(TerminalProbe), 30f,
             "The Claude terminal's folder (ClaudeTerminal, J-056): Claude off then on again gives an address; .mcp.json is valid and names it, with no secret in it; CLAUDE.md and the first screen say Win+H; a client at that address lists the tools. The window itself is left to a real player."),
         new Entry("scopelooks", typeof(ScopeLooksProbe), 200f,

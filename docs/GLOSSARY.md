@@ -452,6 +452,10 @@ that long, and doesn't march.
   and in which coats. Ambient life, so view only: each peer rolls its own
   animals (`docs/design/world-tools.md`, part 2).
 
+**Row house**
+: A building drawn from its row (`RowHouses`, `RowMesher`), because a mod added
+  or edited it. What the world was made with is drawn by the valley instead.
+
 ## Chunk streaming
 
 **Reach**

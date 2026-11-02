@@ -62,6 +62,9 @@ namespace Chem
         /// <summary>Every building in force, in order: those the world was made with, then those the mods added.</summary>
         public IReadOnlyList<BuildingRow> BuildingsNow => RowsUnder(Rules);
 
+        /// <summary>Whether the world was made with this building, so a mod's row of that id edits it.</summary>
+        public bool IsBaseBuilding(string id) => BaseBuildings.Any(r => (string)r["id"] == id);
+
         /// <summary>A building in force by id, or null.</summary>
         public BuildingRow BuildingRowOf(string id) => RowOf(id, Rules);
 
