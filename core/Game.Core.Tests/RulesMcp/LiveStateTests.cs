@@ -298,7 +298,7 @@ namespace Chem.Tests
         public void OutsideTheRulesIsInOnePlaceAndTheInstructionsPointThere()
         {
             var text = Workbench.Outside();
-            foreach (var what in new[] { "Heat glow", "Player size", "Fauna size", "Slippery terrain", "Weather's cover", "Area fill", "Buildings" })
+            foreach (var what in new[] { "Heat glow", "Player size", "Fauna size", "Slippery terrain", "Weather's cover", "Area fill", "A building's rooms" })
                 StringAssert.Contains(what, text);
             StringAssert.Contains("outside_rules", RulesTools.Instructions);
             Assert.That(new RulesTools(NewBench()).OutsideRules(), Is.EqualTo(text));

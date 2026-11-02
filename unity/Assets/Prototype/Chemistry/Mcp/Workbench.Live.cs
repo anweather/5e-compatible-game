@@ -121,8 +121,9 @@ namespace Chem.Mcp
             reactions["entity"] = written["entityRules"].DeepClone();
             raw["reactions"] = reactions;
             raw["elements"] = written[Rules.ElementLooksKey].DeepClone();
-            foreach (var file in new[] { "spells", "critters", "entities", "items", "machines", "sim", "groups", "components", "combos" })
+            foreach (var file in new[] { "spells", "critters", "entities", "items", "machines", "sim", "groups", "components", "combos", BuildingTables.Key })
                 raw[file] = written[file].DeepClone();
+            if (written[Rules.WorldRowsKey] != null) raw[Rules.WorldRowsKey] = written[Rules.WorldRowsKey].DeepClone();
             return raw;
         }
 
@@ -161,6 +162,8 @@ namespace Chem.Mcp
                     if (!JToken.DeepEquals(was, now)) yield return EntryChange(table, id, was, now);
                 }
             foreach (var change in Differences("", under["sim"], over["sim"])) yield return change;
+            foreach (var id in EntryIds(over, Rules.WorldRowsKey))
+                if (!JToken.DeepEquals(EntryIn(under, Rules.WorldRowsKey, id), EntryIn(over, Rules.WorldRowsKey, id))) yield return $"the building {id}";
         }
 
         static IEnumerable<string> EntryIds(Dictionary<string, JToken> raw, string table)
@@ -233,6 +236,7 @@ namespace Chem.Mcp
             foreach (var table in new[] { "spells", "critters" })
                 if (patch[table] is JArray list)
                     foreach (var s in list) entries.Add(table + " " + Str(s["id"]));
+            foreach (var p in (patch["world"]?["buildings"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>()) entries.Add("building " + p.Name);
             return entries;
         }
     }

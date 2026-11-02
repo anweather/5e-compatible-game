@@ -11,6 +11,28 @@ touch them.
 
 ## The world and its space
 
+**Building row**
+: One building as data (`rules/buildings.json`, `world/buildings.json`, a mod's `world` section, by
+  id): its **joins**, **wall segments** and **openings**, a **fill** and a **style**.
+
+**Join**
+: A point a wall segment runs from or to, on the half-cell lattice (0.75 m), in half cells from the row's `at`.
+
+**Wall segment**
+: A wall between two joins, along an axis or at 45°, which takes the cells on its right.
+
+**Opening**
+: What's cut in a wall segment: a door, window or arch, a row of `rules/buildings.json`.
+
+**Fill**
+: What's left inside a building's walls: `hollow` (a floor) or `solid` (its wall's terrain).
+
+**Style**
+: A row of a building's defaults, and a recipe that lays walls from its seed when it has none.
+
+**Site**
+: The cells a building stands on, checked by every peer when it switches on.
+
 **Pane**
 : A window's glass: a `pane` cell in a building's wall (`world/villages.json`,
   a cabin's map), which blocks like the wall, doesn't burn, and shatters to an
@@ -429,6 +451,10 @@ that long, and doesn't march.
 : An entry in the fauna's table: which species appears, where, how thick
   and in which coats. Ambient life, so view only: each peer rolls its own
   animals (`docs/design/world-tools.md`, part 2).
+
+**Row house**
+: A building drawn from its row (`RowHouses`, `RowMesher`), because a mod added
+  or edited it. What the world was made with is drawn by the valley instead.
 
 ## Chunk streaming
 

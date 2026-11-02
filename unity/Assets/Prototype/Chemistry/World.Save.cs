@@ -136,8 +136,10 @@ namespace Chem
             if (room != null) w.LoadRoom(room, roomRules, budgets);
             w.MakeFrom(source);
             w.LoadStart(s);
+            w.NoteBaseBuildings();
             w.LoadState(s);
             foreach (var c in s["chunks"] ?? new JArray()) w.LoadChunk((JObject)c);
+            w.BuildingsIntoStart();
             w.TotalChanged();
             w.spans = null;
             w.activeCoords = null;

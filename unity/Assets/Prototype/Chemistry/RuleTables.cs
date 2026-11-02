@@ -693,6 +693,7 @@ namespace Chem
                 ["groups"] = get("groups.json", false) as JObject ?? new JObject(),
                 ["components"] = get("components.json", false) as JObject ?? new JObject(),
                 ["combos"] = get("combos.json", false) as JObject ?? new JObject(),
+                [BuildingTables.Key] = get("buildings.json", false) as JObject ?? new JObject(),
                 [ElementLooksKey] = get("elements.json", false) as JObject ?? new JObject(),
             };
         }
@@ -742,6 +743,7 @@ namespace Chem
             foreach (var p in (doc[ElementLooksKey] as JObject ?? new JObject()).Properties())
                 if (ParseLook((p.Value as JObject)?["look"]) is LookDef look) r.elementLooks[p.Name] = look;
             ParseMachines(r, doc["machines"] as JObject ?? new JObject());
+            r.ParseBuildings(doc);
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
             {

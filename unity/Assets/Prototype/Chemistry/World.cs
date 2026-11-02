@@ -89,6 +89,7 @@ namespace Chem
         public void ApplyRules(Rules rules)
         {
             FinishTick(); // a rule switch lands between whole ticks (StepSome)
+            var before = Rules;
             Rules = rules ?? throw new ArgumentNullException(nameof(rules));
             ForgetWaterSnapshots(); // terrain may mean something else now
             Weather = SkyNow();
@@ -98,6 +99,7 @@ namespace Chem
                 Sanitize(c);
             }
             SanitizeRaiders();
+            LayBuildings(before, rules);
         }
 
         // A cell made to fit the rules in force (sanitizeCell in the TS).

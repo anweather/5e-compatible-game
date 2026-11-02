@@ -14,7 +14,7 @@ namespace Chem.Mcp
             ("Slippery terrain: only a cover can be slippery, not a terrain", "a cover tagged slippery spread over the ground, such as Grease"),
             ("Weather's cover: what rain, snow and fog lay on the ground", "weather's chances and strengths in sim can be tuned, and a cover's look changes how snow looks"),
             ("Area fill: covering the land past a spell's radius cap", "a burst of the capped radius, or a change to the terrain itself (\"all the grass burns like oil\") with set_material and set_look"),
-            ("Buildings: adding or changing houses and walls", "nothing yet; terraform spells can raise ground and walls of terrain"),
+            ("A building's rooms: walls and doors inside it", "a building's outside is a row: add_building, add_wing and set_building change its walls, openings and fill"),
         };
 
         /// <summary>What the rules can't reach yet, and the nearest thing that can be done.</summary>

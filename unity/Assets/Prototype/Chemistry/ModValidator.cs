@@ -15,7 +15,7 @@ using Newtonsoft.Json.Linq;
 namespace Chem
 {
     /// <summary>Which of validate's checks a problem comes from.</summary>
-    public enum ModCheck { Shape, References, Design, Determinism, Budget, Looks }
+    public enum ModCheck { Shape, References, Design, Determinism, Budget, Looks, Site }
 
     /// <summary>One problem with a mod: the check that found it and one sentence saying what to fix.</summary>
     public readonly struct ModProblem
@@ -45,6 +45,12 @@ namespace Chem
         /// <summary>The world's places a scoped look may name (world/places.json beside rules/); empty when there's none.</summary>
         public WorldPlaces Places { get; private set; } = WorldPlaces.Empty;
 
+        /// <summary>The buildings a world was made with (world/buildings.json, villages.json), which a mod may edit by id.</summary>
+        public WorldBuildings Buildings { get; private set; } = WorldBuildings.Empty;
+
+        /// <summary>The world's things (world/things.json): a building's site keeps clear of them.</summary>
+        public WorldThings Things { get; private set; } = WorldThings.Empty;
+
         public static ModBudgets Parse(string json) => new ModBudgets(JObject.Parse(json));
 
         /// <summary>rules/budgets.json with the family list of rules/looks.json: all a peer checks a mod against.</summary>
@@ -52,7 +58,10 @@ namespace Chem
         {
             var budgets = Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
             budgets.Looks = LookFamilies.Load(rulesDir);
-            budgets.Places = WorldPlaces.Load(Path.Combine(Path.GetDirectoryName(Path.GetFullPath(rulesDir).TrimEnd('/', '\\')) ?? "", "world"));
+            string worldDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(rulesDir).TrimEnd('/', '\\')) ?? "", "world");
+            budgets.Places = WorldPlaces.Load(worldDir);
+            budgets.Buildings = WorldBuildings.Load(worldDir);
+            if (Directory.Exists(worldDir)) budgets.Things = WorldThings.Load(worldDir);
             return budgets;
         }
 
@@ -70,7 +79,7 @@ namespace Chem
 
     public static class ModValidator
     {
-        static readonly HashSet<string> Sections = new HashSet<string>(ModPatch.Tables.Concat(new[] { "elements", "reactions", "spells", "critters", "sim", "combos" }));
+        static readonly HashSet<string> Sections = new HashSet<string>(ModPatch.Tables.Concat(new[] { "elements", "reactions", "spells", "critters", "sim", "combos", BuildingTables.Key, "world" }));
         static readonly string[] RandomKeys = { "seed", "random", "rng" };
 
         /// <summary>
@@ -313,7 +322,9 @@ namespace Chem
             public void Determinism()
             {
                 var wholeKeys = WholeKeys(baseDoc);
-                Walk(patch, "", (key, path, value) =>
+                // A building's numbers are the view's or checked whole by Rules.Check, and its seed is its own.
+                var checkedHere = new JObject(patch.Properties().Where(p => p.Name != "world" && p.Name != BuildingTables.Key).Select(p => new JProperty(p.Name, p.Value)));
+                Walk(checkedHere, "", (key, path, value) =>
                 {
                     if (RandomKeys.Contains(key.ToLowerInvariant()))
                         Add(ModCheck.Determinism, $"{Where(path)} sets \"{key}\"; all randomness comes from the world's seeded generator, through a rule's chance.");
@@ -388,6 +399,7 @@ namespace Chem
                     Add(ModCheck.Budget, $"Critter {Text(c["id"])} acts every {c["every"]} ticks; a mod's critter acts at most every {Num(minEvery)} ticks.");
                 SimBudget();
                 if (composed == null) return;
+                BuildingBudget(composed);
                 MaterialBudget(composed);
                 ChainDepth(composed);
             }
@@ -397,6 +409,8 @@ namespace Chem
                 int count = ModPatch.ElementNames(patch["elements"]).Count(e => !(baseDoc["elements"] as JArray ?? new JArray()).Any(x => Text(x) == e));
                 foreach (var table in ModPatch.Tables)
                     if (patch[table] is JObject entries) count += entries.Properties().Count(p => baseDoc[table]?[p.Name] == null);
+                foreach (var table in BuildingTables.Tables)
+                    if (patch[BuildingTables.Key]?[table] is JObject rows) count += rows.Properties().Count(p => baseDoc[BuildingTables.Key]?[table]?[p.Name] == null);
                 count += PatchSpells.Count(s => !InBase("spells", Text(s["id"])));
                 count += PatchCritters.Count(c => !InBase("critters", Text(c["id"])));
                 count += PatchRules.Count(r => !InBase("cellRules", Text(r["id"])) && !InBase("entityRules", Text(r["id"])));
@@ -430,6 +444,48 @@ namespace Chem
                     if (IsNumber(v) && ((double)v < min || (double)v > max))
                         Add(ModCheck.Budget, $"sim {path} is {Num((double)v)}; a mod may set it from {Num(min)} to {Num(max)}.");
                 }
+            }
+
+            // What one building may be (builders.md section 4), and how many a mod may bring.
+            void BuildingBudget(JObject composed)
+            {
+                if (!(patch["world"]?["buildings"] is JObject rows)) return;
+                double max = budgets.Number("buildings.maxPerMod", 4);
+                if (rows.Count > max) Add(ModCheck.Budget, $"The mod brings {rows.Count} buildings; a mod may bring at most {Num(max)}.");
+                var tables = BuildingTables.Parse(composed);
+                foreach (var p in rows.Properties().Select(p => (id: p.Name, row: BuildingRow.Resolved((JObject)p.Value, tables))))
+                {
+                    void Cap(string what, int count, string key)
+                    {
+                        double cap = budgets.Number("buildings." + key, double.MaxValue);
+                        if (count > cap) Add(ModCheck.Budget, $"Building {p.id} has {count} {what}; a building has at most {Num(cap)}.");
+                    }
+                    Cap("joins", (p.row["joins"] as JObject)?.Count ?? 0, "maxJoins");
+                    Cap("walls", (p.row["walls"] as JObject)?.Count ?? 0, "maxWalls");
+                    Cap("openings", (p.row["walls"] as JObject)?.PropertyValues().Sum(w => (w["openings"] as JArray)?.Count ?? 0) ?? 0, "maxOpenings");
+                    Cap("parts", (p.row["parts"] as JArray)?.Count ?? 0, "maxParts");
+                    Cap("storeys", p.row["storeys"] != null && IsWhole(p.row["storeys"]) ? (int)p.row["storeys"] : 1, "maxStoreys");
+                    SiteSize(p.id, p.row);
+                }
+            }
+
+            void SiteSize(string id, JObject row)
+            {
+                BuiltSize(id, row);
+                if (!(row["joins"] is JObject joins) || joins.Count == 0 || joins.PropertyValues().Any(j => !(j is JArray a) || a.Count != 2 || !IsWhole(a[0]) || !IsWhole(a[1]))) return;
+                double max = budgets.Number("buildings.maxCells", 24);
+                double wide = (joins.PropertyValues().Max(j => (double)j[0]) - joins.PropertyValues().Min(j => (double)j[0])) / 2;
+                double deep = (joins.PropertyValues().Max(j => (double)j[1]) - joins.PropertyValues().Min(j => (double)j[1])) / 2;
+                if (wide > max || deep > max) Add(ModCheck.Budget, $"Building {id} is {Num(wide)} by {Num(deep)} cells; a building is at most {Num(max)} by {Num(max)}.");
+            }
+
+            // A row's built cells (a cabin's, carried along in an edit) stay the size of a building too.
+            void BuiltSize(string id, JObject row)
+            {
+                double reach = 2 * budgets.Number("buildings.maxCells", 24);
+                var numbers = (row["built"] as JObject)?.PropertyValues().SelectMany(t => t).SelectMany(r => r) ?? Enumerable.Empty<JToken>();
+                if (numbers.Any(n => !IsWhole(n) || Math.Abs((double)n) > reach))
+                    Add(ModCheck.Budget, $"Building {id}'s built cells must be whole numbers within {Num(reach)} cells of its at.");
             }
 
             // Covers that float spread over open water: a reach past the budget would cover a lake.

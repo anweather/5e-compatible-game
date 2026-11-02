@@ -37,6 +37,8 @@ Every field is optional.
     "remove":    [ "fire-water" ]             // rule ids to delete
   },
   "spells":   [ /* SpellDef, add or replace by id */ ],
+  "buildings": { "styles": { "adobe": { "wall": { "material": "stone" } } } },   // rows of rules/buildings.json
+  "world":    { "buildings": { "cabin#2": { /* a whole building row, by id: edits it; a new id adds one */ } } },   // docs/RULES_MCP.md "Buildings"
   "groups":   { "shadow": { "name": "Shadow", "order": 6, "color": "#5a4a7a" } },   // spell radial elements (Unity)
   "critters": [ /* CritterDef, add or replace by id */ ],
   "sim":      { "push": { "slideCells": 6 } } // deep-merged over sim.json

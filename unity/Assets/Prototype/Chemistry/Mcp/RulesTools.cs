@@ -40,8 +40,10 @@ namespace Chem.Mcp
             "(the fire element for what burns; a spell, table spell, for its own show). by wins over everything: a spell's own colour, then where, then the element's colour. " +
             "Limits, before you promise anything: a spell's look, and fire, flames, embers, steam and smoke, only turn their art's hue, so white, black, grey, a pale colour or a darker shade of the same hue doesn't show on them (a white fireball stays as it was: offer the nearest hue). " +
             "A mod's spell may have at most radius 6, length 24, size 5, power 6, push 6, raise 4 and dig 4, and level 0 to 9 with at most 20 dice of d4, d6, d8, d10 or d12; a mod adds at most 12 new entries. " +
-            "Some things aren't in the rules at all yet (heat glow, player size, fauna size, slippery terrain, weather's cover, area fill, buildings): read outside_rules before trying or refusing, so you can say what's nearest. " +
+            "Some things aren't in the rules at all yet (heat glow, player size, fauna size, slippery terrain, weather's cover, area fill, a building's rooms): read outside_rules before trying or refusing, so you can say what's nearest. " +
             "The clock and the weather aren't rules: read them with time and weather, and change them with set_time and set_weather, not by moving day.startHour. A new spell isn't much use unreachable: add_spell says how a player reaches it, so tell them. " +
+            "The world's buildings are rows too, and a mod may change them. \"Add a wing to the house by the lake\" is find with kind building and near lake, then add_wing with its id. \"Build a house on the beach\" is find_site with its size, near sea and edge shore, then add_building at a cell it gave. \"The lake's north shore\" is near lake with side north. " +
+            "Give a new material or style in the same draft (add_material, add_building_part), and change anything else about a building with set_building or a whole row in add_building. Cells follow the walls; heights, finishes, roofs and details are only drawn. A site is checked again on every peer when it switches on, and validate says at once if it won't stand. " +
             "If set_look says a colour won't show, tell the player so and offer one that will. Don't look for a saved mod that's close: use one from rules/mods only when the player names it. After apply, tell the player what changed, from its answer.";
 
         const string DraftHelp = "The draft to add to; leave it out to start a new one. Returns the draft id and the patch so far.";
@@ -79,7 +81,7 @@ namespace Chem.Mcp
 
         // ---------- read ----------
 
-        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, or looks (the look families, the parameters each takes, and what takes no colour). Read these to build a draft for what the player asks.")]
+        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
         [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing.")]
@@ -108,7 +110,43 @@ namespace Chem.Mcp
         [RulesTool("here", ReadOnly = true), Description("Where the player asking stands: their name and cell, the place they're in, the named places near them with distance and direction, and what they look at. For \"near me\" or \"this village\".")]
         public string Here([Description("How far to look for places, in cells; 120 when left out.")] int? within = null) => Do(() => bench.DescribeHere(within ?? 120));
 
+        [RulesTool("find", ReadOnly = true), Description("Finds what stands in the world: buildings (with the id a mod edits one by) and things (props and items), each with what it is and how far off, nearest first. For \"the house by the lake\".")]
+        public string Find([Description("building, thing, or a thing's kind or a building's style, such as barrel or cabin; everything when left out.")] string kind = null,
+            [Description("What to measure from: a place's id (places lists them), a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
+            [Description("How far to look, in cells; 64 when left out.")] int? within = null,
+            [Description("Only a place's side: north, east, south or west, such as the lake's north shore.")] string side = null,
+            [Description("shore for only the edge of a place, such as the sea's beach.")] string edge = null) => Do(() => bench.Find(kind, near, within, side, edge));
+
+        [RulesTool("find_site", ReadOnly = true), Description("Finds where a building of this size can stand: open ground, dry, clear of things and buildings, out of the villages and courses. Gives cells to pass to add_building, nearest first. Read-only: a site is taken only when the mod switches on.")]
+        public string FindSite([Description("Its width west to east, in whole cells (a cell is 1.5 m).")] int width, [Description("Its depth north to south, in whole cells.")] int depth,
+            [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
+            [Description("Only a place's side: north, east, south or west.")] string side = null,
+            [Description("shore for the edge of a place: near sea, edge shore is the beach.")] string edge = null,
+            [Description("How far from it, in cells; 32 when left out.")] int? within = null) => Do(() => bench.FindSite(width, depth, near, side, edge, within));
+
         // ---------- draft ----------
+
+        [RulesTool("add_building"), Description("Adds a building to a draft: a box of walls with a door and windows, width by depth cells from the cell at, or a whole row in full for any other shape (joins, walls with openings, roofs; docs/design/builders.md). Hollow by default, so a broken door leaves a room to walk into. Says if the site won't stand.")]
+        public string AddBuilding([Description("Its north-west cell as JSON, [x, y]; find_site gives these. Leave out with row.")] string at = null, [Description("Width west to east in whole cells, 3 or more.")] int? width = null, [Description("Depth north to south in whole cells, 3 or more.")] int? depth = null,
+            [Description("A style's id (list styles, or one add_building_part put in the draft); plain when left out.")] string style = null,
+            [Description("The side its door faces: north, east, south or west; south when left out.")] string front = null,
+            [Description("A new id, such as beach-house#1; made from where it stands when left out.")] string id = null,
+            [Description("solid for a block with no inside; hollow when left out.")] string fill = null,
+            [Description("Or the whole row as JSON, with its id and at.")] string row = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.Sited(bench.AddBuilding(draft, at, width, depth, style, front, id, fill, row)));
+
+        [RulesTool("add_wing"), Description("Adds a wing to a building by id in a draft: new walls that meet its wall on one side, its openings there go, and its roof grows. The whole row goes in the draft, so it's one edit. Picks a side where the site stands when none is given.")]
+        public string AddWing([Description("The building's id; find gives these.")] string building, [Description("How wide along the side, in whole cells, 3 or more; 4 when left out.")] int? width = null, [Description("How far out, in whole cells, 3 or more; 4 when left out.")] int? depth = null,
+            [Description("north, east, south or west; left out picks one the site allows.")] string side = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.Sited(bench.AddWing(draft, building, width ?? 4, depth ?? 4, side)));
+
+        [RulesTool("set_building"), Description("Changes one field of a building in a draft, by dotted path, such as fill, wall.material, wall.finish.color, storeys, roofs.main.shape or walls.north.openings. The whole row goes in the draft, as a mod replaces a row whole.")]
+        public string SetBuilding([Description("The building's id.")] string id, [Description("The field.")] string field, [Description(ValueHelp)] string value,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.Sited(bench.SetBuilding(draft, id, field, value)));
+
+        [RulesTool("add_building_part"), Description("Adds or replaces a row of a building table in a draft: a style (defaults for wall, fill, floor and roof, and a recipe), an opening (cells and what they become), a floor, a roof shape or a detail. list openings, floors, roofs, details or styles shows what's there.")]
+        public string AddBuildingPart([Description("openings, floors, roofs, details or styles.")] string table, [Description("The row's id.")] string id, [Description("The whole row as JSON.")] string row,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.AddBuildingPart(draft, table, id, row).Show());
 
         [RulesTool("add_material"), Description("Adds a new terrain, cover or gas to a draft. Its behaviour comes from material verb groups (burn, soak, dig, melt, freeze, float, dissolve, grow and the rest; rules/README.md). A new terrain also needs a look: {\"look\": {\"family\": \"block\", \"color\": [0.6, 0.7, 1], \"height\": 1.2}} in verbs, with a family from rules/looks.json.")]
         public string AddMaterial([Description("terrain, cover or gas.")] string kind, [Description("A new id, lowercase with dashes.")] string id, [Description("Its name as players see it.")] string name,
@@ -193,7 +231,7 @@ namespace Chem.Mcp
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Tune(draft, param, value).Show());
 
         [RulesTool("remove"), Description("Takes back something the draft added or changed (a material, reaction, spell, element, its look, or a sim parameter). It can't remove base rules.")]
-        public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, reactions, spells, elements or sim.")] string table,
+        public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, reactions, spells, elements, sim, buildings, openings, floors, roofs, details or styles.")] string table,
             [Description("The id, or the sim parameter's path.")] string id) => Do(() => bench.Remove(draft, table, id).Show());
 
         // ---------- check, run, save ----------

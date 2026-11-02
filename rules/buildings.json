@@ -1,0 +1,44 @@
+{
+  "about": "What a building's parts can be (docs/design/builders.md section 4; Buildings.cs). Rows, like every table: a mod adds or replaces one whole under \"buildings\". What's under \"look\" is the view's and stays out of Rules.Fingerprint; the rest decides cells. A building's own rows are world data: world/buildings.json, the villages (world/villages.json), or a mod's \"world\" section.",
+  "ground": "dirt",
+  "openings": {
+    "door": { "cells": 1, "becomes": "door", "look": { "width": 0.9, "height": 2.1, "sill": 0 } },
+    "double-door": { "cells": 2, "becomes": "door", "look": { "width": 1.8, "height": 2.1, "sill": 0 } },
+    "window": { "cells": 1, "becomes": "pane", "look": { "width": 0.9, "height": 1.2, "sill": 0.9 } },
+    "wide-window": { "cells": 2, "becomes": "pane", "look": { "width": 1.8, "height": 1.2, "sill": 0.9 } },
+    "garage": { "cells": 2, "becomes": "door", "look": { "width": 2.7, "height": 2.1, "sill": 0 } },
+    "double-garage": { "cells": 3, "becomes": "door", "look": { "width": 4.9, "height": 2.1, "sill": 0 } },
+    "arch": { "cells": 0, "becomes": "open", "look": { "height": 2.2, "sill": 0 } },
+    "drawn-door": { "cells": 1, "becomes": "wall", "look": { "width": 0.9, "height": 2.1, "sill": 0 } }
+  },
+  "floors": {
+    "slab": { "terrain": "rock", "look": { "height": 0.15 } },
+    "plinth": { "terrain": "brick", "look": { "height": 0.45 } }
+  },
+  "roofs": {
+    "gable": { "look": { "takes": ["over", "gables", "pitch", "overhang", "cover"] } },
+    "hip": { "look": { "takes": ["over", "pitch", "overhang", "cover"] } },
+    "shed": { "look": { "takes": ["over", "low", "pitch", "overhang", "cover"] } },
+    "flat": { "look": { "takes": ["over", "parapet", "overhang", "cover"] } }
+  },
+  "details": {
+    "viga": { "look": { "takes": ["on", "every"] } },
+    "canale": { "look": { "takes": ["on", "at"] } },
+    "chimney": { "look": { "takes": ["on", "at"] } },
+    "porch": { "look": { "takes": ["on", "at", "width", "depth"] } },
+    "beam": { "look": { "takes": ["on", "every"] } },
+    "shutters": { "look": { "takes": ["on", "at"] } },
+    "planter": { "look": { "takes": ["on", "at"] } }
+  },
+  "styles": {
+    "plain": { "fill": "hollow", "floor": { "kind": "slab", "height": 0.15 },
+               "wall": { "material": "stone", "height": 2.7, "thickness": 0.3 },
+               "roof": { "shape": "gable", "pitch": [6, 12], "overhang": 0.3, "cover": "slate" } },
+    "village": { "fill": "solid", "floor": { "kind": "plinth", "height": 0.3 },
+                 "wall": { "material": "logwall", "height": 2.7, "thickness": 0.3 },
+                 "roof": { "shape": "gable", "pitch": [8, 12], "overhang": 0.4, "cover": "thatch" } },
+    "cabin": { "fill": "solid", "floor": { "kind": "plinth", "height": 0.3 },
+               "wall": { "material": "logwall", "height": 2.7, "thickness": 0.45 },
+               "roof": { "shape": "gable", "pitch": [8, 12], "overhang": 0.4, "cover": "shingle" } }
+  }
+}

@@ -89,7 +89,8 @@ public class RulesMcpServer : MonoBehaviour
             Debug.LogWarning($"Rules MCP: no free port from {FirstPort}, so Claude can't reach this game");
             return;
         }
-        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = new GameRoomDesk(this), Here = here }), "spell-chemistry-valley", Application.version);
+        var desk = new GameRoomDesk(this);
+        rpc ??= new McpRpc(new RulesTools(new Workbench(ChemGrid.FindRulesDir()) { Desk = desk, WorldDesk = desk, Here = here }), "spell-chemistry-valley", Application.version);
         var serving = listener;
         var tools = rpc;
         new Thread(() => Serve(serving, tools)) { IsBackground = true, Name = "Rules MCP" }.Start();

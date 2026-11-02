@@ -31,12 +31,22 @@ namespace Chem.Mcp
         /// <summary>The name this MCP's own player goes by in the room: the host.</summary>
         public const string HostName = "host";
 
+        StandInValley standIn;
         World live;
         World Live => live ??= NewRoom(ChangeMode.Open);
 
         World NewRoom(ChangeMode mode)
         {
-            var w = new World(Base, 64, 64, 1);
+            // Where the world files are there, the room is on a stand-in of the valley (StandInValley), so the world tools have a world.
+            standIn ??= StandInValley.Load(RulesDir, Budgets) ?? StandInValley.None;
+            World w;
+            if (standIn == StandInValley.None) w = new World(Base, 64, 64, 1);
+            else
+            {
+                w = new World(Base, standIn.W, standIn.H, 1);
+                w.MakeFrom(standIn);
+                w.KeepStart();
+            }
             w.OpenRoom(mode, HostName, Base, Budgets);
             return w;
         }
@@ -101,6 +111,8 @@ namespace Chem.Mcp
             int space = changed.IndexOf(' ');
             string table = changed.Substring(0, space), id = changed.Substring(space + 1);
             if (table == "sim") return $"{id} from {Compact(Raw["sim"].SelectToken(id))} to {Compact(draft.Patch["sim"]?.SelectToken(id))}";
+            if (table == BuildingsTable) return BuildingChange(id);
+            if (BuildingTables.Tables.Contains(table)) return $"a {Single(table)} row, {id}";
             if (table == "reactions")
             {
                 var rule = (draft.Patch["reactions"]?["add"] as JArray ?? new JArray()).Concat(draft.Patch["reactions"]?["addEntity"] as JArray ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id);
@@ -162,5 +174,11 @@ namespace Chem.Mcp
 
         /// <summary>The room in memory, as the tools left it.</summary>
         public RoomState RoomNow => Live.Room;
+
+        /// <summary>The world in memory the tools act on, when no game is attached.</summary>
+        public World LiveWorld => Live;
+
+        /// <summary>What LiveWorld was made from, for its save; null for a world of plain dirt.</summary>
+        public IChunkSource LiveSource => standIn == StandInValley.None ? null : standIn;
     }
 }

@@ -98,7 +98,15 @@ namespace Chem.Mcp
 
         // ---------- validate ----------
 
-        public IReadOnlyList<ModProblem> Validate(string draftOrMod) => ModValidator.Validate(InForce, Budgets, PatchJson(draftOrMod));
+        public IReadOnlyList<ModProblem> Validate(string draftOrMod) => WithSite(PatchJson(draftOrMod));
+
+        // The mod's checks, then whether its buildings can stand on the world as it is now.
+        IReadOnlyList<ModProblem> WithSite(string json)
+        {
+            var problems = ModValidator.Validate(InForce, Budgets, json);
+            string site = problems.Count == 0 ? SiteNote(json) : null;
+            return site == null ? problems : problems.Append(new ModProblem(ModCheck.Site, site.TrimEnd('.') + ".")).ToList();
+        }
 
         public static string Report(IReadOnlyList<ModProblem> problems)
         {
@@ -118,7 +126,7 @@ namespace Chem.Mcp
             var draft = DraftOf(Required(draftId, "draft"));
             if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A mod needs a title.");
             if (string.IsNullOrWhiteSpace(idea)) throw new RulesToolException("A mod needs its idea in words: that is what people vote on.");
-            var problems = ModValidator.Validate(InForce, Budgets, draft.Patch.ToString(Formatting.None));
+            var problems = WithSite(draft.Patch.ToString(Formatting.None));
             if (problems.Count > 0) throw new RulesToolException("The draft doesn't validate yet. " + Report(problems));
             name = string.IsNullOrWhiteSpace(name) ? Slug(title) : name.Trim();
             if (name.Length == 0 || name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0 || name.Contains("..", StringComparison.Ordinal))

@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", BuildingsTable, "openings", "floors", "roofs", "details", "styles" };
 
         // ---------- list ----------
 
@@ -48,6 +48,17 @@ namespace Chem.Mcp
                     break;
                 case "looks":
                     lines.AddRange(LookLines());
+                    break;
+                case BuildingsTable:
+                    lines.AddRange(BuildingLines());
+                    break;
+                case "openings":
+                case "floors":
+                case "roofs":
+                case "details":
+                case "styles":
+                    foreach (var p in (Raw[BuildingTables.Key][table] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                        lines.Add($"{p.Name}: {Compact(p.Value)}");
                     break;
                 case "critters":
                     lines.AddRange(((JArray)Raw["critters"]).Select(c => $"{Str(c["id"])}: {Str(c["name"])}, {Str(c["mode"])}s {Str(c["element"])}. {Str(c["blurb"])}"));
@@ -138,6 +149,7 @@ namespace Chem.Mcp
         JToken Find(string table, string id)
         {
             if (table == "elements") return Doc["elements"].Any(e => (string)e == id) ? ElementEntry(id) ?? new JObject() : JValue.CreateNull();
+            if (table == BuildingsTable) return (JToken)OnWorld(w => w.BuildingRowOf(id)?.Json) ?? JValue.CreateNull();
             return EntryIn(Raw, table, id) ?? JValue.CreateNull();
         }
 
@@ -158,6 +170,12 @@ namespace Chem.Mcp
                     return raw[table].FirstOrDefault(s => Str(s["id"]) == id);
                 case "sim":
                     return raw["sim"].SelectToken(id);
+                case "openings":
+                case "floors":
+                case "roofs":
+                case "details":
+                case "styles":
+                    return raw[BuildingTables.Key][table]?[id];
                 default:
                     return raw.TryGetValue(table, out var t) ? t[id] : null;
             }
