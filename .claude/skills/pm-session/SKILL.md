@@ -36,14 +36,17 @@ restart after every release.
 
 ## While running
 
-- Before landing, read `git diff origin/dev...origin/<branch> --stat`: only the branch's own files, nothing deleted that it didn't own. Gates pass on a tree that silently reverted other work (50fd301).
-- Land a worker's branch: `tools/workers/land.sh merge <branch> < message`, run the core and sandbox
-  checks (CLAUDE.md "Commands"), then `land.sh push <branch>` (deletes the merged branch).
+- Land with one command: `tools/workers/land.sh auto <branch> [--compiled] [--deletes] < message`. It refuses
+  on deletions, heavy removals, Unity C# nobody compiled, a conflict or a merge touching files the branch
+  doesn't own; runs every gate; pushes and deletes the branch. Read a diff only when it stops. Pass `--compiled`
+  only when DesktopUnity or the Mac has said so. Silent reverts inside a branch's own files still pass (50fd301):
+  skim the stat line it prints. Delete any branch it fully contains.
 - Brief VMs with `tools/workers/start.cmd` / `brief.cmd` and briefs in `docs/handoffs/briefs/`. No
   VMs while a release candidate or perf run holds the PC. No idle compute; Pro before Max.
 - Issues: file, comment, label, close on ship, with a `Discovery-Cost:` line; a rediscovery is a
   comment, never a duplicate.
-- Keep Andrew's board current (STATE, "Andrew's board"): one small publish after each verdict,
+- Keep Andrew's board current with `node tools/workers/board.mjs` (`who`, `landed`, `sub`, `drop`), then
+  publish `.pm/board.html` with the Artifact tool and `url`, in one response: one small publish after each verdict,
   landing or assignment.
 - Anything Andrew reviews goes on the board as images or clips, never as text alone: upload with
   the Artifact tool (`asset: true`, `url` = the board) and reference the returned `/_blob/<id>`.

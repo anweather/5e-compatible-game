@@ -57,7 +57,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **Mac:** `mods-add-things` Unity side on branch `mods-add-things-view` (dbf45a9 merged with dev, view's four items in `docs/RULES_MCP.md` "Things"). Don't land until it has compiled. The squirrel test in a player stays on the PC (#56).
-- **DesktopUnity:** stopped at 400k, handoff `docs/handoffs/desktopunity-2026-11-01.md`. After a clear: a probe that sends a fixed prompt set through the real chat on real Claude, unattended (J-064), before and after each change. Then #59 item 5. The new test player and squirrel test follow.
+- **DesktopUnity:** the prompt probe (J-064): a fixed set through the real chat on real Claude, unattended, three base runs, then #59 item 5 one change at a time. The new test player and squirrel test follow.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), stand-in only until the real-prompt probe runs. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
@@ -78,16 +78,17 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## Andrew's board
 
 https://claude.ai/artifact/KhW6DyMwmA1ncXCxLxbBgY: what needs his verdict, what landed, who's on what.
-He reads it on his phone instead of scrolling the chat. Update it (Artifact `read`, then publish with
-`url`) whenever a verdict, a landing or an assignment changes.
+He reads it on his phone instead of scrolling the chat. Update it with `tools/workers/board.mjs`, then publish
+`.pm/board.html` with `url`, whenever a verdict, a landing or an assignment changes.
 
 ## Open questions for Andrew
 
 - The real test of the PlayTest player: real Claude answering in chat, words by voice, a house built by asking, and how the radial, spell list and Esc menu feel at 4K.
-- Cost: script landing and the board before trying a cheaper main PM? Up to 69% of one session's context re-reads were mechanical (asked 2026-11-02).
 - Cast sounds and the new whoosh: never listened to.
 
 ## Telemetry
+
+- PM cost: up to 69% of one session's context re-reads were mechanical (2026-11-02). Landing and the board are scripted (`land.sh auto`, `board.mjs`); measure the next batch before trying a cheaper main PM.
 
 - Every worker commit carries cost lines; `docs/telemetry/` holds the reports (latest 2026-11-02:
   coordination 55% of spend, cache reads 66% of feature cost).
