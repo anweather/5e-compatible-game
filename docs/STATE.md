@@ -56,9 +56,11 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **DesktopUnity:** #58 voice, then `chat-record` (faed11a, #59: wire the telemetry, progress bar, token list), then `mods-add-things` (dbf45a9: Unity side, squirrel test in a player). Brief: `docs/handoffs/briefs/playtest-fixes-2026-11-01.md`. Both branches are on origin, unmerged, and have never compiled in Unity. Run full EditMode once on merging dev (see below).
+- **DesktopUnity:** `chat-record` (faed11a, #59: wire the telemetry, progress bar, token list), then `mods-add-things` (dbf45a9: Unity side, squirrel test in a player). Brief: `docs/handoffs/briefs/playtest-fixes-2026-11-01.md`. Both branches are on origin, unmerged, and have never compiled in Unity. It expects to pass its 400k line during `chat-record` and will write a handoff there.
+- **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2, Mac:** stopped. Pro is out until Nov 5 (weekly). The Mac needs a `/clear` before more work; its handoff is `docs/handoffs/mac-2026-11-02.md`.
-- **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. The port is untested in a player, on Windows and online; the Mac's last full EditMode had 1 failure, fixed but not rerun in full.
+- **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
+- **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Full EditMode on Windows: 1,067 of 1,067, twice. The port is untested in a player and online.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest/` from 1c97274 is now old. Don't let anyone clean that folder.
 
 ## Next, in order
@@ -80,7 +82,7 @@ He reads it on his phone instead of scrolling the chat. Update it (Artifact `rea
 ## Open questions for Andrew
 
 - The real test of the PlayTest player: real Claude answering in chat, words by voice, a house built by asking, and how the radial, spell list and Esc menu feel at 4K.
-- Cost: use a cheaper model for mechanical PM work? (`docs/handoffs/pm-2026-11-02.md`)
+- Cost: script landing and the board before trying a cheaper main PM? Up to 69% of one session's context re-reads were mechanical (asked 2026-11-02).
 - Cast sounds and the new whoosh: never listened to.
 
 ## Telemetry
