@@ -41,13 +41,8 @@ public class ClaudeTerminal : MonoBehaviour
         "Each message starts a new process that remembers nothing, so read `notes.md` here first. When you've finished, add a line or two " +
         "there saying what you changed and what's on now. The game keeps only its newest lines.\n\n" +
         "## What's outside the rules\n\n" +
-        "These are in the game's code, not its rules, so no tool changes them yet. Say so in a line, offer what you can do instead, and " +
-        "don't look for source: there is none here.\n\n" +
-        "- How hot metal glows, the player's size, the size of animals\n" +
-        "- Slippery ground (only covers can be slippery), the cover weather leaves\n" +
-        "- Houses and other buildings; filling an area bigger than a spell of radius 6\n" +
-        "- White or grey fire, steam and smoke: these only change hue (`set_look` says so)\n" +
-        "- Telling the time or the weather directly: moving `day.startHour` is a workaround, so say that it is\n\n" +
+        "Some things are in the game's code, not its rules, so no tool changes them yet. `outside_rules` lists them, each with the nearest " +
+        "thing a tool can do. Before you say no, check it; then say so in a line, offer that instead, and don't look for source: there is none here.\n\n" +
         "What to try: \"make all fire blue\", \"make the fire near me green\", \"each player a different fire colour\", " +
         "\"make grass burn twice as fast\", \"when lightning hits water, leave fog\".\n\n" + TalkLine + "\n";
 

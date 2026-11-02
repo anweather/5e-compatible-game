@@ -107,13 +107,13 @@ public partial class NetChem
 public struct RoomIntent : INetworkSerializable
 {
     public int Tick;
-    public bool Revert;
+    public RoomChange Change;
     public string Peer, Mod, Json, Title;
 
     public static RoomIntent From(RoomCommand c, int tick) => new RoomIntent
     {
         Tick = tick,
-        Revert = c.Change == RoomChange.Revert,
+        Change = c.Change,
         Peer = c.Peer,
         Mod = c.Mod,
         Json = c.Json,
@@ -122,14 +122,14 @@ public struct RoomIntent : INetworkSerializable
 
     public static RoomIntent From(RoomMod m) => new RoomIntent { Tick = m.Tick, Peer = m.By, Mod = m.Id, Json = m.Json, Title = m.Title };
 
-    public RoomCommand ToCommand() => Revert ? RoomCommand.Revert(Peer, Mod) : RoomCommand.Apply(Peer, Mod, Json, Title);
+    public RoomCommand ToCommand() => new RoomCommand(Change, Peer, Mod, Json, Title);
 
     public RoomMod ToMod() => new RoomMod { Id = Mod, Title = Title, By = Peer, Tick = Tick, Json = Json };
 
     public void NetworkSerialize<T>(BufferSerializer<T> serializer) where T : IReaderWriter
     {
         serializer.SerializeValue(ref Tick);
-        serializer.SerializeValue(ref Revert);
+        serializer.SerializeValue(ref Change);
         serializer.SerializeValue(ref Peer);
         serializer.SerializeValue(ref Mod);
         serializer.SerializeValue(ref Json);

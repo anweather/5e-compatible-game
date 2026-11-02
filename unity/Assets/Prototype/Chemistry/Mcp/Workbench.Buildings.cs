@@ -404,7 +404,7 @@ namespace Chem.Mcp
         // The tables as the draft has them.
         BuildingTables BuildingTablesIn(Draft draft)
         {
-            var rules = Base.WithMods(new[] { ModPatch.Parse(new JObject { [BuildingTables.Key] = draft.Patch[BuildingTables.Key]?.DeepClone() ?? new JObject() }.ToString()) });
+            var rules = InForce.WithMods(new[] { ModPatch.Parse(new JObject { [BuildingTables.Key] = draft.Patch[BuildingTables.Key]?.DeepClone() ?? new JObject() }.ToString()) });
             return rules.Buildings;
         }
     }

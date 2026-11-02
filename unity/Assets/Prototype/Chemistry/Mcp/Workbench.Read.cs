@@ -30,11 +30,11 @@ namespace Chem.Mcp
                     lines.AddRange(Entries(table).Select(p => MaterialLine(table, p)));
                     break;
                 case "elements":
-                    foreach (var e in BaseDoc["elements"].Select(x => (string)x))
+                    foreach (var e in Doc["elements"].Select(x => (string)x))
                     {
-                        int rules = BaseDoc["cellRules"].Count(r => Str(r["element"]) == e);
-                        var spells = BaseDoc["spells"].Where(s => Str(s["element"]) == e).Select(s => Str(s["id"])).ToList();
-                        var colour = BaseElement(e)?["look"]?["color"];
+                        int rules = Doc["cellRules"].Count(r => Str(r["element"]) == e);
+                        var spells = Doc["spells"].Where(s => Str(s["element"]) == e).Select(s => Str(s["id"])).ToList();
+                        var colour = ElementEntry(e)?["look"]?["color"];
                         lines.Add($"{e}: {rules} reaction rule{(rules == 1 ? "" : "s")}; spells: {(spells.Count == 0 ? "none" : string.Join(", ", spells))}" +
                             (colour == null ? "" : $"; colour {Compact(colour)}"));
                     }
@@ -118,55 +118,69 @@ namespace Chem.Mcp
 
         // ---------- describe ----------
 
-        /// <summary>The full entry as written in rules/, plus every place the rules refer to it.</summary>
+        /// <summary>The full entry in force, plus every place the rules refer to it, which mods changed it and, for a spell, how a player reaches it.</summary>
         public string Describe(string table, string id, string draft = null)
         {
             table = Table(table);
             id = Required(id, "id");
             if (table == "materials") table = MaterialKinds.FirstOrDefault(k => Raw["materials"][k]?[id] != null) ?? "terrain";
-            var entry = string.IsNullOrWhiteSpace(draft) ? Find(table, id) : DraftEntry(DraftOf(draft.Trim()), table, id);
+            var drafted = string.IsNullOrWhiteSpace(draft) ? null : DraftOf(draft.Trim());
+            var entry = drafted == null ? Find(table, id) : DraftEntry(drafted, table, id);
             if (entry == null || entry.Type == JTokenType.Null) throw new RulesToolException($"There is no {Single(table)} called {id}; list {table} to see the ids.");
             var refs = new List<string>();
             foreach (var file in Raw.Keys.Where(f => f != "budgets"))
                 References(Raw[file], file, id, entry, refs);
             return $"{Single(table)} {id}:\n{entry.ToString(Formatting.Indented)}\n" +
                 (refs.Count == 0 ? "Nothing in the rules refers to it." : $"Referred to by ({refs.Count}):\n" + string.Join("\n", refs.Distinct().Take(60))) +
-                LookLine(table, id, entry);
+                LookLine(table, id, entry) + ChangedBy(table, id) +
+                (table == "spells" ? "\n" + ReachOf(drafted, id) : "");
         }
 
-        // An entry as a draft has it (its looks included), else as the base has it.
-        JToken DraftEntry(Draft draft, string table, string id) =>
-            (LookTables.Contains(table) ? Current(draft, table, id) : null) ?? Find(table, id);
+        // An entry as a draft has it (its looks included), else as the rules in force have it.
+        JToken DraftEntry(Draft draft, string table, string id)
+        {
+            if (LookTables.Contains(table)) return Current(draft, table, id) ?? Find(table, id);
+            if (table == "reactions")
+                return (draft.Patch["reactions"]?["add"] as JArray ?? new JArray()).Concat(draft.Patch["reactions"]?["addEntity"] as JArray ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id) ?? Find(table, id);
+            if (table == "sim") return draft.Patch["sim"]?.SelectToken(id) ?? Find(table, id);
+            return Find(table, id);
+        }
 
         JToken Find(string table, string id)
+        {
+            if (table == "elements") return Doc["elements"].Any(e => (string)e == id) ? ElementEntry(id) ?? new JObject() : JValue.CreateNull();
+            if (table == BuildingsTable) return (JToken)OnWorld(w => w.BuildingRowOf(id)?.Json) ?? JValue.CreateNull();
+            return EntryIn(Raw, table, id) ?? JValue.CreateNull();
+        }
+
+#pragma warning disable S1168 // a JToken is a collection to the analyser; null here means "no such entry"
+        // An entry in one layer of the written rules, or null.
+        static JToken EntryIn(Dictionary<string, JToken> raw, string table, string id)
         {
             switch (table)
             {
                 case "terrain":
                 case "covers":
                 case "gases":
-                    return Raw["materials"][table]?[id];
+                    return raw["materials"][table]?[id];
                 case "reactions":
-                    return RawList("reactions", "cell").Concat(RawList("reactions", "entity")).FirstOrDefault(r => Str(r["id"]) == id);
+                    return ((raw["reactions"]["cell"] as JArray) ?? new JArray()).Concat((raw["reactions"]["entity"] as JArray) ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id);
                 case "spells":
                 case "critters":
-                    return ((JArray)Raw[table]).FirstOrDefault(s => Str(s["id"]) == id);
-                case "elements":
-                    return BaseDoc["elements"].Any(e => (string)e == id) ? BaseElement(id) ?? new JObject() : JValue.CreateNull();
+                    return raw[table].FirstOrDefault(s => Str(s["id"]) == id);
                 case "sim":
-                    return Raw["sim"].SelectToken(id);
-                case BuildingsTable:
-                    return (JToken)OnWorld(w => w.BuildingRowOf(id)?.Json) ?? JValue.CreateNull();
+                    return raw["sim"].SelectToken(id);
                 case "openings":
                 case "floors":
                 case "roofs":
                 case "details":
                 case "styles":
-                    return Raw[BuildingTables.Key][table]?[id];
+                    return raw[BuildingTables.Key][table]?[id];
                 default:
-                    return Raw.TryGetValue(table, out var t) ? t[id] : JValue.CreateNull();
+                    return raw.TryGetValue(table, out var t) ? t[id] : null;
             }
         }
+#pragma warning restore S1168
 
         // Where a string equal to id appears (outside the entry itself), as "file: entry path".
         static void References(JToken t, string where, string id, JToken self, List<string> refs)
@@ -198,7 +212,7 @@ namespace Chem.Mcp
         {
             element = Required(element, "element");
             material = Required(material, "material");
-            var doc = string.IsNullOrEmpty(draft) ? BaseDoc : JObject.Parse(RulesWith(PatchJson(draft)).ToJson());
+            var doc = string.IsNullOrEmpty(draft) ? Doc : JObject.Parse(RulesWith(PatchJson(draft)).ToJson());
             if (!IsElement(doc, element))
             {
                 // Either way round: explain(grass, fire) means fire on grass.

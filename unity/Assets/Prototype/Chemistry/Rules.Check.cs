@@ -25,13 +25,25 @@ namespace Chem
             return check.Errors;
         }
 
+        /// <summary>Whether a rule's or a spell's condition has this name.</summary>
+        internal static bool IsCondition(string key) => Checker.CondKeys.Contains(key);
+
+        /// <summary>Whether a rule's effect has this name.</summary>
+        internal static bool IsEffect(string key) => Checker.EffectKeys.Contains(key);
+
+        /// <summary>The conditions, for a sentence saying what there is.</summary>
+        internal static IEnumerable<string> Conditions => Checker.CondKeys.OrderBy(k => k, StringComparer.Ordinal);
+
+        /// <summary>The effects, for a sentence saying what there is.</summary>
+        internal static IEnumerable<string> Effects => Checker.EffectKeys.OrderBy(k => k, StringComparer.Ordinal);
+
         sealed partial class Checker
         {
-            static readonly HashSet<string> CondKeys = new HashSet<string>
+            internal static readonly HashSet<string> CondKeys = new HashSet<string>
             {
                 "cover", "fire", "fireBelow", "water", "frozen", "melts", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb",
             };
-            static readonly HashSet<string> EffectKeys = new HashSet<string>
+            internal static readonly HashSet<string> EffectKeys = new HashSet<string>
             {
                 "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "crust", "thaw", "shatter", "dissolve", "scour", "pushCover",
                 "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",

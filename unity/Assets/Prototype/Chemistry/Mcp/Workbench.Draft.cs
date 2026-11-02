@@ -1,7 +1,7 @@
 // The draft tools: add_material, set_material, add_reaction, set_reaction,
 // add_spell, set_spell, tune, remove. Each composes onto a draft (a mod patch in
 // memory) and returns it. Entries are replaced whole when a mod switches on, so
-// a set_ copies the base entry into the draft first and changes one field.
+// a set_ copies the entry in force into the draft first and changes one field.
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
@@ -22,16 +22,18 @@ namespace Chem.Mcp
             kind = Kind(kind);
             id = Required(id, "id");
             if (string.IsNullOrWhiteSpace(name)) throw new RulesToolException($"The {Single(kind)} {id} needs a name.");
-            var owner = MaterialKinds.FirstOrDefault(k => BaseDoc[k]?[id] != null);
+            var owner = MaterialKinds.FirstOrDefault(k => Doc[k]?[id] != null);
             if (owner != null) throw new RulesToolException($"There is already a {Single(owner)} called {id}; use set_material to change it.");
             var entry = new JObject { ["name"] = name.Trim() };
-            var tagList = tags?.Where(t => !string.IsNullOrWhiteSpace(t)).ToList();
-            if (tagList != null && tagList.Count > 0) entry["tags"] = new JArray(tagList);
+            // A cover and a terrain must list tags, even none; a gas has no use for them.
+            var tagList = tags?.Where(t => !string.IsNullOrWhiteSpace(t)).ToList() ?? new List<string>();
+            if (tagList.Count > 0 || kind != "gases") entry["tags"] = new JArray(tagList);
             if (!string.IsNullOrWhiteSpace(verbs))
             {
                 if (!(Value(verbs) is JObject groups)) throw new RulesToolException("verbs is a JSON object of verb groups, such as {\"burn\": {\"catch\": 0.4, \"fuel\": 10}}.");
                 foreach (var p in groups.Properties()) entry[p.Name] = p.Value;
             }
+            RuleFields.CheckMaterial(kind, entry);
             var draft = DraftOf(draftId);
             Section(draft, kind)[id] = entry;
             draft.Changed.Add($"{kind} {id}");
@@ -45,9 +47,10 @@ namespace Chem.Mcp
             var draft = DraftOf(draftId);
             var kind = MaterialKinds.FirstOrDefault(k => draft.Patch[k]?[id] != null) ?? MaterialKinds.FirstOrDefault(k => Raw["materials"][k]?[id] != null)
                 ?? throw new RulesToolException($"There is no terrain, cover or gas called {id}; use add_material for a new one.");
+            RuleFields.CheckMaterial(kind, Required(field, "field"), Value(value));
             var section = Section(draft, kind);
             if (!(section[id] is JObject entry)) section[id] = entry = (JObject)Raw["materials"][kind][id].DeepClone();
-            SetPath(entry, Required(field, "field"), value);
+            SetPath(entry, field, value);
             draft.Changed.Add($"{kind} {id}");
             return draft;
         }
@@ -63,16 +66,18 @@ namespace Chem.Mcp
         {
             id = Required(id, "id");
             element = Required(element, "element");
-            if (BaseDoc["cellRules"].Concat(BaseDoc["entityRules"]).Any(r => Str(r["id"]) == id))
+            if (Doc["cellRules"].Concat(Doc["entityRules"]).Any(r => Str(r["id"]) == id))
                 throw new RulesToolException($"There is already a reaction rule called {id}; use set_reaction to change it.");
             var rule = new JObject { ["id"] = id, ["element"] = element };
             var cond = string.IsNullOrWhiteSpace(conditions) ? new JObject() : Value(conditions) as JObject
                 ?? throw new RulesToolException("conditions is a JSON object, such as {\"cover\": [\"oil\"]} or {\"terrainTag\": \"flammable\"}.");
+            RuleFields.CheckConditions("if", cond);
             if (chance.HasValue) cond["chance"] = chance.Value;
             if (cond.Count > 0) rule["if"] = cond;
             var effect = Value(Required(effects, "effects"));
             if (effect is JObject single) effect = new JArray(single);
             if (!(effect is JArray list) || list.Count == 0) throw new RulesToolException("effects is a JSON list of effects, one key each, such as [{\"ignite\": 2}].");
+            RuleFields.CheckEffects(list);
             rule["do"] = list;
             if (!string.IsNullOrWhiteSpace(log)) rule["log"] = log.Trim();
             if (notable) rule["notable"] = true;
@@ -91,6 +96,7 @@ namespace Chem.Mcp
         public Draft SetReaction(string draftId, string id, string field, string value)
         {
             id = Required(id, "id");
+            RuleFields.CheckRule(Required(field, "field"), Value(value));
             var draft = DraftOf(draftId);
             JObject rule = null;
             foreach (var entity in new[] { false, true })
@@ -109,7 +115,7 @@ namespace Chem.Mcp
                 break;
             }
             if (rule == null) throw new RulesToolException($"There is no reaction rule called {id}; use add_reaction for a new one.");
-            if (Required(field, "field") == "id") throw new RulesToolException("A rule's id can't change; add a new rule instead.");
+            if (field == "id") throw new RulesToolException("A rule's id can't change; add a new rule instead.");
             SetPath(rule, field, value);
             draft.Changed.Add($"reactions {id}");
             return draft;
@@ -121,7 +127,7 @@ namespace Chem.Mcp
         public Draft AddSpell(string draftId, SpellArgs a)
         {
             var id = Required(a.Id, "id");
-            if (BaseDoc["spells"].Any(s => Str(s["id"]) == id)) throw new RulesToolException($"There is already a spell called {id}; use set_spell to change it.");
+            if (Doc["spells"].Any(s => Str(s["id"]) == id)) throw new RulesToolException($"There is already a spell called {id}; use set_spell to change it.");
             var spell = new JObject
             {
                 ["id"] = id,
@@ -142,6 +148,8 @@ namespace Chem.Mcp
                 foreach (var p in extra.Properties()) spell[p.Name] = p.Value;
             }
             if (!string.IsNullOrWhiteSpace(a.Blurb)) spell["blurb"] = a.Blurb.Trim();
+            foreach (var p in spell.Properties()) RuleFields.CheckSpell(p.Name, p.Value);
+            RefuseBadPlace(id, spell);
             var draft = DraftOf(draftId);
             if (Str(spell["element"]) is string element) NewElement(draft, element);
             Upsert(Spells(draft), spell);
@@ -153,22 +161,61 @@ namespace Chem.Mcp
         public Draft SetSpell(string draftId, string id, string field, string value)
         {
             id = Required(id, "id");
-            var draft = DraftOf(draftId);
-            var spells = Spells(draft);
-            int at = IndexOfId(spells, id);
-            JObject spell;
-            if (at >= 0) spell = (JObject)spells[at];
-            else
-            {
-                spell = (JObject)(((JArray)Raw["spells"]).FirstOrDefault(s => Str(s["id"]) == id)?.DeepClone()
-                    ?? throw new RulesToolException($"There is no spell called {id}; use add_spell for a new one."));
-                spells.Add(spell);
-            }
             if (Required(field, "field") == "id") throw new RulesToolException("A spell's id can't change; add a new spell instead.");
+            RuleFields.CheckSpell(field, Value(value));
+            var draft = DraftOf(draftId);
+            var held = (draft.Patch["spells"] as JArray)?.FirstOrDefault(s => Str(s["id"]) == id);
+            var spell = (JObject)(held ?? ((JArray)Raw["spells"]).FirstOrDefault(s => Str(s["id"]) == id))?.DeepClone()
+                ?? throw new RulesToolException($"There is no spell called {id}; use add_spell for a new one.");
             if (field == "damage" && Str(Value(value)) is string dice) value = Dice(dice).ToString(Formatting.None);
             SetPath(spell, field, value);
+            RefuseBadPlace(id, spell);
+            Upsert(Spells(draft), spell);
             draft.Changed.Add($"spells {id}");
             return draft;
+        }
+
+        // What validate would say later, at once: a number past the caps, a group the radial doesn't have.
+        void RefuseBadPlace(string id, JObject spell)
+        {
+            var over = ModValidator.SpellCaps(Budgets, id, spell).FirstOrDefault();
+            if (over != null) throw new RulesToolException(over);
+            if (Str(spell["group"]) is string group && Raw["groups"][group] == null)
+                throw new RulesToolException($"There is no group {group}; the radial's groups are {string.Join(", ", ((JObject)Raw["groups"]).Properties().Select(p => p.Name))}.");
+        }
+
+        /// <summary>How a player reaches a spell: on the radial, by a combo, or not yet and what to do about it. For add_spell and describe.</summary>
+        public string ReachOf(Draft draft, string id)
+        {
+            var spell = (draft?.Patch["spells"] as JArray)?.FirstOrDefault(s => Str(s["id"]) == id) ?? ((JArray)Raw["spells"]).FirstOrDefault(s => Str(s["id"]) == id);
+            string name = Str(spell?["name"]) ?? id;
+            Rules rules;
+            try
+            {
+                rules = draft == null ? InForce : RulesWith(draft.Patch.ToString(Formatting.None));
+            }
+            catch (RulesToolException)
+            {
+                bool listed = !(spell?["radial"]?.Type == JTokenType.Boolean && !(bool)spell["radial"]);
+                return listed
+                    ? $"Once this draft fits together (validate says what's left), a player reaches {name} on the spell radial: hold Tab (LB on a pad), the {Str(Raw["groups"][Str(spell?["group"]) ?? ""]?["name"]) ?? "last"} wedge, then {name}."
+                    : $"{name} has radial false, so no player can reach it from the radial; set_spell {id} radial true puts it there.";
+            }
+            var ways = new List<string>();
+            var radial = RadialLayout.From(rules);
+            int wedge = radial.GroupOfSpell(id);
+            if (wedge >= 0)
+            {
+                string note = Str(spell?["group"]) != radial.Groups[wedge].Id ? $" (it names no group the radial has, so it goes in the last wedge)" : "";
+                ways.Add($"on the spell radial: hold Tab (LB on a pad), the {radial.Groups[wedge].Name} wedge{note}, then {name}");
+            }
+            foreach (var c in rules.Combos.All.Where(c => c.Spell == id || c.Held == id))
+                ways.Add($"by the combo {c.Name} ({c.Id.Replace("+", " then ", System.StringComparison.Ordinal)}){(c.Spell == id ? "" : ", held to full charge")}");
+            foreach (var d in rules.Combos.Dpad.Where(d => d.Spell == id))
+                ways.Add($"on the d-pad's list as {d.Name}");
+            return ways.Count == 0
+                ? $"No player can reach {name} yet: it isn't on the radial (radial false) and no combo casts it. set_spell {id} radial true puts it on the radial."
+                : $"A player reaches {name} {string.Join("; or ", ways)}.";
         }
 
         // ---------- sim ----------
@@ -241,7 +288,7 @@ namespace Chem.Mcp
         /// <summary>An element the base rules don't have joins the draft's elements (validate then asks that more than one spell use it).</summary>
         void NewElement(Draft draft, string element)
         {
-            if (BaseDoc["elements"].Any(e => Str(e) == element)) return;
+            if (Doc["elements"].Any(e => Str(e) == element)) return;
             if (draft.Patch["elements"] is JObject named)
             {
                 if (named[element] == null) named[element] = new JObject();

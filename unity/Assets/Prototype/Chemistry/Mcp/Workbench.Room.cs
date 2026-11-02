@@ -59,6 +59,7 @@ namespace Chem.Mcp
             {
                 var m = RoomPolicy.Parse(mode) ?? throw new RulesToolException($"{mode.Trim()} isn't a change mode; a room is open, host-only or locked.");
                 live = NewRoom(m);
+                Refresh();
             }
             return Describe(Live.Room, Live.Tick);
         }
@@ -92,49 +93,65 @@ namespace Chem.Mcp
                 return Decide(RoomCommand.Apply(PeerOf(peer), key.StartsWith('{') ? IdOf(json) : key, json, title));
             if (string.IsNullOrWhiteSpace(title)) throw new RulesToolException("A draft needs a title, the name players read in the log; apply it again with one.");
             var slug = Slug(title);
+            // Read before it goes in: after, the draft's own values are what's in force.
+            string changes = Changes(draft) + NewSpellsReach(draft);
             string said = Decide(RoomCommand.Apply(PeerOf(peer), slug.Length > 0 ? slug : draft.Id, json, title.Trim()));
-            return said.Contains(" refused:", System.StringComparison.Ordinal) ? said : said + "\n" + Changes(draft);
+            return Refused(said) ? said : said + "\n" + changes;
         }
 
-        /// <summary>What a draft does, in a sentence: each entry it holds against the base rules.</summary>
+        /// <summary>What a draft does, in a sentence: each entry it holds against the rules in force.</summary>
         public string Changes(Draft draft) => "It changes " + string.Join("; ", draft.Changed.Select(c => ChangeOf(draft, c))) + ".";
+
+        string NewSpellsReach(Draft draft) =>
+            string.Concat(draft.Changed.Where(c => c.StartsWith("spells ", System.StringComparison.Ordinal)).Select(c => c.Substring("spells ".Length))
+                .Where(id => EntryIn(Raw, "spells", id) == null).Select(id => "\n" + ReachOf(draft, id)));
 
         string ChangeOf(Draft draft, string changed)
         {
             int space = changed.IndexOf(' ');
             string table = changed.Substring(0, space), id = changed.Substring(space + 1);
             if (table == "sim") return $"{id} from {Compact(Raw["sim"].SelectToken(id))} to {Compact(draft.Patch["sim"]?.SelectToken(id))}";
-            if (table == "reactions") return $"a rule, {id}";
             if (table == BuildingsTable) return BuildingChange(id);
             if (BuildingTables.Tables.Contains(table)) return $"a {Single(table)} row, {id}";
+            if (table == "reactions")
+            {
+                var rule = (draft.Patch["reactions"]?["add"] as JArray ?? new JArray()).Concat(draft.Patch["reactions"]?["addEntity"] as JArray ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id);
+                var before = EntryIn(Raw, table, id);
+                return before == null || rule == null ? $"a rule, {id}" : $"the rule {id}: {string.Join(", ", Differences("", before, rule))}";
+            }
             var (was, now) = table switch
             {
                 "spells" => (Raw["spells"].FirstOrDefault(s => Str(s["id"]) == id), draft.Patch["spells"]?.FirstOrDefault(s => Str(s["id"]) == id)),
-                "elements" => (BaseDoc["elements"].Any(e => Str(e) == id) ? BaseElement(id) ?? new JObject() : null, (draft.Patch["elements"] as JObject)?[id]),
+                "elements" => (Doc["elements"].Any(e => Str(e) == id) ? ElementEntry(id) ?? new JObject() : null, (draft.Patch["elements"] as JObject)?[id]),
                 _ => (Raw["materials"][table]?[id], draft.Patch[table]?[id]),
             };
             if (!(now is JObject entry)) return changed;
-            string name = Str(entry["name"]) ?? id;
-            if (was == null) return $"a new {Single(table)}, {name}";
-            return $"{name}: {string.Join(", ", Differences("", was, entry))}";
+            return EntryChange(table, id, was, entry);
         }
 
         // Field by field, down through groups: "burn.fuel from 8 to 4".
         static IEnumerable<string> Differences(string path, JToken was, JToken now)
         {
             if (now is JObject group && was is JObject before)
-                return group.Properties().SelectMany(p => Differences(path.Length == 0 ? p.Name : path + "." + p.Name, before[p.Name], p.Value));
+                return group.Properties().Select(p => p.Name).Union(before.Properties().Select(p => p.Name))
+                    .SelectMany(k => Differences(path.Length == 0 ? k : path + "." + k, before[k], group[k]));
             return JToken.DeepEquals(was, now) ? Enumerable.Empty<string>() : new[] { $"{path} from {Compact(was)} to {Compact(now)}" };
         }
 
         /// <summary>Reverts a mod on in the room (by its id, as room lists it), as <paramref name="peer"/> (the host when left out).</summary>
-        public string Revert(string mod, string peer = null) => Decide(RoomCommand.Revert(PeerOf(peer), Required(mod, "mod")));
+        public string Revert(string mod, string peer = null)
+        {
+            string held = StillHeld(Required(mod, "mod"));
+            string said = Decide(RoomCommand.Revert(PeerOf(peer), mod.Trim()));
+            return Refused(said) ? said : said + held;
+        }
 
         string Decide(RoomCommand command)
         {
             if (Desk != null) return Desk.Decide(command);
             var verdict = Live.ApplyRoom(command);
             Live.Step(); // in force from the next tick
+            Refresh();
             return verdict.Line + ".\n" + Room();
         }
 

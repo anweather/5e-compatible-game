@@ -6,7 +6,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        /// <summary>Runs a scenario for some ticks with the patch on, then without it, and compares.</summary>
+        /// <summary>Runs a scenario for some ticks on the rules in force with the patch on, then without it, and compares.</summary>
         public string Simulate(string draftOrMod, string scenario, int? ticks = null)
         {
             var (with, without) = SimulateRuns(draftOrMod, scenario, ticks);
@@ -19,7 +19,7 @@ namespace Chem.Mcp
             string cost = slowdown > maxSlowdown
                 ? $"It ticks {slowdown.ToString("0.0", CultureInfo.InvariantCulture)} times slower than without it, past the budget of {Num(maxSlowdown)}."
                 : $"It ticks at {(1 / slowdown).ToString("0.00", CultureInfo.InvariantCulture)} times the speed without it (the budget allows down to 1/{Num(maxSlowdown)}).";
-            return $"Scenario {scenario}: {Simulator.Scenarios[scenario]} {with.Ticks} ticks ({with.Ticks / Base.Sim.TicksPerSecond} s of game time).\n\n" +
+            return $"Scenario {scenario}: {Simulator.Scenarios[scenario]} {with.Ticks} ticks ({with.Ticks / InForce.Sim.TicksPerSecond} s of game time).\n\n" +
                 $"With the mod:\n{Simulator.Describe(with, min)}\n\nWithout it:\n{Simulator.Describe(without, min)}\n\n{verdict} {cost}";
         }
 
@@ -34,7 +34,7 @@ namespace Chem.Mcp
             if (n < 1 || n > max) throw new RulesToolException($"Simulate runs 1 to {max} ticks, not {n}.");
             var rules = RulesWith(PatchJson(draftOrMod));
             // Without it first, so warming up the runtime doesn't count against the mod.
-            var without = Simulator.Run(Base, scenario, n);
+            var without = Simulator.Run(InForce, scenario, n);
             return (Simulator.Run(rules, scenario, n), without);
         }
     }

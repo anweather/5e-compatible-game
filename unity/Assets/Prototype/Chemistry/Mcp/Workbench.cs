@@ -1,4 +1,4 @@
-// What the rules MCP's tools do, without the MCP: the base rules, the drafts in
+// What the rules MCP's tools do, without the MCP: the rules in force, the drafts in
 // memory, and the read, check and save steps (docs/RULES_MCP.md). RulesTools
 // wraps it for the server; the tests in Game.Core.Tests call it directly.
 using System;
@@ -30,22 +30,16 @@ namespace Chem.Mcp
             ModsDir = modsDir ?? Path.Combine(rulesDir, "mods");
             Base = Rules.Load(rulesDir);
             Budgets = ModBudgets.Load(rulesDir);
-            BaseDoc = JObject.Parse(Base.ToJson());
-            Raw = new Dictionary<string, JToken>(StringComparer.Ordinal);
+            baseRaw = new Dictionary<string, JToken>(StringComparer.Ordinal);
             foreach (var path in Directory.GetFiles(rulesDir, "*.json").OrderBy(p => p, StringComparer.Ordinal))
-                Raw[Path.GetFileNameWithoutExtension(path)] = JToken.Parse(File.ReadAllText(path));
+                baseRaw[Path.GetFileNameWithoutExtension(path)] = JToken.Parse(File.ReadAllText(path));
+            PutLayers(Array.Empty<RoomMod>());
         }
 
         public string RulesDir { get; }
         public string ModsDir { get; }
         public Rules Base { get; }
         public ModBudgets Budgets { get; }
-
-        /// <summary>The base rules as the engine reads them (materials ungrouped into flat keys).</summary>
-        internal JObject BaseDoc { get; }
-
-        /// <summary>The rule files as written (materials in verb groups), by name without .json.</summary>
-        internal Dictionary<string, JToken> Raw { get; }
 
         /// <summary>
         /// The folder holding rules/ found by walking up from here (the repo root's rules/), for a
@@ -89,12 +83,12 @@ namespace Chem.Mcp
             throw new RulesToolException($"{(key.Length == 0 ? "Nothing" : key)} is neither a draft, a mod in rules/mods nor a patch.");
         }
 
-        /// <summary>The rules with a patch on, or the reason it can't switch on.</summary>
+        /// <summary>The rules in force with a patch on as well, or the reason it can't switch on.</summary>
         public Rules RulesWith(string patchJson)
         {
             try
             {
-                return Base.WithMods(new[] { ModPatch.Parse(patchJson) });
+                return InForce.WithMods(new[] { ModPatch.Parse(patchJson) });
             }
             catch (ModException e)
             {
@@ -109,7 +103,7 @@ namespace Chem.Mcp
         // The mod's checks, then whether its buildings can stand on the world as it is now.
         IReadOnlyList<ModProblem> WithSite(string json)
         {
-            var problems = ModValidator.Validate(Base, Budgets, json);
+            var problems = ModValidator.Validate(InForce, Budgets, json);
             string site = problems.Count == 0 ? SiteNote(json) : null;
             return site == null ? problems : problems.Append(new ModProblem(ModCheck.Site, site.TrimEnd('.') + ".")).ToList();
         }

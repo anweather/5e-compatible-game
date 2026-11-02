@@ -126,6 +126,8 @@ namespace Chem.Tests
             string wing = ((JObject)rows).Properties().Select(p => p.Name).Single(n => n.StartsWith("cabin#", StringComparison.Ordinal));
             Assert.That(world.BuildingRowOf(wing).Walls.Any(w => w.Id.StartsWith("wing1", StringComparison.Ordinal)));
             Assert.That(client.Call("find", new { kind = "building", near = "lake", within = 12 }), Does.Contain(wing));
+            Assert.That(client.Call("whats_on", new { }), Does.Contain("the building beach-house#1"));
+            Assert.That(client.Call("describe", new { table = "buildings", id = "beach-house#1" }), Does.Contain("stucco-wall"), "the tools read what's on");
 
             // The world's save keeps it: a load has the same cells and room, and reverting then puts all back.
             var source = bench.LiveSource;
@@ -226,6 +228,34 @@ namespace Chem.Tests
             Assert.That(row["roofs"]["main"]["over"].Count(), Is.EqualTo(8), "the roof's outline goes round the wing");
             Assert.That(row["walls"]["north"]["openings"].Single()["kind"].ToString(), Is.EqualTo("door"), "its window under the wing goes, and a door takes it through");
             Assert.That(client.Call("apply", new { mod = d, title = "House and wing" }), Does.Contain("switched on"));
+        }
+
+        [Test]
+        public void AVillageBuildingEditedByIdChangesOnlyItsCellsAndComesBack()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var world = bench.LiveWorld;
+            var row = world.BuildingRowOf("Hollowmere#1");
+            var was = world.BuildingCellsOf(row).Select(c => (c.X, c.Y, c.Terrain)).ToList();
+            string other = "Hollowmere#2";
+            var others = world.BuildingCellsOf(world.BuildingRowOf(other)).Select(c => (c.X, c.Y, c.Terrain)).ToList();
+            int x = row.X, y = row.Y;
+
+            // A smaller building in the same place: what it gives up goes to bare ground.
+            var patch = new JObject { ["world"] = new JObject { ["buildings"] = new JObject { ["Hollowmere#1"] = JObject.Parse("{ \"at\": [" + x + ", " + y + "], \"style\": \"village\", \"joins\": { \"a\": [0, 0], \"b\": [6, 0], \"c\": [6, 6], \"d\": [0, 6] }, \"walls\": { \"n\": { \"from\": \"a\", \"to\": \"b\" }, \"e\": { \"from\": \"b\", \"to\": \"c\" }, \"s\": { \"from\": \"c\", \"to\": \"d\" }, \"w\": { \"from\": \"d\", \"to\": \"a\" } } }") } } };
+            Assert.That(world.ApplyRoom(RoomCommand.Apply("host", "smaller", patch.ToString())).Done, Is.True);
+            Assert.That(world.At(x + 3, y).T, Is.EqualTo("dirt"), "a cell it gave up");
+            Assert.That(others.All(c => world.At(c.X, c.Y).T == c.Terrain), "the next house stands as it did");
+            Assert.That(world.ApplyRoom(RoomCommand.Revert("host", "smaller")).Done, Is.True);
+            Assert.That(was.All(c => world.At(c.X, c.Y).T == c.Terrain), "the revert lays it as it was");
+        }
+
+        [Test]
+        public void AModsBuiltCellsStayABuildingsSize()
+        {
+            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var problems = bench.Validate("{ \"world\": { \"buildings\": { \"t#1\": { \"at\": [10, 10], \"style\": \"cabin\", \"built\": { \"logwall\": [[0, 0, 2000000]] } } } } }");
+            Assert.That(problems.Select(p => p.Message), Has.Some.Contains("built cells"));
         }
 
         [Test]

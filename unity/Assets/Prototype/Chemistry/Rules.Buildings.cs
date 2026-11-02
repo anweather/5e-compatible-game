@@ -97,6 +97,11 @@ namespace Chem
                 if (row["fill"] != null) Fill(who, row["fill"]);
                 if (row["floor"]?["kind"] != null) Named(who, "floor", "floors", row["floor"]["kind"], tables);
                 if (row["storeys"] != null && !IsWholeAtLeast(row["storeys"], 1)) Errors.Add($"{who}: storeys must be a whole number, 1 or more");
+                foreach (var t in (row["built"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                {
+                    if (terrain[t.Name] == null) Errors.Add($"{who}: built names unknown terrain {t.Name}");
+                    if (!(t.Value is JArray spans) || !spans.All(s => s is JArray a && a.Count % 2 == 1 && a.Count >= 3)) Errors.Add($"{who}: built cells are spans, [y, x0, x1, ...] from at");
+                }
                 var joins = row["joins"] as JObject ?? new JObject();
                 foreach (var j in joins.Properties())
                     if (!(j.Value is JArray xy) || xy.Count != 2 || !xy.All(IsWhole)) Errors.Add($"{who}: join {j.Name} must be [x, y], whole half cells from at");

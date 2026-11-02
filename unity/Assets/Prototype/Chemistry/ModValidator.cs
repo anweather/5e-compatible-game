@@ -118,6 +118,17 @@ namespace Chem
             return problems;
         }
 
+        /// <summary>A spell's numbers past the budget's caps, one sentence each: what validate says, and set_spell at once.</summary>
+        internal static IEnumerable<string> SpellCaps(ModBudgets budgets, string id, JObject s)
+        {
+            foreach (var (key, cap) in new[] { ("power", "maxPower"), ("radius", "maxRadius"), ("length", "maxLength"), ("size", "maxSize"), ("push", "maxPush"), ("raise", "maxRaise"), ("dig", "maxDig") })
+            {
+                double max = budgets.Number("spells." + cap, double.MaxValue);
+                if (s[key] != null && (s[key].Type == JTokenType.Integer || s[key].Type == JTokenType.Float) && (double)s[key] > max)
+                    yield return $"Spell {id} has a {key} of {s[key]}; a mod's spell may have at most {max.ToString("0.###", CultureInfo.InvariantCulture)}, so one cast can't cover a chunk or stall the tick.";
+            }
+        }
+
         /// <summary>The engine's terse messages ("spell x: unknown element y") as a sentence.</summary>
         static string Sentence(string m)
         {
@@ -409,12 +420,7 @@ namespace Chem
 
             void SpellBudget(string id, JObject s)
             {
-                foreach (var (key, cap) in new[] { ("power", "maxPower"), ("radius", "maxRadius"), ("length", "maxLength"), ("size", "maxSize"), ("push", "maxPush"), ("raise", "maxRaise"), ("dig", "maxDig") })
-                {
-                    double max = budgets.Number("spells." + cap, double.MaxValue);
-                    if (IsNumber(s[key]) && (double)s[key] > max)
-                        Add(ModCheck.Budget, $"Spell {id} has a {key} of {s[key]}; a mod's spell may have at most {Num(max)}, so one cast can't cover a chunk or stall the tick.");
-                }
+                foreach (var message in SpellCaps(budgets, id, s)) Add(ModCheck.Budget, message);
             }
 
             void RuleBudget(string id, JObject rule)
@@ -465,11 +471,21 @@ namespace Chem
 
             void SiteSize(string id, JObject row)
             {
+                BuiltSize(id, row);
                 if (!(row["joins"] is JObject joins) || joins.Count == 0 || joins.PropertyValues().Any(j => !(j is JArray a) || a.Count != 2 || !IsWhole(a[0]) || !IsWhole(a[1]))) return;
                 double max = budgets.Number("buildings.maxCells", 24);
                 double wide = (joins.PropertyValues().Max(j => (double)j[0]) - joins.PropertyValues().Min(j => (double)j[0])) / 2;
                 double deep = (joins.PropertyValues().Max(j => (double)j[1]) - joins.PropertyValues().Min(j => (double)j[1])) / 2;
                 if (wide > max || deep > max) Add(ModCheck.Budget, $"Building {id} is {Num(wide)} by {Num(deep)} cells; a building is at most {Num(max)} by {Num(max)}.");
+            }
+
+            // A row's built cells (a cabin's, carried along in an edit) stay the size of a building too.
+            void BuiltSize(string id, JObject row)
+            {
+                double reach = 2 * budgets.Number("buildings.maxCells", 24);
+                var numbers = (row["built"] as JObject)?.PropertyValues().SelectMany(t => t).SelectMany(r => r) ?? Enumerable.Empty<JToken>();
+                if (numbers.Any(n => !IsWhole(n) || Math.Abs((double)n) > reach))
+                    Add(ModCheck.Budget, $"Building {id}'s built cells must be whole numbers within {Num(reach)} cells of its at.");
             }
 
             // Covers that float spread over open water: a reach past the budget would cover a lake.
