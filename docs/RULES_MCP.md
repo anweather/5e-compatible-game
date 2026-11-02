@@ -64,7 +64,7 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `add_material`, `set_material(id, field, value)`
 - `add_reaction(a, b -> result, chance?, ...)`, `set_reaction`
 - `add_spell` / `set_spell` (through groups and material verbs only)
-- `set_look(id, param, value, table?, where?, by?)`: one parameter of the look of a spell, terrain,
+- `set_look(id, param, value, table?, where?, by?, spells?)`: one parameter of the look of a spell, terrain,
   cover, gas or element, a `mix` of colours, with `where` a colour or mix that holds only
   round a place, a cell or the player asking, and with `by` one that colours only what a
   player casts (see "Looks")
@@ -119,7 +119,10 @@ summary in words (cells changed by material, peak counts, tick time against the 
 cell hash) plus the same run without the patch for comparison.
 
 **Save and apply**
-- `save(draft, title, idea)`: writes a mod in the `rules/mods/` format (title, idea, patch).
+- `save(draft, title, idea)`: writes a draft, or a mod on by the id `room` gives, in the `rules/mods/` format (title, idea, patch).
+  In a build that's the install's `StreamingAssets/rules/mods`, so an update probably removes it
+  (`docs/telemetry/chat-context-2026-11-02.md`). From the game's chat it's refused unless the player's own message says save
+  (`Workbench.SaveRefused`): a model tried it unasked on real prompts. A terminal has a person to answer Claude's prompt.
 - `apply(mod)` (phase 3): sends the mod into the game this MCP is attached to. In a room it goes
   as a rule-switch intent and follows the room's change mode (below). `revert(mod)`.
 
@@ -147,6 +150,8 @@ can't reach the netcode checksum; `Rules.ApplyPatch` keeps the old look when a r
 doesn't give one, so a mod about numbers doesn't lose its drawing.
 
 **Changing a look through the MCP.** Sizes follow the numbers by themselves; a colour is a look.
+An element's plain colour goes on to every spell of that element with a colour of its own, in one call, as otherwise
+each cast stays the old colour; `spells: false` leaves them, and the answer names them either way.
 `set_look(id, param, value)` changes one parameter of a spell's, material's or element's look in
 a draft: `color` (three numbers 0 to 1, or `"#rrggbb"`; the player says "blue", Claude picks the
 numbers), and any other parameter its family lists (`height`, `glow`, `form`...). It answers with
@@ -413,8 +418,9 @@ switches on), so lockstep holds and we run no servers for it.
      running as this user on this machine can use it. The Esc menu's Play with Claude page (`ClaudeMenu`) shows the line to add it to Claude and how it works, and a switch that closes the port (on by default,
      kept per player, J-047).
      Asked for something, Claude writes it: the server's instructions and `apply`'s description say to
-     build a draft, `simulate` it where a scenario fits, and apply it with a title; a saved mod only if
-     the player names one. `apply` answers with what the draft changed, field by field, and a draft
+     build a draft, `simulate` it if `validate` says to, and apply it with a title; a saved mod only if
+     the player names one. **What a tool needs goes in its description, not the instructions:** Claude Code
+     writes the instructions again with every prompt, and keeps the descriptions in the cached block. `apply` answers with what the draft changed, field by field, and a draft
      with no title is refused. Without `simulate`, "grass burns twice as fast" went in as half the
      fuel, and a fire then died before it spread (`roomasks`).
      Probes: `roomopen`, `roomhost`, `roomlocked`, `roommcp`, `roomclaude`, `roomasks`, `roomclip`.

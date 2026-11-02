@@ -383,7 +383,8 @@ that long, and doesn't march.
   rules' to one that isn't pale. Its effects, and the fire it lights, keep it
   whatever its element's colour is (J-052). A spell with no chosen colour
   follows its element, the one its `element` names, once a mod moves that
-  (`SpellVisuals.Entry.ChoseColour`).
+  (`SpellVisuals.Entry.ChoseColour`). `set_look` on an element's plain colour
+  moves its spells' with it.
 
 ## Things in the world
 
@@ -688,6 +689,12 @@ that long, and doesn't march.
 **Reply**
 : One answer from the model, one `message.id` in the stream, however many tool
   calls it holds. Not a **turn**, which is what `num_turns` counts: tool calls + 1.
+
+**Opening tokens**
+: What a prompt reads or writes before Claude's first reply, about 14,000 to
+  16,500: the tools' definitions in the cached block, then what every prompt
+  writes again (`docs/telemetry/chat-context-2026-11-02.md`). *Not* an
+  **opening**, which is a door or window in a wall.
 
 **Cold prompt**
 : One with nothing cached to read, so it writes all of Claude's starting

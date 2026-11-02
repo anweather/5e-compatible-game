@@ -240,8 +240,8 @@ namespace Chem.Tests
         [Test]
         public void TheToolsMakeScopedAndMixedAsksClear()
         {
-            var listed = new McpRpc(new RulesTools(NewBench()), "test", "1").Handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
-            string tools = (string)Newtonsoft.Json.Linq.JObject.Parse(listed).ToString();
+            var listed = new McpRpc(new RulesTools(Bench()), "test", "1").Handle("{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"tools/list\"}");
+            string tools = Newtonsoft.Json.Linq.JObject.Parse(listed).ToString();
             foreach (var said in new[] { "The fire near me green", "Fire round the village in three colours", "places (or here)", "blue and yellow giving green", "each player gets their own fire colour", "The fire I create blue" })
                 StringAssert.Contains(said, tools);
         }

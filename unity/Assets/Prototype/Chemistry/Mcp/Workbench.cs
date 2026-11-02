@@ -145,8 +145,15 @@ namespace Chem.Mcp
             var path = Path.Combine(ModsDir, name + ".json");
             if (File.Exists(path) && !overwrite) throw new RulesToolException($"rules/mods/{name}.json already exists; pick another name or save with overwrite.");
             var mod = new JObject { ["title"] = title.Trim(), ["idea"] = idea.Trim(), ["patch"] = patch.DeepClone() };
-            Directory.CreateDirectory(ModsDir);
-            File.WriteAllText(path, mod.ToString(Formatting.Indented).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
+            try
+            {
+                Directory.CreateDirectory(ModsDir);
+                File.WriteAllText(path, mod.ToString(Formatting.Indented).Replace("\r\n", "\n", StringComparison.Ordinal) + "\n");
+            }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+            {
+                throw new RulesToolException($"The mod can't be written to {ModsDir}: {e.Message}");
+            }
             Desk?.Saved(path);
             return path;
         }
