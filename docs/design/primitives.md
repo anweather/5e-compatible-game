@@ -59,8 +59,7 @@ condense, dissolve, shatter, conduct, scour, grow, raise, push). `sim.json` hold
 | **Glowing moss** | Half: a cover like `vines` with a colour and `lasts` | Covers never spread (`grow` is terrain's); no look glows |
 | **Acid rain** | One combination: a gas with `decay` and `sheds` acid, laid by a spell | Not as weather (a closed list); the rain itself is water, so no acid puddles |
 
-So covers, gases and terrain combine well; what fails is anything that **moves as a liquid**, anything
-that **spreads by itself**, **products named in code**, and **glow**. Each is a family, not one effect.
+What fails: what **moves as a liquid**, what **spreads by itself**, **products named in code**, **glow**.
 
 ## 3. The smallest set of new primitives
 
@@ -74,9 +73,8 @@ that **spreads by itself**, **products named in code**, and **glow**. Each is a 
   and meteor spell. Defaults equal today's ids, so every golden holds, and the steam, ash, smoke, ice
   and snow literals go. Family: every new liquid's vapour and solid, sooty ash, a cold that leaves
   rime instead of ice. It is J-057's "reshape special cases where cheap".
-- **P4. Glow** (view only): `look.glow` 0 to 1 on covers, liquids and terrain, drawn emissive and
-  counted as light at night. Moss, embers, lava, luminous paint, fungus, a magic circle. Out of the
-  fingerprint.
+- **P4. Glow** (view only, out of the fingerprint): `look.glow` 0 to 1 on any look, drawn emissive and
+  lit at night. Moss, embers, lava, luminous paint, fungus, a magic circle.
 - **P5. Mix**: rows of one `mix` group that meet make a derived material (§4).
 
 **P1 in detail.** `Water` stays the amount; a new `int Liquid` is the kind, an index into a
@@ -104,8 +102,7 @@ ticks within 6 ms a frame, `tick.flow` up to 30 ms a second in rain's 34 000 wet
   `tick.flow`: 1.5 ms a second at rain's peak, 0.25 ms a tick. Thick liquids flow one tick in N, so a
   honey lake costs less than water. `Soak`, `Float` and `Cool` read the kind's flags instead of
   literals: no new passes. The view's water mesh takes a colour per kind (a vertex colour).
-- **D9.** It is seam 2 done right from the start: an integer id in hot state, the table in the rules,
-  read through the accessors, matched by tags, changed only by commands.
+- **D9.** Seam 2 from the start: an integer id in hot state, the table in the rules, accessors, tags.
 - **Saves.** The cell row is a positional array (`World.Save`); the liquid's **id string** is appended
   only when not water, so old saves load as water and a save never depends on an index.
 - **Cell hash and goldens.** `AddCell` adds the kind only when non-zero, as it does `Height` and
@@ -131,9 +128,8 @@ a tick (D13). Every peer validates and composes the same mods in the same order,
   every cell holding it into `into` and clearing its `Life`; inactive chunks are swept when next
   active, from a retired list in the room state (hashed in `CastHash`, saved). A material-wide
   `after` is apart from a cell's own `lasts`, which still withers single covers sooner.
-- **Late join and saves.** A joiner gets the snapshot (cells by id string), the live mods with their
-  switch ticks, the retired list and the mixes. A save holds the same (`SaveRoom`); lapses resume at
-  the saved tick. A reload sweeps anything whose lapse passed.
+- **Late join and saves.** A joiner gets the snapshot (cells by id string), the live mods and their
+  switch ticks, the retired list and the mixes; a save holds the same (`SaveRoom`), lapses resuming.
 - **What may name it.** Only its own mod: another mod's rows, things, items and spawn tables can't, so
   a lapse never leaves a dangling reference. Things can't be made of a temporary material.
 - **Limits** (`budgets.json`, base rules only): 8 new materials a mod, 32 temporary rows live in a
@@ -149,10 +145,8 @@ a tick (D13). Every peer validates and composes the same mods in the same order,
 
 ## 5. Order of work, and the first test
 
-1. **P3, products by data** (S), and slick covers drawn from data (`looks.json` `needs`). Same
-   results, goldens hold; it removes the literals every later step would trip on.
-2. **Temporary materials on strings** (S to M): `lapse`, the sweep, the retired list, the limits,
-   `room()` showing lapses. No interning needed yet.
+1. **P3, products by data** (S), and slick covers drawn from data (`looks.json` `needs`); goldens hold.
+2. **Temporary materials on strings** (S to M): `lapse`, the sweep, the retired list, the limits.
 3. **P2 spread** and **P4 glow** (S each).
 4. **P1 liquids** (M to L): the kind, the `liquids` table, `Flow`'s rule, `touch`, the flags in
    `Soak`/`Float`/`Cool`/rain, the coloured water mesh, new goldens. Then the interning step.
@@ -175,8 +169,7 @@ a honey spill; a quicksand pit that swallows a raider. No code names any of them
    *Recommend: it lasts while the mod is on, `after` optional; a revert always sweeps.*
 4. Mixes: mean of every number, or only colour mixes and the rest from the first parent? *Recommend:
    colour mixes, numbers mean (a thick and a thin paint make a middling one).*
-5. Creatures and houses moved to `builders.md` so this file stays on materials: fine? *Recommend:
-   yes; its own four questions stand there.*
+5. Creatures and houses moved to `builders.md` (its four questions stand there): fine? *Recommend: yes.*
 
 ## Proposed ADRs (titles only)
 
