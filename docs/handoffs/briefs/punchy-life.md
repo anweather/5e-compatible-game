@@ -2,7 +2,7 @@ Brief from the PM: bring Punchy's newer life into the game and make the valley's
 
 This picks up J-035 and backlog 17-19. Upstream is `C:\Users\Andrew\Development\Punchy` on the PC, or https://github.com/Skeleman/Punchy (main, 50da96e). Our base is b183507, 31 commits behind. Permission to modify all of Punchy is J-022: keep the attribution in Credits.cs and record each change in the file's header and the Punchy README. Skip upstream's netcode (M0-M6 and the Netcode for Entities work): life stays view-only here, so physics or randomness in it must never reach shared state.
 
-**Changed 2026-11-01 (J-058):** creatures become data, not Editor assets, and we diverge from Punchy's code while keeping its style. Do branch 1. Branches 2 to 4 wait for the data format in `docs/design/primitives.md`, then land as data rows, not new `.asset` files.
+**Changed 2026-11-01 (J-058):** creatures become data, not Editor assets, and we diverge from Punchy's code while keeping its style. Do branch 1. Branches 2 to 4 wait for the data format in `docs/design/builders.md`, then land as data rows, not new `.asset` files.
 
 One small branch each, off dev, gated and tested in the valley, with a clip for Andrew's board:
 1. **`punchy-mill`** (upstream 7ee4511): cornered and leashed animals mill about. First record the base b183507 in the Punchy README.
