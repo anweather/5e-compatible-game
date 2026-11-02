@@ -186,6 +186,9 @@ public static class ProbeScenarios
             "the clouds over 70% of the sky in it, " +
             "the sun dimmed, a meteor shower at 23:00 with meteors drawn falling, snow at noon (over 2000 flakes in the air, over half " +
             "the puddles laid in the yard frozen), fog closes the haze in, no console errors."),
+        new Entry("chat", typeof(ChatProbe), 40f,
+            "The chat box to Claude (J-060), with a stand-in for claude: Enter opens it and the wizard's controls go off, and come back; a message reaches one process on stdin, with the game's tools only and dontAsk; its words and tools show; a second message waits; notes.md stays bounded; " +
+            "a failure shows, a sign-in failure says to sign in, and with no claude the install line shows. With --shots, a film of the box."),
         new Entry("terminal", typeof(TerminalProbe), 30f,
             "The Claude terminal's folder (ClaudeTerminal, J-056): Claude off then on again gives an address; .mcp.json is valid and names it, with no secret in it; CLAUDE.md and the first screen say Win+H; a client at that address lists the tools. The window itself is left to a real player."),
         new Entry("scopelooks", typeof(ScopeLooksProbe), 200f,

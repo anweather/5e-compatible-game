@@ -12,7 +12,7 @@ public class ClaudeMenu : MonoBehaviour
     const int Width = 640;
     const float MostHeight = 620f;
 
-    const string Quicker = "<color=#ffffffbb>Quicker: F9 opens a terminal with all of this done. Type claude there. " + ClaudeTerminal.TalkLine + "</color>";
+    const string Quicker = "<color=#ffffffbb>Quicker: press Enter and type to Claude right here. Or F9 opens a terminal with all of this done: type claude there. " + ClaudeTerminal.TalkLine + "</color>";
     const string NeedIt = "<b>1.</b> You need Claude Code, installed once: claude.com/claude-code";
     const string RunIt = "<b>2.</b> Run this once in a terminal:";
     const string AskIt = "<b>3.</b> Start a new Claude session, which picks up the game then. Keep the game running, and ask:";
