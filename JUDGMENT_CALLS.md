@@ -41,6 +41,15 @@ Each entry has:
 
 ## Decided
 
+### J-061: Which speech to text for talking to Claude in the game?
+
+- **Asked:** 2026-11-01, by DesktopUnity through the PM: Windows dictation, or whisper.cpp on the device.
+- **Also comes up when:** voice on Linux, Steam Deck or Mac; privacy notes; a release.
+- **Answer:** Andrew: Windows first, then Whisper. Ports and adapters: "a good seam for us to unplug the windows side and plug in the
+  whisper side". The port knows nothing of Windows; each recogniser is an adapter.
+- **Why:** he gets to talk to the game soon, and the Deck version comes after without rework. Windows dictation sends audio to Microsoft, so the setting is plain to the player.
+- **Revisited:** 0.
+
 ### J-060: May the game start the player's own Claude behind an in-game chat?
 
 - **Asked:** 2026-11-01, by the PM, because J-056 said the game doesn't start Claude.
