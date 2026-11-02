@@ -60,7 +60,7 @@ case "$cmd" in
     gate() {
       local name="$1"; shift
       if "$@" >> "$log" 2>&1; then echo "  ok  $name"
-      else tail -30 "$log"; undo; stop "$name failed; the full log is $log; the worktree is back on dev."; fi
+      else grep -v " warning S3776" "$log" | tail -20; undo; stop "$name failed; the full log is $log; the worktree is back on dev."; fi
     }
     for try in 1 2 3; do
       if ! printf '%s\n' "$message" | bash "$0" merge "$branch" > /dev/null 2>&1; then
@@ -80,6 +80,7 @@ case "$cmd" in
       gate "core format" dotnet format core --verify-no-changes
       gate "duplicates" npx --yes jscpd@4.0.5 unity/Assets/Prototype sandbox/src
       gate "chat report" node --test tools/chat-report.test.mjs
+      gate "chat strict" node --test tools/chat-strict.test.mjs
       gate "sandbox types" npm --prefix sandbox run typecheck
       gate "sandbox tests" npm --prefix sandbox test
       gate "sandbox build" npm --prefix sandbox run build

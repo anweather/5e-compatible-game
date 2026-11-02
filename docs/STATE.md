@@ -56,8 +56,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Mac:** `mods-add-things-view` (ee76fc4), done but held: `online` fails with mods-add-things merged, 7 of 7, passes on dev. Finding the cause; one run looked like a real desync (Charge -> Fizzle). Land with `--compiled` only once `online` is green. A yard rebuild is needed on every machine then.
-- **DesktopUnity:** `chat-models`: #59 item 5. Base landed (60097e4, `docs/telemetry/chat-base-2026-11-02.md`): 14.3 s median to the world on Opus. Now a stricter pass check, Sonnet and Haiku (48 prompts at most), a bare install. Changes to what players get come to the PM first. The test player and squirrel test follow.
+- **Mac:** `mods-add-things-view` (c71dd5a): `online` green, the failure was a race in the probe, on dev too (issue #62 is what's left). Sent back: core test `HiddenThingTests.NoneOfItIsInTheCodeOrTheBaseRules` fails on `ProbeThings.cs`. Land with `--compiled` when that passes. A yard rebuild is needed on every machine then.
+- **DesktopUnity:** #59 change 3: split the opening tokens, the "all fire" fix in the server (`Instructions` and tools), a short prompt, no `save` unasked. Measured on Opus and Haiku, 96 prompts plus debugging. Base and models landed (b59601c, `docs/telemetry/chat-model-2026-11-02.md`): Opus 24 of 24 strict, Haiku 18, Sonnet 16; the default stays. The default model is Andrew's call. The test player and squirrel test follow.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
