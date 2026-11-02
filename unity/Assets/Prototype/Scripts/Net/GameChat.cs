@@ -3,8 +3,8 @@ using Chem.Mcp;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The chat box in the game (J-060): Enter, or both sticks pressed on a pad, opens it; what's typed
-// goes to the player's own Claude Code, one process a message (ClaudeChat), and what comes back
+// The chat box in the game (J-060): Enter opens it, or holding to talk does (GameVoice, J-061, the
+// only way in from a pad); what's typed or said goes to the player's own Claude Code, one process a message (ClaudeChat), and what comes back
 // fades up over the game while they carry on playing. The wizard's controls are off only while the
 // box is open. It talks only to this game's rules MCP, and a room's change mode decides what
 // goes through, as ever. RulesMcpServer adds it, so a copy that doesn't serve has none.
@@ -13,6 +13,7 @@ public class GameChat : MonoBehaviour
     const int MostLines = 7, Width = 640, FontSize = 17;
     const float LineSeconds = 14f, FadeSeconds = 2f, BoxHeight = 34f, BottomGap = 90f, ShadeAlpha = 0.6f, ShadeEdge = 8f;
     const string Box = "game-chat-box";
+    const string ListeningMark = "<color=#ff8a80>●</color> ", ListeningLine = "<color=#ffffff88>Listening...</color>";
     const string SignInLine = "You aren't signed in to Claude. A terminal is opening so you can: follow it, then ask again.";
 
     readonly ClaudeChat claude = new();
@@ -23,7 +24,7 @@ public class GameChat : MonoBehaviour
     PlayerInput pausedInput;
     CursorLockMode cursorWas;
     bool cursorVisibleWas;
-    GUIStyle lineStyle, boxStyle;
+    GUIStyle lineStyle, boxStyle, talkStyle;
     Texture2D shade;
 
     /// <summary>The chat, or null where the game doesn't serve Claude.</summary>
@@ -31,6 +32,15 @@ public class GameChat : MonoBehaviour
 
     /// <summary>Whether the box is open, taking the keys.</summary>
     public bool Open { get; private set; }
+
+    /// <summary>Whether the box is being filled by voice: it shows the words and takes no keys.</summary>
+    public bool Talking { get; set; }
+
+    /// <summary>Whether the box could open now.</summary>
+    public bool CanOpen => !Open && !Blocked();
+
+    /// <summary>What's in the box, for the probe.</summary>
+    public string Typed => typed;
 
     /// <summary>What the chat is showing, oldest first, for the probe.</summary>
     public IEnumerable<string> Lines
@@ -47,7 +57,7 @@ public class GameChat : MonoBehaviour
     void Awake()
     {
         Instance = this;
-        QuickExit.BeforeExit += claude.Cancel; // a Windows player has no OnApplicationQuit
+        QuickExit.BeforeExit += claude.Cancel; // some players have no OnApplicationQuit
     }
 
     void OnDestroy()
@@ -62,17 +72,10 @@ public class GameChat : MonoBehaviour
         while (claude.Take(out var heard)) Show(heard.said, heard.text);
         if (Open && PauseMenu.Instance != null && PauseMenu.Instance.Open) SetOpen(false);
         if (Open || Blocked()) return;
-        if ((Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame) || BothSticks()) SetOpen(true);
+        if (Keyboard.current != null && Keyboard.current.enterKey.wasPressedThisFrame) SetOpen(true);
     }
 
     static bool Blocked() => PauseMenu.Instance != null && PauseMenu.Instance.Open;
-
-    static bool BothSticks()
-    {
-        var pad = Gamepad.current;
-        return pad != null && pad.leftStickButton.isPressed && pad.rightStickButton.isPressed
-            && (pad.leftStickButton.wasPressedThisFrame || pad.rightStickButton.wasPressedThisFrame);
-    }
 
     void Show(ClaudeSaid said, string text)
     {
@@ -129,6 +132,7 @@ public class GameChat : MonoBehaviour
     {
         if (open == Open) return;
         Open = open;
+        Talking = false;
         var caster = EventLog.TrackedCaster;
         if (open)
         {
@@ -183,6 +187,12 @@ public class GameChat : MonoBehaviour
         {
             e.Use();
             SetOpen(false);
+            return;
+        }
+        if (Talking)
+        {
+            talkStyle ??= new GUIStyle(boxStyle) { richText = true };
+            GUI.Label(new Rect(x, y, Width, BoxHeight), ListeningMark + (typed.Length > 0 ? typed : ListeningLine), talkStyle);
             return;
         }
         GUI.SetNextControlName(Box);
