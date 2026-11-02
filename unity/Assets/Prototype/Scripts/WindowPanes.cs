@@ -40,6 +40,8 @@ public class WindowPanes : MonoBehaviour
 
     public Pane[] panes = System.Array.Empty<Pane>();
     public Material material;
+    [Tooltip("Nothing behind the glass (a row house's room): a shattered pane leaves a hole to see through, not the dark of a solid house.")]
+    public bool hollow;
 
     Mesh mesh;
     GameObject shown;
@@ -161,6 +163,13 @@ public class WindowPanes : MonoBehaviour
         return -1;
     }
 
+    /// <summary>Takes these panes out of <paramref name="byCell"/>: their building is gone.</summary>
+    public void Unbind(Dictionary<int, WindowPanes> byCell)
+    {
+        foreach (int cell in cellOf)
+            if (byCell.TryGetValue(cell, out var mine) && mine == this) byCell.Remove(cell);
+    }
+
     /// <summary>A pane cell shattered: its panes (a column, on a taller building) open, with shards and the break sound.</summary>
     public void Shatter(int cell)
     {
@@ -209,6 +218,22 @@ public class WindowPanes : MonoBehaviour
             }
         mesh.colors32 = colors;
         mesh.SetUVs(0, uvs);
+        if (hollow) CloseGaps();
+    }
+
+    // A hollow building's shattered panes draw nothing: each folded to a point.
+    void CloseGaps()
+    {
+        var vertices = mesh.vertices;
+        for (int i = 0; i < open.Length; i++)
+        {
+            var p = panes[i];
+            vertices[i * 4] = open[i] ? p.at : p.at - p.along - p.up;
+            vertices[i * 4 + 1] = open[i] ? p.at : p.at + p.along - p.up;
+            vertices[i * 4 + 2] = open[i] ? p.at : p.at + p.along + p.up;
+            vertices[i * 4 + 3] = open[i] ? p.at : p.at - p.along + p.up;
+        }
+        mesh.vertices = vertices;
     }
 
     /// <summary>The hardest hit by a thing so far (N s), for the probe's measure of HeavyImpulse.</summary>

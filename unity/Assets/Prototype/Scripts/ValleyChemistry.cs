@@ -322,6 +322,12 @@ public partial class ValleyChemistry : MonoBehaviour
         if (from == TerrainIds.LogWall || from == TerrainIds.Stone) CabinWallLost(BuildingWallAt(from, x, y), burning: now.Fire > 0 || now.Cover == CoverIds.Ash);
     }
 
+    /// <summary>A row house's panes came or went (RowHouses): their cells shatter them, as a village's do.</summary>
+    public void BindPanes(WindowPanes panes) => panes.Bind(grid, panesByCell);
+
+    /// <summary>A row house's panes are gone.</summary>
+    public void UnbindPanes(WindowPanes panes) => panes.Unbind(panesByCell);
+
     /// <summary>A cell was redrawn: a pane on it shows its crack, or not.</summary>
     public void PaneCracked(int key, bool cracked)
     {

@@ -324,10 +324,20 @@ world yet (G5's other half).
 `RowMesher`; what the world was made with stays as the valley drew it, so villages and cabins look the same until
 a mod touches them. An edited building hides the scene's and shows it again on a revert. An edited cabin keeps its
 own, since its row is cells with no walls: a wing stands beside it as a closed box. `World.BuildingsChanged` moves
-this peer's player off a new wall. `GameRoomDesk` is the `IWorldDesk`, so `find`, `find_site` and `validate` read
+this peer's player off a new wall, past what was laid, never into a hollow house. `CellBlockers` gives a row's walls,
+doors and panes their boxes, since their looks have no height and no scene model covers them. `GameRoomDesk` is the `IWorldDesk`, so `find`, `find_site` and `validate` read
 the real valley. `ValleyShape.Cabins` reads `site`; `RowMesherTests` holds the cabins to where they stood and the
-villages' base rows to `ValleyShape.Villages`' digests. Walls that burn or break in play stay drawn: only the cells
-change. The game has no save of its own yet, so `World.Save` is reached only from tests.
+villages' base rows to `ValleyShape.Villages`' digests. The game has no save of its own yet, so `World.Save` is
+reached only from tests.
+
+**A house in play.** `RowRuin` follows the cells, view only, so peers and late joiners get the same ruin. Each wall is
+cut into **stretches**, one per cell. A stretch whose cell stops blocking falls to a broken stump, and the roof squares
+nearest it go with it; a roof whose cover burns goes as soon as the fire reaches its wall; at half the stretches down
+the whole roof goes. The head over a gap stands while a wall beside it, or meeting it at a join, does. A door's panel
+goes with its cell, and fire leaves soot on the stretch and its neighbours. The floor and a chimney stand. Cells put
+back bring it all back. `RowHouses` looks at one house a frame and writes one index list and one colour list, never a
+mesh (worst 0.26 ms, in the hidden Editor). A wall burns only if its terrain says so: `stucco-wall` in
+`docs/design/builders.md` only breaks, so give a material `burn` for a house a fireball can bring down.
 
 ## Change modes (chosen when a room is made)
 

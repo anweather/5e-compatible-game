@@ -24,6 +24,7 @@ public sealed class MeshKit
     public float Occlusion = 0.35f;
 
     public int VertexCount => positions.Count;
+    public int IndexCount => triangles.Count;
 
     public void Clear()
     {
