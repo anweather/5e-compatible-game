@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
@@ -119,6 +120,8 @@ public class MenuProbe : ProbeScenario
             menu.Back();
             yield return Frames(3);
 
+            yield return PlayLogSwitch(menu);
+
             // Credits, then back.
             yield return Enter(menu, PauseMenu.Submenu.Game, "About and credits");
             menu.Submit();
@@ -186,7 +189,7 @@ public class MenuProbe : ProbeScenario
         {
             (PauseMenu.Submenu.Game, new[] { "Grimoire", "New look", "Mods", "About and credits" }),
             (PauseMenu.Submenu.Multiplayer, new[] { "Rule changes when you host", "Host online", "Join code", "Enter a code" }),
-            (PauseMenu.Submenu.Settings, new[] { "Controls", "Sound", "Shake and rumble" }),
+            (PauseMenu.Submenu.Settings, new[] { "Controls", "Sound", "Shake and rumble", "Play log" }),
             (PauseMenu.Submenu.Claude, new[] { "Play with Claude", "Open a Claude terminal" }),
             (PauseMenu.Submenu.Developer, new[] { "Claude's tools in the chat", "Claude's model in the chat" }),
         };
@@ -202,6 +205,8 @@ public class MenuProbe : ProbeScenario
             }
             foreach (var entry in entries)
                 Check($"{submenu}_has_{entry.Replace(' ', '_')}", seen.Any(l => l.StartsWith(entry, System.StringComparison.Ordinal)), string.Join(", ", seen));
+            if (submenu == PauseMenu.Submenu.Developer)
+                Check("play_log_not_in_developer", !seen.Any(l => l.StartsWith("Play log", System.StringComparison.Ordinal)), string.Join(", ", seen));
             everyLabel.UnionWith(seen);
             Shot(submenu.ToString().ToLowerInvariant());
             yield return Wait(0.2f);
@@ -209,6 +214,50 @@ public class MenuProbe : ProbeScenario
             yield return Frames(3);
         }
         Check("cut_entries_gone", !everyLabel.Overlaps(cut), string.Join(", ", everyLabel.Intersect(cut)));
+    }
+
+    // Settings' Play log, flipped off and on by pad from a log writing in a folder of its own. Turning
+    // it on writes beside the Editor's log, as it does for a player beside theirs, so that file goes too.
+    IEnumerator PlayLogSwitch(PauseMenu menu)
+    {
+        var log = PlayLog.Instance;
+        bool hadChoice = PlayerPrefs.HasKey(PlayLog.OnKey);
+        int choice = PlayerPrefs.GetInt(PlayLog.OnKey, 1);
+        string folder = Path.Combine(Application.temporaryCachePath, "play-log-menu-probe");
+        string reopened = null;
+        try
+        {
+            PlayLog.Wanted = true;
+            log.Begin(folder);
+            yield return Enter(menu, PauseMenu.Submenu.Settings, "Play log");
+            Check("play_log_says_on", menu.FocusedLabel == "Play log: On", $"highlight on '{menu.FocusedLabel}'");
+
+            menu.Submit();
+            yield return Frames(3);
+            Check("play_log_says_off", menu.FocusedLabel == "Play log: Off", $"highlight on '{menu.FocusedLabel}'");
+            Check("play_log_off_is_kept", PlayerPrefs.GetInt(PlayLog.OnKey, 1) == 0, $"{PlayLog.OnKey} {PlayerPrefs.GetInt(PlayLog.OnKey, 1)}");
+            Check("play_log_off_stops_writing", log.FilePath == null, log.FilePath);
+            Check("play_log_off_stays_off_next_game", !PlayLog.StartsWriting(false, PlayLog.Wanted, System.Array.Empty<string>()));
+
+            menu.Submit();
+            yield return Frames(3);
+            reopened = log.FilePath;
+            Check("play_log_says_on_again", menu.FocusedLabel == "Play log: On", $"highlight on '{menu.FocusedLabel}'");
+            Check("play_log_on_is_kept", PlayerPrefs.GetInt(PlayLog.OnKey, 0) == 1, $"{PlayLog.OnKey} {PlayerPrefs.GetInt(PlayLog.OnKey, 0)}");
+            Check("play_log_on_writes_again", reopened != null, reopened);
+            Check("play_log_on_stays_on_next_game", PlayLog.StartsWriting(false, PlayLog.Wanted, System.Array.Empty<string>()));
+            menu.Back();
+            yield return Frames(3);
+        }
+        finally
+        {
+            log.End();
+            if (hadChoice) PlayerPrefs.SetInt(PlayLog.OnKey, choice);
+            else PlayerPrefs.DeleteKey(PlayLog.OnKey);
+            PlayerPrefs.Save();
+            if (Directory.Exists(folder)) Directory.Delete(folder, true);
+            if (reopened != null) File.Delete(reopened);
+        }
     }
 
     // From the main page, into a sub menu, the highlight on the entry that starts with this.
