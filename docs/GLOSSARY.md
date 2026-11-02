@@ -458,10 +458,19 @@ that long, and doesn't march.
   can't change them. The MCP's `places()` lists them and `here()` says which
   one the asking player is in and what's near.
 
-**Spawner** *(proposed)*
-: An entry in the fauna's table: which species appears, where, how thick
-  and in which coats. Ambient life, so view only: each peer rolls its own
-  animals (`docs/design/world-tools.md`, part 2).
+**Slot**
+: A part on a species: a row in its `parts`, by a name of the species' own, saying which
+  shape from `rules/parts.json` goes where, and what it hangs from (`Fauna.cs`).
+
+**Spawner**
+: A species row's `spawn` in `rules/fauna.json`: how thick it is in the wilds, and whether only
+  near water. Ambient life, so view only: each peer rolls its own animals
+  (`docs/design/world-tools.md`, part 2).
+
+**Species**
+: A kind of animal or folk: a row in `rules/fauna.json`, the view's, built into one
+  `CreatureBody` that all its animals share. A **variant** is a row that takes another's
+  body and gives its own colours and size.
 
 **Stretch**
 : The length of a wall segment on one cell, the part that falls when that cell goes (`RowMesher`, `RowRuin`).

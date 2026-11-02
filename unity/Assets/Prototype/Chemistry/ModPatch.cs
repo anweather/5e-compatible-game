@@ -13,7 +13,7 @@ namespace Chem
     public sealed class ModPatch
     {
         /// <summary>The id tables a mod adds entries to or patches entries in, field by field (Rules.MergedEntry).</summary>
-        internal static readonly string[] Tables = { "terrain", "covers", "gases", "entities", "items", "machines", "groups", "components" };
+        internal static readonly string[] Tables = { "terrain", "covers", "gases", "entities", "items", "machines", "groups", "components", FaunaTables.SpeciesKey, FaunaTables.PartsKey };
 
         ModPatch(string title, JObject patch)
         {

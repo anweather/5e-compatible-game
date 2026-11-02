@@ -49,8 +49,8 @@ namespace Chem
         /// by value, so key order and 3 vs 3.0 don't matter, list order does). Every machine that
         /// applied the same mods in the same order gets the same value, so it can go into the
         /// netcode checksum next to World.CellHash. Edits made to <see cref="Sim"/> in code are not in it,
-        /// nor are "look" groups (nor the element entries, which hold only a look): they are the view's
-        /// only, so a look can't reach the checksum.
+        /// nor are "look" groups (nor the element entries, which hold only a look), nor the creature
+        /// tables: they are the view's only, so a look or an animal can't reach the checksum.
         /// </summary>
         public string Fingerprint => fingerprint ??= Fnv1a.Hash(CanonicalRules());
 
@@ -218,10 +218,11 @@ namespace Chem
 
         // ---------- fingerprint ----------
 
-        // The document, with buildings cut to what decides cells: their heights, finishes and roofs are the view's.
+        // The document, with buildings cut to what decides cells (their heights, finishes and roofs are the
+        // view's) and without the creature tables, which are the view's whole.
         string CanonicalRules()
         {
-            var shared = new JObject(doc.Properties().Select(p => new JProperty(p.Name, SharedPart(p))));
+            var shared = new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, SharedPart(p))));
             var sb = new StringBuilder();
             WriteCanonical(sb, shared);
             return sb.ToString();

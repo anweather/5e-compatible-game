@@ -741,7 +741,7 @@ public class OnlineProbe : ProbeScenario
     {
         var shape = wizard.GetComponent<Shapeshift>();
         var fauna = FindAnyObjectByType<ValleyFauna>();
-        int deer = fauna != null ? fauna.SpeciesIndex("Deer") : -1;
+        int deer = fauna != null ? fauna.SpeciesIndex("deer") : -1;
         var at = wizard.transform.position + Vector3.right * 3f;
         if (deer < 0 || shape == null)
         {

@@ -333,7 +333,7 @@ namespace Chem.Mcp
         static string List(IReadOnlyCollection<string> takes) => takes.Count == 0 ? "nothing yet" : string.Join(", ", takes);
 
         // A parameter's value as the look keeps it, or the sentence saying what it must be.
-        static JToken LookValue(string param, JToken v, LookFamily family)
+        JToken LookValue(string param, JToken v, LookFamily family)
         {
             if (v.Type == JTokenType.Null) return v;
             switch (param)
@@ -343,7 +343,7 @@ namespace Chem.Mcp
                 case "mix":
                     return MixValue(v);
                 case "species":
-                    return Str(v) is string species && family.Species.Contains(species) ? v : throw new RulesToolException($"species is one of the fauna's: {string.Join(", ", family.Species)}.");
+                    return Str(v) is string species && InForce.Fauna.Species(species) != null ? v : throw new RulesToolException($"species is a row of the fauna table: {string.Join(", ", InForce.Fauna.SpeciesIds)}.");
                 case "scale":
                     return IsNumber(v) && (double)v > 0 ? v : throw new RulesToolException("scale is a number above 0: how big against the species' own size.");
                 case "form":
@@ -454,7 +454,7 @@ namespace Chem.Mcp
                 {
                     if (!f.Params.Contains("color")) noColour.Add($"{table} {f.Name}");
                     var forms = f.Forms.Count > 0 ? $"; forms {string.Join(", ", f.Forms)}" : "";
-                    if (f.Species.Count > 0) forms += $"; species {string.Join(", ", f.Species)}";
+                    if (f.Params.Contains("species")) forms += $"; species {string.Join(", ", InForce.Fauna.SpeciesIds)}";
                     var what = f.Drawn ? $"takes {List(f.Params)}{forms}" : $"not drawn from data yet (needs {f.Needs})";
                     lines.Add($"{table} {f.Name}: {what}.{(f.About == null ? "" : " " + f.About)}{(f.Notes == null ? "" : " " + f.Notes)}");
                 }

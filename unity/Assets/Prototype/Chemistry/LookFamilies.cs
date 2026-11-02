@@ -31,7 +31,7 @@ namespace Chem
         public float Flow;
         /// <summary>The land itself draws it until it grows in this world (the valley's trees).</summary>
         public bool Baked;
-        /// <summary>Family creature: the fauna species whose model dresses a thing (looks.json things.creature.species).</summary>
+        /// <summary>Family creature: the row of rules/fauna.json whose model dresses a thing.</summary>
         public string Species;
         /// <summary>Family creature: how big against that species' own size.</summary>
         public float Scale = 1;
@@ -64,8 +64,6 @@ namespace Chem
         public bool Drawn = true;
         public IReadOnlyList<string> Forms = Array.Empty<string>();
         public IReadOnlyList<string> Params = Array.Empty<string>();
-        /// <summary>Things' creature family: the fauna species it may name.</summary>
-        public IReadOnlyList<string> Species = Array.Empty<string>();
         /// <summary>Spells: the Particle Pack effects, as "Fire/BigExplosion" (ChemYardBuilder resolves the folder).</summary>
         public string Projectile, Impact, AfterImpact;
         /// <summary>Spells: how long the impact plays.</summary>
@@ -213,7 +211,6 @@ namespace Chem
             Drawn = o["drawn"]?.Type != JTokenType.Boolean || (bool)o["drawn"],
             Forms = o["forms"]?.Select(x => (string)x).ToList() ?? new List<string>(),
             Params = o["params"]?.Select(x => (string)x).ToList() ?? new List<string>(),
-            Species = o["species"]?.Select(x => (string)x).ToList() ?? new List<string>(),
             Projectile = (string)o["projectile"],
             Impact = (string)o["impact"],
             AfterImpact = (string)o["afterImpact"],

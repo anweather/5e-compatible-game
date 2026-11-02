@@ -15,8 +15,8 @@ public class FaunaProbe : ProbeScenario
     protected override IEnumerator Run()
     {
         var fauna = FindAnyObjectByType<ValleyFauna>();
-        Check("fauna_built", fauna != null && fauna.material != null && fauna.species.Count >= 10,
-            $"ValleyFauna with {(fauna != null ? fauna.species.Count : 0)} species");
+        Check("fauna_built", fauna != null && fauna.material != null && fauna.SpeciesCount >= 10,
+            $"ValleyFauna with {(fauna != null ? fauna.SpeciesCount : 0)} species");
         if (fauna == null) yield break;
 
         yield return Wait(10f);
@@ -33,7 +33,7 @@ public class FaunaProbe : ProbeScenario
 
         // A deer eight metres north of the wizard (open meadow), facing it: deer run from anyone within 18 m.
         var w = wizard.transform.position;
-        int deer = fauna.SpeciesIndex("Deer");
+        int deer = fauna.SpeciesIndex("deer");
         var start = new float3(w.x, w.y, w.z + 8f);
         int i = fauna.Spawn(deer, start, math.PI);
         yield return Wait(3f);
@@ -48,7 +48,7 @@ public class FaunaProbe : ProbeScenario
 
         // A little parade in the meadow, under the probe's control, for the picture.
         var origin = V(27f, 0f, 26f);
-        string[] parade = { "Deer", "Rabbit", "Turkey", "RedFox", "Deer" };
+        string[] parade = { "deer", "rabbit", "turkey", "red-fox", "deer" };
         for (int k = 0; k < parade.Length; k++)
         {
             var p = origin + V(-6f + k * 3f, 0f, (k % 2) * 2f);

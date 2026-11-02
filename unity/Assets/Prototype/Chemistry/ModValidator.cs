@@ -189,9 +189,12 @@ namespace Chem
 
             // ---------- the looks: every new thing names a family the view draws ----------
 
+            JObject fauna; // the species in force with the mod on; null if it didn't compose
+
             // A patch's entry names only what it changes, so its look is checked as it composes.
             public void Looks(LookFamilies looks, JObject composed)
             {
+                fauna = composed?[FaunaTables.SpeciesKey] as JObject;
                 var tables = new[] { ("terrain", "Terrain", true), ("covers", "Cover", false), ("gases", "Gas", false), ("entities", "Entity", false), ("items", "Item", false) };
                 foreach (var (table, what, required) in tables)
                     if (patch[table] is JObject entries)
@@ -243,8 +246,8 @@ namespace Chem
                     Add(ModCheck.Looks, $"{who} names the look family \"{name}\", which the view can't draw from data yet (it needs {family.Needs}).");
                 else if (family.Forms.Count > 0 && !family.Forms.Contains(Text(look["form"])))
                     Add(ModCheck.Looks, $"{who}'s look family \"{name}\" takes a form, one of {string.Join(", ", family.Forms)}.");
-                else if (family.Species.Count > 0 && !family.Species.Contains(Text(look["species"])))
-                    Add(ModCheck.Looks, $"{who}'s look family \"{name}\" takes a species, one of {string.Join(", ", family.Species)}.");
+                else if (family.Params.Contains("species") && !(Text(look["species"]) is string species && (fauna?[species] ?? baseDoc[FaunaTables.SpeciesKey]?[species]) != null))
+                    Add(ModCheck.Looks, $"{who}'s look family \"{name}\" takes a species, a row of rules/fauna.json or one the mod adds.");
                 else
                 {
                     Params(look, who, $"the look family \"{name}\"", family.Params, table);
@@ -349,8 +352,8 @@ namespace Chem
             public void Determinism()
             {
                 var wholeKeys = WholeKeys(baseDoc);
-                // A building's numbers are the view's or checked whole by Rules.Check, and its seed is its own.
-                var checkedHere = new JObject(patch.Properties().Where(p => p.Name != "world" && p.Name != BuildingTables.Key).Select(p => new JProperty(p.Name, p.Value)));
+                // A building's numbers are the view's or checked whole by Rules.Check, and its seed is its own; a creature's are the view's.
+                var checkedHere = new JObject(patch.Properties().Where(p => p.Name != "world" && p.Name != BuildingTables.Key && !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value)));
                 Walk(checkedHere, "", (key, path, value) =>
                 {
                     if (RandomKeys.Contains(key.ToLowerInvariant()))
@@ -370,7 +373,9 @@ namespace Chem
                 var whole = new HashSet<string>();
                 // A group's order only sorts the spell radial (MODDING.md slots Frost in at 2.5).
                 var fraction = new HashSet<string> { "order" };
-                Walk(doc, "", (key, path, value) =>
+                // The creature tables' numbers are the view's: their radius says nothing of a spell's.
+                var shared = new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, p.Value)));
+                Walk(shared, "", (key, path, value) =>
                 {
                     if (!IsNumber(value)) return;
                     (IsWhole(value) ? whole : fraction).Add(key);

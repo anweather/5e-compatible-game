@@ -421,6 +421,31 @@ comes). What it does to squares, at full strength:
   through `hidesAfter` cells of it is hidden.
 - **cloudy** changes only how the world looks.
 
+## Creatures (`fauna.json`, `parts.json`)
+
+The valley's animals and folk as rows (`docs/design/builders.md`, section 2; `Fauna.cs`). Both tables are
+the view's: they stay out of `Rules.Fingerprint`, the core only checks them, and each peer rolls its own
+animals. A mod replaces a row whole under `"fauna"` or `"parts"`, as every table's does; at the switch
+only the species whose rows changed are built again (`CreatureBodies`), and living animals keep their
+places and seeds.
+
+- **`fauna.json`**, species by id, in the order they're offered to the land: `name`, `size` `[low, high]`,
+  `body` (`length`, `radius`, `taper`, `flatten`), `coat` (`base`, `accent`, `glow`) or `coats` (each with
+  `name` and `weight`, one picked per animal), `parts`, `move` (`walk`, `run`, `turn`, `bob`, `bobs`,
+  `rock`, `upright`, `stride` for what has no legs), `behave` (`wander`, `idle`, `flee`, `group`, `active`:
+  day, night or always; `graze`, `thirst`, `play`, `laze`, `hunts`, `hunger`, `chase`) and `spawn`
+  (`density` per hectare, `nearWater`). No `spawn`: the wilds never bring it out (a village's folk, a form).
+- **Slots** are `parts` by a name of the species' own: `part` (a row of `parts.json`), `on` (an earlier
+  slot it hangs from the end of; none is the body), `at`, `dir`, `mirror`, `phase`, `mirrorPhase`, `scale`,
+  `thickness`. Order matters: a slot comes after what it hangs from.
+- **A variant** is `{ "variantOf": "red-fox", "scale": 0.95, "coat": {...}, "behave": {...} }`: it takes
+  body, parts, gait and how it moves about from that species, and gives only its colours, its size
+  relative to it and its activities (`active` on). `hunts` naming a species also means its variants.
+- **`parts.json`**, shapes by id: `role` (leg, arm, tail, neck, head, ear, horn, eye, feature), `segments`
+  (`length`, `radii` `[start, end]`, `flatten`, `accent` 0 to 1, `colour` of its own, `glow`), `spring`,
+  `ripple`, `follows` (`ground`), and seven key `poses`, joint angles per segment, until gaits go by rule.
+- **Colours** are `"#rrggbb"`, or `[r, g, b]` from 0 to 1 (sRGB) where hex would round the number.
+
 ## The parts that are code, not data
 
 These are the cellular-automaton steps, parameterised by `sim.json`.

@@ -1,19 +1,21 @@
 // Adapted from Punchy by Zachary Franklin (https://github.com/Skeleman/Punchy),
 // used with permission. From Punchy's CreatureData.cs: the Entities blob is a
 // plain class with arrays, so it runs without Entities; the maths is his. A
-// segment's Pad is ours: a crack web over 0, shadow only under 0.
+// segment's Pad is ours: a crack web over 0, shadow only under 0. Built from
+// rows (rules/fauna.json, rules/parts.json; Chem.FaunaTables), not from assets.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024
 using System;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
+using Chem;
 using Unity.Mathematics;
 using UnityEngine;
 
 namespace Punchy.Fauna
 {
     /// <summary>
-    /// A species flattened for posing: every part (mirrored slots expanded into left and right copies, parents before
+    /// A species' row flattened for posing: every part (mirrored slots expanded into left and right copies, parents before
     /// children), every segment (index 0 is the body), and every segment's seven key poses.
     /// </summary>
     public sealed class CreatureBody
@@ -21,6 +23,8 @@ namespace Punchy.Fauna
         public const int PoseCount = 7;   // idle, walk reach/push/lift, run reach/push/lift
         public const int Idle = 0, WalkReach = 1, WalkPush = 2, WalkLift = 3, RunReach = 4, RunPush = 5, RunLift = 6;
 
+        /// <summary>The species' row in rules/fauna.json, its name in words, and the species it's a variant of (or its own id).</summary>
+        public string Id, Name, Kind;
         public float BodyLength, RearRadius, FrontRadius, BodyFlatten;
         public float WalkSpeed, RunSpeed;
         /// <summary>Distance the body travels per gait cycle, walking and running (from the key poses).</summary>
@@ -33,8 +37,17 @@ namespace Punchy.Fauna
         public bool Upright;
         public float WanderRadius, FleeDistance, TurnRate;
         public float2 IdleTime, Size;
+        /// <summary>How many appear together (the species a variant is based on decides).</summary>
+        public int2 Group;
+        /// <summary>Animals per hectare out in the wilds, and whether only near water.</summary>
+        public float Density;
+        public bool NearWater;
+        /// <summary>Whether its row has a "spawn": only what spawns can hunt.</summary>
+        public bool Spawns;
         public ActiveTime Active;
         public float Grazing, Thirst, Playfulness, Laziness, Hunger, ChaseTime;
+        /// <summary>The species its row says it hunts, by id (any variant of one counts).</summary>
+        public IReadOnlyList<string> Hunts = Array.Empty<string>();
         /// <summary>Species (indices in the caller's list) it hunts.</summary>
         public int[] Prey = Array.Empty<int>();
         /// <summary>Whether anything hunts it (so it needs to watch out for predators).</summary>
@@ -97,74 +110,86 @@ namespace Punchy.Fauna
 
         struct Expanded
         {
-            public LimbSlot Slot;
+            public SlotDef Slot;
+            public PartDef Part;
             public bool Mirrored;
             public int Parent;
         }
 
+        static Color Rgb(double[] c) => new Color((float)c[0], (float)c[1], (float)c[2]);
+
         /// <summary>
-        /// Builds a species. A variant takes its body, parts, gait and behaviour from the species it is a variant
-        /// of, and only its own colours and size.
+        /// Builds a species from its row. A variant takes its body, parts, gait and behaviour from the species it is
+        /// a variant of, and only its own colours, size and activities.
         /// </summary>
         /// <param name="prey">Indices of the species it hunts.</param>
         /// <param name="hunted">Whether any species hunts it.</param>
-        public static CreatureBody Build(CreatureSpecies variant, IReadOnlyList<int> prey = null, bool hunted = false)
+        public static CreatureBody Build(FaunaTables tables, string id, IReadOnlyList<int> prey = null, bool hunted = false)
         {
-            var species = variant.Body;
+            var variant = tables.Species(id);
+            var species = tables.BodyOf(id);
             // Expand slots: mirrored slots become left and right copies; children follow every copy of their parent.
             var parts = new List<Expanded>();
-            var copies = new List<List<int>>();
-            for (int i = 0; i < species.Parts.Count; i++)
+            var copies = new Dictionary<string, List<int>>();
+            foreach (var slot in species.Slots)
             {
-                var slot = species.Parts[i];
                 var mine = new List<int>();
-                copies.Add(mine);
-                if (slot.Limb == null)
-                    continue;
-                var parents = slot.Parent >= 0 && slot.Parent < i ? copies[slot.Parent] : new List<int> { -1 };
+                copies[slot.Id] = mine;
+                var limb = tables.Part(slot.Part);
+                var parents = slot.On != null ? copies[slot.On] : new List<int> { -1 };
                 foreach (var parent in parents)
                 {
                     var parentMirrored = parent >= 0 && parts[parent].Mirrored;
                     mine.Add(parts.Count);
-                    parts.Add(new Expanded { Slot = slot, Mirrored = parentMirrored, Parent = parent });
+                    parts.Add(new Expanded { Slot = slot, Part = limb, Mirrored = parentMirrored, Parent = parent });
                     if (slot.Mirror)
                     {
                         mine.Add(parts.Count);
-                        parts.Add(new Expanded { Slot = slot, Mirrored = !parentMirrored, Parent = parent, });
+                        parts.Add(new Expanded { Slot = slot, Part = limb, Mirrored = !parentMirrored, Parent = parent });
                     }
                 }
             }
 
             var segmentCount = 1;
             foreach (var p in parts)
-                segmentCount += p.Slot.Limb.Segments.Count;
+                segmentCount += p.Part.Segments.Count;
 
+            float length = (float)species.Length, radius = (float)species.Radius, flatten = (float)species.Flatten;
+            float walkSpeed = (float)species.Walk;
             var root = new CreatureBody
             {
-                BodyLength = species.BodyLength,
-                FrontRadius = species.BodyRadius,
-                RearRadius = species.BodyRadius * species.BodyTaper,
-                BodyFlatten = species.BodyFlatten,
-                WalkSpeed = species.WalkSpeed,
-                RunSpeed = math.max(species.RunSpeed, species.WalkSpeed * 1.3f),
-                Bob = new float2(species.Bob.x, species.Bob.y),
-                BobsPerCycle = new float2(species.BobsPerCycle.x, species.BobsPerCycle.y),
-                RunRock = math.radians(species.RunRock),
+                Id = id,
+                Name = variant.Name,
+                Kind = species.Id,
+                Hunts = variant.Hunts,
+                BodyLength = length,
+                FrontRadius = radius,
+                RearRadius = radius * (float)species.Taper,
+                BodyFlatten = flatten,
+                WalkSpeed = walkSpeed,
+                RunSpeed = math.max((float)species.Run, walkSpeed * 1.3f),
+                Bob = new float2((float)species.Bob[0], (float)species.Bob[1]),
+                BobsPerCycle = new float2((float)species.Bobs[0], (float)species.Bobs[1]),
+                RunRock = math.radians((float)species.Rock),
                 Upright = species.Upright,
-                WanderRadius = species.WanderRadius,
-                FleeDistance = species.FleeDistance,
-                TurnRate = math.radians(species.TurnRate),
-                IdleTime = new float2(species.IdleTime.x, species.IdleTime.y),
+                WanderRadius = (float)species.Wander,
+                FleeDistance = (float)species.Flee,
+                TurnRate = math.radians((float)species.Turn),
+                IdleTime = new float2((float)species.Idle[0], (float)species.Idle[1]),
+                Group = new int2((int)species.Group[0], (int)species.Group[1]),
+                Density = (float)variant.Density,
+                NearWater = variant.NearWater,
+                Spawns = variant.Spawns,
             };
-            var sizeScale = variant != species ? variant.VariantScale : 1f;
-            root.Size = new float2(species.Size.x, species.Size.y) * sizeScale;
-            root.Active = variant.Active;
-            root.Grazing = variant.Grazing;
-            root.Thirst = variant.Thirst;
-            root.Playfulness = variant.Playfulness;
-            root.Laziness = variant.Laziness;
-            root.Hunger = variant.Hunger;
-            root.ChaseTime = variant.ChaseTime;
+            var sizeScale = variant != species ? (float)variant.VariantScale : 1f;
+            root.Size = new float2((float)species.Size[0], (float)species.Size[1]) * sizeScale;
+            root.Active = Enum.Parse<ActiveTime>(variant.Active, true);
+            root.Grazing = (float)variant.Graze;
+            root.Thirst = (float)variant.Thirst;
+            root.Playfulness = (float)variant.Play;
+            root.Laziness = (float)variant.Laze;
+            root.Hunger = (float)variant.Hunger;
+            root.ChaseTime = (float)variant.Chase;
             root.Hunted = hunted;
             root.Prey = prey != null ? new List<int>(prey).ToArray() : Array.Empty<int>();
 
@@ -172,26 +197,26 @@ namespace Punchy.Fauna
             root.Segments = new CreatureSegment[segmentCount];
             root.Poses = new float3[segmentCount * PoseCount];
 
-            // Coats come from the variant (or the species itself): its listed coats, or just Base and Accent.
-            var coats = new List<CreatureCoat>(variant.Coats);
+            // Coats come from the variant (or the species itself): its listed coats, or just its coat.
+            var coats = new List<CoatDef>(variant.Coats);
             if (coats.Count == 0)
-                coats.Add(new CreatureCoat { Base = variant.Base, Accent = variant.Accent, AccentGlow = variant.AccentGlow, Weight = 1f });
+                coats.Add(variant.Coat);
             root.Coats = new CreatureCoatData[coats.Count];
             for (int i = 0; i < coats.Count; i++)
                 root.Coats[i] = new CreatureCoatData
                 {
-                    Base = (Vector4)coats[i].Base.linear,
-                    Accent = (Vector4)coats[i].Accent.linear,
-                    AccentGlow = coats[i].AccentGlow,
-                    Weight = math.max(coats[i].Weight, 0.0001f)
+                    Base = (Vector4)Rgb(coats[i].Base).linear,
+                    Accent = (Vector4)Rgb(coats[i].Accent).linear,
+                    AccentGlow = (float)coats[i].Glow,
+                    Weight = math.max((float)coats[i].Weight, 0.0001f)
                 };
 
             root.Segments[0] = new CreatureSegment
             {
-                Length = math.max(0f, species.BodyLength - root.RearRadius - root.FrontRadius),
+                Length = math.max(0f, length - root.RearRadius - root.FrontRadius),
                 RadiusStart = root.RearRadius,
                 RadiusEnd = root.FrontRadius,
-                Flatten = species.BodyFlatten
+                Flatten = flatten
             };
 
             var cursor = 1;
@@ -199,57 +224,59 @@ namespace Punchy.Fauna
             {
                 var e = parts[i];
                 var slot = e.Slot;
-                var limb = slot.Limb;
+                var limb = e.Part;
                 var side = e.Mirrored ? -1f : 1f;
-                var socket = (float3)slot.Socket;
+                var socket = new float3((float)slot.At[0], (float)slot.At[1], (float)slot.At[2]);
                 if (e.Parent < 0)
                 {
                     // Body units → metres: across the radius at that point along the body, along the half-length.
-                    var radius = math.lerp(root.RearRadius, root.FrontRadius, socket.z * 0.5f + 0.5f);
-                    socket = new float3(socket.x * radius, socket.y * radius * species.BodyFlatten, socket.z * species.BodyLength * 0.5f);
+                    var across = math.lerp(root.RearRadius, root.FrontRadius, socket.z * 0.5f + 0.5f);
+                    socket = new float3(socket.x * across, socket.y * across * flatten, socket.z * length * 0.5f);
                 }
                 socket.x *= side;
-                var dir = (float3)slot.Direction;
+                var dir = new float3((float)slot.Dir[0], (float)slot.Dir[1], (float)slot.Dir[2]);
                 root.Parts[i] = new CreaturePart
                 {
                     Parent = e.Parent,
                     Socket = socket,
                     Rest = Rotation(dir, side),
-                    Phase = math.frac(slot.Phase + (e.Mirrored && slot.Mirror ? slot.MirrorPhase : 0f)),
+                    Phase = math.frac((float)slot.Phase + (e.Mirrored && slot.Mirror ? (float)slot.MirrorPhase : 0f)),
                     FirstSegment = cursor,
                     SegmentCount = limb.Segments.Count,
-                    Role = limb.Role,
-                    Spring = limb.Spring,
-                    JointPhaseStep = limb.JointPhaseStep,
-                    FollowGround = limb.FollowGround,
+                    Role = Enum.Parse<LimbRole>(limb.Role, true),
+                    Spring = (float)limb.Spring,
+                    JointPhaseStep = (float)limb.Ripple,
+                    FollowGround = limb.FollowsGround,
                     Side = side
                 };
 
-                var poses = new[] { limb.Idle, limb.WalkReach, limb.WalkPush, limb.WalkLift, limb.RunReach, limb.RunPush, limb.RunLift };
+                float scale = (float)slot.Scale, thickness = (float)slot.Thickness;
                 for (int s = 0; s < limb.Segments.Count; s++)
                 {
                     var seg = limb.Segments[s];
                     root.Segments[cursor] = new CreatureSegment
                     {
-                        Length = seg.Length * slot.Scale,
-                        RadiusStart = seg.RadiusStart * slot.Scale * slot.Thickness,
-                        RadiusEnd = seg.RadiusEnd * slot.Scale * slot.Thickness,
-                        Flatten = seg.Flatten,
-                        Accent = seg.Accent,
-                        Fixed = seg.UseFixedColor ? 1 : 0,
-                        FixedColor = (Vector4)seg.FixedColor.linear,
-                        Glow = seg.Glow
+                        Length = (float)seg.Length * scale,
+                        RadiusStart = (float)seg.RadiusStart * scale * thickness,
+                        RadiusEnd = (float)seg.RadiusEnd * scale * thickness,
+                        Flatten = (float)seg.Flatten,
+                        Accent = (float)seg.Accent,
+                        Fixed = seg.Colour != null ? 1 : 0,
+                        FixedColor = seg.Colour != null ? (Vector4)Rgb(seg.Colour).linear : default,
+                        Glow = (float)seg.Glow
                     };
                     for (int k = 0; k < PoseCount; k++)
                     {
-                        var a = math.radians((float3)poses[k][s]);
+                        var joints = limb.Poses[k];
+                        var joint = s < joints.Length ? joints[s] : new double[3];
+                        var a = math.radians(new float3((float)joint[0], (float)joint[1], (float)joint[2]));
                         root.Poses[cursor * PoseCount + k] = new float3(a.x, a.y * side, a.z * side);
                     }
                     cursor++;
                 }
             }
 
-            MeasureGait(root, species.LeglessStride);
+            MeasureGait(root, new Vector2((float)species.Stride[0], (float)species.Stride[1]));
             return root;
         }
 
@@ -265,7 +292,7 @@ namespace Punchy.Fauna
         /// don't slide: in a cycle a planted foot sweeps back from reach to push while the body passes over it, so
         /// the body moves twice that sweep per cycle.
         /// </summary>
-        static void MeasureGait(CreatureBody b, Vector2 leglessStride)
+        public static void MeasureGait(CreatureBody b, Vector2 leglessStride)
         {
             float stand = 0f, walk = 0f, run = 0f;
             var legs = 0;

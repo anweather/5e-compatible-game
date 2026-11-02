@@ -10,7 +10,7 @@ namespace Chem.Tests
         static readonly Rules R = Rules.Load(ChemistryTests.RulesDir());
         static readonly ModBudgets Budgets = ModBudgets.Load(ChemistryTests.RulesDir());
 
-        const string Kind = "'items': { 'test-find': { 'name': 'Test find', 'mass': 1, 'look': { 'family': 'creature', 'species': 'Deer', 'color': [1, 0.8, 0.2], 'scale': 0.5 } } }";
+        const string Kind = "'items': { 'test-find': { 'name': 'Test find', 'mass': 1, 'look': { 'family': 'creature', 'species': 'deer', 'color': [1, 0.8, 0.2], 'scale': 0.5 } } }";
 
         static string Adds(string rows, bool kind = true) => ("{ " + (kind ? Kind + ", " : "") + "'world': { 'add': [" + rows + "] } }").Replace('\'', '"');
 
@@ -30,7 +30,7 @@ namespace Chem.Tests
         {
             var r = With(Adds(""));
             var look = r.Item("test-find").Look;
-            Assert.That((look.Family, look.Species, look.Scale, look.G), Is.EqualTo(("creature", "Deer", 0.5f, 0.8f)));
+            Assert.That((look.Family, look.Species, look.Scale, look.G), Is.EqualTo(("creature", "deer", 0.5f, 0.8f)));
             string Painted(double g) => $"{{ \"items\": {{ \"test-find\": {{ \"name\": \"Test find\", \"mass\": 1, \"look\": {{ \"family\": \"creature\", \"species\": \"Deer\", \"color\": [1, {g.ToString(System.Globalization.CultureInfo.InvariantCulture)}, 0] }} }} }} }}";
             Assert.That(With(Painted(0.1)).Fingerprint, Is.EqualTo(With(Painted(0.9)).Fingerprint));
             Assert.That(R.Item("bullseye-lantern").Look, Is.Null, "no look: its baked prefab");
@@ -41,7 +41,7 @@ namespace Chem.Tests
         {
             string Problems(string mod) => string.Join("\n", ModValidator.Validate(R, Budgets, mod.Replace('\'', '"')));
             Assert.That(Problems(Adds("{ 'kind': 'test-find', 'cell': [10, 10] }")), Is.Empty);
-            Assert.That(Problems(Kind.Insert(0, "{ ").Replace("'Deer'", "'Dragon'") + " }"), Does.Contain("takes a species"));
+            Assert.That(Problems(Kind.Insert(0, "{ ").Replace("'deer'", "'dragon'") + " }"), Does.Contain("takes a species"));
             Assert.That(Problems(Kind.Insert(0, "{ ").Replace("0.5", "9") + " }"), Does.Contain("scale of 9"));
             Assert.That(Problems("{ 'items': { 'plain': { 'name': 'Plain', 'mass': 1 } }, 'world': { 'add': [{ 'kind': 'plain', 'cell': [1, 1] }] } }"), Does.Contain("no look"));
             Assert.That(Problems(Adds("{ 'kind': 'nope', 'cell': [1, 1] }")), Does.Contain("unknown kind nope"));

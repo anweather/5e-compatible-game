@@ -31,7 +31,7 @@ namespace Chem.Tests
         {
             var client = new HouseToolsTests.Client(bench);
             Assert.That(client.Call("places", new { }), Does.Contain("hollowmere"));
-            Assert.That(client.Call("list", new { table = "looks" }), Does.Contain("species Deer, Rabbit, Squirrel"), "or a client has to guess, and be refused");
+            Assert.That(client.Call("list", new { table = "looks" }), Does.Contain("species deer, rabbit, squirrel"), "or a client has to guess, and be refused");
             Assert.That(client.Call("describe", new { table = "items", id = "ball" }), Does.Contain("baked model"));
             string sites = client.Call("find_site", new { width = 1, depth = 1, near = "hollowmere", within = 40 });
             var spot = Regex.Match(sites, @"\[(\d+), (\d+)\], on");
@@ -42,7 +42,7 @@ namespace Chem.Tests
                 name = "Golden squirrel",
                 mass = 0.3,
                 material = "flesh",
-                look = "{\"family\": \"creature\", \"species\": \"Squirrel\", \"color\": [1, 0.78, 0.2], \"scale\": 1}",
+                look = "{\"family\": \"creature\", \"species\": \"squirrel\", \"color\": [1, 0.78, 0.2], \"scale\": 1}",
             });
             string draft = Regex.Match(made, @"Draft (d\d+)").Groups[1].Value;
             client.Call("set_look", new { id = "golden-squirrel", param = "glow", value = "0.4", table = "item", draft });
@@ -83,7 +83,7 @@ namespace Chem.Tests
             Assert.That(thing.FromMod);
             Assert.That(world.ThingsNow.Count, Is.EqualTo(things + 1));
             Assert.That(world.CellHash(), Is.EqualTo(plain.CellHash()));
-            Assert.That(world.Rules.Item("golden-squirrel").Look.Species, Is.EqualTo("Squirrel"));
+            Assert.That(world.Rules.Item("golden-squirrel").Look.Species, Is.EqualTo("squirrel"));
             Assert.That(client.Call("find", new { kind = "golden-squirrel", near = $"[{thing.CellX}, {thing.CellY}]" }), Does.Contain(thing.Id.ToString()));
             Assert.That(client.Call("whats_on", new { }), Does.Contain("a golden-squirrel at"));
             Assert.That(client.Call("find_site", new { width = 1, depth = 1, near = $"[{thing.CellX}, {thing.CellY}]", within = 0 }), Does.Contain("No site"), "nothing else may stand on it");
@@ -116,7 +116,7 @@ namespace Chem.Tests
                 var client = new HouseToolsTests.Client(bench);
                 string sites = client.Call("find_site", new { width = 1, depth = 1, near = "hollowmere", within = 40 });
                 var spot = Regex.Match(sites, @"\[(\d+), (\d+)\], on");
-                string draft = Regex.Match(client.Call("add_item", new { id = "golden-squirrel", name = "Golden squirrel", mass = 0.3, material = "flesh", look = "{\"species\": \"Squirrel\", \"color\": [1, 0.78, 0.2]}" }), @"Draft (d\d+)").Groups[1].Value;
+                string draft = Regex.Match(client.Call("add_item", new { id = "golden-squirrel", name = "Golden squirrel", mass = 0.3, material = "flesh", look = "{\"species\": \"squirrel\", \"color\": [1, 0.78, 0.2]}" }), @"Draft (d\d+)").Groups[1].Value;
                 client.Call("add_thing", new { kind = "golden-squirrel", at = $"[{spot.Groups[1].Value}, {spot.Groups[2].Value}]", draft });
                 client.Call("save", new { draft, title = "A rare golden squirrel", idea = "One to find.", name = "golden-squirrel" });
                 var (thing, world) = On(bench);

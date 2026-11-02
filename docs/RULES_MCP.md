@@ -353,7 +353,7 @@ where every log wall burns through. Its colour is the plain render; a house's fi
 is a test fixture.
 
 - **A look on a thing.** An `entities` or `items` row may give a `look` of family `creature` (`rules/looks.json` `things`):
-  `species` (one of the fauna's), `color`, `glow`, `scale` (up to `budgets.json` `things.maxScale`). It's for a kind with no
+  `species` (a row of `rules/fauna.json`, or one a mod adds; `list looks` names them), `color`, `glow`, `scale` (up to `budgets.json` `things.maxScale`). It's for a kind with no
   baked prefab; a kind the rules ship with keeps its model. `validate` refuses an added thing of a new kind with no look.
 - **Adding one.** A mod's `world` section takes `"add": [{"kind", "cell": [x, y], "rot"?, "chance"?}]`, at most
   `things.maxPerMod` (16) rows. Each row is appended to its chunk's list, so the file's ids never move. A mod's thing has an
@@ -373,7 +373,7 @@ is a test fixture.
    `ChunkCoords`, `Find`, `LinkedTo`, `Fingerprint`), since `grid.Things` is the file alone and ignores both mods and `chance`.
 2. A kind with no prefab in `ThingSpawner.prefabs`: spawn one generic registered prefab, a prop for an `entities` row and an
    item for an `items` row, and dress it from `Rules.Item(kind).Look` or `Rules.Entity(kind).Look`: `Family == "creature"`, the
-   model of `Species` from the fauna, in `Color` in place of its coat, with `Glow`, at `Scale`. It stands still. The kind and the
+   body of `Species` (`Rules.Fauna.BodyOf`, as `CreatureBodies` builds it), in `Color` in place of its coat, with `Glow`, at `Scale`. It stands still. The kind and the
    look must reach every peer, late joiners too, since a generic prefab doesn't say what it is.
 3. At each rule switch, `World.ThingsNow.ChangesFrom(before)` gives what to spawn and which ids to despawn. A despawned thing
    a player holds is theirs to lose: drop it from the hand.
@@ -389,7 +389,7 @@ claude -p "Put a rare golden squirrel somewhere in the woods for us to find. Sav
   --permission-mode dontAsk --tools Read --allowedTools mcp__spell-valley </dev/null
 ```
 
-`.mcp.json` starts `Rules.Mcp.dll --rules <the copy>/rules`. It ended as one mod both times it was run, with its spots from `find_site`.
+`.mcp.json` starts `Rules.Mcp.dll --rules <the copy>/rules`. It ended as one mod all three times it was run, with its spots from `find_site`.
 What one run wrote is `core/Game.Core.Tests/RulesMcp/golden-squirrel.mod.json`, and `HiddenThingTests` holds it through two runs,
 two peers and a save. **Limit:** the woods aren't a place and a stand-in valley has no trees, so a headless client can't tell
 woods from a meadow, and `find_site` may give a cell a real tree stands on; the game's `find_site` reads the real valley,

@@ -124,6 +124,25 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AFaunaRowPatchesLikeAnyOther()
+        {
+            var squirrel = Base.Fauna.Species("squirrel");
+            string bigger = "{ 'fauna': { 'squirrel': { 'size': [2, 3], 'move': { 'run': 9 } } } }";
+            var row = With(bigger).Fauna.Species("squirrel");
+            Assert.That(row.Size, Is.EqualTo(new double[] { 2, 3 }));
+            Assert.That(row.Run, Is.EqualTo(9));
+            Assert.That(row.Walk, Is.EqualTo(squirrel.Walk), "a group's other keys stay");
+            Assert.That(row.Name, Is.EqualTo("Squirrel"));
+            Assert.That(row.Slots.Count, Is.EqualTo(squirrel.Slots.Count), "and so does the rest of the row");
+            var stacked = With(bigger, "{ 'fauna': { 'squirrel': { 'move': { 'walk': 5 } } } }").Fauna.Species("squirrel");
+            Assert.That((stacked.Run, stacked.Walk), Is.EqualTo((9d, 5d)), "two mods stack");
+            Assert.That(With(bigger).Fingerprint, Is.EqualTo(Base.Fingerprint), "the fauna's the view's");
+
+            var budgets = ModBudgets.Load(ChemistryTests.RulesDir());
+            Assert.That(ModValidator.Validate(Base, budgets, bigger.Replace('\'', '"')), Is.Empty, "a row that names only what it changes passes");
+        }
+
+        [Test]
         public void EveryShippedModPatchesOnlyWhatItChanges()
         {
             foreach (var path in Directory.GetFiles(Path.Combine(ChemistryTests.RulesDir(), "mods"), "*.json"))
