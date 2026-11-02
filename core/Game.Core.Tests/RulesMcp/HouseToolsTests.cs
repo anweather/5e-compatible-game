@@ -82,8 +82,7 @@ namespace Chem.Tests
             Assert.That(found, Does.Contain("cabin"));
             string d = DraftId(client.Call("add_wing", new { building = house }));
 
-            // "Build a house on the beach", in the materials that house is built of, which come in the same mod.
-            client.Call("add_material", new { kind = "terrain", id = "stucco-wall", name = "Stucco wall", tags = new[] { "blocking", "trellis" }, verbs = "{\"break\": {\"leaves\": \"rubble\"}, \"look\": {\"family\": \"wall\", \"form\": \"built\", \"color\": [0.84, 0.71, 0.54]}}", draft = d });
+            // "Build a house on the beach", of stucco, with its roof tile in the same mod.
             client.Call("add_material", new { kind = "terrain", id = "clay-tile", name = "Clay tile", tags = new[] { "roof" }, verbs = "{\"look\": {\"family\": \"ground\", \"color\": [0.66, 0.3, 0.2]}}", draft = d });
             client.Call("add_building_part", new { table = "styles", id = "southwest", row = BuildingTests.SouthwestStyle, draft = d });
             string sites = client.Call("find_site", new { width = 8, depth = 6, near = "sea", edge = "shore" });

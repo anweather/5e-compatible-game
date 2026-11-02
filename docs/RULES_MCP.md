@@ -336,8 +336,15 @@ nearest it go with it; a roof whose cover burns goes as soon as the fire reaches
 the whole roof goes. The head over a gap stands while a wall beside it, or meeting it at a join, does. A door's panel
 goes with its cell, and fire leaves soot on the stretch and its neighbours. The floor and a chimney stand. Cells put
 back bring it all back. `RowHouses` looks at one house a frame and writes one index list and one colour list, never a
-mesh (worst 0.26 ms, in the hidden Editor). A wall burns only if its terrain says so: `stucco-wall` in
-`docs/design/builders.md` only breaks, so give a material `burn` for a house a fireball can bring down.
+mesh (worst 0.26 ms, in the hidden Editor). A wall burns only if its terrain says so.
+
+**`stucco-wall`** (J-063: "Stucco burns, but slower than wood") is a base terrain, drafted with `add_material` and
+checked with `validate`, then copied into `rules/materials.json`, since the server only makes patches. Its `burn`
+is `catch` 0.05 and `fuel` 210, against the log wall's 0.15 and 140. In 40 runs of the same fire on 8 cells of wall
+(`StuccoBurnsSlowerThanLogs`), the next cell catches after 53 ticks to the log wall's 22, a cell lasts half as
+long again, and the wall takes 556 ticks to go to 277, about twice as long; and 6 of the 40 fires die in the stucco
+where every log wall burns through. Its colour is the plain render; a house's finish stays in its row, so a
+`set_material` on `burn.catch` and `burn.fuel` retunes every stucco house at once. A mod can still replace the row.
 
 ## Change modes (chosen when a room is made)
 
