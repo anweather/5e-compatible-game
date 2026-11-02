@@ -83,15 +83,11 @@ forward to the next time the day reaches it, and `set_weather(weather, minutes?)
 history, the change mode decides it on every peer at the same tick, and what it sets is what Hasten Time and
 Control Weather set: `ClockAhead` and `WeatherSet`, already in the save and `SkyHash`.
 
-**What the game must fill in.** Until it does, in a running game these tools read the base rules and say
-so, and `time`, `weather`, `set_time` and `set_weather` refuse with a sentence; the stdio server has them all:
-- `GameRoomDesk` implements `ILiveDesk`: `Now()` returns `WorldNow.Of(grid.World)` from the main thread, null
-  when there's no world. `Workbench.Refresh` calls it at the start of every tool call.
-- `GameRoomDesk.Decide` sends `command.As(switcher.Me)`: today it rebuilds the command as an Apply or a Revert,
-  which would turn a clock command into a mod.
-- `RoomIntent` (`NetChem.Room.cs`) carries `RoomChange` in place of its `bool Revert`, and `ToCommand` is
-  `new RoomCommand(Change, Peer, Mod, Json, Title)`. Do this with the desk: the tools send clock commands only
-  to an `ILiveDesk`.
+**In a running game**, `GameRoomDesk` is an `ILiveDesk`: `Now()` reads `WorldNow.Of(grid.World)` on the main
+thread, null between scenes, and `Workbench.Refresh` calls it at the start of every tool call. `Decide` sends
+`command.As(switcher.Me)`, and `RoomIntent` carries the `RoomChange`, so a clock command stays one on its way
+through the host. A desk that isn't an `ILiveDesk` reads the base rules and says so, and `time`, `weather`,
+`set_time` and `set_weather` refuse with a sentence.
 
 **Check**: `validate(draft)` returns every problem, one sentence each:
 1. Shape: the schema of each table.
