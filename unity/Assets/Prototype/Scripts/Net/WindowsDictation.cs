@@ -1,7 +1,9 @@
 #if UNITY_EDITOR_WIN || (UNITY_STANDALONE_WIN && !UNITY_EDITOR)
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.Windows.Speech;
 
@@ -9,6 +11,9 @@ using UnityEngine.Windows.Speech;
 // and so works only online and with Windows' online speech recognition on. A new recogniser for
 // each hold, so one that went wrong can't spoil the next. The old one stays until the next hold,
 // never going inside its own event, so a word arriving after the end shows in the trace as lost.
+// One that never finished is left behind, not disposed: Dispose on a stuck recogniser stopped the
+// game for 20 s (#58), and nothing here may block the main thread. Windows' device name comes off
+// the main thread for the same reason.
 // Dictation takes a moment to start: until then the state says so, and a Stop waits for it, as a
 // recogniser stopped while starting has heard nothing. Unity's Microphone reads the level beside
 // it, Windows sharing the device; -voice-no-meter leaves that out.
@@ -17,14 +22,25 @@ public sealed class WindowsDictation : ISpeech
     // SPERR_SPEECH_PRIVACY_POLICY_NOT_ACCEPTED: Windows' online speech recognition setting is off.
     const int SettingOff = unchecked((int)0x80045509);
     const string TurnItOn = "Voice needs Windows' online speech recognition: turn it on in Settings > Privacy & security > Speech.";
+    const string StillBusy = "Windows dictation is still busy with the last try. Give it a moment.";
+    const string NoAnswer = "Windows dictation didn't answer, so nothing came through. Try again, or type.";
     const float SilenceSeconds = 60f, MostStopSeconds = 4f;
     const int MeterRate = 16000, MeterSeconds = 1, MeterWindow = 800;
 
+    /// <summary>Whether the level meter runs beside dictation.</summary>
+    public static bool Metered { get; set; } = !Environment.GetCommandLineArgs().Contains("-voice-no-meter");
+
     readonly ConcurrentQueue<(SpeechHeard heard, string text)> heard = new();
     readonly float[] samples = new float[MeterWindow];
+    // Those that never said they'd finished, kept so no finaliser disposes them mid-game; those that
+    // since have, to dispose at the next press, never inside their own event. Windows runs one
+    // dictation at a time, so a new one can't start until a stuck one is done.
+    static readonly List<DictationRecognizer> LeftBehind = new(), Spent = new();
+
     DictationRecognizer recogniser;
+    Task<string> deviceName;
     AudioClip meter;
-    bool holding, stopSent;
+    bool holding, stopSent, finished;
     float stoppedAt = -1f, peak;
 
     public SpeechState State { get; private set; }
@@ -41,9 +57,9 @@ public sealed class WindowsDictation : ISpeech
         holding = true;
         stopSent = false;
         stoppedAt = -1f;
-        string device = WindowsCaptureDevice.Default();
-        Source = WindowsCaptureDevice.Short(device);
-        VoiceTrace.Line($"microphones: {string.Join(", ", Microphone.devices)}; Windows default {device ?? "unknown"}; for calls {WindowsCaptureDevice.ForCalls() ?? "unknown"}");
+        finished = false;
+        VoiceTrace.Line($"microphones: {string.Join(", ", Microphone.devices)}");
+        deviceName = Task.Run(WindowsCaptureDevice.Default);
         try
         {
             recogniser = new DictationRecognizer { InitialSilenceTimeoutSeconds = SilenceSeconds, AutoSilenceTimeoutSeconds = SilenceSeconds };
@@ -60,7 +76,8 @@ public sealed class WindowsDictation : ISpeech
         catch (Exception e) when (e is UnityException or InvalidOperationException)
         {
             Debug.LogWarning("Voice: " + e.Message);
-            Fail("Windows speech isn't available on this PC.");
+            finished = true; // it never started, so there's nothing to wait for
+            Fail(LeftBehind.Count > 0 ? StillBusy : "Windows speech isn't available on this PC.");
         }
     }
 
@@ -84,6 +101,7 @@ public sealed class WindowsDictation : ISpeech
     // Stop should bring DictationComplete; if none comes, the hold still ends.
     public bool Take(out (SpeechHeard heard, string text) line)
     {
+        ShowDevice();
         if (State == SpeechState.Starting && recogniser != null && recogniser.Status == SpeechSystemStatus.Running)
         {
             State = SpeechState.Listening;
@@ -95,7 +113,7 @@ public sealed class WindowsDictation : ISpeech
             if (Time.unscaledTime - stoppedAt > MostStopSeconds)
             {
                 VoiceTrace.Line($"no DictationComplete in {MostStopSeconds} s: ending the hold");
-                End();
+                Fail(NoAnswer);
             }
         }
         if (holding) ReadMeter();
@@ -104,6 +122,14 @@ public sealed class WindowsDictation : ISpeech
     }
 
     public void Dispose() => Drop();
+
+    void ShowDevice()
+    {
+        if (deviceName == null || !deviceName.IsCompleted) return;
+        Source = WindowsCaptureDevice.Short(deviceName.Status == TaskStatus.RanToCompletion ? deviceName.Result : null);
+        VoiceTrace.Line($"Windows default {Source ?? "unknown"}");
+        deviceName = null;
+    }
 
     void OnHypothesis(string text)
     {
@@ -120,6 +146,7 @@ public sealed class WindowsDictation : ISpeech
     void OnComplete(DictationCompletionCause cause)
     {
         VoiceTrace.Line($"DictationComplete {cause}");
+        finished = true;
         switch (cause)
         {
             case DictationCompletionCause.Complete:
@@ -167,7 +194,7 @@ public sealed class WindowsDictation : ISpeech
     void OpenMeter()
     {
         peak = 0f;
-        if (Environment.GetCommandLineArgs().Contains("-voice-no-meter") || Microphone.devices.Length == 0) return;
+        if (!Metered || Microphone.devices.Length == 0) return;
         meter = Microphone.Start(null, true, MeterSeconds, MeterRate);
         VoiceTrace.Line("level meter open");
     }
@@ -195,6 +222,8 @@ public sealed class WindowsDictation : ISpeech
     void Drop()
     {
         CloseMeter();
+        foreach (var spent in Spent) spent.Dispose();
+        Spent.Clear();
         if (recogniser == null) return;
         var old = recogniser;
         recogniser = null;
@@ -202,7 +231,19 @@ public sealed class WindowsDictation : ISpeech
         old.DictationResult -= OnResult;
         old.DictationComplete -= OnComplete;
         old.DictationError -= OnError;
-        old.Dispose();
+        if (finished)
+        {
+            old.Dispose();
+            return;
+        }
+        LeftBehind.Add(old);
+        old.DictationComplete += _ =>
+        {
+            LeftBehind.Remove(old);
+            Spent.Add(old);
+            VoiceTrace.Line($"a recogniser left behind finished, {LeftBehind.Count} still out");
+        };
+        VoiceTrace.Line($"left a stuck recogniser behind, {LeftBehind.Count} now");
     }
 }
 #endif
