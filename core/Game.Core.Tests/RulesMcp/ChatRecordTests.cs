@@ -32,6 +32,30 @@ namespace Chem.Tests
 
         static JObject Record(string name) => Fed(Lines(name)).Record();
 
+        [Test]
+        public void ARetryShowsTheModelThatRanAndThatItRetried()
+        {
+            var recorder = Fed(Lines("badmodel"));
+            recorder.Retried(3000, "claude-haiku-5-5", "There's an issue with the selected model.\nIt may not exist.");
+            var blue = Lines("blue");
+            for (int i = 0; i < blue.Length; i++) recorder.Line(blue[i], 4000 + (Step * i));
+            recorder.Ended(9000);
+            var r = recorder.Record();
+            var alone = Record("blue");
+            Assert.That((string)r["model"], Is.EqualTo((string)alone["model"]), "the model that really ran, not the one asked for");
+            Assert.That((string)r["outcome"], Is.EqualTo("applied"));
+            Assert.That((string)r["why"], Is.Null, "the first try's failure isn't this prompt's");
+            Assert.That((string)r["retry"]["from"], Is.EqualTo("claude-haiku-5-5"));
+            Assert.That((string)r["retry"]["why"], Is.EqualTo("There's an issue with the selected model."));
+            Assert.That((long)r["retry"]["at"], Is.EqualTo(2000));
+            Assert.That((long)r["at"]["claudeReady"], Is.EqualTo(3000), "times stay from the send");
+            Assert.That(r["tokens"].ToString(), Is.EqualTo(alone["tokens"].ToString()), "the tokens are the second try's");
+        }
+
+        [Test]
+        public void ARecordWithNoRetryHasNoSuchField() =>
+            Assert.That(Record("blue").ContainsKey("retry"), Is.False);
+
         static int LineOf(string[] lines, string has) => Array.FindIndex(lines, l => l.Contains(has, StringComparison.Ordinal));
 
         [Test]

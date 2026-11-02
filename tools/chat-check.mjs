@@ -91,7 +91,10 @@ function joinServer(calls, server) {
   });
 }
 
-function checkOne(p, record, rows, mcp) {
+function checkOne(p, record, allRows, mcp) {
+  // A retried prompt's record is its last process's: the first try's lines are only its `retry`.
+  const lastStart = allRows.findLastIndex(r => r.o.type === "system" && r.o.subtype === "init");
+  const rows = record.retry && lastStart > 0 ? allRows.slice(lastStart) : allRows;
   const init = rows.find(r => r.o.type === "system" && r.o.subtype === "init")?.o;
   const result = rows.find(r => r.o.type === "result")?.o;
   const rate = rows.find(r => r.o.type === "rate_limit_event")?.o.rate_limit_info;

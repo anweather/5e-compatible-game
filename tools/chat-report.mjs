@@ -6,6 +6,7 @@
 // <folder> holds chat-log-<date>.jsonl files. A record with no "in the world" time (chatbench, or a
 // game that didn't reach it) counts its `applied` mark instead, and the report says how many did.
 // A line with `of` is a later word on the record with that id (ChatLog.Afterwards).
+// A record with `retry` ran again on the account's model after its own was refused (#64).
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
@@ -107,6 +108,7 @@ export function report({ records, bad }) {
     refused: records.filter(r => r.outcome === "refused").map(r => ({ prompt: r.prompt, why: r.why })),
     reverted: records.filter(r => r.afterwards?.reverted).length,
     fixedByTheNext: records.filter(r => r.afterwards?.fixedBy).length,
+    retried: records.filter(r => r.retry).map(r => ({ prompt: r.prompt, from: r.retry.from, ran: r.model })),
   };
 }
 
@@ -124,7 +126,9 @@ export function text(r) {
     + ` (${r.world.measuredInTheGame} measured in the game, ${r.world.upToTheRoomsAnswer} only up to the room's answer).`);
   out.push(`**Time:** starting up ${percent(r.shares.startingUp)}, the model ${percent(r.shares.model)}, tools ${percent(r.shares.tools)}, left over ${percent(r.shares.leftOver)}.`);
   out.push(`**Per prompt (median):** ${tokens(r.perPrompt.input)} input, ${tokens(r.perPrompt.cacheWrite)} cache write, ${tokens(r.perPrompt.cacheRead)} cache read, ${tokens(r.perPrompt.output)} output, ${dollars(r.perPrompt.cost)}, ${r.perPrompt.turns ?? "-"} turns. All together ${dollars(r.totalCost)}.`);
-  out.push(`**Afterwards:** ${r.reverted} reverted, ${r.fixedByTheNext} fixed by the next prompt.`, "");
+  out.push(`**Afterwards:** ${r.reverted} reverted, ${r.fixedByTheNext} fixed by the next prompt.`);
+  if (r.retried.length) out.push(`**Retried on the account's model:** ${r.retried.length}, from ${[...new Set(r.retried.map(x => x.from))].join(", ")}.`);
+  out.push("");
   out.push("| Kind | Prompts | To world | Done | Output | Cost |", "|---|---:|---:|---:|---:|---:|");
   for (const k of r.byKind) out.push(`| ${k.kind} | ${k.prompts} | ${seconds(k.medianWorldMs)} | ${seconds(k.medianDoneMs)} | ${tokens(k.medianOutput)} | ${dollars(k.medianCost)} |`);
   out.push("", "## Slowest");

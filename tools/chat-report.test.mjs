@@ -48,6 +48,15 @@ test("the dearest come first and what was refused is listed", () => {
   assert.ok(r.refused.some(x => x.prompt === "make the player twice as tall" && /Player size/.test(x.why)));
 });
 
+test("a retry is counted, and says what ran", () => {
+  const records = [{ ...log.records[0], model: "the-default", retry: { from: "claude-haiku-5-5", why: "no", at: 900 } }];
+  const once = report({ records, bad: 0 });
+  assert.deepEqual(once.retried, [{ prompt: records[0].prompt, from: "claude-haiku-5-5", ran: "the-default" }]);
+  assert.ok(text(once).includes("Retried on the account's model:** 1, from claude-haiku-5-5."));
+  assert.deepEqual(r.retried, []);
+  assert.ok(!text(r).includes("Retried"));
+});
+
 test("the text says it all", () => {
   const said = text(r);
   for (const s of ["9 prompts", "Prompt to world", "| building | 1 |", "Asked for, and refused", "make the player twice as tall"]) assert.ok(said.includes(s), s);
