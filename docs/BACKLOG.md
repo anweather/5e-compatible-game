@@ -705,13 +705,20 @@ support for Codex, Kiro and others, and advanced options to tune all of it.
 
 ## 28. Game modes: saved sets of mods (Andrew, 2026-11-02; later)
 
-Pick several mods, including things like building placement, save them as a named game mode, and load the whole set later.
+A game mode is a snapshot: copies of a set of mods, in order, as a package that shares the way a mod does.
 
-- **Builds on:** room mods, row houses and mods that add things, saved mods in the player's folder (#63).
-- **Open:** a mode's own file format; whether it names mods or holds copies, so it survives a mod changing; load order when two
-  mods touch the same thing; what the world keeps from a mode that placed buildings; what a late joiner gets; how a host shares
-  a mode with a peer who lacks it (mods already reach a room as id plus JSON).
-- **Size:** M.
+- **Andrew's model:** in free play, load any mods and snapshot the configuration to create a mode. Inside a mode, the mods you can
+  edit are only that mode's own copies, so it's always clear you're not editing the global one. A mode copies its mods.
+- **Order:** the sequence is fixed and repeatable. Two mods touching the same thing merge; where they set the same value, the last
+  one wins. Mods already do this: the active mods compose over the base in order, groups merge key by key (`Rules.MergedEntry`).
+  A mode has to store that order.
+- **The map as data:** a mode can carry its land too. The land is largely data already: a theme in `world/themes/` solved from a
+  seed (D11), with `world/land.json`, places, villages and things beside it. Not checked: what a mod can change of that today, and
+  what's still baked.
+- **Word:** "sandbox" means the frozen TS prototype here, so free play needs its own word in `docs/GLOSSARY.md`.
+- **Open:** what the world keeps when leaving a mode that placed buildings; what a late joiner gets; how "edit a copy" looks in the
+  Mods page.
+- **Size:** M, more if the land has to move into mods.
 
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
