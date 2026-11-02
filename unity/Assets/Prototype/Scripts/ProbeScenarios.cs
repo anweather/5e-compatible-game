@@ -195,6 +195,8 @@ public static class ProbeScenarios
         new Entry("chat", typeof(ChatProbe), 40f,
             "The chat box to Claude (J-060), with a stand-in for claude: Enter opens it and the wizard's controls go off, and come back; a message reaches one process on stdin, with the game's tools only and dontAsk; its words and tools show; a second message waits; notes.md stays bounded; " +
             "a failure shows, a sign-in failure says to sign in, and with no claude the install line shows. With --shots, a film of the box."),
+        new Entry("dictation", typeof(DictationProbe), 240f,
+            "The real Windows recogniser on the real microphone, three holds with the level meter and three without: no press may stop the game, and every hold must end."),
         new Entry("voice", typeof(VoiceProbe), 70f,
             "Talking to Claude (J-061), with a stand-in recogniser and a stand-in for claude: a hold opens the box, takes the controls and tells the player once where their voice goes; the words fill the box as they come; letting go waits for the recogniser, then sends once; " +
             "a recogniser that can't says why in a line and sends nothing; closing the box drops the words; the keys show on the Controls page's table; a hold played from a sample in tools/voice-samples/out on its real timing, word by word, letting go early, and with Claude busy, the words queued, in order, capped, on one status line. Needs make.ps1 run first. With --shots, a film of a hold. Real dictation is left to a real voice."),
