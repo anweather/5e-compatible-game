@@ -14,7 +14,7 @@ using Debug = UnityEngine.Debug;
 // output is read on a thread of its own, so a slow answer never holds a frame, and comes back
 // through Take on the main thread. The game holds no credential: whoever is signed in to
 // claude on this machine is who answers, and if nobody is, the player signs in themselves.
-public sealed class ClaudeChat
+public sealed class ClaudeChat : IChatHarness
 {
     /// <summary>How long one message may run before it's stopped.</summary>
     const int MostSeconds = 240;
@@ -91,7 +91,7 @@ public sealed class ClaudeChat
     {
         string arguments = ClaudeRun.CommandLine(ClaudeRun.Arguments(Model ?? (GameChat.AccountModel ? null : ClaudeRun.ChatModel)).Concat(Extra ?? Array.Empty<string>()));
         bool script = claude.EndsWith(".cmd", StringComparison.OrdinalIgnoreCase);
-        return new ProcessStartInfo(script ? "cmd.exe" : claude, script ? $"/c \"\"{claude}\" {arguments}\"" : arguments)
+        var start = new ProcessStartInfo(script ? "cmd.exe" : claude, script ? $"/c \"\"{claude}\" {arguments}\"" : arguments)
         {
             WorkingDirectory = folder,
             UseShellExecute = false,
@@ -101,6 +101,8 @@ public sealed class ClaudeChat
             RedirectStandardError = true,
             StandardOutputEncoding = Encoding.UTF8,
         };
+        ClaudeRun.Scrub(start.Environment);
+        return start;
     }
 
     static void TrimNotes(string folder)

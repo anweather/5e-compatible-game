@@ -24,7 +24,6 @@ public class GameChat : MonoBehaviour
     const string ListeningMark = "<color=#ff8a80>●</color> ";
     const string SignInLine = "You aren't signed in to Claude. A terminal is opening so you can: follow it, then ask again.";
 
-    readonly ClaudeChat claude = new();
     readonly List<(string text, float at)> lines = new();
     readonly Queue<(string message, string source)> waiting = new();
     string typed = "";
@@ -36,6 +35,9 @@ public class GameChat : MonoBehaviour
     bool cursorVisibleWas;
     GUIStyle lineStyle, boxStyle, talkStyle, sourceStyle;
     Texture2D shade;
+
+    /// <summary>What answers the messages. Claude Code in play; only the probe's comparisons change it.</summary>
+    public IChatHarness Harness { get; set; } = new ClaudeChat();
 
     /// <summary>The chat, or null where the game doesn't serve Claude.</summary>
     public static GameChat Instance { get; private set; }
@@ -71,7 +73,7 @@ public class GameChat : MonoBehaviour
     }
 
     /// <summary>Whether Claude is still answering, or messages wait for it.</summary>
-    public bool Busy => claude.Busy || waiting.Count > 0;
+    public bool Busy => Harness.Busy || waiting.Count > 0;
 
     /// <summary>The one line about messages waiting for Claude, or null with none.</summary>
     public string Queued => waiting.Count == 0 ? null
@@ -112,7 +114,7 @@ public class GameChat : MonoBehaviour
         // -chat-say sends these messages, split on |, once the game is up, to test a player with nobody at its keys.
         int say = System.Array.IndexOf(args, "-chat-say");
         if (say >= 0 && say + 1 < args.Length) StartCoroutine(Says(args[say + 1].Split('|')));
-        QuickExit.BeforeExit += claude.Cancel; // some players have no OnApplicationQuit
+        QuickExit.BeforeExit += CancelNow; // some players have no OnApplicationQuit
     }
 
     System.Collections.IEnumerator Says(string[] messages)
@@ -135,10 +137,12 @@ public class GameChat : MonoBehaviour
         if (PauseMenu.Button($"Claude's model in the chat: {(AccountModel ? "Account default" : "Haiku")}", PauseMenu.ButtonStyle)) AccountModel = !AccountModel;
     }
 
+    void CancelNow() => Harness.Cancel();
+
     void OnDestroy()
     {
-        QuickExit.BeforeExit -= claude.Cancel;
-        claude.Cancel();
+        QuickExit.BeforeExit -= CancelNow;
+        CancelNow();
         PauseMenu.KeysTaken = false;
         if (Instance == this) Instance = null;
     }
@@ -146,9 +150,9 @@ public class GameChat : MonoBehaviour
     void Update()
     {
         if (!Open) PauseMenu.KeysTaken = false; // a frame late, so the key that closed the box can't open the menu
-        while (claude.Take(out var heard)) Show(heard.said, heard.text);
+        while (Harness.Take(out var heard)) Show(heard.said, heard.text);
         Progress = ChatBar.Of(ChatTelemetry.Instance != null ? ChatTelemetry.Instance.Current : null);
-        if (!claude.Busy && waiting.Count > 0)
+        if (!Harness.Busy && waiting.Count > 0)
         {
             turnedAway = false;
             var next = waiting.Dequeue();
@@ -232,7 +236,7 @@ public class GameChat : MonoBehaviour
         }
         var telemetry = ChatTelemetry.Instance;
         saveAsked = ClaudeRun.AsksToSave(message);
-        claude.Send(message, ClaudeTerminal.Folder, RulesMcpServer.Url, telemetry.Begin(message, source), () => telemetry.Now);
+        Harness.Send(message, ClaudeTerminal.Folder, RulesMcpServer.Url, telemetry.Begin(message, source), () => telemetry.Now);
     }
 
     /// <summary>
@@ -242,7 +246,7 @@ public class GameChat : MonoBehaviour
     public static string SaveRefusal()
     {
         var chat = Instance;
-        return chat != null && chat.claude.Busy && !chat.saveAsked ? ClaudeRun.SaveNotAsked : null;
+        return chat != null && chat.Harness.Busy && !chat.saveAsked ? ClaudeRun.SaveNotAsked : null;
     }
 
     /// <summary>Fills the box, as typing does; voice comes this way too.</summary>

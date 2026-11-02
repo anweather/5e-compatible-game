@@ -73,7 +73,7 @@ namespace Chem.Mcp
         readonly Dictionary<string, (string model, JToken usage)> replies = new Dictionary<string, (string, JToken)>();
 
         long? started, ready, firstWord, firstTool, firstApply, applied, inWorld, done, apiMs, claudeMs;
-        string model, claude, reply, lastWords, failure, endedBy;
+        string model, claude, reply, lastWords, failure, endedBy, harness, costBasis;
         int? turns;
         double? cost;
         JToken usage, modelUsage;
@@ -140,6 +140,9 @@ namespace Chem.Mcp
                     case "result":
                         Result(o, clock);
                         break;
+                    case "first_word":
+                        firstWord ??= clock; // the API loop's stream, before a reply's block has ended
+                        break;
                 }
         }
 
@@ -189,6 +192,7 @@ namespace Chem.Mcp
             ready ??= clock;
             model ??= (string)o["model"];
             claude ??= (string)o["claude_code_version"];
+            harness ??= (string)o["harness"];
         }
 
         void Assistant(JObject o, long clock)
@@ -264,6 +268,7 @@ namespace Chem.Mcp
             reply = (string)o["result"];
             if (failed) failure = reply ?? "Claude stopped.";
             endedBy = (string)o["terminal_reason"];
+            costBasis = (string)o["cost_basis"];
             claudeMs = (long?)o["duration_ms"];
             apiMs = (long?)o["duration_api_ms"];
             turns = (int?)o["num_turns"];
@@ -356,6 +361,7 @@ namespace Chem.Mcp
                 }
             }
             all["cost"] = cost;
+            if (costBasis != null) all["costBasis"] = costBasis; // the API loop's, which are spent: Claude Code's records stay as they were
             all["perModel"] = perModel;
             all["turns"] = turns ?? replies.Count;
             all["cutOff"] = !sawResult;
@@ -403,7 +409,7 @@ namespace Chem.Mcp
             lock (gate)
             {
                 var outcome = Outcome();
-                return new JObject
+                var record = new JObject
                 {
                     ["id"] = who.Id,
                     ["game"] = new JObject { ["version"] = who.GameVersion, ["commit"] = who.Commit },
@@ -433,6 +439,8 @@ namespace Chem.Mcp
                     ["changes"] = Changes(),
                     ["gameCost"] = gameCost,
                 };
+                if (harness != null) record["harness"] = harness;
+                return record;
             }
         }
     }

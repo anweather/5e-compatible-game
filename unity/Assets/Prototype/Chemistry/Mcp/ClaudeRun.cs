@@ -156,6 +156,16 @@ namespace Chem.Mcp
 
         static readonly string[] SaveWords = { "save", "saved", "saves", "saving" };
 
+        /// <summary>The API loop's key, in the environment: the name, never the value. The claude process must never be handed it.</summary>
+        public const string GameKey = "SPELL_VALLEY_API_KEY";
+
+        /// <summary>A process's environment without the game's key.</summary>
+        public static void Scrub(IDictionary<string, string> environment) => environment.Remove(GameKey);
+
+        /// <summary>Text with a key cut out, for anything a person might read.</summary>
+        public static string Without(string text, string key) =>
+            string.IsNullOrEmpty(key) || text == null ? text : text.Replace(key, "[key]");
+
         /// <summary>The arguments as one command line, each quoted where it has to be.</summary>
         public static string CommandLine(IEnumerable<string> arguments) =>
             string.Join(" ", arguments.Select(a => a.IndexOfAny(new[] { ' ', '(', ')' }) >= 0 ? $"\"{a}\"" : a));

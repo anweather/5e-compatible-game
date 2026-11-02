@@ -32,7 +32,7 @@ public class ChatPromptsProbe : RowHousesProbe
     const float CastLands = 3f;
     // J-064: no runs past this share of the weekly limit. Each real stream says the share in its rate_limit_event.
     const double MostWeekly = 0.85, MostFiveHour = 0.60;
-    const string PromptsFile = "chat-prompts.json", BareContext = "bare", CastsFile = "casts.jsonl", AskedFile = "asked.txt";
+    const string PromptsFile = "chat-prompts.json", BareContext = "bare", CastsFile = "casts.jsonl", AskedFile = "asked.txt", ApiHarness = "api", LongCache = "1h";
     // No user settings (their skills and plugins) and no slash commands. Neither reads or moves the login.
     static readonly string[] BareArguments = { "--setting-sources", "project,local", "--disable-slash-commands" };
     static readonly string[] ClaudesOwn = { "CLAUDECODE", "CLAUDE_CODE_ENTRYPOINT", "CLAUDE_CODE_SESSION_ID" };
@@ -48,6 +48,7 @@ public class ChatPromptsProbe : RowHousesProbe
     }
 
     string outDir, chatFolder, modsDir;
+    ApiBudget budget;
     string[] modsWere;
     int spent;
     volatile string rateLine;
@@ -65,7 +66,9 @@ public class ChatPromptsProbe : RowHousesProbe
         int count = Mathf.Min(MostPrompts, Prompts > 0 ? Prompts : prompts.Count, prompts.Count);
         bool knownContext = string.IsNullOrEmpty(Context) || Context == BareContext;
         Check("the_context_is_known", knownContext, Context);
-        if (!knownContext) yield break;
+        bool knownHarness = string.IsNullOrEmpty(Harness) || Harness == ApiHarness;
+        Check("the_harness_is_known", knownHarness, Harness);
+        if (!knownContext || !knownHarness) yield break;
         outDir = OutDir ?? Path.Combine(Application.temporaryCachePath, "chat-prompts");
         chatFolder = Path.Combine(outDir, "claude-terminal");
         modsDir = Path.Combine(ChemGrid.FindRulesDir(), "mods");
@@ -78,12 +81,15 @@ public class ChatPromptsProbe : RowHousesProbe
         ClaudeChat.StandIn = RealClaude ? null : StandIn();
         ClaudeChat.Model = string.IsNullOrEmpty(Model) ? null : Model;
         ClaudeChat.Extra = Arguments();
+        var harnessWas = GameChat.Instance.Harness;
+        if (Api) GameChat.Instance.Harness = ApiHarnessNow();
         try
         {
             yield return SendAll(prompts, count);
         }
         finally
         {
+            GameChat.Instance.Harness = harnessWas;
             ClaudeChat.Tap = null;
             ClaudeChat.StandIn = null;
             ClaudeChat.Model = null;
@@ -91,6 +97,16 @@ public class ChatPromptsProbe : RowHousesProbe
             ClaudeTerminal.TestFolder = null;
             ChatTelemetry.Folder = null;
         }
+    }
+
+    bool Api => Harness == ApiHarness;
+
+    // The game's own loop: on a stand-in unless real money was asked for, which needs a budget file SafeToSpend has checked.
+    ApiChat ApiHarnessNow()
+    {
+        budget = new ApiBudget(RealClaude ? BudgetFile : Path.Combine(outDir, "stand-in-budget.json"));
+        IChatWire wire = RealClaude ? new ApiWire() : new ApiStandIn();
+        return new ApiChat(wire, budget, string.IsNullOrEmpty(Model) ? ClaudeRun.ChatModel : Model, string.IsNullOrEmpty(PrefixTtl) ? LongCache : PrefixTtl);
     }
 
     // The set, or the one kind asked for.
@@ -117,7 +133,8 @@ public class ChatPromptsProbe : RowHousesProbe
         yield return Fresh();
         Metric("prompts_spent", RealClaude ? spent : 0);
         Check("every_prompt_went", records.Count == count, $"{records.Count} of {count}");
-        if (!RealClaude) CheckAsked();
+        if (!RealClaude && !Api) CheckAsked();
+        if (!RealClaude && Api) CheckStandInLoop(records);
         if (!string.IsNullOrEmpty(ScreenshotDir)) yield return Replays(records);
     }
 
@@ -147,6 +164,17 @@ public class ChatPromptsProbe : RowHousesProbe
         return ((JArray)JObject.Parse(File.ReadAllText(file))["prompts"]).Cast<JObject>().ToList();
     }
 
+    // The loop on its stand-in: a tool outside its list never reached the server, and the record reads as Claude Code's does.
+    void CheckStandInLoop(List<(JObject prompt, JObject record)> records)
+    {
+        var first = records.FirstOrDefault().record;
+        Check("the_loop_keeps_a_record", (string)first?["harness"] == ApiHarness && (string)first["tokens"]?["costBasis"] == ApiLoop.RealMoney, first?.ToString());
+        var used = (first?["tools"] as JArray ?? new JArray()).Select(t => (string)t["name"] + "=" + (bool?)t["ok"]).ToList();
+        Check("the_loop_turned_a_shell_away", used.Contains("Bash=False") && used.Contains("whats_on=True"), string.Join(", ", used));
+        var save = (first?["tools"] as JArray ?? new JArray()).FirstOrDefault(t => (string)t["name"] == "save");
+        Check("the_server_turned_an_unasked_save_away", save != null && (bool?)save["ok"] == false && ((string)save["reason"] ?? "").StartsWith("Saving is the player's call", StringComparison.Ordinal), save?.ToString());
+    }
+
     // Everything that must hold before a real prompt goes. One that doesn't spends nothing.
     bool SafeToSpend()
     {
@@ -157,7 +185,12 @@ public class ChatPromptsProbe : RowHousesProbe
         Check("out_folder_holds_no_earlier_run", freshFolder, OutDir);
         var inherited = ClaudesOwn.Where(n => !string.IsNullOrEmpty(Environment.GetEnvironmentVariable(n))).ToList();
         Check("this_editor_isnt_inside_a_claude_session", inherited.Count == 0, string.Join(", ", inherited));
-        Check("claude_is_here", ClaudeChat.FindClaude() != null);
+        if (Api)
+        {
+            Check("a_key_is_here", ApiWire.HasKey);
+            Check("the_budget_has_room", !string.IsNullOrEmpty(BudgetFile) && new ApiBudget(BudgetFile).HasRoom, BudgetFile);
+        }
+        else Check("claude_is_here", ClaudeChat.FindClaude() != null);
         Check("the_server_is_up", RulesMcpServer.Url != null, RulesMcpServer.Url);
         Check("the_chat_is_here", GameChat.Instance != null && ChatTelemetry.Instance != null);
         return Result.Checks.All(c => c.Pass);
@@ -380,6 +413,11 @@ public class ChatPromptsProbe : RowHousesProbe
         bool same = ModsNow().SequenceEqual(modsWere);
         Check($"{name}_left_rules_mods_alone", same);
         if (!RealClaude) return true;
+        if (Api && !budget.HasRoom)
+        {
+            Check($"{name}_under_the_budget", false, $"{budget.Spent}");
+            return false;
+        }
         var weekly = Weekly();
         var fiveHour = FiveHour();
         bool under = (weekly == null || weekly <= MostWeekly) && (fiveHour == null || fiveHour <= MostFiveHour);

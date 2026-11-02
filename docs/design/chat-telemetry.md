@@ -75,6 +75,8 @@ The play log's `what` column marks send, apply and in the world, so a hitch can 
 Proved on real Claude, 2026-11-02 (claude 2.1.316, Opus 5.5), with what's still wrong in that report: tokens, cost, tool ms, outcomes and the model are right.
 Each stream also says how much of the five-hour and weekly limits is used, in its `rate_limit_event`. The cost is list price, which a plan player doesn't pay.
 
+The API loop's lines have the same shape, so all of this reads it. Its record alone has `harness: api` and `tokens.costBasis: api-real`, as those dollars are spent. A Claude Code record has neither, and is unchanged: its dollars are a list price a plan player doesn't pay. Its stream adds `first_word`, at the first text as it streams; Claude Code's comes when a block ends.
+
 ## In the game
 
 - A progress bar while Claude works, with tool detail behind the Developer menu.
