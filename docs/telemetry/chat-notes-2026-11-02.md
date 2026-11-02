@@ -101,6 +101,8 @@ Blue, the pair's first prompt, has no notes either way, and it took 4.5 s and 6.
 
 ## An account without Haiku (#64)
 
+**2026-11-02: Andrew reversed this. No fallback.** A retry on another model spends money nobody asked for, so `chat-fail-loud` takes it out: a refused model runs one process, a red line names the model and says where to change it, and the record says failed. What follows is what was measured with the retry in, kept for its numbers. Real check, 1 prompt, claude 2.1.316, `--model claude-haiku-0-0-not-a-model`: one process (one `init`, one `result`), 0 tokens, 1.0 s, the red line named the id, and the record said failed with `why` "model unavailable: claude-haiku-0-0-not-a-model". An account really without Haiku is still unseen.
+
 **Retry first, and it took.** The account-without-Haiku case itself has still not been seen: a real run with a model id that doesn't exist is the nearest there is.
 
 **The real failure,** claude 2.1.316, `--model claude-haiku-0-0-not-a-model`, 0 tokens, 1.1 s:

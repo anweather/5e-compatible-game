@@ -390,6 +390,7 @@ public class ChatPromptsProbe : RowHousesProbe
             ["expected"] = prompt["outcome"],
             ["record"] = record?["id"],
             ["outcome"] = record?["outcome"],
+            ["lastLine"] = GameChat.Instance.Lines.LastOrDefault(),
             ["sentClock"] = sent,
             ["url"] = RulesMcpServer.Url,
             ["notesBytes"] = File.Exists(notes) ? new FileInfo(notes).Length : 0,

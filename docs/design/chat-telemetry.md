@@ -27,8 +27,7 @@ A run the game didn't start (Claude Code in the terminal) has only the game-side
 | Time, split | starting up, waiting on the model (`duration_api_ms`), in tools, total. They should add up: say what's left over |
 | Tokens | input, cache write, cache read, output, cost, per model, turns |
 | Tools | each call: name, ms, ok or refused, reason |
-| Outcome | applied, refused, failed, timed out, stopped; for a refusal, what it couldn't do |
-| Retry | only if there was one (#64): the model refused, why, and when. `model` is then the one that really ran, and the times stay from the send |
+| Outcome | applied, refused, failed, timed out, stopped; for a refusal, what it couldn't do; for a model the account refused, failed with `why` "model unavailable: <id>", `model` the one asked for and claude's words in `reply` (#64) |
 | What changed | the whole mod patch of each `apply`, so any result can be rebuilt (the castle couldn't be), and its title |
 | Afterwards | reverted or still on at the end of the session, and after how long; whether the next prompt fixes this one |
 | Game cost | worst frame and hitches from send to in the world, ms to compose rules, ms drawing it |
@@ -59,7 +58,7 @@ gives each patch. `afterwards` lines come on a revert, at the session's end for 
 plain rule for `fixedBy`. `McpRpc.Called` and `McpLog` write `mcp-log-<date>.jsonl` beside the records, for terminal sessions too. `PlayLog.Note` adds a `note` line for send,
 apply and in the world, which doesn't count as a mark. `ChatBar` turns `ChatRecorder.Progress` into the bar; the Developer menu's "Claude's tools in the chat"
 brings the tool lines back; the Claude menu lists the last prompts. `ClaudeTerminal.Guide` comes from `ClaudeRun.Guide`, so the bench reads what the game writes.
-The record's prompt is the player's words: `ClaudeChat` adds the notes to what claude is sent, after the record has begun. A retry stays one record: `ChatRecorder.Retried` drops the first try. `ClaudeRun.Read` leaves out an API failure's `assistant` line, and the `result` says the same.
+The record's prompt is the player's words: `ClaudeChat` adds the notes to what claude is sent, after the record has begun. `ClaudeRun.Read` leaves out an API failure's `assistant` line, and the `result` says the same.
 
 ## The game's side
 
