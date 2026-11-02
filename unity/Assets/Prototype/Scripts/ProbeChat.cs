@@ -105,8 +105,9 @@ public class ChatProbe : ProbeScenario
         ClaudeChat.StandIn = StandIn("slow", 2f, "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"ok\"}");
         chat.Send("first");
         chat.Send("second");
-        Check("a_second_message_waits", chat.Lines.Last().Contains("still on the last one"), chat.Lines.Last());
+        Check("a_second_message_waits", chat.Queued != null && chat.Queued.Contains("second"), chat.Queued);
         yield return Until(chat, () => !chat.Busy);
+        Check("then_it_goes", chat.Lines.Contains("You: second") && chat.Queued == null, string.Join(" | ", chat.Lines));
         Check("the_chat_is_free_again", !chat.Busy);
     }
 

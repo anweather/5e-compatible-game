@@ -17,4 +17,5 @@ playtest/runs/
 
 # Sound renders for audition (sound-design skill): listened to, never committed
 tools/sound-audition/
+tools/voice-samples/out/
 __pycache__/
