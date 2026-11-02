@@ -195,6 +195,10 @@ public static class ProbeScenarios
         new Entry("chat", typeof(ChatProbe), 40f,
             "The chat box to Claude (J-060), with a stand-in for claude: Enter opens it and the wizard's controls go off, and come back; a message reaches one process on stdin, with the game's tools only and dontAsk; its words and tools show; a second message waits; notes.md stays bounded; " +
             "a failure shows, a sign-in failure says to sign in, and with no claude the install line shows. With --shots, a film of the box."),
+        new Entry("chatprompts", typeof(ChatPromptsProbe), 2400f,
+            "A fixed set of prompts (docs/telemetry/chat-prompts.json) through the real chat, each on a fresh world, keeping the raw stream and watching what the frames show beside the stamp. " +
+            "With a stand-in unless --real-claude true --out <folder> is given, which spends real prompts on the signed-in Claude (J-064: at most 8 a run, and it stops at a sign-in failure). " +
+            "With --shots, replays the recorded patches and films them, spending nothing."),
         new Entry("dictation", typeof(DictationProbe), 240f,
             "The real Windows recogniser on the real microphone, three holds with the level meter and three without: no press may stop the game, and every hold must end."),
         new Entry("voice", typeof(VoiceProbe), 70f,

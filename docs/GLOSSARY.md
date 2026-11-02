@@ -674,6 +674,25 @@ that long, and doesn't march.
 : What turns speech into text. The game knows only the port, `ISpeech`;
   each recogniser is an adapter behind it, picked in `SpeechChoice` (J-061).
 
+## Claude in the chat
+
+**chatbench**
+: Fixed prompts through the chat's arguments with no game, so it stops at
+  `applied` (`core/Chat.Bench`). Cheap to run on any machine.
+
+**chatprompts**
+: The probe that sends a fixed set of prompts through the running game's chat,
+  so a record has a real "in the world". A stand-in answers unless it's given
+  `--real-claude true`, which spends real prompts (J-064).
+
+**Reply**
+: One answer from the model, one `message.id` in the stream, however many tool
+  calls it holds. Not a **turn**, which is what `num_turns` counts: tool calls + 1.
+
+**Cold prompt**
+: One with nothing cached to read, so it writes all of Claude's starting
+  context. A **warm** one reads most of it.
+
 ## Ambiguities settled
 
 | Word | Means | Not |

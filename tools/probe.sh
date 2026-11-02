@@ -6,6 +6,8 @@
 #   tools/probe.sh smoke
 #   tools/probe.sh fire --shots /path/to/scratchpad
 #   tools/probe.sh perf --seconds 20
+#   tools/probe.sh chatprompts                                     # with a stand-in; spends nothing
+#   tools/probe.sh chatprompts --real-claude true --out /scratch   # spends real prompts (J-064)
 #   tools/probe.sh list
 set -uo pipefail
 
