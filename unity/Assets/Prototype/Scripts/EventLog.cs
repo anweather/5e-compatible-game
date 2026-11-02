@@ -182,12 +182,15 @@ public class EventLog : MonoBehaviour
         if (!pad || radialPad) GUI.Label(new Rect(VitalsHud.Margin, VitalsHud.Margin + vitalsHeight + 6f, 1400, 26), SpellChip(pad), chipStyle);
     }
 
+    /// <summary>The keyboard's spell keys, on the chip.</summary>
+    public const string KeyHints = "Tab: spells  ·  Q element  ·  E spell  ·  Z X C V elements";
+
     string SpellChip(bool pad)
     {
         var group = caster.TryGetComponent<SpellRadialHud>(out var radial) ? radial.CurrentGroup : null;
         string colour = group?.Color ?? "#ffd24a";
         string element = group != null ? $"<color={colour}>{group.Name}</color>  " : "";
-        string keys = pad ? PadGlyphs.Text("hold {LB}: spells, tap: swap  ·  {RB} next  ·  D-pad ◀ ▶ element") : "hold Tab: spells, tap: swap  ·  Q E next  ·  Z X C V elements";
+        string keys = pad ? PadGlyphs.Text("hold {LB}: spells, tap: swap  ·  {RB} next  ·  D-pad ◀ ▶ element") : KeyHints;
         return $"<color={colour}>●</color> {element}<color=#ffd24a><b>{caster.SelectedName}</b></color>   <color=#ffffff88>{keys}</color>";
     }
 }

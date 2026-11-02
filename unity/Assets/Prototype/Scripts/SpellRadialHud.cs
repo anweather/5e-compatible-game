@@ -3,11 +3,12 @@ using Chem;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The spell radial (docs/SPELL_RADIAL.md): hold Tab or LB, aim at an element
-// with the mouse or the right stick, rest on it or push further out to open
+// The spell radial (docs/SPELL_RADIAL.md): hold LB, aim at an element with
+// the right stick (the mouse, from a number key), rest on it or push further out to open
 // its spells as an arc, release to pick. A quick tap swaps back to the
 // previous spell; B cancels (with the mouse, releasing in the centre does).
-// Without opening it: Q / E and RB step through the current element, the
+// Tab on the keyboard opens the spell list instead (SpellListMenu).
+// Without opening it: E and RB step through the current element, Q and the
 // d-pad's left / right step elements, a number key opens that element's arc.
 //
 // The choosing is SpellRadial, engine-free and tested in the core; this feeds
@@ -110,12 +111,17 @@ public class SpellRadialHud : MonoBehaviour
 
     // --- input -------------------------------------------------------------------------
 
-    // Closed: the hold button or a number key opens it; the bumpers, Q / E and the d-pad step.
+    // Closed: the hold button or a number key opens it; Q changes element, E changes spell, as RB and the d-pad do.
     void Idle()
     {
         double now = Time.unscaledTimeAsDouble;
         if (controls.RadialHold.WasPressedThisFrame())
         {
+            if (controls.RadialHold.activeControl?.device is Keyboard)
+            {
+                SpellListMenu.Show(caster);
+                return;
+            }
             heldBy = controls.RadialHold;
             Apply(radial.Feed(Sample(true, now, false)));
             return;
@@ -128,7 +134,6 @@ public class SpellRadialHud : MonoBehaviour
             return;
         }
         if (controls.NextSpellPressed()) Select(radial.StepInElement(1));
-        if (controls.PrevSpell.WasPressedThisFrame()) Select(radial.StepInElement(-1));
         if (controls.NextElement.WasPressedThisFrame()) Select(radial.StepElement(1));
         if (controls.PrevElement.WasPressedThisFrame()) Select(radial.StepElement(-1));
     }
@@ -364,7 +369,7 @@ public class SpellRadialHud : MonoBehaviour
         return $"<size={size}><color=#ffffffcc>{step}</color></size>";
     }
 
-    static string LevelOf(SpellDef def)
+    public static string LevelOf(SpellDef def)
     {
         if (def == null) return "";
         return def.Level == 0 ? "cantrip" : $"level {def.Level}";
@@ -372,7 +377,7 @@ public class SpellRadialHud : MonoBehaviour
 
     static string CancelHint(bool pad) => pad ? PadGlyphs.Text("<color=#ffffffaa>{East}: cancel</color>") : "<color=#ffffffaa>release here: cancel</color>";
 
-    static string FirstSentence(string blurb)
+    public static string FirstSentence(string blurb)
     {
         int stop = blurb.IndexOf(". ", System.StringComparison.Ordinal);
         return stop > 0 ? blurb.Substring(0, stop + 1) : blurb;

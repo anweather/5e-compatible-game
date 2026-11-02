@@ -4,8 +4,8 @@ using UnityEngine;
 // The bottom of the Esc menu's main page (PauseMenu): the version this copy is
 // ("alpha 0.1.0 (abc1234)", BuildInfo), and a line and a download button when a
 // newer alpha is out (UpdateCheck). In its Game sub menu, an About and credits
-// button that opens the attribution and licences (Credits) as a page, and an
-// "Open log folder" button for bug reports. Starts itself.
+// button that opens the attribution and licences (Credits) as a page; in Developer,
+// an "Open log folder" button for bug reports. Starts itself.
 public class GameInfoMenu : MonoBehaviour
 {
     /// <summary>The Credits page's id in the Esc menu.</summary>
@@ -29,14 +29,16 @@ public class GameInfoMenu : MonoBehaviour
     {
         creditsPage ??= new PauseMenu.Page { Title = "About and credits", Width = 560, Draw = DrawCredits };
         PauseMenu.AddSection(Draw, PauseMenu.LastOrder, PauseMenu.Submenu.Main);
-        PauseMenu.AddSection(DrawLinks, PauseMenu.LastOrder, PauseMenu.Submenu.Game);
+        PauseMenu.AddSection(DrawAbout, PauseMenu.LastOrder, PauseMenu.Submenu.Game);
+        PauseMenu.AddSection(DrawLogs, PauseMenu.LastOrder, PauseMenu.Submenu.Developer);
         PauseMenu.AddPage(CreditsPage, creditsPage);
     }
 
     void OnDisable()
     {
         PauseMenu.RemoveSection(Draw);
-        PauseMenu.RemoveSection(DrawLinks);
+        PauseMenu.RemoveSection(DrawAbout);
+        PauseMenu.RemoveSection(DrawLogs);
         PauseMenu.RemovePage(CreditsPage);
     }
     void OnDestroy() { if (instance == this) instance = null; }
@@ -61,12 +63,14 @@ public class GameInfoMenu : MonoBehaviour
         GUILayout.Label($"<color=#ffffff88>{BuildInfo.Label}</color>", small);
     }
 
-    void DrawLinks()
+    void DrawAbout()
     {
-        GUILayout.BeginHorizontal();
-        if (PauseMenu.Button("About and credits", null, GUILayout.Height(32))) PauseMenu.Instance.ShowPage(CreditsPage);
-        if (PauseMenu.Button("Open log folder", null, GUILayout.Height(32))) OpenLogFolder();
-        GUILayout.EndHorizontal();
+        if (PauseMenu.Button("About and credits", PauseMenu.ButtonStyle)) PauseMenu.Instance.ShowPage(CreditsPage);
+    }
+
+    void DrawLogs()
+    {
+        if (PauseMenu.Button("Open log folder", PauseMenu.ButtonStyle)) OpenLogFolder();
     }
 
     // The Credits page: the attribution, scrolled with the mouse wheel or the right stick.

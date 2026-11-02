@@ -229,12 +229,14 @@ public class NetSession : MonoBehaviour
             Back = () => picker.Back(),
         };
         PauseMenu.AddSection(MenuSection, 0, PauseMenu.Submenu.Multiplayer);
+        PauseMenu.AddSection(SameNetworkSection, 0, PauseMenu.Submenu.Developer);
         PauseMenu.AddPage(CodePage, codePage);
     }
 
     void OnDisable()
     {
         PauseMenu.RemoveSection(MenuSection);
+        PauseMenu.RemoveSection(SameNetworkSection);
         PauseMenu.RemovePage(CodePage);
     }
 
@@ -304,6 +306,15 @@ public class NetSession : MonoBehaviour
         GUILayout.EndHorizontal();
         // The code field needs a keyboard; with a controller, pick the code letter by letter.
         if (Gamepad.current != null && PauseMenu.Button("Enter a code with the controller", null, GUILayout.Height(32))) PickCode();
+        GUI.enabled = true;
+    }
+
+    // Hosting without a code, for two copies on one network.
+    void SameNetworkSection()
+    {
+        if (Net == null || Net.IsListening || session != null) return;
+        MakeStyles();
+        GUI.enabled = !busy;
         GUILayout.Label("Same network:", label);
         GUILayout.BeginHorizontal();
         if (PauseMenu.Button("Host", null, GUILayout.Width(70), GUILayout.Height(32))) Host();

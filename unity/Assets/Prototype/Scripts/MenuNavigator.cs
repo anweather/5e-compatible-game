@@ -76,6 +76,9 @@ public class MenuNavigator
         Focus = ((Focus + delta) % n + n) % n;
     }
 
+    /// <summary>Puts the highlight on an item, counted from 0 (EndLayout keeps it on the page).</summary>
+    public void FocusAt(int item) => Focus = System.Math.Max(0, item);
+
     /// <summary>Asks for the highlighted item to act as if clicked, the next time the menu runs its items.</summary>
     public void Activate()
     {

@@ -179,7 +179,7 @@ new states (a stale collection only brings those hitches back):
   nothing. Code: `UpdateCheck`, `BuildVersion.NewestRelease`.
 - **Bug reports.** Players send
   `%USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\Player.log`
-  (Esc → Game → Open log folder); its first lines name the version and commit.
+  (Esc → Developer → Open log folder); its first lines name the version and commit.
 
 ## Updates in place (Velopack)
 

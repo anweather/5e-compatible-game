@@ -273,13 +273,17 @@ that long, and doesn't march.
 
 **Sub menu**
 : A page of the Esc menu that the main page lists: Game, Multiplayer,
-  Settings or Claude. A part of the game adds its entries to one, so the main
+  Settings, Claude or Developer. A part of the game adds its entries to one, so the main
   page stays short. Not a **group**, which is the radial's.
 
 **Group**
 : A ring-1 slice of the spell radial (fire, water, storm, earth, arcane,
   nature, time), at most three spells each (`groups.json`, `GroupDef`).
   Players see them as elements; we say group.
+
+**Spell list**
+: What Tab opens on the keyboard, in place of the radial: every spell by
+  element, then all spells, then the ones not on the wheel (`SpellList`).
 
 **Force**
 : What a spell does to what it hits, apart from its element (`spells.json`

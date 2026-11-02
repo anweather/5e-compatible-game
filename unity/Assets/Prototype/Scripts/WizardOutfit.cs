@@ -99,7 +99,6 @@ public class WizardOutfit : MonoBehaviour
     {
         if (WizardRig.FindLocal() != gameObject) return;
         if (PauseMenu.Button("New look", PauseMenu.ButtonStyle)) Reroll();
-        if (Look != null && PauseMenu.Button($"Headwear: {Look.Headwear}", PauseMenu.ButtonStyle)) NextHeadwear();
     }
 
     IEnumerator Start()

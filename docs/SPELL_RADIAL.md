@@ -5,6 +5,12 @@ a grab-bag and every new spell makes it longer. It becomes a two-ring radial:
 element first, then that element's spells. Decided with Andrew, 2026-10-25;
 ships in alpha 0.1.1.
 
+Since 2026-11-01 the wheel is the controller's. On the keyboard Tab opens the
+**spell list** instead (`SpellListMenu`, `SpellList`): a page of the Esc menu
+with every spell by element, then all spells, then the ones not on the wheel.
+Click a spell, or use the arrows and Enter; Tab or Esc closes it. Number keys
+still open the wheel on an element. Andrew: "the wheel is super super clunky".
+
 ## How it plays
 
 - **Hold Tab** (gamepad: hold **LB**) to open it. The game keeps running
@@ -15,7 +21,7 @@ ships in alpha 0.1.1.
   spells as an arc around that wedge: name, level, a one-line effect.
 - **Release** selects the highlighted spell. Releasing in the centre cancels.
   A quick **tap** of Tab (no movement) swaps back to the previous spell.
-- Click still casts. Q / E (LB / RB) cycle within the current element.
+- Click still casts. Q changes element and E changes spell within it (RB steps spells too).
   Number keys 1–5 jump to an element and open its arc.
 - The HUD's long bar becomes one chip: element colour, spell name, key hints.
 

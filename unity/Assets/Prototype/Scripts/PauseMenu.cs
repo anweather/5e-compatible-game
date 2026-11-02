@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-// The Esc menu: Resume, the sub menus (Game, Multiplayer, Settings, Claude), and
+// The Esc menu: Resume, the sub menus (Game, Multiplayer, Settings, Claude, Developer), and
 // Quit. Other code adds its sections to a sub menu (NetSession adds Play together
 // to Multiplayer, ModsPanel the Mods entry to Game), or to the main page if the
 // player must see it at once (GameInfoMenu's update notice and version). Sections
@@ -56,10 +56,10 @@ public class PauseMenu : MonoBehaviour
     bool focusDrawn;
 
     /// <summary>Where a section sits: on the main page (Main), or on one of the sub menus the main page lists.</summary>
-    public enum Submenu { Main, Game, Multiplayer, Settings, Claude }
+    public enum Submenu { Main, Game, Multiplayer, Settings, Claude, Developer }
 
     /// <summary>The sub menus, in the order the main page lists them.</summary>
-    static readonly Submenu[] Submenus = { Submenu.Game, Submenu.Multiplayer, Submenu.Settings, Submenu.Claude };
+    static readonly Submenu[] Submenus = { Submenu.Game, Submenu.Multiplayer, Submenu.Settings, Submenu.Claude, Submenu.Developer };
 
     /// <summary>A sub-page of the menu: its title, width and contents, and optionally its own controller handling.</summary>
     public sealed class Page
@@ -73,6 +73,8 @@ public class PauseMenu : MonoBehaviour
         public Func<bool> Submit;
         /// <summary>B on the controller; return true if handled (the page stays open).</summary>
         public Func<bool> Back;
+        /// <summary>Played on the keyboard, highlight and all, so Back names no controller button.</summary>
+        public bool ForKeys;
     }
 
     /// <summary>
@@ -207,6 +209,9 @@ public class PauseMenu : MonoBehaviour
         if (page?.Move != null && page.Move(delta)) return;
         nav.Move(delta);
     }
+
+    /// <summary>Puts the highlight on an item of the current page, counted from 0.</summary>
+    public void FocusAt(int item) => nav.FocusAt(item);
 
     /// <summary>The controller's A: activates the highlighted item, as a click would.</summary>
     public void Submit()
@@ -438,7 +443,7 @@ public class PauseMenu : MonoBehaviour
         GUILayout.Space(8);
         page.Draw();
         GUILayout.Space(12);
-        string back = Highlight ? $"Back   <color=#ffffff88>{PadGlyphs.Label(PadButton.East)}</color>" : "Back";
+        string back = Highlight && !page.ForKeys ? $"Back   <color=#ffffff88>{PadGlyphs.Label(PadButton.East)}</color>" : "Back";
         if (Button(back, button) && (page.Back == null || !page.Back())) nav.Back();
     }
 

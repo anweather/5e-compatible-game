@@ -66,6 +66,10 @@ public static class ProbeScenarios
             "the arc opens with Thunderwave highlighted, release picks it and camera look comes back, a tap swaps back to " +
             "Fire Bolt, B cancels without changing the spell, the d-pad steps to the next element and RB to the next spell " +
             "in it, no console errors."),
+        new Entry("spelllist", typeof(SpellListProbe), 60f,
+            "The spell list, on a virtual keyboard: Tab opens it on the spell's element and not the wheel, the arrows move the " +
+            "highlight and the tabs, Enter picks and closes, Tab and Esc close, every spell off the wheel can be picked and cast, Q changes element and E spell, " +
+            "and LB on a virtual gamepad still opens the wheel. Shots at 1080p and at a 4K scale."),
         new Entry("looks", typeof(LooksProbe), 120f,
             "The material effects staged in the yard at noon, one picture each (--shots): rust, sand and glass, a glow ball breaking, ice shards, mud, hot metal, " +
             "Acid Splash and its stain, oil on the pond and fire across it, the shock flash, a window pane before, shattering and after. Checks: lightning fuses sand, " +

@@ -146,4 +146,16 @@ public class MenuNavigatorTests
     [TestCase("", false)]
     [TestCase(null, false)]
     public void RecognisesJoinCodes(string text, bool code) => Assert.That(CodePicker.LooksLikeCode(text), Is.EqualTo(code));
+
+    [Test]
+    public void FocusAtPutsTheHighlightThereAndTheLayoutKeepsItOnThePage()
+    {
+        var nav = new MenuNavigator();
+        Layout(nav, 5);
+        nav.FocusAt(3);
+        Assert.AreEqual(3, nav.Focus);
+        nav.FocusAt(9);
+        Layout(nav, 5);
+        Assert.AreEqual(4, nav.Focus);
+    }
 }
