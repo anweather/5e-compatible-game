@@ -13,7 +13,7 @@ public static class ChatBar
     {
         if (recorder == null) return null;
         var now = recorder.Progress();
-        if (now.InWorld) return (1f, "Done");
+        if (now.InWorld) return now.Done ? (1f, "Done") : (Finishing, "Finishing");
         if (now.Applied) return (Applied, "Drawing the change");
         if (now.Applying) return (Applying, "Changing the world");
         if (now.Done) return (Finishing, "Finishing");

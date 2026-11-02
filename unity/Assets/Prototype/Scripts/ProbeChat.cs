@@ -57,6 +57,12 @@ public class ChatProbe : ProbeScenario
             "{\"type\":\"system\",\"subtype\":\"init\",\"model\":\"stand-in\",\"claude_code_version\":\"0\"}",
             "{\"type\":\"assistant\",\"message\":{\"id\":\"m1\",\"model\":\"stand-in\",\"content\":[{\"type\":\"tool_use\",\"id\":\"t1\",\"name\":\"mcp__spell-valley__whats_on\",\"input\":{}}]}}",
             "{\"type\":\"result\",\"subtype\":\"success\",\"is_error\":false,\"result\":\"Done.\",\"total_cost_usd\":0.05,\"num_turns\":2,\"duration_ms\":100,\"duration_api_ms\":90,\"usage\":{\"input_tokens\":10,\"cache_creation_input_tokens\":20,\"cache_read_input_tokens\":3000,\"output_tokens\":40}}");
+        ClipFilm film = null;
+        if (!string.IsNullOrEmpty(ScreenshotDir))
+        {
+            film = new ClipFilm(this, Path.Combine(ScreenshotDir, "bar"), withHud: true);
+            film.Roll();
+        }
         chat.Send(Recording);
         yield return null;
         yield return null;
@@ -65,6 +71,7 @@ public class ChatProbe : ProbeScenario
         switcher.Toggle(RecordedMod);
         yield return Until(chat, () => ChatTelemetry.Instance.Current == null);
         yield return null;
+        if (film != null) yield return film.Stop();
         Check("the_bar_goes_with_the_prompt", chat.Progress == null);
         for (float t = 0f; t < MostWrite && !Directory.Exists(records); t += Time.unscaledDeltaTime) yield return null;
         var file = Directory.Exists(records) ? Directory.GetFiles(records, "chat-log-*.jsonl").FirstOrDefault() : null;

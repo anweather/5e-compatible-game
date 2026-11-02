@@ -41,33 +41,15 @@ What the stream really says, from claude 2.1.312 (fixtures in `core/Game.Core.Te
 - **The patch is never in the stream:** `apply`'s input is `d1`. `Workbench.Applied` gives it, and the record joins them by that key.
 - **Time:** the record's clock is when a line arrived. Lines carry no time that's safe across peers, so nothing else is read.
 
-## What the PC must add
+## The view's half
 
-Nothing below is in yet, and until it is the game writes no record. `ChatRecorder` locks, so any thread may call it.
-
-1. **`ClaudeChat`:** in `Send`, take a `Stopwatch`, make `new ChatRecorder(message, source, clock, who)` with `ChatWho` filled from
-   the game (id, `Application.version`, commit, room mode, players, mods on) and call `Started` after `process.Start()`. In `Follow`, call
-   `recorder.Line(line, clock)` on each line beside `ClaudeRun.Read`, then `Ended(clock)` once it ends, passing `TimedOut` from the
-   watchdog and `Stopped` from `Cancel`. `source` is typed or voice: `GameChat.Send` must be told which.
-2. **The patch:** in `RulesMcpServer`, `new Workbench(...) { ..., Applied = (key, patch) => current?.Patched(key, patch) }`.
-3. **In the world, the headline:** stamp `recorder.InWorld(clock)` on this peer when the view has finished drawing the switch of
-   the mod this prompt applied. `grid.RoomDecided` matches a command to its mod (as `GameRoomDesk.Decide` does), `ChemGrid.Announce`
-   (`ChemGrid.Rules.cs`) is where `RulesChanged` fires for solo and online alike, and the stamp goes on the first frame after that with no
-   view rebuild left queued. Peers switch at the same tick in lockstep, so "every peer" needs no extra message. A prompt with several
-   applies stamps each: the last stamp stands.
-4. **Writing it:** when the process has ended and the world has it, or a few seconds after if it never will, call
-   `ChatLog.Append(folder, DateTime.UtcNow, recorder.Record())` with the play logs' folder, off the main thread.
-5. **Game cost:** `recorder.GameCost(worstFrameMs, hitches, composeMs, drawMs)` before `Record()`. `PlayLog` has the frame times and hitches: count them
-   from send to in the world. Compose is the time in `World.ApplyRoom`/`batch.Prepare`, draw is `Announce` to the in-the-world stamp.
-6. **Afterwards:** a record is written before this is known, so it's a later line: `ChatLog.Append(folder, day, ChatLog.Afterwards(id, revertedAfterMs, fixedBy))`, on a revert of that
-   mod and at session end for what's still on (null). chat-report folds it in by id. `fixedBy` needs a rule of the PC's choosing: a next prompt that applies over the same entries is the plain one.
-7. **The MCP server log:** in `McpRpc.Call` around `method.Invoke`, ms running, result size, ok or refused, with the tool's name; ms waiting
-   for the main thread is in `GameRoomDesk.OnMainThread`. This one covers terminal sessions, which have no recorder.
-8. **Play log marks:** `PlayLog.Mark` for send, apply and in the world, each with the record's id, so a hitch ties to a prompt. A mark
-   counts today as "felt bad" (`marks`): give these a kind of their own or they pollute it.
-9. **The menu:** the progress bar and the list read the recorder and the record. First words often come last (`docs/telemetry/chatbench-2026-11-02.md`), so progress runs on tools.
-
-`ClaudeTerminal.Guide` now comes from `ClaudeRun.Guide` so the bench reads what the game writes. That one line of the view hasn't been compiled in Unity.
+`ChatTelemetry` (`Scripts/Net/`) keeps the clock and the current `ChatRecorder`. `ClaudeChat` feeds it each line and how the process ended; `GameChat.Send`
+says typed or voice. A room decision of this peer's starts the stamp: **in the world** is the second frame after it with no land recolouring queued, so a
+row house has drawn. The record goes to `ChatLog.Append` off the main thread once the process has ended and the world has it, or 5 s after. `Workbench.Applied`
+gives each patch. `afterwards` lines come on a revert, at the session's end for what stayed on, and when a later prompt's patch touches the same entries, the
+plain rule for `fixedBy`. `McpRpc.Called` and `McpLog` write `mcp-log-<date>.jsonl`, for terminal sessions too. `PlayLog.Note` adds a `note` line for send,
+apply and in the world, which doesn't count as a mark. `ChatBar` turns `ChatRecorder.Progress` into the bar; the Developer menu's "Claude's tools in the chat"
+brings the tool lines back; the Claude menu lists the last prompts. `ClaudeTerminal.Guide` comes from `ClaudeRun.Guide`, so the bench reads what the game writes.
 
 ## The game's side
 
