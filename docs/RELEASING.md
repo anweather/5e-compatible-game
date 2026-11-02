@@ -178,8 +178,8 @@ new states (a stale collection only brings those hitches back):
   invisible to players until step 6. Offline or rate-limited, it says
   nothing. Code: `UpdateCheck`, `BuildVersion.NewestRelease`.
 - **Bug reports.** Players send
-  `%USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\Player.log`
-  (Esc → Developer → Open log folder); its first lines name the version and commit.
+  `%USERPROFILE%\AppData\LocalLow\anweather\Spell Chemistry Valley\Player.log`;
+  its first lines name the version and commit.
 
 ## Updates in place (Velopack)
 

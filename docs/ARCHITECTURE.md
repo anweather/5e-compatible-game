@@ -201,8 +201,8 @@ and carries a sending stone's message to the machine of whoever holds the
 other stone. `NetCourt.cs` keeps the ball court's score: the host's physics
 decides goals (`BallCourt`) and every scoreboard shows the host's count.
 Measured numbers are in `docs/MULTIPLAYER.md` §7. `NetSession.cs` is playing together:
-the Play together section of the Esc menu (Relay join codes, or same-network
-IP) and a one-line status with the join code while online. `NetCommandLine.cs`
+the Play together section of the Esc menu (Relay join codes; the probes host
+and join by address) and a one-line status with the join code while online. `NetCommandLine.cs`
 lets a player build host (`-host-online`) or join (`-join-code CODE`) from the
 command line and logs a `NET STATUS` line every 10 s, for two-machine tests. `NetDemo.cs` and
 `NetDemoDirector.cs` run the 4-player scripted demo. Background:

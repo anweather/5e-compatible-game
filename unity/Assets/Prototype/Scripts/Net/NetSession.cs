@@ -20,8 +20,8 @@ using UnityEngine.SceneManagement;
 // Online: Unity Relay through a Multiplayer Services session. The host gets a
 // short join code to send a friend; nobody needs an account (anonymous
 // sign-in) and nobody opens router ports. The session starts Netcode itself.
-// Same network: host on UDP port Port, join by address (also how Multiplayer
-// Play Mode tests run without the cloud).
+// Same network: host on UDP port Port, join by address. Not in the Esc menu:
+// it's how Multiplayer Play Mode tests (the probes) run without the cloud.
 //
 // Both players must run the same build (lockstep). A joining player sends its
 // version and commit (BuildInfo) in the connection request and the host turns
@@ -33,7 +33,6 @@ public class NetSession : MonoBehaviour
     public const int MaxPlayers = 4;
     public const ushort Port = 7777;
 
-    string address = "127.0.0.1";
     string joinCode = "";
     string status;
     bool busy;
@@ -229,14 +228,12 @@ public class NetSession : MonoBehaviour
             Back = () => picker.Back(),
         };
         PauseMenu.AddSection(MenuSection, 0, PauseMenu.Submenu.Multiplayer);
-        PauseMenu.AddSection(SameNetworkSection, 0, PauseMenu.Submenu.Developer);
         PauseMenu.AddPage(CodePage, codePage);
     }
 
     void OnDisable()
     {
         PauseMenu.RemoveSection(MenuSection);
-        PauseMenu.RemoveSection(SameNetworkSection);
         PauseMenu.RemovePage(CodePage);
     }
 
@@ -306,21 +303,6 @@ public class NetSession : MonoBehaviour
         GUILayout.EndHorizontal();
         // The code field needs a keyboard; with a controller, pick the code letter by letter.
         if (Gamepad.current != null && PauseMenu.Button("Enter a code with the controller", null, GUILayout.Height(32))) PickCode();
-        GUI.enabled = true;
-    }
-
-    // Hosting without a code, for two copies on one network.
-    void SameNetworkSection()
-    {
-        if (Net == null || Net.IsListening || session != null) return;
-        MakeStyles();
-        GUI.enabled = !busy;
-        GUILayout.Label("Same network:", label);
-        GUILayout.BeginHorizontal();
-        if (PauseMenu.Button("Host", null, GUILayout.Width(70), GUILayout.Height(32))) Host();
-        address = GUILayout.TextField(address, field, GUILayout.Width(150));
-        if (PauseMenu.Button("Join", null, GUILayout.Height(32))) Join(address);
-        GUILayout.EndHorizontal();
         GUI.enabled = true;
     }
 
