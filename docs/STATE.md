@@ -57,7 +57,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **Mac:** one full EditMode and the item probes on merged dev, then stop. Mod things landed (9575468); every machine needs a yard rebuild. Squirrel test in a player, on the PC, comes with the test player; glow 0.4 washed it flat yellow in stills.
-- **DesktopUnity:** `chat-context` (3618dd5, change 3, `docs/telemetry/chat-context-2026-11-02.md`): Opus 6.1 s median, down from 14.3, cost down 40%, Haiku passes the strict check. Waiting on 16 real prompts on the merged tree and the Haiku default (J-066), then land with `--compiled`. Then `chat-api`, stacked on it, code-stopped at $9. #63: saved mods may vanish on update. The test player and squirrel test follow.
+- **Mac:** three branches, reporting each: `esc-menu-cuts`, `voice-log-words` (#53), #63 saved mods to the player folder. Stays out of `ClaudeRun`, `ClaudeChat` and the tool loop.
+- **DesktopUnity:** `chat-api`: the game runs its own tool loop against the MCP server on Andrew's key, code-stopped at $9, as a second adapter beside `ClaudeRun`. Change 3 and Haiku by default landed (7e8e423, J-066). EditMode runs on that branch. Then the test player and squirrel test.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
@@ -68,12 +69,11 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## Next, in order
 
 1. The lists above, then a new test player from dev for Andrew: #57 in a real window, voice words, the first real prompt, the creatures.
-2. Small jobs from J-065: cut Same network Host / Join, Frame-rate log and Open log folder from the Esc menu; #53, release builds drop spoken words and keep timing.
-3. Code base cleanup (Andrew, 2026-11-02), once the Mac's and DesktopUnity's work has landed and before new features: review the structure for deep modules that really hide complexity. A read-only review first, a ranked list for Andrew, then branches. The 33 S3776 warnings are one input.
-4. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
-5. Gaits by rule (`docs/design/builders.md`).
-6. Design things on water (#60); size patches for Claude (#61).
-7. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), version bump. J-060 comes back before anything commercial.
+2. Code base cleanup (Andrew, 2026-11-02), once the Mac's and DesktopUnity's work has landed and before new features: review the structure for deep modules that really hide complexity. A read-only review first, a ranked list for Andrew, then branches. The 33 S3776 warnings are one input.
+3. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
+4. Gaits by rule (`docs/design/builders.md`).
+5. Design things on water (#60); size patches for Claude (#61).
+6. 0.1.11, when Andrew says: he put it on hold. Before it ships: #53 (spoken words in the log), the no-Haiku fallback issue, #63 (saved mods on update), version bump. J-060 comes back before anything commercial.
 - Left out of the port, for later: flight and biomes for spawn rows, `glides`, a shore rule for reeds, mod budgets on rows, water animals as shapeshift targets. Dev's main thread may have risen about 1 ms on the Mac (unexplained; not fauna).
 - Backlog and priority: `docs/BACKLOG.md`. Designs: `docs/design/world-tools.md`, `primitives.md`, `builders.md`, `chat-telemetry.md`. First play: `docs/playtests/2026-11-01-mcp.md`.
 
