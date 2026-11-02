@@ -152,8 +152,8 @@ Only the rasteriser changes between them, never the format.
 
 **The test: a single-family stucco house of the American Southwest** with an attached two-car garage,
 15 × 12 m plus 6 × 6 m, a low-pitch tile roof and a recessed arched entry. A `southwest` style, the
-`stucco-wall` (blocking, breaks to rubble, doesn't burn) and `clay-tile` terrains come in the same mod as
-rows. Joins are in half cells, x east and y south, the front facing south:
+`clay-tile` terrain comes in the same mod as a row, and `stucco-wall` (blocking, breaks to rubble, burns slower
+than a log wall, J-063) is in the base rules. Joins are in half cells, x east and y south, the front facing south:
 
 ```json
 { "id": "lakeside#1", "at": [300, 150], "style": "southwest", "seed": 41, "storeys": 1, "fill": "hollow",

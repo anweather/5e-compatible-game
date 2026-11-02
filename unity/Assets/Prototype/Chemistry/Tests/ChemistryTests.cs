@@ -537,6 +537,40 @@ namespace Chem.Tests
             Assert.That(logsOut - logsLit, Is.GreaterThanOrEqualTo(100), $"and burn long: lit at {logsLit}, out at {logsOut}");
         }
 
+        // A wall of 8 cells along y = 1 on dirt, the same fire at its west end; (ticks until the next cell caught,
+        // until the lit cell was gone, until the whole wall was; -1 if it never was), by seed.
+        static (int next, int cell, int wall) WallBurn(string terrain, uint seed)
+        {
+            var w = new World(R, 10, 3, seed, "dirt");
+            for (int x = 1; x <= 8; x++) w.At(x, 1).T = terrain;
+            w.Apply(1, 1, "fire", 3, -1, false);
+            var (next, cell, wall) = (-1, -1, -1);
+            for (int t = 1; t <= 6000 && wall < 0; t++)
+            {
+                w.Step();
+                if (next < 0 && w.At(2, 1).Fire > 0) next = t;
+                if (cell < 0 && w.At(1, 1).T != terrain) cell = t;
+                if (Enumerable.Range(1, 8).All(x => w.At(x, 1).T != terrain)) wall = t;
+                if (Enumerable.Range(1, 8).All(x => w.At(x, 1).Fire == 0)) break;
+            }
+            return (next, cell, wall);
+        }
+
+        [Test]
+        public void StuccoBurnsSlowerThanLogs()
+        {
+            // Andrew, 2026-11-02 (J-063): "Stucco burns, but slower than wood."
+            var seeds = Enumerable.Range(1, 40).Select(s => (uint)s).ToList();
+            var logs = seeds.Select(s => WallBurn("logwall", s)).ToList();
+            var stucco = seeds.Select(s => WallBurn("stucco-wall", s)).ToList();
+            double Mean(IEnumerable<int> ticks) => ticks.Where(t => t >= 0).DefaultIfEmpty(0).Average();
+            Assert.That(stucco.Average(b => b.cell), Is.EqualTo(1.5 * logs.Average(b => b.cell)), "each cell lasts half as long again");
+            Assert.That(Mean(stucco.Select(b => b.next)), Is.GreaterThan(2 * Mean(logs.Select(b => b.next))), "the next cell is more than twice as slow to catch");
+            Assert.That(Mean(stucco.Select(b => b.wall)), Is.GreaterThan(1.75 * Mean(logs.Select(b => b.wall))), "the wall takes far longer to go");
+            Assert.That(logs.Count(b => b.wall >= 0), Is.EqualTo(40), "logs always burn through");
+            Assert.That(stucco.Count(b => b.wall >= 0), Is.InRange(25, 39), "stucco mostly does, and the fire sometimes dies in it");
+        }
+
         // Over 40 seeds, how often the second thatch (3, 1) caught from the first in one tick; damp sets
         // its Cell.DampUntil, and the fire is lit at tick lightAt.
         static int ThatchCaught(int dampUntil, int lightAt)

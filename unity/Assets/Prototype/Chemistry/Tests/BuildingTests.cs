@@ -1,7 +1,7 @@
 // Buildings from parts (Buildings.cs, World.Buildings.cs; docs/design/builders.md
 // section 4): the rasteriser, the villages' cells as rows, and a mod's "world"
-// section through the room. The stucco house is a test fixture only (J-055): no
-// such row is in the rules or the world.
+// section through the room. The stucco house is a test fixture only (J-055): its
+// walls are the rules' stucco-wall, but no such row is in the world.
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,7 +12,6 @@ namespace Chem.Tests
 {
     public class BuildingTests
     {
-        internal const string StuccoTerrain = "{ \"name\": \"Stucco wall\", \"tags\": [\"blocking\", \"trellis\"], \"break\": { \"leaves\": \"rubble\" }, \"look\": { \"family\": \"wall\", \"form\": \"built\", \"color\": [0.84, 0.71, 0.54] } }";
         internal const string TileTerrain = "{ \"name\": \"Clay tile\", \"tags\": [\"roof\"], \"look\": { \"family\": \"ground\", \"color\": [0.66, 0.3, 0.2] } }";
         internal const string SouthwestStyle = "{ \"fill\": \"hollow\", \"floor\": { \"kind\": \"slab\", \"height\": 0.15 }, \"wall\": { \"material\": \"stucco-wall\", \"height\": 2.9, \"thickness\": 0.3, \"finish\": { \"pattern\": \"smooth\", \"color\": \"#d6b48a\" } }, \"roof\": { \"shape\": \"hip\", \"pitch\": [4, 12], \"overhang\": 0.45, \"cover\": \"clay-tile\" } }";
 
@@ -38,7 +37,7 @@ namespace Chem.Tests
             " \"parts\": [{ \"kind\": \"chimney\", \"on\": \"east\", \"at\": 8 }] }";
 
         internal static string StuccoMod(int x, int y) =>
-            "{ \"title\": \"A house\", \"patch\": { \"terrain\": { \"stucco-wall\": " + StuccoTerrain + ", \"clay-tile\": " + TileTerrain + " }," +
+            "{ \"title\": \"A house\", \"patch\": { \"terrain\": { \"clay-tile\": " + TileTerrain + " }," +
             " \"buildings\": { \"styles\": { \"southwest\": " + SouthwestStyle + " } }," +
             " \"world\": { \"buildings\": { \"lakeside#1\": " + StuccoRow(x, y) + " } } } }";
 
@@ -104,7 +103,7 @@ namespace Chem.Tests
         {
             var row = JObject.Parse(StuccoRow(20, 20));
             row["fill"] = "solid";
-            var rules = R.WithMods(new[] { ModPatch.Parse("{ \"terrain\": { \"stucco-wall\": " + StuccoTerrain + ", \"clay-tile\": " + TileTerrain + " }, \"buildings\": { \"styles\": { \"southwest\": " + SouthwestStyle + " } }, \"world\": { \"buildings\": { \"lakeside#1\": " + row.ToString() + " } } }") });
+            var rules = R.WithMods(new[] { ModPatch.Parse("{ \"terrain\": { \"clay-tile\": " + TileTerrain + " }, \"buildings\": { \"styles\": { \"southwest\": " + SouthwestStyle + " } }, \"world\": { \"buildings\": { \"lakeside#1\": " + row.ToString() + " } } }") });
             var cells = Cells(rules.ModBuildings.Single(), rules);
             Assert.That(cells[(27, 25)].Terrain, Is.EqualTo("stucco-wall"));
             Assert.That(cells.Values.Any(c => c.Terrain == "rock"), Is.False);
