@@ -16,6 +16,7 @@ using UnityEngine;
 //   shows Listening until the words come. Notice stays null, as nothing leaves the machine.
 // - Its test set: tools/voice-samples/make.ps1 renders the WAVs (16 kHz mono, as above) it will
 //   transcribe, some quiet or noisy, each with a transcript of the expected words beside it.
+// - Source and Level: the device it opened, and the peak of the samples it just copied.
 public static class SpeechChoice
 {
     public const string Windows = "windows", StandIn = "stand-in", Recorded = "recorded";

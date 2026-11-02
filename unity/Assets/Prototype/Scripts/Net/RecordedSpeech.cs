@@ -36,6 +36,9 @@ public sealed class RecordedSpeech : ISpeech
 
     public SpeechState State { get; private set; }
     public string Why { get; private set; }
+    public string Source => Next;
+    public string ChangeSource => null;
+    public float Level => 0f;
     public string Notice => null;
 
     public void Start()

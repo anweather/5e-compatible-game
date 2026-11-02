@@ -8,12 +8,13 @@ using UnityEngine.InputSystem;
 [RequireComponent(typeof(GameChat))]
 public class GameVoice : MonoBehaviour
 {
-    const string ToldKey = "speech.told";
+    const string ToldKey = "speech.told", NothingHeard = "Nothing heard";
+    const string Starting = "Getting ready, a moment...", Listening = "Listening...", Finishing = "Waiting for the last words...";
 
     GameChat chat;
     ISpeech speech;
     string said = "", guess = "";
-    bool talking, held, dropped;
+    bool talking, held, dropped, released;
 
     /// <summary>The voice, or null where the game doesn't serve Claude.</summary>
     public static GameVoice Instance { get; private set; }
@@ -41,6 +42,12 @@ public class GameVoice : MonoBehaviour
     void Update()
     {
         while (speech != null && speech.Take(out var line)) Heard(line.heard, line.text);
+        if (talking)
+        {
+            chat.TalkHint = released ? Finishing : speech.State == SpeechState.Starting ? Starting : Listening;
+            chat.Level = speech.Level;
+            chat.TalkSource = speech.Source;
+        }
         if (talking && !dropped && !chat.Open) Cancel();
         if (held && !HoldDown())
         {
@@ -72,21 +79,28 @@ public class GameVoice : MonoBehaviour
     public bool Press()
     {
         if (talking || !chat.CanOpen) return false;
+        VoiceTrace.Begin();
+        VoiceTrace.Line("press");
         speech ??= SpeechChoice.Make();
         TellOnce(speech.Notice);
         said = guess = "";
-        dropped = false;
+        dropped = released = false;
         talking = true;
         chat.SetOpen(true);
         chat.Talking = true;
+        chat.TalkHint = Starting;
         speech.Start();
+        VoiceTrace.Line("press done");
         return true;
     }
 
     /// <summary>Ends a hold, as letting go does: what was said goes once the recogniser has finished.</summary>
     public void Release()
     {
-        if (talking) speech.Stop();
+        if (!talking) return;
+        VoiceTrace.Line("release");
+        released = true;
+        speech.Stop();
     }
 
     /// <summary>Forgets the recogniser, so the next hold makes the chosen one.</summary>
@@ -107,6 +121,7 @@ public class GameVoice : MonoBehaviour
 
     void Cancel()
     {
+        VoiceTrace.Line($"DROPPED: the box closed, with {VoiceTrace.Words(Joined(said, guess))}");
         dropped = true;
         speech.Stop();
     }
@@ -126,17 +141,31 @@ public class GameVoice : MonoBehaviour
                 Finish();
                 return;
         }
-        if (!dropped) chat.Type(Joined(said, guess));
+        if (dropped)
+        {
+            VoiceTrace.Line($"DROPPED: {heard} {VoiceTrace.Words(text)}, the box is closed");
+            return;
+        }
+        chat.Type(Joined(said, guess));
     }
 
     // Done: a guess still in the box was the best it had, so it goes too.
     void Finish()
     {
         talking = false;
+        string message = Joined(said, guess);
+        VoiceTrace.Line($"done, state {speech.State}, {VoiceTrace.Words(message)}{(dropped ? " DROPPED" : "")}");
         if (dropped) return;
         chat.SetOpen(false);
         if (speech.State == SpeechState.Unavailable) chat.Say(speech.Why);
-        chat.Send(Joined(said, guess));
+        else if (message.Length == 0) chat.Say(NothingLine());
+        chat.Send(message);
+    }
+
+    string NothingLine()
+    {
+        string line = speech.Source == null ? NothingHeard + "." : $"{NothingHeard} on {speech.Source}.";
+        return speech.ChangeSource == null ? line : $"{line} To change it: {speech.ChangeSource}.";
     }
 
     static string Joined(string first, string second) =>

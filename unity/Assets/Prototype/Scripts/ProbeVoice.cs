@@ -94,6 +94,12 @@ public class VoiceProbe : ProbeScenario
         if (speech == null) yield break;
         Check("the_box_opens_and_takes_the_controls", chat.Open && chat.Talking && (controls == null || !controls.enabled));
         Check("it_listens", speech.State == SpeechState.Listening);
+        speech.Level = 0.5f;
+        yield return null;
+        yield return null;
+        Check("the_level_reaches_the_box", Mathf.Approximately(chat.Level, 0.5f));
+        Check("the_box_says_its_listening", chat.TalkHint.Contains("Listening"), chat.TalkHint);
+        Check("the_box_names_what_listens", chat.TalkSource == speech.Source, chat.TalkSource);
         Check("told_where_the_voice_goes", chat.Lines.Contains(speech.Notice), string.Join(" | ", chat.Lines));
         Check("a_second_press_does_nothing", !voice.Press());
         if (film != null) yield return Wait(FilmStep);
@@ -112,6 +118,7 @@ public class VoiceProbe : ProbeScenario
         yield return null;
         yield return null;
         Check("letting_go_waits_for_the_recogniser", chat.Open && voice.Talking && !chat.Busy);
+        Check("the_box_says_its_waiting", chat.TalkHint.Contains("last words"), chat.TalkHint);
         speech.Final(Second);
         speech.Finish();
         if (film != null) yield return Wait(FilmStep);
@@ -140,6 +147,7 @@ public class VoiceProbe : ProbeScenario
         speech.Slow = false;
         voice.Release();
         yield return Until(() => !voice.Talking);
+        Check("nothing_heard_says_so_and_names_what_listened", chat.Lines.Last().Contains("Nothing heard") && chat.Lines.Last().Contains(speech.Source) && chat.Lines.Last().Contains(speech.ChangeSource), chat.Lines.Last());
         Check("saying_nothing_sends_nothing", !chat.Open && !chat.Busy && chat.Lines.Count(l => l.StartsWith("You:", System.StringComparison.Ordinal)) == sentWere, string.Join(" | ", chat.Lines));
     }
 
@@ -153,7 +161,13 @@ public class VoiceProbe : ProbeScenario
         Check("cant_says_why_in_a_line", chat.Lines.Last() == Why, chat.Lines.Last());
         Check("cant_gives_everything_back", !chat.Open && !chat.Busy && (controls == null || controls.enabled));
         speech.FailWith = null;
+        speech.SlowStart = true;
         Check("it_tries_again_after", voice.Press());
+        yield return null;
+        yield return null;
+        Check("the_box_says_when_its_still_starting", speech.State == SpeechState.Starting && chat.TalkHint.Contains("ready"), chat.TalkHint);
+        speech.SlowStart = false;
+        speech.Ready();
         Check("and_listens", speech.State == SpeechState.Listening);
         voice.Release();
         yield return Until(() => !voice.Talking);

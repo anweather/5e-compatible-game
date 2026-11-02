@@ -7,6 +7,9 @@ public sealed class NoSpeech : ISpeech
 
     public SpeechState State => SpeechState.Unavailable;
     public string Why { get; }
+    public string Source => null;
+    public string ChangeSource => null;
+    public float Level => 0f;
     public string Notice => null;
 
     public void Start() => done = false;
