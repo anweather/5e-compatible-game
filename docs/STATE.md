@@ -64,11 +64,11 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Merged dev passed full EditMode on the Mac and Windows.
-- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-1ad55fb/SpellChemistryValley.exe`, for Andrew. Squirrel test passed in a copy, two built peers over Relay. Never run in a real window. The old `PlayTest/` stays until he has moved over.
+- **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/SpellChemistryValley.exe`, dev at f736c4d, for Andrew's play on 2026-11-02 after 8pm. Copies passed the squirrel test, save right after apply, 2 real Haiku prompts, two built peers over Relay on this PC. The exe itself has never been launched, or anything run in a real window. Older `PlayTest/` and `PlayTest-1ad55fb/` stay until he has moved over.
 
 ## Next, in order
 
-1. A new test player from dev for Andrew: #57 in a real window, voice words, the first real prompt, the creatures.
+1. Andrew plays the test player: #57 in a real window, voice words, the first real prompt, the creatures.
 2. Code base cleanup (Andrew, 2026-11-02), before new features: the ranked list is `docs/design/cleanup-review-2026-11-02.md`, on the board. Branches next, from the top, after his verdict.
 3. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
 4. Gaits by rule (`docs/design/builders.md`).
