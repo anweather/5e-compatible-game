@@ -90,7 +90,7 @@ public class PlayLog : MonoBehaviour
     public static string Folder()
     {
         string log = Application.consoleLogPath;
-        return string.IsNullOrEmpty(log) ? Application.persistentDataPath : Path.GetDirectoryName(log);
+        return string.IsNullOrEmpty(log) ? ChemGrid.Folders.PlayerData : Path.GetDirectoryName(log);
     }
 
     void DrawEntry()

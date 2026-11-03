@@ -11,7 +11,7 @@ namespace Chem.Tests
     /// <summary>What the first play with Claude found (docs/playtests/2026-11-01-mcp.md): the tools read what's in force, refuse at once and say their limits.</summary>
     public class LiveStateTests
     {
-        static Workbench NewBench() => new Workbench(ChemistryTests.RulesDir());
+        static Workbench NewBench() => new Workbench(ChemistryTests.Folders);
 
         static void Bigger(Workbench b) => b.Apply(b.SetSpell(null, "fireball", "radius", "4").Id, "Ana", "Bigger fireball");
 

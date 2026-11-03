@@ -29,7 +29,7 @@ public class ScopeLooksProbe : LooksModProbe
     protected override IEnumerator Run()
     {
         switcher = grid.GetComponent<RuleSwitcher>();
-        bench = new Workbench(ChemGrid.Folders.Rules) { Here = here };
+        bench = new Workbench(new GameFolders(ChemGrid.Folders.Rules)) { Here = here };
         here.Follow();
         Check("here_is_the_real_player", here.Asking() is { } spot && !here.StandIn && spot.Player == switcher.Me && World.InBounds(spot.X, spot.Y), bench.DescribeHere());
         if (!FindMeadow(out at))

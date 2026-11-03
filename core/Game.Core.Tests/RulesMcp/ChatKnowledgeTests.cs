@@ -13,7 +13,7 @@ namespace Chem.Tests
     {
         const string Blue = "[0.25, 0.45, 1]";
 
-        static Workbench NewBench(string mods = null) => new Workbench(ChemistryTests.RulesDir(), mods);
+        static Workbench NewBench(GameFolders folders = null) => new Workbench(folders ?? ChemistryTests.Folders);
 
         static string[] FireSpells(Workbench b) => b.Base.Spells.Where(s => s.Element == "fire").Select(s => s.Id).ToArray();
 
@@ -21,17 +21,19 @@ namespace Chem.Tests
 
         static Rules With(Workbench b, Draft d) => b.Base.WithMods(new[] { ModPatch.Parse(d.Patch.ToString()) });
 
-        static void InATempFolder(Action<string> act)
+        // A player's data folder in Temp, with their mods folder made, where a save goes.
+        static void InATempFolder(Action<GameFolders> act)
         {
-            string dir = Path.Combine(Path.GetTempPath(), "chem-save-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(dir);
+            string data = Path.Combine(Path.GetTempPath(), "chem-save-" + Guid.NewGuid().ToString("N"));
+            var folders = new GameFolders(ChemistryTests.RulesDir(), data);
+            Directory.CreateDirectory(folders.Mods);
             try
             {
-                act(dir);
+                act(folders);
             }
             finally
             {
-                Directory.Delete(dir, true);
+                Directory.Delete(data, true);
             }
         }
 
@@ -133,9 +135,10 @@ namespace Chem.Tests
 
         [Test]
         public void ASaveTheChatWasntAskedForIsRefusedAndWritesNothing() =>
-            InATempFolder(dir =>
+            InATempFolder(folders =>
             {
-                var b = NewBench(dir);
+                string dir = folders.Mods;
+                var b = NewBench(folders);
                 b.SaveRefused = () => ClaudeRun.SaveNotAsked;
                 var d = b.SetSpell(null, "fireball", "radius", "3");
                 var tools = new RulesTools(b);
@@ -149,9 +152,10 @@ namespace Chem.Tests
 
         [Test]
         public void TheRefusalReachesTheModelAsAFailedCall() =>
-            InATempFolder(dir =>
+            InATempFolder(folders =>
             {
-                var b = NewBench(dir);
+                string dir = folders.Mods;
+                var b = NewBench(folders);
                 b.SaveRefused = () => ClaudeRun.SaveNotAsked;
                 var rpc = new McpRpc(new RulesTools(b), "test", "1");
                 var call = new JObject { ["jsonrpc"] = "2.0", ["id"] = 1, ["method"] = "tools/call", ["params"] = new JObject { ["name"] = "save", ["arguments"] = new JObject { ["draft"] = "d1", ["title"] = "x", ["idea"] = "y" } } };
@@ -162,9 +166,10 @@ namespace Chem.Tests
 
         [Test]
         public void AModThatsOnCanBeSavedInALaterMessage() =>
-            InATempFolder(dir =>
+            InATempFolder(folders =>
             {
-                var b = NewBench(dir);
+                string dir = folders.Mods;
+                var b = NewBench(folders);
                 var d = b.SetSpell(null, "fireball", "radius", "3");
                 b.Apply(d.Id, null, "Wide fireball");
                 // Each chat message is a new process that knows no draft ids, and may be a new server too: the room remembers.

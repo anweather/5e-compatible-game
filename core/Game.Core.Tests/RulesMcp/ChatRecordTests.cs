@@ -18,7 +18,7 @@ namespace Chem.Tests
     {
         const int Step = 100;
 
-        static string Fixtures => Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "core", "Game.Core.Tests", "RulesMcp", "chat-fixtures");
+        static string Fixtures => Path.Combine(ChemistryTests.Folders.Repo, "core", "Game.Core.Tests", "RulesMcp", "chat-fixtures");
 
         static string[] Lines(string name) => File.ReadAllLines(Path.Combine(Fixtures, name + ".jsonl"));
 
@@ -41,7 +41,7 @@ namespace Chem.Tests
             Assert.That(home, Is.EqualTo(Path.Combine(data, ChatLog.RecordsFolder)));
             Assert.That(Path.GetDirectoryName(home), Is.EqualTo(data), "under the data folder, so it stays the player's");
             Assert.That(home, Is.Not.EqualTo(data), "not the folder Player.log is in");
-            string root = Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\'));
+            string root = ChemistryTests.Folders.Repo;
             foreach (string readme in new[] { Path.Combine(root, "unity", "ReleaseReadme.txt"), Path.Combine(root, "tools", "README-LINUX.txt") })
             {
                 var told = File.ReadAllLines(readme).Where(l => l.Contains("Spell Chemistry Valley" + "\\", StringComparison.Ordinal) || l.Contains("Spell Chemistry Valley/", StringComparison.Ordinal)).ToList();
@@ -234,11 +234,11 @@ namespace Chem.Tests
         [Test]
         public void AWorkbenchSaysWhatWentToTheRoomAndNothingThatDidnt()
         {
-            string mods = Path.Combine(Path.GetTempPath(), "chat-record-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(mods);
+            string data = Path.Combine(Path.GetTempPath(), "chat-record-" + Guid.NewGuid().ToString("N"));
+            Directory.CreateDirectory(data);
             try
             {
-                var bench = new Workbench(ChemistryTests.RulesDir(), mods);
+                var bench = new Workbench(new GameFolders(ChemistryTests.RulesDir(), data));
                 string told = null, key = null;
                 bench.Applied = (mod, patch) => (key, told) = (mod, patch);
                 string draft = Regex.Match(new RulesTools(bench).SetLook("fire", "color", "[0.25, 0.45, 1]", "element"), @"\b(d\d+)\b").Groups[1].Value;
@@ -250,7 +250,7 @@ namespace Chem.Tests
             }
             finally
             {
-                Directory.Delete(mods, true);
+                Directory.Delete(data, true);
             }
         }
 

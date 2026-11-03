@@ -16,7 +16,8 @@ namespace Chem
         public GameFolders(string rules, string playerData = null)
         {
             Rules = rules;
-            World = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(rules).TrimEnd('/', '\\')) ?? "", WorldName);
+            Repo = Path.GetDirectoryName(Path.GetFullPath(rules).TrimEnd('/', '\\')) ?? "";
+            World = Path.Combine(Repo, WorldName);
             ShippedMods = Path.Combine(rules, ModsName);
             PlayerData = playerData;
             Claude = playerData == null ? null : new ClaudeFolder(playerData);
@@ -24,6 +25,12 @@ namespace Chem
 
         /// <summary>rules/: the rules JSON, looks and budgets.</summary>
         public string Rules { get; }
+
+        /// <summary>
+        /// The folder rules/ is in: the repo's root, with docs/, tools/ and the rest of a checkout, for anything run from one
+        /// (the Editor, the tests, a build being packed); a build reading its pack has only rules/ and world/ there.
+        /// </summary>
+        public string Repo { get; }
 
         /// <summary>world/, beside rules/: things, places, buildings, land and themes.</summary>
         public string World { get; }

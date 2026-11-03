@@ -17,14 +17,15 @@ namespace Chem.Tests
         const string Mod = "{ \"title\": \"Mine\", \"idea\": \"Slides go on.\", \"patch\": { \"sim\": { \"push\": { \"slideCells\": 7 } } } }";
         const string OtherMod = "{ \"title\": \"Other\", \"idea\": \"Slides go further.\", \"patch\": { \"sim\": { \"push\": { \"slideCells\": 9 } } } }";
 
-        string root, install, player;
+        string root, install, data, player;
 
         [SetUp]
         public void MakeFolders()
         {
             root = Path.Combine(Path.GetTempPath(), "player-mods-" + Guid.NewGuid().ToString("N"));
             install = Directory.CreateDirectory(Path.Combine(root, "install", "mods")).FullName;
-            player = Path.Combine(root, "data", "mods");
+            data = Path.Combine(root, "data");
+            player = new ClaudeFolder(data).Mods;
         }
 
         [TearDown]
@@ -108,7 +109,7 @@ namespace Chem.Tests
         {
             Players("mine");
             string rules = CopyOfTheRules();
-            var bench = new Workbench(rules, player);
+            var bench = new Workbench(new GameFolders(rules, data));
             Assert.That(bench.PatchJson("mine"), Is.EqualTo(Mod));
             Assert.That(bench.PatchJson("wildfire"), Is.EqualTo(File.ReadAllText(Path.Combine(rules, "mods", "wildfire.json"))));
         }
@@ -130,7 +131,7 @@ namespace Chem.Tests
         public void ThePlayersCopyWinsInTheToolsToo()
         {
             Players("wildfire");
-            Assert.That(new Workbench(CopyOfTheRules(), player).PatchJson("wildfire"), Is.EqualTo(Mod));
+            Assert.That(new Workbench(new GameFolders(CopyOfTheRules(), data)).PatchJson("wildfire"), Is.EqualTo(Mod));
         }
 
         [Test]
@@ -155,7 +156,7 @@ namespace Chem.Tests
         {
             string rules = CopyOfTheRules(), shipped = Path.Combine(rules, "mods");
             var before = Directory.GetFiles(shipped).Select(f => (f, File.GetLastWriteTimeUtc(f))).ToList();
-            var bench = new Workbench(rules, player);
+            var bench = new Workbench(new GameFolders(rules, data));
             string path = bench.Save(FireDraft(bench).Id, "Mine", "Fire spreads.");
             Assert.That(Path.GetDirectoryName(path), Is.EqualTo(player));
             Assert.That(Directory.GetFiles(shipped).Select(f => (f, File.GetLastWriteTimeUtc(f))), Is.EqualTo(before));
@@ -165,7 +166,7 @@ namespace Chem.Tests
         public void ASaveTakesAShippedNameOnlyWithOverwrite()
         {
             string rules = CopyOfTheRules(), wildfire = Path.Combine(rules, "mods", "wildfire.json"), shipped = File.ReadAllText(wildfire);
-            var bench = new Workbench(rules, player);
+            var bench = new Workbench(new GameFolders(rules, data));
             var draft = FireDraft(bench);
             var e = Assert.Throws<RulesToolException>(() => bench.Save(draft.Id, "Mine", "Fire spreads.", "wildfire"));
             Assert.That(e.Message, Does.Contain("already a mod called wildfire"));

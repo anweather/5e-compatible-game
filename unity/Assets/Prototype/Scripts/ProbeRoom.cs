@@ -479,7 +479,7 @@ public class RoomOpenProbe : RoomProbe
         var cells = TwoGrassCells();
         Check("two_grass_cells", cells.Count == 2, string.Join(" ", cells));
         if (cells.Count < 2) yield break;
-        var bench = new Chem.Mcp.Workbench(ChemGrid.Folders.Rules);
+        var bench = new Chem.Mcp.Workbench(new GameFolders(ChemGrid.Folders.Rules));
         var draft = bench.SetLook(null, "fire", "mix", "[\"#2050ff\", \"#30d040\"]", "elements", out _, (null, "each"));
         string mod = new Newtonsoft.Json.Linq.JObject { ["title"] = "Each their own", ["patch"] = draft.Patch }.ToString();
         Switcher.Ask(RoomCommand.Apply(Switcher.Me, EachPlayer, mod, "Each their own"));

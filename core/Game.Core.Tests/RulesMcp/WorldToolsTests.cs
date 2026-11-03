@@ -12,7 +12,7 @@ namespace Chem.Tests
     {
         static Workbench Bench(HereSpot? spot = null, bool standIn = true)
         {
-            var bench = new Workbench(ChemistryTests.RulesDir());
+            var bench = new Workbench(ChemistryTests.Folders);
             if (spot != null || !standIn) bench.Here = new StandInHere(spot);
             return bench;
         }

@@ -17,17 +17,20 @@ namespace Chem.Tests
         // Family creature's note (rules/looks.json), which is all a model hears of what a glow means.
         const string GlowHint = "glow 0.1 is a soft glow";
 
-        string dir;
+        string data, dir;
+        GameFolders folders;
 
+        // A player's data folder; dir is their mods in it, where a save goes.
         [SetUp]
         public void MakeDir()
         {
-            dir = Path.Combine(Path.GetTempPath(), "hidden-" + Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(dir);
+            data = Path.Combine(Path.GetTempPath(), "hidden-" + Guid.NewGuid().ToString("N"));
+            folders = new GameFolders(ChemistryTests.RulesDir(), data);
+            dir = Directory.CreateDirectory(folders.Mods).FullName;
         }
 
         [TearDown]
-        public void RemoveDir() => Directory.Delete(dir, true);
+        public void RemoveDir() => Directory.Delete(data, true);
 
         // What the asking player's Claude calls, in order. Returns the kept mod's text.
         string Ask(Workbench bench, string file = "golden-squirrel")
@@ -69,7 +72,7 @@ namespace Chem.Tests
         [Test]
         public void TheAskEndsAsOneModThatAnyPeerAgreesOn()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             string kept = Ask(bench);
 
             // One mod: an item with a creature look, added at the spot the tools gave. Nothing else.
@@ -80,7 +83,7 @@ namespace Chem.Tests
             Assert.That(((JArray)patch["world"]["add"]).Single()["kind"].ToString(), Is.EqualTo("golden-squirrel"));
 
             // Switched on, it stands in the world; the tools see it; it leaves the cells alone.
-            var plain = new Workbench(ChemistryTests.RulesDir(), dir).LiveWorld;
+            var plain = new Workbench(folders).LiveWorld;
             int things = plain.ThingsNow.Count;
             var (thing, world) = On(bench);
             plain.Step();
@@ -100,7 +103,7 @@ namespace Chem.Tests
             Assert.That(loaded.ThingsNow.Find(thing.Id)?.Kind, Is.EqualTo("golden-squirrel"));
             Assert.That(loaded.ThingsNow.Fingerprint, Is.EqualTo(world.ThingsNow.Fingerprint));
             Assert.That(loaded.CastHash(), Is.EqualTo(world.CastHash()));
-            var (again, _) = On(new Workbench(ChemistryTests.RulesDir(), dir));
+            var (again, _) = On(new Workbench(folders));
             Assert.That(again.Id, Is.EqualTo(thing.Id));
 
             // A revert takes it all away.
@@ -115,9 +118,9 @@ namespace Chem.Tests
         {
             (string, string, string, ulong) Run()
             {
-                string own = Path.Combine(dir, Guid.NewGuid().ToString("N"));
-                Directory.CreateDirectory(own);
-                var bench = new Workbench(ChemistryTests.RulesDir(), own);
+                var ownFolders = new GameFolders(ChemistryTests.RulesDir(), Path.Combine(data, Guid.NewGuid().ToString("N")));
+                string own = Directory.CreateDirectory(ownFolders.Mods).FullName;
+                var bench = new Workbench(ownFolders);
                 var client = new HouseToolsTests.Client(bench);
                 string sites = client.Call("find_site", new { width = 1, depth = 1, near = "hollowmere", within = 40 });
                 var spot = Regex.Match(sites, @"\[(\d+), (\d+)\], on");
@@ -133,7 +136,7 @@ namespace Chem.Tests
         [Test]
         public void TwoPeersAndALateJoinerAgreeOnWhereItIsAndWhoFoundIt()
         {
-            string kept = Ask(new Workbench(ChemistryTests.RulesDir(), dir));
+            string kept = Ask(new Workbench(folders));
             // Candidates at a chance as well, which is the "rare": each peer decides them alone.
             var mod = JObject.Parse(kept);
             var rows = (JArray)mod["patch"]["world"]["add"];
@@ -141,8 +144,8 @@ namespace Chem.Tests
             for (int i = 1; i <= 5; i++) rows.Add(new JObject { ["kind"] = "golden-squirrel", ["cell"] = new JArray((int)at[0] + i, (int)at[1]), ["chance"] = 0.2 });
             string json = mod.ToString();
 
-            var a = new Workbench(ChemistryTests.RulesDir(), dir).LiveWorld;
-            var b = new Workbench(ChemistryTests.RulesDir(), dir).LiveWorld;
+            var a = new Workbench(folders).LiveWorld;
+            var b = new Workbench(folders).LiveWorld;
             (World peer, RuleSet rules)[] peers = { (a, a.RoomRules), (b, b.RoomRules) };
             ThingId found = ThingId.None;
             for (int t = 1; t <= 30; t++)
@@ -168,7 +171,7 @@ namespace Chem.Tests
             Assert.That(a.Log.Any(l => l.Text.StartsWith("Ana found", StringComparison.Ordinal)), Is.False);
 
             // A late joiner: the room as its history starts, then the commands since.
-            var late = new Workbench(ChemistryTests.RulesDir(), dir).LiveWorld;
+            var late = new Workbench(folders).LiveWorld;
             var batches = TickBatch.Timeline(Array.Empty<(int, CastCommand)>(), null, 30);
             TickBatch.AddRoom(batches, new[] { (3, RoomCommand.Apply("Ana", "golden-squirrel", json)), (9, RoomCommand.Found("Bo", found)) });
             var rules = late.RoomRules;
@@ -179,7 +182,7 @@ namespace Chem.Tests
 
         // What a real Claude wrote, with only the game's tools, in a headless run (docs/RULES_MCP.md "Things"): kept as it came, but for its glow.
         static string WrittenByAClient() =>
-            File.ReadAllText(Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "core", "Game.Core.Tests", "RulesMcp", "golden-squirrel.mod.json"));
+            File.ReadAllText(Path.Combine(ChemistryTests.Folders.Repo, "core", "Game.Core.Tests", "RulesMcp", "golden-squirrel.mod.json"));
 
         [Test]
         public void TheModAHeadlessClientWroteHoldsThroughRunsPeersAndASave()
@@ -192,7 +195,7 @@ namespace Chem.Tests
 
             (World world, Workbench bench) Run()
             {
-                var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+                var bench = new Workbench(folders);
                 var world = bench.LiveWorld;
                 var rules = world.RoomRules;
                 for (int t = 1; t <= 12; t++)
@@ -247,7 +250,7 @@ namespace Chem.Tests
         [Test]
         public void AnAppliedDraftSavesByItsId()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var (client, draft, _) = Applied(bench);
 
             Assert.That(client.Call("validate", new { draft }), Does.StartWith("No problems"));
@@ -260,7 +263,7 @@ namespace Chem.Tests
         [Test]
         public void AnAppliedDraftChangedSinceSavesToo()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var (client, draft, at) = Applied(bench);
 
             client.Call("add_thing", new { kind = "golden-squirrel", at = ClearCell(client, 1), draft });
@@ -272,7 +275,7 @@ namespace Chem.Tests
         [Test]
         public void AnAppliedDraftStillRefusesAnotherModsThing()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var (client, draft, _) = Applied(bench);
             string there = ClearCell(client, 1);
             string other = Regex.Match(client.Call("add_thing", new { kind = "ball", at = there }), @"Draft (d\d+)").Groups[1].Value;
@@ -287,7 +290,7 @@ namespace Chem.Tests
         [Test]
         public void AnAppliedDraftStillRefusesABaseThing()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var (client, draft, _) = Applied(bench);
             var based = bench.LiveWorld.ThingsNow.All.First(t => !t.FromMod);
 
@@ -300,7 +303,7 @@ namespace Chem.Tests
         [Test]
         public void ASecondDraftOnTheSameCellIsStillRefused()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var (client, _, at) = Applied(bench);
 
             string other = Regex.Match(client.Call("add_thing", new { kind = "golden-squirrel", at }), @"Draft (d\d+)").Groups[1].Value;
@@ -311,7 +314,7 @@ namespace Chem.Tests
         [Test]
         public void AnotherModUnderTheSameIdIsNotTheDraftsOwn()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var (client, draft, at) = Applied(bench);
             Assert.That(client.Call("revert", new { mod = "a-squirrel-to-find" }), Does.Contain("switched off"));
             string other = Regex.Match(client.Call("add_item", new { id = "silver-squirrel", name = "Silver squirrel", mass = 0.3, material = "flesh", look = "{\"species\": \"squirrel\", \"color\": [0.8, 0.8, 0.8]}" }), @"Draft (d\d+)").Groups[1].Value;
@@ -325,7 +328,7 @@ namespace Chem.Tests
         [Test]
         public void TheChatsRefusalStillComesFirstAndAModOnStillSavesByItsId()
         {
-            var bench = new Workbench(ChemistryTests.RulesDir(), dir);
+            var bench = new Workbench(folders);
             var (client, draft, _) = Applied(bench);
 
             bench.SaveRefused = () => ClaudeRun.SaveNotAsked;
@@ -340,7 +343,7 @@ namespace Chem.Tests
         [Test]
         public void NoneOfItIsInTheCodeOrTheBaseRules()
         {
-            string root = Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\'));
+            string root = ChemistryTests.Folders.Repo;
             var code = Directory.GetFiles(Path.Combine(root, "unity", "Assets", "Prototype"), "*.cs", SearchOption.AllDirectories).Where(f => !f.Contains(Path.DirectorySeparatorChar + "Tests" + Path.DirectorySeparatorChar, StringComparison.Ordinal));
             var rules = Directory.GetFiles(Path.Combine(root, "rules"), "*.json", SearchOption.AllDirectories);
             var named = code.Concat(rules).Where(f => Regex.IsMatch(File.ReadAllText(f), "golden.?squirrel", RegexOptions.IgnoreCase)).ToList();

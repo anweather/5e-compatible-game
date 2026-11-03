@@ -22,7 +22,7 @@ namespace Chem.Tests
             }
         }
 
-        static Workbench Bench() => new Workbench(ChemistryTests.RulesDir());
+        static Workbench Bench() => new Workbench(ChemistryTests.Folders);
 
         static McpRpc Rpc(Workbench bench) => new McpRpc(new RulesTools(bench), "test", "1");
 

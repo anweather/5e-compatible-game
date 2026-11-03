@@ -167,7 +167,7 @@ public class ChatPromptsProbe : RowHousesProbe
 
     List<JObject> Set()
     {
-        string file = Path.GetFullPath(Path.Combine(Application.dataPath, "..", "..", "docs", "telemetry", string.IsNullOrEmpty(SetFile) ? PromptsFile : SetFile));
+        string file = Path.GetFullPath(Path.Combine(ChemGrid.Folders.Repo, "docs", "telemetry", string.IsNullOrEmpty(SetFile) ? PromptsFile : SetFile));
         return ((JArray)JObject.Parse(File.ReadAllText(file))["prompts"]).Cast<JObject>().ToList();
     }
 
@@ -186,7 +186,7 @@ public class ChatPromptsProbe : RowHousesProbe
     bool SafeToSpend()
     {
         bool outside = !string.IsNullOrEmpty(OutDir) && Path.IsPathRooted(OutDir)
-            && !Path.GetFullPath(OutDir).StartsWith(Path.GetFullPath(Application.persistentDataPath), StringComparison.OrdinalIgnoreCase);
+            && !Path.GetFullPath(OutDir).StartsWith(Path.GetFullPath(ChemGrid.Folders.PlayerData), StringComparison.OrdinalIgnoreCase);
         Check("out_folder_is_given_and_not_the_players", outside, OutDir);
         bool freshFolder = outside && (!Directory.Exists(OutDir) || Directory.GetFiles(OutDir, "chat-log-*").Length == 0);
         Check("out_folder_holds_no_earlier_run", freshFolder, OutDir);
