@@ -119,7 +119,7 @@ public sealed class CellWaterMesh
         wetCell[key] = isWet;
         outline |= isWet && c.Frozen ? ice.Add(key) : ice.Remove(key);
         if (PerfCounts.On) CountChange(c, outline, was != level);
-        if (outline) MarkAround(x, y);
+        if (outline) MarkAround(x, y, "water.mark.outline");
         stale |= outline || was != level;
     }
 
@@ -141,8 +141,10 @@ public sealed class CellWaterMesh
     {
         flowPass++;
         lastFlowX = float.NaN;
+        PerfCounts.Add("water.ground_changed");
+        if (PerfCounts.On && !AnyWetNear(new RectInt(x - 1, y - 1, 3, 3))) PerfCounts.Add("water.ground_changed_no_water_near");
         if (wet.Count == 0) return;
-        MarkAround(x, y);
+        MarkAround(x, y, "water.mark.ground");
         stale = true;
     }
 
@@ -159,12 +161,13 @@ public sealed class CellWaterMesh
 
     // A cell's change reaches two cells round it (its outline reads one ring out, a bank's another):
     // the tiles under that square are redrawn.
-    void MarkAround(int x, int y)
+    void MarkAround(int x, int y, string why)
     {
         int tx0 = Mathf.Max(0, (x - 2) / TileCells), tx1 = Mathf.Min(tilesX - 1, (x + 2) / TileCells);
         int ty0 = Mathf.Max(0, (y - 2) / TileCells), ty1 = (y + 2) / TileCells;
         for (int ty = ty0; ty <= ty1; ty++)
-            for (int tx = tx0; tx <= tx1; tx++) dirtyTiles.Add(ty * tilesX + tx);
+            for (int tx = tx0; tx <= tx1; tx++)
+                if (dirtyTiles.Add(ty * tilesX + tx) && PerfCounts.On) PerfCounts.Add(why);
     }
 
     /// <summary>The water surface drawn at a wet cell after the last Rebuild, or <paramref name="fallback"/>.</summary>
@@ -194,7 +197,7 @@ public sealed class CellWaterMesh
     {
         if (dirtyTiles.Count == 0 && !stale && step == LevelStep.Resting) return;
         PerfCounts.Add("water.rebuilds");
-        if (stale || step != LevelStep.Resting)
+        if (step != LevelStep.Resting || (stale && Time.frameCount - restingSince >= RestFrames))
             using (RecomputeMarker.Auto()) Recompute(levelOver);
         PerfCounts.Peak("water.dirty_tiles", dirtyTiles.Count);
         if (dirtyTiles.Count == 0 || busy) return;
@@ -232,6 +235,11 @@ public sealed class CellWaterMesh
     const int CellsAStride = 256, ExactLevelStrides = 16;
     readonly ChemGrid.FrameBudget levelBudget = new(LevelBudgetMs, ExactLevelStrides);
     readonly System.Func<bool> levelOver;
+    // Frames between the end of one pass and the start of the next. In rain or by a fire some level
+    // moves every frame, so passes ran back to back, 2 ms every frame (#70); a level drawn this
+    // much later than it moved doesn't show.
+    const int RestFrames = 8;
+    int restingSince = int.MinValue / 2;
 
     // The levels of every body of water and the banks round them, as far as the frame's budget goes;
     // where a level moved, far from the cell that changed, those tiles are redrawn too.
@@ -283,8 +291,9 @@ public sealed class CellWaterMesh
         foreach (int key in nextTopped)
             if (!Mathf.Approximately(tops[key], nextTops[key]))
             {
-                MarkAround(key % world.W, key / world.W);
+                MarkAround(key % world.W, key / world.W, "water.mark.top");
                 PerfCounts.Add("water.tops_moved");
+                if (PerfCounts.On && Mathf.Abs(tops[key] - nextTops[key]) < 0.02f) PerfCounts.Add("water.tops_moved_under_2cm");
             }
         foreach (int key in topped) tops[key] = float.NaN;
         foreach (int key in nextTopped) tops[key] = nextTops[key];
@@ -344,7 +353,11 @@ public sealed class CellWaterMesh
         if (box.width <= 0 || box.height <= 0) return;
         if (!tiles.TryGetValue(tile, out var t))
         {
-            if (!AnyWetNear(box)) return;
+            if (!AnyWetNear(box))
+            {
+                PerfCounts.Add("water.tiles_none");
+                return;
+            }
             t = (new ContourSurface(grid, "Water", waterMaterial, Outline, RippleMetres, tiled: true),
                  new ContourSurface(grid, "Ice", iceMaterial, Outline, RippleMetres, tiled: true));
             t.water.go.transform.SetParent(root.transform, true);
@@ -537,6 +550,7 @@ public sealed class CellWaterMesh
         nextBanks.Clear();
         nextCalm.Clear();
         NextStep(LevelStep.Resting);
+        restingSince = Time.frameCount;
     }
 
     // Sets the marks to the new list. A cell that gained or lost one moves the outline round it,
@@ -557,7 +571,7 @@ public sealed class CellWaterMesh
             marks[key] = false;
             changedMarks.Add(key);
         }
-        foreach (int key in changedMarks) MarkAround(key % world.W, key / world.W);
+        foreach (int key in changedMarks) MarkAround(key % world.W, key / world.W, "water.mark.bank");
         goneMarks.Clear();
         changedMarks.Clear();
     }
@@ -601,6 +615,7 @@ public sealed class CellWaterMesh
         if (!world.InBounds(x, y)) return Vector2.zero;
         int key = world.Idx(x, y);
         if (flowRead[key] == flowPass) return flowOf[key];
+        PerfCounts.Add("water.flow_misses");
         var c = world.Cells[key];
         var at = grid.CellCenter(x, y);
         at.y = grid.GroundTop(x, y, c);

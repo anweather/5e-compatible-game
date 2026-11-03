@@ -118,6 +118,28 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void AReusedTileDrawsWhatAFreshOneDoesAndKeepsItsNoise()
+        {
+            // A tile keeps its lattice's noise between redraws (the water's and slicks' tiles): as its
+            // water grows, and once its box moves, it must draw what a fresh contour does, and a redraw
+            // over the same points works no noise out again.
+            var kept = new CellContour(Wobbly) { Tiled = true };
+            var mesh = new ContourMesh();
+            foreach (var (x0, r) in new[] { (0, 3), (0, 5), (0, 7), (8, 7), (8, 4) })
+            {
+                Func<int, int, float> value = (x, y) => (x - 8) * (x - 8) + (y - 4) * (y - 4) < r * r ? 1f : 0f;
+                var fresh = new ContourMesh();
+                var freshContour = new CellContour(Wobbly) { Tiled = true };
+                freshContour.Build(x0, 0, x0 + 15, 15, value, fresh);
+                kept.Build(x0, 0, x0 + 15, 15, value, mesh);
+                AssertSameMesh(fresh, mesh, $"tile at {x0}, water {r} cells round");
+                kept.Build(x0, 0, x0 + 15, 15, value, mesh);
+                Assert.AreEqual(0, kept.NoisePoints, $"a redraw of the same tile at {x0}, {r}");
+                Assert.Greater(freshContour.NoisePoints, 0);
+            }
+        }
+
+        [Test]
         public void TilesSideBySideCoverWhatOneTileDoes()
         {
             // A wobbly blob across where two tiles meet (x 0..7 and 8..15): together they cover

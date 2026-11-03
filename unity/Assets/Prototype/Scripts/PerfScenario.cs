@@ -14,7 +14,7 @@ using Debug = UnityEngine.Debug;
 
 // One timed scenario in a player build, for a performance pass
 // (docs/perf/, the MacOSProfiling build in PrototypeBuild). Start the game with
-//   -fps-probe -perf-scenario <meadow|wildfire|forestload|storm|rain|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
+//   -fps-probe -perf-scenario <meadow|wildfire|forestload|showerstorm|storm|rain|snow|fog|village|dragon|dragonclear|bot> [-perf-seconds N]
 // and FpsProbe hands over to this instead of its showcase: PerfStage sets the
 // scene, it settles, every frame is measured for N seconds (30 by default, 20
 // for the wildfire), one "PERF RESULT" line of key=value pairs goes to the
@@ -61,7 +61,7 @@ public class PerfScenario : MonoBehaviour
     const float EarlyMs = 100f, HostWaitSeconds = 40f, ShotSavedSeconds = 1f;
     const int MostEarly = 40;
     const int OffscreenWide = 1920, OffscreenHigh = 1080;
-    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload" };
+    static readonly string[] Known = { "meadow", Wildfire, "storm", "rain", "snow", Fog, "village", Bot, "forest", "aim", "flamewall", "pso", "dragon", "dragonclear", "dragonlow", "forestload", "showerstorm" };
 
     static readonly string[] WindowCounts = { "tick", "walk", "net", "cast" };
 
