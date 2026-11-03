@@ -276,8 +276,8 @@ public class ProductsViewProbe : RoomProbe
     }
 
     // A fixed camera at 720p, rendered off screen (the brain off): the black ice's film a frame at a time on a 30 fps
-    // clock, or one still. With no folder it films nothing.
-    sealed class Lens
+    // clock, or one still. With no folder it films nothing. glowmoss films with it too.
+    internal sealed class Lens
     {
         readonly Camera cam;
         readonly CinemachineBrain brain;
@@ -360,17 +360,23 @@ public class ProductsViewProbe : RoomProbe
     // The MCP over HTTP, as a client outside calls it, off the main thread so the server can answer.
     IEnumerator Tool(string name, JObject arguments)
     {
+        yield return Call(name, arguments, said => answer = said);
+        Metric($"mcp_{name}_chars", answer?.Length ?? 0);
+    }
+
+    /// <summary>One tool of the game's own rules MCP over HTTP, its answer (or the error) handed to <paramref name="said"/>.</summary>
+    internal static IEnumerator Call(string name, JObject arguments, System.Action<string> said)
+    {
         string url = RulesMcpServer.Url;
         string body = new JObject { ["jsonrpc"] = "2.0", ["id"] = 1, ["method"] = "tools/call", ["params"] = new JObject { ["name"] = name, ["arguments"] = arguments } }.ToString();
         var call = Task.Run(() => Http.PostAsync(url, new StringContent(body, Encoding.UTF8, "application/json")).Result.Content.ReadAsStringAsync().Result);
         while (!call.IsCompleted) yield return null;
         if (call.IsFaulted)
         {
-            answer = call.Exception?.GetBaseException().Message;
+            said(call.Exception?.GetBaseException().Message);
             yield break;
         }
         var json = JObject.Parse(call.Result);
-        answer = json["error"]?.ToString() ?? string.Join("\n", (json["result"]?["content"] as JArray ?? new JArray()).Select(c => (string)c["text"]));
-        Metric($"mcp_{name}_chars", answer.Length);
+        said(json["error"]?.ToString() ?? string.Join("\n", (json["result"]?["content"] as JArray ?? new JArray()).Select(c => (string)c["text"])));
     }
 }

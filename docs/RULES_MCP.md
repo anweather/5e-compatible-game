@@ -204,6 +204,20 @@ looks of the mods before it, ahead of its own. `rules/budgets.json` `looks` caps
 (8), a look's scoped looks (8) and a scope's reach (64 cells). All of it is inside `"look"`, so
 it stays out of `Rules.Fingerprint` and the cell hash.
 
+**Glow** (`docs/design/primitives.md` P4). A cover's look (bare, `slick` or `scorch`) and a `ground` terrain's may
+give `glow`, a number from 0 (none) to 1 (brightest); `block` already took one. Anything else is refused: a glow past
+0 to 1 by the checks ("look.glow must be a number from 0 (none) to 1 (brightest), not 1.5"), and a glow on a gas's
+or element's look, or a family that doesn't list it, by validate (looks.json `bare.also` gives the covers' extra
+parameter, and `list looks` says so). `set_look river-moss glow 0.3` sets it. Like the rest of the look it stays out
+of `Rules.Fingerprint` and the cell hash (`LookTests.AGlowLeavesTheFingerprintAndTheCellHashAlone`), so a glow-only
+mod never moves the netcode checksum. How it's drawn (`CellSlickMesh`): over every cell whose cover glows (a cover
+hides its ground's), or whose ground terrain does with no cover, a second film in the films' tiles adds the look's
+colour times `0.55 × (1 − e^(−glow / 0.3))` (0.1 gives 0.16, 0.3 gives 0.35, 1 gives 0.53), mottled by a small
+tiling noise texture, through one shared additive material lit as the lamps are (`Nightfall.Lamps`, the windows'
+light): 4% of it by day, all of it at night. No lights, no material per cell, nothing made while nothing glows; a
+cell's own film and paint are drawn as before. 0.1 is a shimmer, 0.3 a clear glow at dusk; past about 0.6 a patch
+reads as a lamp. Probe `glowmoss`.
+
 How the view draws them (`ChemGrid.LookScopes.cs`). A cell's colour is worked out when it's drawn, and
 with no such look on none of this runs. Flames, embers, fog, steam and smoke, oil, grease, frost,
 thorns and vines take it cell by cell. The land and the lake are one surface each, so a `where` on
@@ -402,10 +416,9 @@ its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
 - **Tools.** `add_material` and `set_material` take `spread` on a cover, whole (`spread`) or by field (`spread.every`,
   `spread.chance`, `spread.onto`, `spread.notOnto`, `spread.reach`), within the checks above.
 
-**For the view.** The design's moss glows (P4), but a cover look takes only `color` today, and `look.glow` is refused
-("a look with no family doesn't take" it). P4 adds `look.glow` 0 to 1 to every look, drawn emissive and lit at night,
-out of the fingerprint. Until then spreading moss is drawn as a plain cover of its colour. A spreading cell counts as
-live, so its chunk's `LastLive` moves; the view should redraw covers there as they creep in with no cast.
+**For the view.** Spreading moss is a mod's own cover, so it wears a film of its look's colour, redrawn as it creeps
+in with no cast (a spreading cell counts as live, so its chunk's `LastLive` moves). With `look.glow` it glows after
+dark (P4, "Glow" under Looks); probe `glowmoss` lays river stones on the bank and moss with glow 0.3 that creeps over them.
 
 ## Buildings: rows a mod can edit or add
 

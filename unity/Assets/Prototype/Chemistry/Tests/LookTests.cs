@@ -303,5 +303,65 @@ namespace Chem.Tests
             var errors = Assert.Throws<ModException>(() => Base.WithMods(new[] { Mod("{ 'terrain': { 'grass': { 'name': 'Grass', 'tags': ['ground'], 'look': { 'family': 'block', 'color': [2, 0, 0] } } } }") })).Errors;
             Assert.That(errors, Has.Some.EqualTo("terrain grass: look.color must be three numbers from 0 to 1"));
         }
+
+        // ---------- glow (docs/design/primitives.md §3 P4): view only, 0 to 1 ----------
+
+        static ModBudgets budgets;
+        static ModBudgets Budgets => budgets ??= ModBudgets.Load(ChemistryTests.RulesDir());
+
+        // A mod's own cover, a bare look of a colour and this glow, as glowing moss would give it.
+        static string GlowingCover(string glow) =>
+            "{ 'covers': { 'glow-moss': { 'name': 'Glowing moss', 'tags': [], 'look': { 'color': [0.3, 0.85, 0.55], 'glow': GLOW } } } }".Replace("GLOW", glow).Replace('\'', '"');
+
+        static string Q(string json) => json.Replace('\'', '"');
+
+        static string Problems(string patch) => string.Join("\n", ModValidator.Validate(Base, Budgets, patch).Select(p => p.Message));
+
+        [TestCase("0")]
+        [TestCase("0.3")]
+        [TestCase("1")]
+        public void ACoversLookMayGlowFromZeroToOne(string glow)
+        {
+            Assert.That(Problems(GlowingCover(glow)), Is.Empty);
+            var rules = Base.WithMods(new[] { ModPatch.Parse(GlowingCover(glow)) });
+            Assert.That(rules.Covers["glow-moss"].Look.Glow, Is.EqualTo(float.Parse(glow, System.Globalization.CultureInfo.InvariantCulture)));
+        }
+
+        [Test]
+        public void GroundAndAFilmMayGlowToo()
+        {
+            Assert.That(Problems(Q("{ 'terrain': { 'grass': { 'name': 'Grass', 'tags': ['ground', 'turf'], 'look': { 'family': 'ground', 'color': [0.3, 0.6, 0.2], 'glow': 0.2 } } } }")), Is.Empty);
+            Assert.That(Problems(Q("{ 'covers': { 'oil': { 'name': 'Oil', 'tags': ['slippery'], 'look': { 'family': 'slick', 'color': [0.1, 0.1, 0.1], 'glow': 0.5 } } } }")), Is.Empty);
+        }
+
+        [TestCase("1.5", "look.glow must be a number from 0 (none) to 1 (brightest), not 1.5")]
+        [TestCase("-0.1", "look.glow must be a number from 0 (none) to 1 (brightest), not -0.1")]
+        [TestCase("'bright'", "look.glow must be a number from 0 (none) to 1 (brightest), not bright")]
+        public void AGlowPastZeroToOneIsRefused(string glow, string error)
+        {
+            var errors = Assert.Throws<ModException>(() => Base.WithMods(new[] { ModPatch.Parse(GlowingCover(glow)) })).Errors;
+            Assert.That(errors, Has.Some.EqualTo("cover glow-moss: " + error));
+        }
+
+        [Test]
+        public void AGasOrAnElementDoesNotGlow()
+        {
+            Assert.That(Problems(Q("{ 'gases': { 'steam': { 'name': 'Steam', 'look': { 'color': [1, 1, 1], 'glow': 0.3 } } } }")), Does.Contain("gives glow, which a look with no family doesn't take; it takes color"));
+            Assert.That(Problems(Q("{ 'elements': { 'fire': { 'look': { 'color': [1, 0.4, 0.1], 'glow': 0.3 } } } }")), Does.Contain("gives glow, which a look with no family doesn't take"));
+        }
+
+        [Test]
+        public void AGlowLeavesTheFingerprintAndTheCellHashAlone()
+        {
+            var lit = Base.WithMods(new[] { ModPatch.Parse(GlowingCover("0.3")) });
+            var plain = Base.WithMods(new[] { ModPatch.Parse(GlowingCover("0")) });
+            var none = Base.WithMods(new[] { ModPatch.Parse(GlowingCover("0").Replace(", \"glow\": 0", "")) });
+            Assert.That(lit.Fingerprint, Is.EqualTo(plain.Fingerprint));
+            Assert.That(lit.Fingerprint, Is.EqualTo(none.Fingerprint));
+            Assert.That(none.Covers["glow-moss"].Look.Glow, Is.EqualTo(0f));
+            var grass = Base.WithMods(new[] { Mod("{ 'terrain': { 'grass': { 'name': 'Grass', 'tags': ['ground', 'turf'], 'look': { 'family': 'ground', 'color': [0.33, 0.55, 0.22], 'glow': 0.4 } } } }") });
+            Assert.That(grass.Fingerprint, Is.EqualTo(Base.Fingerprint));
+            Assert.That(HashAfterAFireball(grass), Is.EqualTo(HashAfterAFireball(Base)));
+        }
     }
 }

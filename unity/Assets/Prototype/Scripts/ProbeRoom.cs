@@ -74,6 +74,8 @@ public class RoomProbeSeen
     public string stepLog;
     /// <summary>productsview's: for each cover it watches, "id:cells in the world/cells drawn wearing its film", the rules the view draws (its mods), and the chunks a sweep still has to redraw.</summary>
     public string films, viewMods;
+    /// <summary>glowmoss's: "moss cells/glowing cells" (GlowMossProbe.Glows).</summary>
+    public string glows;
     public int sweptLeft;
     public List<int> hashTicks = new();
     public List<string> hashes = new();
@@ -133,6 +135,7 @@ public sealed class RoomProbeRecord : IDisposable
         if (Shows != null) (seen.projectiles, seen.meteors, seen.meteorSeconds) = (Shows.Projectiles, Shows.Meteors, Shows.MeteorSeconds);
         seen.stepLog = TriggerViewProbe.StepLines(grid.World);
         seen.films = ProductsViewProbe.Films(grid);
+        seen.glows = GlowMossProbe.Glows(grid);
         seen.viewMods = string.Join(",", grid.CurrentRules.Mods.Select(m => m.Id));
         seen.sweptLeft = grid.SweptChunksLeft;
         return seen;

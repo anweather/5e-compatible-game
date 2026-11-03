@@ -191,6 +191,8 @@ namespace Chem
                 foreach (var table in (bare["shows"] as JObject ?? new JObject()).Properties())
                     looks.shows[table.Name] = new HashSet<string>(table.Value.Select(x => (string)x), StringComparer.Ordinal);
                 looks.turnsOnly = new HashSet<string>(bare["turnsOnly"]?.Select(x => (string)x) ?? Array.Empty<string>(), StringComparer.Ordinal);
+                foreach (var table in (bare["also"] as JObject ?? new JObject()).Properties())
+                    looks.bareAlso[table.Name] = looks.Bare.Params.Concat(table.Value.Select(x => (string)x)).Distinct().ToList();
             }
             foreach (var table in doc.Properties().Where(p => p.Value is JObject && p.Name != "bare"))
             {
@@ -224,6 +226,12 @@ namespace Chem
             Own = o["own"]?.Select(x => (float)x).ToArray(),
         };
 
+        // looks.json "bare".also: a table whose bare looks take more than the colour (a cover's glow), with the colour.
+        readonly Dictionary<string, IReadOnlyList<string>> bareAlso = new Dictionary<string, IReadOnlyList<string>>(StringComparer.Ordinal);
+
+        /// <summary>The parameters a bare look on this table takes: the colour, and what "also" adds for it (a cover's glow).</summary>
+        public IReadOnlyList<string> BareParams(string table) => bareAlso.TryGetValue(table, out var takes) ? takes : Bare.Params;
+
         /// <summary>The tables whose entries may have a bare look (looks.json "bare".tables).</summary>
         public IReadOnlyList<string> BareTables { get; private set; } = Array.Empty<string>();
 
@@ -236,7 +244,7 @@ namespace Chem
         /// </summary>
         public IReadOnlyList<string> ParamsOf(string table, string family)
         {
-            if (family == null) return BareTables.Contains(table) ? Bare.Params : Array.Empty<string>();
+            if (family == null) return BareTables.Contains(table) ? BareParams(table) : Array.Empty<string>();
             return Find(table, family)?.Params;
         }
 
