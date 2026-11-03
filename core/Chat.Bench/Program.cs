@@ -48,12 +48,12 @@ namespace Chem.Bench
                 Console.Error.WriteLine("claude isn't installed");
                 return 2;
             }
-            string rules = GameFolders.InRepo(Directory.GetCurrentDirectory()).Rules;
+            var folders = GameFolders.InRepo(Directory.GetCurrentDirectory());
             var records = new List<JObject>();
             for (int run = 0; run < runs; run++)
                 foreach (var (_, prompt) in Prompts)
                 {
-                    var record = Run(claude, model, rules, prompt);
+                    var record = Run(claude, model, folders, prompt);
                     ChatLog.Append(folder, DateTime.UtcNow, record);
                     records.Add(record);
                     Console.WriteLine(Row(record));
@@ -70,15 +70,15 @@ namespace Chem.Bench
             return at >= 0 && at + 1 < args.Length ? args[at + 1] : null;
         }
 
-        static JObject Run(string claude, string model, string rules, string prompt)
+        static JObject Run(string claude, string model, GameFolders folders, string prompt)
         {
             string dir = Path.Combine(Path.GetTempPath(), "chatbench-run-" + Guid.NewGuid().ToString("N"));
             string folder = Path.Combine(dir, "chat"), applied = Path.Combine(dir, "applied.jsonl");
             try
             {
                 Directory.CreateDirectory(folder);
-                Copy(rules, Path.Combine(dir, "rules"));
-                Copy(Path.Combine(rules, "..", "world"), Path.Combine(dir, "world"));
+                Copy(folders.Rules, Path.Combine(dir, "rules"));
+                Copy(folders.World, Path.Combine(dir, "world"));
                 WriteFolder(folder, Path.Combine(dir, "rules"), applied);
                 return Follow(claude, model, folder, prompt, applied);
             }

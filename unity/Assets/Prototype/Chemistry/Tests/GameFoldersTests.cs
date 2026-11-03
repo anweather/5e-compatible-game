@@ -75,6 +75,8 @@ namespace Chem.Tests
         {
             Assert.That(File.Exists(Path.Combine(ChemistryTests.RulesDir(), "materials.json")));
             Assert.That(File.Exists(Path.Combine(ChemistryTests.WorldDir(), WorldThings.FileName)));
+            Assert.That(File.Exists(Path.Combine(ChemistryTests.Folders.Repo, "docs", "GLOSSARY.md")), "the repo's root");
+            Assert.That(GameFolders.InRepo(project).Repo, Is.EqualTo(repo));
             Assert.That(new GameFolders(Path.Combine(repo, "rules") + Path.DirectorySeparatorChar).World, Is.EqualTo(Path.Combine(repo, "world")), "a trailing slash");
             Assert.Throws<DirectoryNotFoundException>(() => GameFolders.InRepo(packed));
         }

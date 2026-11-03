@@ -8,7 +8,7 @@ namespace Chem.Tests
     public class RoomToolsTests
     {
         // Each test its own bench: the room is state.
-        static Workbench NewBench() => new Workbench(ChemistryTests.RulesDir());
+        static Workbench NewBench() => new Workbench(ChemistryTests.Folders);
 
         [Test]
         public void ApplyAndRevertGoThroughTheRoomAndRoomListsWhatIsOn()

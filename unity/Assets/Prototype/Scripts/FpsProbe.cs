@@ -159,7 +159,7 @@ public class FpsProbe : MonoBehaviour
             if (!shotTaken && Elapsed > 10f)
             {
                 shotTaken = true;
-                var file = System.IO.Path.Combine(Application.persistentDataPath, "probe-fire.png");
+                var file = System.IO.Path.Combine(ChemGrid.Folders.PlayerData, "probe-fire.png");
                 ScreenCapture.CaptureScreenshot(file);
                 Debug.Log($"FPS PROBE screenshot: {file}");
             }
@@ -175,7 +175,7 @@ public class FpsProbe : MonoBehaviour
     void ScreenshotWhenDue()
     {
         if (shot >= ShotsAt.Length || Elapsed < ShotsAt[shot]) return;
-        var file = System.IO.Path.Combine(Application.persistentDataPath, $"probe-{ShotsAt[shot]:00}s.png");
+        var file = System.IO.Path.Combine(ChemGrid.Folders.PlayerData, $"probe-{ShotsAt[shot]:00}s.png");
         ScreenCapture.CaptureScreenshot(file);
         Debug.Log($"FPS PROBE screenshot: {file}");
         shot++;

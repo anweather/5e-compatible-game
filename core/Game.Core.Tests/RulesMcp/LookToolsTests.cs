@@ -10,7 +10,7 @@ namespace Chem.Tests
     public class LookToolsTests
     {
         static Workbench bench;
-        static Workbench Bench => bench ??= new Workbench(ChemistryTests.RulesDir());
+        static Workbench Bench => bench ??= new Workbench(ChemistryTests.Folders);
 
         static Draft Look(string id, string param, string value, string table = null, string draft = null) =>
             Bench.SetLook(draft, id, param, value, table, out _);

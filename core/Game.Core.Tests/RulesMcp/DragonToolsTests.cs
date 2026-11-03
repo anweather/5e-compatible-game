@@ -9,7 +9,7 @@ namespace Chem.Tests
     public class DragonToolsTests
     {
         static Workbench bench;
-        static Workbench Bench => bench ??= new Workbench(ChemistryTests.RulesDir());
+        static Workbench Bench => bench ??= new Workbench(ChemistryTests.Folders);
 
         static Rules With(Draft d) => Bench.Base.WithMods(new[] { ModPatch.Parse(d.Patch.ToString()) });
 

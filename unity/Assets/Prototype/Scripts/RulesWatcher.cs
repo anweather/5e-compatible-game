@@ -32,7 +32,7 @@ public class RulesWatcher : MonoBehaviour
     {
         RulesDir = ChemGrid.Folders.Rules;
         Watch(RulesDir);
-        Watch(Path.Combine(RulesDir, "mods"));
+        Watch(ChemGrid.Folders.ShippedMods);
         Watch(ChemGrid.Folders.Mods);
     }
 
