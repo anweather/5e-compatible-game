@@ -121,6 +121,13 @@ namespace Chem
         /// <summary>A spell's numbers past the budget's caps, one sentence each: what validate says, and set_spell at once.</summary>
         internal static IEnumerable<string> SpellCaps(ModBudgets budgets, string id, JObject s)
         {
+            if (s["place"] is JObject place)
+                foreach (var (key, cap, why) in new[] { ("count", "maxCount", "things a cast places"), ("within", "maxWithin", "cells round the aim it places within"), ("lasts", "maxLasts", "ticks a placed thing lasts") })
+                {
+                    double max = budgets.Number("place." + cap, double.MaxValue);
+                    if (place[key] != null && (place[key].Type == JTokenType.Integer || place[key].Type == JTokenType.Float) && (double)place[key] > max)
+                        yield return $"Spell {id} places with a {key} of {place[key]}; the most {why} is {max.ToString("0.###", CultureInfo.InvariantCulture)}.";
+                }
             foreach (var (key, cap) in new[] { ("power", "maxPower"), ("radius", "maxRadius"), ("length", "maxLength"), ("size", "maxSize"), ("push", "maxPush"), ("raise", "maxRaise"), ("dig", "maxDig") })
             {
                 double max = budgets.Number("spells." + cap, double.MaxValue);
@@ -304,8 +311,8 @@ namespace Chem
                         Add(ModCheck.Design, $"Spell {id} needs a group (its element on the spell radial, from groups.json).");
                     // What it names on top of a spell the rules have keeps that spell's element or effect.
                     var whole = SpellIn(composed, s);
-                    if (whole["element"] == null && whole["effect"] == null && (composed != null || !InBase("spells", id)))
-                        Add(ModCheck.Design, $"Spell {id} has neither an element nor an effect, so it does nothing to cells; spells act through elements and the material verbs.");
+                    if (whole["element"] == null && whole["effect"] == null && whole["place"] == null && (composed != null || !InBase("spells", id)))
+                        Add(ModCheck.Design, $"Spell {id} has neither an element nor an effect, and places nothing, so it does nothing; spells act through elements and the material verbs, or place something.");
                     FiveE(id, s);
                 }
                 NewElements(composed);

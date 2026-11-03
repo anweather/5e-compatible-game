@@ -76,6 +76,7 @@ namespace Chem.Mcp
             ["ramp"] = null,
             ["carries"] = null,
             ["scatter"] = new[] { "cover", "count", "reach" },
+            ["place"] = new[] { "thing", "animal", "terrain", "cover", "count", "within", "spacing", "lasts", "onto" },
             ["force"] = new[] { "throw", "push" },
             ["seeks"] = new[] { "range", "if" },
             ["light"] = new[] { "bright", "dim" },
