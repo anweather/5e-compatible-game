@@ -47,6 +47,8 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         public CreatureState state;
         // What sets it apart, worked out once (and again if its row changes).
         public CreatureTraits traits;
+        // The size its row gives it (RowScale): it grows or shrinks to this when the row changes (Grow).
+        public float size;
         // One of a village's folk (ValleyFauna.Folk): its village (index in folk; -1 for an animal), what
         // it's doing, where it's going and how long it stays; the barkeep keeps to the bar.
         public int village = -1;
@@ -128,6 +130,9 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
     /// <summary>An animal's species, as its index in the list.</summary>
     public int SpeciesOf(int index) => creatures[index].species;
 
+    /// <summary>The size an animal's row gives it now, which its scale eases to after a change (the probe).</summary>
+    public float RowSize(int index) => creatures[index].size;
+
     /// <summary>An animal's colouring (one of its species' coats).</summary>
     public int Coat(int index) => creatures[index].coat;
 
@@ -182,7 +187,11 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         ReadRowsMs = (System.Diagnostics.Stopwatch.GetTimestamp() - began) * 1000.0 / System.Diagnostics.Stopwatch.Frequency;
         counts = new int[bodies.Count];
         creatures.RemoveAll(c => bodies[c.species] == null);
-        foreach (var c in creatures) c.traits = bodies[c.species].TraitsOf(c.coat, c.state.Individual);
+        foreach (var c in creatures)
+        {
+            c.traits = bodies[c.species].TraitsOf(c.coat, c.state.Individual);
+            c.size = RowScale(bodies[c.species], c.state.Individual);
+        }
         if (first) FindVillages();
     }
 
@@ -215,6 +224,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         }
 
         float dt = math.min(Time.deltaTime, 0.1f);
+        Grow(dt);
         RunFolk(dt, night);
         // Everyone as they were at the start of the frame, for seeing each other.
         herd.Clear();
@@ -238,6 +248,24 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         }
         using (DrawMarker.Auto()) Draw(cam);
     }
+
+    // Animals out when their row's size changes (set_species, a mod on or off) grow or shrink to it, most of the way
+    // in about a second (GrowRate), the same on every peer as the size comes from the row and the individual.
+    void Grow(float dt)
+    {
+        float k = 1f - math.exp(-GrowRate * dt);
+        foreach (var c in creatures)
+        {
+            float gap = c.size - c.state.Scale;
+            c.state.Scale = math.abs(gap) < 0.002f ? c.size : c.state.Scale + gap * k;
+        }
+    }
+
+    const float GrowRate = 3f;
+
+    // The size a species' row gives an individual: somewhere in the row's range, picked by the individual.
+    static float RowScale(CreatureBody b, uint individual) =>
+        math.lerp(b.Size.x, math.max(b.Size.x, b.Size.y), CreatureBody.Unit(individual, 14));
 
     // Beyond this (40 m, squared) from the camera an animal thinks every other frame.
     const float FarThinkingSq = 40f * 40f;
@@ -494,7 +522,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
                 Position = position,
                 Yaw = float.IsNaN(yaw) ? rng.NextFloat(-math.PI, math.PI) : yaw,
                 Phase = rng.NextFloat(),
-                Scale = math.lerp(b.Size.x, math.max(b.Size.x, b.Size.y), CreatureBody.Unit(individual, 14)),
+                Scale = RowScale(b, individual),
                 Mode = CreatureMode.Idle,
                 Timer = rng.NextFloat(0.5f, 4f),
                 Seed = rng.NextUInt() | 1u,
@@ -502,6 +530,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
             },
         };
         added.traits = b.TraitsOf(added.coat, individual);
+        added.size = added.state.Scale;
         creatures.Add(added);
         return creatures.Count - 1;
     }

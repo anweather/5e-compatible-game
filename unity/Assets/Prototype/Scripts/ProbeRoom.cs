@@ -24,7 +24,7 @@ public class RoomProbeAsk
 {
     public string id;
     public int step;
-    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "hostile", "rejoin", "film" (mod: the stand's cell and the target's), "cut" or "dressed" (mod: cells).</summary>
+    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "deer" (faunaresize's), "hostile", "rejoin", "film" (mod: the stand's cell and the target's), "cut" or "dressed" (mod: cells).</summary>
     public string ask, mod;
     /// <summary>How long a "report" may wait for its tick.</summary>
     public float reach;
@@ -44,6 +44,10 @@ public class RoomProbeSeen
     public int fireballRadius;
     /// <summary>How far each row house has fallen, on this side (RowHouses.Ruins).</summary>
     public string ruins;
+    /// <summary>The faunaresize probe's deer: their scales, how many deer are out, and the most one is off its row's size.</summary>
+    public string deer;
+    public int deerOut;
+    public float deerGap;
     /// <summary>The things mods added, on this side (id:kind, sorted), how many wear a body, and the kind in this side's hand.</summary>
     public string things, held;
     public int dressed;
@@ -93,6 +97,12 @@ public sealed class RoomProbeRecord : IDisposable
         seen.fireballRadius = grid.World.Rules.Spell(SpellIds.Fireball).Radius;
         seen.fireTurn = grid.FireElementTint.Turn;
         seen.ruins = grid.TryGetComponent<RowHouses>(out var houses) ? houses.Ruins : "";
+        var fauna = UnityEngine.Object.FindAnyObjectByType<ValleyFauna>();
+        if (fauna != null)
+        {
+            seen.deer = FaunaResizeProbe.Scales(fauna);
+            (seen.deerOut, seen.deerGap) = FaunaResizeProbe.Out(fauna);
+        }
         var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
         seen.things = string.Join(" ", spawner.Live.Where(t => t.prop.FromMod).Select(t => $"{t.id}:{t.prop.kind}").OrderBy(t => t, StringComparer.Ordinal));
         seen.dressed = spawner.GetComponent<ThingBodies>().Count;
@@ -219,6 +229,9 @@ public class RoomProbeClient : MonoBehaviour
                 break;
             case "grab":
                 yield return Grab(grid, ask.mod);
+                break;
+            case "deer":
+                FaunaResizeProbe.PlaceDeer(FindAnyObjectByType<ValleyFauna>(), grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position);
                 break;
             case "dressed":
                 // The cells named (x,y;x,y...) that stand dressed on this side.
