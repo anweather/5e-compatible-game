@@ -73,11 +73,14 @@ namespace Chem
 
             void StyleRow(string id, JObject style, BuildingTables tables)
             {
-                WallMaterial($"style {id}", style["wall"]?["material"]);
-                if (style["fill"] != null) Fill($"style {id}", style["fill"]);
-                if (style["floor"]?["kind"] != null) Named($"style {id}", "floor", "floors", style["floor"]["kind"], tables);
-                if (style["roof"] != null) Roof($"style {id}", style["roof"], tables, null);
-                if (!(style["recipe"] is JObject recipe)) return;
+                string who = $"style {id}";
+                if (Fields(who, "wall", style["wall"])) WallMaterial(who, style["wall"]["material"]);
+                if (style["fill"] != null) Fill(who, style["fill"]);
+                if (Fields(who, "floor", style["floor"]) && style["floor"]["kind"] != null) Named(who, "floor", "floors", style["floor"]["kind"], tables);
+                if (Fields(who, "roof", style["roof"])) Roof(who, style["roof"], tables, null);
+                if (style["storeys"] != null && !IsWholeAtLeast(style["storeys"], 1)) Errors.Add($"{who}: storeys must be a whole number, 1 or more");
+                if (!Fields(who, "recipe", style["recipe"])) return;
+                var recipe = (JObject)style["recipe"];
                 foreach (var key in new[] { "width", "depth" })
                     if (!(recipe[key] is JArray a) || a.Count != 2 || !a.All(v => IsWholeAtLeast(v, 2)))
                         Errors.Add($"style {id}: recipe {key} must be [smallest, largest], whole cells, 2 or more");
@@ -96,12 +99,14 @@ namespace Chem
                     return;
                 }
                 if (row["fill"] != null) Fill(who, row["fill"]);
-                if (row["floor"]?["kind"] != null) Named(who, "floor", "floors", row["floor"]["kind"], tables);
+                // A style's wall or floor that isn't an object is its own refusal (StyleRow); the row takes it.
+                var wall = Fields(who, "wall", row["wall"]) ? (JObject)row["wall"] : null;
+                if (Fields(who, "floor", row["floor"]) && row["floor"]["kind"] != null) Named(who, "floor", "floors", row["floor"]["kind"], tables);
                 if (row["storeys"] != null && !IsWholeAtLeast(row["storeys"], 1)) Errors.Add($"{who}: storeys must be a whole number, 1 or more");
                 foreach (var t in (row["built"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
                 {
                     if (terrain[t.Name] == null) Errors.Add($"{who}: built names unknown terrain {t.Name}");
-                    if (!(t.Value is JArray spans) || !spans.All(s => s is JArray a && a.Count % 2 == 1 && a.Count >= 3)) Errors.Add($"{who}: built cells are spans, [y, x0, x1, ...] from at");
+                    if (!(t.Value is JArray spans) || !spans.All(s => s is JArray a && a.Count % 2 == 1 && a.Count >= 3 && a.All(IsWhole))) Errors.Add($"{who}: built cells are spans, [y, x0, x1, ...] from at");
                 }
                 var joins = row["joins"] as JObject ?? new JObject();
                 foreach (var j in joins.Properties())
@@ -113,11 +118,14 @@ namespace Chem
                 }
                 else
                 {
-                    if (row["wall"]?["material"] == null && walls.PropertyValues().Any(w => w["material"] == null)) Errors.Add($"{who} needs a wall material, in \"wall\", in its style or on each wall");
-                    else WallMaterial(who, row["wall"]?["material"]);
-                    foreach (var w in walls.Properties()) Wall(who, w.Name, w.Value, joins, tables, (int?)row["storeys"] ?? 1);
+                    var each = walls.Properties().Where(w => Fields(who, $"wall {w.Name}", w.Value)).ToList();
+                    if (wall?["material"] == null && each.Any(w => w.Value["material"] == null)) Errors.Add($"{who} needs a wall material, in \"wall\", in its style or on each wall");
+                    else WallMaterial(who, wall?["material"]);
+                    int storeys = IsWholeAtLeast(row["storeys"], 1) ? (int)row["storeys"] : 1;
+                    foreach (var w in each) Wall(who, w.Name, w.Value, joins, tables, storeys);
                 }
-                foreach (var f in (row["roofs"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>()) Roof($"{who}: roof {f.Name}", f.Value, tables, joins);
+                foreach (var f in (row["roofs"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                    if (Fields(who, $"roof {f.Name}", f.Value)) Roof($"{who}: roof {f.Name}", f.Value, tables, joins);
                 foreach (var part in (row["parts"] as JArray)?.OfType<JObject>() ?? Enumerable.Empty<JObject>())
                 {
                     Named(who, "detail", "details", part["kind"], tables);
@@ -195,6 +203,17 @@ namespace Chem
                 var t = terrain[Show(material)];
                 if (t == null) Errors.Add($"{who}: unknown wall material {Show(material)} (a terrain)");
                 else if (!Strings(t["tags"]).Contains("blocking")) Errors.Add($"{who}: wall material {Show(material)} doesn't block, so it can't be a wall (it needs the tag blocking)");
+            }
+
+            // A part that holds fields of its own (a wall, a floor, a roof, a recipe): absent, or an object. One that
+            // isn't is refused here, in a sentence, before anything reads into it (#79): reading a field of a string
+            // throws, and a style's goes into every building of that style, the world's own too.
+            bool Fields(string who, string field, JToken part)
+            {
+                if (part == null) return false;
+                if (part is JObject) return true;
+                Errors.Add($"{who}: {field} must be an object of its own fields, not {Show(part)}");
+                return false;
             }
 
             void Fill(string who, JToken fill)
