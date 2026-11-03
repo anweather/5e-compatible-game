@@ -59,8 +59,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **0.1.11 waits, no rush** (Andrew, 2026-11-02). Draft notes: `docs/handoffs/release-0.1.11-notes.md`. They promise voice: fix #58 or cut that line. Before it ships: version bump, the saved-mods warning (#63).
 - **Play-test fixes (Andrew: fix them all; issues #70 to #81).** On dev: `creature-scale`, `fauna-rows`, `dragon-tools` (u2), `mod-exception`, `voice-hears` (PC), `place-core` and `world-lay` (u2 merged these itself; the PC compiled dev clean after). #72 closed. Design calls J-067.
   - **DesktopUnity:** `lit-windows` and `place-view` landed (#71, #74, #75 closed). Now #70 (perf: no VMs).
-  - **u2 (Max):** `triggers-core` (#76) pushed (b378165e), the Mac is compiling it. u2 stopped.
-  - **Mac:** `fireline-out` landed (7397b523). Compiling `triggers-core`.
+  - **u2 (Max):** `triggers-core` (#76) pushed (b378165e): compiles, but solo triggers with no `who` never fire; a u2 follow-up after #70's measuring (handoff). u2 stopped.
+  - **Mac:** resting; next brief cleanup item 5.
   - Open: #58 needs Andrew's `-voice-check` (on the board); #73 bodies from parts and #60 water surface are designed (`docs/design/bodies-and-surfaces.md`), not built; #80 animals out don't resize; #77 dragon loop; #79, #78, #81.
 - **Cleanup:** items 1 and 3 landed (`game-folders` 10da5b1, `folders-rest` 6e5fb9e4), not yet in a built player. Item 9 landed too (`fireline-out`). Next: items 5 then 4, 2, 7, 8 (`docs/design/cleanup-review-2026-11-02.md`); inputs `docs/handoffs/cleanup-inputs-2026-11-02.md`.
 - **u1:** stopped; Pro weekly is out until Nov 5 (the "pro is back" mail was the 5-hour limit). **Max** weekly was 75% on 2026-11-02 evening.
