@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, DragonTable, BuildingsTable, ThingsTable, LayTable, "openings", "floors", "roofs", "details", "styles" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, PartsTable, DragonTable, BuildingsTable, ThingsTable, LayTable, "openings", "floors", "roofs", "details", "styles" };
 
         // ---------- list ----------
 
@@ -74,6 +74,12 @@ namespace Chem.Mcp
                     break;
                 case DragonTable:
                     lines.AddRange(DragonLines());
+                    break;
+                case FaunaTable:
+                    lines.AddRange(SpeciesLines());
+                    break;
+                case PartsTable:
+                    lines.AddRange(PartLines());
                     break;
                 default:
                     foreach (var p in ((JObject)Raw[table]).Properties())
@@ -143,6 +149,7 @@ namespace Chem.Mcp
             return $"{Single(table)} {id}:\n{entry.ToString(Formatting.Indented)}\n" +
                 (refs.Count == 0 ? "Nothing in the rules refers to it." : $"Referred to by ({refs.Count}):\n" + string.Join("\n", refs.Distinct().Take(60))) +
                 LookLine(table, id, entry) + ChangedBy(table, id) + DragonNote(table, id) +
+                (table == FaunaTable ? SpeciesNote(id, drafted) : "") + (table == PartsTable ? PartNote(id) : "") +
                 (table == "spells" ? "\n" + ReachOf(drafted, id) : "");
         }
 
@@ -153,6 +160,7 @@ namespace Chem.Mcp
             if (table == "reactions")
                 return Over(EntryIn(Raw, table, id), (draft.Patch["reactions"]?["add"] as JArray ?? new JArray()).Concat(draft.Patch["reactions"]?["addEntity"] as JArray ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id)) ?? Find(table, id);
             if (table == "sim") return draft.Patch["sim"]?.SelectToken(id) ?? Find(table, id);
+            if (FaunaTables.Holds(table)) return Current(draft, table, id) ?? Find(table, id);
             return Find(table, id);
         }
 
@@ -323,6 +331,7 @@ namespace Chem.Mcp
             if (t == "reaction" || t == "rules") t = "reactions";
             if (t == "look" || t == "families") t = "looks";
             if (t == "species" || t == "animals" || t == "creatures") t = FaunaTable;
+            if (t == "part" || t == "shapes") t = PartsTable;
             if (t == "spell" || t == "cover" || t == "gas" || t == "element" || t == "group" || t == "critter" || t == "entity" || t == "item" || t == "machine")
                 t = Plural(t);
             if (!Tables.Contains(t)) throw new RulesToolException($"{table} isn't a table; the tables are {string.Join(", ", Tables)}.");
@@ -337,6 +346,8 @@ namespace Chem.Mcp
             "entities" => "entity",
             "sim" => "sim parameter",
             "reactions" => "reaction rule",
+            FaunaTable => "species",
+            PartsTable => "part",
             _ => table.TrimEnd('s'),
         };
 

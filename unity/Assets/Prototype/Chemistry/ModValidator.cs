@@ -499,22 +499,22 @@ namespace Chem
             {
                 double max = budgets.Number("things.maxScale", 20);
                 foreach (var p in (patch[FaunaTables.SpeciesKey] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
-                {
-                    if (!(composed[FaunaTables.SpeciesKey]?[p.Name] is JObject row)) continue;
-                    if (IsNumber(row["scale"]) && (double)row["scale"] > max)
-                        Add(ModCheck.Budget, $"Species {p.Name} has a scale of {row["scale"]}; a species is at most {Num(max)} times the one it's built on.");
-                    var normal = baseDoc[FaunaTables.SpeciesKey]?[p.Name]?["size"] as JArray;
-                    if (!(row["size"] is JArray size) || size.Count != 2 || !size.All(IsNumber)) continue;
-                    for (int i = 0; i < 2; i++)
-                    {
-                        double was = normal != null && normal.Count == 2 && IsNumber(normal[i]) ? (double)normal[i] : 1.1;
-                        if ((double)size[i] > was * max + 1e-9)
-                        {
-                            Add(ModCheck.Budget, $"Species {p.Name} has a size of {size.ToString(Newtonsoft.Json.Formatting.None)}, more than {Num(max)} times its normal size.");
-                            break;
-                        }
-                    }
-                }
+                    if (composed[FaunaTables.SpeciesKey]?[p.Name] is JObject row) SpeciesBudget(p.Name, row, max);
+            }
+
+            void SpeciesBudget(string id, JObject row, double max)
+            {
+                if (IsNumber(row["scale"]) && (double)row["scale"] > max)
+                    Add(ModCheck.Budget, $"Species {id} has a scale of {row["scale"]}; a species is at most {Num(max)} times the one it's built on.");
+                if (row["size"] is JArray size && size.Count == 2 && size.All(IsNumber) && Oversized(size, baseDoc[FaunaTables.SpeciesKey]?[id]?["size"] as JArray, max))
+                    Add(ModCheck.Budget, $"Species {id} has a size of {size.ToString(Newtonsoft.Json.Formatting.None)}, more than {Num(max)} times its normal size.");
+            }
+
+            // Either end of a size past max times the base row's (the reader's default 1.1 for a new row).
+            static bool Oversized(JArray size, JArray normal, double max)
+            {
+                bool known = normal != null && normal.Count == 2 && normal.All(IsNumber);
+                return Enumerable.Range(0, 2).Any(i => (double)size[i] > (known ? (double)normal[i] : 1.1) * max + 1e-9);
             }
 
             void BuildingBudget(JObject composed)
