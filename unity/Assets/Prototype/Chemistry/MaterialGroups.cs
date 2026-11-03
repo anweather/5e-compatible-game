@@ -13,6 +13,7 @@
 //   bake    { into }                                              bakes tag, bakesTo (heat: sand to glass, mud to brick)
 //   melt    { into, water }                                       meltsTo, meltWater (covers: what's left, and the water it gives)
 //   float   { every, reach }                                      floatEvery, floatReach (covers: oil floats and spreads on open water)
+//   spread  { every, chance, onto, notOnto, reach }               spreadEvery, spreadChance, spreadOnto, spreadNotOnto, spreadReach (covers: moss creeps onto the terrain next to it)
 //   freeze  {}  /  boil {}                                        waterTo "ice" / "steam"
 //   burn / freeze / soak { status }                               burnStatus, freezeStatus, soakStatus: the ticks of burning,
 //                                                                 frozen, wet a creature of it takes (a group holding only
@@ -77,6 +78,7 @@ namespace Chem
             ("melt", null, new[] { ("into", "meltsTo"), ("water", "meltWater") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
             ("rot", null, new[] { ("breaks", "rotBreaks") }),
+            ("spread", null, new[] { ("every", "spreadEvery"), ("chance", "spreadChance"), ("onto", "spreadOnto"), ("notOnto", "spreadNotOnto"), ("reach", "spreadReach") }),
             ("scour", "scourable", System.Array.Empty<(string, string)>()),
         };
 

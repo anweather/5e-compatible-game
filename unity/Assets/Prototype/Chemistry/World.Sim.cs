@@ -191,9 +191,10 @@ namespace Chem
             from.Heat = 0;
         }
 
-        // What the timers set going lands: covers floating on, lava running on (the dragon's chunks reset after).
+        // What the timers set going lands: covers floating on, spreading, lava running on (the dragon's chunks reset after).
         void LandFloating()
         {
+            LandSpread();
             foreach (var (cell, cover, slick) in floating)
             {
                 if (cell.Cover != null) continue;
@@ -277,11 +278,12 @@ namespace Chem
             return live;
         }
 
-        /// <summary>The soak pass on one cell: rust, a cover floating off, water soaking in, mud drying. True if anything changed.</summary>
+        /// <summary>The soak pass on one cell: rust, a cover floating off or spreading, water soaking in, mud drying. True if anything changed.</summary>
         bool SoakPass(Chunk ch, int i, Cell c)
         {
             bool changed = Rust(c);
             if (c.Water > 0 && c.Cover != null && Float(ch, i, c)) changed = true;
+            if (Rules.AnySpreads && c.Cover != null && Spread(ch, i, c)) changed = true;
             if (c.Water > 0 && Soak(ch, i, c)) changed = true;
             if (DryOut(c)) changed = true;
             return changed;

@@ -39,6 +39,28 @@ namespace Chem.Tests
 
         static string State(World w) => $"{w.CellHash()} {w.CastHash()} {w.Rules.Fingerprint} {w.RngState}";
 
+        // The mod goes on between ticks 1 and 2, and lapses Lapse ticks later.
+        const int Switched = 1, Lapses = Switched + Lapse;
+
+        static TickBatch Batch(int t)
+        {
+            var batch = new TickBatch(t);
+            if (t == Switched + 1) batch.Room.Add(RoomCommand.Apply("Bo", "black-ice", BlackIce()));
+            // Once at the start, and again late, since a slick withers by itself in 360 ticks.
+            if (t == Switched + 2 || t == Lapses - 50) batch.Casts.Add(new CastCommand("glaze", 32, 32, 0));
+            return batch;
+        }
+
+        static void CheckTick(World a, World b, int t)
+        {
+            if (t % 100 == 0 || t >= Lapses - 2) Assert.That(State(b), Is.EqualTo(State(a)), $"tick {t}");
+            if (t == Switched + 2) Assert.That(Slicks(a), Is.GreaterThan(0), "the cast lays slicks");
+            if (t == Lapses - 1) Assert.That(Slicks(a), Is.GreaterThan(0), "slicks stand until the lapse");
+            if (t != Lapses) return;
+            Assert.That(Slicks(a), Is.Zero, "every slick is swept at the lapse");
+            Assert.That(Last(a), Is.EqualTo("Black ice lapsed (Open room)"));
+        }
+
         [Test]
         public void BlackIceLapsesOnBothPeersAtTheSameTick()
         {
@@ -46,35 +68,19 @@ namespace Chem.Tests
             var b = Room();
             var ra = a.RoomRules;
             var rb = b.RoomRules;
-            int switched = 1, lapses = switched + Lapse; // the mod goes on between ticks 1 and 2
-            for (int t = 1; t <= lapses + 5; t++)
+            for (int t = 1; t <= Lapses + 5; t++)
             {
-                TickBatch Batch()
-                {
-                    var batch = new TickBatch(t);
-                    if (t == switched + 1) batch.Room.Add(RoomCommand.Apply("Bo", "black-ice", BlackIce()));
-                    // Once at the start, and again late, since a slick withers by itself in 360 ticks.
-                    if (t == switched + 2 || t == lapses - 50) batch.Casts.Add(new CastCommand("glaze", 32, 32, 0));
-                    return batch;
-                }
-                ra = Batch().RunOn(a, ra, out _);
-                rb = Batch().RunOn(b, rb, out _);
-                if (t % 100 == 0 || t >= lapses - 2) Assert.That(State(b), Is.EqualTo(State(a)), $"tick {t}");
-                if (t == switched + 2) Assert.That(Slicks(a), Is.GreaterThan(0), "the cast lays slicks");
-                if (t == lapses - 1) Assert.That(Slicks(a), Is.GreaterThan(0), "slicks stand until the lapse");
-                if (t == lapses)
-                {
-                    Assert.That(Slicks(a), Is.Zero, "every slick is swept at the lapse");
-                    Assert.That(Last(a), Is.EqualTo("Black ice lapsed (Open room)"));
-                }
+                ra = Batch(t).RunOn(a, ra, out _);
+                rb = Batch(t).RunOn(b, rb, out _);
+                CheckTick(a, b, t);
             }
             Assert.That(a.Rules.Fingerprint, Is.EqualTo(R.Fingerprint), "the rules are back to base");
             Assert.That(a.Room.Mods, Is.Empty);
-            Assert.That(a.Room.Retired.Select(r => $"{r.Table} {r.Id} {r.Into} {r.Mod} {r.Tick}"), Is.EqualTo(new[] { $"covers black-ice  black-ice {lapses}" }));
+            Assert.That(a.Room.Retired.Select(r => $"{r.Table} {r.Id} {r.Into} {r.Mod} {r.Tick}"), Is.EqualTo(new[] { $"covers black-ice  black-ice {Lapses}" }));
             Assert.That(a.Cells.Count(c => c.Life != 0), Is.Zero, "the slicks' Life went with them");
             Assert.That(State(b), Is.EqualTo(State(a)));
             Assert.That(a.CastHash(), Is.Not.EqualTo(Room().CastHash()), "the retired list is in the checksum");
-            Assert.That(a.RoomText(), Does.EndWith($"|retired:covers:black-ice::black-ice:{lapses}"));
+            Assert.That(a.RoomText(), Does.EndWith($"|retired:covers:black-ice::black-ice:{Lapses}"));
         }
 
         [Test]

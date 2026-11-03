@@ -93,10 +93,16 @@ namespace Chem
             return row == null ? null : BuildingRow.Read(id, row, rules.Buildings);
         }
 
-        // The rows that differ between two rule sets, in id order: only what decides cells counts.
+        // Whether a switch can change what's built: a mod's rows, or tables the world's own rows read through (#85).
+        static bool MayChangeBuildings(Rules was, Rules now) =>
+            was.ModBuildings.Count > 0 || now.ModBuildings.Count > 0 || !JToken.DeepEquals(was.Buildings.Json, now.Buildings.Json);
+
+        // The rows that differ between two rule sets, in id order: only what decides cells counts. A table
+        // change can redraw the world's own rows (a drawn-door that becomes a gap), so they're compared too.
         List<string> ChangedRows(Rules was, Rules now)
         {
             var ids = new SortedSet<string>(was.ModBuildings.Select(r => r.Id).Concat(now.ModBuildings.Select(r => r.Id)), StringComparer.Ordinal);
+            if (!JToken.DeepEquals(was.Buildings.Json, now.Buildings.Json)) ids.UnionWith(BaseBuildings.Select(r => (string)r["id"]));
             return ids.Where(id => !SameCells(RowOf(id, was), was, RowOf(id, now), now)).ToList();
         }
 
@@ -126,7 +132,7 @@ namespace Chem
 
         void LayBuildings(Rules was, Rules now)
         {
-            if (was.ModBuildings.Count == 0 && now.ModBuildings.Count == 0) return;
+            if (!MayChangeBuildings(was, now)) return;
             NoteBaseBuildings();
             var ids = ChangedRows(was, now);
             var oldCells = CellsOf(ids, was);

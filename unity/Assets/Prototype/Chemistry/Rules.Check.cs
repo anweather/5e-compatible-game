@@ -362,6 +362,30 @@ namespace Chem
                 if (t["meltWater"] != null && !(IsWholeNumber(t["meltWater"]) && (double)t["meltWater"] >= 1)) Errors.Add($"cover {id}: meltWater must be a whole number from 1");
             }
 
+            // A cover's spread (World.Spread.cs): whole ticks and cells from 1, a chance from 0 to 1, and onto and
+            // notOnto lists of terrain ids or tags some terrain has.
+            void Spreads(string id, JToken t)
+            {
+                foreach (var key in new[] { "spreadEvery", "spreadReach" })
+                    if (t[key] != null && !(IsWholeNumber(t[key]) && (double)t[key] >= 1)) Errors.Add($"cover {id}: {MaterialGroups.GroupedName(true, key)} must be a whole number from 1");
+                if (t["spreadChance"] != null && !(IsNumber(t["spreadChance"]) && (double)t["spreadChance"] > 0 && (double)t["spreadChance"] <= 1))
+                    Errors.Add($"cover {id}: spread.chance must be a number above 0, up to 1");
+                foreach (var key in new[] { "spreadOnto", "spreadNotOnto" })
+                    if (t[key] != null) SpreadNames(id, key, t[key]);
+            }
+
+            void SpreadNames(string id, string key, JToken list)
+            {
+                if (!(list is JArray names) || names.Any(n => Text(n) == null))
+                {
+                    Errors.Add($"cover {id}: {MaterialGroups.GroupedName(true, key)} must be a list of terrain ids or tags");
+                    return;
+                }
+                var tags = new HashSet<string>(terrain.Properties().SelectMany(p => Strings(p.Value["tags"])));
+                foreach (var name in names.Select(Text).Where(n => terrain[n] == null && !tags.Contains(n)))
+                    Errors.Add($"cover {id}: {MaterialGroups.GroupedName(true, key)} {name} is no terrain or terrain tag");
+            }
+
             // What dissolves a terrain or cover (an element) and what it leaves (one of its own kind).
             void Dissolves(string what, JToken t, JObject kind)
             {
@@ -485,6 +509,7 @@ namespace Chem
                     if (p.Value["floatReach"] != null && !(IsWholeNumber(p.Value["floatReach"]) && (double)p.Value["floatReach"] >= 1)) Errors.Add($"cover {p.Name}: floatReach must be a whole number from 1");
                     Dissolves($"cover {p.Name}", p.Value, covers);
                     Melts(p.Name, p.Value);
+                    Spreads(p.Name, p.Value);
                 }
                 foreach (var p in gases.Properties())
                 {
