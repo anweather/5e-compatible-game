@@ -22,7 +22,7 @@ public class CreatureWaterTests
     static CreatureBody Body(string species)
     {
         var bodies = new CreatureBodies();
-        bodies.Refresh(Rules.Load(ChemGrid.FindRulesDir()));
+        bodies.Refresh(Rules.Load(ChemGrid.Folders.Rules));
         return bodies[bodies.IndexOf(species)];
     }
 

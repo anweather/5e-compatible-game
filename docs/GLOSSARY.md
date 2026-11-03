@@ -73,6 +73,15 @@ touch them.
   `world/` (the folder) is the **world data**: where things stand
   (`things.json`), the villages, the themes and looks.
 
+**Game folders**
+: Where the game finds its files (`Chem.GameFolders`): `rules/`, `world/`
+  beside it, the shipped mods in `rules/mods`, the **player's data folder**
+  (what an update leaves alone) and the player's mods in it. A build reads
+  the copies packed into its StreamingAssets; the Editor, the MCP server
+  and the tests walk up to the repo's. The view reaches them as
+  `ChemGrid.Folders`. With no player (the MCP server), a saved mod goes to
+  `rules/mods`.
+
 **The valley**
 : The hand-made start of the world: 9 × 9 chunks, 864 m, with the yard,
   the lake, the river, the falls, Hollowmere and the coast. Shaped by
@@ -579,7 +588,7 @@ that long, and doesn't march.
 **Shipped mod / player's mod**
 : A **shipped mod** is in `rules/mods/`, and comes with the build. A **player's
   mod** is one they saved, in their data folder beside `notes.md`
-  (`claude-terminal/mods`). The player's wins an id both have. Either reaches a
+  (`claude-terminal/mods`, `GameFolders.Mods`). The player's wins an id both have. Either reaches a
   room the same way, as its id and JSON (`docs/MODDING.md`, "Where mods live").
 
 **Checksum / hash / fingerprint / golden**
@@ -717,6 +726,12 @@ that long, and doesn't march.
 : `chat-log-<date>.jsonl`, one line per prompt, with the prompt in it, in
   `chat-records/` under the player's data folder, so a bug report's `Player.log`
   doesn't send them. A test's stay beside its own log.
+
+**Claude folder**
+: The chat's folder (`Chem.ClaudeFolder`): `claude-terminal` in the player's
+  data folder, where the chat and the terminal run claude, with its
+  `.mcp.json`, `CLAUDE.md`, `notes.md` and the player's mods. A probe points
+  it at a folder of its own (`Test`).
 
 **Notes**
 : `notes.md`, in the chat's folder: what carries over between messages, as each

@@ -138,7 +138,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         try
         {
-            Things = WorldThings.Load(FindWorldDir());
+            Things = WorldThings.Load(Folders.World);
         }
         catch (System.Exception e) when (e is System.FormatException || e is IOException)
         {
@@ -230,7 +230,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         try
         {
-            if (GolfCommand.Load(FindWorldDir()) is { } hole) world.ApplyGolf(hole);
+            if (GolfCommand.Load(Folders.World) is { } hole) world.ApplyGolf(hole);
         }
         catch (System.Exception e) when (e is System.FormatException || e is IOException)
         {
@@ -244,7 +244,7 @@ public partial class ChemGrid : MonoBehaviour
     {
         try
         {
-            var puzzles = WorldPuzzles.Load(FindWorldDir());
+            var puzzles = WorldPuzzles.Load(Folders.World);
             foreach (var problem in puzzles.Check(world.Rules)) Debug.LogWarning(problem);
             puzzles.LayInto(world);
         }
@@ -293,25 +293,10 @@ public partial class ChemGrid : MonoBehaviour
         PumpLog();
     }
 
-    // The rules: packed into a build's StreamingAssets/rules (see PrototypeBuild), or in the
-    // Editor the repo's rules/ folder, found by walking up from the project. A fixed
-    // "../../rules" breaks for Multiplayer Play Mode's virtual players, whose project copies
-    // live deeper (unity/Library/VP/<id>/).
-    public static string FindRulesDir()
-    {
-        var packed = Path.Combine(Application.streamingAssetsPath, "rules");
-        if (!Application.isEditor && File.Exists(Path.Combine(packed, "materials.json"))) return packed;
-        var dir = new DirectoryInfo(Application.dataPath);
-        for (; dir != null; dir = dir.Parent)
-        {
-            var candidate = Path.Combine(dir.FullName, "rules");
-            if (File.Exists(Path.Combine(candidate, "materials.json"))) return candidate;
-        }
-        throw new DirectoryNotFoundException($"No rules/ folder with materials.json above {Application.dataPath}");
-    }
+    static GameFolders folders;
 
-    // world/ (things.json) sits next to rules/: the repo's in the Editor, StreamingAssets/world in a build.
-    public static string FindWorldDir() => Path.Combine(Path.GetDirectoryName(FindRulesDir()), "world");
+    // The game's folders (rules/, world/, the player's data folder and mods), from the roots only Unity knows.
+    public static GameFolders Folders => folders ??= GameFolders.ForGame(Application.streamingAssetsPath, Application.dataPath, Application.isEditor, Application.persistentDataPath);
 
     // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
     // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather

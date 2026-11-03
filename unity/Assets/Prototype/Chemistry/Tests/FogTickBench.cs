@@ -32,7 +32,7 @@ namespace Chem.Tests
         /// <summary>The bench's map: water where land.json has none (a lake, the river, the sea), grass on its hills elsewhere.</summary>
         internal static World Valley(Rules rules)
         {
-            string path = Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir()), "world", "land.json");
+            string path = Path.Combine(ChemistryTests.WorldDir(), "land.json");
             var land = LandFile.Read(File.ReadAllText(path), Size, Size);
             var w = new World(rules, Size, Size, Seed, "grass");
             for (int y = 0; y < Size; y++)

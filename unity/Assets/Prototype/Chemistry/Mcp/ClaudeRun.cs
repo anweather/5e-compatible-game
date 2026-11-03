@@ -155,21 +155,23 @@ namespace Chem.Mcp
         }
 
         /// <summary>
-        /// Whether a failure says this model can't be used here. claude 2.1.316 on a model that doesn't exist: "There's an issue with the selected model (id).
-        /// It may not exist or you may not have access to it." No account without Haiku has been seen, so it's matched loosely, and what it misses fails plainly with the pointer.
+        /// What the player reads of a failure, and whether it said the model asked for can't be used here (#64): then the game's own
+        /// line; else claude's words, and the way out if it might be that. Null text for no failure; no model asked for, claude's words.
         /// </summary>
-        public static bool ModelRefused(string text, string model)
+        public static (string text, bool modelRefused) Explain(string failure, string asked)
         {
-            if (string.IsNullOrEmpty(text) || string.IsNullOrEmpty(model) || NotTheModel(text)) return false;
-            string t = text.ToLowerInvariant();
-            return (t.Contains("model") || text.Contains(model, StringComparison.OrdinalIgnoreCase)) && ModelTrouble.Any(t.Contains);
+            if (failure == null) return (null, false);
+            if (asked == null || NotTheModel(failure)) return (failure, false);
+            return ModelRefused(failure, asked) ? (ModelUnavailable(asked), true) : (failure + " " + ModelPointer, false);
         }
 
-        /// <summary>What the player reads of a failure: the game's own line if the model asked for was refused; else claude's words, and the way out if it might be that.</summary>
-        public static string Pointed(string failure, string model)
+        // claude 2.1.316 on a model that doesn't exist: "There's an issue with the selected model (id). It may not exist or you may not have
+        // access to it." No account without Haiku has been seen, so it's matched loosely, and what it misses fails plainly with the pointer.
+        static bool ModelRefused(string text, string model)
         {
-            if (model == null || NotTheModel(failure)) return failure;
-            return ModelRefused(failure, model) ? ModelUnavailable(model) : failure + " " + ModelPointer;
+            if (text.Length == 0 || model.Length == 0) return false;
+            string t = text.ToLowerInvariant();
+            return (t.Contains("model") || text.Contains(model, StringComparison.OrdinalIgnoreCase)) && ModelTrouble.Any(t.Contains);
         }
 
         /// <summary>

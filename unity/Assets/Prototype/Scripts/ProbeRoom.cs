@@ -479,7 +479,7 @@ public class RoomOpenProbe : RoomProbe
         var cells = TwoGrassCells();
         Check("two_grass_cells", cells.Count == 2, string.Join(" ", cells));
         if (cells.Count < 2) yield break;
-        var bench = new Chem.Mcp.Workbench(ChemGrid.FindRulesDir());
+        var bench = new Chem.Mcp.Workbench(ChemGrid.Folders.Rules);
         var draft = bench.SetLook(null, "fire", "mix", "[\"#2050ff\", \"#30d040\"]", "elements", out _, (null, "each"));
         string mod = new Newtonsoft.Json.Linq.JObject { ["title"] = "Each their own", ["patch"] = draft.Patch }.ToString();
         Switcher.Ask(RoomCommand.Apply(Switcher.Me, EachPlayer, mod, "Each their own"));
@@ -677,10 +677,10 @@ public class RoomMcpProbe : ProbeScenario
     IEnumerator SavesToThePlayersFolder()
     {
         const string name = "probe-player-mod";
-        Check("the_mods_page_reads_the_players_folder", grid.GetComponent<RuleSwitcher>().Catalog.PlayerDir == RuleSwitcher.PlayerModsDir, RuleSwitcher.PlayerModsDir);
+        Check("the_mods_page_reads_the_players_folder", grid.GetComponent<RuleSwitcher>().Catalog.PlayerDir == ChemGrid.Folders.Mods, ChemGrid.Folders.Mods);
         string folder = Path.Combine(Application.temporaryCachePath, "player-mods-probe");
-        string file = Path.Combine(folder, "mods", name + ".json"), shipped = Path.Combine(ChemGrid.FindRulesDir(), "mods", name + ".json");
-        ClaudeTerminal.TestFolder = folder;
+        string file = Path.Combine(folder, "mods", name + ".json"), shipped = Path.Combine(ChemGrid.Folders.ShippedMods, name + ".json");
+        ChemGrid.Folders.Claude.Test = folder;
         try
         {
             RulesMcpServer.Instance.FreshTools();
@@ -700,7 +700,7 @@ public class RoomMcpProbe : ProbeScenario
         }
         finally
         {
-            ClaudeTerminal.TestFolder = null;
+            ChemGrid.Folders.Claude.Test = null;
             RulesMcpServer.Instance.FreshTools();
             if (Directory.Exists(folder)) Directory.Delete(folder, true);
         }

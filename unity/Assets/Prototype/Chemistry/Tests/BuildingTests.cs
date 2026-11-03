@@ -156,10 +156,8 @@ namespace Chem.Tests
         static IEnumerable<VillagePlan> Plans()
         {
             for (int seed = 0; seed < 40; seed++) yield return VillageLayout.Lay(new VillageSpec { Name = "Test", X = 200, Y = 200, Seed = seed, Houses = 12 }, (x, y) => true);
-            foreach (var spec in VillageLayout.Load(WorldDir())) yield return VillageLayout.Lay(spec, (x, y) => true);
+            foreach (var spec in VillageLayout.Load(ChemistryTests.WorldDir())) yield return VillageLayout.Lay(spec, (x, y) => true);
         }
-
-        static string WorldDir() => Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "world");
 
         [Test]
         public void AVillagesRowsLayExactlyItsCells()
@@ -202,7 +200,7 @@ namespace Chem.Tests
         [Test]
         public void TheCabinRowsAreWhereValleyShapePutsThem()
         {
-            var rows = WorldBuildings.Load(WorldDir()).FileRows;
+            var rows = WorldBuildings.Load(ChemistryTests.WorldDir()).FileRows;
             Assert.That(rows.Select(r => (string)r["id"]), Is.EqualTo(new[] { "cabin#1", "cabin#2", "cabin#3", "cabin#4" }));
             foreach (var row in rows)
             {

@@ -12,8 +12,7 @@ namespace Chem.Tests
     /// </summary>
     public class ThemeTests
     {
-        static string WorldDir() => Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "world");
-        static ThemeRegistry Registry => ThemeRegistry.Load(WorldDir());
+        static ThemeRegistry Registry => ThemeRegistry.Load(ChemistryTests.WorldDir());
         static Theme Home => Registry.Themes["home-valley"];
 
         /// <summary>Region size for the tests: a 3×3 core 576 cells across, the valley's size.</summary>
@@ -58,7 +57,7 @@ namespace Chem.Tests
             Assert.That(errors.Any(e => e.StartsWith("features[1] (z).at must be a compass word", System.StringComparison.Ordinal)));
             Assert.That(errors, Does.Contain("features[2] (i): an influence needs exactly one area: area \"continent\", at, around or along (got area, around)"));
             Assert.That(errors, Does.Contain("features[2] (i).reach must be a number in [0.02, 1]"));
-            Assert.That(FileErrors(File.ReadAllText(Path.Combine(WorldDir(), "themes", "home-valley.json"))), Is.Empty);
+            Assert.That(FileErrors(File.ReadAllText(Path.Combine(ChemistryTests.WorldDir(), "themes", "home-valley.json"))), Is.Empty);
         }
 
         [Test]

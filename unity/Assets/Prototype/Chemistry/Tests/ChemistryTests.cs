@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using NUnit.Framework;
 
@@ -19,23 +18,24 @@ namespace Chem.Tests
         /// <summary>The rules without soaking (sim.water.soakPass 0), for tests of the flow alone.</summary>
         internal static Rules NoSoak => noSoak ??= R.WithMods(new[] { ModPatch.Parse("{ \"sim\": { \"water\": { \"soakPass\": 0 } } }") });
 
+        static GameFolders folders;
+
         /// <summary>
-        /// The repo's rules/ folder. In Unity it sits next to the project; under
-        /// `dotnet test` (core/Game.Core.Tests) we walk up from the test binary.
+        /// The repo's folders, found above the Unity project, or above the test binary under
+        /// `dotnet test` (core/Game.Core.Tests).
         /// </summary>
-        internal static string RulesDir()
-        {
+        internal static GameFolders Folders => folders ??= GameFolders.InRepo(
 #if UNITY_5_3_OR_NEWER
-            return Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../rules"));
+            UnityEngine.Application.dataPath);
 #else
-            for (var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory); dir != null; dir = dir.Parent)
-            {
-                var candidate = Path.Combine(dir.FullName, "rules");
-                if (File.Exists(Path.Combine(candidate, "materials.json"))) return candidate;
-            }
-            throw new DirectoryNotFoundException("No rules/ folder above " + TestContext.CurrentContext.TestDirectory);
+            TestContext.CurrentContext.TestDirectory);
 #endif
-        }
+
+        /// <summary>The repo's rules/ folder.</summary>
+        internal static string RulesDir() => Folders.Rules;
+
+        /// <summary>The repo's world/ folder.</summary>
+        internal static string WorldDir() => Folders.World;
 
         /// <summary>A small dirt room with bedrock walls, like room() in sim.test.ts (seed 7).</summary>
         internal static World Room(int w = 12, int h = 8, uint seed = 7, Rules rules = null)
@@ -383,7 +383,7 @@ namespace Chem.Tests
             // world/land.json is the same integers on every peer (lockstep): a re-bake that moves them
             // shows here first. Rebake (Prototype > Bake Valley Land) and update these if the valley's
             // shape changed on purpose.
-            string path = System.IO.Path.Combine(System.IO.Path.GetDirectoryName(RulesDir()), "world", "land.json");
+            string path = System.IO.Path.Combine(WorldDir(), "land.json");
             var land = LandFile.Read(System.IO.File.ReadAllText(path), 576, 576);
             Assert.That(land.Length, Is.EqualTo(576 * 576));
             Assert.That(land[0], Is.EqualTo(665), "the north-west corner, up in the hills");

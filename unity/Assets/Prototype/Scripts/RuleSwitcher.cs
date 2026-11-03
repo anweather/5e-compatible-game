@@ -28,12 +28,6 @@ public class RuleSwitcher : MonoBehaviour
     /// <summary>The shipped mods and the player's own.</summary>
     public ModCatalog Catalog { get; private set; }
 
-    /// <summary>
-    /// Where a player's saved mods live, beside notes.md: an update replaces the install, not this. Solo, host and Editor
-    /// alike, so a save in the Editor leaves the repo's rules/mods, which is the shipped mods, alone.
-    /// </summary>
-    public static string PlayerModsDir => Path.Combine(ClaudeTerminal.Folder, "mods");
-
     /// <summary>Why the last switch was refused, or null after one that worked.</summary>
     public string LastError { get; private set; }
 
@@ -57,14 +51,14 @@ public class RuleSwitcher : MonoBehaviour
     static void MoveModsOutOfTheInstall()
     {
         if (Application.isEditor) return;
-        foreach (string line in ModMove.FromInstall(Path.Combine(ChemGrid.FindRulesDir(), "mods"), PlayerModsDir)) Debug.Log("Mods: " + line);
+        foreach (string line in ModMove.FromInstall(ChemGrid.Folders.ShippedMods, ChemGrid.Folders.Mods)) Debug.Log("Mods: " + line);
     }
 
     void Awake()
     {
         grid = GetComponent<ChemGrid>();
         TryGetComponent(out net);
-        Catalog = new ModCatalog(Path.Combine(ChemGrid.FindRulesDir(), "mods"), PlayerModsDir);
+        Catalog = new ModCatalog(ChemGrid.Folders.ShippedMods, ChemGrid.Folders.Mods);
         if (!TryGetComponent<ModsPanel>(out _)) gameObject.AddComponent<ModsPanel>();
         if (!TryGetComponent<RowHouses>(out _)) gameObject.AddComponent<RowHouses>();
         if ((Application.isEditor || Debug.isDebugBuild) && !TryGetComponent<RulesWatcher>(out _)) gameObject.AddComponent<RulesWatcher>();

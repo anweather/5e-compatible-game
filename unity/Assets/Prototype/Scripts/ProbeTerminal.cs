@@ -31,7 +31,7 @@ public class TerminalProbe : ProbeScenario
         Check("no_secret_in_it", !config.ToString().Contains("token", System.StringComparison.OrdinalIgnoreCase) && !config.ToString().Contains("key", System.StringComparison.OrdinalIgnoreCase));
         Check("guide_says_win_h", File.ReadAllText(Path.Combine(folder, "CLAUDE.md")).Contains(ClaudeTerminal.TalkLine));
         Check("first_screen_says_win_h", File.ReadAllText(Path.Combine(folder, "welcome.txt")).Contains(ClaudeTerminal.TalkLine));
-        Check("folder_is_the_games", ClaudeTerminal.Folder.StartsWith(Application.persistentDataPath, System.StringComparison.Ordinal), ClaudeTerminal.Folder);
+        Check("folder_is_the_games", ChemGrid.Folders.Claude.Path.StartsWith(Application.persistentDataPath, System.StringComparison.Ordinal), ChemGrid.Folders.Claude.Path);
         var list = ListTools(url);
         while (!list.IsCompleted) yield return null;
         string answer = list.Status == TaskStatus.RanToCompletion ? list.Result : list.Exception?.GetBaseException().Message;

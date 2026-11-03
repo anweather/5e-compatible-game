@@ -15,7 +15,7 @@ public class CreatureIndividualTests
         public bool Water(float2 xz) => false;
     }
 
-    static Rules Base() => Rules.Load(ChemGrid.FindRulesDir());
+    static Rules Base() => Rules.Load(ChemGrid.Folders.Rules);
 
     static SegmentInstance[] Pose(CreatureBody b, uint individual, CreatureTask task = CreatureTask.None, float clock = 0f)
     {
