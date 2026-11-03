@@ -66,6 +66,8 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
   a new kind of thing with the look that draws it; `add_thing(kind, at, chance?, rot?)` puts one in the world (see "Things")
+- `add_species(id, name, basedOn, scale?, color?, accent?, glow?, behave?, density?)`, `set_species(id, scale?, behave?)`:
+  a kind of animal that moves, and a change to one's size or habits (see "Animals")
 - `set_look(id, param, value, table?, where?, by?, spells?)`: one parameter of the look of a spell, terrain,
   cover, gas, element, entity or item, a `mix` of colours, with `where` a colour or mix that holds only
   round a place, a cell or the player asking, and with `by` one that colours only what a
@@ -402,6 +404,25 @@ What one run wrote is `core/Game.Core.Tests/RulesMcp/golden-squirrel.mod.json`, 
 two peers and a save. **Limit:** the woods aren't a place and a stand-in valley has no trees, so a headless client can't tell
 woods from a meadow, and `find_site` may give a cell a real tree stands on; the game's `find_site` reads the real valley,
 and a room refuses a row on a blocked cell at the switch.
+
+## Animals: fauna rows a mod adds or changes
+
+`Workbench.Fauna.cs` (#61, #72). An animal is a row of `rules/fauna.json`, drawn and moved by the view (`ValleyFauna`); the
+rows stay out of `Rules.Fingerprint` and off the cells, so no golden moves and the core stays as it was. A thing with a
+`creature` look (above) is a still figure; an animal Claude adds is a row.
+
+- **`add_species`** writes a variant (`variantOf`) of the species it's based on: that one's body, gait, wander, flee, idle and
+  group. It copies the base row's `coat`, `coats`, `hair`, `vary` and `behave`, as a variant's reader would otherwise take its
+  own defaults, then lays on the colours and habits given. A variant reads only `active`, `graze`, `thirst`, `play`, `laze`,
+  `hunger`, `chase` and `hunts` from its own `behave`, so the tool refuses the rest. `scale` is against the base species (a
+  variant's `scale`, multiplied by the base's own). `spawn.density` is half the base's (at least 0.2) unless given; 0 leaves
+  `spawn` out, so it never comes out in the wilds.
+- **`set_species`** sizes a row against its normal size in the base rules, so 1 puts it back: a variant by its `scale`, a
+  species of its own by its `size` pair (the view multiplies only a variant's `scale`). Its `behave` merges over the row's.
+- **Checks.** `Rules.CheckFauna` refuses a bad row as for the base rules; `validate`'s budget refuses a `scale`, or a `size`
+  against the base row's (or 1.1 for a new row), past `budgets.json` `things.maxScale`.
+- **In the view.** A switch rebuilds only the rows that changed (`CreatureBodies.Refresh`); a new species spawns in the
+  wilds by its density, anywhere its habitat fits, not at a place.
 
 ## Change modes (chosen when a room is made)
 

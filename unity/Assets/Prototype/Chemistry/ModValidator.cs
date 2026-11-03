@@ -251,7 +251,7 @@ namespace Chem
                 else
                 {
                     Params(look, who, $"the look family \"{name}\"", family.Params, table);
-                    double maxScale = budgets.Number("things.maxScale", 4);
+                    double maxScale = budgets.Number("things.maxScale", 20);
                     if (look["scale"] != null && !(IsNumber(look["scale"]) && (double)look["scale"] > 0 && (double)look["scale"] <= maxScale))
                         Add(ModCheck.Budget, $"{who}'s look has a scale of {look["scale"]}; a thing's scale is above 0 and at most {Num(maxScale)}.");
                 }
@@ -434,6 +434,7 @@ namespace Chem
                 if (patch["world"]?["add"] is JArray things && things.Count > maxThings)
                     Add(ModCheck.Budget, $"The mod adds {things.Count} things to the world; a mod may add at most {Num(maxThings)}.");
                 if (composed == null) return;
+                FaunaBudget(composed);
                 BuildingBudget(composed);
                 MaterialBudget(composed);
                 ChainDepth(composed);
@@ -482,6 +483,30 @@ namespace Chem
             }
 
             // What one building may be (builders.md section 4), and how many a mod may bring.
+            // A species is drawn only, but a giant should still be a giant and not a mountain (#61): a variant's
+            // scale, and a size against the row's in the base rules (or the reader's default), within things.maxScale.
+            void FaunaBudget(JObject composed)
+            {
+                double max = budgets.Number("things.maxScale", 20);
+                foreach (var p in (patch[FaunaTables.SpeciesKey] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
+                {
+                    if (!(composed[FaunaTables.SpeciesKey]?[p.Name] is JObject row)) continue;
+                    if (IsNumber(row["scale"]) && (double)row["scale"] > max)
+                        Add(ModCheck.Budget, $"Species {p.Name} has a scale of {row["scale"]}; a species is at most {Num(max)} times the one it's built on.");
+                    var normal = baseDoc[FaunaTables.SpeciesKey]?[p.Name]?["size"] as JArray;
+                    if (!(row["size"] is JArray size) || size.Count != 2 || !size.All(IsNumber)) continue;
+                    for (int i = 0; i < 2; i++)
+                    {
+                        double was = normal != null && normal.Count == 2 && IsNumber(normal[i]) ? (double)normal[i] : 1.1;
+                        if ((double)size[i] > was * max + 1e-9)
+                        {
+                            Add(ModCheck.Budget, $"Species {p.Name} has a size of {size.ToString(Newtonsoft.Json.Formatting.None)}, more than {Num(max)} times its normal size.");
+                            break;
+                        }
+                    }
+                }
+            }
+
             void BuildingBudget(JObject composed)
             {
                 if (!(patch["world"]?["buildings"] is JObject rows)) return;
