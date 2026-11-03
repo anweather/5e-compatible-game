@@ -72,8 +72,8 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `add_spell` / `set_spell` (through groups and material verbs only)
 - `add_item(id, name, mass?, material?, look?, extra?)`, `add_entity(id, name, hp?, mass?, material?, look?, extra?)`:
   a new kind of thing with the look that draws it; `add_thing(kind, at, chance?, rot?)` puts one in the world (see "Things")
-- `add_species(id, name, basedOn, scale?, color?, accent?, glow?, behave?, density?)`, `set_species(id, scale?, behave?)`:
-  a kind of animal that moves, and a change to one's size or habits (see "Animals")
+- `add_species(id, name, basedOn?, scale?, color?, accent?, glow?, behave?, density?, from?)`, `set_species(id, scale?, behave?, from?)`:
+  a kind of animal that moves, built on one or grafted from others' slots, and a change to one's size, habits or donors (see "Animals")
 - `set_look(id, param, value, table?, where?, by?, spells?)`: one parameter of the look of a spell, terrain,
   cover, gas, element, entity or item, a `mix` of colours, with `where` a colour or mix that holds only
   round a place, a cell or the player asking, and with `by` one that colours only what a
@@ -457,8 +457,24 @@ rows stay out of `Rules.Fingerprint` and off the cells, so no golden moves and t
   (body units on the body: x across the radius, y up it, z along the half-length, +1 the front; metres from the end of the slot
   it hangs on) and where it starts and ends at rest in metres. Only the first slot of a style group counts toward the shape.
   A variant's lines are its body's, with what it takes from that body said once. `whats_on` and `describe`'s mod lines see
-  `fauna` and `parts` rows a mod adds or changes (#80). No graft (`from`) yet: that's the `graft` branch; until then
-  `outside_rules` says to write a made-up body's row whole.
+  `fauna` and `parts` rows a mod adds or changes (#80). A graft's lines are its flattened slots, with its donors said once
+  and `coat own (donor)` on each slot that wears its donor's colours.
+- **Grafts** (`FaunaGraft.cs`; `bodies-and-surfaces.md` §2, #73): a made-up body from other species' slots. A row's `from`
+  lists donors, and the core flattens it into plain slots when it's read (`FaunaTables.Species`), so the view, the checks
+  and `describe` never see `from`. Each donor `{species, take?, drop?, at?, dir?, scale?, coat?}` gives all its slots, the
+  slots it `take`s and every slot hung `on` them, or all but those it `drop`s and theirs (a variant donor gives its base's
+  slots). The row's own `parts` come first; a donor's slot whose id is taken gets the donor's id before it (`human-tail`,
+  `black-bear-fore`, then `-2`...). A donor's loose slots (no `on`, or `on` one left behind) hang on the new body: with `at`
+  they move together so the first sits at `at` in body units, a mirrored pair keeping its spread across (`x`); `dir` adds
+  to their rest direction; `scale` multiplies every slot's scale and a hung slot's `at`. `"coat": "own"` puts `coat: own`
+  and `donor` on each of that donor's slots (`SlotDef.OwnCoatOf`), for the view's `graft-coats` to draw; until then all
+  wear the row's coat. With no `coat` or `coats` of its own a graft wears its first donor's (with its `hair` and `vary`).
+  `body`, `move` and `behave` may each say `"from": species` and override fields. `add_species` with `from` (no `basedOn`)
+  writes such a row moving and behaving as its first donor, `size` its first donor's × `scale`; `set_species` with `from`
+  replaces a row's donors, keeping its own slots (not on a variant). `Rules.CheckFauna` checks the donors as written, then
+  the flattened slots (every part exists, `on` resolves), and refuses a loop of donors; `validate`'s budget
+  (`budgets.json` `fauna`) refuses more than 4 new species a mod, 3 donors a graft, 40 slots once flattened, or a donor's
+  `scale` outside 0.25 to 4. Gaits aren't by rule yet (Andrew, 2026-11-03), so a graft's legs move by their own poses.
 
 ## Spells that place
 

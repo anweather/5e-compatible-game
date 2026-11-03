@@ -503,6 +503,11 @@ that long, and doesn't march.
   can't change them. The MCP's `places()` lists them and `here()` says which
   one the asking player is in and what's near.
 
+**Graft** and **donor**
+: A **graft** is a species row built from other species' slots by `from` (a centaur, a faun); each
+  species it takes slots from is a **donor**. The core flattens it into plain slots when it's read
+  (`FaunaGraft.cs`, `docs/design/bodies-and-surfaces.md` §2).
+
 **Individual**
 : One animal's fixed number, set when it comes out: it picks that animal's lean, arm swing, bounce, pace,
   hairstyle and hair colour (`CreatureState.Individual`). Local to each peer, like the animal.

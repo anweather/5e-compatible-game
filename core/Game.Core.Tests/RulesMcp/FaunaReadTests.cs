@@ -79,11 +79,11 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void OutsideRulesSaysAGraftIsNotAToolYetAndWhatIs()
+        public void OutsideRulesSaysAGraftsColoursAreNotDrawnYet()
         {
             var outside = Workbench.Outside();
-            Assert.That(outside, Does.Contain("centaur").And.Contain("describe fauna").And.Contain("list parts"));
-            Assert.That(outside, Does.Contain("one coat"));
+            Assert.That(outside, Does.Not.Contain("centaur"), "add_species takes from now (GraftTests)");
+            Assert.That(outside, Does.Contain("one coat").And.Contain("coat own isn't drawn yet"));
         }
 
         // #80 part 3
