@@ -118,7 +118,8 @@ namespace Chem
             var s = Rules.Spell(a.Cast);
             if (s == null) return;
             int dir = DirOf(dx, dy), delay = a.Delay > 0 ? a.Delay : s.Delay;
-            if (!Release(s, (x, y), dir, 1, (dx, dy), delay, $"{me.Player}'s step calls down {s.Name}")) return;
+            // The log names the player as the room does ("Player 1"), not their stand ("solo", "p0").
+            if (!Release(s, (x, y), dir, 1, (dx, dy), delay, $"{TriggerDef.PeerOf(me.Player)}'s step calls down {s.Name}")) return;
             var cast = new TriggeredCast { N = ++triggeredCasts, Trigger = t.Id, Player = me.Player, Spell = s.Id, X = x, Y = y, Dir = dir, Tick = Tick, Lands = Tick + delay };
             triggered.Add(cast);
             triggeredHistory.Add(cast);

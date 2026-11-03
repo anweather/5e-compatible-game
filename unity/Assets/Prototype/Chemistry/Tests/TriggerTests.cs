@@ -93,6 +93,17 @@ namespace Chem.Tests
             Assert.That(w.TriggeredAfter(0).Select(t => t.N), Is.EqualTo(new[] { 1 }));
         }
 
+        [TestCase("solo", "Player 1")]
+        [TestCase("p1", "Player 2")]
+        [TestCase("Ann", "Ann")]
+        public void TheLogNamesThePlayerNotTheirStand(string stand, string named)
+        {
+            var w = Meadow(With(Trigger("each", MeteorNow)));
+            w.ApplyStrike(StrikeCommand.Stand(stand, 20, 20, 12));
+            w.ApplyStrike(StrikeCommand.Stand(stand, 20, 21, 12));
+            Assert.That(w.Log.Select(l => l.Text), Has.Member(named + "'s step calls down Meteor"));
+        }
+
         [Test]
         public void AMeteorWithNoDelayLandsAtOnce()
         {

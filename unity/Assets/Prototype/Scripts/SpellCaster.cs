@@ -289,8 +289,8 @@ public partial class SpellCaster : MonoBehaviour
         grid.ChargeStartsAt(landing);
     }
 
-    // The projectile, meteor or storm, or the effect at once; onArrive when it lands.
-    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, CastCommand cast, System.Action onArrive)
+    // The projectile, meteor or storm, or the effect at once; onArrive when it lands. A meteor falls for <paramref name="fall"/> seconds.
+    void Unleash(SpellDef def, SpellVisuals.Entry look, Vector3 landing, CastCommand cast, System.Action onArrive, float fall = MeteorFall.Seconds)
     {
         int charge = cast.Charge;
         void Land()
@@ -311,7 +311,7 @@ public partial class SpellCaster : MonoBehaviour
                 grid.LightInLook(this, def, look, cast);
                 GameSounds.Play(GameSounds.LandingOf(def), landing);
                 onArrive?.Invoke();
-            }, this, blastScale: look.ScaleFor(def, charge));
+            }, this, fall, blastScale: look.ScaleFor(def, charge));
         else Travel(look, def, charge, landing, Land);
     }
 

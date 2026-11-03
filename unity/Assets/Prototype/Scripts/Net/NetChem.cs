@@ -438,17 +438,19 @@ public partial class NetChem : NetworkBehaviour
         else combosFor[tick] = commands;
     }
 
-    // As StampCombos. Replaying, a stand only has to be there for the next strike or the end, so a newer one replaces it.
+    // As StampCombos. Replaying, a stand only has to be there for the next strike or the end, so a newer one replaces it;
+    // but while a step trigger is in force every stand is a step that may fire one (World.Triggers.cs), so each is kept.
     void StampStrikes()
     {
         if (pendingStrikes.Count == 0) return;
         var stamped = pendingStrikes.ToArray();
         pendingStrikes.Clear();
+        bool steps = grid.World != null && grid.World.Rules.TriggersOn(TriggerEvent.Step).Count > 0;
         for (int i = 0; i < stamped.Length; i++)
         {
             stamped[i].Tick = hostTick;
             var player = stamped[i].Player;
-            if ((StrikeKind)stamped[i].Kind == StrikeKind.Stand) strikeHistory.RemoveAll(s => (StrikeKind)s.Kind == StrikeKind.Stand && s.Player == player && s.Tick > lastStrikeTick);
+            if ((StrikeKind)stamped[i].Kind == StrikeKind.Stand && !steps) strikeHistory.RemoveAll(s => (StrikeKind)s.Kind == StrikeKind.Stand && s.Player == player && s.Tick > lastStrikeTick);
             else lastStrikeTick = hostTick;
             strikeHistory.Add(stamped[i]);
         }
