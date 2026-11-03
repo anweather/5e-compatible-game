@@ -131,6 +131,11 @@ namespace Chem.Mcp
             {
                 return Result(id, ToolResult(e.Message, true));
             }
+            catch (TargetInvocationException e) when (e.InnerException != null)
+            {
+                // Anything else a tool throws is an error too, so the answer goes back and the server goes on.
+                return Result(id, ToolResult($"The tool {tool} failed: {e.InnerException.Message}", true));
+            }
         }
 
         // A value that's missing takes the parameter's default; a required one is a sentence, like any refusal.
