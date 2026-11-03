@@ -16,7 +16,7 @@ namespace Chem.Tests
     {
         const string Unseen = "Won't show:";
 
-        static Workbench NewBench() => new Workbench(ChemistryTests.RulesDir());
+        static Workbench NewBench() => new Workbench(ChemistryTests.Folders);
 
         static BuildingTables Shipped => Rules.Load(ChemistryTests.RulesDir()).Buildings;
 
