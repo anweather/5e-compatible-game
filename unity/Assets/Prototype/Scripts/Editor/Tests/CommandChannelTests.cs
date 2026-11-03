@@ -5,7 +5,8 @@ using NUnit.Framework;
 
 // CommandChannel, one kind of command on its way through the lockstep network, without a network:
 // the host's stamp, the stamped commands joining their tick's batch whether they come before it or
-// after, a late joiner's history, a reset forgetting what came before, and the compaction hook.
+// after, a late joiner's history, a reset forgetting what came before, and the compaction hook;
+// then defense and room commands on it as NetChem has them, with their real intents.
 public class CommandChannelTests
 {
     // An intent of the test's own: a player and what they did.
@@ -150,6 +151,96 @@ public class CommandChannelTests
         host.Request(N("p0", "stand"));
         host.Stamp(5);
         Assert.That(host.HistoryForJoiner().Select(n => n.Tick), Is.EqualTo(new[] { 2, 3, 4, 5 }), "the stands kept as steps stay");
+    }
+
+    // Defense and room commands as NetChem has them on their channels, with the real intents.
+    static CommandChannel<DefenseIntent> DefenseChannel(Dictionary<int, TickBatch> batches) => new(batches, (batch, d) => batch.Defense.Add(d.ToCommand()));
+
+    static CommandChannel<RoomIntent> RoomChannel(Dictionary<int, TickBatch> batches) => new(batches, (batch, r) => batch.Room.Add(r.ToCommand()));
+
+    static DefenseIntent Gate(int x) => DefenseIntent.From(new DefenseCommand(DefenseKind.Start, x, 1, x, 9), 0);
+
+    static RoomIntent Mod(string peer, string mod) => RoomIntent.From(RoomCommand.Apply(peer, mod, "{}"), 0);
+
+    static int[] Gates(TickBatch batch) => batch.Defense.Select(d => d.GateX).ToArray();
+
+    static string[] Mods(TickBatch batch) => batch.Room.Select(r => r.Peer + ":" + r.Mod).ToArray();
+
+    [Test]
+    public void DefenseHistoryReplaysAsTimelineDidWithIt()
+    {
+        // The defense history comes in SendHistoryRpc's defense parameter; the joiner's channel adds it
+        // to the timeline, as TickBatch.Timeline(defense:) did. After a reset too (from > 1).
+        var host = DefenseChannel(new Dictionary<int, TickBatch>());
+        host.Request(Gate(2));
+        host.Stamp(3);
+        host.Request(Gate(4));
+        host.Request(Gate(6));
+        var stamped = host.Stamp(5);
+        Assert.That(stamped.Select(d => d.Tick), Is.EqualTo(new[] { 5, 5 }), "DefenseIntent.Tick is what the stamp sets");
+        var history = host.HistoryForJoiner();
+
+        foreach (int from in new[] { 1, 4 })
+        {
+            var joiner = DefenseChannel(new Dictionary<int, TickBatch>());
+            joiner.Joining(history);
+            var timeline = TickBatch.Timeline(null, null, 6, null, null, null, from);
+            joiner.Replay(timeline);
+            var before = TickBatch.Timeline(null, null, 6, null, null, history.Select(d => (d.Tick, d.ToCommand())), from);
+            Assert.That(timeline.Keys, Is.EquivalentTo(before.Keys));
+            foreach (int t in before.Keys) Assert.That(Gates(timeline[t]), Is.EqualTo(Gates(before[t])), $"from {from}, tick {t}");
+        }
+    }
+
+    [Test]
+    public void AResetKeepsTheRoomCommandsStampedOnItsTick()
+    {
+        // StampResetRules runs before StampRoom in the host's tick: the reset forgets the history
+        // before it, and what was asked meanwhile is stamped on the reset's tick and kept.
+        var host = RoomChannel(new Dictionary<int, TickBatch>());
+        host.Request(Mod("Player 1", "old"));
+        host.Stamp(3);
+        host.Request(Mod("Player 2", "asked"));
+        host.ForgetBefore(9);
+        var stamped = host.Stamp(9);
+        Assert.That(stamped.Select(r => r.Tick), Is.EqualTo(new[] { 9 }), "RoomIntent.Tick is what the stamp sets");
+        host.Request(Mod("Player 1", "after"));
+        host.Stamp(10);
+        Assert.That(host.HistoryForJoiner().Select(r => $"{r.Mod}@{r.Tick}"), Is.EqualTo(new[] { "asked@9", "after@10" }));
+    }
+
+    [Test]
+    public void AResetLeavesHeldRoomCommandsToJoinTheirBatch()
+    {
+        // A peer's held commands aren't history: a reset on the host never touches them.
+        var batches = new Dictionary<int, TickBatch>();
+        var peer = RoomChannel(batches);
+        peer.Receive(9, new[] { Mod("Player 2", "a"), Mod("Player 1", "b") });
+        peer.ForgetBefore(10);
+        batches[9] = new TickBatch(9);
+        peer.Deliver(9);
+        Assert.That(Mods(batches[9]), Is.EqualTo(new[] { "Player 2:a", "Player 1:b" }));
+    }
+
+    [Test]
+    public void ALateJoinerReplaysTheRoomHistoryAsAddRoomDid()
+    {
+        var host = RoomChannel(new Dictionary<int, TickBatch>());
+        host.Request(Mod("Player 2", "a"));
+        host.Request(RoomIntent.From(RoomCommand.Found("Player 1", new ThingId(7)), 0));
+        host.Stamp(2);
+        host.Request(Mod("Player 1", "b"));
+        host.Stamp(4);
+        var history = host.HistoryForJoiner();
+
+        var joiner = RoomChannel(new Dictionary<int, TickBatch>());
+        joiner.Joining(history);
+        var timeline = TickBatch.Timeline(null, null, 5);
+        joiner.Replay(timeline);
+        var before = TickBatch.Timeline(null, null, 5);
+        TickBatch.AddRoom(before, history.Select(r => (r.Tick, r.ToCommand())));
+        for (int t = 1; t <= 5; t++) Assert.That(Mods(timeline[t]), Is.EqualTo(Mods(before[t])), $"tick {t}");
+        Assert.That(Mods(timeline[2]), Is.EqualTo(new[] { "Player 2:a", "Player 1:7" }));
     }
 
     [Test]

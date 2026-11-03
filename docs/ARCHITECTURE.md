@@ -199,9 +199,9 @@ their tick's batch (defense, combos, strikes, the dragon, room commands)
 each repeat one shape: pending on the host, stamped, held for the batch,
 kept for joiners. `CommandChannel.cs` is that shape as one small class
 (`Request`, `Stamp`, `Receive`/`Deliver`, `HistoryForJoiner`/`Replay`,
-`ForgetBefore`, a compaction hook); combo input is on it so far, and
-`NetChem` keeps the RPCs, which Netcode generates on its own methods.
-When a live batch's casts run, their shoves run too: the host moves the
+`ForgetBefore`, a compaction hook); defense, combo input and room
+commands are on it so far, and `NetChem` keeps the RPCs, which Netcode
+generates on its own methods. When a live batch's casts run, their shoves run too: the host moves the
 props, each player their own
 wizard. `NetWizard.cs` switches a spawned wizard on for its owner and
 passes a shove worked out elsewhere (a barrel blast on the host) to it.

@@ -58,8 +58,8 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - **0.1.11 waits** (Andrew, 2026-11-03: "wait on the creatures"; the creatures have landed). Nothing blocks it: the notes cut voice and carry the saved-mods warning (#63). Before cutting: version bump, add today's landings to `docs/handoffs/release-0.1.11-notes.md`, a green release candidate on the PC (no VMs then).
 - **DesktopUnity:** `glow` (P4, `look.glow` on covers, clip of glowing moss), then compile `liquids` (ac5041e5) and build `liquids-view` (coloured water mesh, honey and paint clip).
-- **u2 (Max):** `dependents-all` (#88): anything a mod adds makes a mod naming it a dependent.
-- **Mac:** `channels-2` (defense and room on CommandChannel, e16777a3, paused; remaining probe runs). `whisper-spike` scaffolding pushed (51e5bed0, not landed): the real Whisper step waits on Andrew clearing the downloads in the Mac's session (J-061 seam; no Windows compile yet).
+- **u2 (Max):** stopped for memory mid `liquids-2` (wip branch); restart after the PC's filming. `dependents-all` (#88) waits on the PC's compile.
+- **Mac:** `channels-3` (strikes onto CommandChannel with #83); channels-2 landed. `whisper-spike` scaffolding pushed (51e5bed0, not landed): the real Whisper step waits on Andrew clearing the downloads in the Mac's session (J-061 seam; no Windows compile yet).
 - **Unmerged, kept:** `second-map` (afff4c9); `wip/u2-cover-spread` (superseded by dev's cover-spread, differs only by a refinement; Andrew's to delete).
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/` (2026-11-02), before today's landings.
