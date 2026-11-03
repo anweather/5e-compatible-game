@@ -63,7 +63,8 @@ namespace Chem
             {
                 foreach (var p in (tables.Json["openings"] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
                 {
-                    if (p.Value["cells"] != null && !IsWholeAtLeast(p.Value["cells"], 0)) Errors.Add($"opening {p.Name}: cells must be a whole number, 0 or more");
+                    if (p.Value["cells"] != null && (!IsWholeAtLeast(p.Value["cells"], 0) || (double)p.Value["cells"] > OpeningDef.MaxCells))
+                        Errors.Add($"opening {p.Name}: cells must be a whole number, 0 to {OpeningDef.MaxCells}");
                     string becomes = Show(p.Value["becomes"]);
                     if (becomes != OpeningDef.StaysWall && becomes != OpeningDef.Open && terrain[becomes] == null)
                         Errors.Add($"opening {p.Name}: becomes names unknown terrain {becomes} (a terrain, \"{OpeningDef.StaysWall}\" or \"{OpeningDef.Open}\")");
@@ -169,7 +170,8 @@ namespace Chem
                     Errors.Add($"{wall}: an opening's width is in metres");
                     return;
                 }
-                int at = (int?)o["at"] ?? 0, span = BuildingRow.SpanOf(o, tables);
+                // In long: an at near int's top would wrap past the wall's end (#85).
+                long at = (long?)o["at"] ?? 0, span = BuildingRow.SpanOf(o, tables);
                 if (at + span > length) Errors.Add($"{wall}: a {Show(o["kind"])} at {at} is {span} half cells long and runs past the wall's {length}");
                 // One that leaves a cell keeps half a cell clear of a join; a gap may run to the corners.
                 else if (Show(kind["becomes"]) != OpeningDef.Open && (at < 1 || at + span > length - 1))
