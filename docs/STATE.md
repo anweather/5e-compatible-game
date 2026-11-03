@@ -73,7 +73,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 1. Land what's in flight; then a new test player for Andrew with the play-test fixes and the folders change.
 2. The cleanup, from item 5 down.
-3. `triggers-view`, then bodies from parts (#73) and building on water (#60), per the designs.
+3. Made-up bodies (#73, Andrew's pick, 2026-11-03): `fauna-read`, `graft`, `graft-coats` (handoff). Then `triggers-view`, building on water (#60).
 4. Temporary materials and products as data (`docs/design/primitives.md`); gaits by rule (`builders.md`).
 5. 0.1.11, when Andrew says.
 - Backlog and priority: `docs/BACKLOG.md` (29: more than one map, #69).
