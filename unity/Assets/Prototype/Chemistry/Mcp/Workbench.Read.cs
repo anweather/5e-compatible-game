@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", DragonTable, BuildingsTable, ThingsTable, "openings", "floors", "roofs", "details", "styles" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, DragonTable, BuildingsTable, ThingsTable, "openings", "floors", "roofs", "details", "styles" };
 
         // ---------- list ----------
 
@@ -319,6 +319,7 @@ namespace Chem.Mcp
             if (t == "material") t = "materials";
             if (t == "reaction" || t == "rules") t = "reactions";
             if (t == "look" || t == "families") t = "looks";
+            if (t == "species" || t == "animals" || t == "creatures") t = FaunaTable;
             if (t == "spell" || t == "cover" || t == "gas" || t == "element" || t == "group" || t == "critter" || t == "entity" || t == "item" || t == "machine")
                 t = Plural(t);
             if (!Tables.Contains(t)) throw new RulesToolException($"{table} isn't a table; the tables are {string.Join(", ", Tables)}.");

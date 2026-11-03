@@ -68,13 +68,13 @@ namespace Chem.Mcp
 
         // ---------- read ----------
 
-        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
+        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, fauna (the kinds of animal: add_species and set_species change them), dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
         [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing. All the read tools read the rules in force, every mod on included.")]
         public string WhatsOn() => Do(() => bench.WhatsOn());
 
-        [RulesTool("outside_rules", ReadOnly = true), Description("What can't be changed through these tools yet because it isn't in the rules (heat glow, player size, fauna size, slippery terrain, weather's cover, area fill, a building's rooms), and the nearest thing that can be done for each. Read it before trying or refusing any of those.")]
+        [RulesTool("outside_rules", ReadOnly = true), Description("What can't be changed through these tools yet because it isn't in the rules (heat glow, player size, slippery terrain, weather's cover, area fill, a building's rooms), and the nearest thing that can be done for each. Read it before trying or refusing any of those.")]
         public string OutsideRules() => Do(Workbench.Outside);
 
         [RulesTool("time", ReadOnly = true), Description("The clock: the time of day, the day, the light, and when dawn and dusk are. The clock and the weather aren't rules: read them here and with weather, and change them with set_time and set_weather, not by moving day.startHour.")]
@@ -154,6 +154,23 @@ namespace Chem.Mcp
             [Description("Above 0 and at most 1: how likely it is to be in this world at all, decided once from the world's seed and this thing, the same on every peer. Always there when left out.")] double? chance = null,
             [Description("Its turn about the vertical, in degrees.")] double? rot = null,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Sited(bench.AddThing(draft, kind, at, chance, rot)));
+
+        [RulesTool("add_species"), Description("Adds a new kind of animal to a draft: a row of the fauna table (list fauna) built on a species there is, so it has that one's body and gait and wanders, flees, grazes and comes out in the wilds as it does, with its own name, size, colours and habits. \"A giant rabbit that hops about\" is basedOn rabbit, scale 10, behave {\"play\": 0.6}. It's an animal that moves: add_entity with a creature look is a still figure, for a statue or a find. A mod adds at most 12 new entries.")]
+        public string AddSpecies([Description("A new id, lowercase with dashes.")] string id, [Description("Its name as players see it.")] string name,
+            [Description("The species it's built on (list fauna), whose body, gait and habits it takes.")] string basedOn,
+            [Description("Its size against the species it's built on: 2 is twice as big, 0.5 half. Above 0 and at most budgets.json things.maxScale. 1 when left out.")] double? scale = null,
+            [Description("Its coat's main colour as [r, g, b], each 0 to 1. Its species' coat when left out.")] string color = null,
+            [Description("Its coat's second colour (belly, markings) as [r, g, b].")] string accent = null,
+            [Description("How much its markings glow, 0 to 1.")] double? glow = null,
+            [Description("Habits over its species', as a JSON object: active (day, night or always), graze, thirst, play, laze, hunger (shares, 0 to 1), chase (seconds), hunts (species ids).")] string behave = null,
+            [Description("Animals per hectare in the wilds (the valley's rabbits are 1.8, deer 0.7); 0 and it never comes out on its own. Half its species' when left out.")] double? density = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.AddSpecies(draft, id, name, basedOn, scale, color, accent, glow, behave, density).Show());
+
+        [RulesTool("set_species"), Description("Changes a kind of animal in a draft (list fauna): its size against its normal size, so \"make the deer three times bigger\" is scale 3 and 1 puts it back, and its habits. Every animal of that species changes, in the wilds and in the villages.")]
+        public string SetSpecies([Description("The species' id, such as deer or turkey.")] string id,
+            [Description("Its size against its normal size in the base rules. Above 0 and at most budgets.json things.maxScale.")] double? scale = null,
+            [Description("Habits as a JSON object, merged over its own: active (day, night or always), graze, thirst, play, laze, hunger, chase, hunts; a species not built on another also takes wander and flee (metres) and idle and group ([low, high]).")] string behave = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.SetSpecies(draft, id, scale, behave).Show());
 
         [RulesTool("add_material"), Description("Adds a new terrain, cover or gas to a draft. Its behaviour comes from material verb groups (burn, soak, dig, melt, freeze, float, dissolve, grow and the rest; rules/README.md). A new terrain also needs a look: {\"look\": {\"family\": \"block\", \"color\": [0.6, 0.7, 1], \"height\": 1.2}} in verbs, with a family from rules/looks.json.")]
         public string AddMaterial([Description("terrain, cover or gas.")] string kind, [Description("A new id, lowercase with dashes.")] string id, [Description("Its name as players see it.")] string name,
