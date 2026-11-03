@@ -10,7 +10,7 @@ namespace Chem.Tests
         const string MeteorAhead = "[{\"cast\": \"meteor\", \"at\": \"ahead\", \"by\": 2, \"delay\": 6}]";
 
         static Workbench Bench(string asking = "Andrew") =>
-            new Workbench(ChemistryTests.RulesDir()) { Here = new StandInHere(asking == null ? (HereSpot?)null : new HereSpot(asking, 288, 288)) };
+            new Workbench(ChemistryTests.Folders) { Here = new StandInHere(asking == null ? (HereSpot?)null : new HereSpot(asking, 288, 288)) };
 
         static string DraftIn(string said) => said.Split('\n').First(l => l.StartsWith("Draft ", System.StringComparison.Ordinal)).Substring(6).TrimEnd(':');
 
