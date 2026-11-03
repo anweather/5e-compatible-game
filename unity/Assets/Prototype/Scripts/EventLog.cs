@@ -94,7 +94,7 @@ public class EventLog : MonoBehaviour
 
     /// <summary>
     /// The Reset: in the valley the dragon comes and puts it back (BACKLOG 26), online for everyone if the host asks, and a
-    /// client asks the host to (OnlineReset). In a scene with no valley (Fireline) it reloads the scene. True if it did.
+    /// client asks the host to (OnlineReset). In a scene with no valley it reloads the scene. True if it did.
     /// Held for a few seconds it's RebuildYard, for a world that has gone wrong and can't wait for the dragon.
     /// </summary>
     public static bool ResetYard()
@@ -131,8 +131,6 @@ public class EventLog : MonoBehaviour
         return true;
     }
 
-    const string FirelineHelp = "<b>WASD</b> move   ·   <b>Click</b> Fire Bolt   ·   <b>R</b> reset   ·   <b>Esc</b> menu";
-
     // A plus with a dark shadow, so it reads against the sky as well as the ground.
     void Crosshair()
     {
@@ -147,8 +145,7 @@ public class EventLog : MonoBehaviour
         if (!HudVisible) return;
         HudScale.Apply();
         style ??= new GUIStyle(GUI.skin.label) { fontSize = 18, richText = true };
-        if (caster == null) GUI.Label(new Rect(16, 12, 900, 30), FirelineHelp, style);
-        else DrawCasterHud();
+        if (caster != null) DrawCasterHud();
         DrawLog();
     }
 
