@@ -62,6 +62,14 @@ public class RoomProbeSeen
     public float fireTurn;
     /// <summary>How far the fire on the cells the probe watches is turned, on this side.</summary>
     public List<float> turns = new();
+    /// <summary>
+    /// triggerview's: the triggered casts in this side's world, the shows it played ("n:spell@x,y"), how many since
+    /// it last joined, the projectiles and meteors it showed since then, a meteor's mean fall, and the step lines in its log.
+    /// </summary>
+    public int triggered, showsSince, projectiles, meteors;
+    public float meteorSeconds;
+    public List<string> shown = new();
+    public string stepLog;
     public List<int> hashTicks = new();
     public List<string> hashes = new();
     public bool desync;
@@ -83,6 +91,7 @@ public sealed class RoomProbeRecord : IDisposable
     {
         this.grid = grid;
         this.net = net;
+        shownAtJoin = grid.TriggeredShown.Count;
         grid.RoomDecided += Decided;
         net.TickApplied += Ticked;
     }
@@ -112,8 +121,19 @@ public sealed class RoomProbeRecord : IDisposable
         seen.held = hand != null && hand.TryGetComponent<ItemHolder>(out var hands) && hands.Held != null ? hands.Held.Prop.kind : "";
         seen.turns = WatchedCells.Select(c => grid.FireTint(c.x, c.y).Turn).ToList();
         seen.desync = net.DesyncSeen;
+        seen.triggered = grid.World.TriggeredCasts;
+        seen.shown = TriggerViewProbe.Shown(grid);
+        seen.showsSince = grid.TriggeredShown.Count - shownAtJoin;
+        if (Shows != null) (seen.projectiles, seen.meteors, seen.meteorSeconds) = (Shows.Projectiles, Shows.Meteors, Shows.MeteorSeconds);
+        seen.stepLog = TriggerViewProbe.StepLines(grid.World);
         return seen;
     }
+
+    // The shows this side had played when the record began (a join), and its count of what came out since.
+    readonly int shownAtJoin;
+
+    /// <summary>What came out on this side since the record began, if it counts (triggerview).</summary>
+    public TriggerShowCount Shows { get; set; }
 
     public int Lines => seen.lines.Count;
 
@@ -152,6 +172,7 @@ public class RoomProbeClient : MonoBehaviour
     string lastId;
     RoomProbeRecord record;
     RoomFilm film;
+    TriggerShowCount shows;
     float reachSeconds;
 
     void OnEnable() => Application.logMessageReceived += OnLog;
@@ -230,6 +251,11 @@ public class RoomProbeClient : MonoBehaviour
             case "grab":
                 yield return Grab(grid, ask.mod);
                 break;
+            case "walk":
+                // triggerview's: a walk of whole cells, "dx,dy,steps".
+                var walk = ask.mod.Split(',').Select(int.Parse).ToArray();
+                yield return TriggerViewProbe.Walk(grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject, walk[0], walk[1], walk[2]);
+                break;
             case "deer":
                 FaunaResizeProbe.PlaceDeer(FindAnyObjectByType<ValleyFauna>(), grid, NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().transform.position);
                 break;
@@ -276,6 +302,9 @@ public class RoomProbeClient : MonoBehaviour
         var grid = FindAnyObjectByType<ChemGrid>();
         var net = grid.GetComponent<NetChem>();
         record = new RoomProbeRecord(grid, net);
+        if (shows != null) Destroy(shows.gameObject);
+        shows = TriggerShowCount.Start();
+        record.Shows = shows;
         for (float t = 0f; t < 30f && !(net.Online && net.CaughtUp && grid.World.Tick > 0); t += Time.unscaledDeltaTime) yield return null;
     }
 }

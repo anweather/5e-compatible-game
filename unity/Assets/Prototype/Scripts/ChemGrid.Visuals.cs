@@ -198,6 +198,7 @@ public partial class ChemGrid
         WatchAcidCells();
         ForgetLookFire();
         RenderWhirls();
+        RenderTriggered();
         RenderStars();
         RenderFlashes();
         RenderMovers();

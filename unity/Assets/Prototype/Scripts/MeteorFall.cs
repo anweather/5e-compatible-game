@@ -30,6 +30,9 @@ public class MeteorFall : MonoBehaviour
     Light glow;
     Transform rock;
 
+    /// <summary>How big it is: 1 a meteor's, under 1 a falling star's. It's disabled once it lands (for the probe).</summary>
+    public float Size => size;
+
     /// <summary>
     /// Brings a meteor down on <paramref name="target"/>, coming in from beyond it as seen from
     /// <paramref name="viewer"/> (the caster), so it streaks across their view.

@@ -107,6 +107,11 @@ public static class ProbeScenarios
             "set_species deer scale 3 through the rules MCP in an Open room (#80), this Editor hosting and the virtual player joined: each side puts the same three deer by its wizard. " +
             "Checks: the same three scales on both peers before, three times them on both once the mod is on, and back once it's reverted; every deer out on each side at its row's size each time; " +
             "pace one for one at 0.35 and 1.25 and 1.5 at 3; checksums equal, no client errors. Metrics: pace_at_3 (how much a 3× animal's speed and flee distance grow). With --shots, a film of the three deer from the host's side.", players: 2),
+        new Entry("triggerview", typeof(TriggerViewProbe), 300f,
+            "Two step triggers through the rules MCP in an Open room (bolt-steps: a Fire Bolt 2 behind, every 6; meteor-steps: a Meteor 2 ahead after 6 ticks, every 12; each player's), " +
+            "this Editor hosting and the virtual player joined; each wizard walks 12 cells. Checks: every triggered cast plays one show on each peer (one projectile a bolt, one meteor a meteor, no small star), " +
+            "the meteor falls for its delay, the log names Player 1 and Player 2, a late joiner plays no old shows, nothing fires or shows once reverted, checksums equal. " +
+            "With --shots, a film from behind the host's wizard.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("modthing", typeof(ModThingProbe), 90f,
