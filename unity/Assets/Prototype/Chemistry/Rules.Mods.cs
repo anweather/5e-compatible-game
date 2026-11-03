@@ -93,6 +93,7 @@ namespace Chem
             if (p["combos"] is JObject combos) MergeDeep((JObject)r["combos"], combos);
             ApplyBuildings(r, p);
             ApplyThings(r, p);
+            ApplyLays(r, p);
         }
 
         /// <summary>

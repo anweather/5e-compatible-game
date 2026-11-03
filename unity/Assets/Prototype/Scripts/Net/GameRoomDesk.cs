@@ -17,7 +17,8 @@ public class GameRoomDesk : ILiveDesk, IWorldDesk
 
     public GameRoomDesk(RulesMcpServer server) => this.server = server;
 
-    // Runs on the main thread and waits for its answer; a game that has stopped says so.
+    // Runs on the main thread and waits for its answer; a game that has stopped says so. Whatever the act
+    // throws comes back here as a refusal (logged once there), never into RulesMcpServer.Update.
     string OnMainThread(Func<Action<string>, string> act)
     {
         var answer = new TaskCompletionSource<string>();
@@ -25,10 +26,19 @@ public class GameRoomDesk : ILiveDesk, IWorldDesk
         server.Post(() =>
         {
             McpLog.WaitedMs = clock.ElapsedMilliseconds;
-            string now = act(text => answer.TrySetResult(text));
-            if (now != null) answer.TrySetResult(now);
+            try
+            {
+                string now = act(text => answer.TrySetResult(text));
+                if (now != null) answer.TrySetResult(now);
+            }
+            catch (Exception e)
+            {
+                Debug.LogWarning("Rules MCP: " + e);
+                answer.TrySetException(new RulesToolException($"The game couldn't do that: {e.Message}"));
+            }
         });
-        return answer.Task.Wait(VerdictMs) ? answer.Task.Result : "The game didn't answer in time; ask for the room to see whether it went in.";
+        if (Task.WaitAny(new Task[] { answer.Task }, VerdictMs) < 0) return "The game didn't answer in time; ask for the room to see whether it went in.";
+        return answer.Task.GetAwaiter().GetResult();
     }
 
     static RuleSwitcher Switcher => UnityEngine.Object.FindAnyObjectByType<RuleSwitcher>();

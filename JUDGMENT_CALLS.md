@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-067: Six design calls from the play test of 2026-11-02
+
+- **Asked:** 2026-11-03, by the PM, from `docs/design/events-and-placing.md` and `bodies-and-surfaces.md`.
+- **Answer:** Andrew: yes to all six recommendations. A summoned creature is alive and wanders (a still thing is possible later). A mod decides whose steps fire a trigger, the asker's by default. Triggers wait at least 3 ticks between firings, at most 4 a tick in a room. A centaur keeps each half's colours. Each dock row says what happens when the water drops, on posts by default. A raft is a floating thing you stand on, built after the dock.
+- **Why:** the smallest general choices that make his asks work, each leaving the other option open.
+- **Also comes up when:** any new trigger, summon or water-surface primitive.
+- **Revisited:** 0.
+
 ### J-066: Which model does the in-game chat use?
 
 - **Asked:** 2026-11-02, by the PM, after #59 change 3 (`docs/telemetry/chat-context-2026-11-02.md`).

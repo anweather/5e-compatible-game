@@ -290,9 +290,10 @@ namespace Chem.Mcp
         string SiteNote(string json, string own = null)
         {
             if (WorldBlind) return null;
-            if (!(ModPatch.Parse(json).Json["world"] is JObject)) return null;
             try
             {
+                // SiteProblemOf says a patch that doesn't compose in a sentence; only a patch that can't be read throws here.
+                if (!(ModPatch.Parse(json).Json["world"] is JObject)) return null;
                 return OnWorld(w => w.SiteProblemOf(json, "The draft", own));
             }
             catch (ModException e)
@@ -431,11 +432,8 @@ namespace Chem.Mcp
 
         static int HostLength(JObject row, Side side) => Wing.HostOf(row, side)?.length ?? 0;
 
-        // The tables as the draft has them.
-        BuildingTables BuildingTablesIn(Draft draft)
-        {
-            var rules = InForce.WithMods(new[] { ModPatch.Parse(new JObject { [BuildingTables.Key] = draft.Patch[BuildingTables.Key]?.DeepClone() ?? new JObject() }.ToString()) });
-            return rules.Buildings;
-        }
+        // The tables as the draft has them; tables that don't fit the rules are a refusal (RulesWith), not a ModException.
+        BuildingTables BuildingTablesIn(Draft draft) =>
+            RulesWith(new JObject { [BuildingTables.Key] = draft.Patch[BuildingTables.Key]?.DeepClone() ?? new JObject() }.ToString()).Buildings;
     }
 }

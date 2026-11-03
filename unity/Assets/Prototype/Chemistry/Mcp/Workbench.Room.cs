@@ -132,6 +132,7 @@ namespace Chem.Mcp
             if (table == BuildingsTable) return BuildingChange(id);
             if (BuildingTables.Tables.Contains(table)) return $"a {Single(table)} row, {id}";
             if (table == ThingsTable) return ThingChange(draft, id);
+            if (table == LayTable) return LayChange(draft, id);
             if (table == "reactions")
             {
                 var rule = (draft.Patch["reactions"]?["add"] as JArray ?? new JArray()).Concat(draft.Patch["reactions"]?["addEntity"] as JArray ?? new JArray()).FirstOrDefault(r => Str(r["id"]) == id);

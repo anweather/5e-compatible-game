@@ -68,7 +68,7 @@ namespace Chem.Mcp
 
         // ---------- read ----------
 
-        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, fauna (the kinds of animal: add_species and set_species change them), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
+        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, fauna (the kinds of animal: add_species and set_species change them), dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
         [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing. All the read tools read the rules in force, every mod on included.")]
@@ -112,6 +112,17 @@ namespace Chem.Mcp
             [Description("How far from it, in cells; 32 when left out.")] int? within = null) => Do(() => bench.FindSite(width, depth, near, side, edge, within));
 
         // ---------- draft ----------
+
+        [RulesTool("scatter"), Description("Scatters a terrain, cover or thing over open ground near a place, a building, a cell or you, in a draft: \"50 trees near the lake\" is scatter(what: tree, count: 50, near: lake, edge: shore, within: 12, spacing: 2), not a building of tree. The cells are picked now from the world's seed and written into the draft (a terrain or cover as a lay row of its world section, laid fresh at the switch and taken back by a revert; a thing as add rows), so every peer gets the same. Another seed picks other cells; the same what and seed replace the row. Laid trees and bushes (brush) are the real terrain: they block, burn and topple. At most 256 cells a mod, within 32 cells.")]
+        public string Scatter([Description("A terrain (tree, brush), a cover or a thing's kind.")] string what, [Description("How many.")] int count,
+            [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
+            [Description("How far from it, in cells; 12 when left out, 32 at most.")] int? within = null,
+            [Description("The fewest cells between two; 0 when left out.")] int? spacing = null,
+            [Description("Only a place's side: north, east, south or west.")] string side = null,
+            [Description("shore for the edge of a place: near lake, edge shore is round its water.")] string edge = null,
+            [Description("Which pick: another seed, other cells. 1 when left out.")] int? seed = null,
+            [Description("Only onto ground with one of these terrain tags, such as soil or turf; open ground when left out.")] string[] onto = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.Scatter(draft, what, count, near, within, spacing, side, edge, seed, onto));
 
         [RulesTool("add_building"), Description("Adds a building to a draft: a box of walls with a door and windows, width by depth cells from the cell at, or a whole row in full for any other shape (joins, walls with openings, roofs; docs/design/builders.md). Hollow by default, so a broken door leaves a room to walk into. Says if the site won't stand. Give a new material or style in the same draft (add_material, add_building_part). Cells follow the walls; heights, finishes, roofs and details are only drawn. A site is checked again on every peer when it switches on.")]
         public string AddBuilding([Description("Its north-west cell as JSON, [x, y]; find_site gives these. Leave out with row.")] string at = null, [Description("Width west to east in whole cells, 3 or more.")] int? width = null, [Description("Depth north to south in whole cells, 3 or more.")] int? depth = null,
@@ -198,7 +209,7 @@ namespace Chem.Mcp
         public string SetReaction([Description("The rule's id.")] string id, [Description("The field, such as if.chance or do.")] string field, [Description(ValueHelp)] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.SetReaction(draft, id, field, value).Show());
 
-        [RulesTool("add_spell"), Description("Adds a spell, and says whether a player can reach it and how. It acts through an element (or an effect such as terraform) and sits in a group of the spell radial; SRD 5.2.1 levels and damage dice. A mod's spell may have at most radius 6, length 24, size 5, power 6, push 6, raise 4 and dig 4 (past that it's refused: see outside_rules for area fill), and at most 20 dice of d4 to d12. Its look only turns its art's hue, so white, black, grey or pale doesn't show. It needs a look in extra: {\"look\": {\"family\": \"blast\", \"color\": [1, 0.4, 0.1]}}, with a family from rules/looks.json. A thrown ball or blast is a burst with a radius (1 is 9 cells), not a point, which is one cell. Tell the player how they reach it. A mod adds at most 12 new entries.")]
+        [RulesTool("add_spell"), Description("Adds a spell, and says whether a player can reach it and how. It acts through an element (or an effect such as terraform) and sits in a group of the spell radial; SRD 5.2.1 levels and damage dice. A mod's spell may have at most radius 6, length 24, size 5, power 6, push 6, raise 4 and dig 4 (past that it's refused: see outside_rules for area fill), and at most 20 dice of d4 to d12. Its look only turns its art's hue, so white, black, grey or pale doesn't show. It needs a look in extra: {\"look\": {\"family\": \"blast\", \"color\": [1, 0.4, 0.1]}}, with a family from rules/looks.json. A thrown ball or blast is a burst with a radius (1 is 9 cells), not a point, which is one cell. To bring something out where it lands, give a place in extra, one of thing, animal, terrain or cover: {\"place\": {\"animal\": \"human-child\", \"count\": 1, \"within\": 0}} (a child that walks off), {\"place\": {\"thing\": \"barrel\", \"count\": 3, \"within\": 2, \"lasts\": 600}}, {\"place\": {\"terrain\": \"tree\", \"count\": 5, \"spacing\": 2, \"onto\": [\"soil\"]}}; count and within at most 8; such a spell needs no element. Tell the player how they reach it. A mod adds at most 12 new entries.")]
         public string AddSpell([Description("A new id, such as ice-knife.")] string id, [Description("Its name.")] string name, [Description("The radial group: fire, water, storm, earth, arcane, nature or time.")] string group,
             [Description("0 (a cantrip) to 9.")] int level, [Description("point (one cell), line, square, burst (a ball, by radius), target or cone.")] string shape,
             [Description("The element it applies, such as cold.")] string element = null, [Description("Or an effect: terraform, levitate, carry, teleport, haste, weather, shapeshift, light.")] string effect = null,
@@ -255,12 +266,12 @@ namespace Chem.Mcp
                 return said + d.Brief();
             });
 
-        [RulesTool("tune"), Description("Sets a sim parameter by dotted path (fire.spreadChance, push.slideCells...) within the bounds rules/budgets.json declares.")]
+        [RulesTool("tune"), Description("Sets a sim parameter by dotted path (fire.spreadChance, push.slideCells...) within the bounds rules/budgets.json declares. The dragon is sim too: dragon.budget is how much of the world may change before it comes by itself (never, or 0, and it never does), dragon.speed, dragon.warningTicks, dragon.scale and the rest in list dragon.")]
         public string Tune([Description("The parameter's path; list sim to see them.")] string param, [Description("The value, usually a number.")] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Tune(draft, param, value).Show());
 
         [RulesTool("remove"), Description("Takes back something the draft added or changed (a material, reaction, spell, element, its look, or a sim parameter). It can't remove base rules.")]
-        public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, entities, items, reactions, spells, elements, sim, buildings, things (the id is the cell, x,y), openings, floors, roofs, details or styles.")] string table,
+        public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, entities, items, reactions, spells, elements, sim, buildings, things (the id is the cell, x,y), lay (the id is what#seed, as scatter says), openings, floors, roofs, details or styles.")] string table,
             [Description("The id, or the sim parameter's path.")] string id) => Do(() => bench.Remove(draft, table, id).Show());
 
         // ---------- check, run, save ----------

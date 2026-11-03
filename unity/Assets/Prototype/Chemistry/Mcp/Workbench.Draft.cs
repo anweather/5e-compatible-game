@@ -228,7 +228,7 @@ namespace Chem.Mcp
             var current = Raw["sim"].SelectToken(param);
             if (current == null && bound == null) throw new RulesToolException($"sim has no parameter {param}; list sim to see them.");
             if (current is JObject group) throw new RulesToolException($"sim {param} is a group of parameters; tune one of them, such as {param}.{group.Properties().First().Name}.");
-            var v = Value(Required(value, "value"));
+            var v = Value(Required(DragonValue(param, value), "value"));
             bool numeric = v.Type == JTokenType.Integer || v.Type == JTokenType.Float;
             if (bound.HasValue && !(numeric && (double)v >= bound.Value.Item1 && (double)v <= bound.Value.Item2))
                 throw new RulesToolException($"sim {param} may be set from {Num(bound.Value.Item1)} to {Num(bound.Value.Item2)}, not {Compact(v)}.");
@@ -265,6 +265,9 @@ namespace Chem.Mcp
                     break;
                 case ThingsTable:
                     ((JArray)draft.Patch["world"]["add"]).Where(t => CellKey(t["cell"]) == id).ToList().ForEach(t => t.Remove());
+                    break;
+                case LayTable:
+                    RemoveLay(draft, id);
                     break;
                 case "openings":
                 case "floors":

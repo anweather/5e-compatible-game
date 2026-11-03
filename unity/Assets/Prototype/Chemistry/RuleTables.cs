@@ -304,6 +304,23 @@ namespace Chem
         public int LightBright, LightDim;
         /// <summary>The ground the spell blows out where it lands (Fireball), or null.</summary>
         public CraterDef Crater;
+        /// <summary>What the spell places where it lands (spells.json place: a thing, an animal, a terrain or a cover; World.Place.cs), or null.</summary>
+        public PlaceDef Place;
+    }
+
+    /// <summary>
+    /// A spell's place (docs/design/events-and-placing.md 2a): exactly one of Thing (an entities or items row),
+    /// Animal (a fauna.json species, view only), Terrain or Cover, on Count cells picked by Placement.Pick, among
+    /// the spell's cells, or within Within of the aim when it's given (0 is the aim cell), Spacing cells apart,
+    /// onto ground with one of the Onto tags (any open ground when empty). A thing lapses after Lasts ticks (0 stays).
+    /// </summary>
+    public sealed class PlaceDef
+    {
+        public string Thing, Animal, Terrain, Cover;
+        public int Count = 1, Spacing, Lasts;
+        /// <summary>Cells round the aim to pick from, or -1 for the spell's own cells.</summary>
+        public int Within = -1;
+        public IReadOnlyList<string> Onto = Array.Empty<string>();
     }
 
     /// <summary>
@@ -758,6 +775,7 @@ namespace Chem
             ParseMachines(r, doc["machines"] as JObject ?? new JObject());
             r.ParseBuildings(doc);
             r.ParseThings(doc);
+            r.ParseLays(doc);
 
             foreach (var t in doc["cellRules"].OfType<JObject>())
             {
@@ -979,7 +997,23 @@ namespace Chem
             LightBright = Int((o["light"] as JObject)?["bright"]) ?? 0,
             LightDim = Int((o["light"] as JObject)?["dim"]) ?? 0,
             Crater = ParseCrater(o["crater"]),
+            Place = ParsePlace(o["place"]),
         };
+
+        static PlaceDef ParsePlace(JToken t) => t is JObject p
+            ? new PlaceDef
+            {
+                Thing = Str(p["thing"]),
+                Animal = Str(p["animal"]),
+                Terrain = Str(p["terrain"]),
+                Cover = Str(p["cover"]),
+                Count = Int(p["count"]) ?? 1,
+                Within = Int(p["within"]) ?? -1,
+                Spacing = Int(p["spacing"]) ?? 0,
+                Lasts = Int(p["lasts"]) ?? 0,
+                Onto = (p["onto"] as JArray)?.Select(x => (string)x).ToList() ?? (IReadOnlyList<string>)Array.Empty<string>(),
+            }
+            : null;
 
         static LookDef ParseLook(JToken t)
         {
