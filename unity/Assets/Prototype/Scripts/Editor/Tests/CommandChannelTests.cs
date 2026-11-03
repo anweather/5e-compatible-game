@@ -103,7 +103,7 @@ public class CommandChannelTests
     [Test]
     public void TheCompactionHookDecidesWhatTheHistoryKeeps()
     {
-        // As strikes will: a player's newer stand replaces the older one, a strike is always kept.
+        // Simpler than strikes' rule: a player's newer stand replaces the older one, a strike is always kept.
         var host = Channel(new Dictionary<int, TickBatch>(), (history, n) =>
         {
             if (n.What == "stand") history.RemoveAll(h => h.What == "stand" && h.Player == n.Player);
@@ -117,6 +117,39 @@ public class CommandChannelTests
         var stamped = host.Stamp(2);
         Assert.That(stamped.Length, Is.EqualTo(2), "the wire still carries every command");
         Assert.That(host.HistoryForJoiner().Select(n => $"{n.Player}:{n.What}@{n.Tick}"), Is.EqualTo(new[] { "p1:stand@1", "p0:stand@2", "p0:strike@2" }));
+    }
+
+    [Test]
+    public void TheHookCanKeepEveryStandWhileAStepTriggerIsOn()
+    {
+        // NetChem.StampStrikes' rule as a hook: a stand replaces the player's stands since the last
+        // strike, unless a step trigger is in force, when every stand is a step and is kept.
+        bool steps = false;
+        int lastStrikeTick = 0;
+        var host = Channel(new Dictionary<int, TickBatch>(), (history, n) =>
+        {
+            if (n.What == "stand" && !steps) history.RemoveAll(h => h.What == "stand" && h.Player == n.Player && h.Tick > lastStrikeTick);
+            else lastStrikeTick = n.Tick;
+            history.Add(n);
+        });
+        host.Request(N("p0", "stand"));
+        host.Stamp(1);
+        host.Request(N("p0", "stand"));
+        host.Stamp(2);
+        Assert.That(host.HistoryForJoiner().Select(n => n.Tick), Is.EqualTo(new[] { 2 }), "no trigger: the newer stand replaces the older");
+
+        steps = true;
+        host.Request(N("p0", "stand"));
+        host.Stamp(3);
+        host.Request(N("p0", "stand"));
+        host.Stamp(4);
+        Assert.That(host.HistoryForJoiner().Select(n => $"{n.What}@{n.Tick}"), Is.EqualTo(new[] { "stand@2", "stand@3", "stand@4" }),
+            "a step trigger on: every stand kept for the joiner's replay");
+
+        steps = false;
+        host.Request(N("p0", "stand"));
+        host.Stamp(5);
+        Assert.That(host.HistoryForJoiner().Select(n => n.Tick), Is.EqualTo(new[] { 2, 3, 4, 5 }), "the stands kept as steps stay");
     }
 
     [Test]
