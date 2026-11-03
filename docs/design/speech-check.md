@@ -52,9 +52,15 @@ tools/voice-samples/make.sh
 # From a file: no key, no microphone
 SpellChemistryValley -speech-check -speech stub-transcriber -speech-wav tools/voice-samples/out/make-the-deer-three-times-bigger.wav -speech-stub-seconds 1.5
 
-# From the default microphone: press Space (or the pad's bottom button), talk for 4 s
+# From the default microphone (Windows, or the Editor): press Space (or the pad's bottom button), talk for 4 s
 SpellChemistryValley -speech-check 4 -speech stub-transcriber
 ```
+
+A Mac player has no microphone yet: a Mac build that names Unity's
+`Microphone` fails while Player Settings' Microphone Usage Description is
+empty, so `MicrophoneAudio` leaves it out of Mac players and says so. Filling
+that description in (and macOS then asking the player) is a decision for
+later. WAV files work on the Mac player.
 
 On Windows it's `SpellChemistryValley.exe` with the same flags, and a WAV
 from `tools/voice-samples/make.ps1`. The check waits a second to measure
@@ -64,6 +70,12 @@ quits. Read the result from the player log:
 ```
 SPEECH CHECK the stub transcriber (no model) from make-the-deer-three-times-bigger.wav: done, "make the deer three times bigger" (32), 2.0 s of sound; open 0 ms, record 0 ms, transcribe 1507 ms, total 1509 ms; frames idle mean 14.1 ms, worst 23.2 ms over 72, transcribing mean 13.1 ms, worst 20.8 ms over 115
 ```
+
+A development Mac player, 2026-11-03, from `make-the-deer-three-times-bigger.wav`
+with the stub working 1.5 s: transcribe 1504 ms, total 1509 ms; frames while
+transcribing mean 4.5 ms, worst 13.3 ms over 336. The idle second right after
+the scene loads had a 455 ms frame, which is loading, not the check. A
+release player with the same flags logs `SPEECH CHECK no transcriber here`.
 
 `open` is how long the microphone took to start, `record` the hold,
 `transcribe` the model's time, `total` from press to words. A worst frame

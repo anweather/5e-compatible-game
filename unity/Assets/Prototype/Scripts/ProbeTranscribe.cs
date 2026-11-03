@@ -143,7 +143,7 @@ public class TranscribeProbe : ProbeScenario
     // The default microphone opens and closes; whatever the room gave, the hold ends within the timeout.
     IEnumerator Microphone()
     {
-        Metric("microphones", UnityEngine.Microphone.devices.Length);
+        Metric("microphones", MicrophoneAudio.Devices.Length);
         using var speech = new TranscribedSpeech(new MicrophoneAudio(), new StubTranscriber(TimeSpan.FromSeconds(0.1)), TimeSpan.FromSeconds(ShortTimeout));
         var result = new SpeechCheck.Result();
         bool opened = false;
@@ -151,13 +151,13 @@ public class TranscribeProbe : ProbeScenario
         {
             for (float t = 0f; t < MicSeconds + 2f; t += Time.unscaledDeltaTime)
             {
-                opened |= UnityEngine.Microphone.IsRecording(null);
+                opened |= MicrophoneAudio.IsRecording;
                 yield return null;
             }
         }
         StartCoroutine(Watch());
         yield return SpeechCheck.Run(speech, MicSeconds, false, result);
-        if (UnityEngine.Microphone.devices.Length == 0 || speech.State == SpeechState.Unavailable)
+        if (MicrophoneAudio.Devices.Length == 0 || speech.State == SpeechState.Unavailable)
         {
             Check("a_microphone_that_wont_open_says_why_and_ends", result.Done && speech.Why != null && speech.Why.Contains("icrophone"), result.ToString());
             Check("opening_the_microphone_blocks_nothing", result.OpenMs < 500, $"{result.OpenMs:0} ms");
@@ -165,7 +165,7 @@ public class TranscribeProbe : ProbeScenario
             yield break;
         }
         Check("the_microphone_opened", opened || result.Heard > 0f, result.ToString());
-        Check("the_microphone_closed", !UnityEngine.Microphone.IsRecording(null));
+        Check("the_microphone_closed", !MicrophoneAudio.IsRecording);
         Check("the_microphone_hold_ends_within_the_timeout", result.Done && speech.Why == null, result.ToString());
         Check("opening_the_microphone_blocks_nothing", result.OpenMs < 500, $"{result.OpenMs:0} ms");
         Metric("microphone_open_ms", result.OpenMs);
