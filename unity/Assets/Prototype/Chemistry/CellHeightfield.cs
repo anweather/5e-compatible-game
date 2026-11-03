@@ -101,7 +101,7 @@ namespace Chem
         public float CellOffset(World world, Cell c)
         {
             if (c == null) return 0f;
-            float bank = c.Cover == World.BankCover ? BankDepth : 0f;
+            float bank = CellPaint.IsBank(c.Cover, world.Rules) ? BankDepth : 0f;
             return (world.TerrainOf(c).Elevation + c.Height) * StepHeight + bank;
         }
 
@@ -180,7 +180,7 @@ namespace Chem
                 for (int u = (int)Math.Floor(fu - MoundReach); u <= (int)Math.Ceiling(fu + MoundReach); u++)
                 {
                     var c = CellAt(world, u, v);
-                    if (c == null || c.Cover != World.BankCover) continue;
+                    if (c == null || !CellPaint.IsBank(c.Cover, world.Rules)) continue;
                     float du = fu - u, dv = fv - v;
                     float d = (float)Math.Sqrt(du * du + dv * dv);
                     if (d >= MoundReach) continue;

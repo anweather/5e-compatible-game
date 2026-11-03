@@ -4,7 +4,9 @@ using UnityEngine;
 
 // Oil and grease on the cells as one glossy film lying on the ground: a mesh
 // over the covered cells with a rounded, wobbly outline (ContourSurface) that
-// fades out at its edge, oil near black, grease a dull yellow. Mud and glass
+// fades out at its edge, oil near black, grease a dull yellow. Which covers wear
+// it comes from the rules (IsFilm): any slippery one, and any a mod adds (black
+// ice, a mod's own ash over its charred paint) in its look's colour. Mud and glass
 // ground wear the same film, thinner: mud a wet, dark brown sheen over its
 // darker paint (CellPaint), glass a pale, glassy glaze over sand, brick a
 // baked red (its courses are decals, CellCrackMesh). A cover's film wins over its ground's. Rebuilt when a cell's cover or terrain changes.
@@ -93,8 +95,29 @@ public sealed class CellSlickMesh
         gradeAt = (x, y) => TileGrade(x, y);
     }
 
-    /// <summary>True for a cover drawn as a film (oil, grease).</summary>
-    public static bool IsSlick(string cover) => cover == CoverIds.Oil || cover == CoverIds.Grease;
+    // Which covers wear a film, from the rules in force (asked once a cover, again after a switch): a slippery one
+    // (oil, grease, frost; a mod's black ice), and one the base rules don't have, a mod's own, in its look's colour,
+    // so a cover the view has never seen is drawn, not skipped. Snow stays the land's paint.
+    readonly Dictionary<string, bool> filmCovers = new();
+    // A mod's own cover's film, where its look gives no colour.
+    static readonly Color OwnFilmColor = new(0.5f, 0.5f, 0.5f, 0.85f);
+
+    /// <summary>Whether a cover is drawn as a film, in the rules in force.</summary>
+    public bool IsFilm(string cover)
+    {
+        if (cover == null) return false;
+        if (filmCovers.TryGetValue(cover, out bool film)) return film;
+        var rules = grid.World.Rules;
+        film = rules.Covers.TryGetValue(cover, out var def) &&
+               (def.Has("slippery") || def.Look?.Family == "slick" || (!BaseRules.Covers.ContainsKey(cover) && cover != rules.Sim.Weather.SnowCover && cover != rules.Sim.Weather.BankCover));
+        filmCovers[cover] = film;
+        return film;
+    }
+
+    /// <summary>Whether a cover's film floats a sheen on water (CellFxTexture.Oil): a slippery cover that burns (oil, grease), not a glaze (frost).</summary>
+    public bool IsSheen(string cover) => IsFilm(cover) && grid.World.Rules.Covers.TryGetValue(cover, out var def) && def.Has("slippery") && def.Burns;
+
+    Rules BaseRules => grid.CurrentRules?.Base ?? grid.World.Rules;
 
     /// <summary>A cell was redrawn: rock that <paramref name="cooled"/> from lava wears a crust; anything else loses it.</summary>
     public void Crust(int x, int y, Cell c, bool cooled)
@@ -107,11 +130,11 @@ public sealed class CellSlickMesh
     /// <summary>True for a terrain drawn with a film (mud, glass, brick).</summary>
     public static bool IsGlazed(string terrain) => terrain == TerrainIds.Mud || terrain == TerrainIds.Glass || terrain == TerrainIds.Brick;
 
-    /// <summary>The film a cell wears: its cover's (oil, grease), else its ground's (mud, glass), else null.</summary>
-    public static string FilmOf(Cell c)
+    /// <summary>The film a cell wears: its cover's (oil, grease, frost, a mod's own: IsFilm), else its ground's (mud, glass), else null.</summary>
+    public string FilmOf(Cell c)
     {
         if (c.Star > 0) return StarFilm;
-        if (IsSlick(c.Cover) || c.Cover == CoverIds.Frost) return c.Cover;
+        if (IsFilm(c.Cover)) return c.Cover;
         return IsGlazed(c.T) ? c.T : null;
     }
 
@@ -188,14 +211,25 @@ public sealed class CellSlickMesh
     /// <summary>The film colour a cell is drawn in, for a probe.</summary>
     public Color? FilmColorAt(int x, int y) => ColorAt(x, y);
 
+    /// <summary>How many cells wear this film (a cover's id, or a ground's), for a probe.</summary>
+    public int FilmCells(string film)
+    {
+        int n = 0;
+        foreach (var f in slicks.Values)
+            if (f == film) n++;
+        return n;
+    }
+
     /// <summary>The rules switched: the covers' films take the colours in force.</summary>
     public void Recolour()
     {
         oil = grid.CoverColor(CoverIds.Oil, OilColor);
         grease = grid.CoverColor(CoverIds.Grease, GreaseColor);
         frost = grid.CoverColor(CoverIds.Frost, FrostColor);
+        filmCovers.Clear();
+        var covers = grid.World.Rules.Covers;
         foreach (var (key, film) in slicks)
-            if (film == CoverIds.Oil || film == CoverIds.Grease || film == CoverIds.Frost) MarkAround(key % grid.World.W, key / grid.World.W);
+            if (covers.ContainsKey(film) || film == CoverIds.Oil || film == CoverIds.Grease || film == CoverIds.Frost) MarkAround(key % grid.World.W, key / grid.World.W);
     }
 
     public void Rebuild(bool busy = false)
@@ -356,7 +390,9 @@ public sealed class CellSlickMesh
             CoverIds.Frost => grid.LooksScoped ? grid.CoverColorAt(film, grid.World.Idx(x, y), FrostColor) : frost,
             ScopeFilm => scoped.TryGetValue(grid.World.Idx(x, y), out var over) ? over : Color.clear,
             CrustFilm => CrustColor,
-            _ => grid.LooksScoped ? grid.CoverColorAt(CoverIds.Oil, grid.World.Idx(x, y), OilColor) : oil,
+            CoverIds.Oil => grid.LooksScoped ? grid.CoverColorAt(CoverIds.Oil, grid.World.Idx(x, y), OilColor) : oil,
+            // A mod's own cover: its look's colour (CoverColorAt reads the rules in force, scoped or not).
+            _ => grid.CoverColorAt(film, grid.World.Idx(x, y), OwnFilmColor),
         };
     }
 

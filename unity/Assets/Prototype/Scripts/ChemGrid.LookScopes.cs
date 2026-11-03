@@ -20,6 +20,8 @@ public partial class ChemGrid
 
     LookScopes scopes;
     bool anyScoped, groundScoped;
+    // The cover the rules' snow lays (sim.json weather.snow.cover), whose scoped look the land shows as a film.
+    string snowCover;
     /// <summary>Whether casts need noting by player (a "by" look on anything a cast makes).</summary>
     bool noteCasters;
     CellLook fireLooks, emberLooks, lavaLooks, waterLooks, ashLooks, snowLooks;
@@ -70,7 +72,8 @@ public partial class ChemGrid
         waterLooks = scopes.Of("elements", ElementIds.Water);
         emberLooks = scopes.Of("covers", CoverIds.Embers);
         ashLooks = scopes.Of("covers", CoverIds.Ash);
-        snowLooks = scopes.Of("covers", CoverIds.Snow);
+        snowCover = rules.Sim.Weather.SnowCover;
+        snowLooks = scopes.Of("covers", snowCover ?? CoverIds.Snow);
         noteCasters = fireLooks.ByPlayers || emberLooks.ByPlayers;
         foreach (var id in rules.Gases.Keys) noteCasters |= NoteLook(gasLooks, "gases", id);
         foreach (var id in rules.Covers.Keys) noteCasters |= NoteLook(coverLooks, "covers", id);
@@ -263,7 +266,7 @@ public partial class ChemGrid
     {
         if (c.Water > 0 && !c.Frozen) return waterLooks;
         if (c.Cover == CoverIds.Ash) return ashLooks;
-        if (c.Cover == CoverIds.Snow) return snowLooks;
+        if (c.Cover != null && c.Cover == snowCover) return snowLooks;
         return groundLooks.TryGetValue(c.T, out var look) ? look : null;
     }
 }

@@ -70,7 +70,11 @@ public partial class ChemGrid
     // Every world is a room, solo too (docs/RULES_MCP.md): a rebuilt one keeps the room it replaces.
     void OpenRoom(RoomState was)
     {
-        World.RoomDecided += (command, verdict) => RoomDecided?.Invoke(command, verdict);
+        World.RoomDecided += (command, verdict) =>
+        {
+            if (command.Change == RoomChange.Revert && verdict.Done) Reverted();
+            RoomDecided?.Invoke(command, verdict);
+        };
         if (roomAwaited) return;
         var mode = plannedMode ?? was?.Mode ?? ChangeMode.Open;
         plannedMode = null;
@@ -108,9 +112,32 @@ public partial class ChemGrid
         return parts.Count == 0 ? null : ModPatch.Parse($"{{ \"title\": \"Scene tuning\", \"patch\": {{ \"sim\": {{ {string.Join(", ", parts)} }} }} }}");
     }
 
+    // A mod went off (a revert, or a lapse: World.Lapse.cs) and its temporary materials were swept from every cell,
+    // inactive chunks too. The rules are read again before the next tick (FollowLapse), and every chunk is redrawn.
+    bool reverted;
+
+    void Reverted()
+    {
+        reverted = true;
+        RedrawEveryChunk();
+    }
+
+    // A lapse takes a mod off at the end of a tick with no room command, so nothing put the room's rules in force on
+    // this side (a tick batch hands back the rules it was given): read them again, as on a revert, between ticks.
+    void FollowLapse()
+    {
+        if (!reverted) return;
+        reverted = false;
+        if (World.Room == null || World.RoomRules == null || ReferenceEquals(CurrentRules, World.RoomRules)) return;
+        var before = CurrentRules;
+        CurrentRules = World.RoomRules;
+        if (before != null) Announce(before);
+    }
+
     // Solo: the queued switch takes effect at this tick boundary.
     void ApplyQueuedRules()
     {
+        FollowLapse();
         var before = CurrentRules;
         composing.Restart();
         foreach (var command in queuedRoom) World.ApplyRoom(command);
@@ -140,6 +167,7 @@ public partial class ChemGrid
     /// </summary>
     public void PrepareBatch(TickBatch batch)
     {
+        FollowLapse();
         var before = CurrentRules;
         composing.Restart();
         CurrentRules = batch.Prepare(World, CurrentRules, out var errors);
