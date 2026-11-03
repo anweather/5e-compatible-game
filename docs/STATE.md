@@ -68,7 +68,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## Next, in order
 
 1. A new test player from dev for Andrew: #57 in a real window, voice words, the first real prompt, the creatures.
-2. Code base cleanup (Andrew, 2026-11-02), once the Mac's and DesktopUnity's work has landed and before new features: review the structure for deep modules that really hide complexity. A read-only review first, a ranked list for Andrew, then branches. The 33 S3776 warnings are one input.
+2. Code base cleanup (Andrew, 2026-11-02), before new features: the ranked list is `docs/design/cleanup-review-2026-11-02.md`, on the board. Branches next, from the top, after his verdict.
 3. Temporary materials and products as data (`docs/design/primitives.md`), on u2.
 4. Gaits by rule (`docs/design/builders.md`).
 5. Design things on water (#60); size patches for Claude (#61).
