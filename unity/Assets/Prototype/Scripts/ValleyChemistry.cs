@@ -105,6 +105,8 @@ public partial class ValleyChemistry : MonoBehaviour
     readonly Dictionary<int, List<GeneratedProp>> palmsByCell = new();
     // Cells whose tree grew from a sapling in this world (Grown).
     readonly HashSet<int> grown = new();
+    // The tree cells of the world as it started, by index: the land's, drawn by the terrain (or, for a few, not at all).
+    bool[] startTrees = System.Array.Empty<bool>();
     // Every window pane by its cell (a world index).
     readonly Dictionary<int, WindowPanes> panesByCell = new();
     int[] cabinCells, cabinBurnt, cabinWrecked;
@@ -157,9 +159,11 @@ public partial class ValleyChemistry : MonoBehaviour
         cabinWrecked = new int[n];
         cabinCharred = new bool[n];
         BindRoofs(n);
+        if (startTrees.Length != world.W * world.H) startTrees = new bool[world.W * world.H];
         for (int y = 0; y < world.H; y++)
             for (int x = 0; x < world.W; x++)
             {
+                startTrees[world.Idx(x, y)] = world.At(x, y).T == TerrainIds.Tree;
                 int k = BuildingWallAt(world.At(x, y).T, x, y);
                 if (k < 0) continue;
                 cabinCells[k]++;
@@ -473,9 +477,21 @@ public partial class ValleyChemistry : MonoBehaviour
     /// <summary>
     /// Whether a cell's tree grew there from a sapling while this world ran (Plant Growth): the
     /// valley's terrain has no tree standing for it, so CellDressing draws one. A late joiner
-    /// sees such trees as blockers only (the cells don't say how a tree came to be).
+    /// sees one where the world started with a tree as a blocker only (the cells don't say how a
+    /// tree came to be); elsewhere NeedsTreeDrawn draws it.
     /// </summary>
     public bool Grown(int x, int y) => grown.Contains(grid.World.Idx(x, y));
+
+    /// <summary>
+    /// Whether a tree cell needs a tree drawn on it (CellDressing): one grew there from a sapling (Grown), or the cell
+    /// wasn't a tree when the world started and the land draws none there now, as for a tree a spell or a mod laid
+    /// (docs/design/events-and-placing.md 2b). A late joiner, starting from the same world, draws the same.
+    /// </summary>
+    public bool NeedsTreeDrawn(int x, int y)
+    {
+        int key = grid.World.Idx(x, y);
+        return grown.Contains(key) || (key < startTrees.Length && !startTrees[key] && !TreeStands(x, y));
+    }
 
     /// <summary>
     /// A tree model to draw growing in a cell (CellDressing): the valley's own tree that stood
