@@ -97,7 +97,8 @@ namespace Chem.Mcp
         // The mod's checks, then whether its buildings and things can stand on the world as it is now.
         IReadOnlyList<ModProblem> WithSite(string json, string own = null)
         {
-            var problems = ModValidator.Validate(InForce, Budgets, json);
+            var others = Temporary.Where(t => t.Value != own).ToDictionary(t => t.Key, t => t.Value);
+            var problems = ModValidator.Validate(InForce, Budgets, json, others);
             string site = problems.Count == 0 ? SiteNote(json, own) : null;
             return site == null ? problems : problems.Append(new ModProblem(ModCheck.Site, site.TrimEnd('.') + ".")).ToList();
         }
