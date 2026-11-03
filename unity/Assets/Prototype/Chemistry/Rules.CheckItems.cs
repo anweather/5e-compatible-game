@@ -19,17 +19,16 @@ namespace Chem
 
             void Item(string what, JToken i, bool takenByEntity)
             {
+                var schema = RuleSchema.Items;
                 if (!Truthy(i["name"])) Errors.Add($"{what}: needs a name");
                 if (takenByEntity) Errors.Add($"{what}: id is taken by an entity");
                 MaterialRef(what, i["material"]);
-                Range(i["mass"], $"{what}: mass", 0, above: true);
-                Range(i["zoom"], $"{what}: zoom", 1);
-                Range(i["reach"], $"{what}: reach", 0);
+                Values(what, "", i, schema);
                 ComponentList(what, i["components"]);
                 bool lit = Section(i, "light", what, out var light);
                 bool breakable = Section(i, "breaks", what, out var breaks);
-                if (lit) Light(what, light);
-                if (breakable) Breaks(what, breaks);
+                if (lit) Values(what, "light.", light, schema.SectionOf("light"));
+                if (breakable) Breaks(what, breaks, schema.SectionOf("breaks"));
                 Use(what, i, lit);
             }
 
@@ -66,24 +65,26 @@ namespace Chem
                 if (!(IsWholeNumber(i["strength"]) && (double)i["strength"] >= 1)) Errors.Add($"{what}: use dig needs a whole strength from 1");
             }
 
-            void Light(string what, JObject l)
+            void Breaks(string what, JObject b, RuleSchema schema)
             {
-                Range(l["bright"], $"{what}: light.bright", 0);
-                Range(l["dim"], $"{what}: light.dim", 0);
-                Range(l["cone"], $"{what}: light.cone", 0, max: 179);
-                var color = l["color"];
-                if (color != null && !IsHexColor(color)) Errors.Add($"{what}: light.color must be #rrggbb");
-            }
-
-            void Breaks(string what, JObject b)
-            {
-                var speed = b["speed"];
-                if (speed == null || speed.Type == JTokenType.Null) Errors.Add($"{what}: breaks.speed must be a number above 0");
-                else Range(speed, $"{what}: breaks.speed", 0, above: true);
+                Values(what, "breaks.", b, schema);
                 if (!Section(b, "spill", $"{what}: breaks", out var spill)) return;
                 if (!IsIn(covers, spill["cover"])) Errors.Add($"{what}: breaks.spill.cover {Show(spill["cover"])} unknown");
-                Range(spill["radius"], $"{what}: breaks.spill.radius", 0);
-                Range(spill["fire"], $"{what}: breaks.spill.fire", 0);
+                Values(what, "breaks.spill.", spill, schema.SectionOf("spill"));
+            }
+
+            /// <summary>A section's numbers and colours, each held to its field in the schema, in the schema's order.</summary>
+            void Values(string what, string path, JToken section, RuleSchema schema)
+            {
+                foreach (var f in schema.Fields)
+                {
+                    var v = section[f.Name];
+                    if (f.Type == RuleFieldType.Colour && v != null && !IsHexColor(v)) Errors.Add($"{what}: {path}{f.Name} must be #rrggbb");
+                    if (!f.Ranged) continue;
+                    bool missing = v == null || v.Type == JTokenType.Null;
+                    if (missing && f.Required) Errors.Add($"{what}: {path}{f.Name} must be a number {RangeWords(f.Min, f.Above, f.Max)}");
+                    else Range(v, $"{what}: {path}{f.Name}", f.Min, f.Above, f.Max);
+                }
             }
 
             /// <summary>An optional sub-object: true if it is there; anything else there is an error.</summary>
@@ -105,10 +106,13 @@ namespace Chem
                 if (v == null || v.Type == JTokenType.Null) return;
                 double n = IsNumber(v) ? (double)v : double.NaN;
                 if (n >= min && (!above || n > min) && n <= max) return;
-                string range = $"from {min}";
-                if (above) range = $"above {min}";
-                else if (max < double.MaxValue) range = $"from {min} to {max}";
-                Errors.Add($"{what} must be a number {range}");
+                Errors.Add($"{what} must be a number {RangeWords(min, above, max)}");
+            }
+
+            static string RangeWords(double min, bool above, double max)
+            {
+                if (above) return $"above {min}";
+                return max < double.MaxValue ? $"from {min} to {max}" : $"from {min}";
             }
         }
     }

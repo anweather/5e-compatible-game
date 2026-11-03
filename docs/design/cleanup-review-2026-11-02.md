@@ -31,3 +31,34 @@ on dev. The rest is as the review reported it. `dotnet build core` gave 80 disti
 
 `Playtest/`, `Perf/`, most probe bodies, the Editor builders other than by search, the bodies of
 `World.*`, `Rules.Check*` and `Workbench.*`, `PauseMenu`, `WizardOutfit`, the `Mcp` server code.
+
+## Item 7: `RuleSchema`, first table (2026-11-03, branch `rule-schema`)
+
+`Chemistry/RuleSchema.cs` holds a table's fields (name, type, range, required, whether a mod sets
+it, verbs, sections). **Items** moved first: the smallest table read by all three (the MCP's
+`add_item` through `RuleFields.CheckThing`, `Rules.CheckItems`, and `ModValidator` through
+`Rules.WithMods`), with ranges, a required number, a colour, nested sections and a verb list, but
+no budget or determinism rule of its own. `Rules.CheckItems` takes names, ranges and colours from
+it; the rules that join two fields (use zoom needs a zoom above 1) stay in code. Every message is
+word for word, in the same order (`ABrokenItemIsRefusedWithTheSandboxWording` pins it).
+
+What each remaining table needs:
+
+- **entities**: the same as items (`RuleFields.EntityFields`, `Rules.Check` raider and explodes
+  numbers); a `Whole` range type for "a whole number from 1 to 30". The next one to move.
+- **terrain, covers**: `MaterialGroups`' verbs and grouped names as `Verb` fields with sections;
+  `Rules.Check.Numbers` ranges (flammability, fuel, heat, lasts, floatEvery...); look excluded
+  from the listed fields.
+- **gases**: `RuleFields.GasFields` (burn.flash, sheds) and `GasNumbers`; whole ranges.
+- **spells**: 45 fields in `RuleFields.SpellFields`, `SpellNumbers` and the whole-from-1 keys in
+  `Rules.Check`; a cap per field from `budgets.json` (`ModValidator.SpellCaps`, the add_spell and
+  set_spell descriptions); FiveE level and dice.
+- **reactions**: `RuleFields.RuleKeys`, `Rules.Conditions` and `Effects` as verb lists, `RuleNumbers`,
+  `ModValidator.RuleBudget`.
+- **triggers, world rows, lay rows**: `TriggerFields`, `ActionFields`, `ThingRowFields`,
+  `LayRowFields`: plain name lists, easy once entities are done.
+- **species, parts, buildings**: `Rules.CheckFauna`'s ten key lists and `Buildings.SharedKeys`;
+  numbers the view reads, so the schema needs a "view's, not integer state" flag that
+  `ModValidator.Determinism` would read instead of skipping those tables by name.
+- **The MCP's tool text**: `add_item`'s `extra` description still names its fields by hand
+  (a `[Description]` must be a constant); a test comparing it to the schema would hold it.

@@ -1,7 +1,8 @@
 // The fields the engine reads on a material, spell or reaction rule (RuleTables.cs), so a
 // set_ or add_ tool refuses an unknown one when it's set. Left alone, a misnamed field
 // is ignored and the change quietly does nothing. A new field the engine reads goes here too;
-// EveryFieldInTheRulesIsKnown holds the shipped rules to it.
+// EveryFieldInTheRulesIsKnown holds the shipped rules to it. An item's fields are RuleSchema.Items';
+// the other tables' lists here are still their own copies (cleanup item 7).
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -121,7 +122,7 @@ namespace Chem.Mcp
             foreach (var p in entry.Properties()) CheckMaterial(kind, p.Name, p.Value);
         }
 
-        static readonly string[] ItemFields = { "name", "material", "components", "use", "message", "srd", "mass", "light", "zoom", "reach", "strength", "breaks", "look" };
+        static readonly string[] ItemFields = RuleSchema.Items.ModNames.ToArray();
         static readonly string[] EntityFields = { "name", "material", "components", "hp", "mass", "str", "ac", "explodes", "raider", "look" };
 
         /// <summary>A new entity's or item's fields: throws saying which the engine wouldn't read, or returns.</summary>
