@@ -8,6 +8,7 @@
 // slows to mill about; ours, that goes for any corner, not just a leash's end
 // (Veer no longer picks a new side every frame, and Mill takes a few steps at a
 // time, not back towards the danger, until a way out opens or the danger's gone).
+// Ours too (#80): size raises speed and wariness by Pace, not one for one.
 // Kept close to Punchy, so our style analyzers are off here.
 #pragma warning disable S3776, S3973, S2234, UNT0024, S3358, S107, S1172, S1854, S3241
 using System.Collections.Generic;
@@ -93,6 +94,17 @@ namespace Punchy.Fauna
         /// <summary>Fire scares an animal from at least this far, however bold it is.</summary>
         const float FireFear = 10f;
 
+        /// <summary>
+        /// How much an animal's size (its scale) raises its speeds and the distance it takes fright at: one for one
+        /// up to 1.25 (so every smaller animal, and the valley's land animals, behave exactly as before), and above
+        /// that by the square root of the rest, at most 1.5. A deer three times the size runs 1.5 times as fast and
+        /// flees from 1.5 times as far, not three; legs still scale with the body, so a giant strides slower.
+        /// </summary>
+        public static float Pace(float scale) =>
+            scale <= OneForOne ? scale : math.min(OneForOne * math.sqrt(scale / OneForOne), 1.5f);
+
+        const float OneForOne = 1.25f;
+
         // Flee's stages: running, off to one side of what's in the way, or cornered.
         const byte Running = 0, Veering = 1, Milling = 2;
         /// <summary>A veering animal hitting something else this long after its veer's turn is cornered, seconds.</summary>
@@ -143,7 +155,7 @@ namespace Punchy.Fauna
             var alert = s.Mode == CreatureMode.Sleep ? 0.5f : 1f;
             var away = s.Position.xz - threat;
             var playerDistance = math.length(away);
-            var threatened = flee > 0f && playerDistance < flee * s.Scale * alert;
+            var threatened = flee > 0f && playerDistance < flee * Pace(s.Scale) * alert;
             var danger = threat;
             if (!threatened && b.Hunted && FindPredator(self, ref s, species, alert, out var predator))
             {
@@ -176,8 +188,8 @@ namespace Punchy.Fauna
             // Each individual walks a little faster or slower than the next. Upstream's run takes it too; here
             // that overshoots a corner (CreatureMillTests), which is tuned to the species' top speed.
             var pace = 1f + CreatureBody.Trait(s.Individual, 5) * 0.08f;
-            var walk = b.WalkSpeed * s.Scale * pace;
-            var run = b.RunSpeed * s.Scale;
+            var walk = b.WalkSpeed * Pace(s.Scale) * pace;
+            var run = b.RunSpeed * Pace(s.Scale);
 
             // Keep an eye on a nearby wizard (busy feeding or drinking, only a close one).
             var watchPlayer = flee > 0f && playerDistance < flee * 2.5f;
@@ -562,8 +574,8 @@ namespace Punchy.Fauna
             var distance = math.length(to);
             desiredLook = math.clamp(WrapAngle(math.atan2(to.x, to.y) - s.Yaw), -1.2f, 1.2f);
             moving = true;
-            var walk = b.WalkSpeed * s.Scale;
-            var run = b.RunSpeed * s.Scale;
+            var walk = b.WalkSpeed * Pace(s.Scale);
+            var run = b.RunSpeed * Pace(s.Scale);
 
             if (s.Stage == 0)
             {
@@ -628,13 +640,13 @@ namespace Punchy.Fauna
             moving = true;
             if (distance > 14f && s.Stage == 0)
             {
-                targetSpeed = b.WalkSpeed * s.Scale * 0.8f;
+                targetSpeed = b.WalkSpeed * Pace(s.Scale) * 0.8f;
                 headDown = 0.35f;
             }
             else
             {
                 s.Stage = 1;
-                targetSpeed = b.RunSpeed * s.Scale;
+                targetSpeed = b.RunSpeed * Pace(s.Scale);
             }
         }
 
@@ -785,7 +797,7 @@ namespace Punchy.Fauna
                 s.Position.y = terrain.Height(s.Position.xz);
             else
                 s.Position.y = InWater(ref s, b, deltaTime);
-            var run = math.smoothstep(b.WalkSpeed * 1.1f, math.max(b.WalkSpeed * 1.2f, b.RunSpeed * 0.7f), s.Speed / s.Scale);
+            var run = math.smoothstep(b.WalkSpeed * 1.1f, math.max(b.WalkSpeed * 1.2f, b.RunSpeed * 0.7f), s.Speed / Pace(s.Scale));
             var stride = math.lerp(b.WalkStride, b.RunStride, run) * s.Scale;
             s.Phase = math.frac(s.Phase + s.Speed * deltaTime / stride);
             s.Sway += (-s.YawRate * 0.35f - s.Sway) * math.min(1f, deltaTime * 4f);
