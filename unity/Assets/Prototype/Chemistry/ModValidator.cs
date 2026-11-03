@@ -501,7 +501,9 @@ namespace Chem
                 foreach (var e in effects.OfType<JObject>())
                     foreach (var p in e.Properties().Where(p => IsNumber(p.Value)))
                     {
-                        double max = budgets.Number("effects." + p.Name, double.MaxValue);
+                        string cap = RuleSchema.Effects.Field(p.Name)?.Cap;
+                        if (cap == null) continue;
+                        double max = budgets.Number(cap, double.MaxValue);
                         if ((double)p.Value > max)
                             Add(ModCheck.Budget, $"Rule {id}'s {p.Name} is {p.Value}; the most a mod's rule may give is {Num(max)}, so it can't flood every cell.");
                     }

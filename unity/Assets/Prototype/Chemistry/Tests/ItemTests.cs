@@ -122,6 +122,22 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void ABrokenEntityIsRefusedInTheSameWords()
+        {
+            var errors = Assert.Throws<ModException>(() => R.WithMods(new[] { Mod(@"{ 'entities': {
+                'brute': { 'name': 'Brute', 'str': 31, 'ac': 2.5, 'raider': { 'ticksPerSquare': 0 } },
+                // A crater with no depth threw (IsWholeNumber of null) before the schema held it.
+                'keg': { 'name': 'Keg', 'explodes': { 'cover': 'oil', 'crater': { 'radius': 2 } } } } }") })).Errors;
+            Assert.That(errors, Is.EqualTo(new[]
+            {
+                "entity brute: raider ticksPerSquare must be a whole number from 1",
+                "entity brute: str must be a whole number from 1 to 30",
+                "entity brute: ac must be a whole number from 1 to 30",
+                "entity keg: crater needs a whole depth from 1, radius from 0 and strength from 1",
+            }));
+        }
+
+        [Test]
         public void AnItemsSectionOfTheWrongTypeIsRefused()
         {
             var e = Assert.Throws<ModException>(() => Mod("{ 'items': { 'ball': 3 } }"));

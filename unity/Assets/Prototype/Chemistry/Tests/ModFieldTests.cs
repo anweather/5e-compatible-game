@@ -143,6 +143,19 @@ namespace Chem.Tests
         }
 
         [Test]
+        public void EveryEffectBudgetIsAnEffectsCapInTheSchema()
+        {
+            var budgets = JObject.Parse(File.ReadAllText(Path.Combine(ChemistryTests.RulesDir(), "budgets.json")));
+            var named = ((JObject)budgets["effects"]).Properties().Select(p => "effects." + p.Name).OrderBy(n => n, System.StringComparer.Ordinal);
+            var capped = RuleSchema.Effects.Fields.Where(f => f.Cap != null).Select(f => f.Cap).OrderBy(n => n, System.StringComparer.Ordinal);
+            Assert.That(capped, Is.EqualTo(named), "a cap budgets.json gives that no effect reads would be ignored");
+
+            string Problems(string mod) => string.Join("\n", ModValidator.Validate(Base, ModBudgets.Load(ChemistryTests.RulesDir()), mod.Replace('\'', '"')));
+            Assert.That(Problems("{ 'reactions': { 'add': [{ 'id': 'flood', 'element': 'water', 'do': [{ 'n': 7 }] }] } }"),
+                Does.Contain("Rule flood's n is 7; the most a mod's rule may give is 6, so it can't flood every cell."));
+        }
+
+        [Test]
         public void EveryShippedModPatchesOnlyWhatItChanges()
         {
             foreach (var path in Directory.GetFiles(Path.Combine(ChemistryTests.RulesDir(), "mods"), "*.json"))
