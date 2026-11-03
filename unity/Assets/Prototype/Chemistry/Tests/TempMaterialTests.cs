@@ -201,16 +201,70 @@ namespace Chem.Tests
             Assert.That(Problems("{ \"covers\": { " + rows + " } }"), Has.Member("The mod adds 9 materials; a mod may add at most 8."));
         }
 
+        // ---------- mods over another's material (#86) ----------
+
+        const string Leaning = @"{ ""title"": ""Thick ice"", ""patch"": { ""covers"": { ""black-ice"": { ""speed"": 0.5 } } } }";
+
+        // Another mod may name a lapsing material: it goes on, and goes at the lapse's tick with it, on both peers.
         [Test]
-        public void NoOtherModMayNameATemporaryMaterial()
+        public void AModNamingALapsingMaterialGoesAtTheLapse()
+        {
+            const int after = 30;
+            var a = Room();
+            var b = Room();
+            foreach (var w in new[] { a, b })
+            {
+                w.ApplyRoom(RoomCommand.Apply("Bo", "black-ice", BlackIce(after)));
+                Assert.That(Problems(Leaning, w), Is.Empty, "a material of a mod on may be named");
+                Assert.That(w.ApplyRoom(RoomCommand.Apply("Ana", "thick-ice", Leaning)).Done, Is.True, Last(w));
+                w.ApplyRoom(RoomCommand.Apply("Ana", "unrelated", @"{ ""title"": ""Soft frost"", ""patch"": { ""covers"": { ""frost"": { ""speed"": 0.9 } } } }"));
+                w.Cast("glaze", 32, 32, 0);
+            }
+            for (int t = 1; t <= after + 2; t++)
+            {
+                a.Step();
+                b.Step();
+                Assert.That(State(b), Is.EqualTo(State(a)), $"tick {t}");
+                bool gone = a.Tick >= after;
+                Assert.That(a.Room.Mods.Select(m => m.Id), Is.EqualTo(gone ? new[] { "unrelated" } : new[] { "black-ice", "thick-ice", "unrelated" }), $"tick {a.Tick}");
+            }
+            Assert.That(a.Log.Select(l => l.Text), Has.Member("Black ice lapsed, and Thick ice with it (Open room)"));
+            Assert.That(Slicks(a), Is.Zero);
+        }
+
+        // A chain: c names b's material, b names a's. Reverting a takes c, then b (the last on first); d stays.
+        [Test]
+        public void AChainGoesWithItsFirstLink()
+        {
+            var w = Room();
+            var heard = new System.Collections.Generic.List<string>();
+            w.RoomDecided += (c, v) => heard.Add(c.Mod);
+            foreach (var (id, patch) in new[]
+            {
+                ("a", @"{ ""covers"": { ""a1"": { ""name"": ""A"", ""tags"": [] } } }"),
+                ("d", @"{ ""covers"": { ""frost"": { ""speed"": 0.9 } } }"),
+                ("b", @"{ ""covers"": { ""a1"": { ""speed"": 0.5 }, ""b1"": { ""name"": ""B"", ""tags"": [] } } }"),
+                ("c", @"{ ""covers"": { ""b1"": { ""speed"": 0.5 } } }"),
+            })
+                Assert.That(w.ApplyRoom(RoomCommand.Apply("Ana", id, patch)).Done, Is.True, Last(w));
+            Assert.That(w.WithDependents(0).Select(m => m.Id), Is.EqualTo(new[] { "a", "c", "b" }));
+            heard.Clear();
+            var off = w.ApplyRoom(RoomCommand.Revert("Bo", "a"));
+            Assert.That(off.Line, Is.EqualTo("Bo switched off a, and c, b with it (Open room)"));
+            Assert.That(heard, Is.EqualTo(new[] { "a", "c", "b" }));
+            Assert.That(w.Room.Mods.Select(m => m.Id), Is.EqualTo(new[] { "d" }));
+            Assert.That(w.Rules.HasMaterial("covers", "b1"), Is.False);
+            var again = w.ApplyRoom(RoomCommand.Apply("Ana", "c", @"{ ""covers"": { ""b1"": { ""speed"": 0.5 } } }"));
+            Assert.That(again.Reason, Is.EqualTo("c names b1, a material of the mod b, which isn't on; switch b on first"));
+        }
+
+        [Test]
+        public void NoThingIsMadeOfAnotherModsMaterialNorLapsesIntoOne()
         {
             var w = Room();
             w.ApplyRoom(RoomCommand.Apply("Bo", "black-ice", BlackIce()));
-            const string leaning = @"{ ""title"": ""Thick ice"", ""patch"": { ""covers"": { ""black-ice"": { ""speed"": 0.5 } } } }";
-            Assert.That(Problems(leaning, w), Has.Member("black-ice is a temporary material of the mod black-ice; only that mod may name it, as it goes when that mod does."));
-            var v = w.ApplyRoom(RoomCommand.Apply("Ana", "thick-ice", leaning));
-            Assert.That(v.Done, Is.False);
-            Assert.That(v.Reason, Does.Contain("black-ice is a temporary material"));
+            Assert.That(Problems(@"{ ""covers"": { ""glass"": { ""name"": ""G"", ""tags"": [], ""lapse"": { ""into"": ""black-ice"" } } } }", w),
+                Has.Member("Cover glass lapses into black-ice, a material of the mod black-ice, which goes with it; lapse into a material that stays."));
         }
 
         [Test]
