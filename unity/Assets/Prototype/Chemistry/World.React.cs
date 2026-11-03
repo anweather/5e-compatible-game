@@ -169,23 +169,35 @@ namespace Chem
             return i < 0 ? s : s.Substring(0, i) + with + s.Substring(i + find.Length);
         }
 
-        bool Matches(Cell c, CellCond cond)
+        bool Matches(Cell c, CellCond cond) =>
+            cond == null || (MatchesCoverAndFire(c, cond) && MatchesWater(c, cond) && MatchesGround(c, cond));
+
+        /// <summary>The cover and fire half of <see cref="Matches"/>.</summary>
+        static bool MatchesCoverAndFire(Cell c, CellCond cond)
         {
-            if (cond == null) return true;
             if (cond.Cover != null && !(c.Cover != null && Contains(cond.Cover, c.Cover))) return false;
             if (cond.FireFlag == true && c.Fire == 0) return false;
             if (cond.FireFlag == false && c.Fire > 0) return false;
             if (cond.FireMin.HasValue && c.Fire < cond.FireMin.Value) return false;
-            if (cond.FireBelow.HasValue && c.Fire >= cond.FireBelow.Value) return false;
+            return !(cond.FireBelow.HasValue && c.Fire >= cond.FireBelow.Value);
+        }
+
+        /// <summary>The water, ice, melt and gas part of <see cref="Matches"/>.</summary>
+        bool MatchesWater(Cell c, CellCond cond)
+        {
             if (cond.Water.HasValue && (c.Water > 0 && !c.Frozen) != cond.Water.Value) return false;
             if (cond.Frozen.HasValue && (c.Frozen && c.Water > 0) != cond.Frozen.Value) return false;
             if (cond.Melts.HasValue && CoverMelts(c) != cond.Melts.Value) return false;
-            if (cond.Gas != null && (cond.Gas == "any" ? c.Gas == null : c.Gas != cond.Gas)) return false;
+            return !(cond.Gas != null && (cond.Gas == "any" ? c.Gas == null : c.Gas != cond.Gas));
+        }
+
+        /// <summary>The terrain part of <see cref="Matches"/>: its tags, conductive, hot.</summary>
+        bool MatchesGround(Cell c, CellCond cond)
+        {
             if (!string.IsNullOrEmpty(cond.TerrainTag) && !HasTag(c, cond.TerrainTag)) return false;
             if (!string.IsNullOrEmpty(cond.NotTerrainTag) && HasTag(c, cond.NotTerrainTag)) return false;
             if (cond.Conductive.HasValue && IsConductive(c) != cond.Conductive.Value) return false;
-            if (cond.Hot.HasValue && (c.Heat > 0) != cond.Hot.Value) return false;
-            return true;
+            return !(cond.Hot.HasValue && (c.Heat > 0) != cond.Hot.Value);
         }
 
         /// <summary>
@@ -321,127 +333,74 @@ namespace Chem
             return true;
         }
 
+        /// <summary>
+        /// Runs one of a rule's effects on the cell; true if it changed something. An effect is the
+        /// first kind it sets, tried in this order: fire and water, then the cell's material, then
+        /// terrain, gas and growth.
+        /// </summary>
         bool RunEffect(int x, int y, Cell c, Effect eff, int power, int dir, string element)
         {
-            int max = Rules.Sim.WaterMaxLevel;
-            if (eff.HasIgnite) return eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN, Dryness(c));
-            if (eff.Boil.HasValue)
+            if (TryFireOrWaterEffect(x, y, c, eff, power, out bool changed)) return changed;
+            if (TryMaterialEffect(x, y, c, eff, dir, element, out changed)) return changed;
+            return RunTerrainOrAirEffect(x, y, c, eff, dir);
+        }
+
+        /// <summary>Ignite, boil, melt, freeze, extinguish, condense, addWater: false if the effect is none of these.</summary>
+        bool TryFireOrWaterEffect(int x, int y, Cell c, Effect eff, int power, out bool changed)
+        {
+            if (eff.HasIgnite) changed = eff.IgniteCover ? IgniteCover(c) : Ignite(c, eff.IgniteN, Dryness(c));
+            else if (eff.Boil.HasValue) changed = BoilOff(x, y, c, eff.Boil.Value);
+            else if (eff.Melt) changed = MeltIce(c);
+            else if (eff.Freeze) changed = FreezeWater(c);
+            else if (eff.Extinguish) changed = Douse(c);
+            else if (eff.Condense) changed = CondenseSteam(c);
+            else if (eff.HasAddWater) changed = PourWater(c, eff.AddWaterPower ? power : eff.AddWaterN);
+            else
             {
-                if (c.Water == 0 || c.Frozen) return false;
-                c.Water--;
-                AddGas(c, "steam", eff.Boil.Value);
-                Mark(x, y, SteamMark);
-                return true;
+                changed = false;
+                return false;
             }
-            if (eff.Melt)
+            return true;
+        }
+
+        /// <summary>
+        /// setCover, spreadCover, dissolve, heat, shatter, scour, pushCover, bake, meltCover, crust, thaw:
+        /// false if the effect is none of these.
+        /// </summary>
+        bool TryMaterialEffect(int x, int y, Cell c, Effect eff, int dir, string element, out bool changed)
+        {
+            if (eff.HasSetCover) changed = LayCover(c, eff.SetCover);
+            else if (eff.SpreadCover.HasValue) changed = SpreadCoverOut(x, y, c, eff.SpreadCover.Value);
+            else if (eff.Dissolve != null) changed = Dissolve(c, eff.Dissolve, element);
+            else if (eff.Heat) changed = HeatUp(c);
+            else if (eff.Shatter) changed = Struck(x, y, c);
+            else if (eff.Scour) changed = Scour(x, y, c);
+            else if (eff.PushCover) changed = dir >= 0 && PushCover(x, y, c, dir);
+            else if (eff.Bake) changed = Bake(c);
+            else if (eff.MeltCover) changed = MeltCover(c);
+            else if (eff.Crust) changed = Crust(c);
+            else if (eff.Thaw) changed = Thaw(x, y, c);
+            else
             {
-                if (!c.Frozen) return false;
-                c.Frozen = false;
-                return true;
+                changed = false;
+                return false;
             }
-            if (eff.Freeze)
-            {
-                if (c.Water == 0 || c.Frozen) return false;
-                c.Frozen = true;
-                return true;
-            }
-            if (eff.Extinguish)
-            {
-                if (c.Fire == 0) return false;
-                c.Fire = 0;
-                c.Fuel = 0;
-                return true;
-            }
-            if (eff.Condense)
-            {
-                if (c.Gas != "steam") return false;
-                c.GasAmt -= 2;
-                if (c.GasAmt <= 0)
-                {
-                    c.Gas = null;
-                    c.GasAmt = 0;
-                }
-                if (!IsBlocking(c) || HasTag(c, "vessel")) c.Water = Math.Min(max, c.Water + 2);
-                return true;
-            }
-            if (eff.HasAddWater)
-            {
-                int n = eff.AddWaterPower ? power : eff.AddWaterN;
-                if (c.Water >= max) return false;
-                c.Water = Math.Min(max, c.Water + n);
-                return true;
-            }
-            if (eff.HasSetCover)
-            {
-                if (c.Cover == eff.SetCover) return false;
-                PutCover(c, eff.SetCover);
-                return true;
-            }
-            if (eff.SpreadCover.HasValue)
-            {
-                if (c.Cover == null) return false;
-                var options = new List<(int x, int y)>();
-                foreach (var (nx, ny, _) in ActiveNeighbours(x, y))
-                    if (!IsBlocking(At(nx, ny))) options.Add((nx, ny));
-                for (int i = 0; i < eff.SpreadCover.Value && options.Count > 0; i++)
-                {
-                    int k = (int)Math.Floor(Rand() * options.Count);
-                    var (nx, ny) = options[k];
-                    options.RemoveAt(k);
-                    var n = At(nx, ny);
-                    PutCover(n, c.Cover);
-                    if (c.Fire > 0) IgniteCover(n);
-                }
-                return true;
-            }
-            if (eff.Dissolve != null) return Dissolve(c, eff.Dissolve, element);
-            if (eff.Heat)
-            {
-                int hot = TerrainOf(c).HotFor;
-                if (hot <= 0 || c.Heat >= hot) return false;
-                c.Heat = hot;
-                return true;
-            }
-            if (eff.Shatter) return Struck(x, y, c);
-            if (eff.Scour) return Scour(x, y, c);
-            if (eff.PushCover) return dir >= 0 && PushCover(x, y, c, dir);
-            if (eff.Bake) return Bake(c);
-            if (eff.MeltCover) return MeltCover(c);
-            if (eff.Crust) return Crust(c);
-            if (eff.Thaw) return Thaw(x, y, c);
-            if (eff.Break)
-            {
-                var to = TerrainOf(c).BreaksTo;
-                if (to == null) return false;
-                c.T = to;
-                WallLost(x, y);
-                return true;
-            }
-            if (eff.SetTerrain != null)
-            {
-                if (c.T == eff.SetTerrain) return false;
-                DisplaceWater(x, y);
-                c.T = eff.SetTerrain;
-                return true;
-            }
+            return true;
+        }
+
+        /// <summary>
+        /// The rest: break, setTerrain, raise, conduct, fan, pushGas, clearGas, a wind mark, gas, grow; true if it
+        /// changed something (a wind mark only marks, so it never does), false too if the effect is none of these.
+        /// </summary>
+        bool RunTerrainOrAirEffect(int x, int y, Cell c, Effect eff, int dir)
+        {
+            if (eff.Break) return BreakWall(x, y, c);
+            if (eff.SetTerrain != null) return SetTerrainTo(x, y, c, eff.SetTerrain);
             if (eff.Raise != null) return RaiseUp(x, y, c, eff.Raise);
             if (eff.Conduct.HasValue) return Conduct(x, y, eff.Conduct.Value);
-            if (eff.Fan)
-            {
-                if (dir < 0) return false;
-                c.Fire = Math.Min(3, c.Fire + 1);
-                int nx = x + DirX(dir), ny = y + DirY(dir);
-                if (InBounds(nx, ny)) Apply(nx, ny, "fire", 2, -1, false);
-                return true;
-            }
+            if (eff.Fan) return FanFire(x, y, c, dir);
             if (eff.PushGas) return c.Gas != null && dir >= 0 && ShoveGas(x, y, dir);
-            if (eff.ClearGas)
-            {
-                if (c.Gas == null) return false;
-                c.Gas = null;
-                c.GasAmt = 0;
-                return true;
-            }
+            if (eff.ClearGas) return ClearGas(c);
             if (eff.Mark == "wind")
             {
                 Mark(x, y, WindMark);
@@ -452,15 +411,149 @@ namespace Chem
                 AddGas(c, eff.Gas, eff.N ?? 1);
                 return true;
             }
-            if (eff.Grow != null)
+            return eff.Grow != null && GrowPlant(x, y, c, eff);
+        }
+
+        /// <summary>A boil effect: a level of unfrozen water goes up as steam.</summary>
+        bool BoilOff(int x, int y, Cell c, int steam)
+        {
+            if (c.Water == 0 || c.Frozen) return false;
+            c.Water--;
+            AddGas(c, "steam", steam);
+            Mark(x, y, SteamMark);
+            return true;
+        }
+
+        /// <summary>A melt effect: frozen water thaws.</summary>
+        static bool MeltIce(Cell c)
+        {
+            if (!c.Frozen) return false;
+            c.Frozen = false;
+            return true;
+        }
+
+        /// <summary>A freeze effect: standing water freezes.</summary>
+        static bool FreezeWater(Cell c)
+        {
+            if (c.Water == 0 || c.Frozen) return false;
+            c.Frozen = true;
+            return true;
+        }
+
+        /// <summary>An extinguish effect: the fire goes out, its fuel with it.</summary>
+        static bool Douse(Cell c)
+        {
+            if (c.Fire == 0) return false;
+            c.Fire = 0;
+            c.Fuel = 0;
+            return true;
+        }
+
+        /// <summary>A condense effect: steam thins and leaves water, unless a wall (other than a vessel) stands there.</summary>
+        bool CondenseSteam(Cell c)
+        {
+            if (c.Gas != "steam") return false;
+            c.GasAmt -= 2;
+            if (c.GasAmt <= 0)
             {
-                // Nothing takes root on a wall of raised earth.
-                if (IsBlocking(c)) return false;
-                c.T = eff.Grow;
-                c.Life = GrowTicks(eff, x, y);
-                return true;
+                c.Gas = null;
+                c.GasAmt = 0;
             }
-            return false;
+            if (!IsBlocking(c) || HasTag(c, "vessel")) c.Water = Math.Min(Rules.Sim.WaterMaxLevel, c.Water + 2);
+            return true;
+        }
+
+        /// <summary>An addWater effect: n levels of water, up to the most a cell holds.</summary>
+        bool PourWater(Cell c, int n)
+        {
+            int max = Rules.Sim.WaterMaxLevel;
+            if (c.Water >= max) return false;
+            c.Water = Math.Min(max, c.Water + n);
+            return true;
+        }
+
+        /// <summary>A setCover effect.</summary>
+        bool LayCover(Cell c, string coverId)
+        {
+            if (c.Cover == coverId) return false;
+            PutCover(c, coverId);
+            return true;
+        }
+
+        /// <summary>A spreadCover effect: the cover (alight, if the cell burns) spreads to up to n open neighbours, picked at random.</summary>
+        bool SpreadCoverOut(int x, int y, Cell c, int count)
+        {
+            if (c.Cover == null) return false;
+            var options = new List<(int x, int y)>();
+            foreach (var (nx, ny, _) in ActiveNeighbours(x, y))
+                if (!IsBlocking(At(nx, ny))) options.Add((nx, ny));
+            for (int i = 0; i < count && options.Count > 0; i++)
+            {
+                int k = (int)Math.Floor(Rand() * options.Count);
+                var (nx, ny) = options[k];
+                options.RemoveAt(k);
+                var n = At(nx, ny);
+                PutCover(n, c.Cover);
+                if (c.Fire > 0) IgniteCover(n);
+            }
+            return true;
+        }
+
+        /// <summary>A heat effect: terrain that holds heat stays hot for its hotFor ticks.</summary>
+        bool HeatUp(Cell c)
+        {
+            int hot = TerrainOf(c).HotFor;
+            if (hot <= 0 || c.Heat >= hot) return false;
+            c.Heat = hot;
+            return true;
+        }
+
+        /// <summary>A break effect: the terrain becomes its breaksTo.</summary>
+        bool BreakWall(int x, int y, Cell c)
+        {
+            var to = TerrainOf(c).BreaksTo;
+            if (to == null) return false;
+            c.T = to;
+            WallLost(x, y);
+            return true;
+        }
+
+        /// <summary>A setTerrain effect: the cell becomes that terrain, its water pushed out.</summary>
+        bool SetTerrainTo(int x, int y, Cell c, string terrain)
+        {
+            if (c.T == terrain) return false;
+            DisplaceWater(x, y);
+            c.T = terrain;
+            return true;
+        }
+
+        /// <summary>A fan effect: the fire grows a step and spreads a cell along dir.</summary>
+        bool FanFire(int x, int y, Cell c, int dir)
+        {
+            if (dir < 0) return false;
+            c.Fire = Math.Min(3, c.Fire + 1);
+            int nx = x + DirX(dir), ny = y + DirY(dir);
+            if (InBounds(nx, ny)) Apply(nx, ny, "fire", 2, -1, false);
+            return true;
+        }
+
+        /// <summary>A clearGas effect.</summary>
+        static bool ClearGas(Cell c)
+        {
+            if (c.Gas == null) return false;
+            c.Gas = null;
+            c.GasAmt = 0;
+            return true;
+        }
+
+        /// <summary>A grow effect: the terrain becomes what grows, ripening after GrowTicks.</summary>
+        bool GrowPlant(int x, int y, Cell c, Effect eff)
+        {
+            // Nothing takes root on a wall of raised earth.
+            if (IsBlocking(c)) return false;
+            c.T = eff.Grow;
+            c.Life = GrowTicks(eff, x, y);
+            return true;
         }
     }
 }
