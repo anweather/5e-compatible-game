@@ -18,7 +18,7 @@ public class Showcase : MonoBehaviour
     IEnumerator Start()
     {
         EventLog.HudVisible = false;
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         var wizard = WizardRig.FindLocal().transform;
         var yard = grid.YardCellCenter(13, 7);
         var behindWizard = wizard.position + V(0.9f, 2.3f, -4.2f);

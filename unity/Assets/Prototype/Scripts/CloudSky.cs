@@ -103,7 +103,7 @@ public class CloudSky : MonoBehaviour
 
     void Start()
     {
-        grid = FindAnyObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
         skyLight = GetComponent<SkyLight>();
         if (cloudNoise == null) cloudNoise = madeNoise = Punchy.Weather.CloudNoise.Create();
         weatherMap = Texel("Weather map");

@@ -35,7 +35,7 @@ public class PlayerLook : MonoBehaviour
         {
             yield return null;
             wizard = WizardRig.FindLocal();
-            grid = FindAnyObjectByType<ChemGrid>();
+            grid = ChemGrid.Current?.Grid;
         }
         if (wizard == null || grid == null)
         {

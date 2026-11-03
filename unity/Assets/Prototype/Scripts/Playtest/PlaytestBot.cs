@@ -186,7 +186,7 @@ public class PlaytestBot : MonoBehaviour
         for (int i = 0; i < 600 && (wizard == null || grid == null || grid.World == null); i++)
         {
             wizard = WizardRig.FindLocal();
-            grid = FindAnyObjectByType<ChemGrid>();
+            grid = ChemGrid.Current?.Grid;
             yield return null;
         }
         if (wizard == null || grid == null)

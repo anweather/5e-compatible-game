@@ -102,7 +102,7 @@ public class RobeCloth : MonoBehaviour
         for (int i = 0; i < bones.Length; i++) legs[i] = animator.GetBoneTransform(bones[i]);
         animator.TryGetComponent(out sitter);
         animator.TryGetComponent(out surface);
-        grid = FindAnyObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
         look = GetComponent<MeshRenderer>();
         this.sides = sides;
         rings = heights.Length;

@@ -73,7 +73,7 @@ public class Nightfall : MonoBehaviour
     {
         if (Time.unscaledTime < nextLook) return;
         nextLook = Time.unscaledTime + 0.5f;
-        if (grid == null) grid = FindAnyObjectByType<ChemGrid>();
+        if (grid == null) grid = ChemGrid.Current?.Grid;
         var world = grid != null ? grid.World : null;
         var wizard = WizardRig.FindLocal();
         if (world == null || wizard == null) return;
