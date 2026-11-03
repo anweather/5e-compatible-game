@@ -106,7 +106,7 @@ public static class ProbeScenarios
         new Entry("faunaresize", typeof(FaunaResizeProbe), 150f,
             "set_species deer scale 3 through the rules MCP in an Open room (#80), this Editor hosting and the virtual player joined: each side puts the same three deer by its wizard. " +
             "Checks: the same three scales on both peers before, three times them on both once the mod is on, and back once it's reverted; every deer out on each side at its row's size each time; " +
-            "checksums equal, no client errors. Metrics: pace_at_3 (how much a 3× animal's speed and flee distance grow). With --shots, a film of the three deer from the host's side.", players: 2),
+            "pace one for one at 0.35 and 1.25 and 1.5 at 3; checksums equal, no client errors. Metrics: pace_at_3 (how much a 3× animal's speed and flee distance grow). With --shots, a film of the three deer from the host's side.", players: 2),
         new Entry("roomruin", typeof(RoomRuinProbe), 300f,
             "A burning row house through an Open room: this Editor hosts, the virtual player joins, the host's fireball takes it down, and both, and a late joiner, hold the same ruin and the same checksums.", players: 2),
         new Entry("modthing", typeof(ModThingProbe), 90f,

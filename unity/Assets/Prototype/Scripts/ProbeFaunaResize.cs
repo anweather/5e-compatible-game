@@ -75,6 +75,9 @@ public class FaunaResizeProbe : RoomProbe
         Check("serving", RulesMcpServer.Url != null, RulesMcpServer.ConnectLine);
         if (fauna == null || RulesMcpServer.Url == null) yield break;
         Metric("pace_at_3", CreatureBrain.Pace(Times));
+        // Small animals keep their pace one for one (a mire-spider is 0.35 of a spider); only giants are held back.
+        Check("small_pace_one_for_one", Mathf.Abs(CreatureBrain.Pace(0.35f) - 0.35f) < 1e-6f && Mathf.Abs(CreatureBrain.Pace(1.25f) - 1.25f) < 1e-6f && Mathf.Abs(CreatureBrain.Pace(Times) - 1.5f) < 1e-6f,
+            $"0.35 to {CreatureBrain.Pace(0.35f)}, 1.25 to {CreatureBrain.Pace(1.25f)}, {Times} to {CreatureBrain.Pace(Times)}");
         var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
         middle = PlaceDeer(fauna, grid, wizard.transform.position);
         yield return Ask("deer");
