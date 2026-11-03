@@ -184,7 +184,7 @@ public class ProductsViewProbe : RoomProbe
     }
 
     RoomMod iceMod;
-    int lapses;
+    int lapses, redrawsWere;
     Lens lens;
 
     IEnumerator BlackIce(Vector2Int from)
@@ -213,6 +213,7 @@ public class ProductsViewProbe : RoomProbe
         yield return Agree("ice_on", $"Player 1 switched on {IceTitle}");
         iceMod = World.Room.Mods.FirstOrDefault(m => m.Title == IceTitle);
         lapses = iceMod != null ? World.LapsesAt(iceMod) : -1;
+        redrawsWere = grid.EveryChunkRedraws;
         Metric("ice_lapses_at", lapses);
         Check("ice_lapses", lapses > start, $"{lapses}, now {World.Tick}");
         Check("the_panel_says_time_left", (grid.GetComponent<RuleSwitcher>().LapseNote(iceMod?.Id ?? "") ?? "").StartsWith("lapses in", System.StringComparison.Ordinal));
@@ -260,6 +261,7 @@ public class ProductsViewProbe : RoomProbe
         for (float t = 0f; t < SweepWait && grid.SweptChunksLeft > 0; t += Time.unscaledDeltaTime) yield return null;
         yield return Wait(Settle);
         Metric("swept_chunks_drawn", grid.SweptChunksDrawn);
+        Check("the_lapse_redraws_every_chunk_once", grid.EveryChunkRedraws - redrawsWere == 1, $"{grid.EveryChunkRedraws - redrawsWere} sweeps");
         Check("no_ice_left_in_any_chunk", !World.Cells.Any(c => c.Cover == Ice) && grid.FilmCells(Ice) == 0, Films(grid));
         Check("the_view_follows_the_lapse", grid.CurrentRules.Mods.Count == World.Room.Mods.Count && !grid.CurrentRules.IsOn(iceMod.Id) && !grid.IsFilm(Ice), $"view {string.Join(",", grid.CurrentRules.Mods.Select(m => m.Id))}, room {World.RoomText()}");
         Check("the_panel_drops_it", grid.GetComponent<RuleSwitcher>().LapseNote(iceMod.Id) == null);

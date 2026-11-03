@@ -83,6 +83,15 @@ namespace Chem
         public SortedSet<ulong> Found { get; } = new SortedSet<ulong>();
         /// <summary>The temporary materials gone from the room, lapsed or reverted (World.Lapse.cs), oldest first: what a cell still naming one turns into.</summary>
         public List<RetiredMaterial> Retired { get; } = new List<RetiredMaterial>();
+        /// <summary>The other rows gone from the room with their mods (a style, a building row, a species; World.Lapse.cs), oldest first: who added each, for a refusal.</summary>
+        public List<RetiredRow> RetiredRows { get; } = new List<RetiredRow>();
+    }
+
+    /// <summary>A row that went with its mod and isn't a material: the word for its table (ModAdd.Kind), its id, its mod and the tick.</summary>
+    public sealed class RetiredRow
+    {
+        public string Kind, Id, Mod;
+        public int Tick;
     }
 
     /// <summary>A temporary material that went with its mod: its table and id, what a cell of it turns into (null: none, or dirt for a terrain), its mod and the tick.</summary>

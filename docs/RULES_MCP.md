@@ -366,14 +366,19 @@ its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
 - **Lockstep.** A lapse is checked at the end of each tick (`World.EndTick`), mods in room order, at most one a tick
   (the next due waits a tick). The due tick is the mod's switch tick plus the shortest `after` of its materials, so a
   late joiner or a loaded save, which has both, lapses it at the same tick. No clock but the tick.
-- **What may name it** (#86). Any mod, while its owner is on: a wing names its house's `clay-tile`. A mod naming
-  another's material (a row by its id, or a string anywhere in its patch, `TempMaterials.Named`) is that mod's
+- **What may name it** (#86, #88). Any mod, while its owner is on: a wing names its house's `clay-tile`. Not only
+  materials: anything a mod adds counts (`ModAdds`: a material, a style or other `buildings` table row, a building
+  row under `world.buildings`, a species, a part, a trigger, any row of an id table the base rules lack, owned by
+  the first mod on to add it). A mod naming one (a row by its id, or a string anywhere in its patch, `ModAdds.Named`;
+  a variant's `variantOf` names its species) is that mod's
   **dependent**, and goes with it: when the owner is reverted or lapses, every dependent goes at that tick, and
   every dependent of a dependent (one pass in room order, `World.WithDependents`). They go in one switch, with one
   log line ("Ana switched off A stucco house, and A wing with it"), the owner first and then its dependents in
   reverse of the order they went on; the view hears a revert for each, in that order. A lapsing material is no
   exception: its dependents go at the lapse. A mod naming a material whose owner went is refused, naming it ("A wing
-  names clay-tile, a material of the mod house, which isn't on; switch house on first", from the retired list); one
+  names clay-tile, a material of the mod house, which isn't on; switch house on first", from the retired list; a
+  style or another row the same way, "names adobe, a style of the mod house", from `RetiredRows`, which is in
+  `RoomText` and the save only once it holds any, at most 64 kept); one
   never on in the room gets the checks' own reference sentence. No thing is made of another mod's material, and none
   lapses into one, since it would go at the same tick. Ids travel as strings (cells, saves, the patch): nothing on
   the wire holds an index.
