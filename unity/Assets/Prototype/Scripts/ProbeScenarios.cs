@@ -120,6 +120,11 @@ public static class ProbeScenarios
             "and a Fire Bolt on a second lot: the soot is charred and its film is the soot's look, the base ash unchanged, both peers alike, checksums equal; reverted, the soot is swept. " +
             "Then black ice cast in a slick (lapse after 120 ticks): drawn as a film in its colour on both, the host's wizard skids across it, the panel shows time left; at the lapse every slick goes in every chunk on both, " +
             "and the view's rules and the mods list follow. With --shots: products-view-before.jpg, products-view-after.jpg and black-ice/ frames at 720p, off screen.", players: 2),
+        new Entry("glowmoss", typeof(GlowMossProbe), 300f,
+            "A look's glow (primitives P4) on P2's glowing moss, on two peers: this Editor hosts an Open room, the virtual player joins. The base glows nowhere. Through the real MCP, " +
+            "set_time dusk and the moss mod (a cover with look.glow 0.3 spreading onto stone and rock, laid on two river stones): it creeps, every moss cell glows and nothing else, its film is its colour as before. " +
+            "At midnight a moss cell's glow passes 0.15 and a bare stone's is 0, in the moss's colour; the other peer has the same moss and glowing cells, checksums equal; at noon under 0.03; reverted, no glow is left. " +
+            "With --shots: glow-moss/ frames of the moss creeping at dusk, 720p, off screen.", players: 2),
         new Entry("modthing", typeof(ModThingProbe), 90f,
             "A mod's new kinds of thing, solo (docs/RULES_MCP.md \"Things\"): an item and a prop spawn on their cells dressed as animals, resting on the ground; the first pick-up logs a find and the second doesn't; a revert takes the item out of the hand and the world, and the same mod brings them back. With --shots, a picture standing and one in hand."),
         new Entry("roomthing", typeof(RoomThingProbe), 150f,

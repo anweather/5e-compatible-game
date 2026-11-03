@@ -245,7 +245,7 @@ namespace Chem
                 Scoped(table, who, look);
                 if (name == null)
                 {
-                    if (looks.BareTables.Contains(table)) Params(look, who, "a look with no family", looks.Bare.Params, table);
+                    if (looks.BareTables.Contains(table)) Params(look, who, "a look with no family", looks.BareParams(table), table);
                     return; // else Rules.Check says so
                 }
                 if (table == "elements") return; // Rules.Check: an element names no family

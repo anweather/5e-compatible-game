@@ -250,7 +250,8 @@ does:
 - **`color`**: three numbers 0 to 1. A spell's is the glow in the hand, the aim
   marker and any tint, and its effects turn to it (below). A pale colour
   (saturation under 0.22, white among them) asks for no colour.
-- **`height`** (metres over the ground), **`glow`** (shining in its own colour),
+- **`height`** (metres over the ground), **`glow`** (0 to 1: shining in its own colour after dark; a
+  cover's, a `ground` terrain's or a `block`'s; `docs/RULES_MCP.md` "Glow"),
   **`roughness`** (0 glossy, 1 matt), **`flow`** (a liquid's speed; no drawn
   family reads it yet). `params` in `looks.json` says which a family takes.
 - **`baked`**: the land draws it until it grows in this world (the valley's trees).
