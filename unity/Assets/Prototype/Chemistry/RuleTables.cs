@@ -177,6 +177,14 @@ namespace Chem
         public int FloatReach;
         /// <summary>When it withers (Lasts), its roots break the terrain under it into its BreaksTo (materials.json rot.breaks: vines crack a stone wall).</summary>
         public bool RotBreaks;
+        /// <summary>
+        /// It lays itself on a neighbour (materials.json spread, World.Spread.cs) on its turn every this many ticks
+        /// (spread.every; 0 never), each with this chance (spread.chance), onto a terrain whose id or a tag is in
+        /// SpreadOnto (empty: any) and none in SpreadNotOnto, as far as SpreadReach cells from where it was laid (0: no end).
+        /// </summary>
+        public int SpreadEvery, SpreadReach;
+        public double SpreadChance = 1;
+        public IReadOnlyList<string> SpreadOnto, SpreadNotOnto;
         public bool Has(string tag) => Tags.Contains(tag);
         /// <summary>It burns (a burn group: the flammable tag); what code asks instead of the tag.</summary>
         public bool Burns => Has("flammable");
@@ -647,6 +655,8 @@ namespace Chem
 
         public IReadOnlyDictionary<string, TerrainDef> Terrain => terrain;
         public IReadOnlyDictionary<string, CoverDef> Covers => covers;
+        /// <summary>Some cover spreads (spread.every): without one, the soak pass never looks (World.Spread.cs).</summary>
+        public bool AnySpreads { get; private set; }
         public IReadOnlyDictionary<string, GasDef> Gases => gases;
         /// <summary>machines.json by terrain id: what powers each machine (World.TickMachines).</summary>
         public IReadOnlyDictionary<string, MachineDef> Machines => machines;
@@ -774,6 +784,7 @@ namespace Chem
             ParseComponents(r, doc["components"] as JObject ?? new JObject());
             foreach (var p in ((JObject)doc["terrain"]).Properties()) r.terrain[p.Name] = ParseTerrain(p.Name, (JObject)p.Value);
             foreach (var p in ((JObject)doc["covers"]).Properties()) r.covers[p.Name] = ParseCover(p.Name, (JObject)p.Value);
+            r.AnySpreads = r.covers.Values.Any(c => c.SpreadEvery > 0);
             foreach (var p in ((JObject)doc["gases"]).Properties())
                 r.gases[p.Name] = new GasDef
                 {
@@ -929,6 +940,11 @@ namespace Chem
             FloatEvery = Int(o["floatEvery"]) ?? 0,
             FloatReach = Int(o["floatReach"]) ?? 0,
             RotBreaks = Truthy(o["rotBreaks"]),
+            SpreadEvery = Int(o["spreadEvery"]) ?? 0,
+            SpreadChance = Num(o["spreadChance"]) ?? 1,
+            SpreadOnto = Strings(o["spreadOnto"]),
+            SpreadNotOnto = Strings(o["spreadNotOnto"]),
+            SpreadReach = Int(o["spreadReach"]) ?? 0,
             Look = ParseLook(o["look"]),
         };
 

@@ -668,7 +668,24 @@ namespace Chem
                     var reach = composed["covers"]?[p.Name]?["floatReach"];
                     if (IsNumber(reach) && (double)reach > max)
                         Add(ModCheck.Budget, $"Cover {p.Name} floats {reach} cells over water; a mod's cover may float at most {Num(max)}.");
+                    SpreadBudget(p.Name, composed["covers"]?[p.Name]);
                 }
+            }
+
+            // Covers that spread creep on with no cast: a slow turn and a small chance keep a mod's from covering the land.
+            void SpreadBudget(string id, JToken cover)
+            {
+                if (cover?["spreadEvery"] is JToken every && IsNumber(every))
+                {
+                    double min = budgets.Number("materials.minSpreadEvery", 30), most = budgets.Number("materials.maxSpreadChance", 0.5);
+                    var chance = cover["spreadChance"];
+                    double odds = IsNumber(chance) ? (double)chance : 1;
+                    if ((double)every < min) Add(ModCheck.Budget, $"Cover {id} spreads every {every} ticks; a mod's cover spreads every {Num(min)} ticks or slower.");
+                    if (odds > most) Add(ModCheck.Budget, $"Cover {id} spreads with a chance of {Num(odds)}; a mod's cover spreads with a chance of {Num(most)} at most (give spread.chance).");
+                }
+                var reach = cover?["spreadReach"];
+                double far = budgets.Number("materials.maxSpreadReach", 64);
+                if (IsNumber(reach) && (double)reach > far) Add(ModCheck.Budget, $"Cover {id} spreads {reach} cells; a mod's cover spreads at most {Num(far)}.");
             }
 
             /// <summary>
