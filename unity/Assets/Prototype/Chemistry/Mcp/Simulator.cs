@@ -23,6 +23,12 @@ namespace Chem.Mcp
         public double TicksPerSecond { get; set; }
         public string Hash { get; set; }
         public uint Rng { get; set; }
+        /// <summary>Who walked the loop (Simulator.Walk), or null for a run with no walk.</summary>
+        public string Walker { get; set; }
+        /// <summary>The walker's stands (the first, then a step each), the times triggers fired and the casts they made.</summary>
+        public int Steps { get; set; }
+        public int Firings { get; set; }
+        public int Casts { get; set; }
     }
 
     public static class Simulator
@@ -37,7 +43,29 @@ namespace Chem.Mcp
             ["fireball"] = "Tufts of grass on bare dirt, too far apart for fire to spread; a Fireball bursts in the middle, so its radius, crater and scatter show in the cells burnt.",
             ["flood"] = "A pond overflows: a block of deep water on grass and dirt runs out over the field, past a trench, an oil slick and a small fire.",
             ["storm"] = "A thunderstorm is held over a meadow with trees, a pond and a metal post: rain fills the hollows and lightning strikes.",
+            [WalkScenario] = "A meadow with trees, and a wizard running a loop round it, a cell every 2 ticks: for a trigger on steps.",
         };
+
+        /// <summary>The scenario that's only the walk; any scenario walks too when asked (Run's walker).</summary>
+        public const string WalkScenario = "walk";
+
+        /// <summary>Ticks between a walker's steps: a run, three cells a second.</summary>
+        public const int StepTicks = 2;
+
+        const int LoopFrom = 16, LoopTo = Side - 1 - 16;
+
+        /// <summary>The walker's cell after <paramref name="steps"/> steps round the loop, a square from (16, 16) to (47, 47), clockwise.</summary>
+        public static (int x, int y) Walk(int steps)
+        {
+            int side = LoopTo - LoopFrom, i = steps % (side * 4), leg = i / side, along = i % side;
+            return leg switch
+            {
+                0 => (LoopFrom + along, LoopFrom),
+                1 => (LoopTo, LoopFrom + along),
+                2 => (LoopTo - along, LoopTo),
+                _ => (LoopFrom, LoopTo - along),
+            };
+        }
 
         public static World Build(Rules rules, string scenario)
         {
@@ -57,6 +85,8 @@ namespace Chem.Mcp
                     Pond(w, 40, 40, 10, 6, 4);
                     w.At(20, 20).T = "metal";
                     w.WeatherSet = (WeatherKind.Storm, 0, int.MaxValue);
+                    break;
+                case WalkScenario:
                     break;
                 default:
                     throw new RulesToolException($"There is no scenario {scenario}; the scenarios are {string.Join(", ", Scenarios.Keys)}.");
@@ -117,10 +147,14 @@ namespace Chem.Mcp
                 }
         }
 
-        public static SimRun Run(Rules rules, string scenario, int ticks)
+        /// <summary>
+        /// Runs a scenario for some ticks. With a <paramref name="walker"/>, that player stands at the loop's start and
+        /// steps round it every StepTicks ticks, as Stand commands, so step triggers fire as they would in play.
+        /// </summary>
+        public static SimRun Run(Rules rules, string scenario, int ticks, string walker = null)
         {
             var w = Build(rules, scenario);
-            var run = new SimRun { Ticks = ticks };
+            var run = new SimRun { Ticks = ticks, Walker = walker };
             var start = w.Cells.Select(Snapshot).ToArray();
             Census(w, run.Before);
             var clock = Stopwatch.StartNew();
@@ -129,6 +163,11 @@ namespace Chem.Mcp
             for (int i = 0; i < ticks; i++)
             {
                 var t0 = clock.Elapsed.TotalSeconds;
+                if (walker != null && i % StepTicks == 0)
+                {
+                    var (x, y) = Walk(run.Steps++);
+                    w.ApplyStrike(StrikeCommand.Stand(walker, x, y, 12));
+                }
                 w.Step();
                 stepping += clock.Elapsed.TotalSeconds - t0;
                 for (int c = 0; c < burnt.Length; c++) burnt[c] |= w.Cells[c].Fire > 0;
@@ -142,6 +181,8 @@ namespace Chem.Mcp
             run.CellsChanged = w.Cells.Select(Snapshot).Zip(start, (a, b) => a == b ? 0 : 1).Sum();
             run.Hash = w.CellHash();
             run.Rng = w.RngState;
+            run.Firings = w.TriggerFirings;
+            run.Casts = w.TriggeredCasts;
             return run;
         }
 
@@ -186,7 +227,8 @@ namespace Chem.Mcp
             string speed = run.TicksPerSecond >= minTicksPerSecond ? "within" : "OVER";
             return $"{run.CellsChanged} cells changed, {run.CellsBurnt} burnt. By material: {(changes.Count == 0 ? "no change" : string.Join(", ", changes))}.\n" +
                 $"Peak cells at once: {string.Join(", ", peaks)}.\n" +
-                $"{run.TicksPerSecond:0} ticks per second on one chunk ({speed} the budget of {minTicksPerSecond:0}). Cell hash {run.Hash}.";
+                $"{run.TicksPerSecond:0} ticks per second on one chunk ({speed} the budget of {minTicksPerSecond:0}). Cell hash {run.Hash}." +
+                (run.Walker == null ? "" : $"\n{run.Walker} ran {Math.Max(0, run.Steps - 1)} steps round a loop; triggers fired {run.Firings} times, casting {run.Casts} spells.");
         }
     }
 }

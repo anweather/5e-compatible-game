@@ -121,7 +121,7 @@ namespace Chem.Mcp
             reactions["entity"] = written["entityRules"].DeepClone();
             raw["reactions"] = reactions;
             raw["elements"] = written[Rules.ElementLooksKey].DeepClone();
-            foreach (var file in new[] { "spells", "critters", "entities", "items", "machines", "sim", "groups", "components", "combos", BuildingTables.Key })
+            foreach (var file in new[] { "spells", "critters", "entities", "items", "machines", "sim", "groups", "components", "combos", BuildingTables.Key, TriggersTable })
                 raw[file] = written[file].DeepClone();
             if (written[Rules.WorldRowsKey] != null) raw[Rules.WorldRowsKey] = written[Rules.WorldRowsKey].DeepClone();
             if (written[Rules.WorldThingsKey] != null) raw[Rules.WorldThingsKey] = written[Rules.WorldThingsKey].DeepClone();
@@ -156,7 +156,7 @@ namespace Chem.Mcp
         IEnumerable<string> LayerChanges(int i)
         {
             var (under, over) = (layers[i - 1].Raw, layers[i].Raw);
-            foreach (var table in new[] { "terrain", "covers", "gases", "spells", "elements", "reactions", "critters", "entities", "items", "machines", "groups" })
+            foreach (var table in new[] { "terrain", "covers", "gases", "spells", "elements", "reactions", "critters", "entities", "items", "machines", "groups", TriggersTable })
                 foreach (var id in EntryIds(over, table).Union(EntryIds(under, table)))
                 {
                     var (was, now) = (EntryIn(under, table, id), EntryIn(over, table, id));

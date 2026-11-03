@@ -24,6 +24,7 @@ namespace Chem
             check.Buildings();
             check.Things();
             check.Lays();
+            check.Triggers();
             check.Fauna();
             return check.Errors;
         }
@@ -168,17 +169,16 @@ namespace Chem
                 if (s["leaves"] != null && !IsElement(s["leaves"])) Errors.Add($"spell {Show(s["id"])}: unknown leaves {Show(s["leaves"])}");
                 if (s["trail"] != null && !IsIn(gases, s["trail"])) Errors.Add($"spell {Show(s["id"])}: trail {Show(s["trail"])} is not a gas");
                 foreach (var k in Keys(s["needs"] as JObject).Where(k => !CondKeys.Contains(k))) Errors.Add($"spell {Show(s["id"])}: needs has unknown condition \"{k}\"");
-                if (s["place"] != null) PlaceRefs(s);
+                if (s["place"] != null) PlaceRefs(s["place"], $"spell {Show(s["id"])}: place");
             }
 
             static readonly string[] PlaceWhats = { "thing", "animal", "terrain", "cover" };
             static readonly string[] PlaceKeys = PlaceWhats.Concat(new[] { "count", "within", "spacing", "lasts", "onto" }).ToArray();
 
-            // What a spell places: exactly one row that exists, whole numbers, and tags some terrain has.
-            void PlaceRefs(JToken s)
+            // What a spell or a trigger places: exactly one row that exists, whole numbers, and tags some terrain has.
+            void PlaceRefs(JToken place, string who)
             {
-                string who = $"spell {Show(s["id"])}: place";
-                if (!(s["place"] is JObject p))
+                if (!(place is JObject p))
                 {
                     Errors.Add($"{who} must be an object");
                     return;

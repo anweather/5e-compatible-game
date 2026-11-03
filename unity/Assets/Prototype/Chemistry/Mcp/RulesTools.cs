@@ -68,7 +68,7 @@ namespace Chem.Mcp
 
         // ---------- read ----------
 
-        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, fauna (the kinds of animal: add_species and set_species change them), dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
+        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, fauna (the kinds of animal: add_species and set_species change them), dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), the triggers (rules that react when a player steps), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
         [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing. All the read tools read the rules in force, every mod on included.")]
@@ -165,6 +165,15 @@ namespace Chem.Mcp
             [Description("Above 0 and at most 1: how likely it is to be in this world at all, decided once from the world's seed and this thing, the same on every peer. Always there when left out.")] double? chance = null,
             [Description("Its turn about the vertical, in degrees.")] double? rot = null,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Sited(bench.AddThing(draft, kind, at, chance, rot)));
+
+        [RulesTool("add_trigger"), Description("Adds a trigger to a draft: a rule that reacts when a player steps onto another cell, and casts a spell or places something there. \"A meteor at every step I take\" is add_trigger(id: meteor-steps, do: [{\"cast\": \"meteor\", \"at\": \"ahead\", \"by\": 2, \"delay\": 6}]): the meteor lands 2 cells ahead, under a glowing mark, a second later. \"Vines behind me as I walk\" is do: [{\"place\": {\"cover\": \"vines\", \"count\": 1}, \"at\": \"behind\", \"by\": 1}]. Whose steps: the player asking's when left out, a name, or each for everyone. It fires at most once every 3 ticks for a player (twice a second at a run), at most 4 a tick in the room; a trigger casts spells of level 7 at most and does one or two things; a mod has at most 4. An action raises no event, so nothing chains. Then validate and simulate: it walks a loop and counts what fired.")]
+        public string AddTrigger([Description("A new id, such as meteor-steps.")] string id,
+            [Description("The actions as JSON, one or two: {\"cast\": spell, \"at\": here, ahead, behind or around, \"by\": cells ahead or behind, \"within\": cells for around, \"delay\": ticks before it lands} or {\"place\": {thing, animal, terrain or cover, count, within, spacing, lasts, onto, as a spell's place}, \"at\": ...}.")] string @do,
+            [Description("Whose steps fire it: a player's name, me, or each for everyone; the player asking when left out.")] string who = null,
+            [Description("The fewest ticks between two firings for one player, 3 or more; 3 when left out.")] int? every = null,
+            [Description("Above 0 and at most 1: how likely a step fires it, the same on every peer; every time when left out.")] double? chance = null,
+            [Description("The event: step (a player stepping onto another cell), the only one so far.")] string on = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.AddTrigger(draft, id, on, who, @do, every, chance));
 
         [RulesTool("add_species"), Description("Adds a new kind of animal to a draft: a row of the fauna table (list fauna) built on a species there is, so it has that one's body and gait and wanders, flees, grazes and comes out in the wilds as it does, with its own name, size, colours and habits. \"A giant rabbit that hops about\" is basedOn rabbit, scale 10, behave {\"play\": 0.6}. It's an animal that moves: add_entity with a creature look is a still figure, for a statue or a find. A mod adds at most 12 new entries.")]
         public string AddSpecies([Description("A new id, lowercase with dashes.")] string id, [Description("Its name as players see it.")] string name,
@@ -271,7 +280,7 @@ namespace Chem.Mcp
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Tune(draft, param, value).Show());
 
         [RulesTool("remove"), Description("Takes back something the draft added or changed (a material, reaction, spell, element, its look, or a sim parameter). It can't remove base rules.")]
-        public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, entities, items, reactions, spells, elements, sim, buildings, things (the id is the cell, x,y), lay (the id is what#seed, as scatter says), openings, floors, roofs, details or styles.")] string table,
+        public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, entities, items, reactions, spells, elements, sim, buildings, things (the id is the cell, x,y), lay (the id is what#seed, as scatter says), triggers, openings, floors, roofs, details or styles.")] string table,
             [Description("The id, or the sim parameter's path.")] string id) => Do(() => bench.Remove(draft, table, id).Show());
 
         // ---------- check, run, save ----------
@@ -283,9 +292,10 @@ namespace Chem.Mcp
                 return Workbench.Report(problems) + (problems.Count == 0 ? bench.SimulateNote(draft) : "") + bench.UnseenNote(bench.PatchJson(draft));
             });
 
-        [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, fireball, flood, storm) with the draft on and without it, and says what changed: cells by material, cells burnt, peak counts, ticks per second against the budget, the cell hash. Use it to see a change goes the way the player meant: one can do the opposite of what it seems (less fuel makes a fire spread less). Its numbers show the direction, not a multiple, so don't tune a value to fit them.")]
-        public string Simulate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft, [Description("fire-on-grass (a Fire Bolt in a meadow), fireball (a Fireball in a meadow, for spell size), flood or storm.")] string scenario,
-            [Description("Ticks to run (6 a second); 300 when left out.")] int? ticks = null) => Do(() => bench.Simulate(draft, scenario, ticks));
+        [RulesTool("simulate", ReadOnly = true), Description("Runs the core headless on a scenario (fire-on-grass, fireball, flood, storm, walk) with the draft on and without it, and says what changed: cells by material, cells burnt, peak counts, ticks per second against the budget, the cell hash. Use it to see a change goes the way the player meant: one can do the opposite of what it seems (less fuel makes a fire spread less). Its numbers show the direction, not a multiple, so don't tune a value to fit them. A draft with a trigger on steps walks: its player runs a loop, a cell every 2 ticks, and it says how many times the triggers fired.")]
+        public string Simulate([Description("A draft id, a mod name from rules/mods, or the patch JSON.")] string draft, [Description("fire-on-grass (a Fire Bolt in a meadow), fireball (a Fireball in a meadow, for spell size), flood, storm, or walk (only the walk); walk when left out with a trigger on steps.")] string scenario = null,
+            [Description("Ticks to run (6 a second); 300 when left out.")] int? ticks = null,
+            [Description("Whether a player runs a loop as it goes, so triggers on steps fire; on when the draft has one.")] bool? walk = null) => Do(() => bench.Simulate(draft, scenario, ticks, walk));
 
         [RulesTool("save"), Description("Keeps a draft, or a mod that's on, as a mod file in rules/mods ({\"title\", \"idea\", \"patch\"}), which the Mods page then lists, once it validates. Only when the player asks to save it: apply is what changes the game, and it needs no save. From the chat, a save is refused unless the player's own message says save.")]
         public string Save([Description("A draft's id, or the id of a mod on now, as room lists it.")] string draft, [Description("A short title.")] string title, [Description("The idea in a sentence or two: what people vote on.")] string idea,

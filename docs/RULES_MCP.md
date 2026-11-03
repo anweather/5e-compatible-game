@@ -507,6 +507,48 @@ element:
 only trees the land baked or that grew (`IsGrownTree`): it must dress any `tree` cell the land didn't bake as one of its
 chunk's valley trees, and `brush` as a bush, redrawing on `ChunkFreshened`.
 
+## Triggers: rules that react to a step
+
+`docs/design/events-and-placing.md` 2c, J-067. A mod's **`triggers`** section holds rows by id (`rules/triggers.json`
+is the table, empty in the base rules; a `null` takes a row out):
+
+```json
+"triggers": { "meteor-steps": { "on": "step", "who": "Andrew", "every": 3,
+                                "do": [{ "cast": "meteor", "at": "ahead", "by": 2, "delay": 6 }] } }
+```
+
+- **`on`**: the event; only `step` so far (a `Stand` on another cell: not the first stand, not while downed).
+- **`who`**: the player whose steps fire it, or `"each"`. `add_trigger` fills in the asker's name from `here()` when
+  it's left out (J-067): their peer name, "Player 1". A stand's name is "solo" alone and "p0" online, so a trigger
+  matches a stand by its own name or by its peer name (`TriggerDef.PeerOf`: "solo" and "p<n>" to "Player <n+1>").
+- **Cost.** `simulate`'s slowdown against `simulate.maxSlowdown` is a guide: `apply` doesn't time any mod (a timing
+  differs by machine, so it can't decide a room's rules). What `apply` checks, on every peer, are the budgets below.
+- **`do`**: one or two actions. `{"cast": spell, "at", "by", "within", "delay"}` casts through `World.Release` as a
+  player's cast does (a spell zone still smothers it); a `delay` puts it on the delayed path (`AimStar`, a target mark
+  until it lands), and 0 keeps the spell's own. `{"place": {...}, "at", "by"}` places as a spell's `place` does,
+  within the place's `within` of the action's cell. `at` is `here`, `ahead` or `behind` by `by` cells along the step,
+  or `around`: a cell within `within` picked by `Placement.Pick`.
+- **`every`** (ticks between firings, per player and trigger; at least 3, 3 if left out) and **`chance`** (0 to 1, a
+  `WorldHash` of the seed, the trigger, the tick and the player: no draw from the world's generator).
+- **Lockstep.** A trigger fires inside `ApplyStrike`, in batch order, so every peer fires the same; at most
+  `triggers.maxPerTick` (4) fire a tick in a room, later ones that tick dropped. An action raises no event, so nothing
+  chains. The cooldowns are `TriggerText()` in `CastHash` and `"triggers"` in the save, "" until one fires; an empty
+  table stays out of `Rules.Fingerprint`, so every existing golden and fingerprint holds. Stands aren't saved: after a
+  load each view sends its own again, which is no step.
+- **Budgets** (`budgets.json` `triggers`): 4 a mod, 2 actions each, cast spells of level 7 at most (Meteor), a
+  place within `place`'s caps.
+- **Tools.** `add_trigger(id, do, who?, every?, chance?, on?)`; `list triggers`, `describe triggers <id>`,
+  `remove(draft, "triggers", id)`. `simulate` walks when the draft has a step trigger (or `walk: true`; scenario `walk`
+  is the walk alone): the trigger's player runs a loop round the meadow a cell every 2 ticks, and the reply adds
+  "Andrew ran 59 steps round a loop; triggers fired 30 times, casting 30 spells".
+
+**In the view (`triggers-view`).** `World.Triggered` lists this tick's triggered casts (`TriggeredCast`: `N`, trigger,
+player, spell, cell, `Dir`, `Tick`, `Lands`), cleared as each tick begins; `World.TriggeredAfter(n)` gives those past
+the `n`th from the last 600 ticks, for a view that steps several ticks a frame. `SpellVisuals` plays each one's show
+at its cell (a delayed one's target mark is already in `Cell.Star`, and it lands through `LandStars` as Falling Star
+does, so the landing show is whatever a delayed cast's landing plays now). Nothing else: the steps already go in as
+`WizardStrike`'s `Stand` commands.
+
 ## Change modes (chosen when a room is made)
 
 Andrew, 2026-10-31: the point is fun, not policing. A room picks one when it's created:

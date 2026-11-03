@@ -142,11 +142,19 @@ namespace Chem
                 return;
             }
             if (!InBounds(command.X, command.Y)) return;
+            bool known = stands.ContainsKey(command.Player);
             var me = StandOf(command.Player);
+            int fromX = me.X, fromY = me.Y;
+            bool wasDown = me.Down;
             me.X = command.X;
             me.Y = command.Y;
-            if (command.Kind == StrikeKind.Stand) me.Hp = Math.Max(0, command.Hp);
-            else Strike(me, command.AimX, command.AimY);
+            if (command.Kind != StrikeKind.Stand) Strike(me, command.AimX, command.AimY);
+            else
+            {
+                me.Hp = Math.Max(0, command.Hp);
+                // A step (World.Triggers.cs): a stand on another cell, not the first, not while downed.
+                if (known && !wasDown && !me.Down && (fromX != me.X || fromY != me.Y)) Stepped(me, fromX, fromY);
+            }
         }
 
         WizardStand StandOf(string player)

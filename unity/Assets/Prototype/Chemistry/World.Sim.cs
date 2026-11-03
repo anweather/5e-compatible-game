@@ -89,6 +89,7 @@ namespace Chem
             strikes.Clear();
             combosFired.Clear();
             BeginPlaceTick();
+            BeginTriggerTick();
             TrimWeatherHistory();
             EndSetWeather();
             Weather = SkyNow();
