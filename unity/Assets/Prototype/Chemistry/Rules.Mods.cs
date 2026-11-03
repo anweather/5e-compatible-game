@@ -94,6 +94,7 @@ namespace Chem
             ApplyBuildings(r, p);
             ApplyThings(r, p);
             ApplyLays(r, p);
+            ApplyTriggers(r, p);
         }
 
         /// <summary>
@@ -223,11 +224,14 @@ namespace Chem
         // view's) and without the creature tables, which are the view's whole.
         string CanonicalRules()
         {
-            var shared = new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name)).Select(p => new JProperty(p.Name, SharedPart(p))));
+            var shared = new JObject(doc.Properties().Where(p => !FaunaTables.Holds(p.Name) && !IsEmptyTriggers(p)).Select(p => new JProperty(p.Name, SharedPart(p))));
             var sb = new StringBuilder();
             WriteCanonical(sb, shared);
             return sb.ToString();
         }
+
+        // Rules without triggers fingerprint as they did before there was a table for them.
+        static bool IsEmptyTriggers(JProperty p) => p.Name == TriggersKey && p.Value is JObject t && t.Count == 0;
 
         static JToken SharedPart(JProperty p)
         {
