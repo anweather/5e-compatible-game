@@ -108,7 +108,7 @@ namespace Chem
         {
             var height = Rules.Sim.Height;
             c.Height = Math.Max(height.Min, Math.Min(height.Max, c.Height));
-            if (!Rules.Terrain.ContainsKey(c.T)) c.T = "dirt";
+            if (!Rules.Terrain.ContainsKey(c.T)) c.T = RetiredInto(c.T) ?? "dirt";
             if (c.Cover != null && !Rules.Covers.ContainsKey(c.Cover)) c.Cover = null;
             if (c.Gas != null && !Rules.Gases.ContainsKey(c.Gas))
             {

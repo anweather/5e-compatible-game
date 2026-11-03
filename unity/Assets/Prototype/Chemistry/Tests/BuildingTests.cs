@@ -365,7 +365,8 @@ namespace Chem.Tests
             Assert.That(tree.ApplyRoom(RoomCommand.Apply("Ana", "house", StuccoMod(20, 20))).Reason, Does.Contain("not open ground"));
 
             var built = Up(Yard(), StuccoMod(20, 20));
-            string second = StuccoMod(30, 22).Replace("lakeside#1", "lakeside#2");
+            // Its own tile: a mod may not name another mod's temporary material (World.Lapse.cs).
+            string second = StuccoMod(30, 22).Replace("lakeside#1", "lakeside#2").Replace("clay-tile", "slate-tile");
             var overlap = built.ApplyRoom(RoomCommand.Apply("Ana", "second", second));
             Assert.That(overlap.Done, Is.False);
             Assert.That(overlap.Reason, Does.Contain("lakeside#1 stands there"));

@@ -217,6 +217,7 @@ namespace Chem
             stage = TickStage.None;
             tickRows = null;
             tickChunks = null;
+            LapseDue(); // between whole ticks, as a rule switch lands
         }
 
         /// <summary>

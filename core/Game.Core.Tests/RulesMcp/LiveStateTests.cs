@@ -123,7 +123,8 @@ namespace Chem.Tests
             var said = b.Apply(b.AddMaterial(null, "cover", "tar", "Tar").Id, "Ana", "Tar");
             StringAssert.Contains("switched on", said);
             var d = b.AddReaction(null, "fire-tar", "fire", "[{\"ignite\": 2}]", "{\"cover\": [\"tar\"]}");
-            Assert.That(b.Validate(d.Id), Is.Empty, "tar is on, so a rule may name it");
+            // Tar is on, but as a temporary material of its own mod (World.Lapse.cs): another mod naming it would dangle when it goes.
+            Assert.That(b.Validate(d.Id).Select(p => p.Message), Is.EqualTo(new[] { "tar is a temporary material of the mod tar; only that mod may name it, as it goes when that mod does." }));
             Assert.That(b.Simulate(d.Id, "fire-on-grass", 6), Does.Contain("Scenario fire-on-grass"));
         }
 
@@ -253,6 +254,9 @@ namespace Chem.Tests
             Assert.Throws<RulesToolException>(() => b.AddReaction(null, "r", "fire", "[{\"nope\": 1}]"));
             Assert.Throws<RulesToolException>(() => b.AddReaction(null, "r", "fire", "[{\"ignite\": 1}]", "{\"nope\": 1}"));
             Assert.Throws<RulesToolException>(() => b.AddMaterial(null, "terrain", "t", "T", null, "{\"burn\": {\"nope\": 1}}"));
+            Assert.Throws<RulesToolException>(() => b.AddMaterial(null, "cover", "c", "C", null, "{\"lapse\": {\"until\": 60}}"));
+            Assert.DoesNotThrow(() => b.AddMaterial(null, "cover", "c", "C", null, "{\"lapse\": {\"after\": 60}}"));
+            Assert.DoesNotThrow(() => b.AddMaterial(null, "gas", "g", "G", null, "{\"lapse\": {\"after\": 60}}"));
             Assert.Throws<RulesToolException>(() => b.AddSpell(null, new Workbench.SpellArgs { Id = "s", Name = "S", Group = "fire", Shape = "burst", Extra = "{\"nope\": 1}" }));
             Assert.Throws<RulesToolException>(() => b.AddSpell(null, new Workbench.SpellArgs { Id = "s", Name = "S", Group = "fire", Shape = "burst", Radius = 40 }));
         }

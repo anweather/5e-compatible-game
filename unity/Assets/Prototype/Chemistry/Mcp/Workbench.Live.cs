@@ -56,6 +56,9 @@ namespace Chem.Mcp
         /// <summary>The rules in force: the base rules with the room's mods on, in order.</summary>
         public Rules InForce { get; private set; }
 
+        /// <summary>The room's temporary materials by id, each with its mod (TempMaterials): validate lets no other mod name one.</summary>
+        IReadOnlyDictionary<string, string> Temporary { get; set; } = new Dictionary<string, string>();
+
         /// <summary>The rules in force as the engine reads them (materials ungrouped into flat keys).</summary>
         internal JObject Doc => inForceDoc;
 
@@ -99,7 +102,9 @@ namespace Chem.Mcp
                 Rules.ApplyPatch(written, ModPatch.Parse(mod.Json).Json);
                 next.Add(new Layer { Mod = mod, Written = written, Raw = RawOf(written) });
             }
-            InForce = mods.Count == 0 ? Base : Base.WithMods(mods.Select(m => ModPatch.Parse(m.Json)));
+            var set = RuleSet.Compose(Base, mods.Select(m => new ActiveMod(m.Id, m.Json)));
+            InForce = set.Effective;
+            Temporary = TempMaterials.Owners(TempMaterials.Of(set));
             inForceDoc = JObject.Parse(InForce.ToJson());
             layers = next;
             layersFor = signature;
