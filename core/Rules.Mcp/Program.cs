@@ -23,11 +23,11 @@ namespace Chem.Mcp
         public static void Main(string[] args)
         {
             int at = Array.IndexOf(args, "--rules");
-            string rulesDir = at >= 0 && at + 1 < args.Length ? Path.GetFullPath(args[at + 1]) : GameFolders.InRepo(Directory.GetCurrentDirectory()).Rules;
+            var folders = at >= 0 && at + 1 < args.Length ? new GameFolders(Path.GetFullPath(args[at + 1])) : InRepo(Directory.GetCurrentDirectory());
 
             var builder = Host.CreateApplicationBuilder(Array.Empty<string>());
             builder.Logging.AddConsole(o => o.LogToStandardErrorThreshold = LogLevel.Trace);
-            var bench = new Workbench(rulesDir);
+            var bench = new Workbench(folders);
             int here = Array.IndexOf(args, "--here");
             if (here >= 0 && here + 1 < args.Length && args[here + 1].Split(',') is { Length: 2 } xy
                 && int.TryParse(xy[0], NumberStyles.Integer, CultureInfo.InvariantCulture, out int x) && int.TryParse(xy[1], NumberStyles.Integer, CultureInfo.InvariantCulture, out int y))
@@ -38,6 +38,19 @@ namespace Chem.Mcp
             var tools = new RulesTools(bench, message => new McpException(message));
             builder.Services.AddMcpServer(o => o.ServerInstructions = RulesTools.Instructions).WithStdioServerTransport().WithTools(Tools(tools));
             builder.Build().Run();
+        }
+
+        // The repo's folders above a server started inside it, with no player, so a save goes to rules/mods.
+        static GameFolders InRepo(string start)
+        {
+            try
+            {
+                return GameFolders.InRepo(start);
+            }
+            catch (DirectoryNotFoundException)
+            {
+                throw new DirectoryNotFoundException("No rules/ folder above " + start + "; pass --rules <folder>.");
+            }
         }
 
         // Each RulesTool method as the SDK's tool: its name, its Description and its parameters' are read from there.

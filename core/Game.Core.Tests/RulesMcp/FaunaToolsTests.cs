@@ -8,7 +8,7 @@ namespace Chem.Tests
     public class FaunaToolsTests
     {
         static Workbench bench;
-        static Workbench Bench => bench ??= new Workbench(ChemistryTests.RulesDir());
+        static Workbench Bench => bench ??= new Workbench(ChemistryTests.Folders);
 
         static Rules With(Draft d) => Bench.Base.WithMods(new[] { ModPatch.Parse(d.Patch.ToString()) });
 
@@ -50,7 +50,7 @@ namespace Chem.Tests
             Assert.That(Bench.SetSpecies(d.Id, "deer", 1, null).Patch["fauna"]["deer"]["size"].ToString(Newtonsoft.Json.Formatting.None), Is.EqualTo("[0.9,1.1]"), "1 puts it back, not three times again");
             var hare = Bench.SetSpecies(null, "crystal-hare", 2, null);
             Assert.That(With(hare).Fauna.Species("crystal-hare").VariantScale, Is.EqualTo(2.2), "a variant by its scale");
-            var own = new Workbench(ChemistryTests.RulesDir());
+            var own = new Workbench(ChemistryTests.Folders);
             string applied = own.Apply(own.SetSpecies(null, "deer", 3, null).Id, "Ana", "Big deer");
             Assert.That(applied, Does.Contain("size"), applied);
             Assert.That(own.List("fauna"), Does.Contain("deer: Deer"));

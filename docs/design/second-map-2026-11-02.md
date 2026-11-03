@@ -125,7 +125,7 @@ off with no flag.
 
 | File | Lines | What |
 |---|---|---|
-| `ChemGrid.cs` | 8 | The flag: `MapId` from `SPELL_WORLD_MAP`; `FindWorldDir` points at `world/maps/<id>` |
+| `ChemGrid.cs` | 8 | The flag: `MapId` from `SPELL_WORLD_MAP`; `GameFolders.World` points at `world/maps/<id>` (the branch predates it: there it was `ChemGrid`'s `FindWorldDir`) |
 | `ChemGrid.Rules.cs`, `ModValidator.cs` | 6 | The core's budgets take the world folder (#8) |
 | `Editor/ValleySurroundings.cs` | 17 | Theme id; the mask is always land; `seaMask`, `MapHeight` |
 | `Editor/ValleyShape.cs` | 30 | Skip bridge and path; off: lake, river, channel, court, tower, falls; beach and sand |
