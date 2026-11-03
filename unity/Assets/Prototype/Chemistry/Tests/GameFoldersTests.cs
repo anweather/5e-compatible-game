@@ -6,7 +6,7 @@ namespace Chem.Tests
 {
     /// <summary>
     /// Where the game's folders are (GameFolders): a build's packed rules or the repo's, world/ beside them, and the
-    /// player's mods in the chat's folder (#63), a probe's while one is set. Every folder here is a temp one.
+    /// player's mods in the chat's folder (#63), a probe's while one is set, and the Editor's own data folder (#78). Every folder here is a temp one.
     /// </summary>
     public class GameFoldersTests
     {
@@ -49,9 +49,27 @@ namespace Chem.Tests
         }
 
         [Test]
-        public void APlayersModsAreInTheChatsFolderOrAProbes()
+        public void ABuildKeepsTheDataFolderItIsGiven()
+        {
+            Assert.That(GameFolders.ForGame(packed, project, editor: false, data).PlayerData, Is.EqualTo(data), "no pack");
+            Rules(Path.Combine(packed, "rules"));
+            Assert.That(GameFolders.ForGame(packed, project, editor: false, data).PlayerData, Is.EqualTo(data), "packed");
+        }
+
+        [Test]
+        public void TheEditorKeepsItsOwnDataFolderInTheProjectsLibrary()
         {
             var folders = GameFolders.ForGame(packed, project, editor: true, data);
+            string own = Path.Combine(repo, "unity", "Library", "VP", "1", "Library", "EditorPlayerData");
+            Assert.That(folders.PlayerData, Is.EqualTo(own), "never the shipped game's (#78)");
+            Assert.That(folders.Claude.Path, Is.EqualTo(Path.Combine(own, ClaudeFolder.Name)));
+            Assert.That(GameFolders.EditorPlayerData(project + Path.DirectorySeparatorChar), Is.EqualTo(own), "a trailing slash");
+        }
+
+        [Test]
+        public void APlayersModsAreInTheChatsFolderOrAProbes()
+        {
+            var folders = GameFolders.ForGame(packed, project, editor: false, data);
             Assert.That(folders.PlayerData, Is.EqualTo(data));
             Assert.That(folders.Claude.Path, Is.EqualTo(Path.Combine(data, ClaudeFolder.Name)));
             Assert.That(folders.Mods, Is.EqualTo(Path.Combine(data, "claude-terminal", "mods")), "beside notes.md, as #63 put them");

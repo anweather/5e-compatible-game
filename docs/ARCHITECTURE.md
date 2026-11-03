@@ -37,7 +37,9 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
   tools/), `World` (beside it), `ShippedMods`, `PlayerData` and `Mods`,
   with the chat's folder as a `ClaudeFolder`. The view hands in Unity's
   roots once (`ChemGrid.Folders`: a build's StreamingAssets, the project,
-  the player's data folder); the MCP server, chatbench and the tests use
+  the player's data folder; in the Editor `PlayerData` is the project's
+  `Library/EditorPlayerData` instead, as Unity gives the Editor the
+  shipped game's folder, #78); the MCP server, chatbench and the tests use
   `GameFolders.InRepo(start)`, which walks up to the repo's `rules/`.
   Code that loads from a rules folder it was given (`ModBudgets.Load`,
   `StandInValley.Load`) finds `world/` through it too, and the rules

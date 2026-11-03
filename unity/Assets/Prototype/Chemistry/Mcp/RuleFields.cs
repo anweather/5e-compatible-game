@@ -1,7 +1,8 @@
 // The fields the engine reads on a material, spell or reaction rule (RuleTables.cs), so a
 // set_ or add_ tool refuses an unknown one when it's set. Left alone, a misnamed field
 // is ignored and the change quietly does nothing. A new field the engine reads goes here too;
-// EveryFieldInTheRulesIsKnown holds the shipped rules to it.
+// EveryFieldInTheRulesIsKnown holds the shipped rules to it. An item's, an entity's and a reaction
+// rule's fields are RuleSchema's; the other tables' lists here are still their own copies (cleanup item 7).
 using System.Collections.Generic;
 using System.Linq;
 using Newtonsoft.Json.Linq;
@@ -28,6 +29,7 @@ namespace Chem.Mcp
             ["rusts"] = null,
             ["burn"] = new[] { "flash" },
             ["sheds"] = new[] { "element", "every", "chance" },
+            [Rules.LapseKey] = Rules.LapseFields.ToArray(),
         };
 
         static readonly Dictionary<string, string[]> SpellFields = new Dictionary<string, string[]>
@@ -83,7 +85,7 @@ namespace Chem.Mcp
             ["crater"] = new[] { "radius", "depth", "strength", "leaves" },
         };
 
-        static readonly string[] RuleKeys = { "id", "element", "if", "do", "log", "notable", "stop" };
+        static readonly string[] RuleKeys = RuleSchema.Reactions.ModNames.ToArray();
 
         /// <summary>A material's field set to this value: throws saying what's wrong with the field, or returns.</summary>
         public static void CheckMaterial(string kind, string path, JToken value)
@@ -98,6 +100,11 @@ namespace Chem.Mcp
             var keys = path.Split('.');
             string top = keys[0];
             if (top == "look") return; // ModCheck.Looks and set_look know a look's parameters
+            if (top == Rules.LapseKey)
+            {
+                CheckLapse(what, path, value);
+                return;
+            }
             if (!MaterialGroups.Verbs(cover).Contains(top))
             {
                 if (MaterialGroups.GroupedName(cover, top) is string grouped) throw new RulesToolException($"{what} writes {top} as {grouped}.");
@@ -121,8 +128,17 @@ namespace Chem.Mcp
             foreach (var p in entry.Properties()) CheckMaterial(kind, p.Name, p.Value);
         }
 
-        static readonly string[] ItemFields = { "name", "material", "components", "use", "message", "srd", "mass", "light", "zoom", "reach", "strength", "breaks", "look" };
-        static readonly string[] EntityFields = { "name", "material", "components", "hp", "mass", "str", "ac", "explodes", "raider", "look" };
+        // A temporary material's lapse (World.Lapse.cs): into and after only.
+        static void CheckLapse(string what, string path, JToken value)
+        {
+            var keys = path.Split('.');
+            var below = keys.Length > 1 ? new[] { keys[1] } : (value as JObject)?.Properties().Select(p => p.Name) ?? Enumerable.Empty<string>();
+            var unknown = below.FirstOrDefault(k => !Rules.LapseFields.Contains(k));
+            if (keys.Length > 2 || unknown != null) throw new RulesToolException($"{what}'s lapse has no field {unknown ?? path}; it takes into and after.");
+        }
+
+        static readonly string[] ItemFields = RuleSchema.Items.ModNames.ToArray();
+        static readonly string[] EntityFields = RuleSchema.Entities.ModNames.ToArray();
 
         /// <summary>A new entity's or item's fields: throws saying which the engine wouldn't read, or returns.</summary>
         public static void CheckThing(string table, JObject entry)

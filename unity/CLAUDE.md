@@ -42,8 +42,14 @@ Windows run it from Git Bash.
 - Never revert, checkout or stash a scene or prefab the Editor has open.
   Switch the Editor to a new empty scene first, or rebuild with the menu.
 - Driving Play mode while the Editor is unfocused: call
-  `editor set_auto_tick` and `editor.playmode set_run_in_background`
-  first, and put the latter back afterwards.
+  `editor set_auto_tick --enable true` and
+  `editor.playmode set_run_in_background --enable true` first, and
+  `editor.playmode set_run_in_background --enable false` afterwards. The
+  project's own Run In Background is already on, so the override changes
+  nothing a build sees. Its record lives in
+  `ProjectSettings/Packages/com.unity.pipeline/EditorPipelineConfig.json`,
+  which is ignored: each Editor keeps its own, and the package uses its
+  defaults when the file is missing (#81).
 - `runtime simulate_key` and `simulate_pointer` work for held keys (WASD),
   but press-type actions (`WasPressedThisFrame`: number keys, click, Tab,
   M, Esc) don't fire from them. Call the game's own methods through

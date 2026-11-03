@@ -72,12 +72,18 @@ namespace Chem
                 if (!(donor is JObject d)) return;
                 if (d["species"] == null) Errors.Add($"{who}: every donor names a species");
                 if (d["take"] != null && d["drop"] != null) Errors.Add($"{who}: a donor takes or drops slots, not both");
+                DonorLists(who, d);
+                Number(d["scale"], $"{who}: a donor's scale", 0);
+                if (d["coat"] != null && Show(d["coat"]) != "own") Errors.Add($"{who}: a donor's coat can only be own (its own coats and hair); leave it out for the row's coat");
+            }
+
+            // A donor's slot lists and its [x, y, z] places.
+            void DonorLists(string who, JObject d)
+            {
                 foreach (var key in new[] { "take", "drop" })
                     if (d[key] != null && !(d[key] is JArray a && a.All(x => x.Type == JTokenType.String))) Errors.Add($"{who}: a donor's {key} must be a list of slot ids");
                 foreach (var key in new[] { "at", "dir" })
                     if (d[key] != null && !(d[key] is JArray a && a.Count == 3 && a.All(IsNumber))) Errors.Add($"{who}: a donor's {key} must be [x, y, z]");
-                Number(d["scale"], $"{who}: a donor's scale", 0);
-                if (d["coat"] != null && Show(d["coat"]) != "own") Errors.Add($"{who}: a donor's coat can only be own (its own coats and hair); leave it out for the row's coat");
             }
 
             void Colours(string who, JObject row)

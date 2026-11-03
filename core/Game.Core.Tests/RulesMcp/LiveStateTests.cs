@@ -123,7 +123,8 @@ namespace Chem.Tests
             var said = b.Apply(b.AddMaterial(null, "cover", "tar", "Tar").Id, "Ana", "Tar");
             StringAssert.Contains("switched on", said);
             var d = b.AddReaction(null, "fire-tar", "fire", "[{\"ignite\": 2}]", "{\"cover\": [\"tar\"]}");
-            Assert.That(b.Validate(d.Id), Is.Empty, "tar is on, so a rule may name it");
+            // Tar is on, but as a temporary material of its own mod (World.Lapse.cs): another mod naming it would dangle when it goes.
+            Assert.That(b.Validate(d.Id).Select(p => p.Message), Is.EqualTo(new[] { "tar is a temporary material of the mod tar; only that mod may name it, as it goes when that mod does." }));
             Assert.That(b.Simulate(d.Id, "fire-on-grass", 6), Does.Contain("Scenario fire-on-grass"));
         }
 
@@ -253,6 +254,9 @@ namespace Chem.Tests
             Assert.Throws<RulesToolException>(() => b.AddReaction(null, "r", "fire", "[{\"nope\": 1}]"));
             Assert.Throws<RulesToolException>(() => b.AddReaction(null, "r", "fire", "[{\"ignite\": 1}]", "{\"nope\": 1}"));
             Assert.Throws<RulesToolException>(() => b.AddMaterial(null, "terrain", "t", "T", null, "{\"burn\": {\"nope\": 1}}"));
+            Assert.Throws<RulesToolException>(() => b.AddMaterial(null, "cover", "c", "C", null, "{\"lapse\": {\"until\": 60}}"));
+            Assert.DoesNotThrow(() => b.AddMaterial(null, "cover", "c", "C", null, "{\"lapse\": {\"after\": 60}}"));
+            Assert.DoesNotThrow(() => b.AddMaterial(null, "gas", "g", "G", null, "{\"lapse\": {\"after\": 60}}"));
             Assert.Throws<RulesToolException>(() => b.AddSpell(null, new Workbench.SpellArgs { Id = "s", Name = "S", Group = "fire", Shape = "burst", Extra = "{\"nope\": 1}" }));
             Assert.Throws<RulesToolException>(() => b.AddSpell(null, new Workbench.SpellArgs { Id = "s", Name = "S", Group = "fire", Shape = "burst", Radius = 40 }));
         }
@@ -272,6 +276,19 @@ namespace Chem.Tests
             foreach (var rule in reactions["cell"].Concat(reactions["entity"]).OfType<JObject>())
                 foreach (var p in rule.Properties())
                     Assert.DoesNotThrow(() => RuleFields.CheckRule(p.Name, p.Value), $"{rule["id"]} {p.Name}");
+            foreach (var item in JObject.Parse(File.ReadAllText(Path.Combine(dir, "items.json"))).Properties())
+                Assert.DoesNotThrow(() => RuleFields.CheckThing("items", (JObject)item.Value), item.Name);
+            foreach (var entity in JObject.Parse(File.ReadAllText(Path.Combine(dir, "entities.json"))).Properties().Where(p => p.Value["player"] == null))
+                Assert.DoesNotThrow(() => RuleFields.CheckThing("entities", (JObject)entity.Value), entity.Name);
+        }
+
+        [Test]
+        public void AnUnknownThingFieldNamesTheSchemasFields()
+        {
+            var e = Assert.Throws<RulesToolException>(() => RuleFields.CheckThing("items", new JObject { ["name"] = "N", ["glow"] = 1 }));
+            Assert.AreEqual("An item has no field glow; its fields are name, material, components, use, message, srd, mass, light, zoom, reach, strength, breaks, look.", e.Message);
+            e = Assert.Throws<RulesToolException>(() => RuleFields.CheckThing("entities", new JObject { ["name"] = "N", ["player"] = true }));
+            Assert.AreEqual("An entity has no field player; its fields are name, material, components, hp, mass, str, ac, explodes, raider, look.", e.Message);
         }
 
         // ---------- limits up front ----------

@@ -31,3 +31,41 @@ on dev. The rest is as the review reported it. `dotnet build core` gave 80 disti
 
 `Playtest/`, `Perf/`, most probe bodies, the Editor builders other than by search, the bodies of
 `World.*`, `Rules.Check*` and `Workbench.*`, `PauseMenu`, `WizardOutfit`, the `Mcp` server code.
+
+## Item 7: `RuleSchema` (2026-11-03, branch `rule-schema`)
+
+`Chemistry/RuleSchema.cs` holds a table's fields (name, type, range, required, whether a mod sets
+it, verbs, sections, budget cap); `Rules.CheckSchema.cs` checks ranges and colours from it. The
+rules that join two fields (use zoom needs a zoom above 1) stay in code. Every message is word for
+word and in the same order (`ABrokenItemIsRefusedWithTheSandboxWording`,
+`ABrokenEntityIsRefusedInTheSameWords`, `EveryEffectBudgetIsAnEffectsCapInTheSchema` pin them).
+
+Moved:
+
+- **items**: the smallest table read by all three (the MCP's `add_item` through
+  `RuleFields.CheckThing`, `Rules.CheckItems`, `ModValidator` through `Rules.WithMods`).
+- **entities**: the same, plus whole ranges (str and ac 1 to 30, raider ticksPerSquare) and the
+  first field a mod may not set (`player`, the wizard). The crater a blast digs is its own schema,
+  shared with spells; `IsCrater` reads it, and a crater with no depth no longer throws.
+- **reactions**: the conditions and effects are verb lists (`Rules.Conditions`, `Effects`, the
+  MCP's checks); `RuleNumbers` reads which are numbers; each capped effect names its
+  `budgets.json` cap, which `ModValidator.RuleBudget` reads.
+
+What each remaining table needs:
+
+- **terrain, covers**: `MaterialGroups`' verbs and grouped names as `Verb` fields with sections;
+  `Rules.Check.Numbers` ranges (flammability, fuel, heat, lasts, floatEvery...); look excluded
+  from the listed fields.
+- **gases**: `RuleFields.GasFields` (burn.flash, sheds) and `GasNumbers`; whole ranges.
+- **spells**: 45 fields in `RuleFields.SpellFields`, `SpellNumbers`, `Shapes`, `SpellEffects` and
+  the whole-from-1 keys in `Rules.Check`; caps as reactions do (`ModValidator.SpellCaps`, the
+  add_spell and set_spell descriptions); FiveE level and dice; `crater` is `RuleSchema.Crater`.
+- **triggers, world rows, lay rows**: `TriggerFields`, `ActionFields`, `ThingRowFields`,
+  `LayRowFields`: plain name lists.
+- **species, parts, buildings**: `Rules.CheckFauna`'s ten key lists and `Buildings.SharedKeys`;
+  numbers the view reads, so the schema needs a "view's, not integer state" flag that
+  `ModValidator.Determinism` would read instead of skipping those tables by name.
+- **The MCP's tool text**: `add_item`'s `extra` description still names its fields by hand
+  (a `[Description]` must be a constant); a test comparing it to the schema would hold it.
+- **Mod-only fields**: `ModValidator` could refuse a mod setting a shipped-only field (`player`);
+  today only the MCP does, so that would be a new message.

@@ -4,6 +4,7 @@
 // the rest of the rules read, before checking:
 //
 //   burn    { catch, fuel, heat, leaves, log, look, intensity }  flammable tag, flammability, fuel, heat, burnsTo, burnLog, fireLook, burnIntensity
+//   burn    { ash, smoke }                                        burnAsh, burnSmoke (the cover it leaves burnt out, the gas it smokes; else sim fire.ash, fire.smoke)
 //   break   { leaves }                                            breakable tag, breaksTo
 //   dig     { hardness, leaves }                                  hardness, dugTo
 //   soak    { dry, wet, dampens, leaves, dries }                  soakEvery, soakEveryWet, dampens, soaksTo, driesTo
@@ -20,7 +21,7 @@
 //   conduct { chainsWet }                                         chainsWet: a wet creature of it is shocked by charged water
 //                                                                 next to it (a group holding only chainsWet doesn't conduct)
 //   shatter { leaves, cracks }                                    brittle tag (a thing of it breaks when it lands hard), shattersTo (a cell of it: World.Shatter),
-//                                                                 cracks (the first hit only cracks it, the next shatters it; the material "ice" is frozen water's and frozen creatures')
+//                                                                 cracks (the first hit only cracks it, the next shatters it; the terrain sim.json water.freezes names is frozen water's and frozen creatures')
 //   scald   {}                                                    scalds tag (a creature of it is scalded by steam)
 //   grow    { into, log }                                         growsTo, growLog
 //   uproot  { leaves, log }                                       uprootsTo, uprootLog
@@ -48,7 +49,7 @@ namespace Chem
         // Each verb: the tag having it implies (or null), and its keys as (group key, flat key).
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] TerrainVerbs =
         {
-            ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("heat", "heat"), ("leaves", "burnsTo"), ("log", "burnLog"), ("look", "fireLook") }),
+            ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("heat", "heat"), ("leaves", "burnsTo"), ("log", "burnLog"), ("look", "fireLook"), ("ash", "burnAsh"), ("smoke", "burnSmoke") }),
             ("break", "breakable", new[] { ("leaves", "breaksTo") }),
             ("dig", null, new[] { ("hardness", "hardness"), ("leaves", "dugTo") }),
             ("soak", null, new[] { ("dry", "soakEvery"), ("wet", "soakEveryWet"), ("dampens", "dampens"), ("leaves", "soaksTo"), ("dries", "driesTo") }),
@@ -71,7 +72,7 @@ namespace Chem
 
         static readonly (string verb, string tag, (string group, string flat)[] keys)[] CoverVerbs =
         {
-            ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("intensity", "burnIntensity"), ("look", "fireLook") }),
+            ("burn", "flammable", new[] { ("catch", "flammability"), ("fuel", "fuel"), ("intensity", "burnIntensity"), ("look", "fireLook"), ("ash", "burnAsh"), ("smoke", "burnSmoke") }),
             ("float", null, new[] { ("every", "floatEvery"), ("reach", "floatReach") }),
             ("melt", null, new[] { ("into", "meltsTo"), ("water", "meltWater") }),
             ("dissolve", null, new[] { ("by", "dissolvedBy"), ("leaves", "dissolvesTo") }),
@@ -82,8 +83,11 @@ namespace Chem
         // A creature's statuses from its material: each verb's status key and the flat key it becomes.
         static readonly (string verb, string flat)[] StatusVerbs = { ("burn", "burnStatus"), ("freeze", "freezeStatus"), ("soak", "soakStatus") };
 
-        // What water on it turns into: freeze {} for "ice", boil {} for "steam".
-        static readonly (string verb, string water)[] WaterVerbs = { ("freeze", "ice"), ("boil", "steam") };
+        /// <summary>The flat waterTo's two words (freeze {} and boil {}): what water on it does, not a material; sim.json water says what it becomes.</summary>
+        public const string FreezesWater = "ice", BoilsWater = "steam";
+
+        // What water on it turns into: freeze {} for FreezesWater, boil {} for BoilsWater.
+        static readonly (string verb, string water)[] WaterVerbs = { ("freeze", FreezesWater), ("boil", BoilsWater) };
 
         /// <summary>The keys a verb's group holds on a terrain or cover; check it's one of Verbs first.</summary>
         internal static IReadOnlyList<string> KeysOf(bool cover, string verb)

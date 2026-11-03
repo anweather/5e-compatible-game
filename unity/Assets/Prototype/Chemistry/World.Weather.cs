@@ -21,11 +21,11 @@ namespace Chem
         readonly List<(int x, int y, int lands)> falling = new List<(int x, int y, int lands)>();
         readonly List<(int x, int y, int lands)> newMeteors = new List<(int x, int y, int lands)>();
 
-        /// <summary>The covers snow lays and drifts into (materials.json).</summary>
+        /// <summary>
+        /// The base rules' snow covers, for the view's drawing (CellPaint, CellHeightfield, ChemGrid), which
+        /// doesn't read the rules' yet; the world's snow reads sim.json weather.snow.cover and bank.
+        /// </summary>
         public const string SnowCover = "snow", BankCover = "snowbank";
-
-        /// <summary>The spell a meteor lands as (its crater, its fire).</summary>
-        public const string MeteorSpell = "meteor";
 
         /// <summary>The world's seed: the weather's, as RngState is the cells'.</summary>
         public uint Seed { get; }
@@ -140,7 +140,7 @@ namespace Chem
         void LandMeteors()
         {
             if (falling.Count == 0) return;
-            var spell = Rules.Spell(MeteorSpell);
+            var spell = Rules.Sim.Weather.MeteorSpell == null ? null : Rules.Spell(Rules.Sim.Weather.MeteorSpell);
             foreach (var (x, y, lands) in falling)
             {
                 if (lands > Tick || spell == null || !IsActiveAt(x, y)) continue;
@@ -207,12 +207,13 @@ namespace Chem
         void SettleOn(Chunk ch, int i, int upwind, double cover, double bank, double deepen)
         {
             var c = ch.Cells[i];
+            var w = Rules.Sim.Weather;
             if (c.Water > 0 || c.Fire > 0 || IsBlocking(c)) return;
             if (c.Cover == null)
             {
-                if (Rand() < cover) c.Cover = SnowCover;
+                if (Rand() < cover) c.Cover = w.SnowCover;
             }
-            else if (c.Cover == SnowCover && Rand() < (Sheltered(ch, i, upwind) ? bank : deepen)) c.Cover = BankCover;
+            else if (c.Cover == w.SnowCover && w.BankCover != null && Rand() < (Sheltered(ch, i, upwind) ? bank : deepen)) c.Cover = w.BankCover;
         }
 
         /// <summary>
@@ -317,11 +318,12 @@ namespace Chem
         // One square's snow: a bank sinks to snow, snow melts into a puddle.
         void MeltOn(Cell c, double chance)
         {
-            if (c.Cover != SnowCover && c.Cover != BankCover) return;
+            var w = Rules.Sim.Weather;
+            if (c.Cover == null || (c.Cover != w.SnowCover && c.Cover != w.BankCover)) return;
             if (Rand() >= chance) return;
-            if (c.Cover == BankCover)
+            if (c.Cover == w.BankCover)
             {
-                c.Cover = SnowCover;
+                c.Cover = w.SnowCover;
                 return;
             }
             c.Cover = null;
@@ -344,7 +346,7 @@ namespace Chem
             if (rain == 0) return false;
             if (Rand() >= Rules.Sim.Weather.DouseChance * rain / 100) return false;
             if (--c.Fire > 0) return false;
-            AddGas(c, "steam", 1);
+            AddGas(c, Rules.Sim.WaterBoils, 1);
             LogOnce("rain-douse", "The rain puts out a fire");
             return true;
         }

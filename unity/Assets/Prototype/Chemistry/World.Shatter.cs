@@ -1,5 +1,5 @@
 // What shatters: terrain with shatter.leaves (a window pane, glass ground) and
-// ice on water (the material "ice"). A blast, ground shaken under it, a heavy
+// ice on water (the terrain sim.json water.freezes names). A blast, ground shaken under it, a heavy
 // thing thrown at it or lightning on ice is a hit, and one with shatter.cracks
 // goes intact, cracked, shattered: the first hit cracks it (Cell.Cracked), the
 // next breaks it. A pane falls with its wall, cracked or not: with no wall left
@@ -11,8 +11,6 @@ namespace Chem
 {
     public sealed partial class World
     {
-        /// <summary>The material frozen water and frozen creatures are, for its shatter.cracks.</summary>
-        public const string IceMaterial = "ice";
         /// <summary>The status of a frozen creature with its first crack.</summary>
         public const string CrackedStatus = "cracked";
 
@@ -50,7 +48,11 @@ namespace Chem
 
         // Ice that cracks, on this cell; null for none (a mod's ice that doesn't crack doesn't shatter either).
         TerrainDef IceOver(Cell c) =>
-            c.Frozen && Rules.Terrain.TryGetValue(IceMaterial, out var ice) && ice.Cracks ? ice : null;
+            c.Frozen && FrozenWater() is TerrainDef ice && ice.Cracks ? ice : null;
+
+        // The terrain frozen water is (sim.json water.freezes), whose shatter it borrows; null for none.
+        TerrainDef FrozenWater() =>
+            Rules.Sim.WaterFreezes != null && Rules.Terrain.TryGetValue(Rules.Sim.WaterFreezes, out var ice) ? ice : null;
 
         // Cracked, with a warning if a creature stands on it.
         void Crack(int x, int y, Cell c, TerrainDef what)
