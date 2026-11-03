@@ -328,12 +328,16 @@ namespace Chem
         /// The site problem a patch would meet here if it switched on now: null if none. It doesn't switch it on.
         /// With <paramref name="replacing"/>, a mod on that is an earlier state of this same patch, it goes in that mod's
         /// place rather than over it, so what that mod put in the world doesn't count against the patch.
+        /// A patch that doesn't compose with the mods on is a sentence too, never a ModException: this runs on the
+        /// game's main thread for the tools (GameRoomDesk), where a throw would reach no one.
         /// </summary>
         public string SiteProblemOf(string patchJson, string title = null, string replacing = null)
         {
             if (RoomRules == null) return null;
-            var mods = RoomRules.IsOn(replacing) ? RoomRules.Replaced(new ActiveMod(replacing, patchJson)) : RoomRules.Mods.Append(new ActiveMod("\0site", patchJson));
-            return SiteProblem(RoomRules.WithMods(mods).Effective, title);
+            const string standIn = "\0site";
+            var mods = RoomRules.IsOn(replacing) ? RoomRules.Replaced(new ActiveMod(replacing, patchJson)) : RoomRules.Mods.Append(new ActiveMod(standIn, patchJson));
+            string misfit = Compose(mods, $"{title ?? "that mod"} doesn't fit the rules", out var next);
+            return misfit != null ? misfit.Replace(standIn + ": ", "") : SiteProblem(next.Effective, title);
         }
 
         // ---------- the save ----------
