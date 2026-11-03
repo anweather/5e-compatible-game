@@ -165,8 +165,11 @@ a tick (D13). Every peer validates and composes the same mods in the same order,
    by thick and heap, touch at power 1 (the base `lava-pool` row on a pond for a mod's molten rock), the flags in
    Soak/Float/Cool/rain, `liquid` as a condition and with `addWater`, interning (remap by id at every switch; the cell
    hash, saves and patches by id), temporary like any mod material, the still-water pass waiting out `thick`, the MCP's
-   kind `liquid`. Every golden holds; new goldens for honey, red paint and molten rock (`LiquidTests`). Left: `hot`,
-   `freezes`, `sets` (P3's products for a liquid), the view's coloured water mesh, breath and wading by `DrownDepth`.*
+   kind `liquid`. Every golden holds; new goldens for honey, red paint and molten rock (`LiquidTests`).
+   Then `hot`, `freezes`, `sets` (branch `liquids-2`, `LiquidProductTests`): heat that lights what it touches and
+   cools, a freeze into a terrain or cover wherever water would freeze (with the base `cold-liquid` row), a
+   `Cell.Sets` count into a terrain; goldens for a mod's magma and syrup. Left: the view's coloured water mesh,
+   breath and wading by `DrownDepth`.*
 5. **P5 mix** (S, on P1 and temporary materials).
 
 **The first test** (after step 2): asked of Claude, "give me a spell that lays a slick of black ice

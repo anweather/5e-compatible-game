@@ -14,8 +14,16 @@ namespace Chem.Mcp
         static readonly string[] TerrainFields = { "name", "tags", "look", "elevation", "spring", "speed" };
         static readonly string[] CoverFields = { "name", "tags", "look", "lasts", "witherLog", "damage", "speed" };
 
-        // A liquid's fields (RuleSchema.Liquids): each one value but its lapse.
-        static readonly Dictionary<string, string[]> LiquidFields = RuleSchema.Liquids.Names.ToDictionary(n => n, n => n == Rules.LapseKey ? Rules.LapseFields.ToArray() : null);
+        // A liquid's fields (RuleSchema.Liquids): each one value but its hot, sets and lapse.
+        static readonly Dictionary<string, string[]> LiquidFields = RuleSchema.Liquids.Names.ToDictionary(n => n, LiquidSection);
+
+        static string[] LiquidSection(string field) => field switch
+        {
+            Rules.LapseKey => Rules.LapseFields.ToArray(),
+            "hot" => Rules.HotFields.ToArray(),
+            "sets" => Rules.SetsFields.ToArray(),
+            _ => null,
+        };
 
         static readonly Dictionary<string, string[]> GasFields = new Dictionary<string, string[]>
         {

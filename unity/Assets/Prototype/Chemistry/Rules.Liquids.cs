@@ -30,6 +30,13 @@ namespace Chem
         public string Boils;
         /// <summary>The element it lays, at power 1, on a cell of another liquid it would flow into; null, the other is a wall.</summary>
         public string Touch;
+        /// <summary>Ticks a pour of it stays hot (hot.for): while hot it lights what it touches and burns creatures in it (Cell.Heat), then cools. 0: never hot.</summary>
+        public int HotFor;
+        /// <summary>The terrain or cover it freezes into where water would freeze (a freeze effect, freezing ground, snow); null, it doesn't freeze.</summary>
+        public string Freezes;
+        /// <summary>The terrain it sets into (sets.into), SetsAfter ticks after it was poured (Cell.Sets); null, it never sets.</summary>
+        public string SetsInto;
+        public int SetsAfter;
         /// <summary>How fast a creature wades it (1 unhindered). Carried for the view and movers.</summary>
         public double Speed = 1;
         /// <summary>How the view draws it (the water mesh's colour), or null for water's own. The view's only.</summary>
@@ -46,8 +53,14 @@ namespace Chem
         /// <summary>The id of liquid 0, built in: no row may take it.</summary>
         public const string WaterLiquid = "water";
 
+        /// <summary>A liquid's hot and sets (P3's products for a liquid): their fields.</summary>
+        public static readonly IReadOnlyList<string> HotFields = new[] { "for" }, SetsFields = new[] { "into", "after" };
+
         /// <summary>The most liquids a rule set may hold, water too (a byte a cell, as struct-of-arrays later).</summary>
         public const int MaxLiquids = 255;
+
+        /// <summary>The most ticks a liquid stays hot or takes to set: an hour.</summary>
+        public const int MaxLiquidTicks = 21600;
 
         readonly List<LiquidDef> liquids = new List<LiquidDef>();
         readonly Dictionary<string, int> liquidIndex = new Dictionary<string, int>();
@@ -98,6 +111,10 @@ namespace Chem
             Drowns = Bool(o["drowns"]) ?? true,
             Boils = Str(o["boils"]),
             Touch = Str(o["touch"]),
+            HotFor = Int((o["hot"] as JObject)?["for"]) ?? 0,
+            Freezes = Str(o["freezes"]),
+            SetsInto = Str((o["sets"] as JObject)?["into"]),
+            SetsAfter = Int((o["sets"] as JObject)?["after"]) ?? 0,
             Speed = Num(o["speed"]) ?? 1,
             Look = ParseLook(o["look"]),
         };
@@ -131,6 +148,7 @@ namespace Chem
                 if (o["boils"] != null && !IsIn(gases, o["boils"])) Errors.Add($"{what}: boils {Show(o["boils"])} isn't a gas");
                 if (o["touch"] != null && !IsElement(o["touch"])) Errors.Add($"{what}: touch {Show(o["touch"])} isn't an element");
                 LookOf(what, o, false);
+                LiquidProducts(what, o);
                 if (!(o[LapseKey] is JObject lapse)) return;
                 foreach (var k in lapse.Properties().Select(k => k.Name).Where(k => !LapseFields.Contains(k)))
                     Errors.Add($"{what}: lapse.{k} unknown; lapse takes into and after");
@@ -138,6 +156,33 @@ namespace Chem
                     Errors.Add($"{what}: lapse.after must be a whole number of ticks from 1");
                 if (lapse["into"] != null && Text(lapse["into"]) != WaterLiquid)
                     Errors.Add($"{what}: lapse.into {Show(lapse["into"])} must be water (or give none and it dries)");
+            }
+
+            // Its hot {for}, freezes (a terrain or cover) and sets {into a terrain, after}.
+            void LiquidProducts(string what, JObject o)
+            {
+                if (o["hot"] != null) TicksSection(what, "hot", o["hot"], HotFields, "for");
+                if (o["freezes"] != null && !IsIn(terrain, o["freezes"]) && !IsIn(covers, o["freezes"]))
+                    Errors.Add($"{what}: freezes {Show(o["freezes"])} isn't a terrain or cover");
+                if (o["sets"] == null) return;
+                TicksSection(what, "sets", o["sets"], SetsFields, "after");
+                var into = (o["sets"] as JObject)?["into"];
+                if (o["sets"] is JObject && !(into != null && IsIn(terrain, into))) Errors.Add($"{what}: sets.into {Show(into)} isn't a terrain");
+            }
+
+            // A section of ticks: an object of these fields, its ticks a whole number from 1 to an hour.
+            void TicksSection(string what, string key, JToken v, IReadOnlyList<string> fields, string ticks)
+            {
+                if (!(v is JObject o))
+                {
+                    Errors.Add($"{what}: {key} must be an object ({string.Join(", ", fields)})");
+                    return;
+                }
+                foreach (var k in o.Properties().Select(k => k.Name).Where(k => !fields.Contains(k)))
+                    Errors.Add($"{what}: {key}.{k} unknown; {key} takes {string.Join(" and ", fields)}");
+                var t = o[ticks];
+                if (!(t != null && IsWholeNumber(t) && (double)t >= 1 && (double)t <= MaxLiquidTicks))
+                    Errors.Add($"{what}: {key}.{ticks} must be a whole number of ticks from 1 to {MaxLiquidTicks}");
             }
 
             /// <summary>A reaction's liquid condition and effect name a liquid (the condition may name a tag instead).</summary>

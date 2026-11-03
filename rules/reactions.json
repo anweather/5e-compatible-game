@@ -24,6 +24,7 @@
     { "id": "cold-steam", "element": "cold", "if": { "gas": "steam" }, "do": [{ "condense": true }], "log": "Steam condenses back into water" },
     { "id": "cold-crust", "element": "cold", "if": { "terrainTag": "crusts" }, "do": [{ "crust": true }], "log": "The {terrain} crusts over into rock you can walk on, for now", "notable": true, "stop": true },
     { "id": "cold-water", "element": "cold", "if": { "water": true }, "do": [{ "freeze": true }], "log": "The water freezes solid", "stop": true },
+    { "id": "cold-liquid", "element": "cold", "if": { "freezes": true }, "do": [{ "freeze": true }], "log": "The liquid freezes solid", "stop": true },
     { "id": "cold-covered", "element": "cold", "if": { "cover": ["oil", "grease", "thorns", "embers", "frost"] }, "do": [], "stop": true },
     { "id": "cold-frost", "element": "cold", "if": { "notTerrainTag": "blocking", "water": false, "frozen": false, "power": 4 }, "do": [{ "setCover": "frost" }], "log": "Frost glazes the ground, slippery underfoot", "stop": true },
 

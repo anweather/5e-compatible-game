@@ -201,7 +201,9 @@ touch them.
 : What a cell's water is (P1, `Rules.Liquids.cs`): `Cell.Water` is the
   amount and `Cell.Liquid` the **kind**, an index into the `liquids` table
   where 0 is water, built in. A mod's honey, paint or molten rock is a row
-  there (`thick`, `heap`, `touch` ...). Two kinds never share a cell. The
+  there (`thick`, `heap`, `touch`, `hot`, `freezes`, `sets` ...): a hot one
+  lights what it touches, then cools; one that **sets** hardens into a
+  terrain where it lies (`Cell.Sets` counts down). Two kinds never share a cell. The
   index is the core's own; the wire, saves and the cell hash carry the id.
   "Water" in a rule still means kind 0.
 
