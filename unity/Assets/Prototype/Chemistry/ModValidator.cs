@@ -524,8 +524,30 @@ namespace Chem
             void FaunaBudget(JObject composed)
             {
                 double max = budgets.Number("things.maxScale", 20);
-                foreach (var p in (patch[FaunaTables.SpeciesKey] as JObject)?.Properties() ?? Enumerable.Empty<JProperty>())
-                    if (composed[FaunaTables.SpeciesKey]?[p.Name] is JObject row) SpeciesBudget(p.Name, row, max);
+                var given = (patch[FaunaTables.SpeciesKey] as JObject)?.Properties().ToList() ?? new List<JProperty>();
+                foreach (var p in given)
+                    if (composed[FaunaTables.SpeciesKey]?[p.Name] is JObject row)
+                    {
+                        SpeciesBudget(p.Name, row, max);
+                        GraftBudget(composed[FaunaTables.SpeciesKey] as JObject, p.Name, row);
+                    }
+                double maxNew = budgets.Number("fauna.maxPerMod", 4);
+                int added = given.Count(p => baseDoc[FaunaTables.SpeciesKey]?[p.Name] == null);
+                if (added > maxNew) Add(ModCheck.Budget, $"The mod adds {added} species; a mod may add at most {Num(maxNew)}.");
+            }
+
+            // A graft (FaunaGraft): how many donors, how many slots once flattened, and how far a donor's slots grow or shrink.
+            void GraftBudget(JObject species, string id, JObject row)
+            {
+                if (!FaunaGraft.IsGraft(row)) return;
+                var donors = (row[FaunaGraft.FromKey] as JArray)?.OfType<JObject>().ToList() ?? new List<JObject>();
+                double maxDonors = budgets.Number("fauna.maxDonors", 3), maxSlots = budgets.Number("fauna.maxSlots", 40);
+                double minScale = budgets.Number("fauna.minScale", 0.25), maxScale = budgets.Number("fauna.maxScale", 4);
+                if (donors.Count > maxDonors) Add(ModCheck.Budget, $"Species {id} grafts from {donors.Count} donors; a graft has at most {Num(maxDonors)}.");
+                foreach (var d in donors.Where(d => IsNumber(d["scale"]) && ((double)d["scale"] < minScale || (double)d["scale"] > maxScale)))
+                    Add(ModCheck.Budget, $"Species {id} grafts {Text(d["species"]) ?? "a donor"} at a scale of {d["scale"]}; a donor's scale is {Num(minScale)} to {Num(maxScale)}.");
+                int slots = (FaunaGraft.Flatten(species, id)?["parts"] as JObject)?.Count ?? 0;
+                if (slots > maxSlots) Add(ModCheck.Budget, $"Species {id} has {slots} slots once flattened; a body has at most {Num(maxSlots)} (each is drawn for every animal out).");
             }
 
             void SpeciesBudget(string id, JObject row, double max)

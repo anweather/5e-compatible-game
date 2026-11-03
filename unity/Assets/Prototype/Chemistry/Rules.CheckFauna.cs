@@ -11,12 +11,12 @@ namespace Chem
     {
         sealed partial class Checker
         {
-            static readonly string[] SpeciesKeys = { "name", "variantOf", "scale", "size", "body", "coat", "coats", "hair", "vary", "parts", "move", "behave", "spawn" };
-            static readonly string[] BodyKeys = { "length", "radius", "taper", "flatten" };
+            static readonly string[] SpeciesKeys = { "name", "variantOf", "scale", "size", "body", "coat", "coats", "hair", "vary", "parts", "move", "behave", "spawn", FaunaGraft.FromKey };
+            static readonly string[] BodyKeys = { "length", "radius", "taper", "flatten", FaunaGraft.FromKey };
             static readonly string[] CoatKeys = { "name", "base", "accent", "glow", "weight" };
-            static readonly string[] SlotKeys = { "part", "on", "at", "dir", "mirror", "phase", "mirrorPhase", "scale", "thickness", "style" };
-            static readonly string[] MoveKeys = { "walk", "run", "turn", "rock", "bob", "bobs", "stride", "upright", "habitats", "depth", "leaps" };
-            static readonly string[] BehaveKeys = { "wander", "flee", "idle", "group", "active", "graze", "thirst", "play", "laze", "hunger", "chase", "hunts" };
+            static readonly string[] SlotKeys = { "part", "on", "at", "dir", "mirror", "phase", "mirrorPhase", "scale", "thickness", "style", "coat", "donor" };
+            static readonly string[] MoveKeys = { "walk", "run", "turn", "rock", "bob", "bobs", "stride", "upright", "habitats", "depth", "leaps", FaunaGraft.FromKey };
+            static readonly string[] BehaveKeys = { "wander", "flee", "idle", "group", "active", "graze", "thirst", "play", "laze", "hunger", "chase", "hunts", FaunaGraft.FromKey };
             static readonly string[] SpawnKeys = { "density", "nearWater", "among", "share" };
             static readonly string[] PartKeys = { "role", "segments", "spring", "ripple", "follows", "poses" };
             static readonly string[] VaryKeys = { "shade", "warm", "girth", "mix" };
@@ -51,7 +51,33 @@ namespace Chem
                 Behave(who, row["behave"], species);
                 Variant(id, row, species);
                 if (row["variantOf"] != null && row["parts"] != null) Errors.Add($"{who} is a variant, so it takes its parts from {Show(row["variantOf"])}");
-                if (row["parts"] != null) Slots(who, row["parts"], parts);
+                if (FaunaGraft.IsGraft(row)) Graft(id, row, species, parts);
+                else if (row["parts"] != null) Slots(who, row["parts"], parts);
+            }
+
+            // A graft (FaunaGraft): its donors as written, then its slots as flattened, so every part and on is checked.
+            void Graft(string id, JObject row, JObject species, JObject parts)
+            {
+                string who = $"species {id}";
+                if (row["variantOf"] != null) Errors.Add($"{who} is a variant, so it takes its body from {Show(row["variantOf"])}, not from donors");
+                if (row[FaunaGraft.FromKey] != null && !(row[FaunaGraft.FromKey] is JArray)) Errors.Add($"{who}: from must be a list of donors, such as [{{\"species\": \"deer\"}}]");
+                foreach (var donor in row[FaunaGraft.FromKey] as JArray ?? new JArray()) Donor(who, donor);
+                var flat = FaunaGraft.Flatten(species, id, Errors);
+                if (flat?["parts"] != null) Slots(who, flat["parts"], parts);
+            }
+
+            void Donor(string who, JToken donor)
+            {
+                OnlyKeys($"{who}: a donor", donor, FaunaGraft.DonorKeys);
+                if (!(donor is JObject d)) return;
+                if (d["species"] == null) Errors.Add($"{who}: every donor names a species");
+                if (d["take"] != null && d["drop"] != null) Errors.Add($"{who}: a donor takes or drops slots, not both");
+                foreach (var key in new[] { "take", "drop" })
+                    if (d[key] != null && !(d[key] is JArray a && a.All(x => x.Type == JTokenType.String))) Errors.Add($"{who}: a donor's {key} must be a list of slot ids");
+                foreach (var key in new[] { "at", "dir" })
+                    if (d[key] != null && !(d[key] is JArray a && a.Count == 3 && a.All(IsNumber))) Errors.Add($"{who}: a donor's {key} must be [x, y, z]");
+                Number(d["scale"], $"{who}: a donor's scale", 0);
+                if (d["coat"] != null && Show(d["coat"]) != "own") Errors.Add($"{who}: a donor's coat can only be own (its own coats and hair); leave it out for the row's coat");
             }
 
             void Colours(string who, JObject row)
@@ -131,6 +157,7 @@ namespace Chem
                 Number(slot["scale"], $"{where}: scale", 0);
                 Number(slot["thickness"], $"{where}: thickness", 0);
                 if (slot["style"] != null && !IsWholeAtLeast(slot["style"], 0)) Errors.Add($"{where}: style must be a whole number, 0 or more");
+                if (slot["coat"] != null && (Show(slot["coat"]) != "own" || slot["donor"] == null)) Errors.Add($"{where}: coat can only be own, with the donor whose coats it wears");
             }
 
             void Coat(string who, JToken coat)

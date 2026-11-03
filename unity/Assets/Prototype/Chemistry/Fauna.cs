@@ -50,6 +50,8 @@ namespace Chem
         public double Scale = 1, Thickness = 1;
         /// <summary>Style group: each animal shows one slot of a group (hairstyles, beards); 0 is always shown.</summary>
         public int Style;
+        /// <summary>A grafted slot's donor when it wears that species' own coats and hair ("coat": "own"); null for the row's.</summary>
+        public string OwnCoatOf;
     }
 
     /// <summary>A species' row, as written: a variant leaves out what it takes from <see cref="VariantOf"/>.</summary>
@@ -68,6 +70,8 @@ namespace Chem
         /// <summary>How animals differ from each other; null takes the species it's a variant of, or none.</summary>
         public VaryDef Vary;
         public IReadOnlyList<SlotDef> Slots = Array.Empty<SlotDef>();
+        /// <summary>A graft's donors as written ("from"), each its species id; empty for a row of its own (FaunaGraft).</summary>
+        public IReadOnlyList<string> Grafted = Array.Empty<string>();
         public double Walk = 1.4, Run = 6, Turn = 140, Rock;
         public double[] Bob = { 0.02, 0.06 }, Bobs = { 2, 2 }, Stride = { 0.6, 0.9 };
         /// <summary>Where it lives: walks (the default), swims under the water or floats on it; leaps says a swimmer leaps.</summary>
@@ -146,8 +150,9 @@ namespace Chem
         {
             if (id == null) return null;
             if (readSpecies.TryGetValue(id, out var read)) return read;
-            if (!(species[id] is JObject row)) return null;
+            if (!(FaunaGraft.Flatten(species, id) is JObject row)) return null;
             read = ReadSpecies(id, row);
+            if (species[id]?[FaunaGraft.FromKey] is JArray donors) read.Grafted = donors.Select(d => (string)d["species"]).Where(d => d != null).ToList();
             readSpecies[id] = read;
             return read;
         }
@@ -178,8 +183,9 @@ namespace Chem
         {
             for (int i = 0; i <= MaxVariantDepth && id != null; i++)
             {
-                var row = species[id] as JObject;
-                if (!JToken.DeepEquals(row, other.species[id])) return false;
+                // A graft compares flattened, so a change to a donor changes it.
+                var row = FaunaGraft.Flatten(species, id);
+                if (!JToken.DeepEquals(row, FaunaGraft.Flatten(other.species, id))) return false;
                 if (row == null) return true;
                 if (row["parts"] is JObject slots && slots.PropertyValues().Any(s => changedParts.Contains((string)s["part"]))) return false;
                 id = (string)row["variantOf"];
@@ -289,6 +295,7 @@ namespace Chem
             s.Scale = Num(p.Value["scale"], s.Scale);
             s.Thickness = Num(p.Value["thickness"], s.Thickness);
             s.Style = (int)Num(p.Value["style"], 0);
+            if ((string)p.Value["coat"] == "own") s.OwnCoatOf = (string)p.Value["donor"];
             return s;
         }
 

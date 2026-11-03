@@ -59,6 +59,8 @@ namespace Chem.Mcp
             var lines = new List<string> { $"\nShape: {shape.Words(size)} (at rest, an animal of middle size)." };
             if (s.VariantOf != null)
                 lines.Add($"A variant of {s.VariantOf}: its body, slots and gait are {body.Id}'s, and it wanders {Num(body.Wander)} m, flees at {Num(body.Flee)} m, idles {Span(body.Idle)} s and keeps in groups of {Span(body.Group)} as {body.Id} does (set those on {body.Id}). Its own: size ×{Num(s.VariantScale)}, coat, hair, active {s.Active}, graze {Num(s.Graze)}, thirst {Num(s.Thirst)}, play {Num(s.Play)}, laze {Num(s.Laze)}, hunger {Num(s.Hunger)}, chase {Num(s.Chase)}.");
+            if (s.Grafted.Count > 0)
+                lines.Add($"A graft, flattened from {string.Join(", ", s.Grafted)}: the slots below are what it's built of; a slot whose id was taken has its donor's id before it, and coat own wears that donor's coats and hair.");
             lines.Add($"Body: {Num(body.Length)} m long, radius {Num(body.Radius)} m, taper {Num(body.Taper)}, flatten {Num(body.Flatten)}; " +
                 "a body slot's at is in body units (x across the radius, y up the radius, z along the half-length, +1 the front); a slot on a slot is at metres from the end of that one.");
             lines.Add($"Slots, flattened ({shape.Limbs.Count} drawn, metres at rest before size, x right, y up, z ahead):");
@@ -76,7 +78,7 @@ namespace Chem.Mcp
             string on = limb.Parent < 0 ? $"on the body at [{string.Join(", ", slot.At.Select(Num))}] body units" : $"on {shape.Limbs[limb.Parent].Slot.Id}, [{string.Join(", ", slot.At.Select(Num))}] m from its end";
             string option = limb.Shown ? "" : " (another option)";
             string extra = (slot.Dir.Any(d => Math.Abs(d) > 1e-9) ? $", dir [{string.Join(", ", slot.Dir.Select(Num))}]" : "") +
-                (Math.Abs(slot.Scale - 1) > 1e-9 ? $", scale {Num(slot.Scale)}" : "") + (slot.Style > 0 ? $", style {slot.Style}{option}" : "");
+                (Math.Abs(slot.Scale - 1) > 1e-9 ? $", scale {Num(slot.Scale)}" : "") + (slot.Style > 0 ? $", style {slot.Style}{option}" : "") + (slot.OwnCoatOf != null ? $", coat own ({slot.OwnCoatOf})" : "");
             return $"- {name}: {slot.Part} ({limb.Part.Role}), {on}{extra}; from {BodyShape.Metres(limb.Start)} to {BodyShape.Metres(limb.End)}";
         }
 
