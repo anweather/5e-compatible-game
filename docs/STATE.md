@@ -56,6 +56,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
+- **Paused (Andrew, 2026-11-02):** no new work until he has play tested tonight; in-flight work may finish. Then he decides whether 0.1.11 goes before the cleanup. Draft notes: `docs/handoffs/release-0.1.11-notes.md`; focus list on the board.
 - **Mac:** briefed on `roomruin-wait` (#67: the wait, a distinct detail when nothing was compared, the cause of `both_draw_it`); it may have stopped first, so check for the branch.
 - **Unmerged, kept:** `second-map` (afff4c9): the report and the word are on dev (`docs/design/second-map-2026-11-02.md`), the code waits for shipped maps (#69, backlog 29), after the cleanup.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
