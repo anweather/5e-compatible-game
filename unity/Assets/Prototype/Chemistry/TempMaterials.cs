@@ -2,8 +2,11 @@
 // every terrain, cover or gas row the rules in force have and the base rules don't,
 // owned by the first mod on that adds it. Pure: a RuleSet in, a list out, in mod
 // order, then table order (Rules.MaterialTables), then the patch's own order, so every
-// peer lists them alike. World.Lapse.cs sweeps and lapses them.
+// peer lists them alike. World.Lapse.cs sweeps and lapses them. Another mod may name
+// one while its owner is on, and goes with it (#86): Named says which one names.
+using System;
 using System.Collections.Generic;
+using System.Linq;
 using Newtonsoft.Json.Linq;
 
 namespace Chem
@@ -48,7 +51,28 @@ namespace Chem
                     list.Add(new TempMaterial(table, p.Name, mod, set.Effective.LapseOf(table, p.Name)));
         }
 
-        /// <summary>The temporary materials by id, each with its mod: what ModValidator lets no other mod name.</summary>
+        /// <summary>
+        /// The ids among these that a patch (bare or {"title", "patch"}) names, in ordinal order: a row of one
+        /// of its tables by that id, or a string anywhere in it. Empty for a patch that can't be read.
+        /// </summary>
+        public static SortedSet<string> Named(string json, ICollection<string> ids)
+        {
+            var named = new SortedSet<string>(StringComparer.Ordinal);
+            if (ids.Count > 0 && TryPatch(json, out var patch)) Named(patch, ids, named);
+            return named;
+        }
+
+        /// <summary>Named, on a patch already read.</summary>
+        public static void Named(JObject patch, ICollection<string> ids, SortedSet<string> named)
+        {
+            foreach (var table in ModPatch.Tables)
+                if (patch[table] is JObject rows)
+                    named.UnionWith(rows.Properties().Select(p => p.Name).Where(ids.Contains));
+            foreach (var v in patch.Descendants().OfType<JValue>())
+                if (v.Type == JTokenType.String && ids.Contains((string)v)) named.Add((string)v);
+        }
+
+        /// <summary>The temporary materials by id, each with its mod: a mod naming one goes when that mod does (World.Lapse.cs).</summary>
         public static IReadOnlyDictionary<string, string> Owners(IEnumerable<TempMaterial> temps)
         {
             var owners = new Dictionary<string, string>();

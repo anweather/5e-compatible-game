@@ -352,10 +352,17 @@ its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
 - **Lockstep.** A lapse is checked at the end of each tick (`World.EndTick`), mods in room order, at most one a tick
   (the next due waits a tick). The due tick is the mod's switch tick plus the shortest `after` of its materials, so a
   late joiner or a loaded save, which has both, lapses it at the same tick. No clock but the tick.
-- **What may name it.** Only its own mod: `validate` and every peer's check refuse another mod naming a temporary
-  material anywhere in its patch ("black-ice is a temporary material of the mod black-ice; only that mod may name it"),
-  so a lapse never leaves a dangling reference; a thing can't be made of one. Ids travel as strings (cells, saves, the
-  patch): nothing on the wire holds an index.
+- **What may name it** (#86). Any mod, while its owner is on: a wing names its house's `clay-tile`. A mod naming
+  another's material (a row by its id, or a string anywhere in its patch, `TempMaterials.Named`) is that mod's
+  **dependent**, and goes with it: when the owner is reverted or lapses, every dependent goes at that tick, and
+  every dependent of a dependent (one pass in room order, `World.WithDependents`). They go in one switch, with one
+  log line ("Ana switched off A stucco house, and A wing with it"), the owner first and then its dependents in
+  reverse of the order they went on; the view hears a revert for each, in that order. A lapsing material is no
+  exception: its dependents go at the lapse. A mod naming a material whose owner went is refused, naming it ("A wing
+  names clay-tile, a material of the mod house, which isn't on; switch house on first", from the retired list); one
+  never on in the room gets the checks' own reference sentence. No thing is made of another mod's material, and none
+  lapses into one, since it would go at the same tick. Ids travel as strings (cells, saves, the patch): nothing on
+  the wire holds an index.
 - **Budgets** (`budgets.json` `materials`): `maxPerMod` 8 new materials a mod, `maxLive` 32 temporary rows live in a
   room (refused at the switch: "Big mod would make 35 temporary materials live; a room holds at most 32"), `maxLapse`
   21 600. A lapse on a material the rules already have is refused.
@@ -371,6 +378,41 @@ its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
    `World.RoomRules` in force as `CurrentRules`, with the redraw, recolour and `RulesChanged` of any switch: the mods
    panel, lights and looks go back as on a revert.
 4. The mods panel shows "lapses in 4:59" on a mod whose materials lapse (`RuleSwitcher.LapseNote`).
+
+## Covers that spread
+
+`docs/design/primitives.md` §3, P2. A cover may give `spread`, and it creeps onto the ground next to it with no cast
+(`World.Spread.cs`):
+
+```json
+"river-moss": { "name": "Glowing moss", "tags": [], "look": { "color": [0.3, 0.85, 0.55] },
+                "spread": { "every": 30, "chance": 0.5, "onto": ["stone", "rock"], "notOnto": ["sandy"] },
+                "lapse": { "after": 1800 } }
+```
+
+- **`every`** (ticks, from 1; a mod's from `materials.minSpreadEvery` 30): each cell of it gets a turn every that many
+  ticks, on the soak pass, each cell on its own turn of the count (as soaking is), so a patch doesn't pulse.
+- **`chance`** (above 0, up to 1, default 1; a mod's at most `materials.maxSpreadChance` 0.5): on its turn, for each
+  neighbour in N, E, S, W order that takes it, one roll of the world's seeded RNG.
+- **`onto`**, **`notOnto`** (lists of terrain ids or terrain tags): a neighbour takes it if it's bare (no cover, no
+  fire), not open water (a cover on water is `float`'s), its terrain's id or a tag is in `onto` (none: any terrain)
+  and none is in `notOnto`. A name no terrain has is refused ("spread.notOnto pebbles is no terrain or terrain tag").
+- **`reach`** (cells, from 1; a mod's at most `materials.maxSpreadReach` 64): how far it creeps from where it was laid,
+  counting that cell, carried in `Cell.Slick` as a slick's reach is. None: no end.
+- **When it lands.** What spreads in a tick is laid at its end, first come first laid, so it creeps a cell a turn
+  whichever way the rows run; at most `materials.maxSpreadPerTick` (64) cells a tick in the whole world, and only into
+  active chunks. A catch-up's spread lands on the next tick, under the same cap.
+- **Cost.** None when no cover in the rules spreads (`Rules.AnySpreads`; no RNG is drawn, so every golden holds).
+  A whole active chunk of spreading moss with nowhere left to go costs about 22 µs a tick more than the same chunk under
+  a cover that doesn't spread (a VM, best of six runs of 2 400 ticks); a growing patch adds at most 64 landings a tick.
+- **Temporary.** A mod's spreading cover is swept like any other at its lapse, every cell it reached and its reach.
+- **Tools.** `add_material` and `set_material` take `spread` on a cover, whole (`spread`) or by field (`spread.every`,
+  `spread.chance`, `spread.onto`, `spread.notOnto`, `spread.reach`), within the checks above.
+
+**For the view.** The design's moss glows (P4), but a cover look takes only `color` today, and `look.glow` is refused
+("a look with no family doesn't take" it). P4 adds `look.glow` 0 to 1 to every look, drawn emissive and lit at night,
+out of the fingerprint. Until then spreading moss is drawn as a plain cover of its colour. A spreading cell counts as
+live, so its chunk's `LastLive` moves; the view should redraw covers there as they creep in with no cast.
 
 ## Buildings: rows a mod can edit or add
 

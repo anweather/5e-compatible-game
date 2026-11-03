@@ -76,8 +76,15 @@ namespace Chem
             };
             AddLog(verdict.Line, verdict.Done ? LogKind.Notable : LogKind.Info);
             RoomDecided?.Invoke(c, verdict);
+            // The mods that went with a revert (World.Lapse.cs): each heard as reverted too, after it.
+            var also = wentWith ?? new List<RoomMod>();
+            wentWith = null;
+            foreach (var m in also) RoomDecided?.Invoke(RoomCommand.Revert(m.By, m.Id), verdict);
             return verdict;
         }
+
+        // The mods a revert took with it, for ApplyRoom to tell the view; null between commands.
+        List<RoomMod> wentWith;
 
         RoomVerdict SwitchOn(RoomCommand c)
         {
@@ -102,15 +109,15 @@ namespace Chem
             string title = at >= 0 ? Room.Mods[at].Title : c.Mod;
             string named = c.Mod.Length == 0 ? "that mod" : c.Mod;
             RuleSet next = null;
+            var gone = at < 0 ? null : WithDependents(at);
             string why = RoomPolicy.Refusal(Room.Mode, Room.Host, c.Peer)
                 ?? (at < 0 ? $"{named} isn't on in this room" : null)
-                ?? Compose(Room.Mods.Where((m, i) => i != at).Select(m => new ActiveMod(m.Id, m.Json)), $"without {title} the other mods don't fit", out next)
+                ?? Compose(Without(gone), $"without {title} the other mods don't fit", out next)
                 ?? OverlapProblem(next.Effective, $"without {title}");
             if (why != null) return Refused(c, why);
-            Room.Mods.RemoveAt(at);
-            PutInForce(next);
-            Room.Found.RemoveWhere(t => ThingsNow.Find(new ThingId(t)) == null);
-            return new RoomVerdict(true, null, $"{c.Peer} switched off {title} ({RoomPolicy.Words(Room.Mode)} room)");
+            TakeOff(gone, next);
+            wentWith = gone.Skip(1).ToList();
+            return new RoomVerdict(true, null, $"{c.Peer} switched off {title}{AlsoGone(gone)} ({RoomPolicy.Words(Room.Mode)} room)");
         }
 
         static RoomVerdict Refused(RoomCommand c, string why) => new RoomVerdict(false, why, RoomPolicy.RefusedLine(c.Change, why));
@@ -146,6 +153,7 @@ namespace Chem
                 return $"{title} can't be read as a mod";
             }
             if (problems.Count == 0) return null;
+            if (OwnerProblem(title, json) is string owner) return owner;
             string more = problems.Count == 1 ? "" : $" (and {problems.Count - 1} more)";
             return $"{title} doesn't pass the checks: {problems[0].Message.TrimEnd('.')}{more}";
         }
