@@ -224,6 +224,11 @@ public static class ProbeScenarios
         new Entry("worldlooks", typeof(WorldLooksProbe), 150f,
             "The world's colours come from the rules in force (docs/RULES_MCP.md, \"Looks\"): the colours as they ship are today's to the number; the fire element's colour reaches what's burning and a burning lake, " +
             "one Fireball that chose its own colour keeps it (J-052); gases, covers, the ground and the water each take theirs; the mods off puts it all back. With --shots, a film of each in a folder of its own."),
+        new Entry("waterlook", typeof(WaterLookProbe), 200f,
+            "A look on water costs at its switch, not every frame (#70): Andrew's \"Purple Create Water\" (a look by player 0) and \"All water purple\", on and off " +
+            "through the room over Hollowmere's square, quiet and then after a minute of his meteor mod's shower. Checks: ChemGrid.Render a frame with the looks on " +
+            "within 1 ms or 20% of the stretches with them off, quiet and after the shower; the shower costs more than quiet; the cells' water drawn purple; no " +
+            "console errors. Metrics: each stretch's view markers, frame and water counts, a frame."),
         new Entry("looksmod", typeof(LooksModProbe), 120f,
             "The view draws from the rules in force (docs/RULES_MCP.md, \"Looks\"): a Fireball, the Big fireball mod switched on mid-game, " +
             "a Fireball beside it, the Moonstone mod and its new material, then a look-only switch. --shots films it (ClipFilm). Checks: blast, fire " +
