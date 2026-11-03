@@ -43,20 +43,12 @@ namespace Chem
 
         sealed partial class Checker
         {
-            internal static readonly HashSet<string> CondKeys = new HashSet<string>
-            {
-                "cover", "fire", "fireBelow", "water", "frozen", "melts", "hot", "gas", "terrainTag", "notTerrainTag", "conductive", "status", "flammable", "has", "lacks", "power", "chance", "verb",
-            };
-            internal static readonly HashSet<string> EffectKeys = new HashSet<string>
-            {
-                "ignite", "boil", "melt", "freeze", "extinguish", "condense", "addWater", "setCover", "spreadCover", "break", "heat", "bake", "meltCover", "crust", "thaw", "shatter", "dissolve", "scour", "pushCover",
-                "setTerrain", "raise", "conduct", "fan", "pushGas", "clearGas", "mark", "gas", "n", "status", "statusOf", "clear", "damageMul", "grow", "ticks", "wave",
-            };
+            internal static readonly HashSet<string> CondKeys = new HashSet<string>(RuleSchema.Conditions.Names);
+            internal static readonly HashSet<string> EffectKeys = new HashSet<string>(RuleSchema.Effects.Names);
             static readonly HashSet<string> Shapes = new HashSet<string> { "point", "line", "square", "burst", "target", "cone" };
             static readonly HashSet<string> SpellEffects = new HashSet<string> { "levitate", "carry", "teleport", "terraform", "haste", "weather", "shapeshift", "light" };
 
             static readonly string[] SpellNumbers = { "level", "power", "length", "size", "radius", "push", "wind", "range", "duration", "maxMass", "rate", "radiusPerCharge" };
-            static readonly string[] EffectNumbers = { "boil", "spreadCover", "conduct", "n", "wave" };
             /// <summary>Sim numbers the world divides by or sizes things with.</summary>
             static readonly HashSet<string> PositiveSim = new HashSet<string> { "ticksPerSecond", "water.maxLevel", "water.unitsPerStep", "height.blockAt", "weather.rain.fillEvery", "weather.rain.dryEvery", "weather.storm.strikeEvery", "weather.snow.freezeEvery", "weather.fog.every", "weather.fog.regionChunks", "weather.fog.driftTicks", "weather.meteors.every", "weather.meteors.fallTicks", "streaming.reach", "streaming.keep", "streaming.settleTicks", "streaming.lingerChunks", "streaming.lingerTicks", "streaming.catchUpTicks", "dragon.speed", "dragon.depth", "dragon.breathChunks", "dragon.chunksPerTick", "breath.seconds", "breath.drownEvery", "breath.drownSides", "strike.reach", "dragon.scale" };
 
@@ -110,8 +102,7 @@ namespace Chem
             void RaiderRefs(JProperty p)
             {
                 if (!(p.Value["raider"] is JObject raider)) return;
-                var pace = raider["ticksPerSquare"];
-                if (pace != null && !(IsWholeNumber(pace) && (double)pace >= 1)) Errors.Add($"entity {p.Name}: raider ticksPerSquare must be a whole number from 1");
+                Values($"entity {p.Name}", "raider ", raider, RuleSchema.Entities.SectionOf("raider"));
                 foreach (var e in Strings(raider["weak"]).Where(e => !elements.Contains(e))) Errors.Add($"entity {p.Name}: raider is weak to unknown element {e}");
                 foreach (var e in Strings(raider["resist"]).Where(e => !elements.Contains(e))) Errors.Add($"entity {p.Name}: raider resists unknown element {e}");
             }
@@ -140,8 +131,7 @@ namespace Chem
                 var explodes = p.Value["explodes"];
                 if (Truthy(explodes) && !(explodes is JObject && IsIn(covers, explodes["cover"]))) Errors.Add($"entity {p.Name}: explodes into unknown cover");
                 if (explodes is JObject && !IsCrater(explodes["crater"])) Errors.Add($"entity {p.Name}: crater needs a whole depth from 1, radius from 0 and strength from 1");
-                foreach (string k in new[] { "str", "ac" })
-                    if (p.Value[k] != null && !(IsWholeNumber(p.Value[k]) && (double)p.Value[k] >= 1 && (double)p.Value[k] <= 30)) Errors.Add($"entity {p.Name}: {k} must be a whole number from 1 to 30");
+                Values($"entity {p.Name}", "", p.Value, RuleSchema.Entities);
             }
 
             void SpellRefs(JToken s)
@@ -239,10 +229,7 @@ namespace Chem
             }
 
             /// <summary>No crater, or one with a whole depth from 1 and (if given) a whole radius from 0.</summary>
-            static bool IsCrater(JToken c) =>
-                c == null || (c is JObject && IsWholeNumber(c["depth"]) && (double)c["depth"] >= 1
-                    && (c["radius"] == null || (IsWholeNumber(c["radius"]) && (double)c["radius"] >= 0))
-                    && (c["strength"] == null || (IsWholeNumber(c["strength"]) && (double)c["strength"] >= 1)));
+            static bool IsCrater(JToken c) => c == null || (c is JObject crater && FitsAll(RuleSchema.Crater, crater));
 
             void TerraformRefs(JToken s)
             {
@@ -521,12 +508,11 @@ namespace Chem
             void RuleNumbers(JObject rule)
             {
                 var id = Show(rule["id"]);
-                Number((rule["if"] as JObject)?["fireBelow"], $"rule {id}: fireBelow");
-                Number((rule["if"] as JObject)?["power"], $"rule {id}: power");
-                Number((rule["if"] as JObject)?["chance"], $"rule {id}: chance", 0);
+                foreach (var f in RuleSchema.Conditions.Fields.Where(f => f.Type == RuleFieldType.Number))
+                    Number((rule["if"] as JObject)?[f.Name], $"rule {id}: {f.Name}", f.Ranged ? (int)f.Min : (int?)null);
                 if (!(rule["do"] is JArray effects)) return;
                 foreach (var e in effects.OfType<JObject>())
-                    foreach (var key in EffectNumbers) Number(e[key], $"rule {id}: {key}");
+                    foreach (var f in RuleSchema.Effects.Fields.Where(f => f.Type == RuleFieldType.Number)) Number(e[f.Name], $"rule {id}: {f.Name}");
             }
 
             // One gas's numbers and its flash (materials.json gases).

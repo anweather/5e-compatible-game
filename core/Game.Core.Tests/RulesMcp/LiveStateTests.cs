@@ -272,6 +272,19 @@ namespace Chem.Tests
             foreach (var rule in reactions["cell"].Concat(reactions["entity"]).OfType<JObject>())
                 foreach (var p in rule.Properties())
                     Assert.DoesNotThrow(() => RuleFields.CheckRule(p.Name, p.Value), $"{rule["id"]} {p.Name}");
+            foreach (var item in JObject.Parse(File.ReadAllText(Path.Combine(dir, "items.json"))).Properties())
+                Assert.DoesNotThrow(() => RuleFields.CheckThing("items", (JObject)item.Value), item.Name);
+            foreach (var entity in JObject.Parse(File.ReadAllText(Path.Combine(dir, "entities.json"))).Properties().Where(p => p.Value["player"] == null))
+                Assert.DoesNotThrow(() => RuleFields.CheckThing("entities", (JObject)entity.Value), entity.Name);
+        }
+
+        [Test]
+        public void AnUnknownThingFieldNamesTheSchemasFields()
+        {
+            var e = Assert.Throws<RulesToolException>(() => RuleFields.CheckThing("items", new JObject { ["name"] = "N", ["glow"] = 1 }));
+            Assert.AreEqual("An item has no field glow; its fields are name, material, components, use, message, srd, mass, light, zoom, reach, strength, breaks, look.", e.Message);
+            e = Assert.Throws<RulesToolException>(() => RuleFields.CheckThing("entities", new JObject { ["name"] = "N", ["player"] = true }));
+            Assert.AreEqual("An entity has no field player; its fields are name, material, components, hp, mass, str, ac, explodes, raider, look.", e.Message);
         }
 
         // ---------- limits up front ----------
