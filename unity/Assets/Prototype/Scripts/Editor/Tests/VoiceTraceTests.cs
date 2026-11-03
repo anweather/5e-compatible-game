@@ -53,6 +53,8 @@ public class VoiceTraceTests
     [TestCase("GameVoice.cs")]
     [TestCase("WindowsDictation.cs")]
     [TestCase("VoiceCheck.cs")]
+    [TestCase("TranscribedSpeech.cs")]
+    [TestCase("SpeechCheck.cs")]
     public void EveryWordInATraceGoesThroughWords(string file)
     {
         string[] lines = File.ReadAllLines(Path.Combine(Application.dataPath, "Prototype/Scripts/Net", file));

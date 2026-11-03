@@ -756,6 +756,26 @@ that long, and doesn't march.
 : What turns speech into text. The game knows only the port, `ISpeech`;
   each recogniser is an adapter behind it, picked in `SpeechChoice` (J-061).
 
+**Transcriber**
+: A recogniser's engine that turns a whole recording into text after the
+  hold, on its own thread (`ITranscriber`): Whisper's kind, as Windows
+  dictation hears as you talk. `TranscribedSpeech` is the adapter that
+  records, hands the samples over and waits no longer than its **speech
+  timeout**; past it the hold ends with a line and the next press works.
+  The **stub transcriber** (`StubTranscriber`) stands in for a model with
+  fixed text after a set delay; only an Editor or a development build can
+  pick it.
+
+**Speech audio**
+: Where a transcriber's recording comes from (`ISpeechAudio`): the default
+  microphone or a WAV file, always handed over as 16 kHz mono floats.
+
+**Speech check**
+: `-speech-check`: one recorded hold through the chosen transcriber, with
+  the text and its timings and the frame time while transcribing
+  (`SpeechCheck`, `docs/design/speech-check.md`). Not `-voice-check`, which
+  checks Windows dictation.
+
 ## Claude in the chat
 
 **chatbench**
