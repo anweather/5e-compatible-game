@@ -22,3 +22,8 @@ __pycache__/
 
 # The PM working copy of the board
 /.pm/
+
+# The unity CLI's Editor server settings (com.unity.pipeline). Every authored field is the package's
+# default, which it uses when the file is missing; the rest is this Editor's own Run In Background
+# bookkeeping, which editor.playmode set_run_in_background rewrites on every call (#81).
+unity/ProjectSettings/Packages/com.unity.pipeline/EditorPipelineConfig.json
