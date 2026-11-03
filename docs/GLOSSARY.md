@@ -645,7 +645,8 @@ that long, and doesn't march.
 
 **Temporary material / lapse / retired**
 : A **temporary material** is a terrain, cover or gas a mod adds: it lives
-  while its mod is on, and only that mod may name it. It **lapses** when its
+  while its mod is on. Another mod may name it while that mod is on, and is
+  then its **dependent**: it goes when its owner goes (#86). It **lapses** when its
   row's `lapse.after` ticks have passed since the switch, which takes its mod
   off; lapsed or reverted, every cell of it is **swept** at that tick (into its
   `lapse.into`, or nothing). The room's **retired** list remembers what went

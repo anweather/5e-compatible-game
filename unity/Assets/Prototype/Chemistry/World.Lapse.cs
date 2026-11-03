@@ -9,6 +9,12 @@
 // turns into the same. A mod whose row gives lapse.after goes off by itself that
 // many ticks after its switch, at the end of the tick, in room order, at most one a
 // tick: every peer lapses it at the same tick, with no clock but the tick.
+// Another mod may name a material a mod on adds (a wing naming its house's clay
+// tile, #86). When the owner goes, reverted or lapsed, every mod naming one of its
+// materials goes with it at that tick, and so does every mod naming one of theirs:
+// one pass in room order, since a mod naming another's material went on after it.
+// They go in one switch, logged once, the owner first and then its dependents in
+// reverse of the order they went on (the last on first off).
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -57,25 +63,72 @@ namespace Chem
             }
         }
 
-        // A mod lapses: off as by a revert, the change mode aside. If the mods over it don't fit without it, they go too.
+        // A mod lapses: off as by a revert, the change mode aside, its dependents with it. If the mods over it
+        // don't fit without them, every mod over it goes too.
         void Lapse(int at)
         {
             var mod = Room.Mods[at];
-            var gone = new List<RoomMod> { mod };
-            string why = Compose(Room.Mods.Where((m, i) => i != at).Select(m => new ActiveMod(m.Id, m.Json)), "", out var next);
+            var gone = WithDependents(at);
+            string why = Compose(Without(gone), "", out var next);
             if (why == null) why = OverlapProblem(next.Effective, "");
             if (why != null)
             {
-                gone.AddRange(Room.Mods.Skip(at + 1));
+                gone = Room.Mods.Skip(at + 1).Reverse().Prepend(mod).ToList();
                 next = RoomRules.WithMods(Room.Mods.Take(at).Select(m => new ActiveMod(m.Id, m.Json)));
             }
+            TakeOff(gone, next);
+            var verdict = new RoomVerdict(true, null, $"{mod.Title} lapsed{AlsoGone(gone)} ({RoomPolicy.Words(Room.Mode)} room)");
+            AddLog(verdict.Line, LogKind.Notable);
+            foreach (var m in gone) RoomDecided?.Invoke(RoomCommand.Revert(m.By, m.Id), verdict);
+        }
+
+        /// <summary>
+        /// The mod at this place in the room and every mod that goes with it (#86): each later one naming a
+        /// material one of them adds, chains too. The mod first, then its dependents, the last on first.
+        /// </summary>
+        public List<RoomMod> WithDependents(int at)
+        {
+            var owners = new HashSet<string>(StringComparer.Ordinal) { Room.Mods[at].Id };
+            var ids = new HashSet<string>(StringComparer.Ordinal);
+            var dependents = new List<RoomMod>();
+            for (int i = at + 1; i < Room.Mods.Count; i++)
+            {
+                ids.UnionWith(TemporaryMaterials.Where(t => owners.Contains(t.Mod)).Select(t => t.Id));
+                if (TempMaterials.Named(Room.Mods[i].Json, ids).Count == 0) continue;
+                owners.Add(Room.Mods[i].Id);
+                dependents.Add(Room.Mods[i]);
+            }
+            dependents.Reverse();
+            return dependents.Prepend(Room.Mods[at]).ToList();
+        }
+
+        // The mods on but these, in room order.
+        IEnumerable<ActiveMod> Without(List<RoomMod> gone) => Room.Mods.Where(m => !gone.Contains(m)).Select(m => new ActiveMod(m.Id, m.Json));
+
+        // These mods go off together, in one switch: the rules without them in force, their materials swept.
+        void TakeOff(List<RoomMod> gone, RuleSet next)
+        {
             Room.Mods.RemoveAll(gone.Contains);
             PutInForce(next);
             Room.Found.RemoveWhere(t => ThingsNow.Find(new ThingId(t)) == null);
-            string also = gone.Count == 1 ? "" : ", and " + string.Join(", ", gone.Skip(1).Select(m => m.Title)) + " with it";
-            var verdict = new RoomVerdict(true, null, $"{mod.Title} lapsed{also} ({RoomPolicy.Words(Room.Mode)} room)");
-            AddLog(verdict.Line, LogKind.Notable);
-            foreach (var m in gone) RoomDecided?.Invoke(RoomCommand.Revert(m.By, m.Id), verdict);
+        }
+
+        // ", and A wing, A porch with it" for the mods that went with the first; "" for none.
+        static string AlsoGone(List<RoomMod> gone) =>
+            gone.Count == 1 ? "" : ", and " + string.Join(", ", gone.Skip(1).Select(m => m.Title)) + " with it";
+
+        /// <summary>
+        /// For a patch the checks refuse: why, if it names a material a mod once added that isn't in force now (Room.Retired
+        /// keeps who added it), else null. A wing can't go on before its house; a mod adding its own material again passes.
+        /// </summary>
+        string OwnerProblem(string title, string json)
+        {
+            var gone = new HashSet<string>(Room.Retired.Where(r => !Rules.HasMaterial(r.Table, r.Id)).Select(r => r.Id), StringComparer.Ordinal);
+            var named = TempMaterials.Named(json, gone);
+            if (named.Count == 0) return null;
+            string id = named.Min;
+            string owner = Room.Retired.Last(r => r.Id == id).Mod;
+            return $"{title} names {id}, a material of the mod {owner}, which isn't on; switch {owner} on first";
         }
 
         /// <summary>Puts the room's rules in force: the temporary materials they drop are retired and swept first.</summary>

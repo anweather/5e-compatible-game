@@ -56,7 +56,7 @@ namespace Chem.Mcp
         /// <summary>The rules in force: the base rules with the room's mods on, in order.</summary>
         public Rules InForce { get; private set; }
 
-        /// <summary>The room's temporary materials by id, each with its mod (TempMaterials): validate lets no other mod name one.</summary>
+        /// <summary>The room's temporary materials by id, each with its mod (TempMaterials): another mod may name one, but makes no thing of one.</summary>
         IReadOnlyDictionary<string, string> Temporary { get; set; } = new Dictionary<string, string>();
 
         /// <summary>The rules in force as the engine reads them (materials ungrouped into flat keys).</summary>
