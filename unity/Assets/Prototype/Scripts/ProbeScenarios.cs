@@ -118,6 +118,11 @@ public static class ProbeScenarios
             "A mod's new kinds of thing, solo (docs/RULES_MCP.md \"Things\"): an item and a prop spawn on their cells dressed as animals, resting on the ground; the first pick-up logs a find and the second doesn't; a revert takes the item out of the hand and the world, and the same mod brings them back. With --shots, a picture standing and one in hand."),
         new Entry("roomthing", typeof(RoomThingProbe), 150f,
             "A mod's new kinds of thing through an Open room: the client adopts them dressed, finds one (the line on both), a late joiner gets them dressed and knows the find, and a revert takes one out of the client's hand. Checks as roomopen.", 2),
+        new Entry("graftcoats", typeof(GraftCoatsProbe), 200f,
+            "A centaur, a faun and a six-legged bear by add_species with from, each with a donor in its own coat (graft-coats, J-067), on through the rules MCP in an Open room, " +
+            "this Editor hosting and the virtual player joined; each side puts the same three by its wizard. Checks: every segment of each draws in the colours its donor's own animal " +
+            "of the same individual wears, what the animator writes is those colours, the own-coat slots differ from the row's coat, the same on both peers; a revert takes them away; " +
+            "checksums equal. With --shots, a film of the three walking and a picture of each.", players: 2),
         new Entry("placeview", typeof(PlaceViewProbe), 300f,
             "Placing in play through an Open room (docs/design/events-and-placing.md): a mod's world section lays trees and brambles, and its spells place barrels, crates that lapse, a summoned child, " +
             "trees and brambles. Checks: on both peers the same things on the same cells, resting on the ground; the child out on its cell; the new tree and bramble cells dressed; the crates gone on both " +

@@ -56,7 +56,7 @@ public sealed class CreatureBodies
                 indices[id] = i;
                 bodies.Add(null);
             }
-            if (bodies[i] != null && tables != null && next.SameRows(tables, id, changedParts)) continue;
+            if (bodies[i] != null && tables != null && Same(next, bodies[i], changedParts)) continue;
             bodies[i] = CreatureBody.Build(next, id);
             Rebuilt++;
         }
@@ -64,6 +64,15 @@ public sealed class CreatureBodies
             if (!kept.Contains(id)) bodies[i] = null;
         tables = next;
         SetHunting();
+    }
+
+    // Whether a body's row, and the rows of the donors whose colours a graft wears ("coat": "own"), are as they were.
+    bool Same(FaunaTables next, CreatureBody body, ISet<string> changedParts)
+    {
+        if (!next.SameRows(tables, body.Id, changedParts)) return false;
+        foreach (var donor in body.Own)
+            if (!next.SameRows(tables, donor.Id, changedParts)) return false;
+        return true;
     }
 
     // What each species hunts (any variant of what it lists counts), and whether anything out there hunts it.
