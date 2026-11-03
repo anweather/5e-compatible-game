@@ -719,6 +719,12 @@ A game mode is a snapshot: copies of a set of mods, in order, as a package that 
   Mods page.
 - **Size:** M, more if the land has to move into mods.
 
+## 29. More than one map (Andrew, 2026-11-02; after the code base cleanup)
+
+Ship and load maps other than the valley: maps as shipped content, with a map id and hash in approval and the
+checksum, and a game mode (28) that just names one. A map inside a mod comes later. Findings, ranked:
+`docs/design/second-map-2026-11-02.md`; issue #69; test code on the `second-map` branch.
+
 ## Priority (groomed 2026-10-30 with Andrew, after 0.1.8)
 
 The focus (Andrew, 2026-10-29): material interactions, attributes and effects,

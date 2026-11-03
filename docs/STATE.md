@@ -57,7 +57,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 ## In flight
 
 - **Mac:** briefed on `roomruin-wait` (#67: the wait, a distinct detail when nothing was compared, the cause of `both_draw_it`); it may have stopped first, so check for the branch.
-- **Unmerged, kept:** `second-map` (afff4c9): the report and the word are on dev (`docs/design/second-map-2026-11-02.md`), the code waits for Andrew's decision on shipped maps.
+- **Unmerged, kept:** `second-map` (afff4c9): the report and the word are on dev (`docs/design/second-map-2026-11-02.md`), the code waits for shipped maps (#69, backlog 29), after the cleanup.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
 - **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
@@ -85,7 +85,6 @@ He reads it on his phone instead of scrolling the chat. Update it with `tools/wo
 ## Open questions for Andrew
 
 - The real test of the PlayTest player: real Claude answering in chat, words by voice, a house built by asking, and how the radial, spell list and Esc menu feel at 4K.
-- Shipped maps: on the list, and before or after the cleanup? On the board with clips.
 - The sound pass and the cast sounds: he listens on the board when he has time (J-065).
 
 ## Telemetry
