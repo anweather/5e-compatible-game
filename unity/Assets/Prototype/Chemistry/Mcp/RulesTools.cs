@@ -68,13 +68,13 @@ namespace Chem.Mcp
 
         // ---------- read ----------
 
-        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, fauna (the kinds of animal: add_species and set_species change them), dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), the triggers (rules that react when a player steps), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
+        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, fauna (the kinds of animal, how each is built and whether it comes out on its own: add_species and set_species change them), parts (the shapes animals are built from: each part's role, segments and who wears it), dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), the triggers (rules that react when a player steps), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
         [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing. All the read tools read the rules in force, every mod on included.")]
         public string WhatsOn() => Do(() => bench.WhatsOn());
 
-        [RulesTool("outside_rules", ReadOnly = true), Description("What can't be changed through these tools yet because it isn't in the rules (heat glow, player size, slippery terrain, weather's cover, area fill, a building's rooms), and the nearest thing that can be done for each. Read it before trying or refusing any of those.")]
+        [RulesTool("outside_rules", ReadOnly = true), Description("What can't be changed through these tools yet because it isn't in the rules (heat glow, player size, slippery terrain, weather's cover, area fill, a creature from others' parts, colours part by part, a building's rooms), and the nearest thing that can be done for each. Read it before trying or refusing any of those.")]
         public string OutsideRules() => Do(Workbench.Outside);
 
         [RulesTool("time", ReadOnly = true), Description("The clock: the time of day, the day, the light, and when dawn and dusk are. The clock and the weather aren't rules: read them here and with weather, and change them with set_time and set_weather, not by moving day.startHour.")]
@@ -83,7 +83,7 @@ namespace Chem.Mcp
         [RulesTool("weather", ReadOnly = true), Description("The weather: what it is and how strong, the wind, whether it's held and for how long, or what it turns to next.")]
         public string Weather() => Do(() => bench.WeatherNow());
 
-        [RulesTool("describe", ReadOnly = true), Description("The full entry in force now (the base rules with every mod on), which mods on changed which of its values, everything in the rules that refers to it, for a spell, material or element its look (its mix and scoped looks too) and what set_look may change, and for a spell how a player reaches it. With a draft, the entry as the draft has it. For sim, the id is a dotted path such as fire.spreadChance.")]
+        [RulesTool("describe", ReadOnly = true), Description("The full entry in force now (the base rules with every mod on), which mods on changed which of its values, everything in the rules that refers to it, for a spell, material or element its look (its mix and scoped looks too) and what set_look may change, for a spell how a player reaches it, for a species (fauna) its shape in words (legs, arms, heads; how tall and long) and every slot flattened (its part and role, what it hangs on, where it sits in body units and in metres at rest), and for a part its segments and every slot that wears it. With a draft, the entry as the draft has it. For sim, the id is a dotted path such as fire.spreadChance.")]
         public string Describe([Description("The table.")] string table, [Description("The entry's id.")] string id,
             [Description("Optional: the entry as this draft has it, its look's mix and scoped looks included.")] string draft = null) => Do(() => bench.Describe(table, id, draft));
 

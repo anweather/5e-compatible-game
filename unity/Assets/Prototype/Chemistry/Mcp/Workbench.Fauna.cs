@@ -32,6 +32,13 @@ namespace Chem.Mcp
                 throw new RulesToolException($"There is no species {basedOn}; list fauna shows them.");
             var row = new JObject { ["name"] = Required(name, "name"), ["variantOf"] = basedOn };
             foreach (var key in Inherited.Where(k => under[k] != null)) row[key] = under[key].DeepClone();
+            // A variant's reader takes only VariantBehave from its own behave; wander, idle, flee and group stay
+            // the base's (CreatureBody), so copies of them would be dead and go stale. describe says them as the base's.
+            if (row["behave"] is JObject copied)
+            {
+                foreach (var p in copied.Properties().Where(p => !VariantBehave.Contains(p.Name)).ToList()) p.Remove();
+                if (!copied.HasValues) row.Remove("behave");
+            }
             row["scale"] = Rounded(Positive(scale ?? 1, "scale"));
             Colour(row, color, accent, glow);
             if (!string.IsNullOrWhiteSpace(behave)) row["behave"] = Rules.MergedEntry(row["behave"], Behave(basedOn, behave, true));

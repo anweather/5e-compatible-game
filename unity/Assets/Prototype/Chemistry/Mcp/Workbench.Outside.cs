@@ -13,6 +13,8 @@ namespace Chem.Mcp
             ("Slippery terrain: only a cover can be slippery, not a terrain", "a cover tagged slippery spread over the ground, such as Grease"),
             ("Weather's cover: what rain, snow and fog lay on the ground", "weather's chances and strengths in sim can be tuned, and a cover's look changes how snow looks"),
             ("Area fill: covering the land past a spell's radius cap", "scatter for many trees, bushes, a cover or things over an area near a place (\"50 trees near the lake\"), a burst of the capped radius, or a change to the terrain itself (\"all the grass burns like oil\") with set_material and set_look"),
+            ("A creature from other creatures' parts (a centaur, a faun): no tool builds one from another's slots yet", "describe fauna on each donor (deer, human) for its slots and where each sits, list parts for the shapes, then write the new species' row whole (body, parts as slots in body units, move, behave) as a fauna row in patch JSON to validate and apply; describe fauna on it then says its shape"),
+            ("A creature's colours part by part: one animal wears one coat over all its slots", "coat or coats colour the whole animal, hair its hair; a part with a colour of its own (hooves, eyes) keeps it"),
             ("A building's rooms: walls and doors inside it", "a building's outside is a row: add_building, add_wing and set_building change its walls, openings and fill"),
         };
 

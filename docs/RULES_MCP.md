@@ -32,10 +32,13 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 **Read**
 - `list(table)`: ids and one-line summaries for materials, elements, reactions, spells, groups,
   sim parameters; `list looks` gives the look families, the parameters each takes, and what
-  takes no colour.
+  takes no colour; `list fauna` each species' name, slot count (or what it's a variant of) and
+  where it comes out; `list parts` each part's role, segments, length and who wears it.
 - `describe(table, id, draft?)`: the full entry in force, which mods on changed which of its values,
   what refers to it, for a spell, material or element its look (its mix and scoped looks too) and what
   `set_look` may change, and for a spell how a player reaches it; with a draft, the entry as the draft has it.
+  For a species (`fauna`) it adds the shape in a line ("4 legs in 2 pairs, 1 head, 1 tail; 1.5 m tall,
+  1.8 m long, 0.4 m wide") and every slot flattened, below; for a part, its segments and every slot that wears it.
 - `explain(a, b)`: what happens when a meets b, and which rule decides it.
 - `room()` (phase 3): the room's change mode and the mods on in it, with who added each.
 - `whats_on()`: what's on now in plain words: the room, each mod and what it changes from what
@@ -435,9 +438,11 @@ rows stay out of `Rules.Fingerprint` and off the cells, so no golden moves and t
 `creature` look (above) is a still figure; an animal Claude adds is a row.
 
 - **`add_species`** writes a variant (`variantOf`) of the species it's based on: that one's body, gait, wander, flee, idle and
-  group. It copies the base row's `coat`, `coats`, `hair`, `vary` and `behave`, as a variant's reader would otherwise take its
-  own defaults, then lays on the colours and habits given. A variant reads only `active`, `graze`, `thirst`, `play`, `laze`,
-  `hunger`, `chase` and `hunts` from its own `behave`, so the tool refuses the rest. `scale` is against the base species (a
+  group. It copies the base row's `coat`, `coats`, `hair`, `vary` and the part of `behave` a variant reads, as a variant's reader
+  would otherwise take its own defaults, then lays on the colours and habits given. A variant reads only `active`, `graze`,
+  `thirst`, `play`, `laze`, `hunger`, `chase` and `hunts` from its own `behave`, so the tool refuses the rest and doesn't copy
+  `wander`, `idle`, `flee` or `group` (#80): the view takes those from the base (`CreatureBody`), so a copy would be dead and go
+  stale when the base changes. `describe` says them as the base's. `scale` is against the base species (a
   variant's `scale`, multiplied by the base's own). `spawn.density` is half the base's (at least 0.2) unless given; 0 leaves
   `spawn` out, so it never comes out in the wilds.
 - **`set_species`** sizes a row against its normal size in the base rules, so 1 puts it back: a variant by its `scale`, a
@@ -446,6 +451,14 @@ rows stay out of `Rules.Fingerprint` and off the cells, so no golden moves and t
   against the base row's (or 1.1 for a new row), past `budgets.json` `things.maxScale`.
 - **In the view.** A switch rebuilds only the rows that changed (`CreatureBodies.Refresh`); a new species spawns in the
   wilds by its density, anywhere its habitat fits, not at a place.
+- **Reading a body** (`Workbench.Bodies.cs`, `BodyShape.cs`; `docs/design/bodies-and-surfaces.md` §3). Headless, Claude
+  can't see an animal, so `describe fauna <id>` flattens its slots as the view does (`CreatureBody.Build`): one line per drawn
+  copy (a mirrored slot twice, a slot on a mirrored one per copy), each with its part and role, what it hangs `on`, its `at`
+  (body units on the body: x across the radius, y up it, z along the half-length, +1 the front; metres from the end of the slot
+  it hangs on) and where it starts and ends at rest in metres. Only the first slot of a style group counts toward the shape.
+  A variant's lines are its body's, with what it takes from that body said once. `whats_on` and `describe`'s mod lines see
+  `fauna` and `parts` rows a mod adds or changes (#80). No graft (`from`) yet: that's the `graft` branch; until then
+  `outside_rules` says to write a made-up body's row whole.
 
 ## Spells that place
 
