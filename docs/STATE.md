@@ -58,7 +58,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 - **0.1.11 waits, no rush** (Andrew, 2026-11-02). Draft notes: `docs/handoffs/release-0.1.11-notes.md`. They promise voice: fix #58 or cut that line. Before it ships: version bump, the saved-mods warning (#63).
 - **Play-test fixes (Andrew: fix them all; issues #70 to #81).** On dev: `creature-scale`, `fauna-rows`, `dragon-tools` (u2), `mod-exception`, `voice-hears` (PC), `place-core` and `world-lay` (u2 merged these itself; the PC compiled dev clean after). #72 closed. Design calls J-067.
-  - **DesktopUnity:** `lit-windows` (#71) failed landing only on `UnseenTests.cs(19,54)`, `Workbench(string)` now `Workbench(GameFolders)`; it's merging dev and fixing. Then `place-view` (the view of placed things, scatter trees), then #70 (water tiles 2 ms each after a shower).
+  - **DesktopUnity:** `lit-windows` landed (#71 closed). Now `place-view` (the view of placed things, scatter trees), then #70 (water tiles 2 ms each after a shower).
   - **u2 (Max):** `triggers-core` (#76). Its tests may need the same `Workbench(GameFolders)` move. Brief says never merge.
   - **Mac:** `fireline-out` (cleanup item 9). Lists deletions: land with `--deletes` after reading why each is dead.
   - Open: #58 needs Andrew's `-voice-check` (on the board); #73 bodies from parts and #60 water surface are designed (`docs/design/bodies-and-surfaces.md`), not built; #74 and #75 need `place-view`; #80 animals out don't resize; #77 dragon loop; #79, #78, #81.
