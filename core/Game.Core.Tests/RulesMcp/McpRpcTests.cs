@@ -22,6 +22,29 @@ namespace Chem.Tests
             }
         }
 
+        // A game whose room fails once with something no tool expects.
+        sealed class FailingDesk : IRoomDesk
+        {
+            int calls;
+            public string Room(string mode) => calls++ == 0 ? throw new System.InvalidOperationException("the room broke") : "the game's room";
+            public void Saved(string path) { }
+            public string Decide(RoomCommand command) => "decided";
+        }
+
+        [Test]
+        public void AToolThatThrowsAnythingIsAnErrorAndTheNextCallWorks()
+        {
+            var bench = Bench();
+            bench.Desk = new FailingDesk();
+            var rpc = Rpc(bench);
+            var failed = Call(rpc, "room");
+            Assert.That((bool)failed["isError"], Is.True);
+            Assert.That((string)failed["content"][0]["text"], Does.Contain("the room broke"));
+            var next = Call(rpc, "room");
+            Assert.That((bool)next["isError"], Is.False);
+            Assert.That((string)next["content"][0]["text"], Is.EqualTo("the game's room"));
+        }
+
         static Workbench Bench() => new Workbench(ChemistryTests.RulesDir());
 
         static McpRpc Rpc(Workbench bench) => new McpRpc(new RulesTools(bench), "test", "1");
