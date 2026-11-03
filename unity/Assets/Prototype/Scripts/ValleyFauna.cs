@@ -57,6 +57,8 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         public CreatureTask job;
         public float2 post;
         public float postYaw;
+        // A spell brought it out (ValleyFauna.Summons): its place in the world's count, else -1.
+        public int summon = -1;
     }
 
     static readonly ProfilerMarker UpdateMarker = new("ValleyFauna.Update"), ReadRowsMarker = new("ValleyFauna.ReadRows");
@@ -202,6 +204,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
         if (Time.time >= nextLook) LookAround(centre);
 
         Despawn(centre);
+        BringOutSummons();
         float night = sky != null ? 1f - sky.Daylight : 0f;
         BringOutFolk(centre, FolkGoIn(night));
         spawnBudget = math.min(spawnBudget + spawnRate * Time.deltaTime, 3f);

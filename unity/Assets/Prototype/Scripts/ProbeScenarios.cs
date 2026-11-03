@@ -109,6 +109,10 @@ public static class ProbeScenarios
             "A mod's new kinds of thing, solo (docs/RULES_MCP.md \"Things\"): an item and a prop spawn on their cells dressed as animals, resting on the ground; the first pick-up logs a find and the second doesn't; a revert takes the item out of the hand and the world, and the same mod brings them back. With --shots, a picture standing and one in hand."),
         new Entry("roomthing", typeof(RoomThingProbe), 150f,
             "A mod's new kinds of thing through an Open room: the client adopts them dressed, finds one (the line on both), a late joiner gets them dressed and knows the find, and a revert takes one out of the client's hand. Checks as roomopen.", 2),
+        new Entry("placeview", typeof(PlaceViewProbe), 300f,
+            "Placing in play through an Open room (docs/design/events-and-placing.md): a mod's world section lays trees and brambles, and its spells place barrels, crates that lapse, a summoned child, " +
+            "trees and brambles. Checks: on both peers the same things on the same cells, resting on the ground; the child out on its cell; the new tree and bramble cells dressed; the crates gone on both " +
+            "once they lapse; a late joiner with the same; the quiet frame's cost (no garbage); checksums equal. With --shots, a film of the site from the switch to the crates lapsing.", players: 2),
         new Entry("roomhost", typeof(RoomHostProbe), 90f,
             "A Host-only room: the client's change and revert refused with the sentence on both, the host's goes in. Checks as roomopen.", 2),
         new Entry("roomlocked", typeof(RoomLockedProbe), 90f,

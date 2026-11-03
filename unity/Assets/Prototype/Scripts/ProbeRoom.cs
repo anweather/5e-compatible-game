@@ -24,7 +24,7 @@ public class RoomProbeAsk
 {
     public string id;
     public int step;
-    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "hostile", "rejoin", "film" (mod: the stand's cell and the target's) or "cut".</summary>
+    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "hostile", "rejoin", "film" (mod: the stand's cell and the target's), "cut" or "dressed" (mod: cells).</summary>
     public string ask, mod;
     /// <summary>How long a "report" may wait for its tick.</summary>
     public float reach;
@@ -47,6 +47,13 @@ public class RoomProbeSeen
     /// <summary>The things mods added, on this side (id:kind, sorted), how many wear a body, and the kind in this side's hand.</summary>
     public string things, held;
     public int dressed;
+    /// <summary>
+    /// The things spells placed, on this side (id:kind@cell, sorted, PlaceViewProbe), the most any rests off the ground, the
+    /// animals spells brought out (n:species, sorted), and how many of the cells the last "dressed" ask named stand dressed.
+    /// </summary>
+    public string placed, summons;
+    public float placedGap;
+    public int cellsDressed;
     /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
     public float fireTurn;
     /// <summary>How far the fire on the cells the probe watches is turned, on this side.</summary>
@@ -89,6 +96,8 @@ public sealed class RoomProbeRecord : IDisposable
         var spawner = UnityEngine.Object.FindAnyObjectByType<ThingSpawner>();
         seen.things = string.Join(" ", spawner.Live.Where(t => t.prop.FromMod).Select(t => $"{t.id}:{t.prop.kind}").OrderBy(t => t, StringComparer.Ordinal));
         seen.dressed = spawner.GetComponent<ThingBodies>().Count;
+        (seen.placed, seen.placedGap) = PlaceViewProbe.PlacedOn(grid, spawner);
+        seen.summons = PlaceViewProbe.SummonsOn(grid);
         var hand = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject();
         seen.held = hand != null && hand.TryGetComponent<ItemHolder>(out var hands) && hands.Held != null ? hands.Held.Prop.kind : "";
         seen.turns = WatchedCells.Select(c => grid.FireTint(c.x, c.y).Turn).ToList();
@@ -129,7 +138,7 @@ public class RoomProbeClient : MonoBehaviour
     static readonly WaitForSecondsRealtime Poll = new(0.1f);
 
     readonly List<string> errors = new();
-    int errorCount, lastStep;
+    int errorCount, lastStep, cellsDressed;
     string lastId;
     RoomProbeRecord record;
     RoomFilm film;
@@ -156,6 +165,7 @@ public class RoomProbeClient : MonoBehaviour
             lastStep = ask.step;
             yield return Do(ask);
             var seen = record != null ? record.Seen(ask.id, ask.step) : new RoomProbeSeen { id = ask.id, step = ask.step };
+            seen.cellsDressed = cellsDressed;
             seen.reachSeconds = reachSeconds;
             seen.errorCount = errorCount;
             seen.errors = errors;
@@ -209,6 +219,10 @@ public class RoomProbeClient : MonoBehaviour
                 break;
             case "grab":
                 yield return Grab(grid, ask.mod);
+                break;
+            case "dressed":
+                // The cells named (x,y;x,y...) that stand dressed on this side.
+                cellsDressed = PlaceViewProbe.DressedCount(grid, PlaceViewProbe.ParseCells(ask.mod));
                 break;
             case "cut":
                 film.End();

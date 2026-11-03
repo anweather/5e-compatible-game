@@ -66,6 +66,9 @@ namespace Chem
         /// <summary>The animals spells brought out since this tick began, for the view to bring out (as NewMeteors).</summary>
         public IReadOnlyList<Summon> Summoned => summoned;
 
+        /// <summary>The N of the last animal brought out within the last 600 ticks, or -1: a view compares it with the last it saw, and asks SummonedAfter only when it's past.</summary>
+        public int LastSummonN => summonHistory.Count > 0 ? summonHistory[summonHistory.Count - 1].N : -1;
+
         /// <summary>The animals brought out after the <paramref name="n"/>th (within the last 600 ticks), oldest first: for a view that steps several ticks a frame.</summary>
         public IEnumerable<Summon> SummonedAfter(int n)
         {
