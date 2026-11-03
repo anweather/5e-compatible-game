@@ -10,7 +10,7 @@ namespace Chem
     /// <summary>The game's folders: rules/, world/ beside it, and the player's own when there is a player.</summary>
     public sealed class GameFolders
     {
-        const string RulesName = "rules", WorldName = "world", ModsName = "mods", Marker = "materials.json";
+        const string RulesName = "rules", WorldName = "world", ModsName = "mods", Marker = "materials.json", EditorDataName = "EditorPlayerData";
 
         /// <summary>A given rules folder (the MCP server's --rules, a test's copy), world/ beside it, and the player's data folder if there is one.</summary>
         public GameFolders(string rules, string playerData = null)
@@ -53,13 +53,23 @@ namespace Chem
         /// <summary>
         /// The game's: a build's rules packed into its StreamingAssets, else (the Editor, or a build without them) the repo's
         /// rules/ found by walking up from the project. A fixed "../../rules" would miss it for Multiplayer Play Mode's
-        /// virtual players, whose project copies live deeper (unity/Library/VP/&lt;id&gt;/).
+        /// virtual players, whose project copies live deeper (unity/Library/VP/&lt;id&gt;/). A build's data folder is the one
+        /// it's given; the Editor's is <see cref="EditorPlayerData"/>, as Unity gives the Editor the shipped game's (#78).
         /// </summary>
         public static GameFolders ForGame(string streamingAssets, string project, bool editor, string playerData)
         {
             string packed = Path.Combine(streamingAssets, RulesName);
-            return new GameFolders(!editor && File.Exists(Path.Combine(packed, Marker)) ? packed : RulesAbove(project), playerData);
+            return new GameFolders(!editor && File.Exists(Path.Combine(packed, Marker)) ? packed : RulesAbove(project),
+                editor ? EditorPlayerData(project) : playerData);
         }
+
+        /// <summary>
+        /// The Editor's own data folder, Library/EditorPlayerData in the project: the Editor shares the shipped game's
+        /// persistentDataPath (the same company and product), where a player's saved mods, play logs and chat records are,
+        /// so nothing the Editor or a test run writes goes there. Library is the project's own and out of git.
+        /// </summary>
+        public static string EditorPlayerData(string project) =>
+            Path.Combine(Path.GetDirectoryName(Path.GetFullPath(project).TrimEnd('/', '\\')) ?? project, "Library", EditorDataName);
 
         /// <summary>The repo's rules/ above a folder, with no player: anything started inside the repo.</summary>
         public static GameFolders InRepo(string start) => new GameFolders(RulesAbove(start));
@@ -92,8 +102,8 @@ namespace Chem
         public string Path => Test ?? own;
 
         /// <summary>
-        /// A probe's folder in place of the player's, as an Editor shares its data folder with their game and their notes.md
-        /// is there. While it's set, a sign-in failure opens no terminal: nobody is at the keys.
+        /// A probe's folder in place of the player's, so a probe starts from no notes.md and its saves are its own. While
+        /// it's set, a sign-in failure opens no terminal: nobody is at the keys.
         /// </summary>
         public string Test { get; set; }
 
