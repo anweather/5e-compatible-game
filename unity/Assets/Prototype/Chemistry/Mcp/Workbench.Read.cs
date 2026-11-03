@@ -10,7 +10,7 @@ namespace Chem.Mcp
 {
     public sealed partial class Workbench
     {
-        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, BuildingsTable, ThingsTable, "openings", "floors", "roofs", "details", "styles" };
+        public static readonly string[] Tables = { "materials", "terrain", "covers", "gases", "elements", "reactions", "spells", "groups", "sim", "critters", "entities", "items", "machines", "looks", FaunaTable, DragonTable, BuildingsTable, ThingsTable, "openings", "floors", "roofs", "details", "styles" };
 
         // ---------- list ----------
 
@@ -69,6 +69,9 @@ namespace Chem.Mcp
                 case "sim":
                     Flatten((JObject)Raw["sim"], "", lines);
                     break;
+                case DragonTable:
+                    lines.AddRange(DragonLines());
+                    break;
                 default:
                     foreach (var p in ((JObject)Raw[table]).Properties())
                         lines.Add($"{p.Name}: {Str(p.Value["name"]) ?? Compact(p.Value)}{Detail(p.Value)}");
@@ -114,7 +117,7 @@ namespace Chem.Mcp
                 else
                 {
                     var bound = Budgets.SimBounds.Where(b => b.path == path).Select(b => $" (a mod may set {Num(b.min)} to {Num(b.max)})").FirstOrDefault();
-                    lines.Add($"{path} = {Compact(p.Value)}{bound}");
+                    lines.Add($"{path} = {Compact(p.Value)}{bound}{SimNote(path)}");
                 }
             }
         }
@@ -124,6 +127,7 @@ namespace Chem.Mcp
         /// <summary>The full entry in force, plus every place the rules refer to it, which mods changed it and, for a spell, how a player reaches it.</summary>
         public string Describe(string table, string id, string draft = null)
         {
+            (table, id) = DragonPath(table, id);
             table = Table(table);
             id = Required(id, "id");
             if (table == "materials") table = MaterialKinds.FirstOrDefault(k => Raw["materials"][k]?[id] != null) ?? "terrain";
@@ -135,7 +139,7 @@ namespace Chem.Mcp
                 References(Raw[file], file, id, entry, refs);
             return $"{Single(table)} {id}:\n{entry.ToString(Formatting.Indented)}\n" +
                 (refs.Count == 0 ? "Nothing in the rules refers to it." : $"Referred to by ({refs.Count}):\n" + string.Join("\n", refs.Distinct().Take(60))) +
-                LookLine(table, id, entry) + ChangedBy(table, id) +
+                LookLine(table, id, entry) + ChangedBy(table, id) + DragonNote(table, id) +
                 (table == "spells" ? "\n" + ReachOf(drafted, id) : "");
         }
 
