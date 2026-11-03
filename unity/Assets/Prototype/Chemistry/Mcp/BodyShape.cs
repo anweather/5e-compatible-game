@@ -41,20 +41,24 @@ namespace Chem.Mcp
             foreach (var slot in body.Slots)
             {
                 var part = tables.Part(slot.Part);
-                var mine = new List<int>();
-                copies[slot.Id] = mine;
-                if (part == null) continue;
-                bool styleShown = slot.Style <= 0 || firstOfStyle.Add(slot.Style);
-                var parents = slot.On != null && copies.TryGetValue(slot.On, out var on) ? on : new List<int> { -1 };
-                foreach (int parent in parents)
-                {
-                    bool parentMirrored = parent >= 0 && shape.Limbs[parent].Mirrored;
-                    bool parentShown = parent < 0 || shape.Limbs[parent].Shown;
-                    mine.Add(shape.Add(body, slot, part, parent, parentMirrored, styleShown && parentShown));
-                    if (slot.Mirror) mine.Add(shape.Add(body, slot, part, parent, !parentMirrored, styleShown && parentShown));
-                }
+                copies[slot.Id] = part == null ? new List<int>() : shape.Copies(body, slot, part, copies, slot.Style <= 0 || firstOfStyle.Add(slot.Style));
             }
             return shape;
+        }
+
+        // A slot drawn once per copy of what it hangs on, and again mirrored: the indices of its limbs.
+        List<int> Copies(SpeciesDef body, SlotDef slot, PartDef part, Dictionary<string, List<int>> copies, bool styleShown)
+        {
+            var mine = new List<int>();
+            var parents = slot.On != null && copies.TryGetValue(slot.On, out var on) ? on : new List<int> { -1 };
+            foreach (int parent in parents)
+            {
+                bool parentMirrored = parent >= 0 && Limbs[parent].Mirrored;
+                bool shown = styleShown && (parent < 0 || Limbs[parent].Shown);
+                mine.Add(Add(body, slot, part, parent, parentMirrored, shown));
+                if (slot.Mirror) mine.Add(Add(body, slot, part, parent, !parentMirrored, shown));
+            }
+            return mine;
         }
 
         int Add(SpeciesDef body, SlotDef slot, PartDef part, int parent, bool mirrored, bool shown)
