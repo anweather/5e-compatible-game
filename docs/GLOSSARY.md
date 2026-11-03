@@ -242,6 +242,22 @@ touch them.
 **Cast**
 : A wizard using a spell at a cell and direction (`CastCommand`).
 
+**Action**
+: What a spell (and later a trigger or a world edit) does: `cast` (a spell at a cell) or `place`
+  (`docs/design/events-and-placing.md`).
+
+**Place / placed thing**
+: A spell's `place` field: a thing, an animal, a terrain or a cover put on cells picked by `Placement.Pick`
+  from the world's seed. A **placed thing** is core state (`World.Placed`, in `ThingsNow`) and lapses after `lasts`.
+
+**Pick**
+: Choosing cells over an area the same on every peer (`Placement.Pick`): each open cell scored by `WorldHash`
+  of the seed, a salt and the cell, best first, kept `spacing` cells apart. No draw from the world's generator.
+
+**Summon**
+: An animal a spell's `place` brings out (`World.Summoned`): the core says which species, on which cell and with
+  which Individual; each peer's `ValleyFauna` then lets it live as ambient life, on its own.
+
 **Cast charge**
 : How long a cast was held, 1 to 3 (`CastCommand.Charge`, counted from the meter by `World.HeldCharge`).
 

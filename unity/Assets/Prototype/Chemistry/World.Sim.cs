@@ -88,6 +88,7 @@ namespace Chem
             logged.Clear();
             strikes.Clear();
             combosFired.Clear();
+            BeginPlaceTick();
             TrimWeatherHistory();
             EndSetWeather();
             Weather = SkyNow();
@@ -120,6 +121,7 @@ namespace Chem
                     TickWaves();
                     TickBoulders();
                     TickGolf();
+                    TickPlaced();
                     TickMachines(tickRows);
                     NextStage(TickStage.Timers);
                     return false;

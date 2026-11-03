@@ -403,6 +403,44 @@ two peers and a save. **Limit:** the woods aren't a place and a stand-in valley 
 woods from a meadow, and `find_site` may give a cell a real tree stands on; the game's `find_site` reads the real valley,
 and a room refuses a row on a blocked cell at the switch.
 
+## Spells that place
+
+`docs/design/events-and-placing.md` 2a. A spell's `place` field puts something on cells where it lands, after its
+element:
+
+```json
+"place": { "animal": "human-child", "count": 1, "within": 0 }
+"place": { "thing": "scarecrow", "count": 3, "within": 2, "spacing": 1, "lasts": 3600 }
+"place": { "terrain": "tree", "count": 5, "within": 4, "spacing": 2, "onto": ["soil"] }
+```
+
+- **What.** Exactly one of `thing` (an `entities` or `items` row), `animal` (a `fauna.json` species), `terrain` or
+  `cover` (`Rules.Check`'s `PlaceRefs`). A spell with only a `place` and no element or effect is fine.
+- **Where.** `count` cells (1 if left out) picked by `Placement.Pick` among the spell's cells, or among the cells within
+  `within` of the aim as the crow flies when it's given (0 is the aim cell). `spacing` is the fewest cells between two
+  picks. A cell is open when it's on the world, active, dry, not blocking, with no building or thing, and its terrain
+  has one of the `onto` tags (`ground` with none): `World.PlaceOpen`. Each cast's salt is a hash of the tick and the
+  place actions run so far, so a second cast picks afresh, and every peer the same. Too few open cells logs
+  "Test spell: 2 of 3 had room".
+- **A terrain or cover** is laid fresh (no fire, gas or water; height kept): cell state, in the cell hash.
+- **A thing** goes in `World.Placed` and `ThingsNow` (after the file's and the mods' things), with the id
+  `ThingId.Placed(chunk, n)`: its index has the top bit set, above every file's and mod's, and prints as
+  `"1,0#placed 4"`. `lasts` (ticks) takes it away; none stays. At most `place.maxLive` (64) live: the oldest
+  lapses first. `PlacedText()` is in `CastHash` and the save, "" until a spell places.
+- **An animal** is the view's (J-056): `World.Summoned` lists this tick's (species, cell, `Individual`, running
+  number `N`), cleared as each tick begins; `World.SummonedAfter(n)` gives those past the `n`th from the last 600 ticks,
+  for a view that steps several ticks a frame. Nothing about it is in the hashes but the running count.
+- **Budgets** (`budgets.json` `place`): `count` at most 8, `within` at most 8, `lasts` at most 21 600 (an hour),
+  64 placed things live in a room, 24 summoned animals on a peer (the view's cap, `maxSummoned`).
+
+**In the view (`place-view`).**
+1. `ThingSpawner` diffs `ThingsNow` (`ChangesFrom`) after any tick whose `ThingsNow` isn't the table it last
+   spawned from (a new table whenever a spell places or a placed thing lapses), not only at rule switches; the host
+   spawns, as for a mod's thing. A placed thing has `ThingSpawn.Placed` and `Lapses`.
+2. `ValleyFauna` brings out each `World.SummonedAfter(lastN)` on its cell with `Spawn(species, position, yaw, Individual)`,
+   keeps at most `place.maxSummoned` (24), and lets it wander as ambient life.
+3. A spell with a `place` and no element still needs its show (its `look`), as any cast.
+
 ## Change modes (chosen when a room is made)
 
 Andrew, 2026-10-31: the point is fun, not policing. A room picks one when it's created:
