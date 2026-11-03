@@ -99,12 +99,7 @@ namespace Chem.Mcp
             string what = cover ? "A cover" : "A terrain";
             var keys = path.Split('.');
             string top = keys[0];
-            if (top == "look") return; // ModCheck.Looks and set_look know a look's parameters
-            if (top == Rules.LapseKey)
-            {
-                CheckLapse(what, path, value);
-                return;
-            }
+            if (CheckedElsewhere(what, top, path, value)) return;
             if (!MaterialGroups.Verbs(cover).Contains(top))
             {
                 if (MaterialGroups.GroupedName(cover, top) is string grouped) throw new RulesToolException($"{what} writes {top} as {grouped}.");
@@ -126,6 +121,15 @@ namespace Chem.Mcp
         public static void CheckMaterial(string kind, JObject entry)
         {
             foreach (var p in entry.Properties()) CheckMaterial(kind, p.Name, p.Value);
+        }
+
+        // The fields a material's own check hands off: a look (ModCheck.Looks and set_look know its parameters) and a lapse.
+        static bool CheckedElsewhere(string what, string top, string path, JToken value)
+        {
+            if (top == "look") return true;
+            if (top != Rules.LapseKey) return false;
+            CheckLapse(what, path, value);
+            return true;
         }
 
         // A temporary material's lapse (World.Lapse.cs): into and after only.

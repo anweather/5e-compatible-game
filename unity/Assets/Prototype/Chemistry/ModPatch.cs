@@ -82,7 +82,7 @@ namespace Chem
                 "an object of triggers by id, such as {\"meteor-steps\": {\"on\": \"step\", \"who\": \"Ann\", \"do\": [{\"cast\": \"meteor\", \"at\": \"ahead\", \"by\": 2}]}}; null takes one out");
             Expect(BuildingTables.Key, p[BuildingTables.Key] is JObject b && BuildingTables.Tables.Where(t => b[t] != null).All(t => b[t] is JObject rows && rows.PropertyValues().All(v => v is JObject)),
                 "an object of tables (openings, floors, roofs, details, styles), each of rows by id");
-            if (p[BuildingTables.Key] is JObject given) UnknownBuildingTables(given, errors);
+            UnknownBuildingTables(p[BuildingTables.Key] as JObject, errors);
             Expect("world", p["world"] is JObject w && w.Properties().All(x => x.Name == "buildings" || x.Name == "add" || x.Name == "lay")
                     && (w["buildings"] == null || (w["buildings"] is JObject bs && bs.PropertyValues().All(v => v is JObject)))
                     && (w["add"] == null || ListOf(w["add"], JTokenType.Object))
@@ -94,6 +94,7 @@ namespace Chem
         // A table a mod's "buildings" can't add rows to, named, rather than dropped without a word (#85).
         static void UnknownBuildingTables(JObject given, List<string> errors)
         {
+            if (given == null) return;
             string tables = string.Join(", ", BuildingTables.Tables);
             foreach (var name in given.Properties().Select(x => x.Name).Where(n => !BuildingTables.Tables.Contains(n)))
                 errors.Add(name == "ground"
