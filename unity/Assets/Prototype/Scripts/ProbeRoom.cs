@@ -24,7 +24,7 @@ public class RoomProbeAsk
 {
     public string id;
     public int step;
-    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "deer" (faunaresize's), "grafts" (graftcoats'), "hostile", "rejoin", "film" (mod: the stand's cell and the target's), "cut" or "dressed" (mod: cells).</summary>
+    /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "deer" (faunaresize's), "grafts" (graftcoats'), "hostile", "defense" (roomopen's), "rejoin", "film" (mod: the stand's cell and the target's), "cut" or "dressed" (mod: cells).</summary>
     public string ask, mod;
     /// <summary>How long a "report" may wait for its tick.</summary>
     public float reach;
@@ -62,6 +62,8 @@ public class RoomProbeSeen
     public int cellsDressed;
     /// <summary>How far the fire element's colour turns this side's flames (ChemGrid.WorldLook.cs).</summary>
     public float fireTurn;
+    /// <summary>The defense field's waves on this side: phase, wave, gate and flag, or "-" before any (roomopen's).</summary>
+    public string defense;
     /// <summary>How far the fire on the cells the probe watches is turned, on this side.</summary>
     public List<float> turns = new();
     /// <summary>
@@ -107,6 +109,8 @@ public sealed class RoomProbeRecord : IDisposable
         seen.rules = grid.World.Rules.Fingerprint;
         seen.fireballRadius = grid.World.Rules.Spell(SpellIds.Fireball).Radius;
         seen.fireTurn = grid.FireElementTint.Turn;
+        var waves = grid.World.Defense;
+        seen.defense = waves == null ? "-" : $"{waves.Phase} wave {waves.Wave}, gate {waves.GateX},{waves.GateY}, flag {waves.FlagX},{waves.FlagY}";
         seen.ruins = grid.TryGetComponent<RowHouses>(out var houses) ? houses.Ruins : "";
         var fauna = UnityEngine.Object.FindAnyObjectByType<ValleyFauna>();
         if (fauna != null)
@@ -236,6 +240,9 @@ public class RoomProbeClient : MonoBehaviour
                 net.RequestRoom(RoomCommand.Apply("Player 1", "junk", "{ not json"));
                 for (float t = 0f; t < 3f && record.Lines == before; t += Time.unscaledDeltaTime) yield return null;
                 break;
+            case "defense":
+                yield return StartWaves(grid);
+                break;
             case "film":
                 var wizard = NetworkManager.Singleton.SpawnManager.GetLocalPlayerObject().gameObject;
                 var cells = ask.mod.Split(',').Select(int.Parse).ToArray();
@@ -282,6 +289,14 @@ public class RoomProbeClient : MonoBehaviour
                 yield return Join();
                 break;
         }
+    }
+
+    // The start plate's command from this peer: online it goes through the host (DefenseField.Request).
+    static IEnumerator StartWaves(ChemGrid grid)
+    {
+        var field = FindAnyObjectByType<DefenseField>();
+        DefenseField.Request(grid, field.StartCommand);
+        for (float t = 0f; t < 3f && !field.Running; t += Time.unscaledDeltaTime) yield return null;
     }
 
     // Stands by the first thing of a kind and asks the host for it.
@@ -517,6 +532,8 @@ public class RoomOpenProbe : RoomProbe
     /// <summary>How long a Fire Bolt takes to land and light its cell, and a little more.</summary>
     public const float BoltLands = 2.5f;
     const float FilmSeconds = 5f;
+    /// <summary>Long enough for two 30-tick checksums after the waves start (5 s each at 6 ticks a second).</summary>
+    const float DefenseChecksum = 11f;
 
     protected override ChangeMode Mode => ChangeMode.Open;
 
@@ -618,6 +635,8 @@ public class RoomOpenProbe : RoomProbe
         Check("reset_keeps_the_mods", World.Room.Mods.Count == 2 && Theirs.roomText == World.RoomText() && Theirs.rules == World.Rules.Fingerprint,
             $"{World.Room.Mods.Count} mods on, there {Theirs.roomText}");
 
+        yield return ClientDefense();
+
         // A late joiner after a reset and a change after it: the mods as they stood, then the change.
         yield return HostToggle(Wildfire);
         yield return Wait(0.5f);
@@ -626,6 +645,22 @@ public class RoomOpenProbe : RoomProbe
         Check("late_joiner_has_the_room", Theirs.roomText == World.RoomText(), $"{Theirs.roomText}, here {World.RoomText()}");
         Check("late_joiner_has_the_rules", Theirs.rules == World.Rules.Fingerprint, $"{Theirs.rules}, here {World.Rules.Fingerprint}");
         Check("late_joiner_fireball", Theirs.fireballRadius == World.Rules.Spell(SpellIds.Fireball).Radius, $"radius {Theirs.fireballRadius}");
+        Check("late_joiner_has_the_waves", Theirs.defense == Mine.defense, $"{Theirs.defense}, here {Mine.defense}");
+    }
+
+    // Defense over the network, after the reset so a late joiner replays it: the client starts the waves through the
+    // host, both run them, and the checksums (whose last part is the waves' hash) agree from then on.
+    IEnumerator ClientDefense()
+    {
+        int asked = Net.NetTick;
+        yield return Ask("defense");
+        if (Theirs == null) yield break;
+        yield return Wait(DefenseChecksum);
+        yield return Reach("client_defense", Net.NetTick);
+        if (Theirs == null) yield break;
+        Check("client_starts_the_waves", Mine.defense.StartsWith("Running", StringComparison.Ordinal), Mine.defense);
+        Check("waves_on_both", Theirs.defense == Mine.defense, $"{Theirs.defense}, here {Mine.defense}");
+        CompareHashes("waves_checksums_match", asked);
     }
 }
 
