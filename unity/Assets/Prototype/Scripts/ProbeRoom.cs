@@ -26,6 +26,8 @@ public class RoomProbeAsk
     public int step;
     /// <summary>"join", "report" (mod: a net tick to reach first, if any), "toggle" with a mod's id, "hostile", "rejoin", "film" (mod: the stand's cell and the target's) or "cut".</summary>
     public string ask, mod;
+    /// <summary>How long a "report" may wait for its tick.</summary>
+    public float reach;
 }
 
 /// <summary>What one side has seen by now.</summary>
@@ -175,7 +177,9 @@ public class RoomProbeClient : MonoBehaviour
                 reachSeconds = 0f;
                 if (string.IsNullOrEmpty(ask.mod)) break;
                 int tick = int.Parse(ask.mod, CultureInfo.InvariantCulture);
-                for (; reachSeconds < RoomProbe.ReachSeconds && net.NetTick < tick; reachSeconds += Time.unscaledDeltaTime) yield return null;
+                for (; reachSeconds < ask.reach && net.NetTick < tick; reachSeconds += Time.unscaledDeltaTime) yield return null;
+                // A tick's rules land in NetChem's Update, and this runs straight after it: the view draws them next frame.
+                yield return null;
                 break;
             case "toggle":
                 int lines = record.Lines;
@@ -254,7 +258,7 @@ public abstract class RoomProbe : ProbeScenario
 {
     const float ReplySeconds = 40f;
     /// <summary>How long the virtual player may take to reach a tick the host has run: well inside ReplySeconds.</summary>
-    public const float ReachSeconds = 10f;
+    const float ReachSeconds = 10f;
     protected const string Wildfire = "wildfire", BigFireball = "big-fireball";
 
     static string Beside(string name) => Path.Combine(Path.GetDirectoryName(ProbeLink.HostFile), name);
@@ -315,18 +319,26 @@ public abstract class RoomProbe : ProbeScenario
     protected abstract IEnumerator Steps();
 
     /// <summary>Asks the virtual player, and waits for what it saw; Theirs is null if it never answered.</summary>
-    protected IEnumerator Ask(string ask, string mod = null)
+    protected IEnumerator Ask(string ask, string mod = null, float reach = 0f)
     {
         step++;
-        ProbeLink.Write(AskFile, new RoomProbeAsk { id = id, step = step, ask = ask, mod = mod });
+        ProbeLink.Write(AskFile, new RoomProbeAsk { id = id, step = step, ask = ask, mod = mod, reach = reach });
         Theirs = null;
-        for (float t = 0f; t < ReplySeconds && Theirs == null; t += Time.unscaledDeltaTime)
+        for (float t = 0f; t < ReplySeconds + reach && Theirs == null; t += Time.unscaledDeltaTime)
         {
             var seen = ProbeLink.Read<RoomProbeSeen>(SeenFile);
             if (seen != null && seen.id == id && seen.step == step) Theirs = seen;
             yield return null;
         }
         Check($"answered_{step}_{ask}", Theirs != null, $"no answer in {ReplySeconds:0} s");
+    }
+
+    /// <summary>Asks for a report once the virtual player has run this tick; one that stops short fails _client_reached_tick, saying where.</summary>
+    protected IEnumerator Reach(string name, int tick, float seconds = ReachSeconds)
+    {
+        yield return Ask("report", tick.ToString(CultureInfo.InvariantCulture), seconds);
+        if (Theirs == null) yield break;
+        Check(name + "_client_reached_tick", Theirs.netTick >= tick, $"the client at net tick {Theirs.netTick} after {Theirs.reachSeconds:0.00} s, here {tick}");
     }
 
     /// <summary>What this side has seen by now.</summary>
@@ -350,11 +362,10 @@ public abstract class RoomProbe : ProbeScenario
         yield return Wait(0.6f);
         var mine = Record.Seen(id, step);
         int tick = mine.netTick;
-        yield return Ask("report", tick.ToString(CultureInfo.InvariantCulture));
+        yield return Reach(name, tick);
         if (Theirs == null) yield break;
         slowestReach = Mathf.Max(slowestReach, Theirs.reachSeconds);
         Metric("client_reach_slowest_s", slowestReach);
-        Check(name + "_client_reached_tick", Theirs.netTick >= tick, $"the client at net tick {Theirs.netTick} after {Theirs.reachSeconds:0.00} s, here {tick}");
         Check(name + "_line_here", (mine.lines.LastOrDefault() ?? "").StartsWith(line, StringComparison.Ordinal), mine.lines.LastOrDefault());
         Check(name + "_line_there", Theirs.lines.LastOrDefault() == mine.lines.LastOrDefault(), Theirs.lines.LastOrDefault());
         Check(name + "_same_room", Theirs.roomText == World.RoomText(), $"{Theirs.roomText}, here {World.RoomText()}");
@@ -384,7 +395,10 @@ public abstract class RoomProbe : ProbeScenario
             if (firstDiffer < 0) firstDiffer = Theirs.hashTicks[i];
         }
         Metric("checksums_compared", same + differ);
-        Check(name, same >= 1 && differ == 0, $"{same} same, {differ} differ, first at net tick {firstDiffer}; they recorded {Theirs.hashTicks.FirstOrDefault()} to {Theirs.hashTicks.LastOrDefault()}");
+        string theirs = $"they recorded {Theirs.hashTicks.FirstOrDefault()} to {Theirs.hashTicks.LastOrDefault()}";
+        Check(name, same >= 1 && differ == 0, same + differ == 0
+            ? $"nothing compared: {theirs}, here {mine.hashTicks.FirstOrDefault()} to {mine.hashTicks.LastOrDefault()}, from net tick {from}"
+            : $"{same} same, {differ} differ, first at net tick {firstDiffer}; {theirs}");
         Check("no_desync", !Theirs.desync, "the client saw none");
     }
 }
@@ -395,6 +409,8 @@ public class RoomRuinProbe : RoomProbe
     const string Burning = "burning-house";
     const int SiteX = 235, SiteY = 390; // the grass lot rowburn uses
     const float MostBurn = 60f, Quiet = 4f, Settle = 2f, CatchWait = 15f;
+    // The rejoined client is about 300 ticks behind and replays about 9 a second (30 s on the Mac): this allows 3 a second.
+    const float ReplaySeconds = 100f;
 
     protected override ChangeMode Mode => ChangeMode.Open;
     protected override bool StartsWithAMod => false;
@@ -425,8 +441,9 @@ public class RoomRuinProbe : RoomProbe
         HashesFrom = Net.NetTick;
         yield return Ask("rejoin");
         yield return Wait(Settle);
-        yield return Ask("report");
+        yield return Reach("late_joiner", Net.NetTick, ReplaySeconds);
         if (Theirs == null) yield break;
+        Metric("late_joiner_reach_s", Theirs.reachSeconds);
         Check("a_late_joiner_sees_the_ruin", Theirs.ruins == Mine.ruins, $"{Theirs.ruins}, here {Mine.ruins}");
     }
 }
