@@ -326,7 +326,37 @@ public sealed class ValleyGround
         PaintMarker = new("ValleyGround.Paint"), DetailMarker = new("ValleyGround.ClearGrass"), UploadMarker = new("ValleyGround.UploadPaint"),
         DrawDetailsMarker = new("ValleyGround.DrawDetails"), HeightUpdateMarker = new("ValleyGround.HeightUpdate"),
         HeightEaseMarker = new("ValleyGround.HeightEase"), HeightWriteMarker = new("ValleyGround.HeightWrite"),
-        SyncMarker = new("ValleyGround.SyncHeightmap");
+        SyncMarker = new("ValleyGround.SyncHeightmap"), BlockMarker = new("ValleyGround.Paint.Block"),
+        ComposeMarker = new("ValleyGround.Paint.Compose"), ApplyMarker = new("ValleyGround.UploadPaint.Apply");
+
+    // Each texel's noise, worked out the first time it paints and kept (CellPaint.Block): a shower's
+    // ash repaints the same texels for minutes, and the noise was much of a texel's cost (#70).
+    readonly TexelNoise texelNoise = new();
+
+    /// <summary>For a check (-perf-same-check): paints each strip afresh too, counting any that differ bit for bit from the kept noise's.</summary>
+    public static bool CheckKeptNoise { get; set; }
+
+    /// <summary>The strips painted both ways under CheckKeptNoise, and those that came out different.</summary>
+    public static (int painted, int different) KeptNoiseChecked => (keptChecked, keptDifferent);
+
+    static int keptChecked, keptDifferent;
+
+    void CheckAfresh(PaintBlock kept, ChunkRect r, System.Func<int, int, IReadOnlyList<float>> paintOf)
+    {
+        var fresh = CellPaint.Block(layout, r, paintOf);
+        keptChecked++;
+        for (int z = 0; z < r.Height; z++)
+            for (int x = 0; x < r.Width; x++)
+            {
+                bool same = Bits(kept.Cover[z, x]) == Bits(fresh.Cover[z, x]);
+                for (int k = 0; k < CellPaint.Layers.Count; k++) same &= Bits(kept.Mix[z, x, k]) == Bits(fresh.Mix[z, x, k]);
+                if (same) continue;
+                keptDifferent++;
+                return;
+            }
+    }
+
+    static int Bits(float f) => System.BitConverter.SingleToInt32Bits(f);
 
     // Composing paint gets about this much of a frame (ms); the cells it takes follow from how long
     // the last ones took, between the bounds below.
@@ -399,9 +429,13 @@ public sealed class ValleyGround
         int res = data.alphamapResolution;
         ch.baseAlpha ??= data.GetAlphamaps(0, 0, res, res);
         ch.frameAlpha ??= (float[,,])ch.baseAlpha.Clone();
-        var block = CellPaint.Block(layout, r, paintOf);
-        for (int z = 0; z < r.Height; z++)
-            for (int x = 0; x < r.Width; x++) ComposeTexel(block, (ch.layers, ch.baseAlpha), ch.frameAlpha, x, z, (r.X, r.Z));
+        PaintBlock block;
+        using (BlockMarker.Auto()) block = CellPaint.Block(layout, r, paintOf, texelNoise);
+        if (CheckKeptNoise) CheckAfresh(block, r, paintOf);
+        using (ComposeMarker.Auto())
+            for (int z = 0; z < r.Height; z++)
+                for (int x = 0; x < r.Width; x++) ComposeTexel(block, (ch.layers, ch.baseAlpha), ch.frameAlpha, x, z, (r.X, r.Z));
+        PerfCounts.Add("ground.paint_texels", r.Width * r.Height);
         ch.dx0 = Mathf.Min(ch.dx0, r.X);
         ch.dz0 = Mathf.Min(ch.dz0, r.Z);
         ch.dx1 = Mathf.Max(ch.dx1, r.XMax);
@@ -427,16 +461,21 @@ public sealed class ValleyGround
     static void WriteTexture(Texture2D tex, int first, Chunk ch)
     {
         var pixels = tex.GetPixelData<Color32>(0);
-        int width = tex.width, n = ch.frameAlpha.GetLength(2);
+        var alpha = ch.frameAlpha;
+        int width = tex.width, channels = alpha.GetLength(2) - first;
         for (int z = ch.dz0; z <= ch.dz1; z++)
             for (int x = ch.dx0; x <= ch.dx1; x++)
             {
                 var c = new Color32();
-                for (int channel = 0; channel < 4 && first + channel < n; channel++)
-                    c[channel] = (byte)Mathf.RoundToInt(Mathf.Clamp01(ch.frameAlpha[z, x, first + channel]) * 255f);
+                if (channels > 0) c.r = Texel(alpha[z, x, first]);
+                if (channels > 1) c.g = Texel(alpha[z, x, first + 1]);
+                if (channels > 2) c.b = Texel(alpha[z, x, first + 2]);
+                if (channels > 3) c.a = Texel(alpha[z, x, first + 3]);
                 pixels[z * width + x] = c;
             }
     }
+
+    static byte Texel(float alpha) => (byte)Mathf.RoundToInt(Mathf.Clamp01(alpha) * 255f);
 
     List<Chunk> paintOrder = new();
     int nextPaint;
@@ -457,7 +496,7 @@ public sealed class ValleyGround
             WriteTexture(textures[t], t * 4, ch);
             // The whole texture, with its mips: a chunk's paint is only 64 × 64 texels, so
             // uploading just the painted box saves nothing worth its staging copies.
-            textures[t].Apply(true);
+            using (ApplyMarker.Auto()) textures[t].Apply(true);
         }
         ch.dx0 = ch.dz0 = int.MaxValue;
         ch.dx1 = ch.dz1 = -1;
@@ -564,7 +603,8 @@ public sealed class ValleyGround
         int ox = offset.x, oz = offset.z;
         var r = block.Rect;
         float a = block.Cover[z, x];
-        for (int n = 0; n < into.GetLength(2); n++) into[oz + z, ox + x, n] = baseAlpha[r.Z + z, r.X + x, n] * (1f - a);
+        int all = into.GetLength(2);
+        for (int n = 0; n < all; n++) into[oz + z, ox + x, n] = baseAlpha[r.Z + z, r.X + x, n] * (1f - a);
         if (a <= 0f) return;
         for (int k = 0; k < layers.Length; k++)
             if (layers[k] >= 0) into[oz + z, ox + x, layers[k]] += a * block.Mix[z, x, k];
