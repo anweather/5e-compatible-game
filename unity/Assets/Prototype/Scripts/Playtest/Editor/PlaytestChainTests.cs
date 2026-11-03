@@ -1,4 +1,3 @@
-using System.IO;
 using System.Linq;
 using Chem;
 using NUnit.Framework;
@@ -14,19 +13,13 @@ public class PlaytestChainTests
 {
     static Rules rules;
 
-    static Rules R => rules ??= Rules.Load(FindRules());
-
-    // The repo's rules/: next to the Unity project, or up from the test binary under dotnet test.
-    static string FindRules()
-    {
+    // The repo's rules/: above the Unity project, or above the test binary under dotnet test.
+    static Rules R => rules ??= Rules.Load(GameFolders.InRepo(
 #if UNITY_5_3_OR_NEWER
-        return Path.GetFullPath(Path.Combine(UnityEngine.Application.dataPath, "../../rules"));
+        UnityEngine.Application.dataPath).Rules);
 #else
-        var dir = new DirectoryInfo(TestContext.CurrentContext.TestDirectory);
-        while (dir != null && !File.Exists(Path.Combine(dir.FullName, "rules", "spells.json"))) dir = dir.Parent;
-        return Path.Combine(dir?.FullName ?? ".", "rules");
+        TestContext.CurrentContext.TestDirectory).Rules);
 #endif
-    }
 
     // The wizard stands at Me facing east; the bot aims a few cells ahead, at Target.
     static readonly (int x, int y) Me = (2, 5), Target = (8, 5);

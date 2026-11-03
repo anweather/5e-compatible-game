@@ -47,7 +47,7 @@ public static class ValleyShape
     static float[] padLevels;
 
     // The cabins stand where world/buildings.json's rows say, each one's site in metres.
-    static CabinSite[] ReadCabins() => WorldBuildings.Load(ChemGrid.FindWorldDir()).FileRows
+    static CabinSite[] ReadCabins() => WorldBuildings.Load(ChemGrid.Folders.World).FileRows
         .Where(row => row["site"] != null)
         .Select(row => new CabinSite(Site(row["site"]["metres"]), Site(row["site"]["door"])))
         .ToArray();
@@ -94,7 +94,7 @@ public static class ValleyShape
     static void LayVillages()
     {
         var layout = ValleyTerrain.Layout;
-        var specs = VillageLayout.Load(ChemGrid.FindWorldDir());
+        var specs = VillageLayout.Load(ChemGrid.Folders.World);
         Villages = new VillagePlan[specs.Count];
         villageAreas = new Rect[specs.Count];
         VillageLevels = new float[specs.Count];

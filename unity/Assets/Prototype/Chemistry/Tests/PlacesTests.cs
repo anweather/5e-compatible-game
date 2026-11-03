@@ -8,15 +8,13 @@ namespace Chem.Tests
     /// <summary>world/places.json (Places.cs): the named landmarks, generated from the world data where it can be.</summary>
     public class PlacesTests
     {
-        static string WorldDir() => Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "world");
-
-        static WorldPlaces Valley => WorldPlaces.Load(WorldDir());
+        static WorldPlaces Valley => WorldPlaces.Load(ChemistryTests.WorldDir());
 
         [Test]
         public void PlacesFileIsUpToDate()
         {
-            string path = Path.Combine(WorldDir(), WorldPlaces.FileName);
-            string made = WorldPlaces.Generate(WorldDir());
+            string path = Path.Combine(ChemistryTests.WorldDir(), WorldPlaces.FileName);
+            string made = WorldPlaces.Generate(ChemistryTests.WorldDir());
             string file = Environment.GetEnvironmentVariable("PLACES_OUT");
             if (!string.IsNullOrEmpty(file)) File.WriteAllText(file, made);
             Assert.That(File.ReadAllText(path).Replace("\r\n", "\n"), Is.EqualTo(made),
@@ -27,7 +25,7 @@ namespace Chem.Tests
         public void TheVillagesTheWaterAndTheCoursesAreThere()
         {
             var places = Valley;
-            foreach (var spec in VillageLayout.Load(WorldDir()))
+            foreach (var spec in VillageLayout.Load(ChemistryTests.WorldDir()))
             {
                 var village = places.Find(spec.Name);
                 Assert.That(village, Is.Not.Null, spec.Name);
@@ -40,7 +38,7 @@ namespace Chem.Tests
             Assert.That(lake.Kind, Is.EqualTo("lake"));
             Assert.That(lake.Count, Is.GreaterThan(1000), "the valley's lake is thousands of cells");
             Assert.That(lake.Contains(lake.Middle.x, lake.Middle.y), Is.True);
-            var gauntlet = CourseLayout.Load(WorldDir());
+            var gauntlet = CourseLayout.Load(ChemistryTests.WorldDir());
             Assert.That(lake.Bounds.Bottom, Is.LessThanOrEqualTo(gauntlet.Area.Y), "the Gauntlet is on the lake's far shore");
             var sea = places.All.Single(p => p.Kind == "sea");
             var key = places.Find("Sunward Key");
@@ -79,7 +77,7 @@ namespace Chem.Tests
         {
             Assert.Throws<FormatException>(() => WorldPlaces.FromJson(@"{ ""places"": [ { ""id"": ""a"" } ] }"), "no cells");
             Assert.Throws<FormatException>(() => WorldPlaces.FromJson(@"{ ""places"": [ { ""id"": ""a"", ""area"": [0, 0, 1, 1] }, { ""id"": ""a"", ""area"": [0, 0, 1, 1] } ] }"), "twice");
-            Assert.That(WorldPlaces.Load(Path.Combine(WorldDir(), "no-such-folder")).Count, Is.EqualTo(0), "no file: no places");
+            Assert.That(WorldPlaces.Load(Path.Combine(ChemistryTests.WorldDir(), "no-such-folder")).Count, Is.EqualTo(0), "no file: no places");
         }
     }
 }

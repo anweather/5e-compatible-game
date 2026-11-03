@@ -259,7 +259,7 @@ public static class ValleyBuilder
     static List<RectInt> PlayedGround()
     {
         if (playedGround != null) return playedGround;
-        string dir = ChemGrid.FindWorldDir();
+        string dir = ChemGrid.Folders.World;
         playedGround = WorldPuzzles.Load(dir).All.Select(p => new RectInt(p.X, p.Y, p.Width, p.Height)).ToList();
         if (GolfCommand.Load(dir) is { } h)
             playedGround.Add(new RectInt(Mathf.Min(h.TeeX, h.HoleX) - FairwayHalfWide, Mathf.Min(h.TeeY, h.HoleY) - FairwayHalfWide,

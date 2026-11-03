@@ -38,7 +38,7 @@ namespace Chem.Mcp
         /// <summary>The stand-in for the world/ folder beside a rules folder; null if that has no land or places.</summary>
         public static StandInValley Load(string rulesDir, ModBudgets budgets)
         {
-            string worldDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(rulesDir).TrimEnd('/', '\\')) ?? "", "world");
+            string worldDir = new GameFolders(rulesDir).World;
             string landPath = Path.Combine(worldDir, "land.json");
             if (!File.Exists(landPath) || budgets.Places.Count == 0) return null;
             var doc = Newtonsoft.Json.Linq.JObject.Parse(File.ReadAllText(landPath));

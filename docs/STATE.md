@@ -56,12 +56,13 @@ The one page a new PM session reads first. Keep it short: history goes in
 
 ## In flight
 
-- **Play test done (2026-11-02 evening):** issues #70 to #77, #57 closed, #58 narrowed (the game hears nothing with any mic; Win+H works). DesktopUnity on #70 (`water-look-perf`), then #58. Open: whether 0.1.11 goes before the cleanup.
+- **Play test done (2026-11-02 evening):** issues #70 to #77, #57 closed, #58 narrowed (the game hears nothing with any mic; Win+H works). DesktopUnity on #70 (`water-look-perf`), then #58. 0.1.11 waits, no rush (Andrew, 2026-11-02). Cleanup: items 1 and 3 landed (`game-folders`, 10da5b1; not yet in a built player: check the StreamingAssets path and `ModMove` in the next test player). The Mac next: `folders-rest`, then `fireline-out` (item 9). The draft notes promise voice: fix #58 or cut that line before it ships.
+- **Play-test lanes (Andrew: fix them all):** DesktopUnity: #70, then #58, #71, #60's uncaught `ModException`. u2 (Max; Pro is out until Nov 5, its "back" notice was only the 5-hour limit): `playtest-creature-tools.md` (#61, #72, #77). u2 next: `playtest-designs.md` (#73 to #76, #60); w1 does not fit beside the PC Editor (5.8 GB free with u1 running). u2 and the PC own the rules, fauna and window files; the Mac keeps to folders and Fireline.
 - **Mac and DesktopUnity:** idle for the pause. `roomruin-wait` landed (1ada360): #65, #50 and #67 closed.
 - **Unmerged, kept:** `second-map` (afff4c9): the report and the word are on dev (`docs/design/second-map-2026-11-02.md`), the code waits for shipped maps (#69, backlog 29), after the cleanup.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
-- **u1, u2:** stopped. Pro is back (2026-11-02 20:02); nothing queued while work is paused.
+- **u1:** stopped; Pro weekly is out until Nov 5. **u2:** running.
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Merged dev passed full EditMode on the Mac and Windows.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/SpellChemistryValley.exe`, dev at f736c4d, for Andrew's play on 2026-11-02 after 8pm. Copies passed the squirrel test, save right after apply, 2 real Haiku prompts, two built peers over Relay on this PC. The exe itself has never been launched, or anything run in a real window. Older `PlayTest/` and `PlayTest-1ad55fb/` stay until he has moved over.

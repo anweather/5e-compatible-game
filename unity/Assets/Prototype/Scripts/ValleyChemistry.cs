@@ -250,7 +250,7 @@ public partial class ValleyChemistry : MonoBehaviour
     {
         if (landFromFile == null || landFromFile.Length != world.W * world.H)
         {
-            string path = Path.Combine(ChemGrid.FindWorldDir(), "land.json");
+            string path = Path.Combine(ChemGrid.Folders.World, "land.json");
             landFromFile = File.Exists(path) ? LandFile.Read(File.ReadAllText(path), world.W, world.H) : null;
             if (landFromFile != null && landFromFile.Length == 0) landFromFile = null;
             if (landFromFile == null) Debug.LogWarning($"No land for a {world.W}×{world.H} world in {path}: water won't run down the hills");
@@ -271,7 +271,7 @@ public partial class ValleyChemistry : MonoBehaviour
         for (int y = 0; y < world.H; y++)
             for (int x = 0; x < world.W; x++)
                 land[world.Idx(x, y)] = Mathf.RoundToInt(ground.BaseHeight(x, y) / unit);
-        string path = Path.Combine(ChemGrid.FindWorldDir(), "land.json");
+        string path = Path.Combine(ChemGrid.Folders.World, "land.json");
         File.WriteAllText(path, LandFile.Write(land, world.W, world.H, unit));
         landFromFile = null;
         SetLand(world);

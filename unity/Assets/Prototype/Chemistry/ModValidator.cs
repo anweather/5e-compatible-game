@@ -58,7 +58,7 @@ namespace Chem
         {
             var budgets = Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
             budgets.Looks = LookFamilies.Load(rulesDir);
-            string worldDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(rulesDir).TrimEnd('/', '\\')) ?? "", "world");
+            string worldDir = new GameFolders(rulesDir).World;
             budgets.Places = WorldPlaces.Load(worldDir);
             budgets.Buildings = WorldBuildings.Load(worldDir);
             if (Directory.Exists(worldDir)) budgets.Things = WorldThings.Load(worldDir);

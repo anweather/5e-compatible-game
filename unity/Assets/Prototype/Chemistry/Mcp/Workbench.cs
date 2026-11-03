@@ -44,20 +44,6 @@ namespace Chem.Mcp
         public Rules Base { get; }
         public ModBudgets Budgets { get; }
 
-        /// <summary>
-        /// The folder holding rules/ found by walking up from here (the repo root's rules/), for a
-        /// server started anywhere inside the repo.
-        /// </summary>
-        public static string FindRulesDir(string start)
-        {
-            for (var dir = new DirectoryInfo(start); dir != null; dir = dir.Parent)
-            {
-                var candidate = Path.Combine(dir.FullName, "rules");
-                if (File.Exists(Path.Combine(candidate, "materials.json"))) return candidate;
-            }
-            throw new DirectoryNotFoundException("No rules/ folder above " + start + "; pass --rules <folder>.");
-        }
-
         // ---------- drafts ----------
 
         public Draft DraftOf(string id)

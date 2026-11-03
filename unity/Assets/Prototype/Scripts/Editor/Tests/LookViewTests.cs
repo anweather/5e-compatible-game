@@ -7,7 +7,7 @@ using UnityEditor;
 // a drawer, so ModValidator never passes a look the game can't show.
 public class LookViewTests
 {
-    static LookFamilies Families => LookFamilies.Load(ChemGrid.FindRulesDir());
+    static LookFamilies Families => LookFamilies.Load(ChemGrid.Folders.Rules);
 
     [Test]
     public void EveryTerrainFamilyHasADrawer()
@@ -34,7 +34,7 @@ public class LookViewTests
     public void ASpellsShowComesFromTheRulesInForce()
     {
         var visuals = AssetDatabase.LoadAssetAtPath<SpellVisuals>("Assets/Prototype/Settings/SpellVisuals.asset");
-        var rules = Rules.Load(ChemGrid.FindRulesDir());
+        var rules = Rules.Load(ChemGrid.Folders.Rules);
         var fireball = visuals.For(rules, "fireball");
         Assert.That(fireball.family, Is.EqualTo("blast"));
         Assert.That(fireball.ScaleFor(rules.Spell("fireball"), 1), Is.EqualTo(1f));

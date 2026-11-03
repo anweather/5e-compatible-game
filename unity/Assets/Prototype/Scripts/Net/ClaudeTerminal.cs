@@ -19,7 +19,7 @@ using Debug = UnityEngine.Debug;
 public class ClaudeTerminal : MonoBehaviour
 {
     const float StartWait = 12f;
-    const string FolderName = "claude-terminal", ServerName = ClaudeRun.ServerName, WelcomeFile = "welcome.txt", StartFile = "open.cmd", SignInFile = "sign-in.cmd";
+    const string ServerName = ClaudeRun.ServerName, WelcomeFile = "welcome.txt", StartFile = "open.cmd", SignInFile = "sign-in.cmd";
 
     /// <summary>The chat's line when there's no claude on this machine.</summary>
     public const string NotInstalled = "Claude Code isn't installed. Get it from claude.com/claude-code, then ask again.";
@@ -32,14 +32,8 @@ public class ClaudeTerminal : MonoBehaviour
 
     const string Guide = ClaudeRun.Guide;
 
-    /// <summary>The folder a terminal opens in.</summary>
-    public static string Folder => TestFolder ?? Path.Combine(Application.persistentDataPath, FolderName);
-
-    /// <summary>
-    /// The real-prompt probe's folder in place of the player's own, as an Editor shares its data folder with their
-    /// game and their notes.md is there. While it's set, a sign-in failure opens no terminal: nobody is at the keys.
-    /// </summary>
-    public static string TestFolder { get; set; }
+    // The chat's folder (ClaudeFolder): the player's, or a probe's.
+    static string Folder => ChemGrid.Folders.Claude.Path;
 
     // -open-terminal opens one by itself once the game is up, to test a player with nobody at its keys.
     IEnumerator Start()
@@ -101,7 +95,7 @@ public class ClaudeTerminal : MonoBehaviour
     public static void OpenSignIn()
     {
 #if UNITY_STANDALONE_WIN || UNITY_EDITOR_WIN
-        if (ClaudeChat.StandIn == null && TestFolder == null) Launch(Folder, SignInFile);
+        if (ClaudeChat.StandIn == null && ChemGrid.Folders.Claude.Test == null) Launch(Folder, SignInFile);
 #endif
     }
 

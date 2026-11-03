@@ -122,7 +122,7 @@ public partial class ValleyChemistry
         lastFire = new int[buildings];
         if (buildingMaterials == null)
         {
-            var specs = VillageLayout.Load(ChemGrid.FindWorldDir());
+            var specs = VillageLayout.Load(ChemGrid.Folders.World);
             buildingMaterials = specs.Count > 0 ? specs[0].Materials : new BuildingMaterials();
         }
     }

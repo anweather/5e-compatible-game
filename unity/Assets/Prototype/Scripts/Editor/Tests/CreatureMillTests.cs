@@ -21,7 +21,7 @@ public class CreatureMillTests
         public bool Water(float2 xz) => false;
     }
 
-    static CreatureBody Body(string species) => CreatureBody.Build(Rules.Load(ChemGrid.FindRulesDir()).Fauna, species);
+    static CreatureBody Body(string species) => CreatureBody.Build(Rules.Load(ChemGrid.Folders.Rules).Fauna, species);
 
     static CreatureBody Deer() => Body("deer");
 

@@ -124,9 +124,10 @@ public sealed class ClaudeChat : IChatHarness
         if (stopped) how = ChatOutcome.Stopped;
         if (timedOut) how = ChatOutcome.TimedOut;
         string asked = how == null ? model : null;
-        if (ClaudeRun.ModelRefused(failure, asked)) recorder.ModelUnavailable(asked);
+        var (told, modelRefused) = ClaudeRun.Explain(failure, asked);
+        if (modelRefused) recorder.ModelUnavailable(asked);
         recorder.Ended(clock(), how);
-        if (failure != null) heard.Enqueue((ClaudeSaid.Failed, ClaudeRun.Pointed(failure, asked)));
+        if (failure != null) heard.Enqueue((ClaudeSaid.Failed, told));
     }
 
     // The message in, each line out, and a watchdog so one that never ends can't hold the chat. Null if the process said it was done, else what went wrong.

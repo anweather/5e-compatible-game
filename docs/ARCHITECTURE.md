@@ -32,6 +32,14 @@ ids are listed once in `Scripts/RuleIds.cs` (`SpellIds.FireBolt`, ...).
 
 ### 2. Chem core (`Chemistry/`)
 - `RuleTables.cs` reads the JSON into typed tables.
+- **Where the game's folders are** is `GameFolders.cs`, and nowhere else:
+  `Rules`, `World` (beside it), `ShippedMods`, `PlayerData` and `Mods`,
+  with the chat's folder as a `ClaudeFolder`. The view hands in Unity's
+  roots once (`ChemGrid.Folders`: a build's StreamingAssets, the project,
+  the player's data folder); the MCP server, chatbench and the tests use
+  `GameFolders.InRepo(start)`, which walks up to the repo's `rules/`.
+  Code that loads from a rules folder it was given (`ModBudgets.Load`,
+  `StandInValley.Load`) finds `world/` through it too.
 - `World.cs` holds the cells (`Cell.cs`), the seeded random number
   generator, the log and the tick counter.
 - **Chunks** (`Chunk.cs`, `World.Chunks.cs`; `docs/WORLD_STREAMING.md`).
@@ -319,8 +327,6 @@ What this clean-up left alone, roughly in order of value.
 - **The valley builders keep their layout in static fields**
   (`ValleyShape.Plan`, `ValleyTerrain`'s chunk list). Fine for one-shot editor tools, but a small "valley
   plan" object would make their steps independent.
-- **Rules folder lookup is written twice**: `ChemGrid.FindRulesDir` and
-  the test helper in `Chemistry/Tests/` (the one jscpd clone).
 - **Starter Assets via reflection** (`WizardRig`) breaks silently if the
   pack renames a field. A tiny interface asmdef next to the pack would
   make it compile-checked, at the cost of touching pack files.

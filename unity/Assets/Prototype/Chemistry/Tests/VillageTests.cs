@@ -3,7 +3,6 @@
 // plots skipped where the land refuses them, and a pinned digest so a change
 // to the layout is noticed (every machine has to lay the same village).
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 
 using NUnit.Framework;
@@ -127,7 +126,7 @@ namespace Chem.Tests
         [Test]
         public void TheValleysVillagesRead()
         {
-            var specs = VillageLayout.Load(Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "world"));
+            var specs = VillageLayout.Load(ChemistryTests.WorldDir());
             Assert.That(specs, Is.Not.Empty);
             Assert.Throws<System.FormatException>(() => VillageLayout.FromJson("{\"villages\": [{\"name\": \"x\"}]}"));
         }
@@ -143,7 +142,7 @@ namespace Chem.Tests
         public void BuildingsAreMadeOfTheMaterialsInVillagesJson()
         {
             // world/villages.json "materials": walls and roofs by kind, terrain ids in materials.json.
-            var specs = VillageLayout.Load(System.IO.Path.Combine(System.IO.Path.GetDirectoryName(ChemistryTests.RulesDir()), "world"));
+            var specs = VillageLayout.Load(ChemistryTests.WorldDir());
             var m = specs[0].Materials;
             foreach (var material in m.Walls.Values.Concat(m.Roofs.Values))
                 Assert.That(ChemistryTests.R.Terrain.ContainsKey(material), $"{material} is a terrain");

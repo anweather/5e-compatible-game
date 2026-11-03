@@ -15,12 +15,9 @@ namespace Chem.Tests
     {
         static Rules R => ChemistryTests.R;
 
-        /// <summary>The repo's world/ folder, next to rules/.</summary>
-        static string WorldDir() => Path.Combine(Path.GetDirectoryName(ChemistryTests.RulesDir().TrimEnd('/', '\\')), "world");
+        static string FileText => File.ReadAllText(Path.Combine(ChemistryTests.WorldDir(), WorldThings.FileName));
 
-        static string FileText => File.ReadAllText(Path.Combine(WorldDir(), WorldThings.FileName));
-
-        static WorldThings Valley => WorldThings.Load(WorldDir());
+        static WorldThings Valley => WorldThings.Load(ChemistryTests.WorldDir());
 
         static WorldThings Parse(string json) => WorldThings.FromJson(json.Replace('\'', '"'));
 
@@ -130,7 +127,7 @@ namespace Chem.Tests
             Assert.Throws<FormatException>(() => Parse("{'chunks':[{'chunk':[0,0],'things':[{'cell':[1,0]}]}]}"));
             Assert.Throws<FormatException>(() => Parse("{'chunks':[{'chunk':[0,0],'things':[]},{'chunk':[0,0],'things':[]}]}"));
             Assert.Throws<FormatException>(() => Parse("{'chunks':[{'chunk':[0],'things':[]}]}"));
-            Assert.That(WorldThings.Load(Path.Combine(WorldDir(), "no-such-folder")).Count, Is.EqualTo(0), "no file: no things");
+            Assert.That(WorldThings.Load(Path.Combine(ChemistryTests.WorldDir(), "no-such-folder")).Count, Is.EqualTo(0), "no file: no things");
         }
 
         [Test]
