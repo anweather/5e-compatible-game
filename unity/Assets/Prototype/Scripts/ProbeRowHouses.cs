@@ -66,6 +66,7 @@ public class RowHousesProbe : ProbeScenario
         yield return Until(() => Walls() != wallsWere && Vertices(House) != vertsWere);
         Check("the_wing_goes_in", Walls() > wallsWere, answer);
         WingDrawn(vertsWere, cellsWere);
+        var withWing = WallCells();
         yield return Look("wing", x + 7, y + 4);
 
         // The wing names the house's clay tile (#86): reverting the house takes the wing with it, and both go back on.
@@ -76,7 +77,7 @@ public class RowHousesProbe : ProbeScenario
         yield return Tool("apply", new JObject { ["mod"] = ModJson(x, y), ["title"] = Title });
         yield return Tool("apply", new JObject { ["mod"] = wing, ["title"] = "A wing" });
         yield return Until(() => Walls() > wallsWere);
-        Check("and_both_go_back_on", Walls() > wallsWere && WallCells().IsSupersetOf(cellsWere), answer);
+        Check("and_both_go_back_on", Walls() > wallsWere && WallCells().SetEquals(withWing), answer);
 
         yield return Tool("set_building", new JObject { ["id"] = House, ["field"] = "roofs.main.shape", ["value"] = "\"shed\"" });
         string shack = Draft();
