@@ -171,13 +171,14 @@ namespace Chem.Tests
         [TestCase("", false)]
         [TestCase(null, false)]
         public void AFailureAboutTheModelIsToldFromTheRest(string text, bool refused) =>
-            Assert.That(ClaudeRun.ModelRefused(text, ClaudeRun.ChatModel), Is.EqualTo(refused));
+            Assert.That(ClaudeRun.Explain(text, ClaudeRun.ChatModel).modelRefused, Is.EqualTo(refused));
 
         [Test]
         public void ARefusedModelIsToldInTheGamesWords()
         {
             const string model = "claude-haiku-0-0-not-a-model";
-            string said = ClaudeRun.Pointed(RealRefusal.Replace(ClaudeRun.ChatModel, model), model);
+            var (said, refused) = ClaudeRun.Explain(RealRefusal.Replace(ClaudeRun.ChatModel, model), model);
+            Assert.That(refused, Is.True);
             Assert.That(said, Is.EqualTo(ClaudeRun.ModelUnavailable(model)));
             Assert.That(said, Does.Contain(model).And.Contain("isn't available on this account").And.Contain("doesn't exist"));
             Assert.That(said, Does.Contain("Developer menu").And.Contain("Claude's model in the chat"));
@@ -189,10 +190,10 @@ namespace Chem.Tests
         public void AFailureThatMayBeTheModelPointsAtTheSetting()
         {
             StringAssert.Contains("Claude's model in the chat", ClaudeRun.ModelPointer);
-            Assert.That(ClaudeRun.Pointed("It stopped", ClaudeRun.ChatModel), Is.EqualTo("It stopped " + ClaudeRun.ModelPointer), "unmatched: it may be the model");
-            Assert.That(ClaudeRun.Pointed(RealRefusal, null), Is.EqualTo(RealRefusal), "the setting can't help the account's own model");
-            Assert.That(ClaudeRun.Pointed("You've hit your limit", ClaudeRun.ChatModel), Is.EqualTo("You've hit your limit"));
-            Assert.That(ClaudeRun.NeedsSignIn(ClaudeRun.Pointed("It stopped", ClaudeRun.ChatModel)), Is.False);
+            Assert.That(ClaudeRun.Explain("It stopped", ClaudeRun.ChatModel), Is.EqualTo(("It stopped " + ClaudeRun.ModelPointer, false)), "unmatched: it may be the model");
+            Assert.That(ClaudeRun.Explain(RealRefusal, null), Is.EqualTo((RealRefusal, false)), "the setting can't help the account's own model");
+            Assert.That(ClaudeRun.Explain("You've hit your limit", ClaudeRun.ChatModel), Is.EqualTo(("You've hit your limit", false)));
+            Assert.That(ClaudeRun.NeedsSignIn(ClaudeRun.Explain("It stopped", ClaudeRun.ChatModel).text), Is.False);
         }
 
         [Test]
