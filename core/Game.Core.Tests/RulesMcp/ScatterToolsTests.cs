@@ -8,7 +8,7 @@ namespace Chem.Tests
     /// <summary>scatter (docs/design/events-and-placing.md 2b): "50 trees near the lake" picks cells now and writes them as a lay row.</summary>
     public class ScatterToolsTests
     {
-        static Workbench Bench() => new Workbench(ChemistryTests.RulesDir());
+        static Workbench Bench() => new Workbench(ChemistryTests.Folders);
 
         static JArray Lays(Workbench b, string said) => (JArray)b.DraftOf(DraftIn(said)).Patch["world"]["lay"];
 
