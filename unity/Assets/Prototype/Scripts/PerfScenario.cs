@@ -41,7 +41,7 @@ using Debug = UnityEngine.Debug;
 // and -perf-water-check, which redraws the water tiles at the end and counts any that differ.
 // -perf-offscreen draws the camera into a 1080p texture of real play's colour and depth
 // formats: with no desktop session a camera bound for the window draws nothing, so frame
-// times mean nothing and no pipeline state is made.
+// times mean nothing and no pipeline state is made (with -perf-offscreen-4k, 3840x2160).
 //
 // The bot scenario films the playtest bot (add -playtest -playtest-seed N
 // -playtest-seconds N): it has no stage, -perf-seconds does nothing, and the
@@ -163,8 +163,10 @@ public class PerfScenario : MonoBehaviour
     static void DrawOffscreenIfAsked()
     {
         if (!Has("-perf-offscreen")) return;
-        Camera.main.targetTexture = new RenderTexture(OffscreenWide, OffscreenHigh, GraphicsFormat.B10G11R11_UFloatPack32, GraphicsFormat.D32_SFloat_S8_UInt);
-        Debug.Log($"PERF OFFSCREEN {OffscreenWide}x{OffscreenHigh}");
+        // -perf-offscreen-4k draws into 3840x2160, as Andrew's own screen is.
+        int scale = Has("-perf-offscreen-4k") ? 2 : 1;
+        Camera.main.targetTexture = new RenderTexture(OffscreenWide * scale, OffscreenHigh * scale, GraphicsFormat.B10G11R11_UFloatPack32, GraphicsFormat.D32_SFloat_S8_UInt);
+        Debug.Log($"PERF OFFSCREEN {OffscreenWide * scale}x{OffscreenHigh * scale}");
     }
 
     void ReadTimes()
