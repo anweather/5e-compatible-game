@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-069: Cleanup item 4 and a gesture for walking rules
+
+- **Asked:** 2026-11-03, by the PM, after the Mac found item 4 needs a game assembly first, and after the triggers-view clip.
+- **Answer:** Andrew: drop cleanup item 4 (probes stay in Assembly-CSharp). No casting gesture when a walking rule fires, at least for now.
+- **Why:** item 4 cost player size, not behaviour, and the full fix is days across every view file. The cast's own show reads well enough.
+- **Also comes up when:** a game asmdef or PlayMode tests are proposed; trigger views.
+- **Revisited:** 0.
+
 ### J-068: Made-up bodies before gaits by rule?
 
 - **Asked:** 2026-11-03, by the PM, from `docs/design/bodies-and-surfaces.md` §2.

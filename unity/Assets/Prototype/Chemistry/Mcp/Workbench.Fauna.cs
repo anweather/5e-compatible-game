@@ -20,14 +20,22 @@ namespace Chem.Mcp
         // What a new species takes from the one it's based on, as a variant leaves them to the reader's defaults.
         static readonly string[] Inherited = { "coat", "coats", "hair", "vary", "behave" };
 
-        /// <summary>A new species built on one there is: its body, gait, wandering and fleeing, with its own look, size and habits.</summary>
-        public Draft AddSpecies(string draftId, string id, string name, string basedOn, double? scale, string color, string accent, double? glow, string behave, double? density)
+        /// <summary>
+        /// A new species built on one there is (its body, gait, wandering and fleeing, with its own look, size and habits),
+        /// or grafted from others' slots by <paramref name="from"/> (FaunaGraft), moving and behaving as its first donor.
+        /// </summary>
+        public Draft AddSpecies(string draftId, string id, string name, string basedOn, double? scale, string color, string accent, double? glow, string behave, double? density, string from = null)
         {
             id = Required(id, "id");
-            basedOn = Required(basedOn, "basedOn");
             var draft = DraftOf(draftId);
             if (Current(draft, FaunaTable, id) != null)
                 throw new RulesToolException($"There is already a species called {id}; set_species changes its size and behaviour.");
+            if (!string.IsNullOrWhiteSpace(from))
+            {
+                if (!string.IsNullOrWhiteSpace(basedOn)) throw new RulesToolException("A species is built on one (basedOn) or grafted from donors (from), not both.");
+                return AddGraft(draft, id, Required(name, "name"), Donors(draft, from), scale, (color, accent, glow), behave, density);
+            }
+            basedOn = Required(basedOn, "basedOn");
             if (!(Current(draft, FaunaTable, basedOn) is JObject under))
                 throw new RulesToolException($"There is no species {basedOn}; list fauna shows them.");
             var row = new JObject { ["name"] = Required(name, "name"), ["variantOf"] = basedOn };
@@ -51,13 +59,19 @@ namespace Chem.Mcp
         }
 
         /// <summary>A species' size, against its normal size, and its behaviour, keeping the rest of its row.</summary>
-        public Draft SetSpecies(string draftId, string id, double? scale, string behave)
+        public Draft SetSpecies(string draftId, string id, double? scale, string behave, string from = null)
         {
             id = Required(id, "id");
             var draft = DraftOf(draftId);
             if (!(Current(draft, FaunaTable, id) is JObject now)) throw new RulesToolException($"There is no species {id}; list fauna shows them.");
-            if (!scale.HasValue && string.IsNullOrWhiteSpace(behave)) throw new RulesToolException("set_species changes scale, behave or both; give one.");
+            bool grafting = !string.IsNullOrWhiteSpace(from);
+            if (!scale.HasValue && string.IsNullOrWhiteSpace(behave) && !grafting) throw new RulesToolException("set_species changes scale, behave, from or some of them; give one.");
             var entry = Section(draft, FaunaTable)[id] as JObject ?? new JObject();
+            if (grafting)
+            {
+                if (Str(now["variantOf"]) != null) throw new RulesToolException($"{id} is built on {Str(now["variantOf"])}, so its slots are that one's; add_species with from makes a graft of its own.");
+                entry[FaunaGraft.FromKey] = Donors(draft, from);
+            }
             if (scale.HasValue)
             {
                 double times = Positive(scale.Value, "scale");
@@ -70,6 +84,40 @@ namespace Chem.Mcp
             Section(draft, FaunaTable)[id] = entry;
             draft.Changed.Add($"{FaunaTable} {id}");
             return draft;
+        }
+
+        // A graft's row: its donors' slots, and its first donor's body, gait, habits, colours and a share of its number.
+        Draft AddGraft(Draft draft, string id, string name, JArray donors, double? scale, (string color, string accent, double? glow) look, string behave, double? density)
+        {
+            string first = Str(donors[0]["species"]);
+            var under = (JObject)Current(draft, FaunaTable, first);
+            var basis = InForce.Fauna.BodyOf(first) ?? InForce.Fauna.Species(first);
+            var row = new JObject { ["name"] = name, ["size"] = new JArray((basis?.Size ?? new[] { 0.9, 1.1 }).Select(v => Rounded(v * Positive(scale ?? 1, "scale")))) };
+            foreach (var key in FaunaGraft.Sections) row[key] = new JObject { [FaunaGraft.FromKey] = first };
+            row[FaunaGraft.FromKey] = donors;
+            foreach (var key in Inherited.Where(k => k != "behave" && under[k] != null)) row[key] = under[key].DeepClone();
+            Colour(row, look.color, look.accent, look.glow);
+            if (!string.IsNullOrWhiteSpace(behave)) row["behave"] = Rules.MergedEntry(row["behave"], Behave(id, behave, false));
+            double perHectare = density ?? Math.Max(0.2, (double?)under["spawn"]?["density"] / 2 ?? 0.5);
+            if (perHectare < 0) throw new RulesToolException("density is animals per hectare in the wilds, 0 or more; 0 means it never comes out on its own.");
+            if (perHectare > 0) row["spawn"] = new JObject { ["density"] = Rounded(perHectare) };
+            Section(draft, FaunaTable)[id] = row;
+            draft.Changed.Add($"{FaunaTable} {id}");
+            return draft;
+        }
+
+        // A from list: donors as JSON, each naming a species there is; the rest Rules.CheckFauna checks when it's validated.
+        JArray Donors(Draft draft, string json)
+        {
+            const string example = "[{\"species\": \"deer\", \"drop\": [\"neck\", \"head\"]}, {\"species\": \"human\", \"take\": [\"human-torso\"], \"at\": [0, 0.45, 0.8]}]";
+            if (!(Value(json) is JArray donors) || donors.Count == 0 || !donors.All(d => d is JObject))
+                throw new RulesToolException($"from is a JSON list of donors, such as {example}.");
+            foreach (var donor in donors)
+            {
+                string species = Str(donor["species"]) ?? throw new RulesToolException($"Every donor names a species, such as {example}.");
+                if (Current(draft, FaunaTable, species) == null) throw new RulesToolException($"There is no species {species}; list fauna shows them.");
+            }
+            return donors;
         }
 
         // A behave object of keys the row's reader takes: a variant moves and keeps company as the species it's built on.

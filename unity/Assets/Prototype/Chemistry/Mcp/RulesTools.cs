@@ -74,7 +74,7 @@ namespace Chem.Mcp
         [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing. All the read tools read the rules in force, every mod on included.")]
         public string WhatsOn() => Do(() => bench.WhatsOn());
 
-        [RulesTool("outside_rules", ReadOnly = true), Description("What can't be changed through these tools yet because it isn't in the rules (heat glow, player size, slippery terrain, weather's cover, area fill, a creature from others' parts, colours part by part, a building's rooms), and the nearest thing that can be done for each. Read it before trying or refusing any of those.")]
+        [RulesTool("outside_rules", ReadOnly = true), Description("What can't be changed through these tools yet because it isn't in the rules (heat glow, player size, slippery terrain, weather's cover, area fill, colours part by part, a building's rooms), and the nearest thing that can be done for each. Read it before trying or refusing any of those.")]
         public string OutsideRules() => Do(Workbench.Outside);
 
         [RulesTool("time", ReadOnly = true), Description("The clock: the time of day, the day, the light, and when dawn and dusk are. The clock and the weather aren't rules: read them here and with weather, and change them with set_time and set_weather, not by moving day.startHour.")]
@@ -175,22 +175,26 @@ namespace Chem.Mcp
             [Description("The event: step (a player stepping onto another cell), the only one so far.")] string on = null,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.AddTrigger(draft, id, on, who, @do, every, chance));
 
-        [RulesTool("add_species"), Description("Adds a new kind of animal to a draft: a row of the fauna table (list fauna) built on a species there is, so it has that one's body and gait and wanders, flees, grazes and comes out in the wilds as it does, with its own name, size, colours and habits. \"A giant rabbit that hops about\" is basedOn rabbit, scale 10, behave {\"play\": 0.6}. It's an animal that moves: add_entity with a creature look is a still figure, for a statue or a find. A mod adds at most 12 new entries.")]
+        [RulesTool("add_species"), Description("Adds a new kind of animal to a draft: a row of the fauna table (list fauna) built on a species there is, so it has that one's body and gait and wanders, flees, grazes and comes out in the wilds as it does, with its own name, size, colours and habits. \"A giant rabbit that hops about\" is basedOn rabbit, scale 10, behave {\"play\": 0.6}. Or a body made from other species' slots (a graft): give from instead of basedOn, and it moves and behaves as its first donor. A centaur is from [{\"species\": \"deer\", \"drop\": [\"neck\", \"head\", \"ears\", \"eyes\"]}, {\"species\": \"human\", \"take\": [\"human-torso\"], \"at\": [0, 0.45, 0.8], \"scale\": 1.1, \"coat\": \"own\"}]; describe fauna on each donor lists its slots, and on the new one says where each sits. It's an animal that moves: add_entity with a creature look is a still figure, for a statue or a find. A mod adds at most 12 new entries and 4 species.")]
         public string AddSpecies([Description("A new id, lowercase with dashes.")] string id, [Description("Its name as players see it.")] string name,
-            [Description("The species it's built on (list fauna), whose body, gait and habits it takes.")] string basedOn,
-            [Description("Its size against the species it's built on: 2 is twice as big, 0.5 half. Above 0 and at most budgets.json things.maxScale. 1 when left out.")] double? scale = null,
+            [Description("The species it's built on (list fauna), whose body, gait and habits it takes. Leave out with from.")] string basedOn = null,
+            [Description("Its size against the species it's built on (with from, its first donor): 2 is twice as big, 0.5 half. Above 0 and at most budgets.json things.maxScale. 1 when left out.")] double? scale = null,
             [Description("Its coat's main colour as [r, g, b], each 0 to 1. Its species' coat when left out.")] string color = null,
             [Description("Its coat's second colour (belly, markings) as [r, g, b].")] string accent = null,
             [Description("How much its markings glow, 0 to 1.")] double? glow = null,
             [Description("Habits over its species', as a JSON object: active (day, night or always), graze, thirst, play, laze, hunger (shares, 0 to 1), chase (seconds), hunts (species ids).")] string behave = null,
             [Description("Animals per hectare in the wilds (the valley's rabbits are 1.8, deer 0.7); 0 and it never comes out on its own. Half its species' when left out.")] double? density = null,
-            [Description(DraftHelp)] string draft = null) => Do(() => bench.AddSpecies(draft, id, name, basedOn, scale, color, accent, glow, behave, density).Show());
+            [Description(GraftHelp)] string from = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.AddSpecies(draft, id, name, basedOn, scale, color, accent, glow, behave, density, from).Show());
 
-        [RulesTool("set_species"), Description("Changes a kind of animal in a draft (list fauna): its size against its normal size, so \"make the deer three times bigger\" is scale 3 and 1 puts it back, and its habits. Every animal of that species changes, in the wilds and in the villages.")]
+        const string GraftHelp = "Donors as a JSON list, at most 3; each {\"species\": id, \"take\": [slot ids] or \"drop\": [slot ids] (a slot brings every slot hung on it; all of them when neither is given), \"at\": [x, y, z] body units where its first loose slot goes (a mirrored pair keeps its spread), \"dir\": [pitch, yaw, roll] added, \"scale\": 0.25 to 4, \"coat\": \"own\" to keep its own colours}. A slot id already taken gets the donor's id before it. At most 40 slots once flattened.";
+
+        [RulesTool("set_species"), Description("Changes a kind of animal in a draft (list fauna): its size against its normal size, so \"make the deer three times bigger\" is scale 3 and 1 puts it back, its habits, and the donors a body takes slots from (from: \"six legs on the bear\" is from [{\"species\": \"black-bear\", \"take\": [\"fore\"], \"at\": [0.55, -0.45, 0]}], its own slots kept). Every animal of that species changes, in the wilds and in the villages.")]
         public string SetSpecies([Description("The species' id, such as deer or turkey.")] string id,
             [Description("Its size against its normal size in the base rules. Above 0 and at most budgets.json things.maxScale.")] double? scale = null,
             [Description("Habits as a JSON object, merged over its own: active (day, night or always), graze, thirst, play, laze, hunger, chase, hunts; a species not built on another also takes wander and flee (metres) and idle and group ([low, high]).")] string behave = null,
-            [Description(DraftHelp)] string draft = null) => Do(() => bench.SetSpecies(draft, id, scale, behave).Show());
+            [Description(GraftHelp + " Replaces the row's from; its own slots stay, first.")] string from = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.SetSpecies(draft, id, scale, behave, from).Show());
 
         [RulesTool("add_material"), Description("Adds a new terrain, cover or gas to a draft. Its behaviour comes from material verb groups (burn, soak, dig, melt, freeze, float, dissolve, grow and the rest; rules/README.md). A new terrain also needs a look: {\"look\": {\"family\": \"block\", \"color\": [0.6, 0.7, 1], \"height\": 1.2}} in verbs, with a family from rules/looks.json.")]
         public string AddMaterial([Description("terrain, cover or gas.")] string kind, [Description("A new id, lowercase with dashes.")] string id, [Description("Its name as players see it.")] string name,
