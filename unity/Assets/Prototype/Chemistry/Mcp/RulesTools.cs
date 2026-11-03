@@ -68,7 +68,7 @@ namespace Chem.Mcp
 
         // ---------- read ----------
 
-        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
+        [RulesTool("list", ReadOnly = true), Description("Ids and one-line summaries for a rule table: materials (or terrain, covers, gases), elements, reactions, spells, groups, sim, critters, entities, items, machines, dragon (the dragon that resets the world, its fields and what each does), looks (the look families, the parameters each takes, and what takes no colour), the world's buildings, the things mods have added (things), or a building table (openings, floors, roofs, details, styles). Read these to build a draft for what the player asks.")]
         public string List([Description("The table.")] string table) => Do(() => bench.List(table));
 
         [RulesTool("whats_on", ReadOnly = true), Description("What's on now, in plain words: the room's change mode, each mod on with who added it and what it changes from what was under it, then the clock and the weather. Read this first: it's what the players are seeing. All the read tools read the rules in force, every mod on included.")]
@@ -238,7 +238,7 @@ namespace Chem.Mcp
                 return said + d.Brief();
             });
 
-        [RulesTool("tune"), Description("Sets a sim parameter by dotted path (fire.spreadChance, push.slideCells...) within the bounds rules/budgets.json declares.")]
+        [RulesTool("tune"), Description("Sets a sim parameter by dotted path (fire.spreadChance, push.slideCells...) within the bounds rules/budgets.json declares. The dragon is sim too: dragon.budget is how much of the world may change before it comes by itself (never, or 0, and it never does), dragon.speed, dragon.warningTicks, dragon.scale and the rest in list dragon.")]
         public string Tune([Description("The parameter's path; list sim to see them.")] string param, [Description("The value, usually a number.")] string value,
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Tune(draft, param, value).Show());
 
