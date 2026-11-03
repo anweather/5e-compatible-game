@@ -71,7 +71,7 @@ public class MeteorFall : MonoBehaviour
         if (smoke == null) smoke = ParticleMaterial(look?.afterImpact, null);
         if (smoke == null) smoke = UrpMaterials.NewUnlitParticles("Meteor smoke", new Color(0.25f, 0.22f, 0.2f, 0.6f), additive: false);
 
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         var stones = grid != null ? grid.wallStones : null;
         GameObject body = stones != null && stones.Length > 0 && stones[0] != null
             ? Instantiate(stones[0], transform)

@@ -85,7 +85,7 @@ public class AmbientCritters : MonoBehaviour
 
     void Start()
     {
-        grid = FindAnyObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
     }
 
     void OnDisable()

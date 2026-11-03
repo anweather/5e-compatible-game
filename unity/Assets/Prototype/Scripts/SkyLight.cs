@@ -54,7 +54,7 @@ public class SkyLight : MonoBehaviour
 
     void Start()
     {
-        grid = FindAnyObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
         if (sun == null) sun = RenderSettings.sun;
         // A copy, so the time of day never writes to the sky material asset.
         if (RenderSettings.skybox != null)

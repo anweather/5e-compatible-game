@@ -22,6 +22,10 @@ things go" table is the recipe for adding a spell, material, prop or item.
 - One MonoBehaviour per file, named like the file; a big component may be
   split into `partial` files by responsibility (`ChemGrid.*.cs`).
 - A comment at the top of every file says what it's for, in plain English.
+- Reach the grid in play through `ChemGrid.Current` (`World`, `Rules`,
+  `Request`, or `.Grid` to draw on it), never by searching the scene for a
+  `ChemGrid`. It is null outside Play mode, so Editor code and EditMode
+  tests that open a scene still find the grid in it.
 - Rule ids are referenced only through `RuleIds.cs` (`SpellIds`, `ItemIds`).
 - Runtime singletons that every scene needs can start themselves with
   `[RuntimeInitializeOnLoadMethod]` (`FpsProbe`, `PauseMenu`) so no builder

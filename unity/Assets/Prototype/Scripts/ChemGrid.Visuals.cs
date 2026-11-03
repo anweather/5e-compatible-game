@@ -492,6 +492,7 @@ public partial class ChemGrid
 
     void OnDestroy()
     {
+        LetGoCurrent();
         materials.Destroy();
         waterSurface?.Destroy();
         slicks?.Destroy();

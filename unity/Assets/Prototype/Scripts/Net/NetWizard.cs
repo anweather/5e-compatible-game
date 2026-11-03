@@ -28,7 +28,7 @@ public class NetWizard : NetworkBehaviour
 
     public override void OnNetworkSpawn()
     {
-        var grid = FindAnyObjectByType<ChemGrid>();
+        var grid = ChemGrid.Current?.Grid;
         var caster = GetComponent<SpellCaster>();
         caster.grid = grid;
         form.OnValueChanged += FormChanged;

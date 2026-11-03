@@ -35,13 +35,13 @@ public class WaterSplashes : MonoBehaviour
     [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.AfterSceneLoad)]
     static void Attach()
     {
-        if (FindFirstObjectByType<ChemGrid>() == null || FindFirstObjectByType<WaterSplashes>() != null) return;
+        if (ChemGrid.Current == null || FindFirstObjectByType<WaterSplashes>() != null) return;
         new GameObject("Water splashes").AddComponent<WaterSplashes>();
     }
 
     void Awake()
     {
-        grid = FindFirstObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
         drops = MakeSystem(gameObject, "Water spray", 0.6f);
         var haze = new GameObject("Surf mist");
         haze.transform.SetParent(transform, false);

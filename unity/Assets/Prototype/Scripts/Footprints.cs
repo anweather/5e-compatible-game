@@ -59,7 +59,7 @@ public class Footprints : MonoBehaviour
 
     void Start()
     {
-        grid = FindAnyObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
         fauna = FindAnyObjectByType<ValleyFauna>();
         for (int i = 0; i < Max; i++) prints[i].born = float.NegativeInfinity;
         mesh = new Mesh { name = "Footprints" };

@@ -415,7 +415,7 @@ public class DragonProbe : ProbeScenario
         while (Time.unscaledTime - from < LoadSeconds && (grid == null || grid.World == null))
         {
             yield return null;
-            grid = FindAnyObjectByType<ChemGrid>();
+            grid = ChemGrid.Current?.Grid;
         }
     }
 

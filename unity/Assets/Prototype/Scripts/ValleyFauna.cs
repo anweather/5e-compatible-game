@@ -169,7 +169,7 @@ public partial class ValleyFauna : MonoBehaviour, ICreatureGround
 
     void Start()
     {
-        grid = FindAnyObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
         sky = FindAnyObjectByType<SkyLight>();
         drawer = new CreatureDrawer(material);
         if (grid != null) grid.RulesChanged += ReadRows;

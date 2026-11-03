@@ -35,7 +35,7 @@ public class UnderwaterView : MonoBehaviour
     void Awake()
     {
         cam = GetComponent<Camera>();
-        grid = FindFirstObjectByType<ChemGrid>();
+        grid = ChemGrid.Current?.Grid;
     }
 
     void LateUpdate()
