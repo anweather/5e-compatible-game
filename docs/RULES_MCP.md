@@ -368,6 +368,41 @@ its mod is on (`TempMaterials.cs`, `World.Lapse.cs`). A row may give `lapse`:
    and `World.RoomRules` again (a `TickBatch.RunOn` hands back the old `RuleSet` across a lapse, as no room command came).
 4. Optional: a mod with a lapse shows its time left (`World.LapsesAt(mod)` minus `World.Tick`) in the mods panel.
 
+## Covers that spread
+
+`docs/design/primitives.md` §3, P2. A cover may give `spread`, and it creeps onto the ground next to it with no cast
+(`World.Spread.cs`):
+
+```json
+"river-moss": { "name": "Glowing moss", "tags": [], "look": { "color": [0.3, 0.85, 0.55] },
+                "spread": { "every": 30, "chance": 0.5, "onto": ["stone", "rock"], "notOnto": ["sandy"] },
+                "lapse": { "after": 1800 } }
+```
+
+- **`every`** (ticks, from 1; a mod's from `materials.minSpreadEvery` 30): each cell of it gets a turn every that many
+  ticks, on the soak pass, each cell on its own turn of the count (as soaking is), so a patch doesn't pulse.
+- **`chance`** (above 0, up to 1, default 1; a mod's at most `materials.maxSpreadChance` 0.5): on its turn, for each
+  neighbour in N, E, S, W order that takes it, one roll of the world's seeded RNG.
+- **`onto`**, **`notOnto`** (lists of terrain ids or terrain tags): a neighbour takes it if it's bare (no cover, no
+  fire), not open water (a cover on water is `float`'s), its terrain's id or a tag is in `onto` (none: any terrain)
+  and none is in `notOnto`. A name no terrain has is refused ("spread.notOnto pebbles is no terrain or terrain tag").
+- **`reach`** (cells, from 1; a mod's at most `materials.maxSpreadReach` 64): how far it creeps from where it was laid,
+  counting that cell, carried in `Cell.Slick` as a slick's reach is. None: no end.
+- **When it lands.** What spreads in a tick is laid at its end, first come first laid, so it creeps a cell a turn
+  whichever way the rows run; at most `materials.maxSpreadPerTick` (64) cells a tick in the whole world, and only into
+  active chunks. A catch-up's spread lands on the next tick, under the same cap.
+- **Cost.** None when no cover in the rules spreads (`Rules.AnySpreads`; no RNG is drawn, so every golden holds).
+  A whole active chunk of spreading moss with nowhere left to go costs about 22 µs a tick more than the same chunk under
+  a cover that doesn't spread (a VM, best of six runs of 2 400 ticks); a growing patch adds at most 64 landings a tick.
+- **Temporary.** A mod's spreading cover is swept like any other at its lapse, every cell it reached and its reach.
+- **Tools.** `add_material` and `set_material` take `spread` on a cover, whole (`spread`) or by field (`spread.every`,
+  `spread.chance`, `spread.onto`, `spread.notOnto`, `spread.reach`), within the checks above.
+
+**For the view.** The design's moss glows (P4), but a cover look takes only `color` today, and `look.glow` is refused
+("a look with no family doesn't take" it). P4 adds `look.glow` 0 to 1 to every look, drawn emissive and lit at night,
+out of the fingerprint. Until then spreading moss is drawn as a plain cover of its colour. A spreading cell counts as
+live, so its chunk's `LastLive` moves; the view should redraw covers there as they creep in with no cast.
+
 ## Buildings: rows a mod can edit or add
 
 `docs/design/builders.md` section 4, option (a), outside only. A building is a row: join points in half cells
