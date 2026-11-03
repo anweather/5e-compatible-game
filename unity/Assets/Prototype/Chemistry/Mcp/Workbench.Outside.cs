@@ -13,7 +13,7 @@ namespace Chem.Mcp
             ("Fauna size: how big turkeys, deer and the other ambient life are", "nothing yet"),
             ("Slippery terrain: only a cover can be slippery, not a terrain", "a cover tagged slippery spread over the ground, such as Grease"),
             ("Weather's cover: what rain, snow and fog lay on the ground", "weather's chances and strengths in sim can be tuned, and a cover's look changes how snow looks"),
-            ("Area fill: covering the land past a spell's radius cap", "a burst of the capped radius, or a change to the terrain itself (\"all the grass burns like oil\") with set_material and set_look"),
+            ("Area fill: covering the land past a spell's radius cap", "scatter for many trees, bushes, a cover or things over an area near a place (\"50 trees near the lake\"), a burst of the capped radius, or a change to the terrain itself (\"all the grass burns like oil\") with set_material and set_look"),
             ("A building's rooms: walls and doors inside it", "a building's outside is a row: add_building, add_wing and set_building change its walls, openings and fill"),
         };
 

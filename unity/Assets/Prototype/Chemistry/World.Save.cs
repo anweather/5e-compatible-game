@@ -97,6 +97,7 @@ namespace Chem
             SaveCourse(save);
             SaveRoom(save);
             SavePlaced(save);
+            SaveLaid(save);
             if (boulders.Count > 0) save["boulders"] = new JArray(boulders.Select(b => new JArray(b.Spell, b.X, b.Y, b.Dir, b.Left, b.Every, b.Age, b.OX, b.OY, b.AX, b.AY, b.Step)));
             var made = new Cell();
             var saved = new JArray();
@@ -267,6 +268,7 @@ namespace Chem
             LoadGolf(s);
             LoadCourse(s);
             LoadPlaced(s);
+            LoadLaid(s);
             NextEntityId = (int)s["nextEntityId"];
             if (s["defense"] is JObject d)
             {

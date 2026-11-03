@@ -113,6 +113,17 @@ namespace Chem.Mcp
 
         // ---------- draft ----------
 
+        [RulesTool("scatter"), Description("Scatters a terrain, cover or thing over open ground near a place, a building, a cell or you, in a draft: \"50 trees near the lake\" is scatter(what: tree, count: 50, near: lake, edge: shore, within: 12, spacing: 2), not a building of tree. The cells are picked now from the world's seed and written into the draft (a terrain or cover as a lay row of its world section, laid fresh at the switch and taken back by a revert; a thing as add rows), so every peer gets the same. Another seed picks other cells; the same what and seed replace the row. Laid trees and bushes (brush) are the real terrain: they block, burn and topple. At most 256 cells a mod, within 32 cells.")]
+        public string Scatter([Description("A terrain (tree, brush), a cover or a thing's kind.")] string what, [Description("How many.")] int count,
+            [Description("What to be near: a place's id, a building's id, \"me\" or [x, y] as JSON; the player asking when left out.")] string near = null,
+            [Description("How far from it, in cells; 12 when left out, 32 at most.")] int? within = null,
+            [Description("The fewest cells between two; 0 when left out.")] int? spacing = null,
+            [Description("Only a place's side: north, east, south or west.")] string side = null,
+            [Description("shore for the edge of a place: near lake, edge shore is round its water.")] string edge = null,
+            [Description("Which pick: another seed, other cells. 1 when left out.")] int? seed = null,
+            [Description("Only onto ground with one of these terrain tags, such as soil or turf; open ground when left out.")] string[] onto = null,
+            [Description(DraftHelp)] string draft = null) => Do(() => bench.Scatter(draft, what, count, near, within, spacing, side, edge, seed, onto));
+
         [RulesTool("add_building"), Description("Adds a building to a draft: a box of walls with a door and windows, width by depth cells from the cell at, or a whole row in full for any other shape (joins, walls with openings, roofs; docs/design/builders.md). Hollow by default, so a broken door leaves a room to walk into. Says if the site won't stand. Give a new material or style in the same draft (add_material, add_building_part). Cells follow the walls; heights, finishes, roofs and details are only drawn. A site is checked again on every peer when it switches on.")]
         public string AddBuilding([Description("Its north-west cell as JSON, [x, y]; find_site gives these. Leave out with row.")] string at = null, [Description("Width west to east in whole cells, 3 or more.")] int? width = null, [Description("Depth north to south in whole cells, 3 or more.")] int? depth = null,
             [Description("A style's id (list styles, or one add_building_part put in the draft); plain when left out.")] string style = null,
@@ -243,7 +254,7 @@ namespace Chem.Mcp
             [Description(DraftHelp)] string draft = null) => Do(() => bench.Tune(draft, param, value).Show());
 
         [RulesTool("remove"), Description("Takes back something the draft added or changed (a material, reaction, spell, element, its look, or a sim parameter). It can't remove base rules.")]
-        public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, entities, items, reactions, spells, elements, sim, buildings, things (the id is the cell, x,y), openings, floors, roofs, details or styles.")] string table,
+        public string Remove([Description("The draft.")] string draft, [Description("The table: terrain, covers, gases, entities, items, reactions, spells, elements, sim, buildings, things (the id is the cell, x,y), lay (the id is what#seed, as scatter says), openings, floors, roofs, details or styles.")] string table,
             [Description("The id, or the sim parameter's path.")] string id) => Do(() => bench.Remove(draft, table, id).Show());
 
         // ---------- check, run, save ----------

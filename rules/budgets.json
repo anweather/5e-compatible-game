@@ -9,6 +9,7 @@
   "buildings": { "maxCells": 24, "maxJoins": 64, "maxWalls": 64, "maxOpenings": 64, "maxParts": 32, "maxStoreys": 3, "maxPerMod": 4 },
   "looks": { "maxMix": 8, "maxScoped": 8, "maxWithin": 64 },
   "things": { "maxPerMod": 16, "maxScale": 4 },
+  "lay": { "maxCells": 256, "maxWithin": 32 },
   "place": { "maxCount": 8, "maxWithin": 8, "maxLasts": 21600, "maxLive": 64, "maxSummoned": 24 },
   "sim": {
     "ticksPerSecond": [6, 6],

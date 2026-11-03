@@ -57,6 +57,9 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `find_site(width, depth, near?, side?, edge?, within?)`: cells a building of that size can stand on: dry open
   ground, clear of things and buildings, out of the villages and courses. `near "sea"`, `edge "shore"` is the
   beach; `near "lake"`, `side "north"` the lake's north shore.
+- `scatter(what, count, near?, within?, spacing?, side?, edge?, seed?, onto?, draft?)`: picks `count` open cells near
+  something by `Placement.Pick` from the world's seed, now, and writes them into a draft: a terrain or cover as a `lay`
+  row, a thing as `add` rows. "50 trees near the lake" (see "Laying cells").
 - With no game attached these read a stand-in of the valley (`StandInValley`: the land, water and buildings from
   `world/`, no trees and no yard), and say so.
 
@@ -440,6 +443,28 @@ element:
 2. `ValleyFauna` brings out each `World.SummonedAfter(lastN)` on its cell with `Spawn(species, position, yaw, Individual)`,
    keeps at most `place.maxSummoned` (24), and lets it wander as ambient life.
 3. A spell with a `place` and no element still needs its show (its `look`), as any cast.
+
+## Laying cells: a mod's `lay` and `scatter`
+
+`docs/design/events-and-placing.md` 2b. A mod's `world` section takes **`lay`**:
+`[{ "terrain": "tree", "cells": [[x, y], ...], "seed": 7 }]` (or `"cover"`), at most `lay.maxCells` (256) cells a mod.
+
+- **The switch.** `World.LayCells` (from `ApplyRules`, after the buildings) lays each cell the new rules lay and the old
+  didn't, fresh (no fire, gas or water; height kept), and keeps what stood under (terrain and cover). A cell that isn't
+  open now (`World.PlaceOpen` without the active check: wet, blocking, a building or thing on it) is skipped, the same on
+  every peer, and logged: "3 of 50 tree had no room". A cell the old rules laid and the new don't goes back to what stood
+  under. The starting state follows, as for a building, so the dragon keeps a laid tree.
+- **State.** The cells are in the cell hash from that tick; what stood under is `LaidText()` in `CastHash` and `"laid"` in
+  the save, both empty with nothing laid. The rows are in `Rules.Fingerprint` (`Rules.ModLays`, `Rules.Lay.cs`).
+- **`scatter`** runs the pick against the world the MCP reads (the game's through `IWorldDesk`, or the stand-in), over
+  the cells within `within` (12, at most `lay.maxWithin` 32) steps of `near`, off villages, courses and puzzles. The
+  reply says how many, on what, how near: "50 tree on grass near the lake's shore, 2 cells apart at least, the nearest
+  1 cells from it and the furthest 12 (seed 1)". The same what and seed replace their row; another seed adds one;
+  `remove(draft, "lay", "tree#1")` takes one back. `list lay` shows the rows in force.
+
+**In the view (`place-view`).** A laid `tree` is the real terrain (it blocks, burns, topples), but `CellDressing` dresses
+only trees the land baked or that grew (`IsGrownTree`): it must dress any `tree` cell the land didn't bake as one of its
+chunk's valley trees, and `brush` as a bush, redrawing on `ChunkFreshened`.
 
 ## Change modes (chosen when a room is made)
 
