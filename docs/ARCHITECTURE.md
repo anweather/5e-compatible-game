@@ -163,7 +163,6 @@ in `Chemistry/Tests/` pin its results; they move only on purpose. CI builds and 
 | Demos and probes | `DemoDirector.cs`, `WizardPuppet.cs`, `Showcase.cs`, `FlythroughCamera.cs`, `FpsProbe.cs` |
 | Sound | `GameSounds.cs` (which clip a spell makes when cast and where it lands, a break or a blast; one-shot and looping 3D sources), `ProceduralSounds.cs` (the clips, made in code: no recordings yet). Fires crackle from the `FireLightPool` lights |
 | Small shared helpers | `UrpMaterials.cs`, `Primitives.cs`, `ProceduralTextures.cs`, `ScrollingTexture.cs`, `Flicker.cs` |
-| The old Fireline greybox | `PlayerController.cs`, `CameraFollow.cs`, `FireBolt.cs`, `Burnable.cs`, `Water.cs` (not used by the yard) |
 
 **Earth shaping.** One step of `Cell.Height` is `ChemGrid.stepHeight`
 (0.5 m, the same step a pit is deep), so the ground, the water surface
@@ -233,8 +232,7 @@ corners rounded to stored height steps so a 257 edge meets a 65 edge
 exactly) and bakes the starting cells into them with the runtime's own
 `CellHeightfield` and `CellPaint`, from `ChemGrid.MapWorld`. Full-detail
 and coarse chunks are separate terrain groups, since Unity only stitches
-LOD between neighbours of one resolution. `PrototypeSceneBuilder.cs` builds the old
-Fireline scene. `EditorAssets.cs` has the shared helpers and the Asset
+LOD between neighbours of one resolution. `EditorAssets.cs` has the shared helpers and the Asset
 Store pack paths. `DemoRecorder.cs` records clips, `PrototypeBuild.cs`
 makes macOS/Windows builds, `AssetPacks/` restores the Asset Store packs.
 
@@ -251,7 +249,7 @@ makes macOS/Windows builds, `AssetPacks/` restores the Asset Store packs.
 | **Object pool** | A fixed set of lights moved to the biggest fires, never created per fire; blocker boxes handed back and reused | `FireLightPool.cs`, `CellBlockers.cs` (and the aim markers in `SpellCaster`) |
 | **Cache / flyweight** | One material per name, shared by every cell's dressing; per-cell shades go through property blocks | `MaterialCache.cs`, `CellDressing.Paint` |
 | **Data assets** | How a spell *looks* is an editable asset, separate from what it *does* | `SpellVisuals.cs` (ScriptableObject) |
-| **Builders** | Code that generates scenes and assets, so a rebuild always gives the same result | `ChemYardBuilder`, `ValleyBuilder`, `PrototypeSceneBuilder` |
+| **Builders** | Code that generates scenes and assets, so a rebuild always gives the same result | `ChemYardBuilder`, `ValleyBuilder` |
 | **Fallbacks (strategy-ish)** | Each effect has a prefab version and a plain-cube version, chosen by whether the pack is present | `ChemGrid.Effects.cs`: `RenderFire`/`FallbackFire`, `RenderGas`/`FallbackGas`, `RenderCharge` |
 | **Ground effects** | Cells change how the wizard moves, read from the world each frame, without editing the Starter Assets controller | `SurfaceEffects.cs` (slide, wade) |
 | **Adapter by name** | Starter Assets scripts are reached by name and reflection, so our code compiles even before the packs are restored | `WizardRig.cs`, `WizardPuppet.cs`, `SurfaceEffects.cs` |
@@ -330,7 +328,3 @@ What this clean-up left alone, roughly in order of value.
 - **Starter Assets via reflection** (`WizardRig`) breaks silently if the
   pack renames a field. A tiny interface asmdef next to the pack would
   make it compile-checked, at the cost of touching pack files.
-- **The old Fireline scene** (`PlayerController`, `CameraFollow`,
-  `FireBolt`, `Burnable`, `Water`, `PrototypeSceneBuilder`) predates the
-  Chem core and duplicates its fire in MonoBehaviours. Delete it once no
-  one needs the comparison.
