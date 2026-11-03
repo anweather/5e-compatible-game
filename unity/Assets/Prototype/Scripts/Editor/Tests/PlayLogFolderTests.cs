@@ -33,7 +33,7 @@ public class PlayLogFolderTests
         string streaming = Directory.CreateDirectory(Path.Combine(root, "build", "StreamingAssets")).FullName;
         string project = Directory.CreateDirectory(Path.Combine(root, "project", "Assets")).FullName;
         GameFolders NoRules() => GameFolders.ForGame(streaming, project, false, Path.Combine(root, "data"));
-        Assert.Throws<DirectoryNotFoundException>(() => NoRules(), "no rules/ above the temp folders");
+        Assert.That(() => NoRules().Rules, Throws.TypeOf<DirectoryNotFoundException>(), "no rules/ above the temp folders");
         Assert.That(PlayLog.Folder(null, NoRules), Is.EqualTo(Application.persistentDataPath));
     }
 }
