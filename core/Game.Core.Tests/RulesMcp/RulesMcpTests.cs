@@ -75,6 +75,28 @@ namespace Chem.Tests
             Assert.That(problems, Is.Empty, Workbench.Report(problems));
         }
 
+        // #61: a giant rabbit at 10 times goes through; 50 times is refused. A look's scale is drawn only,
+        // so a world full of giants ticks the same cells at the same cost (simulate's 2 times budget holds).
+        static string Giants(double scale) => ("{ 'items': { 'giant-rabbit': { 'name': 'Giant rabbit', 'mass': 1, 'look': { 'family': 'creature', 'species': 'rabbit', 'scale': "
+            + scale.ToString(System.Globalization.CultureInfo.InvariantCulture) + " } } }, 'world': { 'add': ["
+            + string.Join(", ", Enumerable.Range(0, 16).Select(i => "{ 'kind': 'giant-rabbit', 'cell': [" + (10 + i * 2) + ", 20] }")) + "] } }").Replace('\'', '"');
+
+        [Test]
+        public void AGiantCreatureAtTenTimesPassesAndFiftyTimesIsRefused()
+        {
+            Assert.That(Bench.Validate(Giants(10)), Is.Empty, Workbench.Report(Bench.Validate(Giants(10))));
+            Assert.That(Bench.Validate(Giants(20)), Is.Empty);
+            var refused = Bench.Validate(Giants(50));
+            Assert.That(refused.Any(p => p.Check == ModCheck.Budget && p.Message.Contains("scale of 50", StringComparison.Ordinal) && p.Message.Contains("at most 20", StringComparison.Ordinal)), Is.True, Workbench.Report(refused));
+            foreach (var scenario in Simulator.Scenarios.Keys)
+            {
+                var (big, plain) = Bench.SimulateRuns(Giants(20), scenario, 60);
+                Assert.That(big.Hash, Is.EqualTo(plain.Hash), $"{scenario}: a scale changes no cell");
+                Assert.That(big.Rng, Is.EqualTo(plain.Rng), $"{scenario}: nor the world's generator");
+            }
+            StringAssert.Contains("changed nothing", Bench.Simulate(Giants(20), "fire-on-grass", 60));
+        }
+
         // ---------- simulate ----------
 
         [Test]
