@@ -30,6 +30,7 @@ public static class ValleyCoast
     /// <summary>How far out to sea a point is from the shoreline (m, negative inland), the line wandering into bays and points.</summary>
     public static float Out(Vector2 p)
     {
+        if (ChemGrid.MapId != null) return float.MinValue / 2f;
         float along = Vector2.Dot(p - ShoreOrigin, Along);
         float wander = 16f * (Mathf.PerlinNoise(along * 0.011f + 3.7f, 7.1f) - 0.5f) * 2f
             + 5f * (Mathf.PerlinNoise(along * 0.045f + 1.1f, 2.3f) - 0.5f) * 2f;
@@ -39,6 +40,7 @@ public static class ValleyCoast
     /// <summary>How far inside the island's shore a point is (m; negative out in the water).</summary>
     public static float InIsland(Vector2 p)
     {
+        if (ChemGrid.MapId != null) return float.MinValue / 2f;
         var q = p - IslandAt;
         float a = Mathf.Atan2(q.y, q.x);
         float n = Mathf.PerlinNoise(Mathf.Cos(a) * 1.3f + 5.2f, Mathf.Sin(a) * 1.3f + 5.2f);
@@ -93,7 +95,7 @@ public static class ValleyCoast
     public static float Lush(Vector2 p) => Mathf.InverseLerp(IslandBeach, IslandBeach + 6f, InIsland(p));
 
     /// <summary>Whether a point is land as the sea sees it: not under the sea's level, or inland of the coast (the lake and the river are no sea).</summary>
-    public static bool IsLand(Vector2 p) => Out(p) < HillAt || ValleyShape.HeightAt(p) >= SeaLevel;
+    public static bool IsLand(Vector2 p) => (ChemGrid.MapId == null && Out(p) < HillAt) || ValleyShape.HeightAt(p) >= SeaLevel;
 
     /// <summary>Whether a point is the island (inside its shoreline).</summary>
     public static bool OnIsland(Vector2 p) => InIsland(p) >= 0f;

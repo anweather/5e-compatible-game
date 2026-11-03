@@ -12,6 +12,8 @@ using UnityEngine;
 public static class CoastBuilder
 {
     const string Generated = "Assets/Prototype/Generated";
+    // On a map the sea's mesh reaches back over the whole world: there's no one coast for it to stop at.
+    const float MapSeaInland = 1600f;
 
     static Vector2 Seaward => ValleyCoast.Seaward;
     static Vector2 Along => Vector2.Perpendicular(Seaward);
@@ -47,7 +49,7 @@ public static class CoastBuilder
 
     // --- the sea ----------------------------------------------------------------------
 
-    static void BuildSea(Transform root, ShoreMap shoreMap)
+    public static void BuildSea(Transform root, ShoreMap shoreMap)
     {
         var material = EditorAssets.LoadOrCreate($"{Generated}/Ocean.mat", () => new Material(Shader.Find("Prototype/Ocean")));
         material.SetVector("_ShoreDir", new Vector4(-Seaward.x, -Seaward.y, 0f, 0f));
@@ -63,7 +65,7 @@ public static class CoastBuilder
         ocean.level = ValleyCoast.SeaLevel;
         ocean.shoreOrigin = ValleyCoast.ShoreOrigin;
         ocean.seaward = Seaward;
-        ocean.inland = 60f;
+        ocean.inland = ChemGrid.MapId != null ? MapSeaInland : 60f;
         ocean.Build();
     }
 

@@ -54,11 +54,11 @@ namespace Chem
         public static ModBudgets Parse(string json) => new ModBudgets(JObject.Parse(json));
 
         /// <summary>rules/budgets.json with the family list of rules/looks.json: all a peer checks a mod against.</summary>
-        public static ModBudgets Load(string rulesDir)
+        public static ModBudgets Load(string rulesDir, string mapWorldDir = null)
         {
             var budgets = Parse(File.ReadAllText(Path.Combine(rulesDir, "budgets.json")));
             budgets.Looks = LookFamilies.Load(rulesDir);
-            string worldDir = Path.Combine(Path.GetDirectoryName(Path.GetFullPath(rulesDir).TrimEnd('/', '\\')) ?? "", "world");
+            string worldDir = mapWorldDir ?? Path.Combine(Path.GetDirectoryName(Path.GetFullPath(rulesDir).TrimEnd('/', '\\')) ?? "", "world");
             budgets.Places = WorldPlaces.Load(worldDir);
             budgets.Buildings = WorldBuildings.Load(worldDir);
             if (Directory.Exists(worldDir)) budgets.Things = WorldThings.Load(worldDir);

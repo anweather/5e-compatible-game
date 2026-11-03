@@ -33,7 +33,7 @@ public static class ValleyBuilder
         AssetDatabase.Refresh();
 
         var terrains = BuildTerrain(grid, yardRows);
-        BuildLake();
+        if (ChemGrid.MapId == null) BuildLake();
         // The cells' water (the river, pond, trenches, puddles) and their oil and grease: films whose
         // meshes fade their own edges (vertex alpha). The water flows (Prototype/CellWater: ripples
         // and foam carried along the river's current and down hillsides; Andrew's playtest #32).
@@ -53,16 +53,11 @@ public static class ValleyBuilder
         var houses = BuildVillages();
         // The way to the nearest land over the sea, for the surf's push and the waves (ShoreMap).
         var shoreMap = ShoreMapBaker.Bake($"{Generated}/ShoreMap.asset", ValleyCoast.IsLand);
-        CoastBuilder.Build(VillageMaterial(), shoreMap);
+        if (ChemGrid.MapId != null) CoastBuilder.BuildSea(new GameObject("Coast").transform, shoreMap);
+        else CoastBuilder.Build(VillageMaterial(), shoreMap);
         ScatterRocks();
         BuildWorldEdge();
-        BuildCourt();
-        ValleyBridge.Build(LogMaterial(), CabinMaterial("Plank", new Color(0.52f, 0.37f, 0.23f), 0.12f));
-        RiverRocks();
-        ValleyTower.Build(grid);
-        DefenseFieldBuilder.Build(grid);
-        BuildLandmarks();
-        BuildWaterfall();
+        if (ChemGrid.MapId == null) BuildValleyPlaces(grid);
         var valley = grid.gameObject.AddComponent<ValleyChemistry>();
         valley.grid = grid;
         valley.chunks = terrains;
@@ -76,12 +71,24 @@ public static class ValleyBuilder
         // The river's current along its course and the surf's on the coast (WaterCurrents).
         var currents = grid.gameObject.AddComponent<WaterCurrents>();
         currents.grid = grid;
-        currents.river = ValleyShape.RiverLine;
+        currents.river = ChemGrid.MapId == null ? ValleyShape.RiverLine : System.Array.Empty<Vector2>();
         currents.riverHalfWidth = ValleyShape.RiverHalfWidth;
         currents.shoreMap = shoreMap;
         currents.shoreOrigin = ValleyCoast.ShoreOrigin;
         currents.seaward = ValleyCoast.Seaward;
         currents.seaLevel = ValleyCoast.SeaLevel;
+    }
+
+    // What stands in the valley alone, placed by hand in metres and cells.
+    static void BuildValleyPlaces(ChemGrid grid)
+    {
+        BuildCourt();
+        ValleyBridge.Build(LogMaterial(), CabinMaterial("Plank", new Color(0.52f, 0.37f, 0.23f), 0.12f));
+        RiverRocks();
+        ValleyTower.Build(grid);
+        DefenseFieldBuilder.Build(grid);
+        BuildLandmarks();
+        BuildWaterfall();
     }
 
     // --- terrain -------------------------------------------------------------
@@ -103,10 +110,13 @@ public static class ValleyBuilder
 
         // The cells painted as they are: the old yard's, the ball court's dirt floor (CellKind), and the
         // villages' squares, lanes and walls.
-        var paintedCells = YardCells(grid.yardCells);
-        paintedCells.AddRange(CourtCells());
-        paintedCells.AddRange(PathCells());
-        paintedCells.AddRange(DefenseFieldBuilder.PathCells());
+        var paintedCells = ChemGrid.MapId == null ? YardCells(grid.yardCells) : new List<(int x, int y)>();
+        if (ChemGrid.MapId == null)
+        {
+            paintedCells.AddRange(CourtCells());
+            paintedCells.AddRange(PathCells());
+            paintedCells.AddRange(DefenseFieldBuilder.PathCells());
+        }
         foreach (var plan in ValleyShape.Villages)
             foreach (var (vx, vy, _) in plan.Cells()) paintedCells.Add((vx, vy));
         ValleyTerrain.PlantTrees(assets.trees, AllTrees(valleyTrees, grid, world));
@@ -225,7 +235,7 @@ public static class ValleyBuilder
         for (int i = 0; i < 16000 && spots.Count < 3600; i++)
         {
             var w = new Vector2(layout.OriginX + (float)rng.NextDouble() * size, layout.OriginZ + (float)rng.NextDouble() * size);
-            if (!TreeFits(w)) continue;
+            if (!TreeFits(w) || (ChemGrid.MapId != null && ValleyShape.HeightAt(w) < ValleyShape.MapBeach)) continue;
             float d = ValleyShape.DistanceToYard(w), h = ValleyShape.HeightAt(w);
             float chance = Mathf.InverseLerp(14f, 70f, d) * (0.35f + 0.65f * Mathf.InverseLerp(40f, 160f, (w - Centre).magnitude));
             chance = Mathf.Lerp(chance, ValleySurroundings.Trees(w), ValleySurroundings.Mask(w));
@@ -1493,7 +1503,7 @@ public static class ValleyBuilder
             for (int x = 0; x < w; x++)
             {
                 int yx = x - left, yy = y - top;
-                bool inYard = yx >= 0 && yx < yw && yy >= 0 && yy < yh;
+                bool inYard = yx >= 0 && yx < yw && yy >= 0 && yy < yh && (ChemGrid.MapId == null || yardRows[yy][yx] == '@');
                 // Cell centre on the ground plane (yard cell (0, 0) is at (0, (yh - 1) * cs)).
                 var p = new Vector2(yx * cs, (yh - 1 - yy) * cs);
                 var sample = SampleOf(layout, x, y);
@@ -1583,6 +1593,7 @@ public static class ValleyBuilder
         if (tree) return 'T';
         if (ValleyCoast.OnPath(p) || ValleyCoast.OnSand(p, ground)) return '.';
         if (ValleyShape.DistanceToLake(p) < 6f && ground < 0.6f) return '.';
+        if (ChemGrid.MapId != null && ground < ValleyShape.MapBeach) return '.';
         return ',';
     }
 }

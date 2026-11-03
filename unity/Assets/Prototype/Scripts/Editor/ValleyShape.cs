@@ -14,6 +14,8 @@ using UnityEngine;
 public static class ValleyShape
 {
     public const float LakeLevel = -0.6f;
+    /// <summary>On a map, ground lower than this is beach: sand and bare ground, no grass or trees.</summary>
+    public const float MapBeach = 1.5f;
 
     // Flat ground at exactly 0 this far around the yard's cells, then the meadow rises.
     const float FlatAroundYard = 6f;
@@ -62,8 +64,11 @@ public static class ValleyShape
         Centre = yard.center;
         LakeCentre = Centre + new Vector2(25f, -95f);
         Cabins = ReadCabins();
-        PlanBridge();
-        ValleyCoast.PlanPath(new Vector2(yard.xMax + 3f, yard.yMax - 4f), bridgeLine[0], bridgeLine[1]);
+        if (ChemGrid.MapId == null)
+        {
+            PlanBridge();
+            ValleyCoast.PlanPath(new Vector2(yard.xMax + 3f, yard.yMax - 4f), bridgeLine[0], bridgeLine[1]);
+        }
         var cabinSpots = new Vector2[Cabins.Length];
         for (int i = 0; i < Cabins.Length; i++) cabinSpots[i] = Cabins[i].At;
         LayVillages();
@@ -234,7 +239,7 @@ public static class ValleyShape
     public const float CourtLength = 40f, CourtWidth = 26f;
 
     /// <summary>Whether a point is on the court's floor, at least <paramref name="margin"/> metres inside its rails (a negative margin reaches past them).</summary>
-    public static bool InCourt(Vector2 p, float margin = 0f) =>
+    public static bool InCourt(Vector2 p, float margin = 0f) => ChemGrid.MapId == null &&
         Mathf.Abs(p.x - CourtCentre.x) < CourtLength / 2f - margin && Mathf.Abs(p.y - CourtCentre.y) < CourtWidth / 2f - margin;
 
     /// <summary>The distance from a point to the nearest cabin.</summary>
@@ -268,6 +273,7 @@ public static class ValleyShape
             float pad = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(3f, 14f, DistanceToRect(p, villageAreas[i])));
             h = Mathf.Lerp(VillageLevels[i], h, pad);
         }
+        if (ChemGrid.MapId != null) return h;
         // Near the yard and the first cabin the ground never dips below their level.
         if (DistanceToYard(p) < 45f || (p - Cabin).magnitude < 20f) h = Mathf.Max(h, 0f);
         return (p - Falls).sqrMagnitude < 70f * 70f ? FallsShape(p, h) : h;
@@ -276,6 +282,7 @@ public static class ValleyShape
     // The valley's height before the cabins' pads.
     static float Unlevelled(Vector2 p)
     {
+        if (ChemGrid.MapId != null) return ValleySurroundings.MapHeight(p);
         float d = DistanceToYard(p);
         if (d <= FlatAroundYard) return 0f;
         float rise = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(FlatAroundYard, 30f, d));
@@ -294,6 +301,7 @@ public static class ValleyShape
 
     public static float LakeDepth(Vector2 p)
     {
+        if (ChemGrid.MapId != null) return 0f;
         var q = p - LakeCentre;
         float e = Mathf.Sqrt(q.x * q.x / (95f * 95f) + q.y * q.y / (55f * 55f));
         e += 0.12f * (Mathf.PerlinNoise(p.x * 0.03f, p.y * 0.03f) - 0.5f);
@@ -307,7 +315,7 @@ public static class ValleyShape
         return Mathf.Sqrt(dx * dx + dy * dy);
     }
 
-    public static float DistanceToLake(Vector2 p) => Mathf.Max(0f, (p - LakeCentre).magnitude - 70f);
+    public static float DistanceToLake(Vector2 p) => ChemGrid.MapId != null ? float.MaxValue : Mathf.Max(0f, (p - LakeCentre).magnitude - 70f);
 
     /// <summary>
     /// The river's course, from the pond at the foot of the falls under the northern mountain down into the
@@ -341,9 +349,9 @@ public static class ValleyShape
     static readonly Rect RiverBounds = BoundsOf(RiverCourse, RiverHalfWidth);
 
     /// <summary>Whether a point is one of the river's squares: the river, the stream that feeds the falls, or the pond.</summary>
-    public static bool InRiver(Vector2 p) =>
-        (RiverBounds.Contains(p) && DistanceToCourse(p, RiverCourse) < RiverHalfWidth)
-        || DistanceToCourse(p, Stream) < StreamHalfWidth || (p - Falls).magnitude < PondRadius + StreamHalfWidth;
+    public static bool InRiver(Vector2 p) => ChemGrid.MapId == null &&
+        ((RiverBounds.Contains(p) && DistanceToCourse(p, RiverCourse) < RiverHalfWidth)
+        || DistanceToCourse(p, Stream) < StreamHalfWidth || (p - Falls).magnitude < PondRadius + StreamHalfWidth);
 
     /// <summary>
     /// How deep the river's channel is cut into the ground at a point (metres): its full depth along the
@@ -352,6 +360,7 @@ public static class ValleyShape
     /// </summary>
     public static float ChannelDepth(Vector2 p)
     {
+        if (ChemGrid.MapId != null) return 0f;
         float depth = RiverBounds.Contains(p) ? Channel(DistanceToCourse(p, RiverCourse), ChannelCore, RiverHalfWidth) : 0f;
         float pond = (p - Falls).magnitude;
         if (pond < PondRadius + StreamHalfWidth) depth = Mathf.Max(depth, Channel(pond, PondRadius - 3f, PondRadius + StreamHalfWidth));
@@ -364,6 +373,7 @@ public static class ValleyShape
     /// <summary>Distance from a point to the river's middle line (the stream and the pond's rim count too).</summary>
     public static float DistanceToRiver(Vector2 p)
     {
+        if (ChemGrid.MapId != null) return float.MaxValue;
         float best = Mathf.Min(DistanceToCourse(p, Stream), Mathf.Max(0f, (p - Falls).magnitude - PondRadius));
         return Mathf.Min(best, DistanceToCourse(p, RiverCourse));
     }
@@ -454,7 +464,7 @@ public static class ValleyShape
     public static bool NearBridge(Vector2 p, float margin) => bridgeLine != null && DistanceToCourse(p, bridgeLine) < margin;
 
     /// <summary>Whether a point is within <paramref name="margin"/> of the climbing tower's round (ValleyTower).</summary>
-    public static bool NearTower(Vector2 p, float margin) => (p - ValleyTower.Site).magnitude < ValleyTower.Reach + margin;
+    public static bool NearTower(Vector2 p, float margin) => ChemGrid.MapId == null && (p - ValleyTower.Site).magnitude < ValleyTower.Reach + margin;
 
     /// <summary>Kept clear of trees and rocks: near the yard, the cabins' pads, the lake, the river's banks and the bridge.</summary>
     public static bool KeepClear(Vector2 p, float margin) =>
@@ -462,11 +472,12 @@ public static class ValleyShape
 
     /// <summary>Kept clear of grass and plants: the cabins' pads, the lake, the river, the falls (its basin, cliff and shelf), the villages, and the beaches, sea and path.</summary>
     public static bool KeepClearOfCabinAndLake(Vector2 p) =>
-        DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p) || InRiver(p) || DistanceToVillage(p) < 1f || ValleyCoast.NoGrass(p);
+        DistanceToCabin(p) < 12f || LakeDepth(p) > 0.05f || NearFalls(p) || InRiver(p) || DistanceToVillage(p) < 1f || ValleyCoast.NoGrass(p) || (ChemGrid.MapId != null && HeightAt(p) < MapBeach);
 
     /// <summary>The pond's basin, the cliff and the shelf above it: nothing grows or stands there.</summary>
     public static bool NearFalls(Vector2 p)
     {
+        if (ChemGrid.MapId != null) return false;
         var q = p - Falls;
         // The scree ramp up the east flank is kept clear too.
         return q.magnitude < 19f || (Mathf.Abs(q.x) < 27f && q.y > 0f && q.y < CliffNorth + 6f) || DistanceToCourse(q, new[] { RampFoot, RampTop }) < RampHalfWidth + 3f;
@@ -492,6 +503,7 @@ public static class ValleyShape
             var land = ValleySurroundings.LayerWeights(w, HeightAt(w), slope);
             for (int k = 0; k < floor.Length; k++) floor[k] = Mathf.Lerp(floor[k], land[k], t);
         }
+        if (ChemGrid.MapId != null) return WithSand(floor, Mathf.InverseLerp(MapBeach + 0.8f, MapBeach - 0.5f, HeightAt(w)));
         return WithSand(WithIsland(floor, ValleyCoast.Lush(w)), ValleyCoast.Sand(w, HeightAt(w)));
     }
 

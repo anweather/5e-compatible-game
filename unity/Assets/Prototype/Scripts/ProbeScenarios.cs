@@ -33,6 +33,12 @@ public static class ProbeScenarios
 
     public static readonly IReadOnlyList<Entry> All = new[]
     {
+        new Entry("mapview", typeof(MapViewProbe), 90f,
+            "The second-map test (docs/design/second-map-2026-11-02.md): stills from the air, off-screen, and the count of the map's cells by terrain; notes names cells to look at."),
+        new Entry("mapwalk", typeof(MapWalkProbe), 900f,
+            "The second-map test: walks the cells in notes (x,y,x,y), the first by teleport, and logs a trail of what the wizard meets. Checks: it reached each and never stuck."),
+        new Entry("mapcast", typeof(MapCastProbe), 60f,
+            "The second-map test: Fire Bolt, Create Water and a Fireball on the land by the cell in notes (x,y)."),
         new Entry("smoke", typeof(SmokeProbe), 90f,
             "Walks a few steps, casts each Elements spell once on the yard, then Shape Earth. " +
             "Checks: every prop and item of world/things.json spawned on its cell, the wizard moved, every spell is on the bar and was cast (World log), fire started, " +

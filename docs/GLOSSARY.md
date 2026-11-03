@@ -668,6 +668,11 @@ that long, and doesn't march.
 : A **theme** is JSON goals for the land (`world/themes/`); solved for a
   seed it's a **blueprint** of zones, mountains, lakes and rivers (D11).
 
+**Map**
+: A whole world to play on: the valley, or a folder under `world/maps/` laid out like `world/` (its theme, things, villages, land). Run with
+  `SPELL_WORLD_MAP=<id>` set for the Editor and baked; a test, one build still holds one (`docs/design/second-map-2026-11-02.md`). *Not* the
+  **cell map** in `ChemGrid.map`, one character a cell, nor a **shore map**.
+
 **Theme look**
 : Which of Punchy's lands paints a place (`world/looks.json`). Not a
   spell's visuals and not a wizard's appearance.

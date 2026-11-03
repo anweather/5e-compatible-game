@@ -24,7 +24,7 @@ public static class ValleySurroundings
     static readonly string[] Lands = { "Grassland", "Temperate", "Mountains", "Fells" };
     static readonly float[] LandTrees = { 0.12f, 0.75f, 0.3f, 0.05f };
 
-    const string ThemeId = "home-valley";
+    static string ThemeId => ChemGrid.MapId ?? "home-valley";
     const int ThemeSeed = 1;
     /// <summary>A theme region, in cells: a 3×3 core is then 576 cells across, the valley's size.</summary>
     const double RegionCells = 192;
@@ -46,6 +46,8 @@ public static class ValleySurroundings
     static int[] material;
     static int size;
     static float[] lakeLevels;
+    // On a map (ChemGrid.MapId): what the theme's zones paint is land, the rest open sea; blurred, 0.5 is the shore.
+    static float[] seaMask;
 
     /// <summary>Sets the land up around the valley as ValleyShape.Plan laid it out.</summary>
     public static void Plan(Vector2 valleyCentre, Vector2 lakeCentre, Vector2 falls, IEnumerable<Vector2> cabins,
@@ -143,6 +145,7 @@ public static class ValleySurroundings
         for (int k = 0; k < Lands.Length; k++) weights[k] = new float[size * size];
         treeFactor = new float[size * size];
         material = new int[size * size];
+        var painted = new float[size * size];
         for (int j = 0; j < size; j++)
             for (int i = 0; i < size; i++)
             {
@@ -150,6 +153,7 @@ public static class ValleySurroundings
                 var (cx, cy) = Cell(p);
                 int at = j * size + i;
                 string look = field.Look(cx, cy);
+                painted[at] = field.Painted ? 1f : 0f;
                 material[at] = field.Material(cx, cy);
                 treeFactor[at] = look != null && treesOf.TryGetValue(look, out var t) ? t : 1f;
                 if (look != null && landOf.TryGetValue(look, out int l) && l >= 0) weights[l][at] = 1f;
@@ -162,8 +166,20 @@ public static class ValleySurroundings
             shapeMaps[k] = Blurred(weights[k], Mathf.RoundToInt(ShapeBlur / Step / 2));
             surfaceMaps[k] = Blurred(weights[k], Mathf.RoundToInt(SurfaceBlur / Step / 2));
         }
+        seaMask = Blurred(painted, Mathf.RoundToInt(SurfaceBlur / Step / 2));
         LevelLakes();
     }
+
+    /// <summary>A map's ground (metres): the theme's height on its zones, sinking through the shore to an open sea bed past them.</summary>
+    public static float MapHeight(Vector2 p)
+    {
+        float m = Sample(seaMask, p);
+        return m >= ShoreMask
+            ? Mathf.Lerp(ShoreHeight, Height(p), Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(ShoreMask, 1f, m)))
+            : Mathf.Lerp(-SeaDepth, ShoreHeight, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0f, ShoreMask, m)));
+    }
+
+    const float ShoreMask = 0.5f, ShoreHeight = 0.2f, SeaDepth = 14f;
 
     // Where the theme says nothing: Punchy's own random regions.
     static void Filler(Vector2 p, float[][] weights, int at)
@@ -270,6 +286,7 @@ public static class ValleySurroundings
     /// <summary>0 on the valley floor, rising to 1 where the generated land takes over.</summary>
     public static float Mask(Vector2 p)
     {
+        if (ChemGrid.MapId != null) return 1f;
         float outside = float.MaxValue;
         foreach (var (at, radius) in floor) outside = Mathf.Min(outside, (p - at).magnitude - radius);
         outside = Mathf.Min(outside, ValleyShape.DistanceToCourse(p, ValleyShape.River) - 35f);

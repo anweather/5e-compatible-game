@@ -340,7 +340,7 @@ public static class ValleyTerrain
         AssetDatabase.SaveAssets();
         // Heights are stored in 16 bits: put the terrains where a flat sample reads exactly 0.
         var (fi, fj, fx, fz) = Layout.CellSample(flatCell.x, flatCell.y);
-        float y = -datas[Index(fi, fj)].GetHeight(fx, fz);
+        float y = ChemGrid.MapId != null ? -Depth : -datas[Index(fi, fj)].GetHeight(fx, fz);
 
         var parent = new GameObject("Valley").transform;
         terrains = new Terrain[datas.Length];

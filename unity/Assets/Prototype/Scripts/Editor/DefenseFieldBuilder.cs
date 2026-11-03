@@ -33,11 +33,11 @@ public static class DefenseFieldBuilder
     const float PlateRadius = 1.4f;
 
     /// <summary>Whether a point is within <paramref name="margin"/> of the field's rectangle (inside it with a negative one).</summary>
-    public static bool NearDefenseField(Vector2 p, float margin) =>
+    public static bool NearDefenseField(Vector2 p, float margin) => ChemGrid.MapId == null &&
         p.x > Gate.x - EndRoom - margin && p.x < Flag.x + EndRoom + margin && Mathf.Abs(p.y - Gate.y) < HalfWidth + margin;
 
     /// <summary>Whether a point is on the path's dirt: the row of squares from the gate to the flag.</summary>
-    public static bool OnPath(Vector2 p) => p.x > Gate.x - 1f && p.x < Flag.x + 1f && Mathf.Abs(p.y - Gate.y) < 0.75f;
+    public static bool OnPath(Vector2 p) => ChemGrid.MapId == null && p.x > Gate.x - 1f && p.x < Flag.x + 1f && Mathf.Abs(p.y - Gate.y) < 0.75f;
 
     /// <summary>The path's squares (world cells), painted as the dirt they are.</summary>
     public static IEnumerable<(int x, int y)> PathCells()

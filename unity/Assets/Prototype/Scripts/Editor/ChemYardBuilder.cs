@@ -112,6 +112,7 @@ public static class ChemYardBuilder
 
         SetUpLighting();
         ValleyBuilder.Dress(grid, rows);
+        if (ChemGrid.MapId != null) player.transform.position = start + Vector3.up * ValleyTerrain.GroundAt(start);
         // Props and items aren't placed here: ThingSpawner spawns them from world/things.json.
         var things = PropBuilder.BuildPrefabs();
         things.AddRange(ItemBuilder.BuildPrefabs());

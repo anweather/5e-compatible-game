@@ -311,7 +311,14 @@ public partial class ChemGrid : MonoBehaviour
     }
 
     // world/ (things.json) sits next to rules/: the repo's in the Editor, StreamingAssets/world in a build.
-    public static string FindWorldDir() => Path.Combine(Path.GetDirectoryName(FindRulesDir()), "world");
+    public static string FindWorldDir()
+    {
+        string world = Path.Combine(Path.GetDirectoryName(FindRulesDir()), "world");
+        return MapId == null ? world : Path.Combine(world, "maps", MapId);
+    }
+
+    /// <summary>The map under world/maps/ this process runs on (SPELL_WORLD_MAP), null for the valley: docs/design/second-map-2026-11-02.md.</summary>
+    public static string MapId => string.IsNullOrEmpty(System.Environment.GetEnvironmentVariable("SPELL_WORLD_MAP")) ? null : System.Environment.GetEnvironmentVariable("SPELL_WORLD_MAP");
 
     // Milliseconds of a frame the solo grid may spend on chemistry ticks: a tick that needs longer
     // runs in slices over the next frames (World.StepSome) and the clock catches up after, rather
