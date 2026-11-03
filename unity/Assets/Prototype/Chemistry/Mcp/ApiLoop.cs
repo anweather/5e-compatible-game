@@ -50,7 +50,7 @@ namespace Chem.Mcp
         {
             "add_building", "add_building_part", "add_entity", "add_item", "add_material", "add_reaction", "add_species", "add_spell", "add_thing", "add_wing", "apply",
             "describe", "explain", "find", "find_site", "here", "list", "outside_rules", "places", "remove", "revert", "room",
-            "save", "set_building", "set_look", "set_material", "set_reaction", "set_species", "set_spell", "set_time", "set_weather",
+            "save", "scatter", "set_building", "set_look", "set_material", "set_reaction", "set_species", "set_spell", "set_time", "set_weather",
             "simulate", "time", "tune", "validate", "weather", "whats_on",
         };
 

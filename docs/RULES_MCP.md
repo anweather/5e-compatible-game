@@ -57,6 +57,9 @@ on for everyone in a room at the same tick. The MCP server produces those same p
 - `find_site(width, depth, near?, side?, edge?, within?)`: cells a building of that size can stand on: dry open
   ground, clear of things and buildings, out of the villages and courses. `near "sea"`, `edge "shore"` is the
   beach; `near "lake"`, `side "north"` the lake's north shore.
+- `scatter(what, count, near?, within?, spacing?, side?, edge?, seed?, onto?, draft?)`: picks `count` open cells near
+  something by `Placement.Pick` from the world's seed, now, and writes them into a draft: a terrain or cover as a `lay`
+  row, a thing as `add` rows. "50 trees near the lake" (see "Laying cells").
 - With no game attached these read a stand-in of the valley (`StandInValley`: the land, water and buildings from
   `world/`, no trees and no yard), and say so.
 
@@ -425,6 +428,66 @@ rows stay out of `Rules.Fingerprint` and off the cells, so no golden moves and t
   against the base row's (or 1.1 for a new row), past `budgets.json` `things.maxScale`.
 - **In the view.** A switch rebuilds only the rows that changed (`CreatureBodies.Refresh`); a new species spawns in the
   wilds by its density, anywhere its habitat fits, not at a place.
+
+## Spells that place
+
+`docs/design/events-and-placing.md` 2a. A spell's `place` field puts something on cells where it lands, after its
+element:
+
+```json
+"place": { "animal": "human-child", "count": 1, "within": 0 }
+"place": { "thing": "scarecrow", "count": 3, "within": 2, "spacing": 1, "lasts": 3600 }
+"place": { "terrain": "tree", "count": 5, "within": 4, "spacing": 2, "onto": ["soil"] }
+```
+
+- **What.** Exactly one of `thing` (an `entities` or `items` row), `animal` (a `fauna.json` species), `terrain` or
+  `cover` (`Rules.Check`'s `PlaceRefs`). A spell with only a `place` and no element or effect is fine.
+- **Where.** `count` cells (1 if left out) picked by `Placement.Pick` among the spell's cells, or among the cells within
+  `within` of the aim as the crow flies when it's given (0 is the aim cell). `spacing` is the fewest cells between two
+  picks. A cell is open when it's on the world, active, dry, not blocking, with no building or thing, and its terrain
+  has one of the `onto` tags (`ground` with none): `World.PlaceOpen`. Each cast's salt is a hash of the tick and the
+  place actions run so far, so a second cast picks afresh, and every peer the same. Too few open cells logs
+  "Test spell: 2 of 3 had room".
+- **A terrain or cover** is laid fresh (no fire, gas or water; height kept): cell state, in the cell hash.
+- **A thing** goes in `World.Placed` and `ThingsNow` (after the file's and the mods' things), with the id
+  `ThingId.Placed(chunk, n)`: its index has the top bit set, above every file's and mod's, and prints as
+  `"1,0#placed 4"`. `lasts` (ticks) takes it away; none stays. At most `place.maxLive` (64) live: the oldest
+  lapses first. `PlacedText()` is in `CastHash` and the save, "" until a spell places.
+- **An animal** is the view's (J-056): `World.Summoned` lists this tick's (species, cell, `Individual`, running
+  number `N`), cleared as each tick begins; `World.SummonedAfter(n)` gives those past the `n`th from the last 600 ticks,
+  for a view that steps several ticks a frame. Nothing about it is in the hashes but the running count.
+- **Budgets** (`budgets.json` `place`): `count` at most 8, `within` at most 8, `lasts` at most 21 600 (an hour),
+  64 placed things live in a room, 24 summoned animals on a peer (the view's cap, `maxSummoned`).
+
+**In the view (`place-view`).**
+1. `ThingSpawner` diffs `ThingsNow` (`ChangesFrom`) after any tick whose `ThingsNow` isn't the table it last
+   spawned from (a new table whenever a spell places or a placed thing lapses), not only at rule switches; the host
+   spawns, as for a mod's thing. A placed thing has `ThingSpawn.Placed` and `Lapses`.
+2. `ValleyFauna` brings out each `World.SummonedAfter(lastN)` on its cell with `Spawn(species, position, yaw, Individual)`,
+   keeps at most `place.maxSummoned` (24), and lets it wander as ambient life.
+3. A spell with a `place` and no element still needs its show (its `look`), as any cast.
+
+## Laying cells: a mod's `lay` and `scatter`
+
+`docs/design/events-and-placing.md` 2b. A mod's `world` section takes **`lay`**:
+`[{ "terrain": "tree", "cells": [[x, y], ...], "seed": 7 }]` (or `"cover"`), at most `lay.maxCells` (256) cells a mod.
+
+- **The switch.** `World.LayCells` (from `ApplyRules`, after the buildings) lays each cell the new rules lay and the old
+  didn't, fresh (no fire, gas or water; height kept), and keeps what stood under (terrain and cover). A cell that isn't
+  open now (`World.PlaceOpen` without the active check: wet, blocking, a building or thing on it) is skipped, the same on
+  every peer, and logged: "3 of 50 tree had no room". A cell the old rules laid and the new don't goes back to what stood
+  under. The starting state follows, as for a building, so the dragon keeps a laid tree.
+- **State.** The cells are in the cell hash from that tick; what stood under is `LaidText()` in `CastHash` and `"laid"` in
+  the save, both empty with nothing laid. The rows are in `Rules.Fingerprint` (`Rules.ModLays`, `Rules.Lay.cs`).
+- **`scatter`** runs the pick against the world the MCP reads (the game's through `IWorldDesk`, or the stand-in), over
+  the cells within `within` (12, at most `lay.maxWithin` 32) steps of `near`, off villages, courses and puzzles. The
+  reply says how many, on what, how near: "50 tree on grass near the lake's shore, 2 cells apart at least, the nearest
+  1 cells from it and the furthest 12 (seed 1)". The same what and seed replace their row; another seed adds one;
+  `remove(draft, "lay", "tree#1")` takes one back. `list lay` shows the rows in force.
+
+**In the view (`place-view`).** A laid `tree` is the real terrain (it blocks, burns, topples), but `CellDressing` dresses
+only trees the land baked or that grew (`IsGrownTree`): it must dress any `tree` cell the land didn't bake as one of its
+chunk's valley trees, and `brush` as a bush, redrawing on `ChunkFreshened`.
 
 ## Change modes (chosen when a room is made)
 

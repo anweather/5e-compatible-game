@@ -45,12 +45,22 @@ namespace Chem
             Value = ((ulong)(ushort)(short)chunkX << 48) | ((ulong)(ushort)(short)chunkY << 32) | (uint)index;
         }
 
+        /// <summary>
+        /// The id of the <paramref name="n"/>th thing a spell placed (World.Placed): its index has the top bit set,
+        /// above every file's and mod's (ModIndexes), so it never clashes with one. Its Index reads negative.
+        /// </summary>
+        public static ThingId Placed(int chunkX, int chunkY, int n) =>
+            new ThingId(new ThingId(chunkX, chunkY, 0).Value | 0x80000000u | ((uint)n & 0x7FFFFFFFu));
+
         /// <summary>The packed id, for the wire.</summary>
         public ulong Value { get; }
         public int ChunkX => (short)(ushort)(Value >> 48);
         public int ChunkY => (short)(ushort)(Value >> 32);
         public int Index => (int)(uint)Value;
         public bool IsNone => Value == ulong.MaxValue;
+        /// <summary>A spell placed it (<see cref="Placed"/>); <see cref="PlacedN"/> is then its place in the world's count.</summary>
+        public bool IsPlaced => !IsNone && (Value & 0x80000000u) != 0;
+        public int PlacedN => (int)(Value & 0x7FFFFFFFu);
 
         public bool Equals(ThingId other) => Value == other.Value;
         public override bool Equals(object obj) => obj is ThingId other && Equals(other);
@@ -58,9 +68,14 @@ namespace Chem
         public static bool operator ==(ThingId a, ThingId b) => a.Value == b.Value;
         public static bool operator !=(ThingId a, ThingId b) => a.Value != b.Value;
 
-        /// <summary>"cx,cy#index", e.g. "1,0#3".</summary>
-        public override string ToString() =>
-            IsNone ? "none" : string.Format(CultureInfo.InvariantCulture, "{0},{1}#{2}", ChunkX, ChunkY, Index);
+        /// <summary>"cx,cy#index", e.g. "1,0#3"; a placed thing's "cx,cy#placed n", e.g. "1,0#placed 4".</summary>
+        public override string ToString()
+        {
+            if (IsNone) return "none";
+            return IsPlaced
+                ? string.Format(CultureInfo.InvariantCulture, "{0},{1}#placed {2}", ChunkX, ChunkY, PlacedN)
+                : string.Format(CultureInfo.InvariantCulture, "{0},{1}#{2}", ChunkX, ChunkY, Index);
+        }
     }
 
     /// <summary>One thing in the world's data: what it is, where, and its id.</summary>
@@ -85,6 +100,10 @@ namespace Chem
         public double Chance { get; internal set; } = 1;
         /// <summary>A mod added it (the rules' "world" section): its first pick-up is logged (RoomCommand.Found).</summary>
         public bool FromMod { get; internal set; }
+        /// <summary>A spell placed it (World.Placed): it's there from the tick of the cast, and lapses at <see cref="Lapses"/>.</summary>
+        public bool Placed { get; internal set; }
+        /// <summary>The tick a placed thing goes, 0 for one that stays (and every thing not placed).</summary>
+        public int Lapses { get; internal set; }
     }
 
     /// <summary>
@@ -249,6 +268,17 @@ namespace Chem
                     FromMod = true,
                 });
             }
+            return next;
+        }
+
+        /// <summary>These things and <paramref name="placed"/> after them (World.Placed); this table when there are none.</summary>
+        public WorldThings Plus(IReadOnlyList<ThingSpawn> placed)
+        {
+            if (placed.Count == 0) return this;
+            var next = new WorldThings();
+            foreach (var chunk in byChunk)
+                foreach (var t in chunk.Value) next.Put(chunk.Key, t);
+            foreach (var t in placed) next.Put((t.ChunkX, t.ChunkY), t);
             return next;
         }
 

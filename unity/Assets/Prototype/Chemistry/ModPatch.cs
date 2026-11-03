@@ -80,10 +80,11 @@ namespace Chem
             Expect("combos", p["combos"] is JObject, "an object");
             Expect(BuildingTables.Key, p[BuildingTables.Key] is JObject b && BuildingTables.Tables.Where(t => b[t] != null).All(t => b[t] is JObject rows && rows.PropertyValues().All(v => v is JObject)),
                 "an object of tables (openings, floors, roofs, details, styles), each of rows by id");
-            Expect("world", p["world"] is JObject w && w.Properties().All(x => x.Name == "buildings" || x.Name == "add")
+            Expect("world", p["world"] is JObject w && w.Properties().All(x => x.Name == "buildings" || x.Name == "add" || x.Name == "lay")
                     && (w["buildings"] == null || (w["buildings"] is JObject bs && bs.PropertyValues().All(v => v is JObject)))
-                    && (w["add"] == null || ListOf(w["add"], JTokenType.Object)),
-                "{\"buildings\": {\"<id>\": {a whole building row}}, \"add\": [{a thing: kind, cell}]}: an id the world has edits that building, a new one adds one, and add puts things in the world");
+                    && (w["add"] == null || ListOf(w["add"], JTokenType.Object))
+                    && (w["lay"] == null || ListOf(w["lay"], JTokenType.Object)),
+                "{\"buildings\": {\"<id>\": {a whole building row}}, \"add\": [{a thing: kind, cell}], \"lay\": [{terrain or cover, cells}]}: an id the world has edits that building, a new one adds one, add puts things in the world and lay sets cells");
             return errors;
         }
 

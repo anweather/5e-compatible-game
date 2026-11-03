@@ -23,6 +23,7 @@ namespace Chem
             check.Numbers();
             check.Buildings();
             check.Things();
+            check.Lays();
             check.Fauna();
             return check.Errors;
         }
@@ -167,6 +168,36 @@ namespace Chem
                 if (s["leaves"] != null && !IsElement(s["leaves"])) Errors.Add($"spell {Show(s["id"])}: unknown leaves {Show(s["leaves"])}");
                 if (s["trail"] != null && !IsIn(gases, s["trail"])) Errors.Add($"spell {Show(s["id"])}: trail {Show(s["trail"])} is not a gas");
                 foreach (var k in Keys(s["needs"] as JObject).Where(k => !CondKeys.Contains(k))) Errors.Add($"spell {Show(s["id"])}: needs has unknown condition \"{k}\"");
+                if (s["place"] != null) PlaceRefs(s);
+            }
+
+            static readonly string[] PlaceWhats = { "thing", "animal", "terrain", "cover" };
+            static readonly string[] PlaceKeys = PlaceWhats.Concat(new[] { "count", "within", "spacing", "lasts", "onto" }).ToArray();
+
+            // What a spell places: exactly one row that exists, whole numbers, and tags some terrain has.
+            void PlaceRefs(JToken s)
+            {
+                string who = $"spell {Show(s["id"])}: place";
+                if (!(s["place"] is JObject p))
+                {
+                    Errors.Add($"{who} must be an object");
+                    return;
+                }
+                foreach (var k in Keys(p).Where(k => !PlaceKeys.Contains(k))) Errors.Add($"{who} has no field \"{k}\"; it takes {string.Join(", ", PlaceKeys)}");
+                var whats = PlaceWhats.Where(k => p[k] != null).ToList();
+                if (whats.Count != 1) Errors.Add($"{who} needs exactly one of thing, animal, terrain or cover");
+                if (p["thing"] != null && !IsIn(r["entities"] as JObject, p["thing"]) && !IsIn(r["items"] as JObject, p["thing"])) Errors.Add($"{who}: thing {Show(p["thing"])} is neither an entity nor an item");
+                if (p["animal"] != null && !IsIn(r[FaunaTables.SpeciesKey] as JObject, p["animal"])) Errors.Add($"{who}: animal {Show(p["animal"])} is not a species of fauna.json");
+                if (p["terrain"] != null && !IsIn(terrain, p["terrain"])) Errors.Add($"{who}: unknown terrain {Show(p["terrain"])}");
+                if (p["cover"] != null && !IsIn(covers, p["cover"])) Errors.Add($"{who}: unknown cover {Show(p["cover"])}");
+                if (p["count"] != null && !(IsWholeNumber(p["count"]) && (double)p["count"] >= 1)) Errors.Add($"{who}: count must be a whole number from 1");
+                foreach (var k in new[] { "within", "spacing", "lasts" })
+                    if (p[k] != null && !(IsWholeNumber(p[k]) && (double)p[k] >= 0)) Errors.Add($"{who}: {k} must be a whole number from 0");
+                if (p["lasts"] != null && p["thing"] == null) Errors.Add($"{who}: only a thing lasts a while; cells stay as laid and an animal lives on");
+                if (p["onto"] == null) return;
+                var tags = new HashSet<string>(terrain.Properties().SelectMany(t => Strings(t.Value["tags"])));
+                if (!(p["onto"] is JArray onto) || onto.Any(t => t.Type != JTokenType.String)) Errors.Add($"{who}: onto must be a list of terrain tags");
+                else foreach (var t in onto.Where(t => !tags.Contains((string)t))) Errors.Add($"{who}: onto names the tag {Show(t)}, which no terrain has");
             }
 
             bool IsScatter(JToken c) =>
