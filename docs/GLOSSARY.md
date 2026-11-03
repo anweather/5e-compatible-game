@@ -244,8 +244,17 @@ touch them.
 : A wizard using a spell at a cell and direction (`CastCommand`).
 
 **Action**
-: What a spell (and later a trigger or a world edit) does: `cast` (a spell at a cell) or `place`
+: What a spell or a trigger (and later a world edit) does: `cast` (a spell at a cell) or `place`
   (`docs/design/events-and-placing.md`).
+
+**Trigger / event**
+: A **trigger** is a `rules/triggers.json` row (`TriggerDef`, `Rules.Triggers.cs`) that reacts to an **event** with
+  one or two actions, fired inside the command that raised the event (`World.Triggers.cs`). The base rules have none;
+  a mod adds them (`add_trigger`). The one event so far is a **step**.
+
+**Step**
+: A player's stand moving to another cell: a `Stand` command whose cell differs from the one the core has, not the
+  first stand and not while downed. The event a trigger on `step` reacts to.
 
 **Place / placed thing**
 : A spell's `place` field: a thing, an animal, a terrain or a cover put on cells picked by `Placement.Pick`

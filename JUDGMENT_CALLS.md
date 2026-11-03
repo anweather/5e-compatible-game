@@ -41,6 +41,14 @@ Each entry has:
 
 ## Decided
 
+### J-068: Made-up bodies before gaits by rule?
+
+- **Asked:** 2026-11-03, by the PM, from `docs/design/bodies-and-surfaces.md` §2.
+- **Answer:** Andrew: bodies first. Grafted bodies ship while legs still move by their own poses, so a centaur's torso bobs with the deer's back and a faun's hoofed legs step like a deer's hind pair, until gaits are by rule.
+- **Why:** gets custom creatures into his hands sooner; gaits fix the motion later without changing the rows.
+- **Also comes up when:** any graft, or the gaits-by-rule work (`builders.md` §3).
+- **Revisited:** 0.
+
 ### J-067: Six design calls from the play test of 2026-11-02
 
 - **Asked:** 2026-11-03, by the PM, from `docs/design/events-and-placing.md` and `bodies-and-surfaces.md`.

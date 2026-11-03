@@ -214,30 +214,41 @@ namespace Chem
             FinishTick(); // casts land between whole ticks (StepSome)
             var s = Rules.Spell(spellId);
             if (s == null || !InBounds(x, y)) return;
+            _ = Release(s, (x, y), dir, charge, (aimX, aimY), s.Delay, $"You cast {s.Name}");
+        }
+
+        // A cast once its spell is known: smothered by a spell zone against it, else it goes off, after delay
+        // ticks under a target mark when there is one. A trigger's casts come in here too (World.Triggers.cs).
+        // False when it didn't go off.
+        bool Release(SpellDef s, (int x, int y) at, int dir, int charge, (int x, int y) aim, int delay, string log)
+        {
+            var (x, y) = at;
+            var (aimX, aimY) = aim;
             var zone = ZoneAgainst(s, x, y);
             if (zone != null)
             {
                 AddLog($"The {zone.Name}'s charm smothers your {s.Name}", LogKind.Notable);
-                return;
+                return false;
             }
-            if (s.Effect == "levitate" || s.Effect == "carry") return;
-            AddLog($"You cast {s.Name}", LogKind.Info);
+            if (s.Effect == "levitate" || s.Effect == "carry") return false;
+            AddLog(log, LogKind.Info);
             if (s.Effect == HasteEffect) Hasten(s, ClampCharge(charge));
             else if (s.Effect == WeatherEffect) HoldWeather(s, ClampCharge(charge));
             else if (s.Effect == LightEffect) LightUp(s, x, y);
-            else if (s.Delay > 0) AimStar(s, x, y, dir, ClampCharge(charge));
+            else if (delay > 0) AimStar(s, x, y, dir, ClampCharge(charge), delay);
             else if (IsWave(s)) StartWave(s, x, y, dir, ClampCharge(charge), aimX, aimY);
             else if (IsBoulder(s)) StartBoulder(s, x, y, dir, ClampCharge(charge), aimX, aimY);
             else Land(s, x, y, dir, ClampCharge(charge), aimX, aimY);
+            return true;
         }
 
         /// <summary>
         /// A delayed cast (Falling Star, aimStar in the TS): the cells round where it will land wear a target
         /// mark (Cell.Star) until it lands, Delay ticks on (LandStars).
         /// </summary>
-        void AimStar(SpellDef s, int x, int y, int dir, int charge)
+        void AimStar(SpellDef s, int x, int y, int dir, int charge, int delay)
         {
-            var star = new Star { Spell = s.Id, X = x, Y = y, Dir = dir, Charge = charge, Radius = s.Radius + ChargedGrowth(s, charge), Lands = Tick + s.Delay };
+            var star = new Star { Spell = s.Id, X = x, Y = y, Dir = dir, Charge = charge, Radius = s.Radius + ChargedGrowth(s, charge), Lands = Tick + delay };
             stars.Add(star);
             MarkStar(star, 1);
         }
