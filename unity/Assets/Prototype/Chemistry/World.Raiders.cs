@@ -139,7 +139,7 @@ namespace Chem
         // The first hit on a frozen raider of cracking ice: it cracks, and takes no harm yet.
         bool CracksFirst(Raider r, string frozen)
         {
-            if (r.StatusOf(CrackedStatus) > 0 || !Rules.Terrain.TryGetValue(IceMaterial, out var ice) || !ice.Cracks) return false;
+            if (r.StatusOf(CrackedStatus) > 0 || !(FrozenWater() is TerrainDef ice) || !ice.Cracks) return false;
             r.Status[CrackedStatus] = r.StatusOf(frozen);
             LogOnce($"cracked#{r.Id}", $"{Rules.Entity(r.Kind).Name} cracks", LogKind.Notable);
             return true;
@@ -315,8 +315,8 @@ namespace Chem
             }
             if (c.Heat > 0 && def.Creature && Tick % s.BurnDamageEvery == 0) DamageRaider(r, 1, "hot metal", "fire");
             // Thick steam scalds what is made of a material that scalds (flesh; not bone or chitin).
-            if (c.Gas == "steam" && c.GasAmt >= 2 && def.MaterialDef?.Has("scalds") == true && Tick % s.ScaldEvery == 0)
-                DamageRaider(r, Rules.Gases.TryGetValue("steam", out var steam) ? steam.Scald : 1, "scalding", "fire");
+            if (c.Gas != null && c.Gas == Rules.Sim.WaterBoils && c.GasAmt >= 2 && def.MaterialDef?.Has("scalds") == true && Tick % s.ScaldEvery == 0)
+                DamageRaider(r, Rules.Gases.TryGetValue(c.Gas, out var steam) ? steam.Scald : 1, "scalding", "fire");
         }
 
         // What the raider's square does to it this tick: fire and water reach it, burning and steam hurt, a shock zaps.

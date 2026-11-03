@@ -146,6 +146,10 @@ a tick (D13). Every peer validates and composes the same mods in the same order,
 ## 5. Order of work, and the first test
 
 1. **P3, products by data** (S), and slick covers drawn from data (`looks.json` `needs`); goldens hold.
+   *Core done (branch `products-data`): `sim.json` fire.ash/smoke, water.boils/freezes, weather.snow.cover/bank,
+   weather.meteors.spell, and a material's `burn.ash`/`burn.smoke`. Left for the view: the slick and scorch
+   `needs` (`CellSlickMesh`, `ChemGrid.RenderCover`) and snow drawn by `World.SnowCover`/`BankCover`.
+   Not P3 and kept: `waterTo`'s two flat-format words, the storm's `lightning`, `sheds == "lightning"`.*
 2. **Temporary materials on strings** (S to M): `lapse`, the sweep, the retired list, the limits.
 3. **P2 spread** and **P4 glow** (S each).
 4. **P1 liquids** (M to L): the kind, the `liquids` table, `Flow`'s rule, `touch`, the flags in

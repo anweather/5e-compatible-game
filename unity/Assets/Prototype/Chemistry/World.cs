@@ -323,6 +323,7 @@ namespace Chem
 
         public void AddGas(Cell c, string id, int n)
         {
+            if (id == null) return; // a product the rules leave out (sim.json water.boils, fire.smoke)
             int max = Rules.Sim.Gas.MaxAmount;
             if (c.Gas == null || c.Gas == id)
             {
