@@ -85,6 +85,9 @@ public class WaterLookProbe : ProbeScenario
 
     // A stretch with the camera still: each marker's mean a frame, the frame's, and the view's counts
     // a frame (PerfCounts), as metrics and one log line each; ChemGrid.Render's mean goes to <paramref name="render"/>.
+    /// <summary>The last stretch's view counts, summed over its frames.</summary>
+    protected SortedDictionary<string, long> LastCounts { get; private set; } = new();
+
     protected IEnumerator Stretch(string name, System.Action<double> render)
     {
         var recorders = new Unity.Profiling.ProfilerRecorder[Markers.Length];
@@ -119,8 +122,9 @@ public class WaterLookProbe : ProbeScenario
             recorders[i].Dispose();
         }
         Metric($"{name}_frame_ms", frameMs / frames);
-        foreach (string key in new[] { "water.wet_cells", "water.dirty_tiles", "water.tiles_drawn", "water.changed" })
+        foreach (string key in new[] { "water.wet_cells", "water.dirty_tiles", "water.tiles_drawn", "water.changed", "tile.box_cells", "tile.noise_points" })
             Metric($"{name}_{key}", counts.TryGetValue(key, out long n) ? (double)n / frames : 0);
+        LastCounts = counts;
         Debug.Log(line.Append(wide.WindowSummary()).ToString());
         var countLine = new System.Text.StringBuilder($"PROBE WATERLOOK {name} counts a frame:");
         foreach (var kv in counts) countLine.Append(' ').Append(kv.Key).Append('=').Append(((double)kv.Value / frames).ToString("0.0", inv));

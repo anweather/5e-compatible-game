@@ -236,7 +236,7 @@ public static class ProbeScenarios
         new Entry("showerstorm", typeof(ShowerStormProbe), 420f,
             "The view's cost after a meteor shower and through the storm that follows (#70), as Andrew's evening went: over Hollowmere's square, quiet, then a minute of his " +
             "meteor mod's shower, then a storm for three minutes, the camera still. Logs each stretch's markers, tick stages and view counts a frame (PROBE WATERLOOK lines); " +
-            "checks only that the storm came. Metrics: each stretch's view markers, frame and water counts, a frame."),
+            "checks that the storm came and that redrawn water and slick tiles keep their outline's noise (under 2 points a tile cell). Metrics: each stretch's view markers, frame and water counts, a frame."),
         new Entry("looksmod", typeof(LooksModProbe), 120f,
             "The view draws from the rules in force (docs/RULES_MCP.md, \"Looks\"): a Fireball, the Big fireball mod switched on mid-game, " +
             "a Fireball beside it, the Moonstone mod and its new material, then a look-only switch. --shots films it (ClipFilm). Checks: blast, fire " +
