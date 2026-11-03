@@ -20,7 +20,7 @@ namespace Chem.Mcp
                 ? "The mod changed nothing in this scenario (same cell hash)."
                 : $"The mod changed the outcome (a different cell hash): {with.CellsChanged} cells changed with it, {without.CellsChanged} without.";
             string cost = slowdown > maxSlowdown
-                ? $"It ticks {slowdown.ToString("0.0", CultureInfo.InvariantCulture)} times slower than without it, past the budget of {Num(maxSlowdown)}."
+                ? $"It ticks {slowdown.ToString("0.0", CultureInfo.InvariantCulture)} times slower than without it, past the budget of {Num(maxSlowdown)}. apply doesn't time a mod (a timing differs from machine to machine, so it can't decide a room's rules), so cut it down before applying it: fewer, rarer or smaller casts."
                 : $"It ticks at {(1 / slowdown).ToString("0.00", CultureInfo.InvariantCulture)} times the speed without it (the budget allows down to 1/{Num(maxSlowdown)}).";
             return $"Scenario {scenario}: {Simulator.Scenarios[scenario]} {with.Ticks} ticks ({with.Ticks / InForce.Sim.TicksPerSecond} s of game time).\n\n" +
                 $"With the mod:\n{Simulator.Describe(with, min)}\n\nWithout it:\n{Simulator.Describe(without, min)}\n\n{verdict} {cost}";

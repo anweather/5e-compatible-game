@@ -67,5 +67,54 @@ namespace Chem.Tests
             string said = tools.AddTrigger("weather-steps", "[{\"cast\": \"control-weather\"}]");
             Assert.That(b.Validate(DraftIn(said)).Select(p => p.Message), Has.Some.Contains("level 7 at most"));
         }
+
+        // The rules MCP knows the player at the keyboard as their peer name ("Player 1"); their stands come in as
+        // "solo" alone and as "p<client>" online (SpellCaster.CastPlayer). The default who matches either.
+        static World SteppedBy(Workbench b, string draft, string player)
+        {
+            var w = new World(b.InForce.WithMods(new[] { ModPatch.Parse(b.DraftOf(draft).Patch.ToString()) }), 64, 64, 5, "grass");
+            w.ApplyStrike(StrikeCommand.Stand(player, 20, 20, 12));
+            w.ApplyStrike(StrikeCommand.Stand(player, 21, 20, 12));
+            return w;
+        }
+
+        [Test]
+        public void SoloTheAskersStepsFireATriggerWithNoWho()
+        {
+            var b = Bench("Player 1");
+            string draft = DraftIn(new RulesTools(b).AddTrigger("meteor-steps", MeteorAhead));
+            Assert.That((string)b.DraftOf(draft).Patch["triggers"]["meteor-steps"]["who"], Is.EqualTo("Player 1"));
+            var w = SteppedBy(b, draft, TriggerDef.SoloPlayer);
+            Assert.That(w.TriggerFirings, Is.EqualTo(1), "a solo stand is the asker's");
+            Assert.That(w.Triggered.Single().Player, Is.EqualTo("solo"));
+            Assert.That(SteppedBy(b, draft, TriggerDef.SoloPlayer).CastHash(), Is.EqualTo(w.CastHash()), "the same every time");
+        }
+
+        [Test]
+        public void OnlineTheAskersStepsFireATriggerWithNoWhoAndNoOneElses()
+        {
+            var b = Bench("Player 2");
+            string draft = DraftIn(new RulesTools(b).AddTrigger("meteor-steps", MeteorAhead));
+            Assert.That(SteppedBy(b, draft, "p1").TriggerFirings, Is.EqualTo(1), "client 1 is Player 2");
+            Assert.That(SteppedBy(b, draft, "p0").TriggerFirings, Is.Zero);
+            Assert.That(SteppedBy(b, draft, TriggerDef.SoloPlayer).TriggerFirings, Is.Zero, "solo is Player 1");
+            Assert.That(SteppedBy(b, draft, "p10").TriggerFirings, Is.Zero);
+            Assert.That(SteppedBy(b, draft, "Player 2").TriggerFirings, Is.EqualTo(1), "and a stand by the peer name itself");
+            Assert.That(TriggerDef.PeerOf("p0"), Is.EqualTo("Player 1"));
+            Assert.That(TriggerDef.PeerOf("pe"), Is.EqualTo("pe"));
+            Assert.That(TriggerDef.PeerOf("p+1"), Is.EqualTo("p+1"));
+            Assert.That(TriggerDef.PeerOf("Ann"), Is.EqualTo("Ann"));
+        }
+
+        [Test]
+        public void ApplyRefusesATriggerModPastTheBudgetsAsAnyMod()
+        {
+            var b = Bench();
+            string five = "{ \"title\": \"Five\", \"patch\": { \"triggers\": {" + string.Join(",", Enumerable.Range(0, 5).Select(i => $"\"t{i}\": {{ \"on\": \"step\", \"who\": \"each\", \"do\": [ {{ \"cast\": \"meteor\" }} ] }}")) + "} } }";
+            StringAssert.StartsWith("Switch on refused: Five doesn't pass the checks: The mod has 5 triggers; a mod may have at most 4", b.Apply(five));
+            StringAssert.StartsWith("Switch on refused: Storms doesn't pass the checks: Trigger t casts control-weather, level 8",
+                b.Apply("{ \"title\": \"Storms\", \"patch\": { \"triggers\": { \"t\": { \"on\": \"step\", \"who\": \"each\", \"do\": [ { \"cast\": \"control-weather\" } ] } } } }"));
+            Assert.That(b.RoomNow.Mods, Is.Empty);
+        }
     }
 }

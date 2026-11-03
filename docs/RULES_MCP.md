@@ -518,8 +518,11 @@ is the table, empty in the base rules; a `null` takes a row out):
 ```
 
 - **`on`**: the event; only `step` so far (a `Stand` on another cell: not the first stand, not while downed).
-- **`who`**: the player whose steps fire it (the name casts use), or `"each"`. `add_trigger` fills in the asker's
-  name from `here()` when it's left out (J-067).
+- **`who`**: the player whose steps fire it, or `"each"`. `add_trigger` fills in the asker's name from `here()` when
+  it's left out (J-067): their peer name, "Player 1". A stand's name is "solo" alone and "p0" online, so a trigger
+  matches a stand by its own name or by its peer name (`TriggerDef.PeerOf`: "solo" and "p<n>" to "Player <n+1>").
+- **Cost.** `simulate`'s slowdown against `simulate.maxSlowdown` is a guide: `apply` doesn't time any mod (a timing
+  differs by machine, so it can't decide a room's rules). What `apply` checks, on every peer, are the budgets below.
 - **`do`**: one or two actions. `{"cast": spell, "at", "by", "within", "delay"}` casts through `World.Release` as a
   player's cast does (a spell zone still smothers it); a `delay` puts it on the delayed path (`AimStar`, a target mark
   until it lands), and 0 keeps the spell's own. `{"place": {...}, "at", "by"}` places as a spell's `place` does,

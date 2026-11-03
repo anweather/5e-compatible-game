@@ -22,14 +22,9 @@ namespace Chem.Mcp
             id = Required(id, "id");
             on = string.IsNullOrEmpty(on) ? "step" : on.ToLowerInvariant();
             if (!Rules.TriggerEvents.Contains(on)) throw new RulesToolException($"A trigger reacts to {string.Join(" or ", Rules.TriggerEvents)} so far (a player stepping onto another cell), not {on}.");
-            who = string.IsNullOrEmpty(who) || who == "me" ? Here?.Asking()?.Player ?? throw new RulesToolException("No player is in the game to name, so give who: a player's name, or each for everyone.") : who;
-            var actions = Value(Required(does, "do"));
-            if (actions is JObject one) actions = new JArray(one);
-            if (!(actions is JArray list) || list.Count == 0 || list.Any(a => !(a is JObject)))
-                throw new RulesToolException("do is a list of one or two actions, each {\"cast\": spell, \"at\": here, ahead, behind or around, \"by\": cells, \"delay\": ticks} or {\"place\": {...as a spell's place}, \"at\": ...}.");
-            if (every.HasValue && every.Value < TriggerDef.MinEvery)
-                throw new RulesToolException($"every is at least {TriggerDef.MinEvery} ticks: a trigger fires at most twice a second for a player, so a meteor at every step of a run is already two a second.");
-            if (chance.HasValue && !(chance.Value > 0 && chance.Value <= 1)) throw new RulesToolException("chance is above 0 and at most 1; leave it out for every time.");
+            who = string.IsNullOrEmpty(who) || who == "me" ? AskerForTrigger() : who;
+            var list = TriggerActions(does);
+            CheckTriggerOdds(every, chance);
             var draft = DraftOf(draftId);
             var row = new JObject { ["on"] = on, ["who"] = who };
             if (every.HasValue) row["every"] = every.Value;
@@ -55,6 +50,27 @@ namespace Chem.Mcp
             return draft.Show() + "\n" + string.Format(CultureInfo.InvariantCulture,
                 "{0} fires on {1}'s steps at most once every {2} ticks ({3:0.#} a second at a run), and at most {4} triggers fire a tick in the room. Run simulate on it: it walks a loop and counts what fired.",
                 id, who == TriggerDef.Each ? "everyone" : who, gap, perSecond, (int)Budgets.Number("triggers.maxPerTick", World.DefaultMaxFiringsPerTick));
+        }
+
+        // The asker's name, which matches their steps alone and online (TriggerDef.IsFor), or the reason there's none.
+        string AskerForTrigger() =>
+            Here?.Asking()?.Player ?? throw new RulesToolException("No player is in the game to name, so give who: a player's name, or each for everyone.");
+
+        // do: one action or a list of them, each an object.
+        static JArray TriggerActions(string does)
+        {
+            var actions = Value(Required(does, "do"));
+            if (actions is JObject one) actions = new JArray(one);
+            if (!(actions is JArray list) || list.Count == 0 || list.Any(a => !(a is JObject)))
+                throw new RulesToolException("do is a list of one or two actions, each {\"cast\": spell, \"at\": here, ahead, behind or around, \"by\": cells, \"delay\": ticks} or {\"place\": {...as a spell's place}, \"at\": ...}.");
+            return list;
+        }
+
+        static void CheckTriggerOdds(int? every, double? chance)
+        {
+            if (every.HasValue && every.Value < TriggerDef.MinEvery)
+                throw new RulesToolException($"every is at least {TriggerDef.MinEvery} ticks: a trigger fires at most twice a second for a player, so a meteor at every step of a run is already two a second.");
+            if (chance.HasValue && !(chance.Value > 0 && chance.Value <= 1)) throw new RulesToolException("chance is above 0 and at most 1; leave it out for every time.");
         }
 
         // list triggers: each trigger in force, in words.

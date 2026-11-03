@@ -8,6 +8,7 @@
 // Not a port: the sandbox has no triggers.
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using Newtonsoft.Json.Linq;
 
@@ -64,6 +65,30 @@ namespace Chem
         /// <summary>The chance it fires on an event, 0 to 1, from WorldHash (no draw from the world's generator).</summary>
         public double Chance = 1;
         public IReadOnlyList<TriggerAction> Do = Array.Empty<TriggerAction>();
+
+        /// <summary>A solo game's player, as its stands name it (SpellCaster.SoloPlayer).</summary>
+        public const string SoloPlayer = "solo";
+
+        /// <summary>
+        /// Whether a stand's player's events fire it: Each, the stand's own name, or the name the rules MCP knows them by,
+        /// <paramref name="peer"/> (PeerOf). add_trigger fills in the asker's, "Player 1", whose steps come in as "solo"
+        /// alone or "p0" online.
+        /// </summary>
+        public bool IsFor(string player, string peer) =>
+            Who == Each || string.Equals(Who, player, StringComparison.Ordinal) || string.Equals(Who, peer, StringComparison.Ordinal);
+
+        /// <summary>
+        /// The peer name (NetChem.PeerName, "Player 1" for client 0) of a stand's player (NetChem.PlayerName, "p0"; or
+        /// SoloPlayer, the one player alone): a pure function of the name, so every peer matches the same. Any other name is itself.
+        /// </summary>
+        public static string PeerOf(string player)
+        {
+            if (player == SoloPlayer) return "Player 1";
+            if (player != null && player.Length > 1 && player[0] == 'p'
+                && ulong.TryParse(player.AsSpan(1), NumberStyles.None, CultureInfo.InvariantCulture, out ulong client) && client < ulong.MaxValue)
+                return "Player " + (client + 1).ToString(CultureInfo.InvariantCulture);
+            return player;
+        }
     }
 
     public sealed partial class Rules
@@ -133,20 +158,26 @@ namespace Chem
                 foreach (var row in rows.Properties())
                 {
                     string who = $"trigger {row.Name}";
-                    if (!(row.Value is JObject t))
-                    {
-                        Errors.Add($"{who} must be an object");
-                        continue;
-                    }
-                    foreach (var f in t.Properties().Where(f => !TriggerFields.Contains(f.Name))) Errors.Add($"{who}: {f.Name} isn't a field of a trigger; it takes {string.Join(", ", TriggerFields)}");
-                    if (!(t["on"] is JValue on && TriggerEvents.Contains(Text(on)))) Errors.Add($"{who}: on is the event, one of {string.Join(", ", TriggerEvents)}");
-                    if (string.IsNullOrEmpty(Text(t["who"]))) Errors.Add($"{who}: who is a player's name, or \"{TriggerDef.Each}\" for everyone");
-                    if (t["every"] != null && !(IsWholeNumber(t["every"]) && (double)t["every"] >= TriggerDef.MinEvery))
-                        Errors.Add($"{who}: every is the ticks between firings, a whole number from {TriggerDef.MinEvery}");
-                    if (t["chance"] != null && !(IsNumber(t["chance"]) && (double)t["chance"] > 0 && (double)t["chance"] <= 1)) Errors.Add($"{who}: chance is above 0 and at most 1");
-                    if (!(t["do"] is JArray actions) || actions.Count == 0) Errors.Add($"{who} needs \"do\": a list of actions, each a cast or a place");
-                    else for (int i = 0; i < actions.Count; i++) TriggerAction($"{who}: action {i + 1}", actions[i]);
+                    if (row.Value is JObject t) TriggerRow(who, t);
+                    else Errors.Add($"{who} must be an object");
                 }
+            }
+
+            void TriggerRow(string who, JObject t)
+            {
+                foreach (var f in t.Properties().Where(f => !TriggerFields.Contains(f.Name))) Errors.Add($"{who}: {f.Name} isn't a field of a trigger; it takes {string.Join(", ", TriggerFields)}");
+                if (!(t["on"] is JValue on && TriggerEvents.Contains(Text(on)))) Errors.Add($"{who}: on is the event, one of {string.Join(", ", TriggerEvents)}");
+                if (string.IsNullOrEmpty(Text(t["who"]))) Errors.Add($"{who}: who is a player's name, or \"{TriggerDef.Each}\" for everyone");
+                if (t["every"] != null && !(IsWholeNumber(t["every"]) && (double)t["every"] >= TriggerDef.MinEvery))
+                    Errors.Add($"{who}: every is the ticks between firings, a whole number from {TriggerDef.MinEvery}");
+                if (t["chance"] != null && !(IsNumber(t["chance"]) && (double)t["chance"] > 0 && (double)t["chance"] <= 1)) Errors.Add($"{who}: chance is above 0 and at most 1");
+                TriggerActions(who, t["do"]);
+            }
+
+            void TriggerActions(string who, JToken does)
+            {
+                if (!(does is JArray actions) || actions.Count == 0) Errors.Add($"{who} needs \"do\": a list of actions, each a cast or a place");
+                else for (int i = 0; i < actions.Count; i++) TriggerAction($"{who}: action {i + 1}", actions[i]);
             }
 
             void TriggerAction(string who, JToken a)

@@ -85,19 +85,26 @@ namespace Chem
             var list = Rules.TriggersOn(TriggerEvent.Step);
             if (list.Count == 0) return;
             int dx = Math.Sign(me.X - fromX), dy = Math.Sign(me.Y - fromY);
+            string peer = TriggerDef.PeerOf(me.Player);
             foreach (var t in list)
-            {
-                if (t.Who != TriggerDef.Each && !string.Equals(t.Who, me.Player, StringComparison.Ordinal)) continue;
-                string key = t.Id + "/" + me.Player;
-                if (triggerNext.TryGetValue(key, out int next) && Tick < next) continue;
-                if (firedTick == Tick && firedOnTick >= MaxFiringsPerTick) continue;
-                if (t.Chance < 1 && WorldHash.HashUnit(unchecked((int)Seed), TriggerSalt ^ StableHash(t.Id), Tick, StableHash(me.Player)) >= t.Chance) continue;
-                triggerNext[key] = Tick + Math.Max(TriggerDef.MinEvery, t.Every);
-                if (firedTick != Tick) (firedTick, firedOnTick) = (Tick, 0);
-                firedOnTick++;
-                triggerFirings++;
-                foreach (var a in t.Do) Act(t, a, me, dx, dy);
-            }
+                if (t.IsFor(me.Player, peer) && Due(t, me.Player)) Fire(t, me, dx, dy);
+        }
+
+        // Whether a trigger of the player's fires now: past its floor, under the tick's cap, and its chance met.
+        bool Due(TriggerDef t, string player)
+        {
+            if (triggerNext.TryGetValue(t.Id + "/" + player, out int next) && Tick < next) return false;
+            if (firedTick == Tick && firedOnTick >= MaxFiringsPerTick) return false;
+            return t.Chance >= 1 || WorldHash.HashUnit(unchecked((int)Seed), TriggerSalt ^ StableHash(t.Id), Tick, StableHash(player)) < t.Chance;
+        }
+
+        void Fire(TriggerDef t, WizardStand me, int dx, int dy)
+        {
+            triggerNext[t.Id + "/" + me.Player] = Tick + Math.Max(TriggerDef.MinEvery, t.Every);
+            if (firedTick != Tick) (firedTick, firedOnTick) = (Tick, 0);
+            firedOnTick++;
+            triggerFirings++;
+            foreach (var a in t.Do) Act(t, a, me, dx, dy);
         }
 
         void Act(TriggerDef t, TriggerAction a, WizardStand me, int dx, int dy)
