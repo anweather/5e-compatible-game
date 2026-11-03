@@ -258,7 +258,7 @@ namespace Chem
                 else
                 {
                     Params(look, who, $"the look family \"{name}\"", family.Params, table);
-                    double maxScale = budgets.Number("things.maxScale", 4);
+                    double maxScale = budgets.Number("things.maxScale", 20);
                     if (look["scale"] != null && !(IsNumber(look["scale"]) && (double)look["scale"] > 0 && (double)look["scale"] <= maxScale))
                         Add(ModCheck.Budget, $"{who}'s look has a scale of {look["scale"]}; a thing's scale is above 0 and at most {Num(maxScale)}.");
                 }
