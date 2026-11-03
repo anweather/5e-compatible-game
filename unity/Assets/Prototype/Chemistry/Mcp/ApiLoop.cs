@@ -48,9 +48,9 @@ namespace Chem.Mcp
         /// <summary>The only game tools the loop runs or offers, by name. A tool the server adds later stays out until it's read and named here.</summary>
         public static readonly IReadOnlyCollection<string> Allowed = new HashSet<string>(StringComparer.Ordinal)
         {
-            "add_building", "add_building_part", "add_entity", "add_item", "add_material", "add_reaction", "add_spell", "add_thing", "add_wing", "apply",
+            "add_building", "add_building_part", "add_entity", "add_item", "add_material", "add_reaction", "add_species", "add_spell", "add_thing", "add_wing", "apply",
             "describe", "explain", "find", "find_site", "here", "list", "outside_rules", "places", "remove", "revert", "room",
-            "save", "scatter", "set_building", "set_look", "set_material", "set_reaction", "set_spell", "set_time", "set_weather",
+            "save", "scatter", "set_building", "set_look", "set_material", "set_reaction", "set_species", "set_spell", "set_time", "set_weather",
             "simulate", "time", "tune", "validate", "weather", "whats_on",
         };
 

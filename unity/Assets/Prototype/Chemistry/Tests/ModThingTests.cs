@@ -52,7 +52,7 @@ namespace Chem.Tests
             string Problems(string mod) => string.Join("\n", ModValidator.Validate(R, Budgets, mod.Replace('\'', '"')));
             Assert.That(Problems(Adds("{ 'kind': 'test-find', 'cell': [10, 10] }")), Is.Empty);
             Assert.That(Problems(Kind.Insert(0, "{ ").Replace("'deer'", "'dragon'") + " }"), Does.Contain("takes a species"));
-            Assert.That(Problems(Kind.Insert(0, "{ ").Replace("0.5", "9") + " }"), Does.Contain("scale of 9"));
+            Assert.That(Problems(Kind.Insert(0, "{ ").Replace("0.5", "50") + " }"), Does.Contain("scale of 50"));
             Assert.That(Problems("{ 'items': { 'plain': { 'name': 'Plain', 'mass': 1 } }, 'world': { 'add': [{ 'kind': 'plain', 'cell': [1, 1] }] } }"), Does.Contain("no look"));
             Assert.That(Problems(Adds("{ 'kind': 'nope', 'cell': [1, 1] }")), Does.Contain("unknown kind nope"));
             Assert.That(Problems(Adds("{ 'kind': 'test-find', 'cell': [1, 1], 'chance': 1.5 }")), Does.Contain("chance must be above 0"));
