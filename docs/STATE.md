@@ -61,7 +61,7 @@ The one page a new PM session reads first. Keep it short: history goes in
 - **Unmerged, kept:** `second-map` (afff4c9): the report and the word are on dev (`docs/design/second-map-2026-11-02.md`), the code waits for shipped maps (#69, backlog 29), after the cleanup.
 - **#59 telemetry:** items 1 to 4 landed (b5e3465), checked against the real stream. "In the world" is stamped on frames, so a slow rebuild could stamp early. Item 5 (faster) not started: run `chatbench` and read the first real record.
 - **#58 voice:** the freeze is fixed and landed (d5de6de). Open: real words twice in a row, the real stuck case, `-voice-no-meter`; all need Andrew talking. Separate from chat tuning now (J-064). Lead: the Scarlett is 44.1 kHz, 32-bit, the other mics 48 kHz, 16-bit.
-- **u1, u2:** stopped. Pro is out until Nov 5 (weekly).
+- **u1, u2:** stopped. Pro is back (2026-11-02 20:02); nothing queued while work is paused.
 - **Note:** `YardAutoBuild` skips batch mode, so a hidden Editor needs Build Chemistry Yard run by hand.
 - **Landed tonight:** the whole creature port (`creature-data`, `punchy-people`, `life-variety`, `punchy-water`; Punchy's assets deleted), #57 building light. Merged dev passed full EditMode on the Mac and Windows.
 - **Test player:** `.claude/worktrees/host-ux/unity/Builds/PlayTest-f736c4d/SpellChemistryValley.exe`, dev at f736c4d, for Andrew's play on 2026-11-02 after 8pm. Copies passed the squirrel test, save right after apply, 2 real Haiku prompts, two built peers over Relay on this PC. The exe itself has never been launched, or anything run in a real window. Older `PlayTest/` and `PlayTest-1ad55fb/` stay until he has moved over.
