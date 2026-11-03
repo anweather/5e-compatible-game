@@ -30,6 +30,8 @@ namespace Chem
         public const string StaysWall = "wall";
         /// <summary>What "becomes" says for no cell at all: a gap, which the outside reaches through.</summary>
         public const string Open = "open";
+        /// <summary>The most cells an opening's row may say: far past any wall, and its span in half cells (twice it) stays an int (#85).</summary>
+        public const int MaxCells = 1 << 20;
 
         public string Id;
         /// <summary>How many cells it covers; 0 for one whose width the wall says.</summary>
